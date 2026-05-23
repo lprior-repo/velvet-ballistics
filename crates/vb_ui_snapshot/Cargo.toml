@@ -9,18 +9,15 @@ publish = false
 [features]
 default = ["std"]
 std = ["serde/std", "dep:saphyr"]
-tokio = ["dep:tokio"]
 
 [dependencies]
 serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
 saphyr = { workspace = true, optional = true }
 toml = "0.9"
 vb_ui_model = { path = "../vb_ui_model" }
-thiserror = "2"
 anyhow = "1"
 png = "0.17"
 image = { version = "0.25", default-features = false, features = ["png"] }
-tokio = { version = "1", features = ["fs", "process"], optional = true }
 serde_json = { version = "1", default-features = false, features = ["alloc"] }
 
 [lints]

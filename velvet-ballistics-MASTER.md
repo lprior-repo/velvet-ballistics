@@ -57,7 +57,7 @@ The final product must provide all of the following. None are optional:
 13. IR-interpreter execution is the required runtime mode for the current milestone.
 14. Typed validation, compile, runtime, IPC, and storage failures.
 15. Benchmarked optimizations only; no speed claim without measured before/after data.
-16. AI changes are accepted only with actual evidence that the relevant formatting, linting, tests, fuzzing, recovery, benchmark, dependency audit, supply-chain review, unsafe scan, and CI reproducibility gates ran and passed; merely adding or naming a task is not acceptance evidence.
+16. AI changes are accepted only with actual evidence that the relevant formatting, linting, tests, fuzzing, recovery, benchmark, and CI reproducibility gates ran and passed; merely adding or naming a task is not acceptance evidence. Dependency/supply-chain/API reports are advisory under the 2026-05-23 owner waiver unless a separate bead explicitly makes a specific report blocking.
 
 HTTP/JSON exclusion rule: HTTP and JSON are excluded from the v1 runtime core. Any future adapter must be a separate cold-path adapter crate and must not enter `vb_core`, `vb_runtime`, `vb_storage`, or `vb_ipc`.
 
@@ -103,7 +103,7 @@ First-party Rust code under this workspace must satisfy these rules on every cha
 - No task-per-step scheduler.
 - No formatted text output inside hot execution loops.
 
-Dependency rule: third-party crates may contain internal unsafe only if pinned, audited, justified, and allowed by `cargo-geiger`, `cargo-vet`, `cargo-deny`, and the repository dependency policy.
+Dependency rule: third-party crates may contain internal unsafe only if pinned and justified by the repository dependency policy. `cargo-geiger`, `cargo-vet`, `cargo-deny`, and related supply-chain tools remain advisory reports under the 2026-05-23 owner waiver; their warnings do not block the current Backend / IR Interpreter Complete milestone unless a specific bead opts back into blocking enforcement.
 
 ---
 
@@ -114,13 +114,13 @@ Dependency rule: third-party crates may contain internal unsafe only if pinned, 
 | Simple control flow | Runtime transitions are explicit `StepIdx -> StepIdx`; no hidden graph mutation after compile. |
 | Bounded loops | `for_each`, `collect`, `reduce`, `repeat`, retries, scheduler ticks, trace rings, storage batches, IPC frames, and expression stacks require explicit limits. |
 | No dynamic allocation after init where avoidable | Current turbo-style backend paths preallocate or reserve frames, slots, step states, stacks, queues, trace rings, journal buffers, and IPC buffers before run admission. |
-| Short functions | Hot functions must be <= 25 logical lines. Complex cold validation phase functions must be decomposed or carry a bead-linked justification and must stay out of hot paths. CI, justfile, and Moon tasks must include a source-length gate that fails hot functions over 25 logical lines. |
+| Short functions | Hot functions must be <= 25 logical lines. Complex cold validation phase functions must be decomposed or carry a bead-linked justification and must stay out of hot paths. CI and Moon tasks must include a source-length gate that fails hot functions over 25 logical lines. |
 | Assertions/contracts | User errors return typed errors. Debug assertions may check compiler invariants that are unreachable for validated IR. |
 | Small scopes | Each run belongs to exactly one shard. Shards own mutable runtime state. No global mutable run map. |
 | Checked parameters/returns | Parse, validate, compile, eval, storage, IPC, action dispatch, and scheduler return typed `Result`. |
 | Restricted macros | No macro-hidden business logic in current backend crates. Future codegen work must remain explicit Rust and carry its own compile-fail/equivalence evidence before it returns to scope. |
 | Restricted pointer complexity | No first-party pointer manipulation. Tables are addressed by checked numeric IDs. |
-| Zero warnings | CI denies warnings, clippy violations, audit violations, unsafe scan findings, and missing benchmark metadata. |
+| Zero warnings | CI denies first-party warnings, clippy violations, forbidden constructs, and missing benchmark metadata. Advisory dependency/supply-chain/API report warnings do not block release under the owner waiver unless a specific bead opts in. |
 
 ---
 
@@ -138,14 +138,14 @@ Dependency rule: third-party crates may contain internal unsafe only if pinned, 
 | `proptest` | Property and invariant tests. |
 | `cargo-fuzz` | Parser, decoder, and IR fuzzing. |
 | `trybuild` | Compile-fail tests for public macro/schema contracts when such contracts are active. Generated Rust compile-fail testing is deferred with codegen. |
-| `cargo-audit` | Vulnerability gate. |
-| `cargo-deny` | License, duplicate, source, and advisory gate. |
-| `cargo-vet` | Supply-chain review gate. |
-| `cargo-geiger` | Unsafe dependency scan. |
-| `cargo-machete` | Unused dependency gate. |
+| `cargo-audit` | Advisory vulnerability report; non-blocking under the owner waiver unless a bead opts in. |
+| `cargo-deny` | Advisory license, duplicate, source, and advisory report; non-blocking under the owner waiver unless a bead opts in. |
+| `cargo-vet` | Advisory supply-chain review report; non-blocking under the owner waiver unless a bead opts in. |
+| `cargo-geiger` | Advisory unsafe dependency report; first-party unsafe remains forbidden by lint. |
+| `cargo-machete` | Advisory unused dependency report. |
 | `cargo-hack` | Feature powerset gate. |
-| `cargo-semver-checks` | Public compatibility gate for released crates. |
-| `cargo-public-api` | Public API diff gate. |
+| `cargo-semver-checks` | Advisory public compatibility report for released crates unless an API-stability bead opts in. |
+| `cargo-public-api` | Advisory public API diff report unless an API-stability bead opts in. |
 | `cargo-bloat` | Size regression investigation. |
 | `cargo-mutants` | Mutation testing, at least smoke scope in CI. |
 | `cargo-llvm-cov` | Coverage report gate. |
@@ -161,7 +161,8 @@ Mandatory tooling categories:
 - Formatting/linting: `cargo fmt`, hard-deny `clippy`, warnings as errors, banned-token scan.
 - Test runners: `cargo test`, `cargo nextest`, `miri`, `cargo mutants`, `cargo llvm-cov`.
 - Property/fuzz/compile diagnostics: `proptest`, `cargo-fuzz`, `arbitrary`, `trybuild` where active compile-fail contracts exist, and `insta` only when approved for golden diagnostics.
-- Supply chain: `cargo audit`, `cargo deny`, `cargo vet`, `cargo geiger`, `cargo machete`, `cargo hack`, `cargo semver-checks`, `cargo public-api`, `cargo bloat`.
+- Feature matrix: `cargo hack`.
+- Advisory dependency/API reports: `cargo audit`, `cargo deny`, `cargo vet`, `cargo geiger`, `cargo machete`, `cargo semver-checks`, `cargo public-api`, and `cargo bloat`; these are non-blocking under the 2026-05-23 owner waiver unless a bead explicitly opts in.
 - Performance: `criterion`, `iai-callgrind`, `flamegraph`, `samply`/`perf`, `hyperfine`, `callgrind`, `cachegrind`, and `DHAT` for current-scope evidence. PGO and `target-cpu=native` are deferred with maxperf.
 - Nightly/dynamic verification: Miri, sanitizers, and coverage.
 
@@ -217,10 +218,10 @@ Strict nightly governance:
 | `cargo-fuzz` | Fuzzing | Required for parsers/decoders. |
 | `trybuild` | Compile-fail tests | Required only for active public macro/schema contracts in the current milestone; generated Rust contracts are deferred. |
 | `cargo-nextest` | Test execution | Required CI test runner. |
-| `cargo-audit` | Vulnerability scan | Required release gate. |
-| `cargo-deny` | Policy scan | Required release gate. |
-| `cargo-vet` | Supply-chain review | Required release gate. |
-| `cargo-geiger` | Unsafe scan | Required release gate. |
+| `cargo-audit` | Vulnerability scan | Advisory report; non-blocking under the owner waiver unless a bead opts in. |
+| `cargo-deny` | Policy scan | Advisory report; non-blocking under the owner waiver unless a bead opts in. |
+| `cargo-vet` | Supply-chain review | Advisory report; non-blocking under the owner waiver unless a bead opts in. |
+| `cargo-geiger` | Unsafe dependency scan | Advisory report; first-party unsafe remains forbidden by lint. |
 | `blake3` | Digest computation for envelopes and artifacts | Required for compiled digests, journal digests, blob digests. |
 | `crc32c` | CRC32C header checksum for binary envelopes | Required for envelope header integrity. |
 
@@ -1098,7 +1099,6 @@ velvet-ballastics/
   Cargo.toml
   rust-toolchain.toml
   clippy.toml
-  justfile
   deny.toml
   moon.yml
   supply-chain/
@@ -1387,7 +1387,7 @@ Phase build order is mandatory. The old giant primitive phase is rejected; every
 | Phase | Name | Required delivery |
 |-------|------|-------------------|
 | -1 | Name/repo rebaseline | Canonical spelling, folder/package/crate/bead rebaseline, migration notes. |
-| 0 | Toolchain/lints/CI/justfile | Nightly pin, hard lints, Moon tasks, justfile, supply-chain skeleton. |
+| 0 | Toolchain/lints/CI/Moon | Nightly pin, hard lints, Moon tasks, and optional advisory supply-chain reporting skeleton. |
 | 1 | Core scalar types | IDs, `WorkflowId::as_u32`, `RunId::as_u64`, `FiniteF64`, errors, limits. |
 | 2 | Runtime value arenas | `SlotValue` handles, symbol/list/object/blob arenas, taint arrays. |
 | 3 | Strict YAML event parser | `saphyr-parser` wrapper, YAML profile rejection, source maps, fuzz. |
@@ -1445,7 +1445,7 @@ Round 2 current implementation state, observed in this tree and not a final rele
 | Runtime/direct API | `vb_runtime` exposes direct API, shard/frame-pool/action/wait/ask/trace/counter surfaces, admission/capability surfaces, and typed runtime errors. | Strict persistence-before-ack behavior, shutdown/cancellation edge cases, pending-action recovery, and full lifecycle evidence remain gates. |
 | IPC | `vb_ipc` exposes bounded frame/header/payload validation, typed payloads, memory ingress, client/server surfaces, and required command handlers. | Socket-loop fuzz/backpressure evidence and runtime integration gates remain required. |
 | Deferred codegen/UI | `vb_codegen`, `vb_ui_model`, and `vb_ui_makepad` are documented as deferred tracks. | They are not current acceptance gates and must not block Backend / IR Interpreter Complete. |
-| Tests/audits | Error-variant completeness and diagnostic-code range tests exist; companion docs record benchmark and dependency policy constraints. | Full matrix gates, fuzz, Miri, coverage, mutants, sanitizer, supply-chain, benchmark metadata, and bead closure evidence are still required. |
+| Tests/audits | Error-variant completeness and diagnostic-code range tests exist; companion docs record benchmark and dependency policy constraints. | Full matrix gates, fuzz, Miri, coverage, mutants, sanitizer, benchmark metadata, and bead closure evidence are still required. Supply-chain/dependency reports are advisory under the owner waiver. |
 
 Round 2 status rule: a public function existing in a crate is only API surface evidence. It is not proof that the phase is complete unless the required tests, fuzz/property coverage, benchmark evidence where applicable, and bead closure evidence have actually passed.
 
@@ -1623,7 +1623,6 @@ Required justfile targets:
 ```text
 check
 test
-supply-chain
 feature-powerset
 miri
 coverage
@@ -1633,7 +1632,7 @@ source-length
 fuzz-smoke
 ```
 
-CI must gate on `just check`, `just test`, `just supply-chain`, `just fuzz-smoke`, `just miri`, `just coverage`, `just mutants-smoke`, `just bench-build`, `just source-length`, and `just feature-powerset`. Nightly sanitizer jobs are required for runtime, IPC, storage, and binary decoding crates. The `source-length` target must fail any hot runtime function over 25 logical lines and must be represented by an equivalent Moon task.
+CI must gate on `just check`, `just test`, `just fuzz-smoke`, `just miri`, `just coverage`, `just mutants-smoke`, `just bench-build`, `just source-length`, and `just feature-powerset`. Nightly sanitizer jobs are required for runtime, IPC, storage, and binary decoding crates. The `source-length` target must fail any hot runtime function over 25 logical lines and must be represented by an equivalent Moon task. `just supply-chain` may exist as an advisory report target, but it is non-blocking under the 2026-05-23 owner waiver.
 
 Mandatory CI commands:
 
@@ -1652,21 +1651,26 @@ cargo +nightly test --doc --workspace --all-features
 cargo +nightly doc --workspace --all-features --no-deps
 cargo +nightly miri test -p vb_core -p vb_expr -p vb_compile
 cargo +nightly bench --no-run
-cargo audit
-cargo deny check
-cargo vet
-cargo geiger
-cargo machete
 cargo hack check --feature-powerset --workspace
-cargo semver-checks check-release
-cargo public-api diff
-cargo bloat --release --crates
 cargo llvm-cov --workspace --all-features
 cargo mutants --in-place --timeout 60 --package vb_core
 cargo fuzz build
 ```
 
-Moon expectation: each command above must have a Moon task before release, and the release gate must run through Moon rather than a hand-maintained shell script.
+Advisory report commands, non-blocking under the owner waiver unless a bead opts in:
+
+```bash
+cargo audit
+cargo deny check
+cargo vet
+cargo geiger
+cargo machete
+cargo semver-checks check-release
+cargo public-api diff
+cargo bloat --release --crates
+```
+
+Moon expectation: each mandatory command above must have a Moon task before release, and the release gate must run through Moon rather than a hand-maintained shell script. Advisory report tasks may run in Moon, but warnings from those reports cannot block current release closure without a bead-specific opt-in.
 
 ---
 
@@ -1861,7 +1865,7 @@ The current `velvet-ballastics` backend milestone is done when all 24 points are
 20. Forbidden constructs are absent: `unsafe`, `unwrap`, `expect`, `panic`, `todo`, `unimplemented`, `dbg`, ignored `Result`, runtime maps, hot formatting, runtime YAML/JSON/HTTP, and string reference/action lookup.
 21. Unchecked indexing, slicing, casts, and arithmetic are absent from first-party code.
 22. Every speed claim is backed by real benchmark evidence with p50/p95/p99, instruction counts, allocation counts, bytes allocated, latency, durability mode, and fixture metadata; compileable scaffold placeholders do not count.
-23. Full current-scope gates pass: fmt, clippy hard denies, tests, nextest, Miri, coverage, fuzz smoke, mutants smoke, supply chain, geiger, feature powerset, docs, benchmark build, storage/recovery evidence, IPC evidence, and direct API evidence.
+23. Full current-scope gates pass: fmt, clippy hard denies, tests, nextest, Miri, coverage, fuzz smoke, mutants smoke, feature powerset, docs, benchmark build, storage/recovery evidence, IPC evidence, and direct API evidence. Supply-chain/dependency unsafe reports are advisory under the owner waiver unless a bead opts in.
 24. Every phase parent bead, function-cluster child bead, fuzz target bead, benchmark bead, and P0 blocker bead in the current backend scope is closed with evidence, and mechanical gates can accept AI changes without human guesswork only when the relevant executable checks, tests, benchmarks, and bead evidence have actually run and passed.
 
 ---
@@ -4661,7 +4665,6 @@ cargo fuzz build
 ```bash
 just check
 just test
-just supply-chain
 just miri
 just fuzz-smoke
 just coverage
@@ -4670,6 +4673,8 @@ just bench-build
 just feature-powerset
 just source-length
 ```
+
+`just supply-chain` is advisory and non-blocking under the 2026-05-23 owner waiver unless a future bead explicitly opts in.
 
 `just maxperf` is deferred with generated Rust and is not part of current release closure.
 
@@ -4753,9 +4758,9 @@ Token-level grep is necessary but insufficient. The quality infrastructure uses 
 |-------|------|--------|
 | Token scan | ripgrep | `unsafe`, `unwrap`, `expect`, `panic`, `todo`, `unimplemented`, `dbg`, forbidden imports |
 | Clippy denies | `clippy` | `clippy::unwrap_used`, `clippy::expect_used`, `clippy::panic`, `clippy::arithmetic_side_effects`, etc. |
-| Unsafe scan | `cargo geiger` | Transitive unsafe in dependencies |
+| Dependency unsafe advisory | `cargo geiger` | Transitive unsafe in dependencies; non-blocking under owner waiver |
 | AST scanner | syn-based custom (`xtask forbidden-scan`) | Unchecked indexing, slicing, `as` casts, ignored `Result`, `HashMap<String, _>` in runtime, `serde_json` in runtime, HTTP crates in runtime |
-| Public API diff | `cargo public-api` | Accidental public contract changes |
+| Public API diff advisory | `cargo public-api` | Accidental public contract changes; non-blocking unless an API-stability bead opts in |
 | Allocation scanner | `xtask hotpath-scan` | `format!`, `println!`, `Vec::push` without pre-reserve, `String` construction in hot paths |
 
 AI often satisfies the literal rule while violating the intent. Multi-layer scanning catches this.

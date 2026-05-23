@@ -2227,16 +2227,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
-name = "signal-hook-registry"
-version = "1.4.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4db69cba1110affc0e9f7bcd48bbf87b3f4fc7c61fc9155afd4c469eb3d6c1b"
-dependencies = [
- "errno",
- "libc",
-]
-
-[[package]]
 name = "simd-adler32"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2411,20 +2401,6 @@ checksum = "be4d6b5f19ff7664e8c98d03e2139cb510db9b0a60b55f8e8709b689d939b6bc"
 dependencies = [
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "tokio"
-version = "1.52.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fc7f01b389ac15039e4dc9531aa973a135d7a4135281b12d7c1bc79fd57fffe"
-dependencies = [
- "bytes",
- "libc",
- "mio",
- "pin-project-lite",
- "signal-hook-registry",
- "windows-sys",
 ]
 
 [[package]]
@@ -2690,16 +2666,13 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "proptest",
- "thiserror",
 ]
 
 [[package]]
 name = "vb_boundary_inventory"
 version = "0.1.0"
 dependencies = [
- "chrono",
  "proptest",
- "serde",
  "serde_json",
  "tempfile",
 ]
@@ -2858,8 +2831,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
- "thiserror",
- "tokio",
  "toml 0.9.12+spec-1.1.0",
  "vb_ui_model",
 ]

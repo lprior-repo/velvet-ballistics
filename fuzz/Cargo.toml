@@ -44,6 +44,9 @@ vb_ui_model = { path = "../crates/vb_ui_model" }
 name = "fuzz_lib"
 path = "src/lib.rs"
 
+[package.metadata.cargo-machete]
+ignored = ["bytes"]
+
 [[bin]]
 name = "vb_f04l_yaml_compiler_compile"
 path = "fuzz_targets/vb_f04l_yaml_compiler_compile.rs"

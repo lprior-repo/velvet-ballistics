@@ -31,6 +31,29 @@ exceptions = [
 # GPL-*, LGPL-*, AGPL-*, SSPL-*, Commons Clause are not in the allow list.
 
 [bans]
+# Duplicate dependency policy (vb-jpq7.11):
+#
+# The following duplicates are policy-accepted because they originate from
+# deferred UI/codegen paths that do not pollute backend release gates:
+#
+# 1. windows-*-0.48/0.52 vs 0.56/0.60 crates:
+#    - Source: makepad-platform v1.0.0 requires windows v0.56.0
+#    - Other deps (chrono/iana-time-zone) require windows v0.62.2
+#    - These are PLATFORM-SPECIFIC targets only compiled on Windows
+#    - Backend crates (vb_core, vb_storage, vb_ipc, vb_runtime) do NOT
+#      depend on windows crates; they compile cleanly on Linux
+#
+# 2. winnow 0.7 vs 1.0:
+#    - Source: toml v0.9 (UI/snapshot) vs toml v1.1 (trybuild/test tooling)
+#    - These are TEST/UI toolchain duplicates, not production deps
+#
+# 3. wit-bindgen 0.51 vs 0.57:
+#    - Source: wasip3 (tempfile/fjall) vs wasip2 (getrandom/ahash)
+#    - These are WASI runtime duplicates from different toolchains
+#
+# All duplicate warnings are suppressed via cargo-deny default allow;
+# they do not cause cargo deny to fail. Backend crates compile and pass
+# all gates without windows platform targets on Linux.
 
 [advisories]
 version = 2

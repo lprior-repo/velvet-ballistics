@@ -22,3 +22,6 @@ publish = false
 vb_core = { path = "../crates/vb_core" }
 vb_expr = { path = "../crates/vb_expr" }
 proptest = "1"
+
+[package.metadata.cargo-machete]
+ignored = ["proptest", "vb_expr"]

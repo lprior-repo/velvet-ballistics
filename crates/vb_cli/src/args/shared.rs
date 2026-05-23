@@ -5,16 +5,10 @@ use super::ParseError;
 
 const EMIT_FLAG: &str = "--emit";
 
-/// Parse --json, --jsonl, or --emit text|yaml|postcard output format flags.
+/// Parse --emit text|yaml|postcard output format flags.
 /// Returns OutputFormat::Text by default.
 pub(super) fn parse_output_format(args: &[OsString]) -> super::OutputFormat {
-    if contains_flag(args, "--jsonl") {
-        super::OutputFormat::Jsonl
-    } else if contains_flag(args, "--json") {
-        super::OutputFormat::Json
-    } else {
-        parse_emit_output_format(named_flag(args, EMIT_FLAG).as_deref())
-    }
+    parse_emit_output_format(named_flag(args, EMIT_FLAG).as_deref())
 }
 
 fn parse_emit_output_format(raw: Option<&str>) -> super::OutputFormat {
