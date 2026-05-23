@@ -2846,6 +2846,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "vb_verification"
+version = "0.1.0"
+dependencies = [
+ "vb_core",
+ "vb_storage",
+]
+
+[[package]]
 name = "vb_yaml"
 version = "0.1.0"
 dependencies = [
