@@ -129,3 +129,31 @@ path = "src/bin/ipc_frame.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "strict_artifact_decoder"
+path = "src/bin/strict_artifact_decoder.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "digest_coherence"
+path = "src/bin/digest_coherence.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "readback_family_set"
+path = "src/bin/readback_family_set.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "admission_input_surface"
+path = "src/bin/admission_input_surface.rs"
+test = false
+doc = false
+bench = false

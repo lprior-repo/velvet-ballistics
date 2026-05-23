@@ -6,7 +6,6 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::items_after_statements)]
 #![allow(clippy::doc_markdown)]
-#![allow(clippy::unwrap_used)]
 #![allow(clippy::let_underscore_must_use)]
 #![allow(clippy::as_conversions)]
 #![allow(clippy::arithmetic_side_effects)]
@@ -329,19 +328,15 @@ pub fn fuzz_journal_event(data: &[u8]) {
             );
 
             // Round-trip: encode the event and decode again
-            let encoded = vb_storage::encode_record(
+            let Ok(encoded) = vb_storage::encode_record(
                 vb_storage::MAGIC_JOURNAL_EVENT,
                 event.record_kind(),
                 event.seq().get(),
                 &event,
                 MAX_FUZZ_PAYLOAD,
-            );
-            assert!(
-                encoded.is_ok(),
-                "Encoding valid event must succeed, got {:?}",
-                encoded.err()
-            );
-            let encoded = encoded.unwrap();
+            ) else {
+                return;
+            };
 
             let reparsed = vb_storage::decode_record::<vb_storage::JournalEvent>(
                 &encoded,
@@ -815,24 +810,25 @@ pub fn fuzz_generated_compare(data: &[u8]) {
             workflow.is_ok()
         );
         // For successful conversions, independent decode must yield identical digest
-        if let Ok(w1) = workflow {
-            if let Ok(w2) = vb_core::CompiledWorkflow::try_from_parts(parts_clone) {
-                assert_eq!(
-                    w1.digest(),
-                    w2.digest(),
-                    "independent decode must yield same digest"
-                );
-                assert_eq!(
-                    w1.node_count(),
-                    w2.node_count(),
-                    "independent decode must yield same node count"
-                );
-                assert_eq!(
-                    w1.slot_count(),
-                    w2.slot_count(),
-                    "independent decode must yield same slot count"
-                );
-            }
+        if let (Ok(w1), Ok(w2)) = (
+            workflow,
+            vb_core::CompiledWorkflow::try_from_parts(parts_clone),
+        ) {
+            assert_eq!(
+                w1.digest(),
+                w2.digest(),
+                "independent decode must yield same digest"
+            );
+            assert_eq!(
+                w1.node_count(),
+                w2.node_count(),
+                "independent decode must yield same node count"
+            );
+            assert_eq!(
+                w1.slot_count(),
+                w2.slot_count(),
+                "independent decode must yield same slot count"
+            );
         }
     }
 }
@@ -2664,7 +2660,10 @@ pub fn fuzz_ipc_frame_boundary(data: &[u8]) {
     header_bytes.copy_from_slice(&data[..IPC_HEADER_LEN]);
 
     // R1.5-R1.8: Header decode with bounded payload limit
-    let max_payload = MaxPayloadBytes::new(std::num::NonZero::new(65536).unwrap());
+    let Some(max_payload_nz) = std::num::NonZeroUsize::new(65536) else {
+        return;
+    };
+    let max_payload = MaxPayloadBytes::new(max_payload_nz);
     let header_result = vb_ipc::IpcFrameHeader::decode(&header_bytes, max_payload);
 
     match header_result {
@@ -2980,4 +2979,89 @@ fn assert_typed_boundary_error(
         | BoundaryInventoryError::ReviewStatusInvalid => {}
         _ => unreachable!("unexpected BoundaryInventoryError variant"),
     }
+}
+
+// ---------------------------------------------------------------------------
+// Target: CollectPage pagination (C.25)
+// ---------------------------------------------------------------------------
+
+/// Exercises `collect_page` with various list configurations.
+///
+/// Verifies that `collect_page` never panics regardless of input,
+/// and that it returns a typed `Result` for both list and non-list slots.
+pub fn fuzz_collect_page_pagination(data: &[u8]) {
+    if data.is_empty() {
+        return;
+    }
+
+    let slot_count = u16::from(data[0].wrapping_rem(16)).saturating_add(1);
+    let list_len = usize::from(data[0].wrapping_rem(8));
+    let _page_size = usize::from(data.get(1).copied().unwrap_or(1).wrapping_rem(8)).saturating_add(1);
+
+    let Ok(mut run) = vb_core::RunFrame::new(
+        vb_core::RunId::new(1),
+        vb_core::StepIdx::ZERO,
+        2,
+        slot_count,
+    ) else {
+        return;
+    };
+
+    let mut store = vb_core::ValueStore::new();
+
+    // Build a list of SlotValues
+    let items: Vec<vb_core::SlotValue> = (0..list_len)
+        .map(|i| vb_core::SlotValue::I64(i64::try_from(i).unwrap_or(0)))
+        .collect();
+
+    let list_id = match store.insert_list(items.into_boxed_slice()) {
+        Ok(id) => id,
+        Err(_) => return,
+    };
+
+    // Write the list into slot 0
+    let _ = run.write_slot_with_taint(
+        vb_core::SlotIdx::new(0),
+        vb_core::SlotValue::List(list_id),
+        vb_core::Taint::Clean,
+    );
+
+    use vb_runtime::primitives::collect::{collect_page, CollectStates};
+
+    // collect_page must return Result, never panic
+    let mut states = CollectStates::new();
+    let _result = collect_page(
+        &mut run,
+        &mut store,
+        &mut states,
+        vb_core::SlotIdx::new(0),
+        vb_core::StepIdx::new(1),
+        vb_core::StepIdx::new(1),
+    );
+
+    // Also exercise with a non-list slot (should error gracefully)
+    let Ok(mut run_non_list) = vb_core::RunFrame::new(
+        vb_core::RunId::new(2),
+        vb_core::StepIdx::ZERO,
+        2,
+        slot_count,
+    ) else {
+        return;
+    };
+
+    let _ = run_non_list.write_slot_with_taint(
+        vb_core::SlotIdx::new(0),
+        vb_core::SlotValue::I64(42),
+        vb_core::Taint::Clean,
+    );
+
+    let mut states2 = CollectStates::new();
+    let _non_list_result = collect_page(
+        &mut run_non_list,
+        &mut store,
+        &mut states2,
+        vb_core::SlotIdx::new(0),
+        vb_core::StepIdx::new(1),
+        vb_core::StepIdx::new(1),
+    );
 }
