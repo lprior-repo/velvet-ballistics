@@ -2132,6 +2132,7 @@ enum ReadbackDeletionIntent {
     Full,
 }
 
+#[allow(dead_code)]
 impl ReadbackDeletionIntent {
     fn from_mask(mask: u8) -> Self {
         let core_family_mask = mask & 0b0000_1111;
