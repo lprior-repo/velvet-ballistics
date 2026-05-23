@@ -1366,9 +1366,7 @@ fn parse_cancel(args: &[OsString]) -> Result<Command, ParseError> {
         .ok_or(ParseError::MissingArgument("run_id"))?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
     let reason = named_flag(args, "--reason");
-    if let Some(ref r) = reason
-        && r.len() > 256
-    {
+    if reason.as_ref().is_some_and(|r| r.len() > 256) {
         return Err(ParseError::ReasonTooLong);
     }
     let output = parse_output_format(args);

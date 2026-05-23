@@ -110,19 +110,18 @@ impl TimerWheel {
         let mut fired = Vec::new();
         let expired_keys: Vec<Instant> = self
             .by_deadline
-            .keys()
-            .copied()
-            .take_while(|&deadline| deadline <= now)
+            .range(..=now)
+            .map(|(&deadline, _)| deadline)
             .collect();
 
-        for key in expired_keys {
-            if let Some(entries) = self.by_deadline.remove(&key) {
-                for entry in &entries {
-                    if self.by_run.get(&entry.run).copied() == Some(*entry) {
+        for deadline in expired_keys {
+            if let Some(entries) = self.by_deadline.remove(&deadline) {
+                for entry in entries {
+                    if self.by_run.get(&entry.run).copied() == Some(entry) {
                         self.by_run.remove(&entry.run);
                     }
+                    fired.push(entry);
                 }
-                fired.extend(entries);
             }
         }
         fired
