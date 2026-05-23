@@ -88,17 +88,26 @@ mod tests {
     #[test]
     fn classify_occurrence_returns_no_occurrence_for_empty_text() {
         let result = classify_occurrence(
-            RepoPath::new("test"), LineNumber::new(1), ColumnNumber::new(1), "", &test_config(),
-        ).unwrap();
+            RepoPath::new("test"),
+            LineNumber::new(1),
+            ColumnNumber::new(1),
+            "",
+            &test_config(),
+        )
+        .unwrap();
         assert_eq!(result, OccurrenceClass::NoOccurrence);
     }
 
     #[test]
     fn classify_occurrence_returns_canonical_for_product_spelling() {
         let result = classify_occurrence(
-            RepoPath::new("test.rs"), LineNumber::new(1), ColumnNumber::new(1),
-            CANONICAL_HYPHEN, &test_config(),
-        ).unwrap();
+            RepoPath::new("test.rs"),
+            LineNumber::new(1),
+            ColumnNumber::new(1),
+            CANONICAL_HYPHEN,
+            &test_config(),
+        )
+        .unwrap();
         match result {
             OccurrenceClass::CanonicalProduct { canonical, .. } => {
                 assert_eq!(canonical, CANONICAL_HYPHEN);
@@ -110,9 +119,13 @@ mod tests {
     #[test]
     fn classify_occurrence_returns_canonical_for_crate_module_spelling() {
         let result = classify_occurrence(
-            RepoPath::new("test.rs"), LineNumber::new(1), ColumnNumber::new(1),
-            CANONICAL_UNDERSCORE, &test_config(),
-        ).unwrap();
+            RepoPath::new("test.rs"),
+            LineNumber::new(1),
+            ColumnNumber::new(1),
+            CANONICAL_UNDERSCORE,
+            &test_config(),
+        )
+        .unwrap();
         match result {
             OccurrenceClass::CanonicalCrateModule { canonical, .. } => {
                 assert_eq!(canonical, CANONICAL_UNDERSCORE);
@@ -124,9 +137,13 @@ mod tests {
     #[test]
     fn classify_occurrence_returns_canonical_for_language_version_spelling() {
         let result = classify_occurrence(
-            RepoPath::new("test.rs"), LineNumber::new(1), ColumnNumber::new(1),
-            CANONICAL_LANGUAGE_VERSION, &test_config(),
-        ).unwrap();
+            RepoPath::new("test.rs"),
+            LineNumber::new(1),
+            ColumnNumber::new(1),
+            CANONICAL_LANGUAGE_VERSION,
+            &test_config(),
+        )
+        .unwrap();
         match result {
             OccurrenceClass::CanonicalLanguageVersion { canonical, .. } => {
                 assert_eq!(canonical, CANONICAL_LANGUAGE_VERSION);
@@ -138,13 +155,17 @@ mod tests {
     #[test]
     fn classify_occurrence_returns_allowed_legacy_for_exact_exception() {
         let mut cfg = test_config();
-        cfg.allowlist_policy = AllowlistPolicy::Exact(vec![
-            LegacyAllowRule::RepositoryPath { path: "velvet-ballistics".into() },
-        ]);
+        cfg.allowlist_policy = AllowlistPolicy::Exact(vec![LegacyAllowRule::RepositoryPath {
+            path: "velvet-ballistics".into(),
+        }]);
         let result = classify_occurrence(
-            RepoPath::new("test.rs"), LineNumber::new(1), ColumnNumber::new(1),
-            "velvet-ballistics", &cfg,
-        ).unwrap();
+            RepoPath::new("test.rs"),
+            LineNumber::new(1),
+            ColumnNumber::new(1),
+            "velvet-ballistics",
+            &cfg,
+        )
+        .unwrap();
         match result {
             OccurrenceClass::AllowedLegacy { .. } => {}
             _ => panic!("expected AllowedLegacy"),
@@ -155,9 +176,13 @@ mod tests {
     fn classify_occurrence_returns_invalid_legacy_for_unrecognized_legacy_text() {
         let cfg = test_config();
         let result = classify_occurrence(
-            RepoPath::new("test.rs"), LineNumber::new(1), ColumnNumber::new(1),
-            "velvet-ballistics is bad", &cfg,
-        ).unwrap();
+            RepoPath::new("test.rs"),
+            LineNumber::new(1),
+            ColumnNumber::new(1),
+            "velvet-ballistics is bad",
+            &cfg,
+        )
+        .unwrap();
         match result {
             OccurrenceClass::InvalidLegacy { .. } => {}
             _ => panic!("expected InvalidLegacy"),
@@ -168,9 +193,13 @@ mod tests {
     fn classify_occurrence_returns_no_occurrence_for_unrelated_text() {
         let cfg = test_config();
         let result = classify_occurrence(
-            RepoPath::new("test.rs"), LineNumber::new(1), ColumnNumber::new(1),
-            "completely unrelated text", &cfg,
-        ).unwrap();
+            RepoPath::new("test.rs"),
+            LineNumber::new(1),
+            ColumnNumber::new(1),
+            "completely unrelated text",
+            &cfg,
+        )
+        .unwrap();
         assert_eq!(result, OccurrenceClass::NoOccurrence);
     }
 }

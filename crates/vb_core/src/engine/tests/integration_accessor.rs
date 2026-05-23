@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Integration tests for accessor evaluation.
 
+use crate::RunFrame;
 use crate::errors::EngineError;
 use crate::ids::{
     AccessorIdx, BlobId, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId,
@@ -12,7 +13,6 @@ use crate::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram,
     PathSegment, WorkflowParts,
 };
-use crate::RunFrame;
 
 use crate::engine::{
     EngineSignal, StepBudget, eval_accessor, eval_accessor_with_store, new_run_frame,
@@ -375,8 +375,12 @@ fn eval_accessor_with_store_empty_path_returns_root_blob() -> Result<(), String>
     let workflow = accessor_workflow(Box::new([])).map_err(|e| e.to_string())?;
     let mut run = test_frame(RunId::new(54), &workflow)?;
     let mut store = test_store();
-    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Blob(BlobId::new(3)), Taint::Clean)
-        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(
+        SlotIdx::new(0),
+        SlotValue::Blob(BlobId::new(3)),
+        Taint::Clean,
+    )
+    .map_err(|e| e.to_string())?;
     let value = eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0))
         .map_err(|e| e.to_string())?;
     ensure_equal(value, SlotValue::Blob(BlobId::new(3)))
@@ -388,8 +392,7 @@ fn eval_accessor_empty_path_returns_root_null_without_store() -> Result<(), Stri
     let mut run = test_frame(RunId::new(55), &workflow)?;
     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Null, Taint::Clean)
         .map_err(|e| e.to_string())?;
-    let value =
-        eval_accessor(&workflow, &run, AccessorIdx::new(0)).map_err(|e| e.to_string())?;
+    let value = eval_accessor(&workflow, &run, AccessorIdx::new(0)).map_err(|e| e.to_string())?;
     ensure_equal(value, SlotValue::Null)
 }
 
@@ -403,8 +406,7 @@ fn eval_accessor_empty_path_returns_root_symbol_without_store() -> Result<(), St
         Taint::Clean,
     )
     .map_err(|e| e.to_string())?;
-    let value =
-        eval_accessor(&workflow, &run, AccessorIdx::new(0)).map_err(|e| e.to_string())?;
+    let value = eval_accessor(&workflow, &run, AccessorIdx::new(0)).map_err(|e| e.to_string())?;
     ensure_equal(value, SlotValue::Symbol(SymbolId::new(5)))
 }
 
@@ -412,10 +414,13 @@ fn eval_accessor_empty_path_returns_root_symbol_without_store() -> Result<(), St
 fn eval_accessor_empty_path_returns_root_blob_without_store() -> Result<(), String> {
     let workflow = accessor_workflow(Box::new([])).map_err(|e| e.to_string())?;
     let mut run = test_frame(RunId::new(57), &workflow)?;
-    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Blob(BlobId::new(9)), Taint::Clean)
-        .map_err(|e| e.to_string())?;
-    let value =
-        eval_accessor(&workflow, &run, AccessorIdx::new(0)).map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(
+        SlotIdx::new(0),
+        SlotValue::Blob(BlobId::new(9)),
+        Taint::Clean,
+    )
+    .map_err(|e| e.to_string())?;
+    let value = eval_accessor(&workflow, &run, AccessorIdx::new(0)).map_err(|e| e.to_string())?;
     ensure_equal(value, SlotValue::Blob(BlobId::new(9)))
 }
 
@@ -581,8 +586,7 @@ fn eval_accessor_three_level_field_traversal_abc() -> Result<(), String> {
 #[test]
 fn eval_accessor_field_then_index_traversal() -> Result<(), String> {
     let workflow = accessor_workflow(
-        vec![PathSegment::Field(SymbolId::new(5)), PathSegment::Index(1)]
-            .into_boxed_slice(),
+        vec![PathSegment::Field(SymbolId::new(5)), PathSegment::Index(1)].into_boxed_slice(),
     )
     .map_err(|e| e.to_string())?;
     let mut run = test_frame(RunId::new(64), &workflow)?;
@@ -590,12 +594,7 @@ fn eval_accessor_field_then_index_traversal() -> Result<(), String> {
 
     let inner_list = store
         .insert_list(
-            vec![
-                SlotValue::I64(10),
-                SlotValue::I64(20),
-                SlotValue::I64(30),
-            ]
-            .into_boxed_slice(),
+            vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)].into_boxed_slice(),
         )
         .map_err(|e| e.to_string())?;
     let obj = store
@@ -619,8 +618,7 @@ fn eval_accessor_field_then_index_traversal() -> Result<(), String> {
 #[test]
 fn eval_accessor_index_then_field_traversal() -> Result<(), String> {
     let workflow = accessor_workflow(
-        vec![PathSegment::Index(0), PathSegment::Field(SymbolId::new(3))]
-            .into_boxed_slice(),
+        vec![PathSegment::Index(0), PathSegment::Field(SymbolId::new(3))].into_boxed_slice(),
     )
     .map_err(|e| e.to_string())?;
     let mut run = test_frame(RunId::new(65), &workflow)?;
@@ -697,8 +695,12 @@ fn eval_accessor_rejects_field_on_blob() -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     let mut run = test_frame(RunId::new(68), &workflow)?;
     let mut store = test_store();
-    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Blob(BlobId::new(1)), Taint::Clean)
-        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(
+        SlotIdx::new(0),
+        SlotValue::Blob(BlobId::new(1)),
+        Taint::Clean,
+    )
+    .map_err(|e| e.to_string())?;
 
     match eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0)) {
         Err(EngineError::UnsupportedAccessorTraversal {
@@ -755,8 +757,12 @@ fn eval_accessor_rejects_index_on_blob() -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     let mut run = test_frame(RunId::new(71), &workflow)?;
     let mut store = test_store();
-    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Blob(BlobId::new(2)), Taint::Clean)
-        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(
+        SlotIdx::new(0),
+        SlotValue::Blob(BlobId::new(2)),
+        Taint::Clean,
+    )
+    .map_err(|e| e.to_string())?;
 
     match eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0)) {
         Err(EngineError::UnsupportedAccessorTraversal {
@@ -816,8 +822,7 @@ fn eval_accessor_missing_field_in_nested_object_returns_error() -> Result<(), St
 #[test]
 fn eval_accessor_oob_index_in_nested_list_returns_error() -> Result<(), String> {
     let workflow = accessor_workflow(
-        vec![PathSegment::Field(SymbolId::new(1)), PathSegment::Index(5)]
-            .into_boxed_slice(),
+        vec![PathSegment::Field(SymbolId::new(1)), PathSegment::Index(5)].into_boxed_slice(),
     )
     .map_err(|e| e.to_string())?;
     let mut run = test_frame(RunId::new(73), &workflow)?;
@@ -936,8 +941,7 @@ fn eval_accessor_is_deterministic_for_field_access() -> Result<(), String> {
         )
         .map_err(|e| e.to_string())?;
     let mut run2 = test_frame(RunId::new(77), &workflow)?;
-    run2
-        .write_slot_with_taint(SlotIdx::new(0), SlotValue::Object(obj2), Taint::Clean)
+    run2.write_slot_with_taint(SlotIdx::new(0), SlotValue::Object(obj2), Taint::Clean)
         .map_err(|e| e.to_string())?;
 
     let r1 = eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0))
@@ -1027,10 +1031,7 @@ fn eval_accessor_chain_of_16_fields_returns_leaf() -> Result<(), String> {
         return Err("expected object".into());
     };
 
-    let path: Vec<PathSegment> = field_ids
-        .into_iter()
-        .map(PathSegment::Field)
-        .collect();
+    let path: Vec<PathSegment> = field_ids.into_iter().map(PathSegment::Field).collect();
     let workflow = accessor_workflow(path.into_boxed_slice()).map_err(|e| e.to_string())?;
     let mut run = test_frame(RunId::new(80), &workflow)?;
     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Object(root_obj), Taint::Clean)
@@ -1065,24 +1066,30 @@ fn accessor_workflow_rejects_path_depth_32_exceeds_maximum() -> Result<(), Strin
 
 #[test]
 fn eval_accessor_two_indexes_in_a_row() -> Result<(), String> {
-    let workflow = accessor_workflow(
-        vec![PathSegment::Index(1), PathSegment::Index(0)]
-            .into_boxed_slice(),
-    )
-    .map_err(|e| e.to_string())?;
+    let workflow =
+        accessor_workflow(vec![PathSegment::Index(1), PathSegment::Index(0)].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
     let mut run = test_frame(RunId::new(81), &workflow)?;
     let mut store = test_store();
 
     let inner_list = store
         .insert_list(
-            vec![SlotValue::I64(100), SlotValue::I64(200), SlotValue::I64(300)]
-                .into_boxed_slice(),
+            vec![
+                SlotValue::I64(100),
+                SlotValue::I64(200),
+                SlotValue::I64(300),
+            ]
+            .into_boxed_slice(),
         )
         .map_err(|e| e.to_string())?;
     let outer_list = store
         .insert_list(
-            vec![SlotValue::I64(10), SlotValue::List(inner_list), SlotValue::I64(30)]
-                .into_boxed_slice(),
+            vec![
+                SlotValue::I64(10),
+                SlotValue::List(inner_list),
+                SlotValue::I64(30),
+            ]
+            .into_boxed_slice(),
         )
         .map_err(|e| e.to_string())?;
     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::List(outer_list), Taint::Clean)
@@ -1095,18 +1102,15 @@ fn eval_accessor_two_indexes_in_a_row() -> Result<(), String> {
 
 #[test]
 fn eval_accessor_two_indexes_index_0_then_index_1() -> Result<(), String> {
-    let workflow = accessor_workflow(
-        vec![PathSegment::Index(0), PathSegment::Index(1)]
-            .into_boxed_slice(),
-    )
-    .map_err(|e| e.to_string())?;
+    let workflow =
+        accessor_workflow(vec![PathSegment::Index(0), PathSegment::Index(1)].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
     let mut run = test_frame(RunId::new(82), &workflow)?;
     let mut store = test_store();
 
     let inner_list = store
         .insert_list(
-            vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)]
-                .into_boxed_slice(),
+            vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)].into_boxed_slice(),
         )
         .map_err(|e| e.to_string())?;
     let outer_list = store
@@ -1155,9 +1159,7 @@ fn eval_accessor_null_inside_list_returns_null() -> Result<(), String> {
     let mut run = test_frame(RunId::new(84), &workflow)?;
     let mut store = test_store();
     let list = store
-        .insert_list(
-            vec![SlotValue::Null, SlotValue::I64(1)].into_boxed_slice(),
-        )
+        .insert_list(vec![SlotValue::Null, SlotValue::I64(1)].into_boxed_slice())
         .map_err(|e| e.to_string())?;
     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::List(list), Taint::Clean)
         .map_err(|e| e.to_string())?;
@@ -1215,8 +1217,7 @@ fn eval_accessor_null_inside_nested_object_returns_null() -> Result<(), String> 
 #[test]
 fn eval_accessor_root_slot_out_of_bounds_returns_error() -> Result<(), String> {
     // Root slot 10 with slot_count 10 is OOB at workflow construction time.
-    let workflow_result =
-        accessor_workflow_with_opts(Box::new([]), 10, SlotIdx::new(10), 10);
+    let workflow_result = accessor_workflow_with_opts(Box::new([]), 10, SlotIdx::new(10), 10);
     match workflow_result {
         Err(e) => {
             let msg = e.to_string();
@@ -1237,8 +1238,7 @@ fn eval_accessor_root_slot_out_of_bounds_returns_error() -> Result<(), String> {
 
 #[test]
 fn eval_accessor_with_store_root_slot_out_of_bounds_returns_error() -> Result<(), String> {
-    let workflow_result =
-        accessor_workflow_with_opts(Box::new([]), 10, SlotIdx::new(10), 10);
+    let workflow_result = accessor_workflow_with_opts(Box::new([]), 10, SlotIdx::new(10), 10);
     match workflow_result {
         Err(e) => {
             let msg = e.to_string();
@@ -1295,8 +1295,7 @@ fn eval_accessor_index_beyond_list_len_returns_error() -> Result<(), String> {
     let mut store = test_store();
     let list = store
         .insert_list(
-            vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)]
-                .into_boxed_slice(),
+            vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)].into_boxed_slice(),
         )
         .map_err(|e| e.to_string())?;
     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::List(list), Taint::Clean)

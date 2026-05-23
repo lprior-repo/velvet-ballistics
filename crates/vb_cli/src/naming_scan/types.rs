@@ -418,8 +418,12 @@ mod tests {
 
     #[test]
     fn naming_scan_error_equality() {
-        let a = NamingScanError::InvalidConfiguration { reason: "test".into() };
-        let b = NamingScanError::InvalidConfiguration { reason: "test".into() };
+        let a = NamingScanError::InvalidConfiguration {
+            reason: "test".into(),
+        };
+        let b = NamingScanError::InvalidConfiguration {
+            reason: "test".into(),
+        };
         assert_eq!(a, b);
     }
 }

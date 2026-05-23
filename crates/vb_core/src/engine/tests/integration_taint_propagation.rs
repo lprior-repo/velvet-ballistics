@@ -1625,7 +1625,9 @@ fn reinitialize_resets_time_dependent_taint_to_clean() -> Result<(), String> {
     // After reinitialize, slot is uninitialized
     match run.read_taint(SlotIdx::ZERO) {
         Err(EngineError::SlotUninitialized { slot }) if slot == SlotIdx::ZERO => Ok(()),
-        other => Err(format!("expected SlotUninitialized after reinit, got: {other:?}")),
+        other => Err(format!(
+            "expected SlotUninitialized after reinit, got: {other:?}"
+        )),
     }
 }
 
@@ -1839,8 +1841,7 @@ fn eval_expr_returns_random_when_any_loaded_slot_is_random() -> Result<(), Strin
 
 // C-031: eval_expr_with_store returns TimeDependent when any loaded slot is TimeDependent
 #[test]
-fn eval_expr_returns_time_dependent_when_any_loaded_slot_is_time_dependent() -> Result<(), String>
-{
+fn eval_expr_returns_time_dependent_when_any_loaded_slot_is_time_dependent() -> Result<(), String> {
     let ops = vec![ExprOp::LoadSlot(SlotIdx::new(0))].into_boxed_slice();
 
     let slots = vec![(SlotValue::I64(42), Taint::TimeDependent)];
@@ -1998,8 +1999,8 @@ fn build_list_with_taint_returns_random_when_any_item_is_random() -> Result<(), 
 
 // C-051: build_list_with_taint returns TimeDependent when any item is TimeDependent
 #[test]
-fn build_list_with_taint_returns_time_dependent_when_any_item_time_dependent()
--> Result<(), String> {
+fn build_list_with_taint_returns_time_dependent_when_any_item_time_dependent() -> Result<(), String>
+{
     let mut store = ValueStore::new();
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 2).map_err(|e| e.to_string())?;
 
@@ -2059,8 +2060,7 @@ fn build_list_with_taint_stores_per_item_random_taint_in_value_store() -> Result
     let items = vec![SlotIdx::ZERO];
 
     use crate::engine::object_list::build_list_with_taint;
-    let (list, _) =
-        build_list_with_taint(&mut store, &run, &items).map_err(|e| e.to_string())?;
+    let (list, _) = build_list_with_taint(&mut store, &run, &items).map_err(|e| e.to_string())?;
 
     let (_, item_taint) = store
         .list_item_with_taint(list, 0)
@@ -2111,10 +2111,7 @@ fn join_taint_is_associative_for_all_125_triples() {
             for c in all {
                 let ab_c = join_taint(join_taint(a, b), c);
                 let a_bc = join_taint(a, join_taint(b, c));
-                assert_eq!(
-                    ab_c, a_bc,
-                    "associativity failed for ({a:?}, {b:?}, {c:?})"
-                );
+                assert_eq!(ab_c, a_bc, "associativity failed for ({a:?}, {b:?}, {c:?})");
             }
         }
     }
@@ -2359,7 +2356,10 @@ fn initialized_slots_includes_taint_for_all_five_variants() -> Result<(), String
             Taint::TimeDependent => seen[4] = true,
         }
     }
-    assert!(seen.iter().all(|s| *s), "all five taint variants must appear");
+    assert!(
+        seen.iter().all(|s| *s),
+        "all five taint variants must appear"
+    );
     Ok(())
 }
 
@@ -2388,10 +2388,7 @@ fn eval_expr_output_taint_satisfies_output_gte_max_input() -> Result<(), String>
     for a in all {
         for b in all {
             let max_input = join_taint(a, b);
-            let slots = vec![
-                (SlotValue::I64(1), a),
-                (SlotValue::I64(1), b),
-            ];
+            let slots = vec![(SlotValue::I64(1), a), (SlotValue::I64(1), b)];
             let (_, out_taint) =
                 eval_workflow_with_slots(ops.clone(), slots, vec![]).map_err(|e| e.to_string())?;
             assert_eq!(
@@ -2466,8 +2463,12 @@ fn nested_list_outer_taint_reflects_max_inner_taint() -> Result<(), String> {
     // Build inner list with Secret taint
     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Secret)
         .map_err(|e| e.to_string())?;
-    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::DerivedFromSecret)
-        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(
+        SlotIdx::new(1),
+        SlotValue::I64(20),
+        Taint::DerivedFromSecret,
+    )
+    .map_err(|e| e.to_string())?;
 
     let inner_items = vec![SlotIdx::new(0), SlotIdx::new(1)];
     let (inner_list, inner_taint) =
@@ -2534,8 +2535,7 @@ fn nested_object_outer_taint_reflects_max_inner_taint() -> Result<(), String> {
 #[test]
 fn three_level_nested_structure_taint_propagation() -> Result<(), String> {
     let mut store = ValueStore::new();
-    let mut run =
-        RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 8).map_err(|e| e.to_string())?;
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 8).map_err(|e| e.to_string())?;
 
     // Level 0: Write a Secret-tagged value
     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(99), Taint::Secret)

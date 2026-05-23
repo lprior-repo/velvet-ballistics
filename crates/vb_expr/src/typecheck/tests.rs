@@ -511,7 +511,8 @@ fn typecheck_expr_propagates_type_error_from_helper_arg() -> crate::ExprResult<(
 }
 
 #[test]
-fn typecheck_expr_allows_helper_with_mismatched_arg_types_at_typecheck_level() -> crate::ExprResult<()> {
+fn typecheck_expr_allows_helper_with_mismatched_arg_types_at_typecheck_level()
+-> crate::ExprResult<()> {
     let ty = check("sum(true)")?;
     assert_eq!(ty, ExprType::I64);
     Ok(())

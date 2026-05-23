@@ -154,12 +154,7 @@ fn parse_replay_requires_run_id_and_db() {
         "--db",
         "test-db",
     ]));
-    if let Ok(Command::Replay {
-        run_id,
-        db,
-        output,
-    }) = parsed
-    {
+    if let Ok(Command::Replay { run_id, db, output }) = parsed {
         assert_eq!(run_id, "99");
         assert_eq!(db, PathBuf::from("test-db"));
         assert_eq!(output, OutputFormat::Text);
@@ -288,12 +283,7 @@ fn parse_retry_requires_run_id_and_db() {
         "--db",
         "test-db",
     ]));
-    if let Ok(Command::Retry {
-        run_id,
-        db,
-        output,
-    }) = parsed
-    {
+    if let Ok(Command::Retry { run_id, db, output }) = parsed {
         assert_eq!(run_id, "123");
         assert_eq!(db, PathBuf::from("test-db"));
         assert_eq!(output, OutputFormat::Text);
@@ -311,12 +301,7 @@ fn parse_resume_requires_run_id_and_db() {
         "--db",
         "test-db",
     ]));
-    if let Ok(Command::Resume {
-        run_id,
-        db,
-        output,
-    }) = parsed
-    {
+    if let Ok(Command::Resume { run_id, db, output }) = parsed {
         assert_eq!(run_id, "456");
         assert_eq!(db, PathBuf::from("test-db"));
         assert_eq!(output, OutputFormat::Text);
@@ -334,12 +319,7 @@ fn parse_incident_requires_run_id_and_db() {
         "--db",
         "test-db",
     ]));
-    if let Ok(Command::Incident {
-        run_id,
-        db,
-        output,
-    }) = parsed
-    {
+    if let Ok(Command::Incident { run_id, db, output }) = parsed {
         assert_eq!(run_id, "7");
         assert_eq!(db, PathBuf::from("test-db"));
         assert_eq!(output, OutputFormat::Text);

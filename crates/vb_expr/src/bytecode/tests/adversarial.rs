@@ -590,7 +590,10 @@ fn bcm_adv_002_fold_rejects_mul_overflow_negative() -> crate::ExprResult<()> {
         )),
     };
     let folded = const_fold_expr(&ast);
-    assert_eq!(folded, None, "BC-ADV-002: i64::MIN * -1 should not fold (overflow)");
+    assert_eq!(
+        folded, None,
+        "BC-ADV-002: i64::MIN * -1 should not fold (overflow)"
+    );
     Ok(())
 }
 
@@ -647,10 +650,7 @@ fn bcm_adv_007_fold_i64_min_mul_neg_one() -> crate::ExprResult<()> {
         )),
     };
     let folded = const_fold_expr(&ast);
-    assert_eq!(
-        folded, None,
-        "BC-ADV-007: i64::MIN * -1 should not fold"
-    );
+    assert_eq!(folded, None, "BC-ADV-007: i64::MIN * -1 should not fold");
     Ok(())
 }
 
@@ -691,7 +691,10 @@ fn blackhat_ev_015_f64_add_zero() -> crate::ExprResult<()> {
     let zero = SlotValue::F64(FiniteF64::new(0.0).map_err(|_| crate::ExprError::UnexpectedEof)?);
     let val = SlotValue::F64(FiniteF64::new(3.14).map_err(|_| crate::ExprError::UnexpectedEof)?);
     let r = eval_binary_op(BinaryOp::Add, val, zero)?;
-    assert_eq!(r, SlotValue::F64(FiniteF64::new(3.14).map_err(|_| crate::ExprError::UnexpectedEof)?));
+    assert_eq!(
+        r,
+        SlotValue::F64(FiniteF64::new(3.14).map_err(|_| crate::ExprError::UnexpectedEof)?)
+    );
     Ok(())
 }
 
@@ -706,7 +709,10 @@ fn blackhat_ev_016_f64_sub_zero() -> crate::ExprResult<()> {
     let zero = SlotValue::F64(FiniteF64::new(0.0).map_err(|_| crate::ExprError::UnexpectedEof)?);
     let val = SlotValue::F64(FiniteF64::new(3.14).map_err(|_| crate::ExprError::UnexpectedEof)?);
     let r = eval_binary_op(BinaryOp::Sub, val, zero)?;
-    assert_eq!(r, SlotValue::F64(FiniteF64::new(3.14).map_err(|_| crate::ExprError::UnexpectedEof)?));
+    assert_eq!(
+        r,
+        SlotValue::F64(FiniteF64::new(3.14).map_err(|_| crate::ExprError::UnexpectedEof)?)
+    );
     Ok(())
 }
 

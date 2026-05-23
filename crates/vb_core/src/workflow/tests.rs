@@ -9,9 +9,9 @@ mod tests {
     use crate::value::ConstValue;
     #[cfg(test)]
     use crate::{
-        check_expr_stack_bound, AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow,
-        CoreError, ExprBranch, ExprOp, ExprProgram, PathSegment, ResourceContract, SlotBranch,
-        WorkflowError, WorkflowParts,
+        AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, CoreError, ExprBranch,
+        ExprOp, ExprProgram, PathSegment, ResourceContract, SlotBranch, WorkflowError,
+        WorkflowParts, check_expr_stack_bound,
     };
     use std::fmt::Debug;
 
@@ -1123,8 +1123,8 @@ mod tests {
     // --- Resource contract max_steps set to 0 with 1 node ---
 
     #[test]
-    fn workflow_zero_max_steps_with_one_node_returns_resource_contract_exceeded(
-    ) -> Result<(), String> {
+    fn workflow_zero_max_steps_with_one_node_returns_resource_contract_exceeded()
+    -> Result<(), String> {
         let parts = WorkflowParts {
             name: Box::<str>::from("zero_max_steps"),
             digest: WorkflowDigest::from_bytes([2; 32]),
@@ -1182,8 +1182,8 @@ mod tests {
     // --- TogetherStart with out-of-bounds branch target ---
 
     #[test]
-    fn workflow_together_start_branch_out_of_bounds_returns_step_out_of_bounds(
-    ) -> Result<(), String> {
+    fn workflow_together_start_branch_out_of_bounds_returns_step_out_of_bounds()
+    -> Result<(), String> {
         let mut parts = finish_const_parts_with(resource_contract(3, 0, 1, 0, 0), Box::new([]));
         parts.nodes = vec![
             CompiledNode {
@@ -5198,8 +5198,7 @@ mod tests {
             resource_contract: resource_contract(1, 1, 1, 0, 0),
             step_names: Box::new([]),
         };
-        let workflow =
-            CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
         let node = workflow
             .node(StepIdx::new(0))
             .ok_or_else(|| String::from("missing node"))?;
@@ -5579,8 +5578,8 @@ mod tests {
     }
 
     #[test]
-    fn postcard_roundtrip_compiled_workflow_parts_roundtrip_preserves_all_data(
-    ) -> Result<(), String> {
+    fn postcard_roundtrip_compiled_workflow_parts_roundtrip_preserves_all_data()
+    -> Result<(), String> {
         let expression = ExprProgram::try_from_ops(vec![load(0)].into_boxed_slice())
             .map_err(|e| e.to_string())?;
         let accessor = AccessorProgram {

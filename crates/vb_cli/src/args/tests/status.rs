@@ -182,12 +182,7 @@ fn parse_status_rejects_postcard_emit() {
 
 #[test]
 fn parse_status_rejects_unknown_emit_mode() {
-    let parsed = parse_args(&args(&[
-        "velvet-ballastics",
-        "status",
-        "--emit",
-        "binary",
-    ]));
+    let parsed = parse_args(&args(&["velvet-ballastics", "status", "--emit", "binary"]));
     assert!(
         matches!(parsed, Err(ParseError::InvalidStatusArgument(ref s)) if s == "unknown emit mode binary"),
         "expected InvalidStatusArgument, got {parsed:?}"

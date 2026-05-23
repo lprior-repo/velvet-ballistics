@@ -3792,8 +3792,7 @@ fn cli_run_json_output_reports_structured_run_result() {
         }
     };
     assert!(
-        packet.get("schema_version").is_some()
-            || packet.get("run_id").is_some(),
+        packet.get("schema_version").is_some() || packet.get("run_id").is_some(),
         "expected schema_version or run_id: {stdout}"
     );
     assert!(packet.get("run_id").is_some(), "run_id missing: {stdout}");
@@ -3842,7 +3841,10 @@ fn cli_run_nonexistent_workflow_file_fails_with_diagnostic() {
 fn cli_validate_nonexistent_file_fails_with_diagnostic() {
     let nonexistent_path = std::path::PathBuf::from("/tmp/vb-nonexistent-validate-test.yaml");
 
-    let output = match run_cli(&[std::ffi::OsStr::new("validate"), nonexistent_path.as_os_str()]) {
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("validate"),
+        nonexistent_path.as_os_str(),
+    ]) {
         Some(output) => output,
         None => return,
     };
@@ -4103,7 +4105,10 @@ fn cli_compile_without_out_flag_outputs_digest_only() {
     let ir_bytes = match std::fs::read(&ir_path) {
         Ok(bytes) => bytes,
         Err(err) => {
-            assert!(forced_assertion_failure(), "failed to read compiled IR: {err}");
+            assert!(
+                forced_assertion_failure(),
+                "failed to read compiled IR: {err}"
+            );
             return;
         }
     };

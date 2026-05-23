@@ -6,9 +6,9 @@ use std::path::PathBuf;
 
 use crate::boundary_inventory::{
     BoundaryCandidate, BoundaryClass, BoundaryExposure, BoundaryRecord, BoundaryRecordDraft,
-    BoundaryRecordParts, BoundaryRisk, ClassifiedBoundary, ClassifiedBoundaryInput,
-    EvidenceKind, EvidenceReference, FieldState, FreshnessMarker, Owner, ReviewStatus,
-    ThreatStatement, ValidatedBoundaryInventory, WorkspaceRoot, classify_boundary,
+    BoundaryRecordParts, BoundaryRisk, ClassifiedBoundary, ClassifiedBoundaryInput, EvidenceKind,
+    EvidenceReference, FieldState, FreshnessMarker, Owner, ReviewStatus, ThreatStatement,
+    ValidatedBoundaryInventory, WorkspaceRoot, classify_boundary,
 };
 use proptest::prelude::*;
 

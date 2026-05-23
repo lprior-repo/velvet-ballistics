@@ -358,32 +358,64 @@ mod tests {
 
     #[test]
     fn node_kind_label_returns_set_const() {
-        assert_eq!(node_kind_label(&CompiledNodeKind::SetConst { value: vb_core::ConstIdx::new(0) }), "set_const");
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::SetConst {
+                value: vb_core::ConstIdx::new(0)
+            }),
+            "set_const"
+        );
     }
 
     #[test]
     fn node_kind_label_returns_copy() {
-        assert_eq!(node_kind_label(&CompiledNodeKind::Copy { source: vb_core::SlotIdx::new(0) }), "copy");
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::Copy {
+                source: vb_core::SlotIdx::new(0)
+            }),
+            "copy"
+        );
     }
 
     #[test]
     fn node_kind_label_returns_do() {
-        assert_eq!(node_kind_label(&CompiledNodeKind::Do { action: vb_core::ActionId::new(1), input: vb_core::SlotIdx::new(0) }), "do");
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::Do {
+                action: vb_core::ActionId::new(1),
+                input: vb_core::SlotIdx::new(0)
+            }),
+            "do"
+        );
     }
 
     #[test]
     fn node_kind_label_returns_finish() {
-        assert_eq!(node_kind_label(&CompiledNodeKind::Finish { result: vb_core::SlotIdx::new(0) }), "finish");
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::Finish {
+                result: vb_core::SlotIdx::new(0)
+            }),
+            "finish"
+        );
     }
 
     #[test]
     fn node_kind_label_returns_ask() {
-        assert_eq!(node_kind_label(&CompiledNodeKind::Ask { prompt: vb_core::SlotIdx::new(0), timeout_slot: None }), "ask");
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::Ask {
+                prompt: vb_core::SlotIdx::new(0),
+                timeout_slot: None
+            }),
+            "ask"
+        );
     }
 
     #[test]
     fn node_kind_label_returns_wait_until() {
-        assert_eq!(node_kind_label(&CompiledNodeKind::WaitUntil { deadline_slot: vb_core::SlotIdx::new(0) }), "wait_until");
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::WaitUntil {
+                deadline_slot: vb_core::SlotIdx::new(0)
+            }),
+            "wait_until"
+        );
     }
 
     #[test]
@@ -398,7 +430,14 @@ mod tests {
     fn describe_node_for_simulate_increments_action_count_for_do() {
         let mut ac = 0usize;
         let mut bc = 0usize;
-        let _ = describe_node_for_simulate(&CompiledNodeKind::Do { action: vb_core::ActionId::new(1), input: vb_core::SlotIdx::new(0) }, &mut ac, &mut bc);
+        let _ = describe_node_for_simulate(
+            &CompiledNodeKind::Do {
+                action: vb_core::ActionId::new(1),
+                input: vb_core::SlotIdx::new(0),
+            },
+            &mut ac,
+            &mut bc,
+        );
         assert_eq!(ac, 1);
     }
 
@@ -407,16 +446,33 @@ mod tests {
         let mut ac = 0usize;
         let mut bc = 0usize;
         let branches: Box<[vb_core::ExprBranch]> = Box::new([
-            vb_core::ExprBranch { condition: vb_core::ExprIdx::new(0), target: vb_core::StepIdx::new(2) },
-            vb_core::ExprBranch { condition: vb_core::ExprIdx::new(0), target: vb_core::StepIdx::new(3) },
+            vb_core::ExprBranch {
+                condition: vb_core::ExprIdx::new(0),
+                target: vb_core::StepIdx::new(2),
+            },
+            vb_core::ExprBranch {
+                condition: vb_core::ExprIdx::new(0),
+                target: vb_core::StepIdx::new(3),
+            },
         ]);
-        let _ = describe_node_for_simulate(&CompiledNodeKind::Choose { branches, otherwise: None }, &mut ac, &mut bc);
+        let _ = describe_node_for_simulate(
+            &CompiledNodeKind::Choose {
+                branches,
+                otherwise: None,
+            },
+            &mut ac,
+            &mut bc,
+        );
         assert_eq!(bc, 2);
     }
 
     #[test]
     fn dot_graph_fields_are_accessible() {
-        let graph = DotGraph { node_count: 5, edge_count: 3, dot: "digraph {}".into() };
+        let graph = DotGraph {
+            node_count: 5,
+            edge_count: 3,
+            dot: "digraph {}".into(),
+        };
         assert_eq!(graph.node_count, 5);
         assert_eq!(graph.edge_count, 3);
         assert_eq!(graph.dot, "digraph {}");
@@ -424,7 +480,11 @@ mod tests {
 
     #[test]
     fn simulation_step_fields_are_accessible() {
-        let step = SimulationStep { index: 0, kind_label: "nop".into(), description: "Entry".into() };
+        let step = SimulationStep {
+            index: 0,
+            kind_label: "nop".into(),
+            description: "Entry".into(),
+        };
         assert_eq!(step.index, 0);
         assert_eq!(step.kind_label, "nop");
         assert_eq!(step.description, "Entry");
@@ -432,7 +492,12 @@ mod tests {
 
     #[test]
     fn simulation_result_fields_are_accessible() {
-        let result = SimulationResult { steps: vec![], total_steps: 0, action_count: 0, branch_count: 0 };
+        let result = SimulationResult {
+            steps: vec![],
+            total_steps: 0,
+            action_count: 0,
+            branch_count: 0,
+        };
         assert_eq!(result.total_steps, 0);
         assert!(result.steps.is_empty());
     }

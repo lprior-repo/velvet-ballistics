@@ -293,10 +293,7 @@ fn parse_run_compiled_accepts_journaled_mode_with_db() {
         "--db",
         "journal-db",
     ]));
-    if let Ok(Command::RunCompiled {
-        durability, db, ..
-    }) = parsed
-    {
+    if let Ok(Command::RunCompiled { durability, db, .. }) = parsed {
         assert_eq!(durability, DurabilityMode::Journaled);
         assert_eq!(db, Some(PathBuf::from("journal-db")));
     } else {

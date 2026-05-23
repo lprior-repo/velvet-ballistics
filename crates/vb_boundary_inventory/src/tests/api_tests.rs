@@ -917,11 +917,7 @@ fn discover_boundaries_finds_markers_in_nested_subdirectories() {
     let result = discover_boundaries(workspace);
     assert!(result.is_ok());
     let candidates = result.unwrap();
-    assert!(
-        candidates
-            .iter()
-            .any(|c| c.marker == "ipc-frame-boundary")
-    );
+    assert!(candidates.iter().any(|c| c.marker == "ipc-frame-boundary"));
 }
 
 #[test]
@@ -1285,9 +1281,7 @@ fn discover_boundaries_with_surfaces_file_containing_decoder_entry() {
         ),
         "write surfaces file with decoder marker",
     );
-    let marker_file = temp_dir
-        .path()
-        .join("crates/vb_core/src/lib.rs");
+    let marker_file = temp_dir.path().join("crates/vb_core/src/lib.rs");
     assert_io_ok(
         fs::create_dir_all(marker_file.parent().unwrap()),
         "create parent",

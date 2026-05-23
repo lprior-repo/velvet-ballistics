@@ -98,31 +98,49 @@ mod tests {
 
     #[test]
     fn command_mode_returns_pure_for_validate() {
-        let cmd = Command::Validate { workflow: dummy_path(), output: OutputFormat::Text };
+        let cmd = Command::Validate {
+            workflow: dummy_path(),
+            output: OutputFormat::Text,
+        };
         assert_eq!(command_mode(&cmd), CommandMode::Pure);
     }
 
     #[test]
     fn command_mode_returns_pure_for_verify() {
-        let cmd = Command::Verify { workflow: dummy_path(), profile: VerifyProfile::Quick, output: OutputFormat::Text };
+        let cmd = Command::Verify {
+            workflow: dummy_path(),
+            profile: VerifyProfile::Quick,
+            output: OutputFormat::Text,
+        };
         assert_eq!(command_mode(&cmd), CommandMode::Pure);
     }
 
     #[test]
     fn command_mode_returns_pure_for_explain() {
-        let cmd = Command::Explain { workflow: dummy_path(), output: OutputFormat::Text };
+        let cmd = Command::Explain {
+            workflow: dummy_path(),
+            output: OutputFormat::Text,
+        };
         assert_eq!(command_mode(&cmd), CommandMode::Pure);
     }
 
     #[test]
     fn command_mode_returns_pure_for_compile() {
-        let cmd = Command::Compile { workflow: dummy_path(), emit: EmitTarget::Ir, out: dummy_path(), output: OutputFormat::Text };
+        let cmd = Command::Compile {
+            workflow: dummy_path(),
+            emit: EmitTarget::Ir,
+            out: dummy_path(),
+            output: OutputFormat::Text,
+        };
         assert_eq!(command_mode(&cmd), CommandMode::Pure);
     }
 
     #[test]
     fn command_mode_returns_pure_for_graph() {
-        let cmd = Command::Graph { workflow: dummy_path(), output: OutputFormat::Text };
+        let cmd = Command::Graph {
+            workflow: dummy_path(),
+            output: OutputFormat::Text,
+        };
         assert_eq!(command_mode(&cmd), CommandMode::Pure);
     }
 
@@ -151,25 +169,42 @@ mod tests {
 
     #[test]
     fn command_mode_returns_storage_for_inspect() {
-        let cmd = Command::Inspect { run_id: "1".into(), db: dummy_path(), output: OutputFormat::Text };
+        let cmd = Command::Inspect {
+            run_id: "1".into(),
+            db: dummy_path(),
+            output: OutputFormat::Text,
+        };
         assert_eq!(command_mode(&cmd), CommandMode::Storage);
     }
 
     #[test]
     fn command_mode_returns_storage_for_cancel() {
-        let cmd = Command::Cancel { run_id: "1".into(), reason: None, db: dummy_path(), output: OutputFormat::Text };
+        let cmd = Command::Cancel {
+            run_id: "1".into(),
+            reason: None,
+            db: dummy_path(),
+            output: OutputFormat::Text,
+        };
         assert_eq!(command_mode(&cmd), CommandMode::Storage);
     }
 
     #[test]
     fn command_mode_returns_storage_for_diff() {
-        let cmd = Command::Diff { run_a: "1".into(), run_b: "2".into(), db: dummy_path(), output: OutputFormat::Text };
+        let cmd = Command::Diff {
+            run_a: "1".into(),
+            run_b: "2".into(),
+            db: dummy_path(),
+            output: OutputFormat::Text,
+        };
         assert_eq!(command_mode(&cmd), CommandMode::Storage);
     }
 
     #[test]
     fn command_mode_returns_runtime_for_ipc_serve() {
-        let cmd = Command::IpcServe { socket: dummy_path(), db: dummy_path() };
+        let cmd = Command::IpcServe {
+            socket: dummy_path(),
+            db: dummy_path(),
+        };
         assert_eq!(command_mode(&cmd), CommandMode::Runtime);
     }
 
@@ -180,20 +215,30 @@ mod tests {
 
     #[test]
     fn mode_error_display_storage_init_failed() {
-        let err = ModeError::StorageInitFailed { path: PathBuf::from("/tmp/db"), cause: "disk full".into() };
+        let err = ModeError::StorageInitFailed {
+            path: PathBuf::from("/tmp/db"),
+            cause: "disk full".into(),
+        };
         assert_eq!(err.to_string(), "storage init failed at /tmp/db: disk full");
     }
 
     #[test]
     fn mode_error_display_runtime_init_failed() {
-        let err = ModeError::RuntimeInitFailed { cause: "no shards".into() };
+        let err = ModeError::RuntimeInitFailed {
+            cause: "no shards".into(),
+        };
         assert_eq!(err.to_string(), "runtime init failed: no shards");
     }
 
     #[test]
     fn mode_error_display_pure_command_storage_access() {
-        let err = ModeError::PureCommandStorageAccessAttempted { command: "validate".into() };
-        assert_eq!(err.to_string(), "pure command attempted storage access: validate");
+        let err = ModeError::PureCommandStorageAccessAttempted {
+            command: "validate".into(),
+        };
+        assert_eq!(
+            err.to_string(),
+            "pure command attempted storage access: validate"
+        );
     }
 
     #[test]
@@ -204,28 +249,37 @@ mod tests {
 
     #[test]
     fn mode_error_converts_to_cli_exit_code_storage_init_failed() {
-        let err = ModeError::StorageInitFailed { path: dummy_path(), cause: "err".into() };
+        let err = ModeError::StorageInitFailed {
+            path: dummy_path(),
+            cause: "err".into(),
+        };
         let code: CliExitCode = err.into();
         assert_eq!(code, CliExitCode::StorageError);
     }
 
     #[test]
     fn mode_error_converts_to_cli_exit_code_runtime_init_failed() {
-        let err = ModeError::RuntimeInitFailed { cause: "err".into() };
+        let err = ModeError::RuntimeInitFailed {
+            cause: "err".into(),
+        };
         let code: CliExitCode = err.into();
         assert_eq!(code, CliExitCode::RuntimeFailed);
     }
 
     #[test]
     fn mode_error_converts_to_cli_exit_code_ui_init_failed() {
-        let err = ModeError::UiInitFailed { cause: "err".into() };
+        let err = ModeError::UiInitFailed {
+            cause: "err".into(),
+        };
         let code: CliExitCode = err.into();
         assert_eq!(code, CliExitCode::ActionPolicyError);
     }
 
     #[test]
     fn mode_error_converts_to_cli_exit_code_pure_command_storage_access() {
-        let err = ModeError::PureCommandStorageAccessAttempted { command: "validate".into() };
+        let err = ModeError::PureCommandStorageAccessAttempted {
+            command: "validate".into(),
+        };
         let code: CliExitCode = err.into();
         assert_eq!(code, CliExitCode::StorageError);
     }

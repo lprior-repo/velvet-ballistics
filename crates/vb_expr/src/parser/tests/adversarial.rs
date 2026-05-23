@@ -423,8 +423,15 @@ fn parse_expr_all_comparisons_in_one_expr() -> crate::ExprResult<()> {
         let _ = right;
     }
     let (op_last, _l, _r) = as_binary(cur)?;
-    assert!(matches!(op_last, BinaryOp::Lt | BinaryOp::Lte | BinaryOp::Gt
-        | BinaryOp::Gte | BinaryOp::Eq | BinaryOp::NotEq));
+    assert!(matches!(
+        op_last,
+        BinaryOp::Lt
+            | BinaryOp::Lte
+            | BinaryOp::Gt
+            | BinaryOp::Gte
+            | BinaryOp::Eq
+            | BinaryOp::NotEq
+    ));
     Ok(())
 }
 
@@ -475,7 +482,10 @@ fn parse_expr_string_eq_string() -> crate::ExprResult<()> {
     let (op, left, right) = as_binary(&expr)?;
     assert_eq!(op, BinaryOp::Eq);
     assert_eq!(*left, ExprAst::Literal(ExprLiteral::Text(Box::from("abc"))));
-    assert_eq!(*right, ExprAst::Literal(ExprLiteral::Text(Box::from("abc"))));
+    assert_eq!(
+        *right,
+        ExprAst::Literal(ExprLiteral::Text(Box::from("abc")))
+    );
     Ok(())
 }
 
@@ -533,7 +543,10 @@ fn parse_expr_deeply_nested_in_helper_args() -> crate::ExprResult<()> {
 #[test]
 fn parse_expr_max_i64() -> crate::ExprResult<()> {
     let expr = parse("9223372036854775807")?;
-    assert_eq!(expr, ExprAst::Literal(ExprLiteral::I64(9223372036854775807)));
+    assert_eq!(
+        expr,
+        ExprAst::Literal(ExprLiteral::I64(9223372036854775807))
+    );
     Ok(())
 }
 
@@ -543,7 +556,10 @@ fn parse_expr_neg_max_i64() -> crate::ExprResult<()> {
     let expr = parse("-9223372036854775807")?;
     let (op, inner) = as_unary(&expr)?;
     assert_eq!(op, UnaryOp::Neg);
-    assert_eq!(*inner, ExprAst::Literal(ExprLiteral::I64(9223372036854775807)));
+    assert_eq!(
+        *inner,
+        ExprAst::Literal(ExprLiteral::I64(9223372036854775807))
+    );
     Ok(())
 }
 
@@ -628,10 +644,7 @@ fn parse_expr_unary_nesting_exceeding_max_depth() {
 fn blackhat_pa_009_too_many_helper_args_at_boundary() {
     let result = parse("contains(1, 2, 3, 4, 5, 6, 7, 8, 9)");
     assert!(
-        matches!(
-            result,
-            Err(ExprError::TooManyHelperArgs { len: 9, max: 8 })
-        ),
+        matches!(result, Err(ExprError::TooManyHelperArgs { len: 9, max: 8 })),
         "BH-PA-009: 9 args should hit TooManyHelperArgs"
     );
 }

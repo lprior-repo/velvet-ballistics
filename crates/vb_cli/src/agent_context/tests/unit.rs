@@ -55,9 +55,11 @@ fn build_has_binary_aliases() {
         .get("binary_aliases")
         .and_then(Value::as_array)
         .expect("binary_aliases must be an array");
-    assert!(aliases
-        .iter()
-        .any(|v| v.as_str() == Some("velvet-ballastics")));
+    assert!(
+        aliases
+            .iter()
+            .any(|v| v.as_str() == Some("velvet-ballastics"))
+    );
     assert!(aliases.iter().any(|v| v.as_str() == Some("vb")));
 }
 

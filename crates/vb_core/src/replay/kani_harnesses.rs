@@ -9,7 +9,9 @@ use crate::frame::RunFrame;
 use crate::ids::{RunId, SlotIdx, StepIdx};
 use crate::value::{ConstValue, SlotValue};
 use crate::value_store::ValueStore;
-use crate::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, SlotBranch, WorkflowParts};
+use crate::workflow::{
+    CompiledNode, CompiledNodeKind, ResourceContract, SlotBranch, WorkflowParts,
+};
 
 use super::{ReplayAction, ReplayError, SuspensionKind, step::replay_step};
 
@@ -115,9 +117,7 @@ mod verification {
             .expect("write slot b failed");
 
         let mut store = ValueStore::new();
-        let node = plan
-            .node(StepIdx::new(0))
-            .expect("node 0 missing");
+        let node = plan.node(StepIdx::new(0)).expect("node 0 missing");
         let _result = replay_step(node, &mut run, &mut store, &plan);
 
         if !slot_a && !slot_b && !has_otherwise {
@@ -197,9 +197,7 @@ mod verification {
             .expect("write slot b failed");
 
         let mut store = ValueStore::new();
-        let node = plan
-            .node(StepIdx::new(0))
-            .expect("node 0 missing");
+        let node = plan.node(StepIdx::new(0)).expect("node 0 missing");
         let result = replay_step(node, &mut run, &mut store, &plan);
 
         match result {
@@ -264,9 +262,7 @@ mod verification {
 
         let step_count = plan.node_count();
         let slot_count = plan.slot_count();
-        let node = plan
-            .node(StepIdx::new(0))
-            .expect("node 0 missing");
+        let node = plan.node(StepIdx::new(0)).expect("node 0 missing");
 
         let mut run_a = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)
             .expect("frame a failed");

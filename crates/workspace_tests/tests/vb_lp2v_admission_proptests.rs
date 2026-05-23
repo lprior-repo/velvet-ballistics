@@ -12,8 +12,8 @@
 //!   where `record.digest == workflow.digest()`.
 
 use proptest::prelude::*;
-use rand::rngs::StdRng;
 use rand::SeedableRng;
+use rand::rngs::StdRng;
 use vb_core::value::ConstValue;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 use vb_core::{CompiledWorkflow, ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
@@ -191,7 +191,7 @@ fn pi_01_gate_one_past_max_is_invalid() {
 proptest! {
     #[test]
     fn pi_02_digest_roundtrip_relaxed(seed in 0u64..1000u64) {
-        let mut rng = StdRng::seed_from_u64(seed);
+        let _rng = StdRng::seed_from_u64(seed);
         let value_base = 42i64;
         let value = value_base + (seed % 10) as i64;
         std::hint::black_box(value);
@@ -227,7 +227,7 @@ proptest! {
 proptest! {
     #[test]
     fn pi_02_digest_roundtrip_journaled(seed in 0u64..1000u64) {
-        let mut rng = StdRng::seed_from_u64(seed);
+        let _rng = StdRng::seed_from_u64(seed);
         let value_base = 42i64;
         let value = value_base + (seed % 10) as i64;
         std::hint::black_box(value);
@@ -260,7 +260,7 @@ proptest! {
 proptest! {
     #[test]
     fn pi_02_digest_roundtrip_strict(seed in 0u64..1000u64) {
-        let mut rng = StdRng::seed_from_u64(seed);
+        let _rng = StdRng::seed_from_u64(seed);
         let value_base = 42i64;
         let value = value_base + (seed % 10) as i64;
         std::hint::black_box(value);

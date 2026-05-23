@@ -14,17 +14,16 @@
 
 use tempfile::TempDir;
 use vb_core::{
-    ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx, Taint,
-    WorkflowDigest,
+    ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx, WorkflowDigest,
 };
+use vb_runtime::recovery::RuntimeRecoveryBoundary;
 use vb_storage::recovery::{
     ActionReplayTracker, DigestCheck, RecoveredStepEntry, RecoveredStepState, RecoveryError,
     RecoveryFrameSeed, RecoveryHydration, RecoveryRuntimeSummary, RecoveryTerminalState,
-    RunSnapshot, recover_full_journal, recover_runtime_frame_seed, recover_runtime_summary,
-    recover_runtime_summary_with_expected, hydrate_run_frame, hydrate_run_frame_from_events,
+    RunSnapshot, hydrate_run_frame, hydrate_run_frame_from_events, recover_full_journal,
+    recover_runtime_frame_seed, recover_runtime_summary, recover_runtime_summary_with_expected,
     verify_digests,
 };
-use vb_runtime::recovery::RuntimeRecoveryBoundary;
 use vb_storage::{EventSeq, FjallConfig, FjallJournal, JournalEvent};
 
 fn test_digest(byte: u8) -> WorkflowDigest {
@@ -44,11 +43,7 @@ fn write_events_strict(journal: &FjallJournal, events: &[JournalEvent]) {
     }
 }
 
-fn test_admission_event(
-    run: RunId,
-    seq: EventSeq,
-    digest: WorkflowDigest,
-) -> JournalEvent {
+fn test_admission_event(run: RunId, seq: EventSeq, digest: WorkflowDigest) -> JournalEvent {
     JournalEvent::RunAdmission {
         run,
         seq,
@@ -58,10 +53,7 @@ fn test_admission_event(
     }
 }
 
-fn build_two_step_finished_run(
-    run: RunId,
-    digest: WorkflowDigest,
-) -> Vec<JournalEvent> {
+fn build_two_step_finished_run(run: RunId, digest: WorkflowDigest) -> Vec<JournalEvent> {
     let mut seq = 0u64;
     let mut events = Vec::new();
 
@@ -85,8 +77,7 @@ fn build_two_step_finished_run(
         seq: EventSeq::new(seq),
         slot: SlotIdx::new(0),
         value: Some(
-            postcard::to_allocvec(&SlotValue::I64(42))
-                .expect("value encoding should succeed"),
+            postcard::to_allocvec(&SlotValue::I64(42)).expect("value encoding should succeed"),
         ),
         extra: None,
         attempt: 1,
@@ -114,8 +105,7 @@ fn build_two_step_finished_run(
         seq: EventSeq::new(seq),
         slot: SlotIdx::new(1),
         value: Some(
-            postcard::to_allocvec(&SlotValue::I64(99))
-                .expect("value encoding should succeed"),
+            postcard::to_allocvec(&SlotValue::I64(99)).expect("value encoding should succeed"),
         ),
         extra: None,
         attempt: 1,
@@ -409,10 +399,7 @@ fn hydration_from_events_reconstructs_exact_pc_and_dimensions() {
     ];
 
     let result = hydrate_run_frame_from_events(&events, run);
-    assert!(
-        result.is_ok(),
-        "hydration should succeed: {result:?}"
-    );
+    assert!(result.is_ok(), "hydration should succeed: {result:?}");
 
     let frame = result.unwrap();
     assert_eq!(frame.run_id(), run);
@@ -447,8 +434,7 @@ fn hydration_from_frame_seed_reconstructs_slot_values_and_taint() {
             seq: EventSeq::new(2),
             slot: SlotIdx::new(0),
             value: Some(
-                postcard::to_allocvec(&SlotValue::I64(77))
-                    .expect("value encoding should succeed"),
+                postcard::to_allocvec(&SlotValue::I64(77)).expect("value encoding should succeed"),
             ),
             extra: None,
             attempt: 1,
@@ -461,8 +447,8 @@ fn hydration_from_frame_seed_reconstructs_slot_values_and_taint() {
     }
 
     let journal = open_journal(&dir);
-    let seed = recover_runtime_frame_seed(&journal, run)
-        .expect("frame seed recovery should succeed");
+    let seed =
+        recover_runtime_frame_seed(&journal, run).expect("frame seed recovery should succeed");
 
     let slot = seed
         .slots
@@ -471,8 +457,7 @@ fn hydration_from_frame_seed_reconstructs_slot_values_and_taint() {
         .expect("slot 0 must be in recovered slots");
     assert_eq!(slot.value, SlotValue::I64(77));
 
-    let boundary =
-        vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
+    let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
     let frame = boundary
         .hydrate_run_frame()
         .expect("boundary hydration should succeed");
@@ -526,8 +511,8 @@ fn hydration_reconstructs_waiting_and_asking_step_states() {
     }
 
     let journal = open_journal(&dir);
-    let seed = recover_runtime_frame_seed(&journal, run)
-        .expect("frame seed recovery should succeed");
+    let seed =
+        recover_runtime_frame_seed(&journal, run).expect("frame seed recovery should succeed");
 
     let step0 = seed
         .steps
@@ -543,8 +528,7 @@ fn hydration_reconstructs_waiting_and_asking_step_states() {
         .expect("step 1 must be in recovered steps");
     assert_eq!(step1.state, RecoveredStepState::Asking);
 
-    let boundary =
-        vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
+    let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
     let frame = boundary
         .hydrate_run_frame()
         .expect("boundary hydration should succeed");
@@ -965,15 +949,13 @@ fn recovery_idempotency_full_journal_replayed_twice_identical() {
     let replay_a = {
         let j = open_journal(&dir);
         let mut tracker = ActionReplayTracker::new();
-        recover_full_journal(&j, run, &mut tracker, &[], &[])
-            .expect("first replay should succeed")
+        recover_full_journal(&j, run, &mut tracker, &[], &[]).expect("first replay should succeed")
     };
 
     let replay_b = {
         let j = open_journal(&dir);
         let mut tracker = ActionReplayTracker::new();
-        recover_full_journal(&j, run, &mut tracker, &[], &[])
-            .expect("second replay should succeed")
+        recover_full_journal(&j, run, &mut tracker, &[], &[]).expect("second replay should succeed")
     };
 
     assert_eq!(replay_a, replay_b);
@@ -1160,7 +1142,8 @@ fn max_size_journal_many_events_recoverable_in_order() {
     assert_eq!(
         recovered.len(),
         events.len(),
-        "all {n} events should be recoverable", n = events.len()
+        "all {n} events should be recoverable",
+        n = events.len()
     );
     for (i, (orig, rec)) in events.iter().zip(recovered.iter()).enumerate() {
         assert_eq!(orig, rec, "event {i} must match");
@@ -1337,9 +1320,7 @@ fn non_idempotent_action_rescheduled_after_completion_is_blocked() {
         step: found_step,
     }) = result
     else {
-        panic!(
-            "expected NonIdempotentActionBlocked, got: {result:?}"
-        );
+        panic!("expected NonIdempotentActionBlocked, got: {result:?}");
     };
     assert_eq!(found_action, action);
     assert_eq!(found_step, StepIdx::ZERO);
@@ -1379,10 +1360,7 @@ fn run_cancelled_produces_cancelled_terminal_state() {
         .expect("summary recovery should succeed")
         .summary();
 
-    assert_eq!(
-        summary.terminal,
-        Some(RecoveryTerminalState::Cancelled)
-    );
+    assert_eq!(summary.terminal, Some(RecoveryTerminalState::Cancelled));
 }
 
 /// Given events with RunAdmission events
@@ -1520,14 +1498,8 @@ fn recover_runtime_summary_with_expected_terminal_mismatch() {
             result: SlotIdx::ZERO,
         },
     );
-    let Err(RecoveryError::TerminalStateMismatch {
-        expected,
-        found,
-    }) = result
-    else {
-        panic!(
-            "expected TerminalStateMismatch, got: {result:?}"
-        );
+    let Err(RecoveryError::TerminalStateMismatch { expected, found }) = result else {
+        panic!("expected TerminalStateMismatch, got: {result:?}");
     };
     assert_eq!(expected.as_str(), "Finished");
     assert_eq!(found.as_str(), "Cancelled");
@@ -1676,14 +1648,8 @@ fn verify_digests_workflow_and_ir_level_detects_ir_mismatch() {
         test_digest(0x25),
         DigestCheck::WorkflowAndIr,
     );
-    let Err(RecoveryError::CompiledIrDigestMismatch {
-        expected,
-        found,
-    }) = result
-    else {
-        panic!(
-            "expected CompiledIrDigestMismatch, got: {result:?}"
-        );
+    let Err(RecoveryError::CompiledIrDigestMismatch { expected, found }) = result else {
+        panic!("expected CompiledIrDigestMismatch, got: {result:?}");
     };
     assert_eq!(expected, test_digest(0x24));
     assert_eq!(found, test_digest(0x25));
@@ -1728,8 +1694,7 @@ fn runtime_boundary_rejects_unsupported_pending_actions() {
         unsupported: vb_storage::recovery::UnsupportedRecoveryState::pending_actions_unsupported(),
     };
 
-    let boundary =
-        vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
+    let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
     let result = boundary.hydrate_run_frame();
     let Err(vb_runtime::RuntimeError::InvalidRecoveryHydration) = result else {
         panic!(
@@ -2037,10 +2002,7 @@ mod kani_recovery {
         let action_id: u64 = kani::any();
         let step_idx: u16 = kani::any();
 
-        let resolved = tracker.is_resolved(
-            ActionId::new(action_id),
-            StepIdx::new(step_idx),
-        );
+        let resolved = tracker.is_resolved(ActionId::new(action_id), StepIdx::new(step_idx));
         assert!(!resolved);
     }
 
@@ -2053,10 +2015,7 @@ mod kani_recovery {
         let mut tracker = ActionReplayTracker::new();
         tracker.mark_completed(ActionId::new(action_id), StepIdx::new(step_idx));
 
-        let resolved = tracker.is_resolved(
-            ActionId::new(action_id),
-            StepIdx::new(step_idx),
-        );
+        let resolved = tracker.is_resolved(ActionId::new(action_id), StepIdx::new(step_idx));
         assert!(resolved);
     }
 
@@ -2068,10 +2027,7 @@ mod kani_recovery {
         let mut tracker = ActionReplayTracker::new();
         tracker.mark_failed(ActionId::new(action_id), StepIdx::new(step_idx));
 
-        let resolved = tracker.is_resolved(
-            ActionId::new(action_id),
-            StepIdx::new(step_idx),
-        );
+        let resolved = tracker.is_resolved(ActionId::new(action_id), StepIdx::new(step_idx));
         assert!(resolved);
     }
 
@@ -2098,11 +2054,7 @@ mod kani_recovery {
             attempt: 1,
         }];
 
-        let result = hydrate_run_frame(
-            &snapshot,
-            &tail,
-            RunId::new(correct_run_id),
-        );
+        let result = hydrate_run_frame(&snapshot, &tail, RunId::new(correct_run_id));
         assert!(result.is_err());
     }
 
@@ -2122,8 +2074,7 @@ mod kani_recovery {
 
     #[kani::proof]
     fn verify_no_recovery_data_for_empty_journal() {
-        let result =
-            hydrate_run_frame_from_events(&[], RunId::new(1));
+        let result = hydrate_run_frame_from_events(&[], RunId::new(1));
         match result {
             Err(RecoveryError::NoRecoveryData { run: _ }) => {}
             _ => panic!("empty events must produce NoRecoveryData"),

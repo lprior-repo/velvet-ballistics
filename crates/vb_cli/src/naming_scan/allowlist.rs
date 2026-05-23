@@ -73,34 +73,46 @@ mod tests {
 
     #[test]
     fn exact_exception_matches_repository_path() {
-        let cfg = config_with_rules(vec![
-            LegacyAllowRule::RepositoryPath { path: "src/old.rs".into() },
-        ]);
+        let cfg = config_with_rules(vec![LegacyAllowRule::RepositoryPath {
+            path: "src/old.rs".into(),
+        }]);
         let ex = exact_exception("src/old.rs", &cfg).unwrap();
-        assert_eq!(ex, LegacyException::RepositoryPath { path: "src/old.rs".into() });
+        assert_eq!(
+            ex,
+            LegacyException::RepositoryPath {
+                path: "src/old.rs".into()
+            }
+        );
     }
 
     #[test]
     fn exact_exception_matches_master_filename() {
-        let cfg = config_with_rules(vec![
-            LegacyAllowRule::MasterFilename { filename: "legacy.md".into() },
-        ]);
+        let cfg = config_with_rules(vec![LegacyAllowRule::MasterFilename {
+            filename: "legacy.md".into(),
+        }]);
         let ex = exact_exception("legacy.md", &cfg).unwrap();
-        assert_eq!(ex, LegacyException::MasterFilename { filename: "legacy.md".into() });
+        assert_eq!(
+            ex,
+            LegacyException::MasterFilename {
+                filename: "legacy.md".into()
+            }
+        );
     }
 
     #[test]
     fn exact_exception_matches_migration_reference() {
-        let cfg = config_with_rules(vec![
-            LegacyAllowRule::MigrationReference {
-                label: "mig1".into(),
-                artifact: "file.toml".into(),
-                legacy_text: "old-name".into(),
-            },
-        ]);
+        let cfg = config_with_rules(vec![LegacyAllowRule::MigrationReference {
+            label: "mig1".into(),
+            artifact: "file.toml".into(),
+            legacy_text: "old-name".into(),
+        }]);
         let ex = exact_exception("mig1 file.toml old-name", &cfg).unwrap();
         match ex {
-            LegacyException::MigrationReference { label, artifact, legacy_text } => {
+            LegacyException::MigrationReference {
+                label,
+                artifact,
+                legacy_text,
+            } => {
                 assert_eq!(label, "mig1");
                 assert_eq!(artifact, "file.toml");
                 assert_eq!(legacy_text, "old-name");
@@ -111,25 +123,25 @@ mod tests {
 
     #[test]
     fn exact_exception_returns_none_for_mismatched_repository_path() {
-        let cfg = config_with_rules(vec![
-            LegacyAllowRule::RepositoryPath { path: "src/old.rs".into() },
-        ]);
+        let cfg = config_with_rules(vec![LegacyAllowRule::RepositoryPath {
+            path: "src/old.rs".into(),
+        }]);
         assert!(exact_exception("src/new.rs", &cfg).is_none());
     }
 
     #[test]
     fn exact_exception_returns_none_for_wildcard_rule() {
-        let cfg = config_with_rules(vec![
-            LegacyAllowRule::Wildcard { pattern: "*".into() },
-        ]);
+        let cfg = config_with_rules(vec![LegacyAllowRule::Wildcard {
+            pattern: "*".into(),
+        }]);
         assert!(exact_exception("anything", &cfg).is_none());
     }
 
     #[test]
     fn exact_exception_returns_none_for_prefix_only_rule() {
-        let cfg = config_with_rules(vec![
-            LegacyAllowRule::PrefixOnly { prefix: "old-".into() },
-        ]);
+        let cfg = config_with_rules(vec![LegacyAllowRule::PrefixOnly {
+            prefix: "old-".into(),
+        }]);
         assert!(exact_exception("old-name", &cfg).is_none());
     }
 }

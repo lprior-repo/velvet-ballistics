@@ -4,9 +4,7 @@
 #![forbid(unsafe_code)]
 
 use crate::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
-use crate::limits::{
-    MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE,
-};
+use crate::limits::{MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE};
 use crate::value::ConstValue;
 use crate::workflow::{
     CompiledNode, CompiledNodeKind, ExprBranch, ExprProgram, ResourceContract, SlotBranch,

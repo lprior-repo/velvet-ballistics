@@ -71,7 +71,10 @@ mod tests {
     fn class_for_text_returns_legacy_crate_module_spelling() {
         let result = class_for_text("velvet_ballistics is wrong");
         match result {
-            OccurrenceClass::InvalidLegacy { spelling_class, remediation } => {
+            OccurrenceClass::InvalidLegacy {
+                spelling_class,
+                remediation,
+            } => {
                 assert_eq!(spelling_class, SpellingClass::LegacyCrateModuleSpelling);
                 assert_eq!(remediation, CANONICAL_UNDERSCORE);
             }
@@ -83,7 +86,10 @@ mod tests {
     fn class_for_text_returns_legacy_language_version_spelling() {
         let result = class_for_text("use velvet-ballistics/v1 here");
         match result {
-            OccurrenceClass::InvalidLegacy { spelling_class, remediation } => {
+            OccurrenceClass::InvalidLegacy {
+                spelling_class,
+                remediation,
+            } => {
                 assert_eq!(spelling_class, SpellingClass::LegacyLanguageVersionSpelling);
                 assert_eq!(remediation, CANONICAL_LANGUAGE_VERSION);
             }
@@ -95,7 +101,10 @@ mod tests {
     fn class_for_text_returns_legacy_project_spelling() {
         let result = class_for_text("velvet-ballistics is the old name");
         match result {
-            OccurrenceClass::InvalidLegacy { spelling_class, remediation } => {
+            OccurrenceClass::InvalidLegacy {
+                spelling_class,
+                remediation,
+            } => {
                 assert_eq!(spelling_class, SpellingClass::LegacyProjectSpelling);
                 assert_eq!(remediation, CANONICAL_HYPHEN);
             }

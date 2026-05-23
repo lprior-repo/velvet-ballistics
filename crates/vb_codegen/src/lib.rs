@@ -2784,6 +2784,13 @@ fn fmt_err(_: std::fmt::Error) -> CodegenError {
     CodegenError::FormatBufferOverflow
 }
 
+// --- Public re-exports for BDD parity testing ---
+
+pub use parity::{
+    BlockKind, BlockedRun, ErrorClass, ErrorRun, FinishedRun, ObservedRun, ParityError,
+    TerminalStatus, compare_observed_runs,
+};
+
 mod proptests;
 #[cfg(not(miri))]
 mod tests;

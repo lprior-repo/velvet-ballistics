@@ -218,7 +218,10 @@ fn parse_expr_parses_integer_literals() -> crate::ExprResult<()> {
 #[test]
 fn parse_expr_parses_text_literal() -> crate::ExprResult<()> {
     let expr = parse("\"hello world\"")?;
-    assert_eq!(expr, ExprAst::Literal(ExprLiteral::Text(Box::from("hello world"))));
+    assert_eq!(
+        expr,
+        ExprAst::Literal(ExprLiteral::Text(Box::from("hello world")))
+    );
     Ok(())
 }
 
@@ -609,7 +612,9 @@ fn parse_expr_helper_call_with_expr_args() -> crate::ExprResult<()> {
 #[test]
 fn parse_expr_rejects_bare_identifier_without_parens() {
     let result = parse("foobar");
-    assert!(matches!(result, Err(ExprError::UnexpectedToken { ref token }) if token.contains("unknown identifier")));
+    assert!(
+        matches!(result, Err(ExprError::UnexpectedToken { ref token }) if token.contains("unknown identifier"))
+    );
 }
 
 #[test]

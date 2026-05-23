@@ -128,10 +128,7 @@ fn parse_cancel_rejects_missing_db() {
 #[test]
 fn parse_cancel_rejects_missing_run_id() {
     let parsed = parse_args(&args(&["velvet-ballastics", "cancel"]));
-    assert!(matches!(
-        parsed,
-        Err(ParseError::MissingArgument("run_id"))
-    ));
+    assert!(matches!(parsed, Err(ParseError::MissingArgument("run_id"))));
 }
 
 #[test]
@@ -146,7 +143,10 @@ fn parse_cancel_rejects_unknown_flag() {
     ]));
     assert!(matches!(
         parsed,
-        Err(ParseError::UnknownFlag { command: "cancel", .. })
+        Err(ParseError::UnknownFlag {
+            command: "cancel",
+            ..
+        })
     ));
 }
 

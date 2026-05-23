@@ -343,7 +343,9 @@ fn expr_error_propagates_through_workflow_error_to_compile_error() {
     let workflow_error = vb_core::workflow::WorkflowError::from(core_error);
     let compile_error: vb_compile::CompileError = workflow_error.into();
     assert!(
-        compile_error.to_string().contains("compiled workflow IR failed validation"),
+        compile_error
+            .to_string()
+            .contains("compiled workflow IR failed validation"),
         "compile error should wrap workflow error: {compile_error}"
     );
 }

@@ -366,7 +366,7 @@ fn runtime_rejects_submission_when_capacity_exceeded() {
     };
     let mut config = test_config();
     config.max_active_runs = 2;
-    let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(
+    let runtime = vb_runtime::runtime::Runtime::new_with_journal(
         shard_count,
         config,
         vb_runtime::journal::NoopRuntimeJournal::shared(),

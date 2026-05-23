@@ -131,12 +131,7 @@ fn parse_action_list_rejects_missing_registry_value() {
 
 #[test]
 fn parse_action_list_rejects_unknown_flag() {
-    let parsed = parse_args(&args(&[
-        "velvet-ballastics",
-        "action",
-        "list",
-        "--bogus",
-    ]));
+    let parsed = parse_args(&args(&["velvet-ballastics", "action", "list", "--bogus"]));
     assert!(matches!(
         parsed,
         Err(ParseError::UnknownActionListFlag(ref f)) if f == "--bogus"
@@ -145,12 +140,7 @@ fn parse_action_list_rejects_unknown_flag() {
 
 #[test]
 fn parse_action_list_rejects_positional_argument() {
-    let parsed = parse_args(&args(&[
-        "velvet-ballastics",
-        "action",
-        "list",
-        "extra",
-    ]));
+    let parsed = parse_args(&args(&["velvet-ballastics", "action", "list", "extra"]));
     assert!(matches!(
         parsed,
         Err(ParseError::UnexpectedActionListArgument(ref a)) if a == "extra"
@@ -211,12 +201,7 @@ fn parse_action_inspect_rejects_missing_action_id() {
 
 #[test]
 fn parse_action_inspect_rejects_non_numeric_action_id() {
-    let parsed = parse_args(&args(&[
-        "velvet-ballastics",
-        "action",
-        "inspect",
-        "abc",
-    ]));
+    let parsed = parse_args(&args(&["velvet-ballastics", "action", "inspect", "abc"]));
     assert!(matches!(parsed, Err(ParseError::InvalidActionId(_))));
 }
 

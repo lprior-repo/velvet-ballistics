@@ -56,7 +56,10 @@ fn parse_validate_rejects_unknown_flag() {
     ]));
     assert!(matches!(
         parsed,
-        Err(ParseError::UnknownFlag { command: "validate", .. })
+        Err(ParseError::UnknownFlag {
+            command: "validate",
+            ..
+        })
     ));
 }
 
@@ -230,10 +233,7 @@ fn parse_compile_rejects_missing_emit() {
         "--out",
         "output.vbir",
     ]));
-    assert!(matches!(
-        parsed,
-        Err(ParseError::MissingArgument("--emit"))
-    ));
+    assert!(matches!(parsed, Err(ParseError::MissingArgument("--emit"))));
 }
 
 #[test]
@@ -457,9 +457,7 @@ fn parse_verify_handles_profile_before_workflow() {
         "workflow.yaml",
     ]));
     if let Ok(Command::Verify {
-        workflow,
-        profile,
-        ..
+        workflow, profile, ..
     }) = parsed
     {
         assert_eq!(workflow, PathBuf::from("workflow.yaml"));

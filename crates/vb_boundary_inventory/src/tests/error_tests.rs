@@ -236,7 +236,10 @@ fn error_in_result_workspace_not_discoverable() {
     let result: Result<(), BoundaryInventoryError> =
         Err(BoundaryInventoryError::WorkspaceNotDiscoverable);
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::WorkspaceNotDiscoverable);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::WorkspaceNotDiscoverable
+    );
 }
 
 #[test]
@@ -244,7 +247,10 @@ fn error_in_result_inventory_parse_failure() {
     let result: Result<(), BoundaryInventoryError> =
         Err(BoundaryInventoryError::InventoryParseFailure);
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::InventoryParseFailure);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InventoryParseFailure
+    );
 }
 
 #[test]
@@ -284,8 +290,8 @@ fn error_hash_all_13_variants_in_set() {
 
 #[test]
 fn error_hash_collision_free_across_13_variants() {
-    use std::collections::hash_map::DefaultHasher;
     use std::collections::HashSet;
+    use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
     let variants: [BoundaryInventoryError; 13] = [
         BoundaryInventoryError::WorkspaceNotDiscoverable,

@@ -568,10 +568,7 @@ fn parse_inventory_schema_version_2_rejected() {
 
 #[test]
 fn parse_inventory_schema_version_u32_max_rejected() {
-    let json = format!(
-        r#"{{"schema_version": {}, "boundaries": []}}"#,
-        u32::MAX
-    );
+    let json = format!(r#"{{"schema_version": {}, "boundaries": []}}"#, u32::MAX);
     let result = parse_inventory(json.as_bytes());
     assert_eq!(
         result.unwrap_err(),

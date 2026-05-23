@@ -4,14 +4,14 @@
 
 #[cfg(loom)]
 pub mod sync {
-    pub use loom::sync::{Arc, Mutex, MutexGuard};
     pub use loom::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+    pub use loom::sync::{Arc, Mutex, MutexGuard};
     pub use loom::thread;
 }
 
 #[cfg(not(loom))]
 pub mod sync {
-    pub use std::sync::{Arc, Mutex, MutexGuard};
     pub use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+    pub use std::sync::{Arc, Mutex, MutexGuard};
     pub use std::thread;
 }

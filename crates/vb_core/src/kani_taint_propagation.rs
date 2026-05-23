@@ -167,7 +167,10 @@ fn kani_taint_lattice_transitive() {
     let b_lte_c = bc == c;
     kani::assume(a_lte_b && b_lte_c);
     let ac = join_taint(a, c);
-    kani::assert(ac == c, "transitivity: if a <= b and b <= c then join(a,c) == c");
+    kani::assert(
+        ac == c,
+        "transitivity: if a <= b and b <= c then join(a,c) == c",
+    );
 }
 
 /// VB-CORE-TAINT-006-KANI H9: join_taint never returns a result lower than either input
@@ -208,10 +211,7 @@ fn kani_clean_is_lattice_bottom() {
     let a_raw = kani::any::<u8>();
     let a = taint_from_u8(a_raw);
     let result = join_taint(a, Taint::Clean);
-    kani::assert(
-        result == a,
-        "Clean is identity for join_taint",
-    );
+    kani::assert(result == a, "Clean is identity for join_taint");
 }
 
 /// VB-CORE-TAINT-006-KANI H12: join_taint result ranks Random below TimeDependent

@@ -16,9 +16,9 @@
 
 use std::time::{Duration, Instant};
 
+use vb_runtime::shard::RunId;
 use vb_runtime::shard::timer_wheel::TimerWheel;
 use vb_runtime::shard::types::PendingTimerKind;
-use vb_runtime::shard::RunId;
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -177,7 +177,10 @@ fn fire_expired_clears_by_run_index() {
 fn cancel_removes_active_timer_and_returns_true() {
     let mut wheel = TimerWheel::new();
     let deadline = deadline_at(500);
-    assert_eq!(wheel.insert(run(1), deadline, PendingTimerKind::Wait), Ok(()));
+    assert_eq!(
+        wheel.insert(run(1), deadline, PendingTimerKind::Wait),
+        Ok(())
+    );
     let removed = wheel.cancel(run(1));
     assert!(removed);
     assert!(wheel.is_empty());
@@ -193,7 +196,10 @@ fn cancel_returns_false_for_nonexistent_run() {
 fn cancel_returns_false_after_previous_cancellation() {
     let mut wheel = TimerWheel::new();
     let deadline = deadline_at(500);
-    assert_eq!(wheel.insert(run(1), deadline, PendingTimerKind::Wait), Ok(()));
+    assert_eq!(
+        wheel.insert(run(1), deadline, PendingTimerKind::Wait),
+        Ok(())
+    );
     assert!(wheel.cancel(run(1)));
     assert!(!wheel.cancel(run(1)));
 }
@@ -230,7 +236,9 @@ fn insert_after_cancel_succeeds_and_starts_generation_at_one() {
 
     let d2 = deadline_at(200);
     assert_eq!(wheel.insert(run(1), d2, PendingTimerKind::Ask), Ok(()));
-    let entry = wheel.get_entry(run(1)).expect("entry should exist after re-insert");
+    let entry = wheel
+        .get_entry(run(1))
+        .expect("entry should exist after re-insert");
     assert_eq!(entry.generation, 1);
 }
 
@@ -285,7 +293,10 @@ fn past_deadline_timer_fires_immediately() {
 fn exact_deadline_boundary_is_inclusive() {
     let mut wheel = TimerWheel::new();
     let deadline = Instant::now();
-    assert_eq!(wheel.insert(run(1), deadline, PendingTimerKind::Ask), Ok(()));
+    assert_eq!(
+        wheel.insert(run(1), deadline, PendingTimerKind::Ask),
+        Ok(())
+    );
     let fired = wheel.fire_expired(deadline);
     assert_eq!(fired.len(), 1);
     assert_eq!(fired[0].kind, PendingTimerKind::Ask);
@@ -330,8 +341,14 @@ fn next_deadline_none_when_all_timers_cancelled() {
     let mut wheel = TimerWheel::new();
     let deadline = deadline_at(100);
 
-    assert_eq!(wheel.insert(run(1), deadline, PendingTimerKind::Wait), Ok(()));
-    assert_eq!(wheel.insert(run(2), deadline, PendingTimerKind::Ask), Ok(()));
+    assert_eq!(
+        wheel.insert(run(1), deadline, PendingTimerKind::Wait),
+        Ok(())
+    );
+    assert_eq!(
+        wheel.insert(run(2), deadline, PendingTimerKind::Ask),
+        Ok(())
+    );
     assert_eq!(wheel.next_deadline(), Some(deadline));
 
     wheel.cancel(run(1));
@@ -389,7 +406,10 @@ fn repeating_timer_pattern_with_increasing_deadlines() {
     let mut wheel = TimerWheel::new();
     for cycle in 1u64..=5 {
         let deadline = deadline_at(cycle as i64 * 100);
-        assert_eq!(wheel.insert(run(1), deadline, PendingTimerKind::Wait), Ok(()));
+        assert_eq!(
+            wheel.insert(run(1), deadline, PendingTimerKind::Wait),
+            Ok(())
+        );
         assert_eq!(wheel.next_deadline(), Some(deadline));
         let fired = wheel.fire_expired(deadline);
         assert_eq!(fired.len(), 1);
@@ -413,7 +433,10 @@ fn two_runs_repeating_independently_with_different_periods() {
     assert_eq!(fired[0].run, run(1));
 
     let d1_again = d1 + Duration::from_millis(10);
-    assert_eq!(wheel.insert(run(1), d1_again, PendingTimerKind::Wait), Ok(()));
+    assert_eq!(
+        wheel.insert(run(1), d1_again, PendingTimerKind::Wait),
+        Ok(())
+    );
 
     let fired2 = wheel.fire_expired(d2);
     assert_eq!(fired2.len(), 2);
@@ -436,7 +459,10 @@ fn generation_increments_on_replacement() {
 
     let d2 = deadline_at(200);
     assert_eq!(wheel.insert(run(1), d2, PendingTimerKind::Ask), Ok(()));
-    assert_eq!(wheel.get_entry(run(1)).expect("second insert").generation, 2);
+    assert_eq!(
+        wheel.get_entry(run(1)).expect("second insert").generation,
+        2
+    );
 
     let d3 = deadline_at(300);
     assert_eq!(wheel.insert(run(1), d3, PendingTimerKind::Wait), Ok(()));
@@ -474,7 +500,10 @@ fn capacity_five_thousand_timers_insert_and_drain() {
     let base = Instant::now();
     for i in 0..count {
         let deadline = base + Duration::from_micros(i);
-        assert_eq!(wheel.insert(run(i), deadline, PendingTimerKind::Wait), Ok(()));
+        assert_eq!(
+            wheel.insert(run(i), deadline, PendingTimerKind::Wait),
+            Ok(())
+        );
     }
     assert_eq!(wheel.len(), count as usize);
 
@@ -489,7 +518,10 @@ fn capacity_fifty_timers_same_deadline_all_fire_correctly() {
     let mut wheel = TimerWheel::new();
     let deadline = Instant::now();
     for i in 0..50u64 {
-        assert_eq!(wheel.insert(run(i), deadline, PendingTimerKind::Wait), Ok(()));
+        assert_eq!(
+            wheel.insert(run(i), deadline, PendingTimerKind::Wait),
+            Ok(())
+        );
     }
     let fired = wheel.fire_expired(deadline);
     assert_eq!(fired.len(), 50);
@@ -505,7 +537,10 @@ fn capacity_insert_many_timers_then_cancel_every_second_one() {
     let base = Instant::now();
     for i in 0..count {
         let deadline = base + Duration::from_millis(i);
-        assert_eq!(wheel.insert(run(i), deadline, PendingTimerKind::Wait), Ok(()));
+        assert_eq!(
+            wheel.insert(run(i), deadline, PendingTimerKind::Wait),
+            Ok(())
+        );
     }
 
     for i in (0..count).step_by(2) {
@@ -579,9 +614,18 @@ fn precision_deadline_one_nanosecond_apart_are_distinct() {
 fn precision_identical_timestamps_returned_in_any_order() {
     let mut wheel = TimerWheel::new();
     let deadline = Instant::now();
-    assert_eq!(wheel.insert(run(10), deadline, PendingTimerKind::Wait), Ok(()));
-    assert_eq!(wheel.insert(run(20), deadline, PendingTimerKind::Ask), Ok(()));
-    assert_eq!(wheel.insert(run(30), deadline, PendingTimerKind::Wait), Ok(()));
+    assert_eq!(
+        wheel.insert(run(10), deadline, PendingTimerKind::Wait),
+        Ok(())
+    );
+    assert_eq!(
+        wheel.insert(run(20), deadline, PendingTimerKind::Ask),
+        Ok(())
+    );
+    assert_eq!(
+        wheel.insert(run(30), deadline, PendingTimerKind::Wait),
+        Ok(())
+    );
 
     let fired = wheel.fire_expired(deadline);
     assert_eq!(fired.len(), 3);
@@ -608,7 +652,10 @@ fn get_entry_returns_correct_timer_metadata() {
     let mut wheel = TimerWheel::new();
     let deadline = deadline_at(500);
 
-    assert_eq!(wheel.insert(run(1), deadline, PendingTimerKind::Ask), Ok(()));
+    assert_eq!(
+        wheel.insert(run(1), deadline, PendingTimerKind::Ask),
+        Ok(())
+    );
 
     let entry = wheel.get_entry(run(1)).expect("entry should exist");
     assert_eq!(entry.run, run(1));
@@ -627,7 +674,10 @@ fn get_entry_returns_none_for_unknown_run() {
 fn is_empty_returns_false_after_insert() {
     let mut wheel = TimerWheel::new();
     assert!(wheel.is_empty());
-    assert_eq!(wheel.insert(run(1), deadline_at(100), PendingTimerKind::Wait), Ok(()));
+    assert_eq!(
+        wheel.insert(run(1), deadline_at(100), PendingTimerKind::Wait),
+        Ok(())
+    );
     assert!(!wheel.is_empty());
 }
 
@@ -637,7 +687,14 @@ fn len_accurately_reflects_current_state() {
     assert_eq!(wheel.len(), 0);
 
     for i in 0u64..5 {
-        assert_eq!(wheel.insert(run(i), deadline_at((i + 1) as i64 * 100), PendingTimerKind::Wait), Ok(()));
+        assert_eq!(
+            wheel.insert(
+                run(i),
+                deadline_at((i + 1) as i64 * 100),
+                PendingTimerKind::Wait
+            ),
+            Ok(())
+        );
         assert_eq!(wheel.len(), (i + 1) as usize);
     }
 
@@ -659,5 +716,8 @@ fn fire_expired_after_inserting_then_replacing_same_run_returns_only_final_entry
     let fired = wheel.fire_expired(Instant::now());
     assert_eq!(fired.len(), 0);
     assert_eq!(wheel.len(), 1);
-    assert_eq!(wheel.get_entry(run(1)).expect("replaced entry").kind, PendingTimerKind::Ask);
+    assert_eq!(
+        wheel.get_entry(run(1)).expect("replaced entry").kind,
+        PendingTimerKind::Ask
+    );
 }

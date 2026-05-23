@@ -185,7 +185,10 @@ mod tests {
             CanonicalEntry::new(CanonicalNameKind::BeadRig, CANONICAL_HYPHEN),
             CanonicalEntry::new(CanonicalNameKind::CrateModule, CANONICAL_UNDERSCORE),
             CanonicalEntry::new(CanonicalNameKind::BeadDatabase, CANONICAL_UNDERSCORE),
-            CanonicalEntry::new(CanonicalNameKind::LanguageVersion, CANONICAL_LANGUAGE_VERSION),
+            CanonicalEntry::new(
+                CanonicalNameKind::LanguageVersion,
+                CANONICAL_LANGUAGE_VERSION,
+            ),
         ]
     }
 
@@ -216,31 +219,48 @@ mod tests {
     #[test]
     fn validate_scan_config_rejects_wildcard_allowlist() {
         let mut raw = valid_config();
-        raw.legacy_allowlist = vec![LegacyAllowRule::Wildcard { pattern: "*".into() }];
+        raw.legacy_allowlist = vec![LegacyAllowRule::Wildcard {
+            pattern: "*".into(),
+        }];
         let result = validate_scan_config(raw);
-        assert!(matches!(result.unwrap_err(), NamingScanError::InvalidConfiguration { .. }));
+        assert!(matches!(
+            result.unwrap_err(),
+            NamingScanError::InvalidConfiguration { .. }
+        ));
     }
 
     #[test]
     fn validate_scan_config_rejects_prefix_only_allowlist() {
         let mut raw = valid_config();
-        raw.legacy_allowlist = vec![LegacyAllowRule::PrefixOnly { prefix: "old".into() }];
+        raw.legacy_allowlist = vec![LegacyAllowRule::PrefixOnly {
+            prefix: "old".into(),
+        }];
         let result = validate_scan_config(raw);
-        assert!(matches!(result.unwrap_err(), NamingScanError::InvalidConfiguration { .. }));
+        assert!(matches!(
+            result.unwrap_err(),
+            NamingScanError::InvalidConfiguration { .. }
+        ));
     }
 
     #[test]
     fn validate_scan_config_rejects_substring_allowlist() {
         let mut raw = valid_config();
-        raw.legacy_allowlist = vec![LegacyAllowRule::Substring { needle: "bad".into() }];
+        raw.legacy_allowlist = vec![LegacyAllowRule::Substring {
+            needle: "bad".into(),
+        }];
         let result = validate_scan_config(raw);
-        assert!(matches!(result.unwrap_err(), NamingScanError::InvalidConfiguration { .. }));
+        assert!(matches!(
+            result.unwrap_err(),
+            NamingScanError::InvalidConfiguration { .. }
+        ));
     }
 
     #[test]
     fn validate_scan_config_accepts_repository_path_allowlist() {
         let mut raw = valid_config();
-        raw.legacy_allowlist = vec![LegacyAllowRule::RepositoryPath { path: "src/main.rs".into() }];
+        raw.legacy_allowlist = vec![LegacyAllowRule::RepositoryPath {
+            path: "src/main.rs".into(),
+        }];
         let result = validate_scan_config(raw);
         assert!(result.is_ok());
     }
@@ -249,7 +269,9 @@ mod tests {
     fn validate_scan_config_accepts_migration_reference_allowlist() {
         let mut raw = valid_config();
         raw.legacy_allowlist = vec![LegacyAllowRule::MigrationReference {
-            label: "mig".into(), artifact: "file".into(), legacy_text: "old".into(),
+            label: "mig".into(),
+            artifact: "file".into(),
+            legacy_text: "old".into(),
         }];
         let result = validate_scan_config(raw);
         assert!(result.is_ok());
@@ -260,7 +282,10 @@ mod tests {
         let mut raw = valid_config();
         raw.scan_patterns = vec!["[abc".into()];
         let result = validate_scan_config(raw);
-        assert!(matches!(result.unwrap_err(), NamingScanError::PatternCompilationFailed { .. }));
+        assert!(matches!(
+            result.unwrap_err(),
+            NamingScanError::PatternCompilationFailed { .. }
+        ));
     }
 
     #[test]
@@ -276,7 +301,10 @@ mod tests {
         let mut raw = valid_config();
         raw.canonical_entries[0] = CanonicalEntry::new(CanonicalNameKind::Product, "wrong-name");
         let result = validate_scan_config(raw);
-        assert!(matches!(result.unwrap_err(), NamingScanError::InvalidConfiguration { .. }));
+        assert!(matches!(
+            result.unwrap_err(),
+            NamingScanError::InvalidConfiguration { .. }
+        ));
     }
 
     #[test]
@@ -287,17 +315,24 @@ mod tests {
             CanonicalEntry::new(CanonicalNameKind::Product, CANONICAL_HYPHEN),
         ];
         let result = validate_scan_config(raw);
-        assert!(matches!(result.unwrap_err(), NamingScanError::InvalidConfiguration { .. }));
+        assert!(matches!(
+            result.unwrap_err(),
+            NamingScanError::InvalidConfiguration { .. }
+        ));
     }
 
     #[test]
     fn validate_scan_config_rejects_missing_kind() {
         let mut raw = valid_config();
-        raw.canonical_entries = vec![
-            CanonicalEntry::new(CanonicalNameKind::Product, CANONICAL_HYPHEN),
-        ];
+        raw.canonical_entries = vec![CanonicalEntry::new(
+            CanonicalNameKind::Product,
+            CANONICAL_HYPHEN,
+        )];
         let result = validate_scan_config(raw);
-        assert!(matches!(result.unwrap_err(), NamingScanError::InvalidConfiguration { .. }));
+        assert!(matches!(
+            result.unwrap_err(),
+            NamingScanError::InvalidConfiguration { .. }
+        ));
     }
 
     #[test]
@@ -308,6 +343,9 @@ mod tests {
     #[test]
     fn fingerprint_for_destination_yields_maximum_when_some() {
         let dst = PathBuf::from("/tmp/report.txt");
-        assert_eq!(fingerprint_for_destination(Some(&dst)), "vb-37lc-maximum-bounded-config");
+        assert_eq!(
+            fingerprint_for_destination(Some(&dst)),
+            "vb-37lc-maximum-bounded-config"
+        );
     }
 }

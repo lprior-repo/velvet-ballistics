@@ -15,8 +15,8 @@ use crate::workflow::{
 use crate::ids::ActionId;
 use crate::value::Taint;
 
-use super::{ReplayEngine, ReplayError, SuspensionKind};
 use super::step::ReplayAction;
+use super::{ReplayEngine, ReplayError, SuspensionKind};
 
 #[test]
 fn suspension_kind_names_are_stable() {
@@ -2400,7 +2400,10 @@ fn replay_choose_expr_first_true_branch_wins_over_second() -> Result<(), CoreErr
             ConstValue::Bool(false),
             ConstValue::I64(0),
         ],
-        vec![expr_true.clone(), ExprProgram::try_from_ops(vec![ExprOp::LoadConst(ConstIdx::new(0))].into())?],
+        vec![
+            expr_true.clone(),
+            ExprProgram::try_from_ops(vec![ExprOp::LoadConst(ConstIdx::new(0))].into())?,
+        ],
     )?;
 
     let mut store = ValueStore::new();
@@ -3682,16 +3685,16 @@ fn replay_step_by_step_equals_full_replay() -> Result<(), CoreError> {
 
     assert_eq!(step_run.pc(), full_frame.pc());
     for slot in 0..3u16 {
-        let step_val = *step_run
-            .read_slot(SlotIdx::new(slot))
-            .map_err(|_| CoreError::InternalInvariantViolation {
+        let step_val = *step_run.read_slot(SlotIdx::new(slot)).map_err(|_| {
+            CoreError::InternalInvariantViolation {
                 reason: "step frame read error",
-            })?;
-        let full_val = *full_frame
-            .read_slot(SlotIdx::new(slot))
-            .map_err(|_| CoreError::InternalInvariantViolation {
+            }
+        })?;
+        let full_val = *full_frame.read_slot(SlotIdx::new(slot)).map_err(|_| {
+            CoreError::InternalInvariantViolation {
                 reason: "full frame read error",
-            })?;
+            }
+        })?;
         assert_eq!(step_val, full_val, "slot {slot} mismatch");
     }
     Ok(())
@@ -3748,16 +3751,16 @@ fn replay_idempotent_twice_returns_same_result() -> Result<(), CoreError> {
 
     assert_eq!(frame_a.pc(), frame_b.pc());
     for slot in 0..2u16 {
-        let val_a = *frame_a
-            .read_slot(SlotIdx::new(slot))
-            .map_err(|_| CoreError::InternalInvariantViolation {
+        let val_a = *frame_a.read_slot(SlotIdx::new(slot)).map_err(|_| {
+            CoreError::InternalInvariantViolation {
                 reason: "frame_a read error",
-            })?;
-        let val_b = *frame_b
-            .read_slot(SlotIdx::new(slot))
-            .map_err(|_| CoreError::InternalInvariantViolation {
+            }
+        })?;
+        let val_b = *frame_b.read_slot(SlotIdx::new(slot)).map_err(|_| {
+            CoreError::InternalInvariantViolation {
                 reason: "frame_b read error",
-            })?;
+            }
+        })?;
         assert_eq!(val_a, val_b, "slot {slot} mismatch between idempotent runs");
     }
     Ok(())
@@ -3826,16 +3829,16 @@ fn independent_runs_with_same_plan_produce_identical_state() -> Result<(), CoreE
 
     assert_eq!(frame_a.pc(), frame_b.pc());
     for slot in 0..3u16 {
-        let val_a = *frame_a
-            .read_slot(SlotIdx::new(slot))
-            .map_err(|_| CoreError::InternalInvariantViolation {
+        let val_a = *frame_a.read_slot(SlotIdx::new(slot)).map_err(|_| {
+            CoreError::InternalInvariantViolation {
                 reason: "frame_a read error",
-            })?;
-        let val_b = *frame_b
-            .read_slot(SlotIdx::new(slot))
-            .map_err(|_| CoreError::InternalInvariantViolation {
+            }
+        })?;
+        let val_b = *frame_b.read_slot(SlotIdx::new(slot)).map_err(|_| {
+            CoreError::InternalInvariantViolation {
                 reason: "frame_b read error",
-            })?;
+            }
+        })?;
         assert_eq!(val_a, val_b, "independent runs slot {slot} mismatch");
     }
     Ok(())
@@ -3911,12 +3914,7 @@ fn replay_from_intermediate_snapshot() -> Result<(), CoreError> {
     let step_count = plan.node_count();
     let slot_count = plan.slot_count();
     let mut resume_store = ValueStore::new();
-    let mut resume_run = RunFrame::new(
-        RunId::new(0),
-        snap_frame.pc(),
-        step_count,
-        slot_count,
-    )?;
+    let mut resume_run = RunFrame::new(RunId::new(0), snap_frame.pc(), step_count, slot_count)?;
     resume_run.write_slot(SlotIdx::new(0), SlotValue::I64(10))?;
     resume_run.write_slot(SlotIdx::new(1), SlotValue::I64(20))?;
 
@@ -3928,10 +3926,7 @@ fn replay_from_intermediate_snapshot() -> Result<(), CoreError> {
     super::step::replay_step(node, &mut resume_run, &mut resume_store, &plan)
         .map_err(replay_err_to_core)?;
 
-    assert_eq!(
-        *resume_run.read_slot(SlotIdx::new(2))?,
-        SlotValue::I64(30)
-    );
+    assert_eq!(*resume_run.read_slot(SlotIdx::new(2))?, SlotValue::I64(30));
     assert_eq!(
         *resume_run.read_slot(SlotIdx::new(2))?,
         *frame_full.read_slot(SlotIdx::new(2))?,
@@ -4154,10 +4149,7 @@ fn replay_setconst_with_i64_max_value() -> Result<(), CoreError> {
         .replay_frame_through(StepIdx::new(0), &mut store)
         .map_err(replay_err_to_core)?;
 
-    assert_eq!(
-        *frame.read_slot(SlotIdx::new(0))?,
-        SlotValue::I64(i64::MAX)
-    );
+    assert_eq!(*frame.read_slot(SlotIdx::new(0))?, SlotValue::I64(i64::MAX));
     Ok(())
 }
 
@@ -4195,10 +4187,7 @@ fn replay_setconst_with_i64_min_value() -> Result<(), CoreError> {
         .replay_frame_through(StepIdx::new(0), &mut store)
         .map_err(replay_err_to_core)?;
 
-    assert_eq!(
-        *frame.read_slot(SlotIdx::new(0))?,
-        SlotValue::I64(i64::MIN)
-    );
+    assert_eq!(*frame.read_slot(SlotIdx::new(0))?, SlotValue::I64(i64::MIN));
     Ok(())
 }
 
@@ -4236,9 +4225,6 @@ fn replay_setconst_with_i64_zero() -> Result<(), CoreError> {
         .replay_frame_through(StepIdx::new(0), &mut store)
         .map_err(replay_err_to_core)?;
 
-    assert_eq!(
-        *frame.read_slot(SlotIdx::new(0))?,
-        SlotValue::I64(0)
-    );
+    assert_eq!(*frame.read_slot(SlotIdx::new(0))?, SlotValue::I64(0));
     Ok(())
 }

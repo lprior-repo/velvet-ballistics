@@ -182,38 +182,38 @@ fn timer_fired_cancel_ordering() {
         .max_preemptions(3)
         .max_branches(1000)
         .check(|| {
-        let state = Arc::new(Mutex::new(initial_state()));
-        let event = captured_fire();
+            let state = Arc::new(Mutex::new(initial_state()));
+            let event = captured_fire();
 
-        let cancel_state = state.clone();
-        let cancel = loom::thread::spawn(move || {
-            let mut locked = lock_state(&cancel_state);
-            locked.pending = None;
+            let cancel_state = state.clone();
+            let cancel = loom::thread::spawn(move || {
+                let mut locked = lock_state(&cancel_state);
+                locked.pending = None;
+            });
+
+            let deliver_state = state.clone();
+            let delivery = loom::thread::spawn(move || {
+                let mut locked = lock_state(&deliver_state);
+                deliver(&mut locked, event)
+            });
+
+            assert!(cancel.join().is_ok(), "cancel thread should complete");
+            let delivery_result = delivery.join();
+            assert!(delivery_result.is_ok(), "delivery thread should complete");
+            let Ok(outcome) = delivery_result else {
+                return;
+            };
+
+            let locked = lock_state(&state);
+            assert!(
+                matches!(
+                    outcome,
+                    FireOutcome::ValidDelivered | FireOutcome::StaleAfterCancel
+                ),
+                "cancel race must resolve only to valid delivery or stale-after-cancel"
+            );
+            assert_lattice(&locked, outcome);
         });
-
-        let deliver_state = state.clone();
-        let delivery = loom::thread::spawn(move || {
-            let mut locked = lock_state(&deliver_state);
-            deliver(&mut locked, event)
-        });
-
-        assert!(cancel.join().is_ok(), "cancel thread should complete");
-        let delivery_result = delivery.join();
-        assert!(delivery_result.is_ok(), "delivery thread should complete");
-        let Ok(outcome) = delivery_result else {
-            return;
-        };
-
-        let locked = lock_state(&state);
-        assert!(
-            matches!(
-                outcome,
-                FireOutcome::ValidDelivered | FireOutcome::StaleAfterCancel
-            ),
-            "cancel race must resolve only to valid delivery or stale-after-cancel"
-        );
-        assert_lattice(&locked, outcome);
-    });
 }
 
 /// Captured fired event versus replacement: either the captured event wins
@@ -224,42 +224,42 @@ fn timer_fired_replace_ordering() {
         .max_preemptions(3)
         .max_branches(1000)
         .check(|| {
-        let state = Arc::new(Mutex::new(initial_state()));
-        let event = captured_fire();
+            let state = Arc::new(Mutex::new(initial_state()));
+            let event = captured_fire();
 
-        let replace_state = state.clone();
-        let replace = loom::thread::spawn(move || {
-            let mut locked = lock_state(&replace_state);
-            locked.pending = Some(PendingTimer {
-                generation: 2,
-                deadline: 11,
-                kind: TimerKind::Ask,
+            let replace_state = state.clone();
+            let replace = loom::thread::spawn(move || {
+                let mut locked = lock_state(&replace_state);
+                locked.pending = Some(PendingTimer {
+                    generation: 2,
+                    deadline: 11,
+                    kind: TimerKind::Ask,
+                });
             });
+
+            let deliver_state = state.clone();
+            let delivery = loom::thread::spawn(move || {
+                let mut locked = lock_state(&deliver_state);
+                deliver(&mut locked, event)
+            });
+
+            assert!(replace.join().is_ok(), "replace thread should complete");
+            let delivery_result = delivery.join();
+            assert!(delivery_result.is_ok(), "delivery thread should complete");
+            let Ok(outcome) = delivery_result else {
+                return;
+            };
+
+            let locked = lock_state(&state);
+            assert!(
+                matches!(
+                    outcome,
+                    FireOutcome::ValidDelivered | FireOutcome::StaleAfterReplace
+                ),
+                "replace race must resolve only to valid delivery or stale-after-replace"
+            );
+            assert_lattice(&locked, outcome);
         });
-
-        let deliver_state = state.clone();
-        let delivery = loom::thread::spawn(move || {
-            let mut locked = lock_state(&deliver_state);
-            deliver(&mut locked, event)
-        });
-
-        assert!(replace.join().is_ok(), "replace thread should complete");
-        let delivery_result = delivery.join();
-        assert!(delivery_result.is_ok(), "delivery thread should complete");
-        let Ok(outcome) = delivery_result else {
-            return;
-        };
-
-        let locked = lock_state(&state);
-        assert!(
-            matches!(
-                outcome,
-                FireOutcome::ValidDelivered | FireOutcome::StaleAfterReplace
-            ),
-            "replace race must resolve only to valid delivery or stale-after-replace"
-        );
-        assert_lattice(&locked, outcome);
-    });
 }
 
 /// Captured fired event versus terminal lifecycle transition: either delivery
@@ -271,37 +271,37 @@ fn timer_fired_terminal_ordering() {
         .max_preemptions(3)
         .max_branches(1000)
         .check(|| {
-        let state = Arc::new(Mutex::new(initial_state()));
-        let event = captured_fire();
+            let state = Arc::new(Mutex::new(initial_state()));
+            let event = captured_fire();
 
-        let terminal_state = state.clone();
-        let terminal = loom::thread::spawn(move || {
-            let mut locked = lock_state(&terminal_state);
-            locked.terminal = true;
-            locked.pending = None;
+            let terminal_state = state.clone();
+            let terminal = loom::thread::spawn(move || {
+                let mut locked = lock_state(&terminal_state);
+                locked.terminal = true;
+                locked.pending = None;
+            });
+
+            let deliver_state = state.clone();
+            let delivery = loom::thread::spawn(move || {
+                let mut locked = lock_state(&deliver_state);
+                deliver(&mut locked, event)
+            });
+
+            assert!(terminal.join().is_ok(), "terminal thread should complete");
+            let delivery_result = delivery.join();
+            assert!(delivery_result.is_ok(), "delivery thread should complete");
+            let Ok(outcome) = delivery_result else {
+                return;
+            };
+
+            let locked = lock_state(&state);
+            assert!(
+                matches!(
+                    outcome,
+                    FireOutcome::ValidDelivered | FireOutcome::TerminalRejected
+                ),
+                "terminal race must resolve only to valid delivery or terminal rejection"
+            );
+            assert_lattice(&locked, outcome);
         });
-
-        let deliver_state = state.clone();
-        let delivery = loom::thread::spawn(move || {
-            let mut locked = lock_state(&deliver_state);
-            deliver(&mut locked, event)
-        });
-
-        assert!(terminal.join().is_ok(), "terminal thread should complete");
-        let delivery_result = delivery.join();
-        assert!(delivery_result.is_ok(), "delivery thread should complete");
-        let Ok(outcome) = delivery_result else {
-            return;
-        };
-
-        let locked = lock_state(&state);
-        assert!(
-            matches!(
-                outcome,
-                FireOutcome::ValidDelivered | FireOutcome::TerminalRejected
-            ),
-            "terminal race must resolve only to valid delivery or terminal rejection"
-        );
-        assert_lattice(&locked, outcome);
-    });
 }

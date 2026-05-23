@@ -4,11 +4,11 @@
 use std::collections::HashSet;
 
 use proptest::prelude::*;
+use vb_validate::ValidationError;
 use vb_validate::schema::{
     FieldValue, StepDoc, WorkflowDoc, validate_single_primitive, validate_step_fields,
     validate_trigger, validate_version, validate_workflow_schema,
 };
-use vb_validate::ValidationError;
 
 fn make_doc(fields: Vec<(&str, FieldValue)>) -> WorkflowDoc {
     WorkflowDoc::from_pairs(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
@@ -301,11 +301,11 @@ proptest! {
 mod kani_harnesses {
     use super::*;
 
+    use vb_validate::ValidationError;
     use vb_validate::schema::{
         FieldValue, StepDoc, WorkflowDoc, validate_ids, validate_single_primitive,
         validate_step_fields, validate_trigger, validate_version, validate_workflow_schema,
     };
-    use vb_validate::ValidationError;
 
     #[kani::proof]
     fn capability_name_length_boundary_is_ordered() {
@@ -510,7 +510,10 @@ mod kani_harnesses {
         kani::assume(name.len() <= 64);
         let doc = make_doc(vec![("name", FieldValue::String(name))]);
         kani::assert(doc.has_field("name"), "has_field true for present field");
-        kani::assert(!doc.has_field("missing"), "has_field false for absent field");
+        kani::assert(
+            !doc.has_field("missing"),
+            "has_field false for absent field",
+        );
     }
 }
 
@@ -575,10 +578,10 @@ fn kani_integration_version_mismatch_is_invalid_version() {
 
 #[test]
 fn kani_integration_http_trigger_is_rejected() {
-    let doc = make_doc(vec![("when", FieldValue::Mapping(vec![(
-        "http".to_owned(),
-        FieldValue::Empty,
-    )]))]);
+    let doc = make_doc(vec![(
+        "when",
+        FieldValue::Mapping(vec![("http".to_owned(), FieldValue::Empty)]),
+    )]);
     assert_eq!(
         validate_trigger(&doc),
         Err(ValidationError::HttpTriggerOutOfCore)
@@ -619,10 +622,7 @@ fn kani_integration_multiple_primitives_caught() {
 
 #[test]
 fn kani_integration_missing_primitive_caught() {
-    let step = make_step(vec![(
-        "id",
-        FieldValue::String("bare_step".to_owned()),
-    )]);
+    let step = make_step(vec![("id", FieldValue::String("bare_step".to_owned()))]);
     assert_eq!(
         validate_single_primitive(&step),
         Err(ValidationError::MissingStepPrimitive)

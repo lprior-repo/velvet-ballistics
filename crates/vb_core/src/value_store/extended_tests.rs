@@ -41,7 +41,9 @@ fn symbol_intern_sequential_ids_are_monotonic() -> Result<(), String> {
     if id0.get() != 0 || id1.get() != 1 || id2.get() != 2 {
         return Err(format!(
             "expected monotonic ids 0,1,2 got {},{},{}",
-            id0.get(), id1.get(), id2.get()
+            id0.get(),
+            id1.get(),
+            id2.get()
         ));
     }
     Ok(())
@@ -79,7 +81,10 @@ fn symbol_intern_same_string_distinct_inserts_get_distinct_ids() -> Result<(), S
         return Err("id1 payload mismatch".into());
     }
     if store.symbol_count() != 2 {
-        return Err(format!("expected symbol_count=2, got {}", store.symbol_count()));
+        return Err(format!(
+            "expected symbol_count=2, got {}",
+            store.symbol_count()
+        ));
     }
     Ok(())
 }
@@ -214,10 +219,18 @@ fn object_field_lookup_by_key_resolves_value() -> Result<(), String> {
             .into_boxed_slice(),
         )
         .map_err(|e| e.to_string())?;
-    if store.object_field(obj_id, key_a).map_err(|e| e.to_string())? != SlotValue::I64(100) {
+    if store
+        .object_field(obj_id, key_a)
+        .map_err(|e| e.to_string())?
+        != SlotValue::I64(100)
+    {
         return Err("key_a must resolve to 100".into());
     }
-    if store.object_field(obj_id, key_b).map_err(|e| e.to_string())? != SlotValue::I64(200) {
+    if store
+        .object_field(obj_id, key_b)
+        .map_err(|e| e.to_string())?
+        != SlotValue::I64(200)
+    {
         return Err("key_b must resolve to 200".into());
     }
     Ok(())
@@ -298,7 +311,11 @@ fn object_duplicate_key_first_wins_for_query() -> Result<(), String> {
             .into_boxed_slice(),
         )
         .map_err(|e| e.to_string())?;
-    if store.object_field(obj_id, dup_key).map_err(|e| e.to_string())? != SlotValue::I64(1) {
+    if store
+        .object_field(obj_id, dup_key)
+        .map_err(|e| e.to_string())?
+        != SlotValue::I64(1)
+    {
         return Err("duplicate key must resolve to first value".into());
     }
     Ok(())
@@ -759,7 +776,10 @@ fn store_counts_accurate_after_mixed_inserts() -> Result<(), String> {
         .insert_symbol(Box::<str>::from("b"))
         .map_err(|e| e.to_string())?;
     if store.symbol_count() != 2 {
-        return Err(format!("expected symbol_count=2, got {}", store.symbol_count()));
+        return Err(format!(
+            "expected symbol_count=2, got {}",
+            store.symbol_count()
+        ));
     }
     store
         .insert_list(vec![SlotValue::Null].into_boxed_slice())
@@ -832,10 +852,7 @@ fn store_new_has_no_cap_and_allows_unlimited_inserts() -> Result<(), String> {
             .map_err(|e| e.to_string())?;
     }
     if store.total_arena_count() != 100 {
-        return Err(format!(
-            "expected 100, got {}",
-            store.total_arena_count()
-        ));
+        return Err(format!("expected 100, got {}", store.total_arena_count()));
     }
     Ok(())
 }
@@ -984,8 +1001,12 @@ fn taint_list_insert_clean_default_taint_is_clean() -> Result<(), String> {
     let id = store
         .insert_list(vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice())
         .map_err(|e| e.to_string())?;
-    let (_, taint0) = store.list_item_with_taint(id, 0).map_err(|e| e.to_string())?;
-    let (_, taint1) = store.list_item_with_taint(id, 1).map_err(|e| e.to_string())?;
+    let (_, taint0) = store
+        .list_item_with_taint(id, 0)
+        .map_err(|e| e.to_string())?;
+    let (_, taint1) = store
+        .list_item_with_taint(id, 1)
+        .map_err(|e| e.to_string())?;
     if taint0 != Taint::Clean || taint1 != Taint::Clean {
         return Err("default taint must be Clean".into());
     }
@@ -1000,8 +1021,12 @@ fn taint_list_insert_with_explicit_taint_preserves_values() -> Result<(), String
     let id = store
         .insert_list_with_taint(values, taints)
         .map_err(|e| e.to_string())?;
-    let (v0, t0) = store.list_item_with_taint(id, 0).map_err(|e| e.to_string())?;
-    let (v1, t1) = store.list_item_with_taint(id, 1).map_err(|e| e.to_string())?;
+    let (v0, t0) = store
+        .list_item_with_taint(id, 0)
+        .map_err(|e| e.to_string())?;
+    let (v1, t1) = store
+        .list_item_with_taint(id, 1)
+        .map_err(|e| e.to_string())?;
     if v0 != SlotValue::I64(10) || t0 != Taint::Secret {
         return Err("taint item 0 mismatch".into());
     }
@@ -1038,11 +1063,17 @@ fn taint_object_field_with_explicit_taint_preserves_values() -> Result<(), Strin
     let key = SymbolId::new(1);
     let obj_id = store
         .insert_object(
-            vec![ObjectField::with_taint(key, SlotValue::I64(42), Taint::Secret)]
-                .into_boxed_slice(),
+            vec![ObjectField::with_taint(
+                key,
+                SlotValue::I64(42),
+                Taint::Secret,
+            )]
+            .into_boxed_slice(),
         )
         .map_err(|e| e.to_string())?;
-    let (val, taint) = store.object_field_with_taint(obj_id, key).map_err(|e| e.to_string())?;
+    let (val, taint) = store
+        .object_field_with_taint(obj_id, key)
+        .map_err(|e| e.to_string())?;
     if val != SlotValue::I64(42) || taint != Taint::Secret {
         return Err("object taint mismatch".into());
     }
@@ -1062,7 +1093,9 @@ fn taint_object_duplicate_key_first_wins_for_taint() -> Result<(), String> {
             .into_boxed_slice(),
         )
         .map_err(|e| e.to_string())?;
-    let (val, taint) = store.object_field_with_taint(obj_id, key).map_err(|e| e.to_string())?;
+    let (val, taint) = store
+        .object_field_with_taint(obj_id, key)
+        .map_err(|e| e.to_string())?;
     if val != SlotValue::I64(1) || taint != Taint::Secret {
         return Err("duplicate key first-wins must apply to taint".into());
     }

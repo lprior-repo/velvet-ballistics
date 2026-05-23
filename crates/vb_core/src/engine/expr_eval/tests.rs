@@ -764,11 +764,7 @@ fn eq_equal_i64_values_returns_true() -> Result<(), EngineError> {
         ExprOp::LoadConst(ConstIdx::new(0)),
         ExprOp::Eq,
     ];
-    let result = eval_expr_ops_with_constants(
-        &ops,
-        vec![ConstValue::I64(42)],
-        &mut store,
-    )?;
+    let result = eval_expr_ops_with_constants(&ops, vec![ConstValue::I64(42)], &mut store)?;
     assert_eq!(result, SlotValue::Bool(true));
     Ok(())
 }
@@ -798,11 +794,7 @@ fn eq_equal_bool_values_returns_true() -> Result<(), EngineError> {
         ExprOp::LoadConst(ConstIdx::new(0)),
         ExprOp::Eq,
     ];
-    let result = eval_expr_ops_with_constants(
-        &ops,
-        vec![ConstValue::Bool(true)],
-        &mut store,
-    )?;
+    let result = eval_expr_ops_with_constants(&ops, vec![ConstValue::Bool(true)], &mut store)?;
     assert_eq!(result, SlotValue::Bool(true));
     Ok(())
 }
@@ -1206,11 +1198,7 @@ fn or_false_false_returns_false() -> Result<(), EngineError> {
 fn not_true_returns_false() -> Result<(), EngineError> {
     let mut store = ValueStore::new();
     let ops = vec![ExprOp::LoadConst(ConstIdx::new(0)), ExprOp::Not];
-    let result = eval_expr_ops_with_constants(
-        &ops,
-        vec![ConstValue::Bool(true)],
-        &mut store,
-    )?;
+    let result = eval_expr_ops_with_constants(&ops, vec![ConstValue::Bool(true)], &mut store)?;
     assert_eq!(result, SlotValue::Bool(false));
     Ok(())
 }
@@ -1219,11 +1207,7 @@ fn not_true_returns_false() -> Result<(), EngineError> {
 fn not_false_returns_true() -> Result<(), EngineError> {
     let mut store = ValueStore::new();
     let ops = vec![ExprOp::LoadConst(ConstIdx::new(0)), ExprOp::Not];
-    let result = eval_expr_ops_with_constants(
-        &ops,
-        vec![ConstValue::Bool(false)],
-        &mut store,
-    )?;
+    let result = eval_expr_ops_with_constants(&ops, vec![ConstValue::Bool(false)], &mut store)?;
     assert_eq!(result, SlotValue::Bool(true));
     Ok(())
 }
@@ -1263,11 +1247,8 @@ fn mul_type_mismatch_right_not_number_returns_type_error() -> Result<(), EngineE
         ExprOp::LoadConst(ConstIdx::new(1)),
         ExprOp::Mul,
     ];
-    let result = eval_expr_ops_with_constants(
-        &ops,
-        vec![ConstValue::I64(1), ConstValue::Null],
-        &mut store,
-    );
+    let result =
+        eval_expr_ops_with_constants(&ops, vec![ConstValue::I64(1), ConstValue::Null], &mut store);
     assert_eq!(
         result,
         Err(EngineError::TypeMismatch {
@@ -1328,11 +1309,7 @@ fn or_type_mismatch_right_not_bool_returns_type_error() -> Result<(), EngineErro
 fn not_type_mismatch_operand_not_bool_returns_type_error() -> Result<(), EngineError> {
     let mut store = ValueStore::new();
     let ops = vec![ExprOp::LoadConst(ConstIdx::new(0)), ExprOp::Not];
-    let result = eval_expr_ops_with_constants(
-        &ops,
-        vec![ConstValue::I64(42)],
-        &mut store,
-    );
+    let result = eval_expr_ops_with_constants(&ops, vec![ConstValue::I64(42)], &mut store);
     assert_eq!(
         result,
         Err(EngineError::TypeMismatch {
@@ -1351,11 +1328,7 @@ fn not_type_mismatch_operand_not_bool_returns_type_error() -> Result<(), EngineE
 fn stack_underflow_single_operand_for_add_rejected_at_construction() {
     let mut store = ValueStore::new();
     let ops = vec![ExprOp::LoadConst(ConstIdx::new(0)), ExprOp::Add];
-    let result = eval_expr_ops_with_constants(
-        &ops,
-        vec![ConstValue::I64(1)],
-        &mut store,
-    );
+    let result = eval_expr_ops_with_constants(&ops, vec![ConstValue::I64(1)], &mut store);
     assert_eq!(
         result,
         Err(EngineError::InvalidCompiledWorkflow {
@@ -1368,11 +1341,7 @@ fn stack_underflow_single_operand_for_add_rejected_at_construction() {
 fn stack_underflow_single_operand_for_sub_rejected_at_construction() {
     let mut store = ValueStore::new();
     let ops = vec![ExprOp::LoadConst(ConstIdx::new(0)), ExprOp::Sub];
-    let result = eval_expr_ops_with_constants(
-        &ops,
-        vec![ConstValue::I64(1)],
-        &mut store,
-    );
+    let result = eval_expr_ops_with_constants(&ops, vec![ConstValue::I64(1)], &mut store);
     assert_eq!(
         result,
         Err(EngineError::InvalidCompiledWorkflow {
@@ -1389,11 +1358,7 @@ fn stack_underflow_single_operand_for_sub_rejected_at_construction() {
 fn single_load_const_returns_pushed_value() -> Result<(), EngineError> {
     let mut store = ValueStore::new();
     let ops = vec![ExprOp::LoadConst(ConstIdx::new(0))];
-    let result = eval_expr_ops_with_constants(
-        &ops,
-        vec![ConstValue::I64(42)],
-        &mut store,
-    )?;
+    let result = eval_expr_ops_with_constants(&ops, vec![ConstValue::I64(42)], &mut store)?;
     assert_eq!(result, SlotValue::I64(42));
     Ok(())
 }
@@ -1415,11 +1380,7 @@ fn null_equals_null_via_eq_returns_true() -> Result<(), EngineError> {
         ExprOp::LoadConst(ConstIdx::new(0)),
         ExprOp::Eq,
     ];
-    let result = eval_expr_ops_with_constants(
-        &ops,
-        vec![ConstValue::Null],
-        &mut store,
-    )?;
+    let result = eval_expr_ops_with_constants(&ops, vec![ConstValue::Null], &mut store)?;
     assert_eq!(result, SlotValue::Bool(true));
     Ok(())
 }
@@ -1432,11 +1393,8 @@ fn null_not_equals_i64_via_eq_returns_false() -> Result<(), EngineError> {
         ExprOp::LoadConst(ConstIdx::new(1)),
         ExprOp::Eq,
     ];
-    let result = eval_expr_ops_with_constants(
-        &ops,
-        vec![ConstValue::Null, ConstValue::I64(0)],
-        &mut store,
-    )?;
+    let result =
+        eval_expr_ops_with_constants(&ops, vec![ConstValue::Null, ConstValue::I64(0)], &mut store)?;
     assert_eq!(result, SlotValue::Bool(false));
     Ok(())
 }
@@ -1446,7 +1404,12 @@ fn load_slot_uninitialized_returns_error() -> Result<(), EngineError> {
     let mut store = ValueStore::new();
     let ops = vec![ExprOp::LoadSlot(SlotIdx::new(0))];
     let result = eval_expr_ops_with_store(&ops, vec![], vec![], &mut store);
-    assert_eq!(result, Err(EngineError::SlotUninitialized { slot: SlotIdx::new(0) }));
+    assert_eq!(
+        result,
+        Err(EngineError::SlotUninitialized {
+            slot: SlotIdx::new(0)
+        })
+    );
     Ok(())
 }
 
@@ -1544,11 +1507,7 @@ fn deep_nesting_32_loads_then_31_adds_produces_sum() -> Result<(), EngineError> 
     for _ in 0..31 {
         ops.push(ExprOp::Add);
     }
-    let result = eval_expr_ops_with_constants(
-        &ops,
-        vec![ConstValue::I64(1)],
-        &mut store,
-    )?;
+    let result = eval_expr_ops_with_constants(&ops, vec![ConstValue::I64(1)], &mut store)?;
     assert_eq!(result, SlotValue::I64(32));
     Ok(())
 }
@@ -1563,11 +1522,7 @@ fn deep_nesting_alternating_loads_and_ops_near_max_stack() -> Result<(), EngineE
     for _ in 0..19 {
         ops.push(ExprOp::Add);
     }
-    let result = eval_expr_ops_with_constants(
-        &ops,
-        vec![ConstValue::I64(2)],
-        &mut store,
-    )?;
+    let result = eval_expr_ops_with_constants(&ops, vec![ConstValue::I64(2)], &mut store)?;
     assert_eq!(result, SlotValue::I64(40));
     Ok(())
 }
@@ -1578,27 +1533,31 @@ fn deep_nesting_alternating_loads_and_ops_near_max_stack() -> Result<(), EngineE
 
 #[cfg(test)]
 mod proptests {
-    use proptest::prelude::*;
+    use super::super::eval_expr_with_store;
     use crate::errors::EngineError;
     use crate::ids::{ConstIdx, ExprIdx, RunId, StepIdx, WorkflowDigest};
+    use crate::limits::MAX_EXPRESSION_STACK;
     use crate::value::{ConstValue, SlotValue};
     use crate::value_store::ValueStore;
     use crate::workflow::{
         CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, ResourceContract,
         WorkflowParts, check_expr_stack_bound,
     };
-    use crate::limits::MAX_EXPRESSION_STACK;
-    use super::super::eval_expr_with_store;
+    use proptest::prelude::*;
 
     fn eval_ops_with_constants(
         ops: &[ExprOp],
         constants: Vec<ConstValue>,
     ) -> Result<SlotValue, EngineError> {
         let max_stack = check_expr_stack_bound(ops, MAX_EXPRESSION_STACK).map_err(|_| {
-            EngineError::InvalidCompiledWorkflow { reason: "stack check" }
+            EngineError::InvalidCompiledWorkflow {
+                reason: "stack check",
+            }
         })?;
         let expr = ExprProgram::try_from_parts(ops.into(), max_stack).map_err(|_| {
-            EngineError::InvalidCompiledWorkflow { reason: "expr parts" }
+            EngineError::InvalidCompiledWorkflow {
+                reason: "expr parts",
+            }
         })?;
         let plan = CompiledWorkflow::try_from_parts(WorkflowParts {
             name: "proptest".into(),
@@ -1621,7 +1580,9 @@ mod proptests {
             resource_contract: ResourceContract::DEFAULT,
             step_names: Box::new([]),
         })
-        .map_err(|_| EngineError::InvalidCompiledWorkflow { reason: "workflow parts" })?;
+        .map_err(|_| EngineError::InvalidCompiledWorkflow {
+            reason: "workflow parts",
+        })?;
         let run = crate::RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 8)?;
         let mut store = ValueStore::new();
         let (value, _) = eval_expr_with_store(&plan, &run, &mut store, ExprIdx::new(0))?;
