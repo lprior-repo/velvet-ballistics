@@ -105,12 +105,7 @@ pub fn hydrate_run_frame(
 
     // Apply tail events
     let mut tracker = ActionReplayTracker::new();
-    let executed = apply_tail_events(&mut frame, tail_events, &mut tracker).map_err(|_| {
-        RecoveryError::ReplayDivergence {
-            step: vb_core::StepIdx::ZERO,
-            detail: "tail event application failed".to_owned(),
-        }
-    })?;
+    let executed = apply_tail_events(&mut frame, tail_events, &mut tracker)?;
 
     // Set executed counter (tail events applied)
     for _ in 0..executed {
@@ -152,16 +147,24 @@ pub fn hydrate_run_frame_from_events(
         vb_core::RunFrame::new(run_id, seed.first_step, seed.step_count, seed.slot_count)
             .map_err(|_| RecoveryError::FrameDimensionOverflow { run: run_id })?;
 
-    // Apply step states from seed
+    // Apply step states from seed.
+    // Waiting and Asking states may represent steps that were scheduled
+    // before being marked Running. Transition through Running first to
+    // satisfy the state machine (Pending → Waiting / Pending → Asking are
+    // intentionally rejected by the proof kernel).
     for entry in &seed.steps {
-        match entry.state {
+        let result = match entry.state {
             RecoveredStepState::Running => frame.mark_running(entry.step),
             RecoveredStepState::Succeeded => frame.mark_succeeded(entry.step),
             RecoveredStepState::Failed => frame.mark_failed(entry.step),
-            RecoveredStepState::Waiting => frame.mark_waiting(entry.step),
-            RecoveredStepState::Asking => frame.mark_asking(entry.step),
-        }
-        .map_err(|_| RecoveryError::ReplayDivergence {
+            RecoveredStepState::Waiting => frame
+                .mark_running(entry.step)
+                .and_then(|_| frame.mark_waiting(entry.step)),
+            RecoveredStepState::Asking => frame
+                .mark_running(entry.step)
+                .and_then(|_| frame.mark_asking(entry.step)),
+        };
+        result.map_err(|_| RecoveryError::ReplayDivergence {
             step: entry.step,
             detail: "seed step state transition failed".to_owned(),
         })?;
