@@ -28,37 +28,46 @@ pub open spec fn max_parallel_in_flight() -> int { 1024 }
 
 pub open spec fn max_action_tickets() -> int { 1000000 }
 
-/// The boundedness spec: count_total_steps returns Ok(<= MAX_STEPS_PER_WORKFLOW)
-/// or Err on overflow.
+/// Spec error type modeling WorkflowError::StepCountOverflow.
+/// Rust returns Err(WorkflowError::StepCountOverflow) on u64 overflow.
+/// This spec models that specific error, not the full WorkflowError enum.
+pub enum SpecWorkflowError {
+    StepCountOverflow,
+}
+
+/// The boundedness spec: count_total_steps returns Ok(<= MAX_STEP_BUDGET)
+/// or Err(WorkflowError::StepCountOverflow) on overflow.
 pub open spec fn spec_count_total_steps_bounded(result: int) -> bool {
     result >= 0 && result <= max_steps_per_workflow()
 }
 
 /// Simulates a checked u64 addition.
-pub open spec fn checked_add(a: int, b: int) -> Option<int> {
-    if a + b <= 18446744073709551615int { Some(a + b) } else { None }
+/// Returns Err(StepCountOverflow) on u64 overflow to match Rust behavior.
+pub open spec fn checked_add(a: int, b: int) -> Result<int, SpecWorkflowError> {
+    if a + b <= 18446744073709551615int { Ok(a + b) } else { Err(SpecWorkflowError::StepCountOverflow) }
 }
 
 /// Simulates a checked u64 multiplication (for loop body * iter_count).
-pub open spec fn checked_mul(a: int, b: int) -> Option<int> {
-    if a * b <= 18446744073709551615int { Some(a * b) } else { None }
+/// Returns Err(StepCountOverflow) on u64 overflow to match Rust behavior.
+pub open spec fn checked_mul(a: int, b: int) -> Result<int, SpecWorkflowError> {
+    if a * b <= 18446744073709551615int { Ok(a * b) } else { Err(SpecWorkflowError::StepCountOverflow) }
 }
 
-pub open spec fn checked_compose(a: int, b: int) -> Option<int> {
+pub open spec fn checked_compose(a: int, b: int) -> Result<int, SpecWorkflowError> {
     match checked_add(a, b) {
-        Some(total) => if total <= max_action_tickets() { Some(total) } else { None },
-        None => None,
+        Ok(total) => if total <= max_action_tickets() { Ok(total) } else { Err(SpecWorkflowError::StepCountOverflow) },
+        Err(e) => Err(e),
     }
 }
 
-pub open spec fn checked_repeat(body: int, factor: int) -> Option<int> {
+pub open spec fn checked_repeat(body: int, factor: int) -> Result<int, SpecWorkflowError> {
     if factor >= 0 {
         match checked_mul(body, factor) {
-            Some(total) => if total <= max_action_tickets() { Some(total) } else { None },
-            None => None,
+            Ok(total) => if total <= max_action_tickets() { Ok(total) } else { Err(SpecWorkflowError::StepCountOverflow) },
+            Err(e) => Err(e),
         }
     } else {
-        None
+        Err(SpecWorkflowError::StepCountOverflow)
     }
 }
 
@@ -116,13 +125,13 @@ pub proof fn proof_sequential_checked_compose_monotone(start: int, add: int)
         add >= 0,
         start + add <= max_action_tickets(),
     ensures
-        checked_compose(start, add) == Some(start + add),
+        checked_compose(start, add) == Ok(start + add),
         start <= start + add,
         add <= start + add,
 {
     assert(start + add <= 18446744073709551615int);
-    assert(checked_add(start, add) == Some(start + add));
-    assert(checked_compose(start, add) == Some(start + add));
+    assert(checked_add(start, add) == Ok(start + add));
+    assert(checked_compose(start, add) == Ok(start + add));
 }
 
 /// VERUS-BUD-002: finite collect/reduce/repeat factors multiply body cost.
@@ -132,12 +141,12 @@ pub proof fn proof_nested_finite_repeat_cost(body: int, factor: int)
         factor >= 0,
         body * factor <= max_action_tickets(),
     ensures
-        checked_repeat(body, factor) == Some(body * factor),
+        checked_repeat(body, factor) == Ok(body * factor),
         body * factor >= 0,
 {
     assert(body * factor <= 18446744073709551615int);
-    assert(checked_mul(body, factor) == Some(body * factor));
-    assert(checked_repeat(body, factor) == Some(body * factor));
+    assert(checked_mul(body, factor) == Ok(body * factor));
+    assert(checked_repeat(body, factor) == Ok(body * factor));
 }
 
 /// VERUS-BUD-002: unknown negative factors reject instead of defaulting to a bound.
@@ -145,9 +154,9 @@ pub proof fn proof_unknown_factor_rejects(body: int, factor: int)
     requires
         factor < 0,
     ensures
-        checked_repeat(body, factor) == None::<int>,
+        checked_repeat(body, factor) == Err(SpecWorkflowError::StepCountOverflow),
 {
-    assert(checked_repeat(body, factor) == None::<int>);
+    assert(checked_repeat(body, factor) == Err(SpecWorkflowError::StepCountOverflow));
 }
 
 /// VERUS-BUD-002: checked multiplication overflow rejects.
@@ -157,10 +166,10 @@ pub proof fn proof_nested_overflow_rejects(body: int, factor: int)
         factor >= 0,
         body * factor > 18446744073709551615int,
     ensures
-        checked_repeat(body, factor) == None::<int>,
+        checked_repeat(body, factor) == Err(SpecWorkflowError::StepCountOverflow),
 {
-    assert(checked_mul(body, factor) == None::<int>);
-    assert(checked_repeat(body, factor) == None::<int>);
+    assert(checked_mul(body, factor) == Err(SpecWorkflowError::StepCountOverflow));
+    assert(checked_repeat(body, factor) == Err(SpecWorkflowError::StepCountOverflow));
 }
 
 /// VERUS-BUD-003: conditional branch abstraction is a conservative maximum.
@@ -229,27 +238,27 @@ pub proof fn proof_diagnostic_projection_total()
     assert(!diagnostic_complete(true, true, true, true, true, false));
 }
 
-/// proof_overflow_returns_error_none: checked_add of u64::MAX + 1 returns None.
-pub proof fn proof_overflow_add_returns_none()
+/// proof_overflow_returns_error: checked_add of u64::MAX + 1 returns Err(StepCountOverflow).
+pub proof fn proof_overflow_add_returns_error()
     ensures
-        checked_add(18446744073709551615int, 1) == None::<int>,
+        checked_add(18446744073709551615int, 1) == Err(SpecWorkflowError::StepCountOverflow),
 {
     let result = checked_add(18446744073709551615int, 1);
     match result {
-        None => assert(true),
-        Some(_) => assert(false),
+        Err(SpecWorkflowError::StepCountOverflow) => assert(true),
+        _ => assert(false),
     }
 }
 
-/// proof_overflow_mul_returns_none: checked_mul of u64::MAX * 2 returns None.
-pub proof fn proof_overflow_mul_returns_none()
+/// proof_overflow_mul_returns_error: checked_mul of u64::MAX * 2 returns Err(StepCountOverflow).
+pub proof fn proof_overflow_mul_returns_error()
     ensures
-        checked_mul(18446744073709551615int, 2) == None::<int>,
+        checked_mul(18446744073709551615int, 2) == Err(SpecWorkflowError::StepCountOverflow),
 {
     let result = checked_mul(18446744073709551615int, 2);
     match result {
-        None => assert(true),
-        Some(_) => assert(false),
+        Err(SpecWorkflowError::StepCountOverflow) => assert(true),
+        _ => assert(false),
     }
 }
 
@@ -265,11 +274,13 @@ pub proof fn proof_counting_from_zero(n: int)
     assert(spec_count_total_steps_bounded(n));
 }
 
-/// The complete spec: count_total_steps is either Ok(bounded) or Err.
-pub open spec fn spec_count_total_steps_result(result: Option<int>) -> bool {
+/// The complete spec: count_total_steps is either Ok(bounded) or Err(StepCountOverflow).
+/// This matches the Rust return type Result<u64, WorkflowError> where the only
+/// overflow error is WorkflowError::StepCountOverflow.
+pub open spec fn spec_count_total_steps_result(result: Result<int, SpecWorkflowError>) -> bool {
     match result {
-        None => true,  // Err case (overflow)
-        Some(v) => spec_count_total_steps_bounded(v),
+        Err(SpecWorkflowError::StepCountOverflow) => true,  // Err case matches Rust
+        Ok(v) => spec_count_total_steps_bounded(v),
     }
 }
 

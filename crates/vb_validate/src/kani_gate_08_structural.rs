@@ -405,60 +405,99 @@ fn kani_gate_08_all_node_kinds_no_panic() {
 }
 
 /// Harness 13: Constants with symbol values — Gate 8 doesn't read constants but must tolerate.
+///
+/// GOD RULE fix: replaced hardcoded indices with kani::any().
 #[kani::proof]
 #[kani::unwind(3)]
 fn kani_gate_08_constants_with_symbols() {
+    // Arbitrary indices.
+    let const_idx: vb_core::ids::ConstIdx = kani::any();
+    let sym0: SymbolId = kani::any();
+    let slot0: SlotIdx = kani::any();
+    let step0: StepIdx = kani::any();
+    let step1: StepIdx = kani::any();
+
+    // Bounded slot/symbol counts.
+    let slot_count: u16 = kani::any();
+    let symbols_count: u32 = kani::any();
+    kani::assume(slot_count >= 1);
+    kani::assume(symbols_count >= 1);
+    kani::assume(sym0.get() < symbols_count);
+    kani::assume(slot0.get() < slot_count);
+    kani::assume(step0.get() < u16::MAX);
+    kani::assume(step1.get() < u16::MAX);
+
     let parts = WorkflowParts {
         name: Box::from("consts_with_symbols"),
         digest: WorkflowDigest::from_bytes([3; 32]),
         nodes: Box::new([
             CompiledNode {
-                id: StepIdx::ZERO,
-                output: Some(SlotIdx::ZERO),
+                id: step0,
+                output: Some(slot0),
                 next: None,
                 on_error: None,
                 error_slot: None,
-                kind: CompiledNodeKind::SetConst {
-                    value: vb_core::ids::ConstIdx::new(0),
-                },
+                kind: CompiledNodeKind::SetConst { value: const_idx },
             },
             CompiledNode {
-                id: StepIdx::new(1),
+                id: step1,
                 output: None,
                 next: None,
                 on_error: None,
                 error_slot: None,
-                kind: CompiledNodeKind::Finish {
-                    result: SlotIdx::ZERO,
-                },
+                kind: CompiledNodeKind::Finish { result: slot0 },
             },
         ]),
         expressions: Box::new([]),
         accessors: Box::new([AccessorProgram {
-            root: SlotIdx::ZERO,
+            root: slot0,
             path: Box::new([]),
         }]),
         constants: Box::new([
             vb_core::value::ConstValue::Null,
             vb_core::value::ConstValue::Bool(true),
             vb_core::value::ConstValue::I64(42),
-            vb_core::value::ConstValue::Symbol(SymbolId::new(0)),
+            vb_core::value::ConstValue::Symbol(sym0),
         ]),
-        slot_count: 2,
-        symbols_count: 4,
-        entry: StepIdx::ZERO,
+        slot_count,
+        symbols_count,
+        entry: step0,
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([Box::from("set"), Box::from("finish")]),
     };
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(result.is_ok(), "constants with symbols pass Gate 8");
+    std::mem::forget(parts);
 }
 
 /// Harness 14: Large accessor count with varied depths — stress Gate 8 iteration.
+///
+/// GOD RULE fix: replaced hardcoded indices with kani::any().
 #[kani::proof]
 #[kani::unwind(10)]
 fn kani_gate_08_many_accessors_varied_depths() {
+    // Arbitrary indices for the accessor paths.
+    let sym0: SymbolId = kani::any();
+    let sym1: SymbolId = kani::any();
+    let idx0: u32 = kani::any();
+    let idx1: u32 = kani::any();
+    let idx2: u32 = kani::any();
+    let idx3: u32 = kani::any();
+    let idx4: u32 = kani::any();
+    let idx100: u32 = kani::any();
+
+    // Bounded slot/symbol counts.
+    let slot_count: u16 = kani::any();
+    let symbols_count: u32 = kani::any();
+    kani::assume(slot_count >= 3); // Need at least 3 slots for accessor roots
+    kani::assume(symbols_count >= 2); // Need at least 2 symbols
+    kani::assume(sym0.get() < symbols_count);
+    kani::assume(sym1.get() < symbols_count);
+    // Ensure index sentinels are not MAX (MAX is used as invalid sentinel in Gate 8).
+    kani::assume(idx0 != u32::MAX && idx1 != u32::MAX && idx2 != u32::MAX
+        && idx3 != u32::MAX && idx4 != u32::MAX && idx100 != u32::MAX);
+
     let parts = WorkflowParts {
         name: Box::from("many_accessors"),
         digest: WorkflowDigest::from_bytes([4; 32]),
@@ -480,38 +519,38 @@ fn kani_gate_08_many_accessors_varied_depths() {
             },
             AccessorProgram {
                 root: SlotIdx::ZERO,
-                path: Box::new([PathSegment::Field(SymbolId::new(0))]),
+                path: Box::new([PathSegment::Field(sym0)]),
             },
             AccessorProgram {
                 root: SlotIdx::ZERO,
-                path: Box::new([PathSegment::Index(0)]),
+                path: Box::new([PathSegment::Index(idx0)]),
             },
             AccessorProgram {
                 root: SlotIdx::ZERO,
                 path: Box::new([
-                    PathSegment::Field(SymbolId::new(0)),
-                    PathSegment::Index(0),
-                    PathSegment::Field(SymbolId::new(1)),
+                    PathSegment::Field(sym0),
+                    PathSegment::Index(idx0),
+                    PathSegment::Field(sym1),
                 ]),
             },
             AccessorProgram {
                 root: SlotIdx::new(1),
-                path: Box::new([PathSegment::Index(100)]),
+                path: Box::new([PathSegment::Index(idx100)]),
             },
             AccessorProgram {
                 root: SlotIdx::new(2),
                 path: Box::new([
-                    PathSegment::Index(0),
-                    PathSegment::Index(1),
-                    PathSegment::Index(2),
-                    PathSegment::Index(3),
-                    PathSegment::Index(4),
+                    PathSegment::Index(idx0),
+                    PathSegment::Index(idx1),
+                    PathSegment::Index(idx2),
+                    PathSegment::Index(idx3),
+                    PathSegment::Index(idx4),
                 ]),
             },
         ]),
         constants: Box::new([]),
-        slot_count: 64,
-        symbols_count: 256,
+        slot_count,
+        symbols_count,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([Box::from("root")]),
@@ -522,4 +561,5 @@ fn kani_gate_08_many_accessors_varied_depths() {
         result.is_ok(),
         "many accessors with varied depths pass Gate 8",
     );
+    std::mem::forget(parts);
 }

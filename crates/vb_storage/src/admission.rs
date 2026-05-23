@@ -1070,38 +1070,38 @@ mod tests {
 
         let proof_zero = VerificationProof::new(digest, 0, false);
         assert!(
-            proof_zero.bounded,
-            "GAP: bounded=true even with gate_count=0 (no verification performed)"
+            proof_zero.bounded_claimed,
+            "GAP: bounded_claimed=true even with gate_count=0 (no verification performed)"
         );
         assert!(
-            proof_zero.taint_safe,
-            "GAP: taint_safe=true even with gate_count=0 (no verification performed)"
+            proof_zero.taint_safe_claimed,
+            "GAP: taint_safe_claimed=true even with gate_count=0 (no verification performed)"
         );
         assert!(
-            proof_zero.retry_safe,
-            "GAP: retry_safe=true even with gate_count=0 (no verification performed)"
+            proof_zero.retry_safe_claimed,
+            "GAP: retry_safe_claimed=true even with gate_count=0 (no verification performed)"
         );
         assert!(
-            proof_zero.replayable,
-            "GAP: replayable=true even with gate_count=0 (no verification performed)"
+            proof_zero.replayable_claimed,
+            "GAP: replayable_claimed=true even with gate_count=0 (no verification performed)"
         );
 
         let proof_fifteen = VerificationProof::new(digest, 15, true);
         assert!(
-            proof_fifteen.bounded,
-            "GAP: bounded=true with gate_count=15 (verification claimed but not performed)"
+            proof_fifteen.bounded_claimed,
+            "GAP: bounded_claimed=true with gate_count=15 (verification claimed but not performed)"
         );
         assert!(
-            proof_fifteen.taint_safe,
-            "GAP: taint_safe=true with gate_count=15 (verification claimed but not performed)"
+            proof_fifteen.taint_safe_claimed,
+            "GAP: taint_safe_claimed=true with gate_count=15 (verification claimed but not performed)"
         );
         assert!(
-            proof_fifteen.retry_safe,
-            "GAP: retry_safe=true with gate_count=15 (verification claimed but not performed)"
+            proof_fifteen.retry_safe_claimed,
+            "GAP: retry_safe_claimed=true with gate_count=15 (verification claimed but not performed)"
         );
         assert!(
-            proof_fifteen.replayable,
-            "GAP: replayable=true with gate_count=15 (verification claimed but not performed)"
+            proof_fifteen.replayable_claimed,
+            "GAP: replayable_claimed=true with gate_count=15 (verification claimed but not performed)"
         );
 
         Ok(())
@@ -1112,20 +1112,20 @@ mod tests {
         let zero_digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
         let proof_zero = VerificationProof::new(zero_digest, 15, true);
         assert!(
-            proof_zero.bounded
-                && proof_zero.taint_safe
-                && proof_zero.retry_safe
-                && proof_zero.replayable,
+            proof_zero.bounded_claimed
+                && proof_zero.taint_safe_claimed
+                && proof_zero.retry_safe_claimed
+                && proof_zero.replayable_claimed,
             "GAP: proof flags are true for zero digest"
         );
 
         let max_digest = vb_core::WorkflowDigest::from_bytes([0xFFu8; 32]);
         let proof_max = VerificationProof::new(max_digest, 15, true);
         assert!(
-            proof_max.bounded
-                && proof_max.taint_safe
-                && proof_max.retry_safe
-                && proof_max.replayable,
+            proof_max.bounded_claimed
+                && proof_max.taint_safe_claimed
+                && proof_max.retry_safe_claimed
+                && proof_max.replayable_claimed,
             "GAP: proof flags are true for max digest"
         );
 
@@ -1136,10 +1136,10 @@ mod tests {
         ]);
         let proof_arb = VerificationProof::new(arbitrary_digest, 15, false);
         assert!(
-            proof_arb.bounded
-                && proof_arb.taint_safe
-                && proof_arb.retry_safe
-                && proof_arb.replayable,
+            proof_arb.bounded_claimed
+                && proof_arb.taint_safe_claimed
+                && proof_arb.retry_safe_claimed
+                && proof_arb.replayable_claimed,
             "GAP: proof flags are true for arbitrary digest"
         );
 
@@ -1156,20 +1156,20 @@ mod tests {
 
         assert_eq!(result.verification.gate_count, 15);
         assert!(
-            result.verification.bounded,
-            "GAP: submit_artifact produces bounded=true without checking workflow size"
+            result.verification.bounded_claimed,
+            "GAP: submit_artifact produces bounded_claimed=true without checking workflow size"
         );
         assert!(
-            result.verification.taint_safe,
-            "GAP: submit_artifact produces taint_safe=true without checking taint propagation"
+            result.verification.taint_safe_claimed,
+            "GAP: submit_artifact produces taint_safe_claimed=true without checking taint propagation"
         );
         assert!(
-            result.verification.retry_safe,
-            "GAP: submit_artifact produces retry_safe=true without checking idempotency"
+            result.verification.retry_safe_claimed,
+            "GAP: submit_artifact produces retry_safe_claimed=true without checking idempotency"
         );
         assert!(
-            result.verification.replayable,
-            "GAP: submit_artifact produces replayable=true without checking replay invariants"
+            result.verification.replayable_claimed,
+            "GAP: submit_artifact produces replayable_claimed=true without checking replay invariants"
         );
 
         Ok(())

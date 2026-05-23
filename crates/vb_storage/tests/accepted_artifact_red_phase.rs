@@ -153,10 +153,10 @@ fn accepted_artifact_validator_produces_valid_verification_proof_with_all_flags_
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
     let proof = &artifact.verification;
     assert_eq!(proof.gate_count, 15);
-    assert!(proof.bounded, "bounded flag must be true");
-    assert!(proof.taint_safe, "taint_safe flag must be true");
-    assert!(proof.retry_safe, "retry_safe flag must be true");
-    assert!(proof.replayable, "replayable flag must be true");
+    assert!(proof.bounded_claimed, "bounded_claimed flag must be true");
+    assert!(proof.taint_safe_claimed, "taint_safe_claimed flag must be true");
+    assert!(proof.retry_safe_claimed, "retry_safe_claimed flag must be true");
+    assert!(proof.replayable_claimed, "replayable_claimed flag must be true");
     assert!(proof.durable, "durable flag must be true for Strict policy");
     Ok(())
 }
@@ -363,7 +363,7 @@ fn accepted_artifact_proof_contains_workflow_digest() -> Result<(), String> {
 fn accepted_artifact_validator_requires_all_proof_flags_true_under_strict() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
     let p = &artifact.verification;
-    assert!(p.bounded && p.taint_safe && p.retry_safe && p.replayable && p.durable);
+    assert!(p.bounded_claimed && p.taint_safe_claimed && p.retry_safe_claimed && p.replayable_claimed && p.durable);
     Ok(())
 }
 
@@ -372,6 +372,6 @@ fn accepted_artifact_validator_requires_all_proof_flags_true_under_journaled() -
 {
     let artifact = submit_minimal(RuntimePolicy::Journaled)?;
     let p = &artifact.verification;
-    assert!(p.bounded && p.taint_safe && p.retry_safe && p.replayable && !p.durable);
+    assert!(p.bounded_claimed && p.taint_safe_claimed && p.retry_safe_claimed && p.replayable_claimed && !p.durable);
     Ok(())
 }
