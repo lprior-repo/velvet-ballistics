@@ -23,16 +23,10 @@ impl FjallJournal {
     ) -> Result<Vec<JournalEvent>, JournalError> {
         let (start_seq, first_event) = match self.latest_durable_snapshot_seq(run)? {
             Some(seq) => {
-                // Replay starts at the first event AFTER the snapshot.
-                // The snapshot covers state up to and including `seq`.
-                let next = seq
-                    .get()
-                    .checked_add(1)
-                    .map(EventSeq::new)
-                    .ok_or(JournalError::KeyCapacity)?;
-                (next, FirstReplayEvent::Exact(next))
+                let tail_start = crate::codec::next_seq(seq)?;
+                (tail_start, tail_start)
             }
-            None => (EventSeq::new(0), FirstReplayEvent::AnyAtOrAfterStart),
+            None => (EventSeq::new(0), EventSeq::new(0)),
         };
         self.events_for_run_from(run, start_seq, first_event, limit)
     }
@@ -51,7 +45,7 @@ impl FjallJournal {
         let run_prefix = run_prefix_key(run)?;
         let snap = self.database.snapshot();
 
-        // The lower-bound range starts at the snapshot boundary key, so replay never
+        // The lower-bound range starts at the first required key, so replay never
         // linearly skips pre-snapshot events. The prefix check terminates at the
         // first lexicographic key for another run in this keyspace.
         for item in snap.range(&self.events, start_key..) {

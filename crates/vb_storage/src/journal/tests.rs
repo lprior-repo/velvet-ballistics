@@ -9,8 +9,8 @@
 )]
 use super::*;
 use crate::{
-    BlobRecord, CompiledIrRecord, EventSeq, IndexStatusState, JournalError, JournalEvent,
-    RunHeaderRecord, WorkflowSourceRecord, constants::*, recovery::RunSnapshot,
+    constants::*, recovery::RunSnapshot, BlobRecord, CompiledIrRecord, EventSeq, IndexStatusState,
+    JournalError, JournalEvent, RunHeaderRecord, WorkflowSourceRecord,
 };
 use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 
@@ -728,18 +728,14 @@ fn snapshot_returns_none_for_missing_sequence() {
         .expect("get should succeed");
     assert_eq!(result, None, "missing snapshot seq should return None");
     // but seq 0 and 5 are present
-    assert!(
-        journal
-            .snapshot(run, EventSeq::new(0))
-            .expect("get 0")
-            .is_some()
-    );
-    assert!(
-        journal
-            .snapshot(run, EventSeq::new(5))
-            .expect("get 5")
-            .is_some()
-    );
+    assert!(journal
+        .snapshot(run, EventSeq::new(0))
+        .expect("get 0")
+        .is_some());
+    assert!(journal
+        .snapshot(run, EventSeq::new(5))
+        .expect("get 5")
+        .is_some());
 }
 
 #[test]
@@ -1036,12 +1032,10 @@ fn batch_commits_across_multiple_keyspaces() {
     }
 
     // Verify all keyspaces have the data
-    assert!(
-        journal
-            .workflow_source(source_digest)
-            .expect("get ws")
-            .is_some()
-    );
+    assert!(journal
+        .workflow_source(source_digest)
+        .expect("get ws")
+        .is_some());
     assert!(journal.compiled_ir(ir_digest).expect("get ir").is_some());
     assert!(journal.run_header(run).expect("get header").is_some());
     let replayed = journal.events_for_run(run).expect("get events");
@@ -1765,8 +1759,8 @@ fn events_for_run_rejects_corrupt_latest_snapshot_before_skipping_events() -> Re
         .append_unpersisted(&make_step_started(run, 3, 3))
         .map_err(|err| err.to_string())?;
 
-    let key = crate::keys::run_snapshot_key(run, EventSeq::new(2))
-        .map_err(|err| err.to_string())?;
+    let key =
+        crate::keys::run_snapshot_key(run, EventSeq::new(2)).map_err(|err| err.to_string())?;
     let mut value = journal
         .run_snapshot
         .get(key.as_slice())

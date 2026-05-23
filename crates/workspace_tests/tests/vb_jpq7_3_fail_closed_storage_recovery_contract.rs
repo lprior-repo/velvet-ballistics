@@ -37,8 +37,8 @@ fn journal_at_temp_path() -> Result<(tempfile::TempDir, FjallJournal), String> {
 }
 
 #[test]
-fn given_explicit_replay_limit_when_more_events_exist_then_too_many_events_and_code_are_returned()
--> Result<(), String> {
+fn given_explicit_replay_limit_when_more_events_exist_then_too_many_events_and_code_are_returned(
+) -> Result<(), String> {
     // Given: a run has two contiguous durable events but the caller allows only one.
     let (_temp, journal) = journal_at_temp_path()?;
     let run = RunId::new(73_001);
@@ -82,26 +82,26 @@ fn given_explicit_replay_limit_when_more_events_exist_then_too_many_events_and_c
 }
 
 #[test]
-fn given_snapshot_boundary_event_is_missing_when_replaying_run_then_sequence_gap_points_at_boundary()
--> Result<(), String> {
-    // Given: a durable snapshot claims seq=2, but the first retained event starts at seq=3.
+fn given_first_tail_event_is_missing_when_replaying_run_then_sequence_gap_points_after_snapshot(
+) -> Result<(), String> {
+    // Given: a durable snapshot claims seq=2, but the first retained tail event starts at seq=4.
     let (_temp, journal) = journal_at_temp_path()?;
     let run = RunId::new(73_002);
     journal
         .put_snapshot(&empty_snapshot(run, 2))
         .map_err(|err| err.to_string())?;
     journal
-        .append_journaled(&step_started(run, 3, 3))
+        .append_journaled(&step_started(run, 4, 4))
         .map_err(|err| err.to_string())?;
 
-    // When: replay starts from the latest durable snapshot boundary.
+    // When: replay starts strictly after the latest durable snapshot boundary.
     let result = journal.events_for_run(run);
 
-    // Then: the missing boundary event is not laundered into a successful tail replay.
+    // Then: the missing first tail event is not laundered into a successful tail replay.
     match result {
         Err(JournalError::SequenceGap { expected, actual }) => {
-            assert_eq!(expected, EventSeq::new(2));
-            assert_eq!(actual, EventSeq::new(3));
+            assert_eq!(expected, EventSeq::new(3));
+            assert_eq!(actual, EventSeq::new(4));
             assert_eq!(
                 JournalError::SequenceGap { expected, actual }.diagnostic_code(),
                 JournalError::SEQUENCE_GAP_CODE
@@ -110,7 +110,7 @@ fn given_snapshot_boundary_event_is_missing_when_replaying_run_then_sequence_gap
         }
         other => {
             return Err(format!(
-                "expected SequenceGap at snapshot boundary, got {other:?}"
+                "expected SequenceGap after snapshot boundary, got {other:?}"
             ));
         }
     }
@@ -118,8 +118,8 @@ fn given_snapshot_boundary_event_is_missing_when_replaying_run_then_sequence_gap
 }
 
 #[test]
-fn given_close_after_unpersisted_append_when_reopened_then_event_is_observable()
--> Result<(), String> {
+fn given_close_after_unpersisted_append_when_reopened_then_event_is_observable(
+) -> Result<(), String> {
     // Given: an event is appended through the non-strict path.
     let temp = tempfile::tempdir().map_err(|err| err.to_string())?;
     let path = temp.path().to_path_buf();
@@ -145,8 +145,8 @@ fn given_close_after_unpersisted_append_when_reopened_then_event_is_observable()
 }
 
 #[test]
-fn given_zero_replay_limit_when_constructed_then_limit_is_rejected_before_replay()
--> Result<(), String> {
+fn given_zero_replay_limit_when_constructed_then_limit_is_rejected_before_replay(
+) -> Result<(), String> {
     // Given/When/Then: zero is not a valid fail-closed replay bound.
     assert_eq!(EventReplayLimit::new(0), None);
     let Some(limit) = EventReplayLimit::new(1) else {
@@ -157,8 +157,8 @@ fn given_zero_replay_limit_when_constructed_then_limit_is_rejected_before_replay
 }
 
 #[test]
-fn given_snapshot_index_read_fails_when_events_for_run_starts_then_error_is_not_erased()
--> Result<(), String> {
+fn given_snapshot_index_read_fails_when_events_for_run_starts_then_error_is_not_erased(
+) -> Result<(), String> {
     // Given: latest durable snapshot lookup is recovery-critical state.
     let erases_trim_error = JOURNAL_REPLAY_SOURCE
         .contains(".latest_durable_snapshot_seq(run)\n            .ok()")
@@ -178,8 +178,8 @@ fn given_snapshot_index_read_fails_when_events_for_run_starts_then_error_is_not_
 }
 
 #[test]
-fn given_tail_slot_write_when_recovery_reads_existing_taint_then_read_failure_is_typed_error()
--> Result<(), String> {
+fn given_tail_slot_write_when_recovery_reads_existing_taint_then_read_failure_is_typed_error(
+) -> Result<(), String> {
     // Given: recovery must preserve taint and fail closed if the frame cannot read it.
     let defaults_failed_read_to_clean =
         HYDRATE_SUPPORT_SOURCE.contains("frame.read_taint(*slot).unwrap_or(vb_core::Taint::Clean)");
@@ -197,8 +197,8 @@ fn given_tail_slot_write_when_recovery_reads_existing_taint_then_read_failure_is
 }
 
 #[test]
-fn given_run_event_replay_api_when_public_contract_is_scanned_then_unbounded_vec_api_is_not_the_only_path()
--> Result<(), String> {
+fn given_run_event_replay_api_when_public_contract_is_scanned_then_unbounded_vec_api_is_not_the_only_path(
+) -> Result<(), String> {
     // Given: run replay can be large and must have an explicit bound or streaming contract.
     let default_replay_delegates_to_bound = JOURNAL_REPLAY_SOURCE
         .contains("self.events_for_run_bounded(run, EventReplayLimit::DEFAULT)");
@@ -215,12 +215,13 @@ fn given_run_event_replay_api_when_public_contract_is_scanned_then_unbounded_vec
 }
 
 #[test]
-fn given_journal_shutdown_when_durability_barrier_fails_then_drop_does_not_discard_result()
--> Result<(), String> {
+fn given_journal_shutdown_when_durability_barrier_fails_then_drop_does_not_discard_result(
+) -> Result<(), String> {
     // Given: an explicit persist API already exists for callers that can observe durability errors.
-    let explicit_persist_result_api = JOURNAL_APPEND_SOURCE.contains(
-        "pub fn persist_strict(&self) -> Result<(), JournalError> {\n        self.database.persist(fjall::PersistMode::SyncAll)?;\n        Ok(())\n    }",
-    );
+    let explicit_persist_result_api = JOURNAL_APPEND_SOURCE
+        .contains("pub fn persist_strict(&self) -> Result<(), JournalError>")
+        && JOURNAL_APPEND_SOURCE.contains("self.database.persist(fjall::PersistMode::SyncAll)?;")
+        && JOURNAL_APPEND_SOURCE.contains("Ok(())");
 
     // When: implicit shutdown/drop behavior is scanned.
     let drop_discards_persist_error = JOURNAL_CORE_SOURCE.contains("impl Drop for FjallJournal")
@@ -234,12 +235,12 @@ fn given_journal_shutdown_when_durability_barrier_fails_then_drop_does_not_disca
 }
 
 #[test]
-fn given_snapshot_after_many_old_events_when_replaying_then_pre_snapshot_work_does_not_exhaust_limit()
--> Result<(), String> {
+fn given_snapshot_after_many_old_events_when_replaying_then_pre_snapshot_work_does_not_exhaust_limit(
+) -> Result<(), String> {
     // Given: many old events exist before the durable snapshot boundary.
     let (_temp, journal) = journal_at_temp_path()?;
     let run = RunId::new(73_004);
-    for seq in 0..100_u64 {
+    for seq in 0..101_u64 {
         journal
             .append_journaled(&step_started(run, seq, 0))
             .map_err(|err| err.to_string())?;
@@ -251,12 +252,12 @@ fn given_snapshot_after_many_old_events_when_replaying_then_pre_snapshot_work_do
         return Err("limit of one must be constructible".to_owned());
     };
 
-    // When: replay starts from the snapshot boundary with a one-event collection limit.
+    // When: replay starts after the snapshot boundary with a one-event collection limit.
     let replayed = journal
         .events_for_run_bounded(run, limit)
         .map_err(|err| err.to_string())?;
 
-    // Then: pre-snapshot entries do not consume scan/collection budget; only seq 99 is returned.
-    assert_eq!(replayed, vec![step_started(run, 99, 0)]);
+    // Then: pre-snapshot entries do not consume scan/collection budget; only seq 100 is returned.
+    assert_eq!(replayed, vec![step_started(run, 100, 0)]);
     Ok(())
 }

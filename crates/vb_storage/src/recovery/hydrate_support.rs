@@ -4,8 +4,8 @@
 //! Internal helpers for slot decoding, dimension derivation, event application,
 //! and parallel in-flight tracking. Not part of the public API.
 
-use crate::JournalEvent;
 use crate::recovery::types::{ActionReplayTracker, RecoveryError, RecoveryResult, RunSnapshot};
+use crate::JournalEvent;
 use vb_core::RunId;
 
 /// Decodes snapshot slot/taint bytes into recovered slot entries.

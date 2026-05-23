@@ -19,7 +19,7 @@ impl FjallJournal {
         let mut latest: Option<EventSeq> = None;
 
         for item in self.run_snapshot.prefix(prefix_key) {
-            let key = item.key().map_err(TrimError::from)?;
+            let (key, value) = item.into_inner().map_err(TrimError::from)?;
             if key.len() < 17 {
                 return Err(TrimError::IncompleteTrim { deleted_count: 0 });
             }
@@ -31,13 +31,9 @@ impl FjallJournal {
                 .map_err(|_| TrimError::IncompleteTrim { deleted_count: 0 })?;
             let key_seq_u64 = u64::from_be_bytes(seq_bytes);
             let key_seq = EventSeq::new(key_seq_u64);
-            let value = item.value().map_err(TrimError::from)?;
-            let (_, snapshot): (_, crate::recovery::RunSnapshot) = decode_record(
-                value.as_ref(),
-                MAGIC_SNAPSHOT,
-                MAX_SNAPSHOT_BYTES,
-            )
-            .map_err(TrimError::from)?;
+            let (_, snapshot): (_, crate::recovery::RunSnapshot) =
+                decode_record(value.as_ref(), MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES)
+                    .map_err(TrimError::from)?;
             if snapshot.run != run {
                 return Err(TrimError::Journal(JournalError::WrongRun {
                     expected: run,

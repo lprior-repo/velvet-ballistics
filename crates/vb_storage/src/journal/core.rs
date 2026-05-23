@@ -5,9 +5,9 @@
 //! run metadata, journal events, snapshots, and blobs.
 
 use std::path::Path;
-use std::sync::Mutex;
 #[cfg(test)]
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 
 use crate::{
     constants::{

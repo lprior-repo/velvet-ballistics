@@ -2125,6 +2125,7 @@ pub fn fuzz_readback_family_set(_data: &[u8]) {
 }
 
 #[derive(Clone, Copy)]
+#[allow(dead_code)]
 enum ReadbackDeletionIntent {
     None,
     Partial,

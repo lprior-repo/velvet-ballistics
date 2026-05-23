@@ -61,7 +61,9 @@ impl BoundedActionCompletionQueue {
             return Err(ActionQueueError::InvalidCapacity);
         }
         Ok(Self {
-            inner: std::sync::Mutex::new(Inner { items: VecDeque::new() }),
+            inner: std::sync::Mutex::new(Inner {
+                items: VecDeque::new(),
+            }),
             capacity,
             backpressure_tx: None,
         })
@@ -80,7 +82,9 @@ impl BoundedActionCompletionQueue {
         let (tx, rx) = std::sync::mpsc::sync_channel(capacity);
         Ok((
             Self {
-                inner: std::sync::Mutex::new(Inner { items: VecDeque::new() }),
+                inner: std::sync::Mutex::new(Inner {
+                    items: VecDeque::new(),
+                }),
                 capacity,
                 backpressure_tx: Some(tx),
             },
@@ -108,9 +112,14 @@ impl BoundedActionCompletionQueue {
 
         inner.items.push_back(ticket);
 
-        // Check backpressure threshold: 80% = capacity * 8 / 10
+        // Check backpressure threshold: 80% = capacity * 8 / 10.
+        // Saturating multiplication keeps extreme caller-provided capacities
+        // from wrapping or panicking; division by a non-zero constant is still
+        // represented as checked arithmetic for the no-panic contract.
         let depth = inner.items.len();
-        let threshold = (self.capacity * 8) / 10;
+        let Some(threshold) = self.capacity.saturating_mul(8).checked_div(10) else {
+            return Err(ActionQueueError::InvalidCapacity);
+        };
         if depth >= threshold {
             if let Some(ref tx) = self.backpressure_tx {
                 match tx.try_send(BackpressureWarning {
@@ -404,14 +413,20 @@ mod unit_tests {
         queue.enqueue(make_ticket(7)).unwrap();
         assert_eq!(
             rx.recv_timeout(std::time::Duration::from_millis(100)),
-            Ok(BackpressureWarning { depth: 8, capacity: 10 })
+            Ok(BackpressureWarning {
+                depth: 8,
+                capacity: 10
+            })
         );
 
         // Enqueue 9th (90%) — another warning fires (depth=9 >= threshold=8)
         queue.enqueue(make_ticket(8)).unwrap();
         assert_eq!(
             rx.recv_timeout(std::time::Duration::from_millis(100)),
-            Ok(BackpressureWarning { depth: 9, capacity: 10 })
+            Ok(BackpressureWarning {
+                depth: 9,
+                capacity: 10
+            })
         );
 
         // Drain and verify no more warnings after drain
@@ -423,7 +438,10 @@ mod unit_tests {
         queue.enqueue(make_ticket(100)).unwrap();
         assert_eq!(
             rx.recv_timeout(std::time::Duration::from_millis(100)),
-            Ok(BackpressureWarning { depth: 8, capacity: 10 })
+            Ok(BackpressureWarning {
+                depth: 8,
+                capacity: 10
+            })
         );
     }
 
@@ -448,7 +466,9 @@ mod unit_tests {
 
             // Exhaust the queue
             for i in 0..cap {
-                queue.enqueue(make_ticket(u32::try_from(i).expect("capacity fits in u32"))).unwrap();
+                queue
+                    .enqueue(make_ticket(u32::try_from(i).expect("capacity fits in u32")))
+                    .unwrap();
                 assert_eq!(
                     queue.len() <= queue.capacity(),
                     true,
