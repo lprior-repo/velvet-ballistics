@@ -93,40 +93,57 @@ pub proof fn proof_summary_bounded_sensitive(view: SpecRedactedValueView)
 {}
 
 // Proof: digest present for sensitive
+// TRUSTED BOUNDARY: requires == ensures (tautological entailment)
 pub proof fn proof_digest_present_sensitive(view: SpecRedactedValueView)
     requires view.digest_present,
     ensures view.digest_present,
-{}
+{
+    // vacuous: requires proposition identical to ensures
+}
 
 // Proof: digest present for unknown (fail-closed)
+// TRUSTED BOUNDARY: requires == ensures (tautological entailment)
 pub proof fn proof_digest_present_unknown(view: SpecRedactedValueView)
     requires view.digest_present,
     ensures view.digest_present,
-{}
+{
+    // vacuous: requires proposition identical to ensures
+}
 
 // Proof: taint invariant for non-sensitive
+// TRUSTED BOUNDARY: requires implies ensures by propositional logic (P |- P \/ Q)
 pub proof fn proof_taint_non_sensitive(view: SpecRedactedValueView, taint: SpecTaint)
     requires !view.is_tainted,
     ensures !view.is_tainted || taint.is_tainted(),
-{}
+{
+    // vacuous: requires proposition entails ensures disjunction
+}
 
 // Proof: taint invariant for sensitive
+// TRUSTED BOUNDARY: requires == ensures (tautological entailment)
 pub proof fn proof_taint_sensitive(view: SpecRedactedValueView, taint: SpecTaint)
     requires view.is_tainted || taint.is_tainted(),
     ensures view.is_tainted || taint.is_tainted(),
-{}
+{
+    // vacuous: requires proposition identical to ensures disjunction
+}
 
 // Proof: taint invariant for unknown (fail-closed)
+// TRUSTED BOUNDARY: requires == ensures (tautological entailment)
 pub proof fn proof_taint_unknown(view: SpecRedactedValueView)
     requires view.is_tainted,
     ensures view.is_tainted,
-{}
+{
+    // vacuous: requires proposition identical to ensures
+}
 
 // Proof: fail-closed unknown produces output
 pub proof fn proof_fail_closed_unknown(view: SpecRedactedValueView)
     requires view.is_tainted && view.digest_present,
     ensures view.is_tainted,
-{}
+{
+    assert(view.is_tainted);
+}
 
 // Main theorem: redaction invariants
 pub proof fn proof_redaction_invariants(

@@ -266,10 +266,13 @@ pub proof fn proof_node_step_identity_stable(node: SpecWorkflowNodeView)
 {}
 
 // Additional proof: edge from/to step stability
+// TRUSTED BOUNDARY: requires directly implies ensures by reflexivity on the same conjunction
 pub proof fn proof_edge_step_stability(edge: SpecWorkflowEdgeView)
     requires edge.from_step >= 0 && edge.to_step >= 0,
     ensures edge.from_step >= 0 && edge.to_step >= 0,
-{}
+{
+    assert(edge.from_step >= 0 && edge.to_step >= 0);
+}
 
 } // verus!
 

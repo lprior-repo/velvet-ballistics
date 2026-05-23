@@ -87,7 +87,10 @@ pub open spec fn spec_schema_kind_agree(
 pub proof fn proof_schema_version_invariant(version: int)
     requires version >= 1,
     ensures spec_schema_version_valid(version),
-{}
+{
+    reveal(spec_schema_version_valid);
+    assert(spec_schema_version_valid(version));
+}
 
 // Proof: metadata completeness preserved
 pub proof fn proof_metadata_preserved_by_constructors(
@@ -102,7 +105,10 @@ pub proof fn proof_metadata_preserved_by_constructors(
     ensures
         (SpecMetadataEnvelope { run_id, timestamp, command }).is_complete(),
 {
-    // Trivial: all fields have their own validity conditions
+    reveal(SpecMetadataEnvelope::is_complete);
+    reveal(SpecMetadataEnvelope::run_id_valid);
+    reveal(SpecMetadataEnvelope::timestamp_valid);
+    assert((SpecMetadataEnvelope { run_id, timestamp, command }).is_complete());
 }
 
 // Proof: schema-kind agreement is reflexive
@@ -114,7 +120,10 @@ pub proof fn proof_schema_kind_agreement_reflexive(
         meta.is_complete(),
         spec_schema_version_valid(1),
     ensures spec_schema_kind_agree(meta, kind, meta, kind),
-{}
+{
+    reveal(spec_schema_kind_agree);
+    assert(spec_schema_kind_agree(meta, kind, meta, kind));
+}
 
 // Proof: schema-kind agreement is transitive
 pub proof fn proof_schema_kind_agreement_transitive(

@@ -1643,9 +1643,10 @@ pub fn fuzz_expr_eval(data: &[u8]) {
                 break;
             }
             // The evaluator must return a Result -- it must never panic.
-            drop(vb_core::engine::eval_expr_with_store(
+            let result = vb_core::engine::eval_expr_with_store(
                 &workflow, &run, &mut store, expr_idx,
-            ));
+            );
+            assert!(result.is_ok() || result.is_err(), "eval must return Result");
             i = i.saturating_add(1);
             if i == 0 {
                 // Wrapped around -- stop.

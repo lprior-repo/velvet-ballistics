@@ -50,7 +50,10 @@ pub proof fn proof_metadata_preserved_by_constructors(meta: UiArtifactMetadata)
         meta.source_present,
         meta.redaction_status_present,
     ensures spec_artifact_metadata_complete(meta),
-{}
+{
+    reveal(spec_artifact_metadata_complete);
+    assert(spec_artifact_metadata_complete(meta));
+}
 
 pub proof fn proof_schema_kind_agreement(left: UiArtifactMetadata, right: UiArtifactMetadata)
     requires
