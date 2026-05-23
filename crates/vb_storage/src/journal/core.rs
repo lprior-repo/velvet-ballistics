@@ -103,12 +103,26 @@ impl FjallJournal {
             KEYSPACE_INDEX_ACTION,
         ]
     }
+
+    /// Closes the journal, forcing a strict durability barrier before ownership is released.
+    ///
+    /// This method **must** be called explicitly by callers who require durable persistence.
+    /// Drop does NOT call `close()` — it only releases the process lock.
+    /// Errors from `close()` cannot be propagated through Drop, so callers who need
+    /// fail-closed behavior must invoke this method and handle the result.
+    ///
+    /// # Errors
+    ///
+    /// Returns `JournalError` if the underlying storage fails to persist.
+    pub fn close(&mut self) -> Result<(), JournalError> {
+        self.persist_strict()
+    }
 }
 
 impl Drop for FjallJournal {
     fn drop(&mut self) {
-        if let Err(e) = self.database.persist(fjall::PersistMode::SyncAll) {
-            let _ = e;
-        }
+        // Drop cannot propagate errors from close(), so callers who need
+        // guaranteed durability must call close() explicitly.
+        // Drop only releases the process lock here.
     }
 }

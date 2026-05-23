@@ -128,118 +128,19 @@ pub(super) fn apply_tail_events(
     tracker: &mut ActionReplayTracker,
 ) -> RecoveryResult<u64> {
     let mut executed = 0u64;
-
     for event in tail_events {
         match event {
-            JournalEvent::StepStarted { step, .. } => {
-                frame
-                    .mark_running(*step)
-                    .map_err(|_| RecoveryError::ReplayDivergence {
-                        step: *step,
-                        detail: "mark_running failed".to_owned(),
-                    })?;
-                executed = executed.saturating_add(1);
-            }
-            JournalEvent::StepSucceeded { step, .. } => {
-                frame
-                    .mark_succeeded(*step)
-                    .map_err(|_| RecoveryError::ReplayDivergence {
-                        step: *step,
-                        detail: "mark_succeeded failed".to_owned(),
-                    })?;
-                executed = executed.saturating_add(1);
-            }
-            JournalEvent::ActionScheduled { action, step, .. } => {
-                if tracker.is_resolved(*action, *step) {
-                    return Err(RecoveryError::NonIdempotentActionBlocked {
-                        action: *action,
-                        step: *step,
-                    });
-                }
-                frame
-                    .add_parallel_in_flight(1)
-                    .map_err(|_| RecoveryError::ReplayDivergence {
-                        step: *step,
-                        detail: "parallel_in_flight overflow".to_owned(),
-                    })?;
-                executed = executed.saturating_add(1);
-            }
-            JournalEvent::ActionCompletedEvent { action, step, .. } => {
-                if tracker.is_resolved(*action, *step) {
-                    return Err(RecoveryError::NonIdempotentActionBlocked {
-                        action: *action,
-                        step: *step,
-                    });
-                }
-                tracker.mark_completed(*action, *step);
-                frame
-                    .sub_parallel_in_flight(1)
-                    .map_err(|_| RecoveryError::ReplayDivergence {
-                        step: *step,
-                        detail: "parallel_in_flight underflow".to_owned(),
-                    })?;
-                executed = executed.saturating_add(1);
-            }
-            JournalEvent::ActionFailedEvent { action, step, .. } => {
-                if tracker.is_resolved(*action, *step) {
-                    return Err(RecoveryError::NonIdempotentActionBlocked {
-                        action: *action,
-                        step: *step,
-                    });
-                }
-                tracker.mark_failed(*action, *step);
-                frame
-                    .sub_parallel_in_flight(1)
-                    .map_err(|_| RecoveryError::ReplayDivergence {
-                        step: *step,
-                        detail: "parallel_in_flight underflow".to_owned(),
-                    })?;
-                executed = executed.saturating_add(1);
-            }
-            JournalEvent::SlotWrittenEvent { slot, value, .. } => {
-                if let Some(bytes) = value {
-                    let slot_value = postcard::from_bytes(bytes).map_err(|_| {
-                        RecoveryError::ReplayDivergence {
-                            step: vb_core::StepIdx::ZERO,
-                            detail: format!("slot value decode failed for slot {:?}", slot),
-                        }
-                    })?;
-                    // Preserve existing taint from snapshot; default to Clean for new slots
-                    let taint = frame.read_taint(*slot).unwrap_or(vb_core::Taint::Clean);
-                    frame
-                        .write_slot_with_taint(*slot, slot_value, taint)
-                        .map_err(|_| RecoveryError::ReplayDivergence {
-                            step: vb_core::StepIdx::ZERO,
-                            detail: "slot write out of bounds".to_owned(),
-                        })?;
-                }
-                executed = executed.saturating_add(1);
-            }
-            JournalEvent::WaitScheduledEvent { step, .. } => {
-                frame
-                    .mark_waiting(*step)
-                    .map_err(|_| RecoveryError::ReplayDivergence {
-                        step: *step,
-                        detail: "mark_waiting failed".to_owned(),
-                    })?;
-                executed = executed.saturating_add(1);
-            }
-            JournalEvent::AskScheduledEvent { step, .. } => {
-                frame
-                    .mark_asking(*step)
-                    .map_err(|_| RecoveryError::ReplayDivergence {
-                        step: *step,
-                        detail: "mark_asking failed".to_owned(),
-                    })?;
-                executed = executed.saturating_add(1);
-            }
-            _ => {
-                // RunAccepted, RunAdmission, RunCancelled, RunFinished, RunFailedEvent,
-                // AskAnsweredEvent, RetryScheduledEvent — no frame mutation
-            }
+            JournalEvent::StepStarted { step, .. } => { frame.mark_running(*step).map_err(|_e| RecoveryError::ReplayDivergence { step: *step, detail: "mark_running failed".to_owned() })?; executed += 1; }
+            JournalEvent::StepSucceeded { step, .. } => { frame.mark_succeeded(*step).map_err(|_e| RecoveryError::ReplayDivergence { step: *step, detail: "mark_succeeded failed".to_owned() })?; executed += 1; }
+            JournalEvent::ActionScheduled { action, step, .. } => { if tracker.is_resolved(*action, *step) { return Err(RecoveryError::NonIdempotentActionBlocked { action: *action, step: *step }); } frame.add_parallel_in_flight(1).map_err(|_e| RecoveryError::ReplayDivergence { step: *step, detail: "parallel_in_flight overflow".to_owned() })?; executed += 1; }
+            JournalEvent::ActionCompletedEvent { action, step, .. } => { if tracker.is_resolved(*action, *step) { return Err(RecoveryError::NonIdempotentActionBlocked { action: *action, step: *step }); } tracker.mark_completed(*action, *step); frame.sub_parallel_in_flight(1).map_err(|_e| RecoveryError::ReplayDivergence { step: *step, detail: "parallel_in_flight underflow".to_owned() })?; executed += 1; }
+            JournalEvent::ActionFailedEvent { action, step, .. } => { if tracker.is_resolved(*action, *step) { return Err(RecoveryError::NonIdempotentActionBlocked { action: *action, step: *step }); } tracker.mark_failed(*action, *step); frame.sub_parallel_in_flight(1).map_err(|_e| RecoveryError::ReplayDivergence { step: *step, detail: "parallel_in_flight underflow".to_owned() })?; executed += 1; }
+            JournalEvent::SlotWrittenEvent { slot, value, .. } => { if let Some(bytes) = value { let slot_value = postcard::from_bytes(bytes).map_err(|_e| RecoveryError::ReplayDivergence { step: vb_core::StepIdx::ZERO, detail: format!("slot value decode failed for slot {:?}", slot) })?; let taint = match frame.read_taint(*slot) { Ok(existing) => existing, Err(vb_core::CoreError::SlotUninitialized { .. }) => vb_core::Taint::Clean, Err(_) => { return Err(RecoveryError::ReplayDivergence { step: vb_core::StepIdx::ZERO, detail: format!("slot taint read failed for slot {:?}", slot) }); } }; frame.write_slot_with_taint(*slot, slot_value, taint).map_err(|_e| RecoveryError::ReplayDivergence { step: vb_core::StepIdx::ZERO, detail: "slot write out of bounds".to_owned() })?; } executed += 1; }
+            JournalEvent::WaitScheduledEvent { step, .. } => { frame.mark_waiting(*step).map_err(|_e| RecoveryError::ReplayDivergence { step: *step, detail: "mark_waiting failed".to_owned() })?; executed += 1; }
+            JournalEvent::AskScheduledEvent { step, .. } => { frame.mark_asking(*step).map_err(|_e| RecoveryError::ReplayDivergence { step: *step, detail: "mark_asking failed".to_owned() })?; executed += 1; }
+            _ => {}
         }
     }
-
     Ok(executed)
 }
 
