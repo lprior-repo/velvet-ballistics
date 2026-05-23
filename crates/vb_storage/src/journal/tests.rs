@@ -37,6 +37,18 @@ fn make_step_started(run: RunId, seq: u64, step: u16) -> JournalEvent {
     }
 }
 
+fn corrupt_magic_preserving_crc(value: &mut [u8]) {
+    let magic_bytes = 0xDEAD_BEEFu32.to_le_bytes();
+    if let Some(slice) = value.get_mut(0..4) {
+        slice.copy_from_slice(&magic_bytes);
+    }
+    let checksum = crc32c::crc32c(&value[..CRC_OFFSET]);
+    let crc_bytes = checksum.to_le_bytes();
+    if let Some(slice) = value.get_mut(CRC_OFFSET..CRC_OFFSET.saturating_add(4)) {
+        slice.copy_from_slice(&crc_bytes);
+    }
+}
+
 // =========================================================================
 // Write/read round-trip tests
 // =========================================================================
@@ -1710,6 +1722,107 @@ fn events_for_run_detects_missing_first_tail_event_after_snapshot() -> Result<()
         ),
         "missing first event after the durable snapshot must not be laundered"
     );
+    Ok(())
+}
+
+#[test]
+fn events_for_run_without_snapshot_rejects_missing_initial_sequence() -> Result<(), String> {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(10303);
+    journal
+        .append_unpersisted(&make_step_started(run, 4, 4))
+        .map_err(|err| err.to_string())?;
+
+    let result = journal.events_for_run(run);
+    assert!(
+        matches!(
+            result,
+            Err(JournalError::SequenceGap { expected, actual })
+                if expected == EventSeq::new(0) && actual == EventSeq::new(4)
+        ),
+        "runs without snapshots must start at seq 0, got {:?}",
+        result
+    );
+    Ok(())
+}
+
+#[test]
+fn events_for_run_rejects_corrupt_latest_snapshot_before_skipping_events() -> Result<(), String> {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(10304);
+    let workflow = WorkflowDigest::from_bytes([0x45; DIGEST_BYTES]);
+    let snapshot = RunSnapshot {
+        run,
+        seq: EventSeq::new(2),
+        workflow,
+        slots: vec![],
+        taint: vec![],
+    };
+    journal
+        .put_snapshot(&snapshot)
+        .map_err(|err| err.to_string())?;
+    journal
+        .append_unpersisted(&make_step_started(run, 3, 3))
+        .map_err(|err| err.to_string())?;
+
+    let key = crate::keys::run_snapshot_key(run, EventSeq::new(2))
+        .map_err(|err| err.to_string())?;
+    let mut value = journal
+        .run_snapshot
+        .get(key.as_slice())
+        .map_err(|err| err.to_string())?
+        .ok_or_else(|| "snapshot record should exist".to_owned())?
+        .to_vec();
+    corrupt_magic_preserving_crc(&mut value);
+    journal
+        .run_snapshot
+        .insert(key.to_vec(), value)
+        .map_err(|err| err.to_string())?;
+
+    let result = journal.events_for_run(run);
+    assert!(
+        matches!(result, Err(JournalError::BadMagic { .. })),
+        "corrupt latest snapshot must fail before tail replay, got {:?}",
+        result
+    );
+    Ok(())
+}
+
+#[test]
+fn events_for_run_skips_corrupt_pre_snapshot_event_by_key_range() -> Result<(), String> {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(10305);
+    for seq in 0_u64..3 {
+        journal
+            .append_unpersisted(&make_step_started(run, seq, seq as u16))
+            .map_err(|err| err.to_string())?;
+    }
+    let snapshot = RunSnapshot {
+        run,
+        seq: EventSeq::new(1),
+        workflow: WorkflowDigest::from_bytes([0x46; DIGEST_BYTES]),
+        slots: vec![],
+        taint: vec![],
+    };
+    journal
+        .put_snapshot(&snapshot)
+        .map_err(|err| err.to_string())?;
+
+    let key = crate::keys::run_event_key(run, EventSeq::new(0)).map_err(|err| err.to_string())?;
+    let mut value = journal
+        .events
+        .get(key.as_slice())
+        .map_err(|err| err.to_string())?
+        .ok_or_else(|| "event record should exist".to_owned())?
+        .to_vec();
+    corrupt_magic_preserving_crc(&mut value);
+    journal
+        .events
+        .insert(key.to_vec(), value)
+        .map_err(|err| err.to_string())?;
+
+    let replayed = journal.events_for_run(run).map_err(|err| err.to_string())?;
+    assert_eq!(replayed, vec![make_step_started(run, 2, 2)]);
     Ok(())
 }
 
