@@ -9,6 +9,12 @@ autobins = false
 [workspace]
 
 [package.metadata]
+# NOTE: cargo-fuzz requires `cargo-fuzz = true` here for manifest detection.
+# The `[package.metadata.cargo-fuzz]` subtable is the documented place for
+# libfuzzer options, but Cargo's TOML parser rejects both `[package.metadata]`
+# with a `cargo-fuzz` key AND `[package.metadata.cargo-fuzz]` as a subtable.
+# Minimization config (sancov_timeout, libfuzzer_options) is applied via
+# the `fuzz-smoke` Moon task and `scripts/fuzz-minimization.sh` instead.
 cargo-fuzz = true
 
 [features]

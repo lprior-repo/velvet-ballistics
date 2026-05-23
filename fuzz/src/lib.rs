@@ -20,8 +20,6 @@ use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract};
 use vb_validate::ValidationError;
 
 const MAX_FUZZ_PAYLOAD: u32 = 4096;
-const SMALL_WORKFLOW_A: &[u8] = b"version: velvet-ballastics/v1\nname: fuzz_a\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
-const SMALL_WORKFLOW_B: &[u8] = b"version: velvet-ballastics/v1\nname: fuzz_b\nwhen:\n  manual: {}\nsteps:\n  - id: save_value\n    save:\n      value: true\n  - id: done\n    finish:\n      result: 0\n";
 
 /// Maximum expression ops we will attempt to decode from fuzz input.
 const FUZZ_MAX_EXPR_OPS: usize = 64;
@@ -231,11 +229,50 @@ pub fn fuzz_ipc_frame(data: &[u8]) {
                 result.is_ok(),
                 "decode must succeed when payload len matches header"
             );
+            // Inspect decoded payload invariants
+            if let Ok(decoded) = result {
+                // Verify payload decoded without panic — destructuring alone exercises
+                // the postcard deserialization path for every variant.
+                match decoded {
+                    vb_ipc::IpcPayload::SubmitRun(p)
+                    | vb_ipc::IpcPayload::SubmitRunInline(p) => {
+                        let _ = p.run_id;
+                        let _ = p.workflow;
+                    }
+                    vb_ipc::IpcPayload::CancelRun { run_id }
+                    | vb_ipc::IpcPayload::InspectRun { run_id }
+                    | vb_ipc::IpcPayload::ListEvents { run_id, .. }
+                    | vb_ipc::IpcPayload::DrainTrace { run_id, .. } => {
+                        let _ = run_id;
+                    }
+                    vb_ipc::IpcPayload::AnswerAsk { run_id, ticket, .. } => {
+                        let _ = run_id;
+                        let _ = ticket;
+                    }
+                    vb_ipc::IpcPayload::CompleteAction { run_id, ticket, .. }
+                    | vb_ipc::IpcPayload::FailAction { run_id, ticket, .. } => {
+                        let _ = run_id;
+                        let _ = ticket;
+                    }
+                    vb_ipc::IpcPayload::Shutdown => {}
+                    vb_ipc::IpcPayload::Health
+                    | vb_ipc::IpcPayload::GetMetrics
+                    | vb_ipc::IpcPayload::ListRuns { .. }
+                    | vb_ipc::IpcPayload::GetTaintReport { .. }
+                    | vb_ipc::IpcPayload::GetWorkflowGraph { .. }
+                    | vb_ipc::IpcPayload::VerifyWorkflow { .. } => {}
+                    _ => {}
+                }
+            }
         } else {
             assert!(
                 result.is_err(),
                 "decode must fail when payload len mismatches header"
             );
+            // Error must be a typed IPC error, never a panic
+            if let Err(e) = result {
+                assert_typed_ipc_error(e);
+            }
         }
     }
 }
@@ -277,21 +314,67 @@ pub fn fuzz_ipc_decode(data: &[u8]) {
 
 /// Exercises storage record envelope decode and valid-event encode paths.
 pub fn fuzz_journal_event(data: &[u8]) {
-    let _decoded: Result<(vb_storage::RecordEnvelope, vb_storage::JournalEvent), _> =
-        vb_storage::decode_record(data, vb_storage::MAGIC_JOURNAL_EVENT, MAX_FUZZ_PAYLOAD);
-
-    let event = vb_storage::JournalEvent::RunAccepted {
-        run: vb_core::RunId::new(1),
-        seq: vb_storage::EventSeq::new(0),
-        workflow: vb_core::WorkflowDigest::from_bytes([0x5A; 32]),
-    };
-    let _encoded = vb_storage::encode_record(
+    let decoded = vb_storage::decode_record::<vb_storage::JournalEvent>(
+        data,
         vb_storage::MAGIC_JOURNAL_EVENT,
-        vb_storage::RecordKind::RunAccepted,
-        0,
-        &event,
         MAX_FUZZ_PAYLOAD,
     );
+
+    match decoded {
+        Ok((_envelope, event)) => {
+            // Verify the decoded event is structurally valid
+            assert!(
+                event.is_valid(),
+                "Decoded event must be structurally valid"
+            );
+
+            // Round-trip: encode the event and decode again
+            let encoded = vb_storage::encode_record(
+                vb_storage::MAGIC_JOURNAL_EVENT,
+                event.record_kind(),
+                event.seq().get(),
+                &event,
+                MAX_FUZZ_PAYLOAD,
+            );
+            assert!(
+                encoded.is_ok(),
+                "Encoding valid event must succeed, got {:?}",
+                encoded.err()
+            );
+            let encoded = encoded.unwrap();
+
+            let reparsed = vb_storage::decode_record::<vb_storage::JournalEvent>(
+                &encoded,
+                vb_storage::MAGIC_JOURNAL_EVENT,
+                MAX_FUZZ_PAYLOAD,
+            );
+            assert!(
+                reparsed.is_ok(),
+                "Round-trip encode/decode must succeed for valid event"
+            );
+        }
+        Err(e) => {
+            // For error cases, verify it's a typed JournalError (not a panic)
+            assert!(
+                matches!(
+                    e,
+                    vb_storage::JournalError::BadMagic { .. }
+                        | vb_storage::JournalError::UnexpectedEof
+                        | vb_storage::JournalError::HeaderChecksumMismatch
+                        | vb_storage::JournalError::PayloadDigestMismatch
+                        | vb_storage::JournalError::PostcardDecodeFailed
+                        | vb_storage::JournalError::PayloadTooLarge { .. }
+                        | vb_storage::JournalError::RecordKindFamilyMismatch { .. }
+                        | vb_storage::JournalError::UnknownRecordKind { .. }
+                        | vb_storage::JournalError::UnsupportedSchemaVersion { .. }
+                        | vb_storage::JournalError::HeaderLengthMismatch { .. }
+                        | vb_storage::JournalError::SequenceOverflow
+                ),
+                "Must return typed JournalError for corrupt input, got {:?}",
+                e
+            );
+        }
+    }
 }
 
 /// Exercises recovery replay over arbitrary postcard-encoded event vectors.
@@ -368,6 +451,9 @@ pub fn fuzz_expression(data: &[u8]) {
 /// Exercises compiled IR postcard decode and validation.
 pub fn fuzz_compiled_ir(data: &[u8]) {
     if let Ok(parts) = postcard::from_bytes::<WorkflowParts>(data) {
+        let digest_before = parts.digest;
+        let node_count_before = parts.nodes.len();
+        let slot_count = parts.slot_count;
         let result = vb_core::CompiledWorkflow::try_from_parts(parts);
         // If parts decode succeeded, workflow construction may succeed or fail
         // but must not panic. If it succeeds, the workflow must be usable.
@@ -384,7 +470,309 @@ pub fn fuzz_compiled_ir(data: &[u8]) {
                 "compiled workflow must have at least 1 slot, got {}",
                 workflow.slot_count()
             );
+            // Digest must be preserved through conversion
+            assert_eq!(
+                workflow.digest(),
+                digest_before,
+                "workflow digest must match decoded parts digest"
+            );
+            // Node count must match decoded parts
+            assert_eq!(
+                usize::from(workflow.node_count()),
+                node_count_before,
+                "workflow node count must match decoded parts node count"
+            );
+            // All slot references in nodes must be within declared slot_count
+            for i in 0..workflow.node_count() {
+                let step = vb_core::StepIdx::new(i);
+                let Some(node) = workflow.node(step) else {
+                    continue;
+                };
+                if let Some(output) = node.output {
+                    assert!(
+                        output.get() < slot_count,
+                        "node {} output slot {} out of bounds (slot_count={})",
+                        i,
+                        output.get(),
+                        slot_count
+                    );
+                }
+                check_node_slots(&node.kind, slot_count, i);
+            }
         }
+    }
+}
+
+/// Checks that all slot indices within a node kind are within bounds.
+fn check_node_slots(kind: &vb_core::CompiledNodeKind, slot_count: u16, node_idx: u16) {
+    use vb_core::CompiledNodeKind;
+    match kind {
+        CompiledNodeKind::Nop | CompiledNodeKind::Jump { .. } => {}
+        CompiledNodeKind::SetConst { .. } => {}
+        CompiledNodeKind::Copy { source } => {
+            assert!(
+                source.get() < slot_count,
+                "node {} Copy source slot {} out of bounds",
+                node_idx,
+                source.get()
+            );
+        }
+        CompiledNodeKind::EvalExpr { expr: _ } => {}
+        CompiledNodeKind::BuildObject { fields } => {
+            for (_, slot) in fields.iter() {
+                assert!(
+                    slot.get() < slot_count,
+                    "node {} BuildObject slot {} out of bounds",
+                    node_idx,
+                    slot.get()
+                );
+            }
+        }
+        CompiledNodeKind::BuildList { items } => {
+            for slot in items.iter() {
+                assert!(
+                    slot.get() < slot_count,
+                    "node {} BuildList slot {} out of bounds",
+                    node_idx,
+                    slot.get()
+                );
+            }
+        }
+        CompiledNodeKind::Do { action: _, input } => {
+            assert!(
+                input.get() < slot_count,
+                "node {} Do input slot {} out of bounds",
+                node_idx,
+                input.get()
+            );
+        }
+        CompiledNodeKind::Choose { branches, otherwise } => {
+            for _branch in branches.iter() {}
+            let _ = otherwise;
+        }
+        CompiledNodeKind::ChooseSlot { branches, otherwise } => {
+            for branch in branches.iter() {
+                assert!(
+                    branch.condition.get() < slot_count,
+                    "node {} ChooseSlot condition slot {} out of bounds",
+                    node_idx,
+                    branch.condition.get()
+                );
+            }
+            let _ = otherwise;
+        }
+        CompiledNodeKind::ForEachStart {
+            input,
+            item_slot,
+            ..
+        } => {
+            assert!(
+                input.get() < slot_count,
+                "node {} ForEachStart input slot {} out of bounds",
+                node_idx,
+                input.get()
+            );
+            assert!(
+                item_slot.get() < slot_count,
+                "node {} ForEachStart item_slot {} out of bounds",
+                node_idx,
+                item_slot.get()
+            );
+        }
+        CompiledNodeKind::ForEachNext { iterator_slot, .. } => {
+            assert!(
+                iterator_slot.get() < slot_count,
+                "node {} ForEachNext iterator_slot {} out of bounds",
+                node_idx,
+                iterator_slot.get()
+            );
+        }
+        CompiledNodeKind::ForEachJoin { output } => {
+            assert!(
+                output.get() < slot_count,
+                "node {} ForEachJoin output slot {} out of bounds",
+                node_idx,
+                output.get()
+            );
+        }
+        CompiledNodeKind::TogetherStart { .. } => {}
+        CompiledNodeKind::TogetherBranch { accumulator, .. } => {
+            assert!(
+                accumulator.get() < slot_count,
+                "node {} TogetherBranch accumulator slot {} out of bounds",
+                node_idx,
+                accumulator.get()
+            );
+        }
+        CompiledNodeKind::TogetherJoin { accumulator, .. } => {
+            assert!(
+                accumulator.get() < slot_count,
+                "node {} TogetherJoin accumulator slot {} out of bounds",
+                node_idx,
+                accumulator.get()
+            );
+        }
+        CompiledNodeKind::CollectStart { source, .. } => {
+            assert!(
+                source.get() < slot_count,
+                "node {} CollectStart source slot {} out of bounds",
+                node_idx,
+                source.get()
+            );
+        }
+        CompiledNodeKind::CollectPage { collector_slot, .. }
+        | CompiledNodeKind::CollectNext { collector_slot, .. }
+        | CompiledNodeKind::CollectFinish { collector_slot } => {
+            assert!(
+                collector_slot.get() < slot_count,
+                "node {} Collect collector_slot {} out of bounds",
+                node_idx,
+                collector_slot.get()
+            );
+        }
+        CompiledNodeKind::ReduceStart { input, accumulator, .. } => {
+            assert!(
+                input.get() < slot_count,
+                "node {} ReduceStart input slot {} out of bounds",
+                node_idx,
+                input.get()
+            );
+            assert!(
+                accumulator.get() < slot_count,
+                "node {} ReduceStart accumulator slot {} out of bounds",
+                node_idx,
+                accumulator.get()
+            );
+        }
+        CompiledNodeKind::ReduceNext {
+            iterator_slot,
+            accumulator,
+            ..
+        } => {
+            assert!(
+                iterator_slot.get() < slot_count,
+                "node {} ReduceNext iterator_slot {} out of bounds",
+                node_idx,
+                iterator_slot.get()
+            );
+            assert!(
+                accumulator.get() < slot_count,
+                "node {} ReduceNext accumulator slot {} out of bounds",
+                node_idx,
+                accumulator.get()
+            );
+        }
+        CompiledNodeKind::ReduceFinish { accumulator } => {
+            assert!(
+                accumulator.get() < slot_count,
+                "node {} ReduceFinish accumulator slot {} out of bounds",
+                node_idx,
+                accumulator.get()
+            );
+        }
+        CompiledNodeKind::RepeatStart { .. } => {}
+        CompiledNodeKind::RepeatAttempt { attempt_slot, .. } => {
+            assert!(
+                attempt_slot.get() < slot_count,
+                "node {} RepeatAttempt attempt_slot {} out of bounds",
+                node_idx,
+                attempt_slot.get()
+            );
+        }
+        CompiledNodeKind::RepeatCheck { attempt_slot, .. } => {
+            assert!(
+                attempt_slot.get() < slot_count,
+                "node {} RepeatCheck attempt_slot {} out of bounds",
+                node_idx,
+                attempt_slot.get()
+            );
+        }
+        CompiledNodeKind::RepeatFinish { result } => {
+            assert!(
+                result.get() < slot_count,
+                "node {} RepeatFinish result slot {} out of bounds",
+                node_idx,
+                result.get()
+            );
+        }
+        CompiledNodeKind::WaitUntil { deadline_slot } => {
+            assert!(
+                deadline_slot.get() < slot_count,
+                "node {} WaitUntil deadline_slot {} out of bounds",
+                node_idx,
+                deadline_slot.get()
+            );
+        }
+        CompiledNodeKind::WaitEvent {
+            event,
+            timeout_slot,
+        } => {
+            assert!(
+                event.get() < slot_count,
+                "node {} WaitEvent event slot {} out of bounds",
+                node_idx,
+                event.get()
+            );
+            if let Some(timeout) = timeout_slot {
+                assert!(
+                    timeout.get() < slot_count,
+                    "node {} WaitEvent timeout_slot {} out of bounds",
+                    node_idx,
+                    timeout.get()
+                );
+            }
+        }
+        CompiledNodeKind::Ask { prompt, timeout_slot } => {
+            assert!(
+                prompt.get() < slot_count,
+                "node {} Ask prompt slot {} out of bounds",
+                node_idx,
+                prompt.get()
+            );
+            if let Some(timeout) = timeout_slot {
+                assert!(
+                    timeout.get() < slot_count,
+                    "node {} Ask timeout_slot {} out of bounds",
+                    node_idx,
+                    timeout.get()
+                );
+            }
+        }
+        CompiledNodeKind::AskResume { answer } => {
+            assert!(
+                answer.get() < slot_count,
+                "node {} AskResume answer slot {} out of bounds",
+                node_idx,
+                answer.get()
+            );
+        }
+        CompiledNodeKind::RetryCheck { policy_slot, .. } => {
+            assert!(
+                policy_slot.get() < slot_count,
+                "node {} RetryCheck policy_slot {} out of bounds",
+                node_idx,
+                policy_slot.get()
+            );
+        }
+        CompiledNodeKind::ErrorHandler { error_slot, .. } => {
+            if let Some(slot) = error_slot {
+                assert!(
+                    slot.get() < slot_count,
+                    "node {} ErrorHandler error_slot {} out of bounds",
+                    node_idx,
+                    slot.get()
+                );
+            }
+        }
+        CompiledNodeKind::Finish { result } => {
+            assert!(
+                result.get() < slot_count,
+                "node {} Finish result slot {} out of bounds",
+                node_idx,
+                result.get()
+            );
+        }
+        _ => {}
     }
 }
 
@@ -410,6 +798,7 @@ pub fn fuzz_accepted_artifact_envelope_qi37_4_2(data: &[u8]) {
 /// Exercises IR/codegen equivalence hooks over small compiled workflows.
 pub fn fuzz_generated_compare(data: &[u8]) {
     if let Ok(parts) = postcard::from_bytes::<WorkflowParts>(data) {
+        let parts_clone = parts.clone();
         // Validation must not panic - it returns Result
         let validated = vb_core::validate_compiled_workflow(&parts);
         // If validation passes, workflow construction should also succeed
@@ -422,9 +811,27 @@ pub fn fuzz_generated_compare(data: &[u8]) {
             validated,
             workflow.is_ok()
         );
+        // For successful conversions, independent decode must yield identical digest
+        if let Ok(w1) = workflow {
+            if let Ok(w2) = vb_core::CompiledWorkflow::try_from_parts(parts_clone) {
+                assert_eq!(
+                    w1.digest(),
+                    w2.digest(),
+                    "independent decode must yield same digest"
+                );
+                assert_eq!(
+                    w1.node_count(),
+                    w2.node_count(),
+                    "independent decode must yield same node count"
+                );
+                assert_eq!(
+                    w1.slot_count(),
+                    w2.slot_count(),
+                    "independent decode must yield same slot count"
+                );
+            }
+        }
     }
-
-    let _source = selected_workflow(data);
 }
 
 // ---------------------------------------------------------------------------
@@ -1957,13 +2364,6 @@ pub fn fuzz_recovery_decode(data: &[u8]) {
     drop(vb_storage::recovery::recover_runtime_frame_seed_from_events(&events));
 }
 
-fn selected_workflow(data: &[u8]) -> &'static [u8] {
-    match data.first().copied() {
-        Some(value) if value.is_multiple_of(2) => SMALL_WORKFLOW_A,
-        _ => SMALL_WORKFLOW_B,
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Target: StepBudget::new clamping boundary (FUZZ-001)
 // ---------------------------------------------------------------------------
@@ -2305,7 +2705,7 @@ fn assert_typed_ipc_error(error: vb_ipc::IpcError) {
         | IpcError::PayloadEncodeFailed
         | IpcError::PayloadDecodeFailed
         | IpcError::ResponseDecodeFailed => {}
-        _ => unreachable!("unexpected IpcError variant"),
+        _ => unreachable!("unexpected IpcError variant: {:?}", error),
     }
 }
 
