@@ -1652,6 +1652,67 @@ fn events_for_run_starts_from_snapshot_when_pre_snapshot_trimmed() {
     assert_eq!(replayed[2].seq().get(), 4);
 }
 
+#[test]
+fn events_for_run_bounded_rejects_over_limit() -> Result<(), String> {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(10301);
+    for seq in 0u16..2 {
+        journal
+            .append_unpersisted(&make_step_started(run, u64::from(seq), seq))
+            .map_err(|err| err.to_string())?;
+    }
+
+    let Some(limit) = EventReplayLimit::new(1) else {
+        return Err("non-zero replay limit was rejected".to_owned());
+    };
+    let result = journal.events_for_run_bounded(run, limit);
+    assert!(
+        matches!(
+            result,
+            Err(JournalError::TooManyEvents {
+                run: found_run,
+                limit: 1,
+                observed: 2,
+            }) if found_run == run
+        ),
+        "bounded replay must fail closed when more events are present"
+    );
+    Ok(())
+}
+
+#[test]
+fn events_for_run_detects_missing_snapshot_boundary_event() -> Result<(), String> {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(10302);
+    let workflow = WorkflowDigest::from_bytes([0x44; DIGEST_BYTES]);
+    let snapshot = RunSnapshot {
+        run,
+        seq: EventSeq::new(2),
+        workflow,
+        slots: vec![],
+        taint: vec![],
+    };
+    journal
+        .put_snapshot(&snapshot)
+        .map_err(|err| err.to_string())?;
+    journal
+        .append_unpersisted(&make_step_started(run, 3, 3))
+        .map_err(|err| err.to_string())?;
+
+    let result = journal.events_for_run(run);
+    assert!(
+        matches!(
+            result,
+            Err(JournalError::SequenceGap {
+                expected,
+                actual,
+            }) if expected == EventSeq::new(2) && actual == EventSeq::new(3)
+        ),
+        "missing event at the durable snapshot boundary must not be laundered"
+    );
+    Ok(())
+}
+
 // =========================================================================
 // Edge case: compiled_ir stores multiple distinct digests
 // =========================================================================
@@ -2105,7 +2166,9 @@ fn all_declared_keyspaces_are_iterable_after_open() {
 fn close_succeeds_on_clean_journal() {
     let (_temp, mut journal) = temp_journal();
     // close() should succeed on idle journal
-    journal.close().expect("close on clean journal should succeed");
+    journal
+        .close()
+        .expect("close on clean journal should succeed");
 }
 
 /// Test that close() returns unit on success.
@@ -2133,16 +2196,25 @@ fn drop_releases_process_lock_even_without_explicit_close() {
             seq: EventSeq::new(0),
             workflow: digest,
         };
-        journal.append_strict(&event).expect("append should succeed");
+        journal
+            .append_strict(&event)
+            .expect("append should succeed");
         // Explicitly do NOT call close() here
     } // journal drops here without explicit close
 
     // The process lock should be released when journal drops, allowing reopen
     // If drop called close() and close() succeeded, this would also work.
     // If drop called close() and close() failed, the process lock might not be released.
-    let journal2 = FjallJournal::open(&path, None).expect("journal should be reopenable after drop");
-    let replayed = journal2.events_for_run(RunId::new(9999)).expect("replay should succeed");
-    assert_eq!(replayed.len(), 1, "should have exactly one event after reopen");
+    let journal2 =
+        FjallJournal::open(&path, None).expect("journal should be reopenable after drop");
+    let replayed = journal2
+        .events_for_run(RunId::new(9999))
+        .expect("replay should succeed");
+    assert_eq!(
+        replayed.len(),
+        1,
+        "should have exactly one event after reopen"
+    );
 }
 
 /// Test that close() propagates persist errors when underlying storage fails.

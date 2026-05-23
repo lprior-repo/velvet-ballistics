@@ -5034,6 +5034,15 @@ mod tests {
             JournalError::RecordKindFamilyMismatch { magic: 0, kind: 0 },
             JournalError::HeaderLengthMismatch { found: 0 },
             JournalError::PayloadTooLarge { len: 0, max: 0 },
+            JournalError::TooManyEvents {
+                run: RunId::new(1),
+                limit: 1,
+                observed: 2,
+            },
+            JournalError::ReplayAllocationFailed {
+                run: RunId::new(1),
+                requested: 1,
+            },
         ];
         let mut seen = std::collections::BTreeSet::new();
         for err in &errors {
@@ -5209,6 +5218,31 @@ mod tests {
         assert_eq!(
             JournalError::PostcardDecodeFailed.diagnostic_code(),
             DiagnosticCode::new(0x4015)
+        );
+    }
+
+    #[test]
+    fn journal_error_diagnostic_code_too_many_events() {
+        assert_eq!(
+            JournalError::TooManyEvents {
+                run: RunId::new(7),
+                limit: 1,
+                observed: 2,
+            }
+            .diagnostic_code(),
+            DiagnosticCode::new(0x401E)
+        );
+    }
+
+    #[test]
+    fn journal_error_diagnostic_code_replay_allocation_failed() {
+        assert_eq!(
+            JournalError::ReplayAllocationFailed {
+                run: RunId::new(7),
+                requested: 2,
+            }
+            .diagnostic_code(),
+            DiagnosticCode::new(0x401F)
         );
     }
 

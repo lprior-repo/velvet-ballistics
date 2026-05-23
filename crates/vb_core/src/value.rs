@@ -18,6 +18,10 @@ pub enum Taint {
     DerivedFromSecret = 1,
     /// Slot contains a secret value.
     Secret = 2,
+    /// Slot contains a randomly generated value.
+    Random = 3,
+    /// Slot contains a time-dependent value.
+    TimeDependent = 4,
 }
 
 /// Joins two taint levels, returning the more restrictive one.
@@ -27,11 +31,15 @@ pub fn join_taint(a: Taint, b: Taint) -> Taint {
         Taint::Clean => 0,
         Taint::DerivedFromSecret => 1,
         Taint::Secret => 2,
+        Taint::Random => 3,
+        Taint::TimeDependent => 4,
     };
     let b_disc: u8 = match b {
         Taint::Clean => 0,
         Taint::DerivedFromSecret => 1,
         Taint::Secret => 2,
+        Taint::Random => 3,
+        Taint::TimeDependent => 4,
     };
     if a_disc >= b_disc { a } else { b }
 }
@@ -619,6 +627,8 @@ mod tests {
             Taint::Clean => 0,
             Taint::DerivedFromSecret => 1,
             Taint::Secret => 2,
+            Taint::Random => 3,
+            Taint::TimeDependent => 4,
         }
     }
 

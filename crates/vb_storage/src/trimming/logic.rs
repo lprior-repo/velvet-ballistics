@@ -19,7 +19,7 @@ impl FjallJournal {
         for item in self.run_snapshot.prefix(prefix_key) {
             let key = item.key().map_err(TrimError::from)?;
             if key.len() < 17 {
-                continue;
+                return Err(TrimError::IncompleteTrim { deleted_count: 0 });
             }
             let slice = key
                 .get(9..17)

@@ -18,6 +18,33 @@ use crate::{
     types::{FjallConfig, KeyspaceProfile},
 };
 
+/// Bounded replay limit for journal event collection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EventReplayLimit {
+    max_events: usize,
+}
+
+impl EventReplayLimit {
+    /// Conservative default for operator-facing replay collection.
+    pub const DEFAULT: Self = Self { max_events: 65_536 };
+
+    /// Creates a replay limit; returns `None` when the limit is zero.
+    #[must_use]
+    pub const fn new(max_events: usize) -> Option<Self> {
+        if max_events == 0 {
+            None
+        } else {
+            Some(Self { max_events })
+        }
+    }
+
+    /// Returns the maximum number of events that may be collected.
+    #[must_use]
+    pub const fn max_events(self) -> usize {
+        self.max_events
+    }
+}
+
 /// Fjall-backed append journal.
 pub struct FjallJournal {
     pub(crate) database: fjall::Database,

@@ -336,7 +336,10 @@ fn compare_terminal_status(
                 return Err(ParityError::TerminalMismatch {
                     ir_status: format!("Blocked {{ pc: {:?} }}", ir_b.pc),
                     gen_status: format!("Blocked {{ pc: {:?} }}", gen_b.pc),
-                    detail: format!("blocked pc mismatch: ir={:?}, gen_run={:?}", ir_b.pc, gen_b.pc),
+                    detail: format!(
+                        "blocked pc mismatch: ir={:?}, gen_run={:?}",
+                        ir_b.pc, gen_b.pc
+                    ),
                 });
             }
             Ok(())
@@ -432,11 +435,15 @@ fn compare_slots(
             slot: SlotIdx::new(0),
             ir_value: SlotValue::I64(match i64::try_from(ir.len()) {
                 Ok(v) => v,
-                Err(_) => unreachable!("usize length of a slice cannot exceed i64::MAX on a 64-bit target"),
+                Err(_) => unreachable!(
+                    "usize length of a slice cannot exceed i64::MAX on a 64-bit target"
+                ),
             }),
             gen_value: SlotValue::I64(match i64::try_from(gen_run.len()) {
                 Ok(v) => v,
-                Err(_) => unreachable!("usize length of a slice cannot exceed i64::MAX on a 64-bit target"),
+                Err(_) => unreachable!(
+                    "usize length of a slice cannot exceed i64::MAX on a 64-bit target"
+                ),
             }),
         });
     }
@@ -460,7 +467,10 @@ fn compare_slots(
 }
 
 /// Compares taint markers between two runs.
-fn compare_taints(ir: &[(SlotIdx, Taint)], gen_run: &[(SlotIdx, Taint)]) -> Result<(), ParityError> {
+fn compare_taints(
+    ir: &[(SlotIdx, Taint)],
+    gen_run: &[(SlotIdx, Taint)],
+) -> Result<(), ParityError> {
     if ir.len() != gen_run.len() {
         return Err(ParityError::JournalMismatch {
             first_diff_index: 0,
@@ -473,9 +483,7 @@ fn compare_taints(ir: &[(SlotIdx, Taint)], gen_run: &[(SlotIdx, Taint)]) -> Resu
             ),
         });
     }
-    for ((ir_slot, ir_taint), (gen_slot, gen_taint)) in
-        ir.iter().zip(gen_run.iter())
-    {
+    for ((ir_slot, ir_taint), (gen_slot, gen_taint)) in ir.iter().zip(gen_run.iter()) {
         if ir_slot != gen_slot {
             return Err(ParityError::TaintMismatch {
                 slot: *ir_slot,

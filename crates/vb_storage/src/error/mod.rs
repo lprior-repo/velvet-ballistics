@@ -191,6 +191,26 @@ pub enum JournalError {
     /// Strict durability failed.
     #[error("strict durability failed")]
     StrictDurabilityFailed,
+    /// Replay exceeded the caller-provided event limit.
+    #[error(
+        "journal replay for run {run:?} exceeded event limit: observed {observed} > limit {limit}"
+    )]
+    TooManyEvents {
+        /// Run being replayed.
+        run: RunId,
+        /// Maximum event count allowed.
+        limit: usize,
+        /// Observed event count that crossed the limit.
+        observed: usize,
+    },
+    /// Replay collection could not reserve bounded memory.
+    #[error("journal replay allocation failed for run {run:?}: requested {requested} events")]
+    ReplayAllocationFailed {
+        /// Run being replayed.
+        run: RunId,
+        /// Event capacity requested.
+        requested: usize,
+    },
     /// Admission clock could not provide a timestamp.
     #[error("admission clock unavailable")]
     ClockUnavailable,

@@ -10,6 +10,11 @@
 //
 // This is a pure model.  Fjall I/O, postcard bytes, and production Rust structs
 // remain trusted shell boundaries and require integration evidence later.
+//
+// BINDING: capability_artifact_model
+// Rust type: vb_core::capability::Capability
+// Verified: Matched spec capability matching functions to Rust Capability::{name, action} fields
+// Divergences: Spec models abstract int for name/action; Rust uses Box<str> and ActionId types
 
 use vstd::prelude::*;
 

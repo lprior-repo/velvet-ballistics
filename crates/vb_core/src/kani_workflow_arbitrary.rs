@@ -7,6 +7,8 @@
 //! harnesses exercise arbitrary shapes — nodes, expressions, constants,
 //! step_names, and resource_contract — not just accessor variations.
 
+use crate::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+use crate::capability::Capability;
 use crate::ids::{
     AccessorIdx, ActionId, BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId,
     WorkflowDigest,
@@ -476,10 +478,12 @@ fn bounded_len_2() -> u8 {
 
 impl kani::Arbitrary for Taint {
     fn any() -> Self {
-        match kani::any::<u8>() % 3 {
+        match kani::any::<u8>() % 5 {
             0 => Taint::Clean,
             1 => Taint::DerivedFromSecret,
-            _ => Taint::Secret,
+            2 => Taint::Secret,
+            3 => Taint::Random,
+            _ => Taint::TimeDependent,
         }
     }
 }
@@ -495,6 +499,80 @@ impl kani::Arbitrary for SlotValue {
             5 => SlotValue::List(ListId::new(kani::any())),
             6 => SlotValue::Object(ObjectId::new(kani::any())),
             _ => SlotValue::Blob(BlobId::new(kani::any())),
+        }
+    }
+}
+
+// -------------------------------------------------------------------------
+// kani::Arbitrary for action system types
+// -------------------------------------------------------------------------
+
+impl kani::Arbitrary for Idempotency {
+    fn any() -> Self {
+        match kani::any::<u8>() % 3 {
+            0 => Idempotency::DeterministicPure,
+            1 => Idempotency::IdempotentExternal,
+            _ => Idempotency::AtLeastOnceExternal,
+        }
+    }
+}
+
+impl kani::Arbitrary for SideEffect {
+    fn any() -> Self {
+        match kani::any::<u8>() % 5 {
+            0 => SideEffect::None,
+            1 => SideEffect::Writes,
+            2 => SideEffect::Sends,
+            3 => SideEffect::Creates,
+            _ => SideEffect::Destroys,
+        }
+    }
+}
+
+impl kani::Arbitrary for RetrySafety {
+    fn any() -> Self {
+        match kani::any::<u8>() % 3 {
+            0 => RetrySafety::Safe,
+            1 => RetrySafety::KeyRequired,
+            _ => RetrySafety::Unsafe,
+        }
+    }
+}
+
+impl kani::Arbitrary for Capability {
+    fn any() -> Self {
+        Capability::new(
+            // Bounded name to avoid unbounded symbolic strings
+            format!("cap_{}", kani::any::<u8>().wrapping_rem(16)).into_boxed_str(),
+            kani::any(),
+        )
+    }
+}
+
+impl kani::Arbitrary for ActionContract {
+    fn any() -> Self {
+        // Bounded capability count (0..4) to keep symbolic state space manageable
+        let cap_count = kani::any::<u8>() % 4;
+        let mut caps = Vec::with_capacity(cap_count as usize);
+        let mut i = 0u8;
+        while i < cap_count {
+            caps.push(kani::any::<Capability>());
+            i = match i.checked_add(1) {
+                Some(n) => n,
+                None => break,
+            };
+        }
+        ActionContract {
+            id: kani::any(),
+            input_slot_count: kani::any(),
+            output_slot_count: kani::any(),
+            max_input_bytes: kani::any(),
+            max_output_bytes: kani::any(),
+            timeout_ms: kani::any(),
+            idempotency: kani::any(),
+            side_effect: kani::any(),
+            retry_safety: kani::any(),
+            required_capabilities: caps.into_boxed_slice(),
         }
     }
 }

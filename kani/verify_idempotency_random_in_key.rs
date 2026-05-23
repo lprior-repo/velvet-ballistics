@@ -45,18 +45,16 @@ fn verify_idempotency_random_in_key() {
     // This harness is a placeholder: the actual RandomInKey enforcement requires
     // Taint::Random to be set on the slot value, which depends on runtime taint
     // tracking not yet modeled in SlotValue.
-    let r = frame.write_slot(SlotIdx::new(0), SlotValue::I64(42));
+    // Write a value with Taint::Random to trigger RandomInKey error.
+    let r = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Random);
     kani::assume(r.is_ok());
 
     let key_slots = [SlotIdx::new(0)];
 
-    // CURRENT BEHAVIOR: returns Ok because validate_idempotency_key_ingredients
-    // only checks Secret/DerivedFromSecret. Random check is future work.
-    // This harness will need to be updated when Taint::Random is enforced.
+    // validate_idempotency_key_ingredients checks for Secret/DerivedFromSecret and
+    // also rejects Random/TimeDependent in the idempotency key.
     let result = verify_idempotency(&contract, &key_slots, &frame);
 
-    // Assertion: currently passes (Random not yet enforced). When Taint::Random
-    // is implemented, this should be:
-    // kani::assert(result.is_err() && matches!(result, Err(IdempotencyViolation::RandomInKey(0))));
-    kani::assert(result.is_ok(), "RandomInKey not yet enforced — placeholder harness for future extension");
+    // Assertion: Random taint in key slot triggers Err(RandomInKey).
+    kani::assert(result.is_err() && matches!(result, Err(vb_core::action::IdempotencyViolation::RandomInKey(0))), "RandomInKey enforced — Taint::Random rejected in idempotency key");
 }

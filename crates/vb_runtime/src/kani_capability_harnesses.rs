@@ -101,7 +101,10 @@ mod kani_capability_harnesses {
                 3 => Err(ArtifactEnvelopeError::MissingRequiredProofFlagBounded),
                 4 => Ok(accepted_artifact(
                     self.digest,
-                    Box::new([Capability::new(arbitrary_capability_name(), ActionId::new(7))]),
+                    Box::new([Capability::new(
+                        arbitrary_capability_name(),
+                        ActionId::new(7),
+                    )]),
                 )),
                 _ => Ok(accepted_artifact(self.digest, Box::new([]))),
             }

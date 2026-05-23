@@ -364,4 +364,46 @@ impl JournalEvent {
             | Self::RunAnswered { .. } => None,
         }
     }
+
+    /// Returns true if this event passes basic structural validity checks.
+    ///
+    /// A valid event has:
+    /// - A non-zero run identifier (zero is the null/placeholder value)
+    /// - A sequence number within reasonable bounds (not u64::MAX)
+    /// - Attempt numbers, when present, are non-zero (zero is ambiguous in replay)
+    ///
+    /// Note: This does NOT validate cryptographic digests or semantic consistency.
+    /// Those are enforced by the codec round-trip and replay validation.
+    #[must_use]
+    pub const fn is_valid(&self) -> bool {
+        // RunId(0) is the zero/placeholder value - valid events must have a real run
+        if self.run_id().get() == 0 {
+            return false;
+        }
+        // Sequence must not be at the max value (overflow sentinel)
+        if self.seq().get() == u64::MAX {
+            return false;
+        }
+        // Attempt numbers must be non-zero when present (zero is ambiguous)
+        match self {
+            Self::ActionScheduled { attempt, .. }
+            | Self::ActionCompletedEvent { attempt, .. }
+            | Self::ActionFailedEvent { attempt, .. }
+            | Self::SlotWrittenEvent { attempt, .. }
+            | Self::WaitScheduledEvent { attempt, .. }
+            | Self::AskScheduledEvent { attempt, .. }
+            | Self::AskAnsweredEvent { attempt, .. }
+            | Self::RetryScheduledEvent { attempt, .. }
+            | Self::StepStarted { attempt, .. }
+            | Self::RunCancelled { attempt, .. }
+            | Self::RunFinished { attempt, .. }
+            | Self::RunFailedEvent { attempt, .. } => *attempt != 0,
+            Self::RunAccepted { .. }
+            | Self::RunAdmission { .. }
+            | Self::StepSucceeded { .. }
+            | Self::RunResumed { .. }
+            | Self::RunRetried { .. }
+            | Self::RunAnswered { .. } => true,
+        }
+    }
 }

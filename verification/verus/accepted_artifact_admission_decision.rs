@@ -1,5 +1,11 @@
 // Verus verifier-only model for vb-core-cli-accepted-path PO-004.
 // Trusted shell boundary: postcard decoding is represented as an input case.
+//
+// BINDING: accepted_artifact_admission_decision
+// Rust type: vb_runtime::admission::ArtifactEnvelopeError
+// Verified: Matched spec ArtifactCase/AdmissionError enums to Rust ArtifactEnvelopeError variants
+// Divergences: Spec models simplified error variants; Rust has 11 payload-carrying variants
+//   (e.g., ArtifactNotFound { digest }, InvalidGateCount { found, required })
 
 use vstd::prelude::*;
 

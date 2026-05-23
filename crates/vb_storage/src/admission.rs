@@ -880,7 +880,7 @@ mod tests {
         )
         .map_err(|e| format!("submit_artifact_with_contracts failed: {e}"))?;
 
-        assert!(artifact.verification.idempotency_verified);
+        assert!(artifact.verification.idempotency_verified_claimed);
         assert_eq!(artifact.verification.idempotency_keyed.as_ref(), &[action]);
         assert_eq!(
             artifact.verification.idempotency_attested.as_ref(),

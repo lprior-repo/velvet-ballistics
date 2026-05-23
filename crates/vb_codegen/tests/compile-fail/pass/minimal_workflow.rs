@@ -17,8 +17,8 @@ impl SlotValue {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Taint { Clean, DerivedFromSecret, Secret }
-const fn join_taint(left: Taint, right: Taint) -> Taint { match (left, right) { (Taint::Secret, _) | (_, Taint::Secret) => Taint::Secret, (Taint::DerivedFromSecret, _) | (_, Taint::DerivedFromSecret) => Taint::DerivedFromSecret, (Taint::Clean, Taint::Clean) => Taint::Clean } }
+pub enum Taint { Clean, DerivedFromSecret, Secret, Random, TimeDependent }
+const fn join_taint(left: Taint, right: Taint) -> Taint { match (left, right) { (Taint::Secret, _) | (_, Taint::Secret) => Taint::Secret, (Taint::DerivedFromSecret, _) | (_, Taint::DerivedFromSecret) => Taint::DerivedFromSecret, (Taint::Random, _) | (_, Taint::Random) => Taint::Random, (Taint::TimeDependent, _) | (_, Taint::TimeDependent) => Taint::TimeDependent, (Taint::Clean, Taint::Clean) => Taint::Clean } }
 fn join_taints(values: &[Taint]) -> Taint { values.iter().copied().fold(Taint::Clean, join_taint) }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

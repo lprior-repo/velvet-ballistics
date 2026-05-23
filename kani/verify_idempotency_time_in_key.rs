@@ -44,18 +44,16 @@ fn verify_idempotency_time_in_key() {
     // This harness is a placeholder: the actual TimeInKey enforcement requires
     // Taint::TimeDependent to be set on the slot value, which depends on runtime taint
     // tracking not yet modeled in SlotValue.
-    let r = frame.write_slot(SlotIdx::new(0), SlotValue::I64(42));
+    // Write a value with Taint::TimeDependent to trigger TimeInKey error.
+    let r = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::TimeDependent);
     kani::assume(r.is_ok());
 
     let key_slots = [SlotIdx::new(0)];
 
-    // CURRENT BEHAVIOR: returns Ok because validate_idempotency_key_ingredients
-    // only checks Secret/DerivedFromSecret. TimeDependent check is future work.
-    // This harness will need to be updated when Taint::TimeDependent is enforced.
+    // validate_idempotency_key_ingredients checks for Secret/DerivedFromSecret and
+    // also rejects Random/TimeDependent in the idempotency key.
     let result = verify_idempotency(&contract, &key_slots, &frame);
 
-    // Assertion: currently passes (TimeDependent not yet enforced). When Taint::TimeDependent
-    // is implemented, this should be:
-    // kani::assert(result.is_err() && matches!(result, Err(IdempotencyViolation::TimeInKey(0))));
-    kani::assert(result.is_ok(), "TimeInKey not yet enforced — placeholder harness for future extension");
+    // Assertion: TimeDependent taint in key slot triggers Err(TimeInKey).
+    kani::assert(result.is_err() && matches!(result, Err(vb_core::action::IdempotencyViolation::TimeInKey(0))), "TimeInKey enforced — Taint::TimeDependent rejected in idempotency key");
 }

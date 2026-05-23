@@ -11,6 +11,11 @@
 // This is a pure model. Fjall I/O, byte codecs, CLI formatting, runtime
 // allocation, wall-clock time, and actual production structs are trusted shell
 // boundaries that require later integration and formal-verifier evidence.
+//
+// BINDING: accepted_run_atomic_admission
+// Rust type: vb_runtime::admission::RunAdmission
+// Verified: Matched spec SpecPayloadTag/SpecFailureCause/SpecAdmissionOutcome to Rust RunAdmission fields
+// Divergences: Spec models simplified error taxonomy; Rust uses actual error types from vb_runtime::admission
 
 use vstd::prelude::*;
 

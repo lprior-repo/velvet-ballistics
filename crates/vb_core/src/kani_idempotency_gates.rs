@@ -17,21 +17,16 @@ use crate::value::{SlotValue, Taint};
 /// KANI-RUNTIME-001: Ok when all key slots are clean (no SecretTaint/Random/TimeDependent).
 ///
 /// Bounded: key_slots length 1..16, all slots contain Clean values.
+/// Uses kani::any::<ActionContract>() with assumes to constrain the contract symbolically.
 #[kani::proof]
 #[kani::unwind(6)]
 fn verify_idempotency_all_clean() {
-    let contract = ActionContract {
-        id: crate::ids::ActionId::new(0),
-        input_slot_count: 1,
-        output_slot_count: 1,
-        max_input_bytes: 1024,
-        max_output_bytes: 1024,
-        timeout_ms: 1000,
-        side_effect: SideEffect::Writes,
-        retry_safety: RetrySafety::KeyRequired,
-        idempotency: Idempotency::IdempotentExternal,
-        required_capabilities: Box::new([]),
-    };
+    // Generate contract symbolically — not hardcoded structure
+    let contract = kani::any::<ActionContract>();
+    // Must have side-effect to enter the retry-safety check path
+    kani::assume(contract.side_effect != SideEffect::None);
+    // Must be KeyRequired to check idempotency keys
+    kani::assume(contract.retry_safety == RetrySafety::KeyRequired);
 
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 4);
     kani::assume(frame.is_ok());
@@ -69,18 +64,12 @@ fn verify_idempotency_all_clean() {
 #[kani::proof]
 #[kani::unwind(4)]
 fn verify_idempotency_missing_key() {
-    let contract = ActionContract {
-        id: crate::ids::ActionId::new(0),
-        input_slot_count: 1,
-        output_slot_count: 1,
-        max_input_bytes: 1024,
-        max_output_bytes: 1024,
-        timeout_ms: 1000,
-        side_effect: SideEffect::Writes,
-        retry_safety: RetrySafety::KeyRequired,
-        idempotency: Idempotency::IdempotentExternal,
-        required_capabilities: Box::new([]),
-    };
+    // Generate contract symbolically
+    let contract = kani::any::<ActionContract>();
+    // Must have side-effect to enter the retry-safety check path
+    kani::assume(contract.side_effect != SideEffect::None);
+    // Must be KeyRequired to check for missing keys
+    kani::assume(contract.retry_safety == RetrySafety::KeyRequired);
 
     let key_slots: [SlotIdx; 0] = [];
 
@@ -110,18 +99,12 @@ fn verify_idempotency_missing_key() {
 #[kani::proof]
 #[kani::unwind(6)]
 fn verify_idempotency_secret_in_key() {
-    let contract = ActionContract {
-        id: crate::ids::ActionId::new(0),
-        input_slot_count: 1,
-        output_slot_count: 1,
-        max_input_bytes: 1024,
-        max_output_bytes: 1024,
-        timeout_ms: 1000,
-        side_effect: SideEffect::Writes,
-        retry_safety: RetrySafety::KeyRequired,
-        idempotency: Idempotency::IdempotentExternal,
-        required_capabilities: Box::new([]),
-    };
+    // Generate contract symbolically
+    let contract = kani::any::<ActionContract>();
+    // Must have side-effect to enter the retry-safety check path
+    kani::assume(contract.side_effect != SideEffect::None);
+    // Must be KeyRequired to check idempotency key ingredients
+    kani::assume(contract.retry_safety == RetrySafety::KeyRequired);
 
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 4);
     kani::assume(frame.is_ok());
@@ -176,8 +159,6 @@ fn verify_idempotency_secret_in_key() {
     }
 }
 
-
-
 /// KANI-RUNTIME-006: At most one error variant is ever returned (short-circuit invariant).
 ///
 /// The function iterates key_slots and short-circuits on first error.
@@ -185,18 +166,12 @@ fn verify_idempotency_secret_in_key() {
 #[kani::proof]
 #[kani::unwind(8)]
 fn verify_idempotency_single_error() {
-    let contract = ActionContract {
-        id: crate::ids::ActionId::new(0),
-        input_slot_count: 1,
-        output_slot_count: 1,
-        max_input_bytes: 1024,
-        max_output_bytes: 1024,
-        timeout_ms: 1000,
-        side_effect: SideEffect::Writes,
-        retry_safety: RetrySafety::KeyRequired,
-        idempotency: Idempotency::IdempotentExternal,
-        required_capabilities: Box::new([]),
-    };
+    // Generate contract symbolically
+    let contract = kani::any::<ActionContract>();
+    // Must have side-effect to enter the retry-safety check path
+    kani::assume(contract.side_effect != SideEffect::None);
+    // Must be KeyRequired to check idempotency keys
+    kani::assume(contract.retry_safety == RetrySafety::KeyRequired);
 
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 4);
     kani::assume(frame.is_ok());

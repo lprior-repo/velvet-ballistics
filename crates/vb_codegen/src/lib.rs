@@ -33,8 +33,8 @@ mod kani_generated_runtime;
 
 pub mod parity;
 pub use parity::{
-    compare_observed_runs, BlockKind, BlockedRun, ErrorClass, ErrorRun, FinishedRun,
-    ObservedRun, ParityError, TerminalStatus,
+    BlockKind, BlockedRun, ErrorClass, ErrorRun, FinishedRun, ObservedRun, ParityError,
+    TerminalStatus, compare_observed_runs,
 };
 
 /// Codegen failures with stable typed diagnostics.
@@ -3037,8 +3037,23 @@ fn write_header(out: &mut String) -> CodegenResult<()> {
     writeln!(out, "}}").map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
     writeln!(out, "#[derive(Debug, Clone, Copy, PartialEq, Eq)]").map_err(fmt_err)?;
-    writeln!(out, "pub enum Taint {{ Clean, DerivedFromSecret, Secret }}").map_err(fmt_err)?;
-    writeln!(out, "const fn join_taint(left: Taint, right: Taint) -> Taint {{ match (left, right) {{ (Taint::Secret, _) | (_, Taint::Secret) => Taint::Secret, (Taint::DerivedFromSecret, _) | (_, Taint::DerivedFromSecret) => Taint::DerivedFromSecret, (Taint::Clean, Taint::Clean) => Taint::Clean }} }}").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "pub enum Taint {{ Clean, DerivedFromSecret, Secret, Random, TimeDependent }}"
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "const fn join_taint(left: Taint, right: Taint) -> Taint {{ \
+         match (left, right) {{ \
+             (Taint::Secret, _) | (_, Taint::Secret) => Taint::Secret, \
+             (Taint::DerivedFromSecret, _) | (_, Taint::DerivedFromSecret) => Taint::DerivedFromSecret, \
+             (Taint::Random, _) | (_, Taint::Random) => Taint::Random, \
+             (Taint::TimeDependent, _) | (_, Taint::TimeDependent) => Taint::TimeDependent, \
+             (Taint::Clean, Taint::Clean) => Taint::Clean \
+         }} }}"
+    )
+    .map_err(fmt_err)?;
     writeln!(out, "fn join_taints(values: &[Taint]) -> Taint {{ values.iter().copied().fold(Taint::Clean, join_taint) }}").map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
     writeln!(out, "#[derive(Debug, Clone, Copy, PartialEq, Eq)]").map_err(fmt_err)?;

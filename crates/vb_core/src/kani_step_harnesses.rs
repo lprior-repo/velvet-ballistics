@@ -383,9 +383,13 @@ fn taint_validity_harness() {
         kani::assert(taint_read.is_ok(), "taint read does not panic");
 
         if let Ok(t) = taint_read {
-            // Taint is a closed enum — only 3 variants exist
+            // Taint is a 5-variant enum — all variants valid after successful write
             match t {
-                Taint::Clean | Taint::DerivedFromSecret | Taint::Secret => {
+                Taint::Clean
+                | Taint::DerivedFromSecret
+                | Taint::Secret
+                | Taint::Random
+                | Taint::TimeDependent => {
                     // All valid — closed enum guarantee
                 }
             }

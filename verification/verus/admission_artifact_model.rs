@@ -8,6 +8,11 @@
 // This is a pure finite model. Postcard decoding, Fjall I/O, digest construction,
 // and production struct extraction are trusted shell boundaries that require the
 // integration/Kani/fuzz evidence recorded in the bead plan.
+//
+// BINDING: admission_artifact_model
+// Rust type: vb_storage::admission::AcceptedArtifact
+// Verified: Matched spec gate_count and proof_flags to Rust AcceptedArtifact struct fields
+// Divergences: Spec models abstract booleans; Rust uses actual proof flag types
 
 use vstd::prelude::*;
 

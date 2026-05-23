@@ -66,6 +66,12 @@ pub enum RecoveryError {
         /// Divergence description.
         detail: String,
     },
+    /// Recovery could not read existing slot taint and must fail closed.
+    #[error("slot taint read_taint failed for slot {slot:?}")]
+    SlotTaintReadFailed {
+        /// Slot whose taint could not be read.
+        slot: SlotIdx,
+    },
     /// No snapshot or journal events found for run.
     #[error("no recovery data found for run {run:?}")]
     NoRecoveryData {

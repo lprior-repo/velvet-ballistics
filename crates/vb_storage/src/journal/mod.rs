@@ -15,4 +15,4 @@ pub(crate) mod source;
 #[cfg(test)]
 mod tests;
 
-pub use self::core::FjallJournal;
+pub use self::core::{EventReplayLimit, FjallJournal};

@@ -73,16 +73,18 @@ fn workspace_path(relative: &str) -> std::path::PathBuf {
 fn accepted_artifact_with_gate_count(digest: WorkflowDigest, gate_count: u8) -> AcceptedArtifact {
     AcceptedArtifact {
         digest,
+        source_digest: digest,
+        policy_digest: digest,
         ir: Vec::new(),
         verification: VerificationProof {
             digest,
             gate_count,
             durable: true,
-            bounded: true,
-            taint_safe: true,
-            retry_safe: true,
-            idempotency_verified: true,
-            replayable: true,
+            bounded_claimed: true,
+            taint_safe_claimed: true,
+            retry_safe_claimed: true,
+            idempotency_verified_claimed: true,
+            replayable_claimed: true,
             idempotency_keyed: Box::new([]),
             idempotency_attested: Box::new([]),
             warnings: Vec::new(),
@@ -187,10 +189,10 @@ fn storage_produced_strict_accepted_artifact_has_runtime_required_gate_count_whe
     assert_eq!(artifact.digest, workflow.digest());
     assert_eq!(artifact.verification.digest, workflow.digest());
     assert_eq!(artifact.verification.durable, true);
-    assert_eq!(artifact.verification.bounded, true);
-    assert_eq!(artifact.verification.taint_safe, true);
-    assert_eq!(artifact.verification.retry_safe, true);
-    assert_eq!(artifact.verification.replayable, true);
+    assert_eq!(artifact.verification.bounded_claimed, true);
+    assert_eq!(artifact.verification.taint_safe_claimed, true);
+    assert_eq!(artifact.verification.retry_safe_claimed, true);
+    assert_eq!(artifact.verification.replayable_claimed, true);
     assert_eq!(artifact.verification.gate_count, REQUIRED_GATE_COUNT);
     Ok(())
 }

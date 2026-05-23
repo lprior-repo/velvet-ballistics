@@ -60,6 +60,10 @@ impl JournalError {
     pub const PROCESS_LOCK_HELD_CODE: DiagnosticCode = DiagnosticCode::new(0x401A);
     /// Diagnostic code for process lock I/O error.
     pub const PROCESS_LOCK_IO_CODE: DiagnosticCode = DiagnosticCode::new(0x401B);
+    /// Diagnostic code for replay event limit exceeded.
+    pub const TOO_MANY_EVENTS_CODE: DiagnosticCode = DiagnosticCode::new(0x401E);
+    /// Diagnostic code for replay allocation failure.
+    pub const REPLAY_ALLOCATION_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x401F);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -104,6 +108,8 @@ impl JournalError {
             | Self::AdmissionJournalFailed
             | Self::StrictDurabilityFailed
             | Self::ClockUnavailable => Self::ARTIFACT_MALFORMED_CODE,
+            Self::TooManyEvents { .. } => Self::TOO_MANY_EVENTS_CODE,
+            Self::ReplayAllocationFailed { .. } => Self::REPLAY_ALLOCATION_FAILED_CODE,
             Self::ProcessLockHeld { .. } => Self::PROCESS_LOCK_HELD_CODE,
             Self::ProcessLockIo { .. } => Self::PROCESS_LOCK_IO_CODE,
             Self::Trim(_) => Self::FJALL_CODE, // Map trim errors to a generic code

@@ -328,8 +328,14 @@ fn kani_gate_08_mixed_accessor_paths() {
     kani::assume(sym0.get() < symbols_count);
     kani::assume(sym1.get() < symbols_count);
     // Ensure index sentinels are not MAX (MAX is used as invalid sentinel in Gate 8).
-    kani::assume(idx0 != u32::MAX && idx1 != u32::MAX && idx2 != u32::MAX
-        && idx3 != u32::MAX && idx4 != u32::MAX && idx100 != u32::MAX);
+    kani::assume(
+        idx0 != u32::MAX
+            && idx1 != u32::MAX
+            && idx2 != u32::MAX
+            && idx3 != u32::MAX
+            && idx4 != u32::MAX
+            && idx100 != u32::MAX,
+    );
 
     let parts = WorkflowParts {
         name: Box::from("mixed_paths"),
@@ -495,8 +501,14 @@ fn kani_gate_08_many_accessors_varied_depths() {
     kani::assume(sym0.get() < symbols_count);
     kani::assume(sym1.get() < symbols_count);
     // Ensure index sentinels are not MAX (MAX is used as invalid sentinel in Gate 8).
-    kani::assume(idx0 != u32::MAX && idx1 != u32::MAX && idx2 != u32::MAX
-        && idx3 != u32::MAX && idx4 != u32::MAX && idx100 != u32::MAX);
+    kani::assume(
+        idx0 != u32::MAX
+            && idx1 != u32::MAX
+            && idx2 != u32::MAX
+            && idx3 != u32::MAX
+            && idx4 != u32::MAX
+            && idx100 != u32::MAX,
+    );
 
     let parts = WorkflowParts {
         name: Box::from("many_accessors"),

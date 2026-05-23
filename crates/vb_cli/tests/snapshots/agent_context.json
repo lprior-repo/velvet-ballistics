@@ -1,0 +1,505 @@
+{
+  "active_gates": {
+    "admission": {
+      "gate": "vb_storage::admission",
+      "required": true
+    },
+    "compilation": {
+      "gate": "vb_compile",
+      "required": true
+    },
+    "durability": {
+      "gate": "vb_storage::FjallJournal",
+      "required": false
+    },
+    "validation": {
+      "gate": "vb_validate",
+      "required": true
+    },
+    "verification": {
+      "gate": "vb_verify",
+      "required": true
+    }
+  },
+  "agent_contract": {
+    "ansi_when_non_tty": false,
+    "bounded_output_required": true,
+    "destructive_operations_require_explicit_flag": true,
+    "mutation_responses_return_identifiers": true,
+    "non_interactive_by_default": true,
+    "prompt_bypass_flag": "--force",
+    "stderr": "diagnostics only",
+    "stdout": "data only",
+    "streaming_output_flag": "--jsonl",
+    "structured_output_flag": "--json"
+  },
+  "binary_aliases": [
+    "velvet-ballastics",
+    "vb"
+  ],
+  "cli": "velvet-ballastics",
+  "commands": {
+    "agent-context": {
+      "outputs": [
+        "json"
+      ],
+      "summary": "Emit this versioned machine-readable CLI schema."
+    },
+    "answer": {
+      "flags": {
+        "--db": {
+          "required": true,
+          "type": "path"
+        },
+        "--json": "bool",
+        "--jsonl": "bool",
+        "--step": {
+          "required": true,
+          "type": "u16"
+        },
+        "--value-file": {
+          "required": true,
+          "type": "path"
+        }
+      },
+      "positionals": [
+        "run_id"
+      ],
+      "summary": "Answer a suspended ask step."
+    },
+    "bench-run": {
+      "flags": {
+        "--json": "bool",
+        "--jsonl": "bool"
+      },
+      "positionals": [
+        "workflow.yaml"
+      ],
+      "summary": "Benchmark a workflow fixture."
+    },
+    "compile": {
+      "flags": {
+        "--emit": {
+          "required": true,
+          "type": "enum",
+          "values": [
+            "ir",
+            "rust",
+            "yaml",
+            "postcard"
+          ]
+        },
+        "--json": "bool",
+        "--jsonl": "bool",
+        "--out": {
+          "required": true,
+          "type": "path"
+        }
+      },
+      "positionals": [
+        "workflow.yaml"
+      ],
+      "summary": "Compile a workflow to an artifact."
+    },
+    "diff": {
+      "flags": {
+        "--db": {
+          "required": true,
+          "type": "path"
+        },
+        "--json": "bool",
+        "--jsonl": "bool"
+      },
+      "positionals": [
+        "run_a",
+        "run_b"
+      ],
+      "summary": "Compare two durable runs."
+    },
+    "doctor": {
+      "flags": {
+        "--db": {
+          "required": true,
+          "type": "path"
+        },
+        "--json": "bool",
+        "--jsonl": "bool"
+      },
+      "summary": "Run diagnostic checks."
+    },
+    "events": {
+      "flags": {
+        "--db": {
+          "required": true,
+          "type": "path"
+        },
+        "--json": "bool",
+        "--jsonl": "bool"
+      },
+      "positionals": [
+        "run_id"
+      ],
+      "summary": "List durable events for a run."
+    },
+    "explain": {
+      "flags": {
+        "--json": "bool",
+        "--jsonl": "bool"
+      },
+      "positionals": [
+        "workflow.yaml"
+      ],
+      "summary": "Explain validation errors in detail."
+    },
+    "graph": {
+      "flags": {
+        "--json": "bool",
+        "--jsonl": "bool"
+      },
+      "positionals": [
+        "workflow.yaml"
+      ],
+      "summary": "Output the control-flow graph."
+    },
+    "incident": {
+      "flags": {
+        "--db": {
+          "required": true,
+          "type": "path"
+        },
+        "--json": "bool",
+        "--jsonl": "bool"
+      },
+      "positionals": [
+        "run_id"
+      ],
+      "summary": "Produce a black-box failure report."
+    },
+    "inspect": {
+      "flags": {
+        "--db": {
+          "required": true,
+          "type": "path"
+        },
+        "--json": "bool",
+        "--jsonl": "bool"
+      },
+      "positionals": [
+        "run_id"
+      ],
+      "summary": "Inspect a durable run."
+    },
+    "ipc-serve": {
+      "flags": {
+        "--db": {
+          "required": true,
+          "type": "path"
+        },
+        "--socket": {
+          "required": true,
+          "type": "path"
+        }
+      },
+      "summary": "Start the bounded local binary IPC server."
+    },
+    "replay": {
+      "flags": {
+        "--db": {
+          "required": true,
+          "type": "path"
+        },
+        "--json": "bool",
+        "--jsonl": "bool"
+      },
+      "positionals": [
+        "run_id"
+      ],
+      "summary": "Replay a run from the journal."
+    },
+    "resume": {
+      "flags": {
+        "--db": {
+          "required": true,
+          "type": "path"
+        },
+        "--json": "bool",
+        "--jsonl": "bool"
+      },
+      "positionals": [
+        "run_id"
+      ],
+      "summary": "Resume a suspended run."
+    },
+    "retry": {
+      "flags": {
+        "--db": {
+          "required": true,
+          "type": "path"
+        },
+        "--json": "bool",
+        "--jsonl": "bool"
+      },
+      "positionals": [
+        "run_id"
+      ],
+      "summary": "Retry a failed run from its last successful step."
+    },
+    "run": {
+      "flags": {
+        "--db": "path",
+        "--durability": {
+          "required": true,
+          "type": "enum",
+          "values": [
+            "strict",
+            "journaled",
+            "none"
+          ]
+        },
+        "--input-bin": {
+          "required": true,
+          "type": "path"
+        },
+        "--json": "bool",
+        "--jsonl": "bool",
+        "--step": "u16",
+        "--step-input": "path"
+      },
+      "positionals": [
+        "workflow.yaml"
+      ],
+      "summary": "Compile and execute a workflow."
+    },
+    "run-compiled": {
+      "flags": {
+        "--db": "path",
+        "--durability": {
+          "required": true,
+          "type": "enum",
+          "values": [
+            "strict",
+            "journaled",
+            "none"
+          ]
+        },
+        "--input-bin": {
+          "required": true,
+          "type": "path"
+        },
+        "--json": "bool",
+        "--jsonl": "bool"
+      },
+      "positionals": [
+        "workflow.vbir"
+      ],
+      "summary": "Execute a compiled workflow artifact."
+    },
+    "simulate": {
+      "flags": {
+        "--json": "bool",
+        "--jsonl": "bool"
+      },
+      "positionals": [
+        "workflow.yaml"
+      ],
+      "summary": "Dry-run a workflow without executing actions."
+    },
+    "submit": {
+      "flags": {
+        "--db": {
+          "required": true,
+          "type": "path"
+        },
+        "--durability": {
+          "required": true,
+          "type": "enum",
+          "values": [
+            "strict",
+            "journaled",
+            "none"
+          ]
+        },
+        "--input-bin": {
+          "required": true,
+          "type": "path"
+        },
+        "--json": "bool",
+        "--jsonl": "bool"
+      },
+      "positionals": [
+        "workflow.yaml"
+      ],
+      "summary": "Submit a workflow run to durable storage."
+    },
+    "trace": {
+      "flags": {
+        "--db": {
+          "required": true,
+          "type": "path"
+        },
+        "--json": "bool",
+        "--jsonl": "bool"
+      },
+      "positionals": [
+        "run_id"
+      ],
+      "summary": "Show step-by-step execution trace."
+    },
+    "validate": {
+      "flags": {
+        "--json": "bool",
+        "--jsonl": "bool"
+      },
+      "positionals": [
+        "workflow.yaml"
+      ],
+      "summary": "Validate a workflow definition."
+    },
+    "verify": {
+      "flags": {
+        "--json": "bool",
+        "--jsonl": "bool",
+        "--profile": {
+          "default": "standard",
+          "type": "enum",
+          "values": [
+            "quick",
+            "standard",
+            "full"
+          ]
+        }
+      },
+      "positionals": [
+        "workflow.yaml"
+      ],
+      "summary": "Verify a workflow with a bounded profile."
+    }
+  },
+  "enums": {
+    "durability": [
+      "strict",
+      "journaled",
+      "none"
+    ],
+    "emit": [
+      "ir",
+      "rust",
+      "yaml",
+      "postcard"
+    ],
+    "verify_profile": [
+      "quick",
+      "standard",
+      "full"
+    ]
+  },
+  "exit_codes": {
+    "0": "success",
+    "1": "validation failed",
+    "2": "verification failed",
+    "3": "compile failed",
+    "4": "runtime failed",
+    "5": "storage error",
+    "6": "ipc error",
+    "7": "action policy error",
+    "8": "replay divergence"
+  },
+  "kind": "AgentContext",
+  "known_blockers": {
+    "capability": [
+      {
+        "category": "unregistered_action"
+      },
+      {
+        "category": "missing_capability"
+      },
+      {
+        "category": "capability_mismatch"
+      }
+    ],
+    "policy": [
+      {
+        "category": "validation_failed",
+        "exit_code": 1
+      },
+      {
+        "category": "verification_failed",
+        "exit_code": 2
+      },
+      {
+        "category": "compile_failed",
+        "exit_code": 3
+      },
+      {
+        "category": "runtime_failed",
+        "exit_code": 4
+      },
+      {
+        "category": "storage_error",
+        "exit_code": 5
+      },
+      {
+        "category": "ipc_error",
+        "exit_code": 6
+      },
+      {
+        "category": "action_policy_error",
+        "exit_code": 7
+      },
+      {
+        "category": "replay_divergence",
+        "exit_code": 8
+      }
+    ],
+    "resource": [
+      {
+        "category": "slot_count_exceeded"
+      },
+      {
+        "category": "input_index_out_of_range"
+      },
+      {
+        "category": "journal_capacity"
+      }
+    ]
+  },
+  "language_version": "velvet-ballastics/v1",
+  "planned_agent_primitives": {
+    "async_wait_flag": "--wait",
+    "delivery_flag": "--deliver",
+    "feedback_command": "feedback",
+    "jobs_commands": [
+      "jobs list",
+      "jobs get",
+      "jobs prune"
+    ],
+    "profile_commands": [
+      "profile save",
+      "profile list",
+      "profile show",
+      "profile delete"
+    ]
+  },
+  "schema_version": "velvet-ballastics/cli-output/v1",
+  "version": "0.1.0",
+  "vocabulary_policy": {
+    "banned_flags": [
+      "--format=json",
+      "--output=json",
+      "--skip-confirmations"
+    ],
+    "banned_verbs": [
+      "info",
+      "ls"
+    ],
+    "canonical_destructive_bypass_flag": "--force",
+    "canonical_output_flag": "--json",
+    "canonical_resource_verbs": [
+      "get",
+      "list",
+      "create",
+      "update",
+      "delete"
+    ]
+  }
+}

@@ -3,10 +3,12 @@ use crate::ids::{RunId, SlotIdx, StepIdx};
 use crate::value::{SlotValue, Taint, join_taint};
 
 fn taint_from_u8(v: u8) -> Taint {
-    match v % 3 {
+    match v % 5 {
         0 => Taint::Clean,
         1 => Taint::DerivedFromSecret,
-        _ => Taint::Secret,
+        2 => Taint::Secret,
+        3 => Taint::Random,
+        _ => Taint::TimeDependent,
     }
 }
 
@@ -15,6 +17,8 @@ fn taint_discriminant(t: Taint) -> u8 {
         Taint::Clean => 0,
         Taint::DerivedFromSecret => 1,
         Taint::Secret => 2,
+        Taint::Random => 3,
+        Taint::TimeDependent => 4,
     }
 }
 
