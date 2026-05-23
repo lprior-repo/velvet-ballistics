@@ -135,7 +135,7 @@ fn write_extra_member_manifests(root: &Path) -> Result<(), std::io::Error> {
             manifest.push_str("\n[features]\ndefault = []\nverus = []\n");
         }
         if member == "crates/vb_ui_snapshot" {
-            manifest.push_str("\n[features]\ndefault = [\"std\"]\nstd = []\ntokio = []\n");
+            manifest.push_str("\n[features]\ndefault = [\"std\"]\nstd = []\n");
         }
         write_file(&root.join(member).join("Cargo.toml"), &manifest)?;
     }
