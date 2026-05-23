@@ -2143,6 +2143,7 @@ impl ReadbackDeletionIntent {
     }
 }
 
+#[allow(dead_code)]
 enum ReadbackFamilySet {
     Full,
     Partial,
