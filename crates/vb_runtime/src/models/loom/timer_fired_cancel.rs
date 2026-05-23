@@ -178,7 +178,10 @@ fn assert_lattice(state: &ModelState, outcome: FireOutcome) {
 /// timer, or cancel wins and delivery is explicitly stale-after-cancel.
 #[test]
 fn timer_fired_cancel_ordering() {
-    loom::model(|| {
+    loom::model::Builder::new()
+        .max_preemptions(3)
+        .max_branches(1000)
+        .check(|| {
         let state = Arc::new(Mutex::new(initial_state()));
         let event = captured_fire();
 
@@ -217,7 +220,10 @@ fn timer_fired_cancel_ordering() {
 /// before replacement, or the replacement wins and stale metadata is rejected.
 #[test]
 fn timer_fired_replace_ordering() {
-    loom::model(|| {
+    loom::model::Builder::new()
+        .max_preemptions(3)
+        .max_branches(1000)
+        .check(|| {
         let state = Arc::new(Mutex::new(initial_state()));
         let event = captured_fire();
 
@@ -261,7 +267,10 @@ fn timer_fired_replace_ordering() {
 /// explicitly rejected with no resurrection.
 #[test]
 fn timer_fired_terminal_ordering() {
-    loom::model(|| {
+    loom::model::Builder::new()
+        .max_preemptions(3)
+        .max_branches(1000)
+        .check(|| {
         let state = Arc::new(Mutex::new(initial_state()));
         let event = captured_fire();
 

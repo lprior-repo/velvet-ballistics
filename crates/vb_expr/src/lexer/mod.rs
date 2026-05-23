@@ -10,7 +10,8 @@ use logos::Logos;
 
 pub use types::{BinaryOp, LiteralToken, SpannedToken, Token, TokenSpan, UnaryOp};
 
-pub mod miri_tests;
+#[cfg(any(test, miri))]
+pub(crate) mod miri_tests;
 pub mod tests;
 pub mod types;
 
