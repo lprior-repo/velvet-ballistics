@@ -51,6 +51,8 @@ summary_file="$EVIDENCE_DIR/summary.txt"
     printf 'VERUSFMT=available\n'
   else
     printf 'VERUSFMT=VERUSFMT_MISSING\n'
+    printf 'ERROR: verusfmt is required by VERUSFMT_MISSING gate but is unavailable on PATH.\n' >&2
+    exit 1
   fi
 } >"$summary_file"
 

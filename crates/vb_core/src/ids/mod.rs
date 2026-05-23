@@ -229,6 +229,18 @@ impl From<u16> for BranchCount {
 impl RunId {
     /// Zero run identifier.
     pub const ZERO: Self = Self(0);
+
+    /// Returns the shard index for this run.
+    ///
+    /// Uses `checked_rem` to handle the degenerate case where
+    /// `shard_count` is 0, returning 0 in that case.
+    #[must_use]
+    pub const fn shard_index(self, shard_count: u64) -> u64 {
+        match self.0.checked_rem(shard_count) {
+            Some(index) => index,
+            None => 0,
+        }
+    }
 }
 
 impl SeqNo {
