@@ -782,7 +782,14 @@ fn parse_action_inspect_emit(
                     ..state
                 },
             ),
-            Some("text") | Some("postcard") => parse_action_inspect_args(rest, state),
+            Some("postcard") => parse_action_inspect_args(
+                rest,
+                ActionInspectParseState {
+                    output: OutputFormat::Postcard,
+                    ..state
+                },
+            ),
+            Some("text") => parse_action_inspect_args(rest, state),
             Some(value) => Err(ParseError::InvalidActionInspectArgument(format!(
                 "unknown emit mode {value}"
             ))),
@@ -837,7 +844,14 @@ fn parse_action_list_emit(
                     ..state
                 },
             ),
-            Some("text") | Some("postcard") => parse_action_list_args(rest, state),
+            Some("postcard") => parse_action_list_args(
+                rest,
+                ActionListParseState {
+                    output: OutputFormat::Postcard,
+                    ..state
+                },
+            ),
+            Some("text") => parse_action_list_args(rest, state),
             Some(value) => Err(ParseError::InvalidActionListArgument(format!(
                 "unknown emit mode {value}"
             ))),

@@ -223,6 +223,141 @@ fn cli_public_exit_code_matrix_is_exactly_zero_through_eight_in_agent_context() 
 }
 
 #[test]
+fn agent_context_matches_canonical_operator_surface() {
+    let output = run_cli(&[OsStr::new("agent-context")]);
+    let context = assert_success_channel_contract(&output, "agent-context");
+
+    assert_eq!(
+        context.get("cli"),
+        Some(&Value::String("velvet-ballastics".to_string()))
+    );
+    assert_eq!(
+        context.get("package"),
+        Some(&Value::String("velvet-ballastics".to_string()))
+    );
+    assert_eq!(
+        context.get("binary_aliases"),
+        Some(&Value::Array(vec![Value::String(
+            "velvet-ballastics".to_string()
+        )]))
+    );
+    assert_eq!(
+        context
+            .get("agent_contract")
+            .and_then(|contract| contract.get("structured_output_flag")),
+        Some(&Value::String("--emit".to_string()))
+    );
+    assert_eq!(
+        context
+            .get("vocabulary_policy")
+            .and_then(|policy| policy.get("canonical_output_flag")),
+        Some(&Value::String("--emit".to_string()))
+    );
+
+    let commands = context
+        .get("commands")
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_default();
+    for command in [
+        "agent-context",
+        "ai-context",
+        "status",
+        "system status",
+        "action list",
+        "action inspect",
+        "cancel",
+        "validate",
+        "verify",
+        "events",
+        "trace",
+        "replay",
+        "diff",
+        "explain",
+    ] {
+        assert!(
+            commands.contains_key(command),
+            "agent-context omitted {command}"
+        );
+    }
+
+    let validate_flags = commands
+        .get("validate")
+        .and_then(|command| command.get("flags"))
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_default();
+    assert!(validate_flags.contains_key("--emit"));
+    assert!(!validate_flags.contains_key("--json"));
+    assert!(!validate_flags.contains_key("--jsonl"));
+
+    let compile_emit_values = commands
+        .get("compile")
+        .and_then(|command| command.get("flags"))
+        .and_then(|flags| flags.get("--emit"))
+        .and_then(|emit| emit.get("values"))
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    assert_eq!(
+        compile_emit_values,
+        vec![
+            Value::String("ir".to_string()),
+            Value::String("yaml".to_string()),
+            Value::String("postcard".to_string())
+        ]
+    );
+
+    let advertised_commands = Value::Object(commands).to_string();
+    assert!(!advertised_commands.contains("--format=json"));
+    assert!(!advertised_commands.contains("--output=json"));
+}
+
+#[test]
+fn agent_context_examples_are_executable() {
+    let output = run_cli(&[OsStr::new("agent-context")]);
+    let context = assert_success_channel_contract(&output, "agent-context");
+    let examples = context
+        .get("examples")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    assert!(
+        !examples.is_empty(),
+        "agent-context must advertise runnable examples"
+    );
+
+    for example in examples {
+        let args = example
+            .get("args")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        let expected_exit = example
+            .get("expect_exit")
+            .and_then(Value::as_i64)
+            .unwrap_or(0);
+        let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_velvet-ballastics"));
+        for arg in &args {
+            let Some(raw) = arg.as_str() else {
+                continue;
+            };
+            command.arg(raw);
+        }
+        let actual = command.output();
+        assert!(actual.is_ok(), "example must execute: {args:?}");
+        let actual = actual.unwrap_or_else(|_| std::process::abort());
+        assert_eq!(
+            actual.status.code(),
+            Some(i32::try_from(expected_exit).unwrap_or(0)),
+            "example {args:?} exited unexpectedly; stdout={} stderr={}",
+            stdout_text(&actual),
+            stderr_text(&actual)
+        );
+    }
+}
+
+#[test]
 fn structured_success_matrix_writes_only_payloads_to_stdout() {
     let json = run_cli(&[OsStr::new("status"), OsStr::new("--json")]);
     let json_payload = assert_success_channel_contract(&json, "status --json");

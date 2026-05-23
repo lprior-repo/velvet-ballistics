@@ -2754,6 +2754,11 @@ fn assert_postcard_stdout(
     assert_eq!(header.schema_version, cli_postcard::CLI_SCHEMA_VERSION);
     assert_eq!(header.kind, cli_postcard::CLI_POSTCARD_KIND);
     assert_eq!(header.header_len, 52);
+    assert_eq!(
+        packet.get("schema_version"),
+        Some(&serde_json::json!("velvet-ballastics/cli-output/v1")),
+        "{command} payload schema_version mismatch: {packet}"
+    );
     if let Some(expected_kind) = expected_payload_kind {
         assert_eq!(
             packet.get("kind"),
