@@ -64,3 +64,5 @@ mutants.out.*/
 # TLA+/TLC generated model-checker state dumps
 specs/tla/states/
 vb_oewy_bdd_runner_invariant
+crates/workspace_tests/journal-db/
+crates/workspace_tests/nonexistent-db/
