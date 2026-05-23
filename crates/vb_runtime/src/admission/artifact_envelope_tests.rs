@@ -21,11 +21,11 @@ mod artifact_envelope_bdd_tests {
             digest,
             gate_count: REQUIRED_GATE_COUNT,
             durable: true,
-            bounded: true,
-            taint_safe: true,
-            retry_safe: true,
-            idempotency_verified: true,
-            replayable: true,
+            bounded_claimed: true,
+            taint_safe_claimed: true,
+            retry_safe_claimed: true,
+            idempotency_verified_claimed: true,
+            replayable_claimed: true,
             idempotency_keyed: Box::new([]),
             idempotency_attested: Box::new([]),
             warnings: Vec::new(),
@@ -121,12 +121,12 @@ mod artifact_envelope_bdd_tests {
         ) -> Result<AcceptedArtifact, ArtifactEnvelopeError> {
             let mut proof = valid_proof(digest);
             match self.flag {
-                ProofFlagVariant::Bounded => proof.bounded = false,
-                ProofFlagVariant::TaintSafe => proof.taint_safe = false,
-                ProofFlagVariant::RetrySafe => proof.retry_safe = false,
+                ProofFlagVariant::Bounded => proof.bounded_claimed = false,
+                ProofFlagVariant::TaintSafe => proof.taint_safe_claimed = false,
+                ProofFlagVariant::RetrySafe => proof.retry_safe_claimed = false,
                 ProofFlagVariant::Durable => proof.durable = false,
-                ProofFlagVariant::Replayable => proof.replayable = false,
-                ProofFlagVariant::IdempotencyVerified => proof.idempotency_verified = false,
+                ProofFlagVariant::Replayable => proof.replayable_claimed = false,
+                ProofFlagVariant::IdempotencyVerified => proof.idempotency_verified_claimed = false,
             }
             let artifact = AcceptedArtifact {
                 digest,

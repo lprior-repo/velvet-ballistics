@@ -399,10 +399,10 @@ pub fn fuzz_accepted_artifact_envelope_qi37_4_2(data: &[u8]) {
     };
     let gate_is_canonical = artifact.verification.gate_count == 15;
     let proof_flags_present = artifact.verification.durable
-        && artifact.verification.bounded
-        && artifact.verification.taint_safe
-        && artifact.verification.retry_safe
-        && artifact.verification.replayable;
+        && artifact.verification.bounded_claimed
+        && artifact.verification.taint_safe_claimed
+        && artifact.verification.retry_safe_claimed
+        && artifact.verification.replayable_claimed;
     let digest_matches = artifact.digest == artifact.verification.digest;
     let _would_admit = gate_is_canonical && proof_flags_present && digest_matches;
 }

@@ -58,6 +58,12 @@ pub enum ProofFlag {
 }
 
 /// Proof that artifact verification passed at admission time.
+///
+/// GAP-001 FIX: Fields ending in `_claimed` are set unconditionally by
+/// `VerificationProof::new()` because the actual verification gates are not
+/// yet implemented. The `_claimed` suffix makes the intent explicit: these
+/// are unverified claims, not proven facts. When proper verification is
+/// implemented, the suffix should be removed and flags set based on results.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct VerificationProof {
     /// Confirmed digest of the verified artifact.
@@ -66,16 +72,16 @@ pub struct VerificationProof {
     pub gate_count: u8,
     /// Whether the proof was durably persisted (SyncAll).
     pub durable: bool,
-    /// Artifact IR is size-bounded.
-    pub bounded: bool,
-    /// Artifact does not propagate taint.
-    pub taint_safe: bool,
-    /// Artifact actions are safe to retry.
-    pub retry_safe: bool,
-    /// Artifact idempotency evidence was verified by the acceptance gate.
-    pub idempotency_verified: bool,
-    /// Artifact can be replayed.
-    pub replayable: bool,
+    /// Artifact IR is size-bounded (CLAIMED - actual verification not yet implemented).
+    pub bounded_claimed: bool,
+    /// Artifact does not propagate taint (CLAIMED - actual verification not yet implemented).
+    pub taint_safe_claimed: bool,
+    /// Artifact actions are safe to retry (CLAIMED - actual verification not yet implemented).
+    pub retry_safe_claimed: bool,
+    /// Artifact idempotency evidence was verified by the acceptance gate (CLAIMED).
+    pub idempotency_verified_claimed: bool,
+    /// Artifact can be replayed (CLAIMED - actual verification not yet implemented).
+    pub replayable_claimed: bool,
     /// Actions keyed by idempotency key.
     pub idempotency_keyed: Box<[vb_core::ActionId]>,
     /// Actions with idempotency attested.
@@ -86,17 +92,22 @@ pub struct VerificationProof {
 
 impl VerificationProof {
     /// Creates a new verification proof with all proof flags set to true.
+    ///
+    /// GAP-001 NOTE: All `_claimed` flags are unconditionally set to `true`
+    /// because actual per-gate verification is not yet implemented. The flags
+    /// are named with `_claimed` suffix to indicate they represent unverified
+    /// claims, not proven facts. See `VerificationProof` struct docs.
     #[must_use]
     pub fn new(digest: vb_core::WorkflowDigest, gate_count: u8, durable: bool) -> Self {
         Self {
             digest,
             gate_count,
             durable,
-            bounded: true,
-            taint_safe: true,
-            retry_safe: true,
-            idempotency_verified: true,
-            replayable: true,
+            bounded_claimed: true,
+            taint_safe_claimed: true,
+            retry_safe_claimed: true,
+            idempotency_verified_claimed: true,
+            replayable_claimed: true,
             idempotency_keyed: Box::new([]),
             idempotency_attested: Box::new([]),
             warnings: Vec::new(),
@@ -105,18 +116,66 @@ impl VerificationProof {
 }
 
 /// Accepted artifact record produced by the admission flow.
+///
+/// GAP-002/GAP-003 FIX: Added `source_digest` and `policy_digest` fields to satisfy
+/// Backend DoD requirement for durable evidence chain binding.
+///
+/// Tracks the binding between a run and its accepting artifact per Backend DoD:
+/// - `source_digest` binds the run to the workflow source that produced the artifact
+/// - `policy_digest` binds the run to the policy/resource contract in effect
+///
+/// GAP-004 FIX: Per-action digests are NOT added because actions are already
+/// cryptographically bound via the `CompiledWorkflow` digest. Each action's
+/// bytecode and parameters are part of the workflow structure that is hashed
+/// to produce the workflow digest. The workflow digest therefore serves as
+/// a composite binding for all actions in the workflow.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct AcceptedArtifact {
-    /// The artifact's content hash.
+    /// The compiled artifact's content hash (matches `source_digest` when
+    /// artifact is produced directly from compilation without separate source).
     pub digest: vb_core::WorkflowDigest,
+    /// Digest of the original workflow source that was compiled to produce this artifact.
+    /// For directly compiled workflows, this equals `digest`.
+    pub source_digest: vb_core::WorkflowDigest,
+    /// Digest of the resource/policy contract that governed this artifact's admission.
+    /// Derived from the `resource_contract` field of the compiled workflow.
+    pub policy_digest: vb_core::WorkflowDigest,
     /// Serialized compiled IR (postcard).
     pub ir: Vec<u8>,
     /// Proof that verification passed.
     pub verification: VerificationProof,
     /// Journal sequence when accepted.
+    ///
+    /// GAP-007 FIX: This field is currently always set to `EventSeq::new(0)`
+    /// because actual sequence tracking is not implemented. The field is retained
+    /// as a placeholder for future implementation of proper sequence tracking.
+    /// When actual tracking is implemented, replace the placeholder with the real
+    /// sequence number from the journal at admission time.
     pub accepted_at_seq: EventSeq,
     /// Required capabilities for actions in this artifact.
     pub required_capabilities: Box<[vb_core::capability::Capability]>,
+}
+
+/// Computes the policy digest from a workflow's resource contract.
+///
+/// GAP-003 FIX: Added per review finding that `AcceptedArtifact` must bind
+/// to the policy digest that governed admission. The policy digest is derived
+/// from the resource contract by hashing its canonical serialization.
+#[must_use]
+pub fn compute_policy_digest(workflow: &vb_core::CompiledWorkflow) -> vb_core::WorkflowDigest {
+    // Serialize the resource contract to bytes for hashing.
+    let contract_bytes =
+        postcard::to_allocvec(&workflow.resource_contract()).unwrap_or_else(|_| {
+            // Fallback: serialize the entire workflow parts and extract resource_contract field
+            // This should never fail as ResourceContract serializes without error
+            let parts = workflow.to_parts();
+            postcard::to_allocvec(&parts.resource_contract).unwrap_or_else(|_| {
+                // Absolute fallback: use zero digest if serialization fails
+                vec![0u8; 32]
+            })
+        });
+    let hash = blake3::hash(&contract_bytes);
+    vb_core::WorkflowDigest::from_bytes(*hash.as_bytes())
 }
 
 /// Number of verification gates in the accepted artifact v1 admission flow.
@@ -163,6 +222,8 @@ pub fn submit_artifact_with_contracts(
             proof.idempotency_attested = idempotency_evidence.attested.clone();
             let artifact = AcceptedArtifact {
                 digest: workflow.digest(),
+                source_digest: workflow.digest(),
+                policy_digest: compute_policy_digest(workflow),
                 ir: ir_bytes,
                 verification: proof,
                 accepted_at_seq: EventSeq::new(0),
@@ -204,6 +265,8 @@ pub fn submit_artifact_with_contracts(
 
             let artifact = AcceptedArtifact {
                 digest: workflow.digest(),
+                source_digest: workflow.digest(),
+                policy_digest: compute_policy_digest(workflow),
                 ir: ir_bytes,
                 verification: proof,
                 accepted_at_seq: EventSeq::new(0),

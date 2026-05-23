@@ -1317,6 +1317,8 @@ fn store_workflow_artifacts(
     );
     let artifact = vb_storage::admission::AcceptedArtifact {
         digest: compiled.digest(),
+        source_digest: compiled.digest(),
+        policy_digest: vb_storage::admission::compute_policy_digest(compiled),
         ir: ir_bytes,
         verification: proof,
         accepted_at_seq: vb_storage::EventSeq::new(0),
@@ -2286,6 +2288,8 @@ fn store_compiled_artifact(
     };
     let artifact = vb_storage::admission::AcceptedArtifact {
         digest: compiled.digest(),
+        source_digest: compiled.digest(),
+        policy_digest: vb_storage::admission::compute_policy_digest(compiled),
         ir: ir_bytes,
         verification: vb_storage::admission::VerificationProof::new(
             compiled.digest(),

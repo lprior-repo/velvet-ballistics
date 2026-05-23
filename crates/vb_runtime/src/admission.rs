@@ -314,17 +314,19 @@ impl AcceptedArtifactStore for AlwaysPresentArtifactStore {
             digest: artifact_digest,
             gate_count: REQUIRED_GATE_COUNT,
             durable: true,
-            bounded: true,
-            taint_safe: true,
-            retry_safe: true,
-            idempotency_verified: true,
-            replayable: true,
+            bounded_claimed: true,
+            taint_safe_claimed: true,
+            retry_safe_claimed: true,
+            idempotency_verified_claimed: true,
+            replayable_claimed: true,
             idempotency_keyed: Box::new([]),
             idempotency_attested: Box::new([]),
             warnings: Vec::new(),
         };
         Ok(vb_storage::admission::AcceptedArtifact {
             digest: artifact_digest,
+            source_digest: artifact_digest,
+            policy_digest: artifact_digest,
             ir: Vec::new(),
             verification: proof,
             accepted_at_seq: vb_storage::types::EventSeq::new(0),
@@ -430,22 +432,22 @@ fn validate_accepted_artifact_envelope(
             required: REQUIRED_GATE_COUNT,
         });
     }
-    if !artifact.verification.bounded {
+    if !artifact.verification.bounded_claimed {
         return Err(ArtifactEnvelopeError::MissingRequiredProofFlagBounded);
     }
-    if !artifact.verification.taint_safe {
+    if !artifact.verification.taint_safe_claimed {
         return Err(ArtifactEnvelopeError::MissingRequiredProofFlagTaintSafe);
     }
-    if !artifact.verification.retry_safe {
+    if !artifact.verification.retry_safe_claimed {
         return Err(ArtifactEnvelopeError::MissingRequiredProofFlagRetrySafe);
     }
     if !artifact.verification.durable {
         return Err(ArtifactEnvelopeError::MissingRequiredProofFlagDurable);
     }
-    if !artifact.verification.replayable {
+    if !artifact.verification.replayable_claimed {
         return Err(ArtifactEnvelopeError::MissingRequiredProofFlagReplayable);
     }
-    if !artifact.verification.idempotency_verified {
+    if !artifact.verification.idempotency_verified_claimed {
         return Err(ArtifactEnvelopeError::MissingRequiredProofFlagIdempotencyVerified);
     }
     first_missing_idempotency_attestation(artifact).map_or(Ok(()), |action| {
@@ -981,7 +983,7 @@ mod tests {
     #[test]
     fn admit_artifact_run_rejects_missing_idempotency_gate() {
         let mut artifact = accepted_artifact_with_caps(Box::new([]));
-        artifact.verification.idempotency_verified = false;
+        artifact.verification.idempotency_verified_claimed = false;
         let store = FixedAcceptedStore { artifact };
 
         let result = admit_artifact_run(
@@ -1295,7 +1297,7 @@ mod tests {
             ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError>
             {
                 let mut artifact = accepted_artifact_with_caps(Box::new([]));
-                artifact.verification.bounded = false;
+                artifact.verification.bounded_claimed = false;
                 Ok(artifact)
             }
         }
@@ -1323,7 +1325,7 @@ mod tests {
             ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError>
             {
                 let mut artifact = accepted_artifact_with_caps(Box::new([]));
-                artifact.verification.taint_safe = false;
+                artifact.verification.taint_safe_claimed = false;
                 Ok(artifact)
             }
         }
@@ -1351,7 +1353,7 @@ mod tests {
             ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError>
             {
                 let mut artifact = accepted_artifact_with_caps(Box::new([]));
-                artifact.verification.retry_safe = false;
+                artifact.verification.retry_safe_claimed = false;
                 Ok(artifact)
             }
         }
@@ -1407,7 +1409,7 @@ mod tests {
             ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError>
             {
                 let mut artifact = accepted_artifact_with_caps(Box::new([]));
-                artifact.verification.replayable = false;
+                artifact.verification.replayable_claimed = false;
                 Ok(artifact)
             }
         }
@@ -1435,7 +1437,7 @@ mod tests {
             ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError>
             {
                 let mut artifact = accepted_artifact_with_caps(Box::new([]));
-                artifact.verification.idempotency_verified = false;
+                artifact.verification.idempotency_verified_claimed = false;
                 Ok(artifact)
             }
         }

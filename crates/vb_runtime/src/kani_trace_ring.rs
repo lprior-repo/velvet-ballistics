@@ -12,39 +12,25 @@ use vb_core::action::ActionFailureCode;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
 
 /// Generate an arbitrary TraceEvent for a given run.
+///
+/// Uses kani::any() for StepIdx/SlotIdx to avoid GOD RULE hardcoded-0 violations.
+/// The indices are identifiers only (not array bounds), so any u16 value is valid.
 fn arbitrary_trace_event(run: RunId, variant_selector: u8) -> crate::TraceEvent {
+    let step: StepIdx = kani::any();
+    let slot: SlotIdx = kani::any();
+    let value: Vec<u8> = kani::any();
     match variant_selector % 11 {
-        0 => crate::TraceEvent::StepStarted {
-            run,
-            step: StepIdx::new(0),
-        },
-        1 => crate::TraceEvent::StepEnded {
-            run,
-            step: StepIdx::new(0),
-        },
-        2 => crate::TraceEvent::SlotWritten {
-            run,
-            slot: SlotIdx::new(0),
-            value: vec![],
-        },
-        3 => crate::TraceEvent::ActionScheduled {
-            run,
-            step: StepIdx::new(0),
-        },
-        4 => crate::TraceEvent::ActionCompleted {
-            run,
-            step: StepIdx::new(0),
-        },
+        0 => crate::TraceEvent::StepStarted { run, step },
+        1 => crate::TraceEvent::StepEnded { run, step },
+        2 => crate::TraceEvent::SlotWritten { run, slot, value },
+        3 => crate::TraceEvent::ActionScheduled { run, step },
+        4 => crate::TraceEvent::ActionCompleted { run, step },
         5 => crate::TraceEvent::ActionFailed {
             run,
-            step: StepIdx::new(0),
+            step,
             code: ActionFailureCode::Timeout,
         },
-        6 => crate::TraceEvent::AskAnswered {
-            run,
-            step: StepIdx::new(0),
-            slot: SlotIdx::new(0),
-        },
+        6 => crate::TraceEvent::AskAnswered { run, step, slot },
         7 => crate::TraceEvent::RunSubmitted { run },
         8 => crate::TraceEvent::RunFinished { run },
         9 => crate::TraceEvent::RunFailed { run },
@@ -125,12 +111,20 @@ fn verify_drain_for_run_correctness() {
     let target_run = RunId::new(42);
 
     // Push a mix of events: target run and others interleaved.
-    let events: [crate::TraceEvent; 4] = [
-        arbitrary_trace_event(RunId::new(1), 0),
-        arbitrary_trace_event(target_run, 1),
-        arbitrary_trace_event(RunId::new(2), 2),
-        arbitrary_trace_event(target_run, 3),
-    ];
+    // GOD RULE fix: use kani::any() for event contents; keep run_ids explicit
+    // so we can verify drain_for_run correctness without circular assumptions.
+    // Two arbitrary events (any run), then two target_run events.
+    let event_0: crate::TraceEvent = kani::any();
+    let event_1 = crate::TraceEvent::StepStarted {
+        run: target_run,
+        step: kani::any(),
+    };
+    let event_2: crate::TraceEvent = kani::any();
+    let event_3 = crate::TraceEvent::StepStarted {
+        run: target_run,
+        step: kani::any(),
+    };
+    let events = [event_0, event_1, event_2, event_3];
 
     for event in &events {
         let _ = ring.push(event.clone());

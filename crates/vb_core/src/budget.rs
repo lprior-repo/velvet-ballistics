@@ -1635,42 +1635,31 @@ mod kani_harnesses {
             .ok_or(LocalError::Underflow { resource })
     }
 
-    /// K-B1: add_dim is panic-free for bounded concrete inputs.
+    /// K-B1: add_dim is panic-free for bounded symbolic inputs.
+    /// Uses kani::any() with assume bounds to prevent overflow.
     #[kani::proof]
     fn add_dim_no_panic() {
-        let vals: &[u64] = &[0, 1, 100, u64::MAX / 2, u64::MAX - 1, u64::MAX];
-        let mut call_count = 0u64;
-        for &current in vals {
-            for &requested in vals {
-                let result = add_dim(current, requested, "cpu");
-                match &result {
-                    Ok(_) => call_count += 1,
-                    Err(_) => call_count += 1,
-                }
-                core::mem::forget(result);
-            }
-        }
-        let total = (vals.len() as u64) * (vals.len() as u64);
-        kani::cover!(call_count == total, "full cartesian product");
+        let current: u64 = kani::any();
+        let requested: u64 = kani::any();
+        // Bound inputs to prevent overflow in add_dim
+        kani::assume(current <= u64::MAX / 2);
+        kani::assume(requested <= u64::MAX / 2);
+        let result = add_dim(current, requested, "cpu");
+        // add_dim with bounded inputs cannot overflow - returns Ok
+        assert!(result.is_ok());
     }
 
-    /// K-B2: sub_dim is panic-free for bounded concrete inputs.
+    /// K-B2: sub_dim is panic-free for bounded symbolic inputs.
+    /// Uses kani::any() with assume bounds to prevent underflow.
     #[kani::proof]
     fn sub_dim_no_panic() {
-        let vals: &[u64] = &[0, 1, 100, u64::MAX / 2, u64::MAX - 1, u64::MAX];
-        let mut call_count = 0u64;
-        for &current in vals {
-            for &requested in vals {
-                let result = sub_dim(current, requested, "disk");
-                match &result {
-                    Ok(_) => call_count += 1,
-                    Err(_) => call_count += 1,
-                }
-                core::mem::forget(result);
-            }
-        }
-        let total = (vals.len() as u64) * (vals.len() as u64);
-        kani::cover!(call_count == total, "full cartesian product");
+        let current: u64 = kani::any();
+        let requested: u64 = kani::any();
+        // Bound: requested <= current to prevent underflow in sub_dim
+        kani::assume(requested <= current);
+        let result = sub_dim(current, requested, "disk");
+        // sub_dim with valid inputs (requested <= current) cannot underflow - returns Ok
+        assert!(result.is_ok());
     }
 
     /// K-B3: add_dim(MAX, MAX) returns Err(Overflow).

@@ -149,7 +149,10 @@ pub exec fn validate_transition_exec(current: SpecStepState, next: SpecStepState
 pub proof fn proof_idempotent_remark_allowed(current: SpecStepState)
     ensures validate_transition(current, current),
 {
-    assert(validate_transition(current, current)) by(compute);
+    // By definition of validate_transition: current == current || non_idempotent_transition(current, current)
+    // The left disjunct (current == current) is trivially true.
+    // Therefore validate_transition(current, current) is true.
+    assert(current == current);
 }
 
 pub proof fn proof_terminal_blocks_outward(current: SpecStepState, next: SpecStepState)
@@ -158,7 +161,25 @@ pub proof fn proof_terminal_blocks_outward(current: SpecStepState, next: SpecSte
         current != next,
     ensures !validate_transition(current, next),
 {
-    assert((is_terminal(current) && current != next) ==> !validate_transition(current, next)) by(compute);
+    // For terminal states, non_idempotent_transition always returns false
+    // (see definition at lines 59-91). Since current != next (required),
+    // the only way validate_transition could be true is if non_idempotent_transition(current, next)
+    // is true. But for terminal states, non_idempotent_transition returns false for ALL next.
+    // Therefore validate_transition(current, next) == false.
+    //
+    // More formally: validate_transition(current, next) = (current == next || non_idempotent_transition(current, next))
+    // Since current != next (requires), the left disjunct is false.
+    // Since is_terminal(current), non_idempotent_transition(current, next) = false.
+    // Therefore validate_transition(current, next) = false.
+    //
+    // The key lemma is that terminal states have no outward transitions:
+    match current {
+        SpecStepState::Succeeded => assert(!validate_transition(current, next)),
+        SpecStepState::Failed => assert(!validate_transition(current, next)),
+        SpecStepState::Cancelled => assert(!validate_transition(current, next)),
+        SpecStepState::Skipped => assert(!validate_transition(current, next)),
+        _ => assert(false), // Terminal states are exactly these 4; other states aren't terminal
+    }
 }
 
 pub proof fn proof_suspended_resumes_only_to_running(current: SpecStepState, next: SpecStepState)
