@@ -449,6 +449,9 @@ mod kani_harnesses {
 }
 
 #[cfg(test)]
+mod extended_tests;
+
+#[cfg(test)]
 mod tests {
     use super::{ObjectField, ValueStore};
     use crate::errors::CoreError;

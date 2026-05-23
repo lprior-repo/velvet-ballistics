@@ -29,25 +29,38 @@ pub enum StepState {
 }
 
 /// Pure transition predicate shared by runtime validation and proof harnesses.
+/// Inlines the step-state machine contract from vb_proof_kernels::step_state.
 #[must_use]
 pub fn is_valid_step_state_transition(current: StepState, new: StepState) -> bool {
-    vb_proof_kernels::step_state::is_valid_transition(
-        proof_kernel_step_state(current),
-        proof_kernel_step_state(new),
-    )
-}
-
-fn proof_kernel_step_state(state: StepState) -> vb_proof_kernels::step_state::StepState {
-    match state {
-        StepState::Pending => vb_proof_kernels::step_state::StepState::Pending,
-        StepState::Running => vb_proof_kernels::step_state::StepState::Running,
-        StepState::Succeeded => vb_proof_kernels::step_state::StepState::Succeeded,
-        StepState::Failed => vb_proof_kernels::step_state::StepState::Failed,
-        StepState::Skipped => vb_proof_kernels::step_state::StepState::Skipped,
-        StepState::Waiting => vb_proof_kernels::step_state::StepState::Waiting,
-        StepState::Asking => vb_proof_kernels::step_state::StepState::Asking,
-        StepState::Cancelled => vb_proof_kernels::step_state::StepState::Cancelled,
+    if current == new {
+        return true;
     }
+    const VALID_TRANSITIONS: &[(StepState, StepState)] = &[
+        (StepState::Pending, StepState::Running),
+        (StepState::Pending, StepState::Succeeded),
+        (StepState::Pending, StepState::Failed),
+        (StepState::Pending, StepState::Cancelled),
+        (StepState::Pending, StepState::Skipped),
+        (StepState::Running, StepState::Succeeded),
+        (StepState::Running, StepState::Failed),
+        (StepState::Running, StepState::Waiting),
+        (StepState::Running, StepState::Asking),
+        (StepState::Running, StepState::Cancelled),
+        (StepState::Running, StepState::Skipped),
+        (StepState::Waiting, StepState::Running),
+        (StepState::Asking, StepState::Running),
+        (StepState::Succeeded, StepState::Succeeded),
+        (StepState::Succeeded, StepState::Pending),
+        (StepState::Failed, StepState::Failed),
+        (StepState::Cancelled, StepState::Cancelled),
+        (StepState::Skipped, StepState::Skipped),
+    ];
+    for &(f, t) in VALID_TRANSITIONS {
+        if f == current && t == new {
+            return true;
+        }
+    }
+    false
 }
 
 /// Runtime state for one workflow run.

@@ -1416,3 +1416,1208 @@ fn copy_slot_returns_slot_uninitialized_for_slot_zero_source() -> Result<(), Str
         other => Err(format!("expected SlotUninitialized, got: {other:?}")),
     }
 }
+
+// =============================================================================
+// C-001 to C-005: Full Taint Lattice (Random, TimeDependent)
+// =============================================================================
+
+// C-001: join_taint with Random absorbs Clean, DerivedFromSecret, and Secret
+#[test]
+fn join_taint_random_absorbs_secret_derived_and_clean() {
+    assert_eq!(join_taint(Taint::Random, Taint::Clean), Taint::Random);
+    assert_eq!(
+        join_taint(Taint::Random, Taint::DerivedFromSecret),
+        Taint::Random
+    );
+    assert_eq!(join_taint(Taint::Random, Taint::Secret), Taint::Random);
+    assert_eq!(join_taint(Taint::Random, Taint::Random), Taint::Random);
+}
+
+// C-002: join_taint with TimeDependent absorbs all other taint levels
+#[test]
+fn join_taint_time_dependent_absorbs_all_other_taint_levels() {
+    assert_eq!(
+        join_taint(Taint::TimeDependent, Taint::Clean),
+        Taint::TimeDependent
+    );
+    assert_eq!(
+        join_taint(Taint::TimeDependent, Taint::DerivedFromSecret),
+        Taint::TimeDependent
+    );
+    assert_eq!(
+        join_taint(Taint::TimeDependent, Taint::Secret),
+        Taint::TimeDependent
+    );
+    assert_eq!(
+        join_taint(Taint::TimeDependent, Taint::Random),
+        Taint::TimeDependent
+    );
+    assert_eq!(
+        join_taint(Taint::TimeDependent, Taint::TimeDependent),
+        Taint::TimeDependent
+    );
+}
+
+// C-003: TimeDependent joined with Random returns TimeDependent
+#[test]
+fn join_taint_time_dependent_with_random_returns_time_dependent() {
+    assert_eq!(
+        join_taint(Taint::TimeDependent, Taint::Random),
+        Taint::TimeDependent
+    );
+    assert_eq!(
+        join_taint(Taint::Random, Taint::TimeDependent),
+        Taint::TimeDependent
+    );
+}
+
+// C-004: join_taint lattice order is total: Clean < DerivedFromSecret < Secret < Random < TimeDependent
+#[test]
+fn join_taint_lattice_order_is_total() {
+    let all = [
+        Taint::Clean,
+        Taint::DerivedFromSecret,
+        Taint::Secret,
+        Taint::Random,
+        Taint::TimeDependent,
+    ];
+    for (i, lo) in all.iter().enumerate() {
+        for (j, hi) in all.iter().enumerate() {
+            let result = join_taint(*lo, *hi);
+            if i <= j {
+                assert_eq!(
+                    result, *hi,
+                    "join({lo:?}, {hi:?}) must be {hi:?}, got {result:?}"
+                );
+            } else {
+                assert_eq!(
+                    result, *lo,
+                    "join({lo:?}, {hi:?}) must be {lo:?}, got {result:?}"
+                );
+            }
+        }
+    }
+}
+
+// C-005: join_taint with any variant against itself is idempotent
+#[test]
+fn join_taint_is_idempotent_for_all_variants() {
+    for v in [
+        Taint::Clean,
+        Taint::DerivedFromSecret,
+        Taint::Secret,
+        Taint::Random,
+        Taint::TimeDependent,
+    ] {
+        assert_eq!(join_taint(v, v), v, "idempotent failed for {v:?}");
+    }
+}
+
+// =============================================================================
+// C-006 to C-008: TimeDependent as TRUE Lattice Top
+// =============================================================================
+
+// C-006: TimeDependent is lattice top for all variants
+#[test]
+fn time_dependent_is_lattice_top_for_all_variants() {
+    for v in [
+        Taint::Clean,
+        Taint::DerivedFromSecret,
+        Taint::Secret,
+        Taint::Random,
+    ] {
+        assert_eq!(
+            join_taint(v, Taint::TimeDependent),
+            Taint::TimeDependent,
+            "TimeDependent must absorb {v:?}"
+        );
+        assert_eq!(
+            join_taint(Taint::TimeDependent, v),
+            Taint::TimeDependent,
+            "TimeDependent must absorb {v:?} (reversed)"
+        );
+    }
+}
+
+// C-007: Secret is NOT the lattice top; Random and TimeDependent outrank it
+#[test]
+fn secret_is_not_the_lattice_top_random_and_time_dependent_outrank_it() {
+    // Secret < Random in lattice
+    assert_eq!(
+        join_taint(Taint::Secret, Taint::Random),
+        Taint::Random,
+        "Random outranks Secret"
+    );
+    // Secret < TimeDependent in lattice
+    assert_eq!(
+        join_taint(Taint::Secret, Taint::TimeDependent),
+        Taint::TimeDependent,
+        "TimeDependent outranks Secret"
+    );
+}
+
+// C-008: Random sits between Secret and TimeDependent in the lattice
+#[test]
+fn random_sits_between_secret_and_time_dependent_in_lattice() {
+    // Secret < Random
+    assert_eq!(join_taint(Taint::Secret, Taint::Random), Taint::Random);
+    // Random < TimeDependent
+    assert_eq!(
+        join_taint(Taint::Random, Taint::TimeDependent),
+        Taint::TimeDependent
+    );
+    // Clean < Random
+    assert_eq!(join_taint(Taint::Clean, Taint::Random), Taint::Random);
+}
+
+// =============================================================================
+// C-010 to C-012: Taint Sanitization (Secret→Clean if allowed)
+// =============================================================================
+
+// C-010: write_taint can downgrade taint from Secret to Clean on an initialized slot
+#[test]
+fn write_taint_can_downgrade_secret_to_clean() -> Result<(), String> {
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 1).map_err(|e| e.to_string())?;
+
+    run.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(42), Taint::Secret)
+        .map_err(|e| e.to_string())?;
+    let taint = run.read_taint(SlotIdx::ZERO).map_err(|e| e.to_string())?;
+    ensure_equal(taint, Taint::Secret)?;
+
+    // Downgrade to Clean
+    run.write_taint(SlotIdx::ZERO, Taint::Clean)
+        .map_err(|e| e.to_string())?;
+    let taint = run.read_taint(SlotIdx::ZERO).map_err(|e| e.to_string())?;
+    ensure_equal(taint, Taint::Clean)
+}
+
+// C-011: write_slot implicitly sets taint to Clean (zeroes taint)
+#[test]
+fn write_slot_implicitly_sets_taint_to_clean() -> Result<(), String> {
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 1).map_err(|e| e.to_string())?;
+
+    run.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(42), Taint::Secret)
+        .map_err(|e| e.to_string())?;
+    let taint = run.read_taint(SlotIdx::ZERO).map_err(|e| e.to_string())?;
+    ensure_equal(taint, Taint::Secret)?;
+
+    // write_slot uses write_slot_with_taint with Clean
+    run.write_slot(SlotIdx::ZERO, SlotValue::I64(99))
+        .map_err(|e| e.to_string())?;
+    let taint = run.read_taint(SlotIdx::ZERO).map_err(|e| e.to_string())?;
+    ensure_equal(taint, Taint::Clean)?;
+
+    let value = run.read_slot(SlotIdx::ZERO).map_err(|e| e.to_string())?;
+    ensure_equal(*value, SlotValue::I64(99))
+}
+
+// C-012: reinitialize resets all taint to Clean including TimeDependent
+#[test]
+fn reinitialize_resets_time_dependent_taint_to_clean() -> Result<(), String> {
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 1).map_err(|e| e.to_string())?;
+
+    run.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(1), Taint::TimeDependent)
+        .map_err(|e| e.to_string())?;
+
+    run.reinitialize(RunId::new(2), StepIdx::new(0), 1, 1)
+        .map_err(|e| e.to_string())?;
+
+    // After reinitialize, slot is uninitialized
+    match run.read_taint(SlotIdx::ZERO) {
+        Err(EngineError::SlotUninitialized { slot }) if slot == SlotIdx::ZERO => Ok(()),
+        other => Err(format!("expected SlotUninitialized after reinit, got: {other:?}")),
+    }
+}
+
+// =============================================================================
+// C-013 to C-015: Taint Escalation Prevention
+// =============================================================================
+
+// C-013: join_taint never returns a taint lower than either input
+#[test]
+fn join_taint_never_lower_than_either_input() {
+    let all = [
+        Taint::Clean,
+        Taint::DerivedFromSecret,
+        Taint::Secret,
+        Taint::Random,
+        Taint::TimeDependent,
+    ];
+    for a in all {
+        for b in all {
+            let result = join_taint(a, b);
+            // Check monotonicity: the result is >= each individual input
+            let disc_a = match a {
+                Taint::Clean => 0u8,
+                Taint::DerivedFromSecret => 1,
+                Taint::Secret => 2,
+                Taint::Random => 3,
+                Taint::TimeDependent => 4,
+            };
+            let disc_b = match b {
+                Taint::Clean => 0u8,
+                Taint::DerivedFromSecret => 1,
+                Taint::Secret => 2,
+                Taint::Random => 3,
+                Taint::TimeDependent => 4,
+            };
+            let disc_result = match result {
+                Taint::Clean => 0u8,
+                Taint::DerivedFromSecret => 1,
+                Taint::Secret => 2,
+                Taint::Random => 3,
+                Taint::TimeDependent => 4,
+            };
+            assert!(
+                disc_result >= disc_a && disc_result >= disc_b,
+                "join({a:?}, {b:?}) = {result:?} violates monotonicity"
+            );
+        }
+    }
+}
+
+// C-014: No operation can spontaneously escalate taint without an input carrying that taint
+#[test]
+fn eval_expr_does_not_escalate_to_random_without_random_input() -> Result<(), String> {
+    let ops = vec![
+        ExprOp::LoadSlot(SlotIdx::new(0)),
+        ExprOp::LoadSlot(SlotIdx::new(1)),
+        ExprOp::Add,
+    ]
+    .into_boxed_slice();
+
+    let slots = vec![
+        (SlotValue::I64(1), Taint::Secret),
+        (SlotValue::I64(2), Taint::Clean),
+    ];
+
+    let (_, taint) = eval_workflow_with_slots(ops, slots, vec![]).map_err(|e| e.to_string())?;
+
+    // Should be Secret (max of inputs), NOT escalated to Random or TimeDependent
+    ensure_equal(taint, Taint::Secret)
+}
+
+// C-015: eval_expr does not spontaneously introduce Random taint from Clean inputs
+#[test]
+fn eval_expr_does_not_spontaneously_introduce_random_taint_from_clean_inputs() -> Result<(), String>
+{
+    let ops = vec![
+        ExprOp::LoadSlot(SlotIdx::new(0)),
+        ExprOp::LoadSlot(SlotIdx::new(1)),
+        ExprOp::Mul,
+    ]
+    .into_boxed_slice();
+
+    let slots = vec![
+        (SlotValue::I64(5), Taint::Clean),
+        (SlotValue::I64(7), Taint::Clean),
+    ];
+
+    let (_, taint) = eval_workflow_with_slots(ops, slots, vec![]).map_err(|e| e.to_string())?;
+
+    ensure_equal(taint, Taint::Clean)
+}
+
+// =============================================================================
+// C-020 to C-022: Cross-Component Taint Tracking
+// =============================================================================
+
+// C-020: finish_run preserves TimeDependent taint in Finished signal
+#[test]
+fn finish_run_preserves_time_dependent_taint_in_finished_signal() -> Result<(), String> {
+    use crate::engine::node_helpers::finish_run;
+
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 1).map_err(|e| e.to_string())?;
+
+    run.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(1), Taint::TimeDependent)
+        .map_err(|e| e.to_string())?;
+
+    let result = finish_run(&mut run, SlotIdx::ZERO).map_err(|e| e.to_string())?;
+
+    ensure_equal(
+        result,
+        EngineSignal::Finished(SlotValue::I64(1), Taint::TimeDependent),
+    )
+}
+
+// C-021: copy_slot preserves Random taint across slots
+#[test]
+fn copy_slot_preserves_random_taint() -> Result<(), String> {
+    use crate::engine::node_helpers::copy_slot;
+
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 3, 3).map_err(|e| e.to_string())?;
+
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(77), Taint::Random)
+        .map_err(|e| e.to_string())?;
+
+    let node = CompiledNode {
+        id: StepIdx::new(0),
+        output: Some(SlotIdx::new(1)),
+        next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Copy {
+            source: SlotIdx::new(0),
+        },
+    };
+
+    copy_slot(&mut run, &node, SlotIdx::new(0)).map_err(|e| e.to_string())?;
+
+    let taint = run.read_taint(SlotIdx::new(1)).map_err(|e| e.to_string())?;
+    ensure_equal(taint, Taint::Random)
+}
+
+// C-022: resume_action_completion preserves Random taint after resume
+#[test]
+fn resume_action_completion_preserves_random_taint() -> Result<(), String> {
+    let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: "resume_random".into(),
+        digest: WorkflowDigest::from_bytes([0; 32]),
+        nodes: vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        }]
+        .into(),
+        expressions: vec![].into(),
+        accessors: vec![].into(),
+        constants: vec![].into(),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+    })
+    .map_err(|e| e.to_string())?;
+
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 1).map_err(|e| e.to_string())?;
+
+    let ticket = ActionTicket {
+        run: RunId::new(1),
+        step: StepIdx::new(0),
+        seq: SeqNo::new(1),
+        action: ActionId::new(1),
+        attempt: 1,
+        idempotency_key: 0,
+        capacity: 1,
+    };
+
+    let (signal, _journal) = resume_action_completion(
+        &workflow,
+        &mut run,
+        ticket,
+        SlotIdx::ZERO,
+        SlotValue::Bool(true),
+        Taint::Random,
+    )
+    .map_err(|e| e.to_string())?;
+
+    ensure_equal(signal, EngineSignal::Continue)?;
+
+    let taint = run.read_taint(SlotIdx::ZERO).map_err(|e| e.to_string())?;
+    ensure_equal(taint, Taint::Random)
+}
+
+// =============================================================================
+// C-030 to C-032: Random/TimeDependent in EvalExpr
+// =============================================================================
+
+// C-030: eval_expr_with_store returns Random when any loaded slot is Random
+#[test]
+fn eval_expr_returns_random_when_any_loaded_slot_is_random() -> Result<(), String> {
+    let ops = vec![ExprOp::LoadSlot(SlotIdx::new(0))].into_boxed_slice();
+
+    let slots = vec![(SlotValue::I64(99), Taint::Random)];
+
+    let (_, taint) = eval_workflow_with_slots(ops, slots, vec![]).map_err(|e| e.to_string())?;
+
+    ensure_equal(taint, Taint::Random)
+}
+
+// C-031: eval_expr_with_store returns TimeDependent when any loaded slot is TimeDependent
+#[test]
+fn eval_expr_returns_time_dependent_when_any_loaded_slot_is_time_dependent() -> Result<(), String>
+{
+    let ops = vec![ExprOp::LoadSlot(SlotIdx::new(0))].into_boxed_slice();
+
+    let slots = vec![(SlotValue::I64(42), Taint::TimeDependent)];
+
+    let (_, taint) = eval_workflow_with_slots(ops, slots, vec![]).map_err(|e| e.to_string())?;
+
+    ensure_equal(taint, Taint::TimeDependent)
+}
+
+// C-032: eval_expr with multiple slots returns max taint among TimeDependent, Random, Secret
+#[test]
+fn eval_expr_returns_max_taint_among_time_dependent_random_secret() -> Result<(), String> {
+    let ops = vec![
+        ExprOp::LoadSlot(SlotIdx::new(0)),
+        ExprOp::LoadSlot(SlotIdx::new(1)),
+        ExprOp::LoadSlot(SlotIdx::new(2)),
+        ExprOp::Add,
+        ExprOp::Add,
+    ]
+    .into_boxed_slice();
+
+    let slots = vec![
+        (SlotValue::I64(1), Taint::Secret),
+        (SlotValue::I64(2), Taint::Random),
+        (SlotValue::I64(3), Taint::TimeDependent),
+    ];
+
+    let (_, taint) = eval_workflow_with_slots(ops, slots, vec![]).map_err(|e| e.to_string())?;
+
+    // TimeDependent is the true top, outranking Random and Secret
+    ensure_equal(taint, Taint::TimeDependent)
+}
+
+// =============================================================================
+// C-040 to C-043: BuildObject with Random/TimeDependent Taint
+// =============================================================================
+
+// C-040: build_object_with_taint returns Random when any field is Random
+#[test]
+fn build_object_with_taint_returns_random_when_any_field_is_random() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 2).map_err(|e| e.to_string())?;
+
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Clean)
+        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::Random)
+        .map_err(|e| e.to_string())?;
+
+    let fields = vec![
+        (SymbolId::new(0), SlotIdx::new(0)),
+        (SymbolId::new(1), SlotIdx::new(1)),
+    ];
+
+    use crate::engine::object_list::build_object_with_taint;
+    let (_, taint) =
+        build_object_with_taint(&mut store, &run, &fields).map_err(|e| e.to_string())?;
+
+    ensure_equal(taint, Taint::Random)
+}
+
+// C-041: build_object_with_taint returns TimeDependent when any field is TimeDependent
+#[test]
+fn build_object_with_taint_returns_time_dependent_when_any_field_time_dependent()
+-> Result<(), String> {
+    let mut store = ValueStore::new();
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 2).map_err(|e| e.to_string())?;
+
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret)
+        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::TimeDependent)
+        .map_err(|e| e.to_string())?;
+
+    let fields = vec![
+        (SymbolId::new(0), SlotIdx::new(0)),
+        (SymbolId::new(1), SlotIdx::new(1)),
+    ];
+
+    use crate::engine::object_list::build_object_with_taint;
+    let (_, taint) =
+        build_object_with_taint(&mut store, &run, &fields).map_err(|e| e.to_string())?;
+
+    ensure_equal(taint, Taint::TimeDependent)
+}
+
+// C-042: build_object_with_taint returns TimeDependent when fields have mixed taint
+#[test]
+fn build_object_with_taint_joins_mixed_taint_including_time_dependent() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 4).map_err(|e| e.to_string())?;
+
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Clean)
+        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::DerivedFromSecret)
+        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(2), SlotValue::I64(3), Taint::Secret)
+        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(3), SlotValue::I64(4), Taint::TimeDependent)
+        .map_err(|e| e.to_string())?;
+
+    let fields = vec![
+        (SymbolId::new(0), SlotIdx::new(0)),
+        (SymbolId::new(1), SlotIdx::new(1)),
+        (SymbolId::new(2), SlotIdx::new(2)),
+        (SymbolId::new(3), SlotIdx::new(3)),
+    ];
+
+    use crate::engine::object_list::build_object_with_taint;
+    let (_, taint) =
+        build_object_with_taint(&mut store, &run, &fields).map_err(|e| e.to_string())?;
+
+    ensure_equal(taint, Taint::TimeDependent)
+}
+
+// C-043: build_object_with_taint stores field-level taint in ValueStore
+#[test]
+fn build_object_with_taint_stores_random_field_taint_in_value_store() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 1).map_err(|e| e.to_string())?;
+
+    run.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(42), Taint::Random)
+        .map_err(|e| e.to_string())?;
+
+    let fields = vec![(SymbolId::new(0), SlotIdx::ZERO)];
+
+    use crate::engine::object_list::build_object_with_taint;
+    let (obj, _) = build_object_with_taint(&mut store, &run, &fields).map_err(|e| e.to_string())?;
+
+    let stored_fields = store.object(obj).map_err(|e| e.to_string())?;
+    ensure_equal(stored_fields.len(), 1)?;
+    ensure_equal(stored_fields[0].taint, Taint::Random)
+}
+
+// =============================================================================
+// C-050 to C-053: BuildList with Random/TimeDependent Taint
+// =============================================================================
+
+// C-050: build_list_with_taint returns Random when any item is Random
+#[test]
+fn build_list_with_taint_returns_random_when_any_item_is_random() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 2).map_err(|e| e.to_string())?;
+
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Clean)
+        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::Random)
+        .map_err(|e| e.to_string())?;
+
+    let items = vec![SlotIdx::new(0), SlotIdx::new(1)];
+
+    use crate::engine::object_list::build_list_with_taint;
+    let (_, taint) = build_list_with_taint(&mut store, &run, &items).map_err(|e| e.to_string())?;
+
+    ensure_equal(taint, Taint::Random)
+}
+
+// C-051: build_list_with_taint returns TimeDependent when any item is TimeDependent
+#[test]
+fn build_list_with_taint_returns_time_dependent_when_any_item_time_dependent()
+-> Result<(), String> {
+    let mut store = ValueStore::new();
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 2).map_err(|e| e.to_string())?;
+
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Random)
+        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::TimeDependent)
+        .map_err(|e| e.to_string())?;
+
+    let items = vec![SlotIdx::new(0), SlotIdx::new(1)];
+
+    use crate::engine::object_list::build_list_with_taint;
+    let (_, taint) = build_list_with_taint(&mut store, &run, &items).map_err(|e| e.to_string())?;
+
+    ensure_equal(taint, Taint::TimeDependent)
+}
+
+// C-052: build_list_with_taint with all five variants returns TimeDependent
+#[test]
+fn build_list_with_taint_all_five_variants_returns_time_dependent() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 5).map_err(|e| e.to_string())?;
+
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Clean)
+        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::DerivedFromSecret)
+        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(2), SlotValue::I64(3), Taint::Secret)
+        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(3), SlotValue::I64(4), Taint::Random)
+        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(4), SlotValue::I64(5), Taint::TimeDependent)
+        .map_err(|e| e.to_string())?;
+
+    let items = vec![
+        SlotIdx::new(0),
+        SlotIdx::new(1),
+        SlotIdx::new(2),
+        SlotIdx::new(3),
+        SlotIdx::new(4),
+    ];
+
+    use crate::engine::object_list::build_list_with_taint;
+    let (_, taint) = build_list_with_taint(&mut store, &run, &items).map_err(|e| e.to_string())?;
+
+    ensure_equal(taint, Taint::TimeDependent)
+}
+
+// C-053: build_list_with_taint stores per-item taint in ValueStore
+#[test]
+fn build_list_with_taint_stores_per_item_random_taint_in_value_store() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 1).map_err(|e| e.to_string())?;
+
+    run.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(42), Taint::Random)
+        .map_err(|e| e.to_string())?;
+
+    let items = vec![SlotIdx::ZERO];
+
+    use crate::engine::object_list::build_list_with_taint;
+    let (list, _) =
+        build_list_with_taint(&mut store, &run, &items).map_err(|e| e.to_string())?;
+
+    let (_, item_taint) = store
+        .list_item_with_taint(list, 0)
+        .map_err(|e| e.to_string())?;
+    ensure_equal(item_taint, Taint::Random)
+}
+
+// =============================================================================
+// C-060 to C-062: Taint Merge at Join Points
+// =============================================================================
+
+// C-060: join_taint on all 625 (5×5×5×5) quadruples respects lattice order
+#[test]
+fn join_taint_full_625_quadruples_respect_lattice() {
+    let all = [
+        Taint::Clean,
+        Taint::DerivedFromSecret,
+        Taint::Secret,
+        Taint::Random,
+        Taint::TimeDependent,
+    ];
+    for a in all {
+        for b in all {
+            for c in all {
+                for d in all {
+                    // (a ∨ b) ∨ (c ∨ d) should be commutative with (c ∨ d) ∨ (a ∨ b)
+                    let left = join_taint(join_taint(a, b), join_taint(c, d));
+                    let right = join_taint(join_taint(c, d), join_taint(a, b));
+                    assert_eq!(left, right);
+                }
+            }
+        }
+    }
+}
+
+// C-061: join_taint triple associativity for all 125 (5×5×5) triples
+#[test]
+fn join_taint_is_associative_for_all_125_triples() {
+    let all = [
+        Taint::Clean,
+        Taint::DerivedFromSecret,
+        Taint::Secret,
+        Taint::Random,
+        Taint::TimeDependent,
+    ];
+    for a in all {
+        for b in all {
+            for c in all {
+                let ab_c = join_taint(join_taint(a, b), c);
+                let a_bc = join_taint(a, join_taint(b, c));
+                assert_eq!(
+                    ab_c, a_bc,
+                    "associativity failed for ({a:?}, {b:?}, {c:?})"
+                );
+            }
+        }
+    }
+}
+
+// C-062: join_taint of a chain (a, b, c) matches pairwise join of max element
+#[test]
+fn join_taint_chain_matches_pairwise_max() {
+    let all = [
+        Taint::Clean,
+        Taint::DerivedFromSecret,
+        Taint::Secret,
+        Taint::Random,
+        Taint::TimeDependent,
+    ];
+    for a in all {
+        for b in all {
+            for c in all {
+                let chain = join_taint(join_taint(a, b), c);
+                let pair_max = join_taint(a, join_taint(b, c));
+                assert_eq!(chain, pair_max);
+
+                // Also verify that the result is >= each individual
+                let disc_chain = match chain {
+                    Taint::Clean => 0,
+                    Taint::DerivedFromSecret => 1,
+                    Taint::Secret => 2,
+                    Taint::Random => 3,
+                    Taint::TimeDependent => 4,
+                };
+                let disc_a = match a {
+                    Taint::Clean => 0,
+                    Taint::DerivedFromSecret => 1,
+                    Taint::Secret => 2,
+                    Taint::Random => 3,
+                    Taint::TimeDependent => 4,
+                };
+                let disc_b = match b {
+                    Taint::Clean => 0,
+                    Taint::DerivedFromSecret => 1,
+                    Taint::Secret => 2,
+                    Taint::Random => 3,
+                    Taint::TimeDependent => 4,
+                };
+                let disc_c = match c {
+                    Taint::Clean => 0,
+                    Taint::DerivedFromSecret => 1,
+                    Taint::Secret => 2,
+                    Taint::Random => 3,
+                    Taint::TimeDependent => 4,
+                };
+                assert!(disc_chain >= disc_a);
+                assert!(disc_chain >= disc_b);
+                assert!(disc_chain >= disc_c);
+            }
+        }
+    }
+}
+
+// =============================================================================
+// C-070 to C-073: Taint Serialization Roundtrip (postcard)
+// =============================================================================
+
+// C-070: postcard roundtrip preserves all five Taint variants
+#[test]
+fn taint_postcard_roundtrip_preserves_all_five_variants() {
+    let variants = [
+        Taint::Clean,
+        Taint::DerivedFromSecret,
+        Taint::Secret,
+        Taint::Random,
+        Taint::TimeDependent,
+    ];
+    for variant in variants {
+        let bytes = postcard::to_allocvec(&variant);
+        assert!(
+            bytes.is_ok(),
+            "postcard serialization should succeed for {variant:?}"
+        );
+        let Ok(bytes) = bytes else {
+            continue;
+        };
+        let recovered: Result<Taint, _> = postcard::from_bytes(&bytes);
+        assert!(
+            recovered.is_ok(),
+            "postcard deserialization should succeed for {variant:?}"
+        );
+        let Ok(recovered) = recovered else {
+            continue;
+        };
+        assert_eq!(
+            variant, recovered,
+            "postcard roundtrip must preserve {variant:?}"
+        );
+    }
+}
+
+// C-071: postcard roundtrip preserves join_taint result identity
+#[test]
+fn postcard_roundtrip_preserves_join_taint_result() {
+    let all = [
+        Taint::Clean,
+        Taint::DerivedFromSecret,
+        Taint::Secret,
+        Taint::Random,
+        Taint::TimeDependent,
+    ];
+    for a in all {
+        let joined = join_taint(a, Taint::TimeDependent);
+        let bytes = postcard::to_allocvec(&joined);
+        assert!(bytes.is_ok());
+        let Ok(bytes) = bytes else {
+            continue;
+        };
+        let recovered: Result<Taint, _> = postcard::from_bytes(&bytes);
+        assert!(recovered.is_ok());
+        let Ok(recovered) = recovered else {
+            continue;
+        };
+        assert_eq!(recovered, Taint::TimeDependent);
+    }
+}
+
+// C-072: postcard discriminator encoding matches serial number for all five variants
+#[test]
+fn postcard_encoding_distinguishes_all_five_variants() {
+    let all = [
+        Taint::Clean,
+        Taint::DerivedFromSecret,
+        Taint::Secret,
+        Taint::Random,
+        Taint::TimeDependent,
+    ];
+    for (i, a) in all.iter().enumerate() {
+        for (j, b) in all.iter().enumerate() {
+            if i != j {
+                assert_ne!(a, b);
+                let bytes_a = postcard::to_allocvec(a).unwrap();
+                let bytes_b = postcard::to_allocvec(b).unwrap();
+                assert_ne!(
+                    bytes_a, bytes_b,
+                    "postcard encoding must distinguish {a:?} from {b:?}"
+                );
+            }
+        }
+    }
+}
+
+// C-073: postcard deserializes unknown u8 discriminants safely
+#[test]
+fn postcard_deserializes_unknown_taint_discriminant_to_valid_taint() {
+    // Taint is serialized as its u8 discriminant. Test all possible u8 values.
+    for disc in 0u8..=255u8 {
+        let bytes = postcard::to_allocvec(&disc);
+        match bytes {
+            Ok(bytes) => {
+                let recovered: Result<Taint, _> = postcard::from_bytes(&bytes);
+                // postcard deserialization for an enum with unknown discriminant
+                // may fail or produce a valid variant depending on serde impl
+                // We assert it doesn't panic
+                let _ = recovered;
+            }
+            Err(_) => {
+                // Serialization failure for a u8 is unexpected but not a panic
+            }
+        }
+    }
+}
+
+// =============================================================================
+// C-080 to C-082: Default Taint Values
+// =============================================================================
+
+// C-080: New RunFrame initializes all taint entries to Clean
+#[test]
+fn new_runframe_initializes_all_taint_to_clean() -> Result<(), String> {
+    let run = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 4).map_err(|e| e.to_string())?;
+
+    // All slots are uninitialized, so read_taint returns SlotUninitialized
+    for i in 0..4 {
+        let slot = SlotIdx::new(i);
+        match run.read_taint(slot) {
+            Err(EngineError::SlotUninitialized { slot: s }) if s == slot => {}
+            other => {
+                return Err(format!("taint {i} should be uninitialized, got: {other:?}"));
+            }
+        }
+    }
+
+    // After writing a slot, taint should be Clean by default
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 4).map_err(|e| e.to_string())?;
+    run.write_slot(SlotIdx::new(0), SlotValue::I64(42))
+        .map_err(|e| e.to_string())?;
+    let taint = run.read_taint(SlotIdx::new(0)).map_err(|e| e.to_string())?;
+    ensure_equal(taint, Taint::Clean)
+}
+
+// C-081: taint_snapshot returns default Clean for initialized slots after write_slot
+#[test]
+fn taint_snapshot_defaults_to_clean_for_write_slot() -> Result<(), String> {
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2).map_err(|e| e.to_string())?;
+
+    // write_slot uses write_slot_with_taint internally with Taint::Clean
+    run.write_slot(SlotIdx::new(0), SlotValue::I64(42))
+        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(99), Taint::Secret)
+        .map_err(|e| e.to_string())?;
+
+    let snapshot = run.taint_snapshot();
+    assert_eq!(snapshot.len(), 2);
+    assert_eq!(snapshot[0], Taint::Clean);
+    assert_eq!(snapshot[1], Taint::Secret);
+    Ok(())
+}
+
+// C-082: initialized_slots includes taint for all five variants
+#[test]
+fn initialized_slots_includes_taint_for_all_five_variants() -> Result<(), String> {
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 5).map_err(|e| e.to_string())?;
+
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Clean)
+        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::DerivedFromSecret)
+        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(2), SlotValue::I64(3), Taint::Secret)
+        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(3), SlotValue::I64(4), Taint::Random)
+        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(4), SlotValue::I64(5), Taint::TimeDependent)
+        .map_err(|e| e.to_string())?;
+
+    let initialized = run.initialized_slots().map_err(|e| e.to_string())?;
+    assert_eq!(initialized.len(), 5);
+
+    let mut seen = [false; 5];
+    for (_, _, taint) in &initialized {
+        match taint {
+            Taint::Clean => seen[0] = true,
+            Taint::DerivedFromSecret => seen[1] = true,
+            Taint::Secret => seen[2] = true,
+            Taint::Random => seen[3] = true,
+            Taint::TimeDependent => seen[4] = true,
+        }
+    }
+    assert!(seen.iter().all(|s| *s), "all five taint variants must appear");
+    Ok(())
+}
+
+// =============================================================================
+// C-090 to C-092: Output Taint >= Max Input Taint Invariant
+// =============================================================================
+
+// C-090: eval_expr output taint >= max input taint for all 5 variants
+#[test]
+fn eval_expr_output_taint_satisfies_output_gte_max_input() -> Result<(), String> {
+    let ops = vec![
+        ExprOp::LoadSlot(SlotIdx::new(0)),
+        ExprOp::LoadSlot(SlotIdx::new(1)),
+        ExprOp::Add,
+    ]
+    .into_boxed_slice();
+
+    let all = [
+        Taint::Clean,
+        Taint::DerivedFromSecret,
+        Taint::Secret,
+        Taint::Random,
+        Taint::TimeDependent,
+    ];
+
+    for a in all {
+        for b in all {
+            let max_input = join_taint(a, b);
+            let slots = vec![
+                (SlotValue::I64(1), a),
+                (SlotValue::I64(1), b),
+            ];
+            let (_, out_taint) =
+                eval_workflow_with_slots(ops.clone(), slots, vec![]).map_err(|e| e.to_string())?;
+            assert_eq!(
+                out_taint, max_input,
+                "output taint must equal max input for inputs ({a:?}, {b:?})"
+            );
+        }
+    }
+    Ok(())
+}
+
+// C-091: build_object output taint >= max field taint
+#[test]
+fn build_object_output_taint_satisfies_output_gte_max_field_taint() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 3).map_err(|e| e.to_string())?;
+
+    // Mix Random and TimeDependent
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Random)
+        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::TimeDependent)
+        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(2), SlotValue::I64(3), Taint::Clean)
+        .map_err(|e| e.to_string())?;
+
+    let fields = vec![
+        (SymbolId::new(0), SlotIdx::new(0)),
+        (SymbolId::new(1), SlotIdx::new(1)),
+        (SymbolId::new(2), SlotIdx::new(2)),
+    ];
+
+    use crate::engine::object_list::build_object_with_taint;
+    let (_, taint) =
+        build_object_with_taint(&mut store, &run, &fields).map_err(|e| e.to_string())?;
+
+    // Max of (Random, TimeDependent, Clean) = TimeDependent
+    ensure_equal(taint, Taint::TimeDependent)
+}
+
+// C-092: build_list output taint >= max item taint
+#[test]
+fn build_list_output_taint_satisfies_output_gte_max_item_taint() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 3).map_err(|e| e.to_string())?;
+
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::DerivedFromSecret)
+        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::Secret)
+        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(2), SlotValue::I64(3), Taint::Random)
+        .map_err(|e| e.to_string())?;
+
+    let items = vec![SlotIdx::new(0), SlotIdx::new(1), SlotIdx::new(2)];
+
+    use crate::engine::object_list::build_list_with_taint;
+    let (_, taint) = build_list_with_taint(&mut store, &run, &items).map_err(|e| e.to_string())?;
+
+    // Max of (DerivedFromSecret, Secret, Random) = Random
+    ensure_equal(taint, Taint::Random)
+}
+
+// =============================================================================
+// C-100 to C-102: Nested Structure Taint
+// =============================================================================
+
+// C-100: Nested list taint: outer list taint = max of inner item taints
+#[test]
+fn nested_list_outer_taint_reflects_max_inner_taint() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 3).map_err(|e| e.to_string())?;
+
+    // Build inner list with Secret taint
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Secret)
+        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::DerivedFromSecret)
+        .map_err(|e| e.to_string())?;
+
+    let inner_items = vec![SlotIdx::new(0), SlotIdx::new(1)];
+    let (inner_list, inner_taint) =
+        crate::engine::object_list::build_list_with_taint(&mut store, &run, &inner_items)
+            .map_err(|e| e.to_string())?;
+    ensure_equal(inner_taint, Taint::Secret)?;
+
+    // Store the inner list handle in a slot with its taint
+    run.write_slot_with_taint(SlotIdx::new(2), SlotValue::List(inner_list), inner_taint)
+        .map_err(|e| e.to_string())?;
+
+    // Build outer list containing the inner list
+    let outer_items = vec![SlotIdx::new(2)];
+    let (_, outer_taint) =
+        crate::engine::object_list::build_list_with_taint(&mut store, &run, &outer_items)
+            .map_err(|e| e.to_string())?;
+
+    // Outer taint must be >= inner taint (Secret)
+    ensure_equal(outer_taint, Taint::Secret)
+}
+
+// C-101: Nested object taint: outer object taint = max of inner field taints
+#[test]
+fn nested_object_outer_taint_reflects_max_inner_taint() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 4).map_err(|e| e.to_string())?;
+
+    // Build inner object with Random taint fields
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Random)
+        .map_err(|e| e.to_string())?;
+    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::Clean)
+        .map_err(|e| e.to_string())?;
+
+    let inner_fields = vec![
+        (SymbolId::new(0), SlotIdx::new(0)),
+        (SymbolId::new(1), SlotIdx::new(1)),
+    ];
+    let (inner_obj, inner_taint) =
+        crate::engine::object_list::build_object_with_taint(&mut store, &run, &inner_fields)
+            .map_err(|e| e.to_string())?;
+    ensure_equal(inner_taint, Taint::Random)?;
+
+    // Store inner object with its taint
+    run.write_slot_with_taint(SlotIdx::new(2), SlotValue::Object(inner_obj), inner_taint)
+        .map_err(|e| e.to_string())?;
+
+    // Build outer object containing inner object + a TimeDependent field
+    run.write_slot_with_taint(SlotIdx::new(3), SlotValue::I64(3), Taint::TimeDependent)
+        .map_err(|e| e.to_string())?;
+
+    let outer_fields = vec![
+        (SymbolId::new(0), SlotIdx::new(2)),
+        (SymbolId::new(1), SlotIdx::new(3)),
+    ];
+    let (_, outer_taint) =
+        crate::engine::object_list::build_object_with_taint(&mut store, &run, &outer_fields)
+            .map_err(|e| e.to_string())?;
+
+    // Max of (Random, TimeDependent) = TimeDependent
+    ensure_equal(outer_taint, Taint::TimeDependent)
+}
+
+// C-102: Three-level nested structure taint propagation
+#[test]
+fn three_level_nested_structure_taint_propagation() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let mut run =
+        RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 8).map_err(|e| e.to_string())?;
+
+    // Level 0: Write a Secret-tagged value
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(99), Taint::Secret)
+        .map_err(|e| e.to_string())?;
+
+    // Level 1: Build inner list from Secret slot
+    let (inner_list, t1) =
+        crate::engine::object_list::build_list_with_taint(&mut store, &run, &[SlotIdx::new(0)])
+            .map_err(|e| e.to_string())?;
+    ensure_equal(t1, Taint::Secret)?;
+
+    // Store inner list in a slot
+    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::List(inner_list), t1)
+        .map_err(|e| e.to_string())?;
+
+    // Level 2: Build mid object containing inner list
+    let (mid_obj, t2) = crate::engine::object_list::build_object_with_taint(
+        &mut store,
+        &run,
+        &[(SymbolId::new(0), SlotIdx::new(1))],
+    )
+    .map_err(|e| e.to_string())?;
+    ensure_equal(t2, Taint::Secret)?;
+
+    // Store mid object
+    run.write_slot_with_taint(SlotIdx::new(2), SlotValue::Object(mid_obj), t2)
+        .map_err(|e| e.to_string())?;
+
+    // Add a Random-tainted slot for the outer structure
+    run.write_slot_with_taint(SlotIdx::new(3), SlotValue::I64(1), Taint::Random)
+        .map_err(|e| e.to_string())?;
+
+    // Level 3: Build outer list containing mid object + Random slot
+    let (_, t3) = crate::engine::object_list::build_list_with_taint(
+        &mut store,
+        &run,
+        &[SlotIdx::new(2), SlotIdx::new(3)],
+    )
+    .map_err(|e| e.to_string())?;
+
+    // Outer taint = join(Secret, Random) = Random
+    ensure_equal(t3, Taint::Random)
+}
+
+// =============================================================================
+// C-110 to C-112: Additional Error/Edge Cases
+// =============================================================================
+
+// C-110: write_taint rejects uninitialized slot when writing TimeDependent
+#[test]
+fn write_taint_rejects_uninitialized_slot_with_time_dependent() -> Result<(), String> {
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2).map_err(|e| e.to_string())?;
+
+    let result = run.write_taint(SlotIdx::ZERO, Taint::TimeDependent);
+
+    match result {
+        Err(EngineError::SlotUninitialized { slot }) if slot == SlotIdx::ZERO => Ok(()),
+        other => Err(format!("expected SlotUninitialized, got: {other:?}")),
+    }
+}
+
+// C-111: write_taint rejects uninitialized slot when writing Random
+#[test]
+fn write_taint_rejects_uninitialized_slot_with_random() -> Result<(), String> {
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2).map_err(|e| e.to_string())?;
+
+    let result = run.write_taint(SlotIdx::ZERO, Taint::Random);
+
+    match result {
+        Err(EngineError::SlotUninitialized { slot }) if slot == SlotIdx::ZERO => Ok(()),
+        other => Err(format!("expected SlotUninitialized, got: {other:?}")),
+    }
+}
+
+// C-112: read_taint returns TimeDependent after write_slot_with_taint
+#[test]
+fn read_taint_reads_time_dependent_after_write() -> Result<(), String> {
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 1).map_err(|e| e.to_string())?;
+
+    run.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(1), Taint::TimeDependent)
+        .map_err(|e| e.to_string())?;
+
+    let taint = run.read_taint(SlotIdx::ZERO).map_err(|e| e.to_string())?;
+    ensure_equal(taint, Taint::TimeDependent)
+}

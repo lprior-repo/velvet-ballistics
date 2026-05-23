@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Proof kernels for velvet-ballastics.
 //!
 //! Tiny, pure, sequential Rust kernels suitable for formal verification.

@@ -343,3 +343,6 @@ pub use step::replay_step;
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(kani)]
+mod kani_harnesses;

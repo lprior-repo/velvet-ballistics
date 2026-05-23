@@ -1160,4 +1160,5 @@ mod tests {
 
     // RED PHASE: additional resource contract tests
     mod red_phase_tests;
+    mod red_phase_behavior_tests;
 }
