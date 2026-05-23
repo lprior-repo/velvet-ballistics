@@ -106,7 +106,7 @@ impl BoundedActionCompletionQueue {
             });
         }
 
-        inner.items.push(ticket);
+        inner.items.push_back(ticket);
 
         // Check backpressure threshold: 80% = capacity * 8 / 10
         let depth = inner.items.len();
@@ -181,7 +181,7 @@ mod unit_tests {
         ActionTicket {
             run: RunId::new(1),
             step: StepIdx::new(0),
-            seq: SeqNo::new(seq),
+            seq: SeqNo::new(u64::from(seq)),
             action: ActionId::new(1),
             attempt: 1,
             idempotency_key: seq as u128,
@@ -205,7 +205,7 @@ mod unit_tests {
     #[test]
     fn bounded_action_queue_new_with_zero_capacity_returns_error() {
         let result = BoundedActionCompletionQueue::new(0);
-        assert_eq!(result, Err(ActionQueueError::InvalidCapacity));
+        assert!(matches!(result, Err(ActionQueueError::InvalidCapacity)));
     }
 
     #[test]
@@ -213,7 +213,7 @@ mod unit_tests {
         let queue = BoundedActionCompletionQueue::new(3).unwrap();
         let ticket = make_ticket(0);
         let result = queue.enqueue(ticket);
-        assert_eq!(result, Ok(()));
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -223,7 +223,10 @@ mod unit_tests {
             queue.enqueue(make_ticket(i)).unwrap();
         }
         let result = queue.enqueue(make_ticket(100));
-        assert_eq!(result, Err(ActionQueueError::QueueFull { capacity: 3 }));
+        assert!(matches!(
+            result,
+            Err(ActionQueueError::QueueFull { capacity: 3 })
+        ));
     }
 
     #[test]
@@ -259,7 +262,7 @@ mod unit_tests {
         queue.enqueue(make_ticket(0)).unwrap();
         queue.enqueue(make_ticket(1)).unwrap();
         assert_eq!(queue.remaining_capacity(), 6);
-        queue.dequeue();
+        let _ = queue.dequeue();
         assert_eq!(queue.remaining_capacity(), 7);
     }
 
@@ -269,7 +272,7 @@ mod unit_tests {
         assert_eq!(queue.len() + queue.remaining_capacity(), 7);
         queue.enqueue(make_ticket(0)).unwrap();
         assert_eq!(queue.len() + queue.remaining_capacity(), 7);
-        queue.dequeue();
+        let _ = queue.dequeue();
         assert_eq!(queue.len() + queue.remaining_capacity(), 7);
     }
 
@@ -412,8 +415,8 @@ mod unit_tests {
         );
 
         // Drain and verify no more warnings after drain
-        queue.dequeue();
-        queue.dequeue();
+        let _ = queue.dequeue();
+        let _ = queue.dequeue();
         assert_eq!(queue.len(), 7);
 
         // Next enqueue to 8 (back at 80%) should also fire warning
@@ -445,7 +448,7 @@ mod unit_tests {
 
             // Exhaust the queue
             for i in 0..cap {
-                queue.enqueue(make_ticket(i)).unwrap();
+                queue.enqueue(make_ticket(u32::try_from(i).expect("capacity fits in u32"))).unwrap();
                 assert_eq!(
                     queue.len() <= queue.capacity(),
                     true,

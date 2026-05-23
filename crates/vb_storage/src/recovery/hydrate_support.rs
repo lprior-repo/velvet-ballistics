@@ -122,7 +122,6 @@ pub(super) fn derive_dimensions_from_snapshot_and_tail(
 /// Applies tail journal events to a mutable RunFrame, tracking action resolution.
 ///
 /// Returns the count of state-affecting events applied.
-#[allow(clippy::arithmetic_side_effects)]
 pub(super) fn apply_tail_events(
     frame: &mut vb_core::RunFrame,
     tail_events: &[JournalEvent],

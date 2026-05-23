@@ -4,7 +4,7 @@ use crate::{
     error::JournalError,
     events::JournalEvent,
     journal::{EventReplayLimit, FjallJournal},
-    keys::run_prefix_key,
+    keys::{run_event_key, run_prefix_key},
     types::EventSeq,
 };
 use fjall::Readable;
@@ -47,19 +47,23 @@ impl FjallJournal {
             FirstReplayEvent::AnyAtOrAfterStart => None,
             FirstReplayEvent::Exact(seq) => Some(seq),
         };
+        let start_key = run_event_key(run, start_seq)?;
+        let run_prefix = run_prefix_key(run)?;
         let snap = self.database.snapshot();
 
-        for item in snap.prefix(&self.events, run_prefix_key(run)?) {
-            let value = item.value()?;
+        // The lower-bound range starts at the snapshot boundary key, so replay never
+        // linearly skips pre-snapshot events. The prefix check terminates at the
+        // first lexicographic key for another run in this keyspace.
+        for item in snap.range(&self.events, start_key..) {
+            let (_, value) = item.into_inner_if(|key| key.as_ref().starts_with(&run_prefix))?;
+            let Some(value) = value else {
+                break;
+            };
             let (_, event): (_, JournalEvent) = decode_record(
                 value.as_ref(),
                 MAGIC_JOURNAL_EVENT,
                 MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             )?;
-            // Skip events before the start sequence (already captured in snapshot)
-            if event.seq().get() < start_seq.get() {
-                continue;
-            }
             validate_replay_sequence(run, &mut expected, &event)?;
             push_replay_event(&mut replay, run, limit, event)?;
         }

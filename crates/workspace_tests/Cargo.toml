@@ -71,6 +71,18 @@ path = "tests/vb_c1s0_orchestration_runtime_tests.rs"
 name = "vb_te1i_binary_ipc_acceptance"
 path = "tests/vb_te1i_binary_ipc_acceptance.rs"
 
+[[test]]
+name = "vb_test_compile_error_quality_behavior"
+path = "tests/vb_test_compile_error_quality_behavior.rs"
+
+[[test]]
+name = "vb_test_validate_diagnostic_behavior"
+path = "tests/vb_test_validate_diagnostic_behavior.rs"
+
+[[test]]
+name = "vb_test_compile_codegen_emit_behavior"
+path = "tests/vb_test_compile_codegen_emit_behavior.rs"
+
 [[bench]]
 name = "velvet_ballastics"
 harness = false

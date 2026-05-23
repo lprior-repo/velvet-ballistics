@@ -48,6 +48,7 @@
 //! bounded queues, and deterministic step execution.
 
 pub mod action;
+pub mod action_queue;
 pub mod admission;
 pub mod counters;
 

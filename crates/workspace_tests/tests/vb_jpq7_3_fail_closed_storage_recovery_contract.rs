@@ -232,3 +232,31 @@ fn given_journal_shutdown_when_durability_barrier_fails_then_drop_does_not_disca
     assert_eq!(drop_discards_persist_error, false);
     Ok(())
 }
+
+#[test]
+fn given_snapshot_after_many_old_events_when_replaying_then_pre_snapshot_work_does_not_exhaust_limit()
+-> Result<(), String> {
+    // Given: many old events exist before the durable snapshot boundary.
+    let (_temp, journal) = journal_at_temp_path()?;
+    let run = RunId::new(73_004);
+    for seq in 0..100_u64 {
+        journal
+            .append_journaled(&step_started(run, seq, 0))
+            .map_err(|err| err.to_string())?;
+    }
+    journal
+        .put_snapshot(&empty_snapshot(run, 99))
+        .map_err(|err| err.to_string())?;
+    let Some(limit) = EventReplayLimit::new(1) else {
+        return Err("limit of one must be constructible".to_owned());
+    };
+
+    // When: replay starts from the snapshot boundary with a one-event collection limit.
+    let replayed = journal
+        .events_for_run_bounded(run, limit)
+        .map_err(|err| err.to_string())?;
+
+    // Then: pre-snapshot entries do not consume scan/collection budget; only seq 99 is returned.
+    assert_eq!(replayed, vec![step_started(run, 99, 0)]);
+    Ok(())
+}

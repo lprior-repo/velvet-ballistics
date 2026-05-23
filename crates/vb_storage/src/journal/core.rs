@@ -6,6 +6,8 @@
 
 use std::path::Path;
 use std::sync::Mutex;
+#[cfg(test)]
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::{
     constants::{
@@ -57,6 +59,8 @@ pub struct FjallJournal {
     pub(crate) index_status: fjall::Keyspace,
     pub(crate) index_workflow: fjall::Keyspace,
     pub(crate) index_action: fjall::Keyspace,
+    #[cfg(test)]
+    pub(crate) fail_next_persist: AtomicBool,
     #[allow(dead_code)]
     pub(crate) write_lock: Mutex<()>,
     pub(crate) _process_lock: ProcessLock,
@@ -110,6 +114,8 @@ impl FjallJournal {
             index_status,
             index_workflow,
             index_action,
+            #[cfg(test)]
+            fail_next_persist: AtomicBool::new(false),
             write_lock: Mutex::new(()),
             _process_lock,
         })
@@ -143,6 +149,16 @@ impl FjallJournal {
     /// Returns `JournalError` if the underlying storage fails to persist.
     pub fn close(&mut self) -> Result<(), JournalError> {
         self.persist_strict()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn fail_next_persist_for_test(&self) {
+        self.fail_next_persist.store(true, Ordering::SeqCst);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn consume_persist_failure_for_test(&self) -> bool {
+        self.fail_next_persist.swap(false, Ordering::SeqCst)
     }
 }
 

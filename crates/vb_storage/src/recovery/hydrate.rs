@@ -11,7 +11,8 @@ use crate::recovery::hydrate_support::{
     derive_dimensions_from_snapshot_and_tail,
 };
 use crate::recovery::types::{
-    ActionReplayTracker, RecoveredStepState, RecoveryError, RecoveryResult, RunSnapshot,
+    ActionReplayTracker, RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState, RecoveryError,
+    RecoveryFrameSeed, RecoveryResult, RunSnapshot,
 };
 use vb_core::RunId;
 
@@ -34,15 +35,45 @@ pub fn hydrate_run_frame(
     tail_events: &[JournalEvent],
     run_id: RunId,
 ) -> RecoveryResult<vb_core::RunFrame> {
-    // PRE-1: snapshot.run must match requested run_id
+    validate_snapshot_recovery_inputs(snapshot, tail_events, run_id)?;
+    let snapshot_slots = decode_snapshot_slots(&snapshot.slots, &snapshot.taint, run_id)?;
+    let (step_count, slot_count, first_step) =
+        derive_dimensions_from_snapshot_and_tail(snapshot, tail_events, run_id, &snapshot_slots)?;
+    ensure_nonzero_step_count(step_count)?;
+
+    let mut frame = vb_core::RunFrame::new(run_id, first_step, step_count, slot_count)
+        .map_err(|_| RecoveryError::FrameDimensionOverflow { run: run_id })?;
+    apply_snapshot_slots(&mut frame, &snapshot_slots)?;
+
+    let mut tracker = ActionReplayTracker::new();
+    let executed = apply_tail_events(&mut frame, tail_events, &mut tracker)?;
+    increment_executed(&mut frame, run_id, executed)?;
+    Ok(frame)
+}
+
+fn validate_snapshot_recovery_inputs(
+    snapshot: &RunSnapshot,
+    tail_events: &[JournalEvent],
+    run_id: RunId,
+) -> RecoveryResult<()> {
     if snapshot.run != run_id {
         return Err(RecoveryError::CorruptSnapshot {
             run: snapshot.run,
             seq: snapshot.seq,
         });
     }
+    validate_tail_events_match_run(tail_events, run_id)?;
+    validate_tail_events_after_snapshot(tail_events, snapshot)?;
+    if tail_events.is_empty() && snapshot.slots.is_empty() && snapshot.taint.is_empty() {
+        return Err(RecoveryError::NoRecoveryData { run: run_id });
+    }
+    Ok(())
+}
 
-    // PRE-2: tail events must all belong to run_id
+fn validate_tail_events_match_run(
+    tail_events: &[JournalEvent],
+    run_id: RunId,
+) -> RecoveryResult<()> {
     for event in tail_events {
         if event.run_id() != run_id {
             return Err(RecoveryError::ReplayDivergence {
@@ -55,8 +86,13 @@ pub fn hydrate_run_frame(
             });
         }
     }
+    Ok(())
+}
 
-    // PRE-3: tail events must be strictly after snapshot seq
+fn validate_tail_events_after_snapshot(
+    tail_events: &[JournalEvent],
+    snapshot: &RunSnapshot,
+) -> RecoveryResult<()> {
     for event in tail_events {
         if event.seq() <= snapshot.seq {
             return Err(RecoveryError::ReplayDivergence {
@@ -69,32 +105,24 @@ pub fn hydrate_run_frame(
             });
         }
     }
+    Ok(())
+}
 
-    // If no tail events and snapshot is empty, fail
-    if tail_events.is_empty() && snapshot.slots.is_empty() && snapshot.taint.is_empty() {
-        return Err(RecoveryError::NoRecoveryData { run: run_id });
-    }
-
-    // Decode snapshot slot/taint bytes
-    let snapshot_slots = decode_snapshot_slots(&snapshot.slots, &snapshot.taint, run_id)?;
-
-    // Derive dimensions from snapshot + tail events (reuse decoded slots)
-    let (step_count, slot_count, first_step) =
-        derive_dimensions_from_snapshot_and_tail(snapshot, tail_events, run_id, &snapshot_slots)?;
-
+fn ensure_nonzero_step_count(step_count: u16) -> RecoveryResult<()> {
     if step_count == 0 {
         return Err(RecoveryError::ReplayDivergence {
             step: vb_core::StepIdx::ZERO,
             detail: "derived step_count is zero".to_owned(),
         });
     }
+    Ok(())
+}
 
-    // Build base frame
-    let mut frame = vb_core::RunFrame::new(run_id, first_step, step_count, slot_count)
-        .map_err(|_| RecoveryError::FrameDimensionOverflow { run: run_id })?;
-
-    // Apply snapshot slots/taint to frame
-    for entry in &snapshot_slots {
+fn apply_snapshot_slots(
+    frame: &mut vb_core::RunFrame,
+    snapshot_slots: &[RecoveredSlotEntry],
+) -> RecoveryResult<()> {
+    for entry in snapshot_slots {
         frame
             .write_slot_with_taint(entry.slot, entry.value, entry.taint)
             .map_err(|_| RecoveryError::ReplayDivergence {
@@ -102,19 +130,20 @@ pub fn hydrate_run_frame(
                 detail: "snapshot slot write out of bounds".to_owned(),
             })?;
     }
+    Ok(())
+}
 
-    // Apply tail events
-    let mut tracker = ActionReplayTracker::new();
-    let executed = apply_tail_events(&mut frame, tail_events, &mut tracker)?;
-
-    // Set executed counter (tail events applied)
+fn increment_executed(
+    frame: &mut vb_core::RunFrame,
+    run_id: RunId,
+    executed: u64,
+) -> RecoveryResult<()> {
     for _ in 0..executed {
         frame
             .increment_executed()
             .map_err(|_| RecoveryError::FrameDimensionOverflow { run: run_id })?;
     }
-
-    Ok(frame)
+    Ok(())
 }
 
 /// Hydrates a live RunFrame from full journal events (no snapshot).
@@ -132,27 +161,31 @@ pub fn hydrate_run_frame_from_events(
         return Err(RecoveryError::NoRecoveryData { run: run_id });
     }
 
-    // Use existing seed recovery to derive dimensions and state
     let seed = crate::recovery::replay::summary::recover_runtime_frame_seed_from_events(events)?;
+    ensure_nonzero_step_count(seed.step_count)?;
+    let mut frame = build_frame_from_seed(&seed, run_id)?;
+    apply_seed_step_states(&mut frame, &seed.steps)?;
+    apply_seed_slots(&mut frame, &seed.slots)?;
+    apply_seed_pc(&mut frame, seed.pc)?;
+    increment_executed(&mut frame, run_id, count_state_events(events, run_id)?)?;
+    apply_parallel_peak(&mut frame, events)?;
 
-    if seed.step_count == 0 {
-        return Err(RecoveryError::ReplayDivergence {
-            step: vb_core::StepIdx::ZERO,
-            detail: "derived step_count is zero".to_owned(),
-        });
-    }
+    Ok(frame)
+}
 
-    // Build frame from seed
-    let mut frame =
-        vb_core::RunFrame::new(run_id, seed.first_step, seed.step_count, seed.slot_count)
-            .map_err(|_| RecoveryError::FrameDimensionOverflow { run: run_id })?;
+fn build_frame_from_seed(
+    seed: &RecoveryFrameSeed,
+    run_id: RunId,
+) -> RecoveryResult<vb_core::RunFrame> {
+    vb_core::RunFrame::new(run_id, seed.first_step, seed.step_count, seed.slot_count)
+        .map_err(|_| RecoveryError::FrameDimensionOverflow { run: run_id })
+}
 
-    // Apply step states from seed.
-    // Waiting and Asking states may represent steps that were scheduled
-    // before being marked Running. Transition through Running first to
-    // satisfy the state machine (Pending → Waiting / Pending → Asking are
-    // intentionally rejected by the proof kernel).
-    for entry in &seed.steps {
+fn apply_seed_step_states(
+    frame: &mut vb_core::RunFrame,
+    steps: &[RecoveredStepEntry],
+) -> RecoveryResult<()> {
+    for entry in steps {
         let result = match entry.state {
             RecoveredStepState::Running => frame.mark_running(entry.step),
             RecoveredStepState::Succeeded => frame.mark_succeeded(entry.step),
@@ -169,9 +202,14 @@ pub fn hydrate_run_frame_from_events(
             detail: "seed step state transition failed".to_owned(),
         })?;
     }
+    Ok(())
+}
 
-    // Apply slots from seed
-    for entry in &seed.slots {
+fn apply_seed_slots(
+    frame: &mut vb_core::RunFrame,
+    slots: &[RecoveredSlotEntry],
+) -> RecoveryResult<()> {
+    for entry in slots {
         frame
             .write_slot_with_taint(entry.slot, entry.value, entry.taint)
             .map_err(|_| RecoveryError::ReplayDivergence {
@@ -179,21 +217,24 @@ pub fn hydrate_run_frame_from_events(
                 detail: "seed slot write out of bounds".to_owned(),
             })?;
     }
+    Ok(())
+}
 
-    // Set PC from seed
+fn apply_seed_pc(frame: &mut vb_core::RunFrame, pc: vb_core::StepIdx) -> RecoveryResult<()> {
     frame
-        .set_pc(seed.pc)
+        .set_pc(pc)
         .map_err(|_| RecoveryError::ReplayDivergence {
-            step: seed.pc,
+            step: pc,
             detail: "seed pc out of bounds".to_owned(),
-        })?;
+        })
+}
 
-    // Set executed counter from event count (approximate)
-    let state_events = events
+fn count_state_events(events: &[JournalEvent], run_id: RunId) -> RecoveryResult<u64> {
+    let count = events
         .iter()
-        .filter(|e| {
+        .filter(|event| {
             matches!(
-                e,
+                event,
                 JournalEvent::StepStarted { .. }
                     | JournalEvent::StepSucceeded { .. }
                     | JournalEvent::SlotWrittenEvent { .. }
@@ -205,25 +246,18 @@ pub fn hydrate_run_frame_from_events(
             )
         })
         .count();
-    let state_events = u64::try_from(state_events).unwrap_or(u64::MAX);
+    u64::try_from(count).map_err(|_| RecoveryError::FrameDimensionOverflow { run: run_id })
+}
 
-    for _ in 0..state_events {
-        frame
-            .increment_executed()
-            .map_err(|_| RecoveryError::FrameDimensionOverflow { run: run_id })?;
-    }
-
-    // Compute parallel in-flight from action events
-    let peak = compute_parallel_in_flight(&mut frame, events).map_err(|_| {
-        RecoveryError::ReplayDivergence {
+fn apply_parallel_peak(
+    frame: &mut vb_core::RunFrame,
+    events: &[JournalEvent],
+) -> RecoveryResult<()> {
+    let peak =
+        compute_parallel_in_flight(frame, events).map_err(|_| RecoveryError::ReplayDivergence {
             step: vb_core::StepIdx::ZERO,
             detail: "parallel in-flight computation failed".to_owned(),
-        }
-    })?;
-
-    // Set max_parallel_in_flight to the observed peak
-    // (RunFrame::new initializes it to u16::MAX, which would never update)
+        })?;
     frame.set_max_parallel_in_flight(peak);
-
-    Ok(frame)
+    Ok(())
 }

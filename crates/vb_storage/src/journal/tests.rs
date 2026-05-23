@@ -1609,11 +1609,11 @@ fn duplicate_event_after_batch_commit_is_rejected() {
 }
 
 // =========================================================================
-// Edge case: snapshot with post-snapshot events starts replay from snapshot
+// Edge case: snapshot with post-snapshot events starts replay after snapshot
 // =========================================================================
 
 #[test]
-fn events_for_run_starts_from_snapshot_when_pre_snapshot_trimmed() {
+fn events_for_run_starts_after_snapshot_when_pre_snapshot_trimmed() {
     let (_temp, journal) = temp_journal();
     let run = RunId::new(10300);
     let workflow = WorkflowDigest::from_bytes([0x33; DIGEST_BYTES]);
@@ -1628,8 +1628,8 @@ fn events_for_run_starts_from_snapshot_when_pre_snapshot_trimmed() {
     };
     journal.put_snapshot(&snapshot).expect("put snapshot");
 
-    // Only write events at seq 2, 3, 4 (as if pre-snapshot events were trimmed)
-    for seq in 2u64..5 {
+    // Only write events at seq 3, 4, 5 (as if snapshot-covered events were trimmed)
+    for seq in 3u64..6 {
         let event = JournalEvent::StepStarted {
             run,
             seq: EventSeq::new(seq),
@@ -1645,11 +1645,11 @@ fn events_for_run_starts_from_snapshot_when_pre_snapshot_trimmed() {
     assert_eq!(
         replayed.len(),
         3,
-        "should replay 3 events starting from snapshot seq"
+        "should replay 3 events starting after snapshot seq"
     );
-    assert_eq!(replayed[0].seq().get(), 2);
-    assert_eq!(replayed[1].seq().get(), 3);
-    assert_eq!(replayed[2].seq().get(), 4);
+    assert_eq!(replayed[0].seq().get(), 3);
+    assert_eq!(replayed[1].seq().get(), 4);
+    assert_eq!(replayed[2].seq().get(), 5);
 }
 
 #[test]
@@ -1681,7 +1681,7 @@ fn events_for_run_bounded_rejects_over_limit() -> Result<(), String> {
 }
 
 #[test]
-fn events_for_run_detects_missing_snapshot_boundary_event() -> Result<(), String> {
+fn events_for_run_detects_missing_first_tail_event_after_snapshot() -> Result<(), String> {
     let (_temp, journal) = temp_journal();
     let run = RunId::new(10302);
     let workflow = WorkflowDigest::from_bytes([0x44; DIGEST_BYTES]);
@@ -1696,7 +1696,7 @@ fn events_for_run_detects_missing_snapshot_boundary_event() -> Result<(), String
         .put_snapshot(&snapshot)
         .map_err(|err| err.to_string())?;
     journal
-        .append_unpersisted(&make_step_started(run, 3, 3))
+        .append_unpersisted(&make_step_started(run, 4, 4))
         .map_err(|err| err.to_string())?;
 
     let result = journal.events_for_run(run);
@@ -1706,9 +1706,9 @@ fn events_for_run_detects_missing_snapshot_boundary_event() -> Result<(), String
             Err(JournalError::SequenceGap {
                 expected,
                 actual,
-            }) if expected == EventSeq::new(2) && actual == EventSeq::new(3)
+            }) if expected == EventSeq::new(3) && actual == EventSeq::new(4)
         ),
-        "missing event at the durable snapshot boundary must not be laundered"
+        "missing first event after the durable snapshot must not be laundered"
     );
     Ok(())
 }
@@ -2218,21 +2218,16 @@ fn drop_releases_process_lock_even_without_explicit_close() {
 }
 
 /// Test that close() propagates persist errors when underlying storage fails.
-/// This uses a mock adapter approach - since we can't easily inject failures
-/// into the real fjall storage, we document the expected error type.
+/// This uses a test-only fault hook to force the strict durability boundary to fail.
 #[test]
 fn close_propagates_persist_errors() {
-    // The actual failure injection would require a test adapter that wraps fjall.
-    // Here we verify the error type signature is correct.
-    // A real failure injection test would use a custom FjallDatabase implementation
-    // that returns an error on persist().
-    //
-    // For now, we verify that:
-    // 1. close() has the correct signature returning Result<(), JournalError>
-    // 2. The error propagates through the call chain (persist_strict -> database.persist)
     let (_temp, mut journal) = temp_journal();
+    journal.fail_next_persist_for_test();
+
     let result = journal.close();
-    // On a healthy filesystem, close() succeeds. This test documents the
-    // failure mode contract: errors from underlying persist are propagated.
-    assert!(result.is_ok(), "close should succeed on healthy journal");
+    assert!(
+        matches!(result, Err(JournalError::StrictDurabilityFailed)),
+        "close must propagate strict durability failures, got {:?}",
+        result
+    );
 }

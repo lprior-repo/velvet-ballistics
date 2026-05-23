@@ -25,6 +25,10 @@ impl FjallJournal {
 
     /// Forces a strict durability barrier.
     pub fn persist_strict(&self) -> Result<(), JournalError> {
+        #[cfg(test)]
+        if self.consume_persist_failure_for_test() {
+            return Err(JournalError::StrictDurabilityFailed);
+        }
         self.database.persist(fjall::PersistMode::SyncAll)?;
         Ok(())
     }
