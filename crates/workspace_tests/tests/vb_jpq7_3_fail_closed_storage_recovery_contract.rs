@@ -183,9 +183,10 @@ fn given_tail_slot_write_when_recovery_reads_existing_taint_then_read_failure_is
     // Given: recovery must preserve taint and fail closed if the frame cannot read it.
     let defaults_failed_read_to_clean =
         HYDRATE_SUPPORT_SOURCE.contains("frame.read_taint(*slot).unwrap_or(vb_core::Taint::Clean)");
-    let uses_typed_read_taint_error = HYDRATE_SUPPORT_SOURCE.contains("frame.read_taint(slot)")
+    let uses_typed_read_taint_error = HYDRATE_SUPPORT_SOURCE.contains("frame.read_taint(*slot)")
         && HYDRATE_SUPPORT_SOURCE.contains("RecoveryError::SlotTaintReadFailed")
-        && HYDRATE_SUPPORT_SOURCE.contains("Err(_) => return Err")
+        && HYDRATE_SUPPORT_SOURCE.contains("Err(_) =>")
+        && HYDRATE_SUPPORT_SOURCE.contains("return Err(RecoveryError::SlotTaintReadFailed")
         && HYDRATE_SUPPORT_SOURCE.contains("read_taint");
 
     // When: the hydration support source is scanned for the slot write recovery path.
