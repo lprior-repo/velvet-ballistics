@@ -287,6 +287,8 @@ impl RuntimeJournalConfig {
                 QueuedStorageRuntimeJournal::shared_journaled(journal, queue)
             }
             DurabilityProfile::Strict => StorageRuntimeJournal::shared_strict(journal),
+            // Handle any future DurabilityProfile variants as Volatile (safest fallback).
+            #[allow(unreachable_code)]
             _ => VolatileRuntimeJournal::shared(),
         }
     }

@@ -56,6 +56,9 @@ impl ValueFact {
                 Taint::DerivedFromSecret
             }
             (Taint::Clean, Taint::Clean) => Taint::Clean,
+            // SAFETY: Taint is marked #[non_exhaustive]. This arm handles any
+            // future variants conservatively as Secret (most restrictive).
+            #[allow(unreachable_code)]
             (_, _) => Taint::Secret,
         };
         Self {

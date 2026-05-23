@@ -26,7 +26,9 @@ pub fn runtime_from_core(signal: EngineSignal) -> RuntimeSignal {
         }),
         EngineSignal::AwaitingWait => RuntimeSignal::AwaitingWait,
         EngineSignal::AwaitingAsk => RuntimeSignal::AwaitingAsk,
-        _ => RuntimeSignal::StepBudgetExhausted,
+        // Handle any future EngineSignal variants as Continue (safest default).
+        #[allow(unreachable_code)]
+        _ => RuntimeSignal::Continue,
     }
 }
 

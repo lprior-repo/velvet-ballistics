@@ -78,6 +78,19 @@ pub enum IdempotencyContractViolation {
         /// Declared retry-safety class.
         retry_safety: RetrySafety,
     },
+    /// Contract has an unrecognized or future-side-effect/retry-safety/idempotency
+    /// combination that cannot be statically analysed.
+    #[error("IDEMPOTENCY_INVALID_CONTRACT")]
+    InvalidContract {
+        /// Violating action identifier.
+        action: ActionId,
+        /// Declared side-effect class.
+        side_effect: SideEffect,
+        /// Declared idempotency class.
+        idempotency: Idempotency,
+        /// Declared retry-safety class.
+        retry_safety: RetrySafety,
+    },
 }
 
 impl IdempotencyContractViolation {
@@ -90,6 +103,7 @@ impl IdempotencyContractViolation {
             Self::SideEffectingDeterministicPure { .. } => {
                 "IDEMPOTENCY_SIDE_EFFECTING_DETERMINISTIC_PURE"
             }
+            Self::InvalidContract { .. } => "IDEMPOTENCY_INVALID_CONTRACT",
         }
     }
 }
@@ -159,12 +173,14 @@ pub fn is_statically_idempotent_contract(
         (_, RetrySafety::Safe | RetrySafety::KeyRequired, Idempotency::IdempotentExternal) => {
             Ok(())
         }
+        // `SideEffect`, `RetrySafety`, and `Idempotency` are all `#[non_exhaustive]`.
+        // Any unrecognized combination is treated as an invalid contract.
         (side_effect, retry_safety, idempotency) => {
-            Err(IdempotencyContractViolation::SideEffectingRetryUnsafe {
+            Err(IdempotencyContractViolation::InvalidContract {
                 action: contract.id,
                 side_effect,
-                idempotency,
                 retry_safety,
+                idempotency,
             })
         }
     }

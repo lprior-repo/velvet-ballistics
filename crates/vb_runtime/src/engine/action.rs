@@ -189,9 +189,11 @@ pub fn resume_action_outcome(
                 ))
             }
         }
+        // Handle any future ActionOutcome variants as an internal error.
+        #[allow(unreachable_code)]
         _ => Err(RuntimeEngineError::Core(
-            EngineError::UnsupportedPrimitive {
-                primitive: "unknown_action_outcome",
+            EngineError::InternalInvariantViolation {
+                reason: "unknown_action_outcome",
             },
         )),
     }

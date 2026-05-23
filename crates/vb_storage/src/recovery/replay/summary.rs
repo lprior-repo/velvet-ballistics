@@ -617,6 +617,8 @@ fn replay_error_to_recovery(error: ReplayError) -> RecoveryError {
             step: StepIdx::ZERO,
             detail: reason.to_owned(),
         },
+        // `ReplayError` is `#[non_exhaustive]`; unknown variants
+        // map to a generic replay divergence error.
         _ => RecoveryError::ReplayDivergence {
             step: StepIdx::ZERO,
             detail: "unknown replay error".to_owned(),
