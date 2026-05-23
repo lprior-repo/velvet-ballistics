@@ -189,7 +189,25 @@ pub proof fn proof_suspended_resumes_only_to_running(current: SpecStepState, nex
         validate_transition(current, next),
     ensures next == SpecStepState::Running,
 {
-    assert((is_suspended(current) && current != next && validate_transition(current, next)) ==> next == SpecStepState::Running) by(compute);
+    // Suspended states are Waiting or Asking (per is_suspended definition).
+    // validate_transition(suspended, next) requires next == Running.
+    // This is proven by examining the state machine definition:
+    // - Waiting transitions: only to Running (line 78-81)
+    // - Asking transitions: only to Running (line 82-85)
+    // Since current != next (requires), and the only valid transition is to Running,
+    // we must have next == Running.
+    match current {
+        SpecStepState::Waiting => {
+            // From definition: Waiting -> Running is valid, all other transitions are invalid.
+            // Since validate_transition(current, next) is true (requires), next must be Running.
+            assert(next == SpecStepState::Running);
+        },
+        SpecStepState::Asking => {
+            // Same logic: Asking -> Running is valid, all other transitions are invalid.
+            assert(next == SpecStepState::Running);
+        },
+        _ => assert(false), // is_suspended requires Waiting or Asking
+    }
 }
 
 pub proof fn proof_all_pairs()
@@ -225,36 +243,38 @@ pub proof fn proof_all_pairs()
         validate_transition(SpecStepState::Skipped, SpecStepState::Skipped) == true,
         validate_transition(SpecStepState::Skipped, SpecStepState::Running) == false,
 {
-    assert(validate_transition(SpecStepState::Pending, SpecStepState::Pending) == true) by(compute);
-    assert(validate_transition(SpecStepState::Pending, SpecStepState::Running) == true) by(compute);
-    assert(validate_transition(SpecStepState::Pending, SpecStepState::Succeeded) == true) by(compute);
-    assert(validate_transition(SpecStepState::Pending, SpecStepState::Failed) == true) by(compute);
-    assert(validate_transition(SpecStepState::Pending, SpecStepState::Cancelled) == true) by(compute);
-    assert(validate_transition(SpecStepState::Pending, SpecStepState::Skipped) == true) by(compute);
-    assert(validate_transition(SpecStepState::Pending, SpecStepState::Waiting) == false) by(compute);
-    assert(validate_transition(SpecStepState::Pending, SpecStepState::Asking) == false) by(compute);
-    assert(validate_transition(SpecStepState::Running, SpecStepState::Pending) == false) by(compute);
-    assert(validate_transition(SpecStepState::Running, SpecStepState::Running) == true) by(compute);
-    assert(validate_transition(SpecStepState::Running, SpecStepState::Succeeded) == true) by(compute);
-    assert(validate_transition(SpecStepState::Running, SpecStepState::Failed) == true) by(compute);
-    assert(validate_transition(SpecStepState::Running, SpecStepState::Waiting) == true) by(compute);
-    assert(validate_transition(SpecStepState::Running, SpecStepState::Asking) == true) by(compute);
-    assert(validate_transition(SpecStepState::Running, SpecStepState::Cancelled) == true) by(compute);
-    assert(validate_transition(SpecStepState::Running, SpecStepState::Skipped) == true) by(compute);
-    assert(validate_transition(SpecStepState::Waiting, SpecStepState::Waiting) == true) by(compute);
-    assert(validate_transition(SpecStepState::Waiting, SpecStepState::Running) == true) by(compute);
-    assert(validate_transition(SpecStepState::Waiting, SpecStepState::Asking) == false) by(compute);
-    assert(validate_transition(SpecStepState::Asking, SpecStepState::Asking) == true) by(compute);
-    assert(validate_transition(SpecStepState::Asking, SpecStepState::Running) == true) by(compute);
-    assert(validate_transition(SpecStepState::Asking, SpecStepState::Waiting) == false) by(compute);
-    assert(validate_transition(SpecStepState::Succeeded, SpecStepState::Succeeded) == true) by(compute);
-    assert(validate_transition(SpecStepState::Succeeded, SpecStepState::Running) == false) by(compute);
-    assert(validate_transition(SpecStepState::Failed, SpecStepState::Failed) == true) by(compute);
-    assert(validate_transition(SpecStepState::Failed, SpecStepState::Succeeded) == false) by(compute);
-    assert(validate_transition(SpecStepState::Cancelled, SpecStepState::Cancelled) == true) by(compute);
-    assert(validate_transition(SpecStepState::Cancelled, SpecStepState::Running) == false) by(compute);
-    assert(validate_transition(SpecStepState::Skipped, SpecStepState::Skipped) == true) by(compute);
-    assert(validate_transition(SpecStepState::Skipped, SpecStepState::Running) == false) by(compute);
+    // Each assertion proves the transition is valid according to the state machine definition.
+    // These are proven directly from the spec functions without by(compute).
+    assert(validate_transition(SpecStepState::Pending, SpecStepState::Pending) == true);
+    assert(validate_transition(SpecStepState::Pending, SpecStepState::Running) == true);
+    assert(validate_transition(SpecStepState::Pending, SpecStepState::Succeeded) == true);
+    assert(validate_transition(SpecStepState::Pending, SpecStepState::Failed) == true);
+    assert(validate_transition(SpecStepState::Pending, SpecStepState::Cancelled) == true);
+    assert(validate_transition(SpecStepState::Pending, SpecStepState::Skipped) == true);
+    assert(validate_transition(SpecStepState::Pending, SpecStepState::Waiting) == false);
+    assert(validate_transition(SpecStepState::Pending, SpecStepState::Asking) == false);
+    assert(validate_transition(SpecStepState::Running, SpecStepState::Pending) == false);
+    assert(validate_transition(SpecStepState::Running, SpecStepState::Running) == true);
+    assert(validate_transition(SpecStepState::Running, SpecStepState::Succeeded) == true);
+    assert(validate_transition(SpecStepState::Running, SpecStepState::Failed) == true);
+    assert(validate_transition(SpecStepState::Running, SpecStepState::Waiting) == true);
+    assert(validate_transition(SpecStepState::Running, SpecStepState::Asking) == true);
+    assert(validate_transition(SpecStepState::Running, SpecStepState::Cancelled) == true);
+    assert(validate_transition(SpecStepState::Running, SpecStepState::Skipped) == true);
+    assert(validate_transition(SpecStepState::Waiting, SpecStepState::Waiting) == true);
+    assert(validate_transition(SpecStepState::Waiting, SpecStepState::Running) == true);
+    assert(validate_transition(SpecStepState::Waiting, SpecStepState::Asking) == false);
+    assert(validate_transition(SpecStepState::Asking, SpecStepState::Asking) == true);
+    assert(validate_transition(SpecStepState::Asking, SpecStepState::Running) == true);
+    assert(validate_transition(SpecStepState::Asking, SpecStepState::Waiting) == false);
+    assert(validate_transition(SpecStepState::Succeeded, SpecStepState::Succeeded) == true);
+    assert(validate_transition(SpecStepState::Succeeded, SpecStepState::Running) == false);
+    assert(validate_transition(SpecStepState::Failed, SpecStepState::Failed) == true);
+    assert(validate_transition(SpecStepState::Failed, SpecStepState::Succeeded) == false);
+    assert(validate_transition(SpecStepState::Cancelled, SpecStepState::Cancelled) == true);
+    assert(validate_transition(SpecStepState::Cancelled, SpecStepState::Running) == false);
+    assert(validate_transition(SpecStepState::Skipped, SpecStepState::Skipped) == true);
+    assert(validate_transition(SpecStepState::Skipped, SpecStepState::Running) == false);
 }
 
 // VB-INV002-VERUS: mark_step_after_signal exhaustiveness.
@@ -359,8 +379,10 @@ pub proof fn proof_continue_finished_maps_to_succeeded()
         spec_mark_step_after_signal(SpecEngineSignal::Continue) == SpecStepState::Succeeded,
         spec_mark_step_after_signal(SpecEngineSignal::Finished) == SpecStepState::Succeeded,
 {
-    assert(spec_mark_step_after_signal(SpecEngineSignal::Continue) == SpecStepState::Succeeded) by(compute);
-    assert(spec_mark_step_after_signal(SpecEngineSignal::Finished) == SpecStepState::Succeeded) by(compute);
+    // These follow directly from the spec_mark_step_after_signal definition:
+    // Continue => Succeeded, Finished => Succeeded
+    assert(spec_mark_step_after_signal(SpecEngineSignal::Continue) == SpecStepState::Succeeded);
+    assert(spec_mark_step_after_signal(SpecEngineSignal::Finished) == SpecStepState::Succeeded);
 }
 
 /// Lemma: AwaitingWait maps to Waiting.
@@ -368,7 +390,8 @@ pub proof fn proof_awaiting_wait_maps_to_waiting()
     ensures
         spec_mark_step_after_signal(SpecEngineSignal::AwaitingWait) == SpecStepState::Waiting,
 {
-    assert(spec_mark_step_after_signal(SpecEngineSignal::AwaitingWait) == SpecStepState::Waiting) by(compute);
+    // Directly from spec_mark_step_after_signal definition: AwaitingWait => Waiting
+    assert(spec_mark_step_after_signal(SpecEngineSignal::AwaitingWait) == SpecStepState::Waiting);
 }
 
 /// Lemma: AwaitingAsk maps to Asking.
@@ -376,7 +399,8 @@ pub proof fn proof_awaiting_ask_maps_to_asking()
     ensures
         spec_mark_step_after_signal(SpecEngineSignal::AwaitingAsk) == SpecStepState::Asking,
 {
-    assert(spec_mark_step_after_signal(SpecEngineSignal::AwaitingAsk) == SpecStepState::Asking) by(compute);
+    // Directly from spec_mark_step_after_signal definition: AwaitingAsk => Asking
+    assert(spec_mark_step_after_signal(SpecEngineSignal::AwaitingAsk) == SpecStepState::Asking);
 }
 
 /// Lemma: AwaitingAction and StepBudgetExhausted keep state at Running.
@@ -385,8 +409,10 @@ pub proof fn proof_noop_signals_preserve_running()
         spec_mark_step_after_signal(SpecEngineSignal::AwaitingAction) == SpecStepState::Running,
         spec_mark_step_after_signal(SpecEngineSignal::StepBudgetExhausted) == SpecStepState::Running,
 {
-    assert(spec_mark_step_after_signal(SpecEngineSignal::AwaitingAction) == SpecStepState::Running) by(compute);
-    assert(spec_mark_step_after_signal(SpecEngineSignal::StepBudgetExhausted) == SpecStepState::Running) by(compute);
+    // Directly from spec_mark_step_after_signal definition:
+    // AwaitingAction => Running, StepBudgetExhausted => Running
+    assert(spec_mark_step_after_signal(SpecEngineSignal::AwaitingAction) == SpecStepState::Running);
+    assert(spec_mark_step_after_signal(SpecEngineSignal::StepBudgetExhausted) == SpecStepState::Running);
 }
 
 /// Exhaustiveness lemma: all 6 EngineSignal variants are handled.
@@ -429,7 +455,9 @@ pub proof fn proof_finished_payload_independent()
     ensures
         spec_mark_step_after_signal(SpecEngineSignal::Finished) == SpecStepState::Succeeded,
 {
-    assert(spec_mark_step_after_signal(SpecEngineSignal::Finished) == SpecStepState::Succeeded) by(compute);
+    // The spec function maps Finished => Succeeded, regardless of any payload.
+    // This is proven from the spec_mark_step_after_signal definition.
+    assert(spec_mark_step_after_signal(SpecEngineSignal::Finished) == SpecStepState::Succeeded);
 }
 
 /// proof_signal_exhaustiveness: All 6 EngineSignal variants are handled.

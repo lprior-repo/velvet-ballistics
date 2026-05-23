@@ -1894,183 +1894,133 @@ mod frame_kani_harnesses {
     }
 
     /// K-F4: Running can reach any terminal or suspend state.
+    /// Uses kani::any() to symbolically explore valid target states.
     #[kani::proof]
     fn validate_transition_running_to_all_valid_targets() {
         let c = StepState::Running;
-        kani::assert(validate_transition_inline(c, StepState::Running), "R->R");
-        kani::assert(validate_transition_inline(c, StepState::Succeeded), "R->S");
-        kani::assert(validate_transition_inline(c, StepState::Failed), "R->F");
-        kani::assert(validate_transition_inline(c, StepState::Waiting), "R->W");
-        kani::assert(validate_transition_inline(c, StepState::Asking), "R->A");
-        kani::assert(validate_transition_inline(c, StepState::Cancelled), "R->C");
-        kani::assert(validate_transition_inline(c, StepState::Skipped), "R->K");
+        let target: StepState = kani::any();
+        // Running can transition to: Running, Succeeded, Failed, Waiting, Asking, Skipped, Cancelled
+        // Not valid: Pending
+        let result = validate_transition_inline(c, target);
+        // If target is not Pending, transition should be valid
+        if target != StepState::Pending {
+            kani::assert(result, "Running can transition to non-Pending state");
+        } else {
+            kani::assert(!result, "Running cannot transition to Pending");
+        }
     }
 
     /// K-F5: Terminal states block all non-self transitions.
+    /// Uses kani::any() to symbolically verify terminal blocking property.
     #[kani::proof]
     fn validate_transition_terminal_blocks_all() {
-        let terminals = [
-            StepState::Succeeded,
-            StepState::Failed,
-            StepState::Skipped,
-            StepState::Cancelled,
-        ];
-        let targets = [
-            StepState::Pending,
-            StepState::Running,
-            StepState::Succeeded,
-            StepState::Failed,
-            StepState::Skipped,
-            StepState::Waiting,
-            StepState::Asking,
-            StepState::Cancelled,
-        ];
-        for &terminal in &terminals {
-            for &target in &targets {
-                let result = validate_transition_inline(terminal, target);
-                if terminal == target {
-                    kani::assert(result, "terminal->self allowed");
-                } else {
-                    kani::assert(!result, "terminal->other blocked");
-                }
-
-                /// K-PC1: set_pc never panics when StepIdx < step_count.
-                /// Bounds assumption: pc.as_usize() < step_count as usize.
-                #[kani::proof]
-                fn set_pc_no_panic() {
-                    let step_count: u16 = kani::any();
-                    kani::assume(step_count > 0);
-
-                    let pc_raw: u16 = kani::any();
-                    kani::assume(pc_raw < step_count);
-                    let pc = StepIdx::new(pc_raw);
-
-                    let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
-                    kani::assume(frame.is_ok());
-                    let mut frame = frame.unwrap();
-
-                    let result = frame.set_pc(pc);
-                    kani::assert(result.is_ok(), "set_pc with valid idx returns Ok");
-                }
-
-                /// K-PC2: increment_executed never panics.
-                /// No bounds assumption needed — executed uses checked_add internally.
-                #[kani::proof]
-                fn increment_executed_no_panic() {
-                    let step_count: u16 = kani::any();
-                    kani::assume(step_count > 0);
-
-                    let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
-                    kani::assume(frame.is_ok());
-                    let mut frame = frame.unwrap();
-
-                    let _result = frame.increment_executed();
-                }
-
-                /// K-PC3: set_pc returns Err when StepIdx >= step_count (no panic).
-                /// Bounds assumption: pc.as_usize() >= step_count as usize.
-                #[kani::proof]
-                fn set_pc_rejects_out_of_bounds() {
-                    let step_count: u16 = kani::any();
-                    kani::assume(step_count > 0);
-
-                    let pc_raw: u16 = kani::any();
-                    kani::assume(pc_raw >= step_count);
-                    let pc = StepIdx::new(pc_raw);
-
-                    let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
-                    kani::assume(frame.is_ok());
-                    let mut frame = frame.unwrap();
-
-                    let result = frame.set_pc(pc);
-                    kani::assert(result.is_err(), "set_pc with out-of-bounds idx returns Err");
-                }
-
-                /// pc_kani: combined harness for set_pc and increment_executed proofs.
-                #[kani::proof]
-                fn pc_kani() {
-                    use crate::errors::CoreError;
-                    // K-PC1
-                    {
-                        let step_count: u16 = kani::any();
-                        kani::assume(step_count > 0);
-                        let pc_raw: u16 = kani::any();
-                        kani::assume(pc_raw < step_count);
-                        let pc = StepIdx::new(pc_raw);
-                        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
-                        kani::assume(frame.is_ok());
-                        let mut frame = frame.unwrap();
-                        let result = frame.set_pc(pc);
-                        assert!(matches!(result, Ok(())));
-                    }
-                    // K-PC2
-                    {
-                        let step_count: u16 = kani::any();
-                        kani::assume(step_count > 0);
-                        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
-                        kani::assume(frame.is_ok());
-                        let mut frame = frame.unwrap();
-                        let result = frame.increment_executed();
-                        assert!(matches!(result, Ok(())));
-                    }
-                    // K-PC3
-                    {
-                        let step_count: u16 = kani::any();
-                        kani::assume(step_count > 0);
-                        let pc_raw: u16 = kani::any();
-                        kani::assume(pc_raw >= step_count);
-                        let pc = StepIdx::new(pc_raw);
-                        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
-                        kani::assume(frame.is_ok());
-                        let mut frame = frame.unwrap();
-                        let result = frame.set_pc(pc);
-                        assert!(matches!(
-                            result,
-                            Err(crate::CoreError::InvalidProgramCounter { .. })
-                        ));
-                    }
-                }
-
-                /// K-S1: read_slot never panics for SlotIdx within valid bounds.
-                /// Uses concrete slot_count=5 to bound symbolic state space.
-                #[kani::proof]
-                fn read_slot_no_panic() {
-                    let slot_count: u16 = 5;
-
-                    let slot_raw: u16 = kani::any();
-                    kani::assume(slot_raw < slot_count);
-                    let slot = SlotIdx::new(slot_raw);
-
-                    let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
-                    kani::assume(frame.is_ok());
-                    let mut frame = frame.unwrap();
-
-                    let init_result = frame.write_slot(slot, SlotValue::Null);
-                    kani::assume(init_result.is_ok());
-
-                    let result = frame.read_slot(slot);
-                    kani::assert(result.is_ok(), "read_slot with valid idx returns Ok");
-                }
-
-                /// K-S2: write_slot never panics for SlotIdx within valid bounds.
-                /// Uses concrete slot_count=5 to bound symbolic state space.
-                #[kani::proof]
-                fn write_slot_no_panic() {
-                    let slot_count: u16 = 5;
-
-                    let slot_raw: u16 = kani::any();
-                    kani::assume(slot_raw < slot_count);
-                    let slot = SlotIdx::new(slot_raw);
-
-                    let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
-                    kani::assume(frame.is_ok());
-                    let mut frame = frame.unwrap();
-
-                    let result = frame.write_slot(slot, SlotValue::Null);
-                    kani::assert(result.is_ok(), "write_slot with valid idx returns Ok");
-                }
-            }
+        let terminal: StepState = kani::any();
+        let target: StepState = kani::any();
+        // Succeeded, Failed, Skipped, Cancelled are terminal states
+        let is_terminal = matches!(
+            terminal,
+            StepState::Succeeded | StepState::Failed | StepState::Skipped | StepState::Cancelled
+        );
+        kani::assume(is_terminal);
+        let result = validate_transition_inline(terminal, target);
+        if terminal == target {
+            kani::assert(result, "terminal->self allowed");
+        } else {
+            kani::assert(!result, "terminal->other blocked");
         }
+    }
+
+    /// K-PC1: set_pc never panics when StepIdx < step_count.
+    /// Bounds assumption: pc.as_usize() < step_count as usize.
+    #[kani::proof]
+    fn set_pc_no_panic() {
+        let step_count: u16 = kani::any();
+        kani::assume(step_count > 0);
+
+        let pc_raw: u16 = kani::any();
+        kani::assume(pc_raw < step_count);
+        let pc = StepIdx::new(pc_raw);
+
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+        kani::assume(frame.is_ok());
+        let mut frame = frame.unwrap();
+
+        let result = frame.set_pc(pc);
+        kani::assert(result.is_ok(), "set_pc with valid idx returns Ok");
+    }
+
+    /// K-PC2: increment_executed never panics.
+    /// No bounds assumption needed — executed uses checked_add internally.
+    #[kani::proof]
+    fn increment_executed_no_panic() {
+        let step_count: u16 = kani::any();
+        kani::assume(step_count > 0);
+
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+        kani::assume(frame.is_ok());
+        let mut frame = frame.unwrap();
+
+        let _result = frame.increment_executed();
+    }
+
+    /// K-PC3: set_pc returns Err when StepIdx >= step_count (no panic).
+    /// Bounds assumption: pc.as_usize() >= step_count as usize.
+    #[kani::proof]
+    fn set_pc_rejects_out_of_bounds() {
+        let step_count: u16 = kani::any();
+        kani::assume(step_count > 0);
+
+        let pc_raw: u16 = kani::any();
+        kani::assume(pc_raw >= step_count);
+        let pc = StepIdx::new(pc_raw);
+
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+        kani::assume(frame.is_ok());
+        let mut frame = frame.unwrap();
+
+        let result = frame.set_pc(pc);
+        kani::assert(result.is_err(), "set_pc with out-of-bounds idx returns Err");
+    }
+
+    /// K-S1: read_slot never panics for SlotIdx within valid bounds.
+    /// Uses kani::any() for slot_count with assume bound > 0.
+    #[kani::proof]
+    fn read_slot_no_panic() {
+        let slot_count: u16 = kani::any();
+        kani::assume(slot_count > 0);
+
+        let slot_raw: u16 = kani::any();
+        kani::assume(slot_raw < slot_count);
+        let slot = SlotIdx::new(slot_raw);
+
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+        kani::assume(frame.is_ok());
+        let mut frame = frame.unwrap();
+
+        let init_result = frame.write_slot(slot, SlotValue::Null);
+        kani::assume(init_result.is_ok());
+
+        let result = frame.read_slot(slot);
+        kani::assert(result.is_ok(), "read_slot with valid idx returns Ok");
+    }
+
+    /// K-S2: write_slot never panics for SlotIdx within valid bounds.
+    /// Uses kani::any() for slot_count with assume bound > 0.
+    #[kani::proof]
+    fn write_slot_no_panic() {
+        let slot_count: u16 = kani::any();
+        kani::assume(slot_count > 0);
+
+        let slot_raw: u16 = kani::any();
+        kani::assume(slot_raw < slot_count);
+        let slot = SlotIdx::new(slot_raw);
+
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+        kani::assume(frame.is_ok());
+        let mut frame = frame.unwrap();
+
+        let result = frame.write_slot(slot, SlotValue::Null);
+        kani::assert(result.is_ok(), "write_slot with valid idx returns Ok");
     }
 }
 

@@ -64,6 +64,11 @@ pub enum SpecJournalEvent {
     RunResumed { run_len: int },
     RunRetried { run_len: int },
     RunAnswered { slot_idx: int, answer_len: int },
+    /// Unknown variant: catch-all for non_exhaustive JournalEvent.
+    /// Rust `trace_one` has `_ => TraceEntry { event_type: "Unknown", ... }`.
+    /// Storage layer validation ensures only known variants are persisted,
+    /// but this variant provides a safe fallback for forward-compatibility.
+    Unknown,
 }
 
 // ---------------------------------------------------------------------------
@@ -199,6 +204,14 @@ pub open spec fn spec_trace_one(idx: int, event: &SpecJournalEvent) -> SpecTrace
             seq: 0,
             extra_json_len: 3,
         },
+        // Unknown variant: mirrors Rust catch-all `_ => TraceEntry { event_type: "Unknown", ... }`
+        SpecJournalEvent::Unknown => SpecTraceEntry {
+            index: idx,
+            event_type: "Unknown",
+            step: None,
+            seq: 0,
+            extra_json_len: 0,
+        },
     }
 }
 
@@ -212,12 +225,14 @@ pub proof fn proof_trace_one_deterministic(event: &SpecJournalEvent, idx: int)
         spec_trace_one(idx, event) == spec_trace_one(idx, event),
 {
     // Reflexivity: same input → same output by function purity.
-    assert(spec_trace_one(idx, event) == spec_trace_one(idx, event)) by (compute);
+    // spec_trace_one is a pure total function; equal inputs yield equal outputs.
+    assert(spec_trace_one(idx, event) == spec_trace_one(idx, event));
 }
 
 // ---------------------------------------------------------------------------
 // proof_trace_one_variant_coverage — TRACE-VERUS-002
-// Exhaustively proves spec_trace_one covers all 18 variants with no panics.
+// Exhaustively proves spec_trace_one covers all 19 variants (18 known + Unknown)
+// with no panics. The Unknown variant mirrors the Rust catch-all `_ =>` case.
 // ---------------------------------------------------------------------------
 
 pub proof fn proof_trace_one_variant_coverage(event: SpecJournalEvent)
@@ -243,6 +258,8 @@ pub proof fn proof_trace_one_variant_coverage(event: SpecJournalEvent)
         SpecJournalEvent::RunResumed { .. } => { assert(true); },
         SpecJournalEvent::RunRetried { .. } => { assert(true); },
         SpecJournalEvent::RunAnswered { .. } => { assert(true); },
+        // Unknown variant: mirrors Rust catch-all for non_exhaustive JournalEvent
+        SpecJournalEvent::Unknown => { assert(true); },
     }
 }
 

@@ -196,94 +196,141 @@ fn kani_gate_08_step_names_independent_of_slots() {
 }
 
 /// Harness 9: Empty nodes + valid accessors — Gate 8 does not require non-empty nodes.
+///
+/// GOD RULE fix: replaced hardcoded WorkflowParts with kani::any() + structural constraints.
+/// Tests that valid accessor paths pass Gate 8 regardless of node content.
 #[kani::proof]
+#[kani::unwind(5)]
 fn kani_gate_08_empty_nodes_valid_accessors_pass() {
-    let parts = WorkflowParts {
-        name: Box::from("empty_nodes_workflow"),
-        digest: WorkflowDigest::from_bytes([0; 32]),
-        nodes: Box::new([]),
-        expressions: Box::new([]),
-        accessors: Box::new([AccessorProgram {
-            root: SlotIdx::ZERO,
-            path: Box::new([PathSegment::Field(SymbolId::new(0))]),
-        }]),
-        constants: Box::new([]),
-        slot_count: 1,
-        symbols_count: 1,
-        entry: StepIdx::ZERO,
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::new([Box::from("entry")]),
-    };
+    let parts: WorkflowParts = kani::any();
+
+    // Gate 8 only validates accessors, not nodes. Test with empty nodes.
+    kani::assume(parts.nodes.is_empty());
+
+    // Ensure accessors are structurally valid for Gate 8: root in range, symbols in range.
+    let has_valid_accessor = parts.accessors.iter().any(|acc| {
+        acc.root.get() < parts.slot_count
+            && acc.path.iter().all(|s| match s {
+                PathSegment::Field(fid) => fid.get() < parts.symbols_count,
+                PathSegment::Index(idx) => *idx != u32::MAX,
+            })
+    });
+    kani::assume(has_valid_accessor);
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(
         result.is_ok(),
         "empty nodes with valid accessors pass Gate 8",
     );
+    std::mem::forget(parts);
 }
 
 /// Harness 10: Mixed expression op types with accessors — expressions reference accessors.
+///
+/// GOD RULE fix: replaced hardcoded indices with kani::any().
 #[kani::proof]
 #[kani::unwind(3)]
 fn kani_gate_08_expressions_with_accessor_refs() {
+    // Arbitrary IDs for the workflow structure.
+    let expr_idx: vb_core::ids::ExprIdx = kani::any();
+    let acc_idx: vb_core::ids::AccessorIdx = kani::any();
+    let sym0: SymbolId = kani::any();
+    let sym1: SymbolId = kani::any();
+    let slot0: SlotIdx = kani::any();
+    let step0: StepIdx = kani::any();
+    let step1: StepIdx = kani::any();
+
+    // Arbitrary but bounded slot/symbol counts.
+    let slot_count: u16 = kani::any();
+    let symbols_count: u32 = kani::any();
+    kani::assume(slot_count >= 2);
+    kani::assume(symbols_count >= 2);
+    // Ensure indices are in valid range.
+    kani::assume(slot0.get() < slot_count);
+    kani::assume(step0.get() < u16::MAX); // step indices are u16
+    kani::assume(step1.get() < u16::MAX);
+    kani::assume(sym0.get() < symbols_count);
+    kani::assume(sym1.get() < symbols_count);
+    kani::assume(acc_idx.get() < 2); // We have 2 accessors
+
     let parts = WorkflowParts {
         name: Box::from("expr_accessor_workflow"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::new([
             CompiledNode {
-                id: StepIdx::ZERO,
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
+                id: step0,
+                output: Some(slot0),
+                next: Some(step1),
                 on_error: None,
                 error_slot: None,
-                kind: CompiledNodeKind::EvalExpr {
-                    expr: vb_core::ids::ExprIdx::new(0),
-                },
+                kind: CompiledNodeKind::EvalExpr { expr: expr_idx },
             },
             CompiledNode {
-                id: StepIdx::new(1),
+                id: step1,
                 output: None,
                 next: None,
                 on_error: None,
                 error_slot: None,
-                kind: CompiledNodeKind::Finish {
-                    result: SlotIdx::ZERO,
-                },
+                kind: CompiledNodeKind::Finish { result: slot0 },
             },
         ]),
         expressions: Box::new([vb_core::workflow::ExprProgram {
             ops: Box::new([
-                vb_core::workflow::ExprOp::LoadAccessor(vb_core::ids::AccessorIdx::new(0)),
+                vb_core::workflow::ExprOp::LoadAccessor(acc_idx),
                 vb_core::workflow::ExprOp::Eq,
             ]),
             max_stack: 1,
         }]),
         accessors: Box::new([
             AccessorProgram {
-                root: SlotIdx::ZERO,
-                path: Box::new([PathSegment::Field(SymbolId::new(0))]),
+                root: slot0,
+                path: Box::new([PathSegment::Field(sym0)]),
             },
             AccessorProgram {
-                root: SlotIdx::new(1),
+                root: slot0,
                 path: Box::new([PathSegment::Index(0)]),
             },
         ]),
         constants: Box::new([vb_core::value::ConstValue::Null]),
-        slot_count: 4,
-        symbols_count: 2,
-        entry: StepIdx::ZERO,
+        slot_count,
+        symbols_count,
+        entry: step0,
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([Box::from("eval"), Box::from("finish")]),
     };
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(result.is_ok(), "expressions with accessor refs pass Gate 8");
+    std::mem::forget(parts);
 }
 
 /// Harness 11: Multiple accessor path variants in one workflow — field + index chains.
+///
+/// GOD RULE fix: replaced hardcoded indices with kani::any().
 #[kani::proof]
 #[kani::unwind(5)]
 fn kani_gate_08_mixed_accessor_paths() {
+    // Arbitrary indices for the accessor paths.
+    let sym0: SymbolId = kani::any();
+    let sym1: SymbolId = kani::any();
+    let idx0: u32 = kani::any();
+    let idx1: u32 = kani::any();
+    let idx2: u32 = kani::any();
+    let idx3: u32 = kani::any();
+    let idx4: u32 = kani::any();
+    let idx100: u32 = kani::any();
+
+    // Bounded slot/symbol counts.
+    let slot_count: u16 = kani::any();
+    let symbols_count: u32 = kani::any();
+    kani::assume(slot_count >= 3); // Need at least 3 slots for the accessor roots
+    kani::assume(symbols_count >= 2); // Need at least 2 symbols
+    kani::assume(sym0.get() < symbols_count);
+    kani::assume(sym1.get() < symbols_count);
+    // Ensure index sentinels are not MAX (MAX is used as invalid sentinel in Gate 8).
+    kani::assume(idx0 != u32::MAX && idx1 != u32::MAX && idx2 != u32::MAX
+        && idx3 != u32::MAX && idx4 != u32::MAX && idx100 != u32::MAX);
+
     let parts = WorkflowParts {
         name: Box::from("mixed_paths"),
         digest: WorkflowDigest::from_bytes([2; 32]),
@@ -305,38 +352,38 @@ fn kani_gate_08_mixed_accessor_paths() {
             },
             AccessorProgram {
                 root: SlotIdx::ZERO,
-                path: Box::new([PathSegment::Field(SymbolId::new(0))]),
+                path: Box::new([PathSegment::Field(sym0)]),
             },
             AccessorProgram {
                 root: SlotIdx::ZERO,
-                path: Box::new([PathSegment::Index(0)]),
+                path: Box::new([PathSegment::Index(idx0)]),
             },
             AccessorProgram {
                 root: SlotIdx::ZERO,
                 path: Box::new([
-                    PathSegment::Field(SymbolId::new(0)),
-                    PathSegment::Index(0),
-                    PathSegment::Field(SymbolId::new(1)),
+                    PathSegment::Field(sym0),
+                    PathSegment::Index(idx0),
+                    PathSegment::Field(sym1),
                 ]),
             },
             AccessorProgram {
                 root: SlotIdx::new(1),
-                path: Box::new([PathSegment::Index(100)]),
+                path: Box::new([PathSegment::Index(idx100)]),
             },
             AccessorProgram {
                 root: SlotIdx::new(2),
                 path: Box::new([
-                    PathSegment::Index(0),
-                    PathSegment::Index(1),
-                    PathSegment::Index(2),
-                    PathSegment::Index(3),
-                    PathSegment::Index(4),
+                    PathSegment::Index(idx0),
+                    PathSegment::Index(idx1),
+                    PathSegment::Index(idx2),
+                    PathSegment::Index(idx3),
+                    PathSegment::Index(idx4),
                 ]),
             },
         ]),
         constants: Box::new([]),
-        slot_count: 64,
-        symbols_count: 256,
+        slot_count,
+        symbols_count,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([Box::from("root")]),

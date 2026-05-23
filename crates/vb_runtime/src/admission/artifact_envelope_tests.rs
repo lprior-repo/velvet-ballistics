@@ -36,6 +36,8 @@ mod artifact_envelope_bdd_tests {
     fn valid_artifact(digest: WorkflowDigest) -> AcceptedArtifact {
         AcceptedArtifact {
             digest,
+            source_digest: digest,
+            policy_digest: digest,
             ir: Vec::new(),
             verification: valid_proof(digest),
             accepted_at_seq: EventSeq::new(0),
@@ -86,6 +88,8 @@ mod artifact_envelope_bdd_tests {
             proof.gate_count = self.gate_count;
             let artifact = AcceptedArtifact {
                 digest,
+                source_digest: digest,
+                policy_digest: digest,
                 ir: Vec::new(),
                 verification: proof,
                 accepted_at_seq: EventSeq::new(0),
@@ -130,6 +134,8 @@ mod artifact_envelope_bdd_tests {
             }
             let artifact = AcceptedArtifact {
                 digest,
+                source_digest: digest,
+                policy_digest: digest,
                 ir: Vec::new(),
                 verification: proof,
                 accepted_at_seq: EventSeq::new(0),
@@ -161,6 +167,8 @@ mod artifact_envelope_bdd_tests {
             proof.idempotency_attested = self.attested.clone();
             let artifact = AcceptedArtifact {
                 digest,
+                source_digest: digest,
+                policy_digest: digest,
                 ir: Vec::new(),
                 verification: proof,
                 accepted_at_seq: EventSeq::new(0),

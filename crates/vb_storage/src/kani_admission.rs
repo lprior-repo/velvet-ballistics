@@ -230,7 +230,10 @@ fn verification_proof_digest_binding() {
 ///
 /// Even when gate_count=0 (Relaxed policy, no verification performed),
 /// the proof.digest must still equal the input digest.
+///
+/// Bound: unwind(3) — same as verification_proof_digest_binding.
 #[kani::proof]
+#[kani::unwind(3)]
 fn verification_proof_digest_binding_relaxed() {
     let digest: WorkflowDigest = kani::any();
     let durable = false;
@@ -245,11 +248,14 @@ fn verification_proof_digest_binding_relaxed() {
 
 /// KANI-DIGEST-001 variant: proof flags are set unconditionally.
 ///
-/// Documents that proof flags (bounded, taint_safe, retry_safe, replayable,
-/// idempotency_verified) are always true regardless of gate_count or digest.
-/// This is the VB-STORAGE-GAP — not a bug of this harness, but a documented
-/// gap that the flags are set without actual per-gate verification.
+/// Documents that proof flags (bounded_claimed, taint_safe_claimed, retry_safe_claimed,
+/// replayable_claimed, idempotency_verified_claimed) are always true regardless of
+/// gate_count or digest. This is the VB-STORAGE-GAP — not a bug of this harness,
+/// but a documented gap that the flags are set without actual per-gate verification.
+///
+/// Bound: unwind(3) — same as verification_proof_digest_binding.
 #[kani::proof]
+#[kani::unwind(3)]
 fn verification_proof_all_flags_unconditional() {
     let digest: WorkflowDigest = kani::any();
     let gate_count: u8 = kani::any();
@@ -257,10 +263,13 @@ fn verification_proof_all_flags_unconditional() {
 
     let proof = VerificationProof::new(digest, gate_count, durable);
 
-    // All flags are always true (this is the known gap).
+    // All _claimed flags are always true (this is the known gap).
     kani::assert(
-        proof.bounded && proof.taint_safe && proof.retry_safe && proof.replayable,
-        "All proof flags are true regardless of gate_count (documented gap)",
+        proof.bounded_claimed
+            && proof.taint_safe_claimed
+            && proof.retry_safe_claimed
+            && proof.replayable_claimed,
+        "All proof _claimed flags are true regardless of gate_count (documented gap)",
     );
 
     // Digest binding always holds.
