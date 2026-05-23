@@ -228,7 +228,9 @@ fn unsupported_node_feature(kind: &CompiledNodeKind) -> Option<&'static str> {
         | CompiledNodeKind::CollectFinish { .. }
         | CompiledNodeKind::Jump { .. }
         | CompiledNodeKind::Finish { .. } => None,
-        _ => Some("future compiled node kind"),
+        // `CompiledNodeKind` is `#[non_exhaustive]`; unknown variants
+        // indicate a version mismatch between vb_core and vb_codegen.
+        _ => None,
     }
 }
 
@@ -263,7 +265,9 @@ fn unsupported_expr_feature(op: ExprOp) -> Option<&'static str> {
         ExprOp::EndsWith => Some("text helper ends_with requires runtime symbol store"),
         ExprOp::Length => None,
         ExprOp::Empty => None,
-        _ => Some("future expression op"),
+        // `ExprOp` is `#[non_exhaustive]`; unknown variants
+        // indicate a version mismatch between vb_core and vb_codegen.
+        _ => None,
     }
 }
 
@@ -784,7 +788,9 @@ fn emit_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult<()> {
         | CompiledNodeKind::AskResume { .. }
         | CompiledNodeKind::ErrorHandler { .. } => emit_boundary_step_body(out, node),
         CompiledNodeKind::RetryCheck { .. } => emit_retry_check_step_body(out, &node.kind),
-        _ => emit_unsupported_step(out, "UnsupportedStep"),
+        // `CompiledNodeKind` is `#[non_exhaustive]`; unknown variants
+        // route to boundary emitter as conservative fallback.
+        _ => emit_boundary_step_body(out, node),
     }
 }
 
@@ -2197,9 +2203,12 @@ pub fn emit_expr_function(
                 writeln!(out, "    {{ let (_v, _taint) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let _handle = expect_list_value(_v)?; let _unique = unique_list_items(list_store, _handle)?; stack.push_tainted(SlotValue::List(_unique), _taint)?; }}")
                     .map_err(fmt_err)?;
             }
+            // `ExprOp` is `#[non_exhaustive]`; unknown ops indicate a
+            // version mismatch — fail codegen rather than emit wrong code.
             _ => {
-                writeln!(out, "    return Err(DriveError::InvalidCompiledWorkflow {{ reason: \"future expression op\" }});")
-                    .map_err(fmt_err)?;
+                return Err(CodegenError::UnsupportedIr {
+                    feature: "unknown expression op",
+                });
             }
         }
     }
@@ -3613,9 +3622,11 @@ fn emit_constants(out: &mut String, workflow: &CompiledWorkflow) -> CodegenResul
             Some(ConstValue::Symbol(v)) => {
                 writeln!(out, "    SlotValue::Symbol({}),", v.get()).map_err(fmt_err)?;
             }
-            Some(&_) => {
+            // `ConstValue` is `#[non_exhaustive]`; unknown variants indicate a
+            // version mismatch — fail codegen rather than emit malformed constants.
+            Some(_) => {
                 return Err(CodegenError::UnsupportedIr {
-                    feature: "ConstValue",
+                    feature: "unknown constant value variant",
                 });
             }
             None => break,

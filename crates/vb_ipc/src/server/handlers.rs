@@ -185,8 +185,10 @@ pub fn handle_inspect_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
         Ok(vb_runtime::shard::InspectResponse::NotFound { .. }) => IpcResponse::RuntimeError {
             message: String::from("run not found"),
         },
+        // Handle unknown future InspectResponse variants conservatively.
+        #[allow(unreachable_code)]
         Ok(_) => IpcResponse::RuntimeError {
-            message: String::from("unexpected inspect response"),
+            message: String::from("unknown inspect response variant"),
         },
         Err(e) => IpcResponse::RuntimeError {
             message: sanitize_runtime_error(&e),
@@ -611,6 +613,8 @@ fn node_kind_label(kind: &vb_core::workflow::CompiledNodeKind) -> &'static str {
         vb_core::workflow::CompiledNodeKind::ErrorHandler { .. } => "ErrorHandler",
         vb_core::workflow::CompiledNodeKind::Jump { .. } => "Jump",
         vb_core::workflow::CompiledNodeKind::Finish { .. } => "Finish",
+        // Handle unknown future CompiledNodeKind variants conservatively.
+        #[allow(unreachable_code)]
         _ => "Unknown",
     }
 }
@@ -792,6 +796,8 @@ fn collect_edges_from_node(
         | vb_core::workflow::CompiledNodeKind::AskResume { .. }
         | vb_core::workflow::CompiledNodeKind::RetryCheck { .. }
         | vb_core::workflow::CompiledNodeKind::Finish { .. } => {}
+        // Handle unknown future CompiledNodeKind variants: no edges to report.
+        #[allow(unreachable_code)]
         _ => {}
     }
 }
@@ -1093,6 +1099,8 @@ fn all_successors(kind: &vb_core::workflow::CompiledNodeKind) -> Vec<u16> {
         | vb_core::workflow::CompiledNodeKind::AskResume { .. }
         | vb_core::workflow::CompiledNodeKind::RetryCheck { .. }
         | vb_core::workflow::CompiledNodeKind::Finish { .. } => {}
+        // Handle unknown future CompiledNodeKind variants: no additional successors.
+        #[allow(unreachable_code)]
         _ => {}
     }
     succs

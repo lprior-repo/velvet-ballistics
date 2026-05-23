@@ -154,6 +154,8 @@ pub fn validate_gate_08_accessor_path_segments(parts: &WorkflowParts) -> Validat
                     validate_field_symbol(acc_index, seg_index, *sym_id, parts.symbols_count)?;
                 }
                 PathSegment::Index(idx) => validate_index_segment(acc_index, seg_index, *idx)?,
+                // `PathSegment` is `#[non_exhaustive]`; unknown variants
+                // are a structural error — fail closed rather than silently ignore.
                 _ => {
                     return Err(ValidationError::AccessorPathInvalid {
                         accessor_index: acc_index,
@@ -1082,6 +1084,8 @@ fn node_reads(node: &CompiledNode, expressions: &[ExprProgram]) -> Vec<SlotIdx> 
         CompiledNodeKind::Finish { result } => {
             reads.push(*result);
         }
+        // `CompiledNodeKind` is `#[non_exhaustive]`; unknown variants
+        // contribute no reads (fail-soft: new variants start with no reads).
         _ => {}
     }
     reads
@@ -1622,6 +1626,8 @@ fn const_value_discriminant(value: &vb_core::value::ConstValue) -> u8 {
         vb_core::value::ConstValue::I64(_) => 3,
         vb_core::value::ConstValue::F64(_) => 4,
         vb_core::value::ConstValue::Symbol(_) => 5,
+        // `ConstValue` is `#[non_exhaustive]`; return 0 for unknown
+        // variants (does not conflict with known discriminant values).
         _ => 0,
     }
 }

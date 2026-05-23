@@ -170,6 +170,8 @@ fn taint_marker_string(taint: Taint) -> String {
         Taint::Clean => "CLEAN".to_string(),
         Taint::DerivedFromSecret => "DERIVED".to_string(),
         Taint::Secret => "SECRET".to_string(),
+        // `Taint` is `#[non_exhaustive]`; unknown variants are
+        // treated as unknown rather than silently misclassifying.
         _ => "UNKNOWN".to_string(),
     }
 }
