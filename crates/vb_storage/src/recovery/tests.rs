@@ -12,13 +12,13 @@
 )]
 mod tests {
     use crate::recovery::{
-        check_compiled_ir_digest, check_workflow_source_digest, extract_terminal,
-        is_terminal_event, recover_all_incomplete_runs, recover_full_journal,
-        recover_runtime_frame_seed, recover_runtime_frame_seed_from_events,
+        ActionReplayTracker, DigestCheck, RecoveredStepState, RecoveryError, RecoveryHydration,
+        RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState, check_compiled_ir_digest,
+        check_workflow_source_digest, extract_terminal, is_terminal_event,
+        recover_all_incomplete_runs, recover_full_journal, recover_runtime_frame_seed,
+        recover_runtime_frame_seed_from_events,
         recover_runtime_frame_seed_from_events_with_workflow, recover_runtime_summary,
         recover_snapshot_plus_tail, replay_events, summarize_recovery_events, verify_digests,
-        ActionReplayTracker, DigestCheck, RecoveredStepState, RecoveryError, RecoveryHydration,
-        RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState,
     };
     use crate::{EventSeq, FjallJournal, JournalEvent, RunHeaderRecord};
     use vb_core::value::{ConstValue, SlotValue, Taint};
@@ -259,8 +259,8 @@ mod tests {
     }
 
     #[test]
-    fn recover_runtime_frame_seed_from_events_rebuilds_dimensions_and_step_states(
-    ) -> Result<(), String> {
+    fn recover_runtime_frame_seed_from_events_rebuilds_dimensions_and_step_states()
+    -> Result<(), String> {
         let run = RunId::new(91);
         let workflow = sample_digest(13);
         let events = vec![
@@ -306,11 +306,10 @@ mod tests {
         assert!(seed.steps.iter().any(
             |entry| entry.step == StepIdx::new(1) && entry.state == RecoveredStepState::Waiting
         ));
-        assert!(seed
-            .steps
-            .iter()
-            .any(|entry| entry.step == StepIdx::new(3)
-                && entry.state == RecoveredStepState::Succeeded));
+        assert!(
+            seed.steps.iter().any(|entry| entry.step == StepIdx::new(3)
+                && entry.state == RecoveredStepState::Succeeded)
+        );
         assert_eq!(
             seed.unsupported,
             UnsupportedRecoveryState {
@@ -324,8 +323,8 @@ mod tests {
     }
 
     #[test]
-    fn frame_seed_with_workflow_replays_deterministic_slot_values(
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    fn frame_seed_with_workflow_replays_deterministic_slot_values()
+    -> Result<(), Box<dyn std::error::Error>> {
         let run = RunId::new(94);
         let plan = deterministic_plan()?;
         let events = deterministic_replay_events(run, sample_digest(44));
@@ -363,8 +362,8 @@ mod tests {
     }
 
     #[test]
-    fn frame_seed_with_workflow_rejects_digest_mismatch_before_replay(
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    fn frame_seed_with_workflow_rejects_digest_mismatch_before_replay()
+    -> Result<(), Box<dyn std::error::Error>> {
         let run = RunId::new(95);
         let plan = deterministic_plan()?;
         let mismatched = sample_digest(45);
@@ -377,8 +376,8 @@ mod tests {
     }
 
     #[test]
-    fn frame_seed_with_workflow_maps_replay_step_not_found(
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    fn frame_seed_with_workflow_maps_replay_step_not_found()
+    -> Result<(), Box<dyn std::error::Error>> {
         let run = RunId::new(96);
         let plan = deterministic_plan()?;
         let events = step_succeeded_events(run, sample_digest(44), StepIdx::new(99));
@@ -724,8 +723,8 @@ mod tests {
     }
 
     #[test]
-    fn snapshot_tail_matches_full_journal_lifecycle_summary(
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    fn snapshot_tail_matches_full_journal_lifecycle_summary()
+    -> Result<(), Box<dyn std::error::Error>> {
         let run = RunId::new(900);
         let events = vec![
             JournalEvent::RunAccepted {
@@ -1684,8 +1683,8 @@ mod tests {
 mod hydrate_run_frame_tests {
     use crate::recovery::hydrate_support::apply_tail_events;
     use crate::recovery::{
-        hydrate_run_frame, hydrate_run_frame_from_events, ActionReplayTracker, RecoveryError,
-        RunSnapshot,
+        ActionReplayTracker, RecoveryError, RunSnapshot, hydrate_run_frame,
+        hydrate_run_frame_from_events,
     };
     use crate::{EventSeq, JournalEvent};
     use vb_core::value::{SlotValue, Taint};

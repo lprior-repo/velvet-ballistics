@@ -8,19 +8,15 @@
 //! models (WorkflowDoc, FieldValue) that result from YAML parsing. These
 //! tests verify the validation behavior that downstream YAML parsers rely on.
 
-use vb_validate::schema::{
-    validate_workflow_schema, validate_version, validate_trigger, validate_ids,
-    validate_step_fields, validate_single_primitive,
-    FieldValue, StepDoc, WorkflowDoc,
-};
-use vb_validate::ValidationError;
-use vb_validate::shared::{ValidationPipeline, validate, validate_with_contracts};
 use vb_core::action::ActionContract;
 use vb_core::ids::{SlotIdx, StepIdx};
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind,
-    ResourceContract, WorkflowParts,
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+use vb_validate::ValidationError;
+use vb_validate::schema::{
+    FieldValue, StepDoc, WorkflowDoc, validate_ids, validate_single_primitive,
+    validate_step_fields, validate_trigger, validate_version, validate_workflow_schema,
 };
+use vb_validate::shared::{ValidationPipeline, validate, validate_with_contracts};
 
 // ---------------------------------------------------------------------------
 // Helper constructors
@@ -675,10 +671,7 @@ fn validate_ids_rejects_too_long_id() {
     // When validate_ids is called
     let result = validate_ids(&doc);
     // Then it returns InvalidId
-    assert_eq!(
-        result,
-        Err(ValidationError::InvalidId { id: long_id })
-    );
+    assert_eq!(result, Err(ValidationError::InvalidId { id: long_id }));
 }
 
 #[test]

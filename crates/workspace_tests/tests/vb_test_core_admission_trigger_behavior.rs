@@ -19,9 +19,8 @@ use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ResourceContract, WorkflowParts,
 };
 use vb_core::{
-    drive_deterministic, resume_action_completion, resume_action_failure, route_error_handler,
-    step_once, validate_compiled_workflow, validate_node_bounds, validate_transition_target,
-    EngineSignal, ErrorHandlerOutcome, StepBudget,
+    EngineSignal, ErrorHandlerOutcome, StepBudget, drive_deterministic, resume_action_completion,
+    resume_action_failure, route_error_handler, step_once,
 };
 
 // ============================================================================
@@ -262,9 +261,18 @@ mod admission_policy_enforcement {
         let strict = format!("{:?}", RuntimePolicy::Strict);
         let journaled = format!("{:?}", RuntimePolicy::Journaled);
         let relaxed = format!("{:?}", RuntimePolicy::Relaxed);
-        assert!(strict.contains("Strict"), "Strict debug should contain 'Strict'");
-        assert!(journaled.contains("Journaled"), "Journaled debug should contain 'Journaled'");
-        assert!(relaxed.contains("Relaxed"), "Relaxed debug should contain 'Relaxed'");
+        assert!(
+            strict.contains("Strict"),
+            "Strict debug should contain 'Strict'"
+        );
+        assert!(
+            journaled.contains("Journaled"),
+            "Journaled debug should contain 'Journaled'"
+        );
+        assert!(
+            relaxed.contains("Relaxed"),
+            "Relaxed debug should contain 'Relaxed'"
+        );
     }
 
     #[test]
@@ -373,7 +381,10 @@ mod trigger_condition_evaluation {
         let result = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
 
         assert_eq!(result, EngineSignal::AwaitingWait);
-        assert_eq!(run.step_state(StepIdx::new(0)).map_err(|e| e.to_string())?, StepState::Waiting);
+        assert_eq!(
+            run.step_state(StepIdx::new(0)).map_err(|e| e.to_string())?,
+            StepState::Waiting
+        );
         Ok(())
     }
 
@@ -410,7 +421,10 @@ mod trigger_condition_evaluation {
         let result = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
 
         assert_eq!(result, EngineSignal::AwaitingAsk);
-        assert_eq!(run.step_state(StepIdx::new(0)).map_err(|e| e.to_string())?, StepState::Asking);
+        assert_eq!(
+            run.step_state(StepIdx::new(0)).map_err(|e| e.to_string())?,
+            StepState::Asking
+        );
         Ok(())
     }
 
@@ -461,9 +475,8 @@ mod fail_closed_vs_fail_open {
         let mut run = make_frame(&workflow)?;
         let error = CoreError::DivisionByZero;
 
-        let outcome =
-            route_error_handler(&workflow, &mut run, StepIdx::new(0), &error.into())
-                .map_err(|e| e.to_string())?;
+        let outcome = route_error_handler(&workflow, &mut run, StepIdx::new(0), &error.into())
+            .map_err(|e| e.to_string())?;
 
         // Sharp assertion: Routed outcome
         assert_eq!(outcome, ErrorHandlerOutcome::Routed);
@@ -496,9 +509,8 @@ mod fail_closed_vs_fail_open {
         let mut run = make_frame(&workflow)?;
         let error = CoreError::DivisionByZero;
 
-        let outcome =
-            route_error_handler(&workflow, &mut run, StepIdx::new(0), &error.into())
-                .map_err(|e| e.to_string())?;
+        let outcome = route_error_handler(&workflow, &mut run, StepIdx::new(0), &error.into())
+            .map_err(|e| e.to_string())?;
 
         // Sharp assertion: NoHandler outcome (fail-closed: error propagates)
         assert_eq!(outcome, ErrorHandlerOutcome::NoHandler);
@@ -713,14 +725,16 @@ mod state_transitions {
         );
 
         // Mark running
-        run.mark_running(StepIdx::new(0)).map_err(|e| e.to_string())?;
+        run.mark_running(StepIdx::new(0))
+            .map_err(|e| e.to_string())?;
         assert_eq!(
             run.step_state(StepIdx::new(0)).map_err(|e| e.to_string())?,
             StepState::Running
         );
 
         // Mark succeeded
-        run.mark_succeeded(StepIdx::new(0)).map_err(|e| e.to_string())?;
+        run.mark_succeeded(StepIdx::new(0))
+            .map_err(|e| e.to_string())?;
         assert_eq!(
             run.step_state(StepIdx::new(0)).map_err(|e| e.to_string())?,
             StepState::Succeeded
@@ -733,8 +747,10 @@ mod state_transitions {
         let workflow = make_simple_workflow()?;
         let mut run = make_frame(&workflow)?;
 
-        run.mark_running(StepIdx::new(0)).map_err(|e| e.to_string())?;
-        run.mark_succeeded(StepIdx::new(0)).map_err(|e| e.to_string())?;
+        run.mark_running(StepIdx::new(0))
+            .map_err(|e| e.to_string())?;
+        run.mark_succeeded(StepIdx::new(0))
+            .map_err(|e| e.to_string())?;
 
         // Sharp assertion: Cannot transition from Succeeded back to Running
         let result = run.mark_running(StepIdx::new(0));
@@ -743,7 +759,12 @@ mod state_transitions {
             Err(CoreError::InternalInvariantViolation { reason }) => {
                 assert_eq!(reason, "invalid_state_transition");
             }
-            Err(other) => return Err(format!("expected InternalInvariantViolation, got {:?}", other)),
+            Err(other) => {
+                return Err(format!(
+                    "expected InternalInvariantViolation, got {:?}",
+                    other
+                ));
+            }
             Ok(_) => return Err(String::from("expected error, got Ok")),
         }
         Ok(())
@@ -754,8 +775,10 @@ mod state_transitions {
         let workflow = make_simple_workflow()?;
         let mut run = make_frame(&workflow)?;
 
-        run.mark_running(StepIdx::new(0)).map_err(|e| e.to_string())?;
-        run.mark_failed(StepIdx::new(0)).map_err(|e| e.to_string())?;
+        run.mark_running(StepIdx::new(0))
+            .map_err(|e| e.to_string())?;
+        run.mark_failed(StepIdx::new(0))
+            .map_err(|e| e.to_string())?;
 
         // Sharp assertion: Cannot transition from Failed to Succeeded
         let result = run.mark_succeeded(StepIdx::new(0));
@@ -764,7 +787,12 @@ mod state_transitions {
             Err(CoreError::InternalInvariantViolation { reason }) => {
                 assert_eq!(reason, "invalid_state_transition");
             }
-            Err(other) => return Err(format!("expected InternalInvariantViolation, got {:?}", other)),
+            Err(other) => {
+                return Err(format!(
+                    "expected InternalInvariantViolation, got {:?}",
+                    other
+                ));
+            }
             Ok(_) => return Err(String::from("expected error, got Ok")),
         }
         Ok(())
@@ -775,8 +803,10 @@ mod state_transitions {
         let workflow = make_simple_workflow()?;
         let mut run = make_frame(&workflow)?;
 
-        run.mark_running(StepIdx::new(0)).map_err(|e| e.to_string())?;
-        run.mark_cancelled(StepIdx::new(0)).map_err(|e| e.to_string())?;
+        run.mark_running(StepIdx::new(0))
+            .map_err(|e| e.to_string())?;
+        run.mark_cancelled(StepIdx::new(0))
+            .map_err(|e| e.to_string())?;
 
         // Sharp assertion: Cannot transition from Cancelled back to Running
         let result = run.mark_running(StepIdx::new(0));
@@ -785,7 +815,12 @@ mod state_transitions {
             Err(CoreError::InternalInvariantViolation { reason }) => {
                 assert_eq!(reason, "invalid_state_transition");
             }
-            Err(other) => return Err(format!("expected InternalInvariantViolation, got {:?}", other)),
+            Err(other) => {
+                return Err(format!(
+                    "expected InternalInvariantViolation, got {:?}",
+                    other
+                ));
+            }
             Ok(_) => return Err(String::from("expected error, got Ok")),
         }
         Ok(())
@@ -796,8 +831,10 @@ mod state_transitions {
         let workflow = make_simple_workflow()?;
         let mut run = make_frame(&workflow)?;
 
-        run.mark_running(StepIdx::new(0)).map_err(|e| e.to_string())?;
-        run.mark_skipped(StepIdx::new(0)).map_err(|e| e.to_string())?;
+        run.mark_running(StepIdx::new(0))
+            .map_err(|e| e.to_string())?;
+        run.mark_skipped(StepIdx::new(0))
+            .map_err(|e| e.to_string())?;
 
         // Sharp assertion: Cannot transition from Skipped to Failed
         let result = run.mark_failed(StepIdx::new(0));
@@ -806,7 +843,12 @@ mod state_transitions {
             Err(CoreError::InternalInvariantViolation { reason }) => {
                 assert_eq!(reason, "invalid_state_transition");
             }
-            Err(other) => return Err(format!("expected InternalInvariantViolation, got {:?}", other)),
+            Err(other) => {
+                return Err(format!(
+                    "expected InternalInvariantViolation, got {:?}",
+                    other
+                ));
+            }
             Ok(_) => return Err(String::from("expected error, got Ok")),
         }
         Ok(())
@@ -818,16 +860,20 @@ mod state_transitions {
         let mut run = make_frame(&workflow)?;
 
         // Waiting state
-        run.mark_running(StepIdx::new(0)).map_err(|e| e.to_string())?;
-        run.mark_waiting(StepIdx::new(0)).map_err(|e| e.to_string())?;
+        run.mark_running(StepIdx::new(0))
+            .map_err(|e| e.to_string())?;
+        run.mark_waiting(StepIdx::new(0))
+            .map_err(|e| e.to_string())?;
         assert_eq!(
             run.step_state(StepIdx::new(0)).map_err(|e| e.to_string())?,
             StepState::Waiting
         );
 
         // Asking state
-        run.mark_running(StepIdx::new(1)).map_err(|e| e.to_string())?;
-        run.mark_asking(StepIdx::new(1)).map_err(|e| e.to_string())?;
+        run.mark_running(StepIdx::new(1))
+            .map_err(|e| e.to_string())?;
+        run.mark_asking(StepIdx::new(1))
+            .map_err(|e| e.to_string())?;
         assert_eq!(
             run.step_state(StepIdx::new(1)).map_err(|e| e.to_string())?,
             StepState::Asking
@@ -843,8 +889,10 @@ mod state_transitions {
         // Pending -> Running (allowed)
         assert!(run.mark_running(StepIdx::new(0)).is_ok());
         // Pending -> Skipped (allowed via Running)
-        run.mark_running(StepIdx::new(1)).map_err(|e| e.to_string())?;
-        run.mark_skipped(StepIdx::new(1)).map_err(|e| e.to_string())?;
+        run.mark_running(StepIdx::new(1))
+            .map_err(|e| e.to_string())?;
+        run.mark_skipped(StepIdx::new(1))
+            .map_err(|e| e.to_string())?;
         assert_eq!(
             run.step_state(StepIdx::new(1)).map_err(|e| e.to_string())?,
             StepState::Skipped
@@ -1054,10 +1102,8 @@ mod capability_admission {
 
     #[test]
     fn capability_set_rejects_prefix_without_exact_match() {
-        let caps = CapabilitySet::from_grants(Box::new([Capability::new(
-            "net".into(),
-            ActionId::new(1),
-        )]));
+        let caps =
+            CapabilitySet::from_grants(Box::new([Capability::new("net".into(), ActionId::new(1))]));
 
         let required = Capability::new("network".into(), ActionId::new(1));
         // Sharp assertion: Partial prefix does NOT grant
@@ -1090,10 +1136,8 @@ mod capability_admission {
 
     #[test]
     fn capability_set_empty_name_grants_nothing() {
-        let caps = CapabilitySet::from_grants(Box::new([Capability::new(
-            "".into(),
-            ActionId::new(1),
-        )]));
+        let caps =
+            CapabilitySet::from_grants(Box::new([Capability::new("".into(), ActionId::new(1))]));
 
         let required = Capability::new("network".into(), ActionId::new(1));
         // Sharp assertion: Empty name grants nothing
@@ -1244,7 +1288,10 @@ mod signal_exhaustion_paths {
         let signal = EngineSignal::Continue;
         // Sharp assertion: Continue is not equal to any terminal signal
         assert_ne!(signal, EngineSignal::StepBudgetExhausted);
-        assert_ne!(signal, EngineSignal::Finished(SlotValue::Null, Taint::Clean));
+        assert_ne!(
+            signal,
+            EngineSignal::Finished(SlotValue::Null, Taint::Clean)
+        );
     }
 }
 

@@ -53,10 +53,7 @@ fn cli_help_command_succeeds() {
 #[test]
 fn cli_version_command_succeeds() {
     let output = run_vb(&["version"]);
-    assert!(
-        output.status.success(),
-        "version command should succeed"
-    );
+    assert!(output.status.success(), "version command should succeed");
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
         stdout.contains("velvet-ballastics"),
@@ -78,10 +75,7 @@ fn cli_no_command_shows_help() {
 #[test]
 fn cli_unknown_command_returns_nonzero() {
     let output = run_vb(&["foobar"]);
-    assert!(
-        !output.status.success(),
-        "unknown command should fail"
-    );
+    assert!(!output.status.success(), "unknown command should fail");
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
         stderr.contains("unknown command") || stderr.contains("help"),
@@ -94,40 +88,28 @@ fn cli_unknown_command_returns_nonzero() {
 #[test]
 fn cli_version_short_flag_succeeds() {
     let output = run_vb(&["--version"]);
-    assert!(
-        output.status.success(),
-        "--version flag should succeed"
-    );
+    assert!(output.status.success(), "--version flag should succeed");
 }
 
 /// Check that -V short flag works.
 #[test]
 fn cli_version_v_flag_succeeds() {
     let output = run_vb(&["-V"]);
-    assert!(
-        output.status.success(),
-        "-V flag should succeed"
-    );
+    assert!(output.status.success(), "-V flag should succeed");
 }
 
 /// Check that --help short flag works.
 #[test]
 fn cli_help_short_flag_succeeds() {
     let output = run_vb(&["--help"]);
-    assert!(
-        output.status.success(),
-        "--help flag should succeed"
-    );
+    assert!(output.status.success(), "--help flag should succeed");
 }
 
 /// Check that -h short flag works.
 #[test]
 fn cli_help_h_flag_succeeds() {
     let output = run_vb(&["-h"]);
-    assert!(
-        output.status.success(),
-        "-h flag should succeed"
-    );
+    assert!(output.status.success(), "-h flag should succeed");
 }
 
 // ============================================================================
@@ -141,10 +123,7 @@ mod run_command {
     #[test]
     fn cli_run_without_args_fails() {
         let output = run_vb(&["run"]);
-        assert!(
-            !output.status.success(),
-            "run without args should fail"
-        );
+        assert!(!output.status.success(), "run without args should fail");
     }
 
     /// run with workflow but missing --input-bin should fail.
@@ -172,7 +151,14 @@ mod run_command {
     fn cli_run_durability_none_without_db_succeeds() {
         // This will fail at workflow validation, but not at arg parsing
         // We just verify the arg parsing succeeds
-        let output = run_vb(&["run", "workflow.yaml", "--input-bin", "input.bin", "--durability", "none"]);
+        let output = run_vb(&[
+            "run",
+            "workflow.yaml",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "none",
+        ]);
         // Should fail on file read/validation, not on missing --db
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -185,7 +171,14 @@ mod run_command {
     /// run with --durability journaled without --db should fail.
     #[test]
     fn cli_run_durability_journaled_requires_db() {
-        let output = run_vb(&["run", "workflow.yaml", "--input-bin", "input.bin", "--durability", "journaled"]);
+        let output = run_vb(&[
+            "run",
+            "workflow.yaml",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "journaled",
+        ]);
         assert!(
             !output.status.success(),
             "run with journaled durability without --db should fail"
@@ -201,7 +194,14 @@ mod run_command {
     /// run with --durability strict without --db should fail.
     #[test]
     fn cli_run_durability_strict_requires_db() {
-        let output = run_vb(&["run", "workflow.yaml", "--input-bin", "input.bin", "--durability", "strict"]);
+        let output = run_vb(&[
+            "run",
+            "workflow.yaml",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "strict",
+        ]);
         assert!(
             !output.status.success(),
             "run with strict durability without --db should fail"
@@ -218,8 +218,14 @@ mod run_command {
     #[test]
     fn cli_run_durability_journaled_with_db_passes_arg_parsing() {
         let output = run_vb(&[
-            "run", "workflow.yaml", "--input-bin", "input.bin",
-            "--durability", "journaled", "--db", "journal-db"
+            "run",
+            "workflow.yaml",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "journaled",
+            "--db",
+            "journal-db",
         ]);
         // Should fail on file not found, not arg parsing
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -234,8 +240,12 @@ mod run_command {
     #[test]
     fn cli_run_invalid_durability_mode_fails() {
         let output = run_vb(&[
-            "run", "workflow.yaml", "--input-bin", "input.bin",
-            "--durability", "invalid-mode"
+            "run",
+            "workflow.yaml",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "invalid-mode",
         ]);
         assert!(
             !output.status.success(),
@@ -253,8 +263,14 @@ mod run_command {
     #[test]
     fn cli_run_step_requires_step_input() {
         let output = run_vb(&[
-            "run", "workflow.yaml", "--input-bin", "input.bin",
-            "--durability", "none", "--step", "5"
+            "run",
+            "workflow.yaml",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "none",
+            "--step",
+            "5",
         ]);
         assert!(
             !output.status.success(),
@@ -272,8 +288,16 @@ mod run_command {
     #[test]
     fn cli_run_with_step_flags_passes_arg_parsing() {
         let output = run_vb(&[
-            "run", "workflow.yaml", "--input-bin", "input.bin",
-            "--durability", "none", "--step", "3", "--step-input", "step-data.bin"
+            "run",
+            "workflow.yaml",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "none",
+            "--step",
+            "3",
+            "--step-input",
+            "step-data.bin",
         ]);
         // Should fail on file validation, not arg parsing
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -330,10 +354,7 @@ mod compile_command {
     #[test]
     fn cli_compile_without_args_fails() {
         let output = run_vb(&["compile"]);
-        assert!(
-            !output.status.success(),
-            "compile without args should fail"
-        );
+        assert!(!output.status.success(), "compile without args should fail");
     }
 
     /// compile missing --emit should fail.
@@ -372,7 +393,12 @@ mod compile_command {
     #[test]
     fn cli_compile_unknown_emit_fails() {
         let output = run_vb(&[
-            "compile", "workflow.yaml", "--emit", "wasm", "--out", "output.vbir"
+            "compile",
+            "workflow.yaml",
+            "--emit",
+            "wasm",
+            "--out",
+            "output.vbir",
         ]);
         assert!(
             !output.status.success(),
@@ -442,10 +468,7 @@ mod lifecycle_commands {
     #[test]
     fn cli_cancel_without_db_fails() {
         let output = run_vb(&["cancel", "42"]);
-        assert!(
-            !output.status.success(),
-            "cancel without --db should fail"
-        );
+        assert!(!output.status.success(), "cancel without --db should fail");
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
             stderr.contains("missing argument") || stderr.contains("--db"),
@@ -459,7 +482,12 @@ mod lifecycle_commands {
     fn cli_cancel_reason_too_long_fails() {
         let long_reason = "a".repeat(257);
         let output = run_vb(&[
-            "cancel", "42", "--db", "journal-db", "--reason", &long_reason
+            "cancel",
+            "42",
+            "--db",
+            "journal-db",
+            "--reason",
+            &long_reason,
         ]);
         assert!(
             !output.status.success(),
@@ -477,20 +505,14 @@ mod lifecycle_commands {
     #[test]
     fn cli_retry_without_run_id_fails() {
         let output = run_vb(&["retry"]);
-        assert!(
-            !output.status.success(),
-            "retry without run_id should fail"
-        );
+        assert!(!output.status.success(), "retry without run_id should fail");
     }
 
     /// retry without --db should fail.
     #[test]
     fn cli_retry_without_db_fails() {
         let output = run_vb(&["retry", "42"]);
-        assert!(
-            !output.status.success(),
-            "retry without --db should fail"
-        );
+        assert!(!output.status.success(), "retry without --db should fail");
     }
 
     /// resume without run_id should fail.
@@ -507,10 +529,7 @@ mod lifecycle_commands {
     #[test]
     fn cli_resume_without_db_fails() {
         let output = run_vb(&["resume", "42"]);
-        assert!(
-            !output.status.success(),
-            "resume without --db should fail"
-        );
+        assert!(!output.status.success(), "resume without --db should fail");
     }
 }
 
@@ -525,18 +544,21 @@ mod answer_command {
     #[test]
     fn cli_answer_without_args_fails() {
         let output = run_vb(&["answer"]);
-        assert!(
-            !output.status.success(),
-            "answer without args should fail"
-        );
+        assert!(!output.status.success(), "answer without args should fail");
     }
 
     /// answer with invalid step should fail.
     #[test]
     fn cli_answer_invalid_step_fails() {
         let output = run_vb(&[
-            "answer", "42", "--step", "not-a-number",
-            "--value-file", "value.bin", "--db", "journal-db"
+            "answer",
+            "42",
+            "--step",
+            "not-a-number",
+            "--value-file",
+            "value.bin",
+            "--db",
+            "journal-db",
         ]);
         assert!(
             !output.status.success(),
@@ -562,27 +584,26 @@ mod trace_command {
     #[test]
     fn cli_trace_without_run_id_fails() {
         let output = run_vb(&["trace"]);
-        assert!(
-            !output.status.success(),
-            "trace without run_id should fail"
-        );
+        assert!(!output.status.success(), "trace without run_id should fail");
     }
 
     /// trace without --db should fail.
     #[test]
     fn cli_trace_without_db_fails() {
         let output = run_vb(&["trace", "7"]);
-        assert!(
-            !output.status.success(),
-            "trace without --db should fail"
-        );
+        assert!(!output.status.success(), "trace without --db should fail");
     }
 
     /// trace with unknown filter flag should fail.
     #[test]
     fn cli_trace_unknown_filter_fails() {
         let output = run_vb(&[
-            "trace", "7", "--db", "journal-db", "--unknown-flag", "value"
+            "trace",
+            "7",
+            "--db",
+            "journal-db",
+            "--unknown-flag",
+            "value",
         ]);
         assert!(
             !output.status.success(),
@@ -618,10 +639,7 @@ mod diff_command {
     #[test]
     fn cli_diff_without_db_fails() {
         let output = run_vb(&["diff", "1", "2"]);
-        assert!(
-            !output.status.success(),
-            "diff without --db should fail"
-        );
+        assert!(!output.status.success(), "diff without --db should fail");
     }
 }
 
@@ -765,10 +783,7 @@ mod inspect_events_replay {
     #[test]
     fn cli_inspect_without_db_fails() {
         let output = run_vb(&["inspect", "42"]);
-        assert!(
-            !output.status.success(),
-            "inspect without --db should fail"
-        );
+        assert!(!output.status.success(), "inspect without --db should fail");
     }
 
     /// events without run_id should fail.
@@ -785,10 +800,7 @@ mod inspect_events_replay {
     #[test]
     fn cli_events_without_db_fails() {
         let output = run_vb(&["events", "42"]);
-        assert!(
-            !output.status.success(),
-            "events without --db should fail"
-        );
+        assert!(!output.status.success(), "events without --db should fail");
     }
 
     /// replay without run_id should fail.
@@ -805,10 +817,7 @@ mod inspect_events_replay {
     #[test]
     fn cli_replay_without_db_fails() {
         let output = run_vb(&["replay", "42"]);
-        assert!(
-            !output.status.success(),
-            "replay without --db should fail"
-        );
+        assert!(!output.status.success(), "replay without --db should fail");
     }
 }
 
@@ -823,13 +832,14 @@ mod submit_command {
     #[test]
     fn cli_submit_without_db_fails() {
         let output = run_vb(&[
-            "submit", "workflow.yaml", "--input-bin", "input.bin",
-            "--durability", "journaled"
+            "submit",
+            "workflow.yaml",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "journaled",
         ]);
-        assert!(
-            !output.status.success(),
-            "submit without --db should fail"
-        );
+        assert!(!output.status.success(), "submit without --db should fail");
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
             stderr.contains("missing argument") || stderr.contains("--db"),
@@ -842,8 +852,14 @@ mod submit_command {
     #[test]
     fn cli_submit_with_all_args_passes_parsing() {
         let output = run_vb(&[
-            "submit", "workflow.yaml", "--input-bin", "input.bin",
-            "--durability", "journaled", "--db", "journal-db"
+            "submit",
+            "workflow.yaml",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "journaled",
+            "--db",
+            "journal-db",
         ]);
         // Should fail on file validation, not arg parsing
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -1155,8 +1171,13 @@ mod output_format {
     #[test]
     fn cli_run_accepts_json_flag() {
         let output = run_vb(&[
-            "run", "workflow.yaml", "--input-bin", "input.bin",
-            "--durability", "none", "--json"
+            "run",
+            "workflow.yaml",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "none",
+            "--json",
         ]);
         // Should fail on file, not arg parsing
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -1179,10 +1200,7 @@ mod subcommand_help {
     #[test]
     fn cli_run_with_help_flag_shows_help() {
         let output = run_vb(&["run", "--help"]);
-        assert!(
-            output.status.success(),
-            "run --help should succeed"
-        );
+        assert!(output.status.success(), "run --help should succeed");
         let stdout = String::from_utf8_lossy(&output.stdout);
         assert!(
             stdout.contains("run") || stdout.contains("workflow"),
@@ -1195,9 +1213,6 @@ mod subcommand_help {
     #[test]
     fn cli_validate_with_h_flag_shows_help() {
         let output = run_vb(&["validate", "-h"]);
-        assert!(
-            output.status.success(),
-            "validate -h should succeed"
-        );
+        assert!(output.status.success(), "validate -h should succeed");
     }
 }

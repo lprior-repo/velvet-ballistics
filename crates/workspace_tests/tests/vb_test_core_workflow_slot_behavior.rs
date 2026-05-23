@@ -19,16 +19,23 @@
 //! - State transitions via `mark_*` methods
 
 use vb_core::{
-    ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest},
-    value::{ConstValue, SlotValue, Taint},
-    workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts},
-    EngineSignal, RunFrame, StepState, StepBudget, ValueStore,
-    // Engine functions
-    drive_deterministic, new_run_frame, run_until_blocked, step_once,
-    // Validation
-    validate_compiled_workflow,
     // Error types
     CoreError,
+    EngineSignal,
+    RunFrame,
+    StepBudget,
+    StepState,
+    ValueStore,
+    // Engine functions
+    drive_deterministic,
+    ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest},
+    new_run_frame,
+    run_until_blocked,
+    step_once,
+    // Validation
+    validate_compiled_workflow,
+    value::{ConstValue, SlotValue, Taint},
+    workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts},
 };
 
 // =============================================================================
@@ -223,7 +230,10 @@ mod behavior_new_run_frame {
         let result = new_run_frame(RunId::new(1), &workflow);
 
         // THEN: Frame creation succeeds (slot_count=0 is valid)
-        assert!(result.is_ok(), "frame with 0 slots should be created successfully");
+        assert!(
+            result.is_ok(),
+            "frame with 0 slots should be created successfully"
+        );
         assert_eq!(result.unwrap().slot_count(), 0);
     }
 }
@@ -247,7 +257,10 @@ mod behavior_run_until_blocked {
 
         // THEN: The workflow finishes with the expected value
         let signal = result.expect("run_until_blocked should not error");
-        assert_eq!(signal, EngineSignal::Finished(SlotValue::I64(42), Taint::Clean));
+        assert_eq!(
+            signal,
+            EngineSignal::Finished(SlotValue::I64(42), Taint::Clean)
+        );
         assert_eq!(frame.executed(), 2);
     }
 
@@ -263,7 +276,10 @@ mod behavior_run_until_blocked {
 
         // THEN: The workflow finishes with the copied value (42)
         let signal = result.expect("run_until_blocked should not error");
-        assert_eq!(signal, EngineSignal::Finished(SlotValue::I64(42), Taint::Clean));
+        assert_eq!(
+            signal,
+            EngineSignal::Finished(SlotValue::I64(42), Taint::Clean)
+        );
         assert_eq!(frame.executed(), 3);
     }
 
@@ -312,7 +328,10 @@ mod behavior_run_until_blocked {
 
         // THEN: The workflow finishes
         let signal = result.expect("run_until_blocked should not error");
-        assert_eq!(signal, EngineSignal::Finished(SlotValue::I64(99), Taint::Clean));
+        assert_eq!(
+            signal,
+            EngineSignal::Finished(SlotValue::I64(99), Taint::Clean)
+        );
     }
 
     #[test]
@@ -372,7 +391,10 @@ mod behavior_drive_deterministic {
 
         // THEN: Workflow completes, budget has remaining
         let signal = result.expect("drive_deterministic should not error");
-        assert_eq!(signal, EngineSignal::Finished(SlotValue::I64(77), Taint::Clean));
+        assert_eq!(
+            signal,
+            EngineSignal::Finished(SlotValue::I64(77), Taint::Clean)
+        );
         assert_eq!(budget.remaining(), 8); // 10 - 2 = 8 remaining
     }
 }
@@ -407,10 +429,13 @@ mod behavior_step_once {
         let workflow = two_step_workflow(55);
         let mut frame = make_frame(&workflow, 10);
         // Pre-initialize the result slot (as if SetConst step ran)
-        frame.write_slot(SlotIdx::new(0), SlotValue::I64(55))
+        frame
+            .write_slot(SlotIdx::new(0), SlotValue::I64(55))
             .expect("slot write should succeed");
         // Manually set PC to the finish step
-        frame.set_pc(StepIdx::new(1)).expect("set_pc should succeed");
+        frame
+            .set_pc(StepIdx::new(1))
+            .expect("set_pc should succeed");
         let mut store = ValueStore::new();
 
         // WHEN: Executing the finish step
@@ -418,7 +443,10 @@ mod behavior_step_once {
 
         // THEN: Returns Finished with the result
         let signal = result.expect("step_once should not error");
-        assert_eq!(signal, EngineSignal::Finished(SlotValue::I64(55), Taint::Clean));
+        assert_eq!(
+            signal,
+            EngineSignal::Finished(SlotValue::I64(55), Taint::Clean)
+        );
     }
 
     #[test]
@@ -472,12 +500,26 @@ mod behavior_slot_management {
         let mut frame = make_frame(&workflow, 20);
 
         // WHEN: Writing values to slots 0 and 1
-        frame.write_slot(SlotIdx::new(0), SlotValue::I64(100)).expect("write should succeed");
-        frame.write_slot(SlotIdx::new(1), SlotValue::Bool(true)).expect("write should succeed");
+        frame
+            .write_slot(SlotIdx::new(0), SlotValue::I64(100))
+            .expect("write should succeed");
+        frame
+            .write_slot(SlotIdx::new(1), SlotValue::Bool(true))
+            .expect("write should succeed");
 
         // THEN: Reading returns the written values
-        assert_eq!(frame.read_slot(SlotIdx::new(0)).expect("read should succeed"), &SlotValue::I64(100));
-        assert_eq!(frame.read_slot(SlotIdx::new(1)).expect("read should succeed"), &SlotValue::Bool(true));
+        assert_eq!(
+            frame
+                .read_slot(SlotIdx::new(0))
+                .expect("read should succeed"),
+            &SlotValue::I64(100)
+        );
+        assert_eq!(
+            frame
+                .read_slot(SlotIdx::new(1))
+                .expect("read should succeed"),
+            &SlotValue::Bool(true)
+        );
     }
 
     #[test]
@@ -580,13 +622,19 @@ mod behavior_slot_management {
         let mut frame = make_frame(&workflow, 23);
 
         // Initialize the slot first
-        frame.write_slot(SlotIdx::new(0), SlotValue::Null).expect("write should succeed");
+        frame
+            .write_slot(SlotIdx::new(0), SlotValue::Null)
+            .expect("write should succeed");
 
         // WHEN: Writing taint to the slot
-        frame.write_taint(SlotIdx::new(0), Taint::Secret).expect("taint write should succeed");
+        frame
+            .write_taint(SlotIdx::new(0), Taint::Secret)
+            .expect("taint write should succeed");
 
         // THEN: Reading taint returns the written value
-        let taint = frame.read_taint(SlotIdx::new(0)).expect("taint read should succeed");
+        let taint = frame
+            .read_taint(SlotIdx::new(0))
+            .expect("taint read should succeed");
         assert_eq!(taint, Taint::Secret);
     }
 
@@ -653,14 +701,20 @@ mod behavior_slot_management {
         .unwrap();
         let mut frame = make_frame(&workflow, 25);
 
-        frame.write_slot(SlotIdx::new(0), SlotValue::I64(10)).expect("initial write should succeed");
+        frame
+            .write_slot(SlotIdx::new(0), SlotValue::I64(10))
+            .expect("initial write should succeed");
 
         // WHEN: Overwriting with a different value
-        frame.write_slot(SlotIdx::new(0), SlotValue::Bool(false)).expect("overwrite should succeed");
+        frame
+            .write_slot(SlotIdx::new(0), SlotValue::Bool(false))
+            .expect("overwrite should succeed");
 
         // THEN: New value is returned
         assert_eq!(
-            frame.read_slot(SlotIdx::new(0)).expect("read should succeed"),
+            frame
+                .read_slot(SlotIdx::new(0))
+                .expect("read should succeed"),
             &SlotValue::Bool(false)
         );
     }
@@ -719,23 +773,56 @@ mod behavior_step_state_transitions {
         let mut frame = make_frame(&workflow, 30);
 
         // THEN: Initial state is Pending for all steps
-        assert_eq!(frame.step_state(StepIdx::new(0)).expect("step_state should succeed"), StepState::Pending);
-        assert_eq!(frame.step_state(StepIdx::new(1)).expect("step_state should succeed"), StepState::Pending);
-        assert_eq!(frame.step_state(StepIdx::new(2)).expect("step_state should succeed"), StepState::Pending);
+        assert_eq!(
+            frame
+                .step_state(StepIdx::new(0))
+                .expect("step_state should succeed"),
+            StepState::Pending
+        );
+        assert_eq!(
+            frame
+                .step_state(StepIdx::new(1))
+                .expect("step_state should succeed"),
+            StepState::Pending
+        );
+        assert_eq!(
+            frame
+                .step_state(StepIdx::new(2))
+                .expect("step_state should succeed"),
+            StepState::Pending
+        );
 
         // WHEN: Marking step 0 as Running -> Succeeded
-        frame.mark_running(StepIdx::new(0)).expect("mark_running should succeed");
-        frame.mark_succeeded(StepIdx::new(0)).expect("mark_succeeded should succeed");
+        frame
+            .mark_running(StepIdx::new(0))
+            .expect("mark_running should succeed");
+        frame
+            .mark_succeeded(StepIdx::new(0))
+            .expect("mark_succeeded should succeed");
 
         // THEN: Step 0 is Succeeded
-        assert_eq!(frame.step_state(StepIdx::new(0)).expect("step_state should succeed"), StepState::Succeeded);
+        assert_eq!(
+            frame
+                .step_state(StepIdx::new(0))
+                .expect("step_state should succeed"),
+            StepState::Succeeded
+        );
 
         // WHEN: Marking step 1 as Running -> Failed
-        frame.mark_running(StepIdx::new(1)).expect("mark_running should succeed");
-        frame.mark_failed(StepIdx::new(1)).expect("mark_failed should succeed");
+        frame
+            .mark_running(StepIdx::new(1))
+            .expect("mark_running should succeed");
+        frame
+            .mark_failed(StepIdx::new(1))
+            .expect("mark_failed should succeed");
 
         // THEN: Step 1 is Failed
-        assert_eq!(frame.step_state(StepIdx::new(1)).expect("step_state should succeed"), StepState::Failed);
+        assert_eq!(
+            frame
+                .step_state(StepIdx::new(1))
+                .expect("step_state should succeed"),
+            StepState::Failed
+        );
     }
 
     #[test]
@@ -800,8 +887,12 @@ mod behavior_step_state_transitions {
         let mut frame = make_frame(&workflow, 32);
 
         // Move step to terminal Succeeded state
-        frame.mark_running(StepIdx::new(0)).expect("mark_running should succeed");
-        frame.mark_succeeded(StepIdx::new(0)).expect("mark_succeeded should succeed");
+        frame
+            .mark_running(StepIdx::new(0))
+            .expect("mark_running should succeed");
+        frame
+            .mark_succeeded(StepIdx::new(0))
+            .expect("mark_succeeded should succeed");
 
         // WHEN: Attempting to transition from terminal state back to Running
         let result = frame.mark_running(StepIdx::new(0));
@@ -809,7 +900,9 @@ mod behavior_step_state_transitions {
         // THEN: Returns InternalInvariantViolation (invalid transition)
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert!(matches!(err, CoreError::InternalInvariantViolation { reason } if *reason == *"invalid_state_transition"));
+        assert!(
+            matches!(err, CoreError::InternalInvariantViolation { reason } if *reason == *"invalid_state_transition")
+        );
     }
 }
 
@@ -828,7 +921,8 @@ mod behavior_run_frame_reinitialize {
 
         // Advance the workflow
         let mut store = ValueStore::new();
-        run_until_blocked(&workflow, &mut frame, StepBudget::MAX, &mut store).expect("run should succeed");
+        run_until_blocked(&workflow, &mut frame, StepBudget::MAX, &mut store)
+            .expect("run should succeed");
 
         // Verify initial state after run
         assert_eq!(frame.executed(), 2);
@@ -841,8 +935,18 @@ mod behavior_run_frame_reinitialize {
         assert_eq!(frame.run_id(), RunId::new(99));
         assert_eq!(frame.pc(), StepIdx::new(0));
         assert_eq!(frame.executed(), 0);
-        assert_eq!(frame.step_state(StepIdx::new(0)).expect("step_state should succeed"), StepState::Pending);
-        assert_eq!(frame.step_state(StepIdx::new(1)).expect("step_state should succeed"), StepState::Pending);
+        assert_eq!(
+            frame
+                .step_state(StepIdx::new(0))
+                .expect("step_state should succeed"),
+            StepState::Pending
+        );
+        assert_eq!(
+            frame
+                .step_state(StepIdx::new(1))
+                .expect("step_state should succeed"),
+            StepState::Pending
+        );
     }
 
     #[test]
@@ -1082,8 +1186,12 @@ mod behavior_slot_snapshots {
         .unwrap();
         let mut frame = make_frame(&workflow, 80);
 
-        frame.write_slot(SlotIdx::new(0), SlotValue::I64(1)).expect("write should succeed");
-        frame.write_slot(SlotIdx::new(2), SlotValue::Bool(true)).expect("write should succeed");
+        frame
+            .write_slot(SlotIdx::new(0), SlotValue::I64(1))
+            .expect("write should succeed");
+        frame
+            .write_slot(SlotIdx::new(2), SlotValue::Bool(true))
+            .expect("write should succeed");
 
         // WHEN: Getting slots snapshot
         let snapshot = frame.slots_snapshot();
@@ -1122,16 +1230,25 @@ mod behavior_slot_snapshots {
         .unwrap();
         let mut frame = make_frame(&workflow, 81);
 
-        frame.write_slot(SlotIdx::new(1), SlotValue::Symbol(vb_core::ids::SymbolId::new(5)))
+        frame
+            .write_slot(
+                SlotIdx::new(1),
+                SlotValue::Symbol(vb_core::ids::SymbolId::new(5)),
+            )
             .expect("write should succeed");
 
         // WHEN: Getting initialized slots
-        let initialized = frame.initialized_slots().expect("initialized_slots should succeed");
+        let initialized = frame
+            .initialized_slots()
+            .expect("initialized_slots should succeed");
 
         // THEN: Only one entry (slot 1)
         assert_eq!(initialized.len(), 1);
         assert_eq!(initialized[0].0, SlotIdx::new(1));
-        assert_eq!(initialized[0].1, SlotValue::Symbol(vb_core::ids::SymbolId::new(5)));
+        assert_eq!(
+            initialized[0].1,
+            SlotValue::Symbol(vb_core::ids::SymbolId::new(5))
+        );
         assert_eq!(initialized[0].2, Taint::Clean); // Default taint
     }
 }
@@ -1246,12 +1363,23 @@ mod behavior_taint_propagation {
         let mut frame = make_frame(&workflow, 90);
 
         // WHEN: Writing with taint
-        frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(99), Taint::Secret)
+        frame
+            .write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(99), Taint::Secret)
             .expect("write with taint should succeed");
 
         // THEN: Both value and taint are set correctly
-        assert_eq!(frame.read_slot(SlotIdx::new(0)).expect("read should succeed"), &SlotValue::I64(99));
-        assert_eq!(frame.read_taint(SlotIdx::new(0)).expect("taint read should succeed"), Taint::Secret);
+        assert_eq!(
+            frame
+                .read_slot(SlotIdx::new(0))
+                .expect("read should succeed"),
+            &SlotValue::I64(99)
+        );
+        assert_eq!(
+            frame
+                .read_taint(SlotIdx::new(0))
+                .expect("taint read should succeed"),
+            Taint::Secret
+        );
     }
 
     #[test]

@@ -86,7 +86,10 @@ fn gate_07_policy_rule_rejects_contract_exceeding_protocol_limit() {
     // Then the policy enforcement rejects with exact error
     assert!(matches!(
         result,
-        Err(ValidationError::ExpressionStackExceeded { declared: 128, limit: 64 })
+        Err(ValidationError::ExpressionStackExceeded {
+            declared: 128,
+            limit: 64
+        })
     ));
 }
 
@@ -853,7 +856,11 @@ fn gate_13_policy_rule_accepts_self_read_via_expression() {
     let result = validate(&parts);
 
     // Then enforcement accepts (self-read is not a cycle)
-    assert!(result.is_ok(), "self-read via expression should not be a cycle: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "self-read via expression should not be a cycle: {:?}",
+        result
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -944,7 +951,11 @@ fn gate_14_policy_rule_accepts_slot_consistent_type() {
     let result = validate(&parts);
 
     // Then enforcement accepts
-    assert!(result.is_ok(), "same type to same slot should pass: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "same type to same slot should pass: {:?}",
+        result
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1084,7 +1095,11 @@ fn gate_15_policy_rule_accepts_do_followed_by_deterministic() {
     let result = validate(&parts);
 
     // Then enforcement accepts
-    assert!(result.is_ok(), "Do followed by SetConst should pass: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "Do followed by SetConst should pass: {:?}",
+        result
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1113,7 +1128,11 @@ fn enforcement_action_allows_bypass_when_gate_disabled() {
     let result = pipeline.validate(&parts);
 
     // Then enforcement allows bypass
-    assert!(result.is_ok(), "with gate 9 disabled, should pass: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "with gate 9 disabled, should pass: {:?}",
+        result
+    );
 }
 
 /// Enforcement action: enabling only specific gate enforces only that policy.

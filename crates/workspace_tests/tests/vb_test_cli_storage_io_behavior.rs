@@ -11,14 +11,16 @@
 //! public vb_storage and vb_ipc APIs.
 
 use std::sync::Arc;
+use vb_core::RunId;
 use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::ConstValue;
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
-use vb_core::RunId;
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+};
 use vb_ipc::server::WorkflowResolutionError;
 use vb_storage::{
-    recovery::{extract_terminal, recover_full_journal, ActionReplayTracker},
     CompiledIrRecord, EventSeq, FjallJournal, JournalEvent,
+    recovery::{ActionReplayTracker, extract_terminal, recover_full_journal},
 };
 
 // ---------------------------------------------------------------------------
@@ -327,7 +329,10 @@ fn inspect_returns_empty_for_nonexistent_run() {
     let journal = FjallJournal::open(dir.path(), None).expect("journal must open");
 
     let result = journal.events_for_run(make_run_id(999));
-    assert!(result.is_ok(), "events_for_run must succeed for missing run");
+    assert!(
+        result.is_ok(),
+        "events_for_run must succeed for missing run"
+    );
     let events = result.expect("events ok");
     assert!(events.is_empty(), "missing run must return empty events");
 }
@@ -469,7 +474,10 @@ fn replay_fails_for_nonexistent_run() {
 
     let mut tracker = ActionReplayTracker::new();
     let result = recover_full_journal(&journal, make_run_id(999), &mut tracker, &[], &[]);
-    assert!(result.is_err(), "recover_full_journal must fail for missing run");
+    assert!(
+        result.is_err(),
+        "recover_full_journal must fail for missing run"
+    );
 }
 
 /// Verify extract_terminal returns None for incomplete run.
@@ -665,10 +673,7 @@ fn journal_rejects_duplicate_event() {
         .expect("first append must succeed");
 
     let result = journal.append_strict_batch(&[event]);
-    assert!(
-        result.is_err(),
-        "duplicate event must be rejected"
-    );
+    assert!(result.is_err(), "duplicate event must be rejected");
 }
 
 /// Verify journal can handle multiple runs independently.
@@ -812,7 +817,10 @@ fn event_name_returns_correct_static_strings() {
 #[test]
 fn journal_open_fails_for_missing_directory() {
     let result = FjallJournal::open("/nonexistent/path/to/journal", None);
-    assert!(result.is_err(), "journal open must fail for missing directory");
+    assert!(
+        result.is_err(),
+        "journal open must fail for missing directory"
+    );
 }
 
 /// Verify resolver returns NotFound for unknown digest.

@@ -29,15 +29,13 @@ mod schema_error_codes {
 
     #[test]
     fn forbidden_yaml_feature_code_is_e0102() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::ForbiddenYamlFeature);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::ForbiddenYamlFeature);
         assert_eq!(code.code(), 0x0102);
     }
 
     #[test]
     fn unknown_top_level_field_code_is_e0103() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::UnknownTopLevelField);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::UnknownTopLevelField);
         assert_eq!(code.code(), 0x0103);
     }
 
@@ -89,15 +87,13 @@ mod schema_error_codes {
 
     #[test]
     fn multiple_step_primitives_code_is_e010a() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::MultipleStepPrimitives);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::MultipleStepPrimitives);
         assert_eq!(code.code(), 0x010A);
     }
 
     #[test]
     fn missing_step_primitive_code_is_e010b() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::MissingStepPrimitive);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::MissingStepPrimitive);
         assert_eq!(code.code(), 0x010B);
     }
 }
@@ -135,8 +131,7 @@ mod reference_error_codes {
 
     #[test]
     fn direct_runtime_reference_code_is_e0204() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::DirectRuntimeReference);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::DirectRuntimeReference);
         assert_eq!(code.code(), 0x0204);
     }
 }
@@ -150,8 +145,7 @@ mod control_flow_error_codes {
 
     #[test]
     fn invalid_then_target_code_is_e0301() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::InvalidThenTarget);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidThenTarget);
         assert_eq!(code.code(), 0x0301);
     }
 
@@ -290,8 +284,7 @@ mod type_taint_error_codes {
 
     #[test]
     fn http_trigger_out_of_core_code_is_e040c() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::HttpTriggerOutOfCore);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::HttpTriggerOutOfCore);
         assert_eq!(code.code(), 0x040C);
     }
 }
@@ -305,66 +298,60 @@ mod gate_error_codes {
 
     #[test]
     fn expression_stack_exceeded_code_is_e0501() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::ExpressionStackExceeded {
-                declared: 65,
-                limit: 64,
-            });
+        let code = vb_validate::diagnostic::error_code(&ValidationError::ExpressionStackExceeded {
+            declared: 65,
+            limit: 64,
+        });
         assert_eq!(code.code(), 0x0501);
     }
 
     #[test]
     fn expression_stack_mismatch_code_is_e0502() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::ExpressionStackMismatch {
-                expr_index: 0,
-                declared: 2,
-                computed: 1,
-            });
+        let code = vb_validate::diagnostic::error_code(&ValidationError::ExpressionStackMismatch {
+            expr_index: 0,
+            declared: 2,
+            computed: 1,
+        });
         assert_eq!(code.code(), 0x0502);
     }
 
     #[test]
     fn accessor_slot_out_of_range_code_is_e0503() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::AccessorSlotOutOfRange {
-                accessor_index: 0,
-                slot: 5,
-                slot_count: 2,
-            });
+        let code = vb_validate::diagnostic::error_code(&ValidationError::AccessorSlotOutOfRange {
+            accessor_index: 0,
+            slot: 5,
+            slot_count: 2,
+        });
         assert_eq!(code.code(), 0x0503);
     }
 
     #[test]
     fn accessor_path_invalid_code_is_e0504() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::AccessorPathInvalid {
-                accessor_index: 0,
-                segment_index: 1,
-            });
+        let code = vb_validate::diagnostic::error_code(&ValidationError::AccessorPathInvalid {
+            accessor_index: 0,
+            segment_index: 1,
+        });
         assert_eq!(code.code(), 0x0504);
     }
 
     #[test]
     fn slot_reference_out_of_range_code_is_e0505() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::SlotReferenceOutOfRange {
-                slot: 99,
-                slot_count: 10,
-                context: "node 0".into(),
-            });
+        let code = vb_validate::diagnostic::error_code(&ValidationError::SlotReferenceOutOfRange {
+            slot: 99,
+            slot_count: 10,
+            context: "node 0".into(),
+        });
         assert_eq!(code.code(), 0x0505);
     }
 
     #[test]
     fn loop_body_step_out_of_range_code_is_e0506() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::LoopBodyStepOutOfRange {
-                step: 99,
-                node_count: 5,
-                source_node: 0,
-                label: "for_each body".into(),
-            });
+        let code = vb_validate::diagnostic::error_code(&ValidationError::LoopBodyStepOutOfRange {
+            step: 99,
+            node_count: 5,
+            source_node: 0,
+            label: "for_each body".into(),
+        });
         assert_eq!(code.code(), 0x0506);
     }
 
@@ -380,83 +367,74 @@ mod gate_error_codes {
     #[test]
     fn node_kind_constraint_violation_code_is_e0508() {
         let code =
-            vb_validate::diagnostic::error_code(
-                &ValidationError::NodeKindConstraintViolation {
-                    node_index: 0,
-                    detail: "test".into(),
-                },
-            );
+            vb_validate::diagnostic::error_code(&ValidationError::NodeKindConstraintViolation {
+                node_index: 0,
+                detail: "test".into(),
+            });
         assert_eq!(code.code(), 0x0508);
     }
 
     #[test]
     fn action_contract_missing_code_is_e0509() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::ActionContractMissing {
-                action_id: 1,
-                node_index: 0,
-            });
+        let code = vb_validate::diagnostic::error_code(&ValidationError::ActionContractMissing {
+            action_id: 1,
+            node_index: 0,
+        });
         assert_eq!(code.code(), 0x0509);
     }
 
     #[test]
     fn action_contract_orphan_code_is_e050a() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::ActionContractOrphan {
-                action_id: 2,
-            });
+        let code = vb_validate::diagnostic::error_code(&ValidationError::ActionContractOrphan {
+            action_id: 2,
+        });
         assert_eq!(code.code(), 0x050A);
     }
 
     #[test]
     fn slot_type_inconsistency_code_is_e050b() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::SlotTypeInconsistency {
-                slot: 0,
-            });
+        let code = vb_validate::diagnostic::error_code(&ValidationError::SlotTypeInconsistency {
+            slot: 0,
+        });
         assert_eq!(code.code(), 0x050B);
     }
 
     #[test]
     fn non_deterministic_path_code_is_e050c() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::NonDeterministicPath {
-                from_node: 0,
-                to_node: 1,
-            });
+        let code = vb_validate::diagnostic::error_code(&ValidationError::NonDeterministicPath {
+            from_node: 0,
+            to_node: 1,
+        });
         assert_eq!(code.code(), 0x050C);
     }
 
     #[test]
     fn capability_name_empty_code_is_e050d() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::CapabilityNameEmpty {
-                action_id: 1,
-                capability_index: 0,
-            });
+        let code = vb_validate::diagnostic::error_code(&ValidationError::CapabilityNameEmpty {
+            action_id: 1,
+            capability_index: 0,
+        });
         assert_eq!(code.code(), 0x050D);
     }
 
     #[test]
     fn capability_name_too_long_code_is_e050e() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::CapabilityNameTooLong {
-                action_id: 1,
-                capability_index: 0,
-                len: 129,
-                max: 128,
-            });
+        let code = vb_validate::diagnostic::error_code(&ValidationError::CapabilityNameTooLong {
+            action_id: 1,
+            capability_index: 0,
+            len: 129,
+            max: 128,
+        });
         assert_eq!(code.code(), 0x050E);
     }
 
     #[test]
     fn capability_name_invalid_code_is_e050f() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::CapabilityNameInvalid {
-                action_id: 1,
-                capability_index: 0,
-                name: "network:github".into(),
-            });
+        let code = vb_validate::diagnostic::error_code(&ValidationError::CapabilityNameInvalid {
+            action_id: 1,
+            capability_index: 0,
+            name: "network:github".into(),
+        });
         assert_eq!(code.code(), 0x050F);
     }
 
@@ -473,24 +451,22 @@ mod gate_error_codes {
 
     #[test]
     fn capability_duplicate_code_is_e0511() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::CapabilityDuplicate {
-                action_id: 1,
-                first_index: 0,
-                duplicate_index: 1,
-                name: "network".into(),
-            });
+        let code = vb_validate::diagnostic::error_code(&ValidationError::CapabilityDuplicate {
+            action_id: 1,
+            first_index: 0,
+            duplicate_index: 1,
+            name: "network".into(),
+        });
         assert_eq!(code.code(), 0x0511);
     }
 
     #[test]
     fn accessor_path_too_deep_code_is_e0512() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::AccessorPathTooDeep {
-                accessor_index: 0,
-                depth: 17,
-                max: 16,
-            });
+        let code = vb_validate::diagnostic::error_code(&ValidationError::AccessorPathTooDeep {
+            accessor_index: 0,
+            depth: 17,
+            max: 16,
+        });
         assert_eq!(code.code(), 0x0512);
     }
 
@@ -516,8 +492,7 @@ mod contract_discovery_error_codes {
 
     #[test]
     fn missing_schema_version_code_is_e0601() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::MissingSchemaVersion);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::MissingSchemaVersion);
         assert_eq!(code.code(), 0x0601);
     }
 
@@ -550,21 +525,20 @@ mod error_message_formatting {
 
     #[test]
     fn missing_required_field_message_exact_format() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::MissingRequiredField {
+        let diag = vb_validate::diagnostic::diagnostic_from_error(
+            &ValidationError::MissingRequiredField {
                 field: "version".into(),
-            });
-        assert_eq!(
-            &*diag.message,
-            "missing required field: version"
+            },
         );
+        assert_eq!(&*diag.message, "missing required field: version");
     }
 
     #[test]
     fn invalid_version_message_exact_format() {
-        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidVersion {
-            version: "v2".into(),
-        });
+        let diag =
+            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidVersion {
+                version: "v2".into(),
+            });
         assert_eq!(&*diag.message, "invalid version: v2");
     }
 
@@ -642,9 +616,10 @@ mod error_message_formatting {
 
     #[test]
     fn limit_required_message_exact_format() {
-        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::LimitRequired {
-            resource: "max_slots".into(),
-        });
+        let diag =
+            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::LimitRequired {
+                resource: "max_slots".into(),
+            });
         assert_eq!(&*diag.message, "limit required: max_slots");
     }
 
@@ -668,11 +643,12 @@ mod error_message_formatting {
 
     #[test]
     fn expression_stack_exceeded_message_exact_format() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::ExpressionStackExceeded {
+        let diag = vb_validate::diagnostic::diagnostic_from_error(
+            &ValidationError::ExpressionStackExceeded {
                 declared: 100,
                 limit: 64,
-            });
+            },
+        );
         assert_eq!(
             &*diag.message,
             "expression stack exceeded: declared 100, limit 64"
@@ -681,12 +657,13 @@ mod error_message_formatting {
 
     #[test]
     fn expression_stack_mismatch_message_exact_format() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::ExpressionStackMismatch {
+        let diag = vb_validate::diagnostic::diagnostic_from_error(
+            &ValidationError::ExpressionStackMismatch {
                 expr_index: 3,
                 declared: 4,
                 computed: 2,
-            });
+            },
+        );
         assert_eq!(
             &*diag.message,
             "expression stack mismatch: expr 3, declared 4, computed 2"
@@ -695,12 +672,13 @@ mod error_message_formatting {
 
     #[test]
     fn accessor_slot_out_of_range_message_exact_format() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::AccessorSlotOutOfRange {
+        let diag = vb_validate::diagnostic::diagnostic_from_error(
+            &ValidationError::AccessorSlotOutOfRange {
                 accessor_index: 1,
                 slot: 10,
                 slot_count: 5,
-            });
+            },
+        );
         assert_eq!(
             &*diag.message,
             "accessor slot out of range: accessor 1, slot 10, slot_count 5"
@@ -736,13 +714,14 @@ mod error_message_formatting {
 
     #[test]
     fn accessor_symbol_out_of_bounds_message_exact_format() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::AccessorSymbolOutOfBounds {
+        let diag = vb_validate::diagnostic::diagnostic_from_error(
+            &ValidationError::AccessorSymbolOutOfBounds {
                 accessor_index: 0,
                 segment_index: 3,
                 symbol: 42,
                 symbols_count: 10,
-            });
+            },
+        );
         assert_eq!(
             &*diag.message,
             "accessor symbol out of bounds: accessor 0, segment 3, symbol 42, symbols_count 10"
@@ -751,12 +730,13 @@ mod error_message_formatting {
 
     #[test]
     fn slot_reference_out_of_range_message_exact_format() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::SlotReferenceOutOfRange {
+        let diag = vb_validate::diagnostic::diagnostic_from_error(
+            &ValidationError::SlotReferenceOutOfRange {
                 slot: 99,
                 slot_count: 10,
                 context: "node 0".into(),
-            });
+            },
+        );
         assert_eq!(
             &*diag.message,
             "slot reference out of range: slot 99, slot_count 10, context node 0"
@@ -765,13 +745,14 @@ mod error_message_formatting {
 
     #[test]
     fn loop_body_step_out_of_range_message_exact_format() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::LoopBodyStepOutOfRange {
+        let diag = vb_validate::diagnostic::diagnostic_from_error(
+            &ValidationError::LoopBodyStepOutOfRange {
                 step: 99,
                 node_count: 5,
                 source_node: 0,
                 label: "for_each body".into(),
-            });
+            },
+        );
         assert_eq!(
             &*diag.message,
             "loop body step out of range: step 99, node_count 5, source_node 0, label for_each body"
@@ -793,13 +774,12 @@ mod error_message_formatting {
 
     #[test]
     fn node_kind_constraint_violation_message_exact_format() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(
-                &ValidationError::NodeKindConstraintViolation {
-                    node_index: 5,
-                    detail: "expected Action node".into(),
-                },
-            );
+        let diag = vb_validate::diagnostic::diagnostic_from_error(
+            &ValidationError::NodeKindConstraintViolation {
+                node_index: 5,
+                detail: "expected Action node".into(),
+            },
+        );
         assert_eq!(
             &*diag.message,
             "node kind constraint violation: node 5, expected Action node"
@@ -808,11 +788,12 @@ mod error_message_formatting {
 
     #[test]
     fn action_contract_missing_message_exact_format() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::ActionContractMissing {
+        let diag = vb_validate::diagnostic::diagnostic_from_error(
+            &ValidationError::ActionContractMissing {
                 action_id: 42,
                 node_index: 3,
-            });
+            },
+        );
         assert_eq!(
             &*diag.message,
             "action contract missing: action_id 42 referenced by Do node 3"
@@ -821,10 +802,9 @@ mod error_message_formatting {
 
     #[test]
     fn action_contract_orphan_message_exact_format() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::ActionContractOrphan {
-                action_id: 7,
-            });
+        let diag = vb_validate::diagnostic::diagnostic_from_error(
+            &ValidationError::ActionContractOrphan { action_id: 7 },
+        );
         assert_eq!(
             &*diag.message,
             "action contract orphan: action_id 7 has no corresponding Do node"
@@ -846,13 +826,14 @@ mod error_message_formatting {
 
     #[test]
     fn capability_name_too_long_message_exact_format() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::CapabilityNameTooLong {
+        let diag = vb_validate::diagnostic::diagnostic_from_error(
+            &ValidationError::CapabilityNameTooLong {
                 action_id: 1,
                 capability_index: 2,
                 len: 200,
                 max: 128,
-            });
+            },
+        );
         assert_eq!(
             &*diag.message,
             "capability name too long for action 1 at required_capabilities[2]: 200 > 128"
@@ -861,12 +842,13 @@ mod error_message_formatting {
 
     #[test]
     fn capability_name_invalid_message_exact_format() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::CapabilityNameInvalid {
+        let diag = vb_validate::diagnostic::diagnostic_from_error(
+            &ValidationError::CapabilityNameInvalid {
                 action_id: 1,
                 capability_index: 0,
                 name: "network:github".into(),
-            });
+            },
+        );
         assert_eq!(
             &*diag.message,
             "invalid capability name for action 1 at required_capabilities[0]: network:github"
@@ -875,12 +857,13 @@ mod error_message_formatting {
 
     #[test]
     fn capability_action_mismatch_message_exact_format() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::CapabilityActionMismatch {
+        let diag = vb_validate::diagnostic::diagnostic_from_error(
+            &ValidationError::CapabilityActionMismatch {
                 contract_action_id: 5,
                 capability_action_id: 3,
                 capability_index: 1,
-            });
+            },
+        );
         assert_eq!(
             &*diag.message,
             "capability action 3 does not match contract action 5 at required_capabilities[1]"
@@ -904,10 +887,9 @@ mod error_message_formatting {
 
     #[test]
     fn slot_type_inconsistency_message_exact_format() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::SlotTypeInconsistency {
-                slot: 4,
-            });
+        let diag = vb_validate::diagnostic::diagnostic_from_error(
+            &ValidationError::SlotTypeInconsistency { slot: 4 },
+        );
         assert_eq!(
             &*diag.message,
             "slot type inconsistency: slot 4 has incompatible writers"
@@ -916,11 +898,12 @@ mod error_message_formatting {
 
     #[test]
     fn non_deterministic_path_message_exact_format() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::NonDeterministicPath {
+        let diag = vb_validate::diagnostic::diagnostic_from_error(
+            &ValidationError::NonDeterministicPath {
                 from_node: 1,
                 to_node: 7,
-            });
+            },
+        );
         assert_eq!(
             &*diag.message,
             "non-deterministic path: from node 1 to node 7 contains no suspension point"
@@ -944,12 +927,13 @@ mod error_message_formatting {
 
     #[test]
     fn version_monotonicity_breach_message_exact_format() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::VersionMonotonicityBreach {
+        let diag = vb_validate::diagnostic::diagnostic_from_error(
+            &ValidationError::VersionMonotonicityBreach {
                 file: "lib.cue".into(),
                 expected: "v2.0".into(),
                 actual: "v1.9".into(),
-            });
+            },
+        );
         assert_eq!(
             &*diag.message,
             "version monotonicity breach: lib.cue expected v2.0 got v1.9"
@@ -962,8 +946,7 @@ mod error_message_formatting {
 
     #[test]
     fn duplicate_key_message() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::DuplicateKey);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::DuplicateKey);
         assert_eq!(&*diag.message, "duplicate key");
     }
 
@@ -990,8 +973,9 @@ mod error_message_formatting {
 
     #[test]
     fn multiple_step_primitives_message() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::MultipleStepPrimitives);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(
+            &ValidationError::MultipleStepPrimitives,
+        );
         assert_eq!(&*diag.message, "multiple step primitives");
     }
 
@@ -1004,8 +988,9 @@ mod error_message_formatting {
 
     #[test]
     fn direct_runtime_reference_message() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::DirectRuntimeReference);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(
+            &ValidationError::DirectRuntimeReference,
+        );
         assert_eq!(&*diag.message, "direct runtime reference");
     }
 
@@ -1025,15 +1010,13 @@ mod error_message_formatting {
 
     #[test]
     fn invalid_choose_message() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidChoose);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidChoose);
         assert_eq!(&*diag.message, "invalid choose");
     }
 
     #[test]
     fn invalid_for_each_message() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidForEach);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidForEach);
         assert_eq!(&*diag.message, "invalid for_each");
     }
 
@@ -1046,57 +1029,49 @@ mod error_message_formatting {
 
     #[test]
     fn invalid_collect_message() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidCollect);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidCollect);
         assert_eq!(&*diag.message, "invalid collect");
     }
 
     #[test]
     fn invalid_reduce_message() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidReduce);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidReduce);
         assert_eq!(&*diag.message, "invalid reduce");
     }
 
     #[test]
     fn invalid_repeat_message() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidRepeat);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidRepeat);
         assert_eq!(&*diag.message, "invalid repeat");
     }
 
     #[test]
     fn invalid_wait_message() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidWait);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidWait);
         assert_eq!(&*diag.message, "invalid wait");
     }
 
     #[test]
     fn invalid_ask_message() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidAsk);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidAsk);
         assert_eq!(&*diag.message, "invalid ask");
     }
 
     #[test]
     fn invalid_finish_message() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidFinish);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidFinish);
         assert_eq!(&*diag.message, "invalid finish");
     }
 
     #[test]
     fn invalid_retry_message() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidRetry);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidRetry);
         assert_eq!(&*diag.message, "invalid retry");
     }
 
     #[test]
     fn invalid_on_error_message() {
-        let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidOnError);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidOnError);
         assert_eq!(&*diag.message, "invalid on_error");
     }
 
@@ -1369,8 +1344,7 @@ mod diagnostic_code_display {
 
     #[test]
     fn diagnostic_code_display_e040c() {
-        let code =
-            vb_validate::diagnostic::error_code(&ValidationError::HttpTriggerOutOfCore);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::HttpTriggerOutOfCore);
         let mut s = String::new();
         write!(&mut s, "{}", code).unwrap();
         assert_eq!(s, "E040C");
@@ -1481,9 +1455,15 @@ mod code_range_partitioning {
 
     #[test]
     fn schema_codes_high_nibble_is_0x01() {
-        let codes = [0x0101, 0x0102, 0x0103, 0x0104, 0x0105, 0x0106, 0x0107, 0x0108, 0x0109, 0x010A, 0x010B];
+        let codes = [
+            0x0101, 0x0102, 0x0103, 0x0104, 0x0105, 0x0106, 0x0107, 0x0108, 0x0109, 0x010A, 0x010B,
+        ];
         for code in codes {
-            assert_eq!((code >> 8) & 0xFF, 0x01, "code {code:#06x} should be in E01xx range");
+            assert_eq!(
+                (code >> 8) & 0xFF,
+                0x01,
+                "code {code:#06x} should be in E01xx range"
+            );
         }
     }
 
@@ -1491,31 +1471,55 @@ mod code_range_partitioning {
     fn reference_codes_high_nibble_is_0x02() {
         let codes = [0x0201, 0x0202, 0x0203, 0x0204];
         for code in codes {
-            assert_eq!((code >> 8) & 0xFF, 0x02, "code {code:#06x} should be in E02xx range");
+            assert_eq!(
+                (code >> 8) & 0xFF,
+                0x02,
+                "code {code:#06x} should be in E02xx range"
+            );
         }
     }
 
     #[test]
     fn control_flow_codes_high_nibble_is_0x03() {
-        let codes = [0x0301, 0x0302, 0x0303, 0x0304, 0x0305, 0x0306, 0x0307, 0x0308, 0x0309];
+        let codes = [
+            0x0301, 0x0302, 0x0303, 0x0304, 0x0305, 0x0306, 0x0307, 0x0308, 0x0309,
+        ];
         for code in codes {
-            assert_eq!((code >> 8) & 0xFF, 0x03, "code {code:#06x} should be in E03xx range");
+            assert_eq!(
+                (code >> 8) & 0xFF,
+                0x03,
+                "code {code:#06x} should be in E03xx range"
+            );
         }
     }
 
     #[test]
     fn type_taint_codes_high_nibble_is_0x04() {
-        let codes = [0x0401, 0x0402, 0x0403, 0x0404, 0x0405, 0x0406, 0x0407, 0x0408, 0x0409, 0x040A, 0x040B, 0x040C];
+        let codes = [
+            0x0401, 0x0402, 0x0403, 0x0404, 0x0405, 0x0406, 0x0407, 0x0408, 0x0409, 0x040A, 0x040B,
+            0x040C,
+        ];
         for code in codes {
-            assert_eq!((code >> 8) & 0xFF, 0x04, "code {code:#06x} should be in E04xx range");
+            assert_eq!(
+                (code >> 8) & 0xFF,
+                0x04,
+                "code {code:#06x} should be in E04xx range"
+            );
         }
     }
 
     #[test]
     fn gate_codes_high_nibble_is_0x05() {
-        let codes = [0x0501, 0x0502, 0x0503, 0x0504, 0x0505, 0x0506, 0x0507, 0x0508, 0x0509, 0x050A, 0x050B, 0x050C, 0x050D, 0x050E, 0x050F, 0x0510, 0x0511, 0x0512, 0x0513];
+        let codes = [
+            0x0501, 0x0502, 0x0503, 0x0504, 0x0505, 0x0506, 0x0507, 0x0508, 0x0509, 0x050A, 0x050B,
+            0x050C, 0x050D, 0x050E, 0x050F, 0x0510, 0x0511, 0x0512, 0x0513,
+        ];
         for code in codes {
-            assert_eq!((code >> 8) & 0xFF, 0x05, "code {code:#06x} should be in E05xx range");
+            assert_eq!(
+                (code >> 8) & 0xFF,
+                0x05,
+                "code {code:#06x} should be in E05xx range"
+            );
         }
     }
 
@@ -1523,7 +1527,11 @@ mod code_range_partitioning {
     fn contract_discovery_codes_high_nibble_is_0x06() {
         let codes = [0x0601, 0x0602, 0x0603];
         for code in codes {
-            assert_eq!((code >> 8) & 0xFF, 0x06, "code {code:#06x} should be in E06xx range");
+            assert_eq!(
+                (code >> 8) & 0xFF,
+                0x06,
+                "code {code:#06x} should be in E06xx range"
+            );
         }
     }
 }

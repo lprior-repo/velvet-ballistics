@@ -24,7 +24,9 @@ fn timer_wheel_insert_and_cancel_round_trip() {
 
     assert!(wheel.is_empty(), "new timer wheel must be empty");
 
-    wheel.insert(RunId::new(1), now, PendingTimerKind::Wait).unwrap();
+    wheel
+        .insert(RunId::new(1), now, PendingTimerKind::Wait)
+        .unwrap();
     assert!(!wheel.is_empty(), "wheel must not be empty after insert");
     assert_eq!(wheel.len(), 1, "wheel must have 1 timer after insert");
 
@@ -50,15 +52,27 @@ fn timer_wheel_replace_updates_deadline_and_kind() {
     let d2 = now + std::time::Duration::from_millis(20);
 
     // Insert with Wait kind
-    wheel.insert(RunId::new(1), d1, PendingTimerKind::Wait).unwrap();
+    wheel
+        .insert(RunId::new(1), d1, PendingTimerKind::Wait)
+        .unwrap();
     assert_eq!(wheel.get_kind(RunId::new(1)), Some(PendingTimerKind::Wait));
     assert_eq!(wheel.next_deadline(), Some(d1));
 
     // Replace with Ask kind and later deadline
-    wheel.insert(RunId::new(1), d2, PendingTimerKind::Ask).unwrap();
-    assert_eq!(wheel.len(), 1, "wheel must still have only 1 timer after replace");
+    wheel
+        .insert(RunId::new(1), d2, PendingTimerKind::Ask)
+        .unwrap();
+    assert_eq!(
+        wheel.len(),
+        1,
+        "wheel must still have only 1 timer after replace"
+    );
     assert_eq!(wheel.get_kind(RunId::new(1)), Some(PendingTimerKind::Ask));
-    assert_eq!(wheel.next_deadline(), Some(d2), "next deadline must be the new deadline");
+    assert_eq!(
+        wheel.next_deadline(),
+        Some(d2),
+        "next deadline must be the new deadline"
+    );
 }
 
 // ============================================================================
@@ -73,13 +87,21 @@ fn timer_wheel_fire_expired_returns_only_past_deadlines() {
     let past = now - std::time::Duration::from_millis(100);
     let future = now + std::time::Duration::from_secs(60);
 
-    wheel.insert(RunId::new(1), past, PendingTimerKind::Wait).unwrap();
-    wheel.insert(RunId::new(2), future, PendingTimerKind::Ask).unwrap();
+    wheel
+        .insert(RunId::new(1), past, PendingTimerKind::Wait)
+        .unwrap();
+    wheel
+        .insert(RunId::new(2), future, PendingTimerKind::Ask)
+        .unwrap();
 
     let fired = wheel.fire_expired(now);
 
     assert_eq!(fired.len(), 1, "only 1 timer must fire (the past one)");
-    assert_eq!(fired[0].run, RunId::new(1), "fired timer must be run 1 (the past deadline)");
+    assert_eq!(
+        fired[0].run,
+        RunId::new(1),
+        "fired timer must be run 1 (the past deadline)"
+    );
     assert_eq!(wheel.len(), 1, "wheel must still contain the future timer");
 }
 
@@ -89,7 +111,9 @@ fn timer_wheel_fire_expired_at_exact_deadline_fires() {
     let mut wheel = TimerWheel::new();
     let deadline = std::time::Instant::now();
 
-    wheel.insert(RunId::new(1), deadline, PendingTimerKind::Wait).unwrap();
+    wheel
+        .insert(RunId::new(1), deadline, PendingTimerKind::Wait)
+        .unwrap();
     let fired = wheel.fire_expired(deadline);
 
     assert_eq!(fired.len(), 1, "timer must fire at exact deadline");
@@ -104,16 +128,31 @@ fn timer_wheel_fire_expired_returns_deadline_order() {
     let d1 = now - std::time::Duration::from_millis(200);
     let d2 = now - std::time::Duration::from_millis(100);
 
-    wheel.insert(RunId::new(1), d1, PendingTimerKind::Wait).unwrap();
-    wheel.insert(RunId::new(2), d2, PendingTimerKind::Ask).unwrap();
+    wheel
+        .insert(RunId::new(1), d1, PendingTimerKind::Wait)
+        .unwrap();
+    wheel
+        .insert(RunId::new(2), d2, PendingTimerKind::Ask)
+        .unwrap();
 
     let fired = wheel.fire_expired(now);
 
     assert_eq!(fired.len(), 2, "both expired timers must fire");
     // Must be in deadline order (d1 before d2)
-    assert_eq!(fired[0].run, RunId::new(1), "earlier deadline must fire first");
-    assert_eq!(fired[1].run, RunId::new(2), "later deadline must fire second");
-    assert!(wheel.is_empty(), "wheel must be empty after draining all expired");
+    assert_eq!(
+        fired[0].run,
+        RunId::new(1),
+        "earlier deadline must fire first"
+    );
+    assert_eq!(
+        fired[1].run,
+        RunId::new(2),
+        "later deadline must fire second"
+    );
+    assert!(
+        wheel.is_empty(),
+        "wheel must be empty after draining all expired"
+    );
 }
 
 /// Verifies multiple timers at same deadline all fire together.
@@ -123,9 +162,15 @@ fn timer_wheel_multiple_runs_at_same_deadline() {
     let now = std::time::Instant::now();
     let deadline = now + std::time::Duration::from_millis(50);
 
-    wheel.insert(RunId::new(1), deadline, PendingTimerKind::Wait).unwrap();
-    wheel.insert(RunId::new(2), deadline, PendingTimerKind::Ask).unwrap();
-    wheel.insert(RunId::new(3), deadline, PendingTimerKind::Wait).unwrap();
+    wheel
+        .insert(RunId::new(1), deadline, PendingTimerKind::Wait)
+        .unwrap();
+    wheel
+        .insert(RunId::new(2), deadline, PendingTimerKind::Ask)
+        .unwrap();
+    wheel
+        .insert(RunId::new(3), deadline, PendingTimerKind::Wait)
+        .unwrap();
 
     assert_eq!(wheel.len(), 3, "wheel must have 3 timers");
     let fired = wheel.fire_expired(deadline);
@@ -144,14 +189,21 @@ fn timer_wheel_generation_increments_on_replace() {
     let mut wheel = TimerWheel::new();
     let now = std::time::Instant::now();
 
-    wheel.insert(RunId::new(1), now, PendingTimerKind::Wait).unwrap();
+    wheel
+        .insert(RunId::new(1), now, PendingTimerKind::Wait)
+        .unwrap();
     let entry1 = wheel.get_entry(RunId::new(1)).unwrap();
     assert_eq!(entry1.generation, 1, "first insert must have generation=1");
 
     let later = now + std::time::Duration::from_secs(1);
-    wheel.insert(RunId::new(1), later, PendingTimerKind::Ask).unwrap();
+    wheel
+        .insert(RunId::new(1), later, PendingTimerKind::Ask)
+        .unwrap();
     let entry2 = wheel.get_entry(RunId::new(1)).unwrap();
-    assert_eq!(entry2.generation, 2, "replacement must increment generation");
+    assert_eq!(
+        entry2.generation, 2,
+        "replacement must increment generation"
+    );
     assert_eq!(entry2.kind, PendingTimerKind::Ask, "kind must be updated");
 }
 
@@ -167,17 +219,28 @@ fn timer_wheel_next_deadline_returns_earliest() {
     let early = now + std::time::Duration::from_millis(10);
     let late = now + std::time::Duration::from_millis(100);
 
-    wheel.insert(RunId::new(1), late, PendingTimerKind::Wait).unwrap();
-    wheel.insert(RunId::new(2), early, PendingTimerKind::Ask).unwrap();
+    wheel
+        .insert(RunId::new(1), late, PendingTimerKind::Wait)
+        .unwrap();
+    wheel
+        .insert(RunId::new(2), early, PendingTimerKind::Ask)
+        .unwrap();
 
-    assert_eq!(wheel.next_deadline(), Some(early), "next_deadline must return earliest");
+    assert_eq!(
+        wheel.next_deadline(),
+        Some(early),
+        "next_deadline must return earliest"
+    );
 }
 
 /// Verifies next_deadline returns None when wheel is empty.
 #[test]
 fn timer_wheel_next_deadline_none_when_empty() {
     let wheel = TimerWheel::new();
-    assert!(wheel.next_deadline().is_none(), "empty wheel must have no next_deadline");
+    assert!(
+        wheel.next_deadline().is_none(),
+        "empty wheel must have no next_deadline"
+    );
 }
 
 /// Verifies next_deadline updates after firing earliest timer.
@@ -188,14 +251,26 @@ fn timer_wheel_next_deadline_updates_after_fire() {
     let d1 = now - std::time::Duration::from_millis(50); // past, fires first
     let d2 = now + std::time::Duration::from_millis(100);
 
-    wheel.insert(RunId::new(1), d1, PendingTimerKind::Wait).unwrap();
-    wheel.insert(RunId::new(2), d2, PendingTimerKind::Ask).unwrap();
+    wheel
+        .insert(RunId::new(1), d1, PendingTimerKind::Wait)
+        .unwrap();
+    wheel
+        .insert(RunId::new(2), d2, PendingTimerKind::Ask)
+        .unwrap();
 
-    assert_eq!(wheel.next_deadline(), Some(d1), "initial next_deadline is the past deadline");
+    assert_eq!(
+        wheel.next_deadline(),
+        Some(d1),
+        "initial next_deadline is the past deadline"
+    );
 
     wheel.fire_expired(now);
 
-    assert_eq!(wheel.next_deadline(), Some(d2), "next_deadline must be d2 after firing d1");
+    assert_eq!(
+        wheel.next_deadline(),
+        Some(d2),
+        "next_deadline must be d2 after firing d1"
+    );
 }
 
 // ============================================================================
@@ -210,10 +285,14 @@ fn timer_wheel_len_tracks_active_timers() {
 
     assert_eq!(wheel.len(), 0, "new wheel must have len=0");
 
-    wheel.insert(RunId::new(1), now, PendingTimerKind::Wait).unwrap();
+    wheel
+        .insert(RunId::new(1), now, PendingTimerKind::Wait)
+        .unwrap();
     assert_eq!(wheel.len(), 1);
 
-    wheel.insert(RunId::new(2), now, PendingTimerKind::Ask).unwrap();
+    wheel
+        .insert(RunId::new(2), now, PendingTimerKind::Ask)
+        .unwrap();
     assert_eq!(wheel.len(), 2);
 
     wheel.cancel(RunId::new(1));
@@ -229,10 +308,15 @@ fn timer_wheel_get_entry_returns_correct_entry() {
     let mut wheel = TimerWheel::new();
     let now = std::time::Instant::now();
 
-    wheel.insert(RunId::new(1), now, PendingTimerKind::Wait).unwrap();
+    wheel
+        .insert(RunId::new(1), now, PendingTimerKind::Wait)
+        .unwrap();
     let entry = wheel.get_entry(RunId::new(1));
 
-    assert!(entry.is_some(), "get_entry must return Some for existing run");
+    assert!(
+        entry.is_some(),
+        "get_entry must return Some for existing run"
+    );
     let e = entry.unwrap();
     assert_eq!(e.run, RunId::new(1));
     assert_eq!(e.generation, 1);
@@ -245,9 +329,15 @@ fn timer_wheel_get_kind_returns_correct_kind() {
     let mut wheel = TimerWheel::new();
     let now = std::time::Instant::now();
 
-    assert_eq!(wheel.get_kind(RunId::new(1)), None, "get_kind must return None for unknown run");
+    assert_eq!(
+        wheel.get_kind(RunId::new(1)),
+        None,
+        "get_kind must return None for unknown run"
+    );
 
-    wheel.insert(RunId::new(1), now, PendingTimerKind::Ask).unwrap();
+    wheel
+        .insert(RunId::new(1), now, PendingTimerKind::Ask)
+        .unwrap();
     assert_eq!(wheel.get_kind(RunId::new(1)), Some(PendingTimerKind::Ask));
 }
 
@@ -269,7 +359,9 @@ fn timer_wheel_run_lookup_after_insert() {
     let mut wheel = TimerWheel::new();
     let now = std::time::Instant::now();
 
-    wheel.insert(RunId::new(42), now, PendingTimerKind::Wait).unwrap();
+    wheel
+        .insert(RunId::new(42), now, PendingTimerKind::Wait)
+        .unwrap();
 
     let entry = wheel.get_entry(RunId::new(42));
     assert!(entry.is_some(), "must find timer by run id");
@@ -282,12 +374,17 @@ fn timer_wheel_cancel_removes_from_both_indexes() {
     let mut wheel = TimerWheel::new();
     let now = std::time::Instant::now();
 
-    wheel.insert(RunId::new(1), now, PendingTimerKind::Wait).unwrap();
+    wheel
+        .insert(RunId::new(1), now, PendingTimerKind::Wait)
+        .unwrap();
     assert!(wheel.get_entry(RunId::new(1)).is_some());
 
     wheel.cancel(RunId::new(1));
 
-    assert!(wheel.get_entry(RunId::new(1)).is_none(), "run lookup must be None after cancel");
+    assert!(
+        wheel.get_entry(RunId::new(1)).is_none(),
+        "run lookup must be None after cancel"
+    );
     assert!(wheel.is_empty(), "wheel must be empty after cancel");
 }
 
@@ -299,7 +396,9 @@ fn timer_wheel_is_empty_reflects_actual_state() {
 
     assert!(wheel.is_empty(), "new wheel must be empty");
 
-    wheel.insert(RunId::new(1), now, PendingTimerKind::Wait).unwrap();
+    wheel
+        .insert(RunId::new(1), now, PendingTimerKind::Wait)
+        .unwrap();
     assert!(!wheel.is_empty(), "wheel with 1 timer must not be empty");
 
     wheel.cancel(RunId::new(1));
@@ -314,12 +413,19 @@ fn timer_wheel_fire_expired_ignores_future_timers() {
     let future1 = now + std::time::Duration::from_secs(5);
     let future2 = now + std::time::Duration::from_secs(10);
 
-    wheel.insert(RunId::new(1), future1, PendingTimerKind::Wait).unwrap();
-    wheel.insert(RunId::new(2), future2, PendingTimerKind::Ask).unwrap();
+    wheel
+        .insert(RunId::new(1), future1, PendingTimerKind::Wait)
+        .unwrap();
+    wheel
+        .insert(RunId::new(2), future2, PendingTimerKind::Ask)
+        .unwrap();
 
     let fired = wheel.fire_expired(now);
 
-    assert!(fired.is_empty(), "no timers must fire when none are expired");
+    assert!(
+        fired.is_empty(),
+        "no timers must fire when none are expired"
+    );
     assert_eq!(wheel.len(), 2, "both timers must still be in wheel");
 }
 
@@ -329,14 +435,26 @@ fn timer_wheel_cancel_one_does_not_affect_others() {
     let mut wheel = TimerWheel::new();
     let now = std::time::Instant::now();
 
-    wheel.insert(RunId::new(1), now, PendingTimerKind::Wait).unwrap();
-    wheel.insert(RunId::new(2), now, PendingTimerKind::Ask).unwrap();
-    wheel.insert(RunId::new(3), now, PendingTimerKind::Wait).unwrap();
+    wheel
+        .insert(RunId::new(1), now, PendingTimerKind::Wait)
+        .unwrap();
+    wheel
+        .insert(RunId::new(2), now, PendingTimerKind::Ask)
+        .unwrap();
+    wheel
+        .insert(RunId::new(3), now, PendingTimerKind::Wait)
+        .unwrap();
 
     wheel.cancel(RunId::new(2));
 
     assert_eq!(wheel.len(), 2, "wheel must have 2 timers after cancel");
-    assert!(wheel.get_entry(RunId::new(1)).is_some(), "run 1 still present");
+    assert!(
+        wheel.get_entry(RunId::new(1)).is_some(),
+        "run 1 still present"
+    );
     assert!(wheel.get_entry(RunId::new(2)).is_none(), "run 2 removed");
-    assert!(wheel.get_entry(RunId::new(3)).is_some(), "run 3 still present");
+    assert!(
+        wheel.get_entry(RunId::new(3)).is_some(),
+        "run 3 still present"
+    );
 }

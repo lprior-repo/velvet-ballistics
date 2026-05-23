@@ -926,11 +926,7 @@ fn diagnostic_does_not_delete_events() {
         .events_for_run(run)
         .expect("events before diagnostic");
     // Snapshot at seq 3 covers events 0..3; only seq 4 remains for replay
-    assert_eq!(
-        before.len(),
-        1,
-        "events after snapshot should be 1 (seq 4)"
-    );
+    assert_eq!(before.len(), 1, "events after snapshot should be 1 (seq 4)");
 
     let _diag = journal
         .trim_eligibility_diagnostic(TrimPolicy::default())

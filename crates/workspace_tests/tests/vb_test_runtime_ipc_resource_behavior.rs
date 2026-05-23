@@ -22,10 +22,10 @@ use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowD
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+use vb_runtime::RuntimeError;
 use vb_runtime::frame_pool::FramePool;
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::{ShardConfig, ShardDirective};
-use vb_runtime::RuntimeError;
 
 fn test_config() -> ShardConfig {
     ShardConfig {
@@ -458,8 +458,12 @@ fn resource_frame_pool_release_respects_capacity() {
     };
 
     // Take 2 frames
-    let f1 = pool.take(RunId::new(1), StepIdx::ZERO).expect("first take should succeed");
-    let f2 = pool.take(RunId::new(2), StepIdx::ZERO).expect("second take should succeed");
+    let f1 = pool
+        .take(RunId::new(1), StepIdx::ZERO)
+        .expect("first take should succeed");
+    let f2 = pool
+        .take(RunId::new(2), StepIdx::ZERO)
+        .expect("second take should succeed");
 
     // Pool is empty after taking all
     assert!(pool.is_empty());
@@ -483,12 +487,16 @@ fn resource_frame_pool_release_drops_excess_above_capacity() {
     };
 
     // Take and release first frame
-    let f1 = pool.take(RunId::new(1), StepIdx::ZERO).expect("take should succeed");
+    let f1 = pool
+        .take(RunId::new(1), StepIdx::ZERO)
+        .expect("take should succeed");
     pool.release(f1);
     assert_eq!(pool.available(), 1);
 
     // Take another frame and release it
-    let f2 = pool.take(RunId::new(2), StepIdx::ZERO).expect("take should succeed");
+    let f2 = pool
+        .take(RunId::new(2), StepIdx::ZERO)
+        .expect("take should succeed");
     pool.release(f2);
 
     // Pool still at capacity 1 (excess dropped silently)
@@ -505,12 +513,16 @@ fn resource_frame_pool_recycled_frame_has_clean_state() {
     };
 
     // Take a frame and mark it as executed
-    let mut frame = pool.take(RunId::new(1), StepIdx::ZERO).expect("take should succeed");
+    let mut frame = pool
+        .take(RunId::new(1), StepIdx::ZERO)
+        .expect("take should succeed");
     assert_eq!(frame.increment_executed(), Ok(()));
     pool.release(frame);
 
     // Take again — should have clean state
-    let reused = pool.take(RunId::new(2), StepIdx::ZERO).expect("take should succeed");
+    let reused = pool
+        .take(RunId::new(2), StepIdx::ZERO)
+        .expect("take should succeed");
     assert_eq!(reused.run_id(), RunId::new(2));
     assert_eq!(reused.executed(), 0);
 }
@@ -863,18 +875,20 @@ fn ordering_trace_events_appear_in_execution_order() {
     assert_eq!(runtime.submit_direct(run, wf), Ok(()));
     assert_eq!(runtime.tick_all(), Ok(true));
 
-    let events = runtime.list_events(run).expect("list_events should succeed");
+    let events = runtime
+        .list_events(run)
+        .expect("list_events should succeed");
 
     // Events must include RunSubmitted at minimum for a completed workflow
-    let has_submit = events.iter().any(|e| {
-        matches!(e, vb_runtime::trace::TraceEvent::RunSubmitted { run: r } if *r == run)
-    });
+    let has_submit = events
+        .iter()
+        .any(|e| matches!(e, vb_runtime::trace::TraceEvent::RunSubmitted { run: r } if *r == run));
     assert!(has_submit, "RunSubmitted event should be present");
 
     // For finished workflow, we should also have StepStarted and RunFinished
-    let has_step_started = events.iter().any(|e| {
-        matches!(e, vb_runtime::trace::TraceEvent::StepStarted { run: r, .. } if *r == run)
-    });
+    let has_step_started = events.iter().any(
+        |e| matches!(e, vb_runtime::trace::TraceEvent::StepStarted { run: r, .. } if *r == run),
+    );
     assert!(has_step_started, "StepStarted event should be present");
 
     let has_finished = events.iter().any(|e| {
@@ -914,14 +928,18 @@ fn ordering_completion_events_isolated_per_run() {
     assert_eq!(snap.runs_completed, 2);
 
     // Events for run1 should include RunFinished
-    let events1 = runtime.list_events(run1).expect("list_events should succeed");
+    let events1 = runtime
+        .list_events(run1)
+        .expect("list_events should succeed");
     let has_finished1 = events1.iter().any(|e| {
         matches!(e, vb_runtime::trace::TraceEvent::RunFinished { run: ev_run } if *ev_run == run1)
     });
     assert!(has_finished1, "Run1 should have RunFinished event");
 
     // Events for run2 should also include RunFinished
-    let events2 = runtime.list_events(run2).expect("list_events should succeed");
+    let events2 = runtime
+        .list_events(run2)
+        .expect("list_events should succeed");
     let has_finished2 = events2.iter().any(|e| {
         matches!(e, vb_runtime::trace::TraceEvent::RunFinished { run: ev_run } if *ev_run == run2)
     });
@@ -1148,7 +1166,9 @@ fn edge_frame_pool_rejects_mismatched_dimension_frames() {
     };
 
     // Take frame from pool_b (step_count=4, slot_count=2)
-    let frame = pool_b.take(RunId::new(1), StepIdx::ZERO).expect("take should succeed");
+    let frame = pool_b
+        .take(RunId::new(1), StepIdx::ZERO)
+        .expect("take should succeed");
 
     // Release into pool_a (step_count=2, slot_count=1) — dimension mismatch
     pool_a.release(frame);
@@ -1173,7 +1193,9 @@ fn edge_frame_pool_rapid_cycle_never_exceeds_capacity() {
 
     // Rapid cycle 10 times
     for i in 1u64..=10 {
-        let frame = pool.take(RunId::new(i), StepIdx::ZERO).expect("take should succeed");
+        let frame = pool
+            .take(RunId::new(i), StepIdx::ZERO)
+            .expect("take should succeed");
         pool.release(frame);
     }
 
@@ -1182,6 +1204,8 @@ fn edge_frame_pool_rapid_cycle_never_exceeds_capacity() {
     assert_eq!(pool.capacity(), 1);
 
     // Last taken frame has correct run_id
-    let reused = pool.take(RunId::new(99), StepIdx::ZERO).expect("take should succeed");
+    let reused = pool
+        .take(RunId::new(99), StepIdx::ZERO)
+        .expect("take should succeed");
     assert_eq!(reused.run_id(), RunId::new(99));
 }

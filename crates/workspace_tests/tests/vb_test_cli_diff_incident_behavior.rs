@@ -2,9 +2,7 @@
 //!
 //! Tests the pure computation logic in commands_diff and commands_incident modules.
 
-use vb_cli::commands_diff::{
-    compute_diff, diff_event_summary, event_name, events_differ,
-};
+use vb_cli::commands_diff::{compute_diff, diff_event_summary, event_name, events_differ};
 use vb_cli::commands_incident::build_incident_report;
 use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_storage::{EventSeq, JournalEvent};
@@ -452,7 +450,11 @@ fn incident_run_failed_event() {
 /// RunCancelled sets failure_found and correct failure_code.
 #[test]
 fn incident_run_cancelled() {
-    let events = vec![step_event(1, 1, 1), step_event(1, 2, 2), run_cancelled(1, 10)];
+    let events = vec![
+        step_event(1, 1, 1),
+        step_event(1, 2, 2),
+        run_cancelled(1, 10),
+    ];
     let report = build_incident_report("run-1", &events);
     assert!(report.failure_found);
     assert_eq!(report.failure_code, "RunCancelled");

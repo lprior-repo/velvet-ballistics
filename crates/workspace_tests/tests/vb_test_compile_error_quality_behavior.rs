@@ -89,7 +89,11 @@ steps:
         Err(CompileErrors(es)) => CompileErrors(es),
     };
     let codes: Vec<_> = errors.diagnostic_codes().collect();
-    assert_eq!(codes.len(), errors.len(), "diagnostic_codes count must match errors count");
+    assert_eq!(
+        codes.len(),
+        errors.len(),
+        "diagnostic_codes count must match errors count"
+    );
     for code in &codes {
         assert!(!code.is_empty(), "diagnostic code must not be empty");
     }
@@ -115,7 +119,10 @@ steps:
 "#;
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
-    assert_eq!(code, "DUPLICATE_KEY", "DuplicateKey code must be DUPLICATE_KEY: {code}");
+    assert_eq!(
+        code, "DUPLICATE_KEY",
+        "DuplicateKey code must be DUPLICATE_KEY: {code}"
+    );
 }
 
 /// DuplicateStepId has stable code "DUPLICATE_ID".
@@ -134,7 +141,10 @@ steps:
 "#;
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
-    assert_eq!(code, "DUPLICATE_ID", "DuplicateStepId code must be DUPLICATE_ID: {code}");
+    assert_eq!(
+        code, "DUPLICATE_ID",
+        "DuplicateStepId code must be DUPLICATE_ID: {code}"
+    );
 }
 
 /// NonStringKey has stable code "FORBIDDEN_YAML_FEATURE".
@@ -151,7 +161,10 @@ steps:
 "#;
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
-    assert_eq!(code, "FORBIDDEN_YAML_FEATURE", "NonStringKey code must be FORBIDDEN_YAML_FEATURE: {code}");
+    assert_eq!(
+        code, "FORBIDDEN_YAML_FEATURE",
+        "NonStringKey code must be FORBIDDEN_YAML_FEATURE: {code}"
+    );
 }
 
 /// AliasForbidden has stable code "FORBIDDEN_YAML_FEATURE".
@@ -170,7 +183,10 @@ key: *anchor
 "#;
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
-    assert_eq!(code, "FORBIDDEN_YAML_FEATURE", "AliasForbidden code must be FORBIDDEN_YAML_FEATURE: {code}");
+    assert_eq!(
+        code, "FORBIDDEN_YAML_FEATURE",
+        "AliasForbidden code must be FORBIDDEN_YAML_FEATURE: {code}"
+    );
 }
 
 /// TagForbidden has stable code "FORBIDDEN_YAML_FEATURE".
@@ -187,7 +203,10 @@ steps:
 "#;
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
-    assert_eq!(code, "FORBIDDEN_YAML_FEATURE", "TagForbidden code must be FORBIDDEN_YAML_FEATURE: {code}");
+    assert_eq!(
+        code, "FORBIDDEN_YAML_FEATURE",
+        "TagForbidden code must be FORBIDDEN_YAML_FEATURE: {code}"
+    );
 }
 
 /// EmptySource has stable code "MISSING_REQUIRED_FIELD".
@@ -195,7 +214,10 @@ steps:
 fn compile_error_code_empty_source() {
     let error = parse_ast_error(b"").expect("expected error");
     let code = error.code();
-    assert_eq!(code, "MISSING_REQUIRED_FIELD", "EmptySource code must be MISSING_REQUIRED_FIELD: {code}");
+    assert_eq!(
+        code, "MISSING_REQUIRED_FIELD",
+        "EmptySource code must be MISSING_REQUIRED_FIELD: {code}"
+    );
 }
 
 /// UnknownTopLevelField has stable code "UNKNOWN_TOP_LEVEL_FIELD".
@@ -213,7 +235,10 @@ steps:
 "#;
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
-    assert_eq!(code, "UNKNOWN_TOP_LEVEL_FIELD", "UnknownTopLevelField code must be UNKNOWN_TOP_LEVEL_FIELD: {code}");
+    assert_eq!(
+        code, "UNKNOWN_TOP_LEVEL_FIELD",
+        "UnknownTopLevelField code must be UNKNOWN_TOP_LEVEL_FIELD: {code}"
+    );
 }
 
 /// UnknownStepField has stable code "UNKNOWN_STEP_FIELD".
@@ -231,7 +256,10 @@ steps:
 "#;
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
-    assert_eq!(code, "UNKNOWN_STEP_FIELD", "UnknownStepField code must be UNKNOWN_STEP_FIELD: {code}");
+    assert_eq!(
+        code, "UNKNOWN_STEP_FIELD",
+        "UnknownStepField code must be UNKNOWN_STEP_FIELD: {code}"
+    );
 }
 
 /// InvalidVersion has stable code "INVALID_VERSION".
@@ -248,7 +276,10 @@ steps:
 "#;
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
-    assert_eq!(code, "INVALID_VERSION", "InvalidVersion code must be INVALID_VERSION: {code}");
+    assert_eq!(
+        code, "INVALID_VERSION",
+        "InvalidVersion code must be INVALID_VERSION: {code}"
+    );
 }
 
 /// EmptySteps has stable code "MISSING_STEP_PRIMITIVE".
@@ -263,7 +294,10 @@ steps: []
 "#;
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
-    assert_eq!(code, "MISSING_STEP_PRIMITIVE", "EmptySteps code must be MISSING_STEP_PRIMITIVE: {code}");
+    assert_eq!(
+        code, "MISSING_STEP_PRIMITIVE",
+        "EmptySteps code must be MISSING_STEP_PRIMITIVE: {code}"
+    );
 }
 
 /// MissingStepId has stable code "MISSING_REQUIRED_FIELD".
@@ -279,7 +313,10 @@ steps:
 "#;
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
-    assert_eq!(code, "MISSING_REQUIRED_FIELD", "MissingStepId code must be MISSING_REQUIRED_FIELD: {code}");
+    assert_eq!(
+        code, "MISSING_REQUIRED_FIELD",
+        "MissingStepId code must be MISSING_REQUIRED_FIELD: {code}"
+    );
 }
 
 /// StepShape has stable code "TYPE_MISMATCH".
@@ -295,7 +332,10 @@ steps:
 "#;
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
-    assert_eq!(code, "TYPE_MISMATCH", "StepShape code must be TYPE_MISMATCH: {code}");
+    assert_eq!(
+        code, "TYPE_MISMATCH",
+        "StepShape code must be TYPE_MISMATCH: {code}"
+    );
 }
 
 /// MultipleStepPrimitives has stable code "MULTIPLE_STEP_PRIMITIVES".
@@ -313,7 +353,10 @@ steps:
 "#;
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
-    assert_eq!(code, "MULTIPLE_STEP_PRIMITIVES", "MultipleStepPrimitives code must be MULTIPLE_STEP_PRIMITIVES: {code}");
+    assert_eq!(
+        code, "MULTIPLE_STEP_PRIMITIVES",
+        "MultipleStepPrimitives code must be MULTIPLE_STEP_PRIMITIVES: {code}"
+    );
 }
 
 /// MissingStepPrimitive has stable code "MISSING_STEP_PRIMITIVE".
@@ -329,7 +372,10 @@ steps:
 "#;
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
-    assert_eq!(code, "MISSING_STEP_PRIMITIVE", "MissingStepPrimitive code must be MISSING_STEP_PRIMITIVE: {code}");
+    assert_eq!(
+        code, "MISSING_STEP_PRIMITIVE",
+        "MissingStepPrimitive code must be MISSING_STEP_PRIMITIVE: {code}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -522,10 +568,7 @@ steps:
     // If compilation ever starts failing for this YAML, we should get a useful error
     if result.is_err() {
         let msg = result.unwrap_err().to_string();
-        assert!(
-            !msg.is_empty(),
-            "Error message must not be empty: {msg}"
-        );
+        assert!(!msg.is_empty(), "Error message must not be empty: {msg}");
     }
 }
 
@@ -598,7 +641,8 @@ fn all_error_variants_display_non_empty() {
     assert!(!msg.is_empty(), "EmptySource Display must not be empty");
 
     // DuplicateKey - must produce non-empty Display
-    let dup_err = parse_ast_error(br#"
+    let dup_err = parse_ast_error(
+        br#"
 version: velvet-ballastics/v1
 name: a
 name: b
@@ -607,9 +651,14 @@ when:
 steps:
   - id: d
     finish: { result: 0 }
-"#).expect("need DuplicateKey error");
+"#,
+    )
+    .expect("need DuplicateKey error");
     let dup_msg = dup_err.to_string();
-    assert!(!dup_msg.is_empty(), "DuplicateKey Display must not be empty");
+    assert!(
+        !dup_msg.is_empty(),
+        "DuplicateKey Display must not be empty"
+    );
 }
 
 /// Unknown trigger kind message mentions the unknown kind.
@@ -653,10 +702,7 @@ steps:
     );
     if let Some(first_err) = errors.first() {
         let msg = first_err.to_string();
-        assert!(
-            !msg.is_empty(),
-            "error message must not be empty"
-        );
+        assert!(!msg.is_empty(), "error message must not be empty");
     }
 }
 
@@ -742,7 +788,10 @@ steps:
 "#;
     let errors = all_parse_ast_errors(source);
     let first = errors.first();
-    assert!(first.is_some(), "CompileErrors::first() must return Some for errors");
+    assert!(
+        first.is_some(),
+        "CompileErrors::first() must return Some for errors"
+    );
     // The first error should be about duplicate name
     let first_code = first.map(|e| e.code());
     assert!(

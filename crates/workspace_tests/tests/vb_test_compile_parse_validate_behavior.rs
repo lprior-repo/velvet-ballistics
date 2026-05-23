@@ -4,7 +4,7 @@
 //! Tests parse error detection, validation rule enforcement, exact error
 //! message content, and happy-path compilation success.
 
-use vb_compile::{compile_workflow, strict_yaml, CompileError, CompileErrors, YamlCompiler};
+use vb_compile::{CompileError, CompileErrors, YamlCompiler, compile_workflow, strict_yaml};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -34,10 +34,7 @@ fn all_errors(source: &[u8]) -> Vec<CompileError> {
 #[test]
 fn parse_rejects_totally_empty_source() {
     let result = YamlCompiler::default().parse_ast(b"");
-    assert!(
-        result.is_err(),
-        "empty source should fail parsing"
-    );
+    assert!(result.is_err(), "empty source should fail parsing");
     let err = result.unwrap_err();
     let msg = err.to_string();
     assert!(
@@ -49,10 +46,7 @@ fn parse_rejects_totally_empty_source() {
 #[test]
 fn parse_rejects_whitespace_only_source() {
     let result = YamlCompiler::default().parse_ast(b"   \n\n   \n");
-    assert!(
-        result.is_err(),
-        "whitespace-only source should fail"
-    );
+    assert!(result.is_err(), "whitespace-only source should fail");
 }
 
 #[test]
@@ -63,10 +57,7 @@ fn parse_rejects_source_too_large() {
     });
     let source = b"this exceeds the limit";
     let result = compiler.parse_ast(source);
-    assert!(
-        result.is_err(),
-        "source exceeding byte limit should fail"
-    );
+    assert!(result.is_err(), "source exceeding byte limit should fail");
     let msg = result.unwrap_err().to_string();
     assert!(
         msg.contains("limit") || msg.contains("exceed"),
@@ -165,10 +156,7 @@ anchor_test: &anchor
 key: value
 "#;
     let result = strict_yaml::reject_unsupported_profile_events(source);
-    assert!(
-        result.is_err(),
-        "YAML anchor should be rejected"
-    );
+    assert!(result.is_err(), "YAML anchor should be rejected");
     let err = result.unwrap_err();
     assert!(
         matches!(err, CompileError::AnchorForbidden { .. }),
@@ -182,10 +170,7 @@ fn strict_yaml_rejects_tag() {
 key: !custom_tag value
 "#;
     let result = strict_yaml::reject_unsupported_profile_events(source);
-    assert!(
-        result.is_err(),
-        "YAML tag should be rejected"
-    );
+    assert!(result.is_err(), "YAML tag should be rejected");
     let err = result.unwrap_err();
     assert!(
         matches!(err, CompileError::TagForbidden { .. }),
@@ -211,7 +196,9 @@ steps:
       result: 0
 "#;
     let errors = all_errors(source);
-    let dup = errors.iter().find(|e| matches!(e, CompileError::DuplicateKey { .. }));
+    let dup = errors
+        .iter()
+        .find(|e| matches!(e, CompileError::DuplicateKey { .. }));
     assert!(
         dup.is_some(),
         "duplicate top-level key should error: {errors:?}"
@@ -235,11 +222,10 @@ steps:
     finish: { result: 1 }
 "#;
     let errors = all_errors(source);
-    let dup = errors.iter().find(|e| matches!(e, CompileError::DuplicateStepId { .. }));
-    assert!(
-        dup.is_some(),
-        "duplicate step id should error: {errors:?}"
-    );
+    let dup = errors
+        .iter()
+        .find(|e| matches!(e, CompileError::DuplicateStepId { .. }));
+    assert!(dup.is_some(), "duplicate step id should error: {errors:?}");
 }
 
 #[test]
@@ -257,7 +243,9 @@ steps:
       value: "1"
 "#;
     let errors = all_errors(source);
-    let dup = errors.iter().find(|e| matches!(e, CompileError::DuplicateKey { .. }));
+    let dup = errors
+        .iter()
+        .find(|e| matches!(e, CompileError::DuplicateKey { .. }));
     assert!(
         dup.is_some(),
         "duplicate key in nested mapping should error: {errors:?}"
@@ -281,7 +269,9 @@ steps:
       result: 0
 "#;
     let errors = all_errors(source);
-    let invalid = errors.iter().find(|e| matches!(e, CompileError::InvalidName { .. }));
+    let invalid = errors
+        .iter()
+        .find(|e| matches!(e, CompileError::InvalidName { .. }));
     assert!(
         invalid.is_some(),
         "name with spaces should produce InvalidName: {errors:?}"
@@ -301,7 +291,9 @@ steps:
       result: 0
 "#;
     let errors = all_errors(source);
-    let invalid = errors.iter().find(|e| matches!(e, CompileError::InvalidName { .. }));
+    let invalid = errors
+        .iter()
+        .find(|e| matches!(e, CompileError::InvalidName { .. }));
     assert!(
         invalid.is_some(),
         "uppercase-starting name should produce InvalidName: {errors:?}"
@@ -321,7 +313,9 @@ steps:
       result: 0
 "#;
     let errors = all_errors(source);
-    let invalid = errors.iter().find(|e| matches!(e, CompileError::InvalidName { .. }));
+    let invalid = errors
+        .iter()
+        .find(|e| matches!(e, CompileError::InvalidName { .. }));
     assert!(
         invalid.is_some(),
         "name with special chars should produce InvalidName: {errors:?}"
@@ -341,7 +335,9 @@ steps:
       result: 0
 "#;
     let errors = all_errors(source);
-    let invalid = errors.iter().find(|e| matches!(e, CompileError::InvalidName { .. }));
+    let invalid = errors
+        .iter()
+        .find(|e| matches!(e, CompileError::InvalidName { .. }));
     assert!(
         invalid.is_some(),
         "reserved name 'set' as step id should error: {errors:?}"
@@ -435,11 +431,10 @@ when:
 steps: []
 "#;
     let errors = all_errors(source);
-    let empty = errors.iter().find(|e| matches!(e, CompileError::EmptySteps));
-    assert!(
-        empty.is_some(),
-        "empty steps should error: {errors:?}"
-    );
+    let empty = errors
+        .iter()
+        .find(|e| matches!(e, CompileError::EmptySteps));
+    assert!(empty.is_some(), "empty steps should error: {errors:?}");
 }
 
 #[test]
@@ -454,7 +449,9 @@ steps:
       result: 0
 "#;
     let errors = all_errors(source);
-    let missing = errors.iter().find(|e| matches!(e, CompileError::MissingStepId { .. }));
+    let missing = errors
+        .iter()
+        .find(|e| matches!(e, CompileError::MissingStepId { .. }));
     assert!(
         missing.is_some(),
         "missing step id should error: {errors:?}"
@@ -518,7 +515,9 @@ steps:
       result: 0
 "#;
     let errors = all_errors(source);
-    let unknown = errors.iter().find(|e| matches!(e, CompileError::UnknownStepField { .. }));
+    let unknown = errors
+        .iter()
+        .find(|e| matches!(e, CompileError::UnknownStepField { .. }));
     assert!(
         unknown.is_some(),
         "unknown step field should error: {errors:?}"
@@ -536,11 +535,10 @@ steps:
   - "not a mapping"
 "#;
     let errors = all_errors(source);
-    let shape = errors.iter().find(|e| matches!(e, CompileError::StepShape { .. }));
-    assert!(
-        shape.is_some(),
-        "non-mapping step should error: {errors:?}"
-    );
+    let shape = errors
+        .iter()
+        .find(|e| matches!(e, CompileError::StepShape { .. }));
+    assert!(shape.is_some(), "non-mapping step should error: {errors:?}");
 }
 
 // ---------------------------------------------------------------------------
@@ -567,10 +565,7 @@ steps:
     let shape = errors
         .iter()
         .find(|e| matches!(e, CompileError::StepFieldShape { .. }));
-    assert!(
-        shape.is_some(),
-        "finish not last should error: {errors:?}"
-    );
+    assert!(shape.is_some(), "finish not last should error: {errors:?}");
 }
 
 #[test]
@@ -616,10 +611,7 @@ steps:
       result: 0
 "#;
     let result = compile_workflow(source);
-    assert!(
-        result.is_err(),
-        "empty wait event should be rejected"
-    );
+    assert!(result.is_err(), "empty wait event should be rejected");
 }
 
 // ---------------------------------------------------------------------------
@@ -752,7 +744,9 @@ steps:
       result: 0
 "#;
     let errors = all_errors(source);
-    let invalid = errors.iter().find(|e| matches!(e, CompileError::InvalidName { .. }));
+    let invalid = errors
+        .iter()
+        .find(|e| matches!(e, CompileError::InvalidName { .. }));
     assert!(
         invalid.is_some(),
         "should have InvalidName error: {errors:?}"
@@ -900,10 +894,7 @@ steps:
       result: 0
 "#;
     let result = compile_workflow(source);
-    assert!(
-        result.is_err(),
-        "unknown step field should be rejected"
-    );
+    assert!(result.is_err(), "unknown step field should be rejected");
 }
 
 #[test]
@@ -916,10 +907,7 @@ when:
 steps: []
 "#;
     let result = compile_workflow(source);
-    assert!(
-        result.is_err(),
-        "empty steps should be rejected"
-    );
+    assert!(result.is_err(), "empty steps should be rejected");
 }
 
 #[test]
@@ -934,8 +922,5 @@ steps:
       result: 0
 "#;
     let result = compile_workflow(source);
-    assert!(
-        result.is_err(),
-        "missing version should be rejected"
-    );
+    assert!(result.is_err(), "missing version should be rejected");
 }

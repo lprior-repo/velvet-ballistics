@@ -185,7 +185,11 @@ fn required_capability(action: ActionId) -> Capability {
     Capability::new(Box::from("test.contract.required"), action)
 }
 
-fn action_contract(action: ActionId, input_slots: u16, output_slots: u16) -> vb_core::action::ActionContract {
+fn action_contract(
+    action: ActionId,
+    input_slots: u16,
+    output_slots: u16,
+) -> vb_core::action::ActionContract {
     vb_core::action::ActionContract {
         id: action,
         input_slot_count: input_slots,
@@ -200,7 +204,11 @@ fn action_contract(action: ActionId, input_slots: u16, output_slots: u16) -> vb_
     }
 }
 
-fn action_contracts_through(action: ActionId, input_slots: u16, output_slots: u16) -> Box<[vb_core::action::ActionContract]> {
+fn action_contracts_through(
+    action: ActionId,
+    input_slots: u16,
+    output_slots: u16,
+) -> Box<[vb_core::action::ActionContract]> {
     let target = action.get();
     let mut contracts = Vec::new();
     let mut id = 0u16;
@@ -272,7 +280,11 @@ fn action_output(value: SlotValue) -> ActionOutputReady {
 }
 
 fn tick_and_drain(runtime: &mut Runtime) -> Result<Vec<TraceEvent>, String> {
-    assert_eq!(runtime.tick_all(), Ok(true), "tick_all should return true when shards alive");
+    assert_eq!(
+        runtime.tick_all(),
+        Ok(true),
+        "tick_all should return true when shards alive"
+    );
     Ok(runtime.drain_trace())
 }
 
@@ -291,9 +303,13 @@ fn submit_transitions_run_from_absent_to_initial() -> Result<(), String> {
     assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
 
     // After submit (before tick), the run exists and journal recorded submission
-    let events = journal.snapshot().map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    let events = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
     assert!(
-        events.iter().any(|e| matches!(e, RuntimeJournalEvent::RunSubmitted { run: r, .. } if *r == run)),
+        events
+            .iter()
+            .any(|e| matches!(e, RuntimeJournalEvent::RunSubmitted { run: r, .. } if *r == run)),
         "journal must contain RunSubmitted event"
     );
 
@@ -322,17 +338,24 @@ fn action_suspension_transitions_run_to_resumable() -> Result<(), String> {
     tick_and_drain(&mut runtime)?;
 
     // After first tick, action was scheduled (run is now suspended/resumable)
-    let events = journal.snapshot().map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    let events = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
     assert!(
-        events.iter().any(|e| matches!(e, RuntimeJournalEvent::ActionScheduled { run: r, step, .. }
-            if *r == run && *step == StepIdx::ZERO)),
+        events.iter().any(
+            |e| matches!(e, RuntimeJournalEvent::ActionScheduled { run: r, step, .. }
+            if *r == run && *step == StepIdx::ZERO)
+        ),
         "journal must contain ActionScheduled event for step 0"
     );
 
     // Counters: submitted, waiting for action completion
     let counters = runtime.counters_snapshot();
     assert_eq!(counters.runs_submitted, 1, "must be submitted");
-    assert_eq!(counters.runs_completed, 0, "must NOT complete until action completes");
+    assert_eq!(
+        counters.runs_completed, 0,
+        "must NOT complete until action completes"
+    );
     Ok(())
 }
 
@@ -366,9 +389,13 @@ fn action_completion_transitions_run_from_resumable_to_finished() -> Result<(), 
     assert_eq!(counters.runs_failed, 0, "run must NOT be failed");
 
     // Journal must have RunFinished
-    let events = journal.snapshot().map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    let events = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
     assert!(
-        events.iter().any(|e| matches!(e, RuntimeJournalEvent::RunFinished { run: r, .. } if *r == run)),
+        events
+            .iter()
+            .any(|e| matches!(e, RuntimeJournalEvent::RunFinished { run: r, .. } if *r == run)),
         "journal must contain RunFinished event"
     );
     Ok(())
@@ -408,9 +435,13 @@ fn fail_action_transitions_run_to_failed() -> Result<(), String> {
     assert_eq!(counters.runs_completed, 0, "run must NOT be completed");
 
     // Journal must have RunFailed
-    let events = journal.snapshot().map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    let events = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
     assert!(
-        events.iter().any(|e| matches!(e, RuntimeJournalEvent::RunFailed { run: r } if *r == run)),
+        events
+            .iter()
+            .any(|e| matches!(e, RuntimeJournalEvent::RunFailed { run: r } if *r == run)),
         "journal must contain RunFailed event"
     );
     Ok(())
@@ -436,13 +467,23 @@ fn cancel_run_transitions_run_to_failed() -> Result<(), String> {
 
     // Run should be failed (cancelled runs count as failed)
     let counters = runtime.counters_snapshot();
-    assert_eq!(counters.runs_failed, 1, "cancelled run must be counted as failed");
-    assert_eq!(counters.runs_completed, 0, "cancelled run must NOT be completed");
+    assert_eq!(
+        counters.runs_failed, 1,
+        "cancelled run must be counted as failed"
+    );
+    assert_eq!(
+        counters.runs_completed, 0,
+        "cancelled run must NOT be completed"
+    );
 
     // Journal must have RunCancelled
-    let events = journal.snapshot().map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    let events = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
     assert!(
-        events.iter().any(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r, .. } if *r == run)),
+        events
+            .iter()
+            .any(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r, .. } if *r == run)),
         "journal must contain RunCancelled event"
     );
     Ok(())
@@ -471,7 +512,9 @@ fn terminal_state_is_final_no_further_transitions() -> Result<(), String> {
     // Multiple subsequent ticks should have no effect
     let counters_before = runtime.counters_snapshot();
     for _ in 0..5 {
-        runtime.tick_all().map_err(|e| format!("tick_all failed: {e:?}"))?;
+        runtime
+            .tick_all()
+            .map_err(|e| format!("tick_all failed: {e:?}"))?;
     }
     let counters_after = runtime.counters_snapshot();
 
@@ -502,9 +545,13 @@ fn submit_lifecycle_event_recorded_before_tick() -> Result<(), String> {
     assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
 
     // Journal has RunSubmitted BEFORE any tick
-    let events = journal.snapshot().map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    let events = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
     assert!(
-        events.iter().any(|e| matches!(e, RuntimeJournalEvent::RunSubmitted { run: r, .. } if *r == run)),
+        events
+            .iter()
+            .any(|e| matches!(e, RuntimeJournalEvent::RunSubmitted { run: r, .. } if *r == run)),
         "RunSubmitted must be journaled immediately on submit_direct"
     );
     Ok(())
@@ -525,10 +572,14 @@ fn action_scheduled_lifecycle_event_recorded() -> Result<(), String> {
     tick_and_drain(&mut runtime)?;
 
     // ActionScheduled event must be in journal
-    let events = journal.snapshot().map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    let events = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
     assert!(
-        events.iter().any(|e| matches!(e, RuntimeJournalEvent::ActionScheduled { run: r, step, action: a }
-            if *r == run && *step == StepIdx::ZERO && *a == ActionId::new(7))),
+        events.iter().any(
+            |e| matches!(e, RuntimeJournalEvent::ActionScheduled { run: r, step, action: a }
+            if *r == run && *step == StepIdx::ZERO && *a == ActionId::new(7))
+        ),
         "ActionScheduled must be journaled for action_id=7, step=0"
     );
     Ok(())
@@ -549,10 +600,14 @@ fn step_started_lifecycle_event_recorded() -> Result<(), String> {
     tick_and_drain(&mut runtime)?;
 
     // StepStarted event must be in journal
-    let events = journal.snapshot().map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    let events = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
     assert!(
-        events.iter().any(|e| matches!(e, RuntimeJournalEvent::StepStarted { run: r, step }
-            if *r == run && *step == StepIdx::ZERO)),
+        events.iter().any(
+            |e| matches!(e, RuntimeJournalEvent::StepStarted { run: r, step }
+            if *r == run && *step == StepIdx::ZERO)
+        ),
         "StepStarted must be journaled for step 0"
     );
     Ok(())
@@ -570,9 +625,13 @@ fn run_finished_lifecycle_event_recorded() -> Result<(), String> {
     tick_and_drain(&mut runtime)?;
 
     // RunFinished must be in journal
-    let events = journal.snapshot().map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    let events = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
     assert!(
-        events.iter().any(|e| matches!(e, RuntimeJournalEvent::RunFinished { run: r, .. } if *r == run)),
+        events
+            .iter()
+            .any(|e| matches!(e, RuntimeJournalEvent::RunFinished { run: r, .. } if *r == run)),
         "RunFinished must be journaled on completion"
     );
     Ok(())
@@ -599,13 +658,20 @@ fn run_failed_lifecycle_event_recorded() -> Result<(), String> {
         detail: None,
         encoded_len: 0,
     };
-    assert_eq!(runtime.fail_action(action_ticket(run, ActionId::new(7)), failure), Ok(()));
+    assert_eq!(
+        runtime.fail_action(action_ticket(run, ActionId::new(7)), failure),
+        Ok(())
+    );
     tick_and_drain(&mut runtime)?;
 
     // RunFailed must be in journal
-    let events = journal.snapshot().map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    let events = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
     assert!(
-        events.iter().any(|e| matches!(e, RuntimeJournalEvent::RunFailed { run: r } if *r == run)),
+        events
+            .iter()
+            .any(|e| matches!(e, RuntimeJournalEvent::RunFailed { run: r } if *r == run)),
         "RunFailed must be journaled on failure"
     );
     Ok(())
@@ -662,13 +728,25 @@ fn counters_updated_on_submit() -> Result<(), String> {
     let runtime = Runtime::new(shard_count(1)?, test_config());
 
     // Submit multiple runs
-    assert_eq!(runtime.submit_direct(RunId::new(30010), finished_workflow()?), Ok(()));
-    assert_eq!(runtime.submit_direct(RunId::new(30011), finished_workflow()?), Ok(()));
-    assert_eq!(runtime.submit_direct(RunId::new(30012), finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(RunId::new(30010), finished_workflow()?),
+        Ok(())
+    );
+    assert_eq!(
+        runtime.submit_direct(RunId::new(30011), finished_workflow()?),
+        Ok(())
+    );
+    assert_eq!(
+        runtime.submit_direct(RunId::new(30012), finished_workflow()?),
+        Ok(())
+    );
 
     let counters = runtime.counters_snapshot();
     assert_eq!(counters.runs_submitted, 3, "three runs must be submitted");
-    assert_eq!(counters.runs_completed, 0, "none completed yet (before tick)");
+    assert_eq!(
+        counters.runs_completed, 0,
+        "none completed yet (before tick)"
+    );
     Ok(())
 }
 
@@ -678,8 +756,14 @@ fn counters_updated_on_completion() -> Result<(), String> {
     let mut runtime = Runtime::new(shard_count(1)?, test_config());
 
     // Submit and tick to complete
-    assert_eq!(runtime.submit_direct(RunId::new(30020), finished_workflow()?), Ok(()));
-    assert_eq!(runtime.submit_direct(RunId::new(30021), finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(RunId::new(30020), finished_workflow()?),
+        Ok(())
+    );
+    assert_eq!(
+        runtime.submit_direct(RunId::new(30021), finished_workflow()?),
+        Ok(())
+    );
     tick_and_drain(&mut runtime)?;
 
     let counters = runtime.counters_snapshot();
@@ -710,7 +794,10 @@ fn counters_updated_on_failure() -> Result<(), String> {
         detail: None,
         encoded_len: 0,
     };
-    assert_eq!(runtime.fail_action(action_ticket(run, ActionId::new(7)), failure), Ok(()));
+    assert_eq!(
+        runtime.fail_action(action_ticket(run, ActionId::new(7)), failure),
+        Ok(())
+    );
     tick_and_drain(&mut runtime)?;
 
     let counters = runtime.counters_snapshot();
@@ -731,17 +818,22 @@ fn trace_events_recorded_for_run_lifecycle() -> Result<(), String> {
     tick_and_drain(&mut runtime)?;
 
     // Trace must contain lifecycle events
-    let events = runtime.list_events(run).map_err(|e| format!("list_events failed: {e:?}"))?;
-    assert!(!events.is_empty(), "trace must not be empty after lifecycle");
+    let events = runtime
+        .list_events(run)
+        .map_err(|e| format!("list_events failed: {e:?}"))?;
+    assert!(
+        !events.is_empty(),
+        "trace must not be empty after lifecycle"
+    );
 
     // Must have at least RunSubmitted and RunFinished
     let target_run = run;
-    let has_submitted = events.iter().any(|e| {
-        matches!(e, TraceEvent::RunSubmitted { run: r } if *r == target_run)
-    });
-    let has_finished = events.iter().any(|e| {
-        matches!(e, TraceEvent::RunFinished { run: r } if *r == target_run)
-    });
+    let has_submitted = events
+        .iter()
+        .any(|e| matches!(e, TraceEvent::RunSubmitted { run: r } if *r == target_run));
+    let has_finished = events
+        .iter()
+        .any(|e| matches!(e, TraceEvent::RunFinished { run: r } if *r == target_run));
 
     assert!(has_submitted, "trace must contain RunSubmitted");
     assert!(has_finished, "trace must contain RunFinished");
@@ -762,12 +854,19 @@ fn shutdown_drains_before_journal_drain() -> Result<(), String> {
 
     // Run must have completed during shutdown drain
     let counters = runtime.counters_snapshot();
-    assert_eq!(counters.runs_completed, 1, "run must complete during shutdown drain");
+    assert_eq!(
+        counters.runs_completed, 1,
+        "run must complete during shutdown drain"
+    );
 
     // Journal must have RunFinished from drain processing
-    let events = journal.snapshot().map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    let events = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
     assert!(
-        events.iter().any(|e| matches!(e, RuntimeJournalEvent::RunFinished { run: r, .. } if *r == run)),
+        events
+            .iter()
+            .any(|e| matches!(e, RuntimeJournalEvent::RunFinished { run: r, .. } if *r == run)),
         "journal must have RunFinished from shutdown drain"
     );
     Ok(())
@@ -821,7 +920,11 @@ fn snapshot_run_returns_found_with_exact_fields() -> Result<(), String> {
         Ok(Some(InspectResponse::Found(snap))) => {
             assert_eq!(snap.run, run, "snap.run must equal run");
             assert_eq!(snap.correlation, 99, "snap.correlation must be 99");
-            assert_eq!(snap.pc, StepIdx::ZERO, "snap.pc must be step 0 (action suspended)");
+            assert_eq!(
+                snap.pc,
+                StepIdx::ZERO,
+                "snap.pc must be step 0 (action suspended)"
+            );
         }
         other => {
             return Err(format!("expected Found response, got {:?}", other));
@@ -859,7 +962,11 @@ fn tick_all_returns_exact_false_after_shutdown() -> Result<(), String> {
     let mut runtime = Runtime::new(shard_count(1)?, test_config());
 
     assert_eq!(runtime.shutdown_graceful(), Ok(()));
-    assert_eq!(runtime.tick_all(), Ok(false), "tick_all must return Ok(false) after shutdown");
+    assert_eq!(
+        runtime.tick_all(),
+        Ok(false),
+        "tick_all must return Ok(false) after shutdown"
+    );
     Ok(())
 }
 
@@ -876,7 +983,10 @@ fn submit_returns_exact_queue_full_on_full_queue() -> Result<(), String> {
     let runtime = Runtime::new(shard_count(1)?, config);
 
     // Fill the queue
-    assert_eq!(runtime.submit_direct(RunId::new(40010), finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(RunId::new(40010), finished_workflow()?),
+        Ok(())
+    );
 
     // Next submit returns exact QueueFull error
     assert_eq!(
@@ -895,7 +1005,10 @@ fn tick_shard_returns_exact_shard_not_found() -> Result<(), String> {
     // Invalid shard index
     let result = runtime.tick_shard(99, ShardDirective::Continue);
     assert!(
-        matches!(result, Err(vb_runtime::RuntimeError::ShardNotFound { shard: 99 })),
+        matches!(
+            result,
+            Err(vb_runtime::RuntimeError::ShardNotFound { shard: 99 })
+        ),
         "must return exact ShardNotFound {{ shard: 99 }}, got {:?}",
         result
     );
@@ -906,11 +1019,26 @@ fn tick_shard_returns_exact_shard_not_found() -> Result<(), String> {
 #[test]
 fn runtime_state_is_resumable_is_exact() -> Result<(), String> {
     // Test the enum variants directly
-    assert!(RuntimeState::Resumable.is_resumable(), "Resumable must be resumable");
-    assert!(!RuntimeState::Initial.is_resumable(), "Initial must NOT be resumable");
-    assert!(!RuntimeState::Running.is_resumable(), "Running must NOT be resumable");
-    assert!(!RuntimeState::Resuming.is_resumable(), "Resuming must NOT be resumable (it's a transition state)");
-    assert!(!RuntimeState::Failed.is_resumable(), "Failed must NOT be resumable");
+    assert!(
+        RuntimeState::Resumable.is_resumable(),
+        "Resumable must be resumable"
+    );
+    assert!(
+        !RuntimeState::Initial.is_resumable(),
+        "Initial must NOT be resumable"
+    );
+    assert!(
+        !RuntimeState::Running.is_resumable(),
+        "Running must NOT be resumable"
+    );
+    assert!(
+        !RuntimeState::Resuming.is_resumable(),
+        "Resuming must NOT be resumable (it's a transition state)"
+    );
+    assert!(
+        !RuntimeState::Failed.is_resumable(),
+        "Failed must NOT be resumable"
+    );
     Ok(())
 }
 
@@ -953,11 +1081,18 @@ fn shard_directive_suspend_preserves_queue() -> Result<(), String> {
 
     // Submit counter still 0 (Suspend skipped processing)
     let counters = runtime.counters_snapshot();
-    assert_eq!(counters.runs_submitted, 0, "Suspend must NOT process commands");
+    assert_eq!(
+        counters.runs_submitted, 0,
+        "Suspend must NOT process commands"
+    );
 
     // Now Continue - should process
     assert_eq!(runtime.tick_shard(0, ShardDirective::Continue), Ok(true));
-    assert_eq!(runtime.counters_snapshot().runs_submitted, 1, "Continue must process");
+    assert_eq!(
+        runtime.counters_snapshot().runs_submitted,
+        1,
+        "Continue must process"
+    );
     Ok(())
 }
 
@@ -972,7 +1107,11 @@ fn shard_directive_shutdown_drains_and_returns_false() -> Result<(), String> {
 
     // Subsequent tick_shard Continue also returns false (shard is dead)
     let result2 = runtime.tick_shard(0, ShardDirective::Continue);
-    assert_eq!(result2, Ok(false), "Continue on dead shard must return Ok(false)");
+    assert_eq!(
+        result2,
+        Ok(false),
+        "Continue on dead shard must return Ok(false)"
+    );
     Ok(())
 }
 
@@ -999,7 +1138,10 @@ fn shard_directive_migrate_to_invalid_returns_shard_not_found() -> Result<(), St
     // Migrate to non-existent shard
     let result = runtime.tick_shard(0, ShardDirective::Migrate { target: 99 });
     assert!(
-        matches!(result, Err(vb_runtime::RuntimeError::ShardNotFound { shard: 99 })),
+        matches!(
+            result,
+            Err(vb_runtime::RuntimeError::ShardNotFound { shard: 99 })
+        ),
         "Migrate to invalid shard must return ShardNotFound, got {:?}",
         result
     );
@@ -1013,7 +1155,8 @@ fn shard_directive_cancel_is_unsupported() -> Result<(), String> {
 
     let result = runtime.tick_shard(0, ShardDirective::Cancel);
     match result {
-        Err(vb_runtime::RuntimeError::UnsupportedOperation { operation }) if operation == "tick_shard_cancel" => {}
+        Err(vb_runtime::RuntimeError::UnsupportedOperation { operation })
+            if operation == "tick_shard_cancel" => {}
         other => {
             return Err(format!(
                 "Cancel directive must be UnsupportedOperation, got {:?}",
@@ -1031,7 +1174,8 @@ fn shard_directive_barrier_is_unsupported() -> Result<(), String> {
 
     let result = runtime.tick_shard(0, ShardDirective::Barrier);
     match result {
-        Err(vb_runtime::RuntimeError::UnsupportedOperation { operation }) if operation == "tick_shard_barrier" => {}
+        Err(vb_runtime::RuntimeError::UnsupportedOperation { operation })
+            if operation == "tick_shard_barrier" => {}
         other => {
             return Err(format!(
                 "Barrier directive must be UnsupportedOperation, got {:?}",
@@ -1075,7 +1219,10 @@ fn same_run_id_routes_to_same_shard() -> Result<(), String> {
 
     // Counters show 2 submissions
     let counters = runtime.counters_snapshot();
-    assert_eq!(counters.runs_submitted, 2, "same run_id resubmitted successfully");
+    assert_eq!(
+        counters.runs_submitted, 2,
+        "same run_id resubmitted successfully"
+    );
     Ok(())
 }
 
@@ -1086,9 +1233,18 @@ fn tick_all_processes_one_command_per_shard() -> Result<(), String> {
 
     // Submit 3 runs to 3 different shards (run_id % 3 = shard)
     // Run 0 -> shard 0, Run 1 -> shard 1, Run 2 -> shard 2
-    assert_eq!(runtime.submit_direct(RunId::new(0), finished_workflow()?), Ok(()));
-    assert_eq!(runtime.submit_direct(RunId::new(1), finished_workflow()?), Ok(()));
-    assert_eq!(runtime.submit_direct(RunId::new(2), finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(RunId::new(0), finished_workflow()?),
+        Ok(())
+    );
+    assert_eq!(
+        runtime.submit_direct(RunId::new(1), finished_workflow()?),
+        Ok(())
+    );
+    assert_eq!(
+        runtime.submit_direct(RunId::new(2), finished_workflow()?),
+        Ok(())
+    );
 
     // One tick processes all 3 commands (one per shard)
     assert_eq!(runtime.tick_all(), Ok(true));
@@ -1106,7 +1262,11 @@ fn shutdown_processes_all_shards() -> Result<(), String> {
 
     // Shutdown all shards
     assert_eq!(runtime.shutdown_graceful(), Ok(()));
-    assert_eq!(runtime.tick_all(), Ok(false), "tick_all returns false when all shards down");
+    assert_eq!(
+        runtime.tick_all(),
+        Ok(false),
+        "tick_all returns false when all shards down"
+    );
     Ok(())
 }
 
@@ -1123,8 +1283,14 @@ fn active_runs_tracked_per_shard_independently() -> Result<(), String> {
     let mut runtime = Runtime::new(shard_count(1)?, config);
 
     // Submit 2 runs (both go to shard 0)
-    assert_eq!(runtime.submit_direct(RunId::new(0), finished_workflow()?), Ok(()));
-    assert_eq!(runtime.submit_direct(RunId::new(1), finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(RunId::new(0), finished_workflow()?),
+        Ok(())
+    );
+    assert_eq!(
+        runtime.submit_direct(RunId::new(1), finished_workflow()?),
+        Ok(())
+    );
     tick_and_drain(&mut runtime)?;
 
     // Both should complete
@@ -1132,8 +1298,14 @@ fn active_runs_tracked_per_shard_independently() -> Result<(), String> {
     assert_eq!(counters.runs_completed, 2, "both runs must complete");
 
     // Now try to submit more runs
-    assert_eq!(runtime.submit_direct(RunId::new(2), finished_workflow()?), Ok(()));
-    assert_eq!(runtime.submit_direct(RunId::new(3), finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(RunId::new(2), finished_workflow()?),
+        Ok(())
+    );
+    assert_eq!(
+        runtime.submit_direct(RunId::new(3), finished_workflow()?),
+        Ok(())
+    );
 
     // Tick - should handle capacity exceeded
     let result = runtime.tick_all();
@@ -1169,16 +1341,18 @@ fn trace_events_appear_in_deterministic_order() -> Result<(), String> {
     tick_and_drain(&mut runtime)?;
 
     // Get events in order
-    let events = runtime.list_events(run).map_err(|e| format!("list_events failed: {e:?}"))?;
+    let events = runtime
+        .list_events(run)
+        .map_err(|e| format!("list_events failed: {e:?}"))?;
 
     // Find positions
     let target_run = run;
-    let submit_idx = events.iter().position(|e| {
-        matches!(e, TraceEvent::RunSubmitted { run: r } if *r == target_run)
-    });
-    let finish_idx = events.iter().position(|e| {
-        matches!(e, TraceEvent::RunFinished { run: r } if *r == target_run)
-    });
+    let submit_idx = events
+        .iter()
+        .position(|e| matches!(e, TraceEvent::RunSubmitted { run: r } if *r == target_run));
+    let finish_idx = events
+        .iter()
+        .position(|e| matches!(e, TraceEvent::RunFinished { run: r } if *r == target_run));
 
     assert!(submit_idx.is_some(), "RunSubmitted must be in trace");
     assert!(finish_idx.is_some(), "RunFinished must be in trace");
@@ -1203,11 +1377,18 @@ fn list_events_is_non_destructive() -> Result<(), String> {
     tick_and_drain(&mut runtime)?;
 
     // Call list_events multiple times
-    let first = runtime.list_events(run).map_err(|e| format!("list_events failed: {e:?}"))?;
-    let second = runtime.list_events(run).map_err(|e| format!("list_events failed: {e:?}"))?;
+    let first = runtime
+        .list_events(run)
+        .map_err(|e| format!("list_events failed: {e:?}"))?;
+    let second = runtime
+        .list_events(run)
+        .map_err(|e| format!("list_events failed: {e:?}"))?;
 
     // Must return same events
-    assert_eq!(first, second, "list_events must be idempotent (non-destructive)");
+    assert_eq!(
+        first, second,
+        "list_events must be idempotent (non-destructive)"
+    );
     Ok(())
 }
 

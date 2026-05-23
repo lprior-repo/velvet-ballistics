@@ -419,7 +419,8 @@ steps:
 
     // Must initialize step_budget_remaining
     assert!(
-        generated.contains("let mut step_budget_remaining: u64 = CONTRACT_MAX_STEP_BUDGET_PER_TICK;"),
+        generated
+            .contains("let mut step_budget_remaining: u64 = CONTRACT_MAX_STEP_BUDGET_PER_TICK;"),
         "drive function must initialize step_budget"
     );
 }
@@ -839,7 +840,10 @@ steps:
     // For minimal workflow, CONSTANTS array may be empty or have minimal values
     // The array declaration should be present
     let parts = workflow.to_parts();
-    let expected = format!("const CONSTANTS: [SlotValue; {}] = [", parts.constants.len());
+    let expected = format!(
+        "const CONSTANTS: [SlotValue; {}] = [",
+        parts.constants.len()
+    );
     assert!(
         generated.contains(&expected),
         "constants array length must match workflow constants count"
@@ -1357,7 +1361,10 @@ steps:
 
     // Critical elements must have exact form
     assert!(generated.contains("pub enum SlotValue { Null, Bool(bool), I64(i64), F64(f64), Symbol(u32), List(u32), Object(u32), Blob(u64) }"));
-    assert!(generated.contains("pub enum Taint { Clean, DerivedFromSecret, Secret, Random, TimeDependent }"));
+    assert!(
+        generated
+            .contains("pub enum Taint { Clean, DerivedFromSecret, Secret, Random, TimeDependent }")
+    );
     assert!(generated.contains("pub enum DriveError {"));
     // StepOutcome is not pub - it's internal
     assert!(generated.contains("enum StepOutcome { Continue(u16), Finished(SlotValue) }"));

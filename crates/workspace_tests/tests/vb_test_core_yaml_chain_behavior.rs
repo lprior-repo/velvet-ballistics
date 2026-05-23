@@ -13,9 +13,9 @@ use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
 use vb_core::capability::Capability;
 use vb_core::ids::ActionId;
 use vb_core::workflow::ResourceContract;
-use vb_validate::shared::{validate, validate_with_contracts, ValidationPipeline};
 use vb_validate::ValidationError;
-use vb_yaml::{parse_workflow_source, parse_yaml_events, validate_yaml_profile, YamlError};
+use vb_validate::shared::{ValidationPipeline, validate, validate_with_contracts};
+use vb_yaml::{YamlError, parse_workflow_source, parse_yaml_events, validate_yaml_profile};
 
 // ---------------------------------------------------------------------------
 // YAML parsing happy paths
