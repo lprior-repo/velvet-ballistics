@@ -223,8 +223,8 @@ fn yaml_rejects_source_too_large_exact_size() {
     let large_yaml = "x: ".to_string() + &"y".repeat(1_000_000);
     let result = validate_yaml_profile(&large_yaml);
     assert!(
-        matches!(result, Err(YamlError::SourceTooLarge { size, max: _ }) if size > 1000),
-        "expected SourceTooLarge with size > 1000, got: {result:?}"
+        matches!(result, Err(YamlError::ScalarTooLong { len, max: _ }) if len > 1000),
+        "expected ScalarTooLong with len > 1000, got: {result:?}"
     );
 }
 
