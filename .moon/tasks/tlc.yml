@@ -1,0 +1,12 @@
+tasks:
+  tlc-verify:
+    command: bash scripts/run-tlc-checks.sh
+    options:
+      runInCI: true
+      cache: false
+
+  tlc-verify-workflow:
+    command: java -cp /home/lewis/.local/share/mise/http-tarballs/36e4d95a99aa33dde9ff7b288bf3092f3dfbb26e450fc9758ee765cdb250ce38/tla2tools.jar tlc2.TLC -config verification/tla/WorkflowBoundedAdmission.cfg verification/tla/WorkflowBoundedAdmission.tla
+    options:
+      runInCI: true
+      cache: false

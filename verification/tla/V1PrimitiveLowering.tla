@@ -27,6 +27,29 @@ vars == <<primitive, phase, target, bodyTarget, doneTarget, joinTarget,
           page, pageLimit, inputRemaining, suspended,
           delivered, answer, timedOut, finished, finishedCount>>
 
+TypeOK ==
+  /\ primitive \in Primitives
+  /\ phase \in Phases
+  /\ target \in Nodes
+  /\ bodyTarget \in TargetChoices
+  /\ doneTarget \in TargetChoices
+  /\ joinTarget \in TargetChoices
+  /\ resumeTarget \in TargetChoices
+  /\ exhaustedTarget \in TargetChoices
+  /\ branches \in 1..BranchBound
+  /\ completedBranches \in 0..BranchBound
+  /\ attempt \in 0..AttemptBound
+  /\ maxAttempts \in 1..AttemptBound
+  /\ page \in 0..PageBound
+  /\ pageLimit \in 1..PageBound
+  /\ inputRemaining \in 0..InputBound
+  /\ suspended \in BOOLEAN
+  /\ delivered \in BOOLEAN
+  /\ answer \in BOOLEAN
+  /\ timedOut \in BOOLEAN
+  /\ finished \in BOOLEAN
+  /\ finishedCount \in Nat
+
 InitLoweredPrimitiveGraph ==
   /\ primitive \in Primitives
   /\ phase = "start"

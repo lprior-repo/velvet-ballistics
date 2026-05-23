@@ -18,13 +18,20 @@ VARIABLES
     fired,         \* set of fired timer entries (cleared only via ProcessFired)
     now            \* current time (abstract)
 
-vars == <<timers, deadline_idx, generation, fired, now>>
-
 TIMES == 0..5   \* Reduced from 0..100 for tractability
 KINDS == {"wait", "ask"}
 RunIds == 1..1
 NullEntry == [run |-> 0, deadline |-> 0, kind |-> "null", gen |-> 0]
 TimerEntry == [run: RunIds, deadline: TIMES, kind: KINDS, gen: Nat]
+
+vars == <<timers, deadline_idx, generation, fired, now>>
+
+TypeOK ==
+    /\ timers \in [RunIds -> TimerEntry \cup {NullEntry}]
+    /\ deadline_idx \in [TIMES -> SUBSET RunIds]
+    /\ generation \in [RunIds -> Nat]
+    /\ fired \subseteq TimerEntry
+    /\ now \in TIMES
 
 Init ==
     /\ timers = [r \in RunIds |-> NullEntry]

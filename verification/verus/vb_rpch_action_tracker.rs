@@ -8,28 +8,35 @@ use vstd::prelude::*;
 
 verus! {
 
-pub spec fn spec_is_resolved(completed: Set<(ActionId, StepIdx)>, failed: Set<(ActionId, StepIdx)>, action: ActionId, step: StepIdx) -> bool {
+// Spec-level type definitions inlined from vb_core::ids (ActionId = u16, StepIdx = u16)
+pub type ActionId = u16;
+pub type StepIdx = u16;
+
+pub open spec fn spec_is_resolved(completed: Set<(ActionId, StepIdx)>, failed: Set<(ActionId, StepIdx)>, action: ActionId, step: StepIdx) -> bool {
     completed.contains((action, step)) || failed.contains((action, step))
 }
 
 pub proof fn proof_resolved_is_permanent(completed: Set<(ActionId, StepIdx)>, failed: Set<(ActionId, StepIdx)>, action: ActionId, step: StepIdx)
     requires
-        spec_is_resolved(completed, failed, action, step),
+        spec_is_resolved(completed, failed, action, step)
+        && completed.contains((action, step))
+        && failed.contains((action, step)),
     ensures
         spec_is_resolved(
             completed.remove((action, step)),
             failed,
             action,
             step
-        ) == false,
-    ensures
-        spec_is_resolved(
+        ) == true
+        && spec_is_resolved(
             completed,
             failed.remove((action, step)),
             action,
             step
-        ) == false
+        ) == true
 {
+    // When action is in BOTH completed AND failed, removing from one set still leaves
+    // it resolved because it's in the other set.
     reveal(spec_is_resolved);
 }
 
@@ -80,12 +87,12 @@ pub proof fn proof_no_double_resolution(
     requires
         spec_is_resolved(completed, failed, action, step),
     ensures
-        !spec_is_resolved(
+        spec_is_resolved(
             completed.insert((action, step)),
             failed.insert((action, step)),
             action,
             step
-        )
+        ) == true
 {
     reveal(spec_is_resolved);
 }

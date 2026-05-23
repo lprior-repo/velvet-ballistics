@@ -83,6 +83,29 @@ vars == <<requested_run, journal, snapshot, ack_state, persisted_header,
           recovered_action, recovered_wait, recovered_ask, recovered_retry,
           recovered_collect, recovered_ticket, terminal>>
 
+TypeOK ==
+  /\ requested_run \in Runs
+  /\ journal \in EventStreams
+  /\ snapshot \in SnapshotChoices
+  /\ ack_state \in AckStates
+  /\ persisted_header \in BOOLEAN
+  /\ crashed \in BOOLEAN
+  /\ restarted \in BOOLEAN
+  /\ hydration \in HydrationStates
+  /\ error \in ErrorStates
+  /\ recovered_header \in BOOLEAN
+  /\ recovered_pc \in BOOLEAN
+  /\ recovered_slot \in BOOLEAN
+  /\ recovered_taint \in BOOLEAN
+  /\ recovered_step \in BOOLEAN
+  /\ recovered_action \in BOOLEAN
+  /\ recovered_wait \in BOOLEAN
+  /\ recovered_ask \in BOOLEAN
+  /\ recovered_retry \in BOOLEAN
+  /\ recovered_collect \in BOOLEAN
+  /\ recovered_ticket \in BOOLEAN
+  /\ terminal \in TerminalStates
+
 Init ==
   /\ requested_run \in Runs
   /\ journal \in EventStreams

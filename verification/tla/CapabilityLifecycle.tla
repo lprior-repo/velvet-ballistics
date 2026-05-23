@@ -16,6 +16,17 @@ VARIABLES gate_count, required_count, grant_count, contracts_present,
 vars == <<gate_count, required_count, grant_count, contracts_present,
           legacy_path, admission, run_allocated, journaled, drive_state>>
 
+TypeOK ==
+  /\ gate_count \in GateCounts
+  /\ required_count \in CapabilityCounts
+  /\ grant_count \in CapabilityCounts
+  /\ contracts_present \in BOOLEAN
+  /\ legacy_path \in BOOLEAN
+  /\ admission \in {"pending", "admitted", "denied"}
+  /\ run_allocated \in BOOLEAN
+  /\ journaled \in BOOLEAN
+  /\ drive_state \in {"idle", "denied", "awaiting"}
+
 Init ==
   /\ gate_count \in GateCounts
   /\ required_count \in CapabilityCounts

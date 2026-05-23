@@ -33,6 +33,30 @@ vars == <<header, ordered, seq_gap, snapshot_valid, snapshot_watermark,
           action_state, action_duplicated, collect_state, lifecycle_only,
           terminal, error, crashed>>
 
+TypeOK ==
+  /\ header \in BOOLEAN
+  /\ ordered \in BOOLEAN
+  /\ seq_gap \in BOOLEAN
+  /\ snapshot_valid \in BOOLEAN
+  /\ snapshot_watermark \in Watermarks
+  /\ tail_after_watermark \in BOOLEAN
+  /\ active_attempt \in Attempts
+  /\ stale_attempt_present \in BOOLEAN
+  /\ mixed_stale_attempt \in BOOLEAN
+  /\ durable_slot \in BOOLEAN
+  /\ durable_taint_secret \in BOOLEAN
+  /\ recovered_taint_secret \in BOOLEAN
+  /\ fact_erased \in BOOLEAN
+  /\ wait_fact \in BOOLEAN
+  /\ ask_fact \in BOOLEAN
+  /\ action_state \in ActionState
+  /\ action_duplicated \in BOOLEAN
+  /\ collect_state \in CollectState
+  /\ lifecycle_only \in BOOLEAN
+  /\ terminal \in Terminal
+  /\ error \in Errors
+  /\ crashed \in BOOLEAN
+
 Init ==
   /\ header \in Bool
   /\ ordered \in Bool

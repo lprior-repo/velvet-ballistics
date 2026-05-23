@@ -9,6 +9,11 @@ VARIABLES framePool, globalLock, waitQueue
 
 vars == <<framePool, globalLock, waitQueue>>
 
+TypeOK ==
+  /\ framePool \in [Shards -> SUBSET Frames]
+  /\ globalLock \in [Resources -> Machines \cup {"none"}]
+  /\ waitQueue \in Seq(Machines)
+
 OwnedFrames == UNION {framePool[s] : s \in Shards}
 
 SingleShardOwner ==

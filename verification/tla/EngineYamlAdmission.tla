@@ -11,6 +11,13 @@ VARIABLES artifact_state, durable_records, ack_state, proof_gates
 
 vars == <<artifact_state, durable_records, ack_state, proof_gates>>
 
+TypeOK ==
+  /\ artifact_state \in {"source", "validated", "compiled", "accepted_artifact",
+                        "verified", "persisted"}
+  /\ durable_records \subseteq Records
+  /\ ack_state \in {"pending", "acked", "failed"}
+  /\ proof_gates \subseteq Gates
+
 InitAdmission ==
   /\ artifact_state = "source"
   /\ durable_records = {}

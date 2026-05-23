@@ -49,6 +49,7 @@ libfuzzer-sys = "0.4"
 mio = "1"
 postcard = { version = "1", features = ["alloc"] }
 proptest = "1"
+rand = "0.9"
 rtrb = "0.3"
 rustix = { version = "1", features = ["fs"] }
 saphyr = { version = "=0.0.6", default-features = false }

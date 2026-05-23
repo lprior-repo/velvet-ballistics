@@ -1,0 +1,12 @@
+tasks:
+  kani-verify:
+    command: cargo kani --lib -p vb_core --all-features
+    options:
+      runInCI: true
+      cache: false
+
+  kani-verify-vb-validate:
+    command: cargo kani -p vb_validate --all-features
+    options:
+      runInCI: true
+      cache: false

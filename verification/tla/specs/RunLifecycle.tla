@@ -18,12 +18,19 @@ VARIABLES
     last_event,     \* Last event recorded
     prev_terminal   \* TRUE if terminal was reached in previous state
 
-vars == <<run_state, step_count, terminal_reached, last_event, prev_terminal>>
-
 TerminalStates == {"succeeded", "failed", "skipped", "cancelled"}
 MutableStates == {"queued", "running", "await_action", "await_ask"}
 AllStates == MutableStates \cup TerminalStates
-Events == {"submit", "step", "action_suspend", "action_complete", "ask_suspend", "ask_complete", "succeed", "fail", "skip", "cancel"}
+Events == {"none", "submit", "step", "action_suspend", "action_complete", "ask_suspend", "ask_complete", "succeed", "fail", "skip", "cancel"}
+
+vars == <<run_state, step_count, terminal_reached, last_event, prev_terminal>>
+
+TypeOK ==
+    /\ run_state \in AllStates
+    /\ step_count \in Nat
+    /\ terminal_reached \in BOOLEAN
+    /\ last_event \in Events
+    /\ prev_terminal \in BOOLEAN
 
 Init ==
     /\ run_state = "queued"   \* Start in queued so Tick enables

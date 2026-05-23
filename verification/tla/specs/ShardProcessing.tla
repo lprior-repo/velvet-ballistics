@@ -22,8 +22,6 @@ VARIABLES
     commands_issued,\* Count of commands issued this tick
     insert_counter  \* Monotonic counter for FIFO ordering
 
-vars == <<queue, processing, shard_state, commands_issued, insert_counter>>
-
 RunIds == 1..MAX_RUNS
 Commands == {"submit", "cancel", "resume", "timer_fired", "action_complete", "inspect"}
 NullCommand == [cmd |-> "null_cmd", run |-> 0]
@@ -31,6 +29,15 @@ CommandPayload == [cmd: Commands, run: RunIds]
 
 \* Maximum insert counter value to bound state space
 MaxInsertCounter == 5
+
+vars == <<queue, processing, shard_state, commands_issued, insert_counter>>
+
+TypeOK ==
+    /\ queue \in Seq([cmd: CommandPayload, seq: Nat])
+    /\ processing \in CommandPayload \cup {NullCommand}
+    /\ shard_state \in {"active", "shutdown"}
+    /\ commands_issued \in Nat
+    /\ insert_counter \in Nat
 
 Init ==
     /\ queue = <<>>

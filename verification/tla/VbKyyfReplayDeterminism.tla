@@ -144,6 +144,19 @@ vars == <<run_id, journal, replay_count, journal_dispatched,
           digest_mismatch, error, terminal, generated_mode, replay_state,
           first_replay_error, curr_error>>
 
+TypeOK ==
+  /\ run_id \in RunIds
+  /\ journal \in Seq(RECORD)
+  /\ replay_count \in 0..MaxReplay
+  /\ journal_dispatched \in [1..MaxJournalEntries -> BOOLEAN]
+  /\ digest_mismatch \in BOOLEAN
+  /\ error \in TypedError
+  /\ terminal \in TerminalKind
+  /\ generated_mode \in GeneratedState
+  /\ replay_state \in {"initial", "replay"}
+  /\ first_replay_error \in TypedError
+  /\ curr_error \in TypedError
+
 \* -----------------------------------------------------------------------
 \* Init
 \* -----------------------------------------------------------------------

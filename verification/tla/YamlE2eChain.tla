@@ -25,6 +25,24 @@ vars == <<phase, sourceStored, artifactStored, acceptedEnvelope,
           digestOk, artifactOk, gateOk, proofOk, capabilityOk,
           replayOk, inspectStatus, eventsProjection>>
 
+TypeOK ==
+  /\ phase \in Phase
+  /\ sourceStored \in BOOLEAN
+  /\ artifactStored \in BOOLEAN
+  /\ acceptedEnvelope \in BOOLEAN
+  /\ runHeaderStored \in BOOLEAN
+  /\ journal \in Seq(Event)
+  /\ ack \in Ack
+  /\ yamlParserUsedAfterAdmission \in BOOLEAN
+  /\ digestOk \in BOOLEAN
+  /\ artifactOk \in BOOLEAN
+  /\ gateOk \in BOOLEAN
+  /\ proofOk \in BOOLEAN
+  /\ capabilityOk \in BOOLEAN
+  /\ replayOk \in BOOLEAN
+  /\ inspectStatus \in Projection
+  /\ eventsProjection \in Projection
+
 AcceptedEnvelopeOk ==
   sourceStored /\ artifactStored /\ runHeaderStored /\ acceptedEnvelope
   /\ digestOk /\ artifactOk /\ gateOk /\ proofOk /\ capabilityOk

@@ -12,6 +12,8 @@
 //!   where `record.digest == workflow.digest()`.
 
 use proptest::prelude::*;
+use rand::rngs::StdRng;
+use rand::SeedableRng;
 use vb_core::value::ConstValue;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 use vb_core::{CompiledWorkflow, ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
@@ -24,7 +26,7 @@ use vb_storage::admission::submit_artifact;
 // ============================================================================
 
 /// Build a minimal valid CompiledWorkflow for testing.
-fn minimal_workflow() -> Result<CompiledWorkflow, String> {
+fn minimal_workflow(value: i64) -> Result<CompiledWorkflow, String> {
     let mut parts = WorkflowParts {
         name: Box::<str>::from("pi_test"),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
@@ -52,7 +54,7 @@ fn minimal_workflow() -> Result<CompiledWorkflow, String> {
         ]),
         expressions: Box::new([]),
         accessors: Box::new([]),
-        constants: Box::new([ConstValue::I64(42)]),
+        constants: Box::new([ConstValue::I64(value)]),
         slot_count: 1,
         symbols_count: 0,
         entry: StepIdx::new(0),
@@ -188,12 +190,16 @@ fn pi_01_gate_one_past_max_is_invalid() {
 // PI-02 Invariant (Relaxed policy): digest roundtrip
 proptest! {
     #[test]
-    fn pi_02_digest_roundtrip_relaxed(_seed in 0u64..1000u64) {
+    fn pi_02_digest_roundtrip_relaxed(seed in 0u64..1000u64) {
+        let mut rng = StdRng::seed_from_u64(seed);
+        let value_base = 42i64;
+        let value = value_base + (seed % 10) as i64;
+        std::hint::black_box(value);
         let journal = match temp_journal() {
             Ok(j) => j,
             Err(e) => { prop_assume!(false, "journal open failed: {}", e); return Ok(()); }
         };
-        let workflow = match minimal_workflow() {
+        let workflow = match minimal_workflow(value) {
             Ok(w) => w,
             Err(e) => { prop_assume!(false, "workflow build failed: {}", e); return Ok(()); }
         };
@@ -220,12 +226,16 @@ proptest! {
 // PI-02 Invariant (Journaled policy): digest roundtrip
 proptest! {
     #[test]
-    fn pi_02_digest_roundtrip_journaled(_seed in 0u64..1000u64) {
+    fn pi_02_digest_roundtrip_journaled(seed in 0u64..1000u64) {
+        let mut rng = StdRng::seed_from_u64(seed);
+        let value_base = 42i64;
+        let value = value_base + (seed % 10) as i64;
+        std::hint::black_box(value);
         let journal = match temp_journal() {
             Ok(j) => j,
             Err(e) => { prop_assume!(false, "journal open failed: {}", e); return Ok(()); }
         };
-        let workflow = match minimal_workflow() {
+        let workflow = match minimal_workflow(value) {
             Ok(w) => w,
             Err(e) => { prop_assume!(false, "workflow build failed: {}", e); return Ok(()); }
         };
@@ -249,12 +259,16 @@ proptest! {
 // PI-02 Invariant (Strict policy): digest roundtrip
 proptest! {
     #[test]
-    fn pi_02_digest_roundtrip_strict(_seed in 0u64..1000u64) {
+    fn pi_02_digest_roundtrip_strict(seed in 0u64..1000u64) {
+        let mut rng = StdRng::seed_from_u64(seed);
+        let value_base = 42i64;
+        let value = value_base + (seed % 10) as i64;
+        std::hint::black_box(value);
         let journal = match temp_journal() {
             Ok(j) => j,
             Err(e) => { prop_assume!(false, "journal open failed: {}", e); return Ok(()); }
         };
-        let workflow = match minimal_workflow() {
+        let workflow = match minimal_workflow(value) {
             Ok(w) => w,
             Err(e) => { prop_assume!(false, "workflow build failed: {}", e); return Ok(()); }
         };

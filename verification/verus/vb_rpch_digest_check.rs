@@ -9,56 +9,60 @@ use vstd::prelude::*;
 
 verus! {
 
-pub spec fn spec_digest_check_level(d: DigestCheck) -> int {
+pub enum SpecDigestCheck {
+    WorkflowSourceOnly,
+    WorkflowAndIr,
+    Full,
+}
+
+pub open spec fn spec_digest_check_level(d: SpecDigestCheck) -> int {
     match d {
-        DigestCheck::WorkflowSourceOnly => 0,
-        DigestCheck::WorkflowAndIr => 1,
-        DigestCheck::Full => 2,
+        SpecDigestCheck::WorkflowSourceOnly => 0,
+        SpecDigestCheck::WorkflowAndIr => 1,
+        SpecDigestCheck::Full => 2,
     }
 }
 
 pub proof fn proof_hierarchy_strict()
     ensures
-        spec_digest_check_level(DigestCheck::WorkflowSourceOnly) <
-        spec_digest_check_level(DigestCheck::WorkflowAndIr),
-    ensures
-        spec_digest_check_level(DigestCheck::WorkflowAndIr) <
-        spec_digest_check_level(DigestCheck::Full),
-    ensures
-        spec_digest_check_level(DigestCheck::WorkflowSourceOnly) <
-        spec_digest_check_level(DigestCheck::Full)
+        spec_digest_check_level(SpecDigestCheck::WorkflowSourceOnly) <
+        spec_digest_check_level(SpecDigestCheck::WorkflowAndIr)
+        && spec_digest_check_level(SpecDigestCheck::WorkflowAndIr) <
+        spec_digest_check_level(SpecDigestCheck::Full)
+        && spec_digest_check_level(SpecDigestCheck::WorkflowSourceOnly) <
+        spec_digest_check_level(SpecDigestCheck::Full)
 {
     reveal(spec_digest_check_level);
 }
 
 pub proof fn proof_level_implies_superset(
-    d1: DigestCheck,
-    d2: DigestCheck
+    d1: SpecDigestCheck,
+    d2: SpecDigestCheck
 )
     requires
         spec_digest_check_level(d1) < spec_digest_check_level(d2),
     ensures
         match d1 {
-            DigestCheck::WorkflowSourceOnly => true,
-            DigestCheck::WorkflowAndIr => d2 == DigestCheck::Full,
-            DigestCheck::Full => false,
+            SpecDigestCheck::WorkflowSourceOnly => true,
+            SpecDigestCheck::WorkflowAndIr => d2 == SpecDigestCheck::Full,
+            SpecDigestCheck::Full => false,
         }
 {
     reveal(spec_digest_check_level);
 }
 
-pub proof fn proof_workflow_only_is_minimal(d: DigestCheck)
+pub proof fn proof_workflow_only_is_minimal(d: SpecDigestCheck)
     requires
-        d == DigestCheck::WorkflowSourceOnly,
+        d == SpecDigestCheck::WorkflowSourceOnly,
     ensures
         spec_digest_check_level(d) == 0
 {
     reveal(spec_digest_check_level);
 }
 
-pub proof fn proof_full_is_maximal(d: DigestCheck)
+pub proof fn proof_full_is_maximal(d: SpecDigestCheck)
     requires
-        d == DigestCheck::Full,
+        d == SpecDigestCheck::Full,
     ensures
         spec_digest_check_level(d) == 2
 {

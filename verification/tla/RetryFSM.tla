@@ -11,6 +11,12 @@ vars == <<retryState, attemptCount, backoffUntil, now>>
 
 States == {"ready", "backoff", "done", "exhausted"}
 
+TypeOK ==
+  /\ retryState \in States
+  /\ attemptCount \in 0..MaxRetries
+  /\ backoffUntil \in 0..MaxTime
+  /\ now \in 0..MaxTime
+
 ValidRetryState ==
   /\ retryState \in States
   /\ attemptCount \in 0..MaxRetries

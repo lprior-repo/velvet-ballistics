@@ -26,6 +26,7 @@ criterion.workspace = true
 crossbeam-queue.workspace = true
 postcard.workspace = true
 proptest.workspace = true
+rand.workspace = true
 rtrb.workspace = true
 saphyr.workspace = true
 serde.workspace = true

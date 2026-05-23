@@ -77,6 +77,16 @@ VARIABLES
 
 vars == <<lifecycleState, journal, completedActions, replayTracker, nextSeq, isCrashed>>
 
+TypeOK ==
+  /\ lifecycleState \in [RunIds -> LifecycleState]
+  /\ journal \in [RunIds -> Seq([type: JournalEventType, run: RunIds, seq: SeqNums,
+                                 digest: Digests \cup {NullDigest},
+                                 actionId: ActionIds, stepIdx: 0..MaxActions])]
+  /\ completedActions \in [RunIds -> SUBSET (ActionIds \X 0..MaxActions \X Digests)]
+  /\ replayTracker \in [RunIds -> SUBSET (ActionIds \X 0..MaxActions)]
+  /\ nextSeq \in [RunIds -> SeqNums]
+  /\ isCrashed \in [RunIds -> BOOLEAN]
+
 (* ============================================================================ *)
 (* INITIALIZATION                                                                *)
 (* ============================================================================ *)

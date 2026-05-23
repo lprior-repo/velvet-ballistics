@@ -17,6 +17,21 @@ vars == <<direct_queue, ipc_queue, accepted, rejected, ingress_mode,
           full_submit_rejected, unsupported_submit_observed,
           unsupported_submit_rejected>>
 
+TypeOK ==
+  /\ direct_queue \in 0..Capacity
+  /\ ipc_queue \in 0..Capacity
+  /\ accepted \in 0..MaxEvents
+  /\ rejected \in 0..MaxEvents
+  /\ ingress_mode \in {"idle", "direct", "ipc", "direct_backpressure",
+                      "ipc_backpressure", "unsupported_protocol",
+                      "artifact_not_accepted"}
+  /\ protocol_kind \in ProtocolKind
+  /\ diagnostic_class \in DiagnosticClass
+  /\ full_submit_observed \in BOOLEAN
+  /\ full_submit_rejected \in BOOLEAN
+  /\ unsupported_submit_observed \in BOOLEAN
+  /\ unsupported_submit_rejected \in BOOLEAN
+
 SupportedProtocol == {"direct_api", "binary_ipc"}
 UnsupportedProtocol == {"yaml", "json", "http", "text_command"}
 ProtocolKind == SupportedProtocol \cup UnsupportedProtocol

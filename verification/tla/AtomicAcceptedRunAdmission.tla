@@ -16,6 +16,18 @@ VARIABLES run, workflow, staged, durable, commit_state, ack, allocated, failed,
 vars == <<run, workflow, staged, durable, commit_state, ack, allocated, failed,
           restarted, readback_decision>>
 
+TypeOK ==
+  /\ run \in Runs
+  /\ workflow \in Workflows
+  /\ staged \subseteq RecordKinds
+  /\ durable \subseteq RecordKinds
+  /\ commit_state \in {"pending", "committed", "failed"}
+  /\ ack \in BOOLEAN
+  /\ allocated \in BOOLEAN
+  /\ failed \in BOOLEAN
+  /\ restarted \in BOOLEAN
+  /\ readback_decision \in {"none", "accepted", "absent"}
+
 Init ==
   /\ run \in Runs
   /\ workflow \in Workflows

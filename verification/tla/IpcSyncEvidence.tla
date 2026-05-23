@@ -212,7 +212,7 @@ Fairness ==
 
 Spec == Init /\ [][Next]_vars /\ Fairness
 
-TypeOk ==
+TypeOK ==
   /\ artifact_ok \in [RUNS -> Bool]
   /\ accepted \in [RUNS -> Bool]
   /\ rejected \in [RUNS -> Bool]

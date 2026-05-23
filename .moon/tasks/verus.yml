@@ -1,0 +1,12 @@
+tasks:
+  verus-verify:
+    command: cargo verus -p vb_core --all-features
+    options:
+      runInCI: true
+      cache: false
+
+  verus-verify-all:
+    command: cargo verus --all-features
+    options:
+      runInCI: false
+      cache: false

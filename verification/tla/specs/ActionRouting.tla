@@ -19,10 +19,16 @@ VARIABLES
     run_state,     \* [run -> state] state of each run
     valid_tickets   \* Set of valid (non-stale) ticket IDs
 
-vars == <<pending, ticket_counter, run_state, valid_tickets>>
-
 RunIds == 1..MAX_RUNS
 RunStates == {"missing", "running", "await_action", "await_ask", "finished", "failed", "cancelled"}
+
+vars == <<pending, ticket_counter, run_state, valid_tickets>>
+
+TypeOK ==
+    /\ pending \in Seq([ticket_id: Nat, run: RunIds])
+    /\ ticket_counter \in Nat
+    /\ run_state \in [RunIds -> RunStates]
+    /\ valid_tickets \subseteq Nat
 
 Init ==
     /\ pending = <<>>

@@ -1,10 +1,14 @@
 includes:
   - tasks: '.moon/tasks/all.yml'
+  - tasks: '.moon/tasks/kani.yml'
+  - tasks: '.moon/tasks/verus.yml'
+  - tasks: '.moon/tasks/tlc.yml'
 
 pipeline:
   - 'fmt'
   - 'lint-src'
   - 'check'
+  - 'kani-verify'
   - 'nightly-feature-gate'
   - 'nightly-feature-cargo-probe'
   - 'source-length'
@@ -17,5 +21,7 @@ pipeline:
   - 'mutants-smoke'
   - 'fuzz-smoke'
   - 'miri'
+  - 'verus-verify'
+  - 'tlc-verify'
   - 'coverage'
   - 'bench-build'

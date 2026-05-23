@@ -23,6 +23,18 @@ VARIABLES artifactState, certificate, requestedBudget, capacity, usage,
 vars == <<artifactState, certificate, requestedBudget, capacity, usage,
           reservation, runState, valueSlots, stepBudget, outcome>>
 
+TypeOK ==
+  /\ artifactState \in ArtifactStates
+  /\ certificate \in CertificateStates
+  /\ requestedBudget \in BudgetValues
+  /\ capacity \in BudgetValues
+  /\ usage \in BudgetValues
+  /\ reservation \in BudgetValues
+  /\ runState \in RunStates
+  /\ valueSlots \in ValueSlotCounts
+  /\ stepBudget \in StepBudgets
+  /\ outcome \in Outcomes
+
 Init ==
   /\ artifactState \in ArtifactStates
   /\ certificate = "none"

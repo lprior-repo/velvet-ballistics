@@ -140,7 +140,7 @@ Spec == Init /\ [][Next]_vars
         /\ WF_vars(RejectBoundaryWriteFailure)
         /\ WF_vars(Acknowledge)
 
-TypeOk ==
+TypeOK ==
   /\ phase \in Phases
   /\ source_persisted \in Bool
   /\ artifact_persisted \in Bool

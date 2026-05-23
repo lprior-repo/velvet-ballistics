@@ -9,6 +9,13 @@ VARIABLES journal, dispatched, replayPointer, replayed, inFlight
 
 vars == <<journal, dispatched, replayPointer, replayed, inFlight>>
 
+TypeOK ==
+  /\ journal \in Seq([seq: 1..MaxSeq, action: ActionIds])
+  /\ dispatched \subseteq ActionIds
+  /\ replayPointer \in 1..(Len(journal) + 1)
+  /\ replayed \subseteq ActionIds
+  /\ inFlight \subseteq ActionIds
+
 Entry(seq, action) == [seq |-> seq, action |-> action]
 
 Seqs(s) == {s[i].seq : i \in 1..Len(s)}

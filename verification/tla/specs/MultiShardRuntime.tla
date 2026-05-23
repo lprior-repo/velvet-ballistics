@@ -21,11 +21,16 @@ VARIABLES
     routing_table,  \* [RUNS -> shard index]
     active_runs     \* set of active run_ids
 
-vars == <<runs, routing_table, active_runs>>
-
 RunStates == {"missing", "queued", "running", "await_action", "await_ask", "finished", "failed", "cancelled"}
 RunIds == 1..MAX_RUNS
 ShardIndices == 0..(SHARD_COUNT-1)
+
+vars == <<runs, routing_table, active_runs>>
+
+TypeOK ==
+    /\ runs \in [RunIds -> RunStates]
+    /\ routing_table \in [RunIds -> ShardIndices]
+    /\ active_runs \subseteq RunIds
 
 Init ==
     /\ runs = [r \in RunIds |-> "missing"]

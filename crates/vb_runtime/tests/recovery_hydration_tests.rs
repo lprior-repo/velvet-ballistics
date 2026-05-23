@@ -25,7 +25,7 @@ use vb_storage::recovery::{
     verify_digests,
 };
 use vb_runtime::recovery::RuntimeRecoveryBoundary;
-use vb_storage::{EventSeq, FjallConfig, FjallJournal, JournalError, JournalEvent};
+use vb_storage::{EventSeq, FjallConfig, FjallJournal, JournalEvent};
 
 fn test_digest(byte: u8) -> WorkflowDigest {
     WorkflowDigest::from_bytes([byte; 32])

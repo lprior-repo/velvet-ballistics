@@ -2892,6 +2892,7 @@ dependencies = [
  "mio",
  "postcard",
  "proptest",
+ "rand",
  "rtrb",
  "saphyr",
  "serde",

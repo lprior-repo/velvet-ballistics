@@ -13,8 +13,10 @@ use vstd::prelude::*;
 
 verus! {
 
+pub type RunId = u64;
+
 pub open spec fn spec_seq_order_invariant(snapshot_seq: int, tail_seqs: Seq<int>) -> bool {
-    forall i: int :: 0 <= i < tail_seqs.len() ==> tail_seqs[i] > snapshot_seq
+    forall|i: int| 0 <= i < tail_seqs.len() ==> tail_seqs[i] > snapshot_seq
 }
 
 pub open spec fn spec_hydrate_run_frame_preconditions(
@@ -25,7 +27,7 @@ pub open spec fn spec_hydrate_run_frame_preconditions(
     run_id: RunId,
 ) -> bool {
     snapshot_run == run_id
-        && forall i: int :: 0 <= i < tail_runs.len() ==> tail_runs[i] == run_id
+        && forall|i: int| 0 <= i < tail_runs.len() ==> tail_runs[i] == run_id
         && spec_seq_order_invariant(snapshot_seq, tail_seqs)
 }
 
@@ -45,7 +47,7 @@ pub proof fn proof_preconditions_ensure_valid_hydration(
 )
     requires
         snapshot_run == run_id,
-        forall i: int :: 0 <= i < tail_runs.len() ==> tail_runs[i] == run_id,
+        forall|i: int| 0 <= i < tail_runs.len() ==> tail_runs[i] == run_id,
         spec_seq_order_invariant(snapshot_seq, tail_seqs),
     ensures
         spec_hydrate_run_frame_preconditions(snapshot_run, snapshot_seq, tail_runs, tail_seqs, run_id)
