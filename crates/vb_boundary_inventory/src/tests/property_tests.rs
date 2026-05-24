@@ -5,10 +5,10 @@
 use std::path::PathBuf;
 
 use crate::boundary_inventory::{
-    BoundaryCandidate, BoundaryClass, BoundaryExposure, BoundaryRecord, BoundaryRecordDraft,
-    BoundaryRecordParts, BoundaryRisk, ClassifiedBoundary, ClassifiedBoundaryInput, EvidenceKind,
-    EvidenceReference, FieldState, FreshnessMarker, Owner, ReviewStatus, ThreatStatement,
-    ValidatedBoundaryInventory, WorkspaceRoot, classify_boundary,
+    BoundaryCandidate, BoundaryClass, BoundaryExposure, BoundaryInventoryError, BoundaryRecord,
+    BoundaryRecordDraft, BoundaryRecordParts, BoundaryRisk, ClassifiedBoundary,
+    ClassifiedBoundaryInput, EvidenceKind, EvidenceReference, FieldState, FreshnessMarker, Owner,
+    ReviewStatus, ThreatStatement, ValidatedBoundaryInventory, WorkspaceRoot, classify_boundary,
 };
 use proptest::prelude::*;
 
@@ -71,50 +71,48 @@ impl Arbitrary for EvidenceKind {
 // =============================================================================
 
 proptest! {
+    #![proptest_config(ProptestConfig::with_cases(1000))]
+
+    #[test]
     fn boundary_candidate_new_roundtrip(source_path: String, marker: String) {
         let candidate = BoundaryCandidate::new(source_path.clone(), marker.clone());
         prop_assert_eq!(candidate.source_path, std::path::PathBuf::from(source_path));
         prop_assert_eq!(candidate.marker, marker);
     }
 
+    #[test]
     fn boundary_candidate_path_preserves_slashes(path: String) {
         let candidate = BoundaryCandidate::new(path.clone(), "test-marker".to_string());
-        prop_assert!(!candidate.source_path.as_os_str().is_empty());
+        prop_assert_eq!(candidate.source_path, PathBuf::from(path));
     }
 
+    #[test]
     fn boundary_candidate_marker_empty_allowed(marker: String) {
-        let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", marker);
-        prop_assert_eq!(candidate.marker.len(), 0);
+        let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", marker.clone());
+        prop_assert_eq!(candidate.marker, marker);
     }
 
-    fn classify_boundary_unknown_marker_produces_unknown_class(_flag: bool) {
-        let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", "unknown-marker");
-        let result = classify_boundary(candidate);
-        prop_assert!(result.is_ok());
-        let classified = result.unwrap();
-        prop_assert_eq!(classified.class, BoundaryClass::Unknown);
-    }
-
+    #[test]
     fn classify_boundary_exposure_is_risky_for_multiple(marker in "extern-c-boundary|foreign-function-boundary|ipc-frame-boundary") {
         let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", marker.clone());
         let result = classify_boundary(candidate);
-        prop_assert!(result.is_ok());
-        let classified = result.unwrap();
+        let classified = result.unwrap_or_else(|_| unreachable!("known marker must classify"));
         prop_assert_eq!(classified.exposure.risk, BoundaryRisk::Multiple);
     }
 
+    #[test]
     fn classify_boundary_different_paths_produce_different_ids(path1 in "[a-z]{1,10}", path2 in "[a-z]{1,10}") {
         prop_assume!(path1 != path2);
         let candidate1 = BoundaryCandidate::new(format!("crates/{}/src/lib.rs", path1), "extern-c-boundary".to_string());
         let candidate2 = BoundaryCandidate::new(format!("crates/{}/src/lib.rs", path2), "extern-c-boundary".to_string());
         let result1 = classify_boundary(candidate1);
+        let id1 = result1.unwrap_or_else(|_| unreachable!("known marker must classify")).id;
         let result2 = classify_boundary(candidate2);
-        prop_assert!(result1.is_ok() && result2.is_ok());
-        let id1 = result1.unwrap().id;
-        let id2 = result2.unwrap().id;
+        let id2 = result2.unwrap_or_else(|_| unreachable!("known marker must classify")).id;
         prop_assert_ne!(id1, id2);
     }
 
+    #[test]
     fn classified_boundary_id_roundtrip(id: String) {
         let input = ClassifiedBoundaryInput {
             id: id.clone(),
@@ -126,6 +124,7 @@ proptest! {
         prop_assert_eq!(classified.id, id);
     }
 
+    #[test]
     fn classified_boundary_source_path_roundtrip(source_path: String) {
         let input = ClassifiedBoundaryInput {
             id: "test-id".to_string(),
@@ -137,6 +136,7 @@ proptest! {
         prop_assert_eq!(classified.source_path, std::path::PathBuf::from(source_path));
     }
 
+    #[test]
     fn classified_boundary_class_roundtrip(class: BoundaryClass) {
         let input = ClassifiedBoundaryInput {
             id: "test-id".to_string(),
@@ -148,48 +148,35 @@ proptest! {
         prop_assert_eq!(classified.class, class);
     }
 
-    fn classified_boundary_id_non_empty(id: String) {
-        prop_assume!(!id.is_empty());
-        let input = ClassifiedBoundaryInput {
-            id,
-            class: BoundaryClass::CAbi,
-            source_path: std::path::PathBuf::from("crates/test/src/lib.rs"),
-            exposure: BoundaryExposure::none(),
-        };
-        let classified = ClassifiedBoundary::new(input);
-        prop_assert!(!classified.id.is_empty());
-    }
-
-    fn boundary_exposure_none(_flag: bool) {
-        let exposure = BoundaryExposure::none();
-        prop_assert_eq!(exposure.risk, BoundaryRisk::None);
-    }
-
+    #[test]
     fn boundary_exposure_risky_roundtrip(risk: BoundaryRisk) {
         let exposure = BoundaryExposure::risky(risk);
         prop_assert_eq!(exposure.risk, risk);
     }
 
+    #[test]
     fn freshness_marker_new_roundtrip(sv: u64, ev: u64) {
-        prop_assume!(ev >= sv);
         let marker = FreshnessMarker::new(sv, sv, ev);
         prop_assert_eq!(marker.source_version, sv);
         prop_assert_eq!(marker.schema_version, sv);
         prop_assert_eq!(marker.evidence_version, ev);
     }
 
-    fn freshness_marker_valid_versions(sv: u64, ev: u64) {
-        prop_assume!(ev >= sv);
+    #[test]
+    fn freshness_marker_valid_versions(sv in 0u64..1_000_000, extra in 0u64..1_000_000) {
+        let ev = sv + extra;
         let marker = FreshnessMarker::new(sv, sv, ev);
         prop_assert!(marker.evidence_version >= marker.source_version);
         prop_assert!(marker.evidence_version >= marker.schema_version);
     }
 
+    #[test]
     fn inventory_completion_status_empty_record_count(count: usize) {
         let validated = ValidatedBoundaryInventory::empty_with_discovered_boundary_count(count);
         prop_assert_eq!(validated.discovered_boundary_count, count);
     }
 
+    #[test]
     fn evidence_reference_repo_local_roundtrip(path: String, kind: EvidenceKind) {
         let reference = EvidenceReference::repo_local(std::path::PathBuf::from(path.clone()), kind);
         match reference {
@@ -201,6 +188,7 @@ proptest! {
         }
     }
 
+    #[test]
     fn evidence_reference_free_text_roundtrip(text: String) {
         let reference = EvidenceReference::free_text(text.clone());
         match reference {
@@ -211,6 +199,7 @@ proptest! {
         }
     }
 
+    #[test]
     fn evidence_reference_external_provenance(text: String) {
         prop_assume!(!text.is_empty());
         let reference = EvidenceReference::ExternalProvenance(text.clone());
@@ -222,6 +211,7 @@ proptest! {
         }
     }
 
+    #[test]
     fn field_state_from_option_some(value: String) {
         let state: FieldState<String> = FieldState::from(Some(value.clone()));
         match state {
@@ -230,6 +220,7 @@ proptest! {
         }
     }
 
+    #[test]
     fn field_state_as_ref(value: String) {
         let state: FieldState<String> = FieldState::Present(value.clone());
         let ref_state = state.as_ref();
@@ -239,6 +230,7 @@ proptest! {
         }
     }
 
+    #[test]
     fn field_state_map(value: String) {
         let state: FieldState<String> = FieldState::Present(value.clone());
         let mapped = state.map(|v| v.len());
@@ -248,6 +240,7 @@ proptest! {
         }
     }
 
+    #[test]
     fn review_status_from_serialized_other(value in "[a-z]{1,20}") {
         prop_assume!(value != "approved" && value != "waived");
         let status = ReviewStatus::from_serialized(value.clone());
@@ -257,12 +250,14 @@ proptest! {
         }
     }
 
+    #[test]
     fn review_status_serialized_other(value in "[a-z]{1,20}") {
         prop_assume!(!value.is_empty());
         let status = ReviewStatus::Other(value.clone());
         prop_assert_eq!(status.serialized(), value);
     }
 
+    #[test]
     fn validated_inventory_with_schema_version(schema: u32) {
         let validated = ValidatedBoundaryInventory::with_schema_version(schema);
         prop_assert_eq!(validated.schema_version, schema);
@@ -270,37 +265,13 @@ proptest! {
         prop_assert_eq!(validated.discovered_boundary_count, 0);
     }
 
+    #[test]
     fn validated_inventory_with_review_status(status: String) {
         let validated = ValidatedBoundaryInventory::with_review_status(status.clone());
         prop_assert_eq!(validated.review_status, Some(status));
     }
 
-    fn field_state_from_option_none(_flag: bool) {
-        let state: FieldState<String> = FieldState::from(None);
-        match state {
-            FieldState::Missing => {},
-            FieldState::Present(_) => prop_assert!(false),
-        }
-    }
-
-    fn field_state_missing_as_ref_prop(_flag: bool) {
-        let state: FieldState<String> = FieldState::Missing;
-        let ref_state = state.as_ref();
-        match ref_state {
-            FieldState::Missing => {},
-            FieldState::Present(_) => prop_assert!(false),
-        }
-    }
-
-    fn field_state_missing_map_prop(_flag: bool) {
-        let state: FieldState<String> = FieldState::Missing;
-        let mapped = state.map(|_v: String| 0usize);
-        match mapped {
-            FieldState::Missing => {},
-            FieldState::Present(_) => prop_assert!(false),
-        }
-    }
-
+    #[test]
     fn validated_inventory_from_records_preserves_count(records_count in 0usize..100) {
         let records: Vec<BoundaryRecord> = (0..records_count)
             .map(|i| BoundaryRecordDraft::new(BoundaryRecordParts {
@@ -323,6 +294,7 @@ proptest! {
         prop_assert_eq!(validated.records.len(), records_count);
     }
 
+    #[test]
     fn evidence_reference_repo_local_with_kind(kind: EvidenceKind) {
         let path = PathBuf::from("fuzz/test.rs");
         let reference = EvidenceReference::repo_local(path.clone(), kind);
@@ -335,17 +307,20 @@ proptest! {
         }
     }
 
+    #[test]
     fn boundary_candidate_new_empty_path(marker: String) {
         let candidate = BoundaryCandidate::new("", marker.clone());
         prop_assert_eq!(candidate.marker, marker);
         prop_assert!(candidate.source_path.as_os_str().is_empty());
     }
 
+    #[test]
     fn workspace_root_new_roundtrip(path: String) {
         let workspace = WorkspaceRoot::new(PathBuf::from(path.clone()));
         prop_assert_eq!(workspace.path, PathBuf::from(path));
     }
 
+    #[test]
     fn review_status_from_serialized_then_serialized(value: String) {
         let status = ReviewStatus::from_serialized(value.clone());
         let serialized = status.serialized();
@@ -359,6 +334,7 @@ proptest! {
         }
     }
 
+    #[test]
     fn evidence_reference_external_provenance_format(text in "[a-z0-9]{1,30}") {
         prop_assume!(!text.is_empty());
         let ref_text = format!("external:{}#sha256=abcdef", text);
@@ -371,6 +347,7 @@ proptest! {
         }
     }
 
+    #[test]
     fn freshness_marker_new_any_versions(sv: u64, schema: u64, ev: u64) {
         let marker = FreshnessMarker::new(sv, schema, ev);
         prop_assert_eq!(marker.source_version, sv);
@@ -399,6 +376,22 @@ fn boundary_risk_all_variants() {
 }
 
 #[test]
+fn classify_boundary_unknown_marker_produces_unknown_class() {
+    let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", "unknown-marker");
+    let result = classify_boundary(candidate);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::UnknownBoundaryClass
+    );
+}
+
+#[test]
+fn boundary_exposure_none_returns_none_risk() {
+    let exposure = BoundaryExposure::none();
+    assert_eq!(exposure.risk, BoundaryRisk::None);
+}
+
+#[test]
 fn boundary_class_all_variants() {
     let classes = [
         BoundaryClass::CAbi,
@@ -423,9 +416,9 @@ fn boundary_class_all_variants() {
                 BoundaryClass::Unknown => "unknown-marker", // Won't be reached
             },
         );
-        let result = classify_boundary(candidate);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap().class, class);
+        let classified = classify_boundary(candidate).unwrap();
+        assert_eq!(classified.class, class);
+        assert_eq!(classified.exposure.risk, BoundaryRisk::Multiple);
     }
 }
 

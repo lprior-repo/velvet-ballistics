@@ -141,8 +141,11 @@ fn error_clone() {
 #[test]
 fn error_copy() {
     let err = BoundaryInventoryError::WorkspaceNotDiscoverable;
-    let _copied = err; // Copy (no move)
-    let _another = err; // Another copy
+    let copied = err;
+    let another = err;
+    assert_eq!(copied, BoundaryInventoryError::WorkspaceNotDiscoverable);
+    assert_eq!(another, BoundaryInventoryError::WorkspaceNotDiscoverable);
+    assert_eq!(err, BoundaryInventoryError::WorkspaceNotDiscoverable);
 }
 
 // =============================================================================
@@ -190,24 +193,53 @@ fn error_hash_all_unique() {
 
 #[test]
 fn error_debug_all_variants() {
-    let variants: Vec<BoundaryInventoryError> = vec![
-        BoundaryInventoryError::WorkspaceNotDiscoverable,
-        BoundaryInventoryError::IncompleteDiscoveryInput,
-        BoundaryInventoryError::UnknownBoundaryClass,
-        BoundaryInventoryError::UnsafeForbiddenViolation,
-        BoundaryInventoryError::MissingOwner,
-        BoundaryInventoryError::MissingThreat,
-        BoundaryInventoryError::MissingEvidencePath,
-        BoundaryInventoryError::InvalidEvidencePath,
-        BoundaryInventoryError::StaleEvidence,
-        BoundaryInventoryError::DuplicateBoundaryId,
-        BoundaryInventoryError::InventoryParseFailure,
-        BoundaryInventoryError::SchemaVersionUnsupported,
-        BoundaryInventoryError::ReviewStatusInvalid,
+    let variants: [(BoundaryInventoryError, &str); 13] = [
+        (
+            BoundaryInventoryError::WorkspaceNotDiscoverable,
+            "WorkspaceNotDiscoverable",
+        ),
+        (
+            BoundaryInventoryError::IncompleteDiscoveryInput,
+            "IncompleteDiscoveryInput",
+        ),
+        (
+            BoundaryInventoryError::UnknownBoundaryClass,
+            "UnknownBoundaryClass",
+        ),
+        (
+            BoundaryInventoryError::UnsafeForbiddenViolation,
+            "UnsafeForbiddenViolation",
+        ),
+        (BoundaryInventoryError::MissingOwner, "MissingOwner"),
+        (BoundaryInventoryError::MissingThreat, "MissingThreat"),
+        (
+            BoundaryInventoryError::MissingEvidencePath,
+            "MissingEvidencePath",
+        ),
+        (
+            BoundaryInventoryError::InvalidEvidencePath,
+            "InvalidEvidencePath",
+        ),
+        (BoundaryInventoryError::StaleEvidence, "StaleEvidence"),
+        (
+            BoundaryInventoryError::DuplicateBoundaryId,
+            "DuplicateBoundaryId",
+        ),
+        (
+            BoundaryInventoryError::InventoryParseFailure,
+            "InventoryParseFailure",
+        ),
+        (
+            BoundaryInventoryError::SchemaVersionUnsupported,
+            "SchemaVersionUnsupported",
+        ),
+        (
+            BoundaryInventoryError::ReviewStatusInvalid,
+            "ReviewStatusInvalid",
+        ),
     ];
-    for err in variants {
-        let debug_str = format!("{:?}", err);
-        assert!(!debug_str.is_empty());
+    for (err, expected_debug) in variants {
+        assert_eq!(format!("{:?}", err), expected_debug);
     }
 }
 
@@ -235,7 +267,6 @@ fn error_sync() {
 fn error_in_result_workspace_not_discoverable() {
     let result: Result<(), BoundaryInventoryError> =
         Err(BoundaryInventoryError::WorkspaceNotDiscoverable);
-    assert!(result.is_err());
     assert_eq!(
         result.unwrap_err(),
         BoundaryInventoryError::WorkspaceNotDiscoverable
@@ -246,7 +277,6 @@ fn error_in_result_workspace_not_discoverable() {
 fn error_in_result_inventory_parse_failure() {
     let result: Result<(), BoundaryInventoryError> =
         Err(BoundaryInventoryError::InventoryParseFailure);
-    assert!(result.is_err());
     assert_eq!(
         result.unwrap_err(),
         BoundaryInventoryError::InventoryParseFailure
@@ -257,7 +287,6 @@ fn error_in_result_inventory_parse_failure() {
 fn error_in_result_schema_version_unsupported() {
     let result: Result<(), BoundaryInventoryError> =
         Err(BoundaryInventoryError::SchemaVersionUnsupported);
-    assert!(result.is_err());
     assert_eq!(
         result.unwrap_err(),
         BoundaryInventoryError::SchemaVersionUnsupported

@@ -88,21 +88,14 @@ fn pipeline_validate_rejects_accessor_symbol_out_of_bounds() {
     // SymbolId::new(7) >= symbols_count (5) → must be rejected
     parts.accessors = Box::new([accessor(0, vec![PathSegment::Field(SymbolId::new(7))])]);
 
-    let result = validate(&parts);
-    assert!(result.is_err(), "expected Err, got Ok");
-    let err = result.unwrap_err();
-
-    assert!(
-        matches!(
-            &err,
-            vb_validate::ValidationError::AccessorSymbolOutOfBounds {
-                accessor_index: 0,
-                segment_index: 0,
-                symbol: 7,
-                symbols_count: 5,
-            }
-        ),
-        "expected AccessorSymbolOutOfBounds for accessor_index=0, symbol=7, symbols_count=5, got {err:?}"
+    assert_eq!(
+        validate(&parts),
+        Err(vb_validate::ValidationError::AccessorSymbolOutOfBounds {
+            accessor_index: 0,
+            segment_index: 0,
+            symbol: 7,
+            symbols_count: 5,
+        })
     );
 }
 
@@ -115,20 +108,14 @@ fn pipeline_validate_rejects_second_accessor_symbol_out_of_bounds() {
         accessor(1, vec![PathSegment::Field(SymbolId::new(99))]), // out of bounds
     ]);
 
-    let result = validate(&parts);
-    assert!(result.is_err(), "expected Err, got Ok");
-    let err = result.unwrap_err();
-    assert!(
-        matches!(
-            &err,
-            vb_validate::ValidationError::AccessorSymbolOutOfBounds {
-                accessor_index: 1,
-                segment_index: 0,
-                symbol: 99,
-                symbols_count: 3,
-            }
-        ),
-        "expected AccessorSymbolOutOfBounds for accessor_index=1, symbol=99, symbols_count=3, got {err:?}"
+    assert_eq!(
+        validate(&parts),
+        Err(vb_validate::ValidationError::AccessorSymbolOutOfBounds {
+            accessor_index: 1,
+            segment_index: 0,
+            symbol: 99,
+            symbols_count: 3,
+        })
     );
 }
 
@@ -145,20 +132,14 @@ fn pipeline_validate_rejects_deep_accessor_segment_symbol_out_of_bounds() {
         ],
     )]);
 
-    let result = validate(&parts);
-    assert!(result.is_err(), "expected Err, got Ok");
-    let err = result.unwrap_err();
-    assert!(
-        matches!(
-            &err,
-            vb_validate::ValidationError::AccessorSymbolOutOfBounds {
-                accessor_index: 0,
-                segment_index: 1,
-                symbol: 10,
-                symbols_count: 5,
-            }
-        ),
-        "expected AccessorSymbolOutOfBounds at segment_index=1, symbol=10, symbols_count=5, got {err:?}"
+    assert_eq!(
+        validate(&parts),
+        Err(vb_validate::ValidationError::AccessorSymbolOutOfBounds {
+            accessor_index: 0,
+            segment_index: 1,
+            symbol: 10,
+            symbols_count: 5,
+        })
     );
 }
 
@@ -171,10 +152,7 @@ fn pipeline_validate_accepts_accessor_symbols_in_bounds() {
         accessor(1, vec![PathSegment::Field(SymbolId::new(9))]),
     ]);
 
-    assert!(
-        validate(&parts).is_ok(),
-        "expected Ok for valid accessor symbols"
-    );
+    assert_eq!(validate(&parts), Ok(()));
 }
 
 /// RED PHASE TEST: Pipeline must return AccessorSlotOutOfRange when accessor root >= slot_count.
@@ -183,19 +161,13 @@ fn pipeline_validate_rejects_accessor_root_out_of_range() {
     let mut parts = make_parts(1, 0);
     parts.accessors = Box::new([accessor(5, vec![])]); // root=5, slot_count=1
 
-    let result = validate(&parts);
-    assert!(result.is_err(), "expected Err, got Ok");
-    let err = result.unwrap_err();
-    assert!(
-        matches!(
-            &err,
-            vb_validate::ValidationError::AccessorSlotOutOfRange {
-                accessor_index: 0,
-                slot: 5,
-                slot_count: 1,
-            }
-        ),
-        "expected AccessorSlotOutOfRange, got {err:?}"
+    assert_eq!(
+        validate(&parts),
+        Err(vb_validate::ValidationError::AccessorSlotOutOfRange {
+            accessor_index: 0,
+            slot: 5,
+            slot_count: 1,
+        })
     );
 }
 
@@ -215,14 +187,14 @@ fn pipeline_validate_runs_gates_in_order_short_circuits() {
     parts.accessors = Box::new([accessor(99, vec![])]); // slot out of range
     parts.slot_count = 1;
 
-    let result = validate(&parts);
     // Gate 8 runs before Gate 9, so AccessorSlotOutOfRange is the first error
-    assert!(
-        matches!(
-            &result.unwrap_err(),
-            vb_validate::ValidationError::AccessorSlotOutOfRange { .. }
-        ),
-        "expected first error from gate 8 (accessor root), got different error"
+    assert_eq!(
+        validate(&parts),
+        Err(vb_validate::ValidationError::AccessorSlotOutOfRange {
+            accessor_index: 0,
+            slot: 99,
+            slot_count: 1,
+        })
     );
 }
 
@@ -234,10 +206,7 @@ fn pipeline_validate_all_gates_disabled_accepts_anything() {
 
     let pipeline = ValidationPipeline::no_gates();
     // With all gates disabled, validate should return Ok (no gates run)
-    assert!(
-        pipeline.validate(&parts).is_ok(),
-        "pipeline with no gates should return Ok even for malformed parts"
-    );
+    assert_eq!(pipeline.validate(&parts), Ok(()));
 }
 
 // ---------------------------------------------------------------------------
@@ -268,19 +237,13 @@ fn pipeline_validate_rejects_slot_reference_out_of_range() {
         step_names: Box::new([]),
     };
 
-    let result = validate(&parts);
-    assert!(result.is_err(), "expected Err, got Ok");
-    let err = result.unwrap_err();
-    assert!(
-        matches!(
-            &err,
-            vb_validate::ValidationError::SlotReferenceOutOfRange {
-                slot: 99,
-                slot_count: 1,
-                ..
-            }
-        ),
-        "expected SlotReferenceOutOfRange, got {err:?}"
+    assert_eq!(
+        validate(&parts),
+        Err(vb_validate::ValidationError::SlotReferenceOutOfRange {
+            slot: 99,
+            slot_count: 1,
+            context: "node 0".to_owned(),
+        })
     );
 }
 
@@ -298,18 +261,12 @@ fn pipeline_validate_rejects_expression_stack_exceeds_limit() {
     };
     parts.resource_contract = contract;
 
-    let result = validate(&parts);
-    assert!(result.is_err(), "expected Err, got Ok");
-    let err = result.unwrap_err();
-    assert!(
-        matches!(
-            &err,
-            vb_validate::ValidationError::ExpressionStackExceeded {
-                declared: 128,
-                limit: 64
-            }
-        ),
-        "expected ExpressionStackExceeded {{ declared: 128, limit: 64 }}, got {err:?}"
+    assert_eq!(
+        validate(&parts),
+        Err(vb_validate::ValidationError::ExpressionStackExceeded {
+            declared: 128,
+            limit: 64,
+        })
     );
 }
 
@@ -354,8 +311,5 @@ fn pipeline_validate_does_not_produce_workflow_error() {
     // vb_validate accepts parts with any resource contract; resource contract
     // validation happens at vb_core level, not vb_validate level.
     // So this should pass vb_validate (only gate 8 checks accessors, which are empty).
-    assert!(
-        result.is_ok(),
-        "vb_validate pipeline should not reject parts based on resource contract; that is vb_core's job"
-    );
+    assert_eq!(result, Ok(()));
 }

@@ -35,14 +35,47 @@ fn any_non_clean_taint() -> impl Strategy<Value = Taint> {
 }
 
 /// Helper that inserts into the store by type index (0=symbol, 1=list,
-/// 2=object, 3=blob), returning a uniform `CoreResult<()>` so the caller
-/// does not need to handle different handle types.
-fn insert_by_type(store: &mut ValueStore, typ: u8) -> Result<(), CoreError> {
+/// 2=object, 3=blob), returning the exact deterministic arena ID.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum InsertedArenaId {
+    Symbol(SymbolId),
+    List(ListId),
+    Object(ObjectId),
+    Blob(BlobId),
+}
+
+fn insert_by_type(store: &mut ValueStore, typ: u8) -> Result<InsertedArenaId, CoreError> {
     match typ % 4 {
-        0 => store.insert_symbol("s").map(|_| ()),
-        1 => store.insert_list(vec![].into_boxed_slice()).map(|_| ()),
-        2 => store.insert_object(vec![].into_boxed_slice()).map(|_| ()),
-        _ => store.insert_blob(bytes::Bytes::new()).map(|_| ()),
+        0 => store.insert_symbol("s").map(InsertedArenaId::Symbol),
+        1 => store
+            .insert_list(vec![].into_boxed_slice())
+            .map(InsertedArenaId::List),
+        2 => store
+            .insert_object(vec![].into_boxed_slice())
+            .map(InsertedArenaId::Object),
+        _ => store
+            .insert_blob(bytes::Bytes::new())
+            .map(InsertedArenaId::Blob),
+    }
+}
+
+fn expected_id_for_next_insert(
+    store: &ValueStore,
+    typ: u8,
+) -> Result<InsertedArenaId, proptest::test_runner::TestCaseError> {
+    match typ % 4 {
+        0 => u32::try_from(store.symbol_count())
+            .map(|id| InsertedArenaId::Symbol(SymbolId::new(id)))
+            .map_err(|_| proptest::test_runner::TestCaseError::fail("symbol count exceeds u32")),
+        1 => u32::try_from(store.list_count())
+            .map(|id| InsertedArenaId::List(ListId::new(id)))
+            .map_err(|_| proptest::test_runner::TestCaseError::fail("list count exceeds u32")),
+        2 => u32::try_from(store.object_count())
+            .map(|id| InsertedArenaId::Object(ObjectId::new(id)))
+            .map_err(|_| proptest::test_runner::TestCaseError::fail("object count exceeds u32")),
+        _ => u64::try_from(store.blob_count())
+            .map(|id| InsertedArenaId::Blob(BlobId::new(id)))
+            .map_err(|_| proptest::test_runner::TestCaseError::fail("blob count exceeds u64")),
     }
 }
 
@@ -57,14 +90,8 @@ proptest! {
     fn finite_f64_accepts_all_finite_bit_patterns(bits in any_finite_bits()) {
         let val = f64::from_bits(bits);
         prop_assert!(val.is_finite(), "strategy must only produce finite values");
-        let result = FiniteF64::new(val);
-        prop_assert!(
-            result.is_ok(),
-            "FiniteF64::new must accept finite value {:?}",
-            val
-        );
-        let finite = result.map_err(|e| proptest::test_runner::TestCaseError::fail(format!("construction failed: {e}")))?;
-        prop_assert_eq!(finite.get(), val);
+        let result = FiniteF64::new(val).map(|finite| finite.get());
+        prop_assert_eq!(result, Ok(val));
     }
 
     /// NaN bit-patterns (quiet and signaling, positive and negative) are
@@ -165,18 +192,21 @@ proptest! {
             if store.total_arena_count() >= cap_u64 {
                 // Store is full; any insert must fail.
                 let result = insert_by_type(&mut store, typ);
-                prop_assert!(
-                    matches!(
-                        result,
-                        Err(CoreError::BudgetExceeded { .. })
-                    ),
+                prop_assert_eq!(
+                    result.clone(),
+                    Err(CoreError::BudgetExceeded {
+                        budget: "max_slots",
+                        limit: cap_u64,
+                    }),
                     "insert past cap must fail with BudgetExceeded, got {:?}",
                     result
                 );
             } else {
+                let expected = expected_id_for_next_insert(&store, typ)?;
                 let result = insert_by_type(&mut store, typ);
-                prop_assert!(
-                    result.is_ok(),
+                prop_assert_eq!(
+                    result.clone(),
+                    Ok(expected),
                     "insert below cap must succeed, got {:?}",
                     result
                 );
@@ -196,7 +226,7 @@ proptest! {
         for i in 0..count {
             let label = format!("s{i}");
             let result = store.insert_symbol(label);
-            prop_assert!(result.is_ok(), "uncapped store must accept insert {i}");
+            prop_assert_eq!(result, Ok(SymbolId::new(u32::from(i))));
         }
         prop_assert_eq!(
             store.total_arena_count(),
@@ -219,35 +249,62 @@ proptest! {
             .saturating_add(u64::from(n_blobs));
         // Use cap = total so all should succeed.  Skip when total == 0 because
         // a cap of 0 means "uncapped" in ValueStore's convention.
-        let cap = u16::try_from(total).unwrap_or(u16::MAX);
+        let cap = match u16::try_from(total) {
+            Ok(value) => value,
+            Err(_) => {
+                return Err(proptest::test_runner::TestCaseError::fail(
+                    "total arena count exceeds u16",
+                ));
+            }
+        };
         if cap == 0 {
             return Ok(());
         }
         let mut store = ValueStore::with_max_slots(cap);
 
-        for _ in 0..n_symbols {
+        for i in 0..n_symbols {
             let r = store.insert_symbol("x");
-            prop_assert!(r.is_ok(), "symbol insert within cap must succeed");
+            prop_assert_eq!(
+                r,
+                Ok(SymbolId::new(u32::from(i))),
+                "symbol insert within cap must return exact SymbolId"
+            );
         }
-        for _ in 0..n_lists {
+        for i in 0..n_lists {
             let r = store.insert_list(vec![].into_boxed_slice());
-            prop_assert!(r.is_ok(), "list insert within cap must succeed");
+            prop_assert_eq!(
+                r,
+                Ok(ListId::new(u32::from(i))),
+                "list insert within cap must return exact ListId"
+            );
         }
-        for _ in 0..n_objects {
+        for i in 0..n_objects {
             let r = store.insert_object(vec![].into_boxed_slice());
-            prop_assert!(r.is_ok(), "object insert within cap must succeed");
+            prop_assert_eq!(
+                r,
+                Ok(ObjectId::new(u32::from(i))),
+                "object insert within cap must return exact ObjectId"
+            );
         }
-        for _ in 0..n_blobs {
+        for i in 0..n_blobs {
             let r = store.insert_blob(bytes::Bytes::new());
-            prop_assert!(r.is_ok(), "blob insert within cap must succeed");
+            prop_assert_eq!(
+                r,
+                Ok(BlobId::new(u64::from(i))),
+                "blob insert within cap must return exact BlobId"
+            );
         }
 
         prop_assert_eq!(store.total_arena_count(), total);
 
         // One more insert of any type must fail.
         let result = store.insert_symbol("overflow");
-        prop_assert!(
-            matches!(result, Err(CoreError::BudgetExceeded { .. })),
+        prop_assert_eq!(
+            result.clone(),
+            Err(CoreError::BudgetExceeded {
+                budget: "max_slots",
+                limit: total,
+            }),
             "insert past cap must fail, got {:?}",
             result
         );

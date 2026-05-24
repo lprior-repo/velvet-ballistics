@@ -203,15 +203,12 @@ fn reject_yaml_profile_returns_node_limit_exceeded_for_many_nodes() {
 fn reject_yaml_profile_returns_custom_tag_for_tags() {
     let yaml = "key: !custom value\n";
     let result = validate_yaml_profile(yaml);
-    match result {
-        Err(YamlError::CustomTag { tag }) => {
-            assert!(
-                tag.contains("custom"),
-                "tag should contain 'custom', got: {tag}"
-            );
-        }
-        other => fail_assert!("expected CustomTag, got {other:?}"),
-    }
+    assert_eq!(
+        result,
+        Err(YamlError::CustomTag {
+            tag: "!custom".into()
+        })
+    );
 }
 
 #[test]
@@ -622,7 +619,12 @@ fn adversarial_api_null_byte_in_source_rejected() {
 fn adversarial_api_null_byte_workflow_rejected() {
     let yaml = "version: velvet-ballastics/v1\nname: \x00bad\nwhen:\n  manual: {}\nsteps: []\n";
     let result = parse_workflow_source(yaml);
-    assert!(result.is_err(), "expected error for null byte in workflow");
+    assert_eq!(
+        result,
+        Err(YamlError::ForbiddenFeature {
+            detail: "null_byte_in_source"
+        })
+    );
 }
 
 #[test]
@@ -645,9 +647,12 @@ fn adversarial_api_scalar_one_over_limit_rejected() {
     let val = "x".repeat(65_537);
     let yaml = format!("key: \"{val}\"\n");
     let result = validate_yaml_profile(&yaml);
-    assert!(
-        matches!(result, Err(YamlError::ScalarTooLong { .. })),
-        "expected ScalarTooLong, got: {result:?}"
+    assert_eq!(
+        result,
+        Err(YamlError::ScalarTooLong {
+            len: 65_537,
+            max: 65_536
+        })
     );
 }
 
@@ -681,7 +686,13 @@ fn adversarial_api_workflow_with_missing_when_rejected() {
 fn adversarial_api_workflow_with_non_mapping_when_rejected() {
     let yaml = "version: velvet-ballastics/v1\nname: bad\nwhen: manual\nsteps: []\n";
     let result = parse_workflow_source(yaml);
-    assert!(result.is_err(), "expected error for non-mapping when");
+    assert_eq!(
+        result,
+        Err(YamlError::FieldShape {
+            field: "when",
+            expected: "mapping"
+        })
+    );
 }
 
 #[test]
@@ -716,6 +727,137 @@ fn canonical_triggers_and_aliases_parse() {
     assert_eq!(wf.vars().len(), 1);
     assert_eq!(wf.secrets().len(), 1);
     assert_eq!(wf.steps().len(), 2);
+}
+
+#[test]
+fn parse_workflow_source_preserves_exact_author_value_variants() {
+    let yaml = indoc::indoc! {r#"
+        version: velvet-ballastics/v1
+        name: author-values
+        when:
+          manual: {}
+        inputs:
+          nothing: null
+          enabled: true
+          count: 42
+          label: hello
+          list: [1, two, false]
+          object:
+            child: value
+        vars:
+          nested:
+            - name: alpha
+        steps: []
+        result:
+          ok: true
+        examples:
+          - description: variants
+            input:
+              id: 7
+            expected: [done, 1]
+    "#};
+
+    let workflow = match parse_workflow_source(yaml) {
+        Ok(workflow) => workflow,
+        Err(error) => {
+            fail_assert!("workflow should parse, got {error:?}");
+            return;
+        }
+    };
+
+    assert_eq!(workflow.inputs()[0].value, crate::ast::AuthorValue::Null);
+    assert_eq!(
+        workflow.inputs()[1].value,
+        crate::ast::AuthorValue::Bool(true)
+    );
+    assert_eq!(workflow.inputs()[2].value, crate::ast::AuthorValue::I64(42));
+    assert_eq!(
+        workflow.inputs()[3].value,
+        crate::ast::AuthorValue::Text("hello".into())
+    );
+    assert_eq!(
+        workflow.inputs()[4].value,
+        crate::ast::AuthorValue::Sequence(vec![
+            crate::ast::AuthorValue::I64(1),
+            crate::ast::AuthorValue::Text("two".into()),
+            crate::ast::AuthorValue::Bool(false),
+        ])
+    );
+    assert_eq!(
+        workflow.inputs()[5].value,
+        crate::ast::AuthorValue::Mapping(vec![crate::ast::AuthorEntry {
+            key: "child".into(),
+            value: crate::ast::AuthorValue::Text("value".into()),
+        }])
+    );
+    assert_eq!(
+        workflow.vars()[0].value,
+        crate::ast::AuthorValue::Sequence(vec![crate::ast::AuthorValue::Mapping(vec![
+            crate::ast::AuthorEntry {
+                key: "name".into(),
+                value: crate::ast::AuthorValue::Text("alpha".into()),
+            },
+        ])])
+    );
+    let Some(result) = workflow.result() else {
+        fail_assert!("expected result mapping");
+        return;
+    };
+    assert_eq!(
+        result.fields,
+        vec![crate::ast::AuthorEntry {
+            key: "ok".into(),
+            value: crate::ast::AuthorValue::Bool(true),
+        }]
+    );
+    assert_eq!(
+        workflow.examples()[0].input,
+        Some(crate::ast::AuthorValue::Mapping(vec![
+            crate::ast::AuthorEntry {
+                key: "id".into(),
+                value: crate::ast::AuthorValue::I64(7),
+            }
+        ]))
+    );
+    assert_eq!(
+        workflow.examples()[0].expected,
+        Some(crate::ast::AuthorValue::Sequence(vec![
+            crate::ast::AuthorValue::Text("done".into()),
+            crate::ast::AuthorValue::I64(1),
+        ]))
+    );
+}
+
+#[test]
+fn parse_workflow_source_rejects_unknown_fields_with_exact_field_names() {
+    let top_level = indoc::indoc! {"
+        version: velvet-ballastics/v1
+        name: unknown-top
+        when: { manual: {} }
+        steps: []
+        extra: value
+    "};
+    assert_eq!(
+        parse_workflow_source(top_level),
+        Err(YamlError::UnknownField {
+            field: "extra".into()
+        })
+    );
+
+    let set_field = indoc::indoc! {"
+        version: velvet-ballastics/v1
+        name: unknown-set
+        when: { manual: {} }
+        steps:
+          - id: first
+            set: { output: out, value: value_ref, legacy: extra_value }
+    "};
+    assert_eq!(
+        parse_workflow_source(set_field),
+        Err(YamlError::UnknownField {
+            field: "legacy".into()
+        })
+    );
 }
 
 #[test]
@@ -892,10 +1034,12 @@ fn strict_rejects_retry_and_unknown_example_fields() {
             retry: { max_attempts: 2 }
             set: { output: x, value: "1" }
     "#};
-    assert!(matches!(
+    assert_eq!(
         parse_workflow_source(retry_yaml),
-        Err(YamlError::UnknownField { .. })
-    ));
+        Err(YamlError::UnknownField {
+            field: "retry".into()
+        })
+    );
     let example_yaml = indoc::indoc! {"
         version: velvet-ballastics/v1
         name: bad_example
@@ -904,10 +1048,12 @@ fn strict_rejects_retry_and_unknown_example_fields() {
         examples:
           - name: legacy
     "};
-    assert!(matches!(
+    assert_eq!(
         parse_workflow_source(example_yaml),
-        Err(YamlError::UnknownField { .. })
-    ));
+        Err(YamlError::UnknownField {
+            field: "name".into()
+        })
+    );
 }
 
 #[test]
@@ -949,9 +1095,12 @@ fn semantic_source_map_tracks_trigger_and_block_scalar() {
 fn adversarial_api_oversized_source_rejected_immediately() {
     let big = "x".repeat(2_000_000);
     let result = validate_yaml_profile(&big);
-    assert!(
-        matches!(result, Err(YamlError::SourceTooLarge { .. })),
-        "expected SourceTooLarge, got: {result:?}"
+    assert_eq!(
+        result,
+        Err(YamlError::SourceTooLarge {
+            size: 2_000_000,
+            max: 1_048_576
+        })
     );
 }
 
@@ -959,7 +1108,7 @@ fn adversarial_api_oversized_source_rejected_immediately() {
 fn adversarial_api_only_whitespace_rejected() {
     let yaml = "   \t  \n  \n  ";
     let result = validate_yaml_profile(yaml);
-    assert!(result.is_err(), "expected error for whitespace-only YAML");
+    assert_eq!(result, Err(YamlError::EmptySource));
 }
 
 // ---------------------------------------------------------------------------
@@ -970,8 +1119,13 @@ fn adversarial_api_only_whitespace_rejected() {
 fn build_source_map_returns_non_empty_for_valid_yaml() {
     let yaml = "key: value\n";
     let result = build_source_map(yaml);
-    assert!(result.is_ok(), "build_source_map failed: {result:?}");
-    let map = result.unwrap();
+    let map = match result {
+        Ok(map) => map,
+        Err(error) => {
+            fail_assert!("build_source_map failed: {error:?}");
+            return;
+        }
+    };
     assert!(
         !map.is_empty(),
         "source map should not be empty for valid YAML"
@@ -999,10 +1153,17 @@ fn span_for_node_returns_some_for_valid_index() {
     let yaml = "a: 1\n";
     let map = build_source_map(yaml).expect("source map should build");
     let result = map.span_for_node(0);
-    assert!(
-        result.is_some(),
-        "span_for_node(0) should return Some for valid doc"
-    );
+    match result {
+        Some(span) => {
+            assert_eq!(span.start_offset, 0);
+            assert_eq!(span.end_offset, 0);
+            assert_eq!(span.start_line, 1);
+            assert_eq!(span.start_col, 0);
+            assert_eq!(span.end_line, 1);
+            assert_eq!(span.end_col, 1);
+        }
+        None => fail_assert!("span_for_node(0) should return Some for valid doc"),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1013,14 +1174,16 @@ fn span_for_node_returns_some_for_valid_index() {
 fn reject_forbidden_yaml_features_rejects_custom_tag() {
     // Custom tags like !custom are rejected by the feature checker.
     let yaml = "key: !custom value\n";
-    let Ok(events) = parse_yaml_events(yaml) else {
-        // If YAML parsing itself fails that's also acceptable for this test.
+    let Ok(events) = crate::events::collect_events(yaml) else {
+        fail_assert!("collect_events failed for custom tag fixture");
         return;
     };
     let result = reject_forbidden_yaml_features(&events);
-    assert!(
-        matches!(result, Err(YamlError::CustomTag { .. })),
-        "expected CustomTag error, got: {result:?}"
+    assert_eq!(
+        result,
+        Err(YamlError::CustomTag {
+            tag: "!custom".into()
+        })
     );
 }
 
@@ -1041,5 +1204,174 @@ fn load_fixture_source_parses_valid_workflow() {
               result: "done"
     "#};
     let result = load_fixture_source(yaml);
-    assert!(result.is_ok(), "load_fixture_source failed: {result:?}");
+    match result {
+        Ok(workflow) => {
+            assert_eq!(workflow.version(), "velvet-ballastics/v1");
+            assert_eq!(workflow.name(), "test-workflow");
+            assert_eq!(workflow.steps().len(), 1);
+            assert_eq!(
+                workflow.steps().first().map(|s| s.id.as_str()),
+                Some("start")
+            );
+        }
+        Err(error) => fail_assert!("load_fixture_source failed: {error:?}"),
+    }
+}
+
+// Round 2 exact AST primitive and numeric boundary coverage.
+fn round2_workflow_with_step(step_yaml: &str) -> String {
+    format!(
+        "version: velvet-ballastics/v1\nname: step-primitive\nwhen:\n  manual: {{}}\nsteps:\n{step_yaml}"
+    )
+}
+fn round2_step(step_yaml: &str) -> crate::ast::StepAst {
+    let yaml = round2_workflow_with_step(step_yaml);
+    match parse_workflow_source(&yaml) {
+        Ok(wf) => wf.steps().first().cloned().unwrap_or(crate::ast::StepAst {
+            id: String::new(),
+            name: None,
+            condition: None,
+            primitive: crate::ast::StepPrimitive::Wait {
+                event: None,
+                timeout: None,
+            },
+            with: None,
+            retry: None,
+            on_error: None,
+            then: None,
+        }),
+        Err(error) => {
+            fail_assert!("workflow should parse, got {error:?}");
+            crate::ast::StepAst {
+                id: String::new(),
+                name: None,
+                condition: None,
+                primitive: crate::ast::StepPrimitive::Wait {
+                    event: None,
+                    timeout: None,
+                },
+                with: None,
+                retry: None,
+                on_error: None,
+                then: None,
+            }
+        }
+    }
+}
+
+#[test]
+fn round2_ast_covers_all_step_primitives_save_alias_and_boundaries() {
+    assert_eq!(
+        round2_step("  - id: s\n    set: { output: total, value: inputs.amount }\n").primitive,
+        crate::ast::StepPrimitive::Set {
+            output: "total".into(),
+            value: "inputs.amount".into()
+        }
+    );
+    assert_eq!(
+        round2_step("  - id: save\n    save: { output: slot, value: constant }\n").primitive,
+        crate::ast::StepPrimitive::Set {
+            output: "slot".into(),
+            value: "constant".into()
+        }
+    );
+    assert_eq!(
+        parse_workflow_source(&round2_workflow_with_step(
+            "  - id: save\n    save: { output: '', value: constant }\n"
+        )),
+        Err(YamlError::FieldShape {
+            field: "set.output",
+            expected: "non-empty string"
+        })
+    );
+    assert_eq!(
+        round2_step("  - id: do\n    do: { action: http.get, input: inputs.url }\n").primitive,
+        crate::ast::StepPrimitive::Do {
+            action: "http.get".into(),
+            input: "inputs.url".into()
+        }
+    );
+    assert_eq!(
+        round2_step("  - id: run\n    run: { action: shell.exec, input: command }\n").primitive,
+        crate::ast::StepPrimitive::Do {
+            action: "shell.exec".into(),
+            input: "command".into()
+        }
+    );
+    match round2_step("  - id: choose\n    choose: { branches: [ { when: cond, steps: [] } ], otherwise: fallback }\n").primitive { crate::ast::StepPrimitive::Choose { branches, otherwise } => { assert_eq!(branches.len(), 1); assert_eq!(branches.first().map(|b| b.when.as_str()), Some("cond")); assert_eq!(otherwise, Some("fallback".into())); }, other => fail_assert!("expected Choose, got {other:?}") }
+    match round2_step("  - id: fe\n    foreach: { variable: item, input: inputs.items, at_once: 4294967295, steps: [] }\n").primitive { crate::ast::StepPrimitive::ForEach { variable, input, at_once, body } => { assert_eq!(variable, "item"); assert_eq!(input, "inputs.items"); assert_eq!(at_once, Some(u32::MAX)); assert_eq!(body, Vec::new()); }, other => fail_assert!("expected ForEach, got {other:?}") }
+    assert_eq!(
+        round2_step(
+            "  - id: fe\n    for_each: { variable: user, input: inputs.users, steps: [] }\n"
+        )
+        .primitive,
+        crate::ast::StepPrimitive::ForEach {
+            variable: "user".into(),
+            input: "inputs.users".into(),
+            at_once: None,
+            body: Vec::new()
+        }
+    );
+    match round2_step("  - id: par\n    parallel: { branches: [ { label: left, steps: [] }, { label: right, steps: [] } ] }\n").primitive { crate::ast::StepPrimitive::Together { branches } => { assert_eq!(branches.len(), 2); assert_eq!(branches.first().map(|b| b.label.as_str()), Some("left")); assert_eq!(branches.get(1).map(|b| b.label.as_str()), Some("right")); }, other => fail_assert!("expected Together, got {other:?}") }
+    match round2_step("  - id: collect\n    collect: { variable: page, source: api.pages, pages: 4294967295, items: 4294967295, steps: [] }\n").primitive { crate::ast::StepPrimitive::Collect { variable, source, pages, items, body } => { assert_eq!(variable, "page"); assert_eq!(source, "api.pages"); assert_eq!(pages, Some(u32::MAX)); assert_eq!(items, Some(u32::MAX)); assert_eq!(body, Vec::new()); }, other => fail_assert!("expected Collect, got {other:?}") }
+    match round2_step("  - id: agg\n    aggregate: { variable: acc, input: inputs.values, initial: zero, steps: [] }\n").primitive { crate::ast::StepPrimitive::Aggregate { variable, input, initial, body } => { assert_eq!(variable, "acc"); assert_eq!(input, "inputs.values"); assert_eq!(initial, "zero"); assert_eq!(body, Vec::new()); }, other => fail_assert!("expected Aggregate, got {other:?}") }
+    assert_eq!(
+        round2_step("  - id: repeat\n    repeat: { max_attempts: 65535, steps: [] }\n").primitive,
+        crate::ast::StepPrimitive::Repeat {
+            max_attempts: u16::MAX,
+            body: Vec::new()
+        }
+    );
+    assert_eq!(
+        round2_step("  - id: wait\n    wait: { event: invoice.paid, timeout: PT10M }\n").primitive,
+        crate::ast::StepPrimitive::Wait {
+            event: Some("invoice.paid".into()),
+            timeout: Some("PT10M".into())
+        }
+    );
+    assert_eq!(
+        round2_step("  - id: ask\n    ask: { prompt: Approve?, timeout: PT1H }\n").primitive,
+        crate::ast::StepPrimitive::Ask {
+            prompt: "Approve?".into(),
+            timeout: Some("PT1H".into())
+        }
+    );
+    assert_eq!(
+        round2_step("  - id: finish\n    finish: { result: success }\n").primitive,
+        crate::ast::StepPrimitive::Finish {
+            result: crate::ast::ScalarValue::String("success".into())
+        }
+    );
+    assert_eq!(
+        round2_step("  - id: finish\n    finish: { result: 42 }\n").primitive,
+        crate::ast::StepPrimitive::Finish {
+            result: crate::ast::ScalarValue::Integer(42)
+        }
+    );
+}
+
+#[test]
+fn round2_ast_numeric_errors_are_exact() {
+    for yaml in [
+        round2_workflow_with_step("  - id: r\n    repeat: { max_attempts: 65536, steps: [] }\n"),
+        round2_workflow_with_step("  - id: r\n    repeat: { max_attempts: -1, steps: [] }\n"),
+        round2_workflow_with_step(
+            "  - id: r\n    try_again: { max_attempts: 65536 }\n    set: { output: x, value: yy }\n",
+        ),
+        round2_workflow_with_step(
+            "  - id: r\n    try_again: { max_attempts: -1 }\n    set: { output: x, value: yy }\n",
+        ),
+    ] {
+        assert_eq!(
+            parse_workflow_source(&yaml),
+            Err(YamlError::FieldShape {
+                field: "max_attempts",
+                expected: "u16 integer"
+            })
+        );
+    }
+    assert_eq!(round2_step("  - id: retry\n    try_again: { max_attempts: 65535, delay: PT5S }\n    set: { output: x, value: yy }\n").retry.map(|r| (r.max_attempts, r.delay)), Some((u16::MAX, Some("PT5S".into()))));
+    match round2_step("  - id: fe\n    foreach: { variable: item, input: inputs.items, at_once: 4294967296, steps: [] }\n").primitive { crate::ast::StepPrimitive::ForEach { at_once, .. } => assert_eq!(at_once, None), other => fail_assert!("expected ForEach, got {other:?}") }
+    match round2_step("  - id: fe\n    foreach: { variable: item, input: inputs.items, at_once: -1, steps: [] }\n").primitive { crate::ast::StepPrimitive::ForEach { at_once, .. } => assert_eq!(at_once, None), other => fail_assert!("expected ForEach, got {other:?}") }
+    match round2_step("  - id: c\n    collect: { variable: page, source: pages, pages: 4294967296, items: -1, steps: [] }\n").primitive { crate::ast::StepPrimitive::Collect { pages, items, .. } => { assert_eq!(pages, None); assert_eq!(items, None); }, other => fail_assert!("expected Collect, got {other:?}") }
 }

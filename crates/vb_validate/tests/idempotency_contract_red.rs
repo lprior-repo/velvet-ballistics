@@ -96,6 +96,50 @@ fn retry_unsafe_violation(action_id: ActionId) -> IdempotencyContractViolation {
     }
 }
 
+fn expected_static_contract_result(
+    action_id: ActionId,
+    side_effect: SideEffect,
+    retry_safety: RetrySafety,
+    idempotency: Idempotency,
+) -> Result<(), IdempotencyContractViolation> {
+    match (side_effect, retry_safety, idempotency) {
+        (SideEffect::None, _, _) => Ok(()),
+        (effect, RetrySafety::Unsafe, idem) => {
+            Err(IdempotencyContractViolation::SideEffectingRetryUnsafe {
+                action: action_id,
+                side_effect: effect,
+                idempotency: idem,
+                retry_safety: RetrySafety::Unsafe,
+            })
+        }
+        (effect, retry, Idempotency::AtLeastOnceExternal) => Err(
+            IdempotencyContractViolation::SideEffectingAtLeastOnceExternal {
+                action: action_id,
+                side_effect: effect,
+                idempotency: Idempotency::AtLeastOnceExternal,
+                retry_safety: retry,
+            },
+        ),
+        (effect, retry, Idempotency::DeterministicPure) => Err(
+            IdempotencyContractViolation::SideEffectingDeterministicPure {
+                action: action_id,
+                side_effect: effect,
+                idempotency: Idempotency::DeterministicPure,
+                retry_safety: retry,
+            },
+        ),
+        (_, RetrySafety::Safe | RetrySafety::KeyRequired, Idempotency::IdempotentExternal) => {
+            Ok(())
+        }
+        (effect, retry, idem) => Err(IdempotencyContractViolation::InvalidContract {
+            action: action_id,
+            side_effect: effect,
+            idempotency: idem,
+            retry_safety: retry,
+        }),
+    }
+}
+
 fn at_least_once_violation(action_id: ActionId) -> IdempotencyContractViolation {
     IdempotencyContractViolation::SideEffectingAtLeastOnceExternal {
         action: action_id,
@@ -857,13 +901,18 @@ proptest! {
             Just(Idempotency::AtLeastOnceExternal),
         ],
     ) {
-        let candidate = contract(ActionId::new(0), side_effect, idempotency, retry_safety);
-        let result1 = is_statically_idempotent_contract(&candidate);
-        let result2 = is_statically_idempotent_contract(&candidate);
-        prop_assert_eq!(
-            result1.is_ok(), result2.is_ok(),
-            "Decision table must be confluent"
+        let action_id = ActionId::new(0);
+        let candidate = contract(action_id, side_effect, idempotency, retry_safety);
+        let expected = expected_static_contract_result(
+            action_id,
+            side_effect,
+            retry_safety,
+            idempotency,
         );
+
+        let result = is_statically_idempotent_contract(&candidate);
+
+        prop_assert_eq!(result, expected);
     }
 }
 
@@ -893,12 +942,22 @@ proptest! {
             let _ = frame.write_slot_with_taint(slot_idx, SlotValue::I64(i as i64), taint);
         }
 
-        let result1 = verify_idempotency(&candidate, &key_slots, &frame);
-        let result2 = verify_idempotency(&candidate, &key_slots, &frame);
+        let expected = if side_effect == SideEffect::None || key_count > 0 && taint_pattern == 0 {
+            Ok(())
+        } else if key_count == 0 {
+            Err(IdempotencyViolation::MissingKey(side_effect))
+        } else {
+            let first_secret_slot = (0..key_count)
+                .find(|index| ((taint_pattern >> index) & 1) == 1)
+                .map(u32::from);
+            match first_secret_slot {
+                Some(slot) => Err(IdempotencyViolation::SecretInKey(slot)),
+                None => Ok(()),
+            }
+        };
 
-        prop_assert_eq!(
-            result1.is_ok(), result2.is_ok(),
-            "Runtime gate must be deterministic"
-        );
+        let result = verify_idempotency(&candidate, &key_slots, &frame);
+
+        prop_assert_eq!(result, expected);
     }
 }

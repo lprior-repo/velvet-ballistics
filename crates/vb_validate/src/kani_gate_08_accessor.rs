@@ -34,7 +34,7 @@ fn kani_gate_08_valid_bounded_parts_pass() {
     }
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(result.is_ok(), "bounded valid accessors pass Gate 8");
+    kani::assert(result == Ok(()), "bounded valid accessors pass Gate 8");
     std::mem::forget(parts);
 }
 
@@ -43,7 +43,7 @@ fn kani_gate_08_valid_zero_accessors_pass() {
     let parts = workflow_parts_with_accessors(Box::new([]), 0, 0);
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(result.is_ok(), "zero accessors pass Gate 8");
+    kani::assert(result == Ok(()), "zero accessors pass Gate 8");
 }
 
 #[kani::proof]
@@ -62,7 +62,7 @@ fn kani_gate_08_valid_index_without_symbols_pass() {
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(
-        result.is_ok(),
+        result == Ok(()),
         "index-only accessor does not require symbols",
     );
 }
@@ -110,7 +110,12 @@ fn kani_gate_08_field_symbol_oob_rejected() {
     kani::assert(
         matches!(
             result,
-            Err(ValidationError::AccessorSymbolOutOfBounds { .. })
+            Err(ValidationError::AccessorSymbolOutOfBounds {
+                accessor_index: 0,
+                segment_index: 0,
+                symbol,
+                symbols_count: observed_symbols_count,
+            }) if symbol == field_id && observed_symbols_count == symbols_count
         ),
         "field symbol >= symbols_count is rejected",
     );
@@ -129,7 +134,13 @@ fn kani_gate_08_index_u32_max_rejected() {
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(
-        matches!(result, Err(ValidationError::AccessorPathInvalid { .. })),
+        matches!(
+            result,
+            Err(ValidationError::AccessorPathInvalid {
+                accessor_index: 0,
+                segment_index: 0,
+            })
+        ),
         "u32::MAX index sentinel is rejected",
     );
 }
@@ -153,7 +164,14 @@ fn kani_gate_08_root_oob_rejected() {
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(
-        matches!(result, Err(ValidationError::AccessorSlotOutOfRange { .. })),
+        matches!(
+            result,
+            Err(ValidationError::AccessorSlotOutOfRange {
+                accessor_index: 0,
+                slot,
+                slot_count: observed_slot_count,
+            }) if slot == usize::from(root) && observed_slot_count == usize::from(slot_count)
+        ),
         "root >= slot_count is rejected",
     );
 }

@@ -209,10 +209,7 @@ fn typed_node_tag_returns_some_for_tagged() {
         fail_assert!("expected Some tag");
         return;
     };
-    assert!(
-        tag_str.contains("mytag"),
-        "tag should contain 'mytag', got: {tag_str}"
-    );
+    assert_eq!(tag_str, "!mytag");
 }
 
 #[test]
@@ -468,7 +465,7 @@ fn adversarial_events_tagged_scalar_carries_tag() {
         fail_assert!("missing tagged scalar event");
         return;
     };
-    assert!(tag.contains("mytag"), "expected 'mytag' in tag, got: {tag}");
+    assert_eq!(tag.as_ref(), "!mytag");
 }
 
 #[test]

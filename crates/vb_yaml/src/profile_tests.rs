@@ -30,7 +30,7 @@ fn single_document_accepted() {
 fn multiple_documents_rejected() {
     let yaml = "---\na: 1\n---\nb: 2\n";
     let result = validate_yaml_profile(yaml);
-    assert!(matches!(result, Err(YamlError::MultipleDocuments { .. })));
+    assert_eq!(result, Err(YamlError::MultipleDocuments { count: 2 }));
 }
 
 #[test]
@@ -110,7 +110,13 @@ fn source_too_large_rejected() {
         ..YamlLimits::default()
     };
     let result = validate_yaml_profile_with_limits(&big, &limits);
-    assert!(matches!(result, Err(YamlError::SourceTooLarge { .. })));
+    assert_eq!(
+        result,
+        Err(YamlError::SourceTooLarge {
+            size: 2_000_000,
+            max: 1_000_000
+        })
+    );
 }
 
 #[test]
@@ -122,7 +128,7 @@ fn scalar_too_long_rejected() {
         ..YamlLimits::default()
     };
     let result = validate_yaml_profile_with_limits(&yaml, &limits);
-    assert!(matches!(result, Err(YamlError::ScalarTooLong { .. })));
+    assert_eq!(result, Err(YamlError::ScalarTooLong { len: 100, max: 50 }));
 }
 
 // -----------------------------------------------------------------------
@@ -265,13 +271,7 @@ fn scalar_too_long_exact_values() {
         ..YamlLimits::default()
     };
     let result = validate_yaml_profile_with_limits(&yaml, &limits);
-    match result {
-        Err(YamlError::ScalarTooLong { len, max }) => {
-            assert!(len > 50);
-            assert_eq!(max, 50);
-        }
-        other => fail_assert!("expected ScalarTooLong, got {other:?}"),
-    }
+    assert_eq!(result, Err(YamlError::ScalarTooLong { len: 100, max: 50 }));
 }
 
 #[test]
@@ -316,12 +316,12 @@ fn reject_forbidden_features_rejects_custom_tag() {
         return;
     };
     let result = reject_forbidden_features(&events);
-    match result {
-        Err(YamlError::CustomTag { tag }) => {
-            assert!(tag.contains("mytag"), "expected 'mytag' in tag, got: {tag}");
-        }
-        other => fail_assert!("expected CustomTag, got {other:?}"),
-    }
+    assert_eq!(
+        result,
+        Err(YamlError::CustomTag {
+            tag: "!mytag".into()
+        })
+    );
 }
 
 #[test]
@@ -471,24 +471,23 @@ fn validate_rejects_whitespace_only() {
 fn custom_tag_rejected_exact() {
     let yaml = "key: !custom value\n";
     let result = validate_yaml_profile(yaml);
-    match result {
-        Err(YamlError::CustomTag { tag }) => {
-            assert!(
-                tag.contains("custom"),
-                "tag should contain 'custom', got: {tag}"
-            );
-        }
-        other => fail_assert!("expected CustomTag, got {other:?}"),
-    }
+    assert_eq!(
+        result,
+        Err(YamlError::CustomTag {
+            tag: "!custom".into()
+        })
+    );
 }
 
 #[test]
 fn unsupported_yaml_features_return_typed_diagnostics() {
     let yaml_custom_tag = "key: !custom value\n";
     let result_custom_tag = validate_yaml_profile(yaml_custom_tag);
-    assert!(
-        matches!(result_custom_tag, Err(YamlError::CustomTag { .. })),
-        "custom tag should produce CustomTag error, got {result_custom_tag:?}"
+    assert_eq!(
+        result_custom_tag,
+        Err(YamlError::CustomTag {
+            tag: "!custom".into()
+        })
     );
 
     let yaml_anchor = "a: &anchor\nb: *anchor\n";
@@ -500,9 +499,9 @@ fn unsupported_yaml_features_return_typed_diagnostics() {
 
     let yaml_multi_doc = "---\na: 1\n---\nb: 2\n";
     let result_multi_doc = validate_yaml_profile(yaml_multi_doc);
-    assert!(
-        matches!(result_multi_doc, Err(YamlError::MultipleDocuments { .. })),
-        "multi-doc YAML should produce MultipleDocuments error, got {result_multi_doc:?}"
+    assert_eq!(
+        result_multi_doc,
+        Err(YamlError::MultipleDocuments { count: 2 })
     );
 }
 
@@ -541,9 +540,12 @@ fn sequence_with_10_001_items_rejected() {
     // One over the limit (10,001) should be rejected with SequenceTooLong
     let yaml = yaml_with_sequence_items(10_001);
     let result = validate_yaml_profile(&yaml);
-    assert!(
-        matches!(result, Err(YamlError::SequenceTooLong { .. })),
-        "sequence with 10,001 items should be rejected with SequenceTooLong, got {result:?}"
+    assert_eq!(
+        result,
+        Err(YamlError::SequenceTooLong {
+            len: 10_001,
+            max: 10_000
+        })
     );
 }
 
@@ -563,8 +565,48 @@ fn mapping_with_1025_entries_rejected() {
     // One over the limit (1,025) should be rejected with MappingTooLarge
     let yaml = yaml_with_mapping_entries(1_025);
     let result = validate_yaml_profile(&yaml);
-    assert!(
-        matches!(result, Err(YamlError::MappingTooLarge { .. })),
-        "mapping with 1,025 entries should be rejected with MappingTooLarge, got {result:?}"
+    assert_eq!(
+        result,
+        Err(YamlError::MappingTooLarge {
+            count: 1_025,
+            max: 1_024
+        })
+    );
+}
+
+#[test]
+fn round2_nested_sequence_and_mapping_limits_are_exact() {
+    let seq_limits = YamlLimits {
+        max_sequence_len: 2,
+        ..YamlLimits::default()
+    };
+    assert_eq!(
+        validate_yaml_profile_with_limits(
+            "root:\n  - - first\n    - second\n    - third\n",
+            &seq_limits
+        ),
+        Err(YamlError::SequenceTooLong { len: 3, max: 2 })
+    );
+    assert_eq!(
+        validate_yaml_profile_with_limits("root:\n  - - first\n    - second\n", &seq_limits),
+        Ok(())
+    );
+    let map_limits = YamlLimits {
+        max_mapping_entries: 2,
+        ..YamlLimits::default()
+    };
+    assert_eq!(
+        validate_yaml_profile_with_limits(
+            "root:\n  child:\n    first: one\n    second: two\n    third: three\n",
+            &map_limits
+        ),
+        Err(YamlError::MappingTooLarge { count: 3, max: 2 })
+    );
+    assert_eq!(
+        validate_yaml_profile_with_limits(
+            "root:\n  child:\n    first: one\n    second: two\n",
+            &map_limits
+        ),
+        Ok(())
     );
 }

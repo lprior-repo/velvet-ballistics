@@ -81,10 +81,10 @@ fn discover_boundaries_finds_markers_in_crates() {
     );
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
-    let result = discover_boundaries(workspace);
-    let candidates = result.unwrap();
-    assert!(!candidates.is_empty());
-    assert!(candidates.iter().any(|c| c.marker == "extern-c-boundary"));
+    let candidates = discover_boundaries(workspace).unwrap();
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(candidates[0].marker, "extern-c-boundary");
+    assert_eq!(candidates[0].source_path, PathBuf::from("crates/vb_core/src/lib.rs"));
 }
 
 #[test]
@@ -102,14 +102,10 @@ fn discover_boundaries_finds_markers_in_fuzz() {
     );
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
-    let result = discover_boundaries(workspace);
-    let candidates = result.unwrap();
-    assert!(!candidates.is_empty());
-    assert!(
-        candidates
-            .iter()
-            .any(|c| c.marker == "foreign-function-boundary")
-    );
+    let candidates = discover_boundaries(workspace).unwrap();
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(candidates[0].marker, "foreign-function-boundary");
+    assert_eq!(candidates[0].source_path, PathBuf::from("fuzz/fuzz_target_1.rs"));
 }
 
 #[test]
@@ -127,10 +123,10 @@ fn discover_boundaries_finds_markers_in_scripts() {
     );
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
-    let result = discover_boundaries(workspace);
-    let candidates = result.unwrap();
-    assert!(!candidates.is_empty());
-    assert!(candidates.iter().any(|c| c.marker == "ipc-frame-boundary"));
+    let candidates = discover_boundaries(workspace).unwrap();
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(candidates[0].marker, "ipc-frame-boundary");
+    assert_eq!(candidates[0].source_path, PathBuf::from("scripts/build.sh"));
 }
 
 #[test]
@@ -208,8 +204,20 @@ fn discover_boundaries_all_marker_types() {
     }
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
-    let result = discover_boundaries(workspace).unwrap();
-    assert_eq!(result.len(), markers.len());
+    let mut actual: Vec<(String, PathBuf)> = discover_boundaries(workspace)
+        .unwrap()
+        .into_iter()
+        .map(|candidate| (candidate.marker, candidate.source_path))
+        .collect();
+    actual.sort();
+
+    let mut expected: Vec<(String, PathBuf)> = markers
+        .iter()
+        .map(|(marker, file_path)| ((*marker).to_string(), PathBuf::from(file_path)))
+        .collect();
+    expected.sort();
+
+    assert_eq!(actual, expected);
 }
 
 // =============================================================================
@@ -222,7 +230,7 @@ fn classify_boundary_c_abi() {
     let result = classify_boundary(candidate);
     let classified = result.unwrap();
     assert_eq!(classified.class, BoundaryClass::CAbi);
-    assert!(classified.id.starts_with("vb-y1zq-CAbi-"));
+    assert_eq!(classified.id, "vb-y1zq-CAbi-crates-test-src-lib-rs");
 }
 
 #[test]
@@ -288,14 +296,12 @@ fn classify_boundary_id_stability() {
 
 #[test]
 fn classify_boundary_id_path_normalization() {
-    // Paths with /, ., _ should normalize to same ID
     let candidate1 = BoundaryCandidate::new("crates/test.src/lib.rs", "extern-c-boundary");
-    let candidate2 = BoundaryCandidate::new("crates/test/src/lib.rs", "extern-c-boundary");
+    let candidate2 = BoundaryCandidate::new("crates/test_src/lib.rs", "extern-c-boundary");
     let classified1 = classify_boundary(candidate1).unwrap();
     let classified2 = classify_boundary(candidate2).unwrap();
-    // IDs may differ due to different paths
-    assert!(!classified1.id.is_empty());
-    assert!(!classified2.id.is_empty());
+    assert_eq!(classified1.id, "vb-y1zq-CAbi-crates-test-src-lib-rs");
+    assert_eq!(classified2.id, "vb-y1zq-CAbi-crates-test-src-lib-rs");
 }
 
 #[test]
@@ -349,10 +355,8 @@ fn required_evidence_risky_boundary_ok() {
         source_path: PathBuf::from("crates/test/src/lib.rs"),
         exposure: BoundaryExposure::risky(BoundaryRisk::ExternalBytes),
     });
-    let result = required_evidence(classified);
-    assert!(result.is_ok());
     assert_eq!(
-        result.unwrap(),
+        required_evidence(classified).unwrap(),
         EvidenceRequirement::FuzzOrIsolationOrManualQa
     );
 }
@@ -365,8 +369,10 @@ fn required_evidence_generated_code_risky() {
         source_path: PathBuf::from("crates/gen/src/lib.rs"),
         exposure: BoundaryExposure::none(),
     });
-    let result = required_evidence(classified);
-    assert!(result.is_ok());
+    assert_eq!(
+        required_evidence(classified).unwrap(),
+        EvidenceRequirement::FuzzOrIsolationOrManualQa
+    );
 }
 
 #[test]
@@ -377,8 +383,10 @@ fn required_evidence_unsafe_adjacent_risky() {
         source_path: PathBuf::from("crates/unsafe_dep/src/lib.rs"),
         exposure: BoundaryExposure::none(),
     });
-    let result = required_evidence(classified);
-    assert!(result.is_ok());
+    assert_eq!(
+        required_evidence(classified).unwrap(),
+        EvidenceRequirement::FuzzOrIsolationOrManualQa
+    );
 }
 
 // =============================================================================
@@ -506,8 +514,11 @@ fn validate_inventory_valid_single_record() {
     let record = make_valid_record("test-id");
     let inventory = BoundaryInventory::new(Some(1), vec![record], None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
-    let result = validate_inventory(inventory, workspace);
-    assert!(result.is_ok());
+    let validated = validate_inventory(inventory, workspace).unwrap();
+    assert_eq!(validated.schema_version, 1);
+    assert_eq!(validated.records.len(), 1);
+    assert_eq!(validated.discovered_boundary_count, 1);
+    assert_eq!(validated.review_status, Some("approved".to_string()));
 }
 
 #[test]
@@ -519,8 +530,11 @@ fn validate_inventory_valid_multiple_records() {
     let record2 = make_valid_record("test-id-2");
     let inventory = BoundaryInventory::new(Some(1), vec![record1, record2], None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
-    let result = validate_inventory(inventory, workspace);
-    assert!(result.is_ok());
+    let validated = validate_inventory(inventory, workspace).unwrap();
+    assert_eq!(validated.schema_version, 1);
+    assert_eq!(validated.records.len(), 2);
+    assert_eq!(validated.discovered_boundary_count, 2);
+    assert_eq!(validated.review_status, Some("approved".to_string()));
 }
 
 // Additional tests for better coverage
@@ -562,8 +576,10 @@ fn required_evidence_process_limit_boundary() {
         source_path: PathBuf::from("crates/test/src/lib.rs"),
         exposure: BoundaryExposure::risky(BoundaryRisk::ProcessLimit),
     });
-    let result = required_evidence(classified);
-    assert!(result.is_ok());
+    assert_eq!(
+        required_evidence(classified).unwrap(),
+        EvidenceRequirement::FuzzOrIsolationOrManualQa
+    );
 }
 
 #[test]
@@ -574,8 +590,10 @@ fn required_evidence_language_limit_boundary() {
         source_path: PathBuf::from("crates/test/src/lib.rs"),
         exposure: BoundaryExposure::risky(BoundaryRisk::LanguageLimit),
     });
-    let result = required_evidence(classified);
-    assert!(result.is_ok());
+    assert_eq!(
+        required_evidence(classified).unwrap(),
+        EvidenceRequirement::FuzzOrIsolationOrManualQa
+    );
 }
 
 #[test]
@@ -586,8 +604,10 @@ fn required_evidence_external_bytes_boundary() {
         source_path: PathBuf::from("crates/test/src/lib.rs"),
         exposure: BoundaryExposure::risky(BoundaryRisk::ExternalBytes),
     });
-    let result = required_evidence(classified);
-    assert!(result.is_ok());
+    assert_eq!(
+        required_evidence(classified).unwrap(),
+        EvidenceRequirement::FuzzOrIsolationOrManualQa
+    );
 }
 
 #[test]
@@ -597,8 +617,10 @@ fn validate_inventory_empty_records_valid() {
 
     let inventory = BoundaryInventory::new(Some(1), Vec::new(), None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
-    let result = validate_inventory(inventory, workspace);
-    assert!(result.is_ok());
+    let validated = validate_inventory(inventory, workspace).unwrap();
+    assert_eq!(validated.schema_version, 1);
+    assert_eq!(validated.records.len(), 0);
+    assert_eq!(validated.discovered_boundary_count, 0);
 }
 
 #[test]
@@ -607,9 +629,7 @@ fn inventory_completion_status_all_safe_boundaries() {
     let record2 = make_valid_record("test-id-2");
     let validated = ValidatedBoundaryInventory::from_records(vec![record1, record2]);
 
-    let result = inventory_completion_status(validated);
-    assert!(result.is_ok());
-    match result.unwrap() {
+    match inventory_completion_status(validated).unwrap() {
         UnsafeIsolationStatus::Complete { boundary_count } => {
             assert_eq!(boundary_count, 2);
         }
@@ -620,8 +640,7 @@ fn inventory_completion_status_all_safe_boundaries() {
 fn classify_boundary_id_format() {
     let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", "extern-c-boundary");
     let result = classify_boundary(candidate).unwrap();
-    // ID should start with vb-y1zq-CAbi-
-    assert!(result.id.starts_with("vb-y1zq-CAbi-"));
+    assert_eq!(result.id, "vb-y1zq-CAbi-crates-test-src-lib-rs");
 }
 
 #[test]
@@ -642,10 +661,8 @@ fn classify_boundary_all_marker_types_have_risky_exposure() {
     for (marker, _class) in markers {
         let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", marker);
         let result = classify_boundary(candidate).unwrap();
-        assert!(matches!(
-            result.exposure.risk,
-            BoundaryRisk::Multiple | BoundaryRisk::None
-        ));
+        assert_eq!(result.class, _class);
+        assert_eq!(result.exposure.risk, BoundaryRisk::Multiple);
     }
 }
 
@@ -694,8 +711,9 @@ fn validate_inventory_waived_with_waiver() {
     ));
     let inventory = BoundaryInventory::new(Some(1), vec![record], None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
-    let result = validate_inventory(inventory, workspace);
-    assert!(result.is_ok());
+    let validated = validate_inventory(inventory, workspace).unwrap();
+    assert_eq!(validated.records.len(), 1);
+    assert_eq!(validated.review_status, Some("waived".to_string()));
 }
 
 // =============================================================================
@@ -746,9 +764,7 @@ fn inventory_completion_status_complete_ok() {
     let record = make_valid_record("test-id");
     let validated = ValidatedBoundaryInventory::from_records(vec![record]);
 
-    let result = inventory_completion_status(validated);
-    assert!(result.is_ok());
-    match result.unwrap() {
+    match inventory_completion_status(validated).unwrap() {
         UnsafeIsolationStatus::Complete { boundary_count } => {
             assert_eq!(boundary_count, 1);
         }
@@ -762,8 +778,10 @@ fn inventory_completion_status_third_party_unsafe_allowed() {
     record.source_path = PathBuf::from("fuzz/unsafe_dep/src/lib.rs"); // Third party path
     validated.records.push(record);
 
-    let result = inventory_completion_status(validated);
-    assert!(result.is_ok());
+    assert_eq!(
+        inventory_completion_status(validated).unwrap(),
+        UnsafeIsolationStatus::Complete { boundary_count: 1 }
+    );
 }
 
 // =============================================================================
@@ -869,9 +887,10 @@ fn discover_boundaries_decoder_surface_present_continues() {
     );
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
-    let result = discover_boundaries(workspace);
-    assert!(result.is_ok());
-    assert!(!result.unwrap().is_empty());
+    let candidates = discover_boundaries(workspace).unwrap();
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(candidates[0].marker, "extern-c-boundary");
+    assert_eq!(candidates[0].source_path, PathBuf::from("crates/vb_core/src/lib.rs"));
 }
 
 #[test]
@@ -887,14 +906,10 @@ fn discover_boundaries_finds_marker_in_cargo_toml() {
     );
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
-    let result = discover_boundaries(workspace);
-    assert!(result.is_ok());
-    let candidates = result.unwrap();
-    assert!(
-        candidates
-            .iter()
-            .any(|c| c.marker == "foreign-function-boundary")
-    );
+    let candidates = discover_boundaries(workspace).unwrap();
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(candidates[0].marker, "foreign-function-boundary");
+    assert_eq!(candidates[0].source_path, PathBuf::from("Cargo.toml"));
 }
 
 #[test]
@@ -914,10 +929,13 @@ fn discover_boundaries_finds_markers_in_nested_subdirectories() {
     );
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
-    let result = discover_boundaries(workspace);
-    assert!(result.is_ok());
-    let candidates = result.unwrap();
-    assert!(candidates.iter().any(|c| c.marker == "ipc-frame-boundary"));
+    let candidates = discover_boundaries(workspace).unwrap();
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(candidates[0].marker, "ipc-frame-boundary");
+    assert_eq!(
+        candidates[0].source_path,
+        PathBuf::from("crates/vb_core/src/boundary_inventory/deep/lib.rs")
+    );
 }
 
 #[test]
@@ -960,16 +978,16 @@ fn classify_boundary_rejects_unrecognized_marker() {
 #[test]
 fn classify_boundary_external_binary_marker_to_correct_class() {
     let candidate = BoundaryCandidate::new("crates/bin/src/app.rs", "external-binary-boundary");
-    let result = classify_boundary(candidate);
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap().class, BoundaryClass::ExternalBinary);
+    let classified = classify_boundary(candidate).unwrap();
+    assert_eq!(classified.class, BoundaryClass::ExternalBinary);
+    assert_eq!(classified.id, "vb-y1zq-ExternalBinary-crates-bin-src-app-rs");
 }
 
 #[test]
 fn classify_boundary_id_path_contains_name_of_class() {
     let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", "extern-c-boundary");
     let result = classify_boundary(candidate).unwrap();
-    assert!(result.id.contains("CAbi"));
+    assert_eq!(result.id, "vb-y1zq-CAbi-crates-test-src-lib-rs");
 }
 
 // =============================================================================
@@ -984,10 +1002,8 @@ fn required_evidence_risky_by_process_limit() {
         source_path: PathBuf::from("crates/test/src/lib.rs"),
         exposure: BoundaryExposure::risky(BoundaryRisk::ProcessLimit),
     });
-    let result = required_evidence(classified);
-    assert!(result.is_ok());
     assert_eq!(
-        result.unwrap(),
+        required_evidence(classified).unwrap(),
         EvidenceRequirement::FuzzOrIsolationOrManualQa
     );
 }
@@ -1000,10 +1016,8 @@ fn required_evidence_risky_by_language_limit() {
         source_path: PathBuf::from("crates/test/src/lib.rs"),
         exposure: BoundaryExposure::risky(BoundaryRisk::LanguageLimit),
     });
-    let result = required_evidence(classified);
-    assert!(result.is_ok());
     assert_eq!(
-        result.unwrap(),
+        required_evidence(classified).unwrap(),
         EvidenceRequirement::FuzzOrIsolationOrManualQa
     );
 }
@@ -1016,8 +1030,10 @@ fn required_evidence_safe_class_but_risky_exposure() {
         source_path: PathBuf::from("crates/test/src/lib.rs"),
         exposure: BoundaryExposure::risky(BoundaryRisk::ExternalBytes),
     });
-    let result = required_evidence(classified);
-    assert!(result.is_ok());
+    assert_eq!(
+        required_evidence(classified).unwrap(),
+        EvidenceRequirement::FuzzOrIsolationOrManualQa
+    );
 }
 
 #[test]
@@ -1028,8 +1044,10 @@ fn required_evidence_risky_class_but_none_risk() {
         source_path: PathBuf::from("crates/gen/src/lib.rs"),
         exposure: BoundaryExposure::none(),
     });
-    let result = required_evidence(classified);
-    assert!(result.is_ok());
+    assert_eq!(
+        required_evidence(classified).unwrap(),
+        EvidenceRequirement::FuzzOrIsolationOrManualQa
+    );
 }
 
 // =============================================================================
@@ -1196,10 +1214,12 @@ fn validate_inventory_approved_with_external_evidence_ok() {
     record.evidence = FieldState::Present(EvidenceReference::ExternalProvenance(
         "vb-abc123".to_string(),
     ));
+    let expected_evidence = record.evidence.clone();
     let inventory = BoundaryInventory::new(Some(1), vec![record], None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
-    let result = validate_inventory(inventory, workspace);
-    assert!(result.is_ok());
+    let validated = validate_inventory(inventory, workspace).unwrap();
+    assert_eq!(validated.records.len(), 1);
+    assert_eq!(validated.records[0].evidence, expected_evidence);
 }
 
 #[test]
@@ -1211,10 +1231,12 @@ fn validate_inventory_approved_with_sha256_external_evidence_ok() {
     record.evidence = FieldState::Present(EvidenceReference::ExternalProvenance(
         "external:vb-abc123#sha256=abcdef1234567890".to_string(),
     ));
+    let expected_evidence = record.evidence.clone();
     let inventory = BoundaryInventory::new(Some(1), vec![record], None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
-    let result = validate_inventory(inventory, workspace);
-    assert!(result.is_ok());
+    let validated = validate_inventory(inventory, workspace).unwrap();
+    assert_eq!(validated.records.len(), 1);
+    assert_eq!(validated.records[0].evidence, expected_evidence);
 }
 
 // =============================================================================
@@ -1224,9 +1246,7 @@ fn validate_inventory_approved_with_sha256_external_evidence_ok() {
 #[test]
 fn inventory_completion_status_empty_records_zero_discovered() {
     let validated = ValidatedBoundaryInventory::from_records(Vec::new());
-    let result = inventory_completion_status(validated);
-    assert!(result.is_ok());
-    match result.unwrap() {
+    match inventory_completion_status(validated).unwrap() {
         UnsafeIsolationStatus::Complete { boundary_count } => {
             assert_eq!(boundary_count, 0);
         }
@@ -1237,9 +1257,7 @@ fn inventory_completion_status_empty_records_zero_discovered() {
 fn inventory_completion_status_single_valid_record() {
     let record = make_valid_record("test-id");
     let validated = ValidatedBoundaryInventory::from_records(vec![record]);
-    let result = inventory_completion_status(validated);
-    assert!(result.is_ok());
-    match result.unwrap() {
+    match inventory_completion_status(validated).unwrap() {
         UnsafeIsolationStatus::Complete { boundary_count } => {
             assert_eq!(boundary_count, 1);
         }
@@ -1252,8 +1270,10 @@ fn inventory_completion_status_third_party_unsafe_adjacent_in_fuzz_allowed() {
     let mut record = make_record_with_class(BoundaryClass::UnsafeAdjacentDependency);
     record.source_path = PathBuf::from("fuzz/vendor_sdk/src/lib.rs");
     validated.records.push(record);
-    let result = inventory_completion_status(validated);
-    assert!(result.is_ok());
+    assert_eq!(
+        inventory_completion_status(validated).unwrap(),
+        UnsafeIsolationStatus::Complete { boundary_count: 1 }
+    );
 }
 
 #[test]
@@ -1262,8 +1282,10 @@ fn inventory_completion_status_third_party_unsafe_adjacent_in_scripts_allowed() 
     let mut record = make_record_with_class(BoundaryClass::UnsafeAdjacentDependency);
     record.source_path = PathBuf::from("scripts/vendor_tool.sh");
     validated.records.push(record);
-    let result = inventory_completion_status(validated);
-    assert!(result.is_ok());
+    assert_eq!(
+        inventory_completion_status(validated).unwrap(),
+        UnsafeIsolationStatus::Complete { boundary_count: 1 }
+    );
 }
 
 // =============================================================================
@@ -1292,8 +1314,10 @@ fn discover_boundaries_with_surfaces_file_containing_decoder_entry() {
     );
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
-    let result = discover_boundaries(workspace);
-    assert!(result.is_ok());
+    let candidates = discover_boundaries(workspace).unwrap();
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(candidates[0].marker, "decoder-byte-ingest-boundary");
+    assert_eq!(candidates[0].source_path, PathBuf::from("crates/vb_core/src/lib.rs"));
 }
 
 #[test]

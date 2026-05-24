@@ -109,8 +109,10 @@ proptest! {
         let version: String = "x".repeat(version_len);
         prop_assume!(version != "velvet-ballastics/v1");
         let doc = make_doc(vec![("version", FieldValue::String(version.clone()))]);
-        let result = validate_version(&doc);
-        prop_assert!(result.is_err());
+        prop_assert_eq!(
+            validate_version(&doc),
+            Err(ValidationError::InvalidVersion { version })
+        );
     }
 
     #[test]
@@ -308,46 +310,6 @@ mod kani_harnesses {
     };
 
     #[kani::proof]
-    fn capability_name_length_boundary_is_ordered() {
-        let len: usize = kani::any();
-        kani::assume(len <= 256);
-        kani::assert((len == 0) || (len <= 128) || (len > 128));
-    }
-
-    #[kani::proof]
-    fn duplicate_indexes_are_ordered_when_second_index_is_after_first() {
-        let first_index: usize = kani::any();
-        let duplicate_index: usize = kani::any();
-        kani::assume(first_index < 8);
-        kani::assume(duplicate_index < 8);
-        kani::assume(first_index < duplicate_index);
-        kani::assert(first_index < duplicate_index);
-    }
-
-    #[kani::proof]
-    fn capability_name_length_bounds_are_exhaustive() {
-        let len: usize = kani::any();
-        kani::assume(len <= 256);
-        let is_empty = len == 0;
-        let is_valid = len >= 1 && len <= 128;
-        let is_too_long = len > 128;
-        kani::assert(is_empty || is_valid || is_too_long);
-        kani::assert(!(is_valid && is_too_long));
-        kani::assert(!(is_empty && is_valid));
-    }
-
-    #[kani::proof]
-    fn duplicate_detection_first_index_is_always_less_than_duplicate_index() {
-        let first: usize = kani::any();
-        let dup: usize = kani::any();
-        kani::assume(first < 16);
-        kani::assume(dup < 16);
-        kani::assume(first < dup);
-        kani::assert(first < dup);
-        kani::assert(dup > first);
-    }
-
-    #[kani::proof]
     fn validate_version_deterministic() {
         let version: String = kani::any();
         kani::assume(version.len() <= 256);
@@ -518,27 +480,6 @@ mod kani_harnesses {
 }
 
 // ===========================================================================
-// FUZZ TARGET IDEAS (cargo-fuzz seeds)
-// ===========================================================================
-//
-// Target 1: fuzz_validate_workflow_schema
-// Feed arbitrary byte buffers as serialised WorkflowDoc-like structures.
-// The validator must never panic, OOM, or deadlock.
-//
-// Target 2: fuzz_trigger_validator
-// Feed random trigger kind/body combos. Covers "when" block shapes
-// that Kani can't explore due to unbounded path depth in trigger bodies.
-//
-// Target 3: fuzz_id_grammar
-// Feed random strings (including Unicode, null bytes, extremely long
-// strings) to ID validation paths via validate_workflow_schema.
-//
-// Target 4: fuzz_step_primitive_counting
-// Feed random field name/value combos to validate_single_primitive.
-// Ensures no allocator panic or overflow when step field count is
-// extremely large.
-
-// ===========================================================================
 // UNIT TESTS: Exact-assertion tests (19 tests)
 // ===========================================================================
 
@@ -563,6 +504,58 @@ fn kani_integration_valid_workflow_passes_all_schema_gates() {
         ),
     ]);
     assert_eq!(validate_workflow_schema(&doc), Ok(()));
+}
+
+#[test]
+fn kani_integration_accepts_max_length_workflow_and_step_ids() {
+    let max_name = "a".repeat(64);
+    let max_step_id = format!("s{}", "a".repeat(63));
+    let doc = make_doc(vec![
+        (
+            "version",
+            FieldValue::String("velvet-ballastics/v1".to_owned()),
+        ),
+        ("name", FieldValue::String(max_name)),
+        (
+            "when",
+            FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)]),
+        ),
+        (
+            "steps",
+            FieldValue::Sequence(vec![make_step(vec![
+                ("id", FieldValue::String(max_step_id)),
+                ("finish", FieldValue::Empty),
+            ])]),
+        ),
+    ]);
+
+    assert_eq!(validate_workflow_schema(&doc), Ok(()));
+}
+
+#[test]
+fn kani_integration_workflow_field_names_returns_exact_ordered_vector() {
+    let doc = make_doc(vec![
+        (
+            "version",
+            FieldValue::String("velvet-ballastics/v1".to_owned()),
+        ),
+        ("name", FieldValue::String("test".to_owned())),
+        ("when", FieldValue::Mapping(vec![])),
+        ("steps", FieldValue::Sequence(vec![])),
+    ]);
+
+    assert_eq!(doc.field_names(), vec!["version", "name", "when", "steps"]);
+}
+
+#[test]
+fn kani_integration_step_field_names_returns_exact_ordered_vector() {
+    let step = make_step(vec![
+        ("id", FieldValue::String("s1".to_owned())),
+        ("set", FieldValue::Empty),
+        ("then", FieldValue::Empty),
+    ]);
+
+    assert_eq!(step.field_names(), vec!["id", "set", "then"]);
 }
 
 #[test]
@@ -591,7 +584,12 @@ fn kani_integration_http_trigger_is_rejected() {
 #[test]
 fn kani_integration_empty_workflow_is_rejected() {
     let doc = make_doc(vec![]);
-    assert!(validate_workflow_schema(&doc).is_err());
+    assert_eq!(
+        validate_workflow_schema(&doc),
+        Err(ValidationError::MissingRequiredField {
+            field: "version".to_owned(),
+        })
+    );
 }
 
 #[test]

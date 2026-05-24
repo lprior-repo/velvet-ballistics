@@ -11,9 +11,7 @@ use crate::boundary_inventory::{BoundaryClass, BoundaryInventoryError, parse_inv
 #[test]
 fn parse_inventory_empty_boundaries() {
     let json = r#"{"schema_version": 1, "boundaries": []}"#;
-    let result = parse_inventory(json.as_bytes());
-    assert!(result.is_ok());
-    let inventory = result.unwrap();
+    let inventory = parse_inventory(json.as_bytes()).unwrap();
     assert_eq!(inventory.schema_version, Some(1));
     assert!(inventory.records.is_empty());
 }
@@ -30,9 +28,7 @@ fn parse_inventory_single_boundary() {
             }
         ]
     }"#;
-    let result = parse_inventory(json.as_bytes());
-    assert!(result.is_ok());
-    let inventory = result.unwrap();
+    let inventory = parse_inventory(json.as_bytes()).unwrap();
     assert_eq!(inventory.records.len(), 1);
     let record = &inventory.records[0];
     assert_eq!(record.id, "vb-y1zq-CAbi-crates/test/src/lib.rs");
@@ -53,10 +49,52 @@ fn parse_inventory_all_boundary_classes() {
             {"id": "vb-y1zq-UnsafeAdjacentDependency-1", "source_path": "crates/unsafe_dep/src/lib.rs", "class": "unsafe_adjacent_dependency"}
         ]
     }"#;
-    let result = parse_inventory(json.as_bytes());
-    assert!(result.is_ok());
-    let inventory = result.unwrap();
-    assert_eq!(inventory.records.len(), 7);
+    let inventory = parse_inventory(json.as_bytes()).unwrap();
+    let actual: Vec<(&str, &std::path::Path, BoundaryClass)> = inventory
+        .records
+        .iter()
+        .map(|record| (record.id.as_str(), record.source_path.as_path(), record.class))
+        .collect();
+    assert_eq!(
+        actual,
+        vec![
+            (
+                "vb-y1zq-CAbi-1",
+                std::path::Path::new("crates/test/src/lib.rs"),
+                BoundaryClass::CAbi,
+            ),
+            (
+                "vb-y1zq-Ffi-1",
+                std::path::Path::new("fuzz/test.rs"),
+                BoundaryClass::Ffi,
+            ),
+            (
+                "vb-y1zq-Ipc-1",
+                std::path::Path::new("scripts/run.sh"),
+                BoundaryClass::Ipc,
+            ),
+            (
+                "vb-y1zq-ExternalBinary-1",
+                std::path::Path::new("crates/bin/src/main.rs"),
+                BoundaryClass::ExternalBinary,
+            ),
+            (
+                "vb-y1zq-Decoder-1",
+                std::path::Path::new("crates/decoder/src/lib.rs"),
+                BoundaryClass::Decoder,
+            ),
+            (
+                "vb-y1zq-GeneratedCode-1",
+                std::path::Path::new("crates/gen/src/lib.rs"),
+                BoundaryClass::GeneratedCode,
+            ),
+            (
+                "vb-y1zq-UnsafeAdjacentDependency-1",
+                std::path::Path::new("crates/unsafe_dep/src/lib.rs"),
+                BoundaryClass::UnsafeAdjacentDependency,
+            ),
+        ]
+    );
 }
 
 #[test]
@@ -84,9 +122,32 @@ fn parse_inventory_multiple_boundaries() {
             {"id": "vb-y1zq-Ipc-1", "source_path": "scripts/run1.sh", "class": "ipc"}
         ]
     }"#;
-    let result = parse_inventory(json.as_bytes());
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap().records.len(), 3);
+    let inventory = parse_inventory(json.as_bytes()).unwrap();
+    let actual: Vec<(&str, &std::path::Path, BoundaryClass)> = inventory
+        .records
+        .iter()
+        .map(|record| (record.id.as_str(), record.source_path.as_path(), record.class))
+        .collect();
+    assert_eq!(
+        actual,
+        vec![
+            (
+                "vb-y1zq-CAbi-1",
+                std::path::Path::new("crates/test1/src/lib.rs"),
+                BoundaryClass::CAbi,
+            ),
+            (
+                "vb-y1zq-Ffi-1",
+                std::path::Path::new("fuzz/test1.rs"),
+                BoundaryClass::Ffi,
+            ),
+            (
+                "vb-y1zq-Ipc-1",
+                std::path::Path::new("scripts/run1.sh"),
+                BoundaryClass::Ipc,
+            ),
+        ]
+    );
 }
 
 // =============================================================================
@@ -256,8 +317,9 @@ fn parse_inventory_whitespace_id() {
             {"id": "   ", "source_path": "crates/test/src/lib.rs", "class": "c_abi"}
         ]
     }"#;
-    let result = parse_inventory(json.as_bytes());
-    assert!(result.is_ok()); // Whitespace is allowed in ID
+    let inventory = parse_inventory(json.as_bytes()).unwrap();
+    assert_eq!(inventory.records.len(), 1);
+    assert_eq!(inventory.records[0].id, "   ");
 }
 
 #[test]
@@ -268,8 +330,9 @@ fn parse_inventory_utf8_id() {
             {"id": "vb-y1zq-CAbi-日本語", "source_path": "crates/test/src/lib.rs", "class": "c_abi"}
         ]
     }"#;
-    let result = parse_inventory(json.as_bytes());
-    assert!(result.is_ok());
+    let inventory = parse_inventory(json.as_bytes()).unwrap();
+    assert_eq!(inventory.records.len(), 1);
+    assert_eq!(inventory.records[0].id, "vb-y1zq-CAbi-日本語");
 }
 
 #[test]
@@ -285,9 +348,26 @@ fn parse_inventory_large_boundaries_array() {
         ));
     }
     json.push_str("]}");
-    let result = parse_inventory(json.as_bytes());
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap().records.len(), 100);
+    let inventory = parse_inventory(json.as_bytes()).unwrap();
+    assert_eq!(inventory.records.len(), 100);
+    assert_eq!(inventory.records[0].id, "vb-y1zq-CAbi-0");
+    assert_eq!(
+        inventory.records[0].source_path,
+        std::path::PathBuf::from("crates/test0/src/lib.rs")
+    );
+    assert_eq!(inventory.records[0].class, BoundaryClass::CAbi);
+    assert_eq!(inventory.records[50].id, "vb-y1zq-CAbi-50");
+    assert_eq!(
+        inventory.records[50].source_path,
+        std::path::PathBuf::from("crates/test50/src/lib.rs")
+    );
+    assert_eq!(inventory.records[50].class, BoundaryClass::CAbi);
+    assert_eq!(inventory.records[99].id, "vb-y1zq-CAbi-99");
+    assert_eq!(
+        inventory.records[99].source_path,
+        std::path::PathBuf::from("crates/test99/src/lib.rs")
+    );
+    assert_eq!(inventory.records[99].class, BoundaryClass::CAbi);
 }
 
 // =============================================================================
@@ -496,10 +576,9 @@ fn parse_inventory_source_path_only_whitespace() {
             {"id": "test-id", "source_path": "   ", "class": "c_abi"}
         ]
     }"#;
-    let result = parse_inventory(json.as_bytes());
-    // Whitespace-only source_path is not empty, so parse should succeed
-    // But after PathBuf::from, as_os_str().is_empty() is false for whitespace
-    assert!(result.is_ok());
+    let inventory = parse_inventory(json.as_bytes()).unwrap();
+    assert_eq!(inventory.records.len(), 1);
+    assert_eq!(inventory.records[0].source_path, std::path::PathBuf::from("   "));
 }
 
 #[test]
@@ -532,9 +611,9 @@ fn parse_inventory_valid_record_with_extra_fields() {
             }
         ]
     }"#;
-    let result = parse_inventory(json.as_bytes());
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap().records.len(), 1);
+    let inventory = parse_inventory(json.as_bytes()).unwrap();
+    assert_eq!(inventory.records.len(), 1);
+    assert_eq!(inventory.records[0].id, "vb-y1zq-CAbi-test");
 }
 
 #[test]
@@ -545,9 +624,7 @@ fn parse_inventory_very_long_id_and_path() {
         r#"{{"schema_version": 1, "boundaries": [{{"id": "{}", "source_path": "{}", "class": "c_abi"}}]}}"#,
         long_id, long_path
     );
-    let result = parse_inventory(json.as_bytes());
-    assert!(result.is_ok());
-    let inventory = result.unwrap();
+    let inventory = parse_inventory(json.as_bytes()).unwrap();
     assert_eq!(inventory.records.len(), 1);
     assert_eq!(inventory.records[0].id, long_id);
     assert_eq!(

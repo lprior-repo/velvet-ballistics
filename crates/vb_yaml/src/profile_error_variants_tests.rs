@@ -158,13 +158,13 @@ fn parse_error_for_malformed_yaml() {
     // Mismatched flow indicators — saphyr reports this as a parse error.
     let yaml = "key: [1, 2\n";
     let result = parse_workflow_source(yaml);
-    match result {
-        Err(YamlError::ParseError { line, reason }) => {
-            assert!(line > 0, "ParseError line should be > 0, got {line}");
-            assert!(!reason.is_empty(), "ParseError reason should be non-empty");
-        }
-        other => fail_assert!("expected ParseError, got {other:?}"),
-    }
+    assert_eq!(
+        result,
+        Err(YamlError::ParseError {
+            line: 2,
+            reason: "while parsing a flow sequence, expected ',' or ']'".into()
+        })
+    );
 }
 
 /// `parse_workflow_source` surfaces `ParseError` for unclosed strings.
@@ -172,12 +172,13 @@ fn parse_error_for_malformed_yaml() {
 fn parse_error_unclosed_double_quote() {
     let yaml = "key: \"unclosed\n";
     let result = parse_workflow_source(yaml);
-    match result {
-        Err(YamlError::ParseError { line, .. }) => {
-            assert!(line > 0, "ParseError line should be > 0, got {line}");
-        }
-        other => fail_assert!("expected ParseError, got {other:?}"),
-    }
+    assert_eq!(
+        result,
+        Err(YamlError::ParseError {
+            line: 1,
+            reason: "while scanning a quoted scalar, found unexpected end of stream".into()
+        })
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -277,12 +278,7 @@ fn is_allowed_tag_accepts_double_bang_int() {
 fn forbidden_feature_custom_tag_on_sequence_rejected() {
     let yaml = "items: !seq\n  - a\n";
     let result = validate_yaml_profile(yaml);
-    match result {
-        Err(YamlError::CustomTag { tag }) => {
-            assert!(tag.contains("seq"), "expected 'seq' in tag, got: {tag}");
-        }
-        other => fail_assert!("expected CustomTag, got {other:?}"),
-    }
+    assert_eq!(result, Err(YamlError::CustomTag { tag: "!seq".into() }));
 }
 
 /// A custom tag on a mapping (e.g., !map) is rejected as CustomTag.
@@ -290,10 +286,5 @@ fn forbidden_feature_custom_tag_on_sequence_rejected() {
 fn forbidden_feature_custom_tag_on_mapping_rejected() {
     let yaml = "data: !map\n  k: v\n";
     let result = validate_yaml_profile(yaml);
-    match result {
-        Err(YamlError::CustomTag { tag }) => {
-            assert!(tag.contains("map"), "expected 'map' in tag, got: {tag}");
-        }
-        other => fail_assert!("expected CustomTag, got {other:?}"),
-    }
+    assert_eq!(result, Err(YamlError::CustomTag { tag: "!map".into() }));
 }

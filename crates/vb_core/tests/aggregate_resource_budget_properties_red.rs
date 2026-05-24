@@ -1,75 +1,112 @@
 use proptest::prelude::{ProptestConfig, *};
-
-const BUDGET_RS: &str = include_str!("../src/budget.rs");
-const ADMISSION_RS: &str = include_str!("../../vb_runtime/src/admission.rs");
+use vb_core::{AggregateBudgetError, AggregateResourceBudget, AggregateResourceUsage};
 
 proptest! {
-    #![proptest_config(ProptestConfig { failure_persistence: None, .. ProptestConfig::default() })]
+    #![proptest_config(ProptestConfig { failure_persistence: None, cases: 256, .. ProptestConfig::default() })]
 
     #[test]
-    fn proptest_aggregate_budget_dimensions_are_declared_for_any_dimension_index(index in 0usize..14) {
-        let dimensions = [
-            "max_steps_executable",
-            "max_action_tickets",
-            "max_parallel_in_flight",
-            "max_retries_per_action",
-            "max_gather_pages",
-            "max_gather_items",
-            "max_for_each_iterations",
-            "max_together_branches",
-            "max_repeat_attempts",
-            "max_run_time_seconds",
-            "max_result_bytes",
-            "max_total_slots_written",
-            "max_queue_depth",
-            "max_journal_batch_bytes",
-        ];
+    fn proptest_add_then_subtract_roundtrips_steps_and_actions(
+        current_steps in 0u64..1_000,
+        current_actions in 0u64..1_000,
+        add_steps in 0u32..1_000,
+        add_actions in 0u32..1_000,
+    ) {
+        let usage = AggregateResourceUsage {
+            max_steps_executable: current_steps,
+            max_action_tickets: current_actions,
+            ..AggregateResourceUsage::default()
+        };
+        let budget = AggregateResourceBudget {
+            max_steps_executable: add_steps,
+            max_action_tickets: add_actions,
+            ..zero_budget()
+        };
 
-        prop_assert_eq!(BUDGET_RS.contains("pub struct AggregateResourceBudget"), true);
-        prop_assert_eq!(BUDGET_RS.contains(dimensions[index]), true);
+        let expected = AggregateResourceUsage {
+            max_steps_executable: current_steps + u64::from(add_steps),
+            max_action_tickets: current_actions + u64::from(add_actions),
+            max_active_runs: 1,
+            ..AggregateResourceUsage::default()
+        };
+
+        prop_assert_eq!(usage.try_add_budget(&budget), Ok(expected));
+        prop_assert_eq!(expected.try_subtract_budget(&budget), Ok(usage));
     }
 
     #[test]
-    fn proptest_capacity_comparison_reports_exact_requested_available_values(delta in 1u64..1000) {
-        let requested = 100u64.saturating_add(delta);
-        let available = 100u64;
+    fn proptest_subtract_reports_exact_first_underflow_resource_for_action_ticket_shortfall(
+        shortfall in 1u32..1_000,
+    ) {
+        let actual = AggregateResourceUsage::default().try_subtract_budget(&AggregateResourceBudget {
+            max_action_tickets: shortfall,
+            ..zero_budget()
+        });
 
-        prop_assert_eq!(requested > available, true);
-        prop_assert_eq!(BUDGET_RS.contains("CapacityExceeded"), true);
-        prop_assert_eq!(BUDGET_RS.contains("requested"), true);
-        prop_assert_eq!(BUDGET_RS.contains("available"), true);
+        prop_assert_eq!(actual, Err(AggregateBudgetError::Underflow { resource: "max_action_tickets" }));
     }
 
     #[test]
-    fn proptest_policy_errors_preserve_exact_actual_and_limit(delta in 1u64..1000) {
-        let actual = 100u64.saturating_add(delta);
-        let limit = 100u64;
+    fn proptest_capacity_error_preserves_generated_requested_and_available(
+        available in 0u64..1_000,
+        delta in 1u64..1_000,
+    ) {
+        let requested = available + delta;
+        let usage = AggregateResourceUsage {
+            max_queue_depth: requested,
+            ..AggregateResourceUsage::default()
+        };
 
-        prop_assert_eq!(actual > limit, true);
-        prop_assert_eq!(BUDGET_RS.contains("PolicyExceeded"), true);
-        prop_assert_eq!(BUDGET_RS.contains("actual"), true);
-        prop_assert_eq!(BUDGET_RS.contains("limit"), true);
+        prop_assert_eq!(
+            usage.fits_within(&vb_core::AggregateResourceCapacity {
+                max_steps_executable: u64::MAX,
+                max_action_tickets: u64::MAX,
+                max_parallel_in_flight: u32::MAX,
+                max_gather_pages: u64::MAX,
+                max_gather_items: u64::MAX,
+                max_result_bytes: u64::MAX,
+                max_total_slots_written: u64::MAX,
+                max_timer_entries: u64::MAX,
+                max_trace_events: u64::MAX,
+                max_active_runs: u64::MAX,
+                max_queue_depth: available,
+                max_journal_batch_bytes: u64::MAX,
+                max_ipc_payload_bytes: u64::MAX,
+                max_blob_bytes: u64::MAX,
+                max_input_bytes: u64::MAX,
+                max_step_budget_per_tick: u64::MAX,
+                max_transitions_per_tick: u64::MAX,
+            }),
+            Err(AggregateBudgetError::CapacityExceeded {
+                resource: "max_queue_depth",
+                requested,
+                available,
+            })
+        );
     }
+}
 
-    #[test]
-    fn proptest_checked_add_and_subtract_are_contractually_required(a in 0u64..1000, b in 0u64..1000) {
-        let checked_sum = a.checked_add(b);
-        let checked_difference = a.checked_sub(b);
-
-        prop_assert_eq!(checked_sum, a.checked_add(b));
-        prop_assert_eq!(checked_difference, a.checked_sub(b));
-        prop_assert_eq!(BUDGET_RS.contains("try_add_budget"), true);
-        prop_assert_eq!(BUDGET_RS.contains("try_subtract_budget"), true);
-        prop_assert_eq!(BUDGET_RS.contains("checked_add"), true);
-        prop_assert_eq!(BUDGET_RS.contains("checked_sub"), true);
-    }
-
-    #[test]
-    fn proptest_admission_with_budget_has_runtime_capacity_rejection_surface(requested in 1u64..1000) {
-        let available = requested.saturating_sub(1);
-
-        prop_assert_eq!(requested > available, true);
-        prop_assert_eq!(ADMISSION_RS.contains("admit_run_with_budget"), true);
-        prop_assert_eq!(ADMISSION_RS.contains("ResourceCapacityExceeded"), true);
+fn zero_budget() -> AggregateResourceBudget {
+    AggregateResourceBudget {
+        max_steps_executable: 0,
+        max_action_tickets: 0,
+        max_parallel_in_flight: 0,
+        max_retries_per_action: 0,
+        max_gather_pages: 0,
+        max_gather_items: 0,
+        max_for_each_iterations: 0,
+        max_together_branches: 0,
+        max_repeat_attempts: 0,
+        max_run_time_seconds: 0,
+        max_result_bytes: 0,
+        max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_queue_depth: 0,
+        max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
+        max_step_budget_per_tick: 0,
+        max_transitions_per_tick: 0,
     }
 }

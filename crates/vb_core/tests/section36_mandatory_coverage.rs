@@ -101,16 +101,12 @@ fn finite_f64_overflow_addition_returns_error() {
         .into_boxed_slice(),
         vec![ConstValue::I64(i64::MAX), ConstValue::I64(1)].into_boxed_slice(),
     );
-    // checked_add returns None on overflow, mapped to a resource limit error
-    assert!(
-        matches!(
-            result,
-            Err(CoreError::InvalidCompiledWorkflow {
-                reason: "integer arithmetic overflow",
-                ..
-            })
-        ),
-        "overflowing addition must return an error"
+    assert_eq!(
+        result,
+        Err(CoreError::InvalidCompiledWorkflow {
+            reason: "integer arithmetic overflow",
+        }),
+        "overflowing addition must return the exact overflow error"
     );
 }
 
@@ -125,9 +121,11 @@ fn finite_f64_overflow_multiplication_returns_error() {
         .into_boxed_slice(),
         vec![ConstValue::I64(i64::MAX), ConstValue::I64(2)].into_boxed_slice(),
     );
-    assert!(
-        result.is_err(),
-        "overflowing multiplication must return an error"
+    assert_eq!(
+        result,
+        Err(CoreError::InvalidCompiledWorkflow {
+            reason: "integer arithmetic overflow",
+        })
     );
 }
 
@@ -142,9 +140,11 @@ fn finite_f64_subtraction_underflow_returns_error() {
         .into_boxed_slice(),
         vec![ConstValue::I64(i64::MIN), ConstValue::I64(1)].into_boxed_slice(),
     );
-    assert!(
-        result.is_err(),
-        "underflowing subtraction must return an error"
+    assert_eq!(
+        result,
+        Err(CoreError::InvalidCompiledWorkflow {
+            reason: "integer arithmetic overflow",
+        })
     );
 }
 
@@ -265,34 +265,25 @@ fn const_value_symbol_maps_to_slot_value_symbol() {
 }
 
 #[test]
-fn const_value_to_slot_value_no_silent_null_fallback() {
+fn const_value_to_slot_value_no_silent_null_fallback() -> CoreResult<()> {
     // Every variant is explicitly mapped. If a new variant were added and not
     // handled, the compiler would issue a non-exhaustive match error.
     // This test documents the exhaustive mapping by exercising all variants.
-    let mappings: Vec<SlotValue> = vec![
-        ConstValue::Null
-            .to_slot_value()
-            .unwrap_or(SlotValue::Bool(false)),
-        ConstValue::Bool(true)
-            .to_slot_value()
-            .unwrap_or(SlotValue::Bool(false)),
-        ConstValue::I64(0)
-            .to_slot_value()
-            .unwrap_or(SlotValue::Bool(false)),
-        FiniteF64::new(0.0)
-            .map(|f| ConstValue::F64(f).to_slot_value())
-            .unwrap_or(Ok(SlotValue::Bool(false)))
-            .unwrap_or(SlotValue::Bool(false)),
-        ConstValue::Symbol(SymbolId::new(0))
-            .to_slot_value()
-            .unwrap_or(SlotValue::Bool(false)),
+    let finite = FiniteF64::new(0.0)?;
+    let mappings: Vec<CoreResult<SlotValue>> = vec![
+        ConstValue::Null.to_slot_value(),
+        ConstValue::Bool(true).to_slot_value(),
+        ConstValue::I64(0).to_slot_value(),
+        ConstValue::F64(finite).to_slot_value(),
+        ConstValue::Symbol(SymbolId::new(0)).to_slot_value(),
     ];
     // None of them should be a fallback -- they all return their specific variant
-    assert_eq!(mappings[0], SlotValue::Null);
-    assert_eq!(mappings[1], SlotValue::Bool(true));
-    assert_eq!(mappings[2], SlotValue::I64(0));
-    assert!(matches!(mappings[3], SlotValue::F64(_)));
-    assert_eq!(mappings[4], SlotValue::Symbol(SymbolId::new(0)));
+    assert_eq!(mappings[0], Ok(SlotValue::Null));
+    assert_eq!(mappings[1], Ok(SlotValue::Bool(true)));
+    assert_eq!(mappings[2], Ok(SlotValue::I64(0)));
+    assert_eq!(mappings[3], Ok(SlotValue::F64(finite)));
+    assert_eq!(mappings[4], Ok(SlotValue::Symbol(SymbolId::new(0))));
+    Ok(())
 }
 
 // =========================================================================
@@ -755,7 +746,8 @@ fn try_from_parts_rejects_empty_branch_table_without_otherwise() {
 #[test]
 fn try_from_parts_accepts_valid_parts() {
     let result = CompiledWorkflow::try_from_parts(valid_parts());
-    assert!(matches!(result, Ok(_)), "valid parts should be accepted");
+    let workflow = result.map(|workflow| (workflow.node_count(), workflow.slot_count()));
+    assert_eq!(workflow, Ok((2, 1)), "valid parts should be accepted");
 }
 
 // =========================================================================
@@ -866,7 +858,12 @@ fn failed_step_does_not_become_succeeded_without_error_handler() -> Result<(), S
 
     // step_once will fail because output slot is None on the Copy node
     let result = step_once(&workflow, &mut frame, &mut store);
-    assert!(matches!(result, Err(CoreError::MissingOutputSlot { .. })));
+    assert_eq!(
+        result,
+        Err(CoreError::MissingOutputSlot {
+            step: StepIdx::new(0),
+        })
+    );
     assert_eq!(
         frame
             .step_state(StepIdx::new(0))
@@ -1192,8 +1189,9 @@ fn validate_resource_contract_rejects_oversized_max_steps() {
     // and should NOT be rejected. Test that an at-limit contract passes.
     let parts = parts_with_contract(contract);
     let result = vb_core::validate_resource_contract(&parts);
-    assert!(
-        result.is_ok(),
+    assert_eq!(
+        result,
+        Ok(()),
         "max_steps at the hard limit should be accepted"
     );
     let _ = result;
@@ -1210,8 +1208,9 @@ fn validate_resource_contract_rejects_oversized_max_slots() {
     let parts = parts_with_contract(contract);
     // max_slots == u16::MAX == MAX_SLOTS_PER_WORKFLOW (65_535), at-limit passes
     let result = vb_core::validate_resource_contract(&parts);
-    assert!(
-        result.is_ok(),
+    assert_eq!(
+        result,
+        Ok(()),
         "max_slots at the hard limit should be accepted"
     );
 }
@@ -1233,7 +1232,10 @@ fn validate_resource_contract_rejects_oversized_max_constants() {
 #[test]
 fn validate_resource_contract_rejects_oversized_max_accessors() {
     use vb_core::limits::MAX_ACCESSORS;
-    let oversized: u16 = u16::try_from(MAX_ACCESSORS + 1).unwrap_or(u16::MAX);
+    let oversized: u16 = match u16::try_from(MAX_ACCESSORS + 1) {
+        Ok(value) => value,
+        Err(_) => u16::MAX,
+    };
     // If MAX_ACCESSORS < u16::MAX we can construct an oversized value
     let contract = ResourceContract {
         max_accessors: oversized,
@@ -1242,9 +1244,12 @@ fn validate_resource_contract_rejects_oversized_max_accessors() {
     let parts = parts_with_contract(contract);
     let result = vb_core::validate_resource_contract(&parts);
     if usize::from(oversized) > MAX_ACCESSORS {
-        assert!(
-            matches!(result, Err(WorkflowError::ResourceContractTooLarge { .. })),
-            "max_accessors over limit must be rejected"
+        assert_eq!(
+            result,
+            Err(WorkflowError::ResourceContractTooLarge {
+                resource: "max_accessors",
+            }),
+            "max_accessors over limit must be rejected with exact resource"
         );
     }
 }
@@ -1252,7 +1257,10 @@ fn validate_resource_contract_rejects_oversized_max_accessors() {
 #[test]
 fn validate_resource_contract_rejects_oversized_max_expressions() {
     use vb_core::limits::MAX_EXPRESSIONS;
-    let oversized: u16 = u16::try_from(MAX_EXPRESSIONS + 1).unwrap_or(u16::MAX);
+    let oversized: u16 = match u16::try_from(MAX_EXPRESSIONS + 1) {
+        Ok(value) => value,
+        Err(_) => u16::MAX,
+    };
     let contract = ResourceContract {
         max_expressions: oversized,
         ..ResourceContract::DEFAULT
@@ -1260,9 +1268,12 @@ fn validate_resource_contract_rejects_oversized_max_expressions() {
     let parts = parts_with_contract(contract);
     let result = vb_core::validate_resource_contract(&parts);
     if usize::from(oversized) > MAX_EXPRESSIONS {
-        assert!(
-            result.is_err(),
-            "max_expressions over limit must be rejected"
+        assert_eq!(
+            result,
+            Err(WorkflowError::ResourceContractTooLarge {
+                resource: "max_expressions",
+            }),
+            "max_expressions over limit must be rejected with exact resource"
         );
     }
 }
@@ -1276,9 +1287,12 @@ fn validate_resource_contract_rejects_oversized_max_expr_stack() {
     };
     let parts = parts_with_contract(contract);
     let result = vb_core::validate_resource_contract(&parts);
-    assert!(
-        result.is_err(),
-        "max_expr_stack over limit must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::ResourceContractTooLarge {
+            resource: "max_expr_stack",
+        }),
+        "max_expr_stack over limit must be rejected with exact resource"
     );
 }
 
@@ -1291,8 +1305,9 @@ fn validate_resource_contract_accepts_at_limit_max_expr_stack() {
     };
     let parts = parts_with_contract(contract);
     let result = vb_core::validate_resource_contract(&parts);
-    assert!(
-        result.is_ok(),
+    assert_eq!(
+        result,
+        Ok(()),
         "max_expr_stack at the hard limit should be accepted"
     );
 }
@@ -1306,21 +1321,37 @@ fn validate_resource_contract_rejects_each_resource_individually() {
     // max_accessors check
     if MAX_ACCESSORS < usize::from(u16::MAX) {
         let contract = ResourceContract {
-            max_accessors: u16::try_from(MAX_ACCESSORS + 1).unwrap_or(u16::MAX),
+            max_accessors: match u16::try_from(MAX_ACCESSORS + 1) {
+                Ok(value) => value,
+                Err(_) => u16::MAX,
+            },
             ..ResourceContract::DEFAULT
         };
         let parts = parts_with_contract(contract);
-        assert!(vb_core::validate_resource_contract(&parts).is_err());
+        assert_eq!(
+            vb_core::validate_resource_contract(&parts),
+            Err(WorkflowError::ResourceContractTooLarge {
+                resource: "max_accessors",
+            })
+        );
     }
 
     // max_expressions check
     if MAX_EXPRESSIONS < usize::from(u16::MAX) {
         let contract = ResourceContract {
-            max_expressions: u16::try_from(MAX_EXPRESSIONS + 1).unwrap_or(u16::MAX),
+            max_expressions: match u16::try_from(MAX_EXPRESSIONS + 1) {
+                Ok(value) => value,
+                Err(_) => u16::MAX,
+            },
             ..ResourceContract::DEFAULT
         };
         let parts = parts_with_contract(contract);
-        assert!(vb_core::validate_resource_contract(&parts).is_err());
+        assert_eq!(
+            vb_core::validate_resource_contract(&parts),
+            Err(WorkflowError::ResourceContractTooLarge {
+                resource: "max_expressions",
+            })
+        );
     }
 
     // max_expr_stack check
@@ -1329,7 +1360,12 @@ fn validate_resource_contract_rejects_each_resource_individually() {
         ..ResourceContract::DEFAULT
     };
     let parts = parts_with_contract(contract);
-    assert!(vb_core::validate_resource_contract(&parts).is_err());
+    assert_eq!(
+        vb_core::validate_resource_contract(&parts),
+        Err(WorkflowError::ResourceContractTooLarge {
+            resource: "max_expr_stack",
+        })
+    );
 }
 
 // =========================================================================
@@ -1340,8 +1376,9 @@ fn validate_resource_contract_rejects_each_resource_individually() {
 fn validate_node_bounds_accepts_valid_parts() {
     let parts = parts_with_contract(ResourceContract::DEFAULT);
     let result = vb_core::validate_node_bounds(&parts);
-    assert!(
-        result.is_ok(),
+    assert_eq!(
+        result,
+        Ok(()),
         "valid single-node workflow should pass node bounds check"
     );
 }
@@ -1361,9 +1398,12 @@ fn validate_node_bounds_rejects_node_id_out_of_bounds() {
     }]
     .into_boxed_slice();
     let result = vb_core::validate_node_bounds(&parts);
-    assert!(
-        matches!(result, Err(WorkflowError::StepOutOfBounds { .. })),
-        "node id >= node count must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::StepOutOfBounds {
+            step: StepIdx::new(5),
+        }),
+        "node id >= node count must be rejected with exact step"
     );
 }
 
@@ -1382,9 +1422,12 @@ fn validate_node_bounds_rejects_next_out_of_bounds() {
     }]
     .into_boxed_slice();
     let result = vb_core::validate_node_bounds(&parts);
-    assert!(
-        matches!(result, Err(WorkflowError::StepOutOfBounds { .. })),
-        "next step >= node count must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::StepOutOfBounds {
+            step: StepIdx::new(99),
+        }),
+        "next step >= node count must be rejected with exact step"
     );
 }
 
@@ -1415,8 +1458,9 @@ fn validate_node_bounds_accepts_next_at_last_index() {
     ]
     .into_boxed_slice();
     let result = vb_core::validate_node_bounds(&parts);
-    assert!(
-        result.is_ok(),
+    assert_eq!(
+        result,
+        Ok(()),
         "next pointing to last valid node index should pass"
     );
 }
@@ -1429,8 +1473,9 @@ fn validate_node_bounds_accepts_next_at_last_index() {
 fn validate_transition_target_accepts_valid_finish() {
     let parts = parts_with_contract(ResourceContract::DEFAULT);
     let result = vb_core::validate_transition_target(&parts);
-    assert!(
-        result.is_ok(),
+    assert_eq!(
+        result,
+        Ok(()),
         "Finish node with no transitions should pass"
     );
 }
@@ -1450,14 +1495,16 @@ fn validate_transition_target_rejects_jump_out_of_bounds() {
     }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(
-        result.is_err(),
-        "jump target >= node count must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::StepOutOfBounds {
+            step: StepIdx::new(50),
+        })
     );
 }
 
 #[test]
-fn validate_transition_target_rejects_choose_branch_out_of_bounds() {
+fn validate_transition_target_rejects_choose_branch_out_of_bounds() -> CoreResult<()> {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
     parts.nodes = vec![CompiledNode {
         id: StepIdx::new(0),
@@ -1475,18 +1522,19 @@ fn validate_transition_target_rejects_choose_branch_out_of_bounds() {
         },
     }]
     .into_boxed_slice();
-    parts.expressions = vec![
-        ExprProgram::try_from_ops(vec![ExprOp::LoadConst(ConstIdx::new(0))].into_boxed_slice())
-            .map_err(|e| e.to_string())
-            .unwrap(),
-    ]
+    parts.expressions = vec![ExprProgram::try_from_ops(
+        vec![ExprOp::LoadConst(ConstIdx::new(0))].into_boxed_slice(),
+    )?]
     .into_boxed_slice();
     parts.constants = vec![ConstValue::Bool(true)].into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(
-        result.is_err(),
-        "choose branch target >= node count must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::StepOutOfBounds {
+            step: StepIdx::new(99),
+        })
     );
+    Ok(())
 }
 
 #[test]
@@ -1505,9 +1553,11 @@ fn validate_transition_target_rejects_choose_otherwise_out_of_bounds() {
     }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(
-        result.is_err(),
-        "choose otherwise target >= node count must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::StepOutOfBounds {
+            step: StepIdx::new(99),
+        })
     );
 }
 
@@ -1531,9 +1581,11 @@ fn validate_transition_target_rejects_choose_slot_branch_out_of_bounds() {
     }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(
-        result.is_err(),
-        "choose_slot branch target >= node count must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::StepOutOfBounds {
+            step: StepIdx::new(99),
+        })
     );
 }
 
@@ -1556,9 +1608,11 @@ fn validate_transition_target_rejects_for_each_body_out_of_bounds() {
     }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(
-        result.is_err(),
-        "for_each body >= node count must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::StepOutOfBounds {
+            step: StepIdx::new(99),
+        })
     );
 }
 
@@ -1578,9 +1632,11 @@ fn validate_transition_target_rejects_together_start_branch_out_of_bounds() {
     }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(
-        result.is_err(),
-        "together branch >= node count must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::StepOutOfBounds {
+            step: StepIdx::new(99),
+        })
     );
 }
 
@@ -1600,9 +1656,11 @@ fn validate_transition_target_rejects_together_start_join_out_of_bounds() {
     }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(
-        result.is_err(),
-        "together join >= node count must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::StepOutOfBounds {
+            step: StepIdx::new(99),
+        })
     );
 }
 
@@ -1624,9 +1682,11 @@ fn validate_transition_target_rejects_together_branch_out_of_bounds() {
     }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(
-        result.is_err(),
-        "together branch entry >= node count must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::StepOutOfBounds {
+            step: StepIdx::new(99),
+        })
     );
 }
 
@@ -1648,9 +1708,11 @@ fn validate_transition_target_rejects_together_branch_join_out_of_bounds() {
     }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(
-        result.is_err(),
-        "together branch join >= node count must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::StepOutOfBounds {
+            step: StepIdx::new(99),
+        })
     );
 }
 
@@ -1670,9 +1732,11 @@ fn validate_transition_target_rejects_repeat_check_done_out_of_bounds() {
     }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(
-        result.is_err(),
-        "repeat check done >= node count must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::StepOutOfBounds {
+            step: StepIdx::new(99),
+        })
     );
 }
 
@@ -1693,9 +1757,11 @@ fn validate_transition_target_rejects_retry_check_body_out_of_bounds() {
     }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(
-        result.is_err(),
-        "retry check body >= node count must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::StepOutOfBounds {
+            step: StepIdx::new(99),
+        })
     );
 }
 
@@ -1716,9 +1782,11 @@ fn validate_transition_target_rejects_error_handler_body_out_of_bounds() {
     }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(
-        result.is_err(),
-        "error handler body >= node count must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::StepOutOfBounds {
+            step: StepIdx::new(99),
+        })
     );
 }
 
@@ -1739,9 +1807,11 @@ fn validate_transition_target_rejects_error_handler_handler_out_of_bounds() {
     }]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(
-        result.is_err(),
-        "error handler handler >= node count must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::StepOutOfBounds {
+            step: StepIdx::new(99),
+        })
     );
 }
 
@@ -1773,8 +1843,9 @@ fn validate_transition_target_accepts_valid_multi_node_workflow() {
     .into_boxed_slice();
     parts.constants = vec![ConstValue::I64(42)].into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
-    assert!(
-        result.is_ok(),
+    assert_eq!(
+        result,
+        Ok(()),
         "valid two-node chain should pass transition target check"
     );
 }
@@ -1787,8 +1858,9 @@ fn validate_transition_target_accepts_valid_multi_node_workflow() {
 fn validate_compiled_workflow_accepts_valid_parts() {
     let parts = valid_parts();
     let result = vb_core::validate_compiled_workflow(&parts);
-    assert!(
-        result.is_ok(),
+    assert_eq!(
+        result,
+        Ok(()),
         "valid workflow parts should pass full validation"
     );
 }
@@ -1798,9 +1870,12 @@ fn validate_compiled_workflow_rejects_invalid_parts() {
     let mut parts = valid_parts();
     parts.slot_count = 0; // SetConst outputs to SlotIdx(0) but slot_count is 0
     let result = vb_core::validate_compiled_workflow(&parts);
-    assert!(
-        result.is_err(),
-        "workflow with slot out of bounds should be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::SlotOutOfBounds {
+            slot: SlotIdx::new(0),
+        }),
+        "workflow with slot out of bounds should be rejected with exact slot"
     );
 }
 
@@ -1813,14 +1888,14 @@ fn budget_parts_with_steps(step_count: usize, contract: ResourceContract) -> Wor
     for i in 0..step_count {
         let is_last = i == step_count - 1;
         nodes.push(CompiledNode {
-            id: StepIdx::new(u16::try_from(i).unwrap_or(u16::MAX)),
+            id: bounded_step_idx(i),
             output: None,
             on_error: None,
             error_slot: None,
             next: if is_last {
                 None
             } else {
-                Some(StepIdx::new(u16::try_from(i + 1).unwrap_or(u16::MAX)))
+                Some(bounded_step_idx(i + 1))
             },
             kind: CompiledNodeKind::Nop,
         });
@@ -1845,6 +1920,13 @@ fn budget_parts_with_steps(step_count: usize, contract: ResourceContract) -> Wor
     }
 }
 
+fn bounded_step_idx(index: usize) -> StepIdx {
+    StepIdx::new(match u16::try_from(index) {
+        Ok(value) => value,
+        Err(_) => u16::MAX,
+    })
+}
+
 #[test]
 fn budget_rejects_workflow_exceeding_max_steps() {
     // ResourceContract with max_steps=1 but 2 nodes
@@ -1854,9 +1936,11 @@ fn budget_rejects_workflow_exceeding_max_steps() {
     };
     let parts = budget_parts_with_steps(2, contract);
     let result = CompiledWorkflow::try_from_parts(parts);
-    assert!(
-        matches!(result, Err(WorkflowError::ResourceContractExceeded { .. })),
-        "workflow exceeding max_steps must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::ResourceContractExceeded {
+            resource: "max_steps",
+        })
     );
 }
 
@@ -1870,9 +1954,11 @@ fn budget_rejects_workflow_exceeding_max_slots() {
     let mut parts = budget_parts_with_steps(1, contract);
     parts.slot_count = 1;
     let result = CompiledWorkflow::try_from_parts(parts);
-    assert!(
-        matches!(result, Err(WorkflowError::ResourceContractExceeded { .. })),
-        "workflow exceeding max_slots must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::ResourceContractExceeded {
+            resource: "max_slots",
+        })
     );
 }
 
@@ -1890,8 +1976,10 @@ fn budget_accepts_workflow_at_exact_limits() {
         value: ConstIdx::new(0),
     };
     let result = CompiledWorkflow::try_from_parts(parts);
-    assert!(
-        result.is_ok(),
+    let accepted = result.map(|workflow| (workflow.node_count(), workflow.slot_count()));
+    assert_eq!(
+        accepted,
+        Ok((2, 1)),
         "workflow at exact resource limits should be accepted"
     );
 }
@@ -1906,9 +1994,10 @@ fn expression_stack_underflow_detected_on_binary_op_with_one_value() {
         vec![ExprOp::LoadConst(ConstIdx::new(0)), ExprOp::Eq].into_boxed_slice(),
         vec![ConstValue::I64(1)].into_boxed_slice(),
     );
-    assert!(
-        result.is_err(),
-        "binary op with only one value on stack must error"
+    assert_eq!(
+        result,
+        Err(CoreError::ExpressionStackUnderflow),
+        "binary op with only one value on stack must error exactly"
     );
 }
 
@@ -1920,9 +2009,10 @@ fn expression_stack_overflow_detected() {
         .collect();
     let constants: Vec<ConstValue> = (0..65).map(ConstValue::I64).collect();
     let result = eval_expr_value(ops.into_boxed_slice(), constants.into_boxed_slice());
-    assert!(
-        result.is_err(),
-        "loading 65 values onto stack with max_stack=64 must overflow"
+    assert_eq!(
+        result,
+        Err(CoreError::ExpressionStackOverflow { max: 64 }),
+        "loading 65 values onto stack with max_stack=64 must overflow exactly"
     );
 }
 
@@ -2083,9 +2173,12 @@ fn entry_validation_rejects_entry_past_node_count() {
     let mut parts = valid_parts();
     parts.entry = StepIdx::new(99);
     let result = CompiledWorkflow::try_from_parts(parts);
-    assert!(
-        result.is_err(),
-        "entry step past node count must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::EntryOutOfBounds {
+            entry: StepIdx::new(99),
+        }),
+        "entry step past node count must be rejected with exact entry"
     );
 }
 
@@ -2094,9 +2187,11 @@ fn entry_validation_accepts_zero_entry_for_single_node() {
     let mut parts = valid_parts();
     parts.entry = StepIdx::new(0);
     let result = CompiledWorkflow::try_from_parts(parts);
-    assert!(
-        result.is_ok(),
-        "entry 0 for single-node workflow should be accepted"
+    let accepted = result.map(|workflow| (workflow.entry(), workflow.node_count()));
+    assert_eq!(
+        accepted,
+        Ok((StepIdx::new(0), 2)),
+        "entry 0 for valid workflow should be accepted"
     );
 }
 
@@ -2144,9 +2239,12 @@ fn reachability_rejects_unreachable_second_node() {
         ..ResourceContract::DEFAULT
     };
     let result = CompiledWorkflow::try_from_parts(parts);
-    assert!(
-        matches!(result, Err(WorkflowError::UnreachableNode { .. })),
-        "unreachable node must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::UnreachableNode {
+            step: StepIdx::new(2),
+        }),
+        "unreachable node must be rejected with exact step"
     );
 }
 
@@ -2193,8 +2291,9 @@ fn reachability_accepts_linear_chain() {
         max_slots: 2,
         ..ResourceContract::DEFAULT
     };
-    let result = CompiledWorkflow::try_from_parts(parts);
-    assert!(matches!(result, Ok(_)), "linear chain should be reachable");
+    let result = CompiledWorkflow::try_from_parts(parts)
+        .map(|workflow| (workflow.node_count(), workflow.slot_count()));
+    assert_eq!(result, Ok((3, 2)), "linear chain should be reachable");
 }
 
 // =========================================================================
@@ -2246,9 +2345,13 @@ fn forward_edge_rejects_backward_next() {
         ..ResourceContract::DEFAULT
     };
     let result = CompiledWorkflow::try_from_parts(parts);
-    assert!(
-        matches!(result, Err(WorkflowError::BackwardEdge { .. })),
-        "backward next edge must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::BackwardEdge {
+            from: StepIdx::new(2),
+            to: StepIdx::new(1),
+        }),
+        "backward next edge must be rejected with exact edge"
     );
 }
 
@@ -2288,13 +2391,7 @@ fn branch_route_rejects_empty_branches_without_otherwise() {
         step_names: Box::default(),
     };
     let result = CompiledWorkflow::try_from_parts(parts);
-    match result {
-        Err(WorkflowError::EmptyBranchTable) => {} // expected
-        Err(other) => {
-            panic!("expected EmptyBranchTable but got: {other:?}");
-        }
-        Ok(_) => panic!("empty branch table without otherwise must be rejected"),
-    }
+    assert_eq!(result, Err(WorkflowError::EmptyBranchTable));
 }
 
 #[test]
@@ -2332,8 +2429,10 @@ fn branch_route_accepts_empty_branches_with_otherwise() {
         ..ResourceContract::DEFAULT
     };
     let result = CompiledWorkflow::try_from_parts(parts);
-    assert!(
-        result.is_ok(),
+    let accepted = result.map(|workflow| (workflow.node_count(), workflow.slot_count()));
+    assert_eq!(
+        accepted,
+        Ok((2, 1)),
         "empty branches with otherwise should be accepted"
     );
 }
@@ -2347,12 +2446,21 @@ fn expression_rejects_program_exceeding_op_limit() {
     use vb_core::limits::MAX_EXPRESSION_OPS;
     // Build an expression with MAX_EXPRESSION_OPS + 1 ops (all LoadConst)
     let ops: Vec<ExprOp> = (0..=MAX_EXPRESSION_OPS)
-        .map(|i| ExprOp::LoadConst(ConstIdx::new(u16::try_from(i).unwrap_or(0))))
+        .map(|i| {
+            let index = match u16::try_from(i) {
+                Ok(value) => value,
+                Err(_) => u16::MAX,
+            };
+            ExprOp::LoadConst(ConstIdx::new(index))
+        })
         .collect();
     let result = ExprProgram::try_from_ops(ops.into_boxed_slice());
-    assert!(
-        result.is_err(),
-        "expression exceeding max ops must be rejected"
+    assert_eq!(
+        result,
+        Err(CoreError::ResourceLimitExceeded {
+            resource: "expression ops",
+        }),
+        "expression exceeding max ops must be rejected exactly"
     );
 }
 
@@ -2361,25 +2469,18 @@ fn expression_rejects_program_exceeding_op_limit() {
 // =========================================================================
 
 #[test]
-fn finite_f64_display_outputs_reasonable_string() {
-    let val = FiniteF64::new(3.14_f64).map_err(|e| e.to_string()).unwrap();
+fn finite_f64_display_outputs_exact_string() -> CoreResult<()> {
+    let val = FiniteF64::new(3.14_f64)?;
     let displayed = format!("{val}");
-    assert!(!displayed.is_empty(), "FiniteF64 display must not be empty");
-    assert!(
-        displayed.contains('3'),
-        "FiniteF64 display should contain the number"
-    );
+    assert_eq!(displayed, "3.14");
+    Ok(())
 }
 
 #[test]
-fn slot_value_display_i64_outputs_number() {
+fn slot_value_display_i64_outputs_exact_number() {
     let val = SlotValue::I64(42);
     let displayed = format!("{val}");
-    assert!(!displayed.is_empty(), "SlotValue display must not be empty");
-    assert!(
-        displayed.contains("42"),
-        "SlotValue::I64 display should contain the number"
-    );
+    assert_eq!(displayed, "42");
 }
 
 #[test]
@@ -2387,10 +2488,7 @@ fn slot_value_display_with_store_outputs_reasonable_string() {
     let val = SlotValue::Bool(true);
     let store = ValueStore::new();
     let displayed = val.display_with_store(&store);
-    assert!(
-        !displayed.is_empty(),
-        "display_with_store must not return empty string"
-    );
+    assert_eq!(displayed, "true");
 }
 
 #[test]
@@ -2398,14 +2496,7 @@ fn slot_value_display_with_store_returns_non_xyzzy() {
     let val = SlotValue::I64(123);
     let store = ValueStore::new();
     let displayed = val.display_with_store(&store);
-    assert_ne!(
-        displayed, "xyzzy",
-        "display_with_store must return actual content, not a sentinel"
-    );
-    assert_ne!(
-        displayed, "",
-        "display_with_store must not return empty string"
-    );
+    assert_eq!(displayed, "123");
 }
 
 // =========================================================================
@@ -2413,25 +2504,29 @@ fn slot_value_display_with_store_returns_non_xyzzy() {
 // =========================================================================
 
 #[test]
-fn accessor_validation_rejects_accessor_index_out_of_bounds() {
+fn accessor_validation_rejects_accessor_index_out_of_bounds() -> CoreResult<()> {
     let mut parts = valid_parts();
     // Create an expression that references accessor index 0 when no accessors exist
     let expr = ExprProgram::try_from_ops(
         vec![ExprOp::LoadAccessor(AccessorIdx::new(0))].into_boxed_slice(),
-    )
-    .map_err(|e| e.to_string())
-    .unwrap();
+    )?;
     parts.expressions = vec![expr].into_boxed_slice();
     parts.accessors = Box::new([]); // No accessors
     let result = CompiledWorkflow::try_from_parts(parts);
-    assert!(
-        result.is_err(),
-        "expression referencing out-of-bounds accessor must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::Expression(
+            CoreError::InvalidCompiledWorkflow {
+                reason: "accessor index out of bounds",
+            }
+        )),
+        "expression referencing out-of-bounds accessor must be rejected exactly"
     );
+    Ok(())
 }
 
 #[test]
-fn accessor_validation_accepts_valid_accessor_reference() {
+fn accessor_validation_accepts_valid_accessor_reference() -> CoreResult<()> {
     let mut parts = valid_parts();
     let accessor = AccessorProgram {
         root: SlotIdx::new(0),
@@ -2439,9 +2534,7 @@ fn accessor_validation_accepts_valid_accessor_reference() {
     };
     let expr = ExprProgram::try_from_ops(
         vec![ExprOp::LoadAccessor(AccessorIdx::new(0))].into_boxed_slice(),
-    )
-    .map_err(|e| e.to_string())
-    .unwrap();
+    )?;
     parts.expressions = vec![expr].into_boxed_slice();
     parts.accessors = vec![accessor].into_boxed_slice();
     // Change node to EvalExpr
@@ -2456,11 +2549,14 @@ fn accessor_validation_accepts_valid_accessor_reference() {
         },
     }]
     .into_boxed_slice();
-    let result = CompiledWorkflow::try_from_parts(parts);
-    assert!(
-        result.is_ok(),
+    let result = CompiledWorkflow::try_from_parts(parts)
+        .map(|workflow| (workflow.node_count(), workflow.slot_count()));
+    assert_eq!(
+        result,
+        Ok((1, 1)),
         "valid accessor reference should be accepted"
     );
+    Ok(())
 }
 
 // =========================================================================
@@ -2468,7 +2564,7 @@ fn accessor_validation_accepts_valid_accessor_reference() {
 // =========================================================================
 
 #[test]
-fn accessor_root_slot_must_be_in_bounds() {
+fn accessor_root_slot_must_be_in_bounds() -> CoreResult<()> {
     let mut parts = valid_parts();
     let accessor = AccessorProgram {
         root: SlotIdx::new(99), // slot_count is 1, so 99 is out of bounds
@@ -2476,9 +2572,7 @@ fn accessor_root_slot_must_be_in_bounds() {
     };
     let expr = ExprProgram::try_from_ops(
         vec![ExprOp::LoadAccessor(AccessorIdx::new(0))].into_boxed_slice(),
-    )
-    .map_err(|e| e.to_string())
-    .unwrap();
+    )?;
     parts.expressions = vec![expr].into_boxed_slice();
     parts.accessors = vec![accessor].into_boxed_slice();
     parts.nodes = vec![CompiledNode {
@@ -2493,10 +2587,14 @@ fn accessor_root_slot_must_be_in_bounds() {
     }]
     .into_boxed_slice();
     let result = CompiledWorkflow::try_from_parts(parts);
-    assert!(
-        result.is_err(),
-        "accessor with out-of-bounds root slot must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::SlotOutOfBounds {
+            slot: SlotIdx::new(99),
+        }),
+        "accessor with out-of-bounds root slot must be rejected exactly"
     );
+    Ok(())
 }
 
 // =========================================================================
@@ -2555,9 +2653,13 @@ fn kind_edges_rejects_backward_done_in_for_each_start() {
     // body=2 from ForEachStart at index 0 is forward (ok), done=1 is forward (ok)
     // ForEachNext at index 2 has body=2 which is NOT forward (same index)
     // done=1 from ForEachNext at index 2 is backward
-    assert!(
-        result.is_err(),
-        "backward done edge in ForEachNext must be rejected"
+    assert_eq!(
+        result,
+        Err(WorkflowError::BackwardEdge {
+            from: StepIdx::new(2),
+            to: StepIdx::new(1),
+        }),
+        "backward done edge in ForEachNext must be rejected exactly"
     );
 }
 
@@ -2580,28 +2682,5 @@ fn expression_with_only_push_at_depth_zero_is_rejected() {
 #[test]
 fn expression_with_no_ops_is_rejected() {
     let result = ExprProgram::try_from_ops(Box::new([]));
-    // Empty program should be rejected (no result to leave on stack)
-    assert!(
-        result.is_err() || {
-            // If it succeeds, the expression would leave 0 items on the finish check
-            if let Ok(prog) = result {
-                let mut parts = valid_parts();
-                parts.expressions = vec![prog].into_boxed_slice();
-                parts.nodes = vec![CompiledNode {
-                    id: StepIdx::new(0),
-                    output: Some(SlotIdx::new(0)),
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(0),
-                    },
-                }]
-                .into_boxed_slice();
-                CompiledWorkflow::try_from_parts(parts).is_err()
-            } else {
-                true
-            }
-        }
-    );
+    assert_eq!(result, Err(CoreError::ExpressionStackUnderflow));
 }

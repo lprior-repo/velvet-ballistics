@@ -57,37 +57,31 @@ fn adversarial_anchor_on_mapping_rejected() {
 fn adversarial_custom_tag_double_bang_timestamp_rejected() {
     let yaml = "date: !!timestamp 2024-01-01\n";
     let result = validate_yaml_profile(yaml);
-    match result {
-        Err(YamlError::CustomTag { tag }) => {
-            assert!(
-                tag.contains("timestamp"),
-                "expected 'timestamp' in tag, got: {tag}"
-            );
-        }
-        other => fail_assert!("expected CustomTag, got {other:?}"),
-    }
+    assert_eq!(
+        result,
+        Err(YamlError::CustomTag {
+            tag: "tag:yaml.org,2002:timestamp".into()
+        })
+    );
 }
 
 #[test]
 fn adversarial_custom_tag_local_bang_rejected() {
     let yaml = "val: !myapp/special data\n";
     let result = validate_yaml_profile(yaml);
-    match result {
-        Err(YamlError::CustomTag { tag }) => {
-            assert!(tag.contains("myapp"), "expected 'myapp' in tag, got: {tag}");
-        }
-        other => fail_assert!("expected CustomTag, got {other:?}"),
-    }
+    assert_eq!(
+        result,
+        Err(YamlError::CustomTag {
+            tag: "!myapp/special".into()
+        })
+    );
 }
 
 #[test]
 fn adversarial_multi_document_with_explicit_markers_rejected() {
     let yaml = "---\na: 1\n...\n---\nb: 2\n";
     let result = validate_yaml_profile(yaml);
-    assert!(
-        matches!(result, Err(YamlError::MultipleDocuments { count }) if count >= 2),
-        "expected MultipleDocuments, got: {result:?}"
-    );
+    assert_eq!(result, Err(YamlError::MultipleDocuments { count: 2 }));
 }
 
 #[test]
@@ -169,7 +163,7 @@ fn adversarial_yaml_11_boolean_quoted_accepted() {
 fn adversarial_comments_only_rejected_as_empty() {
     let yaml = "# just a comment\n# another comment\n";
     let result = validate_yaml_profile(yaml);
-    assert!(result.is_err(), "expected error for comments-only YAML");
+    assert_eq!(result, Err(YamlError::EmptySource));
 }
 
 #[test]
@@ -183,13 +177,13 @@ fn adversarial_scalar_over_limit_rejected() {
     let long_val = "x".repeat(70_000);
     let yaml = format!("key: \"{long_val}\"\n");
     let result = validate_yaml_profile(&yaml);
-    match result {
-        Err(YamlError::ScalarTooLong { len, max }) => {
-            assert!(len > 65_536, "expected len > 65536, got {len}");
-            assert_eq!(max, 65_536);
-        }
-        other => fail_assert!("expected ScalarTooLong, got {other:?}"),
-    }
+    assert_eq!(
+        result,
+        Err(YamlError::ScalarTooLong {
+            len: 70_000,
+            max: 65_536
+        })
+    );
 }
 
 #[test]
@@ -246,9 +240,9 @@ fn adversarial_depth_limit_one_over_rejected() {
         ..YamlLimits::default()
     };
     let result = validate_yaml_profile_with_limits(&yaml, &limits);
-    assert!(
-        matches!(result, Err(YamlError::NestingTooDeep { depth, max }) if depth > 10 && max == 10),
-        "expected NestingTooDeep, got: {result:?}"
+    assert_eq!(
+        result,
+        Err(YamlError::NestingTooDeep { depth: 11, max: 10 })
     );
 }
 
@@ -256,24 +250,14 @@ fn adversarial_depth_limit_one_over_rejected() {
 fn adversarial_tag_on_sequence_rejected() {
     let yaml = "items: !seq\n  - a\n  - b\n";
     let result = validate_yaml_profile(yaml);
-    match result {
-        Err(YamlError::CustomTag { tag }) => {
-            assert!(tag.contains("seq"), "expected 'seq' in tag, got: {tag}");
-        }
-        other => fail_assert!("expected CustomTag, got {other:?}"),
-    }
+    assert_eq!(result, Err(YamlError::CustomTag { tag: "!seq".into() }));
 }
 
 #[test]
 fn adversarial_tag_on_mapping_rejected() {
     let yaml = "data: !map\n  k: v\n";
     let result = validate_yaml_profile(yaml);
-    match result {
-        Err(YamlError::CustomTag { tag }) => {
-            assert!(tag.contains("map"), "expected 'map' in tag, got: {tag}");
-        }
-        other => fail_assert!("expected CustomTag, got {other:?}"),
-    }
+    assert_eq!(result, Err(YamlError::CustomTag { tag: "!map".into() }));
 }
 
 #[test]
