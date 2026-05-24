@@ -1,5 +1,7 @@
 # Fuzz Campaign — Reverse Prompt / Redo Plan
 
+> **SUPERSEDED by [RED_QUEEN_MASTER_PLAN.md](./RED_QUEEN_MASTER_PLAN.md)** — comprehensive 78-target, 3-engine, multi-tier Red Queen strategy. This document is retained for historical diagnosis of the original broken state.
+
 ## What went wrong with the first 12h run
 
 - Ran `cargo build --bins --release` binaries (plain Rust), not libfuzzer targets
