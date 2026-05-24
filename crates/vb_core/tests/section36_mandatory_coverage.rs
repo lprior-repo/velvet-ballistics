@@ -1179,7 +1179,7 @@ fn parts_with_contract(contract: ResourceContract) -> WorkflowParts {
 }
 
 #[test]
-fn validate_resource_contract_rejects_oversized_max_steps() {
+fn validate_resource_contract_accepts_at_limit_max_steps() {
     use vb_core::limits::MAX_STEPS_PER_WORKFLOW;
     let contract = ResourceContract {
         max_steps: u16::MAX,
@@ -1200,7 +1200,7 @@ fn validate_resource_contract_rejects_oversized_max_steps() {
 }
 
 #[test]
-fn validate_resource_contract_rejects_oversized_max_slots() {
+fn validate_resource_contract_accepts_at_limit_max_slots() {
     let contract = ResourceContract {
         max_slots: u16::MAX,
         ..ResourceContract::DEFAULT
@@ -1216,7 +1216,7 @@ fn validate_resource_contract_rejects_oversized_max_slots() {
 }
 
 #[test]
-fn validate_resource_contract_rejects_oversized_max_constants() {
+fn validate_resource_contract_accepts_at_limit_max_constants() {
     use vb_core::limits::MAX_CONSTANTS;
     let contract = ResourceContract {
         max_constants: u16::MAX,

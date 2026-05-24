@@ -16,7 +16,7 @@ macro_rules! fail_assert {
 #[test]
 fn validate_rejects_empty_source() {
     let result = validate_yaml_profile("");
-    assert!(matches!(result, Err(YamlError::EmptySource)));
+    assert_eq!(result, Err(YamlError::EmptySource));
 }
 
 #[test]
@@ -33,14 +33,16 @@ fn parse_events_returns_typed_events() {
         fail_assert!("parse events failed");
         return;
     };
-    assert!(!events.is_empty());
+    assert_eq!(events.len(), 8);
+    assert_eq!(events[3].as_scalar(), Some("a"));
+    assert_eq!(events[4].as_scalar(), Some("1"));
 }
 
 #[test]
 fn reject_duplicate_keys_detects_dups() {
     let keys = vec!["foo", "bar", "foo"];
     let result = reject_duplicate_keys(&keys);
-    assert!(matches!(result, Err(YamlError::DuplicateKey { .. })));
+    assert_eq!(result, Err(YamlError::DuplicateKey { key: "foo".into() }));
 }
 
 #[test]
@@ -54,7 +56,7 @@ fn reject_duplicate_keys_allows_unique() {
 fn reject_yaml_1_1_ambiguous_rejects_yes() {
     let scalars = vec!["yes"];
     let result = reject_yaml_1_1_ambiguous_scalars(&scalars);
-    assert!(matches!(result, Err(YamlError::AmbiguousScalar { .. })));
+    assert_eq!(result, Err(YamlError::AmbiguousScalar { scalar: "yes".into() }));
 }
 
 #[test]
@@ -543,7 +545,11 @@ fn parse_yaml_events_produces_events_for_valid_yaml() {
     let yaml = "a: 1\n";
     let result = parse_yaml_events(yaml);
     match result {
-        Ok(events) => assert!(!events.is_empty()),
+        Ok(events) => {
+            assert_eq!(events.len(), 8);
+            assert_eq!(events[3].as_scalar(), Some("a"));
+            assert_eq!(events[4].as_scalar(), Some("1"));
+        }
         Err(e) => fail_assert!("expected Ok, got Err: {e}"),
     }
 }
@@ -551,7 +557,7 @@ fn parse_yaml_events_produces_events_for_valid_yaml() {
 #[test]
 fn parse_yaml_events_returns_error_for_invalid_yaml() {
     let result = parse_yaml_events("");
-    assert!(matches!(result, Err(YamlError::EmptySource)));
+    assert_eq!(result, Err(YamlError::EmptySource));
 }
 
 #[test]
@@ -1126,15 +1132,9 @@ fn build_source_map_returns_non_empty_for_valid_yaml() {
             return;
         }
     };
-    assert!(
-        !map.is_empty(),
-        "source map should not be empty for valid YAML"
-    );
-    assert!(
-        map.len() >= 2,
-        "expected >=2 nodes for key: value, got {}",
-        map.len()
-    );
+    assert_eq!(map.len(), 3);
+    assert_eq!(yaml.get(map.span_for_node(1).map(|span| span.start_offset).unwrap_or(0)..map.span_for_node(1).map(|span| span.end_offset).unwrap_or(0)), Some("key"));
+    assert_eq!(yaml.get(map.span_for_node(2).map(|span| span.start_offset).unwrap_or(0)..map.span_for_node(2).map(|span| span.end_offset).unwrap_or(0)), Some("value"));
 }
 
 #[test]

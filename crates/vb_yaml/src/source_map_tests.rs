@@ -37,7 +37,9 @@ fn empty_source_map() {
 fn build_from_simple_yaml() {
     let yaml = "key: value\n";
     let map = build_ok!(yaml);
-    assert!(!map.is_empty());
+    assert_eq!(map.len(), 3);
+    assert_eq!(span_text(yaml, map.span_for_node(1).unwrap_or(SourceSpan::new(0, 0, 0, 0, 0, 0))), "key");
+    assert_eq!(span_text(yaml, map.span_for_node(2).unwrap_or(SourceSpan::new(0, 0, 0, 0, 0, 0))), "value");
 }
 
 #[test]
@@ -45,7 +47,7 @@ fn node_indices_are_sequential() {
     let yaml = "a: 1\nb: 2\n";
     let map = build_ok!(yaml);
     let count = map.len();
-    assert!(count >= 2);
+    assert_eq!(count, 5);
 
     let mut found = Vec::new();
     for (idx, _span) in map.iter() {
@@ -82,8 +84,7 @@ fn source_map_len_increases_with_entries() {
     let yaml = "a: 1\nb: 2\n";
     let map = build_ok!(yaml);
     let count = map.len();
-    assert!(count >= 2, "expected at least 2 entries, got {count}");
-    assert!(!map.is_empty());
+    assert_eq!(count, 5);
 }
 
 #[test]
@@ -91,13 +92,13 @@ fn source_map_iter_yields_inserted_entries() {
     let yaml = "a: 1\n";
     let map = build_ok!(yaml);
     let entries: Vec<(u32, SourceSpan)> = map.iter().collect();
-    assert!(!entries.is_empty());
+    assert_eq!(entries.len(), 3);
     let Some(first) = entries.first() else {
         fail_assert!("missing first source-map entry");
         return;
     };
     assert_eq!(first.0, 0);
-    assert!(first.1.start_line > 0);
+    assert_eq!(first.1, SourceSpan::new(0, 0, 1, 0, 1, 1));
 }
 
 #[test]
@@ -109,7 +110,9 @@ fn build_source_map_produces_correct_mappings() {
         fail_assert!("expected Some span for node 0");
         return;
     };
-    assert!(s.start_line > 0);
+    assert_eq!(s, SourceSpan::new(0, 0, 1, 0, 1, 1));
+    assert_eq!(span_text(yaml, map.span_for_node(1).unwrap_or(SourceSpan::new(0, 0, 0, 0, 0, 0))), "key");
+    assert_eq!(span_text(yaml, map.span_for_node(2).unwrap_or(SourceSpan::new(0, 0, 0, 0, 0, 0))), "value");
 }
 
 #[test]
@@ -121,9 +124,9 @@ fn source_map_span_for_node_returns_correct_range() {
         fail_assert!("expected Some span");
         return;
     };
-    assert_eq!(s.start_line, s.end_line);
-    assert!(s.end_col >= s.start_col);
-    assert!(s.end_offset >= s.start_offset);
+    assert_eq!(s, SourceSpan::new(0, 0, 1, 0, 1, 1));
+    assert_eq!(span_text(yaml, map.span_for_node(1).unwrap_or(SourceSpan::new(0, 0, 0, 0, 0, 0))), "a");
+    assert_eq!(span_text(yaml, map.span_for_node(2).unwrap_or(SourceSpan::new(0, 0, 0, 0, 0, 0))), "1");
 }
 
 fn span_text<'a>(yaml: &'a str, span: SourceSpan) -> &'a str {
@@ -164,33 +167,33 @@ fn source_map_preserves_order_from_yaml() {
     let yaml = "first: a\nsecond: b\nthird: c\n";
     let map = build_ok!(yaml);
     let entries: Vec<(u32, SourceSpan)> = map.iter().collect();
-    assert!(
-        entries.len() >= 3,
-        "expected at least 3 entries, got {}",
-        entries.len()
-    );
+    assert_eq!(entries.len(), 7);
+    assert_eq!(span_text(yaml, entries[1].1), "first");
+    assert_eq!(span_text(yaml, entries[2].1), "a");
+    assert_eq!(span_text(yaml, entries[3].1), "second");
+    assert_eq!(span_text(yaml, entries[4].1), "b");
+    assert_eq!(span_text(yaml, entries[5].1), "third");
+    assert_eq!(span_text(yaml, entries[6].1), "c");
 }
 
 #[test]
 fn build_source_map_for_nested_yaml() {
     let yaml = "a:\n  b: 1\n";
     let map = build_ok!(yaml);
-    assert!(
-        map.len() >= 3,
-        "expected at least 3 entries, got {}",
-        map.len()
-    );
+    assert_eq!(map.len(), 5);
+    assert_eq!(span_text(yaml, map.span_for_node(1).unwrap_or(SourceSpan::new(0, 0, 0, 0, 0, 0))), "a");
+    assert_eq!(span_text(yaml, map.span_for_node(3).unwrap_or(SourceSpan::new(0, 0, 0, 0, 0, 0))), "b");
+    assert_eq!(span_text(yaml, map.span_for_node(4).unwrap_or(SourceSpan::new(0, 0, 0, 0, 0, 0))), "1");
 }
 
 #[test]
 fn build_source_map_for_sequence_yaml() {
     let yaml = "items:\n  - a\n  - b\n";
     let map = build_ok!(yaml);
-    assert!(
-        map.len() >= 2,
-        "expected at least 2 entries, got {}",
-        map.len()
-    );
+    assert_eq!(map.len(), 5);
+    assert_eq!(span_text(yaml, map.span_for_node(1).unwrap_or(SourceSpan::new(0, 0, 0, 0, 0, 0))), "items");
+    assert_eq!(span_text(yaml, map.span_for_node(3).unwrap_or(SourceSpan::new(0, 0, 0, 0, 0, 0))), "a");
+    assert_eq!(span_text(yaml, map.span_for_node(4).unwrap_or(SourceSpan::new(0, 0, 0, 0, 0, 0))), "b");
 }
 
 // -----------------------------------------------------------------------
@@ -249,10 +252,10 @@ fn semantic_source_map_tracks_multi_step_paths_distinctly() {
     let second_id = map.span_for_path("$.steps[1].id");
     let result = map.span_for_path("$.steps[1].finish.result");
 
-    assert!(matches!(trigger, Some(span) if span_text(yaml, span) == "event"));
-    assert!(matches!(first_id, Some(span) if span_text(yaml, span) == "first"));
-    assert!(matches!(second_id, Some(span) if span_text(yaml, span) == "second"));
-    assert!(matches!(result, Some(span) if span_text(yaml, span) == "result"));
+    assert_eq!(trigger.map(|span| span_text(yaml, span)), Some("event"));
+    assert_eq!(first_id.map(|span| span_text(yaml, span)), Some("first"));
+    assert_eq!(second_id.map(|span| span_text(yaml, span)), Some("second"));
+    assert_eq!(result.map(|span| span_text(yaml, span)), Some("result"));
     assert_ne!(first_id, second_id);
 }
 
@@ -270,9 +273,9 @@ fn semantic_source_map_repeated_fields_use_event_positions_not_text_find() {
     let second_id = map.span_for_path("$.steps[1].id");
     let result = map.span_for_path("$.steps[1].finish.result");
 
-    assert!(matches!(second_id, Some(span) if span_text(yaml, span) == "repeated_later"));
-    assert!(matches!(result, Some(span) if span_text(yaml, span) == "repeated"));
-    assert!(matches!(result, Some(span) if span.end_offset < yaml.len()));
+    assert_eq!(second_id.map(|span| span_text(yaml, span)), Some("repeated_later"));
+    assert_eq!(result.map(|span| span_text(yaml, span)), Some("repeated"));
+    assert_eq!(result.map(|span| span.end_offset), yaml.find("\nnext_key"));
 }
 
 #[test]
@@ -300,11 +303,9 @@ fn adversarial_source_map_deeply_nested_yaml_tracked() {
     let result = build_source_map(yaml);
     match result {
         Ok(map) => {
-            assert!(
-                map.len() >= 5,
-                "expected at least 5 nodes, got {}",
-                map.len()
-            );
+            assert_eq!(map.len(), 11);
+            assert_eq!(span_text(yaml, map.span_for_node(9).unwrap_or(SourceSpan::new(0, 0, 0, 0, 0, 0))), "e");
+            assert_eq!(span_text(yaml, map.span_for_node(10).unwrap_or(SourceSpan::new(0, 0, 0, 0, 0, 0))), "1");
         }
         Err(e) => fail_assert!("expected Ok, got Err: {e}"),
     }
@@ -316,7 +317,9 @@ fn adversarial_source_map_unicode_keys_tracked() {
     let result = build_source_map(yaml);
     match result {
         Ok(map) => {
-            assert!(map.len() >= 2, "expected at least 2 nodes");
+            assert_eq!(map.len(), 5);
+            assert_eq!(span_text(yaml, map.span_for_node(1).unwrap_or(SourceSpan::new(0, 0, 0, 0, 0, 0))), "écla");
+            assert_eq!(span_text(yaml, map.span_for_node(3).unwrap_or(SourceSpan::new(0, 0, 0, 0, 0, 0))), "\nüb");
         }
         Err(e) => fail_assert!("expected Ok, got Err: {e}"),
     }
@@ -331,11 +334,9 @@ fn adversarial_source_map_large_input_tracked() {
     let result = build_source_map(&yaml);
     match result {
         Ok(map) => {
-            assert!(
-                map.len() >= 100,
-                "expected at least 100 nodes, got {}",
-                map.len()
-            );
+            assert_eq!(map.len(), 201);
+            assert_eq!(span_text(&yaml, map.span_for_node(1).unwrap_or(SourceSpan::new(0, 0, 0, 0, 0, 0))), "key0");
+            assert_eq!(span_text(&yaml, map.span_for_node(200).unwrap_or(SourceSpan::new(0, 0, 0, 0, 0, 0))), "val99");
         }
         Err(e) => fail_assert!("expected Ok, got Err: {e}"),
     }
