@@ -37,11 +37,14 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
         RuntimeError::AdmissionArtifactDigestMismatch { .. } => {
             Some("admission rejected: artifact digest mismatch")
         }
-        RuntimeError::AdmissionCapabilityDenied { .. } => {
-            Some("admission rejected: capability denied")
+        RuntimeError::AdmissionArtifactStale { .. } => {
+            Some("admission rejected: artifact certificate is stale")
         }
         RuntimeError::AdmissionDigestMismatch { .. } => {
             Some("admission rejected: artifact digest mismatch")
+        }
+        RuntimeError::AdmissionCapabilityDenied { .. } => {
+            Some("admission rejected: capability denied")
         }
         RuntimeError::AdmissionHeaderPersistenceFailed { .. } => {
             Some("admission durability failed: header persistence failed")
@@ -50,11 +53,7 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
         RuntimeError::SecretResultNotAllowed => {
             Some("secret-tainted answer payload is not allowed by resource contract")
         }
-        RuntimeError::IpcPayloadSizeExceeded { .. } => {
-            Some("IPC payload size exceeds maximum allowed by resource contract")
-        }
         RuntimeError::EngineDriveFailed { .. } => Some("deterministic engine drive failed"),
-        RuntimeError::ShardNotFound { .. } => Some("shard not found"),
         RuntimeError::MigrateSelf => Some("migration target is the source shard"),
         _ => None,
     }
@@ -80,6 +79,9 @@ fn write_runtime_error_dynamic(
         }
         RuntimeError::AdmissionHeaderPersistenceFailed { source } => {
             write!(f, "admission header persistence failed: {source}")
+        }
+        RuntimeError::AdmissionArtifactStale { digest } => {
+            write!(f, "admission rejected: artifact certificate is stale: {digest:?}")
         }
         RuntimeError::CommandQueueCapacityExceeded { capacity, max } => {
             write!(f, "command queue capacity {capacity} exceeds maximum {max}")

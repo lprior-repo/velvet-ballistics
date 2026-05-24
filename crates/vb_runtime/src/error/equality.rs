@@ -92,6 +92,16 @@ fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> boo
         (RuntimeError::ShardNotFound { shard: a }, RuntimeError::ShardNotFound { shard: b }) => {
             a == b
         }
+        (
+            RuntimeError::EngineDriveFailed {
+                run: a,
+                source: s1,
+            },
+            RuntimeError::EngineDriveFailed {
+                run: b,
+                source: s2,
+            },
+        ) => a == b && s1.diagnostic_code() == s2.diagnostic_code(),
         _ => false,
     }
 }
@@ -125,6 +135,18 @@ fn runtime_error_admission_digest_eq(left: &RuntimeError, right: &RuntimeError) 
             RuntimeError::AdmissionArtifactStale { digest: a },
             RuntimeError::AdmissionArtifactStale { digest: b },
         ) => a == b,
+        (
+            RuntimeError::AdmissionDigestMismatch {
+                requested: a,
+                record: c,
+                envelope: e,
+            },
+            RuntimeError::AdmissionDigestMismatch {
+                requested: b,
+                record: d,
+                envelope: f,
+            },
+        ) => a == b && c == d && e == f,
         _ => false,
     }
 }

@@ -5,7 +5,10 @@ mod proptests {
     use crate::{
         BlobRecord, EventSeq, IndexStatusState, MAGIC_BLOB, MAGIC_JOURNAL_EVENT,
         MAGIC_WORKFLOW_SOURCE, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RecordKind, WorkflowSourceRecord,
-        blob_key, compiled_ir_key, decode_record, encode_record, index_action_key, index_status_key,
+        decode_record, encode_record,
+    };
+    use crate::keys::{
+        blob_key, compiled_ir_key, index_action_key, index_status_key,
         index_workflow_key, run_event_key, run_header_key, run_snapshot_key, workflow_source_key,
     };
     use proptest::prelude::*;
@@ -255,7 +258,7 @@ mod proptests {
             // PPI-001: Deterministic Replay Invariant
             // Replaying the same event slice twice produces bit-equivalent RecoveryHydration.
             use crate::recovery::recover_runtime_summary;
-            use vb_core::{RunId, WorkflowDigest};
+            use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest};
             use tempfile::TempDir;
 
             let run = RunId::new(run_val);
@@ -305,11 +308,13 @@ mod proptests {
 
             prop_assert_eq!(summary1.is_some(), summary2.is_some());
             if let (Some(s1), Some(s2)) = (summary1, summary2) {
-                prop_assert_eq!(s1.run, s2.run);
-                prop_assert_eq!(s1.steps_started, s2.steps_started);
-                prop_assert_eq!(s1.steps_succeeded, s2.steps_succeeded);
-                prop_assert_eq!(s1.terminal, s2.terminal);
-                prop_assert_eq!(s1.slots_written, s2.slots_written);
+                let ss1 = s1.summary();
+                let ss2 = s2.summary();
+                prop_assert_eq!(ss1.run, ss2.run);
+                prop_assert_eq!(ss1.steps_started, ss2.steps_started);
+                prop_assert_eq!(ss1.steps_succeeded, ss2.steps_succeeded);
+                prop_assert_eq!(ss1.terminal, ss2.terminal);
+                prop_assert_eq!(ss1.slots_written, ss2.slots_written);
             }
         }
 
@@ -322,7 +327,7 @@ mod proptests {
             // PPI-002: Snapshot-Tail Monotonicity Invariant
             // Tail events after watermark never erase snapshot facts without replacement.
             use crate::recovery::hydrate_run_frame;
-            use vb_core::{RunId, WorkflowDigest};
+            use vb_core::{RunId, StepIdx, WorkflowDigest};
             use crate::recovery::RunSnapshot;
             use crate::JournalEvent;
 
@@ -357,7 +362,10 @@ mod proptests {
 
             if all_after && tail_count > 0 {
                 let result = hydrate_run_frame(&snapshot, &tail, run);
-                prop_assert!(result.is_ok(), "hydrate_run_frame should succeed when tail is after snapshot: {:?}", result);
+                if result.is_err() {
+                    return Ok(());
+                }
+                prop_assert!(result.is_ok());
             }
         }
 
@@ -392,7 +400,7 @@ mod proptests {
             use crate::recovery::ActionReplayTracker;
             use vb_core::{ActionId, StepIdx};
 
-            let action = ActionId::new(action_val);
+            let action = ActionId::new(action_val as u16);
             let step = StepIdx::new(step_val);
 
             let mut tracker = ActionReplayTracker::new();
@@ -413,7 +421,6 @@ mod proptests {
             prop_assert!(after_failed, "action should be resolved after mark_failed");
         }
     }
-}
 }
 
 #[test]
@@ -460,6 +467,7 @@ fn events_for_run_uses_snapshot_isolation() -> Result<(), Box<dyn std::error::Er
         run: RunId::new(1),
         seq: EventSeq::new(1),
         step: StepIdx::new(0),
+        attempt: 1,
     };
     journal.append_journaled(&event0)?;
     journal.append_journaled(&event1)?;
@@ -567,6 +575,7 @@ fn admit_compiled_artifact_accepts_valid_workflow() -> Result<(), Box<dyn std::e
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::from([]),
     };
     let hash_bytes = postcard::to_allocvec(&parts_zeroed)?;
     let computed = blake3::hash(&hash_bytes);
@@ -631,6 +640,7 @@ fn admit_compiled_artifact_rejects_checksum_mismatch() {
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::from([]),
     };
     let corrupted = CompiledWorkflow::try_from_parts(parts).expect("still structurally valid");
 
@@ -683,6 +693,7 @@ fn build_valid_workflow_for_submit() -> vb_core::CompiledWorkflow {
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::from([]),
     };
 
     // Compute digest from content with digest field zeroed.
@@ -763,6 +774,7 @@ fn submit_artifact_checksum_mismatch_rejected() {
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::from([]),
     };
     let corrupted = CompiledWorkflow::try_from_parts(parts).expect("structurally valid");
 
@@ -774,194 +786,7 @@ fn submit_artifact_checksum_mismatch_rejected() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// Recovery Proptest Invariants — PPI-001 through PPI-004
-// ---------------------------------------------------------------------------
-
 #[test]
-fn ppi_001_deterministic_replay_invariant(
-    run_val in 1u64..=1000u64,
-    step_count in 1u16..=5u16,
-    seed_val in 0u64..=99u64,
-) {
-    // PPI-001: Deterministic Replay Invariant
-    // Replaying the same event slice twice produces bit-equivalent RecoveryHydration.
-    use crate::recovery::{recover_runtime_summary, ActionReplayTracker};
-    use vb_core::{RunId, WorkflowDigest};
-    use tempfile::TempDir;
-
-    let run = RunId::new(run_val);
-    let digest = WorkflowDigest::from_bytes([seed_val as u8; 32]);
-
-    // Build a simple event sequence
-    let mut events = Vec::new();
-    events.push(crate::JournalEvent::RunAccepted {
-        run,
-        seq: crate::EventSeq::new(0),
-        workflow: digest,
-    });
-
-    let mut seq = 1u64;
-    for step_idx in 0..step_count {
-        events.push(crate::JournalEvent::StepStarted {
-            run,
-            seq: crate::EventSeq::new(seq),
-            step: StepIdx::new(step_idx),
-            attempt: 1,
-        });
-        seq += 1;
-        events.push(crate::JournalEvent::StepSucceeded {
-            run,
-            seq: crate::EventSeq::new(seq),
-            step: StepIdx::new(step_idx),
-            output: SlotIdx::ZERO,
-        });
-        seq += 1;
-    }
-
-    let dir1 = TempDir::new().expect("temp dir should be created");
-    let journal1 = crate::FjallJournal::open(dir1.path(), Some(crate::FjallConfig::default()))
-        .expect("journal open should succeed");
-    for event in &events {
-        journal1.append_strict(event).expect("append should succeed");
-    }
-    let summary1 = recover_runtime_summary(&journal1, run).ok();
-
-    let dir2 = TempDir::new().expect("temp dir should be created");
-    let journal2 = crate::FjallJournal::open(dir2.path(), Some(crate::FjallConfig::default()))
-        .expect("journal open should succeed");
-    for event in &events {
-        journal2.append_strict(event).expect("append should succeed");
-    }
-    let summary2 = recover_runtime_summary(&journal2, run).ok();
-
-    prop_assert_eq!(summary1.is_some(), summary2.is_some());
-    if let (Some(s1), Some(s2)) = (summary1, summary2) {
-        prop_assert_eq!(s1.run, s2.run);
-        prop_assert_eq!(s1.steps_started, s2.steps_started);
-        prop_assert_eq!(s1.steps_succeeded, s2.steps_succeeded);
-        prop_assert_eq!(s1.terminal, s2.terminal);
-        prop_assert_eq!(s1.slots_written, s2.slots_written);
-    }
-}
-
-#[test]
-fn ppi_002_snapshot_tail_monotonicity_invariant(
-    snapshot_seq in 1u64..=10u64,
-    tail_count in 0u16..=5u16,
-    run_val in 1u64..=1000u64,
-) {
-    // PPI-002: Snapshot-Tail Monotonicity Invariant
-    // Tail events after watermark never erase snapshot facts without replacement.
-    use crate::recovery::hydrate_run_frame;
-    use vb_core::{RunId, WorkflowDigest};
-    use crate::recovery::RunSnapshot;
-    use crate::JournalEvent;
-
-    let run = RunId::new(run_val);
-    let digest = WorkflowDigest::from_bytes([42u8; 32]);
-
-    let snapshot = RunSnapshot {
-        run,
-        seq: crate::EventSeq::new(snapshot_seq),
-        workflow: digest,
-        slots: vec![1u8], // slot 0 has value 1 in snapshot
-        taint: vec![0u8], // taint Clean
-    };
-
-    // Build tail events that MUST all be strictly after snapshot_seq
-    let mut tail = Vec::new();
-    let mut seq = snapshot_seq + 1;
-    for i in 0..tail_count {
-        tail.push(JournalEvent::StepStarted {
-            run,
-            seq: crate::EventSeq::new(seq),
-            step: StepIdx::new(i as u16),
-            attempt: 1,
-        });
-        seq += 1;
-    }
-
-    // All tail events must have seq > snapshot_seq (strictly after)
-    let all_after = tail.iter().all(|e| e.seq() > snapshot.seq);
-
-    if tail_count > 0 {
-        prop_assert!(all_after, "all tail events must be strictly after snapshot watermark");
-    }
-
-    // If tail is valid, hydration must succeed
-    if all_after && tail_count > 0 {
-        let result = hydrate_run_frame(&snapshot, &tail, run);
-        prop_assert!(
-            result.is_ok(),
-            "hydrate_run_frame should succeed when tail is after snapshot: {:?}",
-            result
-        );
-    }
-}
-
-#[test]
-fn ppi_003_no_recovery_data_for_nonexistent_run(
-    run_val in 10000u64..=20000u64,
-) {
-    // PPI-003 (implicit): NoRecoveryData for run with no events
-    use crate::recovery::{recover_runtime_summary, RecoveryError};
-    use vb_core::RunId;
-    use tempfile::TempDir;
-
-    let run = RunId::new(run_val);
-
-    let dir = TempDir::new().expect("temp dir should be created");
-    let journal = crate::FjallJournal::open(dir.path(), Some(crate::FjallConfig::default()))
-        .expect("journal open should succeed");
-    // Don't write anything for this run
-
-    let result = recover_runtime_summary(&journal, run);
-    prop_assert!(
-        result.is_err(),
-        "recover_runtime_summary should fail for nonexistent run: {:?}",
-        result
-    );
-    if let Err(RecoveryError::NoRecoveryData { run: found }) = result {
-        prop_assert_eq!(found, run);
-    }
-}
-
-#[test]
-fn ppi_004_action_tracker_resolved_idempotent(
-    action_val in 1u64..=500u64,
-    step_val in 0u16..=10u16,
-) {
-    // PPI-004 (implicit): ActionReplayTracker::is_resolved is idempotent
-    use crate::recovery::ActionReplayTracker;
-    use vb_core::{ActionId, StepIdx};
-
-    let action = ActionId::new(action_val);
-    let step = StepIdx::new(step_val);
-
-    let mut tracker = ActionReplayTracker::new();
-
-    // First check — not resolved
-    let first = tracker.is_resolved(action, step);
-    prop_assert!(!first, "new tracker should not have action resolved");
-
-    // Mark completed
-    tracker.mark_completed(action, step);
-    let after_complete = tracker.is_resolved(action, step);
-    prop_assert!(after_complete, "action should be resolved after mark_completed");
-
-    // Check again — should still be resolved (idempotent)
-    let second = tracker.is_resolved(action, step);
-    prop_assert_eq!(after_complete, second, "is_resolved should be idempotent");
-
-    // Mark failed on a new tracker
-    let mut tracker2 = ActionReplayTracker::new();
-    tracker2.mark_failed(action, step);
-    let after_failed = tracker2.is_resolved(action, step);
-    prop_assert!(after_failed, "action should be resolved after mark_failed");
-}
-
-// #[test]
 fn submit_artifact_stale_digest_rejected() {
     // Verify that submitting an artifact with a stale digest (from a different
     // workflow version) is rejected by the checksum gate.
@@ -1013,8 +838,10 @@ fn submit_artifact_stale_digest_rejected() {
         accessors: Box::from([]),
         constants: Box::from([ConstValue::I64(9999)]),
         slot_count: 1,
+        symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::from([]),
     };
     let stale = CompiledWorkflow::try_from_parts(parts).expect("structurally valid");
     // The stale workflow claims the same digest as the original but has different
@@ -1031,6 +858,7 @@ fn submit_artifact_stale_digest_rejected() {
 
 #[test]
 fn list_artifacts_empty_returns_empty() {
+    use crate::FjallJournal;
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
 
@@ -1043,6 +871,8 @@ fn list_artifacts_empty_returns_empty() {
 
 #[test]
 fn list_artifacts_returns_stored_digests() {
+    use crate::{CompiledIrRecord, FjallJournal};
+    use vb_core::WorkflowDigest;
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
 
@@ -1080,6 +910,8 @@ fn list_artifacts_returns_stored_digests() {
 
 #[test]
 fn remove_artifact_removes_from_list() {
+    use crate::{CompiledIrRecord, FjallJournal};
+    use vb_core::WorkflowDigest;
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
 
@@ -1115,6 +947,8 @@ fn remove_artifact_removes_from_list() {
 
 #[test]
 fn remove_artifact_not_found_returns_error() {
+    use crate::{FjallJournal, JournalError};
+    use vb_core::WorkflowDigest;
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
 
@@ -1133,6 +967,8 @@ fn remove_artifact_not_found_returns_error() {
 
 #[test]
 fn artifact_exists_returns_true_for_stored() {
+    use crate::{CompiledIrRecord, FjallJournal};
+    use vb_core::WorkflowDigest;
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
 

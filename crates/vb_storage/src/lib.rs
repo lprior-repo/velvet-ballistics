@@ -68,6 +68,18 @@ pub mod process_lock;
 #[path = "po010_proptests.rs"]
 mod proptests;
 
+#[cfg(test)]
+#[path = "proptest_storage.rs"]
+mod proptest_storage;
+
+#[cfg(test)]
+#[path = "proptests.rs"]
+mod proptest_integration;
+
+#[cfg(test)]
+#[path = "error_tests.rs"]
+mod error_tests;
+
 pub mod queue;
 pub mod records;
 pub mod recovery;
