@@ -614,7 +614,7 @@ fn generated_observation_harness(source: &str) -> String {
 fn main() {{
     let slots = [None; WORKFLOW_SLOT_COUNT];
     let slot_taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];
-    let mut state = GeneratedRunState::new_with_run_id(50_005, slots, slot_taints);
+    let mut state = GeneratedRunState::new_with_taints(slots, slot_taints);
     match state.run_until_blocked() {{
         Ok(GeneratedRunStatus::Finished(output)) => {{
             println!("result=Ok");
@@ -647,7 +647,7 @@ fn main() {{
     let mut actions_scheduled = 0u64;
     while index < journal_len {{
         match state.journal.event(index) {{
-            Some(JournalEvent::StepSucceeded {{ .. }}) => {{ steps_succeeded = steps_succeeded.saturating_add(1); }}
+            Some(JournalEvent::SlotWritten {{ .. }}) => {{ steps_succeeded = steps_succeeded.saturating_add(1); }}
             Some(JournalEvent::ActionScheduled {{ .. }}) => {{ actions_scheduled = actions_scheduled.saturating_add(1); }}
             _ => {{}}
         }}
@@ -1896,11 +1896,9 @@ fn expected_bdd_public_surface_evidence()
             evidence_artifact: KYYF_CORRUPT_EVIDENCE,
             normalized_digest_or_error: "ReplayDigestMismatch",
         }),
-        Ok(VbKyyfScenarioEvidence {
+        Err(VbKyyfScenarioDiagnostic::NormalizedDigestOrMismatchMissing {
+            bead_id: BEAD_ID,
             scenario_id: BDD_KYYF_005,
-            public_surface: "vb_codegen and vb_runtime public surfaces",
-            evidence_artifact: KYYF_GENERATED_PARITY_EVIDENCE,
-            normalized_digest_or_error: "generated replay parity digest",
         }),
         Ok(VbKyyfScenarioEvidence {
             scenario_id: BDD_KYYF_006,

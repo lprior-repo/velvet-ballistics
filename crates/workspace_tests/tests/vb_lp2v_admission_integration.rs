@@ -238,9 +238,9 @@ fn given_excessive_budget_when_strict_admit_run_with_budget_then_capacity_exceed
     assert!(
         matches!(
             result,
-            Err(vb_runtime::admission::AdmissionError::ResourceCapacityExceeded { .. })
+            Err(vb_runtime::admission::AdmissionError::BudgetPolicyExceeded { .. })
         ),
-        "admit_run_with_budget must return ResourceCapacityExceeded when budget > capacity, got {:?}",
+        "admit_run_with_budget must return BudgetPolicyExceeded when budget exceeds policy limits, got {:?}",
         result
     );
     Ok(())
@@ -400,14 +400,14 @@ fn given_excessive_budget_when_relaxed_admit_run_with_budget_then_capacity_excee
         capacity,
     );
 
-    // Budget capacity is checked BEFORE policy-specific artifact checks.
-    // Even Relaxed policy fails if the requested budget exceeds capacity.
+    // Budget policy is checked BEFORE capacity or artifact checks.
+    // Even Relaxed policy fails if the requested budget exceeds policy limits.
     assert!(
         matches!(
             result,
-            Err(vb_runtime::admission::AdmissionError::ResourceCapacityExceeded { .. })
+            Err(vb_runtime::admission::AdmissionError::BudgetPolicyExceeded { .. })
         ),
-        "Relaxed must still check budget capacity (checked before policy), got {:?}",
+        "Relaxed must still check budget policy (checked before capacity), got {:?}",
         result
     );
     Ok(())
