@@ -207,9 +207,12 @@ fn blackhat_lx_004_source_length_boundary_accepted() -> crate::ExprResult<()> {
 fn blackhat_lx_005_source_length_one_over_rejected() -> crate::ExprResult<()> {
     let source = "1".repeat(crate::lexer::MAX_SOURCE_BYTES.saturating_add(1));
     let r = lex_expr(&source);
-    assert!(
-        matches!(r, Err(ExprError::ExpressionTooLong { .. })),
-        "BH-LX-005: source one byte over limit should be rejected"
+    assert_eq!(
+        r,
+        Err(ExprError::ExpressionTooLong {
+            len: crate::lexer::MAX_SOURCE_BYTES.saturating_add(1),
+            max: crate::lexer::MAX_SOURCE_BYTES,
+        })
     );
     Ok(())
 }

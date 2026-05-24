@@ -59,13 +59,25 @@ fn parses_helper_call() -> crate::ExprResult<()> {
 #[test]
 fn rejects_unknown_helper() {
     let result = parse("unknown_func(1)");
-    assert!(matches!(result, Err(ExprError::UnknownHelper { .. })));
+    assert_eq!(
+        result,
+        Err(ExprError::UnknownHelper {
+            helper: "unknown_func".into()
+        })
+    );
 }
 
 #[test]
 fn rejects_wrong_arity() {
     let result = parse("contains(1)");
-    assert!(matches!(result, Err(ExprError::HelperArityMismatch { .. })));
+    assert_eq!(
+        result,
+        Err(ExprError::HelperArityMismatch {
+            helper: "contains".into(),
+            expected: 2,
+            actual: 1,
+        })
+    );
 }
 
 #[test]
@@ -74,7 +86,12 @@ fn rejects_parse_depth() {
     let close = ")".repeat(usize::from(crate::parser::MAX_DEPTH).saturating_add(2));
     let source = format!("{open}true{close}");
     let result = parse(&source);
-    assert!(matches!(result, Err(ExprError::ParseDepthExceeded { .. })));
+    assert_eq!(
+        result,
+        Err(ExprError::ParseDepthExceeded {
+            max: usize::from(crate::parser::MAX_DEPTH)
+        })
+    );
 }
 
 // --- BDD parser tests ---
@@ -612,53 +629,91 @@ fn parse_expr_helper_call_with_expr_args() -> crate::ExprResult<()> {
 #[test]
 fn parse_expr_rejects_bare_identifier_without_parens() {
     let result = parse("foobar");
-    assert!(
-        matches!(result, Err(ExprError::UnexpectedToken { ref token }) if token.contains("unknown identifier"))
+    assert_eq!(
+        result,
+        Err(ExprError::UnexpectedToken {
+            token: "unknown identifier: foobar".into()
+        })
     );
 }
 
 #[test]
 fn parse_expr_rejects_unclosed_helper_paren() {
     let result = parse("contains(1, 2");
-    assert!(matches!(result, Err(ExprError::UnexpectedToken { .. })));
+    assert_eq!(
+        result,
+        Err(ExprError::UnexpectedToken {
+            token: "expected comma or right parenthesis".into()
+        })
+    );
 }
 
 #[test]
 fn parse_expr_rejects_comma_after_last_helper_arg() {
     let result = parse("contains(1,)");
-    assert!(matches!(result, Err(ExprError::UnexpectedToken { .. })));
+    assert_eq!(
+        result,
+        Err(ExprError::UnexpectedToken {
+            token: "RParen".into()
+        })
+    );
 }
 
 #[test]
 fn parse_expr_rejects_only_operator() {
     let result = parse("+");
-    assert!(matches!(result, Err(ExprError::UnexpectedToken { .. })));
+    assert_eq!(
+        result,
+        Err(ExprError::UnexpectedToken {
+            token: "Operator(Add)".into()
+        })
+    );
 }
 
 #[test]
 fn parse_expr_rejects_stray_dollar() {
     let result = parse("$");
-    assert!(matches!(result, Err(ExprError::UnexpectedToken { .. })));
+    assert_eq!(
+        result,
+        Err(ExprError::UnexpectedToken {
+            token: "Dollar".into()
+        })
+    );
 }
 
 #[test]
 fn parse_expr_rejects_leading_operator_before_literal() -> crate::ExprResult<()> {
     let result = parse("* 5");
-    assert!(matches!(result, Err(ExprError::UnexpectedToken { .. })));
+    assert_eq!(
+        result,
+        Err(ExprError::UnexpectedToken {
+            token: "Operator(Mul)".into()
+        })
+    );
     Ok(())
 }
 
 #[test]
 fn parse_expr_rejects_consecutive_binary_operators() -> crate::ExprResult<()> {
     let result = parse("1 + * 2");
-    assert!(matches!(result, Err(ExprError::UnexpectedToken { .. })));
+    assert_eq!(
+        result,
+        Err(ExprError::UnexpectedToken {
+            token: "Operator(Mul)".into()
+        })
+    );
     Ok(())
 }
 
 #[test]
 fn parse_expr_rejects_triple_operator_chain() -> crate::ExprResult<()> {
     let result = parse("1 + - * 2");
-    assert!(matches!(result, Err(ExprError::UnexpectedToken { .. })));
+    assert_eq!(
+        result,
+        Err(ExprError::UnexpectedToken {
+            token: "Operator(Mul)".into()
+        })
+    );
     Ok(())
 }
 

@@ -13,27 +13,25 @@ use proptest::prelude::*;
 // CF-1..CF-5: Literal folding
 // ---------------------------------------------------------------------------
 
-proptest! {
-    #[test]
-    fn cf_literal_bool_true_folds_to_some_bool_true(_unit in Just(())) {
-        let lit = ExprLiteral::Bool(true);
-        let result = crate::bytecode::const_fold_expr(&ExprAst::Literal(lit));
-        prop_assert_eq!(result, Some(ConstValue::Bool(true)));
-    }
+#[test]
+fn cf_literal_bool_true_folds_to_some_bool_true() {
+    let lit = ExprLiteral::Bool(true);
+    let result = crate::bytecode::const_fold_expr(&ExprAst::Literal(lit));
+    assert_eq!(result, Some(ConstValue::Bool(true)));
+}
 
-    #[test]
-    fn cf_literal_bool_false_folds_to_some_bool_false(_unit in Just(())) {
-        let lit = ExprLiteral::Bool(false);
-        let result = crate::bytecode::const_fold_expr(&ExprAst::Literal(lit));
-        prop_assert_eq!(result, Some(ConstValue::Bool(false)));
-    }
+#[test]
+fn cf_literal_bool_false_folds_to_some_bool_false() {
+    let lit = ExprLiteral::Bool(false);
+    let result = crate::bytecode::const_fold_expr(&ExprAst::Literal(lit));
+    assert_eq!(result, Some(ConstValue::Bool(false)));
+}
 
-    #[test]
-    fn cf_literal_null_folds_to_some_null(_unit in Just(())) {
-        let lit = ExprLiteral::Null;
-        let result = crate::bytecode::const_fold_expr(&ExprAst::Literal(lit));
-        prop_assert_eq!(result, Some(ConstValue::Null));
-    }
+#[test]
+fn cf_literal_null_folds_to_some_null() {
+    let lit = ExprLiteral::Null;
+    let result = crate::bytecode::const_fold_expr(&ExprAst::Literal(lit));
+    assert_eq!(result, Some(ConstValue::Null));
 }
 
 proptest! {
@@ -49,20 +47,24 @@ proptest! {
 // CF-6: not true = false, not false = true
 // ---------------------------------------------------------------------------
 
-proptest! {
-    #[test]
-    fn cf_not_true_folds_to_false(_unit in Just(())) {
-        let ast = ExprAst::Unary { op: UnaryOp::Not, expr: Box::new(ExprAst::Literal(ExprLiteral::Bool(true))) };
-        let result = crate::bytecode::const_fold_expr(&ast);
-        prop_assert_eq!(result, Some(ConstValue::Bool(false)));
-    }
+#[test]
+fn cf_not_true_folds_to_false() {
+    let ast = ExprAst::Unary {
+        op: UnaryOp::Not,
+        expr: Box::new(ExprAst::Literal(ExprLiteral::Bool(true))),
+    };
+    let result = crate::bytecode::const_fold_expr(&ast);
+    assert_eq!(result, Some(ConstValue::Bool(false)));
+}
 
-    #[test]
-    fn cf_not_false_folds_to_true(_unit in Just(())) {
-        let ast = ExprAst::Unary { op: UnaryOp::Not, expr: Box::new(ExprAst::Literal(ExprLiteral::Bool(false))) };
-        let result = crate::bytecode::const_fold_expr(&ast);
-        prop_assert_eq!(result, Some(ConstValue::Bool(true)));
-    }
+#[test]
+fn cf_not_false_folds_to_true() {
+    let ast = ExprAst::Unary {
+        op: UnaryOp::Not,
+        expr: Box::new(ExprAst::Literal(ExprLiteral::Bool(false))),
+    };
+    let result = crate::bytecode::const_fold_expr(&ast);
+    assert_eq!(result, Some(ConstValue::Bool(true)));
 }
 
 // ---------------------------------------------------------------------------
@@ -292,17 +294,20 @@ fn cf_neg_i64_min_returns_none() {
 // CF-24: Non-i64 operands do not fold arithmetic
 // ---------------------------------------------------------------------------
 
-proptest! {
-    #[test]
-    fn cf_add_f64_does_not_fold(_unit in Just(())) {
-        let f64_val = FiniteF64::new(1.5).expect("valid finite f64");
-        let left = ExprAst::Literal(ExprLiteral::F64(f64_val));
-        let right = ExprAst::Literal(ExprLiteral::I64(2));
-        let ast = ExprAst::Binary { op: BinaryOp::Add, left: Box::new(left), right: Box::new(right) };
-        // Mixed types do not fold
-        let result = crate::bytecode::const_fold_expr(&ast);
-        prop_assert_eq!(result, None);
-    }
+#[test]
+fn cf_add_f64_does_not_fold() -> crate::ExprResult<()> {
+    let f64_val = FiniteF64::new(1.5)?;
+    let left = ExprAst::Literal(ExprLiteral::F64(f64_val));
+    let right = ExprAst::Literal(ExprLiteral::I64(2));
+    let ast = ExprAst::Binary {
+        op: BinaryOp::Add,
+        left: Box::new(left),
+        right: Box::new(right),
+    };
+    // Mixed types do not fold
+    let result = crate::bytecode::const_fold_expr(&ast);
+    assert_eq!(result, None);
+    Ok(())
 }
 
 #[test]

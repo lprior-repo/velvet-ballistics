@@ -4,6 +4,7 @@
 
 use crate::eval::{eval_binary_op, eval_unary_op};
 use crate::lexer::{BinaryOp, UnaryOp};
+use vb_core::limits::{MAX_EXPRESSION_STACK, MAX_EXPRESSION_STACK_USIZE};
 use vb_core::value::FiniteF64;
 use vb_core::{ExprOp, SlotValue};
 
@@ -21,10 +22,11 @@ fn be_check_expr_stack_bound_rejects_100_loads_no_pop() {
         .map(|i| ExprOp::LoadConst(vb_core::ConstIdx::new(i as u16 % 256)))
         .collect();
     let result = crate::bytecode::check_expr_stack_bound(&ops);
-    // This should fail because either the stack overflows OR final depth != 1
-    assert!(
-        result.is_err(),
-        "100 LoadConst ops with no pops must be rejected"
+    assert_eq!(
+        result,
+        Err(crate::ExprError::StackOverflow {
+            max: MAX_EXPRESSION_STACK
+        })
     );
 }
 
@@ -39,10 +41,19 @@ fn be_check_expr_stack_bound_accepts_proper_program_depth_2() {
         ExprOp::Add,
     ];
     let result = crate::bytecode::check_expr_stack_bound(&ops);
-    assert!(
-        result.is_ok(),
-        "proper program with max depth 2 should be accepted"
-    );
+    assert_eq!(result, Ok(2));
+}
+
+#[test]
+fn be_check_expr_stack_bound_accepts_exact_max_stack_depth() {
+    let mut ops: Vec<ExprOp> = (0..MAX_EXPRESSION_STACK_USIZE)
+        .map(|i| ExprOp::LoadConst(vb_core::ConstIdx::new(i as u16)))
+        .collect();
+    ops.extend((1..MAX_EXPRESSION_STACK_USIZE).map(|_| ExprOp::Add));
+
+    let result = crate::bytecode::check_expr_stack_bound(&ops);
+
+    assert_eq!(result, Ok(MAX_EXPRESSION_STACK));
 }
 
 #[test]
@@ -55,9 +66,9 @@ fn be_check_expr_stack_bound_rejects_too_many_ops() {
         .map(|i| ExprOp::LoadConst(vb_core::ConstIdx::new(i as u16 % 256)))
         .collect();
     let result = crate::bytecode::check_expr_stack_bound(&ops);
-    assert!(
-        result.is_err(),
-        "300 ops must be rejected (exceeds MAX_EXPRESSION_OPS)"
+    assert_eq!(
+        result,
+        Err(crate::ExprError::BytecodeTooLong { len: 257, max: 256 })
     );
 }
 
@@ -70,7 +81,7 @@ fn be_not_operation_depth_is_one() {
     // LoadConst, Not — stack: [val] → [result], depth = 1 throughout.
     let ops = vec![ExprOp::LoadConst(vb_core::ConstIdx::new(0)), ExprOp::Not];
     let result = crate::bytecode::check_expr_stack_bound(&ops);
-    assert!(result.is_ok());
+    assert_eq!(result, Ok(1));
 }
 
 // ---------------------------------------------------------------------------
@@ -86,7 +97,7 @@ fn be_division_depth_is_two() {
         ExprOp::Div,
     ];
     let result = crate::bytecode::check_expr_stack_bound(&ops);
-    assert!(result.is_ok());
+    assert_eq!(result, Ok(2));
 }
 
 // ---------------------------------------------------------------------------
@@ -102,8 +113,10 @@ proptest! {
             SlotValue::I64(i),
             SlotValue::F64(f64_val),
         );
-        let is_type_mismatch = matches!(result, Err(crate::ExprError::TypeMismatch { .. }));
-        prop_assert!(is_type_mismatch);
+        prop_assert_eq!(result, Err(crate::ExprError::TypeMismatch {
+            expected: "number".into(),
+            found: "number".into(),
+        }));
     }
 
     #[test]
@@ -114,8 +127,10 @@ proptest! {
             SlotValue::F64(f64_val),
             SlotValue::I64(i),
         );
-        let is_type_mismatch = matches!(result, Err(crate::ExprError::TypeMismatch { .. }));
-        prop_assert!(is_type_mismatch);
+        prop_assert_eq!(result, Err(crate::ExprError::TypeMismatch {
+            expected: "number".into(),
+            found: "number".into(),
+        }));
     }
 }
 
@@ -127,8 +142,10 @@ proptest! {
     #[test]
     fn be_eval_neg_bool_returns_type_mismatch(val in proptest::bool::ANY) {
         let result = eval_unary_op(UnaryOp::Neg, SlotValue::Bool(val));
-        let is_type_mismatch = matches!(result, Err(crate::ExprError::TypeMismatch { .. }));
-        prop_assert!(is_type_mismatch);
+        prop_assert_eq!(result, Err(crate::ExprError::TypeMismatch {
+            expected: "number".into(),
+            found: "boolean".into(),
+        }));
     }
 }
 
@@ -144,8 +161,10 @@ proptest! {
             SlotValue::I64(val),
             SlotValue::Bool(true),
         );
-        let is_type_mismatch = matches!(result, Err(crate::ExprError::TypeMismatch { .. }));
-        prop_assert!(is_type_mismatch);
+        prop_assert_eq!(result, Err(crate::ExprError::TypeMismatch {
+            expected: "boolean".into(),
+            found: "number".into(),
+        }));
     }
 
     #[test]
@@ -155,8 +174,10 @@ proptest! {
             SlotValue::Bool(true),
             SlotValue::I64(val),
         );
-        let is_type_mismatch = matches!(result, Err(crate::ExprError::TypeMismatch { .. }));
-        prop_assert!(is_type_mismatch);
+        prop_assert_eq!(result, Err(crate::ExprError::TypeMismatch {
+            expected: "boolean".into(),
+            found: "number".into(),
+        }));
     }
 }
 

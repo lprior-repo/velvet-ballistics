@@ -13,55 +13,51 @@ use proptest::prelude::*;
 // AO-1: i64::MAX + 1 → IntegerOverflow
 // ---------------------------------------------------------------------------
 
-proptest! {
-    #[test]
-    fn ao_add_i64_max_plus_one_returns_overflow(_unit in Just(())) {
-        let result = eval_binary_op(BinaryOp::Add, SlotValue::I64(i64::MAX), SlotValue::I64(1));
-        prop_assert!(matches!(result, Err(crate::ExprError::IntegerOverflow)));
-    }
+#[test]
+fn ao_add_i64_max_plus_one_returns_overflow() {
+    let result = eval_binary_op(BinaryOp::Add, SlotValue::I64(i64::MAX), SlotValue::I64(1));
+    assert_eq!(result, Err(crate::ExprError::IntegerOverflow));
+}
 
-    #[test]
-    fn ao_add_i64_min_minus_one_returns_overflow(_unit in Just(())) {
-        let result = eval_binary_op(BinaryOp::Add, SlotValue::I64(i64::MIN), SlotValue::I64(-1));
-        prop_assert!(matches!(result, Err(crate::ExprError::IntegerOverflow)));
-    }
+#[test]
+fn ao_add_i64_min_minus_one_returns_overflow() {
+    let result = eval_binary_op(BinaryOp::Add, SlotValue::I64(i64::MIN), SlotValue::I64(-1));
+    assert_eq!(result, Err(crate::ExprError::IntegerOverflow));
 }
 
 // ---------------------------------------------------------------------------
 // AO-2: i64::MIN - 1 → IntegerOverflow
 // ---------------------------------------------------------------------------
 
-proptest! {
-    #[test]
-    fn ao_sub_i64_min_minus_one_returns_overflow(_unit in Just(())) {
-        let result = eval_binary_op(BinaryOp::Sub, SlotValue::I64(i64::MIN), SlotValue::I64(1));
-        prop_assert!(matches!(result, Err(crate::ExprError::IntegerOverflow)));
-    }
+#[test]
+fn ao_sub_i64_min_minus_one_returns_overflow() {
+    let result = eval_binary_op(BinaryOp::Sub, SlotValue::I64(i64::MIN), SlotValue::I64(1));
+    assert_eq!(result, Err(crate::ExprError::IntegerOverflow));
 }
 
 // ---------------------------------------------------------------------------
 // AO-3: i64::MAX * 2 → IntegerOverflow
 // ---------------------------------------------------------------------------
 
-proptest! {
-    #[test]
-    fn ao_mul_i64_max_times_two_returns_overflow(_unit in Just(())) {
-        // Use a large value that will overflow when multiplied by 2
-        let result = eval_binary_op(BinaryOp::Mul, SlotValue::I64(i64::MAX / 2 + 1), SlotValue::I64(2));
-        prop_assert!(matches!(result, Err(crate::ExprError::IntegerOverflow)));
-    }
+#[test]
+fn ao_mul_i64_max_times_two_returns_overflow() {
+    // Use a large value that will overflow when multiplied by 2
+    let result = eval_binary_op(
+        BinaryOp::Mul,
+        SlotValue::I64(i64::MAX / 2 + 1),
+        SlotValue::I64(2),
+    );
+    assert_eq!(result, Err(crate::ExprError::IntegerOverflow));
 }
 
 // ---------------------------------------------------------------------------
 // AO-4: -i64::MIN → IntegerOverflow (negation of MIN is overflow)
 // ---------------------------------------------------------------------------
 
-proptest! {
-    #[test]
-    fn ao_neg_i64_min_returns_overflow(_unit in Just(())) {
-        let result = eval_unary_op(UnaryOp::Neg, SlotValue::I64(i64::MIN));
-        prop_assert!(matches!(result, Err(crate::ExprError::IntegerOverflow)));
-    }
+#[test]
+fn ao_neg_i64_min_returns_overflow() {
+    let result = eval_unary_op(UnaryOp::Neg, SlotValue::I64(i64::MIN));
+    assert_eq!(result, Err(crate::ExprError::IntegerOverflow));
 }
 
 // ---------------------------------------------------------------------------
@@ -81,41 +77,36 @@ proptest! {
 // AO-6: i64::MIN / -1 → IntegerOverflow
 // ---------------------------------------------------------------------------
 
-proptest! {
-    #[test]
-    fn ao_div_i64_min_by_neg_one_returns_overflow(_unit in Just(())) {
-        let result = eval_binary_op(BinaryOp::Div, SlotValue::I64(i64::MIN), SlotValue::I64(-1));
-        prop_assert!(matches!(result, Err(crate::ExprError::IntegerOverflow)));
-    }
+#[test]
+fn ao_div_i64_min_by_neg_one_returns_overflow() {
+    let result = eval_binary_op(BinaryOp::Div, SlotValue::I64(i64::MIN), SlotValue::I64(-1));
+    assert_eq!(result, Err(crate::ExprError::IntegerOverflow));
 }
 
 // ---------------------------------------------------------------------------
 // AO-7: f64 zero negation
 // ---------------------------------------------------------------------------
 
-proptest! {
-    #[test]
-    fn ao_neg_f64_zero_neg_zero(_unit in Just(())) {
-        let result = eval_unary_op(UnaryOp::Neg, SlotValue::F64(FiniteF64::new(-0.0).unwrap()));
-        prop_assert_eq!(result, Ok(SlotValue::F64(FiniteF64::new(0.0).unwrap())));
-    }
+#[test]
+fn ao_neg_f64_zero_neg_zero() -> crate::ExprResult<()> {
+    let negative_zero = FiniteF64::new(-0.0)?;
+    let positive_zero = FiniteF64::new(0.0)?;
+    let result = eval_unary_op(UnaryOp::Neg, SlotValue::F64(negative_zero));
+    assert_eq!(result, Ok(SlotValue::F64(positive_zero)));
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
 // AO-8: Overflow in binary op wrapper (eval_binary_op)
 // ---------------------------------------------------------------------------
 
-proptest! {
-    #[test]
-    fn ao_binary_op_add_i64_overflow_returns_error(_unit in Just(())) {
-        let result = eval_binary_op(
-            BinaryOp::Add,
-            SlotValue::I64(i64::MAX),
-            SlotValue::I64(1)
-        );
-        prop_assert!(matches!(result, Err(crate::ExprError::IntegerOverflow)));
-    }
+#[test]
+fn ao_binary_op_add_i64_overflow_returns_error() {
+    let result = eval_binary_op(BinaryOp::Add, SlotValue::I64(i64::MAX), SlotValue::I64(1));
+    assert_eq!(result, Err(crate::ExprError::IntegerOverflow));
+}
 
+proptest! {
     #[test]
     fn ao_binary_op_div_by_zero_returns_error(val in any::<i64>()) {
         prop_assume!(val != 0);

@@ -46,6 +46,7 @@ Scoped verification after reconciliation:
 - `rtk cargo test -p vb_yaml` — PASS, `232 passed`.
 - `rtk cargo test -p velvet-ballastics --test vb_qi37_14_1_run_step --test cli_trace_integration --test cli_vb_m214_bdd_scenarios --test lifecycle_integration --test deliver_sink_integration --test admission_evidence_integration -- --test-threads=1` — PASS, `155 passed`.
 - `cargo test -p vb_proof_kernels` — PASS, `231 passed`.
+- `cargo test -p vb_expr` — PASS, `649 passed`.
 
 ## Open Finding Buckets
 
@@ -55,7 +56,7 @@ Scoped verification after reconciliation:
 - `vb_proof_kernels`: PATCHED — removed false CRC/vacuous header tests and added generated-IR/replay taxonomy, exact `Policy::within`, and resource-budget saturation coverage. Evidence: `cargo test -p vb_proof_kernels` — PASS, `231 passed`.
 - `vb_yaml`: PATCHED PARTIAL — current diff fixes exact variants/fields in lib/profile/adversarial/source-map/event tests; still needs parser/profile/source-map property/fuzz coverage.
 - `vb_validate`: PATCHED PARTIAL — current diff fixes capability/idempotency/red-phase/Kani accessor exactness; still needs broad source-level `{ .. }` cleanup and hostile-input executable coverage.
-- `vb_expr`: orphan eval tests, OOB exact errors, parser/lexer exact payloads, non-finite float, real generated properties, Kani shape gaps.
+- `vb_expr`: PATCHED PARTIAL — exact OOB/type/parser/lexer payloads and generated expression properties patched. Evidence: `cargo test -p vb_expr` — PASS, `649 passed`. Kani shape gaps remain open under proof parity.
 - `vb_compile`: full compile-chain strict YAML, exact idempotency/topology diagnostics, `compile_source` parity, primitive payload validation, nested duplicate keys.
 - `vb_storage`: disabled atomic admission suite, persisted envelope assertions, exact `JournalError`/`TrimError`, trim identity/reopen durability, Kani persistence gap.
 - `vb_runtime`: recovery/resume/lifecycle/timer/taint vacuum and exactness gaps, stale/latest attempt correctness, fixture silent returns, timer identity/order.

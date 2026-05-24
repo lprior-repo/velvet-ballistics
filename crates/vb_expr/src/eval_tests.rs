@@ -35,6 +35,21 @@ mod tests {
         eval_expr_program(program, &slots, &constants)
     }
 
+    fn assert_type_mismatch(
+        result: ExprResult<SlotValue>,
+        expected_expected: &str,
+        expected_found: &str,
+    ) -> ExprResult<()> {
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch".into(),
+            });
+        };
+        assert_eq!(expected, expected_expected);
+        assert_eq!(found, expected_found);
+        Ok(())
+    }
+
     #[test]
     fn evaluates_addition() -> ExprResult<()> {
         let program = make_program(vec![
@@ -190,7 +205,7 @@ mod tests {
             ExprOp::Add,
         ])?;
         let result = eval_with_const(&program, vec![ConstValue::Bool(true), ConstValue::I64(1)]);
-        assert!(matches!(result, Err(ExprError::TypeMismatch { .. })));
+        assert_type_mismatch(result, "number", "boolean")?;
         Ok(())
     }
 
@@ -204,7 +219,13 @@ mod tests {
     #[test]
     fn public_unary_eval_rejects_wrong_type() {
         let result = eval_unary_op(UnaryOp::Not, SlotValue::I64(1));
-        assert!(matches!(result, Err(ExprError::TypeMismatch { .. })));
+        assert_eq!(
+            result,
+            Err(ExprError::TypeMismatch {
+                expected: "boolean".into(),
+                found: "number".into(),
+            })
+        );
     }
 
     #[test]
@@ -555,10 +576,7 @@ mod tests {
         let mut constants = Vec::new();
         let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
         let result = eval_expr_program(&program, &[], &constants);
-        assert!(
-            matches!(result, Err(ExprError::TypeMismatch { .. })),
-            "true and 1 should fail with TypeMismatch at eval"
-        );
+        assert_type_mismatch(result, "boolean", "number")?;
         Ok(())
     }
 
@@ -591,10 +609,7 @@ mod tests {
             max_stack: 1,
         };
         let result = eval_expr_program(&program, &[], &[]);
-        assert!(
-            result.is_err(),
-            "LoadConst with out-of-bounds index should fail"
-        );
+        assert_eq!(result, Err(ExprError::UnexpectedEof));
         Ok(())
     }
 
@@ -606,10 +621,7 @@ mod tests {
         };
         let slots: Vec<Option<SlotValue>> = vec![];
         let result = eval_expr_program(&program, &slots, &[]);
-        assert!(
-            result.is_err(),
-            "LoadSlot with out-of-bounds index should fail"
-        );
+        assert_eq!(result, Err(ExprError::StackUnderflow));
         Ok(())
     }
 
