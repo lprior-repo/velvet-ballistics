@@ -846,6 +846,13 @@ fn integration_policy_returns_steps_executable_exceeded_when_executable_steps_cr
         absolute_max_run_time_seconds: 2_592_000,
         absolute_max_result_bytes: 262_144,
         absolute_max_steps_executable: 100, // Very low limit
+        absolute_max_timer_entries: 1_000_000,
+        absolute_max_trace_events: 1_000_000,
+        absolute_max_journal_batch_bytes: 1_048_576,
+        absolute_max_queue_depth: 1_024,
+        absolute_max_ipc_payload_bytes: 1_048_576,
+        absolute_max_blob_bytes: 16_777_216,
+        absolute_max_input_bytes: 1_048_576,
     };
 
     let result = policy.validate(&budget);
@@ -1685,6 +1692,13 @@ fn integration_budget_error_total_steps_exceeded_display() {
         max_run_time_seconds: 0,
         max_result_bytes: 1024,
         max_total_slots_written: 100,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_journal_batch_bytes: 0,
+        max_queue_depth: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
 
     let policy = tight_policy(100, 65_535, 64, 8);
@@ -1725,6 +1739,13 @@ fn integration_budget_error_fanout_exceeded_display() {
         max_run_time_seconds: 0,
         max_result_bytes: 1024,
         max_total_slots_written: 100,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_journal_batch_bytes: 0,
+        max_queue_depth: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
 
     let policy = tight_policy(1_000_000, 65_535, 50, 8);
@@ -1762,6 +1783,13 @@ fn integration_budget_error_parallel_exceeded_display() {
         max_run_time_seconds: 0,
         max_result_bytes: 1024,
         max_total_slots_written: 100,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_journal_batch_bytes: 0,
+        max_queue_depth: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
 
     let policy = BoundednessPolicy {
@@ -2149,6 +2177,13 @@ fn integration_policy_validates_steps_executable() {
         absolute_max_run_time_seconds: 2_592_000,
         absolute_max_result_bytes: 262_144,
         absolute_max_steps_executable: 100, // Lower than budget's 200 steps
+        absolute_max_timer_entries: 1_000_000,
+        absolute_max_trace_events: 1_000_000,
+        absolute_max_journal_batch_bytes: 1_048_576,
+        absolute_max_queue_depth: 1_024,
+        absolute_max_ipc_payload_bytes: 1_048_576,
+        absolute_max_blob_bytes: 16_777_216,
+        absolute_max_input_bytes: 1_048_576,
     };
 
     let result = policy.validate(&budget);

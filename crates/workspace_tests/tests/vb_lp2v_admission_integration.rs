@@ -280,6 +280,11 @@ fn given_budget_within_capacity_and_artifact_missing_when_strict_then_artifact_n
         max_journal_batch_bytes: 65536,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
     let capacity = AggregateResourceCapacity {
         max_steps_executable: 1000,
