@@ -6,7 +6,7 @@
 //!
 //! This harness verifies panic-free budget operations at zero boundaries.
 
-use crate::budget::{AggregateResourceBudget, AggregateResourceUsage, BudgetError};
+use crate::budget::{AggregateResourceBudget, AggregateResourceUsage};
 
 /// VB-CORE-BUDGET-001 H1: add_dim(0, 0) returns Ok(0)
 #[kani::proof]
@@ -42,9 +42,14 @@ fn kani_aggregate_usage_zero() {
         max_gather_items: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -62,8 +67,13 @@ fn kani_aggregate_usage_zero() {
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -84,9 +94,14 @@ fn kani_try_add_budget_zero_current() {
         max_gather_items: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -104,8 +119,13 @@ fn kani_try_add_budget_zero_current() {
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };

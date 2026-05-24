@@ -62,6 +62,9 @@ Scoped verification after reconciliation:
 - `rtk cargo test -p velvet-ballastics --test lifecycle_integration --test vb_qi37_14_1_run_step --test cli_trace_integration -- --test-threads=1` — PASS, `83 passed` after residual exactness cleanup.
 - `cargo test -p vb_storage -p vb_runtime -p vb_ipc --lib` — PASS, `3310 passed` after final residual exactness cleanup.
 - `cargo test -p velvet-ballastics --test vb_qi37_14_1_run_step` — PASS, `25 passed` after final run-step exactness cleanup.
+- `rtk cargo check -p vb_core --lib` — PASS after Kani budget field repair.
+- `rtk cargo check -p vb_ipc --lib` — PASS after Kani budget field repair.
+- `rtk cargo kani -p vb_ipc --harness kani_ipc_header_rejects_oversize_payload --output-format=regular` — now proceeds past `vb_core`, but BLOCKED by out-of-scope `vb_runtime` Kani compile failures.
 
 ## Open Finding Buckets
 
@@ -80,7 +83,7 @@ Scoped verification after reconciliation:
 - `vb_cli`: PATCHED PARTIAL — current parent commit hardens non-UI/non-codegen lifecycle, trace, run-step, admission, and deliver-sink tests plus residual lifecycle/run-step exactness. UI-only envelope items excluded. Evidence includes `cargo test -p velvet-ballastics --test vb_qi37_14_1_run_step` — PASS, `25 passed`. Still needs post-patch audit for remaining CLI smoke/either-outcome tests outside touched targets.
 - `xtask`: workspace/test compile state, exact error variant coverage, scheduler set property, stdout JSON parsing.
 - `workspace_tests`: PATCHED PARTIAL but EXECUTION BLOCKED — current diff removes the runtime-storage fault-tolerance tautology; workspace test crate remains non-executable because it is excluded from the root workspace while inheriting workspace fields.
-- Proof parity/Kani: OPEN PARTIAL — current diff symbolically hardens `crates/vb_ipc/src/kani_ipc_header_rejects_oversize.rs` with exact payload-limit variants and covers, but Kani execution is blocked by unrelated existing `vb_core` Kani compile errors. Other hardcoded Kani shapes and Verus/TLA behavior parity gaps remain open.
+- Proof parity/Kani: OPEN PARTIAL — current diff symbolically hardens `crates/vb_ipc/src/kani_ipc_header_rejects_oversize.rs` with exact payload-limit variants and covers, and repairs `vb_core` Kani budget missing-field blockers. Targeted IPC Kani now proceeds past `vb_core` but is still BLOCKED by out-of-scope `vb_runtime` Kani compile failures. Other hardcoded Kani shapes and Verus/TLA behavior parity gaps remain open.
 
 ## Next Round Rule
 
