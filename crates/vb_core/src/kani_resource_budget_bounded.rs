@@ -131,6 +131,7 @@ fn kani_resource_sub_underflow() {
 fn kani_resource_sub_exact_match() {
     let usage = AggregateResourceUsage {
         max_steps_executable: 10,
+        max_active_runs: 1,
         ..AggregateResourceUsage::default()
     };
 
