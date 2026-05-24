@@ -142,12 +142,8 @@ fn run_step_rejects_durability_strict() {
     let input_path = dir.path().join("input.bin");
     let db_path = dir.path().join("journal-db");
 
-    if !write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()) {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -164,7 +160,7 @@ fn run_step_rejects_durability_strict() {
         input_path.as_os_str(),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     // Must fail with exit code 2 (ValidationFailed)
@@ -195,12 +191,8 @@ fn run_step_rejects_durability_journaled() {
     let input_path = dir.path().join("input.bin");
     let db_path = dir.path().join("journal-db");
 
-    if !write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()) {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -217,7 +209,7 @@ fn run_step_rejects_durability_journaled() {
         input_path.as_os_str(),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert!(!output.status.success(), "durability journaled should fail");
@@ -245,12 +237,8 @@ fn run_step_invalid_step_id_reports_not_found() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    if !write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()) {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(&input_path, &[]));
 
     // SETCONST_WORKFLOW has 2 steps (init, done) so step 99 is invalid
     let output = match run_cli(&[
@@ -266,7 +254,7 @@ fn run_step_invalid_step_id_reports_not_found() {
         input_path.as_os_str(),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert!(!output.status.success(), "invalid step ID should fail");
@@ -298,12 +286,8 @@ fn run_step_invalid_step_id_json_includes_error_details() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    if !write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()) {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -320,7 +304,7 @@ fn run_step_invalid_step_id_json_includes_error_details() {
         std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert!(!output.status.success(), "invalid step ID should fail");
@@ -363,12 +347,8 @@ fn run_step_compile_error_reports_failure() {
     let input_path = dir.path().join("input.bin");
 
     // Invalid YAML - missing required fields
-    if !write_test_file(&workflow_path, b"{{{broken") {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, b"{{{broken"));
+    assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -383,7 +363,7 @@ fn run_step_compile_error_reports_failure() {
         input_path.as_os_str(),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert!(!output.status.success(), "broken YAML should fail");
@@ -407,12 +387,8 @@ fn run_step_compile_error_json_includes_errors() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    if !write_test_file(&workflow_path, b"{{{broken") {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, b"{{{broken"));
+    assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -429,7 +405,7 @@ fn run_step_compile_error_json_includes_errors() {
         std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert!(!output.status.success(), "broken YAML should fail");
@@ -462,12 +438,8 @@ fn run_step_json_flag_produces_valid_json() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    if !write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()) {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -484,7 +456,7 @@ fn run_step_json_flag_produces_valid_json() {
         std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert_cli_success(&output, "run --step with --json");
@@ -516,12 +488,8 @@ fn run_step_jsonl_flag_produces_valid_jsonl() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    if !write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()) {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -538,7 +506,7 @@ fn run_step_jsonl_flag_produces_valid_jsonl() {
         std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert_cli_success(&output, "run --step with --jsonl");
@@ -562,12 +530,8 @@ fn run_step_text_output_is_human_readable() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    if !write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()) {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(&input_path, &[]));
 
     // No --json or --jsonl flag = text output
     let output = match run_cli(&[
@@ -583,7 +547,7 @@ fn run_step_text_output_is_human_readable() {
         input_path.as_os_str(),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert_cli_success(&output, "run --step text output");
@@ -617,12 +581,8 @@ fn run_step_executes_single_step_and_reports_correct_index() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    if !write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()) {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -639,7 +599,7 @@ fn run_step_executes_single_step_and_reports_correct_index() {
         std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert_cli_success(&output, "run --step 0");
@@ -670,12 +630,8 @@ fn run_step_json_output_has_required_schema_fields() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    if !write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()) {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -692,7 +648,7 @@ fn run_step_json_output_has_required_schema_fields() {
         std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert_cli_success(&output, "run --step --json");
@@ -749,12 +705,8 @@ fn run_step_jsonl_output_is_valid_jsonl() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    if !write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()) {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -771,7 +723,7 @@ fn run_step_jsonl_output_is_valid_jsonl() {
         std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert_cli_success(&output, "run --step --jsonl");
@@ -799,12 +751,8 @@ fn run_step_json_output_includes_step_kind_signal() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    if !write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()) {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -821,7 +769,7 @@ fn run_step_json_output_includes_step_kind_signal() {
         std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert_cli_success(&output, "run --step --json");
@@ -860,12 +808,8 @@ fn run_step_delta_json_pc_delta_has_before_and_after() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    if !write_test_file(&workflow_path, NOP_WORKFLOW.as_bytes()) {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, NOP_WORKFLOW.as_bytes()));
+    assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -882,7 +826,7 @@ fn run_step_delta_json_pc_delta_has_before_and_after() {
         std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert_cli_success(&output, "run --step --json");
@@ -922,12 +866,8 @@ fn run_step_delta_json_slot_deltas_is_array_with_changes() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    if !write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()) {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -944,7 +884,7 @@ fn run_step_delta_json_slot_deltas_is_array_with_changes() {
         std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert_cli_success(&output, "run --step --json");
@@ -998,12 +938,8 @@ fn run_step_delta_json_state_deltas_has_before_after() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    if !write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()) {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -1020,7 +956,7 @@ fn run_step_delta_json_state_deltas_has_before_after() {
         std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert_cli_success(&output, "run --step --json");
@@ -1074,12 +1010,8 @@ fn run_step_delta_json_taint_deltas_is_array() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    if !write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()) {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -1096,7 +1028,7 @@ fn run_step_delta_json_taint_deltas_is_array() {
         std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert_cli_success(&output, "run --step --json");
@@ -1135,12 +1067,8 @@ fn run_step_finished_includes_output_slot_value_and_taint() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    if !write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()) {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -1157,7 +1085,7 @@ fn run_step_finished_includes_output_slot_value_and_taint() {
         std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert_cli_success(&output, "run --step --json");
@@ -1209,12 +1137,8 @@ fn run_step_error_in_json_format_reports_error_and_message() {
     let input_path = dir.path().join("input.bin");
 
     // Use invalid YAML to trigger an error
-    if !write_test_file(&workflow_path, b"{{{broken") {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, b"{{{broken"));
+    assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -1231,7 +1155,7 @@ fn run_step_error_in_json_format_reports_error_and_message() {
         std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert!(!output.status.success(), "broken YAML should fail");
@@ -1262,12 +1186,8 @@ fn run_step_error_in_jsonl_format_reports_error_object() {
     let input_path = dir.path().join("input.bin");
 
     // Use invalid YAML to trigger an error
-    if !write_test_file(&workflow_path, b"{{{broken") {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, b"{{{broken"));
+    assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -1284,7 +1204,7 @@ fn run_step_error_in_jsonl_format_reports_error_object() {
         std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert!(!output.status.success(), "broken YAML should fail");
@@ -1311,12 +1231,8 @@ fn run_step_durability_not_none_exits_with_validation_failed() {
     let input_path = dir.path().join("input.bin");
     let db_path = dir.path().join("journal-db");
 
-    if !write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()) {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -1333,7 +1249,7 @@ fn run_step_durability_not_none_exits_with_validation_failed() {
         input_path.as_os_str(),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert!(!output.status.success(), "durability journaled should fail");
@@ -1361,12 +1277,8 @@ fn run_step_success_exits_with_code_0() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    if !write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()) {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -1381,7 +1293,7 @@ fn run_step_success_exits_with_code_0() {
         input_path.as_os_str(),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert_cli_success(&output, "run --step success");
@@ -1413,12 +1325,8 @@ fn run_step_validation_failure_exits_with_code_2() {
     let input_path = dir.path().join("input.bin");
 
     // Use invalid step ID to trigger PRE002 validation failure
-    if !write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()) {
-        return;
-    }
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -1433,7 +1341,7 @@ fn run_step_validation_failure_exits_with_code_2() {
         input_path.as_os_str(),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert!(!output.status.success(), "invalid step ID should fail");
@@ -1463,13 +1371,9 @@ fn run_step_malformed_step_input_exits_with_code_2() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    if !write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
     // Malformed postcard data
-    if !write_test_file(&input_path, b"garbage-postcard") {
-        return;
-    }
+    assert!(write_test_file(&input_path, b"garbage-postcard"));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -1484,7 +1388,7 @@ fn run_step_malformed_step_input_exits_with_code_2() {
         input_path.as_os_str(),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     assert!(!output.status.success(), "malformed step-input should fail");
@@ -1513,13 +1417,9 @@ fn run_step_empty_step_input_succeeds() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    if !write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()) {
-        return;
-    }
+    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
     // Empty file is valid - decodes to Box<[SlotValue]>::from([])
-    if !write_test_file(&input_path, &[]) {
-        return;
-    }
+    assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -1534,7 +1434,7 @@ fn run_step_empty_step_input_succeeds() {
         input_path.as_os_str(),
     ]) {
         Some(output) => output,
-        None => return,
+        None => panic!("velvet-ballastics command failed before producing output"),
     };
 
     // Empty step input is valid - command should succeed

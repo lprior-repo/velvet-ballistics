@@ -113,10 +113,7 @@ mod tests {
             source: io_error(io::ErrorKind::AddrInUse, "addr in use"),
         };
         let msg = err.to_string();
-        assert!(
-            msg.contains("bind failed"),
-            "expected 'bind failed' in '{msg}'"
-        );
+        assert_eq!(msg, "bind failed: addr in use");
     }
 
     #[test]
@@ -125,10 +122,7 @@ mod tests {
             source: io_error(io::ErrorKind::Interrupted, "interrupted"),
         };
         let msg = err.to_string();
-        assert!(
-            msg.contains("poll failed"),
-            "expected 'poll failed' in '{msg}'"
-        );
+        assert_eq!(msg, "poll failed: interrupted");
     }
 
     #[test]
@@ -137,30 +131,21 @@ mod tests {
             source: io_error(io::ErrorKind::ConnectionRefused, "refused"),
         };
         let msg = err.to_string();
-        assert!(
-            msg.contains("accept failed"),
-            "expected 'accept failed' in '{msg}'"
-        );
+        assert_eq!(msg, "accept failed: refused");
     }
 
     #[test]
     fn too_many_clients_display() {
         let err = IpcServerError::TooManyClients;
         let msg = err.to_string();
-        assert!(
-            msg.contains("too many clients"),
-            "expected 'too many clients' in '{msg}'"
-        );
+        assert_eq!(msg, "too many clients");
     }
 
     #[test]
     fn response_encode_failed_display() {
         let err = IpcServerError::ResponseEncodeFailed;
         let msg = err.to_string();
-        assert!(
-            msg.contains("response encode failed"),
-            "expected 'response encode failed' in '{msg}'"
-        );
+        assert_eq!(msg, "response encode failed");
     }
 
     #[test]
@@ -169,10 +154,7 @@ mod tests {
             source: io_error(io::ErrorKind::BrokenPipe, "pipe broke"),
         };
         let msg = err.to_string();
-        assert!(
-            msg.contains("response write failed"),
-            "expected 'response write failed' in '{msg}'"
-        );
+        assert_eq!(msg, "response write failed: pipe broke");
     }
 
     #[test]

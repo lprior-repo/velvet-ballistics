@@ -547,11 +547,16 @@ fn scan_for_stale_clean_only_text_returns_empty_for_clean_doc() {
 
     // Then
     let report = result.expect("should not error");
-    assert!(report.stale_clean_only.is_empty());
-    assert!(report.scanned_nodes.contains(&ResolvedNode::EvalExpr));
-    assert!(report.scanned_nodes.contains(&ResolvedNode::BuildObject));
-    assert!(report.scanned_nodes.contains(&ResolvedNode::BuildList));
-    assert!(report.scanned_nodes.contains(&ResolvedNode::Finish));
+    assert_eq!(report.stale_clean_only, Vec::<StalePhrase>::new());
+    assert_eq!(
+        report.scanned_nodes,
+        vec![
+            ResolvedNode::EvalExpr,
+            ResolvedNode::BuildObject,
+            ResolvedNode::BuildList,
+            ResolvedNode::Finish,
+        ]
+    );
 }
 
 #[test]
@@ -932,7 +937,10 @@ fn plan_taint_doc_reconciliation_edits_include_build_object_join() {
 
     // Then
     let plan = result.expect("should not error");
-    assert!(plan.edits.contains(&PatchEdit::BuildObjectJoin));
+    assert_eq!(
+        plan.edits,
+        vec![PatchEdit::BuildObjectJoin, PatchEdit::FinishCarriesTaint]
+    );
 }
 
 #[test]
@@ -949,7 +957,10 @@ fn plan_taint_doc_reconciliation_edits_include_build_list_join() {
 
     // Then
     let plan = result.expect("should not error");
-    assert!(plan.edits.contains(&PatchEdit::BuildListJoin));
+    assert_eq!(
+        plan.edits,
+        vec![PatchEdit::BuildListJoin, PatchEdit::FinishCarriesTaint]
+    );
 }
 
 #[test]
@@ -966,7 +977,7 @@ fn plan_taint_doc_reconciliation_edits_include_finish_carries_taint_when_missing
 
     // Then
     let plan = result.expect("should not error");
-    assert!(plan.edits.contains(&PatchEdit::FinishCarriesTaint));
+    assert_eq!(plan.edits, vec![PatchEdit::FinishCarriesTaint]);
 }
 
 #[test]
@@ -984,9 +995,9 @@ fn plan_taint_doc_reconciliation_preserved_non_goals_extracted() {
 
     // Then
     let plan = result.expect("should not error");
-    assert!(
-        plan.preserved_non_goals
-            .contains(&PreservedNonGoal::ControlFlowTaintV1NonGoal)
+    assert_eq!(
+        plan.preserved_non_goals,
+        vec![PreservedNonGoal::ControlFlowTaintV1NonGoal]
     );
 }
 
@@ -1044,19 +1055,18 @@ fn plan_taint_doc_reconciliation_stale_text_removed_lists_stale_phrases() {
 
     // Then
     let plan = result.expect("should not error");
-    assert!(!plan.stale_text_removed.is_empty());
-    assert!(
-        plan.stale_text_removed
-            .contains(&StalePhrase::EvalExprAlwaysClean)
+    assert_eq!(
+        plan.stale_text_removed,
+        vec![StalePhrase::EvalExprAlwaysClean]
     );
 }
 
 // ============================================================================
-// Data structure equality and Display (Debug)
+// Data structure equality and derived Debug contract
 // ============================================================================
 
 #[test]
-fn doc_reconcile_error_debug_formatting() {
+fn doc_reconcile_error_derived_debug_is_exact_for_wrong_workspace() {
     // Given
     let err = DocReconcileError::WrongWorkspace {
         path: std::path::PathBuf::from("/tmp/test.md"),
@@ -1066,8 +1076,10 @@ fn doc_reconcile_error_debug_formatting() {
     let debug = format!("{:?}", err);
 
     // Then
-    assert!(debug.contains("WrongWorkspace"));
-    assert!(debug.contains("/tmp/test.md"));
+    assert_eq!(
+        debug,
+        "WrongWorkspace { path: \"/tmp/test.md\" }"
+    );
 }
 
 #[test]

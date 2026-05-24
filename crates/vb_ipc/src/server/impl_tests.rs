@@ -375,13 +375,13 @@ fn slow_client_oversized_frame_disconnects_without_unbounded_growth() {
     let oversized = match u32::try_from(MaxPayloadBytes::DEFAULT.get()) {
         Ok(value) => match value.checked_add(1) {
             Some(next) => next,
-            None => return,
+            None => panic!("default payload bound must allow one-over u32 header length"),
         },
-        Err(_) => return,
+        Err(error) => panic!("default payload bound should fit u32: {error}"),
     };
     let header = IpcFrameHeader::new(IpcCommand::Health, 0, 78, oversized);
     let Ok(header_bytes) = header.encode() else {
-        return;
+        panic!("oversized header should encode for server rejection path");
     };
     client
         .write_all(&header_bytes)
@@ -786,10 +786,7 @@ fn ipc_server_error_bind_failed_display() {
         source: std::io::Error::new(std::io::ErrorKind::AddrInUse, "addr in use"),
     };
     let msg = err.to_string();
-    assert!(
-        msg.contains("bind failed"),
-        "expected 'bind failed' in '{msg}'"
-    );
+    assert_eq!(msg, "bind failed: addr in use");
 }
 
 #[test]
@@ -798,20 +795,14 @@ fn ipc_server_error_poll_failed_display() {
         source: std::io::Error::new(std::io::ErrorKind::Interrupted, "interrupted"),
     };
     let msg = err.to_string();
-    assert!(
-        msg.contains("poll failed"),
-        "expected 'poll failed' in '{msg}'"
-    );
+    assert_eq!(msg, "poll failed: interrupted");
 }
 
 #[test]
 fn ipc_server_error_too_many_clients_display() {
     let err = IpcServerError::TooManyClients;
     let msg = err.to_string();
-    assert!(
-        msg.contains("too many clients"),
-        "expected 'too many clients' in '{msg}'"
-    );
+    assert_eq!(msg, "too many clients");
 }
 
 // ── cleanup helper ──────────────────────────────────────────────────────────
@@ -885,10 +876,7 @@ fn ipc_server_error_accept_failed_display() {
         source: std::io::Error::new(std::io::ErrorKind::ConnectionRefused, "refused"),
     };
     let msg = err.to_string();
-    assert!(
-        msg.contains("accept failed"),
-        "expected 'accept failed' in '{msg}'"
-    );
+    assert_eq!(msg, "accept failed: refused");
 }
 
 // ── IpcServerError Display for response_encode_failed ───────────────────────
@@ -897,10 +885,7 @@ fn ipc_server_error_accept_failed_display() {
 fn ipc_server_error_response_encode_failed_display() {
     let err = IpcServerError::ResponseEncodeFailed;
     let msg = err.to_string();
-    assert!(
-        msg.contains("response encode failed"),
-        "expected 'response encode failed' in '{msg}'"
-    );
+    assert_eq!(msg, "response encode failed");
 }
 
 // ── IpcServerError Display for incomplete_frame ─────────────────────────────
@@ -909,10 +894,7 @@ fn ipc_server_error_response_encode_failed_display() {
 fn ipc_server_error_incomplete_frame_display() {
     let err = IpcServerError::IncompleteFrame;
     let msg = err.to_string();
-    assert!(
-        msg.contains("incomplete IPC frame"),
-        "expected 'incomplete IPC frame' in '{msg}'"
-    );
+    assert_eq!(msg, "incomplete IPC frame");
 }
 
 // ── WorkflowResolver trait: NotFound error case ─────────────────────────────
@@ -932,7 +914,7 @@ impl WorkflowResolver for NotFoundResolver {
 fn workflow_resolver_not_found_error_message() {
     let err = WorkflowResolutionError::NotFound;
     let msg = err.to_string();
-    assert!(msg.contains("not found"), "expected 'not found' in '{msg}'");
+    assert_eq!(msg, "workflow not found");
 }
 
 #[test]
@@ -970,10 +952,7 @@ fn workflow_resolver_not_found_is_rejected_by_dispatch() {
         Some(Duration::from_millis(100)),
         Some(&mut resolver),
     );
-    assert!(
-        matches!(result, Ok(_)),
-        "poll_once_with_resolver should succeed"
-    );
+    assert_eq!(result, Ok(true), "poll_once_with_resolver should succeed");
 
     // Read response header.
     let response_header_bytes = read_exact_timeout(&mut client, IPC_HEADER_LEN);
@@ -990,38 +969,15 @@ fn workflow_resolver_not_found_is_rejected_by_dispatch() {
     );
     let payload_len_usize = match usize::try_from(payload_len) {
         Ok(v) => v,
-        Err(_) => return,
-    };
-    if payload_len_usize > 0 {
-        let response_payload = read_exact_timeout(&mut client, payload_len_usize);
-        let Ok(payload) = response_payload else {
-            panic!("should read response payload")
+            Err(error) => panic!("response payload length should fit usize: {error}"),
         };
-        let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
-        match decoded {
-            Ok(IpcResponse::PayloadError { message, .. }) => {
-                assert!(
-                    message.contains("not found") || message.contains("digest"),
-                    "expected 'not found' or 'digest' in payload error message, got '{message}'"
-                );
-            }
-            Ok(IpcResponse::WorkflowDigestMismatch) => {
-                // Also acceptable: server detected digest mismatch before calling resolver.
-            }
-            Ok(IpcResponse::WorkflowResolutionUnsupported) => {
-                // Also acceptable for certain code paths.
-            }
-            Ok(other) => {
-                assert!(
-                    !matches!(other, IpcResponse::Healthy),
-                    "Unexpected Healthy response when resolver returned NotFound"
-                );
-            }
-            Err(e) => {
-                assert!(false, "response payload decode failed: {e}");
-            }
-        }
-    }
+    assert!(payload_len_usize > 0, "resolver failure response must include payload");
+    let response_payload = read_exact_timeout(&mut client, payload_len_usize);
+    let Ok(payload) = response_payload else {
+        panic!("should read response payload")
+    };
+    let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
+    assert_eq!(decoded, Ok(IpcResponse::WorkflowResolutionUnsupported));
 }
 
 // ── IpcResponse serialization roundtrip: Healthy ────────────────────────────
@@ -1074,17 +1030,14 @@ fn ipc_response_roundtrip_frame_error() {
 fn workflow_resolution_error_required_display() {
     let err = WorkflowResolutionError::Required;
     let msg = err.to_string();
-    assert!(
-        msg.contains("resolution required"),
-        "expected 'resolution required' in '{msg}'"
-    );
+    assert_eq!(msg, "workflow resolution required");
 }
 
 #[test]
 fn workflow_resolution_error_invalid_artifact_display() {
     let err = WorkflowResolutionError::InvalidArtifact;
     let msg = err.to_string();
-    assert!(msg.contains("invalid"), "expected 'invalid' in '{msg}'");
+    assert_eq!(msg, "workflow artifact invalid");
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1335,10 +1288,7 @@ fn ipc_response_roundtrip_payload_error() {
 fn ipc_server_error_read_buffer_too_large_display() {
     let err = IpcServerError::ReadBufferTooLarge;
     let msg = err.to_string();
-    assert!(
-        msg.contains("read buffer exceeded"),
-        "expected 'read buffer exceeded' in '{msg}'"
-    );
+    assert_eq!(msg, "IPC read buffer exceeded configured frame bound");
 }
 
 // ── 11. IpcServerError Display: ResponseWriteFailed ──────────────────────────
@@ -1349,10 +1299,7 @@ fn ipc_server_error_response_write_failed_display() {
         source: std::io::Error::new(std::io::ErrorKind::BrokenPipe, "broken pipe"),
     };
     let msg = err.to_string();
-    assert!(
-        msg.contains("response write failed"),
-        "expected 'response write failed' in '{msg}'"
-    );
+    assert_eq!(msg, "response write failed: broken pipe");
 }
 
 // ── 12. Multiple sequential clients: three clients connect, each sends health ─
@@ -1412,29 +1359,17 @@ fn sequential_clients_each_get_health_response() {
         );
         let payload_len_usize = match usize::try_from(payload_len) {
             Ok(v) => v,
-            Err(_) => {
-                assert!(false, "payload_len overflow for client {i}");
-                return;
-            }
+            Err(error) => panic!("payload_len overflow for client {i}: {error}"),
         };
-        if payload_len_usize > 0 {
-            let response_payload = read_exact_timeout(&mut client, payload_len_usize);
-            assert!(
-                response_payload.is_ok(),
-                "should read response payload for client {i}"
-            );
-            let payload = response_payload.expect("read payload");
-            let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
-            match decoded {
-                Ok(IpcResponse::Healthy) => {}
-                Ok(other) => {
-                    assert!(false, "expected Healthy for client {i}, got {other:?}");
-                }
-                Err(e) => {
-                    assert!(false, "response decode failed for client {i}: {e}");
-                }
-            }
-        }
+        assert!(payload_len_usize > 0, "health response for client {i} must include payload");
+        let response_payload = read_exact_timeout(&mut client, payload_len_usize);
+        assert!(
+            response_payload.is_ok(),
+            "should read response payload for client {i}"
+        );
+        let payload = response_payload.expect("read payload");
+        let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
+        assert_eq!(decoded, Ok(IpcResponse::Healthy), "client {i} decoded response");
 
         // Drop the client to test sequential lifecycle.
         drop(client);
@@ -2119,7 +2054,7 @@ fn poll_once_processes_readable_and_writable_for_same_client() {
     client.flush().expect("flush");
 
     let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
-    assert!(result.is_ok(), "poll with readable+writable should succeed");
+    assert_eq!(result, Ok(true), "poll with readable+writable should succeed");
 }
 
 // ── 12. poll_once with multiple simultaneous events ──────────────────────────
@@ -2145,16 +2080,35 @@ fn poll_once_processes_multiple_simultaneous_events() {
     client2.flush().expect("flush 2");
 
     let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
-    assert!(
-        matches!(result, Ok(_)),
-        "poll with multiple clients should succeed"
-    );
+    assert_eq!(result, Ok(true), "poll with multiple clients should succeed");
 
     let header1 = read_exact_timeout(&mut client1, IPC_HEADER_LEN);
-    assert!(matches!(header1, Ok(_)), "client 1 should get response");
+    let header1 = header1.expect("client 1 should get response header");
+    let len1 = u32::from_le_bytes(
+        header1
+            .get(20..24)
+            .and_then(|s| <[u8; 4]>::try_from(s).ok())
+            .unwrap_or([0; 4]),
+    );
+    let len1 = usize::try_from(len1).expect("client 1 payload length fits usize");
+    assert!(len1 > 0, "client 1 health response must include payload");
+    let payload1 = read_exact_timeout(&mut client1, len1).expect("client 1 payload");
+    let decoded1: Result<IpcResponse, _> = postcard::from_bytes(&payload1);
+    assert_eq!(decoded1, Ok(IpcResponse::Healthy));
 
     let header2 = read_exact_timeout(&mut client2, IPC_HEADER_LEN);
-    assert!(matches!(header2, Ok(_)), "client 2 should get response");
+    let header2 = header2.expect("client 2 should get response header");
+    let len2 = u32::from_le_bytes(
+        header2
+            .get(20..24)
+            .and_then(|s| <[u8; 4]>::try_from(s).ok())
+            .unwrap_or([0; 4]),
+    );
+    let len2 = usize::try_from(len2).expect("client 2 payload length fits usize");
+    assert!(len2 > 0, "client 2 health response must include payload");
+    let payload2 = read_exact_timeout(&mut client2, len2).expect("client 2 payload");
+    let decoded2: Result<IpcResponse, _> = postcard::from_bytes(&payload2);
+    assert_eq!(decoded2, Ok(IpcResponse::Healthy));
 }
 
 // ── cleanup helpers ──────────────────────────────────────────────────────────
@@ -2217,7 +2171,7 @@ fn poll_once_removes_client_when_writable_returns_true() {
 
     // Poll should process the writable event and remove the client
     let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
-    assert!(result.is_ok(), "poll should succeed");
+    assert_eq!(result, Ok(true), "poll should succeed");
     assert_eq!(
         server.client_count(),
         0,

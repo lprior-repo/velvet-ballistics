@@ -203,10 +203,7 @@ fn cancel_succeeds_when_bead_is_active() {
     write_run_accepted(&journal, run);
 
     let result = vb_cli::lifecycle::cancel(run, &journal);
-    assert!(
-        result.is_ok(),
-        "cancel from Active state must succeed: {result:?}"
-    );
+    assert_eq!(result, Ok(()), "cancel from Active state must succeed");
 
     // POST-001: verify exactly one RunCancelled event in journal
     let events = journal
@@ -217,10 +214,14 @@ fn cancel_succeeds_when_bead_is_active() {
         2,
         "cancel must append exactly 1 event (setup + cancel)"
     );
-    assert!(
-        matches!(events[1], vb_storage::JournalEvent::RunCancelled { run: r, .. } if r == run),
-        "journal event must be RunCancelled: {:?}",
-        events[1]
+    assert_eq!(
+        events[1],
+        vb_storage::JournalEvent::RunCancelled {
+            run,
+            seq: EventSeq::new(1),
+            attempt: 1,
+            reason: None,
+        }
     );
 
     // POST-002: verify state transition via replay
@@ -251,10 +252,7 @@ fn cancel_succeeds_when_bead_is_waiting_answer() {
     write_waiting_answer(&journal, run);
 
     let result = vb_cli::lifecycle::cancel(run, &journal);
-    assert!(
-        result.is_ok(),
-        "cancel from WaitingAnswer state must succeed: {result:?}"
-    );
+    assert_eq!(result, Ok(()), "cancel from WaitingAnswer state must succeed");
 
     // POST-001: verify RunCancelled event appended (3 total: setup + AskScheduled + cancel)
     let events = journal
@@ -265,10 +263,14 @@ fn cancel_succeeds_when_bead_is_waiting_answer() {
         3,
         "cancel must append exactly 1 event (setup + AskScheduled + cancel)"
     );
-    assert!(
-        matches!(events[2], vb_storage::JournalEvent::RunCancelled { run: r, .. } if r == run),
-        "journal event must be RunCancelled: {:?}",
-        events[2]
+    assert_eq!(
+        events[2],
+        vb_storage::JournalEvent::RunCancelled {
+            run,
+            seq: EventSeq::new(2),
+            attempt: 1,
+            reason: None,
+        }
     );
 
     // POST-002: verify state transition via replay
@@ -298,10 +300,7 @@ fn resume_succeeds_when_bead_is_cancelled() {
     write_cancelled(&journal, run);
 
     let result = vb_cli::lifecycle::resume(run, &journal);
-    assert!(
-        result.is_ok(),
-        "resume from Cancelled state must succeed: {result:?}"
-    );
+    assert_eq!(result, Ok(()), "resume from Cancelled state must succeed");
 
     // POST-001: verify exactly one RunResumed event in journal (3 total: setup + cancel + resume)
     let events = journal
@@ -312,11 +311,12 @@ fn resume_succeeds_when_bead_is_cancelled() {
         3,
         "resume must append exactly 1 event (setup + cancel + resume)"
     );
-    assert!(
-        matches!(events[2], vb_storage::JournalEvent::RunResumed { run: r, .. } if r == run),
-        "journal event must be RunResumed: {:?}",
-        events[2]
-    );
+    match &events[2] {
+        vb_storage::JournalEvent::RunResumed { run: actual_run, seq, .. } => {
+            assert_eq!((*actual_run, *seq), (run, EventSeq::new(2)));
+        }
+        other => panic!("journal event must be RunResumed, got {other:?}"),
+    }
 
     // POST-002: verify state transition to Active via replay
     let states = vb_cli::lifecycle::replay(&journal).expect("replay must succeed");
@@ -345,10 +345,7 @@ fn retry_succeeds_when_bead_is_failed() {
     write_failed(&journal, run);
 
     let result = vb_cli::lifecycle::retry(run, &journal);
-    assert!(
-        result.is_ok(),
-        "retry from Failed state must succeed: {result:?}"
-    );
+    assert_eq!(result, Ok(()), "retry from Failed state must succeed");
 
     // POST-001: verify exactly one RunRetried event in journal (3 total: setup + Failed + retry)
     let events = journal
@@ -359,11 +356,12 @@ fn retry_succeeds_when_bead_is_failed() {
         3,
         "retry must append exactly 1 event (setup + Failed + retry)"
     );
-    assert!(
-        matches!(events[2], vb_storage::JournalEvent::RunRetried { run: r, .. } if r == run),
-        "journal event must be RunRetried: {:?}",
-        events[2]
-    );
+    match &events[2] {
+        vb_storage::JournalEvent::RunRetried { run: actual_run, seq, .. } => {
+            assert_eq!((*actual_run, *seq), (run, EventSeq::new(2)));
+        }
+        other => panic!("journal event must be RunRetried, got {other:?}"),
+    }
 
     // POST-002: verify state transition to Active via replay
     let states = vb_cli::lifecycle::replay(&journal).expect("replay must succeed");
@@ -393,10 +391,7 @@ fn answer_succeeds_when_bead_is_waiting_answer() {
     write_waiting_answer(&journal, run);
 
     let result = vb_cli::lifecycle::answer(run, answer_content, &journal);
-    assert!(
-        result.is_ok(),
-        "answer from WaitingAnswer state must succeed: {result:?}"
-    );
+    assert_eq!(result, Ok(()), "answer from WaitingAnswer state must succeed");
 
     // POST-001: verify exactly one RunAnswered event in journal (3 total: setup + AskScheduled + answer)
     let events = journal
@@ -407,11 +402,26 @@ fn answer_succeeds_when_bead_is_waiting_answer() {
         3,
         "answer must append exactly 1 event (setup + AskScheduled + answer)"
     );
-    assert!(
-        matches!(events[2], vb_storage::JournalEvent::RunAnswered { run: r, .. } if r == run),
-        "journal event must be RunAnswered: {:?}",
-        events[2]
-    );
+    let expected_answer = vb_core::value::ConstValue::Symbol(vb_core::ids::SymbolId::new(
+        "the answer is 42".bytes().fold(0u32, |acc, b| {
+            acc.wrapping_mul(31).wrapping_add(u32::from(b))
+        }) % u32::MAX,
+    ));
+    match &events[2] {
+        vb_storage::JournalEvent::RunAnswered {
+            run: actual_run,
+            seq,
+            slot_idx,
+            answer,
+            ..
+        } => {
+            assert_eq!(
+                (*actual_run, *seq, *slot_idx, answer),
+                (run, EventSeq::new(2), SlotIdx::ZERO, &expected_answer)
+            );
+        }
+        other => panic!("journal event must be RunAnswered, got {other:?}"),
+    }
 
     // POST-002: verify state transition to Completed via replay
     let states = vb_cli::lifecycle::replay(&journal).expect("replay must succeed");
