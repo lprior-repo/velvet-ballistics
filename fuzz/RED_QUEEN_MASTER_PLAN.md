@@ -3,6 +3,7 @@
 
 > **IF YOU ARE EXECUTING WORK RIGHT NOW:** Read `fuzz/EXECUTE.md` — actionable Phase 0+1 steps with failure branches.
 > **IF YOU ARE PLANNING FUTURE WORK:** Read this document for the full strategic context. Phases 2-6 are deferred to `fuzz/FUTURE.md`.
+> **FOR EXTREME DEPTH:** Read `fuzz/EXTREME_FUZZING.md` — stage-split harnesses, multi-oracle design, structure-aware mutation, sanitizer matrix, crash handling, campaign monitoring.
 >
 > "It takes all the running you can do, to keep in the same place." — Red Queen Hypothesis
 > 
@@ -515,97 +516,14 @@ See **[fuzz/FUTURE.md](./FUTURE.md)** for:
 
 ## 7. CI Integration
 
-### 7.1 GitHub Actions Workflows
+**CI workflows are defined in `fuzz/EXTREME_FUZZING.md` §8 and `fuzz/FUTURE.md` Phase 5.**
 
-```yaml
-# .github/workflows/fuzz-smoke.yml
-# Tier 1: Sequential smoke (NOT parallel matrix — GHA free tier has 20 concurrent job limit)
-name: Fuzz Smoke (Tier 1)
-on: [push, pull_request]
-jobs:
-  fuzz-smoke:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@nightly
-      - run: cargo install cargo-fuzz
-      - run: |
-          set -e
-          for target in $(cargo fuzz list | head -20); do
-            echo "=== $target ==="
-            cargo fuzz run "$target" -- -max_total_time=60 -rss_limit_mb=2048 -print_final_stats=1
-          done
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: fuzz-artifacts
-          path: fuzz/artifacts/
+For now, the operational pattern is:
+- **Local smoke:** `for t in $(cargo fuzz list | head -10); do cargo fuzz run $t -- -max_total_time=60; done`
+- **Nightly campaigns:** Run on dedicated hardware via `cargo fuzz run` with `-max_total_time=3600`
+- **CI gating:** Update Moon `fuzz-smoke` task to run top-10 targets for 60 seconds each
 
-# .github/workflows/fuzz-nightly.yml
-name: Fuzz Nightly (Tier 2)
-on:
-  schedule:
-    - cron: '0 2 * * *'
-jobs:
-  fuzz-nightly:
-    runs-on: [self-hosted]  # Requires dedicated runner for 50hr+ total runtime
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@nightly
-        with:
-          components: rust-src
-      - run: cargo install cargo-fuzz
-      - run: |
-          set -e
-          for target in $(cargo fuzz list); do
-            echo "=== $target ==="
-            cargo fuzz run "$target" -- \
-              -max_total_time=3600 -rss_limit_mb=4096 \
-              -print_final_stats=1 -detect_leaks=1
-          done
-      - uses: actions/upload-artifact@v4
-        with:
-          name: nightly-corpus
-          path: fuzz/corpus/
-
-# .github/workflows/fuzz-weekly.yml
-name: Fuzz Weekly Deep (Tier 3)
-on:
-  schedule:
-    - cron: '0 0 * * 0'
-jobs:
-  fuzz-deep:
-    runs-on: [self-hosted, fuzz-runner]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@nightly
-        with:
-          components: rust-src
-      - run: |
-          # Top-25 targets, 12hr each, sequential
-          for target in $(cargo fuzz list | head -25); do
-            cargo fuzz run "$target" -- \
-              -max_total_time=43200 -rss_limit_mb=4096 \
-              -print_final_stats=1 -detect_leaks=1
-          done
-```
-
-### 7.2 Moon CI Tasks
-
-```yaml
-# .moon/tasks/fuzz.yml — deferred to Phase 5 (see fuzz/FUTURE.md)
-# For now, update the existing fuzz-smoke task:
-#
-# fuzz-smoke:
-#   command: cargo fuzz run
-#   args:
-#     - -max_total_time=60
-#     - -rss_limit_mb=2048
-#     - -print_final_stats=1
-#   inputs:
-#     - fuzz/**/*
-#     - crates/*/src/**/*
-```
+---
 
 ---
 
