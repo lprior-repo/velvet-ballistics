@@ -642,7 +642,10 @@ fn yaml_compiler_compile_returns_canonical_yaml_when_source_parse_fails() -> Res
     match first {
         CompileError::CanonicalYaml { category, message } => {
             assert_eq!(*category, "field_shape");
-            assert_eq!(message.contains("id"), true);
+            assert_eq!(
+                message.as_ref(),
+                "field shape error: step.id expected non-empty string"
+            );
             Ok(())
         }
         other => Err(format!("expected CanonicalYaml, got {other:?}")),

@@ -51,6 +51,7 @@ Scoped verification after reconciliation:
 - `rtk cargo test -p vb_runtime` — PASS, `1816 passed`.
 - `cargo test -p vb_doc -p vb_benchmark` — PASS, `117 passed`.
 - `cargo test -p vb_ipc --lib` — PASS, `691 passed`.
+- `rtk cargo test -p vb_compile` — PASS, `290 passed`.
 
 ## Open Finding Buckets
 
@@ -61,7 +62,7 @@ Scoped verification after reconciliation:
 - `vb_yaml`: PATCHED PARTIAL — current diff fixes exact variants/fields in lib/profile/adversarial/source-map/event tests; still needs parser/profile/source-map property/fuzz coverage.
 - `vb_validate`: PATCHED PARTIAL — current diff fixes capability/idempotency/red-phase/Kani accessor exactness; still needs broad source-level `{ .. }` cleanup and hostile-input executable coverage.
 - `vb_expr`: PATCHED PARTIAL — exact OOB/type/parser/lexer payloads and generated expression properties patched. Evidence: `cargo test -p vb_expr` — PASS, `649 passed`. Kani shape gaps remain open under proof parity.
-- `vb_compile`: full compile-chain strict YAML, exact idempotency/topology diagnostics, `compile_source` parity, primitive payload validation, nested duplicate keys.
+- `vb_compile`: PATCHED PARTIAL — current diff hardens idempotency parity, error variant, canonical YAML diagnostic, and secret-finish IR shape tests. Evidence: `rtk cargo test -p vb_compile` — PASS, `290 passed`. Full strict-YAML compile-chain and nested duplicate-key gaps still need post-patch audit.
 - `vb_storage`: PATCHED PARTIAL — current diff hardens atomic admission and trim tests plus persisted accepted-envelope readback. Evidence: `cargo test -p vb_storage` — PASS, `1126 passed`. Kani persistence gap remains open under proof parity.
 - `vb_runtime`: PATCHED PARTIAL — current diff hardens lifecycle attempt/state/journal assertions, timer identity/order triples, and recovery slot/taint/error assertions. Evidence: `rtk cargo test -p vb_runtime` — PASS, `1816 passed`. Remaining broad runtime recovery/resume/tick-shard gaps require post-patch audit.
 - `vb_doc`/`vb_benchmark`: PATCHED PARTIAL — current diff removes doc tautologies and hardens doc errors/patch plans plus benchmark regression/metadata fields. Evidence: `cargo test -p vb_doc -p vb_benchmark` — PASS, `117 passed`.

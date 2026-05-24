@@ -1,4 +1,4 @@
-use vb_compile::check_idempotency_gates;
+use vb_compile::{CompileError, CompileErrors, check_idempotency_gates};
 use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
 use vb_core::ids::ActionId;
 use vb_validate::idempotency_contract::is_statically_idempotent_contract;
@@ -28,11 +28,48 @@ fn static_ok(c: &ActionContract) -> bool {
 }
 
 fn compile_ok(c: &ActionContract) -> bool {
-    check_idempotency_gates(&[c.clone()]).is_ok()
+    compile_result(c).is_ok()
+}
+
+fn compile_result(c: &ActionContract) -> Result<(), CompileErrors> {
+    check_idempotency_gates(&[c.clone()])
+}
+
+fn assert_compile_accepts(c: &ActionContract, context: &str) -> Result<(), String> {
+    compile_result(c).map_err(|errors| format!("compile should accept {context}, got {errors:?}"))
+}
+
+fn assert_compile_rejects_with_idempotency_violation(
+    c: &ActionContract,
+    expected_reason: &'static str,
+    context: &str,
+) -> Result<(), String> {
+    match compile_result(c) {
+        Err(CompileErrors(errors)) => match errors.as_slice() {
+            [CompileError::IdempotencyViolation {
+                action,
+                side_effect,
+                reason,
+            }] => {
+                assert_eq!(
+                    (*action, *side_effect, reason.as_ref()),
+                    (c.id, c.side_effect, expected_reason),
+                    "compile IdempotencyViolation payload for {context}"
+                );
+                Ok(())
+            }
+            other => Err(format!(
+                "compile should reject {context} with one IdempotencyViolation, got {other:?}"
+            )),
+        },
+        Ok(()) => Err(format!(
+            "compile should reject {context} with IdempotencyViolation"
+        )),
+    }
 }
 
 #[test]
-fn parity_side_effect_none_all_combinations_accept() {
+fn parity_side_effect_none_all_combinations_accept() -> Result<(), String> {
     for retry_safety in [
         RetrySafety::Safe,
         RetrySafety::KeyRequired,
@@ -48,16 +85,17 @@ fn parity_side_effect_none_all_combinations_accept() {
                 static_ok(&c),
                 "static accepts None+{retry_safety:?}+{idempotency:?}"
             );
-            assert!(
-                compile_ok(&c),
-                "compile accepts None+{retry_safety:?}+{idempotency:?}"
-            );
+            assert_compile_accepts(
+                &c,
+                &format!("None+{retry_safety:?}+{idempotency:?}"),
+            )?;
         }
     }
+    Ok(())
 }
 
 #[test]
-fn parity_unsafe_retry_all_side_effects_rejected() {
+fn parity_unsafe_retry_all_side_effects_rejected() -> Result<(), String> {
     let mut id = 100;
     for side_effect in [
         SideEffect::Writes,
@@ -75,17 +113,19 @@ fn parity_unsafe_retry_all_side_effects_rejected() {
                 !static_ok(&c),
                 "static rejects {side_effect:?}+Unsafe+{idempotency:?}"
             );
-            assert!(
-                !compile_ok(&c),
-                "compile rejects {side_effect:?}+Unsafe+{idempotency:?}"
-            );
+            assert_compile_rejects_with_idempotency_violation(
+                &c,
+                "side-effecting action declares RetrySafety::Unsafe",
+                &format!("{side_effect:?}+Unsafe+{idempotency:?}"),
+            )?;
             id += 1;
         }
     }
+    Ok(())
 }
 
 #[test]
-fn parity_idempotent_external_safe_or_key_required_accepts() {
+fn parity_idempotent_external_safe_or_key_required_accepts() -> Result<(), String> {
     let mut id = 200;
     for side_effect in [
         SideEffect::Writes,
@@ -104,17 +144,18 @@ fn parity_idempotent_external_safe_or_key_required_accepts() {
                 static_ok(&c),
                 "static accepts {side_effect:?}+{retry_safety:?}+IdempotentExternal"
             );
-            assert!(
-                compile_ok(&c),
-                "compile accepts {side_effect:?}+{retry_safety:?}+IdempotentExternal"
-            );
+            assert_compile_accepts(
+                &c,
+                &format!("{side_effect:?}+{retry_safety:?}+IdempotentExternal"),
+            )?;
             id += 1;
         }
     }
+    Ok(())
 }
 
 #[test]
-fn parity_at_least_once_external_with_safe_or_key_required_rejected_by_both() {
+fn parity_at_least_once_external_with_safe_or_key_required_rejected_by_both() -> Result<(), String> {
     let mut id = 300;
     for side_effect in [
         SideEffect::Writes,
@@ -129,11 +170,11 @@ fn parity_at_least_once_external_with_safe_or_key_required_rejected_by_both() {
                 Idempotency::AtLeastOnceExternal,
                 retry_safety,
             );
-            let cp_ok = compile_ok(&c);
-            assert!(
-                !cp_ok,
-                "compile rejects AtLeastOnceExternal+{retry_safety:?}"
-            );
+            assert_compile_rejects_with_idempotency_violation(
+                &c,
+                "side-effecting action declares Idempotency::AtLeastOnceExternal without guaranteed idempotent retry",
+                &format!("{side_effect:?}+{retry_safety:?}+AtLeastOnceExternal"),
+            )?;
             assert!(
                 !static_ok(&c),
                 "static rejects AtLeastOnceExternal+{retry_safety:?}"
@@ -141,10 +182,11 @@ fn parity_at_least_once_external_with_safe_or_key_required_rejected_by_both() {
             id += 1;
         }
     }
+    Ok(())
 }
 
 #[test]
-fn parity_deterministic_pure_with_safe_or_key_required_rejected_by_both() {
+fn parity_deterministic_pure_with_safe_or_key_required_rejected_by_both() -> Result<(), String> {
     let mut id = 400;
     for side_effect in [
         SideEffect::Writes,
@@ -159,10 +201,11 @@ fn parity_deterministic_pure_with_safe_or_key_required_rejected_by_both() {
                 Idempotency::DeterministicPure,
                 retry_safety,
             );
-            assert!(
-                !compile_ok(&c),
-                "compile rejects DeterministicPure+{retry_safety:?}"
-            );
+            assert_compile_rejects_with_idempotency_violation(
+                &c,
+                "side-effecting action declares Idempotency::DeterministicPure",
+                &format!("{side_effect:?}+{retry_safety:?}+DeterministicPure"),
+            )?;
             assert!(
                 !static_ok(&c),
                 "static rejects DeterministicPure+{retry_safety:?}"
@@ -170,6 +213,7 @@ fn parity_deterministic_pure_with_safe_or_key_required_rejected_by_both() {
             id += 1;
         }
     }
+    Ok(())
 }
 
 #[test]
@@ -237,7 +281,7 @@ fn parity_side_effect_none_all_9_cases_agree() {
 }
 
 #[test]
-fn parity_unsafe_12_cases_all_rejected_by_both() {
+fn parity_unsafe_12_cases_all_rejected_by_both() -> Result<(), String> {
     let mut count = 0usize;
     for side_effect in [
         SideEffect::Writes,
@@ -255,18 +299,20 @@ fn parity_unsafe_12_cases_all_rejected_by_both() {
                 !static_ok(&c),
                 "static rejects Unsafe+{side_effect:?}+{idempotency:?}"
             );
-            assert!(
-                !compile_ok(&c),
-                "compile rejects Unsafe+{side_effect:?}+{idempotency:?}"
-            );
+            assert_compile_rejects_with_idempotency_violation(
+                &c,
+                "side-effecting action declares RetrySafety::Unsafe",
+                &format!("Unsafe+{side_effect:?}+{idempotency:?}"),
+            )?;
             count += 1;
         }
     }
     assert_eq!(count, 12);
+    Ok(())
 }
 
 #[test]
-fn parity_idempotent_external_8_cases_all_accepted_by_both() {
+fn parity_idempotent_external_8_cases_all_accepted_by_both() -> Result<(), String> {
     let mut count = 0usize;
     for side_effect in [
         SideEffect::Writes,
@@ -285,12 +331,13 @@ fn parity_idempotent_external_8_cases_all_accepted_by_both() {
                 static_ok(&c),
                 "static accepts IdempotentExternal+{side_effect:?}+{retry_safety:?}"
             );
-            assert!(
-                compile_ok(&c),
-                "compile accepts IdempotentExternal+{side_effect:?}+{retry_safety:?}"
-            );
+            assert_compile_accepts(
+                &c,
+                &format!("IdempotentExternal+{side_effect:?}+{retry_safety:?}"),
+            )?;
             count += 1;
         }
     }
     assert_eq!(count, 8);
+    Ok(())
 }

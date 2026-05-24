@@ -6,6 +6,7 @@
 
 use crate::{CompileError, CompileErrors, YamlCompiler};
 use proptest::prelude::*;
+use vb_core::{CompiledNodeKind, ConstValue, SlotIdx, StepIdx};
 
 // ----------------------------------------------------------------------------
 // Test helpers
@@ -13,6 +14,53 @@ use proptest::prelude::*;
 
 fn compile_workflow(source: &[u8]) -> Result<crate::CompiledWorkflow, CompileErrors> {
     YamlCompiler::default().compile(source)
+}
+
+fn assert_literal_finish_shape(
+    workflow: &crate::CompiledWorkflow,
+    expected: i64,
+) -> Result<(), String> {
+    let parts = workflow.to_parts();
+    assert_eq!(parts.slot_count, 1, "literal finish slot count");
+    assert_eq!(parts.nodes.len(), 2, "literal finish node count");
+    let Some(set_node) = parts.nodes.first() else {
+        return Err(String::from("literal finish workflow missing SetConst node"));
+    };
+    assert_eq!(
+        set_node.output,
+        Some(SlotIdx::new(0)),
+        "literal finish SetConst output slot"
+    );
+    assert_eq!(
+        set_node.next,
+        Some(StepIdx::new(1)),
+        "literal finish SetConst next node"
+    );
+    let const_idx = match &set_node.kind {
+        CompiledNodeKind::SetConst { value } => value,
+        other => return Err(format!("expected SetConst node, got {other:?}")),
+    };
+    let Some(constant) = parts.constants.get(const_idx.as_usize()) else {
+        return Err(format!("missing constant at index {}", const_idx.get()));
+    };
+    assert_eq!(
+        constant,
+        &ConstValue::I64(expected),
+        "literal finish constant payload"
+    );
+
+    let Some(finish_node) = parts.nodes.get(1) else {
+        return Err(String::from("literal finish workflow missing Finish node"));
+    };
+    assert_eq!(finish_node.output, None, "literal finish output");
+    assert_eq!(finish_node.next, None, "literal finish next");
+    match &finish_node.kind {
+        CompiledNodeKind::Finish { result } => {
+            assert_eq!(*result, SlotIdx::new(0), "literal finish result slot");
+            Ok(())
+        }
+        other => Err(format!("expected Finish node, got {other:?}")),
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -593,8 +641,10 @@ steps:
       result: {}
 "#, value);
 
-        let result = compile_workflow(source.as_bytes());
+        let workflow = compile_workflow(source.as_bytes()).map_err(|errors| {
+            TestCaseError::fail(format!("literal in Finish must compile, got {errors:?}"))
+        })?;
 
-        prop_assert!(result.is_ok(), "literal in Finish must compile, got {:?}", result);
+        assert_literal_finish_shape(&workflow, i64::from(value)).map_err(TestCaseError::fail)?;
     }
 }

@@ -464,8 +464,8 @@ fn yaml_compiler_default_constructs() {
 #[test]
 fn yaml_compiler_rejects_invalid_source() {
     let source = b"not yaml at all";
-    let result = YamlCompiler::default().parse_ast(source);
-    assert!(result.is_err());
+    let error = parse_error(source).expect("expected scalar YAML to fail as top-level shape");
+    assert!(matches!(error, CompileError::TopLevelNotMapping));
 }
 
 // ── YamlCompiler compile returns Err for invalid source ──────────────────────
@@ -473,8 +473,11 @@ fn yaml_compiler_rejects_invalid_source() {
 #[test]
 fn yaml_compiler_rejects_invalid_source_via_compile() {
     let source = b"not yaml at all";
-    let result = YamlCompiler::default().compile(source);
-    assert!(result.is_err());
+    let Err(CompileErrors(errors)) = YamlCompiler::default().compile(source) else {
+        panic!("scalar YAML unexpectedly compiled");
+    };
+    assert_eq!(errors.len(), 1);
+    assert!(matches!(errors.first(), Some(CompileError::TopLevelNotMapping)));
 }
 
 // ── Parse expressions tests ─────────────────────────────────────────────────
@@ -483,31 +486,28 @@ fn yaml_compiler_rejects_invalid_source_via_compile() {
 fn parse_expression_accepts_integer_literals() {
     use crate::expression::{ExpressionLiteral, ParsedExpression, parse_expression};
     let result = parse_expression("42");
-    assert!(result.is_ok());
-    if let Ok(ParsedExpression::Literal(ExpressionLiteral::I64(n))) = result {
-        assert_eq!(n, 42);
-    } else {
-        panic!("expected integer literal");
-    }
+    assert_eq!(result, Ok(ParsedExpression::Literal(ExpressionLiteral::I64(42))));
 }
 
 #[test]
 fn parse_expression_accepts_boolean_literals() {
     use crate::expression::{ExpressionLiteral, ParsedExpression, parse_expression};
     let result = parse_expression("true");
-    assert!(result.is_ok());
-    if let Ok(ParsedExpression::Literal(ExpressionLiteral::Bool(b))) = result {
-        assert!(b);
-    } else {
-        panic!("expected boolean literal");
-    }
+    assert_eq!(result, Ok(ParsedExpression::Literal(ExpressionLiteral::Bool(true))));
 }
 
 #[test]
 fn parse_expression_rejects_invalid_syntax() {
     use crate::expression::parse_expression;
     let result = parse_expression("= 1 + 2");
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(CompileError::ExpressionUnexpectedChar {
+            expression,
+            index: 0,
+            found: '='
+        }) if expression.as_ref() == "= 1 + 2"
+    ));
 }
 
 // ── Strict YAML profile tests ────────────────────────────────────────────────
@@ -516,21 +516,24 @@ fn parse_expression_rejects_invalid_syntax() {
 fn strict_yaml_rejects_alias() {
     use crate::strict_yaml::reject_unsupported_profile_events;
     let result = reject_unsupported_profile_events("&anchor value");
-    assert!(result.is_err());
+    assert!(matches!(result, Err(CompileError::AnchorForbidden { .. })));
 }
 
 #[test]
 fn strict_yaml_accepts_single_document() {
     use crate::strict_yaml::reject_unsupported_profile_events;
     let result = reject_unsupported_profile_events("key: value");
-    assert!(result.is_ok());
+    assert!(matches!(result, Ok(())));
 }
 
 #[test]
 fn strict_yaml_rejects_multiple_documents() {
     use crate::strict_yaml::reject_unsupported_profile_events;
     let result = reject_unsupported_profile_events("key1: value1\n---\nkey2: value2");
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(CompileError::DocumentCount { count: 2 })
+    ));
 }
 
 // ── Expression helper tests ──────────────────────────────────────────────────
@@ -681,8 +684,8 @@ fn expression_literal_text() {
 #[test]
 fn workflow_digest_from_bytes_creates_digest() {
     use vb_core::WorkflowDigest;
-    let _digest = WorkflowDigest::from_bytes([0u8; 32]);
-    // Just verify it can be created without panicking
+    let digest = WorkflowDigest::from_bytes([0xAB; 32]);
+    assert_eq!(digest.as_bytes(), [0xAB; 32]);
 }
 
 // ── CompileError code() tests ────────────────────────────────────────────────
