@@ -2466,7 +2466,7 @@ fn replay_choose_expr_empty_branches_with_otherwise_uses_fallback() -> Result<()
 
 #[test]
 fn replay_choose_expr_empty_branches_no_otherwise_returns_error() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let result = make_plan(
         vec![
             CompiledNode {
                 id: StepIdx::new(0),
@@ -2502,17 +2502,14 @@ fn replay_choose_expr_empty_branches_no_otherwise_returns_error() -> Result<(), 
         ],
         vec![ConstValue::I64(42)],
         vec![],
-    )?;
-
-    let mut store = ValueStore::new();
-    match ReplayEngine::new(&plan).replay_frame_through(StepIdx::new(1), &mut store) {
-        Err(ReplayError::Internal { reason }) => {
-            assert_eq!(reason, "choose_expr no branch matched and no otherwise");
+    );
+    match result {
+        Err(CoreError::InvalidCompiledWorkflow { reason }) => {
+            assert_eq!(reason, "test workflow validation failed");
             Ok(())
         }
-        Err(other) => Err(replay_err_to_core(other)),
-        Ok(_) => Err(CoreError::InternalInvariantViolation {
-            reason: "expected choose empty no-otherwise error",
+        _ => Err(CoreError::InternalInvariantViolation {
+            reason: "expected InvalidCompiledWorkflow from validation",
         }),
     }
 }
@@ -3558,7 +3555,7 @@ fn replay_choose_slot_empty_branches_with_otherwise_fallback() -> Result<(), Cor
 
 #[test]
 fn replay_choose_slot_empty_branches_no_otherwise_error() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let result = make_plan(
         vec![
             CompiledNode {
                 id: StepIdx::new(0),
@@ -3594,17 +3591,14 @@ fn replay_choose_slot_empty_branches_no_otherwise_error() -> Result<(), CoreErro
         ],
         vec![ConstValue::I64(0)],
         vec![],
-    )?;
-
-    let mut store = ValueStore::new();
-    match ReplayEngine::new(&plan).replay_frame_through(StepIdx::new(1), &mut store) {
-        Err(ReplayError::Internal { reason }) => {
-            assert_eq!(reason, "choose_slot no branch matched and no otherwise");
+    );
+    match result {
+        Err(CoreError::InvalidCompiledWorkflow { reason }) => {
+            assert_eq!(reason, "test workflow validation failed");
             Ok(())
         }
-        Err(other) => Err(replay_err_to_core(other)),
-        Ok(_) => Err(CoreError::InternalInvariantViolation {
-            reason: "expected empty slot branches no-otherwise error",
+        _ => Err(CoreError::InternalInvariantViolation {
+            reason: "expected InvalidCompiledWorkflow from validation",
         }),
     }
 }

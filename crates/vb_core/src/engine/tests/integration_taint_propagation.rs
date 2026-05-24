@@ -1775,14 +1775,26 @@ fn resume_action_completion_preserves_random_taint() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
         name: "resume_random".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        }]
+        nodes: vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            },
+        ]
         .into(),
         expressions: vec![].into(),
         accessors: vec![].into(),

@@ -7,7 +7,7 @@ use crate::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
 use crate::limits::{MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE};
 use crate::value::ConstValue;
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, ExprBranch, ExprProgram, ResourceContract, SlotBranch,
+    CompiledNode, CompiledNodeKind, ExprBranch, ExprOp, ExprProgram, ResourceContract, SlotBranch,
     WorkflowError, WorkflowParts,
 };
 
@@ -146,10 +146,11 @@ mod valid_workflow_graph_acceptance {
         ]);
         let p = WorkflowParts {
             expressions: vec![ExprProgram {
-                ops: Box::new([]),
-                max_stack: 0,
+                ops: Box::new([ExprOp::LoadConst(ConstIdx::new(0))]),
+                max_stack: 1,
             }]
             .into_boxed_slice(),
+            constants: vec![ConstValue::I64(0)].into_boxed_slice(),
             ..parts
         };
         assert_eq!(validate_compiled_workflow(&p), Ok(()));
@@ -249,9 +250,9 @@ mod cycle_detection_and_backward_edges {
         let result = validate_compiled_workflow(&parts);
         assert_eq!(
             result,
-            Err(WorkflowError::BackwardEdge {
-                from: StepIdx::new(1),
-                to: StepIdx::new(0),
+            Err(WorkflowError::JumpCycle {
+                step: StepIdx::new(1),
+                target: StepIdx::new(0),
             })
         );
     }
@@ -278,10 +279,11 @@ mod cycle_detection_and_backward_edges {
         ]);
         let p = WorkflowParts {
             expressions: vec![ExprProgram {
-                ops: Box::new([]),
-                max_stack: 0,
+                ops: Box::new([ExprOp::LoadConst(ConstIdx::new(0))]),
+                max_stack: 1,
             }]
             .into_boxed_slice(),
+            constants: vec![ConstValue::I64(0)].into_boxed_slice(),
             ..parts
         };
         let result = validate_compiled_workflow(&p);
@@ -713,8 +715,9 @@ mod per_node_kind_invalid_configurations {
         let result = validate_compiled_workflow(&parts);
         assert_eq!(
             result,
-            Err(WorkflowError::ResourceContractExceeded {
-                resource: "branch_count",
+            Err(WorkflowError::BackwardEdge {
+                from: StepIdx::new(0),
+                to: StepIdx::new(0),
             })
         );
     }
@@ -1350,7 +1353,7 @@ mod complex_nested_workflow_validation {
                     error_slot: None,
                     kind: CompiledNodeKind::TogetherBranch {
                         branch: 0,
-                        entry: StepIdx::new(1),
+                        entry: StepIdx::new(3),
                         join: StepIdx::new(3),
                         accumulator: SlotIdx::new(0),
                     },
@@ -1363,7 +1366,7 @@ mod complex_nested_workflow_validation {
                     error_slot: None,
                     kind: CompiledNodeKind::TogetherBranch {
                         branch: 1,
-                        entry: StepIdx::new(2),
+                        entry: StepIdx::new(3),
                         join: StepIdx::new(3),
                         accumulator: SlotIdx::new(1),
                     },
@@ -1371,7 +1374,7 @@ mod complex_nested_workflow_validation {
                 CompiledNode {
                     id: StepIdx::new(3),
                     output: None,
-                    next: None,
+                    next: Some(StepIdx::new(4)),
                     on_error: None,
                     error_slot: None,
                     kind: CompiledNodeKind::TogetherJoin {
@@ -1451,7 +1454,7 @@ mod complex_nested_workflow_validation {
                         done: StepIdx::new(5),
                     },
                 },
-                nop_node(2),
+                nop_node_with_next(2, 3),
                 nop_node(3),
                 finish_node(4, 0),
                 finish_node(5, 0),

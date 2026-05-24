@@ -129,6 +129,10 @@ pub(crate) fn build_list_with_taint(
     values
         .try_reserve_exact(items.len())
         .map_err(|_| EngineError::AllocationFailed)?;
+    let mut taints = Vec::new();
+    taints
+        .try_reserve_exact(items.len())
+        .map_err(|_| EngineError::AllocationFailed)?;
     let mut accumulated_taint = Taint::Clean;
     let mut index = 0usize;
     while index < items.len() {
@@ -139,6 +143,7 @@ pub(crate) fn build_list_with_taint(
             })?;
         values.push(*run.read_slot(*slot)?);
         let slot_taint = run.read_taint(*slot)?;
+        taints.push(slot_taint);
         accumulated_taint = join_taint(accumulated_taint, slot_taint);
         index = index
             .checked_add(1)
@@ -146,7 +151,7 @@ pub(crate) fn build_list_with_taint(
                 reason: "build_list item index overflow",
             })?;
     }
-    let handle = store.insert_list(values.into_boxed_slice())?;
+    let handle = store.insert_list_with_taint(values.into_boxed_slice(), taints.into_boxed_slice())?;
     Ok((handle, accumulated_taint))
 }
 
