@@ -1,0 +1,12 @@
+name: event-fuzz-3
+steps:
+  - id: start
+    for_each:
+      variable: item
+      input: "0"
+      at_once: 1
+      steps:
+        - id: process
+          set:
+            output: result
+            value: "42"

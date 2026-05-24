@@ -1,0 +1,10 @@
+name: event-fuzz-2
+steps:
+  - id: step_a
+    set:
+      output: x
+      value: "true"
+  - id: step_b
+    set:
+      output: y
+      value: "false"

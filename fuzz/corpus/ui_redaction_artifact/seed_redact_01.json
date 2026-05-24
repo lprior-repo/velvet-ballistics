@@ -1,0 +1,5 @@
+{
+  "name": "test-release",
+  "version": "1.0.0",
+  "artifacts": [{"id": "a1", "type": "binary"}]
+}

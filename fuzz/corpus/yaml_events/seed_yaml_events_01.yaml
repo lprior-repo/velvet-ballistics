@@ -1,0 +1,6 @@
+name: event-fuzz-1
+steps:
+  - id: step1
+    set:
+      output: val
+      value: "1"

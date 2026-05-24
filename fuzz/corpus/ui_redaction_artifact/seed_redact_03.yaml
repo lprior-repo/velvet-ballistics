@@ -1,0 +1,3 @@
+schema: vb-artifact/v1
+build:
+  id: build-123

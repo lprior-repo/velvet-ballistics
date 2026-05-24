@@ -1,0 +1,4 @@
+{
+  "release": "v1.0.0",
+  "changes": [{"component": "core", "diff": "modified"}]
+}
