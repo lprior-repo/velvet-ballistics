@@ -461,13 +461,13 @@ fn blackhat_ev_009_oob_access_no_panic() -> crate::ExprResult<()> {
         max_stack: 1,
     };
     let r = eval_expr_program(&program, &[], &[]);
-    assert!(r.is_err(), "BH-EV-009a: OOB slot should error");
+    assert_eq!(r, Err(ExprError::StackUnderflow), "BH-EV-009a: OOB slot exact error");
     let program = ExprProgram {
         ops: vec![ExprOp::LoadConst(ConstIdx::new(255))].into_boxed_slice(),
         max_stack: 1,
     };
     let r = eval_expr_program(&program, &[], &[]);
-    assert!(r.is_err(), "BH-EV-009b: OOB const should error");
+    assert_eq!(r, Err(ExprError::UnexpectedEof), "BH-EV-009b: OOB const exact error");
     Ok(())
 }
 

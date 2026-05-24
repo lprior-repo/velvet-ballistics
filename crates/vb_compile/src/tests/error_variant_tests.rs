@@ -26,9 +26,7 @@ fn parse_error(source: &[u8]) -> Result<CompileError, String> {
 #[test]
 fn empty_source_rejected_with_empty_source() {
     let result = YamlCompiler::default().parse_ast(b"");
-    assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::EmptySource)))
-    );
+    assert!(matches!(result, Err(CompileErrors(errors)) if matches!(errors.as_slice(), [CompileError::EmptySource])));
 }
 
 // ── DuplicateKey variant ────────────────────────────────────────────────────
@@ -65,9 +63,7 @@ steps:
 100: invalid_key
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::NonStringKey { mark } if mark.line > 0)))
-    );
+    assert!(matches!(result, Err(CompileErrors(errors)) if matches!(errors.as_slice(), [CompileError::NonStringKey { mark }] if mark.line > 0)));
 }
 
 // ── StepShape variant ───────────────────────────────────────────────────────
@@ -82,9 +78,7 @@ steps:
   - "not a mapping"
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::StepShape { step: 0, .. })))
-    );
+    assert!(matches!(result, Err(CompileErrors(errors)) if matches!(errors.as_slice(), [CompileError::StepShape { step: 0 }])));
 }
 
 // ── UnknownStepField variant ─────────────────────────────────────────────────
@@ -102,9 +96,7 @@ steps:
       result: 0
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnknownStepField { step: 0, field } if field.as_ref() == "unknown_field")))
-    );
+    assert!(matches!(result, Err(CompileErrors(errors)) if matches!(errors.as_slice(), [CompileError::UnknownStepField { step: 0, field }] if field.as_ref() == "unknown_field")));
 }
 
 // ── MissingStepId variant ───────────────────────────────────────────────────
@@ -123,9 +115,7 @@ steps:
       result: 0
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::MissingStepId { step: 0, .. })))
-    );
+    assert!(matches!(result, Err(CompileErrors(errors)) if matches!(errors.as_slice(), [CompileError::MissingStepId { step: 0 }])));
 }
 
 // ── DuplicateStepId variant ────────────────────────────────────────────────
@@ -145,9 +135,7 @@ steps:
       result: 0
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::DuplicateStepId { id } if id.as_ref() == "done")))
-    );
+    assert!(matches!(result, Err(CompileErrors(errors)) if matches!(errors.as_slice(), [CompileError::DuplicateStepId { id }] if id.as_ref() == "done")));
 }
 
 // ── UnknownTopLevelField variant ─────────────────────────────────────────────
@@ -165,9 +153,7 @@ steps:
       result: 0
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnknownTopLevelField { field } if field.as_ref() == "unknown_field")))
-    );
+    assert!(matches!(result, Err(CompileErrors(errors)) if matches!(errors.as_slice(), [CompileError::UnknownTopLevelField { field }] if field.as_ref() == "unknown_field")));
 }
 
 // ── InvalidVersion variant ───────────────────────────────────────────────────
@@ -184,9 +170,7 @@ steps:
       result: 0
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::InvalidVersion { actual } if actual.as_ref() == "velvet-ballastics/v2")))
-    );
+    assert!(matches!(result, Err(CompileErrors(errors)) if matches!(errors.as_slice(), [CompileError::InvalidVersion { actual }] if actual.as_ref() == "velvet-ballastics/v2")));
 }
 
 // ── UnknownTriggerKind variant ───────────────────────────────────────────────
@@ -203,9 +187,7 @@ steps:
       result: 0
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnknownTriggerKind { trigger } if trigger.as_ref() == "unknown_trigger")))
-    );
+    assert!(matches!(result, Err(CompileErrors(errors)) if matches!(errors.as_slice(), [CompileError::UnknownTriggerKind { trigger }] if trigger.as_ref() == "unknown_trigger")));
 }
 
 // ── InvalidTriggerCount variant ─────────────────────────────────────────────
@@ -223,9 +205,7 @@ steps:
       result: 0
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::InvalidTriggerCount { count: 2 })))
-    );
+    assert!(matches!(result, Err(CompileErrors(errors)) if matches!(errors.as_slice(), [CompileError::InvalidTriggerCount { count: 2 }])));
 }
 
 // ── FieldShape variant ──────────────────────────────────────────────────────
@@ -243,9 +223,7 @@ steps:
       result: 0
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::FieldShape { field: "inputs", expected: "mapping" })))
-    );
+    assert!(matches!(result, Err(CompileErrors(errors)) if matches!(errors.as_slice(), [CompileError::FieldShape { field: "inputs", expected: "mapping" }])));
 }
 
 // ── EmptySteps variant ───────────────────────────────────────────────────────
@@ -259,9 +237,7 @@ when:
 steps: []
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::EmptySteps)))
-    );
+    assert!(matches!(result, Err(CompileErrors(errors)) if matches!(errors.as_slice(), [CompileError::EmptySteps])));
 }
 
 // ── LastStepMustFinish variant ───────────────────────────────────────────────
@@ -278,9 +254,7 @@ steps:
       value: 1
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::LastStepMustFinish)))
-    );
+    assert!(matches!(result, Err(CompileErrors(errors)) if matches!(errors.as_slice(), [CompileError::LastStepMustFinish])));
 }
 
 // ── UnknownReferenceName variant ─────────────────────────────────────────────

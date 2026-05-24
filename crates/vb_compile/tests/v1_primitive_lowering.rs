@@ -250,22 +250,30 @@ fn compile_workflow_returns_step_field_shape_when_each_scoped_primitive_required
         (
             "for_each",
             "  - id: loop\n    for_each:\n      variable: \"\"\n      input: \"0\"\n      steps: []\n  - id: done\n    finish:\n      result: 0\n",
-            ExpectedShapeError::CanonicalYamlField("foreach.variable"),
+            ExpectedShapeError::CanonicalYaml {
+                message: "field shape error: foreach.variable expected non-empty string",
+            },
         ),
         (
             "parallel",
             "  - id: fanout\n    parallel:\n      branches:\n        - label: \"\"\n          steps: []\n  - id: done\n    finish:\n      result: 0\n",
-            ExpectedShapeError::CanonicalYamlField("parallel.branches[].label"),
+            ExpectedShapeError::CanonicalYaml {
+                message: "field shape error: parallel.branches[].label expected non-empty string",
+            },
         ),
         (
             "collect",
             "  - id: collect_pages\n    collect:\n      variable: page\n      source: \"\"\n      steps: []\n  - id: done\n    finish:\n      result: 0\n",
-            ExpectedShapeError::CanonicalYamlField("collect.source"),
+            ExpectedShapeError::CanonicalYaml {
+                message: "field shape error: collect.source expected non-empty string",
+            },
         ),
         (
             "aggregate",
             "  - id: fold\n    aggregate:\n      variable: acc\n      input: \"0\"\n      initial: \"\"\n      steps: []\n  - id: done\n    finish:\n      result: 0\n",
-            ExpectedShapeError::CanonicalYamlField("aggregate.initial"),
+            ExpectedShapeError::CanonicalYaml {
+                message: "field shape error: aggregate.initial expected non-empty string",
+            },
         ),
         (
             "repeat",
@@ -275,12 +283,16 @@ fn compile_workflow_returns_step_field_shape_when_each_scoped_primitive_required
         (
             "wait",
             "  - id: wait_for_event\n    wait:\n      event: \"\"\n  - id: done\n    finish:\n      result: 0\n",
-            ExpectedShapeError::CanonicalYamlField("wait.event"),
+            ExpectedShapeError::CanonicalYaml {
+                message: "wait.event must be non-empty",
+            },
         ),
         (
             "ask",
             "  - id: ask_human\n    ask:\n      prompt: \"\"\n  - id: done\n    finish:\n      result: 0\n",
-            ExpectedShapeError::CanonicalYamlField("ask.prompt"),
+            ExpectedShapeError::CanonicalYaml {
+                message: "field shape error: ask.prompt expected non-empty string",
+            },
         ),
     ];
 
@@ -295,7 +307,7 @@ fn compile_workflow_returns_step_field_shape_when_each_scoped_primitive_required
 
 #[derive(Clone, Copy)]
 enum ExpectedShapeError {
-    CanonicalYamlField(&'static str),
+    CanonicalYaml { message: &'static str },
     CompileStepField(&'static str),
 }
 
@@ -307,11 +319,13 @@ fn assert_expected_shape_error(
     match (actual, expected_error) {
         (
             CompileError::CanonicalYaml { category, message },
-            ExpectedShapeError::CanonicalYamlField(expected_field),
+            ExpectedShapeError::CanonicalYaml {
+                message: expected_message,
+            },
         ) => {
             assert_eq!(
-                (*category, message.contains(expected_field)),
-                ("field_shape", true),
+                (*category, message.as_ref()),
+                ("field_shape", expected_message),
                 "primitive {primitive} returned wrong canonical field-shape payload"
             );
             Ok(())
@@ -331,7 +345,7 @@ fn assert_expected_shape_error(
             );
             Ok(())
         }
-        (other, ExpectedShapeError::CanonicalYamlField(_)) => Err(format!(
+        (other, ExpectedShapeError::CanonicalYaml { .. }) => Err(format!(
             "primitive {primitive} expected CanonicalYaml field_shape, got {other:?}"
         )),
         (other, ExpectedShapeError::CompileStepField(_)) => Err(format!(

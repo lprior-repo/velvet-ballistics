@@ -16,6 +16,27 @@ fn compile_workflow(source: &[u8]) -> Result<crate::CompiledWorkflow, CompileErr
     YamlCompiler::default().compile(source)
 }
 
+fn assert_exact_secret_taint_leak_errors(
+    result: Result<crate::CompiledWorkflow, CompileErrors>,
+    expected_count: usize,
+    context: &str,
+) {
+    let Err(CompileErrors(errors)) = result else {
+        panic!("{context}: expected SecretTaintLeak errors");
+    };
+    assert_eq!(
+        errors.len(),
+        expected_count,
+        "{context}: wrong SecretTaintLeak count: {errors:?}"
+    );
+    for error in errors {
+        assert!(
+            matches!(error, CompileError::SecretTaintLeak { field: "save.value" }),
+            "{context}: expected only SecretTaintLeak(save.value), got {error:?}"
+        );
+    }
+}
+
 fn assert_literal_finish_shape(
     workflow: &crate::CompiledWorkflow,
     expected: i64,
@@ -345,11 +366,7 @@ steps:
       result: 0
 "#;
     let result = compile_workflow(source);
-    assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { field: "save.value" }))),
-        "ANTI-INVARIANT: secret in Save must be rejected, got {:?}",
-        result
-    );
+    assert_exact_secret_taint_leak_errors(result, 1, "ANTI-INVARIANT: secret in Save");
 }
 
 /// Given: YAML with secret-typed input in Save
@@ -374,11 +391,7 @@ steps:
       result: 0
 "#;
     let result = compile_workflow(source);
-    assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { field: "save.value" }))),
-        "ANTI-INVARIANT: secret-typed input in Save must be rejected, got {:?}",
-        result
-    );
+    assert_exact_secret_taint_leak_errors(result, 1, "ANTI-INVARIANT: secret input in Save");
 }
 
 /// Given: YAML with composite containing secret in Save slot
@@ -402,11 +415,7 @@ steps:
       result: 0
 "#;
     let result = compile_workflow(source);
-    assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { field: "save.value" }))),
-        "ANTI-INVARIANT: composite with secret in Save must be rejected, got {:?}",
-        result
-    );
+    assert_exact_secret_taint_leak_errors(result, 1, "ANTI-INVARIANT: composite secret in Save");
 }
 
 /// Given: YAML with secret via two-hop relay (Save -> Save -> Finish)
@@ -432,11 +441,7 @@ steps:
       result: 1
 "#;
     let result = compile_workflow(source);
-    assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { field: "save.value" }))),
-        "ANTI-INVARIANT: two-hop secret relay must be rejected, got {:?}",
-        result
-    );
+    assert_exact_secret_taint_leak_errors(result, 1, "ANTI-INVARIANT: two-hop secret relay");
 }
 
 /// Given: YAML with nested secret in Save (list containing secret)
@@ -460,11 +465,7 @@ steps:
       result: 0
 "#;
     let result = compile_workflow(source);
-    assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { field: "save.value" }))),
-        "ANTI-INVARIANT: nested secret in Save must be rejected, got {:?}",
-        result
-    );
+    assert_exact_secret_taint_leak_errors(result, 1, "ANTI-INVARIANT: nested secret in Save");
 }
 
 /// Given: YAML with unknown reference root in Finish
@@ -575,11 +576,11 @@ steps:
 
         let result = compile_workflow(source.as_bytes());
 
-        prop_assert!(
-            matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { field: "save.value" }))),
-            "ANTI-INVARIANT: secret in Save must be rejected, got {:?}",
-            result
-        );
+        let Err(CompileErrors(errors)) = result else {
+            return Err(TestCaseError::fail("ANTI-INVARIANT: secret in Save unexpectedly compiled"));
+        };
+        prop_assert_eq!(errors.len(), 1);
+        prop_assert!(matches!(errors.as_slice(), [CompileError::SecretTaintLeak { field: "save.value" }]));
     }
 }
 
@@ -606,11 +607,11 @@ steps:
 
         let result = compile_workflow(source.as_bytes());
 
-        prop_assert!(
-            matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { field: "save.value" }))),
-            "ANTI-INVARIANT: secret input in Save must be rejected, got {:?}",
-            result
-        );
+        let Err(CompileErrors(errors)) = result else {
+            return Err(TestCaseError::fail("ANTI-INVARIANT: secret input in Save unexpectedly compiled"));
+        };
+        prop_assert_eq!(errors.len(), 1);
+        prop_assert!(matches!(errors.as_slice(), [CompileError::SecretTaintLeak { field: "save.value" }]));
     }
 }
 

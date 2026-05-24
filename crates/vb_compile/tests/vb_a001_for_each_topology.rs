@@ -5,7 +5,7 @@
 //! ForEachNext next-edge on the body SetConst so run-compiled
 //! does not reject the compiled IR as unreachable.
 
-use vb_compile::{YamlCompiler, compile_workflow, lower_set, lower_steps_to_ir};
+use vb_compile::{CompileError, YamlCompiler, compile_workflow, lower_set, lower_steps_to_ir};
 use vb_core::ids::{ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts};
 
@@ -305,9 +305,17 @@ fn vb_a001_lower_steps_to_ir_rejects_disconnected_body() -> Result<(), Box<dyn s
         WorkflowDigest::from_bytes([2; 32]),
     );
 
+    let Err(errors) = result else {
+        return Err("for_each with disconnected body unexpectedly compiled".into());
+    };
+    assert_eq!(errors.len(), 1, "disconnected body exact error count");
     assert!(
-        result.is_err(),
-        "for_each with disconnected body must be rejected by validation"
+        matches!(
+            errors.as_slice(),
+            [CompileError::Workflow(vb_core::WorkflowError::UnreachableNode { step })]
+                if *step == StepIdx::new(2)
+        ),
+        "for_each with disconnected body must reject exactly unreachable ForEachNext, got {errors:?}"
     );
     Ok(())
 }

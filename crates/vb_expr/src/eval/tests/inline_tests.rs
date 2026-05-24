@@ -671,16 +671,13 @@ fn eval_expr_program_double_negation() -> ExprResult<()> {
 fn eval_load_const_out_of_bounds_returns_error() -> ExprResult<()> {
     // Given: a program with LoadConst(ConstIdx::new(99)) and empty constants
     // When: eval_expr_program is called
-    // Then: the result is Err(UnexpectedEof) (constant index out of bounds)
+    // Then: the result is exactly Err(UnexpectedEof) (constant index out of bounds)
     let program = ExprProgram {
         ops: vec![ExprOp::LoadConst(ConstIdx::new(99))].into_boxed_slice(),
         max_stack: 1,
     };
     let result = eval_expr_program(&program, &[], &[]);
-    assert!(
-        result.is_err(),
-        "LoadConst with out-of-bounds index should fail"
-    );
+    assert_eq!(result, Err(ExprError::UnexpectedEof));
     Ok(())
 }
 
@@ -688,17 +685,14 @@ fn eval_load_const_out_of_bounds_returns_error() -> ExprResult<()> {
 fn eval_load_slot_out_of_bounds_returns_error() -> ExprResult<()> {
     // Given: a program with LoadSlot(SlotIdx::new(99)) and empty slots
     // When: eval_expr_program is called
-    // Then: the result is Err(StackUnderflow) (slot index out of bounds)
+    // Then: the result is exactly Err(StackUnderflow) (slot index out of bounds)
     let program = ExprProgram {
         ops: vec![ExprOp::LoadSlot(SlotIdx::new(99))].into_boxed_slice(),
         max_stack: 1,
     };
     let slots: Vec<Option<SlotValue>> = vec![];
     let result = eval_expr_program(&program, &slots, &[]);
-    assert!(
-        result.is_err(),
-        "LoadSlot with out-of-bounds index should fail"
-    );
+    assert_eq!(result, Err(ExprError::StackUnderflow));
     Ok(())
 }
 

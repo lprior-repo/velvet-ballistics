@@ -232,8 +232,7 @@ mod tests {
         budget.actions = 200_000;
 
         let violations = policy.within(&budget);
-        assert!(!violations.is_empty());
-        assert!(violations.contains(&"actions"));
+        assert_eq!(violations, vec!["actions"]);
     }
 
     #[test]
@@ -325,7 +324,7 @@ mod tests {
         let mut budget = Budget::new();
         budget.parallel = 300;
         let violations = policy.within(&budget);
-        assert!(violations.contains(&"parallel"));
+        assert_eq!(violations, vec!["parallel"]);
     }
 
     #[test]
@@ -334,7 +333,7 @@ mod tests {
         let mut budget = Budget::new();
         budget.run_time_secs = policy.max_run_time + 1;
         let violations = policy.within(&budget);
-        assert!(violations.contains(&"run_time"));
+        assert_eq!(violations, vec!["run_time"]);
     }
 
     #[test]
@@ -343,7 +342,7 @@ mod tests {
         let mut budget = Budget::new();
         budget.result_bytes = policy.max_result_bytes + 1;
         let violations = policy.within(&budget);
-        assert!(violations.contains(&"result_bytes"));
+        assert_eq!(violations, vec!["result_bytes"]);
     }
 
     #[test]
@@ -352,7 +351,7 @@ mod tests {
         let mut budget = Budget::new();
         budget.steps = policy.max_steps + 1;
         let violations = policy.within(&budget);
-        assert!(violations.contains(&"steps"));
+        assert_eq!(violations, vec!["steps"]);
     }
 
     #[test]
@@ -363,10 +362,7 @@ mod tests {
         budget.parallel = policy.max_parallel + 1;
         budget.run_time_secs = policy.max_run_time + 1;
         let violations = policy.within(&budget);
-        assert_eq!(violations.len(), 3);
-        assert!(violations.contains(&"actions"));
-        assert!(violations.contains(&"parallel"));
-        assert!(violations.contains(&"run_time"));
+        assert_eq!(violations, vec!["actions", "parallel", "run_time"]);
     }
 
     #[test]
