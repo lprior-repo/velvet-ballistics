@@ -640,4 +640,222 @@ mod tests {
             Err(DeterminismError::ReplayDigestMismatch)
         ));
     }
+
+    #[test]
+    fn replay_digest_mismatch_on_second_observation_keeps_exact_taxonomy() {
+        let right = PublicObservation {
+            digest_status: DigestStatus {
+                compiled_ir_matches: false,
+                ..CLEAN_DIGESTS
+            },
+            ..observation()
+        };
+
+        assert!(matches!(
+            compare_replay(observation(), right),
+            Err(DeterminismError::ReplayDigestMismatch)
+        ));
+    }
+
+    #[test]
+    fn replay_digest_mismatch_takes_precedence_over_policy_block() {
+        let left = PublicObservation {
+            digest_status: DigestStatus {
+                policy_matches: false,
+                ..CLEAN_DIGESTS
+            },
+            replay_policy_blocked: true,
+            ..observation()
+        };
+        let right = PublicObservation {
+            replay_policy_blocked: true,
+            ..observation()
+        };
+
+        assert!(matches!(
+            compare_replay(left, right),
+            Err(DeterminismError::ReplayDigestMismatch)
+        ));
+    }
+
+    #[test]
+    fn replay_policy_block_takes_precedence_over_sequence_violation() {
+        let left = PublicObservation {
+            replay_policy_blocked: true,
+            event_signature: 100,
+            ..observation()
+        };
+        let right = PublicObservation {
+            replay_policy_blocked: false,
+            event_signature: 200,
+            ..observation()
+        };
+
+        assert!(matches!(
+            compare_replay(left, right),
+            Err(DeterminismError::ReplayPolicyBlocked)
+        ));
+    }
+
+    #[test]
+    fn replay_sequence_violation_takes_precedence_over_later_observation_delta() {
+        let left = PublicObservation {
+            event_signature: 100,
+            semantic_slot_signature: 300,
+            ..observation()
+        };
+        let right = PublicObservation {
+            event_signature: 200,
+            semantic_slot_signature: 400,
+            ..observation()
+        };
+
+        assert!(matches!(
+            compare_replay(left, right),
+            Err(DeterminismError::ReplaySequenceViolation)
+        ));
+    }
+
+    #[test]
+    fn replay_equal_sequence_with_semantic_delta_returns_nondeterministic_observation() {
+        let right = PublicObservation {
+            event_payload_signature: 99,
+            ..observation()
+        };
+
+        assert!(matches!(
+            compare_replay(observation(), right),
+            Err(DeterminismError::NondeterministicObservation)
+        ));
+    }
+
+    #[test]
+    fn generated_ir_accepts_matching_observations_even_when_generated_run_signature_differs() {
+        let generated = PublicObservation {
+            generated_run_signature: 999,
+            temp_path_signature: 888,
+            process_id_signature: 777,
+            wall_clock_signature: 666,
+            ..observation()
+        };
+
+        assert!(matches!(compare_generated_ir(observation(), generated), Ok(())));
+    }
+
+    #[test]
+    fn generated_ir_unsupported_subset_takes_precedence_over_divergence() {
+        let ir = PublicObservation {
+            unsupported_generated_subset: true,
+            semantic_action_signature: 100,
+            ..observation()
+        };
+        let generated = PublicObservation {
+            unsupported_generated_subset: false,
+            semantic_action_signature: 200,
+            ..observation()
+        };
+
+        assert!(matches!(
+            compare_generated_ir(ir, generated),
+            Err(DeterminismError::UnsupportedGeneratedSubset)
+        ));
+    }
+
+    #[test]
+    fn generated_ir_reports_divergence_for_result_taint_event_digest_and_semantic_fields() {
+        let cases = [
+            PublicObservation {
+                result: TerminalResult::Blocked,
+                ..observation()
+            },
+            PublicObservation {
+                taint: TaintStatus::Tainted,
+                ..observation()
+            },
+            PublicObservation {
+                event_signature: 99,
+                ..observation()
+            },
+            PublicObservation {
+                event_payload_signature: 99,
+                ..observation()
+            },
+            PublicObservation {
+                digest_status: DigestStatus {
+                    action_abi_matches: false,
+                    ..CLEAN_DIGESTS
+                },
+                ..observation()
+            },
+            PublicObservation {
+                replay_policy_blocked: true,
+                ..observation()
+            },
+            PublicObservation {
+                semantic_slot_signature: 99,
+                ..observation()
+            },
+            PublicObservation {
+                semantic_action_signature: 99,
+                ..observation()
+            },
+            PublicObservation {
+                semantic_suspension: true,
+                ..observation()
+            },
+        ];
+
+        for generated in cases {
+            assert!(matches!(
+                compare_generated_ir(observation(), generated),
+                Err(DeterminismError::GeneratedIrDivergence)
+            ));
+        }
+    }
+
+    #[test]
+    fn generated_ir_ignores_semantic_taint_signature_by_contract() {
+        let generated = PublicObservation {
+            semantic_taint_signature: 999,
+            ..observation()
+        };
+
+        assert!(matches!(compare_generated_ir(observation(), generated), Ok(())));
+    }
+
+    #[test]
+    fn cross_run_reports_nondeterminism_for_each_terminal_result_mismatch() {
+        let cases = [
+            TerminalResult::Blocked,
+            TerminalResult::Failed,
+            TerminalResult::None,
+        ];
+
+        for result in cases {
+            let right = PublicObservation {
+                result,
+                ..observation()
+            };
+            assert!(matches!(
+                compare_cross_run(observation(), right),
+                Err(DeterminismError::NondeterministicObservation)
+            ));
+        }
+    }
+
+    #[test]
+    fn cross_run_reports_nondeterminism_for_each_taint_status_mismatch() {
+        let cases = [TaintStatus::Tainted, TaintStatus::Unknown];
+
+        for taint in cases {
+            let right = PublicObservation {
+                taint,
+                ..observation()
+            };
+            assert!(matches!(
+                compare_cross_run(observation(), right),
+                Err(DeterminismError::NondeterministicObservation)
+            ));
+        }
+    }
 }

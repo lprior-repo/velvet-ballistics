@@ -44,13 +44,15 @@ Scoped verification after reconciliation:
 - `rtk cargo test -p vb_core --test aggregate_resource_budget_red --test aggregate_resource_budget_properties_red --test aggregate_resource_budget_snapshot_red --test aggregate_resource_budget_kani_red --test section36_mandatory_coverage --test proptest_core_types` — PASS, `153 passed`.
 - `rtk cargo test -p vb_validate` — PASS, `963 passed`.
 - `rtk cargo test -p vb_yaml` — PASS, `232 passed`.
+- `rtk cargo test -p velvet-ballastics --test vb_qi37_14_1_run_step --test cli_trace_integration --test cli_vb_m214_bdd_scenarios --test lifecycle_integration --test deliver_sink_integration --test admission_evidence_integration -- --test-threads=1` — PASS, `155 passed`.
+- `cargo test -p vb_proof_kernels` — PASS, `231 passed`.
 
 ## Open Finding Buckets
 
 - `vb_boundary_inventory`: PATCHED — registered/repaired proptest suite, replaced weak validation/API/parser/error assertions with exact variants/values, pinned required-evidence outcomes, discovery candidate counts/paths, and stable-id normalization. Evidence: `rtk cargo test -p vb_boundary_inventory` — PASS, `233 passed`.
 - `vb_core` aggregate budget: PATCHED PARTIAL — current diff replaces aggregate source-token/vacuum tests and exact payload/property gaps in aggregate integration tests. Still needs any remaining internal `src/budget/tests.rs` exact-field cleanup and Kani execution proof.
 - `vb_core` general: PATCHED PARTIAL — current diff strengthens `section36`/`proptest_core_types`; still needs a fresh post-patch audit of `section38`, display exactness, handle full-range domains, and Kani exact variants.
-- `vb_proof_kernels`: CRC placeholder/vacuum coverage, generated-IR/replay taxonomy, exact `Policy::within`, resource budget boundaries.
+- `vb_proof_kernels`: PATCHED — removed false CRC/vacuous header tests and added generated-IR/replay taxonomy, exact `Policy::within`, and resource-budget saturation coverage. Evidence: `cargo test -p vb_proof_kernels` — PASS, `231 passed`.
 - `vb_yaml`: PATCHED PARTIAL — current diff fixes exact variants/fields in lib/profile/adversarial/source-map/event tests; still needs parser/profile/source-map property/fuzz coverage.
 - `vb_validate`: PATCHED PARTIAL — current diff fixes capability/idempotency/red-phase/Kani accessor exactness; still needs broad source-level `{ .. }` cleanup and hostile-input executable coverage.
 - `vb_expr`: orphan eval tests, OOB exact errors, parser/lexer exact payloads, non-finite float, real generated properties, Kani shape gaps.
@@ -59,7 +61,7 @@ Scoped verification after reconciliation:
 - `vb_runtime`: recovery/resume/lifecycle/timer/taint vacuum and exactness gaps, stale/latest attempt correctness, fixture silent returns, timer identity/order.
 - `vb_doc`/`vb_benchmark`: tautologies, exact doc errors, patch-plan exactness, pending evidence negative, regression/metadata fields.
 - `vb_ipc`: silent-pass client tests, exact nested frame errors, FIFO identity/order, payload boundaries, Kani exactness.
-- `vb_cli`: lifecycle state setup, JSON parse/shape, trace order/full entries, run-step exact outputs/errors, admission exact rejection, deliver sink variants. UI-only envelope items excluded.
+- `vb_cli`: PATCHED PARTIAL — current parent commit hardens non-UI/non-codegen lifecycle, trace, run-step, admission, and deliver-sink tests. UI-only envelope items excluded. Still needs post-patch audit for remaining CLI smoke/either-outcome tests outside touched targets.
 - `xtask`: workspace/test compile state, exact error variant coverage, scheduler set property, stdout JSON parsing.
 - `workspace_tests`: non-codegen/non-UI tautologies and either-outcome tests need exact behavior or removal.
 - Proof parity/Kani: hardcoded Kani shapes and Verus/TLA behavior parity gaps remain open unless backed by executable behavior tests.

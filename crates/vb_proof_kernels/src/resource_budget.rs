@@ -133,6 +133,31 @@ pub fn loop_compose(body: &Budget, iterations: u64) -> Budget {
 mod tests {
     use super::*;
 
+    const ALL_POLICY_VIOLATIONS: [&str; 5] = [
+        "actions",
+        "parallel",
+        "run_time",
+        "result_bytes",
+        "steps",
+    ];
+
+    fn budget_with_all_fields(value: u64) -> Budget {
+        Budget {
+            steps: value,
+            actions: value,
+            parallel: value,
+            retries: value,
+            gather_pages: value,
+            gather_items: value,
+            for_each_iters: value,
+            together_branches: value,
+            repeat_attempts: value,
+            run_time_secs: value,
+            result_bytes: value,
+            slots_written: value,
+        }
+    }
+
     #[test]
     fn test_sequential_add() {
         let mut a = Budget::new();
@@ -342,6 +367,86 @@ mod tests {
         assert!(violations.contains(&"actions"));
         assert!(violations.contains(&"parallel"));
         assert!(violations.contains(&"run_time"));
+    }
+
+    #[test]
+    fn policy_within_returns_empty_vector_when_every_field_is_at_exact_limit() {
+        let policy = Policy::default_policy();
+        let budget = Budget {
+            actions: policy.max_actions,
+            parallel: policy.max_parallel,
+            run_time_secs: policy.max_run_time,
+            result_bytes: policy.max_result_bytes,
+            steps: policy.max_steps,
+            ..Budget::new()
+        };
+
+        let violations = policy.within(&budget);
+
+        assert_eq!(violations, Vec::<&'static str>::new());
+    }
+
+    #[test]
+    fn policy_within_returns_exact_single_violation_vector_for_each_limited_field() {
+        let policy = Policy::default_policy();
+        let cases = [
+            (
+                Budget {
+                    actions: policy.max_actions + 1,
+                    ..Budget::new()
+                },
+                vec!["actions"],
+            ),
+            (
+                Budget {
+                    parallel: policy.max_parallel + 1,
+                    ..Budget::new()
+                },
+                vec!["parallel"],
+            ),
+            (
+                Budget {
+                    run_time_secs: policy.max_run_time + 1,
+                    ..Budget::new()
+                },
+                vec!["run_time"],
+            ),
+            (
+                Budget {
+                    result_bytes: policy.max_result_bytes + 1,
+                    ..Budget::new()
+                },
+                vec!["result_bytes"],
+            ),
+            (
+                Budget {
+                    steps: policy.max_steps + 1,
+                    ..Budget::new()
+                },
+                vec!["steps"],
+            ),
+        ];
+
+        for (budget, expected) in cases {
+            assert_eq!(policy.within(&budget), expected);
+        }
+    }
+
+    #[test]
+    fn policy_within_returns_all_violations_in_contract_order_when_all_limited_fields_exceed() {
+        let policy = Policy::default_policy();
+        let budget = Budget {
+            actions: policy.max_actions + 1,
+            parallel: policy.max_parallel + 1,
+            run_time_secs: policy.max_run_time + 1,
+            result_bytes: policy.max_result_bytes + 1,
+            steps: policy.max_steps + 1,
+            ..Budget::new()
+        };
+
+        let violations = policy.within(&budget);
+
+        assert_eq!(violations, ALL_POLICY_VIOLATIONS);
     }
 
     #[test]
@@ -1024,5 +1129,83 @@ mod tests {
         let result = loop_compose(&body, 2);
         assert_eq!(result.gather_pages, u64::MAX);
         assert_eq!(result.gather_items, 4);
+    }
+
+    #[test]
+    fn sequential_add_saturates_every_additive_field_at_u64_max_boundary() {
+        let mut left = Budget::new();
+        left.steps = u64::MAX;
+        left.actions = u64::MAX;
+        left.gather_pages = u64::MAX;
+        left.gather_items = u64::MAX;
+        left.run_time_secs = u64::MAX;
+        left.slots_written = u64::MAX;
+
+        let right = budget_with_all_fields(1);
+
+        left.sequential_add(&right);
+
+        assert_eq!(left.steps, u64::MAX);
+        assert_eq!(left.actions, u64::MAX);
+        assert_eq!(left.gather_pages, u64::MAX);
+        assert_eq!(left.gather_items, u64::MAX);
+        assert_eq!(left.run_time_secs, u64::MAX);
+        assert_eq!(left.slots_written, u64::MAX);
+    }
+
+    #[test]
+    fn sequential_add_uses_max_not_add_for_concurrency_and_size_boundary_fields() {
+        let mut left = budget_with_all_fields(u64::MAX - 1);
+        let right = budget_with_all_fields(u64::MAX);
+
+        left.sequential_add(&right);
+
+        assert_eq!(left.parallel, u64::MAX);
+        assert_eq!(left.retries, u64::MAX);
+        assert_eq!(left.for_each_iters, u64::MAX);
+        assert_eq!(left.together_branches, u64::MAX);
+        assert_eq!(left.repeat_attempts, u64::MAX);
+        assert_eq!(left.result_bytes, u64::MAX);
+    }
+
+    #[test]
+    fn loop_mul_saturates_every_field_at_u64_max_boundary() {
+        let mut budget = budget_with_all_fields((u64::MAX / 2) + 1);
+
+        budget.loop_mul(2);
+
+        assert_eq!(budget.steps, u64::MAX);
+        assert_eq!(budget.actions, u64::MAX);
+        assert_eq!(budget.parallel, u64::MAX);
+        assert_eq!(budget.retries, u64::MAX);
+        assert_eq!(budget.gather_pages, u64::MAX);
+        assert_eq!(budget.gather_items, u64::MAX);
+        assert_eq!(budget.for_each_iters, u64::MAX);
+        assert_eq!(budget.together_branches, u64::MAX);
+        assert_eq!(budget.repeat_attempts, u64::MAX);
+        assert_eq!(budget.run_time_secs, u64::MAX);
+        assert_eq!(budget.result_bytes, u64::MAX);
+        assert_eq!(budget.slots_written, u64::MAX);
+    }
+
+    #[test]
+    fn branch_max_never_overflows_and_selects_u64_max_for_every_field() {
+        let mut left = budget_with_all_fields(u64::MAX - 1);
+        let right = budget_with_all_fields(u64::MAX);
+
+        left.branch_max(&right);
+
+        assert_eq!(left.steps, u64::MAX);
+        assert_eq!(left.actions, u64::MAX);
+        assert_eq!(left.parallel, u64::MAX);
+        assert_eq!(left.retries, u64::MAX);
+        assert_eq!(left.gather_pages, u64::MAX);
+        assert_eq!(left.gather_items, u64::MAX);
+        assert_eq!(left.for_each_iters, u64::MAX);
+        assert_eq!(left.together_branches, u64::MAX);
+        assert_eq!(left.repeat_attempts, u64::MAX);
+        assert_eq!(left.run_time_secs, u64::MAX);
+        assert_eq!(left.result_bytes, u64::MAX);
+        assert_eq!(left.slots_written, u64::MAX);
     }
 }

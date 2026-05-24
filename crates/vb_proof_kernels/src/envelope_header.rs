@@ -210,17 +210,6 @@ mod tests {
         assert!(header.blake3_digest.iter().all(|&b| b == 0));
     }
 
-    // ── validate_header_len ─────────────────────────────────────────────────
-
-    #[test]
-    fn test_validate_header_len_always_true() {
-        let header = EnvelopeHeader::new();
-        assert!(header.validate_header_len());
-        let mut header = EnvelopeHeader::new();
-        header.magic = 0;
-        assert!(header.validate_header_len());
-    }
-
     // ── payload_len edge cases ──────────────────────────────────────────────
 
     #[test]
@@ -331,33 +320,6 @@ mod tests {
         ));
     }
 
-    // ── compute_header_crc ─────────────────────────────────────────────────
-
-    #[test]
-    fn test_compute_header_crc_returns_zero() {
-        let header = EnvelopeHeader::new();
-        assert_eq!(compute_header_crc(&header), 0);
-    }
-
-    #[test]
-    fn test_compute_header_crc_nonzero_header_returns_zero() {
-        let mut header = EnvelopeHeader::new();
-        header.magic = 0xDEADBEEF;
-        header.payload_len_u32 = 12345;
-        assert_eq!(compute_header_crc(&header), 0);
-    }
-
-    // ── validate_header_crc ─────────────────────────────────────────────────
-
-    #[test]
-    fn test_validate_header_crc_always_true() {
-        let header = EnvelopeHeader::new();
-        assert!(validate_header_crc(&header));
-        let mut header = EnvelopeHeader::new();
-        header.header_crc32 = 0xFFFFFFFF;
-        assert!(validate_header_crc(&header));
-    }
-
     // ── ValidationError variants ────────────────────────────────────────────
 
     #[test]
@@ -376,6 +338,40 @@ mod tests {
         assert_eq!(format!("{:?}", err), "PayloadCrcMismatch");
         let err = ValidationError::DigestMismatch;
         assert_eq!(format!("{:?}", err), "DigestMismatch");
+    }
+
+    #[test]
+    fn validate_before_alloc_returns_invalid_magic_before_payload_too_large_when_both_fail() {
+        let mut header = EnvelopeHeader::new();
+        header.magic = 0;
+        header.payload_len_u32 = u32::MAX;
+        header.payload_len_hi = u32::MAX;
+
+        let result = header.validate_before_alloc(0);
+
+        assert_eq!(result, ValidationResult::Err(ValidationError::InvalidMagic));
+    }
+
+    #[test]
+    fn validate_before_alloc_returns_payload_too_large_when_magic_is_valid_and_length_exceeds_max() {
+        let mut header = EnvelopeHeader::new();
+        header.payload_len_u32 = 1;
+        header.payload_len_hi = 0;
+
+        let result = header.validate_before_alloc(0);
+
+        assert_eq!(result, ValidationResult::Err(ValidationError::PayloadTooLarge));
+    }
+
+    #[test]
+    fn validate_before_alloc_returns_ok_when_magic_is_valid_and_payload_len_equals_max() {
+        let mut header = EnvelopeHeader::new();
+        header.payload_len_u32 = u32::MAX;
+        header.payload_len_hi = 0;
+
+        let result = header.validate_before_alloc(u64::from(u32::MAX));
+
+        assert_eq!(result, ValidationResult::Ok);
     }
 
     #[test]
