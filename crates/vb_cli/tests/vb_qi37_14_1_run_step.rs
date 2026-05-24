@@ -259,10 +259,7 @@ fn run_step_invalid_step_id_reports_not_found() {
 
     assert!(!output.status.success(), "invalid step ID should fail");
     let code = output.status.code();
-    assert!(
-        code == Some(1) || code == Some(2),
-        "exit code should be 1 or 2, got {code:?}"
-    );
+    assert_eq!(code, Some(2), "validation failure exit code must be 2");
     let stderr = output_stderr(&output);
     assert!(
         stderr.contains("not found") || stderr.contains("99"),
@@ -367,11 +364,7 @@ fn run_step_compile_error_reports_failure() {
     };
 
     assert!(!output.status.success(), "broken YAML should fail");
-    assert!(
-        output.status.code() == Some(2) || output.status.code() == Some(1),
-        "exit code should be 1 or 2: got {:?}",
-        output.status.code()
-    );
+    assert_eq!(output.status.code(), Some(2), "compile validation failure exit code must be 2");
 }
 
 /// VB-PRE003-CLI: Compile error in JSON format includes error details
@@ -782,13 +775,17 @@ fn run_step_json_output_includes_step_kind_signal() {
         "step should be 0"
     );
 
-    // kind should be present (SetConst for our workflow)
-    let kind = json.get("kind").and_then(|v| v.as_str());
-    assert!(kind.is_some(), "kind should be present: {kind:?}");
+    assert_eq!(
+        json.get("kind").and_then(|v| v.as_str()),
+        Some("SetConst"),
+        "step 0 kind should be SetConst: {json}"
+    );
 
-    // signal should be a valid EngineSignal name
-    let signal = json.get("signal").and_then(|v| v.as_str());
-    assert!(signal.is_some(), "signal should be present: {signal:?}");
+    assert_eq!(
+        json.get("signal").and_then(|v| v.as_str()),
+        Some("Continue"),
+        "SetConst step should continue to next step: {json}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -847,10 +844,8 @@ fn run_step_delta_json_pc_delta_has_before_and_after() {
 
     let before = pc_delta.get("before").and_then(|v| v.as_u64());
     let after = pc_delta.get("after").and_then(|v| v.as_u64());
-    assert!(
-        before.is_some() && after.is_some(),
-        "pc_delta before/after must be numbers"
-    );
+    assert_eq!(before, Some(0), "pc_delta before must be entry step 0");
+    assert_eq!(after, Some(1), "pc_delta after must advance to step 1");
 }
 
 /// VB-POST004-CLI: slot_deltas is an array with correct slot change structure
@@ -908,21 +903,11 @@ fn run_step_delta_json_slot_deltas_is_array_with_changes() {
         "slot_deltas should not be empty after SetConst step"
     );
 
-    // Each slot delta should have slot, before, after
-    for item in arr {
-        assert!(
-            item.get("slot").is_some(),
-            "slot_delta item should have 'slot': {item}"
-        );
-        assert!(
-            item.get("before").is_some(),
-            "slot_delta item should have 'before': {item}"
-        );
-        assert!(
-            item.get("after").is_some(),
-            "slot_delta item should have 'after': {item}"
-        );
-    }
+    assert_eq!(arr.len(), 1, "SetConst should produce exactly one slot delta");
+    let item = &arr[0];
+    assert_eq!(item.get("slot").and_then(|v| v.as_u64()), Some(0));
+    assert_eq!(item.get("before"), Some(&serde_json::Value::Null));
+    assert!(item.get("after").is_some(), "slot_delta item should have exact after field: {item}");
 }
 
 /// VB-POST004-CLI: state_deltas is an array with before/after state
@@ -1091,28 +1076,13 @@ fn run_step_finished_includes_output_slot_value_and_taint() {
     assert_cli_success(&output, "run --step --json");
     let json = parse_json(&output);
 
-    // Signal should be "Finished" or "Continue" for SetConst
-    let signal = json.get("signal").and_then(|v| v.as_str()).unwrap_or("");
-    assert!(
-        signal == "Finished" || signal == "Continue",
-        "SetConst step should produce Finished or Continue signal, got {signal}"
-    );
-
-    // TODO: Q2 resolution - full SlotValue vs summary serialization
-    // When Q2 is resolved, assert the exact structure:
-    // assert!(json.get("output_slot").is_some(), "Finished signal should include output_slot");
-    // let output_slot = json.get("output_slot").unwrap();
-    // assert!(output_slot.get("value").is_some(), "output_slot should have value");
-    // assert!(output_slot.get("taint").is_some(), "output_slot should have taint");
-
-    // For now, verify that some form of output is present
-    let has_output = json.get("output_slot").is_some()
-        || (json.get("deltas").is_some()
-            && json.get("deltas").unwrap().get("slot_deltas").is_some());
-    assert!(
-        has_output,
-        "Step result should include output information (output_slot or slot_deltas)"
-    );
+    assert_eq!(json.get("signal").and_then(|v| v.as_str()), Some("Continue"));
+    let output_slot = json
+        .get("output_slot")
+        .expect("SetConst output should include output_slot");
+    assert_eq!(output_slot.get("slot").and_then(|v| v.as_u64()), Some(0));
+    assert!(output_slot.get("value").is_some(), "output_slot should have value: {output_slot}");
+    assert!(output_slot.get("taint").is_some(), "output_slot should have taint: {output_slot}");
 }
 
 // ---------------------------------------------------------------------------

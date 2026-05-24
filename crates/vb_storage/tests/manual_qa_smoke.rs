@@ -69,6 +69,7 @@ fn smoke_happy_path_trim() {
         .unwrap();
     println!("Happy path trim result: {:?}", result);
     assert_eq!(result.status, TrimStatus::Trimmed);
+    assert_eq!(result.run, run);
     assert_eq!(result.deleted_count, 3);
 
     let remaining = journal.events_for_run(run).unwrap();
@@ -115,10 +116,10 @@ fn smoke_retention_policy_blocks() {
     };
     let result = journal.trim_events_for_run(run, policy);
     println!("Retention block result: {:?}", result);
-    assert!(matches!(
-        result,
-        Err(TrimError::RetentionPolicyBlocks { .. })
-    ));
+    let Err(TrimError::RetentionPolicyBlocks { run: found }) = result else {
+        panic!("retention policy should block run {run:?}, got {result:?}");
+    };
+    assert_eq!(found, run);
 }
 
 #[test]
@@ -131,7 +132,10 @@ fn smoke_no_snapshot_fails_closed() {
 
     let result = journal.trim_events_for_run(run, TrimPolicy::default());
     println!("No snapshot result: {:?}", result);
-    assert!(matches!(result, Err(TrimError::NoDurableSnapshot { .. })));
+    let Err(TrimError::NoDurableSnapshot { run: found }) = result else {
+        panic!("missing snapshot should fail for run {run:?}, got {result:?}");
+    };
+    assert_eq!(found, run);
 }
 
 #[test]
@@ -165,11 +169,13 @@ fn smoke_idempotency() {
         .unwrap();
     println!("First trim: {:?}", r1);
     assert_eq!(r1.status, TrimStatus::Trimmed);
+    assert_eq!(r1.run, run);
 
     let r2 = journal
         .trim_events_for_run(run, TrimPolicy::default())
         .unwrap();
     println!("Second trim: {:?}", r2);
     assert_eq!(r2.status, TrimStatus::NoOp);
+    assert_eq!(r2.run, run);
     assert_eq!(r2.deleted_count, 0);
 }

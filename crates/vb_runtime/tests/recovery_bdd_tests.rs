@@ -87,10 +87,9 @@ fn header_binds_target_run_when_digests_match() {
 
     // GA-001a: Workflow source digest matches
     let result = check_workflow_source_digest(&journal, run, digest);
-    assert!(
-        result.is_ok(),
-        "check_workflow_source_digest should succeed when digest matches"
-    );
+    let Ok(()) = result else {
+        panic!("check_workflow_source_digest should succeed when digest matches: {result:?}");
+    };
 
     // GA-001a: Summary binds target run identity
     let hydration =
@@ -427,13 +426,12 @@ fn snapshot_plus_tail_idempotent_on_same_input() {
     let result_a = hydrate_run_frame(&snapshot, &tail, run);
     let result_b = hydrate_run_frame(&snapshot, &tail, run);
 
-    assert!(
-        result_a.is_ok() && result_b.is_ok(),
-        "both replays should succeed: a={result_a:?}, b={result_b:?}"
-    );
-
-    let frame_a = result_a.unwrap();
-    let frame_b = result_b.unwrap();
+    let Ok(frame_a) = result_a else {
+        panic!("first replay should succeed: {result_a:?}");
+    };
+    let Ok(frame_b) = result_b else {
+        panic!("second replay should succeed: {result_b:?}");
+    };
 
     assert_eq!(
         frame_a.run_id(),
@@ -678,15 +676,11 @@ fn resolved_action_not_reexecuted_on_restart() {
     // Pre-mark as completed to simulate the state after first replay
     tracker2.mark_completed(action_id, StepIdx::ZERO);
     let result2 = recover_full_journal(&journal, run, &mut tracker2, &[], &[]);
-    assert!(
-        result2.is_ok()
-            || matches!(
-                result2,
-                Err(RecoveryError::NonIdempotentActionBlocked { action, step })
-                    if action == action_id && step == StepIdx::ZERO
-            ),
-        "replay should not re-execute an already resolved action: {result2:?}"
-    );
+    let Err(RecoveryError::NonIdempotentActionBlocked { action, step }) = result2 else {
+        panic!("replay should block duplicate non-idempotent action exactly: {result2:?}");
+    };
+    assert_eq!(action, action_id);
+    assert_eq!(step, StepIdx::ZERO);
 }
 
 // ---------------------------------------------------------------------------
@@ -942,15 +936,11 @@ fn non_empty_run_with_header_only_returns_no_recovery_data() {
 
     // GA-008a: hydrate_run_frame_from_events with only RunAccepted must return NoRecoveryData
     let result = hydrate_run_frame_from_events(&events, run);
-    assert!(
-        matches!(result, Err(RecoveryError::NoRecoveryData { run: found }) if found == run)
-            || matches!(
-                result,
-                Err(RecoveryError::ReplayDivergence { ref detail, .. })
-                    if detail == "derived step_count is zero"
-            ),
-        "expected empty-frame recovery rejection, got: {result:?}"
-    );
+    let Err(RecoveryError::ReplayDivergence { step, detail }) = result else {
+        panic!("expected ReplayDivergence, got: {result:?}");
+    };
+    assert_eq!(step, StepIdx::ZERO);
+    assert_eq!(detail, "derived step_count is zero");
 }
 
 // ---------------------------------------------------------------------------
@@ -1472,10 +1462,11 @@ fn missing_taint_evidence_fails_closed() {
 
     let result = hydrate_run_frame(&snapshot, &tail, run);
     // GA-018b: Missing taint evidence fails closed — should not silently default
-    assert!(
-        result.is_err(),
-        "hydrate_run_frame should fail when taint evidence is missing for non-empty slots: {result:?}"
-    );
+    let Err(RecoveryError::CorruptSnapshot { run: found, seq }) = result else {
+        panic!("expected CorruptSnapshot, got: {result:?}");
+    };
+    assert_eq!(found, run);
+    assert_eq!(seq, EventSeq::new(0));
 }
 
 // ---------------------------------------------------------------------------
@@ -1625,10 +1616,9 @@ fn verify_digests_returns_ok_when_all_match() {
         ir_digest, // found_ir_digest = ir_digest (distinct from source_digest)
         DigestCheck::WorkflowAndIr,
     );
-    assert!(
-        result.is_ok(),
-        "verify_digests should succeed when digests match: {result:?}"
-    );
+    let Ok(()) = result else {
+        panic!("verify_digests should succeed when digests match: {result:?}");
+    };
 }
 
 #[test]

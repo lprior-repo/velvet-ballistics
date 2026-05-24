@@ -301,10 +301,11 @@ fn submit_artifact_rejects_missing_workflow_digest() -> Result<(), String> {
     })
     .map_err(|e| format!("workflow with zero digest should fail: {e}"))?;
     let result = submit_artifact(&journal, &bad_workflow, RuntimePolicy::Strict);
-    assert!(
-        result.is_err(),
-        "workflow with zero digest should be rejected"
-    );
+    let Err(vb_storage::JournalError::ArtifactChecksumMismatch) = result else {
+        return Err(format!(
+            "workflow with zero digest must fail checksum validation exactly, got {result:?}"
+        ));
+    };
     Ok(())
 }
 

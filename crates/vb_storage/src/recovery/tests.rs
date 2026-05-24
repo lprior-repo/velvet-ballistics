@@ -1164,7 +1164,11 @@ fn replay_detects_out_of_order_step() {
     let Err(err) = result else {
         panic!("out-of-order steps should cause divergence");
     };
-    assert!(matches!(err, RecoveryError::ReplayDivergence { .. }));
+    let RecoveryError::ReplayDivergence { step, detail } = err else {
+        panic!("expected ReplayDivergence, got {err:?}");
+    };
+    assert_eq!(step, StepIdx::new(1));
+    assert_eq!(detail, "step 1 executed before previous step 2");
 }
 
 // --- New Recovery Tests ---
@@ -1876,13 +1880,13 @@ mod hydrate_run_frame_tests {
         let snapshot = empty_snapshot(RunId::new(1), EventSeq::new(0));
         let run = RunId::new(2);
 
-        let result = hydrate_run_frame(&snapshot, &[], run);
+    let result = hydrate_run_frame(&snapshot, &[], run);
 
-        assert!(
-            matches!(result, Err(RecoveryError::CorruptSnapshot { .. })),
-            "expected CorruptSnapshot, got {:?}",
-            result
-        );
+        let Err(RecoveryError::CorruptSnapshot { run: found, seq }) = result else {
+            panic!("expected CorruptSnapshot, got {result:?}");
+        };
+        assert_eq!(found, RunId::new(1));
+        assert_eq!(seq, EventSeq::new(0));
     }
 
     // --- Error: tail event for wrong run ---
@@ -1900,11 +1904,11 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
 
-        assert!(
-            matches!(result, Err(RecoveryError::ReplayDivergence { .. })),
-            "expected ReplayDivergence, got {:?}",
-            result
-        );
+        let Err(RecoveryError::ReplayDivergence { step, detail }) = result else {
+            panic!("expected ReplayDivergence, got {result:?}");
+        };
+        assert_eq!(step, StepIdx::ZERO);
+        assert_eq!(detail, "tail event run_id mismatch: expected RunId(1), found RunId(2)");
     }
 
     // --- Error: tail event before snapshot seq ---
@@ -1922,11 +1926,11 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
 
-        assert!(
-            matches!(result, Err(RecoveryError::ReplayDivergence { .. })),
-            "expected ReplayDivergence, got {:?}",
-            result
-        );
+        let Err(RecoveryError::ReplayDivergence { step, detail }) = result else {
+            panic!("expected ReplayDivergence, got {result:?}");
+        };
+        assert_eq!(step, StepIdx::ZERO);
+        assert_eq!(detail, "tail event seq 5 is not after snapshot seq 10");
     }
 
     // --- Error: corrupt snapshot bytes ---
@@ -1944,11 +1948,11 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame(&snapshot, &[], run);
 
-        assert!(
-            matches!(result, Err(RecoveryError::CorruptSnapshot { .. })),
-            "expected CorruptSnapshot, got {:?}",
-            result
-        );
+        let Err(RecoveryError::CorruptSnapshot { run: found, seq }) = result else {
+            panic!("expected CorruptSnapshot, got {result:?}");
+        };
+        assert_eq!(found, run);
+        assert_eq!(seq, EventSeq::new(0));
     }
 
     // --- Error: empty snapshot and empty events ---
@@ -1960,11 +1964,10 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame(&snapshot, &[], run);
 
-        assert!(
-            matches!(result, Err(RecoveryError::NoRecoveryData { .. })),
-            "expected NoRecoveryData, got {:?}",
-            result
-        );
+        let Err(RecoveryError::NoRecoveryData { run: found }) = result else {
+            panic!("expected NoRecoveryData, got {result:?}");
+        };
+        assert_eq!(found, run);
     }
 
     // --- Error: zero step count from events ---
@@ -1980,15 +1983,11 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame_from_events(&events, run);
 
-        assert!(
-            matches!(
-                result,
-                Err(RecoveryError::ReplayDivergence { .. })
-                    | Err(RecoveryError::NoRecoveryData { .. })
-            ),
-            "expected error for zero step count, got {:?}",
-            result
-        );
+        let Err(RecoveryError::ReplayDivergence { step, detail }) = result else {
+            panic!("expected ReplayDivergence, got {result:?}");
+        };
+        assert_eq!(step, StepIdx::ZERO);
+        assert_eq!(detail, "derived step_count is zero");
     }
 
     // --- State: PC from last step event ---
@@ -2018,8 +2017,9 @@ mod hydrate_run_frame_tests {
         ];
 
         let result = hydrate_run_frame_from_events(&events, run);
-        assert!(result.is_ok(), "expected Ok, got {:?}", result);
-        let frame = result.unwrap();
+        let Ok(frame) = result else {
+            panic!("expected Ok frame, got {result:?}");
+        };
         assert_eq!(frame.pc(), StepIdx::new(1));
     }
 
@@ -2469,11 +2469,11 @@ mod hydrate_run_frame_tests {
         }];
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
-        assert!(
-            matches!(result, Err(RecoveryError::ReplayDivergence { .. })),
-            "expected ReplayDivergence for equal seq, got {:?}",
-            result
-        );
+        let Err(RecoveryError::ReplayDivergence { step, detail }) = result else {
+            panic!("expected ReplayDivergence for equal seq, got {result:?}");
+        };
+        assert_eq!(step, StepIdx::ZERO);
+        assert_eq!(detail, "tail event seq 5 is not after snapshot seq 5");
     }
 
     #[test]
@@ -2488,11 +2488,11 @@ mod hydrate_run_frame_tests {
         }];
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
-        assert!(
-            matches!(result, Err(RecoveryError::ReplayDivergence { .. })),
-            "expected ReplayDivergence for seq < snapshot, got {:?}",
-            result
-        );
+        let Err(RecoveryError::ReplayDivergence { step, detail }) = result else {
+            panic!("expected ReplayDivergence for seq < snapshot, got {result:?}");
+        };
+        assert_eq!(step, StepIdx::ZERO);
+        assert_eq!(detail, "tail event seq 9 is not after snapshot seq 10");
     }
 
     #[test]
