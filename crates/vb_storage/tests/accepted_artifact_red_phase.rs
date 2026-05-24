@@ -115,9 +115,8 @@ fn accepted_artifact_encoder_rejects_relaxed_raw_submit_when_accepted_artifacts_
 -> Result<(), String> {
     let journal = temp_journal()?;
     let workflow = minimal_workflow()?;
-    let result = submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed);
-    assert!(result.is_ok(), "Relaxed policy must be accepted");
-    let artifact = result.unwrap();
+    let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed)
+        .map_err(|error| format!("Relaxed policy must be accepted: {error}"))?;
     assert_eq!(
         artifact.verification.gate_count, 0,
         "Relaxed must have 0 gates"

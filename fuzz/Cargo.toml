@@ -44,10 +44,11 @@ vb_validate = { path = "../crates/vb_validate" }
 vb_yaml = { path = "../crates/vb_yaml" }
 vb_compile = { path = "../crates/vb_compile" }
 vb_ipc = { path = "../crates/vb_ipc" }
-vb_ui_model = { path = "../crates/vb_ui_model" }
-vb_ui_snapshot = { path = "../crates/vb_ui_snapshot" }
+# vb_ui_model = { path = "../crates/vb_ui_model" }  # MISSING
+# vb_ui_snapshot = { path = "../crates/vb_ui_snapshot" }  # MISSING
 vb_doc = { path = "../crates/vb_doc" }
 crc32c = "0.6"
+anyhow = "1"
 
 [lib]
 name = "fuzz_lib"
@@ -297,12 +298,12 @@ test = false
 doc = false
 bench = false
 
-[[bin]]
-name = "vb_ui_model_postcard_decode"
-path = "src/bin/vb_ui_model_postcard_decode.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "vb_ui_model_postcard_decode"
+# path = "src/bin/vb_ui_model_postcard_decode.rs"
+# test = false
+# doc = false
+# bench = false
 
 [[bin]]
 name = "verifier_gates"
@@ -348,12 +349,12 @@ test = false
 doc = false
 bench = false
 
-[[bin]]
-name = "ui_redaction_artifact"
-path = "fuzz_targets/ui_redaction_artifact.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "ui_redaction_artifact"
+# path = "fuzz_targets/ui_redaction_artifact.rs"
+# test = false
+# doc = false
+# bench = false
 
 # vb_5xs4_* targets SKIPPED (Phase 0): vb_boundary_inventory::quality::test_loop_inventory
 # module has been removed (quality.rs is empty). These targets need separate beads
