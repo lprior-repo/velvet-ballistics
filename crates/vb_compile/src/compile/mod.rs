@@ -12,11 +12,8 @@ use vb_core::{
 };
 
 pub use crate::expression::{ParsedExpression, ExpressionHelper, ExpressionLiteral, BinaryOp, UnaryOp};
-pub use crate::bytecode::{compile_expr_to_bytecode, compile_expr_to_bytecode_with_accessors};
+pub use crate::expression_bytecode::{compile_expr_to_bytecode, compile_expr_to_bytecode_with_accessors};
 
-pub mod expression;
-pub mod bytecode;
-pub mod schema;
 pub mod type_taint;
 
 const WORKFLOW_VERSION: &str = "velvet-ballastics/v1";
