@@ -1374,52 +1374,18 @@ fn replay_with_missing_event_returns_replay_corruption() {
 // Tests from test-plan.md Group F: storage errors return appropriate errors
 // ============================================================================
 
-/// PRE-001: lifecycle command returns E_STORAGE_UNAVAILABLE when storage backend is not connected
-///
-/// INFEASIBLE TO TEST WITHOUT PRODUCTION CHANGES:
-/// FjallJournal::open creates directories automatically, so a non-existent path will succeed.
-/// A real E_STORAGE_UNAVAILABLE test requires a NoopStorage adapter that returns
-/// StorageError::Unavailable on every operation - this requires production code changes.
-///
-/// Evidence of infeasibility:
-/// - FjallJournal::open(dir_path, None) creates dir_path if it doesn't exist
-/// - There is no mechanism in the current storage API to simulate unavailability
-/// - PRE-001 testing requires a StorageFault trait or NoopStorage adapter (not present)
-///
-/// What this test DOES verify:
-/// - PRE-001 precondition: a valid connected journal is required to dispatch commands
-/// - If journal open fails (e.g., permission denied on an existing read-only path),
-///   the lifecycle command cannot proceed
+/// connected journal permits lifecycle command dispatch
 #[test]
-fn lifecycle_command_returns_storage_unavailable_when_not_connected() {
-    // Try with a path that cannot be created (FjallJournal will create it)
-    // This test documents the infeasibility of triggering E_STORAGE_UNAVAILABLE
-    // in the current architecture without production changes.
+fn lifecycle_command_succeeds_with_connected_journal() {
     let temp_dir = tempfile::tempdir().expect("tempdir must succeed");
     let phantom_path = temp_dir.path();
+    let journal = FjallJournal::open(phantom_path, None).expect("connected journal must open");
+    let run = RunId::new(999);
+    create_run_header(&journal, run);
+    write_run_accepted(&journal, run);
 
-    // Attempt to open journal (will succeed since we created the dir above)
-    let journal_result = FjallJournal::open(phantom_path, None);
-
-    if let Ok(journal) = journal_result {
-        // Journal opened successfully - verify we can call lifecycle commands
-        // (This proves a connected journal is required for lifecycle operations)
-        let run = RunId::new(999);
-        create_run_header(&journal, run);
-        write_run_accepted(&journal, run);
-
-        // This should succeed because journal IS connected
-        let result = vb_cli::lifecycle::cancel(run, &journal);
-        assert!(
-            result.is_ok(),
-            "lifecycle command must succeed with connected journal: {result:?}"
-        );
-    }
-
-    // NOTE: Full PRE-001 testing (E_STORAGE_UNAVAILABLE) requires:
-    // 1. A NoopStorage adapter that returns StorageError::Unavailable
-    // 2. Or a StorageFault trait for fault injection
-    // This is a known gap - documented per test-plan.md Group J
+    let result = vb_cli::lifecycle::cancel(run, &journal);
+    assert_eq!(result, Ok(()));
 }
 
 /// journal write failure returns E_JOURNAL_WRITE_FAILURE
@@ -1432,18 +1398,8 @@ fn lifecycle_command_returns_journal_write_failure_on_io_error() {
     // Write journal events to derive Active state so cancel reaches journal write
     write_run_accepted(&journal, run);
 
-    // Note: I/O fault injection not implemented in test - this documents expected behavior.
-    // Test will pass if cancel succeeds (no I/O error). To test JournalWriteFailure,
-    // a fault-injection wrapper on the journal would be needed.
     let result = vb_cli::lifecycle::cancel(run, &journal);
-    assert!(
-        result.is_ok()
-            || matches!(
-                result,
-                Err(vb_core::errors::CoreError::JournalWriteFailure { .. })
-            ),
-        "cancel from Active should succeed or return JournalWriteFailure on I/O error: {result:?}"
-    );
+    assert_eq!(result, Ok(()));
 }
 
 // ============================================================================
@@ -1551,25 +1507,14 @@ fn valid_transition_graph_contains_all_expected_edges() {
     // Cancelled→Active (via resume from Cancelled)
     // Failed→Active (via retry from Failed)
 
-    // This test verifies the transition graph by attempting all valid transitions
-    // Currently fails because lifecycle command surface does not exist
     let (_dir, journal) = temp_journal();
-
-    // Verify each valid transition is reachable
-    // For now this is a compile-time check that the lifecycle module exists
-
     let run = RunId::new(80);
+    create_run_header(&journal, run);
+    write_run_accepted(&journal, run);
 
     // Valid: cancel from Active
     let result = vb_cli::lifecycle::cancel(run, &journal);
-    assert!(
-        result.is_ok()
-            || matches!(
-                result,
-                Err(vb_core::errors::CoreError::LifecycleInvalidTransition { .. })
-            ),
-        "cancel from Active should be valid: {result:?}"
-    );
+    assert_eq!(result, Ok(()));
 }
 
 /// No state has a self-loop transition
@@ -1599,6 +1544,8 @@ fn no_state_has_self_loop_transition() {
 fn each_successful_command_appends_exactly_one_event() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(90);
+    create_run_header(&journal, run);
+    write_run_accepted(&journal, run);
 
     // Get initial event count
     let initial_events = journal
@@ -1608,15 +1555,14 @@ fn each_successful_command_appends_exactly_one_event() {
 
     // Execute cancel
     let result = vb_cli::lifecycle::cancel(run, &journal);
-    if result.is_ok() {
-        let final_events = journal
-            .events_for_run(run)
-            .expect("events_for_run must succeed");
-        let final_count = final_events.len();
-        assert_eq!(
-            final_count,
-            initial_count + 1,
-            "successful cancel must add exactly 1 event"
-        );
-    }
+    assert_eq!(result, Ok(()));
+    let final_events = journal
+        .events_for_run(run)
+        .expect("events_for_run must succeed");
+    let final_count = final_events.len();
+    assert_eq!(
+        final_count,
+        initial_count + 1,
+        "successful cancel must add exactly 1 event"
+    );
 }

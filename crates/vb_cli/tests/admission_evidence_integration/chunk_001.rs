@@ -366,15 +366,13 @@ fn runtime_rejects_submission_when_capacity_exceeded() {
     };
     let mut config = test_config();
     config.max_active_runs = 2;
-    let runtime = vb_runtime::runtime::Runtime::new_with_journal(
+    let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(
         shard_count,
         config,
         vb_runtime::journal::NoopRuntimeJournal::shared(),
     );
 
-    let mut submitted = 0u64;
-    let mut hit_capacity = false;
-    for i in [1u64, 2, 3, 4, 5] {
+    for i in [1u64, 2] {
         let digest = WorkflowDigest::from_bytes([0x44u8 | (i as u8); 32]);
         let Some(workflow) = do_action_workflow(digest) else {
             fail_assert!("workflow construction failed for run {i}");
@@ -387,21 +385,34 @@ fn runtime_rejects_submission_when_capacity_exceeded() {
             CapabilitySet::from_grants(Box::from([action_capability(ActionId::new(7))])),
             action_contracts_through(ActionId::new(7)),
         );
-        match result {
-            Ok(()) => submitted = submitted.saturating_add(1),
-            Err(vb_runtime::RuntimeError::ActiveRunCapacityExceeded { .. }) => {
-                hit_capacity = true;
-                break;
-            }
-            Err(other) => {
-                fail_assert!("unexpected error on run {i}: {other:?}");
-                return;
-            }
+        if let Err(other) = result {
+            fail_assert!("first two action-in-progress runs should fit capacity: {other:?}");
+            return;
+        }
+        if let Err(other) = runtime.tick_all() {
+            fail_assert!("submitted run should advance to active action wait: {other:?}");
+            return;
         }
     }
+    let Some(workflow) = do_action_workflow(WorkflowDigest::from_bytes([0x47u8; 32])) else {
+        fail_assert!("workflow construction failed for capacity rejection");
+        return;
+    };
+    let result = runtime.submit_direct_with_inputs_grants_and_contracts(
+        RunId::new(3),
+        workflow,
+        Box::from([(SlotIdx::new(0), SlotValue::I64(0))]),
+        CapabilitySet::from_grants(Box::from([action_capability(ActionId::new(7))])),
+        action_contracts_through(ActionId::new(7)),
+    );
+    assert_eq!(result, Ok(()), "third run is queued before capacity admission");
+    let result = runtime.tick_all();
     assert!(
-        hit_capacity || submitted >= 2,
-        "should submit at least 2 action-in-progress runs or hit capacity, submitted {submitted}"
+        matches!(
+            result,
+            Err(vb_runtime::RuntimeError::ActiveRunCapacityExceeded { capacity: 2 })
+        ),
+        "third active run must be rejected during admission with exact capacity error: {result:?}"
     );
 }
 

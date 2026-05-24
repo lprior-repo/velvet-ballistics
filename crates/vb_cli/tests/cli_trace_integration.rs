@@ -126,7 +126,14 @@ fn setup_action_trace_journal(dir: &std::path::Path) -> vb_core::RunId {
 }
 
 fn json_trace(stdout: &str) -> serde_json::Value {
-    serde_json::from_str(stdout).expect("stdout should be valid JSON")
+    serde_saphyr::from_str(stdout).expect("stdout should be valid YAML-compatible JSON")
+}
+
+fn trace_array(value: &serde_json::Value) -> &Vec<serde_json::Value> {
+    value
+        .get("trace")
+        .and_then(|trace| trace.as_array())
+        .expect("trace should be an array")
 }
 
 // ---------------------------------------------------------------------------
@@ -229,39 +236,40 @@ fn cmd_trace_json_format_structure() {
         OsStr::new(&run_id.get().to_string()),
         OsStr::new("--db"),
         dir.path().as_os_str(),
-        OsStr::new("--json"),
+        OsStr::new("--emit"),
+        OsStr::new("yaml"),
     ]);
 
     assert!(output.is_some());
     let output = output.unwrap();
-    assert_cli_success(&output, "trace --json");
+    assert_cli_success(&output, "trace --emit yaml");
 
-    let stdout = output_stdout(&output);
-    let parsed: serde_json::Value =
-        serde_json::from_str(&stdout).expect("stdout should be valid JSON");
+    let parsed = json_trace(&output_stdout(&output));
 
-    assert!(
-        parsed.get("run_id").is_some(),
-        "JSON should have run_id field: {parsed}"
-    );
-    assert!(
-        parsed.get("trace").is_some(),
-        "JSON should have trace field: {parsed}"
-    );
-    assert!(
-        parsed.get("total").is_some(),
-        "JSON should have total field: {parsed}"
-    );
-    let total = parsed
-        .get("total")
-        .and_then(|v| v.as_i64())
-        .expect("total should be an integer");
-    assert_eq!(total, 4, "total should be 4");
-    let trace = parsed
-        .get("trace")
-        .and_then(|v| v.as_array())
-        .expect("trace should be an array");
+    assert_eq!(parsed.get("kind"), Some(&serde_json::json!("trace_report")));
+    assert_eq!(parsed.get("run_id"), Some(&serde_json::json!(run_id.get().to_string())));
+    assert_eq!(parsed.get("total"), Some(&serde_json::json!(4)));
+    let trace = trace_array(&parsed);
     assert_eq!(trace.len(), 4, "trace array should have 4 entries");
+    assert_eq!(trace[1], serde_json::json!({
+        "seq": 1,
+        "type": "StepStarted",
+        "step": 0,
+        "status": "active"
+    }));
+    assert_eq!(trace[2], serde_json::json!({
+        "seq": 2,
+        "type": "StepSucceeded",
+        "step": 0,
+        "status": "completed",
+        "output": 0
+    }));
+    assert_eq!(trace[3], serde_json::json!({
+        "seq": 3,
+        "type": "RunFinished",
+        "status": "completed",
+        "result": 0
+    }));
 }
 
 #[test]
@@ -274,41 +282,17 @@ fn cmd_trace_jsonl_format_structure() {
         OsStr::new(&run_id.get().to_string()),
         OsStr::new("--db"),
         dir.path().as_os_str(),
-        OsStr::new("--jsonl"),
+        OsStr::new("--emit"),
+        OsStr::new("yaml"),
     ]);
 
     assert!(output.is_some());
     let output = output.unwrap();
-    assert_cli_success(&output, "trace --jsonl");
+    assert_cli_success(&output, "trace --emit yaml");
 
-    let stdout = output_stdout(&output);
-    let lines: Vec<&str> = stdout.lines().collect();
-    assert!(
-        lines.len() >= 4,
-        "jsonl should have at least 4 entry lines: {} lines",
-        lines.len()
-    );
-
-    // All but last line should be valid JSON trace entries
-    let entry_lines = &lines[..lines.len() - 1];
-    for (i, line) in entry_lines.iter().enumerate() {
-        let parsed: serde_json::Value =
-            serde_json::from_str(line).expect("each jsonl line should be valid JSON");
-        assert!(
-            parsed.get("type").is_some() || parsed.get("seq").is_some(),
-            "jsonl entry {i} should be a trace entry: {parsed}"
-        );
-    }
-
-    // Last line should be {"total": N}
-    let last_line = lines.last().expect("should have last line");
-    let total_obj: serde_json::Value =
-        serde_json::from_str(last_line).expect("last line should be valid JSON");
-    let total = total_obj
-        .get("total")
-        .and_then(|v| v.as_i64())
-        .expect("last line should have total field");
-    assert_eq!(total, 4);
+    let parsed = json_trace(&output_stdout(&output));
+    assert_eq!(parsed.get("total"), Some(&serde_json::json!(4)));
+    assert_eq!(trace_array(&parsed).len(), 4);
 }
 
 #[test]
@@ -323,12 +307,13 @@ fn cmd_trace_step_filter_returns_only_matching_step() {
         dir.path().as_os_str(),
         OsStr::new("--step"),
         OsStr::new("0"),
-        OsStr::new("--json"),
+        OsStr::new("--emit"),
+        OsStr::new("yaml"),
     ]);
 
     assert!(output.is_some());
     let output = output.unwrap();
-    assert_cli_success(&output, "trace --step 0 --json");
+    assert_cli_success(&output, "trace --step 0 --emit yaml");
     let parsed = json_trace(&output_stdout(&output));
     let trace = parsed
         .get("trace")
@@ -352,12 +337,13 @@ fn cmd_trace_action_filter_returns_only_matching_action() {
         dir.path().as_os_str(),
         OsStr::new("--action"),
         OsStr::new("17"),
-        OsStr::new("--json"),
+        OsStr::new("--emit"),
+        OsStr::new("yaml"),
     ]);
 
     assert!(output.is_some());
     let output = output.unwrap();
-    assert_cli_success(&output, "trace --action 17 --json");
+    assert_cli_success(&output, "trace --action 17 --emit yaml");
     let parsed = json_trace(&output_stdout(&output));
     let trace = parsed
         .get("trace")
@@ -384,12 +370,13 @@ fn cmd_trace_status_filter_returns_only_active_events() {
         dir.path().as_os_str(),
         OsStr::new("--status"),
         OsStr::new("active"),
-        OsStr::new("--json"),
+        OsStr::new("--emit"),
+        OsStr::new("yaml"),
     ]);
 
     assert!(output.is_some());
     let output = output.unwrap();
-    assert_cli_success(&output, "trace --status active --json");
+    assert_cli_success(&output, "trace --status active --emit yaml");
     let parsed = json_trace(&output_stdout(&output));
     let trace = parsed
         .get("trace")
@@ -420,12 +407,13 @@ fn cmd_trace_sequence_range_filter_is_inclusive() {
         OsStr::new("1"),
         OsStr::new("--until-seq"),
         OsStr::new("2"),
-        OsStr::new("--json"),
+        OsStr::new("--emit"),
+        OsStr::new("yaml"),
     ]);
 
     assert!(output.is_some());
     let output = output.unwrap();
-    assert_cli_success(&output, "trace --since-seq 1 --until-seq 2 --json");
+    assert_cli_success(&output, "trace --since-seq 1 --until-seq 2 --emit yaml");
     let parsed = json_trace(&output_stdout(&output));
     let trace = parsed
         .get("trace")
@@ -456,12 +444,13 @@ fn cmd_trace_limit_bounds_filtered_output() {
         OsStr::new("active"),
         OsStr::new("--limit"),
         OsStr::new("1"),
-        OsStr::new("--json"),
+        OsStr::new("--emit"),
+        OsStr::new("yaml"),
     ]);
 
     assert!(output.is_some());
     let output = output.unwrap();
-    assert_cli_success(&output, "trace --status active --limit 1 --json");
+    assert_cli_success(&output, "trace --status active --limit 1 --emit yaml");
     let parsed = json_trace(&output_stdout(&output));
     assert_eq!(
         parsed.get("total").and_then(|value| value.as_u64()),

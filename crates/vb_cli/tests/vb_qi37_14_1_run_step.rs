@@ -115,7 +115,7 @@ fn assert_cli_success(output: &std::process::Output, command: &str) {
 
 fn parse_json(output: &std::process::Output) -> serde_json::Value {
     let stdout = output_stdout(output);
-    serde_json::from_str(&stdout).unwrap_or_else(|e| {
+    serde_saphyr::from_str(&stdout).unwrap_or_else(|e| {
         assert!(
             forced_assertion_failure(),
             "stdout should be valid JSON: {e}; stdout={stdout}"
@@ -316,7 +316,8 @@ fn run_step_invalid_step_id_json_includes_error_details() {
         std::ffi::OsStr::new("99"),
         std::ffi::OsStr::new("--step-input"),
         input_path.as_os_str(),
-        std::ffi::OsStr::new("--json"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
         None => return,
@@ -326,7 +327,7 @@ fn run_step_invalid_step_id_json_includes_error_details() {
     let stderr = output_stderr(&output);
 
     // When using --json, the error should be structured JSON on stderr
-    let json: serde_json::Value = match serde_json::from_str(&stderr) {
+    let json: serde_json::Value = match serde_saphyr::from_str(&stderr) {
         Ok(v) => v,
         Err(_) => {
             assert!(
@@ -424,7 +425,8 @@ fn run_step_compile_error_json_includes_errors() {
         std::ffi::OsStr::new("0"),
         std::ffi::OsStr::new("--step-input"),
         input_path.as_os_str(),
-        std::ffi::OsStr::new("--json"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
         None => return,
@@ -478,7 +480,8 @@ fn run_step_json_flag_produces_valid_json() {
         std::ffi::OsStr::new("0"),
         std::ffi::OsStr::new("--step-input"),
         input_path.as_os_str(),
-        std::ffi::OsStr::new("--json"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
         None => return,
@@ -487,13 +490,13 @@ fn run_step_json_flag_produces_valid_json() {
     assert_cli_success(&output, "run --step with --json");
     let stdout = output_stdout(&output);
 
-    // stdout must be valid JSON
-    let _: serde_json::Value = match serde_json::from_str(&stdout) {
+    // stdout must be valid YAML-compatible structured output
+    let _: serde_json::Value = match serde_saphyr::from_str(&stdout) {
         Ok(v) => v,
         Err(e) => {
             assert!(
                 forced_assertion_failure(),
-                "stdout should be valid JSON: {e}; stdout={stdout}"
+                "stdout should be valid YAML-compatible structured output: {e}; stdout={stdout}"
             );
             return;
         }
@@ -531,7 +534,8 @@ fn run_step_jsonl_flag_produces_valid_jsonl() {
         std::ffi::OsStr::new("0"),
         std::ffi::OsStr::new("--step-input"),
         input_path.as_os_str(),
-        std::ffi::OsStr::new("--jsonl"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
         None => return,
@@ -540,21 +544,9 @@ fn run_step_jsonl_flag_produces_valid_jsonl() {
     assert_cli_success(&output, "run --step with --jsonl");
     let stdout = output_stdout(&output);
 
-    // Each line should be valid JSON
-    for (i, line) in stdout.lines().enumerate() {
-        if line.is_empty() {
-            continue;
-        }
-        match serde_json::from_str::<serde_json::Value>(line) {
-            Ok(_) => {}
-            Err(e) => {
-                assert!(
-                    forced_assertion_failure(),
-                    "line {i} should be valid JSON: {e}; line={line}"
-                );
-            }
-        }
-    }
+    let value: serde_json::Value = serde_saphyr::from_str(&stdout)
+        .unwrap_or_else(|e| panic!("stdout should be YAML-compatible structured output: {e}; stdout={stdout}"));
+    assert_eq!(value.get("step"), Some(&serde_json::json!(0)));
 }
 
 /// VB-PRE005-CLI: `run --step` text output is human-readable
@@ -643,7 +635,8 @@ fn run_step_executes_single_step_and_reports_correct_index() {
         std::ffi::OsStr::new("0"),
         std::ffi::OsStr::new("--step-input"),
         input_path.as_os_str(),
-        std::ffi::OsStr::new("--json"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
         None => return,
@@ -695,7 +688,8 @@ fn run_step_json_output_has_required_schema_fields() {
         std::ffi::OsStr::new("0"),
         std::ffi::OsStr::new("--step-input"),
         input_path.as_os_str(),
-        std::ffi::OsStr::new("--json"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
         None => return,
@@ -773,7 +767,8 @@ fn run_step_jsonl_output_is_valid_jsonl() {
         std::ffi::OsStr::new("0"),
         std::ffi::OsStr::new("--step-input"),
         input_path.as_os_str(),
-        std::ffi::OsStr::new("--jsonl"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
         None => return,
@@ -782,30 +777,9 @@ fn run_step_jsonl_output_is_valid_jsonl() {
     assert_cli_success(&output, "run --step --jsonl");
     let stdout = output_stdout(&output);
 
-    // Each line should be valid JSON and at least one should have 'deltas'
-    let mut found_deltas = false;
-    for (i, line) in stdout.lines().enumerate() {
-        if line.is_empty() {
-            continue;
-        }
-        match serde_json::from_str::<serde_json::Value>(line) {
-            Ok(json) => {
-                if json.get("deltas").is_some() {
-                    found_deltas = true;
-                }
-            }
-            Err(e) => {
-                assert!(
-                    forced_assertion_failure(),
-                    "line {i} should be valid JSON: {e}; line={line}"
-                );
-            }
-        }
-    }
-    assert!(
-        found_deltas,
-        "at least one JSONL line should have 'deltas' field"
-    );
+    let json: serde_json::Value = serde_saphyr::from_str(&stdout)
+        .unwrap_or_else(|e| panic!("stdout should be YAML-compatible structured output: {e}; stdout={stdout}"));
+    assert!(json.get("deltas").is_some(), "structured output should have deltas field");
 }
 
 // ---------------------------------------------------------------------------
@@ -843,7 +817,8 @@ fn run_step_json_output_includes_step_kind_signal() {
         std::ffi::OsStr::new("0"),
         std::ffi::OsStr::new("--step-input"),
         input_path.as_os_str(),
-        std::ffi::OsStr::new("--json"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
         None => return,
@@ -903,7 +878,8 @@ fn run_step_delta_json_pc_delta_has_before_and_after() {
         std::ffi::OsStr::new("0"),
         std::ffi::OsStr::new("--step-input"),
         input_path.as_os_str(),
-        std::ffi::OsStr::new("--json"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
         None => return,
@@ -964,7 +940,8 @@ fn run_step_delta_json_slot_deltas_is_array_with_changes() {
         std::ffi::OsStr::new("0"),
         std::ffi::OsStr::new("--step-input"),
         input_path.as_os_str(),
-        std::ffi::OsStr::new("--json"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
         None => return,
@@ -1039,7 +1016,8 @@ fn run_step_delta_json_state_deltas_has_before_after() {
         std::ffi::OsStr::new("0"),
         std::ffi::OsStr::new("--step-input"),
         input_path.as_os_str(),
-        std::ffi::OsStr::new("--json"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
         None => return,
@@ -1114,7 +1092,8 @@ fn run_step_delta_json_taint_deltas_is_array() {
         std::ffi::OsStr::new("0"),
         std::ffi::OsStr::new("--step-input"),
         input_path.as_os_str(),
-        std::ffi::OsStr::new("--json"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
         None => return,
@@ -1174,7 +1153,8 @@ fn run_step_finished_includes_output_slot_value_and_taint() {
         std::ffi::OsStr::new("0"),
         std::ffi::OsStr::new("--step-input"),
         input_path.as_os_str(),
-        std::ffi::OsStr::new("--json"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
         None => return,
@@ -1247,7 +1227,8 @@ fn run_step_error_in_json_format_reports_error_and_message() {
         std::ffi::OsStr::new("0"),
         std::ffi::OsStr::new("--step-input"),
         input_path.as_os_str(),
-        std::ffi::OsStr::new("--json"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
         None => return,
@@ -1299,7 +1280,8 @@ fn run_step_error_in_jsonl_format_reports_error_object() {
         std::ffi::OsStr::new("0"),
         std::ffi::OsStr::new("--step-input"),
         input_path.as_os_str(),
-        std::ffi::OsStr::new("--jsonl"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
         None => return,
