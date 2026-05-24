@@ -47,6 +47,7 @@ Scoped verification after reconciliation:
 - `rtk cargo test -p velvet-ballastics --test vb_qi37_14_1_run_step --test cli_trace_integration --test cli_vb_m214_bdd_scenarios --test lifecycle_integration --test deliver_sink_integration --test admission_evidence_integration -- --test-threads=1` — PASS, `155 passed`.
 - `cargo test -p vb_proof_kernels` — PASS, `231 passed`.
 - `cargo test -p vb_expr` — PASS, `649 passed`.
+- `cargo test -p vb_storage` — PASS, `1126 passed`.
 
 ## Open Finding Buckets
 
@@ -58,7 +59,7 @@ Scoped verification after reconciliation:
 - `vb_validate`: PATCHED PARTIAL — current diff fixes capability/idempotency/red-phase/Kani accessor exactness; still needs broad source-level `{ .. }` cleanup and hostile-input executable coverage.
 - `vb_expr`: PATCHED PARTIAL — exact OOB/type/parser/lexer payloads and generated expression properties patched. Evidence: `cargo test -p vb_expr` — PASS, `649 passed`. Kani shape gaps remain open under proof parity.
 - `vb_compile`: full compile-chain strict YAML, exact idempotency/topology diagnostics, `compile_source` parity, primitive payload validation, nested duplicate keys.
-- `vb_storage`: disabled atomic admission suite, persisted envelope assertions, exact `JournalError`/`TrimError`, trim identity/reopen durability, Kani persistence gap.
+- `vb_storage`: PATCHED PARTIAL — current diff hardens atomic admission and trim tests plus persisted accepted-envelope readback. Evidence: `cargo test -p vb_storage` — PASS, `1126 passed`. Kani persistence gap remains open under proof parity.
 - `vb_runtime`: recovery/resume/lifecycle/timer/taint vacuum and exactness gaps, stale/latest attempt correctness, fixture silent returns, timer identity/order.
 - `vb_doc`/`vb_benchmark`: tautologies, exact doc errors, patch-plan exactness, pending evidence negative, regression/metadata fields.
 - `vb_ipc`: silent-pass client tests, exact nested frame errors, FIFO identity/order, payload boundaries, Kani exactness.

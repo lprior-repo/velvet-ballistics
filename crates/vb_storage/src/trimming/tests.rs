@@ -140,14 +140,11 @@ fn trim_given_run_with_events_seq_0_to_9_and_snapshot_at_seq_5_trims_0_to_4() {
 
     // Snapshot at seq 5 covers events 0..5; replay starts at 6
     let remaining = journal.events_for_run(run).expect("replay should succeed");
-    assert_eq!(remaining.len(), 4, "should preserve events 6-9");
-    for event in &remaining {
-        assert!(
-            event.seq().get() >= 6,
-            "event seq {} should be >= 6 (after snapshot at 5)",
-            event.seq().get()
-        );
-    }
+    assert_eq!(
+        remaining,
+        events[6..10].to_vec(),
+        "should preserve exact event records 6-9"
+    );
 }
 
 #[test]
@@ -203,12 +200,19 @@ fn trim_given_run_with_no_snapshot_returns_error() {
         .append_strict_batch(&events)
         .expect("batch should succeed");
 
-    let result = journal.trim_events_for_run(run, TrimPolicy::default());
-    assert!(
-        matches!(result, Err(TrimError::NoDurableSnapshot { .. })),
-        "should error when no durable snapshot exists, got {:?}",
-        result
-    );
+    let err = journal
+        .trim_events_for_run(run, TrimPolicy::default())
+        .expect_err("missing durable snapshot must fail with exact run context");
+    match err {
+        TrimError::NoDurableSnapshot { run: actual } => {
+            assert_eq!(actual, run);
+            assert_eq!(
+                TrimError::NoDurableSnapshot { run: actual }.diagnostic_code(),
+                TrimError::NO_DURABLE_SNAPSHOT_CODE
+            );
+        }
+        other => panic!("expected NoDurableSnapshot for run {run:?}, got {other:?}"),
+    }
 }
 
 #[test]
@@ -229,7 +233,16 @@ fn trim_preserves_run_header_and_snapshot() {
     journal
         .append_strict_batch(&events)
         .expect("batch should succeed");
-    write_header(&journal, run, digest);
+    let expected_header = RunHeaderRecord {
+        run,
+        workflow_id: WorkflowId::new(0),
+        compiled_digest: digest,
+        status: 0,
+        accepted_at_ms: 0,
+    };
+    journal
+        .put_run_header(&expected_header)
+        .expect("header write should succeed");
 
     let snapshot = RunSnapshot {
         run,
@@ -249,12 +262,20 @@ fn trim_preserves_run_header_and_snapshot() {
     let header = journal
         .run_header(run)
         .expect("header lookup should succeed");
-    assert!(header.is_some(), "run header should be preserved");
+    assert_eq!(
+        header,
+        Some(expected_header),
+        "run header bytes must be preserved exactly"
+    );
 
     let snap = journal
         .snapshot(run, EventSeq::new(2))
         .expect("snapshot lookup should succeed");
-    assert!(snap.is_some(), "snapshot should be preserved");
+    assert_eq!(
+        snap,
+        Some(snapshot),
+        "snapshot payload must be preserved exactly"
+    );
 }
 
 #[test]
@@ -460,14 +481,11 @@ fn trim_preserves_events_at_or_after_snapshot() {
 
     // Snapshot at seq 2 covers events 0..2; only event 3 remains for replay
     let remaining = journal.events_for_run(run).expect("replay should succeed");
-    assert_eq!(remaining.len(), 1, "should preserve event 3 only");
-    for event in &remaining {
-        assert!(
-            event.seq().get() >= 3,
-            "event seq {} should be >= 2",
-            event.seq().get()
-        );
-    }
+    assert_eq!(
+        remaining,
+        vec![events[3].clone()],
+        "should preserve exact event 3 only"
+    );
 }
 
 #[test]
@@ -511,12 +529,19 @@ fn terminal_retention_blocks_recent_terminal_runs() {
         skip_noop_runs: true,
         retain_last_n_terminal: 5,
     };
-    let result = journal.trim_events_for_run(run, policy);
-    assert!(
-        matches!(result, Err(TrimError::RetentionPolicyBlocks { .. })),
-        "recent terminal run should be blocked by retention, got {:?}",
-        result
-    );
+    let err = journal
+        .trim_events_for_run(run, policy)
+        .expect_err("recent terminal run must be blocked by retention");
+    match err {
+        TrimError::RetentionPolicyBlocks { run: actual } => {
+            assert_eq!(actual, run);
+            assert_eq!(
+                TrimError::RetentionPolicyBlocks { run: actual }.diagnostic_code(),
+                TrimError::RETENTION_POLICY_BLOCKS_CODE
+            );
+        }
+        other => panic!("expected RetentionPolicyBlocks for run {run:?}, got {other:?}"),
+    }
 }
 
 #[test]
@@ -655,17 +680,11 @@ fn replay_equivalence_after_trim() {
     let after_trim = journal
         .events_for_run(run)
         .expect("replay after trim should succeed");
-    assert_eq!(after_trim.len(), 2, "should preserve events 4-5");
-    for (i, event) in after_trim.iter().enumerate() {
-        let expected_seq = 4 + i as u64;
-        assert_eq!(
-            event.seq().get(),
-            expected_seq,
-            "event at index {} should have seq {}",
-            i,
-            expected_seq
-        );
-    }
+    assert_eq!(
+        after_trim,
+        events[4..6].to_vec(),
+        "should preserve exact events 4-5"
+    );
 
     // Verify trimmed events are actually gone by trying to read them directly
     for seq in 0..3u64 {

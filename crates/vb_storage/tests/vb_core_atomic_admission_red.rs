@@ -924,18 +924,15 @@ proptest! {
         // When: strict admission runs with mismatched source.
         let result = submit_artifact(&journal, &workflow, RuntimePolicy::Strict);
 
-        // Then: it must fail or the artifact must NOT be stored as accepted.
-        // Either way, no partial visibility of an accepted run.
-        if result.is_ok() {
-            let artifact = result.unwrap();
-            // If admission succeeded, the artifact must NOT be readable as accepted.
-            let stored = journal.compiled_ir(artifact.digest).unwrap();
-            prop_assert!(stored.is_none() || {
-                // Stored artifact, if any, must decode correctly.
-                let record = stored.unwrap();
-                postcard::from_bytes::<AcceptedArtifact>(&record.ir).is_err()
-            }, "mismatched source must not produce accepted artifact");
-        }
+        // Then: it must fail closed. No either-outcome acceptance is permitted.
+        prop_assert!(matches!(result, Err(JournalError::ArtifactChecksumMismatch | JournalError::ArtifactMalformed | JournalError::PayloadDigestMismatch)),
+            "mismatched source must return an exact admission error, got {:?}", result);
+        prop_assert_eq!(journal.compiled_ir(workflow.digest()).unwrap(), None,
+            "mismatched source must not stage compiled IR");
+        prop_assert_eq!(journal.run_header(CONTRACT_RUN).unwrap(), None,
+            "mismatched source must not stage run header");
+        prop_assert_eq!(journal.events_for_run(CONTRACT_RUN).unwrap(), Vec::<JournalEvent>::new(),
+            "mismatched source must not stage events");
     }
 }
 
@@ -1147,11 +1144,11 @@ proptest! {
         // When: strict admission runs.
         let result = submit_artifact(&journal, &workflow, RuntimePolicy::Strict);
 
-        // Then: result must be an error (not success with wrong state).
-        prop_assert!(result.is_err() ||
-            // If success, verify no artifact is readable at correct digest.
-            journal.compiled_ir(workflow.digest()).unwrap().is_none(),
-            "inconsistent source must cause admission failure or no artifact");
+        // Then: result must be an exact error (not success with wrong state).
+        prop_assert!(matches!(result, Err(JournalError::ArtifactChecksumMismatch | JournalError::ArtifactMalformed | JournalError::PayloadDigestMismatch)),
+            "inconsistent source must cause exact admission failure, got {:?}", result);
+        prop_assert_eq!(journal.compiled_ir(workflow.digest()).unwrap(), None,
+            "inconsistent source must not stage artifact bytes");
     }
 }
 
@@ -1193,13 +1190,13 @@ proptest! {
         } // drop journal
 
         // Second: reopen and readback.
-        let (events1_count, has_artifact1) = {
+        let (events1, artifact1) = {
             let journal = FjallJournal::open(path, None).unwrap();
             let events1 = journal.events_for_run(CONTRACT_RUN).unwrap();
             let artifact1 = journal.compiled_ir(workflow.digest()).unwrap();
             prop_assert!(events1.len() >= 1, "first readback: events must exist");
             prop_assert!(artifact1.is_some(), "first readback: artifact must exist");
-            (events1.len(), artifact1.is_some())
+            (events1, artifact1)
         }; // drop journal
 
         // Third: reopen and readback again.
@@ -1207,11 +1204,10 @@ proptest! {
             let journal = FjallJournal::open(path, None).unwrap();
             let events2 = journal.events_for_run(CONTRACT_RUN).unwrap();
             let artifact2 = journal.compiled_ir(workflow.digest()).unwrap();
-            prop_assert_eq!(events2.len(), events1_count.max(1),
-                "subsequent readback must find same event count");
-            prop_assert!(artifact2.is_some(), "subsequent readback: artifact must exist");
-            prop_assert_eq!(artifact2.is_some(), has_artifact1,
-                "artifact presence must be consistent across readbacks");
+            prop_assert_eq!(events2, events1,
+                "subsequent readback must find identical event vector");
+            prop_assert_eq!(artifact2, artifact1,
+                "subsequent readback must find identical artifact record bytes");
         }
     }
 }
@@ -1227,16 +1223,30 @@ proptest! {
         let journal = FjallJournal::open(path, None).unwrap();
         let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict).unwrap();
 
-        // Then: ALL required families must be present.
+        // Then: ALL required families must be present with exact persisted identities.
         let source = journal.workflow_source(artifact.digest).unwrap();
         let compiled_ir = journal.compiled_ir(artifact.digest).unwrap();
         let header = journal.run_header(CONTRACT_RUN).unwrap();
         let events = journal.events_for_run(CONTRACT_RUN).unwrap();
 
-        prop_assert!(source.is_some(), "workflow source must be present after strict");
-        prop_assert!(compiled_ir.is_some(), "compiled IR must be present after strict");
-        prop_assert!(header.is_some(), "run header must be present after strict");
-        prop_assert!(!events.is_empty(), "at least one RunAccepted event must be present");
+        let expected_header = RunHeaderRecord {
+            run: CONTRACT_RUN,
+            workflow_id: CONTRACT_WORKFLOW_ID,
+            compiled_digest: artifact.digest,
+            status: CONTRACT_ACCEPTED_STATUS,
+            accepted_at_ms: CONTRACT_ACCEPTED_AT_MS,
+        };
+        let expected_event = JournalEvent::RunAccepted {
+            run: CONTRACT_RUN,
+            seq: artifact.accepted_at_seq,
+            workflow: artifact.digest,
+        };
+        prop_assert_eq!(source, Some(WorkflowSourceRecord {
+            digest: artifact.digest,
+            source: workflow_source_bytes(),
+        }), "workflow source bytes must be exact after strict");
+        prop_assert_eq!(header, Some(expected_header), "run header must be exact after strict");
+        prop_assert_eq!(events, vec![expected_event], "events must be exact after strict");
 
         // Verify the artifact decoded from compiled_ir matches the returned artifact.
         let record = compiled_ir.unwrap();
@@ -1259,25 +1269,16 @@ proptest! {
         };
         journal.put_workflow_source(&wrong_source).unwrap();
 
-        // Try strict admission — must fail or produce no accepted run.
+        // Try strict admission — must fail and produce no accepted run.
         let result = submit_artifact(&journal, &workflow, RuntimePolicy::Strict);
 
-        // If it succeeded despite the mismatch (implementation gap), verify artifact is NOT
-        // stored as accepted by checking compiled_ir doesn't decode as proper AcceptedArtifact.
-        if result.is_ok() {
-            let artifact = result.unwrap();
-            let stored = journal.compiled_ir(artifact.digest).unwrap();
-            if let Some(record) = stored {
-                let decoded: Result<AcceptedArtifact, _> = postcard::from_bytes(&record.ir);
-                // If decode succeeds with 15 gates, the mismatch should have been caught.
-                if decoded.is_ok() && decoded.as_ref().unwrap().verification.gate_count == 15 {
-                    // This means admission passed despite mismatched source — implementation gap.
-                    // The test documents this as a failing invariant.
-                    prop_assert!(false,
-                        "mismatched source was accepted — must be rejected before commit");
-                }
-            }
-        }
-        // If result is Err, that's the expected behavior.
+        prop_assert!(matches!(result, Err(JournalError::ArtifactChecksumMismatch | JournalError::ArtifactMalformed | JournalError::PayloadDigestMismatch)),
+            "mismatched source must be rejected before commit, got {:?}", result);
+        prop_assert_eq!(journal.compiled_ir(workflow.digest()).unwrap(), None,
+            "validation failure must leave no compiled IR");
+        prop_assert_eq!(journal.run_header(CONTRACT_RUN).unwrap(), None,
+            "validation failure must leave no run header");
+        prop_assert_eq!(journal.events_for_run(CONTRACT_RUN).unwrap(), Vec::<JournalEvent>::new(),
+            "validation failure must leave no events");
     }
 }

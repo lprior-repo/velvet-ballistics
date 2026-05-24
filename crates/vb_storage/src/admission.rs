@@ -783,6 +783,71 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn submit_artifact_journaled_persists_exact_accepted_envelope_identity() -> Result<(), String> {
+        let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+
+        let artifact = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled)
+            .map_err(|e| format!("submit failed: {e}"))?;
+        let stored = journal
+            .compiled_ir(artifact.digest)
+            .map_err(|e| format!("compiled_ir read failed: {e}"))?
+            .ok_or_else(|| String::from("artifact missing after submit"))?;
+        let expected_envelope_bytes =
+            postcard::to_allocvec(&artifact).map_err(|e| format!("serialize artifact: {e}"))?;
+        let expected_ir_bytes = postcard::to_allocvec(&workflow.to_parts())
+            .map_err(|e| format!("serialize workflow parts: {e}"))?;
+        let decoded: AcceptedArtifact = postcard::from_bytes(&stored.ir)
+            .map_err(|e| format!("decode stored accepted artifact: {e}"))?;
+
+        assert_eq!(stored.digest, workflow.digest());
+        assert_eq!(stored.ir, expected_envelope_bytes);
+        assert_eq!(decoded, artifact);
+        assert_eq!(artifact.digest, workflow.digest());
+        assert_eq!(artifact.source_digest, workflow.digest());
+        assert_eq!(artifact.policy_digest, compute_policy_digest(&workflow));
+        assert_eq!(artifact.ir, expected_ir_bytes);
+        assert_eq!(artifact.verification.digest, workflow.digest());
+        assert_eq!(artifact.verification.gate_count, ADMISSION_GATE_COUNT);
+        assert_eq!(artifact.verification.durable, false);
+        assert_eq!(artifact.accepted_at_seq, EventSeq::new(0));
+        assert_eq!(artifact.required_capabilities.as_ref(), &[]);
+        Ok(())
+    }
+
+    #[test]
+    fn submit_artifact_strict_reopen_reads_back_exact_envelope_bytes() -> Result<(), String> {
+        let dir = tempfile::tempdir().map_err(|e| format!("tempdir failed: {e}"))?;
+        let path = dir.path().to_path_buf();
+        let workflow = minimal_workflow()?;
+        let artifact = {
+            let journal = crate::FjallJournal::open(&path, None)
+                .map_err(|e| format!("journal open failed: {e}"))?;
+            submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Strict)
+                .map_err(|e| format!("strict submit failed: {e}"))?
+        };
+        let expected_record = CompiledIrRecord {
+            digest: artifact.digest,
+            ir: postcard::to_allocvec(&artifact)
+                .map_err(|e| format!("serialize accepted artifact: {e}"))?,
+        };
+
+        let reopened = crate::FjallJournal::open(&path, None)
+            .map_err(|e| format!("journal reopen failed: {e}"))?;
+        let stored = reopened
+            .compiled_ir(artifact.digest)
+            .map_err(|e| format!("compiled_ir read failed: {e}"))?;
+        let decoded: AcceptedArtifact = postcard::from_bytes(&expected_record.ir)
+            .map_err(|e| format!("decode expected accepted artifact: {e}"))?;
+
+        assert_eq!(stored, Some(expected_record));
+        assert_eq!(decoded, artifact);
+        drop(reopened);
+        drop(dir);
+        Ok(())
+    }
+
     // =========================================================================
     // admit_compiled_artifact
     // =========================================================================
