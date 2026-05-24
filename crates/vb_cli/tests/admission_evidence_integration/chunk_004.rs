@@ -16,6 +16,7 @@ fn budget_validation_rejects_oversized_workflow() {
         absolute_max_run_time_seconds: 60,
         absolute_max_result_bytes: 1024,
         absolute_max_steps_executable: 2,
+        ..vb_core::BoundednessPolicy::DEFAULT
     };
 
     // When: creating a 3-node workflow that exceeds the step limit
@@ -36,6 +37,13 @@ fn budget_validation_rejects_oversized_workflow() {
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_journal_batch_bytes: 0,
+        max_queue_depth: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
 
     // Then: validation rejects the budget
@@ -142,6 +150,7 @@ fn budget_validation_rejects_action_ticket_limit_exceeded() {
         absolute_max_run_time_seconds: 3600,
         absolute_max_result_bytes: 10240,
         absolute_max_steps_executable: 100,
+        ..vb_core::BoundednessPolicy::DEFAULT
     };
 
     let budget = vb_core::WholeWorkflowBudget {
@@ -161,6 +170,13 @@ fn budget_validation_rejects_action_ticket_limit_exceeded() {
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_journal_batch_bytes: 0,
+        max_queue_depth: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
 
     match tight_policy.validate(&budget) {
@@ -186,6 +202,7 @@ fn budget_validation_accepts_budget_policy_within_limits() {
         absolute_max_run_time_seconds: 7200,
         absolute_max_result_bytes: 65536,
         absolute_max_steps_executable: 50,
+        ..vb_core::BoundednessPolicy::DEFAULT
     };
 
     let budget = vb_core::WholeWorkflowBudget {
@@ -205,6 +222,13 @@ fn budget_validation_accepts_budget_policy_within_limits() {
         max_run_time_seconds: 100,
         max_result_bytes: 1024,
         max_total_slots_written: 5,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_journal_batch_bytes: 0,
+        max_queue_depth: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
 
     let result = policy.validate(&budget);
@@ -297,6 +321,7 @@ fn budget_validation_rejects_result_bytes_exceeded() {
         absolute_max_run_time_seconds: 3600,
         absolute_max_result_bytes: 512,
         absolute_max_steps_executable: 100,
+        ..vb_core::BoundednessPolicy::DEFAULT
     };
 
     let budget = vb_core::WholeWorkflowBudget {
@@ -316,6 +341,13 @@ fn budget_validation_rejects_result_bytes_exceeded() {
         max_run_time_seconds: 0,
         max_result_bytes: 1024,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_journal_batch_bytes: 0,
+        max_queue_depth: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
 
     match tight_policy.validate(&budget) {
