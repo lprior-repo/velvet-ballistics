@@ -43,7 +43,12 @@ fn anchor_rejected() {
 #[test]
 fn ambiguous_yes_rejected() {
     let result = validate_yaml_profile("flag: yes\n");
-    assert!(matches!(result, Err(YamlError::AmbiguousScalar { .. })));
+    assert_eq!(
+        result,
+        Err(YamlError::AmbiguousScalar {
+            scalar: "yes".into()
+        })
+    );
 }
 
 #[test]
@@ -64,21 +69,21 @@ fn true_false_accepted() {
 fn reject_duplicate_keys_finds_dup() {
     let keys = vec!["a", "b", "a"];
     let result = reject_duplicate_keys(&keys);
-    assert!(matches!(result, Err(YamlError::DuplicateKey { key }) if key.as_ref() == "a"));
+    assert_eq!(result, Err(YamlError::DuplicateKey { key: "a".into() }));
 }
 
 #[test]
 fn strict_profile_rejects_duplicate_top_level_key() {
     let yaml = "version: velvet-ballastics/v1\nname: first\nname: second\nwhen:\n  manual: {}\nsteps: []\n";
     let result = validate_yaml_profile(yaml);
-    assert!(matches!(result, Err(YamlError::DuplicateKey { key }) if key.as_ref() == "name"));
+    assert_eq!(result, Err(YamlError::DuplicateKey { key: "name".into() }));
 }
 
 #[test]
 fn strict_profile_rejects_duplicate_nested_key() {
     let yaml = "version: velvet-ballastics/v1\nname: wf\nwhen:\n  ipc:\n    name: a\n    name: b\nsteps: []\n";
     let result = validate_yaml_profile(yaml);
-    assert!(matches!(result, Err(YamlError::DuplicateKey { key }) if key.as_ref() == "name"));
+    assert_eq!(result, Err(YamlError::DuplicateKey { key: "name".into() }));
 }
 
 #[test]
@@ -99,7 +104,7 @@ fn depth_limit_enforced() {
         ..YamlLimits::default()
     };
     let result = validate_yaml_profile_with_limits(&yaml, &limits);
-    assert!(matches!(result, Err(YamlError::NestingTooDeep { .. })));
+    assert_eq!(result, Err(YamlError::NestingTooDeep { depth: 11, max: 10 }));
 }
 
 #[test]
@@ -236,13 +241,7 @@ fn depth_limit_exact_values() {
         ..YamlLimits::default()
     };
     let result = validate_yaml_profile_with_limits(&yaml, &limits);
-    match result {
-        Err(YamlError::NestingTooDeep { depth, max }) => {
-            assert!(depth > 10);
-            assert_eq!(max, 10);
-        }
-        other => fail_assert!("expected NestingTooDeep, got {other:?}"),
-    }
+    assert_eq!(result, Err(YamlError::NestingTooDeep { depth: 11, max: 10 }));
 }
 
 #[test]
@@ -285,13 +284,7 @@ fn node_limit_exceeded_exact_values() {
         ..YamlLimits::default()
     };
     let result = validate_yaml_profile_with_limits(&yaml, &limits);
-    match result {
-        Err(YamlError::NodeLimitExceeded { count, max }) => {
-            assert!(count > 5);
-            assert_eq!(max, 5);
-        }
-        other => fail_assert!("expected NodeLimitExceeded, got {other:?}"),
-    }
+    assert_eq!(result, Err(YamlError::NodeLimitExceeded { count: 6, max: 5 }));
 }
 
 #[test]

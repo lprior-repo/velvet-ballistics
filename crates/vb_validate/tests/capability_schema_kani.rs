@@ -461,8 +461,11 @@ mod kani_harnesses {
         let doc = make_doc(vec![]);
         let result = validate_version(&doc);
         kani::assert(
-            matches!(result, Err(ValidationError::MissingRequiredField { .. })),
-            "empty doc must produce MissingRequiredField, not panic",
+            result
+                == Err(ValidationError::MissingRequiredField {
+                    field: "version".to_owned(),
+                }),
+            "empty doc must produce exact MissingRequiredField(version), not panic",
         );
     }
 

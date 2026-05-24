@@ -222,12 +222,12 @@ fn adversarial_source_map_multi_line_scalar_tracks_spans() {
     let result = build_source_map(yaml);
     match result {
         Ok(map) => {
-            assert!(!map.is_empty(), "expected non-empty source map");
-            let first = map.span_for_node(0);
-            assert!(first.is_some(), "expected span for node 0");
-            let span = first;
-            let Some(s) = span else { return };
-            assert!(s.start_line > 0, "start_line should be > 0");
+            assert_eq!(map.len(), 3);
+            assert_eq!(span_text(yaml, map.span_for_node(1).unwrap_or(SourceSpan::new(0, 0, 0, 0, 0, 0))), "key");
+            assert_eq!(
+                span_text(yaml, map.span_for_node(2).unwrap_or(SourceSpan::new(0, 0, 0, 0, 0, 0))),
+                "line1\n  line2\n  line3\n"
+            );
         }
         Err(e) => fail_assert!("expected Ok source map, got Err: {e}"),
     }

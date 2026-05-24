@@ -33,6 +33,63 @@ fn collect_events_empty_mapping() {
 }
 
 #[test]
+fn collect_events_simple_mapping_has_exact_event_sequence_and_scalar_fields() {
+    let yaml = "key: value\n";
+    let events = collect_ok!(yaml);
+    assert_eq!(events.len(), 8);
+
+    assert_eq!(events[0], YamlEvent::StreamStart { span: events[0].span() });
+    assert_eq!(
+        events[1],
+        YamlEvent::DocumentStart {
+            explicit: false,
+            span: events[1].span()
+        }
+    );
+    assert_eq!(
+        events[2],
+        YamlEvent::MappingStart {
+            anchor_id: 0,
+            tag: None,
+            span: events[2].span()
+        }
+    );
+    assert_eq!(
+        events[3],
+        YamlEvent::Scalar {
+            value: "key".into(),
+            style: ScalarStyle::Plain,
+            anchor_id: 0,
+            tag: None,
+            span: EventSpan {
+                start: 0,
+                end: 3,
+                line: 1,
+                column: 0,
+            }
+        }
+    );
+    assert_eq!(
+        events[4],
+        YamlEvent::Scalar {
+            value: "value".into(),
+            style: ScalarStyle::Plain,
+            anchor_id: 0,
+            tag: None,
+            span: EventSpan {
+                start: 5,
+                end: 10,
+                line: 1,
+                column: 5,
+            }
+        }
+    );
+    assert!(matches!(events[5], YamlEvent::MappingEnd { .. }));
+    assert!(matches!(events[6], YamlEvent::DocumentEnd { .. }));
+    assert!(matches!(events[7], YamlEvent::StreamEnd { .. }));
+}
+
+#[test]
 fn scalar_event_carries_value() {
     let yaml = "hello\n";
     let events = collect_ok!(yaml);
@@ -508,8 +565,7 @@ fn adversarial_events_block_scalar_preserves_value() {
         fail_assert!("missing literal block scalar");
         return;
     };
-    assert!(val.contains("line1"), "expected 'line1' in block scalar");
-    assert!(val.contains("line2"), "expected 'line2' in block scalar");
+    assert_eq!(val.as_ref(), "line1\nline2\n");
 }
 
 #[test]
@@ -518,10 +574,11 @@ fn adversarial_events_folded_scalar_preserves_value() {
     let events = collect_ok!(yaml);
     let scalar = events.iter().find_map(|e| match e {
         YamlEvent::Scalar {
+            value,
             style: ScalarStyle::Folded,
             ..
-        } => Some(true),
+        } => Some(value.clone()),
         _ => None,
     });
-    assert_eq!(scalar, Some(true), "expected Folded scalar");
+    assert_eq!(scalar.as_deref(), Some("line1 line2\n"));
 }

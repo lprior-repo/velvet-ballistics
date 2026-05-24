@@ -197,13 +197,7 @@ fn adversarial_node_limit_exceeded() {
         ..YamlLimits::default()
     };
     let result = validate_yaml_profile_with_limits(&yaml, &limits);
-    match result {
-        Err(YamlError::NodeLimitExceeded { count, max }) => {
-            assert!(count > 100);
-            assert_eq!(max, 100);
-        }
-        other => fail_assert!("expected NodeLimitExceeded, got {other:?}"),
-    }
+    assert_eq!(result, Err(YamlError::NodeLimitExceeded { count: 101, max: 100 }));
 }
 
 #[test]
