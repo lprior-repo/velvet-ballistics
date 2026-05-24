@@ -1083,15 +1083,14 @@ fn max_size_journal_near_max_seq_events_recoverable() {
     }
 
     let journal = open_journal(&dir);
-    // events_for_run with near-u64::MAX sequences may report a gap since the
-    // journal has no events below the high sequence range. This is expected
-    // behavior — the journal correctly identifies that low-range events are
-    // missing. The test verifies the events were written successfully and can
-    // be read back via direct access.
+    // events_for_run with near-u64::MAX sequences correctly reports a gap
+    // since the journal has no events at lower sequence numbers (the journal
+    // only contains seq u64::MAX-3..u64::MAX, nothing below). This is correct
+    // behavior: the journal detects the missing low-range events.
     let recovered = journal.events_for_run(run);
     assert!(
-        recovered.is_ok(),
-        "events_for_run should not panic for near-max seq, got: {recovered:?}"
+        matches!(recovered, Err(vb_storage::JournalError::SequenceGap { .. })),
+        "events_for_run at near-u64::MAX seq should report SequenceGap due to missing low-range events, got: {recovered:?}"
     );
 }
 
