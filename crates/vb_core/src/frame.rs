@@ -1960,7 +1960,7 @@ mod frame_kani_harnesses {
         kani::assume(pc_raw < step_count);
         let pc = StepIdx::new(pc_raw);
 
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+        let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
         kani::assume(frame.is_ok());
         let mut frame = frame.unwrap();
 
@@ -1975,7 +1975,7 @@ mod frame_kani_harnesses {
         let step_count: u16 = kani::any();
         kani::assume(step_count > 0);
 
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+        let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
         kani::assume(frame.is_ok());
         let mut frame = frame.unwrap();
 
@@ -1993,7 +1993,7 @@ mod frame_kani_harnesses {
         kani::assume(pc_raw >= step_count);
         let pc = StepIdx::new(pc_raw);
 
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+        let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
         kani::assume(frame.is_ok());
         let mut frame = frame.unwrap();
 
@@ -2014,7 +2014,7 @@ mod frame_kani_harnesses {
         kani::assume(slot_raw < slot_count);
         let slot = SlotIdx::new(slot_raw);
 
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+        let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
         kani::assume(frame.is_ok());
         let mut frame = frame.unwrap();
 
@@ -2038,7 +2038,7 @@ mod frame_kani_harnesses {
         kani::assume(slot_raw < slot_count);
         let slot = SlotIdx::new(slot_raw);
 
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+        let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
         kani::assume(frame.is_ok());
         let mut frame = frame.unwrap();
 

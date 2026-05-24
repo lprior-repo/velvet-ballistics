@@ -13,25 +13,15 @@ fn parse_action_list_defaults_to_text_and_registered() {
 }
 
 #[test]
-fn parse_action_list_accepts_json_output() {
+fn parse_action_list_legacy_json_flag_is_rejected() {
     let parsed = parse_args(&args(&["velvet-ballastics", "action", "list", "--json"]));
-    if let Ok(Command::ActionList { output, registry }) = parsed {
-        assert_eq!(output, OutputFormat::Json);
-        assert_eq!(registry, ActionRegistryMode::Registered);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
-    }
+    assert!(matches!(parsed, Err(ParseError::UnknownActionListFlag(flag)) if flag == "--json"));
 }
 
 #[test]
-fn parse_action_list_accepts_jsonl_output() {
+fn parse_action_list_legacy_jsonl_flag_is_rejected() {
     let parsed = parse_args(&args(&["velvet-ballastics", "action", "list", "--jsonl"]));
-    if let Ok(Command::ActionList { output, registry }) = parsed {
-        assert_eq!(output, OutputFormat::Jsonl);
-        assert_eq!(registry, ActionRegistryMode::Registered);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
-    }
+    assert!(matches!(parsed, Err(ParseError::UnknownActionListFlag(flag)) if flag == "--jsonl"));
 }
 
 #[test]

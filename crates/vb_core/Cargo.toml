@@ -10,7 +10,6 @@ chrono.workspace = true
 indexmap.workspace = true
 serde.workspace = true
 thiserror.workspace = true
-vb_proof_kernels = { path = "../vb_proof_kernels" }
 
 [dev-dependencies]
 criterion.workspace = true

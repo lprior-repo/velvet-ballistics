@@ -90,33 +90,23 @@ fn shard_config_debug_format_contains_field_names() {
 }
 
 #[test]
-fn shard_config_new_accepts_zero_trace_capacity() {
-    // trace_capacity is not validated by ShardConfig::new; zero is accepted.
+fn shard_config_new_rejects_zero_trace_capacity_in_lifecycle_chunk() {
     let result = ShardConfig::new(1, 0, 1, 1, vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(
         result,
-        Ok(ShardConfig {
-            command_queue_capacity: 1,
-            trace_capacity: 0,
-            step_budget_per_tick: 1,
-            max_active_runs: 1,
-            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        Err(RuntimeError::UnsupportedOperation {
+            operation: "trace_capacity_zero"
         })
     );
 }
 
 #[test]
-fn shard_config_new_accepts_zero_step_budget() {
-    // step_budget_per_tick is not validated; zero is accepted.
+fn shard_config_new_rejects_zero_step_budget_in_lifecycle_chunk() {
     let result = ShardConfig::new(1, 1, 0, 1, vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(
         result,
-        Ok(ShardConfig {
-            command_queue_capacity: 1,
-            trace_capacity: 1,
-            step_budget_per_tick: 0,
-            max_active_runs: 1,
-            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        Err(RuntimeError::UnsupportedOperation {
+            operation: "step_budget_per_tick_zero"
         })
     );
 }

@@ -10,8 +10,8 @@
     clippy::unwrap_used
 )]
 mod error_tests {
-    use crate::error::ArtifactInvalidSource;
     use crate::JournalError;
+    use crate::error::ArtifactInvalidSource;
     use vb_core::{DiagnosticCode, RunId};
 
     // -----------------------------------------------------------------------
@@ -30,10 +30,7 @@ mod error_tests {
             display.contains("admission is required"),
             "Display must mention admission: {display}"
         );
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::ARTIFACT_MALFORMED_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
     }
 
     // -----------------------------------------------------------------------
@@ -72,10 +69,7 @@ mod error_tests {
         let err = JournalError::ArtifactInvalid {
             source: ArtifactInvalidSource::PayloadDigestMismatch,
         };
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::ARTIFACT_MALFORMED_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
     }
 
     // -----------------------------------------------------------------------
@@ -84,7 +78,10 @@ mod error_tests {
 
     #[test]
     fn input_too_large_variant_and_fields() {
-        let err = JournalError::InputTooLarge { len: 1024, max: 512 };
+        let err = JournalError::InputTooLarge {
+            len: 1024,
+            max: 512,
+        };
         match err {
             JournalError::InputTooLarge { len, max } => {
                 assert_eq!(len, 1024);
@@ -111,10 +108,7 @@ mod error_tests {
     #[test]
     fn input_too_large_error_code() {
         let err = JournalError::InputTooLarge { len: 1, max: 0 };
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::ARTIFACT_MALFORMED_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
     }
 
     // -----------------------------------------------------------------------
@@ -138,10 +132,7 @@ mod error_tests {
     #[test]
     fn input_schema_mismatch_error_code() {
         let err = JournalError::InputSchemaMismatch;
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::ARTIFACT_MALFORMED_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
     }
 
     // -----------------------------------------------------------------------
@@ -165,10 +156,7 @@ mod error_tests {
     #[test]
     fn capability_denied_error_code() {
         let err = JournalError::CapabilityDenied;
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::ARTIFACT_MALFORMED_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
     }
 
     // -----------------------------------------------------------------------
@@ -192,10 +180,7 @@ mod error_tests {
     #[test]
     fn secret_unavailable_error_code() {
         let err = JournalError::SecretUnavailable;
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::ARTIFACT_MALFORMED_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
     }
 
     // -----------------------------------------------------------------------
@@ -219,10 +204,7 @@ mod error_tests {
     #[test]
     fn run_already_exists_error_code() {
         let err = JournalError::RunAlreadyExists;
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::ARTIFACT_MALFORMED_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
     }
 
     // -----------------------------------------------------------------------
@@ -246,10 +228,7 @@ mod error_tests {
     #[test]
     fn active_run_capacity_exceeded_error_code() {
         let err = JournalError::ActiveRunCapacityExceeded;
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::ARTIFACT_MALFORMED_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
     }
 
     // -----------------------------------------------------------------------
@@ -273,10 +252,7 @@ mod error_tests {
     #[test]
     fn frame_allocation_failed_error_code() {
         let err = JournalError::FrameAllocationFailed;
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::ARTIFACT_MALFORMED_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
     }
 
     // -----------------------------------------------------------------------
@@ -300,10 +276,7 @@ mod error_tests {
     #[test]
     fn admission_journal_failed_error_code() {
         let err = JournalError::AdmissionJournalFailed;
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::ARTIFACT_MALFORMED_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
     }
 
     // -----------------------------------------------------------------------
@@ -358,10 +331,7 @@ mod error_tests {
             limit: 10,
             observed: 20,
         };
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::TOO_MANY_EVENTS_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::TOO_MANY_EVENTS_CODE,);
         assert_eq!(
             JournalError::TOO_MANY_EVENTS_CODE,
             DiagnosticCode::new(0x401E),
@@ -446,10 +416,7 @@ mod error_tests {
     #[test]
     fn clock_unavailable_error_code() {
         let err = JournalError::ClockUnavailable;
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::ARTIFACT_MALFORMED_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
     }
 
     // -----------------------------------------------------------------------
@@ -484,10 +451,7 @@ mod error_tests {
     #[test]
     fn invalid_gate_count_error_code() {
         let err = JournalError::InvalidGateCount { found: 1 };
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::INVALID_GATE_COUNT_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::INVALID_GATE_COUNT_CODE,);
         assert_eq!(
             JournalError::INVALID_GATE_COUNT_CODE,
             DiagnosticCode::new(0x401C),
@@ -529,9 +493,7 @@ mod error_tests {
 
     #[test]
     fn missing_required_proof_flag_error_code() {
-        let err = JournalError::MissingRequiredProofFlag {
-            flag: "test_flag",
-        };
+        let err = JournalError::MissingRequiredProofFlag { flag: "test_flag" };
         assert_eq!(
             err.diagnostic_code(),
             JournalError::MISSING_REQUIRED_PROOF_FLAG_CODE,

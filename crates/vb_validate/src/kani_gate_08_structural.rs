@@ -14,9 +14,9 @@
 //! dependent vb_validate crate under cfg(kani) first.
 
 use crate::{ValidationError, gates::validate_gate_08_accessor_path_segments};
-use vb_core::ids::{SlotIdx, StepIdx, SymbolId, WorkflowDigest};
+use vb_core::ids::{SlotIdx, StepIdx, SymbolId};
 use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, PathSegment, ResourceContract, WorkflowParts,
+    AccessorProgram, CompiledNode, CompiledNodeKind, PathSegment, WorkflowParts,
 };
 
 /// Harness 1: Arbitrary WorkflowParts with bounded valid accessors always passes Gate 8.
@@ -254,51 +254,47 @@ fn kani_gate_08_expressions_with_accessor_refs() {
     kani::assume(sym1.get() < symbols_count);
     kani::assume(acc_idx.get() < 2); // We have 2 accessors
 
-    let parts = WorkflowParts {
-        name: Box::from("expr_accessor_workflow"),
-        digest: WorkflowDigest::from_bytes([1; 32]),
-        nodes: Box::new([
-            CompiledNode {
-                id: step0,
-                output: Some(slot0),
-                next: Some(step1),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::EvalExpr { expr: expr_idx },
-            },
-            CompiledNode {
-                id: step1,
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish { result: slot0 },
-            },
+    let mut parts: WorkflowParts = kani::any();
+    parts.nodes = Box::new([
+        CompiledNode {
+            id: step0,
+            output: Some(slot0),
+            next: Some(step1),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::EvalExpr { expr: expr_idx },
+        },
+        CompiledNode {
+            id: step1,
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish { result: slot0 },
+        },
+    ]);
+    parts.expressions = Box::new([vb_core::workflow::ExprProgram {
+        ops: Box::new([
+            vb_core::workflow::ExprOp::LoadAccessor(acc_idx),
+            vb_core::workflow::ExprOp::Eq,
         ]),
-        expressions: Box::new([vb_core::workflow::ExprProgram {
-            ops: Box::new([
-                vb_core::workflow::ExprOp::LoadAccessor(acc_idx),
-                vb_core::workflow::ExprOp::Eq,
-            ]),
-            max_stack: 1,
-        }]),
-        accessors: Box::new([
-            AccessorProgram {
-                root: slot0,
-                path: Box::new([PathSegment::Field(sym0)]),
-            },
-            AccessorProgram {
-                root: slot0,
-                path: Box::new([PathSegment::Index(0)]),
-            },
-        ]),
-        constants: Box::new([vb_core::value::ConstValue::Null]),
-        slot_count,
-        symbols_count,
-        entry: step0,
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::new([Box::from("eval"), Box::from("finish")]),
-    };
+        max_stack: 1,
+    }]);
+    parts.accessors = Box::new([
+        AccessorProgram {
+            root: slot0,
+            path: Box::new([PathSegment::Field(sym0)]),
+        },
+        AccessorProgram {
+            root: slot0,
+            path: Box::new([PathSegment::Index(0)]),
+        },
+    ]);
+    parts.constants = Box::new([vb_core::value::ConstValue::Null]);
+    parts.slot_count = slot_count;
+    parts.symbols_count = symbols_count;
+    parts.entry = step0;
+    parts.step_names = Box::new([Box::from("eval"), Box::from("finish")]);
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(result.is_ok(), "expressions with accessor refs pass Gate 8");
@@ -338,63 +334,59 @@ fn kani_gate_08_mixed_accessor_paths() {
             && idx100 != u32::MAX,
     );
 
-    let parts = WorkflowParts {
-        name: Box::from("mixed_paths"),
-        digest: WorkflowDigest::from_bytes([2; 32]),
-        nodes: Box::new([CompiledNode {
-            id: StepIdx::ZERO,
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
-                result: SlotIdx::ZERO,
-            },
-        }]),
-        expressions: Box::new([]),
-        accessors: Box::new([
-            AccessorProgram {
-                root: SlotIdx::ZERO,
-                path: Box::new([]),
-            },
-            AccessorProgram {
-                root: SlotIdx::ZERO,
-                path: Box::new([PathSegment::Field(sym0)]),
-            },
-            AccessorProgram {
-                root: SlotIdx::ZERO,
-                path: Box::new([PathSegment::Index(idx0)]),
-            },
-            AccessorProgram {
-                root: SlotIdx::ZERO,
-                path: Box::new([
-                    PathSegment::Field(sym0),
-                    PathSegment::Index(idx0),
-                    PathSegment::Field(sym1),
-                ]),
-            },
-            AccessorProgram {
-                root: SlotIdx::new(1),
-                path: Box::new([PathSegment::Index(idx100)]),
-            },
-            AccessorProgram {
-                root: SlotIdx::new(2),
-                path: Box::new([
-                    PathSegment::Index(idx0),
-                    PathSegment::Index(idx1),
-                    PathSegment::Index(idx2),
-                    PathSegment::Index(idx3),
-                    PathSegment::Index(idx4),
-                ]),
-            },
-        ]),
-        constants: Box::new([]),
-        slot_count,
-        symbols_count,
-        entry: StepIdx::ZERO,
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::new([Box::from("root")]),
-    };
+    let mut parts: WorkflowParts = kani::any();
+    parts.nodes = Box::new([CompiledNode {
+        id: StepIdx::ZERO,
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::ZERO,
+        },
+    }]);
+    parts.expressions = Box::new([]);
+    parts.accessors = Box::new([
+        AccessorProgram {
+            root: SlotIdx::ZERO,
+            path: Box::new([]),
+        },
+        AccessorProgram {
+            root: SlotIdx::ZERO,
+            path: Box::new([PathSegment::Field(sym0)]),
+        },
+        AccessorProgram {
+            root: SlotIdx::ZERO,
+            path: Box::new([PathSegment::Index(idx0)]),
+        },
+        AccessorProgram {
+            root: SlotIdx::ZERO,
+            path: Box::new([
+                PathSegment::Field(sym0),
+                PathSegment::Index(idx0),
+                PathSegment::Field(sym1),
+            ]),
+        },
+        AccessorProgram {
+            root: SlotIdx::new(1),
+            path: Box::new([PathSegment::Index(idx100)]),
+        },
+        AccessorProgram {
+            root: SlotIdx::new(2),
+            path: Box::new([
+                PathSegment::Index(idx0),
+                PathSegment::Index(idx1),
+                PathSegment::Index(idx2),
+                PathSegment::Index(idx3),
+                PathSegment::Index(idx4),
+            ]),
+        },
+    ]);
+    parts.constants = Box::new([]);
+    parts.slot_count = slot_count;
+    parts.symbols_count = symbols_count;
+    parts.entry = StepIdx::ZERO;
+    parts.step_names = Box::new([Box::from("root")]);
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(result.is_ok(), "mixed accessor paths pass Gate 8");
@@ -434,44 +426,40 @@ fn kani_gate_08_constants_with_symbols() {
     kani::assume(step0.get() < u16::MAX);
     kani::assume(step1.get() < u16::MAX);
 
-    let parts = WorkflowParts {
-        name: Box::from("consts_with_symbols"),
-        digest: WorkflowDigest::from_bytes([3; 32]),
-        nodes: Box::new([
-            CompiledNode {
-                id: step0,
-                output: Some(slot0),
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst { value: const_idx },
-            },
-            CompiledNode {
-                id: step1,
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish { result: slot0 },
-            },
-        ]),
-        expressions: Box::new([]),
-        accessors: Box::new([AccessorProgram {
-            root: slot0,
-            path: Box::new([]),
-        }]),
-        constants: Box::new([
-            vb_core::value::ConstValue::Null,
-            vb_core::value::ConstValue::Bool(true),
-            vb_core::value::ConstValue::I64(42),
-            vb_core::value::ConstValue::Symbol(sym0),
-        ]),
-        slot_count,
-        symbols_count,
-        entry: step0,
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::new([Box::from("set"), Box::from("finish")]),
-    };
+    let mut parts: WorkflowParts = kani::any();
+    parts.nodes = Box::new([
+        CompiledNode {
+            id: step0,
+            output: Some(slot0),
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst { value: const_idx },
+        },
+        CompiledNode {
+            id: step1,
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish { result: slot0 },
+        },
+    ]);
+    parts.expressions = Box::new([]);
+    parts.accessors = Box::new([AccessorProgram {
+        root: slot0,
+        path: Box::new([]),
+    }]);
+    parts.constants = Box::new([
+        vb_core::value::ConstValue::Null,
+        vb_core::value::ConstValue::Bool(true),
+        vb_core::value::ConstValue::I64(42),
+        vb_core::value::ConstValue::Symbol(sym0),
+    ]);
+    parts.slot_count = slot_count;
+    parts.symbols_count = symbols_count;
+    parts.entry = step0;
+    parts.step_names = Box::new([Box::from("set"), Box::from("finish")]);
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(result.is_ok(), "constants with symbols pass Gate 8");
@@ -511,63 +499,59 @@ fn kani_gate_08_many_accessors_varied_depths() {
             && idx100 != u32::MAX,
     );
 
-    let parts = WorkflowParts {
-        name: Box::from("many_accessors"),
-        digest: WorkflowDigest::from_bytes([4; 32]),
-        nodes: Box::new([CompiledNode {
-            id: StepIdx::ZERO,
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
-                result: SlotIdx::ZERO,
-            },
-        }]),
-        expressions: Box::new([]),
-        accessors: Box::new([
-            AccessorProgram {
-                root: SlotIdx::ZERO,
-                path: Box::new([]),
-            },
-            AccessorProgram {
-                root: SlotIdx::ZERO,
-                path: Box::new([PathSegment::Field(sym0)]),
-            },
-            AccessorProgram {
-                root: SlotIdx::ZERO,
-                path: Box::new([PathSegment::Index(idx0)]),
-            },
-            AccessorProgram {
-                root: SlotIdx::ZERO,
-                path: Box::new([
-                    PathSegment::Field(sym0),
-                    PathSegment::Index(idx0),
-                    PathSegment::Field(sym1),
-                ]),
-            },
-            AccessorProgram {
-                root: SlotIdx::new(1),
-                path: Box::new([PathSegment::Index(idx100)]),
-            },
-            AccessorProgram {
-                root: SlotIdx::new(2),
-                path: Box::new([
-                    PathSegment::Index(idx0),
-                    PathSegment::Index(idx1),
-                    PathSegment::Index(idx2),
-                    PathSegment::Index(idx3),
-                    PathSegment::Index(idx4),
-                ]),
-            },
-        ]),
-        constants: Box::new([]),
-        slot_count,
-        symbols_count,
-        entry: StepIdx::ZERO,
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::new([Box::from("root")]),
-    };
+    let mut parts: WorkflowParts = kani::any();
+    parts.nodes = Box::new([CompiledNode {
+        id: StepIdx::ZERO,
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::ZERO,
+        },
+    }]);
+    parts.expressions = Box::new([]);
+    parts.accessors = Box::new([
+        AccessorProgram {
+            root: SlotIdx::ZERO,
+            path: Box::new([]),
+        },
+        AccessorProgram {
+            root: SlotIdx::ZERO,
+            path: Box::new([PathSegment::Field(sym0)]),
+        },
+        AccessorProgram {
+            root: SlotIdx::ZERO,
+            path: Box::new([PathSegment::Index(idx0)]),
+        },
+        AccessorProgram {
+            root: SlotIdx::ZERO,
+            path: Box::new([
+                PathSegment::Field(sym0),
+                PathSegment::Index(idx0),
+                PathSegment::Field(sym1),
+            ]),
+        },
+        AccessorProgram {
+            root: SlotIdx::new(1),
+            path: Box::new([PathSegment::Index(idx100)]),
+        },
+        AccessorProgram {
+            root: SlotIdx::new(2),
+            path: Box::new([
+                PathSegment::Index(idx0),
+                PathSegment::Index(idx1),
+                PathSegment::Index(idx2),
+                PathSegment::Index(idx3),
+                PathSegment::Index(idx4),
+            ]),
+        },
+    ]);
+    parts.constants = Box::new([]);
+    parts.slot_count = slot_count;
+    parts.symbols_count = symbols_count;
+    parts.entry = StepIdx::ZERO;
+    parts.step_names = Box::new([Box::from("root")]);
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(

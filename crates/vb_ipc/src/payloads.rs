@@ -2,6 +2,7 @@
 //! IPC payload types.
 
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::value::Taint;
 use vb_core::{RunId, WorkflowDigest};
@@ -180,6 +181,11 @@ pub enum GateKind {
     Gate15DeterminismProof,
 }
 
+/// Failure to parse a verification gate kind from its wire name.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[error("unknown verification gate kind")]
+pub struct ParseGateKindError;
+
 impl GateKind {
     /// Returns the string representation used on the wire.
     pub const fn as_str(&self) -> &'static str {
@@ -197,19 +203,23 @@ impl GateKind {
     }
 }
 
-impl From<&str> for GateKind {
-    fn from(s: &str) -> Self {
+impl TryFrom<&str> for GateKind {
+    type Error = ParseGateKindError;
+
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
         match s {
-            "gate_07_expression_stack_depth" => GateKind::Gate07ExpressionStackDepth,
-            "gate_08_accessor_path_segments" => GateKind::Gate08AccessorPathSegments,
-            "gate_09_slot_references" => GateKind::Gate09SlotReferences,
-            "gate_10_node_kind_specific" => GateKind::Gate10NodeKindSpecific,
-            "gate_11_loop_body_graph" => GateKind::Gate11LoopBodyGraph,
-            "gate_12_action_contract_completeness" => GateKind::Gate12ActionContractCompleteness,
-            "gate_13_no_slot_cycles" => GateKind::Gate13NoSlotCycles,
-            "gate_14_slot_type_consistency" => GateKind::Gate14SlotTypeConsistency,
-            "gate_15_determinism_proof" => GateKind::Gate15DeterminismProof,
-            _ => GateKind::Gate07ExpressionStackDepth, // Default fallback for unknown gates
+            "gate_07_expression_stack_depth" => Ok(GateKind::Gate07ExpressionStackDepth),
+            "gate_08_accessor_path_segments" => Ok(GateKind::Gate08AccessorPathSegments),
+            "gate_09_slot_references" => Ok(GateKind::Gate09SlotReferences),
+            "gate_10_node_kind_specific" => Ok(GateKind::Gate10NodeKindSpecific),
+            "gate_11_loop_body_graph" => Ok(GateKind::Gate11LoopBodyGraph),
+            "gate_12_action_contract_completeness" => {
+                Ok(GateKind::Gate12ActionContractCompleteness)
+            }
+            "gate_13_no_slot_cycles" => Ok(GateKind::Gate13NoSlotCycles),
+            "gate_14_slot_type_consistency" => Ok(GateKind::Gate14SlotTypeConsistency),
+            "gate_15_determinism_proof" => Ok(GateKind::Gate15DeterminismProof),
+            _ => Err(ParseGateKindError),
         }
     }
 }
@@ -499,4 +509,67 @@ pub enum IpcTraceEventKind {
     /// An unknown event (for future compatibility).
     #[doc(hidden)]
     Unknown,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{GateKind, ParseGateKindError};
+
+    const VALID_GATE_KINDS: [(GateKind, &str); 9] = [
+        (
+            GateKind::Gate07ExpressionStackDepth,
+            "gate_07_expression_stack_depth",
+        ),
+        (
+            GateKind::Gate08AccessorPathSegments,
+            "gate_08_accessor_path_segments",
+        ),
+        (GateKind::Gate09SlotReferences, "gate_09_slot_references"),
+        (
+            GateKind::Gate10NodeKindSpecific,
+            "gate_10_node_kind_specific",
+        ),
+        (GateKind::Gate11LoopBodyGraph, "gate_11_loop_body_graph"),
+        (
+            GateKind::Gate12ActionContractCompleteness,
+            "gate_12_action_contract_completeness",
+        ),
+        (GateKind::Gate13NoSlotCycles, "gate_13_no_slot_cycles"),
+        (
+            GateKind::Gate14SlotTypeConsistency,
+            "gate_14_slot_type_consistency",
+        ),
+        (
+            GateKind::Gate15DeterminismProof,
+            "gate_15_determinism_proof",
+        ),
+    ];
+
+    #[test]
+    fn gate_kind_try_from_accepts_existing_wire_names() {
+        VALID_GATE_KINDS
+            .iter()
+            .copied()
+            .for_each(|(expected, wire_name)| {
+                assert_eq!(GateKind::try_from(wire_name), Ok(expected));
+            });
+    }
+
+    #[test]
+    fn gate_kind_as_str_preserves_existing_wire_names() {
+        VALID_GATE_KINDS
+            .iter()
+            .copied()
+            .for_each(|(kind, wire_name)| {
+                assert_eq!(kind.as_str(), wire_name);
+            });
+    }
+
+    #[test]
+    fn gate_kind_try_from_rejects_unknown_wire_names() {
+        assert_eq!(
+            GateKind::try_from("gate_99_future_gate"),
+            Err(ParseGateKindError)
+        );
+    }
 }

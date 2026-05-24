@@ -47,7 +47,7 @@ fn parse_cancel_accepts_reason() {
 }
 
 #[test]
-fn parse_cancel_accepts_json_output() {
+fn parse_cancel_legacy_json_flag_keeps_text_output() {
     let parsed = parse_args(&args(&[
         "velvet-ballastics",
         "cancel",
@@ -57,14 +57,14 @@ fn parse_cancel_accepts_json_output() {
         "--json",
     ]));
     if let Ok(Command::Cancel { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Json);
+        assert_eq!(output, OutputFormat::Text);
     } else {
         assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
     }
 }
 
 #[test]
-fn parse_cancel_accepts_jsonl_output() {
+fn parse_cancel_legacy_jsonl_flag_keeps_text_output() {
     let parsed = parse_args(&args(&[
         "velvet-ballastics",
         "cancel",
@@ -74,7 +74,7 @@ fn parse_cancel_accepts_jsonl_output() {
         "--jsonl",
     ]));
     if let Ok(Command::Cancel { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Jsonl);
+        assert_eq!(output, OutputFormat::Text);
     } else {
         assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
     }

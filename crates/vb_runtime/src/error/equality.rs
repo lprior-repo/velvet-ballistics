@@ -93,14 +93,8 @@ fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> boo
             a == b
         }
         (
-            RuntimeError::EngineDriveFailed {
-                run: a,
-                source: s1,
-            },
-            RuntimeError::EngineDriveFailed {
-                run: b,
-                source: s2,
-            },
+            RuntimeError::EngineDriveFailed { run: a, source: s1 },
+            RuntimeError::EngineDriveFailed { run: b, source: s2 },
         ) => a == b && s1.diagnostic_code() == s2.diagnostic_code(),
         _ => false,
     }

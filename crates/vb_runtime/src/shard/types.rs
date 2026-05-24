@@ -470,6 +470,18 @@ pub struct ShardConfig {
     pub policy: vb_core::policy::RuntimePolicy,
 }
 
+/// Returns true when a trace ring capacity can retain at least one trace event.
+#[must_use]
+pub const fn is_valid_trace_capacity(capacity: usize) -> bool {
+    capacity > 0
+}
+
+/// Returns true when a shard tick can attempt at least one deterministic step.
+#[must_use]
+pub const fn is_valid_step_budget_per_tick(budget: u64) -> bool {
+    budget > 0
+}
+
 impl Default for ShardConfig {
     fn default() -> Self {
         Self {

@@ -117,7 +117,7 @@ proptest! {
             "destructive_operations_require_explicit_flag",
             "mutation_responses_return_identifiers",
             "non_interactive_by_default", "prompt_bypass_flag",
-            "stderr", "stdout", "streaming_output_flag",
+            "machine_output_flag", "stderr", "stdout",
             "structured_output_flag",
         ];
         for key in &keys {
@@ -138,7 +138,7 @@ proptest! {
             .expect("vocabulary_policy must be an object");
         let keys = [
             "banned_flags", "banned_verbs", "canonical_destructive_bypass_flag",
-            "canonical_output_flag", "canonical_resource_verbs",
+            "canonical_output_flag", "canonical_output_values", "canonical_resource_verbs",
         ];
         for key in &keys {
             prop_assert!(

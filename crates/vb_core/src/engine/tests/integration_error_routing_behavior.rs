@@ -9,16 +9,12 @@ use crate::errors::EngineError;
 use crate::frame::RunFrame;
 use crate::ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::{ConstValue, SlotValue};
-use crate::value_store::ValueStore;
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowError,
+    WorkflowParts,
 };
 
 use crate::engine::{ErrorHandlerOutcome, ErrorSlotData, new_run_frame, route_error_handler};
-
-fn test_store() -> ValueStore {
-    ValueStore::new()
-}
 
 fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
 where
@@ -138,7 +134,7 @@ fn make_multihandler_workflow() -> Result<CompiledWorkflow, String> {
         nodes.push(CompiledNode {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(2)),
+            next: Some(StepIdx::new(1)),
             on_error: Some(StepIdx::new(3)),
             error_slot: Some(SlotIdx::new(2)),
             kind: CompiledNodeKind::SetConst {
@@ -147,18 +143,18 @@ fn make_multihandler_workflow() -> Result<CompiledWorkflow, String> {
         });
         nodes.push(CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: None,
+            output: Some(SlotIdx::new(1)),
+            next: Some(StepIdx::new(2)),
             on_error: None,
             error_slot: None,
-            kind: CompiledNodeKind::Finish {
-                result: SlotIdx::new(0),
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
             },
         });
         nodes.push(CompiledNode {
             id: StepIdx::new(2),
             output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(1)),
+            next: Some(StepIdx::new(5)),
             on_error: Some(StepIdx::new(4)),
             error_slot: Some(SlotIdx::new(3)),
             kind: CompiledNodeKind::SetConst {
@@ -168,7 +164,7 @@ fn make_multihandler_workflow() -> Result<CompiledWorkflow, String> {
         nodes.push(CompiledNode {
             id: StepIdx::new(3),
             output: Some(SlotIdx::new(4)),
-            next: Some(StepIdx::new(1)),
+            next: Some(StepIdx::new(5)),
             on_error: None,
             error_slot: None,
             kind: CompiledNodeKind::SetConst {
@@ -178,14 +174,56 @@ fn make_multihandler_workflow() -> Result<CompiledWorkflow, String> {
         nodes.push(CompiledNode {
             id: StepIdx::new(4),
             output: Some(SlotIdx::new(4)),
-            next: Some(StepIdx::new(1)),
+            next: Some(StepIdx::new(5)),
             on_error: None,
             error_slot: None,
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(5),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
     })
+}
+
+fn assert_error_variant_propagates(
+    error: EngineError,
+    expected_code: &str,
+    test_name: &str,
+) -> Result<(), String> {
+    let workflow = make_simple_handler_workflow()?;
+    let mut run = make_frame(100, &workflow)?;
+
+    let outcome = route_error_handler(&workflow, &mut run, StepIdx::new(0), &error)
+        .map_err(|e| e.to_string())?;
+
+    ensure_equal(outcome, ErrorHandlerOutcome::Routed)?;
+    ensure_equal(run.pc(), StepIdx::new(2))?;
+    assert_error_code(&error, expected_code, test_name)
+}
+
+fn assert_error_code(
+    error: &EngineError,
+    expected_code: &str,
+    test_name: &str,
+) -> Result<(), String> {
+    let data = ErrorSlotData::from_engine_error(error, StepIdx::new(0));
+    if &*data.code == expected_code {
+        Ok(())
+    } else {
+        Err(format!(
+            "code mismatch for {test_name}: expected {expected_code} got {}",
+            &*data.code
+        ))
+    }
 }
 
 // =========================================================================
@@ -196,27 +234,7 @@ macro_rules! test_error_variant_propagation {
     ($test_name:ident, $error:expr, $expected_code:literal) => {
         #[test]
         fn $test_name() -> Result<(), String> {
-            let workflow = make_simple_handler_workflow()?;
-            let mut run = make_frame(100, &workflow)?;
-            let error = $error;
-
-            let outcome = route_error_handler(&workflow, &mut run, StepIdx::new(0), &error)
-                .map_err(|e| e.to_string())?;
-
-            ensure_equal(outcome, ErrorHandlerOutcome::Routed)?;
-            ensure_equal(run.pc(), StepIdx::new(2))?;
-
-            let data = ErrorSlotData::from_engine_error(&error, StepIdx::new(0));
-            let msg = format!(
-                "code mismatch for {}: expected {} got {}",
-                stringify!($test_name),
-                $expected_code,
-                &*data.code
-            );
-            if &*data.code != $expected_code {
-                return Err(msg);
-            }
-            Ok(())
+            assert_error_variant_propagates($error, $expected_code, stringify!($test_name))
         }
     };
 }
@@ -238,9 +256,7 @@ test_error_variant_propagation!(
 
 test_error_variant_propagation!(
     resource_limit_exceeded_propagates,
-    EngineError::ResourceLimitExceeded {
-        resource: "slots"
-    },
+    EngineError::ResourceLimitExceeded { resource: "slots" },
     "RESOURCE_LIMIT_EXCEEDED"
 );
 
@@ -262,11 +278,7 @@ test_error_variant_propagation!(
     "STEP_COUNTER_OVERFLOW"
 );
 
-test_error_variant_propagation!(
-    queue_full_propagates,
-    EngineError::QueueFull,
-    "QUEUE_FULL"
-);
+test_error_variant_propagation!(queue_full_propagates, EngineError::QueueFull, "QUEUE_FULL");
 
 test_error_variant_propagation!(
     allocation_failed_propagates,
@@ -424,25 +436,25 @@ test_error_variant_propagation!(
 test_error_variant_propagation!(
     repeat_exhausted_propagates,
     EngineError::RepeatExhausted { max: 5 },
-    "REPEAT_EXHAUSTED"
+    "REPEAT_LIMIT_REACHED"
 );
 
 test_error_variant_propagation!(
     collect_page_limit_exceeded_propagates,
     EngineError::CollectPageLimitExceeded,
-    "COLLECT_PAGE_LIMIT_EXCEEDED"
+    "COLLECT_LIMIT_REACHED"
 );
 
 test_error_variant_propagation!(
     collect_item_limit_exceeded_propagates,
     EngineError::CollectItemLimitExceeded,
-    "COLLECT_ITEM_LIMIT_EXCEEDED"
+    "COLLECT_LIMIT_REACHED"
 );
 
 test_error_variant_propagation!(
     collect_time_limit_exceeded_propagates,
     EngineError::CollectTimeLimitExceeded,
-    "COLLECT_TIME_LIMIT_EXCEEDED"
+    "COLLECT_LIMIT_REACHED"
 );
 
 test_error_variant_propagation!(
@@ -532,9 +544,7 @@ test_error_variant_propagation!(
 
 test_error_variant_propagation!(
     invalid_compiled_workflow_propagates,
-    EngineError::InvalidCompiledWorkflow {
-        reason: "bad node"
-    },
+    EngineError::InvalidCompiledWorkflow { reason: "bad node" },
     "INVALID_COMPILED_WORKFLOW"
 );
 
@@ -563,7 +573,10 @@ fn type_mismatch_routing_contains_expected_and_found_in_message() -> Result<(), 
     ensure_equal(&*data.code, "INPUT_TYPE_MISMATCH")?;
     ensure_equal(data.failed_step, StepIdx::new(1))?;
     if !data.message.contains("list") {
-        return Err(format!("message should contain 'list', got: {}", data.message));
+        return Err(format!(
+            "message should contain 'list', got: {}",
+            data.message
+        ));
     }
     if !data.message.contains("number") {
         return Err(format!(
@@ -623,12 +636,10 @@ fn failed_step_index_written_to_error_slot() -> Result<(), String> {
         found: "i64",
     };
 
-    let _outcome = route_error_handler(&workflow, &mut run, failed_step, &error)
-        .map_err(|e| e.to_string())?;
+    let _outcome =
+        route_error_handler(&workflow, &mut run, failed_step, &error).map_err(|e| e.to_string())?;
 
-    let slot_value = run
-        .read_slot(SlotIdx::new(1))
-        .map_err(|e| e.to_string())?;
+    let slot_value = run.read_slot(SlotIdx::new(1)).map_err(|e| e.to_string())?;
     ensure_equal(*slot_value, SlotValue::I64(0))?;
     Ok(())
 }
@@ -642,9 +653,7 @@ fn failed_step_index_written_for_large_step() -> Result<(), String> {
     let _outcome = route_error_handler(&workflow, &mut run, StepIdx::new(0), &error)
         .map_err(|e| e.to_string())?;
 
-    let slot_value = run
-        .read_slot(SlotIdx::new(1))
-        .map_err(|e| e.to_string())?;
+    let slot_value = run.read_slot(SlotIdx::new(1)).map_err(|e| e.to_string())?;
     ensure_equal(*slot_value, SlotValue::I64(0))?;
     Ok(())
 }
@@ -732,17 +741,13 @@ fn different_steps_write_to_different_error_slots() -> Result<(), String> {
     let mut run0 = make_frame(510, &workflow)?;
     let _ = route_error_handler(&workflow, &mut run0, StepIdx::new(0), &error)
         .map_err(|e| e.to_string())?;
-    let slot0_val = run0
-        .read_slot(SlotIdx::new(2))
-        .map_err(|e| e.to_string())?;
+    let slot0_val = run0.read_slot(SlotIdx::new(2)).map_err(|e| e.to_string())?;
     ensure_equal(*slot0_val, SlotValue::I64(0))?;
 
     let mut run2 = make_frame(511, &workflow)?;
     let _ = route_error_handler(&workflow, &mut run2, StepIdx::new(2), &error)
         .map_err(|e| e.to_string())?;
-    let slot2_val = run2
-        .read_slot(SlotIdx::new(3))
-        .map_err(|e| e.to_string())?;
+    let slot2_val = run2.read_slot(SlotIdx::new(3)).map_err(|e| e.to_string())?;
     ensure_equal(*slot2_val, SlotValue::I64(2))?;
 
     Ok(())
@@ -892,10 +897,7 @@ fn route_error_handler_accepts_engine_error() -> Result<(), String> {
 
 #[test]
 fn error_display_division_by_zero() {
-    assert_eq!(
-        EngineError::DivisionByZero.to_string(),
-        "division by zero"
-    );
+    assert_eq!(EngineError::DivisionByZero.to_string(), "division by zero");
 }
 
 #[test]
@@ -992,9 +994,7 @@ fn error_display_all_variants_produce_non_empty_string() {
         EngineError::BlobOutOfBounds {
             blob: crate::ids::BlobId::new(0),
         },
-        EngineError::UnsupportedPrimitive {
-            primitive: "test",
-        },
+        EngineError::UnsupportedPrimitive { primitive: "test" },
         EngineError::UnsupportedAccessorTraversal {
             segment: "idx",
             found: "obj",
@@ -1002,16 +1002,10 @@ fn error_display_all_variants_produce_non_empty_string() {
         EngineError::ObjectFieldNotFound {
             field: crate::ids::SymbolId::new(0),
         },
-        EngineError::InternalInvariantViolation {
-            reason: "test",
-        },
-        EngineError::InvalidCompiledWorkflow {
-            reason: "test",
-        },
+        EngineError::InternalInvariantViolation { reason: "test" },
+        EngineError::InvalidCompiledWorkflow { reason: "test" },
         EngineError::ExpressionStackOverflow { max: 1 },
-        EngineError::IterationLimitExceeded {
-            resource: "test",
-        },
+        EngineError::IterationLimitExceeded { resource: "test" },
         EngineError::RepeatExhausted { max: 1 },
         EngineError::TogetherBranchLimitExceeded { max: 1 },
         EngineError::ParallelLimitExceeded { limit: 1 },
@@ -1019,12 +1013,8 @@ fn error_display_all_variants_produce_non_empty_string() {
             budget: "test",
             limit: 1,
         },
-        EngineError::BudgetParse {
-            reason: "test",
-        },
-        EngineError::ResourceLimitExceeded {
-            resource: "test",
-        },
+        EngineError::BudgetParse { reason: "test" },
+        EngineError::ResourceLimitExceeded { resource: "test" },
     ];
 
     for error in &errors {
@@ -1092,9 +1082,7 @@ fn error_debug_all_variants_produce_non_empty_string() {
         EngineError::BlobOutOfBounds {
             blob: crate::ids::BlobId::new(0),
         },
-        EngineError::UnsupportedPrimitive {
-            primitive: "test",
-        },
+        EngineError::UnsupportedPrimitive { primitive: "test" },
         EngineError::UnsupportedAccessorTraversal {
             segment: "idx",
             found: "obj",
@@ -1102,16 +1090,10 @@ fn error_debug_all_variants_produce_non_empty_string() {
         EngineError::ObjectFieldNotFound {
             field: crate::ids::SymbolId::new(0),
         },
-        EngineError::InternalInvariantViolation {
-            reason: "test",
-        },
-        EngineError::InvalidCompiledWorkflow {
-            reason: "test",
-        },
+        EngineError::InternalInvariantViolation { reason: "test" },
+        EngineError::InvalidCompiledWorkflow { reason: "test" },
         EngineError::ExpressionStackOverflow { max: 1 },
-        EngineError::IterationLimitExceeded {
-            resource: "test",
-        },
+        EngineError::IterationLimitExceeded { resource: "test" },
         EngineError::RepeatExhausted { max: 1 },
         EngineError::TogetherBranchLimitExceeded { max: 1 },
         EngineError::ParallelLimitExceeded { limit: 1 },
@@ -1119,12 +1101,8 @@ fn error_debug_all_variants_produce_non_empty_string() {
             budget: "test",
             limit: 1,
         },
-        EngineError::BudgetParse {
-            reason: "test",
-        },
-        EngineError::ResourceLimitExceeded {
-            resource: "test",
-        },
+        EngineError::BudgetParse { reason: "test" },
+        EngineError::ResourceLimitExceeded { resource: "test" },
     ];
 
     for error in &errors {
@@ -1285,9 +1263,7 @@ fn error_slot_written_before_pc_advance_observed_order() -> Result<(), String> {
     let _outcome = route_error_handler(&workflow, &mut run, StepIdx::new(0), &error)
         .map_err(|e| e.to_string())?;
 
-    let slot_val = run
-        .read_slot(SlotIdx::new(1))
-        .map_err(|e| e.to_string())?;
+    let slot_val = run.read_slot(SlotIdx::new(1)).map_err(|e| e.to_string())?;
     ensure_equal(*slot_val, SlotValue::I64(0))?;
     ensure_equal(run.pc(), StepIdx::new(2))?;
     Ok(())
@@ -1300,38 +1276,64 @@ fn error_slot_written_before_pc_advance_observed_order() -> Result<(), String> {
 #[test]
 fn double_fault_when_handler_step_not_in_workflow() -> Result<(), String> {
     // Error on a step with on_error pointing to an invalid step
-    let workflow = make_workflow("doublefault", |nodes| {
-        nodes.push(CompiledNode {
-            id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: Some(StepIdx::new(99)),
-            error_slot: Some(SlotIdx::new(1)),
-            kind: CompiledNodeKind::SetConst {
-                value: ConstIdx::new(0),
-            },
-        });
-        nodes.push(CompiledNode {
-            id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
-                result: SlotIdx::new(0),
-            },
-        });
-    })?;
-    let mut run = make_frame(1000, &workflow)?;
-    let error = EngineError::DivisionByZero;
+    let result = invalid_handler_step_workflow_result();
+    ensure_equal(
+        result,
+        Err(WorkflowError::StepOutOfBounds {
+            step: StepIdx::new(99),
+        }),
+    )
+}
 
-    let result = route_error_handler(&workflow, &mut run, StepIdx::new(0), &error);
-    if result.is_ok() {
-        return Err(String::from(
-            "should fail when handler step is out of bounds",
-        ));
+fn invalid_handler_step_workflow_result() -> Result<CompiledWorkflow, WorkflowError> {
+    let parts = WorkflowParts {
+        name: Box::<str>::from("doublefault"),
+        digest: WorkflowDigest::from_bytes([0u8; 32]),
+        nodes: invalid_handler_step_nodes(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: vec![ConstValue::I64(42)].into_boxed_slice(),
+        slot_count: 3,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+    };
+    CompiledWorkflow::try_from_parts(parts)
+}
+
+fn invalid_handler_step_nodes() -> Box<[CompiledNode]> {
+    vec![
+        invalid_handler_source_node(),
+        finish_node_for_invalid_handler(),
+    ]
+    .into_boxed_slice()
+}
+
+fn invalid_handler_source_node() -> CompiledNode {
+    CompiledNode {
+        id: StepIdx::new(0),
+        output: Some(SlotIdx::new(0)),
+        next: Some(StepIdx::new(1)),
+        on_error: Some(StepIdx::new(99)),
+        error_slot: Some(SlotIdx::new(1)),
+        kind: CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
     }
-    Ok(())
+}
+
+fn finish_node_for_invalid_handler() -> CompiledNode {
+    CompiledNode {
+        id: StepIdx::new(1),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    }
 }
 
 #[test]
@@ -1355,7 +1357,6 @@ fn double_fault_handler_step_has_no_handler() -> Result<(), String> {
 // 14. Proptest: error context never lost
 // =========================================================================
 
-#[cfg(feature = "proptest")]
 mod proptest_properties {
     use proptest::prelude::*;
 
@@ -1371,7 +1372,7 @@ mod proptest_properties {
 
     fn prop_workflow() -> CompiledWorkflow {
         let parts = WorkflowParts {
-            name: String::from("proptest"),
+            name: Box::<str>::from("proptest"),
             digest: WorkflowDigest::from_bytes([0u8; 32]),
             nodes: vec![
                 CompiledNode {
@@ -1444,19 +1445,17 @@ mod proptest_properties {
             (1u16..100u16).prop_map(|v| EngineError::RepeatExhausted { max: v }),
             (1u16..100u16).prop_map(|v| EngineError::TogetherBranchLimitExceeded { max: v }),
             (1u16..100u16).prop_map(|v| EngineError::ParallelLimitExceeded { limit: v }),
-            (any::<u8>()).prop_map(|v| EngineError::TypeMismatch {
+            (any::<u8>()).prop_map(|_| EngineError::TypeMismatch {
                 expected: "i64",
                 found: "bool",
             }),
-            (any::<u8>()).prop_map(|v| EngineError::ResourceLimitExceeded {
-                resource: "test",
-            }),
+            (any::<u8>()).prop_map(|_| EngineError::ResourceLimitExceeded { resource: "test" }),
             (any::<u8>()).prop_map(|v| EngineError::BudgetExceeded {
                 budget: "test",
                 limit: v as u64,
             }),
-            (any::<u8>()).prop_map(|v| EngineError::SlotOutOfBounds {
-                slot: SlotIdx::new(v as u32),
+            (any::<u16>()).prop_map(|v| EngineError::SlotOutOfBounds {
+                slot: SlotIdx::new(v),
             }),
         ]
     }
@@ -1475,7 +1474,7 @@ mod proptest_properties {
         }
 
         #[test]
-        fn error_slot_data_failed_step_preserved(error in arb_engine_error(), step in 0u32..100u32) {
+        fn error_slot_data_failed_step_preserved(error in arb_engine_error(), step in 0u16..100u16) {
             let step_idx = StepIdx::new(step);
             let data = ErrorSlotData::from_engine_error(&error, step_idx);
             prop_assert_eq!(data.failed_step, step_idx);

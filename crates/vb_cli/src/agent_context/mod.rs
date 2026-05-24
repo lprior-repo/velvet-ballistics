@@ -9,14 +9,14 @@ pub(crate) fn build(version: &str) -> Value {
         "schema_version": "1",
         "kind": "AgentContext",
         "cli": "velvet-ballastics",
-        "binary_aliases": ["velvet-ballastics", "vb"],
+        "binary_aliases": ["velvet-ballastics"],
         "version": version,
         "language_version": "velvet-ballastics/v1",
         "agent_contract": {
             "non_interactive_by_default": true,
             "prompt_bypass_flag": "--force",
-            "structured_output_flag": "--json",
-            "streaming_output_flag": "--jsonl",
+            "structured_output_flag": "--emit yaml",
+            "machine_output_flag": "--emit postcard",
             "stdout": "data only",
             "stderr": "diagnostics only",
             "ansi_when_non_tty": false,
@@ -25,11 +25,12 @@ pub(crate) fn build(version: &str) -> Value {
             "mutation_responses_return_identifiers": true
         },
         "vocabulary_policy": {
-            "canonical_output_flag": "--json",
+            "canonical_output_flag": "--emit",
+            "canonical_output_values": ["text", "yaml", "postcard"],
             "canonical_destructive_bypass_flag": "--force",
             "canonical_resource_verbs": ["get", "list", "create", "update", "delete"],
             "banned_verbs": ["info", "ls"],
-            "banned_flags": ["--format=json", "--output=json", "--skip-confirmations"]
+            "banned_flags": ["--json", "--jsonl", "--format=json", "--output=json", "--skip-confirmations"]
         },
         "active_gates": active_gates(),
         "known_blockers": known_blockers(),
@@ -91,7 +92,7 @@ fn exit_codes() -> Value {
 
 fn enums() -> Value {
     serde_json::json!({
-        "emit": ["ir", "rust", "yaml", "postcard"],
+        "emit": ["ir", "yaml", "postcard"],
         "durability": ["strict", "journaled", "none"],
         "verify_profile": ["quick", "standard", "full"]
     })
@@ -111,7 +112,7 @@ fn commands() -> Value {
             serde_json::json!({
                 "summary": "Validate a workflow definition.",
                 "positionals": ["workflow.yaml"],
-                "flags": json_flags()
+                "flags": output_flags()
             }),
         ),
         command(
@@ -121,8 +122,7 @@ fn commands() -> Value {
                 "positionals": ["workflow.yaml"],
                 "flags": {
                     "--profile": {"type": "enum", "values": ["quick", "standard", "full"], "default": "standard"},
-                    "--json": "bool",
-                    "--jsonl": "bool"
+                    "--emit": output_emit_flag()
                 }
             }),
         ),
@@ -131,7 +131,7 @@ fn commands() -> Value {
             serde_json::json!({
                 "summary": "Explain validation errors in detail.",
                 "positionals": ["workflow.yaml"],
-                "flags": json_flags()
+                "flags": output_flags()
             }),
         ),
         command(
@@ -140,10 +140,8 @@ fn commands() -> Value {
                 "summary": "Compile a workflow to an artifact.",
                 "positionals": ["workflow.yaml"],
                 "flags": {
-                    "--emit": {"type": "enum", "values": ["ir", "rust", "yaml", "postcard"], "required": true},
-                    "--out": {"type": "path", "required": true},
-                    "--json": "bool",
-                    "--jsonl": "bool"
+                    "--emit": {"type": "enum", "values": ["ir", "yaml", "postcard"], "required": true},
+                    "--out": {"type": "path", "required": true}
                 }
             }),
         ),
@@ -158,8 +156,7 @@ fn commands() -> Value {
                     "--db": "path",
                     "--step": "u16",
                     "--step-input": "path",
-                    "--json": "bool",
-                    "--jsonl": "bool"
+                    "--emit": output_emit_flag()
                 }
             }),
         ),
@@ -172,8 +169,7 @@ fn commands() -> Value {
                     "--input-bin": {"type": "path", "required": true},
                     "--durability": {"type": "enum", "values": ["strict", "journaled", "none"], "required": true},
                     "--db": "path",
-                    "--json": "bool",
-                    "--jsonl": "bool"
+                    "--emit": output_emit_flag()
                 }
             }),
         ),
@@ -207,14 +203,14 @@ fn commands() -> Value {
             serde_json::json!({
                 "summary": "Benchmark a workflow fixture.",
                 "positionals": ["workflow.yaml"],
-                "flags": json_flags()
+                "flags": output_flags()
             }),
         ),
         command(
             "doctor",
             serde_json::json!({
                 "summary": "Run diagnostic checks.",
-                "flags": db_json_flags()
+                "flags": db_output_flags()
             }),
         ),
         command(
@@ -222,7 +218,7 @@ fn commands() -> Value {
             serde_json::json!({
                 "summary": "Answer a suspended ask step.",
                 "positionals": ["run_id"],
-                "flags": {"--step": {"type": "u16", "required": true}, "--value-file": {"type": "path", "required": true}, "--db": {"type": "path", "required": true}, "--json": "bool", "--jsonl": "bool"}
+                "flags": {"--step": {"type": "u16", "required": true}, "--value-file": {"type": "path", "required": true}, "--db": {"type": "path", "required": true}, "--emit": output_emit_flag()}
             }),
         ),
         command(
@@ -230,7 +226,7 @@ fn commands() -> Value {
             serde_json::json!({
                 "summary": "Output the control-flow graph.",
                 "positionals": ["workflow.yaml"],
-                "flags": json_flags()
+                "flags": output_flags()
             }),
         ),
         command(
@@ -238,7 +234,7 @@ fn commands() -> Value {
             serde_json::json!({
                 "summary": "Compare two durable runs.",
                 "positionals": ["run_a", "run_b"],
-                "flags": db_json_flags()
+                "flags": db_output_flags()
             }),
         ),
         command(
@@ -254,8 +250,7 @@ fn commands() -> Value {
                     "--input-bin": {"type": "path", "required": true},
                     "--db": {"type": "path", "required": true},
                     "--durability": {"type": "enum", "values": ["strict", "journaled", "none"], "required": true},
-                    "--json": "bool",
-                    "--jsonl": "bool"
+                    "--emit": output_emit_flag()
                 }
             }),
         ),
@@ -264,7 +259,7 @@ fn commands() -> Value {
             serde_json::json!({
                 "summary": "Dry-run a workflow without executing actions.",
                 "positionals": ["workflow.yaml"],
-                "flags": json_flags()
+                "flags": output_flags()
             }),
         ),
     ]))
@@ -274,19 +269,23 @@ fn command(name: &str, value: Value) -> (String, Value) {
     (name.to_owned(), value)
 }
 
-fn json_flags() -> Value {
-    serde_json::json!({"--json": "bool", "--jsonl": "bool"})
+fn output_flags() -> Value {
+    serde_json::json!({"--emit": output_emit_flag()})
 }
 
-fn db_json_flags() -> Value {
-    serde_json::json!({"--db": {"type": "path", "required": true}, "--json": "bool", "--jsonl": "bool"})
+fn db_output_flags() -> Value {
+    serde_json::json!({"--db": {"type": "path", "required": true}, "--emit": output_emit_flag()})
+}
+
+fn output_emit_flag() -> Value {
+    serde_json::json!({"type": "enum", "values": ["text", "yaml", "postcard"], "default": "text"})
 }
 
 fn run_id_db_command(summary: &str) -> Value {
     serde_json::json!({
         "summary": summary,
         "positionals": ["run_id"],
-        "flags": db_json_flags()
+        "flags": db_output_flags()
     })
 }
 

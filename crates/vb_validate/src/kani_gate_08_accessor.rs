@@ -10,7 +10,8 @@
 use crate::{ValidationError, gates::validate_gate_08_accessor_path_segments};
 use vb_core::ids::{SlotIdx, StepIdx, SymbolId, WorkflowDigest};
 use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, PathSegment, ResourceContract, WorkflowParts,
+    AccessorProgram, CompiledNode, CompiledNodeKind, ExprProgram, PathSegment, ResourceContract,
+    WorkflowParts,
 };
 
 #[kani::proof]
@@ -44,6 +45,7 @@ fn kani_gate_08_valid_zero_accessors_pass() {
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(result.is_ok(), "zero accessors pass Gate 8");
+    std::mem::forget(parts);
 }
 
 #[kani::proof]
@@ -65,6 +67,7 @@ fn kani_gate_08_valid_index_without_symbols_pass() {
         result.is_ok(),
         "index-only accessor does not require symbols",
     );
+    std::mem::forget(parts);
 }
 
 #[kani::proof]
@@ -114,6 +117,7 @@ fn kani_gate_08_field_symbol_oob_rejected() {
         ),
         "field symbol >= symbols_count is rejected",
     );
+    std::mem::forget(parts);
 }
 
 #[kani::proof]
@@ -132,6 +136,7 @@ fn kani_gate_08_index_u32_max_rejected() {
         matches!(result, Err(ValidationError::AccessorPathInvalid { .. })),
         "u32::MAX index sentinel is rejected",
     );
+    std::mem::forget(parts);
 }
 
 #[kani::proof]
@@ -156,6 +161,7 @@ fn kani_gate_08_root_oob_rejected() {
         matches!(result, Err(ValidationError::AccessorSlotOutOfRange { .. })),
         "root >= slot_count is rejected",
     );
+    std::mem::forget(parts);
 }
 
 fn bounded_u32_1024() -> u32 {
@@ -177,24 +183,71 @@ fn workflow_parts_with_accessors(
 ) -> WorkflowParts {
     WorkflowParts {
         name: Box::from("kani_workflow"),
-        digest: WorkflowDigest::from_bytes([0; 32]),
-        nodes: Box::new([CompiledNode {
-            id: StepIdx::ZERO,
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
-                result: SlotIdx::ZERO,
-            },
-        }]),
-        expressions: Box::new([]),
+        digest: WorkflowDigest::from_bytes(kani::any()),
+        nodes: bounded_nodes(),
+        expressions: bounded_expressions(),
         accessors,
-        constants: Box::new([]),
+        constants: bounded_constants(),
         slot_count,
         symbols_count,
-        entry: StepIdx::ZERO,
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::new([]),
+        entry: kani::any(),
+        resource_contract: kani::any::<ResourceContract>(),
+        step_names: bounded_step_names(),
+    }
+}
+
+fn bounded_nodes() -> Box<[CompiledNode]> {
+    if kani::any::<bool>() {
+        let result: SlotIdx = kani::any();
+        Box::new([CompiledNode {
+            id: kani::any::<StepIdx>(),
+            output: if kani::any::<bool>() {
+                Some(kani::any::<SlotIdx>())
+            } else {
+                None
+            },
+            next: if kani::any::<bool>() {
+                Some(kani::any::<StepIdx>())
+            } else {
+                None
+            },
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish { result },
+        }])
+    } else {
+        Box::new([])
+    }
+}
+
+fn bounded_expressions() -> Box<[ExprProgram]> {
+    if kani::any::<bool>() {
+        let ops: Box<[vb_core::workflow::ExprOp]> = if kani::any::<bool>() {
+            Box::new([kani::any::<vb_core::workflow::ExprOp>()])
+        } else {
+            Box::new([])
+        };
+        Box::new([ExprProgram {
+            ops,
+            max_stack: kani::any(),
+        }])
+    } else {
+        Box::new([])
+    }
+}
+
+fn bounded_constants() -> Box<[vb_core::value::ConstValue]> {
+    if kani::any::<bool>() {
+        Box::new([kani::any::<vb_core::value::ConstValue>()])
+    } else {
+        Box::new([])
+    }
+}
+
+fn bounded_step_names() -> Box<[Box<str>]> {
+    if kani::any::<bool>() {
+        Box::new([Box::from("kani_step")])
+    } else {
+        Box::new([])
     }
 }

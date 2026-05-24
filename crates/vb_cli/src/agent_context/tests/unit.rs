@@ -2,7 +2,7 @@ use crate::agent_context::build;
 use serde_json::Value;
 
 #[test]
-fn build_has_versioned_schema_and_json_flag() {
+fn build_has_versioned_schema_and_yaml_emit_flag() {
     let context = build("0.1.0");
 
     assert_eq!(
@@ -16,7 +16,7 @@ fn build_has_versioned_schema_and_json_flag() {
             .get("agent_contract")
             .and_then(|contract| contract.get("structured_output_flag"))
             .and_then(serde_json::Value::as_str),
-        Some("--json")
+        Some("--emit yaml")
     );
 }
 
@@ -60,7 +60,7 @@ fn build_has_binary_aliases() {
             .iter()
             .any(|v| v.as_str() == Some("velvet-ballastics"))
     );
-    assert!(aliases.iter().any(|v| v.as_str() == Some("vb")));
+    assert!(!aliases.iter().any(|v| v.as_str() == Some("vb")));
 }
 
 #[test]
@@ -92,7 +92,8 @@ fn agent_contract_has_required_fields() {
     assert!(contract.contains_key("non_interactive_by_default"));
     assert!(contract.contains_key("prompt_bypass_flag"));
     assert!(contract.contains_key("structured_output_flag"));
-    assert!(contract.contains_key("streaming_output_flag"));
+    assert!(contract.contains_key("machine_output_flag"));
+    assert!(!contract.contains_key("streaming_output_flag"));
     assert!(contract.contains_key("stdout"));
     assert!(contract.contains_key("stderr"));
     assert!(contract.contains_key("ansi_when_non_tty"));
@@ -110,6 +111,7 @@ fn vocabulary_policy_has_canonical_flags() {
         .expect("vocabulary_policy must be an object");
 
     assert!(policy.contains_key("canonical_output_flag"));
+    assert!(policy.contains_key("canonical_output_values"));
     assert!(policy.contains_key("canonical_destructive_bypass_flag"));
     assert!(policy.contains_key("canonical_resource_verbs"));
     assert!(policy.contains_key("banned_verbs"));
@@ -526,7 +528,7 @@ fn enums_emit_has_correct_values() {
         .and_then(Value::as_array)
         .expect("emit must be an array");
     let values: Vec<&str> = emit.iter().filter_map(Value::as_str).collect();
-    assert_eq!(values, vec!["ir", "rust", "yaml", "postcard"]);
+    assert_eq!(values, vec!["ir", "yaml", "postcard"]);
 }
 
 #[test]
@@ -688,14 +690,28 @@ fn command_replay_has_run_id_positional() {
 }
 
 #[test]
-fn vocabulary_policy_canonical_output_flag_is_dash_dash_json() {
+fn vocabulary_policy_canonical_output_flag_is_dash_dash_emit() {
     let context = build("0.1.0");
     assert_eq!(
         context
             .pointer("/vocabulary_policy/canonical_output_flag")
             .and_then(Value::as_str),
-        Some("--json")
+        Some("--emit")
     );
+}
+
+#[test]
+fn vocabulary_policy_canonical_output_values_are_text_yaml_postcard() {
+    let context = build("0.1.0");
+    let values = context
+        .pointer("/vocabulary_policy/canonical_output_values")
+        .and_then(Value::as_array)
+        .expect("canonical_output_values must be an array")
+        .iter()
+        .filter_map(Value::as_str)
+        .collect::<Vec<_>>();
+
+    assert_eq!(values, vec!["text", "yaml", "postcard"]);
 }
 
 #[test]
@@ -741,7 +757,13 @@ fn vocabulary_policy_banned_flags_has_correct_values() {
     let values: Vec<&str> = flags.iter().filter_map(Value::as_str).collect();
     assert_eq!(
         values,
-        vec!["--format=json", "--output=json", "--skip-confirmations"]
+        vec![
+            "--json",
+            "--jsonl",
+            "--format=json",
+            "--output=json",
+            "--skip-confirmations"
+        ]
     );
 }
 
@@ -834,24 +856,24 @@ fn agent_contract_prompt_bypass_flag_is_dash_dash_force() {
 }
 
 #[test]
-fn agent_contract_streaming_output_flag_is_dash_dash_jsonl() {
+fn agent_contract_machine_output_flag_is_dash_dash_emit_postcard() {
     let context = build("0.1.0");
     assert_eq!(
         context
-            .pointer("/agent_contract/streaming_output_flag")
+            .pointer("/agent_contract/machine_output_flag")
             .and_then(Value::as_str),
-        Some("--jsonl")
+        Some("--emit postcard")
     );
 }
 
 #[test]
-fn agent_contract_structured_output_flag_is_dash_dash_json() {
+fn agent_contract_structured_output_flag_is_dash_dash_emit_yaml() {
     let context = build("0.1.0");
     assert_eq!(
         context
             .pointer("/agent_contract/structured_output_flag")
             .and_then(Value::as_str),
-        Some("--json")
+        Some("--emit yaml")
     );
 }
 

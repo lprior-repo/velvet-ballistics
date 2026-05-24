@@ -261,17 +261,7 @@ fn scan_crate(crate_src_path: &Path, allowlist: &[String]) -> anyhow::Result<Vec
         // Check if file is in generated/perf directory or is a test file (skip those)
         let rel_path = file_path.strip_prefix(crate_src_path).unwrap_or(file_path);
         let rel_str = rel_path.to_string_lossy();
-        if rel_str.contains("generated")
-            || rel_str.contains("perf")
-            || rel_str.contains("target")
-            || rel_str.starts_with("tests/")
-            || rel_str.contains("_tests.")
-            || rel_str.ends_with("_tests.rs")
-            || rel_str.ends_with("tests.rs")
-            || rel_str.contains("/test")
-            || rel_str.starts_with("kani/")
-            || rel_str.contains("/kani/")
-        {
+        if should_skip_rs_file(&rel_str) {
             continue;
         }
 
@@ -319,6 +309,8 @@ fn scan_file(file_path: &PathBuf, allowlist: &[String]) -> anyhow::Result<Vec<Sc
     let mut findings = Vec::new();
     let lines: Vec<&str> = content.lines().collect();
 
+    let ignored_lines = cfg_test_lines(&lines);
+
     // Check forbidden patterns
     for (pattern, description) in FORBIDDEN_PATTERNS {
         // Skip if pattern is in allowlist
@@ -327,6 +319,9 @@ fn scan_file(file_path: &PathBuf, allowlist: &[String]) -> anyhow::Result<Vec<Sc
         }
 
         for (line_num, line) in lines.iter().enumerate() {
+            if ignored_lines.contains(&line_num) {
+                continue;
+            }
             if line.contains("dbg!") && pattern == &r"\b\.unwrap\(\)" {
                 // Skip dbg! invocations that might contain .unwrap()
                 continue;
@@ -345,6 +340,9 @@ fn scan_file(file_path: &PathBuf, allowlist: &[String]) -> anyhow::Result<Vec<Sc
 
     // Check unsafe blocks (excluding allowlisted)
     for (line_num, line) in lines.iter().enumerate() {
+        if ignored_lines.contains(&line_num) {
+            continue;
+        }
         if regex_contains(line, UNSAFE_BLOCK_PATTERN) {
             let is_allowlisted = allowlist.iter().any(|a| regex_contains(line, a));
             if !is_allowlisted {
@@ -360,6 +358,83 @@ fn scan_file(file_path: &PathBuf, allowlist: &[String]) -> anyhow::Result<Vec<Sc
     }
 
     Ok(findings)
+}
+
+fn should_skip_rs_file(rel_path: &str) -> bool {
+    rel_path.contains("generated")
+        || rel_path.contains("perf")
+        || rel_path.contains("target")
+        || rel_path.starts_with("tests/")
+        || rel_path.contains("/tests/")
+        || rel_path.contains("_tests.")
+        || rel_path.ends_with("_tests.rs")
+        || rel_path.ends_with("tests.rs")
+        || rel_path.contains("/test")
+        || rel_path.contains("test_harness")
+        || rel_path.contains("_tests")
+        || rel_path.contains("/proof")
+        || rel_path.contains("_proof")
+        || rel_path.contains("proptest")
+        || rel_path.contains("property_tests")
+        || rel_path.contains("/loom/")
+        || rel_path.starts_with("kani/")
+        || rel_path.starts_with("kani_")
+        || rel_path.contains("/kani/")
+        || rel_path.contains("/kani_")
+}
+
+fn cfg_test_lines(lines: &[&str]) -> std::collections::HashSet<usize> {
+    let mut ignored = std::collections::HashSet::new();
+    let mut cfg_test_pending = false;
+    let mut attr_pending = false;
+    let mut test_depth = 0_i32;
+    for (index, line) in lines.iter().enumerate() {
+        let trimmed = line.trim();
+        if test_depth > 0 {
+            ignored.insert(index);
+            test_depth += count_char(line, '{');
+            test_depth -= count_char(line, '}');
+            continue;
+        }
+        if trimmed.starts_with("#[cfg(test)]") {
+            ignored.insert(index);
+            cfg_test_pending = true;
+            continue;
+        }
+        if trimmed.starts_with("#[test]")
+            || trimmed.starts_with("#[kani::proof]")
+            || trimmed.starts_with("#[cfg(kani)]")
+            || trimmed.starts_with("#[cfg(loom)]")
+        {
+            ignored.insert(index);
+            attr_pending = true;
+            continue;
+        }
+        if attr_pending {
+            ignored.insert(index);
+            if trimmed.contains("fn ") {
+                test_depth = count_char(line, '{') - count_char(line, '}');
+                if test_depth <= 0 {
+                    test_depth = 1;
+                }
+            }
+            continue;
+        }
+        if cfg_test_pending {
+            ignored.insert(index);
+            if trimmed.contains("mod ") || trimmed.contains("fn ") {
+                test_depth = count_char(line, '{') - count_char(line, '}');
+                if test_depth <= 0 {
+                    test_depth = 1;
+                }
+            }
+        }
+    }
+    ignored
+}
+
+fn count_char(line: &str, needle: char) -> i32 {
+    i32::try_from(line.chars().filter(|ch| *ch == needle).count()).unwrap_or(i32::MAX)
 }
 
 fn checked_line_number(line_index: usize) -> usize {

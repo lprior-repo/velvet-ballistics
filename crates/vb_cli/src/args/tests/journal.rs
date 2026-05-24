@@ -23,7 +23,7 @@ fn parse_inspect_requires_run_id_and_db() {
 }
 
 #[test]
-fn parse_inspect_accepts_json_output() {
+fn parse_inspect_legacy_json_flag_keeps_text_output() {
     let parsed = parse_args(&args(&[
         "velvet-ballastics",
         "inspect",
@@ -35,7 +35,7 @@ fn parse_inspect_accepts_json_output() {
     if let Ok(Command::Inspect { run_id, db, output }) = parsed {
         assert_eq!(run_id, "42");
         assert_eq!(db, PathBuf::from("test-db"));
-        assert_eq!(output, OutputFormat::Json);
+        assert_eq!(output, OutputFormat::Text);
     } else {
         assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
     }

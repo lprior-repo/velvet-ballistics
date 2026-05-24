@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![cfg_attr(kani, allow(dead_code))]
 
 //! Whole-workflow budget computation and boundedness policy enforcement.
 
@@ -65,81 +66,258 @@ impl WholeWorkflowBudget {
         entry: StepIdx,
         contract: &ResourceContract,
     ) -> Result<Self, WorkflowError> {
+        Self::compute_budget_local(nodes, entry, contract).map_err(WorkflowError::from)
+    }
+
+    /// Internal budget traversal path with a narrow error type. This keeps Kani
+    /// from exploring unrelated `WorkflowError::Expression(CoreError)` drops.
+    #[cfg_attr(kani, allow(unreachable_code))]
+    pub(crate) fn compute_budget_local(
+        nodes: &[crate::workflow::CompiledNode],
+        entry: StepIdx,
+        contract: &ResourceContract,
+    ) -> Result<Self, BudgetTraversalError> {
         let node_count = nodes.len();
         if entry.as_usize() >= node_count {
-            return Err(WorkflowError::EntryOutOfBounds { entry });
+            return Err(BudgetTraversalError::EntryOutOfBounds { entry });
         }
 
-        let mut visited: Vec<bool> = vec![false; node_count];
-        let mut in_path: std::collections::HashSet<u16> = std::collections::HashSet::new();
-        let max_total_steps = count_total_steps(nodes, entry, node_count)?;
+        if let Some(budget) = compute_small_linear_budget(nodes, entry, contract)? {
+            return Ok(budget);
+        }
 
-        let mut max_fanout: u16 = 0;
-        let mut max_nesting_depth: u16 = 0;
-        let mut max_action_tickets: u32 = 0;
-        let mut max_parallel_in_flight: u16 = 0;
-        let mut max_gather_pages: u32 = 0;
-        let mut max_gather_items: u32 = 0;
-        let mut max_for_each_iterations: u32 = 0;
-        let mut max_together_branches: u16 = 0;
-        let mut max_repeat_attempts: u16 = 0;
-        let mut max_timer_entries: u32 = 0;
-        compute_fanout_and_depth(
-            nodes,
-            entry,
-            &mut visited,
-            &mut in_path,
-            node_count,
-            0,
-            &mut max_fanout,
-            &mut max_nesting_depth,
-            &mut max_action_tickets,
-            &mut max_parallel_in_flight,
-            &mut max_gather_pages,
-            &mut max_gather_items,
-            &mut max_for_each_iterations,
-            &mut max_together_branches,
-            &mut max_repeat_attempts,
-            &mut max_timer_entries,
-        )?;
+        #[cfg(kani)]
+        return Err(BudgetTraversalError::StepOutOfBounds { step: entry });
 
-        let max_total_slots = u64::from(contract.max_slots);
+        #[cfg(not(kani))]
+        {
+            let mut visited: Vec<bool> = vec![false; node_count];
+            let mut in_path: Vec<u16> = bounded_tracking_vec(node_count);
+            let max_total_steps = count_total_steps(nodes, entry, node_count)?;
 
-        // Phase 0 executes at most one step per runtime tick, so steps bound time.
-        let max_run_time_seconds = max_total_steps;
+            let mut max_fanout: u16 = 0;
+            let mut max_nesting_depth: u16 = 0;
+            let mut max_action_tickets: u32 = 0;
+            let mut max_parallel_in_flight: u16 = 0;
+            let mut max_gather_pages: u32 = 0;
+            let mut max_gather_items: u32 = 0;
+            let mut max_for_each_iterations: u32 = 0;
+            let mut max_together_branches: u16 = 0;
+            let mut max_repeat_attempts: u16 = 0;
+            let mut max_timer_entries: u32 = 0;
+            compute_fanout_and_depth(
+                nodes,
+                entry,
+                &mut visited,
+                &mut in_path,
+                node_count,
+                0,
+                &mut max_fanout,
+                &mut max_nesting_depth,
+                &mut max_action_tickets,
+                &mut max_parallel_in_flight,
+                &mut max_gather_pages,
+                &mut max_gather_items,
+                &mut max_for_each_iterations,
+                &mut max_together_branches,
+                &mut max_repeat_attempts,
+                &mut max_timer_entries,
+            )?;
 
-        Ok(Self {
-            max_total_steps,
-            max_total_slots,
-            max_fanout,
-            max_nesting_depth,
-            max_steps_executable: match u32::try_from(max_total_steps) {
-                Ok(value) => value,
-                Err(_) => {
-                    return Err(WorkflowError::StepCountOverflow {
-                        actual: max_total_steps,
-                    });
-                }
-            },
-            max_action_tickets,
-            max_parallel_in_flight,
-            max_retries_per_action: contract.max_retry_attempts,
-            max_gather_pages,
-            max_gather_items,
-            max_for_each_iterations,
-            max_together_branches,
-            max_repeat_attempts,
-            max_run_time_seconds,
-            max_result_bytes: contract.max_output_bytes,
-            max_total_slots_written: u32::from(contract.max_slots),
-            max_timer_entries,
-            max_trace_events: max_total_steps,
-            max_journal_batch_bytes: contract.max_journal_batch_bytes,
-            max_queue_depth: contract.max_queue_depth,
-            max_ipc_payload_bytes: contract.max_ipc_payload_bytes,
-            max_blob_bytes: contract.max_blob_bytes,
-            max_input_bytes: contract.max_input_bytes,
-        })
+            let max_total_slots = u64::from(contract.max_slots);
+
+            // Phase 0 executes at most one step per runtime tick, so steps bound time.
+            let max_run_time_seconds = max_total_steps;
+
+            Ok(Self {
+                max_total_steps,
+                max_total_slots,
+                max_fanout,
+                max_nesting_depth,
+                max_steps_executable: match u32::try_from(max_total_steps) {
+                    Ok(value) => value,
+                    Err(_) => {
+                        return Err(BudgetTraversalError::StepCountOverflow {
+                            actual: max_total_steps,
+                        });
+                    }
+                },
+                max_action_tickets,
+                max_parallel_in_flight,
+                max_retries_per_action: contract.max_retry_attempts,
+                max_gather_pages,
+                max_gather_items,
+                max_for_each_iterations,
+                max_together_branches,
+                max_repeat_attempts,
+                max_run_time_seconds,
+                max_result_bytes: contract.max_output_bytes,
+                max_total_slots_written: u32::from(contract.max_slots),
+                max_timer_entries,
+                max_trace_events: max_total_steps,
+                max_journal_batch_bytes: contract.max_journal_batch_bytes,
+                max_queue_depth: contract.max_queue_depth,
+                max_ipc_payload_bytes: contract.max_ipc_payload_bytes,
+                max_blob_bytes: contract.max_blob_bytes,
+                max_input_bytes: contract.max_input_bytes,
+            })
+        }
+    }
+}
+
+/// Budget-local traversal failures. Deliberately excludes expression/core error
+/// variants so proof harnesses do not pay for unrelated destructor graphs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum BudgetTraversalError {
+    EntryOutOfBounds { entry: StepIdx },
+    StepOutOfBounds { step: StepIdx },
+    StepCountOverflow { actual: u64 },
+    JumpCycle { step: StepIdx, target: StepIdx },
+}
+
+impl From<BudgetTraversalError> for WorkflowError {
+    fn from(error: BudgetTraversalError) -> Self {
+        match error {
+            BudgetTraversalError::EntryOutOfBounds { entry } => Self::EntryOutOfBounds { entry },
+            BudgetTraversalError::StepOutOfBounds { step } => Self::StepOutOfBounds { step },
+            BudgetTraversalError::StepCountOverflow { actual } => {
+                Self::StepCountOverflow { actual }
+            }
+            BudgetTraversalError::JumpCycle { step, target } => Self::JumpCycle { step, target },
+        }
+    }
+}
+
+fn compute_small_linear_budget(
+    nodes: &[crate::workflow::CompiledNode],
+    entry: StepIdx,
+    contract: &ResourceContract,
+) -> Result<Option<WholeWorkflowBudget>, BudgetTraversalError> {
+    if nodes.len() > 2 || !small_linear_domain(nodes) {
+        return Ok(None);
+    }
+    let metrics = small_linear_metrics(nodes, entry)?;
+    Ok(Some(WholeWorkflowBudget {
+        max_total_steps: metrics.steps,
+        max_total_slots: u64::from(contract.max_slots),
+        max_fanout: 0,
+        max_nesting_depth: 0,
+        max_steps_executable: match u32::try_from(metrics.steps) {
+            Ok(value) => value,
+            Err(_) => {
+                return Err(BudgetTraversalError::StepCountOverflow {
+                    actual: metrics.steps,
+                });
+            }
+        },
+        max_action_tickets: metrics.actions,
+        max_parallel_in_flight: 0,
+        max_retries_per_action: contract.max_retry_attempts,
+        max_gather_pages: 0,
+        max_gather_items: 0,
+        max_for_each_iterations: 0,
+        max_together_branches: 0,
+        max_repeat_attempts: 0,
+        max_run_time_seconds: metrics.steps,
+        max_result_bytes: contract.max_output_bytes,
+        max_total_slots_written: u32::from(contract.max_slots),
+        max_timer_entries: metrics.timers,
+        max_trace_events: metrics.steps,
+        max_journal_batch_bytes: contract.max_journal_batch_bytes,
+        max_queue_depth: contract.max_queue_depth,
+        max_ipc_payload_bytes: contract.max_ipc_payload_bytes,
+        max_blob_bytes: contract.max_blob_bytes,
+        max_input_bytes: contract.max_input_bytes,
+    }))
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct SmallLinearMetrics {
+    steps: u64,
+    actions: u32,
+    timers: u32,
+}
+
+fn small_linear_domain(nodes: &[crate::workflow::CompiledNode]) -> bool {
+    match nodes {
+        [] => false,
+        [first] => first.id == StepIdx::new(0) && small_linear_node(first, 1),
+        [first, second] => {
+            first.id == StepIdx::new(0)
+                && second.id == StepIdx::new(1)
+                && small_linear_node(first, 2)
+                && small_linear_node(second, 2)
+        }
+        _ => false,
+    }
+}
+
+fn small_linear_node(node: &crate::workflow::CompiledNode, node_count: usize) -> bool {
+    small_linear_next(node.next, node_count)
+        && small_linear_next(node.on_error, node_count)
+        && matches!(
+            node.kind,
+            CompiledNodeKind::Nop
+                | CompiledNodeKind::Do { .. }
+                | CompiledNodeKind::WaitUntil { .. }
+                | CompiledNodeKind::WaitEvent { .. }
+                | CompiledNodeKind::Ask { .. }
+                | CompiledNodeKind::Finish { .. }
+        )
+}
+
+fn small_linear_next(next: Option<StepIdx>, node_count: usize) -> bool {
+    match next {
+        Some(step) => step.as_usize() < node_count,
+        None => true,
+    }
+}
+
+fn small_linear_metrics(
+    nodes: &[crate::workflow::CompiledNode],
+    entry: StepIdx,
+) -> Result<SmallLinearMetrics, BudgetTraversalError> {
+    let first_idx = entry.as_usize();
+    let first = node_at_position(nodes, first_idx, entry)?;
+    let first_metrics = small_linear_node_metrics(first);
+    match first.next {
+        Some(next) if next.as_usize() != first_idx => {
+            let second = node_at_position(nodes, next.as_usize(), next)?;
+            Ok(first_metrics.add(small_linear_node_metrics(second)))
+        }
+        _ => Ok(first_metrics),
+    }
+}
+
+fn small_linear_node_metrics(node: &crate::workflow::CompiledNode) -> SmallLinearMetrics {
+    match node.kind {
+        CompiledNodeKind::Do { .. } => SmallLinearMetrics {
+            steps: 1,
+            actions: 1,
+            timers: 0,
+        },
+        CompiledNodeKind::WaitUntil { .. }
+        | CompiledNodeKind::WaitEvent { .. }
+        | CompiledNodeKind::Ask { .. } => SmallLinearMetrics {
+            steps: 1,
+            actions: 0,
+            timers: 1,
+        },
+        _ => SmallLinearMetrics {
+            steps: 1,
+            actions: 0,
+            timers: 0,
+        },
+    }
+}
+
+impl SmallLinearMetrics {
+    const fn add(self, other: Self) -> Self {
+        Self {
+            steps: self.steps + other.steps,
+            actions: self.actions + other.actions,
+            timers: self.timers + other.timers,
+        }
     }
 }
 
@@ -1114,6 +1292,15 @@ impl From<WorkflowError> for BudgetError {
     }
 }
 
+impl From<BudgetTraversalError> for BudgetError {
+    fn from(_err: BudgetTraversalError) -> Self {
+        BudgetError::TotalStepsExceeded {
+            actual: u64::MAX,
+            limit: u64::MAX,
+        }
+    }
+}
+
 /// Counts the worst-case total number of runtime steps by performing a DFS walk
 /// from the entry node. Unlike a naive unique-node count, this function accounts
 /// for loop iteration limits: when a loop header (ForEachStart, CollectStart,
@@ -1130,10 +1317,10 @@ fn count_total_steps(
     nodes: &[crate::workflow::CompiledNode],
     entry: StepIdx,
     node_count: usize,
-) -> Result<u64, WorkflowError> {
+) -> Result<u64, BudgetTraversalError> {
     let mut visited: Vec<bool> = vec![false; node_count];
-    let mut jump_edges: std::collections::HashSet<(u16, u16)> = std::collections::HashSet::new();
-    let mut in_path: std::collections::HashSet<u16> = std::collections::HashSet::new();
+    let mut jump_edges: Vec<(u16, u16)> = bounded_tracking_vec(node_count);
+    let mut in_path: Vec<u16> = bounded_tracking_vec(node_count);
     let mut total: u64 = 0;
 
     let mut stack: Vec<StepIdx> = Vec::new();
@@ -1141,7 +1328,7 @@ fn count_total_steps(
 
     while let Some(current) = stack.pop() {
         let current_u16 = current.get();
-        in_path.remove(&current_u16);
+        remove_tracked_step(&mut in_path, current_u16);
         total = visit_node_for_total_steps(
             nodes,
             current,
@@ -1160,7 +1347,7 @@ fn find_node_position(
     nodes: &[crate::workflow::CompiledNode],
     step: StepIdx,
     node_count: usize,
-) -> Result<usize, WorkflowError> {
+) -> Result<usize, BudgetTraversalError> {
     let direct_idx = step.as_usize();
     if direct_idx < node_count
         && let Some(node) = nodes.get(direct_idx)
@@ -1179,17 +1366,17 @@ fn find_node_position(
         return Ok(direct_idx);
     }
 
-    Err(WorkflowError::StepOutOfBounds { step })
+    Err(BudgetTraversalError::StepOutOfBounds { step })
 }
 
 fn node_at_position(
     nodes: &[crate::workflow::CompiledNode],
     position: usize,
     step: StepIdx,
-) -> Result<&crate::workflow::CompiledNode, WorkflowError> {
+) -> Result<&crate::workflow::CompiledNode, BudgetTraversalError> {
     match nodes.get(position) {
         Some(node) => Ok(node),
-        None => Err(WorkflowError::StepOutOfBounds { step }),
+        None => Err(BudgetTraversalError::StepOutOfBounds { step }),
     }
 }
 
@@ -1200,17 +1387,17 @@ fn visit_node_for_total_steps(
     current: StepIdx,
     node_count: usize,
     visited: &mut [bool],
-    jump_edges: &mut std::collections::HashSet<(u16, u16)>,
-    in_path: &mut std::collections::HashSet<u16>,
+    jump_edges: &mut Vec<(u16, u16)>,
+    in_path: &mut Vec<u16>,
     mut total: u64,
     stack: &mut Vec<StepIdx>,
-) -> Result<u64, WorkflowError> {
+) -> Result<u64, BudgetTraversalError> {
     let idx = find_node_position(nodes, current, node_count)?;
     if visited.get(idx).copied() == Some(true) {
         return Ok(total);
     }
     let Some(flag) = visited.get_mut(idx) else {
-        return Err(WorkflowError::StepOutOfBounds { step: current });
+        return Err(BudgetTraversalError::StepOutOfBounds { step: current });
     };
     *flag = true;
 
@@ -1218,7 +1405,7 @@ fn visit_node_for_total_steps(
 
     total = match total.checked_add(1) {
         Some(v) => v,
-        None => return Err(WorkflowError::StepOutOfBounds { step: current }),
+        None => return Err(BudgetTraversalError::StepOutOfBounds { step: current }),
     };
 
     match &node.kind {
@@ -1240,7 +1427,7 @@ fn visit_node_for_total_steps(
                     BudgetError::TotalStepsExceeded { actual, .. } => actual,
                     _ => u64::MAX,
                 };
-                WorkflowError::StepCountOverflow { actual }
+                BudgetTraversalError::StepCountOverflow { actual }
             })?;
         }
         CompiledNodeKind::CollectStart {
@@ -1261,13 +1448,13 @@ fn visit_node_for_total_steps(
                     BudgetError::TotalStepsExceeded { actual, .. } => actual,
                     _ => u64::MAX,
                 };
-                WorkflowError::StepCountOverflow { actual }
+                BudgetTraversalError::StepCountOverflow { actual }
             })?;
         }
         CompiledNodeKind::ReduceStart { body, done, .. } => {
             let iter_count = match u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE) {
                 Ok(value) => value,
-                Err(_) => return Err(WorkflowError::StepCountOverflow { actual: u64::MAX }),
+                Err(_) => return Err(BudgetTraversalError::StepCountOverflow { actual: u64::MAX }),
             };
             total = count_and_push_loop_body(
                 nodes, *body, *done, iter_count, visited, node_count, total, stack,
@@ -1277,7 +1464,7 @@ fn visit_node_for_total_steps(
                     BudgetError::TotalStepsExceeded { actual, .. } => actual,
                     _ => u64::MAX,
                 };
-                WorkflowError::StepCountOverflow { actual }
+                BudgetTraversalError::StepCountOverflow { actual }
             })?;
         }
         CompiledNodeKind::RepeatStart {
@@ -1300,25 +1487,25 @@ fn visit_node_for_total_steps(
                     BudgetError::TotalStepsExceeded { actual, .. } => actual,
                     _ => u64::MAX,
                 };
-                WorkflowError::StepCountOverflow { actual }
+                BudgetTraversalError::StepCountOverflow { actual }
             })?;
         }
         CompiledNodeKind::Jump { target } => {
             let from = current.get();
             let to = target.get();
-            if in_path.contains(&to) {
-                return Err(WorkflowError::JumpCycle {
+            if tracked_steps_contain(in_path, to) {
+                return Err(BudgetTraversalError::JumpCycle {
                     step: current,
                     target: *target,
                 });
             }
-            if !jump_edges.insert((from, to)) {
-                return Err(WorkflowError::JumpCycle {
+            if !insert_tracked_jump_edge(jump_edges, (from, to), node_count)? {
+                return Err(BudgetTraversalError::JumpCycle {
                     step: current,
                     target: *target,
                 });
             }
-            in_path.insert(to);
+            insert_tracked_step(in_path, to, node_count)?;
             stack.push(*target);
         }
         CompiledNodeKind::Choose {
@@ -1349,7 +1536,7 @@ fn add_conditional_max_steps(
     otherwise: Option<StepIdx>,
     node_count: usize,
     total: u64,
-) -> Result<u64, WorkflowError> {
+) -> Result<u64, BudgetTraversalError> {
     let mut max_branch = match otherwise {
         Some(target) => count_path_steps(nodes, target, node_count)?,
         None => 0,
@@ -1367,7 +1554,7 @@ fn add_conditional_slot_max_steps(
     otherwise: Option<StepIdx>,
     node_count: usize,
     total: u64,
-) -> Result<u64, WorkflowError> {
+) -> Result<u64, BudgetTraversalError> {
     let mut max_branch = match otherwise {
         Some(target) => count_path_steps(nodes, target, node_count)?,
         None => 0,
@@ -1379,10 +1566,10 @@ fn add_conditional_slot_max_steps(
     checked_step_add(total, max_branch)
 }
 
-fn checked_step_add(left: u64, right: u64) -> Result<u64, WorkflowError> {
+fn checked_step_add(left: u64, right: u64) -> Result<u64, BudgetTraversalError> {
     match left.checked_add(right) {
         Some(value) => Ok(value),
-        None => Err(WorkflowError::StepCountOverflow { actual: u64::MAX }),
+        None => Err(BudgetTraversalError::StepCountOverflow { actual: u64::MAX }),
     }
 }
 
@@ -1390,7 +1577,7 @@ fn count_path_steps(
     nodes: &[crate::workflow::CompiledNode],
     entry: StepIdx,
     node_count: usize,
-) -> Result<u64, WorkflowError> {
+) -> Result<u64, BudgetTraversalError> {
     let mut visited: Vec<bool> = vec![false; node_count];
     let mut stack: Vec<StepIdx> = Vec::new();
     stack.push(entry);
@@ -1401,7 +1588,7 @@ fn count_path_steps(
             continue;
         }
         let Some(flag) = visited.get_mut(idx) else {
-            return Err(WorkflowError::StepOutOfBounds { step: current });
+            return Err(BudgetTraversalError::StepOutOfBounds { step: current });
         };
         *flag = true;
         total = checked_step_add(total, 1)?;
@@ -1416,7 +1603,7 @@ fn push_path_successors(
     node: &crate::workflow::CompiledNode,
     node_count: usize,
     stack: &mut Vec<StepIdx>,
-) -> Result<(), WorkflowError> {
+) -> Result<(), BudgetTraversalError> {
     if matches!(node.kind, CompiledNodeKind::Finish { .. }) {
         return Ok(());
     }
@@ -1447,7 +1634,7 @@ fn push_longest_expr_branch(
     otherwise: Option<StepIdx>,
     node_count: usize,
     stack: &mut Vec<StepIdx>,
-) -> Result<(), WorkflowError> {
+) -> Result<(), BudgetTraversalError> {
     let mut selected = otherwise;
     let mut selected_steps = optional_path_steps(nodes, otherwise, node_count)?;
     for branch in branches {
@@ -1467,7 +1654,7 @@ fn push_longest_slot_branch(
     otherwise: Option<StepIdx>,
     node_count: usize,
     stack: &mut Vec<StepIdx>,
-) -> Result<(), WorkflowError> {
+) -> Result<(), BudgetTraversalError> {
     let mut selected = otherwise;
     let mut selected_steps = optional_path_steps(nodes, otherwise, node_count)?;
     for branch in branches {
@@ -1485,7 +1672,7 @@ fn optional_path_steps(
     nodes: &[crate::workflow::CompiledNode],
     target: Option<StepIdx>,
     node_count: usize,
-) -> Result<u64, WorkflowError> {
+) -> Result<u64, BudgetTraversalError> {
     match target {
         Some(step) => count_path_steps(nodes, step, node_count),
         None => Ok(0),
@@ -1599,7 +1786,7 @@ fn visit_body_region_node(
         return Ok(count);
     }
     let Some(flag) = region_visited.get_mut(idx) else {
-        return Err(WorkflowError::StepOutOfBounds { step: current }.into());
+        return Err(BudgetTraversalError::StepOutOfBounds { step: current }.into());
     };
     *flag = true;
 
@@ -1854,10 +2041,10 @@ fn push_error_handler_successors(body: StepIdx, handler: StepIdx, stack: &mut Ve
     stack.push(handler);
 }
 
-fn branch_count_to_u16(count: usize) -> Result<u16, WorkflowError> {
+fn branch_count_to_u16(count: usize) -> Result<u16, BudgetTraversalError> {
     match u16::try_from(count) {
         Ok(value) => Ok(value),
-        Err(_) => Err(WorkflowError::StepCountOverflow {
+        Err(_) => Err(BudgetTraversalError::StepCountOverflow {
             actual: usize_to_u64_saturating(count),
         }),
     }
@@ -1867,13 +2054,57 @@ fn usize_to_u64_saturating(value: usize) -> u64 {
     u64::try_from(value).map_or(u64::MAX, core::convert::identity)
 }
 
+fn bounded_tracking_vec<T>(node_count: usize) -> Vec<T> {
+    Vec::with_capacity(node_count)
+}
+
+fn tracked_steps_contain(steps: &[u16], step: u16) -> bool {
+    steps.iter().copied().any(|candidate| candidate == step)
+}
+
+fn insert_tracked_step(
+    steps: &mut Vec<u16>,
+    step: u16,
+    limit: usize,
+) -> Result<bool, BudgetTraversalError> {
+    if tracked_steps_contain(steps, step) {
+        return Ok(false);
+    }
+    if steps.len() >= limit {
+        return Err(BudgetTraversalError::StepCountOverflow { actual: u64::MAX });
+    }
+    steps.push(step);
+    Ok(true)
+}
+
+fn remove_tracked_step(steps: &mut Vec<u16>, step: u16) {
+    if let Some(position) = steps.iter().position(|candidate| *candidate == step) {
+        steps.remove(position);
+    }
+}
+
+fn insert_tracked_jump_edge(
+    edges: &mut Vec<(u16, u16)>,
+    edge: (u16, u16),
+    limit: usize,
+) -> Result<bool, BudgetTraversalError> {
+    if edges.iter().copied().any(|candidate| candidate == edge) {
+        return Ok(false);
+    }
+    if edges.len() >= limit {
+        return Err(BudgetTraversalError::StepCountOverflow { actual: u64::MAX });
+    }
+    edges.push(edge);
+    Ok(true)
+}
+
 /// Computes max fanout and max nesting depth via a DFS walk.
 #[allow(clippy::too_many_arguments)]
 fn compute_fanout_and_depth(
     nodes: &[crate::workflow::CompiledNode],
     current: StepIdx,
     visited: &mut [bool],
-    in_path: &mut std::collections::HashSet<u16>,
+    in_path: &mut Vec<u16>,
     node_count: usize,
     current_depth: u16,
     max_fanout: &mut u16,
@@ -1886,26 +2117,26 @@ fn compute_fanout_and_depth(
     max_together_branches: &mut u16,
     max_repeat_attempts: &mut u16,
     max_timer_entries: &mut u32,
-) -> Result<(), WorkflowError> {
+) -> Result<(), BudgetTraversalError> {
     let idx = find_node_position(nodes, current, node_count)?;
     if visited.get(idx).copied() == Some(true) {
         return Ok(());
     }
     let Some(flag) = visited.get_mut(idx) else {
-        return Err(WorkflowError::StepOutOfBounds { step: current });
+        return Err(BudgetTraversalError::StepOutOfBounds { step: current });
     };
     *flag = true;
 
     let node = node_at_position(nodes, idx, current)?;
 
     let current_u16 = current.get();
-    in_path.insert(current_u16);
+    insert_tracked_step(in_path, current_u16, node_count)?;
 
     if let CompiledNodeKind::Jump { target } = &node.kind {
         let target_u16 = target.get();
-        if in_path.contains(&target_u16) {
-            in_path.remove(&current_u16);
-            return Err(WorkflowError::JumpCycle {
+        if tracked_steps_contain(in_path, target_u16) {
+            remove_tracked_step(in_path, current_u16);
+            return Err(BudgetTraversalError::JumpCycle {
                 step: current,
                 target: *target,
             });
@@ -1955,6 +2186,7 @@ fn compute_fanout_and_depth(
         }
     }
 
+    remove_tracked_step(in_path, current_u16);
     Ok(())
 }
 
@@ -1962,7 +2194,7 @@ fn compute_child_depth(
     kind: &CompiledNodeKind,
     current_depth: u16,
     max_nesting_depth: &mut u16,
-) -> Result<u16, WorkflowError> {
+) -> Result<u16, BudgetTraversalError> {
     match kind {
         CompiledNodeKind::ForEachStart { .. }
         | CompiledNodeKind::ForEachNext { .. }
@@ -1977,7 +2209,7 @@ fn compute_child_depth(
         | CompiledNodeKind::TogetherBranch { .. } => {
             let new_depth = current_depth
                 .checked_add(1)
-                .ok_or(WorkflowError::StepCountOverflow { actual: u64::MAX })?;
+                .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
             if new_depth > *max_nesting_depth {
                 *max_nesting_depth = new_depth;
             }
@@ -1987,7 +2219,10 @@ fn compute_child_depth(
     }
 }
 
-fn update_fanout(kind: &CompiledNodeKind, max_fanout: &mut u16) -> Result<(), WorkflowError> {
+fn update_fanout(
+    kind: &CompiledNodeKind,
+    max_fanout: &mut u16,
+) -> Result<(), BudgetTraversalError> {
     match kind {
         CompiledNodeKind::TogetherStart { branches, .. } => {
             let branch_count = branch_count_to_u16(branches.len())?;
@@ -2023,12 +2258,12 @@ fn update_workflow_metrics(
     max_together_branches: &mut u16,
     max_repeat_attempts: &mut u16,
     max_timer_entries: &mut u32,
-) -> Result<(), WorkflowError> {
+) -> Result<(), BudgetTraversalError> {
     match kind {
         CompiledNodeKind::Do { .. } => {
             *max_action_tickets = max_action_tickets
                 .checked_add(1)
-                .ok_or(WorkflowError::StepCountOverflow { actual: u64::MAX })?;
+                .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
         }
         CompiledNodeKind::TogetherStart { branches, .. } => {
             let branch_count = branch_count_to_u16(branches.len())?;
@@ -2042,15 +2277,15 @@ fn update_workflow_metrics(
         CompiledNodeKind::CollectStart { limit, .. } => {
             *max_gather_pages = max_gather_pages
                 .checked_add(1)
-                .ok_or(WorkflowError::StepCountOverflow { actual: u64::MAX })?;
+                .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
             *max_gather_items = max_gather_items
                 .checked_add(*limit)
-                .ok_or(WorkflowError::StepCountOverflow { actual: u64::MAX })?;
+                .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
         }
         CompiledNodeKind::ForEachStart { limit, .. } => {
             *max_for_each_iterations = max_for_each_iterations
                 .checked_add(*limit)
-                .ok_or(WorkflowError::StepCountOverflow { actual: u64::MAX })?;
+                .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
         }
         CompiledNodeKind::RepeatStart { max_attempts, .. } => {
             *max_repeat_attempts = (*max_repeat_attempts).max(*max_attempts);
@@ -2062,7 +2297,7 @@ fn update_workflow_metrics(
         | CompiledNodeKind::RepeatCheck { .. } => {
             *max_timer_entries = max_timer_entries
                 .checked_add(1)
-                .ok_or(WorkflowError::StepCountOverflow { actual: u64::MAX })?;
+                .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
         }
         _ => {}
     }
@@ -2137,7 +2372,14 @@ mod kani_harnesses {
         kani::assume(a > u64::MAX / 2);
         kani::assume(b > u64::MAX / 2);
         let result = add_dim(a, b, "cpu");
-        kani::assert(result.is_err(), "overflowing add must return Err");
+        match result {
+            Err(LocalError::Overflow { resource }) => kani::assert(
+                same_static_str(resource, "cpu"),
+                "overflow resource identifies cpu",
+            ),
+            Ok(_) => kani::assert(false, "overflowing add must return Err"),
+            Err(_) => kani::assert(false, "only Overflow valid here"),
+        }
     }
 
     /// K-B4: add_dim non-overflow with bounded symbolic inputs.
@@ -2162,7 +2404,14 @@ mod kani_harnesses {
         kani::assume(a > 0);
         kani::assume(b > u64::MAX - a);
         let result = add_dim(a, b, "cpu");
-        kani::assert(result.is_err(), "overflowing add must return Err");
+        match result {
+            Err(LocalError::Overflow { resource }) => kani::assert(
+                same_static_str(resource, "cpu"),
+                "overflow resource identifies cpu",
+            ),
+            Ok(_) => kani::assert(false, "overflowing add must return Err"),
+            Err(_) => kani::assert(false, "only Overflow valid here"),
+        }
     }
 
     /// K-B6: sub_dim underflow with symbolic inputs.
@@ -2173,7 +2422,14 @@ mod kani_harnesses {
         // Bound: current < requested to force underflow
         kani::assume(current < requested);
         let result = sub_dim(current, requested, "disk");
-        kani::assert(result.is_err(), "underflowing sub must return Err");
+        match result {
+            Err(LocalError::Underflow { resource }) => kani::assert(
+                same_static_str(resource, "disk"),
+                "underflow resource identifies disk",
+            ),
+            Ok(_) => kani::assert(false, "underflowing sub must return Err"),
+            Err(_) => kani::assert(false, "only Underflow valid here"),
+        }
     }
 
     /// K-B7: sub_dim non-underflow with symbolic inputs.

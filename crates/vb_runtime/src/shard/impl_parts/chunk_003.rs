@@ -1,3 +1,5 @@
+use crate::shard::types::{is_valid_step_budget_per_tick, is_valid_trace_capacity};
+
 impl ShardConfig {
     /// Creates a new ShardConfig, validating capacity limits.
     pub fn new(
@@ -11,6 +13,16 @@ impl ShardConfig {
             return Err(RuntimeError::CommandQueueCapacityExceeded {
                 capacity: command_queue_capacity,
                 max: MAX_COMMAND_QUEUE_CAPACITY,
+            });
+        }
+        if !is_valid_trace_capacity(trace_capacity) {
+            return Err(RuntimeError::UnsupportedOperation {
+                operation: "trace_capacity_zero",
+            });
+        }
+        if !is_valid_step_budget_per_tick(step_budget_per_tick) {
+            return Err(RuntimeError::UnsupportedOperation {
+                operation: "step_budget_per_tick_zero",
             });
         }
         if max_active_runs == 0 {

@@ -233,13 +233,13 @@ fn shard_config_new_at_max_capacity_boundary() {
 /// ShardConfig::new at the minimum valid capacity (1) succeeds.
 #[test]
 fn shard_config_new_at_minimum_capacity() {
-    let result = ShardConfig::new(1, 0, 0, 1, vb_core::policy::RuntimePolicy::Relaxed);
+    let result = ShardConfig::new(1, 1, 1, 1, vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(
         result,
         Ok(ShardConfig {
             command_queue_capacity: 1,
-            trace_capacity: 0,
-            step_budget_per_tick: 0,
+            trace_capacity: 1,
+            step_budget_per_tick: 1,
             max_active_runs: 1,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         })

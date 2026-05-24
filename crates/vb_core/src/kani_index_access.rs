@@ -20,7 +20,7 @@ fn kani_write_slot_in_bounds() {
     kani::assume(slot_raw < slot_count);
     let slot = SlotIdx::new(slot_raw);
 
-    let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
     kani::assume(frame.is_ok());
     let mut frame = frame.unwrap();
 
@@ -38,7 +38,7 @@ fn kani_read_slot_in_bounds() {
     kani::assume(slot_raw < slot_count);
     let slot = SlotIdx::new(slot_raw);
 
-    let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
     kani::assume(frame.is_ok());
     let mut frame = frame.unwrap();
 
@@ -66,7 +66,7 @@ fn kani_write_slot_out_of_bounds() {
     kani::assume(slot_raw >= slot_count);
     let slot = SlotIdx::new(slot_raw);
 
-    let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
     kani::assume(frame.is_ok());
     let mut frame = frame.unwrap();
 
@@ -85,9 +85,9 @@ fn kani_read_slot_out_of_bounds() {
     kani::assume(slot_raw >= slot_count);
     let slot = SlotIdx::new(slot_raw);
 
-    let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
     kani::assume(frame.is_ok());
-    let mut frame = frame.unwrap();
+    let frame = frame.unwrap();
 
     let result = frame.read_slot(slot);
     kani::assert(result.is_err(), "read_slot with OOB idx returns Err");
@@ -101,7 +101,7 @@ fn kani_multiple_slots_sequential() {
     kani::assume(slot_count >= 2);
     kani::assume(slot_count <= 16);
 
-    let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
     kani::assume(frame.is_ok());
     let mut frame = frame.unwrap();
 

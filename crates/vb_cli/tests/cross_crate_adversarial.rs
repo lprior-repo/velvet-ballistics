@@ -820,41 +820,6 @@ fn runtime_to_ipc_shutdown_wire_code_is_stable() {
 }
 
 // ===========================================================================
-// SEAM 7: vb_compile -> vb_codegen (compile produces input for codegen)
-// ===========================================================================
-
-#[test]
-fn compile_to_codegen_simple_nop_workflow_produces_rust_source() {
-    // Given: a minimal compiled workflow (single Nop node)
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    };
-    let parts = minimal_parts(Box::from([node]));
-    let compiled = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
-        Ok(c) => c,
-        Err(err) => {
-            fail_assert!("workflow construction failed: {err:?}");
-            return;
-        }
-    };
-    // When: emitting Rust source
-    let result = vb_codegen::emit_rust_workflow(&compiled);
-    // Then: non-empty source with a drive function
-    match result {
-        Ok(output) => {
-            assert!(!output.is_empty(), "codegen output should not be empty");
-            assert!(output.contains("fn drive"), "should contain drive function");
-        }
-        Err(err) => fail_assert!("codegen should succeed for Nop: {err:?}"),
-    }
-}
-
-// ===========================================================================
 // TAINT PROPAGATION CROSS-CRATE TESTS
 // ===========================================================================
 

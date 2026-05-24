@@ -1382,7 +1382,7 @@ proptest! {
                 let checked = base.checked_add(u64::from(delta));
                 prop_assert!(checked.is_none(), "Err(Overflow) must correspond to real overflow");
             }
-            Err(other) => {
+            Err(_other) => {
                 prop_assert!(false, "expected Ok or Overflow, got unexpected error");
             }
         }
@@ -1447,7 +1447,7 @@ proptest! {
                     base_steps.checked_sub(u64::from(delta_steps)).unwrap_or(u64::MAX)
                 );
             }
-            Err(other) => {
+            Err(_other) => {
                 prop_assert!(false, "expected Ok or Underflow, got unexpected error");
             }
         }

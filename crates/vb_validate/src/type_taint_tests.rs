@@ -696,7 +696,6 @@ fn adversarial_deeply_nested_composite_taint_propagates() {
     assert_eq!(result, Ok(()));
 }
 
-
 // =========================================================================
 // Proptest: taint propagation invariants
 //
@@ -738,12 +737,10 @@ fn arb_typed_value_strat(depth: u8, max_slots: usize) -> BoxedStrategy<TypedValu
 
 fn arb_step_kind(depth: u8, max_slots: usize) -> BoxedStrategy<StepKind> {
     prop_oneof![
-        arb_typed_value_strat(depth, max_slots)
-            .prop_map(|value| StepKind::Save { value }),
+        arb_typed_value_strat(depth, max_slots).prop_map(|value| StepKind::Save { value }),
         arb_typed_value_strat(depth, max_slots)
             .prop_map(|condition| StepKind::Choose { condition }),
-        arb_typed_value_strat(depth, max_slots)
-            .prop_map(|result| StepKind::Finish { result }),
+        arb_typed_value_strat(depth, max_slots).prop_map(|result| StepKind::Finish { result }),
     ]
     .boxed()
 }
@@ -755,35 +752,26 @@ fn arb_step_types(depth: u8, max_slots: usize) -> impl Strategy<Value = StepType
 
 fn arb_workflow_types(max_steps: usize) -> impl Strategy<Value = WorkflowTypes> {
     let secret_names = prop::collection::vec("[a-z][a-z0-9_]{0,15}", 0..4);
-    let steps = (1..=max_steps).prop_flat_map(move |count| {
-        prop::collection::vec(arb_step_types(3, count), count..=count)
-    });
+    let steps = (1..=max_steps)
+        .prop_flat_map(move |count| prop::collection::vec(arb_step_types(3, count), count..=count));
     let inputs = prop::collection::vec(
-        (
-            "[a-z][a-z0-9_]{0,15}",
-            arb_value_type(),
-            any::<bool>(),
-        )
-            .prop_map(|(name, schema_type, is_secret)| InputDecl {
+        ("[a-z][a-z0-9_]{0,15}", arb_value_type(), any::<bool>()).prop_map(
+            |(name, schema_type, is_secret)| InputDecl {
                 name,
                 schema_type,
                 is_secret,
-            }),
+            },
+        ),
         0..4,
     );
-    let vars = prop::collection::vec(
-        ("[a-z][a-z0-9_]{0,15}", arb_value_type()),
-        0..4,
-    );
-    (inputs, vars, secret_names, steps).prop_map(
-        |(inputs, vars, secrets, steps)| WorkflowTypes {
-            inputs,
-            vars,
-            secrets,
-            steps,
-            resource_contract: ResourceLimits::default(),
-        },
-    )
+    let vars = prop::collection::vec(("[a-z][a-z0-9_]{0,15}", arb_value_type()), 0..4);
+    (inputs, vars, secret_names, steps).prop_map(|(inputs, vars, secrets, steps)| WorkflowTypes {
+        inputs,
+        vars,
+        secrets,
+        steps,
+        resource_contract: ResourceLimits::default(),
+    })
 }
 
 #[test]

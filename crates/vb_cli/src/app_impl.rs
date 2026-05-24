@@ -6250,9 +6250,7 @@ pub(crate) fn json_out(value: &serde_json::Value, format: OutputFormat) -> Resul
             Ok(encoded) => write_stdout_bytes(&encoded),
             Err(error) => Err(error),
         },
-        OutputFormat::Text => {
-            write_json_pretty_stdout(value)
-        }
+        OutputFormat::Text => write_json_pretty_stdout(value),
     }
 }
 

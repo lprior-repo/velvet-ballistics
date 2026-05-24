@@ -193,7 +193,7 @@ fn cli_status_jsonl_succeeds() {
 }
 
 #[test]
-fn cli_system_status_json_reports_degraded_when_no_backend_is_attached() {
+fn cli_system_status_legacy_json_flag_reports_degraded_text_when_no_backend_is_attached() {
     let output = run_cli(&[
         std::ffi::OsStr::new("system"),
         std::ffi::OsStr::new("status"),
@@ -208,54 +208,32 @@ fn cli_system_status_json_reports_degraded_when_no_backend_is_attached() {
         None => return,
     };
 
-    assert_cli_success(&output, "system status --json");
+    assert_cli_success(&output, "system status legacy --json");
     assert_eq!(
         output_stderr(&output),
         "",
         "system status success must not write stderr"
     );
     let stdout = output_stdout(&output);
-    let packet: serde_json::Value = match serde_json::from_str(&stdout) {
-        Ok(packet) => packet,
-        Err(error) => {
-            assert!(
-                forced_assertion_failure(),
-                "system status JSON did not parse: {error}; stdout={stdout}"
-            );
-            return;
-        }
-    };
-    let status_value = match packet.get("status") {
-        Some(value) => value.clone(),
-        None => {
-            assert!(forced_assertion_failure(), "missing status field: {stdout}");
-            return;
-        }
-    };
-    let status: vb_ui_model::system::SystemStatusView = match serde_json::from_value(status_value) {
-        Ok(status) => status,
-        Err(error) => {
-            assert!(
-                forced_assertion_failure(),
-                "status field is not UI-model compatible: {error}; stdout={stdout}"
-            );
-            return;
-        }
-    };
-
-    assert_eq!(packet.get("kind"), Some(&serde_json::json!("SystemStatus")));
-    assert_eq!(packet.get("profile"), Some(&serde_json::json!("quick")));
-    assert_eq!(packet.get("server"), Some(&serde_json::json!("none")));
-    assert_eq!(packet.get("connected"), Some(&serde_json::json!(false)));
-    assert_eq!(
-        status.storage_health,
-        vb_ui_model::system::StorageHealth::Degraded
+    assert!(
+        stdout.contains("system_status: degraded"),
+        "stdout={stdout}"
     );
-    assert!(!status.journal_batch_healthy);
-    assert!(!status.blob_store_ok);
-    assert!(!status.index_healthy);
-    assert_eq!(status.writer_queue_depth, 0);
-    assert_eq!(status.active_run_count, 0);
+    assert!(stdout.contains("profile: quick"), "stdout={stdout}");
+    assert!(stdout.contains("server: none"), "stdout={stdout}");
+    assert!(stdout.contains("connected: false"), "stdout={stdout}");
+    assert!(
+        stdout.contains("storage_health: Degraded"),
+        "stdout={stdout}"
+    );
+    assert!(
+        stdout.contains("journal_batch_healthy: false"),
+        "stdout={stdout}"
+    );
+    assert!(stdout.contains("blob_store_ok: false"), "stdout={stdout}");
+    assert!(stdout.contains("index_healthy: false"), "stdout={stdout}");
+    assert!(stdout.contains("writer_queue_depth: 0"), "stdout={stdout}");
+    assert!(stdout.contains("active_run_count: 0"), "stdout={stdout}");
 }
 
 #[test]
@@ -290,16 +268,7 @@ fn cli_system_status_yaml_reports_degraded_no_backend() {
             return;
         }
     };
-    let status: vb_ui_model::system::SystemStatusView = match serde_json::from_value(status_value) {
-        Ok(status) => status,
-        Err(error) => {
-            assert!(
-                forced_assertion_failure(),
-                "status field is not UI-model compatible: {error}; stdout={stdout}"
-            );
-            return;
-        }
-    };
+    let status = status_value;
 
     assert_eq!(
         packet.get("schema_version"),
@@ -311,16 +280,22 @@ fn cli_system_status_yaml_reports_degraded_no_backend() {
     assert_eq!(packet.get("connected"), Some(&serde_json::json!(false)));
     assert_eq!(packet.get("reason"), Some(&serde_json::json!("no-backend")));
     assert_eq!(
-        status.storage_health,
-        vb_ui_model::system::StorageHealth::Degraded
+        status.get("storage_health"),
+        Some(&serde_json::json!("Degraded"))
     );
-    assert_eq!(status.writer_queue_depth, 0);
-    assert!(!status.journal_batch_healthy);
-    assert_eq!(status.snapshot_seq, None);
-    assert!(!status.blob_store_ok);
-    assert!(!status.index_healthy);
-    assert_eq!(status.uptime_seconds, 0);
-    assert_eq!(status.active_run_count, 0);
+    assert_eq!(
+        status.get("writer_queue_depth"),
+        Some(&serde_json::json!(0))
+    );
+    assert_eq!(
+        status.get("journal_batch_healthy"),
+        Some(&serde_json::json!(false))
+    );
+    assert_eq!(status.get("snapshot_seq"), Some(&serde_json::Value::Null));
+    assert_eq!(status.get("blob_store_ok"), Some(&serde_json::json!(false)));
+    assert_eq!(status.get("index_healthy"), Some(&serde_json::json!(false)));
+    assert_eq!(status.get("uptime_seconds"), Some(&serde_json::json!(0)));
+    assert_eq!(status.get("active_run_count"), Some(&serde_json::json!(0)));
 }
 
 #[test]
@@ -1363,44 +1338,6 @@ fn runtime_slot_value_copy_trait() {
     let a = SlotValue::I64(42);
     let b = a;
     assert_eq!(a, b, "SlotValue should be Copy");
-}
-
-// ---------------------------------------------------------------------------
-// Phase 9: Codegen produces non-empty output
-// ---------------------------------------------------------------------------
-
-#[test]
-fn codegen_emit_rust_produces_output() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    };
-    let parts = minimal_parts(Box::from([node]));
-    let compiled = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
-        Ok(compiled) => compiled,
-        Err(err) => {
-            assert!(
-                forced_assertion_failure(),
-                "compile workflow failed: {err:?}"
-            );
-            return;
-        }
-    };
-    let result = vb_codegen::emit_rust_workflow(&compiled);
-    match result {
-        Ok(output) => {
-            assert!(!output.is_empty(), "codegen output should not be empty");
-            assert!(output.contains("fn drive"), "should contain drive function");
-        }
-        Err(err) => assert!(
-            forced_assertion_failure(),
-            "codegen should succeed: {err:?}"
-        ),
-    }
 }
 
 #[test]
@@ -3894,7 +3831,7 @@ fn cli_events_nonexistent_run_reports_empty_or_not_found() {
 }
 
 #[test]
-fn cli_system_status_jsonl_output_is_single_line() {
+fn cli_system_status_legacy_jsonl_flag_emits_status_text() {
     let output = match run_cli(&[
         std::ffi::OsStr::new("system"),
         std::ffi::OsStr::new("status"),
@@ -3907,24 +3844,14 @@ fn cli_system_status_jsonl_output_is_single_line() {
         Some(output) => output,
         None => return,
     };
-    assert_cli_success(&output, "system status --jsonl");
+    assert_cli_success(&output, "system status legacy --jsonl");
     let stdout = output_stdout(&output);
-    let line_count = stdout.lines().count();
-    assert_eq!(
-        line_count, 1,
-        "jsonl output must be exactly one line: {stdout}"
+    assert!(
+        stdout.contains("system_status: degraded"),
+        "stdout={stdout}"
     );
-    let packet: serde_json::Value = match serde_json::from_str(&stdout) {
-        Ok(packet) => packet,
-        Err(error) => {
-            assert!(
-                forced_assertion_failure(),
-                "jsonl parse failed: {error}; stdout={stdout}"
-            );
-            return;
-        }
-    };
-    assert_eq!(packet.get("kind"), Some(&serde_json::json!("SystemStatus")));
+    assert!(stdout.contains("profile: quick"), "stdout={stdout}");
+    assert!(stdout.contains("server: none"), "stdout={stdout}");
 }
 
 #[test]

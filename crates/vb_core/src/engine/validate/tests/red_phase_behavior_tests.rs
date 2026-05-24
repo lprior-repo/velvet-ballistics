@@ -1289,6 +1289,50 @@ mod error_message_exactness_verification {
 mod complex_nested_workflow_validation {
     use super::*;
 
+    fn improperly_nested_loop_parts() -> WorkflowParts {
+        WorkflowParts {
+            nodes: improperly_nested_loop_nodes(),
+            ..valid_parts()
+        }
+    }
+
+    fn improperly_nested_loop_nodes() -> Box<[CompiledNode]> {
+        vec![
+            outer_foreach_start_node(),
+            inner_foreach_start_node(),
+            nop_node_with_next(2, 3),
+            nop_node(3),
+            finish_node(4, 0),
+            finish_node(5, 0),
+        ]
+        .into_boxed_slice()
+    }
+
+    fn outer_foreach_start_node() -> CompiledNode {
+        foreach_start_node(0, 10, 1, 4)
+    }
+
+    fn inner_foreach_start_node() -> CompiledNode {
+        foreach_start_node(1, 5, 2, 5)
+    }
+
+    fn foreach_start_node(id: u16, limit: u32, body: u16, done: u16) -> CompiledNode {
+        CompiledNode {
+            id: StepIdx::new(id),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(0),
+                item_slot: SlotIdx::new(0),
+                limit,
+                body: StepIdx::new(body),
+                done: StepIdx::new(done),
+            },
+        }
+    }
+
     #[test]
     fn accepts_valid_foreach_loop() {
         let parts = WorkflowParts {
@@ -1424,44 +1468,7 @@ mod complex_nested_workflow_validation {
 
     #[test]
     fn rejects_improperly_nested_loops() {
-        let parts = WorkflowParts {
-            nodes: vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::ForEachStart {
-                        input: SlotIdx::new(0),
-                        item_slot: SlotIdx::new(0),
-                        limit: 10,
-                        body: StepIdx::new(1),
-                        done: StepIdx::new(4),
-                    },
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::ForEachStart {
-                        input: SlotIdx::new(0),
-                        item_slot: SlotIdx::new(0),
-                        limit: 5,
-                        body: StepIdx::new(2),
-                        done: StepIdx::new(5),
-                    },
-                },
-                nop_node_with_next(2, 3),
-                nop_node(3),
-                finish_node(4, 0),
-                finish_node(5, 0),
-            ]
-            .into_boxed_slice(),
-            ..valid_parts()
-        };
+        let parts = improperly_nested_loop_parts();
         let result = validate_compiled_workflow(&parts);
         assert!(matches!(
             result,

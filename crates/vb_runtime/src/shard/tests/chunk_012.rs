@@ -178,6 +178,28 @@ fn shard_config_new_rejects_zero_max_active_runs() {
 }
 
 #[test]
+fn shard_config_new_rejects_zero_trace_capacity() {
+    let result = ShardConfig::new(16, 0, 4, 4, vb_core::policy::RuntimePolicy::Relaxed);
+    assert_eq!(
+        result,
+        Err(RuntimeError::UnsupportedOperation {
+            operation: "trace_capacity_zero"
+        })
+    );
+}
+
+#[test]
+fn shard_config_new_rejects_zero_step_budget_per_tick() {
+    let result = ShardConfig::new(16, 16, 0, 4, vb_core::policy::RuntimePolicy::Relaxed);
+    assert_eq!(
+        result,
+        Err(RuntimeError::UnsupportedOperation {
+            operation: "step_budget_per_tick_zero"
+        })
+    );
+}
+
+#[test]
 fn shard_config_new_accepts_valid_parameters() {
     let result = ShardConfig::new(
         1024,

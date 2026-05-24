@@ -91,7 +91,7 @@ fn parse_explain_accepts_emit_yaml() {
 }
 
 #[test]
-fn parse_explain_accepts_jsonl_flag() {
+fn parse_explain_legacy_jsonl_flag_keeps_text_output() {
     let parsed = parse_args(&args(&[
         "velvet-ballastics",
         "explain",
@@ -99,7 +99,7 @@ fn parse_explain_accepts_jsonl_flag() {
         "--jsonl",
     ]));
     if let Ok(Command::Explain { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Jsonl);
+        assert_eq!(output, OutputFormat::Text);
     } else {
         assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
     }
@@ -170,7 +170,7 @@ fn parse_compile_accepts_emit_yaml() {
 }
 
 #[test]
-fn parse_compile_accepts_legacy_json_flag() {
+fn parse_compile_legacy_json_flag_keeps_text_output() {
     let parsed = parse_args(&args(&[
         "velvet-ballastics",
         "compile",
@@ -182,14 +182,14 @@ fn parse_compile_accepts_legacy_json_flag() {
         "--json",
     ]));
     if let Ok(Command::Compile { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Json);
+        assert_eq!(output, OutputFormat::Text);
     } else {
         assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
     }
 }
 
 #[test]
-fn parse_compile_accepts_legacy_jsonl_flag() {
+fn parse_compile_legacy_jsonl_flag_keeps_text_output() {
     let parsed = parse_args(&args(&[
         "velvet-ballastics",
         "compile",
@@ -201,7 +201,7 @@ fn parse_compile_accepts_legacy_jsonl_flag() {
         "--jsonl",
     ]));
     if let Ok(Command::Compile { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Jsonl);
+        assert_eq!(output, OutputFormat::Text);
     } else {
         assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
     }
@@ -346,7 +346,7 @@ fn parse_graph_accepts_emit_yaml() {
 }
 
 #[test]
-fn parse_graph_accepts_json_flag() {
+fn parse_graph_legacy_json_flag_keeps_text_output() {
     let parsed = parse_args(&args(&[
         "velvet-ballastics",
         "graph",
@@ -354,7 +354,7 @@ fn parse_graph_accepts_json_flag() {
         "--json",
     ]));
     if let Ok(Command::Graph { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Json);
+        assert_eq!(output, OutputFormat::Text);
     } else {
         assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
     }
@@ -372,7 +372,7 @@ fn parse_simulate_defaults_to_text_output() {
 }
 
 #[test]
-fn parse_simulate_accepts_json_flag() {
+fn parse_simulate_legacy_json_flag_keeps_text_output() {
     let parsed = parse_args(&args(&[
         "velvet-ballastics",
         "simulate",
@@ -380,14 +380,14 @@ fn parse_simulate_accepts_json_flag() {
         "--json",
     ]));
     if let Ok(Command::Simulate { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Json);
+        assert_eq!(output, OutputFormat::Text);
     } else {
         assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
     }
 }
 
 #[test]
-fn parse_simulate_accepts_jsonl_flag() {
+fn parse_simulate_legacy_jsonl_flag_keeps_text_output() {
     let parsed = parse_args(&args(&[
         "velvet-ballastics",
         "simulate",
@@ -395,7 +395,7 @@ fn parse_simulate_accepts_jsonl_flag() {
         "--jsonl",
     ]));
     if let Ok(Command::Simulate { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Jsonl);
+        assert_eq!(output, OutputFormat::Text);
     } else {
         assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
     }

@@ -13,6 +13,33 @@ use std::collections::VecDeque;
 use std::sync::mpsc::{Receiver, SyncSender, TrySendError};
 use vb_core::action::ActionTicket;
 
+/// Maximum accepted action completion queue capacity.
+pub const MAX_ACTION_COMPLETION_QUEUE_CAPACITY: usize = 65_536;
+
+/// Parsed, non-zero, bounded action completion queue capacity.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ActionQueueCapacity(usize);
+
+impl ActionQueueCapacity {
+    /// Returns the capacity as a primitive for allocation and reporting.
+    #[must_use]
+    pub const fn get(self) -> usize {
+        self.0
+    }
+}
+
+/// Reason an action completion queue capacity was rejected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InvalidActionQueueCapacity {
+    /// Capacity must be at least one.
+    Zero,
+    /// Capacity is above the maximum allowed bound.
+    AboveMaximum {
+        /// Maximum accepted capacity.
+        maximum: usize,
+    },
+}
+
 /// Errors returned by bounded action completion queue operations.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -20,10 +47,15 @@ pub enum ActionQueueError {
     /// Queue has reached its bounded capacity; no more items can be enqueued.
     QueueFull {
         /// The fixed capacity of this queue.
-        capacity: usize,
+        capacity: ActionQueueCapacity,
     },
-    /// Constructor received an invalid capacity (zero).
-    InvalidCapacity,
+    /// Constructor received an invalid capacity.
+    InvalidCapacity {
+        /// Capacity requested by the caller.
+        requested: usize,
+        /// Typed rejection reason.
+        reason: InvalidActionQueueCapacity,
+    },
 }
 
 /// Thread-safe bounded action completion queue.
@@ -33,7 +65,7 @@ pub enum ActionQueueError {
 #[derive(Debug)]
 pub struct BoundedActionCompletionQueue {
     inner: std::sync::Mutex<Inner>,
-    capacity: usize,
+    capacity: ActionQueueCapacity,
     backpressure_tx: Option<SyncSender<BackpressureWarning>>,
 }
 
@@ -54,14 +86,13 @@ pub struct BackpressureWarning {
 impl BoundedActionCompletionQueue {
     /// Creates a new bounded queue with the given capacity.
     ///
-    /// Returns `Err(ActionQueueError::InvalidCapacity)` if `capacity` is zero.
+    /// Returns `Err(ActionQueueError::InvalidCapacity)` if `capacity` is zero
+    /// or exceeds [`MAX_ACTION_COMPLETION_QUEUE_CAPACITY`].
     pub fn new(capacity: usize) -> Result<Self, ActionQueueError> {
-        if capacity == 0 {
-            return Err(ActionQueueError::InvalidCapacity);
-        }
+        let capacity = parse_capacity(capacity)?;
         Ok(Self {
             inner: std::sync::Mutex::new(Inner {
-                items: VecDeque::new(),
+                items: VecDeque::with_capacity(capacity.get()),
             }),
             capacity,
             backpressure_tx: None,
@@ -70,18 +101,17 @@ impl BoundedActionCompletionQueue {
 
     /// Creates a new bounded queue with backpressure notification channel.
     ///
-    /// Returns `Err(ActionQueueError::InvalidCapacity)` if `capacity` is zero.
+    /// Returns `Err(ActionQueueError::InvalidCapacity)` if `capacity` is zero
+    /// or exceeds [`MAX_ACTION_COMPLETION_QUEUE_CAPACITY`].
     pub fn with_backpressure(
         capacity: usize,
     ) -> Result<(Self, Receiver<BackpressureWarning>), ActionQueueError> {
-        if capacity == 0 {
-            return Err(ActionQueueError::InvalidCapacity);
-        }
-        let (tx, rx) = std::sync::mpsc::sync_channel(capacity);
+        let capacity = parse_capacity(capacity)?;
+        let (tx, rx) = std::sync::mpsc::sync_channel(capacity.get());
         Ok((
             Self {
                 inner: std::sync::Mutex::new(Inner {
-                    items: VecDeque::new(),
+                    items: VecDeque::with_capacity(capacity.get()),
                 }),
                 capacity,
                 backpressure_tx: Some(tx),
@@ -102,7 +132,7 @@ impl BoundedActionCompletionQueue {
             Ok(guard) => guard,
             Err(poisoned) => poisoned.into_inner(),
         };
-        if inner.items.len() >= self.capacity {
+        if inner.items.len() >= self.capacity.get() {
             return Err(ActionQueueError::QueueFull {
                 capacity: self.capacity,
             });
@@ -110,20 +140,14 @@ impl BoundedActionCompletionQueue {
 
         inner.items.push_back(ticket);
 
-        // Check backpressure threshold: 80% = capacity * 8 / 10.
-        // Saturating multiplication keeps extreme caller-provided capacities
-        // from wrapping or panicking; division by a non-zero constant is still
-        // represented as checked arithmetic for the no-panic contract.
         let depth = inner.items.len();
-        let Some(threshold) = self.capacity.saturating_mul(8).checked_div(10) else {
-            return Err(ActionQueueError::InvalidCapacity);
-        };
+        let threshold = backpressure_threshold(self.capacity);
         if depth >= threshold
             && let Some(ref tx) = self.backpressure_tx
         {
             match tx.try_send(BackpressureWarning {
                 depth,
-                capacity: self.capacity,
+                capacity: self.capacity.get(),
             }) {
                 Ok(()) | Err(TrySendError::Full(_)) | Err(TrySendError::Disconnected(_)) => {}
             }
@@ -163,19 +187,50 @@ impl BoundedActionCompletionQueue {
     /// Returns `true` if the queue is at capacity.
     #[must_use]
     pub fn is_full(&self) -> bool {
-        self.len() >= self.capacity
+        self.len() >= self.capacity.get()
     }
 
     /// Returns the number of slots available for new items.
     #[must_use]
     pub fn remaining_capacity(&self) -> usize {
-        self.capacity.saturating_sub(self.len())
+        self.capacity.get().saturating_sub(self.len())
     }
 
     /// Returns the fixed capacity of this queue.
     #[must_use]
     pub fn capacity(&self) -> usize {
-        self.capacity
+        self.capacity.get()
+    }
+}
+
+fn parse_capacity(capacity: usize) -> Result<ActionQueueCapacity, ActionQueueError> {
+    if capacity == 0 {
+        return Err(ActionQueueError::InvalidCapacity {
+            requested: capacity,
+            reason: InvalidActionQueueCapacity::Zero,
+        });
+    }
+
+    if capacity > MAX_ACTION_COMPLETION_QUEUE_CAPACITY {
+        return Err(ActionQueueError::InvalidCapacity {
+            requested: capacity,
+            reason: InvalidActionQueueCapacity::AboveMaximum {
+                maximum: MAX_ACTION_COMPLETION_QUEUE_CAPACITY,
+            },
+        });
+    }
+
+    Ok(ActionQueueCapacity(capacity))
+}
+
+fn backpressure_threshold(capacity: ActionQueueCapacity) -> usize {
+    match capacity
+        .get()
+        .checked_mul(8)
+        .and_then(|scaled| scaled.checked_div(10))
+    {
+        Some(threshold) => threshold.max(1),
+        None => capacity.get(),
     }
 }
 
@@ -212,7 +267,67 @@ mod unit_tests {
     #[test]
     fn bounded_action_queue_new_with_zero_capacity_returns_error() {
         let result = BoundedActionCompletionQueue::new(0);
-        assert!(matches!(result, Err(ActionQueueError::InvalidCapacity)));
+        assert!(matches!(
+            result,
+            Err(ActionQueueError::InvalidCapacity {
+                requested: 0,
+                reason: InvalidActionQueueCapacity::Zero,
+            })
+        ));
+    }
+
+    #[test]
+    fn bounded_action_queue_new_with_max_capacity_succeeds() {
+        let queue =
+            BoundedActionCompletionQueue::new(MAX_ACTION_COMPLETION_QUEUE_CAPACITY).unwrap();
+        assert_eq!(queue.capacity(), MAX_ACTION_COMPLETION_QUEUE_CAPACITY);
+    }
+
+    #[test]
+    fn bounded_action_queue_new_above_max_capacity_returns_error() {
+        let requested = MAX_ACTION_COMPLETION_QUEUE_CAPACITY + 1;
+        let result = BoundedActionCompletionQueue::new(requested);
+        assert!(matches!(
+            result,
+            Err(ActionQueueError::InvalidCapacity {
+                requested: value,
+                reason: InvalidActionQueueCapacity::AboveMaximum {
+                    maximum,
+                },
+            }) if value == requested && maximum == MAX_ACTION_COMPLETION_QUEUE_CAPACITY
+        ));
+    }
+
+    #[test]
+    fn bounded_action_queue_with_backpressure_rejects_zero_capacity() {
+        let result = BoundedActionCompletionQueue::with_backpressure(0);
+        assert!(matches!(
+            result,
+            Err(ActionQueueError::InvalidCapacity {
+                requested: 0,
+                reason: InvalidActionQueueCapacity::Zero,
+            })
+        ));
+    }
+
+    #[test]
+    fn bounded_action_queue_with_backpressure_rejects_above_max_capacity() {
+        let requested = MAX_ACTION_COMPLETION_QUEUE_CAPACITY + 1;
+        let result = BoundedActionCompletionQueue::with_backpressure(requested);
+        assert!(matches!(
+            result,
+            Err(ActionQueueError::InvalidCapacity {
+                requested: value,
+                reason: InvalidActionQueueCapacity::AboveMaximum { maximum },
+            }) if value == requested && maximum == MAX_ACTION_COMPLETION_QUEUE_CAPACITY
+        ));
+    }
+
+    #[test]
+    fn bounded_action_queue_preallocates_vecdeque_to_validated_capacity() {
+        let queue = BoundedActionCompletionQueue::new(13).unwrap();
+        let inner = queue.inner.lock().unwrap();
+        assert_eq!(inner.items.capacity(), 13);
     }
 
     #[test]
@@ -232,7 +347,7 @@ mod unit_tests {
         let result = queue.enqueue(make_ticket(100));
         assert!(matches!(
             result,
-            Err(ActionQueueError::QueueFull { capacity: 3 })
+            Err(ActionQueueError::QueueFull { capacity }) if capacity.get() == 3
         ));
     }
 
@@ -479,7 +594,9 @@ mod unit_tests {
             // One more should fail
             assert_eq!(
                 queue.enqueue(make_ticket(255)),
-                Err(ActionQueueError::QueueFull { capacity: cap }),
+                Err(ActionQueueError::QueueFull {
+                    capacity: ActionQueueCapacity(cap)
+                }),
                 "enqueue at capacity must return QueueFull for capacity={}",
                 cap
             );
