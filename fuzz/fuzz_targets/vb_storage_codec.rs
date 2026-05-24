@@ -133,7 +133,7 @@ fn fuzz_codec_payload_corruption(data: &[u8]) {
         );
     }
 
-    for truncation in (0usize..encoded.len().min(64)) {
+    for truncation in 0usize..encoded.len().min(64) {
         let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(
             &encoded[..truncation],
             magic,

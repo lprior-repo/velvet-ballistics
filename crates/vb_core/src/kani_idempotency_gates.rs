@@ -83,25 +83,6 @@ fn symbolic_frame() -> RunFrame {
     frame
 }
 
-fn symbolic_frame_with_taints(taints: [Taint; 4]) -> RunFrame {
-    let slot_count = bounded_nonzero_u16(MAX_SYMBOLIC_SLOTS);
-    let frame = RunFrame::new(
-        RunId::new(kani::any::<u64>()),
-        StepIdx::new(0),
-        bounded_nonzero_u16(MAX_SYMBOLIC_SLOTS),
-        slot_count,
-    );
-    let mut frame = match frame {
-        Ok(value) => value,
-        Err(_) => unreachable_for_kani_frame_bounds(),
-    };
-    write_slot_with_taint(&mut frame, 0, slot_count, taints[0]);
-    write_slot_with_taint(&mut frame, 1, slot_count, taints[1]);
-    write_slot_with_taint(&mut frame, 2, slot_count, taints[2]);
-    write_slot_with_taint(&mut frame, 3, slot_count, taints[3]);
-    frame
-}
-
 fn one_slot_frame_with_taint(taint: Taint) -> RunFrame {
     let frame = RunFrame::new(RunId::new(kani::any::<u64>()), StepIdx::new(0), 1, 1);
     let mut frame = match frame {
