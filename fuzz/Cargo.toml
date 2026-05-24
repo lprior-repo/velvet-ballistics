@@ -102,20 +102,6 @@ doc = false
 bench = false
 
 [[bin]]
-name = "compiled_ir"
-path = "src/bin/compiled_ir.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "expression"
-path = "src/bin/expression.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
 name = "generated_compare"
 path = "src/bin/generated_compare.rs"
 test = false
@@ -125,20 +111,6 @@ bench = false
 [[bin]]
 name = "collect_page"
 path = "src/bin/collect_page_pagination.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "yaml_events"
-path = "src/bin/yaml_events.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "ipc_frame"
-path = "src/bin/ipc_frame.rs"
 test = false
 doc = false
 bench = false
@@ -459,6 +431,36 @@ bench = false
 [[bin]]
 name = "xtask_parse_options_hostile"
 path = "src/bin/xtask_parse_options_hostile.rs"
+test = false
+doc = false
+bench = false
+
+# === new libfuzzer targets (vb-64nl Phase 0) ===
+
+[[bin]]
+name = "compiled_ir_fuzz"
+path = "fuzz_targets/compiled_ir.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ipc_frame_fuzz"
+path = "fuzz_targets/ipc_frame.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "expression_fuzz"
+path = "fuzz_targets/expression.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "yaml_events_fuzz"
+path = "fuzz_targets/yaml_events.rs"
 test = false
 doc = false
 bench = false
