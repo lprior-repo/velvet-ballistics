@@ -52,6 +52,8 @@ Scoped verification after reconciliation:
 - `cargo test -p vb_doc -p vb_benchmark` — PASS, `117 passed`.
 - `cargo test -p vb_ipc --lib` — PASS, `691 passed`.
 - `rtk cargo test -p vb_compile` — PASS, `290 passed`.
+- `rtk cargo check -p vb_ipc --lib` — PASS after symbolic IPC Kani harness edit.
+- `cargo kani -p vb_ipc --harness kani_ipc_header_rejects_oversize_payload` — BLOCKED by unrelated existing `vb_core` Kani compile errors before target harness.
 
 ## Open Finding Buckets
 
@@ -70,7 +72,7 @@ Scoped verification after reconciliation:
 - `vb_cli`: PATCHED PARTIAL — current parent commit hardens non-UI/non-codegen lifecycle, trace, run-step, admission, and deliver-sink tests. UI-only envelope items excluded. Still needs post-patch audit for remaining CLI smoke/either-outcome tests outside touched targets.
 - `xtask`: workspace/test compile state, exact error variant coverage, scheduler set property, stdout JSON parsing.
 - `workspace_tests`: non-codegen/non-UI tautologies and either-outcome tests need exact behavior or removal.
-- Proof parity/Kani: hardcoded Kani shapes and Verus/TLA behavior parity gaps remain open unless backed by executable behavior tests.
+- Proof parity/Kani: OPEN PARTIAL — current diff symbolically hardens `crates/vb_ipc/src/kani_ipc_header_rejects_oversize.rs` with exact payload-limit variants and covers, but Kani execution is blocked by unrelated existing `vb_core` Kani compile errors. Other hardcoded Kani shapes and Verus/TLA behavior parity gaps remain open.
 
 ## Next Round Rule
 
