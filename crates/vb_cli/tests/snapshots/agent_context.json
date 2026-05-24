@@ -25,17 +25,16 @@
     "ansi_when_non_tty": false,
     "bounded_output_required": true,
     "destructive_operations_require_explicit_flag": true,
+    "machine_output_flag": "--emit postcard",
     "mutation_responses_return_identifiers": true,
     "non_interactive_by_default": true,
     "prompt_bypass_flag": "--force",
     "stderr": "diagnostics only",
     "stdout": "data only",
-    "streaming_output_flag": "--jsonl",
-    "structured_output_flag": "--json"
+    "structured_output_flag": "--emit yaml"
   },
   "binary_aliases": [
-    "velvet-ballastics",
-    "vb"
+    "velvet-ballastics"
   ],
   "cli": "velvet-ballastics",
   "commands": {
@@ -51,8 +50,15 @@
           "required": true,
           "type": "path"
         },
-        "--json": "bool",
-        "--jsonl": "bool",
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        },
         "--step": {
           "required": true,
           "type": "u16"
@@ -69,8 +75,15 @@
     },
     "bench-run": {
       "flags": {
-        "--json": "bool",
-        "--jsonl": "bool"
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        }
       },
       "positionals": [
         "workflow.yaml"
@@ -84,13 +97,10 @@
           "type": "enum",
           "values": [
             "ir",
-            "rust",
             "yaml",
             "postcard"
           ]
         },
-        "--json": "bool",
-        "--jsonl": "bool",
         "--out": {
           "required": true,
           "type": "path"
@@ -107,8 +117,15 @@
           "required": true,
           "type": "path"
         },
-        "--json": "bool",
-        "--jsonl": "bool"
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        }
       },
       "positionals": [
         "run_a",
@@ -122,8 +139,15 @@
           "required": true,
           "type": "path"
         },
-        "--json": "bool",
-        "--jsonl": "bool"
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        }
       },
       "summary": "Run diagnostic checks."
     },
@@ -133,8 +157,15 @@
           "required": true,
           "type": "path"
         },
-        "--json": "bool",
-        "--jsonl": "bool"
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        }
       },
       "positionals": [
         "run_id"
@@ -143,8 +174,15 @@
     },
     "explain": {
       "flags": {
-        "--json": "bool",
-        "--jsonl": "bool"
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        }
       },
       "positionals": [
         "workflow.yaml"
@@ -153,8 +191,15 @@
     },
     "graph": {
       "flags": {
-        "--json": "bool",
-        "--jsonl": "bool"
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        }
       },
       "positionals": [
         "workflow.yaml"
@@ -167,8 +212,15 @@
           "required": true,
           "type": "path"
         },
-        "--json": "bool",
-        "--jsonl": "bool"
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        }
       },
       "positionals": [
         "run_id"
@@ -181,8 +233,15 @@
           "required": true,
           "type": "path"
         },
-        "--json": "bool",
-        "--jsonl": "bool"
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        }
       },
       "positionals": [
         "run_id"
@@ -208,8 +267,15 @@
           "required": true,
           "type": "path"
         },
-        "--json": "bool",
-        "--jsonl": "bool"
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        }
       },
       "positionals": [
         "run_id"
@@ -222,8 +288,15 @@
           "required": true,
           "type": "path"
         },
-        "--json": "bool",
-        "--jsonl": "bool"
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        }
       },
       "positionals": [
         "run_id"
@@ -236,8 +309,15 @@
           "required": true,
           "type": "path"
         },
-        "--json": "bool",
-        "--jsonl": "bool"
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        }
       },
       "positionals": [
         "run_id"
@@ -256,12 +336,19 @@
             "none"
           ]
         },
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        },
         "--input-bin": {
           "required": true,
           "type": "path"
         },
-        "--json": "bool",
-        "--jsonl": "bool",
         "--step": "u16",
         "--step-input": "path"
       },
@@ -282,12 +369,19 @@
             "none"
           ]
         },
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        },
         "--input-bin": {
           "required": true,
           "type": "path"
-        },
-        "--json": "bool",
-        "--jsonl": "bool"
+        }
       },
       "positionals": [
         "workflow.vbir"
@@ -296,8 +390,15 @@
     },
     "simulate": {
       "flags": {
-        "--json": "bool",
-        "--jsonl": "bool"
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        }
       },
       "positionals": [
         "workflow.yaml"
@@ -319,12 +420,19 @@
             "none"
           ]
         },
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        },
         "--input-bin": {
           "required": true,
           "type": "path"
-        },
-        "--json": "bool",
-        "--jsonl": "bool"
+        }
       },
       "positionals": [
         "workflow.yaml"
@@ -337,8 +445,15 @@
           "required": true,
           "type": "path"
         },
-        "--json": "bool",
-        "--jsonl": "bool"
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        }
       },
       "positionals": [
         "run_id"
@@ -347,8 +462,15 @@
     },
     "validate": {
       "flags": {
-        "--json": "bool",
-        "--jsonl": "bool"
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        }
       },
       "positionals": [
         "workflow.yaml"
@@ -357,8 +479,15 @@
     },
     "verify": {
       "flags": {
-        "--json": "bool",
-        "--jsonl": "bool",
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        },
         "--profile": {
           "default": "standard",
           "type": "enum",
@@ -383,7 +512,6 @@
     ],
     "emit": [
       "ir",
-      "rust",
       "yaml",
       "postcard"
     ],
@@ -484,6 +612,8 @@
   "version": "0.1.0",
   "vocabulary_policy": {
     "banned_flags": [
+      "--json",
+      "--jsonl",
       "--format=json",
       "--output=json",
       "--skip-confirmations"
@@ -493,7 +623,12 @@
       "ls"
     ],
     "canonical_destructive_bypass_flag": "--force",
-    "canonical_output_flag": "--json",
+    "canonical_output_flag": "--emit",
+    "canonical_output_values": [
+      "text",
+      "yaml",
+      "postcard"
+    ],
     "canonical_resource_verbs": [
       "get",
       "list",

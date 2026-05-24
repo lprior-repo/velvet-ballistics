@@ -240,18 +240,19 @@ fn verify_succeeds_with_json_output() {
         &workflow.to_string_lossy(),
         "--profile",
         "quick",
-        "--json",
+        "--emit",
+        "yaml",
     ]);
 
     assert_eq!(output.status.code(), Some(0));
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
-        stdout.contains("\"success\": true"),
-        "JSON must have success:true: {stdout}"
+        stdout.contains("success: true"),
+        "YAML must have success: true: {stdout}"
     );
     assert!(
-        stdout.contains("\"profile\": \"quick\""),
-        "JSON must have profile:quick: {stdout}"
+        stdout.contains("profile: quick"),
+        "YAML must have profile: quick: {stdout}"
     );
 }
 

@@ -126,6 +126,9 @@ pub enum JournalError {
     /// Postcard payload decode failed.
     #[error("postcard payload decode failed")]
     PostcardDecodeFailed,
+    /// JournalEvent decoded from bytes is semantically invalid (run_id=0, seq overflow, or attempt=0).
+    #[error("journal event is structurally encoded but semantically invalid")]
+    InvalidEvent,
     /// Artifact structure validation failed.
     #[error("artifact structure validation failed")]
     ArtifactMalformed,

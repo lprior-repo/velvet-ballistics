@@ -314,9 +314,9 @@ fn small_linear_node_metrics(node: &crate::workflow::CompiledNode) -> SmallLinea
 impl SmallLinearMetrics {
     const fn add(self, other: Self) -> Self {
         Self {
-            steps: self.steps + other.steps,
-            actions: self.actions + other.actions,
-            timers: self.timers + other.timers,
+            steps: self.steps.saturating_add(other.steps),
+            actions: self.actions.saturating_add(other.actions),
+            timers: self.timers.saturating_add(other.timers),
         }
     }
 }

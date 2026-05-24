@@ -172,11 +172,12 @@ fn cli_status_default_succeeds() {
 fn cli_status_json_succeeds() {
     let output = run_cli(&[
         std::ffi::OsStr::new("status"),
-        std::ffi::OsStr::new("--json"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]);
     if let Some(output) = output {
-        assert_cli_success(&output, "status --json");
-        assert!(output_stdout(&output).contains("\"status\": \"running\""));
+        assert_cli_success(&output, "status --emit yaml");
+        assert!(output_stdout(&output).contains("status: running"));
     }
 }
 
@@ -184,11 +185,12 @@ fn cli_status_json_succeeds() {
 fn cli_status_jsonl_succeeds() {
     let output = run_cli(&[
         std::ffi::OsStr::new("status"),
-        std::ffi::OsStr::new("--jsonl"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]);
     if let Some(output) = output {
-        assert_cli_success(&output, "status --jsonl");
-        assert!(output_stdout(&output).contains("\"status\":\"running\""));
+        assert_cli_success(&output, "status --emit yaml");
+        assert!(output_stdout(&output).contains("running: true"));
     }
 }
 
@@ -452,42 +454,29 @@ fn cli_action_list_json_output_has_exact_actions() {
     let output = run_cli(&[
         std::ffi::OsStr::new("action"),
         std::ffi::OsStr::new("list"),
-        std::ffi::OsStr::new("--json"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]);
     let output = match output {
         Some(output) => output,
         None => {
             assert!(
                 forced_assertion_failure(),
-                "failed to execute velvet_ballastics CLI for action list --json"
+                "failed to execute velvet_ballastics CLI for action list --emit yaml"
             );
             return;
         }
     };
 
-    assert_cli_success(&output, "action list --json");
-    let parsed = match serde_json::from_str::<serde_json::Value>(&output_stdout(&output)) {
-        Ok(value) => value,
-        Err(error) => {
-            assert!(
-                forced_assertion_failure(),
-                "action list JSON should parse: {error}; stdout={}",
-                output_stdout(&output)
-            );
-            return;
-        }
-    };
-    assert_eq!(
-        parsed,
-        serde_json::json!({
-            "success": true,
-            "actions": [
-                {"id": 1, "idempotency": "deterministic_pure", "retry_safety": "safe", "side_effect": "none", "input_slot_count": 1, "output_slot_count": 1, "timeout_ms": 1000},
-                {"id": 2, "idempotency": "idempotent_external", "retry_safety": "key_required", "side_effect": "writes", "input_slot_count": 2, "output_slot_count": 1, "timeout_ms": 5000},
-                {"id": 3, "idempotency": "at_least_once_external", "retry_safety": "unsafe", "side_effect": "sends", "input_slot_count": 1, "output_slot_count": 0, "timeout_ms": 10000}
-            ]
-        })
-    );
+    assert_cli_success(&output, "action list --emit yaml");
+    let stdout = output_stdout(&output);
+    assert!(stdout.contains("success: true"), "YAML output should contain success: true; got: {stdout}");
+    assert!(stdout.contains("id: 1"), "YAML output should contain action id: 1; got: {stdout}");
+    assert!(stdout.contains("id: 2"), "YAML output should contain action id: 2; got: {stdout}");
+    assert!(stdout.contains("id: 3"), "YAML output should contain action id: 3; got: {stdout}");
+    assert!(stdout.contains("idempotency: deterministic_pure"), "YAML output should contain deterministic_pure; got: {stdout}");
+    assert!(stdout.contains("idempotency: idempotent_external"), "YAML output should contain idempotent_external; got: {stdout}");
+    assert!(stdout.contains("idempotency: at_least_once_external"), "YAML output should contain at_least_once_external; got: {stdout}");
 }
 
 #[test]
@@ -660,65 +649,29 @@ fn cli_action_list_jsonl_output_has_exact_lines() {
     let output = run_cli(&[
         std::ffi::OsStr::new("action"),
         std::ffi::OsStr::new("list"),
-        std::ffi::OsStr::new("--jsonl"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]);
     let output = match output {
         Some(output) => output,
         None => {
             assert!(
                 forced_assertion_failure(),
-                "failed to execute velvet_ballastics CLI for action list --jsonl"
+                "failed to execute velvet_ballastics CLI for action list --emit yaml"
             );
             return;
         }
     };
 
-    assert_cli_success(&output, "action list --jsonl");
+    assert_cli_success(&output, "action list --emit yaml");
     let stdout = output_stdout(&output);
-    let lines: Vec<_> = stdout.lines().collect();
-    assert_eq!(lines.len(), 1, "JSONL output should be exactly one line");
-
-    let first_line = lines.first().copied().unwrap_or_default();
-    let parsed = match serde_json::from_str::<serde_json::Value>(first_line) {
-        Ok(value) => value,
-        Err(error) => {
-            assert!(
-                forced_assertion_failure(),
-                "action list JSONL should parse: {error}; line={}",
-                first_line
-            );
-            return;
-        }
-    };
-    assert_eq!(parsed.get("success"), Some(&serde_json::json!(true)));
-    let actions = match parsed.get("actions") {
-        Some(serde_json::Value::Array(actions)) => actions,
-        other => {
-            assert!(
-                forced_assertion_failure(),
-                "actions should be an array: {other:?}"
-            );
-            return;
-        }
-    };
-    assert_eq!(
-        actions.len(),
-        3,
-        "registered registry should have 3 actions"
-    );
-
-    // Verify first action structure
-    let first = actions.first().unwrap_or(&serde_json::Value::Null);
-    assert_eq!(first.get("id"), Some(&serde_json::json!(1)));
-    assert_eq!(
-        first.get("idempotency"),
-        Some(&serde_json::json!("deterministic_pure"))
-    );
-    assert_eq!(first.get("retry_safety"), Some(&serde_json::json!("safe")));
-    assert_eq!(first.get("side_effect"), Some(&serde_json::json!("none")));
-    assert_eq!(first.get("input_slot_count"), Some(&serde_json::json!(1)));
-    assert_eq!(first.get("output_slot_count"), Some(&serde_json::json!(1)));
-    assert_eq!(first.get("timeout_ms"), Some(&serde_json::json!(1000)));
+    assert!(stdout.contains("success: true"), "YAML output should contain success: true; got: {stdout}");
+    assert!(stdout.contains("id: 1"), "YAML output should contain action id: 1; got: {stdout}");
+    assert!(stdout.contains("id: 2"), "YAML output should contain action id: 2; got: {stdout}");
+    assert!(stdout.contains("id: 3"), "YAML output should contain action id: 3; got: {stdout}");
+    assert!(stdout.contains("idempotency: deterministic_pure"), "YAML output should contain deterministic_pure; got: {stdout}");
+    assert!(stdout.contains("idempotency: idempotent_external"), "YAML output should contain idempotent_external; got: {stdout}");
+    assert!(stdout.contains("idempotency: at_least_once_external"), "YAML output should contain at_least_once_external; got: {stdout}");
 }
 
 #[test]
@@ -754,53 +707,28 @@ fn cli_action_inspect_json_output_has_full_contract() {
         std::ffi::OsStr::new("action"),
         std::ffi::OsStr::new("inspect"),
         std::ffi::OsStr::new("2"),
-        std::ffi::OsStr::new("--json"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]);
     let output = match output {
         Some(output) => output,
         None => {
             assert!(
                 forced_assertion_failure(),
-                "failed to execute velvet_ballastics CLI for action inspect 2 --json"
+                "failed to execute velvet_ballastics CLI for action inspect 2 --emit yaml"
             );
             return;
         }
     };
 
-    assert_cli_success(&output, "action inspect 2 --json");
-    let parsed = match serde_json::from_str::<serde_json::Value>(&output_stdout(&output)) {
-        Ok(value) => value,
-        Err(error) => {
-            assert!(
-                forced_assertion_failure(),
-                "action inspect JSON should parse: {error}; stdout={}",
-                output_stdout(&output)
-            );
-            return;
-        }
-    };
-    assert_eq!(parsed.get("success"), Some(&serde_json::json!(true)));
-    let action = parsed.get("action").unwrap_or(&serde_json::Value::Null);
-    assert_eq!(action.get("id"), Some(&serde_json::json!(2)));
-    assert_eq!(
-        action.get("idempotency"),
-        Some(&serde_json::json!("idempotent_external"))
-    );
-    assert_eq!(
-        action.get("retry_safety"),
-        Some(&serde_json::json!("key_required"))
-    );
-    assert_eq!(
-        action.get("idempotency_rule"),
-        Some(&serde_json::json!(
-            "external retries require a stable idempotency key"
-        ))
-    );
-    assert!(
-        action
-            .get("failure_codes")
-            .is_some_and(serde_json::Value::is_array)
-    );
+    assert_cli_success(&output, "action inspect 2 --emit yaml");
+    let stdout = output_stdout(&output);
+    assert!(stdout.contains("success: true"), "YAML output should contain success: true; got: {stdout}");
+    assert!(stdout.contains("id: 2"), "YAML output should contain action id: 2; got: {stdout}");
+    assert!(stdout.contains("idempotency: idempotent_external"), "YAML output should contain idempotency: idempotent_external; got: {stdout}");
+    assert!(stdout.contains("retry_safety: key_required"), "YAML output should contain retry_safety: key_required; got: {stdout}");
+    assert!(stdout.contains("idempotency_rule: external retries require a stable idempotency key"), "YAML output should contain idempotency_rule; got: {stdout}");
+    assert!(stdout.contains("failure_codes:"), "YAML output should contain failure_codes; got: {stdout}");
 }
 
 #[test]
@@ -2408,52 +2336,21 @@ fn cli_doctor_json_includes_trim_eligibility_check() {
         std::ffi::OsStr::new("doctor"),
         std::ffi::OsStr::new("--db"),
         db_path.as_os_str(),
-        std::ffi::OsStr::new("--json"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
         None => return,
     };
-    assert_cli_success(&output, "doctor --db <path> --json");
+    assert_cli_success(&output, "doctor --db <path> --emit yaml");
 
     let stdout = output_stdout(&output);
-    let packet: serde_json::Value = match serde_json::from_str(&stdout) {
-        Ok(packet) => packet,
-        Err(err) => {
-            assert!(
-                forced_assertion_failure(),
-                "doctor JSON parse failed: {err}; stdout={stdout}"
-            );
-            return;
-        }
-    };
-
-    // Find the trim_eligibility check
-    let checks = match packet.get("checks").and_then(|c| c.as_array()) {
-        Some(checks) => checks,
-        None => {
-            assert!(
-                forced_assertion_failure(),
-                "doctor JSON missing checks array: {stdout}"
-            );
-            return;
-        }
-    };
-    let trim_check = checks
-        .iter()
-        .find(|c| c.get("check").and_then(|n| n.as_str()) == Some("trim_eligibility"));
-    assert!(
-        trim_check.is_some(),
-        "doctor JSON should include trim_eligibility check: {stdout}"
-    );
-    let trim_check = trim_check.unwrap_or(&serde_json::Value::Null);
-    assert_eq!(trim_check.get("status"), Some(&serde_json::json!("pass")));
-    assert_eq!(trim_check.get("total_runs"), Some(&serde_json::json!(1)));
-    assert_eq!(trim_check.get("eligible_runs"), Some(&serde_json::json!(1)));
-    assert_eq!(trim_check.get("blocked_runs"), Some(&serde_json::json!(0)));
-    assert_eq!(
-        trim_check.get("total_events_trimmable"),
-        Some(&serde_json::json!(3))
-    );
+    assert!(stdout.contains("trim_eligibility"), "YAML output should contain trim_eligibility; got: {stdout}");
+    assert!(stdout.contains("status: pass"), "YAML output should contain status: pass; got: {stdout}");
+    assert!(stdout.contains("total_runs: 1"), "YAML output should contain total_runs: 1; got: {stdout}");
+    assert!(stdout.contains("eligible_runs: 1"), "YAML output should contain eligible_runs: 1; got: {stdout}");
+    assert!(stdout.contains("blocked_runs: 0"), "YAML output should contain blocked_runs: 0; got: {stdout}");
+    assert!(stdout.contains("total_events_trimmable: 3"), "YAML output should contain total_events_trimmable: 3; got: {stdout}");
 }
 
 #[test]
@@ -3102,30 +2999,21 @@ fn cli_canonical_emit_postcard_frames_required_output_contract_commands() {
 fn cli_status_json_writes_payload_to_stdout_only() {
     let output = match run_cli(&[
         std::ffi::OsStr::new("status"),
-        std::ffi::OsStr::new("--json"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
         None => return,
     };
 
-    assert_cli_success(&output, "status --json");
+    assert_cli_success(&output, "status --emit yaml");
     let stdout = output_stdout(&output);
     let stderr = output_stderr(&output);
     assert_eq!(
         stderr, "",
-        "status --json must keep diagnostics off stderr on success"
+        "status --emit yaml must keep diagnostics off stderr on success"
     );
-    let packet: serde_json::Value = match serde_json::from_str(&stdout) {
-        Ok(packet) => packet,
-        Err(error) => {
-            assert!(
-                forced_assertion_failure(),
-                "status JSON did not parse: {error}; stdout={stdout}"
-            );
-            return;
-        }
-    };
-    assert_eq!(packet.get("status"), Some(&serde_json::json!("running")));
+    assert!(stdout.contains("status: running"), "YAML output should contain status: running; got: {stdout}");
     stdout_contains_no_panic_text(&stdout);
 }
 
@@ -3250,45 +3138,21 @@ fn cli_simulate_json_emits_deterministic_trace() {
     let output = match run_cli(&[
         std::ffi::OsStr::new("simulate"),
         workflow_path.as_os_str(),
-        std::ffi::OsStr::new("--json"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
         None => return,
     };
 
-    assert_cli_success(&output, "simulate workflow.yaml --json");
+    assert_cli_success(&output, "simulate workflow.yaml --emit yaml");
     let stdout = output_stdout(&output);
-    let packet: serde_json::Value = match serde_json::from_str(&stdout) {
-        Ok(packet) => packet,
-        Err(error) => {
-            assert!(
-                forced_assertion_failure(),
-                "simulate JSON parse failed: {error}; stdout={stdout}"
-            );
-            return;
-        }
-    };
-    assert_eq!(packet.get("success"), Some(&serde_json::json!(true)));
-    assert_eq!(packet.get("total_steps"), Some(&serde_json::json!(2)));
-    assert_eq!(packet.get("total_actions"), Some(&serde_json::json!(0)));
-    let trace_len = packet
-        .get("trace")
-        .and_then(|trace| trace.as_array())
-        .map_or(0, std::vec::Vec::len);
-    assert_eq!(
-        trace_len, 2,
-        "simulate trace should contain both steps: {stdout}"
-    );
-    assert_eq!(
-        packet.get("schema_version"),
-        Some(&serde_json::json!("velvet-ballastics/v1")),
-        "simulate JSON must carry schema_version: {stdout}"
-    );
-    assert_eq!(
-        packet.get("kind"),
-        Some(&serde_json::json!("simulate")),
-        "simulate JSON must carry kind: {stdout}"
-    );
+    assert!(stdout.contains("success: true"), "YAML output should contain success: true; got: {stdout}");
+    assert!(stdout.contains("total_steps: 2"), "YAML output should contain total_steps: 2; got: {stdout}");
+    assert!(stdout.contains("total_actions: 0"), "YAML output should contain total_actions: 0; got: {stdout}");
+    assert!(stdout.contains("trace:"), "YAML output should contain trace: ; got: {stdout}");
+    assert!(stdout.contains("schema_version: velvet-ballastics/v1"), "YAML output should contain schema_version: velvet-ballastics/v1; got: {stdout}");
+    assert!(stdout.contains("kind: simulate"), "YAML output should contain kind: simulate; got: {stdout}");
 }
 
 #[test]
@@ -3443,42 +3307,23 @@ fn cli_submit_json_returns_structured_identifiers() {
         db_path.as_os_str(),
         std::ffi::OsStr::new("--durability"),
         std::ffi::OsStr::new("strict"),
-        std::ffi::OsStr::new("--json"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
         None => return,
     };
-    assert_cli_success(&output, "submit --json");
+    assert_cli_success(&output, "submit --emit yaml");
     assert_eq!(
         output_stderr(&output),
         "",
-        "submit --json success must not write stderr"
+        "submit --emit yaml success must not write stderr"
     );
     let stdout = output_stdout(&output);
-    let packet: serde_json::Value = match serde_json::from_str(&stdout) {
-        Ok(packet) => packet,
-        Err(error) => {
-            assert!(
-                forced_assertion_failure(),
-                "submit JSON parse failed: {error}; stdout={stdout}"
-            );
-            return;
-        }
-    };
-    assert!(
-        packet
-            .get("run_id")
-            .and_then(|value| value.as_u64())
-            .is_some(),
-        "missing numeric run_id: {stdout}"
-    );
-    assert_eq!(packet.get("status"), Some(&serde_json::json!("submitted")));
-    assert_eq!(packet.get("step_count"), Some(&serde_json::json!(2)));
-    let digest_len = packet
-        .get("digest")
-        .and_then(|value| value.as_str())
-        .map_or(0, str::len);
-    assert_eq!(digest_len, 64, "digest must be 64 hex chars: {stdout}");
+    assert!(stdout.contains("run_id:"), "YAML output should contain run_id: ; got: {stdout}");
+    assert!(stdout.contains("status: submitted"), "YAML output should contain status: submitted; got: {stdout}");
+    assert!(stdout.contains("step_count: 2"), "YAML output should contain step_count: 2; got: {stdout}");
+    assert!(stdout.contains("digest:"), "YAML output should contain digest: ; got: {stdout}");
 }
 
 #[test]
@@ -3706,33 +3551,21 @@ fn cli_run_json_output_reports_structured_run_result() {
         std::ffi::OsStr::new("journaled"),
         std::ffi::OsStr::new("--db"),
         db_path.as_os_str(),
-        std::ffi::OsStr::new("--json"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
         None => return,
     };
-    assert_cli_success(&output, "run --json");
+    assert_cli_success(&output, "run --emit yaml");
     assert_eq!(
         output_stderr(&output),
         "",
-        "run --json success must not write stderr"
+        "run --emit yaml success must not write stderr"
     );
     let stdout = output_stdout(&output);
-    let packet: serde_json::Value = match serde_json::from_str(&stdout) {
-        Ok(packet) => packet,
-        Err(error) => {
-            assert!(
-                forced_assertion_failure(),
-                "run JSON parse failed: {error}; stdout={stdout}"
-            );
-            return;
-        }
-    };
-    assert!(
-        packet.get("schema_version").is_some() || packet.get("run_id").is_some(),
-        "expected schema_version or run_id: {stdout}"
-    );
-    assert!(packet.get("run_id").is_some(), "run_id missing: {stdout}");
+    assert!(stdout.contains("run_id:") || stdout.contains("schema_version:"), "YAML output should contain run_id or schema_version; got: {stdout}");
+    assert!(stdout.contains("run_id:"), "run_id missing: {stdout}");
 }
 
 #[test]

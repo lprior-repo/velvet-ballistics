@@ -43,6 +43,26 @@ pub fn decode_record<T: DeserializeOwned>(
     Ok((envelope, value))
 }
 
+/// Decodes a `JournalEvent` and validates its semantic constraints.
+///
+/// Unlike the generic [`decode_record`], this function additionally verifies that the
+/// decoded event passes `JournalEvent::is_valid()` — catching run_id=0, seq=u64::MAX,
+/// and attempt=0 that can arise from adversarial byte streams even when postcard
+/// deserialization succeeds.
+///
+/// This is the correct decode function for untrusted input streams.
+pub fn decode_journal_event(
+    bytes: &[u8],
+    expected_magic: u32,
+    max_payload_len: u32,
+) -> Result<(RecordEnvelope, JournalEvent), JournalError> {
+    let (envelope, event) = decode_record::<JournalEvent>(bytes, expected_magic, max_payload_len)?;
+    if !event.is_valid() {
+        return Err(JournalError::InvalidEvent);
+    }
+    Ok((envelope, event))
+}
+
 pub(crate) fn next_seq(seq: EventSeq) -> Result<EventSeq, JournalError> {
     seq.get()
         .checked_add(1)

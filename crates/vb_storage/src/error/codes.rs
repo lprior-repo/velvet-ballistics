@@ -46,6 +46,8 @@ impl JournalError {
     pub const UNEXPECTED_EOF_CODE: DiagnosticCode = DiagnosticCode::new(0x4014);
     /// Diagnostic code for postcard decode failed.
     pub const POSTCARD_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x4015);
+    /// Diagnostic code for semantically invalid journal event (run_id=0, seq overflow, or attempt=0).
+    pub const INVALID_EVENT_CODE: DiagnosticCode = DiagnosticCode::new(0x4020);
     /// Diagnostic code for artifact malformed.
     pub const ARTIFACT_MALFORMED_CODE: DiagnosticCode = DiagnosticCode::new(0x4017);
     /// Diagnostic code for artifact checksum mismatch.
@@ -91,6 +93,7 @@ impl JournalError {
             Self::PayloadDigestMismatch => Self::PAYLOAD_DIGEST_MISMATCH_CODE,
             Self::UnexpectedEof => Self::UNEXPECTED_EOF_CODE,
             Self::PostcardDecodeFailed => Self::POSTCARD_DECODE_FAILED_CODE,
+            Self::InvalidEvent => Self::INVALID_EVENT_CODE,
             Self::ArtifactMalformed => Self::ARTIFACT_MALFORMED_CODE,
             Self::ArtifactChecksumMismatch => Self::ARTIFACT_CHECKSUM_MISMATCH_CODE,
             Self::InvalidGateCount { .. } => Self::INVALID_GATE_COUNT_CODE,
