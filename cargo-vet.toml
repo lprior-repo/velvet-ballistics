@@ -4,7 +4,7 @@
 # Default policy: treat all crates as audit-as-crates-io unless explicitly trusted
 [policy]
 # Only first-party crates (in the workspace) get audit-as-crates-io
-"vb_codegen" = { audit-as-crates-io = true }
+# "vb_codegen" moved to velvet-optional repo (deferred)
 "vb_compile" = { audit-as-crates-io = true }
 "vb_core" = { audit-as-crates-io = true }
 "vb_expr" = { audit-as-crates-io = true }

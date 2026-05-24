@@ -225,7 +225,11 @@ fn kani_ipc_header_rejects_payload_over_min_limit() {
 
     let decoded = IpcFrameHeader::decode(&encoded, max_payload);
     kani::assert(
-        decoded == Err(IpcError::PayloadTooLarge { actual: 2, limit: 1 }),
+        decoded
+            == Err(IpcError::PayloadTooLarge {
+                actual: 2,
+                limit: 1,
+            }),
         "payload over minimum limit should be rejected with exact error",
     );
 }

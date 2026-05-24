@@ -33,7 +33,7 @@ fn source_for(class: &BoundaryClass) -> &'static str {
         BoundaryClass::Ipc => "crates/vb_ipc/src/frame.rs",
         BoundaryClass::ExternalBinary => "scripts/run-verifier.sh",
         BoundaryClass::Decoder => "crates/vb_yaml/src/decode.rs",
-        BoundaryClass::GeneratedCode => "crates/vb_codegen/src/generated/interface.rs",
+        BoundaryClass::GeneratedCode => "crates/vb_codegen/src/generated/interface.rs", // vb_codegen moved to velvet-optional repo (deferred)
         BoundaryClass::UnsafeAdjacentDependency => "Cargo.toml",
         BoundaryClass::Unknown => "crates/unknown/src/lib.rs",
     }

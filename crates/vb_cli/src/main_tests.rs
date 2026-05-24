@@ -272,12 +272,7 @@ fn parse_action_list_accepts_empty_registry_defaults_to_text() {
 
 #[test]
 fn parse_action_inspect_accepts_action_id_defaults_to_text() {
-    let parsed = parse_args(&args(&[
-        "velvet-ballastics",
-        "action",
-        "inspect",
-        "2",
-    ]));
+    let parsed = parse_args(&args(&["velvet-ballastics", "action", "inspect", "2"]));
 
     assert!(
         matches!(

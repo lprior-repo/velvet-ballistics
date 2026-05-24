@@ -44,8 +44,6 @@ vb_validate = { path = "../crates/vb_validate" }
 vb_yaml = { path = "../crates/vb_yaml" }
 vb_compile = { path = "../crates/vb_compile" }
 vb_ipc = { path = "../crates/vb_ipc" }
-vb_ui_model = { path = "../crates/vb_ui_model" }
-vb_ui_snapshot = { path = "../crates/vb_ui_snapshot" }
 vb_doc = { path = "../crates/vb_doc" }
 crc32c = "0.6"
 
@@ -298,13 +296,6 @@ doc = false
 bench = false
 
 [[bin]]
-name = "vb_ui_model_postcard_decode"
-path = "src/bin/vb_ui_model_postcard_decode.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
 name = "verifier_gates"
 path = "src/bin/verifier_gates.rs"
 test = false
@@ -344,13 +335,6 @@ bench = false
 [[bin]]
 name = "lex_expr"
 path = "fuzz_targets/lex_expr.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "ui_redaction_artifact"
-path = "fuzz_targets/ui_redaction_artifact.rs"
 test = false
 doc = false
 bench = false

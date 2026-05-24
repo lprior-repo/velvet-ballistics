@@ -86,9 +86,7 @@ pub(crate) fn print_status(
             Ok(())
         }
         OutputFormat::Yaml => print_status_yaml(status),
-        OutputFormat::Postcard => {
-            print_json(status, output)
-        }
+        OutputFormat::Postcard => print_json(status, output),
     }
 }
 

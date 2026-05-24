@@ -595,8 +595,12 @@ mod tests {
     #[test]
     fn ids_from_str_invalid() {
         use super::SymbolId;
+        use std::num::IntErrorKind;
         let result: Result<SymbolId, _> = "not_a_number".parse();
-        assert!(result.is_err(), "non-numeric string must fail to parse");
+        assert!(
+            result.as_ref().is_err_and(|e| e.kind() == &IntErrorKind::InvalidDigit),
+            "non-numeric string must fail with InvalidDigit, got {result:?}"
+        );
     }
 
     #[test]
@@ -736,32 +740,52 @@ mod tests {
 
     #[test]
     fn from_str_rejects_empty_string() {
+        use std::num::IntErrorKind;
         let result: Result<StepIdx, _> = "".parse();
-        assert!(result.is_err(), "empty string must fail to parse");
+        assert!(
+            result.as_ref().is_err_and(|e| e.kind() == &IntErrorKind::Empty),
+            "empty string must fail with Empty, got {result:?}"
+        );
     }
 
     #[test]
     fn from_str_rejects_negative() {
+        use std::num::IntErrorKind;
         let result: Result<StepIdx, _> = "-1".parse();
-        assert!(result.is_err(), "negative string must fail to parse");
+        assert!(
+            result.as_ref().is_err_and(|e| e.kind() == &IntErrorKind::InvalidDigit),
+            "negative string must fail with InvalidDigit, got {result:?}"
+        );
     }
 
     #[test]
     fn from_str_rejects_overflow_for_u16() {
+        use std::num::IntErrorKind;
         let result: Result<StepIdx, _> = "65536".parse();
-        assert!(result.is_err(), "u16 overflow must fail to parse");
+        assert!(
+            result.as_ref().is_err_and(|e| e.kind() == &IntErrorKind::PosOverflow),
+            "u16 overflow must fail with PosOverflow, got {result:?}"
+        );
     }
 
     #[test]
     fn from_str_rejects_overflow_for_u32() {
+        use std::num::IntErrorKind;
         let result: Result<WorkflowId, _> = "4294967296".parse();
-        assert!(result.is_err(), "u32 overflow must fail to parse");
+        assert!(
+            result.as_ref().is_err_and(|e| e.kind() == &IntErrorKind::PosOverflow),
+            "u32 overflow must fail with PosOverflow, got {result:?}"
+        );
     }
 
     #[test]
     fn from_str_rejects_leading_whitespace() {
+        use std::num::IntErrorKind;
         let result: Result<StepIdx, _> = " 42".parse();
-        assert!(result.is_err(), "leading whitespace must fail");
+        assert!(
+            result.as_ref().is_err_and(|e| e.kind() == &IntErrorKind::InvalidDigit),
+            "leading whitespace must fail with InvalidDigit, got {result:?}"
+        );
     }
 
     // --- BranchIdx edge cases ---
@@ -817,8 +841,15 @@ mod tests {
     #[test]
     fn max_attempts_zero_is_rejected() {
         use super::MaxAttempts;
+        use crate::errors::CoreError;
         let result = MaxAttempts::try_new(0);
-        assert!(result.is_err(), "max_attempts=0 must be rejected");
+        assert!(
+            matches!(
+                result,
+                Err(CoreError::InternalInvariantViolation { .. })
+            ),
+            "max_attempts=0 must be rejected with InternalInvariantViolation, got {result:?}"
+        );
     }
 
     // --- RetryCount edge cases ---

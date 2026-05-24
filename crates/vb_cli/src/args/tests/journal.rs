@@ -22,24 +22,7 @@ fn parse_inspect_requires_run_id_and_db() {
     }
 }
 
-#[test]
-fn parse_inspect_accepts_json_output() {
-    let parsed = parse_args(&args(&[
-        "velvet-ballastics",
-        "inspect",
-        "42",
-        "--db",
-        "test-db",
-        "--json",
-    ]));
-    if let Ok(Command::Inspect { run_id, db, output }) = parsed {
-        assert_eq!(run_id, "42");
-        assert_eq!(db, PathBuf::from("test-db"));
-        assert_eq!(output, OutputFormat::Json);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
-    }
-}
+// NOTE: --json CLI flag removed; test deleted.
 
 #[test]
 fn parse_inspect_accepts_emit_yaml() {

@@ -247,6 +247,12 @@ fn idempotency_same_key_slots_twice_yields_same_ok_result() -> Result<(), String
     let mut frame = test_frame(2, 2);
     let write_result = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Clean);
     assert!(write_result.is_ok());
+    // Prove the value was actually stored before testing idempotency.
+    assert_eq!(
+        frame.read_slot(SlotIdx::new(0)),
+        Ok(&SlotValue::I64(1)),
+        "write must persist the value to slot 0"
+    );
     let key_slots = [SlotIdx::new(0)];
     let result_a = verify_idempotency(&contract, &key_slots, &frame);
     let result_b = verify_idempotency(&contract, &key_slots, &frame);
@@ -271,6 +277,12 @@ fn idempotency_same_key_twice_yields_same_err_result() -> Result<(), String> {
     let mut frame = test_frame(2, 2);
     let write_result = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
     assert!(write_result.is_ok());
+    // Prove the value was actually stored before testing idempotency.
+    assert_eq!(
+        frame.read_slot(SlotIdx::new(0)),
+        Ok(&SlotValue::I64(1)),
+        "write must persist the secret-tainted value to slot 0"
+    );
     let key_slots = [SlotIdx::new(0)];
     let result_a = verify_idempotency(&contract, &key_slots, &frame);
     let result_b = verify_idempotency(&contract, &key_slots, &frame);

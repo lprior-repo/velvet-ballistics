@@ -421,6 +421,21 @@ pub(crate) fn analyze_resume(events: &[JournalEvent]) -> ResumeAnalysis {
         };
     }
 
+    // A run that is currently waiting for an answer cannot be resumed.
+    let is_waiting = matches!(
+        terminal,
+        Some(JournalEvent::AskScheduledEvent { .. })
+            | Some(JournalEvent::WaitScheduledEvent { .. })
+    );
+
+    if is_waiting {
+        return ResumeAnalysis {
+            suspended_at_step,
+            can_resume: false,
+            reason: "run is waiting for answer — cannot resume".to_string(),
+        };
+    }
+
     ResumeAnalysis {
         suspended_at_step,
         can_resume: true,

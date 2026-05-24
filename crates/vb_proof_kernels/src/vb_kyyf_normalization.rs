@@ -739,7 +739,10 @@ mod tests {
             ..observation()
         };
 
-        assert!(matches!(compare_generated_ir(observation(), generated), Ok(())));
+        assert!(matches!(
+            compare_generated_ir(observation(), generated),
+            Ok(())
+        ));
     }
 
     #[test]
@@ -820,7 +823,10 @@ mod tests {
             ..observation()
         };
 
-        assert!(matches!(compare_generated_ir(observation(), generated), Ok(())));
+        assert!(matches!(
+            compare_generated_ir(observation(), generated),
+            Ok(())
+        ));
     }
 
     #[test]

@@ -10,8 +10,8 @@
     clippy::unwrap_used
 )]
 mod error_tests {
-    use crate::error::ArtifactInvalidSource;
     use crate::JournalError;
+    use crate::error::ArtifactInvalidSource;
     use vb_core::{DiagnosticCode, RunId};
 
     // -----------------------------------------------------------------------
@@ -26,14 +26,8 @@ mod error_tests {
             "variant must be AdmissionRequired"
         );
         let display = format!("{err}");
-        assert!(
-            display.contains("admission is required"),
-            "Display must mention admission: {display}"
-        );
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::ARTIFACT_MALFORMED_CODE,
-        );
+        assert_eq!(display, "accepted artifact admission is required");
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
     }
 
     // -----------------------------------------------------------------------
@@ -57,14 +51,7 @@ mod error_tests {
         let source = ArtifactInvalidSource::PayloadDigestMismatch;
         let err = JournalError::ArtifactInvalid { source };
         let display = format!("{err}");
-        assert!(
-            display.contains("artifact invalid"),
-            "Display must mention artifact invalid: {display}"
-        );
-        assert!(
-            display.contains("PayloadDigestMismatch"),
-            "Display must contain source variant: {display}"
-        );
+        assert_eq!(display, "artifact invalid: PayloadDigestMismatch");
     }
 
     #[test]
@@ -72,10 +59,7 @@ mod error_tests {
         let err = JournalError::ArtifactInvalid {
             source: ArtifactInvalidSource::PayloadDigestMismatch,
         };
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::ARTIFACT_MALFORMED_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
     }
 
     // -----------------------------------------------------------------------
@@ -84,7 +68,10 @@ mod error_tests {
 
     #[test]
     fn input_too_large_variant_and_fields() {
-        let err = JournalError::InputTooLarge { len: 1024, max: 512 };
+        let err = JournalError::InputTooLarge {
+            len: 1024,
+            max: 512,
+        };
         match err {
             JournalError::InputTooLarge { len, max } => {
                 assert_eq!(len, 1024);
@@ -98,23 +85,13 @@ mod error_tests {
     fn input_too_large_display_format() {
         let err = JournalError::InputTooLarge { len: 999, max: 100 };
         let display = format!("{err}");
-        assert!(
-            display.contains("input too large"),
-            "Display must mention input too large: {display}"
-        );
-        assert!(
-            display.contains("999") && display.contains("100"),
-            "Display must contain both len and max: {display}"
-        );
+        assert_eq!(display, "runtime input too large: 999 > 100");
     }
 
     #[test]
     fn input_too_large_error_code() {
         let err = JournalError::InputTooLarge { len: 1, max: 0 };
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::ARTIFACT_MALFORMED_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
     }
 
     // -----------------------------------------------------------------------
@@ -129,19 +106,13 @@ mod error_tests {
             "variant must be InputSchemaMismatch"
         );
         let display = format!("{err}");
-        assert!(
-            display.contains("schema mismatch"),
-            "Display must mention schema mismatch: {display}"
-        );
+        assert_eq!(display, "runtime input schema mismatch");
     }
 
     #[test]
     fn input_schema_mismatch_error_code() {
         let err = JournalError::InputSchemaMismatch;
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::ARTIFACT_MALFORMED_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
     }
 
     // -----------------------------------------------------------------------
@@ -156,19 +127,13 @@ mod error_tests {
             "variant must be CapabilityDenied"
         );
         let display = format!("{err}");
-        assert!(
-            display.contains("capability denied"),
-            "Display must mention capability denied: {display}"
-        );
+        assert_eq!(display, "runtime capability denied");
     }
 
     #[test]
     fn capability_denied_error_code() {
         let err = JournalError::CapabilityDenied;
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::ARTIFACT_MALFORMED_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
     }
 
     // -----------------------------------------------------------------------
@@ -183,19 +148,13 @@ mod error_tests {
             "variant must be SecretUnavailable"
         );
         let display = format!("{err}");
-        assert!(
-            display.contains("secret unavailable"),
-            "Display must mention secret unavailable: {display}"
-        );
+        assert_eq!(display, "runtime secret unavailable");
     }
 
     #[test]
     fn secret_unavailable_error_code() {
         let err = JournalError::SecretUnavailable;
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::ARTIFACT_MALFORMED_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
     }
 
     // -----------------------------------------------------------------------
@@ -210,19 +169,13 @@ mod error_tests {
             "variant must be RunAlreadyExists"
         );
         let display = format!("{err}");
-        assert!(
-            display.contains("run already exists"),
-            "Display must mention run already exists: {display}"
-        );
+        assert_eq!(display, "run already exists");
     }
 
     #[test]
     fn run_already_exists_error_code() {
         let err = JournalError::RunAlreadyExists;
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::ARTIFACT_MALFORMED_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
     }
 
     // -----------------------------------------------------------------------
@@ -237,19 +190,13 @@ mod error_tests {
             "variant must be ActiveRunCapacityExceeded"
         );
         let display = format!("{err}");
-        assert!(
-            display.contains("active run capacity exceeded"),
-            "Display must mention capacity exceeded: {display}"
-        );
+        assert_eq!(display, "active run capacity exceeded");
     }
 
     #[test]
     fn active_run_capacity_exceeded_error_code() {
         let err = JournalError::ActiveRunCapacityExceeded;
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::ARTIFACT_MALFORMED_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
     }
 
     // -----------------------------------------------------------------------
@@ -264,19 +211,13 @@ mod error_tests {
             "variant must be FrameAllocationFailed"
         );
         let display = format!("{err}");
-        assert!(
-            display.contains("frame allocation failed"),
-            "Display must mention frame allocation failed: {display}"
-        );
+        assert_eq!(display, "frame allocation failed");
     }
 
     #[test]
     fn frame_allocation_failed_error_code() {
         let err = JournalError::FrameAllocationFailed;
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::ARTIFACT_MALFORMED_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
     }
 
     // -----------------------------------------------------------------------
@@ -300,10 +241,7 @@ mod error_tests {
     #[test]
     fn admission_journal_failed_error_code() {
         let err = JournalError::AdmissionJournalFailed;
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::ARTIFACT_MALFORMED_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
     }
 
     // -----------------------------------------------------------------------
@@ -341,13 +279,9 @@ mod error_tests {
             observed: 150,
         };
         let display = format!("{err}");
-        assert!(
-            display.contains("exceeded event limit"),
-            "Display must mention exceeded event limit: {display}"
-        );
-        assert!(
-            display.contains("observed") && display.contains("limit"),
-            "Display must contain observed and limit: {display}"
+        assert_eq!(
+            display,
+            "journal replay for run RunId(7) exceeded event limit: observed 150 > limit 50"
         );
     }
 
@@ -358,10 +292,7 @@ mod error_tests {
             limit: 10,
             observed: 20,
         };
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::TOO_MANY_EVENTS_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::TOO_MANY_EVENTS_CODE,);
         assert_eq!(
             JournalError::TOO_MANY_EVENTS_CODE,
             DiagnosticCode::new(0x401E),
@@ -399,13 +330,9 @@ mod error_tests {
             requested: 500,
         };
         let display = format!("{err}");
-        assert!(
-            display.contains("allocation failed"),
-            "Display must mention allocation failed: {display}"
-        );
-        assert!(
-            display.contains("requested"),
-            "Display must mention requested: {display}"
+        assert_eq!(
+            display,
+            "journal replay allocation failed for run RunId(3): requested 500 events"
         );
     }
 
@@ -437,19 +364,13 @@ mod error_tests {
             "variant must be ClockUnavailable"
         );
         let display = format!("{err}");
-        assert!(
-            display.contains("clock unavailable"),
-            "Display must mention clock unavailable: {display}"
-        );
+        assert_eq!(display, "admission clock unavailable");
     }
 
     #[test]
     fn clock_unavailable_error_code() {
         let err = JournalError::ClockUnavailable;
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::ARTIFACT_MALFORMED_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::ARTIFACT_MALFORMED_CODE,);
     }
 
     // -----------------------------------------------------------------------
@@ -471,23 +392,13 @@ mod error_tests {
     fn invalid_gate_count_display_format() {
         let err = JournalError::InvalidGateCount { found: 7 };
         let display = format!("{err}");
-        assert!(
-            display.contains("invalid gate count"),
-            "Display must mention invalid gate count: {display}"
-        );
-        assert!(
-            display.contains("7"),
-            "Display must contain the found value: {display}"
-        );
+        assert_eq!(display, "invalid gate count: 7");
     }
 
     #[test]
     fn invalid_gate_count_error_code() {
         let err = JournalError::InvalidGateCount { found: 1 };
-        assert_eq!(
-            err.diagnostic_code(),
-            JournalError::INVALID_GATE_COUNT_CODE,
-        );
+        assert_eq!(err.diagnostic_code(), JournalError::INVALID_GATE_COUNT_CODE,);
         assert_eq!(
             JournalError::INVALID_GATE_COUNT_CODE,
             DiagnosticCode::new(0x401C),
@@ -517,21 +428,15 @@ mod error_tests {
             flag: "integrity_chain",
         };
         let display = format!("{err}");
-        assert!(
-            display.contains("missing required proof flag"),
-            "Display must mention missing required proof flag: {display}"
-        );
-        assert!(
-            display.contains("integrity_chain"),
-            "Display must contain the flag name: {display}"
+        assert_eq!(
+            display,
+            "missing required proof flag: integrity_chain"
         );
     }
 
     #[test]
     fn missing_required_proof_flag_error_code() {
-        let err = JournalError::MissingRequiredProofFlag {
-            flag: "test_flag",
-        };
+        let err = JournalError::MissingRequiredProofFlag { flag: "test_flag" };
         assert_eq!(
             err.diagnostic_code(),
             JournalError::MISSING_REQUIRED_PROOF_FLAG_CODE,

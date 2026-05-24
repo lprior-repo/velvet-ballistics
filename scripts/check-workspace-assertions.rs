@@ -14,10 +14,6 @@ const EXPECTED_MEMBERS: &[&str] = &[
     "crates/vb_runtime",
     "crates/vb_doc",
     "crates/vb_ipc",
-    "crates/vb_codegen",
-    "crates/vb_ui_makepad",
-    "crates/vb_ui_model",
-    "crates/vb_ui_snapshot",
     "crates/vb_proof_kernels",
     "crates/vb_cli",
     "crates/workspace_tests",
@@ -25,16 +21,9 @@ const EXPECTED_MEMBERS: &[&str] = &[
     "xtask",
 ];
 
-const EXPECTED_EXCLUDES: &[&str] = &["target/miri-tmp", "crates/vb_ui", "fuzz"];
+const EXPECTED_EXCLUDES: &[&str] = &["target/miri-tmp", "fuzz"];
 const BOUNDARY_CRATES: &[&str] = &["vb_core", "vb_runtime", "vb_storage", "vb_ipc"];
-const FORBIDDEN_UI_DEPENDENCIES: &[&str] = &[
-    "vb_ui",
-    "vb_ui_makepad",
-    "vb_ui_model",
-    "vb_ui_snapshot",
-    "makepad-widgets",
-    "makepad-draw",
-];
+const FORBIDDEN_UI_DEPENDENCIES: &[&str] = &["makepad-widgets", "makepad-draw"];
 const FORBIDDEN_RUNTIME_FORMAT_DEPENDENCIES: &[&str] =
     &["serde_json", "saphyr", "saphyr-parser", "serde-saphyr"];
 const FORBIDDEN_FEATURE_NAMES: &[&str] = &["json", "serde-json", "velvet-ballistics", "velvet_ballistics"];
@@ -50,10 +39,6 @@ const EXPECTED_PACKAGE_NAMES: &[(&str, &str)] = &[
     ("crates/vb_runtime", "vb_runtime"),
     ("crates/vb_doc", "vb_doc"),
     ("crates/vb_ipc", "vb_ipc"),
-    ("crates/vb_codegen", "vb_codegen"),
-    ("crates/vb_ui_makepad", "vb_ui_makepad"),
-    ("crates/vb_ui_model", "vb_ui_model"),
-    ("crates/vb_ui_snapshot", "vb_ui_snapshot"),
     ("crates/vb_proof_kernels", "vb_proof_kernels"),
     ("crates/vb_cli", "velvet-ballastics"),
     ("crates/workspace_tests", "velvet-ballastics-workspace-tests"),
@@ -64,7 +49,6 @@ const EXPECTED_PACKAGE_NAMES: &[(&str, &str)] = &[
 const EXPECTED_FEATURES: &[(&str, &[&str])] = &[
     ("crates/vb_core", &["bench", "default", "generated", "test-util", "volatile"]),
     ("crates/vb_validate", &["default", "verus"]),
-    ("crates/vb_ui_snapshot", &["default", "std"]),
 ];
 
 fn quoted_values_in_line(line: &str) -> Vec<String> {

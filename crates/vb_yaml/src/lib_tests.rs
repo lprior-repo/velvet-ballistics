@@ -56,7 +56,12 @@ fn reject_duplicate_keys_allows_unique() {
 fn reject_yaml_1_1_ambiguous_rejects_yes() {
     let scalars = vec!["yes"];
     let result = reject_yaml_1_1_ambiguous_scalars(&scalars);
-    assert_eq!(result, Err(YamlError::AmbiguousScalar { scalar: "yes".into() }));
+    assert_eq!(
+        result,
+        Err(YamlError::AmbiguousScalar {
+            scalar: "yes".into()
+        })
+    );
 }
 
 #[test]
@@ -1133,8 +1138,30 @@ fn build_source_map_returns_non_empty_for_valid_yaml() {
         }
     };
     assert_eq!(map.len(), 3);
-    assert_eq!(yaml.get(map.span_for_node(1).map(|span| span.start_offset).unwrap_or(0)..map.span_for_node(1).map(|span| span.end_offset).unwrap_or(0)), Some("key"));
-    assert_eq!(yaml.get(map.span_for_node(2).map(|span| span.start_offset).unwrap_or(0)..map.span_for_node(2).map(|span| span.end_offset).unwrap_or(0)), Some("value"));
+    assert_eq!(
+        yaml.get(
+            map.span_for_node(1)
+                .map(|span| span.start_offset)
+                .unwrap_or(0)
+                ..map
+                    .span_for_node(1)
+                    .map(|span| span.end_offset)
+                    .unwrap_or(0)
+        ),
+        Some("key")
+    );
+    assert_eq!(
+        yaml.get(
+            map.span_for_node(2)
+                .map(|span| span.start_offset)
+                .unwrap_or(0)
+                ..map
+                    .span_for_node(2)
+                    .map(|span| span.end_offset)
+                    .unwrap_or(0)
+        ),
+        Some("value")
+    );
 }
 
 #[test]

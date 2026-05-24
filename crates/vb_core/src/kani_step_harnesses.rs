@@ -18,7 +18,6 @@
 
 use crate::EngineSignal;
 use crate::engine::step_once;
-use crate::errors::EngineError;
 use crate::frame::{RunFrame, StepState};
 use crate::ids::{RunId, SlotIdx, StepIdx};
 use crate::value::{SlotValue, Taint};

@@ -13,7 +13,7 @@ use crate::workflow::{
     CompiledNode, CompiledNodeKind, ResourceContract, SlotBranch, WorkflowParts,
 };
 
-use super::{ReplayAction, ReplayError, SuspensionKind, step::replay_step};
+use super::{ReplayAction, step::replay_step};
 
 fn make_minimal_plan(
     nodes: Vec<CompiledNode>,

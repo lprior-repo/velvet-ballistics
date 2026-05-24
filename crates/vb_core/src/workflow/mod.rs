@@ -1860,8 +1860,8 @@ pub const fn check_lifecycle_transition(state: LifecycleState, cmd: LifecycleCom
         // Cancel is valid from Active or WaitingAnswer
         (LifecycleState::Active, LifecycleCommand::Cancel) => true,
         (LifecycleState::WaitingAnswer, LifecycleCommand::Cancel) => true,
-        // Resume is valid from WaitingAnswer
-        (LifecycleState::WaitingAnswer, LifecycleCommand::Resume) => true,
+        // WaitingAnswer is a blocked state awaiting external input;
+        // resume is not valid — the run must be answered or cancelled first.
         // Retry is valid from Failed
         (LifecycleState::Failed, LifecycleCommand::Retry) => true,
         // Answer is valid from WaitingAnswer

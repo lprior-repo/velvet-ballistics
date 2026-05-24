@@ -142,7 +142,10 @@ fn run_step_rejects_durability_strict() {
     let input_path = dir.path().join("input.bin");
     let db_path = dir.path().join("journal-db");
 
-    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(
+        &workflow_path,
+        SETCONST_WORKFLOW.as_bytes()
+    ));
     assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
@@ -170,10 +173,16 @@ fn run_step_rejects_durability_strict() {
         Some(2),
         "exit code should be 2 (ValidationFailed)"
     );
-    let stderr = output_stderr(&output);
+    let stdout = output_stdout(&output);
     assert!(
-        stderr.contains("durability") || stderr.contains("none"),
-        "error should mention durability: {stderr}"
+        stdout.is_empty(),
+        "stdout must be empty on durability rejection"
+    );
+    let stderr = output_stderr(&output);
+    assert_eq!(
+        stderr,
+        "step isolation requires --durability none\n",
+        "exact stderr for durability rejection"
     );
 }
 
@@ -191,7 +200,10 @@ fn run_step_rejects_durability_journaled() {
     let input_path = dir.path().join("input.bin");
     let db_path = dir.path().join("journal-db");
 
-    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(
+        &workflow_path,
+        SETCONST_WORKFLOW.as_bytes()
+    ));
     assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
@@ -237,7 +249,10 @@ fn run_step_invalid_step_id_reports_not_found() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(
+        &workflow_path,
+        SETCONST_WORKFLOW.as_bytes()
+    ));
     assert!(write_test_file(&input_path, &[]));
 
     // SETCONST_WORKFLOW has 2 steps (init, done) so step 99 is invalid
@@ -260,10 +275,16 @@ fn run_step_invalid_step_id_reports_not_found() {
     assert!(!output.status.success(), "invalid step ID should fail");
     let code = output.status.code();
     assert_eq!(code, Some(2), "validation failure exit code must be 2");
-    let stderr = output_stderr(&output);
+    let stdout = output_stdout(&output);
     assert!(
-        stderr.contains("not found") || stderr.contains("99"),
-        "error should mention step not found: {stderr}"
+        stdout.is_empty(),
+        "stdout must be empty on step not found"
+    );
+    let stderr = output_stderr(&output);
+    assert_eq!(
+        stderr,
+        "step 99 not found in workflow\n",
+        "exact stderr for step not found"
     );
 }
 
@@ -283,7 +304,10 @@ fn run_step_invalid_step_id_json_includes_error_details() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(
+        &workflow_path,
+        SETCONST_WORKFLOW.as_bytes()
+    ));
     assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
@@ -304,25 +328,44 @@ fn run_step_invalid_step_id_json_includes_error_details() {
         None => panic!("velvet-ballastics command failed before producing output"),
     };
 
-    assert!(!output.status.success(), "invalid step ID should fail");
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "invalid step ID must exit with ValidationFailed (2)"
+    );
+    let stdout = output_stdout(&output);
+    assert!(
+        stdout.is_empty(),
+        "stdout must be empty on error"
+    );
     let stderr = output_stderr(&output);
 
-    // When using --json, the error should be structured JSON on stderr
+    // When using --emit yaml, the error should be structured YAML on stderr
     let json: serde_json::Value = match serde_saphyr::from_str(&stderr) {
         Ok(v) => v,
-        Err(_) => {
+        Err(e) => {
             assert!(
                 forced_assertion_failure(),
-                "step not found with --json should produce valid JSON error on stderr: {stderr}"
+                "step not found with --emit yaml should produce valid YAML on stderr: {e}; stderr={stderr}"
             );
             return;
         }
     };
 
-    // JSON error should have 'error' field per contract error taxonomy
-    assert!(
-        json.get("error").is_some(),
-        "JSON error should have 'error' field per contract: {json}"
+    assert_eq!(
+        json.get("error").and_then(|v| v.as_str()),
+        Some("step_not_found"),
+        "JSON error must have code step_not_found: {json}"
+    );
+    assert_eq!(
+        json.get("step").and_then(|v| v.as_u64()),
+        Some(99),
+        "JSON error must include step 99: {json}"
+    );
+    assert_eq!(
+        json.get("message").and_then(|v| v.as_str()),
+        Some("step 99 not found in workflow"),
+        "JSON error must include exact message: {json}"
     );
 }
 
@@ -364,7 +407,11 @@ fn run_step_compile_error_reports_failure() {
     };
 
     assert!(!output.status.success(), "broken YAML should fail");
-    assert_eq!(output.status.code(), Some(2), "compile validation failure exit code must be 2");
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "compile validation failure exit code must be 2"
+    );
 }
 
 /// VB-PRE003-CLI: Compile error in JSON format includes error details
@@ -402,15 +449,52 @@ fn run_step_compile_error_json_includes_errors() {
     };
 
     assert!(!output.status.success(), "broken YAML should fail");
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "compile failure must exit with ValidationFailed (2)"
+    );
     let stdout = output_stdout(&output);
+    assert!(
+        stdout.is_empty(),
+        "stdout must be empty on compile error"
+    );
     let stderr = output_stderr(&output);
 
-    // Error should be reported in JSON or text format
-    let has_error_info =
-        stdout.contains("error") || stderr.contains("error") || stdout.contains("compile");
+    // With --emit yaml, the error should be a structured DiagnosticReport on stderr
+    let json: serde_json::Value = match serde_saphyr::from_str(&stderr) {
+        Ok(v) => v,
+        Err(e) => {
+            assert!(
+                forced_assertion_failure(),
+                "compile error with --emit yaml should produce valid YAML on stderr: {e}; stderr={stderr}"
+            );
+            return;
+        }
+    };
+
+    assert_eq!(
+        json.get("kind").and_then(|v| v.as_str()),
+        Some("DiagnosticReport"),
+        "error must be a DiagnosticReport: {json}"
+    );
+    assert_eq!(
+        json.get("code").and_then(|v| v.as_str()),
+        Some("CompileFailed"),
+        "error code must be CompileFailed: {json}"
+    );
+    assert_eq!(
+        json.get("exit_code").and_then(|v| v.as_u64()),
+        Some(3),
+        "diagnostic exit_code must be 3: {json}"
+    );
     assert!(
-        has_error_info,
-        "error should be reported: stdout={stdout}, stderr={stderr}"
+        json.get("message").and_then(|v| v.as_str()).unwrap_or("").contains("compile error"),
+        "error message must describe compile failure: {json}"
+    );
+    assert!(
+        json.get("schema_version").is_some(),
+        "diagnostic must have schema_version: {json}"
     );
 }
 
@@ -431,7 +515,10 @@ fn run_step_json_flag_produces_valid_json() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(
+        &workflow_path,
+        SETCONST_WORKFLOW.as_bytes()
+    ));
     assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
@@ -452,11 +539,16 @@ fn run_step_json_flag_produces_valid_json() {
         None => panic!("velvet-ballastics command failed before producing output"),
     };
 
-    assert_cli_success(&output, "run --step with --json");
+    assert_cli_success(&output, "run --step with --emit yaml");
+    let stderr = output_stderr(&output);
+    assert!(
+        stderr.is_empty(),
+        "stderr must be empty on success, got: {stderr}"
+    );
     let stdout = output_stdout(&output);
 
     // stdout must be valid YAML-compatible structured output
-    let _: serde_json::Value = match serde_saphyr::from_str(&stdout) {
+    let json: serde_json::Value = match serde_saphyr::from_str(&stdout) {
         Ok(v) => v,
         Err(e) => {
             assert!(
@@ -466,6 +558,34 @@ fn run_step_json_flag_produces_valid_json() {
             return;
         }
     };
+
+    // Exact expected values for SetConst step 0
+    assert_eq!(
+        json.get("step").and_then(|v| v.as_u64()),
+        Some(0),
+        "step must be 0"
+    );
+    assert_eq!(
+        json.get("kind").and_then(|v| v.as_str()),
+        Some("SetConst"),
+        "kind must be SetConst"
+    );
+    assert_eq!(
+        json.get("signal").and_then(|v| v.as_str()),
+        Some("Continue"),
+        "signal must be Continue"
+    );
+    let deltas = json.get("deltas").expect("must have deltas");
+    assert_eq!(
+        deltas.get("pc_delta").and_then(|v| v.get("before")).and_then(|v| v.as_u64()),
+        Some(0),
+        "pc_delta before must be 0"
+    );
+    assert_eq!(
+        deltas.get("pc_delta").and_then(|v| v.get("after")).and_then(|v| v.as_u64()),
+        Some(1),
+        "pc_delta after must be 1"
+    );
 }
 
 /// VB-PRE005-CLI: `run --step` accepts --jsonl flag and produces valid JSONL
@@ -481,7 +601,10 @@ fn run_step_jsonl_flag_produces_valid_jsonl() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(
+        &workflow_path,
+        SETCONST_WORKFLOW.as_bytes()
+    ));
     assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
@@ -505,8 +628,9 @@ fn run_step_jsonl_flag_produces_valid_jsonl() {
     assert_cli_success(&output, "run --step with --jsonl");
     let stdout = output_stdout(&output);
 
-    let value: serde_json::Value = serde_saphyr::from_str(&stdout)
-        .unwrap_or_else(|e| panic!("stdout should be YAML-compatible structured output: {e}; stdout={stdout}"));
+    let value: serde_json::Value = serde_saphyr::from_str(&stdout).unwrap_or_else(|e| {
+        panic!("stdout should be YAML-compatible structured output: {e}; stdout={stdout}")
+    });
     assert_eq!(value.get("step"), Some(&serde_json::json!(0)));
 }
 
@@ -523,7 +647,10 @@ fn run_step_text_output_is_human_readable() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(
+        &workflow_path,
+        SETCONST_WORKFLOW.as_bytes()
+    ));
     assert!(write_test_file(&input_path, &[]));
 
     // No --json or --jsonl flag = text output
@@ -574,7 +701,10 @@ fn run_step_executes_single_step_and_reports_correct_index() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(
+        &workflow_path,
+        SETCONST_WORKFLOW.as_bytes()
+    ));
     assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
@@ -623,7 +753,10 @@ fn run_step_json_output_has_required_schema_fields() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(
+        &workflow_path,
+        SETCONST_WORKFLOW.as_bytes()
+    ));
     assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
@@ -644,44 +777,68 @@ fn run_step_json_output_has_required_schema_fields() {
         None => panic!("velvet-ballastics command failed before producing output"),
     };
 
-    assert_cli_success(&output, "run --step --json");
+    assert_cli_success(&output, "run --step --emit yaml");
+    let stderr = output_stderr(&output);
+    assert!(
+        stderr.is_empty(),
+        "stderr must be empty on success, got: {stderr}"
+    );
     let json = parse_json(&output);
 
-    // Required top-level fields per POST-002 and POST-003
-    assert!(
-        json.get("step").is_some(),
-        "JSON must have 'step' field: {json}"
+    // Exact required top-level fields for SetConst step 0
+    assert_eq!(
+        json.get("step").and_then(|v| v.as_u64()),
+        Some(0),
+        "step must be 0: {json}"
     );
-    assert!(
-        json.get("kind").is_some(),
-        "JSON must have 'kind' field: {json}"
+    assert_eq!(
+        json.get("kind").and_then(|v| v.as_str()),
+        Some("SetConst"),
+        "kind must be SetConst: {json}"
     );
-    assert!(
-        json.get("signal").is_some(),
-        "JSON must have 'signal' field: {json}"
+    assert_eq!(
+        json.get("signal").and_then(|v| v.as_str()),
+        Some("Continue"),
+        "signal must be Continue: {json}"
     );
     assert!(
         json.get("deltas").is_some(),
-        "JSON must have 'deltas' field: {json}"
+        "must have deltas: {json}"
+    );
+    assert!(
+        json.get("before").is_some(),
+        "must have before snapshot: {json}"
+    );
+    assert!(
+        json.get("after").is_some(),
+        "must have after snapshot: {json}"
     );
 
-    // deltas object must have all four delta types per POST-004
-    let deltas = json.get("deltas").unwrap();
+    // deltas object must have all four delta types with exact pc_delta values
+    let deltas = json.get("deltas").expect("must have deltas");
     assert!(
         deltas.get("slot_deltas").is_some(),
-        "deltas must have 'slot_deltas': {deltas}"
+        "deltas must have slot_deltas: {deltas}"
     );
-    assert!(
-        deltas.get("taint_deltas").is_some(),
-        "deltas must have 'taint_deltas': {deltas}"
+    assert_eq!(
+        deltas.get("taint_deltas").and_then(|v| v.as_array().map(|a| a.len())),
+        Some(0),
+        "taint_deltas must be empty array: {deltas}"
     );
     assert!(
         deltas.get("state_deltas").is_some(),
-        "deltas must have 'state_deltas': {deltas}"
+        "deltas must have state_deltas: {deltas}"
     );
-    assert!(
-        deltas.get("pc_delta").is_some(),
-        "deltas must have 'pc_delta': {deltas}"
+    let pc_delta = deltas.get("pc_delta").expect("deltas must have pc_delta");
+    assert_eq!(
+        pc_delta.get("before").and_then(|v| v.as_u64()),
+        Some(0),
+        "pc_delta before must be 0: {pc_delta}"
+    );
+    assert_eq!(
+        pc_delta.get("after").and_then(|v| v.as_u64()),
+        Some(1),
+        "pc_delta after must be 1: {pc_delta}"
     );
 }
 
@@ -698,7 +855,10 @@ fn run_step_jsonl_output_is_valid_jsonl() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(
+        &workflow_path,
+        SETCONST_WORKFLOW.as_bytes()
+    ));
     assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
@@ -722,9 +882,13 @@ fn run_step_jsonl_output_is_valid_jsonl() {
     assert_cli_success(&output, "run --step --jsonl");
     let stdout = output_stdout(&output);
 
-    let json: serde_json::Value = serde_saphyr::from_str(&stdout)
-        .unwrap_or_else(|e| panic!("stdout should be YAML-compatible structured output: {e}; stdout={stdout}"));
-    assert!(json.get("deltas").is_some(), "structured output should have deltas field");
+    let json: serde_json::Value = serde_saphyr::from_str(&stdout).unwrap_or_else(|e| {
+        panic!("stdout should be YAML-compatible structured output: {e}; stdout={stdout}")
+    });
+    assert!(
+        json.get("deltas").is_some(),
+        "structured output should have deltas field"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -744,7 +908,10 @@ fn run_step_json_output_includes_step_kind_signal() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(
+        &workflow_path,
+        SETCONST_WORKFLOW.as_bytes()
+    ));
     assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
@@ -861,7 +1028,10 @@ fn run_step_delta_json_slot_deltas_is_array_with_changes() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(
+        &workflow_path,
+        SETCONST_WORKFLOW.as_bytes()
+    ));
     assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
@@ -903,11 +1073,19 @@ fn run_step_delta_json_slot_deltas_is_array_with_changes() {
         "slot_deltas should not be empty after SetConst step"
     );
 
-    assert_eq!(arr.len(), 1, "SetConst should produce exactly one slot delta");
+    assert_eq!(
+        arr.len(),
+        1,
+        "SetConst should produce exactly one slot delta"
+    );
     let item = &arr[0];
     assert_eq!(item.get("slot").and_then(|v| v.as_u64()), Some(0));
     assert_eq!(item.get("before"), Some(&serde_json::Value::Null));
-    assert!(item.get("after").is_some(), "slot_delta item should have exact after field: {item}");
+    assert_eq!(
+        item.get("after"),
+        Some(&serde_json::json!({"I64": 42})),
+        "slot_delta after must be exact I64 42: {item}"
+    );
 }
 
 /// VB-POST004-CLI: state_deltas is an array with before/after state
@@ -923,7 +1101,10 @@ fn run_step_delta_json_state_deltas_has_before_after() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(
+        &workflow_path,
+        SETCONST_WORKFLOW.as_bytes()
+    ));
     assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
@@ -959,27 +1140,28 @@ fn run_step_delta_json_state_deltas_has_before_after() {
     );
 
     let arr = state_deltas.as_array().unwrap();
-    // Step 0 transitions from Pending -> Succeeded
+    // Step 0 transitions from Pending -> Succeeded, others stay Pending
     assert!(
         !arr.is_empty(),
         "state_deltas should not be empty after step execution"
     );
 
-    // Each state delta should have step, before, after
-    for item in arr {
-        assert!(
-            item.get("step").is_some(),
-            "state_delta item should have 'step': {item}"
-        );
-        assert!(
-            item.get("before").is_some(),
-            "state_delta item should have 'before': {item}"
-        );
-        assert!(
-            item.get("after").is_some(),
-            "state_delta item should have 'after': {item}"
-        );
-    }
+    // Each state delta must have exact step, before, after
+    let expected_state_delta = serde_json::json!({
+        "step": 0,
+        "before": "Pending",
+        "after": "Succeeded"
+    });
+    assert_eq!(
+        arr.len(),
+        1,
+        "SetConst step should produce exactly one state delta"
+    );
+    assert_eq!(
+        &arr[0],
+        &expected_state_delta,
+        "state_delta for step 0 must be exact Pending -> Succeeded"
+    );
 }
 
 /// VB-POST004-CLI: taint_deltas is present and is an array
@@ -995,7 +1177,10 @@ fn run_step_delta_json_taint_deltas_is_array() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(
+        &workflow_path,
+        SETCONST_WORKFLOW.as_bytes()
+    ));
     assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
@@ -1052,7 +1237,10 @@ fn run_step_finished_includes_output_slot_value_and_taint() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(
+        &workflow_path,
+        SETCONST_WORKFLOW.as_bytes()
+    ));
     assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
@@ -1076,13 +1264,24 @@ fn run_step_finished_includes_output_slot_value_and_taint() {
     assert_cli_success(&output, "run --step --json");
     let json = parse_json(&output);
 
-    assert_eq!(json.get("signal").and_then(|v| v.as_str()), Some("Continue"));
+    assert_eq!(
+        json.get("signal").and_then(|v| v.as_str()),
+        Some("Continue")
+    );
     let output_slot = json
         .get("output_slot")
         .expect("SetConst output should include output_slot");
     assert_eq!(output_slot.get("slot").and_then(|v| v.as_u64()), Some(0));
-    assert!(output_slot.get("value").is_some(), "output_slot should have value: {output_slot}");
-    assert!(output_slot.get("taint").is_some(), "output_slot should have taint: {output_slot}");
+    assert_eq!(
+        output_slot.get("value"),
+        Some(&serde_json::json!({"I64": 42})),
+        "output_slot value must be exact I64 42: {output_slot}"
+    );
+    assert_eq!(
+        output_slot.get("taint").and_then(|v| v.as_str()),
+        Some("Clean"),
+        "output_slot taint must be Clean: {output_slot}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1129,16 +1328,53 @@ fn run_step_error_in_json_format_reports_error_and_message() {
     };
 
     assert!(!output.status.success(), "broken YAML should fail");
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "compile failure must exit with ValidationFailed (2)"
+    );
 
     let stdout = output_stdout(&output);
+    assert!(
+        stdout.is_empty(),
+        "stdout must be empty on compile error"
+    );
     let stderr = output_stderr(&output);
 
-    // Error should be reported somewhere (stdout in JSON mode, or stderr)
-    let has_error =
-        stdout.contains("error") || stderr.contains("error") || stdout.contains("compile");
+    // With --emit yaml, error must be a structured DiagnosticReport on stderr
+    let json: serde_json::Value = match serde_saphyr::from_str(&stderr) {
+        Ok(v) => v,
+        Err(e) => {
+            assert!(
+                forced_assertion_failure(),
+                "compile error with --emit yaml should produce valid YAML on stderr: {e}; stderr={stderr}"
+            );
+            return;
+        }
+    };
+
+    assert_eq!(
+        json.get("kind").and_then(|v| v.as_str()),
+        Some("DiagnosticReport"),
+        "error must be a DiagnosticReport: {json}"
+    );
+    assert_eq!(
+        json.get("code").and_then(|v| v.as_str()),
+        Some("CompileFailed"),
+        "error code must be CompileFailed: {json}"
+    );
+    assert_eq!(
+        json.get("exit_code").and_then(|v| v.as_u64()),
+        Some(3),
+        "diagnostic exit_code must be 3: {json}"
+    );
     assert!(
-        has_error,
-        "error should be reported: stdout={stdout}, stderr={stderr}"
+        json.get("message").and_then(|v| v.as_str()).unwrap_or("").contains("compile error"),
+        "error message must describe compile failure: {json}"
+    );
+    assert!(
+        json.get("schema_version").is_some(),
+        "diagnostic must have schema_version: {json}"
     );
 }
 
@@ -1178,6 +1414,36 @@ fn run_step_error_in_jsonl_format_reports_error_object() {
     };
 
     assert!(!output.status.success(), "broken YAML should fail");
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "compile failure must exit with ValidationFailed (2)"
+    );
+
+    let stdout = output_stdout(&output);
+    assert!(
+        stdout.is_empty(),
+        "stdout must be empty on compile error"
+    );
+    let stderr = output_stderr(&output);
+
+    // With --emit yaml, error must be a structured DiagnosticReport on stderr
+    let json: serde_json::Value = serde_saphyr::from_str(&stderr).unwrap_or_else(|e| {
+        panic!(
+            "compile error with --emit yaml should produce valid YAML on stderr: {e}; stderr={stderr}"
+        )
+    });
+
+    assert_eq!(
+        json.get("kind").and_then(|v| v.as_str()),
+        Some("DiagnosticReport"),
+        "error must be a DiagnosticReport: {json}"
+    );
+    assert_eq!(
+        json.get("code").and_then(|v| v.as_str()),
+        Some("CompileFailed"),
+        "error code must be CompileFailed: {json}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1201,7 +1467,10 @@ fn run_step_durability_not_none_exits_with_validation_failed() {
     let input_path = dir.path().join("input.bin");
     let db_path = dir.path().join("journal-db");
 
-    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(
+        &workflow_path,
+        SETCONST_WORKFLOW.as_bytes()
+    ));
     assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
@@ -1247,7 +1516,10 @@ fn run_step_success_exits_with_code_0() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(
+        &workflow_path,
+        SETCONST_WORKFLOW.as_bytes()
+    ));
     assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
@@ -1295,7 +1567,10 @@ fn run_step_validation_failure_exits_with_code_2() {
     let input_path = dir.path().join("input.bin");
 
     // Use invalid step ID to trigger PRE002 validation failure
-    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(
+        &workflow_path,
+        SETCONST_WORKFLOW.as_bytes()
+    ));
     assert!(write_test_file(&input_path, &[]));
 
     let output = match run_cli(&[
@@ -1341,7 +1616,10 @@ fn run_step_malformed_step_input_exits_with_code_2() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(
+        &workflow_path,
+        SETCONST_WORKFLOW.as_bytes()
+    ));
     // Malformed postcard data
     assert!(write_test_file(&input_path, b"garbage-postcard"));
 
@@ -1387,7 +1665,10 @@ fn run_step_empty_step_input_succeeds() {
     let workflow_path = dir.path().join("workflow.yaml");
     let input_path = dir.path().join("input.bin");
 
-    assert!(write_test_file(&workflow_path, SETCONST_WORKFLOW.as_bytes()));
+    assert!(write_test_file(
+        &workflow_path,
+        SETCONST_WORKFLOW.as_bytes()
+    ));
     // Empty file is valid - decodes to Box<[SlotValue]>::from([])
     assert!(write_test_file(&input_path, &[]));
 

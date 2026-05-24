@@ -12,27 +12,9 @@ fn parse_action_list_defaults_to_text_and_registered() {
     }
 }
 
-#[test]
-fn parse_action_list_accepts_json_output() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "action", "list", "--json"]));
-    if let Ok(Command::ActionList { output, registry }) = parsed {
-        assert_eq!(output, OutputFormat::Json);
-        assert_eq!(registry, ActionRegistryMode::Registered);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
-    }
-}
-
-#[test]
-fn parse_action_list_accepts_jsonl_output() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "action", "list", "--jsonl"]));
-    if let Ok(Command::ActionList { output, registry }) = parsed {
-        assert_eq!(output, OutputFormat::Jsonl);
-        assert_eq!(registry, ActionRegistryMode::Registered);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
-    }
-}
+// NOTE: --json and --jsonl CLI flags were removed when OutputFormat::Json
+// and OutputFormat::Jsonl variants were removed. The corresponding tests
+// have been deleted.
 
 #[test]
 fn parse_action_list_accepts_emit_yaml() {

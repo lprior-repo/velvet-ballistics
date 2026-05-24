@@ -72,11 +72,13 @@ fn recovery_from_corrupt_snapshot_sequence_is_detected() {
     };
 
     let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
-    // Hydration should succeed because the seed itself is valid (corrupt snapshot
-    // is a storage-layer concern; the boundary only validates the seed shape).
+    // A seed with step_count=0 and pc=ZERO is invalid because the pc must be
+    // strictly less than step_count for a valid recovered frame position.
     let result = boundary.hydrate_run_frame();
-    // A seed with step_count=0 and no workflow may still be a valid empty-run seed.
-    assert!(result.is_ok() || result.is_err()); // boundary is permissive on empty seed
+    assert_eq!(
+        result,
+        Err(vb_runtime::RuntimeError::InvalidRecoveryHydration)
+    );
 }
 
 /// UnsupportedRecoveryState union of two unsupported flags.

@@ -3749,7 +3749,19 @@ proptest::proptest! {
             prop_assert!(matches!(result, Ok(())));
         } else {
             // If any dimension exceeds policy, validation should fail
-            prop_assert!(result.is_err());
+            // with the specific dimension-exceeded variant. Only the four
+            // randomized dimensions can exceed DEFAULT policy (all others
+            // are hardcoded to 0, which is within policy limits).
+            prop_assert!(
+                matches!(
+                    result,
+                    Err(BudgetError::TotalStepsExceeded { .. })
+                        | Err(BudgetError::TotalSlotsExceeded { .. })
+                        | Err(BudgetError::FanoutExceeded { .. })
+                        | Err(BudgetError::NestingDepthExceeded { .. })
+                ),
+                "expected dimension-exceeded BudgetError, got {result:?}"
+            );
         }
     }
 }

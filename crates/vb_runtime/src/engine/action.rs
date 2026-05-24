@@ -474,7 +474,12 @@ mod tests {
         // Contract at index 0 has id=0, but we request id=99 at index 99
         let contracts = vec![make_contract(0)];
         let result = resolve_contract(ActionId::new(99), &contracts);
-        assert!(result.is_err());
+        assert_eq!(
+            result,
+            Err(RuntimeEngineError::Action(ActionError::UnknownAction {
+                action: ActionId::new(99),
+            }))
+        );
     }
 
     #[test]
@@ -496,14 +501,20 @@ mod tests {
     fn resolve_contract_returns_first_contract() {
         let contracts = vec![make_contract(0)];
         let result = resolve_contract(ActionId::new(0), &contracts);
-        assert!(result.is_ok());
+        match result {
+            Ok(contract) => assert_eq!(contract.id, ActionId::new(0)),
+            Err(e) => panic!("expected Ok, got {e:?}"),
+        }
     }
 
     #[test]
     fn resolve_contract_returns_last_contract() {
         let contracts = vec![make_contract(0), make_contract(1), make_contract(2)];
         let result = resolve_contract(ActionId::new(2), &contracts);
-        assert!(result.is_ok());
+        match result {
+            Ok(contract) => assert_eq!(contract.id, ActionId::new(2)),
+            Err(e) => panic!("expected Ok, got {e:?}"),
+        }
     }
 
     // =====================================================================

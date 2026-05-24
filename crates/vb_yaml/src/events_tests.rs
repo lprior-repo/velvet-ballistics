@@ -40,7 +40,12 @@ fn collect_events_simple_mapping_has_exact_event_sequence_and_scalar_fields() {
     let events = collect_ok!(yaml);
     assert_eq!(events.len(), 8);
 
-    assert_eq!(events[0], YamlEvent::StreamStart { span: events[0].span() });
+    assert_eq!(
+        events[0],
+        YamlEvent::StreamStart {
+            span: events[0].span()
+        }
+    );
     assert_eq!(
         events[1],
         YamlEvent::DocumentStart {
@@ -86,9 +91,24 @@ fn collect_events_simple_mapping_has_exact_event_sequence_and_scalar_fields() {
             }
         }
     );
-    assert_eq!(events[5], YamlEvent::MappingEnd { span: events[5].span() });
-    assert_eq!(events[6], YamlEvent::DocumentEnd { span: events[6].span() });
-    assert_eq!(events[7], YamlEvent::StreamEnd { span: events[7].span() });
+    assert_eq!(
+        events[5],
+        YamlEvent::MappingEnd {
+            span: events[5].span()
+        }
+    );
+    assert_eq!(
+        events[6],
+        YamlEvent::DocumentEnd {
+            span: events[6].span()
+        }
+    );
+    assert_eq!(
+        events[7],
+        YamlEvent::StreamEnd {
+            span: events[7].span()
+        }
+    );
 }
 
 #[test]
@@ -139,7 +159,15 @@ fn span_has_nonzero_line_for_content() {
         fail_assert!("missing scalar");
         return;
     };
-    assert_eq!(scalar.span(), EventSpan { start: 0, end: 1, line: 1, column: 0 });
+    assert_eq!(
+        scalar.span(),
+        EventSpan {
+            start: 0,
+            end: 1,
+            line: 1,
+            column: 0
+        }
+    );
 }
 
 // -----------------------------------------------------------------------
@@ -195,7 +223,13 @@ fn typed_node_is_document_start_for_doc_start_event() {
         fail_assert!("missing document start");
         return;
     };
-    assert_eq!(evt, &YamlEvent::DocumentStart { explicit: true, span: evt.span() });
+    assert_eq!(
+        evt,
+        &YamlEvent::DocumentStart {
+            explicit: true,
+            span: evt.span()
+        }
+    );
 }
 
 #[test]
@@ -244,7 +278,15 @@ fn typed_node_span_returns_correct_line_column() {
         return;
     };
     let span = evt.span();
-    assert_eq!(span, EventSpan { start: 0, end: 1, line: 1, column: 0 });
+    assert_eq!(
+        span,
+        EventSpan {
+            start: 0,
+            end: 1,
+            line: 1,
+            column: 0
+        }
+    );
 }
 
 #[test]
@@ -310,7 +352,15 @@ fn event_span_fields_are_populated() {
         fail_assert!("missing stream start");
         return;
     };
-    assert_eq!(*span, EventSpan { start: 0, end: 0, line: 1, column: 0 });
+    assert_eq!(
+        *span,
+        EventSpan {
+            start: 0,
+            end: 0,
+            line: 1,
+            column: 0
+        }
+    );
 }
 
 #[test]
@@ -470,10 +520,21 @@ fn adversarial_events_null_byte_accepted_by_parser_but_rejected_by_profile() {
             assert_eq!(key_scalar.as_deref(), Some("key"));
             assert_eq!(events.iter().filter(|e| e.as_scalar().is_some()).count(), 2);
             let profile_result = crate::profile::validate_yaml_profile(yaml);
-            assert_eq!(profile_result, Err(crate::YamlError::ForbiddenFeature { detail: "null_byte_in_source" }));
+            assert_eq!(
+                profile_result,
+                Err(crate::YamlError::ForbiddenFeature {
+                    detail: "null_byte_in_source"
+                })
+            );
         }
         Err(e) => {
-            assert_eq!(e, crate::YamlError::ParseError { line: 1, reason: "control characters are not allowed".into() });
+            assert_eq!(
+                e,
+                crate::YamlError::ParseError {
+                    line: 1,
+                    reason: "control characters are not allowed".into()
+                }
+            );
         }
     }
 }
@@ -542,7 +603,18 @@ fn adversarial_events_alias_produces_alias_variant() {
     let yaml = "a: &anc value\nb: *anc\n";
     let events = collect_ok!(yaml);
     let alias = events.iter().find(|e| e.is_alias());
-    assert_eq!(alias, Some(&YamlEvent::Alias { anchor_id: 1, span: alias.map(YamlEvent::span).unwrap_or(EventSpan { start: 0, end: 0, line: 0, column: 0 }) }));
+    assert_eq!(
+        alias,
+        Some(&YamlEvent::Alias {
+            anchor_id: 1,
+            span: alias.map(YamlEvent::span).unwrap_or(EventSpan {
+                start: 0,
+                end: 0,
+                line: 0,
+                column: 0
+            })
+        })
+    );
 }
 
 #[test]

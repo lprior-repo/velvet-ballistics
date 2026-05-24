@@ -46,11 +46,13 @@ fn assert_compile_rejects_with_idempotency_violation(
 ) -> Result<(), String> {
     match compile_result(c) {
         Err(CompileErrors(errors)) => match errors.as_slice() {
-            [CompileError::IdempotencyViolation {
-                action,
-                side_effect,
-                reason,
-            }] => {
+            [
+                CompileError::IdempotencyViolation {
+                    action,
+                    side_effect,
+                    reason,
+                },
+            ] => {
                 assert_eq!(
                     (*action, *side_effect, reason.as_ref()),
                     (c.id, c.side_effect, expected_reason),
@@ -85,10 +87,7 @@ fn parity_side_effect_none_all_combinations_accept() -> Result<(), String> {
                 static_ok(&c),
                 "static accepts None+{retry_safety:?}+{idempotency:?}"
             );
-            assert_compile_accepts(
-                &c,
-                &format!("None+{retry_safety:?}+{idempotency:?}"),
-            )?;
+            assert_compile_accepts(&c, &format!("None+{retry_safety:?}+{idempotency:?}"))?;
         }
     }
     Ok(())
@@ -155,7 +154,8 @@ fn parity_idempotent_external_safe_or_key_required_accepts() -> Result<(), Strin
 }
 
 #[test]
-fn parity_at_least_once_external_with_safe_or_key_required_rejected_by_both() -> Result<(), String> {
+fn parity_at_least_once_external_with_safe_or_key_required_rejected_by_both() -> Result<(), String>
+{
     let mut id = 300;
     for side_effect in [
         SideEffect::Writes,
@@ -253,6 +253,102 @@ fn parity_exhaustive_all_45_cases() {
     }
 
     assert_eq!(agree_count, 45, "full decision table parity");
+}
+
+#[test]
+fn multi_contract_error_accumulation_ordering() {
+    // Three contracts with distinct violations: Unsafe retry,
+    // AtLeastOnceExternal, and DeterministicPure side-effects.
+    // Each must produce an IdempotencyViolation, and they must
+    // appear in the exact order of the input slice.
+    let c_unsafe = contract(
+        1001,
+        SideEffect::Writes,
+        Idempotency::DeterministicPure,
+        RetrySafety::Unsafe,
+    );
+    let c_at_least_once = contract(
+        2001,
+        SideEffect::Sends,
+        Idempotency::AtLeastOnceExternal,
+        RetrySafety::Safe,
+    );
+    let c_deterministic = contract(
+        3001,
+        SideEffect::Destroys,
+        Idempotency::DeterministicPure,
+        RetrySafety::Safe,
+    );
+
+    let result = check_idempotency_gates(&[
+        c_unsafe.clone(),
+        c_at_least_once.clone(),
+        c_deterministic.clone(),
+    ]);
+
+    let Err(CompileErrors(errors)) = result else {
+        panic!("expected Err(CompileErrors([...])) with 3 violations");
+    };
+
+    assert_eq!(errors.len(), 3, "must produce exactly 3 errors in input order");
+
+    // First error: Unsafe retry for writes action.
+    match &errors[0] {
+        CompileError::IdempotencyViolation {
+            action,
+            side_effect,
+            reason,
+        } => {
+            assert_eq!(*action, c_unsafe.id);
+            assert_eq!(*side_effect, SideEffect::Writes);
+            assert_eq!(
+                reason.as_ref(),
+                "side-effecting action declares RetrySafety::Unsafe"
+            );
+        }
+        other => panic!(
+            "expected IdempotencyViolation for contract 1 (Unsafe), got {other:?}"
+        ),
+    }
+
+    // Second error: AtLeastOnceExternal without guaranteed idempotent retry.
+    match &errors[1] {
+        CompileError::IdempotencyViolation {
+            action,
+            side_effect,
+            reason,
+        } => {
+            assert_eq!(*action, c_at_least_once.id);
+            assert_eq!(*side_effect, SideEffect::Sends);
+            assert_eq!(
+                reason.as_ref(),
+                "side-effecting action declares Idempotency::AtLeastOnceExternal \
+                 without guaranteed idempotent retry"
+            );
+        }
+        other => panic!(
+            "expected IdempotencyViolation for contract 2 (AtLeastOnceExternal), got {other:?}"
+        ),
+    }
+
+    // Third error: DeterministicPure with side effects.
+    match &errors[2] {
+        CompileError::IdempotencyViolation {
+            action,
+            side_effect,
+            reason,
+        } => {
+            assert_eq!(*action, c_deterministic.id);
+            assert_eq!(*side_effect, SideEffect::Destroys);
+            assert_eq!(
+                reason.as_ref(),
+                "side-effecting action declares Idempotency::DeterministicPure"
+            );
+        }
+        other => panic!(
+            "expected IdempotencyViolation for contract 3 (DeterministicPure), got {other:?}"
+        ),
+    }
 }
 
 #[test]

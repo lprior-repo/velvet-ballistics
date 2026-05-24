@@ -107,7 +107,7 @@ fn together_start_returns_error_when_no_branches() {
             assert_eq!(reason, "together_start requires at least one branch");
         }
         other => {
-            assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            panic!("expected InvalidCompiledWorkflow error, got {other:?}");
         }
     }
 }
@@ -131,7 +131,7 @@ fn together_start_returns_error_when_output_missing() {
             assert_eq!(step, StepIdx::ZERO);
         }
         other => {
-            assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            panic!("expected MissingOutputSlot error, got {other:?}");
         }
     }
 }
@@ -165,7 +165,7 @@ fn together_start_creates_empty_accumulator_list() {
             assert_eq!(items.len(), 0);
         }
         other => {
-            assert_eq!(other, SlotValue::I64(0));
+            panic!("expected list slot, got {:?}", other);
         }
     }
 }
@@ -211,7 +211,7 @@ fn together_branch_appends_previous_result_for_nonzero_branch() {
             assert_eq!(items.get(1), Some(&SlotValue::I64(20)));
         }
         other => {
-            assert_eq!(other, SlotValue::I64(0));
+            panic!("expected list slot, got {:?}", other);
         }
     }
 }
@@ -239,7 +239,7 @@ fn together_branch_returns_error_when_output_missing_for_nonzero_branch() {
             assert_eq!(step, StepIdx::ZERO);
         }
         other => {
-            assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            panic!("expected MissingOutputSlot error, got {other:?}");
         }
     }
 }
@@ -268,7 +268,7 @@ fn together_join_returns_error_when_output_missing() {
             assert_eq!(step, StepIdx::ZERO);
         }
         other => {
-            assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            panic!("expected MissingOutputSlot error, got {other:?}");
         }
     }
 }
@@ -301,7 +301,7 @@ fn together_join_returns_error_when_next_missing() {
             assert_eq!(step, StepIdx::ZERO);
         }
         other => {
-            assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            panic!("expected MissingNextStep error, got {other:?}");
         }
     }
 }
@@ -409,7 +409,7 @@ fn together_branch_zero_does_not_append_to_accumulator() {
             );
         }
         other => {
-            assert_eq!(other, SlotValue::I64(0));
+            panic!("expected list slot, got {:?}", other);
         }
     }
 }
@@ -449,7 +449,7 @@ fn together_branch_nonzero_appends_to_accumulator() {
             assert_eq!(items.get(0), Some(&SlotValue::I64(99)));
         }
         other => {
-            assert_eq!(other, SlotValue::I64(0));
+            panic!("expected list slot, got {:?}", other);
         }
     }
 }
@@ -525,7 +525,7 @@ fn together_join_with_null_last_result_preserves_accumulator() {
             assert_eq!(items.get(0), Some(&SlotValue::I64(10)));
         }
         other => {
-            assert_eq!(other, SlotValue::I64(0));
+            panic!("expected list slot, got {:?}", other);
         }
     }
 }
@@ -567,7 +567,7 @@ fn together_join_appends_non_null_non_list_last_result() {
             assert_eq!(items.get(1), Some(&SlotValue::I64(20)));
         }
         other => {
-            assert_eq!(other, SlotValue::I64(0));
+            panic!("expected list slot, got {:?}", other);
         }
     }
 }
@@ -612,7 +612,7 @@ fn together_join_with_list_in_output_does_not_double_append() {
             assert_eq!(items.len(), 1);
         }
         other => {
-            assert_eq!(other, SlotValue::I64(0));
+            panic!("expected list slot, got {:?}", other);
         }
     }
 }
@@ -782,7 +782,7 @@ fn phase23_branch_zero_independent_state_does_not_touch_accumulator() {
             assert_eq!(items.get(0), Some(&SlotValue::I64(100)));
         }
         other => {
-            assert_eq!(other, SlotValue::I64(0));
+            panic!("expected list slot, got {:?}", other);
         }
     }
 }
@@ -822,7 +822,7 @@ fn phase23_branch_one_appends_own_result_independently() {
             assert_eq!(items.get(0), Some(&SlotValue::I64(42)));
         }
         other => {
-            assert_eq!(other, SlotValue::I64(0));
+            panic!("expected list slot, got {:?}", other);
         }
     }
 }
@@ -897,7 +897,7 @@ fn phase23_sequential_branches_build_independent_accumulator_state() {
             assert_eq!(items.get(1), Some(&SlotValue::I64(20)));
         }
         other => {
-            assert_eq!(other, SlotValue::I64(0));
+            panic!("expected list slot, got {:?}", other);
         }
     }
 }
@@ -944,7 +944,7 @@ fn phase23_different_branch_values_do_not_interfere() {
             assert_eq!(items.get(2), Some(&SlotValue::Bool(true)));
         }
         other => {
-            assert_eq!(other, SlotValue::I64(0));
+            panic!("expected list slot, got {:?}", other);
         }
     }
 }
@@ -990,7 +990,7 @@ fn phase23_join_appends_last_branch_result_to_accumulator() {
             assert_eq!(items.get(1), Some(&SlotValue::I64(20)));
         }
         other => {
-            assert_eq!(other, SlotValue::I64(0));
+            panic!("expected list slot, got {:?}", other);
         }
     }
 }
@@ -1038,7 +1038,7 @@ fn phase23_join_three_branches_all_results_collected() {
             assert_eq!(items.get(2), Some(&SlotValue::I64(30)));
         }
         other => {
-            assert_eq!(other, SlotValue::I64(0));
+            panic!("expected list slot, got {:?}", other);
         }
     }
 }
@@ -1185,8 +1185,15 @@ fn phase23_branch_failure_preserves_existing_accumulator_state() {
         accumulator,
         Some(output),
     );
-    // Then the error is returned (fail-fast)
-    assert!(result.is_err());
+    // Then a TypeMismatch error is returned (fail-fast)
+    // The accumulator was corrupted from list to boolean
+    match result {
+        Err(EngineError::TypeMismatch { expected, found }) => {
+            assert_eq!(expected, "list");
+            assert_eq!(found, "boolean");
+        }
+        other => panic!("expected TypeMismatch error, got {other:?}"),
+    }
     // And the output slot still holds the value from the last successful branch
     let output_val = *run
         .read_slot(output)
@@ -1219,7 +1226,7 @@ fn phase23_join_failure_when_output_slot_missing() {
             assert_eq!(step, StepIdx::ZERO);
         }
         other => {
-            assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            panic!("expected MissingOutputSlot error, got {other:?}");
         }
     }
 }
@@ -1238,7 +1245,7 @@ fn phase23_start_failure_when_branches_empty() {
             assert_eq!(reason, "together_start requires at least one branch");
         }
         other => {
-            assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            panic!("expected InvalidCompiledWorkflow error, got {other:?}");
         }
     }
 }
@@ -1297,7 +1304,7 @@ fn phase23_partial_failure_first_branch_succeeds_second_corrupt_accumulator() {
             assert_eq!(items.get(0), Some(&SlotValue::I64(10)));
         }
         other => {
-            assert_eq!(other, SlotValue::I64(0));
+            panic!("expected list slot, got {:?}", other);
         }
     }
 
@@ -1329,7 +1336,7 @@ fn phase23_partial_failure_first_branch_succeeds_second_corrupt_accumulator() {
             assert_eq!(found, "boolean");
         }
         other => {
-            assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
+            panic!("expected TypeMismatch error, got {other:?}");
         }
     }
 }
@@ -1375,7 +1382,14 @@ fn phase23_partial_failure_output_preserved_after_branch_error() {
         accumulator,
         Some(output),
     );
-    assert!(fail_result.is_err());
+    match fail_result {
+        Err(EngineError::TypeMismatch { expected, found }) => {
+            // Accumulator was corrupted to I64(999); expect_list requires a list
+            assert_eq!(expected, "list");
+            assert_eq!(found, "number");
+        }
+        other => panic!("expected TypeMismatch error, got {other:?}"),
+    }
 
     // The output slot still holds Null from the last successful branch
     let output_val = *run
@@ -1421,7 +1435,7 @@ fn phase23_join_with_single_branch_collects_one_result() {
             assert_eq!(items.get(0), Some(&SlotValue::I64(42)));
         }
         other => {
-            assert_eq!(other, SlotValue::I64(0));
+            panic!("expected list slot, got {:?}", other);
         }
     }
 }
@@ -1488,7 +1502,7 @@ fn phase23_start_creates_empty_list_output_even_with_multiple_branches() {
             assert_eq!(items.len(), 0);
         }
         other => {
-            assert_eq!(other, SlotValue::I64(0));
+            panic!("expected list slot, got {:?}", other);
         }
     }
 }
@@ -1537,7 +1551,7 @@ fn phase23_join_preserves_order_of_branch_results() {
             assert_eq!(items.get(3), Some(&SlotValue::I64(4)));
         }
         other => {
-            assert_eq!(other, SlotValue::I64(0));
+            panic!("expected list slot, got {:?}", other);
         }
     }
 }

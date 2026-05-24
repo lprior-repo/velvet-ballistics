@@ -1968,10 +1968,20 @@ mod proptests {
                 let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
                 prop_assert_err!(result);
                 if let Err(e) = result {
-                    prop_assert!(
-                        matches!(e, IpcError::InvalidMagic { .. }),
-                        "expected InvalidMagic, got {e:?}"
-                    );
+                    match e {
+                        IpcError::InvalidMagic { actual } => {
+                            prop_assert!(
+                                actual == magic,
+                                "decoder reported actual={actual:#010x} but header had magic={magic:#010x}"
+                            );
+                        }
+                        _ => {
+                            prop_assert!(
+                                false,
+                                "expected InvalidMagic, got {e:?}"
+                            );
+                        }
+                    }
                 }
             }
         }

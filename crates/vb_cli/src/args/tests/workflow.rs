@@ -90,20 +90,7 @@ fn parse_explain_accepts_emit_yaml() {
     }
 }
 
-#[test]
-fn parse_explain_accepts_jsonl_flag() {
-    let parsed = parse_args(&args(&[
-        "velvet-ballastics",
-        "explain",
-        "workflow.yaml",
-        "--jsonl",
-    ]));
-    if let Ok(Command::Explain { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Jsonl);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
-    }
-}
+// NOTE: --jsonl flag removed; test deleted.
 
 #[test]
 fn parse_compile_requires_emit_and_out() {
@@ -169,43 +156,7 @@ fn parse_compile_accepts_emit_yaml() {
     }
 }
 
-#[test]
-fn parse_compile_accepts_legacy_json_flag() {
-    let parsed = parse_args(&args(&[
-        "velvet-ballastics",
-        "compile",
-        "workflow.yaml",
-        "--emit",
-        "ir",
-        "--out",
-        "output.vbir",
-        "--json",
-    ]));
-    if let Ok(Command::Compile { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Json);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
-    }
-}
-
-#[test]
-fn parse_compile_accepts_legacy_jsonl_flag() {
-    let parsed = parse_args(&args(&[
-        "velvet-ballastics",
-        "compile",
-        "workflow.yaml",
-        "--emit",
-        "ir",
-        "--out",
-        "output.vbir",
-        "--jsonl",
-    ]));
-    if let Ok(Command::Compile { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Jsonl);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
-    }
-}
+// NOTE: --json and --jsonl CLI flags removed; tests deleted.
 
 #[test]
 fn parse_compile_rejects_unknown_emit_target_with_exact_variant() {
@@ -345,20 +296,7 @@ fn parse_graph_accepts_emit_yaml() {
     }
 }
 
-#[test]
-fn parse_graph_accepts_json_flag() {
-    let parsed = parse_args(&args(&[
-        "velvet-ballastics",
-        "graph",
-        "workflow.yaml",
-        "--json",
-    ]));
-    if let Ok(Command::Graph { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Json);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
-    }
-}
+// NOTE: --json flag removed; test deleted.
 
 #[test]
 fn parse_simulate_defaults_to_text_output() {
@@ -371,35 +309,7 @@ fn parse_simulate_defaults_to_text_output() {
     }
 }
 
-#[test]
-fn parse_simulate_accepts_json_flag() {
-    let parsed = parse_args(&args(&[
-        "velvet-ballastics",
-        "simulate",
-        "workflow.yaml",
-        "--json",
-    ]));
-    if let Ok(Command::Simulate { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Json);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
-    }
-}
-
-#[test]
-fn parse_simulate_accepts_jsonl_flag() {
-    let parsed = parse_args(&args(&[
-        "velvet-ballastics",
-        "simulate",
-        "workflow.yaml",
-        "--jsonl",
-    ]));
-    if let Ok(Command::Simulate { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Jsonl);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
-    }
-}
+// NOTE: --json and --jsonl CLI flags removed; tests deleted.
 
 #[test]
 fn parse_simulate_accepts_emit_postcard() {

@@ -161,11 +161,10 @@ pub fn resume(run: RunId, journal: &FjallJournal) -> LifecycleResult<()> {
         });
     }
 
-    // Resume is valid from Cancelled or WaitingAnswer
-    let is_resumable = current_state == LifecycleState::Cancelled
-        || current_state == LifecycleState::WaitingAnswer;
-
-    if is_resumable {
+    // Resume is valid only from Cancelled.
+    // WaitingAnswer is a blocked state awaiting external input —
+    // the run must be answered or cancelled first, not resumed.
+    if current_state == LifecycleState::Cancelled {
         // Valid state, proceed to write event
     } else if current_state == LifecycleState::Completed {
         // Completed is terminal, can't resume
@@ -177,7 +176,7 @@ pub fn resume(run: RunId, journal: &FjallJournal) -> LifecycleResult<()> {
             command: Some("resume"),
         });
     } else {
-        // Invalid transition: Pending, Active (caught above), Failed
+        // Invalid transition: Pending, WaitingAnswer, Failed, etc.
         return Err(CoreError::LifecycleInvalidTransition {
             code: CoreError::LIFECYCLE_INVALID_TRANSITION_CODE,
             context: format!("resume not valid from {:?} state", current_state),

@@ -9,7 +9,7 @@
 
 #![forbid(unsafe_code)]
 
-use crate::action::{ActionContract, Idempotency, RetrySafety, SideEffect, verify_idempotency};
+use crate::action::{ActionContract, RetrySafety, SideEffect, verify_idempotency};
 use crate::frame::RunFrame;
 use crate::ids::{RunId, SlotIdx, StepIdx};
 use crate::value::{SlotValue, Taint};

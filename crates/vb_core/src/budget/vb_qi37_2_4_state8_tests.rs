@@ -1311,9 +1311,17 @@ proptest! {
             max_transitions_per_tick: 0,
         };
 
-        let added = usage.try_add_budget(&budget);
-        let Ok(added) = added else {
-            return Ok(());
+        let added = match usage.try_add_budget(&budget) {
+            Ok(a) => a,
+            Err(e) => {
+                prop_assert!(
+                    false,
+                    "try_add_budget should succeed with these inputs: {:?}",
+                    e
+                );
+                // Satisfy exhaustiveness; unreachable after prop_assert!(false, ..).
+                return Ok(());
+            }
         };
 
         let subtracted = added.try_subtract_budget(&budget);
@@ -1382,7 +1390,7 @@ proptest! {
                 let checked = base.checked_add(u64::from(delta));
                 prop_assert!(checked.is_none(), "Err(Overflow) must correspond to real overflow");
             }
-            Err(other) => {
+            Err(_other) => {
                 prop_assert!(false, "expected Ok or Overflow, got unexpected error");
             }
         }
@@ -1392,14 +1400,15 @@ proptest! {
     fn prop_subtract_never_goes_below_zero(
         base_steps in 0u64..5u64,
         delta_steps in 6u32..50u32,
-        base_blob in 0u64..5u64,
-        delta_blob in 6u64..50u64,
     ) {
+        // Only max_steps_executable is set to underflow; all other
+        // dimensions have sufficient headroom so they cannot be
+        // the first-failing resource.
         let usage = AggregateResourceUsage {
             max_steps_executable: base_steps,
-            max_active_runs: 0,
-            max_blob_bytes: base_blob,
-            max_step_budget_per_tick: 1,
+            max_blob_bytes: 1_000_000,
+            max_step_budget_per_tick: 100,
+            max_transitions_per_tick: 100,
             ..Default::default()
         };
 
@@ -1421,7 +1430,7 @@ proptest! {
             max_queue_depth: 0,
             max_journal_batch_bytes: 0,
             max_ipc_payload_bytes: 0,
-            max_blob_bytes: delta_blob,
+            max_blob_bytes: 0,
             max_input_bytes: 0,
             max_step_budget_per_tick: 1,
             max_transitions_per_tick: 1,
@@ -1430,11 +1439,9 @@ proptest! {
         let result = usage.try_subtract_budget(&budget);
         match result {
             Err(AggregateBudgetError::Underflow { resource }) => {
-                prop_assert!(
-                    resource == "max_steps_executable"
-                        || resource == "max_blob_bytes"
-                        || resource == "max_active_runs",
-                    "underflow must identify the underflowing dimension"
+                prop_assert_eq!(
+                    resource, "max_steps_executable",
+                    "must identify max_steps_executable as the underflowing dimension"
                 );
             }
             Ok(subtracted) => {
@@ -1447,7 +1454,7 @@ proptest! {
                     base_steps.checked_sub(u64::from(delta_steps)).unwrap_or(u64::MAX)
                 );
             }
-            Err(other) => {
+            Err(_other) => {
                 prop_assert!(false, "expected Ok or Underflow, got unexpected error");
             }
         }
@@ -1497,14 +1504,31 @@ proptest! {
         let mut budget_b = budget_a;
         budget_b.max_steps_executable = delta_b;
 
-        let result_a = usage.try_add_budget(&budget_a);
-        let result_b = usage.try_add_budget(&budget_b);
-
-        let Ok(added_a) = result_a else {
-            return Ok(());
+        // All base values are in 0..1_000_000 and deltas ≤2000, so
+        // addition cannot overflow.  Assert both results are Ok.
+        let added_a = match usage.try_add_budget(&budget_a) {
+            Ok(a) => a,
+            Err(e) => {
+                prop_assert!(
+                    false,
+                    "try_add_budget for budget_a should succeed: {:?}",
+                    e
+                );
+                // Unreachable; satisfies exhaustiveness.
+                return Ok(());
+            }
         };
-        let Ok(added_b) = result_b else {
-            return Ok(());
+        let added_b = match usage.try_add_budget(&budget_b) {
+            Ok(b) => b,
+            Err(e) => {
+                prop_assert!(
+                    false,
+                    "try_add_budget for budget_b should succeed: {:?}",
+                    e
+                );
+                // Unreachable; satisfies exhaustiveness.
+                return Ok(());
+            }
         };
 
         prop_assert_ne!(

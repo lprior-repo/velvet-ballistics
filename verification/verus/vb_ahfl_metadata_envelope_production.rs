@@ -1,19 +1,16 @@
 //! Production-bound Verus harness for VERUS-META-001: metadata completeness and schema/kind agreement.
 //!
 //! Obligation: PRE-002, POST-001, INV-001
-//! Production-bound: spec types mirror MetadataEnvelope, EnvelopeKind from vb_ui_model.
-//! Proof: metadata schema_version >= 1 and all required fields present.
 //!
 //! Production types correspond to:
 //!   - MetadataEnvelope { run_id: RunId, command: String, timestamp: i64 }
 //!   - EnvelopeKind (Success=0, Error=1, DiagnosticReport=2, Status=3, Event=4, Workflow=5)
-//!   - canonicalize_ui_artifact(...) -> CanonicalUiArtifact
 
 use vstd::prelude::*;
 
 verus! {
 
-// Spec mirror of EnvelopeKind from vb_ui_model::envelope::types
+// Spec mirror of EnvelopeKind
 pub enum SpecEnvelopeKind {
     Success,
     Error,
@@ -37,7 +34,7 @@ impl SpecEnvelopeKind {
 
 }
 
-// Spec mirror of MetadataEnvelope from vb_ui_model::envelope::types
+// Spec mirror of MetadataEnvelope
 // Fields: run_id (u64), command (String), timestamp (i64)
 pub struct SpecMetadataEnvelope {
     pub run_id: int,       // RunId mapped to int

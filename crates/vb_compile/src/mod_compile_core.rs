@@ -130,20 +130,7 @@ pub fn emit_compiled_artifact(workflow: &CompiledWorkflow) -> Result<Box<[u8]>, 
         })
 }
 
-/// Generates a Rust source file from a compiled workflow.
-///
-/// The generated Rust backend is a supported subset, not a catch-all lowering
-/// path for every valid [`CompiledWorkflow`]. Unsupported IR is rejected by
-/// `vb_codegen` before source emission and is surfaced here as a compile error,
-/// so callers can fall back to the interpreter/runtime path without compiling
-/// partial generated Rust.
-pub fn compile_to_generated_rust(workflow: &CompiledWorkflow) -> Result<String, CompileErrors> {
-    vb_codegen::emit_rust_workflow(workflow).map_err(|error| {
-        CompileErrors(vec![CompileError::ExpressionLoweringUnsupported {
-            feature: error.to_string().into_boxed_str(),
-        }])
-    })
-}
+// compile_to_generated_rust moved to velvet-optional repo (deferred)
 
 /// Validates that all action contracts satisfy idempotency safety requirements.
 ///

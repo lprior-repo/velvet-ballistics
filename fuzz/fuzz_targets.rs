@@ -94,8 +94,3 @@ pub fn slot_value_roundtrip(data: &[u8]) {
 pub fn admission_fuzz(data: &[u8]) {
     fuzz_lib::fuzz_admission_fuzz(data);
 }
-
-/// UI model OutputEnvelope postcard decode target.
-pub fn vb_ui_model_postcard_decode(data: &[u8]) {
-    fuzz_lib::fuzz_vb_ui_model_postcard_decode(data);
-}

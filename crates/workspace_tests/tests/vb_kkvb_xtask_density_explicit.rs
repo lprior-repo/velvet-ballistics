@@ -250,7 +250,7 @@ fn runtime_dependency_boundary_accepts_and_rejects_declared_edges() {
     }
     for (crate_name, dep) in [
         ("vb_ui", "clap"),
-        ("vb_codegen", "toml"),
+        // vb_codegen moved to velvet-optional repo (deferred)
         ("vb_runtime", "fjall"),
         ("vb_storage", "bytes"),
     ] {

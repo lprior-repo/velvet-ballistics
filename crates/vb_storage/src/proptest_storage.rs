@@ -11,11 +11,9 @@
 #[cfg(test)]
 mod proptest_storage {
     use crate::{
-        BlobRecord, EventSeq, FjallJournal, JournalEvent,
-        RecordKind, StorageLimits,
-        MAGIC_BLOB, MAGIC_JOURNAL_EVENT,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_BLOB_BYTES, DIGEST_BYTES,
-        decode_record, encode_record, JournalWriterQueue,
+        BlobRecord, DIGEST_BYTES, EventSeq, FjallJournal, JournalEvent, JournalWriterQueue,
+        MAGIC_BLOB, MAGIC_JOURNAL_EVENT, MAX_BLOB_BYTES, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        RecordKind, StorageLimits, decode_record, encode_record,
     };
     use proptest::prelude::*;
     use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest};

@@ -53,7 +53,13 @@ fn parse_inventory_all_boundary_classes() {
     let actual: Vec<(&str, &std::path::Path, BoundaryClass)> = inventory
         .records
         .iter()
-        .map(|record| (record.id.as_str(), record.source_path.as_path(), record.class))
+        .map(|record| {
+            (
+                record.id.as_str(),
+                record.source_path.as_path(),
+                record.class,
+            )
+        })
         .collect();
     assert_eq!(
         actual,
@@ -126,7 +132,13 @@ fn parse_inventory_multiple_boundaries() {
     let actual: Vec<(&str, &std::path::Path, BoundaryClass)> = inventory
         .records
         .iter()
-        .map(|record| (record.id.as_str(), record.source_path.as_path(), record.class))
+        .map(|record| {
+            (
+                record.id.as_str(),
+                record.source_path.as_path(),
+                record.class,
+            )
+        })
         .collect();
     assert_eq!(
         actual,
@@ -578,7 +590,10 @@ fn parse_inventory_source_path_only_whitespace() {
     }"#;
     let inventory = parse_inventory(json.as_bytes()).unwrap();
     assert_eq!(inventory.records.len(), 1);
-    assert_eq!(inventory.records[0].source_path, std::path::PathBuf::from("   "));
+    assert_eq!(
+        inventory.records[0].source_path,
+        std::path::PathBuf::from("   ")
+    );
 }
 
 #[test]

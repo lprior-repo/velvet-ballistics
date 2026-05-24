@@ -156,39 +156,36 @@ fn cmd_trace_with_events_returns_all_entries_in_order() {
     let output = output.unwrap();
     assert_cli_success(&output, "trace");
 
+    let stderr = output_stderr(&output);
+    assert!(
+        stderr.is_empty(),
+        "stderr must be empty on success, got: {stderr}"
+    );
     let stdout = output_stdout(&output);
-    // Check for ordered indices
+    // Check for exact text trace output header, entries, and footer
     assert!(
-        stdout.contains("[0]"),
-        "stdout should contain index 0: {stdout}"
+        stdout.starts_with("execution trace for run"),
+        "stdout must start with trace header: {stdout}"
     );
     assert!(
-        stdout.contains("[1]"),
-        "stdout should contain index 1: {stdout}"
+        stdout.contains("[0] RunAccepted (seq 0)"),
+        "stdout must contain entry 0 RunAccepted: {stdout}"
     );
     assert!(
-        stdout.contains("[2]"),
-        "stdout should contain index 2: {stdout}"
+        stdout.contains("[1] StepStarted step 0 (seq 1)"),
+        "stdout must contain entry 1 StepStarted: {stdout}"
     );
     assert!(
-        stdout.contains("RunAccepted"),
-        "stdout should contain RunAccepted: {stdout}"
+        stdout.contains("[2] StepSucceeded step 0 (seq 2)"),
+        "stdout must contain entry 2 StepSucceeded: {stdout}"
     );
     assert!(
-        stdout.contains("StepStarted"),
-        "stdout should contain StepStarted: {stdout}"
+        stdout.contains("[3] RunFinished (seq 3)"),
+        "stdout must contain entry 3 RunFinished: {stdout}"
     );
     assert!(
-        stdout.contains("StepSucceeded"),
-        "stdout should contain StepSucceeded: {stdout}"
-    );
-    assert!(
-        stdout.contains("RunFinished"),
-        "stdout should contain RunFinished: {stdout}"
-    );
-    assert!(
-        stdout.contains("4 event(s) total"),
-        "stdout should report 4 events: {stdout}"
+        stdout.ends_with("4 event(s) total\n"),
+        "stdout must end with total count: {stdout}"
     );
 }
 
@@ -208,21 +205,23 @@ fn cmd_trace_text_format_structure() {
     let output = output.unwrap();
     assert_cli_success(&output, "trace");
 
+    let stderr = output_stderr(&output);
+    assert!(
+        stderr.is_empty(),
+        "stderr must be empty on success, got: {stderr}"
+    );
     let stdout = output_stdout(&output);
-    // Text format: "execution trace for run {id}"
     assert!(
-        stdout.contains("execution trace for run"),
-        "text output should have header: {stdout}"
+        stdout.starts_with("execution trace for run"),
+        "text output must start with header: {stdout}"
     );
-    // Text format: "  [idx] EventType step? (seq N)"
     assert!(
-        stdout.contains("[0]"),
-        "text output should have indexed entries: {stdout}"
+        stdout.contains("  [0] "),
+        "text output must have leading-space indexed entries: {stdout}"
     );
-    // Text format: "{N} event(s) total"
     assert!(
-        stdout.contains("event(s) total"),
-        "text output should have total: {stdout}"
+        stdout.ends_with(" event(s) total\n"),
+        "text output must end with total count line: {stdout}"
     );
 }
 
@@ -482,6 +481,17 @@ fn cmd_trace_empty_run_returns_success() {
     let output = output.unwrap();
     // Empty run should return success with "no events found" message
     assert_cli_success(&output, "trace on empty run");
+    let stderr = output_stderr(&output);
+    assert!(
+        stderr.is_empty(),
+        "stderr must be empty on success, got: {stderr}"
+    );
+    let stdout = output_stdout(&output);
+    assert_eq!(
+        stdout,
+        "no events found for run 99\n",
+        "stdout must exactly report no events for the run"
+    );
 }
 
 #[test]
@@ -496,6 +506,20 @@ fn cmd_trace_invalid_db_path_returns_storage_error() {
     assert!(output.is_some());
     let output = output.unwrap();
     assert_cli_exit_code(&output, 5); // CliExitCode::StorageError = 5
+    assert_eq!(
+        output.stdout,
+        Vec::<u8>::new(),
+        "stdout must be empty on storage error"
+    );
+    let stderr = output_stderr(&output);
+    assert!(
+        stderr.starts_with("journal directory does not exist: "),
+        "stderr must report missing journal directory: {stderr}"
+    );
+    assert!(
+        stderr.ends_with("\n"),
+        "stderr must end with newline"
+    );
 }
 
 #[test]
@@ -512,6 +536,17 @@ fn cmd_trace_invalid_run_id_format_returns_validation_failed() {
     assert!(output.is_some());
     let output = output.unwrap();
     assert_cli_exit_code(&output, 2); // CliExitCode::ValidationFailed = 2
+    assert_eq!(
+        output.stdout,
+        Vec::<u8>::new(),
+        "stdout must be empty on validation error"
+    );
+    let stderr = output_stderr(&output);
+    assert_eq!(
+        stderr,
+        "invalid run_id 'not-a-number': invalid digit found in string\n",
+        "stderr must be exact validation error"
+    );
 }
 
 #[test]
@@ -530,6 +565,20 @@ fn read_journal_events_returns_storage_error_when_dir_not_found() {
     assert!(output.is_some());
     let output = output.unwrap();
     assert_cli_exit_code(&output, 5); // CliExitCode::StorageError
+    assert_eq!(
+        output.stdout,
+        Vec::<u8>::new(),
+        "stdout must be empty on storage error"
+    );
+    let stderr = output_stderr(&output);
+    assert!(
+        stderr.starts_with("journal directory does not exist: "),
+        "stderr must report missing journal directory: {stderr}"
+    );
+    assert!(
+        stderr.ends_with("\n"),
+        "stderr must end with newline"
+    );
 }
 
 // ---------------------------------------------------------------------------

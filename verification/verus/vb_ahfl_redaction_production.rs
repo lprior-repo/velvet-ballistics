@@ -1,9 +1,6 @@
 //! Production-bound Verus harness for VERUS-REDACT-001: redaction fail-closed projection.
 //!
 //! Obligation: PRE-005, POST-006, INV-004
-//! Production-bound: spec types mirror redact_secret_value, RedactedValueView,
-//!                  classify_secret_sensitivity from vb_ui_model::redact.
-//! Proof: raw secret values never appear in output; unknown sensitivity is fail-closed.
 //!
 //! Production types:
 //!   - RedactedValueView { is_tainted, taint_marker, digest, summary, summary_len }
@@ -16,7 +13,7 @@ use vstd::prelude::*;
 
 verus! {
 
-// Spec mirror of SecretSensitivity from vb_ui_model::redact
+// Spec mirror of SecretSensitivity
 pub enum SpecSecretSensitivity {
     Sensitive,
     NonSensitive,

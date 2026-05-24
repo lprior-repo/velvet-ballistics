@@ -381,8 +381,9 @@ fn cmd_proof_affected(
     Ok(())
 }
 
-#[cfg(test)]
-mod command_shell_tests;
+// command_shell_tests moved to velvet-optional (deferred)
+// #[cfg(test)]
+// mod command_shell_tests;
 
 fn cmd_proof_plan(crate_name: Option<&str>) -> anyhow::Result<()> {
     let obligations = proof::load_proof_obligations()

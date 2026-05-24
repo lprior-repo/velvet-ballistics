@@ -455,7 +455,7 @@ tasks:
         cat target/fuzz-smoke/build.err
         exit 1
       fi
-      for fuzz_target in yaml_events ipc_frame journal_event compiled_ir; do
+      for fuzz_target in journal_event ipc_frame_fuzz_boundary compiled_ir_fuzz; do
         flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" timeout 30s rustup run nightly-2026-04-28 cargo fuzz run "${fuzz_target}" --target x86_64-unknown-linux-gnu -- -max_total_time=1 >"target/fuzz-smoke/${fuzz_target}.log" 2>"target/fuzz-smoke/${fuzz_target}.err"
       done
     toolchains:

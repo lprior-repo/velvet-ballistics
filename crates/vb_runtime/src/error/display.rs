@@ -81,7 +81,10 @@ fn write_runtime_error_dynamic(
             write!(f, "admission header persistence failed: {source}")
         }
         RuntimeError::AdmissionArtifactStale { digest } => {
-            write!(f, "admission rejected: artifact certificate is stale: {digest:?}")
+            write!(
+                f,
+                "admission rejected: artifact certificate is stale: {digest:?}"
+            )
         }
         RuntimeError::CommandQueueCapacityExceeded { capacity, max } => {
             write!(f, "command queue capacity {capacity} exceeds maximum {max}")

@@ -2081,6 +2081,7 @@ mod kani_harnesses {
 
     /// Minimal error enum mirroring the Overflow/Underflow variants.
     /// No transitive types — just &'static str for resource naming.
+    #[allow(dead_code)]
     #[derive(Debug)]
     enum LocalError {
         Overflow { resource: &'static str },

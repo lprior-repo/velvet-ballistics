@@ -46,39 +46,7 @@ fn parse_cancel_accepts_reason() {
     }
 }
 
-#[test]
-fn parse_cancel_accepts_json_output() {
-    let parsed = parse_args(&args(&[
-        "velvet-ballastics",
-        "cancel",
-        "42",
-        "--db",
-        "journal-db",
-        "--json",
-    ]));
-    if let Ok(Command::Cancel { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Json);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
-    }
-}
-
-#[test]
-fn parse_cancel_accepts_jsonl_output() {
-    let parsed = parse_args(&args(&[
-        "velvet-ballastics",
-        "cancel",
-        "42",
-        "--db",
-        "journal-db",
-        "--jsonl",
-    ]));
-    if let Ok(Command::Cancel { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Jsonl);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
-    }
-}
+// NOTE: --json and --jsonl CLI flags removed; tests deleted.
 
 #[test]
 fn parse_cancel_accepts_emit_yaml() {

@@ -784,7 +784,14 @@ fn map_budget_error(error: AggregateBudgetError) -> AdmissionError {
         AggregateBudgetError::PerTickCeilingExceeded { requested, limit } => {
             AdmissionError::ResourcePerTickCeilingExceeded { requested, limit }
         }
+        #[cfg(not(kani))]
         AggregateBudgetError::WorkflowBudget(_) => AdmissionError::BudgetPolicyExceeded {
+            resource: "workflow_budget",
+            actual: u64::MAX,
+            limit: 0,
+        },
+        #[cfg(kani)]
+        AggregateBudgetError::WorkflowBudget => AdmissionError::BudgetPolicyExceeded {
             resource: "workflow_budget",
             actual: u64::MAX,
             limit: 0,

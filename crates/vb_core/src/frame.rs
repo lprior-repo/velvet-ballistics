@@ -760,20 +760,13 @@ mod tests {
     fn frame_increment_executed_overflow_returns_step_counter_overflow() -> CoreResult<()> {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 1)?;
 
-        // Increment until we hit u64::MAX - 1, then verify the next one still works
-        // and the one after that overflows. Since iterating u64::MAX times is impractical,
-        // we test the checked_add logic by calling increment many times and verifying
-        // the counter advances.
-        (0..100).try_for_each(|_| frame.increment_executed())?;
-        assert_eq!(frame.executed(), 100);
+        // Seed the counter at its maximum to force overflow.
+        frame.executed = u64::MAX;
 
-        // The overflow path uses checked_add, so it will return Err when overflow occurs.
-        // We verify the error variant is correct.
-        let max_frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 1);
-        assert_eq!(max_frame.as_ref().map(RunFrame::step_count), Ok(2));
-        assert_eq!(max_frame.as_ref().map(RunFrame::slot_count), Ok(1));
-        assert_eq!(max_frame.as_ref().map(RunFrame::pc), Ok(StepIdx::ZERO));
-        assert_eq!(max_frame.as_ref().map(RunFrame::executed), Ok(0));
+        let result = frame.increment_executed();
+        assert_eq!(result, Err(CoreError::StepCounterOverflow));
+        // Counter must not be mutated on overflow.
+        assert_eq!(frame.executed(), u64::MAX);
 
         Ok(())
     }
@@ -1145,22 +1138,58 @@ mod tests {
     #[test]
     fn parallel_in_flight_updates_max_on_new_peak() -> CoreResult<()> {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 5, 1)?;
-        frame.set_max_parallel_in_flight(10);
+        // Start with a low max so that add_parallel_in_flight updates the peak.
+        frame.set_max_parallel_in_flight(2);
 
         frame.add_parallel_in_flight(2)?;
         assert_eq!(frame.parallel_in_flight(), 2);
+        // Current (2) <= old max (2): peak unchanged.
+        assert_eq!(frame.max_parallel_in_flight(), 2);
 
+        // This pushes current to 5, exceeding old max of 2: peak must update.
         frame.add_parallel_in_flight(3)?;
         assert_eq!(frame.parallel_in_flight(), 5);
+        assert_eq!(frame.max_parallel_in_flight(), 5);
 
         frame.sub_parallel_in_flight(5)?;
         assert_eq!(frame.parallel_in_flight(), 0);
+        // Peak must remain at 5 after decrement.
+        assert_eq!(frame.max_parallel_in_flight(), 5);
 
+        // Current (4) <= old max (5): peak unchanged.
         frame.add_parallel_in_flight(4)?;
         assert_eq!(frame.parallel_in_flight(), 4);
+        assert_eq!(frame.max_parallel_in_flight(), 5);
 
+        // This pushes current to 6, exceeding old max of 5: peak must update.
         frame.add_parallel_in_flight(2)?;
         assert_eq!(frame.parallel_in_flight(), 6);
+        assert_eq!(frame.max_parallel_in_flight(), 6);
+
+        Ok(())
+    }
+
+    #[test]
+    fn parallel_in_flight_max_tracks_peak_after_non_peak_increment_and_reincrement(
+    ) -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 10, 1)?;
+        frame.set_max_parallel_in_flight(5);
+
+        // Non-peak increment: current (3) <= old max (5), peak unchanged.
+        frame.add_parallel_in_flight(3)?;
+        assert_eq!(frame.parallel_in_flight(), 3);
+        assert_eq!(frame.max_parallel_in_flight(), 5);
+
+        // Decrement away from the peak.
+        frame.sub_parallel_in_flight(2)?;
+        assert_eq!(frame.parallel_in_flight(), 1);
+        // Peak still at 5 after decrement.
+        assert_eq!(frame.max_parallel_in_flight(), 5);
+
+        // Reincrement: current goes to 7, exceeding old max of 5: peak must update.
+        frame.add_parallel_in_flight(6)?;
+        assert_eq!(frame.parallel_in_flight(), 7);
+        assert_eq!(frame.max_parallel_in_flight(), 7);
 
         Ok(())
     }
@@ -1318,6 +1347,7 @@ mod tests {
 // Uses a minimal inline transition function to avoid CoreResult (CoreError -> Capability drop loop).
 #[cfg(kani)]
 mod frame_kani_harnesses {
+    #![allow(clippy::unwrap_used)]
     use crate::frame::{
         RunFrame, SlotIdx, SlotValue, StepIdx, StepState, is_valid_step_state_transition,
     };
@@ -1960,8 +1990,9 @@ mod frame_kani_harnesses {
         kani::assume(pc_raw < step_count);
         let pc = StepIdx::new(pc_raw);
 
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+        let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
         kani::assume(frame.is_ok());
+        // SAFETY: guarded by kani::assume(frame.is_ok())
         let mut frame = frame.unwrap();
 
         let result = frame.set_pc(pc);
@@ -1975,8 +2006,9 @@ mod frame_kani_harnesses {
         let step_count: u16 = kani::any();
         kani::assume(step_count > 0);
 
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+        let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
         kani::assume(frame.is_ok());
+        // SAFETY: guarded by kani::assume(frame.is_ok())
         let mut frame = frame.unwrap();
 
         let _result = frame.increment_executed();
@@ -1993,8 +2025,9 @@ mod frame_kani_harnesses {
         kani::assume(pc_raw >= step_count);
         let pc = StepIdx::new(pc_raw);
 
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+        let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
         kani::assume(frame.is_ok());
+        // SAFETY: guarded by kani::assume(frame.is_ok())
         let mut frame = frame.unwrap();
 
         let result = frame.set_pc(pc);
@@ -2014,8 +2047,9 @@ mod frame_kani_harnesses {
         kani::assume(slot_raw < slot_count);
         let slot = SlotIdx::new(slot_raw);
 
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+        let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
         kani::assume(frame.is_ok());
+        // SAFETY: guarded by kani::assume(frame.is_ok())
         let mut frame = frame.unwrap();
 
         let init_result = frame.write_slot(slot, SlotValue::Null);
@@ -2038,8 +2072,9 @@ mod frame_kani_harnesses {
         kani::assume(slot_raw < slot_count);
         let slot = SlotIdx::new(slot_raw);
 
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+        let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
         kani::assume(frame.is_ok());
+        // SAFETY: guarded by kani::assume(frame.is_ok())
         let mut frame = frame.unwrap();
 
         let result = frame.write_slot(slot, SlotValue::Null);
@@ -2049,6 +2084,7 @@ mod frame_kani_harnesses {
 
 #[cfg(kani)]
 mod parallel_in_flight_kani {
+    #![allow(clippy::unwrap_used)]
     use crate::frame::{RunFrame, StepIdx};
     use crate::ids::RunId;
 
@@ -2058,6 +2094,7 @@ mod parallel_in_flight_kani {
 
         let frame = RunFrame::new(RunId::new(0), StepIdx::ZERO, 2, 4);
         kani::assume(frame.is_ok());
+        // SAFETY: guarded by kani::assume(frame.is_ok())
         let mut frame = frame.unwrap();
 
         kani::cover(count == u16::MAX, "max count");
@@ -2074,6 +2111,7 @@ mod parallel_in_flight_kani {
 
         let frame = RunFrame::new(RunId::new(0), StepIdx::ZERO, 2, 4);
         kani::assume(frame.is_ok());
+        // SAFETY: guarded by kani::assume(frame.is_ok())
         let mut frame = frame.unwrap();
 
         let _result = frame.sub_parallel_in_flight(count);

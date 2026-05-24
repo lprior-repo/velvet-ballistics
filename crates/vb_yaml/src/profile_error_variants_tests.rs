@@ -11,23 +11,20 @@ use crate::parse_workflow_source;
 use crate::profile::{reject_forbidden_features, validate_yaml_profile};
 use crate::{YamlError, profile::reject_anchors_aliases_merges};
 
-fn assertion_failed(_message: std::fmt::Arguments<'_>) -> bool {
-    false
-}
-
-macro_rules! fail_assert {
-    ($($arg:tt)*) => {
-        assert!(assertion_failed(format_args!($($arg)*)), $($arg)*)
-    };
-}
-
 // ---------------------------------------------------------------------------
 // YamlError variant smoke tests — variants defined but not fully exercised
 // ---------------------------------------------------------------------------
 
-/// `BinaryScalar` is defined but the actual rejection path runs through
-/// `CustomTag` (the tag check in reject_forbidden_features). We test the
-/// variant exists and formats correctly.
+/// `BinaryScalar` is **unreachable through the public API**.
+///
+/// `reject_binary_scalar` is a no-op because the binary-tag check in
+/// `reject_forbidden_features` catches `!!binary` as a `CustomTag` variant
+/// before the scalar body is ever examined.  No production code path
+/// constructs `YamlError::BinaryScalar`.
+///
+/// This test verifies the `Display` impl so that error-reporting tooling
+/// (e.g. logs, diagnostics) produces a well-formed message if the variant
+/// is ever wired into a reachable path in the future.
 #[test]
 fn yaml_error_binary_scalar_variant_exists() {
     let err = YamlError::BinaryScalar;
@@ -38,9 +35,18 @@ fn yaml_error_binary_scalar_variant_exists() {
     );
 }
 
-/// `UnsupportedFeature` is defined but no current code path returns it
-/// (check_null_bytes returns ForbiddenFeature instead). We test the variant
-/// exists and formats correctly.
+/// `UnsupportedFeature` is **unreachable through the public API**.
+///
+/// No production code path constructs `YamlError::UnsupportedFeature`.
+/// Null-byte checks in `check_null_bytes` and `check_null_bytes_in_source`
+/// return `ForbiddenFeature` instead.  Other feature-related rejections
+/// use narrower variants (`CustomTag`, `AnchorAliasMerge`, etc.).
+/// Until a code path is wired in, this variant can never be returned by
+/// `parse_workflow_source`, `validate_yaml_profile`, or any other public
+/// function.
+///
+/// This test verifies the `Display` impl so that the error message is
+/// well-formed if a future feature adds a reachable constructor.
 #[test]
 fn yaml_error_unsupported_feature_variant_exists() {
     let err = YamlError::UnsupportedFeature {

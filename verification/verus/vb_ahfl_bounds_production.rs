@@ -1,9 +1,6 @@
 //! Production-bound Verus harness for VERUS-BOUNDS-001: bounded collections and truncation metadata.
 //!
 //! Obligation: PRE-003, POST-005, INV-003
-//! Production-bound: spec types mirror WorkflowGraphView, RunEventsView, VerificationReportView,
-//!                  IncidentReportView from vb_ui_model.
-//! Proof: exported collection fields are bounded or have explicit truncation metadata.
 //!
 //! Production types:
 //!   - WorkflowGraphView { workflow_id, workflow_digest, nodes: Vec<WorkflowNodeView>, edges: Vec<WorkflowEdgeView> }

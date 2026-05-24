@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 /// Default first-party crates to scan when no globs are provided.
 const DEFAULT_FIRST_PARTY_CRATES: &[&str] = &[
     "vb_benchmark",
-    "vb_codegen",
+    // vb_codegen moved to velvet-optional repo (deferred)
     "vb_compile",
     "vb_core",
     "vb_doc",
@@ -22,10 +22,6 @@ const DEFAULT_FIRST_PARTY_CRATES: &[&str] = &[
     "vb_proof_kernels",
     "vb_runtime",
     "vb_storage",
-    "vb_ui",
-    "vb_ui_makepad",
-    "vb_ui_model",
-    "vb_ui_snapshot",
     "vb_validate",
     "vb_yaml",
     "vb_cli",

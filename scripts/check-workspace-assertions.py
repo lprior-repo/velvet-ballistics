@@ -26,7 +26,7 @@ ACTIVE_MEMBERS = frozenset(
 
 DEFERRED_MEMBERS = frozenset(
     {
-        "crates/vb_codegen",
+        # crates/vb_codegen removed — lives in velvet-optional repo
         "crates/vb_ui_makepad",
         "crates/vb_ui_snapshot",
         "crates/vb_proof_kernels",
@@ -57,7 +57,7 @@ EXPECTED_PACKAGE_NAMES = {
     "crates/vb_runtime": "vb_runtime",
     "crates/vb_doc": "vb_doc",
     "crates/vb_ipc": "vb_ipc",
-    "crates/vb_codegen": "vb_codegen",
+    # crates/vb_codegen removed — lives in velvet-optional repo
     "crates/vb_ui_makepad": "vb_ui_makepad",
     "crates/vb_ui_snapshot": "vb_ui_snapshot",
     "crates/vb_proof_kernels": "vb_proof_kernels",

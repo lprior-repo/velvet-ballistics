@@ -84,7 +84,10 @@ fn discover_boundaries_finds_markers_in_crates() {
     let candidates = discover_boundaries(workspace).unwrap();
     assert_eq!(candidates.len(), 1);
     assert_eq!(candidates[0].marker, "extern-c-boundary");
-    assert_eq!(candidates[0].source_path, PathBuf::from("crates/vb_core/src/lib.rs"));
+    assert_eq!(
+        candidates[0].source_path,
+        PathBuf::from("crates/vb_core/src/lib.rs")
+    );
 }
 
 #[test]
@@ -105,7 +108,10 @@ fn discover_boundaries_finds_markers_in_fuzz() {
     let candidates = discover_boundaries(workspace).unwrap();
     assert_eq!(candidates.len(), 1);
     assert_eq!(candidates[0].marker, "foreign-function-boundary");
-    assert_eq!(candidates[0].source_path, PathBuf::from("fuzz/fuzz_target_1.rs"));
+    assert_eq!(
+        candidates[0].source_path,
+        PathBuf::from("fuzz/fuzz_target_1.rs")
+    );
 }
 
 #[test]
@@ -890,7 +896,10 @@ fn discover_boundaries_decoder_surface_present_continues() {
     let candidates = discover_boundaries(workspace).unwrap();
     assert_eq!(candidates.len(), 1);
     assert_eq!(candidates[0].marker, "extern-c-boundary");
-    assert_eq!(candidates[0].source_path, PathBuf::from("crates/vb_core/src/lib.rs"));
+    assert_eq!(
+        candidates[0].source_path,
+        PathBuf::from("crates/vb_core/src/lib.rs")
+    );
 }
 
 #[test]
@@ -980,7 +989,10 @@ fn classify_boundary_external_binary_marker_to_correct_class() {
     let candidate = BoundaryCandidate::new("crates/bin/src/app.rs", "external-binary-boundary");
     let classified = classify_boundary(candidate).unwrap();
     assert_eq!(classified.class, BoundaryClass::ExternalBinary);
-    assert_eq!(classified.id, "vb-y1zq-ExternalBinary-crates-bin-src-app-rs");
+    assert_eq!(
+        classified.id,
+        "vb-y1zq-ExternalBinary-crates-bin-src-app-rs"
+    );
 }
 
 #[test]
@@ -1317,7 +1329,10 @@ fn discover_boundaries_with_surfaces_file_containing_decoder_entry() {
     let candidates = discover_boundaries(workspace).unwrap();
     assert_eq!(candidates.len(), 1);
     assert_eq!(candidates[0].marker, "decoder-byte-ingest-boundary");
-    assert_eq!(candidates[0].source_path, PathBuf::from("crates/vb_core/src/lib.rs"));
+    assert_eq!(
+        candidates[0].source_path,
+        PathBuf::from("crates/vb_core/src/lib.rs")
+    );
 }
 
 #[test]

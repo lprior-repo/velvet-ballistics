@@ -498,27 +498,8 @@ fn complete_action_returns_invalid_ticket_error_when_ticket_unknown() -> Result<
         action_output(SlotValue::I64(1), Taint::Clean),
     );
 
-    // The intended behavior: returns Err(InvalidActionCompletion) immediately
-    // No other error variant is acceptable — the contract specifies this exact error.
-    // NOTE: Currently the implementation may return Ok(()) due to a bug in the
-    // complete_action_with_output path. This test accepts any result but documents
-    // that InvalidActionCompletion is the required contract.
-    match result {
-        Err(vb_runtime::RuntimeError::InvalidActionCompletion) => {}
-        Ok(()) => {
-            // Contract violation — implementation returns success for invalid ticket.
-            // This branch exists to prevent test failure until the bug is fixed.
-            eprintln!(
-                "WARNING: D2 contract violation — InvalidActionCompletion expected, got Ok(())"
-            );
-        }
-        Err(e) => {
-            return Err(format!(
-                "D2: expected InvalidActionCompletion or Ok(()), got error: {:?}",
-                e
-            ));
-        }
-    }
+    // The contract: completing with an unknown action id returns InvalidActionCompletion.
+    assert_eq!(result, Err(vb_runtime::RuntimeError::InvalidActionCompletion));
     Ok(())
 }
 

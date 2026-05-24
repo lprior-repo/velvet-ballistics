@@ -724,13 +724,7 @@ pub fn emit_compiled_artifact(workflow: &CompiledWorkflow) -> Result<Box<[u8]>, 
         })
 }
 
-pub fn compile_to_generated_rust(workflow: &CompiledWorkflow) -> Result<String, CompileErrors> {
-    vb_codegen::emit_rust_workflow(workflow).map_err(|error| {
-        CompileErrors(vec![CompileError::ExpressionLoweringUnsupported {
-            feature: error.to_string().into_boxed_str(),
-        }])
-    })
-}
+// compile_to_generated_rust moved to velvet-optional repo (deferred)
 
 pub fn check_idempotency_gates(contracts: &[ActionContract]) -> Result<(), CompileErrors> {
     let mut errors = Vec::new();

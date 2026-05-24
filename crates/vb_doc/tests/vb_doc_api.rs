@@ -915,9 +915,18 @@ fn plan_taint_doc_reconciliation_edits_include_eval_expr_join() {
     // Then
     let plan = result.expect("should not error");
     assert_eq!(plan.status, PatchPlanStatus::NeedsReconciliation);
-    assert_eq!(plan.edits, vec![PatchEdit::EvalExprJoin, PatchEdit::FinishCarriesTaint]);
-    assert_eq!(plan.stale_text_removed, vec![StalePhrase::EvalExprNoOperandJoin]);
-    assert_eq!(plan.evidence_actions, RequiredEvidence::ConcreteArtifactOrPendingMarker);
+    assert_eq!(
+        plan.edits,
+        vec![PatchEdit::EvalExprJoin, PatchEdit::FinishCarriesTaint]
+    );
+    assert_eq!(
+        plan.stale_text_removed,
+        vec![StalePhrase::EvalExprNoOperandJoin]
+    );
+    assert_eq!(
+        plan.evidence_actions,
+        RequiredEvidence::ConcreteArtifactOrPendingMarker
+    );
     assert_eq!(plan.preserved_non_goals, Vec::<PreservedNonGoal>::new());
     assert_eq!(plan.forbidden_actions, Vec::<String>::new());
     assert_eq!(plan.contradiction_count, 1);
@@ -1076,10 +1085,7 @@ fn doc_reconcile_error_derived_debug_is_exact_for_wrong_workspace() {
     let debug = format!("{:?}", err);
 
     // Then
-    assert_eq!(
-        debug,
-        "WrongWorkspace { path: \"/tmp/test.md\" }"
-    );
+    assert_eq!(debug, "WrongWorkspace { path: \"/tmp/test.md\" }");
 }
 
 #[test]

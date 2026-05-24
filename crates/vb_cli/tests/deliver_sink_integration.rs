@@ -43,12 +43,28 @@ fn agent_context_deliver_rejects_unknown_flag_before_writing_file() -> Result<()
         .output()
         .map_err(|error| error.to_string())?;
 
-    assert!(!output.status.success());
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("invalid agent-context argument: unknown flag --bogus")
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "unknown flag must exit with ValidationFailed (2)"
     );
-    assert!(!deliver_path.exists());
+    assert_eq!(
+        output.stdout,
+        Vec::<u8>::new(),
+        "stdout must be empty on error"
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let expected_prefix =
+        "invalid agent-context argument: unknown flag --bogus\n\nvelvet-ballastics - compiled workflow runtime";
+    assert!(
+        stderr.starts_with(expected_prefix),
+        "stderr must start with exact error prefix\ngot: {stderr}"
+    );
+    assert!(
+        stderr.lines().count() > 5,
+        "stderr must include help text after error"
+    );
+    assert!(!deliver_path.exists(), "artifact must not exist on error");
     Ok(())
 }
 
@@ -59,10 +75,26 @@ fn agent_context_deliver_rejects_missing_target() -> Result<(), String> {
         .output()
         .map_err(|error| error.to_string())?;
 
-    assert!(!output.status.success());
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "missing target must exit with ValidationFailed (2)"
+    );
+    assert_eq!(
+        output.stdout,
+        Vec::<u8>::new(),
+        "stdout must be empty on error"
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let expected_prefix =
+        "invalid agent-context argument: --deliver requires stdout or file:<absolute-path>\n\nvelvet-ballastics - compiled workflow runtime";
     assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("--deliver requires stdout or file:<absolute-path>")
+        stderr.starts_with(expected_prefix),
+        "stderr must start with exact error prefix\ngot: {stderr}"
+    );
+    assert!(
+        stderr.lines().count() > 5,
+        "stderr must include help text after error"
     );
     Ok(())
 }
@@ -138,7 +170,11 @@ fn agent_context_deliver_rejects_sink_variants_with_exact_diagnostics() -> Resul
             format!("{expected_stderr}\n"),
             "{label} diagnostic changed"
         );
-        assert_eq!(output.stdout, Vec::<u8>::new(), "{label} must not write stdout");
+        assert_eq!(
+            output.stdout,
+            Vec::<u8>::new(),
+            "{label} must not write stdout"
+        );
     }
 
     Ok(())

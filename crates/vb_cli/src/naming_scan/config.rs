@@ -262,7 +262,10 @@ mod tests {
             path: "src/main.rs".into(),
         }];
         let result = validate_scan_config(raw);
-        assert!(result.is_ok());
+        let config = result.expect("validate_scan_config with repository path allowlist should succeed");
+        assert_eq!(config.allowlist_policy, AllowlistPolicy::Exact(vec![LegacyAllowRule::RepositoryPath {
+            path: "src/main.rs".into(),
+        }]));
     }
 
     #[test]
@@ -274,7 +277,12 @@ mod tests {
             legacy_text: "old".into(),
         }];
         let result = validate_scan_config(raw);
-        assert!(result.is_ok());
+        let config = result.expect("validate_scan_config with migration reference allowlist should succeed");
+        assert_eq!(config.allowlist_policy, AllowlistPolicy::Exact(vec![LegacyAllowRule::MigrationReference {
+            label: "mig".into(),
+            artifact: "file".into(),
+            legacy_text: "old".into(),
+        }]));
     }
 
     #[test]

@@ -133,13 +133,8 @@ pub fn loop_compose(body: &Budget, iterations: u64) -> Budget {
 mod tests {
     use super::*;
 
-    const ALL_POLICY_VIOLATIONS: [&str; 5] = [
-        "actions",
-        "parallel",
-        "run_time",
-        "result_bytes",
-        "steps",
-    ];
+    const ALL_POLICY_VIOLATIONS: [&str; 5] =
+        ["actions", "parallel", "run_time", "result_bytes", "steps"];
 
     fn budget_with_all_fields(value: u64) -> Budget {
         Budget {

@@ -11,15 +11,14 @@ members = [
     "crates/vb_doc",
     "crates/vb_ipc",
     # Deferred crates moved to https://github.com/lprior-repo/velvet-optional:
-    # crates/vb_codegen, crates/vb_ui, crates/vb_ui_makepad, crates/vb_ui_model, crates/vb_ui_snapshot
+    # crates/vb_ui, crates/vb_ui_makepad, crates/vb_ui_model, crates/vb_ui_snapshot
+    # crates/vb_codegen was also moved (removed from this workspace)
     "crates/vb_proof_kernels",
     "crates/vb_cli",
     "crates/vb_verification",
-    # workspace_tests excluded (depends on deferred vb_ui/vb_codegen types)
-    # "crates/workspace_tests",
+    "crates/workspace_tests",
     "crates/vb_benchmark",
-    # xtask excluded (depends on deferred UI crates in velvet-optional)
-    # "xtask",
+    "xtask",
 ]
 default-members = ["."]
 resolver = "2"

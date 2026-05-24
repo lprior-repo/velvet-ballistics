@@ -5,8 +5,9 @@ edition.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+
 [dependencies]
-# vb_ui_snapshot moved to velvet-optional repo (deferred)
 vb_validate = { path = "../crates/vb_validate" }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }

@@ -104,7 +104,10 @@ fn depth_limit_enforced() {
         ..YamlLimits::default()
     };
     let result = validate_yaml_profile_with_limits(&yaml, &limits);
-    assert_eq!(result, Err(YamlError::NestingTooDeep { depth: 11, max: 10 }));
+    assert_eq!(
+        result,
+        Err(YamlError::NestingTooDeep { depth: 11, max: 10 })
+    );
 }
 
 #[test]
@@ -241,7 +244,10 @@ fn depth_limit_exact_values() {
         ..YamlLimits::default()
     };
     let result = validate_yaml_profile_with_limits(&yaml, &limits);
-    assert_eq!(result, Err(YamlError::NestingTooDeep { depth: 11, max: 10 }));
+    assert_eq!(
+        result,
+        Err(YamlError::NestingTooDeep { depth: 11, max: 10 })
+    );
 }
 
 #[test]
@@ -284,7 +290,10 @@ fn node_limit_exceeded_exact_values() {
         ..YamlLimits::default()
     };
     let result = validate_yaml_profile_with_limits(&yaml, &limits);
-    assert_eq!(result, Err(YamlError::NodeLimitExceeded { count: 6, max: 5 }));
+    assert_eq!(
+        result,
+        Err(YamlError::NodeLimitExceeded { count: 6, max: 5 })
+    );
 }
 
 #[test]

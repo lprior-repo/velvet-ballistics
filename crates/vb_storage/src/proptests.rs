@@ -2,14 +2,14 @@
 #[cfg(test)]
 #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
 mod proptests {
+    use crate::keys::{
+        blob_key, compiled_ir_key, index_action_key, index_status_key, index_workflow_key,
+        run_event_key, run_header_key, run_snapshot_key, workflow_source_key,
+    };
     use crate::{
         BlobRecord, EventSeq, IndexStatusState, MAGIC_BLOB, MAGIC_JOURNAL_EVENT,
         MAGIC_WORKFLOW_SOURCE, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RecordKind, WorkflowSourceRecord,
         decode_record, encode_record,
-    };
-    use crate::keys::{
-        blob_key, compiled_ir_key, index_action_key, index_status_key,
-        index_workflow_key, run_event_key, run_header_key, run_snapshot_key, workflow_source_key,
     };
     use proptest::prelude::*;
     use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest, WorkflowId};
@@ -559,8 +559,8 @@ fn admit_compiled_artifact_accepts_valid_workflow() -> Result<(), Box<dyn std::e
     use crate::{FjallJournal, admit_compiled_artifact};
     use vb_core::{
         CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
-        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
         value::ConstValue,
+        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
     };
 
     let temp_dir = tempfile::tempdir()?;
@@ -624,8 +624,8 @@ fn admit_compiled_artifact_rejects_checksum_mismatch() {
     use crate::{FjallJournal, JournalError, admit_compiled_artifact};
     use vb_core::{
         CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
-        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
         value::ConstValue,
+        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
     };
 
     let temp_dir = tempfile::tempdir().expect("tempdir");
@@ -668,7 +668,10 @@ fn admit_compiled_artifact_rejects_checksum_mismatch() {
     let corrupted = CompiledWorkflow::try_from_parts(parts).expect("still structurally valid");
 
     let result = admit_compiled_artifact(&journal, &corrupted);
-    assert!(matches!(result, Err(JournalError::ArtifactChecksumMismatch)));
+    assert!(matches!(
+        result,
+        Err(JournalError::ArtifactChecksumMismatch)
+    ));
 }
 
 /// Helper: build a valid CompiledWorkflow with a self-consistent BLAKE3 digest.
@@ -678,12 +681,12 @@ fn admit_compiled_artifact_rejects_checksum_mismatch() {
 /// used in `submit_artifact`.
 #[allow(dead_code)]
 fn build_valid_workflow_for_submit() -> vb_core::CompiledWorkflow {
+    use vb_core::ids::ConstIdx;
     use vb_core::{
         CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
-        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
         value::ConstValue,
+        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
     };
-    use vb_core::ids::ConstIdx;
 
     let node = CompiledNode {
         id: StepIdx::ZERO,
@@ -741,26 +744,40 @@ fn submit_artifact_valid_workflow_succeeds() {
     let digest = workflow.digest();
 
     let result = submit_artifact(&journal, &workflow, RuntimePolicy::Journaled);
-    assert!(result.is_ok(), "submit_artifact should succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "submit_artifact should succeed: {:?}",
+        result
+    );
     assert_eq!(result.expect("ok").digest.as_bytes(), digest.as_bytes());
 
-    // Verify it was stored.
+    // Verify it was stored with exact IR bytes matching the submitted artifact.
     let loaded = journal.compiled_ir(digest).expect("load compiled ir");
     assert!(loaded.is_some());
     let record = loaded.expect("some");
     assert_eq!(record.digest, digest);
+    // Assert persisted IR bytes are non-empty and contain the expected workflow parts.
+    assert!(!record.ir.is_empty(), "stored IR must not be empty");
+    let stored_artifact: crate::AcceptedArtifact =
+        postcard::from_bytes(&record.ir).expect("IR must deserialize as AcceptedArtifact");
+    assert_eq!(stored_artifact.digest, digest,
+        "deserialized artifact digest must match");
+    let expected_parts_bytes = postcard::to_allocvec(&workflow.to_parts())
+        .expect("serialize workflow parts");
+    assert_eq!(stored_artifact.ir, expected_parts_bytes,
+        "stored artifact IR bytes must match serialized workflow parts");
 }
 
 #[test]
 fn submit_artifact_checksum_mismatch_rejected() {
     use crate::{FjallJournal, JournalError, submit_artifact};
-    use vb_core::{
-        CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
-        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
-        value::ConstValue,
-    };
     use vb_core::RuntimePolicy;
     use vb_core::ids::ConstIdx;
+    use vb_core::{
+        CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
+        value::ConstValue,
+        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
+    };
 
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
@@ -814,12 +831,12 @@ fn submit_artifact_stale_digest_rejected() {
     // Verify that submitting an artifact with a stale digest (from a different
     // workflow version) is rejected by the checksum gate.
     use crate::{FjallJournal, JournalError, submit_artifact};
+    use vb_core::RuntimePolicy;
     use vb_core::{
         CompiledWorkflow, SlotIdx, StepIdx, WorkflowParts,
-        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
         value::ConstValue,
+        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
     };
-    use vb_core::RuntimePolicy;
 
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
@@ -885,7 +902,9 @@ fn list_artifacts_empty_returns_empty() {
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
 
-    let artifacts = journal.list_artifacts().expect("list_artifacts should succeed");
+    let artifacts = journal
+        .list_artifacts()
+        .expect("list_artifacts should succeed");
     assert!(
         artifacts.is_empty(),
         "empty journal should have no artifacts"
@@ -922,7 +941,9 @@ fn list_artifacts_returns_stored_digests() {
         })
         .expect("put d3");
 
-    let mut artifacts = journal.list_artifacts().expect("list_artifacts should succeed");
+    let mut artifacts = journal
+        .list_artifacts()
+        .expect("list_artifacts should succeed");
     artifacts.sort_by(|a, b| a.as_bytes().cmp(&b.as_bytes()));
 
     assert_eq!(artifacts.len(), 3, "should list all 3 artifacts");
@@ -954,14 +975,15 @@ fn remove_artifact_removes_from_list() {
         })
         .expect("put d2");
 
-    journal.remove_artifact(d1).expect("remove d1 should succeed");
+    journal
+        .remove_artifact(d1)
+        .expect("remove d1 should succeed");
 
-    let artifacts = journal.list_artifacts().expect("list_artifacts should succeed");
+    let artifacts = journal
+        .list_artifacts()
+        .expect("list_artifacts should succeed");
     assert_eq!(artifacts.len(), 1, "should have 1 artifact after removal");
-    assert!(
-        artifacts.contains(&d2),
-        "remaining artifact should be d2"
-    );
+    assert!(artifacts.contains(&d2), "remaining artifact should be d2");
     assert!(
         !artifacts.contains(&d1),
         "removed artifact should not be in list"
@@ -1000,10 +1022,7 @@ fn artifact_exists_returns_true_for_stored() {
     let exists_before = journal
         .artifact_exists(digest)
         .expect("artifact_exists should succeed");
-    assert!(
-        !exists_before,
-        "artifact should not exist before storage"
-    );
+    assert!(!exists_before, "artifact should not exist before storage");
 
     journal
         .put_compiled_ir(&CompiledIrRecord {
@@ -1015,8 +1034,5 @@ fn artifact_exists_returns_true_for_stored() {
     let exists_after = journal
         .artifact_exists(digest)
         .expect("artifact_exists should succeed");
-    assert!(
-        exists_after,
-        "artifact should exist after storage"
-    );
+    assert!(exists_after, "artifact should exist after storage");
 }

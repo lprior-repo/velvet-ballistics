@@ -4,16 +4,6 @@
 use super::*;
 use crate::{YamlError, YamlLimits};
 
-fn assertion_failed(_message: std::fmt::Arguments<'_>) -> bool {
-    false
-}
-
-macro_rules! fail_assert {
-    ($($arg:tt)*) => {
-        assert!(assertion_failed(format_args!($($arg)*)), $($arg)*)
-    };
-}
-
 // -----------------------------------------------------------------------
 // Adversarial BDD tests - attack vector validation
 // -----------------------------------------------------------------------
@@ -197,7 +187,13 @@ fn adversarial_node_limit_exceeded() {
         ..YamlLimits::default()
     };
     let result = validate_yaml_profile_with_limits(&yaml, &limits);
-    assert_eq!(result, Err(YamlError::NodeLimitExceeded { count: 101, max: 100 }));
+    assert_eq!(
+        result,
+        Err(YamlError::NodeLimitExceeded {
+            count: 101,
+            max: 100
+        })
+    );
 }
 
 #[test]

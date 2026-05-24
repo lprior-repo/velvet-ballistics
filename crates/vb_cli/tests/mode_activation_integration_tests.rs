@@ -230,7 +230,7 @@ fn verify_succeeds_on_passing_workflow() {
 }
 
 #[test]
-fn verify_succeeds_with_json_output() {
+fn verify_succeeds_with_yaml_output() {
     let dir = temp_workflow(VALID_WORKFLOW);
     let workflow = dir.path().join("workflow.yaml");
 
@@ -240,18 +240,19 @@ fn verify_succeeds_with_json_output() {
         &workflow.to_string_lossy(),
         "--profile",
         "quick",
-        "--json",
+        "--emit",
+        "yaml",
     ]);
 
     assert_eq!(output.status.code(), Some(0));
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
-        stdout.contains("\"success\": true"),
-        "JSON must have success:true: {stdout}"
+        stdout.contains("profile: quick"),
+        "YAML output must contain profile:quick: {stdout}"
     );
     assert!(
-        stdout.contains("\"profile\": \"quick\""),
-        "JSON must have profile:quick: {stdout}"
+        stdout.contains("digest:"),
+        "YAML output must contain digest: {stdout}"
     );
 }
 

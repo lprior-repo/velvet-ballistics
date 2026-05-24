@@ -3,9 +3,8 @@
 use crate::recovery::{
     ActionReplayTracker, DigestCheck, RecoveredStepState, RecoveryError, RecoveryHydration,
     RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState, check_compiled_ir_digest,
-    check_workflow_source_digest, extract_terminal, is_terminal_event,
-    recover_all_incomplete_runs, recover_full_journal, recover_runtime_frame_seed,
-    recover_runtime_frame_seed_from_events,
+    check_workflow_source_digest, extract_terminal, is_terminal_event, recover_all_incomplete_runs,
+    recover_full_journal, recover_runtime_frame_seed, recover_runtime_frame_seed_from_events,
     recover_runtime_frame_seed_from_events_with_workflow, recover_runtime_summary,
     recover_snapshot_plus_tail, replay_events, summarize_recovery_events, verify_digests,
 };
@@ -94,11 +93,7 @@ fn deterministic_replay_events(run: RunId, workflow: WorkflowDigest) -> Vec<Jour
     ]
 }
 
-fn step_succeeded_events(
-    run: RunId,
-    workflow: WorkflowDigest,
-    step: StepIdx,
-) -> Vec<JournalEvent> {
+fn step_succeeded_events(run: RunId, workflow: WorkflowDigest, step: StepIdx) -> Vec<JournalEvent> {
     vec![
         accepted_event(run, EventSeq::new(0), workflow),
         succeeded_event(run, EventSeq::new(1), step, SlotIdx::new(0)),
@@ -248,8 +243,8 @@ fn recover_runtime_summary_reads_summary_from_journal() {
 }
 
 #[test]
-fn recover_runtime_frame_seed_from_events_rebuilds_dimensions_and_step_states()
--> Result<(), String> {
+fn recover_runtime_frame_seed_from_events_rebuilds_dimensions_and_step_states() -> Result<(), String>
+{
     let run = RunId::new(91);
     let workflow = sample_digest(13);
     let events = vec![
@@ -292,12 +287,16 @@ fn recover_runtime_frame_seed_from_events_rebuilds_dimensions_and_step_states()
     assert_eq!(seed.step_count, 4);
     assert_eq!(seed.slot_count, 6);
     assert_eq!(seed.pc, StepIdx::new(3));
-    assert!(seed.steps.iter().any(
-        |entry| entry.step == StepIdx::new(1) && entry.state == RecoveredStepState::Waiting
-    ));
     assert!(
-        seed.steps.iter().any(|entry| entry.step == StepIdx::new(3)
-            && entry.state == RecoveredStepState::Succeeded)
+        seed.steps.iter().any(
+            |entry| entry.step == StepIdx::new(1) && entry.state == RecoveredStepState::Waiting
+        )
+    );
+    assert!(
+        seed.steps
+            .iter()
+            .any(|entry| entry.step == StepIdx::new(3)
+                && entry.state == RecoveredStepState::Succeeded)
     );
     assert_eq!(
         seed.unsupported,
@@ -365,8 +364,7 @@ fn frame_seed_with_workflow_rejects_digest_mismatch_before_replay()
 }
 
 #[test]
-fn frame_seed_with_workflow_maps_replay_step_not_found()
--> Result<(), Box<dyn std::error::Error>> {
+fn frame_seed_with_workflow_maps_replay_step_not_found() -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(96);
     let plan = deterministic_plan()?;
     let events = step_succeeded_events(run, sample_digest(44), StepIdx::new(99));
@@ -471,8 +469,7 @@ fn recover_all_incomplete_runs_returns_only_non_terminal_runs() {
         })
         .expect("finished append succeeds");
 
-    let recovered =
-        recover_all_incomplete_runs(&journal).expect("incomplete recovery succeeds");
+    let recovered = recover_all_incomplete_runs(&journal).expect("incomplete recovery succeeds");
 
     assert_eq!(recovered.len(), 1);
     assert_eq!(
@@ -492,9 +489,7 @@ fn recover_all_incomplete_runs_rejects_header_without_journal() {
 
     let result = recover_all_incomplete_runs(&journal);
 
-    assert!(
-        matches!(result, Err(RecoveryError::NoRecoveryData { run: found }) if found == run)
-    );
+    assert!(matches!(result, Err(RecoveryError::NoRecoveryData { run: found }) if found == run));
 }
 
 fn put_test_header(journal: &FjallJournal, run: RunId, digest: WorkflowDigest) {
@@ -712,8 +707,8 @@ fn action_tracker_allows_first_execution() {
 }
 
 #[test]
-fn snapshot_tail_matches_full_journal_lifecycle_summary()
--> Result<(), Box<dyn std::error::Error>> {
+fn snapshot_tail_matches_full_journal_lifecycle_summary() -> Result<(), Box<dyn std::error::Error>>
+{
     let run = RunId::new(900);
     let events = vec![
         JournalEvent::RunAccepted {
@@ -745,8 +740,7 @@ fn snapshot_tail_matches_full_journal_lifecycle_summary()
 }
 
 #[test]
-fn snapshot_tail_matches_full_journal_action_summary() -> Result<(), Box<dyn std::error::Error>>
-{
+fn snapshot_tail_matches_full_journal_action_summary() -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(901);
     let action = ActionId::new(4);
     let step = StepIdx::new(2);
@@ -1139,6 +1133,27 @@ fn snapshot_plus_tail_accepts_valid_tail_events() {
     let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker)
         .expect("valid tail events should replay successfully");
     assert_eq!(replayed.len(), 2);
+    // Assert exact returned events: replay must not reorder or replace fields.
+    assert_eq!(
+        replayed[0],
+        JournalEvent::StepStarted {
+            run: RunId::new(10),
+            seq: EventSeq::new(6),
+            step: StepIdx::new(0),
+            attempt: 1,
+        }
+    );
+    assert_eq!(
+        replayed[1],
+        JournalEvent::StepSucceeded {
+            run: RunId::new(10),
+            seq: EventSeq::new(7),
+            step: StepIdx::new(0),
+            output: SlotIdx::new(1),
+        }
+    );
+    // Tracker must have no resolved actions after non-action tail events.
+    assert!(!tracker.is_resolved(ActionId::new(1), StepIdx::new(0)));
 }
 
 #[test]
@@ -1176,8 +1191,7 @@ fn replay_detects_out_of_order_step() {
 #[test]
 fn check_workflow_source_digest_returns_mismatch_when_digests_differ() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
-    let journal =
-        crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
     let run = RunId::new(100);
     let stored_digest = sample_digest(1);
@@ -1202,8 +1216,7 @@ fn check_workflow_source_digest_returns_mismatch_when_digests_differ() {
 #[test]
 fn check_workflow_source_digest_succeeds_when_digests_match() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
-    let journal =
-        crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
     let run = RunId::new(101);
     let digest = sample_digest(5);
@@ -1216,8 +1229,7 @@ fn check_workflow_source_digest_succeeds_when_digests_match() {
         .append_journaled(&event)
         .expect("setup: append event");
 
-    check_workflow_source_digest(&journal, run, digest)
-        .expect("matching digest should succeed");
+    check_workflow_source_digest(&journal, run, digest).expect("matching digest should succeed");
 }
 
 #[test]
@@ -1239,8 +1251,7 @@ fn check_compiled_ir_digest_returns_mismatch_when_digests_differ() {
 #[test]
 fn verify_digests_returns_ok_when_all_match() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
-    let journal =
-        crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
     let run = RunId::new(200);
     let digest = sample_digest(7);
@@ -1267,8 +1278,7 @@ fn verify_digests_returns_ok_when_all_match() {
 #[test]
 fn verify_digests_returns_mismatch_when_ir_differs() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
-    let journal =
-        crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
     let run = RunId::new(201);
     let digest = sample_digest(7);
@@ -1299,8 +1309,7 @@ fn verify_digests_returns_mismatch_when_ir_differs() {
 #[test]
 fn recover_full_journal_returns_no_recovery_data_when_empty() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
-    let journal =
-        crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
     let run = RunId::new(999);
     let mut tracker = ActionReplayTracker::new();
@@ -1880,7 +1889,7 @@ mod hydrate_run_frame_tests {
         let snapshot = empty_snapshot(RunId::new(1), EventSeq::new(0));
         let run = RunId::new(2);
 
-    let result = hydrate_run_frame(&snapshot, &[], run);
+        let result = hydrate_run_frame(&snapshot, &[], run);
 
         let Err(RecoveryError::CorruptSnapshot { run: found, seq }) = result else {
             panic!("expected CorruptSnapshot, got {result:?}");
@@ -1908,7 +1917,10 @@ mod hydrate_run_frame_tests {
             panic!("expected ReplayDivergence, got {result:?}");
         };
         assert_eq!(step, StepIdx::ZERO);
-        assert_eq!(detail, "tail event run_id mismatch: expected RunId(1), found RunId(2)");
+        assert_eq!(
+            detail,
+            "tail event run_id mismatch: expected RunId(1), found RunId(2)"
+        );
     }
 
     // --- Error: tail event before snapshot seq ---

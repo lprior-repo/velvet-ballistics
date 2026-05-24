@@ -353,14 +353,18 @@ mod tests {
     }
 
     #[test]
-    fn validate_before_alloc_returns_payload_too_large_when_magic_is_valid_and_length_exceeds_max() {
+    fn validate_before_alloc_returns_payload_too_large_when_magic_is_valid_and_length_exceeds_max()
+    {
         let mut header = EnvelopeHeader::new();
         header.payload_len_u32 = 1;
         header.payload_len_hi = 0;
 
         let result = header.validate_before_alloc(0);
 
-        assert_eq!(result, ValidationResult::Err(ValidationError::PayloadTooLarge));
+        assert_eq!(
+            result,
+            ValidationResult::Err(ValidationError::PayloadTooLarge)
+        );
     }
 
     #[test]

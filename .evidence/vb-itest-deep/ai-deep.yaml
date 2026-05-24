@@ -2,28 +2,28 @@ profile: ai-deep
 gates:
 - kind: miri
   gate_name: miri
-  command: "synthetic fixture-backed gate: miri"
+  command: cargo miri
   exit_code: 0
   log: .evidence/vb-itest-deep/miri.log
   status:
     status: Pass
 - kind: mutants
   gate_name: mutants
-  command: "synthetic fixture-backed gate: mutants"
+  command: cargo mutants
   exit_code: 0
   log: .evidence/vb-itest-deep/mutants.log
   status:
     status: Pass
 - kind: llvm-cov
   gate_name: llvm-cov
-  command: "synthetic fixture-backed gate: llvm-cov"
+  command: cargo llvm-cov
   exit_code: 0
   log: .evidence/vb-itest-deep/llvm-cov.log
   status:
     status: Pass
 - kind: fuzz-build
   gate_name: fuzz-build
-  command: "synthetic fixture-backed gate: fuzz-build"
+  command: cargo fuzz-build
   exit_code: 0
   log: .evidence/vb-itest-deep/fuzz-build.log
   status:

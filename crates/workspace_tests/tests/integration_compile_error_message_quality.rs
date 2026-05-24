@@ -215,76 +215,12 @@ fn compile_error_source_too_large_includes_limit_info() {
     );
 }
 
-/// CompileError::DepthLimit: nesting depth limit enforced.
-#[test]
-fn compile_error_depth_limit_includes_depth_value() {
-    let compiler = YamlCompiler::new(vb_compile::YamlLimits {
-        max_depth: 1,
-        ..Default::default()
-    });
-    let source = br#"
-version: velvet-ballastics/v1
-name: test
-when:
-  manual: {}
-steps:
-  - id: done
-    finish:
-      result: 0
-"#;
-    let result = compiler.compile(source);
-    // Note: max_depth may not be enforced in all compile paths
-    // This test verifies the limit type exists and can be configured
-    assert!(result.is_ok() || result.is_err());
-}
-
-/// CompileError::SequenceLimit: sequence length limit.
-#[test]
-fn compile_error_sequence_limit_exists_and_configurable() {
-    let compiler = YamlCompiler::new(vb_compile::YamlLimits {
-        max_sequence_len: 2,
-        ..Default::default()
-    });
-    let source = br#"
-version: velvet-ballastics/v1
-name: test
-when:
-  manual: {}
-steps:
-  - id: a
-    finish: { result: 0 }
-  - id: b
-    finish: { result: 0 }
-  - id: c
-    finish: { result: 0 }
-"#;
-    let result = compiler.compile(source);
-    // Should either pass (limit not enforced in this path) or fail
-    assert!(result.is_ok() || result.is_err());
-}
-
-/// CompileError::ScalarLimit: scalar length limit.
-#[test]
-fn compile_error_scalar_limit_exists() {
-    let compiler = YamlCompiler::new(vb_compile::YamlLimits {
-        max_scalar_bytes: 5,
-        ..Default::default()
-    });
-    // A scalar longer than 5 bytes
-    let source = br#"
-version: velvet-ballastics/v1
-name: this_name_is_way_too_long_for_the_limit
-when:
-  manual: {}
-steps:
-  - id: done
-    finish:
-      result: 0
-"#;
-    let result = compiler.compile(source);
-    // Either enforces limit or ignores it in this path
-    assert!(result.is_ok() || result.is_err());
-}
+// DepthLimit / SequenceLimit / ScalarLimit enforcement tests removed:
+// YamlCompiler::compile() calls compile_source() which does not route
+// through validate_strict_profile, so these limits are not enforced
+// in the compile path (they are enforced in the parse_ast path only).
+// Vacuous assert!(result.is_ok() || result.is_err()) tests provide
+// no behavioral evidence.
 
 // ---------------------------------------------------------------------------
 // CompileError variant coverage — schema errors

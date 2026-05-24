@@ -252,7 +252,11 @@ fn cancel_succeeds_when_bead_is_waiting_answer() {
     write_waiting_answer(&journal, run);
 
     let result = vb_cli::lifecycle::cancel(run, &journal);
-    assert_eq!(result, Ok(()), "cancel from WaitingAnswer state must succeed");
+    assert_eq!(
+        result,
+        Ok(()),
+        "cancel from WaitingAnswer state must succeed"
+    );
 
     // POST-001: verify RunCancelled event appended (3 total: setup + AskScheduled + cancel)
     let events = journal
@@ -312,7 +316,11 @@ fn resume_succeeds_when_bead_is_cancelled() {
         "resume must append exactly 1 event (setup + cancel + resume)"
     );
     match &events[2] {
-        vb_storage::JournalEvent::RunResumed { run: actual_run, seq, .. } => {
+        vb_storage::JournalEvent::RunResumed {
+            run: actual_run,
+            seq,
+            ..
+        } => {
             assert_eq!((*actual_run, *seq), (run, EventSeq::new(2)));
         }
         other => panic!("journal event must be RunResumed, got {other:?}"),
@@ -357,7 +365,11 @@ fn retry_succeeds_when_bead_is_failed() {
         "retry must append exactly 1 event (setup + Failed + retry)"
     );
     match &events[2] {
-        vb_storage::JournalEvent::RunRetried { run: actual_run, seq, .. } => {
+        vb_storage::JournalEvent::RunRetried {
+            run: actual_run,
+            seq,
+            ..
+        } => {
             assert_eq!((*actual_run, *seq), (run, EventSeq::new(2)));
         }
         other => panic!("journal event must be RunRetried, got {other:?}"),
@@ -391,7 +403,11 @@ fn answer_succeeds_when_bead_is_waiting_answer() {
     write_waiting_answer(&journal, run);
 
     let result = vb_cli::lifecycle::answer(run, answer_content, &journal);
-    assert_eq!(result, Ok(()), "answer from WaitingAnswer state must succeed");
+    assert_eq!(
+        result,
+        Ok(()),
+        "answer from WaitingAnswer state must succeed"
+    );
 
     // POST-001: verify exactly one RunAnswered event in journal (3 total: setup + AskScheduled + answer)
     let events = journal
@@ -454,13 +470,20 @@ fn cancel_returns_invalid_transition_when_bead_is_pending() {
     create_run_header(&journal, run);
 
     let result = vb_cli::lifecycle::cancel(run, &journal);
-    assert!(
-        matches!(
-            result,
-            Err(vb_core::errors::CoreError::LifecycleInvalidTransition { .. })
-        ),
-        "cancel from Pending must return InvalidTransition: {result:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleInvalidTransition {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = result
+    else {
+        panic!("cancel from Pending must return LifecycleInvalidTransition: {result:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("cancel"), "command must be cancel");
 
     // POST-003: verify journal was not modified (no event appended)
     let events = journal
@@ -469,7 +492,7 @@ fn cancel_returns_invalid_transition_when_bead_is_pending() {
     assert_eq!(
         events.len(),
         0,
-        "invalid transition must not append any event to journal"
+        "journal event count must remain at 0 after rejected invalid transition"
     );
 }
 
@@ -481,14 +504,24 @@ fn cancel_returns_invalid_transition_when_bead_is_completed() {
     let run = RunId::new(11);
     create_run_header(&journal, run);
 
+    // Write journal events to derive Completed state
+    write_completed(&journal, run);
+
     let result = vb_cli::lifecycle::cancel(run, &journal);
-    assert!(
-        matches!(
-            result,
-            Err(vb_core::errors::CoreError::LifecycleInvalidTransition { .. })
-        ),
-        "cancel from Completed must return InvalidTransition: {result:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleStaleRequest {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = result
+    else {
+        panic!("cancel from Completed must return LifecycleStaleRequest: {result:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("cancel"), "command must be cancel");
 
     // POST-003: verify journal was not modified
     let events = journal
@@ -496,8 +529,8 @@ fn cancel_returns_invalid_transition_when_bead_is_completed() {
         .expect("events_for_run must succeed");
     assert_eq!(
         events.len(),
-        0,
-        "invalid transition must not append any event to journal"
+        2,
+        "journal event count must remain at 2 after rejected stale request"
     );
 }
 
@@ -509,14 +542,24 @@ fn cancel_returns_invalid_transition_when_bead_is_failed() {
     let run = RunId::new(12);
     create_run_header(&journal, run);
 
+    // Write journal events to derive Failed state
+    write_failed(&journal, run);
+
     let result = vb_cli::lifecycle::cancel(run, &journal);
-    assert!(
-        matches!(
-            result,
-            Err(vb_core::errors::CoreError::LifecycleInvalidTransition { .. })
-        ),
-        "cancel from Failed must return InvalidTransition: {result:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleInvalidTransition {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = result
+    else {
+        panic!("cancel from Failed must return LifecycleInvalidTransition: {result:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("cancel"), "command must be cancel");
 
     // POST-003: verify journal was not modified
     let events = journal
@@ -524,8 +567,8 @@ fn cancel_returns_invalid_transition_when_bead_is_failed() {
         .expect("events_for_run must succeed");
     assert_eq!(
         events.len(),
-        0,
-        "invalid transition must not append any event to journal"
+        2,
+        "journal event count must remain at 2 after rejected invalid transition"
     );
 }
 
@@ -538,13 +581,20 @@ fn resume_returns_invalid_transition_when_bead_is_pending() {
     create_run_header(&journal, run);
 
     let result = vb_cli::lifecycle::resume(run, &journal);
-    assert!(
-        matches!(
-            result,
-            Err(vb_core::errors::CoreError::LifecycleInvalidTransition { .. })
-        ),
-        "resume from Pending must return InvalidTransition: {result:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleInvalidTransition {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = result
+    else {
+        panic!("resume from Pending must return LifecycleInvalidTransition: {result:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("resume"), "command must be resume");
 
     // POST-003: verify journal was not modified
     let events = journal
@@ -553,26 +603,36 @@ fn resume_returns_invalid_transition_when_bead_is_pending() {
     assert_eq!(
         events.len(),
         0,
-        "invalid transition must not append any event to journal"
+        "journal event count must remain at 0 after rejected invalid transition"
     );
 }
 
-/// resume returns E_INVALID_TRANSITION from Active state
-/// POST-003: invalid transition returns error and never modifies state
+/// resume returns E_DUPLICATE_REQUEST from Active state
+/// POST-003: duplicate request returns error and never modifies state
 #[test]
 fn resume_returns_invalid_transition_when_bead_is_active() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(14);
     create_run_header(&journal, run);
 
+    // Write journal events to derive Active state
+    write_run_accepted(&journal, run);
+
     let result = vb_cli::lifecycle::resume(run, &journal);
-    assert!(
-        matches!(
-            result,
-            Err(vb_core::errors::CoreError::LifecycleInvalidTransition { .. })
-        ),
-        "resume from Active must return InvalidTransition: {result:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleDuplicateRequest {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = result
+    else {
+        panic!("resume from Active must return LifecycleDuplicateRequest: {result:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("resume"), "command must be resume");
 
     // POST-003: verify journal was not modified
     let events = journal
@@ -580,12 +640,15 @@ fn resume_returns_invalid_transition_when_bead_is_active() {
         .expect("events_for_run must succeed");
     assert_eq!(
         events.len(),
-        0,
-        "invalid transition must not append any event to journal"
+        1,
+        "journal event count must remain at 1 after rejected duplicate request"
     );
 }
 
 /// resume returns E_INVALID_TRANSITION from WaitingAnswer state
+///
+/// A run awaiting an answer cannot be resumed — it must be answered or cancelled first.
+///
 /// POST-003: invalid transition returns error and never modifies state
 #[test]
 fn resume_returns_invalid_transition_when_bead_is_waiting_answer() {
@@ -593,14 +656,25 @@ fn resume_returns_invalid_transition_when_bead_is_waiting_answer() {
     let run = RunId::new(15);
     create_run_header(&journal, run);
 
+    // Write journal events to derive WaitingAnswer state
+    write_waiting_answer(&journal, run);
+
     let result = vb_cli::lifecycle::resume(run, &journal);
-    assert!(
-        matches!(
-            result,
-            Err(vb_core::errors::CoreError::LifecycleInvalidTransition { .. })
-        ),
-        "resume from WaitingAnswer must return InvalidTransition: {result:?}"
-    );
+
+    let Err(vb_core::errors::CoreError::LifecycleInvalidTransition {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = result
+    else {
+        panic!("resume from WaitingAnswer must return LifecycleInvalidTransition: {result:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("resume"), "command must be resume");
 
     // POST-003: verify journal was not modified
     let events = journal
@@ -608,27 +682,37 @@ fn resume_returns_invalid_transition_when_bead_is_waiting_answer() {
         .expect("events_for_run must succeed");
     assert_eq!(
         events.len(),
-        0,
-        "invalid transition must not append any event to journal"
+        2,
+        "journal event count must remain at 2 after rejected invalid transition"
     );
 }
 
-/// resume returns E_INVALID_TRANSITION from Completed state
-/// POST-003: invalid transition returns error and never modifies state
+/// resume returns E_STALE_REQUEST from Completed state
+/// POST-003: stale request returns error and never modifies state
 #[test]
 fn resume_returns_invalid_transition_when_bead_is_completed() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(16);
     create_run_header(&journal, run);
 
+    // Write journal events to derive Completed state
+    write_completed(&journal, run);
+
     let result = vb_cli::lifecycle::resume(run, &journal);
-    assert!(
-        matches!(
-            result,
-            Err(vb_core::errors::CoreError::LifecycleInvalidTransition { .. })
-        ),
-        "resume from Completed must return InvalidTransition: {result:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleStaleRequest {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = result
+    else {
+        panic!("resume from Completed must return LifecycleStaleRequest: {result:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("resume"), "command must be resume");
 
     // POST-003: verify journal was not modified
     let events = journal
@@ -636,8 +720,8 @@ fn resume_returns_invalid_transition_when_bead_is_completed() {
         .expect("events_for_run must succeed");
     assert_eq!(
         events.len(),
-        0,
-        "invalid transition must not append any event to journal"
+        2,
+        "journal event count must remain at 2 after rejected stale request"
     );
 }
 
@@ -649,14 +733,24 @@ fn resume_returns_invalid_transition_when_bead_is_failed() {
     let run = RunId::new(17);
     create_run_header(&journal, run);
 
+    // Write journal events to derive Failed state
+    write_failed(&journal, run);
+
     let result = vb_cli::lifecycle::resume(run, &journal);
-    assert!(
-        matches!(
-            result,
-            Err(vb_core::errors::CoreError::LifecycleInvalidTransition { .. })
-        ),
-        "resume from Failed must return InvalidTransition: {result:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleInvalidTransition {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = result
+    else {
+        panic!("resume from Failed must return LifecycleInvalidTransition: {result:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("resume"), "command must be resume");
 
     // POST-003: verify journal was not modified
     let events = journal
@@ -664,8 +758,8 @@ fn resume_returns_invalid_transition_when_bead_is_failed() {
         .expect("events_for_run must succeed");
     assert_eq!(
         events.len(),
-        0,
-        "invalid transition must not append any event to journal"
+        2,
+        "journal event count must remain at 2 after rejected invalid transition"
     );
 }
 
@@ -678,13 +772,20 @@ fn retry_returns_invalid_transition_when_bead_is_pending() {
     create_run_header(&journal, run);
 
     let result = vb_cli::lifecycle::retry(run, &journal);
-    assert!(
-        matches!(
-            result,
-            Err(vb_core::errors::CoreError::LifecycleInvalidTransition { .. })
-        ),
-        "retry from Pending must return InvalidTransition: {result:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleInvalidTransition {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = result
+    else {
+        panic!("retry from Pending must return LifecycleInvalidTransition: {result:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("retry"), "command must be retry");
 
     // POST-003: verify journal was not modified
     let events = journal
@@ -693,26 +794,36 @@ fn retry_returns_invalid_transition_when_bead_is_pending() {
     assert_eq!(
         events.len(),
         0,
-        "invalid transition must not append any event to journal"
+        "journal event count must remain at 0 after rejected invalid transition"
     );
 }
 
-/// retry returns E_INVALID_TRANSITION from Active state
-/// POST-003: invalid transition returns error and never modifies state
+/// retry returns E_DUPLICATE_REQUEST from Active state
+/// POST-003: duplicate request returns error and never modifies state
 #[test]
 fn retry_returns_invalid_transition_when_bead_is_active() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(19);
     create_run_header(&journal, run);
 
+    // Write journal events to derive Active state
+    write_run_accepted(&journal, run);
+
     let result = vb_cli::lifecycle::retry(run, &journal);
-    assert!(
-        matches!(
-            result,
-            Err(vb_core::errors::CoreError::LifecycleInvalidTransition { .. })
-        ),
-        "retry from Active must return InvalidTransition: {result:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleDuplicateRequest {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = result
+    else {
+        panic!("retry from Active must return LifecycleDuplicateRequest: {result:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("retry"), "command must be retry");
 
     // POST-003: verify journal was not modified
     let events = journal
@@ -720,27 +831,37 @@ fn retry_returns_invalid_transition_when_bead_is_active() {
         .expect("events_for_run must succeed");
     assert_eq!(
         events.len(),
-        0,
-        "invalid transition must not append any event to journal"
+        1,
+        "journal event count must remain at 1 after rejected duplicate request"
     );
 }
 
-/// retry returns E_INVALID_TRANSITION from Cancelled state
-/// POST-003: invalid transition returns error and never modifies state
+/// retry returns E_STALE_REQUEST from Cancelled state
+/// POST-003: stale request returns error and never modifies state
 #[test]
 fn retry_returns_invalid_transition_when_bead_is_cancelled() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(20);
     create_run_header(&journal, run);
 
+    // Write journal events to derive Cancelled state
+    write_cancelled(&journal, run);
+
     let result = vb_cli::lifecycle::retry(run, &journal);
-    assert!(
-        matches!(
-            result,
-            Err(vb_core::errors::CoreError::LifecycleInvalidTransition { .. })
-        ),
-        "retry from Cancelled must return InvalidTransition: {result:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleStaleRequest {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = result
+    else {
+        panic!("retry from Cancelled must return LifecycleStaleRequest: {result:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("retry"), "command must be retry");
 
     // POST-003: verify journal was not modified
     let events = journal
@@ -748,27 +869,37 @@ fn retry_returns_invalid_transition_when_bead_is_cancelled() {
         .expect("events_for_run must succeed");
     assert_eq!(
         events.len(),
-        0,
-        "invalid transition must not append any event to journal"
+        2,
+        "journal event count must remain at 2 after rejected stale request"
     );
 }
 
-/// retry returns E_INVALID_TRANSITION from Completed state
-/// POST-003: invalid transition returns error and never modifies state
+/// retry returns E_STALE_REQUEST from Completed state
+/// POST-003: stale request returns error and never modifies state
 #[test]
 fn retry_returns_invalid_transition_when_bead_is_completed() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(21);
     create_run_header(&journal, run);
 
+    // Write journal events to derive Completed state
+    write_completed(&journal, run);
+
     let result = vb_cli::lifecycle::retry(run, &journal);
-    assert!(
-        matches!(
-            result,
-            Err(vb_core::errors::CoreError::LifecycleInvalidTransition { .. })
-        ),
-        "retry from Completed must return InvalidTransition: {result:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleStaleRequest {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = result
+    else {
+        panic!("retry from Completed must return LifecycleStaleRequest: {result:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("retry"), "command must be retry");
 
     // POST-003: verify journal was not modified
     let events = journal
@@ -776,8 +907,8 @@ fn retry_returns_invalid_transition_when_bead_is_completed() {
         .expect("events_for_run must succeed");
     assert_eq!(
         events.len(),
-        0,
-        "invalid transition must not append any event to journal"
+        2,
+        "journal event count must remain at 2 after rejected stale request"
     );
 }
 
@@ -789,14 +920,24 @@ fn retry_returns_invalid_transition_when_bead_is_waiting_answer() {
     let run = RunId::new(22);
     create_run_header(&journal, run);
 
+    // Write journal events to derive WaitingAnswer state
+    write_waiting_answer(&journal, run);
+
     let result = vb_cli::lifecycle::retry(run, &journal);
-    assert!(
-        matches!(
-            result,
-            Err(vb_core::errors::CoreError::LifecycleInvalidTransition { .. })
-        ),
-        "retry from WaitingAnswer must return InvalidTransition: {result:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleInvalidTransition {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = result
+    else {
+        panic!("retry from WaitingAnswer must return LifecycleInvalidTransition: {result:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("retry"), "command must be retry");
 
     // POST-003: verify journal was not modified
     let events = journal
@@ -804,8 +945,8 @@ fn retry_returns_invalid_transition_when_bead_is_waiting_answer() {
         .expect("events_for_run must succeed");
     assert_eq!(
         events.len(),
-        0,
-        "invalid transition must not append any event to journal"
+        2,
+        "journal event count must remain at 2 after rejected invalid transition"
     );
 }
 
@@ -818,13 +959,20 @@ fn answer_returns_invalid_transition_when_bead_is_pending() {
     create_run_header(&journal, run);
 
     let result = vb_cli::lifecycle::answer(run, "answer".to_string(), &journal);
-    assert!(
-        matches!(
-            result,
-            Err(vb_core::errors::CoreError::LifecycleInvalidTransition { .. })
-        ),
-        "answer from Pending must return InvalidTransition: {result:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleInvalidTransition {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = result
+    else {
+        panic!("answer from Pending must return LifecycleInvalidTransition: {result:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("answer"), "command must be answer");
 
     // POST-003: verify journal was not modified
     let events = journal
@@ -833,26 +981,36 @@ fn answer_returns_invalid_transition_when_bead_is_pending() {
     assert_eq!(
         events.len(),
         0,
-        "invalid transition must not append any event to journal"
+        "journal event count must remain at 0 after rejected invalid transition"
     );
 }
 
-/// answer returns E_INVALID_TRANSITION from Active state
-/// POST-003: invalid transition returns error and never modifies state
+/// answer returns E_STALE_REQUEST from Active state
+/// POST-003: stale request returns error and never modifies state
 #[test]
 fn answer_returns_invalid_transition_when_bead_is_active() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(24);
     create_run_header(&journal, run);
 
+    // Write journal events to derive Active state
+    write_run_accepted(&journal, run);
+
     let result = vb_cli::lifecycle::answer(run, "answer".to_string(), &journal);
-    assert!(
-        matches!(
-            result,
-            Err(vb_core::errors::CoreError::LifecycleInvalidTransition { .. })
-        ),
-        "answer from Active must return InvalidTransition: {result:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleStaleRequest {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = result
+    else {
+        panic!("answer from Active must return LifecycleStaleRequest: {result:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("answer"), "command must be answer");
 
     // POST-003: verify journal was not modified
     let events = journal
@@ -860,27 +1018,37 @@ fn answer_returns_invalid_transition_when_bead_is_active() {
         .expect("events_for_run must succeed");
     assert_eq!(
         events.len(),
-        0,
-        "invalid transition must not append any event to journal"
+        1,
+        "journal event count must remain at 1 after rejected stale request"
     );
 }
 
-/// answer returns E_INVALID_TRANSITION from Cancelled state
-/// POST-003: invalid transition returns error and never modifies state
+/// answer returns E_STALE_REQUEST from Cancelled state
+/// POST-003: stale request returns error and never modifies state
 #[test]
 fn answer_returns_invalid_transition_when_bead_is_cancelled() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(25);
     create_run_header(&journal, run);
 
+    // Write journal events to derive Cancelled state
+    write_cancelled(&journal, run);
+
     let result = vb_cli::lifecycle::answer(run, "answer".to_string(), &journal);
-    assert!(
-        matches!(
-            result,
-            Err(vb_core::errors::CoreError::LifecycleInvalidTransition { .. })
-        ),
-        "answer from Cancelled must return InvalidTransition: {result:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleStaleRequest {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = result
+    else {
+        panic!("answer from Cancelled must return LifecycleStaleRequest: {result:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("answer"), "command must be answer");
 
     // POST-003: verify journal was not modified
     let events = journal
@@ -888,27 +1056,37 @@ fn answer_returns_invalid_transition_when_bead_is_cancelled() {
         .expect("events_for_run must succeed");
     assert_eq!(
         events.len(),
-        0,
-        "invalid transition must not append any event to journal"
+        2,
+        "journal event count must remain at 2 after rejected stale request"
     );
 }
 
-/// answer returns E_INVALID_TRANSITION from Completed state
-/// POST-003: invalid transition returns error and never modifies state
+/// answer returns E_DUPLICATE_REQUEST from Completed state
+/// POST-003: duplicate request returns error and never modifies state
 #[test]
 fn answer_returns_invalid_transition_when_bead_is_completed() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(26);
     create_run_header(&journal, run);
 
+    // Write journal events to derive Completed state
+    write_completed(&journal, run);
+
     let result = vb_cli::lifecycle::answer(run, "answer".to_string(), &journal);
-    assert!(
-        matches!(
-            result,
-            Err(vb_core::errors::CoreError::LifecycleInvalidTransition { .. })
-        ),
-        "answer from Completed must return InvalidTransition: {result:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleDuplicateRequest {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = result
+    else {
+        panic!("answer from Completed must return LifecycleDuplicateRequest: {result:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("answer"), "command must be answer");
 
     // POST-003: verify journal was not modified
     let events = journal
@@ -916,27 +1094,37 @@ fn answer_returns_invalid_transition_when_bead_is_completed() {
         .expect("events_for_run must succeed");
     assert_eq!(
         events.len(),
-        0,
-        "invalid transition must not append any event to journal"
+        2,
+        "journal event count must remain at 2 after rejected duplicate request"
     );
 }
 
-/// answer returns E_INVALID_TRANSITION from Failed state
-/// POST-003: invalid transition returns error and never modifies state
+/// answer returns E_STALE_REQUEST from Failed state
+/// POST-003: stale request returns error and never modifies state
 #[test]
 fn answer_returns_invalid_transition_when_bead_is_failed() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(27);
     create_run_header(&journal, run);
 
+    // Write journal events to derive Failed state
+    write_failed(&journal, run);
+
     let result = vb_cli::lifecycle::answer(run, "answer".to_string(), &journal);
-    assert!(
-        matches!(
-            result,
-            Err(vb_core::errors::CoreError::LifecycleInvalidTransition { .. })
-        ),
-        "answer from Failed must return InvalidTransition: {result:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleStaleRequest {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = result
+    else {
+        panic!("answer from Failed must return LifecycleStaleRequest: {result:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("answer"), "command must be answer");
 
     // POST-003: verify journal was not modified
     let events = journal
@@ -944,8 +1132,8 @@ fn answer_returns_invalid_transition_when_bead_is_failed() {
         .expect("events_for_run must succeed");
     assert_eq!(
         events.len(),
-        0,
-        "invalid transition must not append any event to journal"
+        2,
+        "journal event count must remain at 2 after rejected stale request"
     );
 }
 
@@ -972,13 +1160,20 @@ fn cancel_returns_duplicate_request_when_called_twice() {
 
     // Second cancel in same state - must return E_DUPLICATE_REQUEST
     let second = vb_cli::lifecycle::cancel(run, &journal);
-    assert!(
-        matches!(
-            second,
-            Err(vb_core::errors::CoreError::LifecycleDuplicateRequest { .. })
-        ),
-        "duplicate cancel must return DuplicateRequest: {second:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleDuplicateRequest {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = second
+    else {
+        panic!("duplicate cancel must return LifecycleDuplicateRequest: {second:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("cancel"), "command must be cancel");
 
     // Journal must NOT have double-written
     let events = journal
@@ -1019,13 +1214,20 @@ fn resume_returns_duplicate_request_when_called_twice() {
     );
 
     let second = vb_cli::lifecycle::resume(run, &journal);
-    assert!(
-        matches!(
-            second,
-            Err(vb_core::errors::CoreError::LifecycleDuplicateRequest { .. })
-        ),
-        "duplicate resume must return DuplicateRequest: {second:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleDuplicateRequest {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = second
+    else {
+        panic!("duplicate resume must return LifecycleDuplicateRequest: {second:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("resume"), "command must be resume");
 
     // POST-004: verify journal was not double-written (still 3, no new events)
     let events_after_second = journal
@@ -1063,13 +1265,20 @@ fn retry_returns_duplicate_request_when_called_twice() {
     );
 
     let second = vb_cli::lifecycle::retry(run, &journal);
-    assert!(
-        matches!(
-            second,
-            Err(vb_core::errors::CoreError::LifecycleDuplicateRequest { .. })
-        ),
-        "duplicate retry must return DuplicateRequest: {second:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleDuplicateRequest {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = second
+    else {
+        panic!("duplicate retry must return LifecycleDuplicateRequest: {second:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("retry"), "command must be retry");
 
     // POST-004: verify journal was not double-written (still 3, no new events)
     let events_after_second = journal
@@ -1107,13 +1316,20 @@ fn answer_returns_duplicate_request_when_called_twice() {
     );
 
     let second = vb_cli::lifecycle::answer(run, "answer2".to_string(), &journal);
-    assert!(
-        matches!(
-            second,
-            Err(vb_core::errors::CoreError::LifecycleDuplicateRequest { .. })
-        ),
-        "duplicate answer must return DuplicateRequest: {second:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleDuplicateRequest {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = second
+    else {
+        panic!("duplicate answer must return LifecycleDuplicateRequest: {second:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("answer"), "command must be answer");
 
     // POST-004: verify journal was not double-written (still 3, no new events)
     let events_after_second = journal
@@ -1144,13 +1360,20 @@ fn cancel_returns_stale_request_when_state_already_advanced() {
     write_completed(&journal, run);
 
     let result = vb_cli::lifecycle::cancel(run, &journal);
-    assert!(
-        matches!(
-            result,
-            Err(vb_core::errors::CoreError::LifecycleStaleRequest { .. })
-        ),
-        "stale cancel must return StaleRequest: {result:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleStaleRequest {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = result
+    else {
+        panic!("stale cancel must return LifecycleStaleRequest: {result:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("cancel"), "command must be cancel");
 }
 
 /// stale resume returns E_STALE_REQUEST when bead is not in Cancelled state
@@ -1164,13 +1387,20 @@ fn resume_returns_stale_request_when_not_in_cancelled_state() {
     write_completed(&journal, run);
 
     let result = vb_cli::lifecycle::resume(run, &journal);
-    assert!(
-        matches!(
-            result,
-            Err(vb_core::errors::CoreError::LifecycleStaleRequest { .. })
-        ),
-        "stale resume must return StaleRequest: {result:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleStaleRequest {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = result
+    else {
+        panic!("stale resume must return LifecycleStaleRequest: {result:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("resume"), "command must be resume");
 }
 
 /// stale retry returns E_STALE_REQUEST when bead is not in Failed state
@@ -1184,13 +1414,20 @@ fn retry_returns_stale_request_when_not_in_failed_state() {
     write_completed(&journal, run);
 
     let result = vb_cli::lifecycle::retry(run, &journal);
-    assert!(
-        matches!(
-            result,
-            Err(vb_core::errors::CoreError::LifecycleStaleRequest { .. })
-        ),
-        "stale retry must return StaleRequest: {result:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleStaleRequest {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = result
+    else {
+        panic!("stale retry must return LifecycleStaleRequest: {result:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("retry"), "command must be retry");
 }
 
 /// stale answer returns E_STALE_REQUEST when bead has passed WaitingAnswer but not Completed.
@@ -1212,13 +1449,20 @@ fn answer_returns_stale_request_when_not_in_waiting_answer_state() {
     write_run_accepted(&journal, run);
 
     let result = vb_cli::lifecycle::answer(run, "stale answer".to_string(), &journal);
-    assert!(
-        matches!(
-            result,
-            Err(vb_core::errors::CoreError::LifecycleStaleRequest { .. })
-        ),
-        "stale answer must return StaleRequest: {result:?}"
-    );
+    let Err(vb_core::errors::CoreError::LifecycleStaleRequest {
+        code,
+        context,
+        timestamp: _,
+        bead_id,
+        command,
+    }) = result
+    else {
+        panic!("stale answer must return LifecycleStaleRequest: {result:?}");
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target run");
+    assert_eq!(command, Some("answer"), "command must be answer");
 }
 
 // ============================================================================

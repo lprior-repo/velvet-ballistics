@@ -10,7 +10,6 @@
 // boundaries for later fuzz, Kani, integration, and static-scan evidence.
 //
 // BINDING: accepted_envelope_model
-// Rust type: vb_ui_model::envelope::types::MetadataEnvelope
 // Verified: Matched spec predicates to envelope field validation (schema_version, gate_count, proof_flags)
 // Divergences: Spec models abstract boolean flags; Rust uses actual proof flag booleans
 

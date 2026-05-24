@@ -1,9 +1,6 @@
 //! Production-bound Verus harness for VERUS-GRAPH-001: workflow graph references and event ordering.
 //!
 //! Obligation: POST-002, POST-003, POST-004, INV-005, INV-006
-//! Production-bound: spec types mirror WorkflowGraphView, WorkflowNodeView, WorkflowEdgeView,
-//!                  RunEventsView, RunEventView from vb_ui_model.
-//! Proof: graph/event references are valid (non-negative indices) and event sequences are ordered.
 //!
 //! Production types:
 //!   - WorkflowGraphView { workflow_id, workflow_digest, nodes: Vec<WorkflowNodeView>, edges: Vec<WorkflowEdgeView> }

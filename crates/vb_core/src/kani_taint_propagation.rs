@@ -96,7 +96,7 @@ fn kani_read_taint_no_panic() {
     kani::assume(slot_raw < slot_count);
     let slot = SlotIdx::new(slot_raw);
 
-    let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
     kani::assume(frame.is_ok());
     let mut frame = frame.unwrap();
 
@@ -120,7 +120,7 @@ fn kani_write_taint_no_panic() {
     let taint_raw = kani::any::<u8>();
     let taint = taint_from_u8(taint_raw);
 
-    let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
     kani::assume(frame.is_ok());
     let mut frame = frame.unwrap();
 

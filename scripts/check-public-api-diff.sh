@@ -3,7 +3,7 @@ set -euo pipefail
 
 packages=(
   vb_boundary_inventory
-  vb_codegen
+  # vb_codegen moved to velvet-optional repo (deferred)
   vb_compile
   vb_core
   vb_doc

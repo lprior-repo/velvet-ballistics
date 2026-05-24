@@ -64,10 +64,13 @@ fn build_frame(command: IpcCommand, correlation: u64, payload_bytes: &[u8]) -> V
     frame
 }
 
-/// Reads exactly `n` bytes from the stream with a short timeout.
+/// Reads exactly `n` bytes from the stream with a short timeout (2s deadline).
+///
+/// Returns `TimedOut` if the deadline is exceeded before all bytes are read.
 fn read_exact_timeout(stream: &mut dyn Read, n: usize) -> Result<Vec<u8>, std::io::Error> {
     let mut buf = vec![0u8; n];
     let mut read_total = 0usize;
+    let deadline = std::time::Instant::now() + Duration::from_millis(2_000);
     while read_total < n {
         match stream.read(&mut buf[read_total..]) {
             Ok(0) => {
@@ -78,6 +81,12 @@ fn read_exact_timeout(stream: &mut dyn Read, n: usize) -> Result<Vec<u8>, std::i
             }
             Ok(count) => read_total = read_total.saturating_add(count),
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                if std::time::Instant::now() >= deadline {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::TimedOut,
+                        "read_exact_timeout deadline exceeded",
+                    ));
+                }
                 std::thread::yield_now();
             }
             Err(e) => return Err(e),
@@ -449,7 +458,10 @@ fn server_responds_with_error_for_invalid_magic() {
         Ok(v) => v,
         Err(_) => panic!("response payload length should fit usize"),
     };
-    assert!(payload_len_usize > 0, "frame error response must include payload");
+    assert!(
+        payload_len_usize > 0,
+        "frame error response must include payload"
+    );
     let response_payload = read_exact_timeout(&mut client, payload_len_usize);
     assert!(
         response_payload.is_ok(),
@@ -520,7 +532,10 @@ fn server_responds_with_error_for_unsupported_version() {
         Ok(v) => v,
         Err(_) => panic!("response payload length should fit usize"),
     };
-    assert!(payload_len_usize > 0, "frame error response must include payload");
+    assert!(
+        payload_len_usize > 0,
+        "frame error response must include payload"
+    );
     let response_payload = read_exact_timeout(&mut client, payload_len_usize);
     assert!(
         response_payload.is_ok(),
@@ -630,27 +645,76 @@ fn server_responds_with_error_for_garbage_payload() {
 
     // Read response header.
     let response_header_bytes = read_exact_timeout(&mut client, IPC_HEADER_LEN);
-
-    // Read response payload and verify it is not a panic.
     let response_header = response_header_bytes.expect("should read response header");
+
+    // Verify response header fields: magic, version, command, correlation.
+    let magic = u32::from_le_bytes(
+        response_header
+            .get(..4)
+            .and_then(|s| <[u8; 4]>::try_from(s).ok())
+            .unwrap_or([0; 4]),
+    );
+    assert_eq!(magic, IPC_MAGIC, "response header must have valid magic");
+
+    let version = u16::from_le_bytes(
+        response_header
+            .get(4..6)
+            .and_then(|s| <[u8; 2]>::try_from(s).ok())
+            .unwrap_or([0; 2]),
+    );
+    assert_eq!(
+        version, IPC_VERSION,
+        "response header must have valid version"
+    );
+
+    let cmd = u16::from_le_bytes(
+        response_header
+            .get(6..8)
+            .and_then(|s| <[u8; 2]>::try_from(s).ok())
+            .unwrap_or([0; 2]),
+    );
+    assert_eq!(
+        cmd,
+        IpcCommand::Health.as_u16(),
+        "response command should be Health (echoed)"
+    );
+
+    let correlation = u64::from_le_bytes(
+        response_header
+            .get(12..20)
+            .and_then(|s| <[u8; 8]>::try_from(s).ok())
+            .unwrap_or([0; 8]),
+    );
+    assert_eq!(
+        correlation, 42,
+        "response correlation must echo request correlation"
+    );
+
     let payload_len = u32::from_le_bytes(
         response_header
             .get(20..24)
-            .map(|s| <[u8; 4]>::try_from(s).ok())
-            .flatten()
+            .and_then(|s| <[u8; 4]>::try_from(s).ok())
             .unwrap_or([0; 4]),
     );
     let payload_len_usize = match usize::try_from(payload_len) {
         Ok(v) => v,
-        Err(_) => return,
+        Err(e) => panic!("payload length must fit usize: {e}"),
     };
-    if payload_len_usize > 0 {
-        let response_payload = read_exact_timeout(&mut client, payload_len_usize);
-        assert!(
-            matches!(response_payload, Ok(_)),
-            "should read response payload"
-        );
-    }
+    assert!(
+        payload_len_usize > 0,
+        "response must include non-empty payload"
+    );
+
+    let response_payload = read_exact_timeout(&mut client, payload_len_usize);
+    let Ok(payload) = response_payload else {
+        panic!("should read response payload: {:?}", response_payload.err());
+    };
+    let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
+    assert_eq!(
+        decoded,
+        Ok(IpcResponse::Healthy),
+        "Health command must return Healthy even with garbage payload"
+    );
 }
 
 // ── pipelined commands ──────────────────────────────────────────────────────
@@ -764,7 +828,10 @@ fn server_responds_with_error_for_nonzero_reserved_field() {
         Ok(v) => v,
         Err(_) => panic!("response payload length should fit usize"),
     };
-    assert!(payload_len_usize > 0, "frame error response must include payload");
+    assert!(
+        payload_len_usize > 0,
+        "frame error response must include payload"
+    );
     let response_payload = read_exact_timeout(&mut client, payload_len_usize);
     let Ok(payload) = response_payload else {
         panic!("should read response payload")
@@ -969,9 +1036,12 @@ fn workflow_resolver_not_found_is_rejected_by_dispatch() {
     );
     let payload_len_usize = match usize::try_from(payload_len) {
         Ok(v) => v,
-            Err(error) => panic!("response payload length should fit usize: {error}"),
-        };
-    assert!(payload_len_usize > 0, "resolver failure response must include payload");
+        Err(error) => panic!("response payload length should fit usize: {error}"),
+    };
+    assert!(
+        payload_len_usize > 0,
+        "resolver failure response must include payload"
+    );
     let response_payload = read_exact_timeout(&mut client, payload_len_usize);
     let Ok(payload) = response_payload else {
         panic!("should read response payload")
@@ -1361,7 +1431,10 @@ fn sequential_clients_each_get_health_response() {
             Ok(v) => v,
             Err(error) => panic!("payload_len overflow for client {i}: {error}"),
         };
-        assert!(payload_len_usize > 0, "health response for client {i} must include payload");
+        assert!(
+            payload_len_usize > 0,
+            "health response for client {i} must include payload"
+        );
         let response_payload = read_exact_timeout(&mut client, payload_len_usize);
         assert!(
             response_payload.is_ok(),
@@ -1369,7 +1442,11 @@ fn sequential_clients_each_get_health_response() {
         );
         let payload = response_payload.expect("read payload");
         let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
-        assert_eq!(decoded, Ok(IpcResponse::Healthy), "client {i} decoded response");
+        assert_eq!(
+            decoded,
+            Ok(IpcResponse::Healthy),
+            "client {i} decoded response"
+        );
 
         // Drop the client to test sequential lifecycle.
         drop(client);
@@ -2054,7 +2131,11 @@ fn poll_once_processes_readable_and_writable_for_same_client() {
     client.flush().expect("flush");
 
     let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
-    assert_eq!(result, Ok(true), "poll with readable+writable should succeed");
+    assert_eq!(
+        result,
+        Ok(true),
+        "poll with readable+writable should succeed"
+    );
 }
 
 // ── 12. poll_once with multiple simultaneous events ──────────────────────────
@@ -2080,7 +2161,11 @@ fn poll_once_processes_multiple_simultaneous_events() {
     client2.flush().expect("flush 2");
 
     let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
-    assert_eq!(result, Ok(true), "poll with multiple clients should succeed");
+    assert_eq!(
+        result,
+        Ok(true),
+        "poll with multiple clients should succeed"
+    );
 
     let header1 = read_exact_timeout(&mut client1, IPC_HEADER_LEN);
     let header1 = header1.expect("client 1 should get response header");
