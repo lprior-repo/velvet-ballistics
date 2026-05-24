@@ -55,6 +55,7 @@ Scoped verification after reconciliation:
 - `rtk cargo check -p vb_ipc --lib` — PASS after symbolic IPC Kani harness edit.
 - `cargo kani -p vb_ipc --harness kani_ipc_header_rejects_oversize_payload` — BLOCKED by unrelated existing `vb_core` Kani compile errors before target harness.
 - `cargo test -p vb_yaml -p vb_validate` — PASS, `1196 passed` after residual exactness cleanup.
+- `cargo test -p vb_compile -p vb_expr` — PASS, `939 passed` after residual exactness cleanup.
 
 ## Open Finding Buckets
 
@@ -64,8 +65,8 @@ Scoped verification after reconciliation:
 - `vb_proof_kernels`: PATCHED — removed false CRC/vacuous header tests and added generated-IR/replay taxonomy, exact `Policy::within`, and resource-budget saturation coverage. Evidence: `cargo test -p vb_proof_kernels` — PASS, `231 passed`.
 - `vb_yaml`: PATCHED PARTIAL — current diff fixes exact variants/fields in lib/profile/adversarial/source-map/event tests, including residual event/span/count assertions. Still needs parser/profile/source-map property/fuzz coverage.
 - `vb_validate`: PATCHED PARTIAL — current diff fixes capability/idempotency/red-phase/Kani accessor exactness plus residual missing-field exactness. Still needs broad source-level `{ .. }` cleanup and hostile-input executable coverage.
-- `vb_expr`: PATCHED PARTIAL — exact OOB/type/parser/lexer payloads and generated expression properties patched. Evidence: `cargo test -p vb_expr` — PASS, `649 passed`. Kani shape gaps remain open under proof parity.
-- `vb_compile`: PATCHED PARTIAL — current diff hardens idempotency parity, error variant, canonical YAML diagnostic, and secret-finish IR shape tests. Evidence: `rtk cargo test -p vb_compile` — PASS, `290 passed`. Full strict-YAML compile-chain and nested duplicate-key gaps still need post-patch audit.
+- `vb_expr`: PATCHED PARTIAL — exact OOB/type/parser/lexer payloads and generated expression properties patched; residual TypeMismatch exactness patched. Evidence: `cargo test -p vb_compile -p vb_expr` — PASS, `939 passed`. Kani shape gaps remain open under proof parity.
+- `vb_compile`: PATCHED PARTIAL — current diff hardens idempotency parity, error variant, canonical YAML diagnostic, secret-finish IR shape tests, and residual secret-finish/error exactness. Evidence: `cargo test -p vb_compile -p vb_expr` — PASS, `939 passed`. Full strict-YAML compile-chain and nested duplicate-key gaps still need post-patch audit.
 - `vb_storage`: PATCHED PARTIAL — current diff hardens atomic admission and trim tests plus persisted accepted-envelope readback. Evidence: `cargo test -p vb_storage` — PASS, `1126 passed`. Kani persistence gap remains open under proof parity.
 - `vb_runtime`: PATCHED PARTIAL — current diff hardens lifecycle attempt/state/journal assertions, timer identity/order triples, and recovery slot/taint/error assertions. Evidence: `rtk cargo test -p vb_runtime` — PASS, `1816 passed`. Remaining broad runtime recovery/resume/tick-shard gaps require post-patch audit.
 - `vb_doc`/`vb_benchmark`: PATCHED PARTIAL — current diff removes doc tautologies and hardens doc errors/patch plans plus benchmark regression/metadata fields. Evidence: `cargo test -p vb_doc -p vb_benchmark` — PASS, `117 passed`.

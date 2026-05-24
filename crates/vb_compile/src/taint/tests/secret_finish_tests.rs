@@ -63,6 +63,39 @@ fn assert_literal_finish_shape(
     }
 }
 
+fn assert_finish_result_shape(
+    workflow: &crate::CompiledWorkflow,
+    context: &str,
+) -> Result<(), String> {
+    let parts = workflow.to_parts();
+    assert!(
+        !parts.nodes.is_empty(),
+        "{context}: compiled workflow must contain at least one node"
+    );
+    let finish_index = parts
+        .nodes
+        .len()
+        .checked_sub(1)
+        .ok_or_else(|| format!("{context}: compiled workflow missing Finish node"))?;
+    let Some(finish_node) = parts.nodes.get(finish_index) else {
+        return Err(format!("{context}: compiled workflow missing Finish node"));
+    };
+    assert_eq!(finish_node.output, None, "{context}: Finish output");
+    assert_eq!(finish_node.next, None, "{context}: Finish next");
+    match &finish_node.kind {
+        CompiledNodeKind::Finish { result } => {
+            assert!(
+                result.as_usize() < usize::from(parts.slot_count),
+                "{context}: Finish result slot {} must be within slot_count {}",
+                result.get(),
+                parts.slot_count
+            );
+            Ok(())
+        }
+        other => Err(format!("{context}: expected Finish node, got {other:?}")),
+    }
+}
+
 // ----------------------------------------------------------------------------
 // Section 47: Taint MUST pass through Finish outputs (currently buggy)
 // ----------------------------------------------------------------------------
@@ -86,12 +119,16 @@ steps:
     finish:
       result: $secrets.token
 "#;
-    let result = compile_workflow(source);
-    assert!(
-        result.is_ok(),
-        "Section 47: secret in Finish must compile, got {:?}",
-        result
-    );
+    let workflow = compile_workflow(source).map_err(|errors| {
+        format!("Section 47: secret in Finish must compile, got {errors:?}")
+    });
+    let workflow = match workflow {
+        Ok(workflow) => workflow,
+        Err(message) => panic!("{message}"),
+    };
+    assert_finish_result_shape(&workflow, "secret finish result").unwrap_or_else(|message| {
+        panic!("{message}");
+    });
 }
 
 /// Given: YAML with secret-derived data via slot relay in Finish
@@ -113,12 +150,12 @@ steps:
     finish:
       result: 0
 "#;
-    let result = compile_workflow(source);
-    assert!(
-        result.is_ok(),
-        "Section 47: secret via slot relay in Finish must compile, got {:?}",
-        result
-    );
+    let workflow = compile_workflow(source).unwrap_or_else(|errors| {
+        panic!("Section 47: secret via slot relay in Finish must compile, got {errors:?}");
+    });
+    assert_finish_result_shape(&workflow, "secret slot relay finish").unwrap_or_else(|message| {
+        panic!("{message}");
+    });
 }
 
 /// Given: YAML with composite containing secret in Finish
@@ -138,12 +175,12 @@ steps:
       result:
         key: $secrets.password
 "#;
-    let result = compile_workflow(source);
-    assert!(
-        result.is_ok(),
-        "Section 47: composite with secret in Finish must compile, got {:?}",
-        result
-    );
+    let workflow = compile_workflow(source).unwrap_or_else(|errors| {
+        panic!("Section 47: composite with secret in Finish must compile, got {errors:?}");
+    });
+    assert_finish_result_shape(&workflow, "secret composite finish").unwrap_or_else(|message| {
+        panic!("{message}");
+    });
 }
 
 /// Given: YAML with inline list containing secret in Finish
@@ -164,12 +201,12 @@ steps:
         - $secrets.item
         - clean_value
 "#;
-    let result = compile_workflow(source);
-    assert!(
-        result.is_ok(),
-        "Section 47: list with secret in Finish must compile, got {:?}",
-        result
-    );
+    let workflow = compile_workflow(source).unwrap_or_else(|errors| {
+        panic!("Section 47: list with secret in Finish must compile, got {errors:?}");
+    });
+    assert_finish_result_shape(&workflow, "secret list finish").unwrap_or_else(|message| {
+        panic!("{message}");
+    });
 }
 
 /// Given: YAML with clean data in Finish
@@ -188,12 +225,12 @@ steps:
     finish:
       result: $input.user
 "#;
-    let result = compile_workflow(source);
-    assert!(
-        result.is_ok(),
-        "clean Finish must compile, got {:?}",
-        result
-    );
+    let workflow = compile_workflow(source).unwrap_or_else(|errors| {
+        panic!("clean Finish must compile, got {errors:?}");
+    });
+    assert_finish_result_shape(&workflow, "clean input finish").unwrap_or_else(|message| {
+        panic!("{message}");
+    });
 }
 
 /// Given: YAML with clean literal in Finish
@@ -210,12 +247,12 @@ steps:
     finish:
       result: 42
 "#;
-    let result = compile_workflow(source);
-    assert!(
-        result.is_ok(),
-        "literal Finish must compile, got {:?}",
-        result
-    );
+    let workflow = compile_workflow(source).unwrap_or_else(|errors| {
+        panic!("literal Finish must compile, got {errors:?}");
+    });
+    assert_literal_finish_shape(&workflow, 42).unwrap_or_else(|message| {
+        panic!("{message}");
+    });
 }
 
 /// Given: YAML with clean var in Finish
@@ -234,12 +271,12 @@ steps:
     finish:
       result: $vars.label
 "#;
-    let result = compile_workflow(source);
-    assert!(
-        result.is_ok(),
-        "var Finish must compile, got {:?}",
-        result
-    );
+    let workflow = compile_workflow(source).unwrap_or_else(|errors| {
+        panic!("var Finish must compile, got {errors:?}");
+    });
+    assert_finish_result_shape(&workflow, "var finish").unwrap_or_else(|message| {
+        panic!("{message}");
+    });
 }
 
 /// Given: YAML with deep slot chain ending in Finish
@@ -273,12 +310,12 @@ steps:
     finish:
       result: 4
 "#;
-    let result = compile_workflow(source);
-    assert!(
-        result.is_ok(),
-        "Section 47: deep slot chain ending in Finish must compile, got {:?}",
-        result
-    );
+    let workflow = compile_workflow(source).unwrap_or_else(|errors| {
+        panic!("Section 47: deep slot chain ending in Finish must compile, got {errors:?}");
+    });
+    assert_finish_result_shape(&workflow, "deep slot chain finish").unwrap_or_else(|message| {
+        panic!("{message}");
+    });
 }
 
 // ----------------------------------------------------------------------------
@@ -309,7 +346,7 @@ steps:
 "#;
     let result = compile_workflow(source);
     assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
+        matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { field: "save.value" }))),
         "ANTI-INVARIANT: secret in Save must be rejected, got {:?}",
         result
     );
@@ -338,7 +375,7 @@ steps:
 "#;
     let result = compile_workflow(source);
     assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
+        matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { field: "save.value" }))),
         "ANTI-INVARIANT: secret-typed input in Save must be rejected, got {:?}",
         result
     );
@@ -366,7 +403,7 @@ steps:
 "#;
     let result = compile_workflow(source);
     assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
+        matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { field: "save.value" }))),
         "ANTI-INVARIANT: composite with secret in Save must be rejected, got {:?}",
         result
     );
@@ -396,7 +433,7 @@ steps:
 "#;
     let result = compile_workflow(source);
     assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
+        matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { field: "save.value" }))),
         "ANTI-INVARIANT: two-hop secret relay must be rejected, got {:?}",
         result
     );
@@ -424,7 +461,7 @@ steps:
 "#;
     let result = compile_workflow(source);
     assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
+        matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { field: "save.value" }))),
         "ANTI-INVARIANT: nested secret in Save must be rejected, got {:?}",
         result
     );
@@ -444,12 +481,12 @@ steps:
     finish:
       result: $unknown_root.field
 "#;
-    let result = compile_workflow(source);
-    assert!(
-        result.is_ok(),
-        "unknown reference root in Finish must compile, got {:?}",
-        result
-    );
+    let workflow = compile_workflow(source).unwrap_or_else(|errors| {
+        panic!("unknown reference root in Finish must compile, got {errors:?}");
+    });
+    assert_finish_result_shape(&workflow, "unknown reference finish").unwrap_or_else(|message| {
+        panic!("{message}");
+    });
 }
 
 /// Given: YAML with non-$ reference in Finish
@@ -466,40 +503,12 @@ steps:
     finish:
       result: not_a_reference
 "#;
-    let result = compile_workflow(source);
-    assert!(
-        result.is_ok(),
-        "non-dollar reference in Finish must compile, got {:?}",
-        result
-    );
-}
-
-// ----------------------------------------------------------------------------
-// Regression: Document current (buggy) behavior
-// These tests will FAIL after the Section 47 fix - they document the bug
-// ----------------------------------------------------------------------------
-
-/// REGRESSION TEST — documents current bug (should FAIL after fix)
-/// Currently: compile returns `Err(SecretTaintLeak)` for secret in Finish
-/// After fix: should return `Ok(CompiledWorkflow)`
-#[test]
-fn regression_compile_rejects_secret_finish_incorrectly() {
-    let source = br#"version: velvet-ballastics/v1
-name: secret_finish_case
-when:
-  manual: {}
-secrets:
-  api_key: SECRET_API_KEY
-steps:
-  - id: done
-    finish:
-      result: $secrets.api_key
-"#;
-    let result = compile_workflow(source);
-    assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { field: "finish.result" }))),
-        "BUG: currently rejects secret Finish (Section 47 violation)"
-    );
+    let workflow = compile_workflow(source).unwrap_or_else(|errors| {
+        panic!("non-dollar reference in Finish must compile, got {errors:?}");
+    });
+    assert_finish_result_shape(&workflow, "non-dollar reference finish").unwrap_or_else(|message| {
+        panic!("{message}");
+    });
 }
 
 // ----------------------------------------------------------------------------
@@ -567,7 +576,7 @@ steps:
         let result = compile_workflow(source.as_bytes());
 
         prop_assert!(
-            matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
+            matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { field: "save.value" }))),
             "ANTI-INVARIANT: secret in Save must be rejected, got {:?}",
             result
         );
@@ -598,7 +607,7 @@ steps:
         let result = compile_workflow(source.as_bytes());
 
         prop_assert!(
-            matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
+            matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { field: "save.value" }))),
             "ANTI-INVARIANT: secret input in Save must be rejected, got {:?}",
             result
         );

@@ -46,7 +46,7 @@ steps:
       result: 0
 "#;
     let error = parse_error(source).expect("expected error");
-    assert!(matches!(error, CompileError::DuplicateKey { key, .. } if key.as_ref() == "name"));
+    assert!(matches!(error, CompileError::DuplicateKey { key, mark } if key.as_ref() == "name" && mark.line > 0));
 }
 
 // ── NonStringKey variant ─────────────────────────────────────────────────────
@@ -66,7 +66,7 @@ steps:
 "#;
     let result = YamlCompiler::default().parse_ast(source);
     assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::NonStringKey { .. })))
+        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::NonStringKey { mark } if mark.line > 0)))
     );
 }
 
@@ -103,7 +103,7 @@ steps:
 "#;
     let result = YamlCompiler::default().parse_ast(source);
     assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnknownStepField { step: 0, .. })))
+        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnknownStepField { step: 0, field } if field.as_ref() == "unknown_field")))
     );
 }
 
@@ -146,7 +146,7 @@ steps:
 "#;
     let result = YamlCompiler::default().parse_ast(source);
     assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::DuplicateStepId { .. })))
+        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::DuplicateStepId { id } if id.as_ref() == "done")))
     );
 }
 
@@ -166,7 +166,7 @@ steps:
 "#;
     let result = YamlCompiler::default().parse_ast(source);
     assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnknownTopLevelField { .. })))
+        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnknownTopLevelField { field } if field.as_ref() == "unknown_field")))
     );
 }
 
@@ -185,7 +185,7 @@ steps:
 "#;
     let result = YamlCompiler::default().parse_ast(source);
     assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::InvalidVersion { .. })))
+        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::InvalidVersion { actual } if actual.as_ref() == "velvet-ballastics/v2")))
     );
 }
 
@@ -204,7 +204,7 @@ steps:
 "#;
     let result = YamlCompiler::default().parse_ast(source);
     assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnknownTriggerKind { .. })))
+        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnknownTriggerKind { trigger } if trigger.as_ref() == "unknown_trigger")))
     );
 }
 
@@ -244,7 +244,7 @@ steps:
 "#;
     let result = YamlCompiler::default().parse_ast(source);
     assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::FieldShape { .. })))
+        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::FieldShape { field: "inputs", expected: "mapping" })))
     );
 }
 
@@ -302,7 +302,7 @@ steps:
       result: 0
 "#;
     let error = parse_error(source).expect("expected error");
-    assert!(matches!(error, CompileError::UnknownReferenceName { kind, .. } if kind == "input"));
+    assert!(matches!(error, CompileError::UnknownReferenceName { kind: "input", reference, name } if reference.as_ref() == "$input.nonexistent" && name.as_ref() == "nonexistent"));
 }
 
 // ── UnknownReferenceRoot variant ─────────────────────────────────────────────
@@ -322,7 +322,7 @@ steps:
       result: 0
 "#;
     let error = parse_error(source).expect("expected error");
-    assert!(matches!(error, CompileError::UnknownReferenceRoot { .. }));
+    assert!(matches!(error, CompileError::UnknownReferenceRoot { reference, root } if reference.as_ref() == "$env.HOME" && root.as_ref() == "env"));
 }
 
 // ── IllegalReference variant ─────────────────────────────────────────────────
@@ -342,7 +342,7 @@ steps:
       result: 0
 "#;
     let error = parse_error(source).expect("expected error");
-    assert!(matches!(error, CompileError::IllegalReference { .. }));
+    assert!(matches!(error, CompileError::IllegalReference { reference } if reference.as_ref() == "$runtime.now"));
 }
 
 // ── UnsupportedAccessorReference variant ─────────────────────────────────────
@@ -364,7 +364,8 @@ steps:
     let error = parse_error(source).expect("expected error");
     assert!(matches!(
         error,
-        CompileError::UnsupportedAccessorReference { .. }
+        CompileError::UnsupportedAccessorReference { reference, root, path }
+            if reference.as_ref() == "$slot.0.name" && root.as_ref() == "slot" && path.as_ref() == "0.name"
     ));
 }
 
@@ -385,8 +386,8 @@ steps:
     let Err(CompileErrors(errors)) = result else {
         panic!("expected error");
     };
-    let first = errors.first();
-    assert!(first.is_some());
+    assert_eq!(errors.len(), 1);
+    assert!(matches!(errors.first(), Some(CompileError::LastStepMustFinish)));
 }
 
 // ── CompileErrors len() and is_empty() ─────────────────────────────────────
@@ -407,7 +408,8 @@ steps:
         panic!("expected error");
     };
     assert!(!errors.is_empty());
-    assert!(errors.len() >= 1);
+    assert_eq!(errors.len(), 1);
+    assert!(matches!(errors.first(), Some(CompileError::LastStepMustFinish)));
 }
 
 // ── CompileErrors iter() ─────────────────────────────────────────────────────
@@ -427,8 +429,9 @@ steps:
     let Err(CompileErrors(errors)) = result else {
         panic!("expected error");
     };
-    let count = errors.iter().count();
-    assert!(count >= 1);
+    let collected: Vec<&CompileError> = errors.iter().collect();
+    assert_eq!(collected.len(), 1);
+    assert!(matches!(collected.as_slice(), [CompileError::LastStepMustFinish]));
 }
 
 // ── CompileErrors as_slice() ─────────────────────────────────────────────────
@@ -449,7 +452,8 @@ steps:
         panic!("expected error");
     };
     let slice = errors.as_slice();
-    assert!(!slice.is_empty());
+    assert_eq!(slice.len(), 1);
+    assert!(matches!(slice, [CompileError::LastStepMustFinish]));
 }
 
 // ── YamlCompiler Default ─────────────────────────────────────────────────────
@@ -516,14 +520,14 @@ fn parse_expression_rejects_invalid_syntax() {
 fn strict_yaml_rejects_alias() {
     use crate::strict_yaml::reject_unsupported_profile_events;
     let result = reject_unsupported_profile_events("&anchor value");
-    assert!(matches!(result, Err(CompileError::AnchorForbidden { .. })));
+    assert!(matches!(result, Err(CompileError::AnchorForbidden { mark }) if mark.line == 0));
 }
 
 #[test]
 fn strict_yaml_accepts_single_document() {
     use crate::strict_yaml::reject_unsupported_profile_events;
     let result = reject_unsupported_profile_events("key: value");
-    assert!(matches!(result, Ok(())));
+    assert_eq!(result, Ok(()));
 }
 
 #[test]
@@ -644,28 +648,28 @@ fn parse_helper_unknown_returns_none() {
 fn expression_literal_null() {
     use crate::expression::ExpressionLiteral;
     let lit = ExpressionLiteral::Null;
-    assert!(matches!(lit, ExpressionLiteral::Null));
+    assert_eq!(lit, ExpressionLiteral::Null);
 }
 
 #[test]
 fn expression_literal_bool_true() {
     use crate::expression::ExpressionLiteral;
     let lit = ExpressionLiteral::Bool(true);
-    assert!(matches!(lit, ExpressionLiteral::Bool(true)));
+    assert_eq!(lit, ExpressionLiteral::Bool(true));
 }
 
 #[test]
 fn expression_literal_bool_false() {
     use crate::expression::ExpressionLiteral;
     let lit = ExpressionLiteral::Bool(false);
-    assert!(matches!(lit, ExpressionLiteral::Bool(false)));
+    assert_eq!(lit, ExpressionLiteral::Bool(false));
 }
 
 #[test]
 fn expression_literal_i64() {
     use crate::expression::ExpressionLiteral;
     let lit = ExpressionLiteral::I64(42);
-    assert!(matches!(lit, ExpressionLiteral::I64(42)));
+    assert_eq!(lit, ExpressionLiteral::I64(42));
 }
 
 #[test]
@@ -758,8 +762,11 @@ steps:
     finish:
       result: 0
 "#;
-    let result = YamlCompiler::default().parse_ast(source);
-    assert!(result.is_ok(), "workflow with reference should parse");
+    let ast = YamlCompiler::default().parse_ast(source).unwrap_or_else(|errors| {
+        panic!("workflow with reference should parse, got {errors:?}");
+    });
+    assert_eq!(ast.name.as_ref(), "ref_test");
+    assert_eq!(ast.steps.len(), 2);
 }
 
 // ── Integration: compute_compiled_digest is deterministic ───────────────────
@@ -820,7 +827,7 @@ steps:
       result: 0
 "#;
     let error = parse_error(source).expect("expected error");
-    assert!(matches!(error, CompileError::UnknownStepField { .. }));
+    assert!(matches!(error, CompileError::UnknownStepField { step: 0, field } if field.as_ref() == "unknown_field"));
 }
 
 #[test]

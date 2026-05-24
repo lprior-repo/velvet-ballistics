@@ -666,15 +666,13 @@ fn eval_helper_contains_returns_type_mismatch_for_i64_args() -> ExprResult<()> {
     };
     let constants = vec![ConstValue::I64(1), ConstValue::I64(2)];
     let result = eval_expr_program(&program, &[], &constants);
-    let Err(ExprError::TypeMismatch { expected, .. }) = result else {
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
         return Err(ExprError::UnexpectedToken {
             token: "expected TypeMismatch for Contains with I64 args".into(),
         });
     };
-    assert!(
-        expected.contains("text"),
-        "expected should mention text, got: {expected}"
-    );
+    assert_eq!(expected, "text");
+    assert_eq!(found, "number");
     Ok(())
 }
 
@@ -691,15 +689,13 @@ fn eval_helper_append_returns_type_mismatch_for_i64_args() -> ExprResult<()> {
     };
     let constants = vec![ConstValue::I64(1), ConstValue::I64(2)];
     let result = eval_expr_program(&program, &[], &constants);
-    let Err(ExprError::TypeMismatch { expected, .. }) = result else {
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
         return Err(ExprError::UnexpectedToken {
             token: "expected TypeMismatch for Append with I64 args".into(),
         });
     };
-    assert!(
-        expected.contains("list"),
-        "expected should mention list, got: {expected}"
-    );
+    assert_eq!(expected, "list");
+    assert_eq!(found, "number");
     Ok(())
 }
 
@@ -716,15 +712,13 @@ fn eval_helper_merge_returns_type_mismatch_for_i64_args() -> ExprResult<()> {
     };
     let constants = vec![ConstValue::I64(1), ConstValue::I64(2)];
     let result = eval_expr_program(&program, &[], &constants);
-    let Err(ExprError::TypeMismatch { expected, .. }) = result else {
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
         return Err(ExprError::UnexpectedToken {
             token: "expected TypeMismatch for Merge with I64 args".into(),
         });
     };
-    assert!(
-        expected.contains("object"),
-        "expected should mention object, got: {expected}"
-    );
+    assert_eq!(expected, "object");
+    assert_eq!(found, "number");
     Ok(())
 }
 
