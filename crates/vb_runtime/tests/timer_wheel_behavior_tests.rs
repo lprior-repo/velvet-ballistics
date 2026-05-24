@@ -36,6 +36,15 @@ fn deadline_at(ms_from_now: i64) -> Instant {
     }
 }
 
+fn timer_triples(
+    entries: &[vb_runtime::shard::timer_wheel::TimerEntry],
+) -> Vec<(RunId, Instant, PendingTimerKind)> {
+    entries
+        .iter()
+        .map(|entry| (entry.run, entry.deadline, entry.kind))
+        .collect()
+}
+
 // ---------------------------------------------------------------------------
 // 1. Timer creation with various durations
 // ---------------------------------------------------------------------------
@@ -130,10 +139,15 @@ fn fire_expired_returns_timers_in_deadline_order() {
     assert_eq!(wheel.insert(run(3), d2, PendingTimerKind::Wait), Ok(()));
 
     let fired = wheel.fire_expired(now);
-    assert_eq!(fired.len(), 3);
-    assert_eq!(fired[0].deadline, d1);
-    assert_eq!(fired[1].deadline, d2);
-    assert_eq!(fired[2].deadline, d3);
+    assert_eq!(
+        timer_triples(&fired),
+        vec![
+            (run(1), d1, PendingTimerKind::Wait),
+            (run(3), d2, PendingTimerKind::Wait),
+            (run(2), d3, PendingTimerKind::Ask),
+        ],
+        "expired timers must preserve exact run/deadline/kind triples in deadline order"
+    );
 }
 
 #[test]
@@ -147,9 +161,11 @@ fn fire_expired_excludes_future_timers() {
     assert_eq!(wheel.insert(run(2), future, PendingTimerKind::Ask), Ok(()));
 
     let fired = wheel.fire_expired(now);
-    assert_eq!(fired.len(), 1);
-    assert_eq!(fired[0].run, run(1));
-    assert!(!wheel.is_empty());
+    assert_eq!(
+        timer_triples(&fired),
+        vec![(run(1), past, PendingTimerKind::Wait)]
+    );
+    assert_eq!(wheel.is_empty(), false);
 }
 
 #[test]
@@ -223,8 +239,11 @@ fn cancelled_timer_not_included_in_fire_expired() {
     assert!(wheel.cancel(run(1)));
 
     let fired = wheel.fire_expired(now);
-    assert_eq!(fired.len(), 1);
-    assert_eq!(fired[0].run, run(2));
+    assert_eq!(
+        timer_triples(&fired),
+        vec![(run(2), past, PendingTimerKind::Ask)],
+        "cancelled run must not silently survive in fired output"
+    );
 }
 
 #[test]
@@ -372,11 +391,15 @@ fn insert_out_of_deadline_order_still_sorts_correctly() {
     assert_eq!(wheel.insert(run(2), d2, PendingTimerKind::Wait), Ok(()));
 
     let fired = wheel.fire_expired(d4);
-    assert_eq!(fired.len(), 4);
-    assert_eq!(fired[0].deadline, d1);
-    assert_eq!(fired[1].deadline, d2);
-    assert_eq!(fired[2].deadline, d3);
-    assert_eq!(fired[3].deadline, d4);
+    assert_eq!(
+        timer_triples(&fired),
+        vec![
+            (run(1), d1, PendingTimerKind::Wait),
+            (run(2), d2, PendingTimerKind::Wait),
+            (run(3), d3, PendingTimerKind::Wait),
+            (run(4), d4, PendingTimerKind::Wait),
+        ]
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -573,10 +596,14 @@ fn precision_nanosecond_scale_deadlines_are_handled() {
     assert_eq!(wheel.insert(run(3), d3, PendingTimerKind::Wait), Ok(()));
 
     let fired = wheel.fire_expired(d3);
-    assert_eq!(fired.len(), 3);
-    assert_eq!(fired[0].deadline, d1);
-    assert_eq!(fired[1].deadline, d2);
-    assert_eq!(fired[2].deadline, d3);
+    assert_eq!(
+        timer_triples(&fired),
+        vec![
+            (run(1), d1, PendingTimerKind::Wait),
+            (run(2), d2, PendingTimerKind::Ask),
+            (run(3), d3, PendingTimerKind::Wait),
+        ]
+    );
 }
 
 #[test]
@@ -592,9 +619,14 @@ fn precision_microsecond_scale_deadlines_maintain_ordering() {
     assert_eq!(wheel.insert(run(2), d2, PendingTimerKind::Wait), Ok(()));
 
     let fired = wheel.fire_expired(d3);
-    assert_eq!(fired[0].deadline, d1);
-    assert_eq!(fired[1].deadline, d2);
-    assert_eq!(fired[2].deadline, d3);
+    assert_eq!(
+        timer_triples(&fired),
+        vec![
+            (run(1), d1, PendingTimerKind::Wait),
+            (run(2), d2, PendingTimerKind::Wait),
+            (run(3), d3, PendingTimerKind::Wait),
+        ]
+    );
 }
 
 #[test]
@@ -611,7 +643,7 @@ fn precision_deadline_one_nanosecond_apart_are_distinct() {
 }
 
 #[test]
-fn precision_identical_timestamps_returned_in_any_order() {
+fn precision_identical_timestamps_returned_in_insertion_order_with_exact_identity() {
     let mut wheel = TimerWheel::new();
     let deadline = Instant::now();
     assert_eq!(
@@ -628,11 +660,15 @@ fn precision_identical_timestamps_returned_in_any_order() {
     );
 
     let fired = wheel.fire_expired(deadline);
-    assert_eq!(fired.len(), 3);
-    let runs: Vec<u64> = fired.iter().map(|e| e.run.get()).collect();
-    assert!(runs.contains(&10));
-    assert!(runs.contains(&20));
-    assert!(runs.contains(&30));
+    assert_eq!(
+        timer_triples(&fired),
+        vec![
+            (run(10), deadline, PendingTimerKind::Wait),
+            (run(20), deadline, PendingTimerKind::Ask),
+            (run(30), deadline, PendingTimerKind::Wait),
+        ],
+        "identical-deadline timers must retain exact identity and deterministic insertion order"
+    );
 }
 
 // ---------------------------------------------------------------------------

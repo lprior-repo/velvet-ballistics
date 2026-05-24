@@ -386,19 +386,16 @@ fn step_succeeded_carries_attempt_field() {
             RuntimeJournalEvent::StepSucceeded {
                 run: r,
                 step: s,
-                output: _,
-                attempt: a, // POST-003: attempt field should exist
-            } if *r == run && *s == StepIdx::ZERO => Some(*a),
+                output,
+                attempt: a,
+            } if *r == run && *s == StepIdx::ZERO => Some((*s, *output, *a)),
             _ => None,
         })
         .collect();
 
-    assert!(
-        !step_succeeded_events.is_empty(),
-        "StepSucceeded event should be in journal"
-    );
     assert_eq!(
-        step_succeeded_events[0], 1,
+        step_succeeded_events,
+        vec![(StepIdx::ZERO, SlotIdx::ZERO, 1)],
         "StepSucceeded should carry attempt=1 from ticket"
     );
 }
@@ -438,19 +435,16 @@ fn action_failed_carries_attempt_field() {
             RuntimeJournalEvent::ActionFailed {
                 run: r,
                 step: s,
-                action: _,
-                attempt: a, // POST-003: attempt field should exist
-            } if *r == run && *s == StepIdx::ZERO => Some(*a),
+                action,
+                attempt: a,
+            } if *r == run && *s == StepIdx::ZERO => Some((*s, *action, *a)),
             _ => None,
         })
         .collect();
 
-    assert!(
-        !action_failed_events.is_empty(),
-        "ActionFailed event should be in journal"
-    );
     assert_eq!(
-        action_failed_events[0], 2,
+        action_failed_events,
+        vec![(StepIdx::ZERO, ActionId::new(0), 2)],
         "ActionFailed should carry attempt=2 from ticket"
     );
 }
@@ -498,20 +492,22 @@ fn step_succeeded_carries_retry_attempt_number() {
 
     // Check attempt=3 was persisted
     let events = journal.snapshot().expect("journal snapshot should work");
-    let step_succeeded_with_attempt_3: bool = events.iter().any(|e| {
-        matches!(
-            e,
+    let matching_step_succeeded: Vec<_> = events
+        .iter()
+        .filter_map(|event| match event {
             RuntimeJournalEvent::StepSucceeded {
-                run,
+                run: event_run,
                 step,
-                output: _,
-                attempt: 3,
-            } if *run == *run && *step == StepIdx::ZERO
-        )
-    });
-    assert!(
-        step_succeeded_with_attempt_3,
-        "StepSucceeded should carry attempt=3 from ticket"
+                output,
+                attempt,
+            } if *event_run == run => Some((*step, *output, *attempt)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        matching_step_succeeded,
+        vec![(StepIdx::ZERO, SlotIdx::ZERO, 3)],
+        "StepSucceeded should carry exact run/step/output/attempt from the accepted ticket"
     );
 }
 
@@ -588,6 +584,14 @@ fn stale_attempt_completion_rejected_before_journal_write() {
     assert_eq!(
         counters_before.runs_failed, counters_after.runs_failed,
         "runs_failed counter must not change on stale rejection"
+    );
+    let Some(state_after) = shard.runs.get(&run) else {
+        panic!("run should remain active after stale rejection");
+    };
+    assert_eq!(
+        state_after.action_attempts.get(0).copied(),
+        Some(3),
+        "stale completion must not decrease or overwrite the current scheduled attempt"
     );
 }
 
@@ -772,7 +776,38 @@ fn action_attempts_never_decreases_across_operations() {
         .copied()
         .expect("step 0 exists");
 
-    // Verify normal scheduling did not create a zero/underflowed attempt.
+    {
+        let Some(state) = shard.runs.get_mut(&run) else {
+            panic!("run should exist before forced mutation");
+        };
+        let Some(attempt) = state.action_attempts.get_mut(0) else {
+            panic!("step 0 attempt counter should exist before forced mutation");
+        };
+        *attempt = 4;
+    }
+
+    let stale_ticket = make_ticket(run, StepIdx::ZERO, 2, 4);
+    let output = ActionOutputReady {
+        output_slot: SlotIdx::ZERO,
+        value: SlotValue::I64(11),
+        taint: Taint::Clean,
+        encoded_len: 8,
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionCompleted {
+            ticket: stale_ticket,
+            output,
+        }),
+        Ok(())
+    );
+    assert_eq!(
+        shard.tick(),
+        Err(RuntimeError::StaleAttempt {
+            incoming: 2,
+            current: 4,
+        })
+    );
+
     let final_attempt = shard
         .runs
         .get(&run)
@@ -781,9 +816,13 @@ fn action_attempts_never_decreases_across_operations() {
         .get(0)
         .copied()
         .expect("step 0 exists");
-    assert!(
-        final_attempt >= initial_attempt,
-        "action_attempts[0] should never decrease below initial value"
+    assert_eq!(
+        final_attempt, 4,
+        "failed stale mutation must preserve the higher scheduled attempt"
+    );
+    assert_eq!(
+        initial_attempt, 1,
+        "fixture sanity: first scheduled attempt starts at one before mutation"
     );
 }
 
@@ -791,43 +830,9 @@ fn action_attempts_never_decreases_across_operations() {
 // Error cases: EncodeFailed on completion/failure paths
 // =============================================================================
 
-/// EncodeFailed: completion returns error and leaves state unchanged
-#[test]
-fn encode_failed_completion_returns_error_and_leaves_state_unchanged() {
-    // This test would require forcing postcard serialization to fail.
-    // We test the error path exists and state is unchanged on error.
-    // Note: Actual EncodeFailed forcing would require a custom encoder or oversized value.
-    // This test documents the expected behavior.
-    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
-    let shared = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
-
-    let Some(wf) = suspended_workflow() else {
-        panic!("missing workflow fixture");
-    };
-    let run = RunId::new(50);
-
-    submit_with_contracts(&shard, run, wf);
-    assert_eq!(shard.tick(), Ok(true));
-
-    // Verify run is active and in correct state
-    let _state_before = shard.runs.get(&run).expect("run should exist").clone();
-
-    // Complete action normally (happy path to verify event structure)
-    let ticket = make_ticket(run, StepIdx::ZERO, 1, 1);
-    let output = ActionOutputReady {
-        output_slot: SlotIdx::ZERO,
-        value: SlotValue::I64(42),
-        taint: Taint::Clean,
-        encoded_len: 8,
-    };
-    assert_eq!(
-        shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
-        Ok(())
-    );
-    // The tick processes the completion - we just verify it doesn't panic
-    assert_eq!(shard.tick(), Ok(true));
-}
+// No runtime value currently forces postcard::to_allocvec(SlotValue) to fail deterministically.
+// A prior placeholder here exercised the happy path while claiming EncodeFailed coverage; it was
+// removed because misleading green tests are worse than an explicit coverage gap.
 
 // =============================================================================
 // BDD Scenario: validate_ticket_attempt accepts valid ticket
@@ -877,7 +882,9 @@ fn validate_ticket_attempt_accepts_valid_ticket() {
 /// Equal attempt (current=1, incoming=1) is NOT stale
 #[test]
 fn equal_attempt_is_not_stale() {
-    let mut shard = Shard::new(small_config());
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
     let Some(wf) = suspended_workflow() else {
         panic!("missing workflow fixture");
     };
@@ -899,11 +906,43 @@ fn equal_attempt_is_not_stale() {
         shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
         Ok(())
     );
-    // Equal attempt should NOT return StaleAttempt error
     let result = shard.tick();
-    assert!(
-        !matches!(result, Err(RuntimeError::StaleAttempt { .. })),
-        "Equal attempt should not be rejected as stale"
+    assert_eq!(result, Ok(true), "equal attempt must complete exactly");
+
+    let events = journal.snapshot().expect("journal snapshot should work");
+    let step_succeeded: Vec<_> = events
+        .iter()
+        .filter_map(|event| match event {
+            RuntimeJournalEvent::StepSucceeded {
+                run: event_run,
+                step,
+                output,
+                attempt,
+            } if *event_run == run => Some((*step, *output, *attempt)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        step_succeeded,
+        vec![(StepIdx::ZERO, SlotIdx::ZERO, 1)],
+        "equal attempt must journal exact success identity"
+    );
+    let slot_written: Vec<_> = events
+        .iter()
+        .filter_map(|event| match event {
+            RuntimeJournalEvent::SlotWritten {
+                run: event_run,
+                slot,
+                taint,
+                ..
+            } if *event_run == run => Some((*slot, *taint)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        slot_written,
+        vec![(SlotIdx::ZERO, Taint::Clean)],
+        "equal attempt must write the exact output slot and taint"
     );
 }
 

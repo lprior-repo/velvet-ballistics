@@ -14,7 +14,8 @@
 
 use tempfile::TempDir;
 use vb_core::{
-    ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx, WorkflowDigest,
+    ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx, Taint,
+    WorkflowDigest,
 };
 use vb_runtime::recovery::RuntimeRecoveryBoundary;
 use vb_storage::recovery::{
@@ -24,7 +25,7 @@ use vb_storage::recovery::{
     recover_runtime_frame_seed, recover_runtime_summary, recover_runtime_summary_with_expected,
     verify_digests,
 };
-use vb_storage::{EventSeq, FjallConfig, FjallJournal, JournalEvent};
+use vb_storage::{EventSeq, FjallConfig, FjallJournal, JournalEvent, encode_slot_written_extra};
 
 fn test_digest(byte: u8) -> WorkflowDigest {
     WorkflowDigest::from_bytes([byte; 32])
@@ -398,10 +399,8 @@ fn hydration_from_events_reconstructs_exact_pc_and_dimensions() {
         },
     ];
 
-    let result = hydrate_run_frame_from_events(&events, run);
-    assert!(result.is_ok(), "hydration should succeed: {result:?}");
-
-    let frame = result.unwrap();
+    let frame = hydrate_run_frame_from_events(&events, run)
+        .expect("hydration should succeed for contiguous accepted/start/write/succeed events");
     assert_eq!(frame.run_id(), run);
     assert_eq!(frame.pc(), StepIdx::new(3));
     assert_eq!(frame.step_count(), 4);
@@ -436,7 +435,10 @@ fn hydration_from_frame_seed_reconstructs_slot_values_and_taint() {
             value: Some(
                 postcard::to_allocvec(&SlotValue::I64(77)).expect("value encoding should succeed"),
             ),
-            extra: None,
+            extra: Some(
+                encode_slot_written_extra(Taint::Secret, None)
+                    .expect("slot taint envelope should encode"),
+            ),
             attempt: 1,
         },
     ];
@@ -456,12 +458,14 @@ fn hydration_from_frame_seed_reconstructs_slot_values_and_taint() {
         .find(|s| s.slot == SlotIdx::ZERO)
         .expect("slot 0 must be in recovered slots");
     assert_eq!(slot.value, SlotValue::I64(77));
+    assert_eq!(slot.taint, Taint::Secret);
 
     let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
     let frame = boundary
         .hydrate_run_frame()
         .expect("boundary hydration should succeed");
     assert_eq!(frame.read_slot(SlotIdx::ZERO), Ok(&SlotValue::I64(77)));
+    assert_eq!(frame.read_taint(SlotIdx::ZERO), Ok(Taint::Secret));
 }
 
 /// Given a journal with WaitScheduled and AskScheduled events
@@ -568,10 +572,12 @@ fn hydration_reconstructs_failed_terminal_state() {
         },
     ];
 
-    let result = hydrate_run_frame_from_events(&events, run);
-    assert!(
-        result.is_ok(),
-        "hydration should succeed for failed run: {result:?}"
+    let frame = hydrate_run_frame_from_events(&events, run)
+        .expect("hydration should succeed for failed run");
+    assert_eq!(frame.run_id(), run);
+    assert_eq!(
+        frame.step_state(StepIdx::ZERO),
+        Ok(vb_core::frame::StepState::Running)
     );
 }
 
@@ -607,14 +613,14 @@ fn hydration_rejects_sequence_gap_in_events() {
         },
     ];
 
-    let result = hydrate_run_frame_from_events(&events, run);
-    // Note: hydrate_run_frame_from_events processes available events without
-    // strictly enforcing continuity. Sequence gap detection is the caller's
-    // responsibility. With events at seq 0, 1, 3, the function hydrates from
-    // what it has (seq 0, 1) and ignores the gap.
-    assert!(
-        result.is_ok(),
-        "hydration should succeed with gapped-but-present events, got: {result:?}"
+    let frame = hydrate_run_frame_from_events(&events, run)
+        .expect("hydration should tolerate caller-supplied gapped event slices");
+    assert_eq!(frame.run_id(), run);
+    assert_eq!(frame.pc(), StepIdx::ZERO);
+    assert_eq!(
+        frame.slot_count(),
+        0,
+        "gapped StepSucceeded output is ignored, so no slot dimension is inferred"
     );
 }
 
@@ -687,9 +693,11 @@ fn corrupt_snapshot_run_mismatch_rejected() {
     }];
 
     let result = hydrate_run_frame(&snapshot, &tail, run);
-    let Err(RecoveryError::CorruptSnapshot { .. }) = result else {
+    let Err(RecoveryError::CorruptSnapshot { run: err_run, seq }) = result else {
         panic!("expected CorruptSnapshot for run mismatch, got: {result:?}");
     };
+    assert_eq!(err_run, wrong_run);
+    assert_eq!(seq, EventSeq::new(1));
 }
 
 /// Given a snapshot with non-empty slots but empty taint vector
@@ -711,10 +719,13 @@ fn corrupt_snapshot_missing_taint_for_non_empty_slots_fails_closed() {
     let tail = vec![];
 
     let result = hydrate_run_frame(&snapshot, &tail, run);
-    assert!(
-        result.is_err(),
-        "should fail when taint is missing for non-empty slots"
-    );
+    let Err(RecoveryError::CorruptSnapshot { run: err_run, seq }) = result else {
+        panic!(
+            "expected CorruptSnapshot when taint is missing for non-empty slots, got: {result:?}"
+        );
+    };
+    assert_eq!(err_run, run);
+    assert_eq!(seq, EventSeq::new(0));
 }
 
 /// Given a snapshot with empty slots and empty taint
@@ -748,11 +759,10 @@ fn snapshot_empty_slots_empty_taint_hydrates_successfully() {
         },
     ];
 
-    let result = hydrate_run_frame(&snapshot, &tail, run);
-    assert!(
-        result.is_ok(),
-        "empty taint + empty slots should succeed: {result:?}"
-    );
+    let frame =
+        hydrate_run_frame(&snapshot, &tail, run).expect("empty taint + empty slots should succeed");
+    assert_eq!(frame.run_id(), run);
+    assert_eq!(frame.pc(), StepIdx::ZERO);
 }
 
 // ============================================================================
