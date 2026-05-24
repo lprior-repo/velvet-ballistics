@@ -8,6 +8,36 @@
 
 use crate::budget::{AggregateResourceBudget, AggregateResourceUsage};
 
+fn zero_usage() -> AggregateResourceUsage {
+    AggregateResourceUsage::default()
+}
+
+fn zero_budget() -> AggregateResourceBudget {
+    AggregateResourceBudget {
+        max_steps_executable: 0,
+        max_action_tickets: 0,
+        max_parallel_in_flight: 0,
+        max_retries_per_action: 0,
+        max_gather_pages: 0,
+        max_gather_items: 0,
+        max_for_each_iterations: 0,
+        max_together_branches: 0,
+        max_repeat_attempts: 0,
+        max_run_time_seconds: 0,
+        max_result_bytes: 0,
+        max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_queue_depth: 0,
+        max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
+        max_step_budget_per_tick: 0,
+        max_transitions_per_tick: 0,
+    }
+}
+
 /// VB-CORE-BUDGET-001 H1: add_dim(0, 0) returns Ok(0)
 #[kani::proof]
 #[kani::unwind(4)]
@@ -34,49 +64,9 @@ fn kani_budget_sub_dim_zero() {
 #[kani::proof]
 #[kani::unwind(4)]
 fn kani_aggregate_usage_zero() {
-    let usage = AggregateResourceUsage {
-        max_steps_executable: 0,
-        max_action_tickets: 0,
-        max_parallel_in_flight: 0,
-        max_gather_pages: 0,
-        max_gather_items: 0,
-        max_result_bytes: 0,
-        max_total_slots_written: 0,
-        max_timer_entries: 0,
-        max_trace_events: 0,
-        max_active_runs: 0,
-        max_queue_depth: 0,
-        max_journal_batch_bytes: 0,
-        max_ipc_payload_bytes: 0,
-        max_blob_bytes: 0,
-        max_input_bytes: 0,
-        max_step_budget_per_tick: 0,
-        max_transitions_per_tick: 0,
-    };
+    let usage = zero_usage();
 
-    let budget = AggregateResourceBudget {
-        max_steps_executable: 0,
-        max_action_tickets: 0,
-        max_parallel_in_flight: 0,
-        max_retries_per_action: 0,
-        max_gather_pages: 0,
-        max_gather_items: 0,
-        max_for_each_iterations: 0,
-        max_together_branches: 0,
-        max_repeat_attempts: 0,
-        max_run_time_seconds: 0,
-        max_result_bytes: 0,
-        max_total_slots_written: 0,
-        max_timer_entries: 0,
-        max_trace_events: 0,
-        max_queue_depth: 0,
-        max_journal_batch_bytes: 0,
-        max_ipc_payload_bytes: 0,
-        max_blob_bytes: 0,
-        max_input_bytes: 0,
-        max_step_budget_per_tick: 0,
-        max_transitions_per_tick: 0,
-    };
+    let budget = zero_budget();
 
     let result = usage.try_add_budget(&budget);
     kani::assert(result.is_ok(), "adding zero budgets succeeds");
@@ -86,48 +76,11 @@ fn kani_aggregate_usage_zero() {
 #[kani::proof]
 #[kani::unwind(4)]
 fn kani_try_add_budget_zero_current() {
-    let usage = AggregateResourceUsage {
-        max_steps_executable: 0,
-        max_action_tickets: 0,
-        max_parallel_in_flight: 0,
-        max_gather_pages: 0,
-        max_gather_items: 0,
-        max_result_bytes: 0,
-        max_total_slots_written: 0,
-        max_timer_entries: 0,
-        max_trace_events: 0,
-        max_active_runs: 0,
-        max_queue_depth: 0,
-        max_journal_batch_bytes: 0,
-        max_ipc_payload_bytes: 0,
-        max_blob_bytes: 0,
-        max_input_bytes: 0,
-        max_step_budget_per_tick: 0,
-        max_transitions_per_tick: 0,
-    };
+    let usage = zero_usage();
 
     let budget = AggregateResourceBudget {
         max_steps_executable: 1,
-        max_action_tickets: 0,
-        max_parallel_in_flight: 0,
-        max_retries_per_action: 0,
-        max_gather_pages: 0,
-        max_gather_items: 0,
-        max_for_each_iterations: 0,
-        max_together_branches: 0,
-        max_repeat_attempts: 0,
-        max_run_time_seconds: 0,
-        max_result_bytes: 0,
-        max_total_slots_written: 0,
-        max_timer_entries: 0,
-        max_trace_events: 0,
-        max_queue_depth: 0,
-        max_journal_batch_bytes: 0,
-        max_ipc_payload_bytes: 0,
-        max_blob_bytes: 0,
-        max_input_bytes: 0,
-        max_step_budget_per_tick: 0,
-        max_transitions_per_tick: 0,
+        ..zero_budget()
     };
 
     let result = usage.try_add_budget(&budget);

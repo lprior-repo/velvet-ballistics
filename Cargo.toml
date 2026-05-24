@@ -15,6 +15,7 @@ members = [
     "crates/vb_proof_kernels",
     "crates/vb_cli",
     "crates/vb_verification",
+    "crates/workspace_tests/idempotency_suite",
     # workspace_tests excluded (depends on deferred vb_ui/vb_codegen types)
     # "crates/workspace_tests",
     "crates/vb_benchmark",

@@ -14,6 +14,7 @@ use vb_core::budget::{
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, RunId, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
+use vb_storage::EventSeq;
 
 /// Number of verification gates required in a v1 accepted artifact for Strict/Journaled admission.
 pub const REQUIRED_GATE_COUNT: u8 = 15;
@@ -297,6 +298,18 @@ pub enum AdmissionError {
         requested: WorkflowDigest,
         /// Digest found inside the loaded artifact envelope.
         found: WorkflowDigest,
+    },
+    /// The loaded artifact certificate is older than the caller's freshness floor.
+    #[error(
+        "admission rejected: artifact certificate stale for digest {digest:?}: accepted_at_seq {accepted_at_seq:?} < required_at_least {required_at_least:?}"
+    )]
+    ArtifactCertificateStale {
+        /// Digest whose certificate was too old.
+        digest: WorkflowDigest,
+        /// Sequence at which the artifact was accepted.
+        accepted_at_seq: EventSeq,
+        /// Minimum accepted sequence required by the caller.
+        required_at_least: EventSeq,
     },
 }
 
@@ -629,6 +642,28 @@ pub fn admit_artifact_run(
     artifact_digest: WorkflowDigest,
     caps: CapabilitySet,
 ) -> Result<RunAdmission, AdmissionError> {
+    admit_artifact_run_with_certificate_floor(
+        store,
+        policy,
+        run_id,
+        artifact_digest,
+        caps,
+        EventSeq::ZERO,
+    )
+}
+
+/// Performs full artifact admission with a caller-supplied certificate freshness floor.
+///
+/// This preserves relaxed-mode behavior and rejects Strict/Journaled artifacts whose
+/// `accepted_at_seq` is below `required_at_least` after envelope validation.
+pub fn admit_artifact_run_with_certificate_floor(
+    store: &dyn AcceptedArtifactStore,
+    policy: RuntimePolicy,
+    run_id: RunId,
+    artifact_digest: WorkflowDigest,
+    caps: CapabilitySet,
+    required_at_least: EventSeq,
+) -> Result<RunAdmission, AdmissionError> {
     match policy {
         RuntimePolicy::Strict | RuntimePolicy::Journaled => {
             // Load and validate the full artifact.
@@ -636,17 +671,6 @@ pub fn admit_artifact_run(
                 .load_accepted_artifact(artifact_digest)
                 .map_err(map_artifact_envelope_error)?;
             validate_accepted_artifact_envelope(&artifact).map_err(map_artifact_envelope_error)?;
-
-            // Check that granted capabilities cover the artifact's required capabilities.
-            if caps.len() != artifact.required_capabilities.len() {
-                return Err(capability_count_mismatch_error(
-                    &artifact.required_capabilities,
-                    &caps,
-                ));
-            }
-            for required_cap in artifact.required_capabilities.iter() {
-                check_capability(required_cap.action_id(), required_cap, &caps)?;
-            }
 
             // INV-002: digest binding must be total. The loaded artifact's digest
             // must match the requested digest exactly — a crafted artifact with
@@ -665,6 +689,25 @@ pub fn admit_artifact_run(
                     requested: artifact_digest,
                     found: artifact.verification.digest,
                 });
+            }
+
+            if artifact.accepted_at_seq < required_at_least {
+                return Err(AdmissionError::ArtifactCertificateStale {
+                    digest: artifact_digest,
+                    accepted_at_seq: artifact.accepted_at_seq,
+                    required_at_least,
+                });
+            }
+
+            // Check that granted capabilities cover the artifact's required capabilities.
+            if caps.len() != artifact.required_capabilities.len() {
+                return Err(capability_count_mismatch_error(
+                    &artifact.required_capabilities,
+                    &caps,
+                ));
+            }
+            for required_cap in artifact.required_capabilities.iter() {
+                check_capability(required_cap.action_id(), required_cap, &caps)?;
             }
 
             Ok(RunAdmission::with_idempotency_evidence(

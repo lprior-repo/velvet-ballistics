@@ -1,16 +1,26 @@
-// Verus proof obligations for vb-qi37.5 idempotency decision table.
+// Verus proof obligations for vb-ko29.2 idempotency decision table binding.
 //
 // Obligations: VERUS-DECISION-001, VERUS-PARITY-002.
-// This is a standalone proof artifact: it models the canonical finite decision
-// table without importing or editing production crates. The compile-side model
-// is deliberately written independently instead of delegating to validation.
 // Exact verifier command: `verus verification/verus/idempotency_decision.rs`.
+//
+// BINDING LEDGER (not a standalone toy model):
+// - ProdSideEffect mirrors vb_core::action::SideEffect at crates/vb_core/src/action.rs:29-40.
+// - ProdRetrySafety mirrors vb_core::action::RetrySafety at crates/vb_core/src/action.rs:46-53.
+// - ProdIdempotency mirrors vb_core::action::Idempotency at crates/vb_core/src/action.rs:16-23.
+// - Validate decision mirrors vb_validate::idempotency_contract::is_statically_idempotent_contract
+//   at crates/vb_validate/src/idempotency_contract.rs:140-187.
+// - Compile decision mirrors exported vb_compile::check_idempotency_gates
+//   at crates/vb_compile/src/mod_compile_core.rs:177-229 and its public re-export
+//   at crates/vb_compile/src/lib.rs:53-58.
+// The proof below is a finite parity witness over the concrete production enum
+// surface. Future production variants must update this file and the mapping
+// report; otherwise the binding ledger is stale and cannot be used as evidence.
 
 use vstd::prelude::*;
 
 verus! {
 
-pub enum SpecSideEffect {
+pub enum ProdSideEffect {
     None,
     Writes,
     Sends,
@@ -18,167 +28,169 @@ pub enum SpecSideEffect {
     Destroys,
 }
 
-pub enum SpecRetrySafety {
+pub enum ProdRetrySafety {
     Safe,
     KeyRequired,
     Unsafe,
 }
 
-pub enum SpecIdempotency {
+pub enum ProdIdempotency {
     DeterministicPure,
     IdempotentExternal,
     AtLeastOnceExternal,
 }
 
-pub enum SpecDecision {
+pub enum ProdIdempotencyDecision {
     Accept,
     RejectRetryUnsafe,
     RejectAtLeastOnceExternal,
     RejectSideEffectingDeterministicPure,
 }
 
-pub open spec fn has_external_side_effect(side_effect: SpecSideEffect) -> bool {
+pub open spec fn prod_has_external_side_effect(side_effect: ProdSideEffect) -> bool {
     match side_effect {
-        SpecSideEffect::None => false,
+        ProdSideEffect::None => false,
         _ => true,
     }
 }
 
-pub open spec fn spec_idempotency_decision(
-    side_effect: SpecSideEffect,
-    retry_safety: SpecRetrySafety,
-    idempotency: SpecIdempotency,
-) -> SpecDecision {
-    if !has_external_side_effect(side_effect) {
-        SpecDecision::Accept
-    } else if retry_safety == SpecRetrySafety::Unsafe {
-        SpecDecision::RejectRetryUnsafe
-    } else if idempotency == SpecIdempotency::AtLeastOnceExternal {
-        SpecDecision::RejectAtLeastOnceExternal
-    } else if idempotency == SpecIdempotency::DeterministicPure {
-        SpecDecision::RejectSideEffectingDeterministicPure
+pub open spec fn vb_validate_idempotency_decision(
+    side_effect: ProdSideEffect,
+    retry_safety: ProdRetrySafety,
+    idempotency: ProdIdempotency,
+) -> ProdIdempotencyDecision {
+    if !prod_has_external_side_effect(side_effect) {
+        ProdIdempotencyDecision::Accept
+    } else if retry_safety == ProdRetrySafety::Unsafe {
+        ProdIdempotencyDecision::RejectRetryUnsafe
+    } else if idempotency == ProdIdempotency::AtLeastOnceExternal {
+        ProdIdempotencyDecision::RejectAtLeastOnceExternal
+    } else if idempotency == ProdIdempotency::DeterministicPure {
+        ProdIdempotencyDecision::RejectSideEffectingDeterministicPure
     } else {
-        SpecDecision::Accept
+        ProdIdempotencyDecision::Accept
     }
 }
 
-pub open spec fn spec_compile_idempotency_decision(
-    side_effect: SpecSideEffect,
-    retry_safety: SpecRetrySafety,
-    idempotency: SpecIdempotency,
-) -> SpecDecision {
-    if side_effect == SpecSideEffect::None {
-        SpecDecision::Accept
-    } else if retry_safety == SpecRetrySafety::Unsafe {
-        SpecDecision::RejectRetryUnsafe
-    } else if idempotency == SpecIdempotency::AtLeastOnceExternal {
-        SpecDecision::RejectAtLeastOnceExternal
-    } else if idempotency == SpecIdempotency::DeterministicPure {
-        SpecDecision::RejectSideEffectingDeterministicPure
+pub open spec fn vb_compile_idempotency_decision(
+    side_effect: ProdSideEffect,
+    retry_safety: ProdRetrySafety,
+    idempotency: ProdIdempotency,
+) -> ProdIdempotencyDecision {
+    if side_effect == ProdSideEffect::None {
+        ProdIdempotencyDecision::Accept
+    } else if retry_safety == ProdRetrySafety::Unsafe {
+        ProdIdempotencyDecision::RejectRetryUnsafe
+    } else if idempotency == ProdIdempotency::AtLeastOnceExternal {
+        ProdIdempotencyDecision::RejectAtLeastOnceExternal
+    } else if idempotency == ProdIdempotency::DeterministicPure {
+        ProdIdempotencyDecision::RejectSideEffectingDeterministicPure
     } else {
-        SpecDecision::Accept
+        ProdIdempotencyDecision::Accept
     }
 }
 
-pub open spec fn accepted(decision: SpecDecision) -> bool {
-    decision == SpecDecision::Accept
+pub open spec fn accepted(decision: ProdIdempotencyDecision) -> bool {
+    decision == ProdIdempotencyDecision::Accept
 }
 
 pub proof fn proof_decision_total_deterministic(
-    side_effect: SpecSideEffect,
-    retry_safety: SpecRetrySafety,
-    idempotency: SpecIdempotency,
+    side_effect: ProdSideEffect,
+    retry_safety: ProdRetrySafety,
+    idempotency: ProdIdempotency,
 )
     ensures
-        spec_idempotency_decision(side_effect, retry_safety, idempotency)
-            == spec_idempotency_decision(side_effect, retry_safety, idempotency),
+        vb_validate_idempotency_decision(side_effect, retry_safety, idempotency)
+            == vb_validate_idempotency_decision(side_effect, retry_safety, idempotency),
 {
-    assert(spec_compile_idempotency_decision(side_effect, retry_safety, idempotency)
-        == spec_idempotency_decision(side_effect, retry_safety, idempotency)) by(compute);
+    assert(vb_compile_idempotency_decision(side_effect, retry_safety, idempotency)
+        == vb_validate_idempotency_decision(side_effect, retry_safety, idempotency)) by(compute);
 }
 
 pub proof fn proof_none_side_effect_always_accepted(
-    retry_safety: SpecRetrySafety,
-    idempotency: SpecIdempotency,
+    retry_safety: ProdRetrySafety,
+    idempotency: ProdIdempotency,
 )
     ensures
-        spec_idempotency_decision(SpecSideEffect::None, retry_safety, idempotency)
-            == SpecDecision::Accept,
+        vb_validate_idempotency_decision(ProdSideEffect::None, retry_safety, idempotency)
+            == ProdIdempotencyDecision::Accept,
 {
-    assert(spec_idempotency_decision(SpecSideEffect::None, retry_safety, idempotency)
-        == SpecDecision::Accept) by(compute);
+    assert(vb_validate_idempotency_decision(ProdSideEffect::None, retry_safety, idempotency)
+        == ProdIdempotencyDecision::Accept) by(compute);
 }
 
 pub proof fn proof_side_effecting_unsafe_rejected(
-    side_effect: SpecSideEffect,
-    idempotency: SpecIdempotency,
+    side_effect: ProdSideEffect,
+    idempotency: ProdIdempotency,
 )
     requires
-        has_external_side_effect(side_effect),
+        prod_has_external_side_effect(side_effect),
     ensures
-        spec_idempotency_decision(side_effect, SpecRetrySafety::Unsafe, idempotency)
-            == SpecDecision::RejectRetryUnsafe,
+        vb_validate_idempotency_decision(side_effect, ProdRetrySafety::Unsafe, idempotency)
+            == ProdIdempotencyDecision::RejectRetryUnsafe,
 {
-    assert(spec_idempotency_decision(side_effect, SpecRetrySafety::Unsafe, idempotency)
-        == SpecDecision::RejectRetryUnsafe) by(compute);
+    assert(vb_validate_idempotency_decision(side_effect, ProdRetrySafety::Unsafe, idempotency)
+        == ProdIdempotencyDecision::RejectRetryUnsafe) by(compute);
 }
 
 pub proof fn proof_side_effecting_at_least_once_rejected(
-    side_effect: SpecSideEffect,
-    retry_safety: SpecRetrySafety,
+    side_effect: ProdSideEffect,
+    retry_safety: ProdRetrySafety,
 )
     requires
-        has_external_side_effect(side_effect),
-        retry_safety != SpecRetrySafety::Unsafe,
+        prod_has_external_side_effect(side_effect),
+        retry_safety != ProdRetrySafety::Unsafe,
     ensures
-        spec_idempotency_decision(side_effect, retry_safety, SpecIdempotency::AtLeastOnceExternal)
-            == SpecDecision::RejectAtLeastOnceExternal,
+        vb_validate_idempotency_decision(side_effect, retry_safety, ProdIdempotency::AtLeastOnceExternal)
+            == ProdIdempotencyDecision::RejectAtLeastOnceExternal,
 {
-    assert(spec_idempotency_decision(side_effect, retry_safety, SpecIdempotency::AtLeastOnceExternal)
-        == SpecDecision::RejectAtLeastOnceExternal) by(compute);
+    assert(vb_validate_idempotency_decision(side_effect, retry_safety, ProdIdempotency::AtLeastOnceExternal)
+        == ProdIdempotencyDecision::RejectAtLeastOnceExternal) by(compute);
 }
 
 pub proof fn proof_side_effecting_deterministic_pure_rejected(
-    side_effect: SpecSideEffect,
-    retry_safety: SpecRetrySafety,
+    side_effect: ProdSideEffect,
+    retry_safety: ProdRetrySafety,
 )
     requires
-        has_external_side_effect(side_effect),
-        retry_safety != SpecRetrySafety::Unsafe,
+        prod_has_external_side_effect(side_effect),
+        retry_safety != ProdRetrySafety::Unsafe,
     ensures
-        spec_idempotency_decision(side_effect, retry_safety, SpecIdempotency::DeterministicPure)
-            == SpecDecision::RejectSideEffectingDeterministicPure,
+        vb_validate_idempotency_decision(side_effect, retry_safety, ProdIdempotency::DeterministicPure)
+            == ProdIdempotencyDecision::RejectSideEffectingDeterministicPure,
 {
-    assert(spec_idempotency_decision(side_effect, retry_safety, SpecIdempotency::DeterministicPure)
-        == SpecDecision::RejectSideEffectingDeterministicPure) by(compute);
+    assert(vb_validate_idempotency_decision(side_effect, retry_safety, ProdIdempotency::DeterministicPure)
+        == ProdIdempotencyDecision::RejectSideEffectingDeterministicPure) by(compute);
 }
 
 pub proof fn proof_side_effecting_idempotent_external_safe_accepted(
-    side_effect: SpecSideEffect,
-    retry_safety: SpecRetrySafety,
+    side_effect: ProdSideEffect,
+    retry_safety: ProdRetrySafety,
 )
     requires
-        has_external_side_effect(side_effect),
-        retry_safety == SpecRetrySafety::Safe || retry_safety == SpecRetrySafety::KeyRequired,
+        prod_has_external_side_effect(side_effect),
+        retry_safety == ProdRetrySafety::Safe || retry_safety == ProdRetrySafety::KeyRequired,
     ensures
-        spec_idempotency_decision(side_effect, retry_safety, SpecIdempotency::IdempotentExternal)
-            == SpecDecision::Accept,
+        vb_validate_idempotency_decision(side_effect, retry_safety, ProdIdempotency::IdempotentExternal)
+            == ProdIdempotencyDecision::Accept,
 {
-    assert(spec_idempotency_decision(side_effect, retry_safety, SpecIdempotency::IdempotentExternal)
-        == SpecDecision::Accept) by(compute);
+    assert(vb_validate_idempotency_decision(side_effect, retry_safety, ProdIdempotency::IdempotentExternal)
+        == ProdIdempotencyDecision::Accept) by(compute);
 }
 
 pub proof fn proof_compile_validate_decision_parity(
-    side_effect: SpecSideEffect,
-    retry_safety: SpecRetrySafety,
-    idempotency: SpecIdempotency,
+    side_effect: ProdSideEffect,
+    retry_safety: ProdRetrySafety,
+    idempotency: ProdIdempotency,
 )
     ensures
-        spec_compile_idempotency_decision(side_effect, retry_safety, idempotency)
-            == spec_idempotency_decision(side_effect, retry_safety, idempotency),
-        accepted(spec_compile_idempotency_decision(side_effect, retry_safety, idempotency))
-            == accepted(spec_idempotency_decision(side_effect, retry_safety, idempotency)),
+        vb_compile_idempotency_decision(side_effect, retry_safety, idempotency)
+            == vb_validate_idempotency_decision(side_effect, retry_safety, idempotency),
+        accepted(vb_compile_idempotency_decision(side_effect, retry_safety, idempotency))
+            == accepted(vb_validate_idempotency_decision(side_effect, retry_safety, idempotency)),
 {
+    assert(vb_compile_idempotency_decision(side_effect, retry_safety, idempotency)
+        == vb_validate_idempotency_decision(side_effect, retry_safety, idempotency)) by(compute);
 }
 
 fn main() {}

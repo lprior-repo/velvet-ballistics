@@ -8,6 +8,32 @@
 
 use crate::budget::{AggregateResourceBudget, AggregateResourceUsage};
 
+fn zero_budget() -> AggregateResourceBudget {
+    AggregateResourceBudget {
+        max_steps_executable: 0,
+        max_action_tickets: 0,
+        max_parallel_in_flight: 0,
+        max_retries_per_action: 0,
+        max_gather_pages: 0,
+        max_gather_items: 0,
+        max_for_each_iterations: 0,
+        max_together_branches: 0,
+        max_repeat_attempts: 0,
+        max_run_time_seconds: 0,
+        max_result_bytes: 0,
+        max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_queue_depth: 0,
+        max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
+        max_step_budget_per_tick: 0,
+        max_transitions_per_tick: 0,
+    }
+}
+
 /// VB-CORE-RESOURCE-004 H1: try_add_budget with small values succeeds
 #[kani::proof]
 #[kani::unwind(4)]
@@ -66,46 +92,12 @@ fn kani_resource_add_small_values() {
 fn kani_resource_add_overflow() {
     let usage = AggregateResourceUsage {
         max_steps_executable: u64::MAX,
-        max_action_tickets: 0,
-        max_parallel_in_flight: 0,
-        max_gather_pages: 0,
-        max_gather_items: 0,
-        max_result_bytes: 0,
-        max_total_slots_written: 0,
-        max_timer_entries: 0,
-        max_trace_events: 0,
-        max_active_runs: 0,
-        max_queue_depth: 0,
-        max_journal_batch_bytes: 0,
-        max_ipc_payload_bytes: 0,
-        max_blob_bytes: 0,
-        max_input_bytes: 0,
-        max_step_budget_per_tick: 0,
-        max_transitions_per_tick: 0,
+        ..AggregateResourceUsage::default()
     };
 
     let budget = AggregateResourceBudget {
         max_steps_executable: 1,
-        max_action_tickets: 0,
-        max_parallel_in_flight: 0,
-        max_retries_per_action: 0,
-        max_gather_pages: 0,
-        max_gather_items: 0,
-        max_for_each_iterations: 0,
-        max_together_branches: 0,
-        max_repeat_attempts: 0,
-        max_run_time_seconds: 0,
-        max_result_bytes: 0,
-        max_total_slots_written: 0,
-        max_timer_entries: 0,
-        max_trace_events: 0,
-        max_queue_depth: 0,
-        max_journal_batch_bytes: 0,
-        max_ipc_payload_bytes: 0,
-        max_blob_bytes: 0,
-        max_input_bytes: 0,
-        max_step_budget_per_tick: 0,
-        max_transitions_per_tick: 0,
+        ..zero_budget()
     };
 
     let result = usage.try_add_budget(&budget);
@@ -118,46 +110,12 @@ fn kani_resource_add_overflow() {
 fn kani_resource_sub_underflow() {
     let usage = AggregateResourceUsage {
         max_steps_executable: 5,
-        max_action_tickets: 0,
-        max_parallel_in_flight: 0,
-        max_gather_pages: 0,
-        max_gather_items: 0,
-        max_result_bytes: 0,
-        max_total_slots_written: 0,
-        max_timer_entries: 0,
-        max_trace_events: 0,
-        max_active_runs: 0,
-        max_queue_depth: 0,
-        max_journal_batch_bytes: 0,
-        max_ipc_payload_bytes: 0,
-        max_blob_bytes: 0,
-        max_input_bytes: 0,
-        max_step_budget_per_tick: 0,
-        max_transitions_per_tick: 0,
+        ..AggregateResourceUsage::default()
     };
 
     let budget = AggregateResourceBudget {
         max_steps_executable: 10,
-        max_action_tickets: 0,
-        max_parallel_in_flight: 0,
-        max_retries_per_action: 0,
-        max_gather_pages: 0,
-        max_gather_items: 0,
-        max_for_each_iterations: 0,
-        max_together_branches: 0,
-        max_repeat_attempts: 0,
-        max_run_time_seconds: 0,
-        max_result_bytes: 0,
-        max_total_slots_written: 0,
-        max_timer_entries: 0,
-        max_trace_events: 0,
-        max_queue_depth: 0,
-        max_journal_batch_bytes: 0,
-        max_ipc_payload_bytes: 0,
-        max_blob_bytes: 0,
-        max_input_bytes: 0,
-        max_step_budget_per_tick: 0,
-        max_transitions_per_tick: 0,
+        ..zero_budget()
     };
 
     let result = usage.try_subtract_budget(&budget);
@@ -173,46 +131,12 @@ fn kani_resource_sub_underflow() {
 fn kani_resource_sub_exact_match() {
     let usage = AggregateResourceUsage {
         max_steps_executable: 10,
-        max_action_tickets: 0,
-        max_parallel_in_flight: 0,
-        max_gather_pages: 0,
-        max_gather_items: 0,
-        max_result_bytes: 0,
-        max_total_slots_written: 0,
-        max_timer_entries: 0,
-        max_trace_events: 0,
-        max_active_runs: 1,
-        max_queue_depth: 0,
-        max_journal_batch_bytes: 0,
-        max_ipc_payload_bytes: 0,
-        max_blob_bytes: 0,
-        max_input_bytes: 0,
-        max_step_budget_per_tick: 0,
-        max_transitions_per_tick: 0,
+        ..AggregateResourceUsage::default()
     };
 
     let budget = AggregateResourceBudget {
         max_steps_executable: 10,
-        max_action_tickets: 0,
-        max_parallel_in_flight: 0,
-        max_retries_per_action: 0,
-        max_gather_pages: 0,
-        max_gather_items: 0,
-        max_for_each_iterations: 0,
-        max_together_branches: 0,
-        max_repeat_attempts: 0,
-        max_run_time_seconds: 0,
-        max_result_bytes: 0,
-        max_total_slots_written: 0,
-        max_timer_entries: 0,
-        max_trace_events: 0,
-        max_queue_depth: 0,
-        max_journal_batch_bytes: 0,
-        max_ipc_payload_bytes: 0,
-        max_blob_bytes: 0,
-        max_input_bytes: 0,
-        max_step_budget_per_tick: 0,
-        max_transitions_per_tick: 0,
+        ..zero_budget()
     };
 
     let result = usage.try_subtract_budget(&budget);
@@ -225,46 +149,12 @@ fn kani_resource_sub_exact_match() {
 fn kani_resource_add_max_values() {
     let usage = AggregateResourceUsage {
         max_steps_executable: u64::MAX / 2,
-        max_action_tickets: 0,
-        max_parallel_in_flight: 0,
-        max_gather_pages: 0,
-        max_gather_items: 0,
-        max_result_bytes: 0,
-        max_total_slots_written: 0,
-        max_timer_entries: 0,
-        max_trace_events: 0,
-        max_active_runs: 0,
-        max_queue_depth: 0,
-        max_journal_batch_bytes: 0,
-        max_ipc_payload_bytes: 0,
-        max_blob_bytes: 0,
-        max_input_bytes: 0,
-        max_step_budget_per_tick: 0,
-        max_transitions_per_tick: 0,
+        ..AggregateResourceUsage::default()
     };
 
     let budget = AggregateResourceBudget {
         max_steps_executable: u32::MAX / 2,
-        max_action_tickets: 0,
-        max_parallel_in_flight: 0,
-        max_retries_per_action: 0,
-        max_gather_pages: 0,
-        max_gather_items: 0,
-        max_for_each_iterations: 0,
-        max_together_branches: 0,
-        max_repeat_attempts: 0,
-        max_run_time_seconds: 0,
-        max_result_bytes: 0,
-        max_total_slots_written: 0,
-        max_timer_entries: 0,
-        max_trace_events: 0,
-        max_queue_depth: 0,
-        max_journal_batch_bytes: 0,
-        max_ipc_payload_bytes: 0,
-        max_blob_bytes: 0,
-        max_input_bytes: 0,
-        max_step_budget_per_tick: 0,
-        max_transitions_per_tick: 0,
+        ..zero_budget()
     };
 
     let result = usage.try_add_budget(&budget);

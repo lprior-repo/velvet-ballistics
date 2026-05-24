@@ -1,0 +1,29 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.03s
+     Running unittests src/lib.rs (target/debug/deps/vb_storage-3bb0503ffcef3367)
+
+running 4 tests
+test codec::tests::next_seq_increments_correctly ... ok
+test codec::tests::next_seq_from_zero_yields_one ... ok
+test codec::tests::next_seq_rejects_overflow ... ok
+test tests::tests::next_seq_returns_sequence_overflow_at_max ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 1087 filtered out; finished in 0.00s
+
+     Running tests/accepted_artifact_red_phase.rs (target/debug/deps/accepted_artifact_red_phase-cb288db5677317b7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 29 filtered out; finished in 0.00s
+
+     Running tests/manual_qa_smoke.rs (target/debug/deps/manual_qa_smoke-3805d30568448f92)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+
+     Running tests/vb_core_atomic_admission_red.rs (target/debug/deps/vb_core_atomic_admission_red-8038d5545e9db00e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

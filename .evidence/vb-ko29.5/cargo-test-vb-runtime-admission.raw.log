@@ -1,0 +1,165 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running unittests src/lib.rs (target/debug/deps/vb_runtime-42d3d03b8fdc48b1)
+
+running 60 tests
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::admit_run_with_budget_returns_resource_capacity_exceeded_when_budget_too_large ... ok
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_durable_flag ... ok
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_bounded_flag ... ok
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_invalid_gate_count_when_gate_count_not_15 ... ok
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::admit_artifact_run_returns_digest_mismatch_when_stored_digest_differs ... ok
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_idempotency_attestation_when_keyed_not_attested ... ok
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_idempotency_verified_flag ... ok
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_replayable_flag ... ok
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_taint_safe_flag ... ok
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_not_found_for_unknown_digest ... ok
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_missing_retry_safe_flag ... ok
+test admission::artifact_envelope_tests::artifact_envelope_bdd_tests::load_accepted_artifact_returns_postcard_decode_failed_for_corrupt_bytes ... ok
+test admission::tests::admission_admit_run_relaxed_without_artifact ... ok
+test admission::tests::admission_admit_run_journaled_without_artifact_rejected ... ok
+test admission::tests::admission_admit_run_strict_rejects_loaded_digest_mismatch ... ok
+test admission::tests::admission_admit_run_strict_rejects_loaded_proof_digest_mismatch ... ok
+test admission::tests::admission_admit_run_strict_without_artifact_rejected ... ok
+test admission::tests::admission_artifact_not_found_error_equality ... ok
+test admission::tests::admission_admit_run_strict_with_present_artifact ... ok
+test admission::tests::admission_capability_denied_error_fields ... ok
+test admission::tests::admission_check_capability_denied ... ok
+test admission::tests::admission_check_capability_granted ... ok
+test admission::tests::admission_check_capability_rejects_hierarchical_grant ... ok
+test admission::tests::admission_check_capability_rejects_partial_prefix_grant ... ok
+test admission::tests::admission_clone_is_equal ... ok
+test admission::tests::admission_new_stores_all_fields ... ok
+test admission::tests::admission_policy_journaled_stored ... ok
+test admission::tests::admission_policy_relaxed_stored ... ok
+test admission::tests::admit_artifact_run_carries_idempotency_evidence_to_dispatch ... ok
+test admission::tests::admit_artifact_run_rejects_excess_grants ... ok
+test admission::tests::admit_artifact_run_preserves_non_empty_required_capabilities ... ok
+test admission::tests::admit_artifact_run_rejects_keyed_action_without_attestation ... ok
+test admission::tests::admit_artifact_run_rejects_missing_bounded_flag ... ok
+test admission::tests::admit_artifact_run_rejects_missing_durable_flag ... ok
+test admission::tests::admit_artifact_run_rejects_missing_grants_without_allocation ... ok
+test admission::tests::admit_artifact_run_rejects_missing_idempotency_attestation ... ok
+test admission::tests::admit_artifact_run_rejects_missing_idempotency_gate ... ok
+test admission::tests::admit_artifact_run_rejects_missing_idempotency_verified_flag ... ok
+test admission::tests::admit_artifact_run_rejects_missing_replayable_flag ... ok
+test admission::tests::admit_artifact_run_rejects_missing_retry_safe_flag ... ok
+test admission::tests::admit_artifact_run_rejects_missing_taint_safe_flag ... ok
+test admission::tests::admit_artifact_run_rejects_non_exact_grant_without_allocation ... ok
+test admission::tests::admit_artifact_run_returns_digest_mismatch ... ok
+test admission::tests::admit_run_with_budget_policy_rejects_over_policy_before_capacity ... ok
+test admission::tests::admit_run_with_budget_rejects_strict_without_artifact ... ok
+test admission::tests::admit_run_with_budget_returns_resource_capacity_exceeded ... ok
+test admission::tests::load_accepted_artifact_returns_invalid_gate_count ... ok
+test admission::tests::load_accepted_artifact_returns_postcard_decode_failed ... ok
+test error::tests_basic::admission_durability_errors_have_stable_codes_distinct_from_generic_storage ... ok
+test error::tests_basic::admission_header_persistence_failure_has_dedicated_diagnostic ... ok
+test error::tests_diagnostics::admission_durability_errors_have_stable_codes ... ok
+test error::tests_diagnostics::admission_durability_error_variants_are_exhaustive ... ok
+test ipc_refinement::tests::strict_admission_refinement_binds_production_accessors ... ok
+test shard::directive::tests::shard_directive_barrier_denies_admission ... ok
+test shard::directive::tests::shard_directive_cancel_denies_admission ... ok
+test shard::directive::tests::shard_directive_continue_allows_admission ... ok
+test shard::directive::tests::shard_directive_migrate_denies_admission ... ok
+test shard::directive::tests::shard_directive_suspend_denies_admission ... ok
+test shard::lifecycle::tests::admission_rejection_does_not_insert_run_state ... ok
+test journal::tests::storage_runtime_journal_maps_run_admission_event ... ok
+
+test result: ok. 60 passed; 0 failed; 0 ignored; 0 measured; 1466 filtered out; finished in 0.05s
+
+     Running tests/durability_matrix_integration.rs (target/debug/deps/durability_matrix_integration-1218360d6f01b7c8)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+     Running tests/durable_resume_red_phase.rs (target/debug/deps/durable_resume_red_phase-f42ac42886a18821)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 17 filtered out; finished in 0.00s
+
+     Running tests/durable_retry_red_phase.rs (target/debug/deps/durable_retry_red_phase-4a4d8cd3f09167bc)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+     Running tests/recovery_bdd_tests.rs (target/debug/deps/recovery_bdd_tests-47c92efaf3570781)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 65 filtered out; finished in 0.00s
+
+     Running tests/recovery_hydration_tests.rs (target/debug/deps/recovery_hydration_tests-173fac612904391a)
+
+running 1 test
+test run_admission_metadata_preserved_in_summary ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 40 filtered out; finished in 0.01s
+
+     Running tests/recovery_integration.rs (target/debug/deps/recovery_integration-d6db2e1a1b0dc66d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.00s
+
+     Running tests/replay_resume.rs (target/debug/deps/replay_resume-f8bd37f454259069)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/timer_wheel_behavior_tests.rs (target/debug/deps/timer_wheel_behavior_tests-94c5a57e329bd503)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 0.00s
+
+     Running tests/vb_5m8w_step_budget_suspension_runtime.rs (target/debug/deps/vb_5m8w_step_budget_suspension_runtime-aac8afbed8004d47)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running tests/vb_h6ix_integration.rs (target/debug/deps/vb_h6ix_integration-86f9c587b94e3146)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+     Running tests/vb_jggy_journal_event_tests.rs (target/debug/deps/vb_jggy_journal_event_tests-050a5d72147b4235)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+     Running tests/vb_jggy_lifecycle_tests.rs (target/debug/deps/vb_jggy_lifecycle_tests-69fe1399651d3452)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.00s
+
+     Running tests/vb_jggy_property_tests.rs (target/debug/deps/vb_jggy_property_tests-298fa181e7c77654)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+     Running tests/vb_ko29_7_idempotency_miri.rs (target/debug/deps/vb_ko29_7_idempotency_miri-408a1ac566aafd82)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/vb_l2d7_joined_taint_propagation_red.rs (target/debug/deps/vb_l2d7_joined_taint_propagation_red-341f0b4dbb345752)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 24 filtered out; finished in 0.00s
+
+     Running tests/vb_qi37_12_2_resume_error_propagation.rs (target/debug/deps/vb_qi37_12_2_resume_error_propagation-014ca8510bd5f84f)
+
+running 1 test
+test handle_submit_journal_event_ordering_run_submitted_before_admission ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+

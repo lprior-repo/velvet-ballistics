@@ -20,3 +20,6 @@ pub mod action_completion_cancel;
 
 #[cfg(loom)]
 pub mod journal_writer_queue;
+
+#[cfg(loom)]
+pub mod idempotency_retry_eviction;

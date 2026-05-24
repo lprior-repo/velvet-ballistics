@@ -1,0 +1,50 @@
+List contracts and harnesses
+
+Usage: cargo-kani list [OPTIONS]
+
+Options:
+  -h, --help
+          Print help (see a summary with '-h')
+
+Common Options:
+      --debug
+          Produce full debug information
+
+  -q, --quiet
+          Produces no output, just an exit code and requested artifacts; overrides --verbose
+
+  -v, --verbose
+          Output processing stages and commands, along with minor debug information
+
+  -Z, --unstable <UNSTABLE_FEATURE>
+          Possible values:
+          - async-lib:          Enable Kani's unstable async library
+          - autoharness:        Enable the autoharness subcommand
+          - concrete-playback:  Enable concrete playback flow
+          - c-ffi:              Allow Kani to link against C code
+          - float-lib:          Kani APIs related to floating-point operations (e.g. `float_to_int_in_range`)
+          - function-contracts: Enable function contracts [RFC 9](https://model-checking.github.io/kani/rfc/rfcs/0009-function-contracts.html)
+          - gen-c:              Generate a C-like file equivalent to input program used for debugging purpose
+          - ghost-state:        Ghost state and shadow memory APIs
+          - lean:               Enabled Lean backend (Aeneas/LLBC)
+          - loop-contracts:     Enable loop contracts [RFC 12](https://model-checking.github.io/kani/rfc/rfcs/0012-loop-contracts.html)
+          - mem-predicates:     Memory predicate APIs
+          - restrict-vtable:    Enable vtable restriction
+          - source-coverage:    Enable source-based code coverage workflow. See [RFC-0011](https://model-checking.github.io/kani/rfc/rfcs/0011-source-coverage.html)
+          - stubbing:           Allow replacing certain items with stubs (mocks). See [RFC-0002](https://model-checking.github.io/kani/rfc/rfcs/0002-function-stubbing.html)
+          - quantifiers:        Enable quantifiers [RFC 10](https://model-checking.github.io/kani/rfc/rfcs/0010-quantifiers.html)
+          - uninit-checks:      Automatically check that uninitialized memory is not used
+          - unstable-options:   Enable an unstable option or subcommand
+          - valid-value-checks: Automatically check that no invalid value is produced which is considered UB in Rust. Note that this does not include checking uninitialized value
+
+      --format <FORMAT>
+          Output format
+
+          Possible values:
+          - pretty:   Print output in human-readable format
+          - markdown: Write output to a Markdown file
+          - json:     Write output to a JSON file
+          
+          [default: pretty]
+
+EXIT_CODE=0

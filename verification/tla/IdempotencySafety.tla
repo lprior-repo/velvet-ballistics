@@ -33,7 +33,7 @@ EXTENDS Integers, FiniteSets, Sequences, TLC
 CONSTANTS
     MaxRuns,          \* Maximum concurrent runs: 2
     MaxActions,       \* Maximum actions per run: 3
-    MaxSeq,           \* Maximum sequence number: 10
+    MaxSeq,           \* Maximum sequence number; MaxSeq is the reserved overflow/fail-safe slot
     NullDigest,       \* Sentinel for non-action events
     Digests           \* Bounded set of digests for model checking
 
@@ -50,7 +50,8 @@ LifecycleState == {"Pending", "Active", "WaitingAnswer", "Cancelled", "Completed
 
 JournalEventType == {"RunAccepted", "ActionCompleted",
                       "ActionFailed", "RunCancelled", "RunResumed",
-                      "RunRetried", "RunAnswered", "RunFinished", "RunFailed"}
+                      "RunRetried", "RunAnswered", "RunFinished", "RunFailed",
+                      "SequenceOverflow"}
 
 IdempotencyClass == {"DeterministicPure", "IdempotentExternal", "AtLeastOnceExternal"}
 
@@ -70,20 +71,27 @@ JournalEvent(recType, runId, seqNum, digest, actionId, stepIdx) ==
 VARIABLES
     lifecycleState,    \* [RunId -> LifecycleState]
     journal,           \* [RunId -> Seq of JournalEvent]
-    completedActions,  \* [RunId -> Set of <<ActionId, StepIdx, Digest>>]
+    completedActions,  \* [RunId -> Set of successful <<ActionId, StepIdx, Digest>>]
+    failedActions,     \* [RunId -> Set of failed <<ActionId, StepIdx, Digest>>]
     replayTracker,     \* [RunId -> Set of <<ActionId, StepIdx>>]
     nextSeq,           \* [RunId -> SeqNums] (next sequence number to assign)
     isCrashed          \* [RunId -> BOOLEAN]
 
-vars == <<lifecycleState, journal, completedActions, replayTracker, nextSeq, isCrashed>>
+vars == <<lifecycleState, journal, completedActions, failedActions, replayTracker, nextSeq, isCrashed>>
+
+TerminalStates == {"Cancelled", "Completed", "Failed"}
+Appendable(run) == nextSeq[run] < MaxSeq
+AtSeqBoundary(run) == nextSeq[run] = MaxSeq
+ResolvedActions(run) == completedActions[run] \cup failedActions[run]
 
 TypeOK ==
   /\ lifecycleState \in [RunIds -> LifecycleState]
   /\ journal \in [RunIds -> Seq([type: JournalEventType, run: RunIds, seq: SeqNums,
                                  digest: Digests \cup {NullDigest},
-                                 actionId: ActionIds, stepIdx: 0..MaxActions])]
-  /\ completedActions \in [RunIds -> SUBSET (ActionIds \X 0..MaxActions \X Digests)]
-  /\ replayTracker \in [RunIds -> SUBSET (ActionIds \X 0..MaxActions)]
+                                 actionId: 0..MaxActions, stepIdx: 0..MaxActions])]
+  /\ completedActions \in [RunIds -> SUBSET (ActionIds \X (0..MaxActions) \X Digests)]
+  /\ failedActions \in [RunIds -> SUBSET (ActionIds \X (0..MaxActions) \X Digests)]
+  /\ replayTracker \in [RunIds -> SUBSET (ActionIds \X (0..MaxActions))]
   /\ nextSeq \in [RunIds -> SeqNums]
   /\ isCrashed \in [RunIds -> BOOLEAN]
 
@@ -95,6 +103,7 @@ Init ==
     /\ lifecycleState = [r \in RunIds |-> "Pending"]
     /\ journal = [r \in RunIds |-> << >>]
     /\ completedActions = [r \in RunIds |-> {}]
+    /\ failedActions = [r \in RunIds |-> {}]
     /\ replayTracker = [r \in RunIds |-> {}]
     /\ nextSeq = [r \in RunIds |-> 0]
     /\ isCrashed = [r \in RunIds |-> FALSE]
@@ -108,11 +117,12 @@ AcceptRun(run) ==
     /\ run \in RunIds
     /\ ~isCrashed[run]
     /\ lifecycleState[run] = "Pending"
+    /\ Appendable(run)
     /\ lifecycleState' = [lifecycleState EXCEPT ![run] = "Active"]
     /\ journal' = [journal EXCEPT ![run] = Append(@,
         JournalEvent("RunAccepted", run, nextSeq[run], NullDigest, 0, 0))]
     /\ nextSeq' = [nextSeq EXCEPT ![run] = @ + 1]
-    /\ UNCHANGED <<completedActions, replayTracker, isCrashed>>
+    /\ UNCHANGED <<completedActions, failedActions, replayTracker, isCrashed>>
 
 (* Complete an action — first time *)
 CompleteAction(run, action, step, digest) ==
@@ -122,7 +132,8 @@ CompleteAction(run, action, step, digest) ==
     /\ step \in 0..MaxActions
     /\ digest \in Digests
     /\ lifecycleState[run] = "Active"
-    /\ \A d \in Digests: <<action, step, d>> \notin completedActions[run]
+    /\ Appendable(run)
+    /\ \A d \in Digests: <<action, step, d>> \notin ResolvedActions(run)
     /\ completedActions' = [completedActions EXCEPT ![run] =
         @ \cup {<<action, step, digest>>}]
     /\ replayTracker' = [replayTracker EXCEPT ![run] =
@@ -130,7 +141,7 @@ CompleteAction(run, action, step, digest) ==
     /\ journal' = [journal EXCEPT ![run] = Append(@,
         JournalEvent("ActionCompleted", run, nextSeq[run], digest, action, step))]
     /\ nextSeq' = [nextSeq EXCEPT ![run] = @ + 1]
-    /\ UNCHANGED <<lifecycleState, isCrashed>>
+    /\ UNCHANGED <<failedActions, lifecycleState, isCrashed>>
 
 (* Complete action duplicate — same key, same digest (idempotent) *)
 CompleteActionDuplicate(run, action, step, digest) ==
@@ -152,20 +163,51 @@ CompleteActionDivergent(run, action, step, oldDigest, newDigest) ==
     /\ oldDigest \in Digests
     /\ newDigest \in Digests
     /\ oldDigest # newDigest
-    /\ <<action, step, oldDigest>> \in completedActions[run]
+    /\ <<action, step, oldDigest>> \in ResolvedActions(run)
     /\ UNCHANGED vars
     \* Returns ReplayDivergence — no overwrite, original preserved
+
+(* Fail an action — first time *)
+FailAction(run, action, step, digest) ==
+    /\ run \in RunIds
+    /\ ~isCrashed[run]
+    /\ action \in ActionIds
+    /\ step \in 0..MaxActions
+    /\ digest \in Digests
+    /\ lifecycleState[run] = "Active"
+    /\ Appendable(run)
+    /\ \A d \in Digests: <<action, step, d>> \notin ResolvedActions(run)
+    /\ failedActions' = [failedActions EXCEPT ![run] =
+        @ \cup {<<action, step, digest>>}]
+    /\ replayTracker' = [replayTracker EXCEPT ![run] =
+        @ \cup {<<action, step>>}]
+    /\ journal' = [journal EXCEPT ![run] = Append(@,
+        JournalEvent("ActionFailed", run, nextSeq[run], digest, action, step))]
+    /\ nextSeq' = [nextSeq EXCEPT ![run] = @ + 1]
+    /\ UNCHANGED <<completedActions, lifecycleState, isCrashed>>
+
+(* Fail action duplicate — same key, same digest (idempotent failure result) *)
+FailActionDuplicate(run, action, step, digest) ==
+    /\ run \in RunIds
+    /\ ~isCrashed[run]
+    /\ action \in ActionIds
+    /\ step \in 0..MaxActions
+    /\ digest \in Digests
+    /\ <<action, step, digest>> \in failedActions[run]
+    /\ UNCHANGED vars
+    \* Returns FailureAlreadyRecorded — no state mutation
 
 (* Cancel a run *)
 CancelRun(run) ==
     /\ run \in RunIds
     /\ ~isCrashed[run]
     /\ lifecycleState[run] \in {"Active", "WaitingAnswer"}
+    /\ Appendable(run)
     /\ lifecycleState' = [lifecycleState EXCEPT ![run] = "Cancelled"]
     /\ journal' = [journal EXCEPT ![run] = Append(@,
         JournalEvent("RunCancelled", run, nextSeq[run], NullDigest, 0, 0))]
     /\ nextSeq' = [nextSeq EXCEPT ![run] = @ + 1]
-    /\ UNCHANGED <<completedActions, replayTracker, isCrashed>>
+    /\ UNCHANGED <<completedActions, failedActions, replayTracker, isCrashed>>
 
 (* Cancel duplicate — already cancelled *)
 CancelDuplicate(run) ==
@@ -188,11 +230,12 @@ ResumeRun(run) ==
     /\ run \in RunIds
     /\ ~isCrashed[run]
     /\ lifecycleState[run] \in {"Active", "WaitingAnswer"}
+    /\ Appendable(run)
     /\ lifecycleState' = [lifecycleState EXCEPT ![run] = "Active"]
     /\ journal' = [journal EXCEPT ![run] = Append(@,
         JournalEvent("RunResumed", run, nextSeq[run], NullDigest, 0, 0))]
     /\ nextSeq' = [nextSeq EXCEPT ![run] = @ + 1]
-    /\ UNCHANGED <<completedActions, replayTracker, isCrashed>>
+    /\ UNCHANGED <<completedActions, failedActions, replayTracker, isCrashed>>
 
 (* Resume on completed — stale request *)
 ResumeOnCompleted(run) ==
@@ -207,11 +250,26 @@ FinishRun(run) ==
     /\ run \in RunIds
     /\ ~isCrashed[run]
     /\ lifecycleState[run] = "Active"
+    /\ Appendable(run)
     /\ lifecycleState' = [lifecycleState EXCEPT ![run] = "Completed"]
     /\ journal' = [journal EXCEPT ![run] = Append(@,
         JournalEvent("RunFinished", run, nextSeq[run], NullDigest, 0, 0))]
     /\ nextSeq' = [nextSeq EXCEPT ![run] = @ + 1]
-    /\ UNCHANGED <<completedActions, replayTracker, isCrashed>>
+    /\ UNCHANGED <<completedActions, failedActions, replayTracker, isCrashed>>
+
+(* Explicit fail-safe sequence-boundary transition.
+   The MaxSeq slot is reserved for this typed terminal failure. Normal appends
+   require nextSeq < MaxSeq, so @ + 1 never leaves the bounded SeqNums set. *)
+SequenceOverflowFailSafe(run) ==
+    /\ run \in RunIds
+    /\ ~isCrashed[run]
+    /\ lifecycleState[run] \notin TerminalStates
+    /\ AtSeqBoundary(run)
+    /\ lifecycleState' = [lifecycleState EXCEPT ![run] = "Failed"]
+    /\ journal' = [journal EXCEPT ![run] = Append(@,
+        JournalEvent("SequenceOverflow", run, nextSeq[run], NullDigest, 0, 0))]
+    /\ nextSeq' = [nextSeq EXCEPT ![run] = MaxSeq]
+    /\ UNCHANGED <<completedActions, failedActions, replayTracker, isCrashed>>
 
 (* Crash a run — wipe volatile state *)
 Crash(run) ==
@@ -219,8 +277,9 @@ Crash(run) ==
     /\ ~isCrashed[run]
     /\ isCrashed' = [isCrashed EXCEPT ![run] = TRUE]
     /\ completedActions' = [completedActions EXCEPT ![run] = {}]
+    /\ failedActions' = [failedActions EXCEPT ![run] = {}]
     /\ replayTracker' = [replayTracker EXCEPT ![run] = {}]
-    /\ lifecycleState' = [lifecycleState EXCEPT ![run] = "Pending"]
+    /\ lifecycleState' = lifecycleState
     /\ UNCHANGED <<journal, nextSeq>>
 
 (* Reconstruct state from journal *)
@@ -234,6 +293,7 @@ GetStateFromEvent(e) ==
       [] e.type = "RunAnswered" -> "WaitingAnswer"
       [] e.type = "RunFinished" -> "Completed"
       [] e.type = "RunFailed" -> "Failed"
+      [] e.type = "SequenceOverflow" -> "Failed"
       [] OTHER -> "Pending"
 
 Recover(run) ==
@@ -242,14 +302,18 @@ Recover(run) ==
     /\ LET reconstructedCompletedActions ==
             { <<journal[run][i].actionId, journal[run][i].stepIdx, journal[run][i].digest>> :
                 i \in { j \in DOMAIN journal[run] : journal[run][j].type = "ActionCompleted" } }
+           reconstructedFailedActions ==
+            { <<journal[run][i].actionId, journal[run][i].stepIdx, journal[run][i].digest>> :
+                i \in { j \in DOMAIN journal[run] : journal[run][j].type = "ActionFailed" } }
            reconstructedReplayTracker ==
             { <<journal[run][i].actionId, journal[run][i].stepIdx>> :
-                i \in { j \in DOMAIN journal[run] : journal[run][j].type = "ActionCompleted" } }
+                i \in { j \in DOMAIN journal[run] : journal[run][j].type \in {"ActionCompleted", "ActionFailed"} } }
            reconstructedLifecycleState ==
             IF journal[run] = << >> THEN "Pending"
             ELSE GetStateFromEvent(journal[run][Len(journal[run])])
        IN
-       /\ completedActions' = [completedActions EXCEPT ![run] = reconstructedCompletedActions]
+        /\ completedActions' = [completedActions EXCEPT ![run] = reconstructedCompletedActions]
+        /\ failedActions' = [failedActions EXCEPT ![run] = reconstructedFailedActions]
        /\ replayTracker' = [replayTracker EXCEPT ![run] = reconstructedReplayTracker]
        /\ lifecycleState' = [lifecycleState EXCEPT ![run] = reconstructedLifecycleState]
        /\ isCrashed' = [isCrashed EXCEPT ![run] = FALSE]
@@ -268,12 +332,17 @@ Next ==
     \/ (\E run \in RunIds, action \in ActionIds, step \in 0..MaxActions,
         oldDigest, newDigest \in Digests:
         CompleteActionDivergent(run, action, step, oldDigest, newDigest))
+    \/ (\E run \in RunIds, action \in ActionIds, step \in 0..MaxActions, digest \in Digests:
+        FailAction(run, action, step, digest))
+    \/ (\E run \in RunIds, action \in ActionIds, step \in 0..MaxActions, digest \in Digests:
+        FailActionDuplicate(run, action, step, digest))
     \/ (\E run \in RunIds: CancelRun(run))
     \/ (\E run \in RunIds: CancelDuplicate(run))
     \/ (\E run \in RunIds: CancelOnTerminal(run))
     \/ (\E run \in RunIds: ResumeRun(run))
     \/ (\E run \in RunIds: ResumeOnCompleted(run))
     \/ (\E run \in RunIds: FinishRun(run))
+    \/ (\E run \in RunIds: SequenceOverflowFailSafe(run))
     \/ (\E run \in RunIds: Crash(run))
     \/ (\E run \in RunIds: Recover(run))
 
@@ -296,7 +365,7 @@ NoDuplicateJournalEvents ==
    Once recorded, the digest is immutable. *)
 DigestBinding ==
     \A run \in RunIds:
-        \A a1, a2 \in completedActions[run]:
+        \A a1, a2 \in ResolvedActions(run):
             (a1[1] = a2[1] /\ a1[2] = a2[2]) => (a1[3] = a2[3])
 
 (* FWH-019: TerminalStateInvariant (state-level)
@@ -314,13 +383,42 @@ NoReplayOfResolvedActions ==
         \A action \in ActionIds, step \in 0..MaxActions:
             <<action, step>> \in replayTracker[run]
                 => \E digest \in Digests:
-                    <<action, step, digest>> \in completedActions[run]
+                    <<action, step, digest>> \in ResolvedActions(run)
+
+NoSuccessFailureConflict ==
+    \A run \in RunIds:
+        \A action \in ActionIds, step \in 0..MaxActions:
+            ~(\E d1, d2 \in Digests:
+                <<action, step, d1>> \in completedActions[run]
+                /\ <<action, step, d2>> \in failedActions[run])
 
 (* Journal sequence numbers are strictly increasing per run *)
 JournalSeqMonotonicity ==
     \A run \in RunIds:
         \A i, j \in DOMAIN journal[run]:
             (i < j) => (journal[run][i].seq < journal[run][j].seq)
+
+SeqWithinBound ==
+    /\ nextSeq \in [RunIds -> SeqNums]
+    /\ \A run \in RunIds:
+        \A i \in DOMAIN journal[run]: journal[run][i].seq \in SeqNums
+
+OverflowIsTerminalFailSafe ==
+    \A run \in RunIds:
+        (AtSeqBoundary(run) /\ lifecycleState[run] \notin TerminalStates /\ ~isCrashed[run])
+            => ENABLED SequenceOverflowFailSafe(run)
+
+TerminalHasNoNormalAppendEnabled ==
+    \A run \in RunIds:
+        lifecycleState[run] \in TerminalStates =>
+            /\ \A action \in ActionIds, step \in 0..MaxActions, digest \in Digests:
+                ~ENABLED CompleteAction(run, action, step, digest)
+            /\ \A action \in ActionIds, step \in 0..MaxActions, digest \in Digests:
+                ~ENABLED FailAction(run, action, step, digest)
+            /\ ~ENABLED CancelRun(run)
+            /\ ~ENABLED ResumeRun(run)
+            /\ ~ENABLED FinishRun(run)
+            /\ ~ENABLED SequenceOverflowFailSafe(run)
 
 (* ============================================================================ *)
 (* TEMPORAL PROPERTIES — checked by TLC over behavior traces                     *)
@@ -331,14 +429,21 @@ JournalSeqMonotonicity ==
    not in a crashed state. Volatile state is wiped during crash but reconstructed. *)
 TerminalStateFinality ==
     \A run \in RunIds:
-        []((lifecycleState[run] \in {"Completed", "Cancelled", "Failed"} /\ ~isCrashed[run])
-            => [](~isCrashed[run] => lifecycleState[run] \in {"Completed", "Cancelled", "Failed"}))
+        \A terminal \in TerminalStates:
+            [](lifecycleState[run] = terminal => [](lifecycleState[run] = terminal))
+
+TerminalExactStepFinality ==
+    [][\A run \in RunIds:
+        lifecycleState[run] \in TerminalStates => lifecycleState'[run] = lifecycleState[run]]_vars
 
 (* FWH-017/018 supplement: MonotonicCompletedActions (temporal)
    The completed set only grows — entries are never removed, except during crash
    where volatile state is wiped. Monotonicity holds across non-crash steps. *)
 MonotonicCompletedActions ==
     [][\A run \in RunIds: ~isCrashed'[run] => completedActions[run] \subseteq completedActions'[run]]_vars
+
+MonotonicFailedActions ==
+    [][\A run \in RunIds: ~isCrashed'[run] => failedActions[run] \subseteq failedActions'[run]]_vars
 
 (* EventualConsistency: every run eventually reaches a terminal state *)
 EventualConsistency ==
@@ -349,9 +454,12 @@ EventualConsistency ==
 RecoveryCorrectness ==
     \A run \in RunIds:
         [] (~isCrashed[run] =>
-            completedActions[run] =
+            /\ completedActions[run] =
                 { <<journal[run][i].actionId, journal[run][i].stepIdx, journal[run][i].digest>> :
-                    i \in { j \in DOMAIN journal[run] : journal[run][j].type = "ActionCompleted" } })
+                    i \in { j \in DOMAIN journal[run] : journal[run][j].type = "ActionCompleted" } }
+            /\ failedActions[run] =
+                { <<journal[run][i].actionId, journal[run][i].stepIdx, journal[run][i].digest>> :
+                    i \in { j \in DOMAIN journal[run] : journal[run][j].type = "ActionFailed" } })
 
 (* ============================================================================ *)
 (* Fairness assumptions for liveness                                             *)

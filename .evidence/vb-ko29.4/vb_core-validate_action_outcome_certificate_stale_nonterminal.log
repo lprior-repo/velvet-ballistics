@@ -1,0 +1,735 @@
+Kani Rust Verifier 0.67.0 (cargo plugin)
+    Blocking waiting for file lock on package cache
+   Compiling vb_core v0.1.0 (/home/lewis/src/velvet-ballistics/crates/vb_core)
+warning: unused imports: `ReplayError` and `SuspensionKind`
+  --> crates/vb_core/src/replay/kani_harnesses.rs:16:27
+   |
+16 | use super::{ReplayAction, ReplayError, SuspensionKind, step::replay_step};
+   |                           ^^^^^^^^^^^  ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `crate::errors::EngineError`
+  --> crates/vb_core/src/kani_step_harnesses.rs:21:5
+   |
+21 | use crate::errors::EngineError;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1963:13
+     |
+1963 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1978:13
+     |
+1978 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1996:13
+     |
+1996 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2017:13
+     |
+2017 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2041:13
+     |
+2041 |         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_taint_propagation.rs:99:9
+   |
+99 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_core/src/kani_taint_propagation.rs:123:9
+    |
+123 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:23:9
+   |
+23 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:41:9
+   |
+41 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:69:9
+   |
+69 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:88:9
+   |
+88 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:90:9
+   |
+90 |     let mut frame = frame.unwrap();
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_core/src/kani_index_access.rs:104:9
+    |
+104 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: field `resource` is never read
+    --> crates/vb_core/src/budget.rs:2151:20
+     |
+2151 |         Overflow { resource: &'static str },
+     |         --------   ^^^^^^^^
+     |         |
+     |         field in this variant
+     |
+     = note: `LocalError` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `resource` is never read
+    --> crates/vb_core/src/budget.rs:2152:21
+     |
+2152 |         Underflow { resource: &'static str },
+     |         ---------   ^^^^^^^^
+     |         |
+     |         field in this variant
+     |
+     = note: `LocalError` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: Found the following unsupported constructs:
+             - caller_location (1)
+             - foreign function (2)
+         
+         Verification will fail if one or more of these constructs is reachable.
+         See https://model-checking.github.io/kani/rust-feature-support.html for more details.
+
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.81s
+Checking harness kani_idempotency_gates::validate_action_outcome_certificate_stale_nonterminal...
+CBMC 6.8.0 (cbmc-6.8.0)
+CBMC version 6.8.0 (cbmc-6.8.0) 64-bit x86_64 linux
+Reading GOTO program from file /home/lewis/src/velvet-ballistics/target/kani/x86_64-unknown-linux-gnu/debug/deps/vb_core-0483d43e20c11ad0__RNvNtCsjxOCHGd00j1_7vb_core22kani_idempotency_gates53validate_action_outcome_certificate_stale_nonterminal.out
+Generating GOTO Program
+Adding CPROVER library (x86_64)
+Removal of function pointers and virtual functions
+Generic Property Instrumentation
+Running with 16 object bits, 48 offset bits (user-specified)
+Starting Bounded Model Checking
+Runtime Symex: 0.0242171s
+size of program expression: 2126 steps
+slicing removed 1560 assignments
+Generated 37 VCC(s), 4 remaining after simplification
+Runtime Postprocess Equation: 0.000217568s
+Passing problem to propositional reduction
+converting SSA
+Runtime Convert SSA: 0.00096772s
+Running propositional reduction
+Post-processing
+Runtime Post-process: 3.8e-06s
+Solving with CaDiCaL 2.0.0
+1134 variables, 1898 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 5.448e-05s
+Runtime decision procedure: 0.00106963s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+1135 variables, 1899 clauses
+SAT checker: instance is UNSATISFIABLE
+Runtime Solver: 8.18e-06s
+Runtime decision procedure: 1.546e-05s
+
+RESULTS:
+Check 1: std::ptr::drop_in_place::<std::boxed::Box<[capability::Capability]>>.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "misaligned pointer to reference cast: address must be a multiple of its type's alignment"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<[capability::Capability]>>
+
+Check 2: std::ptr::drop_in_place::<std::boxed::Box<[capability::Capability]>>.safety_check.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<[capability::Capability]>>
+
+Check 3: std::panic::Location::<'_>::caller.unsupported_construct.1
+	 - Status: SUCCESS
+	 - Description: "caller_location is not currently supported by Kani. Please post your example at https://github.com/model-checking/kani/issues/374"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/panic/location.rs:147:9 in function std::panic::Location::<'_>::caller
+
+Check 4: std::alloc::Layout::max_size_for_align.assertion.1
+	 - Status: UNREACHABLE
+	 - Description: "attempt to add with overflow"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:95:32 in function std::alloc::Layout::max_size_for_align
+
+Check 5: std::alloc::Layout::max_size_for_align.arithmetic_overflow.1
+	 - Status: SUCCESS
+	 - Description: "attempt to compute `unchecked_sub` which would overflow"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:95:18 in function std::alloc::Layout::max_size_for_align
+
+Check 6: std::fmt::Arguments::<'_>::from_str.assertion.1
+	 - Status: UNREACHABLE
+	 - Description: "attempt to shift left with overflow"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/fmt/mod.rs:820:38 in function std::fmt::Arguments::<'_>::from_str
+
+Check 7: kani::rustc_intrinsics::size_of_val_raw::<[capability::Capability]>.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani_core/src/models.rs:23:13 in function kani::rustc_intrinsics::size_of_val_raw::<[capability::Capability]>
+
+Check 8: kani::rustc_intrinsics::size_of_val_raw::<[capability::Capability]>.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "failed to compute `size_of_val`"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::size_of_val_raw::<[capability::Capability]>
+
+Check 9: kani::rustc_intrinsics::size_of_val_raw::<[capability::Capability]>.assertion.1
+	 - Status: SUCCESS
+	 - Description: "cannot compute `size_of_val` for extern types"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::size_of_val_raw::<[capability::Capability]>
+
+Check 10: malloc.assertion.1
+	 - Status: SUCCESS
+	 - Description: "max allocation size exceeded"
+	 - Location: <builtin-library-malloc>:31 in function malloc
+
+Check 11: malloc.assertion.2
+	 - Status: SUCCESS
+	 - Description: "max allocation may fail"
+	 - Location: <builtin-library-malloc>:36 in function malloc
+
+Check 12: __rust_dealloc.assertion.1
+	 - Status: SUCCESS
+	 - Description: "Alignment is power of two"
+	 - Location: ../../../../.kani/kani-0.67.0/library/kani/kani_lib.c:83 in function __rust_dealloc
+
+Check 13: __rust_dealloc.assertion.2
+	 - Status: SUCCESS
+	 - Description: "rust_dealloc must be called on an object whose allocated size matches its layout"
+	 - Location: ../../../../.kani/kani-0.67.0/library/kani/kani_lib.c:85 in function __rust_dealloc
+
+Check 14: std::ptr::drop_in_place::<std::boxed::Box<str>>.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "misaligned pointer to reference cast: address must be a multiple of its type's alignment"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<str>>
+
+Check 15: std::ptr::drop_in_place::<std::boxed::Box<str>>.safety_check.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<str>>
+
+Check 16: kani::rustc_intrinsics::align_of_val_raw::<[capability::Capability]>.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani_core/src/models.rs:43:13 in function kani::rustc_intrinsics::align_of_val_raw::<[capability::Capability]>
+
+Check 17: kani::rustc_intrinsics::align_of_val_raw::<[capability::Capability]>.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "failed to compute `align_of_val`"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::align_of_val_raw::<[capability::Capability]>
+
+Check 18: kani::rustc_intrinsics::align_of_val_raw::<[capability::Capability]>.assertion.1
+	 - Status: SUCCESS
+	 - Description: "cannot compute `align_of_val` for extern types"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::align_of_val_raw::<[capability::Capability]>
+
+Check 19: action::validate_action_outcome.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: crates/vb_core/src/action.rs:454:11 in function action::validate_action_outcome
+
+Check 20: <std::result::Result<(), action::ActionError> as std::ops::Try>::branch.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:2173:15 in function <std::result::Result<(), action::ActionError> as std::ops::Try>::branch
+
+Check 21: kani::rustc_intrinsics::align_of_val_raw::<str>.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani_core/src/models.rs:43:13 in function kani::rustc_intrinsics::align_of_val_raw::<str>
+
+Check 22: kani::rustc_intrinsics::align_of_val_raw::<str>.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "failed to compute `align_of_val`"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::align_of_val_raw::<str>
+
+Check 23: kani::rustc_intrinsics::align_of_val_raw::<str>.assertion.1
+	 - Status: SUCCESS
+	 - Description: "cannot compute `align_of_val` for extern types"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::align_of_val_raw::<str>
+
+Check 24: core::panicking::panic_nounwind_fmt::runtime.unsupported_construct.1
+	 - Status: SUCCESS
+	 - Description: "call to foreign "Rust" function `_RNvCs1hStedNDpZ2_7___rustc17rust_begin_unwind` is not currently supported by Kani. Please post your example at https://github.com/model-checking/kani/issues/new/choose"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/panicking.rs:110:17 in function core::panicking::panic_nounwind_fmt::runtime
+
+Check 25: std::alloc::Layout::is_size_align_valid.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:68:5 in function std::alloc::Layout::is_size_align_valid
+
+Check 26: action::validate_ready_outcome.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: crates/vb_core/src/action.rs:466:5 in function action::validate_ready_outcome
+
+Check 27: kani_idempotency_gates::validate_action_outcome_certificate_stale_nonterminal.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: crates/vb_core/src/kani_idempotency_gates.rs:472:1 in function kani_idempotency_gates::validate_action_outcome_certificate_stale_nonterminal
+
+Check 28: kani_idempotency_gates::validate_action_outcome_certificate_stale_nonterminal.cover.1
+	 - Status: SATISFIED
+	 - Description: "stale/nonterminal certificate covered"
+	 - Location: crates/vb_core/src/kani_idempotency_gates.rs:476:5 in function kani_idempotency_gates::validate_action_outcome_certificate_stale_nonterminal
+
+Check 29: kani_idempotency_gates::validate_action_outcome_certificate_stale_nonterminal.assertion.1
+	 - Status: SUCCESS
+	 - Description: "nonterminal suspended outcome is rejected"
+	 - Location: crates/vb_core/src/kani_idempotency_gates.rs:477:5 in function kani_idempotency_gates::validate_action_outcome_certificate_stale_nonterminal
+
+Check 30: kani::rustc_intrinsics::size_of_val_raw::<str>.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani_core/src/models.rs:23:13 in function kani::rustc_intrinsics::size_of_val_raw::<str>
+
+Check 31: kani::rustc_intrinsics::size_of_val_raw::<str>.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "failed to compute `size_of_val`"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::size_of_val_raw::<str>
+
+Check 32: kani::rustc_intrinsics::size_of_val_raw::<str>.assertion.1
+	 - Status: SUCCESS
+	 - Description: "cannot compute `size_of_val` for extern types"
+	 - Location: ../../../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::size_of_val_raw::<str>
+
+Check 33: __rust_dealloc.precondition_instance.1
+	 - Status: SUCCESS
+	 - Description: "free argument must be NULL or valid pointer"
+	 - Location: ../../../../.kani/kani-0.67.0/library/kani/kani_lib.c:87 in function __rust_dealloc
+
+Check 34: __rust_dealloc.precondition_instance.2
+	 - Status: SUCCESS
+	 - Description: "free argument must be dynamic object"
+	 - Location: ../../../../.kani/kani-0.67.0/library/kani/kani_lib.c:87 in function __rust_dealloc
+
+Check 35: __rust_dealloc.precondition_instance.3
+	 - Status: SUCCESS
+	 - Description: "free argument has offset zero"
+	 - Location: ../../../../.kani/kani-0.67.0/library/kani/kani_lib.c:87 in function __rust_dealloc
+
+Check 36: __rust_dealloc.precondition_instance.4
+	 - Status: SUCCESS
+	 - Description: "double free"
+	 - Location: ../../../../.kani/kani-0.67.0/library/kani/kani_lib.c:87 in function __rust_dealloc
+
+Check 37: __rust_dealloc.precondition_instance.5
+	 - Status: SUCCESS
+	 - Description: "free called for new[] object"
+	 - Location: ../../../../.kani/kani-0.67.0/library/kani/kani_lib.c:87 in function __rust_dealloc
+
+Check 38: __rust_dealloc.precondition_instance.6
+	 - Status: SUCCESS
+	 - Description: "free called for stack-allocated object"
+	 - Location: ../../../../.kani/kani-0.67.0/library/kani/kani_lib.c:87 in function __rust_dealloc
+
+Check 39: kani_idempotency_gates::validate_action_outcome_certificate_stale_nonterminal.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_idempotency_gates.rs:476:27 in function kani_idempotency_gates::validate_action_outcome_certificate_stale_nonterminal
+
+Check 40: action::validate_ready_outcome.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/action.rs:466:33 in function action::validate_ready_outcome
+
+Check 41: action::validate_ready_outcome.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/action.rs:466:33 in function action::validate_ready_outcome
+
+Check 42: action::validate_ready_outcome.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/action.rs:466:33 in function action::validate_ready_outcome
+
+Check 43: action::validate_ready_outcome.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/action.rs:466:33 in function action::validate_ready_outcome
+
+Check 44: action::validate_ready_outcome.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/action.rs:466:33 in function action::validate_ready_outcome
+
+Check 45: action::validate_ready_outcome.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/action.rs:466:33 in function action::validate_ready_outcome
+
+Check 46: action::validate_ready_outcome.pointer_dereference.7
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/action.rs:466:59 in function action::validate_ready_outcome
+
+Check 47: action::validate_ready_outcome.pointer_dereference.8
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/action.rs:466:59 in function action::validate_ready_outcome
+
+Check 48: action::validate_ready_outcome.pointer_dereference.9
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/action.rs:466:59 in function action::validate_ready_outcome
+
+Check 49: action::validate_ready_outcome.pointer_dereference.10
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/action.rs:466:59 in function action::validate_ready_outcome
+
+Check 50: action::validate_ready_outcome.pointer_dereference.11
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/action.rs:466:59 in function action::validate_ready_outcome
+
+Check 51: action::validate_ready_outcome.pointer_dereference.12
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/action.rs:466:59 in function action::validate_ready_outcome
+
+Check 52: action::validate_ready_outcome.pointer_dereference.13
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/action.rs:466:5 in function action::validate_ready_outcome
+
+Check 53: action::validate_ready_outcome.pointer_dereference.14
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/action.rs:467:5 in function action::validate_ready_outcome
+
+Check 54: std::alloc::Layout::align.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:152:9 in function std::alloc::Layout::align
+
+Check 55: std::alloc::Layout::align.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:152:9 in function std::alloc::Layout::align
+
+Check 56: std::alloc::Layout::align.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:152:9 in function std::alloc::Layout::align
+
+Check 57: std::alloc::Layout::align.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:152:9 in function std::alloc::Layout::align
+
+Check 58: std::alloc::Layout::align.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:152:9 in function std::alloc::Layout::align
+
+Check 59: std::alloc::Layout::align.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:152:9 in function std::alloc::Layout::align
+
+Check 60: <std::boxed::Box<str> as std::ops::Drop>::drop.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<str> as std::ops::Drop>::drop
+
+Check 61: <std::boxed::Box<str> as std::ops::Drop>::drop.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<str> as std::ops::Drop>::drop
+
+Check 62: <std::boxed::Box<str> as std::ops::Drop>::drop.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<str> as std::ops::Drop>::drop
+
+Check 63: <std::boxed::Box<str> as std::ops::Drop>::drop.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<str> as std::ops::Drop>::drop
+
+Check 64: <std::boxed::Box<str> as std::ops::Drop>::drop.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<str> as std::ops::Drop>::drop
+
+Check 65: <std::boxed::Box<str> as std::ops::Drop>::drop.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<str> as std::ops::Drop>::drop
+
+Check 66: std::ptr::drop_in_place::<std::boxed::Box<str>>.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<str>>
+
+Check 67: std::ptr::drop_in_place::<std::boxed::Box<str>>.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<str>>
+
+Check 68: std::ptr::drop_in_place::<std::boxed::Box<str>>.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<str>>
+
+Check 69: std::ptr::drop_in_place::<std::boxed::Box<str>>.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<str>>
+
+Check 70: std::ptr::drop_in_place::<std::boxed::Box<str>>.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<str>>
+
+Check 71: std::ptr::drop_in_place::<std::boxed::Box<str>>.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<str>>
+
+Check 72: std::alloc::Layout::is_size_align_valid.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:69:27 in function std::alloc::Layout::is_size_align_valid
+
+Check 73: action::check_output_slot_in_bounds.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/action.rs:479:5 in function action::check_output_slot_in_bounds
+
+Check 74: std::alloc::Layout::size.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:140:9 in function std::alloc::Layout::size
+
+Check 75: std::alloc::Layout::size.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:140:9 in function std::alloc::Layout::size
+
+Check 76: std::alloc::Layout::size.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:140:9 in function std::alloc::Layout::size
+
+Check 77: std::alloc::Layout::size.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:140:9 in function std::alloc::Layout::size
+
+Check 78: std::alloc::Layout::size.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:140:9 in function std::alloc::Layout::size
+
+Check 79: std::alloc::Layout::size.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/alloc/layout.rs:140:9 in function std::alloc::Layout::size
+
+Check 80: <std::boxed::Box<[capability::Capability]> as std::ops::Drop>::drop.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<[capability::Capability]> as std::ops::Drop>::drop
+
+Check 81: <std::boxed::Box<[capability::Capability]> as std::ops::Drop>::drop.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<[capability::Capability]> as std::ops::Drop>::drop
+
+Check 82: <std::boxed::Box<[capability::Capability]> as std::ops::Drop>::drop.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<[capability::Capability]> as std::ops::Drop>::drop
+
+Check 83: <std::boxed::Box<[capability::Capability]> as std::ops::Drop>::drop.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<[capability::Capability]> as std::ops::Drop>::drop
+
+Check 84: <std::boxed::Box<[capability::Capability]> as std::ops::Drop>::drop.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<[capability::Capability]> as std::ops::Drop>::drop
+
+Check 85: <std::boxed::Box<[capability::Capability]> as std::ops::Drop>::drop.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/boxed.rs:1761:19 in function <std::boxed::Box<[capability::Capability]> as std::ops::Drop>::drop
+
+Check 86: action::validate_failed_outcome.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/action.rs:489:5 in function action::validate_failed_outcome
+
+Check 87: std::ptr::drop_in_place::<std::boxed::Box<[capability::Capability]>>.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<[capability::Capability]>>
+
+Check 88: std::ptr::drop_in_place::<std::boxed::Box<[capability::Capability]>>.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<[capability::Capability]>>
+
+Check 89: std::ptr::drop_in_place::<std::boxed::Box<[capability::Capability]>>.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<[capability::Capability]>>
+
+Check 90: std::ptr::drop_in_place::<std::boxed::Box<[capability::Capability]>>.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<[capability::Capability]>>
+
+Check 91: std::ptr::drop_in_place::<std::boxed::Box<[capability::Capability]>>.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<[capability::Capability]>>
+
+Check 92: std::ptr::drop_in_place::<std::boxed::Box<[capability::Capability]>>.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::boxed::Box<[capability::Capability]>>
+
+Check 93: std::ptr::Alignment::new.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/alignment.rs:64:13 in function std::ptr::Alignment::new
+
+Check 94: action::validate_action_outcome.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/action.rs:454:11 in function action::validate_action_outcome
+
+Check 95: action::validate_action_outcome.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/action.rs:454:11 in function action::validate_action_outcome
+
+Check 96: action::validate_action_outcome.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/action.rs:454:11 in function action::validate_action_outcome
+
+Check 97: action::validate_action_outcome.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/action.rs:454:11 in function action::validate_action_outcome
+
+Check 98: action::validate_action_outcome.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/action.rs:454:11 in function action::validate_action_outcome
+
+Check 99: action::validate_action_outcome.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/action.rs:454:11 in function action::validate_action_outcome
+
+Check 100: <std::result::Result<(), action::ActionError> as std::ops::Try>::branch.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:2173:15 in function <std::result::Result<(), action::ActionError> as std::ops::Try>::branch
+
+Check 101: <std::result::Result<(), action::ActionError> as std::ops::Try>::branch.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:2174:22 in function <std::result::Result<(), action::ActionError> as std::ops::Try>::branch
+
+Check 102: std::result::Result::<(), action::ActionError>::is_ok.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<(), action::ActionError>::is_ok
+
+Check 103: std::result::Result::<(), action::ActionError>::is_ok.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<(), action::ActionError>::is_ok
+
+Check 104: std::result::Result::<(), action::ActionError>::is_ok.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<(), action::ActionError>::is_ok
+
+Check 105: std::result::Result::<(), action::ActionError>::is_ok.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<(), action::ActionError>::is_ok
+
+Check 106: std::result::Result::<(), action::ActionError>::is_ok.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<(), action::ActionError>::is_ok
+
+Check 107: std::result::Result::<(), action::ActionError>::is_ok.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<(), action::ActionError>::is_ok
+
+
+SUMMARY:
+ ** 0 of 106 failed (2 unreachable)
+
+ ** 1 of 1 cover properties satisfied
+
+
+VERIFICATION:- SUCCESSFUL
+Verification Time: 0.05588022s
+
+Manual Harness Summary:
+Complete - 1 successfully verified harnesses, 0 failures, 1 total.
+
+EXIT_CODE=0

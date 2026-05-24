@@ -212,7 +212,7 @@ impl Shard {
         digest: vb_core::ids::WorkflowDigest,
         caps: CapabilitySet,
     ) -> RuntimeResult<Option<crate::admission::RunAdmission>> {
-        use crate::admission::{AdmissionError, admit_artifact_run};
+        use crate::admission::{admit_artifact_run, AdmissionError};
 
         match admit_artifact_run(self.artifact_store.as_ref(), self.policy, run, digest, caps) {
             Ok(admission) => Ok(Some(admission)),
@@ -264,6 +264,9 @@ impl Shard {
             }
             Err(AdmissionError::ArtifactDigestMismatch { requested, found }) => {
                 Err(RuntimeError::AdmissionArtifactDigestMismatch { requested, found })
+            }
+            Err(AdmissionError::ArtifactCertificateStale { digest, .. }) => {
+                Err(RuntimeError::AdmissionArtifactStale { digest })
             }
         }
     }

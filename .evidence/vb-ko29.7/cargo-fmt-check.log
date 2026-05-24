@@ -1,0 +1,325 @@
+Diff in /home/lewis/src/velvet-ballistics/crates/vb_runtime/src/error/display.rs:81:
+             write!(f, "admission header persistence failed: {source}")
+         }
+         RuntimeError::AdmissionArtifactStale { digest } => {
+[31m-            write!(f, "admission rejected: artifact certificate is stale: {digest:?}")
+(B[m[32m+            write!(
+(B[m[32m+                f,
+(B[m[32m+                "admission rejected: artifact certificate is stale: {digest:?}"
+(B[m[32m+            )
+(B[m         }
+         RuntimeError::CommandQueueCapacityExceeded { capacity, max } => {
+             write!(f, "command queue capacity {capacity} exceeds maximum {max}")
+Diff in /home/lewis/src/velvet-ballistics/crates/vb_runtime/src/error/equality.rs:93:
+             a == b
+         }
+         (
+[31m-            RuntimeError::EngineDriveFailed {
+(B[m[31m-                run: a,
+(B[m[31m-                source: s1,
+(B[m[31m-            },
+(B[m[31m-            RuntimeError::EngineDriveFailed {
+(B[m[31m-                run: b,
+(B[m[31m-                source: s2,
+(B[m[31m-            },
+(B[m[32m+            RuntimeError::EngineDriveFailed { run: a, source: s1 },
+(B[m[32m+            RuntimeError::EngineDriveFailed { run: b, source: s2 },
+(B[m         ) => a == b && s1.diagnostic_code() == s2.diagnostic_code(),
+         _ => false,
+     }
+Diff in /home/lewis/src/velvet-ballistics/crates/vb_runtime/src/models/loom/idempotency_retry_eviction.rs:22:
+ use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
+ 
+ #[cfg(test)]
+[31m-fn lock_tracker(
+(B[m[31m-    tracker: &Mutex<IdempotencyTracker>,
+(B[m[31m-) -> MutexGuard<'_, IdempotencyTracker> {
+(B[m[32m+fn lock_tracker(tracker: &Mutex<IdempotencyTracker>) -> MutexGuard<'_, IdempotencyTracker> {
+(B[m     match tracker.lock() {
+         Ok(guard) => guard,
+         Err(poisoned) => poisoned.into_inner(),
+Diff in /home/lewis/src/velvet-ballistics/crates/vb_runtime/src/models/loom/idempotency_retry_eviction.rs:117:
+         let completion_ok_count = completion_ok.load(Ordering::SeqCst);
+         let duplicate_count = completion_duplicate.load(Ordering::SeqCst);
+ 
+[31m-        assert!(admitted_count <= 1, "same-scope retry admits at most one caller");
+(B[m[31m-        assert_eq!(admitted_count + denied_count, 2, "both retry attempts resolve");
+(B[m[31m-        assert!(completion_ok_count <= 1, "completed map records at most one winner");
+(B[m[31m-        assert_eq!(locked.len(), completion_ok_count, "tracker length mirrors completion winner count");
+(B[m[31m-        assert_eq!(completion_ok_count + duplicate_count, admitted_count + 1, "every completion attempt resolves");
+(B[m[31m-        assert!(locked.is_completed(&ticket(1, 0, key)), "winning completion is visible by key");
+(B[m[32m+        assert!(
+(B[m[32m+            admitted_count <= 1,
+(B[m[32m+            "same-scope retry admits at most one caller"
+(B[m[32m+        );
+(B[m[32m+        assert_eq!(
+(B[m[32m+            admitted_count + denied_count,
+(B[m[32m+            2,
+(B[m[32m+            "both retry attempts resolve"
+(B[m[32m+        );
+(B[m[32m+        assert!(
+(B[m[32m+            completion_ok_count <= 1,
+(B[m[32m+            "completed map records at most one winner"
+(B[m[32m+        );
+(B[m[32m+        assert_eq!(
+(B[m[32m+            locked.len(),
+(B[m[32m+            completion_ok_count,
+(B[m[32m+            "tracker length mirrors completion winner count"
+(B[m[32m+        );
+(B[m[32m+        assert_eq!(
+(B[m[32m+            completion_ok_count + duplicate_count,
+(B[m[32m+            admitted_count + 1,
+(B[m[32m+            "every completion attempt resolves"
+(B[m[32m+        );
+(B[m[32m+        assert!(
+(B[m[32m+            locked.is_completed(&ticket(1, 0, key)),
+(B[m[32m+            "winning completion is visible by key"
+(B[m[32m+        );
+(B[m     });
+ }
+ 
+Diff in /home/lewis/src/velvet-ballistics/crates/vb_runtime/src/models/loom/idempotency_retry_eviction.rs:175:
+         let new_present = locked.is_completed(&ticket(1, 0, new_key));
+ 
+         assert_eq!(eviction_count, 1, "new key insertion must complete once");
+[31m-        assert_eq!(rejected_count + accepted_count, 1, "old-key conflict resolves once");
+(B[m[31m-        assert!(locked.len() <= 1, "capacity-one tracker never exceeds capacity");
+(B[m[31m-        assert_ne!(old_present, new_present, "capacity-one tracker has exactly one visible key");
+(B[m[32m+        assert_eq!(
+(B[m[32m+            rejected_count + accepted_count,
+(B[m[32m+            1,
+(B[m[32m+            "old-key conflict resolves once"
+(B[m[32m+        );
+(B[m[32m+        assert!(
+(B[m[32m+            locked.len() <= 1,
+(B[m[32m+            "capacity-one tracker never exceeds capacity"
+(B[m[32m+        );
+(B[m[32m+        assert_ne!(
+(B[m[32m+            old_present, new_present,
+(B[m[32m+            "capacity-one tracker has exactly one visible key"
+(B[m[32m+        );
+(B[m         if accepted_count == 1 {
+[31m-            assert!(old_present, "accepted stale key must be the visible survivor");
+(B[m[31m-            assert!(!new_present, "accepted stale key evicts the newer key locally");
+(B[m[32m+            assert!(
+(B[m[32m+                old_present,
+(B[m[32m+                "accepted stale key must be the visible survivor"
+(B[m[32m+            );
+(B[m[32m+            assert!(
+(B[m[32m+                !new_present,
+(B[m[32m+                "accepted stale key evicts the newer key locally"
+(B[m[32m+            );
+(B[m         } else {
+             assert!(new_present, "rejected conflict leaves newer key visible");
+[31m-            assert!(!old_present, "rejected old key remains absent after eviction");
+(B[m[32m+            assert!(
+(B[m[32m+                !old_present,
+(B[m[32m+                "rejected old key remains absent after eviction"
+(B[m[32m+            );
+(B[m         }
+     });
+ }
+Diff in /home/lewis/src/velvet-ballistics/crates/vb_runtime/src/models/loom/timer_fired_cancel.rs:179:
+ #[test]
+ fn timer_fired_cancel_ordering() {
+     loom::model(|| {
+[31m-            let state = Arc::new(Mutex::new(initial_state()));
+(B[m[31m-            let event = captured_fire();
+(B[m[32m+        let state = Arc::new(Mutex::new(initial_state()));
+(B[m[32m+        let event = captured_fire();
+(B[m 
+[31m-            let cancel_state = state.clone();
+(B[m[31m-            let cancel = loom::thread::spawn(move || {
+(B[m[31m-                let mut locked = lock_state(&cancel_state);
+(B[m[31m-                locked.pending = None;
+(B[m[31m-            });
+(B[m[32m+        let cancel_state = state.clone();
+(B[m[32m+        let cancel = loom::thread::spawn(move || {
+(B[m[32m+            let mut locked = lock_state(&cancel_state);
+(B[m[32m+            locked.pending = None;
+(B[m[32m+        });
+(B[m 
+[31m-            let deliver_state = state.clone();
+(B[m[31m-            let delivery = loom::thread::spawn(move || {
+(B[m[31m-                let mut locked = lock_state(&deliver_state);
+(B[m[31m-                deliver(&mut locked, event)
+(B[m[31m-            });
+(B[m[32m+        let deliver_state = state.clone();
+(B[m[32m+        let delivery = loom::thread::spawn(move || {
+(B[m[32m+            let mut locked = lock_state(&deliver_state);
+(B[m[32m+            deliver(&mut locked, event)
+(B[m[32m+        });
+(B[m 
+[31m-            assert!(cancel.join().is_ok(), "cancel thread should complete");
+(B[m[31m-            let delivery_result = delivery.join();
+(B[m[31m-            assert!(delivery_result.is_ok(), "delivery thread should complete");
+(B[m[31m-            let Ok(outcome) = delivery_result else {
+(B[m[31m-                return;
+(B[m[31m-            };
+(B[m[32m+        assert!(cancel.join().is_ok(), "cancel thread should complete");
+(B[m[32m+        let delivery_result = delivery.join();
+(B[m[32m+        assert!(delivery_result.is_ok(), "delivery thread should complete");
+(B[m[32m+        let Ok(outcome) = delivery_result else {
+(B[m[32m+            return;
+(B[m[32m+        };
+(B[m 
+[31m-            let locked = lock_state(&state);
+(B[m[31m-            assert!(
+(B[m[31m-                matches!(
+(B[m[31m-                    outcome,
+(B[m[31m-                    FireOutcome::ValidDelivered | FireOutcome::StaleAfterCancel
+(B[m[31m-                ),
+(B[m[31m-                "cancel race must resolve only to valid delivery or stale-after-cancel"
+(B[m[31m-            );
+(B[m[31m-            assert_lattice(&locked, outcome);
+(B[m[32m+        let locked = lock_state(&state);
+(B[m[32m+        assert!(
+(B[m[32m+            matches!(
+(B[m[32m+                outcome,
+(B[m[32m+                FireOutcome::ValidDelivered | FireOutcome::StaleAfterCancel
+(B[m[32m+            ),
+(B[m[32m+            "cancel race must resolve only to valid delivery or stale-after-cancel"
+(B[m[32m+        );
+(B[m[32m+        assert_lattice(&locked, outcome);
+(B[m     });
+ }
+ 
+Diff in /home/lewis/src/velvet-ballistics/crates/vb_runtime/src/models/loom/timer_fired_cancel.rs:218:
+ #[test]
+ fn timer_fired_replace_ordering() {
+     loom::model(|| {
+[31m-            let state = Arc::new(Mutex::new(initial_state()));
+(B[m[31m-            let event = captured_fire();
+(B[m[32m+        let state = Arc::new(Mutex::new(initial_state()));
+(B[m[32m+        let event = captured_fire();
+(B[m 
+[31m-            let replace_state = state.clone();
+(B[m[31m-            let replace = loom::thread::spawn(move || {
+(B[m[31m-                let mut locked = lock_state(&replace_state);
+(B[m[31m-                locked.pending = Some(PendingTimer {
+(B[m[31m-                    generation: 2,
+(B[m[31m-                    deadline: 11,
+(B[m[31m-                    kind: TimerKind::Ask,
+(B[m[31m-                });
+(B[m[32m+        let replace_state = state.clone();
+(B[m[32m+        let replace = loom::thread::spawn(move || {
+(B[m[32m+            let mut locked = lock_state(&replace_state);
+(B[m[32m+            locked.pending = Some(PendingTimer {
+(B[m[32m+                generation: 2,
+(B[m[32m+                deadline: 11,
+(B[m[32m+                kind: TimerKind::Ask,
+(B[m             });
+[32m+        });
+(B[m 
+[31m-            let deliver_state = state.clone();
+(B[m[31m-            let delivery = loom::thread::spawn(move || {
+(B[m[31m-                let mut locked = lock_state(&deliver_state);
+(B[m[31m-                deliver(&mut locked, event)
+(B[m[31m-            });
+(B[m[32m+        let deliver_state = state.clone();
+(B[m[32m+        let delivery = loom::thread::spawn(move || {
+(B[m[32m+            let mut locked = lock_state(&deliver_state);
+(B[m[32m+            deliver(&mut locked, event)
+(B[m[32m+        });
+(B[m 
+[31m-            assert!(replace.join().is_ok(), "replace thread should complete");
+(B[m[31m-            let delivery_result = delivery.join();
+(B[m[31m-            assert!(delivery_result.is_ok(), "delivery thread should complete");
+(B[m[31m-            let Ok(outcome) = delivery_result else {
+(B[m[31m-                return;
+(B[m[31m-            };
+(B[m[32m+        assert!(replace.join().is_ok(), "replace thread should complete");
+(B[m[32m+        let delivery_result = delivery.join();
+(B[m[32m+        assert!(delivery_result.is_ok(), "delivery thread should complete");
+(B[m[32m+        let Ok(outcome) = delivery_result else {
+(B[m[32m+            return;
+(B[m[32m+        };
+(B[m 
+[31m-            let locked = lock_state(&state);
+(B[m[31m-            assert!(
+(B[m[31m-                matches!(
+(B[m[31m-                    outcome,
+(B[m[31m-                    FireOutcome::ValidDelivered | FireOutcome::StaleAfterReplace
+(B[m[31m-                ),
+(B[m[31m-                "replace race must resolve only to valid delivery or stale-after-replace"
+(B[m[31m-            );
+(B[m[31m-            assert_lattice(&locked, outcome);
+(B[m[32m+        let locked = lock_state(&state);
+(B[m[32m+        assert!(
+(B[m[32m+            matches!(
+(B[m[32m+                outcome,
+(B[m[32m+                FireOutcome::ValidDelivered | FireOutcome::StaleAfterReplace
+(B[m[32m+            ),
+(B[m[32m+            "replace race must resolve only to valid delivery or stale-after-replace"
+(B[m[32m+        );
+(B[m[32m+        assert_lattice(&locked, outcome);
+(B[m     });
+ }
+ 
+Diff in /home/lewis/src/velvet-ballistics/crates/vb_runtime/src/models/loom/timer_fired_cancel.rs:262:
+ #[test]
+ fn timer_fired_terminal_ordering() {
+     loom::model(|| {
+[31m-            let state = Arc::new(Mutex::new(initial_state()));
+(B[m[31m-            let event = captured_fire();
+(B[m[32m+        let state = Arc::new(Mutex::new(initial_state()));
+(B[m[32m+        let event = captured_fire();
+(B[m 
+[31m-            let terminal_state = state.clone();
+(B[m[31m-            let terminal = loom::thread::spawn(move || {
+(B[m[31m-                let mut locked = lock_state(&terminal_state);
+(B[m[31m-                locked.terminal = true;
+(B[m[31m-                locked.pending = None;
+(B[m[31m-            });
+(B[m[32m+        let terminal_state = state.clone();
+(B[m[32m+        let terminal = loom::thread::spawn(move || {
+(B[m[32m+            let mut locked = lock_state(&terminal_state);
+(B[m[32m+            locked.terminal = true;
+(B[m[32m+            locked.pending = None;
+(B[m[32m+        });
+(B[m 
+[31m-            let deliver_state = state.clone();
+(B[m[31m-            let delivery = loom::thread::spawn(move || {
+(B[m[31m-                let mut locked = lock_state(&deliver_state);
+(B[m[31m-                deliver(&mut locked, event)
+(B[m[31m-            });
+(B[m[32m+        let deliver_state = state.clone();
+(B[m[32m+        let delivery = loom::thread::spawn(move || {
+(B[m[32m+            let mut locked = lock_state(&deliver_state);
+(B[m[32m+            deliver(&mut locked, event)
+(B[m[32m+        });
+(B[m 
+[31m-            assert!(terminal.join().is_ok(), "terminal thread should complete");
+(B[m[31m-            let delivery_result = delivery.join();
+(B[m[31m-            assert!(delivery_result.is_ok(), "delivery thread should complete");
+(B[m[31m-            let Ok(outcome) = delivery_result else {
+(B[m[31m-                return;
+(B[m[31m-            };
+(B[m[32m+        assert!(terminal.join().is_ok(), "terminal thread should complete");
+(B[m[32m+        let delivery_result = delivery.join();
+(B[m[32m+        assert!(delivery_result.is_ok(), "delivery thread should complete");
+(B[m[32m+        let Ok(outcome) = delivery_result else {
+(B[m[32m+            return;
+(B[m[32m+        };
+(B[m 
+[31m-            let locked = lock_state(&state);
+(B[m[31m-            assert!(
+(B[m[31m-                matches!(
+(B[m[31m-                    outcome,
+(B[m[31m-                    FireOutcome::ValidDelivered | FireOutcome::TerminalRejected
+(B[m[31m-                ),
+(B[m[31m-                "terminal race must resolve only to valid delivery or terminal rejection"
+(B[m[31m-            );
+(B[m[31m-            assert_lattice(&locked, outcome);
+(B[m[32m+        let locked = lock_state(&state);
+(B[m[32m+        assert!(
+(B[m[32m+            matches!(
+(B[m[32m+                outcome,
+(B[m[32m+                FireOutcome::ValidDelivered | FireOutcome::TerminalRejected
+(B[m[32m+            ),
+(B[m[32m+            "terminal race must resolve only to valid delivery or terminal rejection"
+(B[m[32m+        );
+(B[m[32m+        assert_lattice(&locked, outcome);
+(B[m     });
+ }
+ 

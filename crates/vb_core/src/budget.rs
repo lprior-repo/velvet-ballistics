@@ -1612,13 +1612,13 @@ fn push_path_successors(
             branches,
             otherwise,
         } => {
-            push_longest_expr_branch(nodes, branches, *otherwise, node_count, stack);
+            push_longest_expr_branch(nodes, branches, *otherwise, node_count, stack)?;
         }
         CompiledNodeKind::ChooseSlot {
             branches,
             otherwise,
         } => {
-            push_longest_slot_branch(nodes, branches, *otherwise, node_count, stack);
+            push_longest_slot_branch(nodes, branches, *otherwise, node_count, stack)?;
         }
         _ => push_successor_targets(&node.kind, stack),
     }
@@ -1654,14 +1654,20 @@ fn iterative_branch_depth(
         if let Some(flag) = visited.get_mut(idx) {
             *flag = true;
         }
-        count += 1;
+        count = match count.checked_add(1) {
+            Some(next) => next,
+            None => return max_depth,
+        };
         // Push successors iteratively
         let Ok(node) = node_at_position(nodes, idx, current) else {
             continue;
         };
         match &node.kind {
             CompiledNodeKind::Finish { .. } => {}
-            CompiledNodeKind::Choose { branches, otherwise } => {
+            CompiledNodeKind::Choose {
+                branches,
+                otherwise,
+            } => {
                 // Push all branches; we'll count all their nodes
                 for branch in branches {
                     stack.push(branch.target);
@@ -1670,7 +1676,10 @@ fn iterative_branch_depth(
                     stack.push(*t);
                 }
             }
-            CompiledNodeKind::ChooseSlot { branches, otherwise } => {
+            CompiledNodeKind::ChooseSlot {
+                branches,
+                otherwise,
+            } => {
                 for branch in branches {
                     stack.push(branch.target);
                 }
@@ -1706,11 +1715,12 @@ fn push_longest_expr_branch(
     otherwise: Option<StepIdx>,
     _node_count: usize,
     stack: &mut Vec<StepIdx>,
-) {
+) -> Result<(), BudgetTraversalError> {
     // Iteratively compare branch lengths using explicit stacks — no recursion.
     // This is O(branches * depth) but uses O(1) call stack instead of O(depth).
     let mut selected = otherwise;
-    let mut selected_depth = 0u64;
+    let mut selected_depth =
+        otherwise.map_or(0, |target| iterative_branch_depth(nodes, target, 10_000));
     for branch in branches {
         // Depth-bounded traversal: stop at 10_000 nodes to prevent DoS.
         // This is a heuristic — we only need relative comparison.
@@ -1721,6 +1731,7 @@ fn push_longest_expr_branch(
         }
     }
     push_selected_branch(selected, stack);
+    Ok(())
 }
 
 /// Iteratively finds the longest slot branch without recursive traversal.
@@ -1731,9 +1742,11 @@ fn push_longest_slot_branch(
     otherwise: Option<StepIdx>,
     _node_count: usize,
     stack: &mut Vec<StepIdx>,
-) {
+) -> Result<(), BudgetTraversalError> {
     let mut selected = otherwise;
-    let mut selected_depth = 0u64;
+    let mut selected_depth = otherwise.map_or(0, |target| {
+        iterative_slot_branch_depth(nodes, target, 10_000)
+    });
     for branch in branches {
         let depth = iterative_slot_branch_depth(nodes, branch.target, 10_000);
         if depth > selected_depth {
@@ -1742,6 +1755,7 @@ fn push_longest_slot_branch(
         }
     }
     push_selected_branch(selected, stack);
+    Ok(())
 }
 
 fn push_selected_branch(selected: Option<StepIdx>, stack: &mut Vec<StepIdx>) {

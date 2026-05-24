@@ -1792,6 +1792,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "velvet-ballastics-idempotency-workspace-tests"
+version = "0.1.0"
+dependencies = [
+ "tempfile",
+ "vb_core",
+ "vb_runtime",
+ "vb_storage",
+ "velvet-ballastics",
+]
+
+[[package]]
 name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
