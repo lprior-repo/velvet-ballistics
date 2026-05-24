@@ -151,7 +151,8 @@ pub(crate) fn build_list_with_taint(
                 reason: "build_list item index overflow",
             })?;
     }
-    let handle = store.insert_list_with_taint(values.into_boxed_slice(), taints.into_boxed_slice())?;
+    let handle =
+        store.insert_list_with_taint(values.into_boxed_slice(), taints.into_boxed_slice())?;
     Ok((handle, accumulated_taint))
 }
 
