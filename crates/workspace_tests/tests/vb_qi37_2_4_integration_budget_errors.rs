@@ -93,6 +93,13 @@ fn tight_policy(
         absolute_max_run_time_seconds: 2_592_000,
         absolute_max_result_bytes: 262_144,
         absolute_max_steps_executable: 1_000_000,
+        absolute_max_timer_entries: 1_000_000,
+        absolute_max_trace_events: 1_000_000,
+        absolute_max_journal_batch_bytes: 1_048_576,
+        absolute_max_queue_depth: 1_024,
+        absolute_max_ipc_payload_bytes: 1_048_576,
+        absolute_max_blob_bytes: 16_777_216,
+        absolute_max_input_bytes: 1_048_576,
     }
 }
 
@@ -571,6 +578,13 @@ fn integration_policy_returns_parallel_exceeded_when_parallel_crosses_limit() {
         absolute_max_run_time_seconds: 2_592_000,
         absolute_max_result_bytes: 262_144,
         absolute_max_steps_executable: 1_000_000,
+        absolute_max_timer_entries: 1_000_000,
+        absolute_max_trace_events: 1_000_000,
+        absolute_max_journal_batch_bytes: 1_048_576,
+        absolute_max_queue_depth: 1_024,
+        absolute_max_ipc_payload_bytes: 1_048_576,
+        absolute_max_blob_bytes: 16_777_216,
+        absolute_max_input_bytes: 1_048_576,
     };
 
     let result = policy.validate(&budget);
@@ -619,6 +633,13 @@ fn integration_policy_returns_action_tickets_exceeded_when_action_tickets_cross_
         absolute_max_run_time_seconds: 2_592_000,
         absolute_max_result_bytes: 262_144,
         absolute_max_steps_executable: 1_000_000,
+        absolute_max_timer_entries: 1_000_000,
+        absolute_max_trace_events: 1_000_000,
+        absolute_max_journal_batch_bytes: 1_048_576,
+        absolute_max_queue_depth: 1_024,
+        absolute_max_ipc_payload_bytes: 1_048_576,
+        absolute_max_blob_bytes: 16_777_216,
+        absolute_max_input_bytes: 1_048_576,
     };
 
     let result = policy.validate(&budget);
@@ -699,6 +720,13 @@ fn integration_policy_returns_runtime_exceeded_when_runtime_crosses_limit() {
         absolute_max_run_time_seconds: 1, // Very low limit
         absolute_max_result_bytes: 262_144,
         absolute_max_steps_executable: 1_000_000,
+        absolute_max_timer_entries: 1_000_000,
+        absolute_max_trace_events: 1_000_000,
+        absolute_max_journal_batch_bytes: 1_048_576,
+        absolute_max_queue_depth: 1_024,
+        absolute_max_ipc_payload_bytes: 1_048_576,
+        absolute_max_blob_bytes: 16_777_216,
+        absolute_max_input_bytes: 1_048_576,
     };
 
     let result = policy.validate(&budget);
@@ -768,6 +796,13 @@ fn integration_policy_returns_result_bytes_exceeded_when_result_bytes_cross_limi
         absolute_max_run_time_seconds: 2_592_000,
         absolute_max_result_bytes: 100, // Very low limit
         absolute_max_steps_executable: 1_000_000,
+        absolute_max_timer_entries: 1_000_000,
+        absolute_max_trace_events: 1_000_000,
+        absolute_max_journal_batch_bytes: 1_048_576,
+        absolute_max_queue_depth: 1_024,
+        absolute_max_ipc_payload_bytes: 1_048_576,
+        absolute_max_blob_bytes: 16_777_216,
+        absolute_max_input_bytes: 1_048_576,
     };
 
     let result = policy.validate(&budget);
@@ -1126,6 +1161,13 @@ fn integration_action_together_parallel_exceeded() {
         absolute_max_run_time_seconds: 2_592_000,
         absolute_max_result_bytes: 262_144,
         absolute_max_steps_executable: 1_000_000,
+        absolute_max_timer_entries: 1_000_000,
+        absolute_max_trace_events: 1_000_000,
+        absolute_max_journal_batch_bytes: 1_048_576,
+        absolute_max_queue_depth: 1_024,
+        absolute_max_ipc_payload_bytes: 1_048_576,
+        absolute_max_blob_bytes: 16_777_216,
+        absolute_max_input_bytes: 1_048_576,
     };
 
     let result = policy.validate(&budget);
@@ -1187,6 +1229,13 @@ fn integration_result_size_returns_result_bytes_exceeded() {
         absolute_max_run_time_seconds: 2_592_000,
         absolute_max_result_bytes: 100_000, // Low limit
         absolute_max_steps_executable: 1_000_000,
+        absolute_max_timer_entries: 1_000_000,
+        absolute_max_trace_events: 1_000_000,
+        absolute_max_journal_batch_bytes: 1_048_576,
+        absolute_max_queue_depth: 1_024,
+        absolute_max_ipc_payload_bytes: 1_048_576,
+        absolute_max_blob_bytes: 16_777_216,
+        absolute_max_input_bytes: 1_048_576,
     };
 
     let result = policy.validate(&budget);
@@ -1725,6 +1774,13 @@ fn integration_budget_error_parallel_exceeded_display() {
         absolute_max_run_time_seconds: 2_592_000,
         absolute_max_result_bytes: 262_144,
         absolute_max_steps_executable: 1_000_000,
+        absolute_max_timer_entries: 1_000_000,
+        absolute_max_trace_events: 1_000_000,
+        absolute_max_journal_batch_bytes: 1_048_576,
+        absolute_max_queue_depth: 1_024,
+        absolute_max_ipc_payload_bytes: 1_048_576,
+        absolute_max_blob_bytes: 16_777_216,
+        absolute_max_input_bytes: 1_048_576,
     };
 
     let result = policy.validate(&budget);
@@ -1788,6 +1844,13 @@ fn integration_policy_checks_fanout_before_parallel() {
         absolute_max_run_time_seconds: 2_592_000,
         absolute_max_result_bytes: 262_144,
         absolute_max_steps_executable: 1_000_000,
+        absolute_max_timer_entries: 1_000_000,
+        absolute_max_trace_events: 1_000_000,
+        absolute_max_journal_batch_bytes: 1_048_576,
+        absolute_max_queue_depth: 1_024,
+        absolute_max_ipc_payload_bytes: 1_048_576,
+        absolute_max_blob_bytes: 16_777_216,
+        absolute_max_input_bytes: 1_048_576,
     };
 
     let result = policy.validate(&budget);
@@ -2138,6 +2201,13 @@ fn integration_policy_validates_result_bytes() {
         absolute_max_run_time_seconds: 2_592_000,
         absolute_max_result_bytes: 100_000,
         absolute_max_steps_executable: 1_000_000,
+        absolute_max_timer_entries: 1_000_000,
+        absolute_max_trace_events: 1_000_000,
+        absolute_max_journal_batch_bytes: 1_048_576,
+        absolute_max_queue_depth: 1_024,
+        absolute_max_ipc_payload_bytes: 1_048_576,
+        absolute_max_blob_bytes: 16_777_216,
+        absolute_max_input_bytes: 1_048_576,
     };
 
     let result = policy.validate(&budget);
