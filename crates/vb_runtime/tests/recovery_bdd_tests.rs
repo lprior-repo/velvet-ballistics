@@ -2522,9 +2522,12 @@ fn run_finished_event_sets_terminal_state_with_result() {
     let summary = result.unwrap().summary();
     assert!(summary.terminal.is_some(), "terminal should be present");
     if let Some(terminal) = summary.terminal {
-        assert!(
-            matches!(terminal, RecoveryTerminalState::Finished { .. }),
-            "terminal should be Finished"
+        assert_eq!(
+            terminal,
+            RecoveryTerminalState::Finished {
+                result: SlotIdx::new(3)
+            },
+            "terminal should be Finished with the exact result slot"
         );
     }
 }

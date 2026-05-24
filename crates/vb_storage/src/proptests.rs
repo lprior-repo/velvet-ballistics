@@ -14,14 +14,26 @@ mod proptests {
     use proptest::prelude::*;
     use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest, WorkflowId};
 
+    macro_rules! prop_unwrap_result {
+        ($expr:expr, $context:literal) => {
+            match $expr {
+                Ok(value) => value,
+                Err(error) => {
+                    prop_assert!(false, "{} failed: {:?}", $context, error);
+                    unreachable!()
+                }
+            }
+        };
+    }
+
     proptest! {
         #[test]
         fn run_event_key_ordering_is_monotonic(seq1 in 0u64..1000u64, seq2 in 0u64..1000u64) {
             let run = RunId::new(42);
             let key1 = run_event_key(run, EventSeq::new(seq1));
             let key2 = run_event_key(run, EventSeq::new(seq2));
-            let Ok(k1) = key1 else { return Ok(()) };
-            let Ok(k2) = key2 else { return Ok(()) };
+            let k1 = prop_unwrap_result!(key1, "run_event_key(seq1)");
+            let k2 = prop_unwrap_result!(key2, "run_event_key(seq2)");
             if seq1 < seq2 {
                 prop_assert!(k1 < k2);
             } else if seq1 > seq2 {
@@ -60,7 +72,10 @@ mod proptests {
                 21 => RecordKind::RunCancelled,
                 22 => RecordKind::RunFinished,
                 23 => RecordKind::RunFailed,
-                _ => return Ok(()),
+                _ => {
+                    prop_assert!(false, "kind_id outside generated journal range: {kind_id}");
+                    unreachable!()
+                }
             };
             let encoded = encode_record(
                 MAGIC_JOURNAL_EVENT,
@@ -69,13 +84,13 @@ mod proptests {
                 &event,
                 MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             );
-            let Ok(encoded) = encoded else { return Ok(()) };
+            let encoded = prop_unwrap_result!(encoded, "encode_record journal event");
             let decoded = decode_record::<crate::JournalEvent>(
                 &encoded,
                 MAGIC_JOURNAL_EVENT,
                 MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             );
-            let Ok((_envelope, decoded_event)) = decoded else { return Ok(()) };
+            let (_envelope, decoded_event) = prop_unwrap_result!(decoded, "decode_record journal event");
             prop_assert_eq!(decoded_event, event);
         }
 
@@ -91,8 +106,8 @@ mod proptests {
             let seq = EventSeq::new(seq_val);
             let key1 = run_event_key(run, seq);
             let key2 = run_event_key(run, seq);
-            let Ok(k1) = key1 else { return Ok(()) };
-            let Ok(k2) = key2 else { return Ok(()) };
+            let k1 = prop_unwrap_result!(key1, "run_event_key first call");
+            let k2 = prop_unwrap_result!(key2, "run_event_key second call");
             prop_assert_eq!(k1, k2);
         }
 
@@ -106,7 +121,12 @@ mod proptests {
         }
 
         #[test]
-        fn record_kind_id_roundtrip(kind_id in 1u16..=50u16) {
+        fn record_kind_id_roundtrip(
+            kind_id in proptest::sample::select(vec![
+                1u16, 2, 3, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 30, 40,
+                50,
+            ])
+        ) {
             // Given a valid record kind id
             // When it matches a known RecordKind variant
             // Then the id() round-trips correctly
@@ -131,7 +151,10 @@ mod proptests {
                 30 => RecordKind::Snapshot,
                 40 => RecordKind::Blob,
                 50 => RecordKind::IndexUpdate,
-                _ => return Ok(()),
+                _ => {
+                    prop_assert!(false, "unexpected RecordKind id from select strategy: {kind_id}");
+                    unreachable!()
+                }
             };
             prop_assert_eq!(kind.id(), kind_id);
         }
@@ -152,56 +175,56 @@ mod proptests {
 
             let k1 = workflow_source_key(digest);
             let k2 = workflow_source_key(digest);
-            let Ok(k1) = k1 else { return Ok(()) };
-            let Ok(k2) = k2 else { return Ok(()) };
+            let k1 = prop_unwrap_result!(k1, "workflow_source_key first call");
+            let k2 = prop_unwrap_result!(k2, "workflow_source_key second call");
             prop_assert_eq!(k1, k2);
 
             let k1 = compiled_ir_key(digest);
             let k2 = compiled_ir_key(digest);
-            let Ok(k1) = k1 else { return Ok(()) };
-            let Ok(k2) = k2 else { return Ok(()) };
+            let k1 = prop_unwrap_result!(k1, "compiled_ir_key first call");
+            let k2 = prop_unwrap_result!(k2, "compiled_ir_key second call");
             prop_assert_eq!(k1, k2);
 
             let k1 = run_header_key(run);
             let k2 = run_header_key(run);
-            let Ok(k1) = k1 else { return Ok(()) };
-            let Ok(k2) = k2 else { return Ok(()) };
+            let k1 = prop_unwrap_result!(k1, "run_header_key first call");
+            let k2 = prop_unwrap_result!(k2, "run_header_key second call");
             prop_assert_eq!(k1, k2);
 
             let k1 = run_event_key(run, seq);
             let k2 = run_event_key(run, seq);
-            let Ok(k1) = k1 else { return Ok(()) };
-            let Ok(k2) = k2 else { return Ok(()) };
+            let k1 = prop_unwrap_result!(k1, "run_event_key first call");
+            let k2 = prop_unwrap_result!(k2, "run_event_key second call");
             prop_assert_eq!(k1, k2);
 
             let k1 = run_snapshot_key(run, seq);
             let k2 = run_snapshot_key(run, seq);
-            let Ok(k1) = k1 else { return Ok(()) };
-            let Ok(k2) = k2 else { return Ok(()) };
+            let k1 = prop_unwrap_result!(k1, "run_snapshot_key first call");
+            let k2 = prop_unwrap_result!(k2, "run_snapshot_key second call");
             prop_assert_eq!(k1, k2);
 
             let k1 = blob_key(digest);
             let k2 = blob_key(digest);
-            let Ok(k1) = k1 else { return Ok(()) };
-            let Ok(k2) = k2 else { return Ok(()) };
+            let k1 = prop_unwrap_result!(k1, "blob_key first call");
+            let k2 = prop_unwrap_result!(k2, "blob_key second call");
             prop_assert_eq!(k1, k2);
 
             let k1 = index_status_key(IndexStatusState::from_u8(state_val), ts_val, run);
             let k2 = index_status_key(IndexStatusState::from_u8(state_val), ts_val, run);
-            let Ok(k1) = k1 else { return Ok(()) };
-            let Ok(k2) = k2 else { return Ok(()) };
+            let k1 = prop_unwrap_result!(k1, "index_status_key first call");
+            let k2 = prop_unwrap_result!(k2, "index_status_key second call");
             prop_assert_eq!(k1, k2);
 
             let k1 = index_workflow_key(WorkflowId::new(wf_val), run);
             let k2 = index_workflow_key(WorkflowId::new(wf_val), run);
-            let Ok(k1) = k1 else { return Ok(()) };
-            let Ok(k2) = k2 else { return Ok(()) };
+            let k1 = prop_unwrap_result!(k1, "index_workflow_key first call");
+            let k2 = prop_unwrap_result!(k2, "index_workflow_key second call");
             prop_assert_eq!(k1, k2);
 
             let k1 = index_action_key(ActionId::new(action_val), run, StepIdx::new(step_val));
             let k2 = index_action_key(ActionId::new(action_val), run, StepIdx::new(step_val));
-            let Ok(k1) = k1 else { return Ok(()) };
-            let Ok(k2) = k2 else { return Ok(()) };
+            let k1 = prop_unwrap_result!(k1, "index_action_key first call");
+            let k2 = prop_unwrap_result!(k2, "index_action_key second call");
             prop_assert_eq!(k1, k2);
         }
 
@@ -221,9 +244,9 @@ mod proptests {
                 &record,
                 65536,
             );
-            let Ok(encoded) = encoded else { return Ok(()) };
+            let encoded = prop_unwrap_result!(encoded, "encode_record workflow source");
             let decoded = decode_record::<WorkflowSourceRecord>(&encoded, MAGIC_WORKFLOW_SOURCE, 65536);
-            let Ok((_env, decoded_record)) = decoded else { return Ok(()) };
+            let (_env, decoded_record) = prop_unwrap_result!(decoded, "decode_record workflow source");
             prop_assert_eq!(decoded_record, record);
         }
 
@@ -237,9 +260,9 @@ mod proptests {
                 bytes: blob_bytes,
             };
             let encoded = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, &record, 65536);
-            let Ok(encoded) = encoded else { return Ok(()) };
+            let encoded = prop_unwrap_result!(encoded, "encode_record blob");
             let decoded = decode_record::<BlobRecord>(&encoded, MAGIC_BLOB, 65536);
-            let Ok((_env, decoded_record)) = decoded else { return Ok(()) };
+            let (_env, decoded_record) = prop_unwrap_result!(decoded, "decode_record blob");
             prop_assert_eq!(decoded_record, record);
         }
     }

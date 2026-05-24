@@ -966,7 +966,11 @@ fn snapshot_plus_tail_rejects_event_before_snapshot() {
     let Err(err) = result else {
         panic!("tail event before snapshot should be rejected");
     };
-    assert!(matches!(err, RecoveryError::ReplayDivergence { .. }));
+    let RecoveryError::ReplayDivergence { step, detail } = err else {
+        panic!("expected ReplayDivergence, got {err:?}");
+    };
+    assert_eq!(step, StepIdx::ZERO);
+    assert_eq!(detail, "tail event seq 3 is not after snapshot seq 5");
 }
 
 #[test]
@@ -979,7 +983,10 @@ fn full_journal_recovery_with_no_data_fails() {
     let Err(err) = result else {
         panic!("empty journal should produce NoRecoveryData");
     };
-    assert!(matches!(err, RecoveryError::NoRecoveryData { .. }));
+    let RecoveryError::NoRecoveryData { run } = err else {
+        panic!("expected NoRecoveryData, got {err:?}");
+    };
+    assert_eq!(run, RunId::new(999));
 }
 
 #[test]
@@ -1278,10 +1285,11 @@ fn verify_digests_returns_mismatch_when_ir_differs() {
         sample_digest(9),
         DigestCheck::WorkflowAndIr,
     );
-    assert!(matches!(
-        result,
-        Err(RecoveryError::CompiledIrDigestMismatch { .. })
-    ));
+    let Err(RecoveryError::CompiledIrDigestMismatch { expected, found }) = result else {
+        panic!("expected CompiledIrDigestMismatch, got {result:?}");
+    };
+    assert_eq!(expected, sample_digest(8));
+    assert_eq!(found, sample_digest(9));
 }
 
 #[test]

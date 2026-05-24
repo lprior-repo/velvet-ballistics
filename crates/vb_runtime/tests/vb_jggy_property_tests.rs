@@ -116,7 +116,10 @@ proptest! {
         let step = StepIdx::ZERO;
         let mut state = match make_run_state(step_count, &[initial_attempt]) {
             Ok(s) => s,
-            Err(_e) => return Ok(()), // skip on infrastructure failure
+            Err(error) => {
+                prop_assert!(false, "make_run_state setup failed: {error:?}");
+                unreachable!()
+            }
         };
         let ticket = make_ticket(step, ticket_attempt, 10);
 
@@ -140,7 +143,10 @@ proptest! {
         let step_count = 1u16;
         let mut state = match make_run_state(step_count, &[initial]) {
             Ok(s) => s,
-            Err(_) => return Ok(()), // skip on infrastructure failure
+            Err(error) => {
+                prop_assert!(false, "make_run_state setup failed: {error:?}");
+                unreachable!()
+            }
         };
 
         let mut prev = initial;
@@ -172,7 +178,10 @@ proptest! {
         let step_count = 1u16;
         let mut state = match make_run_state(step_count, &[current]) {
             Ok(s) => s,
-            Err(_) => return Ok(()), // skip on infrastructure failure
+            Err(error) => {
+                prop_assert!(false, "make_run_state setup failed: {error:?}");
+                unreachable!()
+            }
         };
         // Set step 0 to Running state
         state.frame.mark_running(StepIdx::ZERO).ok();
@@ -215,7 +224,10 @@ proptest! {
         let step_count = 1u16;
         let mut state = match make_run_state(step_count, &[current]) {
             Ok(s) => s,
-            Err(_) => return Ok(()), // skip on infrastructure failure
+            Err(error) => {
+                prop_assert!(false, "make_run_state setup failed: {error:?}");
+                unreachable!()
+            }
         };
         state.frame.mark_running(StepIdx::ZERO).ok();
 
@@ -255,7 +267,10 @@ proptest! {
         let step_count = 1u16;
         let mut state = match make_run_state(step_count, &[current]) {
             Ok(s) => s,
-            Err(_) => return Ok(()), // skip on infrastructure failure
+            Err(error) => {
+                prop_assert!(false, "make_run_state setup failed: {error:?}");
+                unreachable!()
+            }
         };
         state.frame.mark_running(StepIdx::ZERO).ok();
 
@@ -290,7 +305,10 @@ proptest! {
         let step_count = 1u16;
         let state = match make_run_state(step_count, &[current]) {
             Ok(s) => s,
-            Err(_) => return Ok(()), // skip on infrastructure failure
+            Err(error) => {
+                prop_assert!(false, "make_run_state setup failed: {error:?}");
+                unreachable!()
+            }
         };
         let ticket = make_ticket(StepIdx::ZERO, ticket_attempt, capacity);
 
@@ -327,7 +345,10 @@ proptest! {
         let step_count = 1u16;
         let mut state = match make_run_state(step_count, &[initial]) {
             Ok(s) => s,
-            Err(_) => return Ok(()), // skip on infrastructure failure
+            Err(error) => {
+                prop_assert!(false, "make_run_state setup failed: {error:?}");
+                unreachable!()
+            }
         };
 
         // Simulate first dispatch

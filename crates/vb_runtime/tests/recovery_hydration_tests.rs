@@ -1098,10 +1098,13 @@ fn max_size_journal_near_max_seq_events_recoverable() {
     // only contains seq u64::MAX-3..u64::MAX, nothing below). This is correct
     // behavior: the journal detects the missing low-range events.
     let recovered = journal.events_for_run(run);
-    assert!(
-        matches!(recovered, Err(vb_storage::JournalError::SequenceGap { .. })),
-        "events_for_run at near-u64::MAX seq should report SequenceGap due to missing low-range events, got: {recovered:?}"
-    );
+    let Err(vb_storage::JournalError::SequenceGap { expected, actual }) = recovered else {
+        panic!(
+            "events_for_run at near-u64::MAX seq should report exact SequenceGap, got: {recovered:?}"
+        );
+    };
+    assert_eq!(expected, EventSeq::ZERO);
+    assert_eq!(actual, EventSeq::new(u64::MAX.saturating_sub(2)));
 }
 
 /// Given 100 events for a single run

@@ -136,6 +136,7 @@ mod proptest_storage {
                 17 => RecordKind::AskScheduled,
                 18 => RecordKind::AskAnswered,
                 19 => RecordKind::RetryScheduled,
+                20 => RecordKind::StepFailed,
                 21 => RecordKind::RunCancelled,
                 22 => RecordKind::RunFinished,
                 23 => RecordKind::RunFailed,
@@ -143,7 +144,10 @@ mod proptest_storage {
                 25 => RecordKind::RunResumed,
                 26 => RecordKind::RunRetried,
                 27 => RecordKind::RunAnswered,
-                _ => return Ok(()),
+                _ => {
+                    prop_assert!(false, "kind_id outside generated journal range: {kind_id}");
+                    unreachable!()
+                }
             };
 
             let event = JournalEvent::RunAccepted {
@@ -159,14 +163,26 @@ mod proptest_storage {
                 &event,
                 MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             );
-            let Ok(encoded) = encoded else { return Ok(()) };
+            let encoded = match encoded {
+                Ok(value) => value,
+                Err(error) => {
+                    prop_assert!(false, "encode_record failed for kind {kind_id}: {error:?}");
+                    unreachable!()
+                }
+            };
 
             let decoded = decode_record::<JournalEvent>(
                 &encoded,
                 MAGIC_JOURNAL_EVENT,
                 MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             );
-            let Ok((envelope, decoded_event)) = decoded else { return Ok(()) };
+            let (envelope, decoded_event) = match decoded {
+                Ok(value) => value,
+                Err(error) => {
+                    prop_assert!(false, "decode_record failed for kind {kind_id}: {error:?}");
+                    unreachable!()
+                }
+            };
 
             prop_assert_eq!(envelope.magic, MAGIC_JOURNAL_EVENT);
             prop_assert_eq!(envelope.record_kind, kind.id());
@@ -184,10 +200,22 @@ mod proptest_storage {
                 bytes: blob_bytes,
             };
             let encoded = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, &record, MAX_BLOB_BYTES);
-            let Ok(encoded) = encoded else { return Ok(()) };
+            let encoded = match encoded {
+                Ok(value) => value,
+                Err(error) => {
+                    prop_assert!(false, "encode_record failed for blob: {error:?}");
+                    unreachable!()
+                }
+            };
 
             let decoded = decode_record::<BlobRecord>(&encoded, MAGIC_BLOB, MAX_BLOB_BYTES);
-            let Ok((_, decoded_record)) = decoded else { return Ok(()) };
+            let (_, decoded_record) = match decoded {
+                Ok(value) => value,
+                Err(error) => {
+                    prop_assert!(false, "decode_record failed for blob: {error:?}");
+                    unreachable!()
+                }
+            };
 
             prop_assert_eq!(decoded_record, record);
         }

@@ -56,6 +56,8 @@ Scoped verification after reconciliation:
 - `cargo kani -p vb_ipc --harness kani_ipc_header_rejects_oversize_payload` — BLOCKED by unrelated existing `vb_core` Kani compile errors before target harness.
 - `cargo test -p vb_yaml -p vb_validate` — PASS, `1196 passed` after residual exactness cleanup.
 - `cargo test -p vb_compile -p vb_expr` — PASS, `939 passed` after residual exactness cleanup.
+- `rtk cargo test -p vb_storage -p vb_runtime` — PASS, `2942 passed` after residual exactness cleanup.
+- `crates/workspace_tests` execution remains BLOCKED: package is excluded from root workspace while inheriting workspace fields.
 
 ## Open Finding Buckets
 
@@ -67,13 +69,13 @@ Scoped verification after reconciliation:
 - `vb_validate`: PATCHED PARTIAL — current diff fixes capability/idempotency/red-phase/Kani accessor exactness plus residual missing-field exactness. Still needs broad source-level `{ .. }` cleanup and hostile-input executable coverage.
 - `vb_expr`: PATCHED PARTIAL — exact OOB/type/parser/lexer payloads and generated expression properties patched; residual TypeMismatch exactness patched. Evidence: `cargo test -p vb_compile -p vb_expr` — PASS, `939 passed`. Kani shape gaps remain open under proof parity.
 - `vb_compile`: PATCHED PARTIAL — current diff hardens idempotency parity, error variant, canonical YAML diagnostic, secret-finish IR shape tests, and residual secret-finish/error exactness. Evidence: `cargo test -p vb_compile -p vb_expr` — PASS, `939 passed`. Full strict-YAML compile-chain and nested duplicate-key gaps still need post-patch audit.
-- `vb_storage`: PATCHED PARTIAL — current diff hardens atomic admission and trim tests plus persisted accepted-envelope readback. Evidence: `cargo test -p vb_storage` — PASS, `1126 passed`. Kani persistence gap remains open under proof parity.
-- `vb_runtime`: PATCHED PARTIAL — current diff hardens lifecycle attempt/state/journal assertions, timer identity/order triples, and recovery slot/taint/error assertions. Evidence: `rtk cargo test -p vb_runtime` — PASS, `1816 passed`. Remaining broad runtime recovery/resume/tick-shard gaps require post-patch audit.
+- `vb_storage`: PATCHED PARTIAL — current diff hardens atomic admission, trim, persisted accepted-envelope readback, recovery exact fields, and proptest setup failure behavior. Evidence: `rtk cargo test -p vb_storage -p vb_runtime` — PASS, `2942 passed`. Kani persistence gap remains open under proof parity.
+- `vb_runtime`: PATCHED PARTIAL — current diff hardens lifecycle attempt/state/journal assertions, timer identity/order triples, recovery slot/taint/error assertions, and property-test setup failure behavior. Evidence: `rtk cargo test -p vb_storage -p vb_runtime` — PASS, `2942 passed`. Remaining tick-shard/resume gaps require post-patch audit.
 - `vb_doc`/`vb_benchmark`: PATCHED PARTIAL — current diff removes doc tautologies and hardens doc errors/patch plans plus benchmark regression/metadata fields. Evidence: `cargo test -p vb_doc -p vb_benchmark` — PASS, `117 passed`.
 - `vb_ipc`: PATCHED PARTIAL — current diff hardens server/helper/IPC exactness and selected protocol tests. Evidence: `cargo test -p vb_ipc --lib` — PASS, `691 passed`. Kani exactness remains open under proof parity.
 - `vb_cli`: PATCHED PARTIAL — current parent commit hardens non-UI/non-codegen lifecycle, trace, run-step, admission, and deliver-sink tests. UI-only envelope items excluded. Still needs post-patch audit for remaining CLI smoke/either-outcome tests outside touched targets.
 - `xtask`: workspace/test compile state, exact error variant coverage, scheduler set property, stdout JSON parsing.
-- `workspace_tests`: non-codegen/non-UI tautologies and either-outcome tests need exact behavior or removal.
+- `workspace_tests`: PATCHED PARTIAL but EXECUTION BLOCKED — current diff removes the runtime-storage fault-tolerance tautology; workspace test crate remains non-executable because it is excluded from the root workspace while inheriting workspace fields.
 - Proof parity/Kani: OPEN PARTIAL — current diff symbolically hardens `crates/vb_ipc/src/kani_ipc_header_rejects_oversize.rs` with exact payload-limit variants and covers, but Kani execution is blocked by unrelated existing `vb_core` Kani compile errors. Other hardcoded Kani shapes and Verus/TLA behavior parity gaps remain open.
 
 ## Next Round Rule

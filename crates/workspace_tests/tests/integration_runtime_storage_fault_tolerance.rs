@@ -162,27 +162,6 @@ fn recovery_terminal_state_finished_serialization() {
     assert_eq!(state, recovered);
 }
 
-/// RecoveryRuntimeSummary zero-initialization produces consistent state.
-#[test]
-fn recovery_runtime_summary_default_is_zero_consistent() {
-    let summary = RecoveryRuntimeSummary {
-        run: RunId::new(0),
-        first_seq: EventSeq::ZERO,
-        last_seq: EventSeq::ZERO,
-        workflow: None,
-        steps_started: 0,
-        steps_succeeded: 0,
-        actions_scheduled: 0,
-        actions_resolved: 0,
-        suspensions: 0,
-        slots_written: 0,
-        terminal: None,
-    };
-    assert_eq!(summary.steps_started, 0);
-    assert_eq!(summary.slots_written, 0);
-    assert!(summary.workflow.is_none());
-}
-
 /// DurableFrameRecoveryBoundary summary returns the seeded summary.
 #[test]
 fn durable_frame_boundary_summary_matches_seed() {
