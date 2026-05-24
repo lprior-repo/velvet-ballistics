@@ -1,9 +1,8 @@
-//! Fuzz target for IPC frame decode.
+//! Fuzz target for IPC frame header/payload decoding.
 //!
-//! This target verifies that `decode_frame_header` and `decode_frame_payload` never
-//! panic on any input bytes.
-//!
-//! Corpus seeds are maintained in `fuzz/corpus/ipc_frame/`.
+//! This target verifies that `decode_frame_header` and `decode_frame_payload`
+//! never panic on arbitrary input and return typed Result values for both
+//! valid and corrupt frames.
 
 #![no_main]
 

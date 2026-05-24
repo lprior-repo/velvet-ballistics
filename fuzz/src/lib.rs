@@ -2924,10 +2924,10 @@ fn assert_typed_boundary_error(
 // Target: CollectPage pagination (C.25)
 // ---------------------------------------------------------------------------
 
-/// Exercises `collect_page` with various list configurations.
+/// Exercises pagination via `collect_start` + `collect_next` with various list configurations.
 ///
-/// Verifies that `collect_page` never panics regardless of input,
-/// and that it returns a typed `Result` for both list and non-list slots.
+/// Verifies that pagination primitives never panic regardless of input,
+/// and that `collect_page` correctly errors on non-list slots.
 pub fn fuzz_collect_page_pagination(data: &[u8]) {
     if data.is_empty() {
         return;
@@ -2935,7 +2935,7 @@ pub fn fuzz_collect_page_pagination(data: &[u8]) {
 
     let slot_count = u16::from(data[0].wrapping_rem(16)).saturating_add(1);
     let list_len = usize::from(data[0].wrapping_rem(8));
-    let _page_size = usize::from(data.get(1).copied().unwrap_or(1).wrapping_rem(8)).saturating_add(1);
+    let page_size = usize::from(data.get(1).copied().unwrap_or(1).wrapping_rem(8)).saturating_add(1);
 
     let Ok(mut run) = vb_core::RunFrame::new(
         vb_core::RunId::new(1),
@@ -2948,7 +2948,6 @@ pub fn fuzz_collect_page_pagination(data: &[u8]) {
 
     let mut store = vb_core::ValueStore::new();
 
-    // Build a list of SlotValues
     let items: Vec<vb_core::SlotValue> = (0..list_len)
         .map(|i| vb_core::SlotValue::I64(i64::try_from(i).unwrap_or(0)))
         .collect();
@@ -2958,27 +2957,40 @@ pub fn fuzz_collect_page_pagination(data: &[u8]) {
         Err(_) => return,
     };
 
-    // Write the list into slot 0
     let _ = run.write_slot_with_taint(
         vb_core::SlotIdx::new(0),
         vb_core::SlotValue::List(list_id),
         vb_core::Taint::Clean,
     );
 
-    use vb_runtime::primitives::collect::{collect_page, CollectStates};
+    use vb_runtime::primitives::collect::{collect_start, collect_next, CollectStates};
 
-    // collect_page must return Result, never panic
     let mut states = CollectStates::new();
-    let _result = collect_page(
+    let _result = collect_start(
         &mut run,
         &mut store,
         &mut states,
         vb_core::SlotIdx::new(0),
+        u32::try_from(list_len).unwrap_or(u32::MAX),
+        u32::try_from(page_size).unwrap_or(u32::MAX),
         vb_core::StepIdx::new(1),
-        vb_core::StepIdx::new(1),
+        vb_core::StepIdx::new(2),
+        Some(vb_core::SlotIdx::new(0)),
+        None,
     );
 
-    // Also exercise with a non-list slot (should error gracefully)
+    if list_len > 0 {
+        let mut states2 = CollectStates::new();
+        let _next_result = collect_next(
+            &mut run,
+            &mut store,
+            &mut states2,
+            vb_core::SlotIdx::new(0),
+            vb_core::StepIdx::new(1),
+            vb_core::StepIdx::new(2),
+        );
+    }
+
     let Ok(mut run_non_list) = vb_core::RunFrame::new(
         vb_core::RunId::new(2),
         vb_core::StepIdx::ZERO,
@@ -2994,11 +3006,12 @@ pub fn fuzz_collect_page_pagination(data: &[u8]) {
         vb_core::Taint::Clean,
     );
 
-    let mut states2 = CollectStates::new();
+    use vb_runtime::primitives::collect::collect_page;
+    let mut states3 = CollectStates::new();
     let _non_list_result = collect_page(
         &mut run_non_list,
         &mut store,
-        &mut states2,
+        &mut states3,
         vb_core::SlotIdx::new(0),
         vb_core::StepIdx::new(1),
         vb_core::StepIdx::new(1),

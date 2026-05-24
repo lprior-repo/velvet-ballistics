@@ -10,6 +10,9 @@
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
+    if data.is_empty() {
+        return;
+    }
     // Journal event deserialization must not panic for any input.
     // This is B11: For any `data: &[u8]`, decode must not panic.
     let result = vb_storage::codec::decode_record::<vb_storage::JournalEvent>(

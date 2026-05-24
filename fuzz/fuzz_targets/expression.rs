@@ -1,8 +1,9 @@
 //! Fuzz target for expression lex/parse/compile/eval roundtrip.
 //!
-//! This target verifies that expression evaluation never panics on any UTF-8 input.
-//!
-//! Corpus seeds are maintained in `fuzz/corpus/expression/`.
+//! This target verifies that the expression pipeline
+//! (`lexer::lex_expr` -> `parser::parse_expr` -> `bytecode::compile_expr_with_pool`
+//! -> `eval::eval_expr_program`) never panics on arbitrary UTF-8 input and
+//! returns typed error Results rather than unwinding.
 
 #![no_main]
 

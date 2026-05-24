@@ -1,9 +1,8 @@
-//! Fuzz target for compiled IR decode.
+//! Fuzz target for compiled IR decode roundtrip.
 //!
-//! This target verifies that `CompiledWorkflow::try_from_parts` never panics on any
-//! postcard-encoded `WorkflowParts` input.
-//!
-//! Corpus seeds are maintained in `fuzz/corpus/compiled_ir/`.
+//! This target verifies that `postcard::from_bytes::<WorkflowParts>` never panics
+//! and that `CompiledWorkflow::try_from_parts` gracefully handles corrupt or
+//! hostile input via typed Result returns.
 
 #![no_main]
 
