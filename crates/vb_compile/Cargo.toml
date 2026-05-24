@@ -11,6 +11,7 @@ saphyr.workspace = true
 saphyr-parser.workspace = true
 thiserror.workspace = true
 vb_core = { path = "../vb_core", features = ["test-util"] }
+# vb_codegen stub (real impl in velvet-optional repo)
 vb_codegen = { path = "../vb_codegen" }
 vb_validate = { path = "../vb_validate" }
 vb_yaml = { path = "../vb_yaml" }

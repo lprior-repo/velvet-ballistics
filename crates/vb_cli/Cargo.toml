@@ -7,7 +7,7 @@ version.workspace = true
 [dependencies]
 vb_compile = { path = "../vb_compile" }
 vb_core = { path = "../vb_core" }
-vb_codegen = { path = "../vb_codegen" }
+# vb_codegen moved to velvet-optional repo (deferred)
 vb_expr = { path = "../vb_expr" }
 vb_ipc = { path = "../vb_ipc" }
 vb_runtime = { path = "../vb_runtime" }
@@ -35,7 +35,7 @@ bytes = { workspace = true }
 proptest = { workspace = true }
 serde = { workspace = true }
 tempfile.workspace = true
-vb_ui_model = { path = "../vb_ui_model" }
+# vb_ui_model moved to velvet-optional repo (deferred)
 
 [lints]
 workspace = true

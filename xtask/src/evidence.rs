@@ -1,5 +1,6 @@
 #![allow(dead_code)]
-include!("evidence/release_contract.rs");
+// UI release contract moved to velvet-optional (deferred)
+// include!("evidence/release_contract.rs");
 include!("evidence/release_validation.rs");
 include!("evidence/tooling_and_gate_types.rs");
 include!("evidence/bundle.rs");

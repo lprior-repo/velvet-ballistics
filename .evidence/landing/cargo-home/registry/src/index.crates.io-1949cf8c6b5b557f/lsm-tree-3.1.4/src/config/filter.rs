@@ -1,0 +1,66 @@
+// Copyright (c) 2024-present, fjall-rs
+// This source code is licensed under both the Apache 2.0 and MIT License
+// (found in the LICENSE-* files in the repository)
+
+pub use crate::table::filter::BloomConstructionPolicy;
+
+/// Filter policy entry
+///
+/// Each level can be configured with a different filter type and bits per key
+#[derive(Copy, Debug, Clone, PartialEq)]
+pub enum FilterPolicyEntry {
+    /// Skip filter construction
+    None,
+
+    /// Standard bloom filter with K bits per key
+    Bloom(BloomConstructionPolicy),
+}
+
+/// Filter policy
+#[derive(Debug, Clone, PartialEq)]
+pub struct FilterPolicy(Vec<FilterPolicyEntry>);
+
+impl std::ops::Deref for FilterPolicy {
+    type Target = [FilterPolicyEntry];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl FilterPolicy {
+    pub(crate) fn get(&self, level: usize) -> FilterPolicyEntry {
+        #[expect(clippy::expect_used, reason = "policy is expected not to be empty")]
+        self.0
+            .get(level)
+            .copied()
+            .unwrap_or_else(|| self.last().copied().expect("policy should not be empty"))
+    }
+
+    /// Disables all filters.
+    ///
+    /// **Not recommended unless you know what you are doing!**
+    #[must_use]
+    pub fn disabled() -> Self {
+        Self::all(FilterPolicyEntry::None)
+    }
+
+    /// Uses the same block size in every level.
+    #[must_use]
+    pub fn all(c: FilterPolicyEntry) -> Self {
+        Self(vec![c])
+    }
+
+    /// Constructs a custom block size policy.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the policy is empty or contains more than 255 elements.
+    #[must_use]
+    pub fn new(policy: impl Into<Vec<FilterPolicyEntry>>) -> Self {
+        let policy = policy.into();
+        assert!(!policy.is_empty(), "compression policy may not be empty");
+        assert!(policy.len() <= 255, "compression policy is too large");
+        Self(policy)
+    }
+}

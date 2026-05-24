@@ -11,10 +11,11 @@ mod gates;
 mod loom;
 mod proof;
 mod shell;
-mod ui_overlap;
-mod ui_snapshot;
-mod ui_snapshot_render;
-mod ui_tokens_cmd;
+// UI modules moved to velvet-optional repo (deferred):
+// mod ui_overlap;
+// mod ui_snapshot;
+// mod ui_snapshot_render;
+// mod ui_tokens_cmd;
 
 use std::path::{Path, PathBuf};
 
@@ -24,9 +25,10 @@ use ai_profile::{cmd_ai_deep, cmd_ai_fast, cmd_ai_release};
 use cli::{Cli, Commands, ProofCommands};
 use contracts::cmd_contracts;
 use shell::write_stdout;
-use ui_overlap::cmd_ui_overlap_check;
-use ui_snapshot::cmd_ui_snapshot;
-use ui_tokens_cmd::cmd_ui_tokens;
+// UI commands moved to velvet-optional repo (deferred)
+// use ui_overlap::cmd_ui_overlap_check;
+// use ui_snapshot::cmd_ui_snapshot;
+// use ui_tokens_cmd::cmd_ui_tokens;
 use xtask::discovery;
 use xtask::lanes;
 use xtask::profiles;
@@ -49,23 +51,13 @@ fn run_legacy_cli(cli: Cli) -> anyhow::Result<()> {
     let workspace_root = std::env::current_dir()?;
 
     match cli.command {
-        Commands::Snapshot {
-            all,
-            fixture,
-            emit,
-            output_dir,
-        } => cmd_ui_snapshot(all, fixture, emit, output_dir),
-        Commands::Tokens {
-            input,
-            output,
-            emit,
-            check,
-        } => cmd_ui_tokens(&input, &output, emit, check),
-        Commands::OverlapCheck {
-            all,
-            screen,
-            input_dir,
-        } => cmd_ui_overlap_check(all, screen, &input_dir),
+        // UI commands moved to velvet-optional repo (deferred)
+        // Commands::Snapshot { .. } => cmd_ui_snapshot(all, fixture, emit, output_dir),
+        // Commands::Tokens { .. } => cmd_ui_tokens(&input, &output, emit, check),
+        // Commands::OverlapCheck { .. } => cmd_ui_overlap_check(all, screen, &input_dir),
+        Commands::Snapshot { .. } | Commands::Tokens { .. } | Commands::OverlapCheck { .. } => {
+            anyhow::bail!("UI commands moved to velvet-optional repo (deferred milestone)")
+        }
         Commands::AiFast { bead } => cmd_ai_fast(bead.as_deref()),
         Commands::AiDeep { bead } => cmd_ai_deep(bead.as_deref()),
         Commands::AiRelease { bead } => cmd_ai_release(bead.as_deref()),

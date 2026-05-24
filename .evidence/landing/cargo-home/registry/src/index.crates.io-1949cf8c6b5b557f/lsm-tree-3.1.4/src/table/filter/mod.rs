@@ -1,0 +1,115 @@
+// Copyright (c) 2024-present, fjall-rs
+// This source code is licensed under both the Apache 2.0 and MIT License
+// (found in the LICENSE-* files in the repository)
+
+pub mod bit_array;
+pub mod block;
+// pub mod blocked_bloom;
+pub mod standard_bloom;
+
+use standard_bloom::Builder as StandardBloomFilterBuilder;
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum BloomConstructionPolicy {
+    BitsPerKey(f32),
+    FalsePositiveRate(f32),
+}
+
+impl Default for BloomConstructionPolicy {
+    fn default() -> Self {
+        Self::BitsPerKey(10.0)
+    }
+}
+
+impl BloomConstructionPolicy {
+    #[must_use]
+    pub fn init(&self, n: usize) -> StandardBloomFilterBuilder {
+        use standard_bloom::Builder;
+
+        match self {
+            Self::BitsPerKey(bpk) => Builder::with_bpk(n, *bpk),
+            Self::FalsePositiveRate(fpr) => Builder::with_fp_rate(n, *fpr),
+        }
+    }
+
+    #[must_use]
+    pub fn is_active(&self) -> bool {
+        match self {
+            Self::BitsPerKey(bpk) => *bpk > 0.0,
+            Self::FalsePositiveRate(fpr) => *fpr > 0.0,
+        }
+    }
+
+    /// Returns the estimated filter size in bytes.
+    #[must_use]
+    pub fn estimated_filter_size(&self, n: usize) -> usize {
+        if n == 0 {
+            return 0;
+        }
+
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "truncation is fine because this is an estimation"
+        )]
+        match self {
+            Self::BitsPerKey(bpk) => (*bpk * (n as f32)) as usize / 8,
+            Self::FalsePositiveRate(fpr) => {
+                let m = StandardBloomFilterBuilder::calculate_m(n, *fpr);
+                let bpk = (m / n) as f32;
+                (bpk * (n as f32)) as usize / 8
+            }
+        }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum FilterType {
+    StandardBloom,
+    BlockedBloom,
+}
+
+impl TryFrom<u8> for FilterType {
+    type Error = crate::Error;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::StandardBloom),
+            1 => Ok(Self::BlockedBloom),
+            _ => Err(crate::Error::InvalidTag(("FilterType", value))),
+        }
+    }
+}
+
+impl From<FilterType> for u8 {
+    fn from(value: FilterType) -> Self {
+        match value {
+            FilterType::StandardBloom => 0,
+            FilterType::BlockedBloom => 1,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test_log::test;
+
+    #[test]
+    fn bloom_estimated_size_bpk() {
+        let policy = BloomConstructionPolicy::BitsPerKey(10.0);
+        let n = 1_000_000;
+        let estimated_size = policy.estimated_filter_size(n);
+        // For 1 million keys and 10 bits per key, the size should be around 1.25 MB
+        assert_eq!(estimated_size, 1_250_000);
+    }
+
+    #[test]
+    fn bloom_estimated_size_fpr() {
+        let policy = BloomConstructionPolicy::FalsePositiveRate(0.01);
+        let n = 1_000_000;
+        let estimated_size = policy.estimated_filter_size(n);
+        // For 1 million keys and 1% false positive rate, the size should be around 1.2 MB
+        assert!((estimated_size as f32) < 1_300_000.0);
+        assert!((estimated_size as f32) > 1_100_000.0);
+    }
+}

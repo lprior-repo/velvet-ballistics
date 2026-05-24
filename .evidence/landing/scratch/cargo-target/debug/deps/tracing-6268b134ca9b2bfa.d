@@ -1,0 +1,12 @@
+/home/lewis/src/velvet-ballistics/.evidence/landing/scratch/cargo-target/debug/deps/tracing-6268b134ca9b2bfa.d: /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/lib.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/macros.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/dispatcher.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/field.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/instrument.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/level_filters.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/span.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/subscriber.rs
+
+/home/lewis/src/velvet-ballistics/.evidence/landing/scratch/cargo-target/debug/deps/libtracing-6268b134ca9b2bfa.rmeta: /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/lib.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/macros.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/dispatcher.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/field.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/instrument.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/level_filters.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/span.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/subscriber.rs
+
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/lib.rs:
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/macros.rs:
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/dispatcher.rs:
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/field.rs:
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/instrument.rs:
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/level_filters.rs:
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/span.rs:
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-0.1.44/src/subscriber.rs:
