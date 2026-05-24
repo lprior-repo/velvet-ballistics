@@ -31,21 +31,20 @@ fn main_test_tempdir() -> std::io::Result<tempfile::TempDir> {
 }
 
 #[test]
-fn parse_ai_context_accepts_run_id_db_and_json() {
+fn parse_ai_context_accepts_run_id_db_and_defaults_to_text_output() {
     let parsed = parse_args(&args(&[
         "velvet-ballastics",
         "ai-context",
         "42",
         "--db",
         "journal-db",
-        "--json",
     ]));
 
     assert!(matches!(parsed, Ok(Command::AiContext { .. })));
     if let Ok(Command::AiContext { run_id, db, output }) = parsed {
         assert_eq!(run_id, "42");
         assert_eq!(db, PathBuf::from("journal-db"));
-        assert_eq!(output, super::OutputFormat::Json);
+        assert_eq!(output, super::OutputFormat::Text);
     }
 }
 
@@ -250,21 +249,20 @@ fn parse_action_list_defaults_to_registered_text_output() {
 }
 
 #[test]
-fn parse_action_list_accepts_empty_registry_json() {
+fn parse_action_list_accepts_empty_registry_defaults_to_text() {
     let parsed = parse_args(&args(&[
         "velvet-ballastics",
         "action",
         "list",
         "--registry",
         "empty",
-        "--json",
     ]));
 
     assert!(
         matches!(
             parsed,
             Ok(Command::ActionList {
-                output: super::OutputFormat::Json,
+                output: super::OutputFormat::Text,
                 registry: ActionRegistryMode::Empty,
             })
         ),
@@ -273,13 +271,12 @@ fn parse_action_list_accepts_empty_registry_json() {
 }
 
 #[test]
-fn parse_action_inspect_accepts_action_id_and_json() {
+fn parse_action_inspect_accepts_action_id_defaults_to_text() {
     let parsed = parse_args(&args(&[
         "velvet-ballastics",
         "action",
         "inspect",
         "2",
-        "--json",
     ]));
 
     assert!(
@@ -287,7 +284,7 @@ fn parse_action_inspect_accepts_action_id_and_json() {
             parsed,
             Ok(Command::ActionInspect {
                 action_id: 2,
-                output: super::OutputFormat::Json,
+                output: super::OutputFormat::Text,
                 registry: ActionRegistryMode::Registered,
             })
         ),
@@ -985,16 +982,4 @@ fn parse_run_id_rejects_float_string() {
 #[test]
 fn output_format_default_is_text() {
     assert_eq!(OutputFormat::default(), OutputFormat::Text);
-}
-
-#[test]
-fn output_format_json_is_json() {
-    assert_ne!(OutputFormat::default(), OutputFormat::Json);
-    assert_eq!(OutputFormat::Json, OutputFormat::Json);
-}
-
-#[test]
-fn output_format_jsonl_is_jsonl() {
-    assert_ne!(OutputFormat::default(), OutputFormat::Jsonl);
-    assert_eq!(OutputFormat::Jsonl, OutputFormat::Jsonl);
 }

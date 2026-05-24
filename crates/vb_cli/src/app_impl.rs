@@ -54,14 +54,6 @@ macro_rules! emit_json_or_return {
     }};
 }
 
-macro_rules! emit_json_line_or_return {
-    ($value:expr $(,)?) => {{
-        if let Err(error) = write_json_line_stdout($value) {
-            return output_error_exit(&error);
-        }
-    }};
-}
-
 const HELP: &str = "\
 velvet-ballastics - compiled workflow runtime
 
@@ -320,7 +312,10 @@ fn cmd_agent_context(deliver: Option<&str>) -> ExitCode {
     if let Some(raw_target) = deliver {
         return deliver_json_value(raw_target, &context);
     }
-    json_out_exit(&context, OutputFormat::Json)
+    match write_json_pretty_stdout(&context) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => output_error_exit(&error),
+    }
 }
 
 fn deliver_json_value(raw_target: &str, value: &serde_json::Value) -> ExitCode {
@@ -1919,7 +1914,7 @@ fn print_step_result(
             }
             Ok(())
         }
-        OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Yaml | OutputFormat::Postcard => {
+        OutputFormat::Yaml | OutputFormat::Postcard => {
             let json = build_step_result_json(
                 step,
                 node,
@@ -2595,7 +2590,7 @@ fn cmd_events(
                 return CliExitCode::ValidationFailed.into();
             } else {
                 match output {
-                    OutputFormat::Json | OutputFormat::Yaml | OutputFormat::Postcard => {
+                    OutputFormat::Yaml | OutputFormat::Postcard => {
                         let event_list: Vec<serde_json::Value> =
                             events.iter().map(event_to_json).collect();
                         emit_json_or_return!(
@@ -2608,13 +2603,6 @@ fn cmd_events(
                             }),
                             output,
                         );
-                    }
-                    OutputFormat::Jsonl => {
-                        for event in &events {
-                            let json_val = event_to_json(event);
-                            emit_json_line_or_return!(&json_val);
-                        }
-                        emit_json_line_or_return!(&serde_json::json!({ "total": events.len() }));
                     }
                     OutputFormat::Text => {
                         for event in &events {
@@ -2928,7 +2916,7 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
                 .map(|e| commands_diff::event_name(e).to_string());
 
             match output {
-                OutputFormat::Json | OutputFormat::Yaml | OutputFormat::Postcard => {
+                OutputFormat::Yaml | OutputFormat::Postcard => {
                     let event_list: Vec<serde_json::Value> =
                         events.iter().map(event_to_json).collect();
                     emit_json_or_return!(
@@ -2942,13 +2930,6 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
                         }),
                         output,
                     );
-                }
-                OutputFormat::Jsonl => {
-                    for event in &events {
-                        let json_val = event_to_json(event);
-                        emit_json_line_or_return!(&json_val);
-                    }
-                    emit_json_line_or_return!(&serde_json::json!({ "terminal": terminal_name }));
                 }
                 OutputFormat::Text => {
                     outln!("recovered {} event(s) for run {run_id}", events.len());
@@ -2999,16 +2980,7 @@ fn write_locked_read_surface(
             write_vb_kyyf_trace(command, run_id, 0);
             ExitCode::SUCCESS
         }
-        OutputFormat::Json | OutputFormat::Yaml | OutputFormat::Postcard => json_out_exit(
-            &serde_json::json!({
-                "run_id": run_id,
-                "command": command,
-                "status": "writer_lock_held",
-                "surface": "available"
-            }),
-            output,
-        ),
-        OutputFormat::Jsonl => json_out_exit(
+        OutputFormat::Yaml | OutputFormat::Postcard => json_out_exit(
             &serde_json::json!({
                 "run_id": run_id,
                 "command": command,
@@ -3049,7 +3021,7 @@ fn cmd_trace(
         return CliExitCode::Success.into();
     }
     match output {
-        OutputFormat::Json | OutputFormat::Yaml | OutputFormat::Postcard => {
+        OutputFormat::Yaml | OutputFormat::Postcard => {
             let entries: Vec<serde_json::Value> = trace.iter().map(trace_entry_to_json).collect();
             emit_json_or_return!(
                 &serde_json::json!({
@@ -3061,12 +3033,6 @@ fn cmd_trace(
                 }),
                 output,
             );
-        }
-        OutputFormat::Jsonl => {
-            for entry in &trace {
-                emit_json_line_or_return!(&trace_entry_to_json(entry));
-            }
-            emit_json_line_or_return!(&serde_json::json!({ "total": trace.len() }));
         }
         OutputFormat::Text => {
             outln!("execution trace for run {run_id}");
@@ -3590,26 +3556,8 @@ fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exi
     });
 
     match output {
-        OutputFormat::Json | OutputFormat::Yaml | OutputFormat::Postcard => {
+        OutputFormat::Yaml | OutputFormat::Postcard => {
             emit_json_or_return!(&json_report, output);
-        }
-        OutputFormat::Jsonl => {
-            let json_str = match serde_json::to_string(&json_report) {
-                Ok(s) => s,
-                Err(err) => {
-                    json_error(
-                        &serde_json::json!({
-                            "success": false,
-                            "error": format!("failed to serialize incident report: {err}")
-                        }),
-                        output,
-                    );
-                    return CliExitCode::StorageError.into();
-                }
-            };
-            if let Err(error) = write_stdout_line_io(format_args!("{json_str}")) {
-                return output_error_exit(&OutputError::Stdout(error));
-            }
         }
         OutputFormat::Text => {
             outln!("incident report for run {run_id}");
@@ -3717,7 +3665,7 @@ fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: OutputFormat
     let result = commands_diff::compute_diff(&events_a, &events_b);
 
     match output {
-        OutputFormat::Json | OutputFormat::Yaml | OutputFormat::Postcard => {
+        OutputFormat::Yaml | OutputFormat::Postcard => {
             emit_json_or_return!(
                 &serde_json::json!({
                     "schema_version": cli_envelope::SCHEMA_VERSION,
@@ -3730,14 +3678,6 @@ fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: OutputFormat
                     "total_differences": result.diffs.len()
                 }),
                 output,
-            );
-        }
-        OutputFormat::Jsonl => {
-            for diff in &result.diffs {
-                emit_json_line_or_return!(diff);
-            }
-            emit_json_line_or_return!(
-                &serde_json::json!({ "total_differences": result.diffs.len() })
             );
         }
         OutputFormat::Text => {
@@ -6031,7 +5971,7 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
 fn write_parse_error_stderr(error: &ParseError, output: OutputFormat) -> io::Result<()> {
     match output {
         OutputFormat::Text => write_error_stderr(error),
-        OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Yaml | OutputFormat::Postcard => {
+        OutputFormat::Yaml | OutputFormat::Postcard => {
             write_diagnostic_report_stderr(error, output)
         }
     }
@@ -6043,7 +5983,7 @@ fn write_diagnostic_report_stderr(error: &ParseError, output: OutputFormat) -> i
 
 fn write_diagnostic_message_stderr(message: &str, code: CliExitCode, output: OutputFormat) {
     let write_result = match output {
-        OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Yaml | OutputFormat::Postcard => {
+        OutputFormat::Yaml | OutputFormat::Postcard => {
             write_structured_stderr(&diagnostic_value(message, code), output)
         }
         OutputFormat::Text => write_stderr_line_io(format_args!("{message}")),
@@ -6143,14 +6083,6 @@ pub(crate) fn write_structured_stderr(
     output: OutputFormat,
 ) -> io::Result<()> {
     match output {
-        OutputFormat::Json => {
-            let json = serde_json::to_string_pretty(value).map_err(io::Error::other)?;
-            write_stderr_line_io(format_args!("{json}"))
-        }
-        OutputFormat::Jsonl => {
-            let json = serde_json::to_string(value).map_err(io::Error::other)?;
-            write_stderr_line_io(format_args!("{json}"))
-        }
         OutputFormat::Yaml => {
             let yaml = serde_saphyr::to_string(value)
                 .map_err(|error| io::Error::other(error.to_string()))?;
@@ -6179,17 +6111,7 @@ fn write_stderr_line_io(args: std::fmt::Arguments<'_>) -> io::Result<()> {
 }
 
 fn output_format_from_args(args: &[OsString]) -> OutputFormat {
-    if contains_os_flag(args, "--jsonl") {
-        OutputFormat::Jsonl
-    } else if contains_os_flag(args, "--json") {
-        OutputFormat::Json
-    } else {
-        parse_emit_output_format(named_os_flag(args, "--emit").as_deref())
-    }
-}
-
-fn contains_os_flag(args: &[OsString], flag: &str) -> bool {
-    args.iter().any(|arg| arg == flag)
+    parse_emit_output_format(named_os_flag(args, "--emit").as_deref())
 }
 
 fn named_os_flag(args: &[OsString], flag: &str) -> Option<String> {
@@ -6276,11 +6198,6 @@ fn write_stdout_bytes(bytes: &[u8]) -> Result<(), OutputError> {
     handle.write_all(bytes).map_err(OutputError::Stdout)
 }
 
-fn write_json_line_stdout(value: &serde_json::Value) -> Result<(), OutputError> {
-    let json_str = serde_json::to_string(value).map_err(OutputError::JsonSerialize)?;
-    write_stdout_line_io(format_args!("{json_str}")).map_err(OutputError::Stdout)
-}
-
 fn write_json_pretty_stdout(value: &serde_json::Value) -> Result<(), OutputError> {
     let json_str = serde_json::to_string_pretty(value).map_err(OutputError::JsonSerialize)?;
     write_stdout_line_io(format_args!("{json_str}")).map_err(OutputError::Stdout)
@@ -6324,7 +6241,6 @@ fn write_stderr_best_effort(args: std::fmt::Arguments<'_>) {
 /// Output a JSON value to stdout in the specified format.
 pub(crate) fn json_out(value: &serde_json::Value, format: OutputFormat) -> Result<(), OutputError> {
     match format {
-        OutputFormat::Json => write_json_pretty_stdout(value),
         OutputFormat::Yaml => {
             let yaml = serde_saphyr::to_string(value)
                 .map_err(|error| OutputError::YamlSerialize(error.to_string()))?;
@@ -6334,9 +6250,7 @@ pub(crate) fn json_out(value: &serde_json::Value, format: OutputFormat) -> Resul
             Ok(encoded) => write_stdout_bytes(&encoded),
             Err(error) => Err(error),
         },
-        OutputFormat::Jsonl => write_json_line_stdout(value),
         OutputFormat::Text => {
-            // Should not be called in text mode, but fallback to pretty JSON
             write_json_pretty_stdout(value)
         }
     }

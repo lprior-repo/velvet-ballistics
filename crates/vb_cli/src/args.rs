@@ -12,10 +12,6 @@ pub(crate) enum OutputFormat {
     /// Human-readable text output (default).
     #[default]
     Text,
-    /// JSON object output (legacy cold-path only).
-    Json,
-    /// JSON Lines output (legacy cold-path only).
-    Jsonl,
     /// YAML structured text output (canonical for v1).
     Yaml,
     /// Postcard binary output (canonical machine format for v1).
@@ -743,20 +739,6 @@ fn parse_action_inspect_args(
         None => Ok(state),
         Some((raw, rest)) => match raw.to_str() {
             Some("--emit") => parse_action_inspect_emit(rest, state),
-            Some("--json") => parse_action_inspect_args(
-                rest,
-                ActionInspectParseState {
-                    output: OutputFormat::Json,
-                    ..state
-                },
-            ),
-            Some("--jsonl") => parse_action_inspect_args(
-                rest,
-                ActionInspectParseState {
-                    output: OutputFormat::Jsonl,
-                    ..state
-                },
-            ),
             Some("--registry") => parse_action_inspect_registry_arg(rest, state),
             Some(flag) if flag.starts_with("--") => {
                 Err(ParseError::UnknownActionInspectFlag(flag.into()))
@@ -807,20 +789,6 @@ fn parse_action_list_args(
         None => Ok(state),
         Some((raw, rest)) => match raw.to_str() {
             Some("--emit") => parse_action_list_emit(rest, state),
-            Some("--json") => parse_action_list_args(
-                rest,
-                ActionListParseState {
-                    output: OutputFormat::Json,
-                    ..state
-                },
-            ),
-            Some("--jsonl") => parse_action_list_args(
-                rest,
-                ActionListParseState {
-                    output: OutputFormat::Jsonl,
-                    ..state
-                },
-            ),
             Some("--registry") => parse_action_registry_arg(rest, state),
             Some(flag) if flag.starts_with("--") => {
                 Err(ParseError::UnknownActionListFlag(flag.into()))
@@ -1492,17 +1460,7 @@ fn parse_server_mode(raw: &str) -> Result<DurabilityMode, ParseError> {
 }
 
 /// Parse canonical `--emit text|yaml|postcard` output flags.
-///
-/// Hidden `--json` and `--jsonl` switches remain accepted only as legacy
-/// cold-path compatibility. The banned `--format=json` alias is intentionally
-/// not recognized by [`output_flag_spec`].
 fn parse_output_format(args: &[OsString]) -> OutputFormat {
-    if args.iter().any(|arg| arg == "--jsonl") {
-        return OutputFormat::Jsonl;
-    }
-    if args.iter().any(|arg| arg == "--json") {
-        return OutputFormat::Json;
-    }
     match named_flag(args, "--emit").as_deref() {
         Some("yaml") => OutputFormat::Yaml,
         Some("postcard") => OutputFormat::Postcard,
@@ -1510,13 +1468,7 @@ fn parse_output_format(args: &[OsString]) -> OutputFormat {
     }
 }
 
-fn parse_compile_output_format(args: &[OsString]) -> OutputFormat {
-    if args.iter().any(|arg| arg == "--jsonl") {
-        return OutputFormat::Jsonl;
-    }
-    if args.iter().any(|arg| arg == "--json") {
-        return OutputFormat::Json;
-    }
+fn parse_compile_output_format(_args: &[OsString]) -> OutputFormat {
     OutputFormat::Text
 }
 
@@ -2073,28 +2025,6 @@ mod tests {
         if let Ok(Command::Compile { emit, output, .. }) = parsed {
             assert_eq!(emit, EmitTarget::Yaml);
             assert_eq!(output, OutputFormat::Text);
-        }
-    }
-
-    #[test]
-    fn parse_compile_legacy_json_flag_selects_json_output() {
-        let parsed = parse_args(&args(&[
-            "velvet-ballastics",
-            "compile",
-            "workflow.yaml",
-            "--emit",
-            "postcard",
-            "--out",
-            "workflow.vbpc",
-            "--json",
-        ]));
-        assert!(
-            matches!(parsed, Ok(Command::Compile { .. })),
-            "unexpected parse result: {parsed:?}"
-        );
-        if let Ok(Command::Compile { emit, output, .. }) = parsed {
-            assert_eq!(emit, EmitTarget::Postcard);
-            assert_eq!(output, OutputFormat::Json);
         }
     }
 

@@ -17,7 +17,7 @@ pub(crate) fn print_system_status(
             Ok(())
         }
         OutputFormat::Yaml => print_system_status_yaml(options, version),
-        OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Postcard => {
+        OutputFormat::Postcard => {
             print_json(options, output, version)
         }
     }

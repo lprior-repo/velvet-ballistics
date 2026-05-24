@@ -664,7 +664,7 @@ fn write_stderr_best_effort(args: std::fmt::Arguments<'_>) {
 
 fn json_error(value: &Value, format: OutputFormat) {
     match format {
-        OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Yaml | OutputFormat::Postcard => {
+        OutputFormat::Yaml | OutputFormat::Postcard => {
             if let Err(error) = crate::app_impl::write_structured_stderr(value, format) {
                 write_stderr_best_effort(format_args!("stderr write failed: {error}"));
             }
