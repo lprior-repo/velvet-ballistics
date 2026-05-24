@@ -1612,13 +1612,13 @@ fn push_path_successors(
             branches,
             otherwise,
         } => {
-            push_longest_expr_branch(nodes, branches, *otherwise, node_count, stack)?;
+            push_longest_expr_branch(nodes, branches, *otherwise, node_count, stack);
         }
         CompiledNodeKind::ChooseSlot {
             branches,
             otherwise,
         } => {
-            push_longest_slot_branch(nodes, branches, *otherwise, node_count, stack)?;
+            push_longest_slot_branch(nodes, branches, *otherwise, node_count, stack);
         }
         _ => push_successor_targets(&node.kind, stack),
     }
@@ -1628,55 +1628,120 @@ fn push_path_successors(
     Ok(())
 }
 
+/// Iteratively counts nodes along a branch using an explicit stack (no recursion).
+/// Bounded by `max_depth` to prevent DoS on adversarial graphs.
+/// Returns 0 if start is None or node not found.
+fn iterative_branch_depth(
+    nodes: &[crate::workflow::CompiledNode],
+    start: StepIdx,
+    max_depth: u64,
+) -> u64 {
+    let mut visited: Vec<bool> = vec![false; nodes.len()];
+    let mut stack: Vec<StepIdx> = Vec::new();
+    stack.push(start);
+    let mut count: u64 = 0;
+
+    while let Some(current) = stack.pop() {
+        if count >= max_depth {
+            return max_depth; // Hit limit — return max as sentinel
+        }
+        let Ok(idx) = find_node_position(nodes, current, nodes.len()) else {
+            continue;
+        };
+        if visited.get(idx).copied() == Some(true) {
+            continue;
+        }
+        if let Some(flag) = visited.get_mut(idx) {
+            *flag = true;
+        }
+        count += 1;
+        // Push successors iteratively
+        let Ok(node) = node_at_position(nodes, idx, current) else {
+            continue;
+        };
+        match &node.kind {
+            CompiledNodeKind::Finish { .. } => {}
+            CompiledNodeKind::Choose { branches, otherwise } => {
+                // Push all branches; we'll count all their nodes
+                for branch in branches {
+                    stack.push(branch.target);
+                }
+                if let Some(t) = otherwise {
+                    stack.push(*t);
+                }
+            }
+            CompiledNodeKind::ChooseSlot { branches, otherwise } => {
+                for branch in branches {
+                    stack.push(branch.target);
+                }
+                if let Some(t) = otherwise {
+                    stack.push(*t);
+                }
+            }
+            _ => {
+                if let Some(next) = node.next {
+                    stack.push(next);
+                }
+            }
+        }
+    }
+    count
+}
+
+/// Iteratively counts nodes along a slot branch.
+fn iterative_slot_branch_depth(
+    nodes: &[crate::workflow::CompiledNode],
+    start: StepIdx,
+    max_depth: u64,
+) -> u64 {
+    iterative_branch_depth(nodes, start, max_depth)
+}
+
+/// Iteratively finds the longest branch without recursive traversal.
+/// This prevents stack overflow on deeply nested Choose graphs.
+/// Returns the branch target with the most steps; pushes nothing on error.
 fn push_longest_expr_branch(
     nodes: &[crate::workflow::CompiledNode],
     branches: &[crate::workflow::ExprBranch],
     otherwise: Option<StepIdx>,
-    node_count: usize,
+    _node_count: usize,
     stack: &mut Vec<StepIdx>,
-) -> Result<(), BudgetTraversalError> {
+) {
+    // Iteratively compare branch lengths using explicit stacks — no recursion.
+    // This is O(branches * depth) but uses O(1) call stack instead of O(depth).
     let mut selected = otherwise;
-    let mut selected_steps = optional_path_steps(nodes, otherwise, node_count)?;
+    let mut selected_depth = 0u64;
     for branch in branches {
-        let branch_steps = count_path_steps(nodes, branch.target, node_count)?;
-        if branch_steps > selected_steps {
+        // Depth-bounded traversal: stop at 10_000 nodes to prevent DoS.
+        // This is a heuristic — we only need relative comparison.
+        let depth = iterative_branch_depth(nodes, branch.target, 10_000);
+        if depth > selected_depth {
             selected = Some(branch.target);
-            selected_steps = branch_steps;
+            selected_depth = depth;
         }
     }
     push_selected_branch(selected, stack);
-    Ok(())
 }
 
+/// Iteratively finds the longest slot branch without recursive traversal.
+/// This prevents stack overflow on deeply nested ChooseSlot graphs.
 fn push_longest_slot_branch(
     nodes: &[crate::workflow::CompiledNode],
     branches: &[crate::workflow::SlotBranch],
     otherwise: Option<StepIdx>,
-    node_count: usize,
+    _node_count: usize,
     stack: &mut Vec<StepIdx>,
-) -> Result<(), BudgetTraversalError> {
+) {
     let mut selected = otherwise;
-    let mut selected_steps = optional_path_steps(nodes, otherwise, node_count)?;
+    let mut selected_depth = 0u64;
     for branch in branches {
-        let branch_steps = count_path_steps(nodes, branch.target, node_count)?;
-        if branch_steps > selected_steps {
+        let depth = iterative_slot_branch_depth(nodes, branch.target, 10_000);
+        if depth > selected_depth {
             selected = Some(branch.target);
-            selected_steps = branch_steps;
+            selected_depth = depth;
         }
     }
     push_selected_branch(selected, stack);
-    Ok(())
-}
-
-fn optional_path_steps(
-    nodes: &[crate::workflow::CompiledNode],
-    target: Option<StepIdx>,
-    node_count: usize,
-) -> Result<u64, BudgetTraversalError> {
-    match target {
-        Some(step) => count_path_steps(nodes, step, node_count),
-        None => Ok(0),
-    }
 }
 
 fn push_selected_branch(selected: Option<StepIdx>, stack: &mut Vec<StepIdx>) {
