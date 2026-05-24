@@ -444,10 +444,13 @@ mod tests {
             budget_us: 200_000,
         };
         let result = check_evidence_gate(&metadata, 20);
-        assert!(matches!(
+        assert_eq!(
             result,
-            Err(EvidenceError::RegressionDetected { .. })
-        ));
+            Err(EvidenceError::RegressionDetected {
+                benchmark: "yaml_parse".to_string(),
+                delta: 30_000,
+            })
+        );
     }
 
     #[test]
@@ -463,7 +466,7 @@ mod tests {
             environment: "linux-x86_64".to_string(),
             budget_us: 200_000,
         };
-        assert!(check_evidence_gate(&metadata, 20).is_ok());
+        assert_eq!(check_evidence_gate(&metadata, 20), Ok(()));
     }
 
     // === capture_metadata tests ===
@@ -507,12 +510,18 @@ mod tests {
             "linux-x86_64",
             200_000,
         );
-        assert!(result.is_ok());
-        let meta = result.unwrap();
-        assert_eq!(meta.name, "yaml_parse");
-        assert_eq!(meta.baseline_us, Some(100_000));
-        assert_eq!(meta.result_us, 105_000);
-        assert_eq!(meta.commit_hash, "abc123def");
+        assert_eq!(
+            result,
+            Ok(BenchmarkMetadata {
+                name: "yaml_parse".to_string(),
+                baseline_us: Some(100_000),
+                result_us: 105_000,
+                command: "cargo bench".to_string(),
+                commit_hash: "abc123def".to_string(),
+                environment: "linux-x86_64".to_string(),
+                budget_us: 200_000,
+            })
+        );
     }
 
     #[test]
@@ -526,10 +535,18 @@ mod tests {
             "linux-x86_64",
             100_000,
         );
-        assert!(result.is_ok());
-        let meta = result.unwrap();
-        assert_eq!(meta.baseline_us, None);
-        assert_eq!(meta.result_us, 50_000);
+        assert_eq!(
+            result,
+            Ok(BenchmarkMetadata {
+                name: "new_benchmark".to_string(),
+                baseline_us: None,
+                result_us: 50_000,
+                command: "cargo bench".to_string(),
+                commit_hash: "abc123".to_string(),
+                environment: "linux-x86_64".to_string(),
+                budget_us: 100_000,
+            })
+        );
     }
 
     // === result_exceeds_threshold boundary tests ===
@@ -878,8 +895,18 @@ mod tests {
             "linux-x86_64",
             200_000,
         );
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap().commit_hash, "ffffffffffffffff");
+        assert_eq!(
+            result,
+            Ok(BenchmarkMetadata {
+                name: "bench".to_string(),
+                baseline_us: Some(100_000),
+                result_us: 105_000,
+                command: "cargo bench".to_string(),
+                commit_hash: "ffffffffffffffff".to_string(),
+                environment: "linux-x86_64".to_string(),
+                budget_us: 200_000,
+            })
+        );
     }
 
     // === check_evidence_gate threshold boundary tests ===
@@ -897,7 +924,7 @@ mod tests {
             environment: "linux-x86_64".to_string(),
             budget_us: 200_000,
         };
-        assert!(check_evidence_gate(&metadata, 20).is_ok());
+        assert_eq!(check_evidence_gate(&metadata, 20), Ok(()));
     }
 
     #[test]
@@ -912,7 +939,7 @@ mod tests {
             environment: "linux-x86_64".to_string(),
             budget_us: 200_000,
         };
-        assert!(check_evidence_gate(&metadata, 0).is_ok());
+        assert_eq!(check_evidence_gate(&metadata, 0), Ok(()));
     }
 
     #[test]
@@ -930,9 +957,12 @@ mod tests {
         };
         let result = check_evidence_gate(&metadata, 20);
         // delta = result - baseline = 120001 - 100000 = 20001
-        assert!(matches!(
+        assert_eq!(
             result,
-            Err(EvidenceError::RegressionDetected { delta: 20_001, .. })
-        ));
+            Err(EvidenceError::RegressionDetected {
+                benchmark: "yaml_parse".to_string(),
+                delta: 20_001,
+            })
+        );
     }
 }

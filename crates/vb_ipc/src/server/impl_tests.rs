@@ -447,31 +447,22 @@ fn server_responds_with_error_for_invalid_magic() {
     );
     let payload_len_usize = match usize::try_from(payload_len) {
         Ok(v) => v,
-        Err(_) => return,
+        Err(_) => panic!("response payload length should fit usize"),
     };
-    if payload_len_usize > 0 {
-        let response_payload = read_exact_timeout(&mut client, payload_len_usize);
-        assert!(
-            response_payload.is_ok(),
-            "should read error response payload"
-        );
-        let payload = response_payload.expect("read payload");
-        let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
-        match decoded {
-            Ok(IpcResponse::FrameError { message }) => {
-                assert!(
-                    message.contains("magic") || message.contains("invalid"),
-                    "frame error should mention invalid magic, got '{message}'"
-                );
-            }
-            Ok(other) => {
-                assert!(false, "expected FrameError, got {other:?}");
-            }
-            Err(e) => {
-                assert!(false, "error response decode failed: {e}");
-            }
-        }
-    }
+    assert!(payload_len_usize > 0, "frame error response must include payload");
+    let response_payload = read_exact_timeout(&mut client, payload_len_usize);
+    assert!(
+        response_payload.is_ok(),
+        "should read error response payload"
+    );
+    let payload = response_payload.expect("read payload");
+    let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
+    assert_eq!(
+        decoded,
+        Ok(IpcResponse::FrameError {
+            message: "invalid IPC frame magic: actual=0x00000000".to_string(),
+        })
+    );
     assert!(
         server.clients.is_empty(),
         "unsupported version frame must disconnect the client after the error response"
@@ -527,31 +518,22 @@ fn server_responds_with_error_for_unsupported_version() {
     );
     let payload_len_usize = match usize::try_from(payload_len) {
         Ok(v) => v,
-        Err(_) => return,
+        Err(_) => panic!("response payload length should fit usize"),
     };
-    if payload_len_usize > 0 {
-        let response_payload = read_exact_timeout(&mut client, payload_len_usize);
-        assert!(
-            response_payload.is_ok(),
-            "should read error response payload"
-        );
-        let payload = response_payload.expect("read payload");
-        let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
-        match decoded {
-            Ok(IpcResponse::FrameError { message }) => {
-                assert!(
-                    message.contains("version") || message.contains("unsupported"),
-                    "frame error should mention unsupported version, got '{message}'"
-                );
-            }
-            Ok(other) => {
-                assert!(false, "expected FrameError, got {other:?}");
-            }
-            Err(e) => {
-                assert!(false, "error response decode failed: {e}");
-            }
-        }
-    }
+    assert!(payload_len_usize > 0, "frame error response must include payload");
+    let response_payload = read_exact_timeout(&mut client, payload_len_usize);
+    assert!(
+        response_payload.is_ok(),
+        "should read error response payload"
+    );
+    let payload = response_payload.expect("read payload");
+    let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
+    assert_eq!(
+        decoded,
+        Ok(IpcResponse::FrameError {
+            message: "unsupported IPC frame version: actual=99".to_string(),
+        })
+    );
 }
 
 // ── multiple client connections ─────────────────────────────────────────────
@@ -780,29 +762,20 @@ fn server_responds_with_error_for_nonzero_reserved_field() {
     );
     let payload_len_usize = match usize::try_from(payload_len) {
         Ok(v) => v,
-        Err(_) => return,
+        Err(_) => panic!("response payload length should fit usize"),
     };
-    if payload_len_usize > 0 {
-        let response_payload = read_exact_timeout(&mut client, payload_len_usize);
-        let Ok(payload) = response_payload else {
-            panic!("should read response payload")
-        };
-        let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
-        match decoded {
-            Ok(IpcResponse::FrameError { message }) => {
-                assert!(
-                    message.contains("reserved") || message.contains("non-zero"),
-                    "frame error should mention reserved, got '{message}'"
-                );
-            }
-            Ok(other) => {
-                assert!(false, "expected FrameError, got {other:?}");
-            }
-            Err(e) => {
-                assert!(false, "error response decode failed: {e}");
-            }
-        }
-    }
+    assert!(payload_len_usize > 0, "frame error response must include payload");
+    let response_payload = read_exact_timeout(&mut client, payload_len_usize);
+    let Ok(payload) = response_payload else {
+        panic!("should read response payload")
+    };
+    let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
+    assert_eq!(
+        decoded,
+        Ok(IpcResponse::FrameError {
+            message: "IPC reserved header field is non-zero: actual=1".to_string(),
+        })
+    );
 }
 
 // ── error variant tests ─────────────────────────────────────────────────────

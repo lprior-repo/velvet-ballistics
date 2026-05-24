@@ -94,7 +94,15 @@ fn evidence_index_empty_creates_valid_index() {
         "Clean text.",
     );
     let result = validate_evidence_bounded_wording(doc, index);
-    assert!(result.is_ok());
+    assert_eq!(
+        result,
+        Ok(EvidenceBoundedReport {
+            unsupported_claims: Vec::new(),
+            cited_claims: 0,
+            pending_claims: 0,
+            forbidden_claims: Vec::new(),
+        })
+    );
 }
 
 #[test]
@@ -114,7 +122,15 @@ fn evidence_index_from_supports_works_with_join_claim() {
         "Clean text.",
     );
     let result = validate_evidence_bounded_wording(doc, index);
-    assert!(result.is_ok());
+    assert_eq!(
+        result,
+        Ok(EvidenceBoundedReport {
+            unsupported_claims: Vec::new(),
+            cited_claims: 0,
+            pending_claims: 0,
+            forbidden_claims: Vec::new(),
+        })
+    );
 }
 
 // ============================================================================
@@ -133,7 +149,15 @@ fn evidence_support_cited_creates_valid_support() {
         "Clean < DerivedFromSecret < Secret.\nDRIFT-1 is verified",
     );
     let result = validate_evidence_bounded_wording(doc, index);
-    assert!(result.is_ok());
+    assert_eq!(
+        result,
+        Ok(EvidenceBoundedReport {
+            unsupported_claims: Vec::new(),
+            cited_claims: 0,
+            pending_claims: 0,
+            forbidden_claims: Vec::new(),
+        })
+    );
 }
 
 #[test]
@@ -148,7 +172,15 @@ fn evidence_support_pending_creates_valid_pending_support() {
         "Clean < DerivedFromSecret < Secret.\nruntime claim remains unverified",
     );
     let result = validate_evidence_bounded_wording(doc, index);
-    assert!(result.is_ok());
+    assert_eq!(
+        result,
+        Ok(EvidenceBoundedReport {
+            unsupported_claims: Vec::new(),
+            cited_claims: 0,
+            pending_claims: 1,
+            forbidden_claims: Vec::new(),
+        })
+    );
 }
 
 // ============================================================================
@@ -741,7 +773,13 @@ fn check_doc_taint_consistency_detects_stale_phrases() {
     let result = check_doc_taint_consistency(text);
 
     // Then
-    assert!(result.is_err());
+    assert_eq!(
+        result,
+        Err(DocReconcileError::StaleCleanOnlyTaintText {
+            node: ResolvedNode::EvalExpr,
+            phrase: "No taint join".to_owned(),
+        })
+    );
 }
 
 // ============================================================================
@@ -871,7 +909,13 @@ fn plan_taint_doc_reconciliation_edits_include_eval_expr_join() {
 
     // Then
     let plan = result.expect("should not error");
-    assert!(plan.edits.contains(&PatchEdit::EvalExprJoin));
+    assert_eq!(plan.status, PatchPlanStatus::NeedsReconciliation);
+    assert_eq!(plan.edits, vec![PatchEdit::EvalExprJoin, PatchEdit::FinishCarriesTaint]);
+    assert_eq!(plan.stale_text_removed, vec![StalePhrase::EvalExprNoOperandJoin]);
+    assert_eq!(plan.evidence_actions, RequiredEvidence::ConcreteArtifactOrPendingMarker);
+    assert_eq!(plan.preserved_non_goals, Vec::<PreservedNonGoal>::new());
+    assert_eq!(plan.forbidden_actions, Vec::<String>::new());
+    assert_eq!(plan.contradiction_count, 1);
 }
 
 #[test]
@@ -1192,7 +1236,15 @@ proptest::proptest! {
             "Clean text.",
         );
         let result = validate_evidence_bounded_wording(doc, index);
-        assert!(result.is_ok());
+        assert_eq!(
+            result,
+            Ok(EvidenceBoundedReport {
+                unsupported_claims: Vec::new(),
+                cited_claims: 0,
+                pending_claims: 0,
+                forbidden_claims: Vec::new(),
+            })
+        );
     }
 }
 
@@ -1228,8 +1280,19 @@ fn validate_taint_vocabulary_consistency_handles_unicode_text() {
     let result = validate_taint_vocabulary_consistency(doc);
 
     // Then
-    // Should not panic and should return a result
-    assert!(result.is_ok() || result.is_err()); // exhaustive
+    assert_eq!(
+        result,
+        Ok(TaintVocabularyReport {
+            lattice: vec![
+                "Clean".to_owned(),
+                "DerivedFromSecret".to_owned(),
+                "Secret".to_owned(),
+            ],
+            propagation_rule: TaintVocabularyRule::JoinedDataFlowTaint,
+            conflicts: Vec::new(),
+            control_flow_scope: PreservedNonGoal::ControlFlowTaintV1NonGoal,
+        })
+    );
 }
 
 #[test]
@@ -1246,8 +1309,21 @@ fn plan_taint_doc_reconciliation_handles_very_long_text() {
     let result = plan_taint_doc_reconciliation(doc, policy);
 
     // Then
-    // Should not panic - either Ok or Err is valid
-    assert!(result.is_ok() || result.is_err());
+    assert_eq!(
+        result,
+        Ok(vb_doc::DocPatchPlan {
+            target: PatchTarget::MasterDoc(std::path::PathBuf::from(
+                "/tmp/workspace/velvet-ballistics-MASTER.md"
+            )),
+            edits: vec![PatchEdit::FinishCarriesTaint],
+            stale_text_removed: Vec::new(),
+            evidence_actions: RequiredEvidence::ConcreteArtifactOrPendingMarker,
+            preserved_non_goals: Vec::new(),
+            forbidden_actions: Vec::new(),
+            contradiction_count: 0,
+            status: PatchPlanStatus::NeedsReconciliation,
+        })
+    );
 }
 
 #[test]
@@ -1261,7 +1337,13 @@ fn check_doc_taint_consistency_handles_multiline_text() {
     let result = check_doc_taint_consistency(text);
 
     // Then
-    assert!(result.is_err()); // Contains stale phrases
+    assert_eq!(
+        result,
+        Err(DocReconcileError::StaleCleanOnlyTaintText {
+            node: ResolvedNode::EvalExpr,
+            phrase: "Always Clean".to_owned(),
+        })
+    );
 }
 
 #[test]
@@ -1280,5 +1362,12 @@ fn validate_evidence_bounded_wording_multiple_claims_counted() {
     let result = validate_evidence_bounded_wording(doc, evidence);
 
     // Then - first unsupported claim errors out
-    assert!(result.is_err());
+    assert_eq!(
+        result,
+        Err(DocReconcileError::UnsupportedEvidenceClaim {
+            sentence: "Lean proves implementation parity".to_owned(),
+            claim_kind: ClaimKind::FormalEvidence,
+            required: RequiredEvidence::ConcreteArtifactOrPendingMarker,
+        })
+    );
 }

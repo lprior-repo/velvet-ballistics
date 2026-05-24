@@ -49,6 +49,8 @@ Scoped verification after reconciliation:
 - `cargo test -p vb_expr` — PASS, `649 passed`.
 - `cargo test -p vb_storage` — PASS, `1126 passed`.
 - `rtk cargo test -p vb_runtime` — PASS, `1816 passed`.
+- `cargo test -p vb_doc -p vb_benchmark` — PASS, `117 passed`.
+- `cargo test -p vb_ipc --lib` — PASS, `691 passed`.
 
 ## Open Finding Buckets
 
@@ -62,8 +64,8 @@ Scoped verification after reconciliation:
 - `vb_compile`: full compile-chain strict YAML, exact idempotency/topology diagnostics, `compile_source` parity, primitive payload validation, nested duplicate keys.
 - `vb_storage`: PATCHED PARTIAL — current diff hardens atomic admission and trim tests plus persisted accepted-envelope readback. Evidence: `cargo test -p vb_storage` — PASS, `1126 passed`. Kani persistence gap remains open under proof parity.
 - `vb_runtime`: PATCHED PARTIAL — current diff hardens lifecycle attempt/state/journal assertions, timer identity/order triples, and recovery slot/taint/error assertions. Evidence: `rtk cargo test -p vb_runtime` — PASS, `1816 passed`. Remaining broad runtime recovery/resume/tick-shard gaps require post-patch audit.
-- `vb_doc`/`vb_benchmark`: tautologies, exact doc errors, patch-plan exactness, pending evidence negative, regression/metadata fields.
-- `vb_ipc`: silent-pass client tests, exact nested frame errors, FIFO identity/order, payload boundaries, Kani exactness.
+- `vb_doc`/`vb_benchmark`: PATCHED PARTIAL — current diff removes doc tautologies and hardens doc errors/patch plans plus benchmark regression/metadata fields. Evidence: `cargo test -p vb_doc -p vb_benchmark` — PASS, `117 passed`.
+- `vb_ipc`: PATCHED PARTIAL — current diff hardens server/helper/IPC exactness and selected protocol tests. Evidence: `cargo test -p vb_ipc --lib` — PASS, `691 passed`. Kani exactness remains open under proof parity.
 - `vb_cli`: PATCHED PARTIAL — current parent commit hardens non-UI/non-codegen lifecycle, trace, run-step, admission, and deliver-sink tests. UI-only envelope items excluded. Still needs post-patch audit for remaining CLI smoke/either-outcome tests outside touched targets.
 - `xtask`: workspace/test compile state, exact error variant coverage, scheduler set property, stdout JSON parsing.
 - `workspace_tests`: non-codegen/non-UI tautologies and either-outcome tests need exact behavior or removal.

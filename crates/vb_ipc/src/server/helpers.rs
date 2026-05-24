@@ -427,10 +427,12 @@ mod tests {
     fn frame_error_response_produces_frame_error_variant() {
         let err = IpcError::InvalidMagic { actual: 0xDEAD };
         let response = frame_error_response(err);
-        let IpcResponse::FrameError { message } = response else {
-            return;
-        };
-        assert!(message.contains("magic"), "expected 'magic' in '{message}'");
+        assert_eq!(
+            response,
+            IpcResponse::FrameError {
+                message: "invalid IPC frame magic: actual=0x0000dead".to_string(),
+            }
+        );
     }
 
     #[test]
@@ -440,16 +442,11 @@ mod tests {
             limit: 10,
         };
         let response = frame_error_response(err);
-        let IpcResponse::FrameError { message } = response else {
-            return;
-        };
-        assert!(
-            message.contains("999"),
-            "expected actual value in '{message}'"
-        );
-        assert!(
-            message.contains("10"),
-            "expected limit value in '{message}'"
+        assert_eq!(
+            response,
+            IpcResponse::FrameError {
+                message: "ingress payload is too large: actual=999, limit=10".to_string(),
+            }
         );
     }
 

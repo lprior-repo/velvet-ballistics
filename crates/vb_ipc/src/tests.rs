@@ -522,13 +522,13 @@ fn memory_ingress_try_recv_returns_frames_in_fifo_order() {
     let frame1 = IngressFrame::new(
         RunId::new(1),
         WorkflowDigest::from_bytes([1; 32]),
-        Bytes::new(),
+        Bytes::from_static(b"first"),
         MaxPayloadBytes::DEFAULT,
     );
     let frame2 = IngressFrame::new(
         RunId::new(2),
         WorkflowDigest::from_bytes([2; 32]),
-        Bytes::new(),
+        Bytes::from_static(b"second"),
         MaxPayloadBytes::DEFAULT,
     );
     assert_ok!(frame1, "first frame should construct");
@@ -546,7 +546,12 @@ fn memory_ingress_try_recv_returns_frames_in_fifo_order() {
     let Ok(Some(f1)) = recv1 else { return };
     let Ok(Some(f2)) = recv2 else { return };
     assert_eq!(f1.run_id(), RunId::new(1));
+    assert_eq!(f1.workflow(), WorkflowDigest::from_bytes([1; 32]));
+    assert_eq!(f1.payload().bytes().as_ref(), b"first");
     assert_eq!(f2.run_id(), RunId::new(2));
+    assert_eq!(f2.workflow(), WorkflowDigest::from_bytes([2; 32]));
+    assert_eq!(f2.payload().bytes().as_ref(), b"second");
+    assert_eq!(queue.try_recv(), Ok(None));
 }
 
 #[test]
@@ -1410,7 +1415,7 @@ fn adversarial_complete_action_with_mismatched_output_bytes_rejected() {
 
     let decoded = decode_payload(&encoded);
 
-    assert_ok!(decoded, "outer IpcPayload should decode");
+    assert_eq!(decoded, Ok(payload));
 }
 
 #[test]
@@ -1515,14 +1520,54 @@ fn adversarial_decode_frame_rejects_oversized_payload_bytes() {
 
 #[test]
 fn adversarial_encode_payload_exceeding_bound_rejected() {
-    let payload = IpcPayload::Health;
+    let payload = IpcPayload::SubmitRun(SubmitRunPayload {
+        run_id: RunId::new(1),
+        workflow: WorkflowDigest::from_bytes([1; 32]),
+        input: Vec::from(&b"over bound"[..]),
+    });
     let tiny_max = MaxPayloadBytes::new(std::num::NonZeroUsize::MIN);
 
     let result = encode_payload(&payload, tiny_max);
 
-    assert!(
-        matches!(result, Ok(_) | Err(IpcError::PayloadTooLarge { .. })),
-        "expected success or PayloadTooLarge for tiny health frame"
+    assert_eq!(
+        result,
+        Err(IpcError::PayloadTooLarge {
+            actual: 45,
+            limit: 1,
+        })
+    );
+}
+
+#[test]
+fn adversarial_response_decode_garbage_maps_to_exact_response_decode_failed() {
+    let garbage = [0xff, 0xff, 0xff, 0xff];
+
+    let result = postcard::from_bytes::<crate::server::IpcResponse>(&garbage)
+        .map_err(|_| IpcError::ResponseDecodeFailed);
+
+    assert_eq!(result, Err(IpcError::ResponseDecodeFailed));
+}
+
+#[test]
+fn adversarial_decode_frame_reports_header_error_before_nested_payload_mismatch() {
+    let mut header_bytes = [0u8; IPC_HEADER_LEN];
+    header_bytes[..4].copy_from_slice(&0xDEAD_BEEF_u32.to_le_bytes());
+    header_bytes[4..6].copy_from_slice(&99u16.to_le_bytes());
+    header_bytes[6..8].copy_from_slice(&99u16.to_le_bytes());
+    header_bytes[10..12].copy_from_slice(&7u16.to_le_bytes());
+    header_bytes[20..24].copy_from_slice(&8u32.to_le_bytes());
+
+    let result = decode_frame(
+        &header_bytes,
+        Bytes::from_static(b"short"),
+        MaxPayloadBytes::DEFAULT,
+    );
+
+    assert_eq!(
+        result,
+        Err(IpcError::InvalidMagic {
+            actual: 0xDEAD_BEEF,
+        })
     );
 }
 
