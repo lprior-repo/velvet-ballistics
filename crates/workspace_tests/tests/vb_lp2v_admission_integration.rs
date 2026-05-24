@@ -199,6 +199,11 @@ fn given_excessive_budget_when_strict_admit_run_with_budget_then_capacity_exceed
         max_journal_batch_bytes: u32::MAX,
         max_step_budget_per_tick: u64::MAX,
         max_transitions_per_tick: u64::MAX,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
     let capacity = AggregateResourceCapacity {
         max_steps_executable: 0, // zero capacity — budget exceeds immediately
@@ -213,6 +218,11 @@ fn given_excessive_budget_when_strict_admit_run_with_budget_then_capacity_exceed
         max_journal_batch_bytes: u64::MAX,
         max_step_budget_per_tick: u64::MAX,
         max_transitions_per_tick: u64::MAX,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
 
     let result = admit_run_with_budget(
@@ -284,6 +294,11 @@ fn given_budget_within_capacity_and_artifact_missing_when_strict_then_artifact_n
         max_journal_batch_bytes: u64::MAX,
         max_step_budget_per_tick: u64::MAX,
         max_transitions_per_tick: u64::MAX,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
 
     let result = admit_run_with_budget(
@@ -344,6 +359,11 @@ fn given_excessive_budget_when_relaxed_admit_run_with_budget_then_capacity_excee
         max_journal_batch_bytes: u32::MAX,
         max_step_budget_per_tick: u64::MAX,
         max_transitions_per_tick: u64::MAX,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
     let capacity = AggregateResourceCapacity {
         max_steps_executable: 0,
@@ -358,6 +378,11 @@ fn given_excessive_budget_when_relaxed_admit_run_with_budget_then_capacity_excee
         max_journal_batch_bytes: u64::MAX,
         max_step_budget_per_tick: u64::MAX,
         max_transitions_per_tick: u64::MAX,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
 
     let result = admit_run_with_budget(
