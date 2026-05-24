@@ -1,0 +1,10 @@
+/home/lewis/.local/bin/verus
+Verus
+  Version: 0.2026.05.05.d03e906
+  Profile: release
+  Platform: linux_x86_64
+  Toolchain: 1.95.0-x86_64-unknown-linux-gnu
+
+/home/lewis/.cargo/bin/verusfmt
+
+exit=0

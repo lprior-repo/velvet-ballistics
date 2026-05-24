@@ -781,6 +781,13 @@ fn budget_error_detail(error: &crate::budget::BudgetError) -> &'static str {
         crate::budget::BudgetError::RunTimeExceeded { .. } => "max_run_time_seconds",
         crate::budget::BudgetError::ResultBytesExceeded { .. } => "max_result_bytes",
         crate::budget::BudgetError::StepsExecutableExceeded { .. } => "max_steps_executable",
+        crate::budget::BudgetError::TimerEntriesExceeded { .. } => "max_timer_entries",
+        crate::budget::BudgetError::TraceEventsExceeded { .. } => "max_trace_events",
+        crate::budget::BudgetError::JournalBatchBytesExceeded { .. } => "max_journal_batch_bytes",
+        crate::budget::BudgetError::QueueDepthExceeded { .. } => "max_queue_depth",
+        crate::budget::BudgetError::IpcPayloadBytesExceeded { .. } => "max_ipc_payload_bytes",
+        crate::budget::BudgetError::BlobBytesExceeded { .. } => "max_blob_bytes",
+        crate::budget::BudgetError::InputBytesExceeded { .. } => "max_input_bytes",
     }
 }
 

@@ -1,0 +1,231 @@
+timestamp=2026-05-23T14:14:06Z
+cwd=/home/lewis/src/vb-jpq7-26-tla-overflow-gpt55
+command=tlc -metadir .evidence/vb-jpq7.26/metadir/LifecycleJournal-smoke -config specs/LifecycleJournal.cfg specs/LifecycleJournal.tla
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
+(Use the -nowarning option to disable this warning.)
+Running breadth-first search Model-Checking with fp 125 and seed 8893765060108813537 with 1 worker on 32 cores with 30688MB heap and 64MB offheap memory [pid: 1381284] (Linux 7.0.3-arch1-2 amd64, Oracle Corporation 26.0.1 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file /home/lewis/src/vb-jpq7-26-tla-overflow-gpt55/specs/LifecycleJournal.tla
+Parsing file /tmp/Naturals.tla
+Parsing file /tmp/Sequences.tla
+Parsing file /tmp/TLC.tla
+Parsing file /tmp/FiniteSets.tla
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module LifecycleJournal
+Starting... (2026-05-23 09:14:06)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-05-23 09:14:07.
+Error: Invariant JournalFullIsTyped is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ previous_crashed = FALSE
+/\ journal = <<>>
+/\ bead_state = (b1 :> "Pending" @@ b2 :> "Pending")
+/\ journal_status = "Ok"
+/\ previous_bead_state = (b1 :> "Pending" @@ b2 :> "Pending")
+/\ previous_commands = {}
+/\ previous_journal = <<>>
+/\ crashed = FALSE
+/\ commands = {}
+/\ last_transition = "Init"
+
+State 2: <Start line 170, col 5 to line 174, col 25 of module LifecycleJournal>
+/\ previous_crashed = FALSE
+/\ journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"]>>
+/\ bead_state = (b1 :> "Active" @@ b2 :> "Pending")
+/\ journal_status = "Ok"
+/\ previous_bead_state = (b1 :> "Pending" @@ b2 :> "Pending")
+/\ previous_commands = {}
+/\ previous_journal = <<>>
+/\ crashed = FALSE
+/\ commands = {}
+/\ last_transition = "Start"
+
+State 3: <Start line 170, col 5 to line 174, col 25 of module LifecycleJournal>
+/\ previous_crashed = FALSE
+/\ journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"]>>
+/\ bead_state = (b1 :> "Active" @@ b2 :> "Active")
+/\ journal_status = "Ok"
+/\ previous_bead_state = (b1 :> "Active" @@ b2 :> "Pending")
+/\ previous_commands = {}
+/\ previous_journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"]>>
+/\ crashed = FALSE
+/\ commands = {}
+/\ last_transition = "Start"
+
+State 4: <Fail line 185, col 5 to line 190, col 25 of module LifecycleJournal>
+/\ previous_crashed = FALSE
+/\ journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"]>>
+/\ bead_state = (b1 :> "Failed" @@ b2 :> "Active")
+/\ journal_status = "Ok"
+/\ previous_bead_state = (b1 :> "Active" @@ b2 :> "Active")
+/\ previous_commands = {}
+/\ previous_journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"]>>
+/\ crashed = FALSE
+/\ commands = {}
+/\ last_transition = "Fail"
+
+State 5: <Fail line 185, col 5 to line 190, col 25 of module LifecycleJournal>
+/\ previous_crashed = FALSE
+/\ journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"]>>
+/\ bead_state = (b1 :> "Failed" @@ b2 :> "Failed")
+/\ journal_status = "Ok"
+/\ previous_bead_state = (b1 :> "Failed" @@ b2 :> "Active")
+/\ previous_commands = {}
+/\ previous_journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"]>>
+/\ crashed = FALSE
+/\ commands = {}
+/\ last_transition = "Fail"
+
+State 6: <SubmitTerminal line 206, col 5 to line 207, col 36 of module LifecycleJournal>
+/\ previous_crashed = FALSE
+/\ journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"]>>
+/\ bead_state = (b1 :> "Failed" @@ b2 :> "Failed")
+/\ journal_status = "Ok"
+/\ previous_bead_state = (b1 :> "Failed" @@ b2 :> "Failed")
+/\ previous_commands = {}
+/\ previous_journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"]>>
+/\ crashed = FALSE
+/\ commands = {[bead_id |-> b1, command |-> "Retry", answer |-> 0]}
+/\ last_transition = "Submit"
+
+State 7: <ProcessCommand line 244, col 5 to line 248, col 30 of module LifecycleJournal>
+/\ previous_crashed = FALSE
+/\ journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"], [bead_id |-> b1, command |-> "Retry", answer |-> 0, index |-> 5, prior |-> "Failed", next |-> "Active"]>>
+/\ bead_state = (b1 :> "Active" @@ b2 :> "Failed")
+/\ journal_status = "Ok"
+/\ previous_bead_state = (b1 :> "Failed" @@ b2 :> "Failed")
+/\ previous_commands = {[bead_id |-> b1, command |-> "Retry", answer |-> 0]}
+/\ previous_journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"]>>
+/\ crashed = FALSE
+/\ commands = {}
+/\ last_transition = "Retry"
+
+State 8: <NeedAnswer line 177, col 5 to line 182, col 25 of module LifecycleJournal>
+/\ previous_crashed = FALSE
+/\ journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"], [bead_id |-> b1, command |-> "Retry", answer |-> 0, index |-> 5, prior |-> "Failed", next |-> "Active"], [bead_id |-> b1, command |-> "NeedAnswer", answer |-> 0, index |-> 6, prior |-> "Active", next |-> "WaitingAnswer"]>>
+/\ bead_state = (b1 :> "WaitingAnswer" @@ b2 :> "Failed")
+/\ journal_status = "Ok"
+/\ previous_bead_state = (b1 :> "Active" @@ b2 :> "Failed")
+/\ previous_commands = {}
+/\ previous_journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"], [bead_id |-> b1, command |-> "Retry", answer |-> 0, index |-> 5, prior |-> "Failed", next |-> "Active"]>>
+/\ crashed = FALSE
+/\ commands = {}
+/\ last_transition = "NeedAnswer"
+
+State 9: <SubmitTerminal line 206, col 5 to line 207, col 36 of module LifecycleJournal>
+/\ previous_crashed = FALSE
+/\ journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"], [bead_id |-> b1, command |-> "Retry", answer |-> 0, index |-> 5, prior |-> "Failed", next |-> "Active"], [bead_id |-> b1, command |-> "NeedAnswer", answer |-> 0, index |-> 6, prior |-> "Active", next |-> "WaitingAnswer"]>>
+/\ bead_state = (b1 :> "WaitingAnswer" @@ b2 :> "Failed")
+/\ journal_status = "Ok"
+/\ previous_bead_state = (b1 :> "WaitingAnswer" @@ b2 :> "Failed")
+/\ previous_commands = {}
+/\ previous_journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"], [bead_id |-> b1, command |-> "Retry", answer |-> 0, index |-> 5, prior |-> "Failed", next |-> "Active"], [bead_id |-> b1, command |-> "NeedAnswer", answer |-> 0, index |-> 6, prior |-> "Active", next |-> "WaitingAnswer"]>>
+/\ crashed = FALSE
+/\ commands = {[bead_id |-> b1, command |-> "Answer", answer |-> 0]}
+/\ last_transition = "Submit"
+
+State 10: <ProcessCommand line 244, col 5 to line 248, col 30 of module LifecycleJournal>
+/\ previous_crashed = FALSE
+/\ journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"], [bead_id |-> b1, command |-> "Retry", answer |-> 0, index |-> 5, prior |-> "Failed", next |-> "Active"], [bead_id |-> b1, command |-> "NeedAnswer", answer |-> 0, index |-> 6, prior |-> "Active", next |-> "WaitingAnswer"], [bead_id |-> b1, command |-> "Answer", answer |-> 0, index |-> 7, prior |-> "WaitingAnswer", next |-> "Completed"]>>
+/\ bead_state = (b1 :> "Completed" @@ b2 :> "Failed")
+/\ journal_status = "Ok"
+/\ previous_bead_state = (b1 :> "WaitingAnswer" @@ b2 :> "Failed")
+/\ previous_commands = {[bead_id |-> b1, command |-> "Answer", answer |-> 0]}
+/\ previous_journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"], [bead_id |-> b1, command |-> "Retry", answer |-> 0, index |-> 5, prior |-> "Failed", next |-> "Active"], [bead_id |-> b1, command |-> "NeedAnswer", answer |-> 0, index |-> 6, prior |-> "Active", next |-> "WaitingAnswer"]>>
+/\ crashed = FALSE
+/\ commands = {}
+/\ last_transition = "Answer"
+
+State 11: <SubmitTerminal line 206, col 5 to line 207, col 36 of module LifecycleJournal>
+/\ previous_crashed = FALSE
+/\ journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"], [bead_id |-> b1, command |-> "Retry", answer |-> 0, index |-> 5, prior |-> "Failed", next |-> "Active"], [bead_id |-> b1, command |-> "NeedAnswer", answer |-> 0, index |-> 6, prior |-> "Active", next |-> "WaitingAnswer"], [bead_id |-> b1, command |-> "Answer", answer |-> 0, index |-> 7, prior |-> "WaitingAnswer", next |-> "Completed"]>>
+/\ bead_state = (b1 :> "Completed" @@ b2 :> "Failed")
+/\ journal_status = "Ok"
+/\ previous_bead_state = (b1 :> "Completed" @@ b2 :> "Failed")
+/\ previous_commands = {}
+/\ previous_journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"], [bead_id |-> b1, command |-> "Retry", answer |-> 0, index |-> 5, prior |-> "Failed", next |-> "Active"], [bead_id |-> b1, command |-> "NeedAnswer", answer |-> 0, index |-> 6, prior |-> "Active", next |-> "WaitingAnswer"], [bead_id |-> b1, command |-> "Answer", answer |-> 0, index |-> 7, prior |-> "WaitingAnswer", next |-> "Completed"]>>
+/\ crashed = FALSE
+/\ commands = {[bead_id |-> b2, command |-> "Retry", answer |-> 0]}
+/\ last_transition = "Submit"
+
+State 12: <ProcessCommand line 244, col 5 to line 248, col 30 of module LifecycleJournal>
+/\ previous_crashed = FALSE
+/\ journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"], [bead_id |-> b1, command |-> "Retry", answer |-> 0, index |-> 5, prior |-> "Failed", next |-> "Active"], [bead_id |-> b1, command |-> "NeedAnswer", answer |-> 0, index |-> 6, prior |-> "Active", next |-> "WaitingAnswer"], [bead_id |-> b1, command |-> "Answer", answer |-> 0, index |-> 7, prior |-> "WaitingAnswer", next |-> "Completed"], [bead_id |-> b2, command |-> "Retry", answer |-> 0, index |-> 8, prior |-> "Failed", next |-> "Active"]>>
+/\ bead_state = (b1 :> "Completed" @@ b2 :> "Active")
+/\ journal_status = "Ok"
+/\ previous_bead_state = (b1 :> "Completed" @@ b2 :> "Failed")
+/\ previous_commands = {[bead_id |-> b2, command |-> "Retry", answer |-> 0]}
+/\ previous_journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"], [bead_id |-> b1, command |-> "Retry", answer |-> 0, index |-> 5, prior |-> "Failed", next |-> "Active"], [bead_id |-> b1, command |-> "NeedAnswer", answer |-> 0, index |-> 6, prior |-> "Active", next |-> "WaitingAnswer"], [bead_id |-> b1, command |-> "Answer", answer |-> 0, index |-> 7, prior |-> "WaitingAnswer", next |-> "Completed"]>>
+/\ crashed = FALSE
+/\ commands = {}
+/\ last_transition = "Retry"
+
+State 13: <NeedAnswer line 177, col 5 to line 182, col 25 of module LifecycleJournal>
+/\ previous_crashed = FALSE
+/\ journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"], [bead_id |-> b1, command |-> "Retry", answer |-> 0, index |-> 5, prior |-> "Failed", next |-> "Active"], [bead_id |-> b1, command |-> "NeedAnswer", answer |-> 0, index |-> 6, prior |-> "Active", next |-> "WaitingAnswer"], [bead_id |-> b1, command |-> "Answer", answer |-> 0, index |-> 7, prior |-> "WaitingAnswer", next |-> "Completed"], [bead_id |-> b2, command |-> "Retry", answer |-> 0, index |-> 8, prior |-> "Failed", next |-> "Active"], [bead_id |-> b2, command |-> "NeedAnswer", answer |-> 0, index |-> 9, prior |-> "Active", next |-> "WaitingAnswer"]>>
+/\ bead_state = (b1 :> "Completed" @@ b2 :> "WaitingAnswer")
+/\ journal_status = "Ok"
+/\ previous_bead_state = (b1 :> "Completed" @@ b2 :> "Active")
+/\ previous_commands = {}
+/\ previous_journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"], [bead_id |-> b1, command |-> "Retry", answer |-> 0, index |-> 5, prior |-> "Failed", next |-> "Active"], [bead_id |-> b1, command |-> "NeedAnswer", answer |-> 0, index |-> 6, prior |-> "Active", next |-> "WaitingAnswer"], [bead_id |-> b1, command |-> "Answer", answer |-> 0, index |-> 7, prior |-> "WaitingAnswer", next |-> "Completed"], [bead_id |-> b2, command |-> "Retry", answer |-> 0, index |-> 8, prior |-> "Failed", next |-> "Active"]>>
+/\ crashed = FALSE
+/\ commands = {}
+/\ last_transition = "NeedAnswer"
+
+State 14: <SubmitTerminal line 206, col 5 to line 207, col 36 of module LifecycleJournal>
+/\ previous_crashed = FALSE
+/\ journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"], [bead_id |-> b1, command |-> "Retry", answer |-> 0, index |-> 5, prior |-> "Failed", next |-> "Active"], [bead_id |-> b1, command |-> "NeedAnswer", answer |-> 0, index |-> 6, prior |-> "Active", next |-> "WaitingAnswer"], [bead_id |-> b1, command |-> "Answer", answer |-> 0, index |-> 7, prior |-> "WaitingAnswer", next |-> "Completed"], [bead_id |-> b2, command |-> "Retry", answer |-> 0, index |-> 8, prior |-> "Failed", next |-> "Active"], [bead_id |-> b2, command |-> "NeedAnswer", answer |-> 0, index |-> 9, prior |-> "Active", next |-> "WaitingAnswer"]>>
+/\ bead_state = (b1 :> "Completed" @@ b2 :> "WaitingAnswer")
+/\ journal_status = "Ok"
+/\ previous_bead_state = (b1 :> "Completed" @@ b2 :> "WaitingAnswer")
+/\ previous_commands = {}
+/\ previous_journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"], [bead_id |-> b1, command |-> "Retry", answer |-> 0, index |-> 5, prior |-> "Failed", next |-> "Active"], [bead_id |-> b1, command |-> "NeedAnswer", answer |-> 0, index |-> 6, prior |-> "Active", next |-> "WaitingAnswer"], [bead_id |-> b1, command |-> "Answer", answer |-> 0, index |-> 7, prior |-> "WaitingAnswer", next |-> "Completed"], [bead_id |-> b2, command |-> "Retry", answer |-> 0, index |-> 8, prior |-> "Failed", next |-> "Active"], [bead_id |-> b2, command |-> "NeedAnswer", answer |-> 0, index |-> 9, prior |-> "Active", next |-> "WaitingAnswer"]>>
+/\ crashed = FALSE
+/\ commands = {[bead_id |-> b2, command |-> "Answer", answer |-> 0]}
+/\ last_transition = "Submit"
+
+State 15: <ProcessCommand line 244, col 5 to line 248, col 30 of module LifecycleJournal>
+/\ previous_crashed = FALSE
+/\ journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"], [bead_id |-> b1, command |-> "Retry", answer |-> 0, index |-> 5, prior |-> "Failed", next |-> "Active"], [bead_id |-> b1, command |-> "NeedAnswer", answer |-> 0, index |-> 6, prior |-> "Active", next |-> "WaitingAnswer"], [bead_id |-> b1, command |-> "Answer", answer |-> 0, index |-> 7, prior |-> "WaitingAnswer", next |-> "Completed"], [bead_id |-> b2, command |-> "Retry", answer |-> 0, index |-> 8, prior |-> "Failed", next |-> "Active"], [bead_id |-> b2, command |-> "NeedAnswer", answer |-> 0, index |-> 9, prior |-> "Active", next |-> "WaitingAnswer"], [bead_id |-> b2, command |-> "Answer", answer |-> 0, index |-> 10, prior |-> "WaitingAnswer", next |-> "Completed"]>>
+/\ bead_state = (b1 :> "Completed" @@ b2 :> "Completed")
+/\ journal_status = "Ok"
+/\ previous_bead_state = (b1 :> "Completed" @@ b2 :> "WaitingAnswer")
+/\ previous_commands = {[bead_id |-> b2, command |-> "Answer", answer |-> 0]}
+/\ previous_journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"], [bead_id |-> b1, command |-> "Retry", answer |-> 0, index |-> 5, prior |-> "Failed", next |-> "Active"], [bead_id |-> b1, command |-> "NeedAnswer", answer |-> 0, index |-> 6, prior |-> "Active", next |-> "WaitingAnswer"], [bead_id |-> b1, command |-> "Answer", answer |-> 0, index |-> 7, prior |-> "WaitingAnswer", next |-> "Completed"], [bead_id |-> b2, command |-> "Retry", answer |-> 0, index |-> 8, prior |-> "Failed", next |-> "Active"], [bead_id |-> b2, command |-> "NeedAnswer", answer |-> 0, index |-> 9, prior |-> "Active", next |-> "WaitingAnswer"]>>
+/\ crashed = FALSE
+/\ commands = {}
+/\ last_transition = "Answer"
+
+State 16: <JournalFull line 279, col 5 to line 284, col 59 of module LifecycleJournal>
+/\ previous_crashed = FALSE
+/\ journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"], [bead_id |-> b1, command |-> "Retry", answer |-> 0, index |-> 5, prior |-> "Failed", next |-> "Active"], [bead_id |-> b1, command |-> "NeedAnswer", answer |-> 0, index |-> 6, prior |-> "Active", next |-> "WaitingAnswer"], [bead_id |-> b1, command |-> "Answer", answer |-> 0, index |-> 7, prior |-> "WaitingAnswer", next |-> "Completed"], [bead_id |-> b2, command |-> "Retry", answer |-> 0, index |-> 8, prior |-> "Failed", next |-> "Active"], [bead_id |-> b2, command |-> "NeedAnswer", answer |-> 0, index |-> 9, prior |-> "Active", next |-> "WaitingAnswer"], [bead_id |-> b2, command |-> "Answer", answer |-> 0, index |-> 10, prior |-> "WaitingAnswer", next |-> "Completed"]>>
+/\ bead_state = (b1 :> "Completed" @@ b2 :> "Completed")
+/\ journal_status = "JournalFull"
+/\ previous_bead_state = (b1 :> "Completed" @@ b2 :> "Completed")
+/\ previous_commands = {}
+/\ previous_journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"], [bead_id |-> b1, command |-> "Retry", answer |-> 0, index |-> 5, prior |-> "Failed", next |-> "Active"], [bead_id |-> b1, command |-> "NeedAnswer", answer |-> 0, index |-> 6, prior |-> "Active", next |-> "WaitingAnswer"], [bead_id |-> b1, command |-> "Answer", answer |-> 0, index |-> 7, prior |-> "WaitingAnswer", next |-> "Completed"], [bead_id |-> b2, command |-> "Retry", answer |-> 0, index |-> 8, prior |-> "Failed", next |-> "Active"], [bead_id |-> b2, command |-> "NeedAnswer", answer |-> 0, index |-> 9, prior |-> "Active", next |-> "WaitingAnswer"], [bead_id |-> b2, command |-> "Answer", answer |-> 0, index |-> 10, prior |-> "WaitingAnswer", next |-> "Completed"]>>
+/\ crashed = FALSE
+/\ commands = {}
+/\ last_transition = "JournalFull"
+
+State 17: <Submit line 216, col 21 to line 216, col 48 of module LifecycleJournal>
+/\ previous_crashed = FALSE
+/\ journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"], [bead_id |-> b1, command |-> "Retry", answer |-> 0, index |-> 5, prior |-> "Failed", next |-> "Active"], [bead_id |-> b1, command |-> "NeedAnswer", answer |-> 0, index |-> 6, prior |-> "Active", next |-> "WaitingAnswer"], [bead_id |-> b1, command |-> "Answer", answer |-> 0, index |-> 7, prior |-> "WaitingAnswer", next |-> "Completed"], [bead_id |-> b2, command |-> "Retry", answer |-> 0, index |-> 8, prior |-> "Failed", next |-> "Active"], [bead_id |-> b2, command |-> "NeedAnswer", answer |-> 0, index |-> 9, prior |-> "Active", next |-> "WaitingAnswer"], [bead_id |-> b2, command |-> "Answer", answer |-> 0, index |-> 10, prior |-> "WaitingAnswer", next |-> "Completed"]>>
+/\ bead_state = (b1 :> "Completed" @@ b2 :> "Completed")
+/\ journal_status = "JournalFull"
+/\ previous_bead_state = (b1 :> "Completed" @@ b2 :> "Completed")
+/\ previous_commands = {}
+/\ previous_journal = <<[bead_id |-> b1, command |-> "Start", answer |-> 0, index |-> 1, prior |-> "Pending", next |-> "Active"], [bead_id |-> b2, command |-> "Start", answer |-> 0, index |-> 2, prior |-> "Pending", next |-> "Active"], [bead_id |-> b1, command |-> "Fail", answer |-> 0, index |-> 3, prior |-> "Active", next |-> "Failed"], [bead_id |-> b2, command |-> "Fail", answer |-> 0, index |-> 4, prior |-> "Active", next |-> "Failed"], [bead_id |-> b1, command |-> "Retry", answer |-> 0, index |-> 5, prior |-> "Failed", next |-> "Active"], [bead_id |-> b1, command |-> "NeedAnswer", answer |-> 0, index |-> 6, prior |-> "Active", next |-> "WaitingAnswer"], [bead_id |-> b1, command |-> "Answer", answer |-> 0, index |-> 7, prior |-> "WaitingAnswer", next |-> "Completed"], [bead_id |-> b2, command |-> "Retry", answer |-> 0, index |-> 8, prior |-> "Failed", next |-> "Active"], [bead_id |-> b2, command |-> "NeedAnswer", answer |-> 0, index |-> 9, prior |-> "Active", next |-> "WaitingAnswer"], [bead_id |-> b2, command |-> "Answer", answer |-> 0, index |-> 10, prior |-> "WaitingAnswer", next |-> "Completed"]>>
+/\ crashed = FALSE
+/\ commands = {[bead_id |-> b1, command |-> "Cancel", answer |-> 0]}
+/\ last_transition = "Submit"
+
+105713 states generated, 36975 distinct states found, 5991 states left on queue.
+The depth of the complete state graph search is 17.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 9 and the 95th percentile is 6).
+Finished in 02s at (2026-05-23 09:14:08)
+exit_code=12

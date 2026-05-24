@@ -4,7 +4,7 @@
 
 #![forbid(unsafe_code)]
 
-use super::{ActionId, EventSeq, RunId, SeqNo, SlotIdx, StepIdx};
+use super::{AccessorIdx, ActionId, ConstIdx, EventSeq, ExprIdx, RunId, SeqNo, SlotIdx, StepIdx};
 use crate::WorkflowDigest;
 
 impl kani::Arbitrary for RunId {
@@ -32,6 +32,24 @@ impl kani::Arbitrary for StepIdx {
 }
 
 impl kani::Arbitrary for SlotIdx {
+    fn any() -> Self {
+        Self::new(kani::any())
+    }
+}
+
+impl kani::Arbitrary for ExprIdx {
+    fn any() -> Self {
+        Self::new(kani::any())
+    }
+}
+
+impl kani::Arbitrary for AccessorIdx {
+    fn any() -> Self {
+        Self::new(kani::any())
+    }
+}
+
+impl kani::Arbitrary for ConstIdx {
     fn any() -> Self {
         Self::new(kani::any())
     }

@@ -1,6 +1,6 @@
 use super::{
     QueuedStorageRuntimeJournal, RuntimeJournal, RuntimeJournalConfig, RuntimeJournalEvent,
-    StorageRuntimeJournal,
+    StorageRuntimeJournal, VolatileRuntimeJournal,
 };
 use crate::runtime::Runtime;
 use crate::shard::ShardConfig;

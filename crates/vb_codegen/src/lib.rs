@@ -230,7 +230,7 @@ fn unsupported_node_feature(kind: &CompiledNodeKind) -> Option<&'static str> {
         CompiledNodeKind::CollectPage { .. } => Some("CollectPage"),
         CompiledNodeKind::CollectNext { .. } => Some("CollectNext"),
         CompiledNodeKind::CollectFinish { .. } => Some("CollectFinish"),
-        _ => Some("future compiled node kind"),
+        _ => Some("unknown non-exhaustive node kind"),
     }
 }
 
@@ -265,7 +265,7 @@ fn unsupported_expr_feature(op: ExprOp) -> Option<&'static str> {
         ExprOp::EndsWith => Some("text helper ends_with requires runtime symbol store"),
         ExprOp::Length => None,
         ExprOp::Empty => None,
-        _ => Some("future expression op"),
+        _ => Some("unknown non-exhaustive expression op"),
     }
 }
 
@@ -1540,7 +1540,7 @@ pub fn emit_expr_function(
                     .map_err(fmt_err)?;
             }
             _ => {
-                writeln!(out, "    return Err(DriveError::InvalidCompiledWorkflow {{ reason: \"unsupported expression op\" }});")
+                writeln!(out, "    return Err(DriveError::InvalidCompiledWorkflow {{ reason: \"unknown non-exhaustive expression op\" }});")
                     .map_err(fmt_err)?;
             }
         }
@@ -2683,9 +2683,9 @@ fn emit_constants(out: &mut String, workflow: &CompiledWorkflow) -> CodegenResul
             Some(ConstValue::Symbol(v)) => {
                 writeln!(out, "    SlotValue::Symbol({}),", v.get()).map_err(fmt_err)?;
             }
-            Some(&_) => {
+            Some(_) => {
                 return Err(CodegenError::UnsupportedIr {
-                    feature: "ConstValue",
+                    feature: "unknown non-exhaustive constant value",
                 });
             }
             None => break,
@@ -2778,10 +2778,8 @@ fn emit_accessor_segment(out: &mut String, segment: vb_core::PathSegment) -> Cod
     match segment {
         vb_core::PathSegment::Field(field) => writeln!(out, "        {{ let (_value, _segment_taint) = match _current {{ SlotValue::Object(_object) => object_store.field(_object, {})?, other => return Err(DriveError::TypeMismatch {{ expected: \"object\", found: other.type_name() }}), }}; _taint = join_taint(_taint, _segment_taint); _current = _value; }}", field.get()).map_err(fmt_err),
         vb_core::PathSegment::Index(index) => writeln!(out, "        {{ let (_value, _segment_taint) = match _current {{ SlotValue::List(_list) => list_store.value_at(_list, {index})?, other => return Err(DriveError::TypeMismatch {{ expected: \"list\", found: other.type_name() }}), }}; _taint = join_taint(_taint, _segment_taint); _current = _value; }}").map_err(fmt_err),
-        // `PathSegment` is `#[non_exhaustive]`; unknown variants indicate a
-        // version mismatch — fail codegen rather than emit malformed accessors.
-        _ => Err(CodegenError::UnsupportedIr {
-            feature: "unknown path segment variant",
+        _ => Err(CodegenError::SemanticMismatch {
+            detail: "unknown non-exhaustive accessor path segment".into(),
         }),
     }
 }
@@ -2789,13 +2787,6 @@ fn emit_accessor_segment(out: &mut String, segment: vb_core::PathSegment) -> Cod
 fn fmt_err(_: std::fmt::Error) -> CodegenError {
     CodegenError::FormatBufferOverflow
 }
-
-// --- Public re-exports for BDD parity testing ---
-
-pub use parity::{
-    BlockKind, BlockedRun, ErrorClass, ErrorRun, FinishedRun, ObservedRun, ParityError,
-    TerminalStatus, compare_observed_runs,
-};
 
 mod proptests;
 #[cfg(not(miri))]

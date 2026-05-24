@@ -68,6 +68,9 @@ fn write_runtime_error_dynamic(
         RuntimeError::ActiveRunCapacityExceeded { capacity } => {
             write!(f, "active run capacity exceeded: {capacity}")
         }
+        RuntimeError::JournalFull { capacity } => {
+            write!(f, "runtime journal capacity exhausted: {capacity}")
+        }
         RuntimeError::UnsupportedOperation { operation } => {
             write!(f, "unsupported runtime operation: {operation}")
         }

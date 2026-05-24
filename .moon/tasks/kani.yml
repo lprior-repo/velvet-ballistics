@@ -1,12 +1,46 @@
+# Kani bounded model checking verification tasks
+# These tasks run formal verification using the Kani model checker
+
+fileGroups:
+  kani_sources:
+    - 'crates/vb_core/src/**/*'
+    - 'crates/vb_validate/src/**/*'
+    - 'verification/kani/**/*'
+  kani_harnesses:
+    - 'crates/vb_validate/src/kani_gate_08_structural.rs'
+    - 'verification/kani/**/*.rs'
+
 tasks:
-  kani-verify:
-    command: cargo kani --lib -p vb_core --all-features
+  verify-kani:
+    script: |
+      set -euo pipefail
+      mkdir -p target/kani-tmp
+      mkdir -p target/moon-locks
+      TMPDIR="$PWD/target/kani-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout 60m rustup run nightly-2026-04-28 cargo kani --lib -p vb_core --all-features
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(kani_sources)'
+      - '@globs(kani_harnesses)'
+      - 'Cargo.toml'
+      - 'rust-toolchain.toml'
     options:
       runInCI: true
       cache: false
 
-  kani-verify-vb-validate:
-    command: cargo kani -p vb_validate --all-features
+  verify-kani-vb-validate:
+    script: |
+      set -euo pipefail
+      mkdir -p target/kani-tmp
+      mkdir -p target/moon-locks
+      TMPDIR="$PWD/target/kani-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout 60m rustup run nightly-2026-04-28 cargo kani -p vb_validate --all-features
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(kani_sources)'
+      - '@globs(kani_harnesses)'
+      - 'Cargo.toml'
+      - 'rust-toolchain.toml'
     options:
       runInCI: true
       cache: false

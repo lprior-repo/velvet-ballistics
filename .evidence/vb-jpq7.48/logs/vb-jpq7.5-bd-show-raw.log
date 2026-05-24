@@ -1,0 +1,30 @@
+command: bd show vb-jpq7.5
+cwd: /home/lewis/src/velvet-ballistics
+timestamp: 2026-05-23T12:14:00Z
+exit_code: 0
+--- stdout follows ---
+✓ vb-jpq7.5 [BUG] · P0: repair formal verification evidence and proof ledgers   [● P0 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: bug
+Created: 2026-05-22 · Updated: 2026-05-23
+Close reason: Completed evidence/ledger closure in /home/lewis/src/vb-jpq7-5-formal-evidence-gpt55. Added .evidence/vb-jpq7.5/formal-evidence-closure.md, proof-reviewer-self-check.md, verification-ledger.jsonl, and fresh raw logs. Child beads vb-jpq7.24/.25/.26/.27 verified CLOSED. Fresh checks: vb-jpq7.27 ledger checker exit 0; vb-jpq7.24 Verus spot exit 0; vb-jpq7.26 BudgetArithmetic TLC spot exit 0; vb_core cargo kani list exit 0 with 143 harnesses; vb_validate cargo kani list exit 1 and remains child-tracked by vb-utvm. Residual gaps vb-utvm/vb-rga1/vb-2tpu remain open and are not counted as PASS evidence.
+
+DESCRIPTION
+Direct evidence: verus verification/verus/vb_a2zn_events_for_run.rs fails to parse; cargo kani list --format json at workspace root reports no supported targets; proof scan finds placeholder RandomInKey harness asserting result.is_ok and hardcoded WorkflowParts/RunFrame shapes; TLA runtime transition model uses BoundedInc saturation rather than typed overflow/error transition. Current proof ledgers cannot count as DoD evidence.
+
+ACCEPTANCE CRITERIA
+Non-parsing/vacuous Verus files are either repaired and bound to production code or marked non-evidence; Kani harness discovery lists real harnesses for relevant crates; hardcoded structural harnesses are replaced by Arbitrary/exhaustive generators or downgraded; placeholder proof obligations are removed from PASS ledgers; TLA overflow/resource models include typed fail/suspend transitions; fresh raw logs are attached to evidence.
+
+LABELS: backend-dod, evidence, formal, kani, master-gap, release-blocker, tla, truth-serum, verus
+
+PARENT
+  ↑ ● vb-jpq7: (EPIC) P0: Truth-serum backend blocker burn-down ● P0
+
+BLOCKS
+  ← ◐ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0
+
+
+--- stderr follows ---
+Warning: auto-backup failed: sync to backup: sync backup backup_export: Error 1105 (HY000): dangling ref: found dangling references to HashSet {
+	e7h8vnaghqjuqjbggsjo0pth15213sus
+}
+

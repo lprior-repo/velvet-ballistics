@@ -45,6 +45,9 @@ fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> boo
             RuntimeError::ActiveRunCapacityExceeded { capacity: a },
             RuntimeError::ActiveRunCapacityExceeded { capacity: b },
         ) => a == b,
+        (RuntimeError::JournalFull { capacity: a }, RuntimeError::JournalFull { capacity: b }) => {
+            a == b
+        }
         (
             RuntimeError::UnsupportedOperation { operation: a },
             RuntimeError::UnsupportedOperation { operation: b },

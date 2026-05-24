@@ -135,16 +135,16 @@ tasks:
       runInCI: true
 
   blocker-closure-evidence:
-    command: 'python scripts/check-blocker-closure-evidence.py --parent vb-jpq7'
+    script: 'python scripts/check-vb-jpq7-closure-evidence.py --parent vb-jpq7 --bd-workdir "${VB_JPQ7_BD_WORKDIR:-/home/lewis/src/velvet-ballistics}"'
     inputs:
-      - 'scripts/check-blocker-closure-evidence.py'
-      - 'schemas/blocker-closure-evidence.schema.json'
-      - 'docs/blocker-closure-evidence.md'
-      - 'evidence/blocker-closure-evidence.jsonl'
+      - 'scripts/check-vb-jpq7-closure-evidence.py'
+      - 'schemas/vb-jpq7-closure-evidence.schema.json'
+      - 'docs/vb-jpq7-closure-evidence.md'
+      - '.beads/vb-jpq7/closure-evidence-manifest.jsonl'
       - '.moon/tasks/all.yml'
     options:
       cache: false
-      runInCI: false
+      runInCI: true
 
   workspace-assertions:
     command: 'bash scripts/check-workspace-assertions.sh'

@@ -1,0 +1,4 @@
+command: PYTHONPYCACHEPREFIX=.evidence/vb-jpq7.48/scratch/pycache python scripts/check-vb-jpq7-closure-evidence.py --self-test
+cwd: /home/lewis/src/vb-jpq7-48-evidence-checker-gpt55-recovered
+timestamp: 2026-05-24T10:21:21Z
+exit_code: 0

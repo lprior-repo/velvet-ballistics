@@ -10,9 +10,11 @@
 
 EXTENDS Integers, Sequences, TLC
 
+MAX_U16 == 65535
+
 CONSTANT RunId, StepId, MaxAttemptsValue
 
-ASSUME MaxAttemptsValue \in Nat \ {0}
+ASSUME MaxAttemptsValue \in 1..MAX_U16
 
 VARIABLES
     runs,
@@ -21,11 +23,16 @@ VARIABLES
     stepState,
     maxAttempts,
     retryPolicy,
-    stepHasRetryCheck
+    stepHasRetryCheck,
+    last_error
 
 Runs == RunId
 Steps == StepId
 MaxAttempts == MaxAttemptsValue
+StepStates == {"Pending", "Running", "Failed"}
+RetryPolicies == {"Retryable", "NonRetryable"}
+FailureTypes == {"Retryable", "NonRetryable"}
+ErrorKinds == {"None", "NonRetryableFailure", "RetryExhausted"}
 
 (* Helper: determine next state for a failure action
  * Returns [state |-> "Failed", attempts |-> attempts, pc |-> pc] for non-retryable or exhausted
@@ -33,11 +40,11 @@ MaxAttempts == MaxAttemptsValue
  *)
 FailureOutcome(run, step, failureType) ==
     CASE failureType = "NonRetryable" \/ ~stepHasRetryCheck[run][step] ->
-        [state |-> "Failed", attempts |-> actionAttempts[run][step], pc |-> framePC[run]]
-      [] actionAttempts[run][step] < maxAttempts[run][step] - 1 ->
-        [state |-> "Running", attempts |-> actionAttempts[run][step] + 1, pc |-> step]
+        [state |-> "Failed", attempts |-> actionAttempts[run][step], pc |-> framePC[run], error |-> "NonRetryableFailure"]
+      [] actionAttempts[run][step] + 1 < maxAttempts[run][step] ->
+        [state |-> "Running", attempts |-> actionAttempts[run][step] + 1, pc |-> step, error |-> "None"]
       [] OTHER ->
-        [state |-> "Failed", attempts |-> actionAttempts[run][step], pc |-> framePC[run]]
+        [state |-> "Failed", attempts |-> actionAttempts[run][step] + 1, pc |-> framePC[run], error |-> "RetryExhausted"]
 
 (* Init action *)
 Init ==
@@ -48,6 +55,7 @@ Init ==
     /\ maxAttempts = [run \in Runs |-> [step \in Steps |-> MaxAttempts]]
     /\ retryPolicy = [run \in Runs |-> [step \in Steps |-> "Retryable"]]
     /\ stepHasRetryCheck = [run \in Runs |-> [step \in Steps |-> TRUE]]
+    /\ last_error = [run \in Runs |-> [step \in Steps |-> "None"]]
 
 (* Add a run to the model *)
 AddRun(run) ==
@@ -56,14 +64,18 @@ AddRun(run) ==
     /\ actionAttempts' = [actionAttempts EXCEPT ![run] = [step \in Steps |-> 0]]
     /\ stepState' = [stepState EXCEPT ![run] = [step \in Steps |-> "Pending"]]
     /\ framePC' = [framePC EXCEPT ![run] = 1]
+    /\ last_error' = [last_error EXCEPT ![run] = [step \in Steps |-> "None"]]
     /\ UNCHANGED <<maxAttempts, retryPolicy, stepHasRetryCheck>>
 
 (* Mark step as running *)
 StartStep(run, step) ==
     /\ run \in runs
     /\ stepState[run][step] = "Pending"
+    /\ \A other \in Steps : stepState[run][other] # "Running"
     /\ stepState' = [stepState EXCEPT ![run][step] = "Running"]
-    /\ UNCHANGED <<runs, actionAttempts, framePC, maxAttempts, retryPolicy, stepHasRetryCheck>>
+    /\ framePC' = [framePC EXCEPT ![run] = step]
+    /\ last_error' = [last_error EXCEPT ![run][step] = "None"]
+    /\ UNCHANGED <<runs, actionAttempts, maxAttempts, retryPolicy, stepHasRetryCheck>>
 
 (* ActionFailed handler - core retry logic
  * Guard: actionAttempts < maxAttempts (except for NonRetryable which has no guard)
@@ -79,6 +91,7 @@ ActionFailed(run, step, failureType) ==
         /\ stepState' = [stepState EXCEPT ![run][step] = outcome.state]
         /\ actionAttempts' = [actionAttempts EXCEPT ![run][step] = outcome.attempts]
         /\ framePC' = [framePC EXCEPT ![run] = outcome.pc]
+        /\ last_error' = [last_error EXCEPT ![run][step] = outcome.error]
         /\ UNCHANGED <<maxAttempts, retryPolicy, runs, stepHasRetryCheck>>
 
 (* Stale completion rejection
@@ -90,7 +103,12 @@ StaleCompletionRejected(run, step) ==
     /\ actionAttempts' = actionAttempts
     /\ framePC' = framePC
     /\ stepState' = stepState
-    /\ UNCHANGED <<maxAttempts, retryPolicy, runs, stepHasRetryCheck>>
+    /\ UNCHANGED <<maxAttempts, retryPolicy, runs, stepHasRetryCheck, last_error>>
+
+TerminalStutter ==
+    /\ runs = Runs
+    /\ \A run \in Runs, step \in Steps : stepState[run][step] # "Running"
+    /\ UNCHANGED <<runs, actionAttempts, framePC, stepState, maxAttempts, retryPolicy, stepHasRetryCheck, last_error>>
 
 (* Next relation
  * Removed existential quantification over attempt and stale/current values to prevent state explosion.
@@ -102,9 +120,23 @@ Next ==
         \/ StartStep(run, step)
         \/ ActionFailed(run, step, ftype)
         \/ StaleCompletionRejected(run, step)
+        \/ TerminalStutter
 
 (* Spec *)
-Spec == Init /\ [][Next]_<<runs, actionAttempts, framePC, stepState, maxAttempts, retryPolicy, stepHasRetryCheck>>
+vars == <<runs, actionAttempts, framePC, stepState, maxAttempts, retryPolicy, stepHasRetryCheck, last_error>>
+
+Spec == Init /\ [][Next]_vars
+
+TypeOK ==
+    /\ runs \in SUBSET Runs
+    /\ actionAttempts \in [Runs -> [Steps -> 0..MAX_U16]]
+    /\ framePC \in [Runs -> Steps]
+    /\ stepState \in [Runs -> [Steps -> StepStates]]
+    /\ maxAttempts \in [Runs -> [Steps -> 1..MAX_U16]]
+    /\ retryPolicy \in [Runs -> [Steps -> RetryPolicies]]
+    /\ stepHasRetryCheck \in [Runs -> [Steps -> BOOLEAN]]
+    /\ last_error \in [Runs -> [Steps -> ErrorKinds]]
+    /\ \A run \in Runs, step \in Steps : actionAttempts[run][step] <= maxAttempts[run][step]
 
 (* Safety: No double retry after exhaustion
  * Once actionAttempts >= maxAttempts for a (run,step), stepState must be Failed.
@@ -115,6 +147,16 @@ NoDoubleRetryAfterExhaustion ==
         actionAttempts[run][step] >= maxAttempts[run][step]
             => stepState[run][step] = "Failed"
 
+RetryExhaustionIsTyped ==
+    \A run \in Runs, step \in Steps :
+        actionAttempts[run][step] >= maxAttempts[run][step]
+            => last_error[run][step] = "RetryExhausted"
+
+NoSilentSaturation ==
+    \A run \in Runs, step \in Steps :
+        stepState[run][step] = "Running"
+            => actionAttempts[run][step] < maxAttempts[run][step]
+
 (* Safety: No stale completion accepted *)
 NoStaleCompletion ==
     \A run \in Runs, step \in Steps :
@@ -124,7 +166,7 @@ NoStaleCompletion ==
 (* Safety: Frame PC reset on retry *)
 FramePCResetOnRetry ==
     \A run \in Runs :
-        framePC[run] \in Steps
+        run \in runs /\ (\E step \in Steps : stepState[run][step] = "Running") /\ framePC[run] \in Steps
             => stepState[run][framePC[run]] = "Running"
 
 (* Liveness: Eventually terminal or exhausted *)
@@ -133,6 +175,8 @@ EventuallyTerminalOrExhausted ==
        /\ \E run \in Runs, step \in Steps : stepState[run][step] = "Failed")
 
 THEOREM Spec => []NoDoubleRetryAfterExhaustion
+THEOREM Spec => []RetryExhaustionIsTyped
+THEOREM Spec => []NoSilentSaturation
 THEOREM Spec => []NoStaleCompletion
 THEOREM Spec => []FramePCResetOnRetry
 

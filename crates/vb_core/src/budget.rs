@@ -41,6 +41,20 @@ pub struct WholeWorkflowBudget {
     pub max_result_bytes: u32,
     /// Maximum total slots written.
     pub max_total_slots_written: u32,
+    /// Maximum timer entries reserved for waits, asks, retries, and repeat checks.
+    pub max_timer_entries: u32,
+    /// Maximum trace events reserved for deterministic execution.
+    pub max_trace_events: u64,
+    /// Maximum journal batch bytes required by reachable journal-producing operations.
+    pub max_journal_batch_bytes: u32,
+    /// Maximum queue entries required by reachable suspension/admission operations.
+    pub max_queue_depth: u32,
+    /// Maximum IPC payload bytes required by reachable IPC operations.
+    pub max_ipc_payload_bytes: u32,
+    /// Maximum blob bytes required by reachable blob/resource operations.
+    pub max_blob_bytes: u64,
+    /// Maximum input bytes required by reachable input operations.
+    pub max_input_bytes: u32,
 }
 
 impl WholeWorkflowBudget {
@@ -69,6 +83,7 @@ impl WholeWorkflowBudget {
         let mut max_for_each_iterations: u32 = 0;
         let mut max_together_branches: u16 = 0;
         let mut max_repeat_attempts: u16 = 0;
+        let mut max_timer_entries: u32 = 0;
         compute_fanout_and_depth(
             nodes,
             entry,
@@ -85,6 +100,7 @@ impl WholeWorkflowBudget {
             &mut max_for_each_iterations,
             &mut max_together_branches,
             &mut max_repeat_attempts,
+            &mut max_timer_entries,
         )?;
 
         let max_total_slots = u64::from(contract.max_slots);
@@ -116,6 +132,13 @@ impl WholeWorkflowBudget {
             max_run_time_seconds,
             max_result_bytes: contract.max_output_bytes,
             max_total_slots_written: u32::from(contract.max_slots),
+            max_timer_entries,
+            max_trace_events: max_total_steps,
+            max_journal_batch_bytes: contract.max_journal_batch_bytes,
+            max_queue_depth: contract.max_queue_depth,
+            max_ipc_payload_bytes: contract.max_ipc_payload_bytes,
+            max_blob_bytes: contract.max_blob_bytes,
+            max_input_bytes: contract.max_input_bytes,
         })
     }
 }
@@ -141,6 +164,20 @@ pub struct BoundednessPolicy {
     pub absolute_max_result_bytes: u32,
     /// Absolute maximum steps executable.
     pub absolute_max_steps_executable: u32,
+    /// Absolute maximum timer entries.
+    pub absolute_max_timer_entries: u32,
+    /// Absolute maximum trace events.
+    pub absolute_max_trace_events: u64,
+    /// Absolute maximum journal batch bytes.
+    pub absolute_max_journal_batch_bytes: u32,
+    /// Absolute maximum queue depth.
+    pub absolute_max_queue_depth: u32,
+    /// Absolute maximum IPC payload bytes.
+    pub absolute_max_ipc_payload_bytes: u32,
+    /// Absolute maximum blob bytes.
+    pub absolute_max_blob_bytes: u64,
+    /// Absolute maximum input bytes.
+    pub absolute_max_input_bytes: u32,
 }
 
 impl BoundednessPolicy {
@@ -155,6 +192,13 @@ impl BoundednessPolicy {
         absolute_max_run_time_seconds: 2_592_000,
         absolute_max_result_bytes: 262_144,
         absolute_max_steps_executable: 1_000_000,
+        absolute_max_timer_entries: 1_000_000,
+        absolute_max_trace_events: 1_000_000,
+        absolute_max_journal_batch_bytes: 1_048_576,
+        absolute_max_queue_depth: 1_024,
+        absolute_max_ipc_payload_bytes: 1_048_576,
+        absolute_max_blob_bytes: 16_777_216,
+        absolute_max_input_bytes: 1_048_576,
     };
 
     /// Validates the computed budget against this policy. Returns the first
@@ -214,7 +258,80 @@ impl BoundednessPolicy {
                 limit: self.absolute_max_steps_executable,
             });
         }
+        validate_extended_budget(self, budget)?;
         Ok(())
+    }
+}
+
+fn validate_extended_budget(
+    policy: &BoundednessPolicy,
+    budget: &WholeWorkflowBudget,
+) -> Result<(), BudgetError> {
+    if budget.max_timer_entries > policy.absolute_max_timer_entries {
+        return Err(BudgetError::TimerEntriesExceeded {
+            actual: budget.max_timer_entries,
+            limit: policy.absolute_max_timer_entries,
+        });
+    }
+    if budget.max_trace_events > policy.absolute_max_trace_events {
+        return Err(BudgetError::TraceEventsExceeded {
+            actual: budget.max_trace_events,
+            limit: policy.absolute_max_trace_events,
+        });
+    }
+    validate_payload_budget(policy, budget)
+}
+
+fn validate_payload_budget(
+    policy: &BoundednessPolicy,
+    budget: &WholeWorkflowBudget,
+) -> Result<(), BudgetError> {
+    validate_u32_budget(
+        "journal",
+        budget.max_journal_batch_bytes,
+        policy.absolute_max_journal_batch_bytes,
+    )?;
+    validate_u32_budget(
+        "queue",
+        budget.max_queue_depth,
+        policy.absolute_max_queue_depth,
+    )?;
+    validate_u32_budget(
+        "ipc",
+        budget.max_ipc_payload_bytes,
+        policy.absolute_max_ipc_payload_bytes,
+    )?;
+    validate_u64_budget(
+        "blob",
+        budget.max_blob_bytes,
+        policy.absolute_max_blob_bytes,
+    )?;
+    validate_u32_budget(
+        "input",
+        budget.max_input_bytes,
+        policy.absolute_max_input_bytes,
+    )
+}
+
+fn validate_u32_budget(kind: &'static str, actual: u32, limit: u32) -> Result<(), BudgetError> {
+    if actual <= limit {
+        return Ok(());
+    }
+    match kind {
+        "journal" => Err(BudgetError::JournalBatchBytesExceeded { actual, limit }),
+        "queue" => Err(BudgetError::QueueDepthExceeded { actual, limit }),
+        "ipc" => Err(BudgetError::IpcPayloadBytesExceeded { actual, limit }),
+        _ => Err(BudgetError::InputBytesExceeded { actual, limit }),
+    }
+}
+
+fn validate_u64_budget(kind: &'static str, actual: u64, limit: u64) -> Result<(), BudgetError> {
+    if actual <= limit {
+        return Ok(());
+    }
+    match kind {
+        "blob" => Err(BudgetError::BlobBytesExceeded { actual, limit }),
+        _ => Err(BudgetError::TraceEventsExceeded { actual, limit }),
     }
 }
 
@@ -240,6 +357,20 @@ pub enum BudgetError {
     ResultBytesExceeded { actual: u32, limit: u32 },
     #[error("steps executable exceeded: {actual} > {limit}")]
     StepsExecutableExceeded { actual: u32, limit: u32 },
+    #[error("timer entries exceeded: {actual} > {limit}")]
+    TimerEntriesExceeded { actual: u32, limit: u32 },
+    #[error("trace events exceeded: {actual} > {limit}")]
+    TraceEventsExceeded { actual: u64, limit: u64 },
+    #[error("journal batch bytes exceeded: {actual} > {limit}")]
+    JournalBatchBytesExceeded { actual: u32, limit: u32 },
+    #[error("queue depth exceeded: {actual} > {limit}")]
+    QueueDepthExceeded { actual: u32, limit: u32 },
+    #[error("ipc payload bytes exceeded: {actual} > {limit}")]
+    IpcPayloadBytesExceeded { actual: u32, limit: u32 },
+    #[error("blob bytes exceeded: {actual} > {limit}")]
+    BlobBytesExceeded { actual: u64, limit: u64 },
+    #[error("input bytes exceeded: {actual} > {limit}")]
+    InputBytesExceeded { actual: u32, limit: u32 },
 }
 
 /// Aggregate whole-run budget required for runtime admission.
@@ -257,8 +388,13 @@ pub struct AggregateResourceBudget {
     pub max_run_time_seconds: u64,
     pub max_result_bytes: u32,
     pub max_total_slots_written: u32,
+    pub max_timer_entries: u32,
+    pub max_trace_events: u64,
     pub max_queue_depth: u32,
     pub max_journal_batch_bytes: u32,
+    pub max_ipc_payload_bytes: u32,
+    pub max_blob_bytes: u64,
+    pub max_input_bytes: u32,
     /// Maximum step budget per runtime tick (from ResourceContract).
     pub max_step_budget_per_tick: u64,
     /// Maximum transitions per runtime tick.
@@ -275,9 +411,14 @@ pub struct AggregateResourceCapacity {
     pub max_gather_items: u64,
     pub max_result_bytes: u64,
     pub max_total_slots_written: u64,
+    pub max_timer_entries: u64,
+    pub max_trace_events: u64,
     pub max_active_runs: u64,
     pub max_queue_depth: u64,
     pub max_journal_batch_bytes: u64,
+    pub max_ipc_payload_bytes: u64,
+    pub max_blob_bytes: u64,
+    pub max_input_bytes: u64,
     /// Maximum step budget per tick capacity.
     pub max_step_budget_per_tick: u64,
     /// Maximum transitions per tick capacity.
@@ -294,9 +435,14 @@ pub struct AggregateResourceUsage {
     pub max_gather_items: u64,
     pub max_result_bytes: u64,
     pub max_total_slots_written: u64,
+    pub max_timer_entries: u64,
+    pub max_trace_events: u64,
     pub max_active_runs: u64,
     pub max_queue_depth: u64,
     pub max_journal_batch_bytes: u64,
+    pub max_ipc_payload_bytes: u64,
+    pub max_blob_bytes: u64,
+    pub max_input_bytes: u64,
     /// Current step budget per tick usage.
     pub max_step_budget_per_tick: u64,
     /// Current transitions per tick usage.
@@ -420,8 +566,13 @@ impl AggregateResourceBudget {
             max_run_time_seconds: budget.max_run_time_seconds,
             max_result_bytes: budget.max_result_bytes,
             max_total_slots_written: budget.max_total_slots_written,
-            max_queue_depth: contract.max_queue_depth,
-            max_journal_batch_bytes: contract.max_journal_batch_bytes,
+            max_timer_entries: budget.max_timer_entries,
+            max_trace_events: budget.max_trace_events,
+            max_queue_depth: budget.max_queue_depth,
+            max_journal_batch_bytes: budget.max_journal_batch_bytes,
+            max_ipc_payload_bytes: budget.max_ipc_payload_bytes,
+            max_blob_bytes: budget.max_blob_bytes,
+            max_input_bytes: budget.max_input_bytes,
             max_step_budget_per_tick: contract.max_step_budget_per_tick,
             max_transitions_per_tick: contract.max_transitions_per_tick,
         })
@@ -479,6 +630,16 @@ impl AggregateResourceUsage {
                 u64::from(budget.max_total_slots_written),
                 "max_total_slots_written",
             )?,
+            max_timer_entries: add_dim(
+                self.max_timer_entries,
+                u64::from(budget.max_timer_entries),
+                "max_timer_entries",
+            )?,
+            max_trace_events: add_dim(
+                self.max_trace_events,
+                budget.max_trace_events,
+                "max_trace_events",
+            )?,
             max_active_runs: add_dim(self.max_active_runs, 1, "max_active_runs")?,
             max_queue_depth: add_dim(
                 self.max_queue_depth,
@@ -489,6 +650,17 @@ impl AggregateResourceUsage {
                 self.max_journal_batch_bytes,
                 u64::from(budget.max_journal_batch_bytes),
                 "max_journal_batch_bytes",
+            )?,
+            max_ipc_payload_bytes: add_dim(
+                self.max_ipc_payload_bytes,
+                u64::from(budget.max_ipc_payload_bytes),
+                "max_ipc_payload_bytes",
+            )?,
+            max_blob_bytes: add_dim(self.max_blob_bytes, budget.max_blob_bytes, "max_blob_bytes")?,
+            max_input_bytes: add_dim(
+                self.max_input_bytes,
+                u64::from(budget.max_input_bytes),
+                "max_input_bytes",
             )?,
             max_step_budget_per_tick: add_dim(
                 self.max_step_budget_per_tick,
@@ -543,6 +715,16 @@ impl AggregateResourceUsage {
                 u64::from(budget.max_total_slots_written),
                 "max_total_slots_written",
             )?,
+            max_timer_entries: sub_dim(
+                self.max_timer_entries,
+                u64::from(budget.max_timer_entries),
+                "max_timer_entries",
+            )?,
+            max_trace_events: sub_dim(
+                self.max_trace_events,
+                budget.max_trace_events,
+                "max_trace_events",
+            )?,
             max_active_runs: sub_dim(self.max_active_runs, 1, "max_active_runs")?,
             max_queue_depth: sub_dim(
                 self.max_queue_depth,
@@ -553,6 +735,17 @@ impl AggregateResourceUsage {
                 self.max_journal_batch_bytes,
                 u64::from(budget.max_journal_batch_bytes),
                 "max_journal_batch_bytes",
+            )?,
+            max_ipc_payload_bytes: sub_dim(
+                self.max_ipc_payload_bytes,
+                u64::from(budget.max_ipc_payload_bytes),
+                "max_ipc_payload_bytes",
+            )?,
+            max_blob_bytes: sub_dim(self.max_blob_bytes, budget.max_blob_bytes, "max_blob_bytes")?,
+            max_input_bytes: sub_dim(
+                self.max_input_bytes,
+                u64::from(budget.max_input_bytes),
+                "max_input_bytes",
             )?,
             max_step_budget_per_tick: sub_dim(
                 self.max_step_budget_per_tick,
@@ -607,6 +800,16 @@ impl AggregateResourceUsage {
             capacity.max_total_slots_written,
         )?;
         check_capacity(
+            "max_timer_entries",
+            self.max_timer_entries,
+            capacity.max_timer_entries,
+        )?;
+        check_capacity(
+            "max_trace_events",
+            self.max_trace_events,
+            capacity.max_trace_events,
+        )?;
+        check_capacity(
             "max_active_runs",
             self.max_active_runs,
             capacity.max_active_runs,
@@ -620,6 +823,21 @@ impl AggregateResourceUsage {
             "max_journal_batch_bytes",
             self.max_journal_batch_bytes,
             capacity.max_journal_batch_bytes,
+        )?;
+        check_capacity(
+            "max_ipc_payload_bytes",
+            self.max_ipc_payload_bytes,
+            capacity.max_ipc_payload_bytes,
+        )?;
+        check_capacity(
+            "max_blob_bytes",
+            self.max_blob_bytes,
+            capacity.max_blob_bytes,
+        )?;
+        check_capacity(
+            "max_input_bytes",
+            self.max_input_bytes,
+            capacity.max_input_bytes,
         )?;
         check_capacity(
             "max_step_budget_per_tick",
@@ -656,6 +874,41 @@ impl AggregateResourceUsage {
             "max_result_bytes",
             self.max_result_bytes,
             u64::from(policy.absolute_max_result_bytes),
+        )?;
+        check_policy(
+            "max_timer_entries",
+            self.max_timer_entries,
+            u64::from(policy.absolute_max_timer_entries),
+        )?;
+        check_policy(
+            "max_trace_events",
+            self.max_trace_events,
+            policy.absolute_max_trace_events,
+        )?;
+        check_policy(
+            "max_journal_batch_bytes",
+            self.max_journal_batch_bytes,
+            u64::from(policy.absolute_max_journal_batch_bytes),
+        )?;
+        check_policy(
+            "max_queue_depth",
+            self.max_queue_depth,
+            u64::from(policy.absolute_max_queue_depth),
+        )?;
+        check_policy(
+            "max_ipc_payload_bytes",
+            self.max_ipc_payload_bytes,
+            u64::from(policy.absolute_max_ipc_payload_bytes),
+        )?;
+        check_policy(
+            "max_blob_bytes",
+            self.max_blob_bytes,
+            policy.absolute_max_blob_bytes,
+        )?;
+        check_policy(
+            "max_input_bytes",
+            self.max_input_bytes,
+            u64::from(policy.absolute_max_input_bytes),
         )
     }
 }
@@ -725,14 +978,39 @@ pub fn validate_aggregate_budget(
         policy.max_total_slots,
     )?;
     check_policy(
+        "max_timer_entries",
+        u64::from(budget.max_timer_entries),
+        u64::from(policy.absolute_max_timer_entries),
+    )?;
+    check_policy(
+        "max_trace_events",
+        budget.max_trace_events,
+        policy.absolute_max_trace_events,
+    )?;
+    check_policy(
         "max_queue_depth",
         u64::from(budget.max_queue_depth),
-        u64::from(u32::MAX),
+        u64::from(policy.absolute_max_queue_depth),
     )?;
     check_policy(
         "max_journal_batch_bytes",
         u64::from(budget.max_journal_batch_bytes),
-        u64::from(u32::MAX),
+        u64::from(policy.absolute_max_journal_batch_bytes),
+    )?;
+    check_policy(
+        "max_ipc_payload_bytes",
+        u64::from(budget.max_ipc_payload_bytes),
+        u64::from(policy.absolute_max_ipc_payload_bytes),
+    )?;
+    check_policy(
+        "max_blob_bytes",
+        budget.max_blob_bytes,
+        policy.absolute_max_blob_bytes,
+    )?;
+    check_policy(
+        "max_input_bytes",
+        u64::from(budget.max_input_bytes),
+        u64::from(policy.absolute_max_input_bytes),
     )
 }
 
@@ -1043,6 +1321,18 @@ fn visit_node_for_total_steps(
             in_path.insert(to);
             stack.push(*target);
         }
+        CompiledNodeKind::Choose {
+            branches,
+            otherwise,
+        } => {
+            total = add_conditional_max_steps(nodes, branches, *otherwise, node_count, total)?;
+        }
+        CompiledNodeKind::ChooseSlot {
+            branches,
+            otherwise,
+        } => {
+            total = add_conditional_slot_max_steps(nodes, branches, *otherwise, node_count, total)?;
+        }
         _ => {
             push_successor_targets(&node.kind, stack);
             if let Some(next) = node.next {
@@ -1051,6 +1341,161 @@ fn visit_node_for_total_steps(
         }
     }
     Ok(total)
+}
+
+fn add_conditional_max_steps(
+    nodes: &[crate::workflow::CompiledNode],
+    branches: &[crate::workflow::ExprBranch],
+    otherwise: Option<StepIdx>,
+    node_count: usize,
+    total: u64,
+) -> Result<u64, WorkflowError> {
+    let mut max_branch = match otherwise {
+        Some(target) => count_path_steps(nodes, target, node_count)?,
+        None => 0,
+    };
+    for branch in branches {
+        let branch_steps = count_path_steps(nodes, branch.target, node_count)?;
+        max_branch = max_branch.max(branch_steps);
+    }
+    checked_step_add(total, max_branch)
+}
+
+fn add_conditional_slot_max_steps(
+    nodes: &[crate::workflow::CompiledNode],
+    branches: &[crate::workflow::SlotBranch],
+    otherwise: Option<StepIdx>,
+    node_count: usize,
+    total: u64,
+) -> Result<u64, WorkflowError> {
+    let mut max_branch = match otherwise {
+        Some(target) => count_path_steps(nodes, target, node_count)?,
+        None => 0,
+    };
+    for branch in branches {
+        let branch_steps = count_path_steps(nodes, branch.target, node_count)?;
+        max_branch = max_branch.max(branch_steps);
+    }
+    checked_step_add(total, max_branch)
+}
+
+fn checked_step_add(left: u64, right: u64) -> Result<u64, WorkflowError> {
+    match left.checked_add(right) {
+        Some(value) => Ok(value),
+        None => Err(WorkflowError::StepCountOverflow { actual: u64::MAX }),
+    }
+}
+
+fn count_path_steps(
+    nodes: &[crate::workflow::CompiledNode],
+    entry: StepIdx,
+    node_count: usize,
+) -> Result<u64, WorkflowError> {
+    let mut visited: Vec<bool> = vec![false; node_count];
+    let mut stack: Vec<StepIdx> = Vec::new();
+    stack.push(entry);
+    let mut total: u64 = 0;
+    while let Some(current) = stack.pop() {
+        let idx = find_node_position(nodes, current, node_count)?;
+        if visited.get(idx).copied() == Some(true) {
+            continue;
+        }
+        let Some(flag) = visited.get_mut(idx) else {
+            return Err(WorkflowError::StepOutOfBounds { step: current });
+        };
+        *flag = true;
+        total = checked_step_add(total, 1)?;
+        let node = node_at_position(nodes, idx, current)?;
+        push_path_successors(nodes, node, node_count, &mut stack)?;
+    }
+    Ok(total)
+}
+
+fn push_path_successors(
+    nodes: &[crate::workflow::CompiledNode],
+    node: &crate::workflow::CompiledNode,
+    node_count: usize,
+    stack: &mut Vec<StepIdx>,
+) -> Result<(), WorkflowError> {
+    if matches!(node.kind, CompiledNodeKind::Finish { .. }) {
+        return Ok(());
+    }
+    match &node.kind {
+        CompiledNodeKind::Choose {
+            branches,
+            otherwise,
+        } => {
+            push_longest_expr_branch(nodes, branches, *otherwise, node_count, stack)?;
+        }
+        CompiledNodeKind::ChooseSlot {
+            branches,
+            otherwise,
+        } => {
+            push_longest_slot_branch(nodes, branches, *otherwise, node_count, stack)?;
+        }
+        _ => push_successor_targets(&node.kind, stack),
+    }
+    if let Some(next) = node.next {
+        stack.push(next);
+    }
+    Ok(())
+}
+
+fn push_longest_expr_branch(
+    nodes: &[crate::workflow::CompiledNode],
+    branches: &[crate::workflow::ExprBranch],
+    otherwise: Option<StepIdx>,
+    node_count: usize,
+    stack: &mut Vec<StepIdx>,
+) -> Result<(), WorkflowError> {
+    let mut selected = otherwise;
+    let mut selected_steps = optional_path_steps(nodes, otherwise, node_count)?;
+    for branch in branches {
+        let branch_steps = count_path_steps(nodes, branch.target, node_count)?;
+        if branch_steps > selected_steps {
+            selected = Some(branch.target);
+            selected_steps = branch_steps;
+        }
+    }
+    push_selected_branch(selected, stack);
+    Ok(())
+}
+
+fn push_longest_slot_branch(
+    nodes: &[crate::workflow::CompiledNode],
+    branches: &[crate::workflow::SlotBranch],
+    otherwise: Option<StepIdx>,
+    node_count: usize,
+    stack: &mut Vec<StepIdx>,
+) -> Result<(), WorkflowError> {
+    let mut selected = otherwise;
+    let mut selected_steps = optional_path_steps(nodes, otherwise, node_count)?;
+    for branch in branches {
+        let branch_steps = count_path_steps(nodes, branch.target, node_count)?;
+        if branch_steps > selected_steps {
+            selected = Some(branch.target);
+            selected_steps = branch_steps;
+        }
+    }
+    push_selected_branch(selected, stack);
+    Ok(())
+}
+
+fn optional_path_steps(
+    nodes: &[crate::workflow::CompiledNode],
+    target: Option<StepIdx>,
+    node_count: usize,
+) -> Result<u64, WorkflowError> {
+    match target {
+        Some(step) => count_path_steps(nodes, step, node_count),
+        None => Ok(0),
+    }
+}
+
+fn push_selected_branch(selected: Option<StepIdx>, stack: &mut Vec<StepIdx>) {
+    if let Some(target) = selected {
+        stack.push(target);
+    }
 }
 
 /// Counts body region steps for a loop header and adds multiplied iterations to total.
@@ -1410,9 +1855,16 @@ fn push_error_handler_successors(body: StepIdx, handler: StepIdx, stack: &mut Ve
 }
 
 fn branch_count_to_u16(count: usize) -> Result<u16, WorkflowError> {
-    u16::try_from(count).map_err(|_| WorkflowError::StepCountOverflow {
-        actual: u64::try_from(count).unwrap_or(u64::MAX),
-    })
+    match u16::try_from(count) {
+        Ok(value) => Ok(value),
+        Err(_) => Err(WorkflowError::StepCountOverflow {
+            actual: usize_to_u64_saturating(count),
+        }),
+    }
+}
+
+fn usize_to_u64_saturating(value: usize) -> u64 {
+    u64::try_from(value).map_or(u64::MAX, core::convert::identity)
 }
 
 /// Computes max fanout and max nesting depth via a DFS walk.
@@ -1433,6 +1885,7 @@ fn compute_fanout_and_depth(
     max_for_each_iterations: &mut u32,
     max_together_branches: &mut u16,
     max_repeat_attempts: &mut u16,
+    max_timer_entries: &mut u32,
 ) -> Result<(), WorkflowError> {
     let idx = find_node_position(nodes, current, node_count)?;
     if visited.get(idx).copied() == Some(true) {
@@ -1470,6 +1923,7 @@ fn compute_fanout_and_depth(
         max_for_each_iterations,
         max_together_branches,
         max_repeat_attempts,
+        max_timer_entries,
     )?;
 
     let mut targets: Vec<StepIdx> = Vec::new();
@@ -1496,6 +1950,7 @@ fn compute_fanout_and_depth(
                 max_for_each_iterations,
                 max_together_branches,
                 max_repeat_attempts,
+                max_timer_entries,
             )?;
         }
     }
@@ -1567,6 +2022,7 @@ fn update_workflow_metrics(
     max_for_each_iterations: &mut u32,
     max_together_branches: &mut u16,
     max_repeat_attempts: &mut u16,
+    max_timer_entries: &mut u32,
 ) -> Result<(), WorkflowError> {
     match kind {
         CompiledNodeKind::Do { .. } => {
@@ -1598,6 +2054,15 @@ fn update_workflow_metrics(
         }
         CompiledNodeKind::RepeatStart { max_attempts, .. } => {
             *max_repeat_attempts = (*max_repeat_attempts).max(*max_attempts);
+        }
+        CompiledNodeKind::WaitUntil { .. }
+        | CompiledNodeKind::WaitEvent { .. }
+        | CompiledNodeKind::Ask { .. }
+        | CompiledNodeKind::RetryCheck { .. }
+        | CompiledNodeKind::RepeatCheck { .. } => {
+            *max_timer_entries = max_timer_entries
+                .checked_add(1)
+                .ok_or(WorkflowError::StepCountOverflow { actual: u64::MAX })?;
         }
         _ => {}
     }

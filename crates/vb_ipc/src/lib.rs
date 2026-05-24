@@ -45,7 +45,7 @@ pub use crate::frame::{
     validate_frame_bounds, validate_frame_magic, write_frame,
 };
 pub use crate::frame_types::{IpcFrame, IpcFrameHeader, decode_frame};
-pub use crate::ingress::{IngressFrame, MemoryIngress};
+pub use crate::ingress::{IngressFrame, MemoryIngress, MemoryIngressSender};
 pub use crate::metrics::{
     AggregateMetrics, IpcMetrics, JournalMetrics, RuntimeMetrics, ShardMetrics,
 };

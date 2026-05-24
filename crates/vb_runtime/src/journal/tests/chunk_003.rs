@@ -177,3 +177,72 @@ fn queued_storage_runtime_journal_maps_queue_full_to_runtime_error() {
         ]
     );
 }
+
+#[test]
+fn volatile_runtime_journal_accepts_appends_until_configured_capacity() {
+    let Some(capacity) = NonZeroUsize::new(2) else {
+        assert!(false, "test capacity must be non-zero");
+        return;
+    };
+    let journal = VolatileRuntimeJournal::with_capacity(capacity);
+    let run = RunId::new(51);
+    let workflow = WorkflowDigest::from_bytes([13; 32]);
+    let first = RuntimeJournalEvent::RunSubmitted { run, workflow };
+    let second = RuntimeJournalEvent::RunFinished {
+        run,
+        result: SlotIdx::new(0),
+    };
+
+    assert_eq!(journal.append(first.clone()), Ok(()));
+    assert_eq!(journal.append(second.clone()), Ok(()));
+
+    assert_eq!(journal.snapshot(), Ok(vec![first, second]));
+}
+
+#[test]
+fn volatile_runtime_journal_returns_journal_full_and_preserves_entries_when_capacity_is_reached() {
+    let Some(capacity) = NonZeroUsize::new(1) else {
+        assert!(false, "test capacity must be non-zero");
+        return;
+    };
+    let journal = VolatileRuntimeJournal::with_capacity(capacity);
+    let run = RunId::new(52);
+    let workflow = WorkflowDigest::from_bytes([14; 32]);
+    let kept = RuntimeJournalEvent::RunSubmitted { run, workflow };
+    let rejected = RuntimeJournalEvent::RunFailed { run };
+
+    assert_eq!(journal.append(kept.clone()), Ok(()));
+    assert_eq!(
+        journal.append(rejected),
+        Err(crate::RuntimeError::JournalFull { capacity: 1 })
+    );
+
+    assert_eq!(journal.snapshot(), Ok(vec![kept]));
+}
+
+#[test]
+fn volatile_runtime_journal_snapshots_remain_stable_after_full_append_rejection() {
+    let Some(capacity) = NonZeroUsize::new(2) else {
+        assert!(false, "test capacity must be non-zero");
+        return;
+    };
+    let journal = VolatileRuntimeJournal::with_capacity(capacity);
+    let run = RunId::new(53);
+    let first = RuntimeJournalEvent::RunCancelled { run, reason: None };
+    let second = RuntimeJournalEvent::RunFailed { run };
+    let rejected = RuntimeJournalEvent::WaitScheduled {
+        run,
+        step: StepIdx::new(1),
+    };
+
+    assert_eq!(journal.append(first.clone()), Ok(()));
+    assert_eq!(journal.append(second.clone()), Ok(()));
+    assert_eq!(
+        journal.append(rejected),
+        Err(crate::RuntimeError::JournalFull { capacity: 2 })
+    );
+
+    let expected = Ok(vec![first, second]);
+    assert_eq!(journal.snapshot(), expected.clone());
+    assert_eq!(journal.snapshot(), expected);
+}

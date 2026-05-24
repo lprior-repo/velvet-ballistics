@@ -1,0 +1,13 @@
+2026-05-23T14:14:57Z
+/home/lewis/src/vb-jpq7-24-verus-binding-gpt55
+COMMAND=verus verification/verus/vb_jpq724_events_for_run_production.rs
+vtsmnwnxqpunpozwsoxoupvwxyuwqxtz ef74f15b903f4ed86dfcb47b2526f1180809a495 vb-jpq7.24 bind Verus evidence to production exec
+/home/lewis/.local/bin/verus
+Verus
+  Version: 0.2026.05.05.d03e906
+  Profile: release
+  Platform: linux_x86_64
+  Toolchain: 1.95.0-x86_64-unknown-linux-gnu
+
+verification results:: 8 verified, 0 errors
+EXIT_CODE=0

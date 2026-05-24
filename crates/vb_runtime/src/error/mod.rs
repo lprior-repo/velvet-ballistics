@@ -25,6 +25,11 @@ pub enum RuntimeError {
     ShutdownInProgress,
     /// Runtime journal mutex was poisoned.
     JournalPoisoned,
+    /// Runtime journal reached its configured capacity without dropping or overwriting entries.
+    JournalFull {
+        /// Configured journal capacity in events.
+        capacity: usize,
+    },
     /// Core execution failure propagated through the runtime boundary.
     Core {
         /// Preserved core error source.

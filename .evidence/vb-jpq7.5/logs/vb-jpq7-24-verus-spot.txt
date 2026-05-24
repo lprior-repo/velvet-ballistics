@@ -1,0 +1,12 @@
+2026-05-23T17:32:30Z
+/home/lewis/src/vb-jpq7-24-verus-binding-gpt55
+Error: Workspace `vb-jpq7-24-verus-binding-gpt55` doesn't have a working-copy commit
+Verus
+  Version: 0.2026.05.05.d03e906
+  Profile: release
+  Platform: linux_x86_64
+  Toolchain: 1.95.0-x86_64-unknown-linux-gnu
+
+verification results:: 8 verified, 0 errors
+
+COMMAND_EXIT=0

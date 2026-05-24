@@ -1,0 +1,24 @@
+2026-05-23T17:11:53Z
+829d8bcd1b3ff89a26dc70de415dc7e24078fb11 rrmkylzxvslwoprxsozlwotvuqykknmr
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
+(Use the -nowarning option to disable this warning.)
+Running breadth-first search Model-Checking with fp 129 and seed -6552110119547960376 with 1 worker on 32 cores with 30688MB heap and 64MB offheap memory [pid: 3770497] (Linux 7.0.3-arch1-2 amd64, Oracle Corporation 26.0.1 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file /home/lewis/src/vb-jpq7-27-proof-ledger-gpt55/specs/tla/RecoveryReplayFull.tla
+Parsing file /tmp/Integers.tla
+Parsing file /tmp/Sequences.tla
+Parsing file /tmp/TLC.tla
+Parsing file /tmp/FiniteSets.tla
+Parsing file /tmp/Naturals.tla
+Semantic processing of module Naturals
+Semantic processing of module Integers
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module RecoveryReplayFull
+Starting... (2026-05-23 12:11:54)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-05-23 12:11:54.
+Progress(2) at 2026-05-23 12:11:57: 3,681 states generated (3,681 s/min), 3,681 distinct states found (3,681 ds/min), 3,679 states left on queue.
+
+COMMAND_EXIT=124

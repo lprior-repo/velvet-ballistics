@@ -7217,7 +7217,7 @@ mod tests {
 
     fn length_expression_workflow() -> Result<CompiledWorkflow, String> {
         direct_expression_workflow(
-            "test_length_expr",
+            "test_length",
             Box::new([
                 vb_core::ExprOp::LoadSlot(SlotIdx::new(0)),
                 vb_core::ExprOp::Length,
@@ -7229,7 +7229,7 @@ mod tests {
 
     fn empty_expression_workflow() -> Result<CompiledWorkflow, String> {
         direct_expression_workflow(
-            "test_empty_expr",
+            "test_empty",
             Box::new([
                 vb_core::ExprOp::LoadSlot(SlotIdx::new(0)),
                 vb_core::ExprOp::Empty,

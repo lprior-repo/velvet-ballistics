@@ -50,8 +50,21 @@ impl IngressFrame {
     }
 }
 
-/// Bounded multi-producer, single-consumer memory ingress queue.
+/// Cloneable producer handle for a bounded memory ingress queue.
 #[derive(Debug, Clone)]
+pub struct MemoryIngressSender {
+    sender: Sender<IngressFrame>,
+}
+
+impl MemoryIngressSender {
+    /// Attempts to submit a frame through this producer handle without blocking.
+    pub fn try_submit(&self, frame: IngressFrame) -> Result<(), IpcError> {
+        submit_to_sender(&self.sender, frame)
+    }
+}
+
+/// Bounded multi-producer, single-consumer memory ingress queue.
+#[derive(Debug)]
 pub struct MemoryIngress {
     pub(crate) sender: Sender<IngressFrame>,
     pub(crate) receiver: Receiver<IngressFrame>,
@@ -65,12 +78,17 @@ impl MemoryIngress {
         Self { sender, receiver }
     }
 
+    /// Creates an additional producer handle sharing this queue's bounded buffer.
+    #[must_use]
+    pub fn producer(&self) -> MemoryIngressSender {
+        MemoryIngressSender {
+            sender: self.sender.clone(),
+        }
+    }
+
     /// Attempts to submit a frame without blocking.
     pub fn try_submit(&self, frame: IngressFrame) -> Result<(), IpcError> {
-        self.sender.try_send(frame).map_err(|e| match e {
-            TrySendError::Full(_) => IpcError::Full,
-            TrySendError::Disconnected(_) => IpcError::Disconnected,
-        })
+        submit_to_sender(&self.sender, frame)
     }
 
     /// Attempts to receive one frame without blocking.
@@ -94,12 +112,18 @@ impl MemoryIngress {
         self.receiver.is_empty()
     }
 
-    /// Test-only helper that drops the original sender so the channel appears disconnected.
     #[cfg(test)]
     pub(crate) fn disconnect_sender(&mut self) {
         let (new_sender, _) = crossbeam_channel::bounded(1);
         self.sender = new_sender;
     }
+}
+
+fn submit_to_sender(sender: &Sender<IngressFrame>, frame: IngressFrame) -> Result<(), IpcError> {
+    sender.try_send(frame).map_err(|e| match e {
+        TrySendError::Full(_) => IpcError::Full,
+        TrySendError::Disconnected(_) => IpcError::Disconnected,
+    })
 }
 
 #[cfg(test)]
@@ -192,6 +216,83 @@ mod tests {
         assert_eq!(ingress.try_recv(), Ok(Some(frame1)));
         assert_eq!(ingress.try_recv(), Ok(Some(frame2)));
         assert_eq!(ingress.try_recv(), Ok(None));
+    }
+
+    #[test]
+    fn memory_ingress_producer_handle_preserves_queued_frames() {
+        let capacity = QueueCapacity::new(NonZeroUsize::new(2).unwrap());
+        let ingress = MemoryIngress::bounded(capacity);
+        let producer = ingress.producer();
+        let first = IngressFrame::new(
+            RunId::new(1),
+            WorkflowDigest::from_bytes([0u8; 32]),
+            Bytes::from_static(b"first"),
+            MaxPayloadBytes::DEFAULT,
+        )
+        .unwrap();
+        let second = IngressFrame::new(
+            RunId::new(2),
+            WorkflowDigest::from_bytes([0u8; 32]),
+            Bytes::from_static(b"second"),
+            MaxPayloadBytes::DEFAULT,
+        )
+        .unwrap();
+
+        assert_eq!(ingress.try_submit(first.clone()), Ok(()));
+        assert_eq!(producer.try_submit(second.clone()), Ok(()));
+
+        assert_eq!(ingress.try_recv(), Ok(Some(first)));
+        assert_eq!(ingress.try_recv(), Ok(Some(second)));
+        assert_eq!(ingress.try_recv(), Ok(None));
+    }
+
+    #[test]
+    fn cloned_producer_handles_share_queue_backpressure() {
+        let capacity = QueueCapacity::new(NonZeroUsize::new(1).unwrap());
+        let ingress = MemoryIngress::bounded(capacity);
+        let first_producer = ingress.producer();
+        let second_producer = first_producer.clone();
+        let first = IngressFrame::new(
+            RunId::new(1),
+            WorkflowDigest::from_bytes([0u8; 32]),
+            Bytes::from_static(b"first"),
+            MaxPayloadBytes::DEFAULT,
+        )
+        .unwrap();
+        let second = IngressFrame::new(
+            RunId::new(2),
+            WorkflowDigest::from_bytes([0u8; 32]),
+            Bytes::from_static(b"second"),
+            MaxPayloadBytes::DEFAULT,
+        )
+        .unwrap();
+
+        assert_eq!(first_producer.try_submit(first.clone()), Ok(()));
+        assert_eq!(
+            second_producer.try_submit(second.clone()),
+            Err(IpcError::Full)
+        );
+        assert_eq!(ingress.try_recv(), Ok(Some(first)));
+        assert_eq!(second_producer.try_submit(second.clone()), Ok(()));
+        assert_eq!(ingress.try_recv(), Ok(Some(second)));
+    }
+
+    #[test]
+    fn producer_handle_try_submit_returns_disconnected_after_receiver_drop() {
+        let capacity = QueueCapacity::new(NonZeroUsize::new(1).unwrap());
+        let ingress = MemoryIngress::bounded(capacity);
+        let producer = ingress.producer();
+        let frame = IngressFrame::new(
+            RunId::new(1),
+            WorkflowDigest::from_bytes([0u8; 32]),
+            Bytes::from_static(b"frame"),
+            MaxPayloadBytes::DEFAULT,
+        )
+        .unwrap();
+
+        drop(ingress);
+
+        assert_eq!(producer.try_submit(frame), Err(IpcError::Disconnected));
     }
 
     #[test]

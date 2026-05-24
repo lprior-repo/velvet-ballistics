@@ -173,7 +173,7 @@ fn kani_gate_08_structure_coverage() {
 #[kani::proof]
 #[kani::unwind(3)]
 fn kani_gate_08_arbitrary_resource_contract() {
-    let mut parts: WorkflowParts = kani::any();
+    let parts: WorkflowParts = kani::any();
     kani::assume(parts.slot_count > 0);
     kani::assume(parts.slot_count <= 16);
 
@@ -213,6 +213,7 @@ fn kani_gate_08_empty_nodes_valid_accessors_pass() {
             && acc.path.iter().all(|s| match s {
                 PathSegment::Field(fid) => fid.get() < parts.symbols_count,
                 PathSegment::Index(idx) => *idx != u32::MAX,
+                _ => false,
             })
     });
     kani::assume(has_valid_accessor);

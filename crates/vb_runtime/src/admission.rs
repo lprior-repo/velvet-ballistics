@@ -7,7 +7,10 @@
 
 use std::sync::Arc;
 use thiserror::Error;
-use vb_core::budget::{AggregateResourceBudget, AggregateResourceCapacity, AggregateResourceUsage};
+use vb_core::budget::{
+    AggregateBudgetError, AggregateResourceBudget, AggregateResourceCapacity,
+    AggregateResourceUsage, BoundednessPolicy, validate_aggregate_budget,
+};
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, RunId, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
@@ -88,6 +91,17 @@ pub struct RunAdmission {
     budget: Option<AggregateResourceBudget>,
     /// Actions whose idempotency evidence passed artifact admission.
     idempotency_attested: Box<[ActionId]>,
+}
+
+/// Aggregate resource request plus policy used by runtime budget admission.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AdmissionBudgetRequest {
+    /// Aggregate resources requested by the run.
+    pub requested: AggregateResourceBudget,
+    /// Shard-local aggregate resource capacity available for admission.
+    pub available: AggregateResourceCapacity,
+    /// Policy ceiling that the requested budget must satisfy before capacity is reserved.
+    pub policy: BoundednessPolicy,
 }
 
 impl RunAdmission {
@@ -212,6 +226,50 @@ pub enum AdmissionError {
         requested: u64,
         /// Available aggregate amount.
         available: u64,
+    },
+    /// The requested aggregate budget exceeds admission policy.
+    #[error("admission rejected: budget policy exceeded for {resource}: {actual} > {limit}")]
+    BudgetPolicyExceeded {
+        /// Resource dimension that failed comparison.
+        resource: &'static str,
+        /// Actual aggregate amount.
+        actual: u64,
+        /// Policy limit.
+        limit: u64,
+    },
+    /// Aggregate budget arithmetic overflowed before admission could reserve capacity.
+    #[error("admission rejected: aggregate budget overflow for {resource}")]
+    ResourceBudgetOverflow {
+        /// Resource dimension that overflowed.
+        resource: &'static str,
+    },
+    /// Aggregate budget arithmetic underflowed before admission could release capacity.
+    #[error("admission rejected: aggregate budget underflow for {resource}")]
+    ResourceBudgetUnderflow {
+        /// Resource dimension that underflowed.
+        resource: &'static str,
+    },
+    /// Aggregate budget capacity configuration is invalid.
+    #[error("admission rejected: invalid aggregate capacity for {resource}")]
+    ResourceBudgetInvalidCapacity {
+        /// Resource dimension with invalid capacity.
+        resource: &'static str,
+    },
+    /// Per-tick step ceiling is invalid or exceeded.
+    #[error("admission rejected: step ceiling exceeded: {requested} > {limit}")]
+    ResourceStepCeilingExceeded {
+        /// Requested steps per tick.
+        requested: u64,
+        /// Ceiling limit.
+        limit: u64,
+    },
+    /// Per-tick transition ceiling is invalid or exceeded.
+    #[error("admission rejected: transition ceiling exceeded: {requested} > {limit}")]
+    ResourcePerTickCeilingExceeded {
+        /// Requested transitions per tick.
+        requested: u64,
+        /// Ceiling limit.
+        limit: u64,
     },
     /// Artifact envelope failed to decode as a valid accepted artifact.
     #[error("admission rejected: artifact envelope decode failed")]
@@ -637,12 +695,39 @@ pub fn admit_run_with_budget(
     requested: AggregateResourceBudget,
     available: AggregateResourceCapacity,
 ) -> Result<RunAdmission, AdmissionError> {
+    admit_run_with_budget_policy(
+        store,
+        policy,
+        digest,
+        run_id,
+        caps,
+        AdmissionBudgetRequest {
+            requested,
+            available,
+            policy: BoundednessPolicy::DEFAULT,
+        },
+    )
+}
+
+/// Performs artifact admission plus policy and aggregate capacity admission.
+pub fn admit_run_with_budget_policy(
+    store: &dyn ArtifactStore,
+    policy: RuntimePolicy,
+    digest: WorkflowDigest,
+    run_id: RunId,
+    caps: CapabilitySet,
+    budget: AdmissionBudgetRequest,
+) -> Result<RunAdmission, AdmissionError> {
+    validate_aggregate_budget(&budget.requested, &budget.policy).map_err(map_budget_error)?;
     let requested_usage = AggregateResourceUsage::default()
-        .try_add_budget(&requested)
-        .map_err(|error| map_budget_error(error, requested, available))?;
+        .try_add_budget(&budget.requested)
+        .map_err(map_budget_error)?;
     requested_usage
-        .fits_within(&available)
-        .map_err(|error| map_budget_error(error, requested, available))?;
+        .check_policy(&budget.policy)
+        .map_err(map_budget_error)?;
+    requested_usage
+        .fits_within(&budget.available)
+        .map_err(map_budget_error)?;
     match policy {
         RuntimePolicy::Strict | RuntimePolicy::Journaled if !store.compiled_ir_exists(digest) => {
             return Err(AdmissionError::ArtifactNotFound { digest });
@@ -656,17 +741,26 @@ pub fn admit_run_with_budget(
         }
     }
     Ok(RunAdmission::with_budget(
-        digest, run_id, caps, policy, requested,
+        digest,
+        run_id,
+        caps,
+        policy,
+        budget.requested,
     ))
 }
 
-fn map_budget_error(
-    error: vb_core::budget::AggregateBudgetError,
-    _requested_budget: AggregateResourceBudget,
-    _available_capacity: AggregateResourceCapacity,
-) -> AdmissionError {
+fn map_budget_error(error: AggregateBudgetError) -> AdmissionError {
     match error {
-        vb_core::budget::AggregateBudgetError::CapacityExceeded {
+        AggregateBudgetError::PolicyExceeded {
+            resource,
+            actual,
+            limit,
+        } => AdmissionError::BudgetPolicyExceeded {
+            resource,
+            actual,
+            limit,
+        },
+        AggregateBudgetError::CapacityExceeded {
             resource,
             requested,
             available,
@@ -675,17 +769,35 @@ fn map_budget_error(
             requested,
             available,
         },
-        vb_core::budget::AggregateBudgetError::Overflow { resource } => {
-            AdmissionError::ResourceCapacityExceeded {
-                resource,
-                requested: u64::MAX,
-                available: u64::MAX,
-            }
+        AggregateBudgetError::Overflow { resource } => {
+            AdmissionError::ResourceBudgetOverflow { resource }
         }
-        _ => AdmissionError::ResourceCapacityExceeded {
-            resource: "aggregate_resource_budget",
-            requested: u64::MAX,
-            available: 0,
+        AggregateBudgetError::Underflow { resource } => {
+            AdmissionError::ResourceBudgetUnderflow { resource }
+        }
+        AggregateBudgetError::InvalidCapacity { resource } => {
+            AdmissionError::ResourceBudgetInvalidCapacity { resource }
+        }
+        AggregateBudgetError::StepCeilingExceeded { requested, limit } => {
+            AdmissionError::ResourceStepCeilingExceeded { requested, limit }
+        }
+        AggregateBudgetError::PerTickCeilingExceeded { requested, limit } => {
+            AdmissionError::ResourcePerTickCeilingExceeded { requested, limit }
+        }
+        AggregateBudgetError::WorkflowBudget(_) => AdmissionError::BudgetPolicyExceeded {
+            resource: "workflow_budget",
+            actual: u64::MAX,
+            limit: 0,
+        },
+        AggregateBudgetError::ReservationNotFound { .. } => AdmissionError::BudgetPolicyExceeded {
+            resource: "reservation_not_found",
+            actual: u64::MAX,
+            limit: 0,
+        },
+        _ => AdmissionError::BudgetPolicyExceeded {
+            resource: "unknown_aggregate_budget_error",
+            actual: u64::MAX,
+            limit: 0,
         },
     }
 }
@@ -1559,24 +1671,29 @@ mod tests {
         let digest = test_digest();
         let run_id = RunId::new(1);
         let caps = CapabilitySet::empty();
-        // Request more steps than the capacity allows.
+        // Request more steps than the capacity allows, while staying inside policy.
         let requested = AggregateResourceBudget {
-            max_steps_executable: u32::MAX,
-            max_action_tickets: u32::MAX,
-            max_parallel_in_flight: u16::MAX,
-            max_retries_per_action: u16::MAX,
-            max_gather_pages: u32::MAX,
-            max_gather_items: u32::MAX,
-            max_for_each_iterations: u32::MAX,
-            max_together_branches: u16::MAX,
-            max_repeat_attempts: u16::MAX,
-            max_run_time_seconds: u64::MAX,
-            max_result_bytes: u32::MAX,
-            max_total_slots_written: u32::MAX,
-            max_queue_depth: u32::MAX,
-            max_journal_batch_bytes: u32::MAX,
-            max_step_budget_per_tick: u64::MAX,
-            max_transitions_per_tick: u64::MAX,
+            max_steps_executable: 10,
+            max_action_tickets: 1,
+            max_parallel_in_flight: 1,
+            max_retries_per_action: 1,
+            max_gather_pages: 1,
+            max_gather_items: 1,
+            max_for_each_iterations: 1,
+            max_together_branches: 1,
+            max_repeat_attempts: 1,
+            max_run_time_seconds: 10,
+            max_result_bytes: 1,
+            max_total_slots_written: 1,
+            max_timer_entries: 1,
+            max_trace_events: 1,
+            max_queue_depth: 1,
+            max_journal_batch_bytes: 1,
+            max_ipc_payload_bytes: 1,
+            max_blob_bytes: 1,
+            max_input_bytes: 1,
+            max_step_budget_per_tick: 1,
+            max_transitions_per_tick: 1,
         };
         let capacity = AggregateResourceCapacity {
             max_steps_executable: 0,
@@ -1586,9 +1703,14 @@ mod tests {
             max_gather_items: u64::MAX,
             max_result_bytes: u64::MAX,
             max_total_slots_written: u64::MAX,
+            max_timer_entries: u64::MAX,
+            max_trace_events: u64::MAX,
             max_active_runs: u64::MAX,
             max_queue_depth: u64::MAX,
             max_journal_batch_bytes: u64::MAX,
+            max_ipc_payload_bytes: u64::MAX,
+            max_blob_bytes: u64::MAX,
+            max_input_bytes: u64::MAX,
             max_step_budget_per_tick: u64::MAX,
             max_transitions_per_tick: u64::MAX,
         };
@@ -1607,6 +1729,84 @@ mod tests {
             result,
             Err(AdmissionError::ResourceCapacityExceeded { .. })
         ));
+    }
+
+    #[test]
+    fn admit_run_with_budget_policy_rejects_over_policy_before_capacity() {
+        struct AlwaysPresentStore;
+        impl ArtifactStore for AlwaysPresentStore {
+            fn compiled_ir_exists(&self, _digest: WorkflowDigest) -> bool {
+                true
+            }
+        }
+        let requested = AggregateResourceBudget {
+            max_steps_executable: 10,
+            max_action_tickets: 1,
+            max_parallel_in_flight: 1,
+            max_retries_per_action: 1,
+            max_gather_pages: 1,
+            max_gather_items: 1,
+            max_for_each_iterations: 1,
+            max_together_branches: 1,
+            max_repeat_attempts: 1,
+            max_run_time_seconds: 10,
+            max_result_bytes: 2_001,
+            max_total_slots_written: 1,
+            max_timer_entries: 1,
+            max_trace_events: 1,
+            max_queue_depth: 1,
+            max_journal_batch_bytes: 1,
+            max_ipc_payload_bytes: 1,
+            max_blob_bytes: 1,
+            max_input_bytes: 1,
+            max_step_budget_per_tick: 1,
+            max_transitions_per_tick: 1,
+        };
+        let capacity = AggregateResourceCapacity {
+            max_steps_executable: u64::MAX,
+            max_action_tickets: u64::MAX,
+            max_parallel_in_flight: u32::MAX,
+            max_gather_pages: u64::MAX,
+            max_gather_items: u64::MAX,
+            max_result_bytes: u64::MAX,
+            max_total_slots_written: u64::MAX,
+            max_timer_entries: u64::MAX,
+            max_trace_events: u64::MAX,
+            max_active_runs: u64::MAX,
+            max_queue_depth: u64::MAX,
+            max_journal_batch_bytes: u64::MAX,
+            max_ipc_payload_bytes: u64::MAX,
+            max_blob_bytes: u64::MAX,
+            max_input_bytes: u64::MAX,
+            max_step_budget_per_tick: u64::MAX,
+            max_transitions_per_tick: u64::MAX,
+        };
+        let budget_policy = BoundednessPolicy {
+            absolute_max_result_bytes: 2_000,
+            ..BoundednessPolicy::DEFAULT
+        };
+
+        let result = admit_run_with_budget_policy(
+            &AlwaysPresentStore,
+            RuntimePolicy::Strict,
+            test_digest(),
+            RunId::new(77),
+            CapabilitySet::empty(),
+            AdmissionBudgetRequest {
+                requested,
+                available: capacity,
+                policy: budget_policy,
+            },
+        );
+
+        assert_eq!(
+            result,
+            Err(AdmissionError::BudgetPolicyExceeded {
+                resource: "max_result_bytes",
+                actual: 2_001,
+                limit: 2_000,
+            })
+        );
     }
 
     #[test]
@@ -1635,8 +1835,13 @@ mod tests {
             max_run_time_seconds: 0,
             max_result_bytes: 0,
             max_total_slots_written: 0,
+            max_timer_entries: 0,
+            max_trace_events: 0,
             max_queue_depth: 0,
             max_journal_batch_bytes: 0,
+            max_ipc_payload_bytes: 0,
+            max_blob_bytes: 0,
+            max_input_bytes: 0,
             max_step_budget_per_tick: 0,
             max_transitions_per_tick: 0,
         };
@@ -1648,9 +1853,14 @@ mod tests {
             max_gather_items: u64::MAX,
             max_result_bytes: u64::MAX,
             max_total_slots_written: u64::MAX,
+            max_timer_entries: u64::MAX,
+            max_trace_events: u64::MAX,
             max_active_runs: u64::MAX,
             max_queue_depth: u64::MAX,
             max_journal_batch_bytes: u64::MAX,
+            max_ipc_payload_bytes: u64::MAX,
+            max_blob_bytes: u64::MAX,
+            max_input_bytes: u64::MAX,
             max_step_budget_per_tick: u64::MAX,
             max_transitions_per_tick: u64::MAX,
         };

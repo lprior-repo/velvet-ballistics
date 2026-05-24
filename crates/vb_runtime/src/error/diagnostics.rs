@@ -15,6 +15,7 @@ impl RuntimeError {
     pub const SHUTDOWN_IN_PROGRESS_CODE: DiagnosticCode = DiagnosticCode::new(0x2006);
     pub const JOURNAL_POISONED_CODE: DiagnosticCode = DiagnosticCode::new(0x2007);
     pub const STORAGE_JOURNAL_APPEND_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x2008);
+    pub const JOURNAL_FULL_CODE: DiagnosticCode = DiagnosticCode::new(0x201E);
     pub const ADMISSION_HEADER_PERSISTENCE_FAILED_CODE: DiagnosticCode =
         DiagnosticCode::new(0x2015);
     pub const UNSUPPORTED_ASYNC_STRICT_ACK_CODE: DiagnosticCode = DiagnosticCode::new(0x2009);
@@ -49,6 +50,7 @@ impl RuntimeError {
             Self::UnsupportedOperation { .. } => Self::UNSUPPORTED_OPERATION_CODE,
             Self::ShutdownInProgress => Self::SHUTDOWN_IN_PROGRESS_CODE,
             Self::JournalPoisoned => Self::JOURNAL_POISONED_CODE,
+            Self::JournalFull { .. } => Self::JOURNAL_FULL_CODE,
             Self::StorageJournalAppend { .. } => Self::STORAGE_JOURNAL_APPEND_FAILED_CODE,
             Self::AdmissionHeaderPersistenceFailed { .. } => {
                 Self::ADMISSION_HEADER_PERSISTENCE_FAILED_CODE
@@ -92,6 +94,7 @@ impl RuntimeError {
             Self::QueueFull | Self::ActiveRunCapacityExceeded { .. } => {
                 Some(Self::QUEUE_FULL_RUNTIME_CODE)
             }
+            Self::JournalFull { .. } => Some(Self::QUEUE_FULL_RUNTIME_CODE),
             Self::JournalPoisoned | Self::UnsupportedAsyncStrictAck => {
                 Some(Self::STORAGE_ERROR_RUNTIME_CODE)
             }

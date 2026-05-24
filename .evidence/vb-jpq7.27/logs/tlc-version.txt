@@ -1,0 +1,5 @@
+2026-05-23T17:04:11Z
+829d8bcd1b3ff89a26dc70de415dc7e24078fb11 rrmkylzxvslwoprxsozlwotvuqykknmr
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Error: Error: unrecognized option: -version
+Usage: java tlc2.TLC [-option] inputfile

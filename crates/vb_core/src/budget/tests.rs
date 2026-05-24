@@ -104,11 +104,19 @@ fn budget_branching_workflow() {
         },
     ];
     let contract = test_contract(4, 1);
-    let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
-        .ok()
-        .filter(|b| b.max_total_steps == 4 && b.max_fanout == 2);
-
-    assert!(budget.is_some(), "branching workflow budget mismatch");
+    match WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract) {
+        Ok(actual) => {
+            assert_eq!(
+                actual.max_total_steps, 2,
+                "conditional path uses max branch cost"
+            );
+            assert_eq!(
+                actual.max_fanout, 2,
+                "choose branch fanout is counted exactly"
+            );
+        }
+        Err(error) => panic!("expected branching budget, got {error:?}"),
+    }
 }
 
 #[test]
@@ -187,6 +195,86 @@ fn budget_nested_loop_depth() {
         .filter(|b| b.max_nesting_depth == 2);
 
     assert!(budget.is_some(), "nested loop depth mismatch");
+}
+
+#[test]
+fn whole_workflow_budget_multiplies_nested_fanout_loop_body_steps() -> Result<(), String> {
+    let nodes = nested_fanout_loop_nodes();
+    let contract = test_contract(8, 8);
+
+    let actual = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
+        .map_err(|error| format!("unexpected budget error: {error:?}"))?;
+
+    ensure_equal(actual.max_total_steps, 11)?;
+    ensure_equal(actual.max_fanout, 2)?;
+    ensure_equal(actual.max_for_each_iterations, 2)?;
+    ensure_equal(actual.max_together_branches, 2)
+}
+
+#[test]
+fn whole_workflow_budget_accumulates_sequential_collect_reduce_repeat_and_resources()
+-> Result<(), String> {
+    let nodes = sequential_collect_reduce_repeat_wait_nodes();
+    let contract = ResourceContract {
+        max_collect_items: 3,
+        max_retry_attempts: 4,
+        max_output_bytes: 123,
+        max_blob_bytes: 456,
+        max_ipc_payload_bytes: 78,
+        max_queue_depth: 9,
+        max_journal_batch_bytes: 10,
+        max_input_bytes: 11,
+        ..test_contract(12, 12)
+    };
+
+    let actual = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
+        .map_err(|error| format!("unexpected budget error: {error:?}"))?;
+
+    ensure_equal(actual.max_gather_pages, 1)?;
+    ensure_equal(actual.max_gather_items, 3)?;
+    ensure_equal(actual.max_repeat_attempts, 2)?;
+    ensure_equal(actual.max_timer_entries, 1)?;
+    ensure_equal(actual.max_result_bytes, 123)?;
+    ensure_equal(actual.max_blob_bytes, 456)?;
+    ensure_equal(actual.max_ipc_payload_bytes, 78)?;
+    ensure_equal(actual.max_queue_depth, 9)?;
+    ensure_equal(actual.max_journal_batch_bytes, 10)?;
+    ensure_equal(actual.max_input_bytes, 11)
+}
+
+#[test]
+fn whole_workflow_budget_uses_conditional_max_instead_of_branch_sum() -> Result<(), String> {
+    let nodes = conditional_max_nodes();
+    let contract = test_contract(8, 4);
+
+    let actual = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
+        .map_err(|error| format!("unexpected budget error: {error:?}"))?;
+
+    ensure_equal(actual.max_total_steps, 4)?;
+    ensure_equal(actual.max_fanout, 2)
+}
+
+#[test]
+fn whole_workflow_budget_rejects_unbounded_jump_cycle_with_exact_error() -> Result<(), String> {
+    let nodes = vec![CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Jump {
+            target: StepIdx::new(0),
+        },
+    }];
+    let contract = test_contract(1, 1);
+
+    match WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract) {
+        Err(WorkflowError::JumpCycle { step, target }) => {
+            ensure_equal(step, StepIdx::new(0))?;
+            ensure_equal(target, StepIdx::new(0))
+        }
+        other => Err(format!("expected JumpCycle for self jump, got {other:?}")),
+    }
 }
 
 #[test]
@@ -495,7 +583,7 @@ fn budget_choose_fanout_counted() {
     let contract = test_contract(3, 1);
     let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
         .ok()
-        .filter(|b| b.max_fanout == 2 && b.max_total_steps == 3);
+        .filter(|b| b.max_fanout == 2 && b.max_total_steps == 2);
 
     assert!(budget.is_some(), "choose fanout budget mismatch");
 }
@@ -848,6 +936,13 @@ fn blackhat_steps_executable_saturates_on_large_total() {
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 7,
+        max_trace_events: 8,
+        max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 9,
+        max_blob_bytes: 10,
+        max_input_bytes: 11,
+        max_queue_depth: 0,
     };
 
     let saturated = u32::try_from(budget.max_total_steps).unwrap_or(u32::MAX);
@@ -1245,6 +1340,13 @@ const fn test_budget(
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 3,
+        max_trace_events: 4,
+        max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 5,
+        max_blob_bytes: 6,
+        max_input_bytes: 7,
+        max_queue_depth: 0,
     }
 }
 
@@ -1264,6 +1366,7 @@ const fn test_policy(
         absolute_max_run_time_seconds: 2_592_000,
         absolute_max_result_bytes: 262_144,
         absolute_max_steps_executable: 1_000_000,
+        ..BoundednessPolicy::DEFAULT
     }
 }
 
@@ -1289,6 +1392,164 @@ fn single_node_workflow() -> Vec<CompiledNode> {
             result: SlotIdx::new(0),
         },
     }]
+}
+
+fn test_node(id: u16, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
+    CompiledNode {
+        id: StepIdx::new(id),
+        output: None,
+        next: next.map(StepIdx::new),
+        on_error: None,
+        error_slot: None,
+        kind,
+    }
+}
+
+fn finish_node(id: u16) -> CompiledNode {
+    test_node(
+        id,
+        None,
+        CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    )
+}
+
+fn nested_fanout_loop_nodes() -> Vec<CompiledNode> {
+    vec![
+        test_node(
+            0,
+            None,
+            CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(0),
+                item_slot: SlotIdx::new(1),
+                limit: 2,
+                body: StepIdx::new(1),
+                done: StepIdx::new(5),
+            },
+        ),
+        test_node(
+            1,
+            None,
+            CompiledNodeKind::TogetherStart {
+                branches: vec![StepIdx::new(2), StepIdx::new(3)].into_boxed_slice(),
+                join: StepIdx::new(4),
+            },
+        ),
+        test_node(2, None, CompiledNodeKind::Nop),
+        test_node(3, None, CompiledNodeKind::Nop),
+        test_node(
+            4,
+            None,
+            CompiledNodeKind::TogetherJoin {
+                branch_count: 2,
+                accumulator: SlotIdx::new(2),
+            },
+        ),
+        test_node(
+            5,
+            Some(6),
+            CompiledNodeKind::ForEachJoin {
+                output: SlotIdx::new(3),
+            },
+        ),
+        finish_node(6),
+    ]
+}
+
+fn sequential_collect_reduce_repeat_wait_nodes() -> Vec<CompiledNode> {
+    vec![
+        test_node(
+            0,
+            None,
+            CompiledNodeKind::CollectStart {
+                source: SlotIdx::new(0),
+                limit: 3,
+                page_size: 1,
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+        ),
+        test_node(1, None, CompiledNodeKind::Nop),
+        test_node(
+            2,
+            Some(3),
+            CompiledNodeKind::CollectFinish {
+                collector_slot: SlotIdx::new(2),
+            },
+        ),
+        test_node(
+            3,
+            None,
+            CompiledNodeKind::ReduceStart {
+                input: SlotIdx::new(2),
+                accumulator: SlotIdx::new(3),
+                initial: ConstIdx::new(0),
+                body: StepIdx::new(4),
+                done: StepIdx::new(5),
+            },
+        ),
+        test_node(4, None, CompiledNodeKind::Nop),
+        test_node(
+            5,
+            Some(6),
+            CompiledNodeKind::ReduceFinish {
+                accumulator: SlotIdx::new(3),
+            },
+        ),
+        test_node(
+            6,
+            None,
+            CompiledNodeKind::RepeatStart {
+                max_attempts: 2,
+                body: StepIdx::new(7),
+                done: StepIdx::new(8),
+            },
+        ),
+        test_node(
+            7,
+            None,
+            CompiledNodeKind::WaitUntil {
+                deadline_slot: SlotIdx::new(4),
+            },
+        ),
+        test_node(
+            8,
+            Some(9),
+            CompiledNodeKind::RepeatFinish {
+                result: SlotIdx::new(5),
+            },
+        ),
+        finish_node(9),
+    ]
+}
+
+fn conditional_max_nodes() -> Vec<CompiledNode> {
+    vec![
+        test_node(
+            0,
+            None,
+            CompiledNodeKind::ChooseSlot {
+                branches: vec![
+                    SlotBranch {
+                        condition: SlotIdx::new(0),
+                        target: StepIdx::new(1),
+                    },
+                    SlotBranch {
+                        condition: SlotIdx::new(1),
+                        target: StepIdx::new(3),
+                    },
+                ]
+                .into_boxed_slice(),
+                otherwise: Some(StepIdx::new(5)),
+            },
+        ),
+        test_node(1, Some(2), CompiledNodeKind::Nop),
+        finish_node(2),
+        test_node(3, Some(4), CompiledNodeKind::Nop),
+        test_node(4, Some(5), CompiledNodeKind::Nop),
+        finish_node(5),
+    ]
 }
 
 // -------------------------------------------------------------------------
@@ -2045,7 +2306,7 @@ fn whole_workflow_budget_max_total_slots_derives_from_contract() -> Result<(), S
 }
 
 #[test]
-fn whole_workflow_budget_max_result_bytes_from_contract() -> Result<(), String> {
+fn whole_workflow_budget_result_bytes_derive_from_contract() -> Result<(), String> {
     let nodes = single_node_workflow();
     let mut contract = test_contract(1, 1);
     contract.max_output_bytes = 9999;
@@ -2770,6 +3031,7 @@ fn policy_reports_first_violation_steps_over_slots_over() -> Result<(), String> 
         absolute_max_run_time_seconds: 2_592_000,
         absolute_max_result_bytes: 262_144,
         absolute_max_steps_executable: 1_000_000,
+        ..BoundednessPolicy::DEFAULT
     };
     match policy.validate(&budget) {
         Err(BudgetError::TotalStepsExceeded { actual, limit }) => {
@@ -3045,6 +3307,13 @@ fn whole_workflow_budget_max_fields() -> Result<(), String> {
         max_run_time_seconds: u64::MAX,
         max_result_bytes: u32::MAX,
         max_total_slots_written: u32::MAX,
+        max_timer_entries: u32::MAX,
+        max_trace_events: u64::MAX,
+        max_journal_batch_bytes: u32::MAX,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
+        max_queue_depth: u32::MAX,
     };
     ensure_equal(budget.max_total_steps, u64::MAX)?;
     ensure_equal(budget.max_total_slots, u64::MAX)?;
@@ -3205,6 +3474,7 @@ fn boundedness_policy_custom_zero_limits_accept_zero_budget() -> Result<(), Stri
         absolute_max_run_time_seconds: 0,
         absolute_max_result_bytes: 0,
         absolute_max_steps_executable: 0,
+        ..BoundednessPolicy::DEFAULT
     };
     let budget = test_budget(0, 0, 0, 0);
     ensure_equal(policy.validate(&budget), Ok(()))
@@ -3222,6 +3492,7 @@ fn boundedness_policy_custom_zero_limits_reject_nonzero() -> Result<(), String> 
         absolute_max_run_time_seconds: 0,
         absolute_max_result_bytes: 0,
         absolute_max_steps_executable: 0,
+        ..BoundednessPolicy::DEFAULT
     };
     let budget = test_budget(1, 0, 0, 0);
     match policy.validate(&budget) {
@@ -3250,9 +3521,14 @@ fn ut_budget_add_never_overflows() {
         max_gather_items: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 12,
+        max_trace_events: 13,
         max_active_runs: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 14,
+        max_blob_bytes: 15,
+        max_input_bytes: 16,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -3269,8 +3545,13 @@ fn ut_budget_add_never_overflows() {
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 7,
+        max_trace_events: 8,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 9,
+        max_blob_bytes: 10,
+        max_input_bytes: 11,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -3306,8 +3587,13 @@ fn ut_budget_add_never_overflows() {
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 3,
+        max_trace_events: 4,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 5,
+        max_blob_bytes: 6,
+        max_input_bytes: 7,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -3337,8 +3623,13 @@ fn ut_budget_sub_never_underflows() {
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 7,
+        max_trace_events: 8,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 9,
+        max_blob_bytes: 10,
+        max_input_bytes: 11,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -3363,9 +3654,14 @@ fn ut_budget_sub_never_underflows() {
         max_gather_items: 5,
         max_result_bytes: 5,
         max_total_slots_written: 5,
+        max_timer_entries: 14,
+        max_trace_events: 16,
         max_active_runs: 5,
         max_queue_depth: 5,
         max_journal_batch_bytes: 5,
+        max_ipc_payload_bytes: 18,
+        max_blob_bytes: 20,
+        max_input_bytes: 22,
         max_step_budget_per_tick: 5,
         max_transitions_per_tick: 5,
     };
@@ -3382,8 +3678,13 @@ fn ut_budget_sub_never_underflows() {
         max_run_time_seconds: 0,
         max_result_bytes: 3,
         max_total_slots_written: 3,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 3,
         max_journal_batch_bytes: 3,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 3,
         max_transitions_per_tick: 3,
     };
@@ -3429,6 +3730,13 @@ proptest::proptest! {
             max_run_time_seconds: 0,
             max_result_bytes: 0,
             max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+            max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
+            max_queue_depth: 0,
         };
 
         // If all dimensions are within policy defaults, validation should pass
@@ -3901,7 +4209,15 @@ fn aggregate_resource_budget_from_whole_workflow_budget() -> Result<(), String> 
         .map_err(|e| format!("{:?}", e))?;
     ensure_equal(arb.max_steps_executable, wfb.max_steps_executable)?;
     ensure_equal(arb.max_action_tickets, wfb.max_action_tickets)?;
-    ensure_equal(arb.max_parallel_in_flight, wfb.max_parallel_in_flight)
+    ensure_equal(arb.max_parallel_in_flight, wfb.max_parallel_in_flight)?;
+    ensure_equal(arb.max_timer_entries, wfb.max_timer_entries)?;
+    ensure_equal(arb.max_trace_events, wfb.max_trace_events)?;
+    ensure_equal(arb.max_result_bytes, 1)?;
+    ensure_equal(arb.max_queue_depth, 1)?;
+    ensure_equal(arb.max_journal_batch_bytes, 1)?;
+    ensure_equal(arb.max_ipc_payload_bytes, 1)?;
+    ensure_equal(arb.max_blob_bytes, 1)?;
+    ensure_equal(arb.max_input_bytes, 1)
 }
 
 #[test]
@@ -3914,9 +4230,14 @@ fn aggregate_resource_usage_try_add_budget_overflow() -> Result<(), String> {
         max_gather_items: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -3933,8 +4254,13 @@ fn aggregate_resource_usage_try_add_budget_overflow() -> Result<(), String> {
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -3962,8 +4288,13 @@ fn aggregate_resource_usage_try_subtract_budget_underflow() -> Result<(), String
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -3983,9 +4314,14 @@ fn aggregate_resource_usage_fits_within_capacity() -> Result<(), String> {
         max_gather_items: 100,
         max_result_bytes: 1000,
         max_total_slots_written: 500,
+        max_timer_entries: 7,
+        max_trace_events: 8,
         max_active_runs: 5,
         max_queue_depth: 20,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 9,
+        max_blob_bytes: 10,
+        max_input_bytes: 11,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
@@ -3997,9 +4333,14 @@ fn aggregate_resource_usage_fits_within_capacity() -> Result<(), String> {
         max_gather_items: 200,
         max_result_bytes: 2000,
         max_total_slots_written: 1000,
+        max_timer_entries: 14,
+        max_trace_events: 16,
         max_active_runs: 10,
         max_queue_depth: 40,
         max_journal_batch_bytes: 8192,
+        max_ipc_payload_bytes: 18,
+        max_blob_bytes: 20,
+        max_input_bytes: 22,
         max_step_budget_per_tick: 2000,
         max_transitions_per_tick: 1000,
     };
@@ -4016,9 +4357,14 @@ fn aggregate_resource_usage_fits_within_rejects_insufficient() -> Result<(), Str
         max_gather_items: 100,
         max_result_bytes: 1000,
         max_total_slots_written: 500,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 5,
         max_queue_depth: 20,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
@@ -4030,9 +4376,14 @@ fn aggregate_resource_usage_fits_within_rejects_insufficient() -> Result<(), Str
         max_gather_items: 200,
         max_result_bytes: 2000,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 10,
         max_queue_depth: 40,
         max_journal_batch_bytes: 8192,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 2000,
         max_transitions_per_tick: 1000,
     };
@@ -4054,9 +4405,14 @@ fn fits_within_capacity_exceeded_action_tickets() -> Result<(), String> {
         max_gather_items: 50,
         max_result_bytes: 500,
         max_total_slots_written: 250,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 3,
         max_queue_depth: 10,
         max_journal_batch_bytes: 2048,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 250,
     };
@@ -4068,9 +4424,14 @@ fn fits_within_capacity_exceeded_action_tickets() -> Result<(), String> {
         max_gather_items: 100,
         max_result_bytes: 1000,
         max_total_slots_written: 500,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 5,
         max_queue_depth: 20,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
@@ -4092,9 +4453,14 @@ fn fits_within_capacity_exceeded_parallel_in_flight() -> Result<(), String> {
         max_gather_items: 50,
         max_result_bytes: 500,
         max_total_slots_written: 250,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 3,
         max_queue_depth: 10,
         max_journal_batch_bytes: 2048,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 250,
     };
@@ -4106,9 +4472,14 @@ fn fits_within_capacity_exceeded_parallel_in_flight() -> Result<(), String> {
         max_gather_items: 100,
         max_result_bytes: 1000,
         max_total_slots_written: 500,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 5,
         max_queue_depth: 20,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
@@ -4130,9 +4501,14 @@ fn fits_within_capacity_exceeded_gather_pages() -> Result<(), String> {
         max_gather_items: 50,
         max_result_bytes: 500,
         max_total_slots_written: 250,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 3,
         max_queue_depth: 10,
         max_journal_batch_bytes: 2048,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 250,
     };
@@ -4144,9 +4520,14 @@ fn fits_within_capacity_exceeded_gather_pages() -> Result<(), String> {
         max_gather_items: 100,
         max_result_bytes: 1000,
         max_total_slots_written: 500,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 5,
         max_queue_depth: 20,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
@@ -4168,9 +4549,14 @@ fn fits_within_capacity_exceeded_gather_items() -> Result<(), String> {
         max_gather_items: 200,
         max_result_bytes: 500,
         max_total_slots_written: 250,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 3,
         max_queue_depth: 10,
         max_journal_batch_bytes: 2048,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 250,
     };
@@ -4182,9 +4568,14 @@ fn fits_within_capacity_exceeded_gather_items() -> Result<(), String> {
         max_gather_items: 100,
         max_result_bytes: 1000,
         max_total_slots_written: 500,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 5,
         max_queue_depth: 20,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
@@ -4206,9 +4597,14 @@ fn fits_within_capacity_exceeded_result_bytes() -> Result<(), String> {
         max_gather_items: 50,
         max_result_bytes: 2000,
         max_total_slots_written: 250,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 3,
         max_queue_depth: 10,
         max_journal_batch_bytes: 2048,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 250,
     };
@@ -4220,16 +4616,23 @@ fn fits_within_capacity_exceeded_result_bytes() -> Result<(), String> {
         max_gather_items: 100,
         max_result_bytes: 1000,
         max_total_slots_written: 500,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 5,
         max_queue_depth: 20,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
     match usage.fits_within(&capacity) {
-        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
-            ensure_equal(resource, "max_result_bytes")
-        }
+        Err(AggregateBudgetError::CapacityExceeded {
+            resource: "max_result_bytes",
+            requested: 2000,
+            available: 1000,
+        }) => Ok(()),
         other => Err(format!("expected CapacityExceeded, got {:?}", other)),
     }
 }
@@ -4244,9 +4647,14 @@ fn fits_within_capacity_exceeded_total_slots_written() -> Result<(), String> {
         max_gather_items: 50,
         max_result_bytes: 500,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 3,
         max_queue_depth: 10,
         max_journal_batch_bytes: 2048,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 250,
     };
@@ -4258,9 +4666,14 @@ fn fits_within_capacity_exceeded_total_slots_written() -> Result<(), String> {
         max_gather_items: 100,
         max_result_bytes: 1000,
         max_total_slots_written: 500,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 5,
         max_queue_depth: 20,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
@@ -4282,9 +4695,14 @@ fn fits_within_capacity_exceeded_active_runs() -> Result<(), String> {
         max_gather_items: 50,
         max_result_bytes: 500,
         max_total_slots_written: 250,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 10,
         max_queue_depth: 10,
         max_journal_batch_bytes: 2048,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 250,
     };
@@ -4296,9 +4714,14 @@ fn fits_within_capacity_exceeded_active_runs() -> Result<(), String> {
         max_gather_items: 100,
         max_result_bytes: 1000,
         max_total_slots_written: 500,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 5,
         max_queue_depth: 20,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
@@ -4320,9 +4743,14 @@ fn fits_within_capacity_exceeded_queue_depth() -> Result<(), String> {
         max_gather_items: 50,
         max_result_bytes: 500,
         max_total_slots_written: 250,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 3,
         max_queue_depth: 50,
         max_journal_batch_bytes: 2048,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 250,
     };
@@ -4334,9 +4762,14 @@ fn fits_within_capacity_exceeded_queue_depth() -> Result<(), String> {
         max_gather_items: 100,
         max_result_bytes: 1000,
         max_total_slots_written: 500,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 5,
         max_queue_depth: 20,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
@@ -4358,9 +4791,14 @@ fn fits_within_capacity_exceeded_journal_batch_bytes() -> Result<(), String> {
         max_gather_items: 50,
         max_result_bytes: 500,
         max_total_slots_written: 250,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 3,
         max_queue_depth: 10,
         max_journal_batch_bytes: 8192,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 250,
     };
@@ -4372,9 +4810,14 @@ fn fits_within_capacity_exceeded_journal_batch_bytes() -> Result<(), String> {
         max_gather_items: 100,
         max_result_bytes: 1000,
         max_total_slots_written: 500,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 5,
         max_queue_depth: 20,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
@@ -4396,9 +4839,14 @@ fn fits_within_capacity_exceeded_step_budget_per_tick() -> Result<(), String> {
         max_gather_items: 50,
         max_result_bytes: 500,
         max_total_slots_written: 250,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 3,
         max_queue_depth: 10,
         max_journal_batch_bytes: 2048,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 2000,
         max_transitions_per_tick: 250,
     };
@@ -4410,9 +4858,14 @@ fn fits_within_capacity_exceeded_step_budget_per_tick() -> Result<(), String> {
         max_gather_items: 100,
         max_result_bytes: 1000,
         max_total_slots_written: 500,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 5,
         max_queue_depth: 20,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
@@ -4434,9 +4887,14 @@ fn fits_within_capacity_exceeded_transitions_per_tick() -> Result<(), String> {
         max_gather_items: 50,
         max_result_bytes: 500,
         max_total_slots_written: 250,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 3,
         max_queue_depth: 10,
         max_journal_batch_bytes: 2048,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 1000,
     };
@@ -4448,9 +4906,14 @@ fn fits_within_capacity_exceeded_transitions_per_tick() -> Result<(), String> {
         max_gather_items: 100,
         max_result_bytes: 1000,
         max_total_slots_written: 500,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 5,
         max_queue_depth: 20,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
@@ -4481,8 +4944,13 @@ fn validate_aggregate_budget_accepts_valid_budget() -> Result<(), String> {
         max_run_time_seconds: 3600,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 50,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
@@ -4491,6 +4959,123 @@ fn validate_aggregate_budget_accepts_valid_budget() -> Result<(), String> {
         crate::budget::validate_aggregate_budget(&budget, &policy),
         Ok(()),
     )
+}
+
+#[test]
+fn validate_aggregate_budget_reports_extended_payload_dimensions() -> Result<(), String> {
+    let policy = BoundednessPolicy {
+        absolute_max_timer_entries: 12,
+        absolute_max_trace_events: 13,
+        absolute_max_queue_depth: 14,
+        absolute_max_journal_batch_bytes: 15,
+        absolute_max_ipc_payload_bytes: 16,
+        absolute_max_blob_bytes: 17,
+        absolute_max_input_bytes: 18,
+        ..BoundednessPolicy::DEFAULT
+    };
+    let base = AggregateResourceBudget {
+        max_steps_executable: 1000,
+        max_action_tickets: 100,
+        max_parallel_in_flight: 10,
+        max_retries_per_action: 3,
+        max_gather_pages: 5,
+        max_gather_items: 100,
+        max_for_each_iterations: 50,
+        max_together_branches: 5,
+        max_repeat_attempts: 3,
+        max_run_time_seconds: 3600,
+        max_result_bytes: 65536,
+        max_total_slots_written: 1000,
+        max_timer_entries: 12,
+        max_trace_events: 13,
+        max_queue_depth: 14,
+        max_journal_batch_bytes: 15,
+        max_ipc_payload_bytes: 16,
+        max_blob_bytes: 17,
+        max_input_bytes: 18,
+        max_step_budget_per_tick: 1000,
+        max_transitions_per_tick: 500,
+    };
+
+    let mut over = base;
+    over.max_timer_entries = 13;
+    assert_policy_exceeded(
+        crate::budget::validate_aggregate_budget(&over, &policy),
+        "max_timer_entries",
+        13,
+        12,
+    )?;
+    over = base;
+    over.max_trace_events = 14;
+    assert_policy_exceeded(
+        crate::budget::validate_aggregate_budget(&over, &policy),
+        "max_trace_events",
+        14,
+        13,
+    )?;
+    over = base;
+    over.max_journal_batch_bytes = 16;
+    assert_policy_exceeded(
+        crate::budget::validate_aggregate_budget(&over, &policy),
+        "max_journal_batch_bytes",
+        16,
+        15,
+    )?;
+    over = base;
+    over.max_queue_depth = 15;
+    assert_policy_exceeded(
+        crate::budget::validate_aggregate_budget(&over, &policy),
+        "max_queue_depth",
+        15,
+        14,
+    )?;
+    over = base;
+    over.max_ipc_payload_bytes = 17;
+    assert_policy_exceeded(
+        crate::budget::validate_aggregate_budget(&over, &policy),
+        "max_ipc_payload_bytes",
+        17,
+        16,
+    )?;
+    over = base;
+    over.max_blob_bytes = 18;
+    assert_policy_exceeded(
+        crate::budget::validate_aggregate_budget(&over, &policy),
+        "max_blob_bytes",
+        18,
+        17,
+    )?;
+    over = base;
+    over.max_input_bytes = 19;
+    assert_policy_exceeded(
+        crate::budget::validate_aggregate_budget(&over, &policy),
+        "max_input_bytes",
+        19,
+        18,
+    )
+}
+
+fn assert_policy_exceeded(
+    actual: Result<(), AggregateBudgetError>,
+    expected_resource: &'static str,
+    expected_actual: u64,
+    expected_limit: u64,
+) -> Result<(), String> {
+    match actual {
+        Err(AggregateBudgetError::PolicyExceeded {
+            resource,
+            actual,
+            limit,
+        }) if resource == expected_resource
+            && actual == expected_actual
+            && limit == expected_limit =>
+        {
+            Ok(())
+        }
+        other => Err(format!(
+            "expected PolicyExceeded {{ resource: {expected_resource}, actual: {expected_actual}, limit: {expected_limit} }}, got {other:?}"
+        )),
+    }
 }
 
 #[test]
@@ -4508,8 +5093,13 @@ fn validate_aggregate_budget_rejects_exceeded_steps() -> Result<(), String> {
         max_run_time_seconds: 3600,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 50,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
@@ -4537,8 +5127,13 @@ fn validate_aggregate_budget_rejects_exceeded_action_tickets() -> Result<(), Str
         max_run_time_seconds: 3600,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 50,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
@@ -4566,8 +5161,13 @@ fn validate_aggregate_budget_rejects_exceeded_parallel_in_flight() -> Result<(),
         max_run_time_seconds: 3600,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 50,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
@@ -4595,8 +5195,13 @@ fn validate_aggregate_budget_rejects_exceeded_run_time() -> Result<(), String> {
         max_run_time_seconds: 3_000_000,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 50,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
@@ -4624,16 +5229,23 @@ fn validate_aggregate_budget_rejects_exceeded_result_bytes() -> Result<(), Strin
         max_run_time_seconds: 3600,
         max_result_bytes: 300_000,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 50,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
     let policy = BoundednessPolicy::DEFAULT;
     match crate::budget::validate_aggregate_budget(&budget, &policy) {
-        Err(AggregateBudgetError::PolicyExceeded { resource, .. }) => {
-            ensure_equal(resource, "max_result_bytes")
-        }
+        Err(AggregateBudgetError::PolicyExceeded {
+            resource: "max_result_bytes",
+            actual: 300_000,
+            limit: 262_144,
+        }) => Ok(()),
         other => Err(format!("expected PolicyExceeded, got {:?}", other)),
     }
 }
@@ -4653,8 +5265,13 @@ fn validate_aggregate_budget_rejects_exceeded_total_slots() -> Result<(), String
         max_run_time_seconds: 3600,
         max_result_bytes: 65536,
         max_total_slots_written: 100_000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 50,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
@@ -4668,6 +5285,7 @@ fn validate_aggregate_budget_rejects_exceeded_total_slots() -> Result<(), String
         absolute_max_run_time_seconds: 2_592_000,
         absolute_max_result_bytes: 262_144,
         absolute_max_steps_executable: 1_000_000,
+        ..BoundednessPolicy::DEFAULT
     };
     match crate::budget::validate_aggregate_budget(&budget, &policy) {
         Err(AggregateBudgetError::PolicyExceeded { resource, .. }) => {
@@ -4692,8 +5310,13 @@ fn validate_aggregate_budget_rejects_exceeded_together_branches() -> Result<(), 
         max_run_time_seconds: 3600,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 50,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
@@ -4707,6 +5330,7 @@ fn validate_aggregate_budget_rejects_exceeded_together_branches() -> Result<(), 
         absolute_max_run_time_seconds: 2_592_000,
         absolute_max_result_bytes: 262_144,
         absolute_max_steps_executable: 1_000_000,
+        ..BoundednessPolicy::DEFAULT
     };
     match crate::budget::validate_aggregate_budget(&budget, &policy) {
         Err(AggregateBudgetError::PolicyExceeded { resource, .. }) => {
@@ -4737,8 +5361,13 @@ fn validate_step_ceilings_accepts_valid() -> Result<(), String> {
         max_run_time_seconds: 3600,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 50,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
     ensure_equal(crate::budget::validate_step_ceilings(&budget), Ok(()))
 }
@@ -4760,8 +5389,13 @@ fn validate_step_ceilings_rejects_zero_step_budget() -> Result<(), String> {
         max_run_time_seconds: 3600,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 50,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
     match crate::budget::validate_step_ceilings(&budget) {
         Err(AggregateBudgetError::StepCeilingExceeded { requested: 0, .. }) => Ok(()),
@@ -4786,8 +5420,13 @@ fn validate_step_ceilings_rejects_zero_transitions() -> Result<(), String> {
         max_run_time_seconds: 3600,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 50,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
     match crate::budget::validate_step_ceilings(&budget) {
         Err(AggregateBudgetError::PerTickCeilingExceeded { requested: 0, .. }) => Ok(()),
@@ -4815,8 +5454,13 @@ fn validate_step_ceilings_rejects_step_over_hard_limit() -> Result<(), String> {
         max_run_time_seconds: 3600,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 50,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
     match crate::budget::validate_step_ceilings(&budget) {
         Err(AggregateBudgetError::StepCeilingExceeded {
@@ -4844,8 +5488,13 @@ fn validate_step_ceilings_rejects_transitions_over_hard_limit() -> Result<(), St
         max_run_time_seconds: 3600,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 50,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
     match crate::budget::validate_step_ceilings(&budget) {
         Err(AggregateBudgetError::PerTickCeilingExceeded {
@@ -4870,9 +5519,14 @@ fn aggregate_resource_capacity_is_copy() -> Result<(), String> {
         max_gather_items: 100,
         max_result_bytes: 1000,
         max_total_slots_written: 500,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 5,
         max_queue_depth: 20,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
@@ -4904,8 +5558,13 @@ fn aggregate_reservation_debug_format() -> Result<(), String> {
             max_run_time_seconds: 3600,
             max_result_bytes: 65536,
             max_total_slots_written: 1000,
+            max_timer_entries: 0,
+            max_trace_events: 0,
             max_queue_depth: 50,
             max_journal_batch_bytes: 4096,
+            max_ipc_payload_bytes: 0,
+            max_blob_bytes: 0,
+            max_input_bytes: 0,
             max_step_budget_per_tick: 1000,
             max_transitions_per_tick: 500,
         },
@@ -5050,9 +5709,14 @@ fn try_add_budget_exercises_multiple_dimensions() -> Result<(), String> {
         max_gather_items: 100,
         max_result_bytes: 1000,
         max_total_slots_written: 500,
+        max_timer_entries: 7,
+        max_trace_events: 8,
         max_active_runs: 5,
         max_queue_depth: 20,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 9,
+        max_blob_bytes: 10,
+        max_input_bytes: 11,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
     };
@@ -5069,8 +5733,13 @@ fn try_add_budget_exercises_multiple_dimensions() -> Result<(), String> {
         max_run_time_seconds: 3600,
         max_result_bytes: 500,
         max_total_slots_written: 250,
+        max_timer_entries: 3,
+        max_trace_events: 4,
         max_queue_depth: 10,
         max_journal_batch_bytes: 2048,
+        max_ipc_payload_bytes: 5,
+        max_blob_bytes: 6,
+        max_input_bytes: 7,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 250,
     };
@@ -5083,9 +5752,14 @@ fn try_add_budget_exercises_multiple_dimensions() -> Result<(), String> {
     ensure_equal(added.max_gather_items, 150)?;
     ensure_equal(added.max_result_bytes, 1500)?;
     ensure_equal(added.max_total_slots_written, 750)?;
+    ensure_equal(added.max_timer_entries, 10)?;
+    ensure_equal(added.max_trace_events, 12)?;
     ensure_equal(added.max_active_runs, 6)?;
     ensure_equal(added.max_queue_depth, 30)?;
     ensure_equal(added.max_journal_batch_bytes, 6144)?;
+    ensure_equal(added.max_ipc_payload_bytes, 14)?;
+    ensure_equal(added.max_blob_bytes, 16)?;
+    ensure_equal(added.max_input_bytes, 18)?;
     ensure_equal(added.max_step_budget_per_tick, 1500)?;
     ensure_equal(added.max_transitions_per_tick, 750)
 }
@@ -5100,9 +5774,14 @@ fn try_subtract_budget_exercises_multiple_dimensions() -> Result<(), String> {
         max_gather_items: 150,
         max_result_bytes: 1500,
         max_total_slots_written: 750,
+        max_timer_entries: 10,
+        max_trace_events: 12,
         max_active_runs: 6,
         max_queue_depth: 30,
         max_journal_batch_bytes: 6144,
+        max_ipc_payload_bytes: 14,
+        max_blob_bytes: 16,
+        max_input_bytes: 18,
         max_step_budget_per_tick: 1500,
         max_transitions_per_tick: 750,
     };
@@ -5119,8 +5798,13 @@ fn try_subtract_budget_exercises_multiple_dimensions() -> Result<(), String> {
         max_run_time_seconds: 3600,
         max_result_bytes: 500,
         max_total_slots_written: 250,
+        max_timer_entries: 3,
+        max_trace_events: 4,
         max_queue_depth: 10,
         max_journal_batch_bytes: 2048,
+        max_ipc_payload_bytes: 5,
+        max_blob_bytes: 6,
+        max_input_bytes: 7,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 250,
     };
@@ -5133,9 +5817,14 @@ fn try_subtract_budget_exercises_multiple_dimensions() -> Result<(), String> {
     ensure_equal(subtracted.max_gather_items, 100)?;
     ensure_equal(subtracted.max_result_bytes, 1000)?;
     ensure_equal(subtracted.max_total_slots_written, 500)?;
+    ensure_equal(subtracted.max_timer_entries, 7)?;
+    ensure_equal(subtracted.max_trace_events, 8)?;
     ensure_equal(subtracted.max_active_runs, 5)?;
     ensure_equal(subtracted.max_queue_depth, 20)?;
     ensure_equal(subtracted.max_journal_batch_bytes, 4096)?;
+    ensure_equal(subtracted.max_ipc_payload_bytes, 9)?;
+    ensure_equal(subtracted.max_blob_bytes, 10)?;
+    ensure_equal(subtracted.max_input_bytes, 11)?;
     ensure_equal(subtracted.max_step_budget_per_tick, 1000)?;
     ensure_equal(subtracted.max_transitions_per_tick, 500)
 }
@@ -5150,9 +5839,14 @@ fn try_add_budget_overflow_action_tickets_dimension() -> Result<(), String> {
         max_gather_items: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5169,8 +5863,13 @@ fn try_add_budget_overflow_action_tickets_dimension() -> Result<(), String> {
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5192,9 +5891,14 @@ fn try_add_budget_overflow_parallel_in_flight_dimension() -> Result<(), String> 
         max_gather_items: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5211,8 +5915,13 @@ fn try_add_budget_overflow_parallel_in_flight_dimension() -> Result<(), String> 
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5234,9 +5943,14 @@ fn try_add_budget_overflow_gather_pages_dimension() -> Result<(), String> {
         max_gather_items: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5253,8 +5967,13 @@ fn try_add_budget_overflow_gather_pages_dimension() -> Result<(), String> {
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5276,9 +5995,14 @@ fn try_add_budget_overflow_gather_items_dimension() -> Result<(), String> {
         max_gather_items: u64::MAX - 1,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5295,8 +6019,13 @@ fn try_add_budget_overflow_gather_items_dimension() -> Result<(), String> {
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5318,9 +6047,14 @@ fn try_add_budget_overflow_result_bytes_dimension() -> Result<(), String> {
         max_gather_items: 0,
         max_result_bytes: u64::MAX - 1,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5337,8 +6071,13 @@ fn try_add_budget_overflow_result_bytes_dimension() -> Result<(), String> {
         max_run_time_seconds: 0,
         max_result_bytes: 2,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5360,9 +6099,14 @@ fn try_add_budget_overflow_total_slots_written_dimension() -> Result<(), String>
         max_gather_items: 0,
         max_result_bytes: 0,
         max_total_slots_written: u64::MAX - 1,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5379,8 +6123,13 @@ fn try_add_budget_overflow_total_slots_written_dimension() -> Result<(), String>
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 2,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5402,9 +6151,14 @@ fn try_add_budget_overflow_queue_depth_dimension() -> Result<(), String> {
         max_gather_items: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 0,
         max_queue_depth: u64::MAX - 1,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5421,8 +6175,13 @@ fn try_add_budget_overflow_queue_depth_dimension() -> Result<(), String> {
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 2,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5444,9 +6203,14 @@ fn try_add_budget_overflow_journal_batch_bytes_dimension() -> Result<(), String>
         max_gather_items: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: u64::MAX - 1,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5463,8 +6227,13 @@ fn try_add_budget_overflow_journal_batch_bytes_dimension() -> Result<(), String>
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 2,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5486,9 +6255,14 @@ fn try_add_budget_overflow_step_budget_per_tick_dimension() -> Result<(), String
         max_gather_items: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: u64::MAX - 1,
         max_transitions_per_tick: 0,
     };
@@ -5505,8 +6279,13 @@ fn try_add_budget_overflow_step_budget_per_tick_dimension() -> Result<(), String
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 2,
         max_transitions_per_tick: 0,
     };
@@ -5528,9 +6307,14 @@ fn try_add_budget_overflow_transitions_per_tick_dimension() -> Result<(), String
         max_gather_items: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: u64::MAX - 1,
     };
@@ -5547,8 +6331,13 @@ fn try_add_budget_overflow_transitions_per_tick_dimension() -> Result<(), String
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 2,
     };
@@ -5570,9 +6359,14 @@ fn try_subtract_budget_underflow_action_tickets_dimension() -> Result<(), String
         max_gather_items: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5589,8 +6383,13 @@ fn try_subtract_budget_underflow_action_tickets_dimension() -> Result<(), String
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5612,9 +6411,14 @@ fn try_subtract_budget_underflow_parallel_in_flight_dimension() -> Result<(), St
         max_gather_items: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5631,8 +6435,13 @@ fn try_subtract_budget_underflow_parallel_in_flight_dimension() -> Result<(), St
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5654,9 +6463,14 @@ fn try_subtract_budget_underflow_gather_pages_dimension() -> Result<(), String> 
         max_gather_items: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5673,8 +6487,13 @@ fn try_subtract_budget_underflow_gather_pages_dimension() -> Result<(), String> 
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5696,9 +6515,14 @@ fn try_subtract_budget_underflow_gather_items_dimension() -> Result<(), String> 
         max_gather_items: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5715,8 +6539,13 @@ fn try_subtract_budget_underflow_gather_items_dimension() -> Result<(), String> 
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5738,9 +6567,14 @@ fn try_subtract_budget_underflow_result_bytes_dimension() -> Result<(), String> 
         max_gather_items: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5757,8 +6591,13 @@ fn try_subtract_budget_underflow_result_bytes_dimension() -> Result<(), String> 
         max_run_time_seconds: 0,
         max_result_bytes: 1,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5780,9 +6619,14 @@ fn try_subtract_budget_underflow_total_slots_written_dimension() -> Result<(), S
         max_gather_items: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5799,8 +6643,13 @@ fn try_subtract_budget_underflow_total_slots_written_dimension() -> Result<(), S
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 1,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5822,9 +6671,14 @@ fn try_subtract_budget_underflow_queue_depth_dimension() -> Result<(), String> {
         max_gather_items: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 2,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5841,8 +6695,13 @@ fn try_subtract_budget_underflow_queue_depth_dimension() -> Result<(), String> {
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 1,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5864,9 +6723,14 @@ fn try_subtract_budget_underflow_journal_batch_bytes_dimension() -> Result<(), S
         max_gather_items: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 2,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5883,8 +6747,13 @@ fn try_subtract_budget_underflow_journal_batch_bytes_dimension() -> Result<(), S
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 1,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5906,9 +6775,14 @@ fn try_subtract_budget_underflow_step_budget_per_tick_dimension() -> Result<(), 
         max_gather_items: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 2,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5925,8 +6799,13 @@ fn try_subtract_budget_underflow_step_budget_per_tick_dimension() -> Result<(), 
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1,
         max_transitions_per_tick: 0,
     };
@@ -5948,9 +6827,14 @@ fn try_subtract_budget_underflow_transitions_per_tick_dimension() -> Result<(), 
         max_gather_items: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 2,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
     };
@@ -5967,8 +6851,13 @@ fn try_subtract_budget_underflow_transitions_per_tick_dimension() -> Result<(), 
         max_run_time_seconds: 0,
         max_result_bytes: 0,
         max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 0,
         max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 1,
     };
@@ -6009,8 +6898,13 @@ fn validate_step_ceilings_accepts_exact_hard_limit() -> Result<(), String> {
         max_run_time_seconds: 3600,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 50,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
     ensure_equal(crate::budget::validate_step_ceilings(&budget), Ok(()))
 }
@@ -6035,8 +6929,13 @@ fn whole_workflow_budget_add_at_exact_limit() -> Result<(), String> {
         max_run_time_seconds: 3600,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 50,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
     let mut usage = AggregateResourceUsage::default();
     // Set usage to exactly the limit
@@ -6052,8 +6951,13 @@ fn whole_workflow_budget_add_at_exact_limit() -> Result<(), String> {
         max_gather_items: 100,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 50,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_active_runs: 1,
     };
     match usage.try_add_budget(&budget) {
@@ -6076,6 +6980,14 @@ fn whole_workflow_budget_policy_at_exact_limit() -> Result<(), String> {
         absolute_max_run_time_seconds: 3600,
         absolute_max_result_bytes: 65536,
         absolute_max_steps_executable: 1000,
+        absolute_max_timer_entries: 17,
+        absolute_max_trace_events: 18,
+        absolute_max_journal_batch_bytes: 19,
+        absolute_max_queue_depth: 20,
+        absolute_max_ipc_payload_bytes: 21,
+        absolute_max_blob_bytes: 22,
+        absolute_max_input_bytes: 23,
+        ..BoundednessPolicy::DEFAULT
     };
     let usage = AggregateResourceUsage {
         max_steps_executable: 1000,
@@ -6085,9 +6997,14 @@ fn whole_workflow_budget_policy_at_exact_limit() -> Result<(), String> {
         max_gather_items: 100,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
+        max_timer_entries: 17,
+        max_trace_events: 18,
         max_active_runs: 1,
-        max_queue_depth: 50,
-        max_journal_batch_bytes: 4096,
+        max_queue_depth: 20,
+        max_journal_batch_bytes: 19,
+        max_ipc_payload_bytes: 21,
+        max_blob_bytes: 22,
+        max_input_bytes: 23,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 1000,
     };
@@ -6110,6 +7027,7 @@ fn whole_workflow_budget_policy_exceeds_limit() -> Result<(), String> {
         absolute_max_run_time_seconds: 3600,
         absolute_max_result_bytes: 65536,
         absolute_max_steps_executable: 1000,
+        ..BoundednessPolicy::DEFAULT
     };
     let usage = AggregateResourceUsage {
         // Exceeds by 1
@@ -6120,9 +7038,14 @@ fn whole_workflow_budget_policy_exceeds_limit() -> Result<(), String> {
         max_gather_items: 100,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_active_runs: 1,
         max_queue_depth: 50,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 1000,
     };
@@ -6159,8 +7082,13 @@ fn whole_workflow_budget_capacity_at_exact_limit() -> Result<(), String> {
         max_run_time_seconds: 3600,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 50,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
     let mut usage = AggregateResourceUsage::default();
     // Set requested to exactly match limit
@@ -6176,8 +7104,13 @@ fn whole_workflow_budget_capacity_at_exact_limit() -> Result<(), String> {
         max_gather_items: 100,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 50,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
         max_active_runs: 1,
     };
     match usage.try_add_budget(&budget) {
@@ -6206,8 +7139,13 @@ fn validate_step_ceilings_rejects_step_over_limit_by_one() -> Result<(), String>
         max_run_time_seconds: 3600,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 50,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
     match crate::budget::validate_step_ceilings(&budget) {
         Err(AggregateBudgetError::StepCeilingExceeded {
@@ -6239,8 +7177,13 @@ fn validate_step_ceilings_accepts_exact_transition_hard_limit() -> Result<(), St
         max_run_time_seconds: 3600,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 50,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
     ensure_equal(crate::budget::validate_step_ceilings(&budget), Ok(()))
 }
@@ -6263,8 +7206,13 @@ fn validate_step_ceilings_rejects_transitions_over_limit_by_one() -> Result<(), 
         max_run_time_seconds: 3600,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
+        max_timer_entries: 0,
+        max_trace_events: 0,
         max_queue_depth: 50,
         max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
     };
     match crate::budget::validate_step_ceilings(&budget) {
         Err(AggregateBudgetError::PerTickCeilingExceeded {

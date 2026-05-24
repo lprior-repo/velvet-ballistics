@@ -233,6 +233,24 @@ impl Shard {
                     capacity: usize::try_from(available).map_or(usize::MAX, |value| value),
                 })
             }
+            Err(AdmissionError::BudgetPolicyExceeded { .. }) => {
+                Err(RuntimeError::AdmissionArtifactInvalid { digest })
+            }
+            Err(AdmissionError::ResourceBudgetOverflow { .. }) => {
+                Err(RuntimeError::AdmissionArtifactInvalid { digest })
+            }
+            Err(AdmissionError::ResourceBudgetUnderflow { .. }) => {
+                Err(RuntimeError::AdmissionArtifactInvalid { digest })
+            }
+            Err(AdmissionError::ResourceBudgetInvalidCapacity { .. }) => {
+                Err(RuntimeError::AdmissionArtifactInvalid { digest })
+            }
+            Err(AdmissionError::ResourceStepCeilingExceeded { .. }) => {
+                Err(RuntimeError::AdmissionArtifactInvalid { digest })
+            }
+            Err(AdmissionError::ResourcePerTickCeilingExceeded { .. }) => {
+                Err(RuntimeError::AdmissionArtifactInvalid { digest })
+            }
             Err(AdmissionError::ArtifactEnvelopeDecodeFailed) => {
                 Err(RuntimeError::AdmissionArtifactInvalid {
                     digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),

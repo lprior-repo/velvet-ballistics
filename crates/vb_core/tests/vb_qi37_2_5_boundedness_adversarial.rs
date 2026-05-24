@@ -33,6 +33,13 @@ fn policy_limit_budget(policy: BoundednessPolicy) -> WholeWorkflowBudget {
         max_run_time_seconds: policy.absolute_max_run_time_seconds,
         max_result_bytes: policy.absolute_max_result_bytes,
         max_total_slots_written: 1,
+        max_timer_entries: 0,
+        max_trace_events: policy.max_total_steps,
+        max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
+        max_queue_depth: 0,
     }
 }
 
@@ -480,6 +487,7 @@ fn given_nested_repeat_together_collect_exceeds_policy_when_verified_then_typed_
         absolute_max_run_time_seconds: budget.max_run_time_seconds,
         absolute_max_result_bytes: budget.max_result_bytes,
         absolute_max_steps_executable: budget.max_steps_executable,
+        ..BoundednessPolicy::DEFAULT
     };
 
     assert_eq!(

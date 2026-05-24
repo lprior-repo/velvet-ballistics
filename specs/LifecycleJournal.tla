@@ -31,15 +31,25 @@ VARIABLES
     bead_state,
     journal,
     commands,
-    crashed
+    crashed,
+    journal_status,
+    previous_bead_state,
+    previous_journal,
+    previous_commands,
+    previous_crashed,
+    last_transition
 
-vars == <<bead_state, journal, commands, crashed>>
+vars == <<bead_state, journal, commands, crashed, journal_status,
+          previous_bead_state, previous_journal, previous_commands,
+          previous_crashed, last_transition>>
 
 LifecycleState == {"Pending", "Active", "WaitingAnswer", "Completed", "Cancelled", "Failed"}
 TerminalState == {"Completed", "Cancelled"}
 LifecycleCommand == {"Cancel", "Resume", "Retry", "Answer"}
 InternalEvent == {"Start", "NeedAnswer", "Fail"}
 EventKind == LifecycleCommand \cup InternalEvent
+JournalStatus == {"Ok", "CommandRejected", "JournalFull"}
+TransitionKind == EventKind \cup {"Init", "Submit", "CommandRejected", "JournalFullReject", "JournalFull", "Crash", "Replay"}
 
 CommandDomain == [bead_id: Beads, command: LifecycleCommand, answer: 0..MaxAnswer]
 EventDomain == [
@@ -58,14 +68,35 @@ TypeInvariant ==
     /\ commands \in SUBSET CommandDomain
     /\ Cardinality(commands) <= 1
     /\ crashed \in BOOLEAN
+    /\ journal_status \in JournalStatus
+    /\ previous_bead_state \in [Beads -> LifecycleState]
+    /\ previous_journal \in Seq(EventDomain)
+    /\ Len(previous_journal) <= MaxJournalLen
+    /\ previous_commands \in SUBSET CommandDomain
+    /\ Cardinality(previous_commands) <= 1
+    /\ previous_crashed \in BOOLEAN
+    /\ last_transition \in TransitionKind
 
 Init ==
     /\ bead_state = [b \in Beads |-> "Pending"]
     /\ journal = <<>>
     /\ commands = {}
     /\ crashed = FALSE
+    /\ journal_status = "Ok"
+    /\ previous_bead_state = bead_state
+    /\ previous_journal = journal
+    /\ previous_commands = commands
+    /\ previous_crashed = crashed
+    /\ last_transition = "Init"
 
 CanAppend == Len(journal) < MaxJournalLen
+
+RememberPre(kind) ==
+    /\ previous_bead_state' = bead_state
+    /\ previous_journal' = journal
+    /\ previous_commands' = commands
+    /\ previous_crashed' = crashed
+    /\ last_transition' = kind
 
 IsActiveOrWaiting(s) == s \in {"Active", "WaitingAnswer"}
 
@@ -129,9 +160,11 @@ EventAccepted(b, kind) ==
 
 AppendEvent(b, kind, ans, nextState) ==
     /\ CanAppend
+    /\ RememberPre(kind)
     /\ journal' = Append(journal, EventFor(b, kind, ans, bead_state[b], nextState))
     /\ bead_state' = [bead_state EXCEPT ![b] = nextState]
     /\ crashed' = crashed
+    /\ journal_status' = "Ok"
 
 Start(b) ==
     /\ ~crashed
@@ -159,8 +192,10 @@ Fail(b) ==
 Submit(cmd) ==
     /\ ~crashed
     /\ commands = {}
+    /\ journal_status # "JournalFull"
     /\ commands' = {cmd}
-    /\ UNCHANGED <<bead_state, journal, crashed>>
+    /\ RememberPre("Submit")
+    /\ UNCHANGED <<bead_state, journal, crashed, journal_status>>
 
 TerminalCommandFor(b) ==
     IF bead_state[b] = "Active" THEN [bead_id |-> b, command |-> "Cancel", answer |-> 0]
@@ -202,6 +237,8 @@ RejectCommand(cmd) ==
        \/ AlreadyAccepted(cmd)
        \/ ~CanAppend
     /\ commands' = {}
+    /\ journal_status' = IF ~CanAppend THEN "JournalFull" ELSE "CommandRejected"
+    /\ RememberPre(IF ~CanAppend THEN "JournalFullReject" ELSE "CommandRejected")
     /\ UNCHANGED <<bead_state, journal, crashed>>
 
 ProcessCommand(cmd) ==
@@ -216,10 +253,12 @@ Process == \E cmd \in CommandDomain : ProcessCommand(cmd)
 Crash ==
     /\ ~crashed
     /\ commands = {}
+    /\ journal_status # "JournalFull"
     /\ journal /= <<>>
     /\ crashed' = TRUE
     /\ commands' = {}
-    /\ UNCHANGED <<bead_state, journal>>
+    /\ RememberPre("Crash")
+    /\ UNCHANGED <<bead_state, journal, journal_status>>
 
 MaxOf(s) == CHOOSE x \in s : \A y \in s : y <= x
 
@@ -235,7 +274,23 @@ Replay ==
     /\ bead_state' = ReplayState
     /\ crashed' = FALSE
     /\ commands' = {}
-    /\ UNCHANGED journal
+    /\ RememberPre("Replay")
+    /\ UNCHANGED <<journal, journal_status>>
+
+JournalFull ==
+    /\ ~crashed
+    /\ commands = {}
+    /\ ~CanAppend
+    /\ journal_status' = "JournalFull"
+    /\ RememberPre("JournalFull")
+    /\ UNCHANGED <<bead_state, journal, commands, crashed>>
+
+TerminalStutter ==
+    /\ ~crashed
+    /\ commands = {}
+    /\ ~CanAppend
+    /\ journal_status = "JournalFull"
+    /\ UNCHANGED vars
 
 Next ==
     \/ \E b \in Beads : Start(b)
@@ -247,6 +302,8 @@ Next ==
     \/ Process
     \/ Crash
     \/ Replay
+    \/ JournalFull
+    \/ TerminalStutter
 
 Spec ==
     /\ Init
@@ -274,6 +331,18 @@ EventuallyTerminalOrCancelled ==
 
 JournalGrowth ==
     [] (Len(journal) <= MaxJournalLen)
+
+JournalFullIsTyped ==
+    journal_status = "JournalFull" =>
+        /\ Len(journal) = MaxJournalLen
+        /\ last_transition \in {"JournalFull", "JournalFullReject"}
+
+ResourceExhaustionDoesNotOverwrite ==
+    journal_status = "JournalFull" =>
+        /\ previous_journal = journal
+        /\ previous_bead_state = bead_state
+        /\ previous_crashed = crashed
+        /\ Len(previous_journal) = MaxJournalLen
 
 StateConstraint == Len(journal) <= MaxJournalLen
 

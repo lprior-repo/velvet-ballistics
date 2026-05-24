@@ -1,0 +1,8 @@
+command: bd show vb-r3q8
+cwd: /home/lewis/src/velvet-ballistics
+commit_sha: 829d8bcd1b3ff89a26dc70de415dc7e24078fb11
+tool_version: bd version 1.0.0 (dev);
+timestamp: 2026-05-23T18:43:56Z
+stdout_log_path: /home/lewis/src/vb-jpq7-49-anti-laundering-gpt55/.evidence/vb-jpq7.49/logs/062-bd-show-vb-r3q8-after-close.stdout.log
+stderr_log_path: /home/lewis/src/vb-jpq7-49-anti-laundering-gpt55/.evidence/vb-jpq7.49/logs/062-bd-show-vb-r3q8-after-close.stderr.log
+exit_code: 0
