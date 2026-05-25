@@ -204,15 +204,7 @@ pub fn resume_action_outcome(
 /// Uses wrapping multiply-add hashing (FNV-1a-inspired) to mix all three
 /// inputs into a u128 without bit-field overlap or silent fallback degradation.
 pub fn compute_idempotency_key(run: RunId, seq: SeqNo, action: ActionId) -> u128 {
-    let run_part = u128::from(run.get());
-    let seq_part = u128::from(seq.get());
-    let action_part = u128::from(u32::from(action.get()));
-    run_part
-        .wrapping_mul(0x6c62272e07bb0143_u128)
-        .wrapping_add(seq_part)
-        .wrapping_mul(0x3b4f1a5b6c2d8e7f_u128)
-        .wrapping_add(action_part)
-        .wrapping_mul(0x5bd1e9956c7b4d3a_u128)
+    vb_core::action::compute_action_idempotency_key(run, seq, action)
 }
 
 /// Resolves an action contract from the registry.

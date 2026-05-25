@@ -72,20 +72,6 @@ fn parse_action_inspect_args(
     match args.split_first() {
         None => Ok(state),
         Some((raw, rest)) => match raw.to_str() {
-            Some("--json") => parse_action_inspect_args(
-                rest,
-                ActionInspectParseState {
-                    output: OutputFormat::Json,
-                    ..state
-                },
-            ),
-            Some("--jsonl") => parse_action_inspect_args(
-                rest,
-                ActionInspectParseState {
-                    output: OutputFormat::Jsonl,
-                    ..state
-                },
-            ),
             Some("--registry") => parse_action_inspect_registry_arg(rest, state),
             Some(flag) if flag.starts_with("--") => {
                 Err(ParseError::UnknownActionInspectFlag(flag.into()))
@@ -105,20 +91,6 @@ fn parse_action_list_args(
     match args.split_first() {
         None => Ok(state),
         Some((raw, rest)) => match raw.to_str() {
-            Some("--json") => parse_action_list_args(
-                rest,
-                ActionListParseState {
-                    output: OutputFormat::Json,
-                    ..state
-                },
-            ),
-            Some("--jsonl") => parse_action_list_args(
-                rest,
-                ActionListParseState {
-                    output: OutputFormat::Jsonl,
-                    ..state
-                },
-            ),
             Some("--registry") => parse_action_registry_arg(rest, state),
             Some(flag) if flag.starts_with("--") => {
                 Err(ParseError::UnknownActionListFlag(flag.into()))
@@ -191,11 +163,11 @@ mod tests {
     #[test]
     fn parse_action_list_with_json_flag() {
         let args = [os("vb"), os("action"), os("list"), os("--json")];
-        let result = parse_action(&args).unwrap();
-        match result {
-            Command::ActionList { output, .. } => assert_eq!(output, OutputFormat::Json),
-            _ => panic!("wrong command"),
-        }
+        let result = parse_action(&args);
+        assert!(
+            matches!(result.unwrap_err(), ParseError::UnknownActionListFlag(ref flag) if flag == "--json"),
+            "expected UnknownActionListFlag, got {result:?}"
+        );
     }
 
     #[test]

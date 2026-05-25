@@ -8,4 +8,3 @@ hardened-build = "build --workspace --all-features --profile hardened"
 nightly-feature-cargo-probe = "check -Zallow-features=try_blocks,portable_simd,allocator_api,generic_const_exprs --workspace --all-targets --all-features"
 xtask = "run -p xtask --"
 
-

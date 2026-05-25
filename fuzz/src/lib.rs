@@ -219,17 +219,17 @@ pub fn fuzz_ipc_frame(data: &[u8]) {
     if !payload.is_empty()
         && let Ok(header) = header_result
     {
-        // Payload decode must return a Result (never panic)
-        // Verify: Ok when lengths match, Err on length mismatch
+        // Payload decode must return a Result (never panic). Matching lengths
+        // only permit postcard deserialization to run; arbitrary bytes may still
+        // fail with a typed payload-decode error.
         let payload_len_usize = header.payload_len as usize;
         let result = decode_frame_payload(&header, payload);
-        if payload.len() == payload_len_usize {
-            assert!(
-                result.is_ok(),
-                "decode must succeed when payload len matches header"
-            );
-            // Inspect decoded payload invariants
-            if let Ok(decoded) = result {
+        match result {
+            Ok(decoded) => {
+                assert!(
+                    payload.len() == payload_len_usize,
+                    "decode must fail when payload len mismatches header"
+                );
                 // Verify payload decoded without panic — destructuring alone exercises
                 // the postcard deserialization path for every variant.
                 match decoded {
@@ -263,15 +263,7 @@ pub fn fuzz_ipc_frame(data: &[u8]) {
                     _ => {}
                 }
             }
-        } else {
-            assert!(
-                result.is_err(),
-                "decode must fail when payload len mismatches header"
-            );
-            // Error must be a typed IPC error, never a panic
-            if let Err(e) = result {
-                assert_typed_ipc_error(e);
-            }
+            Err(e) => assert_typed_ipc_error(e),
         }
     }
 }
@@ -459,11 +451,13 @@ pub fn fuzz_compiled_ir(data: &[u8]) {
                 "compiled workflow must have at least 1 node, got {}",
                 workflow.node_count()
             );
-            // Workflow slot count must be non-zero for valid workflows
-            assert!(
-                workflow.slot_count() >= 1,
-                "compiled workflow must have at least 1 slot, got {}",
-                workflow.slot_count()
+            // Workflows with no slot-referencing nodes may legitimately have
+            // zero slots; successful construction must preserve the declared
+            // slot count exactly.
+            assert_eq!(
+                workflow.slot_count(),
+                slot_count,
+                "workflow slot count must match decoded parts slot count"
             );
             // Digest must be preserved through conversion
             assert_eq!(

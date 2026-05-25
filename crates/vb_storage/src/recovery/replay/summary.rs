@@ -8,7 +8,9 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::JournalEvent;
-use crate::recovery::hydrate_support::verified_action_envelope_digest;
+use crate::recovery::hydrate_support::{
+    verified_action_envelope_digest, verify_action_ticket_event,
+};
 use crate::recovery::types::{
     ActionReplayEffect, ActionReplayTracker, RecoveredPendingAction, RecoveredRunAdmission,
     RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState, RecoveryError, RecoveryFrameSeed,
@@ -114,6 +116,7 @@ pub fn summarize_recovery_events(events: &[JournalEvent]) -> RecoveryResult<Reco
         slots_written: 0,
         terminal: None,
     };
+    let mut tracker = ActionReplayTracker::new();
 
     for event in events {
         if event.run_id() != run {
@@ -123,10 +126,88 @@ pub fn summarize_recovery_events(events: &[JournalEvent]) -> RecoveryResult<Reco
             });
         }
         summary.last_seq = event.seq();
-        apply_summary_event(&mut summary, event);
+        apply_summary_event_checked(&mut summary, event, &mut tracker)?;
     }
 
     Ok(RecoveryHydration::Summary(summary))
+}
+
+fn apply_summary_event_checked(
+    summary: &mut RecoveryRuntimeSummary,
+    event: &JournalEvent,
+    tracker: &mut ActionReplayTracker,
+) -> RecoveryResult<()> {
+    match event {
+        JournalEvent::ActionScheduled { action, step, .. } => {
+            reject_resolved_summary_action(tracker, *action, *step)?;
+            apply_summary_event(summary, event);
+            Ok(())
+        }
+        JournalEvent::ActionScheduledTicket { run, ticket, .. } => {
+            verify_action_ticket_event(*run, *ticket)?;
+            reject_resolved_summary_action(tracker, ticket.action, ticket.step)?;
+            apply_summary_event(summary, event);
+            Ok(())
+        }
+        JournalEvent::ActionCompletedEvent { action, step, .. } => {
+            reject_resolved_summary_action(tracker, *action, *step)?;
+            tracker.mark_completed(*action, *step);
+            apply_summary_event(summary, event);
+            Ok(())
+        }
+        JournalEvent::ActionFailedEvent { action, step, .. } => {
+            reject_resolved_summary_action(tracker, *action, *step)?;
+            tracker.mark_failed(*action, *step);
+            apply_summary_event(summary, event);
+            Ok(())
+        }
+        JournalEvent::ActionCompletedEnvelope {
+            run,
+            ticket,
+            output,
+            outcome,
+            value,
+            encoded_len,
+            taint,
+            value_digest,
+            ..
+        } => {
+            let verified_digest = verified_action_envelope_digest(
+                *run,
+                *ticket,
+                *outcome,
+                value,
+                *encoded_len,
+                *value_digest,
+            )?;
+            let effect = tracker.mark_completed_envelope_effect(
+                *ticket,
+                *output,
+                *encoded_len,
+                *taint,
+                verified_digest,
+            )?;
+            if effect == ActionReplayEffect::Apply {
+                apply_summary_event(summary, event);
+            }
+            Ok(())
+        }
+        _ => {
+            apply_summary_event(summary, event);
+            Ok(())
+        }
+    }
+}
+
+fn reject_resolved_summary_action(
+    tracker: &ActionReplayTracker,
+    action: ActionId,
+    step: StepIdx,
+) -> RecoveryResult<()> {
+    if tracker.is_resolved(action, step) {
+        return Err(RecoveryError::NonIdempotentActionBlocked { action, step });
+    }
+    Ok(())
 }
 
 /// Builder that constructs a [`RecoveryFrameSeed`] from journal events.
@@ -307,6 +388,18 @@ struct FrameSeedAccumulator {
     event_slot_taint_unsupported: bool,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct ActionEnvelopeView<'a> {
+    run: RunId,
+    ticket: vb_core::ActionTicket,
+    output: SlotIdx,
+    outcome: crate::DurableActionOutcome,
+    value: &'a [u8],
+    encoded_len: u32,
+    taint: Taint,
+    value_digest: [u8; 32],
+}
+
 impl FrameSeedAccumulator {
     fn new(run: RunId, first_seq: crate::EventSeq) -> Self {
         Self {
@@ -347,7 +440,9 @@ impl FrameSeedAccumulator {
             });
         }
         self.summary.last_seq = event.seq();
-        apply_summary_event(&mut self.summary, event);
+        if !matches!(event, JournalEvent::ActionCompletedEnvelope { .. }) {
+            apply_summary_event(&mut self.summary, event);
+        }
         self.apply_frame_event(event)
     }
 
@@ -362,7 +457,8 @@ impl FrameSeedAccumulator {
             JournalEvent::ActionScheduled { action, step, .. } => {
                 self.record_action_scheduled(*action, *step)
             }
-            JournalEvent::ActionScheduledTicket { ticket, .. } => {
+            JournalEvent::ActionScheduledTicket { run, ticket, .. } => {
+                verify_action_ticket_event(*run, *ticket)?;
                 self.record_action_scheduled(ticket.action, ticket.step)
             }
             JournalEvent::ActionCompletedEvent { action, step, .. } => {
@@ -372,21 +468,25 @@ impl FrameSeedAccumulator {
                 self.record_action_failed(*action, *step)
             }
             JournalEvent::ActionCompletedEnvelope {
+                run,
                 ticket,
                 output,
+                outcome,
                 value,
                 encoded_len,
                 taint,
                 value_digest,
                 ..
-            } => self.record_action_completion_envelope(
-                *ticket,
-                *output,
+            } => self.record_action_completion_envelope(ActionEnvelopeView {
+                run: *run,
+                ticket: *ticket,
+                output: *output,
+                outcome: *outcome,
                 value,
-                *encoded_len,
-                *taint,
-                *value_digest,
-            ),
+                encoded_len: *encoded_len,
+                taint: *taint,
+                value_digest: *value_digest,
+            }),
             JournalEvent::WaitScheduledEvent { step, .. } => {
                 Ok(self.record_step(*step, RecoveredStepState::Waiting))
             }
@@ -446,29 +546,34 @@ impl FrameSeedAccumulator {
 
     fn record_action_completion_envelope(
         mut self,
-        ticket: vb_core::ActionTicket,
-        output: SlotIdx,
-        value: &[u8],
-        encoded_len: u32,
-        taint: Taint,
-        value_digest: [u8; 32],
+        envelope: ActionEnvelopeView<'_>,
     ) -> RecoveryResult<Self> {
-        let verified_digest =
-            verified_action_envelope_digest(ticket, value, encoded_len, value_digest)?;
+        let verified_digest = verified_action_envelope_digest(
+            envelope.run,
+            envelope.ticket,
+            envelope.outcome,
+            envelope.value,
+            envelope.encoded_len,
+            envelope.value_digest,
+        )?;
         let effect = self.action_tracker.mark_completed_envelope_effect(
-            ticket,
-            output,
-            encoded_len,
-            taint,
+            envelope.ticket,
+            envelope.output,
+            envelope.encoded_len,
+            envelope.taint,
             verified_digest,
         )?;
         if effect == ActionReplayEffect::Duplicate {
             return Ok(self);
         }
-        self.pending_actions.remove(&(ticket.action, ticket.step));
-        self.record_step(ticket.step, RecoveredStepState::Succeeded)
-            .record_last_succeeded(ticket.step)
-            .record_envelope_slot(output, value, taint)
+        self.summary.actions_resolved = self.summary.actions_resolved.saturating_add(1);
+        self.summary.steps_succeeded = self.summary.steps_succeeded.saturating_add(1);
+        self.summary.slots_written = self.summary.slots_written.saturating_add(1);
+        self.pending_actions
+            .remove(&(envelope.ticket.action, envelope.ticket.step));
+        self.record_step(envelope.ticket.step, RecoveredStepState::Succeeded)
+            .record_last_succeeded(envelope.ticket.step)
+            .record_envelope_slot(envelope.output, envelope.value, envelope.taint)
     }
 
     fn record_envelope_slot(
@@ -693,9 +798,17 @@ fn recover_slots_through_step(
     target: StepIdx,
 ) -> RecoveryResult<RecoveredSlots> {
     let mut store = ValueStore::new();
-    let frame = ReplayEngine::new(plan)
-        .replay_frame_through(target, &mut store)
-        .map_err(replay_error_to_recovery)?;
+    let engine = ReplayEngine::new(plan);
+    let frame = match engine.replay_frame_through(target, &mut store) {
+        Ok(frame) => frame,
+        Err(ReplayError::NonDeterministicStep { step, .. }) if step == target => {
+            let mut store = ValueStore::new();
+            engine
+                .replay_frame_up_to(target, &mut store)
+                .map_err(replay_error_to_recovery)?
+        }
+        Err(error) => return Err(replay_error_to_recovery(error)),
+    };
     let slots = initialized_recovered_slots(&frame, target)?;
     Ok(RecoveredSlots::from_replayed(slots))
 }

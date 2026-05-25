@@ -1,6 +1,8 @@
 # CI, Fuzz, Formal, and Evidence Defects
 
-## P0: Moon pipeline references nonexistent formal task names
+<!-- RESOLVED 2026-05-24: Sections 1 (formal task names) and 2 (fuzz target names) resolved via vb-481r.1, vb-481r.8 -->
+
+## ✅ P0: Moon pipeline references nonexistent formal task names [RESOLVED: vb-481r.1]
 
 Evidence:
 
@@ -20,7 +22,7 @@ Impact: Formal lanes are not reliably part of the canonical pipeline.
 
 Suggested bead: `P0 fix moon ci formal task name wiring`
 
-## P0: Required fuzz target names do not match executable Cargo fuzz targets
+## ✅ P0: Required fuzz target names do not match executable Cargo fuzz targets [RESOLVED: vb-481r.8]
 
 Evidence:
 

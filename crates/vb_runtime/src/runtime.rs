@@ -1160,6 +1160,70 @@ mod tests {
     }
 
     #[test]
+    fn runtime_action_completion_preserves_frame_when_completion_envelope_append_fails() {
+        let Some(shard_count) = NonZeroUsize::new(1) else {
+            return;
+        };
+        let journal = RejectCompletionJournal::shared();
+        let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), journal.clone());
+        let Some(wf) = action_then_finish_workflow() else {
+            return;
+        };
+        let run = RunId::new(13);
+        assert_eq!(submit_action_then_finish(&runtime, run, wf), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        let before = active_frame(&runtime, run);
+        assert!(matches!(
+            before,
+            Some(ref frame) if frame.read_slot(SlotIdx::new(1)).is_err()
+        ));
+
+        let value = SlotValue::I64(99);
+        let output = ActionOutputReady {
+            output_slot: SlotIdx::new(1),
+            value,
+            taint: Taint::Clean,
+            encoded_len: encoded_len(&value),
+        };
+        let completion_ticket = ticket(run, StepIdx::ZERO, SeqNo::ZERO, ActionId::new(7), 1, 1);
+        assert_eq!(
+            runtime.complete_action_with_output(completion_ticket, output),
+            Ok(())
+        );
+        assert_eq!(
+            runtime.tick_all(),
+            Err(RuntimeError::JournalFull { capacity: 0 })
+        );
+        assert_eq!(active_frame(&runtime, run), before);
+
+        let trace = runtime.list_events(run);
+        assert!(matches!(
+            trace,
+            Ok(ref evts) if !evts.iter().any(|event| matches!(
+                event,
+                TraceEvent::SlotWritten { run: r, slot, .. }
+                    if *r == run && *slot == SlotIdx::new(1)
+            )) && !evts.contains(&TraceEvent::ActionCompleted {
+                run,
+                step: StepIdx::ZERO,
+            })
+        ));
+        let journal_events = journal.snapshot();
+        assert!(matches!(
+            journal_events,
+            Ok(ref evts) if evts.iter().any(|event| matches!(
+                event,
+                RuntimeJournalEvent::ActionScheduledTicket { ticket: t, .. }
+                    if t.run == run && t.action == ActionId::new(7)
+            )) && !evts.iter().any(|event| matches!(
+                event,
+                RuntimeJournalEvent::ActionCompletedEnvelope { ticket: t, .. }
+                    if t.run == run && t.action == ActionId::new(7)
+            ))
+        ));
+    }
+
+    #[test]
     fn do_action_completion_rejects_wrong_action_ticket() {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;

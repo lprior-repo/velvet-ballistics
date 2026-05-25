@@ -31,6 +31,8 @@ These were intentionally not counted as current blockers:
 - Cold-path JSON in CLI/agent-context: runtime-core JSON remains forbidden, but cold CLI JSON is not automatically a defect.
 - Cold parser/validator/compiler maps and formatting: forbidden API checks must be hot-path aware.
 
+<!-- RESOLUTIONS 2026-05-24: 5 beads closed this session — see to-fix/08-resolution-tracker.md for full mapping -->
+
 ## Report Files
 
 - `to-fix/01-compiler-yaml-ir-defects.md`

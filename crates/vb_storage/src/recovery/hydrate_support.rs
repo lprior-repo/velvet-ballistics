@@ -4,11 +4,11 @@
 //! Internal helpers for slot decoding, dimension derivation, event application,
 //! and parallel in-flight tracking. Not part of the public API.
 
-use crate::JournalEvent;
 use crate::recovery::types::{
     ActionReplayEffect, ActionReplayTracker, RecoveryError, RecoveryResult, RunSnapshot,
 };
-use vb_core::RunId;
+use crate::{DurableActionOutcome, JournalEvent};
+use vb_core::{ActionTicket, RunId};
 
 /// Copy-only observation of `RunFrame::read_taint` for fail-closed replay.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,12 +54,40 @@ fn observe_slot_taint_read(
     }
 }
 
+pub(crate) fn verify_action_ticket_event(run: RunId, ticket: ActionTicket) -> RecoveryResult<()> {
+    if ticket.run != run {
+        return Err(RecoveryError::ReplayDivergence {
+            step: ticket.step,
+            detail: String::from("action ticket run mismatch"),
+        });
+    }
+    if ticket.attempt == 0 || ticket.capacity == 0 || ticket.attempt > ticket.capacity {
+        return Err(RecoveryError::ReplayDivergence {
+            step: ticket.step,
+            detail: String::from("action ticket attempt bounds invalid"),
+        });
+    }
+    if !vb_core::action::action_ticket_has_valid_key(ticket) {
+        return Err(RecoveryError::ReplayDivergence {
+            step: ticket.step,
+            detail: String::from("action ticket idempotency key mismatch"),
+        });
+    }
+    Ok(())
+}
+
 pub(crate) fn verified_action_envelope_digest(
-    ticket: vb_core::ActionTicket,
+    run: RunId,
+    ticket: ActionTicket,
+    outcome: DurableActionOutcome,
     value: &[u8],
     encoded_len: u32,
     expected: [u8; 32],
 ) -> RecoveryResult<[u8; 32]> {
+    verify_action_ticket_event(run, ticket)?;
+    match outcome {
+        DurableActionOutcome::Ready => {}
+    }
     let actual_len = u32::try_from(value.len()).map_err(|_| RecoveryError::ReplayDivergence {
         step: ticket.step,
         detail: String::from("action completion value length exceeds u32"),
@@ -91,6 +119,21 @@ fn decode_action_envelope_slot(
         step: ticket.step,
         detail: format!("slot value decode failed for slot {:?}", output),
     })
+}
+
+fn sub_tail_parallel_in_flight(
+    frame: &mut vb_core::RunFrame,
+    step: vb_core::StepIdx,
+) -> RecoveryResult<()> {
+    if frame.parallel_in_flight() == 0 {
+        return Ok(());
+    }
+    frame
+        .sub_parallel_in_flight(1)
+        .map_err(|_e| RecoveryError::ReplayDivergence {
+            step,
+            detail: "parallel_in_flight underflow".to_owned(),
+        })
 }
 
 /// Decodes snapshot slot/taint bytes into recovered slot entries.
@@ -260,7 +303,8 @@ pub(super) fn apply_tail_events(
                     })?;
                 executed = executed.saturating_add(1);
             }
-            JournalEvent::ActionScheduledTicket { ticket, .. } => {
+            JournalEvent::ActionScheduledTicket { run, ticket, .. } => {
+                verify_action_ticket_event(*run, *ticket)?;
                 if tracker.is_resolved(ticket.action, ticket.step) {
                     return Err(RecoveryError::NonIdempotentActionBlocked {
                         action: ticket.action,
@@ -283,25 +327,28 @@ pub(super) fn apply_tail_events(
                     });
                 }
                 tracker.mark_completed(*action, *step);
-                frame
-                    .sub_parallel_in_flight(1)
-                    .map_err(|_e| RecoveryError::ReplayDivergence {
-                        step: *step,
-                        detail: "parallel_in_flight underflow".to_owned(),
-                    })?;
+                sub_tail_parallel_in_flight(frame, *step)?;
                 executed = executed.saturating_add(1);
             }
             JournalEvent::ActionCompletedEnvelope {
+                run,
                 ticket,
                 output,
+                outcome,
                 value,
                 encoded_len,
                 taint,
                 value_digest,
                 ..
             } => {
-                let verified_digest =
-                    verified_action_envelope_digest(*ticket, value, *encoded_len, *value_digest)?;
+                let verified_digest = verified_action_envelope_digest(
+                    *run,
+                    *ticket,
+                    *outcome,
+                    value,
+                    *encoded_len,
+                    *value_digest,
+                )?;
                 let effect = tracker.mark_completed_envelope_effect(
                     *ticket,
                     *output,
@@ -325,12 +372,7 @@ pub(super) fn apply_tail_events(
                         step: ticket.step,
                         detail: "mark_succeeded failed".to_owned(),
                     })?;
-                frame
-                    .sub_parallel_in_flight(1)
-                    .map_err(|_e| RecoveryError::ReplayDivergence {
-                        step: ticket.step,
-                        detail: "parallel_in_flight underflow".to_owned(),
-                    })?;
+                sub_tail_parallel_in_flight(frame, ticket.step)?;
                 executed = executed.saturating_add(1);
             }
             JournalEvent::ActionFailedEvent { action, step, .. } => {
@@ -341,12 +383,7 @@ pub(super) fn apply_tail_events(
                     });
                 }
                 tracker.mark_failed(*action, *step);
-                frame
-                    .sub_parallel_in_flight(1)
-                    .map_err(|_e| RecoveryError::ReplayDivergence {
-                        step: *step,
-                        detail: "parallel_in_flight underflow".to_owned(),
-                    })?;
+                sub_tail_parallel_in_flight(frame, *step)?;
                 executed = executed.saturating_add(1);
             }
             JournalEvent::SlotWrittenEvent { slot, value, .. } => {
@@ -462,7 +499,8 @@ pub(super) fn compute_parallel_in_flight(
                     peak = frame.parallel_in_flight();
                 }
             }
-            JournalEvent::ActionScheduledTicket { ticket, .. } => {
+            JournalEvent::ActionScheduledTicket { run, ticket, .. } => {
+                verify_action_ticket_event(*run, *ticket)?;
                 if tracker.is_resolved(ticket.action, ticket.step) {
                     return Err(RecoveryError::NonIdempotentActionBlocked {
                         action: ticket.action,
@@ -495,16 +533,24 @@ pub(super) fn compute_parallel_in_flight(
                     })?;
             }
             JournalEvent::ActionCompletedEnvelope {
+                run,
                 ticket,
                 output,
+                outcome,
                 value,
                 encoded_len,
                 taint,
                 value_digest,
                 ..
             } => {
-                let verified_digest =
-                    verified_action_envelope_digest(*ticket, value, *encoded_len, *value_digest)?;
+                let verified_digest = verified_action_envelope_digest(
+                    *run,
+                    *ticket,
+                    *outcome,
+                    value,
+                    *encoded_len,
+                    *value_digest,
+                )?;
                 let effect = tracker.mark_completed_envelope_effect(
                     *ticket,
                     *output,

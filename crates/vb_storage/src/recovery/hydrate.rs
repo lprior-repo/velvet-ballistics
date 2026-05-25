@@ -9,6 +9,7 @@ use crate::JournalEvent;
 use crate::recovery::hydrate_support::{
     apply_tail_events, compute_parallel_in_flight, decode_snapshot_slots,
     derive_dimensions_from_snapshot_and_tail, verified_action_envelope_digest,
+    verify_action_ticket_event,
 };
 use crate::recovery::types::ActionReplayEffect;
 use crate::recovery::types::{
@@ -384,7 +385,8 @@ fn count_state_event(
             reject_resolved_action(tracker, *action, *step)?;
             Ok(true)
         }
-        JournalEvent::ActionScheduledTicket { ticket, .. } => {
+        JournalEvent::ActionScheduledTicket { run, ticket, .. } => {
+            verify_action_ticket_event(*run, *ticket)?;
             reject_resolved_action(tracker, ticket.action, ticket.step)?;
             Ok(true)
         }
@@ -394,16 +396,24 @@ fn count_state_event(
             Ok(true)
         }
         JournalEvent::ActionCompletedEnvelope {
+            run,
             ticket,
             output,
+            outcome,
             value,
             encoded_len,
             taint,
             value_digest,
             ..
         } => {
-            let verified_digest =
-                verified_action_envelope_digest(*ticket, value, *encoded_len, *value_digest)?;
+            let verified_digest = verified_action_envelope_digest(
+                *run,
+                *ticket,
+                *outcome,
+                value,
+                *encoded_len,
+                *value_digest,
+            )?;
             let effect = tracker.mark_completed_envelope_effect(
                 *ticket,
                 *output,

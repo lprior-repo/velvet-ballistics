@@ -439,28 +439,28 @@ bench = false
 # === new libfuzzer targets (vb-64nl Phase 0) ===
 
 [[bin]]
-name = "compiled_ir_fuzz"
+name = "compiled_ir"
 path = "fuzz_targets/compiled_ir.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "ipc_frame_fuzz"
+name = "ipc_frame"
 path = "fuzz_targets/ipc_frame.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "expression_fuzz"
+name = "expression"
 path = "fuzz_targets/expression.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "yaml_events_fuzz"
+name = "yaml_events"
 path = "fuzz_targets/yaml_events.rs"
 test = false
 doc = false

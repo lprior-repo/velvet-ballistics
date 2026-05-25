@@ -8,12 +8,13 @@ use crate::recovery::{
     recover_runtime_frame_seed_from_events_with_workflow, recover_runtime_summary,
     recover_snapshot_plus_tail, replay_events, summarize_recovery_events, verify_digests,
 };
-use crate::{EventSeq, FjallJournal, JournalEvent, RunHeaderRecord};
+use crate::{DurableActionOutcome, EventSeq, FjallJournal, JournalEvent, RunHeaderRecord};
+use vb_core::action::{ActionTicket, compute_action_idempotency_key};
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
-use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
+use vb_core::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 
 fn sample_digest(byte: u8) -> WorkflowDigest {
     WorkflowDigest::from_bytes([byte; 32])
@@ -102,6 +103,59 @@ fn step_succeeded_events(run: RunId, workflow: WorkflowDigest, step: StepIdx) ->
 
 fn accepted_event(run: RunId, seq: EventSeq, workflow: WorkflowDigest) -> JournalEvent {
     JournalEvent::RunAccepted { run, seq, workflow }
+}
+
+fn recovery_action_ticket(run: RunId, step: StepIdx, action: ActionId) -> ActionTicket {
+    let seq = SeqNo::ZERO;
+    ActionTicket {
+        run,
+        step,
+        seq,
+        action,
+        attempt: 1,
+        idempotency_key: compute_action_idempotency_key(run, seq, action),
+        capacity: 1,
+    }
+}
+
+fn recovery_action_scheduled_ticket_event(
+    run: RunId,
+    seq: EventSeq,
+    ticket: ActionTicket,
+    input: SlotIdx,
+    output: SlotIdx,
+) -> JournalEvent {
+    JournalEvent::ActionScheduledTicket {
+        run,
+        seq,
+        ticket,
+        input,
+        output,
+    }
+}
+
+fn recovery_action_completed_envelope_event(
+    run: RunId,
+    seq: EventSeq,
+    ticket: ActionTicket,
+    output: SlotIdx,
+    value: SlotValue,
+    taint: Taint,
+) -> JournalEvent {
+    let encoded = postcard::to_allocvec(&value).expect("slot value encodes");
+    let encoded_len = u32::try_from(encoded.len()).expect("encoded length fits u32");
+    let value_digest = *blake3::hash(&encoded).as_bytes();
+    JournalEvent::ActionCompletedEnvelope {
+        run,
+        seq,
+        ticket,
+        output,
+        outcome: DurableActionOutcome::Ready,
+        value: encoded,
+        encoded_len,
+        taint,
+        value_digest,
+    }
 }
 
 fn started_event(run: RunId, seq: EventSeq, step: StepIdx) -> JournalEvent {
@@ -208,6 +262,47 @@ fn summarize_recovery_events_returns_summary_hydration() {
             result: SlotIdx::new(3),
         })
     );
+}
+
+#[test]
+fn summarize_recovery_events_counts_duplicate_action_completed_envelope_once() {
+    let run = RunId::new(78);
+    let ticket = recovery_action_ticket(run, StepIdx::ZERO, ActionId::new(1));
+    let events = vec![
+        recovery_action_scheduled_ticket_event(
+            run,
+            EventSeq::new(0),
+            ticket,
+            SlotIdx::new(0),
+            SlotIdx::new(1),
+        ),
+        recovery_action_completed_envelope_event(
+            run,
+            EventSeq::new(1),
+            ticket,
+            SlotIdx::new(1),
+            SlotValue::I64(42),
+            Taint::Clean,
+        ),
+        recovery_action_completed_envelope_event(
+            run,
+            EventSeq::new(2),
+            ticket,
+            SlotIdx::new(1),
+            SlotValue::I64(42),
+            Taint::Clean,
+        ),
+    ];
+
+    let hydration = summarize_recovery_events(&events).expect("summary recovery succeeds");
+    let RecoveryHydration::Summary(summary) = hydration else {
+        panic!("expected summary hydration");
+    };
+
+    assert_eq!(summary.actions_scheduled, 1);
+    assert_eq!(summary.actions_resolved, 1);
+    assert_eq!(summary.steps_succeeded, 1);
+    assert_eq!(summary.slots_written, 1);
 }
 
 #[test]
@@ -323,6 +418,72 @@ fn frame_seed_with_workflow_replays_deterministic_slot_values()
     assert!(!seed.unsupported.slot_taint);
     assert_recovered_i64_slot(&seed, SlotIdx::new(0));
     assert_recovered_i64_slot(&seed, SlotIdx::new(1));
+    Ok(())
+}
+
+#[test]
+fn frame_seed_with_workflow_preserves_action_completed_envelope_output_slot_value()
+-> Result<(), Box<dyn std::error::Error>> {
+    let run = RunId::new(943);
+    let digest = sample_digest(55);
+    let action = ActionId::new(4);
+    let parts = WorkflowParts {
+        name: "action_recovery".into(),
+        digest,
+        nodes: vec![CompiledNode {
+            id: StepIdx::ZERO,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action,
+                input: SlotIdx::new(0),
+            },
+            output: Some(SlotIdx::new(1)),
+            next: None,
+        }]
+        .into(),
+        expressions: Vec::new().into(),
+        accessors: Vec::new().into(),
+        constants: Vec::new().into(),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+    };
+    let plan = CompiledWorkflow::try_from_parts(parts)?;
+    let ticket = recovery_action_ticket(run, StepIdx::ZERO, action);
+    let events = vec![
+        accepted_event(run, EventSeq::new(0), digest),
+        recovery_action_scheduled_ticket_event(
+            run,
+            EventSeq::new(1),
+            ticket,
+            SlotIdx::new(0),
+            SlotIdx::new(1),
+        ),
+        recovery_action_completed_envelope_event(
+            run,
+            EventSeq::new(2),
+            ticket,
+            SlotIdx::new(1),
+            SlotValue::I64(1234),
+            Taint::Secret,
+        ),
+    ];
+
+    let seed = recover_runtime_frame_seed_from_events_with_workflow(&events, &plan)?;
+
+    assert!(seed.slots.iter().any(|entry| {
+        entry.slot == SlotIdx::new(1)
+            && entry.value == SlotValue::I64(1234)
+            && entry.taint == Taint::Secret
+    }));
+    assert!(seed.steps.iter().any(|entry| {
+        entry.step == StepIdx::ZERO && entry.state == RecoveredStepState::Succeeded
+    }));
+    assert!(!seed.unsupported.slot_values);
+    assert!(!seed.unsupported.action_payloads);
     Ok(())
 }
 
@@ -1659,9 +1820,10 @@ mod hydrate_run_frame_tests {
         ActionReplayTracker, RecoveryError, RunSnapshot, hydrate_run_frame,
         hydrate_run_frame_from_events,
     };
-    use crate::{EventSeq, JournalEvent};
+    use crate::{DurableActionOutcome, EventSeq, JournalEvent};
+    use vb_core::action::{ActionTicket, compute_action_idempotency_key};
     use vb_core::value::{SlotValue, Taint};
-    use vb_core::{ActionId, RunId, SlotIdx, StepIdx, StepState, WorkflowDigest};
+    use vb_core::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, StepState, WorkflowDigest};
 
     fn sample_digest(byte: u8) -> WorkflowDigest {
         WorkflowDigest::from_bytes([byte; 32])
@@ -1680,6 +1842,63 @@ mod hydrate_run_frame_tests {
             workflow: sample_digest(1),
             slots: Vec::new(),
             taint: Vec::new(),
+        }
+    }
+
+    fn action_ticket(run: RunId, step: StepIdx, action: ActionId) -> ActionTicket {
+        let seq = SeqNo::ZERO;
+        ActionTicket {
+            run,
+            step,
+            seq,
+            action,
+            attempt: 1,
+            idempotency_key: compute_action_idempotency_key(run, seq, action),
+            capacity: 1,
+        }
+    }
+
+    fn encoded_slot(value: &SlotValue) -> Vec<u8> {
+        postcard::to_allocvec(value).expect("slot value encodes")
+    }
+
+    fn action_scheduled_ticket_event(
+        run: RunId,
+        seq: EventSeq,
+        ticket: ActionTicket,
+        input: SlotIdx,
+        output: SlotIdx,
+    ) -> JournalEvent {
+        JournalEvent::ActionScheduledTicket {
+            run,
+            seq,
+            ticket,
+            input,
+            output,
+        }
+    }
+
+    fn action_completed_envelope_event(
+        run: RunId,
+        seq: EventSeq,
+        ticket: ActionTicket,
+        output: SlotIdx,
+        value: SlotValue,
+        taint: Taint,
+    ) -> JournalEvent {
+        let encoded = encoded_slot(&value);
+        let encoded_len = u32::try_from(encoded.len()).expect("encoded length fits u32");
+        let value_digest = *blake3::hash(&encoded).as_bytes();
+        JournalEvent::ActionCompletedEnvelope {
+            run,
+            seq,
+            ticket,
+            output,
+            outcome: DurableActionOutcome::Ready,
+            value: encoded,
+            encoded_len,
+            taint,
+            value_digest,
         }
     }
 
@@ -2225,6 +2444,248 @@ mod hydrate_run_frame_tests {
         let frame = result.unwrap();
         assert_eq!(frame.parallel_in_flight(), 1);
         assert_eq!(frame.max_parallel_in_flight(), 2);
+    }
+
+    #[test]
+    fn hydrate_run_frame_from_events_rejects_action_completed_envelope_digest_mismatch() {
+        let run = RunId::new(20);
+        let ticket = action_ticket(run, StepIdx::ZERO, ActionId::new(1));
+        let value = encoded_slot(&SlotValue::I64(42));
+        let encoded_len = u32::try_from(value.len()).expect("encoded length fits u32");
+        let events = vec![
+            action_scheduled_ticket_event(
+                run,
+                EventSeq::new(1),
+                ticket,
+                SlotIdx::new(0),
+                SlotIdx::new(1),
+            ),
+            JournalEvent::ActionCompletedEnvelope {
+                run,
+                seq: EventSeq::new(2),
+                ticket,
+                output: SlotIdx::new(1),
+                outcome: DurableActionOutcome::Ready,
+                value,
+                encoded_len,
+                taint: Taint::Clean,
+                value_digest: [255; 32],
+            },
+        ];
+
+        let result = hydrate_run_frame_from_events(&events, run);
+
+        assert!(matches!(
+            result,
+            Err(RecoveryError::ReplayDivergence { step, detail })
+                if step == StepIdx::ZERO
+                    && detail == "action completion value digest mismatch"
+        ));
+    }
+
+    #[test]
+    fn hydrate_run_frame_from_events_rejects_action_completed_envelope_encoded_len_mismatch() {
+        let run = RunId::new(21);
+        let ticket = action_ticket(run, StepIdx::ZERO, ActionId::new(1));
+        let value = encoded_slot(&SlotValue::I64(42));
+        let actual_len = u32::try_from(value.len()).expect("encoded length fits u32");
+        let encoded_len = actual_len.checked_add(1).expect("test length increments");
+        let value_digest = *blake3::hash(&value).as_bytes();
+        let events = vec![
+            action_scheduled_ticket_event(
+                run,
+                EventSeq::new(1),
+                ticket,
+                SlotIdx::new(0),
+                SlotIdx::new(1),
+            ),
+            JournalEvent::ActionCompletedEnvelope {
+                run,
+                seq: EventSeq::new(2),
+                ticket,
+                output: SlotIdx::new(1),
+                outcome: DurableActionOutcome::Ready,
+                value,
+                encoded_len,
+                taint: Taint::Clean,
+                value_digest,
+            },
+        ];
+
+        let result = hydrate_run_frame_from_events(&events, run);
+
+        assert!(matches!(
+            result,
+            Err(RecoveryError::ReplayDivergence { step, detail })
+                if step == StepIdx::ZERO
+                    && detail == "action completion encoded length mismatch"
+        ));
+    }
+
+    #[test]
+    fn hydrate_run_frame_from_events_applies_duplicate_identical_action_completed_envelope_once() {
+        let run = RunId::new(22);
+        let ticket = action_ticket(run, StepIdx::ZERO, ActionId::new(1));
+        let first = action_completed_envelope_event(
+            run,
+            EventSeq::new(2),
+            ticket,
+            SlotIdx::new(1),
+            SlotValue::I64(42),
+            Taint::Clean,
+        );
+        let second = action_completed_envelope_event(
+            run,
+            EventSeq::new(3),
+            ticket,
+            SlotIdx::new(1),
+            SlotValue::I64(42),
+            Taint::Clean,
+        );
+        let events = vec![
+            action_scheduled_ticket_event(
+                run,
+                EventSeq::new(1),
+                ticket,
+                SlotIdx::new(0),
+                SlotIdx::new(1),
+            ),
+            first,
+            second,
+        ];
+
+        let result = hydrate_run_frame_from_events(&events, run);
+
+        assert!(result.is_ok(), "expected Ok, got {:?}", result);
+        let frame = result.unwrap();
+        assert_eq!(
+            frame.read_slot(SlotIdx::new(1)).unwrap(),
+            &SlotValue::I64(42)
+        );
+        assert_eq!(frame.read_taint(SlotIdx::new(1)).unwrap(), Taint::Clean);
+        assert_eq!(
+            frame.step_state(StepIdx::ZERO).unwrap(),
+            StepState::Succeeded
+        );
+        assert_eq!(frame.parallel_in_flight(), 0);
+        assert_eq!(frame.max_parallel_in_flight(), 1);
+        assert_eq!(frame.executed(), 2);
+    }
+
+    #[test]
+    fn hydrate_run_frame_from_events_rejects_divergent_action_completed_envelope_duplicate() {
+        let run = RunId::new(23);
+        let ticket = action_ticket(run, StepIdx::ZERO, ActionId::new(1));
+        let events = vec![
+            action_scheduled_ticket_event(
+                run,
+                EventSeq::new(1),
+                ticket,
+                SlotIdx::new(0),
+                SlotIdx::new(1),
+            ),
+            action_completed_envelope_event(
+                run,
+                EventSeq::new(2),
+                ticket,
+                SlotIdx::new(1),
+                SlotValue::I64(42),
+                Taint::Clean,
+            ),
+            action_completed_envelope_event(
+                run,
+                EventSeq::new(3),
+                ticket,
+                SlotIdx::new(1),
+                SlotValue::I64(43),
+                Taint::Clean,
+            ),
+        ];
+
+        let result = hydrate_run_frame_from_events(&events, run);
+
+        assert!(matches!(
+            result,
+            Err(RecoveryError::ReplayDivergence { step, detail })
+                if step == StepIdx::ZERO
+                    && detail == "divergent action completion envelope"
+        ));
+    }
+
+    #[test]
+    fn hydrate_run_frame_from_events_reconstructs_parallel_counters_for_ticket_and_envelope_events()
+    {
+        let run = RunId::new(24);
+        let first = action_ticket(run, StepIdx::ZERO, ActionId::new(1));
+        let second = action_ticket(run, StepIdx::new(1), ActionId::new(2));
+        let events = vec![
+            action_scheduled_ticket_event(
+                run,
+                EventSeq::new(1),
+                first,
+                SlotIdx::new(0),
+                SlotIdx::new(2),
+            ),
+            action_scheduled_ticket_event(
+                run,
+                EventSeq::new(2),
+                second,
+                SlotIdx::new(1),
+                SlotIdx::new(3),
+            ),
+            action_completed_envelope_event(
+                run,
+                EventSeq::new(3),
+                first,
+                SlotIdx::new(2),
+                SlotValue::I64(77),
+                Taint::Clean,
+            ),
+        ];
+
+        let result = hydrate_run_frame_from_events(&events, run);
+
+        assert!(result.is_ok(), "expected Ok, got {:?}", result);
+        let frame = result.unwrap();
+        assert_eq!(frame.parallel_in_flight(), 1);
+        assert_eq!(frame.max_parallel_in_flight(), 2);
+        assert_eq!(
+            frame.step_state(StepIdx::ZERO).unwrap(),
+            StepState::Succeeded
+        );
+        assert_eq!(
+            frame.read_slot(SlotIdx::new(2)).unwrap(),
+            &SlotValue::I64(77)
+        );
+    }
+
+    #[test]
+    fn hydrate_run_frame_applies_tail_completion_without_pre_snapshot_schedule() {
+        let run = RunId::new(25);
+        let snapshot = empty_snapshot(run, EventSeq::new(1));
+        let ticket = action_ticket(run, StepIdx::ZERO, ActionId::new(1));
+        let tail = vec![action_completed_envelope_event(
+            run,
+            EventSeq::new(2),
+            ticket,
+            SlotIdx::new(1),
+            SlotValue::I64(88),
+            Taint::Clean,
+        )];
+
+        let result = hydrate_run_frame(&snapshot, &tail, run);
+
+        assert!(result.is_ok(), "expected Ok, got {:?}", result);
+        let frame = result.unwrap();
+        assert_eq!(frame.parallel_in_flight(), 0);
+        assert_eq!(
+            frame.step_state(StepIdx::ZERO).unwrap(),
+            StepState::Succeeded
+        );
+        assert_eq!(
+            frame.read_slot(SlotIdx::new(1)).unwrap(),
+            &SlotValue::I64(88)
+        );
     }
 
     // --- Invariant: Dimension integrity ---
