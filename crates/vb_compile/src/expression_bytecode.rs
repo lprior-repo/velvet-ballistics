@@ -48,7 +48,6 @@ pub fn compile_expr_to_bytecode_with_accessors(
 ///
 /// For step references with field accessors like `$steps.build.result`, creates
 /// an AccessorProgram with the step's output slot as root and the field as path.
-#[allow(dead_code)]
 pub(crate) fn compile_expr_to_bytecode_with_step_slots(
     expression: &ParsedExpression,
     constants: &mut Vec<ConstValue>,
@@ -110,7 +109,6 @@ impl ExpressionReferenceResolver for SlotAccessorReferenceResolver<'_> {
 /// This resolver handles both bare step references like `$steps.done` (returning
 /// LoadSlot for the step's output slot) and step references with field accessors
 /// like `$steps.done.result` (creating an AccessorProgram).
-#[allow(dead_code)]
 struct StepSlotReferenceResolver<'a> {
     step_slots: &'a [(Box<str>, SlotIdx)],
     accessors: &'a mut Vec<AccessorProgram>,
@@ -167,7 +165,6 @@ fn parse_slot_reference_parts(reference: &str) -> Result<(&str, &str), CompileEr
 /// # Errors
 /// Returns `CompileError::UnknownReferenceRoot` if the reference doesn't start with
 /// `$step` or `$steps`, or if it has invalid format.
-#[allow(dead_code)]
 fn parse_step_reference_parts(reference: &str) -> Result<(&str, Option<&str>), CompileError> {
     let Some(body) = reference.strip_prefix('$') else {
         return Err(CompileError::UnknownReferenceRoot {
@@ -200,7 +197,6 @@ fn parse_step_reference_parts(reference: &str) -> Result<(&str, Option<&str>), C
 ///
 /// For step references with field accessors like `$steps.build.result`, creates
 /// an AccessorProgram with the step's output slot as root and the field as path.
-#[allow(dead_code)]
 fn lower_step_reference(
     reference: &str,
     step_slots: &[(Box<str>, SlotIdx)],
@@ -233,7 +229,6 @@ fn lower_step_reference(
 }
 
 /// Resolves a step ID to its output SlotIdx using the step_slots mapping.
-#[allow(dead_code)]
 fn resolve_step_slot(
     reference: &str,
     step_id: &str,
@@ -255,7 +250,6 @@ fn resolve_step_slot(
 /// For field accessors like "result" or "data.value", creates numeric index segments.
 /// Currently only supports the "result" field which maps to index 0.
 /// Other field names are rejected as they require a symbol table.
-#[allow(dead_code)]
 fn parse_field_path_segments(
     reference: &str,
     field_path: &str,
@@ -558,7 +552,10 @@ const fn helper_name(helper: ExpressionHelper) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::{compile_expr_to_bytecode, compile_expr_to_bytecode_with_accessors};
+    use super::{
+        compile_expr_to_bytecode, compile_expr_to_bytecode_with_accessors,
+        compile_expr_to_bytecode_with_step_slots,
+    };
     use crate::CompileError;
     use crate::expression::parse_expression;
     use vb_core::{
@@ -2404,5 +2401,133 @@ mod tests {
             ms_complex >= ms_simple,
             "more complex expression should have >= max_stack",
         )
+    }
+
+    // ── Step reference lowering tests ────────────────────────────────────────
+
+    fn lower_with_step_slots(
+        source: &str,
+        step_slots: &[(Box<str>, SlotIdx)],
+    ) -> Result<(Vec<ExprOp>, Vec<ConstValue>, Vec<AccessorProgram>), String> {
+        let expr = parse_expression(source).map_err(|error| error.to_string())?;
+        let mut constants = Vec::new();
+        let mut accessors = Vec::new();
+        let program = compile_expr_to_bytecode_with_step_slots(
+            &expr,
+            &mut constants,
+            &mut accessors,
+            step_slots,
+        )
+        .map_err(|error| error.to_string())?;
+        Ok((program.ops.into_vec(), constants, accessors))
+    }
+
+    #[test]
+    fn lowers_bare_step_reference_to_load_slot() -> Result<(), String> {
+        let step_slots: [(Box<str>, SlotIdx); 2] = [
+            (Box::from("build"), SlotIdx::new(3)),
+            (Box::from("test"), SlotIdx::new(5)),
+        ];
+        let (ops, constants, accessors) = lower_with_step_slots("$steps.build", &step_slots)?;
+        let expected_ops = vec![ExprOp::LoadSlot(SlotIdx::new(3))];
+        if ops != expected_ops {
+            return Err(format!(
+                "ops mismatch: expected {expected_ops:?}, got {ops:?}"
+            ));
+        }
+        if !constants.is_empty() {
+            return Err(format!("bare step ref created constants: {constants:?}"));
+        }
+        if !accessors.is_empty() {
+            return Err(format!("bare step ref created accessors: {accessors:?}"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn lowers_step_reference_with_result_field_to_accessor() -> Result<(), String> {
+        let step_slots: [(Box<str>, SlotIdx); 1] = [(Box::from("build"), SlotIdx::new(3))];
+        let (ops, constants, accessors) =
+            lower_with_step_slots("$steps.build.result", &step_slots)?;
+        let expected_ops = vec![ExprOp::LoadAccessor(AccessorIdx::new(0))];
+        let expected_accessors = vec![AccessorProgram {
+            root: SlotIdx::new(3),
+            path: vec![PathSegment::Index(0)].into_boxed_slice(),
+        }];
+        if ops != expected_ops {
+            return Err(format!(
+                "ops mismatch: expected {expected_ops:?}, got {ops:?}"
+            ));
+        }
+        if !constants.is_empty() {
+            return Err(format!("step accessor created constants: {constants:?}"));
+        }
+        if accessors != expected_accessors {
+            return Err(format!(
+                "accessors mismatch: expected {expected_accessors:?}, got {accessors:?}"
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn rejects_unknown_step_reference() -> Result<(), String> {
+        let step_slots: [(Box<str>, SlotIdx); 1] = [(Box::from("build"), SlotIdx::new(3))];
+        let expr = parse_expression("$steps.unknown").map_err(|e| e.to_string())?;
+        let mut constants = Vec::new();
+        let mut accessors = Vec::new();
+        match compile_expr_to_bytecode_with_step_slots(
+            &expr,
+            &mut constants,
+            &mut accessors,
+            &step_slots,
+        ) {
+            Err(CompileError::UnknownReferenceName { kind, name, .. })
+                if &*kind == "step" && &*name == "unknown" =>
+            {
+                Ok(())
+            }
+            other => Err(format!("unexpected lowering result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn rejects_step_reference_with_wrong_root() -> Result<(), String> {
+        let step_slots: [(Box<str>, SlotIdx); 0] = [];
+        let expr = parse_expression("$unknown.build").map_err(|e| e.to_string())?;
+        let mut constants = Vec::new();
+        let mut accessors = Vec::new();
+        match compile_expr_to_bytecode_with_step_slots(
+            &expr,
+            &mut constants,
+            &mut accessors,
+            &step_slots,
+        ) {
+            Err(CompileError::UnknownReferenceRoot { root, .. }) if &*root == "unknown" => Ok(()),
+            other => Err(format!("unexpected lowering result: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn step_reference_in_binary_expression() -> Result<(), String> {
+        let step_slots: [(Box<str>, SlotIdx); 1] = [(Box::from("build"), SlotIdx::new(3))];
+        let (ops, constants, accessors) = lower_with_step_slots("$steps.build == 42", &step_slots)?;
+        let expected_ops = vec![
+            ExprOp::LoadSlot(SlotIdx::new(3)),
+            ExprOp::LoadConst(ConstIdx::new(0)),
+            ExprOp::Eq,
+        ];
+        if ops != expected_ops {
+            return Err(format!(
+                "ops mismatch: expected {expected_ops:?}, got {ops:?}"
+            ));
+        }
+        if constants != vec![ConstValue::I64(42)] {
+            return Err(format!("constants mismatch: {constants:?}"));
+        }
+        if !accessors.is_empty() {
+            return Err(format!("unexpected accessors: {accessors:?}"));
+        }
+        Ok(())
     }
 }
