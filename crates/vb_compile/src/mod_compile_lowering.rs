@@ -22,6 +22,8 @@ mod kani_proofs;
 
 #[allow(unused_imports)]
 pub(crate) use part_01::*;
+// compile_source is needed by external integration tests.
+pub use part_01::compile_source;
 #[allow(unused_imports)]
 pub(crate) use part_02::*;
 #[allow(unused_imports)]

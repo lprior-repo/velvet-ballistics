@@ -56,7 +56,7 @@ fn compile_and_digest(yaml: &str) -> Result<WorkflowDigest, String> {
 /// Generate branch YAML for a together step with given labels and optional set values.
 /// Each branch gets exactly one set step: `set { output: out_label, value: val_str }`.
 fn together_branch_yaml(labels_and_outputs: &[(&str, &str, &str)]) -> String {
-    let mut yaml = String::from("  - id: fanout\n    parallel:\n      branches:\n");
+    let mut yaml = String::from("  - id: fanout\n    together:\n      branches:\n");
     for (label, output, value) in labels_and_outputs {
         yaml.push_str(&format!("        - label: \"{label}\"\n          steps:\n"));
         yaml.push_str(&format!(
@@ -305,7 +305,7 @@ proptest! {
     ) {
         // Build a workflow with `count` branches
         let mut branches_yaml = String::from(
-            "  - id: fanout\n    parallel:\n      branches:\n"
+            "  - id: fanout\n    together:\n      branches:\n"
         );
         for i in 0..count {
             branches_yaml.push_str(&format!(
@@ -327,7 +327,7 @@ proptest! {
 
         // Different count (count+1) must produce different digest
         let mut more_yaml = String::from(
-            "  - id: fanout\n    parallel:\n      branches:\n"
+            "  - id: fanout\n    together:\n      branches:\n"
         );
         for i in 0..(count + 1) {
             more_yaml.push_str(&format!(

@@ -5,6 +5,8 @@
 //!
 //! See `.beads/vb-xi2f.32/test-plan.md` Sections 9.1 and 9.2.
 
+#![allow(unused_must_use)]
+
 use crate::mod_compile_lowering::{canonical_primitive_name, digest_step_primitive};
 use blake3::Hasher;
 use proptest::prelude::*;
@@ -485,7 +487,7 @@ fn canonical_primitive_name_returns_non_empty_distinct_name_for_every_variant() 
                 body: vec![],
             },
         ),
-        ("parallel", StepPrimitive::Together { branches: vec![] }),
+        ("together", StepPrimitive::Together { branches: vec![] }),
         (
             "collect",
             StepPrimitive::Collect {
