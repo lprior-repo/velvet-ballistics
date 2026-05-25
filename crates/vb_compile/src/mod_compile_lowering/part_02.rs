@@ -81,7 +81,7 @@ pub(super) fn lower_canonical_step(
         vb_yaml::ast::StepPrimitive::Choose {
             branches,
             otherwise,
-        } => lower_canonical_choose(index, id, branches, otherwise.as_deref(), next, builder),
+        } => lower_canonical_choose(index, id, branches, otherwise.as_deref(), next, step_names.as_ref(), builder),
         other => Err(CompileErrors(vec![
             CompileError::UnsupportedStepPrimitive {
                 step: index,
@@ -207,11 +207,11 @@ pub(super) fn lower_canonical_choose(
     branches: &[vb_yaml::ast::ChooseBranch],
     otherwise: Option<&str>,
     next: Option<StepIdx>,
+    step_names: &[Box<str>],
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
-    // For now, only support single branch with empty body
-    // Multi-step bodies require more complex lowering
-    if branches.len() != 1 {
+    // Multi-branch choose is not yet supported
+    if branches.len() > 1 {
         return Err(CompileErrors(vec![
             CompileError::UnsupportedStepPrimitive {
                 step: index,
@@ -219,39 +219,66 @@ pub(super) fn lower_canonical_choose(
             },
         ]));
     }
-    let branch = branches.first().ok_or_else(|| {
-        CompileErrors(vec![CompileError::UnsupportedStepPrimitive {
-            step: index,
-            primitive: "choose",
-        }])
-    })?;
-    let condition = slot_from_text(&branch.when, index, "choose.branches[].when")?;
-    // If branch has non-empty steps, we don't support it yet
-    if !branch.steps.is_empty() {
+    // Empty branch table requires otherwise to be set
+    if branches.is_empty() && otherwise.is_none() {
         return Err(CompileErrors(vec![
-            CompileError::UnsupportedStepPrimitive {
-                step: index,
-                primitive: "choose",
-            },
+            CompileError::Workflow(WorkflowError::EmptyBranchTable),
         ]));
     }
+    // If there are no branches, we still need a target for the fallthrough case
     // Empty body means fall through to next step
-    let target = next.ok_or_else(|| {
-        CompileErrors(vec![CompileError::StepFieldShape {
-            step: index,
-            field: "choose",
-            expected: "non-empty next step for empty choose branch",
-        }])
-    })?;
+    let target = if let Some(branch) = branches.first() {
+        if !branch.steps.is_empty() {
+            return Err(CompileErrors(vec![
+                CompileError::UnsupportedStepPrimitive {
+                    step: index,
+                    primitive: "choose",
+                },
+            ]));
+        }
+        // Body is empty - fall through to next
+        next.ok_or_else(|| {
+            CompileErrors(vec![CompileError::StepFieldShape {
+                step: index,
+                field: "choose",
+                expected: "non-empty next step for empty choose branch",
+            }])
+        })?
+    } else {
+        // No branches - must have otherwise set
+        // This case is caught above, but we need a target anyway
+        next.ok_or_else(|| {
+            CompileErrors(vec![CompileError::StepFieldShape {
+                step: index,
+                field: "choose",
+                expected: "non-empty next step for empty choose branch",
+            }])
+        })?
+    };
+    // Resolve otherwise label to step index via step_names lookup
     let otherwise_target = match otherwise {
         Some(label) => {
-            let slot = slot_from_text(label, index, "choose.otherwise")?;
-            // Convert slot index to step index - they're both u16 newtypes
-            Some(StepIdx::new(slot.get()))
+            // Look up the step name in step_names to find its index
+            let step_index = step_names
+                .iter()
+                .position(|name| name.as_ref() == label)
+                .ok_or_else(|| {
+                    CompileErrors(vec![CompileError::UnknownStepTarget {
+                        step: index,
+                        target: label.len(), // dummy value
+                    }])
+                })?;
+            Some(StepIdx::new(step_index as u16))
         }
         None => None,
     };
-    let slot_branches = vec![SlotBranch { condition, target }];
+    // Build slot branches - if no branches, this will be validated by validate_branch_route
+    let slot_branches: Vec<SlotBranch> = if let Some(branch) = branches.first() {
+        let condition = slot_from_text(&branch.when, index, "choose.branches[].when")?;
+        vec![SlotBranch { condition, target }]
+    } else {
+        vec![]
+    };
     let node = lower_choose(id, slot_branches, otherwise_target, builder)
         .map_err(|e| CompileErrors(vec![e]))?;
     builder.push_node(node);
