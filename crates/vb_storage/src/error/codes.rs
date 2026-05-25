@@ -66,6 +66,8 @@ impl JournalError {
     pub const TOO_MANY_EVENTS_CODE: DiagnosticCode = DiagnosticCode::new(0x401E);
     /// Diagnostic code for replay allocation failure.
     pub const REPLAY_ALLOCATION_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x401F);
+    /// Diagnostic code for invalid run identifier (run_id=0).
+    pub const INVALID_RUN_ID_CODE: DiagnosticCode = DiagnosticCode::new(0x4021);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -116,6 +118,7 @@ impl JournalError {
             Self::ProcessLockHeld { .. } => Self::PROCESS_LOCK_HELD_CODE,
             Self::ProcessLockIo { .. } => Self::PROCESS_LOCK_IO_CODE,
             Self::Trim(_) => Self::FJALL_CODE, // Map trim errors to a generic code
+            Self::InvalidRunId { .. } => Self::INVALID_RUN_ID_CODE,
         }
     }
 }
