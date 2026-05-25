@@ -130,6 +130,7 @@ pub(super) fn lower_canonical_set(
         .push_constant(ConstValue::I64(constant))
         .map_err(|e| CompileErrors(vec![e]))?;
     outputs.insert(output.to_owned(), slot);
+    builder.record_slot(slot);
     builder.push_node(lower_set(id, slot, value, next));
     Ok(())
 }
