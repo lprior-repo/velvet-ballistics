@@ -3,9 +3,9 @@ use std::path::PathBuf;
 pub(crate) const CANONICAL_HYPHEN: &str = "velvet-ballistics";
 pub(crate) const CANONICAL_UNDERSCORE: &str = "vb_cli";
 pub(crate) const CANONICAL_LANGUAGE_VERSION: &str = "velvet-ballistics/v1";
-pub(crate) const LEGACY_PROJECT: &str = "velvet-ballistics";
-pub(crate) const LEGACY_CRATE: &str = "velvet_ballistics";
-pub(crate) const LEGACY_LANGUAGE_VERSION: &str = "velvet-ballistics/v1";
+pub(crate) const LEGACY_PROJECT: &str = "velvet-ballastics";
+pub(crate) const LEGACY_CRATE: &str = "velvet_ballastics";
+pub(crate) const LEGACY_LANGUAGE_VERSION: &str = "velvet-ballastics/v1";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CanonicalSpellingTable {

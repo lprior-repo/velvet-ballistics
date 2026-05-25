@@ -34,17 +34,17 @@ mod tests {
 
     #[test]
     fn contains_legacy_returns_true_for_legacy_project() {
-        assert!(contains_legacy("velvet-ballistics is bad"));
+        assert!(contains_legacy("velvet-ballastics is bad"));
     }
 
     #[test]
     fn contains_legacy_returns_true_for_legacy_crate() {
-        assert!(contains_legacy("velvet_ballistics crate"));
+        assert!(contains_legacy("velvet_ballastics crate"));
     }
 
     #[test]
     fn contains_legacy_returns_true_for_legacy_language_version() {
-        assert!(contains_legacy("velvet-ballistics/v1"));
+        assert!(contains_legacy("velvet-ballastics/v1"));
     }
 
     #[test]
@@ -69,7 +69,7 @@ mod tests {
 
     #[test]
     fn class_for_text_returns_legacy_crate_module_spelling() {
-        let result = class_for_text("velvet_ballistics is wrong");
+        let result = class_for_text("velvet_ballastics is wrong");
         match result {
             OccurrenceClass::InvalidLegacy {
                 spelling_class,
@@ -84,7 +84,7 @@ mod tests {
 
     #[test]
     fn class_for_text_returns_legacy_language_version_spelling() {
-        let result = class_for_text("use velvet-ballistics/v1 here");
+        let result = class_for_text("use velvet-ballastics/v1 here");
         match result {
             OccurrenceClass::InvalidLegacy {
                 spelling_class,

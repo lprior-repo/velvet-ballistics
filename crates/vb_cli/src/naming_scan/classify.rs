@@ -156,13 +156,13 @@ mod tests {
     fn classify_occurrence_returns_allowed_legacy_for_exact_exception() {
         let mut cfg = test_config();
         cfg.allowlist_policy = AllowlistPolicy::Exact(vec![LegacyAllowRule::RepositoryPath {
-            path: "velvet-ballistics".into(),
+            path: "velvet-ballastics".into(),
         }]);
         let result = classify_occurrence(
             RepoPath::new("test.rs"),
             LineNumber::new(1),
             ColumnNumber::new(1),
-            "velvet-ballistics",
+            "velvet-ballastics",
             &cfg,
         )
         .unwrap();
@@ -179,7 +179,7 @@ mod tests {
             RepoPath::new("test.rs"),
             LineNumber::new(1),
             ColumnNumber::new(1),
-            "velvet-ballistics is bad",
+            "velvet-ballastics is bad",
             &cfg,
         )
         .unwrap();
