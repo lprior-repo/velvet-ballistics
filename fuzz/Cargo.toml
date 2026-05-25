@@ -466,6 +466,7 @@ test = false
 doc = false
 bench = false
 
+<<<<<<< Updated upstream
 # === vb-xi2f.28 ForEach digest fuzz targets ===
 
 [[bin]]
@@ -478,6 +479,11 @@ bench = false
 [[bin]]
 name = "foreach_digest_step"
 path = "fuzz_targets/foreach_digest_step.rs"
+=======
+[[bin]]
+name = "canonical_digest_ask"
+path = "fuzz_targets/canonical_digest_ask.rs"
+>>>>>>> Stashed changes
 test = false
 doc = false
 bench = false

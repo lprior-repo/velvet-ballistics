@@ -172,6 +172,19 @@ pub fn digest_step_primitive(hasher: &mut blake3::Hasher, primitive: &vb_yaml::a
                 digest_step_primitive(hasher, &step.primitive);
             }
         }
+        vb_yaml::ast::StepPrimitive::Ask { prompt, timeout } => {
+            hasher.update(b"ask");
+            hasher.update(prompt.as_bytes());
+            match timeout {
+                Some(t) => {
+                    hasher.update(b"timeout");
+                    hasher.update(t.as_bytes());
+                }
+                None => {
+                    hasher.update(b"no_timeout");
+                }
+            }
+        }
         other => {
             hasher.update(canonical_primitive_name(other).as_bytes());
         }
