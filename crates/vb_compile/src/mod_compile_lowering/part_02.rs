@@ -208,6 +208,7 @@ pub(super) fn lower_canonical_choose(
             },
         ]));
     }
+    #[allow(clippy::indexing_slicing)]
     let branch = &branches[0];
     let condition = slot_from_text(&branch.when, index, "choose.branches[].when")?;
     // If branch has non-empty steps, we don't support it yet
