@@ -182,6 +182,12 @@ pub enum JournalError {
     /// Run identifier is already active or durably accepted.
     #[error("run already exists")]
     RunAlreadyExists,
+    /// Run identifier is invalid (must be non-zero).
+    #[error("invalid run identifier: {run:?}")]
+    InvalidRunId {
+        /// The invalid run identifier.
+        run: RunId,
+    },
     /// Runtime active run capacity is exhausted.
     #[error("active run capacity exceeded")]
     ActiveRunCapacityExceeded,

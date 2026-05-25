@@ -30,7 +30,13 @@ impl FjallJournal {
     }
 
     /// Loads run metadata by run id.
+    ///
+    /// Returns `Err(InvalidRunId)` if `run` is zero, as zero is not a valid run identifier
+    /// per the storage contract.
     pub fn run_header(&self, run: vb_core::RunId) -> Result<Option<RunHeaderRecord>, JournalError> {
+        if run.get() == 0 {
+            return Err(JournalError::InvalidRunId { run });
+        }
         let key = run_header_key(run)?;
         self.decode_optional(
             &self.run_header,
