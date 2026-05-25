@@ -8,10 +8,11 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::JournalEvent;
+use crate::recovery::hydrate_support::verified_action_envelope_digest;
 use crate::recovery::types::{
-    RecoveredPendingAction, RecoveredRunAdmission, RecoveredSlotEntry, RecoveredStepEntry,
-    RecoveredStepState, RecoveryError, RecoveryFrameSeed, RecoveryHydration, RecoveryResult,
-    RecoveryRuntimeSummary, UnsupportedRecoveryState,
+    ActionReplayEffect, ActionReplayTracker, RecoveredPendingAction, RecoveredRunAdmission,
+    RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState, RecoveryError, RecoveryFrameSeed,
+    RecoveryHydration, RecoveryResult, RecoveryRuntimeSummary, UnsupportedRecoveryState,
 };
 use crate::slot_extra::DecodedSlotWrittenExtra;
 use vb_core::replay::{ReplayEngine, ReplayError};
@@ -36,8 +37,16 @@ pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &Journal
         JournalEvent::ActionScheduled { .. } => {
             summary.actions_scheduled = summary.actions_scheduled.saturating_add(1);
         }
+        JournalEvent::ActionScheduledTicket { .. } => {
+            summary.actions_scheduled = summary.actions_scheduled.saturating_add(1);
+        }
         JournalEvent::ActionCompletedEvent { .. } | JournalEvent::ActionFailedEvent { .. } => {
             summary.actions_resolved = summary.actions_resolved.saturating_add(1);
+        }
+        JournalEvent::ActionCompletedEnvelope { .. } => {
+            summary.actions_resolved = summary.actions_resolved.saturating_add(1);
+            summary.steps_succeeded = summary.steps_succeeded.saturating_add(1);
+            summary.slots_written = summary.slots_written.saturating_add(1);
         }
         JournalEvent::SlotWrittenEvent { .. } => {
             summary.slots_written = summary.slots_written.saturating_add(1);
@@ -288,6 +297,7 @@ struct FrameSeedAccumulator {
     slot_values: HashMap<SlotIdx, SlotValue>,
     slot_taint: HashMap<SlotIdx, Taint>,
     pending_actions: HashSet<(ActionId, StepIdx)>,
+    action_tracker: ActionReplayTracker,
     max_step_idx: Option<StepIdx>,
     min_step_idx: Option<StepIdx>,
     max_slot_idx: Option<SlotIdx>,
@@ -318,6 +328,7 @@ impl FrameSeedAccumulator {
             slot_values: HashMap::new(),
             slot_taint: HashMap::new(),
             pending_actions: HashSet::new(),
+            action_tracker: ActionReplayTracker::new(),
             max_step_idx: None,
             min_step_idx: None,
             max_slot_idx: None,
@@ -349,12 +360,33 @@ impl FrameSeedAccumulator {
                 .record_step(*step, RecoveredStepState::Succeeded)
                 .record_last_succeeded(*step)),
             JournalEvent::ActionScheduled { action, step, .. } => {
-                Ok(self.record_action_scheduled(*action, *step))
+                self.record_action_scheduled(*action, *step)
             }
-            JournalEvent::ActionCompletedEvent { action, step, .. }
-            | JournalEvent::ActionFailedEvent { action, step, .. } => {
-                Ok(self.record_action_resolved(*action, *step))
+            JournalEvent::ActionScheduledTicket { ticket, .. } => {
+                self.record_action_scheduled(ticket.action, ticket.step)
             }
+            JournalEvent::ActionCompletedEvent { action, step, .. } => {
+                self.record_action_completed(*action, *step)
+            }
+            JournalEvent::ActionFailedEvent { action, step, .. } => {
+                self.record_action_failed(*action, *step)
+            }
+            JournalEvent::ActionCompletedEnvelope {
+                ticket,
+                output,
+                value,
+                encoded_len,
+                taint,
+                value_digest,
+                ..
+            } => self.record_action_completion_envelope(
+                *ticket,
+                *output,
+                value,
+                *encoded_len,
+                *taint,
+                *value_digest,
+            ),
             JournalEvent::WaitScheduledEvent { step, .. } => {
                 Ok(self.record_step(*step, RecoveredStepState::Waiting))
             }
@@ -412,14 +444,77 @@ impl FrameSeedAccumulator {
         }
     }
 
-    fn record_action_scheduled(mut self, action: ActionId, step: StepIdx) -> Self {
-        self.pending_actions.insert((action, step));
-        self
+    fn record_action_completion_envelope(
+        mut self,
+        ticket: vb_core::ActionTicket,
+        output: SlotIdx,
+        value: &[u8],
+        encoded_len: u32,
+        taint: Taint,
+        value_digest: [u8; 32],
+    ) -> RecoveryResult<Self> {
+        let verified_digest =
+            verified_action_envelope_digest(ticket, value, encoded_len, value_digest)?;
+        let effect = self.action_tracker.mark_completed_envelope_effect(
+            ticket,
+            output,
+            encoded_len,
+            taint,
+            verified_digest,
+        )?;
+        if effect == ActionReplayEffect::Duplicate {
+            return Ok(self);
+        }
+        self.pending_actions.remove(&(ticket.action, ticket.step));
+        self.record_step(ticket.step, RecoveredStepState::Succeeded)
+            .record_last_succeeded(ticket.step)
+            .record_envelope_slot(output, value, taint)
     }
 
-    fn record_action_resolved(mut self, action: ActionId, step: StepIdx) -> Self {
+    fn record_envelope_slot(
+        mut self,
+        slot: SlotIdx,
+        value: &[u8],
+        taint: Taint,
+    ) -> RecoveryResult<Self> {
+        self.max_slot_idx = max_slot(self.max_slot_idx, slot);
+        match postcard::from_bytes::<SlotValue>(value) {
+            Ok(slot_value) => {
+                self.slot_values.insert(slot, slot_value);
+                self.slot_taint.insert(slot, taint);
+                Ok(self)
+            }
+            Err(_) => Err(RecoveryError::ReplayDivergence {
+                step: StepIdx::ZERO,
+                detail: format!("slot value decode failed for slot {:?}", slot),
+            }),
+        }
+    }
+
+    fn record_action_scheduled(mut self, action: ActionId, step: StepIdx) -> RecoveryResult<Self> {
+        if self.action_tracker.is_resolved(action, step) {
+            return Err(RecoveryError::NonIdempotentActionBlocked { action, step });
+        }
+        self.pending_actions.insert((action, step));
+        Ok(self)
+    }
+
+    fn record_action_completed(mut self, action: ActionId, step: StepIdx) -> RecoveryResult<Self> {
+        if self.action_tracker.is_resolved(action, step) {
+            return Err(RecoveryError::NonIdempotentActionBlocked { action, step });
+        }
+        self.action_tracker.mark_completed(action, step);
         self.pending_actions.remove(&(action, step));
-        self
+        Ok(self)
+    }
+
+    fn record_action_failed(mut self, action: ActionId, step: StepIdx) -> RecoveryResult<Self> {
+        if self.action_tracker.is_resolved(action, step) {
+            return Err(RecoveryError::NonIdempotentActionBlocked { action, step });
+        }
+        self.action_tracker.mark_failed(action, step);
+        self.pending_actions.remove(&(action, step));
+        Ok(self)
     }
 
     fn first_step(&self) -> StepIdx {
@@ -548,13 +643,33 @@ fn recover_slots(
     workflow: Option<&CompiledWorkflow>,
 ) -> RecoveryResult<RecoveredSlots> {
     match (workflow, accumulator.last_succeeded_step) {
-        (Some(plan), Some(target)) => recover_slots_through_step(plan, target),
+        (Some(plan), Some(target)) => Ok(merge_recovered_slots(
+            recover_slots_through_step(plan, target)?,
+            recovered_event_slots(accumulator),
+        )),
         (Some(_), None) => Ok(RecoveredSlots::supported(Vec::new())),
         (None, _) if accumulator.slot_values.is_empty() => Ok(RecoveredSlots::unsupported()),
         (None, _) => Ok(RecoveredSlots::supported(recovered_event_slots(
             accumulator,
         ))),
     }
+}
+
+fn merge_recovered_slots(
+    mut base: RecoveredSlots,
+    overrides: Vec<RecoveredSlotEntry>,
+) -> RecoveredSlots {
+    for override_entry in overrides {
+        match base
+            .entries
+            .iter_mut()
+            .find(|entry| entry.slot == override_entry.slot)
+        {
+            Some(entry) => *entry = override_entry,
+            None => base.entries.push(override_entry),
+        }
+    }
+    base
 }
 
 fn recovered_event_slots(accumulator: &FrameSeedAccumulator) -> Vec<RecoveredSlotEntry> {

@@ -6,6 +6,7 @@
 //! - Non-idempotent action blocking
 //! - Snapshot-plus-tail replay
 
+use crate::recovery::hydrate_support::verified_action_envelope_digest;
 use crate::recovery::types::{ActionReplayTracker, RecoveryError, RecoveryResult};
 use crate::{EventSeq, FjallJournal, JournalEvent};
 use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest};
@@ -88,6 +89,14 @@ pub fn replay_events(
                     });
                 }
             }
+            JournalEvent::ActionScheduledTicket { ticket, .. } => {
+                if tracker.is_resolved(ticket.action, ticket.step) {
+                    return Err(RecoveryError::NonIdempotentActionBlocked {
+                        action: ticket.action,
+                        step: ticket.step,
+                    });
+                }
+            }
             JournalEvent::ActionCompletedEvent { action, step, .. } => {
                 if tracker.is_resolved(*action, *step) {
                     return Err(RecoveryError::NonIdempotentActionBlocked {
@@ -98,6 +107,21 @@ pub fn replay_events(
                 // Mark action as completed to prevent re-execution
                 tracker.mark_completed(*action, *step);
             }
+            JournalEvent::ActionCompletedEnvelope {
+                ticket,
+                output,
+                value,
+                encoded_len,
+                taint,
+                value_digest,
+                ..
+            } => tracker.mark_completed_envelope(
+                *ticket,
+                *output,
+                *encoded_len,
+                *taint,
+                verified_action_envelope_digest(*ticket, value, *encoded_len, *value_digest)?,
+            )?,
             JournalEvent::ActionFailedEvent { action, step, .. } => {
                 if tracker.is_resolved(*action, *step) {
                     return Err(RecoveryError::NonIdempotentActionBlocked {

@@ -9,8 +9,8 @@
 use crate::{EventSeq, JournalError};
 use serde::{Deserialize, Serialize};
 use vb_core::{
-    ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx, Taint,
-    WorkflowDigest,
+    ActionId, ActionTicket, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx,
+    Taint, WorkflowDigest,
 };
 
 /// Recovery failures with typed diagnostics.
@@ -338,6 +338,22 @@ pub struct RunSnapshot {
 pub struct ActionReplayTracker {
     completed: std::collections::HashSet<(ActionId, StepIdx)>,
     failed: std::collections::HashSet<(ActionId, StepIdx)>,
+    completed_envelopes: std::collections::HashMap<(ActionId, StepIdx), ActionCompletionEvidence>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ActionCompletionEvidence {
+    ticket: ActionTicket,
+    output: SlotIdx,
+    encoded_len: u32,
+    taint: Taint,
+    value_digest: [u8; 32],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ActionReplayEffect {
+    Apply,
+    Duplicate,
 }
 
 impl ActionReplayTracker {
@@ -347,6 +363,7 @@ impl ActionReplayTracker {
         Self {
             completed: std::collections::HashSet::new(),
             failed: std::collections::HashSet::new(),
+            completed_envelopes: std::collections::HashMap::new(),
         }
     }
 
@@ -354,6 +371,56 @@ impl ActionReplayTracker {
     /// During recovery, encountering this action again will block re-execution.
     pub fn mark_completed(&mut self, action: ActionId, step: StepIdx) {
         self.completed.insert((action, step));
+    }
+
+    pub(crate) fn mark_completed_envelope_effect(
+        &mut self,
+        ticket: ActionTicket,
+        output: SlotIdx,
+        encoded_len: u32,
+        taint: Taint,
+        value_digest: [u8; 32],
+    ) -> RecoveryResult<ActionReplayEffect> {
+        let key = (ticket.action, ticket.step);
+        let evidence = ActionCompletionEvidence {
+            ticket,
+            output,
+            encoded_len,
+            taint,
+            value_digest,
+        };
+        match self.completed_envelopes.get(&key).copied() {
+            Some(existing) if existing == evidence => Ok(ActionReplayEffect::Duplicate),
+            Some(_) => Err(RecoveryError::ReplayDivergence {
+                step: ticket.step,
+                detail: String::from("divergent action completion envelope"),
+            }),
+            None if self.completed.contains(&key) || self.failed.contains(&key) => {
+                Err(RecoveryError::NonIdempotentActionBlocked {
+                    action: ticket.action,
+                    step: ticket.step,
+                })
+            }
+            None => {
+                self.completed_envelopes.insert(key, evidence);
+                self.completed.insert(key);
+                Ok(ActionReplayEffect::Apply)
+            }
+        }
+    }
+
+    /// Records a full durable completion envelope and rejects duplicates whose
+    /// ticket or output evidence diverges from the first completed envelope.
+    pub fn mark_completed_envelope(
+        &mut self,
+        ticket: ActionTicket,
+        output: SlotIdx,
+        encoded_len: u32,
+        taint: Taint,
+        value_digest: [u8; 32],
+    ) -> RecoveryResult<()> {
+        self.mark_completed_envelope_effect(ticket, output, encoded_len, taint, value_digest)
+            .map(|_| ())
     }
 
     /// Records that an action failed during normal execution.

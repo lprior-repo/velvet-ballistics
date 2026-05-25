@@ -7,7 +7,7 @@ use vb_storage::EventSeq;
 use crate::counters::ShardCounters;
 use crate::engine::{EvidenceCollector, EvidenceEvent};
 use crate::frame_pool::FramePool;
-use crate::journal::{NoopRuntimeJournal, RuntimeJournalEvent, SharedRuntimeJournal};
+use crate::journal::{RuntimeJournalEvent, SharedRuntimeJournal, VolatileRuntimeJournal};
 use crate::trace::{TraceEvent, TraceRing};
 use crate::{RuntimeError, RuntimeResult};
 

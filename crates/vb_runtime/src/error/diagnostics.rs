@@ -63,7 +63,11 @@ impl RuntimeError {
             Self::FramePoolUnavailable => Self::FRAME_POOL_UNAVAILABLE_CODE,
             Self::InvalidActionCompletion
             | Self::StaleAttempt { .. }
-            | Self::AttemptBeyondMax { .. } => Self::INVALID_ACTION_COMPLETION_CODE,
+            | Self::AttemptBeyondMax { .. }
+            | Self::ActionOutputLengthMismatch { .. }
+            | Self::ActionOutputTooLarge { .. }
+            | Self::ActionOutputBlobTooLarge { .. }
+            | Self::ActionTaintDowngrade { .. } => Self::INVALID_ACTION_COMPLETION_CODE,
             Self::InvalidTimerFire => Self::INVALID_TIMER_FIRE_CODE,
             Self::UnsupportedFullRecoveryHydration => {
                 Self::UNSUPPORTED_FULL_RECOVERY_HYDRATION_CODE
@@ -117,7 +121,11 @@ impl RuntimeError {
             },
             Self::InvalidActionCompletion
             | Self::StaleAttempt { .. }
-            | Self::AttemptBeyondMax { .. } => Some(Self::ACTION_FAILED_RUNTIME_CODE),
+            | Self::AttemptBeyondMax { .. }
+            | Self::ActionOutputLengthMismatch { .. }
+            | Self::ActionOutputTooLarge { .. }
+            | Self::ActionOutputBlobTooLarge { .. }
+            | Self::ActionTaintDowngrade { .. } => Some(Self::ACTION_FAILED_RUNTIME_CODE),
             Self::EngineDriveFailed { .. } => Some(Self::ACTION_FAILED_RUNTIME_CODE),
             Self::RunNotFound
             | Self::RunAlreadyExists

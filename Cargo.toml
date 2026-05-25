@@ -10,8 +10,10 @@ members = [
     "crates/vb_runtime",
     "crates/vb_doc",
     "crates/vb_ipc",
-    # Deferred crates moved to https://github.com/lprior-repo/velvet-optional:
-    # crates/vb_codegen, crates/vb_ui, crates/vb_ui_makepad, crates/vb_ui_model, crates/vb_ui_snapshot
+    # Compatibility support crate retained because vb_compile currently depends
+    # on it. Generated workflow mode remains deferred; UI crates stay out of
+    # the active workspace.
+    "crates/vb_codegen",
     "crates/vb_proof_kernels",
     "crates/vb_cli",
     "crates/vb_verification",
@@ -19,12 +21,12 @@ members = [
     # workspace_tests excluded (depends on deferred vb_ui/vb_codegen types)
     # "crates/workspace_tests",
     "crates/vb_benchmark",
-    # xtask excluded (depends on deferred UI crates in velvet-optional)
+    # xtask excluded until the tooling crate is re-linted for workspace CI.
     # "xtask",
 ]
 default-members = ["."]
 resolver = "2"
-exclude = ["target/miri-tmp", "fuzz"]
+exclude = ["target/miri-tmp", "crates/vb_ui", "fuzz"]
 
 [workspace.package]
 edition = "2024"

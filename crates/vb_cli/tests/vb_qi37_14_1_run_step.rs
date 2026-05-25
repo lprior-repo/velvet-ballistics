@@ -545,10 +545,7 @@ fn run_step_postcard_flag_produces_valid_postcard() {
 
     // Postcard is binary format - just verify command succeeds and produces output
     let stdout = output_stdout(&output);
-    assert!(
-        !stdout.is_empty(),
-        "postcard output should not be empty"
-    );
+    assert!(!stdout.is_empty(), "postcard output should not be empty");
 }
 
 /// VB-PRE005-CLI: `run --step` text output is human-readable
@@ -780,10 +777,7 @@ fn run_step_postcard_output_is_valid_postcard() {
 
     // Postcard is binary format - verify command succeeds
     let stdout = output_stdout(&output);
-    assert!(
-        !stdout.is_empty(),
-        "postcard output should not be empty"
-    );
+    assert!(!stdout.is_empty(), "postcard output should not be empty");
 }
 
 // ---------------------------------------------------------------------------

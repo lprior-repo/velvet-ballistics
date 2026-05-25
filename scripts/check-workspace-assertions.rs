@@ -10,19 +10,16 @@ const EXPECTED_MEMBERS: &[&str] = &[
     "crates/vb_validate",
     "crates/vb_expr",
     "crates/vb_compile",
+    "crates/vb_codegen",
     "crates/vb_storage",
     "crates/vb_runtime",
     "crates/vb_doc",
     "crates/vb_ipc",
-    "crates/vb_codegen",
-    "crates/vb_ui_makepad",
-    "crates/vb_ui_model",
-    "crates/vb_ui_snapshot",
     "crates/vb_proof_kernels",
     "crates/vb_cli",
-    "crates/workspace_tests",
+    "crates/vb_verification",
+    "crates/workspace_tests/idempotency_suite",
     "crates/vb_benchmark",
-    "xtask",
 ];
 
 const EXPECTED_EXCLUDES: &[&str] = &["target/miri-tmp", "crates/vb_ui", "fuzz"];
@@ -37,7 +34,12 @@ const FORBIDDEN_UI_DEPENDENCIES: &[&str] = &[
 ];
 const FORBIDDEN_RUNTIME_FORMAT_DEPENDENCIES: &[&str] =
     &["serde_json", "saphyr", "saphyr-parser", "serde-saphyr"];
-const FORBIDDEN_FEATURE_NAMES: &[&str] = &["json", "serde-json", "velvet-ballistics", "velvet_ballistics"];
+const FORBIDDEN_FEATURE_NAMES: &[&str] = &[
+    "json",
+    "serde-json",
+    "velvet-ballistics",
+    "velvet_ballistics",
+];
 
 const EXPECTED_PACKAGE_NAMES: &[(&str, &str)] = &[
     ("crates/vb_boundary_inventory", "vb_boundary_inventory"),
@@ -46,25 +48,27 @@ const EXPECTED_PACKAGE_NAMES: &[(&str, &str)] = &[
     ("crates/vb_validate", "vb_validate"),
     ("crates/vb_expr", "vb_expr"),
     ("crates/vb_compile", "vb_compile"),
+    ("crates/vb_codegen", "vb_codegen"),
     ("crates/vb_storage", "vb_storage"),
     ("crates/vb_runtime", "vb_runtime"),
     ("crates/vb_doc", "vb_doc"),
     ("crates/vb_ipc", "vb_ipc"),
-    ("crates/vb_codegen", "vb_codegen"),
-    ("crates/vb_ui_makepad", "vb_ui_makepad"),
-    ("crates/vb_ui_model", "vb_ui_model"),
-    ("crates/vb_ui_snapshot", "vb_ui_snapshot"),
     ("crates/vb_proof_kernels", "vb_proof_kernels"),
     ("crates/vb_cli", "velvet-ballastics"),
-    ("crates/workspace_tests", "velvet-ballastics-workspace-tests"),
+    ("crates/vb_verification", "vb_verification"),
+    (
+        "crates/workspace_tests/idempotency_suite",
+        "velvet-ballastics-idempotency-workspace-tests",
+    ),
     ("crates/vb_benchmark", "vb_benchmark"),
-    ("xtask", "xtask"),
 ];
 
 const EXPECTED_FEATURES: &[(&str, &[&str])] = &[
-    ("crates/vb_core", &["bench", "default", "generated", "test-util", "volatile"]),
+    (
+        "crates/vb_core",
+        &["bench", "default", "generated", "test-util", "volatile"],
+    ),
     ("crates/vb_validate", &["default", "verus"]),
-    ("crates/vb_ui_snapshot", &["default", "std"]),
 ];
 
 fn quoted_values_in_line(line: &str) -> Vec<String> {
@@ -81,14 +85,22 @@ fn quoted_array_values(text: &str, key: &str) -> BTreeSet<String> {
 
     text.lines().for_each(|line| {
         let trimmed = line.trim();
-        if !active && trimmed.starts_with(&prefix) {
+        let semantic = trimmed
+            .split_once('#')
+            .map_or(trimmed, |(before_comment, _comment)| before_comment.trim());
+        if semantic.is_empty() {
+            return;
+        }
+        if !active && semantic.starts_with(&prefix) {
             active = true;
         }
         if active {
-            quoted_values_in_line(trimmed).into_iter().for_each(|value| {
-                values.insert(value);
-            });
-            if trimmed.contains(']') {
+            quoted_values_in_line(semantic)
+                .into_iter()
+                .for_each(|value| {
+                    values.insert(value);
+                });
+            if semantic.contains(']') {
                 active = false;
             }
         }
@@ -109,7 +121,9 @@ fn package_name(manifest: &str) -> Option<String> {
             in_package = trimmed == "[package]";
             return None;
         }
-        (in_package && trimmed.starts_with("name =")).then(|| quoted_scalar(trimmed)).flatten()
+        (in_package && trimmed.starts_with("name ="))
+            .then(|| quoted_scalar(trimmed))
+            .flatten()
     })
 }
 
@@ -173,18 +187,26 @@ fn dependency_names(manifest: &str) -> BTreeSet<String> {
                 names.insert(dep_name.to_owned());
             }
             if rest.contains("package") {
-                quoted_values_in_line(rest).first().cloned().into_iter().for_each(|value| {
-                    names.insert(value);
-                });
+                quoted_values_in_line(rest)
+                    .first()
+                    .cloned()
+                    .into_iter()
+                    .for_each(|value| {
+                        names.insert(value);
+                    });
             }
             if rest.contains("path") {
-                quoted_values_in_line(rest).into_iter().last().into_iter().for_each(|value| {
-                    if let Some(alias) = value.trim_end_matches('/').rsplit('/').next() {
-                        if !alias.is_empty() {
-                            names.insert(alias.to_owned());
+                quoted_values_in_line(rest)
+                    .into_iter()
+                    .last()
+                    .into_iter()
+                    .for_each(|value| {
+                        if let Some(alias) = value.trim_end_matches('/').rsplit('/').next() {
+                            if !alias.is_empty() {
+                                names.insert(alias.to_owned());
+                            }
                         }
-                    }
-                });
+                    });
             }
         }
     });
@@ -199,7 +221,12 @@ fn sorted_difference(left: &BTreeSet<String>, right: &BTreeSet<String>) -> Vec<S
     left.difference(right).cloned().collect()
 }
 
-fn push_set_failure(failures: &mut Vec<String>, label: &str, missing: Vec<String>, extra: Vec<String>) {
+fn push_set_failure(
+    failures: &mut Vec<String>,
+    label: &str,
+    missing: Vec<String>,
+    extra: Vec<String>,
+) {
     if !missing.is_empty() {
         failures.push(format!("{label} missing {missing:?}"));
     }
@@ -353,22 +380,31 @@ fn rust_files(root: &Path) -> io::Result<Vec<PathBuf>> {
 fn check_generated_boundaries(root: &Path, failures: &mut Vec<String>) {
     match collect_generated_dirs(root) {
         Ok(dirs) => dirs.into_iter().for_each(|dir| match rust_files(&dir) {
-            Ok(files) => files.into_iter().for_each(|source| match fs::read_to_string(&source) {
-                Ok(text) => FORBIDDEN_UI_DEPENDENCIES
-                    .iter()
-                    .chain(FORBIDDEN_RUNTIME_FORMAT_DEPENDENCIES.iter())
-                    .for_each(|forbidden| {
-                        if text.contains(forbidden) {
-                            let rel = source.strip_prefix(root).map_or(source.as_path(), |path| path);
-                            failures.push(format!(
-                                "{}: forbidden generated boundary token {forbidden}",
-                                rel.display()
-                            ));
-                        }
-                    }),
-                Err(error) => failures.push(format!("{}: unreadable: {error}", source.display())),
-            }),
-            Err(error) => failures.push(format!("{}: unreadable generated dir: {error}", dir.display())),
+            Ok(files) => files
+                .into_iter()
+                .for_each(|source| match fs::read_to_string(&source) {
+                    Ok(text) => FORBIDDEN_UI_DEPENDENCIES
+                        .iter()
+                        .chain(FORBIDDEN_RUNTIME_FORMAT_DEPENDENCIES.iter())
+                        .for_each(|forbidden| {
+                            if text.contains(forbidden) {
+                                let rel = source
+                                    .strip_prefix(root)
+                                    .map_or(source.as_path(), |path| path);
+                                failures.push(format!(
+                                    "{}: forbidden generated boundary token {forbidden}",
+                                    rel.display()
+                                ));
+                            }
+                        }),
+                    Err(error) => {
+                        failures.push(format!("{}: unreadable: {error}", source.display()))
+                    }
+                }),
+            Err(error) => failures.push(format!(
+                "{}: unreadable generated dir: {error}",
+                dir.display()
+            )),
         }),
         Err(error) => failures.push(format!("crates: unreadable: {error}")),
     }
@@ -389,7 +425,11 @@ fn run() -> i32 {
     check_generated_boundaries(&root, &mut failures);
 
     failures.iter().for_each(|failure| eprintln!("{failure}"));
-    if failures.is_empty() { 0 } else { 1 }
+    if failures.is_empty() {
+        0
+    } else {
+        1
+    }
 }
 
 fn main() {

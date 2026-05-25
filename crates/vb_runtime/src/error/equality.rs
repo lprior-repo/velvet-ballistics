@@ -89,6 +89,34 @@ fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> boo
             RuntimeError::IpcPayloadSizeExceeded { size: a, max: b },
             RuntimeError::IpcPayloadSizeExceeded { size: c, max: d },
         ) => a == c && b == d,
+        (
+            RuntimeError::ActionOutputLengthMismatch {
+                declared: a,
+                actual: b,
+            },
+            RuntimeError::ActionOutputLengthMismatch {
+                declared: c,
+                actual: d,
+            },
+        ) => a == c && b == d,
+        (
+            RuntimeError::ActionOutputTooLarge { size: a, max: b },
+            RuntimeError::ActionOutputTooLarge { size: c, max: d },
+        ) => a == c && b == d,
+        (
+            RuntimeError::ActionOutputBlobTooLarge { size: a, max: b },
+            RuntimeError::ActionOutputBlobTooLarge { size: c, max: d },
+        ) => a == c && b == d,
+        (
+            RuntimeError::ActionTaintDowngrade {
+                required: a,
+                supplied: b,
+            },
+            RuntimeError::ActionTaintDowngrade {
+                required: c,
+                supplied: d,
+            },
+        ) => a == c && b == d,
         (RuntimeError::ShardNotFound { shard: a }, RuntimeError::ShardNotFound { shard: b }) => {
             a == b
         }

@@ -11,7 +11,11 @@ fileGroups:
     - 'build.rs'
   tests:
     - 'tests/**/*'
-    - 'fuzz/**/*'
+    - 'fuzz/Cargo.toml'
+    - 'fuzz/Cargo.lock'
+    - 'fuzz/fuzz_targets.rs'
+    - 'fuzz/fuzz_targets/**/*'
+    - 'fuzz/src/**/*'
   configs:
     - '.cargo/**/*'
     - '.moon/**/*'
@@ -464,7 +468,11 @@ tasks:
       - 'Cargo.toml'
       - 'Cargo.lock'
       - 'rust-toolchain.toml'
-      - 'fuzz/**/*'
+      - 'fuzz/Cargo.toml'
+      - 'fuzz/Cargo.lock'
+      - 'fuzz/fuzz_targets.rs'
+      - 'fuzz/fuzz_targets/**/*'
+      - 'fuzz/src/**/*'
       - 'crates/vb_core/**/*'
       - 'crates/vb_yaml/**/*'
       - 'crates/vb_expr/**/*'
@@ -495,7 +503,7 @@ tasks:
       mkdir -p target/moon-locks
       mkdir -p target/tmp
       export CARGO_TARGET_DIR=target/bench-build
-      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo bench --quiet -p velvet-ballastics-workspace-tests --bench velvet_ballastics --bench vb_qi37_1_1_recovery --all-features --no-run
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo bench --quiet -p vb_core --bench aggregate_resource_budget --all-features --no-run
     deps:
       - 'check'
     toolchains:
@@ -524,7 +532,10 @@ tasks:
       - 'xtask/src/main.rs'
       - '.moon/tasks/all.yml'
     options:
-      runInCI: true
+      # The xtask crate is presently outside the active Cargo workspace; keep
+      # this policy check explicit until the tooling crate is reactivated and
+      # source-linted under workspace CI.
+      runInCI: false
 
   benchmark-proof:
     command: 'rustup run nightly-2026-04-28 cargo bench --workspace --all-features -- --save-baseline vb-current'

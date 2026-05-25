@@ -122,6 +122,34 @@ pub enum RuntimeError {
     },
     /// Failed to encode a slot value for journal persistence.
     EncodeFailed,
+    /// Caller-declared action output length did not match encoded bytes.
+    ActionOutputLengthMismatch {
+        /// Caller-declared encoded length.
+        declared: u32,
+        /// Runtime-computed encoded length.
+        actual: u32,
+    },
+    /// Encoded action output exceeded the action contract byte limit.
+    ActionOutputTooLarge {
+        /// Runtime-computed encoded length.
+        size: u32,
+        /// Maximum allowed by the action contract.
+        max: u32,
+    },
+    /// Encoded action output exceeded the workflow blob byte limit.
+    ActionOutputBlobTooLarge {
+        /// Runtime-computed encoded length.
+        size: u64,
+        /// Maximum allowed by the workflow resource contract.
+        max: u64,
+    },
+    /// Action output taint attempted to downgrade required taint propagation.
+    ActionTaintDowngrade {
+        /// Minimum taint required by the action input and contract.
+        required: vb_core::Taint,
+        /// Taint supplied by the completion payload.
+        supplied: vb_core::Taint,
+    },
     /// Secret-tainted answer payload is not allowed by the resource contract.
     SecretResultNotAllowed,
     /// IPC payload size exceeds the maximum allowed by the resource contract.

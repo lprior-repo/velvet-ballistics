@@ -8,8 +8,9 @@
 use crate::JournalEvent;
 use crate::recovery::hydrate_support::{
     apply_tail_events, compute_parallel_in_flight, decode_snapshot_slots,
-    derive_dimensions_from_snapshot_and_tail,
+    derive_dimensions_from_snapshot_and_tail, verified_action_envelope_digest,
 };
+use crate::recovery::types::{ActionReplayEffect, ActionReplayTracker};
 use crate::recovery::types::{
     ActionReplayTracker, RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState, RecoveryError,
     RecoveryFrameSeed, RecoveryResult, RunSnapshot,
@@ -361,23 +362,80 @@ fn apply_seed_pc(frame: &mut vb_core::RunFrame, pc: vb_core::StepIdx) -> Recover
 }
 
 fn count_state_events(events: &[JournalEvent], run_id: RunId) -> RecoveryResult<u64> {
-    let count = events
-        .iter()
-        .filter(|event| {
-            matches!(
-                event,
-                JournalEvent::StepStarted { .. }
-                    | JournalEvent::StepSucceeded { .. }
-                    | JournalEvent::SlotWrittenEvent { .. }
-                    | JournalEvent::ActionScheduled { .. }
-                    | JournalEvent::ActionCompletedEvent { .. }
-                    | JournalEvent::ActionFailedEvent { .. }
-                    | JournalEvent::WaitScheduledEvent { .. }
-                    | JournalEvent::AskScheduledEvent { .. }
-            )
-        })
-        .count();
-    u64::try_from(count).map_err(|_| RecoveryError::FrameDimensionOverflow { run: run_id })
+    let mut tracker = ActionReplayTracker::new();
+    let mut count = 0u64;
+    for event in events {
+        if count_state_event(event, &mut tracker)? {
+            count = count.saturating_add(1);
+        }
+    }
+    if count == u64::MAX {
+        return Err(RecoveryError::FrameDimensionOverflow { run: run_id });
+    }
+    Ok(count)
+}
+
+fn count_state_event(
+    event: &JournalEvent,
+    tracker: &mut ActionReplayTracker,
+) -> RecoveryResult<bool> {
+    match event {
+        JournalEvent::ActionScheduled { action, step, .. } => {
+            reject_resolved_action(tracker, *action, *step)?;
+            Ok(true)
+        }
+        JournalEvent::ActionScheduledTicket { ticket, .. } => {
+            reject_resolved_action(tracker, ticket.action, ticket.step)?;
+            Ok(true)
+        }
+        JournalEvent::ActionCompletedEvent { action, step, .. } => {
+            reject_resolved_action(tracker, *action, *step)?;
+            tracker.mark_completed(*action, *step);
+            Ok(true)
+        }
+        JournalEvent::ActionCompletedEnvelope {
+            ticket,
+            output,
+            value,
+            encoded_len,
+            taint,
+            value_digest,
+            ..
+        } => {
+            let verified_digest =
+                verified_action_envelope_digest(*ticket, value, *encoded_len, *value_digest)?;
+            let effect = tracker.mark_completed_envelope_effect(
+                *ticket,
+                *output,
+                *encoded_len,
+                *taint,
+                verified_digest,
+            )?;
+            Ok(effect == ActionReplayEffect::Apply)
+        }
+        JournalEvent::ActionFailedEvent { action, step, .. } => {
+            reject_resolved_action(tracker, *action, *step)?;
+            tracker.mark_failed(*action, *step);
+            Ok(true)
+        }
+        JournalEvent::StepStarted { .. }
+        | JournalEvent::StepSucceeded { .. }
+        | JournalEvent::SlotWrittenEvent { .. }
+        | JournalEvent::WaitScheduledEvent { .. }
+        | JournalEvent::AskScheduledEvent { .. } => Ok(true),
+        _ => Ok(false),
+    }
+}
+
+fn reject_resolved_action(
+    tracker: &ActionReplayTracker,
+    action: vb_core::ActionId,
+    step: vb_core::StepIdx,
+) -> RecoveryResult<()> {
+    if tracker.is_resolved(action, step) {
+        return Err(RecoveryError::NonIdempotentActionBlocked { action, step });
+    }
+    Ok(())
 }
 
 fn apply_parallel_peak(

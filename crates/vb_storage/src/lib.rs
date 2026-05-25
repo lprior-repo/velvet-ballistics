@@ -98,7 +98,7 @@ pub mod vb_2bok_durability_gate_tests;
 // Core types
 pub use constants::*;
 pub use error::JournalError;
-pub use events::JournalEvent;
+pub use events::{DurableActionOutcome, JournalEvent};
 pub use records::{
     BlobRecord, CompiledIrRecord, RecordKind, RunHeaderRecord, WorkflowSourceRecord,
 };

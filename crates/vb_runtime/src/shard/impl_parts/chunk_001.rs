@@ -3,7 +3,7 @@ impl Shard {
     pub fn new(config: ShardConfig) -> Self {
         Self::new_with_journal_and_artifact_store(
             config,
-            NoopRuntimeJournal::shared(),
+            VolatileRuntimeJournal::shared(),
             crate::admission::AlwaysPresentArtifactStore::shared(),
         )
     }

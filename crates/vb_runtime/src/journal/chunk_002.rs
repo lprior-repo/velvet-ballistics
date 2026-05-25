@@ -83,6 +83,8 @@ impl StorageRuntimeJournal {
             }),
             RuntimeJournalEvent::ActionScheduled { .. }
             | RuntimeJournalEvent::ActionCompleted { .. }
+            | RuntimeJournalEvent::ActionScheduledTicket { .. }
+            | RuntimeJournalEvent::ActionCompletedEnvelope { .. }
             | RuntimeJournalEvent::ActionFailed { .. }
             | RuntimeJournalEvent::WaitScheduled { .. }
             | RuntimeJournalEvent::WaitResolved { .. }
@@ -113,6 +115,35 @@ impl StorageRuntimeJournal {
                     attempt: 1,
                 })
             }
+            RuntimeJournalEvent::ActionScheduledTicket {
+                ticket,
+                input,
+                output,
+            } => Some(JournalEvent::ActionScheduledTicket {
+                run: ticket.run,
+                seq,
+                ticket,
+                input,
+                output,
+            }),
+            RuntimeJournalEvent::ActionCompletedEnvelope {
+                ticket,
+                output,
+                value,
+                encoded_len,
+                taint,
+                value_digest,
+            } => Some(JournalEvent::ActionCompletedEnvelope {
+                run: ticket.run,
+                seq,
+                ticket,
+                output,
+                outcome: vb_storage::DurableActionOutcome::Ready,
+                value,
+                encoded_len,
+                taint,
+                value_digest,
+            }),
             RuntimeJournalEvent::ActionFailed {
                 run,
                 step,
@@ -199,6 +230,8 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::RunCancelled { .. }
             | RuntimeJournalEvent::ActionScheduled { .. }
             | RuntimeJournalEvent::ActionCompleted { .. }
+            | RuntimeJournalEvent::ActionScheduledTicket { .. }
+            | RuntimeJournalEvent::ActionCompletedEnvelope { .. }
             | RuntimeJournalEvent::ActionFailed { .. }
             | RuntimeJournalEvent::StepStarted { .. }
             | RuntimeJournalEvent::StepSucceeded { .. }

@@ -542,7 +542,13 @@ fn summarize_events(events: &[JournalEvent]) -> ReplaySummary {
                 JournalEvent::ActionScheduled { .. } => {
                     summary.action_scheduled = summary.action_scheduled.saturating_add(1);
                 }
+                JournalEvent::ActionScheduledTicket { .. } => {
+                    summary.action_scheduled = summary.action_scheduled.saturating_add(1);
+                }
                 JournalEvent::ActionCompletedEvent { .. } => {
+                    summary.action_completed = summary.action_completed.saturating_add(1);
+                }
+                JournalEvent::ActionCompletedEnvelope { .. } => {
                     summary.action_completed = summary.action_completed.saturating_add(1);
                 }
                 JournalEvent::ActionFailedEvent { .. } => {

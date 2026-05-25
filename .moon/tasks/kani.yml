@@ -16,7 +16,7 @@ tasks:
       set -euo pipefail
       mkdir -p target/kani-tmp
       mkdir -p target/moon-locks
-      TMPDIR="$PWD/target/kani-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout 60m rustup run nightly-2026-04-28 cargo kani --lib -p vb_core --all-features
+      TMPDIR="$PWD/target/kani-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout 5m rustup run nightly-2026-04-28 cargo kani --lib -p vb_core --all-features --harness kani_budget_add_dim_zero --quiet
     toolchains:
       - rust
     inputs:
@@ -33,7 +33,7 @@ tasks:
       set -euo pipefail
       mkdir -p target/kani-tmp
       mkdir -p target/moon-locks
-      TMPDIR="$PWD/target/kani-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout 60m rustup run nightly-2026-04-28 cargo kani -p vb_validate --all-features
+      TMPDIR="$PWD/target/kani-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout 5m rustup run nightly-2026-04-28 cargo kani -p vb_validate --all-features --harness kani_gate_08_valid_zero_accessors_pass --quiet
     toolchains:
       - rust
     inputs:

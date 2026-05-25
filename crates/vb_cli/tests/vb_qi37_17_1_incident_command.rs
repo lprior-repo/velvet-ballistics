@@ -164,7 +164,9 @@ fn t_015_nonexistent_run_structured_error() {
     );
     // Check that stderr contains error indication (YAML or text format)
     assert!(
-        stderr.contains("ValidationFailed") || stderr.contains("validation") || stderr.contains("error"),
+        stderr.contains("ValidationFailed")
+            || stderr.contains("validation")
+            || stderr.contains("error"),
         "stderr should contain error indication"
     );
     // POST-003 / INV-002: no stack traces in error output
@@ -197,7 +199,6 @@ fn t_016_successful_run_not_incident() {
     ]);
     let output = run_cli(args);
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
     // The YAML report should not contain failure indicators for a successful run.
     // POST-004: non-failed run should return StorageError (exit code 5)
     assert_eq!(

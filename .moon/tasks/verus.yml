@@ -15,7 +15,7 @@ tasks:
       set -euo pipefail
       mkdir -p target/verus-tmp
       mkdir -p target/moon-locks
-      TMPDIR="$PWD/target/verus-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout 120m rustup run nightly-2026-04-28 cargo verus --lib -p vb_core --all-features
+      TMPDIR="$PWD/target/verus-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout 120m bash scripts/verify-verus.sh
     toolchains:
       - rust
     inputs:
@@ -23,6 +23,8 @@ tasks:
       - '@globs(verus_specs)'
       - 'Cargo.toml'
       - 'rust-toolchain.toml'
+      - 'contracts/proof_obligations.yaml'
+      - 'scripts/verify-verus.sh'
     options:
       runInCI: true
       cache: false

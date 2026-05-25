@@ -4,9 +4,18 @@
 use crate::{EventSeq, JournalError, RecordKind};
 use chrono::{DateTime, Utc};
 use vb_core::{
-    ActionId, CapabilitySet, ConstValue, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx,
-    WorkflowDigest,
+    ActionId, ActionTicket, CapabilitySet, ConstValue, RunId, RuntimePolicy, SlotIdx, SlotValue,
+    StepIdx, Taint, WorkflowDigest,
 };
+
+/// Terminal action outcome captured by durable completion envelopes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[repr(u8)]
+#[non_exhaustive]
+pub enum DurableActionOutcome {
+    /// Action completed successfully and wrote an output slot.
+    Ready = 1,
+}
 
 /// Compact binary journal event. JSONL is a projection, not this durable format.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -81,6 +90,40 @@ pub enum JournalEvent {
         action: ActionId,
         /// Attempt number (1-based).
         attempt: u16,
+    },
+    /// Action was scheduled with the full replay ticket preserved.
+    ActionScheduledTicket {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Full action ticket issued by the runtime.
+        ticket: ActionTicket,
+        /// Input slot consumed by the action.
+        input: SlotIdx,
+        /// Output slot expected to receive the result.
+        output: SlotIdx,
+    },
+    /// Action completed successfully with an atomic durable envelope.
+    ActionCompletedEnvelope {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Full action ticket completed by the runtime.
+        ticket: ActionTicket,
+        /// Output slot written by the action.
+        output: SlotIdx,
+        /// Terminal outcome discriminant for this completion.
+        outcome: DurableActionOutcome,
+        /// Encoded output value bytes.
+        value: Vec<u8>,
+        /// Encoded output byte length validated before persistence.
+        encoded_len: u32,
+        /// Taint written with the output value.
+        taint: Taint,
+        /// BLAKE3 digest of `value` used to reject divergent duplicate evidence.
+        value_digest: [u8; 32],
     },
     /// Action failed.
     ActionFailedEvent {
@@ -230,6 +273,8 @@ impl JournalEvent {
             | Self::StepSucceeded { run, .. }
             | Self::ActionScheduled { run, .. }
             | Self::ActionCompletedEvent { run, .. }
+            | Self::ActionScheduledTicket { run, .. }
+            | Self::ActionCompletedEnvelope { run, .. }
             | Self::ActionFailedEvent { run, .. }
             | Self::SlotWrittenEvent { run, .. }
             | Self::WaitScheduledEvent { run, .. }
@@ -258,6 +303,8 @@ impl JournalEvent {
             | Self::StepSucceeded { seq, .. }
             | Self::ActionScheduled { seq, .. }
             | Self::ActionCompletedEvent { seq, .. }
+            | Self::ActionScheduledTicket { seq, .. }
+            | Self::ActionCompletedEnvelope { seq, .. }
             | Self::ActionFailedEvent { seq, .. }
             | Self::SlotWrittenEvent { seq, .. }
             | Self::WaitScheduledEvent { seq, .. }
@@ -281,8 +328,12 @@ impl JournalEvent {
             Self::RunAdmission { .. } => RecordKind::RunAdmission,
             Self::StepStarted { .. } => RecordKind::StepStarted,
             Self::StepSucceeded { .. } | Self::SlotWrittenEvent { .. } => RecordKind::SlotWritten,
-            Self::ActionScheduled { .. } => RecordKind::ActionScheduled,
-            Self::ActionCompletedEvent { .. } => RecordKind::ActionCompleted,
+            Self::ActionScheduled { .. } | Self::ActionScheduledTicket { .. } => {
+                RecordKind::ActionScheduled
+            }
+            Self::ActionCompletedEvent { .. } | Self::ActionCompletedEnvelope { .. } => {
+                RecordKind::ActionCompleted
+            }
             Self::ActionFailedEvent { .. } => RecordKind::ActionFailed,
             Self::WaitScheduledEvent { .. } => RecordKind::WaitScheduled,
             Self::AskScheduledEvent { .. } => RecordKind::AskScheduled,
@@ -356,6 +407,8 @@ impl JournalEvent {
             | Self::RunCancelled { attempt, .. }
             | Self::RunFinished { attempt, .. }
             | Self::RunFailedEvent { attempt, .. } => Some(*attempt),
+            Self::ActionScheduledTicket { ticket, .. }
+            | Self::ActionCompletedEnvelope { ticket, .. } => Some(ticket.attempt),
             Self::RunAccepted { .. }
             | Self::RunAdmission { .. }
             | Self::StepSucceeded { .. }
@@ -398,6 +451,8 @@ impl JournalEvent {
             | Self::RunCancelled { attempt, .. }
             | Self::RunFinished { attempt, .. }
             | Self::RunFailedEvent { attempt, .. } => *attempt != 0,
+            Self::ActionScheduledTicket { ticket, .. }
+            | Self::ActionCompletedEnvelope { ticket, .. } => ticket.attempt != 0,
             Self::RunAccepted { .. }
             | Self::RunAdmission { .. }
             | Self::StepSucceeded { .. }

@@ -108,10 +108,12 @@ impl Shard {
         crate::shard::helpers::record_scheduled_attempt(&mut state, ticket);
         self.trace_ring
             .push(TraceEvent::ActionScheduled { run, step });
-        self.append_journal_event(RuntimeJournalEvent::ActionScheduled {
-            run,
-            step,
-            action: ticket.action,
+        let output = crate::shard::helpers::action_output_slot(&state, ticket.step)?;
+        let input = crate::shard::helpers::action_input_slot(&state, ticket.step)?;
+        self.append_journal_event(RuntimeJournalEvent::ActionScheduledTicket {
+            ticket,
+            input,
+            output,
         })?;
         self.runs.insert(run, state);
         Ok(())

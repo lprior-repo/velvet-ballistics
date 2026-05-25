@@ -464,6 +464,17 @@ fn validate_ready_outcome(
     output_ready: &ActionOutputReady,
 ) -> Result<(), ActionError> {
     check_output_slot_in_bounds(output_ready.output_slot, contract.output_slot_count)?;
+    check_output_size_in_bounds(output_ready.encoded_len, contract.max_output_bytes)?;
+    Ok(())
+}
+
+fn check_output_size_in_bounds(actual_bytes: u32, max_bytes: u32) -> Result<(), ActionError> {
+    if actual_bytes > max_bytes {
+        return Err(ActionError::PayloadTooLarge {
+            max_bytes,
+            actual_bytes,
+        });
+    }
     Ok(())
 }
 

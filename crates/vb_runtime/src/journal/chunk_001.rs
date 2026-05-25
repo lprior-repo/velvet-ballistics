@@ -62,6 +62,30 @@ pub enum RuntimeJournalEvent {
         /// Action identifier.
         action: ActionId,
     },
+    /// Action was scheduled with the full ticket preserved for durable replay.
+    ActionScheduledTicket {
+        /// Full ticket issued for the action.
+        ticket: vb_core::action::ActionTicket,
+        /// Input slot consumed by the action.
+        input: SlotIdx,
+        /// Output slot expected to receive the result.
+        output: SlotIdx,
+    },
+    /// Action completed successfully with an atomic durable envelope.
+    ActionCompletedEnvelope {
+        /// Full ticket completed by the action boundary.
+        ticket: vb_core::action::ActionTicket,
+        /// Output slot written by the action.
+        output: SlotIdx,
+        /// Encoded output value bytes.
+        value: Vec<u8>,
+        /// Encoded output byte length validated before persistence.
+        encoded_len: u32,
+        /// Taint written with the output value.
+        taint: Taint,
+        /// BLAKE3 digest of `value` used to reject divergent duplicate evidence.
+        value_digest: [u8; 32],
+    },
     /// Action failed at the external action boundary.
     ActionFailed {
         /// Run identifier.
@@ -163,6 +187,8 @@ impl RuntimeJournalEvent {
             | Self::StepStarted { run, .. }
             | Self::StepSucceeded { run, .. }
             | Self::Resumed { run, .. } => *run,
+            Self::ActionScheduledTicket { ticket, .. }
+            | Self::ActionCompletedEnvelope { ticket, .. } => ticket.run,
             Self::RunAdmission { admission } => admission.run_id(),
         }
     }
@@ -209,10 +235,16 @@ pub type SharedRuntimeJournal = Arc<dyn RuntimeJournal>;
 pub struct NoopRuntimeJournal;
 
 impl NoopRuntimeJournal {
-    /// Creates a shared noop journal.
+    /// Creates a shared noop journal for explicitly non-durable tests or benchmarks.
+    #[must_use]
+    pub fn shared_for_tests_and_benchmarks() -> SharedRuntimeJournal {
+        Arc::new(Self)
+    }
+
+    /// Creates a shared noop journal for callers that explicitly select no durability.
     #[must_use]
     pub fn shared() -> SharedRuntimeJournal {
-        Arc::new(Self)
+        Self::shared_for_tests_and_benchmarks()
     }
 }
 

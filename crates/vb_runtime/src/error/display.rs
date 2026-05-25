@@ -101,6 +101,20 @@ fn write_runtime_error_dynamic(
         RuntimeError::IpcPayloadSizeExceeded { size, max } => {
             write!(f, "IPC payload size {size} exceeds maximum {max}")
         }
+        RuntimeError::ActionOutputLengthMismatch { declared, actual } => write!(
+            f,
+            "action output declared encoded length {declared} does not match actual {actual}"
+        ),
+        RuntimeError::ActionOutputTooLarge { size, max } => {
+            write!(f, "action output size {size} exceeds maximum {max}")
+        }
+        RuntimeError::ActionOutputBlobTooLarge { size, max } => {
+            write!(f, "action output blob size {size} exceeds maximum {max}")
+        }
+        RuntimeError::ActionTaintDowngrade { required, supplied } => write!(
+            f,
+            "action output taint {supplied:?} is below required {required:?}"
+        ),
         RuntimeError::EngineDriveFailed { run, source } => {
             write!(f, "engine drive failed for run {run:?}: {source}")
         }

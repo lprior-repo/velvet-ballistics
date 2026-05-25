@@ -5,7 +5,9 @@
 //! and parallel in-flight tracking. Not part of the public API.
 
 use crate::JournalEvent;
-use crate::recovery::types::{ActionReplayTracker, RecoveryError, RecoveryResult, RunSnapshot};
+use crate::recovery::types::{
+    ActionReplayEffect, ActionReplayTracker, RecoveryError, RecoveryResult, RunSnapshot,
+};
 use vb_core::RunId;
 
 /// Copy-only observation of `RunFrame::read_taint` for fail-closed replay.
@@ -50,6 +52,45 @@ fn observe_slot_taint_read(
         }
         Err(_) => SlotTaintReadObservation::Failed,
     }
+}
+
+pub(crate) fn verified_action_envelope_digest(
+    ticket: vb_core::ActionTicket,
+    value: &[u8],
+    encoded_len: u32,
+    expected: [u8; 32],
+) -> RecoveryResult<[u8; 32]> {
+    let actual_len = u32::try_from(value.len()).map_err(|_| RecoveryError::ReplayDivergence {
+        step: ticket.step,
+        detail: String::from("action completion value length exceeds u32"),
+    })?;
+    if actual_len != encoded_len {
+        return Err(RecoveryError::ReplayDivergence {
+            step: ticket.step,
+            detail: String::from("action completion encoded length mismatch"),
+        });
+    }
+
+    let found = *blake3::hash(value).as_bytes();
+    if found == expected {
+        Ok(expected)
+    } else {
+        Err(RecoveryError::ReplayDivergence {
+            step: ticket.step,
+            detail: String::from("action completion value digest mismatch"),
+        })
+    }
+}
+
+fn decode_action_envelope_slot(
+    ticket: vb_core::ActionTicket,
+    output: vb_core::SlotIdx,
+    value: &[u8],
+) -> RecoveryResult<vb_core::SlotValue> {
+    postcard::from_bytes(value).map_err(|_| RecoveryError::ReplayDivergence {
+        step: ticket.step,
+        detail: format!("slot value decode failed for slot {:?}", output),
+    })
 }
 
 /// Decodes snapshot slot/taint bytes into recovered slot entries.
@@ -134,6 +175,15 @@ pub(super) fn derive_dimensions_from_snapshot_and_tail(
                 max_step = Some(max_step.map_or(*step, |s| s.max(*step)));
                 min_step = Some(min_step.map_or(*step, |s| s.min(*step)));
             }
+            JournalEvent::ActionScheduledTicket { ticket, .. } => {
+                max_step = Some(max_step.map_or(ticket.step, |s| s.max(ticket.step)));
+                min_step = Some(min_step.map_or(ticket.step, |s| s.min(ticket.step)));
+            }
+            JournalEvent::ActionCompletedEnvelope { ticket, output, .. } => {
+                max_step = Some(max_step.map_or(ticket.step, |s| s.max(ticket.step)));
+                min_step = Some(min_step.map_or(ticket.step, |s| s.min(ticket.step)));
+                max_slot = Some(max_slot.map_or(*output, |s| s.max(*output)));
+            }
             JournalEvent::SlotWrittenEvent { slot, .. }
             | JournalEvent::RunFinished { result: slot, .. } => {
                 max_slot = Some(max_slot.map_or(*slot, |s| s.max(*slot)));
@@ -210,6 +260,21 @@ pub(super) fn apply_tail_events(
                     })?;
                 executed = executed.saturating_add(1);
             }
+            JournalEvent::ActionScheduledTicket { ticket, .. } => {
+                if tracker.is_resolved(ticket.action, ticket.step) {
+                    return Err(RecoveryError::NonIdempotentActionBlocked {
+                        action: ticket.action,
+                        step: ticket.step,
+                    });
+                }
+                frame
+                    .add_parallel_in_flight(1)
+                    .map_err(|_e| RecoveryError::ReplayDivergence {
+                        step: ticket.step,
+                        detail: "parallel_in_flight overflow".to_owned(),
+                    })?;
+                executed = executed.saturating_add(1);
+            }
             JournalEvent::ActionCompletedEvent { action, step, .. } => {
                 if tracker.is_resolved(*action, *step) {
                     return Err(RecoveryError::NonIdempotentActionBlocked {
@@ -222,6 +287,48 @@ pub(super) fn apply_tail_events(
                     .sub_parallel_in_flight(1)
                     .map_err(|_e| RecoveryError::ReplayDivergence {
                         step: *step,
+                        detail: "parallel_in_flight underflow".to_owned(),
+                    })?;
+                executed = executed.saturating_add(1);
+            }
+            JournalEvent::ActionCompletedEnvelope {
+                ticket,
+                output,
+                value,
+                encoded_len,
+                taint,
+                value_digest,
+                ..
+            } => {
+                let verified_digest =
+                    verified_action_envelope_digest(*ticket, value, *encoded_len, *value_digest)?;
+                let effect = tracker.mark_completed_envelope_effect(
+                    *ticket,
+                    *output,
+                    *encoded_len,
+                    *taint,
+                    verified_digest,
+                )?;
+                if effect == ActionReplayEffect::Duplicate {
+                    continue;
+                }
+                let slot_value = decode_action_envelope_slot(*ticket, *output, value)?;
+                frame
+                    .write_slot_with_taint(*output, slot_value, *taint)
+                    .map_err(|_| RecoveryError::ReplayDivergence {
+                        step: ticket.step,
+                        detail: "slot write out of bounds".to_owned(),
+                    })?;
+                frame
+                    .mark_succeeded(ticket.step)
+                    .map_err(|_| RecoveryError::ReplayDivergence {
+                        step: ticket.step,
+                        detail: "mark_succeeded failed".to_owned(),
+                    })?;
+                frame
+                    .sub_parallel_in_flight(1)
+                    .map_err(|_e| RecoveryError::ReplayDivergence {
+                        step: ticket.step,
                         detail: "parallel_in_flight underflow".to_owned(),
                     })?;
                 executed = executed.saturating_add(1);
@@ -355,6 +462,23 @@ pub(super) fn compute_parallel_in_flight(
                     peak = frame.parallel_in_flight();
                 }
             }
+            JournalEvent::ActionScheduledTicket { ticket, .. } => {
+                if tracker.is_resolved(ticket.action, ticket.step) {
+                    return Err(RecoveryError::NonIdempotentActionBlocked {
+                        action: ticket.action,
+                        step: ticket.step,
+                    });
+                }
+                frame
+                    .add_parallel_in_flight(1)
+                    .map_err(|_| RecoveryError::ReplayDivergence {
+                        step: ticket.step,
+                        detail: "parallel_in_flight overflow".to_owned(),
+                    })?;
+                if frame.parallel_in_flight() > peak {
+                    peak = frame.parallel_in_flight();
+                }
+            }
             JournalEvent::ActionCompletedEvent { action, step, .. } => {
                 if tracker.is_resolved(*action, *step) {
                     return Err(RecoveryError::NonIdempotentActionBlocked {
@@ -369,6 +493,33 @@ pub(super) fn compute_parallel_in_flight(
                         step: *step,
                         detail: "parallel_in_flight underflow".to_owned(),
                     })?;
+            }
+            JournalEvent::ActionCompletedEnvelope {
+                ticket,
+                output,
+                value,
+                encoded_len,
+                taint,
+                value_digest,
+                ..
+            } => {
+                let verified_digest =
+                    verified_action_envelope_digest(*ticket, value, *encoded_len, *value_digest)?;
+                let effect = tracker.mark_completed_envelope_effect(
+                    *ticket,
+                    *output,
+                    *encoded_len,
+                    *taint,
+                    verified_digest,
+                )?;
+                if effect == ActionReplayEffect::Apply {
+                    frame.sub_parallel_in_flight(1).map_err(|_| {
+                        RecoveryError::ReplayDivergence {
+                            step: ticket.step,
+                            detail: "parallel_in_flight underflow".to_owned(),
+                        }
+                    })?;
+                }
             }
             JournalEvent::ActionFailedEvent { action, step, .. } => {
                 if tracker.is_resolved(*action, *step) {

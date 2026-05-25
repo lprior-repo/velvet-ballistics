@@ -125,10 +125,6 @@ fn setup_action_trace_journal(dir: &std::path::Path) -> vb_core::RunId {
     run_id
 }
 
-fn json_trace(stdout: &str) -> serde_json::Value {
-    serde_json::from_str(stdout).expect("stdout should be valid JSON")
-}
-
 // ---------------------------------------------------------------------------
 // Integration: cmd_trace full pipeline with real Fjall journal
 // ---------------------------------------------------------------------------
@@ -238,10 +234,22 @@ fn cmd_trace_json_format_structure() {
     assert_cli_success(&output, "trace --emit yaml");
 
     let stdout = output_stdout(&output);
-    assert!(stdout.contains("run_id:"), "YAML should contain run_id: ; got: {stdout}");
-    assert!(stdout.contains("trace:"), "YAML should contain trace: ; got: {stdout}");
-    assert!(stdout.contains("total:"), "YAML should contain total: ; got: {stdout}");
-    assert!(stdout.contains("total: 4"), "YAML should contain total: 4; got: {stdout}");
+    assert!(
+        stdout.contains("run_id:"),
+        "YAML should contain run_id: ; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("trace:"),
+        "YAML should contain trace: ; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("total:"),
+        "YAML should contain total: ; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("total: 4"),
+        "YAML should contain total: 4; got: {stdout}"
+    );
 }
 
 #[test]
@@ -263,9 +271,18 @@ fn cmd_trace_jsonl_format_structure() {
     assert_cli_success(&output, "trace --emit yaml");
 
     let stdout = output_stdout(&output);
-    assert!(stdout.contains("run_id:"), "YAML should contain run_id: ; got: {stdout}");
-    assert!(stdout.contains("trace:"), "YAML should contain trace: ; got: {stdout}");
-    assert!(stdout.contains("total: 4"), "YAML should contain total: 4; got: {stdout}");
+    assert!(
+        stdout.contains("run_id:"),
+        "YAML should contain run_id: ; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("trace:"),
+        "YAML should contain trace: ; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("total: 4"),
+        "YAML should contain total: 4; got: {stdout}"
+    );
 }
 
 #[test]
@@ -288,8 +305,14 @@ fn cmd_trace_step_filter_returns_only_matching_step() {
     let output = output.unwrap();
     assert_cli_success(&output, "trace --step 0 --emit yaml");
     let stdout = output_stdout(&output);
-    assert!(stdout.contains("step: 0"), "YAML should contain step: 0; got: {stdout}");
-    assert!(stdout.contains("trace:"), "YAML should contain trace: ; got: {stdout}");
+    assert!(
+        stdout.contains("step: 0"),
+        "YAML should contain step: 0; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("trace:"),
+        "YAML should contain trace: ; got: {stdout}"
+    );
 }
 
 #[test]
@@ -312,8 +335,14 @@ fn cmd_trace_action_filter_returns_only_matching_action() {
     let output = output.unwrap();
     assert_cli_success(&output, "trace --action 17 --emit yaml");
     let stdout = output_stdout(&output);
-    assert!(stdout.contains("action: 17"), "YAML should contain action: 17; got: {stdout}");
-    assert!(stdout.contains("trace:"), "YAML should contain trace: ; got: {stdout}");
+    assert!(
+        stdout.contains("action: 17"),
+        "YAML should contain action: 17; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("trace:"),
+        "YAML should contain trace: ; got: {stdout}"
+    );
 }
 
 #[test]
@@ -336,8 +365,14 @@ fn cmd_trace_status_filter_returns_only_active_events() {
     let output = output.unwrap();
     assert_cli_success(&output, "trace --status active --emit yaml");
     let stdout = output_stdout(&output);
-    assert!(stdout.contains("status: active"), "YAML should contain status: active; got: {stdout}");
-    assert!(stdout.contains("StepStarted"), "YAML should contain StepStarted; got: {stdout}");
+    assert!(
+        stdout.contains("status: active"),
+        "YAML should contain status: active; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("StepStarted"),
+        "YAML should contain StepStarted; got: {stdout}"
+    );
 }
 
 #[test]
@@ -362,8 +397,14 @@ fn cmd_trace_sequence_range_filter_is_inclusive() {
     let output = output.unwrap();
     assert_cli_success(&output, "trace --since-seq 1 --until-seq 2 --emit yaml");
     let stdout = output_stdout(&output);
-    assert!(stdout.contains("seq: 1"), "YAML should contain seq: 1; got: {stdout}");
-    assert!(stdout.contains("seq: 2"), "YAML should contain seq: 2; got: {stdout}");
+    assert!(
+        stdout.contains("seq: 1"),
+        "YAML should contain seq: 1; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("seq: 2"),
+        "YAML should contain seq: 2; got: {stdout}"
+    );
 }
 
 #[test]
@@ -388,8 +429,14 @@ fn cmd_trace_limit_bounds_filtered_output() {
     let output = output.unwrap();
     assert_cli_success(&output, "trace --status active --limit 1 --emit yaml");
     let stdout = output_stdout(&output);
-    assert!(stdout.contains("total:"), "YAML should contain total: ; got: {stdout}");
-    assert!(stdout.contains("trace:"), "YAML should contain trace: ; got: {stdout}");
+    assert!(
+        stdout.contains("total:"),
+        "YAML should contain total: ; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("trace:"),
+        "YAML should contain trace: ; got: {stdout}"
+    );
 }
 
 #[test]

@@ -1,0 +1,12 @@
+{"id":"PS-001","seed":"Unit test: is_primitive(\"reduce\") returns true","contract_clause":"CC-001","verifier":"cargo-test","artifact":"vb_yaml/src/ast/parse_steps.rs"}
+{"id":"PS-002","seed":"Unit test: is_primitive rejects non-primitives","contract_clause":"CC-001","verifier":"cargo-test","artifact":"vb_yaml/src/ast/parse_steps.rs"}
+{"id":"PS-003","seed":"Unit test: parse_step_primitive handles reduce","contract_clause":"CC-001","verifier":"cargo-test","artifact":"vb_yaml/src/ast/parse_steps.rs"}
+{"id":"PS-004","seed":"Unit test: canonical_primitive_name(Reduce) == \"reduce\"","contract_clause":"CC-004","verifier":"cargo-test","artifact":"vb_yaml/src/ast/parse_steps.rs"}
+{"id":"PS-005","seed":"Integration test: full YAML parse with reduce step","contract_clause":"CC-001","verifier":"cargo-test","artifact":"vb_yaml/src/ast/parse_steps.rs"}
+{"id":"PS-006","seed":"Unit test: reject_unknown_step_fields accepts reduce step","contract_clause":"CC-002","verifier":"cargo-test","artifact":"vb_yaml/src/ast/parse_steps.rs"}
+{"id":"PS-007","seed":"Kani harness: parse_step_primitive no panic on reduce","contract_clause":"CC-001","verifier":"kani","artifact":"vb_yaml/src/ast/parse_steps.rs"}
+{"id":"PS-008","seed":"Kani harness: is_primitive bounds check","contract_clause":"CC-001","verifier":"kani","artifact":"vb_yaml/src/ast/parse_steps.rs"}
+{"id":"PS-009","seed":"Code inspection: Reduce variant fields match spec","contract_clause":"CC-003","verifier":"code-inspection","artifact":"vb_yaml/src/ast/types.rs"}
+{"id":"PS-010","seed":"Code inspection: all primitive match arms handle reduce","contract_clause":"CC-001","verifier":"code-inspection","artifact":"vb_yaml/src/ast/parse_steps.rs"}
+{"id":"PS-011","seed":"Code inspection: no other primitive name collisions","contract_clause":"CC-001","verifier":"code-inspection","artifact":"vb_yaml/src/ast/parse_steps.rs"}
+{"id":"PS-012","seed":"Fuzz target: random reduce step generation","contract_clause":"CC-001","verifier":"cargo-fuzz","artifact":"fuzz/src/parse_steps.rs"}

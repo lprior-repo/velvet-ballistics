@@ -470,13 +470,34 @@ fn cli_action_list_json_output_has_exact_actions() {
 
     assert_cli_success(&output, "action list --emit yaml");
     let stdout = output_stdout(&output);
-    assert!(stdout.contains("success: true"), "YAML output should contain success: true; got: {stdout}");
-    assert!(stdout.contains("id: 1"), "YAML output should contain action id: 1; got: {stdout}");
-    assert!(stdout.contains("id: 2"), "YAML output should contain action id: 2; got: {stdout}");
-    assert!(stdout.contains("id: 3"), "YAML output should contain action id: 3; got: {stdout}");
-    assert!(stdout.contains("idempotency: deterministic_pure"), "YAML output should contain deterministic_pure; got: {stdout}");
-    assert!(stdout.contains("idempotency: idempotent_external"), "YAML output should contain idempotent_external; got: {stdout}");
-    assert!(stdout.contains("idempotency: at_least_once_external"), "YAML output should contain at_least_once_external; got: {stdout}");
+    assert!(
+        stdout.contains("success: true"),
+        "YAML output should contain success: true; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("id: 1"),
+        "YAML output should contain action id: 1; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("id: 2"),
+        "YAML output should contain action id: 2; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("id: 3"),
+        "YAML output should contain action id: 3; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("idempotency: deterministic_pure"),
+        "YAML output should contain deterministic_pure; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("idempotency: idempotent_external"),
+        "YAML output should contain idempotent_external; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("idempotency: at_least_once_external"),
+        "YAML output should contain at_least_once_external; got: {stdout}"
+    );
 }
 
 #[test]
@@ -665,13 +686,34 @@ fn cli_action_list_jsonl_output_has_exact_lines() {
 
     assert_cli_success(&output, "action list --emit yaml");
     let stdout = output_stdout(&output);
-    assert!(stdout.contains("success: true"), "YAML output should contain success: true; got: {stdout}");
-    assert!(stdout.contains("id: 1"), "YAML output should contain action id: 1; got: {stdout}");
-    assert!(stdout.contains("id: 2"), "YAML output should contain action id: 2; got: {stdout}");
-    assert!(stdout.contains("id: 3"), "YAML output should contain action id: 3; got: {stdout}");
-    assert!(stdout.contains("idempotency: deterministic_pure"), "YAML output should contain deterministic_pure; got: {stdout}");
-    assert!(stdout.contains("idempotency: idempotent_external"), "YAML output should contain idempotent_external; got: {stdout}");
-    assert!(stdout.contains("idempotency: at_least_once_external"), "YAML output should contain at_least_once_external; got: {stdout}");
+    assert!(
+        stdout.contains("success: true"),
+        "YAML output should contain success: true; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("id: 1"),
+        "YAML output should contain action id: 1; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("id: 2"),
+        "YAML output should contain action id: 2; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("id: 3"),
+        "YAML output should contain action id: 3; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("idempotency: deterministic_pure"),
+        "YAML output should contain deterministic_pure; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("idempotency: idempotent_external"),
+        "YAML output should contain idempotent_external; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("idempotency: at_least_once_external"),
+        "YAML output should contain at_least_once_external; got: {stdout}"
+    );
 }
 
 #[test]
@@ -723,12 +765,30 @@ fn cli_action_inspect_json_output_has_full_contract() {
 
     assert_cli_success(&output, "action inspect 2 --emit yaml");
     let stdout = output_stdout(&output);
-    assert!(stdout.contains("success: true"), "YAML output should contain success: true; got: {stdout}");
-    assert!(stdout.contains("id: 2"), "YAML output should contain action id: 2; got: {stdout}");
-    assert!(stdout.contains("idempotency: idempotent_external"), "YAML output should contain idempotency: idempotent_external; got: {stdout}");
-    assert!(stdout.contains("retry_safety: key_required"), "YAML output should contain retry_safety: key_required; got: {stdout}");
-    assert!(stdout.contains("idempotency_rule: external retries require a stable idempotency key"), "YAML output should contain idempotency_rule; got: {stdout}");
-    assert!(stdout.contains("failure_codes:"), "YAML output should contain failure_codes; got: {stdout}");
+    assert!(
+        stdout.contains("success: true"),
+        "YAML output should contain success: true; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("id: 2"),
+        "YAML output should contain action id: 2; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("idempotency: idempotent_external"),
+        "YAML output should contain idempotency: idempotent_external; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("retry_safety: key_required"),
+        "YAML output should contain retry_safety: key_required; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("idempotency_rule: external retries require a stable idempotency key"),
+        "YAML output should contain idempotency_rule; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("failure_codes:"),
+        "YAML output should contain failure_codes; got: {stdout}"
+    );
 }
 
 #[test]
@@ -2345,12 +2405,30 @@ fn cli_doctor_json_includes_trim_eligibility_check() {
     assert_cli_success(&output, "doctor --db <path> --emit yaml");
 
     let stdout = output_stdout(&output);
-    assert!(stdout.contains("trim_eligibility"), "YAML output should contain trim_eligibility; got: {stdout}");
-    assert!(stdout.contains("status: pass"), "YAML output should contain status: pass; got: {stdout}");
-    assert!(stdout.contains("total_runs: 1"), "YAML output should contain total_runs: 1; got: {stdout}");
-    assert!(stdout.contains("eligible_runs: 1"), "YAML output should contain eligible_runs: 1; got: {stdout}");
-    assert!(stdout.contains("blocked_runs: 0"), "YAML output should contain blocked_runs: 0; got: {stdout}");
-    assert!(stdout.contains("total_events_trimmable: 3"), "YAML output should contain total_events_trimmable: 3; got: {stdout}");
+    assert!(
+        stdout.contains("trim_eligibility"),
+        "YAML output should contain trim_eligibility; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("status: pass"),
+        "YAML output should contain status: pass; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("total_runs: 1"),
+        "YAML output should contain total_runs: 1; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("eligible_runs: 1"),
+        "YAML output should contain eligible_runs: 1; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("blocked_runs: 0"),
+        "YAML output should contain blocked_runs: 0; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("total_events_trimmable: 3"),
+        "YAML output should contain total_events_trimmable: 3; got: {stdout}"
+    );
 }
 
 #[test]
@@ -3013,7 +3091,10 @@ fn cli_status_json_writes_payload_to_stdout_only() {
         stderr, "",
         "status --emit yaml must keep diagnostics off stderr on success"
     );
-    assert!(stdout.contains("status: running"), "YAML output should contain status: running; got: {stdout}");
+    assert!(
+        stdout.contains("status: running"),
+        "YAML output should contain status: running; got: {stdout}"
+    );
     stdout_contains_no_panic_text(&stdout);
 }
 
@@ -3147,12 +3228,30 @@ fn cli_simulate_json_emits_deterministic_trace() {
 
     assert_cli_success(&output, "simulate workflow.yaml --emit yaml");
     let stdout = output_stdout(&output);
-    assert!(stdout.contains("success: true"), "YAML output should contain success: true; got: {stdout}");
-    assert!(stdout.contains("total_steps: 2"), "YAML output should contain total_steps: 2; got: {stdout}");
-    assert!(stdout.contains("total_actions: 0"), "YAML output should contain total_actions: 0; got: {stdout}");
-    assert!(stdout.contains("trace:"), "YAML output should contain trace: ; got: {stdout}");
-    assert!(stdout.contains("schema_version: velvet-ballastics/v1"), "YAML output should contain schema_version: velvet-ballastics/v1; got: {stdout}");
-    assert!(stdout.contains("kind: simulate"), "YAML output should contain kind: simulate; got: {stdout}");
+    assert!(
+        stdout.contains("success: true"),
+        "YAML output should contain success: true; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("total_steps: 2"),
+        "YAML output should contain total_steps: 2; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("total_actions: 0"),
+        "YAML output should contain total_actions: 0; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("trace:"),
+        "YAML output should contain trace: ; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("schema_version: velvet-ballastics/v1"),
+        "YAML output should contain schema_version: velvet-ballastics/v1; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("kind: simulate"),
+        "YAML output should contain kind: simulate; got: {stdout}"
+    );
 }
 
 #[test]
@@ -3320,10 +3419,22 @@ fn cli_submit_json_returns_structured_identifiers() {
         "submit --emit yaml success must not write stderr"
     );
     let stdout = output_stdout(&output);
-    assert!(stdout.contains("run_id:"), "YAML output should contain run_id: ; got: {stdout}");
-    assert!(stdout.contains("status: submitted"), "YAML output should contain status: submitted; got: {stdout}");
-    assert!(stdout.contains("step_count: 2"), "YAML output should contain step_count: 2; got: {stdout}");
-    assert!(stdout.contains("digest:"), "YAML output should contain digest: ; got: {stdout}");
+    assert!(
+        stdout.contains("run_id:"),
+        "YAML output should contain run_id: ; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("status: submitted"),
+        "YAML output should contain status: submitted; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("step_count: 2"),
+        "YAML output should contain step_count: 2; got: {stdout}"
+    );
+    assert!(
+        stdout.contains("digest:"),
+        "YAML output should contain digest: ; got: {stdout}"
+    );
 }
 
 #[test]
@@ -3564,7 +3675,10 @@ fn cli_run_json_output_reports_structured_run_result() {
         "run --emit yaml success must not write stderr"
     );
     let stdout = output_stdout(&output);
-    assert!(stdout.contains("run_id:") || stdout.contains("schema_version:"), "YAML output should contain run_id or schema_version; got: {stdout}");
+    assert!(
+        stdout.contains("run_id:") || stdout.contains("schema_version:"),
+        "YAML output should contain run_id or schema_version; got: {stdout}"
+    );
     assert!(stdout.contains("run_id:"), "run_id missing: {stdout}");
 }
 

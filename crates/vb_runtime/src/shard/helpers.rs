@@ -43,6 +43,32 @@ pub fn validate_action_completion(
     }
 }
 
+/// Returns the input slot for a suspended Do step.
+pub fn action_input_slot(
+    state: &crate::shard::types::RunState,
+    step: StepIdx,
+) -> RuntimeResult<SlotIdx> {
+    let Some(node) = state.workflow.node(step) else {
+        return Err(RuntimeError::InvalidActionCompletion);
+    };
+    match node.kind {
+        CompiledNodeKind::Do { input, .. } => Ok(input),
+        _ => Err(RuntimeError::InvalidActionCompletion),
+    }
+}
+
+/// Returns the output slot for a suspended Do step.
+pub fn action_output_slot(
+    state: &crate::shard::types::RunState,
+    step: StepIdx,
+) -> RuntimeResult<SlotIdx> {
+    state
+        .workflow
+        .node(step)
+        .and_then(|node| node.output)
+        .ok_or(RuntimeError::InvalidActionCompletion)
+}
+
 fn validate_ticket_attempt(
     state: &crate::shard::types::RunState,
     ticket: ActionTicket,

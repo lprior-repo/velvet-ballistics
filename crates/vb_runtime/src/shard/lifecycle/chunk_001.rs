@@ -365,46 +365,37 @@ impl Shard {
         output: ActionOutputReady,
     ) -> RuntimeResult<()> {
         let run = ticket.run;
+        let preflight = {
+            let state = self.runs.get(&run).ok_or(RuntimeError::RunNotFound)?;
+            preflight_action_completion(state, ticket, output)?
+        };
+        self.append_journal_event(RuntimeJournalEvent::ActionCompletedEnvelope {
+            ticket: preflight.ticket,
+            output: preflight.output_slot,
+            value: preflight.encoded_value.clone(),
+            encoded_len: preflight.encoded_len,
+            taint: preflight.taint,
+            value_digest: preflight.value_digest,
+        })?;
         let state = self.runs.get_mut(&run).ok_or(RuntimeError::RunNotFound)?;
-        crate::shard::helpers::validate_action_completion(state, ticket)?;
         state
             .frame
-            .write_slot_with_taint(output.output_slot, output.value, output.taint)
+            .write_slot_with_taint(preflight.output_slot, preflight.value, preflight.taint)
             .map_err(|_| RuntimeError::InvalidActionCompletion)?;
         state
             .frame
-            .mark_succeeded(ticket.step)
+            .mark_succeeded(preflight.ticket.step)
             .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-        crate::shard::helpers::advance_after_action_completion(state, ticket.step)?;
-        let encoded_value =
-            postcard::to_allocvec(&output.value).map_err(|_| RuntimeError::EncodeFailed)?;
+        crate::shard::helpers::advance_after_action_completion(state, preflight.ticket.step)?;
         self.trace_ring.push(TraceEvent::SlotWritten {
             run,
-            slot: output.output_slot,
-            value: encoded_value.clone(),
+            slot: preflight.output_slot,
+            value: preflight.encoded_value,
         });
         self.trace_ring.push(TraceEvent::ActionCompleted {
             run,
-            step: ticket.step,
+            step: preflight.ticket.step,
         });
-        self.append_journal_event(RuntimeJournalEvent::SlotWritten {
-            run,
-            slot: output.output_slot,
-            value: encoded_value,
-            taint: output.taint,
-            extra: None,
-        })?;
-        self.append_journal_event(RuntimeJournalEvent::StepSucceeded {
-            run,
-            step: ticket.step,
-            output: output.output_slot,
-            attempt: ticket.attempt,
-        })?;
-        self.append_journal_event(RuntimeJournalEvent::ActionCompleted {
-            run,
-            step: ticket.step,
-            action: ticket.action,
-        })?;
         self.drive_run(run)
     }
 

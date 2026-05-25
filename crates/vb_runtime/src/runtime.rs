@@ -42,7 +42,7 @@ impl Runtime {
         Self::new_with_journal(
             shard_count,
             config,
-            crate::journal::NoopRuntimeJournal::shared(),
+            crate::journal::VolatileRuntimeJournal::shared(),
         )
     }
 
@@ -334,7 +334,7 @@ impl Runtime {
         // Validate ticket before enqueuing — fail fast with InvalidActionCompletion
         // if the ticket doesn't match the current run state.
         if let Some(state) = shard.runs.get(&ticket.run) {
-            crate::shard::helpers::validate_action_completion(state, ticket)?;
+            crate::shard::lifecycle::preflight_action_completion(state, ticket, output.clone())?;
         }
         shard.enqueue(ShardCommand::ActionCompleted { ticket, output })
     }
@@ -591,9 +591,9 @@ impl Runtime {
 mod tests {
     use super::*;
     use crate::AskTicket;
-    use crate::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
+    use crate::journal::{RuntimeJournal, RuntimeJournalEvent, VolatileRuntimeJournal};
     use crate::trace::TraceEvent;
-    use std::sync::Arc;
+    use std::sync::{Arc, Mutex};
     use vb_core::action::{
         ActionContract, ActionFailureCode, ActionOutputReady, ActionTicket, Idempotency,
         RetryPolicy, RetrySafety, SideEffect,
@@ -603,6 +603,43 @@ mod tests {
     use vb_core::policy::RuntimePolicy;
     use vb_core::value::{SlotValue, Taint};
     use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+
+    #[derive(Debug)]
+    struct RejectCompletionJournal {
+        events: Mutex<Vec<RuntimeJournalEvent>>,
+    }
+
+    impl RejectCompletionJournal {
+        fn shared() -> Arc<Self> {
+            Arc::new(Self {
+                events: Mutex::new(Vec::new()),
+            })
+        }
+
+        fn snapshot(&self) -> RuntimeResult<Vec<RuntimeJournalEvent>> {
+            self.events
+                .lock()
+                .map(|events| events.clone())
+                .map_err(|_| RuntimeError::JournalPoisoned)
+        }
+    }
+
+    impl RuntimeJournal for RejectCompletionJournal {
+        fn append(&self, event: RuntimeJournalEvent) -> RuntimeResult<()> {
+            if matches!(event, RuntimeJournalEvent::ActionCompletedEnvelope { .. }) {
+                return Err(RuntimeError::JournalFull { capacity: 0 });
+            }
+            self.events
+                .lock()
+                .map_err(|_| RuntimeError::JournalPoisoned)?
+                .push(event);
+            Ok(())
+        }
+
+        fn probe(&self) -> RuntimeResult<()> {
+            Ok(())
+        }
+    }
 
     fn suspended_workflow() -> Option<CompiledWorkflow> {
         let node = CompiledNode {
@@ -723,6 +760,43 @@ mod tests {
         CapabilitySet::from_grants(Box::from([contract_required_capability(action)]))
     }
 
+    fn ticket(
+        run: RunId,
+        step: StepIdx,
+        seq: SeqNo,
+        action: ActionId,
+        attempt: u16,
+        capacity: u16,
+    ) -> ActionTicket {
+        ActionTicket {
+            run,
+            step,
+            seq,
+            action,
+            attempt,
+            idempotency_key: crate::engine::action::compute_idempotency_key(run, seq, action),
+            capacity,
+        }
+    }
+
+    fn encoded_len(value: &SlotValue) -> u32 {
+        match postcard::to_allocvec(value) {
+            Ok(bytes) => match u32::try_from(bytes.len()) {
+                Ok(len) => len,
+                Err(_) => u32::MAX,
+            },
+            Err(_) => u32::MAX,
+        }
+    }
+
+    fn active_frame(runtime: &Runtime, run: RunId) -> Option<vb_core::RunFrame> {
+        runtime
+            .shards
+            .get(runtime.shard_index(run))
+            .and_then(|shard| shard.runs.get(&run))
+            .map(|state| state.frame.clone())
+    }
+
     fn submit_suspended(runtime: &Runtime, run: RunId, wf: CompiledWorkflow) -> RuntimeResult<()> {
         let action = ActionId::new(0);
         runtime.submit_direct_with_inputs_grants_and_contracts(
@@ -745,7 +819,7 @@ mod tests {
             wf,
             Box::from([(SlotIdx::new(0), SlotValue::I64(0))]),
             action_grants(action),
-            action_contracts_through(action, 1, 1),
+            action_contracts_through(action, 1, 2),
         )
     }
 
@@ -1046,20 +1120,13 @@ mod tests {
             })
         ));
 
-        let ticket = ActionTicket {
-            run,
-            step: StepIdx::ZERO,
-            seq: SeqNo::ZERO,
-            action: ActionId::new(7),
-            attempt: 1,
-            idempotency_key: 0,
-            capacity: 1,
-        };
+        let ticket = ticket(run, StepIdx::ZERO, SeqNo::ZERO, ActionId::new(7), 1, 1);
+        let value = SlotValue::I64(99);
         let output = ActionOutputReady {
             output_slot: SlotIdx::new(1),
-            value: SlotValue::I64(99),
+            value,
             taint: Taint::Clean,
-            encoded_len: 8,
+            encoded_len: encoded_len(&value),
         };
         assert_eq!(runtime.complete_action_with_output(ticket, output), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
@@ -1080,18 +1147,15 @@ mod tests {
         let journal_events = journal.snapshot();
         assert!(matches!(
             journal_events,
-            Ok(ref evts) if evts.contains(&RuntimeJournalEvent::ActionScheduled {
-                run,
-                step: StepIdx::ZERO,
-                action: ActionId::new(7),
-            }) && evts.iter().any(|e| matches!(e,
-                RuntimeJournalEvent::SlotWritten { run: r, slot, .. }
-                if *r == run && *slot == SlotIdx::new(1)
-            )) && evts.contains(&RuntimeJournalEvent::ActionCompleted {
-                run,
-                step: StepIdx::ZERO,
-                action: ActionId::new(7),
-            })
+            Ok(ref evts) if evts.iter().any(|e| matches!(e,
+                RuntimeJournalEvent::ActionScheduledTicket { ticket: t, output, .. }
+                if t.run == run && t.step == StepIdx::ZERO && t.action == ActionId::new(7)
+                    && *output == SlotIdx::new(1)
+            )) && evts.iter().any(|e| matches!(e,
+                RuntimeJournalEvent::ActionCompletedEnvelope { ticket: t, output, encoded_len: len, .. }
+                if t.run == run && t.step == StepIdx::ZERO && t.action == ActionId::new(7)
+                    && *output == SlotIdx::new(1) && *len == encoded_len(&value)
+            ))
         ));
     }
 
