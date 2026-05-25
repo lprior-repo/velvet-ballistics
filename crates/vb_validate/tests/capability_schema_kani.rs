@@ -118,8 +118,8 @@ proptest! {
         prim_idx in 0usize..11usize,
     ) {
         let prims = [
-            "set", "do", "choose", "for_each", "parallel", "collect",
-            "aggregate", "repeat", "wait", "ask", "finish",
+            "set", "do", "choose", "for_each", "together", "collect",
+            "reduce", "repeat", "wait", "ask", "finish",
         ];
         let prim = prims[prim_idx];
         let step = make_step(vec![
@@ -150,8 +150,8 @@ proptest! {
         prim2_idx in 0usize..11usize,
     ) {
         let prims = [
-            "set", "do", "choose", "for_each", "parallel", "collect",
-            "aggregate", "repeat", "wait", "ask", "finish",
+            "set", "do", "choose", "for_each", "together", "collect",
+            "reduce", "repeat", "wait", "ask", "finish",
         ];
         prop_assume!(prim1_idx != prim2_idx);
         let step = make_step(vec![
@@ -246,8 +246,8 @@ proptest! {
         prim_idx in 0usize..11usize,
     ) {
         let prims = [
-            "set", "do", "choose", "for_each", "parallel", "collect",
-            "aggregate", "repeat", "wait", "ask", "finish",
+            "set", "do", "choose", "for_each", "together", "collect",
+            "reduce", "repeat", "wait", "ask", "finish",
         ];
         let doc = make_doc(vec![(
             "steps",
@@ -751,7 +751,7 @@ fn kani_integration_unknown_top_level_field_is_caught() {
 fn kani_integration_step_with_reduce_primitive_accepted() {
     let step = make_step(vec![
         ("id", FieldValue::String("reduce_step".to_owned())),
-        ("aggregate", FieldValue::Empty),
+        ("reduce", FieldValue::Empty),
     ]);
     assert_eq!(validate_single_primitive(&step), Ok(()));
 }
