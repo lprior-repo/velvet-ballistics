@@ -64,7 +64,7 @@ pub(super) fn lower_canonical_parallel(
             join,
         },
     });
-    emit_together_branches(id, branches, join, accumulator, builder)?;
+    emit_together_branches(id, branches, join, accumulator, index, builder)?;
     builder.push_node(CompiledNode {
         id: join,
         output: Some(accumulator),
@@ -94,6 +94,7 @@ pub(super) fn emit_together_branches(
     branches: &[vb_yaml::ast::TogetherBranch],
     join: StepIdx,
     accumulator: SlotIdx,
+    diagnostic_step: usize,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     let mut cursor = 1u16;
@@ -135,6 +136,7 @@ pub(super) fn emit_together_branches(
         emit_single_body_set(
             &branch.steps,
             entry,
+            diagnostic_step,
             branch_id.to_slot(),
             None,
             builder,
@@ -193,6 +195,7 @@ pub(super) fn lower_canonical_collect(
     emit_single_body_set(
         collect.body,
         body_step,
+        index,
         SlotIdx::new(1),
         Some(page),
         builder,

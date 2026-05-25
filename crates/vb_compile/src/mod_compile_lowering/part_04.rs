@@ -52,6 +52,7 @@ pub(super) fn lower_canonical_aggregate(
     emit_single_body_set(
         body,
         body_step,
+        index,
         accumulator,
         Some(next_step),
         builder,
@@ -118,6 +119,7 @@ pub(super) fn lower_canonical_repeat(
     emit_single_body_set(
         body,
         body_step,
+        index,
         SlotIdx::new(1),
         Some(attempt),
         builder,
@@ -211,6 +213,7 @@ pub(super) fn lower_canonical_ask(
 pub(super) fn emit_single_body_set(
     body: &[vb_yaml::ast::StepAst],
     id: StepIdx,
+    diagnostic_step: usize,
     slot: SlotIdx,
     next: Option<StepIdx>,
     builder: &mut SlotCompiler,
@@ -218,14 +221,14 @@ pub(super) fn emit_single_body_set(
 ) -> Result<(), CompileErrors> {
     if body.len() != 1 {
         return Err(CompileErrors(vec![CompileError::StepFieldShape {
-            step: id.as_usize(),
+            step: diagnostic_step,
             field: "steps",
             expected: "exactly one set step",
         }]));
     }
     let step = body.first().ok_or_else(|| {
         CompileErrors(vec![CompileError::StepFieldShape {
-            step: id.as_usize(),
+            step: diagnostic_step,
             field: "steps",
             expected: "one set step",
         }])
@@ -233,14 +236,14 @@ pub(super) fn emit_single_body_set(
     match &step.primitive {
         vb_yaml::ast::StepPrimitive::Set { value, .. } => {
             let constant =
-                body_constant_index(builder, value, id.as_usize(), reuse_first_constant)?;
+                body_constant_index(builder, value, diagnostic_step, reuse_first_constant)?;
             builder.record_slot(slot);
             builder.push_node(lower_set(id, slot, constant, next));
             Ok(())
         }
         other => Err(CompileErrors(vec![
             CompileError::UnsupportedStepPrimitive {
-                step: id.as_usize(),
+                step: diagnostic_step,
                 primitive: canonical_primitive_name(other),
             },
         ])),
