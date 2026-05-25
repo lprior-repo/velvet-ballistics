@@ -916,7 +916,6 @@ enum TerminalSummary {
     Cancelled,
     Finished(SlotIdx),
     Failed,
-    Killed,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -979,9 +978,6 @@ fn summarize_events(events: &[JournalEvent]) -> ReplaySummary {
                 }
                 JournalEvent::RunFailedEvent { .. } => {
                     summary.terminal = Some(TerminalSummary::Failed);
-                }
-                JournalEvent::RunKilled { .. } => {
-                    summary.terminal = Some(TerminalSummary::Killed);
                 }
                 JournalEvent::RunAdmission { .. }
                 | JournalEvent::SlotWrittenEvent { .. }

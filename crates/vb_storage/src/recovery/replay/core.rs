@@ -63,8 +63,7 @@ fn replay_events_with_schedule_requirement(
             | JournalEvent::RunFailedEvent { .. }
             | JournalEvent::RunResumed { .. }
             | JournalEvent::RunRetried { .. }
-            | JournalEvent::RunAnswered { .. }
-            | JournalEvent::RunKilled { .. } => {}
+            | JournalEvent::RunAnswered { .. } => {}
             JournalEvent::StepStarted { step, .. } => {
                 // Verify step ordering
                 if replay_step_order_diverges(last_step, *step) {

@@ -69,9 +69,6 @@ pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &Journal
         JournalEvent::RunFailedEvent { .. } => {
             summary.terminal = Some(crate::recovery::types::RecoveryTerminalState::Failed);
         }
-        JournalEvent::RunKilled { .. } => {
-            summary.terminal = Some(crate::recovery::types::RecoveryTerminalState::Killed);
-        }
         // Lifecycle events (RunResumed, RunRetried, RunAnswered) do not carry sequence
         // numbers and are not part of the durable event log ordering for recovery summary.
         JournalEvent::RunResumed { .. }
