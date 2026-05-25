@@ -13,6 +13,26 @@ use vb_core::{
     Taint, WorkflowDigest,
 };
 
+#[cfg(kani)]
+#[derive(Debug, Clone, Default)]
+struct ReplayResolutionSet(Vec<(ActionId, StepIdx)>);
+
+#[cfg(kani)]
+impl ReplayResolutionSet {
+    fn insert(&mut self, value: (ActionId, StepIdx)) -> bool {
+        if self.contains(&value) {
+            false
+        } else {
+            self.0.push(value);
+            true
+        }
+    }
+
+    fn contains(&self, value: &(ActionId, StepIdx)) -> bool {
+        self.0.iter().any(|entry| entry == value)
+    }
+}
+
 /// Recovery failures with typed diagnostics.
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]

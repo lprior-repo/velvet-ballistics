@@ -18,8 +18,7 @@ members = [
     "crates/vb_cli",
     "crates/vb_verification",
     "crates/workspace_tests/idempotency_suite",
-    # workspace_tests excluded (depends on deferred vb_ui/vb_codegen types)
-    # "crates/workspace_tests",
+    "crates/workspace_tests",
     "crates/vb_benchmark",
     # xtask excluded until the tooling crate is re-linted for workspace CI.
     # "xtask",
