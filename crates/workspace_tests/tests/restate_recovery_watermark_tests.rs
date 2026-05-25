@@ -4,7 +4,7 @@
 //! Verifies that sequence watermarks (first_seq, last_seq, snapshot seq)
 //! maintain expected invariants across recovery paths.
 
-use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_storage::recovery::{
     ActionReplayTracker, RunSnapshot, recover_runtime_frame_seed_from_events,
     recover_runtime_summary, recover_snapshot_plus_tail, summarize_recovery_events,
@@ -65,7 +65,7 @@ fn make_snapshot(run: RunId, seq: u64) -> RunSnapshot {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn watermark_first_seq_equals_first_event_seq() {
+fn watermark_first_seq_equals_first_event_seq() -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(1);
     let events = vec![
         accepted_event(run, 0),
@@ -73,15 +73,13 @@ fn watermark_first_seq_equals_first_event_seq() {
         succeeded_event(run, 2, 0, 0),
     ];
 
-    let summary = summarize_recovery_events(&events)
-        .expect("summarize should succeed")
-        .summary();
-
+    let summary = summarize_recovery_events(&events)?.summary();
     assert_eq!(summary.first_seq, EventSeq::new(0));
+    Ok(())
 }
 
 #[test]
-fn watermark_last_seq_equals_last_event_seq() {
+fn watermark_last_seq_equals_last_event_seq() -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(1);
     let events = vec![
         accepted_event(run, 0),
@@ -89,15 +87,13 @@ fn watermark_last_seq_equals_last_event_seq() {
         succeeded_event(run, 2, 0, 0),
     ];
 
-    let summary = summarize_recovery_events(&events)
-        .expect("summarize should succeed")
-        .summary();
-
+    let summary = summarize_recovery_events(&events)?.summary();
     assert_eq!(summary.last_seq, EventSeq::new(2));
+    Ok(())
 }
 
 #[test]
-fn watermark_first_seq_le_last_seq() {
+fn watermark_first_seq_le_last_seq() -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(1);
     let events = vec![
         accepted_event(run, 5),
@@ -105,29 +101,25 @@ fn watermark_first_seq_le_last_seq() {
         succeeded_event(run, 7, 0, 0),
     ];
 
-    let summary = summarize_recovery_events(&events)
-        .expect("summarize should succeed")
-        .summary();
-
+    let summary = summarize_recovery_events(&events)?.summary();
     assert!(
         summary.first_seq <= summary.last_seq,
         "first_seq {} must be <= last_seq {}",
         summary.first_seq.get(),
         summary.last_seq.get()
     );
+    Ok(())
 }
 
 #[test]
-fn watermark_single_event_has_equal_first_and_last_seq() {
+fn watermark_single_event_has_equal_first_and_last_seq() -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(1);
     let events = vec![accepted_event(run, 42)];
 
-    let summary = summarize_recovery_events(&events)
-        .expect("summarize should succeed")
-        .summary();
-
+    let summary = summarize_recovery_events(&events)?.summary();
     assert_eq!(summary.first_seq, summary.last_seq);
     assert_eq!(summary.first_seq, EventSeq::new(42));
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -135,19 +127,15 @@ fn watermark_single_event_has_equal_first_and_last_seq() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn watermark_snapshot_seq_lt_summary_first_seq() {
+fn watermark_snapshot_seq_lt_summary_first_seq() -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(1);
     let snapshot = make_snapshot(run, 2);
     let tail = vec![started_event(run, 3, 0), succeeded_event(run, 4, 0, 0)];
 
     let mut tracker = ActionReplayTracker::new();
-    let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker)
-        .expect("snapshot+tail should succeed");
+    let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker)?;
 
-    // replay_events returns the tail events; the summary is built from them
-    let summary = summarize_recovery_events(&replayed)
-        .expect("summarize replayed should succeed")
-        .summary();
+    let summary = summarize_recovery_events(&replayed)?.summary();
 
     assert!(
         snapshot.seq < summary.first_seq,
@@ -155,24 +143,24 @@ fn watermark_snapshot_seq_lt_summary_first_seq() {
         snapshot.seq.get(),
         summary.first_seq.get()
     );
+    Ok(())
 }
 
 #[test]
-fn watermark_snapshot_plus_tail_first_seq_equals_tail_first_event() {
+fn watermark_snapshot_plus_tail_first_seq_equals_tail_first_event(
+) -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(1);
     let snapshot = make_snapshot(run, 5);
     let tail = vec![started_event(run, 6, 0), succeeded_event(run, 7, 0, 0)];
 
     let mut tracker = ActionReplayTracker::new();
-    let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker)
-        .expect("snapshot+tail should succeed");
+    let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker)?;
 
-    let summary = summarize_recovery_events(&replayed)
-        .expect("summarize should succeed")
-        .summary();
+    let summary = summarize_recovery_events(&replayed)?.summary();
 
     assert_eq!(summary.first_seq, EventSeq::new(6));
     assert_eq!(summary.last_seq, EventSeq::new(7));
+    Ok(())
 }
 
 #[test]
@@ -220,7 +208,7 @@ fn watermark_snapshot_plus_tail_rejects_event_before_snapshot_seq() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn watermark_full_journal_vs_snapshot_tail_parity() {
+fn watermark_full_journal_vs_snapshot_tail_parity() -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(1);
     let all_events = vec![
         accepted_event(run, 0),
@@ -230,28 +218,21 @@ fn watermark_full_journal_vs_snapshot_tail_parity() {
         succeeded_event(run, 4, 1, 1),
     ];
 
-    // Full journal recovery summary
-    let full_summary = summarize_recovery_events(&all_events)
-        .expect("full summarize should succeed")
-        .summary();
+    let full_summary = summarize_recovery_events(&all_events)?.summary();
 
-    // Snapshot+tail recovery (snapshot at seq 2)
     let snapshot = make_snapshot(run, 2);
     let tail = vec![started_event(run, 3, 1), succeeded_event(run, 4, 1, 1)];
 
     let mut tracker = ActionReplayTracker::new();
-    let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker)
-        .expect("snapshot+tail should succeed");
+    let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker)?;
 
-    let tail_summary = summarize_recovery_events(&replayed)
-        .expect("tail summarize should succeed")
-        .summary();
+    let tail_summary = summarize_recovery_events(&replayed)?.summary();
 
-    // Watermark parity: the tail recovery should have the same last_seq
     assert_eq!(
         full_summary.last_seq, tail_summary.last_seq,
         "full journal and snapshot+tail must agree on last_seq"
     );
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -288,10 +269,140 @@ fn watermark_max_seq_as_only_event_rejected() {
     }];
 
     let result = summarize_recovery_events(&events);
+    assert!(result.is_err(), "EventSeq::MAX as sole event must be rejected");
+}
+
+#[test]
+fn watermark_max_minus_one_to_max_rejected() {
+    let run = RunId::new(1);
+    let events = vec![
+        JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(u64::MAX - 1),
+            workflow: sample_digest(1),
+        },
+        JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::MAX,
+            step: StepIdx::new(0),
+            attempt: 1,
+        },
+    ];
+
+    let result = summarize_recovery_events(&events);
     assert!(
         result.is_err(),
-        "EventSeq::MAX as sole event must be rejected"
+        "EventSeq::MAX-1 followed by MAX must be rejected"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Empty-tail + MAX-snapshot edge case
+// ---------------------------------------------------------------------------
+
+#[test]
+fn watermark_empty_tail_with_max_snapshot_ok() {
+    let run = RunId::new(1);
+    let snapshot = RunSnapshot {
+        run,
+        seq: EventSeq::MAX,
+        workflow: sample_digest(1),
+        slots: vec![0, 1],
+        taint: vec![0, 0],
+    };
+
+    let mut tracker = ActionReplayTracker::new();
+    let result = recover_snapshot_plus_tail(&snapshot, &[], &mut tracker);
+    assert!(
+        result.is_ok(),
+        "empty tail with MAX snapshot should succeed"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Varied event variant coverage
+// ---------------------------------------------------------------------------
+
+#[test]
+fn watermark_varied_event_variants_preserve_seq() -> Result<(), Box<dyn std::error::Error>> {
+    let run = RunId::new(1);
+    let workflow = sample_digest(1);
+    let events = vec![
+        JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow,
+        },
+        JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+            attempt: 1,
+        },
+        JournalEvent::ActionScheduled {
+            run,
+            seq: EventSeq::new(2),
+            step: StepIdx::new(0),
+            action: ActionId::new(1),
+            attempt: 1,
+        },
+        JournalEvent::ActionCompletedEvent {
+            run,
+            seq: EventSeq::new(3),
+            step: StepIdx::new(0),
+            action: ActionId::new(1),
+            attempt: 1,
+        },
+        JournalEvent::SlotWrittenEvent {
+            run,
+            seq: EventSeq::new(4),
+            slot: SlotIdx::new(0),
+            value: Some(vec![1, 2, 3]),
+            extra: None,
+            attempt: 1,
+        },
+        JournalEvent::StepSucceeded {
+            run,
+            seq: EventSeq::new(5),
+            step: StepIdx::new(0),
+            output: SlotIdx::new(0),
+        },
+        JournalEvent::RunFailedEvent {
+            run,
+            seq: EventSeq::new(6),
+            attempt: 1,
+        },
+        JournalEvent::RunCancelled {
+            run,
+            seq: EventSeq::new(7),
+            attempt: 1,
+            reason: None,
+        },
+        JournalEvent::RunFinished {
+            run,
+            seq: EventSeq::new(8),
+            result: SlotIdx::new(0),
+            attempt: 1,
+        },
+    ];
+
+    let summary = summarize_recovery_events(&events)?.summary();
+
+    assert_eq!(summary.first_seq, EventSeq::new(0));
+    assert_eq!(summary.last_seq, EventSeq::new(8));
+    assert_eq!(summary.steps_started, 1);
+    assert_eq!(summary.steps_succeeded, 1);
+    assert_eq!(summary.actions_scheduled, 1);
+    assert_eq!(summary.actions_resolved, 1);
+    assert_eq!(summary.slots_written, 1);
+    assert!(
+        matches!(
+            summary.terminal,
+            Some(vb_storage::recovery::RecoveryTerminalState::Finished { .. })
+        ),
+        "terminal should be Finished"
+    );
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -299,56 +410,44 @@ fn watermark_max_seq_as_only_event_rejected() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn watermark_journal_recovery_first_and_last_seq() {
-    let dir = tempfile::tempdir().expect("temp dir");
-    let journal = FjallJournal::open(dir.path(), None).expect("journal opens");
+fn watermark_journal_recovery_first_and_last_seq() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = tempfile::tempdir()?;
+    let journal = FjallJournal::open(dir.path(), None)?;
     let run = RunId::new(42);
 
-    journal
-        .append_journaled(&accepted_event(run, 0))
-        .expect("append accepted");
-    journal
-        .append_journaled(&started_event(run, 1, 0))
-        .expect("append started");
-    journal
-        .append_journaled(&succeeded_event(run, 2, 0, 0))
-        .expect("append succeeded");
-    journal
-        .append_journaled(&finished_event(run, 3))
-        .expect("append finished");
+    journal.append_journaled(&accepted_event(run, 0))?;
+    journal.append_journaled(&started_event(run, 1, 0))?;
+    journal.append_journaled(&succeeded_event(run, 2, 0, 0))?;
+    journal.append_journaled(&finished_event(run, 3))?;
 
-    let summary = recover_runtime_summary(&journal, run)
-        .expect("summary recovers")
-        .summary();
+    let summary = recover_runtime_summary(&journal, run)?.summary();
 
     assert_eq!(summary.first_seq, EventSeq::new(0));
     assert_eq!(summary.last_seq, EventSeq::new(3));
     assert!(summary.first_seq <= summary.last_seq);
+    Ok(())
 }
 
 #[test]
-fn watermark_journal_recovery_rejects_max_seq() {
-    let dir = tempfile::tempdir().expect("temp dir");
-    let journal = FjallJournal::open(dir.path(), None).expect("journal opens");
+fn watermark_journal_recovery_rejects_max_seq() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = tempfile::tempdir()?;
+    let journal = FjallJournal::open(dir.path(), None)?;
     let run = RunId::new(42);
 
-    journal
-        .append_journaled(&accepted_event(run, 0))
-        .expect("append accepted");
-    journal
-        .append_journaled(&JournalEvent::StepStarted {
-            run,
-            seq: EventSeq::MAX,
-            step: StepIdx::new(0),
-            attempt: 1,
-        })
-        .expect("append max seq");
+    journal.append_journaled(&accepted_event(run, 0))?;
+    journal.append_journaled(&JournalEvent::StepStarted {
+        run,
+        seq: EventSeq::MAX,
+        step: StepIdx::new(0),
+        attempt: 1,
+    })?;
 
     let result = recover_runtime_summary(&journal, run);
     assert!(
         result.is_err(),
         "journal recovery must reject EventSeq::MAX"
     );
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -356,7 +455,7 @@ fn watermark_journal_recovery_rejects_max_seq() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn watermark_frame_seed_first_and_last_seq() {
+fn watermark_frame_seed_first_and_last_seq() -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(1);
     let events = vec![
         accepted_event(run, 10),
@@ -364,11 +463,11 @@ fn watermark_frame_seed_first_and_last_seq() {
         succeeded_event(run, 12, 0, 0),
     ];
 
-    let seed = recover_runtime_frame_seed_from_events(&events)
-        .expect("frame seed recovery should succeed");
+    let seed = recover_runtime_frame_seed_from_events(&events)?;
 
     assert_eq!(seed.summary.first_seq, EventSeq::new(10));
     assert_eq!(seed.summary.last_seq, EventSeq::new(12));
+    Ok(())
 }
 
 #[test]
