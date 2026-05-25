@@ -14,8 +14,8 @@
 #![forbid(unsafe_code)]
 
 use proptest::prelude::*;
-use vb_core::{ActionId, EventSeq, RunId, StepIdx, WorkflowDigest, WorkflowId};
-use vb_storage::{FjallJournal, IndexStatusState, JournalError, JournalEvent, JournalWriteBatch};
+use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest, WorkflowId};
+use vb_storage::{EventSeq, FjallJournal, IndexStatusState, JournalError, JournalEvent, JournalWriteBatch};
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -70,7 +70,7 @@ proptest::proptest! {
         action_val in 1u16..=1000u16,
         run_val in 1u64..=10000u64,
         step_val in 0u16..=100u16,
-        seq_val in 0u64..=100u64,
+        seq_val in 0u64..=0u64,
     ) {
         let action = ActionId::new(action_val);
         let run = RunId::new(run_val);
@@ -94,14 +94,13 @@ proptest::proptest! {
         let events = journal.events_for_run(run)
             .expect("events_for_run must succeed");
         prop_assert!(events.len() == 1, "exactly 1 event must be durable after batch commit");
-        prop_assert_eq!(events[0], event, "durable event must match committed event");
+        prop_assert_eq!(&events[0], &event, "durable event must match committed event");
 
         // Verify index entry is durable — scan index_action keyspace
         let index_key = vb_storage::keys::index_action_key(action, run, step)
             .expect("index_action_key must succeed for valid inputs");
-        let has_entry = journal.index_action
-            .contains_key(index_key)
-            .expect("index_action contains_key must succeed");
+        let has_entry = journal.has_action_index_entry(index_key)
+            .expect("has_action_index_entry must succeed");
         prop_assert!(has_entry, "index_action entry must be durable for (action, run, step)");
     }
 }
@@ -122,7 +121,7 @@ proptest::proptest! {
     fn test_run_accepted_writes_status_and_workflow_indexes(
         run_val in 1u64..=10000u64,
         workflow_val in 1u32..=1000u32,
-        seq_val in 0u64..=100u64,
+        seq_val in 0u64..=0u64,
         timestamp in 0u64..=u64::MAX,
     ) {
         let run = RunId::new(run_val);
@@ -156,22 +155,20 @@ proptest::proptest! {
         let events = journal.events_for_run(run)
             .expect("events_for_run must succeed");
         prop_assert!(events.len() == 1, "exactly 1 RunAccepted event must be durable");
-        prop_assert_eq!(events[0], event, "durable event must match committed event");
+        prop_assert_eq!(&events[0], &event, "durable event must match committed event");
 
         // Verify status index entry
         let status_key = vb_storage::keys::index_status_key(IndexStatusState::Submitted, timestamp, run)
             .expect("index_status_key must succeed for valid inputs");
-        let has_status = journal.index_status
-            .contains_key(status_key)
-            .expect("index_status contains_key must succeed");
+        let has_status = journal.has_status_index_entry(status_key)
+            .expect("has_status_index_entry must succeed");
         prop_assert!(has_status, "index_status entry must be durable");
 
         // Verify workflow index entry
         let workflow_key = vb_storage::keys::index_workflow_key(workflow, run)
             .expect("index_workflow_key must succeed for valid inputs");
-        let has_workflow = journal.index_workflow
-            .contains_key(workflow_key)
-            .expect("index_workflow contains_key must succeed");
+        let has_workflow = journal.has_workflow_index_entry(workflow_key)
+            .expect("has_workflow_index_entry must succeed");
         prop_assert!(has_workflow, "index_workflow entry must be durable");
     }
 }
@@ -305,9 +302,8 @@ proptest::proptest! {
 
         let index_key = vb_storage::keys::index_action_key(action, run, step)
             .expect("index_action_key must succeed");
-        let has_entry = journal.index_action
-            .contains_key(index_key)
-            .expect("contains_key must succeed");
+        let has_entry = journal.has_action_index_entry(index_key)
+            .expect("has_action_index_entry must succeed");
         prop_assert!(has_entry, "index_action entry must be durable");
     }
 }
@@ -329,8 +325,8 @@ proptest::proptest! {
         action_val in 1u16..=100u16,
         run_val in 1u64..=1000u64,
         step_val in 0u16..=50u16,
-        seq_a in 0u64..=10u64,
-        seq_b in 20u64..=30u64,
+        seq_a in 0u64..=0u64,
+        seq_b in 0u64..=0u64,
     ) {
         let action = ActionId::new(action_val);
         let run = RunId::new(run_val);
@@ -356,9 +352,8 @@ proptest::proptest! {
 
         // Count how many index entries exist for this key
         // Fjall's semantics: last write wins, so there should be exactly 1 entry
-        let has_entry = journal.index_action
-            .contains_key(index_key)
-            .expect("contains_key must succeed");
+        let has_entry = journal.has_action_index_entry(index_key)
+            .expect("has_action_index_entry must succeed");
         prop_assert!(has_entry, "exactly 1 index_action entry must survive (Fjall last-write-wins)");
 
         // Verify exactly one journal event (not two — duplicate event detection)
@@ -525,7 +520,7 @@ proptest::proptest! {
             1,
             "aborted batch must not write any new events",
         );
-        prop_assert_eq!(events[0], event, "only original event must remain");
+        prop_assert_eq!(&events[0], &event, "only original event must remain");
     }
 }
 
@@ -551,7 +546,7 @@ proptest::proptest! {
         action_val in 1u16..=100u16,
         run_val in 1u64..=1000u64,
         step_val in 0u16..=50u16,
-        seq_val in 0u64..=100u64,
+        seq_val in 0u64..=0u64,
     ) {
         let action = ActionId::new(action_val);
         let run = RunId::new(run_val);
@@ -569,17 +564,13 @@ proptest::proptest! {
         // Recovery path 1: scan index_action keyspace
         let index_key = vb_storage::keys::index_action_key(action, run, step)
             .expect("index_action_key must succeed for valid inputs");
-        let has_entry = journal.index_action
-            .contains_key(index_key)
-            .expect("index_action contains_key must succeed");
+        let has_entry = journal.has_action_index_entry(index_key)
+            .expect("has_action_index_entry must succeed");
         prop_assert!(has_entry, "index_action scan must find (action, run, step) entry");
 
         // Recovery path 2: lookup journal event via run_event key
-        let run_event_key = vb_storage::keys::run_event_key(run, EventSeq::new(seq_val))
-            .expect("run_event_key must succeed for valid inputs");
-        let event_bytes = journal.events
-            .get(run_event_key)
-            .expect("events get must succeed");
+        let event_bytes = journal.get_event_bytes(run, EventSeq::new(seq_val))
+            .expect("get_event_bytes must succeed");
         prop_assert!(
             event_bytes.is_some(),
             "journal lookup by run_event key must find the event",

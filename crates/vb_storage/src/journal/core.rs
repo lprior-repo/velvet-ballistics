@@ -137,6 +137,51 @@ impl FjallJournal {
         ]
     }
 
+    /// Returns whether the action index contains an entry for the given key.
+    ///
+    /// This is a public query API to support external verification of index writes
+    /// from outside the `vb_storage` crate (e.g., integration tests).
+    ///
+    /// # Errors
+    ///
+    /// Returns `JournalError` if the underlying keyspace query fails.
+    pub fn has_action_index_entry(
+        &self,
+        key: impl AsRef<[u8]>,
+    ) -> Result<bool, JournalError> {
+        Ok(self.index_action.contains_key(key.as_ref())?)
+    }
+
+    /// Returns whether the status index contains an entry for the given key.
+    ///
+    /// This is a public query API to support external verification of index writes
+    /// from outside the `vb_storage` crate (e.g., integration tests).
+    ///
+    /// # Errors
+    ///
+    /// Returns `JournalError` if the underlying keyspace query fails.
+    pub fn has_status_index_entry(
+        &self,
+        key: impl AsRef<[u8]>,
+    ) -> Result<bool, JournalError> {
+        Ok(self.index_status.contains_key(key.as_ref())?)
+    }
+
+    /// Returns whether the workflow index contains an entry for the given key.
+    ///
+    /// This is a public query API to support external verification of index writes
+    /// from outside the `vb_storage` crate (e.g., integration tests).
+    ///
+    /// # Errors
+    ///
+    /// Returns `JournalError` if the underlying keyspace query fails.
+    pub fn has_workflow_index_entry(
+        &self,
+        key: impl AsRef<[u8]>,
+    ) -> Result<bool, JournalError> {
+        Ok(self.index_workflow.contains_key(key.as_ref())?)
+    }
+
     /// Closes the journal, forcing a strict durability barrier before ownership is released.
     ///
     /// This method **must** be called explicitly by callers who require durable persistence.

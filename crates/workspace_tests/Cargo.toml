@@ -88,6 +88,10 @@ path = "tests/restate_journal_side_index_contracts.rs"
 name = "restate_postcard_envelope_wire_tests"
 path = "tests/restate_postcard_envelope_wire_tests.rs"
 
+[[test]]
+name = "restate_runtime_version_barrier_tests"
+path = "tests/restate_runtime_version_barrier_tests.rs"
+
 [[bench]]
 name = "velvet_ballistics"
 harness = false

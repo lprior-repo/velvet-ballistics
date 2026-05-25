@@ -209,6 +209,7 @@ impl<'j> JournalWriteBatch<'j> {
     pub fn append_event(&mut self, event: &JournalEvent) -> Result<(), JournalError> {
         let key = run_event_key(event.run_id(), event.seq())?;
         if self.journal.events.contains_key(key)? {
+            self.aborted = true;
             return Err(JournalError::DuplicateEvent {
                 run: event.run_id(),
                 seq: event.seq(),

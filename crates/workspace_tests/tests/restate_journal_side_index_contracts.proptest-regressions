@@ -1,0 +1,11 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 3585fc697864ea06d3c003bb42ec3e85a6f8630771283c5dd30908dd0a294a59 # shrinks to action_val = 1, run_val = 1, step_val = 0, num_subsequent = 1
+cc 523d26e6459b33e9f798dbab98fe6bf34bee0787e1f6c0fa2318f88aa52d4cb6 # shrinks to action_val = 1, run_val = 1, step_val = 0, seq_val = 1
+cc f85c8aec828fbf039bab3e8bf53ab8cc230e3b6cef71c7a7da2cf871f56e9584 # shrinks to action_val = 1, run_val = 1, step_val = 0, seq_a = 0, seq_b = 20
+cc 9aa0b9b1beab363eaba4132cc6f61a5fe771da452eac8ca6ae400371b1c0f109 # shrinks to action_val = 1, run_val = 1, step_val = 0, seq_val = 1
+cc 0936b0230bba994efe7f91dce24767fe87a04c3bec9d4355d169cdead6d17a0a # shrinks to run_val = 1, workflow_val = 1, seq_val = 1, timestamp = 0
