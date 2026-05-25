@@ -95,3 +95,12 @@ await_holding_lock = "deny"
 large_stack_arrays = "warn"
 large_types_passed_by_value = "warn"
 result_large_err = "warn"
+
+[profile.hardened]
+inherits = "release"
+codegen-units = 1
+debug = "line-tables-only"
+lto = "thin"
+overflow-checks = true
+panic = "abort"
+strip = "symbols"
