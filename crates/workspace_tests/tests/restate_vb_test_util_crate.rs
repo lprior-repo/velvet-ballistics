@@ -14,7 +14,10 @@ fn seeded_bytes_determinism() {
 fn seeded_bytes_different_seeds() {
     let a = SeededBytes::<32>::new(1).unwrap();
     let b = SeededBytes::<32>::new(2).unwrap();
-    assert_ne!(a.bytes, b.bytes, "different seeds must produce different bytes");
+    assert_ne!(
+        a.bytes, b.bytes,
+        "different seeds must produce different bytes"
+    );
 }
 
 #[test]
@@ -22,7 +25,10 @@ fn temp_keyspace_cleanup() {
     let temp = TempKeyspace::open().unwrap();
     let path = temp.path().to_path_buf();
     drop(temp);
-    assert!(!path.exists(), "temp keyspace directory must be removed on drop");
+    assert!(
+        !path.exists(),
+        "temp keyspace directory must be removed on drop"
+    );
 }
 
 #[test]

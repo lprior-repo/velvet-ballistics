@@ -17,9 +17,9 @@ use crate::EventSeq;
 
 use crate::JournalEvent;
 use crate::recovery::hydrate::{
-    hydrate_dimensions_positive, hydrate_events_preconditions,
-    hydrate_snapshot_tail_has_evidence, hydrate_snapshot_tail_preconditions,
-    hydrate_snapshot_tail_run_matches, hydrate_snapshot_tail_seq_after_snapshot,
+    hydrate_dimensions_positive, hydrate_events_preconditions, hydrate_snapshot_tail_has_evidence,
+    hydrate_snapshot_tail_preconditions, hydrate_snapshot_tail_run_matches,
+    hydrate_snapshot_tail_seq_after_snapshot,
 };
 use crate::recovery::types::RunSnapshot;
 

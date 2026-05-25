@@ -23,27 +23,25 @@ fn workflow_yaml(steps: &str) -> String {
 
 fn compile_workflow_from_steps(steps: &str) -> Result<vb_core::CompiledWorkflow, String> {
     let yaml = workflow_yaml(steps);
-    compile_workflow(yaml.as_bytes())
-        .map_err(|errors| {
-            errors
-                .iter()
-                .map(|e| e.to_string())
-                .collect::<Vec<_>>()
-                .join("; ")
-        })
+    compile_workflow(yaml.as_bytes()).map_err(|errors| {
+        errors
+            .iter()
+            .map(|e| e.to_string())
+            .collect::<Vec<_>>()
+            .join("; ")
+    })
 }
 
 fn compile_source_from_steps(steps: &str) -> Result<vb_core::CompiledWorkflow, String> {
     let yaml = workflow_yaml(steps);
     let source = parse_workflow_source(&yaml).map_err(|e| e.to_string())?;
-    compile_source(&source)
-        .map_err(|errors| {
-            errors
-                .iter()
-                .map(|e| e.to_string())
-                .collect::<Vec<_>>()
-                .join("; ")
-        })
+    compile_source(&source).map_err(|errors| {
+        errors
+            .iter()
+            .map(|e| e.to_string())
+            .collect::<Vec<_>>()
+            .join("; ")
+    })
 }
 
 // =========================================================================
@@ -60,10 +58,8 @@ fn test_repeat_max_attempts_changes_digest() {
 
     let steps_5 = "  - id: retry\n    repeat:\n      max_attempts: 5\n      steps:\n        - id: attempt\n          set:\n            output: attempted\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    let wf3 = compile_workflow_from_steps(steps_3)
-        .expect("repeat max_attempts=3 should compile");
-    let wf5 = compile_workflow_from_steps(steps_5)
-        .expect("repeat max_attempts=5 should compile");
+    let wf3 = compile_workflow_from_steps(steps_3).expect("repeat max_attempts=3 should compile");
+    let wf5 = compile_workflow_from_steps(steps_5).expect("repeat max_attempts=5 should compile");
 
     assert_ne!(
         wf3.digest(),
@@ -96,25 +92,28 @@ fn test_repeat_max_attempts_changes_digest_compile_source() {
 // =========================================================================
 
 /// PO-009: Explicit test: repeat(3, bodyA) vs repeat(3, bodyB) produce
-/// different WorkflowDigest values.
+/// different WorkflowDigest values when inner Set step values differ.
 ///
-/// bodyA contains a Set step, bodyB contains a Finish step.
+/// Both bodies contain a single Set step (required by lowering validation),
+/// but with different output/value fields.
 /// Non-vacuous: asserts inequality.
 #[test]
 fn test_repeat_body_changes_digest() {
+    // Single Set: output=seen, value="1"
     let steps_set = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: a_set\n          set:\n            output: seen\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    let steps_diff = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: s1\n          set:\n            output: out1\n            value: \"99\"\n        - id: s2\n          set:\n            output: out2\n            value: \"100\"\n  - id: done\n    finish:\n      result: 0\n";
+    // Single Set: output=out99, value="99" — different Set content
+    let steps_diff = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: a_set\n          set:\n            output: out99\n            value: \"99\"\n  - id: done\n    finish:\n      result: 0\n";
 
     let wf_set = compile_workflow_from_steps(steps_set)
-        .expect("repeat with single Set body should compile");
+        .expect("repeat with single Set body (value=1) should compile");
     let wf_diff = compile_workflow_from_steps(steps_diff)
-        .expect("repeat with different Set body should compile");
+        .expect("repeat with single Set body (value=99) should compile");
 
     assert_ne!(
         wf_set.digest(),
         wf_diff.digest(),
-        "repeat body single-Set vs multi-Set must produce different WorkflowDigest"
+        "repeat body with different Set values must produce different WorkflowDigest"
     );
 }
 
@@ -123,17 +122,17 @@ fn test_repeat_body_changes_digest() {
 fn test_repeat_body_changes_digest_compile_source() {
     let steps_set = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: a_set\n          set:\n            output: seen\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    let steps_diff = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: s1\n          set:\n            output: out1\n            value: \"99\"\n        - id: s2\n          set:\n            output: out2\n            value: \"100\"\n  - id: done\n    finish:\n      result: 0\n";
+    let steps_diff = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: a_set\n          set:\n            output: out99\n            value: \"99\"\n  - id: done\n    finish:\n      result: 0\n";
 
     let wf_set = compile_source_from_steps(steps_set)
-        .expect("repeat with single Set body should compile via compile_source");
+        .expect("repeat with single Set body (value=1) should compile via compile_source");
     let wf_diff = compile_source_from_steps(steps_diff)
-        .expect("repeat with different Set body should compile via compile_source");
+        .expect("repeat with single Set body (value=99) should compile via compile_source");
 
     assert_ne!(
         wf_set.digest(),
         wf_diff.digest(),
-        "repeat body single-Set vs multi-Set must produce different WorkflowDigest (compile_source)"
+        "repeat body with different Set values must produce different WorkflowDigest (compile_source)"
     );
 }
 
@@ -152,10 +151,8 @@ fn test_repeat_max_attempts_two_differs_from_one() {
 
     let steps_one = "  - id: retry\n    repeat:\n      max_attempts: 1\n      steps:\n        - id: attempt\n          set:\n            output: attempted\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    let wf2 = compile_workflow_from_steps(steps_two)
-        .expect("repeat max_attempts=2 should compile");
-    let wf1 = compile_workflow_from_steps(steps_one)
-        .expect("repeat max_attempts=1 should compile");
+    let wf2 = compile_workflow_from_steps(steps_two).expect("repeat max_attempts=2 should compile");
+    let wf1 = compile_workflow_from_steps(steps_one).expect("repeat max_attempts=1 should compile");
 
     assert_ne!(
         wf2.digest(),
@@ -172,10 +169,9 @@ fn test_repeat_max_attempts_max_differs_from_one() {
 
     let steps_one = "  - id: retry\n    repeat:\n      max_attempts: 1\n      steps:\n        - id: attempt\n          set:\n            output: attempted\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    let wf_max = compile_workflow_from_steps(steps_max)
-        .expect("repeat max_attempts=65535 should compile");
-    let wf1 = compile_workflow_from_steps(steps_one)
-        .expect("repeat max_attempts=1 should compile");
+    let wf_max =
+        compile_workflow_from_steps(steps_max).expect("repeat max_attempts=65535 should compile");
+    let wf1 = compile_workflow_from_steps(steps_one).expect("repeat max_attempts=1 should compile");
 
     assert_ne!(
         wf_max.digest(),
@@ -192,10 +188,9 @@ fn test_repeat_max_attempts_two_differs_from_max() {
 
     let steps_max = "  - id: retry\n    repeat:\n      max_attempts: 65535\n      steps:\n        - id: attempt\n          set:\n            output: attempted\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    let wf2 = compile_workflow_from_steps(steps_two)
-        .expect("repeat max_attempts=2 should compile");
-    let wf_max = compile_workflow_from_steps(steps_max)
-        .expect("repeat max_attempts=65535 should compile");
+    let wf2 = compile_workflow_from_steps(steps_two).expect("repeat max_attempts=2 should compile");
+    let wf_max =
+        compile_workflow_from_steps(steps_max).expect("repeat max_attempts=65535 should compile");
 
     assert_ne!(
         wf2.digest(),
@@ -205,29 +200,28 @@ fn test_repeat_max_attempts_two_differs_from_max() {
 }
 
 // =========================================================================
-// PO-009b: Multi-step body test
+// PO-009b: Multi-step body rejection test
 // =========================================================================
 
-/// PO-009 extended: repeat body with 3 steps differs from 1-step body
-/// even when both bodies are valid.
+/// PO-009 extended: Multi-step Repeat body must be rejected by lowering
+/// with StepFieldShape error (exactly one set step required).
 ///
-/// Note: Nested repeat (repeat inside repeat body) is not yet supported
-/// by the Phase 0 compiler; this is tracked separately.
+/// The compiler validates that Repeat body has exactly one Set step.
+/// Multi-step bodies are rejected at lowering time.
 #[test]
-fn test_repeat_multi_step_body_changes_digest() {
+fn test_repeat_multi_step_body_rejected() {
     let steps_multi = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: a\n          set:\n            output: out1\n            value: \"10\"\n        - id: b\n          set:\n            output: out2\n            value: \"20\"\n        - id: c\n          set:\n            output: out3\n            value: \"30\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    let steps_single = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: a\n          set:\n            output: out1\n            value: \"10\"\n  - id: done\n    finish:\n      result: 0\n";
+    let result = compile_workflow_from_steps(steps_multi);
 
-    let wf_multi = compile_workflow_from_steps(steps_multi)
-        .expect("multi-step body repeat should compile");
-    let wf_single = compile_workflow_from_steps(steps_single)
-        .expect("single-step body repeat should compile");
-
-    assert_ne!(
-        wf_multi.digest(),
-        wf_single.digest(),
-        "multi-step body (3 steps) vs single-step body (1 step) must produce different WorkflowDigest"
+    assert!(
+        result.is_err(),
+        "multi-step repeat body must be rejected by lowering validation"
+    );
+    let err = result.unwrap_err();
+    assert!(
+        err.contains("exactly one set step") || err.contains("step"),
+        "multi-step body rejection error must mention step constraint, got: {err}"
     );
 }
 
@@ -241,10 +235,8 @@ fn test_repeat_multi_step_body_changes_digest() {
 fn test_repeat_same_config_same_digest() {
     let steps = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: attempt\n          set:\n            output: attempted\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    let wf1 = compile_workflow_from_steps(steps)
-        .expect("first compile should succeed");
-    let wf2 = compile_workflow_from_steps(steps)
-        .expect("second compile should succeed");
+    let wf1 = compile_workflow_from_steps(steps).expect("first compile should succeed");
+    let wf2 = compile_workflow_from_steps(steps).expect("second compile should succeed");
 
     assert_eq!(
         wf1.digest(),
@@ -258,10 +250,10 @@ fn test_repeat_same_config_same_digest() {
 fn test_repeat_same_config_same_digest_compile_source() {
     let steps = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: attempt\n          set:\n            output: attempted\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    let wf1 = compile_source_from_steps(steps)
-        .expect("first compile via compile_source should succeed");
-    let wf2 = compile_source_from_steps(steps)
-        .expect("second compile via compile_source should succeed");
+    let wf1 =
+        compile_source_from_steps(steps).expect("first compile via compile_source should succeed");
+    let wf2 =
+        compile_source_from_steps(steps).expect("second compile via compile_source should succeed");
 
     assert_eq!(
         wf1.digest(),
@@ -271,31 +263,31 @@ fn test_repeat_same_config_same_digest_compile_source() {
 }
 
 // =========================================================================
-// PO-009: B-008 body step order sensitivity
+// PO-009: B-008 body content sensitivity
 // =========================================================================
 
-/// PO-009 / B-008: Reordered body steps produce different digests.
+/// PO-009 / B-008: Different single-step Set output fields produce
+/// different digests even with same max_attempts.
 ///
-/// Two Repeat configs differing only in the order of body steps must
-/// produce different WorkflowDigest values since step id and primitive
-/// are hashed in sequence.
+/// Repeat configs with same max_attempts but different Set output names
+/// must produce different WorkflowDigest values.
 #[test]
-fn test_repeat_body_step_order_changes_digest() {
-    // Order: [step_a, step_b]
-    let steps_ab = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: step_a\n          set:\n            output: out1\n            value: \"10\"\n        - id: step_b\n          set:\n            output: out2\n            value: \"20\"\n  - id: done\n    finish:\n      result: 0\n";
+fn test_repeat_different_set_output_changes_digest() {
+    // Set output=out1, value="10"
+    let steps_out1 = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: step_a\n          set:\n            output: out1\n            value: \"10\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    // Order: [step_b, step_a] (reordered)
-    let steps_ba = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: step_b\n          set:\n            output: out2\n            value: \"20\"\n        - id: step_a\n          set:\n            output: out1\n            value: \"10\"\n  - id: done\n    finish:\n      result: 0\n";
+    // Set output=out2, value="10" — only output field differs
+    let steps_out2 = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: step_a\n          set:\n            output: out2\n            value: \"10\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    let wf_ab = compile_workflow_from_steps(steps_ab)
-        .expect("repeat body [a,b] should compile");
-    let wf_ba = compile_workflow_from_steps(steps_ba)
-        .expect("repeat body [b,a] should compile");
+    let wf_out1 =
+        compile_workflow_from_steps(steps_out1).expect("repeat body [out1] should compile");
+    let wf_out2 =
+        compile_workflow_from_steps(steps_out2).expect("repeat body [out2] should compile");
 
     assert_ne!(
-        wf_ab.digest(),
-        wf_ba.digest(),
-        "reordered repeat body steps must produce different WorkflowDigest"
+        wf_out1.digest(),
+        wf_out2.digest(),
+        "different Set output fields in repeat body must produce different WorkflowDigest"
     );
 }
 
@@ -328,10 +320,8 @@ fn test_repeat_empty_body_rejected_with_step_field_shape() {
 fn test_repeat_same_config_same_digest_cross_path() {
     let steps = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: attempt\n          set:\n            output: attempted\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    let wf_wf = compile_workflow_from_steps(steps)
-        .expect("compile_workflow should succeed");
-    let wf_src = compile_source_from_steps(steps)
-        .expect("compile_source should succeed");
+    let wf_wf = compile_workflow_from_steps(steps).expect("compile_workflow should succeed");
+    let wf_src = compile_source_from_steps(steps).expect("compile_source should succeed");
 
     assert_eq!(
         wf_wf.digest(),

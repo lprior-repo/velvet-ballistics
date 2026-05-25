@@ -52,7 +52,12 @@ fn arb_set_value() -> impl Strategy<Value = String> {
 }
 
 /// Generate YAML for a workflow with a Repeat step with given params.
-fn repeat_workflow_yaml(max_attempts: u16, body_step_id: &str, output_name: &str, value: &str) -> String {
+fn repeat_workflow_yaml(
+    max_attempts: u16,
+    body_step_id: &str,
+    output_name: &str,
+    value: &str,
+) -> String {
     format!(
         "version: velvet-ballastics/v1\nname: repeat-proptest\nwhen:\n  manual: {{}}\nsteps:\n  - id: retry\n    repeat:\n      max_attempts: {max_attempts}\n      steps:\n        - id: {body_step_id}\n          set:\n            output: {output_name}\n            value: \"{value}\"\n  - id: done\n    finish:\n      result: 0\n"
     )
@@ -60,7 +65,12 @@ fn repeat_workflow_yaml(max_attempts: u16, body_step_id: &str, output_name: &str
 
 /// Generate YAML for a workflow with a Repeat step, using a different
 /// body step ID and output to ensure distinctness.
-fn repeat_workflow_yaml_alt(max_attempts: u16, body_step_id: &str, output_name: &str, value: &str) -> String {
+fn repeat_workflow_yaml_alt(
+    max_attempts: u16,
+    body_step_id: &str,
+    output_name: &str,
+    value: &str,
+) -> String {
     format!(
         "version: velvet-ballastics/v1\nname: repeat-proptest-alt\nwhen:\n  manual: {{}}\nsteps:\n  - id: retry\n    repeat:\n      max_attempts: {max_attempts}\n      steps:\n        - id: alt_{body_step_id}\n          set:\n            output: alt_{output_name}\n            value: \"{value}\"\n  - id: done\n    finish:\n      result: 0\n"
     )

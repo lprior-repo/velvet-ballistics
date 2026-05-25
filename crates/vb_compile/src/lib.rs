@@ -100,17 +100,13 @@ pub use core::{
 };
 pub use errors::{CompileError, CompileErrors, SourceMark};
 pub(crate) use errors::{collect, non_string_key_error};
+#[allow(unused_imports)]
+pub(crate) use lwr::digest_step_primitive as digest_step_primitive_part05;
 pub use lwr::{
-    SlotCompiler, WaitKind,
-    canonical_digest, canonical_digest as canonical_digest_part05,
-    compile_source,
-    lower_ask, lower_choose, lower_collect, lower_do, lower_finish, lower_for_each,
+    SlotCompiler, WaitKind, canonical_digest, canonical_digest as canonical_digest_part05,
+    compile_source, lower_ask, lower_choose, lower_collect, lower_do, lower_finish, lower_for_each,
     lower_reduce, lower_repeat, lower_set, lower_steps_to_ir, lower_together, lower_wait,
     validate_ir,
-};
-#[allow(unused_imports)]
-pub(crate) use lwr::{
-    digest_step_primitive as digest_step_primitive_part05,
 };
 pub(crate) use validation::validate_public_name;
 

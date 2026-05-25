@@ -50,8 +50,8 @@ impl FixtureBuilder {
 
     /// Build a byte vector of the configured capacity using the given seed.
     pub fn build_bytes(self, seed: u64) -> Vec<u8> {
-        use rand::{Rng, SeedableRng};
         use rand::rngs::StdRng;
+        use rand::{Rng, SeedableRng};
 
         let mut rng = StdRng::seed_from_u64(seed);
         let mut vec = vec![0u8; self.capacity.value];

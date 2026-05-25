@@ -147,8 +147,8 @@ fn watermark_snapshot_seq_lt_summary_first_seq() -> Result<(), Box<dyn std::erro
 }
 
 #[test]
-fn watermark_snapshot_plus_tail_first_seq_equals_tail_first_event(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn watermark_snapshot_plus_tail_first_seq_equals_tail_first_event()
+-> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(1);
     let snapshot = make_snapshot(run, 5);
     let tail = vec![started_event(run, 6, 0), succeeded_event(run, 7, 0, 0)];
@@ -269,7 +269,10 @@ fn watermark_max_seq_as_only_event_rejected() {
     }];
 
     let result = summarize_recovery_events(&events);
-    assert!(result.is_err(), "EventSeq::MAX as sole event must be rejected");
+    assert!(
+        result.is_err(),
+        "EventSeq::MAX as sole event must be rejected"
+    );
 }
 
 #[test]

@@ -1,5 +1,5 @@
-use rand::{Rng, SeedableRng};
 use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 
 /// A fixed-size byte array generated deterministically from a u64 seed.
 #[derive(Debug, Clone, PartialEq, Eq)]

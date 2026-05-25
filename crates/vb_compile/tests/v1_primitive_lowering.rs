@@ -1286,23 +1286,24 @@ proptest! {
         );
     }
 
-    // PO-006 extended: Different repeat body contents produce different digests.
-    // Remove doc-comment from inside proptest! macro (macros cannot host doc attrs).
+    // PO-006 extended: Different repeat body Set values produce different digests.
+    // Both bodies use single Set step (required by lowering validation),
+    // but with distinct Set output/value fields.
     #[test]
     fn proptest_repeat_different_body_different_digest(
         max_attempts in 1u16..=u16::MAX,
     ) {
         use proptest::prelude::*;
 
-        // Body A: single Set
+        // Body A: single Set with output=seen, value="1"
         let yaml_set_body = workflow_yaml(&format!(
             "  - id: retry\n    repeat:\n      max_attempts: {max}\n      steps:\n        - id: a_set\n          set:\n            output: seen\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
             max = max_attempts
         ));
 
-        // Body B: different Set with distinct output/value
+        // Body B: single Set with output=out99, value="99" — different content
         let yaml_diff_body = workflow_yaml(&format!(
-            "  - id: retry\n    repeat:\n      max_attempts: {max}\n      steps:\n        - id: s1\n          set:\n            output: out1\n            value: \"99\"\n        - id: s2\n          set:\n            output: out2\n            value: \"100\"\n  - id: done\n    finish:\n      result: 0\n",
+            "  - id: retry\n    repeat:\n      max_attempts: {max}\n      steps:\n        - id: b_set\n          set:\n            output: out99\n            value: \"99\"\n  - id: done\n    finish:\n      result: 0\n",
             max = max_attempts
         ));
 
@@ -1312,7 +1313,7 @@ proptest! {
         prop_assert_ne!(
             wf1.digest(),
             wf2.digest(),
-            "repeat with single-Set body vs multi-Set body must produce different digests"
+            "repeat with different Set body values must produce different digests"
         );
     }
 }

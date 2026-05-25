@@ -24,14 +24,13 @@ fn workflow_yaml(steps: &str) -> String {
 
 fn compile_workflow_from_yaml(steps: &str) -> Result<vb_core::CompiledWorkflow, String> {
     let yaml = workflow_yaml(steps);
-    compile_workflow(yaml.as_bytes())
-        .map_err(|errors| {
-            errors
-                .iter()
-                .map(|e| e.to_string())
-                .collect::<Vec<_>>()
-                .join("; ")
-        })
+    compile_workflow(yaml.as_bytes()).map_err(|errors| {
+        errors
+            .iter()
+            .map(|e| e.to_string())
+            .collect::<Vec<_>>()
+            .join("; ")
+    })
 }
 
 fn compile_source_from_yaml(steps: &str) -> Result<vb_core::CompiledWorkflow, String> {
@@ -63,15 +62,13 @@ fn test_compile_workflow_repeat_digest() {
     // Workflow B: repeat max_attempts=7 with same Set body
     let steps_b = "  - id: retry\n    repeat:\n      max_attempts: 7\n      steps:\n        - id: attempt_b\n          set:\n            output: attempted\n            value: \"42\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    // Workflow C: repeat max_attempts=3 with different body (double Set)
-    let steps_c = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: s1\n          set:\n            output: out1\n            value: \"99\"\n        - id: s2\n          set:\n            output: out2\n            value: \"100\"\n  - id: done\n    finish:\n      result: 0\n";
+    // Workflow C: repeat max_attempts=3 with different Set body value
+    // (single-step body as required by lowering validation)
+    let steps_c = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: attempt_c\n          set:\n            output: attempted\n            value: \"99\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    let wf_a = compile_workflow_from_yaml(steps_a)
-        .expect("workflow A should compile");
-    let wf_b = compile_workflow_from_yaml(steps_b)
-        .expect("workflow B should compile");
-    let wf_c = compile_workflow_from_yaml(steps_c)
-        .expect("workflow C should compile");
+    let wf_a = compile_workflow_from_yaml(steps_a).expect("workflow A should compile");
+    let wf_b = compile_workflow_from_yaml(steps_b).expect("workflow B should compile");
+    let wf_c = compile_workflow_from_yaml(steps_c).expect("workflow C should compile");
 
     // Different max_attempts → different digest
     assert_ne!(
@@ -80,11 +77,11 @@ fn test_compile_workflow_repeat_digest() {
         "compile_workflow: different max_attempts (3 vs 7) must produce different digests"
     );
 
-    // Different body → different digest (same max_attempts)
+    // Different body value → different digest (same max_attempts)
     assert_ne!(
         wf_a.digest(),
         wf_c.digest(),
-        "compile_workflow: different body (single-Set vs multi-Set) must produce different digests"
+        "compile_workflow: different body Set value (42 vs 99) must produce different digests"
     );
 
     // Different max_attempts AND different body → different digest
@@ -119,10 +116,8 @@ fn test_compile_workflow_repeat_digest_empty_body() {
 fn test_compile_workflow_repeat_digest_idempotent() {
     let steps = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: attempt\n          set:\n            output: attempted\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    let wf1 = compile_workflow_from_yaml(steps)
-        .expect("first compile_workflow should succeed");
-    let wf2 = compile_workflow_from_yaml(steps)
-        .expect("second compile_workflow should succeed");
+    let wf1 = compile_workflow_from_yaml(steps).expect("first compile_workflow should succeed");
+    let wf2 = compile_workflow_from_yaml(steps).expect("second compile_workflow should succeed");
 
     assert_eq!(
         wf1.digest(),
@@ -148,15 +143,16 @@ fn test_compile_source_repeat_digest() {
     // Workflow B: repeat max_attempts=7 with same Set body
     let steps_b = "  - id: retry\n    repeat:\n      max_attempts: 7\n      steps:\n        - id: attempt_b\n          set:\n            output: attempted\n            value: \"42\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    // Workflow C: repeat max_attempts=3 with different body
-    let steps_c = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: s1\n          set:\n            output: out1\n            value: \"99\"\n        - id: s2\n          set:\n            output: out2\n            value: \"100\"\n  - id: done\n    finish:\n      result: 0\n";
+    // Workflow C: repeat max_attempts=3 with different Set body value
+    // (single-step body as required by lowering validation)
+    let steps_c = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: attempt_c\n          set:\n            output: attempted\n            value: \"99\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    let wf_a = compile_source_from_yaml(steps_a)
-        .expect("workflow A should compile via compile_source");
-    let wf_b = compile_source_from_yaml(steps_b)
-        .expect("workflow B should compile via compile_source");
-    let wf_c = compile_source_from_yaml(steps_c)
-        .expect("workflow C should compile via compile_source");
+    let wf_a =
+        compile_source_from_yaml(steps_a).expect("workflow A should compile via compile_source");
+    let wf_b =
+        compile_source_from_yaml(steps_b).expect("workflow B should compile via compile_source");
+    let wf_c =
+        compile_source_from_yaml(steps_c).expect("workflow C should compile via compile_source");
 
     // Different max_attempts → different digest
     assert_ne!(
@@ -165,11 +161,11 @@ fn test_compile_source_repeat_digest() {
         "compile_source: different max_attempts (3 vs 7) must produce different digests"
     );
 
-    // Different body → different digest
+    // Different body value → different digest
     assert_ne!(
         wf_a.digest(),
         wf_c.digest(),
-        "compile_source: different body (single-Set vs multi-Set) must produce different digests"
+        "compile_source: different body Set value (42 vs 99) must produce different digests"
     );
 }
 
@@ -197,10 +193,8 @@ fn test_compile_source_repeat_digest_empty_body() {
 fn test_compile_source_repeat_digest_idempotent() {
     let steps = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: attempt\n          set:\n            output: attempted\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    let wf1 = compile_source_from_yaml(steps)
-        .expect("first compile_source should succeed");
-    let wf2 = compile_source_from_yaml(steps)
-        .expect("second compile_source should succeed");
+    let wf1 = compile_source_from_yaml(steps).expect("first compile_source should succeed");
+    let wf2 = compile_source_from_yaml(steps).expect("second compile_source should succeed");
 
     assert_eq!(
         wf1.digest(),
@@ -214,10 +208,10 @@ fn test_compile_source_repeat_digest_idempotent() {
 fn test_compile_workflow_repeat_digest_max_u16_boundary() {
     let steps_max = "  - id: retry\n    repeat:\n      max_attempts: 65535\n      steps:\n        - id: attempt\n          set:\n            output: attempted\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    let wf1 = compile_workflow_from_yaml(steps_max)
-        .expect("repeat max_attempts=65535 should compile");
-    let wf2 = compile_workflow_from_yaml(steps_max)
-        .expect("second compile at u16::MAX should succeed");
+    let wf1 =
+        compile_workflow_from_yaml(steps_max).expect("repeat max_attempts=65535 should compile");
+    let wf2 =
+        compile_workflow_from_yaml(steps_max).expect("second compile at u16::MAX should succeed");
 
     // Idempotency: same boundary value compiled twice → same digest
     assert_eq!(
@@ -235,10 +229,8 @@ fn test_compile_workflow_repeat_digest_identical_body_different_output_names() {
 
     let steps_b = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: s1\n          set:\n            output: beta\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    let wf_a = compile_workflow_from_yaml(steps_a)
-        .expect("output=alpha should compile");
-    let wf_b = compile_workflow_from_yaml(steps_b)
-        .expect("output=beta should compile");
+    let wf_a = compile_workflow_from_yaml(steps_a).expect("output=alpha should compile");
+    let wf_b = compile_workflow_from_yaml(steps_b).expect("output=beta should compile");
 
     assert_ne!(
         wf_a.digest(),
@@ -270,10 +262,8 @@ fn test_compile_source_repeat_digest_min_attempts() {
 fn test_repeat_digest_cross_path_equivalent() {
     let steps = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: attempt\n          set:\n            output: attempted\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    let wf_workflow = compile_workflow_from_yaml(steps)
-        .expect("compile_workflow should succeed");
-    let wf_source = compile_source_from_yaml(steps)
-        .expect("compile_source should succeed");
+    let wf_workflow = compile_workflow_from_yaml(steps).expect("compile_workflow should succeed");
+    let wf_source = compile_source_from_yaml(steps).expect("compile_source should succeed");
 
     assert_eq!(
         wf_workflow.digest(),

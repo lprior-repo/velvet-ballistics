@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use crate::TestSetupError;
+use std::path::PathBuf;
 
 /// An isolated Fjall database that cleans up its temporary directory on drop.
 pub struct TempKeyspace {
@@ -22,11 +22,9 @@ impl TempKeyspace {
         // Leak the TempDir so we control cleanup manually on drop.
         std::mem::forget(temp_dir);
 
-        let database = fjall::Database::builder(&path)
-            .open()
-            .map_err(|e| {
-                TestSetupError::FjallOpenError(format!("failed to open database: {}", e))
-            })?;
+        let database = fjall::Database::builder(&path).open().map_err(|e| {
+            TestSetupError::FjallOpenError(format!("failed to open database: {}", e))
+        })?;
 
         Ok(Self { database, path })
     }

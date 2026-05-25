@@ -851,8 +851,8 @@ fn yaml_limits_max_sequence_defaults_correctly() {
 
 #[test]
 fn compute_compiled_digest_determinism() {
-   // Repeated calls produce bit-for-bit identical digest across multiple invocations.
-   let source = br#"version: velvet-ballistics/v1
+    // Repeated calls produce bit-for-bit identical digest across multiple invocations.
+    let source = br#"version: velvet-ballistics/v1
 name: test
 when:
  manual: {}
@@ -861,23 +861,23 @@ steps:
    finish:
      result: 0
 "#;
-   let digest1 = crate::compute_compiled_digest(source);
-   let digest2 = crate::compute_compiled_digest(source);
-   let digest3 = crate::compute_compiled_digest(source);
-   assert_eq!(digest1, digest2, "first and second call must match");
-   assert_eq!(digest2, digest3, "second and third call must match");
+    let digest1 = crate::compute_compiled_digest(source);
+    let digest2 = crate::compute_compiled_digest(source);
+    let digest3 = crate::compute_compiled_digest(source);
+    assert_eq!(digest1, digest2, "first and second call must match");
+    assert_eq!(digest2, digest3, "second and third call must match");
 }
 
 // ── PO-010: Artifact digest depends on source digest ───────────────────────────
 
 #[test]
 fn artifact_digest_depends_on_source() {
-   // The artifact digest is a function of source digest plus IR serialization.
-   // Changing source digest changes artifact digest.
-   use crate::compile_workflow;
-   use crate::emit_compiled_artifact;
+    // The artifact digest is a function of source digest plus IR serialization.
+    // Changing source digest changes artifact digest.
+    use crate::compile_workflow;
+    use crate::emit_compiled_artifact;
 
-   let source1 = br#"version: velvet-ballistics/v1
+    let source1 = br#"version: velvet-ballistics/v1
 name: test1
 when:
  manual: {}
@@ -886,7 +886,7 @@ steps:
    finish:
      result: 0
 "#;
-   let source2 = br#"version: velvet-ballistics/v1
+    let source2 = br#"version: velvet-ballistics/v1
 name: test2
 when:
  manual: {}
@@ -896,36 +896,39 @@ steps:
      result: 0
 "#;
 
-   // Compile both sources
-   let workflow1 = compile_workflow(source1).expect("source1 should compile");
-   let workflow2 = compile_workflow(source2).expect("source2 should compile");
+    // Compile both sources
+    let workflow1 = compile_workflow(source1).expect("source1 should compile");
+    let workflow2 = compile_workflow(source2).expect("source2 should compile");
 
-   // Get artifact bytes
-   let artifact1 = emit_compiled_artifact(&workflow1).expect("workflow1 should emit");
-   let artifact2 = emit_compiled_artifact(&workflow2).expect("workflow2 should emit");
+    // Get artifact bytes
+    let artifact1 = emit_compiled_artifact(&workflow1).expect("workflow1 should emit");
+    let artifact2 = emit_compiled_artifact(&workflow2).expect("workflow2 should emit");
 
-   // Source digests differ
-   let source_digest1 = crate::compute_compiled_digest(source1);
-   let source_digest2 = crate::compute_compiled_digest(source2);
-   assert_ne!(source_digest1, source_digest2, "different sources have different digests");
+    // Source digests differ
+    let source_digest1 = crate::compute_compiled_digest(source1);
+    let source_digest2 = crate::compute_compiled_digest(source2);
+    assert_ne!(
+        source_digest1, source_digest2,
+        "different sources have different digests"
+    );
 
-   // Artifact bytes differ (because source differs)
-   assert_ne!(
-       artifact1.as_ref(),
-       artifact2.as_ref(),
-       "artifact bytes differ when source differs"
-   );
+    // Artifact bytes differ (because source differs)
+    assert_ne!(
+        artifact1.as_ref(),
+        artifact2.as_ref(),
+        "artifact bytes differ when source differs"
+    );
 }
 
 // ── PO-018: Postcard serialization determinism ─────────────────────────────────
 
 #[test]
 fn postcard_serialization_deterministic() {
-   // Same WorkflowParts produces same postcard::serialize bytes across invocations.
-   use crate::compile_workflow;
-   use crate::emit_compiled_artifact;
+    // Same WorkflowParts produces same postcard::serialize bytes across invocations.
+    use crate::compile_workflow;
+    use crate::emit_compiled_artifact;
 
-   let source = br#"version: velvet-ballistics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: test
 when:
  manual: {}
@@ -935,23 +938,23 @@ steps:
      result: 0
 "#;
 
-   let workflow = compile_workflow(source).expect("source should compile");
+    let workflow = compile_workflow(source).expect("source should compile");
 
-   // Serialize multiple times
-   let artifact1 = emit_compiled_artifact(&workflow).expect("first emit should succeed");
-   let artifact2 = emit_compiled_artifact(&workflow).expect("second emit should succeed");
-   let artifact3 = emit_compiled_artifact(&workflow).expect("third emit should succeed");
+    // Serialize multiple times
+    let artifact1 = emit_compiled_artifact(&workflow).expect("first emit should succeed");
+    let artifact2 = emit_compiled_artifact(&workflow).expect("second emit should succeed");
+    let artifact3 = emit_compiled_artifact(&workflow).expect("third emit should succeed");
 
-   assert_eq!(
-       artifact1.as_ref(),
-       artifact2.as_ref(),
-       "first and second serialization must match"
-   );
-   assert_eq!(
-       artifact2.as_ref(),
-       artifact3.as_ref(),
-       "second and third serialization must match"
-   );
+    assert_eq!(
+        artifact1.as_ref(),
+        artifact2.as_ref(),
+        "first and second serialization must match"
+    );
+    assert_eq!(
+        artifact2.as_ref(),
+        artifact3.as_ref(),
+        "second and third serialization must match"
+    );
 }
 
 // =========================================================================
@@ -2205,5 +2208,3 @@ fn test_digest_sub_step_produces_deterministic_nonzero_digest() {
         "different sub-step value must produce different digest (digest_sub_step hashes primitive)"
     );
 }
-
-
