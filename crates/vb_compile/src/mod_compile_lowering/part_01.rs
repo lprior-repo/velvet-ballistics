@@ -95,6 +95,9 @@ pub(super) fn canonical_step_width(
         | vb_yaml::ast::StepPrimitive::Aggregate { body, .. }
         | vb_yaml::ast::StepPrimitive::Repeat { body, .. } => body_width(body, 3),
         vb_yaml::ast::StepPrimitive::Together { branches } => together_width(branches),
+        vb_yaml::ast::StepPrimitive::Choose { branches, .. } => {
+            choose_width(branches)
+        }
         _ => Ok(1),
     }
 }
@@ -107,6 +110,18 @@ pub(super) fn body_width(
     for step in body {
         width = width
             .checked_add(canonical_body_step_width(&step.primitive)?)
+            .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
+    }
+    Ok(width)
+}
+
+pub(super) fn choose_width(
+    branches: &[vb_yaml::ast::ChooseBranch],
+) -> Result<usize, CompileError> {
+    let mut width = 1usize;
+    for branch in branches {
+        width = width
+            .checked_add(body_width(&branch.steps, 1)?)
             .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
     }
     Ok(width)
