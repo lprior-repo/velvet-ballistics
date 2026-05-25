@@ -198,7 +198,6 @@ fn validate_step_branch_counts(
     }
     Ok(())
 }
-
 pub(crate) fn digest_step_primitive(
     hasher: &mut blake3::Hasher,
     primitive: &vb_yaml::ast::StepPrimitive,
@@ -280,6 +279,14 @@ pub(crate) fn digest_step_primitive(
                 Some(t) => hasher.update(t.as_bytes()),
                 None => hasher.update(b"none"),
             };
+        }
+        vb_yaml::ast::StepPrimitive::Repeat { max_attempts, body } => {
+            hasher.update(b"repeat");
+            hasher.update(&max_attempts.to_le_bytes());
+            for step in body {
+                hasher.update(step.id.as_bytes());
+                digest_step_primitive(hasher, &step.primitive)?;
+            }
         }
         other => {
             hasher.update(canonical_primitive_name(other).as_bytes());

@@ -81,6 +81,11 @@ pub mod kani_digest_step_primitive_no_panic;
 #[cfg(kani)]
 pub mod kani_wait_digest;
 
+// Kani harnesses for Repeat digest coverage (bead vb-xi2f.31).
+// PO-001 through PO-005: digest_step_primitive Repeat { max_attempts, body }.
+#[cfg(kani)]
+pub mod kani_digest_repeat;
+
 pub use expression_bytecode::{compile_expr_to_bytecode, compile_expr_to_bytecode_with_accessors};
 
 use mod_compile_core as core;

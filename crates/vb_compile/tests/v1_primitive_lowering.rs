@@ -1240,6 +1240,83 @@ fn primitive_case_strategy() -> impl Strategy<Value = PrimitiveCase> {
     prop::sample::select(PRIMITIVE_CASES.to_vec())
 }
 
+// =========================================================================
+// PO-006: Proptest for different repeat configs → different digest
+// =========================================================================
+
+/// Proptest strategy generating two distinct repeat configurations.
+///
+/// Produces pairs of repeat cases identical except for `max_attempts`.
+/// GOD RULE 1: variable max_attempts, not single hardcoded value.
+fn repeat_variable_strategy() -> impl Strategy<Value = (u16, u16)> {
+    (1u16..=u16::MAX, 1u16..=u16::MAX).prop_filter("max_attempts must differ", |(a, b)| a != b)
+}
+
+/// YAML template with a `{}` placeholder for max_attempts.
+const REPEAT_YAML_BASE: &str = "  - id: retry\n    repeat:\n      max_attempts: {}\n      steps:\n        - id: attempt\n          set:\n            output: attempted\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n";
+
+fn repeat_yaml(max_attempts: u16) -> String {
+    REPEAT_YAML_BASE.replace("{}", &max_attempts.to_string())
+}
+
+// PO-006 / PROPTEST-REPEAT-001: Different repeat max_attempts produce
+// different WorkflowDigest values via compile_workflow.
+//
+// Non-vacuous: asserts inequality, not just that both compile.
+proptest! {
+    #![proptest_config(ProptestConfig { cases: 64, failure_persistence: None, .. ProptestConfig::default() })]
+
+    #[test]
+    fn proptest_repeat_different_params_different_digest(
+        (max1, max2) in repeat_variable_strategy()
+    ) {
+        use proptest::prelude::*;
+
+        let yaml1 = workflow_yaml(&repeat_yaml(max1));
+        let yaml2 = workflow_yaml(&repeat_yaml(max2));
+
+        let wf1 = compile_workflow(yaml1.as_bytes()).map_err(|e| TestCaseError::fail(format_compile_errors(&e)))?;
+        let wf2 = compile_workflow(yaml2.as_bytes()).map_err(|e| TestCaseError::fail(format_compile_errors(&e)))?;
+
+        prop_assert_ne!(
+            wf1.digest(),
+            wf2.digest(),
+            "repeat max_attempts {} vs {} must produce different digests",
+            max1, max2
+        );
+    }
+
+    // PO-006 extended: Different repeat body contents produce different digests.
+    // Remove doc-comment from inside proptest! macro (macros cannot host doc attrs).
+    #[test]
+    fn proptest_repeat_different_body_different_digest(
+        max_attempts in 1u16..=u16::MAX,
+    ) {
+        use proptest::prelude::*;
+
+        // Body A: single Set
+        let yaml_set_body = workflow_yaml(&format!(
+            "  - id: retry\n    repeat:\n      max_attempts: {max}\n      steps:\n        - id: a_set\n          set:\n            output: seen\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
+            max = max_attempts
+        ));
+
+        // Body B: different Set with distinct output/value
+        let yaml_diff_body = workflow_yaml(&format!(
+            "  - id: retry\n    repeat:\n      max_attempts: {max}\n      steps:\n        - id: s1\n          set:\n            output: out1\n            value: \"99\"\n        - id: s2\n          set:\n            output: out2\n            value: \"100\"\n  - id: done\n    finish:\n      result: 0\n",
+            max = max_attempts
+        ));
+
+        let wf1 = compile_workflow(yaml_set_body.as_bytes()).map_err(|e| TestCaseError::fail(format_compile_errors(&e)))?;
+        let wf2 = compile_workflow(yaml_diff_body.as_bytes()).map_err(|e| TestCaseError::fail(format_compile_errors(&e)))?;
+
+        prop_assert_ne!(
+            wf1.digest(),
+            wf2.digest(),
+            "repeat with single-Set body vs multi-Set body must produce different digests"
+        );
+    }
+}
+
 fn compile_case(case: &PrimitiveCase) -> Result<CompiledWorkflow, String> {
     let yaml = workflow_yaml(case.yaml_steps);
     compile_yaml(&yaml).map_err(|error| format!("primitive {} failed: {error}", case.name))

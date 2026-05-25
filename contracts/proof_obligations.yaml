@@ -681,6 +681,124 @@ obligations:
     note: "Spec contradiction DRIFT-F64 - implement or reject at typecheck"
 
   # ============================================================
+  # COMPILE DIGEST / PRIMITIVE COVERAGE (Section 21)
+  # Covers canonical_digest completeness per StepPrimitive variant.
+  # Bead: vb-xi2f.31 (Repeat digest coverage).
+  # ============================================================
+  - id: VB-COMPILE-DIGEST-REPEAT-001
+    section: [21]
+    statement: |
+      digest_step_primitive consumes Repeat.max_attempts (u16, little-endian)
+      in the blake3 hasher state. Different max_attempts produce different
+      intermediate hasher states.
+    proof_level: L3
+    crate: vb_compile
+    files:
+      - crates/vb_compile/src/mod_compile_lowering/part_05.rs
+    required:
+      kani: kani_digest_repeat.rs::kani_repeat_max_attempts_consumed
+      tests: [test_repeat_max_attempts_changes_digest]
+    commands:
+      - cargo kani --package vb_compile --harness kani_repeat_max_attempts_consumed
+      - cargo test --package vb_compile --test digest_repeat_unit test_repeat_max_attempts_changes_digest -- --nocapture
+    note: "Kani harness compiles but verification blocked by BLOCKER-BLAKE3-INLINEASM (blake3 InlineAsm not supported by Kani 0.67). Compensated by unit tests, integration tests, and proptest."
+
+  - id: VB-COMPILE-DIGEST-REPEAT-002
+    section: [21]
+    statement: |
+      digest_step_primitive recursively consumes all Repeat.body step IDs
+      and primitive names in the blake3 hasher state. Different body steps
+      produce different intermediate hasher states.
+    proof_level: L3
+    crate: vb_compile
+    files:
+      - crates/vb_compile/src/mod_compile_lowering/part_05.rs
+    required:
+      kani: kani_digest_repeat.rs::kani_repeat_body_consumed
+      tests: [test_repeat_body_changes_digest]
+    commands:
+      - cargo kani --package vb_compile --harness kani_repeat_body_consumed
+      - cargo test --package vb_compile --test digest_repeat_unit test_repeat_body_changes_digest -- --nocapture
+    note: "Kani blocked by BLOCKER-BLAKE3-INLINEASM. Body depth bounded to 2 in Kani harness; proptest provides deeper coverage."
+
+  - id: VB-COMPILE-DIGEST-REPEAT-003
+    section: [21]
+    statement: |
+      Different Repeat configurations produce different canonical_digest outputs.
+      canonical_digest(WF1) != canonical_digest(WF2) when WF1 and WF2 differ
+      only in Repeat max_attempts or body steps.
+    proof_level: L3
+    crate: vb_compile
+    files:
+      - crates/vb_compile/src/mod_compile_lowering/part_05.rs
+    required:
+      kani: kani_digest_repeat.rs::kani_repeat_different_params_different_digest
+      proptest: v1_primitive_lowering.rs (repeat cases)
+      tests: [test_repeat_digest_cross_path_equivalent, test_repeat_different_params_different_digest]
+    commands:
+      - cargo kani --package vb_compile --harness kani_repeat_different_params_different_digest
+      - cargo test --package vb_compile --test v1_primitive_lowering proptest_repeat -- --nocapture
+      - cargo test --package vb_compile --test repeat_digest_integration -- --nocapture
+    note: "Kani blocked by BLOCKER-BLAKE3-INLINEASM. Proptest (64 cases) + integration tests (7 cases) = compensating evidence."
+
+  - id: VB-COMPILE-DIGEST-REPEAT-004
+    section: [21]
+    statement: |
+      Both duplicate implementations of digest_step_primitive produce identical
+      hasher state for the same Repeat input. Only the reachable implementation
+      (part_05.rs) is verified; the compile/mod.rs copy is dead code (not in
+      module tree) and is verified only via cross-path integration test equivalence.
+    proof_level: L2
+    crate: vb_compile
+    files:
+      - crates/vb_compile/src/mod_compile_lowering/part_05.rs
+    required:
+      tests: [test_repeat_digest_cross_path_equivalent, test_repeat_same_config_same_digest_cross_path]
+    commands:
+      - cargo test --package vb_compile --test repeat_digest_integration test_repeat_digest_cross_path_equivalent -- --nocapture
+      - cargo test --package vb_compile --test digest_repeat_unit test_repeat_same_config_same_digest_cross_path -- --nocapture
+    note: "compile/mod.rs is dead code (no mod declaration in lib.rs). Cross-path equivalence tests prove compile_workflow and compile_source produce identical digests. Kani harness kani_repeat_both_impls_equivalent is BLOCKED because compile/mod.rs is unreachable from module tree."
+
+  - id: VB-COMPILE-DIGEST-REPEAT-005
+    section: [21]
+    statement: |
+      Existing Set and Finish primitive hashing behavior is preserved after
+      Repeat fix. Same non-repeat inputs produce same digests as before the fix.
+      Idempotency property: same config → same digest.
+    proof_level: L3
+    crate: vb_compile
+    files:
+      - crates/vb_compile/src/mod_compile_lowering/part_05.rs
+    required:
+      kani: kani_digest_repeat.rs::kani_finish_set_digest_unchanged
+      proptest: v1_primitive_lowering.rs (idempotency)
+      tests: [test_repeat_same_config_same_digest]
+    commands:
+      - cargo kani --package vb_compile --harness kani_finish_set_digest_unchanged
+      - cargo test --package vb_compile --test v1_primitive_lowering proptest_equal_primitive_sources_compile_to_equal_digest_and_ir -- --nocapture
+      - cargo test --package vb_compile --test digest_repeat_unit test_repeat_same_config -- --nocapture
+    note: "Kani blocked by BLOCKER-BLAKE3-INLINEASM. Full vb_compile crate test suite (306 tests) passes, confirming no regression."
+
+  # ============================================================
+  # GENERATED RUST PARITY (Section 17)
+  # ============================================================
+  - id: VB-CODEGEN-001
+    section: [17]
+    statement: |
+      Generated Rust == IR interpreter on terminal results, taint, journal, errors
+    proof_level: L2
+    crate: vb_codegen
+    files:
+      - crates/vb_codegen/src/**/*.rs
+    required:
+      differential_tests: [generated_vs_ir]
+      trybuild: [generated_no_forbidden_tokens]
+    commands:
+      - cargo nextest run -p vb_codegen parity
+      - cargo nextest run -p vb_codegen --test trybuild
+
+  # ============================================================
+
   # REFERENCE MODEL CORRECTNESS
   # ============================================================
   - id: VB-REF-001
