@@ -71,13 +71,21 @@ fn parse_step_primitive(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
         "do" | "run" => parse_do(sub, kind),
         "choose" => parse_choose(sub),
         "foreach" | "for_each" => parse_foreach(sub),
-        "parallel" => parse_parallel(sub),
+        "together" => parse_together(sub),
         "collect" => parse_collect(sub),
-        "aggregate" => parse_aggregate(sub),
+        "reduce" => parse_reduce(sub),
         "repeat" => parse_repeat(sub),
         "wait" => parse_wait(sub),
         "ask" => parse_ask(sub),
         "finish" => parse_finish(sub),
+        "parallel" => Err(YamlError::LegacyPrimitive {
+            primitive: "parallel",
+            canonical: "together",
+        }),
+        "aggregate" => Err(YamlError::LegacyPrimitive {
+            primitive: "aggregate",
+            canonical: "reduce",
+        }),
         _ => Err(YamlError::UnknownField { field: kind.into() }),
     }
 }
@@ -92,9 +100,9 @@ fn is_primitive(field: &str) -> bool {
             | "choose"
             | "foreach"
             | "for_each"
-            | "parallel"
+            | "together"
             | "collect"
-            | "aggregate"
+            | "reduce"
             | "repeat"
             | "wait"
             | "ask"
@@ -116,9 +124,9 @@ fn reject_unknown_step_fields(node: &saphyr::Yaml<'_>) -> YamlResult<()> {
             "choose",
             "foreach",
             "for_each",
-            "parallel",
+            "together",
             "collect",
-            "aggregate",
+            "reduce",
             "repeat",
             "wait",
             "ask",
@@ -189,13 +197,13 @@ fn parse_foreach(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
     })
 }
 
-fn parse_parallel(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
+fn parse_together(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
     reject_unknown_fields(node, &["branches"])?;
     let mut branches = Vec::new();
     if let Some(seq) = lookup(node, "branches") {
-        for item in sequence(seq, "parallel.branches")? {
+        for item in sequence(seq, "together.branches")? {
             reject_unknown_fields(item, &["label", "steps"])?;
-            let label = require_str_in(item, "label", "parallel.branches[].label")?;
+            let label = require_str_in(item, "label", "together.branches[].label")?;
             let steps = parse_body_steps(item)?;
             branches.push(TogetherBranch { label, steps });
         }
@@ -219,11 +227,11 @@ fn parse_collect(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
     })
 }
 
-fn parse_aggregate(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
+fn parse_reduce(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
     reject_unknown_fields(node, &["variable", "input", "initial", "steps"])?;
-    let variable = require_str_in(node, "variable", "aggregate.variable")?;
-    let input = require_str_in(node, "input", "aggregate.input")?;
-    let initial = require_str_in(node, "initial", "aggregate.initial")?;
+    let variable = require_str_in(node, "variable", "reduce.variable")?;
+    let input = require_str_in(node, "input", "reduce.input")?;
+    let initial = require_str_in(node, "initial", "reduce.initial")?;
     let body = parse_body_steps(node)?;
     Ok(StepPrimitive::Aggregate {
         variable,

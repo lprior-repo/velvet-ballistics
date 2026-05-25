@@ -9,15 +9,17 @@
 use crate::ast::{AstExpression, AstMapEntry, AstValue, StepAst, WorkflowAst};
 use crate::expression::ParsedExpression;
 use crate::{CompileError, CompileErrors};
-use vb_validate::references::{RefTables, validate_single_reference};
+use vb_validate::references::{RefTables, validate_single_reference_with_context};
 
 pub(crate) fn validate_workflow_ast(ast: &WorkflowAst) -> Result<(), CompileErrors> {
     let tables = build_ref_tables(ast);
     let mut errors = Vec::new();
-    collect_references_from_value_entries(&ast.inputs, &tables, &mut errors);
-    collect_references_from_value_entries(&ast.vars, &tables, &mut errors);
-    collect_references_from_expression_entries(&ast.result, &tables, &mut errors);
-    collect_references_from_values(&ast.examples, &tables, &mut errors);
+    // Top-level declarations have no step context
+    collect_references_from_value_entries(&ast.inputs, &tables, &mut errors, None);
+    collect_references_from_value_entries(&ast.vars, &tables, &mut errors, None);
+    collect_references_from_expression_entries(&ast.result, &tables, &mut errors, None);
+    collect_references_from_values(&ast.examples, &tables, &mut errors, None);
+    // Steps have step context for prior-reference validation
     collect_references_from_steps(&ast.steps, &tables, &mut errors);
     if errors.is_empty() {
         Ok(())
@@ -62,9 +64,10 @@ fn collect_references_from_value_entries(
     entries: &[AstMapEntry<AstValue>],
     tables: &RefTables,
     errors: &mut Vec<CompileError>,
+    step_index: Option<usize>,
 ) {
     for entry in entries {
-        collect_references_from_value(&entry.value, tables, errors);
+        collect_references_from_value(&entry.value, tables, errors, step_index);
     }
 }
 
@@ -72,9 +75,10 @@ fn collect_references_from_expression_entries(
     entries: &[AstMapEntry<AstExpression>],
     tables: &RefTables,
     errors: &mut Vec<CompileError>,
+    step_index: Option<usize>,
 ) {
     for entry in entries {
-        collect_references_from_expression(&entry.value, tables, errors);
+        collect_references_from_expression(&entry.value, tables, errors, step_index);
     }
 }
 
@@ -82,9 +86,10 @@ fn collect_references_from_values(
     values: &[AstValue],
     tables: &RefTables,
     errors: &mut Vec<CompileError>,
+    step_index: Option<usize>,
 ) {
     for value in values {
-        collect_references_from_value(value, tables, errors);
+        collect_references_from_value(value, tables, errors, step_index);
     }
 }
 
@@ -93,8 +98,8 @@ fn collect_references_from_steps(
     tables: &RefTables,
     errors: &mut Vec<CompileError>,
 ) {
-    for step in steps {
-        collect_references_from_step_kind(&step.kind, tables, errors);
+    for (step_index, step) in steps.iter().enumerate() {
+        collect_references_from_step_kind(&step.kind, tables, errors, step_index);
     }
 }
 
@@ -102,6 +107,7 @@ fn collect_references_from_step_kind(
     kind: &crate::ast::StepKindAst,
     tables: &RefTables,
     errors: &mut Vec<CompileError>,
+    step_index: usize,
 ) {
     use crate::ast::StepKindAst;
     match kind {
@@ -113,16 +119,16 @@ fn collect_references_from_step_kind(
         | StepKindAst::Wait { .. }
         | StepKindAst::Ask { .. } => {}
         StepKindAst::Save { fields } => {
-            collect_references_from_value_entries(fields, tables, errors)
+            collect_references_from_value_entries(fields, tables, errors, Some(step_index))
         }
         StepKindAst::Choose { condition, .. } => {
-            collect_references_from_expression(condition, tables, errors);
+            collect_references_from_expression(condition, tables, errors, Some(step_index));
         }
         StepKindAst::Reduce { initial, .. } => {
-            collect_references_from_value(initial, tables, errors);
+            collect_references_from_value(initial, tables, errors, Some(step_index));
         }
         StepKindAst::Finish { result } => {
-            collect_references_from_expression(result, tables, errors);
+            collect_references_from_expression(result, tables, errors, Some(step_index));
         }
     }
 }
@@ -131,18 +137,19 @@ fn collect_references_from_expression(
     expression: &AstExpression,
     tables: &RefTables,
     errors: &mut Vec<CompileError>,
+    step_index: Option<usize>,
 ) {
     match expression {
         AstExpression::Slot(_) => {}
         AstExpression::Reference(reference) => {
-            if let Err(e) = validate_compile_reference(reference.as_ref(), tables) {
+            if let Err(e) = validate_compile_reference(reference.as_ref(), tables, step_index) {
                 errors.push(e);
             }
         }
         AstExpression::Parsed(expression) => {
-            collect_references_from_parsed_expression(expression, tables, errors);
+            collect_references_from_parsed_expression(expression, tables, errors, step_index);
         }
-        AstExpression::Literal(value) => collect_references_from_value(value, tables, errors),
+        AstExpression::Literal(value) => collect_references_from_value(value, tables, errors, step_index),
     }
 }
 
@@ -150,23 +157,24 @@ fn collect_references_from_parsed_expression(
     expression: &ParsedExpression,
     tables: &RefTables,
     errors: &mut Vec<CompileError>,
+    step_index: Option<usize>,
 ) {
     match expression {
         ParsedExpression::Reference(reference) => {
-            if let Err(e) = validate_compile_reference(reference.as_ref(), tables) {
+            if let Err(e) = validate_compile_reference(reference.as_ref(), tables, step_index) {
                 errors.push(e);
             }
         }
         ParsedExpression::Unary { expr, .. } => {
-            collect_references_from_parsed_expression(expr, tables, errors);
+            collect_references_from_parsed_expression(expr, tables, errors, step_index);
         }
         ParsedExpression::Binary { left, right, .. } => {
-            collect_references_from_parsed_expression(left, tables, errors);
-            collect_references_from_parsed_expression(right, tables, errors);
+            collect_references_from_parsed_expression(left, tables, errors, step_index);
+            collect_references_from_parsed_expression(right, tables, errors, step_index);
         }
         ParsedExpression::HelperCall { args, .. } => {
             for arg in args {
-                collect_references_from_parsed_expression(arg, tables, errors);
+                collect_references_from_parsed_expression(arg, tables, errors, step_index);
             }
         }
         ParsedExpression::Literal(_) => {}
@@ -177,16 +185,17 @@ fn collect_references_from_value(
     value: &AstValue,
     tables: &RefTables,
     errors: &mut Vec<CompileError>,
+    step_index: Option<usize>,
 ) {
     match value {
         AstValue::Reference(reference) => {
-            if let Err(e) = validate_compile_reference(reference.as_ref(), tables) {
+            if let Err(e) = validate_compile_reference(reference.as_ref(), tables, step_index) {
                 errors.push(e);
             }
         }
-        AstValue::Sequence(values) => collect_references_from_values(values, tables, errors),
+        AstValue::Sequence(values) => collect_references_from_values(values, tables, errors, step_index),
         AstValue::Mapping(entries) => {
-            collect_references_from_value_entries(entries, tables, errors)
+            collect_references_from_value_entries(entries, tables, errors, step_index)
         }
         AstValue::Null | AstValue::Bool(_) | AstValue::I64(_) | AstValue::Text(_) => {}
     }
@@ -195,14 +204,18 @@ fn collect_references_from_value(
 /// Validates a reference from the compiler AST.
 ///
 /// Handles compile-specific references (`$slot.*`) locally and delegates
-/// everything else to `vb_validate::references::validate_single_reference`.
-fn validate_compile_reference(reference: &str, tables: &RefTables) -> Result<(), CompileError> {
+/// everything else to `vb_validate::references::validate_single_reference_with_context`.
+fn validate_compile_reference(
+    reference: &str,
+    tables: &RefTables,
+    step_index: Option<usize>,
+) -> Result<(), CompileError> {
     let Some(body) = reference.strip_prefix('$') else {
         return Ok(());
     };
     let Some((root, tail)) = body.split_once('.') else {
         // Bare reference -- delegate to shared validation
-        return validate_single_reference(reference, tables)
+        return validate_single_reference_with_context(reference, tables, step_index)
             .map_err(|e| map_validation_error(reference, &e));
     };
     // Compile-specific: slot references are not in the standalone validator
@@ -215,7 +228,8 @@ fn validate_compile_reference(reference: &str, tables: &RefTables) -> Result<(),
     if let Some(error) = check_accessor_path(reference, root, tail, tables) {
         return Err(error);
     }
-    validate_single_reference(reference, tables).map_err(|e| map_validation_error(reference, &e))
+    validate_single_reference_with_context(reference, tables, step_index)
+        .map_err(|e| map_validation_error(reference, &e))
 }
 
 /// Validates a `$slot.*` reference (compile-specific).

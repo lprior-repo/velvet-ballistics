@@ -137,7 +137,8 @@ steps:
 
 #[test]
 fn parse_ast_rejects_illegal_runtime_references() -> Result<(), String> {
-    for reference in ["$runtime.now", "$now", "$random", "$steps.done"] {
+    // Note: $steps.done is no longer rejected as illegal - step references are now allowed
+    for reference in ["$runtime.now", "$now", "$random"] {
         let source = format!(
             "version: velvet-ballastics/v1\nname: ref_case\nwhen:\n  manual: {{}}\nexamples:\n  - name: fixture\n    value: {reference}\nsteps:\n  - id: done\n    finish:\n      result: 0\n"
         );
@@ -750,26 +751,27 @@ steps:
     )
 }
 
-/// `$steps.done` backward reference to a step is rejected as illegal.
+/// `$steps.done` reference to a step is now allowed (vb-xi2f.7 behavior change).
 #[test]
-fn steps_reference_rejected_as_illegal() -> Result<(), String> {
+fn steps_reference_allowed_at_workflow_level() -> Result<(), String> {
+    // Step references are now allowed at workflow level (no step context)
     let source = br#"version: velvet-ballastics/v1
 name: steps_ref
 when:
   manual: {}
 examples:
   - name: fixture
-    value: $steps.done
+    value: $steps.build_result
 steps:
+  - id: build_result
+    save:
+      value: 1
   - id: done
     finish:
       result: 0
 "#;
-    let error = adv_ref_parse_error(source)?;
-    adv_ensure(
-        matches!(error, CompileError::IllegalReference { .. }),
-        "$steps reference should be rejected as illegal",
-    )
+    // Should succeed now that step references are allowed
+    parse_ok(source)
 }
 
 /// `$now` bare illegal reference is rejected.

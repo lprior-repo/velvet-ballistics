@@ -70,6 +70,9 @@ pub enum YamlError {
 
     #[error("forbidden YAML feature: {detail}")]
     ForbiddenFeature { detail: &'static str },
+
+    #[error("legacy primitive not supported: {primitive} (use {canonical} instead)")]
+    LegacyPrimitive { primitive: &'static str, canonical: &'static str },
 }
 
 /// Alias for results using [`YamlError`].

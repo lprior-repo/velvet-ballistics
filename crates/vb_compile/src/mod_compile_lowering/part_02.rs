@@ -1,6 +1,6 @@
 #![allow(unused_imports)]
 use super::*;
-use crate::mod_compile_errors::{CompileError, CompileErrors, non_string_key_error};
+use crate::mod_compile_errors::{non_string_key_error, CompileError, CompileErrors};
 use crate::mod_compile_validation::{
     reject_unsupported_for_each_fields, validate_canonical_compile_scope,
 };
@@ -25,14 +25,6 @@ pub(super) fn lower_canonical_step(
 ) -> Result<(), CompileErrors> {
     match &step.primitive {
         vb_yaml::ast::StepPrimitive::Set { output, value } => {
-            if step.id.starts_with("save") {
-                return Err(CompileErrors(vec![
-                    CompileError::UnsupportedStepPrimitive {
-                        step: index,
-                        primitive: "save",
-                    },
-                ]));
-            }
             let slot = slot_idx_for_step(index).map_err(|e| CompileErrors(vec![e]))?;
             lower_canonical_set(id, slot, output, value, next, outputs, builder)
         }
@@ -75,6 +67,10 @@ pub(super) fn lower_canonical_step(
         vb_yaml::ast::StepPrimitive::Ask { prompt, timeout } => {
             lower_canonical_ask(index, id, prompt, timeout.as_deref(), next, builder)
         }
+        vb_yaml::ast::StepPrimitive::Choose {
+            branches,
+            otherwise,
+        } => lower_canonical_choose(index, id, branches, otherwise.as_deref(), next, builder),
         other => Err(CompileErrors(vec![
             CompileError::UnsupportedStepPrimitive {
                 step: index,
@@ -191,5 +187,57 @@ pub(super) fn lower_canonical_for_each(
             done,
         },
     });
+    Ok(())
+}
+
+pub(super) fn lower_canonical_choose(
+    index: usize,
+    id: StepIdx,
+    branches: &[vb_yaml::ast::ChooseBranch],
+    otherwise: Option<&str>,
+    next: Option<StepIdx>,
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    // For now, only support single branch with empty body
+    // Multi-step bodies require more complex lowering
+    if branches.len() != 1 {
+        return Err(CompileErrors(vec![
+            CompileError::UnsupportedStepPrimitive {
+                step: index,
+                primitive: "choose",
+            },
+        ]));
+    }
+    let branch = &branches[0];
+    let condition = slot_from_text(&branch.when, index, "choose.branches[].when")?;
+    // If branch has non-empty steps, we don't support it yet
+    if !branch.steps.is_empty() {
+        return Err(CompileErrors(vec![
+            CompileError::UnsupportedStepPrimitive {
+                step: index,
+                primitive: "choose",
+            },
+        ]));
+    }
+    // Empty body means fall through to next step
+    let target = next.ok_or_else(|| {
+        CompileErrors(vec![CompileError::StepFieldShape {
+            step: index,
+            field: "choose",
+            expected: "non-empty next step for empty choose branch",
+        }])
+    })?;
+    let otherwise_target = match otherwise {
+        Some(label) => {
+            let slot = slot_from_text(label, index, "choose.otherwise")?;
+            // Convert slot index to step index - they're both u16 newtypes
+            Some(StepIdx::new(slot.get()))
+        }
+        None => None,
+    };
+    let slot_branches = vec![SlotBranch { condition, target }];
+    let node = lower_choose(id, slot_branches, otherwise_target, builder)
+        .map_err(|e| CompileErrors(vec![e]))?;
+    builder.push_node(node);
     Ok(())
 }
