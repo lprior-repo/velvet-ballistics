@@ -2026,6 +2026,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "vb_test_util"
+version = "0.1.0"
+dependencies = [
+ "fjall",
+ "postcard",
+ "rand",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "vb_validate"
 version = "0.1.0"
 dependencies = [
@@ -2117,6 +2128,7 @@ dependencies = [
  "vb_proof_kernels",
  "vb_runtime",
  "vb_storage",
+ "vb_test_util",
  "vb_validate",
  "vb_yaml",
  "velvet-ballistics",
