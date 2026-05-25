@@ -76,13 +76,13 @@ const PRIMITIVE_CASES: &[PrimitiveCase] = &[
         name: "parallel",
         yaml_steps: "  - id: fanout\n    parallel:\n      branches:\n        - label: left\n          steps:\n            - id: left_set\n              set:\n                output: left\n                value: \"1\"\n        - label: right\n          steps:\n            - id: right_set\n              set:\n                output: right\n                value: \"2\"\n  - id: done\n    finish:\n      result: 0\n",
         expected_kinds: TOGETHER_KINDS,
-        expected_slot_count: 1,
+        expected_slot_count: 4,
     },
     PrimitiveCase {
         name: "collect",
         yaml_steps: "  - id: collect_pages\n    collect:\n      variable: page\n      source: \"0\"\n      pages: 3\n      items: 5\n      steps:\n        - id: remember_page\n          set:\n            output: page_seen\n            value: \"7\"\n  - id: done\n    finish:\n      result: 0\n",
         expected_kinds: COLLECT_KINDS,
-        expected_slot_count: 1,
+        expected_slot_count: 2,
     },
     PrimitiveCase {
         name: "aggregate",
@@ -1116,7 +1116,7 @@ fn assert_exact_together(nodes: &[CompiledNode]) -> Result<(), String> {
 }
 
 fn assert_exact_collect(nodes: &[CompiledNode]) -> Result<(), String> {
-    assert_set_const_node(nodes, &[], 1, Some(1), None, 0, 7)?;
+    assert_set_const_node(nodes, &[], 1, Some(1), Some(2), 0, 7)?;
     assert_finish_node(nodes, 4, 0)?;
     match &node_at(nodes, 0)?.kind {
         CompiledNodeKind::CollectStart {
@@ -1151,7 +1151,7 @@ fn assert_exact_collect(nodes: &[CompiledNode]) -> Result<(), String> {
 }
 
 fn assert_exact_reduce(nodes: &[CompiledNode]) -> Result<(), String> {
-    assert_set_const_node(nodes, &[], 1, Some(1), None, 1, 1)?;
+    assert_set_const_node(nodes, &[], 1, Some(1), Some(2), 1, 1)?;
     assert_finish_node(nodes, 4, 0)?;
     match &node_at(nodes, 0)?.kind {
         CompiledNodeKind::ReduceStart {
@@ -1201,7 +1201,7 @@ fn assert_exact_reduce(nodes: &[CompiledNode]) -> Result<(), String> {
 }
 
 fn assert_exact_repeat(nodes: &[CompiledNode]) -> Result<(), String> {
-    assert_set_const_node(nodes, &[], 1, Some(1), None, 0, 1)?;
+    assert_set_const_node(nodes, &[], 1, Some(1), Some(2), 0, 1)?;
     assert_finish_node(nodes, 4, 0)?;
     match &node_at(nodes, 0)?.kind {
         CompiledNodeKind::RepeatStart {

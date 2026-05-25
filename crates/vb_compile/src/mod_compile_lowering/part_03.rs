@@ -16,6 +16,7 @@ pub(super) fn lower_canonical_parallel(
     index: usize,
     id: StepIdx,
     branches: &[vb_yaml::ast::TogetherBranch],
+    next: Option<StepIdx>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     let accumulator = SlotIdx::new(0);
@@ -67,7 +68,7 @@ pub(super) fn lower_canonical_parallel(
     builder.push_node(CompiledNode {
         id: join,
         output: Some(accumulator),
-        next: None,
+        next,
         error_slot: None,
         on_error: None,
         kind: CompiledNodeKind::TogetherJoin {
@@ -75,7 +76,6 @@ pub(super) fn lower_canonical_parallel(
             accumulator,
         },
     });
-    builder.max_slot = Some(accumulator.as_usize());
     Ok(())
 }
 
@@ -163,6 +163,7 @@ pub(super) fn lower_canonical_collect(
     pages: Option<u32>,
     items: Option<u32>,
     body: &[vb_yaml::ast::StepAst],
+    next: Option<StepIdx>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     let source = slot_from_text(source, index, "collect.source")?;
@@ -185,7 +186,7 @@ pub(super) fn lower_canonical_collect(
             done,
         },
     });
-    emit_single_body_set(body, body_step, SlotIdx::new(1), None, builder, false)?;
+    emit_single_body_set(body, body_step, SlotIdx::new(1), Some(page), builder, false)?;
     builder.push_node(CompiledNode {
         id: page,
         output: None,
@@ -201,13 +202,12 @@ pub(super) fn lower_canonical_collect(
     builder.push_node(CompiledNode {
         id: done,
         output: None,
-        next: None,
+        next,
         error_slot: None,
         on_error: None,
         kind: CompiledNodeKind::CollectFinish {
             collector_slot: source,
         },
     });
-    builder.max_slot = Some(source.as_usize());
     Ok(())
 }
