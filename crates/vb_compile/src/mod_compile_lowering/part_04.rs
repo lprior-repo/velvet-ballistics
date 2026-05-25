@@ -241,6 +241,50 @@ pub(super) fn emit_single_body_set(
             builder.push_node(lower_set(id, slot, constant, next));
             Ok(())
         }
+        vb_yaml::ast::StepPrimitive::Do { action, input } => {
+            // Parse action as integer (ActionId) - action field contains numeric ID
+            let action_value = action.parse::<i64>().map_err(|_| {
+                CompileErrors(vec![CompileError::StepFieldShape {
+                    step: diagnostic_step,
+                    field: "do.action",
+                    expected: "integer action id",
+                }])
+            })?;
+            let action_id = u16::try_from(action_value).map_err(|_| {
+                CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
+                    primitive: "do",
+                    field: "action",
+                    value: integer_error_value(action_value),
+                    limit: usize::from(u16::MAX),
+                }])
+            })?;
+            // Parse input as SlotIdx
+            let input_value = input.parse::<i64>().map_err(|_| {
+                CompileErrors(vec![CompileError::StepFieldShape {
+                    step: diagnostic_step,
+                    field: "do.input",
+                    expected: "integer slot index",
+                }])
+            })?;
+            let input_idx = u16::try_from(input_value).map_err(|_| {
+                CompileErrors(vec![CompileError::SlotIndexOutOfRange { value: input_value }])
+            })?;
+            let input_slot = SlotIdx::new(input_idx);
+            builder.record_slot(input_slot);
+            // Construct Do node directly to avoid double-borrow of builder
+            builder.push_node(CompiledNode {
+                id,
+                output: None,
+                next,
+                error_slot: None,
+                on_error: None,
+                kind: CompiledNodeKind::Do {
+                    action: vb_core::ActionId::new(action_id),
+                    input: input_slot,
+                },
+            });
+            Ok(())
+        }
         other => Err(CompileErrors(vec![
             CompileError::UnsupportedStepPrimitive {
                 step: diagnostic_step,
