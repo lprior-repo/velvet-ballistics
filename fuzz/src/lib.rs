@@ -1617,21 +1617,45 @@ pub fn fuzz_expr_eval(data: &[u8]) {
         let mut store = vb_core::ValueStore::new();
         // Iterate expressions by index until expression() returns None.
         let mut i: u16 = 0;
+        let mut eval_count: u32 = 0;
         loop {
             let expr_idx = vb_core::ExprIdx::new(i);
             if workflow.expression(expr_idx).is_none() {
                 break;
             }
-            // The evaluator must return a Result -- it must never panic.
-            // Coverage-only: we only verify panic-freedom, not eval correctness.
-            let _result = vb_core::engine::eval_expr_with_store(
+            // Behavioral invariant: eval_expr_with_store returns Ok with a non-Empty value
+            // for any successfully evaluated expression. If it returns Empty, the evaluator
+            // did not produce a meaningful result for this expression.
+            match vb_core::engine::eval_expr_with_store(
                 &workflow, &run, &mut store, expr_idx,
-            );
+            ) {
+                Ok((slot_val, _taint)) => {
+                    eval_count += 1;
+                    debug_assert!(
+                        !matches!(slot_val, vb_core::SlotValue::Null),
+                        "eval_expr_with_store returned Ok(Null) — evaluator produced no useful result"
+                    );
+                }
+                Err(_) => {
+                    // Expression evaluation can fail for many reasons (undefined variable,
+                    // type mismatch, division by zero). That's fine — the evaluator is
+                    // correctly propagating errors rather than panicking.
+                }
+            }
             i = i.saturating_add(1);
             if i == 0 {
                 // Wrapped around -- stop.
                 break;
             }
+        }
+        // Structural invariant: if the workflow has expressions, at least some must
+        // be evaluable. A workflow that declares expressions but evaluates zero of them
+        // suggests the evaluator is not being invoked correctly.
+        if workflow.expression(vb_core::ExprIdx::new(0)).is_some() {
+            debug_assert!(
+                eval_count > 0,
+                "workflow has expressions but eval_count = 0 — evaluator may not be running"
+            );
         }
     }
 }
