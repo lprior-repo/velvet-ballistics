@@ -1,5 +1,6 @@
 #![allow(unused_imports)]
 use super::*;
+use crate::expression::parse_expression;
 use crate::mod_compile_errors::{CompileError, CompileErrors, non_string_key_error};
 use crate::mod_compile_validation::{
     reject_unsupported_for_each_fields, validate_canonical_compile_scope,
@@ -125,13 +126,28 @@ pub(super) fn lower_canonical_set(
             name: Box::from(output),
         }]));
     }
-    let constant = parse_i64_field(value, id.as_usize(), "set.value")?;
-    let value = builder
-        .push_constant(ConstValue::I64(constant))
-        .map_err(|e| CompileErrors(vec![e]))?;
     outputs.insert(output.to_owned(), slot);
     builder.record_slot(slot);
-    builder.push_node(lower_set(id, slot, value, next));
+
+    // Try simple integer constant first for backward compatibility
+    if let Ok(constant) = value.parse::<i64>() {
+        let value = builder
+            .push_constant(ConstValue::I64(constant))
+            .map_err(|e| CompileErrors(vec![e]))?;
+        builder.push_node(lower_set(id, slot, value, next));
+    } else {
+        // Parse as expression and compile with step slot resolution
+        let expr = parse_expression(value).map_err(|e| CompileErrors(vec![e.into()]))?;
+        let step_slots: Vec<(Box<str>, SlotIdx)> = outputs
+            .iter()
+            .filter(|(k, _)| *k != output)
+            .map(|(k, v)| (Box::<str>::from(k.as_str()), *v))
+            .collect();
+        let expr_idx = builder
+            .compile_expression_with_step_slots(&expr, &step_slots)
+            .map_err(|e| CompileErrors(vec![e]))?;
+        builder.push_node(lower_eval_expr(id, slot, expr_idx, next));
+    }
     Ok(())
 }
 
@@ -277,7 +293,14 @@ pub(super) fn lower_canonical_choose(
                         target: label.len(), // dummy value
                     }])
                 })?;
-            Some(StepIdx::new(step_index as u16))
+            Some(StepIdx::new(u16::try_from(step_index).map_err(|_| {
+                CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
+                    primitive: "choose",
+                    field: "otherwise_target",
+                    value: step_index,
+                    limit: usize::from(u16::MAX),
+                }])
+            })?))
         }
         None => None,
     };

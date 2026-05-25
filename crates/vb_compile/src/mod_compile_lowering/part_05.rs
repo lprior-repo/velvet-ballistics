@@ -231,6 +231,24 @@ pub fn lower_set(
     }
 }
 
+/// Lowers an expression evaluation into an `EvalExpr` node.
+#[allow(dead_code)]
+pub(crate) fn lower_eval_expr(
+    id: StepIdx,
+    output: SlotIdx,
+    expr: ExprIdx,
+    next: Option<StepIdx>,
+) -> CompiledNode {
+    CompiledNode {
+        id,
+        output: Some(output),
+        next,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::EvalExpr { expr },
+    }
+}
+
 /// Lowers a `do` (action) primitive into a `Do` node.
 pub fn lower_do(
     id: StepIdx,

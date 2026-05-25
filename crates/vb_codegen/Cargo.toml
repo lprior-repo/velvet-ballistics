@@ -6,6 +6,7 @@ version.workspace = true
 
 [dependencies]
 thiserror.workspace = true
+vb_core = { path = "../vb_core" }
 
 [lints]
 workspace = true

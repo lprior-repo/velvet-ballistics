@@ -1924,6 +1924,7 @@ name = "vb_codegen"
 version = "0.1.0"
 dependencies = [
  "thiserror",
+ "vb_core",
 ]
 
 [[package]]

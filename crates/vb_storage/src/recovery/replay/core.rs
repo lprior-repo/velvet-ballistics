@@ -6,17 +6,17 @@
 //! - Non-idempotent action blocking
 //! - Snapshot-plus-tail replay
 
-use crate::recovery::hydrate_support::{
-    verified_action_envelope_digest, verify_action_ticket_event,
-};
-use crate::recovery::types::{ActionReplayTracker, RecoveryError, RecoveryResult};
 use super::attempt::compute_max_attempt;
-use crate::{EventSeq, FjallJournal, JournalEvent};
-use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest};
 pub use super::attempt::{
     replay_attempt_is_current, replay_attempt_is_stale, replay_attempt_or_default,
     replay_event_has_state_effect, replay_event_is_stale_state_effect, replay_step_order_diverges,
 };
+use crate::recovery::hydrate_support::{
+    verified_action_envelope_digest, verify_action_ticket_event,
+};
+use crate::recovery::types::{ActionReplayTracker, RecoveryError, RecoveryResult};
+use crate::{EventSeq, FjallJournal, JournalEvent};
+use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest};
 
 /// Core replay logic for all journal event kinds.
 /// Populates the action tracker and detects divergence.

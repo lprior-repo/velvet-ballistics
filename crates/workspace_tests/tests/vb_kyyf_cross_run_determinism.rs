@@ -1896,10 +1896,12 @@ fn expected_bdd_public_surface_evidence()
             evidence_artifact: KYYF_CORRUPT_EVIDENCE,
             normalized_digest_or_error: "ReplayDigestMismatch",
         }),
-        Err(VbKyyfScenarioDiagnostic::NormalizedDigestOrMismatchMissing {
-            bead_id: BEAD_ID,
-            scenario_id: BDD_KYYF_005,
-        }),
+        Err(
+            VbKyyfScenarioDiagnostic::NormalizedDigestOrMismatchMissing {
+                bead_id: BEAD_ID,
+                scenario_id: BDD_KYYF_005,
+            },
+        ),
         Ok(VbKyyfScenarioEvidence {
             scenario_id: BDD_KYYF_006,
             public_surface: "vb_codegen generated-subset validation API",

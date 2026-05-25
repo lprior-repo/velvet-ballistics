@@ -392,8 +392,7 @@ fn cfg_test_lines(lines: &[&str]) -> std::collections::HashSet<usize> {
         let trimmed = line.trim();
         if test_depth > 0 {
             ignored.insert(index);
-            test_depth += count_char(line, '{');
-            test_depth -= count_char(line, '}');
+            test_depth = update_depth(test_depth, line);
             continue;
         }
         if trimmed.starts_with("#[cfg(test)]") {
@@ -413,7 +412,7 @@ fn cfg_test_lines(lines: &[&str]) -> std::collections::HashSet<usize> {
         if attr_pending {
             ignored.insert(index);
             if trimmed.contains("fn ") {
-                test_depth = count_char(line, '{') - count_char(line, '}');
+                test_depth = line_depth_delta(line);
                 if test_depth <= 0 {
                     test_depth = 1;
                 }
@@ -423,7 +422,7 @@ fn cfg_test_lines(lines: &[&str]) -> std::collections::HashSet<usize> {
         if cfg_test_pending {
             ignored.insert(index);
             if trimmed.contains("mod ") || trimmed.contains("fn ") {
-                test_depth = count_char(line, '{') - count_char(line, '}');
+                test_depth = line_depth_delta(line);
                 if test_depth <= 0 {
                     test_depth = 1;
                 }
@@ -433,8 +432,30 @@ fn cfg_test_lines(lines: &[&str]) -> std::collections::HashSet<usize> {
     ignored
 }
 
+fn update_depth(current: i32, line: &str) -> i32 {
+    let opened = count_char(line, '{');
+    let closed = count_char(line, '}');
+    match current
+        .checked_add(opened)
+        .and_then(|value| value.checked_sub(closed))
+    {
+        Some(value) => value,
+        None => 0,
+    }
+}
+
+fn line_depth_delta(line: &str) -> i32 {
+    match count_char(line, '{').checked_sub(count_char(line, '}')) {
+        Some(value) => value,
+        None => 0,
+    }
+}
+
 fn count_char(line: &str, needle: char) -> i32 {
-    i32::try_from(line.chars().filter(|ch| *ch == needle).count()).unwrap_or(i32::MAX)
+    match i32::try_from(line.chars().filter(|ch| *ch == needle).count()) {
+        Ok(value) => value,
+        Err(_) => i32::MAX,
+    }
 }
 
 fn checked_line_number(line_index: usize) -> usize {
