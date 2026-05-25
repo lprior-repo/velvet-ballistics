@@ -6,7 +6,7 @@
 
 ## Summary
 
-The `moon run :test` gate failed during the `velvet-ballastics:check` task. Multiple compilation errors were encountered in `vb_storage` tests.
+The `moon run :test` gate failed during the `velvet-ballistics:check` task. Multiple compilation errors were encountered in `vb_storage` tests.
 
 ## Failure Category
 

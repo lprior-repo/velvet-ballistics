@@ -53,7 +53,7 @@
 ## Additional Gate Risk
 
 - `cargo fmt --all -- --check` reported 179 formatting diff hunks across multiple crates, not only `xtask/src/forbidden_scan.rs`.
-- If `velvet-ballastics:fmt` runs workspace-wide, State 10 may need a pure rustfmt-only sweep beyond the four known failure files.
+- If `velvet-ballistics:fmt` runs workspace-wide, State 10 may need a pure rustfmt-only sweep beyond the four known failure files.
 - Because this state is scope-only, no formatting was applied.
 
 ## Expected Verification Gates

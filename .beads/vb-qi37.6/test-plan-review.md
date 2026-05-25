@@ -26,10 +26,10 @@ APPROVED for State 8 setup review. The plan names all 24 behaviors, uses exact e
 - Setup predicate output:
   - `KANI_SETUP_PRESENT`
   - `FUZZ_BINS_PRESENT`
-- Setup tests: `cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_6_state8_setup` -> `2 passed; 0 failed`.
+- Setup tests: `cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_6_state8_setup` -> `2 passed; 0 failed`.
 - Fuzz setup compile reachability:
-  - `cargo test -p velvet-ballastics-fuzz --features fuzz --bin capability_name_schema --no-run` -> compiled.
-  - `cargo test -p velvet-ballastics-fuzz --features fuzz --bin capability_contract_schema --no-run` -> compiled.
+  - `cargo test -p velvet-ballistics-fuzz --features fuzz --bin capability_name_schema --no-run` -> compiled.
+  - `cargo test -p velvet-ballistics-fuzz --features fuzz --bin capability_contract_schema --no-run` -> compiled.
 
 ## Findings
 

@@ -10,7 +10,7 @@
 /// Top-level workflow AST produced by parsing a workflow YAML document.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorkflowSource {
-    /// Language version string (e.g. "velvet-ballastics/v1").
+    /// Language version string (e.g. "velvet-ballistics/v1").
     pub(crate) version: String,
     /// Workflow name.
     pub(crate) name: String,

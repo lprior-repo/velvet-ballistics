@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.invalid/velvet-ballastics/vb-jpq7-closure-evidence.schema.json",
+  "$id": "https://example.invalid/velvet-ballistics/vb-jpq7-closure-evidence.schema.json",
   "title": "vb-jpq7 closure evidence manifest row",
   "type": "object",
   "additionalProperties": true,

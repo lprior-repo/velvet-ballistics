@@ -31,7 +31,7 @@ All required State 12 inputs were present and non-empty:
 | Verus tool check | `which verus; verus --version` | Missing tool confirmed: `verus not found`; covered by approved waiver `WAIVER-VERUS-TOOL-2026-05-11`. |
 | Kani exact obligation | `cargo kani --harness check_payload_size --contract` | Fails before verification: cargo-kani 0.67.0 rejects `--contract`; covered by approved waiver `WAIVER-KANI-HARNESS-2026-05-11`. |
 | Integration exact obligation sample | `cargo test --test cli_integration ask_answer_durable` | Fails because `cli_integration` is not a default-run test target; covered by approved waiver `WAIVER-INTEGRATION-SCOPE-2026-05-11`. |
-| Integration package-qualified check | `cargo test -p velvet_ballastics --test cli_integration ask_answer_durable` | 0 passed, 74 filtered out; approved test name absent. |
+| Integration package-qualified check | `cargo test -p velvet_ballistics --test cli_integration ask_answer_durable` | 0 passed, 74 filtered out; approved test name absent. |
 | Runtime compensating tests | `cargo test -p vb_runtime --lib red_ask_answer_durable`; `red_ask_answer_secret_redaction`; `red_ask_answer_diagnostics_safe`; `red_test_payload_size_one_byte_over` | PASS; each command ran one matching test successfully. |
 | Optional unit/proptest commands | `cargo test --lib answer_error_`; `cargo test --lib proptest_payload_size` | 0 matching tests; obligations are `required:false` and waived in `verification-layers.md`. |
 

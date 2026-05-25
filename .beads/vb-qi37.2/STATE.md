@@ -566,7 +566,7 @@ agent: rust-contract
 - Replaced `BLOCKED_DISCOVER_EXISTING_SPEC_NAME` and `BLOCKED_DISCOVER_EXISTING_PROOF_NAME` with exact Verus spec/proof names from existing `verification/verus/resource_budget.rs`, `budget_monotonic.rs`, `budget_bounded.rs`, and `step_budget.rs`.
 - Added required ValueStore Verus-first coverage: `VERUS-VS-001` for `verification/verus/value_store_invariant.rs`, including `spec_value_store_cap`, `spec_check_arena_cap`, `proof_arena_cap_enforced`, `proof_cap_exactly_rejects_insert`, `proof_check_arena_cap_gate`, and `proof_total_never_exceeds_cap`.
 - Added executable Kani obligation names for aggregate admission and ValueStore cap parity: `KANI-AGG-001`, `KANI-AGG-002`, and `KANI-VS-001`, each with an exact `cargo kani -p vb_core --harness ...` command for State 5 harness work.
-- Replaced `PARITY-001` blocked command with `cargo test -p vb_core resource_contract -- --nocapture && cargo test -p velvet-ballastics-workspace resource_contract -- --nocapture` plus mandatory reviewer source inspection of `validation.rs`, `workflow/mod.rs`, and `compiled_workflow.rs` active/legacy status.
+- Replaced `PARITY-001` blocked command with `cargo test -p vb_core resource_contract -- --nocapture && cargo test -p velvet-ballistics-workspace resource_contract -- --nocapture` plus mandatory reviewer source inspection of `validation.rs`, `workflow/mod.rs`, and `compiled_workflow.rs` active/legacy status.
 - Updated ValueStore cap traceability so PRE-004, POST-004, INV-005, and ERR-004 map to Verus + Kani + Miri rather than Miri alone.
 - Updated `verification-layers.md` to state no ValueStore/Verus waiver is used.
 
@@ -688,7 +688,7 @@ agent: proof-writer
 - Existing Kani add/sub harness chain; exit=0; all 9 harnesses successful.
 - `rtk cargo test -p vb_core budget -- --nocapture`; exit=0; 306 passed, 1489 filtered.
 - `rtk cargo test -p vb_core resource_contract -- --nocapture`; exit=0; 51 passed, 1744 filtered.
-- `rtk cargo test -p velvet-ballastics-workspace resource_contract -- --nocapture`; exit=0; 0 passed, 340 filtered.
+- `rtk cargo test -p velvet-ballistics-workspace resource_contract -- --nocapture`; exit=0; 0 passed, 340 filtered.
 - Required aggregate/value-store Kani commands; exit=1; no harnesses matched required filters.
 - Required fuzz commands; exit=1; sanitizer incompatible with statically linked libc target.
 - Exact Miri command; exit=1; selected `+nightly` rust-src directory missing.
@@ -817,7 +817,7 @@ agent: proof-writer
 - `TMPDIR=target/tmp cargo kani -p vb_core --harness aggregate_usage_fits_within_rejects_over_capacity_fields`; exit=0; `VERIFICATION:- SUCCESSFUL`.
 - `TMPDIR=target/tmp cargo kani -p vb_core --harness value_store_cap_rejects_insert_with_budget_exceeded_max_slots`; exit=0; `VERIFICATION:- SUCCESSFUL`.
 - `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p vb_core resource_contract -- --nocapture`; exit=0; 51 passed.
-- `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballastics-workspace resource_contract -- --nocapture`; exit=0; 0 passed, 340 filtered.
+- `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballistics-workspace resource_contract -- --nocapture`; exit=0; 0 passed, 340 filtered.
 - `TMPDIR=target/tmp RUSTC_WRAPPER= RUSTFLAGS="-C target-feature=-crt-static" cargo fuzz run budget_compute -- -runs=1000`; exit nonzero; missing `x86_64-linux-musl-g++`.
 - `TMPDIR=target/tmp cargo +nightly miri test -p vb_core value_store -- --nocapture`; exit nonzero; selected nightly rust-src path missing.
 - `TMPDIR=target/tmp RUSTC_WRAPPER= moon ci`; exit nonzero; `source-length` not-git-repository and `test` `/tmp/cc*.s` disk quota failures.

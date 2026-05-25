@@ -11,7 +11,7 @@ updated_at: 2026-05-09T22:00:00Z
 |---|---|---|---|
 | `crates/vb_storage/src/trimming.rs` | 1457 | +31 | Yes (was already 1400+) |
 | `crates/vb_storage/src/error.rs` | 341 | +29 | Yes (was already 300+) |
-| `crates/velvet_ballastics/src/main.rs` | 4061 | +31 | Yes (was already 4000+) |
+| `crates/velvet_ballistics/src/main.rs` | 4061 | +31 | Yes (was already 4000+) |
 
 **Assessment:** My changes added only ~30 lines to each pre-existing file. The files were
 already well over the 300-line threshold before this bead. Splitting these files is

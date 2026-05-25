@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use velvet_ballastics_workspace_tests::acceptance_catalog::{
+use velvet_ballistics_workspace_tests::acceptance_catalog::{
     CatalogValidationError, Scenario, catalog, validate_catalog,
 };
 
@@ -43,7 +43,7 @@ const REQUIRED_BEHAVIOR_ROWS: &[(&str, &str)] = &[
         "VB-BDD-CATALOG-006",
     ),
     (
-        "generated Rust remains semantically equivalent to IR mode",
+        "codegen residue stays quarantined outside active workspace scope",
         "VB-BDD-CATALOG-007",
     ),
     (

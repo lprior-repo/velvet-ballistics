@@ -10,7 +10,6 @@ const EXPECTED_MEMBERS: &[&str] = &[
     "crates/vb_validate",
     "crates/vb_expr",
     "crates/vb_compile",
-    "crates/vb_codegen",
     "crates/vb_storage",
     "crates/vb_runtime",
     "crates/vb_doc",
@@ -19,10 +18,16 @@ const EXPECTED_MEMBERS: &[&str] = &[
     "crates/vb_cli",
     "crates/vb_verification",
     "crates/workspace_tests/idempotency_suite",
+    "crates/workspace_tests",
     "crates/vb_benchmark",
 ];
 
-const EXPECTED_EXCLUDES: &[&str] = &["target/miri-tmp", "crates/vb_ui", "fuzz"];
+const EXPECTED_EXCLUDES: &[&str] = &[
+    "target/miri-tmp",
+    "crates/vb_ui",
+    "crates/vb_codegen",
+    "fuzz",
+];
 const BOUNDARY_CRATES: &[&str] = &["vb_core", "vb_runtime", "vb_storage", "vb_ipc"];
 const FORBIDDEN_UI_DEPENDENCIES: &[&str] = &[
     "vb_ui",
@@ -37,6 +42,8 @@ const FORBIDDEN_RUNTIME_FORMAT_DEPENDENCIES: &[&str] =
 const FORBIDDEN_FEATURE_NAMES: &[&str] = &[
     "json",
     "serde-json",
+    "generated",
+    "maxperf",
     "velvet-ballistics",
     "velvet_ballistics",
 ];
@@ -48,17 +55,20 @@ const EXPECTED_PACKAGE_NAMES: &[(&str, &str)] = &[
     ("crates/vb_validate", "vb_validate"),
     ("crates/vb_expr", "vb_expr"),
     ("crates/vb_compile", "vb_compile"),
-    ("crates/vb_codegen", "vb_codegen"),
     ("crates/vb_storage", "vb_storage"),
     ("crates/vb_runtime", "vb_runtime"),
     ("crates/vb_doc", "vb_doc"),
     ("crates/vb_ipc", "vb_ipc"),
     ("crates/vb_proof_kernels", "vb_proof_kernels"),
-    ("crates/vb_cli", "velvet-ballastics"),
+    ("crates/vb_cli", "velvet-ballistics"),
     ("crates/vb_verification", "vb_verification"),
     (
         "crates/workspace_tests/idempotency_suite",
-        "velvet-ballastics-idempotency-workspace-tests",
+        "velvet-ballistics-idempotency-workspace-tests",
+    ),
+    (
+        "crates/workspace_tests",
+        "velvet-ballistics-workspace-tests",
     ),
     ("crates/vb_benchmark", "vb_benchmark"),
 ];
@@ -66,7 +76,7 @@ const EXPECTED_PACKAGE_NAMES: &[(&str, &str)] = &[
 const EXPECTED_FEATURES: &[(&str, &[&str])] = &[
     (
         "crates/vb_core",
-        &["bench", "default", "generated", "test-util", "volatile"],
+        &["bench", "default", "test-util", "volatile"],
     ),
     ("crates/vb_validate", &["default", "verus"]),
 ];
@@ -288,7 +298,7 @@ fn check_crate_names(root: &Path, failures: &mut Vec<String>) {
             }
             if *member_path == "crates/vb_cli" {
                 let actual_binaries = binary_names(&manifest);
-                let expected_binaries = expected_set(&["velvet-ballastics"]);
+                let expected_binaries = expected_set(&["velvet-ballistics"]);
                 push_set_failure(
                     failures,
                     "crates/vb_cli/Cargo.toml: bin names",

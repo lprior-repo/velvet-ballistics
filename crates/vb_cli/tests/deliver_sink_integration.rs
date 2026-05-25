@@ -8,7 +8,7 @@ fn agent_context_deliver_file_writes_json_without_stdout() -> Result<(), String>
     let deliver_path = dir.path().join("agent-context.jsonl");
     let target = format!("file:{}", path_text(&deliver_path)?);
 
-    let output = Command::new(env!("CARGO_BIN_EXE_velvet-ballastics"))
+    let output = Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
         .args(["agent-context", "--deliver", target.as_str()])
         .output()
         .map_err(|error| error.to_string())?;
@@ -26,7 +26,7 @@ fn agent_context_deliver_file_writes_json_without_stdout() -> Result<(), String>
     assert_eq!(value.get("kind"), Some(&serde_json::json!("AgentContext")));
     assert_eq!(
         value.get("cli"),
-        Some(&serde_json::json!("velvet-ballastics"))
+        Some(&serde_json::json!("velvet-ballistics"))
     );
     assert_eq!(delivered.lines().count(), 1);
     Ok(())
@@ -38,7 +38,7 @@ fn agent_context_deliver_rejects_unknown_flag_before_writing_file() -> Result<()
     let deliver_path = dir.path().join("agent-context.jsonl");
     let target = format!("file:{}", path_text(&deliver_path)?);
 
-    let output = Command::new(env!("CARGO_BIN_EXE_velvet-ballastics"))
+    let output = Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
         .args(["agent-context", "--deliver", target.as_str(), "--bogus"])
         .output()
         .map_err(|error| error.to_string())?;
@@ -54,7 +54,7 @@ fn agent_context_deliver_rejects_unknown_flag_before_writing_file() -> Result<()
 
 #[test]
 fn agent_context_deliver_rejects_missing_target() -> Result<(), String> {
-    let output = Command::new(env!("CARGO_BIN_EXE_velvet-ballastics"))
+    let output = Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
         .args(["agent-context", "--deliver"])
         .output()
         .map_err(|error| error.to_string())?;

@@ -1,4 +1,4 @@
-# velvet-ballastics — Figma-ready tightened UI set
+# velvet-ballistics — Figma-ready tightened UI set
 
 This package contains 8 aligned desktop app screens exported as both SVG and PNG.
 

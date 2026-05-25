@@ -119,7 +119,7 @@ fn ensure_pair(source: &[u8], check: fn(CompileError) -> Result<(), String>) -> 
 
 #[test]
 fn parse_ast_rejects_unknown_numeric_choose_target() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: control_flow_case
 when:
   manual: {}
@@ -142,7 +142,7 @@ steps:
 
 #[test]
 fn duplicate_step_id_preempts_control_flow_errors() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: control_flow_case
 when:
   manual: {}
@@ -162,7 +162,7 @@ steps:
 
 #[test]
 fn unsupported_then_preempts_control_flow_errors() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: control_flow_case
 when:
   manual: {}
@@ -183,7 +183,7 @@ steps:
 
 #[test]
 fn non_last_finish_uses_lowering_diagnostic_before_cfg() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: control_flow_case
 when:
   manual: {}
@@ -201,7 +201,7 @@ steps:
 
 #[test]
 fn last_non_finish_uses_lowering_diagnostic_before_cfg() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: control_flow_case
 when:
   manual: {}
@@ -216,7 +216,7 @@ steps:
 
 #[test]
 fn parse_ast_rejects_unreachable_steps_after_reference_validation() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: control_flow_case
 when:
   manual: {}
@@ -243,7 +243,7 @@ steps:
 
 #[test]
 fn parse_ast_rejects_unreachable_steps_after_reference_validation_again() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: control_flow_case
 when:
   manual: {}
@@ -270,7 +270,7 @@ steps:
 
 #[test]
 fn parse_ast_preserves_first_control_flow_diagnostic() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: control_flow_case
 when:
   manual: {}
@@ -304,7 +304,7 @@ fn reference_errors_still_preempt_control_flow_errors() -> Result<(), String> {
 }
 
 fn reference_preemption_source() -> &'static [u8] {
-    br#"version: velvet-ballastics/v1
+    br#"version: velvet-ballistics/v1
 name: control_flow_case
 when:
   manual: {}
@@ -330,7 +330,7 @@ steps:
 
 #[test]
 fn input_schema_errors_still_preempt_control_flow_errors() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: control_flow_case
 when:
   manual: {}
@@ -351,7 +351,7 @@ steps:
 
 #[test]
 fn parse_ast_rejects_backward_step_targets() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: control_flow_case
 when:
   manual: {}
@@ -375,7 +375,7 @@ steps:
 
 #[test]
 fn parse_ast_rejects_backward_step_targets_again() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: control_flow_case
 when:
   manual: {}
@@ -398,7 +398,7 @@ steps:
 
 #[test]
 fn parse_ast_rejects_self_cycles_again() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: control_flow_case
 when:
   manual: {}
@@ -422,7 +422,7 @@ steps:
 
 #[test]
 fn parse_ast_rejects_self_cycles() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: control_flow_case
 when:
   manual: {}

@@ -93,7 +93,7 @@ Decision: PASS.
 
 ### TEST-EXIT-001
 
-Artifact reviewed: `crates/velvet_ballastics/src/exit_code.rs`.
+Artifact reviewed: `crates/velvet_ballistics/src/exit_code.rs`.
 
 Relevant source facts:
 
@@ -104,7 +104,7 @@ Relevant source facts:
 Command rerun:
 
 ```bash
-TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballastics exit_code --all-features
+TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballistics exit_code --all-features
 ```
 
 Observed output excerpt:
@@ -129,12 +129,12 @@ Decision: PASS.
 
 ### STATIC-EXIT-001
 
-Artifacts reviewed: `crates/velvet_ballastics/src/exit_code.rs` and `verification/verus/diagnostic_envelope_verus.rs`.
+Artifacts reviewed: `crates/velvet_ballistics/src/exit_code.rs` and `verification/verus/diagnostic_envelope_verus.rs`.
 
 Command rerun:
 
 ```bash
-if rg -n "DomainError\s*=\s*9|ExitCode::from\(9u8\)|0_to_9|<= 9" "crates/velvet_ballastics/src/exit_code.rs" "verification/verus/diagnostic_envelope_verus.rs"; then exit 2; else code=$?; test "$code" -eq 1; fi
+if rg -n "DomainError\s*=\s*9|ExitCode::from\(9u8\)|0_to_9|<= 9" "crates/velvet_ballistics/src/exit_code.rs" "verification/verus/diagnostic_envelope_verus.rs"; then exit 2; else code=$?; test "$code" -eq 1; fi
 ```
 
 Observed output: none. Exit status: 0.
@@ -148,7 +148,7 @@ Decision: PASS. No active public `DomainError = 9`, `ExitCode::from(9u8)`, stale
 Command rerun:
 
 ```bash
-TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballastics parse_error_unknown_command_exit_code_is_1 --all-features
+TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballistics parse_error_unknown_command_exit_code_is_1 --all-features
 ```
 
 Observed output excerpt:
@@ -166,7 +166,7 @@ Decision: PASS.
 Command rerun:
 
 ```bash
-TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballastics bdd_format_parity_exit_code_identical_across_formats --all-features
+TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballistics bdd_format_parity_exit_code_identical_across_formats --all-features
 ```
 
 Observed output excerpt:

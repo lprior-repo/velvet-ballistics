@@ -15,13 +15,13 @@ STATUS: APPROVED
 ## Commands executed
 
 ### BDD-KYYF cap acceptance: cross-run determinism
-- Command: `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballastics-workspace-tests --test vb_kyyf_cross_run_determinism -- --test-threads=1`
+- Command: `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballistics-workspace-tests --test vb_kyyf_cross_run_determinism -- --test-threads=1`
 - Exit status: 0
 - Output summary: `cargo test: 16 passed (1 suite, 2.40s)`
 - Result: PASS
 
 ### Acceptance catalog traceability
-- Command: `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog -- --test-threads=1`
+- Command: `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog -- --test-threads=1`
 - Exit status: 0
 - Output summary: `cargo test: 6 passed (1 suite, 0.00s)`
 - Result: PASS

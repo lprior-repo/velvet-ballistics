@@ -12,7 +12,7 @@ use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, Workfl
 #[path = "../src/cli_postcard.rs"]
 mod cli_postcard;
 
-const CLI_WORKFLOW: &str = r"version: velvet-ballastics/v1
+const CLI_WORKFLOW: &str = r"version: velvet-ballistics/v1
 name: cli_subprocess
 when:
   manual: {}
@@ -105,7 +105,7 @@ fn write_test_file(path: &std::path::Path, contents: &[u8]) -> bool {
 }
 
 fn run_cli(args: &[&std::ffi::OsStr]) -> Option<std::process::Output> {
-    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_velvet-ballastics"));
+    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"));
     command.args(args);
 
     match command.output() {
@@ -113,7 +113,7 @@ fn run_cli(args: &[&std::ffi::OsStr]) -> Option<std::process::Output> {
         Err(err) => {
             assert!(
                 forced_assertion_failure(),
-                "failed to execute velvet_ballastics: {err}"
+                "failed to execute velvet_ballistics: {err}"
             );
             None
         }
@@ -274,7 +274,7 @@ fn cli_system_status_yaml_reports_degraded_no_backend() {
 
     assert_eq!(
         packet.get("schema_version"),
-        Some(&serde_json::json!("velvet-ballastics/cli-output/v1"))
+        Some(&serde_json::json!("velvet-ballistics/cli-output/v1"))
     );
     assert_eq!(packet.get("kind"), Some(&serde_json::json!("SystemStatus")));
     assert_eq!(packet.get("profile"), Some(&serde_json::json!("standard")));
@@ -435,7 +435,7 @@ fn cli_action_list_table_output_has_exact_fields() {
         None => {
             assert!(
                 forced_assertion_failure(),
-                "failed to execute velvet_ballastics CLI for action list"
+                "failed to execute velvet_ballistics CLI for action list"
             );
             return;
         }
@@ -462,7 +462,7 @@ fn cli_action_list_json_output_has_exact_actions() {
         None => {
             assert!(
                 forced_assertion_failure(),
-                "failed to execute velvet_ballastics CLI for action list --emit yaml"
+                "failed to execute velvet_ballistics CLI for action list --emit yaml"
             );
             return;
         }
@@ -513,7 +513,7 @@ fn cli_action_list_empty_registry_reports_no_actions() {
         None => {
             assert!(
                 forced_assertion_failure(),
-                "failed to execute velvet_ballastics CLI for action list --registry empty"
+                "failed to execute velvet_ballistics CLI for action list --registry empty"
             );
             return;
         }
@@ -536,7 +536,7 @@ fn cli_action_list_uninitialized_registry_fails() {
         None => {
             assert!(
                 forced_assertion_failure(),
-                "failed to execute velvet_ballastics CLI for action list --registry uninitialized"
+                "failed to execute velvet_ballistics CLI for action list --registry uninitialized"
             );
             return;
         }
@@ -565,7 +565,7 @@ fn cli_action_list_missing_registry_value_fails_with_action_args_diagnostic() {
         None => {
             assert!(
                 forced_assertion_failure(),
-                "failed to execute velvet_ballastics CLI for action list --registry (missing value)"
+                "failed to execute velvet_ballistics CLI for action list --registry (missing value)"
             );
             return;
         }
@@ -595,7 +595,7 @@ fn cli_action_list_unknown_flag_fails_with_exact_diagnostic() {
         None => {
             assert!(
                 forced_assertion_failure(),
-                "failed to execute velvet_ballastics CLI for action list --bogus"
+                "failed to execute velvet_ballistics CLI for action list --bogus"
             );
             return;
         }
@@ -623,7 +623,7 @@ fn cli_action_list_unknown_registry_fails_with_exact_diagnostic() {
         None => {
             assert!(
                 forced_assertion_failure(),
-                "failed to execute velvet_ballastics CLI for action list --registry bogus"
+                "failed to execute velvet_ballistics CLI for action list --registry bogus"
             );
             return;
         }
@@ -650,7 +650,7 @@ fn cli_action_list_trailing_argument_fails() {
         None => {
             assert!(
                 forced_assertion_failure(),
-                "failed to execute velvet_ballastics CLI for action list junk"
+                "failed to execute velvet_ballistics CLI for action list junk"
             );
             return;
         }
@@ -678,7 +678,7 @@ fn cli_action_list_jsonl_output_has_exact_lines() {
         None => {
             assert!(
                 forced_assertion_failure(),
-                "failed to execute velvet_ballastics CLI for action list --emit yaml"
+                "failed to execute velvet_ballistics CLI for action list --emit yaml"
             );
             return;
         }
@@ -728,7 +728,7 @@ fn cli_action_inspect_text_output_has_contract_details() {
         None => {
             assert!(
                 forced_assertion_failure(),
-                "failed to execute velvet_ballastics CLI for action inspect 2"
+                "failed to execute velvet_ballistics CLI for action inspect 2"
             );
             return;
         }
@@ -757,7 +757,7 @@ fn cli_action_inspect_json_output_has_full_contract() {
         None => {
             assert!(
                 forced_assertion_failure(),
-                "failed to execute velvet_ballastics CLI for action inspect 2 --emit yaml"
+                "failed to execute velvet_ballistics CLI for action inspect 2 --emit yaml"
             );
             return;
         }
@@ -803,7 +803,7 @@ fn cli_action_inspect_unregistered_action_fails() {
         None => {
             assert!(
                 forced_assertion_failure(),
-                "failed to execute velvet_ballastics CLI for action inspect 99"
+                "failed to execute velvet_ballistics CLI for action inspect 99"
             );
             return;
         }
@@ -859,7 +859,7 @@ steps: []
 #[test]
 fn yaml_parse_missing_name_returns_error() {
     let yaml = "\
-version: \"velvet-ballastics/v1\"
+version: \"velvet-ballistics/v1\"
 when:
   manual: {}
 steps: []
@@ -881,7 +881,7 @@ steps: []
 #[test]
 fn yaml_parse_valid_minimal_workflow() {
     let yaml = "\
-version: \"velvet-ballastics/v1\"
+version: \"velvet-ballistics/v1\"
 name: test-workflow
 when:
   manual: {}
@@ -918,7 +918,7 @@ fn yaml_parse_broken_yaml_returns_error() {
 #[test]
 fn yaml_profile_rejects_anchors() {
     let yaml =
-        "version: &velvet \"velvet-ballastics/v1\"\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
+        "version: &velvet \"velvet-ballistics/v1\"\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
     let result = vb_yaml::validate_yaml_profile(yaml);
     assert!(
         matches!(result, Err(vb_yaml::YamlError::AnchorAliasMerge)),
@@ -929,7 +929,7 @@ fn yaml_profile_rejects_anchors() {
 #[test]
 fn yaml_parse_step_missing_do_action_returns_error() {
     let yaml = "\
-version: \"velvet-ballastics/v1\"
+version: \"velvet-ballistics/v1\"
 name: test
 when:
   manual: {}
@@ -955,7 +955,7 @@ steps:
 #[test]
 fn yaml_parse_set_missing_output_returns_error() {
     let yaml = "\
-version: \"velvet-ballastics/v1\"
+version: \"velvet-ballistics/v1\"
 name: test
 when:
   manual: {}
@@ -1534,7 +1534,7 @@ fn cli_ai_context_for_journaled_run_emits_compiled_ir_summary() {
     );
     let rendered = packet.to_string();
     assert!(
-        !rendered.contains("version: velvet-ballastics/v1"),
+        !rendered.contains("version: velvet-ballistics/v1"),
         "source YAML must not be emitted: {rendered}"
     );
     assert!(
@@ -1778,7 +1778,7 @@ fn cli_validate_valid_minimal_workflow_succeeds() {
         }
     };
     let workflow_path = dir.path().join("valid.yaml");
-    let workflow = "version: velvet-ballastics/v1
+    let workflow = "version: velvet-ballistics/v1
 name: validate_test
 when:
   manual: {}
@@ -1846,7 +1846,7 @@ fn cli_validate_undefined_step_reference_returns_validation_error() {
         }
     };
     let workflow_path = dir.path().join("bad-ref.yaml");
-    let workflow = "version: velvet-ballastics/v1
+    let workflow = "version: velvet-ballistics/v1
 name: bad_ref_test
 when:
   manual: {}
@@ -1888,7 +1888,7 @@ fn cli_validate_type_mismatch_returns_typed_error() {
         }
     };
     let workflow_path = dir.path().join("type-mismatch.yaml");
-    let workflow = "version: velvet-ballastics/v1
+    let workflow = "version: velvet-ballistics/v1
 name: type_mismatch_test
 when:
   manual: {}
@@ -2668,7 +2668,7 @@ fn assert_postcard_stdout(
     assert_eq!(header.header_len, 52);
     assert_eq!(
         packet.get("schema_version"),
-        Some(&serde_json::json!("velvet-ballastics/cli-output/v1")),
+        Some(&serde_json::json!("velvet-ballistics/cli-output/v1")),
         "{command} payload schema_version mismatch: {packet}"
     );
     if let Some(expected_kind) = expected_payload_kind {
@@ -3130,7 +3130,7 @@ fn cli_emit_yaml_contract_is_not_silent_when_master_emit_mode_is_requested() {
     assert_cli_success(&output, "status --emit yaml");
     let stdout = output_stdout(&output);
     assert!(
-        stdout.starts_with("schema_version: velvet-ballastics/cli-output/v1"),
+        stdout.starts_with("schema_version: velvet-ballistics/cli-output/v1"),
         "master structured YAML must start with schema_version: {stdout}"
     );
     assert!(
@@ -3157,7 +3157,7 @@ fn cli_emit_yaml_contract_is_not_silent_when_master_emit_mode_is_requested() {
     };
     assert_eq!(
         parsed.get("schema_version"),
-        Some(&serde_json::json!("velvet-ballastics/cli-output/v1"))
+        Some(&serde_json::json!("velvet-ballistics/cli-output/v1"))
     );
 }
 
@@ -3245,8 +3245,8 @@ fn cli_simulate_json_emits_deterministic_trace() {
         "YAML output should contain trace: ; got: {stdout}"
     );
     assert!(
-        stdout.contains("schema_version: velvet-ballastics/v1"),
-        "YAML output should contain schema_version: velvet-ballastics/v1; got: {stdout}"
+        stdout.contains("schema_version: velvet-ballistics/v1"),
+        "YAML output should contain schema_version: velvet-ballistics/v1; got: {stdout}"
     );
     assert!(
         stdout.contains("kind: simulate"),

@@ -25,11 +25,11 @@ The implementation did not regress for the minimal accepted workflow. The expect
 ## Commands and results
 
 - `pwd -P` → PASS, output `/home/lewis/src/bd-vb-kyyf-bdd`.
-- `TMPDIR=/tmp/opencode/vb-kyyf-moon-ci-tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract -- --nocapture` before repair → FAIL, 6 passed / 2 failed, both stale generated digest mismatch.
-- `TMPDIR=/tmp/opencode/vb-kyyf-moon-ci-tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract -- --nocapture` after repair → PASS, 8 passed.
+- `TMPDIR=/tmp/opencode/vb-kyyf-moon-ci-tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract -- --nocapture` before repair → FAIL, 6 passed / 2 failed, both stale generated digest mismatch.
+- `TMPDIR=/tmp/opencode/vb-kyyf-moon-ci-tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract -- --nocapture` after repair → PASS, 8 passed.
 - Same focused test repeated after repair → PASS, 8 passed.
 - `TMPDIR=/tmp/opencode/vb-kyyf-moon-ci-tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo fmt --check` → PASS.
-- `TMPDIR=/tmp/opencode/vb-kyyf-moon-ci-tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 moon ci` → PASS, 21 completed / 4 cached; notable output: `velvet-ballastics:test` ran 11026 tests, all passed; `source-length` reported pre-existing `DEFERRED_GLOBAL` oversized files.
+- `TMPDIR=/tmp/opencode/vb-kyyf-moon-ci-tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 moon ci` → PASS, 21 completed / 4 cached; notable output: `velvet-ballistics:test` ran 11026 tests, all passed; `source-length` reported pre-existing `DEFERRED_GLOBAL` oversized files.
 
 ## Residual risk
 

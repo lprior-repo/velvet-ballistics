@@ -10,6 +10,6 @@ updated_at: 2026-05-11T00:00:00Z
 - `crates/vb_runtime/src/lib.rs`: `RuntimeError` taxonomy and stable diagnostic/runtime codes.
 - `crates/vb_runtime/src/recovery.rs`: runtime-facing hydration for admission metadata from durable storage events.
 - `crates/vb_storage/src/**`: journal event persistence/recovery and accepted-artifact evidence storage.
-- `crates/velvet_ballastics/tests/admission_evidence_integration.rs`: cross-crate admission evidence scenarios.
+- `crates/velvet_ballistics/tests/admission_evidence_integration.rs`: cross-crate admission evidence scenarios.
 
 State 2 command evidence: grep/read found `handle_submit_with_inputs` lines 96-131 append admission events before state insertion/ack, and `RuntimeError` admission variants in `vb_runtime/src/lib.rs`.

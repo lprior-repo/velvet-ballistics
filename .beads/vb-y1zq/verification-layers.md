@@ -51,7 +51,7 @@ Every layer named here has a matching executable obligation in `proof-obligation
 
 ## Lean Scope
 - Theorem modules: `BoundaryInventory.Completeness`, `BoundaryInventory.Evidence`, `BoundaryInventory.Identity`, `BoundaryInventory.Status`.
-- Rust target: future `velvet_ballastics::quality::boundary_inventory` module or equivalent downstream implementation.
+- Rust target: future `velvet_ballistics::quality::boundary_inventory` module or equivalent downstream implementation.
 - Abstraction relation: Rust parsed inventory validates into pure Lean records; Lean predicates define allowed completion status; Rust shell proves it only accepts statuses admitted by the Lean model.
 - Shell exclusions: I/O, path existence, parser mechanics, bd status, git state, external tool output, and human waiver approval.
 

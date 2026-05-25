@@ -22,13 +22,13 @@ moon ci
 
 Observed failing tasks in captured output:
 
-- `velvet-ballastics:fmt`: formatting diffs in unrelated/global files, including proof kernels, storage, fuzz, and xtask files.
-- `velvet-ballastics:lint-src`: `vb_proof_kernels::EnvelopeHeader::new` lacks `Default`; `xtask/src/proof.rs` contains panic in `write_proof_evidence` via `unwrap_or_else(|| panic!(...))`.
-- `velvet-ballastics:feature-powerset`: `vb_ui_model --no-default-features` fails because `Vec` is unavailable and module-level `#![cfg_attr(not(feature = "std"), no_std)]` attributes are invalid outside crate root.
+- `velvet-ballistics:fmt`: formatting diffs in unrelated/global files, including proof kernels, storage, fuzz, and xtask files.
+- `velvet-ballistics:lint-src`: `vb_proof_kernels::EnvelopeHeader::new` lacks `Default`; `xtask/src/proof.rs` contains panic in `write_proof_evidence` via `unwrap_or_else(|| panic!(...))`.
+- `velvet-ballistics:feature-powerset`: `vb_ui_model --no-default-features` fails because `Vec` is unavailable and module-level `#![cfg_attr(not(feature = "std"), no_std)]` attributes are invalid outside crate root.
 
 Passing evidence from the same final run:
 
-- `velvet-ballastics:test`: `9860 tests run: 9860 passed, 0 skipped`.
+- `velvet-ballistics:test`: `9860 tests run: 9860 passed, 0 skipped`.
 - `coverage`, `mutants-smoke`, `doc`, and `doc-test` reached pass states in the captured output.
 
 ## Classification

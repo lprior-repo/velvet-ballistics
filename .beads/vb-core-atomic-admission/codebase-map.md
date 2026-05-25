@@ -13,9 +13,9 @@ Persist strict accepted-run creation as one durable Fjall boundary before acknow
 
 - `crates/vb_storage`: owns Fjall keyspaces, record codecs, atomic batch API, artifact/source/header/event/index storage, journal sequence, and strict persistence.
 - `crates/vb_runtime`: owns runtime admission gate, `RunAdmission`, submit path, journal-before-ack ordering, and storage-backed accepted artifact loading.
-- `crates/velvet_ballastics`: owns CLI/operator paths that compile YAML, persist source/artifacts/header/events, and expose inspect/events/readback behavior.
+- `crates/velvet_ballistics`: owns CLI/operator paths that compile YAML, persist source/artifacts/header/events, and expose inspect/events/readback behavior.
 - `crates/vb_core`: owns identifiers and domain types used in persisted records: `RunId`, `WorkflowId`, `WorkflowDigest`, `RuntimePolicy`, `CapabilitySet`, `ActionId`, `StepIdx`.
-- `crates/workspace_tests`, `crates/velvet_ballastics/tests`, `fuzz`: likely verification consumers for failure injection, replay/readback, CLI, and admission fuzz evidence.
+- `crates/workspace_tests`, `crates/velvet_ballistics/tests`, `fuzz`: likely verification consumers for failure injection, replay/readback, CLI, and admission fuzz evidence.
 
 ## Mapped Files And Current Behavior
 
@@ -31,9 +31,9 @@ Persist strict accepted-run creation as one durable Fjall boundary before acknow
 - `crates/vb_storage/src/admission.rs`: `submit_artifact` and `submit_artifact_with_contracts` build `AcceptedArtifact` and persist it as a `CompiledIrRecord`. Current `AcceptedArtifact.accepted_at_seq` is initialized with `EventSeq::new(0)` in both relaxed and strict/journaled paths; current local constant `ADMISSION_GATE_COUNT` is 2.
 - `crates/vb_runtime/src/admission.rs`: runtime admission requires `REQUIRED_GATE_COUNT = 15` for strict/journaled accepted artifacts, validates proof flags, loads `AcceptedArtifact` through `StorageArtifactStore`, and builds `RunAdmission` after capability validation.
 - `crates/vb_runtime/src/shard/lifecycle/chunk_001.rs`: `handle_submit_with_inputs_contracts_and_header_mode` performs `build_admission`, frame allocation, optional `RunSubmitted` append, optional `RunAdmission` append, in-memory insert, and run drive. This is a runtime admission path, but not the storage-level atomic batch for source/artifact/header/RunAccepted/indexes.
-- `crates/velvet_ballastics/src/main.rs`: `store_workflow_artifacts` writes workflow source and raw compiled workflow parts as separate records. `cmd_submit` writes workflow source, run header, and `RunAccepted` as separate operations before returning submitted JSON/text; it does not call `submit_artifact` and does not commit one accepted-run batch.
-- `crates/velvet_ballastics/src/storage.rs`: `StorageWorkflowResolver` currently decodes `CompiledIrRecord.ir` directly as `WorkflowParts`, which conflicts with strict `AcceptedArtifact` envelope storage unless updated by downstream states.
-- `crates/velvet_ballastics/tests/admission_evidence_integration/chunk_001.rs` and `chunk_002.rs`: existing admission evidence covers relaxed artifact persistence and a failing runtime journal before header, but not the full atomic accepted-run batch with failure injection across all required record families.
+- `crates/velvet_ballistics/src/main.rs`: `store_workflow_artifacts` writes workflow source and raw compiled workflow parts as separate records. `cmd_submit` writes workflow source, run header, and `RunAccepted` as separate operations before returning submitted JSON/text; it does not call `submit_artifact` and does not commit one accepted-run batch.
+- `crates/velvet_ballistics/src/storage.rs`: `StorageWorkflowResolver` currently decodes `CompiledIrRecord.ir` directly as `WorkflowParts`, which conflicts with strict `AcceptedArtifact` envelope storage unless updated by downstream states.
+- `crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs` and `chunk_002.rs`: existing admission evidence covers relaxed artifact persistence and a failing runtime journal before header, but not the full atomic accepted-run batch with failure injection across all required record families.
 - `crates/vb_storage/src/vb_2bok_durability_gate_tests.rs`: existing tests cover generic batch persistence/all-or-nothing behavior and `accepted_at_seq` validity expectations, useful as prior evidence but not sufficient for this bead's specific accepted-run boundary.
 
 ## Public APIs Likely In Scope
@@ -44,7 +44,7 @@ Persist strict accepted-run creation as one durable Fjall boundary before acknow
 - `vb_storage::{WorkflowSourceRecord, CompiledIrRecord, RunHeaderRecord, JournalEvent, EventSeq, AcceptedArtifact, VerificationProof}`
 - `vb_runtime::admission::{AcceptedArtifactStore, StorageArtifactStore, RunAdmission, admit_artifact_run}`
 - `vb_runtime::shard::Shard` submit paths through runtime public wrappers
-- CLI surfaces in `crates/velvet_ballastics/src/main.rs`: `run`, `submit`, and storage-backed readback/event inspection paths
+- CLI surfaces in `crates/velvet_ballistics/src/main.rs`: `run`, `submit`, and storage-backed readback/event inspection paths
 
 ## Current Gaps Against Acceptance
 

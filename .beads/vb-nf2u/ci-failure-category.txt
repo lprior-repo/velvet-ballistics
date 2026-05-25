@@ -12,7 +12,7 @@ Primary failure:
 - `moon ci --base HEAD --head HEAD` bypassed the affected-base problem and executed tasks, but failed overall.
 
 First actionable failed task:
-- `velvet-ballastics:fmt`
+- `velvet-ballistics:fmt`
 - Failure class: rustfmt / formatting drift.
 - Full captured Moon output: `/home/lewis/.local/share/opencode/tool-output/tool_e0fb2da6d00114d1JoiC6isWA7`
 
@@ -21,33 +21,33 @@ Representative rustfmt paths from the Moon output:
 - `crates/vb_storage/src/recovery/replay/summary.rs`
 - `crates/vb_storage/tests/accepted_artifact_red_phase.rs`
 - `crates/vb_ui_model/src/envelope.rs`
-- `crates/velvet_ballastics/src/main.rs`
-- `crates/velvet_ballastics/tests/cli_integration.rs`
+- `crates/velvet_ballistics/src/main.rs`
+- `crates/velvet_ballistics/tests/cli_integration.rs`
 - `tests/vb_nf2u_ui_release_acceptance.rs`
 - `tests/vb_qi37_1_1_red_recovery_contract_test.rs`
 
 Additional failed/non-green signal:
 - Moon summary: `Tasks: 9 completed, 4 failed, 7 skipped`.
-- `velvet-ballastics:supply-chain` also emitted warnings/issues and an `ERROR × Couldn't acquire the store` line in the captured output; it is not the first actionable failure and needs separate classification after format is repaired.
+- `velvet-ballistics:supply-chain` also emitted warnings/issues and an `ERROR × Couldn't acquire the store` line in the captured output; it is not the first actionable failure and needs separate classification after format is repaired.
 
 Repair routing:
 - Per go-skill repair targeting, route the next repair to `holzman-rust` as a targeted formatting/CI repair, not a generic "fix CI" request.
-- The repair agent must preserve behavior and avoid unrelated logic changes. It may format the new acceptance test and any workspace files required for `velvet-ballastics:fmt` to pass.
+- The repair agent must preserve behavior and avoid unrelated logic changes. It may format the new acceptance test and any workspace files required for `velvet-ballistics:fmt` to pass.
 
 Format repair result:
 - `state8-format-repair.md` reports `STATUS: PASS`.
-- Orchestrator re-ran `moon run velvet-ballastics:fmt`; result: `Tasks: 1 completed`.
+- Orchestrator re-ran `moon run velvet-ballistics:fmt`; result: `Tasks: 1 completed`.
 - `moon ci --base HEAD --head HEAD` still failed on later non-format tasks; latest full captured output from the repair agent: `/home/lewis/.local/share/opencode/tool-output/tool_e0fba7312001ydKljVr8naa6H2`.
 
 Current first actionable remaining failure:
-- `velvet-ballastics:miri`
+- `velvet-ballistics:miri`
 - Failure class: `vb_validate` Gate 08 accessor behavior under Miri after Miri isolation repair.
-- Lint-src repair wrote `.beads/vb-nf2u/state8-lint-src-repair.md` with `STATUS: PASS`; orchestrator re-ran `moon run velvet-ballastics:lint-src`, result: `Tasks: 1 completed`.
-- Orchestrator re-ran `moon run velvet-ballastics:miri`; full output: `/home/lewis/.local/share/opencode/tool-output/tool_e0fd02cbb001mYcUtUg2YuP2hK`.
+- Lint-src repair wrote `.beads/vb-nf2u/state8-lint-src-repair.md` with `STATUS: PASS`; orchestrator re-ran `moon run velvet-ballistics:lint-src`, result: `Tasks: 1 completed`.
+- Orchestrator re-ran `moon run velvet-ballistics:miri`; full output: `/home/lewis/.local/share/opencode/tool-output/tool_e0fd02cbb001mYcUtUg2YuP2hK`.
 - Miri failed in `vb_validate` test `gate_08_accessor::tests::proptest_above_bound_field_fixtures_use_checked_construction` while running with `--skip proptests` because the proptest macro-generated test name was not skipped and proptest tried file failure persistence.
 - Error: `unsupported operation: getcwd not available when isolation is enabled`, stack through `std::env::current_dir` and `proptest::test_runner::failure_persistence::file::absolutize_source_file`.
 - Rerun hint: `-p vb_validate --lib`.
-- Miri isolation repair wrote `.beads/vb-nf2u/state8-miri-repair.md` with `STATUS: FAIL`: original getcwd/failure-persistence issue was fixed by disabling proptest file persistence, and the focused Miri test passed, but full `moon run velvet-ballastics:miri` reached later failures.
+- Miri isolation repair wrote `.beads/vb-nf2u/state8-miri-repair.md` with `STATUS: FAIL`: original getcwd/failure-persistence issue was fixed by disabling proptest file persistence, and the focused Miri test passed, but full `moon run velvet-ballistics:miri` reached later failures.
 - Current remaining Miri failures from `/home/lewis/.local/share/opencode/tool-output/tool_e0fd5ca21001HsuZp4cMN4EGFv`:
   - `gate_08_accessor::tests::proptest_gate_08_reports_first_invalid_accessor_with_root_precedence`: expected `Ok(())`, got `Err(AccessorPathInvalid { accessor_index: 0, segment_index: 0 })` at `crates/vb_validate/src/gate_08_accessor.rs:490`; panic at line 399.
   - `gates::tests::gate_08_accepts_valid_accessor`: expected `Ok(())`, got `Err(AccessorPathInvalid { accessor_index: 0, segment_index: 0 })` at `crates/vb_validate/src/gates.rs:1461`.
@@ -55,10 +55,10 @@ Current first actionable remaining failure:
 
 Gate 08 Miri behavior repair result:
 - `.beads/vb-nf2u/state8-gate08-miri-repair.md` reports `STATUS: PASS`.
-- Orchestrator re-ran `moon run velvet-ballastics:miri`; result: `Tasks: 1 completed`, `908 passed; 0 failed`, full captured output `/home/lewis/.local/share/opencode/tool-output/tool_e0fe7c913001HIH97CgzagWnX2`.
+- Orchestrator re-ran `moon run velvet-ballistics:miri`; result: `Tasks: 1 completed`, `908 passed; 0 failed`, full captured output `/home/lewis/.local/share/opencode/tool-output/tool_e0fe7c913001HIH97CgzagWnX2`.
 
 Current first actionable remaining failure:
-- `velvet-ballastics:test`
+- `velvet-ballistics:test`
 - Failure class: xtask evidence/profile behavior regression from State 6 UI release gate changes.
 - Full captured Moon output: `/home/lewis/.local/share/opencode/tool-output/tool_e0fedf4cc0013WH5A6xF1Mb4zH`.
 - `moon ci --base HEAD --head HEAD` summary: `Tasks: 17 completed (2 cached), 1 failed, 2 skipped`.
@@ -80,7 +80,7 @@ Post-State 10 machine gate rerun:
 - Moon summary: `Tasks: 15 completed (1 cached), 1 failed, 4 skipped`.
 
 Current first actionable failed task:
-- `velvet-ballastics:supply-chain`
+- `velvet-ballistics:supply-chain`
 - Failure class: cargo-vet supply-chain policy / unvetted newly introduced fuzz dependencies.
 - Exact failure excerpt:
   - `Vetting Failed!`

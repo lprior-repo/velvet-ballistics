@@ -49,7 +49,7 @@ fn collect_yaml_with_field(
     };
 
     format!(
-        r#"version: velvet-ballastics/v1
+        r#"version: velvet-ballistics/v1
 name: test
 when:
   manual: {{}}

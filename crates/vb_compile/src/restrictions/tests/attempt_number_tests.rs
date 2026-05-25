@@ -184,7 +184,7 @@ fn collect_from_value(value: &AstValue, count: &mut usize) {
 /// 2. Is retained in AST as AstExpression::Reference("$attempt.number")
 #[test]
 fn attempt_number_in_repeat_body_save_field_compiles_and_retains_reference() -> TestResult {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: repeat_with_attempt
 when:
   manual: {}
@@ -217,7 +217,7 @@ steps:
 /// Verifies that `$attempt.number` in a repeat body's `do` input expression compiles.
 #[test]
 fn attempt_number_in_repeat_body_do_input_compiles_and_retains_reference() -> TestResult {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: repeat_do_with_attempt
 when:
   manual: {}
@@ -250,7 +250,7 @@ steps:
 /// Verifies that `$attempt.number` in a deeply nested Repeat body compiles.
 #[test]
 fn attempt_number_in_nested_repeat_body_compiles_and_retains_reference() -> TestResult {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: nested_repeat
 when:
   manual: {}
@@ -287,7 +287,7 @@ steps:
 /// Verifies that `$attempt.number` in a `choose` condition inside Repeat compiles.
 #[test]
 fn attempt_number_in_choose_condition_inside_repeat_compiles() -> TestResult {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: repeat_choose_attempt
 when:
   manual: {}
@@ -327,7 +327,7 @@ steps:
 /// $attempt.number in top-level `vars` must be rejected.
 #[test]
 fn attempt_number_in_vars_rejected_with_invalid_variable_scope() -> TestResult {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: vars_attempt_error
 when:
   manual: {}
@@ -358,7 +358,7 @@ steps:
 /// $attempt.number in `finish.result` must be rejected.
 #[test]
 fn attempt_number_in_finish_result_rejected_with_invalid_variable_scope() -> TestResult {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: finish_attempt_error
 when:
   manual: {}
@@ -386,7 +386,7 @@ steps:
 /// $attempt.number in `save` field outside Repeat must be rejected.
 #[test]
 fn attempt_number_in_save_outside_repeat_rejected_with_invalid_variable_scope() -> TestResult {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: save_attempt_error
 when:
   manual: {}
@@ -418,7 +418,7 @@ steps:
 #[test]
 fn attempt_number_in_for_each_body_rejected_with_invalid_variable_scope() -> TestResult {
     // This YAML has $attempt.number in a for_each body step (not a Repeat body)
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: foreach_attempt_error
 when:
   manual: {}
@@ -456,7 +456,7 @@ steps:
 /// $attempt.number in `examples` value must be rejected.
 #[test]
 fn attempt_number_in_examples_rejected_with_invalid_variable_scope() -> TestResult {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: examples_attempt_error
 when:
   manual: {}
@@ -487,7 +487,7 @@ steps:
 /// $attempt.number in `choose` condition outside Repeat must be rejected.
 #[test]
 fn attempt_number_in_choose_outside_repeat_rejected_with_invalid_variable_scope() -> TestResult {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: choose_attempt_error
 when:
   manual: {}
@@ -520,7 +520,7 @@ steps:
 /// $attempt.number in `reduce` body must be rejected.
 #[test]
 fn attempt_number_in_reduce_body_rejected_with_invalid_variable_scope() -> TestResult {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: reduce_attempt_error
 when:
   manual: {}
@@ -563,7 +563,7 @@ steps:
 /// Bare `$attempt` reference (without `.number`) must be rejected.
 #[test]
 fn bare_attempt_reference_rejected() -> TestResult {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: bare_attempt
 when:
   manual: {}
@@ -594,7 +594,7 @@ steps:
 /// `$attempt.number.extra` accessor path must be rejected.
 #[test]
 fn attempt_number_with_extra_accessor_rejected() -> TestResult {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: attempt_extra_accessor
 when:
   manual: {}
@@ -625,7 +625,7 @@ steps:
 /// $attempt.number in `parallel` body must be rejected.
 #[test]
 fn attempt_number_in_parallel_body_rejected_with_invalid_variable_scope() -> TestResult {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: parallel_attempt_error
 when:
   manual: {}
@@ -661,7 +661,7 @@ steps:
 /// $attempt.number in `collect` body must be rejected.
 #[test]
 fn attempt_number_in_collect_body_rejected_with_invalid_variable_scope() -> TestResult {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: collect_attempt_error
 when:
   manual: {}
@@ -699,7 +699,7 @@ steps:
 /// Multiple $attempt.number references in same repeat body all retained.
 #[test]
 fn multiple_attempt_references_in_same_repeat_body_retained() -> TestResult {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: multiple_attempt_refs
 when:
   manual: {}
@@ -731,7 +731,7 @@ steps:
 /// Empty repeat body with $attempt.number reference compiles (body has no steps that use it).
 #[test]
 fn empty_repeat_body_compiles_without_attempt_reference() -> TestResult {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: empty_repeat
 when:
   manual: {}
@@ -760,7 +760,7 @@ steps:
 /// $attempt.number in repeat body with max_attempts=1 is valid.
 #[test]
 fn attempt_number_in_single_attempt_repeat_retained() -> TestResult {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: single_attempt_repeat
 when:
   manual: {}
@@ -791,7 +791,7 @@ steps:
 /// $attempt.number in repeat body is NOT resolved at compile time.
 #[test]
 fn attempt_number_not_resolved_at_compile_time() -> TestResult {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: repeat_unresolved
 when:
   manual: {}

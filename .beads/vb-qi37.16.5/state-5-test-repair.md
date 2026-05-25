@@ -65,7 +65,7 @@ All cancel, resume, retry, and answer invalid-transition tests now verify:
 ## Verification Command
 
 ```bash
-rtk cargo test --package velvet_ballastics --test lifecycle_integration -- --test-threads=1
+rtk cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1
 ```
 
 ## Test Results: 43 passed; 0 failed

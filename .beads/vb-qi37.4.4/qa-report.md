@@ -16,16 +16,16 @@ cargo test: 19 passed, 1297 filtered out (1 suite, 0.05s)
 
 ### 2. admission durability integration test
 ```
-rtk cargo test -p velvet_ballastics --test admission_durability_code
+rtk cargo test -p velvet_ballistics --test admission_durability_code
 cargo test: 1 passed (1 suite, 0.00s)
 ```
 
 ### 3. moon :quick lint gate
 ```
 moon run :quick
-▮▮▮▮ velvet-ballastics:quick (f8dc1122)
+▮▮▮▮ velvet-ballistics:quick (f8dc1122)
 Hello, world!
-▮▮▮▮ velvet-ballastics:quick (21ms, f8dc1122)
+▮▮▮▮ velvet-ballistics:quick (21ms, f8dc1122)
 Tasks: 1 completed
  Time: 37s 449ms
 ```

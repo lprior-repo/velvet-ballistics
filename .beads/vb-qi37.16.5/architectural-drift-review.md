@@ -29,7 +29,7 @@ State12 prerequisites consumed:
   - `crates/vb_storage/src/recovery/replay/core.rs`: 183 lines
   - `crates/vb_storage/src/recovery/replay/summary.rs`: 1193 lines
   - `crates/vb_storage/src/recovery/tests.rs`: 2353 lines
-  - `crates/velvet_ballastics/tests/lifecycle_integration.rs`: 1397 lines
+  - `crates/velvet_ballistics/tests/lifecycle_integration.rs`: 1397 lines
   - `xtask/src/main.rs`: 855 lines
   - `xtask/src/proof.rs`: 231 lines
 - Scoped forbidden-token scan command: matches are confined to existing/test-only assertion helpers or pre-existing files; no unsafe/trust expansion was found in the new Verus harness. Formal trust scan in `verus-report.md` also reports `TRUST_SCAN_CLEAN`.

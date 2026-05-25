@@ -69,7 +69,7 @@ fn classify_occurrence_returns_no_occurrence_when_text_has_no_legacy_token() {
     let config = minimum_valid_scan_config();
     let path = repo_path("docs/clean.md");
 
-    let result = classify_occurrence(path, line(1), column(1), "ballastics only", &config);
+    let result = classify_occurrence(path, line(1), column(1), "ballistics only", &config);
 
     assert_eq!(result, Ok(OccurrenceClass::NoOccurrence));
 }

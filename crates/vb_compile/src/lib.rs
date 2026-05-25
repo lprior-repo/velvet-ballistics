@@ -52,9 +52,8 @@ use mod_compile_validation as validation;
 
 pub use core::{
     YamlCompiler, YamlLimits, build_accessor_table, build_constant_pool, build_slot_layout,
-    check_idempotency_gates, compile_to_generated_rust, compile_workflow,
-    compile_workflow_with_contracts, compute_compiled_digest, emit_compiled_artifact,
-    is_compile_idempotency_gate_accepted,
+    check_idempotency_gates, compile_workflow, compile_workflow_with_contracts,
+    compute_compiled_digest, emit_compiled_artifact, is_compile_idempotency_gate_accepted,
 };
 pub use errors::{CompileError, CompileErrors, SourceMark};
 pub(crate) use errors::{collect, non_string_key_error};

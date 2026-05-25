@@ -20,7 +20,7 @@ No current QA blocker remains. The earlier QA closure blocker was stale and circ
    - Counted public contract test/ignore attributes.
 2. `bash scripts/check-ignored-fallible-results.sh`.
 3. `bash scripts/check-panic-surface.sh`.
-4. `rustup run nightly-2026-04-28 cargo test -p velvet-ballastics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract`.
+4. `rustup run nightly-2026-04-28 cargo test -p velvet-ballistics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract`.
 5. `/usr/bin/git status --short`.
 
 ## Observed Evidence
@@ -57,7 +57,7 @@ MOON_MARKER 'Tasks: 25 completed (3 cached)' count=1
 MOON_MARKER '12169 tests run: 12169 passed (5 slow), 0 skipped' count=1
 MOON_MARKER 'test integrity: PASS base=HEAD' count=1
 MOON_MARKER 'NoViolationFound' count=2
-MOON_MARKER 'velvet-ballastics:supply-chain' count=5
+MOON_MARKER 'velvet-ballistics:supply-chain' count=5
 KANI_SUCCESS_COUNT 12
 KANI_COMPLETE_COUNT 12
 KANI_BAD_MARKER 'VERIFICATION:- FAILED' count=0
@@ -81,7 +81,7 @@ ExitCode: 0
 
 ### Public Contract Rerun
 
-`rustup run nightly-2026-04-28 cargo test -p velvet-ballastics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract` observed:
+`rustup run nightly-2026-04-28 cargo test -p velvet-ballistics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract` observed:
 
 ```text
 running 11 tests

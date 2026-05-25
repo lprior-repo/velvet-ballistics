@@ -42,7 +42,7 @@ STATUS: PASS
 - PASS: `cargo kani -p vb_ui_snapshot --harness inventory`; output path `/home/lewis/.local/share/opencode/tool-output/tool_e10b3de3e001h3qsqpx8tIXbv3`; summary: `Complete - 1 successfully verified harnesses, 0 failures, 1 total`.
 - PASS: `cargo kani -p vb_ui_snapshot --harness layout_`; output path `/home/lewis/.local/share/opencode/tool-output/tool_e10b3f06e002uWP0en2asd2wEy`; summary: `Complete - 5 successfully verified harnesses, 0 failures, 5 total`.
 - PASS: `cargo nextest run -p vb_ui_snapshot -p xtask`; summary `130 tests run: 130 passed, 0 skipped`.
-- PASS: `cargo nextest run -p velvet-ballastics-workspace --test vb_nf2u_ui_release_acceptance`; summary `8 tests run: 8 passed, 0 skipped`.
+- PASS: `cargo nextest run -p velvet-ballistics-workspace --test vb_nf2u_ui_release_acceptance`; summary `8 tests run: 8 passed, 0 skipped`.
 - PASS: `rtk cargo fmt --all --check`; no output.
 - PASS: `rtk cargo clippy -p vb_ui_snapshot -p xtask --tests --all-features -- -D warnings`; wrapper summary `0 errors, 2 warnings`.
 - PASS: `moon run :verify-all`; output path `/home/lewis/.local/share/opencode/tool-output/tool_e10b9b0d3001hNI1uqosxS1T4Y`; summary `Tasks: 1 completed`, Kani summaries show 1 inventory and 5 layout harnesses verified.

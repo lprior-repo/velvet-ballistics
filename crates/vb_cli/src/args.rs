@@ -1,4 +1,4 @@
-//! Argument parsing for velvet_ballastics.
+//! Argument parsing for velvet_ballistics.
 #![forbid(unsafe_code)]
 
 use std::ffi::OsString;
@@ -1823,7 +1823,7 @@ mod tests {
     #[test]
     fn parse_run_accepts_db_for_journaled_mode() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "run",
             "workflow.yaml",
             "--input-bin",
@@ -1856,7 +1856,7 @@ mod tests {
     #[test]
     fn parse_run_compiled_requires_db_for_strict_mode() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "run-compiled",
             "workflow.vbir",
             "--input-bin",
@@ -1874,7 +1874,7 @@ mod tests {
     #[test]
     fn parse_run_none_mode_keeps_db_optional() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "run",
             "workflow.yaml",
             "--input-bin",
@@ -1896,7 +1896,7 @@ mod tests {
     #[test]
     fn parse_run_without_step_flags_produces_none_step() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "run",
             "workflow.yaml",
             "--input-bin",
@@ -1916,7 +1916,7 @@ mod tests {
     #[test]
     fn parse_run_step_requires_step_input() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "run",
             "workflow.yaml",
             "--input-bin",
@@ -1945,7 +1945,7 @@ mod tests {
     #[test]
     fn parse_validate_accepts_json_flag() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "validate",
             "workflow.yaml",
             "--emit",
@@ -1963,7 +1963,7 @@ mod tests {
     #[test]
     fn parse_explain_accepts_yaml_flag() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "explain",
             "workflow.yaml",
             "--emit",
@@ -1981,7 +1981,7 @@ mod tests {
     #[test]
     fn parse_compile_uses_artifact_emit_without_output_format() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "compile",
             "workflow.yaml",
             "--emit",
@@ -2010,7 +2010,7 @@ mod tests {
     #[test]
     fn parse_compile_artifact_yaml_does_not_select_yaml_output() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "compile",
             "workflow.yaml",
             "--emit",
@@ -2031,7 +2031,7 @@ mod tests {
     #[test]
     fn parse_run_with_step_flags() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "run",
             "workflow.yaml",
             "--input-bin",
@@ -2059,7 +2059,7 @@ mod tests {
     #[test]
     fn parse_compile_rejects_unknown_emit_target_with_exact_variant() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "compile",
             "workflow.yaml",
             "--emit",
@@ -2077,7 +2077,7 @@ mod tests {
     #[test]
     fn parse_compile_rejects_deferred_rust_emit_target() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "compile",
             "workflow.yaml",
             "--emit",
@@ -2095,7 +2095,7 @@ mod tests {
     #[test]
     fn parse_run_rejects_unknown_durability_with_exact_variant() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "run",
             "workflow.yaml",
             "--input-bin",
@@ -2113,7 +2113,7 @@ mod tests {
     #[test]
     fn parse_answer_rejects_invalid_step_with_exact_variant() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "answer",
             "run-1",
             "--step",
@@ -2133,7 +2133,7 @@ mod tests {
     #[test]
     fn parse_inspect_includes_output_format() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "inspect",
             "42",
             "--db",
@@ -2157,19 +2157,19 @@ mod tests {
 
     #[test]
     fn parse_help_command() {
-        let parsed = parse_args(&args(&["velvet-ballastics", "help"]));
+        let parsed = parse_args(&args(&["velvet-ballistics", "help"]));
         assert!(matches!(parsed, Ok(Command::Help)));
     }
 
     #[test]
     fn parse_version_command() {
-        let parsed = parse_args(&args(&["velvet-ballastics", "--version"]));
+        let parsed = parse_args(&args(&["velvet-ballistics", "--version"]));
         assert!(matches!(parsed, Ok(Command::Version)));
     }
 
     #[test]
     fn parse_agent_context_command() {
-        let parsed = parse_args(&args(&["velvet-ballastics", "agent-context"]));
+        let parsed = parse_args(&args(&["velvet-ballistics", "agent-context"]));
         assert!(matches!(
             parsed,
             Ok(Command::AgentContext { deliver: None })
@@ -2179,7 +2179,7 @@ mod tests {
     #[test]
     fn parse_agent_context_deliver_target() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "agent-context",
             "--deliver",
             "file:/tmp/out.jsonl",
@@ -2191,7 +2191,7 @@ mod tests {
 
     #[test]
     fn parse_agent_context_rejects_missing_deliver_target() {
-        let parsed = parse_args(&args(&["velvet-ballastics", "agent-context", "--deliver"]));
+        let parsed = parse_args(&args(&["velvet-ballistics", "agent-context", "--deliver"]));
         assert!(
             matches!(parsed, Err(ParseError::InvalidAgentContextArgument(ref reason)) if reason == "--deliver requires stdout or file:<absolute-path>")
         );
@@ -2199,7 +2199,7 @@ mod tests {
 
     #[test]
     fn parse_agent_context_rejects_unknown_flag() {
-        let parsed = parse_args(&args(&["velvet-ballastics", "agent-context", "--bogus"]));
+        let parsed = parse_args(&args(&["velvet-ballistics", "agent-context", "--bogus"]));
         assert!(
             matches!(parsed, Err(ParseError::InvalidAgentContextArgument(ref reason)) if reason == "unknown flag --bogus")
         );
@@ -2208,7 +2208,7 @@ mod tests {
     #[test]
     fn parse_trace_defaults_to_no_filters() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "trace",
             "7",
             "--db",
@@ -2238,7 +2238,7 @@ mod tests {
     #[test]
     fn parse_trace_accepts_all_filters() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "trace",
             "7",
             "--db",
@@ -2277,7 +2277,7 @@ mod tests {
     #[test]
     fn parse_trace_rejects_invalid_step() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "trace",
             "7",
             "--db",
@@ -2295,7 +2295,7 @@ mod tests {
     #[test]
     fn parse_trace_rejects_invalid_since_seq() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "trace",
             "7",
             "--db",
@@ -2313,7 +2313,7 @@ mod tests {
     #[test]
     fn parse_trace_rejects_missing_until_seq_value() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "trace",
             "7",
             "--db",
@@ -2332,7 +2332,7 @@ mod tests {
     #[test]
     fn parse_trace_rejects_missing_limit_value() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "trace",
             "7",
             "--db",
@@ -2351,7 +2351,7 @@ mod tests {
     #[test]
     fn parse_trace_rejects_unknown_filter_flag() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "trace",
             "7",
             "--db",
@@ -2368,7 +2368,7 @@ mod tests {
 
     #[test]
     fn parse_status_accepts_no_runtime_defaults() {
-        let parsed = parse_args(&args(&["velvet-ballastics", "status", "--emit", "yaml"]));
+        let parsed = parse_args(&args(&["velvet-ballistics", "status", "--emit", "yaml"]));
         assert!(matches!(parsed, Ok(Command::Status { .. })));
         if let Ok(Command::Status { options, output }) = parsed {
             assert_eq!(options.active_runs, None);
@@ -2381,7 +2381,7 @@ mod tests {
     #[test]
     fn parse_status_accepts_diagnostic_counters() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "status",
             "--active-runs",
             "5",
@@ -2402,7 +2402,7 @@ mod tests {
     #[test]
     fn parse_status_rejects_invalid_numeric_argument() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "status",
             "--queue-depth",
             "many",
@@ -2415,7 +2415,7 @@ mod tests {
 
     #[test]
     fn parse_status_rejects_missing_queue_depth_value() {
-        let parsed = parse_args(&args(&["velvet-ballastics", "status", "--queue-depth"]));
+        let parsed = parse_args(&args(&["velvet-ballistics", "status", "--queue-depth"]));
         assert!(matches!(
             parsed,
             Err(ParseError::MissingArgument("--queue-depth"))
@@ -2425,7 +2425,7 @@ mod tests {
     #[test]
     fn parse_status_rejects_missing_active_runs_value() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "status",
             "--active-runs",
             "--emit",
@@ -2440,7 +2440,7 @@ mod tests {
     #[test]
     fn parse_status_rejects_missing_trace_dropped_value() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "status",
             "--trace-dropped",
             "--queue-depth",
@@ -2454,7 +2454,7 @@ mod tests {
 
     #[test]
     fn parse_status_rejects_unknown_flag() {
-        let parsed = parse_args(&args(&["velvet-ballastics", "status", "--bogus"]));
+        let parsed = parse_args(&args(&["velvet-ballistics", "status", "--bogus"]));
         assert!(
             matches!(parsed, Err(ParseError::InvalidStatusArgument(ref s)) if s == "unknown flag --bogus"),
             "expected InvalidStatusArgument(unknown flag --bogus), got {parsed:?}"
@@ -2463,7 +2463,7 @@ mod tests {
 
     #[test]
     fn parse_status_rejects_extra_positional_argument() {
-        let parsed = parse_args(&args(&["velvet-ballastics", "status", "extra"]));
+        let parsed = parse_args(&args(&["velvet-ballistics", "status", "extra"]));
         assert!(
             matches!(parsed, Err(ParseError::InvalidStatusArgument(ref s)) if s == "unexpected positional argument extra"),
             "expected InvalidStatusArgument(unexpected positional argument extra), got {parsed:?}"
@@ -2473,7 +2473,7 @@ mod tests {
     #[test]
     fn parse_status_rejects_out_of_range_queue_depth() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "status",
             "--queue-depth",
             "1025",
@@ -2487,7 +2487,7 @@ mod tests {
     #[test]
     fn parse_status_rejects_out_of_range_active_runs() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "status",
             "--active-runs",
             "1025",
@@ -2500,7 +2500,7 @@ mod tests {
 
     #[test]
     fn parse_system_status_defaults_to_standard_none_text() {
-        let parsed = parse_args(&args(&["velvet-ballastics", "system", "status"]));
+        let parsed = parse_args(&args(&["velvet-ballistics", "system", "status"]));
         assert!(matches!(parsed, Ok(Command::SystemStatus { .. })));
         if let Ok(Command::SystemStatus { options, output }) = parsed {
             assert_eq!(options.profile, VerifyProfile::Standard);
@@ -2513,7 +2513,7 @@ mod tests {
     #[test]
     fn parse_system_status_accepts_profile_server_and_emit_yaml() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "system",
             "status",
             "--profile",
@@ -2535,7 +2535,7 @@ mod tests {
     #[test]
     fn parse_system_status_rejects_unknown_profile() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "system",
             "status",
             "--profile",
@@ -2547,7 +2547,7 @@ mod tests {
     #[test]
     fn parse_system_status_rejects_unknown_server_mode() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "system",
             "status",
             "--server",
@@ -2559,7 +2559,7 @@ mod tests {
     #[test]
     fn parse_system_status_rejects_unprobed_server_mode() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "system",
             "status",
             "--server",
@@ -2570,13 +2570,13 @@ mod tests {
 
     #[test]
     fn parse_no_command_returns_error() {
-        let parsed = parse_args(&args(&["velvet-ballastics"]));
+        let parsed = parse_args(&args(&["velvet-ballistics"]));
         assert!(matches!(parsed, Err(ParseError::NoCommand)));
     }
 
     #[test]
     fn parse_unknown_command_returns_error() {
-        let parsed = parse_args(&args(&["velvet-ballastics", "foobar"]));
+        let parsed = parse_args(&args(&["velvet-ballistics", "foobar"]));
         assert!(matches!(parsed, Err(ParseError::UnknownCommand(_))));
     }
 
@@ -2591,7 +2591,7 @@ mod tests {
 
     #[test]
     fn parse_verify_defaults_to_standard_profile() {
-        let parsed = parse_args(&args(&["velvet-ballastics", "verify", "workflow.yaml"]));
+        let parsed = parse_args(&args(&["velvet-ballistics", "verify", "workflow.yaml"]));
         assert!(
             matches!(parsed, Ok(Command::Verify { .. })),
             "unexpected parse result: {parsed:?}"
@@ -2611,7 +2611,7 @@ mod tests {
     #[test]
     fn parse_verify_accepts_quick_profile() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "verify",
             "workflow.yaml",
             "--profile",
@@ -2629,7 +2629,7 @@ mod tests {
     #[test]
     fn parse_verify_accepts_full_profile_with_yaml() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "verify",
             "workflow.yaml",
             "--profile",
@@ -2653,7 +2653,7 @@ mod tests {
     #[test]
     fn parse_verify_rejects_unknown_profile() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "verify",
             "workflow.yaml",
             "--profile",
@@ -2667,7 +2667,7 @@ mod tests {
 
     #[test]
     fn parse_graph_defaults_to_text_output() {
-        let parsed = parse_args(&args(&["velvet-ballastics", "graph", "workflow.yaml"]));
+        let parsed = parse_args(&args(&["velvet-ballistics", "graph", "workflow.yaml"]));
         assert!(
             matches!(parsed, Ok(Command::Graph { .. })),
             "unexpected parse result: {parsed:?}"
@@ -2681,7 +2681,7 @@ mod tests {
     #[test]
     fn parse_graph_accepts_yaml_emit() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "graph",
             "workflow.yaml",
             "--emit",
@@ -2699,7 +2699,7 @@ mod tests {
     #[test]
     fn parse_diff_requires_both_run_ids_and_db() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "diff",
             "1",
             "2",
@@ -2727,7 +2727,7 @@ mod tests {
     #[test]
     fn parse_diff_accepts_json_flag() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "diff",
             "10",
             "20",
@@ -2747,7 +2747,7 @@ mod tests {
 
     #[test]
     fn parse_diff_requires_db_flag() {
-        let parsed = parse_args(&args(&["velvet-ballastics", "diff", "1", "2"]));
+        let parsed = parse_args(&args(&["velvet-ballistics", "diff", "1", "2"]));
         assert!(
             matches!(parsed, Err(ParseError::MissingArgument("--db"))),
             "unexpected: {parsed:?}"
@@ -2756,7 +2756,7 @@ mod tests {
 
     #[test]
     fn parse_simulate_defaults_to_text_output() {
-        let parsed = parse_args(&args(&["velvet-ballastics", "simulate", "workflow.yaml"]));
+        let parsed = parse_args(&args(&["velvet-ballistics", "simulate", "workflow.yaml"]));
         assert!(
             matches!(parsed, Ok(Command::Simulate { .. })),
             "unexpected parse result: {parsed:?}"
@@ -2770,7 +2770,7 @@ mod tests {
     #[test]
     fn parse_simulate_accepts_yaml_emit() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "simulate",
             "workflow.yaml",
             "--emit",
@@ -2788,7 +2788,7 @@ mod tests {
     #[test]
     fn parse_simulate_accepts_postcard_emit() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "simulate",
             "workflow.yaml",
             "--emit",
@@ -2805,7 +2805,7 @@ mod tests {
 
     #[test]
     fn parse_doctor_without_db_is_stateless_text_mode() {
-        let parsed = parse_args(&args(&["velvet-ballastics", "doctor"]));
+        let parsed = parse_args(&args(&["velvet-ballistics", "doctor"]));
         assert!(
             matches!(parsed, Ok(Command::Doctor { .. })),
             "unexpected parse result: {parsed:?}"
@@ -2819,7 +2819,7 @@ mod tests {
     #[test]
     fn parse_doctor_accepts_optional_db_and_yaml_output() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "doctor",
             "--db",
             "journal-db",
@@ -2839,7 +2839,7 @@ mod tests {
     #[test]
     fn parse_action_list_accepts_yaml_output() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "action",
             "list",
             "--emit",
@@ -2860,7 +2860,7 @@ mod tests {
     #[test]
     fn parse_cancel_accepts_run_id_and_db() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "cancel",
             "42",
             "--db",
@@ -2887,7 +2887,7 @@ mod tests {
     #[test]
     fn parse_cancel_accepts_reason() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "cancel",
             "42",
             "--db",
@@ -2907,7 +2907,7 @@ mod tests {
     #[test]
     fn parse_cancel_accepts_yaml_output() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "cancel",
             "42",
             "--db",
@@ -2924,7 +2924,7 @@ mod tests {
 
     #[test]
     fn parse_cancel_rejects_missing_db() {
-        let parsed = parse_args(&args(&["velvet-ballastics", "cancel", "42"]));
+        let parsed = parse_args(&args(&["velvet-ballistics", "cancel", "42"]));
         assert!(
             matches!(parsed, Err(ParseError::MissingArgument("--db"))),
             "unexpected: {parsed:?}"
@@ -2935,7 +2935,7 @@ mod tests {
     fn parse_cancel_rejects_reason_longer_than_256_bytes() {
         let long_reason = "a".repeat(257);
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "cancel",
             "42",
             "--db",
@@ -2953,7 +2953,7 @@ mod tests {
     fn parse_cancel_accepts_reason_exactly_256_bytes() {
         let reason = "a".repeat(256);
         let parsed = parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "cancel",
             "42",
             "--db",

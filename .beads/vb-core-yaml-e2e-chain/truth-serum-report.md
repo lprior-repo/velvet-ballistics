@@ -26,7 +26,7 @@ TMPDIR=target/tmp RUSTC_WRAPPER= TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOS
 
 ### Contract Test Gate
 ```bash
-TMPDIR=target/tmp RUSTC_WRAPPER= TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet-ballastics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture
+TMPDIR=target/tmp RUSTC_WRAPPER= TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet-ballistics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture
 ```
 **Result**: `cargo test: 35 passed (1 suite, 43.68s)` — exit=0. **PASS**.
 

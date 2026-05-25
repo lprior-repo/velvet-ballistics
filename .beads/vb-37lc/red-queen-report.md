@@ -59,13 +59,13 @@ exit=0
 ### No wildcard enum match in bead-owned naming scan
 
 ```bash
-cd /home/lewis/src/vb-37lc/crates/velvet_ballastics && cargo +nightly clippy -- -D clippy::wildcard_enum_match_arm
+cd /home/lewis/src/vb-37lc/crates/velvet_ballistics && cargo +nightly clippy -- -D clippy::wildcard_enum_match_arm
 ```
 
 Result:
 
 ```text
-Checking velvet_ballastics v0.1.0 (/home/lewis/src/vb-37lc/crates/velvet_ballastics)
+Checking velvet_ballistics v0.1.0 (/home/lewis/src/vb-37lc/crates/velvet_ballistics)
 Finished `dev` profile ...
 exit=0
 ```
@@ -75,7 +75,7 @@ Previous wildcard enum survivor remains defeated.
 ### Unrelated `commands_ai_context.rs` scoped unchanged
 
 ```bash
-git -C /home/lewis/src/vb-37lc diff --quiet -- crates/velvet_ballastics/src/commands_ai_context.rs
+git -C /home/lewis/src/vb-37lc diff --quiet -- crates/velvet_ballistics/src/commands_ai_context.rs
 ```
 
 Result:
@@ -89,7 +89,7 @@ The unrelated no-assert scan remains scoped out by unchanged-by-this-bead rule.
 ### Function-shape survivor after refactor
 
 ```bash
-python3 -c '<scan crates/velvet_ballastics/src/naming_scan.rs function lengths; fail if max > 25>'
+python3 -c '<scan crates/velvet_ballistics/src/naming_scan.rs function lengths; fail if max > 25>'
 ```
 
 Result:

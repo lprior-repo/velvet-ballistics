@@ -11,9 +11,9 @@
 
 - `pwd -P` returned `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-engine-yaml`.
 - `test -s ".beads/vb-engine-yaml/contract.md" && test -s ".beads/vb-engine-yaml/traceability-matrix.jsonl" && test -s ".beads/vb-engine-yaml/delivery-scope.jsonl"` exited 0.
-- Risk discovery command: `rtk grep -n "unsafe|unwrap\(|expect\(|panic!|todo!|unimplemented!|assert!|spawn|tokio|Mutex|RwLock|Atomic|serialize|deserialize|state|transition|lease|queue|retry|cancel" crates/vb_yaml crates/vb_validate crates/vb_compile crates/vb_core crates/vb_runtime crates/vb_storage crates/vb_ipc crates/velvet_ballastics fuzz kani verification tests xtask .moon Cargo.toml Cargo.lock velvet-ballistics-MASTER.md`.
+- Risk discovery command: `rtk grep -n "unsafe|unwrap\(|expect\(|panic!|todo!|unimplemented!|assert!|spawn|tokio|Mutex|RwLock|Atomic|serialize|deserialize|state|transition|lease|queue|retry|cancel" crates/vb_yaml crates/vb_validate crates/vb_compile crates/vb_core crates/vb_runtime crates/vb_storage crates/vb_ipc crates/velvet_ballistics fuzz kani verification tests xtask .moon Cargo.toml Cargo.lock velvet-ballistics-MASTER.md`.
 - Risk discovery result: 12766 matches in 470 scoped files.
-- Proof discovery command: `rtk grep -n "requires|ensures|proof fn|invariant|kani::|loom::|proptest!|fuzz_target|Flux|TLA|Miri|unsafe" crates/vb_yaml crates/vb_validate crates/vb_compile crates/vb_core crates/vb_runtime crates/vb_storage crates/vb_ipc crates/velvet_ballastics fuzz kani verification tests xtask .moon Cargo.toml Cargo.lock velvet-ballistics-MASTER.md`.
+- Proof discovery command: `rtk grep -n "requires|ensures|proof fn|invariant|kani::|loom::|proptest!|fuzz_target|Flux|TLA|Miri|unsafe" crates/vb_yaml crates/vb_validate crates/vb_compile crates/vb_core crates/vb_runtime crates/vb_storage crates/vb_ipc crates/velvet_ballistics fuzz kani verification tests xtask .moon Cargo.toml Cargo.lock velvet-ballistics-MASTER.md`.
 - Proof discovery result: 1750 matches in 385 scoped files.
 - Discovery was not blocked.
 

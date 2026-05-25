@@ -1920,14 +1920,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "vb_codegen"
-version = "0.1.0"
-dependencies = [
- "thiserror",
- "vb_core",
-]
-
-[[package]]
 name = "vb_compile"
 version = "0.1.0"
 dependencies = [
@@ -1937,7 +1929,6 @@ dependencies = [
  "saphyr",
  "saphyr-parser",
  "thiserror",
- "vb_codegen",
  "vb_core",
  "vb_validate",
  "vb_yaml",
@@ -2063,7 +2054,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "velvet-ballastics"
+name = "velvet-ballistics"
 version = "0.1.0"
 dependencies = [
  "blake3",
@@ -2087,18 +2078,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "velvet-ballastics-idempotency-workspace-tests"
+name = "velvet-ballistics-idempotency-workspace-tests"
 version = "0.1.0"
 dependencies = [
  "tempfile",
  "vb_core",
  "vb_runtime",
  "vb_storage",
- "velvet-ballastics",
+ "velvet-ballistics",
 ]
 
 [[package]]
-name = "velvet-ballastics-workspace-tests"
+name = "velvet-ballistics-workspace-tests"
 version = "0.1.0"
 dependencies = [
  "blake3",
@@ -2118,7 +2109,6 @@ dependencies = [
  "toml",
  "vb_benchmark",
  "vb_boundary_inventory",
- "vb_codegen",
  "vb_compile",
  "vb_core",
  "vb_doc",
@@ -2129,7 +2119,7 @@ dependencies = [
  "vb_storage",
  "vb_validate",
  "vb_yaml",
- "velvet-ballastics",
+ "velvet-ballistics",
  "xtask",
 ]
 

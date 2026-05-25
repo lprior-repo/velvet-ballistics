@@ -93,8 +93,8 @@ cargo build: 2 errors, 0 warnings (2 crates)
 
 ```
 $ moon ci 2>&1 | tail -30
- velvet-ballastics:lint-src | error: could not compile `vb_compile` (lib) due to 2 previous errors
- velvet-ballastics:lint-src (1s 18ms, ebda83bc)
+ velvet-ballistics:lint-src | error: could not compile `vb_compile` (lib) due to 2 previous errors
+ velvet-ballistics:lint-src (1s 18ms, ebda83bc)
 
 Tasks: 12 completed (4 cached), 5 failed, 9 skipped
  Time: 51s 471ms

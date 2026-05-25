@@ -35,7 +35,7 @@ summary: 983 passed.
 ```
 
 ```text
-command: rtk cargo test -p velvet_ballastics -- --test-threads=1
+command: rtk cargo test -p velvet_ballistics -- --test-threads=1
 exit: 0
 summary: 471 passed.
 ```

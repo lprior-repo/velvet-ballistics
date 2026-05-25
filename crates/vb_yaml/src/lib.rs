@@ -8,7 +8,7 @@
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::doc_markdown)]
 
-//! Cold-path YAML parsing and profile enforcement for velvet-ballastics.
+//! Cold-path YAML parsing and profile enforcement for velvet-ballistics.
 //!
 //! This crate wraps `saphyr-parser` to provide strict YAML event parsing,
 //! profile rejection (anchors, aliases, merge keys, duplicate keys, etc.),

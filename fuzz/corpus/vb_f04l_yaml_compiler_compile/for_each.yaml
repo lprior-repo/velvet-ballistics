@@ -1,4 +1,4 @@
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: fuzz-foreach
 when:
   manual: {}

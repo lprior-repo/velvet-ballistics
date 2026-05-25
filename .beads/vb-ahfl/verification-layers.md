@@ -23,7 +23,7 @@
 
 ## Verus Scope
 
-- Rust target: `crates/vb_ui_model/src/envelope/types.rs::MetadataEnvelope`, `EnvelopeKind`, exported UI model structs in `workflow.rs`, `run.rs`, `verify.rs`, and `incident.rs`, and CLI envelope kind mapping in `crates/velvet_ballastics/src/cli_envelope.rs`.
+- Rust target: `crates/vb_ui_model/src/envelope/types.rs::MetadataEnvelope`, `EnvelopeKind`, exported UI model structs in `workflow.rs`, `run.rs`, `verify.rs`, and `incident.rs`, and CLI envelope kind mapping in `crates/velvet_ballistics/src/cli_envelope.rs`.
 - Spec/proof functions: metadata completeness, bounded collection length, redaction no-raw-secret projection, graph reference validity, event ordering, and deterministic canonicalization.
 - Invariants: INV-001 through INV-006.
 - Trusted boundary: validated constructors/converters from CLI JSON/JSONL and UI model data into canonical artifact types.
@@ -58,7 +58,7 @@ Required production-bound obligations are not waived in this repaired State 3 st
 
 - Verus production harnesses: `verification/verus/vb_ahfl_metadata_envelope_production.rs`, `verification/verus/vb_ahfl_bounds_production.rs`, `verification/verus/vb_ahfl_redaction_production.rs`, and `verification/verus/vb_ahfl_graph_events_production.rs`.
 - Kani production harness: `vb_ahfl_canonicalization_no_false_parity`.
-- Property test target: `cargo test -p velvet_ballastics --test vb_ahfl_cli_ui_parity -- --nocapture`.
+- Property test target: `cargo test -p velvet_ballistics --test vb_ahfl_cli_ui_parity -- --nocapture`.
 - Static boundary target: dependency/import scan only, comment text ignored.
 - API, fuzz, mutation, and CI commands are exact planned obligations and remain blocking until their owner states execute or explicitly re-review them.
 

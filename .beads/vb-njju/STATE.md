@@ -107,7 +107,7 @@ artifact_root: /home/lewis/src/femdation-vb-njju/.beads/vb-njju
 # State 4 Repair Verified — 2026-05-19
 
 - Proof-planner repaired `proof-obligations.planned.jsonl`, `proof-strategy.md`, and `proof-plan-review-input.md`.
-- PO-004 now uses supported `cargo mutants --package vb_runtime --test-package velvet-ballastics-workspace-tests --file crates/vb_runtime/src/admission.rs ...` semantic-target command.
+- PO-004 now uses supported `cargo mutants --package vb_runtime --test-package velvet-ballistics-workspace-tests --file crates/vb_runtime/src/admission.rs ...` semantic-target command.
 - PO-008 now uses explicit GNU target fuzz command for `yaml_events`, `ipc_frame`, `journal_event`, and `compiled_ir`.
 - PO-010 now explicitly rejects zero selected tests and requires State 5 filter/registration repair or `BLOCK_LOCAL` evidence.
 - current_state: 5
@@ -137,7 +137,7 @@ artifact_root: /home/lewis/src/femdation-vb-njju/.beads/vb-njju
 
 - `proof-review.md` has exact `STATUS: REJECTED`.
 - `proof-findings.jsonl` is valid JSONL.
-- PO-004 is `BLOCK_LOCAL_RELEASE`: planned cargo-mutants strategy baselined `vb_runtime` but oracle test belongs to `velvet-ballastics-workspace-tests`; no admission mutant kill evidence.
+- PO-004 is `BLOCK_LOCAL_RELEASE`: planned cargo-mutants strategy baselined `vb_runtime` but oracle test belongs to `velvet-ballistics-workspace-tests`; no admission mutant kill evidence.
 - PO-005 is `BLOCK_LOCAL_INFRA_RELEASE`: disk quota/TMPDIR path explosion is not a waiver.
 - PO-017 is `BLOCK_LOCAL_RELEASE`: `moon ci` failed from the same recursive TMPDIR/mutants-smoke failure.
 - Nearest repair starts State 4 for PO-004 plan/strategy; State 5 then reruns PO-004/PO-005/PO-017.

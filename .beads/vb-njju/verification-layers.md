@@ -19,14 +19,14 @@
 
 ## Required executable commands
 
-- `cargo test --package velvet-ballastics-workspace-tests --test vb_njju_mutation_fuzz_property_closure`
-- `cargo test --package velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog`
-- `cargo test --package velvet-ballastics-workspace-tests --test vb_c3k9_current_api_mutation_plan`
+- `cargo test --package velvet-ballistics-workspace-tests --test vb_njju_mutation_fuzz_property_closure`
+- `cargo test --package velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog`
+- `cargo test --package velvet-ballistics-workspace-tests --test vb_c3k9_current_api_mutation_plan`
 - `cargo test --package vb_codegen --lib proptests::fixed_six_step_emitted_rust_and_ir_match_finished_signal_and_slots`
 - `cargo test --package vb_storage --lib proptests::ppi_001_deterministic_replay_invariant`
-- `cargo test --package velvet-ballastics-workspace-tests --test vb_y1zq_boundary_inventory_contract`
+- `cargo test --package velvet-ballistics-workspace-tests --test vb_y1zq_boundary_inventory_contract`
 - `moon run :mutants-smoke`
-- `cargo mutants --package velvet-ballastics-workspace-tests --test vb_njju_mutation_fuzz_property_closure`
+- `cargo mutants --package velvet-ballistics-workspace-tests --test vb_njju_mutation_fuzz_property_closure`
 - `moon run :fuzz-smoke`
 - `cargo fuzz build --target x86_64-unknown-linux-gnu`
 

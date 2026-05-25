@@ -38,7 +38,7 @@ fn all_parse_ast_errors(source: &[u8]) -> CompileErrors {
 #[test]
 fn compile_errors_display_format() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 name: test2
 when:
@@ -64,7 +64,7 @@ steps:
 #[test]
 fn compile_errors_diagnostic_codes_iterates_all() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 name: test2
 when:
@@ -97,7 +97,7 @@ steps:
 #[test]
 fn compile_error_code_duplicate_key() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 name: test2
 when:
@@ -119,7 +119,7 @@ steps:
 #[test]
 fn compile_error_code_duplicate_step_id() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -141,7 +141,7 @@ steps:
 #[test]
 fn compile_error_code_non_string_key() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -183,7 +183,7 @@ key: *anchor
 #[test]
 fn compile_error_code_tag_forbidden() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: !badtag test
 when:
   manual: {}
@@ -214,7 +214,7 @@ fn compile_error_code_empty_source() {
 #[test]
 fn compile_error_code_unknown_toplevel_field() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -235,7 +235,7 @@ steps:
 #[test]
 fn compile_error_code_unknown_step_field() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -276,7 +276,7 @@ steps:
 #[test]
 fn compile_error_code_empty_steps() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -294,7 +294,7 @@ steps: []
 #[test]
 fn compile_error_code_missing_step_id() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -313,7 +313,7 @@ steps:
 #[test]
 fn compile_error_code_step_shape_not_mapping() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -332,7 +332,7 @@ steps:
 #[test]
 fn compile_error_code_multiple_step_primitives() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -353,7 +353,7 @@ steps:
 #[test]
 fn compile_error_code_missing_step_primitive() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -448,7 +448,7 @@ fn expression_error_integer_out_of_range_includes_index() {
 #[test]
 fn duplicate_key_message_includes_key_name() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 name: duplicate_name
 when:
@@ -471,7 +471,7 @@ steps:
 #[test]
 fn duplicate_step_id_message_includes_id() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -494,7 +494,7 @@ steps:
 #[test]
 fn unknown_step_field_message_includes_step_index_and_field() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -516,7 +516,7 @@ steps:
 #[test]
 fn invalid_name_message_includes_field_and_value() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: "invalid name with spaces"
 when:
   manual: {}
@@ -542,7 +542,7 @@ fn backward_branch_target_message_mentions_step_info() {
     // the error message, if it occurs, is informative.
     // The key assertion is that error messages have meaningful content.
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -601,7 +601,7 @@ fn document_count_message_includes_count() {
 #[test]
 fn diagnostic_code_alias_for_code() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 name: duplicate
 when:
@@ -633,7 +633,7 @@ fn all_error_variants_display_non_empty() {
     // DuplicateKey - must produce non-empty Display
     let dup_err = parse_ast_error(
         br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: a
 name: b
 when:
@@ -655,7 +655,7 @@ steps:
 #[test]
 fn unknown_trigger_kind_message_contains_trigger_value() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   unknown_trigger_type: {}
@@ -676,7 +676,7 @@ steps:
 #[test]
 fn field_shape_message_mentions_field_and_expected() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -704,7 +704,7 @@ steps:
 #[test]
 fn error_messages_have_specific_content() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -741,7 +741,7 @@ steps:
 fn error_codes_are_string_constants() {
     // Verify codes are all uppercase ASCII identifiers
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 name: duplicate
 when:
@@ -767,7 +767,7 @@ steps:
 #[test]
 fn compile_errors_first_gives_primary_error() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 name: duplicate
 when:
@@ -794,7 +794,7 @@ steps:
 #[test]
 fn compile_errors_len_is_accurate() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 name: duplicate
 when:
@@ -815,7 +815,7 @@ steps:
 #[test]
 fn compile_error_code_merge_key_forbidden() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}

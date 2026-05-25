@@ -10,7 +10,7 @@
 //!
 //! These tests define the expected lifecycle behavior for cancel, resume, retry,
 //! and answer commands. They are RED-PHASE tests that MUST FAIL until the
-//! lifecycle command surface is implemented in velvet_ballastics.
+//! lifecycle command surface is implemented in velvet_ballistics.
 //!
 //! Evidence command: `cargo test --test lifecycle_integration -- --test-threads=1`
 //! Expected result: compilation errors OR test failures until lifecycle commands exist.

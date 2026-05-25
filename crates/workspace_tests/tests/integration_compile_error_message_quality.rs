@@ -50,7 +50,7 @@ fn compile_error_empty_source_message_is_descriptive() {
 #[test]
 fn compile_error_utf8_message_includes_invalid_sequence() {
     // Valid UTF-8 YAML with a trailing byte that is invalid
-    let source = b"version: velvet-ballastics/v1\nname: test\n";
+    let source = b"version: velvet-ballistics/v1\nname: test\n";
     // This source is valid UTF-8 so it won't trigger Utf8 error directly,
     // but we verify the error variant exists and Display formats.
     let errors = all_errors(source);
@@ -62,7 +62,7 @@ fn compile_error_utf8_message_includes_invalid_sequence() {
 #[test]
 fn compile_error_parse_invalid_yaml_is_syntax_error() {
     // Missing colon after key
-    let source = b"version: velvet-ballastics/v1\nname test\n";
+    let source = b"version: velvet-ballistics/v1\nname test\n";
     let error = parse_error(source).expect("expected error");
     assert!(
         matches!(error, CompileError::Parse(_)),
@@ -105,7 +105,7 @@ fn compile_error_top_level_not_mapping_rejected() {
 #[test]
 fn compile_error_duplicate_key_reports_key_name() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: first
 name: second
 when:
@@ -131,7 +131,7 @@ steps:
 #[test]
 fn compile_error_anchor_forbidden_message_contains_mark() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -155,7 +155,7 @@ ref: *anchor
 #[test]
 fn compile_error_tag_forbidden_rejected() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: !tagged test
 when:
   manual: {}
@@ -176,7 +176,7 @@ steps:
 #[test]
 fn compile_error_merge_key_forbidden_rejected() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 <<: { injected: value }
 when:
@@ -223,7 +223,7 @@ fn compile_error_depth_limit_includes_depth_value() {
         ..Default::default()
     });
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -246,7 +246,7 @@ fn compile_error_sequence_limit_exists_and_configurable() {
         ..Default::default()
     });
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -272,7 +272,7 @@ fn compile_error_scalar_limit_exists() {
     });
     // A scalar longer than 5 bytes
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: this_name_is_way_too_long_for_the_limit
 when:
   manual: {}
@@ -294,7 +294,7 @@ steps:
 #[test]
 fn compile_error_unknown_top_level_field_rejected() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 unknown_toplevel: true
 when:
@@ -348,7 +348,7 @@ steps:
 #[test]
 fn compile_error_empty_steps_rejected() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -378,7 +378,7 @@ steps: []
 #[test]
 fn compile_error_missing_step_id_rejected() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -400,7 +400,7 @@ steps:
 #[test]
 fn compile_error_duplicate_step_id_rejected() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -424,7 +424,7 @@ steps:
 #[test]
 fn compile_error_step_shape_not_mapping_rejected() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -445,7 +445,7 @@ steps:
 #[test]
 fn compile_error_unknown_step_field_rejected() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -469,7 +469,7 @@ steps:
 #[test]
 fn compile_error_missing_step_primitive_rejected() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -490,7 +490,7 @@ steps:
 #[test]
 fn compile_error_multiple_step_primitives_rejected() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -518,7 +518,7 @@ steps:
 #[test]
 fn compile_error_invalid_name_rejected() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: "invalid name with spaces"
 when:
   manual: {}
@@ -541,7 +541,7 @@ steps:
 #[test]
 fn compile_error_invalid_trigger_count_rejected() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -565,7 +565,7 @@ steps:
 #[test]
 fn compile_error_unknown_trigger_kind_rejected() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   unknown_trigger: {}

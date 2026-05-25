@@ -5,7 +5,7 @@
 - Scope: release-gating executable Given/When/Then contracts for deterministic run/replay/recovery/generated-vs-IR behavior through public surfaces only.
 - Cited startup rules: `/home/lewis/.claude/skills/rust-contract/SKILL.md` and `/home/lewis/.agents/skills/rust-contract/SKILL.md` both require contract-first design, TLA+ by default for temporal behavior, Verus for Rust-local pure/core logic, valid JSONL proof obligations, and no implementation/test/proof code.
 - Master clauses read: lines 23, 49, 235-240, 790-797, 1073-1107, 1256-1265, 1276-1285, 1318-1344, 1483-1496, 1514.
-- Public surfaces from delivery scope: `FjallJournal::events_for_run`, `recover_full_journal`, `recover_runtime_summary`, `recover_runtime_frame_seed`, `verify_digests`, `Runtime::submit_compiled_with_inputs`, `Runtime::inspect_run`, `compare_generated_to_ir`, `validate_generated_subset`, and CLI `velvet-ballastics replay/events/inspect`.
+- Public surfaces from delivery scope: `FjallJournal::events_for_run`, `recover_full_journal`, `recover_runtime_summary`, `recover_runtime_frame_seed`, `verify_digests`, `Runtime::submit_compiled_with_inputs`, `Runtime::inspect_run`, `compare_generated_to_ir`, `validate_generated_subset`, and CLI `velvet-ballistics replay/events/inspect`.
 
 ## Assumptions
 - Scenario implementation will live in `crates/workspace_tests/tests/vb_kyyf_cross_run_determinism.rs` or an equivalent public-surface BDD test target.

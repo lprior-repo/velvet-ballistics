@@ -45,25 +45,25 @@ verus verification/verus/diagnostic_envelope_verus.rs
 `TEST-EXIT-001`:
 
 ```bash
-TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballastics exit_code --all-features
+TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballistics exit_code --all-features
 ```
 
 `STATIC-EXIT-001`:
 
 ```bash
-rg -n "DomainError\s*=\s*9|ExitCode::from\(9u8\)|0_to_9|<= 9" crates/velvet_ballastics/src/exit_code.rs verification/verus/diagnostic_envelope_verus.rs
+rg -n "DomainError\s*=\s*9|ExitCode::from\(9u8\)|0_to_9|<= 9" crates/velvet_ballistics/src/exit_code.rs verification/verus/diagnostic_envelope_verus.rs
 ```
 
 `TEST-DIAGNOSTICS-001`:
 
 ```bash
-TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballastics parse_error_unknown_command_exit_code_is_1 --all-features
+TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballistics parse_error_unknown_command_exit_code_is_1 --all-features
 ```
 
 `TEST-STRUCTURED-001`:
 
 ```bash
-TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballastics bdd_format_parity_exit_code_identical_across_formats --all-features
+TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballistics bdd_format_parity_exit_code_identical_across_formats --all-features
 ```
 
 `TEST-POSTCARD-001`:

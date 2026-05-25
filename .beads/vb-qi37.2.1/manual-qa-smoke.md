@@ -18,7 +18,7 @@ cargo nextest run -p vb_core --test aggregate_resource_budget_red --no-fail-fast
 ```
 warning: skipping duplicate package `bitflags v2.10.0 (https://github.com/makepad/makepad?branch=dev#20b6c53b)`
     Blocking waiting for file lock on package cache
-warning: /home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballastics/Cargo.toml: file `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballastics/src/main.rs` found to be present in multiple build targets
+warning: /home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballistics/Cargo.toml: file `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballistics/src/main.rs` found to be present in multiple build targets
 warning: skipping duplicate package `bitflags v2.10.0`
     Finished `test` profile [unoptimized + debuginfo] target(s) in 0.14s
 ────────────

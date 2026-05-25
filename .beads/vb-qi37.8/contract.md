@@ -41,7 +41,7 @@
 | R17 | `vb_compile::api_compilation.rs:51` calls `validate_with_contracts` | api_compilation.rs:51 |
 | R18 | `vb_compile::schema.rs:651` calls `validate` | schema.rs:651 |
 | R19 | `vb_compile::types.rs:155` calls `validate` | types.rs:155 |
-| R20 | `velvet_ballastics::commands_verify.rs:76` calls `validate` | commands_verify.rs:76 |
+| R20 | `velvet_ballistics::commands_verify.rs:76` calls `validate` | commands_verify.rs:76 |
 | R21 | `fuzz::lib.rs:40,60` calls `validate_with_contracts` | fuzz/lib.rs |
 
 ### 1.4 Error Handling Requirements

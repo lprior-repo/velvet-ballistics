@@ -62,13 +62,13 @@ rtk rm -rf /tmp/opencode/vb-kyyf-moon-ci-tmp && rtk mkdir -p /tmp/opencode/vb-ky
 Result: PASS.
 
 ```text
-velvet-ballastics:test | Summary [  13.814s] 11026 tests run: 11026 passed, 0 skipped
-velvet-ballastics:mutants-smoke | 1 mutant tested: 1 caught
-velvet-ballastics:source-length | DEFERRED_GLOBAL: crates/vb_compile/src/expression_bytecode.rs has 2242 physical lines (limit <300)
-velvet-ballastics:source-length | DEFERRED_GLOBAL: crates/vb_compile/src/expression.rs has 881 physical lines (limit <300)
-velvet-ballastics:source-length | DEFERRED_GLOBAL: crates/vb_compile/src/references.rs has 342 physical lines (limit <300)
-velvet-ballastics:source-length | DEFERRED_GLOBAL: crates/vb_compile/src/schema.rs has 729 physical lines (limit <300)
-velvet-ballastics:source-length | DEFERRED_GLOBAL: crates/vb_compile/src/type_taint.rs has 511 physical lines (limit <300)
+velvet-ballistics:test | Summary [  13.814s] 11026 tests run: 11026 passed, 0 skipped
+velvet-ballistics:mutants-smoke | 1 mutant tested: 1 caught
+velvet-ballistics:source-length | DEFERRED_GLOBAL: crates/vb_compile/src/expression_bytecode.rs has 2242 physical lines (limit <300)
+velvet-ballistics:source-length | DEFERRED_GLOBAL: crates/vb_compile/src/expression.rs has 881 physical lines (limit <300)
+velvet-ballistics:source-length | DEFERRED_GLOBAL: crates/vb_compile/src/references.rs has 342 physical lines (limit <300)
+velvet-ballistics:source-length | DEFERRED_GLOBAL: crates/vb_compile/src/schema.rs has 729 physical lines (limit <300)
+velvet-ballistics:source-length | DEFERRED_GLOBAL: crates/vb_compile/src/type_taint.rs has 511 physical lines (limit <300)
 Tasks: 21 completed (4 cached)
  Time: 40s 768ms
 ```

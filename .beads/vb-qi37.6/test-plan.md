@@ -354,7 +354,7 @@ Red expectation: fails first if strict submit can succeed using artifact existen
 Commands:
 
 ```bash
-rg 'admit_run\(|compiled_ir_exists\(' crates/vb_runtime/src crates/velvet_ballastics/tests
+rg 'admit_run\(|compiled_ir_exists\(' crates/vb_runtime/src crates/velvet_ballistics/tests
 TMPDIR=/home/lewis/src/vb-qi37-6/.tmp RUSTC_WRAPPER= cargo test -p vb_runtime strict_submit_uses_admit_artifact_run_before_allocation --lib
 ```
 
@@ -404,7 +404,7 @@ Command:
 
 ```bash
 TMPDIR=/home/lewis/src/vb-qi37-6/.tmp RUSTC_WRAPPER= cargo test -p vb_ui_model required_capabilities --lib
-TMPDIR=/home/lewis/src/vb-qi37-6/.tmp RUSTC_WRAPPER= cargo test -p velvet_ballastics ui_required_capabilities --test admission_evidence_integration
+TMPDIR=/home/lewis/src/vb-qi37-6/.tmp RUSTC_WRAPPER= cargo test -p velvet_ballistics ui_required_capabilities --test admission_evidence_integration
 ```
 
 ### Behavior 22: Kani exact-grant setup routes to State 11 execution
@@ -663,8 +663,8 @@ State 11 must classify failures as local implementation/proof failures, not rein
 ### Static scans
 
 ```bash
-rg 'admit_run\(|compiled_ir_exists\(' crates/vb_runtime/src crates/velvet_ballastics/tests
-rg 'CapabilitySet::empty\(\)' crates/vb_runtime/src crates/velvet_ballastics/tests
+rg 'admit_run\(|compiled_ir_exists\(' crates/vb_runtime/src crates/velvet_ballistics/tests
+rg 'CapabilitySet::empty\(\)' crates/vb_runtime/src crates/velvet_ballistics/tests
 rg 'required_capabilities' crates/vb_storage/src crates/vb_runtime/src crates/vb_ui_model/src crates/vb_validate/src
 rustup run nightly-2026-04-28 cargo clippy --workspace --lib --bins --examples --all-features -- -D warnings
 ```

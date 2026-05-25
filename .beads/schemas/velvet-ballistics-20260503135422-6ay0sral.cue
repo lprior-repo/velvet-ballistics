@@ -21,7 +21,7 @@ import "list"
 
     // Specific preconditions that must be verified
     precondition_checks: [
-      "benches/velvet_ballastics.rs already uses criterion with BenchmarkId and Throughput.",
+      "benches/velvet_ballistics.rs already uses criterion with BenchmarkId and Throughput.",
       "BENCH_METADATA is defined in the bench file for fixture-backed metadata.",
       "The justfile has benchmark-proof and bench-build targets.",
     ]

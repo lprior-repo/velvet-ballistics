@@ -8,7 +8,7 @@ Current: Formal verification execution, 2026-05-19
 
 The baseline was captured against the isolated workspace `/home/lewis/src/femdation-vb-qi37-26-1` with the following verified state:
 
-- `cargo check --package velvet-ballastics-workspace-tests --tests` → PASS (exit 0, 0 errors)
+- `cargo check --package velvet-ballistics-workspace-tests --tests` → PASS (exit 0, 0 errors)
 - `cargo check --package vb_ipc` → PASS (exit 0, 0 errors)
 - `crates/vb_ipc/src/server/handlers.rs` identical between source checkout and isolated workspace
 - No regressions detected at baseline
@@ -19,7 +19,7 @@ The baseline was captured against the isolated workspace `/home/lewis/src/femdat
 | Obligation | Layer | Command | Result | Classification |
 |---|---|---|---|---|
 | COMP-001 | static-scan | `cargo check -p vb_ipc` | **PASS** | bead-local |
-| COMP-002 | static-scan | `cargo check -p velvet-ballastics-workspace-tests --tests` | **PASS** | workspace |
+| COMP-002 | static-scan | `cargo check -p velvet-ballistics-workspace-tests --tests` | **PASS** | workspace |
 | COMP-003 | static-scan | `cargo clippy -p vb_ipc -- -D warnings` | **PASS** | bead-local |
 | SAFE-001 | static-scan | `grep` (diff-scoped against `0ebc5270`) | **PASS** | bead-local |
 | SAFE-002 | static-scan | `grep` (diff-scoped against `0ebc5270`) | **PASS** | bead-local |

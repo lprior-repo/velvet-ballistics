@@ -11,8 +11,8 @@ The Moon `:test` gate was executed but failed. The process was terminated after 
 ## Stages Completed
 
 1. `velvet-ballistics:agent-cli-contract` - cached (277050d8)
-2. `velvet-ballastics:supply-chain` - running for ~60s before termination
-3. `velvet-ballastics:nightly-feature-gate` - started
+2. `velvet-ballistics:supply-chain` - running for ~60s before termination
+3. `velvet-ballistics:nightly-feature-gate` - started
 
 ## Failure Details
 

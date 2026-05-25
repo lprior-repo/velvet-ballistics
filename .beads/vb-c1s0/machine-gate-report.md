@@ -11,7 +11,7 @@ attempt: 1
 ### Test Execution
 
 ```bash
-cargo nextest run --package velvet-ballastics-workspace-tests \
+cargo nextest run --package velvet-ballistics-workspace-tests \
   --test vb_c1s0_orchestration_runtime_tests --retries 2 --flaky-result fail
 ```
 
@@ -20,7 +20,7 @@ cargo nextest run --package velvet-ballastics-workspace-tests \
 ### Build
 
 ```bash
-cargo build --package velvet-ballastics-workspace-tests
+cargo build --package velvet-ballistics-workspace-tests
 ```
 
 **Result**: SUCCESS (0 errors)
@@ -28,7 +28,7 @@ cargo build --package velvet-ballastics-workspace-tests
 ### Format Check
 
 ```bash
-cargo fmt --check --package velvet-ballastics-workspace-tests
+cargo fmt --check --package velvet-ballistics-workspace-tests
 ```
 
 **Result**: SUCCESS (no output = compliant)
@@ -36,7 +36,7 @@ cargo fmt --check --package velvet-ballastics-workspace-tests
 ### Clippy
 
 ```bash
-cargo clippy --package velvet-ballastics-workspace-tests \
+cargo clippy --package velvet-ballistics-workspace-tests \
   --test vb_c1s0_orchestration_runtime_tests -- -D warnings
 ```
 

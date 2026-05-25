@@ -59,7 +59,7 @@ Counts: PASS 9, FAIL_LOCAL 0, FAIL_REGRESSION 0, WAIVED 0, DEFERRED_GLOBAL 0.
 These are not added as ledger obligations; they are explicit rerun coverage evidence requested for State 11 after black-hat repair.
 
 - Structured diagnostic JSON/JSONL and stdout/stderr separation:
-  - Command: `TMPDIR=$PWD/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballastics --test vb_qi37_13_structured_reconciliation --all-features`
+  - Command: `TMPDIR=$PWD/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballistics --test vb_qi37_13_structured_reconciliation --all-features`
   - Result: PASS, 11 passed.
   - Covered parse routes: unknown command JSON, unknown command JSONL one-line stderr, unsupported emit mode JSON, unsupported status emit mode JSON.
   - Covered non-parse routes: missing-file validate JSON, malformed YAML validate JSONL, missing-file compile JSON, runtime input decode JSON, storage open JSON.
@@ -79,10 +79,10 @@ These are not added as ledger obligations; they are explicit rerun coverage evid
 - Command matrix / child reconciliation:
   - `RECON-CHILD-001` and `MATRIX-COMMAND-001` exact commands both passed.
 - Clippy/fmt:
-  - `TMPDIR=$PWD/target/tmp RUSTC_WRAPPER= cargo clippy -p velvet_ballastics --lib --bin velvet-ballastics --all-features -- -D warnings` -> PASS.
-  - `TMPDIR=$PWD/target/tmp RUSTC_WRAPPER= cargo fmt --check -p velvet_ballastics && rustfmt --edition 2024 --check crates/velvet_ballastics/src/main.rs` -> PASS.
+  - `TMPDIR=$PWD/target/tmp RUSTC_WRAPPER= cargo clippy -p velvet_ballistics --lib --bin velvet-ballistics --all-features -- -D warnings` -> PASS.
+  - `TMPDIR=$PWD/target/tmp RUSTC_WRAPPER= cargo fmt --check -p velvet_ballistics && rustfmt --edition 2024 --check crates/velvet_ballistics/src/main.rs` -> PASS.
   - `TMPDIR=$PWD/target/tmp RUSTC_WRAPPER= cargo clippy --manifest-path fuzz/Cargo.toml --features fuzz --lib --bin vb_ui_model_postcard_decode -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap -D clippy::arithmetic_side_effects -D clippy::as_conversions -D clippy::let_underscore_must_use -D clippy::await_holding_lock` -> PASS.
-  - `rustfmt --edition 2024 --check crates/velvet_ballastics/src/exit_code.rs verification/verus/diagnostic_envelope_verus.rs fuzz/src/lib.rs fuzz/src/bin/vb_ui_model_postcard_decode.rs` -> PASS.
+  - `rustfmt --edition 2024 --check crates/velvet_ballistics/src/exit_code.rs verification/verus/diagnostic_envelope_verus.rs fuzz/src/lib.rs fuzz/src/bin/vb_ui_model_postcard_decode.rs` -> PASS.
 
 ## Waivers
 

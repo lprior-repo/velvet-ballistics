@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-//! Proof kernels for velvet-ballastics.
+//! Proof kernels for velvet-ballistics.
 //!
 //! Tiny, pure, sequential Rust kernels suitable for formal verification.
 //! These are extracted from vb_core for Verus/Aeneas extraction.

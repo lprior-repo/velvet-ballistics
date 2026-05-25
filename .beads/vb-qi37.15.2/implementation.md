@@ -13,4 +13,4 @@ Changes:
 
 Evidence:
 - Red: `cli_submit_json_returns_structured_identifiers` failed before implementation with `FjallError: Locked`.
-- Green: `rtk cargo test -p velvet_ballastics --test cli_integration cli_submit_json_returns_structured_identifiers` -> 1 passed.
+- Green: `rtk cargo test -p velvet_ballistics --test cli_integration cli_submit_json_returns_structured_identifiers` -> 1 passed.

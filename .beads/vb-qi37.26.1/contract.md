@@ -26,7 +26,7 @@
 
 ## Postconditions
 - POST-001: `cargo check -p vb_ipc` exits with code `0` and zero errors.
-- POST-002: `cargo check -p velvet-ballastics-workspace-tests --tests` exits with code `0` and zero errors.
+- POST-002: `cargo check -p velvet-ballistics-workspace-tests --tests` exits with code `0` and zero errors.
 - POST-003: `cargo clippy -p vb_ipc -- -D warnings` exits with code `0` (source lint zero tolerance).
 - POST-004: No new `unsafe`, `unwrap`, `expect`, `panic`, `todo`, or `unimplemented` are introduced in the changed code.
 

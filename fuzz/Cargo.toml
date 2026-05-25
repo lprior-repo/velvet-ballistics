@@ -1,5 +1,5 @@
 [package]
-name = "velvet-ballastics-fuzz"
+name = "velvet-ballistics-fuzz"
 version = "0.1.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
@@ -490,6 +490,13 @@ bench = false
 [[bin]]
 name = "vb_rpch_replay_events_fuzz"
 path = "fuzz_targets/vb_rpch_replay_events_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "choose_lowering_fuzzer"
+path = "fuzz_targets/choose_lowering_fuzzer.rs"
 test = false
 doc = false
 bench = false

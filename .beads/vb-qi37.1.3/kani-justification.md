@@ -11,7 +11,7 @@ updated_at: 2026-05-09T00:00:00Z
 
 ### 1. No Existing Kani Infrastructure
 
-The velvet-ballastics codebase has **zero existing Kani harnesses**:
+The velvet-ballistics codebase has **zero existing Kani harnesses**:
 ```bash
 $ rtk grep -rn "#\[kani::proof\]" crates/
 0 matches

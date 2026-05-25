@@ -1,4 +1,4 @@
-# Proof Obligation Registry for velvet-ballastics
+# Proof Obligation Registry for velvet-ballistics
 # Source of truth for all formal verification requirements
 # Each obligation maps to: section references, proof level, required commands, evidence artifact
 

@@ -41,7 +41,7 @@ updated_at: 2026-05-09T00:00:00Z
 - `impl From<vb_storage::JournalError> for RuntimeError` (line 462)
 - No dedicated `RuntimeError` variant for process lock held
 
-### CLI: velvet_ballastics/src/bench.rs (131 lines)
+### CLI: velvet_ballistics/src/bench.rs (131 lines)
 - `cmd_doctor(db: &Path) -> ExitCode` (line 67)
   - Opens journal via `vb_storage::FjallJournal::open(db, None)`
   - On error: prints "FAIL: cannot open journal" and returns `ExitCode::FAILURE`
@@ -61,7 +61,7 @@ updated_at: 2026-05-09T00:00:00Z
 - `crates/vb_storage/src/process_lock.rs` - may need public API
 - `crates/vb_storage/src/tests.rs` - add lock tests
 - `crates/vb_runtime/src/` - add runtime startup lock tests
-- `crates/velvet_ballastics/src/` - add doctor lock tests
+- `crates/velvet_ballistics/src/` - add doctor lock tests
 
 ## Integration Points
 - Storage → Runtime: `JournalError` propagates via `From` impl

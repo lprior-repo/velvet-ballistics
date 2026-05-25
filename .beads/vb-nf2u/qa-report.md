@@ -90,10 +90,10 @@ Actual output excerpt:
 ```text
 Nextest run ID 066893d6-86e0-47a3-854a-a972c567b673 with nextest profile: default
     Starting 4 tests across 1 binary
-        PASS [   0.074s] (1/4) velvet-ballastics-workspace::vb_nf2u_ui_release_acceptance test_all_eight_screens_pass_reachability_and_overlap_gates
-        PASS [   0.172s] (2/4) velvet-ballastics-workspace::vb_nf2u_ui_release_acceptance test_intentional_overlap_fixture_fails_gate
-        PASS [   0.272s] (3/4) velvet-ballastics-workspace::vb_nf2u_ui_release_acceptance test_intentional_secret_fixture_fails_redaction_gate
-        PASS [   0.372s] (4/4) velvet-ballastics-workspace::vb_nf2u_ui_release_acceptance test_secret_values_are_redacted_in_every_screen
+        PASS [   0.074s] (1/4) velvet-ballistics-workspace::vb_nf2u_ui_release_acceptance test_all_eight_screens_pass_reachability_and_overlap_gates
+        PASS [   0.172s] (2/4) velvet-ballistics-workspace::vb_nf2u_ui_release_acceptance test_intentional_overlap_fixture_fails_gate
+        PASS [   0.272s] (3/4) velvet-ballistics-workspace::vb_nf2u_ui_release_acceptance test_intentional_secret_fixture_fails_redaction_gate
+        PASS [   0.372s] (4/4) velvet-ballistics-workspace::vb_nf2u_ui_release_acceptance test_secret_values_are_redacted_in_every_screen
 ────────────
      Summary [   0.373s] 4 tests run: 4 passed, 0 skipped
 

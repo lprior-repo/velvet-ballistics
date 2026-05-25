@@ -89,7 +89,7 @@ Expected: TLC reports no invariant violations, no deadlock, temporal properties 
 | Layer | Target | Claim | Command |
 |-------|--------|-------|---------|
 | replay | vb_storage journal | Resume survives journal replay | `cargo test --package vb_storage --test replay_resume` |
-| integration | CLI-runtime boundary | Command::Resume routes correctly | `cargo test --package velvet_ballastics --test cli_integration` |
+| integration | CLI-runtime boundary | Command::Resume routes correctly | `cargo test --package velvet_ballistics --test cli_integration` |
 | unit | ShardCommand::Resume | Valid transitions only | `cargo test --package vb_runtime --lib -- shard::lifecycle` |
 | proptest | RuntimeState predicates | Exhaustive state coverage | `cargo test --package vb_runtime --lib -- properties` |
 

@@ -17,7 +17,7 @@ ALL_LANES_APPROVED_FOR_VERIFY_STANDARD
 | ID | Clause | Claim | Verifier | Command | Evidence |
 |---|---|---|---|---|---|
 | COMP-001 | C1 | vb_ipc compiles zero errors | cargo | `cargo check -p vb_ipc` | Exit 0, 0 errors |
-| COMP-002 | C2 | workspace-tests compiles | cargo | `cargo check -p velvet-ballastics-workspace-tests --tests` | Exit 0, 0 errors |
+| COMP-002 | C2 | workspace-tests compiles | cargo | `cargo check -p velvet-ballistics-workspace-tests --tests` | Exit 0, 0 errors |
 | COMP-003 | C1 | vb_ipc clippy clean | cargo clippy | `cargo clippy -p vb_ipc -- -D warnings` | Exit 0, 0 warnings |
 | SAFE-001 | C3 | No new unwrap/expect/panic/todo/unimplemented | grep | `grep -n 'unwrap\|expect\|panic!\|todo!\|unimplemented!' crates/vb_ipc/src/server/handlers.rs` | No new matches in diff |
 | SAFE-002 | C3 | No unsafe introduced | grep | `grep -n 'unsafe' crates/vb_ipc/src/server/handlers.rs` | Only `#![forbid(unsafe_code)]` |

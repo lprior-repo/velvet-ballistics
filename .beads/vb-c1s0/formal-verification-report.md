@@ -27,7 +27,7 @@ All tests pass. Formal verification obligations were approved in prior states.
 - nextest run ID: de5657d3-9e70-413b-8896-9269860469a0
 
 ### Build: PASS
-- `cargo build --package velvet-ballastics-workspace-tests` succeeds
+- `cargo build --package velvet-ballistics-workspace-tests` succeeds
 
 ### Format: PASS
 - `cargo fmt --check` passes with no output

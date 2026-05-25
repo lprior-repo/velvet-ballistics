@@ -34,7 +34,7 @@
 | ID | Trace | Behavior | Primary layer |
 |---|---|---|---|
 | B01 | PRE-001 / ERR-001 | `compile_source` rejects an empty canonical source with `CompileError::EmptySteps` before IR construction. | unit + proptest |
-| B02 | PRE-002 | canonical admission accepts only `velvet-ballastics/v1` plus supported canonical trigger forms. | integration + proptest |
+| B02 | PRE-002 | canonical admission accepts only `velvet-ballistics/v1` plus supported canonical trigger forms. | integration + proptest |
 | B03 | PRE-003 / ERR-002 | unsupported top-level declarations and top-level `result` return exact unsupported top-level errors. | unit + proptest |
 | B04 | PRE-004 / ERR-004 | duplicate top-level or nested step IDs return `DuplicateStepId` before runtime validation. | integration + proptest + Kani checkpoint |
 | B05 | PRE-005 / ERR-003 | unsupported step control fields return `UnsupportedStepControlField` unless a future primitive contract consumes them. | unit + proptest |
@@ -94,7 +94,7 @@ Deviation note: the ratio is near the Testing Trophy target but tilts heavier to
 
 `fn compile_source_returns_empty_steps_when_source_has_no_steps()`
 
-- Given: a canonical `WorkflowSource` with version `velvet-ballastics/v1`, supported trigger, and zero steps.
+- Given: a canonical `WorkflowSource` with version `velvet-ballistics/v1`, supported trigger, and zero steps.
 - When: `compile_source(&source)` is called.
 - Then: result is `Err(CompileErrors)` containing exactly `CompileError::EmptySteps`.
 - And: no `CompiledWorkflow`, nodes, digest, or validation side effects are produced.

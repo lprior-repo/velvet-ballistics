@@ -39,7 +39,7 @@ updated_at: 2026-05-11
 - `jj log`: current change `uoxvlsmwxmxl`; pre-rebase parent `5fb2d246b0f6`, then successfully rebased to parent `c993943126cc`.
 - `jj diff --stat`: 41 changed files after rebase.
 - `moon ci`: PASS after rebase; 19 tasks completed in 6m24s, including `source-length`, `fmt`, `lint-src`, `test`, `feature-powerset`, `doc-test`, `hardened-build`, `maxperf`, and `maxperf-native`.
-- `rtk cargo test -p vb_runtime runtime_error --lib && rtk cargo test -p velvet_ballastics --test admission_durability_code`: PASS; `19 passed, 1324 filtered out`; `1 passed`.
+- `rtk cargo test -p vb_runtime runtime_error --lib && rtk cargo test -p velvet_ballistics --test admission_durability_code`: PASS; `19 passed, 1324 filtered out`; `1 passed`.
 
 ## Landing Decision
 - Ready-to-land preflight: YES for code/artifact/gate state, subject to normal State 15 landing actions not requested here.

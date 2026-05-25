@@ -7,7 +7,7 @@ STATUS: PASS
 
 # Manual QA Smoke
 
-Command: `rtk cargo run -p velvet_ballastics --bin vb -- simulate /tmp/tmp.FtR48HRB6h/workflow.yaml --json`
+Command: `rtk cargo run -p velvet_ballistics --bin vb -- simulate /tmp/tmp.FtR48HRB6h/workflow.yaml --json`
 
 Verbatim output excerpt:
 
@@ -15,7 +15,7 @@ Verbatim output excerpt:
 Running `target/debug/vb simulate /tmp/tmp.FtR48HRB6h/workflow.yaml --json`
 {
   "kind": "simulate",
-  "schema_version": "velvet-ballastics/v1",
+  "schema_version": "velvet-ballistics/v1",
   "success": true,
   "total_actions": 0,
   "total_branches": 0,

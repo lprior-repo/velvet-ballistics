@@ -2,7 +2,7 @@
 //! Integration tests for the `incident` command — vb-qi37.17.1.
 //!
 //! These tests create a temporary journal, populate it with events, and
-//! invoke the velvet-ballastics CLI binary to verify end-to-end behavior.
+//! invoke the velvet-ballistics CLI binary to verify end-to-end behavior.
 
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -25,9 +25,9 @@ impl JournalGuard {
     }
 }
 
-/// Helper: run the velvet-ballastics binary with the given arguments.
+/// Helper: run the velvet-ballistics binary with the given arguments.
 fn run_cli(args: Vec<OsString>) -> std::process::Output {
-    let exe = env!("CARGO_BIN_EXE_velvet-ballastics");
+    let exe = env!("CARGO_BIN_EXE_velvet-ballistics");
     let output = Command::new(exe).args(args).output().expect("cli must run");
     output
 }

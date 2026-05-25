@@ -65,10 +65,10 @@ python3 validation:
   Schema errors: 0
   Package command validation: 0 invalid -p workspace_tests commands
   Commands verified:
-    PO-001: cargo test -p velvet-ballastics-workspace-tests --test vb_kyyf_cross_run_determinism -- --test-threads=1 ✓
-    PO-003: cargo test -p velvet-ballastics-workspace-tests --test vb_kyyf_cross_run_determinism ✓
-    PO-006: cargo test -p velvet-ballastics-workspace-tests --test vb_kyyf_cross_run_determinism ✓
-    PO-007: cargo test -p velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog ✓
+    PO-001: cargo test -p velvet-ballistics-workspace-tests --test vb_kyyf_cross_run_determinism -- --test-threads=1 ✓
+    PO-003: cargo test -p velvet-ballistics-workspace-tests --test vb_kyyf_cross_run_determinism ✓
+    PO-006: cargo test -p velvet-ballistics-workspace-tests --test vb_kyyf_cross_run_determinism ✓
+    PO-007: cargo test -p velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog ✓
 ```
 
 All 10 obligation rows are valid JSON Lines with all required obligation-schema fields. Controller-patched package names confirmed correct.

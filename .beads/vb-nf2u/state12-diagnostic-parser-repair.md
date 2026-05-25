@@ -63,7 +63,7 @@ fn try_from(raw: RawCommandDiagnostic) -> std::result::Result<Self, Self::Error>
 ## Verification
 
 ```bash
-cargo nextest run -p velvet-ballastics-workspace --test vb_nf2u_ui_release_acceptance
+cargo nextest run -p velvet-ballistics-workspace --test vb_nf2u_ui_release_acceptance
 ```
 
 **Result:** 8 tests run, 8 passed, 0 skipped — all in 8.590s

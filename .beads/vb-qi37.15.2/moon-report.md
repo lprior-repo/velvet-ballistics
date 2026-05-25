@@ -19,5 +19,5 @@ Error: process::failed
 
 Bead-local command evidence:
 ```text
-rtk cargo test -p velvet_ballastics --test cli_integration cli_submit -> 4 passed, 74 filtered out
+rtk cargo test -p velvet_ballistics --test cli_integration cli_submit -> 4 passed, 74 filtered out
 ```

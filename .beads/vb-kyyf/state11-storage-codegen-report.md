@@ -52,7 +52,7 @@ cargo test: 367 passed (4 suites, 18.61s)
 - Result: `PASS`
 
 ### 4. Scoped cargo check
-- Command: `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo check -p vb_cli -p vb_storage -p velvet-ballastics-workspace-tests --all-targets`
+- Command: `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo check -p vb_cli -p vb_storage -p velvet-ballistics-workspace-tests --all-targets`
 - Working directory: `/home/lewis/src/bd-vb-kyyf-bdd`
 - Exit status: `0`
 - Raw output:

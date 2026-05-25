@@ -25,7 +25,7 @@ All three mandatory QA gates pass with real command evidence. The lifecycle inte
 
 **Command:**
 ```bash
-rtk cargo test --package velvet_ballastics --test lifecycle_integration -- --test-threads=1
+rtk cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1
 ```
 
 **Evidence:**
@@ -63,12 +63,12 @@ moon run :test
 
 **Evidence:**
 ```
-velvet-ballastics:test | ────────────
-velvet-ballastics:test |  Nextest run ID 41e503d2-99c9-4442-ae3c-e51bd2ba426d with nextest profile: default
-velvet-ballastics:test |     Starting 9894 tests across 59 binaries
-velvet-ballastics:test | ────────────
-velvet-ballastics:test |      Summary [  11.534s] 9894 tests run: 9894 passed, 0 skipped
-▮▮▮▮ velvet-ballastics:test (12s 451ms, 86088fa7)
+velvet-ballistics:test | ────────────
+velvet-ballistics:test |  Nextest run ID 41e503d2-99c9-4442-ae3c-e51bd2ba426d with nextest profile: default
+velvet-ballistics:test |     Starting 9894 tests across 59 binaries
+velvet-ballistics:test | ────────────
+velvet-ballistics:test |      Summary [  11.534s] 9894 tests run: 9894 passed, 0 skipped
+▮▮▮▮ velvet-ballistics:test (12s 451ms, 86088fa7)
 
 Tasks: 4 completed (1 cached)
  Time: 20s 496ms
@@ -84,7 +84,7 @@ Tasks: 4 completed (1 cached)
 
 **Command:**
 ```bash
-rtk cargo test --package velvet_ballastics --test lifecycle_integration -- --test-threads=1 --nocapture
+rtk cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1 --nocapture
 ```
 
 **Tests verified:**
@@ -101,7 +101,7 @@ rtk cargo test --package velvet_ballastics --test lifecycle_integration -- --tes
 
 **Command:**
 ```bash
-rtk cargo test --package velvet_ballastics --test lifecycle_integration -- --test-threads=1
+rtk cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1
 ```
 
 **16 invalid transition tests verified:**
@@ -221,7 +221,7 @@ rtk cargo test --package velvet_ballastics --test lifecycle_integration -- --tes
 
 | Gate | Command | Expected | Actual | Status |
 |------|---------|----------|--------|--------|
-| 1 | `rtk cargo test --package velvet_ballastics --test lifecycle_integration -- --test-threads=1` | 43 passed | 43 passed (0.67s) | **PASS** |
+| 1 | `rtk cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1` | 43 passed | 43 passed (0.67s) | **PASS** |
 | 2 | `moon run :quick` | PASS | Tasks: 1 completed (44s) | **PASS** |
 | 3 | `moon run :test` | 9894 passed | 9894 passed, 0 skipped (20s) | **PASS** |
 
@@ -231,7 +231,7 @@ rtk cargo test --package velvet_ballastics --test lifecycle_integration -- --tes
 
 ### Observation 1: Format Drift in Test File
 
-**Finding:** `cargo fmt -- --check` shows formatting differences in `crates/velvet_ballastics/tests/lifecycle_integration.rs` (test file, not production code).
+**Finding:** `cargo fmt -- --check` shows formatting differences in `crates/velvet_ballistics/tests/lifecycle_integration.rs` (test file, not production code).
 
 **Impact:** None — test file formatting does not affect functionality. All 43 tests pass regardless of formatting.
 

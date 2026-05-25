@@ -40,7 +40,7 @@ This plan covers all remaining **planned** proof obligations (`status: planned`)
 
 | Sub-test                                              | Command | Expected |
 |-------------------------------------------------------|---------|----------|
-| `vb_hxm0_acceptance_catalog` catalog shape validation | `cargo test --package velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog` | `test result: ok`; all 4 vb-njju rows present |
+| `vb_hxm0_acceptance_catalog` catalog shape validation | `cargo test --package velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog` | `test result: ok`; all 4 vb-njju rows present |
 | `vb_njju_catalog_rows_exist_and_validate`             | (included in above) | BDD-NJJU-001 through BDD-NJJU-004 all pass validate_catalog |
 | Public-surface isolation check                        | (included in validate_catalog) | no "private"/"helper" surface, all fixtures contain "isolated" |
 | Duplicate ID rejection                                | (included in validate_catalog) | no duplicate scenario IDs |
@@ -67,7 +67,7 @@ This plan covers all remaining **planned** proof obligations (`status: planned`)
 
 | Sub-test | Command | Expected |
 |---------|---------|----------|
-| Mutation plan test suite | `cargo test --package velvet-ballastics-workspace-tests --test vb_c3k9_current_api_mutation_plan` | `test result: ok` |
+| Mutation plan test suite | `cargo test --package velvet-ballistics-workspace-tests --test vb_c3k9_current_api_mutation_plan` | `test result: ok` |
 | Validates admission scope is named | (inline in test) | plan must reference admission-branch scope, not diagnostic.rs |
 | Validates blocking disposition | (inline in test) | non-blocking evidence → `EvidenceError::ReleaseGateWouldPassUnsafely` |
 | Rejects unrelated mutation scope | (inline in test) | unrelated scope → `EvidenceError::UnrelatedMutationScope` |
@@ -154,7 +154,7 @@ This plan covers all remaining **planned** proof obligations (`status: planned`)
 
 | Sub-test | Command | Expected |
 |---------|---------|----------|
-| Boundary inventory contract test | `cargo test --package velvet-ballastics-workspace-tests --test vb_y1zq_boundary_inventory_contract` | test passes |
+| Boundary inventory contract test | `cargo test --package velvet-ballistics-workspace-tests --test vb_y1zq_boundary_inventory_contract` | test passes |
 | Every unsafe boundary has fuzz evidence | (inline validation) | each boundary has either `has_fuzz: true` or `approved_blocker: true` |
 | Boundary list covers decoder, IPC, binary surfaces | (inline validation) | no unknown/unmapped boundary types pass silently |
 
@@ -176,7 +176,7 @@ This plan covers all remaining **planned** proof obligations (`status: planned`)
 
 | Sub-test | Command | Expected |
 |---------|---------|----------|
-| `test_unsafe_boundary_fuzz_missing_causes_release_gate_failure` | `cargo test --package velvet-ballastics-workspace-tests --test vb_njju_mutation_fuzz_property_closure test_unsafe_boundary_fuzz_missing_causes_release_gate_failure` | test passes (fail-closed behavior demonstrated) |
+| `test_unsafe_boundary_fuzz_missing_causes_release_gate_failure` | `cargo test --package velvet-ballistics-workspace-tests --test vb_njju_mutation_fuzz_property_closure test_unsafe_boundary_fuzz_missing_causes_release_gate_failure` | test passes (fail-closed behavior demonstrated) |
 
 **Evidence:** `target/test-output/vb_njju_mutation_fuzz_property_closure.log`
 

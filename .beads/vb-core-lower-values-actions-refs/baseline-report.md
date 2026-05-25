@@ -18,7 +18,7 @@ Touched crates/files summary (most relevant):
 |---|---|
 | `crates/vb_core/` | Core engine types, taint, capability, replay, validation, workflow, budget, kani harnesses |
 | `crates/vb_compile/` | Compiler lowering (primary target for this bead) |
-| `crates/velvet_ballastics/` | CLI postcard, exit codes, main |
+| `crates/velvet_ballistics/` | CLI postcard, exit codes, main |
 | `crates/vb_storage/` | Recovery subsystem |
 | `crates/vb_runtime/` | Runtime recovery |
 | `crates/vb_ui_model/` | Postcard tests, binary decode fuzz |

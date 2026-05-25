@@ -20,7 +20,7 @@ STATUS: PASS
 6. Removed the black-hat cited `unwrap_or` / `unwrap_or_else(Rect::unit)` defaults from `checks.rs`, `xtask/src/evidence.rs`, and Kani layout harnesses. Missing negative fixtures now remain fail-closed.
 
 ## Command results
-- PASS: `cargo nextest run -p velvet-ballastics-workspace --test vb_nf2u_ui_release_acceptance` — 8 passed, 0 skipped.
+- PASS: `cargo nextest run -p velvet-ballistics-workspace --test vb_nf2u_ui_release_acceptance` — 8 passed, 0 skipped.
 - PASS: `cargo nextest run -p vb_ui_snapshot -p xtask` — 130 passed, 0 skipped.
 - PASS: `cargo kani -p vb_ui_snapshot --harness inventory` — 1 harness verified, 0 failures; output `/home/lewis/.local/share/opencode/tool-output/tool_e10f3b508001iMh7MFD0MK0WZM`.
 - PASS: `cargo kani -p vb_ui_snapshot --harness layout_` — 5 harnesses verified, 0 failures; output `/home/lewis/.local/share/opencode/tool-output/tool_e10f3c7b1001jyxcOd4VGd14Xx`.

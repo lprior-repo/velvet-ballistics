@@ -56,7 +56,7 @@ This repaired plan explicitly addresses every finding in `.beads/vb-nsnc/test-pl
 | 14-15 | Missing/orphan regressions | Integration | existing public gate fixtures, exact payloads | Existing API semantics must not drift. |
 | 16 | Live gate wiring | Integration | call shared public API only | Catches edits only in test-only parallel gate. |
 | 17-21 | Diagnostic mapping | Unit | `diagnostic.rs`, `diag_convert.rs`, `diag_render.rs` | Pure conversion/rendering; exact codes. |
-| 22-23 | CLI/user rendering | E2E or CLI renderer integration | `crates/velvet_ballastics/tests/cli_integration.rs` or existing renderer harness | User-visible contract from process boundary/shared CLI renderer. |
+| 22-23 | CLI/user rendering | E2E or CLI renderer integration | `crates/velvet_ballistics/tests/cli_integration.rs` or existing renderer harness | User-visible contract from process boundary/shared CLI renderer. |
 | 24 | Static/resource safety | Static | `moon ci`, `rg`/repo forbidden checks, clippy, review checklist | Safety/resource obligations are cheaper and stricter statically. |
 
 Integration dominates because capability validation is a public verifier contract. Unit tests concentrate on pure grammar/diagnostic conversion. E2E stays narrow but must cover every new variant's user-facing rendering path.

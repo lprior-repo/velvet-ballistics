@@ -73,7 +73,7 @@ cargo clippy: No issues found
 $ cd /home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-atomic-admission && rtk cargo clippy --package vb_runtime -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap -D clippy::arithmetic_side_effects -D clippy::as_conversions -D clippy::let_underscore_must_use 2>&1 | tail -50
 cargo clippy: No issues found
 
-$ cd /home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-atomic-admission && rtk cargo clippy --package velvet_ballastics -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap -D clippy::arithmetic_side_effects -D clippy::as_conversions -D clippy::let_underscore_must_use 2>&1 | tail -50
+$ cd /home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-atomic-admission && rtk cargo clippy --package velvet_ballistics -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap -D clippy::arithmetic_side_effects -D clippy::as_conversions -D clippy::let_underscore_must_use 2>&1 | tail -50
 cargo clippy: No issues found
 ```
 
@@ -133,7 +133,7 @@ All mandatory verification gates pass:
 1. All required artifacts exist and are non-empty
 2. All JSONL files are valid
 3. All key review documents have STATUS: APPROVED
-4. All three touched crates (vb_storage, vb_runtime, velvet_ballastics) pass clippy with strict deny flags for unsafe code, unwrap, expect, panic, todo, unimplemented, unreachable, unchecked indexing/slicing
+4. All three touched crates (vb_storage, vb_runtime, velvet_ballistics) pass clippy with strict deny flags for unsafe code, unwrap, expect, panic, todo, unimplemented, unreachable, unchecked indexing/slicing
 5. No hallucinated file paths
 6. No deleted tests
 7. All contract clauses have PASS evidence

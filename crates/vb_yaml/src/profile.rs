@@ -3,7 +3,7 @@
 //! Strict YAML profile enforcement.
 //!
 //! This module implements the "strict profile" that rejects YAML features
-//! incompatible with the velvet-ballastics workflow definition language.
+//! incompatible with the velvet-ballistics workflow definition language.
 
 #[path = "profile_dupkeys.rs"]
 mod profile_dupkeys;

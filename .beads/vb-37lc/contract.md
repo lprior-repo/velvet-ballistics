@@ -1,11 +1,11 @@
 # Contract Specification: vb-37lc Canonical Spelling Scan
 
 ## Context
-- Feature: mechanical repository scan that enforces canonical `velvet-ballastics` naming and rejects legacy misspellings outside documented exceptions.
+- Feature: mechanical repository scan that enforces canonical `velvet-ballistics` naming and rejects legacy misspellings outside documented exceptions.
 - Domain terms:
-  - Canonical product, binary, package, and bead rig: `velvet-ballastics`.
-  - Canonical crate/module and bead database: `velvet_ballastics`.
-  - Canonical language version: `velvet-ballastics/v1`.
+  - Canonical product, binary, package, and bead rig: `velvet-ballistics`.
+  - Canonical crate/module and bead database: `velvet_ballistics`.
+  - Canonical language version: `velvet-ballistics/v1`.
   - Legacy exception: an occurrence of the legacy project spelling allowed only when it is the current external repository path, the master filename, or an explicitly labeled migration reference to a pre-existing external artifact.
   - Finding: a deterministic record containing file path, line number, column, matched spelling class, and remediation text.
 - Assumptions:
@@ -33,9 +33,9 @@
 - POST-006: Integration into the canonical quality flow makes invalid naming a blocking gate for source, docs, manifests, scripts, and configured bead references.
 
 ## Invariants
-- INV-001: Canonical product, binary, package, and bead rig spelling is always `velvet-ballastics`.
-- INV-002: Canonical crate/module and bead database spelling is always `velvet_ballastics`.
-- INV-003: Canonical language version spelling is always `velvet-ballastics/v1`.
+- INV-001: Canonical product, binary, package, and bead rig spelling is always `velvet-ballistics`.
+- INV-002: Canonical crate/module and bead database spelling is always `velvet_ballistics`.
+- INV-003: Canonical language version spelling is always `velvet-ballistics/v1`.
 - INV-004: Legacy project spelling is invalid unless the occurrence matches a documented exception with explicit migration context.
 - INV-005: The current external repository path and master filename are allowed legacy exceptions only; they must not expand into a blanket substring allowlist.
 - INV-006: The scan has no runtime-core dependencies on YAML, JSON, or HTTP parsing.

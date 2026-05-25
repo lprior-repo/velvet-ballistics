@@ -514,9 +514,9 @@ next_gate: State 6 proof-review and contract-verification-review must re-review 
   - `TMPDIR=target/tmp cargo kani -p vb_runtime --harness yaml_e2e_admission_matrix` exit=0; Kani reported `Complete - 1 successfully verified harnesses, 0 failures, 1 total`.
   - `TMPDIR=target/tmp rtk cargo fmt --check` exit=0.
 - compensating_executable_evidence:
-  - after `mkdir -p target/tmp crates/vb_storage/target/tmp crates/vb_runtime/target/tmp crates/velvet_ballastics/target/tmp`, `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p vb_storage -- --nocapture` exit=0; `983 passed (7 suites, 43.30s)`.
+  - after `mkdir -p target/tmp crates/vb_storage/target/tmp crates/vb_runtime/target/tmp crates/velvet_ballistics/target/tmp`, `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p vb_storage -- --nocapture` exit=0; `983 passed (7 suites, 43.30s)`.
   - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p vb_runtime -- --nocapture` exit=0; `1460 passed (10 suites, 1.16s)`.
-  - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet_ballastics --test cli_integration -- --nocapture` exit=0; `86 passed (1 suite, 1.24s)`.
+  - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet_ballistics --test cli_integration -- --nocapture` exit=0; `86 passed (1 suite, 1.24s)`.
 - failed_attempts_classified:
   - TLC `/tmp` disk quota failure: `BLOCK_LOCAL`; repaired with Java temp and TLC metadir under `target/tmp`.
   - cargo/sccache `/tmp` disk quota failure: `BLOCK_LOCAL`; bypassed with `RUSTC_WRAPPER=`.
@@ -556,7 +556,7 @@ next_gate: contract-verification-review must separately re-review repaired State
   - `TMPDIR=target/tmp cargo kani -p vb_runtime --harness yaml_e2e_admission_matrix` exit=0; `Complete - 1 successfully verified harnesses, 0 failures, 1 total`.
   - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p vb_storage -- --nocapture` exit=0; `983 passed (7 suites, 23.27s)`.
   - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p vb_runtime -- --nocapture` exit=0; `1460 passed (10 suites, 1.09s)`.
-  - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet_ballastics --test cli_integration -- --nocapture` exit=0; `86 passed (1 suite, 1.14s)`.
+  - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet_ballistics --test cli_integration -- --nocapture` exit=0; `86 passed (1 suite, 1.14s)`.
 - artifacts_written:
   - `.beads/vb-core-yaml-e2e-chain/proof-review.md`
   - `.beads/vb-core-yaml-e2e-chain/proof-findings.jsonl`
@@ -642,8 +642,8 @@ next_gate: implementation state must make the YAML-origin strict accepted-artifa
 - focused_gates:
   - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo fmt --check`: PASS.
   - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p vb_compile --test vb_core_yaml_e2e_chain_strict_yaml -- --nocapture`: PASS; `5 passed`.
-  - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet-ballastics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture`: EXPECTED RED; `4 passed; 1 failed`; failing test `storage_produced_strict_accepted_artifact_has_runtime_required_gate_count_when_yaml_origin_run_is_submitted`; blocker `artifact checksum mismatch`; log `/home/lewis/.local/share/rtk/tee/1778902076_cargo_test.log`.
-  - `PROPTEST_CASES=1000 RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet-ballastics-workspace --test vb_core_yaml_e2e_chain_contract source_digest_mismatch_returns_distinct_digest_when_claimed_digest_differs -- --nocapture`: PASS; `1 passed, 4 filtered out`.
+  - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet-ballistics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture`: EXPECTED RED; `4 passed; 1 failed`; failing test `storage_produced_strict_accepted_artifact_has_runtime_required_gate_count_when_yaml_origin_run_is_submitted`; blocker `artifact checksum mismatch`; log `/home/lewis/.local/share/rtk/tee/1778902076_cargo_test.log`.
+  - `PROPTEST_CASES=1000 RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet-ballistics-workspace --test vb_core_yaml_e2e_chain_contract source_digest_mismatch_returns_distinct_digest_when_claimed_digest_differs -- --nocapture`: PASS; `1 passed, 4 filtered out`.
 - fuzz_status: no bead-specific strict YAML / accepted artifact / recovery fuzz target was present; fuzz execution deferred and documented in test-writer report.
 - blocker_summary: YAML-origin compile output cannot be submitted as a strict accepted artifact because `submit_artifact` returns exact surfaced error text `artifact checksum mismatch`; implementation must repair digest/admission parity rather than weakening tests.
 
@@ -673,7 +673,7 @@ next_gate: route back to State 7 for test-plan repair, then State 8 for suite re
 - static_scan_evidence: changed State 8 tests had no weak `assert!(result.is_ok())` / `assert!(result.is_err())`, ignored tests, sleeps, shared global mutability, mocks, or private integration imports; `Cargo.toml` reported `INSTA_ABSENT`. Pre-existing unrelated workspace tests still contain weak assertion/discard patterns and are listed in `test-suite-review.md`.
 - execution_evidence:
   - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p vb_compile --test vb_core_yaml_e2e_chain_strict_yaml -- --nocapture`: PASS, `5 passed`.
-  - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet-ballastics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture`: FAIL, `4 passed; 1 failed`; failing test `storage_produced_strict_accepted_artifact_has_runtime_required_gate_count_when_yaml_origin_run_is_submitted`; raw log `/home/lewis/.local/share/rtk/tee/1778902412_cargo_test.log` line 19: `Error: "artifact checksum mismatch"`.
+  - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet-ballistics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture`: FAIL, `4 passed; 1 failed`; failing test `storage_produced_strict_accepted_artifact_has_runtime_required_gate_count_when_yaml_origin_run_is_submitted`; raw log `/home/lewis/.local/share/rtk/tee/1778902412_cargo_test.log` line 19: `Error: "artifact checksum mismatch"`.
 - rejection_summary: test plan fails density/fuzz gates; executable suite is red and has a digest property that does not exercise source persistence/admission exact error mapping. Coverage and mutation were not run because Tier 1 failed.
 
 ---
@@ -727,8 +727,8 @@ next_gate: rerun State 9 from Tier 0; implementation must later fix strict accep
   - isolation gate: PASS, `state8-repair-isolation-ok`.
   - `rtk cargo fmt --check` with `TMPDIR=target/tmp`: PASS.
   - `rtk cargo test -p vb_compile --test vb_core_yaml_e2e_chain_strict_yaml -- --nocapture`: PASS; `10 passed`.
-  - `rtk cargo test -p velvet-ballastics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture`: EXPECTED RED; `34 passed; 1 failed`; only failure is `storage_produced_strict_accepted_artifact_has_runtime_required_gate_count_when_yaml_origin_run_is_submitted`; raw blocker `artifact checksum mismatch`; log `/home/lewis/.local/share/rtk/tee/1778904823_cargo_test.log`.
-  - `PROPTEST_CASES=1000 rtk cargo test -p velvet-ballastics-workspace --test vb_core_yaml_e2e_chain_contract source_digest_mismatch_returns_payload_digest_mismatch_when_claimed_digest_differs -- --nocapture`: PASS; `1 passed, 34 filtered out`.
+  - `rtk cargo test -p velvet-ballistics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture`: EXPECTED RED; `34 passed; 1 failed`; only failure is `storage_produced_strict_accepted_artifact_has_runtime_required_gate_count_when_yaml_origin_run_is_submitted`; raw blocker `artifact checksum mismatch`; log `/home/lewis/.local/share/rtk/tee/1778904823_cargo_test.log`.
+  - `PROPTEST_CASES=1000 rtk cargo test -p velvet-ballistics-workspace --test vb_core_yaml_e2e_chain_contract source_digest_mismatch_returns_payload_digest_mismatch_when_claimed_digest_differs -- --nocapture`: PASS; `1 passed, 34 filtered out`.
   - fuzz smoke targets: `strict_yaml_profile`, `accepted_artifact_decode`, and `recovery_decode` all compiled and ran with stdin seeds under `TMPDIR=target/tmp`.
 - blocker_summary: accepted-artifact contract remains intentionally red because storage `submit_artifact` rejects YAML-compiled workflow with `artifact checksum mismatch`; test was not weakened/deleted/ignored.
 - report_updated: `.beads/vb-core-yaml-e2e-chain/test-writer-report.md` now contains State 8 repair command evidence, blocker classification, 35-test density evidence, and fuzz smoke evidence.
@@ -758,7 +758,7 @@ next_gate: implementation repair must make preserved strict accepted-artifact te
 - fuzz_evidence: `fuzz/Cargo.toml` contains `strict_yaml_profile`, `accepted_artifact_decode`, and `recovery_decode`; target bodies exist in `fuzz/src/lib.rs`; all three smoke bins compiled and ran with stdin seeds under `TMPDIR=target/tmp`.
 - execution_evidence:
   - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p vb_compile --test vb_core_yaml_e2e_chain_strict_yaml -- --nocapture`: PASS; `10 passed`.
-  - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet-ballastics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture`: FAIL; `34 passed; 1 failed`; raw log `/home/lewis/.local/share/rtk/tee/1778906844_cargo_test.log` line 49 shows `Error: "artifact checksum mismatch"`.
+  - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet-ballistics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture`: FAIL; `34 passed; 1 failed`; raw log `/home/lewis/.local/share/rtk/tee/1778906844_cargo_test.log` line 49 shows `Error: "artifact checksum mismatch"`.
 - rejection_summary: suite review remains rejected solely because `tests/vb_core_yaml_e2e_chain_contract.rs:166-183` still fails. Coverage and mutation were not run because Tier 1 failed.
 
 ---
@@ -785,7 +785,7 @@ next_gate: implementation repair may proceed; preserve the strict accepted-artif
 - density_evidence: Python count found 10 strict-YAML `#[test]` cases, 35 contract `#[test]` cases, and one `proptest!` block.
 - execution_evidence:
   - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p vb_compile --test vb_core_yaml_e2e_chain_strict_yaml -- --nocapture`: PASS; `10 passed`.
-  - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet-ballastics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture`: EXPECTED RED; `34 passed; 1 failed`; raw log `/home/lewis/.local/share/rtk/tee/1778907378_cargo_test.log` line 49 shows `Error: "artifact checksum mismatch"`.
+  - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet-ballistics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture`: EXPECTED RED; `34 passed; 1 failed`; raw log `/home/lewis/.local/share/rtk/tee/1778907378_cargo_test.log` line 49 shows `Error: "artifact checksum mismatch"`.
   - fuzz smoke binaries `strict_yaml_profile`, `accepted_artifact_decode`, and `recovery_decode` compiled and ran with deterministic stdin seeds.
 - approval_summary: the only observed failing test is the preserved sharp accepted-artifact contract test at `tests/vb_core_yaml_e2e_chain_contract.rs:166-183`; under the pre-implementation red-test criterion this is an implementation gap, not a test design defect.
 - repair_guide_update: not required because no State 7/8 test-design repair route remains.
@@ -828,8 +828,8 @@ next_gate: State 11 formal-verifier and machine gates must run proof obligations
 - focused_gates:
   - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo fmt --check`: PASS.
   - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p vb_compile --test vb_core_yaml_e2e_chain_strict_yaml -- --nocapture`: PASS; `10 passed`.
-  - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet-ballastics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture`: PASS; `35 passed`.
-  - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo check -p vb_compile -p vb_storage -p velvet-ballastics-workspace --tests`: PASS.
+  - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet-ballistics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture`: PASS; `35 passed`.
+  - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo check -p vb_compile -p vb_storage -p velvet-ballistics-workspace --tests`: PASS.
   - `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p vb_storage -- --nocapture`: PASS after stale-test repair; `983 passed`.
 - failed_attempts_classified:
   - Missing `CompileError::ArtifactEncode` diagnostic-code arm: `BLOCK_LOCAL`; repaired before completion.
@@ -911,7 +911,7 @@ next_gate: no further State 7 repair required; implementation (State 10) repaire
 - State 8 attempt 2 (2026-05-16T00:45:00Z): wrote 10 strict-YAML tests, 35 contract tests, storage proptest, and 3 fuzz smoke bins; strict accepted-artifact test remained EXPECTED RED (artifact checksum mismatch).
 - State 9 attempt 2 (2026-05-16T00:55:00Z): REJECTED — suite still red on accepted-artifact test.
 - State 9 attempt 3 / red-criterion-retry (2026-05-16T00:58:00Z): APPROVED — plan and suite approved under pre-implementation red-test criterion; only failure is preserved sharp contract test proving implementation gap.
-- State 10 (2026-05-16T05:13:12Z): COMPLETE — repaired YAML-origin artifact digest parity, raised storage gate count to 15, fixed stale assertions; `cargo test -p velvet-ballastics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture` → 35 passed.
+- State 10 (2026-05-16T05:13:12Z): COMPLETE — repaired YAML-origin artifact digest parity, raised storage gate count to 15, fixed stale assertions; `cargo test -p velvet-ballistics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture` → 35 passed.
 - State 11 (2026-05-16T07:39:00Z): REJECTED — 17 PASS, 6 FAIL_LOCAL; TLA/Verus/Kani/storage/runtime/CLI integration passed; E2E-REC-008 (wrong package name), STATIC-BOUNDARY-009 (needless return in fuzz), STRICT-YAML-012/ERR-STRICT-013 (digest inequality), MIRI-CODEC-024 (missing rust-src), GATE-RELEASE-025 (moon ci failures) classified as FAIL_LOCAL.
 
 ### test-plan.md status
@@ -1018,8 +1018,8 @@ next_gate: downstream State 11 residuals already routed; no further State 8 work
 |---|---|---|
 | `pwd -P` isolation | PASS | `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-yaml-e2e-chain` |
 | `TMPDIR=target/tmp RUSTC_WRAPPER= ... cargo test -p vb_compile --test vb_core_yaml_e2e_chain_strict_yaml -- --nocapture` | PASS | `cargo test: 10 passed (1 suite, 0.01s)` |
-| `TMPDIR=target/tmp RUSTC_WRAPPER= ... cargo test -p velvet-ballastics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture` | PASS | `cargo test: 35 passed (1 suite, 65.47s)` |
-| `TMPDIR=target/tmp RUSTC_WRAPPER= ... cargo test -p velvet-ballastics-workspace --test vb_core_yaml_e2e_chain_contract storage_produced_strict_accepted_artifact -- --nocapture` | PASS | `1 passed, 34 filtered out (0.10s)` |
+| `TMPDIR=target/tmp RUSTC_WRAPPER= ... cargo test -p velvet-ballistics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture` | PASS | `cargo test: 35 passed (1 suite, 65.47s)` |
+| `TMPDIR=target/tmp RUSTC_WRAPPER= ... cargo test -p velvet-ballistics-workspace --test vb_core_yaml_e2e_chain_contract storage_produced_strict_accepted_artifact -- --nocapture` | PASS | `1 passed, 34 filtered out (0.10s)` |
 
 ## Test count summary
 
@@ -1070,7 +1070,7 @@ next_gate: State 11 formal-verifier and machine gates; downstream residual failu
 |---|---|---|
 | `RUSTC_WRAPPER= TMPDIR=target/tmp ... cargo fmt --check` | PASS | no output |
 | `RUSTC_WRAPPER= TMPDIR=target/tmp ... cargo test -p vb_compile --test vb_core_yaml_e2e_chain_strict_yaml -- --nocapture` | PASS | `10 passed` |
-| `RUSTC_WRAPPER= TMPDIR=target/tmp ... cargo test -p velvet-ballastics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture` | PASS | `35 passed` |
+| `RUSTC_WRAPPER= TMPDIR=target/tmp ... cargo test -p velvet-ballistics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture` | PASS | `35 passed` |
 | `RUSTC_WRAPPER= TMPDIR=target/tmp ... cargo test -p vb_storage -- --nocapture` | PASS | `983 passed` |
 
 ## Power-of-Ten / Zero-Panic Rules
@@ -1116,13 +1116,13 @@ next_gate: route failures back for repair; no new regressions; 6 FAIL_LOCAL resi
 ### Test lanes (all PASS for bead-scoped)
 - vb_storage: `rtk cargo test -p vb_storage -- --nocapture` exit=0. 983 passed (7 suites, 30.95s).
 - vb_runtime: `rtk cargo test -p vb_runtime -- --nocapture` exit=0. 1460 passed (10 suites, 0.93s).
-- CLI: `rtk cargo test -p velvet_ballastics --test cli_integration -- --nocapture` exit=0. 86 passed.
+- CLI: `rtk cargo test -p velvet_ballistics --test cli_integration -- --nocapture` exit=0. 86 passed.
 - Strict YAML bead tests: `rtk cargo test -p vb_compile --test vb_core_yaml_e2e_chain_strict_yaml -- --nocapture` exit=0. 10 passed.
-- Contract bead tests: `rtk cargo test -p velvet-ballastics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture` exit=0. 35 passed.
+- Contract bead tests: `rtk cargo test -p velvet-ballistics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture` exit=0. 35 passed.
 
 ### FAIL_LOCAL obligations
 
-1. **E2E-REC-008** exit=101: exact command `cargo test -p velvet-ballastics-workspace --test vb_qi37_1_1_red_recovery_contract_test` fails. Wrong package; correct is `velvet-ballastics-workspace-tests`. Corrected command: `cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_1_1_red_recovery_contract_test` exit=0. 19 passed.
+1. **E2E-REC-008** exit=101: exact command `cargo test -p velvet-ballistics-workspace --test vb_qi37_1_1_red_recovery_contract_test` fails. Wrong package; correct is `velvet-ballistics-workspace-tests`. Corrected command: `cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_1_1_red_recovery_contract_test` exit=0. 19 passed.
 
 2. **STATIC-BOUNDARY-009** exit=101: `cargo clippy --workspace --lib --bins --examples --all-features -- -D warnings` fails at `fuzz/src/lib.rs:1392`: needless `return` under `clippy::needless_return`.
 
@@ -1153,7 +1153,7 @@ next_gate: route failures back for repair; no new regressions; 6 FAIL_LOCAL resi
 
 ## Repair routes
 
-- E2E-REC-008: update `proof-obligations.jsonl` command package name from `velvet-ballastics-workspace` to `velvet-ballastics-workspace-tests`. Owner: State 11/self.
+- E2E-REC-008: update `proof-obligations.jsonl` command package name from `velvet-ballistics-workspace` to `velvet-ballistics-workspace-tests`. Owner: State 11/self.
 - STATIC-BOUNDARY-009: remove `return;` at `fuzz/src/lib.rs:1392` or add `#[allow(clippy::needless_return)]`. Owner: State 8 repair.
 - STRICT-YAML-012 / ERR-STRICT-013: fix digest computation to preserve distinct digests for distinct canonical sources, or update/remove the assertion. Owner: State 10 repair.
 - MIRI-CODEC-024: repair nightly rust-src toolchain setup or obtain MIRI-WAIVER-024. Owner: tooling/waiver.
@@ -1187,8 +1187,8 @@ next_gate: advance to State 12; 3 FAIL_LOCAL code obligations routed to owner st
 
 ## Metadata fix applied
 
-- **E2E-REC-008**: Updated `proof-obligations.jsonl` line 8: changed package name from `velvet-ballastics-workspace` to `velvet-ballastics-workspace-tests`. This is a metadata/artifact fix, not production code.
-- Corrected command: `cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_1_1_red_recovery_contract_test -- --nocapture`
+- **E2E-REC-008**: Updated `proof-obligations.jsonl` line 8: changed package name from `velvet-ballistics-workspace` to `velvet-ballistics-workspace-tests`. This is a metadata/artifact fix, not production code.
+- Corrected command: `cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_1_1_red_recovery_contract_test -- --nocapture`
 - Fresh run result: `cargo test: 19 passed (1 suite, 0.16s)` exit=0. **PASS**.
 
 ## Obligation re-run results
@@ -1348,7 +1348,7 @@ TMPDIR=target/tmp RUSTC_WRAPPER= TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOS
 
 ### Contract test gate
 ```bash
-TMPDIR=target/tmp RUSTC_WRAPPER= TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet-ballastics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture
+TMPDIR=target/tmp RUSTC_WRAPPER= TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet-ballistics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture
 ```
 **Result**: `cargo test: 35 passed (1 suite, 43.68s)` — exit=0. **PASS**.
 

@@ -18,11 +18,11 @@
 | OBL-BND-005 | proptest | `xtask/tests/bundle_tests.rs` | `cargo test --package xtask --test bundle_tests round_trip_json -- --test-threads=1` | **PASS** |
 | OBL-BND-006 | proptest | `xtask/tests/bundle_tests.rs` | `cargo test --package xtask --test bundle_tests round_trip_postcard -- --test-threads=1` | **PASS** |
 | OBL-BND-007 | miri | `xtask/tests/bundle_tests.rs` | `cargo +nightly miri test --test bundle_tests` | **WAIVED: MIRI_MISSING_RUSTSRC** |
-| OBL-CAT-001 | unit-test | `crates/workspace_tests/src/acceptance_catalog.rs` | `cargo test --package velvet-ballastics-workspace-tests -- acceptance_catalog::tests::validate_catalog_valid -- --exact` | **PASS** |
-| OBL-CAT-002 | unit-test | `crates/workspace_tests/src/acceptance_catalog.rs` | `cargo test --package velvet-ballastics-workspace-tests -- acceptance_catalog::tests::validate_catalog_duplicate_id -- --exact` | **PASS** |
-| OBL-CAT-003 | unit-test | `crates/workspace_tests/src/acceptance_catalog.rs` | `cargo test --package velvet-ballastics-workspace-tests -- acceptance_catalog::tests::validate_catalog_missing_gwt -- --exact` | **PASS** |
-| OBL-CAT-004 | unit-test | `crates/workspace_tests/src/acceptance_catalog.rs` | `cargo test --package velvet-ballastics-workspace-tests -- acceptance_catalog::tests::validate_catalog_missing_assertion -- --exact` | **PASS** |
-| OBL-CAT-005 | integration-test | `crates/workspace_tests/tests/vb_hxm0_acceptance_catalog.rs` | `cargo test --package velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog` | **PASS** |
+| OBL-CAT-001 | unit-test | `crates/workspace_tests/src/acceptance_catalog.rs` | `cargo test --package velvet-ballistics-workspace-tests -- acceptance_catalog::tests::validate_catalog_valid -- --exact` | **PASS** |
+| OBL-CAT-002 | unit-test | `crates/workspace_tests/src/acceptance_catalog.rs` | `cargo test --package velvet-ballistics-workspace-tests -- acceptance_catalog::tests::validate_catalog_duplicate_id -- --exact` | **PASS** |
+| OBL-CAT-003 | unit-test | `crates/workspace_tests/src/acceptance_catalog.rs` | `cargo test --package velvet-ballistics-workspace-tests -- acceptance_catalog::tests::validate_catalog_missing_gwt -- --exact` | **PASS** |
+| OBL-CAT-004 | unit-test | `crates/workspace_tests/src/acceptance_catalog.rs` | `cargo test --package velvet-ballistics-workspace-tests -- acceptance_catalog::tests::validate_catalog_missing_assertion -- --exact` | **PASS** |
+| OBL-CAT-005 | integration-test | `crates/workspace_tests/tests/vb_hxm0_acceptance_catalog.rs` | `cargo test --package velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog` | **PASS** |
 | OBL-CAT-006 | integration-test | `crates/workspace_tests/tests/vb_hxm0_acceptance_catalog.rs` | via OBL-CAT-005 | **PASS** |
 | OBL-CAT-007 | integration-test | `crates/workspace_tests/tests/vb_hxm0_acceptance_catalog.rs` | via OBL-CAT-005 | **PASS** |
 | OBL-CAT-008 | integration-test | `crates/workspace_tests/tests/vb_hxm0_acceptance_catalog.rs` | via OBL-CAT-005 | **PASS** |
@@ -106,7 +106,7 @@ test result: ok. 1 passed; 0 failed
 ### PASS: OBL-CAT-001 through OBL-CAT-004
 
 ```
-cargo test --package velvet-ballastics-workspace-tests -- acceptance_catalog::tests::validate_catalog_valid -- --exact
+cargo test --package velvet-ballistics-workspace-tests -- acceptance_catalog::tests::validate_catalog_valid -- --exact
   --> Running 1 test
   test acceptance_catalog::tests::validate_catalog_valid ... ok
 test result: ok. 1 passed; 0 failed
@@ -117,7 +117,7 @@ test result: ok. 1 passed; 0 failed
 ### PASS: OBL-CAT-005 through OBL-CAT-009 (Integration Tests)
 
 ```
-cargo test --package velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog
+cargo test --package velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog
   --> Running 13 tests
   test test_catalog_lists_every_master_doc_behavior_by_scenario_id ... ok
   test test_catalog_maps_existing_tests_to_covered_scenarios ... ok

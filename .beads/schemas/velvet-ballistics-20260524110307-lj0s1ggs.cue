@@ -27,7 +27,7 @@ import "list"
 
     // Specific postconditions that must be verified
     postcondition_checks: [
-      "reject parallel and aggregate in velvet-ballastics/v1 with symbolic typed diagnostics",
+      "reject parallel and aggregate in velvet-ballistics/v1 with symbolic typed diagnostics",
       "A bead-local evidence artifact records commands, logs, commit SHA, changed files, and residual risks",
     ]
 

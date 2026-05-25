@@ -19,7 +19,7 @@ updated_at: 2026-05-12T03:45:00Z
 rtk cargo fmt --all
   PASS
 
-rtk cargo test --package velvet_ballastics --test lifecycle_integration -- --test-threads=1
+rtk cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1
   PASS: 43 passed (1 suite, 1.82s)
 
 rtk cargo test --package vb_storage --doc inject_seq_gap
@@ -38,6 +38,6 @@ Do not move `main`, push, close bead, or forget workspace per landing preflight 
 ## Combined qi37 Landing Update — 2026-05-12T03:56:46Z
 
 - Included in combined workspace `/home/lewis/src/Velvet-ballistics-landing-all-q37`.
-- Lifecycle focused gate rerun: `rtk cargo test -p velvet_ballastics --test lifecycle_integration` PASS — 43 passed.
+- Lifecycle focused gate rerun: `rtk cargo test -p velvet_ballistics --test lifecycle_integration` PASS — 43 passed.
 - Combined canonical gate: `moon ci` PASS — 19 tasks completed, 2 cached; 8063 tests passed.
 - See `.beads/qi37-all-landing-evidence.md`.

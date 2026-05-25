@@ -60,19 +60,19 @@ classification: BLOCK_REGRESSION / environment-local required-gate failure, not 
 Relevant `moon ci` evidence:
 
 ```text
-velvet-ballastics:fmt (1s 424ms, c55f72d9)
-velvet-ballastics:test | Summary [  90.246s] 11106 tests run: 11106 passed (1 slow), 0 skipped
-velvet-ballastics:mutants-smoke | Error: Failed to copy .../.tmp/cargo-mutants-bd-vb-kyyf-bdd-ZN4ptw.tmp/.../target_nosccache/debug/incremental/.../0221tx9d3q4uaorqs6ljdairt.o
-velvet-ballastics:mutants-smoke | Caused by:
-velvet-ballastics:mutants-smoke |     File name too long (os error 36)
+velvet-ballistics:fmt (1s 424ms, c55f72d9)
+velvet-ballistics:test | Summary [  90.246s] 11106 tests run: 11106 passed (1 slow), 0 skipped
+velvet-ballistics:mutants-smoke | Error: Failed to copy .../.tmp/cargo-mutants-bd-vb-kyyf-bdd-ZN4ptw.tmp/.../target_nosccache/debug/incremental/.../0221tx9d3q4uaorqs6ljdairt.o
+velvet-ballistics:mutants-smoke | Caused by:
+velvet-ballistics:mutants-smoke |     File name too long (os error 36)
 Tasks: 20 completed (3 cached), 1 failed
 ```
 
 ## Classification
 
 - Format repair: PASS.
-- `velvet-ballastics:fmt`: PASS inside `moon ci`.
-- `moon ci`: FAIL because `velvet-ballastics:mutants-smoke` recursively copied the workspace-local `.tmp/cargo-mutants...` directory until path length exceeded OS limits.
+- `velvet-ballistics:fmt`: PASS inside `moon ci`.
+- `moon ci`: FAIL because `velvet-ballistics:mutants-smoke` recursively copied the workspace-local `.tmp/cargo-mutants...` directory until path length exceeded OS limits.
 - No Rust behavior changed.
 - No forbidden Rust constructs were added.
 

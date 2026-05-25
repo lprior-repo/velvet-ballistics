@@ -24,8 +24,8 @@ The bead description cited these source defects:
 
 - `rustup run nightly-2026-04-28 cargo fmt --all -- --check` -> PASS on live rerun.
 - `moon ci` -> FAIL/BLOCK_GLOBAL. Full output: `/home/lewis/.local/share/opencode/tool-output/tool_e53cb9935001x2youOsXWkFzMl`.
-- `moon ci` failed `velvet-ballastics:panic-surface` on production `unreachable!(...)` in `crates/vb_codegen/src/parity.rs:438` and `:444`.
-- `moon ci` failed `velvet-ballastics:check` on `-D warnings` dead-code errors in unrelated workspace tests: `vb_test_compile_error_quality_behavior.rs:33`, `vb_test_runtime_lifecycle_state_behavior.rs:53`, `:127`, and `:231`.
+- `moon ci` failed `velvet-ballistics:panic-surface` on production `unreachable!(...)` in `crates/vb_codegen/src/parity.rs:438` and `:444`.
+- `moon ci` failed `velvet-ballistics:check` on `-D warnings` dead-code errors in unrelated workspace tests: `vb_test_compile_error_quality_behavior.rs:33`, `vb_test_runtime_lifecycle_state_behavior.rs:53`, `:127`, and `:231`.
 
 ## Regression Classification
 

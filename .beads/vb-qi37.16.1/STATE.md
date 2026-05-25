@@ -7,7 +7,7 @@ updated_at: 2026-05-09T00:00:00Z
 
 ### Tests Added
 
-#### 1. CLI Parsing Tests (velvet_ballastics/src/args.rs) — ALL PASS
+#### 1. CLI Parsing Tests (velvet_ballistics/src/args.rs) — ALL PASS
 - `parse_cancel_accepts_run_id_and_db`
 - `parse_cancel_accepts_reason`
 - `parse_cancel_accepts_json_output`
@@ -15,7 +15,7 @@ updated_at: 2026-05-09T00:00:00Z
 - `parse_cancel_rejects_reason_longer_than_256_bytes`
 - `parse_cancel_accepts_reason_exactly_256_bytes`
 
-#### 2. CLI Integration Tests (velvet_ballastics/tests/cli_integration.rs) — ALL FAIL (RED)
+#### 2. CLI Integration Tests (velvet_ballistics/tests/cli_integration.rs) — ALL FAIL (RED)
 - `cli_cancel_nonexistent_run_returns_success_idempotent` → Fails: `cancel command not yet implemented`
 - `cli_cancel_with_reason_persists_to_journal` → Fails: stub returns error
 - `cli_cancel_json_output_contains_success_and_status` → Fails: JSON `{"success":false,"error":"cancel command not yet implemented"}`
@@ -40,7 +40,7 @@ cancel with --json should succeed failed: stdout={"error":"cancel command not ye
 The workspace has pre-existing test compilation errors in:
 - `vb_storage/src/tests.rs` — Missing `attempt` field in JournalEvent constructors (242 errors)
 - `vb_runtime/tests/vb_jggy_property_tests.rs` — Missing imports and macros
-- `velvet_ballastics/src/mode_activation_tests.rs` — prop_assert format string issues
+- `velvet_ballistics/src/mode_activation_tests.rs` — prop_assert format string issues
 
 These were introduced by the parent commit and are outside the scope of this bead. The production code compiles cleanly.
 

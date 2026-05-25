@@ -113,7 +113,7 @@ STATUS: SOURCE_CI_REPAIRED_WITH_MOON_CI_PASS
 - `moon run :fmt --summary normal` with `TMPDIR=/home/lewis/src/vb-scxh/target/tmp RUSTC_WRAPPER=` — PASS.
 - First `moon ci --force --summary normal` — FAIL at `check`: missing `include_str!` fixtures under `crates/workspace_tests/fixtures/...`; `fmt`, `lint-src`, `source-length`, `nightly-feature-gate`, `fuzz-smoke`, and `miri` passed before failure/skip cascade.
 - Second `moon ci --force --summary normal` — FAIL at `test`: `vb_37lc_canonical_spelling_red::part_05::discover_scan_inputs_scans_real_fixture_tree_when_root_name_matches_prior_shortcut` returned `AlreadyExists`.
-- Targeted rerun `cargo nextest run -p velvet-ballastics-workspace-tests 'vb_37lc_canonical_spelling_red::part_05::discover_scan_inputs_scans_real_fixture_tree_when_root_name_matches_prior_shortcut'` — PASS after tempdir repair.
+- Targeted rerun `cargo nextest run -p velvet-ballistics-workspace-tests 'vb_37lc_canonical_spelling_red::part_05::discover_scan_inputs_scans_real_fixture_tree_when_root_name_matches_prior_shortcut'` — PASS after tempdir repair.
 - Final `moon ci --force --summary normal` with `TMPDIR=/home/lewis/src/vb-scxh/target/tmp RUSTC_WRAPPER=` — PASS: all 21 Moon actions completed, including `fmt`, `lint-src`, `source-length`, `check`, `fuzz-smoke`, `miri`, `test` (`8185 passed, 6 skipped`), `feature-powerset`, `coverage`, `mutants-smoke`, `bench-build`, `doc-test`, `doc`, `maxperf`, `maxperf-native`, and `hardened-build`.
 
 ## Performance Layer

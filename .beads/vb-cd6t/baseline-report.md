@@ -10,7 +10,7 @@ Baseline evidence sources before repair:
 - Observed failures in parent log:
   - cargo-deny license rejected NCSA for libfuzzer-sys 0.4.12.
   - cargo-deny license rejected MPL-2.0 for resvg 0.42.0 and usvg 0.42.0.
-  - velvet-ballastics-fuzz synthesized manifest unlicensed.
+  - velvet-ballistics-fuzz synthesized manifest unlicensed.
   - RUSTSEC-2025-0057 fxhash 0.2.1 unmaintained advisory.
   - duplicate crate warnings are nonfatal warnings in same log.
 Classification from parent: BLOCK_RELEASE / REQUIRED_OBLIGATION_FAIL.

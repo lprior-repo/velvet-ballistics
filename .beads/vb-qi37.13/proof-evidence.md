@@ -12,7 +12,7 @@ STATUS: REPAIRED
 
 - LEDGER-ID-ALIGNMENT: PASS. `.beads/vb-qi37.13/proof-obligations.jsonl` and `.beads/vb-qi37.13/proof-obligations.planned.jsonl` both contain exactly 9 matching IDs in order: `VERUS-EXIT-001`, `TEST-EXIT-001`, `STATIC-EXIT-001`, `TEST-DIAGNOSTICS-001`, `TEST-STRUCTURED-001`, `TEST-POSTCARD-001`, `FUZZ-POSTCARD-001`, `RECON-CHILD-001`, `MATRIX-COMMAND-001`.
 - VERUS-EXIT-001: PASS. Direct Verus invocation verifies the public exit-code model over `0..=8` with `4 verified, 0 errors`.
-- TEST-EXIT-001: PASS. `cargo test -p velvet_ballastics exit_code --all-features` passed the filtered public exit-code tests and matching integration tests.
+- TEST-EXIT-001: PASS. `cargo test -p velvet_ballistics exit_code --all-features` passed the filtered public exit-code tests and matching integration tests.
 - STATIC-EXIT-001: PASS. Required scan found no `DomainError = 9`, `ExitCode::from(9u8)`, stale `0_to_9`, or public `<= 9` proof residue in the required files.
 - TEST-DIAGNOSTICS-001: PASS. `parse_error_unknown_command_exit_code_is_1` passed and observed the fail-closed validation diagnostic route.
 - TEST-STRUCTURED-001: PASS. `bdd_format_parity_exit_code_identical_across_formats` passed and preserves diagnostic format parity.
@@ -81,7 +81,7 @@ Status: PASS.
 Command:
 
 ```bash
-TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballastics exit_code --all-features
+TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballistics exit_code --all-features
 ```
 
 Result excerpt:
@@ -111,7 +111,7 @@ Status: PASS.
 Command:
 
 ```bash
-rg -n "DomainError\s*=\s*9|ExitCode::from\(9u8\)|0_to_9|<= 9" crates/velvet_ballastics/src/exit_code.rs verification/verus/diagnostic_envelope_verus.rs
+rg -n "DomainError\s*=\s*9|ExitCode::from\(9u8\)|0_to_9|<= 9" crates/velvet_ballistics/src/exit_code.rs verification/verus/diagnostic_envelope_verus.rs
 ```
 
 Result: no output; command exit status 1 from no matches.
@@ -123,7 +123,7 @@ Status: PASS because no forbidden residue was found.
 Command:
 
 ```bash
-TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballastics parse_error_unknown_command_exit_code_is_1 --all-features
+TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballistics parse_error_unknown_command_exit_code_is_1 --all-features
 ```
 
 Result excerpt:
@@ -141,7 +141,7 @@ Status: PASS.
 Command:
 
 ```bash
-TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballastics bdd_format_parity_exit_code_identical_across_formats --all-features
+TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballistics bdd_format_parity_exit_code_identical_across_formats --all-features
 ```
 
 Result excerpt:

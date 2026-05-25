@@ -7,9 +7,9 @@ Workspace: `/home/lewis/src/Velvet-ballistics-vb-jkrk-go`
 Source: `/home/lewis/src/Velvet-ballistics-vb-qi37-16-3-go/.beads/vb-qi37.16.3/landing-blocker.md`
 
 - `moon ci`: FAIL
-- `velvet-ballastics:fmt`: formatting diffs in proof kernels, storage, fuzz, and xtask files
-- `velvet-ballastics:lint-src`: `vb_proof_kernels::EnvelopeHeader::new` lacks `Default`; `xtask/src/proof.rs` panic via `unwrap_or_else(|| panic!(...))`
-- `velvet-ballastics:feature-powerset`: `vb_ui_model --no-default-features` fails because `Vec` is unavailable and module-level `#![cfg_attr(not(feature = "std"), no_std)]` attributes are invalid outside crate root
+- `velvet-ballistics:fmt`: formatting diffs in proof kernels, storage, fuzz, and xtask files
+- `velvet-ballistics:lint-src`: `vb_proof_kernels::EnvelopeHeader::new` lacks `Default`; `xtask/src/proof.rs` panic via `unwrap_or_else(|| panic!(...))`
+- `velvet-ballistics:feature-powerset`: `vb_ui_model --no-default-features` fails because `Vec` is unavailable and module-level `#![cfg_attr(not(feature = "std"), no_std)]` attributes are invalid outside crate root
 
 ## Local setup observations
 
@@ -18,7 +18,7 @@ Source: `/home/lewis/src/Velvet-ballistics-vb-qi37-16-3-go/.beads/vb-qi37.16.3/l
 
 ## Baseline commands
 
-- `moon ci` in stale copied repo: FAIL after acceptance blockers (`fmt`, `lint-src`, `feature-powerset`) had passed; failure was `velvet-ballastics:test` trybuild stderr path mismatch caused by copied repo path leakage.
+- `moon ci` in stale copied repo: FAIL after acceptance blockers (`fmt`, `lint-src`, `feature-powerset`) had passed; failure was `velvet-ballistics:test` trybuild stderr path mismatch caused by copied repo path leakage.
 - Recreated real workspace with `jj workspace add --revision main --name vb-jkrk-go ...`: PASS.
 - `jj status` in recreated workspace: PASS/no changes.
 

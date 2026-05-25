@@ -25,8 +25,8 @@ Actual commands executed in `/home/lewis/src/vb-kkvb` after latest State 4.7 Mod
 | Evidence cleanup | `./target/debug/xtask ai-deep --bead vb-rq-yaml` wrote `.evidence/vb-rq-yaml/ai-deep.yaml`; temporary evidence was removed | PASS |
 | Runtime boundary | `cargo metadata --format-version 1 --no-deps --quiet` found no forbidden deps on `vb_core`, `vb_runtime`, `vb_storage`, `vb_ipc` | PASS |
 | Function shape | Source probe confirmed `cmd_ai_deep` remains a thin delegator to `run_ai_profile(evidence::GateProfile::AiDeep, bead)` | PASS |
-| Ordering/mutation resilience | `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_kkvb_xtask_red_phase --quiet` | 368/368 PASS |
-| Ordering/mutation resilience | `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_kkvb_xtask_density_explicit --quiet` | 286/286 PASS |
+| Ordering/mutation resilience | `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_kkvb_xtask_red_phase --quiet` | 368/368 PASS |
+| Ordering/mutation resilience | `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_kkvb_xtask_density_explicit --quiet` | 286/286 PASS |
 | Focused mutation survivor | `cargo +nightly test -p xtask cmd_ai_deep --quiet` | 2/2 focused PASS |
 
 ## Red Queen state-machine evidence

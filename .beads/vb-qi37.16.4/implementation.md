@@ -11,7 +11,7 @@
 
 ### Defect 1 — CLI `cmd_answer` was a Stub
 
-**File:** `crates/velvet_ballastics/src/main.rs:2590–2737`
+**File:** `crates/velvet_ballistics/src/main.rs:2590–2737`
 **Previous State:** Function returned "answer command not yet implemented" without reading value_file or sending IPC.
 **Current State:** Fully implemented.
 
@@ -45,7 +45,7 @@ Implementation:
 ### Compile Gate
 
 ```bash
-$ cargo check -p velvet_ballastics -p vb_ipc --all-targets --all-features
+$ cargo check -p velvet_ballistics -p vb_ipc --all-targets --all-features
 cargo build: 0 errors, 1 warnings (5 crates)
 ```
 
@@ -53,7 +53,7 @@ cargo build: 0 errors, 1 warnings (5 crates)
 
 ### Clippy Gate (Bead Scope Only)
 
-The bead scope includes `velvet_ballastics` and `vb_ipc`. Both compile clean.
+The bead scope includes `velvet_ballistics` and `vb_ipc`. Both compile clean.
 
 Pre-existing clippy errors in `crates/vb_proof_kernels/src/` (envelope_header.rs, step_state.rs) are outside bead scope — classified as `DEFERRED_GLOBAL`.
 
@@ -72,7 +72,7 @@ test result: ok. 11879 passed; 0 failed (1 flaky race-condition failure in vb_ip
 
 | File | Change |
 |------|--------|
-| `crates/velvet_ballastics/src/main.rs` | `cmd_answer` implemented (lines 2590–2737) |
+| `crates/velvet_ballistics/src/main.rs` | `cmd_answer` implemented (lines 2590–2737) |
 | `crates/vb_ipc/src/server/handlers.rs` | `handle_answer_ask` preserves answer bytes (lines 213–276) |
 
 ---
@@ -85,7 +85,7 @@ test result: ok. 11879 passed; 0 failed (1 flaky race-condition failure in vb_ip
 
 ## Residual Risk
 
-1. **No end-to-end CLI test:** The existing 9863-test suite tests runtime directly or IPC in isolation, but does not invoke `velvet_ballastics answer ...` as a subprocess. A subprocess integration test would provide stronger confidence but is not blocking.
+1. **No end-to-end CLI test:** The existing 9863-test suite tests runtime directly or IPC in isolation, but does not invoke `velvet_ballistics answer ...` as a subprocess. A subprocess integration test would provide stronger confidence but is not blocking.
 
 2. **Taint classification:** The implementation hardcodes `Taint::Clean`. The contract mentions taint-flag in IPC payload or content scanning — this may need future enhancement but is not a defect per the current contract scope.
 
@@ -97,7 +97,7 @@ test result: ok. 11879 passed; 0 failed (1 flaky race-condition failure in vb_ip
 
 ```bash
 # Compile check (bead scope)
-$ cargo check -p velvet_ballastics -p vb_ipc --all-targets --all-features
+$ cargo check -p velvet_ballistics -p vb_ipc --all-targets --all-features
 cargo build: 0 errors, 1 warnings (5 crates)
 
 # Full workspace test

@@ -16,7 +16,7 @@
 // ---------------------------------------------------------------------------
 
 /// Minimal 2-step workflow: SetConst(slot0=42) -> Finish
-const SETCONST_WORKFLOW: &str = r#"version: velvet-ballastics/v1
+const SETCONST_WORKFLOW: &str = r#"version: velvet-ballistics/v1
 name: setconst-test
 when:
   manual: {}
@@ -31,7 +31,7 @@ steps:
 "#;
 
 /// 3-step workflow with Nop Save then Finish
-const NOP_WORKFLOW: &str = r#"version: velvet-ballastics/v1
+const NOP_WORKFLOW: &str = r#"version: velvet-ballistics/v1
 name: nop-test
 when:
   manual: {}
@@ -81,7 +81,7 @@ fn write_test_file(path: &std::path::Path, contents: &[u8]) -> bool {
 }
 
 fn run_cli(args: &[&std::ffi::OsStr]) -> Option<std::process::Output> {
-    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_velvet-ballastics"));
+    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"));
     command.args(args);
 
     match command.output() {
@@ -89,7 +89,7 @@ fn run_cli(args: &[&std::ffi::OsStr]) -> Option<std::process::Output> {
         Err(err) => {
             assert!(
                 forced_assertion_failure(),
-                "failed to execute velvet_ballastics: {err}"
+                "failed to execute velvet_ballistics: {err}"
             );
             None
         }

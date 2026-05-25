@@ -21,9 +21,9 @@ STATUS: APPROVED
 
 ## BDD Scenarios
 
-- Given existing admission integration tests, when `cargo test -p velvet_ballastics --test admission_evidence_integration` runs, then all admission evidence scenarios pass with exact typed outcomes.
+- Given existing admission integration tests, when `cargo test -p velvet_ballistics --test admission_evidence_integration` runs, then all admission evidence scenarios pass with exact typed outcomes.
 - Given accepted artifact storage tests, when `cargo test -p vb_storage --test accepted_artifact_red_phase` runs, then accepted artifact envelope/error behavior passes.
-- Given durability diagnostic tests, when `cargo test -p velvet_ballastics --test admission_durability_code` runs, then admission durability code mapping passes.
+- Given durability diagnostic tests, when `cargo test -p velvet_ballistics --test admission_durability_code` runs, then admission durability code mapping passes.
 - Given the repaired proof wrapper, when `moon run :verify-proof` runs, then it exits 0 and reports all proof checks passed.
 - Given the repaired Loom model imports, when `RUSTFLAGS="--cfg loom" cargo test -p vb_runtime journal_writer_queue` runs, then journal queue models pass.
 

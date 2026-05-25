@@ -31,8 +31,8 @@ updated_at: 2026-05-11T12:51:12Z
 
 ## Passing State 8 gates after black-hat repair
 
-- `moon run :quick`: PASS. `velvet-ballastics:quick` completed and printed `Hello, world!` four times.
-- `moon run :test`: PASS. `agent-cli-contract` cached PASS, `nightly-feature-gate` PASS, `velvet-ballastics:check` PASS, `velvet-ballastics:test` PASS. Nextest run ID `c5c2f6dd-5ea3-46d0-840d-8e2fffd3a48b`; `9864 tests run: 9864 passed, 0 skipped`.
+- `moon run :quick`: PASS. `velvet-ballistics:quick` completed and printed `Hello, world!` four times.
+- `moon run :test`: PASS. `agent-cli-contract` cached PASS, `nightly-feature-gate` PASS, `velvet-ballistics:check` PASS, `velvet-ballistics:test` PASS. Nextest run ID `c5c2f6dd-5ea3-46d0-840d-8e2fffd3a48b`; `9864 tests run: 9864 passed, 0 skipped`.
 
 ## Canonical CI invocation note
 
@@ -85,7 +85,7 @@ updated_at: 2026-05-11T12:51:12Z
 
 ### Passing landing gates
 
-- `moon run :quick`: PASS after rebase. `velvet-ballastics:quick` completed and printed `Hello, world!` four times.
+- `moon run :quick`: PASS after rebase. `velvet-ballistics:quick` completed and printed `Hello, world!` four times.
 - `moon run :test`: PASS after rebase. `agent-cli-contract`, `nightly-feature-gate`, `check`, and `test` passed. Nextest run ID `59a379be-fa8c-49ac-a096-c465f8d065fc`; `9958 tests run: 9958 passed, 0 skipped`.
 
 ### Landing `moon ci --stdin`

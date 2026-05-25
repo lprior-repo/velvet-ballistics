@@ -68,7 +68,7 @@ Command: `rtk quota -s`
 
 ## Blocker
 
-`moon ci` failed in `velvet-ballastics:mutants-smoke` while copying into the external cargo-mutants temp directory:
+`moon ci` failed in `velvet-ballistics:mutants-smoke` while copying into the external cargo-mutants temp directory:
 
 ```text
 Error: Failed to copy /home/lewis/src/bd-vb-kyyf-bdd/target-test/debug/deps/accepted_artifact_red_phase-f64f6994ca2a8121 to /tmp/opencode/vb-kyyf-moon-ci-tmp/cargo-mutants-bd-vb-kyyf-bdd-8p7npn.tmp/target-test/debug/deps/accepted_artifact_red_phase-f64f6994ca2a8121

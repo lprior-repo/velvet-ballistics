@@ -142,7 +142,7 @@ EXIT: 0
 
 ### Help Output
 ```bash
-$ ./target/release/velvet-ballastics answer --help
+$ ./target/release/velvet-ballistics answer --help
 missing argument: --step
 [full usage text follows]
 answer     <run_id> --step <N> --value-file <file> --db <path> [--json|--jsonl]  Answer a suspended step
@@ -150,31 +150,31 @@ answer     <run_id> --step <N> --value-file <file> --db <path> [--json|--jsonl] 
 
 ### Missing run_id
 ```bash
-$ ./target/release/velvet-ballastics answer
+$ ./target/release/velvet-ballistics answer
 missing argument: run_id
 ```
 
 ### Invalid run_id (text)
 ```bash
-$ ./target/release/velvet-ballastics answer invalid_run_id --step 1 --value-file /tmp/value.bin --db /tmp/nonexistent.db
+$ ./target/release/velvet-ballistics answer invalid_run_id --step 1 --value-file /tmp/value.bin --db /tmp/nonexistent.db
 invalid run_id 'invalid_run_id': invalid digit found in string
 ```
 
 ### Missing value_file (text)
 ```bash
-$ ./target/release/velvet-ballastics answer 12345 --step 1 --value-file /tmp/nonexistent.bin --db /tmp/nonexistent.db
+$ ./target/release/velvet-ballistics answer 12345 --step 1 --value-file /tmp/nonexistent.bin --db /tmp/nonexistent.db
 error reading value file /tmp/nonexistent.bin: No such file or directory (os error 2)
 ```
 
 ### Missing value_file (JSON)
 ```bash
-$ ./target/release/velvet-ballastics answer 12345 --step 1 --value-file /tmp/nonexistent.bin --db /tmp/nonexistent.db --json
+$ ./target/release/velvet-ballistics answer 12345 --step 1 --value-file /tmp/nonexistent.bin --db /tmp/nonexistent.db --json
 {"error":"error reading value file /tmp/nonexistent.bin: No such file or directory (os error 2)","success":false}
 ```
 
 ### Missing value_file (JSONL)
 ```bash
-$ ./target/release/velvet-ballastics answer 12345 --step 1 --value-file /tmp/nonexistent.bin --db /tmp/nonexistent.db --jsonl
+$ ./target/release/velvet-ballistics answer 12345 --step 1 --value-file /tmp/nonexistent.bin --db /tmp/nonexistent.db --jsonl
 {"error":"error reading value file /tmp/nonexistent.bin: No such file or directory (os error 2)","success":false}
 ```
 
@@ -194,7 +194,7 @@ EXIT: 0
 
 ```bash
 $ moon run :test
-velvet-ballastics:test | 9867 tests run: 9867 passed, 0 skipped
+velvet-ballistics:test | 9867 tests run: 9867 passed, 0 skipped
 Tasks: 4 completed (1 cached)
 Time: 35s 638ms
 EXIT: 0

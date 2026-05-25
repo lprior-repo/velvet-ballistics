@@ -131,7 +131,7 @@ Expected: Kani reports all paths safe, no overflow, no out-of-bounds.
 ## Integration Test Scope
 
 **Targets:**
-- `crates/velvet_ballastics/tests/cli_integration.rs` — full `Command::Answer` CLI smoke
+- `crates/velvet_ballistics/tests/cli_integration.rs` — full `Command::Answer` CLI smoke
 - Journal replay test: start run, suspend at ask, answer, kill process, restart, verify run resumes correctly
 - Secret redaction test: emit diagnostics after answer, verify no `Secret`-tainted slot values appear in trace output
 

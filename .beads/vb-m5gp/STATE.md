@@ -126,10 +126,10 @@ Proceed to State 2 (`explore`) in isolated workspace only. Use `bd --db /home/le
 - Mandatory test-writer doctrine read: `/home/lewis/.claude/skills/test-writer/SKILL.md` and `/home/lewis/.agents/skills/test-writer/SKILL.md`; contents matched, agents copy remains authoritative on conflict.
 - Consumed approved `.beads/vb-m5gp/test-plan.md`, `contract.md`, `codebase-map.md`, `proof-evidence.md`, `proof-review.md`, and `contract-verification-review.md`.
 - Added `crates/workspace_tests/tests/vb_m5gp_compile_split_contract.rs` with crate-root API parity, accepted-output characterization, rejected-diagnostic characterization, 45-case idempotency table parity, private-module privacy scan, and failing-first split/source-length gate.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract --no-run`: passed.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract`: expected red, 5 passed and 1 failed (`lib_rs_declares_only_facade_and_private_split_modules_when_refactor_completes`) because the four `mod_compile_*` declarations do not exist yet.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract --no-run`: passed.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract`: expected red, 5 passed and 1 failed (`lib_rs_declares_only_facade_and_private_split_modules_when_refactor_completes`) because the four `mod_compile_*` declarations do not exist yet.
 - Source-length structural gate is already red: `crates/vb_compile/src/lib.rs` has `6139` lines and fails the `<300` threshold.
-- `cargo +nightly clippy -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract --all-features -- -D warnings`: passed.
+- `cargo +nightly clippy -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract --all-features -- -D warnings`: passed.
 - `cargo +nightly check -p vb_compile --all-targets --all-features`: passed.
 - Public internal module leak scan returned `0 matches`.
 - Dependency/config diff gate passed after restoring unintended Cargo.lock churn from cargo invocation: no diffs in `Cargo.toml`, `Cargo.lock`, `crates/vb_compile/Cargo.toml`, or `.moon/`.
@@ -150,8 +150,8 @@ Proceed to State 2 (`explore`) in isolated workspace only. Use `bd --db /home/le
 - Strengthened artifact smoke check with exact bytes, digest, header prefix, and content suffix assertions.
 - Preserved structural split gate red until implementation.
 - `cargo +nightly fmt --all --check`: PASS.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract --no-run`: PASS.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract`: expected RED; 5 passed, 1 failed only at `lib_rs_declares_only_facade_and_private_split_modules_when_refactor_completes` because split module declarations are still absent.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract --no-run`: PASS.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract`: expected RED; 5 passed, 1 failed only at `lib_rs_declares_only_facade_and_private_split_modules_when_refactor_completes` because split module declarations are still absent.
 
 ## State 8 Repair Routing — Attempt 2
 
@@ -168,9 +168,9 @@ Proceed to State 2 (`explore`) in isolated workspace only. Use `bd --db /home/le
 - Static banned-pattern scan over the scoped split test returned `0 matches` for weak result assertions, swallowed errors, ignored tests, sleeps, shared mutable state, mocks, `.expect_`, and private integration imports.
 - `cargo +nightly fmt --all --check`: PASS.
 - `cargo +nightly check -p vb_compile --all-targets --all-features`: PASS.
-- `cargo +nightly clippy -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract --all-features -- -D warnings`: PASS.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract --no-run`: PASS.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract`: expected RED; 5 passed, 1 failed only at `lib_rs_declares_only_facade_and_private_split_modules_when_refactor_completes` because the four `mod_compile_*` declarations are absent pre-implementation.
+- `cargo +nightly clippy -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract --all-features -- -D warnings`: PASS.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract --no-run`: PASS.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract`: expected RED; 5 passed, 1 failed only at `lib_rs_declares_only_facade_and_private_split_modules_when_refactor_completes` because the four `mod_compile_*` declarations are absent pre-implementation.
 - Public internal module leak scan: `0 matches`.
 - Dependency/config diff gate for Cargo and Moon files: PASS, no output.
 - Source-length gate remains expected RED with `crates/vb_compile/src/lib.rs: 6139` until State 10 implements the split.
@@ -192,8 +192,8 @@ Proceed to State 2 (`explore`) in isolated workspace only. Use `bd --db /home/le
 - Preserved behavior by wiring the legacy implementation through `mod_compile_core` and intentionally not reusing the unwired `compile/`, `lower/`, or `validation/` scaffolding.
 - Recorded residual source-governance risk in `implementation.md`: `compile_core_impl.rs` remains a large compatibility include and needs a follow-up semantic extraction into the requested domains.
 - `cargo +nightly fmt --all --check`: PASS.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract --no-run`: PASS.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract`: PASS, 6 passed.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract --no-run`: PASS.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract`: PASS, 6 passed.
 - `cargo +nightly check -p vb_compile --all-targets --all-features`: PASS.
 - Source-length command for `lib.rs` and `mod_compile_*.rs`: PASS with counts `lib.rs=51`, `mod_compile_core.rs=7`, `mod_compile_errors.rs=4`, `mod_compile_lowering.rs=5`, `mod_compile_validation.rs=5`.
 - `bash scripts/check-source-length.sh`: PASS.
@@ -225,8 +225,8 @@ Proceed to State 2 (`explore`) in isolated workspace only. Use `bd --db /home/le
 
 - State 4 repair scope only: repaired exact obligation command planning artifacts under `.beads/vb-m5gp/`; no production code, tests, proof harnesses, models, dependencies, or CI config edited.
 - Consumed State 11 rejection inputs: `formal-verification-report.md`, `regression-diff.md`, and `ci-failure-category.txt`.
-- Repaired `API-002` in `proof-obligations.jsonl` and `PO-005` in `proof-obligations.planned.jsonl`: replaced invalid package `workspace_tests` with actual package `velvet-ballastics-workspace-tests` and updated expected evidence wording.
-- Repaired `ERR-001` in `proof-obligations.jsonl` and `PO-007` in `proof-obligations.planned.jsonl`: replaced invalid package `workspace_tests` with actual package `velvet-ballastics-workspace-tests` and updated expected evidence wording.
+- Repaired `API-002` in `proof-obligations.jsonl` and `PO-005` in `proof-obligations.planned.jsonl`: replaced invalid package `workspace_tests` with actual package `velvet-ballistics-workspace-tests` and updated expected evidence wording.
+- Repaired `ERR-001` in `proof-obligations.jsonl` and `PO-007` in `proof-obligations.planned.jsonl`: replaced invalid package `workspace_tests` with actual package `velvet-ballistics-workspace-tests` and updated expected evidence wording.
 - Repaired `STATIC-001` in `proof-obligations.jsonl` and `PO-010` in `proof-obligations.planned.jsonl`: required exact command is now `cargo +nightly clippy -p vb_compile --lib --bins --examples --all-features -- -D warnings`, aligned with repository governance that source lint is strict and test clippy is not strict.
 - Updated `proof-strategy.md` and `proof-plan-review-input.md` to document the attempt 3 exact-command repairs and source-only clippy rationale.
 - JSONL validation required before State 11 rerun: parse `proof-obligations.jsonl` and `proof-obligations.planned.jsonl` and verify every planned row retains required fields.
@@ -242,7 +242,7 @@ Proceed to State 2 (`explore`) in isolated workspace only. Use `bd --db /home/le
 - State 11 scope only: reran approved exact obligations and canonical gates after repaired package/clippy commands; no production, test, or proof implementation files edited.
 - Mandatory formal-verifier startup read completed: `/home/lewis/.claude/skills/formal-verifier/SKILL.md` and `/home/lewis/.agents/skills/formal-verifier/SKILL.md`; contents matched and agents copy wins on conflict.
 - Mandatory preflight passed: required artifacts exist, `contract-verification-review.md` contains `STATUS: APPROVED`, and proof/trace/scope/planned JSONL parsed.
-- Rerun PASS gates: `cargo +nightly check -p vb_compile --all-targets --all-features`, `cargo +nightly test -p vb_compile --all-targets --all-features`, repaired workspace integration tests under `velvet-ballastics-workspace-tests`, repaired diagnostics command, repaired source-only clippy command, `cargo +nightly fmt --all --check`, source-length command, `cargo kani --package vb_compile --harness idempotency_gate_parity --quiet`, and `moon ci`.
+- Rerun PASS gates: `cargo +nightly check -p vb_compile --all-targets --all-features`, `cargo +nightly test -p vb_compile --all-targets --all-features`, repaired workspace integration tests under `velvet-ballistics-workspace-tests`, repaired diagnostics command, repaired source-only clippy command, `cargo +nightly fmt --all --check`, source-length command, `cargo kani --package vb_compile --harness idempotency_gate_parity --quiet`, and `moon ci`.
 - `moon ci` PASS: exit 0, `Tasks: 23 completed`, workspace summary `10889 passed, 44 skipped`.
 - Optional `MIRI-001` remains `DEFERRED_GLOBAL`: direct `cargo +nightly miri test -p vb_compile` failed before tests due missing local nightly rust-src path, while canonical `moon ci` Miri lanes passed selected checks.
 - Wrote/updated `formal-verification-report.md` (`STATUS: APPROVED`), `verification-ledger.jsonl`, `machine-gate-report.md`, `regression-diff.md`, `kani-report.md`, `source-length-report.md`, `test-report.md`, `api-compat-report.md`, `static-scan-report.md`, `miri-report.md`, and `ci-failure-category.txt`.
@@ -262,8 +262,8 @@ Proceed to State 2 (`explore`) in isolated workspace only. Use `bd --db /home/le
 - Strengthened `scripts/check-source-length.sh` to reject hidden include bodies/doc-only split files in the compile split.
 - Updated `.beads/vb-m5gp/implementation.md` and `.beads/vb-m5gp/source-length-report.md` with repaired evidence.
 - `cargo +nightly fmt --all --check`: PASS.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract --no-run`: PASS.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract`: PASS, 6 passed.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract --no-run`: PASS.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract`: PASS, 6 passed.
 - `cargo +nightly check -p vb_compile --all-targets --all-features`: PASS.
 - `bash scripts/check-source-length.sh`: PASS.
 - Relevant workspace compile tests: `integration_compile_codegen_pipeline` PASS (15 passed), `integration_compile_codegen_runtime_e2e` PASS (23 passed), `integration_compile_error_message_quality` PASS (21 passed, 4 ignored).
@@ -283,8 +283,8 @@ Proceed to State 2 (`explore`) in isolated workspace only. Use `bd --db /home/le
 - Strengthened `scripts/check-source-length.sh` to reject the same top-level `crates/vb_compile/src/*.rs` oversized files, while preserving hidden include/doc-only split checks.
 - Updated `.beads/vb-m5gp/test-writer-report.md` and `.beads/vb-m5gp/source-length-report.md` with attempt 3 evidence and expected RED status.
 - `cargo +nightly fmt --all --check`: PASS.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract --no-run`: PASS.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract`: expected RED; 6 passed, 1 failed at `vb_compile_production_sources_remain_under_agreed_line_limit` because oversized top-level production files remain.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract --no-run`: PASS.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract`: expected RED; 6 passed, 1 failed at `vb_compile_production_sources_remain_under_agreed_line_limit` because oversized top-level production files remain.
 - `bash scripts/check-source-length.sh`: expected RED; rejected `expression_bytecode.rs`, `expression.rs`, `mod_compile_errors.rs`, `mod_compile_lowering.rs`, `mod_compile_validation.rs`, `references.rs`, `schema.rs`, and `type_taint.rs` for `>=300` lines.
 
 ## State 8 Repair Routing — Attempt 3
@@ -304,8 +304,8 @@ Proceed to State 2 (`explore`) in isolated workspace only. Use `bd --db /home/le
 - Updated `crates/workspace_tests/tests/vb_m5gp_compile_split_contract.rs` and `scripts/check-source-length.sh` to classify pre-existing unrelated oversized top-level files as `DEFERRED_GLOBAL` while still blocking bead-local split files.
 - Updated `.beads/vb-m5gp/implementation.md` and `.beads/vb-m5gp/source-length-report.md`.
 - `cargo +nightly fmt --all --check`: PASS.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract --no-run`: PASS.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract`: PASS, 7 passed.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract --no-run`: PASS.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract`: PASS, 7 passed.
 - `cargo +nightly check -p vb_compile --all-targets --all-features`: PASS.
 - `bash scripts/check-source-length.sh`: PASS with `DEFERRED_GLOBAL` notices for pre-existing unrelated `expression_bytecode.rs`, `expression.rs`, `references.rs`, `schema.rs`, and `type_taint.rs`.
 - `cargo +nightly clippy -p vb_compile --lib --bins --examples --all-features -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap -D clippy::arithmetic_side_effects -D clippy::as_conversions -D clippy::let_underscore_must_use -D clippy::await_holding_lock`: PASS.
@@ -326,7 +326,7 @@ Proceed to State 2 (`explore`) in isolated workspace only. Use `bd --db /home/le
 - Verified every bead-local split source is below 300 physical lines; no waiver was required.
 - Updated `.beads/vb-m5gp/implementation.md` and `.beads/vb-m5gp/source-length-report.md` with attempt 4 evidence.
 - `cargo +nightly fmt --all --check`: PASS.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract`: PASS, 7 passed.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract`: PASS, 7 passed.
 - `bash scripts/check-source-length.sh`: PASS with `DEFERRED_GLOBAL` notices for pre-existing unrelated `expression_bytecode.rs`, `expression.rs`, `references.rs`, `schema.rs`, and `type_taint.rs`.
 - `cargo +nightly check -p vb_compile --all-targets --all-features`: PASS.
 
@@ -349,7 +349,7 @@ Proceed to State 2 (`explore`) in isolated workspace only. Use `bd --db /home/le
 - `cargo +nightly fmt --all --check`: PASS.
 - `cargo +nightly check -p vb_compile --all-targets --all-features`: PASS.
 - `cargo +nightly clippy -p vb_compile --lib --bins --examples --all-features -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap -D clippy::arithmetic_side_effects -D clippy::as_conversions -D clippy::let_underscore_must_use -D clippy::await_holding_lock`: PASS.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract`: PASS, 7 passed.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract`: PASS, 7 passed.
 - `bash scripts/check-source-length.sh`: PASS with `DEFERRED_GLOBAL` notices only for pre-existing unrelated `expression_bytecode.rs`, `expression.rs`, `references.rs`, `schema.rs`, and `type_taint.rs`.
 - Wrote `.beads/vb-m5gp/test-plan-review.md` with `STATUS: APPROVED`.
 - Wrote `.beads/vb-m5gp/test-suite-review.md` with `STATUS: APPROVED`.
@@ -387,9 +387,9 @@ Proceed to State 2 (`explore`) in isolated workspace only. Use `bd --db /home/le
 - Added executable dependency-edge gate `mod_compile_dependency_edges_remain_acyclic_and_diagnostic_leaf` to `crates/workspace_tests/tests/vb_m5gp_compile_split_contract.rs`.
 - Updated `.beads/vb-m5gp/implementation.md`, `.beads/vb-m5gp/static-scan-report.md`, and `.beads/vb-m5gp/source-length-report.md` with attempt 5 evidence.
 - `rtk cargo fmt --check`: PASS after formatting.
-- `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract mod_compile_dependency_edges_remain_acyclic_and_diagnostic_leaf`: PASS, 1 passed.
-- `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract vb_compile_production_sources_remain_under_agreed_line_limit`: PASS, 1 passed.
-- `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract`: PASS, 8 passed.
+- `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract mod_compile_dependency_edges_remain_acyclic_and_diagnostic_leaf`: PASS, 1 passed.
+- `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract vb_compile_production_sources_remain_under_agreed_line_limit`: PASS, 1 passed.
+- `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract`: PASS, 8 passed.
 - `bash scripts/check-source-length.sh`: PASS with `DEFERRED_GLOBAL` notices only for pre-existing unrelated `expression_bytecode.rs`, `expression.rs`, `references.rs`, `schema.rs`, and `type_taint.rs`.
 - `rtk cargo check -p vb_compile`: PASS.
 - `rtk cargo clippy -p vb_compile --lib --bins --examples --all-features -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap -D clippy::arithmetic_side_effects -D clippy::as_conversions -D clippy::let_underscore_must_use -D clippy::await_holding_lock`: PASS.
@@ -412,9 +412,9 @@ Proceed to State 2 (`explore`) in isolated workspace only. Use `bd --db /home/le
 - `cargo +nightly fmt --all --check`: PASS.
 - `cargo +nightly check -p vb_compile --all-targets --all-features`: PASS.
 - `cargo +nightly clippy -p vb_compile --lib --bins --examples --all-features -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap -D clippy::arithmetic_side_effects -D clippy::as_conversions -D clippy::let_underscore_must_use -D clippy::await_holding_lock`: PASS.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract mod_compile_dependency_edges_remain_acyclic_and_diagnostic_leaf`: PASS, 1 passed.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract vb_compile_production_sources_remain_under_agreed_line_limit`: PASS, 1 passed.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract`: PASS, 8 passed.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract mod_compile_dependency_edges_remain_acyclic_and_diagnostic_leaf`: PASS, 1 passed.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract vb_compile_production_sources_remain_under_agreed_line_limit`: PASS, 1 passed.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract`: PASS, 8 passed.
 - `bash scripts/check-source-length.sh`: PASS with `DEFERRED_GLOBAL` notices only for pre-existing unrelated `expression_bytecode.rs`, `expression.rs`, `references.rs`, `schema.rs`, and `type_taint.rs`.
 - Wrote `.beads/vb-m5gp/test-plan-review.md` with `STATUS: APPROVED`.
 - Wrote `.beads/vb-m5gp/test-suite-review.md` with `STATUS: APPROVED`.
@@ -430,8 +430,8 @@ Proceed to State 2 (`explore`) in isolated workspace only. Use `bd --db /home/le
 - State 11 direct child only; no nested agents; no production code, tests, or proofs edited. Writes limited to State 11 evidence artifacts under `.beads/vb-m5gp/` and this state file.
 - Mandatory formal-verifier startup read completed: `/home/lewis/.claude/skills/formal-verifier/SKILL.md` and `/home/lewis/.agents/skills/formal-verifier/SKILL.md`; both report version `1.5.0`; agents copy wins on conflict.
 - Mandatory preflight passed: required artifacts exist; `contract-verification-review.md` contains `STATUS: APPROVED`; proof, traceability, delivery-scope, and planned-obligation JSONL parsed.
-- Required exact obligations rerun and passed: `cargo +nightly check -p vb_compile --all-targets --all-features`, `cargo +nightly test -p vb_compile --all-targets --all-features`, repaired workspace integration tests under `velvet-ballastics-workspace-tests`, diagnostics command, source-only clippy, rustfmt, source-length exact command, Kani idempotency parity, and `moon ci`.
-- Dependency-edge repair verified: manual scan returned `errors_to_validation=0 matches`, `validation_to_lowering_or_core=0 matches`, and `include_bodies=0 matches`; split contract dependency-edge test passed inside `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract`.
+- Required exact obligations rerun and passed: `cargo +nightly check -p vb_compile --all-targets --all-features`, `cargo +nightly test -p vb_compile --all-targets --all-features`, repaired workspace integration tests under `velvet-ballistics-workspace-tests`, diagnostics command, source-only clippy, rustfmt, source-length exact command, Kani idempotency parity, and `moon ci`.
+- Dependency-edge repair verified: manual scan returned `errors_to_validation=0 matches`, `validation_to_lowering_or_core=0 matches`, and `include_bodies=0 matches`; split contract dependency-edge test passed inside `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract`.
 - Canonical gates passed: `moon ci` exit 0 with `Tasks: 23 completed`, nextest summary `10771 passed, 44 skipped`; `bash scripts/check-source-length.sh` exit 0 with only pre-existing unrelated DEFERRED_GLOBAL notices.
 - Optional direct `cargo +nightly miri test -p vb_compile` remains `DEFERRED_GLOBAL` because local nightly rust-src path is missing; canonical `moon ci` Miri lane passed selected checks.
 - Wrote/updated `formal-verification-report.md` (`STATUS: APPROVED`), `verification-ledger.jsonl`, `machine-gate-report.md`, `regression-diff.md`, `static-scan-report.md`, `source-length-report.md`, `test-report.md`, `kani-report.md`, and `miri-report.md`.
@@ -449,8 +449,8 @@ Proceed to State 2 (`explore`) in isolated workspace only. Use `bd --db /home/le
 - Consumed `.beads/vb-m5gp/contract.md`, `.beads/vb-m5gp/domain-model-review.md`, `.beads/vb-m5gp/implementation.md`, `.beads/vb-m5gp/formal-verification-report.md`, `.beads/vb-m5gp/static-scan-report.md`, `.beads/vb-m5gp/source-length-report.md`, `crates/workspace_tests/tests/vb_m5gp_compile_split_contract.rs`, and `scripts/check-source-length.sh`.
 - Independent source review verified the prior blockers are repaired: no `mod_compile_errors -> mod_compile_validation` imports, no `mod_compile_validation -> mod_compile_core` imports, `YamlLimits` moved to private shared `limits.rs`, and no hidden `include!`/`compile_core_impl` body remains.
 - Independent recursive count found no bead-local `lib.rs` or `mod_compile_*` source at or above 300 lines; max observed bead-local split source was `crates/vb_compile/src/mod_compile_errors/collection.rs` at 286 lines.
-- Reran `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract mod_compile_dependency_edges_remain_acyclic_and_diagnostic_leaf`: PASS, 1 passed.
-- Reran `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract vb_compile_production_sources_remain_under_agreed_line_limit`: PASS, 1 passed.
+- Reran `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract mod_compile_dependency_edges_remain_acyclic_and_diagnostic_leaf`: PASS, 1 passed.
+- Reran `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract vb_compile_production_sources_remain_under_agreed_line_limit`: PASS, 1 passed.
 - Reran `bash scripts/check-source-length.sh`: PASS with only pre-existing unrelated DEFERRED_GLOBAL notices.
 - Reran `rtk cargo check -p vb_compile`: PASS.
 - Wrote `.beads/vb-m5gp/black-hat-review.md` with `STATUS: APPROVED`; removed stale rejection `defects.md` because this retry is approved.

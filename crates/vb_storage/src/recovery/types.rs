@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-//! Recovery types for velvet-ballastics journal.
+//! Recovery types for velvet-ballistics journal.
 //!
 //! Provides:
 //! - Digest mismatch detection types

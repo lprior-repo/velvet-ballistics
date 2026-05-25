@@ -845,7 +845,7 @@ workspace: `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-4`
 
 ## Evidence
 
-- `moon run :verify-proof`: exit=0; `velvet-ballastics:verify-proof` reported `[PASS] All proof checks passed`.
+- `moon run :verify-proof`: exit=0; `velvet-ballistics:verify-proof` reported `[PASS] All proof checks passed`.
 - `tlc -config specs/admission_header_before_ack.cfg specs/admission_header_before_ack.tla`: exit=0; 25 states generated, 13 distinct states found, 2 temporal branches checked, no errors.
 - `verus verification/verus/admission_artifact_model.rs`: exit=0; `verification results:: 6 verified, 0 errors`.
 - `verus verification/verus/capability_artifact_model.rs`: exit=0; `verification results:: 8 verified, 0 errors`.
@@ -893,9 +893,9 @@ attempt: 1-of-7
 - `moon run :verify-all`: PASS.
 - `moon run :fuzz-smoke`: PASS.
 - `moon run :mutants-smoke`: PASS, 1 mutant tested and caught.
-- `cargo test -p velvet_ballastics --test admission_evidence_integration`: PASS, 8 tests.
+- `cargo test -p velvet_ballistics --test admission_evidence_integration`: PASS, 8 tests.
 - `cargo test -p vb_storage --test accepted_artifact_red_phase`: PASS, 29 tests.
-- `cargo test -p velvet_ballastics --test admission_durability_code`: PASS, 1 test.
+- `cargo test -p velvet_ballistics --test admission_durability_code`: PASS, 1 test.
 - `RUSTFLAGS="--cfg loom" cargo test -p vb_runtime journal_writer_queue`: PASS, 3 tests.
 - `RUSTFLAGS="--cfg loom" cargo test -p vb_runtime timer_fired_cancel`: PASS, 1 test.
 - `RUSTFLAGS="--cfg loom" cargo test -p vb_runtime shutdown_drain`: PASS, 3 tests.

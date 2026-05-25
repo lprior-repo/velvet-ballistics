@@ -53,7 +53,7 @@ macro_rules! fail_assert {
 /// Valid minimal workflow YAML used across many tests.
 /// Note: the canonical compiler requires explicit output names for save/set.
 fn valid_workflow_yaml() -> &'static [u8] {
-    b"version: velvet-ballastics/v1\nname: test_wf\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    save:\n      output: saved\n      value: \"42\"\n  - id: s2\n    finish:\n      result: saved\n"
+    b"version: velvet-ballistics/v1\nname: test_wf\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    save:\n      output: saved\n      value: \"42\"\n  - id: s2\n    finish:\n      result: saved\n"
 }
 
 // ===========================================================================
@@ -89,7 +89,7 @@ fn yaml_to_validate_empty_string_propagates_empty_source_error() {
 #[test]
 fn yaml_to_validate_anchor_rejection_propagates_exact_variant() {
     // Given: YAML with an anchor
-    let yaml = "version: &v velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
+    let yaml = "version: &v velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
     // When: parsing through the profile gate
     let result = vb_yaml::parse_workflow_source(yaml);
     // Then: AnchorAliasMerge variant exactly
@@ -99,7 +99,7 @@ fn yaml_to_validate_anchor_rejection_propagates_exact_variant() {
 #[test]
 fn yaml_to_validate_ambiguous_scalar_propagates_exact_scalar_value() {
     // Given: YAML with an unquoted YAML 1.1 ambiguous boolean
-    let yaml = "version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    set:\n      output: x\n      value: yes\n";
+    let yaml = "version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    set:\n      output: x\n      value: yes\n";
     // When: parsing through profile validation
     let result = vb_yaml::parse_workflow_source(yaml);
     // Then: AmbiguousScalar with the exact rejected scalar
@@ -114,7 +114,7 @@ fn yaml_to_validate_ambiguous_scalar_propagates_exact_scalar_value() {
 #[test]
 fn yaml_to_validate_missing_required_field_has_correct_field_name() {
     // Given: YAML missing the "name" field
-    let yaml = "version: velvet-ballastics/v1\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    finish:\n      result: x\n";
+    let yaml = "version: velvet-ballistics/v1\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    finish:\n      result: x\n";
     // When: parsing
     let result = vb_yaml::parse_workflow_source(yaml);
     // Then: MissingField with field = "name"
@@ -161,7 +161,7 @@ fn validate_schema_id_grammar_enforced_across_seam() {
     let doc = WorkflowDoc::from_pairs(vec![
         (
             "version".into(),
-            FieldValue::String("velvet-ballastics/v1".into()),
+            FieldValue::String("velvet-ballistics/v1".into()),
         ),
         ("name".into(), FieldValue::String("test".into())),
         (
@@ -194,7 +194,7 @@ fn validate_schema_step_without_primitive_rejected_across_seam() {
     let doc = WorkflowDoc::from_pairs(vec![
         (
             "version".into(),
-            FieldValue::String("velvet-ballastics/v1".into()),
+            FieldValue::String("velvet-ballistics/v1".into()),
         ),
         ("name".into(), FieldValue::String("test".into())),
         (
@@ -269,7 +269,7 @@ fn compile_to_core_rejects_non_utf8_input_at_compilation_boundary() {
 #[test]
 fn compile_to_core_step_count_matches_yaml_step_count() {
     // Given: a 3-step workflow
-    let yaml = b"version: velvet-ballastics/v1\nname: three_step\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    save:\n      output: first\n      value: \"1\"\n  - id: s2\n    save:\n      output: second\n      value: \"2\"\n  - id: s3\n    finish:\n      result: second\n";
+    let yaml = b"version: velvet-ballistics/v1\nname: three_step\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    save:\n      output: first\n      value: \"1\"\n  - id: s2\n    save:\n      output: second\n      value: \"2\"\n  - id: s3\n    finish:\n      result: second\n";
     // When: compiling
     let result = vb_compile::compile_workflow(yaml);
     // Then: the compiled workflow has at least 3 nodes (one per step)
@@ -911,7 +911,7 @@ fn error_yaml_to_compile_pipeline_preserves_error_information() {
 #[test]
 fn error_compile_duplicate_step_id_rejected_with_exact_id() {
     // Given: workflow with duplicate step IDs
-    let yaml = b"version: velvet-ballastics/v1\nname: dup\nwhen:\n  manual: {}\nsteps:\n  - id: dup_id\n    save:\n      output: saved\n      value: \"1\"\n  - id: dup_id\n    finish:\n      result: saved\n";
+    let yaml = b"version: velvet-ballistics/v1\nname: dup\nwhen:\n  manual: {}\nsteps:\n  - id: dup_id\n    save:\n      output: saved\n      value: \"1\"\n  - id: dup_id\n    finish:\n      result: saved\n";
     // When: compiling
     let result = vb_compile::compile_workflow(yaml);
     // Then: compilation fails mentioning the duplicate
@@ -1167,7 +1167,7 @@ fn compile_pipeline_valid_workflow_produces_deterministic_digest() {
 #[test]
 fn compile_pipeline_invalid_trigger_rejected_with_correct_error() {
     // Given: YAML with an HTTP trigger
-    let yaml = b"version: velvet-ballastics/v1\nname: http_wf\nwhen:\n  http: {}\nsteps:\n  - id: s1\n    finish:\n      result: x\n";
+    let yaml = b"version: velvet-ballistics/v1\nname: http_wf\nwhen:\n  http: {}\nsteps:\n  - id: s1\n    finish:\n      result: x\n";
     // When: compiling
     let result = vb_compile::compile_workflow(yaml);
     // Then: compilation fails
@@ -1186,7 +1186,7 @@ fn compile_pipeline_invalid_trigger_rejected_with_correct_error() {
 #[test]
 fn compile_pipeline_empty_steps_rejected() {
     // Given: YAML with empty steps array
-    let yaml = b"version: velvet-ballastics/v1\nname: empty\nwhen:\n  manual: {}\nsteps: []\n";
+    let yaml = b"version: velvet-ballistics/v1\nname: empty\nwhen:\n  manual: {}\nsteps: []\n";
     // When: compiling
     let result = vb_compile::compile_workflow(yaml);
     // Then: compilation fails because steps must not be empty
@@ -1196,7 +1196,7 @@ fn compile_pipeline_empty_steps_rejected() {
 #[test]
 fn compile_pipeline_reserved_step_id_rejected() {
     // Given: YAML with a step using reserved id "runtime"
-    let yaml = b"version: velvet-ballastics/v1\nname: reserved\nwhen:\n  manual: {}\nsteps:\n  - id: runtime\n    finish:\n      result: x\n";
+    let yaml = b"version: velvet-ballistics/v1\nname: reserved\nwhen:\n  manual: {}\nsteps:\n  - id: runtime\n    finish:\n      result: x\n";
     // When: compiling
     let result = vb_compile::compile_workflow(yaml);
     // Then: compilation fails
@@ -1206,7 +1206,7 @@ fn compile_pipeline_reserved_step_id_rejected() {
 #[test]
 fn compile_pipeline_uppercase_step_id_rejected() {
     // Given: YAML with an uppercase step ID
-    let yaml = b"version: velvet-ballastics/v1\nname: upper\nwhen:\n  manual: {}\nsteps:\n  - id: MyStep\n    finish:\n      result: x\n";
+    let yaml = b"version: velvet-ballistics/v1\nname: upper\nwhen:\n  manual: {}\nsteps:\n  - id: MyStep\n    finish:\n      result: x\n";
     // When: compiling
     let result = vb_compile::compile_workflow(yaml);
     // Then: compilation fails

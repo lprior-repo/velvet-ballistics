@@ -65,9 +65,9 @@ fn failure_repair_command(gate_name: &str) -> &'static str {
     match gate_name {
         "fmt" => "cargo +nightly fmt --all",
         "clippy" => "cargo +nightly clippy --workspace --all-targets --all-features",
-        "miri" => "moon run velvet-ballastics:miri",
-        "test" | "nextest" => "moon run velvet-ballastics:test",
-        "supply-chain" => "moon run velvet-ballastics:supply-chain",
+        "miri" => "moon run velvet-ballistics:miri",
+        "test" | "nextest" => "moon run velvet-ballistics:test",
+        "supply-chain" => "moon run velvet-ballistics:supply-chain",
         _ => "moon ci --base HEAD --head HEAD",
     }
 }

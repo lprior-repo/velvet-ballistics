@@ -5,7 +5,7 @@ updated_at: 2026-05-11
 # Moon Report
 
 ## Commands
-- `rtk cargo test -p vb_runtime runtime_error --lib && rtk cargo test -p velvet_ballastics --test admission_durability_code`: PASS; 19 `vb_runtime` tests passed, 1297 filtered; 1 integration test passed.
+- `rtk cargo test -p vb_runtime runtime_error --lib && rtk cargo test -p velvet_ballistics --test admission_durability_code`: PASS; 19 `vb_runtime` tests passed, 1297 filtered; 1 integration test passed.
 - `moon run :quick`: PASS; rerun after refactor returned success.
 - `moon run :test`: PASS; nextest summary reported 9831 tests passed, 0 skipped.
 - `moon ci`: NON-ZERO; output saved at `/home/lewis/.local/share/opencode/tool-output/tool_e19d661b8001uZi7XItEOpIKJ6`.

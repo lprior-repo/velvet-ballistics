@@ -3,25 +3,25 @@
 STATUS: APPROVED
 
 Workspace: `/home/lewis/src/vb-37lc`  
-Scope: canonical Velvet Ballastics naming scan (`crates/velvet_ballastics/src/naming_scan.rs`, `tests/vb_37lc_canonical_spelling_red.rs`)  
+Scope: canonical Velvet Ballastics naming scan (`crates/velvet_ballistics/src/naming_scan.rs`, `tests/vb_37lc_canonical_spelling_red.rs`)  
 State: 5.5 Black Hat after Red Queen approval and shape repair
 
 ## Evidence Run
 
 - `cargo +nightly nextest run --test vb_37lc_canonical_spelling_red` — PASS, 76/76.
 - `cargo +nightly clippy --test vb_37lc_canonical_spelling_red -- -D warnings` — PASS.
-- `cargo +nightly clippy --manifest-path crates/velvet_ballastics/Cargo.toml -- -D clippy::wildcard_enum_match_arm` — PASS.
-- Function-length gate script over `crates/velvet_ballastics/src/naming_scan.rs` — PASS: `max_function_length=25 function=scan_repository lines=382-406`.
+- `cargo +nightly clippy --manifest-path crates/velvet_ballistics/Cargo.toml -- -D clippy::wildcard_enum_match_arm` — PASS.
+- Function-length gate script over `crates/velvet_ballistics/src/naming_scan.rs` — PASS: `max_function_length=25 function=scan_repository lines=382-406`.
 - Panic/unsafe scan over `naming_scan.rs` — PASS: no `unwrap(`, `expect(`, `panic!`, `todo!`, `unimplemented!`, `dbg!`, or `unsafe` hits.
 - Wildcard catch-all scan over `naming_scan.rs` — PASS: no `_ =>` match arms found.
 - Synthetic shortcut/thread-name scan over `naming_scan.rs` — PASS: no thread-name behavior; only `kind_name` identifier noise.
-- `git -C /home/lewis/src/vb-37lc diff --quiet -- crates/velvet_ballastics/src/commands_ai_context.rs` — PASS: exit 0, unrelated file is unchanged and legitimately scoped out.
+- `git -C /home/lewis/src/vb-37lc diff --quiet -- crates/velvet_ballistics/src/commands_ai_context.rs` — PASS: exit 0, unrelated file is unchanged and legitimately scoped out.
 
 ## Phase 1 — Contract & Bead Parity
 
 PASS.
 
-- Canonical spellings exactly match the contract: `velvet-ballastics`, `velvet_ballastics`, `velvet-ballastics/v1` at `naming_scan.rs:5-7` and canonical table construction at `266-276`.
+- Canonical spellings exactly match the contract: `velvet-ballistics`, `velvet_ballistics`, `velvet-ballistics/v1` at `naming_scan.rs:5-7` and canonical table construction at `266-276`.
 - Contract API exists with the required signatures: `validate_scan_config` (`278-293`), `discover_scan_inputs` (`295-306`), `classify_occurrence` (`308-328`), `scan_file` (`368-380`), `scan_repository` (`382-406`), `render_scan_report` (`408-416`).
 - Error taxonomy is represented as `NamingScanError` variants at `255-263`.
 - Finding fields satisfy path, line, column, class, remediation at `175-182`; deterministic sorting uses path/line/column/class at `1033-1040`.

@@ -24,7 +24,7 @@ STATUS: APPROVED
 ## Tier 1 — Focused Execution Evidence
 
 - PASS strict YAML suite: `rtk cargo test -p vb_compile --test vb_core_yaml_e2e_chain_strict_yaml -- --nocapture` returned `cargo test: 10 passed`.
-- EXPECTED RED contract suite: `rtk cargo test -p velvet-ballastics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture` returned `34 passed; 1 failed`; log `/home/lewis/.local/share/rtk/tee/1778907378_cargo_test.log` lines 2-44 show one failing test, and line 49 shows `Error: "artifact checksum mismatch"`.
+- EXPECTED RED contract suite: `rtk cargo test -p velvet-ballistics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture` returned `34 passed; 1 failed`; log `/home/lewis/.local/share/rtk/tee/1778907378_cargo_test.log` lines 2-44 show one failing test, and line 49 shows `Error: "artifact checksum mismatch"`.
 - The failing test is `tests/vb_core_yaml_e2e_chain_contract.rs:166-183`, which asserts exact digest equality, verification digest equality, true proof flags, and `REQUIRED_GATE_COUNT` for `submit_artifact(&journal, &workflow, RuntimePolicy::Strict)`.
 - This is the only observed failure and it is the intended implementation gap from the repaired plan, not a weak assertion, nondeterminism, or test-design defect.
 - PASS fuzz smoke binaries: `strict_yaml_profile`, `accepted_artifact_decode`, and `recovery_decode` compiled and ran with deterministic stdin seeds.

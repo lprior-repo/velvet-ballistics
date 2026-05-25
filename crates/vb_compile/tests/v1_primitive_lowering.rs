@@ -9,7 +9,7 @@ use vb_core::{
 };
 
 const HEADER: &str =
-    "version: velvet-ballastics/v1\nname: primitive-lowering\nwhen:\n  manual: {}\nsteps:\n";
+    "version: velvet-ballistics/v1\nname: primitive-lowering\nwhen:\n  manual: {}\nsteps:\n";
 
 #[derive(Clone, Copy, Debug)]
 struct PrimitiveCase {
@@ -435,17 +435,17 @@ fn compile_source_returns_exact_error_variants_for_contract_taxonomy() -> Result
     let cases = [
         (
             "empty_steps",
-            "version: velvet-ballastics/v1\nname: empty\nwhen:\n  manual: {}\nsteps: []\n",
+            "version: velvet-ballistics/v1\nname: empty\nwhen:\n  manual: {}\nsteps: []\n",
             ExpectedCompileError::EmptySteps,
         ),
         (
             "top_level_inputs",
-            "version: velvet-ballastics/v1\nname: inputs\nwhen:\n  manual: {}\ninputs:\n  account:\n    type: string\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+            "version: velvet-ballistics/v1\nname: inputs\nwhen:\n  manual: {}\ninputs:\n  account:\n    type: string\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
             ExpectedCompileError::UnsupportedTopLevelDeclaration("inputs"),
         ),
         (
             "top_level_result",
-            "version: velvet-ballastics/v1\nname: result\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\nresult:\n  ok: true\n",
+            "version: velvet-ballistics/v1\nname: result\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\nresult:\n  ok: true\n",
             ExpectedCompileError::UnsupportedTopLevelResult,
         ),
         (
@@ -508,17 +508,17 @@ fn public_compile_apis_return_exact_error_variants_for_contract_taxonomy() -> Re
     let cases = [
         (
             "empty_steps",
-            "version: velvet-ballastics/v1\nname: empty\nwhen:\n  manual: {}\nsteps: []\n",
+            "version: velvet-ballistics/v1\nname: empty\nwhen:\n  manual: {}\nsteps: []\n",
             ExpectedCompileError::EmptySteps,
         ),
         (
             "top_level_inputs",
-            "version: velvet-ballastics/v1\nname: inputs\nwhen:\n  manual: {}\ninputs:\n  account:\n    type: string\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+            "version: velvet-ballistics/v1\nname: inputs\nwhen:\n  manual: {}\ninputs:\n  account:\n    type: string\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
             ExpectedCompileError::UnsupportedTopLevelDeclaration("inputs"),
         ),
         (
             "top_level_result",
-            "version: velvet-ballastics/v1\nname: result\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\nresult:\n  ok: true\n",
+            "version: velvet-ballistics/v1\nname: result\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\nresult:\n  ok: true\n",
             ExpectedCompileError::UnsupportedTopLevelResult,
         ),
         (
@@ -649,7 +649,7 @@ fn public_helpers_return_exact_step_index_slot_index_limit_and_workflow_error_va
 fn yaml_compiler_compile_returns_canonical_yaml_when_source_parse_fails() -> Result<(), String> {
     let errors = YamlCompiler::default()
         .compile(
-            b"version: velvet-ballastics/v1\nname: bad\nwhen:\n  manual: {}\nsteps:\n  - id:\n",
+            b"version: velvet-ballistics/v1\nname: bad\nwhen:\n  manual: {}\nsteps:\n  - id:\n",
         )
         .err()
         .ok_or_else(|| String::from("invalid canonical YAML unexpectedly compiled"))?;

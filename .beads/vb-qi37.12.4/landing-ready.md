@@ -18,7 +18,7 @@ STATUS: BOOKMARK_READY
 
 - Direct gate: `scripts/check-ignored-fallible-results.sh` exit 0, `NoViolationFound`.
 - Verify standard: `moon run :verify-standard` exit 0, all standard checks passed.
-- Affected tests: `vb_runtime` 1460 passed, `vb_ipc` 407 passed, `vb_storage` 983 passed, `velvet_ballastics` serial 471 passed.
+- Affected tests: `vb_runtime` 1460 passed, `vb_ipc` 407 passed, `vb_storage` 983 passed, `velvet_ballistics` serial 471 passed.
 - Formatting: `rtk cargo fmt --all --check` exit 0.
 
 ## Known Debt

@@ -11,7 +11,7 @@
 
 All 7 mandated tests (T1–T7) **PASS**. The compile-fix prerequisite bead is verified:
 - `vb_ipc` compiles cleanly with zero clippy warnings.
-- `velvet-ballastics-workspace-tests` compiles cleanly including test targets.
+- `velvet-ballistics-workspace-tests` compiles cleanly including test targets.
 - No new panic patterns were introduced by the fix commit `0ebc5270`.
 - The file explicitly forbids `unsafe` code and contains zero unsafe usage.
 - The `String → enum` type-mismatch fix is confirmed by 227 occurrences of strongly-typed enum variants in `handlers.rs`.
@@ -31,11 +31,11 @@ All 7 mandated tests (T1–T7) **PASS**. The compile-fix prerequisite bead is ve
 
 ---
 
-### T2 — cargo check -p velvet-ballastics-workspace-tests --tests
+### T2 — cargo check -p velvet-ballistics-workspace-tests --tests
 
 | Field | Value |
 |---|---|
-| **Command** | `cargo check -p velvet-ballastics-workspace-tests --tests` |
+| **Command** | `cargo check -p velvet-ballistics-workspace-tests --tests` |
 | **Exit Code** | `0` |
 | **Output Summary** | `Finished dev profile [unoptimized + debuginfo] target(s) in 0.07s` — workspace-tests compile including all test targets. |
 | **Status** | **PASS** |
@@ -102,7 +102,7 @@ All 7 mandated tests (T1–T7) **PASS**. The compile-fix prerequisite bead is ve
 | Test | Description | Status |
 |---|---|---|
 | T1 | `cargo check -p vb_ipc` | **PASS** |
-| T2 | `cargo check -p velvet-ballastics-workspace-tests --tests` | **PASS** |
+| T2 | `cargo check -p velvet-ballistics-workspace-tests --tests` | **PASS** |
 | T3 | `cargo clippy -p vb_ipc -- -D warnings` | **PASS** |
 | T4 | Git diff panic-pattern audit | **PASS** |
 | T5 | `unsafe` usage scan | **PASS** |

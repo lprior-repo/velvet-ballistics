@@ -115,7 +115,7 @@
 | **Integration** | 14 | Most critical — component boundaries, real journal/storage deps, no mocks |
 | **Unit / Calc** | 45 | 8 pub fns × 5x minimum + storage journal module tests covering write_event/read_journal edge cases; pure transition functions, command validation predicates, error construction |
 | **E2E** | 2 | Full CLI dispatch through storage to journal; black-box lifecycle smoke |
-| **Static Analysis** | 1 | `cargo clippy --all-targets` on touched crates (velvet_ballastics, vb_runtime, vb_storage) |
+| **Static Analysis** | 1 | `cargo clippy --all-targets` on touched crates (velvet_ballistics, vb_runtime, vb_storage) |
 
 **Unit test breakdown (45 total)**:
 - `cancel(bead_id)` from {Active, WaitingAnswer, Pending, Completed, Failed} = 5 tests
@@ -1083,7 +1083,7 @@ Corpus seeds: valid (BeadId, Cancel/Resume/Retry/Answer, LifecycleState) combina
 
 | Scenario | CLI Args | Expected | Layer |
 |---------|---------|----------|-------|
-| cancel bead via CLI | `velvet_ballastics cancel <bead_id>` | success exit code, journal entry | e2e |
+| cancel bead via CLI | `velvet_ballistics cancel <bead_id>` | success exit code, journal entry | e2e |
 | full lifecycle via CLI | cancel, then resume | correct state transitions | e2e |
 
 ---

@@ -16,7 +16,7 @@ pub use crate::expression_bytecode::{compile_expr_to_bytecode, compile_expr_to_b
 
 pub mod type_taint;
 
-const WORKFLOW_VERSION: &str = "velvet-ballastics/v1";
+const WORKFLOW_VERSION: &str = "velvet-ballistics/v1";
 
 pub fn compile_workflow(source: &[u8]) -> Result<CompiledWorkflow, CompileErrors> {
     YamlCompiler::default().compile(source)
@@ -740,14 +740,6 @@ pub fn emit_compiled_artifact(workflow: &CompiledWorkflow) -> Result<Box<[u8]>, 
                 feature: format!("postcard serialization failed: {error}").into_boxed_str(),
             }])
         })
-}
-
-pub fn compile_to_generated_rust(workflow: &CompiledWorkflow) -> Result<String, CompileErrors> {
-    vb_codegen::emit_rust_workflow(workflow).map_err(|error| {
-        CompileErrors(vec![CompileError::ExpressionLoweringUnsupported {
-            feature: error.to_string().into_boxed_str(),
-        }])
-    })
 }
 
 pub fn check_idempotency_gates(contracts: &[ActionContract]) -> Result<(), CompileErrors> {

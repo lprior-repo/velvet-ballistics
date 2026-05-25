@@ -12,7 +12,7 @@ use vb_cli::naming_scan::{
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-const MEMBERS: [(&str, &str); 19] = [
+const MEMBERS: [(&str, &str); 16] = [
     ("crates/vb_boundary_inventory", "vb_boundary_inventory"),
     ("crates/vb_core", "vb_core"),
     ("crates/vb_yaml", "vb_yaml"),
@@ -23,18 +23,18 @@ const MEMBERS: [(&str, &str); 19] = [
     ("crates/vb_runtime", "vb_runtime"),
     ("crates/vb_doc", "vb_doc"),
     ("crates/vb_ipc", "vb_ipc"),
-    ("crates/vb_codegen", "vb_codegen"),
-    ("crates/vb_ui_makepad", "vb_ui_makepad"),
-    ("crates/vb_ui_model", "vb_ui_model"),
-    ("crates/vb_ui_snapshot", "vb_ui_snapshot"),
     ("crates/vb_proof_kernels", "vb_proof_kernels"),
-    ("crates/vb_cli", "velvet-ballastics"),
+    ("crates/vb_cli", "velvet-ballistics"),
+    ("crates/vb_verification", "vb_verification"),
+    (
+        "crates/workspace_tests/idempotency_suite",
+        "velvet-ballistics-idempotency-workspace-tests",
+    ),
     (
         "crates/workspace_tests",
-        "velvet-ballastics-workspace-tests",
+        "velvet-ballistics-workspace-tests",
     ),
     ("crates/vb_benchmark", "vb_benchmark"),
-    ("xtask", "xtask"),
 ];
 
 fn repo_root() -> Result<PathBuf, std::env::VarError> {
@@ -68,7 +68,7 @@ fn workspace() -> Result<tempfile::TempDir, Box<dyn std::error::Error>> {
     write_file(
         &root.join("Cargo.toml"),
         &format!(
-            "[workspace]\nmembers = [\n{member_lines}]\nexclude = [\"target/miri-tmp\", \"crates/vb_ui\", \"fuzz\"]\n"
+            "[workspace]\nmembers = [\n{member_lines}]\nexclude = [\"target/miri-tmp\", \"crates/vb_ui\", \"crates/vb_codegen\", \"fuzz\"]\n"
         ),
     )?;
     for (member, package_name) in MEMBERS {
@@ -81,16 +81,13 @@ fn write_manifest(root: &Path, member: &str, package_name: &str) -> Result<(), s
     let mut manifest =
         format!("[package]\nname = \"{package_name}\"\nedition = \"2024\"\n\n[dependencies]\n");
     if member == "crates/vb_cli" {
-        manifest.push_str("\n[lib]\nname = \"vb_cli\"\npath = \"src/lib.rs\"\n\n[[bin]]\nname = \"velvet-ballastics\"\npath = \"src/main.rs\"\n");
+        manifest.push_str("\n[lib]\nname = \"vb_cli\"\npath = \"src/lib.rs\"\n\n[[bin]]\nname = \"velvet-ballistics\"\npath = \"src/main.rs\"\n");
     }
     if member == "crates/vb_core" {
-        manifest.push_str("\n[features]\ndefault = []\ngenerated = []\nbench = []\nvolatile = []\ntest-util = []\n");
+        manifest.push_str("\n[features]\ndefault = []\nbench = []\nvolatile = []\ntest-util = []\n");
     }
     if member == "crates/vb_validate" {
         manifest.push_str("\n[features]\ndefault = []\nverus = []\n");
-    }
-    if member == "crates/vb_ui_snapshot" {
-        manifest.push_str("\n[features]\ndefault = [\"std\"]\nstd = []\n");
     }
     write_file(&root.join(member).join("Cargo.toml"), &manifest)
 }
@@ -114,7 +111,7 @@ fn package_name_drift_reports_exact_member_and_expected_name() -> TestResult {
     assert!(!output.status.success());
     assert_eq!(
         stderr(&output),
-        "crates/vb_cli/Cargo.toml: package.name expected \"velvet-ballastics\", got Some(\"velvet-ballistics\")\n"
+        "crates/vb_cli/Cargo.toml: package.name expected \"velvet-ballistics\", got Some(\"velvet-ballistics\")\n"
     );
     Ok(())
 }
@@ -122,13 +119,13 @@ fn package_name_drift_reports_exact_member_and_expected_name() -> TestResult {
 #[test]
 fn binary_alias_reports_exact_allowed_binary_set() -> TestResult {
     let dir = workspace()?;
-    let manifest = "[package]\nname = \"velvet-ballastics\"\nedition = \"2024\"\n\n[dependencies]\n\n[[bin]]\nname = \"vb\"\npath = \"src/main.rs\"\n";
+    let manifest = "[package]\nname = \"velvet-ballistics\"\nedition = \"2024\"\n\n[dependencies]\n\n[[bin]]\nname = \"vb\"\npath = \"src/main.rs\"\n";
     write_file(&dir.path().join("crates/vb_cli/Cargo.toml"), manifest)?;
     let output = run_assertions(dir.path())?;
     assert!(!output.status.success());
     assert_eq!(
         stderr(&output),
-        "crates/vb_cli/Cargo.toml: bin names missing [\"velvet-ballastics\"]\ncrates/vb_cli/Cargo.toml: bin names unexpected [\"vb\"]\n"
+        "crates/vb_cli/Cargo.toml: bin names missing [\"velvet-ballistics\"]\ncrates/vb_cli/Cargo.toml: bin names unexpected [\"vb\"]\n"
     );
     Ok(())
 }
@@ -136,7 +133,7 @@ fn binary_alias_reports_exact_allowed_binary_set() -> TestResult {
 #[test]
 fn feature_drift_reports_exact_expected_feature_set() -> TestResult {
     let dir = workspace()?;
-    let manifest = "[package]\nname = \"vb_core\"\nedition = \"2024\"\n\n[features]\ndefault = []\ngenerated = []\nbench = []\njson = []\n";
+    let manifest = "[package]\nname = \"vb_core\"\nedition = \"2024\"\n\n[features]\ndefault = []\nbench = []\njson = []\n";
     write_file(&dir.path().join("crates/vb_core/Cargo.toml"), manifest)?;
     let output = run_assertions(dir.path())?;
     assert!(!output.status.success());
@@ -150,13 +147,13 @@ fn feature_drift_reports_exact_expected_feature_set() -> TestResult {
 fn scan_config() -> ScanConfig {
     ScanConfig {
         canonical_table: CanonicalSpellingTable {
-            product: "velvet-ballastics".to_string(),
-            binary: "velvet-ballastics".to_string(),
-            package: "velvet-ballastics".to_string(),
-            bead_rig: "velvet-ballastics".to_string(),
+            product: "velvet-ballistics".to_string(),
+            binary: "velvet-ballistics".to_string(),
+            package: "velvet-ballistics".to_string(),
+            bead_rig: "velvet-ballistics".to_string(),
             crate_module: "vb_cli".to_string(),
             bead_database: "vb_cli".to_string(),
-            language_version: "velvet-ballastics/v1".to_string(),
+            language_version: "velvet-ballistics/v1".to_string(),
         },
         allowlist_policy: AllowlistPolicy::Exact(vec![
             LegacyAllowRule::RepositoryPath {
@@ -194,7 +191,7 @@ fn spelling_gate_rejects_legacy_spelling_outside_exact_allowlist() {
             line: LineNumber::new(1),
             column: vb_cli::naming_scan::ColumnNumber::new(5),
             spelling_class: SpellingClass::LegacyProjectSpelling,
-            remediation: "velvet-ballastics".to_string(),
+            remediation: "velvet-ballistics".to_string(),
         }])
     );
 }
@@ -203,13 +200,13 @@ fn spelling_gate_rejects_legacy_spelling_outside_exact_allowlist() {
 fn broad_substring_allowlist_is_configuration_error() {
     let raw = RawScanConfig {
         canonical_entries: vec![
-            CanonicalEntry::new(CanonicalNameKind::Product, "velvet-ballastics"),
-            CanonicalEntry::new(CanonicalNameKind::Binary, "velvet-ballastics"),
-            CanonicalEntry::new(CanonicalNameKind::Package, "velvet-ballastics"),
-            CanonicalEntry::new(CanonicalNameKind::BeadRig, "velvet-ballastics"),
+            CanonicalEntry::new(CanonicalNameKind::Product, "velvet-ballistics"),
+            CanonicalEntry::new(CanonicalNameKind::Binary, "velvet-ballistics"),
+            CanonicalEntry::new(CanonicalNameKind::Package, "velvet-ballistics"),
+            CanonicalEntry::new(CanonicalNameKind::BeadRig, "velvet-ballistics"),
             CanonicalEntry::new(CanonicalNameKind::CrateModule, "vb_cli"),
             CanonicalEntry::new(CanonicalNameKind::BeadDatabase, "vb_cli"),
-            CanonicalEntry::new(CanonicalNameKind::LanguageVersion, "velvet-ballastics/v1"),
+            CanonicalEntry::new(CanonicalNameKind::LanguageVersion, "velvet-ballistics/v1"),
         ],
         legacy_allowlist: vec![LegacyAllowRule::Substring {
             needle: "velvet-ballistics".to_string(),

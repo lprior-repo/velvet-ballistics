@@ -12,4 +12,4 @@ mod kani_harnesses;
 mod tests;
 
 /// Workspace marker - all actual code is in crates/
-pub const WORKSPACE_NAME: &str = "velvet_ballastics";
+pub const WORKSPACE_NAME: &str = "velvet_ballistics";

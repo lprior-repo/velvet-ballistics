@@ -10,7 +10,7 @@ STATUS: PASS_WITH_RED_PHASE
 
 ## Changed Files
 
-- `crates/velvet_ballastics/tests/vb_qi37_13_structured_reconciliation.rs`
+- `crates/velvet_ballistics/tests/vb_qi37_13_structured_reconciliation.rs`
   - Adds black-box CLI behavior tests for exact public exit-code matrix, structured success formats, stdout/stderr separation, and structured validation diagnostics for unknown command/unsupported emit modes.
   - State 9 repair: diagnostic `message` assertions now compare the exact stable string for JSON validation diagnostics instead of substring containment.
   - State 9 repair: the unknown-command JSONL diagnostic test now asserts exact `message` in addition to exit code, stdout/stderr routing, one-line JSONL framing, schema version, kind, code, and public `exit_code`.
@@ -26,7 +26,7 @@ STATUS: PASS_WITH_RED_PHASE
 Command:
 
 ```bash
-TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballastics --test vb_qi37_13_structured_reconciliation --all-features --no-run
+TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballistics --test vb_qi37_13_structured_reconciliation --all-features --no-run
 ```
 
 Result: PASS.
@@ -36,7 +36,7 @@ Result: PASS.
 Command:
 
 ```bash
-TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballastics --test vb_qi37_13_structured_reconciliation --all-features
+TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballistics --test vb_qi37_13_structured_reconciliation --all-features
 ```
 
 Result after State 9 assertion repair: FAIL as expected for failing-first coverage.
@@ -79,7 +79,7 @@ cargo fmt --check
 Result: BLOCKED by unrelated pre-existing workspace issues outside this repair lane: unresolved `crates/vb_core/src/kani.rs`, invalid `fuzz/src/bin/step_budget_new.rs`, and a formatting diff in `crates/vb_ui_model/src/emitter/binary/tests.rs`. The touched CLI test file was formatted directly with:
 
 ```bash
-rustfmt crates/velvet_ballastics/tests/vb_qi37_13_structured_reconciliation.rs
+rustfmt crates/velvet_ballistics/tests/vb_qi37_13_structured_reconciliation.rs
 ```
 
 ### Green: required focused existing lanes
@@ -88,9 +88,9 @@ Commands:
 
 ```bash
 verus verification/verus/diagnostic_envelope_verus.rs
-TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballastics exit_code --all-features
-TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballastics parse_error_unknown_command_exit_code_is_1 --all-features
-TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballastics bdd_format_parity_exit_code_identical_across_formats --all-features
+TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballistics exit_code --all-features
+TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballistics parse_error_unknown_command_exit_code_is_1 --all-features
+TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballistics bdd_format_parity_exit_code_identical_across_formats --all-features
 TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo fuzz run vb_ui_model_postcard_decode --target x86_64-unknown-linux-gnu -- -runs=1
 ```
 
@@ -99,7 +99,7 @@ Results: PASS for all listed commands.
 Static/reconciliation checks also exited 0:
 
 ```bash
-if rg -n "DomainError\s*=\s*9|ExitCode::from\(9u8\)|0_to_9|<= 9" "crates/velvet_ballastics/src/exit_code.rs" "verification/verus/diagnostic_envelope_verus.rs"; then exit 2; else code=$?; test "$code" -eq 1; fi
+if rg -n "DomainError\s*=\s*9|ExitCode::from\(9u8\)|0_to_9|<= 9" "crates/velvet_ballistics/src/exit_code.rs" "verification/verus/diagnostic_envelope_verus.rs"; then exit 2; else code=$?; test "$code" -eq 1; fi
 python3 -c "...RECON-CHILD-001 marker check..."
 python3 -c "...MATRIX-COMMAND-001 proof/traceability check..."
 ```

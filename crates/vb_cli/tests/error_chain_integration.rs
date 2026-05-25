@@ -26,7 +26,7 @@ where
 /// Compile error propagates to CLI with proper Display and source chain.
 #[test]
 fn compile_error_propagates_to_cli() {
-    let source = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
+    let source = b"version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
     let compiled = vb_compile::compile_workflow(source);
     assert!(compiled.is_err(), "expected compile error for empty steps");
     let errors = match compiled {

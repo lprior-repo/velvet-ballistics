@@ -51,7 +51,7 @@
 ## Evidence Commands
 - Focused storage integration: `rustup run nightly-2026-04-28 cargo nextest run --cargo-quiet -p vb_storage --test recovery_integration --all-features`
 - Focused runtime unit/collect evidence: `rustup run nightly-2026-04-28 cargo nextest run --cargo-quiet -p vb_runtime --all-features collect --no-capture`
-- Workspace recovery contract evidence: `rustup run nightly-2026-04-28 cargo nextest run --cargo-quiet -p velvet-ballastics-workspace-tests --all-features vb_qi37_1_1_red_recovery_contract_test --no-capture`
+- Workspace recovery contract evidence: `rustup run nightly-2026-04-28 cargo nextest run --cargo-quiet -p velvet-ballistics-workspace-tests --all-features vb_qi37_1_1_red_recovery_contract_test --no-capture`
 - Proof gate: `moon run :verify-proof`
 - Source gate: `moon run :lint-src`
 - Standard gate: `moon run :test`

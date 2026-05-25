@@ -22,7 +22,7 @@ State: 2 artifact retry
 - Reuse existing resource validation error style from `crates/vb_core/src/validation/resource.rs` instead of introducing a parallel error vocabulary.
 - Reuse existing budget test fixture style from `crates/vb_core/src/engine/tests/integration_budget.rs` for Given/When/Then-style aggregate scenarios.
 - Keep generated/maxperf runtime constraints in mind: no YAML, JSON, or HTTP dependencies in runtime core; aggregate budget model should remain typed Rust data, not dynamic config parsing.
-- Preserve crate naming conventions from `AGENTS.md`: package/product `velvet-ballastics`, crate/module `velvet_ballastics`; do not introduce `velvet-ballistics` names except where already externally fixed.
+- Preserve crate naming conventions from `AGENTS.md`: package/product `velvet-ballistics`, crate/module `velvet_ballistics`; do not introduce `velvet-ballistics` names except where already externally fixed.
 
 ## Suspected Touchpoints
 

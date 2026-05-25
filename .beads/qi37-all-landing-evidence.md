@@ -25,8 +25,8 @@ forbidden_source_checkout: `/home/lewis/src/Velvet-ballistics` not touched
 - `rtk cargo test -p vb_runtime ask_answer --lib`: PASS — 19 passed, 1323 filtered out.
 - `rtk cargo test -p vb_runtime --test durable_resume_red_phase`: PASS — 17 passed.
 - `rtk cargo test -p vb_storage --test replay_resume`: PASS — 3 passed.
-- `rtk cargo test -p velvet_ballastics --test admission_evidence_integration`: PASS — 8 passed.
-- `rtk cargo test -p velvet_ballastics --test lifecycle_integration`: PASS — 43 passed.
+- `rtk cargo test -p velvet_ballistics --test admission_evidence_integration`: PASS — 8 passed.
+- `rtk cargo test -p velvet_ballistics --test lifecycle_integration`: PASS — 43 passed.
 - `rtk cargo test -p vb_runtime journal::tests::runtime_shutdown_graceful_drains_owned_queued_journal --lib`: PASS — 1 passed, 1341 filtered out.
 - `moon ci`: PASS — 19 tasks completed, 2 cached; 8063 tests passed; duration 1m 56s 290ms.
 

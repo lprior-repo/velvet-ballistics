@@ -8,7 +8,7 @@ STATUS: PASS
 ## Target
 
 - Workspace: `/home/lewis/src/Velvet-ballistics-vb-qi37-16-2-go`
-- Binary: `cargo run -q -p velvet_ballastics --bin velvet-ballastics -- ...`
+- Binary: `cargo run -q -p velvet_ballistics --bin velvet-ballistics -- ...`
 - Feature under final QA: durable resume transition and CLI resume surface.
 
 ## Interface discovery
@@ -16,7 +16,7 @@ STATUS: PASS
 Command:
 
 ```bash
-cargo run -q -p velvet_ballastics --bin velvet-ballastics -- --help
+cargo run -q -p velvet_ballistics --bin velvet-ballistics -- --help
 ```
 
 Outcome: exit 0. Relevant stdout excerpt:
@@ -31,13 +31,13 @@ options:
 Version command:
 
 ```bash
-cargo run -q -p velvet_ballastics --bin velvet-ballastics -- version
+cargo run -q -p velvet_ballistics --bin velvet-ballistics -- version
 ```
 
 Output:
 
 ```text
-velvet-ballastics 0.1.0
+velvet-ballistics 0.1.0
 ```
 
 Exit: 0.
@@ -46,12 +46,12 @@ Exit: 0.
 
 | ID | Category | Command | Expected | Actual | Status |
 |---|---|---|---|---|---|
-| QA-01 | discovery | `cargo run -q -p velvet_ballastics --bin velvet-ballastics -- --help` | Help lists `resume <run_id> --db <path> [--json\|--jsonl]` | Exit 0; help listed resume exactly | PASS |
-| QA-02 | discovery | `cargo run -q -p velvet_ballastics --bin velvet-ballastics -- version` | Binary starts and prints version | Exit 0; `velvet-ballastics 0.1.0` | PASS |
-| QA-03 | missing input | `cargo run -q -p velvet_ballastics --bin velvet-ballastics -- resume` | Missing run id rejected | Exit 1; stderr `missing argument: run_id` plus help | PASS |
-| QA-04 | missing input | `cargo run -q -p velvet_ballastics --bin velvet-ballastics -- resume run-qa-001` | Missing `--db` rejected | Exit 1; stderr `missing argument: --db` plus help | PASS |
-| QA-05 | invalid input | `cargo run -q -p velvet_ballastics --bin velvet-ballastics -- resume run-qa-001 --db /tmp/velvet-no-such-db-vb-qi37-16-2 --json` | Invalid nonnumeric run id rejected | Exit 1; stderr `invalid run_id 'run-qa-001': invalid digit found in string` | PASS |
-| QA-06 | fail-closed valid id | `cargo run -q -p velvet_ballastics --bin velvet-ballastics -- resume 1001 --db /tmp/velvet-no-such-db-vb-qi37-16-2 --json` | Unknown run fails closed with structured JSON | Exit 5; stderr `{"error":"run 1001 not found","success":false}` | PASS |
+| QA-01 | discovery | `cargo run -q -p velvet_ballistics --bin velvet-ballistics -- --help` | Help lists `resume <run_id> --db <path> [--json\|--jsonl]` | Exit 0; help listed resume exactly | PASS |
+| QA-02 | discovery | `cargo run -q -p velvet_ballistics --bin velvet-ballistics -- version` | Binary starts and prints version | Exit 0; `velvet-ballistics 0.1.0` | PASS |
+| QA-03 | missing input | `cargo run -q -p velvet_ballistics --bin velvet-ballistics -- resume` | Missing run id rejected | Exit 1; stderr `missing argument: run_id` plus help | PASS |
+| QA-04 | missing input | `cargo run -q -p velvet_ballistics --bin velvet-ballistics -- resume run-qa-001` | Missing `--db` rejected | Exit 1; stderr `missing argument: --db` plus help | PASS |
+| QA-05 | invalid input | `cargo run -q -p velvet_ballistics --bin velvet-ballistics -- resume run-qa-001 --db /tmp/velvet-no-such-db-vb-qi37-16-2 --json` | Invalid nonnumeric run id rejected | Exit 1; stderr `invalid run_id 'run-qa-001': invalid digit found in string` | PASS |
+| QA-06 | fail-closed valid id | `cargo run -q -p velvet_ballistics --bin velvet-ballistics -- resume 1001 --db /tmp/velvet-no-such-db-vb-qi37-16-2 --json` | Unknown run fails closed with structured JSON | Exit 5; stderr `{"error":"run 1001 not found","success":false}` | PASS |
 | QA-07 | runtime happy path | `cargo test -q -p vb_runtime resume_keeps_awaiting_action_resumable_after_resume -- --nocapture` | Resume from resumable run reports resumed and preserves resumable post-drive state | Exit 0; 1 passed | PASS |
 | QA-08 | storage replay | `cargo test -q -p vb_storage --test replay_resume -- --nocapture` | Replay/resume storage tests pass | Exit 0; 3 passed | PASS |
 
@@ -60,13 +60,13 @@ Exit: 0.
 ### QA-03 missing run id
 
 ```text
-$ cargo run -q -p velvet_ballastics --bin velvet-ballastics -- resume
+$ cargo run -q -p velvet_ballistics --bin velvet-ballistics -- resume
 --- stdout ---
 <empty>
 --- stderr ---
 missing argument: run_id
 
-velvet-ballastics - compiled workflow runtime
+velvet-ballistics - compiled workflow runtime
 ...
 --- exit: 1 ---
 ```
@@ -74,13 +74,13 @@ velvet-ballastics - compiled workflow runtime
 ### QA-04 missing db
 
 ```text
-$ cargo run -q -p velvet_ballastics --bin velvet-ballastics -- resume run-qa-001
+$ cargo run -q -p velvet_ballistics --bin velvet-ballistics -- resume run-qa-001
 --- stdout ---
 <empty>
 --- stderr ---
 missing argument: --db
 
-velvet-ballastics - compiled workflow runtime
+velvet-ballistics - compiled workflow runtime
 ...
 --- exit: 1 ---
 ```
@@ -88,7 +88,7 @@ velvet-ballastics - compiled workflow runtime
 ### QA-05 invalid run id
 
 ```text
-$ cargo run -q -p velvet_ballastics --bin velvet-ballastics -- resume run-qa-001 --db /tmp/velvet-no-such-db-vb-qi37-16-2 --json
+$ cargo run -q -p velvet_ballistics --bin velvet-ballistics -- resume run-qa-001 --db /tmp/velvet-no-such-db-vb-qi37-16-2 --json
 --- stdout ---
 <empty>
 --- stderr ---
@@ -99,7 +99,7 @@ invalid run_id 'run-qa-001': invalid digit found in string
 ### QA-06 valid numeric id missing from journal/db
 
 ```text
-$ cargo run -q -p velvet_ballastics --bin velvet-ballastics -- resume 1001 --db /tmp/velvet-no-such-db-vb-qi37-16-2 --json
+$ cargo run -q -p velvet_ballistics --bin velvet-ballistics -- resume 1001 --db /tmp/velvet-no-such-db-vb-qi37-16-2 --json
 --- stdout ---
 <empty>
 --- stderr ---

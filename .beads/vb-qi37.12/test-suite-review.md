@@ -60,7 +60,7 @@ NO `use crate::` in vb_qi37_12 target. Test reads source files as text and check
 
 ## Tier 1 — Execution
 
-**Compile gate:** `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract --no-run` → exit 0. **PASS**.
+**Compile gate:** `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract --no-run` → exit 0. **PASS**.
 
 **Test execution:** `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test ... -- --nocapture` → `38 passed; 9 failed; 0 ignored`. **PASS** (red-first as expected).
 

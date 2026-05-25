@@ -2,7 +2,7 @@
 
 ## Happy Path Tests
 - `test_vb_ipc_compiles_cleanly` -- `cargo check -p vb_ipc` exits 0 with zero errors.
-- `test_workspace_tests_compiles_cleanly` -- `cargo check -p velvet-ballastics-workspace-tests --tests` exits 0 with zero errors.
+- `test_workspace_tests_compiles_cleanly` -- `cargo check -p velvet-ballistics-workspace-tests --tests` exits 0 with zero errors.
 - `test_clippy_passes_with_zero_warnings` -- `cargo clippy -p vb_ipc -- -D warnings` exits 0.
 
 ## Error Path Tests
@@ -17,7 +17,7 @@
 ## Contract Verification Tests
 - `test_precondition_clean_checkout` -- No uncommitted changes exist that could interfere with compilation.
 - `test_postcondition_vb_ipc_zero_errors` -- `cargo check -p vb_ipc` exits 0.
-- `test_postcondition_workspace_tests_zero_errors` -- `cargo check -p velvet-ballastics-workspace-tests --tests` exits 0.
+- `test_postcondition_workspace_tests_zero_errors` -- `cargo check -p velvet-ballistics-workspace-tests --tests` exits 0.
 - `test_postcondition_no_safety_regression` -- No new `unsafe`, `unwrap`, `expect`, `panic`, `todo`, or `unimplemented` in the diff.
 - `test_invariant_type_consistency` -- All IPC payload construction in `handlers.rs` uses typed enum variants.
 - `test_invariant_compilation_isolation` -- Orphaned files remain unreferenced by the module tree.
@@ -32,7 +32,7 @@
 
 **When:**
 - `cargo check -p vb_ipc` is executed.
-- `cargo check -p velvet-ballastics-workspace-tests --tests` is executed.
+- `cargo check -p velvet-ballistics-workspace-tests --tests` is executed.
 - `cargo clippy -p vb_ipc -- -D warnings` is executed.
 
 **Then:**

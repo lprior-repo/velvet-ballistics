@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # check-spelling-gate.sh
 # Mechanical gate: rejects new velvet-ballistics (wrong) spelling in active code/docs.
-# Canonical spelling is velvet-ballastics (correct).
+# Canonical spelling is velvet-ballistics (correct).
 #
 # Allowlisted path patterns (skip these entirely):
 #   - .beads/            — Bead artifacts and CI output (not source)
@@ -26,7 +26,7 @@ set -euo pipefail
 
 ROOT="$(pwd -P)"
 
-echo "=== Spelling Gate: velvet-ballistics vs velvet-ballastics ===" >&2
+echo "=== Spelling Gate: velvet-ballistics vs velvet-ballistics ===" >&2
 
 count=0
 
@@ -106,7 +106,7 @@ for file in "${files[@]}"; do
             continue
         fi
 
-        echo "VIOLATION: $file:$linenum: wrong spelling 'velvet-ballistics' (use 'velvet-ballastics')" >&2
+        echo "VIOLATION: $file:$linenum: wrong spelling 'velvet-ballistics' (use 'velvet-ballistics')" >&2
         count=$((count + 1))
     done < <(rtk grep -n --include='*.rs' \
                        --include='*.toml' \
@@ -122,7 +122,7 @@ echo "=== Spelling Gate complete: $count violations ===" >&2
 
 if [[ $count -gt 0 ]]; then
     echo "" >&2
-    echo "Hint: The canonical spelling is 'velvet-ballastics'." >&2
+    echo "Hint: The canonical spelling is 'velvet-ballistics'." >&2
     echo "Allowlisted path patterns (excluded entirely):" >&2
     echo "  - .beads/ (bead artifacts and CI output)" >&2
     echo "  - .jj/ (JJ internal state)" >&2

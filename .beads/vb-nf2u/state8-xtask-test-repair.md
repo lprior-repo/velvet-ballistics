@@ -36,9 +36,9 @@ Commands run:
 - `rtk cargo test -p xtask --test integration_gates test_exit_code_1_when_any_gate_fails` — PASS.
 - `rtk cargo test -p xtask` — PASS: 55 passed.
 - `rtk cargo fmt --check` — initially FAIL, then PASS after `rtk cargo fmt`.
-- `moon run velvet-ballastics:test` — PASS: 10781 passed, 0 skipped.
-- `moon run velvet-ballastics:lint-src` — PASS.
-- `moon ci --base HEAD --head HEAD` — initially FAIL on `velvet-ballastics:lint-src` clippy `cmp_owned`; after repair PASS: 20 completed (2 cached), 0 failed.
+- `moon run velvet-ballistics:test` — PASS: 10781 passed, 0 skipped.
+- `moon run velvet-ballistics:lint-src` — PASS.
+- `moon ci --base HEAD --head HEAD` — initially FAIL on `velvet-ballistics:lint-src` clippy `cmp_owned`; after repair PASS: 20 completed (2 cached), 0 failed.
 
 Full CI:
 - PASS: `moon ci --base HEAD --head HEAD`.

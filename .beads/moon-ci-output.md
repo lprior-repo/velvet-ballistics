@@ -249,7 +249,7 @@ Changed files:
 	.beads/vb-qi37.1.3/workspace/RELEASE_CHECKLIST.md
 	.beads/vb-qi37.1.3/workspace/SECURITY.md
 	.beads/vb-qi37.1.3/workspace/VERIFYING_RUST_WITH_LEAN_AND_GATES.md
-	.beads/vb-qi37.1.3/workspace/benches/velvet_ballastics.rs
+	.beads/vb-qi37.1.3/workspace/benches/velvet_ballistics.rs
 	.beads/vb-qi37.1.3/workspace/cargo-vet.toml
 	.beads/vb-qi37.1.3/workspace/config.yaml
 	.beads/vb-qi37.1.3/workspace/crates/flow-core/Cargo.toml
@@ -731,29 +731,29 @@ Changed files:
 	.beads/vb-qi37.1.3/workspace/crates/vb_yaml/src/source_map_tests.rs
 	.beads/vb-qi37.1.3/workspace/crates/vb_yaml/src/source_map_types.rs
 	.beads/vb-qi37.1.3/workspace/crates/velvet-ballistics/crates/vb_core/src/workflow/validation/parts.rs
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/Cargo.toml
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/src/agent_context.rs
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/src/args.rs
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/src/bench.rs
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/src/commands.rs
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/src/commands_ai_context.rs
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/src/commands_diff.rs
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/src/commands_incident.rs
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/src/commands_journal.rs
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/src/commands_status.rs
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/src/commands_verify.rs
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/src/commands_workflow.rs
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/src/exit_code.rs
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/src/io.rs
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/src/main.rs
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/src/main_tests.rs
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/src/run.rs
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/src/storage.rs
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/src/workflow.rs
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/tests/admission_evidence_integration.rs
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/tests/cli_integration.rs
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/tests/cross_crate_adversarial.rs
-	.beads/vb-qi37.1.3/workspace/crates/velvet_ballastics/tests/error_chain_integration.rs
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/Cargo.toml
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/src/agent_context.rs
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/src/args.rs
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/src/bench.rs
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/src/commands.rs
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/src/commands_ai_context.rs
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/src/commands_diff.rs
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/src/commands_incident.rs
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/src/commands_journal.rs
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/src/commands_status.rs
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/src/commands_verify.rs
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/src/commands_workflow.rs
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/src/exit_code.rs
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/src/io.rs
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/src/main.rs
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/src/main_tests.rs
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/src/run.rs
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/src/storage.rs
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/src/workflow.rs
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/tests/admission_evidence_integration.rs
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/tests/cli_integration.rs
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/tests/cross_crate_adversarial.rs
+	.beads/vb-qi37.1.3/workspace/crates/velvet_ballistics/tests/error_chain_integration.rs
 	.beads/vb-qi37.1.3/workspace/deny.toml
 	.beads/vb-qi37.1.3/workspace/design/figma/figma_makepad_notes.md
 	.beads/vb-qi37.1.3/workspace/design/figma/screens/png/01_execution_observatory_overview.png
@@ -772,8 +772,8 @@ Changed files:
 	.beads/vb-qi37.1.3/workspace/design/figma/screens/svg/06_incident_failure_console.svg
 	.beads/vb-qi37.1.3/workspace/design/figma/screens/svg/07_action_registry_contract_inspector.svg
 	.beads/vb-qi37.1.3/workspace/design/figma/screens/svg/08_storage_journal_doctor_ai_context.svg
-	.beads/vb-qi37.1.3/workspace/design/figma/velvet_ballastics_figma_ready_tightened_board.png
-	.beads/vb-qi37.1.3/workspace/design/figma/velvet_ballastics_figma_ready_tightened_screens.zip
+	.beads/vb-qi37.1.3/workspace/design/figma/velvet_ballistics_figma_ready_tightened_board.png
+	.beads/vb-qi37.1.3/workspace/design/figma/velvet_ballistics_figma_ready_tightened_screens.zip
 	.beads/vb-qi37.1.3/workspace/design/reference/figma_makepad_notes.md
 	.beads/vb-qi37.1.3/workspace/design/reference/screenshots/01_execution_observatory_overview.png
 	.beads/vb-qi37.1.3/workspace/design/reference/screenshots/02_workflow_graph_authoring.png
@@ -986,46 +986,46 @@ Changed files:
 	.beads/vb-qi37.1.3/workspace/vb-qi37-ws/Cargo.toml
 	.beads/vb-qi37.1.3/workspace/vb-qi37-ws/tests/epic_coordination_test.rs
 	.beads/vb-qi37.1.3/workspace/velvet-ballistics-MASTER.md
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/figma_makepad_notes.md
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/01_execution_observatory_overview.png
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/02_workflow_graph_authoring.png
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/03_execution_details_graph_view.png
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/04_verification_certificate_view.png
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/05_replay_theater.png
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/06_incident_failure_console.png
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/07_action_registry_contract_inspector.png
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/08_storage_journal_doctor_ai_context.png
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/01_execution_observatory_overview.svg
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/02_workflow_graph_authoring.svg
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/03_execution_details_graph_view.svg
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/04_verification_certificate_view.svg
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/05_replay_theater.svg
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/06_incident_failure_console.svg
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/07_action_registry_contract_inspector.svg
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/08_storage_journal_doctor_ai_context.svg
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/velvet_ballastics_figma_ready_tightened_board.png
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_makepad_ui_master_plan_with_images/README.md
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/canonical/figma_makepad_notes.md
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/canonical/velvet_ballastics_figma_ready_tightened_board.png
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/figma_makepad_notes.md
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/01_execution_observatory_overview.png
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/02_workflow_graph_authoring.png
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/03_execution_details_graph_view.png
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/04_verification_certificate_view.png
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/05_replay_theater.png
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/06_incident_failure_console.png
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/07_action_registry_contract_inspector.png
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/08_storage_journal_doctor_ai_context.png
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/01_execution_observatory_overview.svg
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/02_workflow_graph_authoring.svg
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/03_execution_details_graph_view.svg
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/04_verification_certificate_view.svg
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/05_replay_theater.svg
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/06_incident_failure_console.svg
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/07_action_registry_contract_inspector.svg
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/08_storage_journal_doctor_ai_context.svg
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/velvet_ballastics_figma_ready_tightened_board.png
-	.beads/vb-qi37.1.3/workspace/velvet_ballastics_makepad_ui_master_plan_with_images/velvet-ballastics-MASTER-makepad-ui-update.md
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/figma_makepad_notes.md
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/01_execution_observatory_overview.png
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/02_workflow_graph_authoring.png
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/03_execution_details_graph_view.png
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/04_verification_certificate_view.png
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/05_replay_theater.png
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/06_incident_failure_console.png
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/07_action_registry_contract_inspector.png
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/08_storage_journal_doctor_ai_context.png
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/01_execution_observatory_overview.svg
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/02_workflow_graph_authoring.svg
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/03_execution_details_graph_view.svg
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/04_verification_certificate_view.svg
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/05_replay_theater.svg
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/06_incident_failure_console.svg
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/07_action_registry_contract_inspector.svg
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/08_storage_journal_doctor_ai_context.svg
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/velvet_ballistics_figma_ready_tightened_board.png
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_makepad_ui_master_plan_with_images/README.md
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/canonical/figma_makepad_notes.md
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/canonical/velvet_ballistics_figma_ready_tightened_board.png
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/figma_makepad_notes.md
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/01_execution_observatory_overview.png
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/02_workflow_graph_authoring.png
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/03_execution_details_graph_view.png
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/04_verification_certificate_view.png
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/05_replay_theater.png
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/06_incident_failure_console.png
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/07_action_registry_contract_inspector.png
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/08_storage_journal_doctor_ai_context.png
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/01_execution_observatory_overview.svg
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/02_workflow_graph_authoring.svg
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/03_execution_details_graph_view.svg
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/04_verification_certificate_view.svg
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/05_replay_theater.svg
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/06_incident_failure_console.svg
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/07_action_registry_contract_inspector.svg
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/08_storage_journal_doctor_ai_context.svg
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/velvet_ballistics_figma_ready_tightened_board.png
+	.beads/vb-qi37.1.3/workspace/velvet_ballistics_makepad_ui_master_plan_with_images/velvet-ballistics-MASTER-makepad-ui-update.md
 	.beads/vb-qi37.1.3/workspace/xtask/Cargo.toml
 	.beads/vb-qi37.1.3/workspace/xtask/src/evidence.rs
 	.beads/vb-qi37.1.3/workspace/xtask/src/gates.rs
@@ -1173,7 +1173,7 @@ Changed files:
 	.workspaces/vb-2yb8-ws/RELEASE_CHECKLIST.md
 	.workspaces/vb-2yb8-ws/SECURITY.md
 	.workspaces/vb-2yb8-ws/VERIFYING_RUST_WITH_LEAN_AND_GATES.md
-	.workspaces/vb-2yb8-ws/benches/velvet_ballastics.rs
+	.workspaces/vb-2yb8-ws/benches/velvet_ballistics.rs
 	.workspaces/vb-2yb8-ws/cargo-vet.toml
 	.workspaces/vb-2yb8-ws/config.yaml
 	.workspaces/vb-2yb8-ws/crates/flow-core/Cargo.toml
@@ -1648,29 +1648,29 @@ Changed files:
 	.workspaces/vb-2yb8-ws/crates/vb_yaml/src/source_map_tests.rs
 	.workspaces/vb-2yb8-ws/crates/vb_yaml/src/source_map_types.rs
 	.workspaces/vb-2yb8-ws/crates/velvet-ballistics/crates/vb_core/src/workflow/validation/parts.rs
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/Cargo.toml
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/src/agent_context.rs
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/src/args.rs
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/src/bench.rs
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/src/commands.rs
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/src/commands_ai_context.rs
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/src/commands_diff.rs
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/src/commands_incident.rs
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/src/commands_journal.rs
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/src/commands_status.rs
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/src/commands_verify.rs
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/src/commands_workflow.rs
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/src/exit_code.rs
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/src/io.rs
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/src/main.rs
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/src/main_tests.rs
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/src/run.rs
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/src/storage.rs
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/src/workflow.rs
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/tests/admission_evidence_integration.rs
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/tests/cli_integration.rs
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/tests/cross_crate_adversarial.rs
-	.workspaces/vb-2yb8-ws/crates/velvet_ballastics/tests/error_chain_integration.rs
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/Cargo.toml
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/src/agent_context.rs
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/src/args.rs
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/src/bench.rs
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/src/commands.rs
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/src/commands_ai_context.rs
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/src/commands_diff.rs
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/src/commands_incident.rs
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/src/commands_journal.rs
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/src/commands_status.rs
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/src/commands_verify.rs
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/src/commands_workflow.rs
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/src/exit_code.rs
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/src/io.rs
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/src/main.rs
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/src/main_tests.rs
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/src/run.rs
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/src/storage.rs
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/src/workflow.rs
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/tests/admission_evidence_integration.rs
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/tests/cli_integration.rs
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/tests/cross_crate_adversarial.rs
+	.workspaces/vb-2yb8-ws/crates/velvet_ballistics/tests/error_chain_integration.rs
 	.workspaces/vb-2yb8-ws/deny.toml
 	.workspaces/vb-2yb8-ws/design/figma/figma_makepad_notes.md
 	.workspaces/vb-2yb8-ws/design/figma/screens/png/01_execution_observatory_overview.png
@@ -1689,8 +1689,8 @@ Changed files:
 	.workspaces/vb-2yb8-ws/design/figma/screens/svg/06_incident_failure_console.svg
 	.workspaces/vb-2yb8-ws/design/figma/screens/svg/07_action_registry_contract_inspector.svg
 	.workspaces/vb-2yb8-ws/design/figma/screens/svg/08_storage_journal_doctor_ai_context.svg
-	.workspaces/vb-2yb8-ws/design/figma/velvet_ballastics_figma_ready_tightened_board.png
-	.workspaces/vb-2yb8-ws/design/figma/velvet_ballastics_figma_ready_tightened_screens.zip
+	.workspaces/vb-2yb8-ws/design/figma/velvet_ballistics_figma_ready_tightened_board.png
+	.workspaces/vb-2yb8-ws/design/figma/velvet_ballistics_figma_ready_tightened_screens.zip
 	.workspaces/vb-2yb8-ws/design/reference/figma_makepad_notes.md
 	.workspaces/vb-2yb8-ws/design/reference/screenshots/01_execution_observatory_overview.png
 	.workspaces/vb-2yb8-ws/design/reference/screenshots/02_workflow_graph_authoring.png
@@ -1782,46 +1782,46 @@ Changed files:
 	.workspaces/vb-2yb8-ws/tests/ui_snapshots/verification_certificate.png
 	.workspaces/vb-2yb8-ws/tests/ui_snapshots/workflow_graph_authoring.png
 	.workspaces/vb-2yb8-ws/velvet-ballistics-MASTER.md
-	.workspaces/vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/figma_makepad_notes.md
-	.workspaces/vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/01_execution_observatory_overview.png
-	.workspaces/vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/02_workflow_graph_authoring.png
-	.workspaces/vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/03_execution_details_graph_view.png
-	.workspaces/vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/04_verification_certificate_view.png
-	.workspaces/vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/05_replay_theater.png
-	.workspaces/vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/06_incident_failure_console.png
-	.workspaces/vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/07_action_registry_contract_inspector.png
-	.workspaces/vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/08_storage_journal_doctor_ai_context.png
-	.workspaces/vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/01_execution_observatory_overview.svg
-	.workspaces/vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/02_workflow_graph_authoring.svg
-	.workspaces/vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/03_execution_details_graph_view.svg
-	.workspaces/vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/04_verification_certificate_view.svg
-	.workspaces/vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/05_replay_theater.svg
-	.workspaces/vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/06_incident_failure_console.svg
-	.workspaces/vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/07_action_registry_contract_inspector.svg
-	.workspaces/vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/08_storage_journal_doctor_ai_context.svg
-	.workspaces/vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/velvet_ballastics_figma_ready_tightened_board.png
-	.workspaces/vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/README.md
-	.workspaces/vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/canonical/figma_makepad_notes.md
-	.workspaces/vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/canonical/velvet_ballastics_figma_ready_tightened_board.png
-	.workspaces/vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/figma_makepad_notes.md
-	.workspaces/vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/01_execution_observatory_overview.png
-	.workspaces/vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/02_workflow_graph_authoring.png
-	.workspaces/vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/03_execution_details_graph_view.png
-	.workspaces/vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/04_verification_certificate_view.png
-	.workspaces/vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/05_replay_theater.png
-	.workspaces/vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/06_incident_failure_console.png
-	.workspaces/vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/07_action_registry_contract_inspector.png
-	.workspaces/vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/08_storage_journal_doctor_ai_context.png
-	.workspaces/vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/01_execution_observatory_overview.svg
-	.workspaces/vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/02_workflow_graph_authoring.svg
-	.workspaces/vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/03_execution_details_graph_view.svg
-	.workspaces/vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/04_verification_certificate_view.svg
-	.workspaces/vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/05_replay_theater.svg
-	.workspaces/vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/06_incident_failure_console.svg
-	.workspaces/vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/07_action_registry_contract_inspector.svg
-	.workspaces/vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/08_storage_journal_doctor_ai_context.svg
-	.workspaces/vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/velvet_ballastics_figma_ready_tightened_board.png
-	.workspaces/vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/velvet-ballastics-MASTER-makepad-ui-update.md
+	.workspaces/vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/figma_makepad_notes.md
+	.workspaces/vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/01_execution_observatory_overview.png
+	.workspaces/vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/02_workflow_graph_authoring.png
+	.workspaces/vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/03_execution_details_graph_view.png
+	.workspaces/vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/04_verification_certificate_view.png
+	.workspaces/vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/05_replay_theater.png
+	.workspaces/vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/06_incident_failure_console.png
+	.workspaces/vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/07_action_registry_contract_inspector.png
+	.workspaces/vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/08_storage_journal_doctor_ai_context.png
+	.workspaces/vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/01_execution_observatory_overview.svg
+	.workspaces/vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/02_workflow_graph_authoring.svg
+	.workspaces/vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/03_execution_details_graph_view.svg
+	.workspaces/vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/04_verification_certificate_view.svg
+	.workspaces/vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/05_replay_theater.svg
+	.workspaces/vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/06_incident_failure_console.svg
+	.workspaces/vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/07_action_registry_contract_inspector.svg
+	.workspaces/vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/08_storage_journal_doctor_ai_context.svg
+	.workspaces/vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/velvet_ballistics_figma_ready_tightened_board.png
+	.workspaces/vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/README.md
+	.workspaces/vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/canonical/figma_makepad_notes.md
+	.workspaces/vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/canonical/velvet_ballistics_figma_ready_tightened_board.png
+	.workspaces/vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/figma_makepad_notes.md
+	.workspaces/vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/01_execution_observatory_overview.png
+	.workspaces/vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/02_workflow_graph_authoring.png
+	.workspaces/vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/03_execution_details_graph_view.png
+	.workspaces/vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/04_verification_certificate_view.png
+	.workspaces/vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/05_replay_theater.png
+	.workspaces/vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/06_incident_failure_console.png
+	.workspaces/vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/07_action_registry_contract_inspector.png
+	.workspaces/vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/08_storage_journal_doctor_ai_context.png
+	.workspaces/vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/01_execution_observatory_overview.svg
+	.workspaces/vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/02_workflow_graph_authoring.svg
+	.workspaces/vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/03_execution_details_graph_view.svg
+	.workspaces/vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/04_verification_certificate_view.svg
+	.workspaces/vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/05_replay_theater.svg
+	.workspaces/vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/06_incident_failure_console.svg
+	.workspaces/vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/07_action_registry_contract_inspector.svg
+	.workspaces/vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/08_storage_journal_doctor_ai_context.svg
+	.workspaces/vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/velvet_ballistics_figma_ready_tightened_board.png
+	.workspaces/vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/velvet-ballistics-MASTER-makepad-ui-update.md
 	.workspaces/vb-2yb8-ws/xtask/Cargo.toml
 	.workspaces/vb-2yb8-ws/xtask/src/main.rs
 	vb-2yb8-ws/.beads/.gitignore
@@ -1967,7 +1967,7 @@ Changed files:
 	vb-2yb8-ws/RELEASE_CHECKLIST.md
 	vb-2yb8-ws/SECURITY.md
 	vb-2yb8-ws/VERIFYING_RUST_WITH_LEAN_AND_GATES.md
-	vb-2yb8-ws/benches/velvet_ballastics.rs
+	vb-2yb8-ws/benches/velvet_ballistics.rs
 	vb-2yb8-ws/cargo-vet.toml
 	vb-2yb8-ws/config.yaml
 	vb-2yb8-ws/crates/flow-core/Cargo.toml
@@ -2444,30 +2444,30 @@ Changed files:
 	vb-2yb8-ws/crates/vb_yaml/src/source_map_tests.rs
 	vb-2yb8-ws/crates/vb_yaml/src/source_map_types.rs
 	vb-2yb8-ws/crates/velvet-ballistics/crates/vb_core/src/workflow/validation/parts.rs
-	vb-2yb8-ws/crates/velvet_ballastics/Cargo.toml
-	vb-2yb8-ws/crates/velvet_ballastics/src/agent_context.rs
-	vb-2yb8-ws/crates/velvet_ballastics/src/args.rs
-	vb-2yb8-ws/crates/velvet_ballastics/src/bench.rs
-	vb-2yb8-ws/crates/velvet_ballastics/src/commands.rs
-	vb-2yb8-ws/crates/velvet_ballastics/src/commands_ai_context.rs
-	vb-2yb8-ws/crates/velvet_ballastics/src/commands_diff.rs
-	vb-2yb8-ws/crates/velvet_ballastics/src/commands_incident.rs
-	vb-2yb8-ws/crates/velvet_ballastics/src/commands_journal.rs
-	vb-2yb8-ws/crates/velvet_ballastics/src/commands_status.rs
-	vb-2yb8-ws/crates/velvet_ballastics/src/commands_verify.rs
-	vb-2yb8-ws/crates/velvet_ballastics/src/commands_workflow.rs
-	vb-2yb8-ws/crates/velvet_ballastics/src/exit_code.rs
-	vb-2yb8-ws/crates/velvet_ballastics/src/io.rs
-	vb-2yb8-ws/crates/velvet_ballastics/src/main.rs
-	vb-2yb8-ws/crates/velvet_ballastics/src/main_tests.rs
-	vb-2yb8-ws/crates/velvet_ballastics/src/run.rs
-	vb-2yb8-ws/crates/velvet_ballastics/src/storage.rs
-	vb-2yb8-ws/crates/velvet_ballastics/src/workflow.rs
-	vb-2yb8-ws/crates/velvet_ballastics/tests/admission_evidence_integration.rs
-	vb-2yb8-ws/crates/velvet_ballastics/tests/cli_integration.rs
-	vb-2yb8-ws/crates/velvet_ballastics/tests/cli_verify_integration.rs
-	vb-2yb8-ws/crates/velvet_ballastics/tests/cross_crate_adversarial.rs
-	vb-2yb8-ws/crates/velvet_ballastics/tests/error_chain_integration.rs
+	vb-2yb8-ws/crates/velvet_ballistics/Cargo.toml
+	vb-2yb8-ws/crates/velvet_ballistics/src/agent_context.rs
+	vb-2yb8-ws/crates/velvet_ballistics/src/args.rs
+	vb-2yb8-ws/crates/velvet_ballistics/src/bench.rs
+	vb-2yb8-ws/crates/velvet_ballistics/src/commands.rs
+	vb-2yb8-ws/crates/velvet_ballistics/src/commands_ai_context.rs
+	vb-2yb8-ws/crates/velvet_ballistics/src/commands_diff.rs
+	vb-2yb8-ws/crates/velvet_ballistics/src/commands_incident.rs
+	vb-2yb8-ws/crates/velvet_ballistics/src/commands_journal.rs
+	vb-2yb8-ws/crates/velvet_ballistics/src/commands_status.rs
+	vb-2yb8-ws/crates/velvet_ballistics/src/commands_verify.rs
+	vb-2yb8-ws/crates/velvet_ballistics/src/commands_workflow.rs
+	vb-2yb8-ws/crates/velvet_ballistics/src/exit_code.rs
+	vb-2yb8-ws/crates/velvet_ballistics/src/io.rs
+	vb-2yb8-ws/crates/velvet_ballistics/src/main.rs
+	vb-2yb8-ws/crates/velvet_ballistics/src/main_tests.rs
+	vb-2yb8-ws/crates/velvet_ballistics/src/run.rs
+	vb-2yb8-ws/crates/velvet_ballistics/src/storage.rs
+	vb-2yb8-ws/crates/velvet_ballistics/src/workflow.rs
+	vb-2yb8-ws/crates/velvet_ballistics/tests/admission_evidence_integration.rs
+	vb-2yb8-ws/crates/velvet_ballistics/tests/cli_integration.rs
+	vb-2yb8-ws/crates/velvet_ballistics/tests/cli_verify_integration.rs
+	vb-2yb8-ws/crates/velvet_ballistics/tests/cross_crate_adversarial.rs
+	vb-2yb8-ws/crates/velvet_ballistics/tests/error_chain_integration.rs
 	vb-2yb8-ws/deny.toml
 	vb-2yb8-ws/design/figma/figma_makepad_notes.md
 	vb-2yb8-ws/design/figma/screens/png/01_execution_observatory_overview.png
@@ -2486,8 +2486,8 @@ Changed files:
 	vb-2yb8-ws/design/figma/screens/svg/06_incident_failure_console.svg
 	vb-2yb8-ws/design/figma/screens/svg/07_action_registry_contract_inspector.svg
 	vb-2yb8-ws/design/figma/screens/svg/08_storage_journal_doctor_ai_context.svg
-	vb-2yb8-ws/design/figma/velvet_ballastics_figma_ready_tightened_board.png
-	vb-2yb8-ws/design/figma/velvet_ballastics_figma_ready_tightened_screens.zip
+	vb-2yb8-ws/design/figma/velvet_ballistics_figma_ready_tightened_board.png
+	vb-2yb8-ws/design/figma/velvet_ballistics_figma_ready_tightened_screens.zip
 	vb-2yb8-ws/design/reference/figma_makepad_notes.md
 	vb-2yb8-ws/design/reference/screenshots/01_execution_observatory_overview.png
 	vb-2yb8-ws/design/reference/screenshots/02_workflow_graph_authoring.png
@@ -2578,46 +2578,46 @@ Changed files:
 	vb-2yb8-ws/tests/ui_snapshots/verification_certificate.png
 	vb-2yb8-ws/tests/ui_snapshots/workflow_graph_authoring.png
 	vb-2yb8-ws/velvet-ballistics-MASTER.md
-	vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/figma_makepad_notes.md
-	vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/01_execution_observatory_overview.png
-	vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/02_workflow_graph_authoring.png
-	vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/03_execution_details_graph_view.png
-	vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/04_verification_certificate_view.png
-	vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/05_replay_theater.png
-	vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/06_incident_failure_console.png
-	vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/07_action_registry_contract_inspector.png
-	vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/08_storage_journal_doctor_ai_context.png
-	vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/01_execution_observatory_overview.svg
-	vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/02_workflow_graph_authoring.svg
-	vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/03_execution_details_graph_view.svg
-	vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/04_verification_certificate_view.svg
-	vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/05_replay_theater.svg
-	vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/06_incident_failure_console.svg
-	vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/07_action_registry_contract_inspector.svg
-	vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/08_storage_journal_doctor_ai_context.svg
-	vb-2yb8-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/velvet_ballastics_figma_ready_tightened_board.png
-	vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/README.md
-	vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/canonical/figma_makepad_notes.md
-	vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/canonical/velvet_ballastics_figma_ready_tightened_board.png
-	vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/figma_makepad_notes.md
-	vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/01_execution_observatory_overview.png
-	vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/02_workflow_graph_authoring.png
-	vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/03_execution_details_graph_view.png
-	vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/04_verification_certificate_view.png
-	vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/05_replay_theater.png
-	vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/06_incident_failure_console.png
-	vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/07_action_registry_contract_inspector.png
-	vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/08_storage_journal_doctor_ai_context.png
-	vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/01_execution_observatory_overview.svg
-	vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/02_workflow_graph_authoring.svg
-	vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/03_execution_details_graph_view.svg
-	vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/04_verification_certificate_view.svg
-	vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/05_replay_theater.svg
-	vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/06_incident_failure_console.svg
-	vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/07_action_registry_contract_inspector.svg
-	vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/08_storage_journal_doctor_ai_context.svg
-	vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/velvet_ballastics_figma_ready_tightened_board.png
-	vb-2yb8-ws/velvet_ballastics_makepad_ui_master_plan_with_images/velvet-ballastics-MASTER-makepad-ui-update.md
+	vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/figma_makepad_notes.md
+	vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/01_execution_observatory_overview.png
+	vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/02_workflow_graph_authoring.png
+	vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/03_execution_details_graph_view.png
+	vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/04_verification_certificate_view.png
+	vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/05_replay_theater.png
+	vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/06_incident_failure_console.png
+	vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/07_action_registry_contract_inspector.png
+	vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/08_storage_journal_doctor_ai_context.png
+	vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/01_execution_observatory_overview.svg
+	vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/02_workflow_graph_authoring.svg
+	vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/03_execution_details_graph_view.svg
+	vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/04_verification_certificate_view.svg
+	vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/05_replay_theater.svg
+	vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/06_incident_failure_console.svg
+	vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/07_action_registry_contract_inspector.svg
+	vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/08_storage_journal_doctor_ai_context.svg
+	vb-2yb8-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/velvet_ballistics_figma_ready_tightened_board.png
+	vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/README.md
+	vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/canonical/figma_makepad_notes.md
+	vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/canonical/velvet_ballistics_figma_ready_tightened_board.png
+	vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/figma_makepad_notes.md
+	vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/01_execution_observatory_overview.png
+	vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/02_workflow_graph_authoring.png
+	vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/03_execution_details_graph_view.png
+	vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/04_verification_certificate_view.png
+	vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/05_replay_theater.png
+	vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/06_incident_failure_console.png
+	vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/07_action_registry_contract_inspector.png
+	vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/08_storage_journal_doctor_ai_context.png
+	vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/01_execution_observatory_overview.svg
+	vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/02_workflow_graph_authoring.svg
+	vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/03_execution_details_graph_view.svg
+	vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/04_verification_certificate_view.svg
+	vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/05_replay_theater.svg
+	vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/06_incident_failure_console.svg
+	vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/07_action_registry_contract_inspector.svg
+	vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/08_storage_journal_doctor_ai_context.svg
+	vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/velvet_ballistics_figma_ready_tightened_board.png
+	vb-2yb8-ws/velvet_ballistics_makepad_ui_master_plan_with_images/velvet-ballistics-MASTER-makepad-ui-update.md
 	vb-2yb8-ws/xtask/Cargo.toml
 	vb-2yb8-ws/xtask/src/main.rs
 	vb-apn5-ws/.beads/.gitignore
@@ -2743,7 +2743,7 @@ Changed files:
 	vb-apn5-ws/RELEASE_CHECKLIST.md
 	vb-apn5-ws/SECURITY.md
 	vb-apn5-ws/VERIFYING_RUST_WITH_LEAN_AND_GATES.md
-	vb-apn5-ws/benches/velvet_ballastics.rs
+	vb-apn5-ws/benches/velvet_ballistics.rs
 	vb-apn5-ws/cargo-vet.toml
 	vb-apn5-ws/config.yaml
 	vb-apn5-ws/crates/flow-core/Cargo.toml
@@ -3218,29 +3218,29 @@ Changed files:
 	vb-apn5-ws/crates/vb_yaml/src/source_map_tests.rs
 	vb-apn5-ws/crates/vb_yaml/src/source_map_types.rs
 	vb-apn5-ws/crates/velvet-ballistics/crates/vb_core/src/workflow/validation/parts.rs
-	vb-apn5-ws/crates/velvet_ballastics/Cargo.toml
-	vb-apn5-ws/crates/velvet_ballastics/src/agent_context.rs
-	vb-apn5-ws/crates/velvet_ballastics/src/args.rs
-	vb-apn5-ws/crates/velvet_ballastics/src/bench.rs
-	vb-apn5-ws/crates/velvet_ballastics/src/commands.rs
-	vb-apn5-ws/crates/velvet_ballastics/src/commands_ai_context.rs
-	vb-apn5-ws/crates/velvet_ballastics/src/commands_diff.rs
-	vb-apn5-ws/crates/velvet_ballastics/src/commands_incident.rs
-	vb-apn5-ws/crates/velvet_ballastics/src/commands_journal.rs
-	vb-apn5-ws/crates/velvet_ballastics/src/commands_status.rs
-	vb-apn5-ws/crates/velvet_ballastics/src/commands_verify.rs
-	vb-apn5-ws/crates/velvet_ballastics/src/commands_workflow.rs
-	vb-apn5-ws/crates/velvet_ballastics/src/exit_code.rs
-	vb-apn5-ws/crates/velvet_ballastics/src/io.rs
-	vb-apn5-ws/crates/velvet_ballastics/src/main.rs
-	vb-apn5-ws/crates/velvet_ballastics/src/main_tests.rs
-	vb-apn5-ws/crates/velvet_ballastics/src/run.rs
-	vb-apn5-ws/crates/velvet_ballastics/src/storage.rs
-	vb-apn5-ws/crates/velvet_ballastics/src/workflow.rs
-	vb-apn5-ws/crates/velvet_ballastics/tests/admission_evidence_integration.rs
-	vb-apn5-ws/crates/velvet_ballastics/tests/cli_integration.rs
-	vb-apn5-ws/crates/velvet_ballastics/tests/cross_crate_adversarial.rs
-	vb-apn5-ws/crates/velvet_ballastics/tests/error_chain_integration.rs
+	vb-apn5-ws/crates/velvet_ballistics/Cargo.toml
+	vb-apn5-ws/crates/velvet_ballistics/src/agent_context.rs
+	vb-apn5-ws/crates/velvet_ballistics/src/args.rs
+	vb-apn5-ws/crates/velvet_ballistics/src/bench.rs
+	vb-apn5-ws/crates/velvet_ballistics/src/commands.rs
+	vb-apn5-ws/crates/velvet_ballistics/src/commands_ai_context.rs
+	vb-apn5-ws/crates/velvet_ballistics/src/commands_diff.rs
+	vb-apn5-ws/crates/velvet_ballistics/src/commands_incident.rs
+	vb-apn5-ws/crates/velvet_ballistics/src/commands_journal.rs
+	vb-apn5-ws/crates/velvet_ballistics/src/commands_status.rs
+	vb-apn5-ws/crates/velvet_ballistics/src/commands_verify.rs
+	vb-apn5-ws/crates/velvet_ballistics/src/commands_workflow.rs
+	vb-apn5-ws/crates/velvet_ballistics/src/exit_code.rs
+	vb-apn5-ws/crates/velvet_ballistics/src/io.rs
+	vb-apn5-ws/crates/velvet_ballistics/src/main.rs
+	vb-apn5-ws/crates/velvet_ballistics/src/main_tests.rs
+	vb-apn5-ws/crates/velvet_ballistics/src/run.rs
+	vb-apn5-ws/crates/velvet_ballistics/src/storage.rs
+	vb-apn5-ws/crates/velvet_ballistics/src/workflow.rs
+	vb-apn5-ws/crates/velvet_ballistics/tests/admission_evidence_integration.rs
+	vb-apn5-ws/crates/velvet_ballistics/tests/cli_integration.rs
+	vb-apn5-ws/crates/velvet_ballistics/tests/cross_crate_adversarial.rs
+	vb-apn5-ws/crates/velvet_ballistics/tests/error_chain_integration.rs
 	vb-apn5-ws/deny.toml
 	vb-apn5-ws/design/figma/figma_makepad_notes.md
 	vb-apn5-ws/design/figma/screens/png/01_execution_observatory_overview.png
@@ -3259,8 +3259,8 @@ Changed files:
 	vb-apn5-ws/design/figma/screens/svg/06_incident_failure_console.svg
 	vb-apn5-ws/design/figma/screens/svg/07_action_registry_contract_inspector.svg
 	vb-apn5-ws/design/figma/screens/svg/08_storage_journal_doctor_ai_context.svg
-	vb-apn5-ws/design/figma/velvet_ballastics_figma_ready_tightened_board.png
-	vb-apn5-ws/design/figma/velvet_ballastics_figma_ready_tightened_screens.zip
+	vb-apn5-ws/design/figma/velvet_ballistics_figma_ready_tightened_board.png
+	vb-apn5-ws/design/figma/velvet_ballistics_figma_ready_tightened_screens.zip
 	vb-apn5-ws/design/reference/figma_makepad_notes.md
 	vb-apn5-ws/design/reference/screenshots/01_execution_observatory_overview.png
 	vb-apn5-ws/design/reference/screenshots/02_workflow_graph_authoring.png
@@ -3352,46 +3352,46 @@ Changed files:
 	vb-apn5-ws/tests/ui_snapshots/verification_certificate.png
 	vb-apn5-ws/tests/ui_snapshots/workflow_graph_authoring.png
 	vb-apn5-ws/velvet-ballistics-MASTER.md
-	vb-apn5-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/figma_makepad_notes.md
-	vb-apn5-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/01_execution_observatory_overview.png
-	vb-apn5-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/02_workflow_graph_authoring.png
-	vb-apn5-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/03_execution_details_graph_view.png
-	vb-apn5-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/04_verification_certificate_view.png
-	vb-apn5-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/05_replay_theater.png
-	vb-apn5-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/06_incident_failure_console.png
-	vb-apn5-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/07_action_registry_contract_inspector.png
-	vb-apn5-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/08_storage_journal_doctor_ai_context.png
-	vb-apn5-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/01_execution_observatory_overview.svg
-	vb-apn5-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/02_workflow_graph_authoring.svg
-	vb-apn5-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/03_execution_details_graph_view.svg
-	vb-apn5-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/04_verification_certificate_view.svg
-	vb-apn5-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/05_replay_theater.svg
-	vb-apn5-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/06_incident_failure_console.svg
-	vb-apn5-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/07_action_registry_contract_inspector.svg
-	vb-apn5-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/08_storage_journal_doctor_ai_context.svg
-	vb-apn5-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/velvet_ballastics_figma_ready_tightened_board.png
-	vb-apn5-ws/velvet_ballastics_makepad_ui_master_plan_with_images/README.md
-	vb-apn5-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/canonical/figma_makepad_notes.md
-	vb-apn5-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/canonical/velvet_ballastics_figma_ready_tightened_board.png
-	vb-apn5-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/figma_makepad_notes.md
-	vb-apn5-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/01_execution_observatory_overview.png
-	vb-apn5-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/02_workflow_graph_authoring.png
-	vb-apn5-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/03_execution_details_graph_view.png
-	vb-apn5-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/04_verification_certificate_view.png
-	vb-apn5-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/05_replay_theater.png
-	vb-apn5-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/06_incident_failure_console.png
-	vb-apn5-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/07_action_registry_contract_inspector.png
-	vb-apn5-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/08_storage_journal_doctor_ai_context.png
-	vb-apn5-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/01_execution_observatory_overview.svg
-	vb-apn5-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/02_workflow_graph_authoring.svg
-	vb-apn5-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/03_execution_details_graph_view.svg
-	vb-apn5-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/04_verification_certificate_view.svg
-	vb-apn5-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/05_replay_theater.svg
-	vb-apn5-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/06_incident_failure_console.svg
-	vb-apn5-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/07_action_registry_contract_inspector.svg
-	vb-apn5-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/08_storage_journal_doctor_ai_context.svg
-	vb-apn5-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/velvet_ballastics_figma_ready_tightened_board.png
-	vb-apn5-ws/velvet_ballastics_makepad_ui_master_plan_with_images/velvet-ballastics-MASTER-makepad-ui-update.md
+	vb-apn5-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/figma_makepad_notes.md
+	vb-apn5-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/01_execution_observatory_overview.png
+	vb-apn5-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/02_workflow_graph_authoring.png
+	vb-apn5-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/03_execution_details_graph_view.png
+	vb-apn5-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/04_verification_certificate_view.png
+	vb-apn5-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/05_replay_theater.png
+	vb-apn5-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/06_incident_failure_console.png
+	vb-apn5-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/07_action_registry_contract_inspector.png
+	vb-apn5-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/08_storage_journal_doctor_ai_context.png
+	vb-apn5-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/01_execution_observatory_overview.svg
+	vb-apn5-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/02_workflow_graph_authoring.svg
+	vb-apn5-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/03_execution_details_graph_view.svg
+	vb-apn5-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/04_verification_certificate_view.svg
+	vb-apn5-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/05_replay_theater.svg
+	vb-apn5-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/06_incident_failure_console.svg
+	vb-apn5-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/07_action_registry_contract_inspector.svg
+	vb-apn5-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/08_storage_journal_doctor_ai_context.svg
+	vb-apn5-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/velvet_ballistics_figma_ready_tightened_board.png
+	vb-apn5-ws/velvet_ballistics_makepad_ui_master_plan_with_images/README.md
+	vb-apn5-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/canonical/figma_makepad_notes.md
+	vb-apn5-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/canonical/velvet_ballistics_figma_ready_tightened_board.png
+	vb-apn5-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/figma_makepad_notes.md
+	vb-apn5-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/01_execution_observatory_overview.png
+	vb-apn5-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/02_workflow_graph_authoring.png
+	vb-apn5-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/03_execution_details_graph_view.png
+	vb-apn5-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/04_verification_certificate_view.png
+	vb-apn5-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/05_replay_theater.png
+	vb-apn5-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/06_incident_failure_console.png
+	vb-apn5-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/07_action_registry_contract_inspector.png
+	vb-apn5-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/08_storage_journal_doctor_ai_context.png
+	vb-apn5-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/01_execution_observatory_overview.svg
+	vb-apn5-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/02_workflow_graph_authoring.svg
+	vb-apn5-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/03_execution_details_graph_view.svg
+	vb-apn5-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/04_verification_certificate_view.svg
+	vb-apn5-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/05_replay_theater.svg
+	vb-apn5-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/06_incident_failure_console.svg
+	vb-apn5-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/07_action_registry_contract_inspector.svg
+	vb-apn5-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/08_storage_journal_doctor_ai_context.svg
+	vb-apn5-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/velvet_ballistics_figma_ready_tightened_board.png
+	vb-apn5-ws/velvet_ballistics_makepad_ui_master_plan_with_images/velvet-ballistics-MASTER-makepad-ui-update.md
 	vb-apn5-ws/xtask/Cargo.toml
 	vb-apn5-ws/xtask/src/main.rs
 	vb-qi37-16-1-ws/.beads/.gitignore
@@ -3639,7 +3639,7 @@ Changed files:
 	vb-qi37-16-1-ws/RELEASE_CHECKLIST.md
 	vb-qi37-16-1-ws/SECURITY.md
 	vb-qi37-16-1-ws/VERIFYING_RUST_WITH_LEAN_AND_GATES.md
-	vb-qi37-16-1-ws/benches/velvet_ballastics.rs
+	vb-qi37-16-1-ws/benches/velvet_ballistics.rs
 	vb-qi37-16-1-ws/cargo-vet.toml
 	vb-qi37-16-1-ws/config.yaml
 	vb-qi37-16-1-ws/crates/flow-core/Cargo.toml
@@ -4121,29 +4121,29 @@ Changed files:
 	vb-qi37-16-1-ws/crates/vb_yaml/src/source_map_tests.rs
 	vb-qi37-16-1-ws/crates/vb_yaml/src/source_map_types.rs
 	vb-qi37-16-1-ws/crates/velvet-ballistics/crates/vb_core/src/workflow/validation/parts.rs
-	vb-qi37-16-1-ws/crates/velvet_ballastics/Cargo.toml
-	vb-qi37-16-1-ws/crates/velvet_ballastics/src/agent_context.rs
-	vb-qi37-16-1-ws/crates/velvet_ballastics/src/args.rs
-	vb-qi37-16-1-ws/crates/velvet_ballastics/src/bench.rs
-	vb-qi37-16-1-ws/crates/velvet_ballastics/src/commands.rs
-	vb-qi37-16-1-ws/crates/velvet_ballastics/src/commands_ai_context.rs
-	vb-qi37-16-1-ws/crates/velvet_ballastics/src/commands_diff.rs
-	vb-qi37-16-1-ws/crates/velvet_ballastics/src/commands_incident.rs
-	vb-qi37-16-1-ws/crates/velvet_ballastics/src/commands_journal.rs
-	vb-qi37-16-1-ws/crates/velvet_ballastics/src/commands_status.rs
-	vb-qi37-16-1-ws/crates/velvet_ballastics/src/commands_verify.rs
-	vb-qi37-16-1-ws/crates/velvet_ballastics/src/commands_workflow.rs
-	vb-qi37-16-1-ws/crates/velvet_ballastics/src/exit_code.rs
-	vb-qi37-16-1-ws/crates/velvet_ballastics/src/io.rs
-	vb-qi37-16-1-ws/crates/velvet_ballastics/src/main.rs
-	vb-qi37-16-1-ws/crates/velvet_ballastics/src/main_tests.rs
-	vb-qi37-16-1-ws/crates/velvet_ballastics/src/run.rs
-	vb-qi37-16-1-ws/crates/velvet_ballastics/src/storage.rs
-	vb-qi37-16-1-ws/crates/velvet_ballastics/src/workflow.rs
-	vb-qi37-16-1-ws/crates/velvet_ballastics/tests/admission_evidence_integration.rs
-	vb-qi37-16-1-ws/crates/velvet_ballastics/tests/cli_integration.rs
-	vb-qi37-16-1-ws/crates/velvet_ballastics/tests/cross_crate_adversarial.rs
-	vb-qi37-16-1-ws/crates/velvet_ballastics/tests/error_chain_integration.rs
+	vb-qi37-16-1-ws/crates/velvet_ballistics/Cargo.toml
+	vb-qi37-16-1-ws/crates/velvet_ballistics/src/agent_context.rs
+	vb-qi37-16-1-ws/crates/velvet_ballistics/src/args.rs
+	vb-qi37-16-1-ws/crates/velvet_ballistics/src/bench.rs
+	vb-qi37-16-1-ws/crates/velvet_ballistics/src/commands.rs
+	vb-qi37-16-1-ws/crates/velvet_ballistics/src/commands_ai_context.rs
+	vb-qi37-16-1-ws/crates/velvet_ballistics/src/commands_diff.rs
+	vb-qi37-16-1-ws/crates/velvet_ballistics/src/commands_incident.rs
+	vb-qi37-16-1-ws/crates/velvet_ballistics/src/commands_journal.rs
+	vb-qi37-16-1-ws/crates/velvet_ballistics/src/commands_status.rs
+	vb-qi37-16-1-ws/crates/velvet_ballistics/src/commands_verify.rs
+	vb-qi37-16-1-ws/crates/velvet_ballistics/src/commands_workflow.rs
+	vb-qi37-16-1-ws/crates/velvet_ballistics/src/exit_code.rs
+	vb-qi37-16-1-ws/crates/velvet_ballistics/src/io.rs
+	vb-qi37-16-1-ws/crates/velvet_ballistics/src/main.rs
+	vb-qi37-16-1-ws/crates/velvet_ballistics/src/main_tests.rs
+	vb-qi37-16-1-ws/crates/velvet_ballistics/src/run.rs
+	vb-qi37-16-1-ws/crates/velvet_ballistics/src/storage.rs
+	vb-qi37-16-1-ws/crates/velvet_ballistics/src/workflow.rs
+	vb-qi37-16-1-ws/crates/velvet_ballistics/tests/admission_evidence_integration.rs
+	vb-qi37-16-1-ws/crates/velvet_ballistics/tests/cli_integration.rs
+	vb-qi37-16-1-ws/crates/velvet_ballistics/tests/cross_crate_adversarial.rs
+	vb-qi37-16-1-ws/crates/velvet_ballistics/tests/error_chain_integration.rs
 	vb-qi37-16-1-ws/deny.toml
 	vb-qi37-16-1-ws/design/figma/figma_makepad_notes.md
 	vb-qi37-16-1-ws/design/figma/screens/png/01_execution_observatory_overview.png
@@ -4162,8 +4162,8 @@ Changed files:
 	vb-qi37-16-1-ws/design/figma/screens/svg/06_incident_failure_console.svg
 	vb-qi37-16-1-ws/design/figma/screens/svg/07_action_registry_contract_inspector.svg
 	vb-qi37-16-1-ws/design/figma/screens/svg/08_storage_journal_doctor_ai_context.svg
-	vb-qi37-16-1-ws/design/figma/velvet_ballastics_figma_ready_tightened_board.png
-	vb-qi37-16-1-ws/design/figma/velvet_ballastics_figma_ready_tightened_screens.zip
+	vb-qi37-16-1-ws/design/figma/velvet_ballistics_figma_ready_tightened_board.png
+	vb-qi37-16-1-ws/design/figma/velvet_ballistics_figma_ready_tightened_screens.zip
 	vb-qi37-16-1-ws/design/reference/figma_makepad_notes.md
 	vb-qi37-16-1-ws/design/reference/screenshots/01_execution_observatory_overview.png
 	vb-qi37-16-1-ws/design/reference/screenshots/02_workflow_graph_authoring.png
@@ -4376,46 +4376,46 @@ Changed files:
 	vb-qi37-16-1-ws/vb-qi37-ws/Cargo.toml
 	vb-qi37-16-1-ws/vb-qi37-ws/tests/epic_coordination_test.rs
 	vb-qi37-16-1-ws/velvet-ballistics-MASTER.md
-	vb-qi37-16-1-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/figma_makepad_notes.md
-	vb-qi37-16-1-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/01_execution_observatory_overview.png
-	vb-qi37-16-1-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/02_workflow_graph_authoring.png
-	vb-qi37-16-1-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/03_execution_details_graph_view.png
-	vb-qi37-16-1-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/04_verification_certificate_view.png
-	vb-qi37-16-1-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/05_replay_theater.png
-	vb-qi37-16-1-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/06_incident_failure_console.png
-	vb-qi37-16-1-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/07_action_registry_contract_inspector.png
-	vb-qi37-16-1-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/png/08_storage_journal_doctor_ai_context.png
-	vb-qi37-16-1-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/01_execution_observatory_overview.svg
-	vb-qi37-16-1-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/02_workflow_graph_authoring.svg
-	vb-qi37-16-1-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/03_execution_details_graph_view.svg
-	vb-qi37-16-1-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/04_verification_certificate_view.svg
-	vb-qi37-16-1-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/05_replay_theater.svg
-	vb-qi37-16-1-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/06_incident_failure_console.svg
-	vb-qi37-16-1-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/07_action_registry_contract_inspector.svg
-	vb-qi37-16-1-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/svg/08_storage_journal_doctor_ai_context.svg
-	vb-qi37-16-1-ws/velvet_ballastics_figma_ready_tightened_screens/velvet_ballastics_figma_ready_tightened/velvet_ballastics_figma_ready_tightened_board.png
-	vb-qi37-16-1-ws/velvet_ballastics_makepad_ui_master_plan_with_images/README.md
-	vb-qi37-16-1-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/canonical/figma_makepad_notes.md
-	vb-qi37-16-1-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/canonical/velvet_ballastics_figma_ready_tightened_board.png
-	vb-qi37-16-1-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/figma_makepad_notes.md
-	vb-qi37-16-1-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/01_execution_observatory_overview.png
-	vb-qi37-16-1-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/02_workflow_graph_authoring.png
-	vb-qi37-16-1-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/03_execution_details_graph_view.png
-	vb-qi37-16-1-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/04_verification_certificate_view.png
-	vb-qi37-16-1-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/05_replay_theater.png
-	vb-qi37-16-1-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/06_incident_failure_console.png
-	vb-qi37-16-1-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/07_action_registry_contract_inspector.png
-	vb-qi37-16-1-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/png/08_storage_journal_doctor_ai_context.png
-	vb-qi37-16-1-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/01_execution_observatory_overview.svg
-	vb-qi37-16-1-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/02_workflow_graph_authoring.svg
-	vb-qi37-16-1-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/03_execution_details_graph_view.svg
-	vb-qi37-16-1-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/04_verification_certificate_view.svg
-	vb-qi37-16-1-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/05_replay_theater.svg
-	vb-qi37-16-1-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/06_incident_failure_console.svg
-	vb-qi37-16-1-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/07_action_registry_contract_inspector.svg
-	vb-qi37-16-1-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/svg/08_storage_journal_doctor_ai_context.svg
-	vb-qi37-16-1-ws/velvet_ballastics_makepad_ui_master_plan_with_images/design_assets/velvet_ballastics_figma_ready_tightened/velvet_ballastics_figma_ready_tightened_board.png
-	vb-qi37-16-1-ws/velvet_ballastics_makepad_ui_master_plan_with_images/velvet-ballastics-MASTER-makepad-ui-update.md
+	vb-qi37-16-1-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/figma_makepad_notes.md
+	vb-qi37-16-1-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/01_execution_observatory_overview.png
+	vb-qi37-16-1-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/02_workflow_graph_authoring.png
+	vb-qi37-16-1-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/03_execution_details_graph_view.png
+	vb-qi37-16-1-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/04_verification_certificate_view.png
+	vb-qi37-16-1-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/05_replay_theater.png
+	vb-qi37-16-1-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/06_incident_failure_console.png
+	vb-qi37-16-1-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/07_action_registry_contract_inspector.png
+	vb-qi37-16-1-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/png/08_storage_journal_doctor_ai_context.png
+	vb-qi37-16-1-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/01_execution_observatory_overview.svg
+	vb-qi37-16-1-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/02_workflow_graph_authoring.svg
+	vb-qi37-16-1-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/03_execution_details_graph_view.svg
+	vb-qi37-16-1-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/04_verification_certificate_view.svg
+	vb-qi37-16-1-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/05_replay_theater.svg
+	vb-qi37-16-1-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/06_incident_failure_console.svg
+	vb-qi37-16-1-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/07_action_registry_contract_inspector.svg
+	vb-qi37-16-1-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/svg/08_storage_journal_doctor_ai_context.svg
+	vb-qi37-16-1-ws/velvet_ballistics_figma_ready_tightened_screens/velvet_ballistics_figma_ready_tightened/velvet_ballistics_figma_ready_tightened_board.png
+	vb-qi37-16-1-ws/velvet_ballistics_makepad_ui_master_plan_with_images/README.md
+	vb-qi37-16-1-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/canonical/figma_makepad_notes.md
+	vb-qi37-16-1-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/canonical/velvet_ballistics_figma_ready_tightened_board.png
+	vb-qi37-16-1-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/figma_makepad_notes.md
+	vb-qi37-16-1-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/01_execution_observatory_overview.png
+	vb-qi37-16-1-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/02_workflow_graph_authoring.png
+	vb-qi37-16-1-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/03_execution_details_graph_view.png
+	vb-qi37-16-1-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/04_verification_certificate_view.png
+	vb-qi37-16-1-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/05_replay_theater.png
+	vb-qi37-16-1-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/06_incident_failure_console.png
+	vb-qi37-16-1-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/07_action_registry_contract_inspector.png
+	vb-qi37-16-1-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/png/08_storage_journal_doctor_ai_context.png
+	vb-qi37-16-1-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/01_execution_observatory_overview.svg
+	vb-qi37-16-1-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/02_workflow_graph_authoring.svg
+	vb-qi37-16-1-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/03_execution_details_graph_view.svg
+	vb-qi37-16-1-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/04_verification_certificate_view.svg
+	vb-qi37-16-1-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/05_replay_theater.svg
+	vb-qi37-16-1-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/06_incident_failure_console.svg
+	vb-qi37-16-1-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/07_action_registry_contract_inspector.svg
+	vb-qi37-16-1-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/svg/08_storage_journal_doctor_ai_context.svg
+	vb-qi37-16-1-ws/velvet_ballistics_makepad_ui_master_plan_with_images/design_assets/velvet_ballistics_figma_ready_tightened/velvet_ballistics_figma_ready_tightened_board.png
+	vb-qi37-16-1-ws/velvet_ballistics_makepad_ui_master_plan_with_images/velvet-ballistics-MASTER-makepad-ui-update.md
 	vb-qi37-16-1-ws/xtask/Cargo.toml
 	vb-qi37-16-1-ws/xtask/src/evidence.rs
 	vb-qi37-16-1-ws/xtask/src/gates.rs
@@ -4428,34 +4428,34 @@ Changed files:
 
 Action count: 1
 Requested targets: 30
-	velvet-ballastics:agent-cli-contract
-	velvet-ballastics:maxperf
-	velvet-ballastics:pgo-instrument-build
-	velvet-ballastics:nightly-feature-gate
-	velvet-ballastics:supply-chain
-	velvet-ballastics:verify-all
-	velvet-ballastics:verify-proof
-	velvet-ballastics:verify-deep
-	velvet-ballastics:mutants-smoke
-	velvet-ballastics:verify-standard
-	velvet-ballastics:bench-build
-	velvet-ballastics:hardened-build
-	velvet-ballastics:check
-	velvet-ballastics:feature-powerset
-	velvet-ballastics:maxperf-native
-	velvet-ballastics:coverage
-	velvet-ballastics:doc
-	velvet-ballastics:sanitizer-address-check
-	velvet-ballastics:test
-	velvet-ballastics:miri
-	velvet-ballastics:nightly-feature-cargo-probe
-	velvet-ballastics:fmt
-	velvet-ballastics:lint-src
-	velvet-ballastics:verify-fast
-	velvet-ballastics:quick
-	velvet-ballastics:benchmark-proof
-	velvet-ballastics:doc-test
-	velvet-ballastics:source-length
-	velvet-ballastics:pgo-optimized-build
-	velvet-ballastics:fuzz-smoke
+	velvet-ballistics:agent-cli-contract
+	velvet-ballistics:maxperf
+	velvet-ballistics:pgo-instrument-build
+	velvet-ballistics:nightly-feature-gate
+	velvet-ballistics:supply-chain
+	velvet-ballistics:verify-all
+	velvet-ballistics:verify-proof
+	velvet-ballistics:verify-deep
+	velvet-ballistics:mutants-smoke
+	velvet-ballistics:verify-standard
+	velvet-ballistics:bench-build
+	velvet-ballistics:hardened-build
+	velvet-ballistics:check
+	velvet-ballistics:feature-powerset
+	velvet-ballistics:maxperf-native
+	velvet-ballistics:coverage
+	velvet-ballistics:doc
+	velvet-ballistics:sanitizer-address-check
+	velvet-ballistics:test
+	velvet-ballistics:miri
+	velvet-ballistics:nightly-feature-cargo-probe
+	velvet-ballistics:fmt
+	velvet-ballistics:lint-src
+	velvet-ballistics:verify-fast
+	velvet-ballistics:quick
+	velvet-ballistics:benchmark-proof
+	velvet-ballistics:doc-test
+	velvet-ballistics:source-length
+	velvet-ballistics:pgo-optimized-build
+	velvet-ballistics:fuzz-smoke
 Resolved targets: 0

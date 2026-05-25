@@ -16,15 +16,15 @@ STATUS: PASS
 
 ## Target
 
-Binary: `velvet-ballastics` (CLI)
-Build: `cargo build -p velvet_ballastics`
+Binary: `velvet-ballistics` (CLI)
+Build: `cargo build -p velvet_ballistics`
 State: After INV-002 taint repair (State 6)
 
 ---
 
 ## Interface Surface
 
-Discovered via `velvet-ballastics answer --help`:
+Discovered via `velvet-ballistics answer --help`:
 
 ```
 answer     <run_id> --step <N> --value-file <file> --db <path> [--json|--jsonl]  Answer a suspended step
@@ -123,27 +123,27 @@ EXIT: 0
 
 ```bash
 # Help
-$ cargo run -p velvet_ballastics --bin velvet-ballastics -- answer --help
+$ cargo run -p velvet_ballistics --bin velvet-ballistics -- answer --help
   → "missing argument: --step" + usage text (PASS)
 
 # No args
-$ cargo run -p velvet_ballastics --bin velvet-ballastics -- answer
+$ cargo run -p velvet_ballistics --bin velvet-ballistics -- answer
   → "missing argument: run_id" (PASS)
 
 # Invalid run_id
-$ cargo run -p velvet_ballastics --bin velvet-ballastics -- answer invalid_run_id --step 1 --value-file /tmp/value.bin --db /tmp/nonexistent.db
+$ cargo run -p velvet_ballistics --bin velvet-ballistics -- answer invalid_run_id --step 1 --value-file /tmp/value.bin --db /tmp/nonexistent.db
   → "invalid run_id 'invalid_run_id': invalid digit found in string" (PASS)
 
 # Missing value_file
-$ cargo run -p velvet_ballastics --bin velvet-ballastics -- answer 12345 --step 1 --value-file /tmp/nonexistent_value_file.bin --db /tmp/nonexistent.db
+$ cargo run -p velvet_ballistics --bin velvet-ballistics -- answer 12345 --step 1 --value-file /tmp/nonexistent_value_file.bin --db /tmp/nonexistent.db
   → "error reading value file /tmp/nonexistent_value_file.bin: No such file or directory (os error 2)" (PASS)
 
 # Socket failure (text)
-$ cargo run -p velvet_ballastics --bin velvet-ballastics -- answer 12345 --step 1 --value-file /tmp/value.bin --db /tmp/nonexistent.db
+$ cargo run -p velvet_ballistics --bin velvet-ballistics -- answer 12345 --step 1 --value-file /tmp/value.bin --db /tmp/nonexistent.db
   → "error connecting to IPC server at /tmp/nonexistent.sock: connect failed: No such file or directory (os error 2)" (PASS)
 
 # Socket failure (JSON)
-$ cargo run -p velvet_ballastics --bin velvet-ballastics -- answer 12345 --step 1 --value-file /tmp/value.bin --db /tmp/nonexistent.db --json
+$ cargo run -p velvet_ballistics --bin velvet-ballistics -- answer 12345 --step 1 --value-file /tmp/value.bin --db /tmp/nonexistent.db --json
   → {"error":"error connecting to IPC server at /tmp/nonexistent.sock: connect failed: No such file or directory (os error 2)","success":false} (PASS)
 
 # IPC taint tests

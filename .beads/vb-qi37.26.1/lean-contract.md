@@ -22,7 +22,7 @@
 - **Limitation:** Future beads that add new handler logic, state machines, or arithmetic in `vb_ipc` must evaluate Verus/theorem obligations per `rust-contract` skill rules.
 - **Compensating evidence:**
   - `cargo check -p vb_ipc` (type-system evidence).
-  - `cargo check -p velvet-ballastics-workspace-tests --tests` (cross-crate type consistency).
+  - `cargo check -p velvet-ballistics-workspace-tests --tests` (cross-crate type consistency).
   - Manual inspection confirming no new logic was added (only literal-to-variant replacement).
 
 ## NOT_APPLICABLE Declaration

@@ -166,8 +166,8 @@ $ ls crates/vb_validate/src/idempotency_contract.rs \
       crates/vb_core/src/action.rs \
       crates/vb_compile/src/lib.rs \
       crates/vb_validate/tests/idempotency_contract_red.rs \
-      crates/velvet_ballastics/tests/lifecycle_integration.rs \
-      crates/velvet_ballastics/src/main.rs \
+      crates/velvet_ballistics/tests/lifecycle_integration.rs \
+      crates/velvet_ballistics/src/main.rs \
       reference/src/replay_model.rs \
       fuzz/src/bin/replay_events.rs \
       kani/ \

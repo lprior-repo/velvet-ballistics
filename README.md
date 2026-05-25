@@ -1,10 +1,10 @@
-# velvet-ballastics
+# velvet-ballistics
 
 A formally bounded workflow runtime for AI agent orchestration.
 
 **TigerBeetle's engineering discipline applied to LangGraph's market.**
 
-velvet-ballastics is a nightly-Rust, single-binary orchestration engine that compiles YAML workflows into compact IR, dispatches them through a shard-owned in-memory runtime with native action dispatch, and persists events through Fjall-backed append-only storage. No HTTP, no JSON, no async runtime in the hot path. Every transition is bounded, numeric, and benchmarkable.
+velvet-ballistics is a nightly-Rust, single-binary orchestration engine that compiles YAML workflows into compact IR, dispatches them through a shard-owned in-memory runtime with native action dispatch, and persists events through Fjall-backed append-only storage. No HTTP, no JSON, no async runtime in the hot path. Every transition is bounded, numeric, and benchmarkable.
 
 ## Why This Exists
 
@@ -14,9 +14,9 @@ Existing workflow engines (Temporal, Restate, Inngest, Prefect, BullMQ) share a 
 - **Secrets leak through control flow** — a secret-tainted value choosing which public branch runs is an information channel
 - **Interpretation overhead compounds** — agent workflows run tight loops with expression evaluation at every step
 
-velvet-ballastics addresses all four dimensions:
+velvet-ballistics addresses all four dimensions:
 
-| | velvet-ballastics | Temporal | Restate | LangGraph |
+| | velvet-ballistics | Temporal | Restate | LangGraph |
 |---|---|---|---|---|
 | Formal resource bounds | Checked arithmetic, bounded frames, slot budgets | Timeouts only | Timeouts only | No |
 | Taint tracking | Clean/DerivedFromSecret/Secret lattice | No | No | No |

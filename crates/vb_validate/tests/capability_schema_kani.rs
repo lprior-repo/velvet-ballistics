@@ -97,7 +97,7 @@ proptest! {
     ) {
         let doc = make_doc(vec![(
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         )]);
         prop_assert_eq!(validate_version(&doc), Ok(()));
     }
@@ -107,7 +107,7 @@ proptest! {
         version_len in 0usize..64usize,
     ) {
         let version: String = "x".repeat(version_len);
-        prop_assume!(version != "velvet-ballastics/v1");
+        prop_assume!(version != "velvet-ballistics/v1");
         let doc = make_doc(vec![("version", FieldValue::String(version.clone()))]);
         let result = validate_version(&doc);
         prop_assert!(result.is_err());
@@ -467,7 +467,7 @@ mod kani_harnesses {
         let doc = make_doc(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String(name)),
         ]);
@@ -547,7 +547,7 @@ fn kani_integration_valid_workflow_passes_all_schema_gates() {
     let doc = make_doc(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
         (
@@ -639,7 +639,7 @@ fn kani_integration_get_string_returns_correct_value() {
 fn kani_integration_has_field_positive_and_negative() {
     let doc = make_doc(vec![(
         "version",
-        FieldValue::String("velvet-ballastics/v1".to_owned()),
+        FieldValue::String("velvet-ballistics/v1".to_owned()),
     )]);
     assert!(doc.has_field("version"));
     assert!(!doc.has_field("name"));
@@ -725,7 +725,7 @@ fn kani_integration_unknown_top_level_field_is_caught() {
     let doc = make_doc(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
         (

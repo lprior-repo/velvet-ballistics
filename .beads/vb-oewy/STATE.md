@@ -31,14 +31,14 @@ Created bookmark: push-pzknqnszylxz at 26ad75be
 
 ### Compilation & Lint
 ```
-cargo check -p velvet-ballastics-workspace-tests: ✓
-cargo clippy -p velvet-ballastics-workspace-tests: ✓ (0 errors, 0 warnings)
+cargo check -p velvet-ballistics-workspace-tests: ✓
+cargo clippy -p velvet-ballistics-workspace-tests: ✓ (0 errors, 0 warnings)
 ```
 
 ### Test Execution
 ```
-cargo test -p velvet-ballastics-workspace-tests: 1221 passed (53 suites, 10.28s)
-cargo test -p velvet-ballastics-workspace-tests bdd_runner: 4 passed
+cargo test -p velvet-ballistics-workspace-tests: 1221 passed (53 suites, 10.28s)
+cargo test -p velvet-ballistics-workspace-tests bdd_runner: 4 passed
 ```
 
 ### Contract Traceability

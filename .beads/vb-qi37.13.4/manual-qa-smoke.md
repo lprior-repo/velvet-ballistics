@@ -7,7 +7,7 @@ STATUS: PASS
 
 # Manual QA Smoke
 
-Command: `rtk cargo run -p velvet_ballastics --bin vb -- status --emit yaml`
+Command: `rtk cargo run -p velvet_ballistics --bin vb -- status --emit yaml`
 
 Verbatim output excerpt:
 
@@ -17,7 +17,7 @@ Running `target/debug/vb status --emit yaml`
   "RuntimePolicy": "Strict",
   "kind": "status",
   "running": true,
-  "schema_version": "velvet-ballastics/v1",
+  "schema_version": "velvet-ballistics/v1",
   "status": "running"
 }
 ```

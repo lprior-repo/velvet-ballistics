@@ -269,7 +269,7 @@ verification results:: 5 verified, 0 errors
 
 ## Obligation Results
 
-- `SCOPE-001`: `PASS_SCOPE_RESOLVED`. `jq` verified `.beads/vb-ahfl/delivery-scope.jsonl` names bead `vb-ahfl`, includes touched crates `crates/vb_ui_model`, `crates/vb_ui_makepad`, and `crates/velvet_ballastics`, and includes the required metadata and cold-path boundary contract clauses.
+- `SCOPE-001`: `PASS_SCOPE_RESOLVED`. `jq` verified `.beads/vb-ahfl/delivery-scope.jsonl` names bead `vb-ahfl`, includes touched crates `crates/vb_ui_model`, `crates/vb_ui_makepad`, and `crates/velvet_ballistics`, and includes the required metadata and cold-path boundary contract clauses.
 - `STATIC-BOUNDARY-001`: `PASS_STATIC_BOUNDARY`. `cargo metadata --format-version 1 --no-deps` exited 0, and the repaired `rg` scan found no disallowed Cargo dependencies, Rust `use` items, or `extern crate` items in `crates/vb_ui_model`.
 - `VERUS-META-001`, `VERUS-BOUNDS-001`, `VERUS-REDACT-001`, `VERUS-GRAPH-001`: `PASS_LOCAL_MODEL`; `NOT_PRODUCTION_BOUND`. `verification/verus/vb_ahfl_ui_artifact_contract.rs` still verifies as an abstract local model with `5 verified, 0 errors`, but the required production-bound Verus files named in State 4 are not present and were not invented.
 - `KANI-CANON-001`: `BLOCKED_TARGET_DISCOVERY`; `NOT_RUN`. `cargo-kani 0.67.0` is available, but required canonicalization APIs/harness symbols were not found in `crates`.
@@ -325,7 +325,7 @@ jsonl validation pass
 Command:
 
 ```bash
-TMPDIR=target/tmp jq -e '.["bead_id"] == "vb-ahfl" and (["crates/vb_ui_model","crates/vb_ui_makepad","crates/velvet_ballastics"] - .["touched_crates"] | length == 0) and (.["contract_clauses"] | index("Every UI artifact includes schema_version, kind, generated_at, source, and redaction_status") != null) and (.["contract_clauses"] | index("vb_ui_model remains cold-path plain data and does not introduce Makepad, async runtime, HTTP, or runtime-core UI coupling") != null)' .beads/vb-ahfl/delivery-scope.jsonl
+TMPDIR=target/tmp jq -e '.["bead_id"] == "vb-ahfl" and (["crates/vb_ui_model","crates/vb_ui_makepad","crates/velvet_ballistics"] - .["touched_crates"] | length == 0) and (.["contract_clauses"] | index("Every UI artifact includes schema_version, kind, generated_at, source, and redaction_status") != null) and (.["contract_clauses"] | index("vb_ui_model remains cold-path plain data and does not introduce Makepad, async runtime, HTTP, or runtime-core UI coupling") != null)' .beads/vb-ahfl/delivery-scope.jsonl
 ```
 
 Exit status: 0.

@@ -1,4 +1,4 @@
-//! Reference Models for velvet-ballastics.
+//! Reference Models for velvet-ballistics.
 //!
 //! These are slow, obvious, allocation-friendly reference implementations.
 //! They serve as the golden reference for differential testing.

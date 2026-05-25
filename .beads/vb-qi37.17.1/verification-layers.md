@@ -35,7 +35,7 @@
 
 ## Manual QA Scope
 
-- Run `velvet-ballastics incident <run_id> --db <path>` on a test database with:
+- Run `velvet-ballistics incident <run_id> --db <path>` on a test database with:
   1. A failed run — verify JSON output has `failure_code: "RunFailed"`
   2. A non-existent run — verify structured error output
   3. A successful run — verify exit code indicates "not an incident"

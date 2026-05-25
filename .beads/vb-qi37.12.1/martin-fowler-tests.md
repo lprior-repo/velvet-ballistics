@@ -103,7 +103,7 @@ Since no new code is being added, the test strategy focuses on **verification th
 
 ### Scenario: Full Silent Discard Audit
 
-**Given**: The velvet-ballastics codebase at commit HEAD
+**Given**: The velvet-ballistics codebase at commit HEAD
 **When**: The audit for vb-qi37.12.1 runs completely
 **Then**:
 - AUDIT-001: VERIFIED CLEAN (zero .unwrap() in production)

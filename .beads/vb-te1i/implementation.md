@@ -107,7 +107,7 @@ cargo test --package vb_ipc -- --test-threads=4
 686 passed ✅
 
 # BDD integration tests
-cargo test --package velvet-ballastics-workspace-tests -- \
+cargo test --package velvet-ballistics-workspace-tests -- \
   ipc_health_and_shutdown_return_expected_responses \
   ipc_submit_run_roundtrips_when_frame_is_valid \
   ipc_rejects_bad_magic_before_payload_allocation \

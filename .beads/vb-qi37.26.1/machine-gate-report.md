@@ -18,7 +18,7 @@ cargo check -p vb_ipc
 
 ### Gate 2: Workspace Tests Compilation (COMP-002)
 ```bash
-cargo check -p velvet-ballastics-workspace-tests --tests
+cargo check -p velvet-ballistics-workspace-tests --tests
 ```
 - **Result:** PASS
 - **Exit code:** 0

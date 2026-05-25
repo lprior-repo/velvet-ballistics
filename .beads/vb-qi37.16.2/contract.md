@@ -4,7 +4,7 @@
 - Feature: cli/runtime: Implement durable resume transition
 - Bead ID: vb-qi37.16.2
 - Phase: state-3 (contract synthesis)
-- Touched Crates: velvet_ballastics, vb_runtime, vb_storage
+- Touched Crates: velvet_ballistics, vb_runtime, vb_storage
 - Public APIs: Command::Resume, ShardCommand::Resume, Shard::handle_resume, RuntimeJournalEvent
 - Release Critical: true
 - Risk Tags: p0, durability, journal-replay, cli-runtime-boundary, state-transition

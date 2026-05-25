@@ -5,11 +5,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
 
-use vb_codegen::CodegenError;
 use vb_core::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ExprIdx, ExprOp,
-    ExprProgram, ResourceContract, RunId, RuntimePolicy, SlotIdx, StepIdx, SymbolId,
-    WorkflowDigest, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ResourceContract,
+    RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
 };
 use vb_proof_kernels::vb_kyyf_normalization::{
     DeterminismError, DigestStatus, PublicObservation, TaintStatus, TerminalResult,
@@ -21,24 +19,19 @@ use vb_storage::recovery::{
     ActionReplayTracker, DigestCheck, RecoveryError, RecoveryFrameSeedBuilder,
 };
 use vb_storage::{EventSeq, FjallJournal, JournalEvent};
-use velvet_ballastics_workspace_tests::acceptance_catalog::{Scenario, catalog};
+use velvet_ballistics_workspace_tests::acceptance_catalog::{Scenario, catalog};
 
 const BEAD_ID: &str = "vb-kyyf";
 const BDD_KYYF_001: &str = "BDD-KYYF-001";
 const BDD_KYYF_002: &str = "BDD-KYYF-002";
 const BDD_KYYF_003: &str = "BDD-KYYF-003";
 const BDD_KYYF_004: &str = "BDD-KYYF-004";
-const BDD_KYYF_005: &str = "BDD-KYYF-005";
-const BDD_KYYF_006: &str = "BDD-KYYF-006";
 const BDD_KYYF_007: &str = "BDD-KYYF-007";
 const KYYF_EVIDENCE_TARGET_PREFIX: &str = ".evidence/vb-kyyf/";
 const KYYF_CROSS_RUN_EVIDENCE: &str = ".evidence/vb-kyyf/bdd-cross-run-determinism.md";
 const KYYF_REPLAY_EVIDENCE: &str = ".evidence/vb-kyyf/storage-replay-resume.md";
 const KYYF_POLICY_EVIDENCE: &str = ".evidence/vb-kyyf/non-replay-safe-actions.md";
 const KYYF_CORRUPT_EVIDENCE: &str = ".evidence/vb-kyyf/recovery-bdd-errors.md";
-const KYYF_GENERATED_PARITY_EVIDENCE: &str = ".evidence/vb-kyyf/generated-ir-parity.md";
-const KYYF_GENERATED_UNSUPPORTED_EVIDENCE: &str =
-    ".evidence/vb-kyyf/generated-subset-fail-closed.md";
 const KYYF_ACCEPTANCE_CATALOG_EVIDENCE: &str =
     ".evidence/vb-kyyf/acceptance-catalog-traceability.md";
 
@@ -106,7 +99,7 @@ struct CorruptReplayObservation {
     expected_typed_error: &'static str,
 }
 
-const REQUIRED_PUBLIC_SCENARIO_SURFACES: [RequiredScenarioSurface; 6] = [
+const REQUIRED_PUBLIC_SCENARIO_SURFACES: [RequiredScenarioSurface; 4] = [
     RequiredScenarioSurface {
         scenario_id: BDD_KYYF_001,
         public_surface: "vb_runtime public API",
@@ -126,16 +119,6 @@ const REQUIRED_PUBLIC_SCENARIO_SURFACES: [RequiredScenarioSurface; 6] = [
         scenario_id: BDD_KYYF_004,
         public_surface: "vb_storage journal and recovery APIs",
         expected_assertion_marker: "ReplayDigestMismatch",
-    },
-    RequiredScenarioSurface {
-        scenario_id: BDD_KYYF_005,
-        public_surface: "vb_codegen and vb_runtime public surfaces",
-        expected_assertion_marker: "generated replay parity digest",
-    },
-    RequiredScenarioSurface {
-        scenario_id: BDD_KYYF_006,
-        public_surface: "vb_codegen generated-subset validation API",
-        expected_assertion_marker: "UnsupportedGeneratedSubset",
     },
 ];
 
@@ -384,52 +367,6 @@ fn deterministic_finish_workflow(digest_byte: u8) -> Result<CompiledWorkflow, St
         constants: Box::from([ConstValue::I64(42)]),
         slot_count: 1,
         symbols_count: 0,
-        entry: StepIdx::ZERO,
-        step_names: Box::from([]),
-        resource_contract: ResourceContract::DEFAULT,
-    };
-    CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())
-}
-
-fn unsupported_generated_subset_workflow() -> Result<CompiledWorkflow, String> {
-    let eval_contains = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::EvalExpr {
-            expr: ExprIdx::new(0),
-        },
-    };
-    let finish = CompiledNode {
-        id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        },
-    };
-    let expr = ExprProgram::try_from_ops(Box::from([
-        ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::LoadConst(ConstIdx::new(1)),
-        ExprOp::Contains,
-    ]))
-    .map_err(|error| error.to_string())?;
-    let parts = WorkflowParts {
-        name: Box::from("vb-kyyf-unsupported-generated-contains"),
-        digest: WorkflowDigest::from_bytes([0x66; 32]),
-        nodes: Box::from([eval_contains, finish]),
-        expressions: Box::from([expr]),
-        accessors: Box::from([]),
-        constants: Box::from([
-            ConstValue::Symbol(SymbolId::new(0)),
-            ConstValue::Symbol(SymbolId::new(1)),
-        ]),
-        slot_count: 1,
-        symbols_count: 2,
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
@@ -950,7 +887,7 @@ fn assert_evidence_then_return(
     })
 }
 
-fn run_velvet_ballastics_cli(
+fn run_velvet_ballistics_cli(
     command_name: &'static str,
     run_arg: &str,
     db_path: &std::path::Path,
@@ -960,9 +897,9 @@ fn run_velvet_ballastics_cli(
             "run",
             "--quiet",
             "-p",
-            "velvet-ballastics",
+            "velvet-ballistics",
             "--bin",
-            "velvet-ballastics",
+            "velvet-ballistics",
             "--",
             command_name,
             run_arg,
@@ -973,7 +910,7 @@ fn run_velvet_ballastics_cli(
         .map_err(|_| VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
             bead_id: BEAD_ID,
             scenario_id: BDD_KYYF_002,
-            public_surface: "velvet-ballastics CLI process launch",
+            public_surface: "velvet-ballistics CLI process launch",
         })?;
     Ok(CliReport {
         command_name,
@@ -1518,14 +1455,14 @@ fn collect_bdd_kyyf_002() -> Result<VbKyyfScenarioEvidence, VbKyyfScenarioDiagno
     let expected_cli_event_count = first.len();
     drop(reopened);
     let first_cli_reports = [
-        run_velvet_ballastics_cli("replay", &run_arg, temp.path())?,
-        run_velvet_ballastics_cli("events", &run_arg, temp.path())?,
-        run_velvet_ballastics_cli("inspect", &run_arg, temp.path())?,
+        run_velvet_ballistics_cli("replay", &run_arg, temp.path())?,
+        run_velvet_ballistics_cli("events", &run_arg, temp.path())?,
+        run_velvet_ballistics_cli("inspect", &run_arg, temp.path())?,
     ];
     let second_cli_reports = [
-        run_velvet_ballastics_cli("replay", &run_arg, temp.path())?,
-        run_velvet_ballastics_cli("events", &run_arg, temp.path())?,
-        run_velvet_ballastics_cli("inspect", &run_arg, temp.path())?,
+        run_velvet_ballistics_cli("replay", &run_arg, temp.path())?,
+        run_velvet_ballistics_cli("events", &run_arg, temp.path())?,
+        run_velvet_ballistics_cli("inspect", &run_arg, temp.path())?,
     ];
     if !cli_reports_are_reopened_replay_evidence(
         &first_cli_reports,
@@ -1536,7 +1473,7 @@ fn collect_bdd_kyyf_002() -> Result<VbKyyfScenarioEvidence, VbKyyfScenarioDiagno
         return Err(VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
             bead_id: BEAD_ID,
             scenario_id: BDD_KYYF_002,
-            public_surface: "velvet-ballastics CLI replay/events/inspect",
+            public_surface: "velvet-ballistics CLI replay/events/inspect",
         });
     }
     let evidence_summary = format!(

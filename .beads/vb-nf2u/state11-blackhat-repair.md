@@ -18,7 +18,7 @@ STATUS: FAIL
 - PASS: `rtk cargo check -p xtask`
 - PASS: `rm -rf ".evidence/vb-nf2u-missing" && cargo xtask ai-release --bead vb-nf2u-missing; code=$?; test "$code" -ne 0 && test ! -e ".evidence/vb-nf2u-missing/ai-release.yaml"`
   - Observed product error: `Error: unknown ai-release bead id: vb-nf2u-missing`.
-- PASS: `cargo nextest run -p velvet-ballastics-workspace --test vb_nf2u_ui_release_acceptance` — 8 passed.
+- PASS: `cargo nextest run -p velvet-ballistics-workspace --test vb_nf2u_ui_release_acceptance` — 8 passed.
 - PASS: `cargo nextest run -p xtask` — 91 passed.
 - PASS: `cargo nextest run -p vb_ui_snapshot -p vb_ui_makepad -p xtask` — 131 passed.
 - PASS: `rtk cargo fmt --all --check`.

@@ -46,11 +46,11 @@ STATUS: PASS
 
 ## Commands run
 - `bd prime` — PASS, workflow context loaded; Dolt auto-push warning reported non-fast-forward remote.
-- `cargo nextest run -p velvet-ballastics-workspace --test vb_nf2u_ui_release_acceptance` — initially FAIL (4/8), then PASS: 8 passed, 0 skipped.
+- `cargo nextest run -p velvet-ballistics-workspace --test vb_nf2u_ui_release_acceptance` — initially FAIL (4/8), then PASS: 8 passed, 0 skipped.
 - `cargo nextest run -p vb_ui_snapshot -p vb_ui_makepad -p xtask` — initially FAIL during repair, final PASS: 82 passed, 0 skipped.
 - `rtk cargo fmt --all --check` — initially FAIL formatting drift in edited file, final PASS.
 - `rtk cargo fmt --all && rtk cargo fmt --all --check` — PASS.
-- `moon run velvet-ballastics:test` — PASS: 10810 tests passed, 0 skipped.
+- `moon run velvet-ballistics:test` — PASS: 10810 tests passed, 0 skipped.
 
 ## Power-of-Ten / zero-panic impact
 - No `unsafe`, `unwrap`, `expect`, `panic`, `todo`, `unimplemented`, or `dbg` added to production code.
@@ -67,7 +67,7 @@ STATUS: PASS
 
 ## Full Moon CI
 - Full `moon ci` was not run.
-- `moon run velvet-ballastics:test` was run and passed as the feasible canonical Moon test lane.
+- `moon run velvet-ballistics:test` was run and passed as the feasible canonical Moon test lane.
 
 ## Residual risks
 - Negative fixture tests share global `target/vb-nf2u-negative-fixtures` and `.evidence/vb-nf2u`; production evidence now includes a contract audit section to keep concurrent acceptance reads deterministic.

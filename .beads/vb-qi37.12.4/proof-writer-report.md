@@ -75,15 +75,15 @@ status: BLOCKED_TOOLING
 ```text
 command: moon run :lint-src
 exit: 0
-stdout: task velvet-ballastics:lint-src completed in 6s 897ms; final EXIT=0
-stderr: moon task hasher warned missing fixture input paths crates/workspace_tests/fixtures and crates/velvet_ballastics/tests/fixtures/fixtures
+stdout: task velvet-ballistics:lint-src completed in 6s 897ms; final EXIT=0
+stderr: moon task hasher warned missing fixture input paths crates/workspace_tests/fixtures and crates/velvet_ballistics/tests/fixtures/fixtures
 status: PASS for GATE-CLIPPY-001 only
 ```
 
 ```text
 command: moon run :verify-standard
 exit: 1
-stdout: task velvet-ballastics:verify-standard invoked `bash scripts/rust-verification-gauntlet.sh standard`; final EXIT=1
+stdout: task velvet-ballistics:verify-standard invoked `bash scripts/rust-verification-gauntlet.sh standard`; final EXIT=1
 stderr: scripts/rust-verification-gauntlet.sh lines 3-7 are parsed as shell commands/comments with `//!`; shell reports `//!: No such file or directory` and `syntax error near unexpected token newline`; task failed because process bash exited 2
 status: BLOCKED_TOOLING for GATE-MOON-001
 ```
@@ -206,7 +206,7 @@ exit: 0
 ```text
 command: TMPDIR=target/tmp moon run :lint-src
 exit: 0
-stdout: velvet-ballastics:lint-src completed; Tasks: 1 completed.
+stdout: velvet-ballistics:lint-src completed; Tasks: 1 completed.
 ```
 
 ```text

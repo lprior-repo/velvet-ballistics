@@ -13,5 +13,5 @@ Changes:
 
 Evidence:
 - Initial text/json simulate test passed against existing implementation; schema envelope coverage was then added to lock the current structured-output contract.
-- Green: `rtk cargo test -p velvet_ballastics --test cli_integration cli_simulate_json_emits_deterministic_trace` -> 1 passed.
+- Green: `rtk cargo test -p velvet_ballistics --test cli_integration cli_simulate_json_emits_deterministic_trace` -> 1 passed.
 - Red phase caveat: no separately captured failing run exists for the schema assertion after it was added; downstream review must treat this as a TDD process gap, not a product-behavior failure.

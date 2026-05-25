@@ -11,12 +11,12 @@ The `moon run :test` command failed due to a timeout during the `nightly-feature
 ## Tasks Executed
 
 1. **installing rust nightly-2026-04-28** - Completed
-2. **velvet-ballastics:agent-cli-contract** - Cached (277050d8)
-3. **velvet-ballastics:supply-chain** - Completed (1m 56s, 69222e5f)
+2. **velvet-ballistics:agent-cli-contract** - Cached (277050d8)
+3. **velvet-ballistics:supply-chain** - Completed (1m 56s, 69222e5f)
    - Vetting Succeeded (403 exempted)
    - Advisories OK, bans OK, licenses OK, sources OK
    - Unsafe code metrics collected
-4. **velvet-ballastics:nightly-feature-gate** - FAILED
+4. **velvet-ballistics:nightly-feature-gate** - FAILED
 
 ## Failure Details
 

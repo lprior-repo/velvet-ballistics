@@ -48,7 +48,7 @@
 ## Contract Signatures
 
 ```rust
-// crates/velvet_ballastics/src/args.rs (CLI surface)
+// crates/velvet_ballistics/src/args.rs (CLI surface)
 fn cancel(bead_id: BeadId) -> Result<(), LifecycleError>;
 fn resume(bead_id: BeadId) -> Result<(), LifecycleError>;
 fn retry(bead_id: BeadId) -> Result<(), LifecycleError>;

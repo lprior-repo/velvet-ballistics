@@ -22,8 +22,8 @@ $ pwd -P && test -s ".beads/vb-jpq7-proof-wave1/delivery-scope.jsonl" && test -s
 .beads/.../evidence/current-source-lightweight-required-checks-20260523T1644Z.log:35:test integrity: PASS base=workspace-fallback
 .beads/.../evidence/current-source-lightweight-required-checks-20260523T1644Z.log:49:test integrity: PASS base=workspace-fallback
 .beads/.../evidence/current-source-lightweight-required-checks-20260523T1644Z.log:59:test integrity: PASS base=workspace-fallback
-.beads/.../evidence/current-source-rerun-wave1-freshness.log:598:velvet-ballastics:test-integrity | test integrity: PASS base=workspace-fallback
-.beads/.../evidence/current-source-rerun-wave1-freshness.log:914:velvet-ballastics:test |      Summary [ 263.983s] 11531 tests run: 11531 pass...
+.beads/.../evidence/current-source-rerun-wave1-freshness.log:598:velvet-ballistics:test-integrity | test integrity: PASS base=workspace-fallback
+.beads/.../evidence/current-source-rerun-wave1-freshness.log:914:velvet-ballistics:test |      Summary [ 263.983s] 11531 tests run: 11531 pass...
 .beads/.../evidence/current-source-rerun-wave1-freshness.log:1025:Tasks: 29 completed
 .beads/.../evidence/current-source-rerun-wave1-freshness.log:1028:exit_status=0
 .beads/vb-jpq7-proof-wave1/formal-verification-report.md:11:- PASS: 20 executable Wave 1 obligations total.

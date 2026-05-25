@@ -13,7 +13,7 @@
 ### 1.1 Crates Under Test
 | Crate | Role |
 |-------|------|
-| `velvet_ballastics` | CLI surface — `Command::Answer { run_id, step, value_file, db, output }` |
+| `velvet_ballistics` | CLI surface — `Command::Answer { run_id, step, value_file, db, output }` |
 | `vb_runtime` | Runtime core — `Shard::handle_ask_answer`, `AskTicket`, `AskAnswer`, `RuntimeJournalEvent::AskAnswered` |
 | `vb_storage` | Journal persistence — Fjall-backed `SlotWritten` + `AskAnswered` journal events |
 
@@ -170,7 +170,7 @@ type AnswerResult<T> = Result<T, AnswerError>
 
 ## 4. Integration Tests
 
-**Target file:** `crates/velvet_ballastics/tests/cli_integration.rs`
+**Target file:** `crates/velvet_ballistics/tests/cli_integration.rs`
 **Command prefix:** `cargo test --test cli_integration`
 
 ### 4.1 Durable Answer — End-to-End (`INTEGRATION-POST-004`)
@@ -183,7 +183,7 @@ type AnswerResult<T> = Result<T, AnswerError>
 Given a run suspended at an Ask step in AwaitingAsk state
   And the run's AskTicket (run_id, step, seq) is recorded
 When the operator invokes:
-  velvet_ballastics answer --run-id <run_id> --step <step> --value-file <file> --db <db_path> --output <out>
+  velvet_ballistics answer --run-id <run_id> --step <step> --value-file <file> --db <db_path> --output <out>
 Then the process exits 0
   And the run resumes from the next step index after process restart
 ```
@@ -495,7 +495,7 @@ Scenario: Operator answers a suspended ask and run resumes after restart
     And the database is at "/var/lib/vb/run-42.db"
     And ResourceContract allows secret results = false
   When the operator runs:
-    velvet_ballastics answer --run-id 42 --step 3 --value-file /tmp/answer-val.bin --db /var/lib/vb/run-42.db --output /tmp/run-42.out
+    velvet_ballistics answer --run-id 42 --step 3 --value-file /tmp/answer-val.bin --db /var/lib/vb/run-42.db --output /tmp/run-42.out
   Then the command exits with status 0
     And the file "/tmp/run-42.out" contains the answer value
     And the journal contains in order:
@@ -570,7 +570,7 @@ Scenario: Operator submits value file exceeding max_ipc_payload_bytes
 
 **Step 1:** Start a long-running workflow that hits an ask step.
 **Step 2:** Observe the run enters `AwaitingAsk` state.
-**Step 3:** Submit an answer via `velvet_ballastics answer ...`.
+**Step 3:** Submit an answer via `velvet_ballistics answer ...`.
 **Step 4:** Verify answer is written to slot and acknowledged.
 **Step 5:** Kill the `vb_runtime` process with `kill -9`.
 **Step 6:** Restart `vb_runtime`.

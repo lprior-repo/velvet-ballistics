@@ -1,4 +1,4 @@
-use velvet_ballastics_workspace_tests::quality::current_api_mutation_plan::{
+use velvet_ballistics_workspace_tests::quality::current_api_mutation_plan::{
     MissingRequirement, REQUIRED_SECTIONS, validate_plan,
 };
 
@@ -105,7 +105,7 @@ replay
 owner bead
 critical survivor
 release-risk acceptance
-cargo mutants --package velvet-ballastics-workspace-tests --test vb_c3k9_current_api_mutation_plan
+cargo mutants --package velvet-ballistics-workspace-tests --test vb_c3k9_current_api_mutation_plan
 90% mutation kill rate
 exclusion policy";
 
@@ -169,7 +169,7 @@ replay
 owner bead
 critical survivor
 release-risk acceptance
-cargo mutants --package velvet-ballastics-workspace-tests --test vb_c3k9_current_api_mutation_plan
+cargo mutants --package velvet-ballistics-workspace-tests --test vb_c3k9_current_api_mutation_plan
 90% mutation kill rate
 exclusion policy";
 
@@ -238,7 +238,7 @@ fn admission_branch_mutation_plan_rejects_unrelated_smoke_substitution() {
         PLAN.contains("Runtime admission branch")
             && PLAN.contains("test_mutation_gate_fails_when_admission_branch_removed")
             && PLAN.contains(
-                "cargo mutants --package velvet-ballastics-workspace-tests --test vb_njju_mutation_fuzz_property_closure"
+                "cargo mutants --package velvet-ballistics-workspace-tests --test vb_njju_mutation_fuzz_property_closure"
             ),
         "vb-njju admission-branch mutation plan must name exact scope, test, and scoped cargo-mutants command"
     );

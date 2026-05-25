@@ -9,7 +9,7 @@
 ## Current Classification
 
 - Focused parity/static/compile/fmt/full local `vb_codegen` suite: PASS. PO-007 now records the declared exact command shape via direct cargo binary equivalent: `/home/lewis/.cargo/bin/cargo check -p vb_codegen --all-targets && /home/lewis/.cargo/bin/cargo test -p vb_codegen --test trybuild_tests && /home/lewis/.cargo/bin/cargo fmt --all -- --check`, with cargo check success, 3 trybuild tests passed, and fmt no diff output.
-- Prior scoped lint blocker: RESOLVED. `moon ci` output shows `velvet-ballastics:lint-src` completed successfully in 182ms and no `too_many_arguments` diagnostic appeared.
+- Prior scoped lint blocker: RESOLVED. `moon ci` output shows `velvet-ballistics:lint-src` completed successfully in 182ms and no `too_many_arguments` diagnostic appeared.
 - `moon ci`: DEFERRED_GLOBAL due disk quota/resource exhaustion:
   - `feature-powerset`: failed writing incremental query cache with `Disk quota exceeded`.
   - `fuzz-smoke`: linker/rustc LLVM output stream failed with `Disk quota exceeded`.

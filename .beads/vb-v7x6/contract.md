@@ -8,4 +8,4 @@ REQ-2: The test must validate the same required UI release subgates and evidence
 
 REQ-3: `moon run :doc` must pass from the isolated workspace.
 
-REQ-4: Canonical product naming remains `velvet-ballastics`; no master-doc deferred UI semantics are changed.
+REQ-4: Canonical product naming remains `velvet-ballistics`; no master-doc deferred UI semantics are changed.

@@ -29,7 +29,7 @@ isolated_workspace: /home/lewis/src/vb-go-skill/p0-wave-20260515/vb-f04l
 |---|---|---|---|
 | Focused v1_primitive_lowering suite | cargo test -p vb_compile --test v1_primitive_lowering | crates/vb_compile/tests/v1_primitive_lowering.rs | 15 passed |
 | Proptest | PROPTEST_CASES=1000 cargo test ... proptest | crates/vb_compile/tests/v1_primitive_lowering.rs | 2 passed, 13 filtered |
-| Fuzz compile | cargo test -p velvet-ballastics-fuzz --no-run | fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs | exit 0 |
+| Fuzz compile | cargo test -p velvet-ballistics-fuzz --no-run | fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs | exit 0 |
 | Strict clippy | cargo clippy -p vb_compile --lib --all-features -- -D warnings | vb_compile/src/lib.rs | No issues |
 | Format check | cargo fmt --check | vb_compile/src/lib.rs | FMT_OK |
 

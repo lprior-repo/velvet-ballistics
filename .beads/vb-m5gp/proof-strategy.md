@@ -60,7 +60,7 @@ Required executable gates:
 1. Workspace isolation and required input presence.
 2. Dependency/config no-change diff.
 3. Formatting and strict source-target clippy for `vb_compile`.
-4. API compatibility via `cargo +nightly test -p vb_compile --all-targets --all-features` and selected downstream workspace tests using the actual package `velvet-ballastics-workspace-tests`.
+4. API compatibility via `cargo +nightly test -p vb_compile --all-targets --all-features` and selected downstream workspace tests using the actual package `velvet-ballistics-workspace-tests`.
 5. Behavior parity via `moon ci` plus targeted compile/error integration tests.
 6. Static structure checks for private module names, private facade, acyclic dependency direction, stale scaffolding non-use, visibility leakage, and file length.
 7. Kani idempotency parity using `cargo kani --package vb_compile --harness idempotency_gate_parity --quiet` when Kani tooling is available.
@@ -85,6 +85,6 @@ Proof writing/formal verification must not claim success unless `proof-obligatio
 
 State 11 rejected the prior approved plan because three exact obligation commands were locally invalid even though project-equivalent evidence passed:
 
-- `API-002` / `PO-005`: replaced package `workspace_tests` with actual package `velvet-ballastics-workspace-tests` in exact command and evidence wording.
-- `ERR-001` / `PO-007`: replaced package `workspace_tests` with actual package `velvet-ballastics-workspace-tests` for the diagnostic integration test command and evidence wording.
+- `API-002` / `PO-005`: replaced package `workspace_tests` with actual package `velvet-ballistics-workspace-tests` in exact command and evidence wording.
+- `ERR-001` / `PO-007`: replaced package `workspace_tests` with actual package `velvet-ballistics-workspace-tests` for the diagnostic integration test command and evidence wording.
 - `STATIC-001` / `PO-010`: replaced all-target clippy with the repository-governed strict source lint command `cargo +nightly clippy -p vb_compile --lib --bins --examples --all-features -- -D warnings`. All-target clippy is not retained as required because repository governance states source lint is strict while test clippy is not strict; existing test-target lint debt is outside this bead's source-lint obligation.

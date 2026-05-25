@@ -4,7 +4,7 @@
 use crate::{ValidationError, ValidationResult};
 use super::doc::{FieldValue, StepDoc, WorkflowDoc};
 
-const CANONICAL_VERSION: &str = "velvet-ballastics/v1";
+const CANONICAL_VERSION: &str = "velvet-ballistics/v1";
 
 const REQUIRED_TOP_LEVEL_FIELDS: &[&str] = &["version", "name", "when", "steps"];
 

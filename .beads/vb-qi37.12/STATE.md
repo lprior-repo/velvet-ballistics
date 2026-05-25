@@ -840,12 +840,12 @@ result: PASS_WITH_FAILING_FIRST_TESTS
 
 ## Execution Evidence
 
-- Compile gate exited 0: `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract --no-run`.
+- Compile gate exited 0: `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract --no-run`.
 - Focused State 8 test run exited non-zero as expected failing-first evidence: `11 passed; 2 failed; 0 ignored`; log `/home/lewis/.local/share/rtk/tee/1778907508_cargo_test.log`.
 - Failing tests:
   - `given_recovery_critical_slot_payload_when_accessor_contract_is_scanned_then_decode_error_is_not_erased` detects `JournalEvent::slot_value` erasing decode errors with `.ok()` instead of a typed result surface.
   - `given_persisted_payload_fuzz_target_when_oracle_is_scanned_then_malformed_decode_classes_are_exhaustive` detects wildcard `_ => {}` acceptance in the malformed decode fuzz oracle.
-- Proptest exited 0: `TMPDIR=target/tmp RUSTC_WRAPPER= PROPTEST_CASES=1000 rtk cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract proptest -- --nocapture` with 1 passed, 12 filtered.
+- Proptest exited 0: `TMPDIR=target/tmp RUSTC_WRAPPER= PROPTEST_CASES=1000 rtk cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract proptest -- --nocapture` with 1 passed, 12 filtered.
 - Fuzz list exited 0 and included `vb_qi37_12_persisted_payload_decode`.
 - Fuzz execution exited 0: `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo fuzz run vb_qi37_12_persisted_payload_decode --target x86_64-unknown-linux-gnu -- -runs=100`.
 - Focused storage decode tests exited 0: 36 passed, 947 filtered.
@@ -1213,7 +1213,7 @@ result: REJECTED
 
 - Isolation check: `pwd` returned `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-12`.
 - Workspace reality: `rtk git status --short` reported non-git isolated jj workspace; `jj status` showed isolated workspace changes only.
-- Focused State 8 test run executed: `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract -- --nocapture`.
+- Focused State 8 test run executed: `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract -- --nocapture`.
 - Focused run result: 11 passed, 2 failed, 0 ignored. Failures are intentional red-first defects for typed recovery slot decode and fuzz oracle wildcard acceptance.
 - Review result: plan rejected for underallocated unit count and incomplete per-signature boundary matrix; suite rejected for hollow proptest, plan-parity gaps, pre-existing weak assertion hits, and current wildcard fuzz oracle acceptance.
 
@@ -1485,7 +1485,7 @@ Added 23 new source-string scan tests to reach toward the 36-test plan:
 
 | Gate | Command | Result |
 |------|---------|--------|
-| Compile | `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract --no-run` | exit 0 |
+| Compile | `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract --no-run` | exit 0 |
 | Tests | `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test ... -- --nocapture` | 38 passed, 9 failed |
 | Proptest | `PROPTEST_CASES=1000 ... proptest -- --nocapture` | 1 passed, 46 filtered |
 | Banned assertions | `rtk grep -rn "assert!(result\.is_ok())\|assert!(result\.is_err())" tests/ crates/workspace_tests/tests/` | 7 hits, all quarantined with `#[ignore]` |
@@ -1659,7 +1659,7 @@ prop_assert!(report_contains_static_test, "report must contain static test 323; 
 
 | Gate | Command | Result |
 |------|---------|--------|
-| Compile | `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract --no-run` | exit 0 |
+| Compile | `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract --no-run` | exit 0 |
 | Tests | `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test ... -- --nocapture` | 38 passed, 9 failed, 0 ignored |
 | Proptest | `PROPTEST_CASES=1000 ... proptest -- --nocapture` | 1 passed, 46 filtered |
 | Banned x==x check | `rtk grep -n "prop_assert_eq!\(\s*model_total"` | 0 matches |
@@ -1714,7 +1714,7 @@ result: APPROVED
 - Isolation: `pwd -P` returned `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-12`. Not source checkout, not nested under it.
 - Banned pattern scan (vb_qi37_12 target): `rtk grep -rn "assert!(result\.is_ok())\|assert!(result\.is_err())" crates/workspace_tests/tests/vb_qi37_12_state8_silent_discard_contract.rs` → **0 matches**. PASS.
 - Tautology scan: `rtk grep -n "prop_assert_eq!.*model_total" crates/workspace_tests/tests/vb_qi37_12_state8_silent_discard_contract.rs` → **0 matches**. LETHAL 1 FIXED.
-- Compile: `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract --no-run` → exit 0. PASS.
+- Compile: `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract --no-run` → exit 0. PASS.
 - Tests: `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test ... -- --nocapture` → **38 passed, 9 failed, 0 ignored**. Red-first correct.
 - Proptest: `TMPDIR=target/tmp RUSTC_WRAPPER= PROPTEST_CASES=1000 rtk cargo test ... proptest -- --nocapture` → **1 passed, 46 filtered**. PASS.
 
@@ -1818,7 +1818,7 @@ result: PASS
 |------|---------|--------|
 | Compile | `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo check --workspace --all-targets --all-features` | 0 errors, 1 warning (unused var in test) |
 | Clippy (production) | `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo clippy --workspace --lib --bins --examples --all-features -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap -D clippy::arithmetic_side_effects -D clippy::as_conversions -D clippy::let_underscore_must_use -D clippy::await_holding_lock` | 0 errors (fuzz crate has clippy::panic in test infra; fuzz is not production) |
-| Focused tests | `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract -- --nocapture` | **44 passed, 3 failed** — remaining failures are `apply_drive_result` source-scan tests; storage defect fixed |
+| Focused tests | `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract -- --nocapture` | **44 passed, 3 failed** — remaining failures are `apply_drive_result` source-scan tests; storage defect fixed |
 
 ## Test Results
 

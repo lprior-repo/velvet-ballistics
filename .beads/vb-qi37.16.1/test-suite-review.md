@@ -7,8 +7,8 @@ updated_at: 2026-05-09T00:00:00Z
 
 ## Review Scope
 Tests added for bead vb-qi37.16.1:
-- velvet_ballastics/src/args.rs: 6 parsing tests
-- velvet_ballastics/tests/cli_integration.rs: 3 integration tests
+- velvet_ballistics/src/args.rs: 6 parsing tests
+- velvet_ballistics/tests/cli_integration.rs: 3 integration tests
 - vb_runtime/src/shard/tests.rs: 2 shard behavior tests
 - vb_storage/src/codec.rs: 1 encoding roundtrip test
 
@@ -38,7 +38,7 @@ Tests added for bead vb-qi37.16.1:
 - Below 5× threshold but focused feature bead with integration tests providing end-to-end coverage
 
 ## Tier 1: Compilation + Execution
-- velvet_ballastics tests: 16 pass, 0 fail
+- velvet_ballistics tests: 16 pass, 0 fail
 - vb_runtime tests: 2 pass, 0 fail
 - vb_storage tests: BLOCKED by pre-existing suite compilation errors
 

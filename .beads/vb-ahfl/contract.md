@@ -3,7 +3,7 @@
 ## Context
 
 - Bead: `vb-ahfl`.
-- Accepted State 3 scope artifact: UI model artifact schema bounds and CLI parity for `vb_ui_model`, `vb_ui_makepad`, and `velvet-ballastics` CLI JSON/JSONL surfaces, as recorded in `.beads/vb-ahfl/delivery-scope.jsonl`.
+- Accepted State 3 scope artifact: UI model artifact schema bounds and CLI parity for `vb_ui_model`, `vb_ui_makepad`, and `velvet-ballistics` CLI JSON/JSONL surfaces, as recorded in `.beads/vb-ahfl/delivery-scope.jsonl`.
 - `BLOCKER-SCOPE-001` repair decision: State 3 explicitly scopes this artifact stack to the State 2 delivery-scope UI artifact contract. The stale bead DB title `engine: End-to-end YAML to IR semantic evidence` is not a hidden requirement for this contract stack. If an owner/orchestrator rejects the State 2 delivery scope and chooses engine YAML-to-IR, the required action is regeneration of State 2/3/4/5 for engine lifecycle semantics, not approving or extending this UI-scope contract with implicit TLA+ debt.
 - Authoritative repository rule: `/velvet-ballistics-MASTER.md` is the master contract; State 2 cites master lines 5316-5344 and 5765-5839 for UI artifacts.
 

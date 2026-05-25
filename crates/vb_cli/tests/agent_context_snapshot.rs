@@ -6,12 +6,12 @@ use std::ffi::OsStr;
 use std::process::Output;
 
 fn run_cli(args: &[&OsStr]) -> Output {
-    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_velvet-ballastics"));
+    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"));
     command.args(args);
     let output = command.output();
     assert!(
         output.is_ok(),
-        "failed to execute velvet-ballastics: {output:?}"
+        "failed to execute velvet-ballistics: {output:?}"
     );
     output.unwrap_or_else(|_| std::process::abort())
 }

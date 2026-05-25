@@ -505,7 +505,7 @@ next_gate: proof-reviewer must approve or reject repaired State 5 evidence; impl
 - `jq -s 'length' ".beads/vb-qi37.12.4/proof-obligations.planned.jsonl"`; exit=0; output `25`.
 - `test -x "scripts/check-ignored-fallible-results.sh"`; exit=1.
 - `bash "scripts/check-ignored-fallible-results.sh"`; exit=127; stderr `bash: scripts/check-ignored-fallible-results.sh: No such file or directory`.
-- `moon run :lint-src`; exit=0; `velvet-ballastics:lint-src` completed.
+- `moon run :lint-src`; exit=0; `velvet-ballistics:lint-src` completed.
 - `moon run :verify-standard`; exit=1; `scripts/rust-verification-gauntlet.sh` shell parse failure at `//!` lines before verifier execution.
 - Tool discovery: `which java` exit=0; `which verus` exit=0; `cargo kani --version` exit=0; `cargo flux --version` exit=101; `cargo +nightly miri --version` exit=0; `cargo fuzz --version` exit=0; `moon --version` exit=0.
 

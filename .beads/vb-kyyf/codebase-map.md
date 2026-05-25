@@ -54,4 +54,4 @@
 - `crates/vb_storage/tests/recovery_bdd_tests.rs`
 - `crates/vb_storage/tests/recovery_integration.rs`
 - `crates/vb_codegen/src/tests.rs`
-- Optional if CLI acceptance is required: `crates/workspace_tests/tests/*cli*`, `crates/velvet_ballastics/src/**`, and existing CLI replay command tests if present.
+- Optional if CLI acceptance is required: `crates/workspace_tests/tests/*cli*`, `crates/velvet_ballistics/src/**`, and existing CLI replay command tests if present.

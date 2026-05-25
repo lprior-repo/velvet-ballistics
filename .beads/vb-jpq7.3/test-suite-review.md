@@ -24,7 +24,7 @@ STATUS: APPROVED
 - `rtk cargo test -p vb_storage latest_durable_snapshot_seq --all-features` — PASS, 4 tests.
 - `rtk cargo test -p vb_storage events_for_run_rejects_latest_snapshot --all-features` — PASS, 2 tests.
 - `rtk cargo test -p vb_storage events_for_run --all-features` — PASS, 24 tests.
-- `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract` — PASS, 9 tests.
+- `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract` — PASS, 9 tests.
 - `rtk cargo test -p vb_storage close_propagates_persist_errors --all-features` — PASS, 1 test.
 - `rtk cargo test -p vb_storage apply_tail_events_fails_closed_when_taint_read_fails --all-features` — PASS, 1 test.
 

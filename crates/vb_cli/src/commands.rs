@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-//! Command implementations for velvet-ballastics.
+//! Command implementations for velvet-ballistics.
 //! Thin re-export facade over sibling modules: run, storage, bench.
 
 // Re-export EmitTarget so callers can use it via commands::

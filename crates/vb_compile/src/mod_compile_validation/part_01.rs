@@ -9,7 +9,7 @@ use std::collections::HashSet;
 use std::str;
 use vb_core::{ConstValue, SlotIdx, StepIdx};
 
-pub(crate) const WORKFLOW_VERSION: &str = "velvet-ballastics/v1";
+pub(crate) const WORKFLOW_VERSION: &str = "velvet-ballistics/v1";
 
 pub(crate) fn reject_known_canonical_text_gaps(text: &str) -> Result<(), CompileError> {
     if text.contains("event: \"\"") {

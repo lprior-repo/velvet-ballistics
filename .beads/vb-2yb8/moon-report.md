@@ -5,5 +5,5 @@
 | :ci | 1 | NOT DEFINED |
 
 **Notes:**
-- `:test` failed at `velvet-ballastics:supply-chain` - couldn't acquire store (os error 2)
+- `:test` failed at `velvet-ballistics:supply-chain` - couldn't acquire store (os error 2)
 - `:ci` reports "No tasks found. Unable to execute action pipeline."

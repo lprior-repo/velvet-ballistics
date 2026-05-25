@@ -17,7 +17,7 @@ use vb_compile::compile_workflow;
 #[test]
 fn generated_header_contains_forbid_unsafe_directive() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: header_test
 when:
   manual: {}
@@ -39,7 +39,7 @@ steps:
 #[test]
 fn generated_header_contains_deny_directives() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: deny_test
 when:
   manual: {}
@@ -69,7 +69,7 @@ steps:
 #[test]
 fn generated_header_contains_generated_workflow_comment() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: comment_test
 when:
   manual: {}
@@ -95,7 +95,7 @@ steps:
 #[test]
 fn generated_contains_slot_value_enum() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: slot_enum_test
 when:
   manual: {}
@@ -127,7 +127,7 @@ steps:
 #[test]
 fn generated_contains_taint_enum() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: taint_test
 when:
   manual: {}
@@ -152,7 +152,7 @@ steps:
 #[test]
 fn generated_contains_drive_error_enum() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: drive_error_test
 when:
   manual: {}
@@ -181,7 +181,7 @@ steps:
 #[test]
 fn id_emission_contains_workflow_slot_count() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: slot_count_test
 when:
   manual: {}
@@ -204,7 +204,7 @@ steps:
 #[test]
 fn id_emission_contains_workflow_node_count() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: node_count_test
 when:
   manual: {}
@@ -227,7 +227,7 @@ steps:
 #[test]
 fn id_emission_slot_count_matches_workflow() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: slot_count_match
 when:
   manual: {}
@@ -254,7 +254,7 @@ steps:
 #[test]
 fn id_emission_node_count_matches_workflow() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: node_count_match
 when:
   manual: {}
@@ -285,7 +285,7 @@ steps:
 #[test]
 fn id_emission_contains_symbol_constants() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: symbol_test
 when:
   manual: {}
@@ -308,7 +308,7 @@ steps:
 #[test]
 fn id_section_has_correct_separator() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: sep_test
 when:
   manual: {}
@@ -334,7 +334,7 @@ steps:
 #[test]
 fn drive_function_has_correct_signature() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: drive_sig_test
 when:
   manual: {}
@@ -361,7 +361,7 @@ steps:
 #[test]
 fn drive_function_initializes_slot_taints() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: taints_init_test
 when:
   manual: {}
@@ -383,7 +383,7 @@ steps:
 #[test]
 fn drive_function_initializes_program_counter() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: pc_init_test
 when:
   manual: {}
@@ -405,7 +405,7 @@ steps:
 #[test]
 fn drive_function_initializes_step_budget() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: budget_init_test
 when:
   manual: {}
@@ -428,7 +428,7 @@ steps:
 #[test]
 fn drive_function_has_main_loop() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: loop_test
 when:
   manual: {}
@@ -450,7 +450,7 @@ steps:
 #[test]
 fn drive_function_checks_step_budget_exhaustion() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: budget_check_test
 when:
   manual: {}
@@ -480,7 +480,7 @@ steps:
 #[test]
 fn drive_function_has_match_on_pc() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: pc_match_test
 when:
   manual: {}
@@ -502,7 +502,7 @@ steps:
 #[test]
 fn drive_function_dispatches_to_step_functions() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: dispatch_test
 when:
   manual: {}
@@ -524,7 +524,7 @@ steps:
 #[test]
 fn drive_function_handles_invalid_pc() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: invalid_pc_test
 when:
   manual: {}
@@ -546,7 +546,7 @@ steps:
 #[test]
 fn drive_function_handles_step_outcome_continue() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: continue_test
 when:
   manual: {}
@@ -568,7 +568,7 @@ steps:
 #[test]
 fn drive_function_handles_step_outcome_finished() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: finished_test
 when:
   manual: {}
@@ -590,7 +590,7 @@ steps:
 #[test]
 fn drive_function_comment_separator_present() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: sep_test
 when:
   manual: {}
@@ -616,7 +616,7 @@ steps:
 #[test]
 fn step_functions_are_named_sequentially() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: step_names_test
 when:
   manual: {}
@@ -645,7 +645,7 @@ steps:
 #[test]
 fn step_function_signature_contains_workflow_slot_count() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: step_sig_test
 when:
   manual: {}
@@ -667,7 +667,7 @@ steps:
 #[test]
 fn step_function_signature_contains_slot_taints() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: taints_param_test
 when:
   manual: {}
@@ -689,7 +689,7 @@ steps:
 #[test]
 fn step_function_signature_contains_list_store() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: list_store_test
 when:
   manual: {}
@@ -711,7 +711,7 @@ steps:
 #[test]
 fn step_function_signature_contains_object_store() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: object_store_test
 when:
   manual: {}
@@ -733,7 +733,7 @@ steps:
 #[test]
 fn step_function_returns_step_outcome() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: outcome_test
 when:
   manual: {}
@@ -759,7 +759,7 @@ steps:
 #[test]
 fn constants_section_has_separator() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: const_section_test
 when:
   manual: {}
@@ -781,7 +781,7 @@ steps:
 #[test]
 fn constants_array_is_named_constants() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: const_array_test
 when:
   manual: {}
@@ -803,7 +803,7 @@ steps:
 #[test]
 fn constants_array_has_correct_terminator() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: const_term_test
 when:
   manual: {}
@@ -825,7 +825,7 @@ steps:
 #[test]
 fn constants_empty_workflow_has_empty_array() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: empty_const_test
 when:
   manual: {}
@@ -857,7 +857,7 @@ steps:
 #[test]
 fn resource_contract_section_has_separator() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: contract_section_test
 when:
   manual: {}
@@ -883,7 +883,7 @@ steps:
 #[test]
 fn generated_runtime_api_drive_with_journal() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: runtime_api_test
 when:
   manual: {}
@@ -905,7 +905,7 @@ steps:
 #[test]
 fn generated_runtime_api_contains_generated_run_state() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: run_state_test
 when:
   manual: {}
@@ -927,7 +927,7 @@ steps:
 #[test]
 fn generated_run_state_new_initializes_all_fields() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: new_init_test
 when:
   manual: {}
@@ -949,7 +949,7 @@ steps:
 #[test]
 fn generated_run_state_has_run_until_blocked() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: blocked_test
 when:
   manual: {}
@@ -971,7 +971,7 @@ steps:
 #[test]
 fn generated_api_has_action_resume() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: action_resume_test
 when:
   manual: {}
@@ -993,7 +993,7 @@ steps:
 #[test]
 fn generated_api_has_ask_answer() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: ask_answer_test
 when:
   manual: {}
@@ -1019,7 +1019,7 @@ steps:
 #[test]
 fn action_match_dispatch_section_exists() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: action_match_test
 when:
   manual: {}
@@ -1041,7 +1041,7 @@ steps:
 #[test]
 fn ask_answer_spec_section_exists() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: ask_spec_test
 when:
   manual: {}
@@ -1067,7 +1067,7 @@ steps:
 #[test]
 fn generated_finish_result_slot_function_exists() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: finish_slot_test
 when:
   manual: {}
@@ -1093,7 +1093,7 @@ steps:
 #[test]
 fn multi_step_workflow_generates_all_step_functions() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: multi_step_test
 when:
   manual: {}
@@ -1127,7 +1127,7 @@ steps:
 #[test]
 fn drive_function_dispatches_to_all_step_functions() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: dispatch_all_test
 when:
   manual: {}
@@ -1157,7 +1157,7 @@ steps:
 #[test]
 fn multi_step_workflow_match_covers_all_cases() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: match_cases_test
 when:
   manual: {}
@@ -1190,7 +1190,7 @@ steps:
 #[test]
 fn generated_code_starts_with_attribute() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: attr_test
 when:
   manual: {}
@@ -1212,7 +1212,7 @@ steps:
 #[test]
 fn generated_code_contains_use_statement() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: use_test
 when:
   manual: {}
@@ -1234,7 +1234,7 @@ steps:
 #[test]
 fn generated_step_outcome_enum_exists() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: outcome_enum_test
 when:
   manual: {}
@@ -1269,7 +1269,7 @@ steps:
 #[test]
 fn journal_contract_section_has_separator() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: journal_section_test
 when:
   manual: {}
@@ -1291,7 +1291,7 @@ steps:
 #[test]
 fn journal_capacity_constant_is_generated() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: journal_cap_test
 when:
   manual: {}
@@ -1320,7 +1320,7 @@ fn expression_functions_are_generated_when_expressions_exist() {
     // Expression evaluation in generated code requires specific workflow constructs.
     // We test that the generated code structure supports expression functions.
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: expr_test
 when:
   manual: {}
@@ -1347,7 +1347,7 @@ steps:
 #[test]
 fn critical_structs_have_exact_form() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: exact_test
 when:
   manual: {}
@@ -1374,7 +1374,7 @@ steps:
 #[test]
 fn slot_value_impl_methods_are_present() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: slot_impl_test
 when:
   manual: {}
@@ -1395,7 +1395,7 @@ steps:
 #[test]
 fn drive_error_impl_has_display_if_present() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: error_impl_test
 when:
   manual: {}
@@ -1421,7 +1421,7 @@ steps:
 #[test]
 fn no_unsafe_code_in_generated_output() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: safe_test
 when:
   manual: {}
@@ -1447,7 +1447,7 @@ steps:
 #[test]
 fn no_explicit_unsafe_in_generated_output() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: no_explicit_unsafe_test
 when:
   manual: {}

@@ -37,7 +37,7 @@ TMPDIR=/home/lewis/src/bd-vb-vt2f-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARG
 Status: PASS, no output.
 
 ```bash
-TMPDIR=/home/lewis/src/bd-vb-vt2f-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 cargo nextest run -p velvet-ballastics-workspace-tests --test vb_vt2f_direct_runtime_api_acceptance test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evicted
+TMPDIR=/home/lewis/src/bd-vb-vt2f-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 cargo nextest run -p velvet-ballistics-workspace-tests --test vb_vt2f_direct_runtime_api_acceptance test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evicted
 ```
 
 Status: RED, expected failing-first evidence captured.
@@ -45,7 +45,7 @@ Status: RED, expected failing-first evidence captured.
 ```text
 Nextest run ID 1356b2f3-1901-4ea9-9629-0ea161a143e4
 Summary [   0.003s] 1 test run: 0 passed, 1 failed, 13 skipped
-FAIL velvet-ballastics-workspace-tests::vb_vt2f_direct_runtime_api_acceptance test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evicted
+FAIL velvet-ballistics-workspace-tests::vb_vt2f_direct_runtime_api_acceptance test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evicted
 assertion `left == right` failed
   left: Ok(())
  right: Err(RunNotFound)

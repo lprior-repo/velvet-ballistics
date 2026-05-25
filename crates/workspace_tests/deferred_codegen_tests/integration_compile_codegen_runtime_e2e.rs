@@ -23,7 +23,7 @@ use vb_core::workflow::{
 #[test]
 fn yaml_compile_codegen_produces_runtime_ready_workflow() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: e2e_finish
 when:
   manual: {}
@@ -55,7 +55,7 @@ steps:
 #[test]
 fn yaml_compile_codegen_with_set_step() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: e2e_set
 when:
   manual: {}
@@ -78,7 +78,7 @@ steps:
 #[test]
 fn yaml_compile_codegen_with_multiple_steps() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: e2e_multi
 when:
   manual: {}
@@ -106,7 +106,7 @@ steps:
 #[test]
 fn yaml_compile_codegen_with_set_and_finish() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: e2e_set_finish
 when:
   manual: {}
@@ -204,7 +204,7 @@ fn compiler_size_limit_rejected_before_codegen() {
     });
 
     let source = format!(
-        r#"version: velvet-ballastics/v1
+        r#"version: velvet-ballistics/v1
 name: {}
 when:
   manual: {{}}
@@ -236,7 +236,7 @@ fn compiler_with_custom_limits_accepts_valid_source() {
     });
 
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: custom_limits
 when:
   manual: {}
@@ -258,7 +258,7 @@ fn compiler_default_limits_are_sensible() {
 
     // 1KB source should be accepted by default
     let source = format!(
-        r#"version: velvet-ballastics/v1
+        r#"version: velvet-ballistics/v1
 name: {}
 when:
   manual: {{}}
@@ -280,7 +280,7 @@ steps:
 #[test]
 fn generated_code_forbids_unsafe_by_default() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: safe_code
 when:
   manual: {}
@@ -301,7 +301,7 @@ steps:
 #[test]
 fn generated_code_contains_resource_contract() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: contract_check
 when:
   manual: {}
@@ -321,7 +321,7 @@ steps:
 #[test]
 fn generated_code_contains_workflow_constants() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: constants_test
 when:
   manual: {}
@@ -349,7 +349,7 @@ steps:
 #[test]
 fn compiled_workflow_parts_are_validated() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: parts_validate
 when:
   manual: {}
@@ -371,7 +371,7 @@ steps:
 #[test]
 fn compiled_workflow_round_trips_through_parts() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: round_trip
 when:
   manual: {}
@@ -402,7 +402,7 @@ steps:
 #[test]
 fn compiled_workflow_slot_layout_is_correct() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: slot_layout
 when:
   manual: {}
@@ -448,7 +448,7 @@ fn compile_error_propagates_through_pipeline() {
 #[test]
 fn compile_error_for_duplicate_step_ids() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: dup_ids
 when:
   manual: {}
@@ -473,7 +473,7 @@ steps:
 fn compile_accepts_valid_finish_workflow() {
     // This test just verifies a simple finish workflow compiles
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: simple_finish
 when:
   manual: {}
@@ -498,7 +498,7 @@ steps:
 #[test]
 fn generated_workflow_has_valid_entry_point() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: entry_check
 when:
   manual: {}
@@ -521,7 +521,7 @@ steps:
 #[test]
 fn generated_workflow_has_valid_node_count() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: node_count
 when:
   manual: {}
@@ -548,7 +548,7 @@ steps:
 #[test]
 fn generated_workflow_has_valid_slot_count() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: slot_count
 when:
   manual: {}
@@ -571,7 +571,7 @@ steps:
 #[test]
 fn generated_workflow_constants_are_accessible() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: const_test
 when:
   manual: {}

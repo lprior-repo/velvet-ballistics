@@ -52,7 +52,7 @@ first failed as:
 
 - Category: `FORMAT`
 - Classification: `BLOCK_LOCAL`
-- Scoped file: `crates/velvet_ballastics/src/main.rs`
+- Scoped file: `crates/velvet_ballistics/src/main.rs`
 - Owner: State 8 repair via `holzman-rust`
 
 `state-8-format-repair.md` records `STATUS: REPAIRED` with no behavior change.
@@ -61,7 +61,7 @@ Post-repair orchestrator gate result:
 
 ```text
 rtk cargo fmt -- --check: PASS
-rtk cargo check -p velvet_ballastics -p vb_ipc --all-targets --all-features: PASS
+rtk cargo check -p velvet_ballistics -p vb_ipc --all-targets --all-features: PASS
 moon run :test: 9863 tests run, 9863 passed, 0 skipped
 moon ci: Tasks: 19 completed (2 cached)
 ```
@@ -86,7 +86,7 @@ Post-repair orchestrator gate result:
 
 ```text
 rtk cargo fmt -- --check: PASS
-rtk cargo check -p vb_ipc -p vb_runtime -p velvet_ballastics --all-targets --all-features: PASS
+rtk cargo check -p vb_ipc -p vb_runtime -p velvet_ballistics --all-targets --all-features: PASS
 rtk cargo test -p vb_ipc --lib answer: 13 passed
 rtk cargo test -p vb_runtime --lib ask_answer: 24 passed
 moon run :test: 9867 tests run, 9867 passed, 0 skipped

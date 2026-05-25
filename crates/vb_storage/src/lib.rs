@@ -58,6 +58,9 @@ pub mod kani_recovery_hydrate;
 #[cfg(kani)]
 pub mod kani_admission;
 
+#[cfg(kani)]
+pub mod kani_postcard_envelope_wire;
+
 pub mod keys;
 pub mod process_lock;
 

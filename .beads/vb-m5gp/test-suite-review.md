@@ -35,9 +35,9 @@ STATUS: APPROVED
 - PASS: `cargo +nightly fmt --all --check` exited 0.
 - PASS: `cargo +nightly check -p vb_compile --all-targets --all-features` exited 0.
 - PASS: strict source clippy command exited 0: `cargo +nightly clippy -p vb_compile --lib --bins --examples --all-features -- -D warnings ...`.
-- PASS: focused edge test passed: `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract mod_compile_dependency_edges_remain_acyclic_and_diagnostic_leaf` — 1 passed.
-- PASS: focused source-length test passed: `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract vb_compile_production_sources_remain_under_agreed_line_limit` — 1 passed.
-- PASS: `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract` passed: 8 passed, 0 failed, 0 ignored.
+- PASS: focused edge test passed: `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract mod_compile_dependency_edges_remain_acyclic_and_diagnostic_leaf` — 1 passed.
+- PASS: focused source-length test passed: `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract vb_compile_production_sources_remain_under_agreed_line_limit` — 1 passed.
+- PASS: `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract` passed: 8 passed, 0 failed, 0 ignored.
 - PASS: `bash scripts/check-source-length.sh` exited 0, with only `DEFERRED_GLOBAL` notices for pre-existing unrelated top-level files: `expression_bytecode.rs`, `expression.rs`, `references.rs`, `schema.rs`, and `type_taint.rs`.
 
 ## Tier 2 — Coverage

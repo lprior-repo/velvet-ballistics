@@ -87,11 +87,11 @@ Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/agent_c
          .expect("binary_aliases must be an array");
 [31m-    assert!(aliases
 (B[m[31m-        .iter()
-(B[m[31m-        .any(|v| v.as_str() == Some("velvet-ballastics")));
+(B[m[31m-        .any(|v| v.as_str() == Some("velvet-ballistics")));
 (B[m[32m+    assert!(
 (B[m[32m+        aliases
 (B[m[32m+            .iter()
-(B[m[32m+            .any(|v| v.as_str() == Some("velvet-ballastics"))
+(B[m[32m+            .any(|v| v.as_str() == Some("velvet-ballistics"))
 (B[m[32m+    );
 (B[m     assert!(aliases.iter().any(|v| v.as_str() == Some("vb")));
  }
@@ -973,11 +973,11 @@ Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/agent_c
          .expect("binary_aliases must be an array");
 [31m-    assert!(aliases
 (B[m[31m-        .iter()
-(B[m[31m-        .any(|v| v.as_str() == Some("velvet-ballastics")));
+(B[m[31m-        .any(|v| v.as_str() == Some("velvet-ballistics")));
 (B[m[32m+    assert!(
 (B[m[32m+        aliases
 (B[m[32m+            .iter()
-(B[m[32m+            .any(|v| v.as_str() == Some("velvet-ballastics"))
+(B[m[32m+            .any(|v| v.as_str() == Some("velvet-ballistics"))
 (B[m[32m+    );
 (B[m     assert!(aliases.iter().any(|v| v.as_str() == Some("vb")));
  }
@@ -987,12 +987,12 @@ Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/args/te
  #[test]
  fn parse_action_list_rejects_unknown_flag() {
 [31m-    let parsed = parse_args(&args(&[
-(B[m[31m-        "velvet-ballastics",
+(B[m[31m-        "velvet-ballistics",
 (B[m[31m-        "action",
 (B[m[31m-        "list",
 (B[m[31m-        "--bogus",
 (B[m[31m-    ]));
-(B[m[32m+    let parsed = parse_args(&args(&["velvet-ballastics", "action", "list", "--bogus"]));
+(B[m[32m+    let parsed = parse_args(&args(&["velvet-ballistics", "action", "list", "--bogus"]));
 (B[m     assert!(matches!(
          parsed,
          Err(ParseError::UnknownActionListFlag(ref f)) if f == "--bogus"
@@ -1001,12 +1001,12 @@ Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/args/te
  #[test]
  fn parse_action_list_rejects_positional_argument() {
 [31m-    let parsed = parse_args(&args(&[
-(B[m[31m-        "velvet-ballastics",
+(B[m[31m-        "velvet-ballistics",
 (B[m[31m-        "action",
 (B[m[31m-        "list",
 (B[m[31m-        "extra",
 (B[m[31m-    ]));
-(B[m[32m+    let parsed = parse_args(&args(&["velvet-ballastics", "action", "list", "extra"]));
+(B[m[32m+    let parsed = parse_args(&args(&["velvet-ballistics", "action", "list", "extra"]));
 (B[m     assert!(matches!(
          parsed,
          Err(ParseError::UnexpectedActionListArgument(ref a)) if a == "extra"
@@ -1015,19 +1015,19 @@ Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/args/te
  #[test]
  fn parse_action_inspect_rejects_non_numeric_action_id() {
 [31m-    let parsed = parse_args(&args(&[
-(B[m[31m-        "velvet-ballastics",
+(B[m[31m-        "velvet-ballistics",
 (B[m[31m-        "action",
 (B[m[31m-        "inspect",
 (B[m[31m-        "abc",
 (B[m[31m-    ]));
-(B[m[32m+    let parsed = parse_args(&args(&["velvet-ballastics", "action", "inspect", "abc"]));
+(B[m[32m+    let parsed = parse_args(&args(&["velvet-ballistics", "action", "inspect", "abc"]));
 (B[m     assert!(matches!(parsed, Err(ParseError::InvalidActionId(_))));
  }
  
 Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/args/tests/cancel.rs:128:
  #[test]
  fn parse_cancel_rejects_missing_run_id() {
-     let parsed = parse_args(&args(&["velvet-ballastics", "cancel"]));
+     let parsed = parse_args(&args(&["velvet-ballistics", "cancel"]));
 [31m-    assert!(matches!(
 (B[m[31m-        parsed,
 (B[m[31m-        Err(ParseError::MissingArgument("run_id"))
@@ -1121,12 +1121,12 @@ Diff in /home/lewis/src/vb-utvm-vb-validate-kani-gpt55/crates/vb_cli/src/args/te
  #[test]
  fn parse_status_rejects_unknown_emit_mode() {
 [31m-    let parsed = parse_args(&args(&[
-(B[m[31m-        "velvet-ballastics",
+(B[m[31m-        "velvet-ballistics",
 (B[m[31m-        "status",
 (B[m[31m-        "--emit",
 (B[m[31m-        "binary",
 (B[m[31m-    ]));
-(B[m[32m+    let parsed = parse_args(&args(&["velvet-ballastics", "status", "--emit", "binary"]));
+(B[m[32m+    let parsed = parse_args(&args(&["velvet-ballistics", "status", "--emit", "binary"]));
 (B[m     assert!(
          matches!(parsed, Err(ParseError::InvalidStatusArgument(ref s)) if s == "unknown emit mode binary"),
          "expected InvalidStatusArgument, got {parsed:?}"

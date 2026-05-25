@@ -27,12 +27,12 @@ Time: 1s 344ms
 
 ### `moon run :test`
 
-First bounded attempt: timed out at 300s while `velvet-ballastics:test` was still running.
+First bounded attempt: timed out at 300s while `velvet-ballistics:test` was still running.
 
 Retry with 600s bound: PASS.
 
 ```text
-velvet-ballastics:test | Summary [57.732s] 9863 tests run: 9863 passed, 0 skipped
+velvet-ballistics:test | Summary [57.732s] 9863 tests run: 9863 passed, 0 skipped
 Tasks: 4 completed (1 cached)
 Time: 1m 8s 549ms
 ```
@@ -55,11 +55,11 @@ Tasks: 13 completed (1 cached), 3 failed, 3 skipped
 
 Primary failures match existing `vb-w823` repo-wide global debt:
 
-- `velvet-ballastics:fmt` diffs in `crates/vb_proof_kernels/src/envelope_header.rs`, `lib.rs`, `step_state.rs`, `taint.rs`.
-- `velvet-ballastics:fmt` diffs in `crates/vb_storage/src/codec_miri_tests.rs`, `kani_codec.rs`, `lib.rs`.
-- `velvet-ballastics:fmt` diffs in `fuzz/fuzz_targets/decode_record.rs`, `fuzz/fuzz_targets/lex_expr.rs`.
-- `velvet-ballastics:fmt` diffs in `xtask/src/main.rs`, `xtask/src/proof.rs`.
-- `velvet-ballastics:lint-src` clippy `new_without_default` for `crates/vb_proof_kernels/src/envelope_header.rs:26:5`.
+- `velvet-ballistics:fmt` diffs in `crates/vb_proof_kernels/src/envelope_header.rs`, `lib.rs`, `step_state.rs`, `taint.rs`.
+- `velvet-ballistics:fmt` diffs in `crates/vb_storage/src/codec_miri_tests.rs`, `kani_codec.rs`, `lib.rs`.
+- `velvet-ballistics:fmt` diffs in `fuzz/fuzz_targets/decode_record.rs`, `fuzz/fuzz_targets/lex_expr.rs`.
+- `velvet-ballistics:fmt` diffs in `xtask/src/main.rs`, `xtask/src/proof.rs`.
+- `velvet-ballistics:lint-src` clippy `new_without_default` for `crates/vb_proof_kernels/src/envelope_header.rs:26:5`.
 
 Classification: `DEFERRED_GLOBAL`, not bead-local, because these files are outside the Wave 3 CLI integration delivery scope and are already tracked by `vb-w823`.
 

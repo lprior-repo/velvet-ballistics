@@ -18,7 +18,7 @@ STATUS: PASS
 6. Release evidence is rendered from typed document state after validation. YAML/text emission is no longer the proof surface.
 
 ## Command results
-- PASS: `cargo nextest run -p velvet-ballastics-workspace --test vb_nf2u_ui_release_acceptance` — 8 passed.
+- PASS: `cargo nextest run -p velvet-ballistics-workspace --test vb_nf2u_ui_release_acceptance` — 8 passed.
 - PASS: `cargo nextest run -p vb_ui_snapshot -p xtask` — 130 passed.
 - PASS: `cargo kani -p vb_ui_snapshot --harness inventory` — 1 harness verified, 0 failures; output `tool_e11162583001NIwZ78ns4nz0mx`.
 - PASS: `cargo kani -p vb_ui_snapshot --harness layout_` — 5 harnesses verified, 0 failures; output `tool_e1116357c001FXBm36VCFa0RMO`.

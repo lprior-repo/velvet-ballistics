@@ -20,7 +20,7 @@ STATUS: APPROVED
 | ERR-ADM-CAUSES-001 | PASS | `cargo test -p vb_runtime admission_durability_error_variants_are_exhaustive` | 1 passed, 1324 filtered out |
 | ERR-ADM-PERSIST-001 | PASS | `cargo test -p vb_runtime admission_header_persistence_failure_has_dedicated_diagnostic` | 1 passed, 1324 filtered out |
 | ERR-ADM-001 | PASS | `cargo test -p vb_runtime admission_durability_errors_have_stable_codes` | 2 passed, 1323 filtered out |
-| API-ADM-001 | PASS | `cargo test -p velvet_ballastics --test admission_evidence_integration api_envelope_preserves_admission_durability_code` | 1 passed, 6 filtered out |
+| API-ADM-001 | PASS | `cargo test -p velvet_ballistics --test admission_evidence_integration api_envelope_preserves_admission_durability_code` | 1 passed, 6 filtered out |
 | TLA-ERR-001 | PASS | `moon run :verify-proof`; `tlc -config specs/admission_header_before_ack.cfg specs/admission_header_before_ack.tla` | moon PASS; TLC PASS, 8 generated, 4 distinct, diameter 2 |
 | ERR-IDEMP-001 | PASS | `cargo test -p vb_runtime duplicate_run_id_preserves_stable_diagnostic_code` | 1 passed, 1324 filtered out |
 | REL-GATE-004 | DEFERRED_GLOBAL | `moon ci` | unchanged unrelated global debt per prior regression-diff.md |

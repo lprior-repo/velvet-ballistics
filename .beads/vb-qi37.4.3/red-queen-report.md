@@ -15,12 +15,12 @@ STATUS: APPROVED
 |---|---|---|
 | TEST-PRE-001 | `rtk cargo test -p vb_runtime shard::tests::submit_rejects_duplicate_run_id --all-features` | 2 passed |
 | TEST-PRE-002 | `rtk cargo test -p vb_runtime admission_rejection_does_not_insert_run_state --all-features` | 1 passed |
-| TEST-DUR-001 | `rtk cargo test -p velvet_ballastics --test admission_evidence_integration storage_failure_before_header_prevents_ack --all-features` | 1 passed |
-| REC-HEADER-001 | `rtk cargo test -p velvet_ballastics --test admission_evidence_integration restart_lookup_finds_persisted_header --all-features` | 1 passed |
+| TEST-DUR-001 | `rtk cargo test -p velvet_ballistics --test admission_evidence_integration storage_failure_before_header_prevents_ack --all-features` | 1 passed |
+| REC-HEADER-001 | `rtk cargo test -p velvet_ballistics --test admission_evidence_integration restart_lookup_finds_persisted_header --all-features` | 1 passed |
 | DUR-ACK-001 | `rtk cargo test -p vb_runtime submit_direct_returns_durability_error_before_ack_when_header_cannot_persist --all-features` | 1 passed |
 
 ### Full Integration Suite
-- `rtk cargo test -p velvet_ballastics --test admission_evidence_integration --all-features` → **8 passed**
+- `rtk cargo test -p velvet_ballistics --test admission_evidence_integration --all-features` → **8 passed**
 
 ### Moon Gate
 - `moon run :quick` → **PASS**
@@ -68,13 +68,13 @@ Header is durably persisted by runtime shell before shard receives `SubmitPrePer
 - `crates/vb_runtime/src/shard/impl_.rs`: 13 lines (façade) — previously 799 lines
 - `crates/vb_runtime/src/shard/lifecycle.rs`: 17 lines (façade) — previously 2106 lines
 - `crates/vb_runtime/src/shard/tests.rs`: 30 lines (façade) — previously 7005 lines
-- `crates/velvet_ballastics/tests/admission_evidence_integration.rs`: 12 lines (façade) — previously 877 lines
+- `crates/velvet_ballistics/tests/admission_evidence_integration.rs`: 12 lines (façade) — previously 877 lines
 
 All split files ≤300 lines. No behavioral changes — pure mechanical module extraction with `include!`.
 
 ### `moon ci` Canonical Gate
 - 19 completed, 2 cached, 0 failed
-- `velvet-ballastics:test` 8015/8015 passed
+- `velvet-ballistics:test` 8015/8015 passed
 - Output: `/home/lewis/.local/share/opencode/tool-output/tool_e1a0aaf70001OZ4gLQnSoCc4xB`
 
 ###jj Diff Verification

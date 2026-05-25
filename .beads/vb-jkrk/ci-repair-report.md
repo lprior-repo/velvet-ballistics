@@ -7,7 +7,7 @@ Workspace: `/home/lewis/src/Velvet-ballistics-vb-jkrk-go`
 
 1. `jj status` in stale suggested path — PASS command, revealed copied repo warning and unrelated `.opencode/skill/tla-plus/*` additions.
 2. `jj abandon @ && jj new main && jj describe -m "vb-jkrk: repair global moon ci blockers"` in stale copy — PASS, but stale copied repo still produced invalid trybuild paths.
-3. `moon ci` in stale copy — FAIL; acceptance blockers (`fmt`, `lint-src`, `feature-powerset`) passed, but `velvet-ballastics:test` failed on trybuild path mismatch because outputs referenced `/home/lewis/src/Velvet-ballistics/...`.
+3. `moon ci` in stale copy — FAIL; acceptance blockers (`fmt`, `lint-src`, `feature-powerset`) passed, but `velvet-ballistics:test` failed on trybuild path mismatch because outputs referenced `/home/lewis/src/Velvet-ballistics/...`.
 4. `mv -f "/home/lewis/src/Velvet-ballistics-vb-jkrk-go" "/home/lewis/src/Velvet-ballistics-vb-jkrk-go.stale-copy-20260511" && jj workspace add --revision main --name vb-jkrk-go --message "vb-jkrk: repair global moon ci blockers" "/home/lewis/src/Velvet-ballistics-vb-jkrk-go"` — PASS.
 5. `jj status` in recreated workspace — PASS/no changes.
 6. `rtk cargo fmt --check` — PASS/no output.

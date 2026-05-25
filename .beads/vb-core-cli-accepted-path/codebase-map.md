@@ -11,18 +11,18 @@ Bead requires strict YAML `run`, `submit`, and strict direct run paths to persis
 
 ## Relevant production paths read
 
-### CLI front door: `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-cli-accepted-path/crates/velvet_ballastics/src/main.rs`
+### CLI front door: `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-cli-accepted-path/crates/velvet_ballistics/src/main.rs`
 - `cmd_run` at lines 1144-1200 reads workflow YAML, compiles with `vb_compile::compile_workflow`, maps inputs, calls `store_workflow_artifacts` for durable modes, then calls `run_compiled_workflow`.
 - `store_workflow_artifacts` at lines 1203-1246 writes `WorkflowSourceRecord` and `CompiledIrRecord` directly. Evidence: it serializes `compiled.to_parts()` and writes `journal.put_workflow_source` then `journal.put_compiled_ir`; it does not call `vb_storage::admission::submit_artifact*`, so the persisted compiled record is raw `WorkflowParts`, not an `AcceptedArtifact` envelope.
 - `cmd_submit` at lines 1256-1399 reads YAML, compiles, writes `WorkflowSourceRecord`, writes `RunHeaderRecord`, and appends `JournalEvent::RunAccepted` for durable modes. Evidence: no accepted artifact write occurs before the `RunAccepted` append.
 - `runtime_journal_for_mode` / `open_storage_runtime_journal` at lines 1776-1816 create a storage-backed runtime journal for strict/journaled durability only; they do not pass a storage-backed artifact store to runtime construction.
 - `run_compiled_workflow` at lines 1818-1899 constructs `Runtime::new_with_journal(...)` then calls `runtime.submit_compiled_with_inputs(...)`. Current path admits an in-memory `CompiledWorkflow` directly.
 
-### Legacy/non-main CLI helper: `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-cli-accepted-path/crates/velvet_ballastics/src/run.rs`
+### Legacy/non-main CLI helper: `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-cli-accepted-path/crates/velvet_ballistics/src/run.rs`
 - `cmd_run` at lines 104-139 compiles YAML and directly calls `run_compiled_workflow` with no artifact persistence.
 - `cmd_run_compiled` at lines 141-180 accepts raw postcard `WorkflowParts`, validates into `CompiledWorkflow`, and runs. This is valid for relaxed/non-strict artifact testing but is a bypass risk if exposed under strict durability.
 
-### CLI runtime helper: `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-cli-accepted-path/crates/velvet_ballastics/src/workflow.rs`
+### CLI runtime helper: `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-cli-accepted-path/crates/velvet_ballistics/src/workflow.rs`
 - `run_compiled_workflow` at lines 36-88 creates `Runtime::new_with_journal(...)`; `runtime_journal_for_mode` at lines 90-124 only selects a journal, not an artifact store.
 
 ### Runtime construction and admission
@@ -38,21 +38,21 @@ Bead requires strict YAML `run`, `submit`, and strict direct run paths to persis
 - `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-cli-accepted-path/crates/vb_storage/src/artifacts.rs` lines 14-45 lists/removes/checks compiled IR artifacts only by digest.
 
 ## Existing tests and evidence points
-- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-cli-accepted-path/crates/velvet_ballastics/tests/cli_integration.rs` lines 2020-2076: strict CLI run currently asserts run completion and `RunAccepted`/`RunFinished` events. It does not assert accepted artifact envelope persistence or storage-backed admission.
-- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-cli-accepted-path/crates/velvet_ballastics/tests/ir_artifact_admission.rs` lines 85-180: `run-compiled` accepts valid raw handcrafted IR and rejects malformed raw IR under `--durability none`. This is out of strict accepted-artifact admission but must not become a strict bypass.
-- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-cli-accepted-path/crates/velvet_ballastics/tests/admission_evidence_integration.rs` and chunks exist and should be searched by test-planner for admission assertions.
+- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-cli-accepted-path/crates/velvet_ballistics/tests/cli_integration.rs` lines 2020-2076: strict CLI run currently asserts run completion and `RunAccepted`/`RunFinished` events. It does not assert accepted artifact envelope persistence or storage-backed admission.
+- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-cli-accepted-path/crates/velvet_ballistics/tests/ir_artifact_admission.rs` lines 85-180: `run-compiled` accepts valid raw handcrafted IR and rejects malformed raw IR under `--durability none`. This is out of strict accepted-artifact admission but must not become a strict bypass.
+- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-cli-accepted-path/crates/velvet_ballistics/tests/admission_evidence_integration.rs` and chunks exist and should be searched by test-planner for admission assertions.
 - `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-cli-accepted-path/crates/vb_storage/src/vb_2bok_durability_gate_tests.rs` contains accepted-artifact storage tests and forged source digest tests; useful for storage-side precedent.
 
 ## Suspected touched crates
-- `velvet_ballastics`: CLI `run`, `submit`, runtime construction, direct `run-compiled` strict behavior, operator output/errors.
+- `velvet_ballistics`: CLI `run`, `submit`, runtime construction, direct `run-compiled` strict behavior, operator output/errors.
 - `vb_runtime`: public constructors may need storage-backed accepted artifact store path for CLI strict/journaled runtime admission.
 - `vb_storage`: accepted artifact persistence, atomic accepted-run batch, and source/artifact/header/event consistency; likely shared with dependency beads.
 - `vb_core`: `RuntimePolicy`, digest types, capability contract surface; no direct schema change unless accepted artifact format dependency lands in this bead.
 - `vb_compile` / `vb_yaml`: source compile/validate inputs; likely consumed not edited except tests proving YAML-origin path.
 
 ## Public APIs/symbols to preserve or deliberately change
-- `velvet_ballastics::main::cmd_run`, `cmd_submit`, `run_compiled_workflow`, `runtime_journal_for_mode` (private but CLI-critical).
-- `velvet_ballastics::run::cmd_run`, `cmd_run_compiled` if still wired/exported.
+- `velvet_ballistics::main::cmd_run`, `cmd_submit`, `run_compiled_workflow`, `runtime_journal_for_mode` (private but CLI-critical).
+- `velvet_ballistics::run::cmd_run`, `cmd_run_compiled` if still wired/exported.
 - `vb_runtime::runtime::Runtime::new_with_journal`, possible new constructor equivalent to `new_with_journal_and_artifact_store` for multi-shard runtime.
 - `vb_runtime::shard::Shard::new_with_journal_and_artifact_store`, `Shard::new_with_journal`.
 - `vb_runtime::admission::{AcceptedArtifactStore, StorageArtifactStore, admit_artifact_run, REQUIRED_GATE_COUNT}`.
@@ -87,5 +87,5 @@ Bead requires strict YAML `run`, `submit`, and strict direct run paths to persis
 
 ## Open questions / unknowns
 - Exact final accepted artifact v1 gate count is inconsistent in current code (`vb_storage` creates gate_count=2; `vb_runtime` requires 15). Treat as BLOCK_DEPENDENCY until `vb-core-accepted-artifact-format` resolves or contract chooses migration behavior.
-- Whether `crates/velvet_ballastics/src/run.rs` is still wired into the binary or is a legacy helper requires call-graph confirmation by implementation agent.
+- Whether `crates/velvet_ballistics/src/run.rs` is still wired into the binary or is a legacy helper requires call-graph confirmation by implementation agent.
 - Whether `cmd_submit` should execute runtime admission immediately or only persist an accepted run for later execution must be fixed in contract.

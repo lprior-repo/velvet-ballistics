@@ -292,7 +292,7 @@ cargo loom --version
 | PO-023 | `cargo test --package vb_runtime --test recovery_bdd_tests` | **PASS** — 65 tests |
 | PO-024 | `cargo test --package vb_cli --test cli_vb_m214_bdd_scenarios` | **PASS** — 44 tests |
 | PO-025 | `cargo test --package vb_cli --test cli_verify_integration` | **PASS** — 14 tests |
-| PO-026 | `cargo test --package velvet-ballastics-workspace-tests` | **PASS** — 1231 tests |
+| PO-026 | `cargo test --package velvet-ballistics-workspace-tests` | **PASS** — 1231 tests |
 
 ---
 

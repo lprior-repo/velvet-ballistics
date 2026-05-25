@@ -114,7 +114,7 @@ The `v1_primitive_lowering.rs` integration test suite (1481 lines) covers:
 
 ### Fuzz target compile
 
-- Command: `TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rtk cargo test -p velvet-ballastics-fuzz --no-run`
+- Command: `TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rtk cargo test -p velvet-ballistics-fuzz --no-run`
 - Exit: 0
 - Result: fuzz targets compile (vb_f04l_yaml_compiler_compile corpus exists)
 

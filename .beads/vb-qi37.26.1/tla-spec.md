@@ -15,7 +15,7 @@ Because there is no state-over-time behavior to model, no temporal properties to
 Compilation correctness is covered by:
 - `static-scan` layer: `cargo check -p vb_ipc` (see `verification-layers.md`).
 - `static-scan` layer: `cargo clippy -p vb_ipc -- -D warnings`.
-- `static-scan` layer: `cargo check -p velvet-ballastics-workspace-tests --tests`.
+- `static-scan` layer: `cargo check -p velvet-ballistics-workspace-tests --tests`.
 
 These static gates provide deterministic, machine-checkable evidence that the type system is consistent, which subsumes any temporal concern for this scope.
 

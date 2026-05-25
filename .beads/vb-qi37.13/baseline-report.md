@@ -73,7 +73,7 @@ No `git status --short` lines were emitted.
 Command:
 
 ```bash
-TMPDIR="/home/lewis/src/vb-qi37-13-r2/target/tmp" RUSTC_WRAPPER= cargo test -p velvet_ballastics exit_code::tests::discriminant_values_match_spec -- --exact
+TMPDIR="/home/lewis/src/vb-qi37-13-r2/target/tmp" RUSTC_WRAPPER= cargo test -p velvet_ballistics exit_code::tests::discriminant_values_match_spec -- --exact
 ```
 
 Result summary:
@@ -86,7 +86,7 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 171 filtered out; fi
 
 ## Baseline source finding
 
-File: `crates/velvet_ballastics/src/exit_code.rs`
+File: `crates/velvet_ballistics/src/exit_code.rs`
 
 Current relevant source:
 

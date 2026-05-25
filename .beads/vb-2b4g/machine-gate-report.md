@@ -25,17 +25,17 @@ Scoped lint repair verified:
 
 ```text
 tool_e3791d01c0018lXo5c2X4NAzMP lines 76-79:
-▮▮▮▮ velvet-ballastics:lint-src (f8cca462)
-▮▮▮▮ velvet-ballastics:lint-src (182ms, f8cca462)
+▮▮▮▮ velvet-ballistics:lint-src (f8cca462)
+▮▮▮▮ velvet-ballistics:lint-src (182ms, f8cca462)
 ```
 
 Environment/global failures:
 
 ```text
-velvet-ballastics:feature-powerset | error: failed to write query cache to .../target/debug/incremental/.../query-cache.bin: Disk quota exceeded (os error 122)
-velvet-ballastics:fuzz-smoke | LLVM ERROR: IO failure on output stream: Disk quota exceeded
-velvet-ballastics:mutants-smoke | Disk quota exceeded (os error 122)
-Error: fs::write Failed to write .../.moon/cache/states/velvet-ballastics/fuzz-smoke/stdout.log. Disk quota exceeded (os error 122)
+velvet-ballistics:feature-powerset | error: failed to write query cache to .../target/debug/incremental/.../query-cache.bin: Disk quota exceeded (os error 122)
+velvet-ballistics:fuzz-smoke | LLVM ERROR: IO failure on output stream: Disk quota exceeded
+velvet-ballistics:mutants-smoke | Disk quota exceeded (os error 122)
+Error: fs::write Failed to write .../.moon/cache/states/velvet-ballistics/fuzz-smoke/stdout.log. Disk quota exceeded (os error 122)
 MOON_CI_EXIT_STATUS=1
 ```
 

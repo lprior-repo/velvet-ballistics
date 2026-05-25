@@ -42,7 +42,7 @@
     )
 )]
 
-//! Hot-path runtime engine for velvet-ballastics.
+//! Hot-path runtime engine for velvet-ballistics.
 //!
 //! Owns shard scheduling, frame pools, action dispatch, timer wheels,
 //! bounded queues, and deterministic step execution.

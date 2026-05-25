@@ -176,7 +176,7 @@
 
 ### Proptest
 ```
-cargo test -p velvet-ballastics-workspace-tests --test contracts_as_data_props
+cargo test -p velvet-ballistics-workspace-tests --test contracts_as_data_props
 17 passed (1 suite, 0.06s)
 ```
 

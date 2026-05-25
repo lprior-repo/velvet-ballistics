@@ -372,7 +372,7 @@ Layer: static/adversarial integration.
 ### Behavior: CLI verify has honest oracle without contracts
 Test function: `fn cli_verify_output_does_not_claim_idempotency_contract_proof_when_no_contract_registry_is_supplied()`
 Given: a workflow source containing at least one `Do` node and no supplied contract registry.
-When: `velvet-ballastics verify <workflow>` runs.
+When: `velvet-ballistics verify <workflow>` runs.
 Then: process output contains stable status `idempotency_contract_proof=unavailable` or exits with the typed diagnostic category `ACTION_CONTRACT_MISSING`; it must not contain `idempotency_contract_proof=ok`, `verified_idempotent=true`, or any green proof claim.
 Layer: e2e.
 

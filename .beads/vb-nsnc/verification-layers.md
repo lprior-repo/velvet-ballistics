@@ -32,7 +32,7 @@
 | POST-6 (invalid grammar rejected) | unit + integration | `cargo nextest run -p vb_validate --test capability_contract_schema` | nextest report |
 | ERR-taxonomy (5 variants) | unit | `cargo nextest run -p vb_validate --test capability_contract_schema error_taxonomy` | nextest report |
 | ERR-taxonomy (E050D..E0511) | unit | `cargo nextest run -p vb_validate --test diag_convert` | nextest report |
-| ERR-taxonomy (CLI render) | e2e | `cargo nextest run -p velvet-ballastics --test cli_integration` | nextest report |
+| ERR-taxonomy (CLI render) | e2e | `cargo nextest run -p velvet-ballistics --test cli_integration` | nextest report |
 | I10 (missing/orphan preserved) | integration | `cargo nextest run -p vb_validate --test capability_contract_schema regression` | nextest report |
 | Static safety (no unsafe/unwrap/panic) | static-scan | `moon ci` | clippy/fmt report |
 | Static safety (no hot JSON/YAML/HTTP) | static-scan | `rg 'JSON|YAML|HTTP' vb_validate/src/*.rs` | rg report |

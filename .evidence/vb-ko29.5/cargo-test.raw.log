@@ -1,4 +1,4 @@
-   Compiling velvet-ballastics-idempotency-workspace-tests v0.1.0 (/home/lewis/src/velvet-ballistics/crates/workspace_tests/idempotency_suite)
+   Compiling velvet-ballistics-idempotency-workspace-tests v0.1.0 (/home/lewis/src/velvet-ballistics/crates/workspace_tests/idempotency_suite)
     Finished `test` profile [unoptimized + debuginfo] target(s) in 0.25s
      Running tests/vb_ko29_5_public_idempotency.rs (target/debug/deps/vb_ko29_5_public_idempotency-c0a831fea99e61fc)
 

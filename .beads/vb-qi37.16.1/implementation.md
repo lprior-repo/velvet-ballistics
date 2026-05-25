@@ -7,7 +7,7 @@ updated_at: 2026-05-09T00:00:00Z
 
 ## Changes Made
 
-### 1. CLI Layer (velvet_ballastics)
+### 1. CLI Layer (velvet_ballistics)
 - **args.rs**: Added `Command::Cancel { run_id, db, reason, output }` variant, `parse_cancel()` function, `ReasonTooLong` parse error, and HELP text.
 - **main.rs**: Added `cmd_cancel()` dispatch and full implementation.
 

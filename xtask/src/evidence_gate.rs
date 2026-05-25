@@ -454,7 +454,7 @@ mod tests {
             breaking_changes: Vec::new(),
         });
         bundle.bloat_analysis = Some(BloatRecord {
-            binary_path: "target/release/velvet-ballastics".to_string(),
+            binary_path: "target/release/velvet-ballistics".to_string(),
             total_size_bytes: 5_000_000,
             top_contributors: Vec::new(),
         });

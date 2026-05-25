@@ -40,7 +40,7 @@
 
 | Gate | Command | Result | Evidence |
 |------|---------|--------|----------|
-| 1 | `rtk cargo test --package velvet_ballastics --test lifecycle_integration -- --test-threads=1` | **PASS** | `cargo test: 43 passed (1 suite, 0.66s)` |
+| 1 | `rtk cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1` | **PASS** | `cargo test: 43 passed (1 suite, 0.66s)` |
 | 2 | `moon run :quick` | **PASS** | `Tasks: 1 completed, Time: 45s 471ms` |
 | 3 | `moon run :test` | **PASS** | `9894 tests run: 9894 passed, 0 skipped` |
 
@@ -68,7 +68,7 @@ All PRE/POST/INV clauses verified:
 ## Quality Gates
 
 - **Format gate**: `rtk cargo fmt -- --check` — PASS (per state-8-report)
-- **Compile gate**: `rtk cargo build --package velvet_ballastics` — PASS (0 errors)
+- **Compile gate**: `rtk cargo build --package velvet_ballistics` — PASS (0 errors)
 - **Integration gate**: 43 lifecycle_integration tests — PASS
 - **Moon quick**: 1 task completed — PASS
 - **Moon test**: 9894 tests, 0 skipped — PASS

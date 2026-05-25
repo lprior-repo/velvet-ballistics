@@ -79,14 +79,14 @@ Added tests to reach >=45 passing tests for 5x density requirement:
 ### Compile check (integration tests)
 ```bash
 cd /home/lewis/src/vb-femdation/vb-qi37-2-4
-cargo build --package velvet-ballastics-workspace-tests --tests
+cargo build --package velvet-ballistics-workspace-tests --tests
 ```
 **Exit status**: 0 (compiles successfully)
 
 ### Run integration tests
 ```bash
 cd /home/lewis/src/vb-femdation/vb-qi37-2-4
-cargo nextest run --package velvet-ballastics-workspace-tests --test vb_qi37_2_4_integration_budget_errors
+cargo nextest run --package velvet-ballistics-workspace-tests --test vb_qi37_2_4_integration_budget_errors
 ```
 **Result**: 47 tests, 46 passed, 1 failed (intentional GAP-2)
 

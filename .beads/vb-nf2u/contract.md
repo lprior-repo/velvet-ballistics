@@ -2,7 +2,7 @@
 
 ## Context
 - Feature: add fail-closed UI release gates proving all eight release screens are reachable, readable, layout-safe, redacted, and captured with deterministic evidence.
-- Authority: `velvet-ballistics-MASTER.md` is authoritative; generated docs, commands, and diagnostics must use canonical product spelling `velvet-ballastics` except legacy path references.
+- Authority: `velvet-ballistics-MASTER.md` is authoritative; generated docs, commands, and diagnostics must use canonical product spelling `velvet-ballistics` except legacy path references.
 - Existing targets: `vb_ui_snapshot::REQUIRED_FIXTURES`, `vb_ui_makepad::shell::{ShellNav, Screen}`, `vb_ui_model::UiScreenKind`, `vb_ui_snapshot::checks`, `vb_ui_snapshot::report`, `cargo xtask ui-snapshot`, `cargo xtask ui-overlap-check`, and `cargo xtask ai-release --bead <id>`.
 - Canonical screen IDs: `execution_overview`, `workflow_graph_authoring`, `execution_details`, `verification_certificate`, `replay_theater`, `incident_failure`, `action_registry`, `storage_doctor_ai_context`.
 

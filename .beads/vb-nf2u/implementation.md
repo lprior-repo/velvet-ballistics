@@ -50,7 +50,7 @@ warning: skipping duplicate package `bitflags v2.10.0 (https://github.com/makepa
   /cache/cargo-shared/git/checkouts/makepad-ec2f134f34cd9f98/20b6c53/libs/vulkan/bitflags/Cargo.toml
 in favor of /cache/cargo-shared/git/checkouts/makepad-ec2f134f34cd9f98/20b6c53/libs/bitflags/Cargo.toml
 
-warning: /home/lewis/src/Velvet-ballistics-vb-nf2u-go/crates/velvet_ballastics/Cargo.toml: file `/home/lewis/src/Velvet-ballistics-vb-nf2u-go/crates/velvet_ballastics/src/main.rs` found to be present in multiple build targets:
+warning: /home/lewis/src/Velvet-ballistics-vb-nf2u-go/crates/velvet_ballistics/Cargo.toml: file `/home/lewis/src/Velvet-ballistics-vb-nf2u-go/crates/velvet_ballistics/src/main.rs` found to be present in multiple build targets:
   * `bin` target `vb`
   * `bin` target `velvet-ballistics`
 warning: skipping duplicate package `bitflags v2.10.0 (https://github.com/makepad/makepad?branch=dev#20b6c53b)`:
@@ -61,10 +61,10 @@ in favor of /cache/cargo-shared/git/checkouts/makepad-ec2f134f34cd9f98/20b6c53/l
 ────────────
  Nextest run ID e71d664c-5652-4aa2-aff3-52aa3eda97ae with nextest profile: default
     Starting 4 tests across 1 binary
-        PASS [   0.334s] (1/4) velvet-ballastics-workspace::vb_nf2u_ui_release_acceptance test_secret_values_are_redacted_in_every_screen
-        PASS [   0.476s] (2/4) velvet-ballastics-workspace::vb_nf2u_ui_release_acceptance test_all_eight_screens_pass_reachability_and_overlap_gates
-        PASS [   0.575s] (3/4) velvet-ballastics-workspace::vb_nf2u_ui_release_acceptance test_intentional_overlap_fixture_fails_gate
-        PASS [   0.672s] (4/4) velvet-ballastics-workspace::vb_nf2u_ui_release_acceptance test_intentional_secret_fixture_fails_redaction_gate
+        PASS [   0.334s] (1/4) velvet-ballistics-workspace::vb_nf2u_ui_release_acceptance test_secret_values_are_redacted_in_every_screen
+        PASS [   0.476s] (2/4) velvet-ballistics-workspace::vb_nf2u_ui_release_acceptance test_all_eight_screens_pass_reachability_and_overlap_gates
+        PASS [   0.575s] (3/4) velvet-ballistics-workspace::vb_nf2u_ui_release_acceptance test_intentional_overlap_fixture_fails_gate
+        PASS [   0.672s] (4/4) velvet-ballistics-workspace::vb_nf2u_ui_release_acceptance test_intentional_secret_fixture_fails_redaction_gate
 ────────────
      Summary [   0.672s] 4 tests run: 4 passed, 0 skipped
 ```

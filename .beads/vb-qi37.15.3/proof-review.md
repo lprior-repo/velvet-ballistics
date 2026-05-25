@@ -78,7 +78,7 @@ All proofs use `SpecJournalEvent` ghost type directly; no `kani::any()`, no `Wor
 - Actual artifact: `verification/verus/vb_cli_commands_journal_trace.rs` ✓
 
 `proof-obligations.jsonl` (State 3 artifact) records:
-- `crates/velvet_ballastics/src/commands_journal.rs` — does not exist
+- `crates/velvet_ballistics/src/commands_journal.rs` — does not exist
 - Corrected path `crates/vb_cli/src/commands_journal.rs` confirmed in production ✓
 
 The proof-writer correctly used the actual artifact path. The planned obligations JSONL is stale but this does not block approval.
@@ -103,7 +103,7 @@ proof-plan-review-input.md (State 4) states "16 variants". production code has *
 |---|---|---|---|
 | Path mismatch in planned obligations JSONL | advisory | Planned obligations reference non-existent `vb_cli/commands_journal.rs`; actual artifact is `vb_cli_commands_journal_trace.rs` | Non-blocking — proof uses correct path |
 | 16 vs 18 variant count in proof-plan-review-input.md | advisory | Proof-writer corrected to 18 in Verus artifact | Non-blocking — proof is correct |
-| Stale proof-obligations.jsonl paths | advisory | State 3 artifact references `velvet_ballastics` instead of `vb_cli` | Non-blocking — production code confirmed at `vb_cli` |
+| Stale proof-obligations.jsonl paths | advisory | State 3 artifact references `velvet_ballistics` instead of `vb_cli` | Non-blocking — production code confirmed at `vb_cli` |
 
 ---
 

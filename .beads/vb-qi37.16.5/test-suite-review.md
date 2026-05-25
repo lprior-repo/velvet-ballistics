@@ -34,7 +34,7 @@
 
 **[PASS]** Mock interrogation — no `mockall`, `Mock::new()`, or `.expect_()` found. Pass.
 
-**[PASS]** Integration test purity — no `use crate::` paths found. `use velvet_ballastics::lifecycle::test_helpers` accesses test-only helpers gated behind `#[cfg(test)]` — not a black-box violation since test helpers are explicitly test-scoped. Pass.
+**[PASS]** Integration test purity — no `use crate::` paths found. `use velvet_ballistics::lifecycle::test_helpers` accesses test-only helpers gated behind `#[cfg(test)]` — not a black-box violation since test helpers are explicitly test-scoped. Pass.
 
 **[PASS]** Error variant completeness — all 6 contract error variants verified with exact `matches!` assertions:
 - `LifecycleInvalidTransition` — 16 invalid-transition tests
@@ -122,7 +122,7 @@ This is the best achievable evidence without production changes. The test is no 
 
 | Gate | Command | Result |
 |------|---------|--------|
-| Lifecycle tests | `rtk cargo test --package velvet_ballastics --test lifecycle_integration -- --test-threads=1` | **43 passed** (0.65s) |
+| Lifecycle tests | `rtk cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1` | **43 passed** (0.65s) |
 | Moon quick | `moon run :quick` | **Tasks: 1 completed** (66s) |
 | Moon test | `moon run :test` | **9894 tests passed (1 leaky)**, 0 skipped |
 

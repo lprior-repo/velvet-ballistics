@@ -4,11 +4,11 @@
 
 ## Canonical Naming
 
-- Product, binary, and package: `velvet-ballastics`
-- Crate and module: `velvet_ballastics`
-- Bead rig: `velvet-ballastics`
+- Product, binary, and package: `velvet-ballistics`
+- Crate and module: `velvet_ballistics`
+- Bead rig: `velvet-ballistics`
 - Bead database: `velvet_ballistics`
-- Language version: `velvet-ballastics/v1`
+- Language version: `velvet-ballistics/v1`
 - `velvet-ballistics` is invalid except in external migration artifacts.
 
 ## Workspace Structure

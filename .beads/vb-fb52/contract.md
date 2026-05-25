@@ -5,7 +5,7 @@
 - **Bead ID:** vb-fb52
 - **Workspace:** `/home/lewis/src/Velvet-ballistics/vb-fb52-ws`
 - **Domain:** storage — Fjall-backed atomic cross-keyspace write batches
-- **Governing norms:** velvet-ballastics MASTER.md §18, §13, §2 (Holzmann)
+- **Governing norms:** velvet-ballistics MASTER.md §18, §13, §2 (Holzmann)
 
 ---
 

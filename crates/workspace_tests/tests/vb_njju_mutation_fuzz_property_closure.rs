@@ -4,7 +4,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use velvet_ballastics_workspace_tests::acceptance_catalog::{catalog, validate_catalog};
+use velvet_ballistics_workspace_tests::acceptance_catalog::{catalog, validate_catalog};
 
 const REQUIRED_FUZZ_TARGETS: &[&str] =
     &["yaml_events", "ipc_frame", "journal_event", "compiled_ir"];

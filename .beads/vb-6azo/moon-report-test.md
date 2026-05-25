@@ -4,11 +4,11 @@
 
 **Status:** FAILED
 **Exit Code:** 101
-**Task:** velvet-ballastics:check
+**Task:** velvet-ballistics:check
 
 ## Failure Details
 
-The `:test` gate failed at the `velvet-ballastics:check` task after 17s 549ms.
+The `:test` gate failed at the `velvet-ballistics:check` task after 17s 549ms.
 
 ### Error Categories
 

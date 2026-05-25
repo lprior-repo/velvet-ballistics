@@ -111,7 +111,7 @@ pub fn run_bdd_scenario_file(path: &Path) -> Result<Vec<BddScenarioResult>>
 
 ## Open Questions
 
-1. Should the runner be a CLI subcommand (`velvet-ballastics bdd-suite`) or a library?
+1. Should the runner be a CLI subcommand (`velvet-ballistics bdd-suite`) or a library?
 2. Should it integrate with the existing `profile_runner.rs` or be separate?
 3. Does evidence go into the same `EvidenceBundle` format or a new BDD-specific bundle?
 

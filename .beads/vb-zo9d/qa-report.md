@@ -49,7 +49,7 @@ FAIL: cannot open journal at /nonexistent/path/to/db: fjall journal operation fa
 ### 4. Integration Test Suite
 **Command:**
 ```bash
-cargo test -p velvet_ballastics --test cli_integration cli_doctor
+cargo test -p velvet_ballistics --test cli_integration cli_doctor
 ```
 **Output:**
 ```
@@ -61,7 +61,7 @@ cargo test: 4 passed, 70 filtered out (1 suite, 0.01s)
 **Command:**
 ```bash
 cargo check -p vb_storage --lib
-cargo check -p velvet_ballastics
+cargo check -p velvet_ballistics
 ```
 **Output:** Both compiled successfully (1 warning in vb_storage about unused_mut)
 **Status:** PASS

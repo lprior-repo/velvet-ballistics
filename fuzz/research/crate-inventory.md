@@ -71,7 +71,7 @@ Focus: **PUBLIC API SURFACES** — the attack surface for fuzzing.
 
 ## BENCHMARKS
 
-Root `benches/`: action_dispatch, action_queuing, array_queue, cold_start, collect_page, ir_traversal, memory_footprint, pagination_cost, rtrb, snapshot_restore, snapshot_save, timer_wheel_tick, velvet_ballastics
+Root `benches/`: action_dispatch, action_queuing, array_queue, cold_start, collect_page, ir_traversal, memory_footprint, pagination_cost, rtrb, snapshot_restore, snapshot_save, timer_wheel_tick, velvet_ballistics
 
 Crate-level: `vb_core/benches/aggregate_resource_budget`, `vb_validate/benches/capability_schema`, `workspace_tests/benches/` (17 benchmarks)
 
@@ -298,7 +298,7 @@ Major modules: `admission.rs`, `action_queue/`, `shard/` (30+ chunk files), `pri
 
 ## 10-13. vb_cli, vb_boundary_inventory, vb_doc, vb_ui_model
 
-**vb_cli** (59 src, 48 pub fn, 24 pub types): CLI binary (velvet-ballastics). Argument parsing, commands (diff, incident, journal, status, system, verify, workflow), lifecycle, deliver_sink, naming_scan.
+**vb_cli** (59 src, 48 pub fn, 24 pub types): CLI binary (velvet-ballistics). Argument parsing, commands (diff, incident, journal, status, system, verify, workflow), lifecycle, deliver_sink, naming_scan.
 
 **vb_boundary_inventory** (17 src, 23 pub fn, 28 pub types): Workspace boundary scanner. `parse_inventory()`, `validate_inventory()`, `BoundaryInventory`, `BoundaryRecord`, `BoundaryStatus`.
 

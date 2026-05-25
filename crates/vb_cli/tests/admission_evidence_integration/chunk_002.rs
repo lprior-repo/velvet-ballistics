@@ -10,7 +10,7 @@ fn submit_artifact_then_run_succeeds() {
     // and then submit the artifact under Relaxed policy (which skips checksum
     // verification since the compile pipeline sets digest from source hash
     // rather than from serialized IR hash).
-    let workflow_yaml = b"version: velvet-ballastics/v1\nname: artifact_test\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      output: saved\n      value: \"42\"\n  - id: done\n    finish:\n      result: saved\n";
+    let workflow_yaml = b"version: velvet-ballistics/v1\nname: artifact_test\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      output: saved\n      value: \"42\"\n  - id: done\n    finish:\n      result: saved\n";
     let workflow = match vb_compile::compile_workflow(workflow_yaml) {
         Ok(w) => w,
         Err(err) => {
@@ -158,7 +158,7 @@ fn run_without_artifact_under_relaxed_policy() {
 
 #[test]
 fn submit_artifact_yaml_compiled_then_run_with_inputs_taints() {
-    let workflow_yaml = b"version: velvet-ballastics/v1\nname: taint_input_test\nwhen:\n  manual: {}\nsteps:\n  - id: read_slot\n    save:\n      output: saved\n      value: '42'\n  - id: done\n    finish:\n      result: saved\n";
+    let workflow_yaml = b"version: velvet-ballistics/v1\nname: taint_input_test\nwhen:\n  manual: {}\nsteps:\n  - id: read_slot\n    save:\n      output: saved\n      value: '42'\n  - id: done\n    finish:\n      result: saved\n";
     let workflow = match vb_compile::compile_workflow(workflow_yaml) {
         Ok(w) => w,
         Err(err) => {

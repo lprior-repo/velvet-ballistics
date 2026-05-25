@@ -103,9 +103,9 @@ Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.25s
 ### moon :quick gate
 ```
 $ moon run :quick
-▮▮▮▮ velvet-ballastics:quick (93080fa8)
+▮▮▮▮ velvet-ballistics:quick (93080fa8)
 Hello, world!
-▮▮▮▮ velvet-ballastics:quick (20ms, 93080fa8)
+▮▮▮▮ velvet-ballistics:quick (20ms, 93080fa8)
 Tasks: 1 completed
  Time: 34s 448ms
 ```

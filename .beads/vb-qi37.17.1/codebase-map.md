@@ -263,7 +263,7 @@ Tests should go in `crates/vb_cli/src/commands_incident.rs` as a `#[cfg(test)] m
 Add to `crates/vb_cli/tests/`:
 
 - Create a temporary FjallJournal with known events
-- Run `velvet-ballastics incident <run_id> --db <path> --json`
+- Run `velvet-ballistics incident <run_id> --db <path> --json`
 - Parse JSON output and verify structure
 - Test missing run case
 - Test non-failed run case

@@ -35,7 +35,7 @@ These changes are preserved in the control checkout and NOT present in this isol
 | `vb_expr` | Expression parsing, lexing, eval, bytecode generation | vb_core, logos, arrayvec |
 | `vb_codegen` | Generated Rust workflow mode | vb_core |
 | `vb_ipc` | Binary IPC ingress | vb_core, vb_runtime, vb_validate, mio, crossbeam-channel |
-| `velvet_ballastics` | Main binary crate (top-level integration) | all above crates |
+| `velvet_ballistics` | Main binary crate (top-level integration) | all above crates |
 
 ### UI Crates
 - `vb_ui_model` - UI domain models
@@ -50,7 +50,7 @@ These changes are preserved in the control checkout and NOT present in this isol
 ## Dependency Graph (Key Edges)
 
 ```
-velvet_ballastics (bin)
+velvet_ballistics (bin)
 ├── vb_compile
 │   ├── vb_yaml
 │   ├── vb_validate
@@ -202,8 +202,8 @@ crates/vb_compile/src/
 
 ## Entry Points
 
-- **Binary**: `velvet-ballastics` at `crates/velvet_ballastics/src/main.rs`
-- **Library**: `velvet_ballastics` crate exposes all modules
+- **Binary**: `velvet-ballistics` at `crates/velvet_ballistics/src/main.rs`
+- **Library**: `velvet_ballistics` crate exposes all modules
 - **Tests**: Integration tests in `tests/` root; unit tests in each crate
 
 ---

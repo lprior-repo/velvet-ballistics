@@ -38,11 +38,11 @@ commit_or_change: jj workspace revision (not git)
 | Test/Gate | Command | Artifact | Result |
 |---|---|---|---|
 | Strict YAML tests | `cargo test -p vb_compile --test vb_core_yaml_e2e_chain_strict_yaml -- --nocapture` | vb_core_yaml_e2e_chain_strict_yaml.rs | 10 PASS |
-| Contract tests | `cargo test -p velvet-ballastics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture` | vb_core_yaml_e2e_chain_contract.rs | 35 PASS |
+| Contract tests | `cargo test -p velvet-ballistics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture` | vb_core_yaml_e2e_chain_contract.rs | 35 PASS |
 | vb_storage | `cargo test -p vb_storage -- --nocapture` | vb_storage | 983 PASS |
 | vb_runtime | `cargo test -p vb_runtime -- --nocapture` | vb_runtime | 1460 PASS |
-| CLI integration | `cargo test -p velvet_ballastics --test cli_integration -- --nocapture` | cli_integration | 86 PASS |
-| E2E recovery | `cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_1_1_red_recovery_contract_test -- --nocapture` | vb_qi37_1_1_red_recovery_contract_test | 19 PASS |
+| CLI integration | `cargo test -p velvet_ballistics --test cli_integration -- --nocapture` | cli_integration | 86 PASS |
+| E2E recovery | `cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_1_1_red_recovery_contract_test -- --nocapture` | vb_qi37_1_1_red_recovery_contract_test | 19 PASS |
 | Clippy | `cargo clippy --all-features -- -D warnings ...` | workspace | No issues |
 
 ## Review Evidence

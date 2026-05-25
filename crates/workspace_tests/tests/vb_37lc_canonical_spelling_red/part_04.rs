@@ -4,7 +4,7 @@ use super::*;
 fn scan_file_does_not_report_canonical_crate_module_even_when_pattern_selects_it() {
     let mut config = maximum_bounded_scan_config();
     config.scan_patterns = vec![CANONICAL_UNDERSCORE.to_string()];
-    let input = text_scan_input("crates/vb_cli/src/lib.rs", "pub mod velvet_ballastics;\n");
+    let input = text_scan_input("crates/vb_cli/src/lib.rs", "pub mod velvet_ballistics;\n");
 
     let result = scan_file(input, &config);
 
@@ -202,7 +202,7 @@ fn scan_repository_report_kernel_preserves_config_identity_when_report_is_succes
     write_fixture_file(
         temp.path(),
         "docs/naming.md",
-        "velvet-ballastics is absent\n",
+        "velvet-ballistics is absent\n",
     )?;
     let root = RepoRoot::new(temp.path().to_path_buf());
     let config = minimum_valid_scan_config();

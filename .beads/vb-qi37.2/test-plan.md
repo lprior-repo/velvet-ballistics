@@ -8,5 +8,5 @@ STATUS: APPROVED
 - Kani ValueStore cap diagnostic parity: exact `PO-012` harness.
 - Miri ValueStore scoped UB check: `MIRIFLAGS=-Zmiri-disable-isolation cargo +nightly-2025-11-21 miri test -p vb_core value_store -- --nocapture`.
 - Focused budget regression tests: `rtk cargo test -p vb_core budget -- --nocapture`.
-- ResourceContract parity tests: `rtk cargo test -p vb_core resource_contract -- --nocapture` and `rtk cargo test -p velvet-ballastics-workspace resource_contract -- --nocapture`.
+- ResourceContract parity tests: `rtk cargo test -p vb_core resource_contract -- --nocapture` and `rtk cargo test -p velvet-ballistics-workspace resource_contract -- --nocapture`.
 - Fuzz and `moon ci` remain State 11 blockers until environment/tooling is repaired.

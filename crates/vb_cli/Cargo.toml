@@ -1,5 +1,5 @@
 [package]
-name = "velvet-ballastics"
+name = "velvet-ballistics"
 edition.workspace = true
 license.workspace = true
 version.workspace = true
@@ -7,7 +7,7 @@ version.workspace = true
 [dependencies]
 vb_compile = { path = "../vb_compile" }
 vb_core = { path = "../vb_core" }
-# vb_codegen moved to velvet-optional repo (deferred)
+# vb_codegen is removed from the current workspace scope.
 vb_expr = { path = "../vb_expr" }
 vb_ipc = { path = "../vb_ipc" }
 vb_runtime = { path = "../vb_runtime" }
@@ -27,7 +27,7 @@ name = "vb_cli"
 path = "src/lib.rs"
 
 [[bin]]
-name = "velvet-ballastics"
+name = "velvet-ballistics"
 path = "src/main.rs"
 
 [dev-dependencies]
@@ -35,7 +35,7 @@ bytes = { workspace = true }
 proptest = { workspace = true }
 serde = { workspace = true }
 tempfile.workspace = true
-# vb_ui_model moved to velvet-optional repo (deferred)
+# vb_ui_model is removed from the current workspace scope.
 
 [lints]
 workspace = true

@@ -68,11 +68,11 @@ State 2 explore artifact for `runtime/recovery: Crash restart integration eviden
 
 ### CLI/integration surface
 
-- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-1-6/crates/velvet_ballastics/src/run.rs`
-- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-1-6/crates/velvet_ballastics/src/storage.rs`
-- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-1-6/crates/velvet_ballastics/src/lifecycle.rs`
-- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-1-6/crates/velvet_ballastics/src/commands_journal.rs`
-- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-1-6/crates/velvet_ballastics/src/commands_status.rs`
+- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-1-6/crates/velvet_ballistics/src/run.rs`
+- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-1-6/crates/velvet_ballistics/src/storage.rs`
+- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-1-6/crates/velvet_ballistics/src/lifecycle.rs`
+- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-1-6/crates/velvet_ballistics/src/commands_journal.rs`
+- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-1-6/crates/velvet_ballistics/src/commands_status.rs`
   - These are likely needed only if acceptance evidence must be command-level instead of crate-level integration.
 
 ## Existing test/evidence anchors
@@ -88,9 +88,9 @@ State 2 explore artifact for `runtime/recovery: Crash restart integration eviden
   - Contract tests for event-only frame seed recovery, slot values/taint, unsupported flags, queue drain to journal.
 - `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-1-6/crates/vb_runtime/src/collect_tests.rs`
   - Extensive collect pagination unit/contract tests, including `capture_extra` and journal-event hydration helpers.
-- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-1-6/crates/velvet_ballastics/tests/lifecycle_integration.rs`
+- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-1-6/crates/velvet_ballistics/tests/lifecycle_integration.rs`
   - CLI/library lifecycle journal tests for cancel/resume/retry/answer event append and replay.
-- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-1-6/crates/velvet_ballastics/tests/mode_activation_integration_tests.rs`
+- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-1-6/crates/velvet_ballistics/tests/mode_activation_integration_tests.rs`
   - CLI journal open behavior and durability mode assertions.
 
 ## Required downstream scope

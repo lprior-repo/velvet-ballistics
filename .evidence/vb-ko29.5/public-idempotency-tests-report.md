@@ -12,14 +12,14 @@ workspace member with only the dependencies needed by this idempotency suite.
 
 | Command | Exit | Evidence |
 | --- | ---: | --- |
-| `rtk cargo test -p velvet-ballastics-idempotency-workspace-tests --test vb_ko29_5_public_idempotency --no-run` | 0 | `.evidence/vb-ko29.5/cargo-test-no-run.log` |
-| `rtk cargo test -p velvet-ballastics-idempotency-workspace-tests --test vb_ko29_5_public_idempotency -- --nocapture` | 0 | `.evidence/vb-ko29.5/cargo-test.log` |
+| `rtk cargo test -p velvet-ballistics-idempotency-workspace-tests --test vb_ko29_5_public_idempotency --no-run` | 0 | `.evidence/vb-ko29.5/cargo-test-no-run.log` |
+| `rtk cargo test -p velvet-ballistics-idempotency-workspace-tests --test vb_ko29_5_public_idempotency -- --nocapture` | 0 | `.evidence/vb-ko29.5/cargo-test.log` |
 | `rtk cargo test -p vb_runtime admission` | 0 | `.evidence/vb-ko29.5/cargo-test-vb-runtime-admission.log` |
-| `rtk run "cargo test -p velvet-ballastics-idempotency-workspace-tests --test vb_ko29_5_public_idempotency --no-run"` | 0 | `.evidence/vb-ko29.5/cargo-test-no-run.raw.log` |
-| `rtk run "cargo test -p velvet-ballastics-idempotency-workspace-tests --test vb_ko29_5_public_idempotency -- --nocapture"` | 0 | `.evidence/vb-ko29.5/cargo-test.raw.log` |
+| `rtk run "cargo test -p velvet-ballistics-idempotency-workspace-tests --test vb_ko29_5_public_idempotency --no-run"` | 0 | `.evidence/vb-ko29.5/cargo-test-no-run.raw.log` |
+| `rtk run "cargo test -p velvet-ballistics-idempotency-workspace-tests --test vb_ko29_5_public_idempotency -- --nocapture"` | 0 | `.evidence/vb-ko29.5/cargo-test.raw.log` |
 | `rtk run "cargo test -p vb_runtime admission"` | 0 | `.evidence/vb-ko29.5/cargo-test-vb-runtime-admission.raw.log` |
 | `rustfmt --check crates/vb_runtime/src/admission.rs crates/vb_runtime/src/shard/lifecycle/chunk_001.rs crates/workspace_tests/idempotency_suite/tests/vb_ko29_5_public_idempotency.rs` | 0 | `.evidence/vb-ko29.8/touched-rustfmt-check.raw.log` |
-| `rtk run "cargo test -p velvet-ballastics-idempotency-workspace-tests --test vb_ko29_5_public_idempotency -- --nocapture"` | 0 | `.evidence/vb-ko29.8/idempotency-suite.raw.log` |
+| `rtk run "cargo test -p velvet-ballistics-idempotency-workspace-tests --test vb_ko29_5_public_idempotency -- --nocapture"` | 0 | `.evidence/vb-ko29.8/idempotency-suite.raw.log` |
 | `rtk run "cargo test -p vb_runtime admission"` | 0 | `.evidence/vb-ko29.8/vb-runtime-admission.raw.log` |
 
 Note: `rtk cargo` compacted the success output; the `.raw.log` files are the

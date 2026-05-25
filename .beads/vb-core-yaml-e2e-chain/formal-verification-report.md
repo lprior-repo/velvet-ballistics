@@ -11,7 +11,7 @@ STATUS: APPROVED
 
 ## Inputs
 
-- proof-obligations.jsonl: `.beads/vb-core-yaml-e2e-chain/proof-obligations.jsonl`, 23 obligations. E2E-REC-008 command package name corrected from `velvet-ballastics-workspace` to `velvet-ballastics-workspace-tests` (metadata fix).
+- proof-obligations.jsonl: `.beads/vb-core-yaml-e2e-chain/proof-obligations.jsonl`, 23 obligations. E2E-REC-008 command package name corrected from `velvet-ballistics-workspace` to `velvet-ballistics-workspace-tests` (metadata fix).
 - delivery-scope.jsonl: `.beads/vb-core-yaml-e2e-chain/delivery-scope.jsonl`.
 - baseline-report.md: `.beads/vb-core-yaml-e2e-chain/baseline-report.md`.
 - tla-spec.md: `.beads/vb-core-yaml-e2e-chain/tla-spec.md`.
@@ -43,14 +43,14 @@ STATUS: APPROVED
 | VERUS-DIG-004 | `TMPDIR=target/tmp RUSTC_WRAPPER= verus verification/verus/yaml_e2e_digest_roles.rs` | 0 | `verification results:: 8 verified, 0 errors`. |
 | VERUS-DIG-005 | Same Verus run | 0 | Shared run. `8 verified, 0 errors`. |
 | PROP-CORRUPT-006 | `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p vb_storage -- --nocapture` | 0 | `983 passed (7 suites, 30.95s)`. |
-| E2E-CLI-007 | `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet_ballastics --test cli_integration -- --nocapture` | 0 | `86 passed (1 suite, 0.50s)`. |
-| E2E-REC-008 | `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_1_1_red_recovery_contract_test -- --nocapture` | 0 | `19 passed (1 suite, 0.16s)`. State 11 retry 3: proof-obligations.jsonl package name corrected from `velvet-ballastics-workspace` to `velvet-ballastics-workspace-tests`. |
+| E2E-CLI-007 | `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet_ballistics --test cli_integration -- --nocapture` | 0 | `86 passed (1 suite, 0.50s)`. |
+| E2E-REC-008 | `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_1_1_red_recovery_contract_test -- --nocapture` | 0 | `19 passed (1 suite, 0.16s)`. State 11 retry 3: proof-obligations.jsonl package name corrected from `velvet-ballistics-workspace` to `velvet-ballistics-workspace-tests`. |
 | ERR-SOURCE-014 | Same vb_storage run | 0 | Shared run. Source digest mismatch tests passed. |
 | ERR-ARTIFACT-DIGEST-015 | Same vb_storage run | 0 | Shared run. Artifact digest mismatch/recovery tests passed. |
 | ERR-ARTIFACT-MISSING-016 | `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p vb_runtime -- --nocapture` | 0 | `1460 passed (10 suites, 0.93s)`. |
 | ERR-ARTIFACT-INVALID-017 | Same vb_runtime run | 0 | Shared run. |
 | ERR-CAPABILITY-018 | Same vb_runtime run | 0 | Shared run. |
-| ERR-DURABILITY-019 | Same CLI run (velvet_ballastics) | 0 | Shared CLI run. |
+| ERR-DURABILITY-019 | Same CLI run (velvet_ballistics) | 0 | Shared CLI run. |
 | ERR-REPLAY-020 | Same vb_storage run | 0 | Shared run. Replay divergence tests passed. |
 | ERR-CORRUPT-021 | Same vb_storage run | 0 | Shared run. Corrupt record/snapshot tests passed. |
 | ERR-NO-DATA-022 | Same vb_storage run | 0 | Shared run. NoRecoveryData tests passed. |

@@ -1,6 +1,6 @@
 //! Integration tests for mode activation boundaries (POST-002, POST-003, POST-004, POST-005).
 //!
-//! These tests run the actual velvet-ballastics binary and verify:
+//! These tests run the actual velvet-ballistics binary and verify:
 //! - Pure commands succeed without storage present (POST-002)
 //! - Storage commands fail fast with StorageError on invalid paths (POST-004)
 //! - Exit codes are stable regardless of inactive subsystems (POST-005)
@@ -18,7 +18,7 @@ use std::path::PathBuf;
 use std::process::{Command, Output};
 
 const VALID_WORKFLOW: &str = r#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -33,7 +33,7 @@ steps:
 "#;
 
 const INVALID_WORKFLOW: &str = r#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -41,13 +41,13 @@ steps:
   - id: step1
 "#;
 
-/// The velvet-ballastics binary path.
+/// The velvet-ballistics binary path.
 fn velvet_bin() -> PathBuf {
-    if let Some(path) = option_env!("CARGO_BIN_EXE_velvet-ballastics") {
+    if let Some(path) = option_env!("CARGO_BIN_EXE_velvet-ballistics") {
         return PathBuf::from(path);
     }
 
-    if let Some(path) = std::env::var_os("CARGO_BIN_EXE_velvet-ballastics") {
+    if let Some(path) = std::env::var_os("CARGO_BIN_EXE_velvet-ballistics") {
         return PathBuf::from(path);
     }
 
@@ -57,18 +57,18 @@ fn velvet_bin() -> PathBuf {
                 .map(|name| name == "debug" || name == "release")
                 .unwrap_or(false)
         }) {
-            Some(profile_dir) => profile_dir.join("velvet-ballastics"),
+            Some(profile_dir) => profile_dir.join("velvet-ballistics"),
             None => PathBuf::from("target")
                 .join("debug")
-                .join("velvet-ballastics"),
+                .join("velvet-ballistics"),
         },
         Err(_) => PathBuf::from("target")
             .join("debug")
-            .join("velvet-ballastics"),
+            .join("velvet-ballistics"),
     }
 }
 
-/// Run the velvet-ballastics binary with the given args.
+/// Run the velvet-ballistics binary with the given args.
 fn run_bin<I>(args: I) -> Output
 where
     I: IntoIterator,
@@ -79,7 +79,7 @@ where
 
     for arg in args {
         let arg = arg.as_ref();
-        if is_first && arg == OsStr::new("velvet-ballastics") {
+        if is_first && arg == OsStr::new("velvet-ballistics") {
             is_first = false;
             continue;
         }
@@ -90,7 +90,7 @@ where
     let output = command.output();
     assert!(
         output.is_ok(),
-        "velvet-ballastics binary must be built: {output:?}"
+        "velvet-ballistics binary must be built: {output:?}"
     );
     match output {
         Ok(output) => output,
@@ -155,7 +155,7 @@ fn validate_succeeds_on_valid_workflow_without_storage() {
     let workflow = dir.path().join("workflow.yaml");
 
     // When: user runs validate
-    let output = run_bin(["velvet-ballastics", "validate", &workflow.to_string_lossy()]);
+    let output = run_bin(["velvet-ballistics", "validate", &workflow.to_string_lossy()]);
 
     // Then: exit code is 0
     assert_eq!(
@@ -171,7 +171,7 @@ fn validate_fails_on_invalid_workflow_without_storage() {
     let dir = temp_workflow(INVALID_WORKFLOW);
     let workflow = dir.path().join("workflow.yaml");
 
-    let output = run_bin(["velvet-ballastics", "validate", &workflow.to_string_lossy()]);
+    let output = run_bin(["velvet-ballistics", "validate", &workflow.to_string_lossy()]);
 
     assert_eq!(
         output.status.code(),
@@ -188,7 +188,7 @@ fn validate_succeeds_when_no_storage_path_exists() {
     let workflow = dir.path().join("workflow.yaml");
 
     // No --db argument, no storage path
-    let output = run_bin(["velvet-ballastics", "validate", &workflow.to_string_lossy()]);
+    let output = run_bin(["velvet-ballistics", "validate", &workflow.to_string_lossy()]);
 
     assert_eq!(
         output.status.code(),
@@ -208,7 +208,7 @@ fn verify_succeeds_on_passing_workflow() {
     let workflow = dir.path().join("workflow.yaml");
 
     let output = run_bin([
-        "velvet-ballastics",
+        "velvet-ballistics",
         "verify",
         &workflow.to_string_lossy(),
         "--profile",
@@ -235,7 +235,7 @@ fn verify_succeeds_with_json_output() {
     let workflow = dir.path().join("workflow.yaml");
 
     let output = run_bin([
-        "velvet-ballastics",
+        "velvet-ballistics",
         "verify",
         &workflow.to_string_lossy(),
         "--profile",
@@ -262,7 +262,7 @@ fn verify_fails_with_exit_2_on_failing_workflow() {
     let dir = temp_workflow(INVALID_WORKFLOW);
     let workflow = dir.path().join("workflow.yaml");
 
-    let output = run_bin(["velvet-ballastics", "verify", &workflow.to_string_lossy()]);
+    let output = run_bin(["velvet-ballistics", "verify", &workflow.to_string_lossy()]);
 
     assert_eq!(
         output.status.code(),
@@ -277,7 +277,7 @@ fn verify_does_not_require_db() {
     let dir = temp_workflow(VALID_WORKFLOW);
     let workflow = dir.path().join("workflow.yaml");
 
-    let output = run_bin(["velvet-ballastics", "verify", &workflow.to_string_lossy()]);
+    let output = run_bin(["velvet-ballistics", "verify", &workflow.to_string_lossy()]);
 
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
@@ -298,7 +298,7 @@ fn compile_produces_ir_without_storage() {
     let output_path = dir.path().join("out.vbir");
 
     let output = run_bin([
-        "velvet-ballastics",
+        "velvet-ballistics",
         "compile",
         &workflow.to_string_lossy(),
         "--emit",
@@ -329,7 +329,7 @@ fn bench_run_executes_in_memory_without_storage() {
     let workflow = dir.path().join("workflow.yaml");
 
     let output = run_bin([
-        "velvet-ballastics",
+        "velvet-ballistics",
         "bench-run",
         &workflow.to_string_lossy(),
     ]);
@@ -359,7 +359,7 @@ fn bench_run_does_not_fail_with_storage_error() {
     let missing_db = dir.path().join("nonexistent_journal_path");
 
     let output = run_bin([
-        "velvet-ballastics",
+        "velvet-ballistics",
         "bench-run",
         &workflow.to_string_lossy(),
         "--db",
@@ -380,7 +380,7 @@ fn bench_run_does_not_fail_with_storage_error() {
 #[test]
 fn agent_context_emits_cli_schema_without_storage() {
     // POST-002: agent-context is Pure (static JSON build)
-    let output = run_bin(["velvet-ballastics", "agent-context"]);
+    let output = run_bin(["velvet-ballistics", "agent-context"]);
 
     assert_eq!(
         output.status.code(),
@@ -406,7 +406,7 @@ fn agent_context_emits_cli_schema_without_storage() {
 #[test]
 fn status_reports_in_memory_without_storage() {
     // POST-002: status is Pure (transient Shard::new)
-    let output = run_bin(["velvet-ballastics", "status"]);
+    let output = run_bin(["velvet-ballistics", "status"]);
 
     assert_eq!(
         output.status.code(),
@@ -430,7 +430,7 @@ fn graph_outputs_dot_without_storage() {
     let dir = temp_workflow(VALID_WORKFLOW);
     let workflow = dir.path().join("workflow.yaml");
 
-    let output = run_bin(["velvet-ballastics", "graph", &workflow.to_string_lossy()]);
+    let output = run_bin(["velvet-ballistics", "graph", &workflow.to_string_lossy()]);
 
     assert_eq!(
         output.status.code(),
@@ -454,7 +454,7 @@ fn simulate_dry_runs_without_storage() {
     let dir = temp_workflow(VALID_WORKFLOW);
     let workflow = dir.path().join("workflow.yaml");
 
-    let output = run_bin(["velvet-ballastics", "simulate", &workflow.to_string_lossy()]);
+    let output = run_bin(["velvet-ballistics", "simulate", &workflow.to_string_lossy()]);
 
     assert_eq!(
         output.status.code(),
@@ -470,7 +470,7 @@ fn simulate_dry_runs_without_storage() {
 
 #[test]
 fn action_list_succeeds_without_storage() {
-    let output = run_bin(["velvet-ballastics", "action", "list"]);
+    let output = run_bin(["velvet-ballistics", "action", "list"]);
 
     assert_eq!(
         output.status.code(),
@@ -482,7 +482,7 @@ fn action_list_succeeds_without_storage() {
 
 #[test]
 fn action_inspect_succeeds_without_storage() {
-    let output = run_bin(["velvet-ballastics", "action", "inspect", "1"]);
+    let output = run_bin(["velvet-ballistics", "action", "inspect", "1"]);
 
     // Either success or "action not found" is acceptable — but not StorageError
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -505,7 +505,7 @@ fn run_durability_none_skips_storage() {
     let input = input_dir.path().join("input.bin");
 
     let output = run_bin([
-        "velvet-ballastics",
+        "velvet-ballistics",
         "run",
         &workflow.to_string_lossy(),
         "--input-bin",
@@ -542,7 +542,7 @@ fn inspect_fails_fast_with_storage_error_on_invalid_path() {
     );
 
     let output = run_bin([
-        "velvet-ballastics",
+        "velvet-ballistics",
         "inspect",
         "1",
         "--db",
@@ -577,7 +577,7 @@ fn doctor_fails_fast_on_invalid_path() {
     );
 
     let output = run_bin([
-        "velvet-ballastics",
+        "velvet-ballistics",
         "doctor",
         "--db",
         &invalid_db.to_string_lossy(),
@@ -606,7 +606,7 @@ fn submit_opens_fjall_journal() {
     let journal = journal_dir.path().join("fjall-db");
 
     let output = run_bin([
-        "velvet-ballastics",
+        "velvet-ballistics",
         "submit",
         &workflow.to_string_lossy(),
         "--input-bin",
@@ -632,7 +632,7 @@ fn submit_opens_fjall_journal() {
 #[test]
 fn unknown_command_exits_with_code_2_and_lists_valid_commands() {
     // ERR-Taxonomy: ParseError::UnknownCommand → exit 2 (ValidationFailed) + valid command list
-    let output = run_bin(["velvet-ballastics", "foobar"]);
+    let output = run_bin(["velvet-ballistics", "foobar"]);
 
     assert_eq!(
         output.status.code(),
@@ -657,7 +657,7 @@ fn inspect_without_db_fails() {
     let _workflow = dir.path().join("workflow.yaml");
 
     // Running inspect without --db should fail
-    let output = run_bin(["velvet-ballastics", "inspect", "1"]);
+    let output = run_bin(["velvet-ballistics", "inspect", "1"]);
 
     assert_ne!(
         output.status.code(),
@@ -683,7 +683,7 @@ fn pure_commands_exit_independent_of_storage_availability() {
     let workflow = dir.path().join("workflow.yaml");
 
     // validate should succeed even if /tmp/nonexistent/storage/path does not exist
-    let output = run_bin(["velvet-ballastics", "validate", &workflow.to_string_lossy()]);
+    let output = run_bin(["velvet-ballistics", "validate", &workflow.to_string_lossy()]);
 
     assert_eq!(
         output.status.code(),
@@ -732,7 +732,7 @@ fn all_pure_commands_do_not_produce_storage_error() {
     ];
 
     for (name, mut args) in pure_commands {
-        args.insert(0, "velvet-ballastics");
+        args.insert(0, "velvet-ballistics");
         let output = run_bin(args.into_iter().map(OsString::from).collect::<Vec<_>>());
 
         assert_ne!(

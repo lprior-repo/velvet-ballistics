@@ -37,7 +37,7 @@
 | Clause | Layer | Checker | Evidence |
 |--------|-------|---------|----------|
 | PRE-014: artifact_version = velvet.artifact/v1 | kani | `kani::verify_artifact_version` | formal-verification-report.md |
-| PRE-015: workflow_version = velvet-ballastics/v1 | kani | `kani::verify_workflow_version` | formal-verification-report.md |
+| PRE-015: workflow_version = velvet-ballistics/v1 | kani | `kani::verify_workflow_version` | formal-verification-report.md |
 | PRE-016: workflow_name non-empty | kani | `kani::verify_workflow_name` | formal-verification-report.md |
 | PRE-017: ir_bytes non-empty | kani | `kani::verify_ir_bytes` | formal-verification-report.md |
 | PRE-018: ir_bytes within MAX_COMPILED_IR_BYTES | kani | `kani::verify_ir_bytes_bound` | formal-verification-report.md |
@@ -133,8 +133,8 @@
 
 | Clause | Layer | Checker | Evidence |
 |--------|-------|---------|----------|
-| submit_artifact followed by admit_run | cargo-nextest | `cargo nextest run -p velvet_ballastics admission_evidence_integration` | integration-report.md |
-| submit_direct rejected when artifact required | cargo-nextest | `cargo nextest run -p velvet_ballastics reject_raw_submit` | integration-report.md |
+| submit_artifact followed by admit_run | cargo-nextest | `cargo nextest run -p velvet_ballistics admission_evidence_integration` | integration-report.md |
+| submit_direct rejected when artifact required | cargo-nextest | `cargo nextest run -p velvet_ballistics reject_raw_submit` | integration-report.md |
 
 ## Lean Scope
 

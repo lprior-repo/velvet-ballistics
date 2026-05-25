@@ -80,9 +80,9 @@ Important dependency context from `bd --db /home/lewis/src/velvet-ballistics/.be
   - Broad storage recovery test module; use for digest mismatch, snapshot/tail, corrupt journal, no recovery data, and terminal-state cases.
 - `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-1/crates/vb_storage/tests/replay_resume.rs`
   - Integration-oriented replay/resume surface relevant to crash-before-ack and crash-after-ack evidence.
-- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-1/crates/velvet_ballastics/tests/cli_integration.rs`
+- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-1/crates/velvet_ballistics/tests/cli_integration.rs`
   - CLI end-to-end surface for durable run, inspect/events, and recovery-adjacent operator proof.
-- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-1/crates/velvet_ballastics/tests/admission_evidence_integration/**/*.rs`
+- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-1/crates/velvet_ballistics/tests/admission_evidence_integration/**/*.rs`
   - Admission and durable artifact evidence; useful because recovery must remain bound to accepted persisted artifacts.
 
 ## Public APIs to preserve/prove

@@ -169,7 +169,7 @@ Output:
 
 ```text
 error: the package 'vb_storage' does not contain this feature: verus
-help: packages with the missing feature: vb_validate, velvet-ballastics-workspace-tests
+help: packages with the missing feature: vb_validate, velvet-ballistics-workspace-tests
 ```
 
 Classification: `BLOCKED_PLAN_COMMAND` for `VFR-R2-RUST-ATTACH-001..007`; State 11 reports production surfaces exist and all-features checks passed, but this planned command is invalid.

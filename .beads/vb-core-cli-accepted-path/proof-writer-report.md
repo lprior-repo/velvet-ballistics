@@ -99,7 +99,7 @@ moon run :verify-proof
 
 - Exit: 2.
 - Status: BLOCKED_TOOLING.
-- Evidence: Moon invoked `velvet-ballastics:verify-proof`; `scripts/rust-verification-gauntlet.sh` failed at lines 3-7 with `//!: No such file or directory` and `syntax error near unexpected token newline`, then Moon reported `Process bash failed: exit code 2`.
+- Evidence: Moon invoked `velvet-ballistics:verify-proof`; `scripts/rust-verification-gauntlet.sh` failed at lines 3-7 with `//!: No such file or directory` and `syntax error near unexpected token newline`, then Moon reported `Process bash failed: exit code 2`.
 
 ### Cleanup
 
@@ -280,7 +280,7 @@ TMPDIR=target/tmp moon run :verify-proof
 ```
 
 - Exit: 0.
-- Evidence: Moon invoked `velvet-ballastics:verify-proof`; gauntlet entered `proof/all`; Kani harness labels `KANI-EXPR-BYTECODE-001`, `KANI-SLOT-REF-001`, `KANI-CONSTANT-POOL-001`, `KANI-ACCESSOR-REF-001`, and `INV-007-NODEDUP-001` each reported `[PASS]`; final line reported `[PASS] All proof checks passed`; Moon reported `Tasks: 1 completed`.
+- Evidence: Moon invoked `velvet-ballistics:verify-proof`; gauntlet entered `proof/all`; Kani harness labels `KANI-EXPR-BYTECODE-001`, `KANI-SLOT-REF-001`, `KANI-CONSTANT-POOL-001`, `KANI-ACCESSOR-REF-001`, and `INV-007-NODEDUP-001` each reported `[PASS]`; final line reported `[PASS] All proof checks passed`; Moon reported `Tasks: 1 completed`.
 
 ```bash
 TMPDIR=target/tmp cargo kani --package vb_compile --harness compile_expr_to_bytecode_overflow --quiet

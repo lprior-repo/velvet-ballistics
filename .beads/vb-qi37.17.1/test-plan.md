@@ -236,7 +236,7 @@ Integration tests live in `crates/vb_cli/tests/incident_integration.rs` (new fil
   simulating a failed run (StepStarted → ActionCompletedEvent → RunFailedEvent).
 - **Command**:
   ```
-  velvet-ballastics incident <run_id> --db <temp_db_path> --format json
+  velvet-ballistics incident <run_id> --db <temp_db_path> --format json
   ```
 - **Expected output**:
   - stdout is valid JSON (parseable by `serde_json::from_str`)
@@ -251,7 +251,7 @@ Integration tests live in `crates/vb_cli/tests/incident_integration.rs` (new fil
   target run_id (or open a valid journal where the run simply doesn't exist).
 - **Command**:
   ```
-  velvet-ballastics incident <nonexistent_run_id> --db <temp_db_path> --format json
+  velvet-ballistics incident <nonexistent_run_id> --db <temp_db_path> --format json
   ```
 - **Expected output**:
   - stdout (or stderr, depending on json_error path) contains valid JSON
@@ -267,7 +267,7 @@ Integration tests live in `crates/vb_cli/tests/incident_integration.rs` (new fil
   (StepStarted → ActionCompletedEvent → StepCompleted). No RunFailedEvent, no RunCancelled.
 - **Command**:
   ```
-  velvet-ballastics incident <run_id> --db <temp_db_path> --format json
+  velvet-ballistics incident <run_id> --db <temp_db_path> --format json
   ```
 - **Expected output**:
   - Exit code is `CliExitCode::StorageError` (not success — the run had no failure, so it's "not an incident")
@@ -280,7 +280,7 @@ Integration tests live in `crates/vb_cli/tests/incident_integration.rs` (new fil
 - **Setup**: Same as T-014 (failed run with known events).
 - **Command**:
   ```
-  velvet-ballastics incident <run_id> --db <temp_db_path> --format text
+  velvet-ballistics incident <run_id> --db <temp_db_path> --format text
   ```
 - **Expected output**:
   - Text output lines appear in deterministic key order:
@@ -299,7 +299,7 @@ Integration tests live in `crates/vb_cli/tests/incident_integration.rs` (new fil
 - **Setup**: Same as T-014 (failed run with known events).
 - **Command**:
   ```
-  velvet-ballastics incident <run_id> --db <temp_db_path> --format jsonl
+  velvet-ballistics incident <run_id> --db <temp_db_path> --format jsonl
   ```
 - **Expected output**:
   - stdout is exactly one line of JSON (no pretty-printing, no newlines within the JSON)

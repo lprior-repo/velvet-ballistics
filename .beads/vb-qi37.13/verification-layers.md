@@ -22,7 +22,7 @@ attempt: 1-of-7
 
 ## Executable Scope
 
-- Unit: `crates/velvet_ballastics/src/exit_code.rs` tests must reject out-of-range values.
+- Unit: `crates/velvet_ballistics/src/exit_code.rs` tests must reject out-of-range values.
 - Integration: CLI structured-output tests must observe only codes `0..=8`.
 - Fuzz/proptest/Kani: postcard route must execute under repository tooling or be explicitly waived by proof review.
 

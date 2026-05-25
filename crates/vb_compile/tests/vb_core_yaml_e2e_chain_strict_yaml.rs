@@ -42,7 +42,7 @@ fn classify(error: CompileError) -> StrictYamlRejection {
 
 #[test]
 fn strict_yaml_rejected_when_duplicate_top_level_key_present() -> Result<(), String> {
-    let source = "version: velvet-ballastics/v1\nname: first\nname: second\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n";
+    let source = "version: velvet-ballistics/v1\nname: first\nname: second\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n";
 
     let rejection = classify(first_error(source)?);
 
@@ -57,7 +57,7 @@ fn strict_yaml_rejected_when_duplicate_top_level_key_present() -> Result<(), Str
 
 #[test]
 fn validate_and_compile_yaml_returns_artifact_when_minimal_yaml_is_valid() -> Result<(), String> {
-    let source = "version: velvet-ballastics/v1\nname: valid_minimal\nwhen: { manual: {} }\nsteps:\n  - id: make\n    set: { output: answer, value: \"42\" }\n  - id: done\n    finish: { result: answer }\n";
+    let source = "version: velvet-ballistics/v1\nname: valid_minimal\nwhen: { manual: {} }\nsteps:\n  - id: make\n    set: { output: answer, value: \"42\" }\n  - id: done\n    finish: { result: answer }\n";
 
     let workflow = compile_yaml(source).map_err(|errors| errors.to_string())?;
 
@@ -70,7 +70,7 @@ fn validate_and_compile_yaml_returns_artifact_when_minimal_yaml_is_valid() -> Re
 #[test]
 fn validate_and_compile_yaml_rejects_duplicate_keys_with_strict_yaml_rejected() -> Result<(), String>
 {
-    let source = "version: velvet-ballastics/v1\nname: first\nname: second\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n";
+    let source = "version: velvet-ballistics/v1\nname: first\nname: second\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n";
 
     let rejection = classify(first_error(source)?);
 
@@ -85,7 +85,7 @@ fn validate_and_compile_yaml_rejects_duplicate_keys_with_strict_yaml_rejected() 
 
 #[test]
 fn strict_yaml_rejected_when_anchor_present() -> Result<(), String> {
-    let source = "version: velvet-ballastics/v1\nname: anchored\nwhen: &trigger { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n";
+    let source = "version: velvet-ballistics/v1\nname: anchored\nwhen: &trigger { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n";
 
     let rejection = classify(first_error(source)?);
 
@@ -96,7 +96,7 @@ fn strict_yaml_rejected_when_anchor_present() -> Result<(), String> {
 #[test]
 fn validate_and_compile_yaml_rejects_aliases_and_anchors_with_strict_yaml_rejected()
 -> Result<(), String> {
-    let source = "version: velvet-ballastics/v1\nname: anchored\nwhen: &trigger { manual: {} }\nsteps:\n  - id: done\n    finish: { result: *trigger }\n";
+    let source = "version: velvet-ballistics/v1\nname: anchored\nwhen: &trigger { manual: {} }\nsteps:\n  - id: done\n    finish: { result: *trigger }\n";
 
     let rejection = classify(first_error(source)?);
 
@@ -106,7 +106,7 @@ fn validate_and_compile_yaml_rejects_aliases_and_anchors_with_strict_yaml_reject
 
 #[test]
 fn strict_yaml_rejected_when_explicit_tag_present() -> Result<(), String> {
-    let source = "version: !vb velvet-ballastics/v1\nname: tagged\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n";
+    let source = "version: !vb velvet-ballistics/v1\nname: tagged\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n";
 
     let rejection = classify(first_error(source)?);
 
@@ -117,7 +117,7 @@ fn strict_yaml_rejected_when_explicit_tag_present() -> Result<(), String> {
 #[test]
 fn validate_and_compile_yaml_rejects_explicit_tags_with_strict_yaml_rejected() -> Result<(), String>
 {
-    let source = "version: !vb velvet-ballastics/v1\nname: tagged\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n";
+    let source = "version: !vb velvet-ballistics/v1\nname: tagged\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n";
 
     let rejection = classify(first_error(source)?);
 
@@ -127,7 +127,7 @@ fn validate_and_compile_yaml_rejects_explicit_tags_with_strict_yaml_rejected() -
 
 #[test]
 fn strict_yaml_rejected_when_multi_document_stream_present() -> Result<(), String> {
-    let source = "version: velvet-ballastics/v1\nname: first\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n---\nversion: velvet-ballastics/v1\nname: second\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n";
+    let source = "version: velvet-ballistics/v1\nname: first\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n---\nversion: velvet-ballistics/v1\nname: second\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n";
 
     let rejection = classify(first_error(source)?);
 
@@ -138,7 +138,7 @@ fn strict_yaml_rejected_when_multi_document_stream_present() -> Result<(), Strin
 #[test]
 fn validate_and_compile_yaml_rejects_multi_document_stream_with_strict_yaml_rejected()
 -> Result<(), String> {
-    let source = "version: velvet-ballastics/v1\nname: first\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n---\nversion: velvet-ballastics/v1\nname: second\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n";
+    let source = "version: velvet-ballistics/v1\nname: first\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n---\nversion: velvet-ballistics/v1\nname: second\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n";
 
     let rejection = classify(first_error(source)?);
 
@@ -148,7 +148,7 @@ fn validate_and_compile_yaml_rejects_multi_document_stream_with_strict_yaml_reje
 
 #[test]
 fn strict_yaml_rejected_when_top_level_shape_is_sequence() -> Result<(), String> {
-    let source = "- version\n- velvet-ballastics/v1\n";
+    let source = "- version\n- velvet-ballistics/v1\n";
 
     let rejection = classify(first_error(source)?);
 

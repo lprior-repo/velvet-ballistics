@@ -20,8 +20,8 @@
 - `PROPTEST_CASES=1000 cargo nextest run -p vb_validate --test capability_contract_schema proptest`
 - `cargo test -p vb_validate --bench capability_schema --no-run`
 - `cargo test -p vb_validate --test capability_schema_kani --no-run`
-- `cargo test -p velvet-ballastics-fuzz --features fuzz --bin capability_name_schema --no-run`
-- `cargo test -p velvet-ballastics-fuzz --features fuzz --bin capability_contract_schema --no-run`
+- `cargo test -p velvet-ballistics-fuzz --features fuzz --bin capability_name_schema --no-run`
+- `cargo test -p velvet-ballistics-fuzz --features fuzz --bin capability_contract_schema --no-run`
 
 ## Why failures are expected before implementation
 

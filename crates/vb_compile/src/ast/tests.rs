@@ -71,7 +71,7 @@ fn parsed_binary_op(expression: &ParsedExpression) -> Result<BinaryOp, String> {
 #[test]
 fn parse_ast_retains_vars_and_examples_surface() -> Result<(), String> {
     let ast = parse(
-        b"version: velvet-ballastics/v1\nname: ast_surface\nwhen:\n  manual: {}\nvars:\n  retries: 3\nexamples:\n  - name: happy\nsteps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
+        b"version: velvet-ballistics/v1\nname: ast_surface\nwhen:\n  manual: {}\nvars:\n  retries: 3\nexamples:\n  - name: happy\nsteps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
     )?;
 
     ensure(ast.vars.len() == 1, "vars surface not retained")?;
@@ -83,7 +83,7 @@ fn parse_ast_retains_vars_and_examples_surface() -> Result<(), String> {
 #[test]
 fn parse_ast_rejects_ipc_like_compile_boundary() -> Result<(), String> {
     let error = parse_err(
-        b"version: velvet-ballastics/v1\nname: ast_surface\nwhen:\n  ipc: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+        b"version: velvet-ballistics/v1\nname: ast_surface\nwhen:\n  ipc: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
     )?;
 
     ensure(
@@ -96,7 +96,7 @@ fn parse_ast_rejects_ipc_like_compile_boundary() -> Result<(), String> {
 #[test]
 fn parse_ast_rejects_unknown_trigger_fields() -> Result<(), String> {
     let error = parse_err(
-        b"version: velvet-ballastics/v1\nname: ast_surface\nwhen:\n  manual:\n    extra: true\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+        b"version: velvet-ballistics/v1\nname: ast_surface\nwhen:\n  manual:\n    extra: true\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
     )?;
 
     ensure(
@@ -109,7 +109,7 @@ fn parse_ast_rejects_unknown_trigger_fields() -> Result<(), String> {
 #[test]
 fn parse_ast_rejects_unknown_step_fields() -> Result<(), String> {
     let error = parse_err(
-        b"version: velvet-ballastics/v1\nname: ast_surface\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    mystery: true\n    finish:\n      result: 0\n",
+        b"version: velvet-ballistics/v1\nname: ast_surface\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    mystery: true\n    finish:\n      result: 0\n",
     )?;
 
     ensure(
@@ -121,7 +121,7 @@ fn parse_ast_rejects_unknown_step_fields() -> Result<(), String> {
 
 #[test]
 fn parse_ast_keeps_available_source_marks() -> Result<(), String> {
-    let source = "version: velvet-ballastics/v1\nname: ast_surface\nwhen:\n  manual: {}\nvars:\n  retries: 3\nsteps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
+    let source = "version: velvet-ballistics/v1\nname: ast_surface\nwhen:\n  manual: {}\nvars:\n  retries: 3\nsteps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
     let ast = parse(source.as_bytes())?;
     let mark = ast.mark.ok_or_else(|| "workflow mark missing".to_owned())?;
     let trigger_mark = match ast.trigger {
@@ -150,7 +150,7 @@ fn parse_ast_keeps_available_source_marks() -> Result<(), String> {
 #[test]
 fn parse_ast_retains_source_primitive_identity() -> Result<(), String> {
     let ast = parse(
-        br#"version: velvet-ballastics/v1
+        br#"version: velvet-ballistics/v1
 name: ast_primitives
 when:
   manual: {}
@@ -205,7 +205,7 @@ steps:
 #[test]
 fn parse_ast_rejects_multiple_triggers_before_lowering() -> Result<(), String> {
     let error = parse_err(
-        br#"version: velvet-ballastics/v1
+        br#"version: velvet-ballistics/v1
 name: ast_surface
 when:
   manual: {}
@@ -227,7 +227,7 @@ steps:
 #[test]
 fn parse_ast_reports_multiple_primitive_step_index() -> Result<(), String> {
     let error = parse_err(
-        br#"version: velvet-ballastics/v1
+        br#"version: velvet-ballistics/v1
 name: ast_surface
 when:
   manual: {}
@@ -252,7 +252,7 @@ steps:
 #[test]
 fn parse_ast_exposes_parsed_expression_public_surface() -> Result<(), String> {
     let expression = first_choose_condition(
-        br#"version: velvet-ballastics/v1
+        br#"version: velvet-ballistics/v1
 name: ast_surface
 when:
   manual: {}
@@ -279,7 +279,7 @@ steps:
 #[test]
 fn parse_ast_preserves_expression_diagnostics() -> Result<(), String> {
     let error = parse_err(
-        br#"version: velvet-ballastics/v1
+        br#"version: velvet-ballistics/v1
 name: ast_surface
 when:
   manual: {}
@@ -311,7 +311,7 @@ fn parse_ast_accepts_valid_rooted_refs_in_expression_strings() -> Result<(), Str
 }
 
 fn rooted_refs_expression_source() -> &'static [u8] {
-    br#"version: velvet-ballastics/v1
+    br#"version: velvet-ballistics/v1
 name: ast_surface
 when:
   manual: {}
@@ -353,7 +353,7 @@ fn parse_ast_rejects_unsupported_symbolic_expression_syntax() -> Result<(), Stri
 fn symbolic_condition(condition: &'static str) -> String {
     format!(
         concat!(
-            "version: velvet-ballastics/v1\nname: ast_surface\nwhen:\n",
+            "version: velvet-ballistics/v1\nname: ast_surface\nwhen:\n",
             "  manual: {{}}\ninputs:\n  flag: boolean\n  count: number\n",
             "steps:\n  - id: route\n    choose:\n      condition: \"{}\"\n",
             "      on_true: 1\n      on_false: 1\n  - id: done\n",
@@ -371,7 +371,7 @@ fn symbolic_condition(condition: &'static str) -> String {
 #[test]
 fn security_action_id_overflow_reports_actual_value() -> Result<(), String> {
     let error = parse_err(
-        br#"version: velvet-ballastics/v1
+        br#"version: velvet-ballistics/v1
 name: action_overflow
 when:
   manual: {}
@@ -400,7 +400,7 @@ steps:
 #[test]
 fn security_non_integer_branch_target_reports_shape_error() -> Result<(), String> {
     let error = parse_err(
-        br#"version: velvet-ballastics/v1
+        br#"version: velvet-ballistics/v1
 name: bad_branch
 when:
   manual: {}
@@ -435,7 +435,7 @@ steps:
 #[test]
 fn security_negative_branch_target_reports_actual_value() -> Result<(), String> {
     let error = parse_err(
-        br#"version: velvet-ballastics/v1
+        br#"version: velvet-ballistics/v1
 name: neg_branch
 when:
   manual: {}
@@ -466,7 +466,7 @@ steps:
 #[test]
 fn security_action_id_boundary_overflow_reports_actual() -> Result<(), String> {
     let error = parse_err(
-        br#"version: velvet-ballastics/v1
+        br#"version: velvet-ballistics/v1
 name: action_boundary
 when:
   manual: {}

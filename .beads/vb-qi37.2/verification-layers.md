@@ -66,7 +66,7 @@
   - `cargo kani -p vb_core --harness aggregate_usage_fits_within_rejects_over_capacity_fields`
   - `cargo kani -p vb_core --harness value_store_cap_rejects_insert_with_budget_exceeded_max_slots`
   These harnesses must bind to existing production targets in `crates/vb_core/src/budget.rs` and `crates/vb_core/src/value_store.rs`; they are not substitutes for Verus.
-- Parity obligation command: `cargo test -p vb_core resource_contract -- --nocapture && cargo test -p velvet-ballastics-workspace resource_contract -- --nocapture`, plus reviewer source inspection resolving `crates/vb_core/src/validation.rs`, `crates/vb_core/src/workflow/mod.rs`, and `crates/vb_core/src/compiled_workflow.rs` active/legacy status.
+- Parity obligation command: `cargo test -p vb_core resource_contract -- --nocapture && cargo test -p velvet-ballistics-workspace resource_contract -- --nocapture`, plus reviewer source inspection resolving `crates/vb_core/src/validation.rs`, `crates/vb_core/src/workflow/mod.rs`, and `crates/vb_core/src/compiled_workflow.rs` active/legacy status.
 - Fuzz commands after harness confirmation:
   - `cargo fuzz run resource_budget -- -runs=1000`
   - `cargo fuzz run budget_compute -- -runs=1000`
@@ -75,7 +75,7 @@
   - `cargo fuzz run step_budget_new -- -runs=1000`
 - Performance commands after benchmark confirmation:
   - `cargo bench --bench aggregate_resource_budget`
-  - `cargo bench -p workspace_tests --bench velvet_ballastics`
+  - `cargo bench -p workspace_tests --bench velvet_ballistics`
   Expected threshold: no claim of speedup; evidence must show bounded completion and no more than 10 percent regression against `origin/main` for budget hot paths if implementation changes touch them.
 - Static source gate: `moon ci` remains canonical repository gate; source lint must preserve zero tolerance.
 

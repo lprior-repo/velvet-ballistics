@@ -9,13 +9,13 @@ updated_at: 2026-05-09T22:05:00Z
 
 ### Build
 ```bash
-cargo build -p velvet_ballastics
+cargo build -p velvet_ballistics
 ```
 **Result:** SUCCESS (1 pre-existing warning in vb_storage batch.rs)
 
 ### Integration Tests
 ```bash
-cargo test -p velvet_ballastics --test cli_integration cli_doctor
+cargo test -p velvet_ballistics --test cli_integration cli_doctor
 ```
 **Result:** 4 passed, 70 filtered out
 

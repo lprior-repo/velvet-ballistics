@@ -64,7 +64,7 @@ mod tests {
 
     #[test]
     fn contains_legacy_returns_false_for_canonical_hyphen() {
-        assert!(!contains_legacy("velvet-ballastics"));
+        assert!(!contains_legacy("velvet-ballistics"));
     }
 
     #[test]

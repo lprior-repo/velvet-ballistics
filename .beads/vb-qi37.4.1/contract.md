@@ -41,7 +41,7 @@ These are contract signatures and semantic shapes, not implementation code.
 
 ```rust
 pub const ACCEPTED_ARTIFACT_VERSION_V1: &str = "velvet.artifact/v1";
-pub const WORKFLOW_LANGUAGE_VERSION_V1: &str = "velvet-ballastics/v1";
+pub const WORKFLOW_LANGUAGE_VERSION_V1: &str = "velvet-ballistics/v1";
 pub const VERIFICATION_GATE_COUNT_V1: u8 = 15;
 
 pub struct AcceptedArtifactV1 {
@@ -93,7 +93,7 @@ pub struct RunAdmissionV1 {
 Type-first constraints:
 
 - `ArtifactVersion` accepts only `velvet.artifact/v1`.
-- `WorkflowLanguageVersion` accepts only `velvet-ballastics/v1`.
+- `WorkflowLanguageVersion` accepts only `velvet-ballistics/v1`.
 - `WorkflowName` is non-empty, bounded, and already name/scope validated.
 - `BoundedIrBytes` is non-empty and no larger than `MAX_COMPILED_IR_BYTES` after accounting for the enclosing artifact payload bound.
 - `GateCount` for v1 is exactly 15.
@@ -146,7 +146,7 @@ pub fn admit_artifact_run_v1(
 ### 6.1 Encoding preconditions
 
 - Artifact version is exactly `velvet.artifact/v1`.
-- Workflow version is exactly `velvet-ballastics/v1`.
+- Workflow version is exactly `velvet-ballistics/v1`.
 - `workflow_name` is non-empty and bounded.
 - `ir_bytes` is non-empty and within `MAX_COMPILED_IR_BYTES`/record payload limits.
 - `ir_digest == blake3(ir_bytes)`.
@@ -234,7 +234,7 @@ pub fn admit_artifact_run_v1(
 - `UnexpectedEof`: header or payload bytes are truncated.
 - `PostcardDecodeFailed`: payload is not a valid `AcceptedArtifactV1` postcard value.
 - `UnsupportedArtifactVersion { version }`: artifact version is not `velvet.artifact/v1`.
-- `UnsupportedWorkflowVersion { version }`: workflow version is not `velvet-ballastics/v1`.
+- `UnsupportedWorkflowVersion { version }`: workflow version is not `velvet-ballistics/v1`.
 - `EmptyWorkflowName`: workflow name is empty after decoding.
 - `InvalidWorkflowName`: workflow name violates name/scope contract.
 - `EmptyIr`: compiled IR bytes are empty.

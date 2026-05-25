@@ -180,9 +180,9 @@ Observed output excerpt:
 
 ```text
 Resolved targets: 23
-                       velvet-ballastics:test |      Summary [   9.323s] 10894 tests run: 10894 passed, 44 skipped
-              velvet-ballastics:mutants-smoke | 1 mutant tested: 1 caught
-                       velvet-ballastics:miri | test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 935 filtered out; finished in 2.30s
+                       velvet-ballistics:test |      Summary [   9.323s] 10894 tests run: 10894 passed, 44 skipped
+              velvet-ballistics:mutants-smoke | 1 mutant tested: 1 caught
+                       velvet-ballistics:miri | test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 935 filtered out; finished in 2.30s
 Tasks: 23 completed
  Time: 29s 900ms
 

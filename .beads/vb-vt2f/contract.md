@@ -35,7 +35,7 @@
 
 ### Postconditions
 
-- POST-001 Runnable BDD target: The direct API acceptance group is runnable by `cargo nextest run -p velvet-ballastics-workspace-tests --test vb_vt2f_direct_runtime_api_acceptance`.
+- POST-001 Runnable BDD target: The direct API acceptance group is runnable by `cargo nextest run -p velvet-ballistics-workspace-tests --test vb_vt2f_direct_runtime_api_acceptance`.
 - POST-002 Catalog closure: `VB-BDD-CATALOG-004` points at executable evidence and is no longer deferred to `vb-vt2f`.
 - POST-003 Failure locality: A failing scenario reports the exact scenario/test name and observable mismatch.
 - POST-004 Submit-to-finish evidence: A finish workflow submitted through the direct API reaches a terminal result; snapshot/trace/journal evidence preserves result value and taint.

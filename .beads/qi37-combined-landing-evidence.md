@@ -15,7 +15,7 @@
 - `rtk cargo test -p vb_runtime journal::` — PASS, 9 passed.
 - `rtk cargo test -p vb_runtime runtime::` — PASS, 61 passed.
 - `rtk cargo test -p vb_runtime shard::` — PASS after mapping missing runtime chunks and ask-answer split tests, 405 passed.
-- `rtk cargo test -p velvet_ballastics --test admission_evidence_integration` — PASS, 8 passed.
+- `rtk cargo test -p velvet_ballistics --test admission_evidence_integration` — PASS, 8 passed.
 - `rtk cargo test -p vb_runtime --lib ask_answer` — PASS, 19 passed.
 - `rtk cargo test -p vb_runtime --lib red_ask_answer_secret` — PASS, 1 passed.
 - `rtk cargo test -p vb_ipc answer` — PASS, 13 passed.

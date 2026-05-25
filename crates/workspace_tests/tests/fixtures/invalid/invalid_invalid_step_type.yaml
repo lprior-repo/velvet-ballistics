@@ -2,7 +2,7 @@
 # This workflow uses an unknown/unsupported step type
 # Semantic validation should fail with UnsupportedStepPrimitive
 ---
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: unknown_step_type_workflow
 
 when:

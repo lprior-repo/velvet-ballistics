@@ -40,11 +40,11 @@ result: GREEN required format gate rerun
 ```
 
 ```text
-$ test "$(pwd -P)" = /home/lewis/src/bd-vb-kyyf-bdd && TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballastics-workspace-tests --test vb_kyyf_cross_run_determinism bdd_kyyf_001_to_006_require_executable_public_surfaces_not_catalog_bookkeeping_only -- --test-threads=1
+$ test "$(pwd -P)" = /home/lewis/src/bd-vb-kyyf-bdd && TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballistics-workspace-tests --test vb_kyyf_cross_run_determinism bdd_kyyf_001_to_006_require_executable_public_surfaces_not_catalog_bookkeeping_only -- --test-threads=1
 exit: 101
 result: RED / failing-first successful
 failure summary:
-- BDD-KYYF-002 remains `ScenarioSurfaceUnavailable` for `velvet-ballastics CLI replay/events/inspect`.
+- BDD-KYYF-002 remains `ScenarioSurfaceUnavailable` for `velvet-ballistics CLI replay/events/inspect`.
 - BDD-KYYF-004 now reaches the repaired blocker: `ScenarioSurfaceUnavailable` for `action-abi or policy digest mismatch recovery public surface` after emitting all eight independent case rows.
 - BDD-KYYF-005 now fails with exact `ScenarioSurfaceUnavailable` for `generated durable replay public surface` instead of a rustc harness compile blocker or synthesized generated constants.
 ```
@@ -129,7 +129,7 @@ result: GREEN
 ```
 
 ```text
-$ TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballastics-workspace-tests --test vb_kyyf_cross_run_determinism bdd_kyyf_001_to_006_require_executable_public_surfaces_not_catalog_bookkeeping_only -- --test-threads=1
+$ TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballistics-workspace-tests --test vb_kyyf_cross_run_determinism bdd_kyyf_001_to_006_require_executable_public_surfaces_not_catalog_bookkeeping_only -- --test-threads=1
 exit: 0
 result: GREEN; cargo test: 1 passed, 15 filtered out (1 suite, 1.15s)
 ```

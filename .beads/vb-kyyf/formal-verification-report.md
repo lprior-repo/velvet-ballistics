@@ -27,16 +27,16 @@ STATUS: APPROVED
 
 | ID | Result | Command evidence |
 |---|---|---|
-| PO-001 | PASS | `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_kyyf_cross_run_determinism -- --test-threads=1` exit 0; `cargo test: 16 passed (1 suite, 1.14s)`. |
+| PO-001 | PASS | `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_kyyf_cross_run_determinism -- --test-threads=1` exit 0; `cargo test: 16 passed (1 suite, 1.14s)`. |
 | PO-002 | PASS | `rtk cargo test -p vb_storage --test replay_resume` exit 0; `cargo test: 3 passed (1 suite, 0.02s)`. |
-| PO-003 | PASS | `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_kyyf_cross_run_determinism` exit 0; `cargo test: 16 passed (1 suite, 1.15s)`. |
+| PO-003 | PASS | `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_kyyf_cross_run_determinism` exit 0; `cargo test: 16 passed (1 suite, 1.15s)`. |
 | PO-004 | PASS | `rtk cargo test -p vb_storage --test recovery_bdd_tests` exit 0; `cargo test: 29 passed, 2 ignored (1 suite, 0.11s)`. |
 | PO-005 | PASS | `rtk cargo test -p vb_codegen` exit 0; `cargo test: 367 passed (4 suites, 7.76s)`. |
 | PO-006 | PASS | Same exact command as PO-003; generated-subset fail-closed scenario included in passing suite. |
-| PO-007 | PASS | `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog` exit 0; `cargo test: 6 passed (1 suite, 0.00s)`. |
+| PO-007 | PASS | `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog` exit 0; `cargo test: 6 passed (1 suite, 0.00s)`. |
 | PO-008 | PASS | `JAVA_TOOL_OPTIONS='-Djava.io.tmpdir=/home/lewis/src/bd-vb-kyyf-bdd/.tlc-tmp' tlc -workers 32 -metadir /home/lewis/src/bd-vb-kyyf-bdd/.tlc-metadir -config verification/tla/VbKyyfReplayDeterminism.cfg verification/tla/VbKyyfReplayDeterminism.tla` exit 0; TLC reported no errors; `42,907,696` states generated, `16,483,704` distinct, depth `9`, finished in `07min 46s`. |
 | PO-009 | PASS | `verus verification/verus/vb_kyyf_normalization.rs` exit 0; `verification results:: 43 verified, 0 errors`. |
-| PO-010 | DEFERRED_GLOBAL | `moon ci` exit 1 after all scoped vb-kyyf obligations passed. Failures: two out-of-scope `vb_cli` storage-error exit-code tests and `velvet-ballastics:mutants-smoke` disk quota copying `.tlc-metadir`. Full output: `/home/lewis/.local/share/opencode/tool-output/tool_e3cd7fbff001gu1aeCytJUYiDo`. |
+| PO-010 | DEFERRED_GLOBAL | `moon ci` exit 1 after all scoped vb-kyyf obligations passed. Failures: two out-of-scope `vb_cli` storage-error exit-code tests and `velvet-ballistics:mutants-smoke` disk quota copying `.tlc-metadir`. Full output: `/home/lewis/.local/share/opencode/tool-output/tool_e3cd7fbff001gu1aeCytJUYiDo`. |
 
 ## Evidence artifacts
 

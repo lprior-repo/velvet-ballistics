@@ -41,7 +41,7 @@ Scope: UI release gate behavior for `cargo xtask ai-release --bead vb-nf2u`.
    - Observed evidence reflected hostile input fields and omitted stale canned defaults (`run_button`, `stop_button`, `overlap_area_px: 600`).
 
 6. Acceptance suite:
-   - Command: `cargo nextest run -p velvet-ballastics-workspace --test vb_nf2u_ui_release_acceptance`.
+   - Command: `cargo nextest run -p velvet-ballistics-workspace --test vb_nf2u_ui_release_acceptance`.
    - Result: PASS, `8 tests run: 8 passed, 0 skipped`.
 
 ## Findings

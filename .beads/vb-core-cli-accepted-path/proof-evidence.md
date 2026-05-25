@@ -93,8 +93,8 @@ Exit: 2.
 
 ```text
 [ WARN 2026-05-15 16:15:04.484] moon_task_hasher::task_hasher  Attempted to hash input crates/workspace_tests/fixtures but it does not exist, skipping
-[ WARN 16:15:04.485] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballastics/tests/fixtures/fixtures but it does not exist, skipping
-velvet-ballastics:verify-proof
+[ WARN 16:15:04.485] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping
+velvet-ballistics:verify-proof
 scripts/rust-verification-gauntlet.sh: line 3: //!: No such file or directory
 scripts/rust-verification-gauntlet.sh: line 4: //!: No such file or directory
 scripts/rust-verification-gauntlet.sh: line 5: //!: No such file or directory
@@ -185,8 +185,8 @@ Classification: `BLOCKED_TOOLING`; Kani did not execute.
 
 ```text
 [ WARN 2026-05-15 17:39:11.619] moon_task_hasher::task_hasher  Attempted to hash input crates/workspace_tests/fixtures but it does not exist, skipping
-[ WARN 17:39:11.619] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballastics/tests/fixtures/fixtures but it does not exist, skipping
-velvet-ballastics:verify-proof
+[ WARN 17:39:11.619] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping
+velvet-ballistics:verify-proof
 scripts/rust-verification-gauntlet.sh: line 3: //!: No such file or directory
 scripts/rust-verification-gauntlet.sh: line 4: //!: No such file or directory
 scripts/rust-verification-gauntlet.sh: line 5: //!: No such file or directory

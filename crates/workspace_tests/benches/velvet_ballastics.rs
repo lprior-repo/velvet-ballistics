@@ -6,8 +6,6 @@ use bytes::Bytes;
 use criterion::{Bencher, BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;
 use std::num::NonZeroUsize;
-use std::path::PathBuf;
-use std::process::Command;
 use std::time::{Duration, Instant};
 use vb_core::{
     ActionId, Capability, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ExprIdx,
@@ -25,61 +23,8 @@ fn any_workflow_cap() -> Capability {
     Capability::new("".into(), ActionId::new(0))
 }
 
-struct GeneratedBinary {
-    path: PathBuf,
-    _temp_dir: PathBuf,
-}
-
-impl GeneratedBinary {
-    fn compile(workflow: &CompiledWorkflow, name: &str) -> Option<Self> {
-        let generated = vb_codegen::emit_rust_workflow(workflow).ok()?;
-        let temp_dir =
-            std::env::temp_dir().join(format!("vb_bench_gen_{}_{}", std::process::id(), name));
-        std::fs::create_dir_all(&temp_dir).ok()?;
-        let source_path = temp_dir.join("generated.rs");
-        let binary_path = temp_dir.join("generated_bin");
-        let harness = format!(
-            "{}\nfn main() {{\n    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    match drive(slots) {{\n        Ok(value) => println!(\"ok:{{value:#?}}\"),\n        Err(e) => println!(\"err:{{e:#?}}\"),\n    }}\n}}\n",
-            generated
-        );
-        std::fs::write(&source_path, harness).ok()?;
-        let output = Command::new("rustc")
-            .arg("--edition")
-            .arg("2024")
-            .arg("-Copt-level=3")
-            .arg("-o")
-            .arg(&binary_path)
-            .arg(&source_path)
-            .output()
-            .ok()?;
-        if !output.status.success() {
-            eprintln!("rustc failed: {}", String::from_utf8_lossy(&output.stderr));
-            return None;
-        }
-        Some(Self {
-            path: binary_path,
-            _temp_dir: temp_dir,
-        })
-    }
-
-    #[allow(dead_code)]
-    fn run(&self) -> std::process::Output {
-        match Command::new(&self.path).output() {
-            Ok(output) => output,
-            Err(e) => {
-                eprintln!("generated binary failed: {e}");
-                std::process::Output {
-                    status: std::process::ExitStatus::default(),
-                    stdout: Vec::new(),
-                    stderr: Vec::new(),
-                }
-            }
-        }
-    }
-}
-
-const SMALL_WORKFLOW: &[u8] = b"version: velvet-ballastics/v1\nname: bench_minimal\nwhen:\n  manual: {}\nsteps:\n  - id: save_value\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
-const CHOOSE_WORKFLOW: &[u8] = b"version: velvet-ballastics/v1\nname: bench_choose\nwhen:\n  manual: {}\nsteps:\n  - id: route\n    choose:\n      condition: true\n      on_true: 1\n      on_false: 1\n  - id: done\n    finish:\n      result: true\n";
+const SMALL_WORKFLOW: &[u8] = b"version: velvet-ballistics/v1\nname: bench_minimal\nwhen:\n  manual: {}\nsteps:\n  - id: save_value\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
+const CHOOSE_WORKFLOW: &[u8] = b"version: velvet-ballistics/v1\nname: bench_choose\nwhen:\n  manual: {}\nsteps:\n  - id: route\n    choose:\n      condition: true\n      on_true: 1\n      on_false: 1\n  - id: done\n    finish:\n      result: true\n";
 const EXPR_EQ_SYMBOL: &str = "$input.value == 7";
 const EXPR_NUMBER_COMPARE: &str = "7 > 3";
 const EXPR_BOOLEAN_CHAIN: &str = "true && false || true";
@@ -1064,106 +1009,13 @@ fn sample_ingress_frame() -> Option<vb_ipc::IngressFrame> {
     .ok()
 }
 
-fn generated_benches(c: &mut Criterion) {
-    let workflow = vb_compile::compile_workflow(CHOOSE_WORKFLOW);
-    let generated_source = match workflow.as_ref() {
-        Ok(plan) => vb_codegen::emit_rust_workflow(plan).ok(),
-        Err(_) => None,
-    };
-    let for_each = for_each_workflow();
-    let for_each_source = for_each
-        .as_ref()
-        .and_then(|plan| vb_codegen::emit_rust_workflow(plan).ok());
-    let mut group = c.benchmark_group("generated_mode");
-    group.bench_function(
-        metadata(
-            "codegen_emit_choose_workflow",
-            CHOOSE_WORKFLOW,
-            "fixture=choose_workflow;surface=codegen_emit",
-        ),
-        |b| {
-            checked_iter(b, "codegen_emit_choose_workflow", || {
-                if let Ok(plan) = workflow.as_ref() {
-                    Some(vb_codegen::emit_rust_workflow(black_box(plan)))
-                } else {
-                    None
-                }
-            })
-        },
-    );
-    group.bench_function(
-        metadata(
-            "codegen_compare_generated_to_ir_choose",
-            CHOOSE_WORKFLOW,
-            "fixture=choose_workflow;surface=codegen_compare",
-        ),
-        |b| {
-            checked_iter(b, "codegen_compare_generated_to_ir_choose", || {
-                match (workflow.as_ref(), generated_source.as_ref()) {
-                    (Ok(plan), Some(source)) => Some(vb_codegen::compare_generated_to_ir(
-                        black_box(source.as_str()),
-                        black_box(plan),
-                    )),
-                    _ => None,
-                }
-            })
-        },
-    );
-    group.bench_function(
-        metadata(
-            "codegen_emit_for_each_workflow",
-            b"for_each_workflow",
-            "fixture=for_each_workflow;surface=codegen_emit",
-        ),
-        |b| {
-            checked_iter(b, "codegen_emit_for_each_workflow", || {
-                for_each
-                    .as_ref()
-                    .map(|plan| vb_codegen::emit_rust_workflow(black_box(plan)))
-            })
-        },
-    );
-    group.bench_function(
-        metadata(
-            "codegen_compare_generated_to_ir_for_each",
-            b"for_each_workflow",
-            "fixture=for_each_workflow;surface=codegen_compare",
-        ),
-        |b| {
-            checked_iter(b, "codegen_compare_generated_to_ir_for_each", || {
-                match (for_each.as_ref(), for_each_source.as_ref()) {
-                    (Some(plan), Some(source)) => Some(vb_codegen::compare_generated_to_ir(
-                        black_box(source.as_str()),
-                        black_box(plan),
-                    )),
-                    _ => None,
-                }
-            })
-        },
-    );
-    group.finish();
-}
-
-fn ir_vs_generated_benches(c: &mut Criterion) {
+fn ir_execution_benches(c: &mut Criterion) {
     let finish_1_workflow = finish_workflow();
     let save_chain_1000 = save_chain_workflow(1000);
     let choose_100_workflow = choose_100_workflow();
     let expr_workflow = expression_workflow();
 
-    let gen_finish = finish_1_workflow
-        .as_ref()
-        .and_then(|w| GeneratedBinary::compile(w, "finish_1"));
-    let gen_chain_1000 = save_chain_1000
-        .as_ref()
-        .and_then(|w| GeneratedBinary::compile(w, "save_chain_1000"));
-    let gen_choose_100 = choose_100_workflow
-        .as_ref()
-        .and_then(|w| GeneratedBinary::compile(w, "choose_100"));
-    let gen_expr = expr_workflow
-        .as_ref()
-        .and_then(|w| GeneratedBinary::compile(w, "expr"));
-
-    let mut ir_group = c.benchmark_group("ir_vs_generated");
+    let mut ir_group = c.benchmark_group("ir_execution");
     ir_group.measurement_time(std::time::Duration::from_secs(5));
     ir_group.sample_size(100);
 
@@ -1268,162 +1120,6 @@ fn ir_vs_generated_benches(c: &mut Criterion) {
     );
 
     ir_group.finish();
-
-    let mut gen_group = c.benchmark_group("generated_execution");
-    gen_group.measurement_time(std::time::Duration::from_secs(5));
-    gen_group.sample_size(100);
-
-    if let Some(ref gen_bin) = gen_finish {
-        gen_group.bench_function(
-            metadata(
-                "generated_execution_1_step",
-                b"finish_1",
-                "fixture=finish_1;surface=generated_exec",
-            ),
-            |b| {
-                let bin_path = gen_bin.path.clone();
-                checked_iter(b, "generated_execution_1_step", || {
-                    let start = Instant::now();
-                    #[allow(clippy::let_underscore_must_use)]
-                    let _ = Command::new(&bin_path).output();
-                    black_box(start.elapsed())
-                })
-            },
-        );
-    }
-
-    if let Some(ref gen_bin) = gen_chain_1000 {
-        gen_group.bench_function(
-            metadata(
-                "generated_execution_1000_steps",
-                b"save_chain_1000",
-                "fixture=save_chain_1000;surface=generated_exec",
-            ),
-            |b| {
-                let bin_path = gen_bin.path.clone();
-                checked_iter(b, "generated_execution_1000_steps", || {
-                    let start = Instant::now();
-                    #[allow(clippy::let_underscore_must_use)]
-                    let _ = Command::new(&bin_path).output();
-                    black_box(start.elapsed())
-                })
-            },
-        );
-    }
-
-    if let Some(ref gen_bin) = gen_choose_100 {
-        gen_group.bench_function(
-            metadata(
-                "generated_execution_choose_100",
-                b"choose_100",
-                "fixture=choose_100;surface=generated_exec",
-            ),
-            |b| {
-                let bin_path = gen_bin.path.clone();
-                checked_iter(b, "generated_execution_choose_100", || {
-                    let start = Instant::now();
-                    #[allow(clippy::let_underscore_must_use)]
-                    let _ = Command::new(&bin_path).output();
-                    black_box(start.elapsed())
-                })
-            },
-        );
-    }
-
-    if let Some(ref gen_bin) = gen_expr {
-        gen_group.bench_function(
-            metadata(
-                "generated_execution_expr",
-                b"expression",
-                "fixture=expression_workflow;surface=generated_exec",
-            ),
-            |b| {
-                let bin_path = gen_bin.path.clone();
-                checked_iter(b, "generated_execution_expr", || {
-                    let start = Instant::now();
-                    #[allow(clippy::let_underscore_must_use)]
-                    let _ = Command::new(&bin_path).output();
-                    black_box(start.elapsed())
-                })
-            },
-        );
-    }
-
-    gen_group.finish();
-
-    let mut ratio_group = c.benchmark_group("ir_vs_generated_ratio");
-    ratio_group.measurement_time(std::time::Duration::from_secs(10));
-    ratio_group.sample_size(50);
-
-    if let Some(ref gen_bin) = gen_finish {
-        ratio_group.bench_function(
-            metadata(
-                "ir_vs_generated_1",
-                b"finish_1",
-                "fixture=finish_1;surface=ratio",
-            ),
-            |b| {
-                let bin_path = gen_bin.path.clone();
-                checked_iter(b, "ir_vs_generated_1", || {
-                    let ir_start = Instant::now();
-                    if let Some(plan) = finish_1_workflow.as_ref() {
-                        let mut frame = vb_core::new_run_frame(RunId::new(200), plan);
-                        let mut store = vb_core::ValueStore::new();
-                        if let Ok(run) = frame.as_mut() {
-                            let signal =
-                                vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store);
-                            black_box(signal.is_ok());
-                        }
-                    }
-                    let ir_ns = ir_start.elapsed().as_nanos();
-
-                    let gen_start = Instant::now();
-                    #[allow(clippy::let_underscore_must_use)]
-                    let _ = Command::new(&bin_path).output();
-                    let gen_ns = gen_start.elapsed().as_nanos();
-
-                    #[allow(clippy::as_conversions)]
-                    black_box((ir_ns as f64) / (gen_ns as f64))
-                })
-            },
-        );
-    }
-
-    if let Some(ref gen_bin) = gen_chain_1000 {
-        ratio_group.bench_function(
-            metadata(
-                "ir_vs_generated_1000",
-                b"save_chain_1000",
-                "fixture=save_chain_1000;surface=ratio",
-            ),
-            |b| {
-                let bin_path = gen_bin.path.clone();
-                checked_iter(b, "ir_vs_generated_1000", || {
-                    let ir_start = Instant::now();
-                    if let Some(plan) = save_chain_1000.as_ref() {
-                        let mut frame = vb_core::new_run_frame(RunId::new(201), plan);
-                        let mut store = vb_core::ValueStore::new();
-                        if let Ok(run) = frame.as_mut() {
-                            let signal =
-                                vb_core::run_until_blocked(plan, run, StepBudget::MAX, &mut store);
-                            black_box(signal.is_ok());
-                        }
-                    }
-                    let ir_ns = ir_start.elapsed().as_nanos();
-
-                    let gen_start = Instant::now();
-                    #[allow(clippy::let_underscore_must_use)]
-                    let _ = Command::new(&bin_path).output();
-                    let gen_ns = gen_start.elapsed().as_nanos();
-
-                    #[allow(clippy::as_conversions)]
-                    black_box((ir_ns as f64) / (gen_ns as f64))
-                })
-            },
-        );
-    }
-
-    ratio_group.finish();
 }
 
 fn bench_expr(
@@ -1503,7 +1199,7 @@ fn seed_journal(
 
 fn one_mb_workflow() -> String {
     let mut source = String::from(
-        "version: velvet-ballastics/v1\nname: parse_1mb\nwhen:\n  manual: {}\nnotes:\n",
+        "version: velvet-ballistics/v1\nname: parse_1mb\nwhen:\n  manual: {}\nnotes:\n",
     );
     while source.len() < 1_048_576 {
         source.push_str("  - fixture-line-for-yaml-parser-throughput\n");
@@ -1514,7 +1210,7 @@ fn one_mb_workflow() -> String {
 
 fn many_step_workflow(count: u16) -> String {
     let mut source = String::from(
-        "version: velvet-ballastics/v1\nname: many_steps\nwhen:\n  manual: {}\nsteps:\n",
+        "version: velvet-ballistics/v1\nname: many_steps\nwhen:\n  manual: {}\nsteps:\n",
     );
     let mut step = 0_u16;
     while step < count {
@@ -2699,8 +2395,7 @@ criterion_group!(
     expression_benches,
     slot_and_transition_benches,
     storage_and_ipc_benches,
-    generated_benches,
-    ir_vs_generated_benches,
+    ir_execution_benches,
     taint_scalar_expr_bench,
     taint_slot_loading_bench,
     taint_build_object_bench,

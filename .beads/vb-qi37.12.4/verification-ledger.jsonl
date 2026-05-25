@@ -3,6 +3,6 @@
 {"id":"TEST-VB-RUNTIME","command":"rtk cargo test -p vb_runtime","status":"PASS","evidence":"1460 passed","classification":"PASS"}
 {"id":"TEST-VB-IPC","command":"rtk cargo test -p vb_ipc","status":"PASS","evidence":"407 passed","classification":"PASS"}
 {"id":"TEST-VB-STORAGE","command":"rtk cargo test -p vb_storage","status":"PASS","evidence":"983 passed","classification":"PASS"}
-{"id":"TEST-CLI","command":"rtk cargo test -p velvet_ballastics -- --test-threads=1","status":"PASS","evidence":"471 passed","classification":"PASS"}
+{"id":"TEST-CLI","command":"rtk cargo test -p velvet_ballistics -- --test-threads=1","status":"PASS","evidence":"471 passed","classification":"PASS"}
 {"id":"VERIFY-STANDARD","command":"moon run :verify-standard","status":"PASS","evidence":"all standard checks passed","classification":"PASS"}
 {"id":"TEST-VB-UI-EXCLUDED","command":"rtk cargo test --manifest-path crates/vb_ui/Cargo.toml","status":"FAIL_REGRESSION","evidence":"pre-existing missing JournalEvent attempt fields in excluded crate","classification":"DEFERRED_GLOBAL"}

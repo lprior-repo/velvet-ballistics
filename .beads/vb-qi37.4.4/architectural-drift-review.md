@@ -15,7 +15,7 @@ STATUS: REFACTORED
 ## Refactor Performed
 - Extracted `RuntimeError` and `RuntimeResult` from oversized `crates/vb_runtime/src/lib.rs` into cohesive `crates/vb_runtime/src/error/` modules while preserving crate-root public re-exports.
 - Split display/source, equality, diagnostics/runtime-code mapping, conversions, and tests by responsibility.
-- Moved the bead-local admission durability integration test into `crates/velvet_ballastics/tests/admission_durability_code.rs`; `admission_evidence_integration.rs` now has no diff and is no longer in the updated delivery scope.
+- Moved the bead-local admission durability integration test into `crates/velvet_ballistics/tests/admission_durability_code.rs`; `admission_evidence_integration.rs` now has no diff and is no longer in the updated delivery scope.
 
 ## DDD Notes
 - The runtime error boundary is now a named error module with focused submodules instead of a god `lib.rs`.

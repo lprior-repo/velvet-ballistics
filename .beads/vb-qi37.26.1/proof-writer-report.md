@@ -13,7 +13,7 @@
 | Obligation | Status | Exit Code | Notes |
 |---|---|---|---|
 | COMP-001 | PASS | 0 | `cargo check -p vb_ipc` — clean compile |
-| COMP-002 | PASS | 0 | `cargo check -p velvet-ballastics-workspace-tests --tests` — clean compile |
+| COMP-002 | PASS | 0 | `cargo check -p velvet-ballistics-workspace-tests --tests` — clean compile |
 | COMP-003 | PASS | 0 | `cargo clippy -p vb_ipc -- -D warnings` — no warnings |
 | SAFE-001 | WAIVED | 0 | 100 grep matches in handlers.rs; all pre-existing, grandfathered |
 | SAFE-002 | PASS | 0 | Only match is `#![forbid(unsafe_code)]` at line 1 |
@@ -30,7 +30,7 @@ Command executed successfully. Zero crates needed recompilation (already built).
 
 ### COMP-002 — Workspace Tests Compilation
 Command executed successfully. Zero crates needed recompilation.  
-**Verdict:** Cross-crate integration tests in `velvet-ballastics-workspace-tests` compile cleanly.
+**Verdict:** Cross-crate integration tests in `velvet-ballistics-workspace-tests` compile cleanly.
 
 ### COMP-003 — Clippy Cleanliness
 Command executed successfully. No clippy warnings or errors with `-D warnings`.  

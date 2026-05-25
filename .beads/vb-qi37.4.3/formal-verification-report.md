@@ -4,7 +4,7 @@ STATUS: APPROVED
 
 ## Inputs
 - proof-obligations.jsonl: 7 obligations (5 proptest, 1 tla-plus, 1 waiver)
-- delivery-scope.jsonl: vb-qi37.4.3, touched_crates=[vb_runtime, vb_storage, velvet_ballastics], release_critical=true
+- delivery-scope.jsonl: vb-qi37.4.3, touched_crates=[vb_runtime, vb_storage, velvet_ballistics], release_critical=true
 - baseline-report.md: moon ci non-zero exit 128 due to missing git ref 'main' in JJ isolated workspace; classified DEFERRED_GLOBAL
 - tla-spec.md: present
 - contract-verification-review.md: STATUS: APPROVED (line 3)
@@ -23,8 +23,8 @@ STATUS: APPROVED
 | TEST-PRE-001 | proptest | PASS | `rtk cargo test -p vb_runtime shard::tests::submit_rejects_duplicate_run_id` -> 1 passed, 1441 filtered out |
 | TEST-PRE-002 | proptest | PASS | `rtk cargo test -p vb_runtime admission_rejection_does_not_insert_run_state` -> 1 passed, 1441 filtered out |
 | TLA-ACK-001 | tla-plus | PASS | `moon run :verify-proof` -> task completed; Kani no proof harnesses; Lean dir skipped |
-| REC-HEADER-001 | proptest | PASS | `rtk cargo test -p velvet_ballastics --test admission_evidence_integration restart_lookup_finds_persisted_header` -> 1 passed, 7 filtered out |
-| TEST-DUR-001 | proptest | PASS | `rtk cargo test -p velvet_ballastics --test admission_evidence_integration storage_failure_before_header_prevents_ack` -> 1 passed, 7 filtered out |
+| REC-HEADER-001 | proptest | PASS | `rtk cargo test -p velvet_ballistics --test admission_evidence_integration restart_lookup_finds_persisted_header` -> 1 passed, 7 filtered out |
+| TEST-DUR-001 | proptest | PASS | `rtk cargo test -p velvet_ballistics --test admission_evidence_integration storage_failure_before_header_prevents_ack` -> 1 passed, 7 filtered out |
 | REL-GATE-001 | gauntlet-all | PASS | `moon ci` -> exit 0; 19 tasks completed; 8015 tests passed; 2 cached |
 | WAIVER-VERUS-HEADER-ORDER | waiver | WAIVED | formal-waivers.jsonl entry approved; owner Lewis, expiry parent vb-qi37.4 release closure, compensating evidence TLA-ACK-001, TEST-DUR-001, REC-HEADER-001, moon ci |
 

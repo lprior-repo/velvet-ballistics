@@ -843,15 +843,15 @@ Exit: 0
 
 moon ci exit 1 with 3 failures:
 
-1. **velvet-ballastics:test** - vb_ipc server test failure: `serve_ipc_with_resolver_none_timeout_none_resolver_returns_ok_when_client_connected`
+1. **velvet-ballistics:test** - vb_ipc server test failure: `serve_ipc_with_resolver_none_timeout_none_resolver_returns_ok_when_client_connected`
    - Error: `path must be shorter than SUN_LEN` (UNIX socket path length limit)
    - Classification: PRE_EXISTING_WORKSPACE (not bead-local)
 
-2. **velvet-ballastics:mutants-smoke** - cargo-mutants path explosion
+2. **velvet-ballistics:mutants-smoke** - cargo-mutants path explosion
    - Error: `File name too long (os error 36)` - deeply nested `.tmp` path
    - Classification: PRE_EXISTING_WORKSPACE (not bead-local)
 
-3. **velvet-ballastics:source-length** - not a git repository
+3. **velvet-ballistics:source-length** - not a git repository
    - Error: `fatal: not a git repository` (jj workspace)
    - Classification: PRE_EXISTING_WORKSPACE (not bead-local)
 

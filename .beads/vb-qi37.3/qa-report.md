@@ -18,7 +18,7 @@
 Command:
 
 ```bash
-rustup run nightly-2026-04-28 cargo run -p velvet_ballastics --bin velvet-ballastics -- --help
+rustup run nightly-2026-04-28 cargo run -p velvet_ballistics --bin velvet-ballistics -- --help
 ```
 
 Exit status: `0`
@@ -27,8 +27,8 @@ Observed output summary:
 
 ```text
 Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.04s
-Running `target/debug/velvet-ballastics --help`
-velvet-ballastics - compiled workflow runtime
+Running `target/debug/velvet-ballistics --help`
+velvet-ballistics - compiled workflow runtime
 commands:
   validate   <workflow.yaml> [--json|--jsonl]          Validate a workflow definition
   verify     <workflow.yaml> [--profile <quick|standard|full>] [--json|--jsonl]  Verify a workflow

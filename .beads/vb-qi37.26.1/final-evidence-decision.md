@@ -22,7 +22,7 @@ All 7 contract clauses are satisfied with reproducible command evidence:
 |---|---|---|---|
 | C1 | POST-001: `cargo check -p vb_ipc` exits 0 | COMP-001: exit 0, zero errors | ✅ PASS |
 | C1 | POST-003: `cargo clippy -p vb_ipc -- -D warnings` exits 0 | COMP-003: exit 0, zero warnings | ✅ PASS |
-| C2 | POST-002: `cargo check -p velvet-ballastics-workspace-tests --tests` exits 0 | COMP-002: exit 0, zero errors | ✅ PASS |
+| C2 | POST-002: `cargo check -p velvet-ballistics-workspace-tests --tests` exits 0 | COMP-002: exit 0, zero errors | ✅ PASS |
 | C3 | POST-004: No new panic/unsafe in changed code | SAFE-001: 0 new in diff; SAFE-002: 0 new unsafe | ✅ PASS |
 | C4 | INV-002: Orphaned files excluded from build | ORPH-001: `handlers/mod.rs` absent (exit 1) | ✅ PASS |
 | INV-001 | Type consistency: enum variants, not strings | TYPE-001: 227 enum variant usages | ✅ PASS |

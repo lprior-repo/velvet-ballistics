@@ -10,10 +10,10 @@ STATUS: PASS
 - `moon run :source-length`: exit 0; task completed.
 - `moon run :test`: exit 0; `8358 tests run: 8358 passed (1 slow), 6 skipped`.
 - `moon run :bench-build`: exit 0; task completed.
-- `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_1_1_red_recovery_contract_test`: exit 0; 19 passed.
+- `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_1_1_red_recovery_contract_test`: exit 0; 19 passed.
 - `rtk cargo test -p vb_storage recovery::tests::`: exit 0; 77 passed.
 - `rtk cargo test -p vb_runtime recovery::tests::`: exit 0; 9 passed.
-- `PROPTEST_CASES=1000 rtk cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_1_1_red_recovery_contract_test proptest`: exit 0; 3 passed.
+- `PROPTEST_CASES=1000 rtk cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_1_1_red_recovery_contract_test proptest`: exit 0; 3 passed.
 - `mkdir -p target/tmp && TMPDIR=target/tmp verus verification/verus/recovery_verification.rs`: exit 0; `verification results:: 17 verified, 0 errors`.
 - `JAVA_TOOL_OPTIONS=-Djava.io.tmpdir=target/tmp TMPDIR=target/tmp tlc -metadir target/tmp/tlc-review-rerun-metadir-2 -config verification/tla/RecoveryHydration.cfg verification/tla/RecoveryHydration.tla`: exit 0; model checking completed with no error.
 

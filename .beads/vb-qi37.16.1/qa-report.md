@@ -8,8 +8,8 @@ updated_at: 2026-05-09T00:00:00Z
 ## Automated QA Evidence
 
 ### Unit Tests
-- velvet_ballastics args parsing: 6/6 pass
-- velvet_ballastics cancel integration: 3/3 pass
+- velvet_ballistics args parsing: 6/6 pass
+- velvet_ballistics cancel integration: 3/3 pass
 - vb_runtime shard cancel with reason: 1/1 pass
 - vb_runtime shard cancel without reason: 1/1 pass
 - vb_storage codec roundtrip with reason: not runnable due to pre-existing suite errors

@@ -13,7 +13,7 @@ STATUS: APPROVED
 - Initial `rtk git push origin HEAD:main` rejected non-fast-forward.
 - Recovery: `rtk git fetch origin main && rtk git rebase origin/main`.
 - Conflict resolved in `crates/workspace_tests/tests/vb_hxm0_acceptance_catalog.rs` by preserving both prior `vb-vt2f` executable evidence and new `vb-ssei` executable evidence.
-- Post-conflict test: `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_ssei_verification_admission_acceptance --test vb_hxm0_acceptance_catalog -- --nocapture` -> `cargo test: 17 passed (2 suites, 0.00s)`.
+- Post-conflict test: `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_ssei_verification_admission_acceptance --test vb_hxm0_acceptance_catalog -- --nocapture` -> `cargo test: 17 passed (2 suites, 0.00s)`.
 - Retry push succeeded: `rtk git push origin HEAD:main` -> `ok main`.
 
 ## Bead landing

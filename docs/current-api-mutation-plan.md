@@ -74,9 +74,9 @@ Critical semantic survivor policy:
 
 Validation command and threshold:
 
-- Focused validator command: `cargo test --package velvet-ballastics-workspace-tests --test vb_c3k9_current_api_mutation_plan`.
-- Scoped mutation command: `cargo mutants --package velvet-ballastics-workspace-tests --test vb_c3k9_current_api_mutation_plan`.
-- Admission-branch closure command: `cargo mutants --package velvet-ballastics-workspace-tests --test vb_njju_mutation_fuzz_property_closure`.
+- Focused validator command: `cargo test --package velvet-ballistics-workspace-tests --test vb_c3k9_current_api_mutation_plan`.
+- Scoped mutation command: `cargo mutants --package velvet-ballistics-workspace-tests --test vb_c3k9_current_api_mutation_plan`.
+- Admission-branch closure command: `cargo mutants --package velvet-ballistics-workspace-tests --test vb_njju_mutation_fuzz_property_closure`.
 - Unrelated smoke substitution policy: `moon run :mutants-smoke` over `crates/vb_core/src/diagnostic.rs` is regression smoke only and never satisfies admission-branch closure for `vb-njju`.
 - Release evidence threshold: at least `90% mutation kill rate` for scoped semantic targets.
 - Mutation exclusion policy: exclusions are only valid for generated boilerplate, unreachable compile-time rejected states, or documented tool limitations with exact compensating test/proof evidence.

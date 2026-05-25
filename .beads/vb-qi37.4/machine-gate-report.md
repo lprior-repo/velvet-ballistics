@@ -13,9 +13,9 @@ STATUS: PASS
 - `moon run :lint-src`: PASS.
 - `moon run :fuzz-smoke`: PASS.
 - `moon run :mutants-smoke`: PASS; 1 mutant tested, 1 caught.
-- `cargo test -p velvet_ballastics --test admission_evidence_integration`: PASS; 8 passed.
+- `cargo test -p velvet_ballistics --test admission_evidence_integration`: PASS; 8 passed.
 - `cargo test -p vb_storage --test accepted_artifact_red_phase`: PASS; 29 passed.
-- `cargo test -p velvet_ballastics --test admission_durability_code`: PASS; 1 passed.
+- `cargo test -p velvet_ballistics --test admission_durability_code`: PASS; 1 passed.
 - `RUSTFLAGS="--cfg loom" cargo test -p vb_runtime journal_writer_queue`: PASS; 3 passed.
 - `RUSTFLAGS="--cfg loom" cargo test -p vb_runtime timer_fired_cancel`: PASS; 1 passed.
 - `RUSTFLAGS="--cfg loom" cargo test -p vb_runtime shutdown_drain`: PASS; 3 passed.

@@ -13,7 +13,7 @@ gates:
     repair_command: cargo +nightly miri test --workspace
 - kind: mutants
   gate_name: mutants
-  command: cargo mutants --package velvet_ballastics
+  command: cargo mutants --package velvet_ballistics
   exit_code: 1
   log: .evidence/vb-itest-deep-agg/mutants.log
   status:
@@ -21,7 +21,7 @@ gates:
   why_failed:
     gate_name: mutants
     hint: Mutation testing found surviving mutants
-    repair_command: cargo mutants --package velvet_ballastics
+    repair_command: cargo mutants --package velvet_ballistics
 - kind: llvm-cov
   gate_name: llvm-cov
   command: cargo llvm-cov

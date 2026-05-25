@@ -62,7 +62,7 @@ attempt: 3
 - Obligation: `CANONICAL-PROOF-GATE-016`.
 - Command: `moon run :verify-proof`.
 - Exit: 0.
-- Output summary: Moon task `velvet-ballastics:verify-proof` ran `scripts/rust-verification-gauntlet.sh proof`, completed in 2s 574ms, and reported `[PASS] All proof checks passed`.
+- Output summary: Moon task `velvet-ballistics:verify-proof` ran `scripts/rust-verification-gauntlet.sh proof`, completed in 2s 574ms, and reported `[PASS] All proof checks passed`.
 - Harnesses reported PASS: `KANI-EXPR-BYTECODE-001`, `KANI-SLOT-REF-001`, `KANI-CONSTANT-POOL-001`, `KANI-ACCESSOR-REF-001`, and `INV-007-NODEDUP-001`.
 - Wrapper note: `Verus proofs (VERUS-EXPR-STACK-001, VERUS-SLOT-MAX-001) are WAIVED -- toolchain not installed`; this is an existing wrapper note for vb_compile proof lanes and does not replace the direct Verus evidence above for `VERUS-CAP-003`, `VERUS-GATE-004`, or `VERUS-DIGEST-005`.
 

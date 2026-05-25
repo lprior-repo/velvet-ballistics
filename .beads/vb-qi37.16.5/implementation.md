@@ -9,31 +9,31 @@
 ## Original Block (per state-6-block.md)
 
 ```bash
-rtk cargo test --package velvet_ballastics --test lifecycle_integration
+rtk cargo test --package velvet_ballistics --test lifecycle_integration
 ```
 
 **Original failures (23 compile errors):**
-1. E0433: `velvet_ballastics::lifecycle` module does not exist (binary-only crate)
+1. E0433: `velvet_ballistics::lifecycle` module does not exist (binary-only crate)
 2. `EventSeq::ZERO` does not exist in `vb_storage/src/events.rs`
 3. `JournalEvent::{RunResumed, RunRetried, RunAnswered}` not handled exhaustively
 
 ## Changes Made
 
-### 1. `crates/velvet_ballastics/Cargo.toml` (preserved)
+### 1. `crates/velvet_ballistics/Cargo.toml` (preserved)
 
 Lib target and chrono dependency already present from prior state.
 
-### 2. `crates/velvet_ballastics/src/lib.rs` (preserved)
+### 2. `crates/velvet_ballistics/src/lib.rs` (preserved)
 
 Library root already exposing lifecycle module.
 
-### 3. `crates/velvet_ballastics/src/lifecycle.rs` (preserved)
+### 3. `crates/velvet_ballistics/src/lifecycle.rs` (preserved)
 
 Lifecycle command surface already implemented.
 
 ### 4. Test File Fixes (THIS REPAIR)
 
-**`crates/velvet_ballastics/tests/lifecycle_integration.rs`:**
+**`crates/velvet_ballistics/tests/lifecycle_integration.rs`:**
 
 - **Line 545**: `s.lifecycle_state` → `s.lifecycle` (RunState field name fix)
 - **Lines 615-620**: Rewrote `storage_unavailable` test to handle fact that failed journal open cannot provide a journal handle to pass to cancel()
@@ -47,27 +47,27 @@ Lifecycle command surface already implemented.
 
 Added missing `JournalEvent::{RunResumed, RunRetried, RunAnswered}` match arms in:
 
-- **`crates/velvet_ballastics/src/commands_ai_context.rs`** (`event_to_json`):
+- **`crates/velvet_ballistics/src/commands_ai_context.rs`** (`event_to_json`):
   ```rust
   vb_storage::JournalEvent::RunResumed { run, timestamp } => ...
   vb_storage::JournalEvent::RunRetried { run, timestamp } => ...
   vb_storage::JournalEvent::RunAnswered { run, slot_idx, answer, timestamp } => ...
   ```
 
-- **`crates/velvet_ballastics/src/vb.rs`** (`print_event` and `event_to_json`):
+- **`crates/velvet_ballistics/src/vb.rs`** (`print_event` and `event_to_json`):
   Added same three variants with appropriate output formatting.
 
-- **`crates/velvet_ballastics/src/commands_diff.rs`** (`diff_event_summary` and `event_name`):
+- **`crates/velvet_ballistics/src/commands_diff.rs`** (`diff_event_summary` and `event_name`):
   Added same three variants with JSON summary and static name strings.
 
-- **`crates/velvet_ballastics/src/commands_journal.rs`** (`trace_one`):
+- **`crates/velvet_ballistics/src/commands_journal.rs`** (`trace_one`):
   Added same three variants with TraceEntry construction.
 
 ## Verification
 
 ```bash
 # Compilation: 0 errors (was 23)
-rtk cargo test --package velvet_ballastics --test lifecycle_integration
+rtk cargo test --package velvet_ballistics --test lifecycle_integration
 # Result: cargo build: 0 errors, 8 warnings
 
 # Tests: 25 passed, 18 failed (runtime failures, not compile errors)

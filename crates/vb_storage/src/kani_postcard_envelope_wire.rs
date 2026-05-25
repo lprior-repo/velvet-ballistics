@@ -183,7 +183,7 @@ fn kani_harness_storage_decode_order() {
     if magic != expected_magic {
         match result {
             Err(JournalError::BadMagic { .. }) => {
-                kani::cover!(true, "BadMagic returned for wrong magic");
+                kani::cover!(matches!(result, Err(JournalError::BadMagic { .. })), "BadMagic returned for wrong magic");
             }
             Ok(_) => {
                 kani::assert(false, "wrong magic should never return Ok");
@@ -243,7 +243,7 @@ fn kani_harness_crc_before_digest() {
 
     match result {
         Err(JournalError::HeaderChecksumMismatch) => {
-            kani::cover!(true, "HeaderChecksumMismatch returned");
+            kani::cover!(matches!(result, Err(JournalError::HeaderChecksumMismatch)), "HeaderChecksumMismatch returned");
         }
         Err(JournalError::BadMagic { .. }) => {
             // Magic check may fail first (unlikely with correct magic)
@@ -273,7 +273,7 @@ fn kani_harness_digest_before_postcard() {
     let mut header: [u8; RECORD_HEADER_BYTES] = kani::any();
     let valid_magic: u32 = kani::any();
     let payload_len: u32 = kani::any();
-    kani::assume(payload_len as usize <= 1024); // Limit for proof tractability
+    kani::assume(payload_len as usize <= MAX_JOURNAL_EVENT_PAYLOAD_BYTES as usize);
 
     header[0..4].copy_from_slice(&valid_magic.to_le_bytes());
     header[4..6].copy_from_slice(&CURRENT_SCHEMA_VERSION.to_le_bytes());
@@ -303,7 +303,7 @@ fn kani_harness_digest_before_postcard() {
     // Must fail with PayloadDigestMismatch
     match result {
         Err(JournalError::PayloadDigestMismatch) => {
-            kani::cover!(true, "PayloadDigestMismatch returned");
+            kani::cover!(matches!(result, Err(JournalError::PayloadDigestMismatch)), "PayloadDigestMismatch returned");
         }
         Err(JournalError::BadMagic { .. }) => {
             // Magic check may fail first
@@ -316,7 +316,7 @@ fn kani_harness_digest_before_postcard() {
         }
         Ok(_) => {
             // If payload accidentally matches digest, that's fine
-            kani::cover!(true, "decode succeeded (payload matched digest)");
+            kani::cover!(result.is_ok(), "decode succeeded (payload matched digest)");
         }
     }
 

@@ -17,7 +17,7 @@ workspace: /home/lewis/src/vb-qi37-6
 
 ## State Inputs Read
 
-- `.beads/vb-qi37.6/STATE.md`: current_state 1, status `BLOCK_LOCAL`, owner_state 2, rerun_from 2. It records prior focused repair edits in `crates/vb_core/src/capability.rs`, `crates/vb_core/src/kani_capability_harnesses.rs`, `crates/vb_runtime/src/admission.rs`, `crates/vb_runtime/src/engine/action.rs`, `crates/vb_runtime/src/engine/drive.rs`, `crates/vb_runtime/src/engine/execute.rs`, `crates/vb_runtime/src/engine/tests.rs`, `crates/vb_runtime/src/kani_capability_harnesses.rs`, and `crates/velvet_ballastics/tests/admission_evidence_integration/chunk_003.rs`.
+- `.beads/vb-qi37.6/STATE.md`: current_state 1, status `BLOCK_LOCAL`, owner_state 2, rerun_from 2. It records prior focused repair edits in `crates/vb_core/src/capability.rs`, `crates/vb_core/src/kani_capability_harnesses.rs`, `crates/vb_runtime/src/admission.rs`, `crates/vb_runtime/src/engine/action.rs`, `crates/vb_runtime/src/engine/drive.rs`, `crates/vb_runtime/src/engine/execute.rs`, `crates/vb_runtime/src/engine/tests.rs`, `crates/vb_runtime/src/kani_capability_harnesses.rs`, and `crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs`.
 - `.beads/vb-qi37.6/baseline-report.md`: baseline path `/home/lewis/src/vb-qi37-6`, HEAD `c6272854a341ff3e5017db2aae703aa6d1483d7f`, repo-wide `cargo fmt --check` caveat includes pre-existing `fuzz/src/bin/step_budget_new.rs:2:1 expected item, found '!'`.
 
 ## Capability Model Core
@@ -100,7 +100,7 @@ workspace: /home/lewis/src/vb-qi37-6
 - `crates/vb_runtime/src/engine/action.rs`: unit tests for no-contract rejection and action behavior.
 - `crates/vb_runtime/src/engine/execute.rs`: tests cover Do dispatch rejection when contracts are missing.
 - `crates/vb_runtime/src/engine/drive.rs`: helpers and tests include `CapabilitySet` and direct drive with grants.
-- `crates/velvet_ballastics/tests/admission_evidence_integration/chunk_001.rs` and `chunk_002.rs`: integration coverage for `submit_artifact` persistence and runtime completion under relaxed policy, but the visible tests use workflows without action capability requirements.
+- `crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs` and `chunk_002.rs`: integration coverage for `submit_artifact` persistence and runtime completion under relaxed policy, but the visible tests use workflows without action capability requirements.
 - `fuzz/src/lib.rs`: `fuzz_capability_name_schema` and `fuzz_capability_contract_schema` exercise capability schema validation through `vb_validate::shared::validate_with_contracts`.
 - Fuzz target binaries: `fuzz/src/bin/capability_name_schema.rs`, `fuzz/src/bin/capability_contract_schema.rs`.
 

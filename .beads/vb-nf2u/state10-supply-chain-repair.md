@@ -10,7 +10,7 @@ State 10 wired the `ui_redaction_artifact` cargo-fuzz target in `fuzz/Cargo.toml
 - `jobserver:0.1.34`
 - `libfuzzer-sys:0.4.12`
 
-`moon run velvet-ballastics:supply-chain` runs `cargo vet --store-path supply-chain --locked`; cargo-vet therefore failed with `Vetting Failed!` and each of those dependencies missing `safe-to-deploy`.
+`moon run velvet-ballistics:supply-chain` runs `cargo vet --store-path supply-chain --locked`; cargo-vet therefore failed with `Vetting Failed!` and each of those dependencies missing `safe-to-deploy`.
 
 ## Files changed
 
@@ -24,14 +24,14 @@ State 10 wired the `ui_redaction_artifact` cargo-fuzz target in `fuzz/Cargo.toml
    - PASS for workflow context load.
    - Note: automatic Dolt push warning remained unrelated to this repair (`non-fast-forward`).
 
-2. `moon run velvet-ballastics:supply-chain`
+2. `moon run velvet-ballistics:supply-chain`
    - FAIL before repair.
    - Verbatim actionable summary: `Vetting Failed!`; `3 unvetted dependencies:`; `arbitrary:1.4.2 missing ["safe-to-deploy"]`; `jobserver:0.1.34 missing ["safe-to-deploy"]`; `libfuzzer-sys:0.4.12 missing ["safe-to-deploy"]`.
 
-3. `rustup run nightly-2026-04-28 cargo vet --store-path supply-chain fmt && moon run velvet-ballastics:supply-chain`
+3. `rustup run nightly-2026-04-28 cargo vet --store-path supply-chain fmt && moon run velvet-ballistics:supply-chain`
    - FAIL before verification because cargo-vet rejected the option placement: `error: the subcommand 'fmt' cannot be used with '--store-path <STORE_PATH>'`.
 
-4. `rustup run nightly-2026-04-28 cargo vet fmt --store-path supply-chain && moon run velvet-ballastics:supply-chain`
+4. `rustup run nightly-2026-04-28 cargo vet fmt --store-path supply-chain && moon run velvet-ballistics:supply-chain`
    - PASS.
    - Verbatim Moon summary: `Tasks: 1 completed`; `Time: 46s 417ms`.
    - Full captured output: `/home/lewis/.local/share/opencode/tool-output/tool_e104eaddb0016lvv3Lb9GADCuV`.

@@ -64,7 +64,7 @@ moon run :quick
 Result:
 
 ```text
-velvet-ballastics:quick ... Tasks: 1 completed
+velvet-ballistics:quick ... Tasks: 1 completed
 Time: 41s 895ms
 ```
 
@@ -77,8 +77,8 @@ moon run :test
 Result:
 
 ```text
-velvet-ballastics:test | Starting 9860 tests across 58 binaries
-velvet-ballastics:test | Summary [  12.274s] 9860 tests run: 9860 passed, 0 skipped
+velvet-ballistics:test | Starting 9860 tests across 58 binaries
+velvet-ballistics:test | Summary [  12.274s] 9860 tests run: 9860 passed, 0 skipped
 Tasks: 4 completed (1 cached)
 Time: 24s 98ms
 ```

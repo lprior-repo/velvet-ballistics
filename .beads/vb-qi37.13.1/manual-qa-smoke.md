@@ -11,7 +11,7 @@ cargo test -p vb_ui_model --lib
 ## Output
 
 ```
-warning: /home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballastics/Cargo.toml: file `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballastics/src/main.rs` found to be present in multiple build targets:
+warning: /home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballistics/Cargo.toml: file `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballistics/src/main.rs` found to be present in multiple build targets:
   * `bin` target `vb`
   * `bin` target `velvet-ballistics`
 warning: skipping duplicate package `bitflags v2.10.0 (https://github.com/makepad/makepad?branch=dev#20b6c53b)`:

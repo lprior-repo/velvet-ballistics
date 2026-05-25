@@ -9,10 +9,10 @@ Truth-serum after P0 landing proved:
 
 Known failing lanes from direct evidence:
 
-1. `velvet-ballastics:fmt`: formatting drift, including `xtask/src/forbidden_scan.rs`.
-2. `velvet-ballastics:lint-src`: clippy failures in `xtask/src/forbidden_scan.rs` and `crates/vb_cli/*`.
-3. `velvet-ballastics:check`: unused imports/variables in `crates/vb_storage/tests/recovery_bdd_tests.rs`.
-4. `velvet-ballastics:miri`: passed scoped checks in the truth-serum run.
+1. `velvet-ballistics:fmt`: formatting drift, including `xtask/src/forbidden_scan.rs`.
+2. `velvet-ballistics:lint-src`: clippy failures in `xtask/src/forbidden_scan.rs` and `crates/vb_cli/*`.
+3. `velvet-ballistics:check`: unused imports/variables in `crates/vb_storage/tests/recovery_bdd_tests.rs`.
+4. `velvet-ballistics:miri`: passed scoped checks in the truth-serum run.
 
 Acceptance:
 

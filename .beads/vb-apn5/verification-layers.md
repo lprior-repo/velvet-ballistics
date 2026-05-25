@@ -14,7 +14,7 @@ updated_at: 2026-05-09T00:00:00Z
 
 ### Postconditions (PO1-PO6)
 - **Layer**: Unit tests + Integration tests
-- **Tool**: `cargo test -p vb_storage`, `cargo test -p velvet_ballastics`
+- **Tool**: `cargo test -p vb_storage`, `cargo test -p velvet_ballistics`
 - **Rationale**: Direct observable behavior on real filesystem
 
 ### Invariants (I1-I4)

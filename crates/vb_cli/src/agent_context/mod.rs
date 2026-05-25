@@ -8,10 +8,10 @@ pub(crate) fn build(version: &str) -> Value {
     serde_json::json!({
         "schema_version": "1",
         "kind": "AgentContext",
-        "cli": "velvet-ballastics",
-        "binary_aliases": ["velvet-ballastics"],
+        "cli": "velvet-ballistics",
+        "binary_aliases": ["velvet-ballistics"],
         "version": version,
-        "language_version": "velvet-ballastics/v1",
+        "language_version": "velvet-ballistics/v1",
         "agent_contract": {
             "non_interactive_by_default": true,
             "prompt_bypass_flag": "--force",

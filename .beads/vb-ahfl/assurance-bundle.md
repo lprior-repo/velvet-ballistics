@@ -16,7 +16,7 @@ UI artifact schema parity: vb_ui_model artifact bounds, redaction, canonicalizat
 
 - `crates/vb_ui_model` (canonical.rs, redact.rs, modified lib.rs)
 - `crates/vb_ui_makepad`
-- `crates/velvet_ballastics`
+- `crates/velvet_ballistics`
 
 ## Critical/Proof Obligations Evidence
 

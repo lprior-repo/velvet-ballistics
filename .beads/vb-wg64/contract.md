@@ -6,7 +6,7 @@
 - State: 3 contract
 - Workspace: `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-wg64`
 - Baseline: clean-clone forced gate `moon ci --base HEAD --head HEAD --force` failed with exit 1.
-- Known failing lanes: `velvet-ballastics:fmt`, `velvet-ballastics:lint-src`, `velvet-ballastics:check`.
+- Known failing lanes: `velvet-ballistics:fmt`, `velvet-ballistics:lint-src`, `velvet-ballistics:check`.
 
 ## Requirements
 

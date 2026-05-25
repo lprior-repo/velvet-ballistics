@@ -28,7 +28,7 @@ The proof obligations for this bead fall into **three non-proof categories**:
 
 2. **Test obligations** (T-001 through T-016) — verified by `cargo test`. These exercise every branch of `build_incident_report`, `build_repair_hints`, and `cmd_incident` I/O boundary with concrete inputs and expected outputs.
 
-3. **Manual-QA obligation** (QA-001) — verified by hand-running `velvet-ballastics incident` against a test database. Checks for absence of stack traces in all output paths.
+3. **Manual-QA obligation** (QA-001) — verified by hand-running `velvet-ballistics incident` against a test database. Checks for absence of stack traces in all output paths.
 
 ## Artifact inventory
 

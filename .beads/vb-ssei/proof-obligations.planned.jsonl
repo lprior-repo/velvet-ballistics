@@ -1,2 +1,2 @@
-{"id":"PO-SSEI-001","command":"rtk cargo test -p velvet-ballastics-workspace-tests --test vb_ssei_verification_admission_acceptance -- --nocapture","expected_evidence":"4 tests pass","required":true,"owner_state":8,"rerun_from":8,"status":"PASS"}
-{"id":"PO-SSEI-002","command":"rtk cargo test -p velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog -- --nocapture","expected_evidence":"6 catalog tests pass","required":true,"owner_state":8,"rerun_from":8,"status":"PASS"}
+{"id":"PO-SSEI-001","command":"rtk cargo test -p velvet-ballistics-workspace-tests --test vb_ssei_verification_admission_acceptance -- --nocapture","expected_evidence":"4 tests pass","required":true,"owner_state":8,"rerun_from":8,"status":"PASS"}
+{"id":"PO-SSEI-002","command":"rtk cargo test -p velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog -- --nocapture","expected_evidence":"6 catalog tests pass","required":true,"owner_state":8,"rerun_from":8,"status":"PASS"}

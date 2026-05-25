@@ -27,15 +27,15 @@ rtk cargo fmt -- --check
   PASS (no output before downstream gates)
 
 moon run :test
-  velvet-ballastics:test | Summary [..] 9863 tests run: 9863 passed, 0 skipped
+  velvet-ballistics:test | Summary [..] 9863 tests run: 9863 passed, 0 skipped
   Tasks: 4 completed (1 cached)
 
 moon ci
-  velvet-ballastics:lint-src (15s 802ms)
-  velvet-ballastics:feature-powerset (21s 216ms)
-  velvet-ballastics:test | Summary [  23.095s] 9863 tests run: 9863 passed, 0 skipped
-  velvet-ballastics:fuzz-smoke (1m 929ms)
-  velvet-ballastics:doc-test (2m 53s 763ms)
+  velvet-ballistics:lint-src (15s 802ms)
+  velvet-ballistics:feature-powerset (21s 216ms)
+  velvet-ballistics:test | Summary [  23.095s] 9863 tests run: 9863 passed, 0 skipped
+  velvet-ballistics:fuzz-smoke (1m 929ms)
+  velvet-ballistics:doc-test (2m 53s 763ms)
   Tasks: 19 completed (1 cached)
   Time: 3m 52s 48ms
 ```

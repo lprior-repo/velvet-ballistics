@@ -150,7 +150,7 @@ The State 13 façade split (`include!` macros) preserves **exact** original beha
 - Full `admission_evidence_integration` suite: 8 passed.
 - `moon run :quick` → PASS.
 - `moon ci`: 19 completed, 2 cached, 0 failed.
-- `velvet-ballastics:test`: 8015/8015 passed.
+- `velvet-ballistics:test`: 8015/8015 passed.
 
 ### Mechanical Split Line Count Gate
 Each generated file ≤300 lines (per `architectural-drift-review.md` lines 62-69):

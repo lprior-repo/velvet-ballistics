@@ -9,7 +9,7 @@
 - **vb_yaml**: Cold-path YAML parser and profile enforcement crate
 - **vb_validate**: Cold-path workflow validation crate
 - **vb_compile**: Cold-path YAML compiler boundary crate
-- **v1 construct**: Any YAML field, primitive, or trigger defined in `velvet-ballastics/v1` schema
+- **v1 construct**: Any YAML field, primitive, or trigger defined in `velvet-ballistics/v1` schema
 - **Parity**: Same input produces same accept/reject classification across all three crates
 
 ## Assumptions

@@ -49,12 +49,12 @@ test result: FAILED. 1339 passed; 1 failed; 0 ignored; 0 measured; 0 filtered ou
 ### 4. `moon run :quick`
 
 ```
-▮▮▮▮ velvet-ballastics:quick (71c3ae32)
+▮▮▮▮ velvet-ballistics:quick (71c3ae32)
 Hello, world!
 Hello, world!
 Hello, world!
 Hello, world!
-▮▮▮▮ velvet-ballastics:quick (59ms, 71c3ae32)
+▮▮▮▮ velvet-ballistics:quick (59ms, 71c3ae32)
 
 Tasks: 1 completed
  Time: 11s 239ms

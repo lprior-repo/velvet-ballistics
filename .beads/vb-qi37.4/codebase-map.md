@@ -14,9 +14,9 @@ updated_at: 2026-05-15T19:48:24Z
 - `crates/vb_storage/src/journal/append.rs`: durability boundary; `append_strict` appends then calls `persist_strict`, which uses `fjall::PersistMode::SyncAll`.
 - `crates/vb_runtime/src/error/mod.rs`, `display.rs`, `diagnostics.rs`, `equality.rs`, and `conversions.rs`: typed runtime admission/durability errors and stable diagnostic/runtime-code mapping.
 - `crates/vb_runtime/src/recovery.rs`: hydrates `RunAdmission` from durable storage events for recovery-facing runtime metadata.
-- `crates/velvet_ballastics/tests/admission_evidence_integration.rs` and included chunks: cross-crate evidence for submit-artifact-then-run, relaxed policy behavior, storage failure before header acknowledgement, restart header lookup, and capability rejection.
+- `crates/velvet_ballistics/tests/admission_evidence_integration.rs` and included chunks: cross-crate evidence for submit-artifact-then-run, relaxed policy behavior, storage failure before header acknowledgement, restart header lookup, and capability rejection.
 - `crates/vb_storage/tests/accepted_artifact_red_phase.rs`: storage-level accepted artifact tests for envelope proof fields, gate count, postcard encoding, round trip, required capabilities, digest binding, and raw workflow rejection.
-- `crates/velvet_ballastics/tests/admission_durability_code.rs`: API envelope preservation of admission durability diagnostic codes.
+- `crates/velvet_ballistics/tests/admission_durability_code.rs`: API envelope preservation of admission durability diagnostic codes.
 
 ## Scope Notes
 

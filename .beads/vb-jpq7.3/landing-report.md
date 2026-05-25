@@ -20,7 +20,7 @@ Branch: `main`
 - `bash scripts/check-test-integrity.sh`: PASS (`test integrity: PASS base=HEAD`)
 - `bash scripts/check-ignored-fallible-results.sh`: PASS (`NoViolationFound`)
 - `bash scripts/check-panic-surface.sh`: PASS (`NoViolationFound`)
-- `rustup run nightly-2026-04-28 cargo test -p velvet-ballastics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract`: PASS (`11 passed; 0 failed; 0 ignored`)
+- `rustup run nightly-2026-04-28 cargo test -p velvet-ballistics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract`: PASS (`11 passed; 0 failed; 0 ignored`)
 
 Canonical full Moon evidence was not rerun because the latest accepted full pass already exists at `/home/lewis/.local/share/opencode/tool-output/tool_e54cfc867001em3UkY7dnDZZ7z` with `Tasks: 25 completed (3 cached)` and `12169 tests run: 12169 passed (5 slow), 0 skipped`.
 

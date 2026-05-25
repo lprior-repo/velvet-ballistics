@@ -20,7 +20,7 @@ Downstream implementation must expose or share these constants with tests; chang
 
 | Constant | Exact value | Use |
 |---|---:|---|
-| `CLI_TEXT_SCHEMA_VERSION` | `"velvet-ballastics/cli-output/v1"` | YAML/text envelope schema |
+| `CLI_TEXT_SCHEMA_VERSION` | `"velvet-ballistics/cli-output/v1"` | YAML/text envelope schema |
 | `CLI_BINARY_SCHEMA_VERSION` | `1_u16` | Postcard envelope schema |
 | `CLI_BINARY_MAGIC` | `0x5642_434C_u32` (`VBCL`) | binary header magic |
 | `CLI_BINARY_HEADER_LEN` | `52_u32` | 4 + 2 + 2 + 4 + 4 + 32 + 4 |
@@ -34,7 +34,7 @@ Downstream implementation must expose or share these constants with tests; chang
 
 ## 1. Behavior Inventory
 
-1. `cli_schema_version` returns exactly `velvet-ballastics/cli-output/v1` when queried.
+1. `cli_schema_version` returns exactly `velvet-ballistics/cli-output/v1` when queried.
 2. `binary_cli_schema_version` returns exactly `1_u16` when queried.
 3. `kind_name` returns the exact stable PascalCase name for each of the 24 v1 kinds.
 4. `kind_id` returns the exact stable ID `1..=24` for each v1 kind.
@@ -56,7 +56,7 @@ Downstream implementation must expose or share these constants with tests; chang
 20. `validate_diagnostic_entry` rejects a 4097-byte message with `MessageTooLong { len: 4097, max: 4096 }`.
 21. `validate_diagnostic_entry` rejects ANSI SGR, bare ESC, unterminated CSI, and nested ANSI with `AnsiForbidden`.
 22. `validate_text_envelope` rejects empty schema version with `EmptySchemaVersion`.
-23. `validate_text_envelope` rejects v2 text schema with `UnsupportedTextSchemaVersion { found: "velvet-ballastics/cli-output/v2" }`.
+23. `validate_text_envelope` rejects v2 text schema with `UnsupportedTextSchemaVersion { found: "velvet-ballistics/cli-output/v2" }`.
 24. `validate_text_envelope` rejects kind/payload mismatch with `KindPayloadMismatch { kind }`.
 25. `validate_text_envelope` rejects numeric exit code `9` with `InvalidExitCode { code: 9 }`.
 26. `validate_text_envelope` rejects ANSI in schema, kind, command, diagnostic, payload string, or repair hint with `AnsiForbidden`.
@@ -100,7 +100,7 @@ Minimum: 60 unit tests. Planned names below are mandatory; integration/proptest/
 
 | Contract signature | Required unit test names |
 |---|---|
-| `cli_schema_version()` | `schema_constants_return_text_v1_when_queried`; `schema_version_is_non_empty_ascii_when_queried`; `schema_version_contains_no_ansi_when_queried`; `schema_version_uses_velvet_ballastics_spelling_when_queried`; `schema_version_rejects_mutated_literal_in_snapshot_gate` |
+| `cli_schema_version()` | `schema_constants_return_text_v1_when_queried`; `schema_version_is_non_empty_ascii_when_queried`; `schema_version_contains_no_ansi_when_queried`; `schema_version_uses_velvet_ballistics_spelling_when_queried`; `schema_version_rejects_mutated_literal_in_snapshot_gate` |
 | `binary_cli_schema_version()` | `binary_schema_version_returns_one_when_queried`; `binary_schema_version_is_not_zero_when_queried`; `binary_schema_version_matches_decoder_current_version`; `binary_schema_version_matches_encoder_header`; `binary_schema_version_rejects_default_zero_mutant` |
 | `kind_name(kind)` | `kind_name_returns_verification_report`; `kind_name_returns_diagnostic_report`; `kind_name_returns_agent_context`; `kind_names_are_unique_for_all_24_kinds`; `kind_name_contains_no_whitespace_or_ansi` |
 | `kind_id(kind)` | `kind_id_returns_one_for_verification_report`; `kind_id_returns_two_for_diagnostic_report`; `kind_id_returns_twenty_four_for_agent_context`; `kind_ids_are_unique_for_all_24_kinds`; `kind_id_rejects_default_zero_mutant_by_table_snapshot` |
@@ -120,7 +120,7 @@ Test functions: `schema_constants_return_text_v1_when_queried`, `binary_schema_v
 
 Given: the public schema constants API is available.
 When: `cli_schema_version()` and `binary_cli_schema_version()` are called.
-Then: the exact returned values are `"velvet-ballastics/cli-output/v1"` and `1_u16`.
+Then: the exact returned values are `"velvet-ballistics/cli-output/v1"` and `1_u16`.
 
 ### Behavior: Kind table is exact and exhaustive
 Test function: `kind_table_returns_exact_names_and_ids_when_all_v1_kinds_are_queried`
@@ -162,14 +162,14 @@ Test function: `build_text_envelope_returns_exact_document_for_each_payload_fami
 
 Given: deterministic typed fixtures for all 24 payload families with no timestamp and empty diagnostics summary.
 When: each fixture is wrapped by `build_text_envelope` and serialized to YAML.
-Then: each YAML document has field order and values exactly `schema_version`, `kind`, `command`, `exit_code`, `data`, `diagnostics_summary`; `schema_version` is `velvet-ballastics/cli-output/v1`; `exit_code` is `0`; `kind` and `command` match the 24-row table above; `diagnostics_summary` is `[]`; `data` equals the fixture payload with snake_case field names.
+Then: each YAML document has field order and values exactly `schema_version`, `kind`, `command`, `exit_code`, `data`, `diagnostics_summary`; `schema_version` is `velvet-ballistics/cli-output/v1`; `exit_code` is `0`; `kind` and `command` match the 24-row table above; `diagnostics_summary` is `[]`; `data` equals the fixture payload with snake_case field names.
 
 ### Behavior: Text envelope validators return exact typed errors
 Test functions: `validate_text_envelope_returns_empty_schema_version_for_empty_string`, `validate_text_envelope_returns_unsupported_text_schema_version_for_v2`, `validate_text_envelope_returns_kind_payload_mismatch_for_incident_status_payload`, `validate_text_envelope_returns_invalid_exit_code_for_nine`, `validate_text_envelope_returns_unredacted_taint_for_secret_field`
 
-Given: invalid text envelopes with schema `""`, schema `"velvet-ballastics/cli-output/v2"`, kind `IncidentReport` carrying a `StatusReport` payload, exit byte `9`, and secret field `side_effects` containing `"token=abc123"` without redaction proof.
+Given: invalid text envelopes with schema `""`, schema `"velvet-ballistics/cli-output/v2"`, kind `IncidentReport` carrying a `StatusReport` payload, exit byte `9`, and secret field `side_effects` containing `"token=abc123"` without redaction proof.
 When: `validate_text_envelope` runs.
-Then: exact errors are `EmptySchemaVersion`, `UnsupportedTextSchemaVersion { found: "velvet-ballastics/cli-output/v2".to_owned() }`, `KindPayloadMismatch { kind: CliOutputKind::IncidentReport }`, `InvalidExitCode { code: 9 }`, and `UnredactedTaint { field: "side_effects" }`.
+Then: exact errors are `EmptySchemaVersion`, `UnsupportedTextSchemaVersion { found: "velvet-ballistics/cli-output/v2".to_owned() }`, `KindPayloadMismatch { kind: CliOutputKind::IncidentReport }`, `InvalidExitCode { code: 9 }`, and `UnredactedTaint { field: "side_effects" }`.
 
 ### Behavior: Diagnostic report construction and bounds are exact
 Test functions: `build_diagnostic_report_returns_exact_verify_validation_failure`, `build_diagnostic_report_accepts_64_diagnostics`, `build_diagnostic_report_rejects_65_diagnostics`
@@ -218,7 +218,7 @@ Validation order required by every decoder test: (1) enough bytes for fixed head
 ### Behavior: Runtime-core boundary has isolated side effects
 Test function: `boundary_gate_reports_runtime_core_boundary_violation_for_temp_vb_runtime_fixture`
 
-Given: the test creates temporary directory `target/test-fixtures/vb-qi37-13-1/runtime-boundary`, writes a minimal crate file `crates/vb_runtime/src/cli_schema_boundary_violation.rs` inside that temp fixture containing `use velvet_ballastics::cli_schema::CliTextEnvelope;`, and does not touch real workspace source.
+Given: the test creates temporary directory `target/test-fixtures/vb-qi37-13-1/runtime-boundary`, writes a minimal crate file `crates/vb_runtime/src/cli_schema_boundary_violation.rs` inside that temp fixture containing `use velvet_ballistics::cli_schema::CliTextEnvelope;`, and does not touch real workspace source.
 When: the public boundary validator is run against `target/test-fixtures/vb-qi37-13-1/runtime-boundary`.
 Then: it returns exactly `Err(CliEnvelopeError::RuntimeCoreBoundaryViolation { crate_name: "vb_runtime" })`; cleanup removes `target/test-fixtures/vb-qi37-13-1/runtime-boundary` after the test.
 And: the separate static-gate shell test for `scripts/check-cli-schema-boundaries.sh target/test-fixtures/vb-qi37-13-1/runtime-boundary` must exit nonzero and print `vb_runtime: CLI schema dependency forbidden`, but that shell-text assertion does not satisfy or replace the required `CliEnvelopeError::RuntimeCoreBoundaryViolation` scenario above.
@@ -303,7 +303,7 @@ Corpus seeds: exact status stdout/stderr pair; empty stdout; empty stderr; malfo
 
 ## 9. Mutation Testing Checkpoints
 
-Command scope: `cargo mutants --package velvet-ballastics --file crates/velvet_ballastics/src/cli_schema.rs --file crates/velvet_ballastics/src/cli_schema_binary.rs --file crates/velvet_ballastics/src/cli_schema_diagnostics.rs --minimum-test-timeout 20 --timeout-multiplier 3`. Required kill rate: >= 90%.
+Command scope: `cargo mutants --package velvet-ballistics --file crates/velvet_ballistics/src/cli_schema.rs --file crates/velvet_ballistics/src/cli_schema_binary.rs --file crates/velvet_ballistics/src/cli_schema_diagnostics.rs --minimum-test-timeout 20 --timeout-multiplier 3`. Required kill rate: >= 90%.
 
 - Deleted `cli_schema_version` branch or changed literal killed by schema constant tests and YAML snapshot tests.
 - `binary_cli_schema_version` default `0` killed by version tests and decode version tests.
@@ -342,14 +342,14 @@ Command scope: `cargo mutants --package velvet-ballastics --file crates/velvet_b
 4. Dependency gate must prove `serde_yaml` and `postcard` are cold CLI dependencies only, not runtime core dependencies.
 5. Allocation sentinel tests for oversized payload must use a public test allocator counter or decode-state hook; setup resets the counter before decode and cleanup restores the default state after each test.
 6. Filesystem fixtures live only under `target/test-fixtures/vb-qi37-13-1/`; every integration test removes its fixture directory on success and on failure via test tempdir drop.
-7. Coverage gate: `cargo llvm-cov --package velvet-ballastics --tests --fail-under-lines 90` must include every `CliEnvelopeError` variant path.
+7. Coverage gate: `cargo llvm-cov --package velvet-ballistics --tests --fail-under-lines 90` must include every `CliEnvelopeError` variant path.
 8. No test writes bead state, Dolt state, or `.beads` runtime databases.
 
 ## 11. Combinatorial Coverage Matrix
 
 | Scenario | Input Class | Expected Output | Layer |
 |---|---|---|---|
-| schema text constant | no input | exact `"velvet-ballastics/cli-output/v1"` | unit |
+| schema text constant | no input | exact `"velvet-ballistics/cli-output/v1"` | unit |
 | schema binary constant | no input | exact `1_u16` | unit |
 | kind happy path | IDs 1..=24 | exact matching `CliOutputKind` | unit/proptest/Kani |
 | kind error zero | ID 0 | `Err(UnknownKindId { kind: 0 })` | unit |
@@ -360,7 +360,7 @@ Command scope: `cargo mutants --package velvet-ballastics --file crates/velvet_b
 | command mismatch | representative disallowed pairs | exact `KindCommandMismatch { kind, command }` | unit/proptest |
 | text envelope happy path | all 24 valid payloads | exact YAML field values | integration |
 | text empty version | `""` | `Err(EmptySchemaVersion)` | unit |
-| text unsupported version | `"velvet-ballastics/cli-output/v2"` | `Err(UnsupportedTextSchemaVersion { found: "velvet-ballastics/cli-output/v2".to_owned() })` | unit/proptest |
+| text unsupported version | `"velvet-ballistics/cli-output/v2"` | `Err(UnsupportedTextSchemaVersion { found: "velvet-ballistics/cli-output/v2".to_owned() })` | unit/proptest |
 | text payload mismatch | incident kind/status payload | `Err(KindPayloadMismatch { kind: IncidentReport })` | unit |
 | invalid exit code | byte 9 | `Err(InvalidExitCode { code: 9 })` | unit |
 | ANSI strings | SGR/bare ESC/CSI/nested | `Err(AnsiForbidden)` | unit/proptest/fuzz |

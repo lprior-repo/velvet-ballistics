@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
-pub(crate) const CANONICAL_HYPHEN: &str = "velvet-ballastics";
+pub(crate) const CANONICAL_HYPHEN: &str = "velvet-ballistics";
 pub(crate) const CANONICAL_UNDERSCORE: &str = "vb_cli";
-pub(crate) const CANONICAL_LANGUAGE_VERSION: &str = "velvet-ballastics/v1";
+pub(crate) const CANONICAL_LANGUAGE_VERSION: &str = "velvet-ballistics/v1";
 pub(crate) const LEGACY_PROJECT: &str = "velvet-ballistics";
 pub(crate) const LEGACY_CRATE: &str = "velvet_ballistics";
 pub(crate) const LEGACY_LANGUAGE_VERSION: &str = "velvet-ballistics/v1";
@@ -275,9 +275,9 @@ mod tests {
 
     #[test]
     fn canonical_entry_new_sets_fields() {
-        let entry = CanonicalEntry::new(CanonicalNameKind::Product, "velvet-ballastics");
+        let entry = CanonicalEntry::new(CanonicalNameKind::Product, "velvet-ballistics");
         assert_eq!(entry.kind, CanonicalNameKind::Product);
-        assert_eq!(entry.token, "velvet-ballastics");
+        assert_eq!(entry.token, "velvet-ballistics");
     }
 
     #[test]

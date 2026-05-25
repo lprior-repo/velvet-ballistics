@@ -36,7 +36,7 @@ Latest commit: fix: enforce generated code safety gates
 - vb_ui_snapshot
 - vb_validate
 - vb_yaml
-- velvet_ballastics
+- velvet_ballistics
 - workspace_tests
 
 ## Pre-Edit Baseline

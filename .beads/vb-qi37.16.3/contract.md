@@ -11,7 +11,7 @@
   - `RetryPolicy` - max_attempts (u16), base_delay_ms (u32), exponential_backoff (bool)
   - `ActionFailureOutcome` - RetryNow | DriveHandler | FailRun
   - `RuntimeJournalEvent::ActionFailed` - evidence event for durable journal
-  - `ShardCommand::ActionFailed` - CLI-facing command variant for `velvet-ballastics retry`
+  - `ShardCommand::ActionFailed` - CLI-facing command variant for `velvet-ballistics retry`
 - **Assumptions**:
   - Retry is only applicable to steps with a succeeding `RetryCheck` node in the workflow graph
   - `VbCoreRetryPolicy::Retryable` gates retry; `NonRetryable` bypasses retry logic

@@ -22,7 +22,7 @@
 │   ├── vb_ui_makepad/            # Makepad UI renderer
 │   ├── vb_ui_snapshot/           # Snapshot/replay UI
 │   ├── vb_ui/                    # UI integration (excluded from workspace)
-│   ├── velvet_ballastics/        # Main binary
+│   ├── velvet_ballistics/        # Main binary
 │   ├── vb_proof_kernels/         # Verification kernels
 │   ├── workspace_tests/          # Integration tests
 │   └── vb_benchmark/             # Benchmarks
@@ -323,12 +323,12 @@ Source checkout was not used for writes.
 
 ## CLI / production entry points
 
-1. `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-4-2/crates/velvet_ballastics/src/main.rs`
+1. `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-4-2/crates/velvet_ballistics/src/main.rs`
    - Symbols: `run_compiled_workflow`, `runtime_journal_for_mode`, `cmd_run`, `cmd_run_compiled`.
    - Current behavior: `run_compiled_workflow` creates `Runtime::new_with_journal(...)`; no storage-backed accepted artifact store is supplied.
    - Risk: strict/journaled CLI can use durable journal sink but dummy admission store.
 
-2. `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-4-2/crates/velvet_ballastics/src/storage.rs`
+2. `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-4-2/crates/velvet_ballistics/src/storage.rs`
    - Symbols: `cmd_ipc_serve`, `StorageWorkflowResolver::resolve_workflow`.
    - Current behavior: resolver reads `journal.compiled_ir(digest)` and decodes `record.ir` as `WorkflowParts`.
    - Risk: `submit_artifact` stores `AcceptedArtifact` bytes in `record.ir`; resolver may reject valid accepted artifacts as invalid raw workflow parts. Runtime admission must not parse YAML/JSON, but may need accepted-envelope decoding plus inner IR decode.
@@ -336,8 +336,8 @@ Source checkout was not used for writes.
 ## Existing tests and proof assets
 
 - `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-4-2/crates/vb_runtime/src/admission.rs` unit tests cover admission record fields, exact capability grants, and legacy existence-only `admit_run`.
-- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-4-2/crates/velvet_ballastics/tests/admission_evidence_integration/chunk_002.rs` covers relaxed artifact submission then runtime success, but uses `Runtime::new_with_journal` and does not prove strict storage-backed admission.
-- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-4-2/crates/velvet_ballastics/tests/ir_artifact_admission.rs` covers `run-compiled` malformed raw IR rejection, not accepted artifact envelope admission.
+- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-4-2/crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs` covers relaxed artifact submission then runtime success, but uses `Runtime::new_with_journal` and does not prove strict storage-backed admission.
+- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-4-2/crates/velvet_ballistics/tests/ir_artifact_admission.rs` covers `run-compiled` malformed raw IR rejection, not accepted artifact envelope admission.
 - `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-4-2/crates/vb_storage/src/vb_2bok_durability_gate_tests.rs` covers `submit_artifact` policy behavior, gate counts, error codes, and accepted artifact persistence.
 - `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-4-2/verification/verus/capability_artifact_model.rs` is relevant to capability/exact-cardinality admission.
 - `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-4-2/verification/tla/CapabilityLifecycle.tla` and cfg variants are relevant for capability lifecycle admission properties.

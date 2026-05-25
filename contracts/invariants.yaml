@@ -1,4 +1,4 @@
-# Mechanical Invariants for velvet-ballastics
+# Mechanical Invariants for velvet-ballistics
 # Executable rules checked by `cargo xtask invariants`
 # Source of truth for what "mechanically enforced" means
 

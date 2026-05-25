@@ -8,7 +8,7 @@ Domain model is embedded in `contract.md`. This document provides a quick refere
 ### v1 YAML Construct Taxonomy
 
 **Top-Level Fields**:
-- `version`: Required, must be "velvet-ballastics/v1"
+- `version`: Required, must be "velvet-ballistics/v1"
 - `name`: Required, workflow identifier
 - `when`: Trigger (manual, schedule, event, webhook)
 - `inputs`: Unsupported top-level (compile rejection)

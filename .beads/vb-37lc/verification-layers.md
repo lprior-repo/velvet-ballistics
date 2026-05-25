@@ -75,7 +75,7 @@
   - Waived layer: release-provenance
   - Reason: State 1 produces planning artifacts only and no release binary, package, SBOM, or provenance artifact.
   - Compensating evidence: release provenance remains governed by repository-wide release gates before any release artifact is produced.
-  - Owner: downstream release owner for `velvet-ballastics`.
+  - Owner: downstream release owner for `velvet-ballistics`.
   - Follow-up/complete condition: complete when State 1 handoff occurs with no release artifact; waiver expires at release-candidate packaging.
 
 ## Independent Review Gate

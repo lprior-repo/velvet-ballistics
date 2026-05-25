@@ -478,8 +478,8 @@ source_inputs:
 discovery_commands:
 - `pwd -P`
 - `test -s ".beads/vb-engine-yaml/contract.md" && test -s ".beads/vb-engine-yaml/traceability-matrix.jsonl" && test -s ".beads/vb-engine-yaml/delivery-scope.jsonl"`
-- `rtk grep -n "unsafe|unwrap\(|expect\(|panic!|todo!|unimplemented!|assert!|spawn|tokio|Mutex|RwLock|Atomic|serialize|deserialize|state|transition|lease|queue|retry|cancel" crates/vb_yaml crates/vb_validate crates/vb_compile crates/vb_core crates/vb_runtime crates/vb_storage crates/vb_ipc crates/velvet_ballastics fuzz kani verification tests xtask .moon Cargo.toml Cargo.lock velvet-ballistics-MASTER.md`
-- `rtk grep -n "requires|ensures|proof fn|invariant|kani::|loom::|proptest!|fuzz_target|Flux|TLA|Miri|unsafe" crates/vb_yaml crates/vb_validate crates/vb_compile crates/vb_core crates/vb_runtime crates/vb_storage crates/vb_ipc crates/velvet_ballastics fuzz kani verification tests xtask .moon Cargo.toml Cargo.lock velvet-ballistics-MASTER.md`
+- `rtk grep -n "unsafe|unwrap\(|expect\(|panic!|todo!|unimplemented!|assert!|spawn|tokio|Mutex|RwLock|Atomic|serialize|deserialize|state|transition|lease|queue|retry|cancel" crates/vb_yaml crates/vb_validate crates/vb_compile crates/vb_core crates/vb_runtime crates/vb_storage crates/vb_ipc crates/velvet_ballistics fuzz kani verification tests xtask .moon Cargo.toml Cargo.lock velvet-ballistics-MASTER.md`
+- `rtk grep -n "requires|ensures|proof fn|invariant|kani::|loom::|proptest!|fuzz_target|Flux|TLA|Miri|unsafe" crates/vb_yaml crates/vb_validate crates/vb_compile crates/vb_core crates/vb_runtime crates/vb_storage crates/vb_ipc crates/velvet_ballistics fuzz kani verification tests xtask .moon Cargo.toml Cargo.lock velvet-ballistics-MASTER.md`
 discovery_result:
 - risk discovery: 12766 matches in 470 scoped files
 - proof discovery: 1750 matches in 385 scoped files

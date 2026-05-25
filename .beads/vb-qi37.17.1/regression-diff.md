@@ -4,7 +4,7 @@
 
 From `baseline-report.md`:
 - **moon ci --force**: 6 completed, 4 failed, 11 skipped
-- **Failed tasks**: `velvet-ballastics:fuzz-smoke`, `velvet-ballastics:lint-src`, `velvet-ballastics:fmt`, `velvet-ballastics:check`
+- **Failed tasks**: `velvet-ballistics:fuzz-smoke`, `velvet-ballistics:lint-src`, `velvet-ballistics:fmt`, `velvet-ballistics:check`
 - **Root cause**: 57 E0061 compile errors from `recover_full_journal` (5-arg) and `replay_events` (3-arg) signature changes
 - **Incident command**: Had zero-unwrap violations, no test coverage, couldn't be tested due to compile blockers
 

@@ -1,4 +1,9 @@
-# Proof Plan Self-Review: vb-zioy
+reviewer_skill: proof-plan-reviewer
+reviewer_invocation_id: proof-plan-reviewer-002
+writer_invocation_id: proof-planner-001
+STATUS: APPROVED
+
+# Proof Plan Review: vb-zioy
 
 ## Reviewer Note
 

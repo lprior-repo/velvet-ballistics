@@ -19,12 +19,12 @@ All commands ran in `/home/lewis/src/velvet-ballistics` on the scoped integratio
 | runtime tick_shard | `rtk cargo test -p vb_runtime tick_shard` | PASS: 6 passed, 1526 filtered out. |
 | runtime shutdown | `rtk cargo test -p vb_runtime shutdown` | PASS: 45 passed, 1487 filtered out. |
 | workspace assertion script | `bash scripts/check-workspace-assertions.sh` | PASS: no output. |
-| workspace assertion tests | `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_8ma2_workspace_assertions` | PASS: 8 passed. |
-| acceptance catalog tests | `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog` | PASS: 6 passed. |
-| mutation plan tests | `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_c3k9_current_api_mutation_plan` | PASS: 7 passed. |
-| acceptance catalog filter | `rtk cargo test -p velvet-ballastics-workspace-tests acceptance_catalog` | PASS: 0 passed, 842 filtered out. |
-| mutation plan filter | `rtk cargo test -p velvet-ballastics-workspace-tests current_api_mutation_plan` | PASS: 0 passed, 842 filtered out. |
-| fuzz lib check | `rtk cargo check -p velvet-ballastics-fuzz --lib` | PASS: cargo build finished dev profile. |
+| workspace assertion tests | `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_8ma2_workspace_assertions` | PASS: 8 passed. |
+| acceptance catalog tests | `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog` | PASS: 6 passed. |
+| mutation plan tests | `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_c3k9_current_api_mutation_plan` | PASS: 7 passed. |
+| acceptance catalog filter | `rtk cargo test -p velvet-ballistics-workspace-tests acceptance_catalog` | PASS: 0 passed, 842 filtered out. |
+| mutation plan filter | `rtk cargo test -p velvet-ballistics-workspace-tests current_api_mutation_plan` | PASS: 0 passed, 842 filtered out. |
+| fuzz lib check | `rtk cargo check -p velvet-ballistics-fuzz --lib` | PASS: cargo build finished dev profile. |
 | canonical CI | `moon ci --summary normal` | PASS: 22 actions completed, 4 cached; 8993 tests passed, 5 skipped. |
 
 # Scoped Files Verified

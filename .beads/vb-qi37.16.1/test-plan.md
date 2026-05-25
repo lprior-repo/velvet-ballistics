@@ -48,7 +48,7 @@ Deviation: 44% unit, 44% integration, 11% e2e. Slightly more unit than target du
 
 ### Behavior 1: CLI parses cancel command
 ```
-Given: velvet_ballastics binary with cancel subcommand
+Given: velvet_ballistics binary with cancel subcommand
 When: user runs "cancel <run_id> --db <path> --reason 'user request' --json"
 Then: args parse into Command::Cancel { run_id, db, reason: Some("user request"), output: Json }
 ```
@@ -187,7 +187,7 @@ Test: `fn integration_cancel_cli_persists_reason_to_journal()` (in durability_ma
 ### Behavior 18: E2E CLI JSON output shape
 ```
 Given: a Fjall journal with a run
-When: "velvet_ballastics cancel <run_id> --db <path> --json" is executed
+When: "velvet_ballistics cancel <run_id> --db <path> --json" is executed
 Then: stdout is valid JSON with success=true, run_id, status="cancelled"
 ```
 Test: `fn e2e_cancel_cli_json_output_shape()` (inline in main.rs tests or integration)

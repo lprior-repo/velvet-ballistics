@@ -19,7 +19,7 @@ STATUS: PASS
 Command:
 
 ```bash
-rustup run nightly-2026-04-28 cargo run -p velvet_ballastics --bin velvet-ballastics -- --help
+rustup run nightly-2026-04-28 cargo run -p velvet_ballistics --bin velvet-ballistics -- --help
 ```
 
 Exit code: `0`
@@ -28,8 +28,8 @@ Captured output summary:
 
 ```text
 Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.11s
-Running `target/debug/velvet-ballastics --help`
-velvet-ballastics - compiled workflow runtime
+Running `target/debug/velvet-ballistics --help`
+velvet-ballistics - compiled workflow runtime
 commands:
   validate   <workflow.yaml> [--json|--jsonl]          Validate a workflow definition
   verify     <workflow.yaml> [--profile <quick|standard|full>] [--json|--jsonl]  Verify a workflow
@@ -74,7 +74,7 @@ Inspection: CLI starts and help is non-empty. No collect-specific product CLI ro
 Command:
 
 ```bash
-rustup run nightly-2026-04-28 cargo run -p velvet_ballastics --bin velvet-ballastics -- version
+rustup run nightly-2026-04-28 cargo run -p velvet_ballistics --bin velvet-ballistics -- version
 ```
 
 Exit code: `0`
@@ -83,8 +83,8 @@ Captured output summary:
 
 ```text
 Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.28s
-Running `target/debug/velvet-ballastics version`
-velvet-ballastics 0.1.0
+Running `target/debug/velvet-ballistics version`
+velvet-ballistics 0.1.0
 EXIT_CODE=0
 ```
 
@@ -95,7 +95,7 @@ Inspection: safe no-db/no-side-effect version command works.
 Command:
 
 ```bash
-rustup run nightly-2026-04-28 cargo run -p velvet_ballastics --bin velvet-ballastics -- status --json
+rustup run nightly-2026-04-28 cargo run -p velvet_ballistics --bin velvet-ballistics -- status --json
 ```
 
 Exit code: `0`
@@ -104,7 +104,7 @@ Captured output summary:
 
 ```text
 Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.20s
-Running `target/debug/velvet-ballastics status --json`
+Running `target/debug/velvet-ballistics status --json`
 {
   "RuntimePolicy": "Strict",
   "active_runs": { "active": 0, "max_active_runs": 1024 },

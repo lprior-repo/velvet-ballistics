@@ -218,7 +218,7 @@ Proceed to State 3 (`rust-contract`) in isolated workspace only. Use `bd --db /h
 - Loom exact obligation command passed: `cargo xtask loom --model timer_fired_cancel`; exit `0`; `3` model tests passed, `0` failed.
 - Runtime exact obligation command passed: `/usr/bin/env cargo test -p vb_runtime timer`; exit `0`; `77` unit timer-filtered tests plus `1` integration timer-filtered test passed.
 - Cargo check gate passed: `/usr/bin/env cargo check --workspace --all-targets --all-features`; exit `0`.
-- Canonical machine gate failed: `moon ci` exited non-zero in `velvet-ballastics:lint-src` because `crates/vb_runtime/src/shard/tests/chunk_001.rs:20:9` contains denied `panic!`.
+- Canonical machine gate failed: `moon ci` exited non-zero in `velvet-ballistics:lint-src` because `crates/vb_runtime/src/shard/tests/chunk_001.rs:20:9` contains denied `panic!`.
 - Baseline `.beads/vb-f7k6/baseline-report.md` records clean `moon ci`; current failure is classified `FAIL_REGRESSION` in scoped crate `vb_runtime`, not deferred global debt.
 - Produced required State 11 artifacts: `formal-verification-report.md` (`STATUS: REJECTED`), `verification-ledger.jsonl`, `tla-report.md`, `loom-report.md`, `test-report.md`, `machine-gate-report.md`, and `regression-diff.md`.
 - State remains blocked and does not advance to `READY_FOR_BLACK_HAT`; route to State 10 implementation repair for the machine-gate regression.

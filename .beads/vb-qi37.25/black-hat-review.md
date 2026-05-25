@@ -10,7 +10,7 @@ Black-hat verdict: APPROVED.
 Contract parity:
 - R1 workspace membership exactness is enforced by check-workspace-assertions.py and negative fixture tests.
 - R2 package/crate names are exact, including expected/actual failure text.
-- R3 binary name set is exactly ["velvet-ballastics"].
+- R3 binary name set is exactly ["velvet-ballistics"].
 - R4 feature gate checks reject exact drift and forbidden feature names.
 - R5 forbidden dependency checks cover direct, package alias, and path alias cases.
 - R6 canonical spelling tests reject invalid velvet-ballistics outside exact allowlist and reject broad substring allowlists.

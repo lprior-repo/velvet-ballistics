@@ -20,7 +20,7 @@ All mandatory verification gates passed:
 - All required artifacts exist and are non-empty
 - All JSONL files valid
 - All key review documents have STATUS: APPROVED
-- All three touched crates (vb_storage, vb_runtime, velvet_ballastics) pass clippy with strict deny flags
+- All three touched crates (vb_storage, vb_runtime, velvet_ballistics) pass clippy with strict deny flags
 - No hallucinated file paths
 - No deleted tests
 - All contract clauses have PASS evidence

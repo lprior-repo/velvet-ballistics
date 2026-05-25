@@ -25,7 +25,7 @@ This persists `-C target-cpu=native` for any `cargo build --profile maxperf` inv
 $ cargo +nightly build --profile maxperf
    Compiling num-traits v0.2.19
    ...
-   Compiling velvet-ballastics-workspace v0.1.0
+   Compiling velvet-ballistics-workspace v0.1.0
     Finished `maxperf` profile [optimized] target(s) in 0.34s
 ```
 

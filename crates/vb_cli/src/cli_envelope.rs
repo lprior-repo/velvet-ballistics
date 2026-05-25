@@ -15,7 +15,7 @@ use serde_json::{Map, Value};
 
 /// Schema version for all CLI output envelopes.
 /// Verified non-empty by construction.
-pub(crate) const SCHEMA_VERSION: &str = "velvet-ballastics/cli-output/v1";
+pub(crate) const SCHEMA_VERSION: &str = "velvet-ballistics/cli-output/v1";
 
 /// Registered kind constants for envelope payloads.
 /// Kept in sync with the registry in contract.md.
@@ -190,7 +190,7 @@ mod tests {
     #[test]
     fn test_schema_version_not_empty() {
         assert!(!SCHEMA_VERSION.is_empty());
-        assert_eq!(SCHEMA_VERSION, "velvet-ballastics/cli-output/v1");
+        assert_eq!(SCHEMA_VERSION, "velvet-ballistics/cli-output/v1");
     }
 
     #[test]
@@ -218,7 +218,7 @@ mod tests {
         let envelope = build_envelope(data, Kind::CliStatus);
         assert_eq!(
             envelope.get("schema_version"),
-            Some(&serde_json::json!("velvet-ballastics/cli-output/v1"))
+            Some(&serde_json::json!("velvet-ballistics/cli-output/v1"))
         );
     }
 
@@ -242,7 +242,7 @@ mod tests {
         let result = serialize_with_version(&data, Kind::CliStatus);
         assert_eq!(
             result.get("schema_version"),
-            Some(&serde_json::json!("velvet-ballastics/cli-output/v1"))
+            Some(&serde_json::json!("velvet-ballistics/cli-output/v1"))
         );
         assert_eq!(result.get("kind"), Some(&serde_json::json!("CliStatus")));
         assert_eq!(result.get("status"), Some(&serde_json::json!("ok")));
@@ -254,7 +254,7 @@ mod tests {
         let result = serialize_with_version(&data, Kind::AgentContext);
         assert_eq!(
             result.get("schema_version"),
-            Some(&serde_json::json!("velvet-ballastics/cli-output/v1"))
+            Some(&serde_json::json!("velvet-ballistics/cli-output/v1"))
         );
         assert_eq!(result.get("kind"), Some(&serde_json::json!("AgentContext")));
     }

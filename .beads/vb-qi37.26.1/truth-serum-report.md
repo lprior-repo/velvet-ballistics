@@ -14,7 +14,7 @@
 
 All five previously identified issues (TS-001 through TS-005) are **confirmed resolved**. Zero stale counts remain. All verification commands match their claimed output. All approval files are present and non-empty. All required artifacts per `STATE.md` exist.
 
-The bead's core compile-fix claim is **VERIFIED TRUE**: `cargo check` passes for both `vb_ipc` and `velvet-ballastics-workspace-tests`, no new panic/unsafe patterns were introduced in the fix commit, and the module structure is correctly implemented as a single file (`handlers.rs`).
+The bead's core compile-fix claim is **VERIFIED TRUE**: `cargo check` passes for both `vb_ipc` and `velvet-ballistics-workspace-tests`, no new panic/unsafe patterns were introduced in the fix commit, and the module structure is correctly implemented as a single file (`handlers.rs`).
 
 ---
 
@@ -88,7 +88,7 @@ EXIT:0
 ```
 
 ```bash
-$ cargo check -p velvet-ballastics-workspace-tests --tests; echo "EXIT:$?"
+$ cargo check -p velvet-ballistics-workspace-tests --tests; echo "EXIT:$?"
 cargo build (0 crates compiled)
 Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.09s
 EXIT:0
@@ -195,7 +195,7 @@ From the perspective of a downstream engineer:
 | Enum count = 227 | `/usr/bin/rg ... \| wc -l` | 227 | ✅ CONFIRMED |
 | Enum count = 227 (plain `rg`) | `rg ... \| wc -l` | 227 | ✅ CONFIRMED |
 | `cargo check -p vb_ipc` | Reproduced | EXIT:0 | ✅ CONFIRMED |
-| `cargo check -p velvet-ballastics-workspace-tests --tests` | Reproduced | EXIT:0 | ✅ CONFIRMED |
+| `cargo check -p velvet-ballistics-workspace-tests --tests` | Reproduced | EXIT:0 | ✅ CONFIRMED |
 | Panic count = 100 (`/usr/bin/grep`) | Reproduced | 100 | ✅ CONFIRMED |
 | All approval files present | `ls -la` + `STATE.md` cross-check | All present, non-empty | ✅ CONFIRMED |
 | All required artifacts exist | `STATE.md` cross-check | 33/33 present | ✅ CONFIRMED |

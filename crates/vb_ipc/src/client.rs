@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-//! IPC client for connecting to a velvet_ballastics runtime.
+//! IPC client for connecting to a velvet_ballistics runtime.
 
 mod connection;
 mod error;

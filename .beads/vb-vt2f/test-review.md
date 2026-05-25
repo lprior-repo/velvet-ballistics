@@ -38,10 +38,10 @@ PRIVATE_SURFACE_SCAN: PASS_NO_MATCH
 ```
 
 ```text
-pwd -P && rtk grep -n "^use |^const DIRECT_API_TARGET|Runtime::|vb_runtime::|vb_core::|velvet_ballastics_workspace_tests::acceptance_catalog|VB-BDD-CATALOG-004|PrivateSurface" "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs" "crates/workspace_tests/tests/vb_hxm0_acceptance_catalog.rs"
+pwd -P && rtk grep -n "^use |^const DIRECT_API_TARGET|Runtime::|vb_runtime::|vb_core::|velvet_ballistics_workspace_tests::acceptance_catalog|VB-BDD-CATALOG-004|PrivateSurface" "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs" "crates/workspace_tests/tests/vb_hxm0_acceptance_catalog.rs"
 /home/lewis/src/bd-vb-vt2f-bdd
 36 matches in 2 files, including:
-crates/workspace_tests/tests/vb_hxm0_acceptance_catalog.rs:3: use velvet_ballastics_workspace_tests::acceptance_catalog::{...}
+crates/workspace_tests/tests/vb_hxm0_acceptance_catalog.rs:3: use velvet_ballistics_workspace_tests::acceptance_catalog::{...}
 crates/workspace_tests/tests/vb_hxm0_acceptance_catalog.rs:22: "VB-BDD-CATALOG-004"
 crates/workspace_tests/tests/vb_hxm0_acceptance_catalog.rs:149: .filter(|scenario| scenario.id == "VB-BDD-CATALOG-004")
 crates/workspace_tests/tests/vb_hxm0_acceptance_catalog.rs:344: Err(CatalogValidationError::PrivateSurface { ... })
@@ -50,12 +50,12 @@ crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:23: const 
 ```
 
 ```text
-TMPDIR=/home/lewis/src/bd-vb-vt2f-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 cargo nextest run -p velvet-ballastics-workspace-tests --test vb_vt2f_direct_runtime_api_acceptance
+TMPDIR=/home/lewis/src/bd-vb-vt2f-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 cargo nextest run -p velvet-ballistics-workspace-tests --test vb_vt2f_direct_runtime_api_acceptance
 Summary [   0.003s] 13 tests run: 13 passed, 0 skipped
 ```
 
 ```text
-TMPDIR=/home/lewis/src/bd-vb-vt2f-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 cargo nextest run -p velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog
+TMPDIR=/home/lewis/src/bd-vb-vt2f-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 cargo nextest run -p velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog
 Summary [   0.003s] 13 tests run: 13 passed, 0 skipped
 ```
 

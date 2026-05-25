@@ -39,7 +39,7 @@ workflow.yaml
 
 `vb-storage` owns the Fjall durability boundary. It writes append-only binary journal events and exposes explicit persistence barriers.
 
-`velvet-ballastics` wires the binary surface. The binary may expose operator commands, but the runtime control plane remains memory/IPC-first.
+`velvet-ballistics` wires the binary surface. The binary may expose operator commands, but the runtime control plane remains memory/IPC-first.
 
 ## Nightly Rust Policy
 

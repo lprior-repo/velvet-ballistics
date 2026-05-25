@@ -61,7 +61,7 @@ decision_artifact: `.beads/vb-jpq7-proof-wave1/final-evidence-decision.md`
 |---|---|---|---|
 | Current canonical CI | `moon ci` | `evidence/current-source-rerun-wave1-freshness.log` | PASS: 29 completed; 11531/11531 tests passed; `exit_status=0` at lines 914 and 1025-1028 |
 | Test integrity fallback | `bash scripts/check-test-integrity.sh --self-test`; env/explicit/default invocations | `evidence/OBL-TEST-INTEGRITY-FALLBACK-001.log` | PASS: `base=workspace-fallback`; exit 0 for all four invocations |
-| Post-bridge lightweight freshness | self-test, default test-integrity, `moon run velvet-ballastics:test-integrity` | `evidence/current-source-lightweight-required-checks-20260523T1644Z.log` | PASS: all `EXIT:0`; fallback active |
+| Post-bridge lightweight freshness | self-test, default test-integrity, `moon run velvet-ballistics:test-integrity` | `evidence/current-source-lightweight-required-checks-20260523T1644Z.log` | PASS: all `EXIT:0`; fallback active |
 | Mutation smoke | Moon `mutants-smoke` task | `evidence/current-source-rerun-wave1-freshness.log:634,881-882` | PASS: 1 mutant tested, 1 caught |
 | Miri smoke | Moon `miri` task | `evidence/current-source-rerun-wave1-freshness.log:866-870` | PASS: 1 passed, 0 failed |
 | Coverage | Moon `coverage` task | `evidence/current-source-rerun-wave1-freshness.log:872-878` | PASS: report saved to `target/llvm-cov/lcov.info` |

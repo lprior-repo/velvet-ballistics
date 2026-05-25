@@ -34,12 +34,12 @@ updated_at: 2026-05-12T00:00:00Z
 | ERR-004 | gauntlet-standard | journal read error returns error | integration test |
 
 ## Verus Scope
-- Rust target: `crates/velvet_ballastics/src/commands_journal.rs::build_trace`, `trace_one`
+- Rust target: `crates/velvet_ballistics/src/commands_journal.rs::build_trace`, `trace_one`
 - Spec/Proof function: `build_trace` spec fn; `trace_one` spec fn
 - Invariants: determinism, completeness, index correspondence, event variant coverage
 - Trusted boundary: `JournalEvent` enum variants are storage-validated
 - Shell exclusions: journal I/O, CLI dispatch, output formatting, error reporting
-- Evidence command: `cargo test -p velvet_ballastics -- commands_journal`
+- Evidence command: `cargo test -p velvet_ballistics -- commands_journal`
 
 ## TLA+ Scope
 - None; TLA+ waiver applies.

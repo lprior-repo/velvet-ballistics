@@ -16,7 +16,7 @@
 
 **Command:**
 ```bash
-rustup run nightly-2026-04-28 cargo test --package velvet_ballastics --test cli_integration
+rustup run nightly-2026-04-28 cargo test --package velvet_ballistics --test cli_integration
 ```
 
 **Result:** 82 PASSED, 4 FAILED
@@ -36,7 +36,7 @@ rustup run nightly-2026-04-28 cargo test --package velvet_ballastics --test cli_
 
 **Command:**
 ```bash
-rustup run nightly-2026-04-28 cargo test --package velvet_ballastics --test admission_evidence_integration
+rustup run nightly-2026-04-28 cargo test --package velvet_ballistics --test admission_evidence_integration
 ```
 
 **Result:** 8 PASSED, 0 FAILED
@@ -45,7 +45,7 @@ rustup run nightly-2026-04-28 cargo test --package velvet_ballastics --test admi
 
 **Command:**
 ```bash
-rustup run nightly-2026-04-28 cargo test --package velvet_ballastics --test ir_artifact_admission
+rustup run nightly-2026-04-28 cargo test --package velvet_ballistics --test ir_artifact_admission
 ```
 
 **Result:** 8 PASSED, 0 FAILED

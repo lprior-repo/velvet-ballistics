@@ -4,7 +4,7 @@ STATUS: APPROVED
 
 ### Evidence Summary
 
-**QA Report (State 9):** PASS - `rtk cargo test -p vb_runtime runtime_error --lib` (19 passed), `rtk cargo test -p velvet_ballastics --test admission_durability_code` (1 passed), `moon run :quick` completed.
+**QA Report (State 9):** PASS - `rtk cargo test -p vb_runtime runtime_error --lib` (19 passed), `rtk cargo test -p velvet_ballistics --test admission_durability_code` (1 passed), `moon run :quick` completed.
 
 **QA Review (State 9):** APPROVED.
 

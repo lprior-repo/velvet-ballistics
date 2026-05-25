@@ -99,9 +99,9 @@ Affected obligations:
 ### Release Gauntlet
 
 - `timeout 600s moon ci`: FAIL_LOCAL. `moon ci` completed in `1m 2s 734ms` with `Tasks: 12 completed, 3 failed, 5 skipped`.
-- Failure 1: `velvet-ballastics:source-length` failed with `fatal: not a git repository (or any parent up to mount point /)` and `cargo-mutants residue check failed`.
-- Failure 2: `velvet-ballastics:test` failed with `error writing dependencies to /tmp/sccacheq7OckB/deps.d: Disk quota exceeded (os error 122)` while compiling `makepad-widgets`.
-- Failure 3: `velvet-ballastics:mutants-smoke` failed with `Disk quota exceeded (os error 122)` while writing `/tmp/cargo-mutants-vb-qi37-6-IyC23O.tmp/crates/vb_core/src/diagnostic.rs`.
+- Failure 1: `velvet-ballistics:source-length` failed with `fatal: not a git repository (or any parent up to mount point /)` and `cargo-mutants residue check failed`.
+- Failure 2: `velvet-ballistics:test` failed with `error writing dependencies to /tmp/sccacheq7OckB/deps.d: Disk quota exceeded (os error 122)` while compiling `makepad-widgets`.
+- Failure 3: `velvet-ballistics:mutants-smoke` failed with `Disk quota exceeded (os error 122)` while writing `/tmp/cargo-mutants-vb-qi37-6-IyC23O.tmp/crates/vb_core/src/diagnostic.rs`.
 
 Affected obligation:
 
@@ -253,8 +253,8 @@ STATUS: PARTIAL_PASS_WITH_BLOCKERS
 
 ### Fuzz
 
-- `timeout 300s env TMPDIR=target/tmp RUSTC_WRAPPER= SCCACHE_DIR=target/tmp/sccache RUSTFLAGS="-C target-feature=-crt-static" cargo fuzz run capability_name_schema --target x86_64-unknown-linux-gnu -- -runs=1000`: exit 0. Built `velvet-ballastics-fuzz` and ran `target/x86_64-unknown-linux-gnu/release/capability_name_schema ... -runs=1000`.
-- `timeout 300s env TMPDIR=target/tmp RUSTC_WRAPPER= SCCACHE_DIR=target/tmp/sccache RUSTFLAGS="-C target-feature=-crt-static" cargo fuzz run capability_contract_schema --target x86_64-unknown-linux-gnu -- -runs=1000`: exit 0. Built `velvet-ballastics-fuzz` and ran `target/x86_64-unknown-linux-gnu/release/capability_contract_schema ... -runs=1000`.
+- `timeout 300s env TMPDIR=target/tmp RUSTC_WRAPPER= SCCACHE_DIR=target/tmp/sccache RUSTFLAGS="-C target-feature=-crt-static" cargo fuzz run capability_name_schema --target x86_64-unknown-linux-gnu -- -runs=1000`: exit 0. Built `velvet-ballistics-fuzz` and ran `target/x86_64-unknown-linux-gnu/release/capability_name_schema ... -runs=1000`.
+- `timeout 300s env TMPDIR=target/tmp RUSTC_WRAPPER= SCCACHE_DIR=target/tmp/sccache RUSTFLAGS="-C target-feature=-crt-static" cargo fuzz run capability_contract_schema --target x86_64-unknown-linux-gnu -- -runs=1000`: exit 0. Built `velvet-ballistics-fuzz` and ran `target/x86_64-unknown-linux-gnu/release/capability_contract_schema ... -runs=1000`.
 - Initial non-overridden fuzz retry classified the remaining default-target failure as `BLOCKED_ENVIRONMENT`: `libfuzzer-sys` could not find `x86_64-linux-musl-g++` for `x86_64-unknown-linux-musl`. The GNU target override is the passing local execution path.
 
 ### Proof Artifact Lint

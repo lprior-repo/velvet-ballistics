@@ -29,7 +29,7 @@
   ],
   "attempt": 3,
   "repair_evidence": {
-    "po007_test": "TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog => 6 passed",
+    "po007_test": "TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog => 6 passed",
     "po007_artifact_check": "test -s .evidence/vb-kyyf/acceptance-catalog-traceability.md => exit 0"
   }
 }

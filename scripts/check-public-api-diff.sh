@@ -13,7 +13,7 @@ packages=(
   vb_storage
   vb_validate
   vb_yaml
-  velvet-ballastics
+  velvet-ballistics
 )
 
 for package in "${packages[@]}"; do

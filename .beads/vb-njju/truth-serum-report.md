@@ -24,19 +24,19 @@ ALL EXIST
 → All required files present.
 
 ```
-$ cargo test --package velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog
+$ cargo test --package velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog
 cargo test: 13 passed (1 suite, 0.00s)
 ```
 → BDD-CAT-001 confirmed. Evidence: `target/test-output/PO-001-vb_hxm0_acceptance_catalog.log`
 
 ```
-$ cargo test --package velvet-ballastics-workspace-tests --test vb_njju_mutation_fuzz_property_closure
+$ cargo test --package velvet-ballistics-workspace-tests --test vb_njju_mutation_fuzz_property_closure
 cargo test: 5 passed (1 suite, 0.00s)
 ```
 → BOUNDARY-REL-002 confirmed.
 
 ```
-$ cargo test --package velvet-ballastics-workspace-tests --test vb_c3k9_current_api_mutation_plan
+$ cargo test --package velvet-ballistics-workspace-tests --test vb_c3k9_current_api_mutation_plan
 cargo test: 8 passed (1 suite, 0.00s)
 ```
 → MUT-PLAN-002 confirmed. Evidence: `target/test-output/PO-003-current-api-mutation-plan.log`
@@ -54,7 +54,7 @@ cargo test: 1 passed, 988 filtered out (1 suite, 4.32s)
 → PROP-REPLAY-002 confirmed.
 
 ```
-$ cargo test --package velvet-ballastics-workspace-tests --test vb_y1zq_boundary_inventory_contract
+$ cargo test --package velvet-ballistics-workspace-tests --test vb_y1zq_boundary_inventory_contract
 cargo test: 112 passed (1 suite, 0.00s)
 ```
 → BOUNDARY-FUZZ-001 confirmed. Evidence: `target/test-output/PO-012-boundary-inventory-contract.log`

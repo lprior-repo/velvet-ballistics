@@ -66,7 +66,7 @@ stderr: bash: scripts/check-ignored-fallible-results.sh: No such file or directo
 ```text
 command: moon run :lint-src
 exit: 0
-stdout: velvet-ballastics:lint-src completed; Tasks: 1 completed; EXIT=0
+stdout: velvet-ballistics:lint-src completed; Tasks: 1 completed; EXIT=0
 stderr: warnings for missing hashed fixture input paths only
 ```
 
@@ -135,7 +135,7 @@ stderr/stdout: InvalidInvocation: run from repository root; invalid_invocation_e
 ```text
 command: TMPDIR=target/tmp moon run :lint-src
 exit: 0
-stdout: velvet-ballastics:lint-src completed; Tasks: 1 completed.
+stdout: velvet-ballistics:lint-src completed; Tasks: 1 completed.
 ```
 
 ```text

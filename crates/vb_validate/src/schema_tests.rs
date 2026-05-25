@@ -22,7 +22,7 @@ fn valid_workflow_doc() -> WorkflowDoc {
     make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
         (
@@ -98,7 +98,7 @@ fn rejects_http_trigger() {
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
         (
@@ -197,7 +197,7 @@ fn validate_workflow_schema_returns_unknown_top_level_field_for_invalid_field() 
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
         (
@@ -224,7 +224,7 @@ fn validate_workflow_schema_returns_duplicate_key_for_duplicate_top_level_field(
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("first".to_owned())),
         ("name", FieldValue::String("second".to_owned())),
@@ -251,7 +251,7 @@ fn validate_workflow_schema_returns_duplicate_key_for_duplicate_step_field() {
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
         (
@@ -278,7 +278,7 @@ fn validate_workflow_schema_returns_unknown_step_field_for_invalid_step_field() 
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
         (
@@ -305,7 +305,7 @@ fn validate_workflow_schema_returns_missing_required_field_for_absent_name() {
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         (
             "when",
@@ -332,7 +332,7 @@ fn validate_workflow_schema_returns_missing_required_field_for_absent_steps() {
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
         (
@@ -363,7 +363,7 @@ fn validate_version_returns_invalid_version_for_bad_version() {
 fn validate_version_accepts_current_version() {
     let doc = make_workflow(vec![(
         "version",
-        FieldValue::String("velvet-ballastics/v1".to_owned()),
+        FieldValue::String("velvet-ballistics/v1".to_owned()),
     )]);
     assert_eq!(validate_version(&doc), Ok(()));
 }
@@ -409,7 +409,7 @@ fn validate_ids_returns_invalid_id_for_malformed_id() {
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
         (
@@ -437,7 +437,7 @@ fn validate_ids_returns_reserved_id_for_system_id() {
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
         (
@@ -489,7 +489,7 @@ fn validate_ids_accepts_valid_step_ids() {
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("my_workflow".to_owned())),
         (
@@ -518,7 +518,7 @@ fn validate_ids_rejects_step_id_with_spaces() {
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
         (
@@ -546,7 +546,7 @@ fn validate_ids_rejects_step_id_starting_with_digit() {
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
         (
@@ -574,7 +574,7 @@ fn validate_ids_rejects_step_id_with_special_chars() {
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
         (
@@ -885,11 +885,11 @@ fn get_string_with_multiple_fields_returns_correct_one() {
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("multi_test".to_owned())),
     ]);
-    assert_eq!(doc.get_string("version"), Some("velvet-ballastics/v1"));
+    assert_eq!(doc.get_string("version"), Some("velvet-ballistics/v1"));
     assert_eq!(doc.get_string("name"), Some("multi_test"));
 }
 
@@ -948,7 +948,7 @@ fn field_names_returns_correct_fields_for_workflow() {
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
     ]);
@@ -982,7 +982,7 @@ fn from_pairs_creates_workflow_with_given_pairs() {
     let pairs = vec![
         (
             "version".to_owned(),
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         (
             "name".to_owned(),
@@ -990,7 +990,7 @@ fn from_pairs_creates_workflow_with_given_pairs() {
         ),
     ];
     let doc = WorkflowDoc::from_pairs(pairs);
-    assert_eq!(doc.get_string("version"), Some("velvet-ballastics/v1"));
+    assert_eq!(doc.get_string("version"), Some("velvet-ballistics/v1"));
     assert_eq!(doc.get_string("name"), Some("roundtrip"));
 }
 
@@ -1028,7 +1028,7 @@ fn adversarial_reserved_id_input_is_rejected_as_reserved() {
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
         (
@@ -1056,7 +1056,7 @@ fn adversarial_reserved_id_vars_is_rejected_as_reserved() {
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
         (
@@ -1084,7 +1084,7 @@ fn adversarial_reserved_id_secrets_is_rejected_as_reserved() {
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
         (
@@ -1112,7 +1112,7 @@ fn adversarial_reserved_id_steps_is_rejected_as_reserved() {
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
         (
@@ -1140,7 +1140,7 @@ fn adversarial_reserved_id_error_is_rejected_as_reserved() {
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
         (
@@ -1168,7 +1168,7 @@ fn adversarial_reserved_id_attempt_is_rejected_as_reserved() {
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
         (
@@ -1271,7 +1271,7 @@ fn adversarial_duplicate_step_ids_in_full_workflow_is_rejected() {
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("dup_test".to_owned())),
         (
@@ -1374,7 +1374,7 @@ fn adversarial_empty_steps_sequence_is_rejected() {
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("empty_steps".to_owned())),
         (
@@ -1396,7 +1396,7 @@ fn adversarial_unknown_top_level_field_webhook_is_rejected() {
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
         (
@@ -1469,7 +1469,7 @@ fn adversarial_step_without_id_field_is_rejected() {
     let doc = make_workflow(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("no_id_test".to_owned())),
         (

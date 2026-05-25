@@ -20,7 +20,7 @@ STATUS: PASS
 6. Release evidence/check rows now carry explicit provenance/origin, reducing the ability to construct all-green evidence without source outcome context.
 
 ## Command results
-- PASS: `cargo nextest run -p velvet-ballastics-workspace --test vb_nf2u_ui_release_acceptance` — 8 passed, 0 skipped.
+- PASS: `cargo nextest run -p velvet-ballistics-workspace --test vb_nf2u_ui_release_acceptance` — 8 passed, 0 skipped.
 - PASS: `cargo nextest run -p vb_ui_snapshot -p xtask` — 130 passed, 0 skipped.
 - PASS: `cargo kani -p vb_ui_snapshot --harness inventory` — 1 harness verified, 0 failures.
 - PASS: `cargo kani -p vb_ui_snapshot --harness layout_` — 5 harnesses verified, 0 failures.

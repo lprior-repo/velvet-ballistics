@@ -1,7 +1,7 @@
 //! CLI Run and Lifecycle Behavior Tests
 //!
 //! Tests command parsing, run execution (happy and failure paths), exit code
-//! behavior, and input/output contracts for the velvet-ballastics CLI.
+//! behavior, and input/output contracts for the velvet-ballistics CLI.
 //!
 //! These are BEHAVIOR tests that verify observable CLI behavior by invoking
 //! the binary through process execution and checking stdout/stderr/exit codes.
@@ -9,29 +9,29 @@
 use std::path::PathBuf;
 use std::process::{Command, Output};
 
-/// Helper to get the path to the velvet-ballastics binary.
+/// Helper to get the path to the velvet-ballistics binary.
 fn vb_binary() -> PathBuf {
     // Use the cargo test environment or target directory
-    std::env::var("CARGO_BIN_EXE_velvet-ballastics")
+    std::env::var("CARGO_BIN_EXE_velvet-ballistics")
         .map(PathBuf::from)
         .ok()
         .or_else(|| {
             std::fs::canonicalize(std::path::Path::new(env!("CARGO_MANIFEST_DIR")))
                 .ok()
-                .map(|p| p.join("../../target/debug/velvet-ballastics"))
+                .map(|p| p.join("../../target/debug/velvet-ballistics"))
         })
-        .unwrap_or_else(|| PathBuf::from("velvet-ballastics"))
+        .unwrap_or_else(|| PathBuf::from("velvet-ballistics"))
 }
 
-/// Run the velvet-ballastics binary with the given args and return the output.
+/// Run the velvet-ballistics binary with the given args and return the output.
 fn run_vb(args: &[&str]) -> Output {
     let binary = vb_binary();
     let mut cmd = Command::new(&binary);
     cmd.args(args);
-    cmd.output().expect("failed to execute velvet-ballastics")
+    cmd.output().expect("failed to execute velvet-ballistics")
 }
 
-/// Check that velvet-ballastics prints help and exits successfully.
+/// Check that velvet-ballistics prints help and exits successfully.
 #[test]
 fn cli_help_command_succeeds() {
     let output = run_vb(&["help"]);
@@ -43,20 +43,20 @@ fn cli_help_command_succeeds() {
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
-        stdout.contains("velvet-ballastics") && stdout.contains("commands:"),
+        stdout.contains("velvet-ballistics") && stdout.contains("commands:"),
         "help output should contain command list: {}",
         stdout
     );
 }
 
-/// Check that velvet-ballastics prints version and exits successfully.
+/// Check that velvet-ballistics prints version and exits successfully.
 #[test]
 fn cli_version_command_succeeds() {
     let output = run_vb(&["version"]);
     assert!(output.status.success(), "version command should succeed");
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
-        stdout.contains("velvet-ballastics"),
+        stdout.contains("velvet-ballistics"),
         "version output should contain package name: {}",
         stdout
     );

@@ -19,7 +19,7 @@ attempt: 1-of-7
   - libfuzzer-sys 0.4.12: NCSA license not in allowlist
   - resvg 0.42.0: MPL-2.0 (copyleft) not in allowlist
   - usvg 0.42.0: MPL-2.0 (copyleft) not in allowlist
-  - velvet-ballastics-fuzz 0.1.0: no license field
+  - velvet-ballistics-fuzz 0.1.0: no license field
 - Advisory failures:
   - fxhash 0.2.1: RUSTSEC-2025-0057 (unmaintained)
 - Bans: ok
@@ -42,7 +42,7 @@ attempt: 1-of-7
 
 ### bench-build
 - Status: EXISTS (13 benchmark files in benches/)
-- Benchmarks: velvet_ballastics.rs (main suite), action_dispatch.rs, action_queuing.rs, array_queue.rs, cold_start.rs, collect_page.rs, ir_traversal.rs, memory_footprint.rs, pagination_cost.rs, rtrb.rs, snapshot_restore.rs, snapshot_save.rs, timer_wheel_tick.rs
+- Benchmarks: velvet_ballistics.rs (main suite), action_dispatch.rs, action_queuing.rs, array_queue.rs, cold_start.rs, collect_page.rs, ir_traversal.rs, memory_footprint.rs, pagination_cost.rs, rtrb.rs, snapshot_restore.rs, snapshot_save.rs, timer_wheel_tick.rs
 - Main suite covers: yaml_parse, compile_validate, expression, runtime_core, storage_ipc, generated_mode, ir_vs_generated, generated_execution, ir_vs_generated_ratio
 - Criterion-based with metadata embedding (BENCH_METADATA constant)
 - No `target/criterion/` directory exists - benchmark-proof has never been run
@@ -100,4 +100,4 @@ Note: `supply-chain` is NOT in CI (runInCI: false).
 - supply-chain/: audits.toml, config.toml, imports.lock
 - .moon/tasks/all.yml: All moon task definitions
 - docs/rust-governance.md: Governance policy document
-- benches/velvet_ballastics.rs: Main benchmark suite with metadata
+- benches/velvet_ballistics.rs: Main benchmark suite with metadata

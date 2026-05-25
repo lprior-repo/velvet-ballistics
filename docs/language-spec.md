@@ -1,7 +1,7 @@
 # Velvet Ballastics Workflow Language v1
 
 Status: draft
-Canonical workflow version: `velvet-ballastics/v1`
+Canonical workflow version: `velvet-ballistics/v1`
 Canonical action manifest version: `velvet/action/v1`
 Suggested file extensions: `.velvet.yaml`, `.vb.yaml`, `.workflow.yaml`
 
@@ -70,7 +70,7 @@ vb
 Each step has an `id`. After a step succeeds, its immutable output is available as `$step_id.field`.
 
 ```yaml
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: hello_world
 
 when:
@@ -176,12 +176,12 @@ result:
 examples:
 ```
 
-Unknown top-level fields are validation errors. `version` must be exactly `velvet-ballastics/v1`.
+Unknown top-level fields are validation errors. `version` must be exactly `velvet-ballistics/v1`.
 
 Valid minimal workflow:
 
 ```yaml
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: hello_world
 
 when:
@@ -261,7 +261,7 @@ v1 is strict. These legacy/internal aliases are not accepted as public YAML prim
 A future CLI migration command may rewrite old files into canonical v1 syntax:
 
 ```bash
-velvet migrate old.yaml --from twerk/v1 --to velvet-ballastics/v1
+velvet migrate old.yaml --from twerk/v1 --to velvet-ballistics/v1
 ```
 
 ## Triggers
@@ -1710,7 +1710,7 @@ Every event should include:
 ## Example: Webhook Issue Triage
 
 ```yaml
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: issue_triage
 
 when:
@@ -1797,7 +1797,7 @@ examples:
 ## Example: Customer Report
 
 ```yaml
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: customer_report
 
 when:

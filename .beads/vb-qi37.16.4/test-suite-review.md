@@ -43,7 +43,7 @@ $ rtk grep -rn "mockall\|Mock.*::new()\|\.expect_" \
 
 ### [PASS] Integration test purity
 ```bash
-$ rtk grep -rn "use crate::" crates/velvet_ballastics/tests/
+$ rtk grep -rn "use crate::" crates/velvet_ballistics/tests/
 (no output)
 ```
 ```bash
@@ -124,7 +124,7 @@ cargo test: 13 passed, 391 skipped (1 binary, 0.030s)
 ### [PASS] moon run :test
 ```bash
 $ moon run :test
-velvet-ballastics:test | 9867 tests run: 9867 passed, 0 skipped
+velvet-ballistics:test | 9867 tests run: 9867 passed, 0 skipped
 Tasks: 4 completed (1 cached)
 Time: 38s 159ms
 EXIT: 0
@@ -163,7 +163,7 @@ EXIT: 0
 | `crates/vb_ipc/src/lib.rs:338` | Added `taint: Option<Taint>` to `IpcPayload::AnswerAsk` | 4 new taint roundtrip tests + 3 existing tests updated |
 | `crates/vb_ipc/src/server/handlers.rs:218,265` | Destructure `taint` field; `unwrap_or(Taint::Clean)` | `red_ask_answer_secret_redaction` (runtime enforcement) |
 | `crates/vb_ipc/src/tests.rs:605,1311,1328` | Added `taint: None` to existing test constructions | All 13 answer tests pass |
-| `crates/velvet_ballastics/src/main.rs:2662` | Added `taint: None` to CLI IPC call | Covered by `moon run :test` |
+| `crates/velvet_ballistics/src/main.rs:2662` | Added `taint: None` to CLI IPC call | Covered by `moon run :test` |
 | `crates/vb_ui/src/ipc_bridge.rs:394` | Added `taint: None` to IPC bridge call | Covered by `moon run :test` |
 
 ---

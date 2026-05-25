@@ -15,7 +15,7 @@ Proptest and Kani suites test independent copies of `parse_schema_version`, `par
 Add a new test file `crates/workspace_tests/tests/contracts_production_binding.rs` that imports directly from the xtask crate:
 
 ```rust
-use velvet_ballastics_xtask::contracts::{
+use velvet_ballistics_xtask::contracts::{
     ContractKind, ContractError, DiscoveryReport, ReportSummary,
     parse_schema_version, compare_semver, parse_vet_exit_code,
     gate_evidence_from_report,

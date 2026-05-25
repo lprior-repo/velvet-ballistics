@@ -31,7 +31,7 @@ cargo check -p vb_ipc
 cargo clippy -p vb_ipc -- -D warnings
 
 # Gate 3: Workspace tests compile
-cargo check -p velvet-ballastics-workspace-tests --tests
+cargo check -p velvet-ballistics-workspace-tests --tests
 ```
 
 All three gates must exit `0` with zero errors and zero warnings.

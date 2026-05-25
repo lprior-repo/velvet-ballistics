@@ -20,7 +20,7 @@ Line-count gate rejects every `.rs` file over 300 lines. The bead-local diff is 
 - `crates/vb_runtime/src/shard/impl_.rs`: 799 lines; bead diff adds `SubmitPrePersisted` dispatch.
 - `crates/vb_runtime/src/shard/lifecycle.rs`: 2106 lines; bead diff adds pre-persisted submit path and tests.
 - `crates/vb_runtime/src/shard/tests.rs`: 7005 lines; bead diff adds duplicate-submit coverage.
-- `crates/velvet_ballastics/tests/admission_evidence_integration.rs`: 877 lines; bead diff adds two admission/header integration tests.
+- `crates/velvet_ballistics/tests/admission_evidence_integration.rs`: 877 lines; bead diff adds two admission/header integration tests.
 
 ## Smallest safe unblock movement
 
@@ -164,13 +164,13 @@ Goal: keep one integration test crate name while every file stays below 300 line
 
 Files:
 
-- Keep `crates/velvet_ballastics/tests/admission_evidence_integration.rs` under 300 lines with only module declarations:
+- Keep `crates/velvet_ballistics/tests/admission_evidence_integration.rs` under 300 lines with only module declarations:
   - `mod admission_evidence_support;`
   - `mod admission_storage;`
   - `mod admission_execution;`
   - `mod admission_policy;`
   - `mod admission_taint;`
-- Add directory `crates/velvet_ballastics/tests/admission_evidence_integration/` with:
+- Add directory `crates/velvet_ballistics/tests/admission_evidence_integration/` with:
   - `admission_evidence_support.rs`: `fail_assert`, workflow builders, `test_config`, `temp_journal`, `FailingBeforeHeaderJournal`.
   - `admission_storage.rs`: `storage_failure_before_header_prevents_ack`, `restart_lookup_finds_persisted_header`, `submit_artifact_then_run_succeeds`.
   - `admission_execution.rs`: `evidence_chain_after_execution`.
@@ -189,13 +189,13 @@ jj diff --stat
 cargo fmt --all
 cargo test -p vb_runtime runtime::tests::submission::submit_direct_returns_durability_error_before_ack_when_header_cannot_persist
 cargo test -p vb_runtime shard::tests::submit_capacity::submit_rejects_duplicate_run_id
-cargo test -p velvet-ballastics --test admission_evidence_integration storage_failure_before_header_prevents_ack
-cargo test -p velvet-ballastics --test admission_evidence_integration restart_lookup_finds_persisted_header
+cargo test -p velvet-ballistics --test admission_evidence_integration storage_failure_before_header_prevents_ack
+cargo test -p velvet-ballistics --test admission_evidence_integration restart_lookup_finds_persisted_header
 
 # Line-count gate for touched runtime/test files:
 python3 - <<'PY'
 from pathlib import Path
-roots = [Path('crates/vb_runtime/src'), Path('crates/velvet_ballastics/tests')]
+roots = [Path('crates/vb_runtime/src'), Path('crates/velvet_ballistics/tests')]
 bad = []
 for root in roots:
     for path in root.rglob('*.rs'):

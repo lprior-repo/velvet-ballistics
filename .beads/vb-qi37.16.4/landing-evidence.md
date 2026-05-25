@@ -113,7 +113,7 @@ Diff summary:
 
 - `853 files changed, 6215 insertions(+), 274 deletions(-)`.
 - Includes many `states/26-05-11-*` generated TLA/TLC state artifacts, including very large binary files under `states/26-05-11-16-56-04/`.
-- Source changes include Rust files under `crates/vb_*`, `crates/velvet_ballastics`, `fuzz/fuzz_targets`, `xtask`, specs `AskAnswerLifecycle.{cfg,tla}`, and bead artifacts.
+- Source changes include Rust files under `crates/vb_*`, `crates/velvet_ballistics`, `fuzz/fuzz_targets`, `xtask`, specs `AskAnswerLifecycle.{cfg,tla}`, and bead artifacts.
 
 ## Remote Main / Integration Status
 

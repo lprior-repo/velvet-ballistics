@@ -4,7 +4,7 @@ STATUS: REFACTORED
 
 Bead-owned naming scan scope was split to satisfy the 300-line physical file limit without changing behavior.
 
-- Replaced the monolithic `crates/velvet_ballastics/src/naming_scan.rs` with cohesive modules under `crates/velvet_ballastics/src/naming_scan/`:
+- Replaced the monolithic `crates/velvet_ballistics/src/naming_scan.rs` with cohesive modules under `crates/velvet_ballistics/src/naming_scan/`:
   - `types.rs`, `config.rs`, `classify.rs`, `allowlist.rs`, `legacy.rs`, `line_scan.rs`, `discovery.rs`, `repository.rs`, `report.rs`, `ordering.rs`, `mod.rs`.
 - Split `tests/vb_37lc_canonical_spelling_red.rs` into a small harness plus focused test/helper modules under `tests/vb_37lc_canonical_spelling_red/`.
 - Kept public API exports unchanged through `naming_scan/mod.rs`.

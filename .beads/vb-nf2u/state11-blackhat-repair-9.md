@@ -33,8 +33,8 @@ STATUS: PASS
 - `rtk cargo clippy -p vb_ui_snapshot -p xtask --tests --all-features -- -D warnings` — PASS.
 - `if cargo xtask ai-release --bead vb-nf2u-missing; then exit 64; else true; fi` — PASS; unknown bead fails closed.
 - `rm -rf "target/vb-nf2u-negative-fixtures" && if cargo xtask ai-release --bead vb-nf2u; then exit 65; else true; fi` — PASS; missing fixtures fail closed.
-- `cargo nextest run -p velvet-ballastics-workspace --test vb_nf2u_ui_release_acceptance && cargo xtask ai-release --bead vb-nf2u` — PASS; acceptance 8/8 and positive release path passed.
-- `cargo nextest run -p velvet-ballastics-workspace --test vb_nf2u_ui_release_acceptance` — PASS; 8/8.
+- `cargo nextest run -p velvet-ballistics-workspace --test vb_nf2u_ui_release_acceptance && cargo xtask ai-release --bead vb-nf2u` — PASS; acceptance 8/8 and positive release path passed.
+- `cargo nextest run -p velvet-ballistics-workspace --test vb_nf2u_ui_release_acceptance` — PASS; 8/8.
 - `cargo nextest run -p vb_ui_snapshot -p xtask` — PASS; 130/130.
 - `cargo kani -p vb_ui_snapshot --harness inventory` persisted through `.evidence/vb-nf2u/kani-ui.txt` — PASS; 1 harness, 0 failures.
 - `cargo kani -p vb_ui_snapshot --harness layout_` persisted through `.evidence/vb-nf2u/kani-layout.txt` — PASS; 5 harnesses, 0 failures.

@@ -45,8 +45,8 @@
 - `cargo test -p vb_compile -- --nocapture`
 - `cargo test -p vb_storage -- --nocapture`
 - `cargo test -p vb_runtime -- --nocapture`
-- `cargo test -p velvet_ballastics --test cli_integration -- --nocapture`
-- `cargo test -p velvet-ballastics-workspace --test vb_qi37_1_1_red_recovery_contract_test -- --nocapture`
+- `cargo test -p velvet_ballistics --test cli_integration -- --nocapture`
+- `cargo test -p velvet-ballistics-workspace --test vb_qi37_1_1_red_recovery_contract_test -- --nocapture`
 - `cargo +nightly miri test -p vb_storage`
 - `cargo clippy --workspace --lib --bins --examples --all-features -- -D warnings`
 - `moon ci`

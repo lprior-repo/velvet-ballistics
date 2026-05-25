@@ -96,7 +96,7 @@ Suggested bead: `P1 replace timer maps with bounded timer wheel storage`
 Evidence:
 
 - Root `Cargo.toml:2-23` includes extra active crates (`vb_boundary_inventory`, `vb_doc`, `vb_proof_kernels`, `vb_cli`, `vb_verification`, `vb_benchmark`) and excludes `crates/workspace_tests`.
-- The active target in master Sections 23 and 34 lists core backend crates plus `velvet_ballastics` and workspace tests/fuzz expectations.
+- The active target in master Sections 23 and 34 lists core backend crates plus `velvet_ballistics` and workspace tests/fuzz expectations.
 
 Master violated:
 

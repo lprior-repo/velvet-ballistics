@@ -60,7 +60,7 @@ jq -c . .beads/vb-te1i/proof-obligations.planned.jsonl >/dev/null && echo "JSONL
 
 # Re-run evidence commands (should still pass)
 cargo test --package vb_ipc
-cargo test --package velvet-ballastics-workspace-tests --test vb_te1i_binary_ipc_acceptance
+cargo test --package velvet-ballistics-workspace-tests --test vb_te1i_binary_ipc_acceptance
 cargo clippy --package vb_ipc --lib --bins --examples -- -D warnings
 ```
 

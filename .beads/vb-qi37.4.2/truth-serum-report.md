@@ -283,7 +283,7 @@ All artifact paths referenced in assurance-bundle.md and verification-ledger.jso
 - Source checkout `/home/lewis/src/velvet-ballistics` was NOT written (isolation verified)
 - All bead work stayed in `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-4-2`
 - No production code, tests, proof code, or CI config changed in source checkout
-- Delivery scope covers 15 scoped files across vb_runtime, vb_storage, velvet_ballastics
+- Delivery scope covers 15 scoped files across vb_runtime, vb_storage, velvet_ballistics
 
 ### CHECK 4: Zero Runtime Panic Surface
 

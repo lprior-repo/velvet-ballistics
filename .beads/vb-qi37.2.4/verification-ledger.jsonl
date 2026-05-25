@@ -1,5 +1,5 @@
 {"id":"PROP-BUD-001","result":"PASS","evidence":"rtk cargo test --package vb_core --lib budget::vb_qi37_2_4_state8_tests -- --nocapture => 9 passed","owner_state":11,"rerun_from":11}
-{"id":"PROP-DIAG-001","result":"PASS","evidence":"rtk cargo test --package velvet-ballastics-workspace-tests --test vb_qi37_2_4_integration_budget_errors -- --nocapture => 47 passed","owner_state":11,"rerun_from":11}
+{"id":"PROP-DIAG-001","result":"PASS","evidence":"rtk cargo test --package velvet-ballistics-workspace-tests --test vb_qi37_2_4_integration_budget_errors -- --nocapture => 47 passed","owner_state":11,"rerun_from":11}
 {"id":"GATE-BUD-001","result":"PASS","evidence":"moon run :verify-proof => All proof checks passed","owner_state":11,"rerun_from":11}
 {"id":"GATE-BUD-002","result":"PASS","evidence":"moon run :verify-deep => All deep checks passed","owner_state":11,"rerun_from":11}
 {"id":"GATE-BUD-003","result":"PASS","evidence":"moon run :verify-standard => All standard checks passed; moon ci => 20 tasks completed","owner_state":11,"rerun_from":11}

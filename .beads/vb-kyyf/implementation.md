@@ -22,7 +22,7 @@ Final classification: `PASS_LOCAL` for requested State 11 State-10 repair scope;
 - PO-007 acceptance catalog expectation mismatch: `BLOCK_LOCAL -> REPAIRED`. Catalog tests now distinguish Rust test targets from `.evidence/*.md` executable evidence targets and expect 5 Rust targets, 7 evidence targets, 12 total executable targets, and 5 deferred beads.
 - PO-010 bead-local test-target dead-code cleanup from `moon ci`: `BLOCK_LOCAL -> REPAIRED`. The unused `run_runtime_public_surface` helper was removed and the required catalog-surface helpers are exercised by `given_vb_kyyf_scenario_finishes_when_runner_reports_then_evidence_path_is_traceable`; focused check and `moon ci` check phase no longer report the prior dead-code errors.
 - PO-001/PO-003/PO-006 exact `workspace_tests` package-command failures: `CONTROLLER_OWNED_REMAINS`. Per dispatch instruction, proof-obligation command rows were not edited; canonical package substitute passed.
-- New `moon ci` observation after repair: `OUT_OF_SCOPE_REMAINING`. `moon ci` reached `velvet-ballastics:test`, failed `vb_cli::mode_activation_integration_tests inspect_fails_fast_with_storage_error_on_invalid_path` (`left Some(0)`, `right Some(5)`), then timed out while other tasks continued. This was not the State 11 vb-kyyf dead-code failure being repaired here.
+- New `moon ci` observation after repair: `OUT_OF_SCOPE_REMAINING`. `moon ci` reached `velvet-ballistics:test`, failed `vb_cli::mode_activation_integration_tests inspect_fails_fast_with_storage_error_on_invalid_path` (`left Some(0)`, `right Some(5)`), then timed out while other tasks continued. This was not the State 11 vb-kyyf dead-code failure being repaired here.
 
 ## Files changed in this repair
 
@@ -35,12 +35,12 @@ Final classification: `PASS_LOCAL` for requested State 11 State-10 repair scope;
 ## Commands / status
 
 - `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p vb_codegen` — PASS, `367 passed`.
-- `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballastics-workspace-tests --test vb_kyyf_cross_run_determinism -- --test-threads=1` — PASS, `16 passed`.
-- `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog` — PASS, `6 passed`.
+- `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballistics-workspace-tests --test vb_kyyf_cross_run_determinism -- --test-threads=1` — PASS, `16 passed`.
+- `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog` — PASS, `6 passed`.
 - `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo fmt --check` — PASS.
 - `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo check --workspace --all-targets --all-features` — PASS.
-- `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo clippy -p vb_codegen -p velvet-ballastics-workspace-tests --lib --all-features -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap -D clippy::arithmetic_side_effects -D clippy::as_conversions -D clippy::let_underscore_must_use -D clippy::await_holding_lock` — PASS, `No issues found`.
-- `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 moon ci` — FAIL/TIMEOUT after prior requested repair passed: `velvet-ballastics:check` passed; `velvet-ballastics:test` failed `inspect_fails_fast_with_storage_error_on_invalid_path`; shell timeout at 300000 ms while `mutants-smoke` continued.
+- `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo clippy -p vb_codegen -p velvet-ballistics-workspace-tests --lib --all-features -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap -D clippy::arithmetic_side_effects -D clippy::as_conversions -D clippy::let_underscore_must_use -D clippy::await_holding_lock` — PASS, `No issues found`.
+- `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 moon ci` — FAIL/TIMEOUT after prior requested repair passed: `velvet-ballistics:check` passed; `velvet-ballistics:test` failed `inspect_fails_fast_with_storage_error_on_invalid_path`; shell timeout at 300000 ms while `mutants-smoke` continued.
 
 ## Power-of-Ten / zero-panic / performance
 
@@ -78,7 +78,7 @@ Final classification: `PASS_LOCAL` for PO-007 evidence artifact generation.
 ## Attempt 4 command evidence
 
 - `pwd -P` from `/home/lewis/src/bd-vb-kyyf-bdd` — PASS; output `/home/lewis/src/bd-vb-kyyf-bdd`.
-- `test "$(pwd -P)" = /home/lewis/src/bd-vb-kyyf-bdd && TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog` — PASS; `cargo test: 6 passed (1 suite, 0.00s)`.
+- `test "$(pwd -P)" = /home/lewis/src/bd-vb-kyyf-bdd && TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog` — PASS; `cargo test: 6 passed (1 suite, 0.00s)`.
 - `test "$(pwd -P)" = /home/lewis/src/bd-vb-kyyf-bdd && test -s .evidence/vb-kyyf/acceptance-catalog-traceability.md` — PASS; exit status 0.
 - `test "$(pwd -P)" = /home/lewis/src/bd-vb-kyyf-bdd && TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo fmt --check` — PASS; exit status 0.
 
@@ -131,10 +131,10 @@ Final classification: `PASS_LOCAL` for the requested State 10 attempt 5 public-s
 ## Attempt 5 command evidence
 
 - `pwd -P` from `/home/lewis/src/bd-vb-kyyf-bdd` — PASS; output `/home/lewis/src/bd-vb-kyyf-bdd`.
-- `test "$(pwd -P)" = /home/lewis/src/bd-vb-kyyf-bdd && TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballastics-workspace-tests --test vb_kyyf_cross_run_determinism -- --test-threads=1` — first run after initial repairs FAIL; remaining blockers were `BDD-KYYF-002` CLI trace and `BDD-KYYF-007` catalog path. Final rerun PASS; `cargo test: 16 passed (1 suite, 5.82s)`.
-- `test "$(pwd -P)" = /home/lewis/src/bd-vb-kyyf-bdd && TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog -- --test-threads=1` — PASS; `cargo test: 6 passed (1 suite, 0.00s)`.
+- `test "$(pwd -P)" = /home/lewis/src/bd-vb-kyyf-bdd && TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballistics-workspace-tests --test vb_kyyf_cross_run_determinism -- --test-threads=1` — first run after initial repairs FAIL; remaining blockers were `BDD-KYYF-002` CLI trace and `BDD-KYYF-007` catalog path. Final rerun PASS; `cargo test: 16 passed (1 suite, 5.82s)`.
+- `test "$(pwd -P)" = /home/lewis/src/bd-vb-kyyf-bdd && TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog -- --test-threads=1` — PASS; `cargo test: 6 passed (1 suite, 0.00s)`.
 - `test "$(pwd -P)" = /home/lewis/src/bd-vb-kyyf-bdd && TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo fmt --check` — PASS; exit status 0.
-- `test "$(pwd -P)" = /home/lewis/src/bd-vb-kyyf-bdd && TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo check -p vb_cli -p vb_storage -p velvet-ballastics-workspace-tests --all-targets` — PASS; `Finished dev profile`.
+- `test "$(pwd -P)" = /home/lewis/src/bd-vb-kyyf-bdd && TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo check -p vb_cli -p vb_storage -p velvet-ballistics-workspace-tests --all-targets` — PASS; `Finished dev profile`.
 
 ## Attempt 5 evidence artifacts populated
 
@@ -186,9 +186,9 @@ Final classification: `PASS_LOCAL` for the scoped BDD-KYYF-002 cap-unblock valid
 
 - `pwd -P` from `/home/lewis/src/bd-vb-kyyf-bdd` — PASS, exit status 0; output `/home/lewis/src/bd-vb-kyyf-bdd`.
 - `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo fmt --check` — PASS, exit status 0.
-- `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballastics-workspace-tests --test vb_kyyf_cross_run_determinism bdd_kyyf_001_to_006_require_executable_public_surfaces_not_catalog_bookkeeping_only -- --test-threads=1` — PASS, exit status 0; `cargo test: 1 passed, 15 filtered out (1 suite, 1.13s)`.
+- `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballistics-workspace-tests --test vb_kyyf_cross_run_determinism bdd_kyyf_001_to_006_require_executable_public_surfaces_not_catalog_bookkeeping_only -- --test-threads=1` — PASS, exit status 0; `cargo test: 1 passed, 15 filtered out (1 suite, 1.13s)`.
 - `test -s .evidence/vb-kyyf/storage-replay-resume.md` — PASS, exit status 0.
-- Optional compile-confidence gate: `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo check -p velvet-ballastics-workspace-tests --test vb_kyyf_cross_run_determinism` — PASS, exit status 0; `Finished dev profile [unoptimized + debuginfo] target(s) in 0.21s`.
+- Optional compile-confidence gate: `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo check -p velvet-ballistics-workspace-tests --test vb_kyyf_cross_run_determinism` — PASS, exit status 0; `Finished dev profile [unoptimized + debuginfo] target(s) in 0.21s`.
 
 ## Cap-unblock files changed by this pass
 

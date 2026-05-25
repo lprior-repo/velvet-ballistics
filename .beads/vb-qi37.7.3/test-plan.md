@@ -286,13 +286,13 @@ Determinism test: `fn validation_returns_same_exact_error_on_repeated_runs_for_s
 E2E CLI test 1: `fn cli_validate_reports_e050d_for_invalid_symbol_reference_fixture()`
 
 Given: fixture `tests/fixtures/vb_qi37_7_3/invalid_symbol_accessor.vbir` containing accessor `SymbolId::new(1)` with `symbols_count = 1`.
-When: `cargo run -p velvet-ballastics -- validate tests/fixtures/vb_qi37_7_3/invalid_symbol_accessor.vbir --json` is executed.
+When: `cargo run -p velvet-ballistics -- validate tests/fixtures/vb_qi37_7_3/invalid_symbol_accessor.vbir --json` is executed.
 Then: process exit code is `1`; stderr or JSON error output contains `E050D`, `SymbolReferenceOutOfRange`, `symbol 1`, and `AccessorField`; output does not contain `UNKNOWN` or `internal error`.
 
 E2E CLI test 2: `fn cli_run_compiled_reports_resource_error_for_invalid_resource_fixture()`
 
 Given: fixture `tests/fixtures/vb_qi37_7_3/resource_max_steps_exceeded.vbir` with two nodes and `max_steps = 1`.
-When: `cargo run -p velvet-ballastics -- run-compiled tests/fixtures/vb_qi37_7_3/resource_max_steps_exceeded.vbir --input-bin tests/fixtures/vb_qi37_7_3/input.bin --durability memory --json` is executed.
+When: `cargo run -p velvet-ballistics -- run-compiled tests/fixtures/vb_qi37_7_3/resource_max_steps_exceeded.vbir --input-bin tests/fixtures/vb_qi37_7_3/input.bin --durability memory --json` is executed.
 Then: process exit code is `1`; output contains `E050F`, `ResourceContractExceeded`, `max_steps`, `actual 2`, and `declared 1`.
 
 ## 4. Proptest Invariants
@@ -434,7 +434,7 @@ These checks are concrete acceptance gates, not promises:
 
 1. `moon ci` must pass.
 2. `cargo test -p vb_core -p vb_validate vb_qi37_7_3 -- --nocapture` must pass targeted tests.
-3. `cargo test -p velvet-ballastics cli_validate_reports_e050d_for_invalid_symbol_reference_fixture cli_run_compiled_reports_resource_error_for_invalid_resource_fixture -- --nocapture` must pass E2E tests.
+3. `cargo test -p velvet-ballistics cli_validate_reports_e050d_for_invalid_symbol_reference_fixture cli_run_compiled_reports_resource_error_for_invalid_resource_fixture -- --nocapture` must pass E2E tests.
 4. `cargo mutants --package vb_core --package vb_validate --minimum-test-timeout 60` must report `>= 90%` kill rate.
 5. `cargo fuzz run artifact_decode_admission -- -max_total_time=60` must complete with no crash.
 6. `cargo fuzz run action_contract_verifier -- -max_total_time=60` must complete with no crash.

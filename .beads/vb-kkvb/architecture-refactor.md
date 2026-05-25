@@ -33,7 +33,7 @@ REFACTORED: yes
 - `cargo check --package xtask` — passed.
 - `cargo clippy --package xtask --lib --bins -- -D warnings` — passed for production targets.
 - `cargo test --package xtask --lib --bins --tests` — passed: 42 tests.
-- `cargo test --package velvet-ballastics-workspace-tests --test vb_kkvb_xtask_red_phase --test vb_kkvb_xtask_density_explicit` — passed: 13 tests.
+- `cargo test --package velvet-ballistics-workspace-tests --test vb_kkvb_xtask_red_phase --test vb_kkvb_xtask_density_explicit` — passed: 13 tests.
 - File-length scan over bead-owned xtask/vb-kkvb Rust files — passed; no file >300 lines reported.
 
 ## Final line-length status

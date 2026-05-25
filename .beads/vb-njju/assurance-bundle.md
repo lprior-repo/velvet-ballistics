@@ -36,15 +36,15 @@
 
 | ID | Layer | Command | Exit | Result | Evidence |
 |----|-------|---------|------|--------|----------|
-| BDD-CAT-001 | proptest | `cargo test --package velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog` | 0 | PASS | 13 passed (1 suite, 0.00s) |
-| MUT-ADM-001 | cargo-mutants | `cargo mutants --package velvet-ballastics-workspace-tests --test vb_njju_mutation_fuzz_property_closure` | 0 | PASS | 56 mutants: 23 caught, 10 missed, 23 unviable |
-| MUT-PLAN-002 | cargo-mutants | `cargo test --package velvet-ballastics-workspace-tests --test vb_c3k9_current_api_mutation_plan` | 0 | PASS | 8 passed (1 suite, 0.00s) |
+| BDD-CAT-001 | proptest | `cargo test --package velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog` | 0 | PASS | 13 passed (1 suite, 0.00s) |
+| MUT-ADM-001 | cargo-mutants | `cargo mutants --package velvet-ballistics-workspace-tests --test vb_njju_mutation_fuzz_property_closure` | 0 | PASS | 56 mutants: 23 caught, 10 missed, 23 unviable |
+| MUT-PLAN-002 | cargo-mutants | `cargo test --package velvet-ballistics-workspace-tests --test vb_c3k9_current_api_mutation_plan` | 0 | PASS | 8 passed (1 suite, 0.00s) |
 | FUZZ-SMOKE-001 | cargo-fuzz | `moon run :fuzz-smoke` | 0 | PASS | yaml_events/ipc_frame/journal_event/compiled_ir all runnable |
 | FUZZ-BUILD-002 | cargo-fuzz | `moon run :fuzz-smoke` (includes cargo fuzz build) | 0 | PASS | cargo fuzz build exit 0; all targets present |
 | PROP-TAINT-001 | proptest | `cargo test --package vb_codegen --lib proptests::fixed_six_step_emitted_rust_and_ir_match_finished_signal_and_slots` | 0 | PASS | 1 passed, 369 filtered (1.75s) |
 | PROP-REPLAY-002 | proptest | `cargo test --package vb_storage --lib proptests::ppi_001_deterministic_replay_invariant` | 0 | PASS | 1 passed, 988 filtered (2.79s) |
-| BOUNDARY-FUZZ-001 | cargo-fuzz | `cargo test --package velvet-ballastics-workspace-tests --test vb_y1zq_boundary_inventory_contract` | 0 | PASS | 112 passed (1 suite, 0.00s) |
-| BOUNDARY-REL-002 | gauntlet-all | `cargo test --package velvet-ballastics-workspace-tests --test vb_njju_mutation_fuzz_property_closure` | 0 | PASS | 5 passed (1 suite, 0.00s) |
+| BOUNDARY-FUZZ-001 | cargo-fuzz | `cargo test --package velvet-ballistics-workspace-tests --test vb_y1zq_boundary_inventory_contract` | 0 | PASS | 112 passed (1 suite, 0.00s) |
+| BOUNDARY-REL-002 | gauntlet-all | `cargo test --package velvet-ballistics-workspace-tests --test vb_njju_mutation_fuzz_property_closure` | 0 | PASS | 5 passed (1 suite, 0.00s) |
 | TRACE-JSONL-001 | static-scan | `python3 -c 'import json, pathlib; [...]'` | 0 | PASS | proof-obligations.jsonl (12 rows) + traceability-matrix.jsonl (18 rows) valid |
 | TLA-WAIVE-001 | waiver | review tla-spec.md | 0 | WAIVED | owner: State 3; reason: no temporal behavior; expiry: State 4 if stateful workflow introduced |
 | LEAN-WAIVE-001 | waiver | review lean-contract.md | 0 | WAIVED | owner: State 3; reason: no theorem kernel; expiry: State 4 if evidence lattice introduced |

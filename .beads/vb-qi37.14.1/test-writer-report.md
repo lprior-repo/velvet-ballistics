@@ -67,7 +67,7 @@
   "exit_code": 1,
   "kind": "DiagnosticReport",
   "message": "step 99 not found in workflow",
-  "schema_version": "velvet-ballastics/cli-output/v1"
+  "schema_version": "velvet-ballistics/cli-output/v1"
 }
 ```
 
@@ -142,5 +142,5 @@ The failing test `run_step_invalid_step_id_json_includes_error_details` proves:
 
 - Tests are designed to be deterministic with no flakiness
 - Each test is self-contained with tempfile cleanup
-- Binary execution via `CARGO_BIN_EXE_velvet-ballastics`
+- Binary execution via `CARGO_BIN_EXE_velvet-ballistics`
 - All assertions have descriptive messages for debugging

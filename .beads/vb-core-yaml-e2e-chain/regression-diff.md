@@ -35,7 +35,7 @@ STATUS: APPROVED (no regressions, 3 FAIL_LOCAL bead-local code issues, 2 DEFERRE
    - `STATIC-BOUNDARY-009` fails: `cargo clippy` exits 101.
    - Owner: State 8.
 
-3. **Stale obligation package name** (E2E-REC-008, State 5/8): `proof-obligations.jsonl` command named package `velvet-ballastics-workspace` but the test target is in `velvet-ballastics-workspace-tests`. **FIXED in State 11 retry 3**: updated proof-obligations.jsonl metadata. Corrected command passes 19 tests.
+3. **Stale obligation package name** (E2E-REC-008, State 5/8): `proof-obligations.jsonl` command named package `velvet-ballistics-workspace` but the test target is in `velvet-ballistics-workspace-tests`. **FIXED in State 11 retry 3**: updated proof-obligations.jsonl metadata. Corrected command passes 19 tests.
 
 ## Pre-Existing Failures (DEFERRED_GLOBAL — not caused by this bead)
 

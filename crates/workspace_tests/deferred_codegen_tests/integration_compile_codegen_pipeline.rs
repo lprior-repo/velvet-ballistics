@@ -26,7 +26,7 @@ use vb_core::workflow::{
 #[test]
 fn minimal_finish_workflow_compiles_and_generates() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: minimal_finish
 when:
   manual: {}
@@ -46,7 +46,7 @@ steps:
 #[test]
 fn constant_expression_workflow_codegen() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: const_expr
 when:
   manual: {}
@@ -158,7 +158,7 @@ steps:
 #[test]
 fn compile_error_for_duplicate_step_id() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: dup_ids
 when:
   manual: {}
@@ -192,7 +192,7 @@ fn compiler_respects_source_size_limit() {
 
     // 95 bytes — under the 100-byte limit so should succeed
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: s
 when:
   manual: {}
@@ -215,7 +215,7 @@ fn compiler_rejects_source_exceeding_size_limit() {
 
     // A very long name should exceed the limit
     let source = format!(
-        r#"version: velvet-ballastics/v1
+        r#"version: velvet-ballistics/v1
 name: {}
 when:
   manual: {{}}
@@ -238,7 +238,7 @@ fn compiler_respects_depth_limit() {
     });
 
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: nested
 when:
   manual: {}
@@ -260,7 +260,7 @@ fn compiler_rejects_deeply_nested_mapping() {
     });
 
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: nested
 when:
   manual: {}
@@ -281,7 +281,7 @@ steps:
 #[test]
 fn generated_code_contains_no_unsafe() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: safe_test
 when:
   manual: {}
@@ -300,7 +300,7 @@ steps:
 #[test]
 fn generated_code_contains_resource_contract() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: contract_test
 when:
   manual: {}

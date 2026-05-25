@@ -13,7 +13,7 @@ STATUS: APPROVED
 
 ### Integration Tests
 ```
-cargo nextest run --package velvet-ballastics-workspace-tests --test vb_qi37_2_4_integration_budget_errors
+cargo nextest run --package velvet-ballistics-workspace-tests --test vb_qi37_2_4_integration_budget_errors
 Result: 47 tests run: 46 passed, 1 failed (RunTimeExceeded - intentional GAP-2)
 ```
 
@@ -30,7 +30,7 @@ Failing tests (EXPECTED per test-writer-report):
 
 ### Compilation
 ```
-cargo build --package velvet-ballastics-workspace-tests --tests: 0 crates compiled, Finished in 0.19s
+cargo build --package velvet-ballistics-workspace-tests --tests: 0 crates compiled, Finished in 0.19s
 cargo build --package vb_core --tests: 0 crates compiled, Finished in 0.03s
 ```
 Both packages compile successfully.
@@ -88,7 +88,7 @@ Both packages compile successfully.
 
 **[PASS] Integration tests pass (46/47)**
 ```bash
-cargo nextest run --package velvet-ballastics-workspace-tests --test vb_qi37_2_4_integration_budget_errors
+cargo nextest run --package velvet-ballistics-workspace-tests --test vb_qi37_2_4_integration_budget_errors
 # Result: 47 tests run: 46 passed, 1 failed (RunTimeExceeded - GAP-2 documentation)
 ```
 
