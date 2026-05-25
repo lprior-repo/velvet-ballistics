@@ -1631,7 +1631,7 @@ pub fn fuzz_expr_eval(data: &[u8]) {
             ) {
                 Ok((slot_val, _taint)) => {
                     eval_count += 1;
-                    debug_assert!(
+                    assert!(
                         !matches!(slot_val, vb_core::SlotValue::Null),
                         "eval_expr_with_store returned Ok(Null) — evaluator produced no useful result"
                     );
@@ -1652,7 +1652,7 @@ pub fn fuzz_expr_eval(data: &[u8]) {
         // be evaluable. A workflow that declares expressions but evaluates zero of them
         // suggests the evaluator is not being invoked correctly.
         if workflow.expression(vb_core::ExprIdx::new(0)).is_some() {
-            debug_assert!(
+            assert!(
                 eval_count > 0,
                 "workflow has expressions but eval_count = 0 — evaluator may not be running"
             );
