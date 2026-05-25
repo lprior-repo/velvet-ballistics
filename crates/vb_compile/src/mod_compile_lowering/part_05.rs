@@ -155,6 +155,27 @@ pub(super) fn digest_step_primitive(
                 _ => hasher.update(b"unsupported"),
             };
         }
+        vb_yaml::ast::StepPrimitive::Collect {
+            variable,
+            source,
+            pages,
+            items,
+            body,
+        } => {
+            hasher.update(b"collect");
+            hasher.update(variable.as_bytes());
+            hasher.update(source.as_bytes());
+            if let Some(p) = pages {
+                hasher.update(&p.to_le_bytes());
+            }
+            if let Some(i) = items {
+                hasher.update(&i.to_le_bytes());
+            }
+            for step in body {
+                hasher.update(step.id.as_bytes());
+                digest_step_primitive(hasher, &step.primitive);
+            }
+        }
         other => {
             hasher.update(canonical_primitive_name(other).as_bytes());
         }
