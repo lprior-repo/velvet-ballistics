@@ -254,7 +254,13 @@ fn digest_step_primitive(hasher: &mut blake3::Hasher, primitive: &vb_yaml::ast::
                 vb_yaml::ast::ScalarValue::Integer(value) => hasher.update(&value.to_le_bytes()),
             };
         }
-        vb_yaml::ast::StepPrimitive::Collect { variable, source, pages, items, body } => {
+        vb_yaml::ast::StepPrimitive::Collect {
+            variable,
+            source,
+            pages,
+            items,
+            body,
+        } => {
             hasher.update(b"collect");
             hasher.update(variable.as_bytes());
             hasher.update(source.as_bytes());

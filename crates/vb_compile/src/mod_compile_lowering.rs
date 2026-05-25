@@ -14,6 +14,9 @@ mod part_11;
 mod part_12;
 mod part_13;
 
+#[cfg(test)]
+mod tests;
+
 #[allow(unused_imports)]
 pub use part_01::*;
 #[allow(unused_imports)]

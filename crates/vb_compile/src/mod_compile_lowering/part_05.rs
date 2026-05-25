@@ -95,7 +95,7 @@ pub(super) fn canonical_finish_slot(
     }
 }
 
-pub(super) fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) -> &'static str {
+pub(crate) fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) -> &'static str {
     match primitive {
         vb_yaml::ast::StepPrimitive::Set { .. } => "set",
         vb_yaml::ast::StepPrimitive::Save { .. } => "save",
@@ -137,7 +137,7 @@ pub(super) fn canonical_digest(source: &vb_yaml::ast::WorkflowSource) -> Workflo
     WorkflowDigest::from_bytes(hasher.finalize().into())
 }
 
-pub(super) fn digest_step_primitive(
+pub(crate) fn digest_step_primitive(
     hasher: &mut blake3::Hasher,
     primitive: &vb_yaml::ast::StepPrimitive,
 ) {
