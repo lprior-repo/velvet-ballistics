@@ -14,7 +14,8 @@
 use proptest::prelude::*;
 use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowError, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowError,
+    WorkflowParts,
 };
 
 // ---------------------------------------------------------------------------
@@ -22,18 +23,16 @@ use vb_core::workflow::{
 // ---------------------------------------------------------------------------
 
 fn minimal_valid_parts() -> WorkflowParts {
-    let nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
-                result: SlotIdx::new(0),
-            },
+    let nodes = vec![CompiledNode {
+        id: StepIdx::new(0),
+        output: Some(SlotIdx::new(0)),
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
         },
-    ];
+    }];
 
     WorkflowParts {
         name: Box::from("test"),

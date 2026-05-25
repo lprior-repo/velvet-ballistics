@@ -156,17 +156,21 @@ pub(super) fn emit_together_branches(
     Ok(())
 }
 
+pub(super) struct CollectLowering<'a> {
+    pub(super) source: &'a str,
+    pub(super) pages: Option<u32>,
+    pub(super) items: Option<u32>,
+    pub(super) body: &'a [vb_yaml::ast::StepAst],
+    pub(super) next: Option<StepIdx>,
+}
+
 pub(super) fn lower_canonical_collect(
     index: usize,
     id: StepIdx,
-    source: &str,
-    pages: Option<u32>,
-    items: Option<u32>,
-    body: &[vb_yaml::ast::StepAst],
-    next: Option<StepIdx>,
+    collect: CollectLowering<'_>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
-    let source = slot_from_text(source, index, "collect.source")?;
+    let source = slot_from_text(collect.source, index, "collect.source")?;
     let body_step =
         checked_step_offset(id, 1, "collect", "body").map_err(|e| CompileErrors(vec![e]))?;
     let page = checked_step_offset(id, 2, "collect", "page").map_err(|e| CompileErrors(vec![e]))?;
@@ -180,13 +184,20 @@ pub(super) fn lower_canonical_collect(
         on_error: None,
         kind: CompiledNodeKind::CollectStart {
             source,
-            limit: pages.unwrap_or(1),
-            page_size: items.unwrap_or(1),
+            limit: collect.pages.unwrap_or(1),
+            page_size: collect.items.unwrap_or(1),
             body: body_step,
             done,
         },
     });
-    emit_single_body_set(body, body_step, SlotIdx::new(1), Some(page), builder, false)?;
+    emit_single_body_set(
+        collect.body,
+        body_step,
+        SlotIdx::new(1),
+        Some(page),
+        builder,
+        false,
+    )?;
     builder.push_node(CompiledNode {
         id: page,
         output: None,
@@ -202,7 +213,7 @@ pub(super) fn lower_canonical_collect(
     builder.push_node(CompiledNode {
         id: done,
         output: None,
-        next,
+        next: collect.next,
         error_slot: None,
         on_error: None,
         kind: CompiledNodeKind::CollectFinish {

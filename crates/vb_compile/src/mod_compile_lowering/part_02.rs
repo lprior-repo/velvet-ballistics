@@ -1,6 +1,6 @@
 #![allow(unused_imports)]
 use super::*;
-use crate::mod_compile_errors::{non_string_key_error, CompileError, CompileErrors};
+use crate::mod_compile_errors::{CompileError, CompileErrors, non_string_key_error};
 use crate::mod_compile_validation::{
     reject_unsupported_for_each_fields, validate_canonical_compile_scope,
 };
@@ -46,7 +46,18 @@ pub(super) fn lower_canonical_step(
             items,
             body,
             ..
-        } => lower_canonical_collect(index, id, source, *pages, *items, body, next, builder),
+        } => lower_canonical_collect(
+            index,
+            id,
+            CollectLowering {
+                source,
+                pages: *pages,
+                items: *items,
+                body,
+                next,
+            },
+            builder,
+        ),
         vb_yaml::ast::StepPrimitive::Aggregate {
             input,
             initial,
@@ -208,8 +219,12 @@ pub(super) fn lower_canonical_choose(
             },
         ]));
     }
-    #[allow(clippy::indexing_slicing)]
-    let branch = &branches[0];
+    let branch = branches.first().ok_or_else(|| {
+        CompileErrors(vec![CompileError::UnsupportedStepPrimitive {
+            step: index,
+            primitive: "choose",
+        }])
+    })?;
     let condition = slot_from_text(&branch.when, index, "choose.branches[].when")?;
     // If branch has non-empty steps, we don't support it yet
     if !branch.steps.is_empty() {

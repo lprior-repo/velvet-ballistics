@@ -853,14 +853,6 @@ fn compile_yaml_with_api(
     }
 }
 
-fn compile_steps_error_with_api(
-    steps: &str,
-    api_path: PublicApiPath,
-) -> Result<CompileErrors, String> {
-    let yaml = workflow_yaml(steps);
-    compile_yaml_error_with_api(&yaml, api_path)
-}
-
 fn compile_document_or_steps_error_with_api(
     body: &str,
     api_path: PublicApiPath,
@@ -1295,28 +1287,6 @@ fn assert_finish_node(
         other => return Err(format!("expected Finish at node {index}, got {other:?}")),
     }
     Ok(())
-}
-
-fn assert_unsupported_step_primitive(
-    case_name: &str,
-    api_path: PublicApiPath,
-    actual: &CompileError,
-    expected_step: usize,
-    expected_primitive: &'static str,
-) -> Result<(), String> {
-    match actual {
-        CompileError::UnsupportedStepPrimitive { step, primitive } => {
-            assert_eq!(
-                (*step, *primitive),
-                (expected_step, expected_primitive),
-                "api {api_path:?} case {case_name} unsupported primitive payload"
-            );
-            Ok(())
-        }
-        other => Err(format!(
-            "api {api_path:?} case {case_name} expected UnsupportedStepPrimitive, got {other:?}"
-        )),
-    }
 }
 
 fn assert_dense_node_ids(workflow: &CompiledWorkflow, case_name: &str) -> Result<(), String> {

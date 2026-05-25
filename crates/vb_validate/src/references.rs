@@ -780,8 +780,14 @@ mod tests {
 
     #[test]
     fn parse_step_reference_parses_valid_step_reference() {
-        assert_eq!(parse_step_reference("$steps.build.output"), Some(("build", "output")));
-        assert_eq!(parse_step_reference("$step.build.output"), Some(("build", "output")));
+        assert_eq!(
+            parse_step_reference("$steps.build.output"),
+            Some(("build", "output"))
+        );
+        assert_eq!(
+            parse_step_reference("$step.build.output"),
+            Some(("build", "output"))
+        );
         assert_eq!(parse_step_reference("$steps.build"), None); // missing field
         assert_eq!(parse_step_reference("$input.user"), None); // not a step reference
         assert_eq!(parse_step_reference("steps.build.output"), None); // missing $
@@ -792,11 +798,8 @@ mod tests {
         // Given step_ids ["step1", "step2", "step3"] and current step index 2
         let tables = make_tables(&[], &[], &[], &["step1", "step2", "step3"]);
         // When validating a reference to step1 (index 0) from step3 (index 2)
-        let result = validate_single_reference_with_context(
-            "$steps.step1.output",
-            &tables,
-            Some(2),
-        );
+        let result =
+            validate_single_reference_with_context("$steps.step1.output", &tables, Some(2));
         // Then it succeeds (prior step reference)
         assert_eq!(result, Ok(()));
     }
@@ -806,13 +809,13 @@ mod tests {
         // Given step_ids ["step1", "step2", "step3"] and current step index 1
         let tables = make_tables(&[], &[], &[], &["step1", "step2", "step3"]);
         // When validating a reference to step3 (index 2) from step2 (index 1)
-        let result = validate_single_reference_with_context(
-            "$steps.step3.output",
-            &tables,
-            Some(1),
-        );
+        let result =
+            validate_single_reference_with_context("$steps.step3.output", &tables, Some(1));
         // Then it fails (future step reference)
-        assert!(matches!(result, Err(ValidationError::FutureReference { .. })));
+        assert!(matches!(
+            result,
+            Err(ValidationError::FutureReference { .. })
+        ));
     }
 
     #[test]
@@ -820,13 +823,13 @@ mod tests {
         // Given step_ids ["step1", "step2", "step3"] and current step index 1
         let tables = make_tables(&[], &[], &[], &["step1", "step2", "step3"]);
         // When validating a reference to step2 (index 1) from step2 (index 1)
-        let result = validate_single_reference_with_context(
-            "$steps.step2.output",
-            &tables,
-            Some(1),
-        );
+        let result =
+            validate_single_reference_with_context("$steps.step2.output", &tables, Some(1));
         // Then it fails (same-step reference)
-        assert!(matches!(result, Err(ValidationError::FutureReference { .. })));
+        assert!(matches!(
+            result,
+            Err(ValidationError::FutureReference { .. })
+        ));
     }
 
     #[test]

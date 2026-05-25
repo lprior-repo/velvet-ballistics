@@ -54,8 +54,8 @@ pub fn compile_source(
         resource_contract: ResourceContract::DEFAULT,
         step_names: step_names.into_boxed_slice(),
     };
-    CompiledWorkflow::try_from_parts(parts)
-        .map_err(|e| CompileErrors(vec![e.into()]))
+    vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
+    CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))
 }
 
 #[derive(Clone, Copy)]

@@ -149,7 +149,9 @@ fn collect_references_from_expression(
         AstExpression::Parsed(expression) => {
             collect_references_from_parsed_expression(expression, tables, errors, step_index);
         }
-        AstExpression::Literal(value) => collect_references_from_value(value, tables, errors, step_index),
+        AstExpression::Literal(value) => {
+            collect_references_from_value(value, tables, errors, step_index)
+        }
     }
 }
 
@@ -193,7 +195,9 @@ fn collect_references_from_value(
                 errors.push(e);
             }
         }
-        AstValue::Sequence(values) => collect_references_from_values(values, tables, errors, step_index),
+        AstValue::Sequence(values) => {
+            collect_references_from_values(values, tables, errors, step_index)
+        }
         AstValue::Mapping(entries) => {
             collect_references_from_value_entries(entries, tables, errors, step_index)
         }

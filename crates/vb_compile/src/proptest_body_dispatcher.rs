@@ -166,6 +166,69 @@ proptest! {
 }
 
 // ─────────────────────────────────────────────────────────────────
+// PO-021: Multi-step body (len > 1) returns StepFieldShape
+// ─────────────────────────────────────────────────────────────────
+
+/// Strategy for multi-step body (2+ steps).
+pub fn multi_step_body_strategy() -> impl Strategy<Value = Vec<StepAst>> {
+    any::<i64>().prop_map(|value| {
+        vec![
+            StepAst {
+                id: "set".to_string(),
+                name: None,
+                condition: None,
+                primitive: StepPrimitive::Set {
+                    output: "x".to_string(),
+                    value: value.to_string(),
+                },
+                with: None,
+                retry: None,
+                on_error: None,
+                then: None,
+            },
+            StepAst {
+                id: "set".to_string(),
+                name: None,
+                condition: None,
+                primitive: StepPrimitive::Set {
+                    output: "y".to_string(),
+                    value: (value + 1).to_string(),
+                },
+                with: None,
+                retry: None,
+                on_error: None,
+                then: None,
+            },
+        ]
+    })
+}
+
+proptest! {
+    /// PO-021 H1: Multi-step body (len > 1) always returns StepFieldShape (100 iterations).
+    #[test]
+    fn proptest_body_dispatcher_multi_step(body in multi_step_body_strategy()) {
+        let id = StepIdx::new(0);
+        let slot = SlotIdx::new(1);
+        let mut builder = SlotCompiler::new();
+
+        prop_assert!(body.len() > 1, "strategy must produce multi-step body");
+
+        let result = emit_single_body_set(&body, id, slot, None, &mut builder, false);
+
+        // Must return error
+        prop_assert!(result.is_err(), "multi-step body must return error");
+
+        // Error must be StepFieldShape with "exactly one set step"
+        let err = result.unwrap_err();
+        let is_step_field_shape = err.0.iter().any(|e| {
+            matches!(e, vb_compile::CompileError::StepFieldShape { field, expected, .. }
+                if *field == "steps" && expected.contains("one"))
+        });
+        prop_assert!(is_step_field_shape, "multi-step body returns StepFieldShape with 'exactly one set step'");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
 // PO-020: emit_single_body_set invariant
 // ─────────────────────────────────────────────────────────────────
 

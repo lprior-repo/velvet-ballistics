@@ -3,6 +3,9 @@
 # Each over-limit file must have a validated entry or be split below 300 lines.
 # Rows below are the pre-existing architectural-drift baseline captured by vb-jpq7.47.
 
+verification/flux/vb_rpch_flux_r8.rs|lewis|vb-rpch|split-proof-artifact-before-release|Pre-existing Flux verification artifact (319 lines); retained as single proof harness until verifier-lane artifact split.
+verification/flux/vb_rpch_flux_r9.rs|lewis|vb-rpch|split-proof-artifact-before-release|Pre-existing Flux verification artifact (470 lines); retained as single proof harness until verifier-lane artifact split.
+
 contracts/verus/contracts_as_data_spec.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (672 lines); must be split by domain responsibility or retired before removing exception.
 crates/vb_benchmark/src/lib.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (938 lines); must be split by domain responsibility or retired before removing exception.
 crates/vb_boundary_inventory/src/tests/api_tests.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (1317 lines); must be split by domain responsibility or retired before removing exception.
