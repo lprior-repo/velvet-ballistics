@@ -49,7 +49,14 @@ pub(super) fn lower_canonical_aggregate(
             done,
         },
     });
-    emit_single_body_set(body, body_step, accumulator, Some(next_step), builder, false)?;
+    emit_single_body_set(
+        body,
+        body_step,
+        accumulator,
+        Some(next_step),
+        builder,
+        false,
+    )?;
     builder.push_node(CompiledNode {
         id: next_step,
         output: None,
@@ -108,7 +115,14 @@ pub(super) fn lower_canonical_repeat(
             done,
         },
     });
-    emit_single_body_set(body, body_step, SlotIdx::new(1), Some(attempt), builder, false)?;
+    emit_single_body_set(
+        body,
+        body_step,
+        SlotIdx::new(1),
+        Some(attempt),
+        builder,
+        false,
+    )?;
     builder.push_node(CompiledNode {
         id: attempt,
         output: Some(attempt_slot),
@@ -202,6 +216,13 @@ pub(super) fn emit_single_body_set(
     builder: &mut SlotCompiler,
     reuse_first_constant: bool,
 ) -> Result<(), CompileErrors> {
+    if body.len() != 1 {
+        return Err(CompileErrors(vec![CompileError::StepFieldShape {
+            step: id.as_usize(),
+            field: "steps",
+            expected: "exactly one set step",
+        }]));
+    }
     let step = body.first().ok_or_else(|| {
         CompileErrors(vec![CompileError::StepFieldShape {
             step: id.as_usize(),
