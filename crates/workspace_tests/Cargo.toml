@@ -80,6 +80,14 @@ path = "tests/vb_test_compile_error_quality_behavior.rs"
 name = "vb_test_validate_diagnostic_behavior"
 path = "tests/vb_test_validate_diagnostic_behavior.rs"
 
+[[test]]
+name = "restate_journal_side_index_contracts"
+path = "tests/restate_journal_side_index_contracts.rs"
+
+[[test]]
+name = "restate_postcard_envelope_wire_tests"
+path = "tests/restate_postcard_envelope_wire_tests.rs"
+
 [[bench]]
 name = "velvet_ballistics"
 harness = false
