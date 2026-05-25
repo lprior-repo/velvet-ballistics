@@ -670,13 +670,13 @@ fn kani_integration_schedule_trigger_with_cron_accepted() {
 }
 
 #[test]
-fn kani_integration_event_trigger_with_name_accepted() {
+fn kani_integration_event_trigger_with_type_accepted() {
     let doc = make_doc(vec![(
         "when",
         FieldValue::Mapping(vec![(
             "event".to_owned(),
             FieldValue::Mapping(vec![(
-                "name".to_owned(),
+                "type".to_owned(),
                 FieldValue::String("job.created".to_owned()),
             )]),
         )]),

@@ -36,16 +36,7 @@ const ALLOWED_STEP_FIELDS: &[&str] = &[
 ];
 
 const STEP_PRIMITIVES: &[&str] = &[
-    "set",
-    "do",
-    "choose",
-    "for_each",
-    "together",
-    "collect",
-    "reduce",
-    "repeat",
-    "wait",
-    "ask",
+    "set", "do", "choose", "for_each", "together", "collect", "reduce", "repeat", "wait", "ask",
     "finish",
 ];
 
@@ -156,7 +147,7 @@ pub fn validate_trigger(doc: &WorkflowDoc) -> ValidationResult<()> {
     match kind.as_str() {
         "manual" | "webhook" => validate_empty_trigger(kind, body),
         "schedule" => validate_named_string_trigger(kind, body, "cron"),
-        "event" => validate_named_string_trigger(kind, body, "name"),
+        "event" => validate_named_string_trigger(kind, body, "type"),
         "http" => Err(ValidationError::HttpTriggerOutOfCore),
         other => Err(ValidationError::UnsupportedTrigger {
             trigger: other.to_owned(),
@@ -1149,13 +1140,13 @@ mod tests {
 
     #[test]
     fn validate_trigger_accepts_event_trigger() {
-        // Given a workflow doc with an event trigger carrying name
+        // Given a workflow doc with an event trigger carrying type
         let doc = make_workflow(vec![(
             "when",
             FieldValue::Mapping(vec![(
                 "event".to_owned(),
                 FieldValue::Mapping(vec![(
-                    "name".to_owned(),
+                    "type".to_owned(),
                     FieldValue::String("job.created".to_owned()),
                 )]),
             )]),
