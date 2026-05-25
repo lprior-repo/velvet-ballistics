@@ -128,26 +128,12 @@ pub(super) fn lower_canonical_set(
     }
     outputs.insert(output.to_owned(), slot);
     builder.record_slot(slot);
-
-    // Try simple integer constant first for backward compatibility
-    if let Ok(constant) = value.parse::<i64>() {
-        let value = builder
-            .push_constant(ConstValue::I64(constant))
-            .map_err(|e| CompileErrors(vec![e]))?;
-        builder.push_node(lower_set(id, slot, value, next));
-    } else {
-        // Parse as expression and compile with step slot resolution
-        let expr = parse_expression(value).map_err(|e| CompileErrors(vec![e]))?;
-        let step_slots: Vec<(Box<str>, SlotIdx)> = outputs
-            .iter()
-            .filter(|(k, _)| *k != output)
-            .map(|(k, v)| (Box::<str>::from(k.as_str()), *v))
-            .collect();
-        let expr_idx = builder
-            .compile_expression_with_step_slots(&expr, &step_slots)
-            .map_err(|e| CompileErrors(vec![e]))?;
-        builder.push_node(lower_eval_expr(id, slot, expr_idx, next));
-    }
+    // set.value must be an integer string - use parse_i64_field for proper StepFieldShape error
+    let constant = parse_i64_field(value, usize::from(id.get()), "set.value")?;
+    let value_idx = builder
+        .push_constant(ConstValue::I64(constant))
+        .map_err(|e| CompileErrors(vec![e]))?;
+    builder.push_node(lower_set(id, slot, value_idx, next));
     Ok(())
 }
 
