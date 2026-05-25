@@ -1,10 +1,11 @@
 use proptest::prelude::*;
 use vb_compile::{
-    CompileError, CompileErrors, YamlCompiler, compile_source, compile_workflow, lower_steps_to_ir,
+    CompileError, CompileErrors, YamlCompiler, compile_source, compile_workflow, lower_choose,
+    lower_steps_to_ir,
     lower_together,
 };
 use vb_core::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, StepIdx, WorkflowError,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, SlotBranch, SlotIdx, StepIdx, WorkflowError,
 };
 
 const HEADER: &str =
