@@ -183,7 +183,10 @@ fn kani_harness_storage_decode_order() {
     if magic != expected_magic {
         match result {
             Err(JournalError::BadMagic { .. }) => {
-                kani::cover!(matches!(result, Err(JournalError::BadMagic { .. })), "BadMagic returned for wrong magic");
+                kani::cover!(
+                    matches!(result, Err(JournalError::BadMagic { .. })),
+                    "BadMagic returned for wrong magic"
+                );
             }
             Ok(_) => {
                 kani::assert(false, "wrong magic should never return Ok");
@@ -243,7 +246,10 @@ fn kani_harness_crc_before_digest() {
 
     match result {
         Err(JournalError::HeaderChecksumMismatch) => {
-            kani::cover!(matches!(result, Err(JournalError::HeaderChecksumMismatch)), "HeaderChecksumMismatch returned");
+            kani::cover!(
+                matches!(result, Err(JournalError::HeaderChecksumMismatch)),
+                "HeaderChecksumMismatch returned"
+            );
         }
         Err(JournalError::BadMagic { .. }) => {
             // Magic check may fail first (unlikely with correct magic)
@@ -303,7 +309,10 @@ fn kani_harness_digest_before_postcard() {
     // Must fail with PayloadDigestMismatch
     match result {
         Err(JournalError::PayloadDigestMismatch) => {
-            kani::cover!(matches!(result, Err(JournalError::PayloadDigestMismatch)), "PayloadDigestMismatch returned");
+            kani::cover!(
+                matches!(result, Err(JournalError::PayloadDigestMismatch)),
+                "PayloadDigestMismatch returned"
+            );
         }
         Err(JournalError::BadMagic { .. }) => {
             // Magic check may fail first

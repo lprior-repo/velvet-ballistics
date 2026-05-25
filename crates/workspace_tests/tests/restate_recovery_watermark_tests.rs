@@ -6,9 +6,8 @@
 
 use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_storage::recovery::{
-    ActionReplayTracker, RecoveryError, RecoveryHydration, RunSnapshot,
-    recover_runtime_frame_seed_from_events, recover_runtime_summary,
-    recover_snapshot_plus_tail, summarize_recovery_events,
+    ActionReplayTracker, RunSnapshot, recover_runtime_frame_seed_from_events,
+    recover_runtime_summary, recover_snapshot_plus_tail, summarize_recovery_events,
 };
 use vb_storage::{EventSeq, FjallJournal, JournalEvent};
 
@@ -139,10 +138,7 @@ fn watermark_single_event_has_equal_first_and_last_seq() {
 fn watermark_snapshot_seq_lt_summary_first_seq() {
     let run = RunId::new(1);
     let snapshot = make_snapshot(run, 2);
-    let tail = vec![
-        started_event(run, 3, 0),
-        succeeded_event(run, 4, 0, 0),
-    ];
+    let tail = vec![started_event(run, 3, 0), succeeded_event(run, 4, 0, 0)];
 
     let mut tracker = ActionReplayTracker::new();
     let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker)
@@ -165,10 +161,7 @@ fn watermark_snapshot_seq_lt_summary_first_seq() {
 fn watermark_snapshot_plus_tail_first_seq_equals_tail_first_event() {
     let run = RunId::new(1);
     let snapshot = make_snapshot(run, 5);
-    let tail = vec![
-        started_event(run, 6, 0),
-        succeeded_event(run, 7, 0, 0),
-    ];
+    let tail = vec![started_event(run, 6, 0), succeeded_event(run, 7, 0, 0)];
 
     let mut tracker = ActionReplayTracker::new();
     let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker)
@@ -196,7 +189,10 @@ fn watermark_snapshot_plus_tail_rejects_event_at_snapshot_seq() {
     let mut tracker = ActionReplayTracker::new();
     let result = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker);
 
-    assert!(result.is_err(), "tail event at snapshot seq must be rejected");
+    assert!(
+        result.is_err(),
+        "tail event at snapshot seq must be rejected"
+    );
 }
 
 #[test]
@@ -241,10 +237,7 @@ fn watermark_full_journal_vs_snapshot_tail_parity() {
 
     // Snapshot+tail recovery (snapshot at seq 2)
     let snapshot = make_snapshot(run, 2);
-    let tail = vec![
-        started_event(run, 3, 1),
-        succeeded_event(run, 4, 1, 1),
-    ];
+    let tail = vec![started_event(run, 3, 1), succeeded_event(run, 4, 1, 1)];
 
     let mut tracker = ActionReplayTracker::new();
     let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker)
@@ -295,7 +288,10 @@ fn watermark_max_seq_as_only_event_rejected() {
     }];
 
     let result = summarize_recovery_events(&events);
-    assert!(result.is_err(), "EventSeq::MAX as sole event must be rejected");
+    assert!(
+        result.is_err(),
+        "EventSeq::MAX as sole event must be rejected"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -393,4 +389,168 @@ fn watermark_frame_seed_rejects_max_seq() {
         result.is_err(),
         "frame seed recovery must reject EventSeq::MAX"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Property-based tests
+// ---------------------------------------------------------------------------
+
+use proptest::prelude::*;
+
+fn build_contiguous_events(run: RunId, start_seq: u64, count: usize) -> Vec<JournalEvent> {
+    let mut events = Vec::with_capacity(count);
+    for i in 0..count {
+        let seq = start_seq + i as u64;
+        if i == 0 {
+            events.push(JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(seq),
+                workflow: sample_digest(1),
+            });
+        } else {
+            let step = StepIdx::new(((i - 1) / 2) as u16);
+            let event = if (i - 1) % 2 == 0 {
+                JournalEvent::StepStarted {
+                    run,
+                    seq: EventSeq::new(seq),
+                    step,
+                    attempt: 1,
+                }
+            } else {
+                JournalEvent::StepSucceeded {
+                    run,
+                    seq: EventSeq::new(seq),
+                    step,
+                    output: SlotIdx::new(0),
+                }
+            };
+            events.push(event);
+        }
+    }
+    events
+}
+
+fn build_tail_events(run: RunId, start_seq: u64, count: usize) -> Vec<JournalEvent> {
+    let mut events = Vec::with_capacity(count);
+    for i in 0..count {
+        let seq = start_seq + i as u64;
+        let step = StepIdx::new((i / 2) as u16);
+        let event = if i % 2 == 0 {
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(seq),
+                step,
+                attempt: 1,
+            }
+        } else {
+            JournalEvent::StepSucceeded {
+                run,
+                seq: EventSeq::new(seq),
+                step,
+                output: SlotIdx::new(0),
+            }
+        };
+        events.push(event);
+    }
+    events
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    #[test]
+    fn proptest_watermark_first_seq_le_last_seq(
+        run_raw in 1u64..=1000u64,
+        start_seq in 0u64..=1000u64,
+        count in 1usize..=20usize,
+    ) {
+        let run = RunId::new(run_raw);
+        let events = build_contiguous_events(run, start_seq, count);
+        let result = summarize_recovery_events(&events);
+        prop_assert!(result.is_ok(), "summarize_recovery_events failed: {:?}", result);
+        let summary = result.unwrap().summary();
+        prop_assert!(
+            summary.first_seq <= summary.last_seq,
+            "first_seq {} must be <= last_seq {}",
+            summary.first_seq.get(),
+            summary.last_seq.get()
+        );
+    }
+
+    #[test]
+    fn proptest_snapshot_seq_lt_tail_first_seq(
+        snapshot_seq in 0u64..=1000u64,
+        tail_first_seq in 0u64..=1000u64,
+        tail_count in 1usize..=5usize,
+    ) {
+        let run = RunId::new(1);
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(snapshot_seq),
+            workflow: sample_digest(1),
+            slots: vec![0, 1],
+            taint: vec![0, 0],
+        };
+        if tail_first_seq > snapshot_seq {
+            let tail = build_tail_events(run, tail_first_seq, tail_count);
+            let mut tracker = ActionReplayTracker::new();
+            let replayed = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker);
+            prop_assert!(replayed.is_ok(), "recover_snapshot_plus_tail failed: {:?}", replayed);
+            let summary_result = summarize_recovery_events(&replayed.unwrap());
+            prop_assert!(
+                summary_result.is_ok(),
+                "summarize_recovery_events failed: {:?}",
+                summary_result
+            );
+            prop_assert_eq!(
+                summary_result.unwrap().summary().first_seq,
+                EventSeq::new(tail_first_seq)
+            );
+        } else {
+            let tail = build_tail_events(run, tail_first_seq, tail_count);
+            let mut tracker = ActionReplayTracker::new();
+            let result = recover_snapshot_plus_tail(&snapshot, &tail, &mut tracker);
+            prop_assert!(
+                result.is_err(),
+                "expected error when tail_first_seq {} <= snapshot_seq {}",
+                tail_first_seq,
+                snapshot_seq
+            );
+        }
+    }
+
+    #[test]
+    fn proptest_watermark_parity_full_vs_snapshot_tail(
+        run_raw in 1u64..=1000u64,
+        start_seq in 0u64..=1000u64,
+        count in 5usize..=30usize,
+        split_idx in 1usize..=28usize,
+    ) {
+        prop_assume!(split_idx < count - 1);
+        let run = RunId::new(run_raw);
+        let events = build_contiguous_events(run, start_seq, count);
+        let full_result = summarize_recovery_events(&events);
+        prop_assert!(full_result.is_ok(), "full summary failed: {:?}", full_result);
+        let full_summary = full_result.unwrap().summary();
+        let snapshot_seq = events[split_idx - 1].seq();
+        let tail = &events[split_idx..];
+        let snapshot = RunSnapshot {
+            run,
+            seq: snapshot_seq,
+            workflow: sample_digest(1),
+            slots: vec![0, 1],
+            taint: vec![0, 0],
+        };
+        let mut tracker = ActionReplayTracker::new();
+        let replayed = recover_snapshot_plus_tail(&snapshot, tail, &mut tracker);
+        prop_assert!(replayed.is_ok(), "snapshot+tail replay failed: {:?}", replayed);
+        let tail_result = summarize_recovery_events(&replayed.unwrap());
+        prop_assert!(tail_result.is_ok(), "tail summary failed: {:?}", tail_result);
+        let tail_summary = tail_result.unwrap().summary();
+        prop_assert_eq!(
+            full_summary.last_seq,
+            tail_summary.last_seq,
+            "full journal and snapshot+tail must agree on last_seq"
+        );
+    }
 }

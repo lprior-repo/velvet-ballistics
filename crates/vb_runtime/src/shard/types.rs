@@ -316,9 +316,7 @@ pub enum RegisterOverlapOutcome {
 pub struct InspectHandle {
     run: RunId,
     epoch: u64,
-    registry: std::sync::Arc<
-        std::sync::Mutex<std::collections::HashMap<RunId, u64>>,
-    >,
+    registry: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<RunId, u64>>>,
 }
 
 impl InspectHandle {
@@ -354,9 +352,7 @@ impl Drop for InspectHandle {
 /// Does NOT create global mutable run state - each registry instance is independent.
 #[derive(Default)]
 pub struct IntrospectionRegistry {
-    inner: std::sync::Arc<
-        std::sync::Mutex<std::collections::HashMap<RunId, u64>>,
-    >,
+    inner: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<RunId, u64>>>,
     next_epoch: u64,
 }
 
@@ -371,7 +367,10 @@ impl IntrospectionRegistry {
     ///
     /// Returns the handle guard on success.
     pub fn register(&mut self, run: RunId) -> RuntimeResult<InspectHandle> {
-        let mut guard = self.inner.lock().map_err(|_| crate::RuntimeError::JournalPoisoned)?;
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|_| crate::RuntimeError::JournalPoisoned)?;
 
         // Check if already registered
         if guard.contains_key(&run) {
@@ -396,7 +395,10 @@ impl IntrospectionRegistry {
         &mut self,
         run: RunId,
     ) -> RuntimeResult<(InspectHandle, Result<(), RegisterOverlapOutcome>)> {
-        let mut guard = self.inner.lock().map_err(|_| crate::RuntimeError::JournalPoisoned)?;
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|_| crate::RuntimeError::JournalPoisoned)?;
 
         let (outcome, epoch) = if let Some(&old_epoch) = guard.get(&run) {
             // Overlap detected - replace with new epoch
@@ -432,7 +434,10 @@ impl IntrospectionRegistry {
     ///
     /// Returns whether the handle was found and unregistered.
     pub fn unregister(&mut self, run: RunId) -> RuntimeResult<UnregisterOutcome> {
-        let mut guard = self.inner.lock().map_err(|_| crate::RuntimeError::JournalPoisoned)?;
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|_| crate::RuntimeError::JournalPoisoned)?;
 
         if guard.remove(&run).is_some() {
             Ok(UnregisterOutcome::Unregistered)
@@ -445,7 +450,10 @@ impl IntrospectionRegistry {
     ///
     /// Returns the count of handles removed.
     pub fn unregister_all(&mut self) -> RuntimeResult<usize> {
-        let mut guard = self.inner.lock().map_err(|_| crate::RuntimeError::JournalPoisoned)?;
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|_| crate::RuntimeError::JournalPoisoned)?;
         let count = guard.len();
         guard.clear();
         Ok(count)
@@ -480,7 +488,10 @@ impl InspectSnapshotFormatter {
                 )
             }
             InspectResponse::NotFound { run, correlation } => {
-                format!("NotFound {{ run: {:?}, correlation: {} }}", run, correlation)
+                format!(
+                    "NotFound {{ run: {:?}, correlation: {} }}",
+                    run, correlation
+                )
             }
         }
     }

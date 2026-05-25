@@ -7,7 +7,6 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::{EventSeq, JournalEvent};
 use crate::recovery::hydrate_support::{
     verified_action_envelope_digest, verify_action_ticket_event,
 };
@@ -17,6 +16,7 @@ use crate::recovery::types::{
     RecoveryHydration, RecoveryResult, RecoveryRuntimeSummary, UnsupportedRecoveryState,
 };
 use crate::slot_extra::DecodedSlotWrittenExtra;
+use crate::{EventSeq, JournalEvent};
 use vb_core::replay::{ReplayEngine, ReplayError};
 use vb_core::value_store::ValueStore;
 use vb_core::{

@@ -12,11 +12,10 @@
 
 use proptest::prelude::*;
 use vb_core::{ActionId, RunId, StepIdx};
-use vb_storage::keys::{
-    blob_key, compiled_ir_key, index_action_key,
-    run_event_key, run_header_key, workflow_source_key,
-};
 use vb_storage::FjallJournal;
+use vb_storage::keys::{
+    blob_key, compiled_ir_key, index_action_key, run_event_key, run_header_key, workflow_source_key,
+};
 
 // ============================================================
 // Known constants
@@ -74,14 +73,14 @@ fn all_prefixes_distinct_unit() {
     // Direct all-pairs check for the 9 known constants
     let prefixes = [
         0x01u8, // PREFIX_WORKFLOW_SOURCE
-        0x02,    // PREFIX_COMPILED_IR
-        0x10,    // PREFIX_RUN_HEADER
-        0x11,    // PREFIX_RUN_EVENT
-        0x12,    // PREFIX_RUN_SNAPSHOT
-        0x20,    // PREFIX_BLOB
-        0x30,    // PREFIX_INDEX_STATUS
-        0x31,    // PREFIX_INDEX_WORKFLOW
-        0x32,    // PREFIX_INDEX_ACTION
+        0x02,   // PREFIX_COMPILED_IR
+        0x10,   // PREFIX_RUN_HEADER
+        0x11,   // PREFIX_RUN_EVENT
+        0x12,   // PREFIX_RUN_SNAPSHOT
+        0x20,   // PREFIX_BLOB
+        0x30,   // PREFIX_INDEX_STATUS
+        0x31,   // PREFIX_INDEX_WORKFLOW
+        0x32,   // PREFIX_INDEX_ACTION
     ];
 
     for i in 0..prefixes.len() {
@@ -149,7 +148,8 @@ proptest! {
 fn max_sequence_ordering() {
     let run = RunId::new(1);
     let key_max = run_event_key(run, vb_storage::types::EventSeq::new(u64::MAX)).unwrap();
-    let key_max_minus_1 = run_event_key(run, vb_storage::types::EventSeq::new(u64::MAX - 1)).unwrap();
+    let key_max_minus_1 =
+        run_event_key(run, vb_storage::types::EventSeq::new(u64::MAX - 1)).unwrap();
 
     assert!(
         key_max_minus_1 < key_max,
@@ -310,25 +310,41 @@ proptest! {
 #[test]
 fn encode_exact_length_workflow_source() {
     let key = workflow_source_key([0u8; 32]).unwrap();
-    assert_eq!(key.len(), DIGEST_KEY_BYTES, "workflow_source key must be 33 bytes");
+    assert_eq!(
+        key.len(),
+        DIGEST_KEY_BYTES,
+        "workflow_source key must be 33 bytes"
+    );
 }
 
 #[test]
 fn encode_exact_length_compiled_ir() {
     let key = compiled_ir_key([0u8; 32]).unwrap();
-    assert_eq!(key.len(), DIGEST_KEY_BYTES, "compiled_ir key must be 33 bytes");
+    assert_eq!(
+        key.len(),
+        DIGEST_KEY_BYTES,
+        "compiled_ir key must be 33 bytes"
+    );
 }
 
 #[test]
 fn encode_exact_length_run_header() {
     let key = run_header_key(RunId::new(0)).unwrap();
-    assert_eq!(key.len(), RUN_ONLY_KEY_BYTES, "run_header key must be 9 bytes");
+    assert_eq!(
+        key.len(),
+        RUN_ONLY_KEY_BYTES,
+        "run_header key must be 9 bytes"
+    );
 }
 
 #[test]
 fn encode_exact_length_run_event() {
     let key = run_event_key(RunId::new(0), vb_storage::types::EventSeq::new(0)).unwrap();
-    assert_eq!(key.len(), JOURNAL_KEY_BYTES, "run_event key must be 17 bytes");
+    assert_eq!(
+        key.len(),
+        JOURNAL_KEY_BYTES,
+        "run_event key must be 17 bytes"
+    );
 }
 
 #[test]
@@ -340,7 +356,11 @@ fn encode_exact_length_blob() {
 #[test]
 fn encode_exact_length_index_action() {
     let key = index_action_key(ActionId::new(0), RunId::new(0), StepIdx::new(0)).unwrap();
-    assert_eq!(key.len(), INDEX_ACTION_KEY_BYTES, "index_action key must be 13 bytes");
+    assert_eq!(
+        key.len(),
+        INDEX_ACTION_KEY_BYTES,
+        "index_action key must be 13 bytes"
+    );
 }
 
 // ============================================================
@@ -498,11 +518,24 @@ proptest! {
 #[test]
 fn smoke_test_module_loads() {
     // Sanity check: constants are in scope
-    assert_eq!(VALID_PREFIXES.len(), 9, "must have exactly 9 valid prefixes");
+    assert_eq!(
+        VALID_PREFIXES.len(),
+        9,
+        "must have exactly 9 valid prefixes"
+    );
     assert_eq!(DIGEST_KEY_BYTES, 33, "DIGEST_KEY_BYTES must be 33");
     assert_eq!(JOURNAL_KEY_BYTES, 17, "JOURNAL_KEY_BYTES must be 17");
     assert_eq!(RUN_ONLY_KEY_BYTES, 9, "RUN_ONLY_KEY_BYTES must be 9");
-    assert_eq!(INDEX_STATUS_KEY_BYTES, 18, "INDEX_STATUS_KEY_BYTES must be 18");
-    assert_eq!(INDEX_WORKFLOW_KEY_BYTES, 13, "INDEX_WORKFLOW_KEY_BYTES must be 13");
-    assert_eq!(INDEX_ACTION_KEY_BYTES, 13, "INDEX_ACTION_KEY_BYTES must be 13");
+    assert_eq!(
+        INDEX_STATUS_KEY_BYTES, 18,
+        "INDEX_STATUS_KEY_BYTES must be 18"
+    );
+    assert_eq!(
+        INDEX_WORKFLOW_KEY_BYTES, 13,
+        "INDEX_WORKFLOW_KEY_BYTES must be 13"
+    );
+    assert_eq!(
+        INDEX_ACTION_KEY_BYTES, 13,
+        "INDEX_ACTION_KEY_BYTES must be 13"
+    );
 }

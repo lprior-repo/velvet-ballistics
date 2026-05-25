@@ -18,16 +18,15 @@
 //! Each test documents the expected contract and will pass once the runtime
 //! artifact version barrier is properly implemented.
 
+use proptest::{prop_assert, prop_assume, proptest};
+use vb_compile::{CompileError, CompileErrors, YamlCompiler};
+use vb_core::capability::CapabilitySet;
 use vb_core::ids::{RunId, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
-use vb_core::capability::CapabilitySet;
 use vb_runtime::admission::{
-    admit_artifact_run, ArtifactEnvelopeError, AdmissionError,
-    MissingAcceptedArtifactStore,
+    AdmissionError, ArtifactEnvelopeError, MissingAcceptedArtifactStore, admit_artifact_run,
 };
 use vb_storage::admission::{AcceptedArtifact, VerificationProof};
-use vb_compile::{CompileError, CompileErrors, YamlCompiler};
-use proptest::{proptest, prop_assert, prop_assume};
 
 // ---------------------------------------------------------------------------
 // Test fixtures and helpers
@@ -37,10 +36,7 @@ fn empty_digest() -> WorkflowDigest {
     WorkflowDigest::from_bytes([0u8; 32])
 }
 
-fn make_artifact_with_gate_count(
-    gate_count: u8,
-    all_flags_true: bool,
-) -> AcceptedArtifact {
+fn make_artifact_with_gate_count(gate_count: u8, all_flags_true: bool) -> AcceptedArtifact {
     AcceptedArtifact {
         digest: empty_digest(),
         source_digest: empty_digest(),
@@ -153,9 +149,11 @@ impl vb_runtime::admission::AcceptedArtifactStore for FixedAcceptedArtifactStore
                 digest: empty_digest(),
             });
         }
-        self.artifact.clone().ok_or(ArtifactEnvelopeError::ArtifactNotFound {
-            digest: empty_digest(),
-        })
+        self.artifact
+            .clone()
+            .ok_or(ArtifactEnvelopeError::ArtifactNotFound {
+                digest: empty_digest(),
+            })
     }
 }
 
@@ -178,7 +176,13 @@ fn gate_count_zero_rejected() {
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(
-        matches!(err, AdmissionError::ArtifactInvalidGateCount { found: 0, required: 15 }),
+        matches!(
+            err,
+            AdmissionError::ArtifactInvalidGateCount {
+                found: 0,
+                required: 15
+            }
+        ),
         "expected ArtifactInvalidGateCount {{ found: 0, required: 15 }}, got {:?}",
         err
     );
@@ -198,7 +202,13 @@ fn gate_count_fourteen_rejected() {
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(
-        matches!(err, AdmissionError::ArtifactInvalidGateCount { found: 14, required: 15 }),
+        matches!(
+            err,
+            AdmissionError::ArtifactInvalidGateCount {
+                found: 14,
+                required: 15
+            }
+        ),
         "expected ArtifactInvalidGateCount {{ found: 14, required: 15 }}, got {:?}",
         err
     );
@@ -218,7 +228,13 @@ fn gate_count_sixteen_rejected() {
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(
-        matches!(err, AdmissionError::ArtifactInvalidGateCount { found: 16, required: 15 }),
+        matches!(
+            err,
+            AdmissionError::ArtifactInvalidGateCount {
+                found: 16,
+                required: 15
+            }
+        ),
         "expected ArtifactInvalidGateCount {{ found: 16, required: 15 }}, got {:?}",
         err
     );
@@ -235,7 +251,11 @@ fn gate_count_fifteen_accepted() {
         empty_digest(),
         CapabilitySet::empty(),
     );
-    assert!(result.is_ok(), "gate_count == 15 must be accepted, got {:?}", result);
+    assert!(
+        result.is_ok(),
+        "gate_count == 15 must be accepted, got {:?}",
+        result
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -416,7 +436,11 @@ fn artifact_digest_match_accepted() {
         digest,
         CapabilitySet::empty(),
     );
-    assert!(result.is_ok(), "matching digest must be accepted, got {:?}", result);
+    assert!(
+        result.is_ok(),
+        "matching digest must be accepted, got {:?}",
+        result
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -527,7 +551,11 @@ fn all_proof_flags_true_accepted() {
         empty_digest(),
         CapabilitySet::empty(),
     );
-    assert!(result.is_ok(), "all proof flags true must be accepted, got {:?}", result);
+    assert!(
+        result.is_ok(),
+        "all proof flags true must be accepted, got {:?}",
+        result
+    );
 }
 
 // ---------------------------------------------------------------------------

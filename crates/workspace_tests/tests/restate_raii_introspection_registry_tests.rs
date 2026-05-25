@@ -16,13 +16,15 @@
 
 use std::num::NonZeroUsize;
 
-use vb_core::ids::{RunId, StepIdx, ConstIdx, SlotIdx};
+use vb_core::ids::{ConstIdx, RunId, SlotIdx, StepIdx};
 use vb_core::value::ConstValue;
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+};
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::{
-    InspectResponse, InspectSnapshotFormatter, IntrospectionRegistry,
-    RegisterOverlapOutcome, ShardConfig, UnregisterOutcome,
+    InspectResponse, InspectSnapshotFormatter, IntrospectionRegistry, RegisterOverlapOutcome,
+    ShardConfig, UnregisterOutcome,
 };
 
 // ============================================================================
@@ -82,8 +84,7 @@ fn finished_workflow() -> Result<CompiledWorkflow, String> {
         resource_contract: ResourceContract::DEFAULT,
     };
 
-    CompiledWorkflow::try_from_parts(parts)
-        .map_err(|e| format!("workflow creation failed: {e:?}"))
+    CompiledWorkflow::try_from_parts(parts).map_err(|e| format!("workflow creation failed: {e:?}"))
 }
 
 // ============================================================================
@@ -103,7 +104,9 @@ fn raii_registry_register_handle_makes_run_visible_to_snapshot() -> Result<(), S
     runtime
         .submit_direct(run, workflow)
         .map_err(|e| format!("submit failed: {e:?}"))?;
-    runtime.tick_all().map_err(|e| format!("tick failed: {e:?}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick failed: {e:?}"))?;
 
     // Create a registry and register the handle
     let mut registry = IntrospectionRegistry::new();
@@ -145,7 +148,10 @@ fn raii_registry_drop_guard_removes_handle() -> Result<(), String> {
         .map_err(|e| format!("register failed: {e:?}"))?;
 
     // Verify the run is visible
-    assert!(registry.is_visible(run), "run should be visible after register");
+    assert!(
+        registry.is_visible(run),
+        "run should be visible after register"
+    );
 
     // When: the guard is dropped
     drop(handle);
@@ -215,7 +221,13 @@ fn raii_registry_overlapping_registration_replaces_with_new_epoch() -> Result<()
 
     // Then: the result should be a replacement with a new epoch
     match result {
-        Ok((handle2, Err(RegisterOverlapOutcome::Replaced { old_epoch, new_epoch }))) => {
+        Ok((
+            handle2,
+            Err(RegisterOverlapOutcome::Replaced {
+                old_epoch,
+                new_epoch,
+            }),
+        )) => {
             if old_epoch == epoch1 && new_epoch > old_epoch {
                 // Expected: epoch incremented
             } else {
@@ -317,10 +329,7 @@ fn raii_registry_stale_guard_drop_preserves_fresh_handle() -> Result<(), String>
     );
 
     // Verify epoch was incremented (stale handle's epoch should not work)
-    assert!(
-        handle2_epoch >= epoch1,
-        "new epoch should be >= old epoch"
-    );
+    assert!(handle2_epoch >= epoch1, "new epoch should be >= old epoch");
 
     Ok(())
 }
@@ -447,7 +456,9 @@ fn raii_registry_full_lifecycle_with_inspect() -> Result<(), String> {
     runtime
         .submit_direct(run, workflow)
         .map_err(|e| format!("submit failed: {e:?}"))?;
-    runtime.tick_all().map_err(|e| format!("tick failed: {e:?}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick failed: {e:?}"))?;
 
     // The run is no longer active (finished), but we want to test registry visibility
     // In a real scenario, the registry would track visibility independently of run state
@@ -458,7 +469,10 @@ fn raii_registry_full_lifecycle_with_inspect() -> Result<(), String> {
         .map_err(|e| format!("register failed: {e:?}"))?;
 
     // Then: snapshot should show the registration effect
-    assert!(registry.is_visible(run), "run should be visible after registration");
+    assert!(
+        registry.is_visible(run),
+        "run should be visible after registration"
+    );
 
     // When: we drop the handle
     drop(handle);

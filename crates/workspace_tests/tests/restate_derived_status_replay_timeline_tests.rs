@@ -27,10 +27,10 @@
 #![forbid(unsafe_code)]
 
 use vb_cli::lifecycle::test_helpers::create_run_header;
-use vb_cli::status::{derive_status_from_events, DerivedStatus, ReplayTimeline};
 use vb_cli::status::StatusError;
-use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_cli::status::{DerivedStatus, ReplayTimeline, derive_status_from_events};
 use vb_core::action::compute_action_idempotency_key;
+use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_storage::{EventSeq, FjallJournal, JournalEvent};
 
 // ---------------------------------------------------------------------------
@@ -123,13 +123,11 @@ fn derive_status_waiting_action_from_pending_action_index() {
             pending_step,
         } => {
             assert_eq!(
-                pending_action, make_action_id(5),
+                pending_action,
+                make_action_id(5),
                 "pending action index must be 5"
             );
-            assert_eq!(
-                pending_step, make_step_idx(2),
-                "pending step must be 2"
-            );
+            assert_eq!(pending_step, make_step_idx(2), "pending step must be 2");
         }
         other => {
             panic!(
@@ -178,11 +176,13 @@ fn derive_status_waiting_action_from_ticket_action() {
             pending_step,
         } => {
             assert_eq!(
-                pending_action, make_action_id(7),
+                pending_action,
+                make_action_id(7),
                 "pending action index must be 7 (from ticket)"
             );
             assert_eq!(
-                pending_step, make_step_idx(1),
+                pending_step,
+                make_step_idx(1),
                 "pending step must be 1 (from ticket)"
             );
         }
@@ -240,18 +240,12 @@ fn replay_explain_prints_snapshot_boundary_then_journal_tail() {
     }
 
     // When: replay_explain is called
-    let timeline = vb_cli::status::replay_explain(&journal)
-        .expect("replay_explain must succeed");
+    let timeline = vb_cli::status::replay_explain(&journal).expect("replay_explain must succeed");
 
     // Then: timeline has snapshot boundary marker then events in sequence
     match timeline {
-        ReplayTimeline::Valid {
-            runs,
-        } => {
-            assert!(
-                !runs.is_empty(),
-                "timeline must contain at least one run"
-            );
+        ReplayTimeline::Valid { runs } => {
+            assert!(!runs.is_empty(), "timeline must contain at least one run");
             let run_timeline = &runs[0];
             assert!(
                 run_timeline.snapshot_boundary.is_some(),
@@ -331,29 +325,26 @@ fn replay_explain_handles_multiple_runs() {
 
     for event in run1_events {
         let mut batch = vb_storage::JournalWriteBatch::new(&journal);
-        batch.append_event(&event).expect("append_event must succeed");
+        batch
+            .append_event(&event)
+            .expect("append_event must succeed");
         batch.commit().expect("commit must succeed");
     }
     for event in run2_events {
         let mut batch = vb_storage::JournalWriteBatch::new(&journal);
-        batch.append_event(&event).expect("append_event must succeed");
+        batch
+            .append_event(&event)
+            .expect("append_event must succeed");
         batch.commit().expect("commit must succeed");
     }
 
     // When: replay_explain is called
-    let timeline = vb_cli::status::replay_explain(&journal)
-        .expect("replay_explain must succeed");
+    let timeline = vb_cli::status::replay_explain(&journal).expect("replay_explain must succeed");
 
     // Then: timeline has two runs
     match timeline {
-        ReplayTimeline::Valid {
-            runs,
-        } => {
-            assert_eq!(
-                runs.len(),
-                2,
-                "timeline must contain 2 runs"
-            );
+        ReplayTimeline::Valid { runs } => {
+            assert_eq!(runs.len(), 2, "timeline must contain 2 runs");
         }
         ReplayTimeline::Empty => {
             panic!("expected non-empty ReplayTimeline::Valid, got Empty");
@@ -380,10 +371,7 @@ fn replay_explain_missing_run_header_returns_typed_not_found() {
     // Then: result is Err with NotFound variant
     match result {
         Err(StatusError::RunNotFound { run_id }) => {
-            assert_eq!(
-                run_id, run,
-                "error must contain the requested run id"
-            );
+            assert_eq!(run_id, run, "error must contain the requested run id");
         }
         Ok(_) => {
             panic!("expected Err(RunNotFound), got Ok");
@@ -438,7 +426,11 @@ fn derive_status_waiting_action_from_action_scheduled_event() {
             pending_action,
             pending_step,
         } => {
-            assert_eq!(pending_action, make_action_id(99), "pending action must be 99");
+            assert_eq!(
+                pending_action,
+                make_action_id(99),
+                "pending action must be 99"
+            );
             assert_eq!(pending_step, make_step_idx(0), "pending step must be 0");
         }
         DerivedStatus::Inconsistency(_) => {
@@ -491,10 +483,7 @@ fn derive_status_backing_off_from_retry_timer() {
     // Then: status is BackingOff with retry step
     match status {
         DerivedStatus::BackingOff { retry_step } => {
-            assert_eq!(
-                retry_step, make_step_idx(1),
-                "retry step must be 1"
-            );
+            assert_eq!(retry_step, make_step_idx(1), "retry step must be 1");
         }
         other => {
             panic!(
@@ -700,23 +689,20 @@ fn replay_explain_is_read_only_no_journal_mutation() {
 
     for event in &events {
         let mut batch = vb_storage::JournalWriteBatch::new(&journal);
-        batch.append_event(event).expect("append_event must succeed");
+        batch
+            .append_event(event)
+            .expect("append_event must succeed");
         batch.commit().expect("commit must succeed");
     }
 
     // Read the journal state
-    let headers_before = journal
-        .run_headers()
-        .expect("run_headers must succeed");
+    let headers_before = journal.run_headers().expect("run_headers must succeed");
 
     // When: replay_explain is called
-    let _timeline = vb_cli::status::replay_explain(&journal)
-        .expect("replay_explain must succeed");
+    let _timeline = vb_cli::status::replay_explain(&journal).expect("replay_explain must succeed");
 
     // Then: journal state is unchanged
-    let headers_after = journal
-        .run_headers()
-        .expect("run_headers must succeed");
+    let headers_after = journal.run_headers().expect("run_headers must succeed");
     assert_eq!(
         headers_before.len(),
         headers_after.len(),
@@ -761,13 +747,14 @@ fn replay_timeline_includes_digest_or_record_kind_per_event() {
 
     for event in &events {
         let mut batch = vb_storage::JournalWriteBatch::new(&journal);
-        batch.append_event(event).expect("append_event must succeed");
+        batch
+            .append_event(event)
+            .expect("append_event must succeed");
         batch.commit().expect("commit must succeed");
     }
 
     // When: replay_explain is called
-    let timeline = vb_cli::status::replay_explain(&journal)
-        .expect("replay_explain must succeed");
+    let timeline = vb_cli::status::replay_explain(&journal).expect("replay_explain must succeed");
 
     // Then: each entry has either digest or record_kind
     match timeline {
@@ -810,13 +797,14 @@ fn replay_timeline_entry_has_digest_for_run_accepted() {
 
     for event in &events {
         let mut batch = vb_storage::JournalWriteBatch::new(&journal);
-        batch.append_event(event).expect("append_event must succeed");
+        batch
+            .append_event(event)
+            .expect("append_event must succeed");
         batch.commit().expect("commit must succeed");
     }
 
     // When: replay_explain is called
-    let timeline = vb_cli::status::replay_explain(&journal)
-        .expect("replay_explain must succeed");
+    let timeline = vb_cli::status::replay_explain(&journal).expect("replay_explain must succeed");
 
     // Then: entry has the workflow digest
     match timeline {
@@ -855,7 +843,10 @@ fn derive_status_empty_events_returns_pending() {
     match status {
         DerivedStatus::Pending => {}
         other => {
-            panic!("expected DerivedStatus::Pending for empty events, got {:?}", other);
+            panic!(
+                "expected DerivedStatus::Pending for empty events, got {:?}",
+                other
+            );
         }
     }
 }

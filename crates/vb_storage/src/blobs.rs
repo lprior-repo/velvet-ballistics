@@ -44,7 +44,10 @@ impl FjallJournal {
     ///
     /// Returns `Ok(())` if the blob was successfully trimmed.
     /// Returns `Err(ArtifactNotFound)` if the blob does not exist.
-    pub fn trim_blob(&self, digest: [u8; crate::constants::DIGEST_BYTES]) -> Result<(), JournalError> {
+    pub fn trim_blob(
+        &self,
+        digest: [u8; crate::constants::DIGEST_BYTES],
+    ) -> Result<(), JournalError> {
         let key = blob_key(digest)?;
         let exists = self.blob.contains_key(key.as_slice())?;
         if !exists {

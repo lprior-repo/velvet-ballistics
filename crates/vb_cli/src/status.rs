@@ -157,7 +157,8 @@ pub fn derive_status_from_events(events: &[JournalEvent]) -> DerivedStatus {
                 pending_action = Some(ticket.action);
                 pending_step = Some(ticket.step);
             }
-            JournalEvent::AskScheduledEvent { step, .. } | JournalEvent::WaitScheduledEvent { step, .. }
+            JournalEvent::AskScheduledEvent { step, .. }
+            | JournalEvent::WaitScheduledEvent { step, .. }
                 if pending_action.is_none() && terminal_state.is_none() =>
             {
                 return DerivedStatus::WaitingAnswer {
@@ -181,7 +182,9 @@ pub fn derive_status_from_events(events: &[JournalEvent]) -> DerivedStatus {
     }
 
     // Check if run failed
-    let has_failed = events.iter().any(|e| matches!(e, JournalEvent::RunFailedEvent { .. }));
+    let has_failed = events
+        .iter()
+        .any(|e| matches!(e, JournalEvent::RunFailedEvent { .. }));
 
     // If failed with retry timer, return BackingOff
     if has_failed {
@@ -227,11 +230,12 @@ pub fn replay_explain(journal: &FjallJournal) -> Result<ReplayTimeline, StatusEr
 
     let mut runs = Vec::new();
     for header in &headers {
-        let events = journal
-            .events_for_run(header.run)
-            .map_err(|e| StatusError::Inconsistency {
-                reason: format!("failed to read events for run {:?}: {}", header.run, e),
-            })?;
+        let events =
+            journal
+                .events_for_run(header.run)
+                .map_err(|e| StatusError::Inconsistency {
+                    reason: format!("failed to read events for run {:?}: {}", header.run, e),
+                })?;
 
         let timeline = build_run_timeline(header.run, &events);
         runs.push(timeline);
@@ -331,21 +335,27 @@ fn build_explain_entry(event: &JournalEvent) -> ReplayExplainEntry {
             Some(s.get()),
             None,
         ),
-        JournalEvent::ActionScheduled { step: s, action: a, .. } => (
+        JournalEvent::ActionScheduled {
+            step: s, action: a, ..
+        } => (
             "ActionScheduled",
             None,
             Some(vb_storage::RecordKind::ActionScheduled),
             Some(s.get()),
             Some(a.get()),
         ),
-        JournalEvent::ActionCompletedEvent { step: s, action: a, .. } => (
+        JournalEvent::ActionCompletedEvent {
+            step: s, action: a, ..
+        } => (
             "ActionCompleted",
             None,
             Some(vb_storage::RecordKind::ActionCompleted),
             Some(s.get()),
             Some(a.get()),
         ),
-        JournalEvent::ActionFailedEvent { step: s, action: a, .. } => (
+        JournalEvent::ActionFailedEvent {
+            step: s, action: a, ..
+        } => (
             "ActionFailed",
             None,
             Some(vb_storage::RecordKind::ActionFailed),
@@ -443,13 +453,7 @@ fn build_explain_entry(event: &JournalEvent) -> ReplayExplainEntry {
             Some(ticket.step.get()),
             Some(ticket.action.get()),
         ),
-        _ => (
-            "Unknown",
-            None,
-            None,
-            None,
-            None,
-        ),
+        _ => ("Unknown", None, None, None, None),
     };
 
     ReplayExplainEntry {

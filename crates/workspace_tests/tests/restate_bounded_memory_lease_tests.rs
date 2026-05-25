@@ -34,10 +34,8 @@
 //! - [`reserve_overflow_returns_error`] - Overflow returns error
 //! - [`release_underflow_returns_error`] - Underflow returns error
 
-use vb_core::budget::{
-    AggregateResourceBudget, AggregateResourceCapacity, AggregateResourceUsage,
-};
 use std::error::Error;
+use vb_core::budget::{AggregateResourceBudget, AggregateResourceCapacity, AggregateResourceUsage};
 
 // =============================================================================
 // Test Data Fixtures
@@ -98,11 +96,11 @@ fn small_capacity() -> AggregateResourceCapacity {
 fn tight_capacity() -> AggregateResourceCapacity {
     AggregateResourceCapacity {
         max_steps_executable: 5,   // 50% of budget request
-        max_action_tickets: 3,      // 60% of budget request
-        max_parallel_in_flight: 1,   // 50% of budget request
+        max_action_tickets: 3,     // 60% of budget request
+        max_parallel_in_flight: 1, // 50% of budget request
         max_gather_pages: 1,
-        max_gather_items: 50,       // 50% of budget request
-        max_result_bytes: 512,      // 50% of budget request
+        max_gather_items: 50,  // 50% of budget request
+        max_result_bytes: 512, // 50% of budget request
         max_total_slots_written: 128,
         max_timer_entries: 50,
         max_trace_events: 500,
@@ -215,8 +213,10 @@ fn reserve_then_drop_returns_memory_to_budget() -> Result<(), Box<dyn Error>> {
     let _run_id = vb_core::ids::RunId::new(1);
 
     // Step 1: Reserve (add budget)
-    let after_reserve = initial_usage
-        .try_add_budget(&budget_with_bytes(u32::try_from(reserve_bytes)?, reserve_bytes))?;
+    let after_reserve = initial_usage.try_add_budget(&budget_with_bytes(
+        u32::try_from(reserve_bytes)?,
+        reserve_bytes,
+    ))?;
 
     // Verify bytes were reserved (usage increased)
     if after_reserve.max_result_bytes != reserve_bytes {
@@ -235,8 +235,10 @@ fn reserve_then_drop_returns_memory_to_budget() -> Result<(), Box<dyn Error>> {
     }
 
     // Step 2: Drop the lease (release memory back to budget)
-    let after_drop = after_reserve
-        .try_subtract_budget(&budget_with_bytes(u32::try_from(reserve_bytes)?, reserve_bytes))?;
+    let after_drop = after_reserve.try_subtract_budget(&budget_with_bytes(
+        u32::try_from(reserve_bytes)?,
+        reserve_bytes,
+    ))?;
 
     // Step 3: Verify budget returned to initial state
     if after_drop.max_result_bytes != 0 {
@@ -419,8 +421,10 @@ fn no_panic_api_required_for_memory_operations() -> Result<(), Box<dyn Error>> {
     }
 
     // validate_aggregate_budget
-    let validate_result =
-        vb_core::budget::validate_aggregate_budget(&small_budget(), &vb_core::budget::BoundednessPolicy::DEFAULT);
+    let validate_result = vb_core::budget::validate_aggregate_budget(
+        &small_budget(),
+        &vb_core::budget::BoundednessPolicy::DEFAULT,
+    );
     if validate_result.is_err() {
         return Err("validate_aggregate_budget must not panic".into());
     }
@@ -480,12 +484,11 @@ fn budget_accounting_exact_after_orphaned_lease_drop() -> Result<(), Box<dyn Err
     let Err(error) = double_drop else {
         return Err("double drop must produce error".into());
     };
-    if !matches!(error, vb_core::budget::AggregateBudgetError::Underflow { .. }) {
-        return Err(format!(
-            "double drop must produce Underflow error, got: {:?}",
-            error
-        )
-        .into());
+    if !matches!(
+        error,
+        vb_core::budget::AggregateBudgetError::Underflow { .. }
+    ) {
+        return Err(format!("double drop must produce Underflow error, got: {:?}", error).into());
     }
 
     Ok(())
@@ -518,12 +521,11 @@ fn reserve_overflow_returns_error() -> Result<(), Box<dyn Error>> {
     let Err(error) = result else {
         return Err("overflow must produce error".into());
     };
-    if !matches!(error, vb_core::budget::AggregateBudgetError::Overflow { .. }) {
-        return Err(format!(
-            "overflow must produce Overflow error, got: {:?}",
-            error
-        )
-        .into());
+    if !matches!(
+        error,
+        vb_core::budget::AggregateBudgetError::Overflow { .. }
+    ) {
+        return Err(format!("overflow must produce Overflow error, got: {:?}", error).into());
     }
 
     Ok(())
@@ -548,12 +550,11 @@ fn release_underflow_returns_error() -> Result<(), Box<dyn Error>> {
     let Err(error) = result else {
         return Err("underflow must produce error".into());
     };
-    if !matches!(error, vb_core::budget::AggregateBudgetError::Underflow { .. }) {
-        return Err(format!(
-            "underflow must produce Underflow error, got: {:?}",
-            error
-        )
-        .into());
+    if !matches!(
+        error,
+        vb_core::budget::AggregateBudgetError::Underflow { .. }
+    ) {
+        return Err(format!("underflow must produce Underflow error, got: {:?}", error).into());
     }
 
     Ok(())

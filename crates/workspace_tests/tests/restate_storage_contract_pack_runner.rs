@@ -629,15 +629,24 @@ fn multiple_runs_event_isolation_contract() {
     // Extract workflow digest via pattern matching on RunAccepted variant.
     let run_1_digest = match &run_1_events[0] {
         JournalEvent::RunAccepted { workflow, .. } => *workflow,
-        other => panic!("first event of run_1 should be RunAccepted, got {:?}", other),
+        other => panic!(
+            "first event of run_1 should be RunAccepted, got {:?}",
+            other
+        ),
     };
     let run_2_digest = match &run_2_events[0] {
         JournalEvent::RunAccepted { workflow, .. } => *workflow,
-        other => panic!("first event of run_2 should be RunAccepted, got {:?}", other),
+        other => panic!(
+            "first event of run_2 should be RunAccepted, got {:?}",
+            other
+        ),
     };
     let run_3_digest = match &run_3_events[0] {
         JournalEvent::RunAccepted { workflow, .. } => *workflow,
-        other => panic!("first event of run_3 should be RunAccepted, got {:?}", other),
+        other => panic!(
+            "first event of run_3 should be RunAccepted, got {:?}",
+            other
+        ),
     };
 
     assert_ne!(

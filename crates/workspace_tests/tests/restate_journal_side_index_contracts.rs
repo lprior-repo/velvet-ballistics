@@ -15,7 +15,9 @@
 
 use proptest::prelude::*;
 use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest, WorkflowId};
-use vb_storage::{EventSeq, FjallJournal, IndexStatusState, JournalError, JournalEvent, JournalWriteBatch};
+use vb_storage::{
+    EventSeq, FjallJournal, IndexStatusState, JournalError, JournalEvent, JournalWriteBatch,
+};
 
 // ---------------------------------------------------------------------------
 // Test helpers
