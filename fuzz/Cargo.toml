@@ -41,7 +41,7 @@ vb_expr = { path = "../crates/vb_expr" }
 vb_storage = { path = "../crates/vb_storage" }
 vb_runtime = { path = "../crates/vb_runtime" }
 vb_validate = { path = "../crates/vb_validate" }
-vb_yaml = { path = "../crates/vb_yaml" }
+vb_yaml = { path = "../crates/vb_yaml", features = ["test-util"] }
 vb_compile = { path = "../crates/vb_compile" }
 vb_ipc = { path = "../crates/vb_ipc" }
 # vb_ui_model = { path = "../crates/vb_ui_model" }  # MISSING
@@ -462,6 +462,22 @@ bench = false
 [[bin]]
 name = "yaml_events"
 path = "fuzz_targets/yaml_events.rs"
+test = false
+doc = false
+bench = false
+
+# === vb-xi2f.28 ForEach digest fuzz targets ===
+
+[[bin]]
+name = "foreach_digest_canonical"
+path = "fuzz_targets/foreach_digest_canonical.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "foreach_digest_step"
+path = "fuzz_targets/foreach_digest_step.rs"
 test = false
 doc = false
 bench = false

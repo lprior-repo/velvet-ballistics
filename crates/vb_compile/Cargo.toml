@@ -18,6 +18,7 @@ vb_yaml = { path = "../vb_yaml" }
 
 [dev-dependencies]
 proptest.workspace = true
+vb_yaml = { path = "../vb_yaml", features = ["test-util"] }
 
 [lints]
 workspace = true

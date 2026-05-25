@@ -14,6 +14,12 @@ mod part_11;
 mod part_12;
 mod part_13;
 
+// Kani harnesses for ForEach digest coverage (PO-K-FE-01 through PO-K-FE-10).
+// Bead: vb-xi2f.28 | State: 5 (proof-writer)
+// Placed here to access pub(super) items from part_05 (canonical_digest, digest_step_primitive).
+#[cfg(kani)]
+mod kani_proofs;
+
 #[allow(unused_imports)]
 pub use part_01::*;
 #[allow(unused_imports)]

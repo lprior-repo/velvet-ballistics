@@ -113,7 +113,7 @@ pub(super) fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) 
     }
 }
 
-pub(super) fn canonical_digest(source: &vb_yaml::ast::WorkflowSource) -> WorkflowDigest {
+pub fn canonical_digest(source: &vb_yaml::ast::WorkflowSource) -> WorkflowDigest {
     let mut hasher = blake3::Hasher::new();
     hasher.update(source.version().as_bytes());
     hasher.update(source.name().as_bytes());
@@ -137,10 +137,7 @@ pub(super) fn canonical_digest(source: &vb_yaml::ast::WorkflowSource) -> Workflo
     WorkflowDigest::from_bytes(hasher.finalize().into())
 }
 
-pub(super) fn digest_step_primitive(
-    hasher: &mut blake3::Hasher,
-    primitive: &vb_yaml::ast::StepPrimitive,
-) {
+pub fn digest_step_primitive(hasher: &mut blake3::Hasher, primitive: &vb_yaml::ast::StepPrimitive) {
     match primitive {
         vb_yaml::ast::StepPrimitive::Set { output, value } => {
             hasher.update(b"set");
@@ -154,6 +151,26 @@ pub(super) fn digest_step_primitive(
                 vb_yaml::ast::ScalarValue::Integer(value) => hasher.update(&value.to_le_bytes()),
                 _ => hasher.update(b"unsupported"),
             };
+        }
+        vb_yaml::ast::StepPrimitive::ForEach {
+            variable,
+            input,
+            at_once,
+            body,
+        } => {
+            hasher.update(b"for_each");
+            hasher.update(b":variable:");
+            hasher.update(variable.as_bytes());
+            hasher.update(b":input:");
+            hasher.update(input.as_bytes());
+            hasher.update(b":at_once:");
+            let limit = at_once.unwrap_or(1);
+            hasher.update(&limit.to_le_bytes());
+            hasher.update(b":body:");
+            for step in body {
+                hasher.update(step.id.as_bytes());
+                digest_step_primitive(hasher, &step.primitive);
+            }
         }
         other => {
             hasher.update(canonical_primitive_name(other).as_bytes());

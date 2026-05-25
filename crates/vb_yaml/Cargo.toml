@@ -12,5 +12,8 @@ thiserror.workspace = true
 [dev-dependencies]
 indoc.workspace = true
 
+[features]
+test-util = []
+
 [lints]
 workspace = true
