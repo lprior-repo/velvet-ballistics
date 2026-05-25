@@ -294,6 +294,51 @@ fn compile_workflow_returns_step_field_shape_when_each_scoped_primitive_required
     Ok(())
 }
 
+#[test]
+fn compile_workflow_rejects_multi_step_body_in_scoped_primitives() -> Result<(), String> {
+    // Scoped primitives (repeat, for_each, collect, reduce) require exactly one set step
+    // in their body. Multiple steps must be rejected with StepFieldShape error.
+    let cases = [
+        (
+            "repeat with two steps in body",
+            "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: step1\n          set:\n            output: out_x\n            value: \"1\"\n        - id: step2\n          set:\n            output: out_y\n            value: \"2\"\n  - id: done\n    finish:\n      result: 0\n",
+        ),
+        (
+            "for_each with two steps in body",
+            "  - id: loop\n    for_each:\n      variable: item\n      input: \"0\"\n      steps:\n        - id: step1\n          set:\n            output: out_x\n            value: \"1\"\n        - id: step2\n          set:\n            output: out_y\n            value: \"2\"\n  - id: done\n    finish:\n      result: 0\n",
+        ),
+        (
+            "collect with two steps in body",
+            "  - id: collect_pages\n    collect:\n      variable: page\n      source: \"0\"\n      steps:\n        - id: step1\n          set:\n            output: out_x\n            value: \"1\"\n        - id: step2\n          set:\n            output: out_y\n            value: \"2\"\n  - id: done\n    finish:\n      result: 0\n",
+        ),
+        (
+            "reduce with two steps in body",
+            "  - id: fold\n    reduce:\n      variable: acc\n      input: \"0\"\n      initial: \"10\"\n      steps:\n        - id: step1\n          set:\n            output: out_x\n            value: \"1\"\n        - id: step2\n          set:\n            output: out_y\n            value: \"2\"\n  - id: done\n    finish:\n      result: 0\n",
+        ),
+    ];
+
+    for (case_name, yaml_steps) in cases {
+        let yaml = workflow_yaml(yaml_steps);
+        let errors = compile_yaml_error(&yaml)?;
+        let first = first_compile_error(&errors)?;
+        match first {
+            CompileError::StepFieldShape { field, expected, .. } => {
+                assert_eq!(
+                    (*field, expected.as_ref()),
+                    ("steps", "exactly one set step"),
+                    "case {case_name} expected 'steps' field with 'exactly one set step', got field='{field}' expected='{expected}'"
+                );
+            }
+            other => {
+                return Err(format!(
+                    "case {case_name} expected StepFieldShape error with 'exactly one set step', got {other:?}"
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 #[derive(Clone, Copy)]
 enum ExpectedShapeError {
     CanonicalYamlField(&'static str),
