@@ -3,12 +3,8 @@
 //! These tests verify that `do` primitives inside scoped primitive bodies
 //! (repeat, collect, for_each, reduce) are correctly lowered to final IR.
 
-use vb_compile::{
-    CompileError, CompileErrors, YamlCompiler, compile_source, compile_workflow,
-};
-use vb_core::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, SlotIdx, StepIdx,
-};
+use vb_compile::{CompileError, CompileErrors, YamlCompiler, compile_source, compile_workflow};
+use vb_core::{CompiledNode, CompiledNodeKind, CompiledWorkflow, SlotIdx, StepIdx};
 
 const HEADER: &str =
     "version: velvet-ballistics/v1\nname: nested-do-lowering\nwhen:\n  manual: {}\nsteps:\n";
@@ -34,15 +30,15 @@ fn nested_do_in_repeat_body_lowers_to_final_ir() -> Result<(), String> {
         5,
         "repeat with do body should produce 5 nodes"
     );
-    assert_eq!(
-        parts.entry,
-        StepIdx::new(0),
-        "entry must be dense zero"
-    );
+    assert_eq!(parts.entry, StepIdx::new(0), "entry must be dense zero");
 
     // Verify RepeatStart at node 0
     match &parts.nodes[0].kind {
-        CompiledNodeKind::RepeatStart { max_attempts, body, done } => {
+        CompiledNodeKind::RepeatStart {
+            max_attempts,
+            body,
+            done,
+        } => {
             assert_eq!(*max_attempts, 3, "RepeatStart max_attempts");
             assert_eq!(body.get(), 1, "RepeatStart body");
             assert_eq!(done.get(), 3, "RepeatStart done");
@@ -61,7 +57,11 @@ fn nested_do_in_repeat_body_lowers_to_final_ir() -> Result<(), String> {
 
     // Verify RepeatAttempt at node 2
     match &parts.nodes[2].kind {
-        CompiledNodeKind::RepeatAttempt { attempt_slot, body, done } => {
+        CompiledNodeKind::RepeatAttempt {
+            attempt_slot,
+            body,
+            done,
+        } => {
             assert_eq!(attempt_slot.get(), 1, "RepeatAttempt attempt_slot");
             assert_eq!(body.get(), 1, "RepeatAttempt body");
             assert_eq!(done.get(), 3, "RepeatAttempt done");
@@ -113,10 +113,7 @@ fn nested_do_in_collect_body_lowers_to_final_ir() -> Result<(), String> {
     // Verify CollectStart at node 0
     match &parts.nodes[0].kind {
         CompiledNodeKind::CollectStart {
-            source,
-            body,
-            done,
-            ..
+            source, body, done, ..
         } => {
             assert_eq!(source.get(), 0, "CollectStart source");
             assert_eq!(body.get(), 1, "CollectStart body");
@@ -135,7 +132,11 @@ fn nested_do_in_collect_body_lowers_to_final_ir() -> Result<(), String> {
 
     // Verify CollectPage at node 2
     match &parts.nodes[2].kind {
-        CompiledNodeKind::CollectPage { collector_slot, body, done } => {
+        CompiledNodeKind::CollectPage {
+            collector_slot,
+            body,
+            done,
+        } => {
             assert_eq!(collector_slot.get(), 0, "CollectPage collector_slot");
             assert_eq!(body.get(), 1, "CollectPage body");
             assert_eq!(done.get(), 3, "CollectPage done");
@@ -203,7 +204,11 @@ fn nested_do_in_for_each_body_lowers_to_final_ir() -> Result<(), String> {
 
     // Verify ForEachNext at node 2
     match &parts.nodes[2].kind {
-        CompiledNodeKind::ForEachNext { iterator_slot, body, done } => {
+        CompiledNodeKind::ForEachNext {
+            iterator_slot,
+            body,
+            done,
+        } => {
             assert_eq!(iterator_slot.get(), 1, "ForEachNext iterator_slot");
             assert_eq!(body.get(), 1, "ForEachNext body");
             assert_eq!(done.get(), 3, "ForEachNext done");
@@ -301,7 +306,9 @@ fn nested_do_with_invalid_input_slot_returns_error() -> Result<(), String> {
         "nested do with out-of-range input slot should fail"
     );
     let errors = result.err().unwrap();
-    let first = errors.first().ok_or_else(|| String::from("expected at least one error"))?;
+    let first = errors
+        .first()
+        .ok_or_else(|| String::from("expected at least one error"))?;
     match first {
         CompileError::SlotIndexOutOfRange { value } => {
             assert_eq!(*value, 99999, "should report exact out-of-range value");
@@ -351,12 +358,21 @@ fn nested_do_in_together_branch_lowers_to_final_ir() -> Result<(), String> {
 
     // Verify first TogetherBranch at node 1
     match &parts.nodes[1].kind {
-        CompiledNodeKind::TogetherBranch { branch, entry, join, .. } => {
+        CompiledNodeKind::TogetherBranch {
+            branch,
+            entry,
+            join,
+            ..
+        } => {
             assert_eq!(*branch, 0, "first TogetherBranch branch index");
             assert_eq!(entry.get(), 2, "first TogetherBranch entry");
             assert_eq!(join.get(), 5, "first TogetherBranch join");
         }
-        other => return Err(format!("expected first TogetherBranch at node 1, got {other:?}")),
+        other => {
+            return Err(format!(
+                "expected first TogetherBranch at node 1, got {other:?}"
+            ));
+        }
     }
 
     // Verify Do at node 2 (left action)
@@ -369,12 +385,21 @@ fn nested_do_in_together_branch_lowers_to_final_ir() -> Result<(), String> {
 
     // Verify second TogetherBranch at node 3
     match &parts.nodes[3].kind {
-        CompiledNodeKind::TogetherBranch { branch, entry, join, .. } => {
+        CompiledNodeKind::TogetherBranch {
+            branch,
+            entry,
+            join,
+            ..
+        } => {
             assert_eq!(*branch, 1, "second TogetherBranch branch index");
             assert_eq!(entry.get(), 4, "second TogetherBranch entry");
             assert_eq!(join.get(), 5, "second TogetherBranch join");
         }
-        other => return Err(format!("expected second TogetherBranch at node 3, got {other:?}")),
+        other => {
+            return Err(format!(
+                "expected second TogetherBranch at node 3, got {other:?}"
+            ));
+        }
     }
 
     // Verify Do at node 4 (right action)
@@ -387,7 +412,10 @@ fn nested_do_in_together_branch_lowers_to_final_ir() -> Result<(), String> {
 
     // Verify TogetherJoin at node 5
     match &parts.nodes[5].kind {
-        CompiledNodeKind::TogetherJoin { branch_count, accumulator } => {
+        CompiledNodeKind::TogetherJoin {
+            branch_count,
+            accumulator,
+        } => {
             assert_eq!(*branch_count, 2, "TogetherJoin branch_count");
             assert_eq!(accumulator.get(), 0, "TogetherJoin accumulator");
         }

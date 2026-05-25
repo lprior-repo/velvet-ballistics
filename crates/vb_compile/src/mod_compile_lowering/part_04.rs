@@ -267,7 +267,9 @@ pub(super) fn emit_single_body_set(
                 }])
             })?;
             let input_idx = u16::try_from(input_value).map_err(|_| {
-                CompileErrors(vec![CompileError::SlotIndexOutOfRange { value: input_value }])
+                CompileErrors(vec![CompileError::SlotIndexOutOfRange {
+                    value: input_value,
+                }])
             })?;
             let input_slot = SlotIdx::new(input_idx);
             builder.record_slot(input_slot);

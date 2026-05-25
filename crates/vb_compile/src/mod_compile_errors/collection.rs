@@ -65,9 +65,9 @@ impl CompileError {
             Self::UnsupportedStepPrimitive { primitive, .. } => primitive_code(primitive),
             Self::UnsupportedStepControlField { field, .. } => control_field_code(field),
             Self::StepFieldShape { field, .. } => step_field_shape_code(field),
-            Self::BackwardBranchTarget { .. } | Self::UnknownStepTarget { .. } => {
-                "INVALID_THEN_TARGET"
-            }
+            Self::BackwardBranchTarget { .. }
+            | Self::UnknownStepTarget { .. }
+            | Self::UnknownStepLabel { .. } => "INVALID_THEN_TARGET",
             Self::UnknownReferenceRoot { .. } => "UNKNOWN_REFERENCE",
             Self::IllegalReference { .. } => "DIRECT_RUNTIME_REFERENCE",
             Self::UnknownReferenceName { kind, .. } => unknown_reference_code(kind),

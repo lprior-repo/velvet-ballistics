@@ -222,12 +222,14 @@ pub(super) fn lower_canonical_choose(
     step_names: &[Box<str>],
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
-    // Multi-branch choose is not yet supported
-    if branches.len() > 1 {
+    // Fanout limit: choose cannot have more than 64 branches
+    if branches.len() > 64 {
         return Err(CompileErrors(vec![
-            CompileError::UnsupportedStepPrimitive {
-                step: index,
+            CompileError::PrimitiveLoweringLimitExceeded {
                 primitive: "choose",
+                field: "branches",
+                value: branches.len(),
+                limit: 64,
             },
         ]));
     }
@@ -237,9 +239,16 @@ pub(super) fn lower_canonical_choose(
             WorkflowError::EmptyBranchTable,
         )]));
     }
-    // If there are no branches, we still need a target for the fallthrough case
-    // Empty body means fall through to next step
-    let target = if let Some(branch) = branches.first() {
+    // All branches must have empty bodies (fall-through to next)
+    // and we need a next step to fall through to
+    let target = next.ok_or_else(|| {
+        CompileErrors(vec![CompileError::StepFieldShape {
+            step: index,
+            field: "choose",
+            expected: "non-empty next step for choose fallthrough",
+        }])
+    })?;
+    for branch in branches {
         if !branch.steps.is_empty() {
             return Err(CompileErrors(vec![
                 CompileError::UnsupportedStepPrimitive {
@@ -248,36 +257,17 @@ pub(super) fn lower_canonical_choose(
                 },
             ]));
         }
-        // Body is empty - fall through to next
-        next.ok_or_else(|| {
-            CompileErrors(vec![CompileError::StepFieldShape {
-                step: index,
-                field: "choose",
-                expected: "non-empty next step for empty choose branch",
-            }])
-        })?
-    } else {
-        // No branches - must have otherwise set
-        // This case is caught above, but we need a target anyway
-        next.ok_or_else(|| {
-            CompileErrors(vec![CompileError::StepFieldShape {
-                step: index,
-                field: "choose",
-                expected: "non-empty next step for empty choose branch",
-            }])
-        })?
-    };
+    }
     // Resolve otherwise label to step index via step_names lookup
     let otherwise_target = match otherwise {
         Some(label) => {
-            // Look up the step name in step_names to find its index
             let step_index = step_names
                 .iter()
                 .position(|name| name.as_ref() == label)
                 .ok_or_else(|| {
-                    CompileErrors(vec![CompileError::UnknownStepTarget {
+                    CompileErrors(vec![CompileError::UnknownStepLabel {
                         step: index,
-                        target: label.len(), // dummy value
+                        label: Box::from(label),
                     }])
                 })?;
             Some(StepIdx::new(u16::try_from(step_index).map_err(|_| {
@@ -291,13 +281,12 @@ pub(super) fn lower_canonical_choose(
         }
         None => None,
     };
-    // Build slot branches - if no branches, this will be validated by validate_branch_route
-    let slot_branches: Vec<SlotBranch> = if let Some(branch) = branches.first() {
+    // Build slot branches from all branches
+    let mut slot_branches: Vec<SlotBranch> = Vec::with_capacity(branches.len());
+    for branch in branches {
         let condition = slot_from_text(&branch.when, index, "choose.branches[].when")?;
-        vec![SlotBranch { condition, target }]
-    } else {
-        vec![]
-    };
+        slot_branches.push(SlotBranch { condition, target });
+    }
     let node = lower_choose(id, slot_branches, otherwise_target, builder)
         .map_err(|e| CompileErrors(vec![e]))?;
     builder.push_node(node);

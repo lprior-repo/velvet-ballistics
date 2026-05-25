@@ -511,3 +511,102 @@ fn direct_digest_collect_empty_vs_nonempty_body() {
         "empty body vs non-empty body must produce different digests via digest_step_primitive"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────
+// vb-awhr: choose otherwise handling and fanout limit
+// ─────────────────────────────────────────────────────────────────
+
+use crate::mod_compile_lowering::part_02::lower_canonical_choose;
+
+#[test]
+fn lower_canonical_choose_accepts_two_branches() {
+    let branches = vec![
+        vb_yaml::ast::ChooseBranch {
+            when: "0".to_string(),
+            steps: vec![],
+        },
+        vb_yaml::ast::ChooseBranch {
+            when: "1".to_string(),
+            steps: vec![],
+        },
+    ];
+    let step_names: [Box<str>; 2] = [Box::from("pick"), Box::from("done")];
+    let mut builder = crate::SlotCompiler::new();
+    let result = lower_canonical_choose(
+        0,
+        vb_core::ids::StepIdx::new(0),
+        &branches,
+        Some("done"),
+        Some(vb_core::ids::StepIdx::new(1)),
+        &step_names,
+        &mut builder,
+    );
+    assert!(
+        result.is_ok(),
+        "two-branch choose must compile: {:?}",
+        result
+    );
+}
+
+#[test]
+fn lower_canonical_choose_rejects_unknown_otherwise_label() {
+    let branches = vec![vb_yaml::ast::ChooseBranch {
+        when: "0".to_string(),
+        steps: vec![],
+    }];
+    let step_names: [Box<str>; 1] = [Box::from("pick")];
+    let mut builder = crate::SlotCompiler::new();
+    let result = lower_canonical_choose(
+        0,
+        vb_core::ids::StepIdx::new(0),
+        &branches,
+        Some("missing"),
+        Some(vb_core::ids::StepIdx::new(1)),
+        &step_names,
+        &mut builder,
+    );
+    match result {
+        Err(crate::CompileErrors(errors)) => {
+            assert!(
+                errors.iter().any(|e| matches!(e, crate::CompileError::UnknownStepLabel { label, .. } if label.as_ref() == "missing")),
+                "unknown otherwise label must return UnknownStepLabel with actual label text, got: {:?}",
+                errors
+            );
+        }
+        other => panic!(
+            "expected error for unknown otherwise label, got: {:?}",
+            other
+        ),
+    }
+}
+
+#[test]
+fn lower_canonical_choose_rejects_65_branches() {
+    let branches: Vec<vb_yaml::ast::ChooseBranch> = (0..65)
+        .map(|i| vb_yaml::ast::ChooseBranch {
+            when: i.to_string(),
+            steps: vec![],
+        })
+        .collect();
+    let step_names: [Box<str>; 2] = [Box::from("pick"), Box::from("done")];
+    let mut builder = crate::SlotCompiler::new();
+    let result = lower_canonical_choose(
+        0,
+        vb_core::ids::StepIdx::new(0),
+        &branches,
+        Some("done"),
+        Some(vb_core::ids::StepIdx::new(1)),
+        &step_names,
+        &mut builder,
+    );
+    match result {
+        Err(crate::CompileErrors(errors)) => {
+            assert!(
+                errors.iter().any(|e| matches!(e, crate::CompileError::PrimitiveLoweringLimitExceeded { primitive, field, value, limit } if *primitive == "choose" && *field == "branches" && *value == 65 && *limit == 64)),
+                "65-branch choose must fail with PrimitiveLoweringLimitExceeded, got: {:?}",
+                errors
+            );
+        }
+        other => panic!("expected error for 65 branches, got: {:?}", other),
+    }
+}

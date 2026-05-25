@@ -1620,7 +1620,6 @@ fn unsupported_primitive_name(errors: &CompileErrors) -> Option<&'static str> {
     })
 }
 
-
 #[test]
 fn compile_workflow_rejects_empty_body_in_scoped_primitives() -> Result<(), String> {
     let cases = [
@@ -1648,7 +1647,10 @@ fn compile_workflow_rejects_empty_body_in_scoped_primitives() -> Result<(), Stri
         let first = first_compile_error(&errors)?;
         match first {
             CompileError::StepFieldShape {
-                step, field, expected, ..
+                step,
+                field,
+                expected,
+                ..
             } => {
                 assert_eq!(
                     (*step, field.as_ref(), expected.as_ref()),
@@ -1692,9 +1694,7 @@ fn compile_workflow_rejects_non_set_body_in_all_scoped_primitives() -> Result<()
         let first = first_compile_error(&errors)?;
         match first {
             CompileError::UnsupportedStepPrimitive {
-                step,
-                primitive,
-                ..
+                step, primitive, ..
             } => {
                 assert_eq!(
                     (*step, primitive.as_ref()),
@@ -1721,7 +1721,10 @@ fn compile_workflow_rejects_multi_step_body_at_non_zero_step() -> Result<(), Str
     let first = first_compile_error(&errors)?;
     match first {
         CompileError::StepFieldShape {
-            step, field, expected, ..
+            step,
+            field,
+            expected,
+            ..
         } => {
             assert_eq!(
                 (*step, field.as_ref(), expected.as_ref()),
@@ -1745,7 +1748,10 @@ fn compile_workflow_rejects_multi_step_together_branch() -> Result<(), String> {
     let first = first_compile_error(&errors)?;
     match first {
         CompileError::StepFieldShape {
-            step, field, expected, ..
+            step,
+            field,
+            expected,
+            ..
         } => {
             assert_eq!(
                 (*step, field.as_ref(), expected.as_ref()),
@@ -1758,4 +1764,103 @@ fn compile_workflow_rejects_multi_step_together_branch() -> Result<(), String> {
             "expected StepFieldShape for together branch, got {other:?}"
         )),
     }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// vb-awhr: choose otherwise handling and fanout limit fixes
+// ─────────────────────────────────────────────────────────────────
+
+#[test]
+fn compile_workflow_choose_two_branches_with_otherwise() -> Result<(), String> {
+    let yaml = workflow_yaml(
+        "  - id: setup\n    set:\n      output: condition\n      value: \"1\"\n  - id: pick\n    choose:\n      branches:\n        - when: \"0\"\n          steps: []\n        - when: \"1\"\n          steps: []\n      otherwise: done\n  - id: done\n    finish:\n      result: 0\n",
+    );
+    let workflow = compile_yaml(&yaml)?;
+    let kinds = node_kind_names(workflow.to_parts().nodes.as_ref());
+    assert_eq!(
+        kinds,
+        vec!["SetConst", "ChooseSlot", "Finish"],
+        "two-branch choose must compile to SetConst, ChooseSlot, Finish"
+    );
+    Ok(())
+}
+
+#[test]
+fn compile_workflow_choose_rejects_unknown_otherwise_label() -> Result<(), String> {
+    let yaml = workflow_yaml(
+        "  - id: pick\n    choose:\n      branches:\n        - when: \"0\"\n          steps: []\n      otherwise: missing_label\n  - id: done\n    finish:\n      result: 0\n",
+    );
+    let errors = compile_yaml_error(&yaml)?;
+    let first = first_compile_error(&errors)?;
+    match first {
+        CompileError::UnknownStepLabel { step, label } => {
+            assert_eq!(
+                (*step, label.as_ref()),
+                (0, "missing_label"),
+                "unknown otherwise label must report the actual label text"
+            );
+        }
+        other => {
+            return Err(format!(
+                "expected UnknownStepLabel for missing otherwise, got {other:?}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn compile_workflow_choose_rejects_65_branches() -> Result<(), String> {
+    let mut branches = String::new();
+    for i in 0..65 {
+        branches.push_str(&format!("        - when: \"{}\"\n          steps: []\n", i));
+    }
+    let yaml = workflow_yaml(&format!(
+        "  - id: pick\n    choose:\n      branches:\n{}      otherwise: done\n  - id: done\n    finish:\n      result: 0\n",
+        branches
+    ));
+    let errors = compile_yaml_error(&yaml)?;
+    let first = first_compile_error(&errors)?;
+    match first {
+        CompileError::PrimitiveLoweringLimitExceeded {
+            primitive,
+            field,
+            value,
+            limit,
+        } => {
+            assert_eq!(
+                (*primitive, *field, *value, *limit),
+                ("choose", "branches", 65, 64),
+                "65-branch choose must fail with exact fanout limit error"
+            );
+        }
+        other => {
+            return Err(format!(
+                "expected PrimitiveLoweringLimitExceeded for 65 branches, got {other:?}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn compile_workflow_choose_64_branches_accepted() -> Result<(), String> {
+    let mut branches = String::new();
+    for i in 0..64 {
+        branches.push_str(&format!("        - when: \"{}\"\n          steps: []\n", i));
+    }
+    let yaml = workflow_yaml(&format!(
+        "  - id: pick\n    choose:\n      branches:\n{}      otherwise: done\n  - id: done\n    finish:\n      result: 0\n",
+        branches
+    ));
+    let workflow = compile_yaml(&yaml)?;
+    let kinds = node_kind_names(workflow.to_parts().nodes.as_ref());
+    assert_eq!(
+        kinds.len(),
+        2,
+        "64-branch choose must compile to exactly 2 nodes (ChooseSlot + Finish)"
+    );
+    assert_eq!(kinds[0], "ChooseSlot", "first node must be ChooseSlot");
+    assert_eq!(kinds[1], "Finish", "second node must be Finish");
+    Ok(())
 }

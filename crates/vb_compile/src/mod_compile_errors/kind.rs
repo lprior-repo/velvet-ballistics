@@ -136,6 +136,8 @@ pub enum CompileError {
     UnsupportedAccessorReference { reference: Box<str>, root: Box<str>, path: Box<str> },
     #[error("step {step} branch target {target} is not a declared step")]
     UnknownStepTarget { step: usize, target: usize },
+    #[error("step {step} otherwise label '{label}' is not a declared step")]
+    UnknownStepLabel { step: usize, label: Box<str> },
     #[error("step {step} is unreachable from workflow entry")]
     UnreachableStep { step: usize },
     #[error("type mismatch in {field}: expected {expected}, found {found}")]
