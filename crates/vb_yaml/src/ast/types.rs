@@ -31,19 +31,10 @@ pub struct WorkflowSource {
 }
 
 impl WorkflowSource {
-<<<<<<< Updated upstream
     /// Production-visible constructor: restricted to crate-internal use.
     #[doc(hidden)]
     #[cfg(not(any(test, feature = "test-util")))]
     pub(crate) fn new(parts: WorkflowSourceParts) -> Self {
-=======
-    /// Construct a `WorkflowSource` from its constituent parts.
-    ///
-    /// This is intentionally public to allow test harnesses, Kani proofs, and
-    /// fuzz targets in dependent crates to construct workflow sources directly.
-    #[allow(unreachable_pub)]
-    pub fn new(parts: WorkflowSourceParts) -> Self {
->>>>>>> Stashed changes
         Self {
             version: parts.version,
             name: parts.name,
@@ -113,7 +104,6 @@ impl WorkflowSource {
     }
 }
 
-<<<<<<< Updated upstream
 /// Parts bundle for constructing a [`WorkflowSource`].
 ///
 /// Visibility is `pub(crate)` in production, `pub` when the `test-util`
@@ -140,25 +130,6 @@ pub(crate) struct WorkflowSourceParts {
     pub(crate) result: Option<ResultMapping>,
     /// Inline examples / test cases.
     pub(crate) examples: Vec<ExampleAst>,
-=======
-/// Construction parts for [`WorkflowSource`].
-///
-/// Intentionally public to allow test harnesses, Kani proofs, and fuzz
-/// targets in dependent crates to construct workflow sources directly.
-/// This is a pure value object with no invariants beyond what the
-/// parser enforces.
-#[allow(unreachable_pub)]
-pub struct WorkflowSourceParts {
-    pub version: String,
-    pub name: String,
-    pub trigger: TriggerAst,
-    pub inputs: Vec<InputField>,
-    pub vars: Vec<VarField>,
-    pub secrets: Vec<SecretField>,
-    pub steps: Vec<StepAst>,
-    pub result: Option<ResultMapping>,
-    pub examples: Vec<ExampleAst>,
->>>>>>> Stashed changes
 }
 
 #[doc(hidden)]

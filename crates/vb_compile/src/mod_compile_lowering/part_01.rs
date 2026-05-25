@@ -13,10 +13,11 @@ use vb_core::{
 };
 
 /// Compile the canonical cold YAML authoring AST into numeric runtime IR.
-pub fn compile_source(
+pub(crate) fn compile_source(
     source: &vb_yaml::ast::WorkflowSource,
 ) -> Result<CompiledWorkflow, CompileErrors> {
     validate_canonical_compile_scope(source)?;
+    validate_branch_counts(source)?;
     let steps = source.steps();
     let last = steps
         .len()

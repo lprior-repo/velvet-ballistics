@@ -465,9 +465,19 @@ path = "fuzz_targets/yaml_events.rs"
 test = false
 doc = false
 bench = false
+[[bin]]
+name = "compile_workflow"
+path = "fuzz_targets/compile_workflow_fuzz.rs"
+test = false
+doc = false
+bench = false
 
-<<<<<<< Updated upstream
-# === vb-xi2f.28 ForEach digest fuzz targets ===
+[[bin]]
+name = "parse_workflow_source"
+path = "fuzz_targets/parse_workflow_source_fuzz.rs"
+test = false
+doc = false
+bench = false
 
 [[bin]]
 name = "foreach_digest_canonical"
@@ -477,13 +487,8 @@ doc = false
 bench = false
 
 [[bin]]
-name = "foreach_digest_step"
-path = "fuzz_targets/foreach_digest_step.rs"
-=======
-[[bin]]
-name = "canonical_digest_ask"
-path = "fuzz_targets/canonical_digest_ask.rs"
->>>>>>> Stashed changes
+name = "foreach_digest_proptest"
+path = "fuzz_targets/foreach_digest_proptest.rs"
 test = false
 doc = false
 bench = false

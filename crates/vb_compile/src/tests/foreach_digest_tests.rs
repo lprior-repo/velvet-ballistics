@@ -105,7 +105,7 @@ fn foreach_workflow(
 /// Compute digest bytes from `digest_step_primitive` on a standalone hasher.
 fn step_digest_bytes(primitive: &StepPrimitive) -> [u8; 32] {
     let mut hasher = blake3::Hasher::new();
-    digest_step_primitive_part05(&mut hasher, primitive);
+    digest_step_primitive_part05(&mut hasher, primitive).expect("valid test primitive");
     *hasher.finalize().as_bytes()
 }
 

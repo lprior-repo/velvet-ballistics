@@ -43,7 +43,7 @@ fn hash_bytes(data: &[&[u8]]) -> [u8; 32] {
 /// Call digest_step_primitive with a hasher and return the final hash bytes.
 fn hash_primitive(primitive: &StepPrimitive) -> [u8; 32] {
     let mut hasher = blake3::Hasher::new();
-    digest_step_primitive(&mut hasher, primitive);
+    digest_step_primitive(&mut hasher, primitive).expect("valid test primitive");
     hasher.finalize().into()
 }
 

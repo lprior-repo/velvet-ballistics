@@ -21,7 +21,7 @@ mod part_13;
 mod kani_proofs;
 
 #[allow(unused_imports)]
-pub use part_01::*;
+pub(crate) use part_01::*;
 #[allow(unused_imports)]
 pub(crate) use part_02::*;
 #[allow(unused_imports)]
