@@ -7,7 +7,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::JournalEvent;
+use crate::{EventSeq, JournalEvent};
 use crate::recovery::hydrate_support::{
     verified_action_envelope_digest, verify_action_ticket_event,
 };
@@ -69,6 +69,9 @@ pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &Journal
         JournalEvent::RunFailedEvent { .. } => {
             summary.terminal = Some(crate::recovery::types::RecoveryTerminalState::Failed);
         }
+        JournalEvent::RunKilled { .. } => {
+            summary.terminal = Some(crate::recovery::types::RecoveryTerminalState::Killed);
+        }
         // Lifecycle events (RunResumed, RunRetried, RunAnswered) do not carry sequence
         // numbers and are not part of the durable event log ordering for recovery summary.
         JournalEvent::RunResumed { .. }
@@ -123,6 +126,15 @@ pub fn summarize_recovery_events(events: &[JournalEvent]) -> RecoveryResult<Reco
             return Err(RecoveryError::ReplayDivergence {
                 step: StepIdx::ZERO,
                 detail: "recovery summary received events for multiple runs".to_owned(),
+            });
+        }
+        if event.seq() == EventSeq::MAX {
+            return Err(RecoveryError::ReplayDivergence {
+                step: StepIdx::ZERO,
+                detail: format!(
+                    "overflow sentinel sequence {} is not valid",
+                    event.seq().get()
+                ),
             });
         }
         summary.last_seq = event.seq();
@@ -446,6 +458,15 @@ impl FrameSeedAccumulator {
             return Err(RecoveryError::ReplayDivergence {
                 step: StepIdx::ZERO,
                 detail: "frame seed recovery received events for multiple runs".to_owned(),
+            });
+        }
+        if event.seq() == EventSeq::MAX {
+            return Err(RecoveryError::ReplayDivergence {
+                step: StepIdx::ZERO,
+                detail: format!(
+                    "overflow sentinel sequence {} is not valid",
+                    event.seq().get()
+                ),
             });
         }
         self.summary.last_seq = event.seq();
