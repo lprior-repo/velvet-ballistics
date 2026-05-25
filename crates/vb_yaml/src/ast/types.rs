@@ -31,7 +31,28 @@ pub struct WorkflowSource {
 }
 
 impl WorkflowSource {
+    /// Production-visible constructor: restricted to crate-internal use.
+    #[doc(hidden)]
+    #[cfg(not(any(test, feature = "test-util")))]
     pub(crate) fn new(parts: WorkflowSourceParts) -> Self {
+        Self {
+            version: parts.version,
+            name: parts.name,
+            trigger: parts.trigger,
+            inputs: parts.inputs,
+            vars: parts.vars,
+            secrets: parts.secrets,
+            steps: parts.steps,
+            result: parts.result,
+            examples: parts.examples,
+        }
+    }
+
+    /// Test-visible constructor: publicly exported when the `test-util`
+    /// feature is active or `cfg(test)` is enabled.
+    #[doc(hidden)]
+    #[cfg(any(test, feature = "test-util"))]
+    pub fn new(parts: WorkflowSourceParts) -> Self {
         Self {
             version: parts.version,
             name: parts.name,
@@ -83,16 +104,55 @@ impl WorkflowSource {
     }
 }
 
+/// Parts bundle for constructing a [`WorkflowSource`].
+///
+/// Visibility is `pub(crate)` in production, `pub` when the `test-util`
+/// feature is active or `cfg(test)` is enabled, so that verification
+/// harnesses in other crates can construct `WorkflowSource` directly.
+#[doc(hidden)]
+#[cfg(not(any(test, feature = "test-util")))]
 pub(crate) struct WorkflowSourceParts {
+    /// Language version string.
     pub(crate) version: String,
+    /// Workflow name.
     pub(crate) name: String,
+    /// Trigger declaration.
     pub(crate) trigger: TriggerAst,
+    /// Declared input fields.
     pub(crate) inputs: Vec<InputField>,
+    /// Declared workflow-level variables.
     pub(crate) vars: Vec<VarField>,
+    /// Declared secret references.
     pub(crate) secrets: Vec<SecretField>,
+    /// Ordered step list.
     pub(crate) steps: Vec<StepAst>,
+    /// Optional result mapping.
     pub(crate) result: Option<ResultMapping>,
+    /// Inline examples / test cases.
     pub(crate) examples: Vec<ExampleAst>,
+}
+
+#[doc(hidden)]
+#[cfg(any(test, feature = "test-util"))]
+pub struct WorkflowSourceParts {
+    /// Language version string.
+    pub version: String,
+    /// Workflow name.
+    pub name: String,
+    /// Trigger declaration.
+    pub trigger: TriggerAst,
+    /// Declared input fields.
+    pub inputs: Vec<InputField>,
+    /// Declared workflow-level variables.
+    pub vars: Vec<VarField>,
+    /// Declared secret references.
+    pub secrets: Vec<SecretField>,
+    /// Ordered step list.
+    pub steps: Vec<StepAst>,
+    /// Optional result mapping.
+    pub result: Option<ResultMapping>,
+    /// Inline examples / test cases.
+    pub examples: Vec<ExampleAst>,
 }
 
 // ---------------------------------------------------------------------------

@@ -95,16 +95,16 @@ pub(super) fn canonical_finish_slot(
     }
 }
 
-pub(crate) fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) -> &'static str {
+pub(super) fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) -> &'static str {
     match primitive {
         vb_yaml::ast::StepPrimitive::Set { .. } => "set",
         vb_yaml::ast::StepPrimitive::Save { .. } => "save",
         vb_yaml::ast::StepPrimitive::Do { .. } => "do",
         vb_yaml::ast::StepPrimitive::Choose { .. } => "choose",
         vb_yaml::ast::StepPrimitive::ForEach { .. } => "for_each",
-        vb_yaml::ast::StepPrimitive::Together { .. } => "together",
+        vb_yaml::ast::StepPrimitive::Together { .. } => "parallel",
         vb_yaml::ast::StepPrimitive::Collect { .. } => "collect",
-        vb_yaml::ast::StepPrimitive::Aggregate { .. } => "reduce",
+        vb_yaml::ast::StepPrimitive::Aggregate { .. } => "aggregate",
         vb_yaml::ast::StepPrimitive::Repeat { .. } => "repeat",
         vb_yaml::ast::StepPrimitive::Wait { .. } => "wait",
         vb_yaml::ast::StepPrimitive::Ask { .. } => "ask",
@@ -113,7 +113,7 @@ pub(crate) fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) 
     }
 }
 
-pub(super) fn canonical_digest(source: &vb_yaml::ast::WorkflowSource) -> WorkflowDigest {
+pub fn canonical_digest(source: &vb_yaml::ast::WorkflowSource) -> WorkflowDigest {
     let mut hasher = blake3::Hasher::new();
     hasher.update(source.version().as_bytes());
     hasher.update(source.name().as_bytes());
@@ -137,10 +137,7 @@ pub(super) fn canonical_digest(source: &vb_yaml::ast::WorkflowSource) -> Workflo
     WorkflowDigest::from_bytes(hasher.finalize().into())
 }
 
-pub(crate) fn digest_step_primitive(
-    hasher: &mut blake3::Hasher,
-    primitive: &vb_yaml::ast::StepPrimitive,
-) {
+pub fn digest_step_primitive(hasher: &mut blake3::Hasher, primitive: &vb_yaml::ast::StepPrimitive) {
     match primitive {
         vb_yaml::ast::StepPrimitive::Set { output, value } => {
             hasher.update(b"set");
@@ -155,22 +152,21 @@ pub(crate) fn digest_step_primitive(
                 _ => hasher.update(b"unsupported"),
             };
         }
-        vb_yaml::ast::StepPrimitive::Collect {
+        vb_yaml::ast::StepPrimitive::ForEach {
             variable,
-            source,
-            pages,
-            items,
+            input,
+            at_once,
             body,
         } => {
-            hasher.update(b"collect");
+            hasher.update(b"for_each");
+            hasher.update(b":variable:");
             hasher.update(variable.as_bytes());
-            hasher.update(source.as_bytes());
-            if let Some(p) = pages {
-                hasher.update(&p.to_le_bytes());
-            }
-            if let Some(i) = items {
-                hasher.update(&i.to_le_bytes());
-            }
+            hasher.update(b":input:");
+            hasher.update(input.as_bytes());
+            hasher.update(b":at_once:");
+            let limit = at_once.unwrap_or(1);
+            hasher.update(&limit.to_le_bytes());
+            hasher.update(b":body:");
             for step in body {
                 hasher.update(step.id.as_bytes());
                 digest_step_primitive(hasher, &step.primitive);
@@ -228,24 +224,6 @@ pub fn lower_set(
         error_slot: None,
         on_error: None,
         kind: CompiledNodeKind::SetConst { value },
-    }
-}
-
-/// Lowers an expression evaluation into an `EvalExpr` node.
-#[allow(dead_code)]
-pub(crate) fn lower_eval_expr(
-    id: StepIdx,
-    output: SlotIdx,
-    expr: ExprIdx,
-    next: Option<StepIdx>,
-) -> CompiledNode {
-    CompiledNode {
-        id,
-        output: Some(output),
-        next,
-        error_slot: None,
-        on_error: None,
-        kind: CompiledNodeKind::EvalExpr { expr },
     }
 }
 

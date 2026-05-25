@@ -29,6 +29,9 @@ mod type_taint;
 // #[cfg(test)]
 // mod property_tests;
 
+#[cfg(test)]
+mod tests;
+
 // Kani harnesses for idempotency gate parity verification (State 5 proof-writer).
 #[cfg(kani)]
 pub mod kani_idempotency_parity;
@@ -58,9 +61,10 @@ pub use core::{
 pub use errors::{CompileError, CompileErrors, SourceMark};
 pub(crate) use errors::{collect, non_string_key_error};
 pub use lwr::{
-    SlotCompiler, WaitKind, compile_source, lower_ask, lower_choose, lower_collect, lower_do,
-    lower_finish, lower_for_each, lower_reduce, lower_repeat, lower_set, lower_steps_to_ir,
-    lower_together, lower_wait, validate_ir,
+    SlotCompiler, WaitKind, canonical_digest as canonical_digest_part05, compile_source,
+    digest_step_primitive as digest_step_primitive_part05, lower_ask, lower_choose, lower_collect,
+    lower_do, lower_finish, lower_for_each, lower_reduce, lower_repeat, lower_set,
+    lower_steps_to_ir, lower_together, lower_wait, validate_ir,
 };
 pub(crate) use validation::validate_public_name;
 
