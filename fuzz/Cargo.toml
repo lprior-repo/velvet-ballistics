@@ -465,3 +465,31 @@ path = "fuzz_targets/yaml_events.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "vb_rpch_seed_dimensions_fuzz"
+path = "fuzz_targets/vb_rpch_seed_dimensions_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_rpch_hydrate_snapshot_tail_fuzz"
+path = "fuzz_targets/vb_rpch_hydrate_snapshot_tail_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_rpch_hydrate_events_fuzz"
+path = "fuzz_targets/vb_rpch_hydrate_events_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_rpch_replay_events_fuzz"
+path = "fuzz_targets/vb_rpch_replay_events_fuzz.rs"
+test = false
+doc = false
+bench = false

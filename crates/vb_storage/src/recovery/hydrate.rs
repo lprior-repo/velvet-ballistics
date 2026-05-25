@@ -18,23 +18,71 @@ use crate::recovery::types::{
 };
 use vb_core::RunId;
 
+/// Production proof surface for snapshot-plus-tail run identity.
+#[must_use]
+pub fn hydrate_snapshot_tail_run_matches(
+    snapshot: &RunSnapshot,
+    tail_events: &[JournalEvent],
+    run_id: RunId,
+) -> bool {
+    snapshot.run == run_id && tail_events.iter().all(|event| event.run_id() == run_id)
+}
+
+/// Production proof surface for snapshot-plus-tail sequence ordering.
+#[must_use]
+pub fn hydrate_snapshot_tail_seq_after_snapshot(
+    snapshot: &RunSnapshot,
+    tail_events: &[JournalEvent],
+) -> bool {
+    tail_events.iter().all(|event| event.seq() > snapshot.seq)
+}
+
+/// Production proof surface for non-empty recovery evidence.
+#[must_use]
+pub fn hydrate_snapshot_tail_has_evidence(
+    snapshot: &RunSnapshot,
+    tail_events: &[JournalEvent],
+) -> bool {
+    !tail_events.is_empty() || !snapshot.slots.is_empty() || !snapshot.taint.is_empty()
+}
+
+/// Production proof surface for hydrate_run_frame preconditions that do not decode bytes.
+#[must_use]
+pub fn hydrate_snapshot_tail_preconditions(
+    snapshot: &RunSnapshot,
+    tail_events: &[JournalEvent],
+    run_id: RunId,
+) -> bool {
+    hydrate_snapshot_tail_run_matches(snapshot, tail_events, run_id)
+        && hydrate_snapshot_tail_seq_after_snapshot(snapshot, tail_events)
+        && hydrate_snapshot_tail_has_evidence(snapshot, tail_events)
+}
+
+/// Production proof surface for events-only hydrate preconditions.
+#[must_use]
+pub const fn hydrate_events_preconditions(events: &[JournalEvent]) -> bool {
+    !events.is_empty()
+}
+
+/// Production proof surface for positive frame dimensions.
+#[must_use]
+pub const fn hydrate_dimensions_positive(step_count: u16, slot_count: u16) -> bool {
+    step_count > 0 && slot_count > 0
+}
+
 /// Copy-only metadata needed to validate snapshot/tail hydration ordering.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct TailEventMetadata {
-    /// Run carried by the tail event.
     pub(crate) run: RunId,
-    /// Sequence carried by the tail event.
     pub(crate) seq: crate::EventSeq,
 }
 
 impl TailEventMetadata {
-    /// Creates metadata from explicit event fields.
     #[must_use]
     pub(crate) const fn new(run: RunId, seq: crate::EventSeq) -> Self {
         Self { run, seq }
     }
 
-    /// Projects copy metadata from a journal event.
     #[must_use]
     pub(crate) const fn from_event(event: &JournalEvent) -> Self {
         Self::new(event.run_id(), event.seq())
@@ -44,35 +92,23 @@ impl TailEventMetadata {
 /// Allocation-free classification for snapshot/tail hydration preconditions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SnapshotRecoveryInputViolation {
-    /// Snapshot belongs to a different run.
     SnapshotRunMismatch {
-        /// Run carried by the snapshot.
         snapshot_run: RunId,
-        /// Snapshot sequence.
         snapshot_seq: crate::EventSeq,
     },
-    /// Tail event belongs to a different run.
     TailRunMismatch {
-        /// Requested run.
         expected: RunId,
-        /// Event run.
         actual: RunId,
     },
-    /// Tail event is not strictly after the snapshot sequence.
     TailSeqNotAfterSnapshot {
-        /// Snapshot sequence.
         snapshot_seq: crate::EventSeq,
-        /// Event sequence.
         actual_seq: crate::EventSeq,
     },
-    /// Snapshot and tail are both empty.
     NoRecoveryData {
-        /// Requested run.
         run: RunId,
     },
 }
 
-/// Validates snapshot identity without allocating an error string.
 pub(crate) const fn validate_snapshot_metadata(
     snapshot_run: RunId,
     snapshot_seq: crate::EventSeq,
@@ -88,7 +124,6 @@ pub(crate) const fn validate_snapshot_metadata(
     }
 }
 
-/// Validates one tail event's run identity without allocating an error string.
 pub(crate) const fn validate_tail_run_metadata(
     event: TailEventMetadata,
     run_id: RunId,
@@ -103,7 +138,6 @@ pub(crate) const fn validate_tail_run_metadata(
     }
 }
 
-/// Validates one tail event's sequence lower bound without allocating an error string.
 pub(crate) const fn validate_tail_seq_after_snapshot(
     event: TailEventMetadata,
     snapshot_seq: crate::EventSeq,
@@ -118,7 +152,6 @@ pub(crate) const fn validate_tail_seq_after_snapshot(
     }
 }
 
-/// Validates that recovery has at least one snapshot byte or tail event.
 pub(crate) const fn validate_recovery_data_present(
     tail_events_empty: bool,
     snapshot_slots_empty: bool,

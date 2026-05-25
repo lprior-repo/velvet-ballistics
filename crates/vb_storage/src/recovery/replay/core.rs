@@ -17,7 +17,7 @@ use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest};
 /// action-completion events. Events without an attempt field contribute 1
 /// (PRE-001: treat as attempt 1).
 #[must_use]
-fn compute_max_attempt(events: &[JournalEvent]) -> u16 {
+pub(crate) fn compute_max_attempt(events: &[JournalEvent]) -> u16 {
     let mut max_attempt = 1u16;
     for event in events {
         if let Some(attempt) = event.attempt().filter(|&a| a > max_attempt) {
@@ -25,6 +25,55 @@ fn compute_max_attempt(events: &[JournalEvent]) -> u16 {
         }
     }
     max_attempt
+}
+
+/// Production proof surface for defaulting absent attempts to attempt one.
+#[must_use]
+pub const fn replay_attempt_or_default(attempt: Option<u16>) -> u16 {
+    match attempt {
+        Some(value) => value,
+        None => 1,
+    }
+}
+
+/// Production proof surface for latest-attempt filtering.
+#[must_use]
+pub const fn replay_attempt_is_current(attempt: Option<u16>, max_attempt: u16) -> bool {
+    replay_attempt_or_default(attempt) >= max_attempt
+}
+
+/// Production proof surface for stale-attempt rejection.
+#[must_use]
+pub const fn replay_attempt_is_stale(attempt: Option<u16>, max_attempt: u16) -> bool {
+    replay_attempt_or_default(attempt) < max_attempt
+}
+
+/// Production proof surface for event kinds that may mutate replay state.
+#[must_use]
+pub const fn replay_event_has_state_effect(event: &JournalEvent) -> bool {
+    matches!(
+        event,
+        JournalEvent::StepStarted { .. }
+            | JournalEvent::ActionScheduled { .. }
+            | JournalEvent::ActionCompletedEvent { .. }
+            | JournalEvent::ActionFailedEvent { .. }
+            | JournalEvent::SlotWrittenEvent { .. }
+    )
+}
+
+/// Production proof surface for stale state-effect filtering.
+#[must_use]
+pub fn replay_event_is_stale_state_effect(event: &JournalEvent, max_attempt: u16) -> bool {
+    replay_event_has_state_effect(event) && replay_attempt_is_stale(event.attempt(), max_attempt)
+}
+
+/// Production proof surface for step-order divergence detection.
+#[must_use]
+pub const fn replay_step_order_diverges(previous: Option<StepIdx>, current: StepIdx) -> bool {
+    match previous {
+        Some(step) => current.get() < step.get(),
+        None => false,
+    }
 }
 
 /// Core replay logic for all journal event kinds.
@@ -54,8 +103,7 @@ fn replay_events_with_schedule_requirement(
 
     for event in events {
         // PRE-001: skip state-affecting events from older attempts
-        let attempt = event.attempt().unwrap_or(1);
-        if attempt < max_attempt {
+        if replay_attempt_is_stale(event.attempt(), max_attempt) {
             replayed.push(event.clone());
             continue;
         }
@@ -76,15 +124,17 @@ fn replay_events_with_schedule_requirement(
             | JournalEvent::RunAnswered { .. } => {}
             JournalEvent::StepStarted { step, .. } => {
                 // Verify step ordering
-                if let Some(prev) = last_step
-                    && step.get() < prev.get()
-                {
+                if replay_step_order_diverges(last_step, *step) {
+                    let previous_step = match last_step {
+                        Some(value) => value,
+                        None => StepIdx::ZERO,
+                    };
                     return Err(RecoveryError::ReplayDivergence {
                         step: *step,
                         detail: format!(
                             "step {} executed before previous step {}",
                             step.get(),
-                            prev.get()
+                            previous_step.get()
                         ),
                     });
                 }

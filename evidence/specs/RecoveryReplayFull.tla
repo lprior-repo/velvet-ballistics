@@ -18,6 +18,12 @@ CONSTANT
     StepId,
     ActionId,
     Attempt,
+    EnabledEventTypes,
+    ABIExpected,
+    ABIFound,
+    PolicyExpected,
+    PolicyFound,
+    SnapshotInputs,
     MAX_SEQ,
     MAX_EVENTS
 
@@ -25,11 +31,22 @@ VARIABLES
     journal,
     snapshot_seq,
     tracker,
+    replay_candidates,
     digest_level,
+    digest_stage,
     recovered_runs,
-    last_error
+    last_error,
+    abi_expected,
+    abi_found,
+    policy_expected,
+    policy_found,
+    snapshot_inputs
+
+NoneError == "None"
 
 Digest == {0, 1, 2, 3}
+
+ErrorDomain == {NoneError} \cup {"NoRecoveryData", "CorruptSnapshot", "WorkflowSourceDigestMismatch", "CompiledIrDigestMismatch", "ActionAbiMismatch", "PolicyDigestMismatch", "NonIdempotentActionBlocked", "ReplayDivergence", "FrameDimensionOverflow"}
 
 DigestLevel == {"WorkflowSourceOnly", "WorkflowAndIr", "Full"}
 
@@ -61,31 +78,57 @@ RECORDSnapshot == [
     taint: STRING
 ]
 
-NoneError == "None"
+ReplayCandidate == [
+    action: ActionId,
+    step: StepId,
+    attempt: Attempt
+]
 
 TypeOK ==
+    /\ EnabledEventTypes \subseteq EventType
+    /\ ABIExpected \in Digest
+    /\ ABIFound \in Digest
+    /\ PolicyExpected \in Digest
+    /\ PolicyFound \in Digest
+    /\ SnapshotInputs \subseteq {"Absent", "Corrupt"}
+    /\ abi_expected \in Digest
+    /\ abi_found \in Digest
+    /\ policy_expected \in Digest
+    /\ policy_found \in Digest
+    /\ snapshot_inputs \subseteq {"Absent", "Corrupt"}
     /\ journal \in Seq(RECORDEvent)
     /\ snapshot_seq \in EventSeqNum \cup {-1}
     /\ tracker \in [completed: SUBSET [action: ActionId, step: StepId], failed: SUBSET [action: ActionId, step: StepId]]
+    /\ replay_candidates \subseteq ReplayCandidate
     /\ digest_level \in DigestLevel
+    /\ digest_stage \in [RunId -> SUBSET {"WorkflowChecked", "IrChecked"}]
     /\ recovered_runs \subseteq RunId
-    /\ last_error \in {NoneError} \cup {"NoRecoveryData", "CorruptSnapshot", "WorkflowSourceDigestMismatch", "CompiledIrDigestMismatch", "ActionAbiMismatch", "PolicyDigestMismatch", "NonIdempotentActionBlocked", "ReplayDivergence", "FrameDimensionOverflow"}
+    /\ last_error \in ErrorDomain
 
 Init ==
     /\ journal = <<>>
     /\ snapshot_seq = -1
     /\ tracker = [completed |-> {}, failed |-> {}]
+    /\ replay_candidates = {}
     /\ digest_level = "WorkflowSourceOnly"
+    /\ digest_stage = [r \in RunId |-> {}]
     /\ recovered_runs = {}
     /\ last_error = NoneError
+    /\ abi_expected = ABIExpected
+    /\ abi_found = ABIFound
+    /\ policy_expected = PolicyExpected
+    /\ policy_found = PolicyFound
+    /\ snapshot_inputs = SnapshotInputs
+
+InputVars == <<abi_expected, abi_found, policy_expected, policy_found, snapshot_inputs>>
+
+vars == <<journal, snapshot_seq, tracker, replay_candidates, digest_level, digest_stage, recovered_runs, last_error, abi_expected, abi_found, policy_expected, policy_found, snapshot_inputs>>
 
 MakeEvent(type, run, step, action, attempt, seq, wf_digest, ir_digest) ==
     [type |-> type, run |-> run, step |-> step,
      action |-> action, attempt |-> attempt, seq |-> seq,
      workflow_digest |-> wf_digest,
      ir_digest |-> ir_digest]
-
-Sort(s, less) == s
 
 Min(s) == CHOOSE x \in s : \A y \in s : x <= y
 
@@ -109,13 +152,26 @@ BuildSeqFromIndices(indices, result) ==
 
 AppendEvent(e) ==
     /\ Len(journal) < MAX_EVENTS
+    /\ IF Len(journal) = 0 THEN TRUE ELSE journal[Len(journal)].seq <= e.seq
+    /\ snapshot_seq >= 0 => e.seq > snapshot_seq
+    /\ e.type = "ActionScheduled" =>
+        ~\E i \in 1..Len(journal) :
+            /\ journal[i].type = "ActionCompleted"
+            /\ journal[i].action = e.action
+            /\ journal[i].step = e.step
+            /\ journal[i].attempt = e.attempt
     /\ journal' = Append(journal, e)
-    /\ UNCHANGED <<snapshot_seq, tracker, digest_level, recovered_runs, last_error>>
+    /\ recovered_runs' = IF e.type \in {"RunFinished", "RunCancelled", "RunFailedEvent"}
+        THEN recovered_runs \ {e.run}
+        ELSE recovered_runs
+    /\ UNCHANGED <<snapshot_seq, tracker, replay_candidates, digest_level, digest_stage, last_error, InputVars>>
 
 SetSnapshot(run, seq) ==
-    /\ snapshot_seq >= 0
-    /\ journal' = Append(journal, MakeEvent("RunAccepted", run, 0, 0, 1, seq, 1, 1))
-    /\ UNCHANGED <<tracker, digest_level, recovered_runs, last_error>>
+    /\ run \in RunId
+    /\ seq \in EventSeqNum
+    /\ \A i \in 1..Len(journal) : journal[i].seq > seq
+    /\ snapshot_seq' = seq
+    /\ UNCHANGED <<journal, tracker, replay_candidates, digest_level, digest_stage, recovered_runs, last_error, InputVars>>
 
 DiscoverIncomplete ==
     \E runs \in SUBSET RunId :
@@ -127,7 +183,7 @@ DiscoverIncomplete ==
         } IN
         recovered_runs' = incomplete /\
         journal' = journal /\
-        UNCHANGED <<snapshot_seq, tracker, digest_level, last_error>>
+        UNCHANGED <<snapshot_seq, tracker, replay_candidates, digest_level, digest_stage, last_error, InputVars>>
 
 ReplayEvents ==
     \E run \in RunId :
@@ -141,18 +197,34 @@ ReplayEvents ==
         IN
         tracker' = [tracker EXCEPT !.completed = tracker.completed \cup resolved] /\
         journal' = new_journal /\
-        UNCHANGED <<snapshot_seq, digest_level, recovered_runs, last_error>>
+        UNCHANGED <<snapshot_seq, replay_candidates, digest_level, digest_stage, recovered_runs, last_error, InputVars>>
 
 DigestCheckNext ==
     \E level \in DigestLevel :
         digest_level' = level /\
         journal' = journal /\
-        UNCHANGED <<snapshot_seq, tracker, recovered_runs, last_error>>
+        UNCHANGED <<snapshot_seq, tracker, replay_candidates, digest_stage, recovered_runs, last_error, InputVars>>
 
 RecordError(err) ==
     last_error' = err /\
     journal' = journal /\
-    UNCHANGED <<snapshot_seq, tracker, digest_level, recovered_runs>>
+    UNCHANGED <<snapshot_seq, tracker, replay_candidates, digest_level, digest_stage, recovered_runs, InputVars>>
+
+RecordErrorWithUnchangedStage(err) ==
+    /\ last_error = NoneError
+    /\ err # NoneError
+    /\ last_error' = err
+    /\ UNCHANGED <<journal, snapshot_seq, tracker, replay_candidates, digest_level, digest_stage, recovered_runs, InputVars>>
+
+MarkReplayCandidate ==
+    \E i \in 1..Len(journal) :
+        /\ journal[i].type \in {"ActionCompleted", "ActionFailed"}
+        /\ LET candidate == [action |-> journal[i].action,
+                             step |-> journal[i].step,
+                             attempt |-> journal[i].attempt] IN
+            /\ candidate \notin replay_candidates
+            /\ replay_candidates' = replay_candidates \cup {candidate}
+        /\ UNCHANGED <<journal, snapshot_seq, tracker, digest_level, digest_stage, recovered_runs, last_error, InputVars>>
 
 CheckWorkflowDigest ==
     \E run \in RunId, expected \in Digest :
@@ -161,19 +233,58 @@ CheckWorkflowDigest ==
             journal[i].type = "RunAccepted" /\
             IF journal[i].workflow_digest = expected
             THEN /\ journal' = journal
-                 /\ UNCHANGED <<snapshot_seq, tracker, digest_level, recovered_runs, last_error>>
-            ELSE RecordError("WorkflowSourceDigestMismatch")
+                 /\ digest_stage' = [digest_stage EXCEPT ![run] = @ \cup {"WorkflowChecked"}]
+                 /\ UNCHANGED <<snapshot_seq, tracker, replay_candidates, digest_level, recovered_runs, last_error, InputVars>>
+            ELSE RecordErrorWithUnchangedStage("WorkflowSourceDigestMismatch")
 
 CheckIrDigest ==
     digest_level \in {"WorkflowAndIr", "Full"} /\
     \E run \in RunId, expected \in Digest :
+        "WorkflowChecked" \in digest_stage[run] /\
         \E i \in 1..Len(journal) :
             journal[i].run = run /\
             journal[i].type = "RunAccepted" /\
             IF journal[i].ir_digest = expected
             THEN /\ journal' = journal
-                 /\ UNCHANGED <<snapshot_seq, tracker, digest_level, recovered_runs, last_error>>
-            ELSE RecordError("CompiledIrDigestMismatch")
+                 /\ digest_stage' = [digest_stage EXCEPT ![run] = @ \cup {"IrChecked"}]
+                 /\ UNCHANGED <<snapshot_seq, tracker, replay_candidates, digest_level, recovered_runs, last_error, InputVars>>
+            ELSE RecordErrorWithUnchangedStage("CompiledIrDigestMismatch")
+
+RecoverRunWithoutEvents ==
+    \E run \in RunId :
+        /\ ~\E i \in 1..Len(journal) : journal[i].run = run
+        /\ RecordErrorWithUnchangedStage("NoRecoveryData")
+
+LoadCorruptSnapshot ==
+    /\ snapshot_seq >= 0
+    /\ "Corrupt" \in snapshot_inputs
+    /\ RecordErrorWithUnchangedStage("CorruptSnapshot")
+
+CheckActionAbiDigest ==
+    /\ abi_expected # abi_found
+    /\ RecordErrorWithUnchangedStage("ActionAbiMismatch")
+
+CheckPolicyDigest ==
+    /\ policy_expected # policy_found
+    /\ RecordErrorWithUnchangedStage("PolicyDigestMismatch")
+
+DetectNonIdempotentResolved ==
+    \E i \in 1..Len(journal), candidate \in replay_candidates :
+        /\ journal[i].type \in {"ActionCompleted", "ActionFailed"}
+        /\ candidate.action = journal[i].action
+        /\ candidate.step = journal[i].step
+        /\ candidate.attempt = journal[i].attempt
+        /\ RecordErrorWithUnchangedStage("NonIdempotentActionBlocked")
+
+DetectReplayDivergence ==
+    \E candidate_seq \in EventSeqNum :
+        /\ Len(journal) > 0
+        /\ candidate_seq < journal[Len(journal)].seq
+        /\ RecordErrorWithUnchangedStage("ReplayDivergence")
+
+DetectFrameDimensionOverflow ==
+    /\ Len(journal) >= MAX_EVENTS
+    /\ RecordErrorWithUnchangedStage("FrameDimensionOverflow")
 
 TailCausalAfterSnapshot ==
     snapshot_seq >= 0 =>
@@ -202,23 +313,102 @@ NoResolvedReExecution ==
                 journal[j].attempt = journal[i].attempt
 
 DigestVerificationOrder ==
-    \A i \in 1..Len(journal) :
-        journal[i].type = "RunAccepted" =>
-            /\ journal[i].workflow_digest \in Digest \ {0}
-            /\ journal[i].ir_digest \in Digest \ {0}
+    \A run \in RunId :
+        "IrChecked" \in digest_stage[run] => "WorkflowChecked" \in digest_stage[run]
 
 Next ==
-    \/ \E type \in EventType, run \in RunId, step \in StepId,
+    \/ \E type \in EnabledEventTypes, run \in RunId, step \in StepId,
           action \in ActionId, attempt \in Attempt, seq \in EventSeqNum :
         AppendEvent(MakeEvent(type, run, step, action, attempt, seq, 1, 1))
-    \/ SetSnapshot(0, 0)
+    \/ \E run \in RunId, seq \in EventSeqNum : SetSnapshot(run, seq)
     \/ DiscoverIncomplete
     \/ DigestCheckNext
     \/ CheckWorkflowDigest
     \/ CheckIrDigest
-    \/ RecordError(NoneError)
+    \/ RecoverRunWithoutEvents
+    \/ LoadCorruptSnapshot
+    \/ CheckActionAbiDigest
+    \/ CheckPolicyDigest
+    \/ MarkReplayCandidate
+    \/ DetectNonIdempotentResolved
+    \/ DetectReplayDivergence
+    \/ DetectFrameDimensionOverflow
 
-Spec == Init /\ [][Next]_<<journal, snapshot_seq, tracker, digest_level, recovered_runs, last_error>>
+Spec == Init /\ [][Next]_vars
+
+ReachReplaySeqOrderAntecedent == Len(journal) >= 2
+
+ReachTailCausalAntecedent ==
+    /\ snapshot_seq >= 0
+    /\ \E i \in 1..Len(journal) : journal[i].seq > snapshot_seq
+
+ReachRecoveredRunsNonEmpty == recovered_runs # {}
+
+ReachTerminalExcludedFromRecovered ==
+    \E i \in 1..Len(journal) :
+        /\ journal[i].type \in {"RunFinished", "RunCancelled", "RunFailedEvent"}
+        /\ journal[i].run \notin recovered_runs
+
+ReachResolvedActionGuardAntecedent ==
+    \E i \in 1..Len(journal), candidate \in replay_candidates :
+        /\ journal[i].type \in {"ActionCompleted", "ActionFailed"}
+        /\ candidate.action = journal[i].action
+        /\ candidate.step = journal[i].step
+        /\ candidate.attempt = journal[i].attempt
+
+ReachDigestAcceptedAntecedent ==
+    \E i \in 1..Len(journal) : journal[i].type = "RunAccepted"
+
+ReachModeledDigestError ==
+    last_error \in {"WorkflowSourceDigestMismatch", "CompiledIrDigestMismatch"}
+
+ReachDigestIrAfterWorkflow ==
+    \E run \in RunId :
+        /\ "WorkflowChecked" \in digest_stage[run]
+        /\ "IrChecked" \in digest_stage[run]
+
+ReachError(err) == last_error = err
+
+NotReachReplaySeqOrderAntecedent == ~ReachReplaySeqOrderAntecedent
+NotReachTailCausalAntecedent == ~ReachTailCausalAntecedent
+NotReachRecoveredRunsNonEmpty == ~ReachRecoveredRunsNonEmpty
+NotReachTerminalExcludedFromRecovered == ~ReachTerminalExcludedFromRecovered
+NotReachResolvedActionGuardAntecedent == ~ReachResolvedActionGuardAntecedent
+NotReachDigestIrAfterWorkflow == ~ReachDigestIrAfterWorkflow
+NotReachErrorWorkflowSourceDigestMismatch == ~ReachError("WorkflowSourceDigestMismatch")
+NotReachErrorCompiledIrDigestMismatch == ~ReachError("CompiledIrDigestMismatch")
+NotReachErrorNoRecoveryData == ~ReachError("NoRecoveryData")
+NotReachErrorCorruptSnapshot == ~ReachError("CorruptSnapshot")
+NotReachErrorActionAbiMismatch == ~ReachError("ActionAbiMismatch")
+NotReachErrorPolicyDigestMismatch == ~ReachError("PolicyDigestMismatch")
+NotReachErrorNonIdempotentActionBlocked == ~ReachError("NonIdempotentActionBlocked")
+NotReachErrorReplayDivergence == ~ReachError("ReplayDivergence")
+NotReachErrorFrameDimensionOverflow == ~ReachError("FrameDimensionOverflow")
+
+ModeledRecoveryErrors == ErrorDomain \ {NoneError}
+
+RecoveryErrorWitnessCoverageClaim ==
+    ModeledRecoveryErrors = {
+        "NoRecoveryData",
+        "CorruptSnapshot",
+        "WorkflowSourceDigestMismatch",
+        "CompiledIrDigestMismatch",
+        "ActionAbiMismatch",
+        "PolicyDigestMismatch",
+        "NonIdempotentActionBlocked",
+        "ReplayDivergence",
+        "FrameDimensionOverflow"
+    }
+
+AllNonVacuityWitnessesReached ==
+    /\ ReachReplaySeqOrderAntecedent
+    /\ ReachTailCausalAntecedent
+    /\ ReachRecoveredRunsNonEmpty
+    /\ ReachTerminalExcludedFromRecovered
+    /\ ReachResolvedActionGuardAntecedent
+    /\ ReachDigestAcceptedAntecedent
+
+NotAllNonVacuityWitnessesReached == ~AllNonVacuityWitnessesReached
 
 THEOREM Spec => []TypeOK
 THEOREM Spec => []TailCausalAfterSnapshot
@@ -228,5 +418,3 @@ THEOREM Spec => []NoResolvedReExecution
 THEOREM Spec => []DigestVerificationOrder
 
 ====
-
-(End file - total 211 lines)

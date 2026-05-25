@@ -13,6 +13,29 @@ use vb_core::{
     Taint, WorkflowDigest,
 };
 
+#[cfg(kani)]
+#[derive(Debug, Clone, Default)]
+struct ReplayResolutionSet(Vec<(ActionId, StepIdx)>);
+
+#[cfg(kani)]
+impl ReplayResolutionSet {
+    fn insert(&mut self, value: (ActionId, StepIdx)) -> bool {
+        if self.contains(&value) {
+            false
+        } else {
+            self.0.push(value);
+            true
+        }
+    }
+
+    fn contains(&self, value: &(ActionId, StepIdx)) -> bool {
+        self.0.iter().any(|entry| entry == value)
+    }
+}
+
+#[cfg(not(kani))]
+type ReplayResolutionSet = std::collections::HashSet<(ActionId, StepIdx)>;
+
 /// Recovery failures with typed diagnostics.
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
@@ -292,6 +315,21 @@ impl UnsupportedRecoveryState {
             pending_actions: self.pending_actions || other.pending_actions,
         }
     }
+
+    /// Production proof surface for `SUPPORTED`: every unsupported flag is false.
+    #[must_use]
+    pub const fn is_fully_supported(self) -> bool {
+        !self.slot_values && !self.slot_taint && !self.action_payloads && !self.pending_actions
+    }
+
+    /// Production proof surface for flag-wise union correspondence.
+    #[must_use]
+    pub const fn union_matches_flags(self, other: Self, union: Self) -> bool {
+        union.slot_values == (self.slot_values || other.slot_values)
+            && union.slot_taint == (self.slot_taint || other.slot_taint)
+            && union.action_payloads == (self.action_payloads || other.action_payloads)
+            && union.pending_actions == (self.pending_actions || other.pending_actions)
+    }
 }
 
 /// Minimal live-frame seed recovered from durable journal headers/events.
@@ -365,7 +403,6 @@ pub(crate) enum ActionReplayEffect {
 }
 
 impl ActionReplayTracker {
-    /// Creates an empty action replay tracker.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -495,6 +532,18 @@ impl ActionReplayTracker {
         self.failed.insert((action, step));
     }
 
+    /// Production proof surface: the completed set contains this action/step pair.
+    #[must_use]
+    pub fn has_completed(&self, action: ActionId, step: StepIdx) -> bool {
+        self.completed.contains(&(action, step))
+    }
+
+    /// Production proof surface: the failed set contains this action/step pair.
+    #[must_use]
+    pub fn has_failed(&self, action: ActionId, step: StepIdx) -> bool {
+        self.failed.contains(&(action, step))
+    }
+
     /// Checks whether an action has already been resolved (completed or failed)
     /// and must not be re-executed during recovery.
     #[must_use]
@@ -519,4 +568,40 @@ pub enum DigestCheck {
     WorkflowAndIr,
     /// Verify all digests including action ABI and policy.
     Full,
+}
+
+impl DigestCheck {
+    /// Numeric rank for proof and testing of the strict digest hierarchy.
+    #[must_use]
+    pub const fn hierarchy_rank(self) -> u8 {
+        match self {
+            Self::WorkflowSourceOnly => 1,
+            Self::WorkflowAndIr => 2,
+            Self::Full => 3,
+        }
+    }
+
+    /// Whether this level requires workflow-source digest verification.
+    #[must_use]
+    pub const fn checks_workflow_source(self) -> bool {
+        self.hierarchy_rank() >= Self::WorkflowSourceOnly.hierarchy_rank()
+    }
+
+    /// Whether this level requires compiled-IR digest verification.
+    #[must_use]
+    pub const fn checks_compiled_ir(self) -> bool {
+        self.hierarchy_rank() >= Self::WorkflowAndIr.hierarchy_rank()
+    }
+
+    /// Whether this level requires all currently-modeled digest checks.
+    #[must_use]
+    pub const fn checks_full(self) -> bool {
+        self.hierarchy_rank() >= Self::Full.hierarchy_rank()
+    }
+
+    /// Production proof surface for strict ordering between two levels.
+    #[must_use]
+    pub const fn is_strictly_weaker_than(self, other: Self) -> bool {
+        self.hierarchy_rank() < other.hierarchy_rank()
+    }
 }

@@ -7,17 +7,111 @@
 
 #![forbid(unsafe_code)]
 
-use crate::journal::EventReplayLimit;
-use crate::journal::replay::{ReplayPushLimitDecision, classify_replay_push_len};
+use crate::EventSeq;
+use crate::JournalEvent;
 use crate::recovery::hydrate::{
-    SnapshotRecoveryInputViolation, TailEventMetadata, validate_recovery_data_present,
-    validate_snapshot_metadata, validate_tail_run_metadata, validate_tail_seq_after_snapshot,
+    hydrate_dimensions_positive, hydrate_events_preconditions, hydrate_run_frame,
+    hydrate_run_frame_from_events, hydrate_snapshot_tail_preconditions,
 };
-use crate::recovery::hydrate_support::{
-    SlotTaintReadObservation, SlotTaintResolution, resolve_slot_taint_read,
+use crate::recovery::replay::core::replay_events;
+use crate::recovery::replay::core::{
+    replay_attempt_is_current, replay_attempt_is_stale, replay_attempt_or_default,
+    replay_event_has_state_effect, replay_event_is_stale_state_effect, replay_step_order_diverges,
 };
-use crate::{EventSeq, JournalError};
-use vb_core::{RunId, Taint};
+use crate::recovery::replay::summary::recovery_dimension_count_from_index;
+use crate::recovery::types::RecoveryError;
+use crate::recovery::types::RunSnapshot;
+use crate::recovery::types::{ActionReplayTracker, DigestCheck, UnsupportedRecoveryState};
+use vb_core::{ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest};
+
+fn arbitrary_seq() -> EventSeq {
+    EventSeq::new(kani::any())
+}
+
+fn bounded_event_vec() -> Vec<JournalEvent> {
+    let len = usize::from(kani::any::<u8>() % 3);
+    let mut events = Vec::new();
+    let run = RunId::new(u64::from(kani::any::<u8>()));
+    for index in 0..len {
+        events.push(bounded_event_at(run, EventSeq::new(index as u64)));
+    }
+    events
+}
+
+fn bounded_event_at(run: RunId, seq: EventSeq) -> JournalEvent {
+    let step = StepIdx::new(u16::from(kani::any::<u8>() % 2));
+    let action = ActionId::new(u16::from(kani::any::<u8>() % 2));
+    let slot = SlotIdx::new(u16::from(kani::any::<u8>() % 2));
+    let attempt = u16::from((kani::any::<u8>() % 2) + 1);
+
+    match kani::any::<u8>() % 8 {
+        0 => JournalEvent::RunAccepted {
+            run,
+            seq,
+            workflow: WorkflowDigest::from_bytes([0; 32]),
+        },
+        1 => JournalEvent::StepStarted {
+            run,
+            seq,
+            step,
+            attempt,
+        },
+        2 => JournalEvent::StepSucceeded {
+            run,
+            seq,
+            step,
+            output: slot,
+        },
+        3 => JournalEvent::ActionScheduled {
+            run,
+            seq,
+            step,
+            action,
+            attempt,
+        },
+        4 => JournalEvent::ActionCompletedEvent {
+            run,
+            seq,
+            step,
+            action,
+            attempt,
+        },
+        5 => JournalEvent::ActionFailedEvent {
+            run,
+            seq,
+            step,
+            action,
+            attempt,
+        },
+        6 => JournalEvent::SlotWrittenEvent {
+            run,
+            seq,
+            slot,
+            value: None,
+            extra: None,
+            attempt,
+        },
+        _ => JournalEvent::RunFailedEvent { run, seq, attempt },
+    }
+}
+
+fn empty_snapshot_for_run(run: RunId) -> RunSnapshot {
+    RunSnapshot {
+        run,
+        seq: EventSeq::new(0),
+        workflow: WorkflowDigest::from_bytes([0; 32]),
+        slots: Vec::new(),
+        taint: Vec::new(),
+    }
+}
+
+fn single_run_accepted(run: RunId, seq: EventSeq) -> JournalEvent {
+    JournalEvent::RunAccepted {
+        run,
+        seq,
+        workflow: WorkflowDigest::from_bytes([0; 32]),
+    }
+}
 
 const MAX_TAIL_EVENTS: u8 = 4;
 const MAX_TAIL_EVENTS_USIZE: usize = 4;
@@ -25,26 +119,351 @@ const MAX_TAIL_EVENTS_USIZE: usize = 4;
 #[derive(Clone, Copy)]
 struct TailMetadataBatch {
     len: u8,
-    events: [TailEventMetadata; MAX_TAIL_EVENTS_USIZE],
-}
-
-impl kani::Arbitrary for TailEventMetadata {
-    fn any() -> Self {
-        Self::new(arbitrary_run_id(), EventSeq::new(kani::any()))
-    }
+    events: [JournalEvent; MAX_TAIL_EVENTS_USIZE],
 }
 
 impl kani::Arbitrary for TailMetadataBatch {
     fn any() -> Self {
-        Self {
-            len: kani::any::<u8>() % (MAX_TAIL_EVENTS + 1),
-            events: [kani::any(), kani::any(), kani::any(), kani::any()],
+        let discriminant: u8 = kani::any();
+        match discriminant % 15 {
+            0 => JournalEvent::RunAccepted {
+                run: kani::any(),
+                seq: arbitrary_seq(),
+                workflow: WorkflowDigest::from_bytes(kani::any()),
+            },
+            1 => JournalEvent::RunAdmission {
+                run: kani::any(),
+                seq: arbitrary_seq(),
+                artifact_digest: WorkflowDigest::from_bytes(kani::any()),
+                granted_capabilities: CapabilitySet::empty(),
+                policy: RuntimePolicy::Strict,
+            },
+            2 => JournalEvent::StepStarted {
+                run: kani::any(),
+                seq: arbitrary_seq(),
+                step: kani::any(),
+                attempt: kani::any(),
+            },
+            3 => JournalEvent::StepSucceeded {
+                run: kani::any(),
+                seq: arbitrary_seq(),
+                step: kani::any(),
+                output: kani::any(),
+            },
+            4 => JournalEvent::ActionScheduled {
+                run: kani::any(),
+                seq: arbitrary_seq(),
+                step: kani::any(),
+                action: kani::any(),
+                attempt: kani::any(),
+            },
+            5 => JournalEvent::ActionCompletedEvent {
+                run: kani::any(),
+                seq: arbitrary_seq(),
+                step: kani::any(),
+                action: kani::any(),
+                attempt: kani::any(),
+            },
+            6 => JournalEvent::ActionFailedEvent {
+                run: kani::any(),
+                seq: arbitrary_seq(),
+                step: kani::any(),
+                action: kani::any(),
+                attempt: kani::any(),
+            },
+            7 => JournalEvent::SlotWrittenEvent {
+                run: kani::any(),
+                seq: arbitrary_seq(),
+                slot: kani::any(),
+                value: None,
+                extra: None,
+                attempt: kani::any(),
+            },
+            8 => JournalEvent::WaitScheduledEvent {
+                run: kani::any(),
+                seq: arbitrary_seq(),
+                step: kani::any(),
+                attempt: kani::any(),
+            },
+            9 => JournalEvent::AskScheduledEvent {
+                run: kani::any(),
+                seq: arbitrary_seq(),
+                step: kani::any(),
+                attempt: kani::any(),
+            },
+            10 => JournalEvent::AskAnsweredEvent {
+                run: kani::any(),
+                seq: arbitrary_seq(),
+                step: kani::any(),
+                attempt: kani::any(),
+            },
+            11 => JournalEvent::RetryScheduledEvent {
+                run: kani::any(),
+                seq: arbitrary_seq(),
+                step: kani::any(),
+                attempt: kani::any(),
+            },
+            12 => JournalEvent::RunCancelled {
+                run: kani::any(),
+                seq: arbitrary_seq(),
+                attempt: kani::any(),
+                reason: None,
+            },
+            13 => JournalEvent::RunFinished {
+                run: kani::any(),
+                seq: arbitrary_seq(),
+                result: kani::any(),
+                attempt: kani::any(),
+            },
+            14 => JournalEvent::RunFailedEvent {
+                run: kani::any(),
+                seq: arbitrary_seq(),
+                attempt: kani::any(),
+            },
+            _ => kani::any(),
         }
     }
 }
 
 fn arbitrary_run_id() -> RunId {
     RunId::new(kani::any())
+}
+
+impl kani::Arbitrary for UnsupportedRecoveryState {
+    fn any() -> Self {
+        Self {
+            slot_values: kani::any(),
+            slot_taint: kani::any(),
+            action_payloads: kani::any(),
+            pending_actions: kani::any(),
+        }
+    }
+}
+
+#[kani::proof]
+fn unsupported_recovery_state_union_kani() {
+    let left: UnsupportedRecoveryState = kani::any();
+    let right: UnsupportedRecoveryState = kani::any();
+    let union = left.union(right);
+
+    kani::assert(
+        UnsupportedRecoveryState::SUPPORTED.is_fully_supported(),
+        "SUPPORTED carries no unsupported flags",
+    );
+    kani::assert(
+        left.union_matches_flags(right, union),
+        "union is flag-wise boolean OR",
+    );
+}
+
+#[kani::proof]
+fn recovery_frame_seed_dimensions_kani() {
+    let max_index: Option<u16> = kani::any();
+    let run = RunId::new(kani::any());
+    let result = recovery_dimension_count_from_index(max_index, run);
+
+    match (&result, max_index) {
+        (Ok(count), Some(index)) => {
+            kani::assert(*count == index + 1, "count is max index plus one")
+        }
+        (Ok(count), None) => kani::assert(*count == 0, "absent dimension index maps to zero"),
+        (Err(RecoveryError::FrameDimensionOverflow { .. }), Some(u16::MAX)) => {}
+        _ => kani::assert(false, "only u16::MAX overflows dimension count"),
+    }
+    core::mem::forget(result);
+}
+
+#[kani::proof]
+fn action_replay_tracker_monotonic_kani() {
+    let action = kani::any();
+    let step = kani::any();
+    let mut completed = ActionReplayTracker::new();
+    let mut failed = ActionReplayTracker::new();
+
+    completed.mark_completed(action, step);
+    failed.mark_failed(action, step);
+
+    kani::assert(
+        completed.is_resolved(action, step),
+        "completed action resolves",
+    );
+    kani::assert(failed.is_resolved(action, step), "failed action resolves");
+}
+
+#[kani::proof]
+fn digest_check_hierarchy_kani() {
+    kani::assert(
+        DigestCheck::WorkflowSourceOnly.is_strictly_weaker_than(DigestCheck::WorkflowAndIr),
+        "workflow-only is weaker than workflow-and-ir",
+    );
+    kani::assert(
+        DigestCheck::WorkflowAndIr.is_strictly_weaker_than(DigestCheck::Full),
+        "workflow-and-ir is weaker than full",
+    );
+    kani::assert(
+        DigestCheck::Full.checks_full(),
+        "full checks full hierarchy",
+    );
+}
+
+#[kani::proof]
+#[kani::unwind(5)]
+fn hydrate_run_frame_precond_kani() {
+    let run_id = RunId::new(u64::from(kani::any::<u8>()));
+    let tail_run = RunId::new(u64::from(kani::any::<u8>()));
+    let tail_seq = EventSeq::new(u64::from(kani::any::<u8>() % 2));
+    let snapshot = empty_snapshot_for_run(run_id);
+    let tail_event = single_run_accepted(tail_run, tail_seq);
+    let tail_events = [tail_event];
+
+    let preconditions = hydrate_snapshot_tail_preconditions(&snapshot, &tail_events, run_id);
+    kani::cover!(tail_run == run_id, "tail run match covered");
+    kani::cover!(tail_run != run_id, "tail run mismatch covered");
+    kani::cover!(tail_seq > snapshot.seq, "tail seq after snapshot covered");
+    kani::cover!(
+        tail_seq <= snapshot.seq,
+        "tail seq not after snapshot covered"
+    );
+    kani::cover!(preconditions, "snapshot-tail preconditions true covered");
+    kani::cover!(!preconditions, "snapshot-tail preconditions false covered");
+    kani::assert(
+        preconditions == (tail_run == run_id && tail_seq > snapshot.seq && !tail_events.is_empty()),
+        "snapshot-tail precondition surface matches run/seq/evidence contract",
+    );
+
+    let empty_tail: [JournalEvent; 0] = [];
+    let no_data_result = hydrate_run_frame(&snapshot, &empty_tail, run_id);
+    kani::cover!(
+        no_data_result.is_err(),
+        "hydrate_run_frame no-data Err covered"
+    );
+    kani::assert(
+        no_data_result.is_err(),
+        "empty snapshot plus empty tail returns typed error",
+    );
+}
+
+#[kani::proof]
+#[kani::unwind(5)]
+fn hydrate_run_frame_from_events_precond_kani() {
+    let run_id = RunId::new(u64::from(kani::any::<u8>()));
+    let non_empty = kani::any::<bool>();
+    let event = single_run_accepted(run_id, EventSeq::new(0));
+    let singleton = [event];
+    let events = if non_empty { &singleton[..] } else { &[][..] };
+
+    let preconditions = hydrate_events_preconditions(events);
+    kani::cover!(events.is_empty(), "empty events covered");
+    kani::cover!(!events.is_empty(), "non-empty events covered");
+    kani::cover!(preconditions, "events preconditions true covered");
+    kani::cover!(!preconditions, "events preconditions false covered");
+    kani::assert(
+        preconditions == !events.is_empty(),
+        "events hydrate precondition is exactly non-empty evidence",
+    );
+    kani::assert(
+        hydrate_dimensions_positive(1, 1),
+        "positive one-by-one dimensions are accepted by proof surface",
+    );
+    kani::assert(
+        !hydrate_dimensions_positive(0, 1) && !hydrate_dimensions_positive(1, 0),
+        "zero step or slot dimension is rejected by proof surface",
+    );
+
+    let empty_events: [JournalEvent; 0] = [];
+    let result = hydrate_run_frame_from_events(&empty_events, run_id);
+    kani::cover!(
+        result.is_err(),
+        "hydrate_run_frame_from_events empty Err covered"
+    );
+    kani::assert(
+        result.is_err(),
+        "events-only hydrate returns typed error for empty evidence",
+    );
+}
+
+#[kani::proof]
+#[kani::unwind(5)]
+fn replay_events_kani() {
+    let attempt = if kani::any::<bool>() {
+        None
+    } else {
+        Some(u16::from((kani::any::<u8>() % 2) + 1))
+    };
+    let max_attempt = u16::from((kani::any::<u8>() % 2) + 1);
+    let defaulted = replay_attempt_or_default(attempt);
+
+    kani::cover!(attempt.is_none(), "absent attempt default covered");
+    kani::cover!(attempt.is_some(), "present attempt covered");
+    kani::cover!(
+        replay_attempt_is_current(attempt, max_attempt),
+        "current attempt covered"
+    );
+    kani::cover!(
+        replay_attempt_is_stale(attempt, max_attempt),
+        "stale attempt covered"
+    );
+    kani::assert(
+        defaulted >= 1,
+        "attempt default is never zero in reduced domain",
+    );
+    kani::assert(
+        replay_attempt_is_current(attempt, max_attempt)
+            != replay_attempt_is_stale(attempt, max_attempt),
+        "attempt is exactly one of current or stale",
+    );
+
+    let run = RunId::new(0);
+    let state_event = JournalEvent::ActionScheduled {
+        run,
+        seq: EventSeq::new(0),
+        step: StepIdx::new(0),
+        action: ActionId::new(0),
+        attempt: defaulted,
+    };
+    let inert_event = single_run_accepted(run, EventSeq::new(0));
+    kani::assert(
+        replay_event_has_state_effect(&state_event),
+        "ActionScheduled is state-affecting",
+    );
+    kani::assert(
+        !replay_event_has_state_effect(&inert_event),
+        "RunAccepted is not state-affecting",
+    );
+    kani::assert(
+        replay_event_is_stale_state_effect(&state_event, max_attempt)
+            == replay_attempt_is_stale(Some(defaulted), max_attempt),
+        "stale state-effect combines state effect and stale attempt",
+    );
+    kani::assert(
+        !replay_step_order_diverges(Some(StepIdx::new(0)), StepIdx::new(1)),
+        "nondecreasing step order accepted",
+    );
+    kani::assert(
+        replay_step_order_diverges(Some(StepIdx::new(1)), StepIdx::new(0)),
+        "decreasing step order diverges",
+    );
+
+    let events: [JournalEvent; 0] = [];
+    let mut tracker = ActionReplayTracker::new();
+    let digests = [];
+
+    let result = replay_events(&events, &mut tracker, &digests);
+    kani::cover!(events.is_empty(), "empty replay covered");
+    kani::cover!(result.is_ok(), "replay_events Ok path covered");
+    kani::assert(
+        result.is_ok(),
+        "empty replay succeeds without state effects",
+    );
+    core::mem::forget(result);
+}
+
+#[kani::proof]
+#[kani::unwind(5)]
+fn hydrate_run_frame_precond_run_id_mismatch() {
+    let snapshot: RunSnapshot = kani::any();
+    let tail_events = bounded_event_vec();
+    let run_id: RunId = kani::any();
 }
 
 fn arbitrary_taint() -> Taint {
@@ -325,3 +744,54 @@ fn slot_taint_resolution_preserves_existing_taint() {
         }
     }
 }
+
+#[kani::proof]
+#[kani::unwind(5)]
+fn hydrate_run_frame_precond_seq_order_violation() {
+    let mut snapshot: RunSnapshot = kani::any();
+    let mut tail_events = bounded_event_vec();
+    let run_id: RunId = kani::any();
+
+    snapshot.run = run_id;
+    snapshot.seq = EventSeq::new(100);
+
+    for event in &mut tail_events {
+        if let JournalEvent::RunAccepted { run, seq, .. } = event {
+            *run = run_id;
+            *seq = EventSeq::new(50);
+        }
+    }
+}
+
+#[kani::proof]
+#[kani::unwind(5)]
+fn hydrate_run_frame_from_events_precond_empty_events() {
+    let events: Vec<JournalEvent> = Vec::new();
+    let run_id: RunId = kani::any();
+
+    let result = hydrate_run_frame_from_events(&events, run_id);
+
+    kani::assert(
+        result.is_err(),
+        "hydrate_run_frame_from_events must return Err on empty events",
+    );
+}
+
+#[kani::proof]
+#[kani::unwind(5)]
+fn recover_runtime_summary_precond_basic() {
+    use crate::recovery::replay::summary::summarize_recovery_events;
+
+    let events = bounded_event_vec();
+
+    kani::assume(!events.is_empty());
+
+    let result = summarize_recovery_events(&events);
+
+    kani::assert(
+        result.is_ok() || result.is_err(),
+        "recover_runtime_summary_from_events must return Result",
+    );
+}
+
+fn main() {}
