@@ -691,7 +691,7 @@ fn canonical_triggers_and_aliases_parse() {
         name: canonical
         when:
           event:
-            name: invoice.created
+            type: invoice.created
         inputs:
           payload:
             nested: [1, "$kept_text"]
@@ -748,7 +748,7 @@ fn parse_workflow_source_accepts_all_v1_triggers() {
                 name: event-trigger
                 when:
                   event:
-                    name: invoice.created
+                    type: invoice.created
                 steps: []
             "},
         ),

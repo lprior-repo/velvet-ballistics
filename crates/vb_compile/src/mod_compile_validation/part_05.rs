@@ -213,8 +213,8 @@ pub(super) fn validate_schedule_trigger(node: &Yaml<'_>) -> Result<(), CompileEr
 
 pub(super) fn validate_event_trigger(node: &Yaml<'_>) -> Result<(), CompileError> {
     let mapping = trigger_mapping("event", node)?;
-    reject_unknown_trigger_fields("event", mapping, &["name"])?;
-    required_trigger_string_field(node, "event", "name").map(|_| ())
+    reject_unknown_trigger_fields("event", mapping, &["type"])?;
+    required_trigger_string_field(node, "event", "type").map(|_| ())
 }
 
 pub(super) fn trigger_mapping<'a>(
