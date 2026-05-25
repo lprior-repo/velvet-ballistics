@@ -29,6 +29,9 @@ mod type_taint;
 // #[cfg(test)]
 // mod property_tests;
 
+#[cfg(test)]
+mod tests;
+
 // Kani harnesses for idempotency gate parity verification (State 5 proof-writer).
 #[cfg(kani)]
 pub mod kani_idempotency_parity;
@@ -42,6 +45,10 @@ pub mod kani_foreach_parity;
 // Kani harnesses for repeat/ask id+1 lowering overflow rejection.
 #[cfg(kani)]
 pub mod kani_lower_control;
+
+// Kani harnesses for wait digest coverage verification (vb-xi2f.32).
+#[cfg(kani)]
+pub mod kani_wait_digest;
 
 pub use expression_bytecode::{compile_expr_to_bytecode, compile_expr_to_bytecode_with_accessors};
 

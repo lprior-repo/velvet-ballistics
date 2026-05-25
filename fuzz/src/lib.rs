@@ -3022,3 +3022,158 @@ pub fn fuzz_collect_page_pagination(data: &[u8]) {
         vb_core::StepIdx::new(1),
     );
 }
+
+// ---------------------------------------------------------------------------
+// Wait digest coverage fuzz helpers (vb-xi2f.32)
+// ---------------------------------------------------------------------------
+
+/// Fuzz target helper: builds a workflow with a single Wait step from two
+/// string slices (event and timeout), parses it through the cold-path
+/// compiler, and verifies digest sensitivity properties.
+///
+/// Used by `wait_digest_sensitivity`, `wait_sentinel_collision`, and
+/// `wait_digest_exhaustive_collision` fuzz targets.
+pub fn fuzz_wait_digest_sensitivity(event: &str, timeout: &str) {
+    let src_a = build_wait_workflow_yaml(event, timeout);
+
+    // Parse and compile through the cold-path
+    let parsed_a = vb_yaml::parse_workflow_source(&src_a);
+    let Ok(source_a) = parsed_a else { return; };
+
+    let compiled_a = vb_compile::compile_source(&source_a);
+    let Ok(wf_a) = compiled_a else { return; };
+    let digest_a = wf_a.digest();
+
+    // Build a different configuration and verify the digest differs.
+    // We vary the timeout by appending a sentinel marker.
+    let alt_event = if event.is_empty() { "fuzz_alt" } else { event };
+    let alt_timeout = format!("{timeout}_fuzz_variant");
+    let src_b = build_wait_workflow_yaml(alt_event, &alt_timeout);
+
+    let parsed_b = vb_yaml::parse_workflow_source(&src_b);
+    let Ok(source_b) = parsed_b else { return; };
+
+    let compiled_b = vb_compile::compile_source(&source_b);
+    let Ok(wf_b) = compiled_b else { return; };
+    let digest_b = wf_b.digest();
+
+    // If the two configurations are different, digests must differ
+    if event != alt_event || timeout != alt_timeout {
+        assert!(
+            digest_a != digest_b,
+            "COLLISION: different wait configs produced same digest {:?}",
+            digest_a
+        );
+    }
+}
+
+/// Fuzz target helper: verifies sentinel unambiguity for WaitEvent timeout.
+/// For all event strings: digest(WaitEvent{event, None}) != digest(WaitEvent{event, Some("none")}).
+pub fn fuzz_wait_sentinel_unambiguous(event: &str) {
+    let absent_yaml = build_wait_workflow_yaml_no_timeout(event);
+    let sentinel_yaml = build_wait_workflow_yaml(event, "none");
+
+    let absent_source = vb_yaml::parse_workflow_source(&absent_yaml);
+    let sentinel_source = vb_yaml::parse_workflow_source(&sentinel_yaml);
+    let (Ok(src_a), Ok(src_b)) = (absent_source, sentinel_source) else { return; };
+
+    let compiled_a = vb_compile::compile_source(&src_a);
+    let compiled_b = vb_compile::compile_source(&src_b);
+    let (Ok(wf_a), Ok(wf_b)) = (compiled_a, compiled_b) else { return; };
+
+    let digest_a = wf_a.digest();
+    let digest_b = wf_b.digest();
+
+    assert!(
+        digest_a != digest_b,
+        "SENTINEL COLLISION: timeout=None and timeout=Some(\"none\") produced same digest {:?}",
+        digest_a
+    );
+}
+
+/// Fuzz target helper: exhaustive pairwise collision detection.
+/// Generates two different Wait configurations from byte input and verifies
+/// their digests differ.
+pub fn fuzz_wait_pairwise_collision(byte1: u8, byte2: u8, event1: &str, event2: &str) {
+    // Map the first byte to a Wait shape selector
+    let use_until1 = byte1 % 3 == 0;
+    let use_no_timeout1 = byte1 % 3 == 1;
+    let _use_both1 = byte1 % 3 == 2;
+
+    let (e1, t1): (Option<String>, Option<String>) = if use_until1 {
+        (None, Some(String::from("10")))
+    } else if use_no_timeout1 {
+        (if event1.is_empty() { Some(String::from("e")) } else { Some(event1.to_string()) }, None)
+    } else {
+        (if event1.is_empty() { Some(String::from("e")) } else { Some(event1.to_string()) },
+         Some(String::from("20")))
+    };
+
+    let use_until2 = byte2 % 3 == 0;
+    let use_no_timeout2 = byte2 % 3 == 1;
+    let _use_both2 = byte2 % 3 == 2;
+
+    let (e2, t2): (Option<String>, Option<String>) = if use_until2 {
+        (None, Some(String::from("10")))
+    } else if use_no_timeout2 {
+        (if event2.is_empty() { Some(String::from("f")) } else { Some(event2.to_string()) }, None)
+    } else {
+        (if event2.is_empty() { Some(String::from("f")) } else { Some(event2.to_string()) },
+         Some(String::from("30")))
+    };
+
+    // If the two are identical, skip
+    if e1 == e2 && t1 == t2 {
+        return;
+    }
+
+    let yaml1 = build_wait_workflow_from_opts(&e1, &t1);
+    let yaml2 = build_wait_workflow_from_opts(&e2, &t2);
+
+    let src1 = vb_yaml::parse_workflow_source(&yaml1);
+    let src2 = vb_yaml::parse_workflow_source(&yaml2);
+    let (Ok(s1), Ok(s2)) = (src1, src2) else { return; };
+
+    let c1 = vb_compile::compile_source(&s1);
+    let c2 = vb_compile::compile_source(&s2);
+    let (Ok(w1), Ok(w2)) = (c1, c2) else { return; };
+
+    assert!(
+        w1.digest() != w2.digest(),
+        "EXHAUSTIVE COLLISION: distinct Wait configs (e1={e1:?}, t1={t1:?}) vs (e2={e2:?}, t2={t2:?}) produced same digest",
+    );
+}
+
+/// Builds a valid Wait workflow YAML string with event and timeout.
+fn build_wait_workflow_yaml(event: &str, timeout: &str) -> String {
+    let mut wait = String::from("  - id: w\n    wait:");
+    if !event.is_empty() {
+        wait.push_str(&format!("\n      event: \"{event}\""));
+    }
+    if !timeout.is_empty() {
+        wait.push_str(&format!("\n      timeout: \"{timeout}\""));
+    }
+    format!("version: velvet-ballastics/v1\nname: fuzz-wait\nwhen:\n  manual: {{}}\nsteps:\n{wait}\n  - id: d\n    finish:\n      result: 0\n")
+}
+
+/// Builds a Wait workflow YAML without a timeout field.
+fn build_wait_workflow_yaml_no_timeout(event: &str) -> String {
+    let wait = if event.is_empty() {
+        String::from("  - id: w\n    wait:\n      timeout: \"1\"")
+    } else {
+        format!("  - id: w\n    wait:\n      event: \"{event}\"")
+    };
+    format!("version: velvet-ballastics/v1\nname: fuzz-wait\nwhen:\n  manual: {{}}\nsteps:\n{wait}\n  - id: d\n    finish:\n      result: 0\n")
+}
+
+/// Builds a Wait workflow YAML from Option<(String, String)> tuples.
+fn build_wait_workflow_from_opts(event: &Option<String>, timeout: &Option<String>) -> String {
+    let mut wait = String::from("  - id: w\n    wait:");
+    if let Some(e) = event {
+        wait.push_str(&format!("\n      event: \"{e}\""));
+    }
+    if let Some(t) = timeout {
+        wait.push_str(&format!("\n      timeout: \"{t}\""));
+    }
+    format!("version: velvet-ballastics/v1\nname: fuzz-wait\nwhen:\n  manual: {{}}\nsteps:\n{wait}\n  - id: d\n    finish:\n      result: 0\n")
+}

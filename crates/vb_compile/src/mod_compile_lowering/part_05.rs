@@ -95,7 +95,7 @@ pub(super) fn canonical_finish_slot(
     }
 }
 
-pub(super) fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) -> &'static str {
+pub(crate) fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) -> &'static str {
     match primitive {
         vb_yaml::ast::StepPrimitive::Set { .. } => "set",
         vb_yaml::ast::StepPrimitive::Save { .. } => "save",
@@ -137,7 +137,7 @@ pub(super) fn canonical_digest(source: &vb_yaml::ast::WorkflowSource) -> Workflo
     WorkflowDigest::from_bytes(hasher.finalize().into())
 }
 
-pub(super) fn digest_step_primitive(
+pub(crate) fn digest_step_primitive(
     hasher: &mut blake3::Hasher,
     primitive: &vb_yaml::ast::StepPrimitive,
 ) {
@@ -153,6 +153,17 @@ pub(super) fn digest_step_primitive(
                 vb_yaml::ast::ScalarValue::String(value) => hasher.update(value.as_bytes()),
                 vb_yaml::ast::ScalarValue::Integer(value) => hasher.update(&value.to_le_bytes()),
                 _ => hasher.update(b"unsupported"),
+            };
+        }
+        vb_yaml::ast::StepPrimitive::Wait { event, timeout } => {
+            hasher.update(b"wait");
+            match event {
+                Some(e) => hasher.update(e.as_bytes()),
+                None => hasher.update(b"none"),
+            };
+            match timeout {
+                Some(t) => hasher.update(t.as_bytes()),
+                None => hasher.update(b"none"),
             };
         }
         other => {

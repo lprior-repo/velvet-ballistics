@@ -254,6 +254,17 @@ fn digest_step_primitive(hasher: &mut blake3::Hasher, primitive: &vb_yaml::ast::
                 vb_yaml::ast::ScalarValue::Integer(value) => hasher.update(&value.to_le_bytes()),
             };
         }
+        vb_yaml::ast::StepPrimitive::Wait { event, timeout } => {
+            hasher.update(b"wait");
+            match event {
+                Some(e) => hasher.update(e.as_bytes()),
+                None => hasher.update(b"none"),
+            };
+            match timeout {
+                Some(t) => hasher.update(t.as_bytes()),
+                None => hasher.update(b"none"),
+            };
+        }
         other => {
             hasher.update(canonical_primitive_name(other).as_bytes());
         }
