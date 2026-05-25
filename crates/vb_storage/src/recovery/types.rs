@@ -137,6 +137,8 @@ pub type RecoveryResult<T> = Result<T, RecoveryError>;
 pub enum RecoveryTerminalState {
     /// Run was cancelled before completion.
     Cancelled,
+    /// Run was killed before completion.
+    Killed,
     /// Run completed and selected a result slot.
     Finished {
         /// Result slot selected by the finish event.

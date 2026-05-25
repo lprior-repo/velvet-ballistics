@@ -242,6 +242,11 @@ pub enum TraceEvent {
         /// Run identifier.
         run: RunId,
     },
+    /// A run was killed immediately.
+    RunKilled {
+        /// Run identifier.
+        run: RunId,
+    },
 }
 
 impl TraceEvent {
@@ -259,7 +264,8 @@ impl TraceEvent {
             | Self::RunSubmitted { run }
             | Self::RunFinished { run }
             | Self::RunFailed { run }
-            | Self::RunCancelled { run } => *run,
+            | Self::RunCancelled { run }
+            | Self::RunKilled { run } => *run,
         }
     }
 
@@ -267,7 +273,7 @@ impl TraceEvent {
     #[must_use]
     pub fn is_terminal_for_run(&self, target: RunId) -> bool {
         match self {
-            Self::RunFinished { run } | Self::RunFailed { run } | Self::RunCancelled { run } => {
+            Self::RunFinished { run } | Self::RunFailed { run } | Self::RunCancelled { run } | Self::RunKilled { run } => {
                 *run == target
             }
             Self::StepStarted { .. }

@@ -59,6 +59,7 @@ fn replay_events_with_schedule_requirement(
             | JournalEvent::AskAnsweredEvent { .. }
             | JournalEvent::RetryScheduledEvent { .. }
             | JournalEvent::RunCancelled { .. }
+            | JournalEvent::RunKilled { .. }
             | JournalEvent::RunFinished { .. }
             | JournalEvent::RunFailedEvent { .. }
             | JournalEvent::RunResumed { .. }
@@ -263,6 +264,7 @@ pub fn is_terminal_event(event: &JournalEvent) -> bool {
         event,
         JournalEvent::RunFinished { .. }
             | JournalEvent::RunCancelled { .. }
+            | JournalEvent::RunKilled { .. }
             | JournalEvent::RunFailedEvent { .. }
     )
 }

@@ -109,6 +109,25 @@ impl Shard {
         Ok(())
     }
 
+    pub(crate) fn handle_kill(
+        &mut self,
+        run: RunId,
+        reason: Option<String>,
+    ) -> RuntimeResult<()> {
+        self.pending_timers.swap_remove(&run);
+        if self.runs.contains_key(&run) {
+            self.append_journal_event(RuntimeJournalEvent::RunKilled { run, reason })?;
+        }
+        if let Some(state) = self.runs.swap_remove(&run) {
+            self.release_frame(state.frame);
+            self.terminal_runs.insert(run);
+            self.counters.inc_failed();
+            self.trace_ring.push(TraceEvent::RunKilled { run });
+        }
+        self.discard_journal_sequence(run);
+        Ok(())
+    }
+
     pub(crate) fn handle_inspect(&mut self, run: RunId, correlation: u64) {
         self.inspect_response = Some(self.snapshot_run(run, correlation));
     }

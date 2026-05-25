@@ -62,6 +62,9 @@ pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &Journal
         JournalEvent::RunCancelled { .. } => {
             summary.terminal = Some(crate::recovery::types::RecoveryTerminalState::Cancelled);
         }
+        JournalEvent::RunKilled { .. } => {
+            summary.terminal = Some(crate::recovery::types::RecoveryTerminalState::Killed);
+        }
         JournalEvent::RunFinished { result, .. } => {
             summary.terminal =
                 Some(crate::recovery::types::RecoveryTerminalState::Finished { result: *result });

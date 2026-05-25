@@ -67,6 +67,12 @@ impl StorageRuntimeJournal {
                 attempt: 1,
                 reason,
             }),
+            RuntimeJournalEvent::RunKilled { run, reason } => Some(JournalEvent::RunKilled {
+                run,
+                seq,
+                attempt: 1,
+                reason,
+            }),
             RuntimeJournalEvent::StepStarted { run, step } => Some(JournalEvent::StepStarted {
                 run,
                 seq,
@@ -161,6 +167,7 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::RunFinished { .. }
             | RuntimeJournalEvent::RunFailed { .. }
             | RuntimeJournalEvent::RunCancelled { .. }
+            | RuntimeJournalEvent::RunKilled { .. }
             | RuntimeJournalEvent::WaitScheduled { .. }
             | RuntimeJournalEvent::WaitResolved { .. }
             | RuntimeJournalEvent::AskScheduled { .. }
@@ -228,6 +235,7 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::RunFinished { .. }
             | RuntimeJournalEvent::RunFailed { .. }
             | RuntimeJournalEvent::RunCancelled { .. }
+            | RuntimeJournalEvent::RunKilled { .. }
             | RuntimeJournalEvent::ActionScheduled { .. }
             | RuntimeJournalEvent::ActionCompleted { .. }
             | RuntimeJournalEvent::ActionScheduledTicket { .. }

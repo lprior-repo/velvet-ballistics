@@ -44,6 +44,13 @@ pub enum RuntimeJournalEvent {
         /// Optional cancellation reason.
         reason: Option<String>,
     },
+    /// Run was killed immediately, removing all pending actions and timers.
+    RunKilled {
+        /// Run identifier.
+        run: RunId,
+        /// Optional kill reason.
+        reason: Option<String>,
+    },
     /// Action was scheduled and handed to the external action boundary.
     ActionScheduled {
         /// Run identifier.
@@ -176,6 +183,7 @@ impl RuntimeJournalEvent {
             | Self::RunFinished { run, .. }
             | Self::RunFailed { run }
             | Self::RunCancelled { run, .. }
+            | Self::RunKilled { run, .. }
             | Self::ActionScheduled { run, .. }
             | Self::ActionCompleted { run, .. }
             | Self::ActionFailed { run, .. }

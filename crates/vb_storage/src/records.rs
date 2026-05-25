@@ -167,6 +167,8 @@ pub enum RecordKind {
     StepFailed = 20,
     /// Run cancelled event.
     RunCancelled = 21,
+    /// Run killed event.
+    RunKilled = 28,
     /// Run finished event.
     RunFinished = 22,
     /// Run failed event.
@@ -207,6 +209,7 @@ impl RecordKind {
             Self::RetryScheduled => 19,
             Self::StepFailed => 20,
             Self::RunCancelled => 21,
+            Self::RunKilled => 28,
             Self::RunFinished => 22,
             Self::RunFailed => 23,
             Self::RunAdmission => 24,
