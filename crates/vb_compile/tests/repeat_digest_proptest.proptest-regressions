@@ -1,0 +1,13 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc c747bd0bd102d35688a5246a621b2c862f18c2313a0ff3a5e2f8d2bd786dc86c # shrinks to max1 = 1, max2 = 2, id = "a", output = "N", value = "0"
+cc f457539b920c824e896c0acfeeab89e134b4a6f4bce9ab7b3f01da6cda081905 # shrinks to max_attempts = 1, id = "a", output = "y", value = "0"
+cc 2eaac6fd2b59903dd673678abc97bdf0f5bf9230494e2db090d73e658d59102f # shrinks to max_attempts = 1, id = "Y", output1 = "a", output2 = "A", value = "0"
+cc bbec70c97c496683f7774b9daa02923c154a135aedab8ccb4314181443c31ba2 # shrinks to max_attempts = 1, id = "A", output = "y", value = "0"
+cc 238b0961d074b0a43a669779214e930a5559654f99249398e536370314969573 # shrinks to max_attempts = 1, id = "n", output = "A", value1 = "0", value2 = "-1"
+cc 6a719989b9b8086fb79c22b33e71ccce1c9904e342db487ddc36e01c9c91591c # shrinks to max1 = 1, max2 = 2, id = "aa", output = "No", value = "0"
+cc 318d327787a1a0c895797d0fd889241d7d9369467dc1e93841ce921f003cba16 # shrinks to max_attempts = 1, id = "Aa", output1 = "ON", output2 = "aA", value = "0"
