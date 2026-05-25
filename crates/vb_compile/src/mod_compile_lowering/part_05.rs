@@ -246,3 +246,9 @@ pub fn lower_do(
         kind: CompiledNodeKind::Do { action, input },
     }
 }
+
+// Unit tests for canonical_digest and digest_step_primitive live in a
+// separate file to keep this file under the 300-line limit.
+#[cfg(test)]
+#[path = "../tests/digest_unit_tests.rs"]
+mod tests;

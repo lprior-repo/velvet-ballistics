@@ -25,6 +25,14 @@ mod schema;
 pub mod strict_yaml;
 mod type_taint;
 
+// Proptest properties for Finish digest verification (vb-xi2f.34).
+#[cfg(test)]
+mod proptest_finish_digest;
+
+// Kani harnesses for Finish digest verification (vb-xi2f.34).
+#[cfg(kani)]
+pub mod kani_finish_digest;
+
 // TEMPORARILY DISABLED: pre-existing proptest macro compatibility issue in bytecode_ast_parity.rs
 // #[cfg(test)]
 // mod property_tests;

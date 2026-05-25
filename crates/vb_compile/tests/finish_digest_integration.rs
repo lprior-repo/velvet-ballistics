@@ -361,7 +361,7 @@ steps:
       result: 0
 "#;
 
-    let yaml_v2 = r#"version: velvet-ballastics/v2
+    let yaml_v2 = r#"version: velvet-ballistics/v2
 name: version_test
 when:
   manual: {}

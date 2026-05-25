@@ -39,7 +39,7 @@ fn digest_unwrap(yaml: &str) -> WorkflowDigest {
 
 fn yaml_with_steps(steps_yaml: &str) -> String {
     format!(
-        "version: velvet-ballastics/v1\n\
+        "version: velvet-ballistics/v1\n\
          name: test_workflow\n\
          when:\n  manual: {{}}\n\
          steps:\n{}",
