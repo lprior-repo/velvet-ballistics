@@ -47,6 +47,11 @@ vb_boundary_inventory = { path = "../vb_boundary_inventory" }
 vb_doc = { path = "../vb_doc" }
 vb_yaml = { path = "../vb_yaml" }
 vb_cli = { package = "velvet-ballistics", path = "../vb_cli" }
+vb_test_util = { path = "../vb_test_util" }
+
+[[test]]
+name = "restate_vb_test_util_crate"
+path = "tests/restate_vb_test_util_crate.rs"
 
 [[test]]
 name = "contracts_production_binding"
@@ -91,6 +96,10 @@ path = "tests/restate_postcard_envelope_wire_tests.rs"
 [[test]]
 name = "restate_runtime_version_barrier_tests"
 path = "tests/restate_runtime_version_barrier_tests.rs"
+
+[[test]]
+name = "restate_cancel_kill_lattice_tests"
+path = "tests/restate_cancel_kill_lattice_tests.rs"
 
 [[bench]]
 name = "velvet_ballistics"
