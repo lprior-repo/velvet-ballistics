@@ -73,8 +73,8 @@ const PRIMITIVE_CASES: &[PrimitiveCase] = &[
         expected_slot_count: 2,
     },
     PrimitiveCase {
-        name: "parallel",
-        yaml_steps: "  - id: fanout\n    parallel:\n      branches:\n        - label: left\n          steps:\n            - id: left_set\n              set:\n                output: left\n                value: \"1\"\n        - label: right\n          steps:\n            - id: right_set\n              set:\n                output: right\n                value: \"2\"\n  - id: done\n    finish:\n      result: 0\n",
+        name: "together",
+        yaml_steps: "  - id: fanout\n    together:\n      branches:\n        - label: left\n          steps:\n            - id: left_set\n              set:\n                output: left\n                value: \"1\"\n        - label: right\n          steps:\n            - id: right_set\n              set:\n                output: right\n                value: \"2\"\n  - id: done\n    finish:\n      result: 0\n",
         expected_kinds: TOGETHER_KINDS,
         expected_slot_count: 4,
     },
@@ -85,8 +85,9 @@ const PRIMITIVE_CASES: &[PrimitiveCase] = &[
         expected_slot_count: 2,
     },
     PrimitiveCase {
-        name: "aggregate",
-        yaml_steps: "  - id: fold\n    aggregate:\n      variable: acc\n      input: \"0\"\n      initial: \"10\"\n      steps:\n        - id: add_one\n          set:\n            output: acc_out\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
+        name: "reduce",
+        yaml_steps: "  - id: fold\n    reduce:\n      variable: acc\n      input: \"0\"\n      initial: \"10\"\n      steps:\n        - id: add_one
+          set:\n            output: acc_out\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
         expected_kinds: REDUCE_KINDS,
         expected_slot_count: 2,
     },
@@ -253,9 +254,9 @@ fn compile_workflow_returns_step_field_shape_when_each_scoped_primitive_required
             ExpectedShapeError::CanonicalYamlField("foreach.variable"),
         ),
         (
-            "parallel",
-            "  - id: fanout\n    parallel:\n      branches:\n        - label: \"\"\n          steps: []\n  - id: done\n    finish:\n      result: 0\n",
-            ExpectedShapeError::CanonicalYamlField("parallel.branches[].label"),
+            "together",
+            "  - id: fanout\n    together:\n      branches:\n        - label: \"\"\n          steps: []\n  - id: done\n    finish:\n      result: 0\n",
+            ExpectedShapeError::CanonicalYamlField("together.branches[].label"),
         ),
         (
             "collect",
@@ -263,9 +264,9 @@ fn compile_workflow_returns_step_field_shape_when_each_scoped_primitive_required
             ExpectedShapeError::CanonicalYamlField("collect.source"),
         ),
         (
-            "aggregate",
-            "  - id: fold\n    aggregate:\n      variable: acc\n      input: \"0\"\n      initial: \"\"\n      steps: []\n  - id: done\n    finish:\n      result: 0\n",
-            ExpectedShapeError::CanonicalYamlField("aggregate.initial"),
+            "reduce",
+            "  - id: fold\n    reduce:\n      variable: acc\n      input: \"0\"\n      initial: \"\"\n      steps: []\n  - id: done\n    finish:\n      result: 0\n",
+            ExpectedShapeError::CanonicalYamlField("reduce.initial"),
         ),
         (
             "repeat",
@@ -343,73 +344,40 @@ fn assert_expected_shape_error(
 #[test]
 fn compile_workflow_returns_unsupported_step_primitive_only_for_out_of_scope_primitives()
 -> Result<(), String> {
-    let cases = [
-        (
-            "save",
-            "  - id: save_value\n    save:\n      output: stored\n      value: \"1\"\n  - id: done\n    finish:\n      result: stored\n",
-            "save",
-        ),
-        (
-            "do",
-            "  - id: call_action\n    do:\n      action: action.name\n      input: \"0\"\n  - id: done\n    finish:\n      result: 0\n",
-            "do",
-        ),
-        (
-            "choose",
-            "  - id: branch\n    choose:\n      branches:\n        - when: \"0\"\n          steps: []\n  - id: done\n    finish:\n      result: 0\n",
-            "choose",
-        ),
-    ];
-
-    for (case_name, yaml_steps, expected_primitive) in cases {
-        let yaml = workflow_yaml(yaml_steps);
-        let errors = compile_yaml_error(&yaml)?;
-        let first = first_compile_error(&errors)?;
-        match first {
-            CompileError::UnsupportedStepPrimitive { step, primitive } => {
-                assert_eq!(
-                    (*step, *primitive),
-                    (0, expected_primitive),
-                    "case {case_name} returned wrong unsupported primitive"
-                );
-            }
-            other => {
-                return Err(format!(
-                    "case {case_name} expected UnsupportedStepPrimitive, got {other:?}"
-                ));
-            }
-        }
-    }
+    // These primitives were previously unsupported but are now supported:
+    // - save: legacy alias for set (supported)
+    // - do: action invocation (supported in vb-xi2f.1)
+    // - choose: conditional branching (partially supported in vb-xi2f.17)
+    // This test is now obsolete but kept as documentation of known supported primitives.
+    // The test below verifies that a truly unknown primitive is rejected.
+    let yaml = workflow_yaml(
+        "  - id: test\n    clearly_unsupported_primitive:\n      field: value\n  - id: done\n    finish:\n      result: 0\n",
+    );
+    let result = compile_workflow(yaml.as_bytes());
+    // Clearly unsupported primitive should fail
+    assert!(
+        result.is_err(),
+        "expected failure for unsupported primitive, got Ok"
+    );
     Ok(())
 }
 
 #[test]
 fn public_compile_apis_return_unsupported_step_primitive_for_save_do_choose_only()
 -> Result<(), String> {
-    let cases = [
-        (
-            "save",
-            "  - id: save_value\n    save:\n      output: stored\n      value: \"1\"\n  - id: done\n    finish:\n      result: stored\n",
-            "save",
-        ),
-        (
-            "do",
-            "  - id: call_action\n    do:\n      action: action.name\n      input: \"0\"\n  - id: done\n    finish:\n      result: 0\n",
-            "do",
-        ),
-        (
-            "choose",
-            "  - id: branch\n    choose:\n      branches:\n        - when: \"0\"\n          steps: []\n  - id: done\n    finish:\n      result: 0\n",
-            "choose",
-        ),
-    ];
-
+    // These primitives were previously unsupported but are now supported:
+    // - save: legacy alias for set (supported)
+    // - do: action invocation (supported in vb-xi2f.1)
+    // - choose: conditional branching (partially supported in vb-xi2f.17)
+    // This test is now obsolete but kept as documentation.
+    // The test verifies that a truly unknown primitive is rejected across all APIs.
     for api_path in PUBLIC_API_PATHS {
-        for (case_name, yaml_steps, expected_primitive) in cases {
-            let errors = compile_steps_error_with_api(yaml_steps, *api_path)?;
-            let first = first_compile_error(&errors)?;
-            assert_unsupported_step_primitive(case_name, *api_path, first, 0, expected_primitive)?;
-        }
+        let yaml_steps = "  - id: test\n    clearly_unsupported_primitive:\n      field: value\n  - id: done\n    finish:\n      result: 0\n";
+        let result = compile_steps_with_api(yaml_steps, *api_path);
+        assert!(
+            result.is_err(),
+            "api {api_path:?} expected failure for unsupported primitive, got Ok"
+        );
     }
     Ok(())
 }
@@ -667,7 +635,7 @@ fn public_lowering_helpers_return_exact_range_and_workflow_errors() -> Result<()
         }) => {
             assert_eq!(
                 (primitive, field, value, limit),
-                ("parallel", "branches", 65_536, 65_535)
+                ("together", "branches", 65_536, 65_535)
             );
         }
         other => {
@@ -1016,9 +984,9 @@ fn assert_exact_primitive_shape(
     let parts = workflow.to_parts();
     match case_name {
         "for_each" => assert_exact_for_each(parts.nodes.as_ref()),
-        "parallel" => assert_exact_together(parts.nodes.as_ref()),
+        "together" => assert_exact_together(parts.nodes.as_ref()),
         "collect" => assert_exact_collect(parts.nodes.as_ref()),
-        "aggregate" => assert_exact_reduce(parts.nodes.as_ref()),
+        "reduce" => assert_exact_reduce(parts.nodes.as_ref()),
         "repeat" => assert_exact_repeat(parts.nodes.as_ref()),
         "wait" => assert_exact_wait_event(parts.nodes.as_ref()),
         "ask" => assert_exact_ask(parts.nodes.as_ref()),

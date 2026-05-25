@@ -597,8 +597,8 @@ steps:
       result: 0
 "#;
 
-    /// Workflow with loop body step out of range (Gate 11)
-    /// The parallel branches point to step 2 (join) but join is at node 1, not step 2.
+    /// Workflow with loop body type mismatch (Gate 11)
+    /// The for_each 'input' field expects expression string but gets a number.
     const VB_YD5X_MALFORMED_LOOP_BODY: &[u8] = br#"
 version: velvet-ballastics/v1
 name: bad_loop_body
@@ -606,8 +606,13 @@ when:
   manual: {}
 steps:
   - id: fanout
-    parallel:
-      branches: [2]
+    for_each:
+      variable: i
+      input: 123
+      steps:
+        - id: step
+          finish:
+            result: 0
   - id: join
     finish:
       result: 0
