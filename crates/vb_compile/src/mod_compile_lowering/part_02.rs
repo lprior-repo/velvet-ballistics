@@ -137,7 +137,7 @@ pub(super) fn lower_canonical_set(
         builder.push_node(lower_set(id, slot, value, next));
     } else {
         // Parse as expression and compile with step slot resolution
-        let expr = parse_expression(value).map_err(|e| CompileErrors(vec![e.into()]))?;
+        let expr = parse_expression(value).map_err(|e| CompileErrors(vec![e]))?;
         let step_slots: Vec<(Box<str>, SlotIdx)> = outputs
             .iter()
             .filter(|(k, _)| *k != output)
