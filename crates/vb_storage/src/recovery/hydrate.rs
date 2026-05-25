@@ -10,7 +10,7 @@ use crate::recovery::hydrate_support::{
     apply_tail_events, compute_parallel_in_flight, decode_snapshot_slots,
     derive_dimensions_from_snapshot_and_tail, verified_action_envelope_digest,
 };
-use crate::recovery::types::{ActionReplayEffect, ActionReplayTracker};
+use crate::recovery::types::ActionReplayEffect;
 use crate::recovery::types::{
     ActionReplayTracker, RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState, RecoveryError,
     RecoveryFrameSeed, RecoveryResult, RunSnapshot,
