@@ -81,7 +81,15 @@ pub(super) fn lower_canonical_step(
         vb_yaml::ast::StepPrimitive::Choose {
             branches,
             otherwise,
-        } => lower_canonical_choose(index, id, branches, otherwise.as_deref(), next, step_names.as_ref(), builder),
+        } => lower_canonical_choose(
+            index,
+            id,
+            branches,
+            otherwise.as_deref(),
+            next,
+            step_names.as_ref(),
+            builder,
+        ),
         other => Err(CompileErrors(vec![
             CompileError::UnsupportedStepPrimitive {
                 step: index,
@@ -221,9 +229,9 @@ pub(super) fn lower_canonical_choose(
     }
     // Empty branch table requires otherwise to be set
     if branches.is_empty() && otherwise.is_none() {
-        return Err(CompileErrors(vec![
-            CompileError::Workflow(WorkflowError::EmptyBranchTable),
-        ]));
+        return Err(CompileErrors(vec![CompileError::Workflow(
+            WorkflowError::EmptyBranchTable,
+        )]));
     }
     // If there are no branches, we still need a target for the fallthrough case
     // Empty body means fall through to next step

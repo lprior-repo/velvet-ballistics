@@ -322,7 +322,9 @@ fn compile_workflow_rejects_multi_step_body_in_scoped_primitives() -> Result<(),
         let errors = compile_yaml_error(&yaml)?;
         let first = first_compile_error(&errors)?;
         match first {
-            CompileError::StepFieldShape { field, expected, .. } => {
+            CompileError::StepFieldShape {
+                field, expected, ..
+            } => {
                 assert_eq!(
                     (*field, expected.as_ref()),
                     ("steps", "exactly one set step"),
@@ -705,6 +707,133 @@ fn public_lowering_helpers_return_exact_range_and_workflow_errors() -> Result<()
             other => return Err(format!("expected Workflow(EmptyNodes), got {other:?}")),
         },
         Ok(_) => return Err(String::from("empty IR unexpectedly compiled")),
+    }
+    Ok(())
+}
+
+#[test]
+fn lower_choose_rejects_more_than_64_branches() -> Result<(), String> {
+    // Given: 65 branches (exceeds the 64 branch limit)
+    let too_many_branches: Vec<SlotBranch> = (0..65u16)
+        .map(|i| SlotBranch {
+            condition: SlotIdx::new(i),
+            target: StepIdx::new(100u16 + i),
+        })
+        .collect();
+    let mut builder = vb_compile::SlotCompiler::new();
+
+    // When: lower_choose is called with 65 branches
+    let result = lower_choose(
+        StepIdx::new(0),
+        too_many_branches,
+        Some(StepIdx::new(200)),
+        &mut builder,
+    );
+
+    // Then: it must fail with PrimitiveLoweringLimitExceeded
+    match result {
+        Err(CompileError::PrimitiveLoweringLimitExceeded {
+            primitive,
+            field,
+            value,
+            limit,
+        }) => {
+            assert_eq!(
+                (primitive, field, value, limit),
+                ("choose", "branches", 65, 64)
+            );
+        }
+        other => {
+            return Err(format!(
+                "expected PrimitiveLoweringLimitExceeded for 65 branches, got {other:?}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn lower_choose_accepts_valid_otherwise_target() -> Result<(), String> {
+    // Given: a single branch with a valid otherwise target
+    let single_branch = vec![SlotBranch {
+        condition: SlotIdx::new(0),
+        target: StepIdx::new(1),
+    }];
+    let mut builder = vb_compile::SlotCompiler::new();
+
+    // When: lower_choose is called with valid otherwise
+    let result = lower_choose(
+        StepIdx::new(0),
+        single_branch,
+        Some(StepIdx::new(2)),
+        &mut builder,
+    );
+
+    // Then: it must succeed and produce a ChooseSlot node
+    let node = result.map_err(|e| format!("lower_choose failed: {e}"))?;
+    match node.kind {
+        CompiledNodeKind::ChooseSlot {
+            branches,
+            otherwise,
+        } => {
+            assert_eq!(branches.len(), 1);
+            assert_eq!(otherwise, Some(StepIdx::new(2)));
+        }
+        other => {
+            return Err(format!("expected ChooseSlot node, got {other:?}"));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn lower_choose_accepts_empty_branches_with_otherwise() -> Result<(), String> {
+    // Given: empty branches with a valid otherwise target
+    let empty_branches: Vec<SlotBranch> = vec![];
+    let mut builder = vb_compile::SlotCompiler::new();
+
+    // When: lower_choose is called with empty branches but otherwise is Some
+    let result = lower_choose(
+        StepIdx::new(0),
+        empty_branches,
+        Some(StepIdx::new(2)),
+        &mut builder,
+    );
+
+    // Then: it must succeed (empty branches with otherwise is valid)
+    let node = result.map_err(|e| format!("lower_choose failed: {e}"))?;
+    match node.kind {
+        CompiledNodeKind::ChooseSlot {
+            branches,
+            otherwise,
+        } => {
+            assert_eq!(branches.len(), 0);
+            assert_eq!(otherwise, Some(StepIdx::new(2)));
+        }
+        other => {
+            return Err(format!("expected ChooseSlot node, got {other:?}"));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn lower_choose_rejects_empty_branches_without_otherwise() -> Result<(), String> {
+    // Given: empty branches with no otherwise target
+    let empty_branches: Vec<SlotBranch> = vec![];
+    let mut builder = vb_compile::SlotCompiler::new();
+
+    // When: lower_choose is called with empty branches and no otherwise
+    let result = lower_choose(StepIdx::new(0), empty_branches, None, &mut builder);
+
+    // Then: it must fail with EmptyBranchTable
+    match result {
+        Err(CompileError::Workflow(WorkflowError::EmptyBranchTable)) => {}
+        other => {
+            return Err(format!(
+                "expected EmptyBranchTable error for empty branches with no otherwise, got {other:?}"
+            ));
+        }
     }
     Ok(())
 }
