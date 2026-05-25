@@ -38,7 +38,7 @@ pub(super) fn lower_canonical_step(
             ..
         } => lower_canonical_for_each(index, id, input, *at_once, body, builder),
         vb_yaml::ast::StepPrimitive::Together { branches } => {
-            lower_canonical_parallel(index, id, branches, builder)
+            lower_canonical_parallel(index, id, branches, next, builder)
         }
         vb_yaml::ast::StepPrimitive::Collect {
             source,
@@ -46,15 +46,15 @@ pub(super) fn lower_canonical_step(
             items,
             body,
             ..
-        } => lower_canonical_collect(index, id, source, *pages, *items, body, builder),
+        } => lower_canonical_collect(index, id, source, *pages, *items, body, next, builder),
         vb_yaml::ast::StepPrimitive::Aggregate {
             input,
             initial,
             body,
             ..
-        } => lower_canonical_aggregate(index, id, input, initial, body, builder),
+        } => lower_canonical_aggregate(index, id, input, initial, body, next, builder),
         vb_yaml::ast::StepPrimitive::Repeat { max_attempts, body } => {
-            lower_canonical_repeat(index, id, *max_attempts, body, builder)
+            lower_canonical_repeat(index, id, *max_attempts, body, next, builder)
         }
         vb_yaml::ast::StepPrimitive::Wait { event, timeout } => lower_canonical_wait(
             index,

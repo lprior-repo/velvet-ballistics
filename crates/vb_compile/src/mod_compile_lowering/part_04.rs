@@ -18,6 +18,7 @@ pub(super) fn lower_canonical_aggregate(
     input: &str,
     initial: &str,
     body: &[vb_yaml::ast::StepAst],
+    next: Option<StepIdx>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     let input = slot_from_text(input, index, "aggregate.input")?;
@@ -48,7 +49,7 @@ pub(super) fn lower_canonical_aggregate(
             done,
         },
     });
-    emit_single_body_set(body, body_step, accumulator, None, builder, false)?;
+    emit_single_body_set(body, body_step, accumulator, Some(next_step), builder, false)?;
     builder.push_node(CompiledNode {
         id: next_step,
         output: None,
@@ -65,7 +66,7 @@ pub(super) fn lower_canonical_aggregate(
     builder.push_node(CompiledNode {
         id: done,
         output: None,
-        next: None,
+        next,
         error_slot: None,
         on_error: None,
         kind: CompiledNodeKind::ReduceFinish { accumulator },
@@ -78,6 +79,7 @@ pub(super) fn lower_canonical_repeat(
     id: StepIdx,
     max_attempts: u16,
     body: &[vb_yaml::ast::StepAst],
+    next: Option<StepIdx>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     if max_attempts == 0 {
@@ -106,7 +108,7 @@ pub(super) fn lower_canonical_repeat(
             done,
         },
     });
-    emit_single_body_set(body, body_step, SlotIdx::new(1), None, builder, false)?;
+    emit_single_body_set(body, body_step, SlotIdx::new(1), Some(attempt), builder, false)?;
     builder.push_node(CompiledNode {
         id: attempt,
         output: Some(attempt_slot),
@@ -122,7 +124,7 @@ pub(super) fn lower_canonical_repeat(
     builder.push_node(CompiledNode {
         id: done,
         output: None,
-        next: None,
+        next,
         error_slot: None,
         on_error: None,
         kind: CompiledNodeKind::RepeatFinish {
