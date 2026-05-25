@@ -2210,4 +2210,78 @@ mod tests {
         assert_eq!(contract.output_slot_count, 0);
         assert!(contract.required_capabilities.is_empty());
     }
+
+    // =========================================================================
+    // vb-8mdp.6: Idempotency Hydration proptest tests
+    // PO-VB-IDEM-001c, PO-VB-IDEM-012b
+    // =========================================================================
+
+    /// Deterministic pseudo-random u16 in [0, n) derived from iteration count.
+    /// Uses a simple hash-based approach: mix the iteration counter with
+    /// the per-test call-site id to produce a deterministic sequence.
+    fn deterministic_rand_u16_bounded(n: u16, iter: u32, site_id: u32) -> u16 {
+        // Simple mixing function: xorshift-like, returns u16
+        let mut x = iter.wrapping_mul(1664525).wrapping_add(1013904223);
+        x = x ^ (x >> 13);
+        x = x.wrapping_mul(1664525).wrapping_add(1013904223);
+        x = x ^ (x >> 17);
+        x = x ^ (x >> 5);
+        let combined = x.wrapping_mul(31).wrapping_add(site_id);
+        combined as u16 % n
+    }
+
+    #[test]
+    fn test_key_computation_deterministic() {
+        // Property: compute_action_idempotency_key is deterministic.
+        // f(run, seq, action) == f(run, seq, action) for all inputs.
+        use crate::ids::{ActionId, RunId, SeqNo};
+
+        for iter in 0..1000u32 {
+            let run = RunId::new(u64::from(deterministic_rand_u16_bounded(64, iter, 0)));
+            let seq = SeqNo::new(u64::from(deterministic_rand_u16_bounded(64, iter, 1)));
+            let action = ActionId::new(deterministic_rand_u16_bounded(16, iter, 2));
+
+            let key1 = compute_action_idempotency_key(run, seq, action);
+            let key2 = compute_action_idempotency_key(run, seq, action);
+
+            assert_eq!(key1, key2, "key computation must be deterministic");
+        }
+    }
+
+    #[test]
+    fn test_canonical_key_validates() {
+        // Property: ticket with canonical key validates; ticket with wrong key rejects.
+        for iter in 0..1000u32 {
+            let run = RunId::new(u64::from(deterministic_rand_u16_bounded(64, iter, 10)));
+            let seq = SeqNo::new(u64::from(deterministic_rand_u16_bounded(64, iter, 11)));
+            let action = ActionId::new(deterministic_rand_u16_bounded(16, iter, 12));
+
+            let canonical_key = compute_action_idempotency_key(run, seq, action);
+
+            // Canonical ticket should validate
+            let canonical_ticket = ActionTicket {
+                run,
+                step: StepIdx::new(deterministic_rand_u16_bounded(4, iter, 13)),
+                seq,
+                action,
+                attempt: deterministic_rand_u16_bounded(3, iter, 14) + 1,
+                idempotency_key: canonical_key,
+                capacity: deterministic_rand_u16_bounded(5, iter, 15) + 1,
+            };
+            assert!(
+                action_ticket_has_valid_key(canonical_ticket),
+                "canonical key must validate"
+            );
+
+            // Wrong key should reject
+            let wrong_ticket = ActionTicket {
+                idempotency_key: canonical_key.wrapping_add(1),
+                ..canonical_ticket
+            };
+            assert!(
+                !action_ticket_has_valid_key(wrong_ticket),
+                "wrong key must reject"
+            );
+        }
+    }
 }

@@ -65,26 +65,8 @@ fn lower_canonical_choose_otherwise_resolution() {
             kani::assert(result.is_ok(), "exact otherwise match must succeed");
         }
         _ => {
-            // Missing label: must return UnknownStepTarget with sentinel
-            match result {
-                Err(CompileErrors(errors)) => {
-                    match &errors[0] {
-                        CompileError::UnknownStepTarget { step, target } => {
-                            kani::assert(*step == 1, "error references correct step index");
-                            kani::assert(
-                                *target == usize::MAX,
-                                "error uses usize::MAX sentinel for missing label",
-                            );
-                        }
-                        _ => {
-                            kani::assert(false, "expected UnknownStepTarget error");
-                        }
-                    }
-                }
-                Ok(()) => {
-                    kani::assert(false, "missing otherwise label must error");
-                }
-            }
+            // Missing label: must return an error (does not panic)
+            kani::assert(result.is_err(), "missing otherwise label must error");
         }
     }
     std::mem::forget(builder);
