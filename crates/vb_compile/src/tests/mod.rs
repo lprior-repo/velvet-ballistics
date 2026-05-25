@@ -7,3 +7,5 @@ pub(crate) mod error_variant_tests;
 
 #[cfg(test)]
 mod foreach_digest_tests;
+
+pub(crate) mod wait_digest_unit_tests;

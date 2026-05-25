@@ -3024,129 +3024,156 @@ pub fn fuzz_collect_page_pagination(data: &[u8]) {
 }
 
 // ---------------------------------------------------------------------------
-// vb-xi2f.28: ForEach digest fuzz targets
+// Wait digest coverage fuzz helpers (vb-xi2f.32)
 // ---------------------------------------------------------------------------
 
-/// Fuzz target: canonical_digest panic freedom with adversarial source data.
+/// Fuzz target helper: builds a workflow with a single Wait step from two
+/// string slices (event and timeout), parses it through the cold-path
+/// compiler, and verifies digest sensitivity properties.
 ///
-/// Constructs a `WorkflowSource` with ForEach fields derived from arbitrary
-/// bytes, then exercises `canonical_digest_part05` to verify that the digest
-/// computation never panics on adversarial inputs.
-///
-/// Bead: vb-xi2f.28 | State: 9 (test-writer)
-pub fn fuzz_canonical_digest_foreach(data: &[u8]) {
-    if data.is_empty() {
+/// Used by `wait_digest_sensitivity`, `wait_sentinel_collision`, and
+/// `wait_digest_exhaustive_collision` fuzz targets.
+pub fn fuzz_wait_digest_sensitivity(event: &str, timeout: &str) {
+    let src_a = build_wait_workflow_yaml(event, timeout);
+
+    // Parse and compile through the cold-path
+    let parsed_a = vb_yaml::parse_workflow_source(&src_a);
+    let Ok(source_a) = parsed_a else { return; };
+
+    let compiled_a = vb_compile::compile_source(&source_a);
+    let Ok(wf_a) = compiled_a else { return; };
+    let digest_a = wf_a.digest();
+
+    // Build a different configuration and verify the digest differs.
+    // We vary the timeout by appending a sentinel marker.
+    let alt_event = if event.is_empty() { "fuzz_alt" } else { event };
+    let alt_timeout = format!("{timeout}_fuzz_variant");
+    let src_b = build_wait_workflow_yaml(alt_event, &alt_timeout);
+
+    let parsed_b = vb_yaml::parse_workflow_source(&src_b);
+    let Ok(source_b) = parsed_b else { return; };
+
+    let compiled_b = vb_compile::compile_source(&source_b);
+    let Ok(wf_b) = compiled_b else { return; };
+    let digest_b = wf_b.digest();
+
+    // If the two configurations are different, digests must differ
+    if event != alt_event || timeout != alt_timeout {
+        assert!(
+            digest_a != digest_b,
+            "COLLISION: different wait configs produced same digest {:?}",
+            digest_a
+        );
+    }
+}
+
+/// Fuzz target helper: verifies sentinel unambiguity for WaitEvent timeout.
+/// For all event strings: digest(WaitEvent{event, None}) != digest(WaitEvent{event, Some("none")}).
+pub fn fuzz_wait_sentinel_unambiguous(event: &str) {
+    let absent_yaml = build_wait_workflow_yaml_no_timeout(event);
+    let sentinel_yaml = build_wait_workflow_yaml(event, "none");
+
+    let absent_source = vb_yaml::parse_workflow_source(&absent_yaml);
+    let sentinel_source = vb_yaml::parse_workflow_source(&sentinel_yaml);
+    let (Ok(src_a), Ok(src_b)) = (absent_source, sentinel_source) else { return; };
+
+    let compiled_a = vb_compile::compile_source(&src_a);
+    let compiled_b = vb_compile::compile_source(&src_b);
+    let (Ok(wf_a), Ok(wf_b)) = (compiled_a, compiled_b) else { return; };
+
+    let digest_a = wf_a.digest();
+    let digest_b = wf_b.digest();
+
+    assert!(
+        digest_a != digest_b,
+        "SENTINEL COLLISION: timeout=None and timeout=Some(\"none\") produced same digest {:?}",
+        digest_a
+    );
+}
+
+/// Fuzz target helper: exhaustive pairwise collision detection.
+/// Generates two different Wait configurations from byte input and verifies
+/// their digests differ.
+pub fn fuzz_wait_pairwise_collision(byte1: u8, byte2: u8, event1: &str, event2: &str) {
+    // Map the first byte to a Wait shape selector
+    let use_until1 = byte1 % 3 == 0;
+    let use_no_timeout1 = byte1 % 3 == 1;
+    let _use_both1 = byte1 % 3 == 2;
+
+    let (e1, t1): (Option<String>, Option<String>) = if use_until1 {
+        (None, Some(String::from("10")))
+    } else if use_no_timeout1 {
+        (if event1.is_empty() { Some(String::from("e")) } else { Some(event1.to_string()) }, None)
+    } else {
+        (if event1.is_empty() { Some(String::from("e")) } else { Some(event1.to_string()) },
+         Some(String::from("20")))
+    };
+
+    let use_until2 = byte2 % 3 == 0;
+    let use_no_timeout2 = byte2 % 3 == 1;
+    let _use_both2 = byte2 % 3 == 2;
+
+    let (e2, t2): (Option<String>, Option<String>) = if use_until2 {
+        (None, Some(String::from("10")))
+    } else if use_no_timeout2 {
+        (if event2.is_empty() { Some(String::from("f")) } else { Some(event2.to_string()) }, None)
+    } else {
+        (if event2.is_empty() { Some(String::from("f")) } else { Some(event2.to_string()) },
+         Some(String::from("30")))
+    };
+
+    // If the two are identical, skip
+    if e1 == e2 && t1 == t2 {
         return;
     }
 
-    let first = data.first().copied().unwrap_or(0);
+    let yaml1 = build_wait_workflow_from_opts(&e1, &t1);
+    let yaml2 = build_wait_workflow_from_opts(&e2, &t2);
 
-    // Derive variable name (bounded UTF-8)
-    let var_len = usize::from(first.wrapping_rem(32)).saturating_add(1);
-    let var_end = var_len.min(data.len());
-    let variable = std::str::from_utf8(data.get(..var_end).unwrap_or(b"x")).unwrap_or("item");
+    let src1 = vb_yaml::parse_workflow_source(&yaml1);
+    let src2 = vb_yaml::parse_workflow_source(&yaml2);
+    let (Ok(s1), Ok(s2)) = (src1, src2) else { return; };
 
-    // Derive input name
-    let input_start = var_end;
-    let input_len = if data.len() > input_start {
-        usize::from(data.get(input_start).copied().unwrap_or(0).wrapping_rem(32)).saturating_add(1)
-    } else {
-        1
-    };
-    let input_end = input_start.saturating_add(input_len).min(data.len());
-    let input = std::str::from_utf8(
-        data.get(input_start..input_end).unwrap_or(b"items"),
-    )
-    .unwrap_or("items");
+    let c1 = vb_compile::compile_source(&s1);
+    let c2 = vb_compile::compile_source(&s2);
+    let (Ok(w1), Ok(w2)) = (c1, c2) else { return; };
 
-    // Derive at_once from bytes
-    let at_once_start = input_end;
-    let at_once_val: Option<u32> = if data.len() >= at_once_start.saturating_add(4) {
-        let bytes: [u8; 4] = match data.get(at_once_start..at_once_start.saturating_add(4)) {
-            Some(slice) if slice.len() >= 4 => {
-                let mut arr = [0u8; 4];
-                arr.copy_from_slice(&slice[..4]);
-                arr
-            }
-            _ => [0u8; 4],
-        };
-        let val = u32::from_le_bytes(bytes);
-        if val == u32::MAX {
-            None
-        } else {
-            Some(val)
-        }
-    } else {
-        None
-    };
-
-    // Derive body step count (0-4)
-    let body_start = at_once_start.saturating_add(4).min(data.len());
-    let body_count_raw = if body_start < data.len() {
-        usize::from(data.get(body_start).copied().unwrap_or(0).wrapping_rem(5))
-    } else {
-        0
-    };
-    let mut body: Vec<vb_yaml::ast::StepAst> = Vec::new();
-    for i in 0..body_count_raw {
-        let label = if let Some(&b) = data.get(i.wrapping_rem(data.len().max(1))) {
-            format!("o_{b}")
-        } else {
-            "o_0".to_string()
-        };
-        body.push(vb_yaml::ast::StepAst {
-            id: format!("s{i}"),
-            name: None,
-            condition: None,
-            primitive: vb_yaml::ast::StepPrimitive::Set {
-                output: label,
-                value: "1".to_string(),
-            },
-            with: None,
-            retry: None,
-            on_error: None,
-            then: None,
-        });
-    }
-
-    let step = vb_yaml::ast::StepAst {
-        id: "f0".to_string(),
-        name: None,
-        condition: None,
-        primitive: vb_yaml::ast::StepPrimitive::ForEach {
-            variable: variable.to_string(),
-            input: input.to_string(),
-            at_once: at_once_val,
-            body,
-        },
-        with: None,
-        retry: None,
-        on_error: None,
-        then: None,
-    };
-
-    let source = vb_yaml::ast::WorkflowSource::new(vb_yaml::ast::WorkflowSourceParts {
-        version: "velvet-ballastics/v1".to_string(),
-        name: "fuzz_test".to_string(),
-        trigger: vb_yaml::ast::TriggerAst::Manual,
-        inputs: vec![],
-        vars: vec![],
-        secrets: vec![],
-        steps: vec![step],
-        result: None,
-        examples: vec![],
-    });
-
-    // canonical_digest must never panic
-    let _digest = vb_compile::canonical_digest_part05(&source);
+    assert!(
+        w1.digest() != w2.digest(),
+        "EXHAUSTIVE COLLISION: distinct Wait configs (e1={e1:?}, t1={t1:?}) vs (e2={e2:?}, t2={t2:?}) produced same digest",
+    );
 }
 
-/// Fuzz target: digest_step_primitive panic freedom with adversarial ForEach data.
-///
-/// Constructs ForEach steps from arbitrary byte data and calls
-/// `digest_step_primitive_part05` to verify panic freedom under hostile inputs.
-///
-/// Bead: vb-xi2f.28 | State: 9 (test-writer)
-pub fn fuzz_digest_step_primitive(data: &[u8]) {
-    fuzz_canonical_digest_foreach(data);
+/// Builds a valid Wait workflow YAML string with event and timeout.
+fn build_wait_workflow_yaml(event: &str, timeout: &str) -> String {
+    let mut wait = String::from("  - id: w\n    wait:");
+    if !event.is_empty() {
+        wait.push_str(&format!("\n      event: \"{event}\""));
+    }
+    if !timeout.is_empty() {
+        wait.push_str(&format!("\n      timeout: \"{timeout}\""));
+    }
+    format!("version: velvet-ballastics/v1\nname: fuzz-wait\nwhen:\n  manual: {{}}\nsteps:\n{wait}\n  - id: d\n    finish:\n      result: 0\n")
+}
+
+/// Builds a Wait workflow YAML without a timeout field.
+fn build_wait_workflow_yaml_no_timeout(event: &str) -> String {
+    let wait = if event.is_empty() {
+        String::from("  - id: w\n    wait:\n      timeout: \"1\"")
+    } else {
+        format!("  - id: w\n    wait:\n      event: \"{event}\"")
+    };
+    format!("version: velvet-ballastics/v1\nname: fuzz-wait\nwhen:\n  manual: {{}}\nsteps:\n{wait}\n  - id: d\n    finish:\n      result: 0\n")
+}
+
+/// Builds a Wait workflow YAML from Option<(String, String)> tuples.
+fn build_wait_workflow_from_opts(event: &Option<String>, timeout: &Option<String>) -> String {
+    let mut wait = String::from("  - id: w\n    wait:");
+    if let Some(e) = event {
+        wait.push_str(&format!("\n      event: \"{e}\""));
+    }
+    if let Some(t) = timeout {
+        wait.push_str(&format!("\n      timeout: \"{t}\""));
+    }
+    format!("version: velvet-ballastics/v1\nname: fuzz-wait\nwhen:\n  manual: {{}}\nsteps:\n{wait}\n  - id: d\n    finish:\n      result: 0\n")
 }

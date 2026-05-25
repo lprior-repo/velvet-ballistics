@@ -48,6 +48,7 @@ pub mod kani_canonical_name;
 // Kani harnesses for together digest step verification (vb-xi2f.29).
 #[cfg(kani)]
 pub mod together_digest_kani;
+
 // Kani harnesses for idempotency gate parity verification (State 5 proof-writer).
 #[cfg(kani)]
 pub mod kani_idempotency_parity;
@@ -75,6 +76,10 @@ pub mod kani_digest_ask_timeout_sensitivity;
 pub mod kani_digest_ask_timeout_sentinel;
 #[cfg(kani)]
 pub mod kani_digest_step_primitive_no_panic;
+
+// Kani harnesses for wait digest coverage verification (vb-xi2f.32).
+#[cfg(kani)]
+pub mod kani_wait_digest;
 
 pub use expression_bytecode::{compile_expr_to_bytecode, compile_expr_to_bytecode_with_accessors};
 
