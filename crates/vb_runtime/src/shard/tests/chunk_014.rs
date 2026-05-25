@@ -22,20 +22,12 @@ fn shard_action_completed_full_writes_slot_and_advances() {
     assert_eq!(shard.tick(), Ok(true));
 
     // Complete the action using the full ActionCompleted command (not legacy).
-    let ticket = vb_core::action::ActionTicket {
-        run,
-        step: vb_core::ids::StepIdx::ZERO,
-        seq: vb_core::ids::SeqNo::ZERO,
-        action: ActionId::new(0),
-        attempt: 1,
-        idempotency_key: 0,
-        capacity: 1,
-    };
+    let ticket = action_ticket(run, vb_core::ids::StepIdx::ZERO);
     let output = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::new(0),
         value: vb_core::value::SlotValue::I64(42),
         taint: vb_core::value::Taint::Clean,
-        encoded_len: 8,
+        encoded_len: 2,
     };
     assert_eq!(
         shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
@@ -183,15 +175,7 @@ fn shard_action_failure_retryable_exhaustion_fails_run() {
     assert_eq!(shard.tick(), Ok(true));
 
     // First retryable failure: retries (attempt counter goes to 2)
-    let ticket1 = vb_core::action::ActionTicket {
-        run,
-        step: vb_core::ids::StepIdx::new(1),
-        seq: vb_core::ids::SeqNo::ZERO,
-        action: ActionId::new(0),
-        attempt: 1,
-        idempotency_key: 0,
-        capacity: 1,
-    };
+    let ticket1 = action_ticket(run, vb_core::ids::StepIdx::new(1));
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
             ticket: ticket1,
@@ -203,13 +187,9 @@ fn shard_action_failure_retryable_exhaustion_fails_run() {
 
     // Second retryable failure: retries (attempt counter goes to 2, then tries add to 2, max=2, returns false => exhausts)
     let ticket2 = vb_core::action::ActionTicket {
-        run,
-        step: vb_core::ids::StepIdx::new(1),
-        seq: vb_core::ids::SeqNo::ZERO,
-        action: ActionId::new(0),
         attempt: 2,
-        idempotency_key: 0,
-        capacity: 1,
+        capacity: 2,
+        ..action_ticket(run, vb_core::ids::StepIdx::new(1))
     };
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {

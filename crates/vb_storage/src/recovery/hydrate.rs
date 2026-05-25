@@ -385,10 +385,16 @@ fn count_state_event(
             reject_resolved_action(tracker, *action, *step)?;
             Ok(true)
         }
-        JournalEvent::ActionScheduledTicket { run, ticket, .. } => {
+        JournalEvent::ActionScheduledTicket {
+            run,
+            ticket,
+            input,
+            output,
+            ..
+        } => {
             verify_action_ticket_event(*run, *ticket)?;
-            reject_resolved_action(tracker, ticket.action, ticket.step)?;
-            Ok(true)
+            let effect = tracker.mark_scheduled_ticket_effect(*ticket, *input, *output)?;
+            Ok(effect == ActionReplayEffect::Apply)
         }
         JournalEvent::ActionCompletedEvent { action, step, .. } => {
             reject_resolved_action(tracker, *action, *step)?;
@@ -414,6 +420,7 @@ fn count_state_event(
                 *encoded_len,
                 *value_digest,
             )?;
+            tracker.require_scheduled_ticket(*ticket, *output)?;
             let effect = tracker.mark_completed_envelope_effect(
                 *ticket,
                 *output,

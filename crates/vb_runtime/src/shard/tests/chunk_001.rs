@@ -37,7 +37,7 @@ fn invalid_timer_command(run: super::RunId) -> ShardCommand {
 fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let node = CompiledNode {
         id: vb_core::ids::StepIdx::ZERO,
-        output: None,
+        output: Some(SlotIdx::ZERO),
         next: None,
         on_error: None,
         error_slot: None,
@@ -77,7 +77,7 @@ fn action_with_error_handler_workflow() -> Option<vb_core::workflow::CompiledWor
     };
     let action = CompiledNode {
         id: vb_core::ids::StepIdx::new(1),
-        output: None,
+        output: Some(SlotIdx::new(0)),
         next: Some(vb_core::ids::StepIdx::new(3)),
         on_error: None,
         error_slot: None,
@@ -123,13 +123,15 @@ fn action_with_error_handler_workflow() -> Option<vb_core::workflow::CompiledWor
 }
 
 fn action_ticket(run: super::RunId, step: vb_core::ids::StepIdx) -> vb_core::action::ActionTicket {
+    let seq = vb_core::ids::SeqNo::ZERO;
+    let action = ActionId::new(0);
     vb_core::action::ActionTicket {
         run,
         step,
-        seq: vb_core::ids::SeqNo::ZERO,
-        action: ActionId::new(0),
+        seq,
+        action,
         attempt: 1,
-        idempotency_key: 0,
+        idempotency_key: vb_core::action::compute_action_idempotency_key(run, seq, action),
         capacity: 1,
     }
 }

@@ -303,13 +303,17 @@ pub(super) fn apply_tail_events(
                     })?;
                 executed = executed.saturating_add(1);
             }
-            JournalEvent::ActionScheduledTicket { run, ticket, .. } => {
+            JournalEvent::ActionScheduledTicket {
+                run,
+                ticket,
+                input,
+                output,
+                ..
+            } => {
                 verify_action_ticket_event(*run, *ticket)?;
-                if tracker.is_resolved(ticket.action, ticket.step) {
-                    return Err(RecoveryError::NonIdempotentActionBlocked {
-                        action: ticket.action,
-                        step: ticket.step,
-                    });
+                let effect = tracker.mark_scheduled_ticket_effect(*ticket, *input, *output)?;
+                if effect == ActionReplayEffect::Duplicate {
+                    continue;
                 }
                 frame
                     .add_parallel_in_flight(1)
@@ -499,13 +503,17 @@ pub(super) fn compute_parallel_in_flight(
                     peak = frame.parallel_in_flight();
                 }
             }
-            JournalEvent::ActionScheduledTicket { run, ticket, .. } => {
+            JournalEvent::ActionScheduledTicket {
+                run,
+                ticket,
+                input,
+                output,
+                ..
+            } => {
                 verify_action_ticket_event(*run, *ticket)?;
-                if tracker.is_resolved(ticket.action, ticket.step) {
-                    return Err(RecoveryError::NonIdempotentActionBlocked {
-                        action: ticket.action,
-                        step: ticket.step,
-                    });
+                let effect = tracker.mark_scheduled_ticket_effect(*ticket, *input, *output)?;
+                if effect == ActionReplayEffect::Duplicate {
+                    continue;
                 }
                 frame
                     .add_parallel_in_flight(1)
@@ -551,6 +559,7 @@ pub(super) fn compute_parallel_in_flight(
                     *encoded_len,
                     *value_digest,
                 )?;
+                tracker.require_scheduled_ticket(*ticket, *output)?;
                 let effect = tracker.mark_completed_envelope_effect(
                     *ticket,
                     *output,

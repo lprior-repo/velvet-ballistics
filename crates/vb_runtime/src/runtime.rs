@@ -644,7 +644,7 @@ mod tests {
     fn suspended_workflow() -> Option<CompiledWorkflow> {
         let node = CompiledNode {
             id: StepIdx::ZERO,
-            output: None,
+            output: Some(SlotIdx::ZERO),
             next: None,
             on_error: None,
             error_slot: None,
@@ -981,8 +981,9 @@ mod tests {
         assert_eq!(submit_suspended(&runtime, RunId::new(2), wf2), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         let events = runtime.drain_trace();
-        // Each submit produces: RunSubmitted + StepStarted + ActionScheduled = 3 events per run
-        assert_eq!(events.len(), 6);
+        // Each submit produces: RunSubmitted + initial SlotWritten + StepStarted
+        // + ActionScheduled = 4 events per run.
+        assert_eq!(events.len(), 8);
     }
 
     // Helper: workflow that finishes immediately (SetConst -> Finish).
@@ -1401,15 +1402,14 @@ mod tests {
             return;
         };
         let runtime = Runtime::new(shard_count, runtime_config());
-        let ticket = ActionTicket {
-            run: RunId::new(1),
-            step: StepIdx::ZERO,
-            seq: SeqNo::new(0),
-            action: ActionId::new(0),
-            attempt: 1,
-            idempotency_key: 1,
-            capacity: 1,
-        };
+        let ticket = ticket(
+            RunId::new(1),
+            StepIdx::ZERO,
+            SeqNo::ZERO,
+            ActionId::new(0),
+            1,
+            1,
+        );
         let failure = ActionFailure {
             code: ActionFailureCode::Rejected,
             retry_policy: RetryPolicy::NonRetryable,
@@ -1757,15 +1757,14 @@ mod tests {
         };
         let runtime = Runtime::new(shard_count, runtime_config());
         // When failing an action for a run that was never submitted
-        let ticket = ActionTicket {
-            run: RunId::new(998),
-            step: StepIdx::ZERO,
-            seq: SeqNo::ZERO,
-            action: ActionId::new(0),
-            attempt: 1,
-            idempotency_key: 0,
-            capacity: 1,
-        };
+        let ticket = ticket(
+            RunId::new(998),
+            StepIdx::ZERO,
+            SeqNo::ZERO,
+            ActionId::new(0),
+            1,
+            1,
+        );
         let failure = ActionFailure {
             code: ActionFailureCode::Rejected,
             retry_policy: RetryPolicy::NonRetryable,
@@ -1986,15 +1985,7 @@ mod tests {
         assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         // When failing the action
-        let ticket = ActionTicket {
-            run,
-            step: StepIdx::ZERO,
-            seq: SeqNo::ZERO,
-            action: ActionId::new(0),
-            attempt: 1,
-            idempotency_key: 0,
-            capacity: 1,
-        };
+        let ticket = ticket(run, StepIdx::ZERO, SeqNo::ZERO, ActionId::new(0), 1, 1);
         let failure = ActionFailure {
             code: ActionFailureCode::Rejected,
             retry_policy: RetryPolicy::NonRetryable,
@@ -2444,20 +2435,12 @@ mod tests {
 
         // All three runs are suspended on their Do actions.
         // Complete only run2's action.
-        let ticket = ActionTicket {
-            run: run2,
-            step: StepIdx::ZERO,
-            seq: SeqNo::ZERO,
-            action: ActionId::new(7),
-            attempt: 1,
-            idempotency_key: 0,
-            capacity: 1,
-        };
+        let ticket = ticket(run2, StepIdx::ZERO, SeqNo::ZERO, ActionId::new(7), 1, 1);
         let output = ActionOutputReady {
             output_slot: SlotIdx::new(1),
             value: SlotValue::I64(42),
             taint: Taint::Clean,
-            encoded_len: 8,
+            encoded_len: encoded_len(&SlotValue::I64(42)),
         };
         assert_eq!(runtime.complete_action_with_output(ticket, output), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));

@@ -264,7 +264,7 @@ fn do_with_retry_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     };
     let action = CompiledNode {
         id: vb_core::ids::StepIdx::new(1),
-        output: None,
+        output: Some(SlotIdx::new(0)),
         next: Some(vb_core::ids::StepIdx::new(2)),
         on_error: None,
         error_slot: None,

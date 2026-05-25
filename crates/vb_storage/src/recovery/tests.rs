@@ -306,6 +306,252 @@ fn summarize_recovery_events_counts_duplicate_action_completed_envelope_once() {
 }
 
 #[test]
+fn summarize_recovery_events_counts_duplicate_action_scheduled_ticket_once() {
+    let run = RunId::new(780);
+    let ticket = recovery_action_ticket(run, StepIdx::ZERO, ActionId::new(1));
+    let events = vec![
+        recovery_action_scheduled_ticket_event(
+            run,
+            EventSeq::new(0),
+            ticket,
+            SlotIdx::new(0),
+            SlotIdx::new(1),
+        ),
+        recovery_action_scheduled_ticket_event(
+            run,
+            EventSeq::new(1),
+            ticket,
+            SlotIdx::new(0),
+            SlotIdx::new(1),
+        ),
+        recovery_action_completed_envelope_event(
+            run,
+            EventSeq::new(2),
+            ticket,
+            SlotIdx::new(1),
+            SlotValue::I64(42),
+            Taint::Clean,
+        ),
+    ];
+
+    let hydration = summarize_recovery_events(&events).expect("summary recovery succeeds");
+    let RecoveryHydration::Summary(summary) = hydration else {
+        panic!("expected summary hydration");
+    };
+
+    assert_eq!(summary.actions_scheduled, 1);
+    assert_eq!(summary.actions_resolved, 1);
+}
+
+#[test]
+fn summarize_recovery_events_rejects_divergent_action_scheduled_ticket() {
+    let run = RunId::new(781);
+    let ticket = recovery_action_ticket(run, StepIdx::ZERO, ActionId::new(1));
+    let events = vec![
+        recovery_action_scheduled_ticket_event(
+            run,
+            EventSeq::new(0),
+            ticket,
+            SlotIdx::new(0),
+            SlotIdx::new(1),
+        ),
+        recovery_action_scheduled_ticket_event(
+            run,
+            EventSeq::new(1),
+            ticket,
+            SlotIdx::new(0),
+            SlotIdx::new(2),
+        ),
+    ];
+
+    let result = summarize_recovery_events(&events);
+
+    assert!(matches!(
+        result,
+        Err(RecoveryError::ReplayDivergence { step, detail })
+            if step == StepIdx::ZERO && detail == "divergent action schedule ticket"
+    ));
+}
+
+#[test]
+fn summarize_recovery_events_rejects_completion_output_mismatch_with_schedule() {
+    let run = RunId::new(782);
+    let ticket = recovery_action_ticket(run, StepIdx::ZERO, ActionId::new(1));
+    let events = vec![
+        recovery_action_scheduled_ticket_event(
+            run,
+            EventSeq::new(0),
+            ticket,
+            SlotIdx::new(0),
+            SlotIdx::new(1),
+        ),
+        recovery_action_completed_envelope_event(
+            run,
+            EventSeq::new(1),
+            ticket,
+            SlotIdx::new(2),
+            SlotValue::I64(42),
+            Taint::Clean,
+        ),
+    ];
+
+    let result = summarize_recovery_events(&events);
+
+    assert!(matches!(
+        result,
+        Err(RecoveryError::ReplayDivergence { step, detail })
+            if step == StepIdx::ZERO
+                && detail == "action completion envelope does not match schedule ticket"
+    ));
+}
+
+#[test]
+fn summarize_recovery_events_rejects_action_completed_envelope_without_schedule() {
+    let run = RunId::new(786);
+    let ticket = recovery_action_ticket(run, StepIdx::ZERO, ActionId::new(1));
+    let events = vec![recovery_action_completed_envelope_event(
+        run,
+        EventSeq::new(0),
+        ticket,
+        SlotIdx::new(1),
+        SlotValue::I64(42),
+        Taint::Clean,
+    )];
+
+    let result = summarize_recovery_events(&events);
+
+    assert!(matches!(
+        result,
+        Err(RecoveryError::ReplayDivergence { step, detail })
+            if step == StepIdx::ZERO
+                && detail == "action completion envelope missing schedule ticket"
+    ));
+}
+
+#[test]
+fn replay_events_accepts_identical_duplicate_action_scheduled_ticket() {
+    let run = RunId::new(783);
+    let ticket = recovery_action_ticket(run, StepIdx::ZERO, ActionId::new(1));
+    let events = vec![
+        recovery_action_scheduled_ticket_event(
+            run,
+            EventSeq::new(0),
+            ticket,
+            SlotIdx::new(0),
+            SlotIdx::new(1),
+        ),
+        recovery_action_scheduled_ticket_event(
+            run,
+            EventSeq::new(1),
+            ticket,
+            SlotIdx::new(0),
+            SlotIdx::new(1),
+        ),
+        recovery_action_completed_envelope_event(
+            run,
+            EventSeq::new(2),
+            ticket,
+            SlotIdx::new(1),
+            SlotValue::I64(42),
+            Taint::Clean,
+        ),
+    ];
+    let mut tracker = ActionReplayTracker::new();
+
+    let result = replay_events(&events, &mut tracker, &[]);
+
+    assert!(result.is_ok(), "expected Ok, got {:?}", result);
+}
+
+#[test]
+fn replay_events_rejects_divergent_action_scheduled_ticket() {
+    let run = RunId::new(784);
+    let ticket = recovery_action_ticket(run, StepIdx::ZERO, ActionId::new(1));
+    let events = vec![
+        recovery_action_scheduled_ticket_event(
+            run,
+            EventSeq::new(0),
+            ticket,
+            SlotIdx::new(0),
+            SlotIdx::new(1),
+        ),
+        recovery_action_scheduled_ticket_event(
+            run,
+            EventSeq::new(1),
+            ticket,
+            SlotIdx::new(0),
+            SlotIdx::new(2),
+        ),
+    ];
+    let mut tracker = ActionReplayTracker::new();
+
+    let result = replay_events(&events, &mut tracker, &[]);
+
+    assert!(matches!(
+        result,
+        Err(RecoveryError::ReplayDivergence { step, detail })
+            if step == StepIdx::ZERO && detail == "divergent action schedule ticket"
+    ));
+}
+
+#[test]
+fn replay_events_rejects_completion_output_mismatch_with_schedule() {
+    let run = RunId::new(785);
+    let ticket = recovery_action_ticket(run, StepIdx::ZERO, ActionId::new(1));
+    let events = vec![
+        recovery_action_scheduled_ticket_event(
+            run,
+            EventSeq::new(0),
+            ticket,
+            SlotIdx::new(0),
+            SlotIdx::new(1),
+        ),
+        recovery_action_completed_envelope_event(
+            run,
+            EventSeq::new(1),
+            ticket,
+            SlotIdx::new(2),
+            SlotValue::I64(42),
+            Taint::Clean,
+        ),
+    ];
+    let mut tracker = ActionReplayTracker::new();
+
+    let result = replay_events(&events, &mut tracker, &[]);
+
+    assert!(matches!(
+        result,
+        Err(RecoveryError::ReplayDivergence { step, detail })
+            if step == StepIdx::ZERO
+                && detail == "action completion envelope does not match schedule ticket"
+    ));
+}
+
+#[test]
+fn replay_events_rejects_action_completed_envelope_without_schedule() {
+    let run = RunId::new(787);
+    let ticket = recovery_action_ticket(run, StepIdx::ZERO, ActionId::new(1));
+    let events = vec![recovery_action_completed_envelope_event(
+        run,
+        EventSeq::new(0),
+        ticket,
+        SlotIdx::new(1),
+        SlotValue::I64(42),
+        Taint::Clean,
+    )];
+    let mut tracker = ActionReplayTracker::new();
+
+    let result = replay_events(&events, &mut tracker, &[]);
+
+    assert!(matches!(
+        result,
+        Err(RecoveryError::ReplayDivergence { step, detail })
+            if step == StepIdx::ZERO
+                && detail == "action completion envelope missing schedule ticket"
+    ));
+}
+
+#[test]
 fn recover_runtime_summary_reads_summary_from_journal() {
     let dir = tempfile::tempdir().expect("temp dir");
     let journal = FjallJournal::open(dir.path(), None).expect("journal opens");
@@ -2609,6 +2855,106 @@ mod hydrate_run_frame_tests {
             Err(RecoveryError::ReplayDivergence { step, detail })
                 if step == StepIdx::ZERO
                     && detail == "divergent action completion envelope"
+        ));
+    }
+
+    #[test]
+    fn hydrate_run_frame_from_events_deduplicates_identical_action_scheduled_ticket() {
+        let run = RunId::new(26);
+        let ticket = action_ticket(run, StepIdx::ZERO, ActionId::new(1));
+        let events = vec![
+            action_scheduled_ticket_event(
+                run,
+                EventSeq::new(1),
+                ticket,
+                SlotIdx::new(0),
+                SlotIdx::new(1),
+            ),
+            action_scheduled_ticket_event(
+                run,
+                EventSeq::new(2),
+                ticket,
+                SlotIdx::new(0),
+                SlotIdx::new(1),
+            ),
+            action_completed_envelope_event(
+                run,
+                EventSeq::new(3),
+                ticket,
+                SlotIdx::new(1),
+                SlotValue::I64(42),
+                Taint::Clean,
+            ),
+        ];
+
+        let result = hydrate_run_frame_from_events(&events, run);
+
+        assert!(result.is_ok(), "expected Ok, got {:?}", result);
+        let frame = result.unwrap();
+        assert_eq!(frame.parallel_in_flight(), 0);
+        assert_eq!(frame.max_parallel_in_flight(), 1);
+        assert_eq!(frame.executed(), 2);
+    }
+
+    #[test]
+    fn hydrate_run_frame_from_events_rejects_divergent_action_scheduled_ticket() {
+        let run = RunId::new(27);
+        let ticket = action_ticket(run, StepIdx::ZERO, ActionId::new(1));
+        let events = vec![
+            action_scheduled_ticket_event(
+                run,
+                EventSeq::new(1),
+                ticket,
+                SlotIdx::new(0),
+                SlotIdx::new(1),
+            ),
+            action_scheduled_ticket_event(
+                run,
+                EventSeq::new(2),
+                ticket,
+                SlotIdx::new(0),
+                SlotIdx::new(2),
+            ),
+        ];
+
+        let result = hydrate_run_frame_from_events(&events, run);
+
+        assert!(matches!(
+            result,
+            Err(RecoveryError::ReplayDivergence { step, detail })
+                if step == StepIdx::ZERO && detail == "divergent action schedule ticket"
+        ));
+    }
+
+    #[test]
+    fn hydrate_run_frame_from_events_rejects_completion_output_that_differs_from_schedule() {
+        let run = RunId::new(28);
+        let ticket = action_ticket(run, StepIdx::ZERO, ActionId::new(1));
+        let events = vec![
+            action_scheduled_ticket_event(
+                run,
+                EventSeq::new(1),
+                ticket,
+                SlotIdx::new(0),
+                SlotIdx::new(1),
+            ),
+            action_completed_envelope_event(
+                run,
+                EventSeq::new(2),
+                ticket,
+                SlotIdx::new(2),
+                SlotValue::I64(42),
+                Taint::Clean,
+            ),
+        ];
+
+        let result = hydrate_run_frame_from_events(&events, run);
+
+        assert!(matches!(
+            result,
+            Err(RecoveryError::ReplayDivergence { step, detail })
+                if step == StepIdx::ZERO
+                    && detail == "action completion envelope does not match schedule ticket"
         ));
     }
 

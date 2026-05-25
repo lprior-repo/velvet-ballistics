@@ -39,6 +39,14 @@ pub fn replay_events(
     tracker: &mut ActionReplayTracker,
     _expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
 ) -> RecoveryResult<Vec<JournalEvent>> {
+    replay_events_with_schedule_requirement(events, tracker, true)
+}
+
+fn replay_events_with_schedule_requirement(
+    events: &[JournalEvent],
+    tracker: &mut ActionReplayTracker,
+    require_schedule: bool,
+) -> RecoveryResult<Vec<JournalEvent>> {
     validate_contiguous_sequences(events)?;
     let max_attempt = compute_max_attempt(events);
     let mut replayed = Vec::new();
@@ -91,14 +99,15 @@ pub fn replay_events(
                     });
                 }
             }
-            JournalEvent::ActionScheduledTicket { run, ticket, .. } => {
+            JournalEvent::ActionScheduledTicket {
+                run,
+                ticket,
+                input,
+                output,
+                ..
+            } => {
                 verify_action_ticket_event(*run, *ticket)?;
-                if tracker.is_resolved(ticket.action, ticket.step) {
-                    return Err(RecoveryError::NonIdempotentActionBlocked {
-                        action: ticket.action,
-                        step: ticket.step,
-                    });
-                }
+                tracker.mark_scheduled_ticket_effect(*ticket, *input, *output)?;
             }
             JournalEvent::ActionCompletedEvent { action, step, .. } => {
                 if tracker.is_resolved(*action, *step) {
@@ -120,20 +129,26 @@ pub fn replay_events(
                 taint,
                 value_digest,
                 ..
-            } => tracker.mark_completed_envelope(
-                *ticket,
-                *output,
-                *encoded_len,
-                *taint,
-                verified_action_envelope_digest(
+            } => {
+                let verified_digest = verified_action_envelope_digest(
                     *run,
                     *ticket,
                     *outcome,
                     value,
                     *encoded_len,
                     *value_digest,
-                )?,
-            )?,
+                )?;
+                if require_schedule {
+                    tracker.require_scheduled_ticket(*ticket, *output)?;
+                }
+                tracker.mark_completed_envelope(
+                    *ticket,
+                    *output,
+                    *encoded_len,
+                    *taint,
+                    verified_digest,
+                )?;
+            }
             JournalEvent::ActionFailedEvent { action, step, .. } => {
                 if tracker.is_resolved(*action, *step) {
                     return Err(RecoveryError::NonIdempotentActionBlocked {
@@ -246,7 +261,7 @@ pub fn recover_snapshot_plus_tail(
         }
     }
 
-    replay_events(tail_events, tracker, &[])
+    replay_events_with_schedule_requirement(tail_events, tracker, false)
 }
 
 /// Checks whether a run has reached a terminal state.

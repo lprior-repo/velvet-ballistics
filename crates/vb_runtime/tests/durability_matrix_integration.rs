@@ -96,7 +96,7 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
 fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let node = CompiledNode {
         id: StepIdx::ZERO,
-        output: None,
+        output: Some(SlotIdx::ZERO),
         next: None,
         on_error: None,
         error_slot: None,
@@ -290,20 +290,22 @@ fn action_completed_persists_before_ack() {
     // Clear journal from submit phase
     let _ = journal.snapshot().unwrap();
 
+    let seq = vb_core::ids::SeqNo::ZERO;
+    let action = vb_core::ids::ActionId::new(0);
     let ticket = vb_core::action::ActionTicket {
         run,
         step: StepIdx::ZERO,
-        seq: vb_core::ids::SeqNo::new(1),
-        action: vb_core::ids::ActionId::new(0),
+        seq,
+        action,
         attempt: 1,
-        idempotency_key: 0,
+        idempotency_key: vb_core::action::compute_action_idempotency_key(run, seq, action),
         capacity: 1,
     };
     let output = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::new(0),
         value: SlotValue::Bool(true),
         taint: Taint::Clean,
-        encoded_len: 1,
+        encoded_len: 2,
     };
     shard
         .enqueue(ShardCommand::ActionCompleted { ticket, output })
@@ -314,21 +316,14 @@ fn action_completed_persists_before_ack() {
     let has_slot_written = events
         .iter()
         .any(|e| matches!(e, RuntimeJournalEvent::SlotWritten { run: r, .. } if *r == run));
-    let has_step_succeeded = events
-        .iter()
-        .any(|e| matches!(e, RuntimeJournalEvent::StepSucceeded { run: r, .. } if *r == run));
-    let has_action_completed = events
-        .iter()
-        .any(|e| matches!(e, RuntimeJournalEvent::ActionCompleted { run: r, .. } if *r == run));
+    let has_action_completed_envelope = events.iter().any(|e| {
+        matches!(e, RuntimeJournalEvent::ActionCompletedEnvelope { ticket, .. } if ticket.run == run)
+    });
 
     assert!(has_slot_written, "SlotWritten must be persisted before ack");
     assert!(
-        has_step_succeeded,
-        "StepSucceeded must be persisted before ack"
-    );
-    assert!(
-        has_action_completed,
-        "ActionCompleted must be persisted before ack"
+        has_action_completed_envelope,
+        "ActionCompletedEnvelope must be persisted before ack"
     );
 }
 
@@ -346,13 +341,15 @@ fn action_failed_persists_before_ack() {
 
     let _ = journal.snapshot().unwrap();
 
+    let seq = vb_core::ids::SeqNo::ZERO;
+    let action = vb_core::ids::ActionId::new(0);
     let ticket = vb_core::action::ActionTicket {
         run,
         step: StepIdx::ZERO,
-        seq: vb_core::ids::SeqNo::new(1),
-        action: vb_core::ids::ActionId::new(0),
+        seq,
+        action,
         attempt: 1,
-        idempotency_key: 0,
+        idempotency_key: vb_core::action::compute_action_idempotency_key(run, seq, action),
         capacity: 1,
     };
     let failure = vb_core::action::ActionFailure {

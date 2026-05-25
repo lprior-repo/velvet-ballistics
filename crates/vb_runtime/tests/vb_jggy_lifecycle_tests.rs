@@ -117,7 +117,7 @@ fn submit_with_inputs_and_contracts(
 fn suspended_workflow() -> Option<CompiledWorkflow> {
     let node = CompiledNode {
         id: StepIdx::ZERO,
-        output: None,
+        output: Some(SlotIdx::ZERO),
         next: None,
         on_error: None,
         error_slot: None,
@@ -145,7 +145,7 @@ fn suspended_workflow() -> Option<CompiledWorkflow> {
 fn suspended_workflow_2step() -> Option<CompiledWorkflow> {
     let node0 = CompiledNode {
         id: StepIdx::ZERO,
-        output: None,
+        output: Some(SlotIdx::ZERO),
         next: Some(StepIdx::new(1)),
         on_error: None,
         error_slot: None,
@@ -156,7 +156,7 @@ fn suspended_workflow_2step() -> Option<CompiledWorkflow> {
     };
     let node1 = CompiledNode {
         id: StepIdx::new(1),
-        output: None,
+        output: Some(SlotIdx::ZERO),
         next: None,
         on_error: None,
         error_slot: None,
@@ -194,7 +194,7 @@ fn retry_workflow() -> Option<CompiledWorkflow> {
     };
     let action = CompiledNode {
         id: StepIdx::new(1),
-        output: None,
+        output: Some(SlotIdx::ZERO),
         next: Some(StepIdx::new(2)),
         on_error: None,
         error_slot: None,
@@ -252,13 +252,15 @@ fn small_config() -> ShardConfig {
 }
 
 fn make_ticket(run: RunId, step: StepIdx, attempt: u16, capacity: u16) -> ActionTicket {
+    let seq = SeqNo::ZERO;
+    let action = ActionId::new(0);
     ActionTicket {
         run,
         step,
-        seq: SeqNo::ZERO,
-        action: ActionId::new(0),
+        seq,
+        action,
         attempt,
-        idempotency_key: 0,
+        idempotency_key: vb_core::action::compute_action_idempotency_key(run, seq, action),
         capacity,
     }
 }
@@ -370,7 +372,7 @@ fn step_succeeded_carries_attempt_field() {
         output_slot: SlotIdx::ZERO,
         value: SlotValue::I64(42),
         taint: Taint::Clean,
-        encoded_len: 8,
+        encoded_len: 2,
     };
     assert_eq!(
         shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
@@ -378,28 +380,27 @@ fn step_succeeded_carries_attempt_field() {
     );
     assert_eq!(shard.tick(), Ok(true));
 
-    // Check journal event carries attempt
+    // Check durable action completion envelope carries attempt.
     let events = journal.snapshot().expect("journal snapshot should work");
-    let step_succeeded_events: Vec<_> = events
+    let completion_attempts: Vec<_> = events
         .iter()
         .filter_map(|e| match e {
-            RuntimeJournalEvent::StepSucceeded {
-                run: r,
-                step: s,
-                output: _,
-                attempt: a, // POST-003: attempt field should exist
-            } if *r == run && *s == StepIdx::ZERO => Some(*a),
+            RuntimeJournalEvent::ActionCompletedEnvelope { ticket, .. }
+                if ticket.run == run && ticket.step == StepIdx::ZERO =>
+            {
+                Some(ticket.attempt)
+            }
             _ => None,
         })
         .collect();
 
     assert!(
-        !step_succeeded_events.is_empty(),
-        "StepSucceeded event should be in journal"
+        !completion_attempts.is_empty(),
+        "ActionCompletedEnvelope event should be in journal"
     );
     assert_eq!(
-        step_succeeded_events[0], 1,
-        "StepSucceeded should carry attempt=1 from ticket"
+        completion_attempts[0], 1,
+        "ActionCompletedEnvelope ticket should carry attempt=1"
     );
 }
 
@@ -488,7 +489,7 @@ fn step_succeeded_carries_retry_attempt_number() {
         output_slot: SlotIdx::ZERO,
         value: SlotValue::I64(99),
         taint: Taint::Clean,
-        encoded_len: 8,
+        encoded_len: 3,
     };
     assert_eq!(
         shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
@@ -496,22 +497,18 @@ fn step_succeeded_carries_retry_attempt_number() {
     );
     assert_eq!(shard.tick(), Ok(true));
 
-    // Check attempt=3 was persisted
+    // Check attempt=3 was persisted in the durable action completion envelope.
     let events = journal.snapshot().expect("journal snapshot should work");
-    let step_succeeded_with_attempt_3: bool = events.iter().any(|e| {
+    let completion_with_attempt_3: bool = events.iter().any(|e| {
         matches!(
             e,
-            RuntimeJournalEvent::StepSucceeded {
-                run,
-                step,
-                output: _,
-                attempt: 3,
-            } if *run == *run && *step == StepIdx::ZERO
+            RuntimeJournalEvent::ActionCompletedEnvelope { ticket, .. }
+                if ticket.run == run && ticket.step == StepIdx::ZERO && ticket.attempt == 3
         )
     });
     assert!(
-        step_succeeded_with_attempt_3,
-        "StepSucceeded should carry attempt=3 from ticket"
+        completion_with_attempt_3,
+        "ActionCompletedEnvelope ticket should carry attempt=3"
     );
 }
 
@@ -555,7 +552,7 @@ fn stale_attempt_completion_rejected_before_journal_write() {
         output_slot: SlotIdx::ZERO,
         value: SlotValue::I64(7),
         taint: Taint::Clean,
-        encoded_len: 8,
+        encoded_len: 3,
     };
     assert_eq!(
         shard.enqueue(ShardCommand::ActionCompleted {
@@ -819,7 +816,7 @@ fn encode_failed_completion_returns_error_and_leaves_state_unchanged() {
         output_slot: SlotIdx::ZERO,
         value: SlotValue::I64(42),
         taint: Taint::Clean,
-        encoded_len: 8,
+        encoded_len: 2,
     };
     assert_eq!(
         shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
@@ -861,7 +858,7 @@ fn validate_ticket_attempt_accepts_valid_ticket() {
         output_slot: SlotIdx::ZERO,
         value: SlotValue::I64(100),
         taint: Taint::Clean,
-        encoded_len: 8,
+        encoded_len: 3,
     };
     assert_eq!(
         shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
@@ -893,7 +890,7 @@ fn equal_attempt_is_not_stale() {
         output_slot: SlotIdx::ZERO,
         value: SlotValue::I64(7),
         taint: Taint::Clean,
-        encoded_len: 8,
+        encoded_len: 2,
     };
     assert_eq!(
         shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
@@ -930,7 +927,7 @@ fn future_attempt_within_capacity_is_accepted() {
         output_slot: SlotIdx::ZERO,
         value: SlotValue::I64(7),
         taint: Taint::Clean,
-        encoded_len: 8,
+        encoded_len: 2,
     };
     assert_eq!(
         shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),

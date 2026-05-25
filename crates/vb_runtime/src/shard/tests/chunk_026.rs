@@ -34,20 +34,12 @@ fn vb1u88_action_ticket_step_idx_boundary() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    let ticket_min = vb_core::action::ActionTicket {
-        run,
-        step: vb_core::ids::StepIdx::ZERO,
-        seq: vb_core::ids::SeqNo::ZERO,
-        action: ActionId::new(0),
-        attempt: 1,
-        idempotency_key: 0,
-        capacity: 1,
-    };
+    let ticket_min = action_ticket(run, vb_core::ids::StepIdx::ZERO);
     let output = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::ZERO,
         value: vb_core::value::SlotValue::I64(1),
         taint: vb_core::value::Taint::Clean,
-        encoded_len: 0,
+        encoded_len: 2,
     };
     assert_eq!(
         shard.enqueue(ShardCommand::ActionCompleted {

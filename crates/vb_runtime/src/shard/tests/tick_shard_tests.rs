@@ -34,7 +34,7 @@ use crate::RuntimeError;
 fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let node = CompiledNode {
         id: StepIdx::ZERO,
-        output: None,
+        output: Some(SlotIdx::ZERO),
         next: None,
         on_error: None,
         error_slot: None,

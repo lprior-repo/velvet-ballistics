@@ -143,10 +143,18 @@ fn apply_summary_event_checked(
             apply_summary_event(summary, event);
             Ok(())
         }
-        JournalEvent::ActionScheduledTicket { run, ticket, .. } => {
+        JournalEvent::ActionScheduledTicket {
+            run,
+            ticket,
+            input,
+            output,
+            ..
+        } => {
             verify_action_ticket_event(*run, *ticket)?;
-            reject_resolved_summary_action(tracker, ticket.action, ticket.step)?;
-            apply_summary_event(summary, event);
+            let effect = tracker.mark_scheduled_ticket_effect(*ticket, *input, *output)?;
+            if effect == ActionReplayEffect::Apply {
+                apply_summary_event(summary, event);
+            }
             Ok(())
         }
         JournalEvent::ActionCompletedEvent { action, step, .. } => {
@@ -180,6 +188,7 @@ fn apply_summary_event_checked(
                 *encoded_len,
                 *value_digest,
             )?;
+            tracker.require_scheduled_ticket(*ticket, *output)?;
             let effect = tracker.mark_completed_envelope_effect(
                 *ticket,
                 *output,
@@ -440,7 +449,11 @@ impl FrameSeedAccumulator {
             });
         }
         self.summary.last_seq = event.seq();
-        if !matches!(event, JournalEvent::ActionCompletedEnvelope { .. }) {
+        if !matches!(
+            event,
+            JournalEvent::ActionCompletedEnvelope { .. }
+                | JournalEvent::ActionScheduledTicket { .. }
+        ) {
             apply_summary_event(&mut self.summary, event);
         }
         self.apply_frame_event(event)
@@ -457,9 +470,15 @@ impl FrameSeedAccumulator {
             JournalEvent::ActionScheduled { action, step, .. } => {
                 self.record_action_scheduled(*action, *step)
             }
-            JournalEvent::ActionScheduledTicket { run, ticket, .. } => {
+            JournalEvent::ActionScheduledTicket {
+                run,
+                ticket,
+                input,
+                output,
+                ..
+            } => {
                 verify_action_ticket_event(*run, *ticket)?;
-                self.record_action_scheduled(ticket.action, ticket.step)
+                self.record_action_scheduled_ticket(*ticket, *input, *output)
             }
             JournalEvent::ActionCompletedEvent { action, step, .. } => {
                 self.record_action_completed(*action, *step)
@@ -556,6 +575,8 @@ impl FrameSeedAccumulator {
             envelope.encoded_len,
             envelope.value_digest,
         )?;
+        self.action_tracker
+            .require_scheduled_ticket(envelope.ticket, envelope.output)?;
         let effect = self.action_tracker.mark_completed_envelope_effect(
             envelope.ticket,
             envelope.output,
@@ -601,6 +622,22 @@ impl FrameSeedAccumulator {
             return Err(RecoveryError::NonIdempotentActionBlocked { action, step });
         }
         self.pending_actions.insert((action, step));
+        Ok(self)
+    }
+
+    fn record_action_scheduled_ticket(
+        mut self,
+        ticket: vb_core::ActionTicket,
+        input: SlotIdx,
+        output: SlotIdx,
+    ) -> RecoveryResult<Self> {
+        let effect = self
+            .action_tracker
+            .mark_scheduled_ticket_effect(ticket, input, output)?;
+        if effect == ActionReplayEffect::Apply {
+            self.summary.actions_scheduled = self.summary.actions_scheduled.saturating_add(1);
+            self.pending_actions.insert((ticket.action, ticket.step));
+        }
         Ok(self)
     }
 

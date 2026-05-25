@@ -42,7 +42,7 @@
     fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         let node = CompiledNode {
             id: StepIdx::ZERO,
-            output: None,
+            output: Some(SlotIdx::ZERO),
             next: None,
             on_error: None,
             error_slot: None,
@@ -80,7 +80,7 @@
         };
         let action = CompiledNode {
             id: StepIdx::new(1),
-            output: None,
+            output: Some(SlotIdx::ZERO),
             next: Some(StepIdx::new(2)),
             on_error: None,
             error_slot: None,
@@ -179,7 +179,7 @@
         };
         let action = CompiledNode {
             id: StepIdx::new(1),
-            output: None,
+            output: Some(SlotIdx::new(0)),
             next: Some(StepIdx::new(3)),
             on_error: None,
             error_slot: None,

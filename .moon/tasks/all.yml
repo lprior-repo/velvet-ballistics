@@ -41,11 +41,7 @@ tasks:
       - '@globs(tests)'
       - '@globs(configs)'
     options:
-      # The xtask crate is currently outside the active Cargo workspace, so the
-      # cargo xtask alias resolves to a non-member package. Keep this manual
-      # until xtask is either re-admitted and re-linted or split into an
-      # independently buildable tool crate.
-      runInCI: false
+      runInCI: true
 
   lint-src:
     script: |
@@ -714,7 +710,11 @@ tasks:
       - '.cargo/config.toml'
       - '.moon/tasks/all.yml'
     options:
-      runInCI: true
+      # The xtask crate is currently outside the active Cargo workspace, so the
+      # cargo xtask alias resolves to a non-member package. Keep this manual
+      # until xtask is either re-admitted and re-linted or split into an
+      # independently buildable tool crate.
+      runInCI: false
 
   quick:
     script: |

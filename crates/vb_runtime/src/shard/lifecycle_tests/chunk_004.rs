@@ -25,7 +25,7 @@
             output_slot: SlotIdx::ZERO,
             value: SlotValue::I64(7),
             taint: Taint::Clean,
-            encoded_len: 0,
+            encoded_len: 2,
         };
         assert_eq!(
             shard.enqueue(ShardCommand::ActionCompleted {
@@ -61,7 +61,7 @@
             output_slot: SlotIdx::ZERO,
             value: SlotValue::I64(7),
             taint: Taint::Clean,
-            encoded_len: 0,
+            encoded_len: 2,
         };
         let error = RuntimeError::AttemptBeyondMax { attempt: 4, max: 3 };
         assert_eq!(error.runtime_code(), Some("ACTION_FAILED"));
@@ -116,7 +116,7 @@
             output_slot: SlotIdx::ZERO,
             value: SlotValue::I64(7),
             taint: Taint::Clean,
-            encoded_len: 0,
+            encoded_len: 2,
         };
         assert_eq!(
             shard.enqueue(ShardCommand::ActionCompleted {

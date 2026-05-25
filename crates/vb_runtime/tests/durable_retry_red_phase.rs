@@ -39,7 +39,7 @@ fn retry_workflow() -> Option<CompiledWorkflow> {
     };
     let action = CompiledNode {
         id: StepIdx::new(1),
-        output: None,
+        output: Some(SlotIdx::ZERO),
         next: Some(StepIdx::new(2)),
         on_error: None,
         error_slot: None,
@@ -101,7 +101,7 @@ fn error_handler_with_slot_workflow() -> Option<CompiledWorkflow> {
     };
     let action = CompiledNode {
         id: StepIdx::new(1),
-        output: None,
+        output: Some(SlotIdx::new(0)),
         next: Some(StepIdx::new(3)),
         on_error: None,
         error_slot: None,
@@ -164,7 +164,7 @@ fn run_exists(shard: &mut Shard, run: RunId) -> bool {
 fn suspended_workflow_no_retry() -> Option<CompiledWorkflow> {
     let node = CompiledNode {
         id: StepIdx::ZERO,
-        output: None,
+        output: Some(SlotIdx::ZERO),
         next: None,
         on_error: None,
         error_slot: None,
@@ -264,13 +264,15 @@ fn small_config() -> ShardConfig {
 }
 
 fn make_ticket(run: RunId, step: StepIdx, attempt: u16, capacity: u16) -> ActionTicket {
+    let seq = SeqNo::ZERO;
+    let action = ActionId::new(0);
     ActionTicket {
         run,
         step,
-        seq: SeqNo::ZERO,
-        action: ActionId::new(0),
+        seq,
+        action,
         attempt,
-        idempotency_key: 0,
+        idempotency_key: vb_core::action::compute_action_idempotency_key(run, seq, action),
         capacity,
     }
 }

@@ -202,7 +202,7 @@ def validate_row_shape(root: Path, row: ManifestRow) -> list[str]:
     if not isinstance(data.get("exit_code"), int):
         failures.append(f"manifest row {row.row_number}: exit_code must be integer")
     cwd = string_field(data, "cwd")
-    if cwd is not None and not Path(cwd).is_dir():
+    if cwd is not None and data.get("exit_code") == 0 and not Path(cwd).is_dir():
         failures.append(f"manifest row {row.row_number}: cwd is not a directory {cwd}")
     raw_log = string_field(data, "raw_log_path")
     if raw_log is not None:

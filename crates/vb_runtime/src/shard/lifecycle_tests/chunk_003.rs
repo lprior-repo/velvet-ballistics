@@ -209,7 +209,7 @@
             output_slot: SlotIdx::new(0),
             value: SlotValue::I64(42),
             taint: Taint::Clean,
-            encoded_len: 0,
+            encoded_len: 2,
         };
         assert_eq!(
             shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),

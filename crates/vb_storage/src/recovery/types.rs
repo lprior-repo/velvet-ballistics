@@ -336,9 +336,17 @@ pub struct RunSnapshot {
 /// re-execution of non-idempotent actions.
 #[derive(Debug, Clone)]
 pub struct ActionReplayTracker {
+    scheduled_tickets: std::collections::HashMap<(ActionId, StepIdx), ActionScheduleEvidence>,
     completed: std::collections::HashSet<(ActionId, StepIdx)>,
     failed: std::collections::HashSet<(ActionId, StepIdx)>,
     completed_envelopes: std::collections::HashMap<(ActionId, StepIdx), ActionCompletionEvidence>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ActionScheduleEvidence {
+    ticket: ActionTicket,
+    input: SlotIdx,
+    output: SlotIdx,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -361,9 +369,60 @@ impl ActionReplayTracker {
     #[must_use]
     pub fn new() -> Self {
         Self {
+            scheduled_tickets: std::collections::HashMap::new(),
             completed: std::collections::HashSet::new(),
             failed: std::collections::HashSet::new(),
             completed_envelopes: std::collections::HashMap::new(),
+        }
+    }
+
+    pub(crate) fn mark_scheduled_ticket_effect(
+        &mut self,
+        ticket: ActionTicket,
+        input: SlotIdx,
+        output: SlotIdx,
+    ) -> RecoveryResult<ActionReplayEffect> {
+        let key = (ticket.action, ticket.step);
+        if self.is_resolved(ticket.action, ticket.step) {
+            return Err(RecoveryError::NonIdempotentActionBlocked {
+                action: ticket.action,
+                step: ticket.step,
+            });
+        }
+        let evidence = ActionScheduleEvidence {
+            ticket,
+            input,
+            output,
+        };
+        match self.scheduled_tickets.get(&key).copied() {
+            Some(existing) if existing == evidence => Ok(ActionReplayEffect::Duplicate),
+            Some(_) => Err(RecoveryError::ReplayDivergence {
+                step: ticket.step,
+                detail: String::from("divergent action schedule ticket"),
+            }),
+            None => {
+                self.scheduled_tickets.insert(key, evidence);
+                Ok(ActionReplayEffect::Apply)
+            }
+        }
+    }
+
+    pub(crate) fn require_scheduled_ticket(
+        &self,
+        ticket: ActionTicket,
+        output: SlotIdx,
+    ) -> RecoveryResult<()> {
+        let key = (ticket.action, ticket.step);
+        match self.scheduled_tickets.get(&key).copied() {
+            Some(existing) if existing.ticket == ticket && existing.output == output => Ok(()),
+            Some(_) => Err(RecoveryError::ReplayDivergence {
+                step: ticket.step,
+                detail: String::from("action completion envelope does not match schedule ticket"),
+            }),
+            None => Err(RecoveryError::ReplayDivergence {
+                step: ticket.step,
+                detail: String::from("action completion envelope missing schedule ticket"),
+            }),
         }
     }
 
@@ -389,6 +448,14 @@ impl ActionReplayTracker {
             taint,
             value_digest,
         };
+        if let Some(schedule) = self.scheduled_tickets.get(&key).copied()
+            && (schedule.ticket != ticket || schedule.output != output)
+        {
+            return Err(RecoveryError::ReplayDivergence {
+                step: ticket.step,
+                detail: String::from("action completion envelope does not match schedule ticket"),
+            });
+        }
         match self.completed_envelopes.get(&key).copied() {
             Some(existing) if existing == evidence => Ok(ActionReplayEffect::Duplicate),
             Some(_) => Err(RecoveryError::ReplayDivergence {

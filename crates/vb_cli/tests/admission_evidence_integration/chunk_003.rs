@@ -49,14 +49,18 @@ fn evidence_chain_after_execution() {
         seq: vb_core::ids::SeqNo::ZERO,
         action: ActionId::new(7),
         attempt: 1,
-        idempotency_key: 0,
+        idempotency_key: compute_action_idempotency_key(
+            run_id,
+            vb_core::ids::SeqNo::ZERO,
+            ActionId::new(7),
+        ),
         capacity: 1,
     };
     let output = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::new(1),
         value: SlotValue::I64(99),
         taint: Taint::Clean,
-        encoded_len: 8,
+        encoded_len: 3,
     };
     match runtime.complete_action_with_output(ticket, output) {
         Ok(()) => {}
@@ -89,7 +93,7 @@ fn evidence_chain_after_execution() {
     };
 
     let mut found_step_succeeded = false;
-    let mut found_slot_written = false;
+    let mut found_action_completed_envelope = false;
     let mut found_run_submitted = false;
     let mut found_run_finished = false;
 
@@ -108,8 +112,10 @@ fn evidence_chain_after_execution() {
             {
                 found_step_succeeded = true;
             }
-            vb_runtime::journal::RuntimeJournalEvent::SlotWritten { run, .. } if *run == run_id => {
-                found_slot_written = true;
+            vb_runtime::journal::RuntimeJournalEvent::ActionCompletedEnvelope {
+                ticket, ..
+            } if ticket.run == run_id => {
+                found_action_completed_envelope = true;
             }
             _ => {}
         }
@@ -128,8 +134,8 @@ fn evidence_chain_after_execution() {
         "journal should contain StepSucceeded event"
     );
     assert!(
-        found_slot_written,
-        "journal should contain SlotWritten event"
+        found_action_completed_envelope,
+        "journal should contain ActionCompletedEnvelope event"
     );
 }
 
@@ -372,14 +378,18 @@ fn evidence_chain_preserves_event_ordering_across_restarts() {
         seq: vb_core::ids::SeqNo::ZERO,
         action: ActionId::new(7),
         attempt: 1,
-        idempotency_key: 0,
+        idempotency_key: compute_action_idempotency_key(
+            run_id,
+            vb_core::ids::SeqNo::ZERO,
+            ActionId::new(7),
+        ),
         capacity: 1,
     };
     let output = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::new(1),
         value: SlotValue::I64(99),
         taint: Taint::Clean,
-        encoded_len: 8,
+        encoded_len: 3,
     };
     match runtime1.complete_action_with_output(ticket, output) {
         Ok(()) => {}
