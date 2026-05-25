@@ -5162,11 +5162,9 @@ vb_core
 vb_runtime
 vb_storage
 vb_ipc
-vb_codegen generated output
-generated workflow code
 ```
 
-Makepad dependencies must not change runtime semantics, binary IPC semantics, persistence semantics, or generated Rust workflow semantics.
+Makepad dependencies must not change runtime semantics, binary IPC semantics, or persistence semantics.
 
 ### Makepad Rationale
 

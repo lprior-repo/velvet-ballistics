@@ -308,7 +308,6 @@ invariants:
       - crates/vb_storage/**
       - crates/vb_runtime/**
       - crates/vb_ipc/**
-      - crates/vb_codegen/**
     description: "First-party crates must have #![forbid(unsafe_code)]"
 
   # ============================================================
@@ -323,7 +322,6 @@ invariants:
       - crates/vb_storage/**
       - crates/vb_runtime/**
       - crates/vb_ipc/**
-      - crates/vb_codegen/**
     forbidden:
       - panic!
       - todo!

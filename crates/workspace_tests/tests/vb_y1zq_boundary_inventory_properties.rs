@@ -33,7 +33,7 @@ fn source_for(class: &BoundaryClass) -> &'static str {
         BoundaryClass::Ipc => "crates/vb_ipc/src/frame.rs",
         BoundaryClass::ExternalBinary => "scripts/run-verifier.sh",
         BoundaryClass::Decoder => "crates/vb_yaml/src/decode.rs",
-        BoundaryClass::GeneratedCode => "crates/vb_codegen/src/generated/interface.rs",
+        BoundaryClass::GeneratedCode => "crates/vb_runtime/src/generated/interface.rs",
         BoundaryClass::UnsafeAdjacentDependency => "Cargo.toml",
         BoundaryClass::Unknown => "crates/unknown/src/lib.rs",
     }

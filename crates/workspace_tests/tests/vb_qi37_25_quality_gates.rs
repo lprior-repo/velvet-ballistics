@@ -68,7 +68,7 @@ fn workspace() -> Result<tempfile::TempDir, Box<dyn std::error::Error>> {
     write_file(
         &root.join("Cargo.toml"),
         &format!(
-            "[workspace]\nmembers = [\n{member_lines}]\nexclude = [\"target/miri-tmp\", \"crates/vb_ui\", \"crates/vb_codegen\", \"fuzz\"]\n"
+            "[workspace]\nmembers = [\n{member_lines}]\nexclude = [\"target/miri-tmp\", \"crates/vb_ui\", \"fuzz\"]\n"
         ),
     )?;
     for (member, package_name) in MEMBERS {
@@ -84,7 +84,8 @@ fn write_manifest(root: &Path, member: &str, package_name: &str) -> Result<(), s
         manifest.push_str("\n[lib]\nname = \"vb_cli\"\npath = \"src/lib.rs\"\n\n[[bin]]\nname = \"velvet-ballistics\"\npath = \"src/main.rs\"\n");
     }
     if member == "crates/vb_core" {
-        manifest.push_str("\n[features]\ndefault = []\nbench = []\nvolatile = []\ntest-util = []\n");
+        manifest
+            .push_str("\n[features]\ndefault = []\nbench = []\nvolatile = []\ntest-util = []\n");
     }
     if member == "crates/vb_validate" {
         manifest.push_str("\n[features]\ndefault = []\nverus = []\n");

@@ -27,7 +27,7 @@ Key test mandates:
 ## CRATE INVENTORY
 
 Production crates (crates/):
-vb_core, vb_yaml, vb_validate, vb_expr, vb_compile, vb_storage, vb_runtime, vb_ipc, vb_codegen, vb_cli, vb_benchmark, vb_ui, vb_ui_model, vb_ui_snapshot, vb_ui_makepad, vb_doc, vb_boundary_inventory, vb_proof_kernels
+vb_core, vb_yaml, vb_validate, vb_expr, vb_compile, vb_storage, vb_runtime, vb_ipc, vb_cli, vb_benchmark, vb_ui, vb_ui_model, vb_ui_snapshot, vb_ui_makepad, vb_doc, vb_boundary_inventory, vb_proof_kernels
 
 Test/benchmark crates:
 workspace_tests/, fuzz/, benches/
@@ -60,14 +60,13 @@ workspace_tests/, fuzz/, benches/
 - **vb_runtime**: LETHAL — tick_shard API missing (Section 30); bounded action completion queue missing (Section 4)
 - **vb_ipc**: LETHAL — ArrayQueue specified, crossbeam_channel used (Section 50); pipelining contradiction
 
-### PARTIAL (2)
+### PARTIAL (1)
 - **vb_compile**: Partial — compile pipeline solid but $attempt.number restriction not tested
-- **vb_codegen**: Partial — trybuild silent pass when no fixtures
 
 ### LETHAL CROSS-CUTTING (5)
 1. **validate_taint** rejects SecretResultLeak for Finish — violates Section 47; tests assert the WRONG behavior
 2. **AND/OR short-circuit** — eval.rs:161-162 uses `?` causing early return; violates Section 46
-3. **F64 contradiction** — Section 46 plan says no F64 eval but codegen uses F64 arithmetic
+3. **F64 contradiction** — Section 46 plan says no F64 eval but evaluator behavior still needs current-scope parity evidence
 4. **tick_shard missing** — Runtime::tick_shard not implemented; violates Section 30
 5. **bounded action completion queue missing** — violates Section 4
 
@@ -81,8 +80,7 @@ workspace_tests/, fuzz/, benches/
 - **fuzz**: yaml_events and expr_eval with corpus approved
 - **vb_ui_snapshot**: Layout and redaction checks pass
 
-### REJECTED (7)
-- **vb_codegen**: LETHAL — trybuild silently passes (Section 36); pattern rejection scanner untested; CodegenError::UnsupportedIr missing test
+### REJECTED (6)
 - **vb_cli**: LETHAL — ui command not implemented (Section 33); cli_postcard.rs unused
 - **vb_benchmark**: LETHAL — BenchmarkMetadata only 7/22 required fields
 - **vb_ui_model**: LETHAL — test density 1.9x below 5x threshold

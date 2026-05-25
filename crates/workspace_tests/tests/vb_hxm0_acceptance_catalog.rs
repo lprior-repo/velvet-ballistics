@@ -208,8 +208,6 @@ fn obligation_for_scenario(scenario_id: &str) -> &'static str {
         "BDD-KYYF-002" => "PO-002",
         "BDD-KYYF-003" => "PO-003",
         "BDD-KYYF-004" => "PO-004",
-        "BDD-KYYF-005" => "PO-005",
-        "BDD-KYYF-006" => "PO-006",
         "BDD-KYYF-007" => "PO-007",
         _ => "not-planned-for-vb-kyyf",
     }
@@ -242,8 +240,8 @@ fn test_catalog_maps_existing_tests_to_covered_scenarios() {
 
     // Then: covered scenarios point at real test/evidence files and deferred gaps point only at beads.
     assert_eq!(executable_test_targets.len(), 11);
-    assert_eq!(executable_evidence_targets.len(), 7);
-    assert_eq!(executable_targets.len(), 18);
+    assert_eq!(executable_evidence_targets.len(), 5);
+    assert_eq!(executable_targets.len(), 16);
     assert_eq!(follow_up_beads.len(), 3);
     assert_eq!(
         executable_test_targets,

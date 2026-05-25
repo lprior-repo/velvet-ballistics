@@ -681,24 +681,6 @@ obligations:
     note: "Spec contradiction DRIFT-F64 - implement or reject at typecheck"
 
   # ============================================================
-  # GENERATED RUST PARITY (Section 17)
-  # ============================================================
-  - id: VB-CODEGEN-001
-    section: [17]
-    statement: |
-      Generated Rust == IR interpreter on terminal results, taint, journal, errors
-    proof_level: L2
-    crate: vb_codegen
-    files:
-      - crates/vb_codegen/src/**/*.rs
-    required:
-      differential_tests: [generated_vs_ir]
-      trybuild: [generated_no_forbidden_tokens]
-    commands:
-      - cargo nextest run -p vb_codegen parity
-      - cargo nextest run -p vb_codegen --test trybuild
-
-  # ============================================================
   # REFERENCE MODEL CORRECTNESS
   # ============================================================
   - id: VB-REF-001
@@ -868,10 +850,6 @@ proof_matrix:
     proof_strategy: "Kani + fuzz. The key property is 'reject before allocation'."
     primary_level: L3
     secondary_level: L2
-  vb_codegen:
-    proof_strategy: "Differential test generated Rust vs IR interpreter. Trybuild for forbidden generated constructs."
-    primary_level: L2
-    secondary_level: L1
   vb_ui_model:
     proof_strategy: "Schema tests, redaction tests, bounded-list tests."
     primary_level: L1

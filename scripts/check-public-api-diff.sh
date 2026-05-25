@@ -3,7 +3,6 @@ set -euo pipefail
 
 packages=(
   vb_boundary_inventory
-  vb_codegen
   vb_compile
   vb_core
   vb_doc

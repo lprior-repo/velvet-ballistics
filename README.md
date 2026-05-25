@@ -51,7 +51,7 @@ crates/vb_compile      Full compilation pipeline (YAML -> validated IR)
 crates/vb_storage      Fjall journal, envelope, recovery, snapshots
 crates/vb_runtime      Shard engine, action dispatch, primitives, frame pool
 crates/vb_ipc          Unix domain socket server/client, binary protocol
-crates/vb_codegen      Generated Rust code output (maxperf)
+velvet-optional        Optional generated Rust code track
 benches/               Benchmark evidence for speed claims
 ```
 

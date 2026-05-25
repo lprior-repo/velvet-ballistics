@@ -26,13 +26,9 @@ const BDD_KYYF_001: &str = "BDD-KYYF-001";
 const BDD_KYYF_002: &str = "BDD-KYYF-002";
 const BDD_KYYF_003: &str = "BDD-KYYF-003";
 const BDD_KYYF_004: &str = "BDD-KYYF-004";
-const BDD_KYYF_005: &str = "BDD-KYYF-005";
-const BDD_KYYF_006: &str = "BDD-KYYF-006";
 const BDD_KYYF_007: &str = "BDD-KYYF-007";
 const KYYF_EVIDENCE_TARGET_PREFIX: &str = ".evidence/vb-kyyf/";
 const KYYF_CROSS_RUN_EVIDENCE: &str = ".evidence/vb-kyyf/bdd-cross-run-determinism.md";
-const KYYF_GENERATED_PARITY_EVIDENCE: &str = ".evidence/vb-kyyf/generated-ir-parity.md";
-const KYYF_GENERATED_UNSUPPORTED_EVIDENCE: &str = ".evidence/vb-kyyf/generated-subset-fail-closed.md";
 const KYYF_REPLAY_EVIDENCE: &str = ".evidence/vb-kyyf/storage-replay-resume.md";
 const KYYF_POLICY_EVIDENCE: &str = ".evidence/vb-kyyf/non-replay-safe-actions.md";
 const KYYF_CORRUPT_EVIDENCE: &str = ".evidence/vb-kyyf/recovery-bdd-errors.md";
@@ -500,189 +496,6 @@ fn count_scheduled_action_facts(events: &[JournalEvent]) -> u64 {
         JournalEvent::ActionScheduled { .. } => count.saturating_add(1),
         _ => count,
     })
-}
-
-fn generated_mode_public_observation(
-    workflow: &CompiledWorkflow,
-) -> Result<PublicObservation, VbKyyfScenarioDiagnostic> {
-    let source = vb_codegen::emit_rust_workflow(workflow).map_err(|_| {
-        VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
-            bead_id: BEAD_ID,
-            scenario_id: BDD_KYYF_005,
-            public_surface: "vb_codegen::emit_rust_workflow",
-        }
-    })?;
-    vb_codegen::compare_generated_to_ir(&source, workflow).map_err(|_| {
-        VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
-            bead_id: BEAD_ID,
-            scenario_id: BDD_KYYF_005,
-            public_surface: "vb_codegen::compare_generated_to_ir",
-        }
-    })?;
-    generated_observation_from_source(&source)
-}
-
-fn generated_observation_from_source(
-    source: &str,
-) -> Result<PublicObservation, VbKyyfScenarioDiagnostic> {
-    let temp = tempfile::tempdir().map_err(|_| generated_surface_unavailable())?;
-    let source_path = temp.path().join("vb_kyyf_generated_observation.rs");
-    let binary_path = temp.path().join("vb_kyyf_generated_observation_bin");
-    std::fs::write(&source_path, generated_observation_harness(source))
-        .map_err(|_| generated_surface_unavailable())?;
-    compile_generated_observation(&source_path, &binary_path)?;
-    let output = Command::new(&binary_path)
-        .output()
-        .map_err(|_| generated_surface_unavailable())?;
-    if !output.status.success() {
-        return Err(generated_surface_unavailable());
-    }
-    let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
-    parse_generated_observation(&stdout)
-}
-
-fn generated_surface_unavailable() -> VbKyyfScenarioDiagnostic {
-    VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
-        bead_id: BEAD_ID,
-        scenario_id: BDD_KYYF_005,
-        public_surface: "generated durable replay public surface",
-    }
-}
-
-fn generated_observation_harness(source: &str) -> String {
-    format!(
-        r#"{source}
-fn main() {{
-    let slots = [None; WORKFLOW_SLOT_COUNT];
-    let slot_taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];
-    let mut state = GeneratedRunState::new_with_taints(slots, slot_taints);
-    match state.run_until_blocked() {{
-        Ok(GeneratedRunStatus::Finished(output)) => {{
-            println!("result=Ok");
-            println!("result_value={{:?}}", output.value);
-            println!("taint={{:?}}", output.taint);
-            println!("suspended=false");
-            println!("typed_error=None");
-        }}
-        Ok(GeneratedRunStatus::Suspended(_)) => {{
-            println!("result=Blocked");
-            println!("result_value=None");
-            println!("taint=Unknown");
-            println!("suspended=true");
-            println!("typed_error=None");
-        }}
-        Err(error) => {{
-            println!("result=Failed");
-            println!("result_value=None");
-            println!("taint=Unknown");
-            println!("suspended=false");
-            println!("typed_error={{error:?}}");
-        }}
-    }}
-    let journal_len = state.journal.len();
-    println!("journal_len={{journal_len}}");
-    let last_index = match journal_len.checked_sub(1) {{ Some(value) => value, None => 0 }};
-    println!("journal_last_index={{last_index}}");
-    let mut index = 0u16;
-    let mut steps_succeeded = 0u64;
-    let mut actions_scheduled = 0u64;
-    while index < journal_len {{
-        match state.journal.event(index) {{
-            Some(JournalEvent::SlotWritten {{ .. }}) => {{ steps_succeeded = steps_succeeded.saturating_add(1); }}
-            Some(JournalEvent::ActionScheduled {{ .. }}) => {{ actions_scheduled = actions_scheduled.saturating_add(1); }}
-            _ => {{}}
-        }}
-        index = match index.checked_add(1) {{ Some(next) => next, None => journal_len }};
-    }}
-    println!("steps_succeeded={{steps_succeeded}}");
-    println!("actions_scheduled={{actions_scheduled}}");
-}}
-"#
-    )
-}
-
-fn compile_generated_observation(
-    source_path: &PathBuf,
-    binary_path: &PathBuf,
-) -> Result<(), VbKyyfScenarioDiagnostic> {
-    let compile = Command::new("rustc")
-        .arg("--edition")
-        .arg("2024")
-        .arg("-o")
-        .arg(binary_path)
-        .arg(source_path)
-        .output()
-        .map_err(|_| generated_surface_unavailable())?;
-    if compile.status.success() {
-        Ok(())
-    } else {
-        Err(generated_surface_unavailable())
-    }
-}
-
-fn parse_generated_observation(text: &str) -> Result<PublicObservation, VbKyyfScenarioDiagnostic> {
-    let result = generated_field(text, "result")?;
-    let taint = generated_field(text, "taint")?;
-    let journal_len = generated_u64(text, "journal_len")?;
-    let journal_last_index = generated_u64(text, "journal_last_index")?;
-    let steps_succeeded = generated_u64(text, "steps_succeeded")?;
-    let actions_scheduled = generated_u64(text, "actions_scheduled")?;
-    Ok(PublicObservation {
-        result: generated_terminal_result(result),
-        taint: generated_taint_status(taint),
-        event_signature: journal_len,
-        event_payload_signature: journal_last_index,
-        digest_status: CLEAN_DIGESTS,
-        replay_policy_blocked: false,
-        unsupported_generated_subset: false,
-        semantic_slot_signature: generated_slot_signature(text),
-        semantic_action_signature: actions_scheduled,
-        semantic_suspension: generated_field(text, "suspended")? == "true",
-        semantic_taint_signature: steps_succeeded,
-        temp_path_signature: 50_005,
-        process_id_signature: 50_006,
-        wall_clock_signature: 50_007,
-        generated_run_signature: 50_008,
-    })
-}
-
-fn generated_field<'a>(text: &'a str, key: &str) -> Result<&'a str, VbKyyfScenarioDiagnostic> {
-    text.lines()
-        .filter_map(|line| line.split_once('='))
-        .find(|(found_key, _)| *found_key == key)
-        .map(|(_, value)| value)
-        .ok_or_else(generated_surface_unavailable)
-}
-
-fn generated_u64(text: &str, key: &str) -> Result<u64, VbKyyfScenarioDiagnostic> {
-    generated_field(text, key)?
-        .parse::<u64>()
-        .map_err(|_| generated_surface_unavailable())
-}
-
-fn generated_terminal_result(value: &str) -> TerminalResult {
-    match value {
-        "Ok" => TerminalResult::Ok,
-        "Blocked" => TerminalResult::Blocked,
-        "Failed" => TerminalResult::Failed,
-        _ => TerminalResult::None,
-    }
-}
-
-fn generated_taint_status(value: &str) -> TaintStatus {
-    match value {
-        "Clean" => TaintStatus::Clean,
-        "Tainted" => TaintStatus::Tainted,
-        _ => TaintStatus::Unknown,
-    }
-}
-
-fn generated_slot_signature(text: &str) -> u64 {
-    if generated_field(text, "result_value").is_ok_and(|value| value.contains("I64(42)")) {
-        42
-    } else {
-        0
-    }
 }
 
 fn append_event(
@@ -1712,92 +1525,6 @@ fn collect_bdd_kyyf_004() -> Result<VbKyyfScenarioEvidence, VbKyyfScenarioDiagno
     }
 }
 
-fn collect_bdd_kyyf_005() -> Result<VbKyyfScenarioEvidence, VbKyyfScenarioDiagnostic> {
-    let workflow = deterministic_finish_workflow(0x55).map_err(|_| {
-        VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
-            bead_id: BEAD_ID,
-            scenario_id: BDD_KYYF_005,
-            public_surface: "vb_core::CompiledWorkflow generated parity fixture",
-        }
-    })?;
-    vb_codegen::validate_generated_subset(&workflow).map_err(|_| {
-        VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
-            bead_id: BEAD_ID,
-            scenario_id: BDD_KYYF_005,
-            public_surface: "vb_codegen::validate_generated_subset supported fixture",
-        }
-    })?;
-    let ir_observation = durable_runtime_public_surface(RunId::new(50_005), BDD_KYYF_005, 0x55)?;
-    let generated_observation = match generated_mode_public_observation(&workflow) {
-        Ok(observation) => observation,
-        Err(diagnostic) => {
-            let evidence_summary = format!(
-                "{}\ngenerated_durable_replay=ScenarioSurfaceUnavailable(public_surface=generated durable replay public surface)",
-                observation_summary("ir_observation", &ir_observation)
-            );
-            let _evidence = assert_evidence_then_return(
-                BDD_KYYF_005,
-                "vb_codegen and vb_runtime public surfaces",
-                KYYF_GENERATED_PARITY_EVIDENCE,
-                "generated replay parity digest",
-                &evidence_summary,
-            )?;
-            return Err(diagnostic);
-        }
-    };
-    let evidence_summary = format!(
-        "{}\n{}",
-        observation_summary("ir_observation", &ir_observation),
-        observation_summary("generated_observation", &generated_observation)
-    );
-    if outcome_label(compare_generated_ir(ir_observation, generated_observation)) != "Ok" {
-        return Err(
-            VbKyyfScenarioDiagnostic::NormalizedDigestOrMismatchMissing {
-                bead_id: BEAD_ID,
-                scenario_id: BDD_KYYF_005,
-            },
-        );
-    }
-    assert_evidence_then_return(
-        BDD_KYYF_005,
-        "vb_codegen and vb_runtime public surfaces",
-        KYYF_GENERATED_PARITY_EVIDENCE,
-        "generated replay parity digest",
-        &evidence_summary,
-    )
-}
-
-fn collect_bdd_kyyf_006() -> Result<VbKyyfScenarioEvidence, VbKyyfScenarioDiagnostic> {
-    let workflow = unsupported_generated_subset_workflow().map_err(|_| {
-        VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
-            bead_id: BEAD_ID,
-            scenario_id: BDD_KYYF_006,
-            public_surface: "vb_core::CompiledWorkflow valid unsupported generated-subset fixture",
-        }
-    })?;
-    let result = vb_codegen::validate_generated_subset(&workflow);
-    if !matches!(
-        result,
-        Err(CodegenError::UnsupportedIr {
-            feature: "text helper contains requires runtime symbol store"
-        })
-    ) {
-        return Err(
-            VbKyyfScenarioDiagnostic::NormalizedDigestOrMismatchMissing {
-                bead_id: BEAD_ID,
-                scenario_id: BDD_KYYF_006,
-            },
-        );
-    }
-    assert_evidence_then_return(
-        BDD_KYYF_006,
-        "vb_codegen generated-subset validation API",
-        KYYF_GENERATED_UNSUPPORTED_EVIDENCE,
-        "UnsupportedGeneratedSubset",
-        "unsupported generated subset fixture returned CodegenError::UnsupportedIr",
-    )
-}
-
 fn execute_required_bdd_public_surfaces()
 -> Vec<Result<VbKyyfScenarioEvidence, VbKyyfScenarioDiagnostic>> {
     vec![
@@ -1805,8 +1532,6 @@ fn execute_required_bdd_public_surfaces()
         collect_bdd_kyyf_002(),
         collect_bdd_kyyf_003(),
         collect_bdd_kyyf_004(),
-        collect_bdd_kyyf_005(),
-        collect_bdd_kyyf_006(),
     ]
 }
 
@@ -1836,18 +1561,6 @@ fn expected_bdd_public_surface_evidence()
             public_surface: "vb_storage journal and recovery APIs",
             evidence_artifact: KYYF_CORRUPT_EVIDENCE,
             normalized_digest_or_error: "ReplayDigestMismatch",
-        }),
-        Err(
-            VbKyyfScenarioDiagnostic::NormalizedDigestOrMismatchMissing {
-                bead_id: BEAD_ID,
-                scenario_id: BDD_KYYF_005,
-            },
-        ),
-        Ok(VbKyyfScenarioEvidence {
-            scenario_id: BDD_KYYF_006,
-            public_surface: "vb_codegen generated-subset validation API",
-            evidence_artifact: KYYF_GENERATED_UNSUPPORTED_EVIDENCE,
-            normalized_digest_or_error: "UnsupportedGeneratedSubset",
         }),
     ]
 }
@@ -2455,8 +2168,6 @@ fn given_vb_kyyf_scenario_finishes_when_runner_reports_then_evidence_path_is_tra
         BDD_KYYF_002,
         BDD_KYYF_003,
         BDD_KYYF_004,
-        BDD_KYYF_005,
-        BDD_KYYF_006,
         BDD_KYYF_007,
     ];
     let scenarios = catalog();

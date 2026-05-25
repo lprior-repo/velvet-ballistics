@@ -77,7 +77,7 @@ members = [
     "crates/workspace_tests",
     "crates/vb_benchmark",
 {extra}]
-exclude = ["target/miri-tmp", "crates/vb_ui", "crates/vb_codegen", "fuzz"]
+exclude = ["target/miri-tmp", "crates/vb_ui", "fuzz"]
 "#
         ),
     )

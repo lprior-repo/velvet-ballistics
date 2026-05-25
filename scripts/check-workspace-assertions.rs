@@ -25,7 +25,6 @@ const EXPECTED_MEMBERS: &[&str] = &[
 const EXPECTED_EXCLUDES: &[&str] = &[
     "target/miri-tmp",
     "crates/vb_ui",
-    "crates/vb_codegen",
     "fuzz",
 ];
 const BOUNDARY_CRATES: &[&str] = &["vb_core", "vb_runtime", "vb_storage", "vb_ipc"];
