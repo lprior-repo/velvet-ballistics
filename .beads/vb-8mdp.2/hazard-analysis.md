@@ -55,7 +55,7 @@ Fjall keyspaces are isolated; keys are namespaced. Reading from `workflow_source
 
 ### Mitigation
 - Fixed-size keys with type-safe `keys` module
-- Key prefix distinctness proven via `restate_fjall_keyspace_manifest_tests`
+- Key prefix distinctness proven via `fjall_keyspace_manifest_tests`
 - Magic check in `decode_record_header` catches any remaining key confusion
 
 ---

@@ -18,7 +18,7 @@
 - Crate target: to be determined by explore
 
 ## Source Scope
-- Master-filtered IPC streaming tests inspired by Restate failure modes only
+- Master-filtered IPC streaming tests
 - VB binary IPC tests for partial header, partial body, multi-frame streams, reserved flags, oversize-message rejection
 - Magic/header/payload length validated before allocation and before Postcard decode
-- No HTTP/gRPC/JSON or Restate protocol copying
+- No HTTP/gRPC/JSON or external protocol copying

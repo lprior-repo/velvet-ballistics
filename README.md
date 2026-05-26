@@ -8,7 +8,7 @@ velvet-ballistics is a nightly-Rust, single-binary orchestration engine that com
 
 ## Why This Exists
 
-Existing workflow engines (Temporal, Restate, Inngest, Prefect, BullMQ) share a common trait: they trust the runtime to behave. They don't bound memory, don't track information flow, and interpret IR at runtime. This works for traditional workflows but fails for AI agent orchestration where:
+Existing workflow engines (Temporal, Inngest, Prefect, BullMQ) share a common trait: they trust the runtime to behave. They don't bound memory, don't track information flow, and interpret IR at runtime. This works for traditional workflows but fails for AI agent orchestration where:
 
 - **Agent loops can explode** — unbounded retry, fan-out, and list processing need hard resource limits, not soft timeouts
 - **Secrets leak through control flow** — a secret-tainted value choosing which public branch runs is an information channel
@@ -16,12 +16,12 @@ Existing workflow engines (Temporal, Restate, Inngest, Prefect, BullMQ) share a 
 
 velvet-ballistics addresses all four dimensions:
 
-| | velvet-ballistics | Temporal | Restate | LangGraph |
-|---|---|---|---|---|
-| Formal resource bounds | Checked arithmetic, bounded frames, slot budgets | Timeouts only | Timeouts only | No |
-| Taint tracking | Clean/DerivedFromSecret/Secret lattice | No | No | No |
-| IR compilation | 34 CompiledNodeKind variants with exact semantics | Interpreted | Interpreted | Interpreted |
-| Native code generation | maxperf profile generates Rust, zero interpreter | No | No | No |
+| | velvet-ballistics | Temporal | LangGraph |
+|---|---|---|---|
+| Formal resource bounds | Checked arithmetic, bounded frames, slot budgets | Timeouts only | No |
+| Taint tracking | Clean/DerivedFromSecret/Secret lattice | No | No |
+| IR compilation | 34 CompiledNodeKind variants with exact semantics | Interpreted | Interpreted |
+| Native code generation | maxperf profile generates Rust, zero interpreter | No | No |
 
 ## Architecture
 

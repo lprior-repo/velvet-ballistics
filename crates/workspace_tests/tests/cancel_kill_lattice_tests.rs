@@ -1,6 +1,6 @@
 #![cfg(test)]
 #![forbid(unsafe_code)]
-//! restate_cancel_kill_lattice_tests: Cancel/Kill State Machine Lattice Tests
+//! cancel_kill_lattice_tests: Cancel/Kill State Machine Lattice Tests
 //!
 //! Integration tests for Cancel and Kill behavior against the step-state lattice.
 //! Tests verify state transition invariants defined in the canonical step-state model.

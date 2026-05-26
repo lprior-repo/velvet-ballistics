@@ -34,7 +34,7 @@ The unit of trust is the accepted artifact, not the YAML source. YAML is a cold 
 
 Competitive comparison is allowed only with scope discipline:
 
-1. Compare durability and replay semantics to Restate, Temporal, DBOS, and AWS Step Functions.
+1. Compare durability and replay semantics to Temporal, DBOS, and AWS Step Functions.
 2. State the v1 single-server boundary plainly: no replication, no quorum, no leader election, no distributed control plane.
 3. Compare data orchestration ergonomics to Airflow and Dagster only when explaining non-goals.
 4. Never claim production readiness, performance superiority, or crash safety without executable evidence and benchmark/recovery artifacts attached to the bead or release.
@@ -3349,7 +3349,7 @@ This section tracks known architectural defects discovered through adversarial r
 
 > **Target contract.** The invariants in this section describe the intended architecture. Current implementation has frame-seed hydration for recovered slot values, taint, and step states, but live pending-action hydration and strict async acknowledgement paths remain gated. Summary-only recovery still returns `UnsupportedFullRecoveryHydration`, and `UnsupportedAsyncStrictAck` remains in the code until strict durability acknowledgement evidence is complete.
 
-`velvet-ballistics` is a log-first durable execution engine. The architecture follows the same core model as production-grade orchestrators (Restate, AWS Step Functions): journal events are the ground truth, state is deterministically derived from the journal, and side effects are never re-executed without explicit idempotency proof.
+`velvet-ballistics` is a log-first durable execution engine. The architecture follows the same core model as production-grade orchestrators (AWS Step Functions): journal events are the ground truth, state is deterministically derived from the journal, and side effects are never re-executed without explicit idempotency proof.
 
 ### Log-First Invariants
 
@@ -3597,37 +3597,29 @@ The following phases extend Section 35 for operator-facing features:
 
 ## 71. Competitive Performance Targets
 
-The following are internal engineering targets derived from published benchmarks of production-grade durable execution engines (Restate 1.2 on AWS c6id.8xlarge, 3-way replicated cluster, 1200 concurrent clients). They are not public performance claims. As a single-server engine with no replication overhead, `velvet-ballistics` is designed to meet or exceed these on equivalent hardware, but no external claim is allowed until the measurement contract below is satisfied.
+The following are internal engineering targets for `velvet-ballistics` as a single-server engine. They are not public performance claims, but no external claim is allowed until the measurement contract below is satisfied.
 
 ### Step-Level Latency Targets
 
-| Metric | Restate (replicated) | Velvet Ballastics (single-server) | Notes |
-|--------|---------------------|-----------------------------------|-------|
-| Single step p50 (no replication) | 3ms | <= 1ms | No network roundtrip for quorum |
-| Single step p50 (journaled) | 10ms | <= 5ms | Fjall group commit vs quorum replication |
-| Single step p50 (strict) | N/A (same as journaled) | <= 10ms | fsync on every step; Restate has no equivalent |
-| Full workflow p50 (9 steps, low load) | 31ms | <= 15ms | Compiled IR, no SDK roundtrip |
-| Full workflow p50 (9 steps, high load) | 116ms | <= 60ms | Single-server removes coordination overhead |
-| Full workflow p99 (9 steps, high load) | 163ms | <= 100ms | Tight bound from no-unsafe, checked arithmetic |
+| Metric | Velvet Ballastics (single-server) | Notes |
+|--------|-----------------------------------|-------|
+| Single step p50 (no replication) | <= 1ms | No network roundtrip for quorum |
+| Single step p50 (journaled) | <= 5ms | Fjall group commit |
+| Single step p50 (strict) | <= 10ms | fsync on every step |
+| Full workflow p50 (9 steps, low load) | <= 15ms | Compiled IR, no SDK roundtrip |
+| Full workflow p50 (9 steps, high load) | <= 60ms | Single-server removes coordination overhead |
+| Full workflow p99 (9 steps, high load) | <= 100ms | Tight bound from no-unsafe, checked arithmetic |
 
 ### Throughput Targets
 
-| Metric | Restate | Velvet Ballastics | Notes |
-|--------|---------|-------------------|-------|
-| Actions (steps) per second | 94,286 | Not a current target | Removed generated Rust/maxperf work. |
-| Full workflows per second (9 steps) | 8,571 | >= 10,000 | Single-server removes replication overhead |
-| Concurrent active runs | 1,200 (test clients) | >= 4,096 | Frame pool capacity |
+| Metric | Velvet Ballastics | Notes |
+|--------|-------------------|-------|
+| Full workflows per second (9 steps) | >= 10,000 | Single-server removes replication overhead |
+| Concurrent active runs | >= 4,096 | Frame pool capacity |
 
 ### Why These Targets Are Achievable
 
-Restate pays for every step:
-1. Network roundtrip for quorum replication (fastest path is one RTT to 2 of 3 nodes)
-2. Epoch checking and leader validation on every event
-3. SDK roundtrip: server pushes to service process, service responds over network
-4. Tokio async overhead (scheduler, waker, polling)
-5. RocksDB async flush competing with event processing
-
-`velvet-ballistics` eliminates all five:
+`velvet-ballistics` eliminates replication overhead:
 1. No replication — local Fjall write
 2. No leader — single shard owns the run
 3. No SDK — action dispatch is a function call within the same process
@@ -3662,7 +3654,7 @@ When a run fails and is retried, the engine must reject stale events from previo
 5. Recovery replays events for the latest attempt only. Events from earlier attempts are ignored.
 6. The attempt counter is journaled as part of `RunAccepted` and persists across crashes.
 
-This mirrors Restate's invocation execution attempt tracking, adapted for single-server synchronous execution.
+This provides invocation execution attempt tracking for single-server synchronous execution.
 
 ---
 
@@ -3684,7 +3676,7 @@ This prevents unbounded disk growth in long-running production deployments.
 
 ## 74. Converged Binary Design
 
-`velvet-ballistics` ships as a single binary that operates in different modes depending on the command invoked. This mirrors Restate's converged single-binary design, adapted for single-server operation.
+`velvet-ballistics` ships as a single binary that operates in different modes depending on the command invoked. This converged single-binary design is adapted for single-server operation.
 
 ### Modes
 

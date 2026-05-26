@@ -2012,6 +2012,5 @@ The language and runtime should prove this thesis:
 
 ```text
 Velvet Ballastics is a truly open-source, single-binary, durable workflow orchestrator
-with Step Functions clarity, n8n approachability, Restate-like durability,
-and a beautiful inspectable UI.
+with Step Functions clarity, n8n approachability, and a beautiful inspectable UI.
 ```

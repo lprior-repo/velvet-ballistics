@@ -1,20 +1,20 @@
-# Restate Architecture Steal Plan
+# Architecture Steal Plan
 
 Generated 2026-05-24. This is a Master-filtered backlog source for `vb-8mdp`.
 
 ## Authority
 
-`velvet-ballistics-MASTER.md` is the only architecture contract. Restate is prior art for failure modes and test ideas only.
+`velvet-ballistics-MASTER.md` is the only architecture contract.
 
 ## Black Hat Fence
 
-Do not copy Restate code, module names, type names, async architecture, HTTP/gRPC/JSON paths, distributed control-plane assumptions, storage layout, or wire formats.
+Do not copy external orchestrator code, module names, type names, async architecture, HTTP/gRPC/JSON paths, distributed control-plane assumptions, storage layout, or wire formats.
 
-Use Restate only to identify behavioral risks that must be re-expressed through Velvet Ballastics types, numeric IR, binary IPC, Fjall/Postcard storage, bounded queues, and single-server shard-owned execution.
+Identify behavioral risks that must be re-expressed through Velvet Ballastics types, numeric IR, binary IPC, Fjall/Postcard storage, bounded queues, and single-server shard-owned execution.
 
 ## Accepted Steals
 
-| Area | Accepted Invariant | Rejected Restate Coupling |
+| Area | Accepted Invariant | Rejected Coupling |
 |---|---|---|
 | IPC | Fragmented headers/bodies, oversize rejection, reserved flag rejection, decode-order tests | HTTP/gRPC transport, JSON payload interpretation, distributed service routing |
 | Storage | Budget-before-decode, fixed record envelopes, lexicographic key ordering, side-index consistency, corruption fixtures | RocksDB layout, implicit serde migrations, string hot keys |

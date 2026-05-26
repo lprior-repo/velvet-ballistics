@@ -1,4 +1,4 @@
-//! Restate Journal Batch Accounting Tests
+//! Journal Batch Accounting Tests
 //!
 //! Tests for batch limit enforcement with MAX_BATCH_COUNT = 10,000.
 //!

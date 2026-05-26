@@ -47,6 +47,60 @@ vb_boundary_inventory = { path = "../vb_boundary_inventory" }
 vb_doc = { path = "../vb_doc" }
 vb_yaml = { path = "../vb_yaml" }
 vb_cli = { package = "velvet-ballistics", path = "../vb_cli" }
+vb_test_util = { path = "../vb_test_util" }
+
+[[test]]
+name = "vb_test_util_crate"
+path = "tests/vb_test_util_crate.rs"
+
+[[test]]
+name = "journal_batch_accounting_tests"
+path = "tests/journal_batch_accounting_tests.rs"
+
+[[test]]
+name = "cancel_kill_lattice_tests"
+path = "tests/cancel_kill_lattice_tests.rs"
+
+[[test]]
+name = "journal_side_index_contracts"
+path = "tests/journal_side_index_contracts.rs"
+
+[[test]]
+name = "postcard_envelope_wire_tests"
+path = "tests/postcard_envelope_wire_tests.rs"
+
+[[test]]
+name = "runtime_version_barrier_tests"
+path = "tests/runtime_version_barrier_tests.rs"
+
+[[test]]
+name = "bounded_memory_lease_tests"
+path = "tests/bounded_memory_lease_tests.rs"
+
+[[test]]
+name = "fjall_keyspace_manifest_tests"
+path = "tests/fjall_keyspace_manifest_tests.rs"
+
+[[test]]
+name = "derived_status_replay_timeline_tests"
+path = "tests/derived_status_replay_timeline_tests.rs"
+
+[[test]]
+name = "raii_introspection_registry_tests"
+path = "tests/raii_introspection_registry_tests.rs"
+
+[[test]]
+name = "recovery_watermark_tests"
+path = "tests/recovery_watermark_tests.rs"
+
+[[test]]
+name = "snapshot_sequence_precondition_tests"
+path = "tests/snapshot_sequence_precondition_tests.rs"
+
+[[test]]
+name = "storage_contract_pack_runner"
+path = "tests/storage_contract_pack_runner.rs"
+
 [[test]]
 name = "contracts_production_binding"
 path = "tests/contracts_production_binding.rs"
