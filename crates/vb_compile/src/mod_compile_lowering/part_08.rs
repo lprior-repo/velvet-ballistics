@@ -118,6 +118,8 @@ impl SlotCompiler {
             accessors: self.accessors.into_boxed_slice(),
             constants: self.constants.into_boxed_slice(),
             entry: StepIdx::new(0),
+            // NB: ResourceContract::DEFAULT is used when no explicit contract is provided.
+            // Callers needing a specific contract should use compile_source(contract).
             resource_contract: ResourceContract::DEFAULT,
             step_names: Box::new([]),
         })

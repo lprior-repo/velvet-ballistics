@@ -809,7 +809,25 @@ fn validate_node_id(node: &CompiledNode, index: usize) -> Result<(), WorkflowErr
 fn validate_resource_contract(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     let contract = parts.resource_contract;
     validate_resource_counts(parts, contract)?;
-    validate_expr_stack_contract(parts.expressions.as_ref(), contract.max_expr_stack)
+    validate_expr_stack_contract(parts.expressions.as_ref(), contract.max_expr_stack)?;
+    validate_transitions_per_tick(contract.max_transitions_per_tick)
+}
+
+/// Validates that `max_transitions_per_tick` is within acceptable bounds.
+/// Must be at least 1 (non-zero) and must not exceed the protocol hard limit.
+fn validate_transitions_per_tick(max_transitions_per_tick: u64) -> Result<(), WorkflowError> {
+    use crate::limits::MAX_STEP_BUDGET;
+    if max_transitions_per_tick == 0 {
+        return Err(WorkflowError::ResourceContractExceeded {
+            resource: "max_transitions_per_tick",
+        });
+    }
+    if max_transitions_per_tick > MAX_STEP_BUDGET {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: "max_transitions_per_tick",
+        });
+    }
+    Ok(())
 }
 
 fn validate_resource_counts(

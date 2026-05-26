@@ -47,14 +47,14 @@ pub enum CompiledNodeKind {
     /// Branch using a pre-materialized boolean condition slot.
     Choose {
         /// Ordered expression branches.
-        branches: Box<[super::compiled_workflow::ExprBranch]>,
+        branches: Box<[super::workflow::ExprBranch]>,
         /// Target when no branch condition is true.
         otherwise: Option<StepIdx>,
     },
     /// Branch using pre-materialized boolean condition slots.
     ChooseSlot {
         /// Ordered slot branches.
-        branches: Box<[super::compiled_workflow::SlotBranch]>,
+        branches: Box<[super::workflow::SlotBranch]>,
         /// Target when no branch condition is true.
         otherwise: Option<StepIdx>,
     },

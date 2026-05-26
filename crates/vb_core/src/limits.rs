@@ -93,6 +93,42 @@ pub const MAX_VALUES_PER_RUN: usize = 1_000_000;
 ///
 pub const MAX_STEP_BUDGET: u64 = 10_000;
 
+/// Maximum input bytes accepted at admission (hard limit).
+///
+pub const MAX_INPUT_BYTES: u32 = 16_777_216;
+
+/// Maximum output bytes produced by a run (hard limit).
+///
+pub const MAX_OUTPUT_BYTES: u32 = 16_777_216;
+
+/// Maximum blob payload bytes (hard limit).
+///
+pub const MAX_BLOB_BYTES: u64 = 67_108_864;
+
+/// Maximum IPC payload bytes (hard limit).
+///
+pub const MAX_IPC_PAYLOAD_BYTES: u32 = 16_777_216;
+
+/// Maximum retry attempts for action policies (hard limit).
+///
+pub const MAX_RETRY_ATTEMPTS: u16 = 10;
+
+/// Maximum branch fanout (hard limit).
+///
+pub const MAX_FANOUT: u16 = 256;
+
+/// Maximum collect items (hard limit).
+///
+pub const MAX_COLLECT_ITEMS: u32 = 1_048_576;
+
+/// Maximum runtime queue depth (hard limit).
+///
+pub const MAX_QUEUE_DEPTH: u32 = 1_048_576;
+
+/// Maximum journal batch bytes (hard limit).
+///
+pub const MAX_JOURNAL_BATCH_BYTES: u32 = 16_777_216;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -340,6 +376,87 @@ mod tests {
         assert!(
             MAX_CONSTANTS <= MAX_SLOTS_PER_WORKFLOW,
             "constants must not exceed total slots per workflow"
+        );
+    }
+
+    // --- New limits are non-zero ---
+
+    #[test]
+    fn max_input_bytes_is_nonzero() {
+        assert_ne!(MAX_INPUT_BYTES, 0);
+    }
+
+    #[test]
+    fn max_output_bytes_is_nonzero() {
+        assert_ne!(MAX_OUTPUT_BYTES, 0);
+    }
+
+    #[test]
+    fn max_blob_bytes_is_nonzero() {
+        assert_ne!(MAX_BLOB_BYTES, 0);
+    }
+
+    #[test]
+    fn max_ipc_payload_bytes_is_nonzero() {
+        assert_ne!(MAX_IPC_PAYLOAD_BYTES, 0);
+    }
+
+    #[test]
+    fn max_retry_attempts_is_nonzero() {
+        assert_ne!(MAX_RETRY_ATTEMPTS, 0);
+    }
+
+    #[test]
+    fn max_fanout_is_nonzero() {
+        assert_ne!(MAX_FANOUT, 0);
+    }
+
+    #[test]
+    fn max_collect_items_is_nonzero() {
+        assert_ne!(MAX_COLLECT_ITEMS, 0);
+    }
+
+    #[test]
+    fn max_queue_depth_is_nonzero() {
+        assert_ne!(MAX_QUEUE_DEPTH, 0);
+    }
+
+    #[test]
+    fn max_journal_batch_bytes_is_nonzero() {
+        assert_ne!(MAX_JOURNAL_BATCH_BYTES, 0);
+    }
+
+    // --- Relationship invariants for new limits ---
+
+    #[test]
+    fn max_input_bytes_fits_in_u32() {
+        // already u32, sanity check it's not u32::MAX which would indicate unbounded
+        assert!(MAX_INPUT_BYTES < u32::MAX);
+    }
+
+    #[test]
+    fn max_output_bytes_fits_in_u32() {
+        assert!(MAX_OUTPUT_BYTES < u32::MAX);
+    }
+
+    #[test]
+    fn max_blob_bytes_limit_is_reasonable_megabytes() {
+        let mb = MAX_BLOB_BYTES / (1024 * 1024);
+        assert!(mb >= 1, "max blob bytes must be at least 1 MiB, got {mb}");
+        assert!(mb <= 1024, "max blob bytes must be at most 1 GiB, got {mb}");
+    }
+
+    #[test]
+    fn max_queue_depth_reasonable() {
+        assert!(MAX_QUEUE_DEPTH >= 256, "queue depth must be at least 256");
+    }
+
+    #[test]
+    fn max_journal_batch_bytes_is_reasonable() {
+        let mb = MAX_JOURNAL_BATCH_BYTES / (1024 * 1024);
+        assert!(
+            mb >= 1,
+            "journal batch bytes must be at least 1 MiB, got {mb}"
         );
     }
 }
