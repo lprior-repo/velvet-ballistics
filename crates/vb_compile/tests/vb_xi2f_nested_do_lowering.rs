@@ -196,9 +196,12 @@ fn nested_do_in_for_each_body_lowers_to_final_ir() -> Result<(), String> {
     // Verify Do at node 1 (body step)
     match &parts.nodes[1].kind {
         CompiledNodeKind::Do { action, input } => {
+            let _ = action; // suppress unused warning in test
             assert_eq!(action.get(), 0, "Do action id");
             assert_eq!(input.get(), 1, "Do input slot");
         }
+        other => return Err(format!("expected Do at node 1, got {other:?}")),
+    }
         other => return Err(format!("expected Do at node 1, got {other:?}")),
     }
 
@@ -377,7 +380,7 @@ fn nested_do_in_together_branch_lowers_to_final_ir() -> Result<(), String> {
 
     // Verify Do at node 2 (left action)
     match &parts.nodes[2].kind {
-        CompiledNodeKind::Do { action, input } => {
+        CompiledNodeKind::Do { action: _, input } => {
             assert_eq!(input.get(), 0, "left Do input slot");
         }
         other => return Err(format!("expected left Do at node 2, got {other:?}")),
@@ -404,7 +407,7 @@ fn nested_do_in_together_branch_lowers_to_final_ir() -> Result<(), String> {
 
     // Verify Do at node 4 (right action)
     match &parts.nodes[4].kind {
-        CompiledNodeKind::Do { action, input } => {
+        CompiledNodeKind::Do { action: _, input } => {
             assert_eq!(input.get(), 1, "right Do input slot");
         }
         other => return Err(format!("expected right Do at node 4, got {other:?}")),
