@@ -36,13 +36,27 @@ fn arb_core_error() -> impl Strategy<Value = CoreError> {
         Just(CoreError::CollectItemLimitExceeded),
         Just(CoreError::CollectTimeLimitExceeded),
         // Numeric-field variants
-        (0u16..100).prop_map(|s| CoreError::InvalidProgramCounter { step: StepIdx::new(s) }),
-        (0u16..100).prop_map(|s| CoreError::SlotOutOfBounds { slot: SlotIdx::new(s) }),
-        (0u16..100).prop_map(|s| CoreError::SlotUninitialized { slot: SlotIdx::new(s) }),
-        (0u16..100).prop_map(|s| CoreError::MissingNextStep { step: StepIdx::new(s) }),
-        (0u16..100).prop_map(|s| CoreError::MissingOutputSlot { step: StepIdx::new(s) }),
-        (0u16..100).prop_map(|s| CoreError::StepStateOutOfBounds { step: StepIdx::new(s) }),
-        (0u16..100).prop_map(|s| CoreError::NonBoolCondition { slot: SlotIdx::new(s) }),
+        (0u16..100).prop_map(|s| CoreError::InvalidProgramCounter {
+            step: StepIdx::new(s)
+        }),
+        (0u16..100).prop_map(|s| CoreError::SlotOutOfBounds {
+            slot: SlotIdx::new(s)
+        }),
+        (0u16..100).prop_map(|s| CoreError::SlotUninitialized {
+            slot: SlotIdx::new(s)
+        }),
+        (0u16..100).prop_map(|s| CoreError::MissingNextStep {
+            step: StepIdx::new(s)
+        }),
+        (0u16..100).prop_map(|s| CoreError::MissingOutputSlot {
+            step: StepIdx::new(s)
+        }),
+        (0u16..100).prop_map(|s| CoreError::StepStateOutOfBounds {
+            step: StepIdx::new(s)
+        }),
+        (0u16..100).prop_map(|s| CoreError::NonBoolCondition {
+            slot: SlotIdx::new(s)
+        }),
         (any::<u8>()).prop_map(|m| CoreError::ExpressionStackOverflow { max: m }),
         (any::<u16>()).prop_map(|m| CoreError::RepeatExhausted { max: m }),
         (any::<u16>()).prop_map(|m| CoreError::TogetherBranchLimitExceeded { max: m }),
@@ -54,9 +68,18 @@ fn arb_core_error() -> impl Strategy<Value = CoreError> {
         Just(CoreError::IterationLimitExceeded { resource: "test" }),
         Just(CoreError::InternalInvariantViolation { reason: "test" }),
         Just(CoreError::BudgetParse { reason: "test" }),
-        Just(CoreError::TypeMismatch { expected: "a", found: "b" }),
-        Just(CoreError::UnsupportedAccessorTraversal { segment: "a", found: "b" }),
-        (any::<u64>()).prop_map(|l| CoreError::BudgetExceeded { budget: "cpu", limit: l }),
+        Just(CoreError::TypeMismatch {
+            expected: "a",
+            found: "b"
+        }),
+        Just(CoreError::UnsupportedAccessorTraversal {
+            segment: "a",
+            found: "b"
+        }),
+        (any::<u64>()).prop_map(|l| CoreError::BudgetExceeded {
+            budget: "cpu",
+            limit: l
+        }),
         // Enumerate a wide range of variants
     ]
 }
@@ -112,25 +135,44 @@ proptest! {
 
 #[test]
 fn core_error_all_variants_produce_registered_codes() {
-    use vb_core::diagnostic::CODE_REGISTRY;
-    use vb_core::ids::{
-        ActionId, BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SymbolId,
-    };
     use chrono::Utc;
+    use vb_core::diagnostic::CODE_REGISTRY;
+    use vb_core::ids::{ActionId, BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SymbolId};
 
     let run_id = vb_core::ids::RunId::new(1);
 
     let errors: Vec<CoreError> = vec![
-        CoreError::InvalidProgramCounter { step: StepIdx::new(0) },
-        CoreError::MissingNextStep { step: StepIdx::new(0) },
-        CoreError::SlotOutOfBounds { slot: SlotIdx::new(0) },
-        CoreError::SlotUninitialized { slot: SlotIdx::new(0) },
-        CoreError::ExprOutOfBounds { expr: ExprIdx::new(0) },
-        CoreError::ConstOutOfBounds { index: ConstIdx::new(0) },
-        CoreError::MissingOutputSlot { step: StepIdx::new(0) },
-        CoreError::StepStateOutOfBounds { step: StepIdx::new(0) },
-        CoreError::TypeMismatch { expected: "u64", found: "string" },
-        CoreError::NonBoolCondition { slot: SlotIdx::new(0) },
+        CoreError::InvalidProgramCounter {
+            step: StepIdx::new(0),
+        },
+        CoreError::MissingNextStep {
+            step: StepIdx::new(0),
+        },
+        CoreError::SlotOutOfBounds {
+            slot: SlotIdx::new(0),
+        },
+        CoreError::SlotUninitialized {
+            slot: SlotIdx::new(0),
+        },
+        CoreError::ExprOutOfBounds {
+            expr: ExprIdx::new(0),
+        },
+        CoreError::ConstOutOfBounds {
+            index: ConstIdx::new(0),
+        },
+        CoreError::MissingOutputSlot {
+            step: StepIdx::new(0),
+        },
+        CoreError::StepStateOutOfBounds {
+            step: StepIdx::new(0),
+        },
+        CoreError::TypeMismatch {
+            expected: "u64",
+            found: "string",
+        },
+        CoreError::NonBoolCondition {
+            slot: SlotIdx::new(0),
+        },
         CoreError::DivisionByZero,
         CoreError::NonFiniteNumber,
         CoreError::StepBudgetExhausted,
@@ -142,14 +184,27 @@ fn core_error_all_variants_produce_registered_codes() {
         CoreError::ExpressionStackUnderflow,
         CoreError::InvalidCompiledWorkflow { reason: "test" },
         CoreError::UnsupportedPrimitive { primitive: "wait" },
-        CoreError::UnsupportedAccessorTraversal { segment: "field", found: "map" },
-        CoreError::ObjectFieldNotFound { field: SymbolId::new(0) },
+        CoreError::UnsupportedAccessorTraversal {
+            segment: "field",
+            found: "map",
+        },
+        CoreError::ObjectFieldNotFound {
+            field: SymbolId::new(0),
+        },
         CoreError::ListIndexOutOfBounds { index: 999 },
         CoreError::InternalInvariantViolation { reason: "test" },
-        CoreError::SymbolOutOfBounds { symbol: SymbolId::new(0) },
-        CoreError::ListOutOfBounds { list: ListId::new(0) },
-        CoreError::ObjectOutOfBounds { object: ObjectId::new(0) },
-        CoreError::BlobOutOfBounds { blob: BlobId::new(0) },
+        CoreError::SymbolOutOfBounds {
+            symbol: SymbolId::new(0),
+        },
+        CoreError::ListOutOfBounds {
+            list: ListId::new(0),
+        },
+        CoreError::ObjectOutOfBounds {
+            object: ObjectId::new(0),
+        },
+        CoreError::BlobOutOfBounds {
+            blob: BlobId::new(0),
+        },
         CoreError::IterationLimitExceeded { resource: "cpu" },
         CoreError::RepeatExhausted { max: 3 },
         CoreError::CollectPageLimitExceeded,
@@ -157,7 +212,10 @@ fn core_error_all_variants_produce_registered_codes() {
         CoreError::CollectTimeLimitExceeded,
         CoreError::TogetherBranchLimitExceeded { max: 1 },
         CoreError::ParallelLimitExceeded { limit: 1 },
-        CoreError::BudgetExceeded { budget: "cpu", limit: 100 },
+        CoreError::BudgetExceeded {
+            budget: "cpu",
+            limit: 100,
+        },
         CoreError::BudgetParse { reason: "invalid" },
         CoreError::CapabilityDenied {
             action: ActionId::new(0),
