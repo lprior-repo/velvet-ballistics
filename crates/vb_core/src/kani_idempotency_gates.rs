@@ -757,5 +757,3 @@ fn kani_verify_idempotency_missing_key() {
     let result_none = verify_idempotency(&contract_none, &[], &frame);
     kani::assert(result_none.is_ok(), "SideEffect::None always passes");
 }
-
-fn main() {}
