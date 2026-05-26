@@ -43,6 +43,22 @@ pub mod kani_foreach_parity;
 #[cfg(kani)]
 pub mod kani_lower_control;
 
+// Kani harnesses for vb-xi2f.35 ResourceContract digest verification.
+// PO-K01 through PO-K14 (digest determinism, field sensitivity, collision,
+// migration, entry point, dual path, with-default equivalence).
+#[cfg(kani)]
+pub mod kani_resource_contract_cross_field_collision;
+#[cfg(kani)]
+pub mod kani_resource_contract_digest_determinism;
+#[cfg(kani)]
+pub mod kani_resource_contract_digest_field_sensitivity;
+#[cfg(kani)]
+pub mod kani_resource_contract_dual_path_equivalence;
+#[cfg(kani)]
+pub mod kani_resource_contract_entry_point;
+#[cfg(kani)]
+pub mod kani_resource_contract_migration_digest;
+
 pub use expression_bytecode::{compile_expr_to_bytecode, compile_expr_to_bytecode_with_accessors};
 
 use mod_compile_core as core;
@@ -59,9 +75,9 @@ pub use core::{
 pub use errors::{CompileError, CompileErrors, SourceMark};
 pub(crate) use errors::{collect, non_string_key_error};
 pub use lwr::{
-    SlotCompiler, WaitKind, compile_source, lower_ask, lower_choose, lower_collect, lower_do,
-    lower_finish, lower_for_each, lower_reduce, lower_repeat, lower_set, lower_steps_to_ir,
-    lower_together, lower_wait, validate_ir,
+    SlotCompiler, WaitKind, compile_source, compile_source_with_default, lower_ask, lower_choose,
+    lower_collect, lower_do, lower_finish, lower_for_each, lower_reduce, lower_repeat, lower_set,
+    lower_steps_to_ir, lower_together, lower_wait, validate_ir,
 };
 pub(crate) use validation::validate_public_name;
 

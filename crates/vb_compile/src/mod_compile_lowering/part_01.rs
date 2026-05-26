@@ -15,6 +15,7 @@ use vb_core::{
 /// Compile the canonical cold YAML authoring AST into numeric runtime IR.
 pub fn compile_source(
     source: &vb_yaml::ast::WorkflowSource,
+    contract: ResourceContract,
 ) -> Result<CompiledWorkflow, CompileErrors> {
     validate_canonical_compile_scope(source)?;
     let steps = source.steps();
@@ -43,7 +44,7 @@ pub fn compile_source(
     }
     let parts = WorkflowParts {
         name: Box::from(source.name()),
-        digest: canonical_digest(source),
+        digest: canonical_digest(source, contract),
         slot_count: builder.slot_count().map_err(|e| CompileErrors(vec![e]))?,
         symbols_count: 0,
         nodes: builder.nodes.into_boxed_slice(),
@@ -51,10 +52,22 @@ pub fn compile_source(
         accessors: builder.accessors.into_boxed_slice(),
         constants: builder.constants.into_boxed_slice(),
         entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
+        resource_contract: contract,
         step_names: step_names.into_boxed_slice(),
     };
-    Ok(CompiledWorkflow::from_parts_unchecked(parts))
+    CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))
+}
+
+/// Convenience wrapper that compiles source with the conservative
+/// [`ResourceContract::DEFAULT`].
+///
+/// This is the recommended entry point for callers that do not supply an
+/// explicit resource contract. It delegates to [`compile_source`] with
+/// the default contract.
+pub fn compile_source_with_default(
+    source: &vb_yaml::ast::WorkflowSource,
+) -> Result<CompiledWorkflow, CompileErrors> {
+    compile_source(source, ResourceContract::DEFAULT)
 }
 
 #[derive(Clone, Copy)]

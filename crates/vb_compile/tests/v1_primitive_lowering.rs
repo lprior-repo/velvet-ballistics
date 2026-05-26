@@ -4,7 +4,8 @@ use vb_compile::{
     lower_together,
 };
 use vb_core::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, StepIdx, WorkflowError,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, ResourceContract, StepIdx,
+    WorkflowError,
 };
 
 const HEADER: &str =
@@ -76,13 +77,13 @@ const PRIMITIVE_CASES: &[PrimitiveCase] = &[
         name: "parallel",
         yaml_steps: "  - id: fanout\n    parallel:\n      branches:\n        - label: left\n          steps:\n            - id: left_set\n              set:\n                output: left\n                value: \"1\"\n        - label: right\n          steps:\n            - id: right_set\n              set:\n                output: right\n                value: \"2\"\n  - id: done\n    finish:\n      result: 0\n",
         expected_kinds: TOGETHER_KINDS,
-        expected_slot_count: 1,
+        expected_slot_count: 4,
     },
     PrimitiveCase {
         name: "collect",
         yaml_steps: "  - id: collect_pages\n    collect:\n      variable: page\n      source: \"0\"\n      pages: 3\n      items: 5\n      steps:\n        - id: remember_page\n          set:\n            output: page_seen\n            value: \"7\"\n  - id: done\n    finish:\n      result: 0\n",
         expected_kinds: COLLECT_KINDS,
-        expected_slot_count: 1,
+        expected_slot_count: 2,
     },
     PrimitiveCase {
         name: "aggregate",
@@ -145,7 +146,8 @@ fn compile_source_emits_supported_ir_when_each_scoped_primitive_is_valid() -> Re
     for case in PRIMITIVE_CASES {
         let yaml = workflow_yaml(case.yaml_steps);
         let source = parse_source(&yaml)?;
-        let workflow = compile_source(&source).map_err(|errors| format_compile_errors(&errors))?;
+        let workflow = compile_source(&source, ResourceContract::DEFAULT)
+            .map_err(|errors| format_compile_errors(&errors))?;
         let parts = workflow.to_parts();
 
         assert_eq!(
@@ -478,7 +480,7 @@ fn compile_source_returns_exact_error_variants_for_contract_taxonomy() -> Result
             workflow_yaml(body)
         };
         let source = parse_source(&yaml)?;
-        let errors = compile_source(&source)
+        let errors = compile_source(&source, ResourceContract::DEFAULT)
             .err()
             .ok_or_else(|| format!("case {case_name} unexpectedly compiled"))?;
         let first = first_compile_error(&errors)?;
@@ -617,6 +619,7 @@ fn public_helpers_return_exact_step_index_slot_index_limit_and_workflow_error_va
         0,
         "bad-id",
         vb_core::WorkflowDigest::from_bytes([1; 32]),
+        ResourceContract::DEFAULT,
     ) {
         Err(errors) => match first_compile_error(&errors)? {
             CompileError::Workflow(WorkflowError::NodeIdMismatch { expected, actual }) => {
@@ -686,6 +689,7 @@ fn public_lowering_helpers_return_exact_range_and_workflow_errors() -> Result<()
         0,
         "empty",
         vb_core::WorkflowDigest::from_bytes([0; 32]),
+        ResourceContract::DEFAULT,
     ) {
         Err(errors) => match first_compile_error(&errors)? {
             CompileError::Workflow(WorkflowError::EmptyNodes) => {}
@@ -878,7 +882,7 @@ fn compile_yaml_with_api(
                     message: message.into_boxed_str(),
                 }])
             })?;
-            compile_source(&source)
+            compile_source(&source, ResourceContract::DEFAULT)
         }
         PublicApiPath::CompileWorkflow => compile_workflow(yaml.as_bytes()),
         PublicApiPath::YamlCompilerCompile => YamlCompiler::default().compile(yaml.as_bytes()),
@@ -1116,7 +1120,7 @@ fn assert_exact_together(nodes: &[CompiledNode]) -> Result<(), String> {
 }
 
 fn assert_exact_collect(nodes: &[CompiledNode]) -> Result<(), String> {
-    assert_set_const_node(nodes, &[], 1, Some(1), None, 0, 7)?;
+    assert_set_const_node(nodes, &[], 1, Some(1), Some(2), 0, 7)?;
     assert_finish_node(nodes, 4, 0)?;
     match &node_at(nodes, 0)?.kind {
         CompiledNodeKind::CollectStart {
@@ -1151,7 +1155,7 @@ fn assert_exact_collect(nodes: &[CompiledNode]) -> Result<(), String> {
 }
 
 fn assert_exact_reduce(nodes: &[CompiledNode]) -> Result<(), String> {
-    assert_set_const_node(nodes, &[], 1, Some(1), None, 1, 1)?;
+    assert_set_const_node(nodes, &[], 1, Some(1), Some(2), 1, 1)?;
     assert_finish_node(nodes, 4, 0)?;
     match &node_at(nodes, 0)?.kind {
         CompiledNodeKind::ReduceStart {
@@ -1201,7 +1205,7 @@ fn assert_exact_reduce(nodes: &[CompiledNode]) -> Result<(), String> {
 }
 
 fn assert_exact_repeat(nodes: &[CompiledNode]) -> Result<(), String> {
-    assert_set_const_node(nodes, &[], 1, Some(1), None, 0, 1)?;
+    assert_set_const_node(nodes, &[], 1, Some(1), Some(2), 0, 1)?;
     assert_finish_node(nodes, 4, 0)?;
     match &node_at(nodes, 0)?.kind {
         CompiledNodeKind::RepeatStart {

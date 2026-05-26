@@ -32,7 +32,7 @@ impl YamlCompiler {
         reject_known_canonical_text_gaps(text).map_err(|e| CompileErrors(vec![e]))?;
         let source = vb_yaml::parse_workflow_source(text)
             .map_err(|e| CompileErrors(vec![canonical_yaml_error(e)]))?;
-        crate::mod_compile_lowering::compile_source(&source)
+        crate::mod_compile_lowering::compile_source_with_default(&source)
     }
 
     /// Parses strict YAML into the cold typed AST without emitting runtime IR.

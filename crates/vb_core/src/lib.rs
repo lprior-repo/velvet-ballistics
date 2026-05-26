@@ -14,6 +14,7 @@
 pub mod action;
 pub mod budget;
 pub mod capability;
+pub mod contract_encoding;
 pub mod diagnostic;
 pub mod engine;
 pub mod error;

@@ -4,20 +4,54 @@
 use crate::errors::CoreError;
 use crate::ids::{AccessorIdx, ConstIdx, ExprIdx, SlotIdx, StepIdx};
 use crate::limits::{
-    MAX_ACCESSORS, MAX_CONSTANTS, MAX_EXPRESSIONS,
-    MAX_SLOTS_PER_WORKFLOW, MAX_STEPS_PER_WORKFLOW,
+    MAX_ACCESSORS, MAX_BLOB_BYTES, MAX_COLLECT_ITEMS, MAX_CONSTANTS, MAX_EXPRESSIONS,
+    MAX_FANOUT, MAX_INPUT_BYTES, MAX_IPC_PAYLOAD_BYTES, MAX_JOURNAL_BATCH_BYTES,
+    MAX_OUTPUT_BYTES, MAX_QUEUE_DEPTH, MAX_RETRY_ATTEMPTS, MAX_SLOTS_PER_WORKFLOW,
+    MAX_STEP_BUDGET, MAX_STEPS_PER_WORKFLOW,
 };
 
 use crate::accessors::AccessorProgram;
-use crate::compiled_workflow::ResourceContract;
+use crate::workflow::ResourceContract;
 use crate::expressions::ExprProgram;
-use crate::compiled_workflow::WorkflowParts;
+use crate::workflow::WorkflowParts;
 use crate::validation::WorkflowError;
 
 pub(crate) fn validate_resource_contract(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     let contract = parts.resource_contract;
     validate_resource_counts(parts, contract)?;
-    validate_expr_stack_contract(parts.expressions.as_ref(), contract.max_expr_stack)
+    validate_expr_stack_contract(parts.expressions.as_ref(), contract.max_expr_stack)?;
+    validate_nonzero_u64("max_transitions_per_tick", contract.max_transitions_per_tick, MAX_STEP_BUDGET)?;
+    validate_nonzero_u64("max_step_budget_per_tick", contract.max_step_budget_per_tick, MAX_STEP_BUDGET)?;
+    validate_nonzero_u32("max_input_bytes", contract.max_input_bytes, MAX_INPUT_BYTES)?;
+    validate_nonzero_u32("max_output_bytes", contract.max_output_bytes, MAX_OUTPUT_BYTES)?;
+    validate_nonzero_u64("max_blob_bytes", contract.max_blob_bytes, MAX_BLOB_BYTES)?;
+    validate_nonzero_u32("max_ipc_payload_bytes", contract.max_ipc_payload_bytes, MAX_IPC_PAYLOAD_BYTES)?;
+    validate_nonzero_u32("max_retry_attempts", u32::from(contract.max_retry_attempts), u32::from(MAX_RETRY_ATTEMPTS))?;
+    validate_nonzero_u32("max_fanout", u32::from(contract.max_fanout), u32::from(MAX_FANOUT))?;
+    validate_nonzero_u32("max_collect_items", contract.max_collect_items, MAX_COLLECT_ITEMS)?;
+    validate_nonzero_u32("max_queue_depth", contract.max_queue_depth, MAX_QUEUE_DEPTH)?;
+    validate_nonzero_u32("max_journal_batch_bytes", contract.max_journal_batch_bytes, MAX_JOURNAL_BATCH_BYTES)?;
+    Ok(())
+}
+
+fn validate_nonzero_u32(resource: &'static str, declared: u32, hard_limit: u32) -> Result<(), WorkflowError> {
+    if declared == 0 {
+        return Err(WorkflowError::ResourceContractExceeded { resource });
+    }
+    if declared > hard_limit {
+        return Err(WorkflowError::ResourceContractTooLarge { resource });
+    }
+    Ok(())
+}
+
+fn validate_nonzero_u64(resource: &'static str, declared: u64, hard_limit: u64) -> Result<(), WorkflowError> {
+    if declared == 0 {
+        return Err(WorkflowError::ResourceContractExceeded { resource });
+    }
+    if declared > hard_limit {
+        return Err(WorkflowError::ResourceContractTooLarge { resource });
+    }
+    Ok(())
 }
 
 pub(crate) fn validate_resource_counts(

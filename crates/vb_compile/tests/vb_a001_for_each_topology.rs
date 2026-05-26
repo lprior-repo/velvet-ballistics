@@ -7,7 +7,7 @@
 
 use vb_compile::{YamlCompiler, compile_workflow, lower_set, lower_steps_to_ir};
 use vb_core::ids::{ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
 // ---------------------------------------------------------------------------
 // Corpus YAML for the for_each workflow under vb-a001
@@ -232,6 +232,7 @@ fn vb_a001_lower_steps_to_ir_accepts_connected_foreach() -> Result<(), Box<dyn s
         0,
         "vb-a001-connected",
         WorkflowDigest::from_bytes([1; 32]),
+        ResourceContract::DEFAULT,
     );
 
     assert!(
@@ -303,6 +304,7 @@ fn vb_a001_lower_steps_to_ir_rejects_disconnected_body() -> Result<(), Box<dyn s
         0,
         "vb-a001-disconnected",
         WorkflowDigest::from_bytes([2; 32]),
+        ResourceContract::DEFAULT,
     );
 
     assert!(

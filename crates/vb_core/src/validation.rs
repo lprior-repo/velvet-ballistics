@@ -20,7 +20,7 @@ use crate::budget::{BoundednessPolicy, BudgetError, WholeWorkflowBudget};
 use crate::errors::CoreError;
 use crate::ids::StepIdx;
 use crate::nodes::CompiledNode;
-use crate::compiled_workflow::WorkflowParts;
+use crate::workflow::WorkflowParts;
 
 use thiserror::Error;
 

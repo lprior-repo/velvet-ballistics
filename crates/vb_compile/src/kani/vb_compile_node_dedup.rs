@@ -14,7 +14,7 @@
 
 use crate::lower_steps_to_ir;
 use vb_core::{
-    CompiledNode, CompiledNodeKind, SlotIdx, StepIdx, WorkflowDigest,
+    CompiledNode, CompiledNodeKind, ResourceContract, SlotIdx, StepIdx, WorkflowDigest,
 };
 
 /// INV-007-NODEDUP-001: StepIdx uniqueness invariant.
@@ -71,6 +71,7 @@ fn node_id_uniqueness() {
         0,
         "unique-workflow",
         WorkflowDigest::from_bytes([0u8; 32]),
+        ResourceContract::DEFAULT,
     );
 
     kani::assert(result.is_ok(), "unique StepIdx nodes should compile successfully");
@@ -122,6 +123,7 @@ fn node_id_uniqueness() {
         0,
         "dup-workflow",
         WorkflowDigest::from_bytes([1u8; 32]),
+        ResourceContract::DEFAULT,
     );
 
     // Duplicate StepIdx should be rejected by vb_validate shared validation
@@ -160,6 +162,7 @@ fn step_idx_ordering_preserved() {
         0,
         "ordered-workflow",
         WorkflowDigest::from_bytes([2u8; 32]),
+        ResourceContract::DEFAULT,
     );
 
     kani::assert(result.is_ok(), "ordered nodes should compile");

@@ -113,7 +113,10 @@ pub(super) fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) 
     }
 }
 
-pub(super) fn canonical_digest(source: &vb_yaml::ast::WorkflowSource) -> WorkflowDigest {
+pub(crate) fn canonical_digest(
+    source: &vb_yaml::ast::WorkflowSource,
+    contract: ResourceContract,
+) -> WorkflowDigest {
     let mut hasher = blake3::Hasher::new();
     hasher.update(source.version().as_bytes());
     hasher.update(source.name().as_bytes());
@@ -134,6 +137,9 @@ pub(super) fn canonical_digest(source: &vb_yaml::ast::WorkflowSource) -> Workflo
         hasher.update(step.id.as_bytes());
         digest_step_primitive(&mut hasher, &step.primitive);
     }
+    // Encode the resource contract into the digest via the canonical encoding
+    let contract_bytes = vb_core::contract_encoding::encode_contract_bytes(&contract);
+    hasher.update(&contract_bytes);
     WorkflowDigest::from_bytes(hasher.finalize().into())
 }
 
@@ -165,6 +171,9 @@ pub(super) fn digest_step_primitive(
 ///
 /// This is the primary lowering step that converts step-level IR into the
 /// compiled node array used by the hot runtime.
+///
+/// The caller must supply the [`ResourceContract`] that governs the workflow.
+/// Use [`ResourceContract::DEFAULT`] when no explicit contract is available.
 #[allow(clippy::too_many_arguments)]
 pub fn lower_steps_to_ir(
     nodes: Vec<CompiledNode>,
@@ -175,6 +184,7 @@ pub fn lower_steps_to_ir(
     symbols_count: u32,
     name: &str,
     digest: WorkflowDigest,
+    contract: ResourceContract,
 ) -> Result<CompiledWorkflow, CompileErrors> {
     let parts = WorkflowParts {
         name: Box::from(name),
@@ -186,7 +196,7 @@ pub fn lower_steps_to_ir(
         slot_count,
         symbols_count,
         entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
+        resource_contract: contract,
         step_names: Box::new([]),
     };
     vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
