@@ -2108,6 +2108,57 @@ mod tests {
     }
 
     #[test]
+    fn code_registry_detects_duplicate_symbolic_names() {
+        // C-001: Exhaustive duplicate detection across the ENTIRE CODE_REGISTRY.
+        // Unlike the relaxed Section 16 check above, this test enumerates
+        // every duplicate symbolic name regardless of category.
+        // Duplicate symbolic names violate single-source-of-truth invariants
+        // and MUST be resolved in State 11 holzman-rust work.
+        // This test documents the current duplicates so they are visible
+        // until the production entries are deduplicated.
+        let mut name_counts: std::collections::BTreeMap<&str, Vec<(u16, CodeCategory)>> =
+            std::collections::BTreeMap::new();
+        for entry in CODE_REGISTRY {
+            name_counts
+                .entry(entry.symbolic)
+                .or_default()
+                .push((entry.numeric, entry.category));
+        }
+        let duplicates: Vec<_> = name_counts
+            .into_iter()
+            .filter(|(_, entries)| entries.len() > 1)
+            .collect();
+        // There are exactly 4 duplicate symbolic names in CODE_REGISTRY.
+        // If this count changes, investigate whether duplicates were added or
+        // removed during production code changes.
+        assert_eq!(
+            duplicates.len(),
+            4,
+            "CODE_REGISTRY duplicate symbolic name count changed: found {} duplicates. \
+             Expected 4: QUEUE_FULL, LIFECYCLE_STORAGE_UNAVAILABLE, \
+             LIFECYCLE_DUPLICATE_REQUEST, LIFECYCLE_INVALID_TRANSITION. \
+             Run with `cargo test code_registry_detects_duplicate_symbolic_names -- --nocapture` \
+             to see all duplicates.",
+            duplicates.len()
+        );
+        // Verify the specific expected duplicates are present.
+        let expected_dupes: &[&str] = &[
+            "QUEUE_FULL",
+            "LIFECYCLE_STORAGE_UNAVAILABLE",
+            "LIFECYCLE_DUPLICATE_REQUEST",
+            "LIFECYCLE_INVALID_TRANSITION",
+        ];
+        for expected in expected_dupes {
+            let found = duplicates.iter().any(|(name, _)| *name == *expected);
+            assert!(
+                found,
+                "expected duplicate name '{}' not found in CODE_REGISTRY",
+                expected
+            );
+        }
+    }
+
+    #[test]
     fn code_registry_has_no_duplicate_numeric_codes() {
         // Numeric codes may be duplicated across different symbolic names
         // when multiple error categories share the same numeric range.

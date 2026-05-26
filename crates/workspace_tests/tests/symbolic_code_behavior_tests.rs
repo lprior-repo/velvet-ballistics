@@ -71,8 +71,12 @@ fn compile_error_code_returns_symbolic_not_str() {
     // Compile-time invariant: code() returns SymbolicCode, not &str.
     // This is verified by the type system.
     fn _assert_symbolic_code_type<F: Fn() -> SymbolicCode>(_f: F) {}
-    // The CompileError::code method now returns SymbolicCode.
-    // Type-level regression: code() no longer returns &'static str.
+    // Lethal (L-001): actually invoke the helper with a real CompileError value.
+    let error = vb_compile::CompileError::EmptySource;
+    let code: SymbolicCode = error.code();
+    _assert_symbolic_code_type(|| code);
+    assert_eq!(code.as_str(), "MISSING_REQUIRED_FIELD");
+    assert_eq!(code.numeric_code(), 0x0105);
 }
 
 // ---------------------------------------------------------------------------

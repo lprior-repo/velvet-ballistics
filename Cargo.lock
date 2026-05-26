@@ -2130,6 +2130,7 @@ dependencies = [
  "vb_proof_kernels",
  "vb_runtime",
  "vb_storage",
+ "vb_test_util",
  "vb_validate",
  "vb_yaml",
  "velvet-ballistics",
