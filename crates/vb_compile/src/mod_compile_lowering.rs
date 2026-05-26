@@ -20,6 +20,9 @@ mod part_13;
 #[cfg(kani)]
 mod kani_proofs;
 
+#[cfg(test)]
+mod tests;
+
 #[allow(unused_imports)]
 pub(crate) use part_01::*;
 // compile_source is needed by external integration tests.

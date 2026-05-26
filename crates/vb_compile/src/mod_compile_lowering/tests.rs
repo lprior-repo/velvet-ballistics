@@ -275,8 +275,10 @@ fn make_collect(
 /// Helper: compute digest of a StepPrimitive via digest_step_primitive.
 fn digest_primitive(primitive: &StepPrimitive) -> blake3::Hash {
     let mut hasher = Hasher::new();
-    digest_step_primitive(&mut hasher, primitive);
-    hasher.finalize()
+    match digest_step_primitive(&mut hasher, primitive) {
+        Ok(()) => hasher.finalize(),
+        Err(error) => panic!("digest_step_primitive failed: {error:?}"),
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────

@@ -24,6 +24,7 @@
 // `WorkflowTypes` and `WorkflowAst` requires different traversal strategies.
 
 use thiserror::Error;
+use vb_core::diagnostic::{HasSymbolicCode, SymbolicCode};
 
 pub mod control_flow;
 pub mod diagnostic;
@@ -61,12 +62,10 @@ mod type_check;
 #[cfg(test)]
 mod type_sigs;
 
-// Split-out diagnostic modules (test-only until migration completes).
-#[cfg(test)]
+// Split-out diagnostic modules (diag_codes and diag_render are public API).
 mod diag_codes;
 #[cfg(test)]
 mod diag_convert;
-#[cfg(test)]
 mod diag_render;
 #[cfg(test)]
 mod diag_tests;
@@ -365,6 +364,91 @@ pub enum ValidationError {
         expected: String,
         actual: String,
     },
+}
+
+impl ValidationError {
+    /// Returns the stable [`SymbolicCode`] for this validation error variant.
+    ///
+    /// Every variant maps to a registered diagnostic code name.
+    /// The mapping matches the per-variant assignments in [`error_diagnostic_parts`].
+    #[must_use]
+    pub fn code(&self) -> SymbolicCode {
+        let s: &'static str = match self {
+            // Schema: E01xx
+            Self::DuplicateKey => "DUPLICATE_KEY",
+            Self::ForbiddenYamlFeature => "FORBIDDEN_YAML_FEATURE",
+            Self::UnknownTopLevelField => "UNKNOWN_TOP_LEVEL_FIELD",
+            Self::UnknownStepField => "UNKNOWN_STEP_FIELD",
+            Self::MissingRequiredField { .. } => "MISSING_REQUIRED_FIELD",
+            Self::InvalidVersion { .. } => "INVALID_VERSION",
+            Self::InvalidId { .. } => "INVALID_ID",
+            Self::ReservedId { .. } => "RESERVED_ID",
+            Self::DuplicateId { .. } => "DUPLICATE_ID",
+            Self::MultipleStepPrimitives => "MULTIPLE_STEP_PRIMITIVES",
+            Self::MissingStepPrimitive => "MISSING_STEP_PRIMITIVE",
+            // Reference: E02xx
+            Self::UnknownReference { .. } => "UNKNOWN_REFERENCE",
+            Self::FutureReference { .. } => "FUTURE_REFERENCE",
+            Self::SecretNotDeclared { .. } => "SECRET_NOT_DECLARED",
+            Self::DirectRuntimeReference => "DIRECT_RUNTIME_REFERENCE",
+            // Control-flow: E03xx
+            Self::InvalidThenTarget => "INVALID_THEN_TARGET",
+            Self::ControlFlowCycle => "CONTROL_FLOW_CYCLE",
+            Self::UnreachableStep { .. } => "UNREACHABLE_STEP",
+            Self::InvalidChoose => "INVALID_CHOOSE",
+            Self::InvalidForEach => "INVALID_FOR_EACH",
+            Self::InvalidTogether => "INVALID_TOGETHER",
+            Self::InvalidCollect => "INVALID_COLLECT",
+            Self::InvalidReduce => "INVALID_REDUCE",
+            Self::InvalidRepeat => "INVALID_REPEAT",
+            // Type/taint/limit: E04xx
+            Self::InvalidWait => "INVALID_WAIT",
+            Self::InvalidAsk => "INVALID_ASK",
+            Self::InvalidFinish => "INVALID_FINISH",
+            Self::InvalidRetry => "INVALID_RETRY",
+            Self::InvalidOnError => "INVALID_ON_ERROR",
+            Self::SecretResultLeak => "SECRET_RESULT_LEAK",
+            Self::TypeMismatch { .. } => "TYPE_MISMATCH",
+            Self::PayloadTooLarge => "PAYLOAD_TOO_LARGE",
+            Self::LimitRequired { .. } => "LIMIT_REQUIRED",
+            Self::LimitExceeded { .. } => "LIMIT_EXCEEDED",
+            Self::UnsupportedTrigger { .. } => "UNSUPPORTED_TRIGGER",
+            Self::HttpTriggerOutOfCore => "HTTP_TRIGGER_OUT_OF_CORE",
+            // Gate verifier: E05xx
+            Self::ExpressionStackExceeded { .. } => "EXPRESSION_STACK_EXCEEDED",
+            Self::ExpressionStackMismatch { .. } => "EXPRESSION_STACK_MISMATCH",
+            Self::AccessorSlotOutOfRange { .. } => "ACCESSOR_SLOT_OUT_OF_RANGE",
+            Self::AccessorPathInvalid { .. } => "ACCESSOR_PATH_INVALID",
+            Self::AccessorPathTooDeep { .. } => "ACCESSOR_PATH_TOO_DEEP",
+            Self::AccessorSymbolOutOfBounds { .. } => "ACCESSOR_SYMBOL_OUT_OF_BOUNDS",
+            Self::SlotReferenceOutOfRange { .. } => "SLOT_REFERENCE_OUT_OF_RANGE",
+            Self::LoopBodyStepOutOfRange { .. } => "LOOP_BODY_STEP_OUT_OF_RANGE",
+            Self::SlotDependencyCycle { .. } => "SLOT_DEPENDENCY_CYCLE",
+            Self::NodeKindConstraintViolation { .. } => "NODE_KIND_CONSTRAINT_VIOLATION",
+            Self::ActionContractMissing { .. } => "ACTION_CONTRACT_MISSING",
+            Self::ActionContractOrphan { .. } => "ACTION_CONTRACT_ORPHAN",
+            Self::CapabilityNameEmpty { .. } => "CAPABILITY_NAME_EMPTY",
+            Self::CapabilityNameTooLong { .. } => "CAPABILITY_NAME_TOO_LONG",
+            Self::CapabilityNameInvalid { .. } => "CAPABILITY_NAME_INVALID",
+            Self::CapabilityActionMismatch { .. } => "CAPABILITY_ACTION_MISMATCH",
+            Self::CapabilityDuplicate { .. } => "CAPABILITY_DUPLICATE",
+            Self::SlotTypeInconsistency { .. } => "SLOT_TYPE_INCONSISTENCY",
+            Self::NonDeterministicPath { .. } => "NON_DETERMINISTIC_PATH",
+            // Contract discovery: E06xx
+            Self::MissingSchemaVersion => "MISSING_SCHEMA_VERSION",
+            Self::CueVetFailed { .. } => "CUE_VET_FAILED",
+            Self::VersionMonotonicityBreach { .. } => "VERSION_MONOTONICITY_BREACH",
+        };
+        // All symbolic names above are registered in vb_core::CODE_REGISTRY.
+        // Fall back to INTERNAL_INVARIANT if a name is missing (should never happen).
+        SymbolicCode::from_static(s).unwrap_or(SymbolicCode::INTERNAL_INVARIANT)
+    }
+}
+
+impl HasSymbolicCode for ValidationError {
+    fn symbolic_code(&self) -> SymbolicCode {
+        self.code()
+    }
 }
 
 pub type ValidationResult<T> = Result<T, ValidationError>;

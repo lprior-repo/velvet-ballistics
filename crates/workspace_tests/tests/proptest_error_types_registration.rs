@@ -3,7 +3,7 @@
 //! Compensates: BLOCKED PO-015.
 //! Invariant: Every sampled variant maps to a SymbolicCode registered in CODE_REGISTRY.
 
-use vb_core::diagnostic::{CODE_REGISTRY, SymbolicCode};
+use vb_core::diagnostic::{CODE_REGISTRY, HasSymbolicCode, SymbolicCode};
 use vb_core::errors::CoreError;
 use vb_core::ids::{SlotIdx, StepIdx};
 

@@ -1886,7 +1886,13 @@ impl Diagnostic {
     /// `DiagnosticCode::new(0x1309)` when the symbolic code is not
     /// registered (internal invariant violation).
     #[must_use]
-    pub fn new(code: SymbolicCode, message: Box<str>, severity: Severity, span: Span, source_file: Option<Box<str>>) -> Self {
+    pub fn new(
+        code: SymbolicCode,
+        message: Box<str>,
+        severity: Severity,
+        span: Span,
+        source_file: Option<Box<str>>,
+    ) -> Self {
         // SAFETY: Every SymbolicCode constructed via from_static() or deserialization
         // is guaranteed to be registered, so as_diagnostic_code() always returns Some.
         // The None branch is only reachable through crate-internal raw construction.
@@ -2045,7 +2051,7 @@ mod tests {
     use super::{
         CodeCategory, Diagnostic, DiagnosticCode, DiagnosticCodeParseError, Severity, SymbolicCode,
     };
-    use crate::diagnostic::{numeric_to_symbolic, symbolic_to_numeric, CODE_REGISTRY};
+    use crate::diagnostic::{CODE_REGISTRY, numeric_to_symbolic, symbolic_to_numeric};
     use crate::span::Span;
     use core::str::FromStr;
 
@@ -2279,6 +2285,7 @@ mod tests {
             Box::<str>::from("duplicate key found"),
             Severity::Error,
             Span::ZERO,
+            None,
         );
 
         assert_eq!(diag.code, code);
@@ -2296,6 +2303,7 @@ mod tests {
             Box::<str>::from("duplicate key"),
             Severity::Error,
             Span::ZERO,
+            None,
         );
 
         assert!(diag.is_some());
@@ -2311,6 +2319,7 @@ mod tests {
             Box::<str>::from("unknown"),
             Severity::Error,
             Span::ZERO,
+            None,
         );
 
         assert!(diag.is_none());

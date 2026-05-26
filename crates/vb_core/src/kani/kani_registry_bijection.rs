@@ -64,8 +64,12 @@ mod harnesses {
             let entry = &CODE_REGISTRY[i];
             // The symbolic→numeric lookup should find this entry
             // This is verified by construction — the const function scans the registry.
-            let found = super::super::kani_symbolic_code_validation::symbolic_to_numeric(entry.symbolic);
-            assert!(found.is_some(), "Every registered symbolic name must resolve");
+            let found =
+                super::super::kani_symbolic_code_validation::symbolic_to_numeric(entry.symbolic);
+            assert!(
+                found.is_some(),
+                "Every registered symbolic name must resolve"
+            );
             assert_eq!(found, Some(entry.numeric), "Symbolic→numeric mismatch");
 
             // And the numeric→symbolic lookup should also find it

@@ -41,11 +41,11 @@ fn diagnostic_from_parts(
     span: Span,
 ) -> Diagnostic {
     match code.symbolic_code() {
-        Some(sc) => Diagnostic::new(sc, message.into(), severity, span),
+        Some(sc) => Diagnostic::new(sc, message.into(), severity, span, None),
         None => {
             let fallback = diagnostic_fallback_symbolic();
             let annotated = format!("[unregistered {:04X}] {}", code.code(), message);
-            Diagnostic::new(fallback, annotated.into(), severity, span)
+            Diagnostic::new(fallback, annotated.into(), severity, span, None)
         }
     }
 }

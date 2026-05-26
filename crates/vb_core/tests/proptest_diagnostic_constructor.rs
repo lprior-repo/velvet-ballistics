@@ -9,25 +9,32 @@
 use vb_core::diagnostic::{CODE_REGISTRY, Diagnostic, DiagnosticCode, Severity, SymbolicCode};
 use vb_core::span::Span;
 
+/// Helper: returns the registered `SymbolicCode` for the `"DUPLICATE_KEY"` entry.
+fn duplicate_key_code() -> SymbolicCode {
+    SymbolicCode::from_static("DUPLICATE_KEY").expect("DUPLICATE_KEY must be registered")
+}
+
 #[test]
 fn diagnostic_new_preserves_symbolic_numeric_invariant_for_all_registered_codes() {
     for entry in CODE_REGISTRY {
         // Verify SymbolicCode can be constructed from registry entry
-        let _ = SymbolicCode::from_static(entry.symbolic).expect("must be registered");
+        let symbolic = SymbolicCode::from_static(entry.symbolic).expect("must be registered");
         let diagnostic = Diagnostic::new(
-            DiagnosticCode::new(entry.numeric),
+            symbolic,
             Box::<str>::from("test message"),
             Severity::Error,
             Span::ZERO,
+            None,
         );
         // Verify diagnostic fields
-        assert_eq!(diagnostic.code, DiagnosticCode::new(entry.numeric));
+        assert_eq!(diagnostic.code, symbolic);
+        assert_eq!(diagnostic.numeric_code, DiagnosticCode::new(entry.numeric));
         assert_eq!(diagnostic.message.as_ref(), "test message");
         assert_eq!(diagnostic.severity, Severity::Error);
         assert_eq!(diagnostic.span, Span::ZERO);
 
-        // Verify numeric → symbolic lookup consistency
-        let numeric = diagnostic.code;
+        // Verify numeric -> symbolic lookup consistency
+        let numeric = diagnostic.numeric_code;
         let symbolic_back = numeric.symbolic_code();
         assert!(
             symbolic_back.is_some(),
@@ -56,14 +63,15 @@ fn diagnostic_new_never_panics_for_all_registered_codes() {
             continue;
         }
         seen.push(entry.symbolic);
-        let _code = SymbolicCode::from_static(entry.symbolic).expect("registered");
-        // The Diagnostic::new is called with the numeric code directly.
+        let symbolic = SymbolicCode::from_static(entry.symbolic).expect("registered");
+        // The Diagnostic::new is called with the symbolic code directly.
         // It should not panic for any registered code.
         let _diagnostic = Diagnostic::new(
-            DiagnosticCode::new(entry.numeric),
+            symbolic,
             Box::<str>::from("no-panic test"),
             Severity::Warning,
             Span::ZERO,
+            None,
         );
     }
     // If we reach here without panic, the test passes.
@@ -81,10 +89,11 @@ fn diagnostic_new_preserves_severity() {
         (Severity::Info, "Info"),
     ] {
         let diagnostic = Diagnostic::new(
-            DiagnosticCode::new(0x0101),
+            duplicate_key_code(),
             Box::<str>::from("test"),
             *sev,
             Span::ZERO,
+            None,
         );
         assert_eq!(
             diagnostic.severity, *sev,
@@ -97,10 +106,11 @@ fn diagnostic_new_preserves_severity() {
 #[test]
 fn diagnostic_new_preserves_message() {
     let diagnostic = Diagnostic::new(
-        DiagnosticCode::new(0x0101),
+        duplicate_key_code(),
         Box::<str>::from("custom diagnostic message"),
         Severity::Error,
         Span::ZERO,
+        None,
     );
     assert_eq!(diagnostic.message.as_ref(), "custom diagnostic message");
 }
@@ -109,28 +119,31 @@ fn diagnostic_new_preserves_message() {
 fn diagnostic_new_preserves_span() {
     let span = Span::new(10, 20);
     let diagnostic = Diagnostic::new(
-        DiagnosticCode::new(0x0101),
+        duplicate_key_code(),
         Box::<str>::from("test"),
         Severity::Error,
         span,
+        None,
     );
     assert_eq!(diagnostic.span, span);
 }
 
 #[test]
 fn diagnostic_identity_property_code_round_trip() {
-    // For each registry entry, construct Diagnostic and verify code.code() == expected
+    // For each registry entry, construct Diagnostic and verify numeric_code.code() == expected
     for entry in CODE_REGISTRY {
+        let symbolic = SymbolicCode::from_static(entry.symbolic).expect("must be registered");
         let diagnostic = Diagnostic::new(
-            DiagnosticCode::new(entry.numeric),
+            symbolic,
             Box::<str>::from("round-trip test"),
             Severity::Warning,
             Span::ZERO,
+            None,
         );
         assert_eq!(
-            diagnostic.code.code(),
+            diagnostic.numeric_code.code(),
             entry.numeric,
-            "diagnostic.code.code() should match entry.numeric for '{}'",
+            "diagnostic.numeric_code.code() should match entry.numeric for '{}'",
             entry.symbolic
         );
     }

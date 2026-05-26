@@ -29,7 +29,10 @@ fn symbolic_code_serialize_produces_json_string_of_symbolic_name() {
 fn symbolic_code_serialize_never_outputs_numeric_format() {
     let code = SymbolicCode::from_static("DUPLICATE_KEY").expect("registered");
     let json = serde_json::to_string(&code).expect("serialize");
-    let numeric_fmt = format!("\"E{:04X}\"", code.numeric_code());
+    let num = code
+        .numeric_code()
+        .expect("DUPLICATE_KEY must be registered");
+    let numeric_fmt = format!("\"E{:04X}\"", num);
     assert_ne!(
         json, numeric_fmt,
         "Serialize must NOT produce numeric format '{}'",

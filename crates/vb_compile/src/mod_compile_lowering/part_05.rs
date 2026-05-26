@@ -269,6 +269,43 @@ pub(crate) fn digest_step_primitive(
                 }
             }
         }
+        vb_yaml::ast::StepPrimitive::Collect {
+            variable,
+            source,
+            pages,
+            items,
+            body,
+        } => {
+            hasher.update(b"collect");
+            hasher.update(b":variable:");
+            hasher.update(variable.as_bytes());
+            hasher.update(b":source:");
+            hasher.update(source.as_bytes());
+            hasher.update(b":pages:");
+            match pages {
+                Some(value) => {
+                    hasher.update(b"some");
+                    hasher.update(&value.to_le_bytes());
+                }
+                None => {
+                    hasher.update(b"none");
+                }
+            }
+            hasher.update(b":items:");
+            match items {
+                Some(value) => {
+                    hasher.update(b"some");
+                    hasher.update(&value.to_le_bytes());
+                }
+                None => {
+                    hasher.update(b"none");
+                }
+            }
+            hasher.update(b":body:");
+            for step in body {
+                digest_sub_step(hasher, step)?;
+            }
+        }
         vb_yaml::ast::StepPrimitive::Wait { event, timeout } => {
             hasher.update(b"wait");
             match event {

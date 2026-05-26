@@ -145,6 +145,7 @@ fn diagnostics_parse_display_and_own_messages() {
         Box::<str>::from("invalid program counter"),
         Severity::Error,
         Span::ZERO,
+        None,
     )
     .expect("0x0101 should be registered in CODE_REGISTRY");
 

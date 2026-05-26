@@ -18,20 +18,38 @@ pub enum ValidationError {
     ForbiddenYamlFeature,
     UnknownTopLevelField,
     UnknownStepField,
-    MissingRequiredField { field: &'static str },
-    InvalidVersion { version: &'static str },
-    InvalidId { id: &'static str },
-    ReservedId { id: &'static str },
-    DuplicateId { id: &'static str },
+    MissingRequiredField {
+        field: &'static str,
+    },
+    InvalidVersion {
+        version: &'static str,
+    },
+    InvalidId {
+        id: &'static str,
+    },
+    ReservedId {
+        id: &'static str,
+    },
+    DuplicateId {
+        id: &'static str,
+    },
     MultipleStepPrimitives,
     MissingStepPrimitive,
-    UnknownReference { reference: &'static str },
-    FutureReference { reference: &'static str },
-    SecretNotDeclared { secret: &'static str },
+    UnknownReference {
+        reference: &'static str,
+    },
+    FutureReference {
+        reference: &'static str,
+    },
+    SecretNotDeclared {
+        secret: &'static str,
+    },
     DirectRuntimeReference,
     InvalidThenTarget,
     ControlFlowCycle,
-    UnreachableStep { step: &'static str },
+    UnreachableStep {
+        step: &'static str,
+    },
     InvalidChoose,
     InvalidForEach,
     InvalidTogether,
@@ -44,34 +62,97 @@ pub enum ValidationError {
     InvalidRetry,
     InvalidOnError,
     SecretResultLeak,
-    TypeMismatch { expected: &'static str, found: &'static str },
+    TypeMismatch {
+        expected: &'static str,
+        found: &'static str,
+    },
     PayloadTooLarge,
-    LimitRequired { resource: &'static str },
-    LimitExceeded { resource: &'static str },
-    UnsupportedTrigger { trigger: &'static str },
+    LimitRequired {
+        resource: &'static str,
+    },
+    LimitExceeded {
+        resource: &'static str,
+    },
+    UnsupportedTrigger {
+        trigger: &'static str,
+    },
     HttpTriggerOutOfCore,
-    ExpressionStackExceeded { declared: u32, limit: u32 },
-    ExpressionStackMismatch { expr_index: u32, declared: u32, computed: u32 },
-    AccessorSlotOutOfRange { accessor_index: u32, slot: u16, slot_count: u16 },
-    AccessorPathInvalid { accessor_index: u32, segment_index: u32 },
-    SlotReferenceOutOfRange { slot: u16, slot_count: u16, context: &'static str },
-    LoopBodyStepOutOfRange { step: &'static str, node_count: u32, source_node: &'static str, label: &'static str },
+    ExpressionStackExceeded {
+        declared: u32,
+        limit: u32,
+    },
+    ExpressionStackMismatch {
+        expr_index: u32,
+        declared: u32,
+        computed: u32,
+    },
+    AccessorSlotOutOfRange {
+        accessor_index: u32,
+        slot: u16,
+        slot_count: u16,
+    },
+    AccessorPathInvalid {
+        accessor_index: u32,
+        segment_index: u32,
+    },
+    SlotReferenceOutOfRange {
+        slot: u16,
+        slot_count: u16,
+        context: &'static str,
+    },
+    LoopBodyStepOutOfRange {
+        step: &'static str,
+        node_count: u32,
+        source_node: &'static str,
+        label: &'static str,
+    },
     SlotDependencyCycle,
-    NodeKindConstraintViolation { node_kind: &'static str },
-    ActionContractMissing { action: &'static str },
-    ActionContractOrphan { action: &'static str },
-    SlotTypeInconsistency { slot_name: &'static str },
+    NodeKindConstraintViolation {
+        node_kind: &'static str,
+    },
+    ActionContractMissing {
+        action: &'static str,
+    },
+    ActionContractOrphan {
+        action: &'static str,
+    },
+    SlotTypeInconsistency {
+        slot_name: &'static str,
+    },
     NonDeterministicPath,
     CapabilityNameEmpty,
-    CapabilityNameTooLong { name: &'static str },
-    CapabilityNameInvalid { name: &'static str },
-    CapabilityActionMismatch { capability: &'static str, action: &'static str },
-    CapabilityDuplicate { name: &'static str },
-    AccessorPathTooDeep { accessor_index: u32, depth: u32, max: u32 },
-    AccessorSymbolOutOfBounds { accessor_index: u32, segment_index: u32, symbol: u32, symbols_count: u32 },
+    CapabilityNameTooLong {
+        name: &'static str,
+    },
+    CapabilityNameInvalid {
+        name: &'static str,
+    },
+    CapabilityActionMismatch {
+        capability: &'static str,
+        action: &'static str,
+    },
+    CapabilityDuplicate {
+        name: &'static str,
+    },
+    AccessorPathTooDeep {
+        accessor_index: u32,
+        depth: u32,
+        max: u32,
+    },
+    AccessorSymbolOutOfBounds {
+        accessor_index: u32,
+        segment_index: u32,
+        symbol: u32,
+        symbols_count: u32,
+    },
     MissingSchemaVersion,
-    CueVetFailed { file: &'static str },
-    VersionMonotonicityBreach { expected: &'static str, actual: &'static str },
+    CueVetFailed {
+        file: &'static str,
+    },
+    VersionMonotonicityBreach {
+        expected: &'static str,
+        actual: &'static str,
+    },
 }
 
 /// Minimal model of SymbolicCode.
@@ -120,53 +201,118 @@ impl ValidationError {
             ValidationError::LimitExceeded { .. } => SymbolicCode("LIMIT_EXCEEDED"),
             ValidationError::UnsupportedTrigger { .. } => SymbolicCode("UNSUPPORTED_TRIGGER"),
             ValidationError::HttpTriggerOutOfCore => SymbolicCode("HTTP_TRIGGER_OUT_OF_CORE"),
-            ValidationError::ExpressionStackExceeded { .. } => SymbolicCode("EXPRESSION_STACK_EXCEEDED"),
-            ValidationError::ExpressionStackMismatch { .. } => SymbolicCode("EXPRESSION_STACK_MISMATCH"),
-            ValidationError::AccessorSlotOutOfRange { .. } => SymbolicCode("ACCESSOR_SLOT_OUT_OF_RANGE"),
+            ValidationError::ExpressionStackExceeded { .. } => {
+                SymbolicCode("EXPRESSION_STACK_EXCEEDED")
+            }
+            ValidationError::ExpressionStackMismatch { .. } => {
+                SymbolicCode("EXPRESSION_STACK_MISMATCH")
+            }
+            ValidationError::AccessorSlotOutOfRange { .. } => {
+                SymbolicCode("ACCESSOR_SLOT_OUT_OF_RANGE")
+            }
             ValidationError::AccessorPathInvalid { .. } => SymbolicCode("ACCESSOR_PATH_INVALID"),
-            ValidationError::SlotReferenceOutOfRange { .. } => SymbolicCode("SLOT_REFERENCE_OUT_OF_RANGE"),
-            ValidationError::LoopBodyStepOutOfRange { .. } => SymbolicCode("LOOP_BODY_STEP_OUT_OF_RANGE"),
+            ValidationError::SlotReferenceOutOfRange { .. } => {
+                SymbolicCode("SLOT_REFERENCE_OUT_OF_RANGE")
+            }
+            ValidationError::LoopBodyStepOutOfRange { .. } => {
+                SymbolicCode("LOOP_BODY_STEP_OUT_OF_RANGE")
+            }
             ValidationError::SlotDependencyCycle => SymbolicCode("SLOT_DEPENDENCY_CYCLE"),
-            ValidationError::NodeKindConstraintViolation { .. } => SymbolicCode("NODE_KIND_CONSTRAINT_VIOLATION"),
-            ValidationError::ActionContractMissing { .. } => SymbolicCode("ACTION_CONTRACT_MISSING"),
+            ValidationError::NodeKindConstraintViolation { .. } => {
+                SymbolicCode("NODE_KIND_CONSTRAINT_VIOLATION")
+            }
+            ValidationError::ActionContractMissing { .. } => {
+                SymbolicCode("ACTION_CONTRACT_MISSING")
+            }
             ValidationError::ActionContractOrphan { .. } => SymbolicCode("ACTION_CONTRACT_ORPHAN"),
-            ValidationError::SlotTypeInconsistency { .. } => SymbolicCode("SLOT_TYPE_INCONSISTENCY"),
+            ValidationError::SlotTypeInconsistency { .. } => {
+                SymbolicCode("SLOT_TYPE_INCONSISTENCY")
+            }
             ValidationError::NonDeterministicPath => SymbolicCode("NON_DETERMINISTIC_PATH"),
             ValidationError::CapabilityNameEmpty => SymbolicCode("CAPABILITY_NAME_EMPTY"),
-            ValidationError::CapabilityNameTooLong { .. } => SymbolicCode("CAPABILITY_NAME_TOO_LONG"),
-            ValidationError::CapabilityNameInvalid { .. } => SymbolicCode("CAPABILITY_NAME_INVALID"),
-            ValidationError::CapabilityActionMismatch { .. } => SymbolicCode("CAPABILITY_ACTION_MISMATCH"),
+            ValidationError::CapabilityNameTooLong { .. } => {
+                SymbolicCode("CAPABILITY_NAME_TOO_LONG")
+            }
+            ValidationError::CapabilityNameInvalid { .. } => {
+                SymbolicCode("CAPABILITY_NAME_INVALID")
+            }
+            ValidationError::CapabilityActionMismatch { .. } => {
+                SymbolicCode("CAPABILITY_ACTION_MISMATCH")
+            }
             ValidationError::CapabilityDuplicate { .. } => SymbolicCode("CAPABILITY_DUPLICATE"),
             ValidationError::AccessorPathTooDeep { .. } => SymbolicCode("ACCESSOR_PATH_TOO_DEEP"),
-            ValidationError::AccessorSymbolOutOfBounds { .. } => SymbolicCode("ACCESSOR_SYMBOL_OUT_OF_BOUNDS"),
+            ValidationError::AccessorSymbolOutOfBounds { .. } => {
+                SymbolicCode("ACCESSOR_SYMBOL_OUT_OF_BOUNDS")
+            }
             ValidationError::MissingSchemaVersion => SymbolicCode("MISSING_SCHEMA_VERSION"),
             ValidationError::CueVetFailed { .. } => SymbolicCode("CUE_VET_FAILED"),
-            ValidationError::VersionMonotonicityBreach { .. } => SymbolicCode("VERSION_MONOTONICITY_BREACH"),
+            ValidationError::VersionMonotonicityBreach { .. } => {
+                SymbolicCode("VERSION_MONOTONICITY_BREACH")
+            }
         }
     }
 }
 
 /// Known registered symbolic code names (subset of full registry).
 const REGISTERED_CODES: &[&str] = &[
-    "DUPLICATE_KEY", "FORBIDDEN_YAML_FEATURE", "UNKNOWN_TOP_LEVEL_FIELD",
-    "UNKNOWN_STEP_FIELD", "MISSING_REQUIRED_FIELD", "INVALID_VERSION",
-    "INVALID_ID", "RESERVED_ID", "DUPLICATE_ID", "MULTIPLE_STEP_PRIMITIVES",
-    "MISSING_STEP_PRIMITIVE", "UNKNOWN_REFERENCE", "FUTURE_REFERENCE",
-    "SECRET_NOT_DECLARED", "DIRECT_RUNTIME_REFERENCE", "INVALID_THEN_TARGET",
-    "CONTROL_FLOW_CYCLE", "UNREACHABLE_STEP", "INVALID_CHOOSE", "INVALID_FOR_EACH",
-    "INVALID_TOGETHER", "INVALID_COLLECT", "INVALID_REDUCE", "INVALID_REPEAT",
-    "INVALID_WAIT", "INVALID_ASK", "INVALID_FINISH", "INVALID_RETRY",
-    "INVALID_ON_ERROR", "SECRET_RESULT_LEAK", "TYPE_MISMATCH", "PAYLOAD_TOO_LARGE",
-    "LIMIT_REQUIRED", "LIMIT_EXCEEDED", "UNSUPPORTED_TRIGGER", "HTTP_TRIGGER_OUT_OF_CORE",
-    "EXPRESSION_STACK_EXCEEDED", "EXPRESSION_STACK_MISMATCH",
-    "ACCESSOR_SLOT_OUT_OF_RANGE", "ACCESSOR_PATH_INVALID",
-    "SLOT_REFERENCE_OUT_OF_RANGE", "LOOP_BODY_STEP_OUT_OF_RANGE",
-    "SLOT_DEPENDENCY_CYCLE", "NODE_KIND_CONSTRAINT_VIOLATION",
-    "ACTION_CONTRACT_MISSING", "ACTION_CONTRACT_ORPHAN", "SLOT_TYPE_INCONSISTENCY",
-    "NON_DETERMINISTIC_PATH", "CAPABILITY_NAME_EMPTY", "CAPABILITY_NAME_TOO_LONG",
-    "CAPABILITY_NAME_INVALID", "CAPABILITY_ACTION_MISMATCH", "CAPABILITY_DUPLICATE",
-    "ACCESSOR_PATH_TOO_DEEP", "ACCESSOR_SYMBOL_OUT_OF_BOUNDS",
-    "MISSING_SCHEMA_VERSION", "CUE_VET_FAILED", "VERSION_MONOTONICITY_BREACH",
+    "DUPLICATE_KEY",
+    "FORBIDDEN_YAML_FEATURE",
+    "UNKNOWN_TOP_LEVEL_FIELD",
+    "UNKNOWN_STEP_FIELD",
+    "MISSING_REQUIRED_FIELD",
+    "INVALID_VERSION",
+    "INVALID_ID",
+    "RESERVED_ID",
+    "DUPLICATE_ID",
+    "MULTIPLE_STEP_PRIMITIVES",
+    "MISSING_STEP_PRIMITIVE",
+    "UNKNOWN_REFERENCE",
+    "FUTURE_REFERENCE",
+    "SECRET_NOT_DECLARED",
+    "DIRECT_RUNTIME_REFERENCE",
+    "INVALID_THEN_TARGET",
+    "CONTROL_FLOW_CYCLE",
+    "UNREACHABLE_STEP",
+    "INVALID_CHOOSE",
+    "INVALID_FOR_EACH",
+    "INVALID_TOGETHER",
+    "INVALID_COLLECT",
+    "INVALID_REDUCE",
+    "INVALID_REPEAT",
+    "INVALID_WAIT",
+    "INVALID_ASK",
+    "INVALID_FINISH",
+    "INVALID_RETRY",
+    "INVALID_ON_ERROR",
+    "SECRET_RESULT_LEAK",
+    "TYPE_MISMATCH",
+    "PAYLOAD_TOO_LARGE",
+    "LIMIT_REQUIRED",
+    "LIMIT_EXCEEDED",
+    "UNSUPPORTED_TRIGGER",
+    "HTTP_TRIGGER_OUT_OF_CORE",
+    "EXPRESSION_STACK_EXCEEDED",
+    "EXPRESSION_STACK_MISMATCH",
+    "ACCESSOR_SLOT_OUT_OF_RANGE",
+    "ACCESSOR_PATH_INVALID",
+    "SLOT_REFERENCE_OUT_OF_RANGE",
+    "LOOP_BODY_STEP_OUT_OF_RANGE",
+    "SLOT_DEPENDENCY_CYCLE",
+    "NODE_KIND_CONSTRAINT_VIOLATION",
+    "ACTION_CONTRACT_MISSING",
+    "ACTION_CONTRACT_ORPHAN",
+    "SLOT_TYPE_INCONSISTENCY",
+    "NON_DETERMINISTIC_PATH",
+    "CAPABILITY_NAME_EMPTY",
+    "CAPABILITY_NAME_TOO_LONG",
+    "CAPABILITY_NAME_INVALID",
+    "CAPABILITY_ACTION_MISMATCH",
+    "CAPABILITY_DUPLICATE",
+    "ACCESSOR_PATH_TOO_DEEP",
+    "ACCESSOR_SYMBOL_OUT_OF_BOUNDS",
+    "MISSING_SCHEMA_VERSION",
+    "CUE_VET_FAILED",
+    "VERSION_MONOTONICITY_BREACH",
 ];
 
 fn is_registered(name: &str) -> bool {
@@ -213,18 +359,44 @@ mod harnesses {
             ValidationError::InvalidRetry,
             ValidationError::InvalidOnError,
             ValidationError::SecretResultLeak,
-            ValidationError::TypeMismatch { expected: "int", found: "str" },
+            ValidationError::TypeMismatch {
+                expected: "int",
+                found: "str",
+            },
             ValidationError::PayloadTooLarge,
             ValidationError::LimitRequired { resource: "cpu" },
             ValidationError::LimitExceeded { resource: "cpu" },
             ValidationError::UnsupportedTrigger { trigger: "test" },
             ValidationError::HttpTriggerOutOfCore,
-            ValidationError::ExpressionStackExceeded { declared: 10, limit: 5 },
-            ValidationError::ExpressionStackMismatch { expr_index: 0, declared: 5, computed: 10 },
-            ValidationError::AccessorSlotOutOfRange { accessor_index: 0, slot: 99, slot_count: 5 },
-            ValidationError::AccessorPathInvalid { accessor_index: 0, segment_index: 0 },
-            ValidationError::SlotReferenceOutOfRange { slot: 99, slot_count: 5, context: "test" },
-            ValidationError::LoopBodyStepOutOfRange { step: "test", node_count: 10, source_node: "n0", label: "l0" },
+            ValidationError::ExpressionStackExceeded {
+                declared: 10,
+                limit: 5,
+            },
+            ValidationError::ExpressionStackMismatch {
+                expr_index: 0,
+                declared: 5,
+                computed: 10,
+            },
+            ValidationError::AccessorSlotOutOfRange {
+                accessor_index: 0,
+                slot: 99,
+                slot_count: 5,
+            },
+            ValidationError::AccessorPathInvalid {
+                accessor_index: 0,
+                segment_index: 0,
+            },
+            ValidationError::SlotReferenceOutOfRange {
+                slot: 99,
+                slot_count: 5,
+                context: "test",
+            },
+            ValidationError::LoopBodyStepOutOfRange {
+                step: "test",
+                node_count: 10,
+                source_node: "n0",
+                label: "l0",
+            },
             ValidationError::SlotDependencyCycle,
             ValidationError::NodeKindConstraintViolation { node_kind: "test" },
             ValidationError::ActionContractMissing { action: "test" },
@@ -234,13 +406,28 @@ mod harnesses {
             ValidationError::CapabilityNameEmpty,
             ValidationError::CapabilityNameTooLong { name: "too_long" },
             ValidationError::CapabilityNameInvalid { name: "invalid" },
-            ValidationError::CapabilityActionMismatch { capability: "c", action: "a" },
+            ValidationError::CapabilityActionMismatch {
+                capability: "c",
+                action: "a",
+            },
             ValidationError::CapabilityDuplicate { name: "dup" },
-            ValidationError::AccessorPathTooDeep { accessor_index: 0, depth: 10, max: 5 },
-            ValidationError::AccessorSymbolOutOfBounds { accessor_index: 0, segment_index: 0, symbol: 99, symbols_count: 10 },
+            ValidationError::AccessorPathTooDeep {
+                accessor_index: 0,
+                depth: 10,
+                max: 5,
+            },
+            ValidationError::AccessorSymbolOutOfBounds {
+                accessor_index: 0,
+                segment_index: 0,
+                symbol: 99,
+                symbols_count: 10,
+            },
             ValidationError::MissingSchemaVersion,
             ValidationError::CueVetFailed { file: "test.cue" },
-            ValidationError::VersionMonotonicityBreach { expected: "v2", actual: "v1" },
+            ValidationError::VersionMonotonicityBreach {
+                expected: "v2",
+                actual: "v1",
+            },
         ];
 
         for (i, variant) in variants.iter().enumerate() {
@@ -248,16 +435,19 @@ mod harnesses {
             let name = code.0;
 
             // (a) Code must be in the registry
-            assert!(is_registered(name),
-                "Variant {}: code '{}' must be registered", i, name);
+            assert!(
+                is_registered(name),
+                "Variant {}: code '{}' must be registered",
+                i,
+                name
+            );
 
             // (b) Code must have a non-zero numeric value (by construction,
             // all SymbolicCode in the registry have non-zero numeric codes)
             // This is verified by the const-level registry bijection proofs.
 
             // (c) The code must not be empty
-            assert!(!name.is_empty(),
-                "Variant {}: code must not be empty", i);
+            assert!(!name.is_empty(), "Variant {}: code must not be empty", i);
         }
     }
 }

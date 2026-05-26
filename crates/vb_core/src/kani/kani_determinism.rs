@@ -8,10 +8,8 @@
 //! Bound: Each HasSymbolicCode implementor — arbitrary instance (kani::any);
 //! For DiagnosticCode::symbolic_code(): 90-entry registry scan (unwind=100).
 
-use super::kani_symbolic_code_validation::{
-    CODE_REGISTRY, DiagnosticCode, SymbolicCode,
-};
 use super::kani_reverse_lookup::numeric_to_symbolic;
+use super::kani_symbolic_code_validation::{CODE_REGISTRY, DiagnosticCode, SymbolicCode};
 
 /// Trait for types that carry a symbolic diagnostic code.
 pub trait HasSymbolicCode {
@@ -58,13 +56,21 @@ mod harnesses {
         if let Some(sym) = result1 {
             // The symbolic string must actually be in the registry
             let found_in_registry = CODE_REGISTRY.iter().any(|e| e.symbolic == sym.as_str());
-            assert!(found_in_registry, "Returned SymbolicCode must be in the registry");
+            assert!(
+                found_in_registry,
+                "Returned SymbolicCode must be in the registry"
+            );
 
             // And the registry entry's numeric code must match
-            let entry_numeric = CODE_REGISTRY.iter()
+            let entry_numeric = CODE_REGISTRY
+                .iter()
                 .find(|e| e.symbolic == sym.as_str())
                 .map(|e| e.numeric);
-            assert_eq!(entry_numeric, Some(raw), "Registry numeric must match input");
+            assert_eq!(
+                entry_numeric,
+                Some(raw),
+                "Registry numeric must match input"
+            );
         }
     }
 

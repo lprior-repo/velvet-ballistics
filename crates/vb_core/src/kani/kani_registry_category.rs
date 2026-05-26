@@ -62,9 +62,14 @@ mod harnesses {
             let high_byte = (entry.numeric >> 8) & 0xFF;
             let expected = expected_high_byte(entry.category);
             assert_eq!(
-                high_byte, expected,
+                high_byte,
+                expected,
                 "Entry '{}' (code {:04X}, category {:?}): high byte {:02X} != expected {:02X}",
-                entry.symbolic, entry.numeric, category_name(entry.category), high_byte, expected
+                entry.symbolic,
+                entry.numeric,
+                category_name(entry.category),
+                high_byte,
+                expected
             );
         }
     }

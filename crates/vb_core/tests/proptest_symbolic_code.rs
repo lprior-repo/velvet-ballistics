@@ -35,7 +35,7 @@ proptest! {
         let code = code.unwrap();
         prop_assert_eq!(code.as_str(), s);
         let expected_numeric = symbolic_to_numeric(s);
-        prop_assert_eq!(Some(code.numeric_code()), expected_numeric);
+        prop_assert_eq!(code.numeric_code(), expected_numeric);
     }
 
     #[test]
@@ -75,7 +75,7 @@ proptest! {
     fn numeric_code_matches_registry(s in arb_registered_str()) {
         let code = SymbolicCode::from_static(s).unwrap();
         let expected = symbolic_to_numeric(s).unwrap();
-        prop_assert_eq!(code.numeric_code(), expected);
+        prop_assert_eq!(code.numeric_code(), Some(expected));
     }
 
     #[test]
@@ -90,14 +90,18 @@ proptest! {
     fn as_diagnostic_code_matches_registry(s in arb_registered_str()) {
         let code = SymbolicCode::from_static(s).unwrap();
         let expected_num = symbolic_to_numeric(s).unwrap();
-        prop_assert_eq!(code.as_diagnostic_code().code(), expected_num);
+        prop_assert_eq!(
+            code.as_diagnostic_code().map(|c| c.code()),
+            Some(expected_num),
+        );
     }
 
     #[test]
     fn display_formats_as_symbolic_name_not_e_hex(s in arb_registered_str()) {
         let code = SymbolicCode::from_static(s).unwrap();
         let display = code.to_string();
-        let expected_hex = format!("E{:04X}", code.numeric_code());
+        let num = code.numeric_code().expect("registered code must have a numeric code");
+        let expected_hex = format!("E{:04X}", num);
         prop_assert_eq!(&display, s);
         let is_e_hex = display == expected_hex;
         prop_assert!(!is_e_hex);
@@ -106,7 +110,7 @@ proptest! {
     #[test]
     fn numeric_to_symbolic_returns_some_for_registered_codes(s in arb_registered_str()) {
         let code = SymbolicCode::from_static(s).unwrap();
-        let back = numeric_to_symbolic(code.numeric_code());
+        let back = numeric_to_symbolic(code.numeric_code().expect("registered code must have a numeric code"));
         prop_assert!(back.is_some());
     }
 }

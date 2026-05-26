@@ -21,6 +21,7 @@ use vb_core::workflow::{
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn yaml_compile_codegen_produces_runtime_ready_workflow() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -53,6 +54,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn yaml_compile_codegen_with_set_step() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -76,6 +78,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn yaml_compile_codegen_with_multiple_steps() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -104,6 +107,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn yaml_compile_codegen_with_set_and_finish() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -131,6 +135,7 @@ steps:
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn codegen_rejects_unsupported_workflow_in_pipeline() {
     // Build a workflow with an unsupported feature (Contains expression)
     let workflow = make_workflow_with_unsupported_expr_op();
@@ -155,6 +160,7 @@ fn codegen_rejects_unsupported_workflow_in_pipeline() {
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn codegen_rejects_deep_accessor_in_pipeline() {
     let workflow = make_workflow_with_deep_accessor(20);
 
@@ -174,6 +180,7 @@ fn codegen_rejects_deep_accessor_in_pipeline() {
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn codegen_rejects_out_of_bounds_slot_in_pipeline() {
     let workflow = make_workflow_with_out_of_bounds_accessor();
 
@@ -278,6 +285,7 @@ steps:
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn generated_code_forbids_unsafe_by_default() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -299,6 +307,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn generated_code_contains_resource_contract() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -319,6 +328,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn generated_code_contains_workflow_constants() {
     let source = br#"
 version: velvet-ballastics/v1

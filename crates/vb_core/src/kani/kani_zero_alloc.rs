@@ -10,7 +10,7 @@
 //! Bound: Code paths: from_static, Display::fmt, numeric_code, as_diagnostic_code.
 //! Format strings bounded to ~50 chars.
 
-use super::kani_symbolic_code_validation::{CODE_REGISTRY, SymbolicCode, DiagnosticCode};
+use super::kani_symbolic_code_validation::{CODE_REGISTRY, DiagnosticCode, SymbolicCode};
 
 /// Stub for heap allocation — verifies no path triggers alloc.
 /// In production Kani run, this would use `kani::stub` to intercept
@@ -68,10 +68,14 @@ const fn as_diagnostic_code_stub(sym: SymbolicCode) -> DiagnosticCode {
 const fn string_eq(a: &str, b: &str) -> bool {
     let a_bytes = a.as_bytes();
     let b_bytes = b.as_bytes();
-    if a_bytes.len() != b_bytes.len() { return false; }
+    if a_bytes.len() != b_bytes.len() {
+        return false;
+    }
     let mut i = 0;
     while i < a_bytes.len() {
-        if a_bytes[i] != b_bytes[i] { return false; }
+        if a_bytes[i] != b_bytes[i] {
+            return false;
+        }
         i += 1;
     }
     true

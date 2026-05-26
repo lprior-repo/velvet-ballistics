@@ -76,10 +76,14 @@ const fn as_diagnostic_code(sym: SymbolicCode) -> DiagnosticCode {
 }
 
 const fn string_eq_bytes(a: &[u8], b: &[u8]) -> bool {
-    if a.len() != b.len() { return false; }
+    if a.len() != b.len() {
+        return false;
+    }
     let mut i = 0;
     while i < a.len() {
-        if a[i] != b[i] { return false; }
+        if a[i] != b[i] {
+            return false;
+        }
         i += 1;
     }
     true
@@ -134,10 +138,20 @@ mod harnesses {
             );
             // The invariant: numeric_code reverse-lookups to the original code
             let reversed = diagnostic.numeric_code.symbolic_code();
-            assert!(reversed.is_some(), "numeric_code must resolve to a SymbolicCode");
-            assert_eq!(reversed, Some(sym), "Reverse lookup must return the original SymbolicCode");
+            assert!(
+                reversed.is_some(),
+                "numeric_code must resolve to a SymbolicCode"
+            );
+            assert_eq!(
+                reversed,
+                Some(sym),
+                "Reverse lookup must return the original SymbolicCode"
+            );
             // Also verify code matches
-            assert_eq!(diagnostic.code, sym, "Diagnostic.code must match the input SymbolicCode");
+            assert_eq!(
+                diagnostic.code, sym,
+                "Diagnostic.code must match the input SymbolicCode"
+            );
         }
     }
 
@@ -158,8 +172,11 @@ mod harnesses {
             );
             // The core invariant: no mismatch between symbolic and numeric codes
             let numeric_sym = diagnostic.numeric_code.symbolic_code();
-            assert_eq!(numeric_sym, Some(sym),
-                "Invariant: numeric_code.symbolic_code() must equal Some(code)");
+            assert_eq!(
+                numeric_sym,
+                Some(sym),
+                "Invariant: numeric_code.symbolic_code() must equal Some(code)"
+            );
 
             // Also verify that numeric_code's inner value matches the registry
             assert_eq!(

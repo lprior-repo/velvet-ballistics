@@ -20,7 +20,7 @@ tasks:
         if [ -f "$spec" ]; then
           echo "Checking TLC model: $spec"
           TMPDIR="$PWD/target/tlc-tmp" flock --shared target/moon-locks/source-mutation.lock \
-            java -jar tla2tools.jar -terse -death -config "$(echo $spec | sed 's/\.tla$/.cfg/')" "$spec" || true
+            java -jar tla2tools.jar -terse -death -config "$(echo $spec | sed 's/\.tla$/.cfg/')" "$spec"
         fi
       done
     toolchains:

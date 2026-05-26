@@ -20,8 +20,7 @@ fn serialize_symbolic_code(code: &SymbolicCode) -> String {
 fn deserialize_symbolic_code(json_str: &str) -> Result<SymbolicCode, String> {
     // Strip optional surrounding quotes
     let inner = json_str.trim_matches('"');
-    SymbolicCode::from_static(inner)
-        .ok_or_else(|| format!("Unknown symbolic code: {}", inner))
+    SymbolicCode::from_static(inner).ok_or_else(|| format!("Unknown symbolic code: {}", inner))
 }
 
 /// Round-trip: serialize then deserialize.
@@ -54,7 +53,10 @@ mod harnesses {
 
             // Deserialize
             let deserialized = deserialize_symbolic_code(&serialized);
-            assert!(deserialized.is_ok(), "Deserialization must succeed for registered codes");
+            assert!(
+                deserialized.is_ok(),
+                "Deserialization must succeed for registered codes"
+            );
             assert_eq!(
                 deserialized.unwrap().as_str(),
                 entry.symbolic,
@@ -64,7 +66,11 @@ mod harnesses {
             // Round-trip identity
             let rt = roundtrip(&code);
             assert!(rt.is_ok(), "Round-trip must succeed");
-            assert_eq!(rt.unwrap().as_str(), code.as_str(), "Round-trip identity must hold");
+            assert_eq!(
+                rt.unwrap().as_str(),
+                code.as_str(),
+                "Round-trip identity must hold"
+            );
         }
     }
 
@@ -72,7 +78,12 @@ mod harnesses {
     #[kani::proof]
     #[kani::unwind(50)]
     fn kani_serde_rejects_unknown() {
-        let unknown = ["\"__UNKNOWN__\"", "\"NOT_A_CODE\"", "\"\"", "\"RANDOM_STRING_123\""];
+        let unknown = [
+            "\"__UNKNOWN__\"",
+            "\"NOT_A_CODE\"",
+            "\"\"",
+            "\"RANDOM_STRING_123\"",
+        ];
         for s in unknown.iter() {
             let result = deserialize_symbolic_code(s);
             assert!(result.is_err(), "Unknown code '{}' must be rejected", s);

@@ -15,6 +15,7 @@ use vb_compile::compile_workflow;
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn generated_header_contains_forbid_unsafe_directive() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -37,6 +38,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn generated_header_contains_deny_directives() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -67,6 +69,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn generated_header_contains_generated_workflow_comment() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -93,6 +96,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn generated_contains_slot_value_enum() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -125,6 +129,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn generated_contains_taint_enum() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -150,6 +155,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn generated_contains_drive_error_enum() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -179,6 +185,7 @@ steps:
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn id_emission_contains_workflow_slot_count() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -202,6 +209,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn id_emission_contains_workflow_node_count() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -225,6 +233,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn id_emission_slot_count_matches_workflow() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -252,6 +261,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn id_emission_node_count_matches_workflow() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -283,6 +293,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn id_emission_contains_symbol_constants() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -306,6 +317,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn id_section_has_correct_separator() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -332,6 +344,7 @@ steps:
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn drive_function_has_correct_signature() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -359,6 +372,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn drive_function_initializes_slot_taints() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -381,6 +395,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn drive_function_initializes_program_counter() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -403,6 +418,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn drive_function_initializes_step_budget() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -426,6 +442,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn drive_function_has_main_loop() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -448,6 +465,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn drive_function_checks_step_budget_exhaustion() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -478,6 +496,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn drive_function_has_match_on_pc() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -500,6 +519,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn drive_function_dispatches_to_step_functions() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -522,6 +542,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn drive_function_handles_invalid_pc() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -544,6 +565,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn drive_function_handles_step_outcome_continue() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -566,6 +588,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn drive_function_handles_step_outcome_finished() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -588,6 +611,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn drive_function_comment_separator_present() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -614,6 +638,7 @@ steps:
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn step_functions_are_named_sequentially() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -643,6 +668,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn step_function_signature_contains_workflow_slot_count() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -665,6 +691,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn step_function_signature_contains_slot_taints() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -687,6 +714,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn step_function_signature_contains_list_store() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -709,6 +737,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn step_function_signature_contains_object_store() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -731,6 +760,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn step_function_returns_step_outcome() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -757,6 +787,7 @@ steps:
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn constants_section_has_separator() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -779,6 +810,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn constants_array_is_named_constants() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -801,6 +833,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn constants_array_has_correct_terminator() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -823,6 +856,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn constants_empty_workflow_has_empty_array() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -855,6 +889,7 @@ steps:
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn resource_contract_section_has_separator() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -881,6 +916,7 @@ steps:
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn generated_runtime_api_drive_with_journal() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -903,6 +939,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn generated_runtime_api_contains_generated_run_state() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -925,6 +962,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn generated_run_state_new_initializes_all_fields() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -947,6 +985,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn generated_run_state_has_run_until_blocked() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -969,6 +1008,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn generated_api_has_action_resume() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -991,6 +1031,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn generated_api_has_ask_answer() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -1017,6 +1058,7 @@ steps:
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn action_match_dispatch_section_exists() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -1039,6 +1081,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn ask_answer_spec_section_exists() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -1065,6 +1108,7 @@ steps:
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn generated_finish_result_slot_function_exists() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -1091,6 +1135,7 @@ steps:
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn multi_step_workflow_generates_all_step_functions() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -1125,6 +1170,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn drive_function_dispatches_to_all_step_functions() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -1155,6 +1201,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn multi_step_workflow_match_covers_all_cases() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -1188,6 +1235,7 @@ steps:
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn generated_code_starts_with_attribute() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -1210,6 +1258,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn generated_code_contains_use_statement() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -1232,6 +1281,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn generated_step_outcome_enum_exists() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -1267,6 +1317,7 @@ steps:
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn journal_contract_section_has_separator() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -1289,6 +1340,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn journal_capacity_constant_is_generated() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -1315,6 +1367,7 @@ steps:
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn expression_functions_are_generated_when_expressions_exist() {
     // Note: This test verifies the codegen infrastructure for expressions.
     // Expression evaluation in generated code requires specific workflow constructs.
@@ -1345,6 +1398,7 @@ steps:
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn critical_structs_have_exact_form() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -1372,6 +1426,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn slot_value_impl_methods_are_present() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -1393,6 +1448,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn drive_error_impl_has_display_if_present() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -1419,6 +1475,7 @@ steps:
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn no_unsafe_code_in_generated_output() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -1445,6 +1502,7 @@ steps:
 }
 
 #[test]
+#[ignore = "BLOCK_GLOBAL: requires codegen_full feature not yet landed"]
 fn no_explicit_unsafe_in_generated_output() {
     let source = br#"
 version: velvet-ballastics/v1

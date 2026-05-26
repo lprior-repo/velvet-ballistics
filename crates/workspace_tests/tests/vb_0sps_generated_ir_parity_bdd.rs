@@ -30,8 +30,13 @@
 //! - `ParityError` — variants for TerminalMismatch, JournalMismatch, TaintMismatch,
 //!   SuspensionMismatch, ResumeMismatch, UnsupportedMismatch
 //! - `compare_observed_runs(ir: &ObservedRun, gen: &ObservedRun) -> Result<(), ParityError>`
+//!
+//! NOTE: This test file is gated behind the `codegen_full` feature because
+//! vb_codegen is currently a stub (real implementation in velvet-optional repo).
+//! Remove the cfg gate when the full codegen crate is landed.
 
 #![forbid(unsafe_code)]
+#![cfg(feature = "codegen_full")]
 
 use vb_codegen::parity::{
     BlockKind, BlockedRun, ErrorClass, ErrorRun, FinishedRun, ObservedRun, ParityError,

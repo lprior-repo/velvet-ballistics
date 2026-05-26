@@ -5,5 +5,5 @@ pub(crate) mod agent_context;
 pub mod commands_diff;
 pub mod commands_incident;
 pub mod lifecycle;
-
+pub mod naming_scan;
 pub mod status;

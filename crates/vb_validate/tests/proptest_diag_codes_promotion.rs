@@ -170,7 +170,9 @@ fn all_validation_error_variant_codes() -> Vec<(String, u16)> {
         .map(|v| {
             let code = v.code();
             let name = code.as_str().to_string();
-            let numeric = code.numeric_code();
+            let numeric = code
+                .numeric_code()
+                .expect("all validation error codes must be registered");
             (name, numeric)
         })
         .collect()

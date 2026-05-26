@@ -404,9 +404,7 @@ pub enum CoreError {
         event_seq: Option<EventSeq>,
     },
     /// Evidence collection capacity was exceeded.
-    #[error(
-        "collect evidence capacity exceeded: run {run_id:?} slot {slot:?} capacity {capacity}"
-    )]
+    #[error("collect evidence capacity exceeded: run {run_id:?} slot {slot:?} capacity {capacity}")]
     CollectEvidenceCapacityExceeded {
         /// Run identifier.
         run_id: RunId,

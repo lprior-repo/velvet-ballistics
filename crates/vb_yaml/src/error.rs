@@ -144,7 +144,8 @@ impl HasSymbolicCode for YamlError {
             | YamlError::MultipleDocuments { .. }
             | YamlError::AmbiguousScalar { .. }
             | YamlError::ParseError { .. }
-            | YamlError::UnsupportedFeature { .. } => "FORBIDDEN_YAML_FEATURE",
+            | YamlError::UnsupportedFeature { .. }
+            | YamlError::LegacyPrimitive { .. } => "FORBIDDEN_YAML_FEATURE",
             YamlError::SourceTooLarge { .. } => "PAYLOAD_TOO_LARGE",
             YamlError::NestingTooDeep { .. }
             | YamlError::NodeLimitExceeded { .. }
@@ -152,8 +153,7 @@ impl HasSymbolicCode for YamlError {
             | YamlError::SequenceTooLong { .. }
             | YamlError::MappingTooLarge { .. } => "LIMIT_EXCEEDED",
             YamlError::UnknownField { .. } => "UNKNOWN_TOP_LEVEL_FIELD",
-            YamlError::EmptySource
-            | YamlError::MissingField { .. } => "MISSING_REQUIRED_FIELD",
+            YamlError::EmptySource | YamlError::MissingField { .. } => "MISSING_REQUIRED_FIELD",
             YamlError::FieldShape { .. } => "TYPE_MISMATCH",
             YamlError::UnsupportedTrigger { .. } => "UNSUPPORTED_TRIGGER",
         };
