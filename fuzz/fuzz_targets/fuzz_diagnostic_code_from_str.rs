@@ -1,11 +1,12 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
+use std::str::FromStr;
 
-/// Fuzz target: DiagnosticCode::from_str parsing.
-///
-/// Risk: Panic on non-ASCII, control characters, extremely long inputs.
-/// The FromStr impl must handle all inputs without panic (only Err returns).
+// Fuzz target: DiagnosticCode::from_str parsing.
+//
+// Risk: panic on non-ASCII, control characters, extremely long inputs.
+// The FromStr impl must handle all inputs without panic (only Err returns).
 fuzz_target!(|data: &[u8]| {
     // Convert bytes to a string. If the input is not valid UTF-8, we
     // skip it — DiagnosticCode only accepts valid UTF-8 strings.

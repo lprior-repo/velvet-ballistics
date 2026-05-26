@@ -3153,7 +3153,7 @@ fn build_wait_workflow_yaml(event: &str, timeout: &str) -> String {
     if !timeout.is_empty() {
         wait.push_str(&format!("\n      timeout: \"{timeout}\""));
     }
-    format!("version: velvet-ballastics/v1\nname: fuzz-wait\nwhen:\n  manual: {{}}\nsteps:\n{wait}\n  - id: d\n    finish:\n      result: 0\n")
+    format!("version: velvet-ballistics/v1\nname: fuzz-wait\nwhen:\n  manual: {{}}\nsteps:\n{wait}\n  - id: d\n    finish:\n      result: 0\n")
 }
 
 /// Builds a Wait workflow YAML without a timeout field.
@@ -3163,7 +3163,7 @@ fn build_wait_workflow_yaml_no_timeout(event: &str) -> String {
     } else {
         format!("  - id: w\n    wait:\n      event: \"{event}\"")
     };
-    format!("version: velvet-ballastics/v1\nname: fuzz-wait\nwhen:\n  manual: {{}}\nsteps:\n{wait}\n  - id: d\n    finish:\n      result: 0\n")
+    format!("version: velvet-ballistics/v1\nname: fuzz-wait\nwhen:\n  manual: {{}}\nsteps:\n{wait}\n  - id: d\n    finish:\n      result: 0\n")
 }
 
 /// Builds a Wait workflow YAML from Option<(String, String)> tuples.
@@ -3175,5 +3175,129 @@ fn build_wait_workflow_from_opts(event: &Option<String>, timeout: &Option<String
     if let Some(t) = timeout {
         wait.push_str(&format!("\n      timeout: \"{t}\""));
     }
-    format!("version: velvet-ballastics/v1\nname: fuzz-wait\nwhen:\n  manual: {{}}\nsteps:\n{wait}\n  - id: d\n    finish:\n      result: 0\n")
+    format!("version: velvet-ballistics/v1\nname: fuzz-wait\nwhen:\n  manual: {{}}\nsteps:\n{wait}\n  - id: d\n    finish:\n      result: 0\n")
+}
+
+/// Exercises the public canonical digest path with bounded ForEach workflows.
+///
+/// This is a build/smoke fuzz helper for `foreach_digest_canonical`. It binds to
+/// `vb_compile::canonical_digest` through the public crate export and keeps all
+/// generated workflow shapes bounded so malformed hostile bytes cannot allocate
+/// unbounded body vectors.
+pub fn fuzz_canonical_digest_foreach(data: &[u8]) {
+    let Some(selector) = data.first().copied() else {
+        return;
+    };
+
+    let variable = bounded_utf8_token(data.get(1..33), "item");
+    let input = bounded_utf8_token(data.get(33..65), "items");
+    let at_once = foreach_at_once(selector);
+    let body = foreach_body(selector, data.get(65..));
+    let source = foreach_digest_source(variable, input, at_once, body);
+
+    let first = vb_compile::canonical_digest(&source);
+    let second = vb_compile::canonical_digest(&source);
+    if first != second {
+        return;
+    }
+}
+
+fn foreach_at_once(selector: u8) -> Option<u32> {
+    match selector.wrapping_rem(4) {
+        0 => None,
+        1 => Some(0),
+        2 => Some(1),
+        _ => Some(u32::from(selector)),
+    }
+}
+
+fn foreach_body(selector: u8, bytes: Option<&[u8]>) -> Vec<vb_yaml::ast::StepAst> {
+    let mut body = Vec::new();
+    if selector.is_multiple_of(2) {
+        let value = bytes
+            .and_then(|slice| slice.first().copied())
+            .map_or(0_i64, i64::from);
+        body.push(vb_yaml::ast::StepAst {
+            id: String::from("body_set"),
+            name: None,
+            condition: None,
+            primitive: vb_yaml::ast::StepPrimitive::Set {
+                output: String::from("item"),
+                value: value.to_string(),
+            },
+            with: None,
+            retry: None,
+            on_error: None,
+            then: None,
+        });
+    }
+    if selector.is_multiple_of(3) {
+        body.push(vb_yaml::ast::StepAst {
+            id: String::from("body_finish"),
+            name: None,
+            condition: None,
+            primitive: vb_yaml::ast::StepPrimitive::Finish {
+                result: vb_yaml::ast::ScalarValue::Integer(i64::from(selector)),
+            },
+            with: None,
+            retry: None,
+            on_error: None,
+            then: None,
+        });
+    }
+    body
+}
+
+fn foreach_digest_source(
+    variable: String,
+    input: String,
+    at_once: Option<u32>,
+    body: Vec<vb_yaml::ast::StepAst>,
+) -> vb_yaml::ast::WorkflowSource {
+    let steps = vec![vb_yaml::ast::StepAst {
+        id: String::from("foreach"),
+        name: None,
+        condition: None,
+        primitive: vb_yaml::ast::StepPrimitive::ForEach {
+            variable,
+            input,
+            at_once,
+            body,
+        },
+        with: None,
+        retry: None,
+        on_error: None,
+        then: None,
+    }];
+    vb_yaml::ast::WorkflowSource::new(vb_yaml::ast::WorkflowSourceParts {
+        version: String::from("velvet-ballistics/v1"),
+        name: String::from("fuzz-foreach-digest"),
+        trigger: vb_yaml::ast::TriggerAst::Manual,
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps,
+        result: None,
+        examples: vec![],
+    })
+}
+
+fn bounded_utf8_token(bytes: Option<&[u8]>, fallback: &str) -> String {
+    let Some(raw) = bytes else {
+        return String::from(fallback);
+    };
+    let Ok(text) = std::str::from_utf8(raw) else {
+        return String::from(fallback);
+    };
+    let mut out = String::new();
+    for ch in text.chars().take(16) {
+        if ch.is_ascii_alphanumeric() || ch == '_' {
+            out.push(ch);
+        }
+    }
+    if out.is_empty() {
+        String::from(fallback)
+    } else {
+        out
+    }
 }

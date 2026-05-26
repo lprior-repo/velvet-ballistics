@@ -7,7 +7,6 @@
 
 use vb_compile::{YamlCompiler, compile_workflow, lower_set, lower_steps_to_ir};
 use vb_core::ids::{ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
-#[allow(unused_imports)]
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts};
 
 // ---------------------------------------------------------------------------

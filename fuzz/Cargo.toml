@@ -502,12 +502,14 @@ test = false
 doc = false
 bench = false
 
-[[bin]]
-name = "foreach_digest_proptest"
-path = "fuzz_targets/foreach_digest_proptest.rs"
-test = false
-doc = false
-bench = false
+# Disabled: declared target file is absent. Re-enable only with a real
+# libFuzzer target at fuzz_targets/foreach_digest_proptest.rs.
+# [[bin]]
+# name = "foreach_digest_proptest"
+# path = "fuzz_targets/foreach_digest_proptest.rs"
+# test = false
+# doc = false
+# bench = false
 
 [[bin]]
 name = "wait_digest_exhaustive_collision"

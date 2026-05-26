@@ -12,6 +12,9 @@ VARIABLES run_state, seq, journal, proof_gates, terminal_seen, terminal_state,
 vars == <<run_state, seq, journal, proof_gates, terminal_seen, terminal_state,
           terminal_seq, terminal_journal>>
 
+Terminal == {"finished", "failed", "cancelled"}
+Live == {"accepted", "running", "suspended"}
+
 TypeOK ==
   /\ run_state \in Live \cup Terminal
   /\ seq \in 0..MaxSeq
@@ -21,9 +24,6 @@ TypeOK ==
   /\ terminal_state \in Terminal \cup {"none"}
   /\ terminal_seq \in 0..MaxSeq
   /\ terminal_journal \in Seq(0..MaxSeq)
-
-Terminal == {"finished", "failed", "cancelled"}
-Live == {"accepted", "running", "suspended"}
 
 InitLifecycle ==
   /\ run_state = "accepted"

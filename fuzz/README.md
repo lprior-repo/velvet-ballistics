@@ -18,9 +18,17 @@ repository, that contract is satisfied by these cargo-fuzz binaries:
 do not add duplicate `fuzz/fuzz_targets/*.rs` wrappers unless cargo-fuzz is
 reconfigured to consume that layout directly.
 
-On Linux, cargo-fuzz 0.13 defaults `check` to `x86_64-unknown-linux-musl`,
-which is incompatible with ASan static libc linking. Use:
+On this Linux workspace, cargo-fuzz 0.13.1 defaults `build`/`run` to
+`x86_64-unknown-linux-musl`, which is incompatible with ASan static libc
+linking (`cannot specify -static with -fsanitize=address`). Use the GNU target
+for canonical sanitizer builds and smoke runs:
 
 ```sh
 cargo fuzz check --target x86_64-unknown-linux-gnu
+cargo fuzz build --target x86_64-unknown-linux-gnu
+cargo fuzz run --target x86_64-unknown-linux-gnu <target> -- -max_total_time=60 -print_final_stats=1
 ```
+
+The target name still comes from `cargo fuzz list`; for example,
+`foreach_digest_canonical` is the bounded canonical-digest target used by the
+global verifier blocker repair evidence.
