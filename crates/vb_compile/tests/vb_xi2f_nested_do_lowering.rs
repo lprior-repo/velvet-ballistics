@@ -124,7 +124,7 @@ fn nested_do_in_collect_body_lowers_to_final_ir() -> Result<(), String> {
 
     // Verify Do at node 1
     match &parts.nodes[1].kind {
-        CompiledNodeKind::Do { action, input } => {
+        CompiledNodeKind::Do { action: _, input } => {
             assert_eq!(input.get(), 1, "Do input slot");
         }
         other => return Err(format!("expected Do at node 1, got {other:?}")),
@@ -202,8 +202,6 @@ fn nested_do_in_for_each_body_lowers_to_final_ir() -> Result<(), String> {
         }
         other => return Err(format!("expected Do at node 1, got {other:?}")),
     }
-        other => return Err(format!("expected Do at node 1, got {other:?}")),
-    }
 
     // Verify ForEachNext at node 2
     match &parts.nodes[2].kind {
@@ -263,7 +261,7 @@ fn nested_do_in_reduce_body_lowers_to_final_ir() -> Result<(), String> {
 
     // Verify Do at node 1
     match &parts.nodes[1].kind {
-        CompiledNodeKind::Do { action, input } => {
+        CompiledNodeKind::Do { action: _, input } => {
             assert_eq!(input.get(), 1, "Do input slot");
         }
         other => return Err(format!("expected Do at node 1, got {other:?}")),
@@ -442,7 +440,7 @@ fn format_compile_errors(errors: &CompileErrors) -> String {
         if !message.is_empty() {
             message.push_str("; ");
         }
-        message.push_str(error.code());
+        message.push_str(error.code().as_str());
         message.push_str(": ");
         message.push_str(&error.to_string());
     }

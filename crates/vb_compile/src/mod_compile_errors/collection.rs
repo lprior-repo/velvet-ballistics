@@ -3,13 +3,13 @@ use super::*;
 use saphyr_parser::Span;
 use std::str;
 use thiserror::Error;
-use vb_core::{ActionId, SideEffect, WorkflowError};
+use vb_core::{ActionId, HasSymbolicCode, SideEffect, SymbolicCode, WorkflowError};
 
 impl CompileError {
     /// Stable machine-readable validation diagnostic code.
     #[must_use]
-    pub fn code(&self) -> &'static str {
-        match self {
+    pub fn code(&self) -> SymbolicCode {
+        let s: &'static str = match self {
             Self::SourceTooLarge { .. } => "PAYLOAD_TOO_LARGE",
             Self::Utf8(_)
             | Self::Parse(_)
@@ -86,12 +86,27 @@ impl CompileError {
             Self::IdempotencyViolation { .. } => "IDEMPOTENCY_VIOLATION",
             Self::Validation(error) => validation_error_code(error),
             Self::CanonicalYaml { category, .. } => canonical_yaml_code(category),
+        };
+        // Safety invariant: all symbolic strings returned by CompileError::code()
+        // are registered in vb_core::CODE_REGISTRY. This is verified by
+        // behavior tests (B-040) and proptest coverage.
+        if let Some(code) = SymbolicCode::from_static(s) {
+            return code;
         }
+        // Unreachable: all match arms use strings registered in CODE_REGISTRY.
+        // Use the internal sentinel to satisfy zero-expect.
+        SymbolicCode::from_parts("INTERNAL_INVARIANT_VIOLATION", 0x1309)
     }
 
     /// Alias for integrations that name the machine field explicitly.
     #[must_use]
-    pub fn diagnostic_code(&self) -> &'static str {
+    pub fn diagnostic_code(&self) -> SymbolicCode {
+        self.code()
+    }
+}
+
+impl HasSymbolicCode for CompileError {
+    fn symbolic_code(&self) -> SymbolicCode {
         self.code()
     }
 }
@@ -240,7 +255,7 @@ impl CompileErrors {
     }
 
     /// Iterates over stable machine-readable diagnostic codes in reporting order.
-    pub fn diagnostic_codes(&self) -> impl Iterator<Item = &'static str> + '_ {
+    pub fn diagnostic_codes(&self) -> impl Iterator<Item = SymbolicCode> + '_ {
         self.0.iter().map(CompileError::code)
     }
 

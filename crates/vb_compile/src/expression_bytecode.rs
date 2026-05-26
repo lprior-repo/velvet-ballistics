@@ -784,7 +784,7 @@ mod tests {
                     ref root, ref path, ..
                 } if root.as_ref() == "slot.1"
                     && path.as_ref() == ".0"
-                    && error.diagnostic_code() == "UNSUPPORTED_ACCESSOR_REFERENCE" =>
+                    && error.diagnostic_code().as_str() == "UNSUPPORTED_ACCESSOR_REFERENCE" =>
                 {
                     Ok(())
                 }

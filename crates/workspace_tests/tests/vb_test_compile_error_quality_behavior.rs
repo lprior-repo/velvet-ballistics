@@ -85,7 +85,10 @@ steps:
         "diagnostic_codes count must match errors count"
     );
     for code in &codes {
-        assert!(!code.is_empty(), "diagnostic code must not be empty");
+        assert!(
+            !code.as_str().is_empty(),
+            "diagnostic code must not be empty"
+        );
     }
 }
 
@@ -110,7 +113,8 @@ steps:
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "DUPLICATE_KEY",
+        code.as_str(),
+        "DUPLICATE_KEY",
         "DuplicateKey code must be DUPLICATE_KEY: {code}"
     );
 }
@@ -132,7 +136,8 @@ steps:
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "DUPLICATE_ID",
+        code.as_str(),
+        "DUPLICATE_ID",
         "DuplicateStepId code must be DUPLICATE_ID: {code}"
     );
 }
@@ -152,7 +157,8 @@ steps:
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "FORBIDDEN_YAML_FEATURE",
+        code.as_str(),
+        "FORBIDDEN_YAML_FEATURE",
         "NonStringKey code must be FORBIDDEN_YAML_FEATURE: {code}"
     );
 }
@@ -174,7 +180,8 @@ key: *anchor
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "FORBIDDEN_YAML_FEATURE",
+        code.as_str(),
+        "FORBIDDEN_YAML_FEATURE",
         "AliasForbidden code must be FORBIDDEN_YAML_FEATURE: {code}"
     );
 }
@@ -194,7 +201,8 @@ steps:
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "FORBIDDEN_YAML_FEATURE",
+        code.as_str(),
+        "FORBIDDEN_YAML_FEATURE",
         "TagForbidden code must be FORBIDDEN_YAML_FEATURE: {code}"
     );
 }
@@ -205,7 +213,8 @@ fn compile_error_code_empty_source() {
     let error = parse_ast_error(b"").expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "MISSING_REQUIRED_FIELD",
+        code.as_str(),
+        "MISSING_REQUIRED_FIELD",
         "EmptySource code must be MISSING_REQUIRED_FIELD: {code}"
     );
 }
@@ -226,7 +235,8 @@ steps:
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "UNKNOWN_TOP_LEVEL_FIELD",
+        code.as_str(),
+        "UNKNOWN_TOP_LEVEL_FIELD",
         "UnknownTopLevelField code must be UNKNOWN_TOP_LEVEL_FIELD: {code}"
     );
 }
@@ -247,7 +257,8 @@ steps:
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "UNKNOWN_STEP_FIELD",
+        code.as_str(),
+        "UNKNOWN_STEP_FIELD",
         "UnknownStepField code must be UNKNOWN_STEP_FIELD: {code}"
     );
 }
@@ -267,7 +278,8 @@ steps:
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "INVALID_VERSION",
+        code.as_str(),
+        "INVALID_VERSION",
         "InvalidVersion code must be INVALID_VERSION: {code}"
     );
 }
@@ -285,7 +297,8 @@ steps: []
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "MISSING_STEP_PRIMITIVE",
+        code.as_str(),
+        "MISSING_STEP_PRIMITIVE",
         "EmptySteps code must be MISSING_STEP_PRIMITIVE: {code}"
     );
 }
@@ -304,7 +317,8 @@ steps:
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "MISSING_REQUIRED_FIELD",
+        code.as_str(),
+        "MISSING_REQUIRED_FIELD",
         "MissingStepId code must be MISSING_REQUIRED_FIELD: {code}"
     );
 }
@@ -323,7 +337,8 @@ steps:
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "TYPE_MISMATCH",
+        code.as_str(),
+        "TYPE_MISMATCH",
         "StepShape code must be TYPE_MISMATCH: {code}"
     );
 }
@@ -344,7 +359,8 @@ steps:
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "MULTIPLE_STEP_PRIMITIVES",
+        code.as_str(),
+        "MULTIPLE_STEP_PRIMITIVES",
         "MultipleStepPrimitives code must be MULTIPLE_STEP_PRIMITIVES: {code}"
     );
 }
@@ -363,7 +379,8 @@ steps:
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "MISSING_STEP_PRIMITIVE",
+        code.as_str(),
+        "MISSING_STEP_PRIMITIVE",
         "MissingStepPrimitive code must be MISSING_STEP_PRIMITIVE: {code}"
     );
 }
@@ -391,9 +408,9 @@ fn expression_error_includes_byte_index_and_char() {
         "ExpressionUnexpectedChar message should include the unexpected char '@': {msg}"
     );
     assert!(
-        err.code() == "INVALID_EXPRESSION",
+        err.code().as_str() == "INVALID_EXPRESSION",
         "Expression lexer error must have code INVALID_EXPRESSION: {}",
-        err.code()
+        err.code().as_str()
     );
 }
 
@@ -413,9 +430,9 @@ fn expression_error_unterminated_string_includes_index() {
         "Expression error message should mention byte/index: {msg}"
     );
     assert!(
-        err.code() == "INVALID_EXPRESSION",
+        err.code().as_str() == "INVALID_EXPRESSION",
         "Expression error code must be INVALID_EXPRESSION: {}",
-        err.code()
+        err.code().as_str()
     );
 }
 
@@ -434,9 +451,9 @@ fn expression_error_integer_out_of_range_includes_index() {
         "ExpressionIntegerOutOfRange message should mention byte/index: {msg}"
     );
     assert!(
-        err.code() == "INVALID_EXPRESSION",
+        err.code().as_str() == "INVALID_EXPRESSION",
         "ExpressionIntegerOutOfRange code must be INVALID_EXPRESSION: {}",
-        err.code()
+        err.code().as_str()
     );
 }
 
@@ -754,11 +771,13 @@ steps:
     let code = error.code();
 
     assert!(
-        code.chars().all(|c| c.is_ascii_uppercase() || c == '_'),
+        code.as_str()
+            .chars()
+            .all(|c| c.is_ascii_uppercase() || c == '_'),
         "Error code must be uppercase ASCII with underscores only: {code}"
     );
     assert!(
-        !code.contains(' '),
+        !code.as_str().contains(' '),
         "Error code must not contain spaces: {code}"
     );
 }
@@ -785,7 +804,8 @@ steps:
     // The first error should be about duplicate name
     let first_code = first.map(|e| e.code());
     assert!(
-        first_code == Some("DUPLICATE_KEY") || first_code == Some("MISSING_REQUIRED_FIELD"),
+        first_code.as_ref().map(|c| c.as_str()) == Some("DUPLICATE_KEY")
+            || first_code.as_ref().map(|c| c.as_str()) == Some("MISSING_REQUIRED_FIELD"),
         "first() error should be DUPLICATE_KEY or MISSING_REQUIRED_FIELD, got: {first_code:?}"
     );
 }
@@ -828,7 +848,11 @@ steps:
     assert!(result.is_err(), "should produce an error");
     if let Err(CompileErrors(errors)) = result {
         assert!(!errors.is_empty(), "errors should not be empty");
-        let code = errors.first().map(|e| e.code()).unwrap_or("");
-        assert!(!code.is_empty(), "error code must not be empty: {code}");
+        if let Some(code) = errors.first().map(|e| e.code()) {
+            assert!(
+                !code.as_str().is_empty(),
+                "error code must not be empty: {code}"
+            );
+        }
     }
 }

@@ -518,6 +518,7 @@ mod tests {
     use super::*;
     use crate::YamlCompiler;
     use saphyr::LoadableYamlNode;
+    use vb_core::SymbolicCode;
 
     fn validate_inputs(inputs: &str) -> Result<(), CompileError> {
         let source = format!("version: velvet-ballistics/v1\ninputs:\n{inputs}\n");
@@ -657,7 +658,7 @@ steps:
         vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))
     }
 
-    fn first_compile_code(source: &[u8]) -> Result<&'static str, String> {
+    fn first_compile_code(source: &[u8]) -> Result<SymbolicCode, String> {
         match YamlCompiler::default().compile(source) {
             Ok(workflow) => Err(format!("compile unexpectedly succeeded: {workflow:?}")),
             Err(errors) => errors
@@ -685,7 +686,7 @@ steps:
     #[test]
     fn vb_yd5x_legacy_slot_ref_shape_fails_canonical_compile() -> Result<(), String> {
         assert_eq!(
-            first_compile_code(VB_YD5X_MALFORMED_SLOT_REF)?,
+            first_compile_code(VB_YD5X_MALFORMED_SLOT_REF)?.as_str(),
             "MISSING_REQUIRED_FIELD"
         );
         Ok(())
@@ -694,7 +695,7 @@ steps:
     #[test]
     fn vb_yd5x_legacy_loop_body_shape_fails_canonical_compile() -> Result<(), String> {
         assert_eq!(
-            first_compile_code(VB_YD5X_MALFORMED_LOOP_BODY)?,
+            first_compile_code(VB_YD5X_MALFORMED_LOOP_BODY)?.as_str(),
             "TYPE_MISMATCH"
         );
         Ok(())
@@ -703,7 +704,7 @@ steps:
     #[test]
     fn vb_yd5x_legacy_duplicate_id_shape_fails_canonical_compile() -> Result<(), String> {
         assert_eq!(
-            first_compile_code(VB_YD5X_MALFORMED_DUPLICATE_ID)?,
+            first_compile_code(VB_YD5X_MALFORMED_DUPLICATE_ID)?.as_str(),
             "MISSING_REQUIRED_FIELD"
         );
         Ok(())
@@ -712,7 +713,7 @@ steps:
     #[test]
     fn vb_yd5x_legacy_unknown_ref_shape_fails_canonical_compile() -> Result<(), String> {
         assert_eq!(
-            first_compile_code(VB_YD5X_MALFORMED_UNKNOWN_REF)?,
+            first_compile_code(VB_YD5X_MALFORMED_UNKNOWN_REF)?.as_str(),
             "UNKNOWN_TOP_LEVEL_FIELD"
         );
         Ok(())
@@ -727,7 +728,7 @@ steps:
             (VB_YD5X_MALFORMED_UNKNOWN_REF, "UNKNOWN_TOP_LEVEL_FIELD"),
         ];
         for (source, expected_code) in test_cases {
-            assert_eq!(first_compile_code(source)?, expected_code);
+            assert_eq!(first_compile_code(source)?.as_str(), expected_code);
         }
         Ok(())
     }

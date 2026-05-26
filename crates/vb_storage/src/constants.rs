@@ -87,5 +87,5 @@ pub const MAX_SNAPSHOT_BYTES: u32 = 67_108_864;
 /// Maximum blob payload bytes accepted by the default blob APIs.
 pub const MAX_BLOB_BYTES: u32 = 67_108_864;
 /// Maximum number of events permitted in a single journal write batch.
-pub const MAX_BATCH_COUNT: usize = 500;
+pub const MAX_BATCH_COUNT: usize = 10_000;
 const _PAYLOAD_LEN_CONVERSION_MAX: u32 = 4_294_967_295;

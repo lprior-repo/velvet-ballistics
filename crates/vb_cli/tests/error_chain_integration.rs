@@ -81,7 +81,7 @@ fn validation_error_propagates_into_compile_error() {
         "CompileError should preserve the exact ValidationError::DuplicateKey source"
     );
     assert_eq!(
-        compile_error.diagnostic_code(),
+        compile_error.diagnostic_code().as_str(),
         "INVALID_COMPILED_WORKFLOW",
         "diagnostic code should be preserved through From conversion"
     );
@@ -383,7 +383,7 @@ fn all_compile_error_variants_have_non_empty_display() {
         );
         let code = error.diagnostic_code();
         assert!(
-            !code.is_empty(),
+            !code.as_str().is_empty(),
             "compile error variant must have non-empty diagnostic code: {error:?}"
         );
     }

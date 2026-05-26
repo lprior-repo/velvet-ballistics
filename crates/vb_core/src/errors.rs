@@ -3,7 +3,7 @@
 //! Typed core failures with stable diagnostic codes.
 
 use crate::capability::{Capability, CapabilitySet};
-use crate::diagnostic::DiagnosticCode;
+use crate::diagnostic::{DiagnosticCode, HasSymbolicCode, SymbolicCode};
 use crate::ids::{
     ActionId, BlobId, ConstIdx, EventSeq, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx,
     SymbolId,
@@ -713,6 +713,77 @@ impl CoreError {
             Self::CapabilityDenied { .. } => Some(Self::CAPABILITY_DENIED_RUNTIME_CODE),
             _ => None,
         }
+    }
+
+    /// Returns the stable symbolic diagnostic code for this error.
+    ///
+    /// # Invariant
+    /// Every CoreError variant maps to a symbolic code registered in
+    /// `vb_core::CODE_REGISTRY`. Violation indicates a compile-time invariant failure.
+    #[must_use]
+    pub fn symbolic_code(&self) -> SymbolicCode {
+        let s: &'static str = match self {
+            Self::InvalidProgramCounter { .. } => "INVALID_PROGRAM_COUNTER",
+            Self::MissingNextStep { .. } => "MISSING_NEXT_STEP",
+            Self::SlotOutOfBounds { .. } => "SLOT_OUT_OF_BOUNDS",
+            Self::SlotUninitialized { .. } => "SLOT_UNINITIALIZED",
+            Self::ExprOutOfBounds { .. } => "EXPR_OUT_OF_BOUNDS",
+            Self::ConstOutOfBounds { .. } => "CONST_OUT_OF_BOUNDS",
+            Self::MissingOutputSlot { .. } => "MISSING_OUTPUT_SLOT",
+            Self::StepStateOutOfBounds { .. } => "STEP_STATE_OUT_OF_BOUNDS",
+            Self::TypeMismatch { .. } => "TYPE_MISMATCH",
+            Self::NonBoolCondition { .. } => "NON_BOOL_CONDITION",
+            Self::NonFiniteNumber => "NON_FINITE_NUMBER",
+            Self::DivisionByZero => "DIVISION_BY_ZERO",
+            Self::StepBudgetExhausted => "STEP_BUDGET_EXHAUSTED",
+            Self::StepCounterOverflow => "STEP_COUNTER_OVERFLOW",
+            Self::QueueFull => "QUEUE_FULL",
+            Self::ResourceLimitExceeded { .. } => "RESOURCE_LIMIT_EXCEEDED",
+            Self::AllocationFailed => "ALLOCATION_FAILED",
+            Self::ExpressionStackOverflow { .. } => "EXPRESSION_STACK_OVERFLOW",
+            Self::ExpressionStackUnderflow => "EXPRESSION_STACK_UNDERFLOW",
+            Self::InvalidCompiledWorkflow { .. } => "INVALID_COMPILED_WORKFLOW",
+            Self::UnsupportedPrimitive { .. } => "UNSUPPORTED_PRIMITIVE",
+            Self::UnsupportedAccessorTraversal { .. } => "UNSUPPORTED_ACCESSOR_TRAVERSAL",
+            Self::ObjectFieldNotFound { .. } => "OBJECT_FIELD_NOT_FOUND",
+            Self::ListIndexOutOfBounds { .. } => "LIST_INDEX_OUT_OF_BOUNDS",
+            Self::InternalInvariantViolation { .. } => "INTERNAL_INVARIANT_VIOLATION",
+            Self::SymbolOutOfBounds { .. } => "SYMBOL_OUT_OF_BOUNDS",
+            Self::ListOutOfBounds { .. } => "LIST_OUT_OF_BOUNDS",
+            Self::ObjectOutOfBounds { .. } => "OBJECT_OUT_OF_BOUNDS",
+            Self::BlobOutOfBounds { .. } => "BLOB_OUT_OF_BOUNDS",
+            Self::IterationLimitExceeded { .. } => "ITERATION_LIMIT_EXCEEDED",
+            Self::RepeatExhausted { .. } => "REPEAT_EXHAUSTED",
+            Self::CollectPageLimitExceeded => "COLLECT_PAGE_LIMIT_EXCEEDED",
+            Self::CollectItemLimitExceeded => "COLLECT_ITEM_LIMIT_EXCEEDED",
+            Self::CollectTimeLimitExceeded => "COLLECT_TIME_LIMIT_EXCEEDED",
+            Self::TogetherBranchLimitExceeded { .. } => "TOGETHER_BRANCH_LIMIT_EXCEEDED",
+            Self::ParallelLimitExceeded { .. } => "PARALLEL_LIMIT_EXCEEDED",
+            Self::CapabilityDenied { .. } => "CAPABILITY_DENIED",
+            Self::BudgetExceeded { .. } => "BUDGET_EXCEEDED",
+            Self::BudgetParse { .. } => "BUDGET_PARSE",
+            Self::CollectPageOrderViolation { .. } => "COLLECT_PAGE_ORDER_VIOLATION",
+            Self::CollectExtraHydrationFailed { .. } => "COLLECT_EXTRA_HYDRATION_FAILED",
+            Self::CollectEvidenceCapacityExceeded { .. } => "COLLECT_EVIDENCE_CAPACITY_EXCEEDED",
+            Self::LifecycleStorageUnavailable { .. } => "LIFECYCLE_STORAGE_UNAVAILABLE",
+            Self::LifecycleDuplicateRequest { .. } => "LIFECYCLE_DUPLICATE_REQUEST",
+            Self::LifecycleStaleRequest { .. } => "LIFECYCLE_STALE_REQUEST",
+            Self::LifecycleInvalidTransition { .. } => "LIFECYCLE_INVALID_TRANSITION",
+            Self::JournalWriteFailure { .. } => "JOURNAL_WRITE_FAILURE",
+            Self::ReplayCorruption { .. } => "REPLAY_CORRUPTION",
+        };
+        if let Some(code) = SymbolicCode::from_static(s) {
+            return code;
+        }
+        // Unreachable: all match arms use strings registered in CODE_REGISTRY.
+        // Use the internal sentinel as a safe fallback to satisfy zero-expect.
+        SymbolicCode::from_parts("INTERNAL_INVARIANT_VIOLATION", 0x1309)
+    }
+}
+
+impl HasSymbolicCode for CoreError {
+    fn symbolic_code(&self) -> SymbolicCode {
+        self.symbolic_code()
     }
 }
 

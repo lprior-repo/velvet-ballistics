@@ -131,6 +131,7 @@ impl FixedAcceptedArtifactStore {
         }
     }
 
+    #[allow(dead_code)]
     fn with_failure() -> Self {
         Self {
             artifact: None,

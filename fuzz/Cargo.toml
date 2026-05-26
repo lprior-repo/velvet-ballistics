@@ -515,3 +515,10 @@ path = "fuzz_targets/wait_digest_exhaustive_collision.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "fuzz_diagnostic_code_from_str"
+path = "fuzz_targets/fuzz_diagnostic_code_from_str.rs"
+test = false
+doc = false
+bench = false

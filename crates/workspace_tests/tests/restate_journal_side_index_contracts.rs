@@ -208,7 +208,7 @@ proptest::proptest! {
         // Truncate the key
         let truncate_len = truncate_len as usize;
         if truncate_len < valid_len {
-            let short_key = &valid_key[..(valid_len - truncate_len)];
+            let _short_key = &valid_key[..(valid_len - truncate_len)];
             // In production decode, short keys are rejected before field extraction.
             // We verify the encoding is correct by confirming valid_key is full-length.
             prop_assert_eq!(valid_len, 13, "valid index_action_key must be 13 bytes");
@@ -221,7 +221,7 @@ proptest::proptest! {
         state in 0u8..=2u8,
         timestamp in 0u64..=1000u64,
         run_val in 1u64..=1000u64,
-        extra_bytes in 0u8..=10u8,
+        _extra_bytes in 0u8..=10u8,
     ) {
         let run = RunId::new(run_val);
         let status_state = IndexStatusState::from_u8(state);
@@ -240,7 +240,7 @@ proptest::proptest! {
     fn index_workflow_key_decode_error_on_wrong_length(
         workflow_val in 1u32..=100u32,
         run_val in 1u64..=1000u64,
-        extra_bytes in 0u8..=10u8,
+        _extra_bytes in 0u8..=10u8,
     ) {
         let workflow = WorkflowId::new(workflow_val);
         let run = RunId::new(run_val);
@@ -401,7 +401,7 @@ proptest::proptest! {
             let event = make_action_scheduled(run, i as u64, step, action);
 
             let before_len = batch.len();
-            let before_empty = batch.is_empty();
+            let _before_empty = batch.is_empty();
 
             let result = batch.append_event(&event);
             prop_assert!(result.is_ok(), "append_event must succeed for valid event");
@@ -600,6 +600,7 @@ fn journal_write_batch_send_sync_not_satisfied() {
     // The line below is a compile-time assertion — it won't link/run.
     // We use the negation: the test passes because compilation WOULD fail
     // if JournalWriteBatch were Send or Sync.
+    #[allow(dead_code)]
     fn assert_not_send_sync<T: ?Sized>()
     where
         T: std::marker::Send,

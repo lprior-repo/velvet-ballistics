@@ -87,7 +87,10 @@ pub use budget::{
     validate_aggregate_budget,
 };
 pub use capability::{Capability, CapabilitySet};
-pub use diagnostic::{Diagnostic, DiagnosticCode, DiagnosticCodeParseError, Severity};
+pub use diagnostic::{
+    CODE_REGISTRY, CodeCategory, CodeEntry, Diagnostic, DiagnosticCode, DiagnosticCodeParseError,
+    HasSymbolicCode, Severity, SymbolicCode, SymbolicCodeParseError,
+};
 pub use engine::{
     EngineSignal, ErrorHandlerOutcome, ErrorSlotData, StepBudget, build_list, build_object,
     drive_deterministic, eval_accessor, eval_expr, journal_action_suspended, new_run_frame,

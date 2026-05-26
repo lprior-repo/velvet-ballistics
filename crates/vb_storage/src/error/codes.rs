@@ -1,5 +1,5 @@
 use crate::error::JournalError;
-use vb_core::DiagnosticCode;
+use vb_core::{DiagnosticCode, HasSymbolicCode, SymbolicCode};
 
 impl JournalError {
     /// Diagnostic code for fjall operation failure.
@@ -120,5 +120,69 @@ impl JournalError {
             Self::Trim(_) => Self::FJALL_CODE, // Map trim errors to a generic code
             Self::InvalidRunId { .. } => Self::INVALID_RUN_ID_CODE,
         }
+    }
+
+    /// Returns the stable symbolic diagnostic code for this error.
+    #[must_use]
+    pub fn symbolic_code(&self) -> SymbolicCode {
+        let s: &'static str = match self {
+            Self::Fjall(_) => "FJALL_ERROR",
+            Self::Encode(_) => "JOURNAL_ENCODE_FAILED",
+            Self::KeyCapacity => "KEY_CAPACITY_EXCEEDED",
+            Self::DuplicateEvent { .. } => "DUPLICATE_EVENT",
+            Self::WriteLockPoisoned => "WRITE_LOCK_POISONED",
+            Self::QueueCapacity => "QUEUE_CAPACITY_ZERO",
+            Self::QueueFull => "JOURNAL_QUEUE_FULL",
+            Self::QueueShutdown => "QUEUE_SHUTDOWN",
+            Self::WrongRun { .. } => "WRONG_RUN",
+            Self::SequenceGap { .. } => "SEQUENCE_GAP",
+            Self::SequenceOverflow => "SEQUENCE_OVERFLOW",
+            Self::BadMagic { .. } => "BAD_MAGIC",
+            Self::UnsupportedSchemaVersion { .. } => "UNSUPPORTED_SCHEMA_VERSION",
+            Self::MigrationRequired { .. } => "MIGRATION_REQUIRED",
+            Self::UnknownRecordKind { .. } => "UNKNOWN_RECORD_KIND",
+            Self::RecordKindFamilyMismatch { .. } => "RECORD_KIND_FAMILY_MISMATCH",
+            Self::HeaderLengthMismatch { .. } => "HEADER_LENGTH_MISMATCH",
+            Self::PayloadTooLarge { .. } => "PAYLOAD_TOO_LARGE",
+            Self::HeaderChecksumMismatch => "HEADER_CHECKSUM_MISMATCH",
+            Self::PayloadDigestMismatch => "PAYLOAD_DIGEST_MISMATCH",
+            Self::UnexpectedEof => "UNEXPECTED_EOF",
+            Self::PostcardDecodeFailed => "POSTCARD_DECODE_FAILED",
+            Self::InvalidEvent => "INVALID_JOURNAL_EVENT",
+            Self::ArtifactMalformed => "ARTIFACT_MALFORMED",
+            Self::ArtifactChecksumMismatch => "ARTIFACT_CHECKSUM_MISMATCH",
+            Self::InvalidGateCount { .. } => "INVALID_GATE_COUNT",
+            Self::MissingRequiredProofFlag { .. } => "MISSING_REQUIRED_PROOF_FLAG",
+            Self::ArtifactNotFound { .. } => "ARTIFACT_NOT_FOUND",
+            Self::AdmissionRequired
+            | Self::ArtifactInvalid { .. }
+            | Self::InputTooLarge { .. }
+            | Self::InputSchemaMismatch
+            | Self::CapabilityDenied
+            | Self::SecretUnavailable
+            | Self::RunAlreadyExists
+            | Self::ActiveRunCapacityExceeded
+            | Self::FrameAllocationFailed
+            | Self::AdmissionJournalFailed
+            | Self::StrictDurabilityFailed
+            | Self::ClockUnavailable => "ARTIFACT_MALFORMED",
+            Self::TooManyEvents { .. } => "TOO_MANY_EVENTS",
+            Self::ReplayAllocationFailed { .. } => "REPLAY_ALLOCATION_FAILED",
+            Self::ProcessLockHeld { .. } => "PROCESS_LOCK_HELD",
+            Self::ProcessLockIo { .. } => "PROCESS_LOCK_IO",
+            Self::Trim(_) => "FJALL_ERROR",
+            Self::InvalidRunId { .. } => "INVALID_RUN_ID",
+        };
+        if let Some(code) = SymbolicCode::from_static(s) {
+            return code;
+        }
+        // Unreachable: all match arms use registered symbolic names.
+        SymbolicCode::from_parts("INTERNAL_INVARIANT_VIOLATION", 0x1309)
+    }
+}
+
+impl HasSymbolicCode for JournalError {
+    fn symbolic_code(&self) -> SymbolicCode {
+        self.symbolic_code()
     }
 }

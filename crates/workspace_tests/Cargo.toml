@@ -157,6 +157,22 @@ harness = false
 name = "array_queue"
 harness = false
 
+[[test]]
+name = "proptest_error_types_registration"
+path = "tests/proptest_error_types_registration.rs"
+
+[[test]]
+name = "proptest_compile_error_codes"
+path = "tests/proptest_compile_error_codes.rs"
+
+[[test]]
+name = "behavior_symbolic_code_serde"
+path = "tests/behavior_symbolic_code_serde.rs"
+
+[[test]]
+name = "e2e_diagnostic_chain"
+path = "tests/e2e_diagnostic_chain.rs"
+
 [[bench]]
 name = "rtrb"
 harness = false

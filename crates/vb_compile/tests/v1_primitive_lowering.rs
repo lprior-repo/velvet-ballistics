@@ -1690,7 +1690,7 @@ fn format_compile_errors(errors: &CompileErrors) -> String {
         if !message.is_empty() {
             message.push_str("; ");
         }
-        message.push_str(error.code());
+        message.push_str(error.code().as_str());
         message.push_str(": ");
         message.push_str(&error.to_string());
     }

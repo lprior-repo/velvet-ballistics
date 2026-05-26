@@ -1945,6 +1945,7 @@ dependencies = [
  "postcard",
  "proptest",
  "serde",
+ "serde_json",
  "thiserror",
 ]
 
@@ -2062,6 +2063,7 @@ dependencies = [
  "saphyr",
  "saphyr-parser",
  "thiserror",
+ "vb_core",
 ]
 
 [[package]]

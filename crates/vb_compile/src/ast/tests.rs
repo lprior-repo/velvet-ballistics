@@ -295,7 +295,7 @@ steps:
 "#,
     )?;
     ensure(
-        error.code() == "INVALID_EXPRESSION",
+        error.code().as_str() == "INVALID_EXPRESSION",
         "parse_ast did not preserve expression parse diagnostic",
     )
 }
@@ -343,7 +343,7 @@ fn parse_ast_rejects_unsupported_symbolic_expression_syntax() -> Result<(), Stri
     ] {
         let error = parse_err(source.as_bytes())?;
         ensure(
-            error.code() == "INVALID_EXPRESSION",
+            error.code().as_str() == "INVALID_EXPRESSION",
             "parse_ast did not reject unsupported symbolic expression syntax",
         )?;
     }
