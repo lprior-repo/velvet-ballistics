@@ -48,7 +48,6 @@ vb_boundary_inventory = { path = "../vb_boundary_inventory" }
 vb_doc = { path = "../vb_doc" }
 vb_yaml = { path = "../vb_yaml" }
 vb_cli = { package = "velvet-ballistics", path = "../vb_cli" }
-vb_codegen = { path = "../vb_codegen" }
 vb_test_util = { path = "../vb_test_util" }
 
 [[test]]

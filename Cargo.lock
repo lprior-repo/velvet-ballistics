@@ -1920,13 +1920,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "vb_codegen"
-version = "0.1.0"
-dependencies = [
- "thiserror",
-]
-
-[[package]]
 name = "vb_compile"
 version = "0.1.0"
 dependencies = [
@@ -2130,7 +2123,6 @@ dependencies = [
  "toml",
  "vb_benchmark",
  "vb_boundary_inventory",
- "vb_codegen",
  "vb_compile",
  "vb_core",
  "vb_doc",
