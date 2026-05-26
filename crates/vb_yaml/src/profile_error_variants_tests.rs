@@ -30,7 +30,7 @@ macro_rules! fail_assert {
 /// variant exists and formats correctly.
 #[test]
 fn yaml_error_binary_scalar_variant_exists() {
-    let err = YamlError::BinaryScalar { span: None };
+    let err = YamlError::BinaryScalar;
     let msg = err.to_string();
     assert!(
         msg.contains("binary"),
@@ -45,7 +45,6 @@ fn yaml_error_binary_scalar_variant_exists() {
 fn yaml_error_unsupported_feature_variant_exists() {
     let err = YamlError::UnsupportedFeature {
         feature: "some_feature",
-        span: None,
     };
     let msg = err.to_string();
     assert!(
@@ -71,7 +70,6 @@ fn forbidden_feature_null_byte_in_source_rejected() {
         matches!(
             result,
             Err(YamlError::ForbiddenFeature {
-                span: None,
                 detail: "null_byte_in_source"
             })
         ),
@@ -99,7 +97,6 @@ fn field_shape_inputs_key_not_string() {
     assert_eq!(
         result,
         Err(YamlError::FieldShape {
-            span: None,
             field: "inputs key",
             expected: "string"
         })
@@ -122,7 +119,6 @@ fn field_shape_vars_key_not_string() {
     assert_eq!(
         result,
         Err(YamlError::FieldShape {
-            span: None,
             field: "vars key",
             expected: "string"
         })
@@ -145,7 +141,6 @@ fn field_shape_result_key_not_string() {
     assert_eq!(
         result,
         Err(YamlError::FieldShape {
-            span: None,
             field: "result key",
             expected: "string"
         })
@@ -164,7 +159,7 @@ fn parse_error_for_malformed_yaml() {
     let yaml = "key: [1, 2\n";
     let result = parse_workflow_source(yaml);
     match result {
-        Err(YamlError::ParseError { line, reason, .. }) => {
+        Err(YamlError::ParseError { line, reason }) => {
             assert!(line > 0, "ParseError line should be > 0, got {line}");
             assert!(!reason.is_empty(), "ParseError reason should be non-empty");
         }
@@ -207,7 +202,7 @@ fn reject_anchors_aliases_merges_rejects_yaml_org_merge_via_scalar() {
         },
     }];
     let result = reject_anchors_aliases_merges(events);
-    assert!(matches!(result, Err(YamlError::AnchorAliasMerge { .. })));
+    assert_eq!(result, Err(YamlError::AnchorAliasMerge));
 }
 
 /// In `reject_anchors_aliases_merges`, a Scalar event with anchor_id == 0
@@ -228,7 +223,7 @@ fn reject_anchors_aliases_merges_rejects_double_bang_merge_via_scalar() {
         },
     }];
     let result = reject_anchors_aliases_merges(events);
-    assert!(matches!(result, Err(YamlError::AnchorAliasMerge { .. })));
+    assert_eq!(result, Err(YamlError::AnchorAliasMerge));
 }
 
 // ---------------------------------------------------------------------------
@@ -283,7 +278,7 @@ fn forbidden_feature_custom_tag_on_sequence_rejected() {
     let yaml = "items: !seq\n  - a\n";
     let result = validate_yaml_profile(yaml);
     match result {
-        Err(YamlError::CustomTag { tag, .. }) => {
+        Err(YamlError::CustomTag { tag }) => {
             assert!(tag.contains("seq"), "expected 'seq' in tag, got: {tag}");
         }
         other => fail_assert!("expected CustomTag, got {other:?}"),
@@ -296,7 +291,7 @@ fn forbidden_feature_custom_tag_on_mapping_rejected() {
     let yaml = "data: !map\n  k: v\n";
     let result = validate_yaml_profile(yaml);
     match result {
-        Err(YamlError::CustomTag { tag, .. }) => {
+        Err(YamlError::CustomTag { tag }) => {
             assert!(tag.contains("map"), "expected 'map' in tag, got: {tag}");
         }
         other => fail_assert!("expected CustomTag, got {other:?}"),

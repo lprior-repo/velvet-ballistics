@@ -12,7 +12,6 @@ use vb_core::workflow::{
 };
 use vb_validate::ValidationError;
 use vb_validate::shared::{ValidationPipeline, validate};
-use vb_core::span::Span;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -492,10 +491,10 @@ fn validation_pipeline_default_is_all_gates() {
 // ValidationError Display edge cases
 // ---------------------------------------------------------------------------
 
-/// ValidationError::DuplicateKey { span: Span::ZERO } Display.
+/// ValidationError::DuplicateKey Display.
 #[test]
 fn validation_error_duplicate_key_display() {
-    let err = ValidationError::DuplicateKey { span: Span::ZERO };
+    let err = ValidationError::DuplicateKey;
     let msg = err.to_string();
     assert!(
         msg.contains("DUPLICATE_KEY"),
@@ -503,10 +502,10 @@ fn validation_error_duplicate_key_display() {
     );
 }
 
-/// ValidationError::ForbiddenYamlFeature { span: Span::ZERO } Display.
+/// ValidationError::ForbiddenYamlFeature Display.
 #[test]
 fn validation_error_forbidden_yaml_feature_display() {
-    let err = ValidationError::ForbiddenYamlFeature { span: Span::ZERO };
+    let err = ValidationError::ForbiddenYamlFeature;
     let msg = err.to_string();
     assert!(
         msg.contains("FORBIDDEN_YAML_FEATURE"),
@@ -519,7 +518,7 @@ fn validation_error_forbidden_yaml_feature_display() {
 fn validation_error_missing_required_field_display() {
     let err = ValidationError::MissingRequiredField {
         field: String::from("name"),
-     span: Span::ZERO};
+    };
     let msg = err.to_string();
     assert!(msg.contains("name"), "should contain field name: {msg}");
 }
@@ -530,7 +529,7 @@ fn validation_error_type_mismatch_display() {
     let err = ValidationError::TypeMismatch {
         expected: String::from("i64"),
         found: String::from("bool"),
-     span: Span::ZERO};
+    };
     let msg = err.to_string();
     assert!(
         msg.contains("i64") && msg.contains("bool"),
@@ -544,7 +543,7 @@ fn validation_error_slot_dependency_cycle_display() {
     let err = ValidationError::SlotDependencyCycle {
         slot: 3,
         chain: String::from("0→1→2→3"),
-     span: Span::ZERO};
+    };
     let msg = err.to_string();
     assert!(
         msg.contains("3") && msg.contains("0→1→2→3"),
@@ -558,7 +557,7 @@ fn validation_error_expression_stack_exceeded_display() {
     let err = ValidationError::ExpressionStackExceeded {
         declared: 5,
         limit: 4,
-     span: Span::ZERO};
+    };
     let msg = err.to_string();
     assert!(
         msg.contains("5") && msg.contains("4"),
@@ -572,7 +571,7 @@ fn validation_error_action_contract_missing_display() {
     let err = ValidationError::ActionContractMissing {
         action_id: 7,
         node_index: 3,
-     span: Span::ZERO};
+    };
     let msg = err.to_string();
     assert!(
         msg.contains("7") && msg.contains("3"),
@@ -586,7 +585,7 @@ fn validation_error_non_deterministic_path_display() {
     let err = ValidationError::NonDeterministicPath {
         from_node: 2,
         to_node: 5,
-     span: Span::ZERO};
+    };
     let msg = err.to_string();
     assert!(
         msg.contains("2") && msg.contains("5"),

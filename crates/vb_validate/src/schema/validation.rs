@@ -3,7 +3,6 @@
 
 use crate::{ValidationError, ValidationResult};
 use super::doc::{FieldValue, StepDoc, WorkflowDoc};
-use vb_core::span::Span;
 
 const CANONICAL_VERSION: &str = "velvet-ballistics/v1";
 
@@ -99,7 +98,7 @@ fn validate_no_duplicate_names(fields: &[(String, FieldValue)]) -> ValidationRes
     let mut seen: Vec<&str> = Vec::with_capacity(fields.len());
     for (name, _) in fields {
         if seen.contains(&name.as_str()) {
-            return Err(ValidationError::DuplicateKey { span: Span::ZERO });
+            return Err(ValidationError::DuplicateKey);
         }
         seen.push(name.as_str());
     }
@@ -111,10 +110,10 @@ pub fn validate_version(doc: &WorkflowDoc) -> ValidationResult<()> {
         Some(version) if version == CANONICAL_VERSION => Ok(()),
         Some(version) => Err(ValidationError::InvalidVersion {
             version: version.to_owned(),
-         span: Span::ZERO}),
+        }),
         None => Err(ValidationError::MissingRequiredField {
             field: "version".to_owned(),
-         span: Span::ZERO}),
+        }),
     }
 }
 
@@ -123,30 +122,30 @@ pub fn validate_trigger(doc: &WorkflowDoc) -> ValidationResult<()> {
         .get_mapping("when")
         .ok_or_else(|| ValidationError::MissingRequiredField {
             field: "when".to_owned(),
-         span: Span::ZERO})?;
+        })?;
     if trigger.is_empty() {
         return Err(ValidationError::MissingRequiredField {
             field: "when".to_owned(),
-         span: Span::ZERO});
+        });
     }
     if trigger.len() > 1 {
         return Err(ValidationError::UnsupportedTrigger {
             trigger: "multiple triggers".to_owned(),
-         span: Span::ZERO});
+        });
     }
     let (kind, body) = trigger
         .first()
         .ok_or_else(|| ValidationError::MissingRequiredField {
             field: "when".to_owned(),
-         span: Span::ZERO})?;
+        })?;
     match kind.as_str() {
         "manual" | "webhook" => validate_empty_trigger(kind, body),
         "schedule" => validate_named_string_trigger(kind, body, "cron"),
         "event" => validate_named_string_trigger(kind, body, "type"),
-        "http" => Err(ValidationError::HttpTriggerOutOfCore { span: Span::ZERO }),
+        "http" => Err(ValidationError::HttpTriggerOutOfCore),
         other => Err(ValidationError::UnsupportedTrigger {
             trigger: other.to_owned(),
-         span: Span::ZERO}),
+        }),
     }
 }
 
@@ -156,7 +155,7 @@ fn validate_empty_trigger(kind: &str, body: &FieldValue) -> ValidationResult<()>
         FieldValue::Mapping(entries) if entries.is_empty() => Ok(()),
         _ => Err(ValidationError::UnsupportedTrigger {
             trigger: kind.to_owned(),
-         span: Span::ZERO}),
+        }),
     }
 }
 
@@ -168,7 +167,7 @@ fn validate_named_string_trigger(
     let FieldValue::Mapping(entries) = body else {
         return Err(ValidationError::UnsupportedTrigger {
             trigger: kind.to_owned(),
-         span: Span::ZERO});
+        });
     };
     let valid = entries.iter().any(|(field, value)| match value {
         FieldValue::String(text) => field == required_field && !text.is_empty(),
@@ -179,7 +178,7 @@ fn validate_named_string_trigger(
     } else {
         Err(ValidationError::UnsupportedTrigger {
             trigger: kind.to_owned(),
-         span: Span::ZERO})
+        })
     }
 }
 
@@ -188,7 +187,7 @@ pub fn validate_ids(doc: &WorkflowDoc) -> ValidationResult<()> {
         .get_string("name")
         .ok_or_else(|| ValidationError::MissingRequiredField {
             field: "name".to_owned(),
-         span: Span::ZERO})?;
+        })?;
     validate_id("name", name)?;
     let mut seen: Vec<&str> = vec![name];
     let Some(steps) = doc.get_sequence("steps") else {
@@ -201,7 +200,7 @@ pub fn validate_ids(doc: &WorkflowDoc) -> ValidationResult<()> {
         } else {
             return Err(ValidationError::MissingRequiredField {
                 field: format!("steps[{index}].id"),
-             span: Span::ZERO});
+            });
         }
     }
     Ok(())
@@ -211,25 +210,25 @@ fn validate_id(field: &str, id: &str) -> ValidationResult<()> {
     if !is_valid_id(id) {
         return Err(ValidationError::InvalidId {
             id: format!("{field}: {id}"),
-         span: Span::ZERO});
+        });
     }
     if is_reserved_id(id) {
         return Err(ValidationError::ReservedId {
             id: format!("{field}: {id}"),
-         span: Span::ZERO});
+        });
     }
     Ok(())
 }
 
 fn validate_single_id(id: &str, seen: &[&str]) -> ValidationResult<()> {
     if !is_valid_id(id) {
-        return Err(ValidationError::InvalidId { id: id.to_owned() , span: Span::ZERO});
+        return Err(ValidationError::InvalidId { id: id.to_owned() });
     }
     if is_reserved_id(id) {
-        return Err(ValidationError::ReservedId { id: id.to_owned() , span: Span::ZERO});
+        return Err(ValidationError::ReservedId { id: id.to_owned() });
     }
     if seen.contains(&id) {
-        return Err(ValidationError::DuplicateId { id: id.to_owned() , span: Span::ZERO});
+        return Err(ValidationError::DuplicateId { id: id.to_owned() });
     }
     Ok(())
 }
@@ -262,7 +261,7 @@ pub fn validate_step_fields(doc: &WorkflowDoc) -> ValidationResult<()> {
         .get_sequence("steps")
         .ok_or_else(|| ValidationError::MissingRequiredField {
             field: "steps".to_owned(),
-         span: Span::ZERO})?;
+        })?;
     for step in steps {
         validate_step_unknown_fields(step)?;
         validate_single_primitive(step)?;
@@ -275,7 +274,7 @@ fn validate_required_fields(doc: &WorkflowDoc) -> ValidationResult<()> {
         if !doc.has_field(field) {
             return Err(ValidationError::MissingRequiredField {
                 field: (*field).to_owned(),
-             span: Span::ZERO});
+            });
         }
     }
     Ok(())
@@ -284,7 +283,7 @@ fn validate_required_fields(doc: &WorkflowDoc) -> ValidationResult<()> {
 fn validate_unknown_fields(doc: &WorkflowDoc) -> ValidationResult<()> {
     for field in doc.field_names() {
         if !ALLOWED_TOP_LEVEL_FIELDS.contains(&field) {
-            return Err(ValidationError::UnknownTopLevelField { span: Span::ZERO });
+            return Err(ValidationError::UnknownTopLevelField);
         }
     }
     Ok(())
@@ -293,7 +292,7 @@ fn validate_unknown_fields(doc: &WorkflowDoc) -> ValidationResult<()> {
 fn validate_step_unknown_fields(step: &StepDoc) -> ValidationResult<()> {
     for field in step.field_names() {
         if !ALLOWED_STEP_FIELDS.contains(&field) {
-            return Err(ValidationError::UnknownStepField { span: Span::ZERO });
+            return Err(ValidationError::UnknownStepField);
         }
     }
     Ok(())
@@ -307,10 +306,10 @@ pub fn validate_single_primitive(step: &StepDoc) -> ValidationResult<()> {
         }
     }
     if count == 0 {
-        return Err(ValidationError::MissingStepPrimitive { span: Span::ZERO });
+        return Err(ValidationError::MissingStepPrimitive);
     }
     if count > 1 {
-        return Err(ValidationError::MultipleStepPrimitives { span: Span::ZERO });
+        return Err(ValidationError::MultipleStepPrimitives);
     }
     Ok(())
 }

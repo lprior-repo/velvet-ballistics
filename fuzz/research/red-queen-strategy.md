@@ -26,7 +26,7 @@
 
 ### 1.1 Package Layout
 
-- **Package**: `velvet-ballistics-fuzz` (`fuzz/Cargo.toml`)
+- **Package**: `velvet-ballastics-fuzz` (`fuzz/Cargo.toml`)
 - **Library**: `fuzz/src/lib.rs` — 3010 lines, 38 `pub fn fuzz_*` shared harness bodies
 - **Bridge module**: `fuzz/fuzz_targets.rs` — 101 lines, thin wrappers for C ABI and callable entrypoints
 - **libfuzzer targets**: `fuzz/fuzz_targets/*.rs` — 12 targets using `#![no_main]` + `fuzz_target!` macro
@@ -780,7 +780,7 @@ Verify that fuzz harnesses are **sensitive enough** to catch injected bugs. Use 
 **Process**:
 ```bash
 # Run mutation testing on fuzz harness library
-cargo mutants -p velvet-ballistics-fuzz -- --test-fuzz-smoke
+cargo mutants -p velvet-ballastics-fuzz -- --test-fuzz-smoke
 
 # Verify: mutants in codec validation logic SHOULD be caught by fuzz harnesses
 # If a mutation is NOT caught, the harness needs strengthening

@@ -2,7 +2,6 @@
 //! Event conversion and collection functions.
 
 use super::events_types::{EventSpan, ScalarStyle, YamlEvent};
-use crate::source_map::SourceSpan;
 use crate::{YamlError, YamlResult};
 
 /// Collect all YAML events from the given source text.
@@ -13,20 +12,9 @@ pub fn collect_events(text: &str) -> YamlResult<Vec<YamlEvent>> {
     let mut events = Vec::new();
 
     while let Some(result) = parser.next_event() {
-        let (event, span) = result.map_err(|e| {
-            let m = e.marker();
-            YamlError::ParseError {
-                span: Some(SourceSpan::new(
-                    m.index(),
-                    m.index(),
-                    m.line(),
-                    m.col(),
-                    m.line(),
-                    m.col(),
-                )),
-                line: m.line(),
-                reason: e.info().into(),
-            }
+        let (event, span) = result.map_err(|e| YamlError::ParseError {
+            line: e.marker().line(),
+            reason: e.info().into(),
         })?;
         events.push(convert_event(event, span));
     }

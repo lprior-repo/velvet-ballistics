@@ -2,72 +2,36 @@
 
 //! YAML parsing error types.
 
-use crate::source_map::SourceSpan;
 use thiserror::Error;
 use vb_core::diagnostic::{HasSymbolicCode, SymbolicCode};
 
 /// YAML parsing error type.
-///
-/// Parse-level variants carry an optional [`SourceSpan`] extracted from the
-/// parser event stream. Limit-exceeded variants that apply to the whole
-/// document (`SourceTooLarge`, `NestingTooDeep`, `NodeLimitExceeded`,
-/// `EmptySource`) omit the span.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum YamlError {
     #[error("unsupported trigger: {trigger}")]
-    UnsupportedTrigger {
-        trigger: &'static str,
-        #[doc(hidden)]
-        span: Option<SourceSpan>,
-    },
+    UnsupportedTrigger { trigger: &'static str },
 
     #[error("unsupported YAML feature: {feature}")]
-    UnsupportedFeature {
-        feature: &'static str,
-        #[doc(hidden)]
-        span: Option<SourceSpan>,
-    },
+    UnsupportedFeature { feature: &'static str },
 
     #[error("duplicate key found: {key}")]
-    DuplicateKey {
-        key: Box<str>,
-        #[doc(hidden)]
-        span: Option<SourceSpan>,
-    },
+    DuplicateKey { key: Box<str> },
 
     #[error("anchor/alias/merge key rejected")]
-    AnchorAliasMerge {
-        #[doc(hidden)]
-        span: Option<SourceSpan>,
-    },
+    AnchorAliasMerge,
 
     #[error("custom tag rejected: {tag}")]
-    CustomTag {
-        tag: Box<str>,
-        #[doc(hidden)]
-        span: Option<SourceSpan>,
-    },
+    CustomTag { tag: Box<str> },
 
     #[error("binary scalar rejected")]
-    BinaryScalar {
-        #[doc(hidden)]
-        span: Option<SourceSpan>,
-    },
+    BinaryScalar,
 
     #[error("multiple documents rejected")]
-    MultipleDocuments {
-        count: usize,
-        #[doc(hidden)]
-        span: Option<SourceSpan>,
-    },
+    MultipleDocuments { count: usize },
 
     #[error("YAML 1.1 ambiguous scalar rejected: {scalar}")]
-    AmbiguousScalar {
-        scalar: Box<str>,
-        #[doc(hidden)]
-        span: Option<SourceSpan>,
-    },
+    AmbiguousScalar { scalar: Box<str> },
 
     #[error("source too large: {size} bytes, max {max}")]
     SourceTooLarge { size: usize, max: usize },
@@ -79,81 +43,43 @@ pub enum YamlError {
     NodeLimitExceeded { count: u32, max: u32 },
 
     #[error("scalar too long: {len} bytes, max {max}")]
-    ScalarTooLong {
-        len: usize,
-        max: usize,
-        #[doc(hidden)]
-        span: Option<SourceSpan>,
-    },
+    ScalarTooLong { len: usize, max: usize },
 
     #[error("sequence too long: {len}, max {max}")]
-    SequenceTooLong {
-        len: usize,
-        max: usize,
-        #[doc(hidden)]
-        span: Option<SourceSpan>,
-    },
+    SequenceTooLong { len: usize, max: usize },
 
     #[error("mapping too large: {count} entries, max {max}")]
-    MappingTooLarge {
-        count: usize,
-        max: usize,
-        #[doc(hidden)]
-        span: Option<SourceSpan>,
-    },
+    MappingTooLarge { count: usize, max: usize },
 
     #[error("unknown field: {field}")]
-    UnknownField {
-        field: Box<str>,
-        #[doc(hidden)]
-        span: Option<SourceSpan>,
-    },
+    UnknownField { field: Box<str> },
 
     #[error("empty source")]
     EmptySource,
 
     #[error("missing required field: {field}")]
-    MissingField {
-        field: &'static str,
-        #[doc(hidden)]
-        span: Option<SourceSpan>,
-    },
+    MissingField { field: &'static str },
 
     #[error("field shape error: {field} expected {expected}")]
     FieldShape {
         field: &'static str,
         expected: &'static str,
-        #[doc(hidden)]
-        span: Option<SourceSpan>,
     },
 
     #[error("parse error at line {line}: {reason}")]
-    ParseError {
-        line: usize,
-        reason: Box<str>,
-        #[doc(hidden)]
-        span: Option<SourceSpan>,
-    },
+    ParseError { line: usize, reason: Box<str> },
 
     #[error("forbidden YAML feature: {detail}")]
-<<<<<<< HEAD
     ForbiddenFeature { detail: &'static str },
 
     #[error("legacy primitive not supported: {primitive} (use {canonical} instead)")]
     LegacyPrimitive {
         primitive: &'static str,
         canonical: &'static str,
-=======
-    ForbiddenFeature {
-        detail: &'static str,
-        #[doc(hidden)]
-        span: Option<SourceSpan>,
->>>>>>> landing/vb-xi2f.9
     },
 }
 
 impl YamlError {
-<<<<<<< HEAD
     /// Returns the stable symbolic diagnostic code for this YAML error.
     ///
     /// Mapping matches error-taxonomy §2.3:
@@ -196,12 +122,6 @@ impl YamlError {
         }
         // Unreachable: all match arms use registered symbolic names.
         SymbolicCode::INTERNAL_INVARIANT
-    }
-}
-
-impl HasSymbolicCode for YamlError {
-    fn symbolic_code(&self) -> SymbolicCode {
-        self.code()
     }
 }
 
@@ -249,33 +169,6 @@ impl YamlError {
     #[must_use]
     pub fn symbolic_code_name(&self) -> &'static str {
         self.symbolic_code().as_str()
-=======
-    /// Returns the source span associated with this error, if any.
-    #[must_use]
-    pub fn span(&self) -> Option<SourceSpan> {
-        match self {
-            Self::UnsupportedTrigger { span, .. }
-            | Self::UnsupportedFeature { span, .. }
-            | Self::DuplicateKey { span, .. }
-            | Self::AnchorAliasMerge { span }
-            | Self::CustomTag { span, .. }
-            | Self::BinaryScalar { span }
-            | Self::MultipleDocuments { span, .. }
-            | Self::AmbiguousScalar { span, .. }
-            | Self::ScalarTooLong { span, .. }
-            | Self::SequenceTooLong { span, .. }
-            | Self::MappingTooLarge { span, .. }
-            | Self::UnknownField { span, .. }
-            | Self::MissingField { span, .. }
-            | Self::FieldShape { span, .. }
-            | Self::ParseError { span, .. }
-            | Self::ForbiddenFeature { span, .. } => *span,
-            Self::SourceTooLarge { .. }
-            | Self::NestingTooDeep { .. }
-            | Self::NodeLimitExceeded { .. }
-            | Self::EmptySource => None,
-        }
->>>>>>> landing/vb-xi2f.9
     }
 }
 

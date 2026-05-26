@@ -22,7 +22,6 @@ pub mod mod_compile_lowering;
 mod mod_compile_validation;
 mod references;
 mod schema;
-pub mod span_bridge;
 pub mod strict_yaml;
 mod type_taint;
 
@@ -64,7 +63,6 @@ pub mod kani_foreach_parity;
 #[cfg(kani)]
 pub mod kani_lower_control;
 
-<<<<<<< HEAD
 // Kani harnesses for vb-xi2f.33: digest covering Ask primitives.
 #[cfg(kani)]
 pub mod kani_digest_ask_empty_prompt;
@@ -87,16 +85,6 @@ pub mod kani_wait_digest;
 // PO-001 through PO-005: digest_step_primitive Repeat { max_attempts, body }.
 #[cfg(kani)]
 pub mod kani_digest_repeat;
-=======
-#[cfg(kani)]
-pub mod kani_canonical_yaml_enrich;
-
-#[cfg(kani)]
-pub mod kani_span_bridge_enrich;
-
-#[cfg(kani)]
-pub mod kani_tree_mark_enrich;
->>>>>>> landing/vb-xi2f.9
 
 pub use expression_bytecode::{compile_expr_to_bytecode, compile_expr_to_bytecode_with_accessors};
 

@@ -16,7 +16,6 @@ pub(crate) fn reject_known_canonical_text_gaps(text: &str) -> Result<(), Compile
         Err(CompileError::CanonicalYaml {
             category: "field_shape",
             message: Box::from("wait.event must be non-empty"),
-            mark: SourceMark::unavailable(),
         })
     } else {
         Ok(())
@@ -24,20 +23,9 @@ pub(crate) fn reject_known_canonical_text_gaps(text: &str) -> Result<(), Compile
 }
 
 pub(crate) fn canonical_yaml_error(error: vb_yaml::YamlError) -> CompileError {
-    let mark = match error.span() {
-        Some(span) => SourceMark {
-            index: span.start_offset,
-            end_index: span.end_offset,
-            line: span.start_line,
-            column: span.start_col,
-            available: true,
-        },
-        None => SourceMark::unavailable(),
-    };
     CompileError::CanonicalYaml {
         category: yaml_error_category(&error),
         message: error.to_string().into_boxed_str(),
-        mark,
     }
 }
 
@@ -45,9 +33,9 @@ pub(crate) fn yaml_error_category(error: &vb_yaml::YamlError) -> &'static str {
     match error {
         vb_yaml::YamlError::UnsupportedTrigger { .. }
         | vb_yaml::YamlError::UnsupportedFeature { .. }
-        | vb_yaml::YamlError::AnchorAliasMerge { .. }
+        | vb_yaml::YamlError::AnchorAliasMerge
         | vb_yaml::YamlError::CustomTag { .. }
-        | vb_yaml::YamlError::BinaryScalar { .. }
+        | vb_yaml::YamlError::BinaryScalar
         | vb_yaml::YamlError::AmbiguousScalar { .. }
         | vb_yaml::YamlError::ForbiddenFeature { .. } => "forbidden_feature",
         vb_yaml::YamlError::DuplicateKey { .. } => "duplicate_key",

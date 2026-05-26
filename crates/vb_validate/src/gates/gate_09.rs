@@ -4,7 +4,6 @@
 use crate::{ValidationError, ValidationResult};
 use vb_core::ids::{AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
 use vb_core::workflow::{
-use vb_core::span::Span;
     AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
     WorkflowParts,
 };
@@ -153,7 +152,7 @@ fn validate_expr_slots(
                     slot: slot.as_usize(),
                     slot_count,
                     context: format!("expression {expr_index}"),
-                 span: Span::ZERO});
+                });
             }
             _ => {}
         }
@@ -167,7 +166,7 @@ fn check_slot(slot: SlotIdx, node_index: usize, slot_count: usize) -> Validation
             slot: slot.as_usize(),
             slot_count,
             context: format!("node {node_index}"),
-         span: Span::ZERO});
+        });
     }
     Ok(())
 }

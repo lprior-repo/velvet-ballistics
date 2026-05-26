@@ -5,7 +5,7 @@
 //! native Rust IR. This module preserves source-language intent before IR
 //! lowering erases names and diagnostic metadata.
 
-pub(crate) mod marks;
+mod marks;
 mod parse;
 mod types;
 

@@ -6,7 +6,6 @@ use vb_core::action::ActionContract;
 use vb_core::capability::Capability;
 use vb_core::ids::{AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
 use vb_core::workflow::{
-use vb_core::span::Span;
     AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
     WorkflowParts,
 };
@@ -32,7 +31,7 @@ pub fn validate_gate_12_action_contract_completeness(
                 return Err(ValidationError::ActionContractMissing {
                     action_id: usize::from(action_val),
                     node_index,
-                 span: Span::ZERO});
+                });
             }
             if !do_action_ids.contains(&action_val) {
                 do_action_ids.push(action_val);
@@ -56,7 +55,7 @@ pub fn validate_gate_12_action_contract_completeness(
         if !found {
             return Err(ValidationError::ActionContractOrphan {
                 action_id: usize::from(contract_id),
-             span: Span::ZERO});
+            });
         }
     }
 
@@ -81,7 +80,7 @@ fn validate_required_capability(
             contract_action_id: usize::from(contract_action.get()),
             capability_action_id: usize::from(capability.action_id().get()),
             capability_index,
-         span: Span::ZERO});
+        });
     }
     Ok(())
 }
@@ -96,7 +95,7 @@ fn validate_capability_name(
         return Err(ValidationError::CapabilityNameEmpty {
             action_id: usize::from(action_id.get()),
             capability_index,
-         span: Span::ZERO});
+        });
     }
     if len > MAX_CAPABILITY_NAME_BYTES {
         return Err(ValidationError::CapabilityNameTooLong {
@@ -104,14 +103,14 @@ fn validate_capability_name(
             capability_index,
             len,
             max: MAX_CAPABILITY_NAME_BYTES,
-         span: Span::ZERO});
+        });
     }
     if !is_capability_name_grammar_valid(name) {
         return Err(ValidationError::CapabilityNameInvalid {
             action_id: usize::from(action_id.get()),
             capability_index,
             name: name.to_owned(),
-         span: Span::ZERO});
+        });
     }
     Ok(())
 }
@@ -148,7 +147,7 @@ fn validate_no_duplicate_capability_requirements(
                     first_index,
                     duplicate_index,
                     name: duplicate.name().to_owned(),
-                 span: Span::ZERO})
+                })
         })
         .map_or(Ok(()), Err)
 }

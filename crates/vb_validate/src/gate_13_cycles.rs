@@ -6,7 +6,6 @@
 
 use crate::{ValidationError, ValidationResult};
 use vb_core::ids::SlotIdx;
-use vb_core::span::Span;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, WorkflowParts};
 
 pub fn validate_gate_13_no_slot_cycles(parts: &WorkflowParts) -> ValidationResult<()> {
@@ -61,13 +60,11 @@ fn detect_cycle_dfs(
             .ok_or(ValidationError::SlotDependencyCycle {
                 slot,
                 chain: format!("slot {slot} -> slot {neighbor}"),
-                span: Span::ZERO,
             })?;
         if color == 1 {
             return Err(ValidationError::SlotDependencyCycle {
                 slot,
                 chain: format!("slot {slot} -> slot {neighbor}"),
-                span: Span::ZERO,
             });
         }
         if color == 0 {

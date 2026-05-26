@@ -14,6 +14,7 @@
 pub mod action;
 pub mod budget;
 pub mod capability;
+pub mod contract_encoding;
 pub mod diagnostic;
 pub mod engine;
 pub mod error;
@@ -21,7 +22,6 @@ pub mod errors;
 pub mod frame;
 pub mod ids;
 pub mod limits;
-pub mod non_empty_vec;
 pub mod policy;
 pub mod replay;
 pub mod span;
@@ -75,13 +75,7 @@ pub mod kani_step_harnesses;
 pub mod kani_step_state_transition;
 
 #[cfg(kani)]
-pub mod kani_span_enrich;
-
-#[cfg(kani)]
-pub mod kani_non_empty_vec;
-
-#[cfg(kani)]
-pub mod kani_diagnostic_enrich;
+pub mod kani;
 
 pub use action::{
     ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionInput, ActionJournalEvent,
@@ -96,7 +90,10 @@ pub use budget::{
     validate_aggregate_budget,
 };
 pub use capability::{Capability, CapabilitySet};
-pub use diagnostic::{Diagnostic, DiagnosticCode, DiagnosticCodeParseError, Severity};
+pub use diagnostic::{
+    CODE_REGISTRY, CodeCategory, CodeEntry, Diagnostic, DiagnosticCode, DiagnosticCodeParseError,
+    HasSymbolicCode, Severity, SymbolicCode, SymbolicCodeParseError,
+};
 pub use engine::{
     EngineSignal, ErrorHandlerOutcome, ErrorSlotData, StepBudget, build_list, build_object,
     drive_deterministic, eval_accessor, eval_expr, journal_action_suspended, new_run_frame,
@@ -111,7 +108,6 @@ pub use ids::{
     FanoutLimit, ListId, MaxAttempts, ObjectId, RetryCount, RunId, SeqNo, SlotIdx, StepIdx,
     SymbolId, WorkflowDigest, WorkflowId,
 };
-pub use non_empty_vec::NonEmptyVec;
 pub use policy::RuntimePolicy;
 pub use span::{Located, Span, Spanned};
 pub use value::{ConstValue, FiniteF64, SlotValue, Taint, join_taint};

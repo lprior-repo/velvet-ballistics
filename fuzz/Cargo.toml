@@ -41,7 +41,7 @@ vb_expr = { path = "../crates/vb_expr" }
 vb_storage = { path = "../crates/vb_storage" }
 vb_runtime = { path = "../crates/vb_runtime" }
 vb_validate = { path = "../crates/vb_validate" }
-vb_yaml = { path = "../crates/vb_yaml", features = ["test-util"] }
+vb_yaml = { path = "../crates/vb_yaml" }
 vb_compile = { path = "../crates/vb_compile" }
 vb_ipc = { path = "../crates/vb_ipc" }
 # vb_ui_model = { path = "../crates/vb_ui_model" }  # MISSING
@@ -465,86 +465,33 @@ path = "fuzz_targets/yaml_events.rs"
 test = false
 doc = false
 bench = false
-<<<<<<< HEAD
-[[bin]]
-name = "compile_workflow"
-path = "fuzz_targets/compile_workflow_fuzz.rs"
-test = false
-doc = false
-bench = false
-
-# === wait digest coverage targets (vb-xi2f.32) ===
-
-[[bin]]
-name = "wait_digest_sensitivity"
-path = "fuzz_targets/wait_digest_sensitivity.rs"
-=======
 
 # === vb-xi2f.9 Span Enrichment Fuzz Targets ===
 
 [[bin]]
 name = "diagnostic_from_error"
 path = "fuzz_targets/diagnostic_from_error.rs"
->>>>>>> landing/vb-xi2f.9
 test = false
 doc = false
 bench = false
 
 [[bin]]
-<<<<<<< HEAD
-name = "parse_workflow_source"
-path = "fuzz_targets/parse_workflow_source_fuzz.rs"
-=======
 name = "diagnostic_code_from_str"
 path = "fuzz_targets/diagnostic_code_from_str.rs"
->>>>>>> landing/vb-xi2f.9
 test = false
 doc = false
 bench = false
 
 [[bin]]
-<<<<<<< HEAD
-name = "wait_sentinel_collision"
-path = "fuzz_targets/wait_sentinel_collision.rs"
-=======
 name = "span_bridge_fuzz"
 path = "fuzz_targets/span_bridge_fuzz.rs"
->>>>>>> landing/vb-xi2f.9
 test = false
 doc = false
 bench = false
 
 [[bin]]
-<<<<<<< HEAD
-name = "foreach_digest_canonical"
-path = "fuzz_targets/foreach_digest_canonical.rs"
-test = false
-doc = false
-bench = false
-
-# Disabled: declared target file is absent. Re-enable only with a real
-# libFuzzer target at fuzz_targets/foreach_digest_proptest.rs.
-# [[bin]]
-# name = "foreach_digest_proptest"
-# path = "fuzz_targets/foreach_digest_proptest.rs"
-# test = false
-# doc = false
-# bench = false
-
-[[bin]]
-name = "wait_digest_exhaustive_collision"
-path = "fuzz_targets/wait_digest_exhaustive_collision.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "fuzz_diagnostic_code_from_str"
-path = "fuzz_targets/fuzz_diagnostic_code_from_str.rs"
-=======
 name = "compile_source_ast_marks"
 path = "fuzz_targets/compile_source_ast_marks.rs"
->>>>>>> landing/vb-xi2f.9
 test = false
 doc = false
 bench = false

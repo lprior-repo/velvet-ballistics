@@ -4,7 +4,6 @@
 #![allow(unreachable_pub)]
 
 use crate::{ValidationError, ValidationResult};
-use vb_core::span::Span;
 use vb_core::workflow::{AccessorProgram, PathSegment, WorkflowParts};
 
 /// Validates that every accessor path segment resolves to a well-formed symbol.
@@ -21,7 +20,6 @@ pub fn validate_gate_08_accessor_path_segments(parts: &WorkflowParts) -> Validat
                     return Err(ValidationError::AccessorPathInvalid {
                         accessor_index: acc_index,
                         segment_index: seg_index,
-                        span: Span::ZERO,
                     });
                 }
             }
@@ -44,7 +42,6 @@ fn validate_field_symbol(
             segment_index: seg_index,
             symbol: symbol.get(),
             symbols_count,
-            span: Span::ZERO,
         })
     }
 }
@@ -54,7 +51,6 @@ fn validate_index_segment(acc_index: usize, seg_index: usize, idx: u32) -> Valid
         Err(ValidationError::AccessorPathInvalid {
             accessor_index: acc_index,
             segment_index: seg_index,
-            span: Span::ZERO,
         })
     } else {
         Ok(())
@@ -71,7 +67,6 @@ fn validate_accessor_root(
             accessor_index: acc_index,
             slot: accessor.root.as_usize(),
             slot_count: usize::from(slot_count),
-            span: Span::ZERO,
         });
     }
     Ok(())
@@ -142,7 +137,6 @@ mod tests {
                 segment_index: 0,
                 symbol: field_id,
                 symbols_count,
-                span: Span::ZERO,
             })
         }
     }
@@ -152,7 +146,6 @@ mod tests {
             Err(ValidationError::AccessorPathInvalid {
                 accessor_index: 0,
                 segment_index: 0,
-                span: Span::ZERO,
             })
         } else {
             Ok(())
@@ -167,7 +160,6 @@ mod tests {
                 accessor_index: 0,
                 slot: usize::from(root),
                 slot_count: usize::from(slot_count),
-                span: Span::ZERO,
             })
         }
     }
@@ -211,7 +203,6 @@ mod tests {
                 segment_index: 0,
                 symbol: 3,
                 symbols_count: 3,
-                span: Span::ZERO
             })
         );
     }
@@ -227,7 +218,6 @@ mod tests {
                 segment_index: 0,
                 symbol: 4,
                 symbols_count: 3,
-                span: Span::ZERO
             })
         );
     }
@@ -243,7 +233,6 @@ mod tests {
                 segment_index: 0,
                 symbol: 0,
                 symbols_count: 0,
-                span: Span::ZERO
             })
         );
     }
@@ -276,7 +265,6 @@ mod tests {
             Err(ValidationError::AccessorPathInvalid {
                 accessor_index: 0,
                 segment_index: 0,
-                span: Span::ZERO
             })
         );
     }
@@ -327,7 +315,6 @@ mod tests {
                 accessor_index: 0,
                 slot: 3,
                 slot_count: 3,
-                span: Span::ZERO
             })
         );
     }
@@ -346,7 +333,6 @@ mod tests {
                 accessor_index: 0,
                 slot: 5,
                 slot_count: 1,
-                span: Span::ZERO
             })
         );
     }
@@ -372,7 +358,6 @@ mod tests {
                 segment_index: 1,
                 symbol: 2,
                 symbols_count: 2,
-                span: Span::ZERO
             })
         );
     }
@@ -394,7 +379,6 @@ mod tests {
                 accessor_index: 0,
                 slot: 5,
                 slot_count: 1,
-                span: Span::ZERO
             })
         );
     }
@@ -421,7 +405,6 @@ mod tests {
                 segment_index: 0,
                 symbol: 1,
                 symbols_count: 1,
-                span: Span::ZERO
             })
         );
         assert_eq!(
@@ -431,7 +414,6 @@ mod tests {
                 segment_index: 0,
                 symbol: 1,
                 symbols_count: 1,
-                span: Span::ZERO
             })
         );
     }
@@ -509,7 +491,7 @@ mod tests {
                     segment_index: 1,
                     symbol: invalid_field,
                     symbols_count: 2,
-                 span: Span::ZERO})
+                })
             );
         }
 
@@ -607,7 +589,6 @@ mod tests {
                     accessor_index: 0,
                     slot: usize::from(root),
                     slot_count: usize::from(slot_count),
-                    span: Span::ZERO
                 })
             );
         }

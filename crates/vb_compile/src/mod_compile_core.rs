@@ -43,10 +43,7 @@ impl YamlCompiler {
         let docs =
             Yaml::load_from_str(text).map_err(|e| CompileErrors(vec![CompileError::Parse(e)]))?;
         let doc = single_document(&docs).map_err(|e| CompileErrors(vec![e]))?;
-        // Build AstMarks early to thread into tree validation for richer error locations.
-        let marks = ast::marks::AstMarks::new(text).ok();
-        validate_strict_profile(doc, self.limits, marks.as_ref())
-            .map_err(|e| CompileErrors(vec![e]))?;
+        validate_strict_profile(doc, self.limits).map_err(|e| CompileErrors(vec![e]))?;
         validate_workflow_document_shape(doc).map_err(|e| CompileErrors(vec![e]))?;
         schema::validate_input_schemas(doc)?;
         let ast = ast::parse_workflow_ast(text, doc).map_err(|e| CompileErrors(vec![e]))?;

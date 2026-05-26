@@ -5,16 +5,15 @@ use vb_ipc::IpcError;
 use vb_runtime::RuntimeError;
 use vb_storage::JournalError;
 use vb_validate::ValidationError;
-use vb_core::span::Span;
 
 #[test]
 fn diagnostic_code_ranges_are_globally_partitioned_by_crate() {
     assert_eq!(
-        vb_validate::diagnostic::error_code(&ValidationError::DuplicateKey { span: Span::ZERO }),
+        vb_validate::diagnostic::error_code(&ValidationError::DuplicateKey),
         DiagnosticCode::new(0x0101)
     );
     assert_eq!(
-        vb_validate::diagnostic::error_code(&ValidationError::HttpTriggerOutOfCore { span: Span::ZERO }),
+        vb_validate::diagnostic::error_code(&ValidationError::HttpTriggerOutOfCore),
         DiagnosticCode::new(0x040C)
     );
     assert_eq!(

@@ -1,7 +1,6 @@
 #![forbid(unsafe_code)]
 
 use vb_core::ids::{SlotIdx, StepIdx, SymbolId, WorkflowDigest};
-use vb_core::span::Span;
 use vb_core::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, PathSegment,
     ResourceContract, WorkflowError, WorkflowParts,
@@ -95,7 +94,6 @@ fn aggregate_gate_08_rejects_accessor_root_greater_than_slot_count() {
             accessor_index: 0,
             slot: 5,
             slot_count: 1,
-            span: Span::ZERO
         })
     );
 }
@@ -121,7 +119,6 @@ fn aggregate_gate_08_reports_invalid_field_segment_coordinates() {
             segment_index: 1,
             symbol: 2,
             symbols_count: 2,
-            span: Span::ZERO
         })
     );
 }
@@ -143,7 +140,6 @@ fn aggregate_gate_08_checks_root_before_path_segments() {
             accessor_index: 0,
             slot: 5,
             slot_count: 1,
-            span: Span::ZERO
         })
     );
 }
@@ -179,7 +175,6 @@ fn aggregate_gate_08_rejects_field_equal_to_symbols_count() {
             segment_index: 0,
             symbol: 4,
             symbols_count: 4,
-            span: Span::ZERO
         })
     );
 }
@@ -195,7 +190,6 @@ fn aggregate_gate_08_rejects_field_above_symbols_count() {
             segment_index: 0,
             symbol: 5,
             symbols_count: 4,
-            span: Span::ZERO
         })
     );
 }
@@ -227,7 +221,6 @@ fn validate_gate_08_matches_core_workflow_for_invalid_field_boundaries() {
             segment_index: 0,
             symbol: 1,
             symbols_count: 1,
-            span: Span::ZERO
         })
     );
     assert_eq!(

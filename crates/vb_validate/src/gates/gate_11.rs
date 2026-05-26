@@ -4,7 +4,6 @@
 use crate::{ValidationError, ValidationResult};
 use vb_core::ids::{AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
 use vb_core::workflow::{
-use vb_core::span::Span;
     AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
     WorkflowParts,
 };
@@ -279,7 +278,7 @@ fn require_pairing(matches: bool, index: usize, detail: impl Into<String>) -> Va
     Err(ValidationError::NodeKindConstraintViolation {
         node_index: index,
         detail: detail.into(),
-     span: Span::ZERO})
+    })
 }
 
 fn is_matching_for_each_start(kind: &CompiledNodeKind, body: StepIdx, done: StepIdx) -> bool {
@@ -366,7 +365,7 @@ fn check_step_in_range(
             node_count,
             source_node: source_index,
             label: label.to_owned(),
-         span: Span::ZERO});
+        });
     }
     Ok(())
 }
@@ -382,7 +381,7 @@ fn check_next_step_in_range(
             node_count,
             source_node: source_index,
             label: "next".to_owned(),
-         span: Span::ZERO});
+        });
     }
     Ok(())
 }
@@ -401,7 +400,7 @@ fn check_loop_span(
             node_count,
             source_node: start_index,
             label: "loop body must be after loop start".to_owned(),
-         span: Span::ZERO});
+        });
     }
     if done_usize <= body_usize {
         return Err(ValidationError::LoopBodyStepOutOfRange {
@@ -409,7 +408,7 @@ fn check_loop_span(
             node_count,
             source_node: start_index,
             label: "loop done must be after loop body".to_owned(),
-         span: Span::ZERO});
+        });
     }
     Ok(())
 }
@@ -429,7 +428,7 @@ fn check_together_span(
                 node_count,
                 source_node: start_index,
                 label: format!("together branch {branch_index} must be after start"),
-             span: Span::ZERO});
+            });
         }
         if join_usize <= branch_usize {
             return Err(ValidationError::LoopBodyStepOutOfRange {
@@ -437,7 +436,7 @@ fn check_together_span(
                 node_count,
                 source_node: start_index,
                 label: format!("together join must be after branch {branch_index}"),
-             span: Span::ZERO});
+            });
         }
     }
     Ok(())

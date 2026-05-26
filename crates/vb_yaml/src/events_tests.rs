@@ -408,7 +408,6 @@ fn adversarial_events_null_byte_accepted_by_parser_but_rejected_by_profile() {
                 matches!(
                     profile_result,
                     Err(crate::YamlError::ForbiddenFeature {
-                        span: None,
                         detail: "null_byte_in_source"
                     })
                 ),

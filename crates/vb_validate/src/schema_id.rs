@@ -3,26 +3,16 @@
 
 #![allow(unreachable_pub)]
 use crate::{ValidationError, ValidationResult};
-use vb_core::span::Span;
 
 pub fn validate_single_id(id: &str, seen: &[&str]) -> ValidationResult<()> {
     if !is_valid_id(id) {
-        return Err(ValidationError::InvalidId {
-            id: id.to_owned(),
-            span: Span::ZERO,
-        });
+        return Err(ValidationError::InvalidId { id: id.to_owned() });
     }
     if is_reserved_id(id) {
-        return Err(ValidationError::ReservedId {
-            id: id.to_owned(),
-            span: Span::ZERO,
-        });
+        return Err(ValidationError::ReservedId { id: id.to_owned() });
     }
     if seen.contains(&id) {
-        return Err(ValidationError::DuplicateId {
-            id: id.to_owned(),
-            span: Span::ZERO,
-        });
+        return Err(ValidationError::DuplicateId { id: id.to_owned() });
     }
     Ok(())
 }
@@ -86,7 +76,6 @@ const RESERVED_IDS: &[&str] = &[
 #[cfg(test)]
 mod id_tests {
     use super::*;
-    use vb_core::span::Span;
 
     // -- is_valid_id: valid cases --
 
@@ -288,8 +277,7 @@ mod id_tests {
         assert_eq!(
             validate_single_id("BAD", &[]),
             Err(ValidationError::InvalidId {
-                id: "BAD".to_owned(),
-                span: Span::ZERO
+                id: "BAD".to_owned()
             })
         );
     }
@@ -299,8 +287,7 @@ mod id_tests {
         assert_eq!(
             validate_single_id("runtime", &[]),
             Err(ValidationError::ReservedId {
-                id: "runtime".to_owned(),
-                span: Span::ZERO
+                id: "runtime".to_owned()
             })
         );
     }
@@ -310,8 +297,7 @@ mod id_tests {
         assert_eq!(
             validate_single_id("step1", &["step1"]),
             Err(ValidationError::DuplicateId {
-                id: "step1".to_owned(),
-                span: Span::ZERO
+                id: "step1".to_owned()
             })
         );
     }

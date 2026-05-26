@@ -5,7 +5,6 @@
 
 use crate::{ValidationError, ValidationResult};
 use vb_core::ids::StepIdx;
-use vb_core::span::Span;
 use vb_core::workflow::{CompiledNodeKind, WorkflowParts};
 
 pub fn validate_gate_11_loop_body_graph(parts: &WorkflowParts) -> ValidationResult<()> {
@@ -104,7 +103,6 @@ fn check_step_in_range(
             node_count,
             source_node: source_index,
             label: label.to_owned(),
-            span: Span::ZERO,
         });
     }
     Ok(())
@@ -124,7 +122,6 @@ fn check_loop_span(
             node_count,
             source_node: start_index,
             label: "loop body must be after loop start".to_owned(),
-            span: Span::ZERO,
         });
     }
     if done_usize <= body_usize {
@@ -133,7 +130,6 @@ fn check_loop_span(
             node_count,
             source_node: start_index,
             label: "loop done must be after loop body".to_owned(),
-            span: Span::ZERO,
         });
     }
     Ok(())
@@ -154,7 +150,6 @@ fn check_together_span(
                 node_count,
                 source_node: start_index,
                 label: format!("together branch {bi} must be after start"),
-                span: Span::ZERO,
             });
         }
         if join_usize <= bu {
@@ -163,7 +158,6 @@ fn check_together_span(
                 node_count,
                 source_node: start_index,
                 label: format!("together join must be after branch {bi}"),
-                span: Span::ZERO,
             });
         }
     }

@@ -1,7 +1,7 @@
 # Velvet Ballistics — Fuzz Infrastructure Inventory
 
 **Generated:** 2026-05-24
-**Package:** `velvet-ballistics-fuzz` v0.1.0 (edition 2024)
+**Package:** `velvet-ballastics-fuzz` v0.1.0 (edition 2024)
 **libfuzzer-sys:** 0.4.12 (verified in Cargo.lock)
 
 ---
@@ -10,7 +10,7 @@
 
 | Field | Value |
 |-------|-------|
-| `name` | `velvet-ballistics-fuzz` |
+| `name` | `velvet-ballastics-fuzz` |
 | `edition` | `2024` |
 | `publish` | `false` |
 | `autobins` | `false` |

@@ -921,7 +921,7 @@ fn yaml_profile_rejects_anchors() {
         "version: &velvet \"velvet-ballistics/v1\"\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
     let result = vb_yaml::validate_yaml_profile(yaml);
     assert!(
-        matches!(result, Err(vb_yaml::YamlError::AnchorAliasMerge { .. })),
+        matches!(result, Err(vb_yaml::YamlError::AnchorAliasMerge)),
         "anchors should be rejected"
     );
 }

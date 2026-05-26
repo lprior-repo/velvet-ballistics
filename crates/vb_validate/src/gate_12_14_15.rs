@@ -6,7 +6,6 @@
 
 use crate::{ValidationError, ValidationResult};
 use vb_core::action::ActionContract;
-use vb_core::span::Span;
 use vb_core::workflow::{CompiledNodeKind, WorkflowParts};
 
 pub fn validate_gate_12_action_contract_completeness(
@@ -28,7 +27,6 @@ pub fn validate_gate_12_action_contract_completeness(
                 return Err(ValidationError::ActionContractMissing {
                     action_id: usize::from(action_val),
                     node_index,
-                    span: Span::ZERO,
                 });
             }
             if !do_action_ids.contains(&action_val) {
@@ -48,7 +46,6 @@ pub fn validate_gate_12_action_contract_completeness(
         if !found {
             return Err(ValidationError::ActionContractOrphan {
                 action_id: usize::from(cid),
-                span: Span::ZERO,
             });
         }
     }
@@ -72,21 +69,16 @@ pub fn validate_gate_14_slot_type_consistency(parts: &WorkflowParts) -> Validati
                 if let Some(slot) = node.output {
                     let su = slot.as_usize();
                     if su < slot_count {
-                        let existing = slot_const_kind.get(su).copied().ok_or(
-                            ValidationError::SlotTypeInconsistency {
-                                slot: su,
-                                span: Span::ZERO,
-                            },
-                        )?;
+                        let existing = slot_const_kind
+                            .get(su)
+                            .copied()
+                            .ok_or(ValidationError::SlotTypeInconsistency { slot: su })?;
                         if existing == 0 {
                             if let Some(e) = slot_const_kind.get_mut(su) {
                                 *e = kind;
                             }
                         } else if existing != kind {
-                            return Err(ValidationError::SlotTypeInconsistency {
-                                slot: su,
-                                span: Span::ZERO,
-                            });
+                            return Err(ValidationError::SlotTypeInconsistency { slot: su });
                         }
                     }
                 }
@@ -121,7 +113,6 @@ pub fn validate_gate_15_determinism_proof(parts: &WorkflowParts) -> ValidationRe
                         return Err(ValidationError::NonDeterministicPath {
                             from_node: node_index,
                             to_node: nu,
-                            span: Span::ZERO,
                         });
                     }
                 }
