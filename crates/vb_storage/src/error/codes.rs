@@ -177,7 +177,7 @@ impl JournalError {
             return code;
         }
         // Unreachable: all match arms use registered symbolic names.
-        SymbolicCode::from_parts("INTERNAL_INVARIANT_VIOLATION", 0x1309)
+        SymbolicCode::INTERNAL_INVARIANT
     }
 }
 

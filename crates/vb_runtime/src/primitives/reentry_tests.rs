@@ -1253,7 +1253,7 @@ mod proptest_reentry {
     use crate::primitives::for_each::{for_each_next, for_each_start};
     use crate::primitives::helpers::jump_to_body;
     use crate::primitives::reduce::{reduce_next, reduce_start};
-    use crate::primitives::repeat::{repeat_attempt, repeat_check, repeat_start};
+    use crate::primitives::repeat::{repeat_check, repeat_start};
     use crate::test_harness::list_in_slot;
 
     /// Helper: creates a fresh RunFrame with generous step and slot counts.

@@ -24,6 +24,7 @@ fn any_workflow_cap() -> Capability {
 }
 
 const SMALL_WORKFLOW: &[u8] = b"version: velvet-ballistics/v1\nname: bench_minimal\nwhen:\n  manual: {}\nsteps:\n  - id: save_value\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
+#[allow(dead_code)]
 const CHOOSE_WORKFLOW: &[u8] = b"version: velvet-ballistics/v1\nname: bench_choose\nwhen:\n  manual: {}\nsteps:\n  - id: route\n    choose:\n      condition: true\n      on_true: 1\n      on_false: 1\n  - id: done\n    finish:\n      result: true\n";
 const EXPR_EQ_SYMBOL: &str = "$input.value == 7";
 const EXPR_NUMBER_COMPARE: &str = "7 > 3";
@@ -885,6 +886,7 @@ fn expression_workflow() -> Option<CompiledWorkflow> {
     compiled_from_nodes("bench_expr", nodes, constants.into_boxed_slice())
 }
 
+#[allow(dead_code)]
 fn for_each_workflow() -> Option<CompiledWorkflow> {
     let nodes = vec![
         CompiledNode {

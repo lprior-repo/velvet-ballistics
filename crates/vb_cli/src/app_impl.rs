@@ -1430,9 +1430,15 @@ fn cmd_submit(
     }
 
     // Record the run header
-    let accepted_at_ms = match SystemTime::now().duration_since(UNIX_EPOCH) {
-        Ok(d) => d.as_millis().try_into().unwrap_or(0),
-        Err(_) => 0,
+    let accepted_at_ms: u64 = match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(d) => match u64::try_from(d.as_millis()) {
+            Ok(ms) => ms,
+            Err(_) => {
+                errln!("warning: system clock value does not fit in u64; using 0");
+                0_u64
+            }
+        },
+        Err(_) => 0_u64,
     };
     let header = vb_storage::RunHeaderRecord {
         run: run_id,
@@ -3401,10 +3407,10 @@ fn write_cancel_event(
     reason: Option<String>,
     events: &[vb_storage::JournalEvent],
 ) -> Result<(), vb_storage::JournalError> {
-    let next_seq = events
-        .last()
-        .map(|e| e.seq().get().saturating_add(1))
-        .unwrap_or(0);
+    let next_seq = match events.last() {
+        Some(e) => e.seq().get().saturating_add(1),
+        None => 0,
+    };
     let event = vb_storage::JournalEvent::RunCancelled {
         run: rid,
         seq: vb_storage::EventSeq::new(next_seq),

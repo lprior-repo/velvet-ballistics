@@ -3,8 +3,8 @@
 //! These tests verify that `do` primitives inside scoped primitive bodies
 //! (repeat, collect, for_each, reduce) are correctly lowered to final IR.
 
-use vb_compile::{CompileError, CompileErrors, YamlCompiler, compile_source, compile_workflow};
-use vb_core::{CompiledNode, CompiledNodeKind, CompiledWorkflow, SlotIdx, StepIdx};
+use vb_compile::{CompileError, CompileErrors, compile_workflow};
+use vb_core::{CompiledNodeKind, CompiledWorkflow, StepIdx};
 
 const HEADER: &str =
     "version: velvet-ballistics/v1\nname: nested-do-lowering\nwhen:\n  manual: {}\nsteps:\n";

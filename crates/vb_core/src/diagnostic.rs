@@ -1627,6 +1627,18 @@ impl SymbolicCode {
         SymbolicCode { symbolic, numeric }
     }
 
+    /// Symbolic code used when an internal invariant violation occurs at a
+    /// `SymbolicCode` construction site where the registry lookup fails.
+    ///
+    /// This sentinel is registered in [`CODE_REGISTRY`] at numeric `0x1309`.
+    /// All callers that construct `SymbolicCode` values should ensure their
+    /// symbolic strings are registered; this constant exists as a centralized
+    /// type-level guarantee instead of scattered `from_parts` calls.
+    pub const INTERNAL_INVARIANT: SymbolicCode = SymbolicCode {
+        symbolic: "INTERNAL_INVARIANT_VIOLATION",
+        numeric: 0x1309,
+    };
+
     /// Returns the symbolic name string.
     #[must_use]
     pub const fn as_str(self) -> &'static str {

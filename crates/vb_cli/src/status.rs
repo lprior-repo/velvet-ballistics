@@ -470,7 +470,7 @@ fn build_explain_entry(event: &JournalEvent) -> ReplayExplainEntry {
 mod tests {
     use super::*;
     use vb_core::ids::RunId;
-    use vb_core::workflow::WorkflowDigest;
+    use vb_core::ids::WorkflowDigest;
 
     fn dummy_digest() -> WorkflowDigest {
         WorkflowDigest::from_bytes([0xAB_u8; 32])

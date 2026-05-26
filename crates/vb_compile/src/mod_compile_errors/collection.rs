@@ -94,8 +94,8 @@ impl CompileError {
             return code;
         }
         // Unreachable: all match arms use strings registered in CODE_REGISTRY.
-        // Use the internal sentinel to satisfy zero-expect.
-        SymbolicCode::from_parts("INTERNAL_INVARIANT_VIOLATION", 0x1309)
+        // Use centralized sentinel to satisfy zero-expect.
+        SymbolicCode::INTERNAL_INVARIANT
     }
 
     /// Alias for integrations that name the machine field explicitly.

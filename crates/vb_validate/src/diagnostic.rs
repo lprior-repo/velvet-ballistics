@@ -124,8 +124,8 @@ pub fn error_symbolic_code(error: &ValidationError) -> SymbolicCode {
         return code;
     }
     // Unreachable: all validation numeric codes are registered.
-    // Use internal sentinel to satisfy zero-expect.
-    SymbolicCode::from_parts("INTERNAL_INVARIANT_VIOLATION", 0x1309)
+    // Use centralized sentinel to satisfy zero-expect and type-level guarantee.
+    SymbolicCode::INTERNAL_INVARIANT
 }
 
 impl ValidationError {

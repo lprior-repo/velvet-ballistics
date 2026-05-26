@@ -21,17 +21,6 @@ fn all_registry_numeric_codes() -> Vec<u16> {
     codes
 }
 
-fn all_parseable_registry_codes() -> Vec<u16> {
-    all_registry_numeric_codes()
-        .into_iter()
-        .filter(|c| {
-            // Only include codes that are in supported ranges
-            let input = format!("E{c:04X}");
-            vb_core::diagnostic::DiagnosticCode::from_str(&input).is_ok()
-        })
-        .collect()
-}
-
 // ---------------------------------------------------------------------------
 // Supported code property tests
 // ---------------------------------------------------------------------------

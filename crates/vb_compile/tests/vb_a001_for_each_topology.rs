@@ -7,7 +7,8 @@
 
 use vb_compile::{YamlCompiler, compile_workflow, lower_set, lower_steps_to_ir};
 use vb_core::ids::{ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+#[allow(unused_imports)]
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts};
 
 // ---------------------------------------------------------------------------
 // Corpus YAML for the for_each workflow under vb-a001
