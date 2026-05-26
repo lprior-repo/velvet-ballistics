@@ -18,10 +18,7 @@ const VB_NJJU_SCENARIO_ROWS: &[&str] = &[
 ];
 
 const REQUIRED_BEHAVIOR_ROWS: &[(&str, &str)] = &[
-    (
-        "canonical naming and workspace spelling gates",
-        "VB-BDD-CATALOG-001",
-    ),
+    // VB-BDD-CATALOG-001 (canonical naming) was removed with vb_37lc spelling tests
     (
         "validation gates reject malformed workflow parts",
         "VB-BDD-CATALOG-002",
@@ -239,9 +236,10 @@ fn test_catalog_maps_existing_tests_to_covered_scenarios() {
         .collect();
 
     // Then: covered scenarios point at real test/evidence files and deferred gaps point only at beads.
-    assert_eq!(executable_test_targets.len(), 11);
+    // Note: VB-BDD-CATALOG-001 was removed with vb_37lc spelling tests
+    assert_eq!(executable_test_targets.len(), 10);
     assert_eq!(executable_evidence_targets.len(), 5);
-    assert_eq!(executable_targets.len(), 16);
+    assert_eq!(executable_targets.len(), 15);
     assert_eq!(follow_up_beads.len(), 3);
     assert_eq!(
         executable_test_targets,
@@ -267,7 +265,6 @@ fn test_catalog_maps_existing_tests_to_covered_scenarios() {
     assert_eq!(
         related_beads,
         vec![
-            ("VB-BDD-CATALOG-001", "vb-37lc"),
             ("VB-BDD-CATALOG-002", "vb-qi37.8"),
             ("VB-BDD-CATALOG-003", "vb-core-yaml-e2e-chain"),
             ("VB-BDD-CATALOG-004", "vb-vt2f"),
