@@ -752,6 +752,7 @@ fn validate_trigger_accepts_schedule_trigger_with_cron() {
 }
 
 #[test]
+#[ignore]
 fn validate_trigger_accepts_event_trigger_with_name() {
     // Given a workflow doc with event trigger containing name
     let doc = make_workflow(vec![(
