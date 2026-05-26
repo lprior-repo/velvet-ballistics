@@ -73,6 +73,9 @@ pub mod kani_step_harnesses;
 #[cfg(kani)]
 pub mod kani_step_state_transition;
 
+#[cfg(kani)]
+pub mod kani;
+
 pub use action::{
     ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionInput, ActionJournalEvent,
     ActionOutcome, ActionOutput, ActionOutputReady, ActionResult, ActionTicket, Idempotency,
@@ -86,7 +89,12 @@ pub use budget::{
     validate_aggregate_budget,
 };
 pub use capability::{Capability, CapabilitySet};
-pub use diagnostic::{Diagnostic, DiagnosticCode, DiagnosticCodeParseError, Severity};
+pub use diagnostic::{
+    CODE_REGISTRY, CodeCategory, CodeEntry, Diagnostic, DiagnosticCode, DiagnosticCodeParseError,
+    HasSymbolicCode, Severity, SymbolicCode, SymbolicCodeParseError, category_from_numeric,
+    is_registered_numeric, is_registered_symbolic, numeric_to_symbolic, numeric_to_symbolic_code,
+    symbolic_to_numeric,
+};
 pub use engine::{
     EngineSignal, ErrorHandlerOutcome, ErrorSlotData, StepBudget, build_list, build_object,
     drive_deterministic, eval_accessor, eval_expr, journal_action_suspended, new_run_frame,

@@ -1228,16 +1228,16 @@ fn diagnostic_code_supported_ranges_are_parseable() {
         Ok(vb_core::diagnostic::DiagnosticCode::new(0x040C))
     );
     assert_eq!(
-        vb_core::diagnostic::DiagnosticCode::from_str("E1001"),
-        Ok(vb_core::diagnostic::DiagnosticCode::new(0x1001))
+        vb_core::diagnostic::DiagnosticCode::from_str("E1003"),
+        Ok(vb_core::diagnostic::DiagnosticCode::new(0x1003))
     );
     assert_eq!(
         vb_core::diagnostic::DiagnosticCode::from_str("E200D"),
         Ok(vb_core::diagnostic::DiagnosticCode::new(0x200D))
     );
     assert_eq!(
-        vb_core::diagnostic::DiagnosticCode::from_str("E300E"),
-        Ok(vb_core::diagnostic::DiagnosticCode::new(0x300E))
+        vb_core::diagnostic::DiagnosticCode::from_str("E300F"),
+        Ok(vb_core::diagnostic::DiagnosticCode::new(0x300F))
     );
     assert_eq!(
         vb_core::diagnostic::DiagnosticCode::from_str("E4015"),

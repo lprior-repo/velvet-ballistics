@@ -3,7 +3,7 @@
 //! Typed core failures with stable diagnostic codes.
 
 use crate::capability::{Capability, CapabilitySet};
-use crate::diagnostic::DiagnosticCode;
+use crate::diagnostic::{DiagnosticCode, HasSymbolicCode, SymbolicCode};
 use crate::ids::{
     ActionId, BlobId, ConstIdx, EventSeq, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx,
     SymbolId,
@@ -404,7 +404,9 @@ pub enum CoreError {
         event_seq: Option<EventSeq>,
     },
     /// Evidence collection capacity was exceeded.
-    #[error("collect evidence capacity exceeded: run {run_id:?} slot {slot:?} capacity {capacity}")]
+    #[error(
+        "collect evidence capacity exceeded: run {run_id:?} slot {slot:?} capacity {capacity}"
+    )]
     CollectEvidenceCapacityExceeded {
         /// Run identifier.
         run_id: RunId,
@@ -509,7 +511,7 @@ impl CoreError {
     /// Slot uninitialized diagnostic code.
     pub const SLOT_UNINITIALIZED_CODE: DiagnosticCode = DiagnosticCode::new(0x1012);
     /// Expression out-of-bounds diagnostic code.
-    pub const EXPR_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1014);
+    pub const EXPR_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1015);
     /// Constant out-of-bounds diagnostic code.
     pub const CONST_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1013);
     /// Type mismatch diagnostic code.
@@ -716,6 +718,23 @@ impl CoreError {
     }
 }
 
+impl HasSymbolicCode for CoreError {
+    /// Returns the [`SymbolicCode`] for this core error.
+    ///
+    /// Delegates to [`CoreError::diagnostic_code`] and converts the
+    /// numeric code to its registered symbolic name via
+    /// [`DiagnosticCode::symbolic_code`]. Falls back to
+    /// [`SymbolicCode::INTERNAL_INVARIANT`] when the numeric code is
+    /// not yet registered in [`CODE_REGISTRY`].
+    fn symbolic_code(&self) -> SymbolicCode {
+        match self.diagnostic_code().symbolic_code() {
+            Some(sc) => sc,
+            // Unregistered numeric code falls back to the invariant sentinel.
+            None => SymbolicCode::INTERNAL_INVARIANT,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
@@ -761,7 +780,7 @@ mod tests {
         let error = CoreError::ExprOutOfBounds {
             expr: ExprIdx::new(7),
         };
-        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1014));
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1015));
         assert_eq!(
             error.to_string(),
             "expression index out of bounds: ExprIdx(7)"

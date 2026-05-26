@@ -16,7 +16,7 @@ mod tests {
     fn diagnostic_from_error_includes_error_code() {
         let error = ValidationError::DuplicateKey;
         let diag = diagnostic_from_error(&error);
-        assert_eq!(diag.code.code(), 0x0101);
+        assert_eq!(diag.numeric_code.code(), 0x0101);
     }
 
     #[test]
@@ -66,7 +66,7 @@ mod tests {
             id: "bad-id".to_owned(),
         };
         let diag = diagnostic_from_error(&error);
-        assert_eq!(diag.code.code(), 0x0107);
+        assert_eq!(diag.numeric_code.code(), 0x0107);
         assert!(diag.message.contains("bad-id"));
     }
 
@@ -76,7 +76,7 @@ mod tests {
             id: "runtime".to_owned(),
         };
         let diag = diagnostic_from_error(&error);
-        assert_eq!(diag.code.code(), 0x0108);
+        assert_eq!(diag.numeric_code.code(), 0x0108);
         assert!(diag.message.contains("runtime"));
     }
 
@@ -86,7 +86,7 @@ mod tests {
             id: "step1".to_owned(),
         };
         let diag = diagnostic_from_error(&error);
-        assert_eq!(diag.code.code(), 0x0109);
+        assert_eq!(diag.numeric_code.code(), 0x0109);
         assert!(diag.message.contains("step1"));
     }
 
@@ -96,7 +96,7 @@ mod tests {
             reference: "$input.missing".to_owned(),
         };
         let diag = diagnostic_from_error(&error);
-        assert_eq!(diag.code.code(), 0x0201);
+        assert_eq!(diag.numeric_code.code(), 0x0201);
         assert!(diag.message.contains("$input.missing"));
     }
 
@@ -106,7 +106,7 @@ mod tests {
             reference: "$steps.build".to_owned(),
         };
         let diag = diagnostic_from_error(&error);
-        assert_eq!(diag.code.code(), 0x0202);
+        assert_eq!(diag.numeric_code.code(), 0x0202);
         assert!(diag.message.contains("$steps.build"));
     }
 
@@ -116,7 +116,7 @@ mod tests {
             resource: "max_steps".to_owned(),
         };
         let diag = diagnostic_from_error(&error);
-        assert_eq!(diag.code.code(), 0x040A);
+        assert_eq!(diag.numeric_code.code(), 0x040A);
         assert!(diag.message.contains("max_steps"));
     }
 
@@ -126,7 +126,7 @@ mod tests {
             trigger: "cron".to_owned(),
         };
         let diag = diagnostic_from_error(&error);
-        assert_eq!(diag.code.code(), 0x040B);
+        assert_eq!(diag.numeric_code.code(), 0x040B);
         assert!(diag.message.contains("cron"));
     }
 
@@ -149,7 +149,7 @@ mod tests {
             found: "number".to_owned(),
         };
         let diag = diagnostic_from_error(&error);
-        assert_eq!(diag.code.code(), 0x0407);
+        assert_eq!(diag.numeric_code.code(), 0x0407);
         assert!(diag.message.contains("boolean"));
         assert!(diag.message.contains("number"));
     }

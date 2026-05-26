@@ -693,13 +693,13 @@ fn compile_error_source_too_large_code() {
         actual: 100,
         limit: 50,
     };
-    assert_eq!(error.code(), "PAYLOAD_TOO_LARGE");
+    assert_eq!(error.code().as_str(), "PAYLOAD_TOO_LARGE");
 }
 
 #[test]
 fn compile_error_empty_source_code() {
     let error = CompileError::EmptySource;
-    assert_eq!(error.code(), "MISSING_REQUIRED_FIELD");
+    assert_eq!(error.code().as_str(), "MISSING_REQUIRED_FIELD");
 }
 
 #[test]
@@ -708,7 +708,7 @@ fn compile_error_unknown_reference_root_code() {
         reference: Box::from("$unknown.value"),
         root: Box::from("unknown"),
     };
-    assert_eq!(error.code(), "UNKNOWN_REFERENCE");
+    assert_eq!(error.code().as_str(), "UNKNOWN_REFERENCE");
 }
 
 // ── YamlLimits tests ────────────────────────────────────────────────────────

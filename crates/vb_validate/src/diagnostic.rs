@@ -5,7 +5,7 @@
 //! error codes matching the master contract (Section 16).
 
 use crate::ValidationError;
-use vb_core::diagnostic::{Diagnostic, DiagnosticCode, Severity};
+use vb_core::diagnostic::{Diagnostic, DiagnosticCode, HasSymbolicCode, Severity, SymbolicCode};
 use vb_core::span::Span;
 
 // ---------------------------------------------------------------------------
@@ -89,13 +89,71 @@ const CODE_VERSION_MONOTONICITY_BREACH: u16 = 0x0603;
 /// Converts a validation error into a diagnostic record.
 pub fn diagnostic_from_error(error: &ValidationError) -> Diagnostic {
     let (code, message) = error_diagnostic_parts(error);
-    Diagnostic::new(code, message.into(), Severity::Error, Span::ZERO)
+    // All codes from error_diagnostic_parts are registered in CODE_REGISTRY.
+    // The fallback is unreachable in practice but handled per Holzman rules.
+    diagnostic_from_parts(code, message, Severity::Error, Span::ZERO)
+}
+
+/// Fallback SymbolicCode used when a registered code lookup fails.
+/// This is a process-start invariant: "MISSING_REQUIRED_FIELD" is always
+/// registered.
+fn diagnostic_fallback_symbolic() -> SymbolicCode {
+    use std::sync::OnceLock;
+    static FALLBACK: OnceLock<SymbolicCode> = OnceLock::new();
+    *FALLBACK.get_or_init(|| {
+        // This will always succeed because "MISSING_REQUIRED_FIELD" is
+        // registered in CODE_REGISTRY. If it fails, the registry is
+        // corrupt — a fatal invariant caught by registry bijection tests.
+        match SymbolicCode::from_static("MISSING_REQUIRED_FIELD") {
+            Some(c) => c,
+            None => {
+                // The registry is corrupt at process start. Terminate
+                // cleanly rather than panicking silently.
+                std::process::abort();
+            }
+        }
+    })
+}
+
+/// Internal helper: constructs a Diagnostic from a DiagnosticCode,
+/// resolving the symbolic code from the registry. Uses a fallback
+/// SymbolicCode if the registry lookup fails (should not happen for
+/// codes defined in this module).
+fn diagnostic_from_parts(
+    code: DiagnosticCode,
+    message: String,
+    severity: Severity,
+    span: Span,
+) -> Diagnostic {
+    match code.symbolic_code() {
+        Some(sc) => Diagnostic::new(sc, message.into(), severity, span),
+        None => {
+            let fallback = diagnostic_fallback_symbolic();
+            let annotated = format!("[unregistered {:04X}] {}", code.code(), message);
+            Diagnostic::new(fallback, annotated.into(), severity, span)
+        }
+    }
 }
 
 /// Returns the stable diagnostic code for a validation error.
 pub fn error_code(error: &ValidationError) -> DiagnosticCode {
     let (code, _) = error_diagnostic_parts(error);
     code
+}
+
+impl HasSymbolicCode for ValidationError {
+    /// Returns the [`SymbolicCode`] for this validation error.
+    ///
+    /// Resolves the [`DiagnosticCode`] for this variant via
+    /// [`error_code`] and converts to a registered symbolic name.
+    /// All validation error codes are registered in [`CODE_REGISTRY`];
+    /// the fallback to [`SymbolicCode::INTERNAL_INVARIANT`] is a
+    /// safety net for process-start invariant violations.
+    fn symbolic_code(&self) -> SymbolicCode {
+        error_code(self)
+            .symbolic_code()
+            .unwrap_or(SymbolicCode::INTERNAL_INVARIANT)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -430,7 +488,7 @@ mod tests {
     #[test]
     fn duplicate_key_maps_to_e0101() {
         let diag = diagnostic_from_error(&ValidationError::DuplicateKey);
-        assert_eq!(diag.code.code(), 0x0101);
+        assert_eq!(diag.numeric_code.code(), 0x0101);
         assert_eq!(diag.severity, Severity::Error);
     }
 
@@ -439,7 +497,7 @@ mod tests {
         let diag = diagnostic_from_error(&ValidationError::InvalidVersion {
             version: "v2".into(),
         });
-        assert_eq!(diag.code.code(), 0x0106);
+        assert_eq!(diag.numeric_code.code(), 0x0106);
         assert!(diag.message.contains("v2"));
     }
 
@@ -448,13 +506,13 @@ mod tests {
         let diag = diagnostic_from_error(&ValidationError::UnknownReference {
             reference: "$input.missing".into(),
         });
-        assert_eq!(diag.code.code(), 0x0201);
+        assert_eq!(diag.numeric_code.code(), 0x0201);
     }
 
     #[test]
     fn control_flow_cycle_maps_to_e0302() {
         let diag = diagnostic_from_error(&ValidationError::ControlFlowCycle);
-        assert_eq!(diag.code.code(), 0x0302);
+        assert_eq!(diag.numeric_code.code(), 0x0302);
     }
 
     #[test]
@@ -462,14 +520,14 @@ mod tests {
         let diag = diagnostic_from_error(&ValidationError::UnreachableStep {
             step: "skipped".into(),
         });
-        assert_eq!(diag.code.code(), 0x0303);
+        assert_eq!(diag.numeric_code.code(), 0x0303);
         assert!(diag.message.contains("skipped"));
     }
 
     #[test]
     fn secret_result_leak_maps_to_e0406() {
         let diag = diagnostic_from_error(&ValidationError::SecretResultLeak);
-        assert_eq!(diag.code.code(), 0x0406);
+        assert_eq!(diag.numeric_code.code(), 0x0406);
     }
 
     #[test]
@@ -478,7 +536,7 @@ mod tests {
             expected: "boolean".into(),
             found: "number".into(),
         });
-        assert_eq!(diag.code.code(), 0x0407);
+        assert_eq!(diag.numeric_code.code(), 0x0407);
         assert!(diag.message.contains("boolean"));
         assert!(diag.message.contains("number"));
     }
@@ -486,13 +544,13 @@ mod tests {
     #[test]
     fn duplicate_id_maps_to_e0109() {
         let diag = diagnostic_from_error(&ValidationError::DuplicateId { id: "step1".into() });
-        assert_eq!(diag.code.code(), 0x0109);
+        assert_eq!(diag.numeric_code.code(), 0x0109);
     }
 
     #[test]
     fn direct_runtime_maps_to_e0204() {
         let diag = diagnostic_from_error(&ValidationError::DirectRuntimeReference);
-        assert_eq!(diag.code.code(), 0x0204);
+        assert_eq!(diag.numeric_code.code(), 0x0204);
     }
 
     #[test]
@@ -675,7 +733,7 @@ mod tests {
         // When diagnostic_from_error is called
         let diag = diagnostic_from_error(&error);
         // Then the diagnostic has code E0101
-        assert_eq!(diag.code.code(), 0x0101);
+        assert_eq!(diag.numeric_code.code(), 0x0101);
     }
 
     #[test]
@@ -744,7 +802,7 @@ mod tests {
         // When diagnostic_from_error is called
         let diag = diagnostic_from_error(&error);
         // Then the message contains the id
-        assert_eq!(diag.code.code(), 0x0107);
+        assert_eq!(diag.numeric_code.code(), 0x0107);
         assert!(diag.message.contains("bad-id"));
     }
 
@@ -757,7 +815,7 @@ mod tests {
         // When diagnostic_from_error is called
         let diag = diagnostic_from_error(&error);
         // Then the message contains the id
-        assert_eq!(diag.code.code(), 0x0108);
+        assert_eq!(diag.numeric_code.code(), 0x0108);
         assert!(diag.message.contains("runtime"));
     }
 
@@ -770,7 +828,7 @@ mod tests {
         // When diagnostic_from_error is called
         let diag = diagnostic_from_error(&error);
         // Then the message contains the id
-        assert_eq!(diag.code.code(), 0x0109);
+        assert_eq!(diag.numeric_code.code(), 0x0109);
         assert!(diag.message.contains("step1"));
     }
 
@@ -783,7 +841,7 @@ mod tests {
         // When diagnostic_from_error is called
         let diag = diagnostic_from_error(&error);
         // Then the message contains the reference
-        assert_eq!(diag.code.code(), 0x0201);
+        assert_eq!(diag.numeric_code.code(), 0x0201);
         assert!(diag.message.contains("$input.missing"));
     }
 
@@ -796,7 +854,7 @@ mod tests {
         // When diagnostic_from_error is called
         let diag = diagnostic_from_error(&error);
         // Then the message contains the reference
-        assert_eq!(diag.code.code(), 0x0202);
+        assert_eq!(diag.numeric_code.code(), 0x0202);
         assert!(diag.message.contains("$steps.build"));
     }
 
@@ -809,7 +867,7 @@ mod tests {
         // When diagnostic_from_error is called
         let diag = diagnostic_from_error(&error);
         // Then the message contains the resource
-        assert_eq!(diag.code.code(), 0x040A);
+        assert_eq!(diag.numeric_code.code(), 0x040A);
         assert!(diag.message.contains("max_steps"));
     }
 
@@ -822,7 +880,7 @@ mod tests {
         // When diagnostic_from_error is called
         let diag = diagnostic_from_error(&error);
         // Then the message contains the trigger
-        assert_eq!(diag.code.code(), 0x040B);
+        assert_eq!(diag.numeric_code.code(), 0x040B);
         assert!(diag.message.contains("cron"));
     }
 
@@ -852,7 +910,7 @@ mod tests {
         // When diagnostic_from_error is called
         let diag = diagnostic_from_error(&error);
         // Then the message contains both type names
-        assert_eq!(diag.code.code(), 0x0407);
+        assert_eq!(diag.numeric_code.code(), 0x0407);
         assert!(diag.message.contains("boolean"));
         assert!(diag.message.contains("number"));
     }

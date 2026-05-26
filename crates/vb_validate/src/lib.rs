@@ -96,6 +96,12 @@ pub mod kani_gate_08_accessor;
 #[cfg(kani)]
 pub mod kani_gate_08_structural;
 
+// REPAIR-8: Wire orphaned kani/ directory module for PO-003 verification.
+// Contains kani_validation_error_code.rs harness that verifies every
+// ValidationError variant maps to a registered diagnostic code.
+#[cfg(kani)]
+pub mod kani;
+
 /// Validation error codes matching the master contract (Section 16).
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 #[non_exhaustive]

@@ -23,6 +23,12 @@ pub mod source_map;
 mod error;
 mod limits;
 
+// REPAIR-8: Wire orphaned kani/ directory module for PO-006 verification.
+// Contains kani_yaml_error_code.rs harness that verifies every YamlError
+// variant maps to a registered diagnostic code via CODE_REGISTRY.
+#[cfg(kani)]
+pub mod kani;
+
 pub use error::*;
 pub use limits::*;
 

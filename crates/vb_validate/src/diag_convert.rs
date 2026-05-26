@@ -160,7 +160,7 @@ mod tests {
     #[test]
     fn duplicate_key_maps_to_e0101() {
         let diag = diagnostic_from_error(&ValidationError::DuplicateKey);
-        assert_eq!(diag.code.code(), 0x0101);
+        assert_eq!(diag.numeric_code.code(), 0x0101);
         assert_eq!(diag.severity, Severity::Error);
     }
 
@@ -169,7 +169,7 @@ mod tests {
         let diag = diagnostic_from_error(&ValidationError::InvalidVersion {
             version: "v2".into(),
         });
-        assert_eq!(diag.code.code(), 0x0106);
+        assert_eq!(diag.numeric_code.code(), 0x0106);
         assert!(diag.message.contains("v2"));
     }
 
@@ -178,13 +178,13 @@ mod tests {
         let diag = diagnostic_from_error(&ValidationError::UnknownReference {
             reference: "$input.missing".into(),
         });
-        assert_eq!(diag.code.code(), 0x0201);
+        assert_eq!(diag.numeric_code.code(), 0x0201);
     }
 
     #[test]
     fn control_flow_cycle_maps_to_e0302() {
         let diag = diagnostic_from_error(&ValidationError::ControlFlowCycle);
-        assert_eq!(diag.code.code(), 0x0302);
+        assert_eq!(diag.numeric_code.code(), 0x0302);
     }
 
     #[test]
@@ -192,14 +192,14 @@ mod tests {
         let diag = diagnostic_from_error(&ValidationError::UnreachableStep {
             step: "skipped".into(),
         });
-        assert_eq!(diag.code.code(), 0x0303);
+        assert_eq!(diag.numeric_code.code(), 0x0303);
         assert!(diag.message.contains("skipped"));
     }
 
     #[test]
     fn secret_result_leak_maps_to_e0406() {
         let diag = diagnostic_from_error(&ValidationError::SecretResultLeak);
-        assert_eq!(diag.code.code(), 0x0406);
+        assert_eq!(diag.numeric_code.code(), 0x0406);
     }
 
     #[test]
@@ -208,7 +208,7 @@ mod tests {
             expected: "boolean".into(),
             found: "number".into(),
         });
-        assert_eq!(diag.code.code(), 0x0407);
+        assert_eq!(diag.numeric_code.code(), 0x0407);
         assert!(diag.message.contains("boolean"));
         assert!(diag.message.contains("number"));
     }
@@ -216,13 +216,13 @@ mod tests {
     #[test]
     fn duplicate_id_maps_to_e0109() {
         let diag = diagnostic_from_error(&ValidationError::DuplicateId { id: "step1".into() });
-        assert_eq!(diag.code.code(), 0x0109);
+        assert_eq!(diag.numeric_code.code(), 0x0109);
     }
 
     #[test]
     fn direct_runtime_maps_to_e0204() {
         let diag = diagnostic_from_error(&ValidationError::DirectRuntimeReference);
-        assert_eq!(diag.code.code(), 0x0204);
+        assert_eq!(diag.numeric_code.code(), 0x0204);
     }
 
     #[test]

@@ -8,6 +8,7 @@ version.workspace = true
 saphyr.workspace = true
 saphyr-parser.workspace = true
 thiserror.workspace = true
+vb_core = { path = "../vb_core" }
 
 [dev-dependencies]
 indoc.workspace = true

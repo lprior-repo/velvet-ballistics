@@ -3,6 +3,7 @@
 //! YAML parsing error types.
 
 use thiserror::Error;
+use vb_core::diagnostic::{HasSymbolicCode, SymbolicCode};
 
 /// YAML parsing error type.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
@@ -70,6 +71,53 @@ pub enum YamlError {
 
     #[error("forbidden YAML feature: {detail}")]
     ForbiddenFeature { detail: &'static str },
+}
+
+impl HasSymbolicCode for YamlError {
+    /// Returns the [`SymbolicCode`] for this YAML error variant.
+    ///
+    /// Every variant maps to a code name registered in
+    /// `vb_core::CODE_REGISTRY`. Multiple YAML-specific variants
+    /// (e.g., `AnchorAliasMerge`, `CustomTag`, `BinaryScalar`,
+    /// `AmbiguousScalar`, `ParseError`, `UnsupportedFeature`) share the
+    /// `"FORBIDDEN_YAML_FEATURE"` code because they all represent
+    /// YAML constructs rejected by the strict profile.
+    fn symbolic_code(&self) -> SymbolicCode {
+        let s: &'static str = match self {
+            YamlError::DuplicateKey { .. } => "DUPLICATE_KEY",
+            YamlError::ForbiddenFeature { .. }
+            | YamlError::AnchorAliasMerge
+            | YamlError::CustomTag { .. }
+            | YamlError::BinaryScalar
+            | YamlError::MultipleDocuments { .. }
+            | YamlError::AmbiguousScalar { .. }
+            | YamlError::ParseError { .. }
+            | YamlError::UnsupportedFeature { .. } => "FORBIDDEN_YAML_FEATURE",
+            YamlError::SourceTooLarge { .. } => "PAYLOAD_TOO_LARGE",
+            YamlError::NestingTooDeep { .. }
+            | YamlError::NodeLimitExceeded { .. }
+            | YamlError::ScalarTooLong { .. }
+            | YamlError::SequenceTooLong { .. }
+            | YamlError::MappingTooLarge { .. } => "LIMIT_EXCEEDED",
+            YamlError::UnknownField { .. } => "UNKNOWN_TOP_LEVEL_FIELD",
+            YamlError::EmptySource
+            | YamlError::MissingField { .. } => "MISSING_REQUIRED_FIELD",
+            YamlError::FieldShape { .. } => "TYPE_MISMATCH",
+            YamlError::UnsupportedTrigger { .. } => "UNSUPPORTED_TRIGGER",
+        };
+        SymbolicCode::from_static(s).unwrap_or(SymbolicCode::INTERNAL_INVARIANT)
+    }
+}
+
+impl YamlError {
+    /// Returns the symbolic diagnostic code name for this error variant.
+    ///
+    /// Compatibility wrapper for callers that need a `&'static str`.
+    /// Prefer [`HasSymbolicCode::symbolic_code`] for new code.
+    #[must_use]
+    pub fn symbolic_code_name(&self) -> &'static str {
+        self.symbolic_code().as_str()
+    }
 }
 
 /// Alias for results using [`YamlError`].

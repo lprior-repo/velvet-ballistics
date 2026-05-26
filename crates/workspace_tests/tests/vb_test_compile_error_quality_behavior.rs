@@ -85,7 +85,7 @@ steps:
         "diagnostic_codes count must match errors count"
     );
     for code in &codes {
-        assert!(!code.is_empty(), "diagnostic code must not be empty");
+        assert!(!code.as_str().is_empty(), "diagnostic code must not be empty");
     }
 }
 

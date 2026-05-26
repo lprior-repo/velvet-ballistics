@@ -275,7 +275,7 @@ fn diagnostic_conversion_returns_e050d_when_error_is_capability_name_empty() {
         capability_index: 0,
     };
     let diagnostic = diagnostic_from_error(&error);
-    assert_eq!(diagnostic.code.code(), 0x050D);
+    assert_eq!(diagnostic.numeric_code.code(), 0x050D);
     assert_eq!(
         diagnostic.message.as_ref(),
         "capability name is empty for action 1 at required_capabilities[0]"
@@ -291,7 +291,7 @@ fn diagnostic_conversion_returns_e050e_when_error_is_capability_name_too_long() 
         max: 128,
     };
     let diagnostic = diagnostic_from_error(&error);
-    assert_eq!(diagnostic.code.code(), 0x050E);
+    assert_eq!(diagnostic.numeric_code.code(), 0x050E);
     assert_eq!(
         diagnostic.message.as_ref(),
         "capability name too long for action 1 at required_capabilities[0]: 129 > 128"
@@ -306,7 +306,7 @@ fn diagnostic_conversion_returns_e050f_when_error_is_capability_name_invalid() {
         name: "network:github".to_owned(),
     };
     let diagnostic = diagnostic_from_error(&error);
-    assert_eq!(diagnostic.code.code(), 0x050F);
+    assert_eq!(diagnostic.numeric_code.code(), 0x050F);
     assert_eq!(
         diagnostic.message.as_ref(),
         "invalid capability name for action 1 at required_capabilities[0]: network:github"
@@ -321,7 +321,7 @@ fn diagnostic_conversion_returns_e0510_when_error_is_capability_action_mismatch(
         capability_index: 0,
     };
     let diagnostic = diagnostic_from_error(&error);
-    assert_eq!(diagnostic.code.code(), 0x0510);
+    assert_eq!(diagnostic.numeric_code.code(), 0x0510);
     assert_eq!(
         diagnostic.message.as_ref(),
         "capability action 2 does not match contract action 1 at required_capabilities[0]"
@@ -337,7 +337,7 @@ fn diagnostic_conversion_returns_e0511_when_error_is_capability_duplicate() {
         name: "network".to_owned(),
     };
     let diagnostic = diagnostic_from_error(&error);
-    assert_eq!(diagnostic.code.code(), 0x0511);
+    assert_eq!(diagnostic.numeric_code.code(), 0x0511);
     assert_eq!(
         diagnostic.message.as_ref(),
         "duplicate capability requirement for action 1: network at required_capabilities[0] and required_capabilities[1]"

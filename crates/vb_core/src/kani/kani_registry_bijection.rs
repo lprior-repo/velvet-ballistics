@@ -1,0 +1,100 @@
+#![forbid(unsafe_code)]
+//! PO-002 + PO-010: Kani harnesses for CODE_REGISTRY bijection and non-zero invariants.
+//!
+//! PO-002 H1-H4: Registry is a bijection — no duplicate symbolic names, no duplicate
+//! numeric codes, symbolic↔numeric round-trip identity.
+//! PO-010: No diagnostic code has numeric value 0x0000.
+//!
+//! Bound: Registry size 157 entries (unwind=320 for pairwise, unwind=160 for non-zero).
+//!
+//! Rewired: uses production types from crate::diagnostic instead of
+//! inline models from kani_symbolic_code_validation.
+
+use crate::diagnostic::CODE_REGISTRY;
+
+/// Const helper: check if a u16 value appears exactly once in the registry's numeric fields.
+const fn count_numeric(value: u16) -> usize {
+    let mut count = 0;
+    let mut i = 0;
+    while i < CODE_REGISTRY.len() {
+        if CODE_REGISTRY[i].numeric == value {
+            count += 1;
+        }
+        i += 1;
+    }
+    count
+}
+
+#[cfg(kani)]
+mod harnesses {
+    use super::*;
+
+    /// PO-002 H1: No duplicate symbolic names in CODE_REGISTRY.
+    #[kani::proof]
+    #[kani::unwind(320)]
+    fn kani_registry_bijection_unique_symbolic() {
+        for i in 0..CODE_REGISTRY.len() {
+            for j in (i + 1)..CODE_REGISTRY.len() {
+                assert!(
+                    CODE_REGISTRY[i].symbolic != CODE_REGISTRY[j].symbolic,
+                    "Duplicate symbolic name detected"
+                );
+            }
+        }
+    }
+
+    /// PO-002 H2: No duplicate numeric codes in CODE_REGISTRY.
+    #[kani::proof]
+    #[kani::unwind(320)]
+    fn kani_registry_bijection_unique_numeric() {
+        for i in 0..CODE_REGISTRY.len() {
+            for j in (i + 1)..CODE_REGISTRY.len() {
+                assert!(
+                    CODE_REGISTRY[i].numeric != CODE_REGISTRY[j].numeric,
+                    "Duplicate numeric code detected"
+                );
+            }
+        }
+    }
+
+    /// PO-002 H3: For every entry, symbolic→numeric lookup resolves correctly.
+    #[kani::proof]
+    #[kani::unwind(320)]
+    fn kani_registry_bijection_roundtrip_symbolic_to_numeric() {
+        use crate::diagnostic::symbolic_to_numeric;
+
+        for i in 0..CODE_REGISTRY.len() {
+            let entry = &CODE_REGISTRY[i];
+            let found = symbolic_to_numeric(entry.symbolic);
+            assert!(
+                found.is_some(),
+                "Every registered symbolic name must resolve"
+            );
+            assert_eq!(found, Some(entry.numeric), "Symbolic→numeric mismatch");
+
+            let rev = count_numeric(entry.numeric);
+            assert_eq!(rev, 1, "Each numeric code must appear exactly once");
+        }
+    }
+
+    /// PO-002 H4: Combined bijection harness.
+    #[kani::proof]
+    #[kani::unwind(320)]
+    fn kani_registry_bijection() {
+        kani_registry_bijection_unique_symbolic();
+        kani_registry_bijection_unique_numeric();
+        kani_registry_bijection_roundtrip_symbolic_to_numeric();
+    }
+
+    /// PO-010: No entry has numeric code 0x0000 (reserved sentinel).
+    #[kani::proof]
+    #[kani::unwind(160)]
+    fn kani_registry_nonzero() {
+        for i in 0..CODE_REGISTRY.len() {
+            assert!(
+                CODE_REGISTRY[i].numeric != 0,
+                "No diagnostic code may have numeric value 0x0000"
+            );
+        }
+    }
+}

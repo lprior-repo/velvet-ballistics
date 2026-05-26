@@ -1,4 +1,5 @@
 use super::RuntimeError;
+use vb_core::diagnostic::{HasSymbolicCode, SymbolicCode};
 use vb_core::DiagnosticCode;
 
 impl RuntimeError {
@@ -144,7 +145,22 @@ impl RuntimeError {
             | Self::SecretResultNotAllowed
             | Self::IpcPayloadSizeExceeded { .. }
             | Self::ShardNotFound { .. }
-            | Self::MigrateSelf => None,
+            |             Self::MigrateSelf => None,
         }
+    }
+}
+
+impl HasSymbolicCode for RuntimeError {
+    /// Returns the [`SymbolicCode`] for this runtime error.
+    ///
+    /// Delegates to [`RuntimeError::diagnostic_code`] and converts the
+    /// numeric code to its registered symbolic name via
+    /// [`DiagnosticCode::symbolic_code`]. Falls back to
+    /// [`SymbolicCode::INTERNAL_INVARIANT`] when the numeric code is
+    /// not yet registered in [`CODE_REGISTRY`].
+    fn symbolic_code(&self) -> SymbolicCode {
+        self.diagnostic_code()
+            .symbolic_code()
+            .unwrap_or(SymbolicCode::INTERNAL_INVARIANT)
     }
 }

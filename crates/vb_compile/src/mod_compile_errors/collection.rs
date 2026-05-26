@@ -3,13 +3,14 @@ use super::*;
 use saphyr_parser::Span;
 use std::str;
 use thiserror::Error;
+use vb_core::diagnostic::{HasSymbolicCode, SymbolicCode};
 use vb_core::{ActionId, SideEffect, WorkflowError};
 
 impl CompileError {
     /// Stable machine-readable validation diagnostic code.
     #[must_use]
-    pub fn code(&self) -> &'static str {
-        match self {
+    pub fn code(&self) -> SymbolicCode {
+        let s: &'static str = match self {
             Self::SourceTooLarge { .. } => "PAYLOAD_TOO_LARGE",
             Self::Utf8(_)
             | Self::Parse(_)
@@ -86,12 +87,22 @@ impl CompileError {
             Self::IdempotencyViolation { .. } => "IDEMPOTENCY_VIOLATION",
             Self::Validation(error) => validation_error_code(error),
             Self::CanonicalYaml { category, .. } => canonical_yaml_code(category),
-        }
+        };
+        SymbolicCode::from_static(s).unwrap_or(SymbolicCode::INTERNAL_INVARIANT)
     }
 
     /// Alias for integrations that name the machine field explicitly.
     #[must_use]
-    pub fn diagnostic_code(&self) -> &'static str {
+    pub fn diagnostic_code(&self) -> SymbolicCode {
+        self.code()
+    }
+}
+
+impl HasSymbolicCode for CompileError {
+    /// Returns the [`SymbolicCode`] for this compile error.
+    ///
+    /// Delegates to [`CompileError::code`].
+    fn symbolic_code(&self) -> SymbolicCode {
         self.code()
     }
 }
@@ -240,7 +251,7 @@ impl CompileErrors {
     }
 
     /// Iterates over stable machine-readable diagnostic codes in reporting order.
-    pub fn diagnostic_codes(&self) -> impl Iterator<Item = &'static str> + '_ {
+    pub fn diagnostic_codes(&self) -> impl Iterator<Item = SymbolicCode> + '_ {
         self.0.iter().map(CompileError::code)
     }
 

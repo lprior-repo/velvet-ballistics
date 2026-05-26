@@ -139,17 +139,18 @@ fn spans_locations_and_source_map_are_constructible() {
 
 #[test]
 fn diagnostics_parse_display_and_own_messages() {
-    let code = DiagnosticCode::new(0x1001);
-    let diagnostic = Diagnostic {
+    let code = DiagnosticCode::new(0x0101);
+    let diagnostic = Diagnostic::from_numeric(
         code,
-        message: Box::<str>::from("invalid program counter"),
-        severity: Severity::Error,
-        span: Span::ZERO,
-    };
+        Box::<str>::from("invalid program counter"),
+        Severity::Error,
+        Span::ZERO,
+    )
+    .expect("0x0101 should be registered in CODE_REGISTRY");
 
-    assert_eq!(code.code(), 0x1001);
-    assert_eq!(code.to_string(), "E1001");
-    assert_eq!(DiagnosticCode::from_str("E1001"), Ok(code));
+    assert_eq!(code.code(), 0x0101);
+    assert_eq!(code.to_string(), "E0101");
+    assert_eq!(DiagnosticCode::from_str("E0101"), Ok(code));
     assert!(matches!(
         DiagnosticCode::from_str("E9999"),
         Err(vb_core::diagnostic::DiagnosticCodeParseError::UnsupportedCode)

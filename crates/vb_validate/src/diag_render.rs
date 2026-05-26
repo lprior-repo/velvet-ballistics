@@ -6,7 +6,7 @@
 
 #![allow(unreachable_pub)]
 use crate::ValidationError;
-use vb_core::diagnostic::{Diagnostic, DiagnosticCode, Severity};
+use vb_core::diagnostic::{Diagnostic, DiagnosticCode, Severity, SymbolicCode};
 use vb_core::span::Span;
 
 use crate::diag_codes::*;
@@ -14,7 +14,40 @@ use crate::diag_codes::*;
 /// Converts a validation error into a diagnostic record.
 pub fn diagnostic_from_error(error: &ValidationError) -> Diagnostic {
     let (code, message) = error_diagnostic_parts(error);
-    Diagnostic::new(code, message.into(), Severity::Error, Span::ZERO)
+    // All codes from error_diagnostic_parts are registered in CODE_REGISTRY.
+    diagnostic_from_parts(code, message, Severity::Error, Span::ZERO)
+}
+
+/// Fallback SymbolicCode used when a registered code lookup fails.
+fn diagnostic_fallback_symbolic() -> SymbolicCode {
+    use std::sync::OnceLock;
+    static FALLBACK: OnceLock<SymbolicCode> = OnceLock::new();
+    *FALLBACK.get_or_init(
+        || match SymbolicCode::from_static("MISSING_REQUIRED_FIELD") {
+            Some(c) => c,
+            None => {
+                std::process::abort();
+            }
+        },
+    )
+}
+
+/// Internal helper: constructs a Diagnostic from a DiagnosticCode,
+/// resolving the symbolic code from the registry.
+fn diagnostic_from_parts(
+    code: DiagnosticCode,
+    message: String,
+    severity: Severity,
+    span: Span,
+) -> Diagnostic {
+    match code.symbolic_code() {
+        Some(sc) => Diagnostic::new(sc, message.into(), severity, span),
+        None => {
+            let fallback = diagnostic_fallback_symbolic();
+            let annotated = format!("[unregistered {:04X}] {}", code.code(), message);
+            Diagnostic::new(fallback, annotated.into(), severity, span)
+        }
+    }
 }
 
 /// Returns the stable diagnostic code for a validation error.
@@ -496,7 +529,7 @@ mod render_tests {
             declared: 100,
             limit: 64,
         });
-        assert_eq!(diag.code.code(), 0x0501);
+        assert_eq!(diag.numeric_code.code(), 0x0501);
         assert!(diag.message.contains("100"));
         assert!(diag.message.contains("64"));
     }
@@ -508,7 +541,7 @@ mod render_tests {
             declared: 4,
             computed: 2,
         });
-        assert_eq!(diag.code.code(), 0x0502);
+        assert_eq!(diag.numeric_code.code(), 0x0502);
         assert!(diag.message.contains("3"));
         assert!(diag.message.contains("4"));
         assert!(diag.message.contains("2"));
@@ -521,7 +554,7 @@ mod render_tests {
             slot: 10,
             slot_count: 5,
         });
-        assert_eq!(diag.code.code(), 0x0503);
+        assert_eq!(diag.numeric_code.code(), 0x0503);
         assert!(diag.message.contains("10"));
         assert!(diag.message.contains("5"));
     }
@@ -532,7 +565,7 @@ mod render_tests {
             slot: 2,
             chain: "2 -> 3 -> 2".to_owned(),
         });
-        assert_eq!(diag.code.code(), 0x0507);
+        assert_eq!(diag.numeric_code.code(), 0x0507);
         assert!(diag.message.contains("2 -> 3 -> 2"));
     }
 
@@ -542,7 +575,7 @@ mod render_tests {
             action_id: 42,
             node_index: 3,
         });
-        assert_eq!(diag.code.code(), 0x0509);
+        assert_eq!(diag.numeric_code.code(), 0x0509);
         assert!(diag.message.contains("42"));
         assert!(diag.message.contains("3"));
     }
@@ -550,14 +583,14 @@ mod render_tests {
     #[test]
     fn action_contract_orphan_code_and_message() {
         let diag = diagnostic_from_error(&ValidationError::ActionContractOrphan { action_id: 10 });
-        assert_eq!(diag.code.code(), 0x050A);
+        assert_eq!(diag.numeric_code.code(), 0x050A);
         assert!(diag.message.contains("10"));
     }
 
     #[test]
     fn slot_type_inconsistency_code_and_message() {
         let diag = diagnostic_from_error(&ValidationError::SlotTypeInconsistency { slot: 4 });
-        assert_eq!(diag.code.code(), 0x050B);
+        assert_eq!(diag.numeric_code.code(), 0x050B);
         assert!(diag.message.contains("4"));
     }
 
@@ -567,7 +600,7 @@ mod render_tests {
             from_node: 1,
             to_node: 5,
         });
-        assert_eq!(diag.code.code(), 0x050C);
+        assert_eq!(diag.numeric_code.code(), 0x050C);
         assert!(diag.message.contains("1"));
         assert!(diag.message.contains("5"));
     }
@@ -575,31 +608,31 @@ mod render_tests {
     #[test]
     fn forbidden_yaml_feature_code_is_e0102() {
         let diag = diagnostic_from_error(&ValidationError::ForbiddenYamlFeature);
-        assert_eq!(diag.code.code(), 0x0102);
+        assert_eq!(diag.numeric_code.code(), 0x0102);
         assert_eq!(diag.severity, Severity::Error);
     }
 
     #[test]
     fn direct_runtime_reference_code_is_e0204() {
         let diag = diagnostic_from_error(&ValidationError::DirectRuntimeReference);
-        assert_eq!(diag.code.code(), 0x0204);
+        assert_eq!(diag.numeric_code.code(), 0x0204);
     }
 
     #[test]
     fn secret_result_leak_code_is_e0406() {
         let diag = diagnostic_from_error(&ValidationError::SecretResultLeak);
-        assert_eq!(diag.code.code(), 0x0406);
+        assert_eq!(diag.numeric_code.code(), 0x0406);
     }
 
     #[test]
     fn payload_too_large_code_is_e0408() {
         let diag = diagnostic_from_error(&ValidationError::PayloadTooLarge);
-        assert_eq!(diag.code.code(), 0x0408);
+        assert_eq!(diag.numeric_code.code(), 0x0408);
     }
 
     #[test]
     fn http_trigger_out_of_core_code_is_e040c() {
         let diag = diagnostic_from_error(&ValidationError::HttpTriggerOutOfCore);
-        assert_eq!(diag.code.code(), 0x040C);
+        assert_eq!(diag.numeric_code.code(), 0x040C);
     }
 }

@@ -1,4 +1,5 @@
 use crate::error::JournalError;
+use vb_core::diagnostic::{HasSymbolicCode, SymbolicCode};
 use vb_core::DiagnosticCode;
 
 impl JournalError {
@@ -117,5 +118,20 @@ impl JournalError {
             Self::ProcessLockIo { .. } => Self::PROCESS_LOCK_IO_CODE,
             Self::Trim(_) => Self::FJALL_CODE, // Map trim errors to a generic code
         }
+    }
+}
+
+impl HasSymbolicCode for JournalError {
+    /// Returns the [`SymbolicCode`] for this journal error.
+    ///
+    /// Delegates to [`JournalError::diagnostic_code`] and converts the
+    /// numeric code to its registered symbolic name via
+    /// [`DiagnosticCode::symbolic_code`]. Falls back to
+    /// [`SymbolicCode::INTERNAL_INVARIANT`] when the numeric code is
+    /// not yet registered in [`CODE_REGISTRY`].
+    fn symbolic_code(&self) -> SymbolicCode {
+        self.diagnostic_code()
+            .symbolic_code()
+            .unwrap_or(SymbolicCode::INTERNAL_INVARIANT)
     }
 }
