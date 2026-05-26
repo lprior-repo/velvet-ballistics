@@ -31,6 +31,7 @@ pub(super) fn mapping<'a>(
     field: &'static str,
 ) -> YamlResult<&'a saphyr::Mapping<'a>> {
     node.as_mapping().ok_or(YamlError::FieldShape {
+        span: None,
         field,
         expected: "mapping",
     })
@@ -41,6 +42,7 @@ pub(super) fn sequence<'a>(
     field: &'static str,
 ) -> YamlResult<&'a saphyr::Sequence<'a>> {
     node.as_sequence().ok_or(YamlError::FieldShape {
+        span: None,
         field,
         expected: "sequence",
     })
@@ -50,12 +52,16 @@ pub(super) fn reject_unknown_fields(node: &saphyr::Yaml<'_>, allowed: &[&str]) -
     for (key, _) in mapping(node, "mapping")? {
         let Some(key) = key.as_str() else {
             return Err(YamlError::FieldShape {
+                span: None,
                 field: "mapping key",
                 expected: "string",
             });
         };
         if !allowed.contains(&key) {
-            return Err(YamlError::UnknownField { field: key.into() });
+            return Err(YamlError::UnknownField {
+                span: None,
+                field: key.into(),
+            });
         }
     }
     Ok(())
@@ -64,10 +70,11 @@ pub(super) fn reject_unknown_fields(node: &saphyr::Yaml<'_>, allowed: &[&str]) -
 /// Require a non-empty string field.
 pub(super) fn require_str(node: &saphyr::Yaml<'_>, field: &'static str) -> YamlResult<String> {
     match lookup(node, field) {
-        None => Err(YamlError::MissingField { field }),
+        None => Err(YamlError::MissingField { span: None, field }),
         Some(v) => match v.as_str() {
             Some(s) if !s.is_empty() => Ok(s.to_string()),
             _ => Err(YamlError::FieldShape {
+                span: None,
                 field,
                 expected: "non-empty string",
             }),
@@ -82,10 +89,14 @@ pub(super) fn require_str_in(
     context: &'static str,
 ) -> YamlResult<String> {
     match lookup(node, field) {
-        None => Err(YamlError::MissingField { field: context }),
+        None => Err(YamlError::MissingField {
+            span: None,
+            field: context,
+        }),
         Some(v) => match v.as_str() {
             Some(s) if !s.is_empty() => Ok(s.to_string()),
             _ => Err(YamlError::FieldShape {
+                span: None,
                 field: context,
                 expected: "non-empty string",
             }),
@@ -100,12 +111,16 @@ pub(super) fn require_scalar_in(
     context: &'static str,
 ) -> YamlResult<ScalarValue> {
     match lookup(node, field) {
-        None => Err(YamlError::MissingField { field: context }),
+        None => Err(YamlError::MissingField {
+            span: None,
+            field: context,
+        }),
         Some(v) => match v.as_str() {
             Some(s) if !s.is_empty() => Ok(ScalarValue::String(s.to_string())),
             _ => match v.as_integer() {
                 Some(i) => Ok(ScalarValue::Integer(i)),
                 None => Err(YamlError::FieldShape {
+                    span: None,
                     field: context,
                     expected: "string or integer scalar",
                 }),
@@ -127,11 +142,12 @@ pub(super) fn opt_u32(node: &saphyr::Yaml<'_>, field: &str) -> Option<u32> {
 /// Require a u16 field.
 pub(super) fn require_u16(node: &saphyr::Yaml<'_>, field: &'static str) -> YamlResult<u16> {
     match lookup(node, field) {
-        None => Err(YamlError::MissingField { field }),
+        None => Err(YamlError::MissingField { span: None, field }),
         Some(v) => {
             v.as_integer()
                 .and_then(|i| u16::try_from(i).ok())
                 .ok_or(YamlError::FieldShape {
+                    span: None,
                     field,
                     expected: "u16 integer",
                 })
@@ -149,6 +165,7 @@ pub(super) fn require_u16(node: &saphyr::Yaml<'_>, field: &'static str) -> YamlR
 /// runs profile validation first.
 pub(crate) fn parse_workflow_ast(text: &str) -> YamlResult<WorkflowSource> {
     let docs = saphyr::Yaml::load_from_str(text).map_err(|e| YamlError::ParseError {
+        span: None,
         line: e.marker().line(),
         reason: e.info().into(),
     })?;
@@ -161,6 +178,7 @@ pub(crate) fn parse_workflow_ast(text: &str) -> YamlResult<WorkflowSource> {
 fn parse_workflow_from_yaml(root: &saphyr::Yaml<'_>) -> YamlResult<WorkflowSource> {
     if !root.is_mapping() {
         return Err(YamlError::FieldShape {
+            span: None,
             field: "workflow",
             expected: "mapping",
         });

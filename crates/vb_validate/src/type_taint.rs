@@ -7,6 +7,7 @@
 
 use crate::{ValidationError, ValidationResult};
 use std::collections::HashMap;
+use vb_core::span::Span;
 
 // ---------------------------------------------------------------------------
 // Public value types
@@ -360,6 +361,7 @@ fn check_resource_bound(
     if actual > declared {
         return Err(ValidationError::LimitExceeded {
             resource: resource.to_owned(),
+            span: Span::ZERO,
         });
     }
     Ok(())
@@ -373,11 +375,13 @@ fn check_declared_bound(
     if declared == 0 {
         return Err(ValidationError::LimitRequired {
             resource: resource.to_owned(),
+            span: Span::ZERO,
         });
     }
     if declared > hard_limit {
         return Err(ValidationError::LimitExceeded {
             resource: resource.to_owned(),
+            span: Span::ZERO,
         });
     }
     Ok(())
@@ -578,6 +582,7 @@ fn require_boolean(actual: ValueType) -> ValidationResult<()> {
         Err(ValidationError::TypeMismatch {
             expected: "boolean".to_owned(),
             found: actual.as_str().to_owned(),
+            span: Span::ZERO,
         })
     }
 }

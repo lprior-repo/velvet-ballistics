@@ -21,6 +21,7 @@ pub mod errors;
 pub mod frame;
 pub mod ids;
 pub mod limits;
+pub mod non_empty_vec;
 pub mod policy;
 pub mod replay;
 pub mod span;
@@ -73,6 +74,15 @@ pub mod kani_step_harnesses;
 #[cfg(kani)]
 pub mod kani_step_state_transition;
 
+#[cfg(kani)]
+pub mod kani_span_enrich;
+
+#[cfg(kani)]
+pub mod kani_non_empty_vec;
+
+#[cfg(kani)]
+pub mod kani_diagnostic_enrich;
+
 pub use action::{
     ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionInput, ActionJournalEvent,
     ActionOutcome, ActionOutput, ActionOutputReady, ActionResult, ActionTicket, Idempotency,
@@ -101,8 +111,9 @@ pub use ids::{
     FanoutLimit, ListId, MaxAttempts, ObjectId, RetryCount, RunId, SeqNo, SlotIdx, StepIdx,
     SymbolId, WorkflowDigest, WorkflowId,
 };
+pub use non_empty_vec::NonEmptyVec;
 pub use policy::RuntimePolicy;
-pub use span::{Located, SourceMap, Span, Spanned};
+pub use span::{Located, Span, Spanned};
 pub use value::{ConstValue, FiniteF64, SlotValue, Taint, join_taint};
 pub use value_store::{ObjectField, ValueStore};
 pub use workflow::{

@@ -135,6 +135,7 @@ mod verus_unit_tests {
     use crate::ValidationError;
     use vb_core::ids::{SlotIdx, StepIdx, SymbolId};
     use vb_core::workflow::{
+use vb_core::span::Span;
         AccessorProgram, CompiledNode, CompiledNodeKind, PathSegment, ResourceContract,
         WorkflowDigest, WorkflowParts,
     };
@@ -194,7 +195,7 @@ mod verus_unit_tests {
         let result = validate_gate_08_accessor_path_segments(&parts);
         assert!(result.is_err(), "OOB symbol should produce error");
         match result {
-            Err(ValidationError::AccessorSymbolOutOfBounds { symbol, symbols_count, .. }) => {
+            Err(ValidationError::AccessorSymbolOutOfBounds { symbol, symbols_count, .. , span: Span::ZERO}) => {
                 assert_eq!(symbol, 5);
                 assert_eq!(symbols_count, 3);
             }

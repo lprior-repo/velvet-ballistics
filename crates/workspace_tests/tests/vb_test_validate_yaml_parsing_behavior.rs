@@ -17,6 +17,7 @@ use vb_validate::schema::{
     validate_step_fields, validate_trigger, validate_version, validate_workflow_schema,
 };
 use vb_validate::shared::{ValidationPipeline, validate, validate_with_contracts};
+use vb_core::span::Span;
 
 // ---------------------------------------------------------------------------
 // Helper constructors
@@ -109,7 +110,7 @@ fn validate_workflow_schema_detects_duplicate_top_level_key() {
     // When validate_workflow_schema is called
     let result = validate_workflow_schema(&doc);
     // Then it returns DuplicateKey error exactly
-    assert_eq!(result, Err(ValidationError::DuplicateKey));
+    assert_eq!(result, Err(ValidationError::DuplicateKey { span: Span::ZERO }));
 }
 
 #[test]
@@ -137,7 +138,7 @@ fn validate_workflow_schema_detects_duplicate_step_field_key() {
     // When validate_workflow_schema is called
     let result = validate_workflow_schema(&doc);
     // Then it returns DuplicateKey before counting primitives
-    assert_eq!(result, Err(ValidationError::DuplicateKey));
+    assert_eq!(result, Err(ValidationError::DuplicateKey { span: Span::ZERO }));
 }
 
 // ---------------------------------------------------------------------------
@@ -168,7 +169,7 @@ fn validate_workflow_schema_detects_missing_version() {
         result,
         Err(ValidationError::MissingRequiredField {
             field: "version".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -199,7 +200,7 @@ fn validate_workflow_schema_detects_missing_name() {
         result,
         Err(ValidationError::MissingRequiredField {
             field: "name".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -227,7 +228,7 @@ fn validate_workflow_schema_detects_missing_when() {
         result,
         Err(ValidationError::MissingRequiredField {
             field: "when".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -252,7 +253,7 @@ fn validate_workflow_schema_detects_missing_steps() {
         result,
         Err(ValidationError::MissingRequiredField {
             field: "steps".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -285,7 +286,7 @@ fn validate_workflow_schema_detects_unknown_top_level_field() {
     // When validate_workflow_schema is called
     let result = validate_workflow_schema(&doc);
     // Then it returns UnknownTopLevelField
-    assert_eq!(result, Err(ValidationError::UnknownTopLevelField));
+    assert_eq!(result, Err(ValidationError::UnknownTopLevelField { span: Span::ZERO }));
 }
 
 #[test]
@@ -313,7 +314,7 @@ fn validate_workflow_schema_rejects_bogus_field() {
     // When validate_workflow_schema is called
     let result = validate_workflow_schema(&doc);
     // Then it returns UnknownTopLevelField
-    assert_eq!(result, Err(ValidationError::UnknownTopLevelField));
+    assert_eq!(result, Err(ValidationError::UnknownTopLevelField { span: Span::ZERO }));
 }
 
 #[test]
@@ -341,7 +342,7 @@ fn validate_step_fields_detects_unknown_step_field() {
     // When validate_step_fields is called
     let result = validate_step_fields(&doc);
     // Then it returns UnknownStepField
-    assert_eq!(result, Err(ValidationError::UnknownStepField));
+    assert_eq!(result, Err(ValidationError::UnknownStepField { span: Span::ZERO }));
 }
 
 #[test]
@@ -357,7 +358,7 @@ fn validate_step_fields_rejects_legacy_save_field() {
     // When validate_step_fields is called
     let result = validate_step_fields(&doc);
     // Then it returns UnknownStepField
-    assert_eq!(result, Err(ValidationError::UnknownStepField));
+    assert_eq!(result, Err(ValidationError::UnknownStepField { span: Span::ZERO }));
 }
 
 // ---------------------------------------------------------------------------
@@ -388,7 +389,7 @@ fn validate_version_rejects_missing_version() {
         result,
         Err(ValidationError::MissingRequiredField {
             field: "version".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -406,7 +407,7 @@ fn validate_version_rejects_wrong_version() {
         result,
         Err(ValidationError::InvalidVersion {
             version: "not-velvet/v1".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -421,7 +422,7 @@ fn validate_version_rejects_empty_version_string() {
         result,
         Err(ValidationError::InvalidVersion {
             version: String::new(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -439,7 +440,7 @@ fn validate_version_rejects_future_version() {
         result,
         Err(ValidationError::InvalidVersion {
             version: "velvet-ballastics/v99".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -508,7 +509,7 @@ fn validate_ids_rejects_step_id_starting_with_digit() {
         result,
         Err(ValidationError::InvalidId {
             id: "1bad".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -540,7 +541,7 @@ fn validate_ids_rejects_step_id_with_dash() {
         result,
         Err(ValidationError::InvalidId {
             id: "bad-id".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -572,7 +573,7 @@ fn validate_ids_rejects_reserved_id_runtime() {
         result,
         Err(ValidationError::ReservedId {
             id: "runtime".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -604,7 +605,7 @@ fn validate_ids_rejects_reserved_id_now() {
         result,
         Err(ValidationError::ReservedId {
             id: "now".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -642,7 +643,7 @@ fn validate_ids_rejects_duplicate_step_id() {
         result,
         Err(ValidationError::DuplicateId {
             id: "step1".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -671,7 +672,7 @@ fn validate_ids_rejects_too_long_id() {
     // When validate_ids is called
     let result = validate_ids(&doc);
     // Then it returns InvalidId
-    assert_eq!(result, Err(ValidationError::InvalidId { id: long_id }));
+    assert_eq!(result, Err(ValidationError::InvalidId { id: long_id , span: Span::ZERO}));
 }
 
 #[test]
@@ -780,7 +781,7 @@ fn validate_trigger_rejects_http_trigger() {
     // When validate_trigger is called
     let result = validate_trigger(&doc);
     // Then it returns HttpTriggerOutOfCore
-    assert_eq!(result, Err(ValidationError::HttpTriggerOutOfCore));
+    assert_eq!(result, Err(ValidationError::HttpTriggerOutOfCore { span: Span::ZERO }));
 }
 
 #[test]
@@ -794,7 +795,7 @@ fn validate_trigger_rejects_empty_when_mapping() {
         result,
         Err(ValidationError::MissingRequiredField {
             field: "when".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -812,7 +813,7 @@ fn validate_trigger_rejects_unsupported_trigger() {
         result,
         Err(ValidationError::UnsupportedTrigger {
             trigger: "cron".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -830,7 +831,7 @@ fn validate_trigger_rejects_event_without_name() {
         result,
         Err(ValidationError::UnsupportedTrigger {
             trigger: "event".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -884,7 +885,7 @@ fn validate_single_primitive_rejects_no_primitive() {
     // When validate_single_primitive is called
     let result = validate_single_primitive(&step);
     // Then it returns MissingStepPrimitive
-    assert_eq!(result, Err(ValidationError::MissingStepPrimitive));
+    assert_eq!(result, Err(ValidationError::MissingStepPrimitive { span: Span::ZERO }));
 }
 
 #[test]
@@ -898,7 +899,7 @@ fn validate_single_primitive_rejects_multiple_primitives() {
     // When validate_single_primitive is called
     let result = validate_single_primitive(&step);
     // Then it returns MultipleStepPrimitives
-    assert_eq!(result, Err(ValidationError::MultipleStepPrimitives));
+    assert_eq!(result, Err(ValidationError::MultipleStepPrimitives { span: Span::ZERO }));
 }
 
 #[test]
@@ -1082,7 +1083,7 @@ fn validate_workflow_schema_rejects_empty_workflow() {
         result,
         Err(ValidationError::MissingRequiredField {
             field: "version".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -1122,7 +1123,7 @@ fn validate_workflow_schema_fails_on_first_error_in_sequence() {
     // When validate_workflow_schema is called
     let result = validate_workflow_schema(&doc);
     // Then it returns DuplicateKey (first validator that fails)
-    assert_eq!(result, Err(ValidationError::DuplicateKey));
+    assert_eq!(result, Err(ValidationError::DuplicateKey { span: Span::ZERO }));
 }
 
 // ---------------------------------------------------------------------------
@@ -1131,19 +1132,19 @@ fn validate_workflow_schema_fails_on_first_error_in_sequence() {
 
 #[test]
 fn validation_error_duplicate_key_display() {
-    let err = ValidationError::DuplicateKey;
+    let err = ValidationError::DuplicateKey { span: Span::ZERO };
     assert_eq!(format!("{}", err), "DUPLICATE_KEY");
 }
 
 #[test]
 fn validation_error_unknown_top_level_field_display() {
-    let err = ValidationError::UnknownTopLevelField;
+    let err = ValidationError::UnknownTopLevelField { span: Span::ZERO };
     assert_eq!(format!("{}", err), "UNKNOWN_TOP_LEVEL_FIELD");
 }
 
 #[test]
 fn validation_error_unknown_step_field_display() {
-    let err = ValidationError::UnknownStepField;
+    let err = ValidationError::UnknownStepField { span: Span::ZERO };
     assert_eq!(format!("{}", err), "UNKNOWN_STEP_FIELD");
 }
 
@@ -1151,7 +1152,7 @@ fn validation_error_unknown_step_field_display() {
 fn validation_error_missing_required_field_with_field() {
     let err = ValidationError::MissingRequiredField {
         field: "version".to_owned(),
-    };
+     span: Span::ZERO};
     assert_eq!(format!("{}", err), "MISSING_REQUIRED_FIELD: version");
 }
 
@@ -1159,7 +1160,7 @@ fn validation_error_missing_required_field_with_field() {
 fn validation_error_invalid_version_with_version() {
     let err = ValidationError::InvalidVersion {
         version: "v2.0".to_owned(),
-    };
+     span: Span::ZERO};
     assert_eq!(format!("{}", err), "INVALID_VERSION: v2.0");
 }
 
@@ -1167,7 +1168,7 @@ fn validation_error_invalid_version_with_version() {
 fn validation_error_invalid_id_with_id() {
     let err = ValidationError::InvalidId {
         id: "bad-id".to_owned(),
-    };
+     span: Span::ZERO};
     assert_eq!(format!("{}", err), "INVALID_ID: bad-id");
 }
 
@@ -1175,7 +1176,7 @@ fn validation_error_invalid_id_with_id() {
 fn validation_error_reserved_id_with_id() {
     let err = ValidationError::ReservedId {
         id: "runtime".to_owned(),
-    };
+     span: Span::ZERO};
     assert_eq!(format!("{}", err), "RESERVED_ID: runtime");
 }
 
@@ -1183,19 +1184,19 @@ fn validation_error_reserved_id_with_id() {
 fn validation_error_duplicate_id_with_id() {
     let err = ValidationError::DuplicateId {
         id: "step1".to_owned(),
-    };
+     span: Span::ZERO};
     assert_eq!(format!("{}", err), "DUPLICATE_ID: step1");
 }
 
 #[test]
 fn validation_error_multiple_step_primitives_display() {
-    let err = ValidationError::MultipleStepPrimitives;
+    let err = ValidationError::MultipleStepPrimitives { span: Span::ZERO };
     assert_eq!(format!("{}", err), "MULTIPLE_STEP_PRIMITIVES");
 }
 
 #[test]
 fn validation_error_missing_step_primitive_display() {
-    let err = ValidationError::MissingStepPrimitive;
+    let err = ValidationError::MissingStepPrimitive { span: Span::ZERO };
     assert_eq!(format!("{}", err), "MISSING_STEP_PRIMITIVE");
 }
 
@@ -1203,13 +1204,13 @@ fn validation_error_missing_step_primitive_display() {
 fn validation_error_unsupported_trigger_with_trigger() {
     let err = ValidationError::UnsupportedTrigger {
         trigger: "http".to_owned(),
-    };
+     span: Span::ZERO};
     assert_eq!(format!("{}", err), "UNSUPPORTED_TRIGGER: http");
 }
 
 #[test]
 fn validation_error_http_trigger_out_of_core_display() {
-    let err = ValidationError::HttpTriggerOutOfCore;
+    let err = ValidationError::HttpTriggerOutOfCore { span: Span::ZERO };
     assert_eq!(format!("{}", err), "HTTP_TRIGGER_OUT_OF_CORE");
 }
 
@@ -1219,7 +1220,7 @@ fn validation_error_slot_reference_out_of_range_display() {
         slot: 5,
         slot_count: 3,
         context: "output".to_owned(),
-    };
+     span: Span::ZERO};
     assert_eq!(
         format!("{}", err),
         "SLOT_REFERENCE_OUT_OF_RANGE: slot 5, slot_count 3, context output"

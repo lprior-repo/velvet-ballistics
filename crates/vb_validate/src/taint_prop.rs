@@ -7,6 +7,7 @@
 //! that would leak secrets into results (SECRET_RESULT_LEAK).
 
 use crate::ValidationResult;
+use vb_core::span::Span;
 
 use crate::fact_table::{Facts, resolve_value, write_slot};
 use crate::type_sigs::{StepKind, Taint, ValueFact, WorkflowTypes};
@@ -38,7 +39,7 @@ fn validate_step_taint(
             StepKind::Finish { result } => {
                 let fact = resolve_value(result, facts, slots);
                 if fact.taint == Taint::Secret {
-                    return Err(crate::ValidationError::SecretResultLeak);
+                    return Err(crate::ValidationError::SecretResultLeak { span: Span::ZERO });
                 }
             }
         }
@@ -51,6 +52,7 @@ mod tests {
     use super::*;
     use crate::ValidationError;
     use crate::type_sigs::{InputDecl, StepTypes, TypedValue, ValueType};
+    use vb_core::span::Span;
 
     fn make_workflow(steps: Vec<StepTypes>) -> WorkflowTypes {
         WorkflowTypes {
@@ -155,7 +157,7 @@ mod tests {
         wf.secrets.push("token".to_owned());
         assert!(matches!(
             validate_taint(&wf),
-            Err(ValidationError::SecretResultLeak)
+            Err(ValidationError::SecretResultLeak { span: Span::ZERO })
         ));
     }
 
@@ -168,7 +170,7 @@ mod tests {
         wf.secrets.push("token".to_owned());
         assert!(matches!(
             validate_taint(&wf),
-            Err(ValidationError::SecretResultLeak)
+            Err(ValidationError::SecretResultLeak { span: Span::ZERO })
         ));
     }
 
@@ -185,7 +187,7 @@ mod tests {
         });
         assert!(matches!(
             validate_taint(&wf),
-            Err(ValidationError::SecretResultLeak)
+            Err(ValidationError::SecretResultLeak { span: Span::ZERO })
         ));
     }
 
@@ -199,7 +201,7 @@ mod tests {
         wf.secrets.push("token".to_owned());
         assert!(matches!(
             validate_taint(&wf),
-            Err(ValidationError::SecretResultLeak)
+            Err(ValidationError::SecretResultLeak { span: Span::ZERO })
         ));
     }
 
@@ -215,7 +217,7 @@ mod tests {
         wf.secrets.push("token".to_owned());
         assert!(matches!(
             validate_taint(&wf),
-            Err(ValidationError::SecretResultLeak)
+            Err(ValidationError::SecretResultLeak { span: Span::ZERO })
         ));
     }
 
@@ -237,7 +239,7 @@ mod tests {
         wf.secrets.push("deep_secret".to_owned());
         assert!(matches!(
             validate_taint(&wf),
-            Err(ValidationError::SecretResultLeak)
+            Err(ValidationError::SecretResultLeak { span: Span::ZERO })
         ));
     }
 
@@ -256,7 +258,7 @@ mod tests {
         wf.secrets.push("password".to_owned());
         assert!(matches!(
             validate_taint(&wf),
-            Err(ValidationError::SecretResultLeak)
+            Err(ValidationError::SecretResultLeak { span: Span::ZERO })
         ));
     }
 }

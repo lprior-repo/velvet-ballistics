@@ -1,7 +1,7 @@
 use proptest::prelude::*;
 use vb_compile::{
-    CompileError, CompileErrors, YamlCompiler, compile_source, compile_workflow, lower_steps_to_ir,
-    lower_together,
+    CompileError, CompileErrors, SourceMark, YamlCompiler, compile_source, compile_workflow,
+    lower_steps_to_ir, lower_together,
 };
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, StepIdx, WorkflowError,
@@ -306,7 +306,9 @@ fn assert_expected_shape_error(
 ) -> Result<(), String> {
     match (actual, expected_error) {
         (
-            CompileError::CanonicalYaml { category, message },
+            CompileError::CanonicalYaml {
+                category, message, ..
+            },
             ExpectedShapeError::CanonicalYamlField(expected_field),
         ) => {
             assert_eq!(
@@ -640,7 +642,9 @@ fn yaml_compiler_compile_returns_canonical_yaml_when_source_parse_fails() -> Res
     let first = first_compile_error(&errors)?;
 
     match first {
-        CompileError::CanonicalYaml { category, message } => {
+        CompileError::CanonicalYaml {
+            category, message, ..
+        } => {
             assert_eq!(*category, "field_shape");
             assert_eq!(message.contains("id"), true);
             Ok(())
@@ -876,6 +880,13 @@ fn compile_yaml_with_api(
                 CompileErrors(vec![CompileError::CanonicalYaml {
                     category: "parse_error",
                     message: message.into_boxed_str(),
+                    mark: SourceMark {
+                        index: 0,
+                        end_index: 0,
+                        line: 0,
+                        column: 0,
+                        available: false,
+                    },
                 }])
             })?;
             compile_source(&source)

@@ -11,25 +11,31 @@ pub(super) fn parse_trigger(node: &saphyr::Yaml<'_>) -> YamlResult<TriggerAst> {
     if let Some(when_val) = lookup(node, "when") {
         return parse_when_trigger(when_val);
     }
-    Err(YamlError::MissingField { field: "when" })
+    Err(YamlError::MissingField {
+        span: None,
+        field: "when",
+    })
 }
 
 fn parse_when_trigger(when_val: &saphyr::Yaml<'_>) -> YamlResult<TriggerAst> {
     let map = mapping(when_val, "when")?;
     if map.len() != 1 {
         return Err(YamlError::FieldShape {
+            span: None,
             field: "when",
             expected: "exactly one trigger",
         });
     }
     let Some((key, body)) = map.iter().next() else {
         return Err(YamlError::FieldShape {
+            span: None,
             field: "when",
             expected: "exactly one trigger",
         });
     };
     let Some(kind) = key.as_str() else {
         return Err(YamlError::FieldShape {
+            span: None,
             field: "when key",
             expected: "string",
         });
@@ -39,9 +45,16 @@ fn parse_when_trigger(when_val: &saphyr::Yaml<'_>) -> YamlResult<TriggerAst> {
         "webhook" => empty_body(body, "when.webhook").map(|()| TriggerAst::Webhook),
         "schedule" => parse_schedule(body),
         "event" => parse_event(body),
-        "ipc" => Err(YamlError::UnsupportedTrigger { trigger: "ipc" }),
-        "http" => Err(YamlError::UnsupportedTrigger { trigger: "http" }),
+        "ipc" => Err(YamlError::UnsupportedTrigger {
+            span: None,
+            trigger: "ipc",
+        }),
+        "http" => Err(YamlError::UnsupportedTrigger {
+            span: None,
+            trigger: "http",
+        }),
         other => Err(YamlError::UnknownField {
+            span: None,
             field: other.into(),
         }),
     }
@@ -53,6 +66,7 @@ fn empty_body(body: &saphyr::Yaml<'_>, field: &'static str) -> YamlResult<()> {
         Ok(())
     } else {
         Err(YamlError::FieldShape {
+            span: None,
             field,
             expected: "empty mapping",
         })
@@ -63,11 +77,13 @@ fn parse_schedule(body: &saphyr::Yaml<'_>) -> YamlResult<TriggerAst> {
     reject_unknown_fields(body, &["cron"])?;
     let Some(cron) = lookup(body, "cron").and_then(saphyr::Yaml::as_str) else {
         return Err(YamlError::MissingField {
+            span: None,
             field: "when.schedule.cron",
         });
     };
     if cron.is_empty() {
         return Err(YamlError::FieldShape {
+            span: None,
             field: "when.schedule.cron",
             expected: "non-empty string",
         });
@@ -81,11 +97,13 @@ fn parse_event(body: &saphyr::Yaml<'_>) -> YamlResult<TriggerAst> {
     reject_unknown_fields(body, &["name"])?;
     let Some(event_name) = lookup(body, "name").and_then(saphyr::Yaml::as_str) else {
         return Err(YamlError::MissingField {
+            span: None,
             field: "when.event.name",
         });
     };
     if event_name.is_empty() {
         return Err(YamlError::FieldShape {
+            span: None,
             field: "when.event.name",
             expected: "non-empty string",
         });

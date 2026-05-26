@@ -10,7 +10,10 @@ use crate::{YamlError, YamlResult};
 
 pub(super) fn parse_steps(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<StepAst>> {
     let Some(node) = lookup(node, "steps") else {
-        return Err(YamlError::MissingField { field: "steps" });
+        return Err(YamlError::MissingField {
+            span: None,
+            field: "steps",
+        });
     };
     let mut steps = Vec::new();
     for item in sequence(node, "steps")? {
@@ -46,6 +49,7 @@ fn parse_step_primitive(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
     for (key, value) in mapping(node, "step")? {
         let Some(key) = key.as_str() else {
             return Err(YamlError::FieldShape {
+                span: None,
                 field: "step key",
                 expected: "string",
             });
@@ -53,6 +57,7 @@ fn parse_step_primitive(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
         if is_primitive(key) {
             if selected.is_some() {
                 return Err(YamlError::FieldShape {
+                    span: None,
                     field: "step",
                     expected: "exactly one primitive",
                 });
@@ -62,6 +67,7 @@ fn parse_step_primitive(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
     }
     let Some((kind, sub)) = selected else {
         return Err(YamlError::MissingField {
+            span: None,
             field: "step primitive",
         });
     };
@@ -78,7 +84,10 @@ fn parse_step_primitive(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
         "wait" => parse_wait(sub),
         "ask" => parse_ask(sub),
         "finish" => parse_finish(sub),
-        _ => Err(YamlError::UnknownField { field: kind.into() }),
+        _ => Err(YamlError::UnknownField {
+            span: None,
+            field: kind.into(),
+        }),
     }
 }
 
@@ -137,6 +146,7 @@ fn parse_set(sub: &saphyr::Yaml<'_>, primitive: &'static str) -> YamlResult<Step
     let value = require_str_in(sub, "value", "set.value")?;
     if primitive == "save" && output.is_empty() {
         return Err(YamlError::FieldShape {
+            span: None,
             field: "save.output",
             expected: "non-empty string",
         });
@@ -150,6 +160,7 @@ fn parse_do(sub: &saphyr::Yaml<'_>, primitive: &str) -> YamlResult<StepPrimitive
     let input = require_str_in(sub, "input", "do.input")?;
     if primitive == "run" && action.is_empty() {
         return Err(YamlError::FieldShape {
+            span: None,
             field: "run.action",
             expected: "non-empty string",
         });
@@ -254,6 +265,7 @@ fn parse_body_steps(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<StepAst>> {
 fn parse_retry(node: &saphyr::Yaml<'_>) -> YamlResult<Option<RetryPolicy>> {
     if lookup(node, "retry").is_some() {
         return Err(YamlError::UnknownField {
+            span: None,
             field: "retry".into(),
         });
     }
@@ -266,6 +278,7 @@ fn parse_retry(node: &saphyr::Yaml<'_>) -> YamlResult<Option<RetryPolicy>> {
         Some(v) => Some(
             v.as_str()
                 .ok_or(YamlError::FieldShape {
+                    span: None,
                     field: "try_again.delay",
                     expected: "string",
                 })?
@@ -294,6 +307,7 @@ fn parse_wait(sub: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
         Some(v) => Some(
             v.as_str()
                 .ok_or(YamlError::FieldShape {
+                    span: None,
                     field: "wait.event",
                     expected: "string",
                 })?
@@ -305,6 +319,7 @@ fn parse_wait(sub: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
         Some(v) => Some(
             v.as_str()
                 .ok_or(YamlError::FieldShape {
+                    span: None,
                     field: "wait.timeout",
                     expected: "string",
                 })?
@@ -322,6 +337,7 @@ fn parse_ask(sub: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
         Some(v) => Some(
             v.as_str()
                 .ok_or(YamlError::FieldShape {
+                    span: None,
                     field: "ask.timeout",
                     expected: "string",
                 })?

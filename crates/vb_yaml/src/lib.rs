@@ -26,6 +26,9 @@ mod limits;
 pub use error::*;
 pub use limits::*;
 
+#[cfg(kani)]
+pub mod kani_yaml_error_enrich;
+
 /// Parse YAML text into a stream of typed events.
 ///
 /// This is the lowest-level public API. It runs profile validation first,

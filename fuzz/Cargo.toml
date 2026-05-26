@@ -465,3 +465,33 @@ path = "fuzz_targets/yaml_events.rs"
 test = false
 doc = false
 bench = false
+
+# === vb-xi2f.9 Span Enrichment Fuzz Targets ===
+
+[[bin]]
+name = "diagnostic_from_error"
+path = "fuzz_targets/diagnostic_from_error.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "diagnostic_code_from_str"
+path = "fuzz_targets/diagnostic_code_from_str.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "span_bridge_fuzz"
+path = "fuzz_targets/span_bridge_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "compile_source_ast_marks"
+path = "fuzz_targets/compile_source_ast_marks.rs"
+test = false
+doc = false
+bench = false

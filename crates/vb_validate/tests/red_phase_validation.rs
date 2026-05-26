@@ -5,6 +5,7 @@
 #![forbid(unsafe_code)]
 
 use vb_core::ids::{SlotIdx, StepIdx, SymbolId};
+use vb_core::span::Span;
 use vb_core::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, PathSegment, ResourceContract, WorkflowParts,
 };
@@ -100,6 +101,7 @@ fn pipeline_validate_rejects_accessor_symbol_out_of_bounds() {
                 segment_index: 0,
                 symbol: 7,
                 symbols_count: 5,
+                span: Span::ZERO
             }
         ),
         "expected AccessorSymbolOutOfBounds for accessor_index=0, symbol=7, symbols_count=5, got {err:?}"
@@ -126,6 +128,7 @@ fn pipeline_validate_rejects_second_accessor_symbol_out_of_bounds() {
                 segment_index: 0,
                 symbol: 99,
                 symbols_count: 3,
+                span: Span::ZERO
             }
         ),
         "expected AccessorSymbolOutOfBounds for accessor_index=1, symbol=99, symbols_count=3, got {err:?}"
@@ -156,6 +159,7 @@ fn pipeline_validate_rejects_deep_accessor_segment_symbol_out_of_bounds() {
                 segment_index: 1,
                 symbol: 10,
                 symbols_count: 5,
+                span: Span::ZERO
             }
         ),
         "expected AccessorSymbolOutOfBounds at segment_index=1, symbol=10, symbols_count=5, got {err:?}"
@@ -193,6 +197,7 @@ fn pipeline_validate_rejects_accessor_root_out_of_range() {
                 accessor_index: 0,
                 slot: 5,
                 slot_count: 1,
+                span: Span::ZERO
             }
         ),
         "expected AccessorSlotOutOfRange, got {err:?}"
@@ -306,7 +311,8 @@ fn pipeline_validate_rejects_expression_stack_exceeds_limit() {
             &err,
             vb_validate::ValidationError::ExpressionStackExceeded {
                 declared: 128,
-                limit: 64
+                limit: 64,
+                span: Span::ZERO
             }
         ),
         "expected ExpressionStackExceeded {{ declared: 128, limit: 64 }}, got {err:?}"

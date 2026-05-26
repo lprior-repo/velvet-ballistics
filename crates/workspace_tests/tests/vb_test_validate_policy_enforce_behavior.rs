@@ -18,6 +18,7 @@ use vb_core::workflow::{
 };
 use vb_validate::ValidationError;
 use vb_validate::shared::{ValidationPipeline, validate};
+use vb_core::span::Span;
 
 // ---------------------------------------------------------------------------
 // Test fixtures
@@ -97,7 +98,7 @@ fn gate_07_policy_rule_rejects_contract_exceeding_protocol_limit() {
         Err(ValidationError::ExpressionStackExceeded {
             declared: 128,
             limit: 64
-        })
+        , span: Span::ZERO})
     ));
 }
 
@@ -131,7 +132,7 @@ fn gate_07_policy_rule_rejects_mismatched_declared_stack() {
             expr_index: 0,
             declared: 2,
             computed: 1,
-        })
+         span: Span::ZERO})
     ));
 }
 
@@ -199,7 +200,7 @@ fn gate_08_policy_rule_rejects_accessor_root_out_of_range() {
             accessor_index: 0,
             slot: 99,
             slot_count: 1,
-        })
+         span: Span::ZERO})
     ));
 }
 
@@ -231,7 +232,7 @@ fn gate_08_policy_rule_rejects_accessor_symbol_out_of_bounds() {
             segment_index: 0,
             symbol: 99,
             symbols_count: 1,
-        })
+         span: Span::ZERO})
     ));
 }
 
@@ -261,7 +262,7 @@ fn gate_08_policy_rule_rejects_sentinel_index_segment() {
         Err(ValidationError::AccessorPathInvalid {
             accessor_index: 0,
             segment_index: 0,
-        })
+         span: Span::ZERO})
     ));
 }
 
@@ -295,7 +296,7 @@ fn gate_08_policy_rule_rejects_accessor_path_too_deep() {
             accessor_index: 0,
             depth: 20,
             max: 16,
-        })
+         span: Span::ZERO})
     ));
 }
 
@@ -327,7 +328,7 @@ fn gate_09_policy_rule_rejects_output_slot_out_of_range() {
             slot: 99,
             slot_count: 1,
             context: _,
-        })
+         span: Span::ZERO})
     ));
 }
 
@@ -357,7 +358,7 @@ fn gate_09_policy_rule_rejects_error_slot_out_of_range() {
             slot: 50,
             slot_count: 1,
             context: _,
-        })
+         span: Span::ZERO})
     ));
 }
 
@@ -386,7 +387,7 @@ fn gate_09_policy_rule_rejects_expr_load_slot_out_of_range() {
             slot: 99,
             slot_count: 1,
             context: _,
-        })
+         span: Span::ZERO})
     ));
 }
 
@@ -410,7 +411,7 @@ fn gate_10_policy_rule_rejects_finish_result_out_of_range() {
         Err(ValidationError::NodeKindConstraintViolation {
             node_index: 0,
             detail: _,
-        })
+         span: Span::ZERO})
     ));
 }
 
@@ -446,7 +447,7 @@ fn gate_10_policy_rule_rejects_setconst_const_out_of_range() {
         Err(ValidationError::NodeKindConstraintViolation {
             node_index: 0,
             detail: _,
-        })
+         span: Span::ZERO})
     ));
 }
 
@@ -483,7 +484,7 @@ fn gate_10_policy_rule_rejects_sentinel_action_id() {
         Err(ValidationError::NodeKindConstraintViolation {
             node_index: 0,
             detail: ref d,
-        }) if d.contains("sentinel")
+         span: Span::ZERO}) if d.contains("sentinel")
     ));
 }
 
@@ -527,7 +528,7 @@ fn gate_10_policy_rule_rejects_choose_expr_out_of_range() {
         Err(ValidationError::NodeKindConstraintViolation {
             node_index: 0,
             detail: _,
-        })
+         span: Span::ZERO})
     ));
 }
 
@@ -573,7 +574,7 @@ fn gate_11_policy_rule_rejects_for_each_body_out_of_range() {
             node_count: 2,
             source_node: 0,
             label: _,
-        })
+         span: Span::ZERO})
     ));
 }
 
@@ -615,7 +616,7 @@ fn gate_11_policy_rule_rejects_for_each_done_out_of_range() {
             node_count: 2,
             source_node: 0,
             label: _,
-        })
+         span: Span::ZERO})
     ));
 }
 
@@ -657,7 +658,7 @@ fn gate_11_policy_rule_rejects_loop_body_before_start() {
             node_count: 3,
             source_node: 0,
             label: ref l,
-        }) if l.contains("after")
+         span: Span::ZERO}) if l.contains("after")
     ));
 }
 
@@ -699,7 +700,7 @@ fn gate_11_policy_rule_rejects_for_each_done_before_body() {
             node_count: 3,
             source_node: 0,
             label: ref l,
-        }) if l.contains("after")
+         span: Span::ZERO}) if l.contains("after")
     ));
 }
 
@@ -738,7 +739,7 @@ fn gate_11_policy_rule_rejects_together_branch_out_of_range() {
             node_count: 2,
             source_node: 0,
             label: _,
-        })
+         span: Span::ZERO})
     ));
 }
 
@@ -777,7 +778,7 @@ fn gate_11_policy_rule_rejects_together_join_out_of_range() {
             node_count: 2,
             source_node: 0,
             label: _,
-        })
+         span: Span::ZERO})
     ));
 }
 
@@ -822,7 +823,7 @@ fn gate_13_policy_rule_rejects_direct_slot_cycle() {
         Err(ValidationError::SlotDependencyCycle {
             slot: 1,
             chain: ref c,
-        }) if c.contains("slot 1 -> slot 0")
+         span: Span::ZERO}) if c.contains("slot 1 -> slot 0")
     ));
 }
 
@@ -958,7 +959,7 @@ fn gate_14_policy_rule_rejects_slot_type_inconsistency_i64_vs_bool() {
     // Then enforcement reports exact type inconsistency error
     assert!(matches!(
         result,
-        Err(ValidationError::SlotTypeInconsistency { slot: 0 })
+        Err(ValidationError::SlotTypeInconsistency { slot: 0 , span: Span::ZERO})
     ));
 }
 
@@ -1058,7 +1059,7 @@ fn gate_15_policy_rule_rejects_consecutive_nondeterministic_nodes() {
         Err(ValidationError::NonDeterministicPath {
             from_node: 0,
             to_node: 1,
-        })
+         span: Span::ZERO})
     ));
 }
 
@@ -1101,7 +1102,7 @@ fn gate_15_policy_rule_rejects_consecutive_ask_nodes() {
         Err(ValidationError::NonDeterministicPath {
             from_node: 0,
             to_node: 1,
-        })
+         span: Span::ZERO})
     ));
 }
 
@@ -1390,7 +1391,7 @@ fn exact_violation_expression_stack_exceeded_has_all_fields() {
     let err = ValidationError::ExpressionStackExceeded {
         declared: 100,
         limit: 64,
-    };
+     span: Span::ZERO};
     let msg = err.to_string();
     assert!(msg.contains("declared"));
     assert!(msg.contains("100"));
@@ -1404,7 +1405,7 @@ fn exact_violation_slot_dependency_cycle_has_all_fields() {
     let err = ValidationError::SlotDependencyCycle {
         slot: 5,
         chain: String::from("slot 5 -> slot 3 -> slot 1 -> slot 5"),
-    };
+     span: Span::ZERO};
     let msg = err.to_string();
     assert!(msg.contains("slot 5"));
     assert!(msg.contains("slot 5 -> slot 3 -> slot 1 -> slot 5"));
@@ -1416,7 +1417,7 @@ fn exact_violation_action_contract_missing_has_all_fields() {
     let err = ValidationError::ActionContractMissing {
         action_id: 42,
         node_index: 7,
-    };
+     span: Span::ZERO};
     let msg = err.to_string();
     assert!(msg.contains("42"));
     assert!(msg.contains("7"));
@@ -1428,7 +1429,7 @@ fn exact_violation_node_kind_constraint_has_node_and_detail() {
     let err = ValidationError::NodeKindConstraintViolation {
         node_index: 3,
         detail: String::from("Finish result slot 99 out of range (slot_count 1)"),
-    };
+     span: Span::ZERO};
     let msg = err.to_string();
     assert!(msg.contains("3"));
     assert!(msg.contains("Finish result slot 99 out of range"));
@@ -1442,7 +1443,7 @@ fn exact_violation_capability_name_too_long_has_all_params() {
         capability_index: 2,
         len: 256,
         max: 128,
-    };
+     span: Span::ZERO};
     let msg = err.to_string();
     assert!(msg.contains("1"));
     assert!(msg.contains("2"));
@@ -1458,7 +1459,7 @@ fn exact_violation_loop_body_step_out_of_range_has_all_context() {
         node_count: 10,
         source_node: 3,
         label: String::from("for_each body"),
-    };
+     span: Span::ZERO};
     let msg = err.to_string();
     assert!(msg.contains("50"));
     assert!(msg.contains("10"));
@@ -1472,7 +1473,7 @@ fn exact_violation_non_deterministic_path_has_both_nodes() {
     let err = ValidationError::NonDeterministicPath {
         from_node: 2,
         to_node: 5,
-    };
+     span: Span::ZERO};
     let msg = err.to_string();
     assert!(msg.contains("2"));
     assert!(msg.contains("5"));

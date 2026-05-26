@@ -229,7 +229,7 @@ fn parse_yaml_benches(c: &mut Criterion) {
             checked_iter(b, "parse_yaml_small", || {
                 let result = match std::str::from_utf8(input) {
                     Ok(text) => vb_yaml::parse_yaml_events(black_box(text)),
-                    Err(error) => Err(vb_yaml::YamlError::ParseError {
+                    Err(error) => Err(vb_yaml::YamlError::ParseError { span: None,
                         line: 0,
                         reason: error.to_string().into_boxed_str(),
                     }),

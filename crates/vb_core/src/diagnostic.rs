@@ -83,7 +83,7 @@ pub enum Severity {
     Info,
 }
 
-/// User-facing diagnostic with stable code and source span.
+/// User-facing diagnostic with stable code, source span, and optional file path.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Diagnostic {
     /// Stable diagnostic code.
@@ -92,24 +92,28 @@ pub struct Diagnostic {
     pub message: Box<str>,
     /// Diagnostic severity.
     pub severity: Severity,
-    /// Source span for the diagnostic.
+    /// Source span for the diagnostic (carries optional line/column).
     pub span: Span,
+    /// Path to source file (present for authoring-time diagnostics, absent at runtime).
+    pub source_file: Option<Box<str>>,
 }
 
 impl Diagnostic {
     /// Creates a diagnostic record.
     #[must_use]
-    pub const fn new(
+    pub fn new(
         code: DiagnosticCode,
         message: Box<str>,
         severity: Severity,
         span: Span,
+        source_file: Option<Box<str>>,
     ) -> Self {
         Self {
             code,
             message,
             severity,
             span,
+            source_file,
         }
     }
 }
@@ -231,12 +235,40 @@ mod tests {
             Box::<str>::from("invalid workflow"),
             Severity::Error,
             Span::ZERO,
+            None,
         );
 
         assert_eq!(diagnostic.code, DiagnosticCode::new(0x0101));
         assert_eq!(diagnostic.message.as_ref(), "invalid workflow");
         assert_eq!(diagnostic.severity, Severity::Error);
         assert_eq!(diagnostic.span, Span::ZERO);
+        assert_eq!(diagnostic.source_file, None);
+    }
+
+    #[test]
+    fn diagnostic_carries_source_file_when_provided() {
+        let diagnostic = Diagnostic::new(
+            DiagnosticCode::new(0x0101),
+            Box::<str>::from("test"),
+            Severity::Error,
+            Span::ZERO,
+            Some(Box::<str>::from("workflow.yaml")),
+        );
+
+        assert_eq!(diagnostic.source_file.as_deref(), Some("workflow.yaml"));
+    }
+
+    #[test]
+    fn diagnostic_backward_compat_source_file_none() {
+        let diagnostic = Diagnostic::new(
+            DiagnosticCode::new(0x0101),
+            Box::<str>::from("runtime error"),
+            Severity::Warning,
+            Span::ZERO,
+            None,
+        );
+
+        assert!(diagnostic.source_file.is_none());
     }
 
     // -- DiagnosticCodeParseError exact variant assertions --
@@ -288,5 +320,74 @@ mod tests {
         let result = DiagnosticCode::from_str("E9999");
 
         assert_eq!(result, Err(DiagnosticCodeParseError::UnsupportedCode));
+    }
+
+    #[test]
+    fn diagnostic_code_rejects_wrong_prefix_g() {
+        // B26 variant: wrong prefix "G" should be InvalidFormat
+        let result = DiagnosticCode::from_str("G0101");
+
+        assert_eq!(result, Err(DiagnosticCodeParseError::InvalidFormat));
+    }
+
+    #[test]
+    fn diagnostic_code_parses_e010b_uppercase_hex() {
+        // B25: E010B (uppercase B) is supported and within range
+        let result = DiagnosticCode::from_str("E010B");
+
+        assert_eq!(result, Ok(DiagnosticCode::new(0x010B)));
+    }
+
+    #[test]
+    fn diagnostic_code_e0000_is_unsupported() {
+        // E0000 is valid format but outside supported ranges
+        let result = DiagnosticCode::from_str("E0000");
+
+        assert_eq!(result, Err(DiagnosticCodeParseError::UnsupportedCode));
+    }
+
+    #[test]
+    fn severity_has_three_variants() {
+        // B32: Severity enum has Error, Warning, Info
+        let error = Severity::Error;
+        let warning = Severity::Warning;
+        let info = Severity::Info;
+
+        assert_ne!(error, warning);
+        assert_ne!(warning, info);
+        assert_ne!(error, info);
+    }
+
+    #[test]
+    fn diagnostic_new_preserves_source_file_exactly() {
+        // B20: source_file is preserved exactly
+        let diagnostic = Diagnostic::new(
+            DiagnosticCode::new(0x0201),
+            Box::<str>::from("test msg"),
+            Severity::Error,
+            Span::ZERO,
+            Some(Box::<str>::from("path/to/workflow.yaml")),
+        );
+        assert_eq!(
+            diagnostic.source_file.as_deref(),
+            Some("path/to/workflow.yaml")
+        );
+    }
+
+    #[test]
+    fn diagnostic_backward_compat_span_zero_none_source() {
+        // B22: backward compat: Span::ZERO + None source_file
+        let diagnostic = Diagnostic::new(
+            DiagnosticCode::new(0x0101),
+            Box::<str>::from("runtime error"),
+            Severity::Warning,
+            Span::ZERO,
+            None,
+        );
+
+        assert_eq!(diagnostic.span, Span::ZERO);
+        assert!(diagnostic.source_file.is_none());
+        assert_eq!(diagnostic.severity, Severity::Warning);
+        assert_eq!(diagnostic.message.as_ref(), "runtime error");
     }
 }

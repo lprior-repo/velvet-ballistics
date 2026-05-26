@@ -9,6 +9,7 @@ use crate::schema_fields::{
     validate_version, validate_workflow_schema,
 };
 use crate::schema_id::{is_valid_id, validate_single_id};
+use vb_core::span::Span;
 
 fn make_workflow(fields: Vec<(&str, FieldValue)>) -> WorkflowDoc {
     WorkflowDoc::from_pairs(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
@@ -115,7 +116,7 @@ fn rejects_http_trigger() {
     ]);
     assert!(matches!(
         validate_trigger(&doc),
-        Err(ValidationError::HttpTriggerOutOfCore)
+        Err(ValidationError::HttpTriggerOutOfCore { span: Span::ZERO })
     ));
 }
 
@@ -142,7 +143,7 @@ fn rejects_step_without_primitive() {
     let step = make_step(vec![("id", FieldValue::String("s1".to_owned()))]);
     assert!(matches!(
         validate_single_primitive(&step),
-        Err(ValidationError::MissingStepPrimitive)
+        Err(ValidationError::MissingStepPrimitive { span: Span::ZERO })
     ));
 }
 
@@ -155,7 +156,7 @@ fn rejects_step_with_multiple_primitives() {
     ]);
     assert!(matches!(
         validate_single_primitive(&step),
-        Err(ValidationError::MultipleStepPrimitives)
+        Err(ValidationError::MultipleStepPrimitives { span: Span::ZERO })
     ));
 }
 
@@ -215,7 +216,7 @@ fn validate_workflow_schema_returns_unknown_top_level_field_for_invalid_field() 
     ]);
     assert_eq!(
         validate_workflow_schema(&doc),
-        Err(ValidationError::UnknownTopLevelField)
+        Err(ValidationError::UnknownTopLevelField { span: Span::ZERO })
     );
 }
 
@@ -242,7 +243,7 @@ fn validate_workflow_schema_returns_duplicate_key_for_duplicate_top_level_field(
     ]);
     assert_eq!(
         validate_workflow_schema(&doc),
-        Err(ValidationError::DuplicateKey)
+        Err(ValidationError::DuplicateKey { span: Span::ZERO })
     );
 }
 
@@ -269,7 +270,7 @@ fn validate_workflow_schema_returns_duplicate_key_for_duplicate_step_field() {
     ]);
     assert_eq!(
         validate_workflow_schema(&doc),
-        Err(ValidationError::DuplicateKey)
+        Err(ValidationError::DuplicateKey { span: Span::ZERO })
     );
 }
 
@@ -296,7 +297,7 @@ fn validate_workflow_schema_returns_unknown_step_field_for_invalid_step_field() 
     ]);
     assert_eq!(
         validate_step_fields(&doc),
-        Err(ValidationError::UnknownStepField)
+        Err(ValidationError::UnknownStepField { span: Span::ZERO })
     );
 }
 
@@ -323,6 +324,7 @@ fn validate_workflow_schema_returns_missing_required_field_for_absent_name() {
         validate_workflow_schema(&doc),
         Err(ValidationError::MissingRequiredField {
             field: "name".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -344,6 +346,7 @@ fn validate_workflow_schema_returns_missing_required_field_for_absent_steps() {
         validate_workflow_schema(&doc),
         Err(ValidationError::MissingRequiredField {
             field: "steps".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -355,6 +358,7 @@ fn validate_version_returns_invalid_version_for_bad_version() {
         validate_version(&doc),
         Err(ValidationError::InvalidVersion {
             version: "2.0".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -375,6 +379,7 @@ fn validate_version_rejects_empty_version() {
         validate_version(&doc),
         Err(ValidationError::InvalidVersion {
             version: String::new(),
+            span: Span::ZERO
         })
     );
 }
@@ -389,6 +394,7 @@ fn validate_version_rejects_unknown_version() {
         validate_version(&doc),
         Err(ValidationError::InvalidVersion {
             version: "other-language/v2".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -400,6 +406,7 @@ fn validate_version_returns_missing_required_field_when_absent() {
         validate_version(&doc),
         Err(ValidationError::MissingRequiredField {
             field: "version".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -428,6 +435,7 @@ fn validate_ids_returns_invalid_id_for_malformed_id() {
         validate_ids(&doc),
         Err(ValidationError::InvalidId {
             id: "1bad".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -456,6 +464,7 @@ fn validate_ids_returns_reserved_id_for_system_id() {
         validate_ids(&doc),
         Err(ValidationError::ReservedId {
             id: "runtime".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -467,6 +476,7 @@ fn validate_ids_returns_duplicate_id_for_same_step_id() {
         validate_single_id("step1", &seen),
         Err(ValidationError::DuplicateId {
             id: "step1".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -480,7 +490,7 @@ fn validate_single_primitive_returns_multiple_step_primitives_for_two_primitives
     ]);
     assert_eq!(
         validate_single_primitive(&step),
-        Err(ValidationError::MultipleStepPrimitives)
+        Err(ValidationError::MultipleStepPrimitives { span: Span::ZERO })
     );
 }
 
@@ -537,6 +547,7 @@ fn validate_ids_rejects_step_id_with_spaces() {
         validate_ids(&doc),
         Err(ValidationError::InvalidId {
             id: "has space".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -565,6 +576,7 @@ fn validate_ids_rejects_step_id_starting_with_digit() {
         validate_ids(&doc),
         Err(ValidationError::InvalidId {
             id: "9lead".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -593,6 +605,7 @@ fn validate_ids_rejects_step_id_with_special_chars() {
         validate_ids(&doc),
         Err(ValidationError::InvalidId {
             id: "bad-id".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -607,6 +620,7 @@ fn validate_trigger_rejects_ipc_trigger() {
         validate_trigger(&doc),
         Err(ValidationError::UnsupportedTrigger {
             trigger: "ipc".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -660,6 +674,7 @@ fn validate_trigger_rejects_schedule_without_cron() {
         validate_trigger(&doc),
         Err(ValidationError::UnsupportedTrigger {
             trigger: "schedule".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -683,6 +698,7 @@ fn validate_trigger_rejects_unsupported_trigger() {
         validate_trigger(&doc),
         Err(ValidationError::UnsupportedTrigger {
             trigger: "cron".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -694,6 +710,7 @@ fn validate_trigger_rejects_empty_when_mapping() {
         validate_trigger(&doc),
         Err(ValidationError::MissingRequiredField {
             field: "when".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -751,7 +768,7 @@ fn validate_step_fields_rejects_legacy_save_field() {
     )]);
     assert_eq!(
         validate_step_fields(&doc),
-        Err(ValidationError::UnknownStepField)
+        Err(ValidationError::UnknownStepField { span: Span::ZERO })
     );
 }
 
@@ -778,7 +795,7 @@ fn validate_step_fields_rejects_step_without_kind() {
     )]);
     assert_eq!(
         validate_step_fields(&doc),
-        Err(ValidationError::MissingStepPrimitive)
+        Err(ValidationError::MissingStepPrimitive { span: Span::ZERO })
     );
 }
 
@@ -795,6 +812,7 @@ fn validate_workflow_schema_rejects_empty_workflow() {
         validate_workflow_schema(&doc),
         Err(ValidationError::MissingRequiredField {
             field: "version".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -1019,6 +1037,7 @@ fn adversarial_version_v2_is_rejected_as_invalid_version() {
         validate_version(&doc),
         Err(ValidationError::InvalidVersion {
             version: "velvet-ballistics/v2".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -1047,6 +1066,7 @@ fn adversarial_reserved_id_input_is_rejected_as_reserved() {
         validate_ids(&doc),
         Err(ValidationError::ReservedId {
             id: "input".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -1075,6 +1095,7 @@ fn adversarial_reserved_id_vars_is_rejected_as_reserved() {
         validate_ids(&doc),
         Err(ValidationError::ReservedId {
             id: "vars".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -1103,6 +1124,7 @@ fn adversarial_reserved_id_secrets_is_rejected_as_reserved() {
         validate_ids(&doc),
         Err(ValidationError::ReservedId {
             id: "secrets".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -1131,6 +1153,7 @@ fn adversarial_reserved_id_steps_is_rejected_as_reserved() {
         validate_ids(&doc),
         Err(ValidationError::ReservedId {
             id: "steps".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -1159,6 +1182,7 @@ fn adversarial_reserved_id_error_is_rejected_as_reserved() {
         validate_ids(&doc),
         Err(ValidationError::ReservedId {
             id: "error".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -1187,6 +1211,7 @@ fn adversarial_reserved_id_attempt_is_rejected_as_reserved() {
         validate_ids(&doc),
         Err(ValidationError::ReservedId {
             id: "attempt".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -1200,7 +1225,7 @@ fn adversarial_step_with_set_and_do_primitives_is_rejected() {
     ]);
     assert_eq!(
         validate_single_primitive(&step),
-        Err(ValidationError::MultipleStepPrimitives)
+        Err(ValidationError::MultipleStepPrimitives { span: Span::ZERO })
     );
 }
 
@@ -1213,7 +1238,7 @@ fn adversarial_step_with_choose_and_finish_primitives_is_rejected() {
     ]);
     assert_eq!(
         validate_single_primitive(&step),
-        Err(ValidationError::MultipleStepPrimitives)
+        Err(ValidationError::MultipleStepPrimitives { span: Span::ZERO })
     );
 }
 
@@ -1235,7 +1260,7 @@ fn adversarial_step_with_all_primitives_is_rejected() {
     ]);
     assert_eq!(
         validate_single_primitive(&step),
-        Err(ValidationError::MultipleStepPrimitives)
+        Err(ValidationError::MultipleStepPrimitives { span: Span::ZERO })
     );
 }
 
@@ -1250,7 +1275,7 @@ fn adversarial_step_with_only_non_primitive_fields_is_rejected() {
     ]);
     assert_eq!(
         validate_single_primitive(&step),
-        Err(ValidationError::MissingStepPrimitive)
+        Err(ValidationError::MissingStepPrimitive { span: Span::ZERO })
     );
 }
 
@@ -1262,7 +1287,7 @@ fn adversarial_http_trigger_is_rejected_as_out_of_core() {
     )]);
     assert_eq!(
         validate_trigger(&doc),
-        Err(ValidationError::HttpTriggerOutOfCore)
+        Err(ValidationError::HttpTriggerOutOfCore { span: Span::ZERO })
     );
 }
 
@@ -1296,6 +1321,7 @@ fn adversarial_duplicate_step_ids_in_full_workflow_is_rejected() {
         validate_ids(&doc),
         Err(ValidationError::DuplicateId {
             id: "clone".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -1306,6 +1332,7 @@ fn adversarial_uppercase_step_id_is_rejected() {
         validate_single_id("MyStep", &[]),
         Err(ValidationError::InvalidId {
             id: "MyStep".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -1316,6 +1343,7 @@ fn adversarial_hyphenated_step_id_is_rejected() {
         validate_single_id("my-step", &[]),
         Err(ValidationError::InvalidId {
             id: "my-step".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -1326,6 +1354,7 @@ fn adversarial_step_id_starting_with_digit_is_rejected() {
         validate_single_id("0step", &[]),
         Err(ValidationError::InvalidId {
             id: "0step".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -1334,7 +1363,10 @@ fn adversarial_step_id_starting_with_digit_is_rejected() {
 fn adversarial_empty_step_id_is_rejected() {
     assert_eq!(
         validate_single_id("", &[]),
-        Err(ValidationError::InvalidId { id: String::new() })
+        Err(ValidationError::InvalidId {
+            id: String::new(),
+            span: Span::ZERO
+        })
     );
 }
 
@@ -1351,6 +1383,7 @@ fn adversarial_multiple_triggers_are_rejected() {
         validate_trigger(&doc),
         Err(ValidationError::UnsupportedTrigger {
             trigger: "multiple triggers".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -1365,6 +1398,7 @@ fn adversarial_unknown_trigger_kind_is_rejected() {
         validate_trigger(&doc),
         Err(ValidationError::UnsupportedTrigger {
             trigger: "timer".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -1387,6 +1421,7 @@ fn adversarial_empty_steps_sequence_is_rejected() {
         validate_ids(&doc),
         Err(ValidationError::MissingRequiredField {
             field: "steps".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -1414,7 +1449,7 @@ fn adversarial_unknown_top_level_field_webhook_is_rejected() {
     ]);
     assert_eq!(
         validate_workflow_schema(&doc),
-        Err(ValidationError::UnknownTopLevelField)
+        Err(ValidationError::UnknownTopLevelField { span: Span::ZERO })
     );
 }
 
@@ -1430,7 +1465,7 @@ fn adversarial_unknown_step_field_payload_is_rejected() {
     )]);
     assert_eq!(
         validate_step_fields(&doc),
-        Err(ValidationError::UnknownStepField)
+        Err(ValidationError::UnknownStepField { span: Span::ZERO })
     );
 }
 
@@ -1440,6 +1475,7 @@ fn adversarial_reserved_id_result_is_rejected_in_step() {
         validate_single_id("result", &[]),
         Err(ValidationError::ReservedId {
             id: "result".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -1450,6 +1486,7 @@ fn adversarial_reserved_id_when_is_rejected_in_step() {
         validate_single_id("when", &[]),
         Err(ValidationError::ReservedId {
             id: "when".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -1460,6 +1497,7 @@ fn adversarial_reserved_id_item_is_rejected_in_step() {
         validate_single_id("item", &[]),
         Err(ValidationError::ReservedId {
             id: "item".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -1485,6 +1523,7 @@ fn adversarial_step_without_id_field_is_rejected() {
         validate_ids(&doc),
         Err(ValidationError::MissingRequiredField {
             field: "step id".to_owned(),
+            span: Span::ZERO
         })
     );
 }

@@ -22,6 +22,7 @@ mod mod_compile_lowering;
 mod mod_compile_validation;
 mod references;
 mod schema;
+pub mod span_bridge;
 pub mod strict_yaml;
 mod type_taint;
 
@@ -42,6 +43,15 @@ pub mod kani_foreach_parity;
 // Kani harnesses for repeat/ask id+1 lowering overflow rejection.
 #[cfg(kani)]
 pub mod kani_lower_control;
+
+#[cfg(kani)]
+pub mod kani_canonical_yaml_enrich;
+
+#[cfg(kani)]
+pub mod kani_span_bridge_enrich;
+
+#[cfg(kani)]
+pub mod kani_tree_mark_enrich;
 
 pub use expression_bytecode::{compile_expr_to_bytecode, compile_expr_to_bytecode_with_accessors};
 
