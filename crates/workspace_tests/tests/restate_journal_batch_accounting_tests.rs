@@ -11,13 +11,21 @@
 //! - B06: No state mutation on limit failure
 //! - B07: Limit checked before durable write
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::indexing_slicing, clippy::arithmetic_side_effects, clippy::as_conversions, clippy::let_underscore_must_use, clippy::panic_in_result_fn)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::unimplemented,
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
+    clippy::as_conversions,
+    clippy::let_underscore_must_use,
+    clippy::panic_in_result_fn
+)]
 
 use vb_core::{RunId, WorkflowDigest};
 use vb_storage::{
-    constants::MAX_BATCH_COUNT,
-    journal::FjallJournal,
-    EventSeq, JournalError, JournalEvent,
+    EventSeq, JournalError, JournalEvent, constants::MAX_BATCH_COUNT, journal::FjallJournal,
 };
 
 fn temp_journal() -> (tempfile::TempDir, FjallJournal) {

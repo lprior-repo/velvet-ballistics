@@ -430,7 +430,9 @@ fn inv1_terminal_never_regresses_after_cancel() -> Result<(), String> {
     let counters_before = runtime.counters_snapshot();
 
     for _ in 0..5 {
-        runtime.tick_all().map_err(|e| format!("tick_all failed: {e:?}"))?;
+        runtime
+            .tick_all()
+            .map_err(|e| format!("tick_all failed: {e:?}"))?;
     }
 
     let counters_after = runtime.counters_snapshot();
