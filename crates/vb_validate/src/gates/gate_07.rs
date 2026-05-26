@@ -4,7 +4,6 @@
 use crate::{ValidationError, ValidationResult};
 use vb_core::ids::{AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
 use vb_core::workflow::{
-use vb_core::span::Span;
     AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
     WorkflowParts,
 };
@@ -20,14 +19,14 @@ pub fn validate_gate_07_expression_stack_depth(parts: &WorkflowParts) -> Validat
         return Err(ValidationError::ExpressionStackExceeded {
             declared: usize::from(contract_stack),
             limit: usize::from(MAX_EXPR_STACK_DEPTH),
-         span: Span::ZERO});
+        });
     }
     for (expr_index, expr) in parts.expressions.iter().enumerate() {
         if expr.max_stack > contract_stack {
             return Err(ValidationError::ExpressionStackExceeded {
                 declared: usize::from(expr.max_stack),
                 limit: usize::from(contract_stack),
-             span: Span::ZERO});
+            });
         }
         let computed = compute_stack_depth(&expr.ops)?;
         if computed != expr.max_stack {
@@ -35,7 +34,7 @@ pub fn validate_gate_07_expression_stack_depth(parts: &WorkflowParts) -> Validat
                 expr_index,
                 declared: usize::from(expr.max_stack),
                 computed: usize::from(computed),
-             span: Span::ZERO});
+            });
         }
     }
     Ok(())
@@ -52,14 +51,14 @@ pub fn compute_stack_depth(ops: &[ExprOp]) -> ValidationResult<u8> {
             .ok_or(ValidationError::ExpressionStackExceeded {
                 declared: 0,
                 limit: usize::from(MAX_EXPR_STACK_DEPTH),
-             span: Span::ZERO})?;
+            })?;
         let push_amount = push_count(op);
         depth = depth
             .checked_add(push_amount)
             .ok_or(ValidationError::ExpressionStackExceeded {
                 declared: usize::from(depth).saturating_add(usize::from(push_amount)),
                 limit: usize::from(MAX_EXPR_STACK_DEPTH),
-             span: Span::ZERO})?;
+            })?;
         if depth > max_depth {
             max_depth = depth;
         }

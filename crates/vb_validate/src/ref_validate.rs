@@ -12,7 +12,6 @@
 
 use crate::{ValidationError, ValidationResult};
 use std::collections::HashSet;
-use vb_core::span::Span;
 
 /// Builds reference tables and validates all references in a workflow.
 pub fn validate_references(workflow: &WorkflowRefs) -> ValidationResult<()> {
@@ -136,11 +135,11 @@ fn reference_name(tail: &str) -> &str {
 
 fn validate_bare_reference(reference: &str, body: &str) -> ValidationResult<()> {
     if matches!(body, "now" | "random") {
-        Err(ValidationError::DirectRuntimeReference { span: Span::ZERO })
+        Err(ValidationError::DirectRuntimeReference)
     } else {
         Err(ValidationError::UnknownReference {
             reference: reference.to_owned(),
-         span: Span::ZERO})
+        })
     }
 }
 
@@ -154,11 +153,11 @@ fn validate_rooted_reference(
         "input" => validate_declared(reference, tail, "input", &tables.inputs),
         "var" | "vars" => validate_declared(reference, tail, "var", &tables.vars),
         "secrets" => validate_declared(reference, tail, "secrets", &tables.secrets),
-        "runtime" => Err(ValidationError::DirectRuntimeReference { span: Span::ZERO }),
+        "runtime" => Err(ValidationError::DirectRuntimeReference),
         "step" | "steps" => validate_step_reference(reference, tail, tables),
         _ => Err(ValidationError::UnknownReference {
             reference: reference.to_owned(),
-         span: Span::ZERO}),
+        }),
     }
 }
 
@@ -172,11 +171,11 @@ fn validate_step_reference(
         // Step references are always runtime-time, reject them.
         Err(ValidationError::FutureReference {
             reference: reference.to_owned(),
-         span: Span::ZERO})
+        })
     } else {
         Err(ValidationError::UnknownReference {
             reference: reference.to_owned(),
-         span: Span::ZERO})
+        })
     }
 }
 
@@ -192,6 +191,6 @@ fn validate_declared(
     } else {
         Err(ValidationError::UnknownReference {
             reference: reference.to_owned(),
-         span: Span::ZERO})
+        })
     }
 }

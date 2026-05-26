@@ -8,7 +8,6 @@
 mod tests {
     use crate::ref_validate::{RefTables, WorkflowRefs, string_set, validate_references, validate_single_reference};
     use crate::ValidationError;
-use vb_core::span::Span;
 
     fn make_tables(
         inputs: &[&str],
@@ -70,7 +69,7 @@ use vb_core::span::Span;
             result,
             Err(ValidationError::FutureReference {
                 reference: "$steps.build.result".to_owned(),
-             span: Span::ZERO})
+            })
         );
     }
 
@@ -88,7 +87,7 @@ use vb_core::span::Span;
             result,
             Err(ValidationError::UnknownReference {
                 reference: "$input.nonexistent".to_owned(),
-             span: Span::ZERO})
+            })
         );
     }
 
@@ -102,7 +101,7 @@ use vb_core::span::Span;
             references: vec!["$runtime.memory".to_owned()],
         };
         let result = validate_references(&workflow);
-        assert_eq!(result, Err(ValidationError::DirectRuntimeReference { span: Span::ZERO }));
+        assert_eq!(result, Err(ValidationError::DirectRuntimeReference));
     }
 
     #[test]
@@ -115,7 +114,7 @@ use vb_core::span::Span;
             references: vec!["$now".to_owned()],
         };
         let result = validate_references(&workflow);
-        assert_eq!(result, Err(ValidationError::DirectRuntimeReference { span: Span::ZERO }));
+        assert_eq!(result, Err(ValidationError::DirectRuntimeReference));
     }
 
     #[test]
@@ -132,7 +131,7 @@ use vb_core::span::Span;
             result,
             Err(ValidationError::UnknownReference {
                 reference: "$env.HOME".to_owned(),
-             span: Span::ZERO})
+            })
         );
     }
 

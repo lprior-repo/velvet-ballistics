@@ -24,7 +24,6 @@
 // `WorkflowTypes` and `WorkflowAst` requires different traversal strategies.
 
 use thiserror::Error;
-use vb_core::span::Span;
 
 pub mod control_flow;
 pub mod diagnostic;
@@ -35,9 +34,6 @@ pub mod references;
 pub mod schema;
 pub mod shared;
 pub mod type_taint;
-
-#[cfg(kani)]
-pub mod kani_validation_error_enrich;
 
 // Individual gate modules (test-only until migration from gates.rs completes).
 #[cfg(test)]
@@ -66,6 +62,8 @@ mod type_check;
 mod type_sigs;
 
 // Split-out diagnostic modules (test-only until migration completes).
+#[cfg(test)]
+mod diag_codes;
 #[cfg(test)]
 mod diag_convert;
 #[cfg(test)]
@@ -105,132 +103,120 @@ pub mod kani_gate_08_structural;
 pub mod kani;
 
 /// Validation error codes matching the master contract (Section 16).
-///
-/// Each variant carries a `span: vb_core::Span` field that anchors the error
-/// to a source location. When the error is produced at runtime or without source
-/// context, `span` is `Span::ZERO` (backward compatible with prior behavior).
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ValidationError {
     #[error("DUPLICATE_KEY")]
-    DuplicateKey { span: Span },
+    DuplicateKey,
 
     #[error("FORBIDDEN_YAML_FEATURE")]
-    ForbiddenYamlFeature { span: Span },
+    ForbiddenYamlFeature,
 
     #[error("UNKNOWN_TOP_LEVEL_FIELD")]
-    UnknownTopLevelField { span: Span },
+    UnknownTopLevelField,
 
     #[error("UNKNOWN_STEP_FIELD")]
-    UnknownStepField { span: Span },
+    UnknownStepField,
 
     #[error("MISSING_REQUIRED_FIELD: {field}")]
-    MissingRequiredField { field: String, span: Span },
+    MissingRequiredField { field: String },
 
     #[error("INVALID_VERSION: {version}")]
-    InvalidVersion { version: String, span: Span },
+    InvalidVersion { version: String },
 
     #[error("INVALID_ID: {id}")]
-    InvalidId { id: String, span: Span },
+    InvalidId { id: String },
 
     #[error("RESERVED_ID: {id}")]
-    ReservedId { id: String, span: Span },
+    ReservedId { id: String },
 
     #[error("DUPLICATE_ID: {id}")]
-    DuplicateId { id: String, span: Span },
+    DuplicateId { id: String },
 
     #[error("MULTIPLE_STEP_PRIMITIVES")]
-    MultipleStepPrimitives { span: Span },
+    MultipleStepPrimitives,
 
     #[error("MISSING_STEP_PRIMITIVE")]
-    MissingStepPrimitive { span: Span },
+    MissingStepPrimitive,
 
     #[error("UNKNOWN_REFERENCE: {reference}")]
-    UnknownReference { reference: String, span: Span },
+    UnknownReference { reference: String },
 
     #[error("FUTURE_REFERENCE: {reference}")]
-    FutureReference { reference: String, span: Span },
+    FutureReference { reference: String },
 
     #[error("SECRET_NOT_DECLARED: {secret}")]
-    SecretNotDeclared { secret: String, span: Span },
+    SecretNotDeclared { secret: String },
 
     #[error("DIRECT_RUNTIME_REFERENCE")]
-    DirectRuntimeReference { span: Span },
+    DirectRuntimeReference,
 
     #[error("INVALID_THEN_TARGET")]
-    InvalidThenTarget { span: Span },
+    InvalidThenTarget,
 
     #[error("CONTROL_FLOW_CYCLE")]
-    ControlFlowCycle { span: Span },
+    ControlFlowCycle,
 
     #[error("UNREACHABLE_STEP: {step}")]
-    UnreachableStep { step: String, span: Span },
+    UnreachableStep { step: String },
 
     #[error("INVALID_CHOOSE")]
-    InvalidChoose { span: Span },
+    InvalidChoose,
 
     #[error("INVALID_FOR_EACH")]
-    InvalidForEach { span: Span },
+    InvalidForEach,
 
     #[error("INVALID_TOGETHER")]
-    InvalidTogether { span: Span },
+    InvalidTogether,
 
     #[error("INVALID_COLLECT")]
-    InvalidCollect { span: Span },
+    InvalidCollect,
 
     #[error("INVALID_REDUCE")]
-    InvalidReduce { span: Span },
+    InvalidReduce,
 
     #[error("INVALID_REPEAT")]
-    InvalidRepeat { span: Span },
+    InvalidRepeat,
 
     #[error("INVALID_WAIT")]
-    InvalidWait { span: Span },
+    InvalidWait,
 
     #[error("INVALID_ASK")]
-    InvalidAsk { span: Span },
+    InvalidAsk,
 
     #[error("INVALID_FINISH")]
-    InvalidFinish { span: Span },
+    InvalidFinish,
 
     #[error("INVALID_RETRY")]
-    InvalidRetry { span: Span },
+    InvalidRetry,
 
     #[error("INVALID_ON_ERROR")]
-    InvalidOnError { span: Span },
+    InvalidOnError,
 
     #[error("SECRET_RESULT_LEAK")]
-    SecretResultLeak { span: Span },
+    SecretResultLeak,
 
     #[error("TYPE_MISMATCH: expected {expected}, found {found}")]
-    TypeMismatch {
-        expected: String,
-        found: String,
-        span: Span,
-    },
+    TypeMismatch { expected: String, found: String },
 
     #[error("PAYLOAD_TOO_LARGE")]
-    PayloadTooLarge { span: Span },
+    PayloadTooLarge,
 
     #[error("LIMIT_REQUIRED: {resource}")]
-    LimitRequired { resource: String, span: Span },
+    LimitRequired { resource: String },
 
     #[error("LIMIT_EXCEEDED: {resource}")]
-    LimitExceeded { resource: String, span: Span },
+    LimitExceeded { resource: String },
 
     #[error("UNSUPPORTED_TRIGGER: {trigger}")]
-    UnsupportedTrigger { trigger: String, span: Span },
+    UnsupportedTrigger { trigger: String },
 
     #[error("HTTP_TRIGGER_OUT_OF_CORE")]
-    HttpTriggerOutOfCore { span: Span },
+    HttpTriggerOutOfCore,
 
     // Gate 7: Expression stack depth bounded
     #[error("EXPRESSION_STACK_EXCEEDED: declared {declared}, limit {limit}")]
-    ExpressionStackExceeded {
-        declared: usize,
-        limit: usize,
-        span: Span,
-    },
+    ExpressionStackExceeded { declared: usize, limit: usize },
 
     #[error(
         "EXPRESSION_STACK_MISMATCH: expr {expr_index}, declared {declared}, computed {computed}"
@@ -239,7 +225,6 @@ pub enum ValidationError {
         expr_index: usize,
         declared: usize,
         computed: usize,
-        span: Span,
     },
 
     // Gate 8: Accessor path segments valid
@@ -250,14 +235,12 @@ pub enum ValidationError {
         accessor_index: usize,
         slot: usize,
         slot_count: usize,
-        span: Span,
     },
 
     #[error("ACCESSOR_PATH_INVALID: accessor {accessor_index}, segment {segment_index}")]
     AccessorPathInvalid {
         accessor_index: usize,
         segment_index: usize,
-        span: Span,
     },
 
     #[error("ACCESSOR_PATH_TOO_DEEP: accessor {accessor_index}, depth {depth}, max {max}")]
@@ -265,7 +248,6 @@ pub enum ValidationError {
         accessor_index: usize,
         depth: usize,
         max: usize,
-        span: Span,
     },
 
     #[error(
@@ -276,7 +258,6 @@ pub enum ValidationError {
         segment_index: usize,
         symbol: u32,
         symbols_count: u32,
-        span: Span,
     },
 
     // Gate 9: Slot references within bounds
@@ -285,7 +266,6 @@ pub enum ValidationError {
         slot: usize,
         slot_count: usize,
         context: String,
-        span: Span,
     },
 
     // Gate 11: Loop body graph well-formed
@@ -297,45 +277,31 @@ pub enum ValidationError {
         node_count: usize,
         source_node: usize,
         label: String,
-        span: Span,
     },
 
     // Gate 13: No slot dependency cycles
     #[error("SLOT_DEPENDENCY_CYCLE: slot {slot}, chain {chain}")]
-    SlotDependencyCycle {
-        slot: usize,
-        chain: String,
-        span: Span,
-    },
+    SlotDependencyCycle { slot: usize, chain: String },
 
     // Gate 10: Node-kind-specific constraints
     #[error("NODE_KIND_CONSTRAINT: node {node_index}, detail {detail}")]
-    NodeKindConstraintViolation {
-        node_index: usize,
-        detail: String,
-        span: Span,
-    },
+    NodeKindConstraintViolation { node_index: usize, detail: String },
 
     // Gate 12: Action contract completeness
     #[error(
         "ACTION_CONTRACT_MISSING: action_id {action_id} referenced by Do node {node_index} has no contract"
     )]
-    ActionContractMissing {
-        action_id: usize,
-        node_index: usize,
-        span: Span,
-    },
+    ActionContractMissing { action_id: usize, node_index: usize },
 
     #[error(
         "ACTION_CONTRACT_ORPHAN: action_id {action_id} in contract has no corresponding Do node"
     )]
-    ActionContractOrphan { action_id: usize, span: Span },
+    ActionContractOrphan { action_id: usize },
 
     #[error("CAPABILITY_NAME_EMPTY: action_id {action_id}, capability_index {capability_index}")]
     CapabilityNameEmpty {
         action_id: usize,
         capability_index: usize,
-        span: Span,
     },
 
     #[error(
@@ -346,7 +312,6 @@ pub enum ValidationError {
         capability_index: usize,
         len: usize,
         max: usize,
-        span: Span,
     },
 
     #[error(
@@ -356,7 +321,6 @@ pub enum ValidationError {
         action_id: usize,
         capability_index: usize,
         name: String,
-        span: Span,
     },
 
     #[error(
@@ -366,7 +330,6 @@ pub enum ValidationError {
         contract_action_id: usize,
         capability_action_id: usize,
         capability_index: usize,
-        span: Span,
     },
 
     #[error(
@@ -377,36 +340,30 @@ pub enum ValidationError {
         first_index: usize,
         duplicate_index: usize,
         name: String,
-        span: Span,
     },
 
     // Gate 14: Slot type consistency
     #[error("SLOT_TYPE_INCONSISTENCY: slot {slot}, writers have incompatible kinds")]
-    SlotTypeInconsistency { slot: usize, span: Span },
+    SlotTypeInconsistency { slot: usize },
 
     // Gate 15: Determinism proof
     #[error(
         "NON_DETERMINISTIC_PATH: from node {from_node} to node {to_node} contains no suspension point"
     )]
-    NonDeterministicPath {
-        from_node: usize,
-        to_node: usize,
-        span: Span,
-    },
+    NonDeterministicPath { from_node: usize, to_node: usize },
 
     // Contract-discovery errors (vb-6f02)
     #[error("MISSING_SCHEMA_VERSION")]
-    MissingSchemaVersion { span: Span },
+    MissingSchemaVersion,
 
     #[error("CUE_VET_FAILED: {file}")]
-    CueVetFailed { file: String, span: Span },
+    CueVetFailed { file: String },
 
     #[error("VERSION_MONOTONICITY_BREACH: {file} expected {expected} got {actual}")]
     VersionMonotonicityBreach {
         file: String,
         expected: String,
         actual: String,
-        span: Span,
     },
 }
 

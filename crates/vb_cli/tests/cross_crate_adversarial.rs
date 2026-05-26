@@ -7,7 +7,6 @@
 
 use std::str::FromStr;
 use vb_core::ids::{RunId, SlotIdx, StepIdx, WorkflowDigest};
-use vb_core::span::Span;
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
@@ -69,7 +68,7 @@ fn yaml_to_validate_parse_invalid_yaml_propagates_parse_error_code() {
     let result = vb_yaml::parse_workflow_source(yaml);
     // Then: a parse error is returned with a line number
     match result {
-        Err(vb_yaml::YamlError::ParseError { line, reason, .. }) => {
+        Err(vb_yaml::YamlError::ParseError { line, reason }) => {
             assert!(line > 0, "parse error should report a line number");
             assert!(!reason.is_empty(), "parse error should report a reason");
         }
@@ -93,11 +92,8 @@ fn yaml_to_validate_anchor_rejection_propagates_exact_variant() {
     let yaml = "version: &v velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
     // When: parsing through the profile gate
     let result = vb_yaml::parse_workflow_source(yaml);
-    // Then: AnchorAliasMerge variant (span may be populated from parser events)
-    assert!(matches!(
-        result,
-        Err(vb_yaml::YamlError::AnchorAliasMerge { .. })
-    ));
+    // Then: AnchorAliasMerge variant exactly
+    assert_eq!(result, Err(vb_yaml::YamlError::AnchorAliasMerge));
 }
 
 #[test]
@@ -106,11 +102,13 @@ fn yaml_to_validate_ambiguous_scalar_propagates_exact_scalar_value() {
     let yaml = "version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    set:\n      output: x\n      value: yes\n";
     // When: parsing through profile validation
     let result = vb_yaml::parse_workflow_source(yaml);
-    // Then: AmbiguousScalar with the exact rejected scalar (span may be populated from parser events)
-    assert!(matches!(
+    // Then: AmbiguousScalar with the exact rejected scalar
+    assert_eq!(
         result,
-        Err(vb_yaml::YamlError::AmbiguousScalar { scalar, .. }) if scalar.as_ref() == "yes"
-    ));
+        Err(vb_yaml::YamlError::AmbiguousScalar {
+            scalar: "yes".into()
+        })
+    );
 }
 
 #[test]
@@ -122,10 +120,7 @@ fn yaml_to_validate_missing_required_field_has_correct_field_name() {
     // Then: MissingField with field = "name"
     assert_eq!(
         result,
-        Err(vb_yaml::YamlError::MissingField {
-            span: None,
-            field: "name"
-        })
+        Err(vb_yaml::YamlError::MissingField { field: "name" })
     );
 }
 
@@ -139,7 +134,6 @@ fn yaml_to_validate_field_shape_error_has_field_and_expected() {
     assert_eq!(
         result,
         Err(vb_yaml::YamlError::FieldShape {
-            span: None,
             field: "workflow",
             expected: "mapping"
         })
@@ -188,8 +182,7 @@ fn validate_schema_id_grammar_enforced_across_seam() {
     assert_eq!(
         result,
         Err(vb_validate::ValidationError::InvalidId {
-            id: "BAD_ID".into(),
-            span: Span::ZERO
+            id: "BAD_ID".into()
         })
     );
 }
@@ -221,7 +214,7 @@ fn validate_schema_step_without_primitive_rejected_across_seam() {
     // Then: MissingStepPrimitive error
     assert_eq!(
         result,
-        Err(vb_validate::ValidationError::MissingStepPrimitive { span: Span::ZERO })
+        Err(vb_validate::ValidationError::MissingStepPrimitive)
     );
 }
 
@@ -955,7 +948,6 @@ fn error_validation_error_type_mismatch_preserves_both_types() {
     let error = vb_validate::ValidationError::TypeMismatch {
         expected: "u32".into(),
         found: "string".into(),
-        span: Span::ZERO,
     };
     // When: formatting
     let message = error.to_string();
@@ -1320,7 +1312,7 @@ fn validate_type_taint_secret_result_leak_detection() {
     // This tests that the type_taint module exists and can be called
     // The actual validation would operate on the typed AST
     // We verify the error variant exists and can be constructed
-    let error = vb_validate::ValidationError::SecretResultLeak { span: Span::ZERO };
+    let error = vb_validate::ValidationError::SecretResultLeak;
     let message = error.to_string();
     assert!(
         message.contains("SECRET") || message.contains("secret"),
@@ -1331,7 +1323,7 @@ fn validate_type_taint_secret_result_leak_detection() {
 #[test]
 fn validate_control_flow_cycle_detection_error_exists() {
     // Given: the ControlFlowCycle error variant
-    let error = vb_validate::ValidationError::ControlFlowCycle { span: Span::ZERO };
+    let error = vb_validate::ValidationError::ControlFlowCycle;
     let message = error.to_string();
     assert!(
         message.contains("cycle") || message.contains("CYCLE"),
@@ -1344,7 +1336,6 @@ fn validate_references_unknown_reference_contains_reference_name() {
     // Given: an UnknownReference error
     let error = vb_validate::ValidationError::UnknownReference {
         reference: "missing_step".into(),
-        span: Span::ZERO,
     };
     let message = error.to_string();
     assert!(
@@ -1358,7 +1349,6 @@ fn validate_references_future_reference_contains_reference_name() {
     // Given: a FutureReference error
     let error = vb_validate::ValidationError::FutureReference {
         reference: "later_step".into(),
-        span: Span::ZERO,
     };
     let message = error.to_string();
     assert!(

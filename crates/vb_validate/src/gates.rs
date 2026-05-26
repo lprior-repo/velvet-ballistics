@@ -8,7 +8,6 @@
 use crate::{ValidationError, ValidationResult};
 use vb_core::action::ActionContract;
 use vb_core::capability::Capability;
-use vb_core::span::Span;
 
 // Re-export the core types we need so callers only depend on vb_validate.
 pub use vb_core::ids::{AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
@@ -40,7 +39,6 @@ pub fn validate_gate_07_expression_stack_depth(parts: &WorkflowParts) -> Validat
         return Err(ValidationError::ExpressionStackExceeded {
             declared: usize::from(contract_stack),
             limit: usize::from(MAX_EXPR_STACK_DEPTH),
-            span: Span::ZERO,
         });
     }
     for (expr_index, expr) in parts.expressions.iter().enumerate() {
@@ -48,7 +46,6 @@ pub fn validate_gate_07_expression_stack_depth(parts: &WorkflowParts) -> Validat
             return Err(ValidationError::ExpressionStackExceeded {
                 declared: usize::from(expr.max_stack),
                 limit: usize::from(contract_stack),
-                span: Span::ZERO,
             });
         }
         let computed = compute_stack_depth(&expr.ops)?;
@@ -57,7 +54,6 @@ pub fn validate_gate_07_expression_stack_depth(parts: &WorkflowParts) -> Validat
                 expr_index,
                 declared: usize::from(expr.max_stack),
                 computed: usize::from(computed),
-                span: Span::ZERO,
             });
         }
     }
@@ -83,7 +79,6 @@ pub fn compute_stack_depth(ops: &[ExprOp]) -> ValidationResult<u8> {
             .ok_or(ValidationError::ExpressionStackExceeded {
                 declared: 0,
                 limit: usize::from(MAX_EXPR_STACK_DEPTH),
-                span: Span::ZERO,
             })?;
         let push_amount = push_count(op);
         depth = depth
@@ -91,7 +86,6 @@ pub fn compute_stack_depth(ops: &[ExprOp]) -> ValidationResult<u8> {
             .ok_or(ValidationError::ExpressionStackExceeded {
                 declared: usize::from(depth).saturating_add(usize::from(push_amount)),
                 limit: usize::from(MAX_EXPR_STACK_DEPTH),
-                span: Span::ZERO,
             })?;
         if depth > max_depth {
             max_depth = depth;
@@ -161,7 +155,6 @@ pub fn validate_gate_08_accessor_path_segments(parts: &WorkflowParts) -> Validat
                 accessor_index: acc_index,
                 depth: accessor.path.len(),
                 max: MAX_ACCESSOR_PATH_DEPTH,
-                span: Span::ZERO,
             });
         }
         for (seg_index, segment) in accessor.path.iter().enumerate() {
@@ -176,7 +169,6 @@ pub fn validate_gate_08_accessor_path_segments(parts: &WorkflowParts) -> Validat
                     return Err(ValidationError::AccessorPathInvalid {
                         accessor_index: acc_index,
                         segment_index: seg_index,
-                        span: Span::ZERO,
                     });
                 }
             }
@@ -199,7 +191,6 @@ fn validate_field_symbol(
             segment_index: seg_index,
             symbol: symbol.get(),
             symbols_count,
-            span: Span::ZERO,
         })
     }
 }
@@ -209,7 +200,6 @@ fn validate_index_segment(acc_index: usize, seg_index: usize, idx: u32) -> Valid
         Err(ValidationError::AccessorPathInvalid {
             accessor_index: acc_index,
             segment_index: seg_index,
-            span: Span::ZERO,
         })
     } else {
         Ok(())
@@ -226,7 +216,6 @@ fn validate_accessor_root(
             accessor_index: acc_index,
             slot: accessor.root.as_usize(),
             slot_count: usize::from(slot_count),
-            span: Span::ZERO,
         });
     }
     Ok(())
@@ -376,7 +365,6 @@ fn validate_node_slots(
             return Err(ValidationError::NodeKindConstraintViolation {
                 node_index,
                 detail: "unsupported node kind".to_string(),
-                span: Span::ZERO,
             });
         }
     }
@@ -395,7 +383,6 @@ fn validate_expr_slots(
                     slot: slot.as_usize(),
                     slot_count,
                     context: format!("expression {expr_index}"),
-                    span: Span::ZERO,
                 });
             }
             _ => {}
@@ -410,7 +397,6 @@ fn check_slot(slot: SlotIdx, node_index: usize, slot_count: usize) -> Validation
             slot: slot.as_usize(),
             slot_count,
             context: format!("node {node_index}"),
-            span: Span::ZERO,
         });
     }
     Ok(())
@@ -697,7 +683,6 @@ fn require_pairing(matches: bool, index: usize, detail: impl Into<String>) -> Va
     Err(ValidationError::NodeKindConstraintViolation {
         node_index: index,
         detail: detail.into(),
-        span: Span::ZERO,
     })
 }
 
@@ -785,7 +770,6 @@ fn check_step_in_range(
             node_count,
             source_node: source_index,
             label: label.to_owned(),
-            span: Span::ZERO,
         });
     }
     Ok(())
@@ -802,7 +786,6 @@ fn check_next_step_in_range(
             node_count,
             source_node: source_index,
             label: "next".to_owned(),
-            span: Span::ZERO,
         });
     }
     Ok(())
@@ -825,7 +808,6 @@ fn check_loop_span(
             node_count,
             source_node: start_index,
             label: "loop body must be after loop start".to_owned(),
-            span: Span::ZERO,
         });
     }
     // Done must be after body.
@@ -835,7 +817,6 @@ fn check_loop_span(
             node_count,
             source_node: start_index,
             label: "loop done must be after loop body".to_owned(),
-            span: Span::ZERO,
         });
     }
     Ok(())
@@ -857,7 +838,6 @@ fn check_together_span(
                 node_count,
                 source_node: start_index,
                 label: format!("together branch {branch_index} must be after start"),
-                span: Span::ZERO,
             });
         }
         // Join must be after branch.
@@ -867,7 +847,6 @@ fn check_together_span(
                 node_count,
                 source_node: start_index,
                 label: format!("together join must be after branch {branch_index}"),
-                span: Span::ZERO,
             });
         }
     }
@@ -965,14 +944,12 @@ fn detect_cycle_dfs(
             .ok_or(ValidationError::SlotDependencyCycle {
                 slot,
                 chain: format!("slot {slot} -> slot {neighbor}"),
-                span: Span::ZERO,
             })?;
         if color == 1 {
             // Gray = cycle found.
             return Err(ValidationError::SlotDependencyCycle {
                 slot,
                 chain: format!("slot {slot} -> slot {neighbor}"),
-                span: Span::ZERO,
             });
         }
         if color == 0 {
@@ -1160,7 +1137,6 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                         detail: format!(
                             "Finish result slot {result_usize} out of range (slot_count {slot_count})"
                         ),
-                        span: Span::ZERO,
                     });
                 }
             }
@@ -1176,7 +1152,6 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                             detail: format!(
                                 "Choose branch {branch_index} expr index {expr_usize} out of range (expr_count {expr_count})"
                             ),
-                            span: Span::ZERO,
                         });
                     }
                     let target_usize = branch.target.as_usize();
@@ -1186,7 +1161,6 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                             detail: format!(
                                 "Choose branch {branch_index} target step {target_usize} out of range (node_count {node_count})"
                             ),
-                            span: Span::ZERO,
                         });
                     }
                 }
@@ -1198,7 +1172,6 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                             detail: format!(
                                 "Choose otherwise target step {otherwise_usize} out of range (node_count {node_count})"
                             ),
-                            span: Span::ZERO,
                         });
                     }
                 }
@@ -1215,7 +1188,6 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                             detail: format!(
                                 "ChooseSlot branch {branch_index} condition slot {cond_usize} out of range (slot_count {slot_count})"
                             ),
-                            span: Span::ZERO,
                         });
                     }
                     let target_usize = branch.target.as_usize();
@@ -1225,7 +1197,6 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                             detail: format!(
                                 "ChooseSlot branch {branch_index} target step {target_usize} out of range (node_count {node_count})"
                             ),
-                            span: Span::ZERO,
                         });
                     }
                 }
@@ -1237,7 +1208,6 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                             detail: format!(
                                 "ChooseSlot otherwise target step {otherwise_usize} out of range (node_count {node_count})"
                             ),
-                            span: Span::ZERO,
                         });
                     }
                 }
@@ -1250,7 +1220,6 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                         detail: format!(
                             "SetConst value index {const_usize} out of range (const_count {const_count})"
                         ),
-                        span: Span::ZERO,
                     });
                 }
             }
@@ -1262,7 +1231,6 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                         detail: format!(
                             "EvalExpr expr index {expr_usize} out of range (expr_count {expr_count})"
                         ),
-                        span: Span::ZERO,
                     });
                 }
             }
@@ -1274,7 +1242,6 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                         detail: format!(
                             "Do input slot {input_usize} out of range (slot_count {slot_count})"
                         ),
-                        span: Span::ZERO,
                     });
                 }
                 // Action ID must be valid (non-sentinel).
@@ -1282,7 +1249,6 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                     return Err(ValidationError::NodeKindConstraintViolation {
                         node_index,
                         detail: String::from("Do action_id is sentinel value u16::MAX"),
-                        span: Span::ZERO,
                     });
                 }
             }
@@ -1300,7 +1266,6 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                         detail: format!(
                             "ForEachStart input slot {input_usize} out of range (slot_count {slot_count})"
                         ),
-                        span: Span::ZERO,
                     });
                 }
                 let item_usize = item_slot.as_usize();
@@ -1310,7 +1275,6 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                         detail: format!(
                             "ForEachStart item_slot {item_usize} out of range (slot_count {slot_count})"
                         ),
-                        span: Span::ZERO,
                     });
                 }
                 let body_usize = body.as_usize();
@@ -1320,7 +1284,6 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                         detail: format!(
                             "ForEachStart body step {body_usize} out of range (node_count {node_count})"
                         ),
-                        span: Span::ZERO,
                     });
                 }
                 let done_usize = done.as_usize();
@@ -1330,7 +1293,6 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                         detail: format!(
                             "ForEachStart done step {done_usize} out of range (node_count {node_count})"
                         ),
-                        span: Span::ZERO,
                     });
                 }
             }
@@ -1343,7 +1305,6 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                             detail: format!(
                                 "TogetherStart branch {branch_index} step {branch_usize} out of range (node_count {node_count})"
                             ),
-                            span: Span::ZERO,
                         });
                     }
                 }
@@ -1354,7 +1315,6 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                         detail: format!(
                             "TogetherStart join step {join_usize} out of range (node_count {node_count})"
                         ),
-                        span: Span::ZERO,
                     });
                 }
             }
@@ -1367,7 +1327,6 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                                 "BuildObject field {field_index} symbol {} out of range (symbols_count {symbols_count})",
                                 symbol.get()
                             ),
-                            span: Span::ZERO,
                         });
                     }
                     let slot_usize = slot.as_usize();
@@ -1377,7 +1336,6 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                             detail: format!(
                                 "BuildObject field {field_index} slot {slot_usize} out of range (slot_count {slot_count})"
                             ),
-                            span: Span::ZERO,
                         });
                     }
                 }
@@ -1391,7 +1349,6 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                             detail: format!(
                                 "BuildList item {item_index} slot {slot_usize} out of range (slot_count {slot_count})"
                             ),
-                            span: Span::ZERO,
                         });
                     }
                 }
@@ -1439,7 +1396,6 @@ fn validate_load_const_reference(
             detail: format!(
                 "Expression {expr_index} LoadConst const index {const_usize} out of range (const_count {const_count})"
             ),
-            span: Span::ZERO,
         });
     }
     Ok(())
@@ -1457,7 +1413,6 @@ fn validate_load_accessor_reference(
             detail: format!(
                 "Expression {expr_index} LoadAccessor accessor index {accessor_usize} out of range (accessor_count {accessor_count})"
             ),
-            span: Span::ZERO,
         });
     }
     Ok(())
@@ -1495,7 +1450,6 @@ pub fn validate_gate_12_action_contract_completeness(
                 return Err(ValidationError::ActionContractMissing {
                     action_id: usize::from(action_val),
                     node_index,
-                    span: Span::ZERO,
                 });
             }
             if !do_action_ids.contains(&action_val) {
@@ -1521,7 +1475,6 @@ pub fn validate_gate_12_action_contract_completeness(
         if !found {
             return Err(ValidationError::ActionContractOrphan {
                 action_id: usize::from(contract_id),
-                span: Span::ZERO,
             });
         }
     }
@@ -1547,7 +1500,6 @@ fn validate_required_capability(
             contract_action_id: usize::from(contract_action.get()),
             capability_action_id: usize::from(capability.action_id().get()),
             capability_index,
-            span: Span::ZERO,
         });
     }
     Ok(())
@@ -1563,7 +1515,6 @@ fn validate_capability_name(
         return Err(ValidationError::CapabilityNameEmpty {
             action_id: usize::from(action_id.get()),
             capability_index,
-            span: Span::ZERO,
         });
     }
     if len > MAX_CAPABILITY_NAME_BYTES {
@@ -1572,7 +1523,6 @@ fn validate_capability_name(
             capability_index,
             len,
             max: MAX_CAPABILITY_NAME_BYTES,
-            span: Span::ZERO,
         });
     }
     if !is_capability_name_grammar_valid(name) {
@@ -1580,7 +1530,6 @@ fn validate_capability_name(
             action_id: usize::from(action_id.get()),
             capability_index,
             name: name.to_owned(),
-            span: Span::ZERO,
         });
     }
     Ok(())
@@ -1618,7 +1567,6 @@ fn validate_no_duplicate_capability_requirements(
                     first_index,
                     duplicate_index,
                     name: duplicate.name().to_owned(),
-                    span: Span::ZERO,
                 })
         })
         .map_or(Ok(()), Err)
@@ -1657,12 +1605,10 @@ pub fn validate_gate_14_slot_type_consistency(parts: &WorkflowParts) -> Validati
                 if let Some(slot) = node.output {
                     let slot_usize = slot.as_usize();
                     if slot_usize < slot_count {
-                        let existing = slot_const_kind.get(slot_usize).copied().ok_or(
-                            ValidationError::SlotTypeInconsistency {
-                                slot: slot_usize,
-                                span: Span::ZERO,
-                            },
-                        )?;
+                        let existing = slot_const_kind
+                            .get(slot_usize)
+                            .copied()
+                            .ok_or(ValidationError::SlotTypeInconsistency { slot: slot_usize })?;
                         if existing == 0 {
                             if let Some(entry) = slot_const_kind.get_mut(slot_usize) {
                                 *entry = kind;
@@ -1670,7 +1616,6 @@ pub fn validate_gate_14_slot_type_consistency(parts: &WorkflowParts) -> Validati
                         } else if existing != kind {
                             return Err(ValidationError::SlotTypeInconsistency {
                                 slot: slot_usize,
-                                span: Span::ZERO,
                             });
                         }
                     }
@@ -1737,7 +1682,6 @@ pub fn validate_gate_15_determinism_proof(parts: &WorkflowParts) -> ValidationRe
                         return Err(ValidationError::NonDeterministicPath {
                             from_node: node_index,
                             to_node: next_step.as_usize(),
-                            span: Span::ZERO,
                         });
                     }
                     _ => {}
@@ -2255,7 +2199,6 @@ mod tests {
             Err(ValidationError::SlotDependencyCycle {
                 slot: 1,
                 chain: "slot 1 -> slot 0".into(),
-                span: Span::ZERO
             })
         );
     }
@@ -2866,10 +2809,7 @@ mod tests {
         assert!(
             matches!(
                 result,
-                Err(ValidationError::SlotTypeInconsistency {
-                    slot: 0,
-                    span: Span::ZERO
-                })
+                Err(ValidationError::SlotTypeInconsistency { slot: 0 })
             ),
             "blackhat: I64 and Bool writers to same slot must be rejected"
         );
@@ -2915,8 +2855,7 @@ mod tests {
                 result,
                 Err(ValidationError::NonDeterministicPath {
                     from_node: 0,
-                    to_node: 1,
-                    span: Span::ZERO
+                    to_node: 1
                 })
             ),
             "blackhat: consecutive Do nodes must be rejected as non-deterministic path"
@@ -2947,10 +2886,7 @@ mod tests {
         assert!(
             matches!(
                 result,
-                Err(ValidationError::ActionContractOrphan {
-                    action_id: 99,
-                    span: Span::ZERO
-                })
+                Err(ValidationError::ActionContractOrphan { action_id: 99 })
             ),
             "blackhat: orphan contract with no Do node must be rejected"
         );

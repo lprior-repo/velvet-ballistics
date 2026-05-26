@@ -2045,7 +2045,6 @@ dependencies = [
  "proptest",
  "thiserror",
  "vb_core",
- "vb_yaml",
 ]
 
 [[package]]
@@ -2061,7 +2060,6 @@ name = "vb_yaml"
 version = "0.1.0"
 dependencies = [
  "indoc",
- "proptest",
  "saphyr",
  "saphyr-parser",
  "thiserror",

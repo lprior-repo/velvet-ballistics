@@ -4,7 +4,6 @@
 use crate::{ValidationError, ValidationResult};
 use vb_core::ids::{AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
 use vb_core::workflow::{
-use vb_core::span::Span;
     AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
     WorkflowParts,
 };
@@ -19,7 +18,7 @@ pub fn validate_gate_08_accessor_path_segments(parts: &WorkflowParts) -> Validat
                 accessor_index: acc_index,
                 depth: accessor.path.len(),
                 max: MAX_ACCESSOR_PATH_DEPTH,
-             span: Span::ZERO});
+            });
         }
         for (seg_index, segment) in accessor.path.iter().enumerate() {
             match segment {
@@ -47,7 +46,7 @@ fn validate_field_symbol(
             segment_index: seg_index,
             symbol: symbol.get(),
             symbols_count,
-         span: Span::ZERO})
+        })
     }
 }
 
@@ -56,7 +55,7 @@ fn validate_index_segment(acc_index: usize, seg_index: usize, idx: u32) -> Valid
         Err(ValidationError::AccessorPathInvalid {
             accessor_index: acc_index,
             segment_index: seg_index,
-         span: Span::ZERO})
+        })
     } else {
         Ok(())
     }
@@ -72,7 +71,7 @@ fn validate_accessor_root(
             accessor_index: acc_index,
             slot: accessor.root.as_usize(),
             slot_count: usize::from(slot_count),
-         span: Span::ZERO});
+        });
     }
     Ok(())
 }

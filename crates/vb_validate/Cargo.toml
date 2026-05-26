@@ -7,7 +7,6 @@ version.workspace = true
 [dependencies]
 thiserror.workspace = true
 vb_core = { path = "../vb_core" }
-vb_yaml = { path = "../vb_yaml" }
 
 [dev-dependencies]
 criterion = { workspace = true }

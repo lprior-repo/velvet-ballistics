@@ -18,7 +18,6 @@ pub(super) fn parse_inputs(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<InputField
     for (key, value) in mapping(inputs, "inputs")? {
         let Some(key) = key.as_str() else {
             return Err(YamlError::FieldShape {
-                span: None,
                 field: "inputs key",
                 expected: "string",
             });
@@ -43,7 +42,6 @@ pub(super) fn parse_vars(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<VarField>> {
     for (key, value) in mapping(vars, "vars")? {
         let Some(key) = key.as_str() else {
             return Err(YamlError::FieldShape {
-                span: None,
                 field: "vars key",
                 expected: "string",
             });
@@ -68,21 +66,18 @@ pub(super) fn parse_secrets(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<SecretFie
     for (key, value) in mapping(secrets, "secrets")? {
         let Some(key) = key.as_str() else {
             return Err(YamlError::FieldShape {
-                span: None,
                 field: "secrets key",
                 expected: "string",
             });
         };
         let Some(value) = value.as_str() else {
             return Err(YamlError::FieldShape {
-                span: None,
                 field: "secrets",
                 expected: "mapping of non-empty strings",
             });
         };
         if value.is_empty() {
             return Err(YamlError::FieldShape {
-                span: None,
                 field: "secrets",
                 expected: "mapping of non-empty strings",
             });
@@ -107,7 +102,6 @@ pub(super) fn parse_result(node: &saphyr::Yaml<'_>) -> YamlResult<Option<ResultM
     for (key, value) in mapping(sub, "result")? {
         let Some(key) = key.as_str() else {
             return Err(YamlError::FieldShape {
-                span: None,
                 field: "result key",
                 expected: "string",
             });
@@ -136,7 +130,6 @@ pub(super) fn parse_examples(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<ExampleA
             Some(v) => Some(
                 v.as_str()
                     .ok_or(YamlError::FieldShape {
-                        span: None,
                         field: "examples.description",
                         expected: "string",
                     })?
@@ -181,7 +174,6 @@ pub(super) fn parse_author_value(node: &saphyr::Yaml<'_>) -> YamlResult<AuthorVa
         for (key, value) in map {
             let Some(key) = key.as_str() else {
                 return Err(YamlError::FieldShape {
-                    span: None,
                     field: "mapping key",
                     expected: "string",
                 });
@@ -194,7 +186,6 @@ pub(super) fn parse_author_value(node: &saphyr::Yaml<'_>) -> YamlResult<AuthorVa
         Ok(AuthorValue::Mapping(out))
     } else {
         Err(YamlError::FieldShape {
-            span: None,
             field: "value",
             expected: "author value",
         })

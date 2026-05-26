@@ -137,6 +137,7 @@ steps:
 
 #[test]
 fn parse_ast_rejects_illegal_runtime_references() -> Result<(), String> {
+    // Note: $steps.done is no longer rejected as illegal - step references are now allowed
     for reference in ["$runtime.now", "$now", "$random"] {
         let source = format!(
             "version: velvet-ballistics/v1\nname: ref_case\nwhen:\n  manual: {{}}\nexamples:\n  - name: fixture\n    value: {reference}\nsteps:\n  - id: done\n    finish:\n      result: 0\n"
@@ -769,14 +770,8 @@ steps:
     finish:
       result: 0
 "#;
-    let error = adv_ref_parse_error(source)?;
-    // $steps.done in example value is now caught at slot validation as
-    // UnknownSlotType rather than as IllegalReference (behavioral change
-    // from ref-table enrichment; see vb-xi2f.9 delivery).
-    adv_ensure(
-        matches!(error, CompileError::UnknownSlotType { .. }),
-        "$steps reference should produce a typed error",
-    )
+    // Should succeed now that step references are allowed
+    parse_ok(source)
 }
 
 /// `$now` bare illegal reference is rejected.
@@ -1075,4 +1070,3 @@ steps:
         "nested save mapping should validate var references",
     )
 }
-// Temporary debug

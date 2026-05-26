@@ -6,7 +6,6 @@ use vb_core::action::ActionContract;
 use vb_core::capability::Capability;
 use vb_core::ids::{AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
 use vb_core::workflow::{
-use vb_core::span::Span;
     AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
     WorkflowParts,
 };
@@ -33,7 +32,7 @@ pub fn validate_gate_14_slot_type_consistency(parts: &WorkflowParts) -> Validati
                         let existing = slot_const_kind
                             .get(slot_usize)
                             .copied()
-                            .ok_or(ValidationError::SlotTypeInconsistency { slot: slot_usize , span: Span::ZERO})?;
+                            .ok_or(ValidationError::SlotTypeInconsistency { slot: slot_usize })?;
                         if existing == 0 {
                             if let Some(entry) = slot_const_kind.get_mut(slot_usize) {
                                 *entry = kind;
@@ -41,7 +40,7 @@ pub fn validate_gate_14_slot_type_consistency(parts: &WorkflowParts) -> Validati
                         } else if existing != kind {
                             return Err(ValidationError::SlotTypeInconsistency {
                                 slot: slot_usize,
-                             span: Span::ZERO});
+                            });
                         }
                     }
                 }

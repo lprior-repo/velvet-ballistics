@@ -44,7 +44,6 @@ mod tests {
     use super::*;
     use crate::ValidationError;
     use crate::type_sigs::{StepTypes, TypedValue, ValueType};
-    use vb_core::span::Span;
 
     fn make_workflow(steps: Vec<StepTypes>) -> WorkflowTypes {
         WorkflowTypes {
@@ -139,7 +138,6 @@ mod tests {
             Err(ValidationError::TypeMismatch {
                 expected: "boolean".to_owned(),
                 found: "text".to_owned(),
-                span: Span::ZERO
             })
         );
     }
@@ -167,7 +165,6 @@ mod tests {
             Err(ValidationError::TypeMismatch {
                 expected: "boolean".to_owned(),
                 found: "object".to_owned(),
-                span: Span::ZERO
             })
         );
     }
@@ -183,7 +180,6 @@ mod tests {
             Err(ValidationError::TypeMismatch {
                 expected: "boolean".to_owned(),
                 found: "list".to_owned(),
-                span: Span::ZERO
             })
         );
     }
@@ -199,7 +195,6 @@ mod tests {
             Err(ValidationError::TypeMismatch {
                 expected: "boolean".to_owned(),
                 found: "number".to_owned(),
-                span: Span::ZERO
             })
         );
     }
