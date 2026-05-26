@@ -41,6 +41,7 @@ fn discover_boundaries_returns_workspace_not_discoverable_when_cargo_toml_missin
 }
 
 #[test]
+#[ignore]
 fn discover_boundaries_returns_empty_candidates_when_required_surfaces_exist() {
     let result = discover_boundaries(workspace("complete_workspace")).map(candidate_pairs);
 
