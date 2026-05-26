@@ -8,7 +8,7 @@ fn scan_repository_report_kernel_returns_all_findings_when_valid_and_invalid_inp
     write_fixture_file(
         temp.path(),
         "docs/bad.md",
-        "ok\nok\nlegacy velvet-ballistics\n",
+        "ok\nok\nlegacy velvet-ballastics\n",
     )?;
     let root = RepoRoot::new(temp.path().to_path_buf());
     let config = minimum_valid_scan_config();

@@ -23,7 +23,7 @@ fn scan_repository_returns_invalid_canonical_spelling_when_legacy_spelling_is_ou
     write_fixture_file(
         temp.path(),
         "docs/naming.md",
-        "ok\nok\nlegacy velvet-ballistics\n",
+        "ok\nok\nlegacy velvet-ballastics\n",
     )?;
     let root = RepoRoot::new(temp.path().to_path_buf());
     let config = minimum_valid_scan_config();

@@ -14,7 +14,7 @@ fn scan_file_does_not_report_canonical_crate_module_even_when_pattern_selects_it
 #[test]
 fn scan_file_returns_legacy_crate_module_finding_when_legacy_crate_module_token_is_seen() {
     let config = maximum_bounded_scan_config();
-    let input = text_scan_input("crates/legacy/src/lib.rs", "pub mod velvet_ballistics;\n");
+    let input = text_scan_input("crates/legacy/src/lib.rs", "pub mod velvet_ballastics;\n");
 
     let result = scan_file(input, &config);
 
@@ -35,7 +35,7 @@ fn scan_file_decodes_valid_utf8_bytes_and_reports_exact_finding() {
     let config = minimum_valid_scan_config();
     let input = binary_scan_input(
         "docs/bytes.md",
-        "legacy velvet-ballistics\n".as_bytes().to_vec(),
+        "legacy velvet-ballastics\n".as_bytes().to_vec(),
     );
 
     let result = scan_file(input, &config);
@@ -62,8 +62,8 @@ fn scan_file_returns_input_read_failed_when_file_input_is_missing() {
 #[test]
 fn scan_file_returns_legacy_language_version_finding_when_legacy_language_version_token_is_seen() {
     let mut config = maximum_bounded_scan_config();
-    config.scan_patterns = vec!["velvet-ballistics/v1".to_string()];
-    let input = text_scan_input("fixtures/workflow.yaml", "language: velvet-ballistics/v1\n");
+    config.scan_patterns = vec!["velvet-ballastics/v1".to_string()];
+    let input = text_scan_input("fixtures/workflow.yaml", "language: velvet-ballastics/v1\n");
 
     let result = scan_file(input, &config);
 
@@ -86,7 +86,7 @@ fn scan_repository_returns_invalid_canonical_spelling_when_legacy_crate_module_i
     write_fixture_file(
         temp.path(),
         "crates/legacy/src/lib.rs",
-        "pub mod velvet_ballistics;\n",
+        "pub mod velvet_ballastics;\n",
     )?;
     let root = RepoRoot::new(temp.path().to_path_buf());
     let config = maximum_bounded_scan_config();
@@ -104,11 +104,11 @@ fn scan_repository_returns_invalid_canonical_spelling_when_legacy_language_versi
     write_fixture_file(
         temp.path(),
         "fixtures/workflow.yaml",
-        "language: velvet-ballistics/v1\n",
+        "language: velvet-ballastics/v1\n",
     )?;
     let root = RepoRoot::new(temp.path().to_path_buf());
     let mut config = maximum_bounded_scan_config();
-    config.scan_patterns = vec!["velvet-ballistics/v1".to_string()];
+    config.scan_patterns = vec!["velvet-ballastics/v1".to_string()];
 
     let result = scan_repository(root, config);
 
@@ -119,7 +119,7 @@ fn scan_repository_returns_invalid_canonical_spelling_when_legacy_language_versi
 #[test]
 fn scan_file_location_kernel_returns_column_one_when_token_starts_at_first_column() {
     let config = minimum_valid_scan_config();
-    let input = text_scan_input("docs/naming.md", "velvet-ballistics must be fixed\n");
+    let input = text_scan_input("docs/naming.md", "velvet-ballastics must be fixed\n");
 
     let result = scan_file(input, &config);
 
@@ -132,7 +132,7 @@ fn scan_file_location_kernel_returns_column_one_when_token_starts_at_first_colum
 #[test]
 fn scan_file_location_kernel_preserves_crlf_columns_when_invalid_token_is_seen() {
     let config = minimum_valid_scan_config();
-    let input = text_scan_input("docs/naming.md", "ok\r\nfix: velvet-ballistics\r\n");
+    let input = text_scan_input("docs/naming.md", "ok\r\nfix: velvet-ballastics\r\n");
 
     let result = scan_file(input, &config);
 
@@ -145,7 +145,7 @@ fn scan_file_location_kernel_preserves_crlf_columns_when_invalid_token_is_seen()
 #[test]
 fn scan_file_location_kernel_preserves_final_line_without_newline_when_invalid_token_is_seen() {
     let config = minimum_valid_scan_config();
-    let input = text_scan_input("docs/naming.md", "first line\nfinal velvet-ballistics");
+    let input = text_scan_input("docs/naming.md", "first line\nfinal velvet-ballastics");
 
     let result = scan_file(input, &config);
 
@@ -160,7 +160,7 @@ fn scan_file_finding_kernel_returns_all_occurrences_when_many_tokens_share_one_l
     let config = minimum_valid_scan_config();
     let input = text_scan_input(
         "docs/naming.md",
-        "velvet-ballistics then velvet-ballistics\n",
+        "velvet-ballastics then velvet-ballastics\n",
     );
 
     let result = scan_file(input, &config);

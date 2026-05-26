@@ -110,8 +110,8 @@ pub(crate) fn maximum_bounded_valid_raw_config() -> RawScanConfig {
         legacy_allowlist: exact_legacy_allowlist(),
         scan_patterns: vec![
             LEGACY_PROJECT.to_string(),
-            "velvet_ballistics".to_string(),
-            "velvet-ballistics/v1".to_string(),
+            "velvet_ballastics".to_string(),
+            "velvet-ballastics/v1".to_string(),
         ],
         excluded_path_rules: vec![
             ".git/**".to_string(),
@@ -156,8 +156,8 @@ pub(crate) fn maximum_bounded_scan_config() -> ScanConfig {
 pub(crate) fn maximum_scan_patterns() -> Vec<String> {
     vec![
         LEGACY_PROJECT.to_string(),
-        "velvet_ballistics".to_string(),
-        "velvet-ballistics/v1".to_string(),
+        "velvet_ballastics".to_string(),
+        "velvet-ballastics/v1".to_string(),
     ]
 }
 
