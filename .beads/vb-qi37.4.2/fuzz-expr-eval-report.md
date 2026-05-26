@@ -1,4 +1,4 @@
-   Compiling velvet-ballastics-fuzz v0.1.0 (/home/lewis/src/vb-femdation/vb-qi37-4-2/fuzz)
+   Compiling velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/vb-femdation/vb-qi37-4-2/fuzz)
     Finished `release` profile [optimized + debuginfo] target(s) in 10.13s
     Finished `release` profile [optimized + debuginfo] target(s) in 0.05s
      Running `target/x86_64-unknown-linux-gnu/release/expr_eval -artifact_prefix=/home/lewis/src/vb-femdation/vb-qi37-4-2/fuzz/artifacts/expr_eval/ -runs=1000 /home/lewis/src/vb-femdation/vb-qi37-4-2/fuzz/corpus/expr_eval`

@@ -116,7 +116,7 @@
 58. "vb_compile::api_compilation.rs:51 calls validate_with_contracts"
 59. "vb_compile::schema.rs:651 calls validate"
 60. "vb_compile::types.rs:155 calls validate"
-61. "velvet_ballastics::commands_verify.rs:76 calls validate"
+61. "velvet_ballistics::commands_verify.rs:76 calls validate"
 62. "fuzz::lib.rs:40,60 calls validate_with_contracts"
 
 ---

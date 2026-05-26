@@ -56,7 +56,7 @@
 
 | Obligation | Contract clause | What it proves | Method | Status |
 |------------|----------------|----------------|--------|--------|
-| QA-001 | INV-002 | No stack traces in any output path (JSON, JSONL, Text, error) | Manual: `velvet-ballastics incident <test_run_id> --db <test_db> --format json` | PLANNED — awaiting QA agent |
+| QA-001 | INV-002 | No stack traces in any output path (JSON, JSONL, Text, error) | Manual: `velvet-ballistics incident <test_run_id> --db <test_db> --format json` | PLANNED — awaiting QA agent |
 
 ## Coverage matrix
 

@@ -148,9 +148,9 @@ Result: FAIL_LOCAL/BLOCKED_ENVIRONMENT. No release PASS claimed.
 Output summary:
 
 - `Tasks: 12 completed, 3 failed, 5 skipped`.
-- `velvet-ballastics:source-length`: `fatal: not a git repository (or any parent up to mount point /)` and `cargo-mutants residue check failed`.
-- `velvet-ballastics:test`: `error writing dependencies to /tmp/sccacheq7OckB/deps.d: Disk quota exceeded (os error 122)`.
-- `velvet-ballastics:mutants-smoke`: `Disk quota exceeded (os error 122)` while writing `/tmp/cargo-mutants-vb-qi37-6-IyC23O.tmp/crates/vb_core/src/diagnostic.rs`.
+- `velvet-ballistics:source-length`: `fatal: not a git repository (or any parent up to mount point /)` and `cargo-mutants residue check failed`.
+- `velvet-ballistics:test`: `error writing dependencies to /tmp/sccacheq7OckB/deps.d: Disk quota exceeded (os error 122)`.
+- `velvet-ballistics:mutants-smoke`: `Disk quota exceeded (os error 122)` while writing `/tmp/cargo-mutants-vb-qi37-6-IyC23O.tmp/crates/vb_core/src/diagnostic.rs`.
 
 Obligation affected: `GATE-016`.
 
@@ -257,8 +257,8 @@ Obligations covered: `SCHEMA-FUZZ-008`, `SCHEMA-FUZZ-009`.
 - Final command: `timeout 600s env TMPDIR=target/tmp RUSTC_WRAPPER= SCCACHE_DIR=target/tmp/sccache moon ci`.
 - Result: FAIL_LOCAL, `Tasks: 13 completed, 2 failed, 5 skipped`.
 - Repaired during retry: fuzz proof-artifact lint, workspace-local `target/tmp`, and crate-local temp directories for `vb_codegen`, `vb_ipc`, and `vb_runtime` needed by relative `TMPDIR=target/tmp`.
-- Remaining failure 1: `velvet-ballastics:source-length` reports `fatal: not a git repository (or any parent up to mount point /)` and `cargo-mutants residue check failed`; classified as environment/source-control context for this jj workspace.
-- Remaining failure 2: `velvet-ballastics:test` reaches `vb_storage` admission tests and fails with `journal open failed: artifact structure validation failed`; classified as the same bead-local storage implementation blocker as `INTEG-011`.
+- Remaining failure 1: `velvet-ballistics:source-length` reports `fatal: not a git repository (or any parent up to mount point /)` and `cargo-mutants residue check failed`; classified as environment/source-control context for this jj workspace.
+- Remaining failure 2: `velvet-ballistics:test` reaches `vb_storage` admission tests and fails with `journal open failed: artifact structure validation failed`; classified as the same bead-local storage implementation blocker as `INTEG-011`.
 
 ## Disposition
 

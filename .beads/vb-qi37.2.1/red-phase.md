@@ -19,8 +19,8 @@
 - `cargo nextest run -p vb_core --test aggregate_resource_budget_snapshot_red --no-fail-fast`
 - `PROPTEST_CASES=1000 cargo nextest run -p vb_core --test aggregate_resource_budget_properties_red --no-fail-fast`
 - `cargo kani -p vb_core --harness checked_addition_harness_requires_aggregate_usage_api`
-- `cargo run -p velvet-ballastics-fuzz --bin aggregate_workflow_budget`
-- `cargo run -p velvet-ballastics-fuzz --bin aggregate_artifact_budget`
+- `cargo run -p velvet-ballistics-fuzz --bin aggregate_workflow_budget`
+- `cargo run -p velvet-ballistics-fuzz --bin aggregate_artifact_budget`
 - `cargo bench -p vb_core --bench aggregate_resource_budget -- --test`
 
 ## Why Failures Are Expected Before Implementation

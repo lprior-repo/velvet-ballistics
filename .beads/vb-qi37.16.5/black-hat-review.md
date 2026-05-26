@@ -119,7 +119,7 @@
 
 | Gate | Command | Result |
 |------|---------|--------|
-| 1 | `rtk cargo test --package velvet_ballastics --test lifecycle_integration -- --test-threads=1` | **43 passed** (0.67s) |
+| 1 | `rtk cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1` | **43 passed** (0.67s) |
 | 2 | `moon run :quick` | **Tasks: 1 completed** (44s) |
 | 3 | `moon run :test` | **9894 tests passed, 0 skipped** |
 

@@ -249,7 +249,7 @@ tasks:
       set -euo pipefail
       mkdir -p target/moon-locks
       mkdir -p target/tmp
-      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" CARGO_TARGET_DIR=target/hardened-build rustup run nightly-2026-04-28 cargo build --quiet -p velvet-ballastics --bin velvet-ballastics --all-features --profile hardened
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" CARGO_TARGET_DIR=target/hardened-build rustup run nightly-2026-04-28 cargo build --quiet -p velvet-ballistics --bin velvet-ballistics --all-features --profile hardened
     deps:
       - 'test'
       - 'lint-src'
@@ -336,7 +336,7 @@ tasks:
       run_logged target/supply-chain/vet.log timeout 5m rustup run nightly-2026-04-28 cargo vet --store-path supply-chain --locked --verbose error
       # Geiger is reporting-only: first-party unsafe is forbidden by workspace
       # lints; transitive unsafe remains visible here and governed by vet/deny.
-      for package in vb_boundary_inventory vb_compile vb_core vb_doc vb_expr vb_ipc vb_runtime vb_storage vb_validate vb_yaml velvet-ballastics velvet-ballastics-workspace-tests; do
+      for package in vb_boundary_inventory vb_compile vb_core vb_doc vb_expr vb_ipc vb_runtime vb_storage vb_validate vb_yaml velvet-ballistics velvet-ballistics-workspace-tests; do
         package_target_dir="target/supply-chain/geiger/$package"
         mkdir -p "$package_target_dir"
         CARGO_TARGET_DIR="$package_target_dir" timeout --kill-after=10s 90s rustup run nightly-2026-04-28 cargo geiger -p "$package" --all-features --all-dependencies --include-tests --output-format GitHubMarkdown >"target/supply-chain/geiger/$package.md" 2>"target/supply-chain/geiger/$package.err" || true
@@ -367,7 +367,7 @@ tasks:
       set -euo pipefail
       mkdir -p target/moon-locks
       mkdir -p target/tmp
-      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" timeout 10m rustup run nightly-2026-04-28 cargo hack check --workspace --feature-powerset --depth 1 --exclude velvet-ballastics-fuzz --quiet
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" timeout 10m rustup run nightly-2026-04-28 cargo hack check --workspace --feature-powerset --depth 1 --exclude velvet-ballistics-fuzz --quiet
     deps:
       - 'check'
     toolchains:
@@ -558,7 +558,7 @@ tasks:
       runInCI: false
 
   pgo-instrument-build:
-    script: 'RUSTFLAGS="-Cprofile-generate=$PWD/target/pgo/profiles" rustup run nightly-2026-04-28 cargo build -p velvet-ballastics --bin velvet-ballastics --all-features --profile maxperf'
+    script: 'RUSTFLAGS="-Cprofile-generate=$PWD/target/pgo/profiles" rustup run nightly-2026-04-28 cargo build -p velvet-ballistics --bin velvet-ballistics --all-features --profile maxperf'
     toolchains:
       - rust
     inputs:
@@ -571,7 +571,7 @@ tasks:
       runInCI: false
 
   pgo-optimized-build:
-    script: 'RUSTFLAGS="-Cprofile-use=$PWD/target/pgo/merged.profdata -Cllvm-args=-pgo-warn-missing-function" rustup run nightly-2026-04-28 cargo build -p velvet-ballastics --bin velvet-ballastics --all-features --profile maxperf'
+    script: 'RUSTFLAGS="-Cprofile-use=$PWD/target/pgo/merged.profdata -Cllvm-args=-pgo-warn-missing-function" rustup run nightly-2026-04-28 cargo build -p velvet-ballistics --bin velvet-ballistics --all-features --profile maxperf'
     toolchains:
       - rust
     inputs:
@@ -589,7 +589,7 @@ tasks:
       mkdir -p target/moon-locks
       mkdir -p target/tmp
       export CARGO_TARGET_DIR=target/maxperf
-      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo build --quiet -p velvet-ballastics --bin velvet-ballastics --all-features --release
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo build --quiet -p velvet-ballistics --bin velvet-ballistics --all-features --release
     deps:
       - 'test'
       - 'lint-src'
@@ -610,7 +610,7 @@ tasks:
       mkdir -p target/tmp
       export CARGO_TARGET_DIR=target/maxperf-native
       export RUSTFLAGS="-C target-cpu=native -Dwarnings"
-      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rustup run nightly-2026-04-28 cargo build --quiet -p velvet-ballastics --bin velvet-ballastics --all-features --release
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rustup run nightly-2026-04-28 cargo build --quiet -p velvet-ballistics --bin velvet-ballistics --all-features --release
     deps:
       - 'test'
       - 'lint-src'

@@ -9,32 +9,32 @@
 
 ## Evidence Summary
 
-The integration tests in `crates/velvet_ballastics/tests/lifecycle_integration.rs` are **correctly failing** because the lifecycle command surface does not exist yet in `velvet_ballastics`. This document records the exact compilation errors and the missing implementation components.
+The integration tests in `crates/velvet_ballistics/tests/lifecycle_integration.rs` are **correctly failing** because the lifecycle command surface does not exist yet in `velvet_ballistics`. This document records the exact compilation errors and the missing implementation components.
 
 ## Compilation Evidence
 
 ### Command
 
 ```bash
-cargo test --package velvet_ballastics --test lifecycle_integration 2>&1
+cargo test --package velvet_ballistics --test lifecycle_integration 2>&1
 ```
 
 ### Primary Errors
 
-#### Error 1: Missing Module `velvet_ballastics::lifecycle`
+#### Error 1: Missing Module `velvet_ballistics::lifecycle`
 
 ```
-error[E0433]: cannot find module or crate `velvet_ballastics` in this scope
-  --> crates/velvet_ballastics/tests/lifecycle_integration.rs:79:18
+error[E0433]: cannot find module or crate `velvet_ballistics` in this scope
+  --> crates/velvet_ballistics/tests/lifecycle_integration.rs:79:18
    |
-79 |     let result = velvet_ballastics::lifecycle::cancel(run, &journal);
-   |                  ^^^^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `velvet_ballastics`
+79 |     let result = velvet_ballistics::lifecycle::cancel(run, &journal);
+   |                  ^^^^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `velvet_ballistics`
 ```
 
-**Root Cause**: The `velvet_ballastics::lifecycle` module does not exist. The lifecycle commands (cancel, resume, retry, answer) must be exposed as a public API in `velvet_ballastics`.
+**Root Cause**: The `velvet_ballistics::lifecycle` module does not exist. The lifecycle commands (cancel, resume, retry, answer) must be exposed as a public API in `velvet_ballistics`.
 
 **Required Implementation**:
-- Create `crates/velvet_ballastics/src/lifecycle.rs` module
+- Create `crates/velvet_ballistics/src/lifecycle.rs` module
 - Expose public functions: `cancel`, `resume`, `retry`, `answer`, `replay`
 - These should delegate to `vb_runtime::shard` handlers or provide a new CLI-facing API
 
@@ -69,9 +69,9 @@ The tests reference error variants that don't exist yet:
 
 ## Missing Implementation Components
 
-### 1. Lifecycle Module in velvet_ballastics
+### 1. Lifecycle Module in velvet_ballistics
 
-**Location**: `crates/velvet_ballastics/src/lifecycle.rs` (to be created)
+**Location**: `crates/velvet_ballistics/src/lifecycle.rs` (to be created)
 
 **Functions Required** (per contract.md and test-plan.md):
 
@@ -199,19 +199,19 @@ To move from red-phase to green-phase:
 
 1. **Create `crates/vb_core/src/errors.rs` additions**: Add lifecycle error variants with structured diagnostics
 2. **Create `crates/vb_core/src/workflow.rs` additions**: Add `LifecycleState` and `LifecycleCommand` enums
-3. **Create `crates/velvet_ballastics/src/lifecycle.rs`**: Implement the lifecycle command API
+3. **Create `crates/velvet_ballistics/src/lifecycle.rs`**: Implement the lifecycle command API
 4. **Implement error conversions**: Add `From<lifecycle::Error>` for appropriate error types
 5. **Implement journal integration**: Connect lifecycle commands to vb_storage journal
 
 ## Files Modified
 
-- `crates/velvet_ballastics/tests/lifecycle_integration.rs` (created - red-phase tests)
+- `crates/velvet_ballistics/tests/lifecycle_integration.rs` (created - red-phase tests)
 - `.beads/vb-qi37.16.5/red-phase-evidence.md` (this file - evidence documentation)
 
 ## Files Requiring Implementation
 
 1. `crates/vb_core/src/errors.rs` - Add lifecycle error variants
 2. `crates/vb_core/src/workflow.rs` - Add LifecycleState, LifecycleCommand
-3. `crates/velvet_ballastics/src/lifecycle.rs` - Implement lifecycle command API
-4. `crates/velvet_ballastics/src/main.rs` or `args.rs` - Wire CLI to lifecycle module
+3. `crates/velvet_ballistics/src/lifecycle.rs` - Implement lifecycle command API
+4. `crates/velvet_ballistics/src/main.rs` or `args.rs` - Wire CLI to lifecycle module
 5. `crates/vb_storage/src/journal.rs` - May need additional journal event types

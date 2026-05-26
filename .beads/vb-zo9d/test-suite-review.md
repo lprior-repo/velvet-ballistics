@@ -43,14 +43,14 @@ updated_at: 2026-05-09T21:45:00Z
 
 ### Clippy
 - vb_storage --lib: 0 errors, 0 warnings (my changes)
-- velvet_ballastics: 0 errors, 0 warnings (my changes)
+- velvet_ballistics: 0 errors, 0 warnings (my changes)
 - Full workspace check fails due to pre-existing warnings in batch.rs (unrelated)
 
 **Status:** PASS (for modified code)
 
 ### Tests Pass
 ```bash
-cargo nextest run -p velvet_ballastics --test cli_integration -- cli_doctor
+cargo nextest run -p velvet_ballistics --test cli_integration -- cli_doctor
 ```
 Result: 4 passed, 70 skipped, 0 failed
 

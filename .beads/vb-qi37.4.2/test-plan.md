@@ -1173,8 +1173,8 @@ Suggested bounded command after tests exist: `cargo mutants --package vb_runtime
 |---|---|---|---|
 | Canonical CI | `moon ci` before landing or downstream WAIVED/DEFERRED with owner/reason/expiry/limitation | No unrelated failure hidden; no pass claimed by State 7 | GATE-STATE3-012 / PO-012 |
 | Source lint | `moon run :lint-src` | zero lint violations in production source | STATIC-BYPASS-010 |
-| Bypass scan | `rtk grep -n "AlwaysPresentArtifactStore|compiled_ir_exists\(|admit_run\(|admit_run_with_budget\(" crates/vb_runtime/src crates/velvet_ballastics/src` plus reviewer audit | No protected strict/journaled production path uses dummy/existence-only admission | PRE-006, INV-002 |
-| Parser scan | `rtk grep -n "serde_yaml|serde_json|WorkflowParts" crates/vb_runtime/src crates/velvet_ballastics/src` plus reviewer audit | Strict accepted-artifact admission path does not parse YAML/JSON/raw workflow parts | POST-001, INV-004 |
+| Bypass scan | `rtk grep -n "AlwaysPresentArtifactStore|compiled_ir_exists\(|admit_run\(|admit_run_with_budget\(" crates/vb_runtime/src crates/velvet_ballistics/src` plus reviewer audit | No protected strict/journaled production path uses dummy/existence-only admission | PRE-006, INV-002 |
+| Parser scan | `rtk grep -n "serde_yaml|serde_json|WorkflowParts" crates/vb_runtime/src crates/velvet_ballistics/src` plus reviewer audit | Strict accepted-artifact admission path does not parse YAML/JSON/raw workflow parts | POST-001, INV-004 |
 | Panic/unsafe governance | existing repo gates for `unsafe`, `unwrap`, `expect`, `panic`, `todo`, unchecked indexing/casts | No new prohibited constructs in production/test plan scope; test writer must not add weak `is_ok`/`is_err` assertions | AGENTS.md, test-planner rules |
 | JSONL traceability | `jq -c .` for proof and trace JSONL | All trace rows remain parseable and mapped to tests/obligations | all clauses |
 

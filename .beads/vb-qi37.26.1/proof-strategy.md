@@ -50,7 +50,7 @@
 $ cargo check -p vb_ipc
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.98s
 
-$ cargo check -p velvet-ballastics-workspace-tests --tests
+$ cargo check -p velvet-ballistics-workspace-tests --tests
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.08s
 
 $ cargo clippy -p vb_ipc -- -D warnings
@@ -92,7 +92,7 @@ $ /usr/bin/rg -n 'EdgeType::|PassFail::|GateKind::|NodeKind::|TaintPathStatus::'
 | Obligation | Artifact | Command |
 |---|---|---|
 | COMP-001 | compilation-report.md | `cargo check -p vb_ipc` |
-| COMP-002 | compilation-report.md | `cargo check -p velvet-ballastics-workspace-tests --tests` |
+| COMP-002 | compilation-report.md | `cargo check -p velvet-ballistics-workspace-tests --tests` |
 | COMP-003 | compilation-report.md | `cargo clippy -p vb_ipc -- -D warnings` |
 | SAFE-001 | safety-scan-report.md | `grep -n 'unwrap\|expect\|panic!\|todo!\|unimplemented!' crates/vb_ipc/src/server/handlers.rs` |
 | SAFE-002 | safety-scan-report.md | `grep -n 'unsafe' crates/vb_ipc/src/server/handlers.rs` |

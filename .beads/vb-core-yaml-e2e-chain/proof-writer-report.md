@@ -44,10 +44,10 @@
 | PO-001 | `verification/tla/YamlE2eChain.tla`; `verification/tla/YamlE2eChain.cfg` | `tlc -metadir target/tmp/tlc -config verification/tla/YamlE2eChain.cfg verification/tla/YamlE2eChain.tla` | PASS |
 | PO-002 | `verification/tla/YamlE2eChain.tla`; `verification/tla/YamlE2eChain.cfg` | `tlc -metadir target/tmp/tlc -config verification/tla/YamlE2eChain.cfg verification/tla/YamlE2eChain.tla` | PASS |
 | PO-003 | `verification/tla/YamlE2eChain.tla`; `verification/tla/YamlE2eChain.cfg` | `tlc -metadir target/tmp/tlc -config verification/tla/YamlE2eChain.cfg verification/tla/YamlE2eChain.tla` | PASS |
-| PO-004 | `verification/verus/yaml_e2e_digest_roles.rs` plus storage/CLI compensation | Verus + `cargo test -p vb_storage` + `cargo test -p velvet_ballastics --test cli_integration` | PASS_WITH_COMPENSATION |
+| PO-004 | `verification/verus/yaml_e2e_digest_roles.rs` plus storage/CLI compensation | Verus + `cargo test -p vb_storage` + `cargo test -p velvet_ballistics --test cli_integration` | PASS_WITH_COMPENSATION |
 | PO-005 | `verification/verus/yaml_e2e_digest_roles.rs` plus Kani/runtime/storage compensation | Verus + Kani + `cargo test -p vb_runtime` + `cargo test -p vb_storage` | PASS_WITH_COMPENSATION |
 | PO-006 | production test artifact `crates/vb_storage/src/recovery/tests.rs` | `cargo test -p vb_storage -- --nocapture` | PASS_COMPENSATING_SUITE |
-| PO-007 | production test artifact `crates/velvet_ballastics/tests/cli_integration.rs` | `cargo test -p velvet_ballastics --test cli_integration -- --nocapture` | PASS_COMPENSATING_SUITE |
+| PO-007 | production test artifact `crates/velvet_ballistics/tests/cli_integration.rs` | `cargo test -p velvet_ballistics --test cli_integration -- --nocapture` | PASS_COMPENSATING_SUITE |
 | PO-008 | production workspace recovery integration | not run in State 5 | NOT_RUN_OWNER_STATE_7 |
 | PO-009 | static boundary plus clippy | not run in State 5 | NOT_RUN_OWNER_STATE_8 |
 | PO-010 | production compile/YAML tests | not run in State 5 | NOT_RUN_OWNER_STATE_7 |
@@ -122,7 +122,7 @@ EXIT_STATUS=0
 ### Storage Compensation For PO-004/PO-005/PO-006/PO-011
 
 ```text
-Command: mkdir -p target/tmp crates/vb_storage/target/tmp crates/vb_runtime/target/tmp crates/velvet_ballastics/target/tmp; RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p vb_storage -- --nocapture; code=$?; printf '\nEXIT_STATUS=%s\n' "$code"; exit "$code"
+Command: mkdir -p target/tmp crates/vb_storage/target/tmp crates/vb_runtime/target/tmp crates/velvet_ballistics/target/tmp; RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p vb_storage -- --nocapture; code=$?; printf '\nEXIT_STATUS=%s\n' "$code"; exit "$code"
 Exit status: 0
 Output excerpt:
 cargo test: 983 passed (7 suites, 43.30s)
@@ -142,7 +142,7 @@ EXIT_STATUS=0
 ### CLI Compensation For PO-004/PO-007/PO-011
 
 ```text
-Command: RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet_ballastics --test cli_integration -- --nocapture; code=$?; printf '\nEXIT_STATUS=%s\n' "$code"; exit "$code"
+Command: RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet_ballistics --test cli_integration -- --nocapture; code=$?; printf '\nEXIT_STATUS=%s\n' "$code"; exit "$code"
 Exit status: 0
 Output excerpt:
 cargo test: 86 passed (1 suite, 1.24s)

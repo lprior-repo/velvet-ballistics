@@ -5,7 +5,7 @@ use crate::args::{Command, EmitTarget, OutputFormat, ParseError, VerifyProfile, 
 
 #[test]
 fn parse_validate_requires_workflow() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "validate", "workflow.yaml"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "validate", "workflow.yaml"]));
     if let Ok(Command::Validate { workflow, output }) = parsed {
         assert_eq!(workflow, PathBuf::from("workflow.yaml"));
         assert_eq!(output, OutputFormat::Text);
@@ -17,7 +17,7 @@ fn parse_validate_requires_workflow() {
 #[test]
 fn parse_validate_accepts_emit_yaml() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "validate",
         "workflow.yaml",
         "--emit",
@@ -33,7 +33,7 @@ fn parse_validate_accepts_emit_yaml() {
 #[test]
 fn parse_validate_accepts_emit_postcard() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "validate",
         "workflow.yaml",
         "--emit",
@@ -49,7 +49,7 @@ fn parse_validate_accepts_emit_postcard() {
 #[test]
 fn parse_validate_rejects_unknown_flag() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "validate",
         "workflow.yaml",
         "--bogus",
@@ -65,7 +65,7 @@ fn parse_validate_rejects_unknown_flag() {
 
 #[test]
 fn parse_explain_requires_workflow() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "explain", "workflow.yaml"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "explain", "workflow.yaml"]));
     if let Ok(Command::Explain { workflow, output }) = parsed {
         assert_eq!(workflow, PathBuf::from("workflow.yaml"));
         assert_eq!(output, OutputFormat::Text);
@@ -77,7 +77,7 @@ fn parse_explain_requires_workflow() {
 #[test]
 fn parse_explain_accepts_emit_yaml() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "explain",
         "workflow.yaml",
         "--emit",
@@ -93,7 +93,7 @@ fn parse_explain_accepts_emit_yaml() {
 #[test]
 fn parse_explain_legacy_jsonl_flag_keeps_text_output() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "explain",
         "workflow.yaml",
         "--jsonl",
@@ -108,7 +108,7 @@ fn parse_explain_legacy_jsonl_flag_keeps_text_output() {
 #[test]
 fn parse_compile_requires_emit_and_out() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "compile",
         "workflow.yaml",
         "--emit",
@@ -135,7 +135,7 @@ fn parse_compile_requires_emit_and_out() {
 #[test]
 fn parse_compile_accepts_emit_postcard() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "compile",
         "workflow.yaml",
         "--emit",
@@ -153,7 +153,7 @@ fn parse_compile_accepts_emit_postcard() {
 #[test]
 fn parse_compile_accepts_emit_yaml() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "compile",
         "workflow.yaml",
         "--emit",
@@ -172,7 +172,7 @@ fn parse_compile_accepts_emit_yaml() {
 #[test]
 fn parse_compile_legacy_json_flag_keeps_text_output() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "compile",
         "workflow.yaml",
         "--emit",
@@ -191,7 +191,7 @@ fn parse_compile_legacy_json_flag_keeps_text_output() {
 #[test]
 fn parse_compile_legacy_jsonl_flag_keeps_text_output() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "compile",
         "workflow.yaml",
         "--emit",
@@ -210,7 +210,7 @@ fn parse_compile_legacy_jsonl_flag_keeps_text_output() {
 #[test]
 fn parse_compile_rejects_unknown_emit_target_with_exact_variant() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "compile",
         "workflow.yaml",
         "--emit",
@@ -227,7 +227,7 @@ fn parse_compile_rejects_unknown_emit_target_with_exact_variant() {
 #[test]
 fn parse_compile_rejects_missing_emit() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "compile",
         "workflow.yaml",
         "--out",
@@ -239,7 +239,7 @@ fn parse_compile_rejects_missing_emit() {
 #[test]
 fn parse_compile_rejects_missing_out() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "compile",
         "workflow.yaml",
         "--emit",
@@ -250,7 +250,7 @@ fn parse_compile_rejects_missing_out() {
 
 #[test]
 fn parse_verify_defaults_to_standard_profile() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "verify", "workflow.yaml"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "verify", "workflow.yaml"]));
     if let Ok(Command::Verify {
         workflow,
         profile,
@@ -268,7 +268,7 @@ fn parse_verify_defaults_to_standard_profile() {
 #[test]
 fn parse_verify_accepts_quick_profile() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "verify",
         "workflow.yaml",
         "--profile",
@@ -284,7 +284,7 @@ fn parse_verify_accepts_quick_profile() {
 #[test]
 fn parse_verify_accepts_full_profile_with_emit_yaml() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "verify",
         "workflow.yaml",
         "--profile",
@@ -306,7 +306,7 @@ fn parse_verify_accepts_full_profile_with_emit_yaml() {
 #[test]
 fn parse_verify_rejects_unknown_profile() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "verify",
         "workflow.yaml",
         "--profile",
@@ -320,7 +320,7 @@ fn parse_verify_rejects_unknown_profile() {
 
 #[test]
 fn parse_graph_defaults_to_text_output() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "graph", "workflow.yaml"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "graph", "workflow.yaml"]));
     if let Ok(Command::Graph { workflow, output }) = parsed {
         assert_eq!(workflow, PathBuf::from("workflow.yaml"));
         assert_eq!(output, OutputFormat::Text);
@@ -332,7 +332,7 @@ fn parse_graph_defaults_to_text_output() {
 #[test]
 fn parse_graph_accepts_emit_yaml() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "graph",
         "workflow.yaml",
         "--emit",
@@ -348,7 +348,7 @@ fn parse_graph_accepts_emit_yaml() {
 #[test]
 fn parse_graph_legacy_json_flag_keeps_text_output() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "graph",
         "workflow.yaml",
         "--json",
@@ -362,7 +362,7 @@ fn parse_graph_legacy_json_flag_keeps_text_output() {
 
 #[test]
 fn parse_simulate_defaults_to_text_output() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "simulate", "workflow.yaml"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "simulate", "workflow.yaml"]));
     if let Ok(Command::Simulate { workflow, output }) = parsed {
         assert_eq!(workflow, PathBuf::from("workflow.yaml"));
         assert_eq!(output, OutputFormat::Text);
@@ -374,7 +374,7 @@ fn parse_simulate_defaults_to_text_output() {
 #[test]
 fn parse_simulate_legacy_json_flag_keeps_text_output() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "simulate",
         "workflow.yaml",
         "--json",
@@ -389,7 +389,7 @@ fn parse_simulate_legacy_json_flag_keeps_text_output() {
 #[test]
 fn parse_simulate_legacy_jsonl_flag_keeps_text_output() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "simulate",
         "workflow.yaml",
         "--jsonl",
@@ -404,7 +404,7 @@ fn parse_simulate_legacy_jsonl_flag_keeps_text_output() {
 #[test]
 fn parse_simulate_accepts_emit_postcard() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "simulate",
         "workflow.yaml",
         "--emit",
@@ -419,7 +419,7 @@ fn parse_simulate_accepts_emit_postcard() {
 
 #[test]
 fn parse_bench_run_requires_workflow() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "bench-run", "workflow.yaml"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "bench-run", "workflow.yaml"]));
     if let Ok(Command::BenchRun {
         workflow, output, ..
     }) = parsed
@@ -434,7 +434,7 @@ fn parse_bench_run_requires_workflow() {
 #[test]
 fn parse_bench_run_accepts_emit_yaml() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "bench-run",
         "workflow.yaml",
         "--emit",
@@ -450,7 +450,7 @@ fn parse_bench_run_accepts_emit_yaml() {
 #[test]
 fn parse_verify_handles_profile_before_workflow() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "verify",
         "--profile",
         "quick",

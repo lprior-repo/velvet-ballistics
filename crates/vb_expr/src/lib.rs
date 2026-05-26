@@ -12,7 +12,7 @@
 #![allow(clippy::needless_pass_by_value)]
 #![allow(clippy::unused_self)]
 
-//! Cold-path expression lexer, parser, and bytecode compiler for velvet-ballastics.
+//! Cold-path expression lexer, parser, and bytecode compiler for velvet-ballistics.
 //!
 //! Expressions are parsed into an AST, type-checked, and compiled to a bounded
 //! stack-based bytecode (`ExprProgram`) for deterministic hot-path evaluation.

@@ -208,8 +208,8 @@ Every scenario must assert exact values or exact typed variants. Tests that only
 | I01 compile strict YAML | `cargo test -p vb_compile -- --nocapture` | B02 | Report names each malformed class and exact variant. |
 | I02 storage digest/recovery | `cargo test -p vb_storage -- --nocapture` | B03, B04, B11-B14 | Focused evidence for all storage/recovery typed errors and deterministic recovery. |
 | I03 runtime admission | `cargo test -p vb_runtime -- --nocapture` | B05, B06, B15 | Strict admission rejects all invalid matrix cells; no successful `RunAdmission`. |
-| I04 CLI strict durable chain | `cargo test -p velvet_ballastics --test cli_integration -- --nocapture` | B07-B09 | CLI output and stored state expose digest-bound durable evidence or exact typed failures. |
-| I05 workspace recovery | `cargo test -p velvet-ballastics-workspace --test vb_qi37_1_1_red_recovery_contract_test -- --nocapture` | B10 | Restart/recovery uses persisted data only; no YAML parser sentinel after admission. |
+| I04 CLI strict durable chain | `cargo test -p velvet_ballistics --test cli_integration -- --nocapture` | B07-B09 | CLI output and stored state expose digest-bound durable evidence or exact typed failures. |
+| I05 workspace recovery | `cargo test -p velvet-ballistics-workspace --test vb_qi37_1_1_red_recovery_contract_test -- --nocapture` | B10 | Restart/recovery uses persisted data only; no YAML parser sentinel after admission. |
 | I06 full error taxonomy chain | chained `vb_compile`, `vb_storage`, `vb_runtime`, CLI, workspace recovery commands from PO-011 | B02-B13 | Evidence report maps every ERR-001..ERR-011 to exact crate/public variant. |
 | I07 artifact envelope parity | `vb_storage` + `vb_runtime` focused admission tests | B05, B15 | Storage-produced accepted artifact satisfies runtime gate/proof expectations, or mismatch fails with `AcceptedArtifactInvalid`. |
 | I08 events/inspect journal fidelity | CLI integration and storage projection tests | B08, B09 | Events/inspect are projections of persisted Fjall journal state; no synthetic success. |
@@ -218,8 +218,8 @@ Every scenario must assert exact values or exact typed variants. Tests that only
 
 | Group | Command | Scenarios | Required assertions |
 |---|---|---|---|
-| E01 valid YAML-origin strict run | `cargo test -p velvet_ballastics --test cli_integration -- --nocapture` or black-box CLI fixture | B08, B09 | Source digest, artifact digest, run id, accepted sequence, RunAccepted, RunAdmission, terminal status visible in events/inspect. |
-| E02 restart/recovery no-YAML chain | `cargo test -p velvet-ballastics-workspace --test vb_qi37_1_1_red_recovery_contract_test -- --nocapture` | B10, B14 | Recovery refines acknowledged state from persisted artifact/journal/snapshot and proves no post-admission YAML parser dependency. |
+| E01 valid YAML-origin strict run | `cargo test -p velvet_ballistics --test cli_integration -- --nocapture` or black-box CLI fixture | B08, B09 | Source digest, artifact digest, run id, accepted sequence, RunAccepted, RunAdmission, terminal status visible in events/inspect. |
+| E02 restart/recovery no-YAML chain | `cargo test -p velvet-ballistics-workspace --test vb_qi37_1_1_red_recovery_contract_test -- --nocapture` | B10, B14 | Recovery refines acknowledged state from persisted artifact/journal/snapshot and proves no post-admission YAML parser dependency. |
 
 ## 5. Proptest Invariants
 
@@ -301,8 +301,8 @@ Threshold: `cargo-mutants` scoped mutation kill rate must be ≥90%; any survivo
 | STRICT-YAML-012, ERR-STRICT-013 | `cargo test -p vb_compile -- --nocapture` |
 | PROP-CORRUPT-006, ERR-SOURCE-014, ERR-ARTIFACT-DIGEST-015, ERR-REPLAY-020, ERR-CORRUPT-021, ERR-NO-DATA-022 | `cargo test -p vb_storage -- --nocapture` |
 | ERR-ARTIFACT-MISSING-016, ERR-ARTIFACT-INVALID-017, ERR-CAPABILITY-018 | `cargo test -p vb_runtime -- --nocapture` |
-| E2E-CLI-007, ERR-DURABILITY-019 | `cargo test -p velvet_ballastics --test cli_integration -- --nocapture` |
-| E2E-REC-008 | `cargo test -p velvet-ballastics-workspace --test vb_qi37_1_1_red_recovery_contract_test -- --nocapture` |
+| E2E-CLI-007, ERR-DURABILITY-019 | `cargo test -p velvet_ballistics --test cli_integration -- --nocapture` |
+| E2E-REC-008 | `cargo test -p velvet-ballistics-workspace --test vb_qi37_1_1_red_recovery_contract_test -- --nocapture` |
 | ERR-TAXONOMY-013-022 | chained focused commands from PO-011 with report mapping every ERR-001..ERR-011 |
 | STATIC-BOUNDARY-009 | `cargo clippy --workspace --lib --bins --examples --all-features -- -D warnings` plus static boundary report |
 | KANI-ADMIT-023 | `cargo kani -p vb_runtime --harness yaml_e2e_admission_matrix` |

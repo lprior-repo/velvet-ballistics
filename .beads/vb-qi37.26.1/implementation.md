@@ -23,8 +23,8 @@ This is a **verification/closure bead**. The actual code fix was already applied
 
 ### C2 -- workspace-tests compiles cleanly
 - **Status:** SATISFIED
-- **Evidence:** `cargo check -p velvet-ballastics-workspace-tests --tests` exits `0` with zero errors.
-- **Command:** `cargo check -p velvet-ballastics-workspace-tests --tests`
+- **Evidence:** `cargo check -p velvet-ballistics-workspace-tests --tests` exits `0` with zero errors.
+- **Command:** `cargo check -p velvet-ballistics-workspace-tests --tests`
 - **Result:** `Finished dev profile [unoptimized + debuginfo] target(s) in 1.13s`
 
 ### C3 -- no new safety violations introduced

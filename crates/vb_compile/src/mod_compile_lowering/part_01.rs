@@ -17,6 +17,7 @@ pub fn compile_source(
     source: &vb_yaml::ast::WorkflowSource,
 ) -> Result<CompiledWorkflow, CompileErrors> {
     validate_canonical_compile_scope(source)?;
+    validate_branch_counts(source)?;
     let steps = source.steps();
     let last = steps
         .len()
@@ -54,7 +55,8 @@ pub fn compile_source(
         resource_contract: ResourceContract::DEFAULT,
         step_names: step_names.into_boxed_slice(),
     };
-    Ok(CompiledWorkflow::from_parts_unchecked(parts))
+    vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
+    CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))
 }
 
 #[derive(Clone, Copy)]
@@ -94,6 +96,7 @@ pub(super) fn canonical_step_width(
         | vb_yaml::ast::StepPrimitive::Aggregate { body, .. }
         | vb_yaml::ast::StepPrimitive::Repeat { body, .. } => body_width(body, 3),
         vb_yaml::ast::StepPrimitive::Together { branches } => together_width(branches),
+        vb_yaml::ast::StepPrimitive::Choose { branches, .. } => choose_width(branches),
         _ => Ok(1),
     }
 }
@@ -109,6 +112,13 @@ pub(super) fn body_width(
             .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
     }
     Ok(width)
+}
+
+pub(super) fn choose_width(
+    _branches: &[vb_yaml::ast::ChooseBranch],
+) -> Result<usize, CompileError> {
+    // All branches must have empty bodies and compile to a single ChooseSlot node.
+    Ok(1)
 }
 
 pub(super) fn together_width(
@@ -127,7 +137,7 @@ pub(super) fn canonical_body_step_width(
     primitive: &vb_yaml::ast::StepPrimitive,
 ) -> Result<usize, CompileError> {
     match primitive {
-        vb_yaml::ast::StepPrimitive::Set { .. } => Ok(1),
+        vb_yaml::ast::StepPrimitive::Set { .. } | vb_yaml::ast::StepPrimitive::Do { .. } => Ok(1),
         other => Err(CompileError::UnsupportedStepPrimitive {
             step: 0,
             primitive: canonical_primitive_name(other),

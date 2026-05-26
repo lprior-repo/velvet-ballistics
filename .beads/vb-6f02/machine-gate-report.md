@@ -7,11 +7,11 @@
 - Command: `moon ci --force`
 - Result: 5 completed, 5 failed, 11 skipped
 - Failed tasks (all pre-existing):
-  - `velvet-ballastics:fuzz-smoke` - pre-existing compilation error in fuzz crate
-  - `velvet-ballastics:fmt` - pre-existing diff marker
-  - `velvet-ballastics:lint-src` - pre-existing compilation errors
-  - `velvet-ballastics:check` - pre-existing xtask compilation errors
-  - `velvet-ballastics:workspace-assertions` - pre-existing assertion failure
+  - `velvet-ballistics:fuzz-smoke` - pre-existing compilation error in fuzz crate
+  - `velvet-ballistics:fmt` - pre-existing diff marker
+  - `velvet-ballistics:lint-src` - pre-existing compilation errors
+  - `velvet-ballistics:check` - pre-existing xtask compilation errors
+  - `velvet-ballistics:workspace-assertions` - pre-existing assertion failure
 - miri gate: **FIXED** — no longer a new failure
 - Passed: beads-server-mode, agent-cli-contract, nightly-feature-gate, fmt (lint), source-length, miri (full)
 
@@ -24,7 +24,7 @@
 
 ### 3. cargo test (workspace_tests)
 **STATUS: PASS (all bead-related tests)**
-- Command: `cargo test -p velvet-ballastics-workspace-tests`
+- Command: `cargo test -p velvet-ballistics-workspace-tests`
 - Results by test file:
   - `contracts_production_binding.rs`: **31 passed, 0 failed** ✓
   - `contracts_as_data_props.rs`: **17 passed, 0 failed** ✓

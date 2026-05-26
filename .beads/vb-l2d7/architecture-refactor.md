@@ -19,7 +19,7 @@ STATUS: REFACTORED
 - Panic/unsafe scan for focused production files: PASS.
 - `rtk cargo fmt --check`: PASS.
 - `python scripts/check-doc-taint-consistency.py velvet-ballistics-MASTER.md`: PASS.
-- `rtk cargo nextest run -p velvet-ballastics-workspace --test vb_l2d7_doc_reconciliation_contract_red`: 70 passed.
+- `rtk cargo nextest run -p velvet-ballistics-workspace --test vb_l2d7_doc_reconciliation_contract_red`: 70 passed.
 - `rtk cargo nextest run -p vb_runtime --test vb_l2d7_joined_taint_propagation_red`: 24 passed.
 - Finish contradiction probes: Secret/DerivedFromSecret rejection wording fails closed; allowed no-rejection wording passes.
 - Focused clippy:

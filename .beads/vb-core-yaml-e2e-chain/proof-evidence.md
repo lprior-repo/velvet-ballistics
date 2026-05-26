@@ -8,7 +8,7 @@
 - `PO-004`: PASS_WITH_COMPENSATION by Verus pure proof plus `vb_storage` and `cli_integration` executable compensation; all commands exit 0.
 - `PO-005`: PASS_WITH_COMPENSATION by Verus pure proof plus Kani admission proof, `vb_runtime`, and `vb_storage` executable compensation; all commands exit 0.
 - `PO-006`: PASS_COMPENSATING_SUITE by `cargo test -p vb_storage -- --nocapture`; exit status 0.
-- `PO-007`: PASS_COMPENSATING_SUITE by `cargo test -p velvet_ballastics --test cli_integration -- --nocapture`; exit status 0.
+- `PO-007`: PASS_COMPENSATING_SUITE by `cargo test -p velvet_ballistics --test cli_integration -- --nocapture`; exit status 0.
 - `PO-012`: PASS by `cargo kani -p vb_runtime --harness yaml_e2e_admission_matrix`; exit status 0; 1 harness verified, 0 failures.
 - `PO-008`, `PO-009`, `PO-010`, `PO-013`, `PO-017`: NOT_RUN in State 5 because their planned artifacts are downstream production integration/static/Miri/CI gates.
 - `PO-011`: PARTIAL_COMPENSATION only; storage/runtime/CLI suites passed, but the full planned chained command was not run in this State 5 repair.
@@ -73,7 +73,7 @@ EXIT_STATUS=0
 ### Storage Compensation
 
 ```text
-Command: mkdir -p target/tmp crates/vb_storage/target/tmp crates/vb_runtime/target/tmp crates/velvet_ballastics/target/tmp; RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p vb_storage -- --nocapture; code=$?; printf '\nEXIT_STATUS=%s\n' "$code"; exit "$code"
+Command: mkdir -p target/tmp crates/vb_storage/target/tmp crates/vb_runtime/target/tmp crates/velvet_ballistics/target/tmp; RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p vb_storage -- --nocapture; code=$?; printf '\nEXIT_STATUS=%s\n' "$code"; exit "$code"
 Exit status: 0
 Output excerpt:
 cargo test: 983 passed (7 suites, 43.30s)
@@ -93,7 +93,7 @@ EXIT_STATUS=0
 ### CLI Compensation
 
 ```text
-Command: RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet_ballastics --test cli_integration -- --nocapture; code=$?; printf '\nEXIT_STATUS=%s\n' "$code"; exit "$code"
+Command: RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet_ballistics --test cli_integration -- --nocapture; code=$?; printf '\nEXIT_STATUS=%s\n' "$code"; exit "$code"
 Exit status: 0
 Output excerpt:
 cargo test: 86 passed (1 suite, 1.24s)

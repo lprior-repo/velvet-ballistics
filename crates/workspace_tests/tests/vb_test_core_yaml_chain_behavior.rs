@@ -23,7 +23,7 @@ use vb_yaml::{YamlError, parse_workflow_source, parse_yaml_events, validate_yaml
 
 #[test]
 fn yaml_parses_minimal_valid_workflow() {
-    let yaml = r#"version: velvet-ballastics/v1
+    let yaml = r#"version: velvet-ballistics/v1
 name: minimal
 when:
   manual: {}
@@ -44,7 +44,7 @@ steps:
 #[test]
 fn yaml_profile_validation_accepts_plain_scalar_strings() {
     // Plain scalars are allowed for string values
-    let yaml = r#"version: velvet-ballastics/v1
+    let yaml = r#"version: velvet-ballistics/v1
 name: plain_scalar_test
 when:
   manual: {}
@@ -62,7 +62,7 @@ steps:
 
 #[test]
 fn yaml_profile_validation_accepts_quoted_strings() {
-    let yaml = r#"version: velvet-ballastics/v1
+    let yaml = r#"version: velvet-ballistics/v1
 name: quoted_test
 when:
   manual: {}
@@ -80,7 +80,7 @@ steps:
 
 #[test]
 fn yaml_profile_validation_accepts_integer_values() {
-    let yaml = r#"version: velvet-ballastics/v1
+    let yaml = r#"version: velvet-ballistics/v1
 name: integer_test
 when:
   manual: {}
@@ -99,7 +99,7 @@ steps:
 
 #[test]
 fn yaml_events_parse_valid_document() {
-    let yaml = r#"version: velvet-ballastics/v1
+    let yaml = r#"version: velvet-ballistics/v1
 name: events_test
 when:
   manual: {}
@@ -167,7 +167,7 @@ fn yaml_rejects_ambiguous_off_scalar_exact_variant() {
 #[test]
 fn yaml_rejects_multiple_documents_exact_count() {
     let yaml = r#"---
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: first
 when:
   manual: {}
@@ -176,7 +176,7 @@ steps:
     finish:
       result: 0
 ---
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: second
 when:
   manual: {}
@@ -748,7 +748,7 @@ fn workflow_parts_accepts_resource_contract_at_exact_usage_bounds() {
 
 #[test]
 fn compiled_workflow_carries_resource_contract() {
-    let yaml = r#"version: velvet-ballastics/v1
+    let yaml = r#"version: velvet-ballistics/v1
 name: contract_carrier_test
 when:
   manual: {}
@@ -769,7 +769,7 @@ steps:
 
 #[test]
 fn compiled_workflow_to_parts_preserves_contract() {
-    let yaml = r#"version: velvet-ballastics/v1
+    let yaml = r#"version: velvet-ballistics/v1
 name: parts_preservation_test
 when:
   manual: {}
@@ -790,7 +790,7 @@ steps:
 
 #[test]
 fn compiled_workflow_try_from_parts_validates_contract() {
-    let yaml = r#"version: velvet-ballastics/v1
+    let yaml = r#"version: velvet-ballistics/v1
 name: parts_validation_test
 when:
   manual: {}

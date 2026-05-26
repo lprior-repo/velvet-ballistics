@@ -33,9 +33,9 @@ State 10 repair after black-hat dependency-cycle rejection. Scope was limited to
 ## Commands Run
 
 - `rtk cargo fmt --check` — PASS after formatting.
-- `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract mod_compile_dependency_edges_remain_acyclic_and_diagnostic_leaf` — PASS, 1 passed.
-- `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract vb_compile_production_sources_remain_under_agreed_line_limit` — PASS, 1 passed.
-- `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract` — PASS, 8 passed.
+- `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract mod_compile_dependency_edges_remain_acyclic_and_diagnostic_leaf` — PASS, 1 passed.
+- `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract vb_compile_production_sources_remain_under_agreed_line_limit` — PASS, 1 passed.
+- `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract` — PASS, 8 passed.
 - `bash scripts/check-source-length.sh` — PASS with `DEFERRED_GLOBAL` notices only for pre-existing unrelated top-level sources: `expression_bytecode.rs`, `expression.rs`, `references.rs`, `schema.rs`, `type_taint.rs`.
 - `rtk cargo check -p vb_compile` — PASS.
 - `rtk cargo clippy -p vb_compile --lib --bins --examples --all-features -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap -D clippy::arithmetic_side_effects -D clippy::as_conversions -D clippy::let_underscore_must_use -D clippy::await_holding_lock` — PASS.

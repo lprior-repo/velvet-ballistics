@@ -8,7 +8,7 @@
 use std::process::{Command, Output};
 
 /// Minimal valid YAML workflow for CLI testing
-const MINIMAL_WORKFLOW: &str = r#"version: velvet-ballastics/v1
+const MINIMAL_WORKFLOW: &str = r#"version: velvet-ballistics/v1
 name: test-workflow
 when:
   manual: {}
@@ -22,21 +22,21 @@ steps:
       result: result
 "#;
 
-/// Run velvet-ballastics CLI with given args, return Output
+/// Run velvet-ballistics CLI with given args, return Output
 ///
 /// Note: `.unwrap()` is called on the result in tests. For `cargo test`,
 /// the binary is built and linked before tests run, so `Command::output()`
 /// failure indicates an infrastructure problem (EMFILE, ENOENT) rather than
 /// a test logic error. In practice, this panic vector is never triggered.
 fn run_cli(args: &[&str]) -> std::io::Result<Output> {
-    Command::new(env!("CARGO_BIN_EXE_velvet-ballastics"))
+    Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
         .args(args)
         .output()
 }
 
 /// Run CLI that expects to fail (non-zero exit), return Output
 fn run_cli_failing(args: &[&str]) -> std::io::Result<Output> {
-    Command::new(env!("CARGO_BIN_EXE_velvet-ballastics"))
+    Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
         .args(args)
         .output()
 }
@@ -70,7 +70,7 @@ mod parse_error_tests {
     #[test]
     fn parse_unknown_command_returns_error() {
         // Given: an invalid subcommand string
-        // When: velvet-ballastics is invoked with unknown subcommand
+        // When: velvet-ballistics is invoked with unknown subcommand
         // Then: exit code 2 (ValidationFailed) with "unknown command" in output
         let output = run_cli_failing(&["nonexistent-command"]).unwrap();
         assert_eq!(output.status.code(), Some(2));
@@ -160,7 +160,7 @@ mod parse_error_tests {
     #[test]
     fn parse_valid_command_returns_ok() {
         // Given: a valid subcommand with no required args
-        // When: velvet-ballastics is invoked with 'status' command
+        // When: velvet-ballistics is invoked with 'status' command
         // Then: exit code 0 or non-fatal status response
         let output = run_cli(&["status"]).unwrap();
         // status with no db is ok (shows queue depth 0)
@@ -203,7 +203,7 @@ mod exit_code_tests {
     #[test]
     fn exit_code_two_on_validation_failure() {
         // Given: an invalid YAML workflow
-        // When: velvet-ballastics validate is called
+        // When: velvet-ballistics validate is called
         // Then: exit code 2 (ValidationFailed) per contract POST-008
         let (_tmp_dir, tmp) =
             write_bdd_file("vb-test-invalid.yaml", "invalid: yaml: content: [").unwrap();
@@ -218,7 +218,7 @@ mod exit_code_tests {
     #[test]
     fn exit_code_two_on_verification_failure() {
         // Given: a valid YAML but verification would fail (no db for run)
-        // When: velvet-ballastics verify is called on a workflow
+        // When: velvet-ballistics verify is called on a workflow
         // Then: exit code 2 (VerificationFailed) because verify requires a db
         //       to complete full verification; exit 0 would only occur if verify
         //       can succeed without db, which is not the case for this CLI.
@@ -242,7 +242,7 @@ mod exit_code_tests {
     #[test]
     fn exit_code_three_on_compile_failure() {
         // Given: a YAML that would fail compilation (undefined step reference)
-        // When: velvet-ballastics compile is called with --emit
+        // When: velvet-ballistics compile is called with --emit
         // Then: exit code 3 (CompileFailed) because YAML passes validation
         //       but the semantic error (undefined reference) is caught at compile time.
         // DOCUMENTED ACCEPTABLE OUTCOMES:
@@ -252,7 +252,7 @@ mod exit_code_tests {
         // indicates the YAML was structurally valid but the IR generation failed.
         let (_tmp_dir, tmp) = write_bdd_file(
             "vb-test-compilefail.yaml",
-            r#"version: velvet-ballastics/v1
+            r#"version: velvet-ballistics/v1
 name: test
 steps:
   - id: step1
@@ -287,7 +287,7 @@ steps:
     #[test]
     fn exit_code_four_on_runtime_failure() {
         // Given: a workflow that can't be run (no db, no input-bin)
-        // When: velvet-ballastics run is called without required args
+        // When: velvet-ballistics run is called without required args
         // Then: non-zero exit code (error handling, not panic)
         let (_tmp_dir, tmp) = write_bdd_file("vb-test-runtime.yaml", MINIMAL_WORKFLOW).unwrap();
         let output = run_cli(&["run", tmp.to_str().unwrap()]).unwrap();
@@ -301,7 +301,7 @@ steps:
     #[test]
     fn exit_code_five_on_storage_error() {
         // Given: run with --db pointing to nonexistent directory
-        // When: velvet-ballastics run is called with invalid db path
+        // When: velvet-ballistics run is called with invalid db path
         // Then: non-zero exit (storage or error handling)
         let (_tmp_dir, tmp) = write_bdd_file("vb-test-runtime2.yaml", MINIMAL_WORKFLOW).unwrap();
         let output = run_cli_failing(&[
@@ -323,7 +323,7 @@ steps:
     #[test]
     fn exit_code_six_on_ipc_error() {
         // Given: ipc-serve with invalid socket path
-        // When: velvet-ballastics ipc-serve is called
+        // When: velvet-ballistics ipc-serve is called
         // Then: non-zero exit (IPC error or usage error)
         let tmp_dir = bdd_tempdir().unwrap();
         let db = tmp_dir.path().join("db");
@@ -344,7 +344,7 @@ steps:
     #[test]
     fn exit_code_seven_on_action_policy_error() {
         // Given: action policy violation scenario
-        // When: velvet-ballastics runs with restricted action registry
+        // When: velvet-ballistics runs with restricted action registry
         // Then: exit code 7 (ActionPolicyError) if policy is violated
         // DOCUMENTED ACCEPTABLE OUTCOMES for `run` with minimal workflow:
         // - Exit 0: Normal run completion (workflow succeeded)
@@ -381,7 +381,7 @@ steps:
     #[test]
     fn exit_code_eight_on_replay_divergence() {
         // Given: replay with mismatched run state
-        // When: velvet-ballastics replay is called on a nonexistent run
+        // When: velvet-ballistics replay is called on a nonexistent run
         // Then: non-zero exit (replay divergence or storage error)
         let tmp_dir = bdd_tempdir().unwrap();
         let db = tmp_dir.path().join("nonexistent");
@@ -420,7 +420,7 @@ mod bdd_scenarios {
     fn cli_explain_invalid_workflow_reports_validation_errors() {
         let (_tmp_dir, tmp) = write_bdd_file(
             "vb-test-explain-bad.yaml",
-            "version: velvet-ballastics/v1\nsteps: not-valid",
+            "version: velvet-ballistics/v1\nsteps: not-valid",
         )
         .unwrap();
         let output = run_cli_failing(&["explain", tmp.to_str().unwrap()]).unwrap();
@@ -610,7 +610,7 @@ mod bdd_scenarios {
         let missing_db = run_cli_failing(&[
             "ipc-serve",
             "--socket",
-            "target/velvet-ballastics-ipc-test.sock",
+            "target/velvet-ballistics-ipc-test.sock",
         ])
         .unwrap();
         assert_eq!(missing_db.status.code(), Some(2)); // ValidationFailed (exit code 2) per CliExitCode remapping (DEFECT-001 fix)
@@ -691,7 +691,7 @@ mod bdd_scenarios {
     #[test]
     fn cli_run_strict_durability_requires_db() {
         // Given: a valid workflow with --durability strict
-        // When: velvet-ballastics run is called without --db
+        // When: velvet-ballistics run is called without --db
         // Then: exit code indicating missing required --db flag
         let (_tmp_dir, tmp) = write_bdd_file("vb-test-strict.yaml", MINIMAL_WORKFLOW).unwrap();
         // --durability strict requires --db to persist state
@@ -707,7 +707,7 @@ mod bdd_scenarios {
     #[test]
     fn cli_run_journaled_durability_requires_db() {
         // Given: a valid workflow with --durability journaled
-        // When: velvet-ballastics run is called without --db
+        // When: velvet-ballistics run is called without --db
         // Then: exit code indicating missing required --db flag
         let (_tmp_dir, tmp) = write_bdd_file("vb-test-journaled.yaml", MINIMAL_WORKFLOW).unwrap();
         // --durability journaled requires --db to persist journal

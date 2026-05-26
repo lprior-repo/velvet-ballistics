@@ -52,7 +52,7 @@ updated_at: 2026-05-20T00:10:00Z
 | Test/Gate | Command | Artifact | Result |
 |-----------|---------|----------|--------|
 | 29 integration tests | cargo nextest run --test vb_c1s0_orchestration_runtime_tests | crates/workspace_tests/tests/vb_c1s0_orchestration_runtime_tests.rs | ✅ 29 PASS |
-| Build | cargo build --package velvet-ballastics-workspace-tests | (no file output) | ✅ SUCCESS |
+| Build | cargo build --package velvet-ballistics-workspace-tests | (no file output) | ✅ SUCCESS |
 | Format | cargo fmt --check | (no file output) | ✅ SUCCESS |
 | Clippy | cargo clippy | (pre-existing workspace issues) | ⚠ PRE-EXISTING |
 

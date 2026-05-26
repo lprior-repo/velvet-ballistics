@@ -62,7 +62,7 @@
 - Focused storage tests: `cargo test -p vb_storage --test recovery_integration`.
 - Focused storage module tests: `cargo test -p vb_storage recovery::`.
 - Runtime recovery boundary tests: `cargo test -p vb_runtime recovery`.
-- Workspace recovery contract tests: `cargo test -p velvet-ballastics-workspace vb_qi37_1_1`.
+- Workspace recovery contract tests: `cargo test -p velvet-ballistics-workspace vb_qi37_1_1`.
 - Canonical gate after implementation: `moon ci`.
 
 ## Waivers and blockers

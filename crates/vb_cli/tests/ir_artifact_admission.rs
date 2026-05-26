@@ -71,7 +71,7 @@ fn write_parts(path: &Path, parts: &WorkflowParts) {
 }
 
 fn run_vb(args: &[&OsStr]) -> Output {
-    let output = std::process::Command::new(env!("CARGO_BIN_EXE_velvet-ballastics"))
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
         .args(args)
         .output();
     assert!(output.is_ok(), "vb test binary executes: {output:?}");

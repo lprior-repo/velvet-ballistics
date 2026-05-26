@@ -25,8 +25,8 @@ Review the refreshed State 4 proof plan after repaired State 3 resolved `SCOPE-0
 ```bash
 pwd -P
 test -s ".beads/vb-ahfl/contract.md" && test -s ".beads/vb-ahfl/traceability-matrix.jsonl" && test -s ".beads/vb-ahfl/delivery-scope.jsonl" && test -s ".beads/vb-ahfl/proof-obligations.jsonl" && test -s ".beads/vb-ahfl/verification-layers.md"
-rg -n "unsafe|unwrap\(|expect\(|panic!|todo!|unimplemented!|assert!|spawn|tokio|Mutex|RwLock|Atomic|serialize|deserialize|state|transition|lease|queue|retry|cancel" crates/vb_ui_model crates/vb_ui_makepad crates/velvet_ballastics velvet-ballistics-MASTER.md
-rg -n "requires|ensures|proof fn|invariant|kani::|loom::|proptest!|fuzz_target|Flux|TLA|Miri|unsafe" crates/vb_ui_model crates/vb_ui_makepad crates/velvet_ballastics verification velvet-ballistics-MASTER.md
+rg -n "unsafe|unwrap\(|expect\(|panic!|todo!|unimplemented!|assert!|spawn|tokio|Mutex|RwLock|Atomic|serialize|deserialize|state|transition|lease|queue|retry|cancel" crates/vb_ui_model crates/vb_ui_makepad crates/velvet_ballistics velvet-ballistics-MASTER.md
+rg -n "requires|ensures|proof fn|invariant|kani::|loom::|proptest!|fuzz_target|Flux|TLA|Miri|unsafe" crates/vb_ui_model crates/vb_ui_makepad crates/velvet_ballistics verification velvet-ballistics-MASTER.md
 bash -lc 'cargo metadata --format-version 1 --no-deps >/tmp/vb-ahfl-cargo-metadata.json && ! rg -n "^(\\s*(makepad|tokio|async-std|reqwest|hyper|serde_yaml|yaml-rust)\\s*=|\\s*use\\s+(makepad|tokio|async_std|reqwest|hyper|serde_yaml|yaml_rust)\\b|\\s*extern\\s+crate\\s+(makepad|tokio|async_std|reqwest|hyper|serde_yaml|yaml_rust)\\b)" crates/vb_ui_model/Cargo.toml crates/vb_ui_model/src'
 ```
 

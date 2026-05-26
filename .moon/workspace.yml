@@ -4,9 +4,9 @@ vcs:
   defaultBranch: main
 
 projects:
-  velvet-ballastics: '.'
+  velvet-ballistics: '.'
 
-defaultProject: velvet-ballastics
+defaultProject: velvet-ballistics
 
 versionConstraint: '>=1.0.0'
 

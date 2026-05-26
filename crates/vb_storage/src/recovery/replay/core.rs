@@ -6,26 +6,17 @@
 //! - Non-idempotent action blocking
 //! - Snapshot-plus-tail replay
 
+use super::attempt::compute_max_attempt;
+pub use super::attempt::{
+    replay_attempt_is_current, replay_attempt_is_stale, replay_attempt_or_default,
+    replay_event_has_state_effect, replay_event_is_stale_state_effect, replay_step_order_diverges,
+};
 use crate::recovery::hydrate_support::{
     verified_action_envelope_digest, verify_action_ticket_event,
 };
 use crate::recovery::types::{ActionReplayTracker, RecoveryError, RecoveryResult};
 use crate::{EventSeq, FjallJournal, JournalEvent};
 use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest};
-
-/// Computes the maximum attempt number observed in action-scheduling and
-/// action-completion events. Events without an attempt field contribute 1
-/// (PRE-001: treat as attempt 1).
-#[must_use]
-fn compute_max_attempt(events: &[JournalEvent]) -> u16 {
-    let mut max_attempt = 1u16;
-    for event in events {
-        if let Some(attempt) = event.attempt().filter(|&a| a > max_attempt) {
-            max_attempt = attempt;
-        }
-    }
-    max_attempt
-}
 
 /// Core replay logic for all journal event kinds.
 /// Populates the action tracker and detects divergence.
@@ -54,8 +45,7 @@ fn replay_events_with_schedule_requirement(
 
     for event in events {
         // PRE-001: skip state-affecting events from older attempts
-        let attempt = event.attempt().unwrap_or(1);
-        if attempt < max_attempt {
+        if replay_attempt_is_stale(event.attempt(), max_attempt) {
             replayed.push(event.clone());
             continue;
         }
@@ -69,6 +59,7 @@ fn replay_events_with_schedule_requirement(
             | JournalEvent::AskAnsweredEvent { .. }
             | JournalEvent::RetryScheduledEvent { .. }
             | JournalEvent::RunCancelled { .. }
+            | JournalEvent::RunKilled { .. }
             | JournalEvent::RunFinished { .. }
             | JournalEvent::RunFailedEvent { .. }
             | JournalEvent::RunResumed { .. }
@@ -76,15 +67,17 @@ fn replay_events_with_schedule_requirement(
             | JournalEvent::RunAnswered { .. } => {}
             JournalEvent::StepStarted { step, .. } => {
                 // Verify step ordering
-                if let Some(prev) = last_step
-                    && step.get() < prev.get()
-                {
+                if replay_step_order_diverges(last_step, *step) {
+                    let previous_step = match last_step {
+                        Some(value) => value,
+                        None => StepIdx::ZERO,
+                    };
                     return Err(RecoveryError::ReplayDivergence {
                         step: *step,
                         detail: format!(
                             "step {} executed before previous step {}",
                             step.get(),
-                            prev.get()
+                            previous_step.get()
                         ),
                     });
                 }

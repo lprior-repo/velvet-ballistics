@@ -17,7 +17,7 @@ jj workspace add --name Velvet-ballistics-vb-8iwj-wave3-integration -r luomokpo 
 Initial conflict:
 
 ```text
-crates/velvet_ballastics/tests/cli_integration.rs 3-sided conflict
+crates/velvet_ballistics/tests/cli_integration.rs 3-sided conflict
 ```
 
 Resolution: manually combined all three EOF-appended test modules and preserved:
@@ -30,14 +30,14 @@ Conflict marker check after resolution:
 
 ```text
 grep for <<<<<<<, >>>>>>>, %%%%%%%, +++++++ markers in cli_integration.rs -> no matches reported by tool.
-jj status -> no unresolved conflict warning; working copy has M crates/velvet_ballastics/tests/cli_integration.rs.
+jj status -> no unresolved conflict warning; working copy has M crates/velvet_ballistics/tests/cli_integration.rs.
 ```
 
 ## Scoped machine evidence
 
 ```text
-cargo +nightly fmt -p velvet_ballastics --check -> exit 0
-rtk cargo check -p velvet_ballastics --all-targets -> cargo build: 0 errors, 1 duplicate-package warning
+cargo +nightly fmt -p velvet_ballistics --check -> exit 0
+rtk cargo check -p velvet_ballistics --all-targets -> cargo build: 0 errors, 1 duplicate-package warning
 ```
 
 Integrated CLI tests:
@@ -62,8 +62,8 @@ cli_submit_rejects_unknown_durability -> 1 passed, 85 filtered out
 Status YAML:
 
 ```text
-rtk cargo run -p velvet_ballastics --bin vb -- status --emit yaml
-schema_version: velvet-ballastics/cli-output/v1
+rtk cargo run -p velvet_ballistics --bin vb -- status --emit yaml
+schema_version: velvet-ballistics/cli-output/v1
 kind: status
 status: running
 running: true
@@ -84,10 +84,10 @@ runtime_policy: Strict
 Simulate JSON using a temp workflow matching `CLI_WORKFLOW`:
 
 ```text
-rtk cargo run -p velvet_ballastics --bin vb -- simulate /tmp/.../cli-workflow.yaml --json
+rtk cargo run -p velvet_ballistics --bin vb -- simulate /tmp/.../cli-workflow.yaml --json
 {
   "kind": "simulate",
-  "schema_version": "velvet-ballastics/v1",
+  "schema_version": "velvet-ballistics/v1",
   "success": true,
   "total_actions": 0,
   "total_branches": 0,
@@ -102,7 +102,7 @@ rtk cargo run -p velvet_ballastics --bin vb -- simulate /tmp/.../cli-workflow.ya
 Submit JSON using a temp workflow and temp DB:
 
 ```text
-rtk cargo run -p velvet_ballastics --bin vb -- submit /tmp/.../cli-workflow.yaml --input-bin /dev/null --db /tmp/.../submit-db --durability strict --json
+rtk cargo run -p velvet_ballistics --bin vb -- submit /tmp/.../cli-workflow.yaml --input-bin /dev/null --db /tmp/.../submit-db --durability strict --json
 {
   "digest": "67e9d102e4b112a6177310c84eec69abe8c356a7dd1e65dfc60208385bb4a6a0",
   "run_id": 1778512346823153217,

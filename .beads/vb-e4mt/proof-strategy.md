@@ -142,7 +142,7 @@ cargo kani -p vb_core --harness kani_harness_step_budget_consume
 
 | Obligation | Target | Command |
 |------------|--------|---------|
-| INTEGRATION-001 | vb_qi37_2_4_integration_budget_errors | cargo test -p velvet-ballastics-workspace --test vb_qi37_2_4_integration_budget_errors |
+| INTEGRATION-001 | vb_qi37_2_4_integration_budget_errors | cargo test -p velvet-ballistics-workspace --test vb_qi37_2_4_integration_budget_errors |
 | INTEGRATION-002 | CLI budget enforcement | cargo test -p vb_cli --test cli_verify_integration |
 
 ### Lane 7: BDD (BEHAVIOR-DRIVEN)
@@ -150,12 +150,12 @@ cargo kani -p vb_core --harness kani_harness_step_budget_consume
 
 | Obligation | Scenario | Command |
 |------------|----------|---------|
-| BDD-001 | TotalStepsExceeded | cargo test -p velvet-ballastics-workspace bdd_unbounded_for_each_rejected |
-| BDD-002 | FanoutExceeded | cargo test -p velvet-ballastics-workspace bdd_fanout_exceeded_rejected |
-| BDD-003 | GatherItemsExceeded | cargo test -p velvet-ballastics-workspace bdd_collect_unlimited_rejected |
-| BDD-004 | ExpressionStackExceeded | cargo test -p velvet-ballastics-workspace bdd_expr_stack_exceeded_rejected |
-| BDD-005 | StepBudgetExhausted | cargo test -p velvet-ballastics-workspace bdd_step_budget_exhausted_signal |
-| BDD-006 | CapacityExceeded | cargo test -p velvet-ballastics-workspace bdd_aggregate_capacity_exceeded |
+| BDD-001 | TotalStepsExceeded | cargo test -p velvet-ballistics-workspace bdd_unbounded_for_each_rejected |
+| BDD-002 | FanoutExceeded | cargo test -p velvet-ballistics-workspace bdd_fanout_exceeded_rejected |
+| BDD-003 | GatherItemsExceeded | cargo test -p velvet-ballistics-workspace bdd_collect_unlimited_rejected |
+| BDD-004 | ExpressionStackExceeded | cargo test -p velvet-ballistics-workspace bdd_expr_stack_exceeded_rejected |
+| BDD-005 | StepBudgetExhausted | cargo test -p velvet-ballistics-workspace bdd_step_budget_exhausted_signal |
+| BDD-006 | CapacityExceeded | cargo test -p velvet-ballistics-workspace bdd_aggregate_capacity_exceeded |
 
 ### Lane 8: Gauntlet (CI GATE)
 **Status**: 2 obligations (deferred to owner_state=12)

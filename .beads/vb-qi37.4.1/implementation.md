@@ -41,7 +41,7 @@ State 6 repair implemented:
 | Contract Requirement | Implementation | Status |
 |---|---|---|
 | Artifact version `velvet.artifact/v1` | `AcceptedArtifact.version = velvet.artifact/v1` | ✓ |
-| Workflow version `velvet-ballastics/v1` | `AcceptedArtifact.workflow_version = velvet-ballastics/v1` | ✓ |
+| Workflow version `velvet-ballistics/v1` | `AcceptedArtifact.workflow_version = velvet-ballistics/v1` | ✓ |
 | Gate count exactly 15 | `ADMISSION_GATE_COUNT = 15`, check in `submit_artifact` | ✓ |
 | All proof flags true | `VerificationProof::new()` sets all to `true`, validates | ✓ |
 | 15-gate `VerificationProof` in artifact | `VerificationProof::new()` called with 15 gates | ✓ |

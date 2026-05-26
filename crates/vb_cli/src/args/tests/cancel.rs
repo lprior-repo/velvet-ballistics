@@ -6,7 +6,7 @@ use crate::args::{Command, OutputFormat, ParseError, parse_args};
 #[test]
 fn parse_cancel_accepts_run_id_and_db() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "cancel",
         "42",
         "--db",
@@ -31,7 +31,7 @@ fn parse_cancel_accepts_run_id_and_db() {
 #[test]
 fn parse_cancel_accepts_reason() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "cancel",
         "42",
         "--db",
@@ -49,7 +49,7 @@ fn parse_cancel_accepts_reason() {
 #[test]
 fn parse_cancel_legacy_json_flag_keeps_text_output() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "cancel",
         "42",
         "--db",
@@ -66,7 +66,7 @@ fn parse_cancel_legacy_json_flag_keeps_text_output() {
 #[test]
 fn parse_cancel_legacy_jsonl_flag_keeps_text_output() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "cancel",
         "42",
         "--db",
@@ -83,7 +83,7 @@ fn parse_cancel_legacy_jsonl_flag_keeps_text_output() {
 #[test]
 fn parse_cancel_accepts_emit_yaml() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "cancel",
         "42",
         "--db",
@@ -101,7 +101,7 @@ fn parse_cancel_accepts_emit_yaml() {
 #[test]
 fn parse_cancel_accepts_emit_postcard() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "cancel",
         "42",
         "--db",
@@ -118,7 +118,7 @@ fn parse_cancel_accepts_emit_postcard() {
 
 #[test]
 fn parse_cancel_rejects_missing_db() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "cancel", "42"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "cancel", "42"]));
     assert!(
         matches!(parsed, Err(ParseError::MissingArgument("--db"))),
         "unexpected: {parsed:?}"
@@ -127,14 +127,14 @@ fn parse_cancel_rejects_missing_db() {
 
 #[test]
 fn parse_cancel_rejects_missing_run_id() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "cancel"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "cancel"]));
     assert!(matches!(parsed, Err(ParseError::MissingArgument("run_id"))));
 }
 
 #[test]
 fn parse_cancel_rejects_unknown_flag() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "cancel",
         "42",
         "--db",
@@ -154,7 +154,7 @@ fn parse_cancel_rejects_unknown_flag() {
 fn parse_cancel_rejects_reason_longer_than_256_bytes() {
     let long_reason = "a".repeat(257);
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "cancel",
         "42",
         "--db",
@@ -172,7 +172,7 @@ fn parse_cancel_rejects_reason_longer_than_256_bytes() {
 fn parse_cancel_accepts_reason_exactly_256_bytes() {
     let reason = "a".repeat(256);
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "cancel",
         "42",
         "--db",

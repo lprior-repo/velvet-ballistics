@@ -11,12 +11,12 @@ STATUS: PASS
 
 | ID | Category | Command/Request | Expected | Actual | Status |
 |----|----------|----------------|----------|--------|--------|
-| REC-HEADER-001 | Happy Path | `cargo test -p velvet_ballastics --test admission_evidence_integration restart_lookup_finds_persisted_header` | PASS | `1 passed, 7 filtered out` | PASS |
-| TEST-DUR-001 | Failure Path | `cargo test -p velvet_ballastics --test admission_evidence_integration storage_failure_before_header_prevents_ack` | PASS | `1 passed, 7 filtered out` | PASS |
+| REC-HEADER-001 | Happy Path | `cargo test -p velvet_ballistics --test admission_evidence_integration restart_lookup_finds_persisted_header` | PASS | `1 passed, 7 filtered out` | PASS |
+| TEST-DUR-001 | Failure Path | `cargo test -p velvet_ballistics --test admission_evidence_integration storage_failure_before_header_prevents_ack` | PASS | `1 passed, 7 filtered out` | PASS |
 | TEST-PRE-001 | Duplicate Rejection | `cargo test -p vb_runtime shard::tests::submit_rejects_duplicate_run_id` | PASS | `1 passed, 1441 filtered out` | PASS |
 | TEST-PRE-002 | Admission Rejection | `cargo test -p vb_runtime admission_rejection_does_not_insert_run_state` | PASS | `1 passed, 1441 filtered out` | PASS |
 | DUR-ACK | Durability Before Ack | `cargo test -p vb_runtime submit_direct_returns_durability_error_before_ack_when_header_cannot_persist` | PASS | `1 passed, 1441 filtered out` | PASS |
-| Full Suite | Integration | `cargo test -p velvet_ballastics --test admission_evidence_integration` | All 8 Pass | `8 passed (1 suite, 0.05s)` | PASS |
+| Full Suite | Integration | `cargo test -p velvet_ballistics --test admission_evidence_integration` | All 8 Pass | `8 passed (1 suite, 0.05s)` | PASS |
 | Moon CI | Release Gate | `moon ci` | All tasks pass | `Tasks: 19 completed (2 cached) Time: 54s 987ms` | PASS |
 
 ### Verbatim Command Evidence
@@ -25,7 +25,7 @@ STATUS: PASS
 
 **Command:**
 ```
-cargo test -p velvet_ballastics --test admission_evidence_integration restart_lookup_finds_persisted_header
+cargo test -p velvet_ballistics --test admission_evidence_integration restart_lookup_finds_persisted_header
 ```
 **Output:**
 ```
@@ -36,7 +36,7 @@ cargo test: 1 passed, 7 filtered out (1 suite, 0.01s)
 
 **Command:**
 ```
-cargo test -p velvet_ballastics --test admission_evidence_integration storage_failure_before_header_prevents_ack
+cargo test -p velvet_ballistics --test admission_evidence_integration storage_failure_before_header_prevents_ack
 ```
 **Output:**
 ```
@@ -80,7 +80,7 @@ cargo test: 1 passed, 1441 filtered out (7 suites, 0.01s)
 
 **Command:**
 ```
-cargo test -p velvet_ballastics --test admission_evidence_integration
+cargo test -p velvet_ballistics --test admission_evidence_integration
 ```
 **Output:**
 ```

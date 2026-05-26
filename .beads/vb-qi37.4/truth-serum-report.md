@@ -12,9 +12,9 @@ STATUS: APPROVED
 - `RUSTFLAGS="--cfg loom" cargo test -p vb_runtime journal_writer_queue`: exit 0; 3 passed.
 - `RUSTFLAGS="--cfg loom" cargo test -p vb_runtime timer_fired_cancel`: exit 0; 1 passed.
 - `RUSTFLAGS="--cfg loom" cargo test -p vb_runtime shutdown_drain`: exit 0; 3 passed.
-- `cargo test -p velvet_ballastics --test admission_evidence_integration`: exit 0; 8 passed.
+- `cargo test -p velvet_ballistics --test admission_evidence_integration`: exit 0; 8 passed.
 - `cargo test -p vb_storage --test accepted_artifact_red_phase`: exit 0; 29 passed.
-- `cargo test -p velvet_ballastics --test admission_durability_code`: exit 0; 1 passed.
+- `cargo test -p velvet_ballistics --test admission_durability_code`: exit 0; 1 passed.
 - `jj diff --name-only | moon ci --stdin`: exit 0; 18 completed, 2 cached; 8358 tests passed, 6 skipped.
 
 ## Skeptical QA Review

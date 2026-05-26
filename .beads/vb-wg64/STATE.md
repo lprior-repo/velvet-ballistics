@@ -95,7 +95,7 @@
 ## State 8 — Source lint gate
 
 - status: COMPLETE
-- evidence: canonical `moon ci` `velvet-ballastics:lint-src` passed. Explicit all-target clippy commands remain failed on test lint debt and were not suppressed.
+- evidence: canonical `moon ci` `velvet-ballistics:lint-src` passed. Explicit all-target clippy commands remain failed on test lint debt and were not suppressed.
 
 ## State 9 — Additional clean-clone repairs
 

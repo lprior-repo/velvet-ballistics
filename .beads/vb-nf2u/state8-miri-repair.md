@@ -6,9 +6,9 @@ Files changed:
 - `crates/vb_validate/src/gate_08_accessor.rs`
 
 Commands run:
-- `moon run velvet-ballastics:fmt` — PASS (`Tasks: 1 completed`).
+- `moon run velvet-ballistics:fmt` — PASS (`Tasks: 1 completed`).
 - `cargo +nightly-2026-04-28 miri test -p vb_validate --lib gate_08_accessor::tests::proptest_above_bound_field_fixtures_use_checked_construction` — PASS (1 passed, 907 filtered).
-- `moon run velvet-ballastics:miri` — FAIL. The original proptest failure-persistence/getcwd issue did not recur; Miri progressed and failed later in `vb_validate` with assertion failures in `gate_08_accessor::tests::proptest_gate_08_reports_first_invalid_accessor_with_root_precedence` and `gates::tests::gate_08_accepts_valid_accessor`. Full output: `/home/lewis/.local/share/opencode/tool-output/tool_e0fd5ca21001HsuZp4cMN4EGFv`.
+- `moon run velvet-ballistics:miri` — FAIL. The original proptest failure-persistence/getcwd issue did not recur; Miri progressed and failed later in `vb_validate` with assertion failures in `gate_08_accessor::tests::proptest_gate_08_reports_first_invalid_accessor_with_root_precedence` and `gates::tests::gate_08_accepts_valid_accessor`. Full output: `/home/lewis/.local/share/opencode/tool-output/tool_e0fd5ca21001HsuZp4cMN4EGFv`.
 
 Normal proptest coverage preservation: the repair only sets `failure_persistence: None` for this existing `proptest!` block. It does not skip or reduce generated cases, ranges, assertions, or normal non-Miri execution; it only disables writing persisted failure files.
 

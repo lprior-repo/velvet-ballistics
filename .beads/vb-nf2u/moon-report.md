@@ -6,7 +6,7 @@ Status: PASS
 
 ## Commands Verified By Orchestrator
 
-1. `moon run velvet-ballastics:miri`
+1. `moon run velvet-ballistics:miri`
    - Result: PASS
    - Summary: `Tasks: 1 completed`; `908 passed; 0 failed`
    - Captured output: `/home/lewis/.local/share/opencode/tool-output/tool_e0fe7c913001HIH97CgzagWnX2`
@@ -21,7 +21,7 @@ Status: PASS
 
 - Plain `moon ci` and `moon ci --force` were not usable in this JJ isolated workspace because Moon attempted affected-file detection against Git ref `main`, which is a JJ bookmark here rather than a Git ref visible to Moon.
 - The effective full gate command is therefore `moon ci --base HEAD --head HEAD`.
-- Pre-existing warnings remain about duplicate `velvet_ballastics` bin target paths and duplicate Makepad `bitflags`, but the Moon CI gate passed.
+- Pre-existing warnings remain about duplicate `velvet_ballistics` bin target paths and duplicate Makepad `bitflags`, but the Moon CI gate passed.
 - Prior State 8 repair reports remain under `.beads/vb-nf2u/state8-*-repair.md` for formatting, supply-chain, lint-src, Miri, Gate 08 Miri behavior, and xtask test repair.
 
 ## Post-State 10 Reverification
@@ -35,7 +35,7 @@ Repair artifact:
 
 Orchestrator verification after repair:
 
-1. `moon run velvet-ballastics:supply-chain`
+1. `moon run velvet-ballistics:supply-chain`
    - Result: PASS
    - Run as the first part of the combined command below.
 
@@ -109,7 +109,7 @@ Repair artifact:
 - Key repairs: typed/provenance-derived subgate outcomes for positive `ai-release` evidence, fail-closed missing/malformed required negative fixtures, typed test-domain parsing in acceptance checks, trusted checked `Rect` layout boundary type, and split pure domain validation/calculation from artifact writers.
 
 Orchestrator verification after repair:
-- Command: `cargo nextest run -p velvet-ballastics-workspace --test vb_nf2u_ui_release_acceptance && cargo nextest run -p vb_ui_snapshot -p xtask && cargo kani -p vb_ui_snapshot --harness inventory && cargo kani -p vb_ui_snapshot --harness layout_ && moon run :verify-all && moon ci --base HEAD --head HEAD`
+- Command: `cargo nextest run -p velvet-ballistics-workspace --test vb_nf2u_ui_release_acceptance && cargo nextest run -p vb_ui_snapshot -p xtask && cargo kani -p vb_ui_snapshot --harness inventory && cargo kani -p vb_ui_snapshot --harness layout_ && moon run :verify-all && moon ci --base HEAD --head HEAD`
 - Result: PASS
 - Final Moon CI summary: `Tasks: 20 completed (2 cached)`
 - Duration: `10m 37s 523ms`
@@ -128,7 +128,7 @@ Repair artifact:
 - Key repairs: provenance-bearing outcome constructors for screen/check/subgate rows, typed parsing of `negative-fixtures.txt` in acceptance tests, required function splits below 25 lines, typed `LayoutKernelResult`/`LayoutKernelError`/selection enums, and removal of cited neutral `unwrap_or` / `unwrap_or_else(Rect::unit)` defaults.
 
 Orchestrator verification after repair:
-- Command: `cargo nextest run -p velvet-ballastics-workspace --test vb_nf2u_ui_release_acceptance && cargo nextest run -p vb_ui_snapshot -p xtask && cargo kani -p vb_ui_snapshot --harness inventory && cargo kani -p vb_ui_snapshot --harness layout_ && moon run :verify-all && moon ci --base HEAD --head HEAD`
+- Command: `cargo nextest run -p velvet-ballistics-workspace --test vb_nf2u_ui_release_acceptance && cargo nextest run -p vb_ui_snapshot -p xtask && cargo kani -p vb_ui_snapshot --harness inventory && cargo kani -p vb_ui_snapshot --harness layout_ && moon run :verify-all && moon ci --base HEAD --head HEAD`
 - Result: PASS
 - Final Moon CI summary: `Tasks: 20 completed (2 cached)`
 - Duration: `9m 57s 607ms`
@@ -147,7 +147,7 @@ Repair artifact:
 - Key repairs: artifact-byte-derived screen digests/capture facts, typed `UiReleaseDocument` validation before writing, layout predicates executed through `vb_ui_snapshot::layout_kernel`, typed deterministic capture state (`HiddenAnimationState`, `ClockSource`, `CaptureTimestamp`), fail-closed required negative fixture `actual_status`, explicit `FixtureValue::Present/NotApplicable`, and cited oversized functions split below 25 lines.
 
 Orchestrator verification after repair:
-- Command: `rm -rf "target/vb-nf2u-negative-fixtures" && if cargo xtask ai-release --bead vb-nf2u; then exit 64; else true; fi && cargo nextest run -p velvet-ballastics-workspace --test vb_nf2u_ui_release_acceptance && cargo nextest run -p vb_ui_snapshot -p xtask && cargo kani -p vb_ui_snapshot --harness inventory && cargo kani -p vb_ui_snapshot --harness layout_ && moon run :verify-all && moon ci --base HEAD --head HEAD`
+- Command: `rm -rf "target/vb-nf2u-negative-fixtures" && if cargo xtask ai-release --bead vb-nf2u; then exit 64; else true; fi && cargo nextest run -p velvet-ballistics-workspace --test vb_nf2u_ui_release_acceptance && cargo nextest run -p vb_ui_snapshot -p xtask && cargo kani -p vb_ui_snapshot --harness inventory && cargo kani -p vb_ui_snapshot --harness layout_ && moon run :verify-all && moon ci --base HEAD --head HEAD`
 - Result: PASS, including the expected fail-closed missing-fixture precheck.
 - Final Moon CI summary: `Tasks: 20 completed (2 cached)`
 - Duration: `11m 52s 497ms`
@@ -168,7 +168,7 @@ Repair artifact:
 
 Orchestrator verification after repair:
 - Initial fail-closed checks were independently confirmed: unknown bead IDs fail before evidence generation, and missing `target/vb-nf2u-negative-fixtures` makes `cargo xtask ai-release --bead vb-nf2u` fail non-zero.
-- Command after fixture setup: `cargo nextest run -p velvet-ballastics-workspace --test vb_nf2u_ui_release_acceptance && cargo xtask ai-release --bead vb-nf2u && cargo nextest run -p vb_ui_snapshot -p xtask && cargo kani -p vb_ui_snapshot --harness inventory && cargo kani -p vb_ui_snapshot --harness layout_ && moon run :verify-all && moon ci --base HEAD --head HEAD`
+- Command after fixture setup: `cargo nextest run -p velvet-ballistics-workspace --test vb_nf2u_ui_release_acceptance && cargo xtask ai-release --bead vb-nf2u && cargo nextest run -p vb_ui_snapshot -p xtask && cargo kani -p vb_ui_snapshot --harness inventory && cargo kani -p vb_ui_snapshot --harness layout_ && moon run :verify-all && moon ci --base HEAD --head HEAD`
 - Result: PASS
 - Final Moon CI summary: `Tasks: 20 completed (2 cached)`
 - Duration: `16m 6s 713ms`
@@ -194,7 +194,7 @@ Subagent verification evidence:
 - `cargo nextest run -p vb_ui_snapshot -p xtask`: PASS 130/130.
 - Kani inventory/layout: PASS with non-zero harnesses.
 - `moon run :verify-all`: PASS, output `/home/lewis/.local/share/opencode/tool-output/tool_e11947cdb001XOz0xjj2cVITPl`.
-- `moon run velvet-ballastics:miri`: PASS, output `/home/lewis/.local/share/opencode/tool-output/tool_e11b06b05001tXWyOVVjO6tRIR`.
+- `moon run velvet-ballistics:miri`: PASS, output `/home/lewis/.local/share/opencode/tool-output/tool_e11b06b05001tXWyOVVjO6tRIR`.
 - `moon ci --base HEAD --head HEAD`: PASS, `Tasks: 20 completed (1 cached)`, output `/home/lewis/.local/share/opencode/tool-output/tool_e11b7219e001QUcX4AlC43jlPy`.
 
 Residual notes:

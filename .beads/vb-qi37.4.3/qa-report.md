@@ -13,25 +13,25 @@ STATUS: PASS
 Tasks: 19 completed (2 cached), 0 failed
 Time: 52s 711ms
 ```
-- `velvet-ballastics:test`: 8015/8015 nextest tests passed
-- `velvet-ballastics:lint-src`: PASS
-- `velvet-ballastics:fmt`: PASS
-- `velvet-ballastics:check`: PASS
-- `velvet-ballastics:feature-powerset`: PASS
-- `velvet-ballastics:source-length`: PASS
-- `velvet-ballastics:nightly-feature-gate`: PASS
-- `velvet-ballastics:nightly-feature-cargo-probe`: PASS
-- `velvet-ballastics:hardened-build`: PASS
-- `velvet-ballastics:maxperf`: PASS
-- `velvet-ballastics:maxperf-native`: PASS
-- `velvet-ballastics:coverage`: PASS
-- `velvet-ballastics:doc`: PASS
-- `velvet-ballastics:doc-test`: PASS
-- `velvet-ballastics:miri`: PASS
-- `velvet-ballastics:mutants-smoke`: 1 mutant tested, 1 caught
-- `velvet-ballastics:bench-build`: PASS
-- `velvet-ballastics:fuzz-smoke`: PASS
-- `velvet-ballastics:agent-cli-contract`: cached
+- `velvet-ballistics:test`: 8015/8015 nextest tests passed
+- `velvet-ballistics:lint-src`: PASS
+- `velvet-ballistics:fmt`: PASS
+- `velvet-ballistics:check`: PASS
+- `velvet-ballistics:feature-powerset`: PASS
+- `velvet-ballistics:source-length`: PASS
+- `velvet-ballistics:nightly-feature-gate`: PASS
+- `velvet-ballistics:nightly-feature-cargo-probe`: PASS
+- `velvet-ballistics:hardened-build`: PASS
+- `velvet-ballistics:maxperf`: PASS
+- `velvet-ballistics:maxperf-native`: PASS
+- `velvet-ballistics:coverage`: PASS
+- `velvet-ballistics:doc`: PASS
+- `velvet-ballistics:doc-test`: PASS
+- `velvet-ballistics:miri`: PASS
+- `velvet-ballistics:mutants-smoke`: 1 mutant tested, 1 caught
+- `velvet-ballistics:bench-build`: PASS
+- `velvet-ballistics:fuzz-smoke`: PASS
+- `velvet-ballistics:agent-cli-contract`: cached
 
 Output: `/home/lewis/.local/share/opencode/tool-output/tool_e1a0e953600105TFc0VD4L4qQz`
 
@@ -52,7 +52,7 @@ Parent commit (@-): lxwyustn c9939431 main | landing: merge landable vb-jkrk wav
 | `moon-report.md` | `moon ci` PASS after rebase repair |
 | `regression-diff.md` | No `BLOCK_RELEASE`/`BLOCK_LOCAL`; downstream State 8 green |
 | `architectural-drift-review.md` | `STATUS: REFACTORED`; line-count blocker removed |
-| `delivery-scope.jsonl` | Scoped crates: vb_runtime, vb_storage, velvet_ballastics |
+| `delivery-scope.jsonl` | Scoped crates: vb_runtime, vb_storage, velvet_ballistics |
 
 ## QA Gates
 

@@ -19,7 +19,7 @@ updated_at: 2026-05-12T00:00:00Z
 - N/A.
 
 ## Verus Scope
-- Rust targets: `crates/velvet_ballastics/src/commands_journal.rs::build_trace` and `trace_one`.
+- Rust targets: `crates/velvet_ballistics/src/commands_journal.rs::build_trace` and `trace_one`.
 - Spec/proof surface:
   - `build_trace`: pure function `events: &[JournalEvent]` -> `Vec<TraceEntry>`
   - `trace_one`: pure function `idx: usize, event: &JournalEvent` -> `TraceEntry`
@@ -30,7 +30,7 @@ updated_at: 2026-05-12T00:00:00Z
   - Event type coverage: all `JournalEvent` variants are covered by `trace_one`
 - Trusted boundary: `JournalEvent` enum variants are validated by the storage layer on write
 - Shell exclusions: I/O (journal read), CLI dispatch, output formatting, error reporting
-- Evidence command: `cargo test -p velvet_ballastics -- commands_journal` for unit tests
+- Evidence command: `cargo test -p velvet_ballistics -- commands_journal` for unit tests
 
 ## Waivers
 - None; Verus covers all pure Rust core clauses for this bead.

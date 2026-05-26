@@ -19,10 +19,10 @@ STATUS: APPROVED
 | Kani | `TMPDIR=target/tmp RUSTC_WRAPPER= cargo kani -p vb_runtime --harness yaml_e2e_admission_matrix` | 0 | `Complete - 1 successfully verified harnesses, 0 failures, 1 total`. 7 checks all SUCCESS. |
 | vb_storage | `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p vb_storage -- --nocapture` | 0 | `983 passed (7 suites, 30.95s)`. |
 | vb_runtime | `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p vb_runtime -- --nocapture` | 0 | `1460 passed (10 suites, 0.93s)`. |
-| CLI integration | `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet_ballastics --test cli_integration -- --nocapture` | 0 | `86 passed (1 suite, 0.50s)`. |
+| CLI integration | `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet_ballistics --test cli_integration -- --nocapture` | 0 | `86 passed (1 suite, 0.50s)`. |
 | Strict YAML tests | `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p vb_compile --test vb_core_yaml_e2e_chain_strict_yaml -- --nocapture` | 0 | `10 passed (1 suite, 0.00s)`. |
-| Contract tests | `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet-ballastics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture` | 0 | `35 passed (1 suite, 28.21s)`. |
-| Recovery test (corrected) | `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_1_1_red_recovery_contract_test -- --nocapture` | 0 | `19 passed (1 suite, 0.16s)`. proof-obligations.jsonl package name corrected. |
+| Contract tests | `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet-ballistics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture` | 0 | `35 passed (1 suite, 28.21s)`. |
+| Recovery test (corrected) | `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_1_1_red_recovery_contract_test -- --nocapture` | 0 | `19 passed (1 suite, 0.16s)`. proof-obligations.jsonl package name corrected. |
 
 ## FAIL_LOCAL Gates (code repair required)
 

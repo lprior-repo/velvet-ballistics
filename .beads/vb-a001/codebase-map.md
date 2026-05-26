@@ -164,11 +164,11 @@ cargo test -p vb_compile lower
 moon ci
 
 # Manual for_each run
-target/debug/velvet-ballastics run fuzz/corpus/vb_f04l_yaml_compiler_compile/for_each.yaml --input-bin /dev/null
-target/debug/velvet-ballastics compile --emit postcard --out /tmp/for_each.vbir fuzz/corpus/vb_f04l_yaml_compiler_compile/for_each.yaml
-target/debug/velvet-ballastics run-compiled /tmp/for_each.vbir --input-bin /dev/null
+target/debug/velvet-ballistics run fuzz/corpus/vb_f04l_yaml_compiler_compile/for_each.yaml --input-bin /dev/null
+target/debug/velvet-ballistics compile --emit postcard --out /tmp/for_each.vbir fuzz/corpus/vb_f04l_yaml_compiler_compile/for_each.yaml
+target/debug/velvet-ballistics run-compiled /tmp/for_each.vbir --input-bin /dev/null
 
 # Journal replay (when proven)
-target/debug/velvet-ballastics run for_each.yaml --input-bin list_input.bin --durability full --db /tmp/vb-journal
-target/debug/velvet-ballastics inspect /tmp/vb-journal
+target/debug/velvet-ballistics run for_each.yaml --input-bin list_input.bin --durability full --db /tmp/vb-journal
+target/debug/velvet-ballistics inspect /tmp/vb-journal
 ```

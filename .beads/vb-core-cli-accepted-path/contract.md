@@ -21,7 +21,7 @@
 - Dependency beads `vb-core-accepted-artifact-format`, `vb-core-atomic-admission`, and `vb-core-storage-artifact-store` are in progress; this contract treats their unresolved schema/atomicity details as blocking dependencies, not optional behavior.
 - The accepted artifact format must resolve the current gate-count mismatch noted in State 2: storage creates `gate_count=2`, runtime requires `REQUIRED_GATE_COUNT=15`.
 - `cmd_submit` is a durable acceptance operation: it must not emit or persist `RunAccepted` unless the accepted artifact and run header are already durably bound.
-- Legacy or helper paths such as `crates/velvet_ballastics/src/run.rs` are in scope if reachable from strict CLI modes.
+- Legacy or helper paths such as `crates/velvet_ballistics/src/run.rs` are in scope if reachable from strict CLI modes.
 
 ## Open Questions
 

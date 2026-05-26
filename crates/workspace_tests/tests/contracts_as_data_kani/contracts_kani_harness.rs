@@ -296,10 +296,7 @@ fn kani_schema_version_no_panic() {
                 parts.len()
             );
             for part in &parts {
-                assert!(
-                    !part.is_empty(),
-                    "Each semver component must be non-empty"
-                );
+                assert!(!part.is_empty(), "Each semver component must be non-empty");
                 assert!(
                     part.parse::<u32>().is_ok(),
                     "Each semver component must be a valid u32"
@@ -325,7 +322,10 @@ fn kani_schema_version_no_panic() {
         }
         Err(_) => {
             // Other error variants shouldn't be returned for schema_version
-            kani::assert(false, "parse_schema_version should not return other error types");
+            kani::assert(
+                false,
+                "parse_schema_version should not return other error types",
+            );
         }
     }
 }
@@ -338,18 +338,8 @@ fn kani_schema_version_no_panic() {
 fn kani_schema_version_rejects_malformed() {
     // Test cases: empty string, no dots, one dot, leading zeros, non-numeric
     let malformed_inputs = [
-        "",
-        "1.0",
-        "1.0.0.0",
-        "01.0.0",
-        "1.02.0",
-        "1.0.03",
-        "abc",
-        "1.abc.0",
-        "1.0.abc",
-        ".0.0",
-        "1..0",
-        "1.0.",
+        "", "1.0", "1.0.0.0", "01.0.0", "1.02.0", "1.0.03", "abc", "1.abc.0", "1.0.abc", ".0.0",
+        "1..0", "1.0.",
     ];
 
     for input in malformed_inputs {
@@ -484,10 +474,7 @@ fn kani_vet_exit_code() {
 
     // Postcondition: exit_code == 0 => Ok, non-zero => Err
     if exit_code == 0 {
-        assert!(
-            result.is_ok(),
-            "Exit code 0 should always return Ok"
-        );
+        assert!(result.is_ok(), "Exit code 0 should always return Ok");
     } else {
         assert!(
             result.is_err(),

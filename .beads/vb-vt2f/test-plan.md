@@ -84,7 +84,7 @@ These are no longer open questions; State 8 must bind tests to these public name
   - trace/journal/counter evidence contains the submitted run id and terminal finished event/class;
   - active run list excludes the terminal run;
   - no private shard/internal modules are imported as primary evidence.
-- Red/failing-first expectation before State 8: `cargo nextest run -p velvet-ballastics-workspace-tests --test vb_vt2f_direct_runtime_api_acceptance` fails with missing test target/file. After file creation, first red may be compile/API drift or assertion mismatch; output must name this test.
+- Red/failing-first expectation before State 8: `cargo nextest run -p velvet-ballistics-workspace-tests --test vb_vt2f_direct_runtime_api_acceptance` fails with missing test target/file. After file creation, first red may be compile/API drift or assertion mismatch; output must name this test.
 - Covers: PRE-001..PRE-005, POST-001, POST-003, POST-004, INV-001, INV-002, INV-004, INV-005, INV-006, WAIVER-TLA-VT2F-001, WAIVER-VERUS-VT2F-001, GATE-VT2F-001.
 
 ### SCN-VT2F-002 — inspect active and unknown runs
@@ -288,7 +288,7 @@ Minimum threshold: >=90% scoped mutation kill rate for changed workspace test/ca
 | PRE-003 | SCN-VT2F-001/003/004/005/006/008 | explicit ticks/action/ask/timer/shutdown | deterministic progress; no sleeps/network/IPC/YAML/JSON/HTTP | integration | direct API test file |
 | PRE-004 | all SCN-VT2F-001..010 | scenario metadata | test names/GWT/evidence target visible; failure output names mismatch | integration/catalog | direct API + catalog tests |
 | PRE-005 | SCN-VT2F-001/009 | relaxed vs strict submit policy | policy declaration matches asserted behavior | integration | direct API test file |
-| POST-001 | direct API suite | test target discovery | `cargo nextest run -p velvet-ballastics-workspace-tests --test vb_vt2f_direct_runtime_api_acceptance` exits 0 after implementation | integration | direct API test file |
+| POST-001 | direct API suite | test target discovery | `cargo nextest run -p velvet-ballistics-workspace-tests --test vb_vt2f_direct_runtime_api_acceptance` exits 0 after implementation | integration | direct API test file |
 | POST-002 | SCN-VT2F-010 | catalog row | target set to direct test file and deferral cleared | catalog integration | catalog src + catalog test |
 | POST-003 | all failure paths | intentionally failing mismatch or compile/API drift | nextest output names exact scenario/test and expected-vs-observed | integration | direct API test file |
 | POST-004 | SCN-VT2F-001 | deterministic finish workflow | exact terminal value, taint, terminal event/counter/snapshot | integration | direct API test file |
@@ -317,7 +317,7 @@ Minimum threshold: >=90% scoped mutation kill rate for changed workspace test/ca
 
 State 8 must capture red evidence before weakening or repairing assertions:
 
-1. Initial missing direct target evidence: `cargo nextest run -p velvet-ballastics-workspace-tests --test vb_vt2f_direct_runtime_api_acceptance` currently fails because no such test target exists. This is expected pre-State-8 red evidence.
+1. Initial missing direct target evidence: `cargo nextest run -p velvet-ballistics-workspace-tests --test vb_vt2f_direct_runtime_api_acceptance` currently fails because no such test target exists. This is expected pre-State-8 red evidence.
 2. Catalog red after expectation update: update catalog regression expectations first so `VB-BDD-CATALOG-004` still deferred causes failure, then update catalog row to make it green.
 3. API drift red: public names are resolved in this plan; if the checkout changes again, preserve compile failure or assertion failure evidence with exact missing symbol/behavior and route plan repair before weakening any oracle.
 4. Strict admission red: SCN-VT2F-009 must fail if strict raw direct submission succeeds. Do not invert the expectation to match permissive behavior; record master/code drift.
@@ -328,8 +328,8 @@ State 8 must capture red evidence before weakening or repairing assertions:
 Run from isolated workspace only:
 
 ```bash
-cargo nextest run -p velvet-ballastics-workspace-tests --test vb_vt2f_direct_runtime_api_acceptance
-cargo nextest run -p velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog
+cargo nextest run -p velvet-ballistics-workspace-tests --test vb_vt2f_direct_runtime_api_acceptance
+cargo nextest run -p velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog
 ```
 
 State 8 should not claim `moon ci` closure unless explicitly routed; State 11 owns `GATE-VT2F-001`. State 9 owns `.beads/vb-vt2f/test-review.md` public-surface audit after the State 8 file exists.

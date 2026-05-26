@@ -41,7 +41,7 @@ STATUS: PASS
 - `cargo xtask ai-release --bead vb-nf2u` — PASS.
 - `if cargo xtask ai-release --bead vb-nf2u-missing; then exit 64; else true; fi` — PASS; unknown bead fails closed.
 - `rm -rf "target/vb-nf2u-negative-fixtures" && if cargo xtask ai-release --bead vb-nf2u; then exit 64; else true; fi` — PASS; missing required fixture fails closed.
-- `cargo nextest run -p velvet-ballastics-workspace --test vb_nf2u_ui_release_acceptance` — PASS; 8/8 tests.
+- `cargo nextest run -p velvet-ballistics-workspace --test vb_nf2u_ui_release_acceptance` — PASS; 8/8 tests.
 - `cargo nextest run -p vb_ui_snapshot -p xtask` — PASS; 130/130 tests.
 - `cargo kani -p vb_ui_snapshot --harness inventory` — PASS; non-zero harness execution.
 - `cargo kani -p vb_ui_snapshot --harness layout_` — PASS; non-zero harness execution.
@@ -49,7 +49,7 @@ STATUS: PASS
 - `moon ci --base HEAD --head HEAD` — PASS; `Tasks: 20 completed (1 cached)`, output `/home/lewis/.local/share/opencode/tool-output/tool_e11b7219e001QUcX4AlC43jlPy`.
 - `rtk cargo fmt --all --check` — PASS.
 - `rtk cargo clippy -p vb_ui_snapshot -p xtask --tests --all-features -- -D warnings` — PASS; 0 errors, 2 warnings.
-- `moon run velvet-ballastics:miri` — PASS after adding `target/miri-tmp` workspace exclusion; output `/home/lewis/.local/share/opencode/tool-output/tool_e11b06b05001tXWyOVVjO6tRIR`.
+- `moon run velvet-ballistics:miri` — PASS after adding `target/miri-tmp` workspace exclusion; output `/home/lewis/.local/share/opencode/tool-output/tool_e11b06b05001tXWyOVVjO6tRIR`.
 
 ## Power-of-Ten / zero-panic rules affected
 

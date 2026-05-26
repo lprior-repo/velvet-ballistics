@@ -6,7 +6,7 @@ updated_at: 2026-05-09T00:00:00Z
 # Manual QA Smoke Report
 
 ## Target
-- Binary: `velvet-ballastics` (debug build)
+- Binary: `velvet-ballistics` (debug build)
 - Interface: CLI subcommand `cancel`
 - Test environment: /tmp/cancel-qa-db*
 
@@ -31,7 +31,7 @@ cancel <run_id> --db <path> [--reason <text>] [--json|--jsonl]
 
 ### OBSERVATION: Pre-existing `submit` command has Fjall lock bug
 - **Severity**: OBSERVATION (pre-existing, not introduced by this bead)
-- **Description**: `velvet-ballastics submit` opens the Fjall journal twice in the same process, causing `FjallError: Locked`
+- **Description**: `velvet-ballistics submit` opens the Fjall journal twice in the same process, causing `FjallError: Locked`
 - **Reproduction**: `submit workflow.yaml --input-bin input.bin --db /tmp/db --durability strict`
 - **Evidence**: `error opening journal at /tmp/cancel-qa-db4: fjall journal operation failed: FjallError: Locked`
 - **Impact**: Cannot test cancel on a live submitted run via CLI submit. Workaround: integration tests seed journal directly.

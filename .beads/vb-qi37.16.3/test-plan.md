@@ -90,7 +90,7 @@
 |-------|-------|-----------|
 | Unit / Calc | 14 | Pure functions: validate_ticket_attempt, record_retry_attempt, retry_is_available, retry_metadata_exists, retry_policy_after_action, ticket_with_retry_capacity, apply_error_handler, normalize_scheduled_ticket, advance_after_action_completion, find_error_handler_for_failure |
 | Integration | 10 | handle_action_failure with real journal + shard state; journal replay with in-memory journal; retry exhaustion with real RunState |
-| E2E | 2 | CLI `velvet-ballastics retry` command; full run lifecycle with retry |
+| E2E | 2 | CLI `velvet-ballistics retry` command; full run lifecycle with retry |
 | Static | 3 | clippy::forbidden-unsafe, no-unwrap on error paths, cargo-deny checks |
 
 **Rationale**: The Calc layer (unit) dominates because the core retry logic is pure functions operating on ActionTicket, RunState, and RetryPolicy with no I/O. Integration tests cover the stateful interactions (journal append, PC reset, frame mutations). E2E is minimal — two scenarios: CLI retry command and full run lifecycle. Static analysis catches unsafe code, panics, and dbg! usage at compile time.
@@ -588,23 +588,23 @@ Then: returns Err(RuntimeError::UnsupportedOperation { operation: "retry_attempt
 
 ## 9. Manual QA / BDD Expectations for Durable Retry
 
-### CLI E2E: `velvet-ballastics retry` command
+### CLI E2E: `velvet-ballistics retry` command
 
 **Given** a run in `Failed` state with retryable step S  
-**When** user runs `velvet-ballastics retry --run-id <id> --db <path>`  
+**When** user runs `velvet-ballistics retry --run-id <id> --db <path>`  
 **Then** the command returns exit code 0  
 **And** the run transitions from `Failed` back to `Running` at step S  
-**And** `velvet-ballastics status --run-id <id>` shows `Running`  
+**And** `velvet-ballistics status --run-id <id>` shows `Running`  
 
 **Given** a run in `Failed` state with non-retryable step S and no handler  
-**When** user runs `velvet-ballastics retry --run-id <id> --db <path>`  
+**When** user runs `velvet-ballistics retry --run-id <id> --db <path>`  
 **Then** the command returns exit code 1  
-**And** `velvet-ballastics status --run-id <id>` shows `Failed`  
+**And** `velvet-ballistics status --run-id <id>` shows `Failed`  
 
 **Given** a run in `Failed` state with exhausted retries (max_attempts reached)  
-**When** user runs `velvet-ballastics retry --run-id <id> --db <path>`  
+**When** user runs `velvet-ballistics retry --run-id <id> --db <path>`  
 **Then** the command returns exit code 1  
-**And** `velvet-ballastics status --run-id <id>` shows `Failed`  
+**And** `velvet-ballistics status --run-id <id>` shows `Failed`  
 
 ### CLI E2E: Journal replay after crash
 
@@ -634,7 +634,7 @@ Then: returns Err(RuntimeError::UnsupportedOperation { operation: "retry_attempt
 3. **Frame slot type coercion**: `write_failure_slot` writes `I64(step.get())`. Is there a test that slot E already contains a value of a different type? What happens if slot E is the same slot written by ActionCompleted?
    - **Resolution needed**: Confirm INV-004 holds even when error_slot == slot written by prior action. Add integration test for this collision case.
 
-4. **CLI integration test isolation**: Do `velvet-ballastics retry` E2E tests require a real database, or can they use an in-memory substitute? If real DB is required, how do we ensure CI stability?
+4. **CLI integration test isolation**: Do `velvet-ballistics retry` E2E tests require a real database, or can they use an in-memory substitute? If real DB is required, how do we ensure CI stability?
    - **Resolution needed**: Confirm test DB strategy for E2E tests. If real Fjall instance needed, add cleanup procedure.
 
 ---
@@ -673,7 +673,7 @@ Then: returns Err(RuntimeError::UnsupportedOperation { operation: "retry_attempt
 | handle_action_failure | `crates/vb_runtime/src/shard/lifecycle.rs` | integration |
 | journal replay idempotency | `crates/vb_runtime/src/journal/` | integration |
 | stale attempt rejection | `crates/vb_runtime/src/shard/lifecycle.rs` | integration |
-| CLI retry command | `crates/velvet_ballastics/tests/cli_integration.rs` | E2E |
+| CLI retry command | `crates/velvet_ballistics/tests/cli_integration.rs` | E2E |
 | full run lifecycle | `crates/vb_runtime/tests/` | E2E |
 
 ---

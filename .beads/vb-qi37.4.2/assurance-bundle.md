@@ -451,7 +451,7 @@ All 59 obligations have terminal status. 40 PASS with real evidence. 19 DEFERRED
 |---|---|---|---|
 | 21 strict admission tests | `cargo test --test vb_qi37_4_2_strict_runtime_admission` | 17 PASS, 4 DEFERRED_GLOBAL | Test suite covers B01-B16, P01-P05 |
 | Compile check | `cargo test --test vb_qi37_4_2_strict_runtime_admission --no-run` | PASS | Exit 0 |
-| Fuzz compile | `cargo check -p velvet-ballastics-fuzz --features fuzz --bin accepted_artifact_envelope_qi37_4_2` | PASS | Exit 0 |
+| Fuzz compile | `cargo check -p velvet-ballistics-fuzz --features fuzz --bin accepted_artifact_envelope_qi37_4_2` | PASS | Exit 0 |
 
 **DEFERRED_GLOBAL test failures** (4):
 1. B14 source inspection: `AlwaysPresentArtifactStore` impl exists in source checkout (outside bead scope)

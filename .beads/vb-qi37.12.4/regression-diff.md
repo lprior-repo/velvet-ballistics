@@ -8,7 +8,7 @@
 ## Regression Evidence
 
 - Direct gate passes with `NoViolationFound`.
-- Affected non-excluded packages pass: `vb_runtime`, `vb_ipc`, `vb_storage`, `velvet_ballastics` serial.
+- Affected non-excluded packages pass: `vb_runtime`, `vb_ipc`, `vb_storage`, `velvet_ballistics` serial.
 - `moon run :verify-standard` passes including Kani standard harnesses.
 
 ## Deferred Global Debt

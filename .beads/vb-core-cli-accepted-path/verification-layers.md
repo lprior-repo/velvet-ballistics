@@ -67,7 +67,7 @@
 - Parser/codec fuzzing: required if accepted artifact decode or strict direct compiled input parsing changes; current executable targets are `rustup run nightly-2026-04-28 cargo fuzz run admission_fuzz -- -runs=1000` and `rustup run nightly-2026-04-28 cargo fuzz run admission_flow -- -runs=1000`.
 - Miri: required for touched pure/storage codec paths if existing Moon lane supports it; otherwise formal-verifier records DEFERRED_GLOBAL for missing lane.
 - Mutation: required over typed admission errors and bypass rejection tests if cargo-mutants scope exists; bounded smoke evidence command is `moon run :mutants-smoke`, and deeper mutation scope must be planned by State 9/11 if touched code is outside the smoke slice.
-- API compatibility: required if public runtime constructors or CLI-facing APIs change; evidence command is `rustup run nightly-2026-04-28 cargo semver-checks check-release --package vb_runtime --baseline-rev origin/main && rustup run nightly-2026-04-28 cargo semver-checks check-release --package velvet_ballastics --baseline-rev origin/main`.
+- API compatibility: required if public runtime constructors or CLI-facing APIs change; evidence command is `rustup run nightly-2026-04-28 cargo semver-checks check-release --package vb_runtime --baseline-rev origin/main && rustup run nightly-2026-04-28 cargo semver-checks check-release --package velvet_ballistics --baseline-rev origin/main`.
 - Release provenance: release-critical bead requires supply-chain/release gate through `moon ci` or release gauntlet used by repository.
 
 ## State 3 to State 4/5 Proof ID Mapping

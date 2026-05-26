@@ -114,4 +114,4 @@ Proof is via 16 test obligations + 3 structural (compile) obligations.
 | UNWRAP/DEAD | `cargo clippy --workspace --lib --bins -- -D warnings` | 0 warnings |
 | UNIT tests | `cargo test --package vb_cli --lib commands_incident::tests` | 13 PASS, 0 FAIL |
 | INT tests | `cargo test --package vb_cli --test incident_integration` | 3 PASS, 0 FAIL |
-| QA | Manual `velvet-ballastics incident` run | No stack traces in any output |
+| QA | Manual `velvet-ballistics incident` run | No stack traces in any output |

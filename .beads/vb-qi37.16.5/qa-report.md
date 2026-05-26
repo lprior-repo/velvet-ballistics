@@ -21,7 +21,7 @@ All three mandatory QA gates pass with evidence.
 
 **Command:**
 ```bash
-rtk cargo test --package velvet_ballastics --test lifecycle_integration -- --test-threads=1
+rtk cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1
 ```
 
 **Evidence:**
@@ -60,10 +60,10 @@ moon run :test
 **Evidence:**
 ```
 velvet-ballistics:test | ────────────
-velvet-ballastics:test |  Nextest run ID 2401b1ab-e17b-4a2b-a1f5-dafd2af3d85e with nextest profile: default
-velvet-ballastics:test |     Starting 9894 tests across 59 binaries
-velvet-ballastics:test | ────────────
-velvet-ballastics:test |      Summary [  17.910s] 9894 tests run: 9894 passed, 0 skipped
+velvet-ballistics:test |  Nextest run ID 2401b1ab-e17b-4a2b-a1f5-dafd2af3d85e with nextest profile: default
+velvet-ballistics:test |     Starting 9894 tests across 59 binaries
+velvet-ballistics:test | ────────────
+velvet-ballistics:test |      Summary [  17.910s] 9894 tests run: 9894 passed, 0 skipped
 velvet-ballistics:test (19s 114ms, 63d0ad53)
 Tasks: 4 completed (1 cached)
  Time: 28s 186ms
@@ -120,7 +120,7 @@ Tasks: 4 completed (1 cached)
 
 | Gate | Command | Expected | Actual | Status |
 |------|---------|----------|--------|--------|
-| 1 | `rtk cargo test --package velvet_ballastics --test lifecycle_integration -- --test-threads=1` | 43 passed | 43 passed (0.66s) | **PASS** |
+| 1 | `rtk cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1` | 43 passed | 43 passed (0.66s) | **PASS** |
 | 2 | `moon run :quick` | PASS | Tasks: 1 completed (45s) | **PASS** |
 | 3 | `moon run :test` | 9894 passed | 9894 passed, 0 skipped (28s) | **PASS** |
 

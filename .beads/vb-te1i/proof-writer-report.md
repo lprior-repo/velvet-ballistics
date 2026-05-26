@@ -32,7 +32,7 @@ cd /home/lewis/src/vb-te1i-workspace && cargo test --package vb_ipc
 
 ### BDD Integration Tests (BDD-001..007)
 ```bash
-cd /home/lewis/src/vb-te1i-workspace && cargo test --package velvet-ballastics-workspace-tests --test vb_te1i_binary_ipc_acceptance
+cd /home/lewis/src/vb-te1i-workspace && cargo test --package velvet-ballistics-workspace-tests --test vb_te1i_binary_ipc_acceptance
 ```
 **Result**: `7 passed (1 suite, 0.00s)` — **PASS**
 

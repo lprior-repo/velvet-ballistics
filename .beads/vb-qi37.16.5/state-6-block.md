@@ -9,14 +9,14 @@ rerun_from: 6
 ## Verification Command
 
 ```bash
-rtk cargo test --package velvet_ballastics --test lifecycle_integration
+rtk cargo test --package velvet_ballistics --test lifecycle_integration
 ```
 
 ## Original Block (FIXED)
 
 All original compile errors have been resolved:
 
-1. ✅ E0433: `velvet_ballastics::lifecycle` module not found — FIXED (lib target exists)
+1. ✅ E0433: `velvet_ballistics::lifecycle` module not found — FIXED (lib target exists)
 2. ✅ `EventSeq::ZERO` missing — FIXED (constants added to vb_storage)
 3. ✅ `JournalEvent::{RunResumed, RunRetried, RunAnswered}` not handled exhaustively — FIXED (added to all match statements)
 
@@ -85,19 +85,19 @@ Tests are invalid per contract — they don't establish valid prior state.
 ## Files Modified
 
 ### Test File
-- `crates/velvet_ballastics/tests/lifecycle_integration.rs`
+- `crates/velvet_ballistics/tests/lifecycle_integration.rs`
 
 ### Production Code
-- `crates/velvet_ballastics/src/commands_ai_context.rs`
-- `crates/velvet_ballastics/src/vb.rs`
-- `crates/velvet_ballastics/src/commands_diff.rs`
-- `crates/velvet_ballastics/src/commands_journal.rs`
+- `crates/velvet_ballistics/src/commands_ai_context.rs`
+- `crates/velvet_ballistics/src/vb.rs`
+- `crates/velvet_ballistics/src/commands_diff.rs`
+- `crates/velvet_ballistics/src/commands_journal.rs`
 
 ## Evidence
 
 ```bash
 # Compilation succeeds
-rtk cargo test --package velvet_ballastics --test lifecycle_integration
+rtk cargo test --package velvet_ballistics --test lifecycle_integration
 # Result: 0 errors, 8 warnings
 
 # Tests fail at runtime (not compile time)

@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use proptest::prelude::*;
-use velvet_ballastics_workspace_tests::boundary_inventory::{
+use velvet_ballistics_workspace_tests::boundary_inventory::{
     BoundaryCandidate, BoundaryClass, BoundaryInventory, BoundaryInventoryError, BoundaryRecord,
     BoundaryRecordParts, EvidenceKind, EvidenceReference, EvidenceRequirement, FieldState,
     FreshnessMarker, Owner, ReviewStatus, ThreatStatement, WorkspaceRoot, classify_boundary,
@@ -33,7 +33,7 @@ fn source_for(class: &BoundaryClass) -> &'static str {
         BoundaryClass::Ipc => "crates/vb_ipc/src/frame.rs",
         BoundaryClass::ExternalBinary => "scripts/run-verifier.sh",
         BoundaryClass::Decoder => "crates/vb_yaml/src/decode.rs",
-        BoundaryClass::GeneratedCode => "crates/vb_codegen/src/generated/interface.rs",
+        BoundaryClass::GeneratedCode => "crates/vb_runtime/src/generated/interface.rs",
         BoundaryClass::UnsafeAdjacentDependency => "Cargo.toml",
         BoundaryClass::Unknown => "crates/unknown/src/lib.rs",
     }

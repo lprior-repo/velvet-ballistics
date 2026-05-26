@@ -849,8 +849,6 @@ pub open spec fn proof_digest_binding_rejects_mismatch(obs: SpecNormalizedObserv
 //  - verify_digests                        (digest computation/checking)
 //  - Runtime::submit_compiled_with_inputs  (workflow execution)
 //  - Runtime::inspect_run                  (run inspection)
-//  - compare_generated_to_ir                (generated vs IR parity check)
-//  - validate_generated_subset              (generated mode acceptance)
 //
 // Any change to the production implementation of these surfaces invalidates
 // this proof kernel unless the proof is re-run and re-approved.

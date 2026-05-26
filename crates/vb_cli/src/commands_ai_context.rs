@@ -483,28 +483,28 @@ pub(crate) fn suggested_ai_commands(
 ) -> Vec<String> {
     let db_arg = db.display();
     let base = vec![
-        format!("velvet-ballastics inspect {run_id} --db {db_arg} --emit yaml"),
-        format!("velvet-ballastics events {run_id} --db {db_arg} --emit yaml"),
+        format!("velvet-ballistics inspect {run_id} --db {db_arg} --emit yaml"),
+        format!("velvet-ballistics events {run_id} --db {db_arg} --emit yaml"),
     ];
     match status {
         RunStatus::Failed | RunStatus::Cancelled => base
             .into_iter()
             .chain([
-                format!("velvet-ballastics incident {run_id} --db {db_arg} --emit yaml"),
-                format!("velvet-ballastics retry {run_id} --db {db_arg} --emit yaml"),
+                format!("velvet-ballistics incident {run_id} --db {db_arg} --emit yaml"),
+                format!("velvet-ballistics retry {run_id} --db {db_arg} --emit yaml"),
             ])
             .collect(),
         RunStatus::Running => base
             .into_iter()
             .chain([
-                format!("velvet-ballastics trace {run_id} --db {db_arg} --emit yaml"),
-                format!("velvet-ballastics resume {run_id} --db {db_arg} --emit yaml"),
+                format!("velvet-ballistics trace {run_id} --db {db_arg} --emit yaml"),
+                format!("velvet-ballistics resume {run_id} --db {db_arg} --emit yaml"),
             ])
             .collect(),
         RunStatus::Finished => base
             .into_iter()
             .chain([format!(
-                "velvet-ballastics replay {run_id} --db {db_arg} --emit yaml"
+                "velvet-ballistics replay {run_id} --db {db_arg} --emit yaml"
             )])
             .collect(),
     }

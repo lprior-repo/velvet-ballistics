@@ -75,7 +75,7 @@ commit_or_change: db204639
 | given_raw_workflow_parts_when_strict_admission_runs_then_strict_raw_workflow_parts_rejected_error | moon ci | vb_2bok_durability_gate_tests.rs | PASS |
 | given_index_derivation_failure_when_strict_admission_runs_then_index_derivation_failed_error | moon ci | vb_2bok_durability_gate_tests.rs | PASS |
 | codec_miri_tests | cargo miri test | vb_2bok_durability_gate_tests.rs | PASS (20 tests) |
-| clippy strict gate | cargo clippy | vb_storage, vb_runtime, velvet_ballastics | PASS (no issues) |
+| clippy strict gate | cargo clippy | vb_storage, vb_runtime, velvet_ballistics | PASS (no issues) |
 
 ## Review Evidence
 

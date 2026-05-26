@@ -46,7 +46,7 @@ status: PASS
 - `tlc -config specs/admission_header_before_ack.cfg specs/admission_header_before_ack.tla`: exit=0; TLC 2.19 computed 6 initial states, generated 25 states, found 13 distinct states, checked 2 temporal branches, depth 3, and reported `Model checking completed. No error has been found.`
 - `verus verification/verus/admission_artifact_model.rs`: exit=0; `verification results:: 6 verified, 0 errors`.
 - `verus verification/verus/capability_artifact_model.rs`: exit=0; `verification results:: 8 verified, 0 errors`.
-- `moon run :verify-proof`: exit=0; Moon task `velvet-ballastics:verify-proof` ran configured Kani proof harnesses and reported `[PASS] All proof checks passed`.
+- `moon run :verify-proof`: exit=0; Moon task `velvet-ballistics:verify-proof` ran configured Kani proof harnesses and reported `[PASS] All proof checks passed`.
 
 ## Assumptions And Trusted Boundaries
 

@@ -34,7 +34,7 @@
 - `cargo nextest run --test vb_qi37_1_1_red_recovery_contract_test` initially failed on the known `crates/vb_storage/src/batch.rs` `[u8; 17]` vs `Vec<u8>` compile blocker.
 - `rtk cargo fmt --all && cargo nextest run --test vb_qi37_1_1_red_recovery_contract_test` compiled and ran 19 tests: 14 passed, 5 failed. Remaining failures are contradictory red-fixture assertions around missing/corrupt value taint flags, supported seed hydration expecting failure, and a local constant `JournalWriterFlushReport { drained: 3, written: 0 }` expecting equality with `{ drained: 3, written: 3 }`.
 - `rtk cargo test --test vb_qi37_1_1_red_recovery_contract_test --no-run && cargo bench --bench vb_qi37_1_1_recovery --no-run` passed; red test and bench scaffold compile.
-- `rtk cargo test -p velvet-ballastics-fuzz --bin recover_runtime_frame_seed_contract --no-run` passed after registering the fuzz binary.
+- `rtk cargo test -p velvet-ballistics-fuzz --bin recover_runtime_frame_seed_contract --no-run` passed after registering the fuzz binary.
 - `rtk cargo fmt --all -- --check && rtk cargo clippy -p vb_storage -p vb_runtime --lib -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro` completed with no clippy errors reported by rtk.
 - **State 6 re-run**: After fixing `slot_values_unsupported()` and `union()` in `crates/vb_storage/src/recovery/types.rs`, tests pass: `corrupt_slot_value_blocks_both_values_and_taint` and `missing_slot_value_blocks_both_values_and_taint` now pass. 3 test bugs were fixed:
   - `drain_report_contract_requires_three_drained_and_three_written`: Rewrote to call actual `queue.drain_all()` with 3 enqueued events instead of comparing a local struct with wrong `written: 0`.
@@ -55,7 +55,7 @@
 - `crates/vb_storage/src/batch.rs`
 - `crates/vb_storage/src/recovery/replay/summary.rs`
 - `crates/vb_storage/src/recovery/types.rs`
-- `benches/velvet_ballastics.rs`
+- `benches/velvet_ballistics.rs`
 - `tests/vb_qi37_1_1_red_recovery_contract_test.rs`
 - `.beads/vb-qi37.1.1/implementation.md`
 

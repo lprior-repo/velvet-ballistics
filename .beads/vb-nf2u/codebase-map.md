@@ -24,7 +24,7 @@ The release-gate target is not yet fully implemented: the eight-screen fixture i
 - `/home/lewis/src/Velvet-ballistics-vb-nf2u-go/xtask/tests/integration_gates.rs` — generic `ai-fast`/`ai-deep`/`ai-release` evidence tests; no UI-specific release-gate assertions found.
 - `/home/lewis/src/Velvet-ballistics-vb-nf2u-go/design/reference/` — reference board and eight reference screenshots.
 - `/home/lewis/src/Velvet-ballistics-vb-nf2u-go/design/reference/figma_makepad_notes.md` — states eight 1920x1080 screens, fixed shell dimensions, no overlaps, and Makepad animation cue guidance.
-- `/home/lewis/src/Velvet-ballistics-vb-nf2u-go/velvet_ballastics_makepad_ui_master_plan_with_images/velvet-ballastics-MASTER-makepad-ui-update.md` — non-authoritative UI plan mirror with snapshot requirements and UI acceptance commands.
+- `/home/lewis/src/Velvet-ballistics-vb-nf2u-go/velvet_ballistics_makepad_ui_master_plan_with_images/velvet-ballistics-MASTER-makepad-ui-update.md` — non-authoritative UI plan mirror with snapshot requirements and UI acceptance commands.
 
 ## 3. Existing UI snapshot/overlap/redaction commands, xtask entrypoints, tests, fixtures, generated artifacts
 

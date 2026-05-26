@@ -28,7 +28,7 @@ Result:
 ```text
 Tasks: 19 completed
 Time: 2m 56s 724ms
-velvet-ballastics:test: 8003 tests run: 8003 passed, 0 skipped
+velvet-ballistics:test: 8003 tests run: 8003 passed, 0 skipped
 ```
 
 Full output capture:

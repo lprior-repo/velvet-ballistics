@@ -101,7 +101,7 @@ evidence/integration-test-plan.md
 ├── PO-032: vb_compile::api_compilation.rs:51 validate_with_contracts
 ├── PO-033: vb_compile::schema.rs:651 validate
 ├── PO-034: vb_compile::types.rs:155 validate
-├── PO-035: velvet_ballastics::commands_verify.rs:76 validate
+├── PO-035: velvet_ballistics::commands_verify.rs:76 validate
 └── PO-036: fuzz::lib.rs:40,60 validate_with_contracts
 ```
 

@@ -1,4 +1,4 @@
-//! Workflow execution helpers for velvet-ballastics.
+//! Workflow execution helpers for velvet-ballistics.
 #![forbid(unsafe_code)]
 
 use crate::args::DurabilityMode;

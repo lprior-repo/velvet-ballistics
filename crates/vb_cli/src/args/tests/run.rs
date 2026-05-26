@@ -6,7 +6,7 @@ use crate::args::{Command, DurabilityMode, OutputFormat, ParseError, StepTarget,
 #[test]
 fn parse_run_accepts_journaled_mode_with_db() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "run",
         "workflow.yaml",
         "--input-bin",
@@ -36,7 +36,7 @@ fn parse_run_accepts_journaled_mode_with_db() {
 #[test]
 fn parse_run_accepts_strict_mode_with_db() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "run",
         "workflow.yaml",
         "--input-bin",
@@ -57,7 +57,7 @@ fn parse_run_accepts_strict_mode_with_db() {
 #[test]
 fn parse_run_none_mode_keeps_db_optional() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "run",
         "workflow.yaml",
         "--input-bin",
@@ -76,7 +76,7 @@ fn parse_run_none_mode_keeps_db_optional() {
 #[test]
 fn parse_run_none_mode_can_still_accept_db() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "run",
         "workflow.yaml",
         "--input-bin",
@@ -97,7 +97,7 @@ fn parse_run_none_mode_can_still_accept_db() {
 #[test]
 fn parse_run_accepts_emit_yaml() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "run",
         "workflow.yaml",
         "--input-bin",
@@ -117,7 +117,7 @@ fn parse_run_accepts_emit_yaml() {
 #[test]
 fn parse_run_without_step_flags_produces_none_step() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "run",
         "workflow.yaml",
         "--input-bin",
@@ -135,7 +135,7 @@ fn parse_run_without_step_flags_produces_none_step() {
 #[test]
 fn parse_run_step_requires_step_input() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "run",
         "workflow.yaml",
         "--input-bin",
@@ -154,7 +154,7 @@ fn parse_run_step_requires_step_input() {
 #[test]
 fn parse_run_with_step_flags() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "run",
         "workflow.yaml",
         "--input-bin",
@@ -180,7 +180,7 @@ fn parse_run_with_step_flags() {
 #[test]
 fn parse_run_rejects_unknown_durability_with_exact_variant() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "run",
         "workflow.yaml",
         "--input-bin",
@@ -197,7 +197,7 @@ fn parse_run_rejects_unknown_durability_with_exact_variant() {
 #[test]
 fn parse_run_rejects_missing_input_bin() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "run",
         "workflow.yaml",
         "--durability",
@@ -212,7 +212,7 @@ fn parse_run_rejects_missing_input_bin() {
 #[test]
 fn parse_run_rejects_missing_durability() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "run",
         "workflow.yaml",
         "--input-bin",
@@ -237,7 +237,7 @@ fn step_target_holds_step_id_and_path() {
 #[test]
 fn parse_run_compiled_requires_workflow_and_input_bin_and_durability() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "run-compiled",
         "workflow.vbir",
         "--input-bin",
@@ -266,7 +266,7 @@ fn parse_run_compiled_requires_workflow_and_input_bin_and_durability() {
 #[test]
 fn parse_run_compiled_requires_db_for_strict_mode() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "run-compiled",
         "workflow.vbir",
         "--input-bin",
@@ -283,7 +283,7 @@ fn parse_run_compiled_requires_db_for_strict_mode() {
 #[test]
 fn parse_run_compiled_accepts_journaled_mode_with_db() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "run-compiled",
         "workflow.vbir",
         "--input-bin",
@@ -304,7 +304,7 @@ fn parse_run_compiled_accepts_journaled_mode_with_db() {
 #[test]
 fn parse_submit_requires_workflow_input_bin_db_durability() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "submit",
         "workflow.yaml",
         "--input-bin",
@@ -335,7 +335,7 @@ fn parse_submit_requires_workflow_input_bin_db_durability() {
 #[test]
 fn parse_submit_rejects_unknown_durability() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "submit",
         "workflow.yaml",
         "--input-bin",
@@ -354,7 +354,7 @@ fn parse_submit_rejects_unknown_durability() {
 #[test]
 fn parse_ipc_serve_requires_socket_and_db() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "ipc-serve",
         "--socket",
         "/tmp/vb.sock",
@@ -372,7 +372,7 @@ fn parse_ipc_serve_requires_socket_and_db() {
 #[test]
 fn parse_ipc_serve_rejects_missing_socket() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "ipc-serve",
         "--db",
         "test-db",
@@ -386,7 +386,7 @@ fn parse_ipc_serve_rejects_missing_socket() {
 #[test]
 fn parse_run_rejects_unknown_flag() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "run",
         "workflow.yaml",
         "--input-bin",

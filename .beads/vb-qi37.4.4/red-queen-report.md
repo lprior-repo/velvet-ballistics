@@ -5,7 +5,7 @@
 ### Adversarial QA Scope
 - Contract: admission durability errors (POST-001, POST-002, INV-001)
 - Error taxonomy verification: 5 admission variants
-- Post-refactor touched files: `crates/vb_runtime/src/error/*`, `crates/velvet_ballastics/tests/admission_durability_code.rs`
+- Post-refactor touched files: `crates/vb_runtime/src/error/*`, `crates/velvet_ballistics/tests/admission_durability_code.rs`
 
 ### Command Evidence
 
@@ -29,14 +29,14 @@ rtk cargo test -p vb_runtime duplicate_run_id_preserves_stable_diagnostic_code
 
 **API envelope test:**
 ```
-rtk cargo test -p velvet_ballastics --test admission_durability_code
+rtk cargo test -p velvet_ballistics --test admission_durability_code
 => 1 passed
 ```
 
 **Full suite:**
 ```
 rtk cargo test -p vb_runtime --lib => 1316 passed
-rtk cargo test -p velvet_ballastics => 351 passed
+rtk cargo test -p velvet_ballistics => 351 passed
 moon run :quick => completed
 ```
 

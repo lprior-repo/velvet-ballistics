@@ -37,8 +37,8 @@ next_state: complete
 
 ## Historical baseline finding
 
-- Earlier source read before repair found `crates/velvet_ballastics/src/exit_code.rs` with `CliExitCode::DomainError = 9` and tests asserting 9.
-- Command: `TMPDIR="/home/lewis/src/vb-qi37-13-r2/target/tmp" RUSTC_WRAPPER= cargo test -p velvet_ballastics exit_code::tests::discriminant_values_match_spec -- --exact`
+- Earlier source read before repair found `crates/velvet_ballistics/src/exit_code.rs` with `CliExitCode::DomainError = 9` and tests asserting 9.
+- Command: `TMPDIR="/home/lewis/src/vb-qi37-13-r2/target/tmp" RUSTC_WRAPPER= cargo test -p velvet_ballistics exit_code::tests::discriminant_values_match_spec -- --exact`
 - Result at that time: PASS, 1 test passed. State 5 attempt 2 repair evidence below supersedes this historical baseline and confirms public exit 9 is now removed.
 
 ## Retry counters
@@ -56,8 +56,8 @@ next_state: complete
 - State 2 search evidence included `args.rs`, `exit_code.rs`, `main.rs`, `cli_postcard.rs`, `verification/verus/diagnostic_envelope_verus.rs`, and `fuzz/Cargo.toml` / `fuzz/fuzz_targets.rs`.
 - State 3 produced contract/type/proof-obligation artifacts and JSONL parsed successfully.
 - State 4 produced proof strategy, proof review input, and planned proof obligations.
-- State 5 repair attempt 2 validated public exit-code source/proof parity: no `CliExitCode::DomainError = 9`, `ExitCode::from(9u8)`, stale `0_to_9`, or public `<= 9` proof remains in `crates/velvet_ballastics/src/exit_code.rs` or `verification/verus/diagnostic_envelope_verus.rs`.
-- State 5 command `TMPDIR="/home/lewis/src/vb-qi37-13-r2/target/tmp" RUSTC_WRAPPER= cargo test -p velvet_ballastics exit_code --all-features` passed.
+- State 5 repair attempt 2 validated public exit-code source/proof parity: no `CliExitCode::DomainError = 9`, `ExitCode::from(9u8)`, stale `0_to_9`, or public `<= 9` proof remains in `crates/velvet_ballistics/src/exit_code.rs` or `verification/verus/diagnostic_envelope_verus.rs`.
+- State 5 command `TMPDIR="/home/lewis/src/vb-qi37-13-r2/target/tmp" RUSTC_WRAPPER= cargo test -p velvet_ballistics exit_code --all-features` passed.
 - State 5 command `verus verification/verus/diagnostic_envelope_verus.rs` passed with `verification results:: 4 verified, 0 errors`.
 - State 5 command `TMPDIR="/home/lewis/src/vb-qi37-13-r2/target/tmp" RUSTC_WRAPPER= cargo test -p vb_ui_model --all-features postcard` passed with 8 postcard tests.
 - State 5 command `TMPDIR="/home/lewis/src/vb-qi37-13-r2/target/tmp" RUSTC_WRAPPER= cargo run --manifest-path fuzz/Cargo.toml --features fuzz --bin vb_ui_model_postcard_decode -- < /dev/null` passed.
@@ -101,7 +101,7 @@ State 5 proof-writer/evidence alignment returned `STATUS: REPAIRED` against the 
 
 State 7 test-planner produced `test-plan.md` and State 8 test-writer produced CLI/postcard red-phase tests. State 9 initial review rejected assertion strength only; State 8 repaired exact diagnostic message assertions and one-line JSONL envelope assertions. State 9 rerun now says `STATUS: APPROVED`, finding count 0. Remaining failures are legitimate implementation-owned red phase: four CLI structured diagnostic cases still emit plain text/help instead of `DiagnosticReport` JSON/JSONL stderr envelopes.
 
-State 10 implementation completed: `STATUS: PASS`. `crates/velvet_ballastics/src/main.rs` now captures `--json` / `--jsonl` before parsing and emits structured `DiagnosticReport` JSON/JSONL parse diagnostics to stderr while preserving text-mode help diagnostics. Evidence passed: CLI structured reconciliation 6/6, postcard 12/12, exit-code tests, Verus diagnostic proof, `velvet_ballastics` clippy, and package fmt.
+State 10 implementation completed: `STATUS: PASS`. `crates/velvet_ballistics/src/main.rs` now captures `--json` / `--jsonl` before parsing and emits structured `DiagnosticReport` JSON/JSONL parse diagnostics to stderr while preserving text-mode help diagnostics. Evidence passed: CLI structured reconciliation 6/6, postcard 12/12, exit-code tests, Verus diagnostic proof, `velvet_ballistics` clippy, and package fmt.
 
 State 11 formal-verifier approved. Ledger counts: PASS 9, FAIL_LOCAL 0, FAIL_REGRESSION 0, WAIVED 0, DEFERRED_GLOBAL 0. Required commands passed: Verus diagnostic, exit-code tests/static no-9 scan, CLI structured reconciliation 6/6, postcard 12/12, GNU-target fuzz, child evidence reconciliation, command matrix, clippy/fmt gates.
 

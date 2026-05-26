@@ -14,7 +14,7 @@ vars == <<artifact_state, durable_records, ack_state, proof_gates>>
 TypeOK ==
   /\ artifact_state \in {"source", "validated", "compiled", "accepted_artifact",
                         "verified", "persisted"}
-  /\ durable_records \subseteq Records
+  /\ durable_records \subseteq RequiredRecords
   /\ ack_state \in {"pending", "acked", "failed"}
   /\ proof_gates \subseteq Gates
 

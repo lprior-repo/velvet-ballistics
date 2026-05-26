@@ -4,12 +4,12 @@ Post-repair final manual QA rerun:
 
 Command:
 ```bash
-rtk cargo run -p velvet_ballastics --bin vb -- status --emit yaml
+rtk cargo run -p velvet_ballistics --bin vb -- status --emit yaml
 ```
 
 Observed output:
 ```text
-schema_version: velvet-ballastics/cli-output/v1
+schema_version: velvet-ballistics/cli-output/v1
 kind: status
 status: running
 running: true
@@ -27,6 +27,6 @@ step_budget_per_tick: 1000
 runtime_policy: Strict
 ```
 
-Final command: `rtk cargo run -p velvet_ballastics --bin vb -- status --emit yaml`
+Final command: `rtk cargo run -p velvet_ballistics --bin vb -- status --emit yaml`
 
-Output included `schema_version: velvet-ballastics/v1`, `kind: status`, and `status: running`; command completed successfully.
+Output included `schema_version: velvet-ballistics/v1`, `kind: status`, and `status: running`; command completed successfully.

@@ -29,7 +29,7 @@ STATUS: COMPLETE
 ## Raw command evidence
 
 - `rtk cargo test --package vb_core --lib budget::vb_qi37_2_4_state8_tests -- --nocapture` => `cargo test: 9 passed, 1521 filtered out (1 suite, 0.02s)`
-- `rtk cargo test --package velvet-ballastics-workspace-tests --test vb_qi37_2_4_integration_budget_errors -- --nocapture` => `cargo test: 47 passed (1 suite, 0.00s)`
+- `rtk cargo test --package velvet-ballistics-workspace-tests --test vb_qi37_2_4_integration_budget_errors -- --nocapture` => `cargo test: 47 passed (1 suite, 0.00s)`
 
 ## Holzman reference files used
 

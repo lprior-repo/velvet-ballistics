@@ -39,7 +39,7 @@
 |---|---|---|---|---|---|
 | UNIT-001..010 | cargo test | `cargo test --package vb_ipc` | verification-ledger.jsonl | PASS | None |
 | STATIC-001 | cargo clippy | `cargo clippy --package vb_ipc --lib --bins --examples -- -D warnings` | verification-ledger.jsonl | PASS | None |
-| BDD-001..007 | cargo test | `cargo test --package velvet-ballastics-workspace-tests --test vb_te1i_binary_ipc_acceptance` | verification-ledger.jsonl | PASS | None |
+| BDD-001..007 | cargo test | `cargo test --package velvet-ballistics-workspace-tests --test vb_te1i_binary_ipc_acceptance` | verification-ledger.jsonl | PASS | None |
 | KAN-001 | cargo kani | `cargo kani --package vb_ipc` | proof-evidence.md | WAIVED | BLOCKED_TOOLING: Kani unavailable |
 | KAN-002 | cargo kani | `cargo kani --package vb_ipc` | proof-evidence.md | WAIVED | BLOCKED_TOOLING: Kani unavailable |
 | KAN-003 | cargo kani | `cargo kani --package vb_ipc` | proof-evidence.md | WAIVED | BLOCKED_TOOLING: Kani unavailable |
@@ -55,7 +55,7 @@
 | Test/Gate | Command | Artifact | Result |
 |---|---|---|---|
 | vb_ipc unit tests (686) | `cargo test --package vb_ipc` | verification-ledger.jsonl | PASS |
-| BDD acceptance (7 scenarios) | `cargo test --package velvet-ballastics-workspace-tests --test vb_te1i_binary_ipc_acceptance` | verification-ledger.jsonl | PASS |
+| BDD acceptance (7 scenarios) | `cargo test --package velvet-ballistics-workspace-tests --test vb_te1i_binary_ipc_acceptance` | verification-ledger.jsonl | PASS |
 | vb_ipc clippy | `cargo clippy --package vb_ipc --lib --bins --examples -- -D warnings` | machine-gate-report.md | PASS |
 | BDD file formatting | `cargo fmt --check -- crates/workspace_tests/tests/vb_te1i_binary_ipc_acceptance.rs` | regression-diff.md | PASS (fixed) |
 
@@ -107,7 +107,7 @@
 
 ```
 cargo test --package vb_ipc: 686 passed
-cargo test --package velvet-ballastics-workspace-tests --test vb_te1i_binary_ipc_acceptance: 7 passed
+cargo test --package velvet-ballistics-workspace-tests --test vb_te1i_binary_ipc_acceptance: 7 passed
 cargo clippy --package vb_ipc --lib --bins --examples -- -D warnings: No issues found
 cargo fmt --check -- crates/workspace_tests/tests/vb_te1i_binary_ipc_acceptance.rs: PASS (after fmt fix)
 ```

@@ -10,9 +10,9 @@ use crate::{
     codec::encode_record,
     constants::{
         JOURNAL_KEY_BYTES, MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD,
-        MAGIC_JOURNAL_EVENT, MAGIC_SNAPSHOT, MAGIC_WORKFLOW_SOURCE, MAX_BLOB_BYTES,
-        MAX_COMPILED_IR_BYTES, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_RUN_HEADER_BYTES,
-        MAX_SNAPSHOT_BYTES, MAX_WORKFLOW_SOURCE_BYTES,
+        MAGIC_JOURNAL_EVENT, MAGIC_SNAPSHOT, MAGIC_WORKFLOW_SOURCE, MAX_BATCH_COUNT,
+        MAX_BLOB_BYTES, MAX_COMPILED_IR_BYTES, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        MAX_RUN_HEADER_BYTES, MAX_SNAPSHOT_BYTES, MAX_WORKFLOW_SOURCE_BYTES,
     },
     error::JournalError,
     events::JournalEvent,
@@ -209,10 +209,14 @@ impl<'j> JournalWriteBatch<'j> {
     pub fn append_event(&mut self, event: &JournalEvent) -> Result<(), JournalError> {
         let key = run_event_key(event.run_id(), event.seq())?;
         if self.journal.events.contains_key(key)? {
+            self.aborted = true;
             return Err(JournalError::DuplicateEvent {
                 run: event.run_id(),
                 seq: event.seq(),
             });
+        }
+        if self.inner.len() >= MAX_BATCH_COUNT {
+            return Err(JournalError::QueueFull);
         }
         let value = encode_record(
             MAGIC_JOURNAL_EVENT,

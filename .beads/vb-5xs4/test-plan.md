@@ -616,7 +616,7 @@ Threshold: >=90% overall kill rate via `cargo mutants`; 100% kill required for c
 - Introduce `unwrap`, `expect`, `panic`, `unsafe`, unchecked indexing/casts/arithmetic -> caught by static policy gate.
 - Add YAML/JSON/HTTP dependency to runtime core -> caught by runtime-core static scan.
 
-Mutation run command: `moon run :verify-deep` or, if moon lane is not wired, `cargo mutants --package velvet_ballastics --in-place --timeout 300` plus explicit evidence file in `formal-verification-report.md`.
+Mutation run command: `moon run :verify-deep` or, if moon lane is not wired, `cargo mutants --package velvet_ballistics --in-place --timeout 300` plus explicit evidence file in `formal-verification-report.md`.
 
 ## 8. Combinatorial Coverage Matrix
 

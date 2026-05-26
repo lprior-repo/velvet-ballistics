@@ -13,5 +13,8 @@ vb_core = { path = "../vb_core" }
 [dev-dependencies]
 indoc.workspace = true
 
+[features]
+test-util = []
+
 [lints]
 workspace = true

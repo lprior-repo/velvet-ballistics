@@ -22,9 +22,9 @@ Error: process::failed
 The git process was terminated during the `nightly-feature-gate` task execution. This appears to be a process timeout or resource issue rather than a test failure.
 
 ## Tasks Observed
-- `velvet-ballastics:agent-cli-contract` (cached)
-- `velvet-ballastics:supply-chain` (ran for 60s before termination)
-- `velvet-ballastics:nightly-feature-gate` (failed)
+- `velvet-ballistics:agent-cli-contract` (cached)
+- `velvet-ballistics:supply-chain` (ran for 60s before termination)
+- `velvet-ballistics:nightly-feature-gate` (failed)
 
 ## Failure Category
 See `.beads/vb-qi37/ci-failure-category.txt`

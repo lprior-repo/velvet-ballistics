@@ -18,7 +18,7 @@ Status: State 2 artifact retry, write-capable, no production/test edits made.
 - `crates/vb_validate/src/lib.rs`: defines `ValidationError`, including `ActionContractMissing` and `ActionContractOrphan`. New capability-contract schema failures probably need new `ValidationError` variants plus diagnostic mappings.
 - `crates/vb_validate/src/diagnostic.rs`, `diag_render.rs`, `diag_convert.rs`: diagnostic mappings for validation errors. Any new validation error should be mapped here to preserve CLI/UI error rendering.
 - `crates/vb_validate/src/gates.rs`: appears to contain an older or parallel implementation of gate 12 and comments mentioning gate 13 capabilities. Check this before editing to avoid updating one gate path while callers use another.
-- `crates/velvet_ballastics/src/main.rs`: CLI renders `ActionContractDetail.required_capabilities` and maps validation errors. Any new validation error may need CLI text/reporting updates.
+- `crates/velvet_ballistics/src/main.rs`: CLI renders `ActionContractDetail.required_capabilities` and maps validation errors. Any new validation error may need CLI text/reporting updates.
 - `crates/vb_ui/src/registry/mod.rs`, `crates/vb_ui/src/verify/action_policy.rs`, `crates/vb_ui_snapshot/src/fixtures.rs`, `crates/vb_ui_model/src/lib.rs`: UI and snapshot consumers already display or model required capabilities; useful downstream consumers, but likely not first implementation touchpoints.
 - `velvet-ballistics-MASTER.md`: authoritative contract. Relevant notes say capability model is partial, compile-time schema validation is needed, actions declare required capabilities, operators grant capabilities, and admission checks should deny missing grants. It also says capability checking occurs at admission time only, while current runtime still performs execution-time checks.
 
@@ -36,7 +36,7 @@ Status: State 2 artifact retry, write-capable, no production/test edits made.
 - Add a contract-schema validator near gate 12, probably in `crates/vb_validate/src/gate_12_14_15.rs`, because `required_capabilities` belongs to `ActionContract` completeness/validity.
 - Consider whether `crates/vb_validate/src/gates.rs` is still active or re-exported. If both gate implementations are live, keep semantics in sync or consolidate through the used function path.
 - Extend `ValidationError` in `crates/vb_validate/src/lib.rs` for cases such as empty capability name, capability action mismatch with containing contract id, duplicate capability entries, invalid capability name grammar, and potentially too-long names if a bound exists in the master contract.
-- Wire new error diagnostics in `diagnostic.rs`, `diag_render.rs`, `diag_convert.rs`, and CLI validation-error formatting in `crates/velvet_ballastics/src/main.rs` if compile errors or user-facing reporting require it.
+- Wire new error diagnostics in `diagnostic.rs`, `diag_render.rs`, `diag_convert.rs`, and CLI validation-error formatting in `crates/velvet_ballistics/src/main.rs` if compile errors or user-facing reporting require it.
 - Add tests in `crates/vb_validate/src/gate_12_14_15.rs` for compiled contract validation and in `crates/vb_validate/src/schema_tests.rs` only if the bead requires authoring document schema shape. The known gap is compiled `ActionContract.required_capabilities`, not workflow YAML fields.
 - If the contract requires admission-time enforcement, the runtime touchpoint is `vb_runtime/src/admission.rs` plus submit/lifecycle call sites that have access to compiled action contracts. Current `admit_run` lacks contract input, so rust-contract should decide whether this bead is schema-only or also changes admission API.
 
@@ -67,7 +67,7 @@ Status: State 2 artifact retry, write-capable, no production/test edits made.
 - `crates/vb_validate/src/schema_tests.rs`: only relevant if authoring document schema receives a new `capabilities` field or capability declaration syntax.
 - `crates/vb_runtime/src/admission.rs`: existing unit tests for capability checking; extend only if admission-time validation/enforcement is in scope.
 - `crates/vb_runtime/src/engine/action.rs` and `crates/vb_runtime/src/engine/tests.rs`: existing runtime capability-denial path; useful regression coverage if enforcement placement changes.
-- `crates/velvet_ballastics/tests/cli_integration.rs`: likely integration test location if validation errors surface in CLI output.
+- `crates/velvet_ballistics/tests/cli_integration.rs`: likely integration test location if validation errors surface in CLI output.
 
 ## Next-State Notes For rust-contract
 

@@ -13,7 +13,7 @@ use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts};
 // Corpus YAML for the for_each workflow under vb-a001
 // ---------------------------------------------------------------------------
 
-const FOREACH_YAML: &str = "version: velvet-ballastics/v1
+const FOREACH_YAML: &str = "version: velvet-ballistics/v1
 name: fuzz-foreach
 when:
   manual: {}

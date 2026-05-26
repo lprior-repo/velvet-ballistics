@@ -40,7 +40,7 @@ fn parse_ast_rejects_unknown_input_reference_after_schema() -> Result<(), String
 }
 
 fn unknown_input_reference_source() -> &'static [u8] {
-    br#"version: velvet-ballastics/v1
+    br#"version: velvet-ballistics/v1
 name: ref_case
 when:
   manual: {}
@@ -65,7 +65,7 @@ fn parse_ast_accepts_declared_cold_references() -> Result<(), String> {
 }
 
 fn declared_cold_references_source() -> &'static [u8] {
-    br#"version: velvet-ballastics/v1
+    br#"version: velvet-ballistics/v1
 name: ref_case
 when:
   manual: {}
@@ -93,7 +93,7 @@ steps:
 #[test]
 fn parse_ast_accepts_numeric_slot_accessor_reference() -> Result<(), String> {
     parse_ok(
-        br#"version: velvet-ballastics/v1
+        br#"version: velvet-ballistics/v1
 name: ref_case
 when:
   manual: {}
@@ -111,7 +111,7 @@ steps:
 #[test]
 fn parse_ast_rejects_field_slot_accessor_without_symbol_table() -> Result<(), String> {
     let error = parse_error(
-        br#"version: velvet-ballastics/v1
+        br#"version: velvet-ballistics/v1
 name: ref_case
 when:
   manual: {}
@@ -137,9 +137,10 @@ steps:
 
 #[test]
 fn parse_ast_rejects_illegal_runtime_references() -> Result<(), String> {
-    for reference in ["$runtime.now", "$now", "$random", "$steps.done"] {
+    // Note: $steps.done is no longer rejected as illegal - step references are now allowed
+    for reference in ["$runtime.now", "$now", "$random"] {
         let source = format!(
-            "version: velvet-ballastics/v1\nname: ref_case\nwhen:\n  manual: {{}}\nexamples:\n  - name: fixture\n    value: {reference}\nsteps:\n  - id: done\n    finish:\n      result: 0\n"
+            "version: velvet-ballistics/v1\nname: ref_case\nwhen:\n  manual: {{}}\nexamples:\n  - name: fixture\n    value: {reference}\nsteps:\n  - id: done\n    finish:\n      result: 0\n"
         );
         let error = parse_error(source.as_bytes())?;
         ensure(
@@ -153,7 +154,7 @@ fn parse_ast_rejects_illegal_runtime_references() -> Result<(), String> {
 #[test]
 fn parse_ast_rejects_unknown_reference_root() -> Result<(), String> {
     let error = parse_error(
-        br#"version: velvet-ballastics/v1
+        br#"version: velvet-ballistics/v1
 name: ref_case
 when:
   manual: {}
@@ -175,7 +176,7 @@ steps:
 
 #[test]
 fn parse_ast_reference_validation_reports_unknown_reference() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: ref_case
 when:
   manual: {}
@@ -204,7 +205,7 @@ steps:
 #[test]
 fn parse_ast_rejects_unknown_reference_in_retained_surface() -> Result<(), String> {
     let error = parse_error(
-        br#"version: velvet-ballastics/v1
+        br#"version: velvet-ballistics/v1
 name: ref_case
 when:
   manual: {}
@@ -231,7 +232,7 @@ steps:
 #[test]
 fn parse_ast_rejects_illegal_reference_in_retained_surface() -> Result<(), String> {
     let error = parse_error(
-        br#"version: velvet-ballastics/v1
+        br#"version: velvet-ballistics/v1
 name: ref_case
 when:
   manual: {}
@@ -277,7 +278,7 @@ fn adv_ensure(condition: bool, message: &'static str) -> Result<(), String> {
 /// Bare reference with no dot separator (e.g. "$input") rejected.
 #[test]
 fn bare_input_reference_without_name_rejected_with_unknown_root() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: bare_ref
 when:
   manual: {}
@@ -305,7 +306,7 @@ steps:
 /// parsed expression, not the AST reference surface.
 #[test]
 fn secret_reference_in_choose_condition_handled_by_validation() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: secret_choose
 when:
   manual: {}
@@ -329,7 +330,7 @@ steps:
 /// Reference to undeclared var rejected.
 #[test]
 fn undeclared_var_reference_rejected_with_unknown_name() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: missing_var
 when:
   manual: {}
@@ -351,7 +352,7 @@ steps:
 /// Reference to undeclared secret rejected.
 #[test]
 fn undeclared_secret_reference_rejected_with_unknown_name() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: missing_secret
 when:
   manual: {}
@@ -382,7 +383,7 @@ fn plain_text_without_dollar_not_treated_as_reference() -> Result<(), String> {
     // In YAML, plain text like "input.user" without $ is just a string value.
     // In the AST it becomes AstValue::Text, not AstValue::Reference.
     // The reference validator only checks values starting with $.
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: plain_text
 when:
   manual: {}
@@ -406,7 +407,7 @@ steps:
 /// Multiple reference errors accumulate across examples.
 #[test]
 fn multiple_bad_references_in_separate_examples_accumulate() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: multi_bad_refs
 when:
   manual: {}
@@ -443,7 +444,7 @@ steps:
 /// explicitly rejects empty segments.
 #[test]
 fn security_empty_accessor_segment_double_dot_rejected() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: empty_accessor_segment
 when:
   manual: {}
@@ -465,7 +466,7 @@ steps:
 /// SECURITY: Accessor path with trailing dot must be rejected.
 #[test]
 fn security_trailing_dot_accessor_path_rejected() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: trailing_dot_accessor
 when:
   manual: {}
@@ -489,7 +490,7 @@ steps:
 /// Reference to declared input succeeds (positive validation).
 #[test]
 fn declared_input_reference_passes() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: input_ref_ok
 when:
   manual: {}
@@ -512,7 +513,7 @@ steps:
 /// Reference to declared var succeeds (positive validation).
 #[test]
 fn declared_var_reference_passes() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: var_ref_ok
 when:
   manual: {}
@@ -535,7 +536,7 @@ steps:
 /// Reference to declared secret succeeds (positive validation).
 #[test]
 fn declared_secret_reference_passes() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: secret_ref_ok
 when:
   manual: {}
@@ -558,7 +559,7 @@ steps:
 /// `$vars.name.field` accessor path on a declared var is rejected.
 #[test]
 fn accessor_path_on_declared_var_rejected() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: accessor_var
 when:
   manual: {}
@@ -583,7 +584,7 @@ steps:
 /// `$input.name.field` accessor path on a declared input is rejected.
 #[test]
 fn accessor_path_on_declared_input_rejected() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: accessor_input
 when:
   manual: {}
@@ -608,7 +609,7 @@ steps:
 /// `$secrets.name.field` accessor path on a declared secret is rejected.
 #[test]
 fn accessor_path_on_declared_secret_rejected() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: accessor_secret
 when:
   manual: {}
@@ -632,7 +633,7 @@ steps:
 /// `$slot.0` bare slot reference (no accessor path) passes.
 #[test]
 fn bare_slot_reference_passes() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: bare_slot
 when:
   manual: {}
@@ -650,7 +651,7 @@ steps:
 /// `$slot.abc` non-numeric slot index is rejected.
 #[test]
 fn non_numeric_slot_index_rejected() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: bad_slot_idx
 when:
   manual: {}
@@ -673,7 +674,7 @@ steps:
 /// `$slots.0` alternate spelling of slot root passes.
 #[test]
 fn alternate_slots_root_passes() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: slots_root
 when:
   manual: {}
@@ -691,7 +692,7 @@ steps:
 /// Numeric accessor path with deep nesting passes.
 #[test]
 fn deep_numeric_accessor_path_passes() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: deep_accessor
 when:
   manual: {}
@@ -709,7 +710,7 @@ steps:
 /// Accessor path with non-numeric segment after numeric slot rejected.
 #[test]
 fn mixed_accessor_path_rejected() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: mixed_accessor
 when:
   manual: {}
@@ -731,7 +732,7 @@ steps:
 /// `$runtime.something` is rejected as illegal reference.
 #[test]
 fn runtime_reference_rejected_as_illegal() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: runtime_ref
 when:
   manual: {}
@@ -750,32 +751,33 @@ steps:
     )
 }
 
-/// `$steps.done` backward reference to a step is rejected as illegal.
+/// `$steps.done` reference to a step is now allowed (vb-xi2f.7 behavior change).
 #[test]
-fn steps_reference_rejected_as_illegal() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+fn steps_reference_allowed_at_workflow_level() -> Result<(), String> {
+    // Step references are now allowed at workflow level (no step context)
+    let source = br#"version: velvet-ballistics/v1
 name: steps_ref
 when:
   manual: {}
 examples:
   - name: fixture
-    value: $steps.done
+    value: $steps.build_result
 steps:
+  - id: build_result
+    save:
+      value: 1
   - id: done
     finish:
       result: 0
 "#;
-    let error = adv_ref_parse_error(source)?;
-    adv_ensure(
-        matches!(error, CompileError::IllegalReference { .. }),
-        "$steps reference should be rejected as illegal",
-    )
+    // Should succeed now that step references are allowed
+    parse_ok(source)
 }
 
 /// `$now` bare illegal reference is rejected.
 #[test]
 fn bare_now_reference_rejected() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: bare_now
 when:
   manual: {}
@@ -797,7 +799,7 @@ steps:
 /// Reference in save fields is validated.
 #[test]
 fn reference_in_save_field_validated() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: save_bad_ref
 when:
   manual: {}
@@ -821,7 +823,7 @@ steps:
 /// Reference in finish result expression is validated.
 #[test]
 fn reference_in_finish_result_validated() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: finish_bad_ref
 when:
   manual: {}
@@ -841,7 +843,7 @@ steps:
 /// Multiple references in a single mapping are all validated.
 #[test]
 fn multiple_references_in_mapping_all_validated() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: multi_ref_mapping
 when:
   manual: {}
@@ -869,7 +871,7 @@ steps:
 /// Accessor path on undeclared name triggers unknown name check.
 #[test]
 fn accessor_path_on_undeclared_name_triggers_unknown_name() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: accessor_undeclared
 when:
   manual: {}
@@ -891,7 +893,7 @@ steps:
 /// Literal values (not references) pass validation.
 #[test]
 fn literal_values_pass_validation() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: literals
 when:
   manual: {}
@@ -915,7 +917,7 @@ steps:
 /// Sequence of references each validated.
 #[test]
 fn sequence_of_references_validated() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: seq_refs
 when:
   manual: {}
@@ -946,7 +948,7 @@ steps:
 /// `$var` singular alias also works for declared vars.
 #[test]
 fn var_alias_root_resolves_declared_var() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: var_alias
 when:
   manual: {}
@@ -969,7 +971,7 @@ steps:
 /// Empty value (null) is not treated as reference.
 #[test]
 fn empty_value_not_treated_as_reference() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: empty_val
 when:
   manual: {}
@@ -992,7 +994,7 @@ steps:
 /// Compile-specific: $slot reference with u16 max value passes.
 #[test]
 fn slot_reference_with_max_u16_index() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: max_slot
 when:
   manual: {}
@@ -1010,7 +1012,7 @@ steps:
 /// `$inputs` plural root is NOT a valid alias -- rejected.
 #[test]
 fn inputs_plural_root_rejected_as_unknown() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: inputs_plural
 when:
   manual: {}
@@ -1042,7 +1044,7 @@ steps:
 /// Reference in nested save mapping value is validated.
 #[test]
 fn reference_in_nested_save_mapping_validated() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: nested_save_ref
 when:
   manual: {}

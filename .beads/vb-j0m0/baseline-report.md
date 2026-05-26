@@ -8,7 +8,7 @@ attempt: 1-of-7
 
 ## Existing Fuzz Infrastructure
 
-### Fuzz Crate: `velvet-ballastics-fuzz`
+### Fuzz Crate: `velvet-ballistics-fuzz`
 - Location: `fuzz/` in workspace root
 - Framework: libfuzzer-sys (cargo-fuzz compatible)
 - Features: `fuzz` feature flag for stdin-driven execution

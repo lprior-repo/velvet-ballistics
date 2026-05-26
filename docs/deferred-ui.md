@@ -16,9 +16,9 @@ The following remain future work:
 
 1. `vb_ui_model` typed artifact crate.
 2. `vb_ui_makepad` native Makepad app crate.
-3. `velvet-ballastics ui --db <path>`.
-4. `velvet-ballastics ui --socket <path>`.
-5. `velvet-ballastics ui --demo-fixture <fixture>`.
+3. `velvet-ballistics ui --db <path>`.
+4. `velvet-ballistics ui --socket <path>`.
+5. `velvet-ballistics ui --demo-fixture <fixture>`.
 6. Makepad app shell, design tokens, graph canvas, replay theater, incident console,
    action registry, storage doctor, AI context panel, bounded motion, snapshots, and UI hardening.
 7. Figma/reference asset integration.

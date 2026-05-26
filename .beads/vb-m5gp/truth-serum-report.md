@@ -93,7 +93,7 @@ pub_mod_compile=0 []
 ```
 
 ```text
-$ cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract mod_compile_dependency_edges_remain_acyclic_and_diagnostic_leaf -- --exact
+$ cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract mod_compile_dependency_edges_remain_acyclic_and_diagnostic_leaf -- --exact
     Finished `test` profile [unoptimized + debuginfo] target(s) in 0.53s
      Running tests/vb_m5gp_compile_split_contract.rs (target/debug/deps/vb_m5gp_compile_split_contract-6d6e03c9db8f6086)
 

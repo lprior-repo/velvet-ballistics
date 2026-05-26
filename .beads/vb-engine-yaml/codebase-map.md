@@ -25,7 +25,7 @@ Explicit exclusions: UI delivery, generated Rust/codegen parity, and maxperf gen
 - `crates/vb_runtime/**`: deterministic runtime, admission, bounded primitives, lifecycle, events, recovery, idempotency and capability enforcement seams.
 - `crates/vb_storage/**`: Fjall/Postcard persistence, accepted artifacts, run headers, journal, snapshots, indexes, hydration/recovery, fail-closed errors.
 - `crates/vb_ipc/**`: local binary IPC frames, bounded ingress, commands, payloads, backpressure, server/client dispatch.
-- `crates/velvet_ballastics/**`: CLI/operator entrypoints, diagnostics, YAML validation/compile/admission/runtime/storage integration.
+- `crates/velvet_ballistics/**`: CLI/operator entrypoints, diagnostics, YAML validation/compile/admission/runtime/storage integration.
 - `fuzz/**`, `kani/**`, `verification/**`, `tests/**`, `xtask/**`, `.moon/**`: evidence and gate surfaces for fuzz, formal/model checks, integration tests, release evidence, and canonical `moon ci` orchestration.
 
 ## Public API Seams

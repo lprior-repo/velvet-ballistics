@@ -86,7 +86,7 @@ fn yaml_accepts_explicit_false_string() {
 #[test]
 fn yaml_rejects_multiple_documents() {
     let yaml = r#"---
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: first
 when:
   manual: {}
@@ -95,7 +95,7 @@ steps:
     finish:
       result: 0
 ---
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: second
 when:
   manual: {}
@@ -114,7 +114,7 @@ steps:
 #[test]
 fn yaml_accepts_single_document() {
     let yaml = r#"---
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: single
 when:
   manual: {}
@@ -185,7 +185,7 @@ fn yaml_rejects_source_too_large() {
         ..Default::default()
     });
     let source = b"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: large_source_that_is_way_over_the_limit
 when:
   manual: {}
@@ -205,7 +205,7 @@ fn yaml_rejects_scalar_too_long() {
         ..Default::default()
     });
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: long_scalar_test
 when:
   manual: {}
@@ -224,7 +224,7 @@ steps:
 
 #[test]
 fn yaml_rejects_duplicate_top_level_key() {
-    let yaml = r#"version: velvet-ballastics/v1
+    let yaml = r#"version: velvet-ballistics/v1
 name: first
 when:
   manual: {}
@@ -272,7 +272,7 @@ fn reject_duplicate_keys_helper_multiple_duplicate() {
 
 #[test]
 fn yaml_rejects_unknown_top_level_field() {
-    let yaml = br#"version: velvet-ballastics/v1
+    let yaml = br#"version: velvet-ballistics/v1
 name: unknown_field_test
 unknown_toplevel: this_is_not_valid
 when:
@@ -288,7 +288,7 @@ steps:
 
 #[test]
 fn yaml_rejects_unknown_step_field() {
-    let yaml = br#"version: velvet-ballastics/v1
+    let yaml = br#"version: velvet-ballistics/v1
 name: unknown_step_field_test
 when:
   manual: {}
@@ -338,7 +338,7 @@ steps:
 
 #[test]
 fn compile_rejects_wrong_version_prefix() {
-    let yaml = br#"version: velvet-ballastics/v2
+    let yaml = br#"version: velvet-ballistics/v2
 name: wrong_version
 when:
   manual: {}
@@ -358,7 +358,7 @@ steps:
 
 #[test]
 fn compile_rejects_empty_wait_event() {
-    let yaml = br#"version: velvet-ballastics/v1
+    let yaml = br#"version: velvet-ballistics/v1
 name: empty_wait
 when:
   manual: {}
@@ -376,7 +376,7 @@ steps:
 
 #[test]
 fn compile_rejects_missing_required_step_fields() {
-    let yaml = br#"version: velvet-ballastics/v1
+    let yaml = br#"version: velvet-ballistics/v1
 name: incomplete_step
 when:
   manual: {}

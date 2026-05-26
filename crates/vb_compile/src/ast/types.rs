@@ -50,10 +50,10 @@ pub enum TriggerAst {
     },
     /// Cold adapter webhook trigger retained for compiler compatibility.
     Webhook {
-        /// Webhook path.
-        path: Box<str>,
+        /// Webhook path (optional for adapter flexibility).
+        path: Option<Box<str>>,
         /// HTTP method retained for cold adapter compilation.
-        method: Box<str>,
+        method: Option<Box<str>>,
         /// Optional idempotency expression/source field.
         unique: Option<Box<str>>,
         /// Source mark for the `webhook` trigger key.

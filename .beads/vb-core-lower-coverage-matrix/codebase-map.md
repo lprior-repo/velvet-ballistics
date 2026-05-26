@@ -66,7 +66,7 @@ Cold-path YAML compiler boundary.
 ### Top-Level Fields
 | Construct | vb_yaml | vb_validate | vb_compile | Notes |
 |-----------|---------|-------------|------------|-------|
-| `version` | ✓ AST | ✓ Schema check | ✓ Parse | Required, must be "velvet-ballastics/v1" |
+| `version` | ✓ AST | ✓ Schema check | ✓ Parse | Required, must be "velvet-ballistics/v1" |
 | `name` | ✓ AST | ✓ Schema check | ✓ Parse | Required |
 | `when` (trigger) | ✓ AST | ✓ Gate 10/11 | ✓ Parse | Manual, Schedule, Event, Webhook |
 | `inputs` | ✓ AST | ✓ Schema | ✓ Rejected | UnsupportedTopLevelDeclaration |

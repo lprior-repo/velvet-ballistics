@@ -19,7 +19,7 @@ $ pwd -P
 ```
 
 ```text
-$ test "$(pwd -P)" = /home/lewis/src/bd-vb-kyyf-bdd && TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballastics-workspace-tests --test vb_kyyf_cross_run_determinism bdd_kyyf_001_to_006_require_executable_public_surfaces_not_catalog_bookkeeping_only -- --test-threads=1
+$ test "$(pwd -P)" = /home/lewis/src/bd-vb-kyyf-bdd && TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballistics-workspace-tests --test vb_kyyf_cross_run_determinism bdd_kyyf_001_to_006_require_executable_public_surfaces_not_catalog_bookkeeping_only -- --test-threads=1
 cargo test: 1 passed, 15 filtered out (1 suite, 1.17s)
 ```
 

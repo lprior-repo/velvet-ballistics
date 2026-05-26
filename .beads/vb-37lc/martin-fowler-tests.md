@@ -28,7 +28,7 @@
 - `given_source_doc_manifest_script_when_discovering_inputs_then_path_is_scanned`
 
 ## Contract Verification Tests
-- `given_canonical_table_when_loaded_then_product_binary_package_and_rig_are_ballastics`
+- `given_canonical_table_when_loaded_then_product_binary_package_and_rig_are_ballistics`
 - `given_canonical_table_when_loaded_then_crate_module_and_database_are_underscore_ballistics`
 - `given_canonical_table_when_loaded_then_language_version_is_v1`
 - `given_legacy_occurrence_without_exception_when_classified_then_invalid_legacy_is_returned`
@@ -51,7 +51,7 @@
 ## Given/When/Then Scenarios
 
 ### Scenario 1: Canonical names pass
-Given: a repository surface contains only `velvet-ballastics`, `velvet_ballastics`, and `velvet-ballastics/v1` in their valid naming contexts.
+Given: a repository surface contains only `velvet-ballistics`, `velvet_ballistics`, and `velvet-ballistics/v1` in their valid naming contexts.
 When: the canonical spelling scan runs with the complete scan configuration.
 Then:
 - The scan returns `Ok(ScanReport)`.
@@ -76,7 +76,7 @@ Then:
 - The quality gate fails.
 
 ### Scenario 4: Wrong crate/module spelling fails closed
-Given: a Rust source or manifest context uses a crate or module spelling other than `velvet_ballastics`.
+Given: a Rust source or manifest context uses a crate or module spelling other than `velvet_ballistics`.
 When: the repository scan runs.
 Then:
 - The occurrence is reported as invalid canonical naming.

@@ -102,14 +102,14 @@ grep -q "insta" Cargo.toml && echo "INSTA_PRESENT" || echo "INSTA_ABSENT"
 ### [PASS] Test Compile
 
 ```bash
-cargo build --package velvet-ballastics-workspace-tests
+cargo build --package velvet-ballistics-workspace-tests
 ```
 **Result**: Compilation successful (exit 0).
 
 ### [PASS] Tests Pass — 29 passed, 0 failed, 0 flaky
 
 ```bash
-cargo nextest run --package velvet-ballastics-workspace-tests --test vb_c1s0_orchestration_runtime_tests --retries 2 --flaky-result fail
+cargo nextest run --package velvet-ballistics-workspace-tests --test vb_c1s0_orchestration_runtime_tests --retries 2 --flaky-result fail
 ```
 **Result**: 29 tests run: 29 passed, 0 skipped. Zero flaky.
 

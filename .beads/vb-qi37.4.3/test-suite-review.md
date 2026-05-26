@@ -10,7 +10,7 @@ STATUS: APPROVED
 
 **[PASS]** Mock interrogation — no `mockall` or inappropriate mocks found in scoped tests.
 
-**[PASS]** Integration test purity — `crates/velvet_ballastics/tests/admission_evidence_integration/` tests use only public API via `runtime.submit_direct`, `submit_artifact`, and journal interfaces. No `use crate::internal` paths detected.
+**[PASS]** Integration test purity — `crates/velvet_ballistics/tests/admission_evidence_integration/` tests use only public API via `runtime.submit_direct`, `submit_artifact`, and journal interfaces. No `use crate::internal` paths detected.
 
 **[PASS]** Error variant completeness — `RuntimeError::RunAlreadyExists` asserted exactly in `submit_rejects_duplicate_run_id`. `RuntimeError::JournalPoisoned` asserted exactly in `storage_failure_before_header_prevents_ack`. `RuntimeError::ActiveRunCapacityExceeded` asserted exactly in `submit_at_capacity_returns_active_run_capacity_exceeded`.
 

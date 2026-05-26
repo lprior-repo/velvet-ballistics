@@ -1,9 +1,10 @@
 [package]
-name = "velvet-ballastics-workspace-tests"
+name = "velvet-ballistics-workspace-tests"
 edition.workspace = true
 license.workspace = true
 version.workspace = true
 publish = false
+autobenches = false
 
 [lints]
 workspace = true
@@ -34,7 +35,6 @@ serde.workspace = true
 tempfile.workspace = true
 toml.workspace = true
 xtask = { path = "../../xtask" }
-vb_codegen = { path = "../vb_codegen" }
 vb_compile = { path = "../vb_compile" }
 vb_core = { path = "../vb_core" }
 vb_expr = { path = "../vb_expr" }
@@ -47,7 +47,60 @@ vb_benchmark = { path = "../vb_benchmark" }
 vb_boundary_inventory = { path = "../vb_boundary_inventory" }
 vb_doc = { path = "../vb_doc" }
 vb_yaml = { path = "../vb_yaml" }
-vb_cli = { package = "velvet-ballastics", path = "../vb_cli" }
+vb_cli = { package = "velvet-ballistics", path = "../vb_cli" }
+vb_test_util = { path = "../vb_test_util" }
+
+[[test]]
+name = "vb_test_util_crate"
+path = "tests/vb_test_util_crate.rs"
+
+[[test]]
+name = "journal_batch_accounting_tests"
+path = "tests/journal_batch_accounting_tests.rs"
+
+[[test]]
+name = "cancel_kill_lattice_tests"
+path = "tests/cancel_kill_lattice_tests.rs"
+
+[[test]]
+name = "journal_side_index_contracts"
+path = "tests/journal_side_index_contracts.rs"
+
+[[test]]
+name = "postcard_envelope_wire_tests"
+path = "tests/postcard_envelope_wire_tests.rs"
+
+[[test]]
+name = "runtime_version_barrier_tests"
+path = "tests/runtime_version_barrier_tests.rs"
+
+[[test]]
+name = "bounded_memory_lease_tests"
+path = "tests/bounded_memory_lease_tests.rs"
+
+[[test]]
+name = "fjall_keyspace_manifest_tests"
+path = "tests/fjall_keyspace_manifest_tests.rs"
+
+[[test]]
+name = "derived_status_replay_timeline_tests"
+path = "tests/derived_status_replay_timeline_tests.rs"
+
+[[test]]
+name = "raii_introspection_registry_tests"
+path = "tests/raii_introspection_registry_tests.rs"
+
+[[test]]
+name = "recovery_watermark_tests"
+path = "tests/recovery_watermark_tests.rs"
+
+[[test]]
+name = "snapshot_sequence_precondition_tests"
+path = "tests/snapshot_sequence_precondition_tests.rs"
+
+[[test]]
+name = "storage_contract_pack_runner"
+path = "tests/storage_contract_pack_runner.rs"
 
 [[test]]
 name = "contracts_production_binding"
@@ -81,12 +134,8 @@ path = "tests/vb_test_compile_error_quality_behavior.rs"
 name = "vb_test_validate_diagnostic_behavior"
 path = "tests/vb_test_validate_diagnostic_behavior.rs"
 
-[[test]]
-name = "vb_test_compile_codegen_emit_behavior"
-path = "tests/vb_test_compile_codegen_emit_behavior.rs"
-
 [[bench]]
-name = "velvet_ballastics"
+name = "velvet_ballistics"
 harness = false
 
 [[bench]]
@@ -140,6 +189,22 @@ harness = false
 [[bench]]
 name = "array_queue"
 harness = false
+
+[[test]]
+name = "proptest_error_types_registration"
+path = "tests/proptest_error_types_registration.rs"
+
+[[test]]
+name = "proptest_compile_error_codes"
+path = "tests/proptest_compile_error_codes.rs"
+
+[[test]]
+name = "behavior_symbolic_code_serde"
+path = "tests/behavior_symbolic_code_serde.rs"
+
+[[test]]
+name = "e2e_diagnostic_chain"
+path = "tests/e2e_diagnostic_chain.rs"
 
 [[bench]]
 name = "rtrb"

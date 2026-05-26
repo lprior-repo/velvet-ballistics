@@ -1,244 +1,195 @@
-# Black Hat Review — Section 16 Diagnostic Codes (vb-xi2f.10) RETRY-3
+# BLACK-HAT REVIEW — vb-xi2f.38
 
-**Date:** 2026-05-26
-**Bead:** vb-xi2f.10
-**Reviewer:** black-hat-reviewer (femdation child)
-**Prior Verdict:** REJECTED (5 CRITICAL/HIGH findings)
-**Artifacts reviewed:** `crates/vb_core/src/diagnostic.rs`, `crates/vb_core/src/errors.rs`, `crates/workspace_tests/tests/symbolic_code_behavior_tests.rs`, `crates/vb_runtime/src/error/diagnostics.rs`
-
----
-
-## VERDICT: **APPROVED** with MANDATORY FIXES
-
-The 5 mandated fixes from the prior rejection are **genuinely and completely resolved**. The production code is correct, the registry is comprehensive, the category system works, and the Holzman Rust gate is clean. However, 2 workspace tests were not updated to reflect the corrected behavior and will FAIL when run. Fixing them is a 2-line change.
+## Bead
+**ID:** vb-xi2f.38  
+**Title:** P1: digest covers collect semantics  
+**Current State:** 13  
+**Source checkout:** /home/lewis/src/velvet-ballistics  
+**Isolated workspace:** /home/lewis/src/vb-xi2f.38-ws
 
 ---
 
-## PHASE 1: CONTRACT & BEAD PARITY
+## Verdict: **REJECTED — CRITICAL DEFECT**
 
-### ✅ RESOLVED — Prior CRITICAL 1: All 37+ CoreError codes registered
+### Executive Summary
 
-**File:** `crates/vb_core/src/diagnostic.rs`, lines 118–1547
+The **claimed implementation fix has NOT been implemented**. The code at `part_05.rs:140-162` and `compile/mod.rs:243-259` shows that `StepPrimitive::Collect` falls into the catch-all match arm that only hashes the primitive name `"collect"` via `canonical_primitive_name()`. The fields (variable, source, pages, items, body) are **never hashed**.
 
-The CODE_REGISTRY now contains **237 entries**. Every CoreError variant with a `diagnostic_code()` return value has a corresponding registry entry:
+All claimed evidence (TLA+, Kani, Proptest) either:
+1. Verifies a **different code path** (Proptest uses `blake3::hash(source)` not `digest_step_primitive`)
+2. Verifies **different properties** (TLA+ verifies node lowering, not digest hashing)
+3. **Cannot run** (Kani panics during compilation)
 
-| Range | Coverage | Symbolic Names |
-|---|---|---|
-| 0x1001–0x1006, 0x1011–0x1015 | Compilation (10) | INVALID_PROGRAM_COUNTER → EXPR_OUT_OF_BOUNDS |
-| 0x1101–0x1105 | WorkflowIr (5) | CORE_TYPE_MISMATCH → INVALID_COMPILED_WORKFLOW |
-| 0x1201–0x1203 | Expression (3) | STEP_BUDGET_EXHAUSTED, STEP_COUNTER_OVERFLOW, INVALID_EXPRESSION |
-| 0x1301–0x130D, 0x1311–0x1315 | Accessor (21) | CORE_QUEUE_FULL → ACCESSOR_CONST_OUT_OF_BOUNDS |
-| 0x1401–0x140D | Lowering (13) | ITERATION_LIMIT_EXCEEDED → COLLECT_EVIDENCE_CAPACITY_EXCEEDED |
-| 0x1501–0x1506 | Lifecycle (6) | CORE_LIFECYCLE_STORAGE_UNAVAILABLE → REPLAY_CORRUPTION |
-| 0x2001–0x201E, 0x2070–0x207D | Storage (44) | QUEUE_FULL → STORAGE_SEALED |
-| 0x300F–0x301B, 0x3020–0x3022 | Runtime (16) | RUNTIME_TIMEOUT → ACTION_CIRCUIT_BREAKER_OPEN |
-| 0x4001–0x402E | RuntimeBoundary (46) | JOURNAL_FJALL → JOURNAL_SLOT_SEALED |
+---
 
-**Plus** Schema (11), Reference (4), ControlFlow (9), TypeTaint (12), Gate (19), ContractDiscovery (3), IPC (10), Lifecycle (4).
+## PHASE 1: Contract & Bead Parity — **FAIL**
 
-All codes that previously collapsed to `INTERNAL_INVARIANT_VIOLATION` now resolve to specific, named symbolic codes. **Contract parity restored.** ✅
+### Claimed vs Actual Implementation
 
-### ✅ RESOLVED — Prior CRITICAL 2: `category_from_numeric` now consults registry
+| Claim | Actual |
+|-------|--------|
+| "digest_step_primitive now hashes Collect fields (variable, source, pages, items, body)" | Collect falls into catch-all `other => { hasher.update(canonical_primitive_name(other).as_bytes()); }` which only hashes the string `"collect"` |
 
-**File:** `crates/vb_core/src/diagnostic.rs`, lines 1950–1988
+**Evidence:**
 
-The function now implements a two-tier lookup:
-
+**File:** `crates/vb_compile/src/mod_compile_lowering/part_05.rs` (lines 140-162)
 ```rust
-pub fn category_from_numeric(numeric: u16) -> CodeCategory {
-    // 1. Consult registry for the authoritative category.
-    for entry in CODE_REGISTRY {
-        if entry.numeric == numeric {
-            return entry.category;
+pub(crate) fn digest_step_primitive(
+    hasher: &mut blake3::Hasher,
+    primitive: &vb_yaml::ast::StepPrimitive,
+) {
+    match primitive {
+        vb_yaml::ast::StepPrimitive::Set { output, value } => {
+            hasher.update(b"set");
+            hasher.update(output.as_bytes());
+            hasher.update(value.as_bytes());
+        }
+        vb_yaml::ast::StepPrimitive::Finish { result } => {
+            hasher.update(b"finish");
+            match result {
+                vb_yaml::ast::ScalarValue::String(value) => hasher.update(value.as_bytes()),
+                vb_yaml::ast::ScalarValue::Integer(value) => hasher.update(&value.to_le_bytes()),
+                _ => hasher.update(b"unsupported"),
+            };
+        }
+        other => {
+            hasher.update(canonical_primitive_name(other).as_bytes());
         }
     }
-    // 2. Fall back to high-byte heuristics for unregistered codes.
-    let high_byte = numeric.wrapping_shr(8) & 0xFF_u16;
-    match high_byte { ... }
 }
 ```
 
-- `INTERNAL_INVARIANT_VIOLATION` (0x1309) now correctly returns `CodeCategory::Internal` via registry lookup (line 1541–1546).
-- The `Internal` variant of `CodeCategory` is no longer dead code.
-- The default arm maps unknown high bytes to `CodeCategory::Internal` (line 1986) — a reasonable sentinel.
-
-**Evaluation:** The `CodeEntry.category` field is no longer dead data. The registry is the authoritative source, with high-byte heuristics as a backward-compatible fallback. ✅
-
-### ✅ RESOLVED — Prior HIGH 3: ExprOutOfBounds collision resolved
-
-- `errors.rs`:514: `EXPR_OUT_OF_BOUNDS_CODE = DiagnosticCode::new(0x1015)` (was 0x1014)
-- `diagnostic.rs`:535–538: `"EXPR_OUT_OF_BOUNDS"` registered at numeric `0x1015`
-- `diagnostic.rs`:528–533: `"IDEMPOTENCY_VIOLATION"` retains exclusive ownership of `0x1014`
-
-No numeric collisions remain between ExprOutOfBounds and IDEMPOTENCY_VIOLATION. ✅
-
-### ✅ RESOLVED — Prior HIGH 4: Test field names fixed
-
-**File:** `crates/workspace_tests/tests/symbolic_code_behavior_tests.rs`, lines 207–208, 296–297
-
+**File:** `crates/vb_compile/src/mod_compile_lowering/part_05.rs` (lines 98-113)
 ```rust
-// Line 207 (was `step: StepIdx::new(1)`)
-let error = CoreError::NonBoolCondition {
-    slot: SlotIdx::new(1),  // ✅ Correct field name and type
-};
-
-// Line 296
-CoreError::NonBoolCondition {
-    slot: SlotIdx::new(0),  // ✅ Correct field name and type
-};
-```
-
-Field names match production `CoreError::NonBoolCondition { slot: SlotIdx }`. ✅
-
-### 🔴 NEW FINDING — Stale workspace test assertions for CapabilityDenied and ExpressionStackOverflow
-
-**File:** `crates/workspace_tests/tests/symbolic_code_behavior_tests.rs`
-
-**Lines 252:** `core_error_capability_denied` test
-```rust
-assert_eq!(code.as_str(), "INTERNAL_INVARIANT_VIOLATION");
-```
-This test asserts the **old fallback** behavior. Since `CAPABILITY_DENIED` is now registered at 0x1409 (diagnostic.rs:1473–1478), the correct assertion is:
-```rust
-assert_eq!(code.as_str(), "CAPABILITY_DENIED");
-```
-
-**Lines 259:** `core_error_expression_stack_overflow` test
-```rust
-assert_eq!(code.as_str(), "INTERNAL_INVARIANT_VIOLATION");
-```
-This test asserts the **old fallback** behavior. Since `EXPRESSION_STACK_OVERFLOW` is now registered at 0x1304 (diagnostic.rs:1346–1349), the correct assertion is:
-```rust
-assert_eq!(code.as_str(), "EXPRESSION_STACK_OVERFLOW");
-```
-
-**Why these tests WILL fail:** The `HasSymbolicCode::symbolic_code()` for `CoreError` (errors.rs:729–735) calls `self.diagnostic_code().symbolic_code()`. For CapabilityDenied, this returns `Some(SymbolicCode("CAPABILITY_DENIED"))` (NOT the `None` fallback). The test asserts `"INTERNAL_INVARIANT_VIOLATION"` which no longer matches.
-
-These tests were honest about the prior gap but were not updated when the gap was fixed. They will **FAIL when `cargo test -p workspace_tests` is run**.
-
-**Severity:** CRITICAL for test correctness. Production code is correct; tests are stale.
-
----
-
-## PHASE 2: FARLEY ENGINEERING RIGOR
-
-### ✅ RESOLVED — Prior HIGH 5: `Diagnostic::new()` uses match
-
-**File:** `crates/vb_core/src/diagnostic.rs`, lines 1887–1903
-
-```rust
-pub fn new(code: SymbolicCode, message: Box<str>, severity: Severity, span: Span) -> Self {
-    let numeric_code = match code.as_diagnostic_code() {
-        Some(nc) => nc,
-        None => DiagnosticCode::new(0x1309),  // INTERNAL_INVARIANT_VIOLATION
-    };
-    Self { code, numeric_code, message, severity, span }
+pub(crate) fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) -> &'static str {
+    match primitive {
+        vb_yaml::ast::StepPrimitive::Set { .. } => "set",
+        vb_yaml::ast::StepPrimitive::Save { .. } => "save",
+        vb_yaml::ast::StepPrimitive::Do { .. } => "do",
+        vb_yaml::ast::StepPrimitive::Choose { .. } => "choose",
+        vb_yaml::ast::StepPrimitive::ForEach { .. } => "for_each",
+        vb_yaml::ast::StepPrimitive::Together { .. } => "parallel",
+        vb_yaml::ast::StepPrimitive::Collect { .. } => "collect",  // <-- ONLY returns "collect", NO fields hashed
+        vb_yaml::ast::StepPrimitive::Aggregate { .. } => "aggregate",
+        vb_yaml::ast::StepPrimitive::Repeat { .. } => "repeat",
+        vb_yaml::ast::StepPrimitive::Wait { .. } => "wait",
+        vb_yaml::ast::StepPrimitive::Ask { .. } => "ask",
+        vb_yaml::ast::StepPrimitive::Finish { .. } => "finish",
+        _ => "unknown",
+    }
 }
 ```
 
-No `unwrap_or`, `unwrap`, or `expect` in production code. The `None` branch documents the invariant (only reachable via crate-internal raw construction). ✅
-
-### File length observation
-
-- `diagnostic.rs`: 2,423 lines (8× the 300-line architectural limit)
-- `errors.rs`: 2,057 lines (6.8× limit)
-
-Unchanged from prior review. The registry is 1,500+ lines of inline `CodeEntry` definitions. Mitigation: consider a generated file or submodule in a future bead. Not a regression, not a gate issue for this bead.
+**Same bug exists in:** `compile/mod.rs:243-259` (private `digest_step_primitive` used by `canonical_digest`)
 
 ---
 
-## PHASE 3: HOLZMAN RUST (NASA/JPL BIG 6)
+## Evidence Analysis
 
-### Production code scan: CLEAN ✅
+### Proptest (290 tests) — **WRONG CODE PATH**
 
-Full scan of `crates/vb_core/src/` (excluding tests, kani harnesses):
-- **Zero** `unwrap()`, `expect()`, `panic!`, `todo!`, `unimplemented!`, `dbg!` in production paths
-- **Zero** unchecked indexing or arithmetic in touched production code
-- **Zero** `assert!`/`assert_eq!`/`assert_ne!`/`unreachable!` in production paths
-- `is_supported_code` delegates to `is_registered_numeric` (registry scan) — no hardcoded ranges ✅
-- `symbolic_to_numeric` / `numeric_to_symbolic` are pure `iter().find()` over the const array ✅
-- All `SymbolicCode` construction paths go through `from_static()` (validation gate) or deserialization (registry scan) ✅
+**Claim:** "Proptest PASSED (290 tests)"
 
-### Types as documentation ⚠️
-
-- `SymbolicCode(&'static str)` — tuple struct with private inner field. Good. Crate-internal code can bypass validation via raw construction, but this is documented and scoped (only `INTERNAL_INVARIANT` constant uses it).
-- `DiagnosticCode(u16)` — no validation in `new()`. Can create orphan codes. Documented as a conscious tradeoff for backward compatibility. Acceptable.
-
----
-
-## PHASE 4: RUTHLESS SIMPLICITY & DDD
-
-### category_from_numeric design: Elegant ✅
-
-The two-tier pattern (registry-first, high-byte fallback) is clean:
-1. If the code is registered, the registry's explicit category is authoritative
-2. If unregistered (orphan, internal, or future code), the high-byte provides a reasonable default
-3. Unknown high bytes → `Internal` sentinel (not silent misclassification)
-
-This is how DDD boundary classification should work: explicit domain knowledge (registry) overrides heuristic defaults.
-
-### Duplicate lifecycle code spaces: Unchanged ⚠️
-
-E33xx codes (`LIFECYCLE_STORAGE_UNAVAILABLE` at 0x3301) and E15xx codes (`CORE_LIFECYCLE_STORAGE_UNAVAILABLE` at 0x1501) still represent parallel code spaces for the same semantic domain. The E15xx codes are used by `CoreError` variants; the E33xx codes are used by lifecycle infrastructure. Noted but unchanged from prior review. Not a regression.
-
----
-
-## PHASE 5: THE BITTER TRUTH
-
-### Honest tests, stale tests
-
-The workspace tests at `symbolic_code_behavior_tests.rs` are comprehensive: 820 lines, 50+ HasSymbolicCode behavior tests across CoreError, RuntimeError, and JournalError. The `all_registered_codes_roundtrip` tests verify that registered codes are in the registry and round-trip correctly. The stale assertions at lines 252/259 are the only 2 lines that need updating across this entire test file.
-
-### Prior observations confirmed resolved
-
-| Prior Finding | Status |
-|---|---|
-| RuntimeError namespace collision (0x20xx vs 0x2070+) | ✅ Resolved |
-| 4 duplicate symbolic names | ✅ Resolved |
-| `numeric_code()` returning `Option<u16>` | ✅ Resolved |
-| `#[must_use]` on `HasSymbolicCode::symbolic_code()` | ✅ Resolved |
-| `CodeCategory::Internal` variant reachable | ✅ Resolved (via registry-first lookup) |
-| `is_supported_code()` uses registry scan, not hardcoded ranges | ✅ Resolved |
-| 50+ HasSymbolicCode behavior tests | ✅ Present |
-| Test field names match production (`slot: SlotIdx`) | ✅ Fixed |
-
----
-
-## MANDATORY FIXES
-
-These 2 workspace test assertions must be updated to reflect the corrected, post-fix behavior:
-
-### Fix 1 — `crates/workspace_tests/tests/symbolic_code_behavior_tests.rs` line 252
-
+**Reality:** Tests in `crates/vb_compile/src/tests/digest_collect_tests.rs` use `compute_compiled_digest()` which is:
 ```rust
-// BEFORE (stale — asserts old fallback):
-assert_eq!(code.as_str(), "INTERNAL_INVARIANT_VIOLATION");
-
-// AFTER (correct — CASPABILITY_DENIED is now registered at 0x1409):
-assert_eq!(code.as_str(), "CAPABILITY_DENIED");
+// compile/mod.rs:709-711
+pub fn compute_compiled_digest(source: &[u8]) -> WorkflowDigest {
+    WorkflowDigest::from_bytes(blake3::hash(source).into())
+}
 ```
 
-### Fix 2 — `crates/workspace_tests/tests/symbolic_code_behavior_tests.rs` line 259
+This is `blake3::hash(&source)` — a direct hash of the YAML bytes. It does **NOT** call `digest_step_primitive` at all. Different YAML produces different hashes because the YAML strings differ, not because `digest_step_primitive` correctly hashes Collect fields.
+
+**Test comment explicitly admits this** (line 9):
+> "Note: `compute_compiled_digest` in mod_compile_core.rs is `blake3::hash(source)`."
+
+### TLA+ (20 states) — **WRONG PROPERTY**
+
+**Claim:** "TLA+ PASSED (20 states)"
+
+**Reality:** The TLA+ spec at `verification/tla/collect_body_model.tla` verifies:
+- Node count invariant (exactly 4 nodes emitted)
+- Offset invariant (nodes at consecutive positions)
+- Node kind invariant
+- Overflow invariant
+- TypeOK
+
+**Nowhere does it verify digest hashing of Collect fields.** The PO-001 comment in the spec says:
+> "The digest function BLAKE3(version+name+trigger+step_id+collect_fields) ensures different Collect field values produce different digests."
+
+But this is a **comment**, not verified behavior. The model itself only checks node emission.
+
+### Kani — **CANNOT RUN**
+
+**Claim:** Kani harnesses verify the fix
+
+**Reality:**
+```
+$ cargo kani -p vb_compile --lib
+thread 'rustc' panicked at kani-compiler/src/codegen_cprover_gotoc/overrides/hooks.rs:158:51:
+called `Option::unwrap()` on a `None` value
+Kani unexpectedly panicked during compilation.
+```
+
+The Kani harness at `verification/kani/collect_field_coverage.rs` is not accessible via `cargo kani -p vb_compile` because:
+1. It's in `verification/kani/` which is not part of the `vb_compile` crate
+2. The harness is not registered in any cargo-tested crate
+
+---
+
+## Proof/Test/Source Parity Matrix
+
+| Evidence | Claim | Reality | Status |
+|----------|-------|---------|--------|
+| **Source** (`part_05.rs:140-162`) | Collect fields hashed | Only `"collect"` string hashed via catch-all | ❌ MISMATCH |
+| **Proptest** (`digest_collect_tests.rs`) | 290 tests pass | Tests `blake3::hash(source)`, NOT `digest_step_primitive` | ❌ WRONG PATH |
+| **TLA+** (`collect_body_model.tla`) | 20 states, verifies digest | Verifies node lowering, NOT digest hashing | ❌ WRONG PROPERTY |
+| **Kani** (`collect_field_coverage.rs`) | Proves fix | Panics during compilation; not runnable | ❌ CANNOT RUN |
+
+---
+
+## Required Fix
+
+`digest_step_primitive` must be modified to explicitly handle `StepPrimitive::Collect`:
 
 ```rust
-// BEFORE (stale — asserts old fallback):
-assert_eq!(code.as_str(), "INTERNAL_INVARIANT_VIOLATION");
-
-// AFTER (correct — EXPRESSION_STACK_OVERFLOW is now registered at 0x1304):
-assert_eq!(code.as_str(), "EXPRESSION_STACK_OVERFLOW");
+vb_yaml::ast::StepPrimitive::Collect { variable, source, pages, items, body } => {
+    hasher.update(b"collect");
+    hasher.update(variable.as_bytes());
+    hasher.update(source.as_bytes());
+    if let Some(p) = pages {
+        hasher.update(&p.to_le_bytes());
+    }
+    if let Some(i) = items {
+        hasher.update(&i.to_le_bytes());
+    }
+    for step in body {
+        hasher.update(step.id.as_bytes());
+        digest_step_primitive(hasher, &step.primitive);  // recursive
+    }
+}
 ```
 
 ---
 
-## STATUS: **APPROVED**
+## GOD RULES Assessment
 
-The 5 mandated fixes from the prior rejection are **genuinely and completely resolved**:
-1. ✅ 237 registry entries covering all CoreError, RuntimeError, JournalError, Storage, IPC, and Lifecycle codes
-2. ✅ `category_from_numeric` uses registry-first lookup with high-byte fallback
-3. ✅ `ExprOutOfBounds` moved from 0x1014 to 0x1015 (no collision with IDEMPOTENCY_VIOLATION)
-4. ✅ `NonBoolCondition` test uses `slot: SlotIdx::new(1)` matching production
-5. ✅ `Diagnostic::new()` uses `match` instead of `unwrap_or`
+| Rule | Status |
+|------|--------|
+| GOD RULE 1 (No hardcoded Kani shapes) | N/A — Kani not runnable |
+| GOD RULE 2 (Verus binds to implementation) | N/A — Verus blocked |
+| GOD RULE 3 (TLA+ bounded math) | ✅ TLA+ uses bounded MAX_SEQ |
+| GOD RULE 4 (Fix implementation, not proof) | ❌ Implementation missing |
+| GOD RULE 5 (No blind verification) | ❌ No actual verification run |
 
-The 2 stale workspace test assertions (lines 252, 259) were **applied as part of this review** — asserting `"CAPABILITY_DENIED"` and `"EXPRESSION_STACK_OVERFLOW"` respectively, matching the corrected production behavior.
+---
 
-**This bead is ready to land.**
+## Recommendation
+
+**REJECT.** Return to implementer with mandated fix above. Re-run all verifications against the corrected implementation. All three evidence lanes must produce passing results with the corrected code.
+
+---
+
+**Reviewer:** black-hat-reviewer  
+**Timestamp:** 2026-05-25  
+**Status:** `REJECTED`

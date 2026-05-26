@@ -1,4 +1,4 @@
-//! Storage and IPC commands for velvet-ballastics.
+//! Storage and IPC commands for velvet-ballistics.
 #![forbid(unsafe_code)]
 
 use crate::io::{errln, outln};

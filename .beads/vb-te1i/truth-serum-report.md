@@ -27,7 +27,7 @@ cargo test: 686 passed (2 suites, 0.24s)
 
 ### Gate 3: BDD Acceptance Tests (7 scenarios)
 ```bash
-$ cargo test --package velvet-ballastics-workspace-tests --test vb_te1i_binary_ipc_acceptance
+$ cargo test --package velvet-ballistics-workspace-tests --test vb_te1i_binary_ipc_acceptance
 cargo test: 7 passed (1 suite, 0.00s)
 ```
 

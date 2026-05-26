@@ -12,7 +12,7 @@
   - Journal/events/inspect: Fjall-backed durable evidence surfaces for RunAccepted, RunAdmission, RunFinished, failures, and digest fields.
   - Recovery: restart/replay from persisted headers, source/artifact records, journal events, and snapshots without YAML reparsing.
 - Assumptions:
-  - Existing package names are `velvet_ballastics`, `vb_compile`, `vb_storage`, `vb_runtime`, and workspace package `velvet-ballastics-workspace`.
+  - Existing package names are `velvet_ballistics`, `vb_compile`, `vb_storage`, `vb_runtime`, and workspace package `velvet-ballistics-workspace`.
   - Downstream states may add tests/proofs, but this contract stage does not write production code, tests, or proof code.
   - `moon ci` remains the release gate; focused Cargo commands are obligation-level evidence commands.
 - Open questions:
@@ -71,11 +71,11 @@
 - ERR-004 / `AcceptedArtifactMissing`: `cargo test -p vb_runtime -- --nocapture` must include strict admission evidence for missing accepted artifact envelope returning `AcceptedArtifactMissing` or the crate's exact admission variant mapped to this contract error.
 - ERR-005 / `AcceptedArtifactInvalid`: `cargo test -p vb_runtime -- --nocapture` must include malformed, under-proven, or gate/proof-count mismatch evidence returning `AcceptedArtifactInvalid`.
 - ERR-006 / `CapabilityMismatch`: `cargo test -p vb_runtime -- --nocapture` must include missing capability grant evidence returning `CapabilityMismatch`.
-- ERR-007 / `DurabilityFailure`: `cargo test -p velvet_ballastics --test cli_integration -- --nocapture` must include persistence-before-ack failure evidence returning `DurabilityFailure` with no runnable state acknowledged.
+- ERR-007 / `DurabilityFailure`: `cargo test -p velvet_ballistics --test cli_integration -- --nocapture` must include persistence-before-ack failure evidence returning `DurabilityFailure` with no runnable state acknowledged.
 - ERR-008 / `ReplayDivergence`: `cargo test -p vb_storage -- --nocapture` must include divergent journal/snapshot evidence returning `ReplayDivergence`.
 - ERR-009 / `CorruptRecoveryData`: `cargo test -p vb_storage -- --nocapture` must include corrupt frame/snapshot/journal evidence returning `CorruptRecoveryData` or the crate's exact `CorruptSnapshot`/frame corruption variant mapped to this contract error.
 - ERR-010 / `NoRecoveryData`: `cargo test -p vb_storage -- --nocapture` must include no durable run evidence returning `NoRecoveryData`.
-- ERR-011 / `YamlReparseDuringRecovery`: `cargo test -p velvet-ballastics-workspace --test vb_qi37_1_1_red_recovery_contract_test -- --nocapture` plus static boundary evidence must prove parser-call sentinel failure or no post-admission parser dependency; success without this evidence is rejected.
+- ERR-011 / `YamlReparseDuringRecovery`: `cargo test -p velvet-ballistics-workspace --test vb_qi37_1_1_red_recovery_contract_test -- --nocapture` plus static boundary evidence must prove parser-call sentinel failure or no post-admission parser dependency; success without this evidence is rejected.
 
 ## Contract Signatures
 

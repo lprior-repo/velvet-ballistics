@@ -18,8 +18,8 @@
 ## Command Evidence
 
 - `cargo +nightly fmt --all --check`: PASS.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract --no-run`: PASS.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract`: expected RED; 6 passed, 1 failed.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract --no-run`: PASS.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract`: expected RED; 6 passed, 1 failed.
   - Failing test: `vb_compile_production_sources_remain_under_agreed_line_limit`.
   - Oversized top-level sources: `expression.rs=881`, `expression_bytecode.rs=2242`, `mod_compile_errors.rs=848`, `mod_compile_lowering.rs=2539`, `mod_compile_validation.rs=1447`, `references.rs=342`, `schema.rs=729`, `type_taint.rs=511`.
 - `bash scripts/check-source-length.sh`: expected RED with the same top-level `crates/vb_compile/src/*.rs` oversized production files.

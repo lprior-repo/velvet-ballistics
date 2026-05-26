@@ -92,8 +92,8 @@ fn parse_webhook_trigger(
     mark: Option<SourceMark>,
 ) -> Result<TriggerAst, CompileError> {
     Ok(TriggerAst::Webhook {
-        path: trigger_str(value, "webhook", "path")?.into(),
-        method: trigger_str(value, "webhook", "method")?.into(),
+        path: optional_str(value, "path").map(|s| s.into()),
+        method: optional_str(value, "method").map(|s| s.into()),
         unique: optional_str(value, "unique").map(Box::<str>::from),
         mark,
     })
@@ -115,7 +115,7 @@ fn parse_event_trigger(
     mark: Option<SourceMark>,
 ) -> Result<TriggerAst, CompileError> {
     Ok(TriggerAst::Event {
-        name: trigger_str(value, "event", "name")?.into(),
+        name: trigger_str(value, "event", "type")?.into(),
         mark,
     })
 }

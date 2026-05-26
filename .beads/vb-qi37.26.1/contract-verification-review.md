@@ -20,7 +20,7 @@ STATUS: APPROVED
 - `jq -c . .beads/vb-qi37.26.1/proof-obligations.jsonl >/dev/null` → VALID JSONL
 - `jq -c . .beads/vb-qi37.26.1/traceability-matrix.jsonl >/dev/null` → VALID JSONL
 - `cargo check -p vb_ipc` → Finished dev profile. 0 errors.
-- `cargo check -p velvet-ballastics-workspace-tests --tests` → Finished dev profile. 0 errors.
+- `cargo check -p velvet-ballistics-workspace-tests --tests` → Finished dev profile. 0 errors.
 - `cargo clippy -p vb_ipc -- -D warnings` → No issues found.
 - `grep -n 'unsafe' crates/vb_ipc/src/server/handlers.rs` → 1 match: `#![forbid(unsafe_code)]` (acceptable)
 - `ls crates/vb_ipc/src/server/handlers/mod.rs 2>/dev/null` → No such file (orphaned files confirmed excluded)

@@ -40,7 +40,7 @@ Truth serum audit completed with PASS verdict:
 - All required artifacts exist and are non-empty
 - All JSONL files are valid
 - All key review documents have STATUS: APPROVED
-- All three touched crates (vb_storage, vb_runtime, velvet_ballastics) pass clippy with strict deny flags for unsafe code, unwrap, expect, panic, todo, unimplemented, unreachable, unchecked indexing/slicing
+- All three touched crates (vb_storage, vb_runtime, velvet_ballistics) pass clippy with strict deny flags for unsafe code, unwrap, expect, panic, todo, unimplemented, unreachable, unchecked indexing/slicing
 - No hallucinated file paths
 - No deleted tests
 - All contract clauses have PASS evidence

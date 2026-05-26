@@ -6,7 +6,7 @@ updated_at: 2026-05-09T21:30:00Z
 # Manual QA Smoke Report
 
 ## Test Environment
-- Binary: velvet_ballastics (debug build)
+- Binary: velvet_ballistics (debug build)
 - Workspace: vb-zo9d-ws
 - Test database paths: /tmp/vb-doctor-empty-test, /tmp/vb-doctor-qa-db2
 
@@ -75,7 +75,7 @@ FAIL: cannot open journal at /nonexistent/path/to/db: fjall journal operation fa
 
 ### Integration Test Suite
 ```bash
-$ cargo test -p velvet_ballastics --test cli_integration cli_doctor
+$ cargo test -p velvet_ballistics --test cli_integration cli_doctor
 ```
 **Results:**
 - `cli_doctor_json_includes_trim_eligibility_check` — PASS

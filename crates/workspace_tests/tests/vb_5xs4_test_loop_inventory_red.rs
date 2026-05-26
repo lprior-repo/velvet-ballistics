@@ -5,7 +5,7 @@
 //! `quality::test_loop_inventory` and its public domain types.
 
 use proptest::prelude::*;
-use velvet_ballastics_workspace_tests::quality::test_loop_inventory::{
+use velvet_ballistics_workspace_tests::quality::test_loop_inventory::{
     AssignmentEvidence, BehaviorEvidence, CaseEvidence, CaseLabel, Disposition, DispositionKind,
     DispositionSelection, ExceptionMetadata, ExceptionReason, ExceptionScope, Finding, FindingId,
     FindingSummary, Inventory, InventoryError, InventoryReport, InventoryScope, LabelEvidence,

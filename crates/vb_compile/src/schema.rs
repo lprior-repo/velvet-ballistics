@@ -518,10 +518,10 @@ mod tests {
     use super::*;
     use crate::YamlCompiler;
     use saphyr::LoadableYamlNode;
-    use vb_core::diagnostic::SymbolicCode;
+    use vb_core::SymbolicCode;
 
     fn validate_inputs(inputs: &str) -> Result<(), CompileError> {
-        let source = format!("version: velvet-ballastics/v1\ninputs:\n{inputs}\n");
+        let source = format!("version: velvet-ballistics/v1\ninputs:\n{inputs}\n");
         let docs = Yaml::load_from_str(&source)?;
         let Some(doc) = docs.first() else {
             return Err(CompileError::EmptySource);
@@ -562,7 +562,7 @@ mod tests {
 
     /// Minimal canonical workflow for testing.
     const VB_YD5X_MINIMAL_VALID_WORKFLOW: &[u8] = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: minimal_valid
 when:
   manual: {}
@@ -580,7 +580,7 @@ steps:
     /// This uses a slot index that is out of bounds for the compiled workflow.
     /// The issue is the result slot 99 doesn't exist.
     const VB_YD5X_MALFORMED_SLOT_REF: &[u8] = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: bad_slot_ref
 when:
   manual: {}
@@ -598,17 +598,22 @@ steps:
       result: 0
 "#;
 
-    /// Workflow with loop body step out of range (Gate 11)
-    /// The parallel branches point to step 2 (join) but join is at node 1, not step 2.
+    /// Workflow with loop body type mismatch (Gate 11)
+    /// The for_each 'input' field expects expression string but gets a number.
     const VB_YD5X_MALFORMED_LOOP_BODY: &[u8] = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: bad_loop_body
 when:
   manual: {}
 steps:
   - id: fanout
-    parallel:
-      branches: [2]
+    for_each:
+      variable: i
+      input: 123
+      steps:
+        - id: step
+          finish:
+            result: 0
   - id: join
     finish:
       result: 0
@@ -616,7 +621,7 @@ steps:
 
     /// Workflow with duplicate step ID
     const VB_YD5X_MALFORMED_DUPLICATE_ID: &[u8] = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: duplicate_ids
 when:
   manual: {}
@@ -631,7 +636,7 @@ steps:
 
     /// Workflow with unknown reference
     const VB_YD5X_MALFORMED_UNKNOWN_REF: &[u8] = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: unknown_ref
 when:
   manual: {}

@@ -17,7 +17,7 @@
 |---|---|---|
 | UNIT-001..010 | `cargo test --package vb_ipc` | 686 passed — PASS |
 | STATIC-001 | `cargo clippy --package vb_ipc --lib --bins --examples -- -D warnings` | No issues found — PASS |
-| BDD-001..007 | `cargo test --package velvet-ballastics-workspace-tests --test vb_te1i_binary_ipc_acceptance` | 7 passed — PASS |
+| BDD-001..007 | `cargo test --package velvet-ballistics-workspace-tests --test vb_te1i_binary_ipc_acceptance` | 7 passed — PASS |
 | KAN-001/002/003 | `cargo kani --package vb_ipc` | BLOCKED — formal waiver in JSONL |
 | VERUS-001..004 | `verus crates/vb_ipc/src/commands.rs` etc. | BLOCKED — formal waiver in JSONL |
 

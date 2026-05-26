@@ -13,7 +13,7 @@ use vb_storage::{EventSeq, FjallJournal, JournalEvent};
 // ---------------------------------------------------------------------------
 
 fn run_cli(args: &[&std::ffi::OsStr]) -> Option<std::process::Output> {
-    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_velvet-ballastics"));
+    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"));
     command.args(args);
     command.output().ok()
 }

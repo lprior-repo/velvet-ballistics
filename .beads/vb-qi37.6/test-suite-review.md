@@ -45,11 +45,11 @@ State 8 setup suite and touched setup artifacts only:
 
 ## Tier 1 — Execution evidence run by reviewer
 
-[PASS] `cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_6_state8_setup` -> `2 passed; 0 failed`.
+[PASS] `cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_6_state8_setup` -> `2 passed; 0 failed`.
 
-[PASS] `cargo test -p velvet-ballastics-fuzz --features fuzz --bin capability_name_schema --no-run` -> compiled.
+[PASS] `cargo test -p velvet-ballistics-fuzz --features fuzz --bin capability_name_schema --no-run` -> compiled.
 
-[PASS] `cargo test -p velvet-ballastics-fuzz --features fuzz --bin capability_contract_schema --no-run` -> compiled.
+[PASS] `cargo test -p velvet-ballistics-fuzz --features fuzz --bin capability_contract_schema --no-run` -> compiled.
 
 [PASS] Focused behavior checks from State 8 report rerun:
 

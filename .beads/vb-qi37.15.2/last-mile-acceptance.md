@@ -22,8 +22,8 @@ Local behavior artifacts are present and approved:
 
 Do not close/forget workspace yet. `jj status` shows unintegrated code and artifact changes in this isolated workspace, including:
 
-- `M crates/velvet_ballastics/src/main.rs`
-- `M crates/velvet_ballastics/tests/cli_integration.rs`
+- `M crates/velvet_ballistics/src/main.rs`
+- `M crates/velvet_ballistics/tests/cli_integration.rs`
 - new `.beads/vb-qi37.15.2/*` artifacts
 
 Forgetting the workspace now would abandon unlanded changes. State 15 requires landing/sync/cleanup, but this session has no safe integration policy for merging this isolated JJ change into the canonical workspace/branch while the root workspace is dirty and sibling Wave 3 workspaces modify the same CLI files.
@@ -34,15 +34,15 @@ Integrate the JJ workspace change into the canonical branch with an explicit JJ 
 
 Exact sibling conflict risk under the new policy:
 
-- `crates/velvet_ballastics/tests/cli_integration.rs`: `vb-qi37.13.4`, `vb-qi37.15.1`, and `vb-qi37.15.2` all append independent test modules at EOF from parent `qwxtlxqq 5fb2d246`; sequential integration requires manual combination.
-- `crates/velvet_ballastics/src/main.rs`: touched by all three; current hunks are non-adjacent, but must be verified in the same integration pass.
+- `crates/velvet_ballistics/tests/cli_integration.rs`: `vb-qi37.13.4`, `vb-qi37.15.1`, and `vb-qi37.15.2` all append independent test modules at EOF from parent `qwxtlxqq 5fb2d246`; sequential integration requires manual combination.
+- `crates/velvet_ballistics/src/main.rs`: touched by all three; current hunks are non-adjacent, but must be verified in the same integration pass.
 
 ## 2026-05-11 integration retry
 
 Integration workspace `/home/lewis/src/Velvet-ballistics-vb-8iwj-wave3-integration` combines this change with `vb-qi37.13.4` and `vb-qi37.15.1` as merge parents. The `cli_integration.rs` 3-sided conflict was manually resolved by preserving all sibling test modules. Scoped evidence:
 
-- `cargo +nightly fmt -p velvet_ballastics --check`: pass.
-- `rtk cargo check -p velvet_ballastics --all-targets`: 0 errors, 1 duplicate-package warning.
+- `cargo +nightly fmt -p velvet_ballistics --check`: pass.
+- `rtk cargo check -p velvet_ballistics --all-targets`: 0 errors, 1 duplicate-package warning.
 - submit tests `cli_submit_persists_ledger_before_success`, `cli_submit_json_returns_structured_identifiers`, `cli_submit_rejects_missing_input_bin`, `cli_submit_rejects_unknown_durability`: each 1 passed, 85 filtered out.
 - final manual QA `submit <valid temp workflow> --input-bin /dev/null --db <temp-db> --durability strict --json`: PASS with `status: submitted`, numeric `run_id`, `step_count: 2`.
 - `SUBMIT-TLA-001` waiver remains accounted in `formal-waivers.jsonl`.

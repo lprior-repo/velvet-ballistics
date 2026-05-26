@@ -1,13 +1,13 @@
-baseline_command: rustup run nightly-2026-04-28 cargo bench -p velvet-ballastics-workspace-tests --bench velvet_ballastics ipc_frame_decode --all-features -- --sample-size 10 --warm-up-time 1 --measurement-time 1
+baseline_command: rustup run nightly-2026-04-28 cargo bench -p velvet-ballistics-workspace-tests --bench velvet_ballistics ipc_frame_decode --all-features -- --sample-size 10 --warm-up-time 1 --measurement-time 1
 baseline_output_excerpt:
   Finished `bench` profile [optimized + debuginfo] target(s) in 37.12s
-  Running benches/velvet_ballastics.rs (target/release/deps/velvet_ballastics-44a32d74bb375e1b)
+  Running benches/velvet_ballistics.rs (target/release/deps/velvet_ballistics-44a32d74bb375e1b)
   storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p...
                           time:   [69.311 ns 69.547 ns 69.731 ns]
-result_command: rustup run nightly-2026-04-28 cargo bench -p velvet-ballastics-workspace-tests --bench velvet_ballastics ipc_frame_decode --all-features -- --sample-size 10 --warm-up-time 1 --measurement-time 1
+result_command: rustup run nightly-2026-04-28 cargo bench -p velvet-ballistics-workspace-tests --bench velvet_ballistics ipc_frame_decode --all-features -- --sample-size 10 --warm-up-time 1 --measurement-time 1
 result_output_excerpt:
   Finished `bench` profile [optimized + debuginfo] target(s) in 0.09s
-  Running benches/velvet_ballastics.rs (target/release/deps/velvet_ballastics-44a32d74bb375e1b)
+  Running benches/velvet_ballistics.rs (target/release/deps/velvet_ballistics-44a32d74bb375e1b)
   storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p...
                           time:   [69.497 ns 69.635 ns 69.950 ns]
                           change: [+0.2168% +0.8125% +1.6132%] (p = 0.03 < 0.05)

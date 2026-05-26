@@ -55,7 +55,7 @@ python3 - <<'PY'
 PY
 bash scripts/check-ignored-fallible-results.sh
 bash scripts/check-panic-surface.sh
-rustup run nightly-2026-04-28 cargo test -p velvet-ballastics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract
+rustup run nightly-2026-04-28 cargo test -p velvet-ballistics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract
 ```
 
 Observed summary:

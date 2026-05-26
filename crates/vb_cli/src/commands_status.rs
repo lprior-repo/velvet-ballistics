@@ -92,7 +92,7 @@ pub(crate) fn print_status(
 
 fn print_status_yaml(status: &CliStatus) -> Result<(), crate::OutputError> {
     crate::write_stdout_line_checked(format_args!(
-        "schema_version: velvet-ballastics/cli-output/v1"
+        "schema_version: velvet-ballistics/cli-output/v1"
     ))?;
     crate::write_stdout_line_checked(format_args!("kind: status"))?;
     crate::write_stdout_line_checked(format_args!("status: {}", status.health))?;

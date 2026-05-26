@@ -39,7 +39,7 @@ updated_at: 2026-05-09T21:05:00Z
 
 - Added re-exports: `TrimBlocker`, `TrimDiagnostic`, `TrimEligibility`
 
-### 4. velvet_ballastics/src/main.rs
+### 4. velvet_ballistics/src/main.rs
 
 - Extended `cmd_doctor` with Check 4: `trim_eligibility`
   - Calls `journal.trim_eligibility_diagnostic(TrimPolicy::default())`
@@ -47,7 +47,7 @@ updated_at: 2026-05-09T21:05:00Z
   - Text mode prints summary line and per-run details
   - On error, returns `CliExitCode::StorageError`
 
-### 5. velvet_ballastics/tests/cli_integration.rs
+### 5. velvet_ballistics/tests/cli_integration.rs
 
 - Added 4 integration tests:
   - `cli_doctor_json_includes_trim_eligibility_check`

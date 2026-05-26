@@ -16,7 +16,7 @@ STATUS: PASS
 Command:
 
 ```bash
-timeout 180 cargo run -q -p velvet_ballastics --bin velvet-ballastics -- --help; code=$?; printf '\nEXIT:%s\n' "$code"
+timeout 180 cargo run -q -p velvet_ballistics --bin velvet-ballistics -- --help; code=$?; printf '\nEXIT:%s\n' "$code"
 ```
 
 Outcome: PASS. The command listed `answer <run_id> --step <N> --value-file <file> --db <path> [--json|--jsonl]` and exited 0.
@@ -34,7 +34,7 @@ EXIT:0
 Command:
 
 ```bash
-timeout 180 cargo run -q -p velvet_ballastics --bin velvet-ballastics -- answer; code=$?; printf '\nEXIT:%s\n' "$code"
+timeout 180 cargo run -q -p velvet_ballistics --bin velvet-ballistics -- answer; code=$?; printf '\nEXIT:%s\n' "$code"
 ```
 
 Outcome: PASS. Missing `run_id` is rejected without panic.
@@ -49,7 +49,7 @@ EXIT:1
 Command:
 
 ```bash
-timeout 180 cargo run -q -p velvet_ballastics --bin velvet-ballastics -- answer not-a-run --step 0 --value-file /no/such/value.bin --db /tmp/vb-qa-db --json; code=$?; printf '\nEXIT:%s\n' "$code"
+timeout 180 cargo run -q -p velvet_ballistics --bin velvet-ballistics -- answer not-a-run --step 0 --value-file /no/such/value.bin --db /tmp/vb-qa-db --json; code=$?; printf '\nEXIT:%s\n' "$code"
 ```
 
 Outcome: PASS. Invalid run ID returns structured JSON failure without panic.
@@ -72,7 +72,7 @@ from pathlib import Path
 import sys
 Path(sys.argv[1]).write_bytes(b'qa-answer-bytes')
 PY
-timeout 180 cargo run -q -p velvet_ballastics --bin velvet-ballastics -- answer 42 --step 0 --value-file "$tmp/value.bin" --db "$tmp/run-db" --json; code=$?; printf '\nEXIT:%s\n' "$code"; rm -rf "$tmp"
+timeout 180 cargo run -q -p velvet_ballistics --bin velvet-ballistics -- answer 42 --step 0 --value-file "$tmp/value.bin" --db "$tmp/run-db" --json; code=$?; printf '\nEXIT:%s\n' "$code"; rm -rf "$tmp"
 ```
 
 Outcome: PASS. The CLI reads an answer file, derives the socket path from `--db`, attempts IPC, and reports a structured connection failure without panic.
@@ -111,7 +111,7 @@ EXIT:0
 Command:
 
 ```bash
-timeout 300 cargo test -q -p velvet_ballastics answer -- --nocapture; code=$?; printf '\nEXIT:%s\n' "$code"
+timeout 300 cargo test -q -p velvet_ballistics answer -- --nocapture; code=$?; printf '\nEXIT:%s\n' "$code"
 ```
 
 Outcome: PASS.

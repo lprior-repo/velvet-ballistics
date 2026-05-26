@@ -822,7 +822,7 @@ next_gate: implementation state must make failing-first strict runtime admission
 - `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test --test vb_qi37_4_2_strict_runtime_admission --no-run` exit=0.
 - `TMPDIR=target/tmp RUSTC_WRAPPER= PROPTEST_CASES=1000 rtk cargo test --test vb_qi37_4_2_strict_runtime_admission` exit=non-zero; 5 passed and 5 failed as failing-first evidence.
 - deterministic failures cover gate-count revalidation, durable proof flag revalidation, digest mismatch denial, stale certificate denial, and proptest gate-count singleton invariant with minimal failing input `found = 0`.
-- `TMPDIR=target/tmp rtk grep -n "AlwaysPresentArtifactStore|compiled_ir_exists\(|serde_yaml|serde_json|WorkflowParts" crates/vb_runtime/src crates/velvet_ballastics/src` exit=0 with 358 matches; static B12/B13/B14 gates remain red/unclaimed.
+- `TMPDIR=target/tmp rtk grep -n "AlwaysPresentArtifactStore|compiled_ir_exists\(|serde_yaml|serde_json|WorkflowParts" crates/vb_runtime/src crates/velvet_ballistics/src` exit=0 with 358 matches; static B12/B13/B14 gates remain red/unclaimed.
 - Fuzz/Kani/mutation/Moon CI not claimed; focused deterministic tests are red and block broader pass claims.
 
 ## Attempts
@@ -902,9 +902,9 @@ next_gate: implementation/API repair must make the expanded failing-first suite 
 - `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test --test vb_qi37_4_2_strict_runtime_admission --no-run` exit=0.
 - `TMPDIR=target/tmp RUSTC_WRAPPER= PROPTEST_CASES=1000 PROPTEST_FAILURE_PERSISTENCE=off rtk cargo test --test vb_qi37_4_2_strict_runtime_admission` exit=non-zero; 9 passed, 12 failed, 0 ignored. Failures are intentional red evidence for runtime revalidation, digest/stale taxonomy, constructor bypass, and state/diagnostic preservation gaps.
 - `TMPDIR=target/tmp RUSTC_WRAPPER= PROPTEST_CASES=1000 PROPTEST_FAILURE_PERSISTENCE=off rtk cargo test --test vb_qi37_4_2_strict_runtime_admission proptest` exit=non-zero; 2 passed, 3 failed. P01/P05 pass; P02/P03/P04 fail against current implementation.
-- `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo check -p velvet-ballastics-fuzz --features fuzz --bin accepted_artifact_envelope_qi37_4_2` exit=0.
-- `TMPDIR=target/tmp rtk grep -n "AlwaysPresentArtifactStore|compiled_ir_exists\(|admit_run\(|admit_run_with_budget\(" crates/vb_runtime/src crates/velvet_ballastics/src` exit=0 with 21 bypass-risk matches.
-- `TMPDIR=target/tmp rtk grep -n "serde_yaml|serde_json|WorkflowParts" crates/vb_runtime/src crates/velvet_ballastics/src` exit=0 with 343 parser-surface matches.
+- `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo check -p velvet-ballistics-fuzz --features fuzz --bin accepted_artifact_envelope_qi37_4_2` exit=0.
+- `TMPDIR=target/tmp rtk grep -n "AlwaysPresentArtifactStore|compiled_ir_exists\(|admit_run\(|admit_run_with_budget\(" crates/vb_runtime/src crates/velvet_ballistics/src` exit=0 with 21 bypass-risk matches.
+- `TMPDIR=target/tmp rtk grep -n "serde_yaml|serde_json|WorkflowParts" crates/vb_runtime/src crates/velvet_ballistics/src` exit=0 with 343 parser-surface matches.
 - `cargo kani --version` exit=0 (`cargo-kani 0.67.0`); `cargo mutants --version` exit=0 (`cargo-mutants 27.0.0`). No Kani/mutation pass is claimed while deterministic tests are red.
 - Generated proptest regression file was removed after red runs.
 

@@ -8,7 +8,7 @@
 //! - JSON output completeness
 
 /// Malformed YAML for error path testing.
-const MALFORMED_YAML: &str = r#"version: velvet-ballastics/v1
+const MALFORMED_YAML: &str = r#"version: velvet-ballistics/v1
 name: bad_workflow
 when:
   manual: {}
@@ -44,7 +44,7 @@ fn write_test_file(path: &std::path::Path, contents: &[u8]) -> bool {
 }
 
 fn run_cli(args: &[&std::ffi::OsStr]) -> Option<std::process::Output> {
-    let exe = env!("CARGO_BIN_EXE_velvet-ballastics");
+    let exe = env!("CARGO_BIN_EXE_velvet-ballistics");
     let mut command = std::process::Command::new(exe);
     command.args(args);
 

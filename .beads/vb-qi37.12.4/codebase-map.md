@@ -79,7 +79,7 @@ Production first-party Rust is primarily under:
 - `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-12-4/crates/vb_ui_snapshot/src`
 - `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-12-4/crates/vb_ui_makepad/src`
 - `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-12-4/crates/vb_proof_kernels/src`
-- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-12-4/crates/velvet_ballastics/src`
+- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-12-4/crates/velvet_ballistics/src`
 - `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-12-4/xtask/src`
 
 Non-production search domains that need explicit exclusion or justification:
@@ -89,10 +89,10 @@ Non-production search domains that need explicit exclusion or justification:
 
 ## Concrete observed risk examples
 
-- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-12-4/crates/velvet_ballastics/src/main.rs`
+- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-12-4/crates/velvet_ballistics/src/main.rs`
   - Grep found `Ok(()) | Err(_) => {}` around lines 4582, 4694, 4697, 4705, and 4708. These look like production silent-discard candidates and need contract/test review. Some may be existing debt tied to blocked `vb-qi37.12.2`; this bead should gate reintroduction and documented patterns without silently accepting them.
   - Grep also found `drop(frame.write_slot(...))` and `drop(journal)` patterns; not every `drop` is a discarded fallible result, so a mechanical gate should type-check or pattern-match narrowly enough to avoid false positives.
-- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-12-4/crates/velvet_ballastics/src/storage.rs`
+- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-12-4/crates/velvet_ballistics/src/storage.rs`
   - Grep found `unwrap_or` on `NonZeroUsize::new(1)`; this is not an ignored fallible `Result` but shows why broad `unwrap_or` scans are too noisy for this bead.
 - `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-12-4/xtask/src/ui_snapshot.rs` and `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-12-4/xtask/src/loom.rs`
   - Grep found `.ok()` and `filter_map(|e| e.ok())`; these may be intentional lossy conversions in tooling. Contract must decide whether xtask is production first-party for this gate or a tooling exception requiring explicit comments/allowlist.

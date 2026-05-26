@@ -86,7 +86,7 @@ fn forbidden_feature_null_byte_in_source_rejected() {
 #[test]
 fn field_shape_inputs_key_not_string() {
     let yaml = indoc::indoc! {"
-        version: velvet-ballastics/v1
+        version: velvet-ballistics/v1
         name: test
         when: { manual: {} }
         inputs:
@@ -108,7 +108,7 @@ fn field_shape_inputs_key_not_string() {
 #[test]
 fn field_shape_vars_key_not_string() {
     let yaml = indoc::indoc! {"
-        version: velvet-ballastics/v1
+        version: velvet-ballistics/v1
         name: test
         when: { manual: {} }
         vars:
@@ -130,7 +130,7 @@ fn field_shape_vars_key_not_string() {
 #[test]
 fn field_shape_result_key_not_string() {
     let yaml = indoc::indoc! {"
-        version: velvet-ballastics/v1
+        version: velvet-ballistics/v1
         name: test
         when: { manual: {} }
         steps: []

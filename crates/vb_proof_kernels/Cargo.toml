@@ -1,4 +1,4 @@
-# Proof Kernels for velvet-ballastics
+# Proof Kernels for velvet-ballistics
 #
 # Tiny, pure, sequential Rust kernels suitable for formal verification.
 # These are extracted from vb_core for Verus/Aeneas verification.

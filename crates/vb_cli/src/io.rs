@@ -1,11 +1,11 @@
-//! I/O helpers for velvet-ballastics.
+//! I/O helpers for velvet-ballistics.
 #![forbid(unsafe_code)]
 
 use crate::args::ParseError;
 use std::io::{self, Write};
 
 const HELP: &str = "\
-velvet-ballastics - compiled workflow runtime
+velvet-ballistics - compiled workflow runtime
 
 commands:
   validate   <workflow.yaml>                          Validate a workflow definition
@@ -48,7 +48,7 @@ pub fn write_help_stdout() -> io::Result<()> {
 pub fn write_version_stdout() -> io::Result<()> {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
-    writeln!(handle, "velvet-ballastics {VERSION}")
+    writeln!(handle, "velvet-ballistics {VERSION}")
 }
 
 pub fn write_error_stderr(error: &ParseError) -> io::Result<()> {

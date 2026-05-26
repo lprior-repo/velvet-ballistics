@@ -17,7 +17,7 @@
 
 - **External systems abstracted**:
   - Storage backend (vb_storage) abstracted as append-only journal interface
-  - CLI argument parsing (velvet_ballastics/args.rs) abstracted as command dispatch
+  - CLI argument parsing (velvet_ballistics/args.rs) abstracted as command dispatch
 
 - **Non-applicability rationale**: N/A — lifecycle state transitions, journal replay, and recovery are inherently temporal/state-over-time and require TLA+ model checking.
 

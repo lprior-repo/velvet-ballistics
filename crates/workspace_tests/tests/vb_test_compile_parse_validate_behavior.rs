@@ -72,7 +72,7 @@ fn parse_rejects_source_too_large() {
 #[test]
 fn parse_rejects_multiple_documents() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: first
 when:
   manual: {}
@@ -120,7 +120,7 @@ fn parse_rejects_top_level_scalar() {
 fn parse_rejects_invalid_yaml_syntax() {
     // Missing colon after key at top level produces TopLevelNotMapping
     // since the parser treats it as a scalar key
-    let source = b"version velvet-ballastics/v1\n";
+    let source = b"version velvet-ballistics/v1\n";
     let error = parse_error(source).expect("expected error");
     // TopLevelNotMapping is the error for this malformed YAML
     assert!(
@@ -185,7 +185,7 @@ key: !custom_tag value
 #[test]
 fn parse_rejects_duplicate_top_level_key() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: first
 name: duplicate
 when:
@@ -211,7 +211,7 @@ steps:
 #[test]
 fn parse_rejects_duplicate_step_id() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -231,7 +231,7 @@ steps:
 #[test]
 fn parse_rejects_duplicate_key_in_nested_mapping() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -259,7 +259,7 @@ steps:
 #[test]
 fn parse_rejects_name_with_spaces() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: "invalid name with spaces"
 when:
   manual: {}
@@ -281,7 +281,7 @@ steps:
 #[test]
 fn parse_rejects_name_starting_with_uppercase() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: InvalidName
 when:
   manual: {}
@@ -303,7 +303,7 @@ steps:
 #[test]
 fn parse_rejects_name_with_special_chars() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: "name@#!"
 when:
   manual: {}
@@ -325,7 +325,7 @@ steps:
 #[test]
 fn parse_rejects_reserved_name_step_id() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -374,7 +374,7 @@ steps:
 #[test]
 fn parse_rejects_multiple_triggers() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -398,7 +398,7 @@ steps:
 #[test]
 fn parse_rejects_unknown_trigger_kind() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   unknown_trigger: {}
@@ -424,7 +424,7 @@ steps:
 #[test]
 fn parse_rejects_empty_steps() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -440,7 +440,7 @@ steps: []
 #[test]
 fn parse_rejects_missing_step_id() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -461,7 +461,7 @@ steps:
 #[test]
 fn parse_rejects_step_without_primitive() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -481,7 +481,7 @@ steps:
 #[test]
 fn parse_rejects_step_with_multiple_primitives() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -504,7 +504,7 @@ steps:
 #[test]
 fn parse_rejects_unknown_step_field() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -527,7 +527,7 @@ steps:
 #[test]
 fn parse_rejects_non_mapping_step() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -548,7 +548,7 @@ steps:
 #[test]
 fn parse_rejects_finish_not_last() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -571,7 +571,7 @@ steps:
 #[test]
 fn parse_rejects_finish_missing_result() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -598,7 +598,7 @@ steps:
 #[test]
 fn parse_rejects_empty_wait_event() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -621,7 +621,7 @@ steps:
 #[test]
 fn compile_produces_valid_workflow_for_minimal_manual_trigger() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: minimal_workflow
 when:
   manual: {}
@@ -645,7 +645,7 @@ steps:
 #[test]
 fn compile_produces_valid_workflow_for_set_and_finish() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: set_workflow
 when:
   manual: {}
@@ -670,7 +670,7 @@ fn compile_produces_valid_workflow_with_webhook_trigger() {
     // webhook: {} means webhook trigger with no configuration
     // which is valid for the canonical compiler handoff
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: webhook_workflow
 when:
   webhook: {}
@@ -689,7 +689,7 @@ steps:
 #[test]
 fn compile_produces_valid_workflow_with_schedule_trigger() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: schedule_workflow
 when:
   schedule:
@@ -713,7 +713,7 @@ steps:
 #[test]
 fn error_message_for_duplicate_key_contains_key_name() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: first
 name: second
 when:
@@ -734,7 +734,7 @@ steps:
 #[test]
 fn error_message_for_invalid_name_contains_field_and_value() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: "bad name"
 when:
   manual: {}
@@ -761,7 +761,7 @@ steps:
 #[test]
 fn error_message_for_unknown_trigger_kind_contains_trigger_value() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   bad_trigger: {}
@@ -781,7 +781,7 @@ steps:
 #[test]
 fn error_message_for_empty_steps_is_descriptive() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -798,7 +798,7 @@ steps: []
 #[test]
 fn error_message_for_non_string_key_is_descriptive() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -817,7 +817,7 @@ steps:
 #[test]
 fn error_message_for_step_shape_not_mapping_contains_step_index() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -835,7 +835,7 @@ steps:
 #[test]
 fn error_message_for_unknown_step_field_contains_field_name() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -860,7 +860,7 @@ steps:
 #[test]
 fn compile_workflow_rejects_invalid_finish_not_last() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -883,7 +883,7 @@ steps:
 #[test]
 fn compile_workflow_rejects_unknown_step_field() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -900,7 +900,7 @@ steps:
 #[test]
 fn compile_workflow_rejects_empty_steps() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}

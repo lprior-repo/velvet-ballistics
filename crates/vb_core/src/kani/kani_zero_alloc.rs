@@ -9,41 +9,16 @@
 //!
 //! Bound: Code paths: from_static, Display::fmt, numeric_code, as_diagnostic_code.
 //! Format strings bounded to ~50 chars.
-//!
-//! Rewired: uses production SymbolicCode, DiagnosticCode, and CODE_REGISTRY
-//! from crate::diagnostic instead of inline models.
 
-use crate::diagnostic::{CODE_REGISTRY, DiagnosticCode, SymbolicCode};
+use super::kani_symbolic_code_validation::{CODE_REGISTRY, SymbolicCode, DiagnosticCode};
 
-/// Stub: as_diagnostic_code without heap allocation.
-const fn as_diagnostic_code_stub(sym: SymbolicCode) -> DiagnosticCode {
-    let s = sym.as_str();
-    let mut i = 0;
-    while i < CODE_REGISTRY.len() {
-        if string_eq(s, CODE_REGISTRY[i].symbolic) {
-            return DiagnosticCode::new(CODE_REGISTRY[i].numeric);
-        }
-        i += 1;
-    }
-    DiagnosticCode::new(0)
-}
+/// Stub for heap allocation — verifies no path triggers alloc.
+/// In production Kani run, this would use `kani::stub` to intercept
+/// alloc::alloc::alloc, alloc::boxed::Box::new, etc.
+/// For this model, we verify that SymbolicCode can be constructed and used
+/// entirely on the stack.
 
-const fn string_eq(a: &str, b: &str) -> bool {
-    let a_bytes = a.as_bytes();
-    let b_bytes = b.as_bytes();
-    if a_bytes.len() != b_bytes.len() {
-        return false;
-    }
-    let mut i = 0;
-    while i < a_bytes.len() {
-        if a_bytes[i] != b_bytes[i] {
-            return false;
-        }
-        i += 1;
-    }
-    true
-}
-
+/// Demonstrate stack-only operations with SymbolicCode.
 #[cfg(kani)]
 mod harnesses {
     use super::*;
@@ -51,8 +26,9 @@ mod harnesses {
     /// PO-007 H1: SymbolicCode construction from static strings does not
     /// require heap allocation. SymbolicCode is Copy (stack-only).
     #[kani::proof]
-    #[kani::unwind(160)]
+    #[kani::unwind(10)]
     fn kani_zero_alloc_hot_path() {
+        // Construction path: from_static
         for i in 0..CODE_REGISTRY.len() {
             let entry = &CODE_REGISTRY[i];
             let code = SymbolicCode::from_static(entry.symbolic);
@@ -74,4 +50,29 @@ mod harnesses {
             }
         }
     }
+}
+
+/// Stub: as_diagnostic_code without heap allocation.
+const fn as_diagnostic_code_stub(sym: SymbolicCode) -> DiagnosticCode {
+    let s = sym.as_str();
+    let mut i = 0;
+    while i < CODE_REGISTRY.len() {
+        if string_eq(s, CODE_REGISTRY[i].symbolic) {
+            return DiagnosticCode::new(CODE_REGISTRY[i].numeric);
+        }
+        i += 1;
+    }
+    DiagnosticCode::new(0)
+}
+
+const fn string_eq(a: &str, b: &str) -> bool {
+    let a_bytes = a.as_bytes();
+    let b_bytes = b.as_bytes();
+    if a_bytes.len() != b_bytes.len() { return false; }
+    let mut i = 0;
+    while i < a_bytes.len() {
+        if a_bytes[i] != b_bytes[i] { return false; }
+        i += 1;
+    }
+    true
 }

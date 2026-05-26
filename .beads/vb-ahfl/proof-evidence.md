@@ -119,7 +119,7 @@
 
 ## SCOPE-001 Evidence
 
-- Command: `jq -e '.["bead_id"] == "vb-ahfl" and (["crates/vb_ui_model","crates/vb_ui_makepad","crates/velvet_ballastics"] - .["touched_crates"] | length == 0) and (.["contract_clauses"] | index("Every UI artifact includes schema_version, kind, generated_at, source, and redaction_status") != null) and (.["contract_clauses"] | index("vb_ui_model remains cold-path plain data and does not introduce Makepad, async runtime, HTTP, or runtime-core UI coupling") != null)' .beads/vb-ahfl/delivery-scope.jsonl`.
+- Command: `jq -e '.["bead_id"] == "vb-ahfl" and (["crates/vb_ui_model","crates/vb_ui_makepad","crates/velvet_ballistics"] - .["touched_crates"] | length == 0) and (.["contract_clauses"] | index("Every UI artifact includes schema_version, kind, generated_at, source, and redaction_status") != null) and (.["contract_clauses"] | index("vb_ui_model remains cold-path plain data and does not introduce Makepad, async runtime, HTTP, or runtime-core UI coupling") != null)' .beads/vb-ahfl/delivery-scope.jsonl`.
 - Exit: 0.
 - Output: `true`.
 - Classification: `PASS_SCOPE_RESOLVED` for the UI artifact schema parity stack.

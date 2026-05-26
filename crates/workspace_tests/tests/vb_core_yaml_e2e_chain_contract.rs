@@ -33,7 +33,7 @@ impl AcceptedArtifactStore for MissingAcceptedArtifactStore {
 }
 
 fn valid_yaml_source() -> &'static [u8] {
-    br#"version: velvet-ballastics/v1
+    br#"version: velvet-ballistics/v1
 name: yaml_e2e_chain
 when:
   manual: {}

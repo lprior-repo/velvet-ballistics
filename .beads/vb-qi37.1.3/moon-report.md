@@ -15,7 +15,7 @@ updated_at: 2026-05-09T00:00:00Z
 $ moon run :quick
 ...
 Error: task_runner::run_failed
-  × Task velvet-ballastics:check failed to run.
+  × Task velvet-ballistics:check failed to run.
   ╰─▶ Process set failed: exit code 101
 ```
 

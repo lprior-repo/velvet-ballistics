@@ -19,7 +19,7 @@
   - `.beads/vb-core-atomic-admission/proof-obligations.jsonl`.
   - `.beads/vb-core-atomic-admission/proof-obligations.planned.jsonl`.
   - `.beads/vb-core-atomic-admission/delivery-scope.jsonl`.
-- Public surfaces under test from `delivery-scope.jsonl`: `vb_storage::FjallJournal::batch`, `vb_storage::JournalWriteBatch`, `vb_storage::submit_artifact`, `vb_storage::submit_artifact_with_contracts`, `vb_storage::AcceptedArtifact`, `vb_storage::VerificationProof`, `vb_storage::WorkflowSourceRecord`, `vb_storage::CompiledIrRecord`, `vb_storage::RunHeaderRecord`, `vb_storage::JournalEvent::RunAccepted`, `vb_runtime::admission::AcceptedArtifactStore`, `vb_runtime::admission::StorageArtifactStore`, `vb_runtime::admission::admit_artifact_run`, and `velvet_ballastics` CLI submit/run storage paths.
+- Public surfaces under test from `delivery-scope.jsonl`: `vb_storage::FjallJournal::batch`, `vb_storage::JournalWriteBatch`, `vb_storage::submit_artifact`, `vb_storage::submit_artifact_with_contracts`, `vb_storage::AcceptedArtifact`, `vb_storage::VerificationProof`, `vb_storage::WorkflowSourceRecord`, `vb_storage::CompiledIrRecord`, `vb_storage::RunHeaderRecord`, `vb_storage::JournalEvent::RunAccepted`, `vb_runtime::admission::AcceptedArtifactStore`, `vb_runtime::admission::StorageArtifactStore`, `vb_runtime::admission::admit_artifact_run`, and `velvet_ballistics` CLI submit/run storage paths.
 - No production code, test code, proof/model code, dependency files, or CI files are to be edited in State 7.
 - Test-writer must assert exact returned values, exact persisted records, exact durable absence, and exact error variants with operation/run/record-kind/boundary/causal-class context. Bare `is_ok()` / `is_err()` assertions are rejected.
 
@@ -346,12 +346,12 @@ Use real temporary `FjallJournal` stores and reopen them for restart/readback ch
 
 ### I05: CLI/runtime before-ack order
 
-- Through `velvet_ballastics` submit/run path, assert success output occurs only after restart-readable durable evidence exists.
+- Through `velvet_ballistics` submit/run path, assert success output occurs only after restart-readable durable evidence exists.
 - With commit failpoint, assert CLI returns failure, no success run id/status, and no runtime frame/runnable state.
 
 ### I06: API compatibility downstream callers
 
-- Compile and run downstream callers in `vb_runtime` and `velvet_ballastics` against any changed public API.
+- Compile and run downstream callers in `vb_runtime` and `velvet_ballistics` against any changed public API.
 - Assert no caller bypasses strict accepted-run admission by writing source/artifact/event/index records independently.
 
 ## 6. Proptest Invariants

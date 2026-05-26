@@ -7,7 +7,7 @@ use crate::commands_journal::TraceStatus;
 #[test]
 fn parse_inspect_requires_run_id_and_db() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "inspect",
         "42",
         "--db",
@@ -25,7 +25,7 @@ fn parse_inspect_requires_run_id_and_db() {
 #[test]
 fn parse_inspect_legacy_json_flag_keeps_text_output() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "inspect",
         "42",
         "--db",
@@ -44,7 +44,7 @@ fn parse_inspect_legacy_json_flag_keeps_text_output() {
 #[test]
 fn parse_inspect_accepts_emit_yaml() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "inspect",
         "42",
         "--db",
@@ -61,14 +61,14 @@ fn parse_inspect_accepts_emit_yaml() {
 
 #[test]
 fn parse_inspect_rejects_missing_db() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "inspect", "42"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "inspect", "42"]));
     assert!(matches!(parsed, Err(ParseError::MissingArgument("--db"))));
 }
 
 #[test]
 fn parse_events_requires_run_id_and_db() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "events",
         "run-1",
         "--db",
@@ -95,7 +95,7 @@ fn parse_events_requires_run_id_and_db() {
 #[test]
 fn parse_events_accepts_status_filter() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "events",
         "run-1",
         "--db",
@@ -113,7 +113,7 @@ fn parse_events_accepts_status_filter() {
 #[test]
 fn parse_events_accepts_limit_filter() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "events",
         "run-1",
         "--db",
@@ -131,7 +131,7 @@ fn parse_events_accepts_limit_filter() {
 #[test]
 fn parse_events_rejects_unknown_status() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "events",
         "run-1",
         "--db",
@@ -148,7 +148,7 @@ fn parse_events_rejects_unknown_status() {
 #[test]
 fn parse_replay_requires_run_id_and_db() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "replay",
         "99",
         "--db",
@@ -166,7 +166,7 @@ fn parse_replay_requires_run_id_and_db() {
 #[test]
 fn parse_trace_defaults_to_no_filters() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "trace",
         "7",
         "--db",
@@ -187,7 +187,7 @@ fn parse_trace_defaults_to_no_filters() {
 #[test]
 fn parse_trace_accepts_all_filters() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "trace",
         "7",
         "--db",
@@ -226,7 +226,7 @@ fn parse_trace_accepts_all_filters() {
 #[test]
 fn parse_trace_rejects_invalid_step() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "trace",
         "7",
         "--db",
@@ -243,7 +243,7 @@ fn parse_trace_rejects_invalid_step() {
 #[test]
 fn parse_trace_rejects_invalid_since_seq() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "trace",
         "7",
         "--db",
@@ -260,7 +260,7 @@ fn parse_trace_rejects_invalid_since_seq() {
 #[test]
 fn parse_trace_rejects_unknown_trace_flag() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "trace",
         "7",
         "--db",
@@ -277,7 +277,7 @@ fn parse_trace_rejects_unknown_trace_flag() {
 #[test]
 fn parse_retry_requires_run_id_and_db() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "retry",
         "123",
         "--db",
@@ -295,7 +295,7 @@ fn parse_retry_requires_run_id_and_db() {
 #[test]
 fn parse_resume_requires_run_id_and_db() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "resume",
         "456",
         "--db",
@@ -313,7 +313,7 @@ fn parse_resume_requires_run_id_and_db() {
 #[test]
 fn parse_incident_requires_run_id_and_db() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "incident",
         "7",
         "--db",
@@ -331,7 +331,7 @@ fn parse_incident_requires_run_id_and_db() {
 #[test]
 fn parse_answer_rejects_invalid_step_with_exact_variant() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "answer",
         "run-1",
         "--step",
@@ -350,7 +350,7 @@ fn parse_answer_rejects_invalid_step_with_exact_variant() {
 #[test]
 fn parse_answer_accepts_valid_step_and_input() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "answer",
         "run-1",
         "--step",
@@ -381,7 +381,7 @@ fn parse_answer_accepts_valid_step_and_input() {
 #[test]
 fn parse_diff_requires_both_run_ids_and_db() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "diff",
         "1",
         "2",
@@ -407,7 +407,7 @@ fn parse_diff_requires_both_run_ids_and_db() {
 #[test]
 fn parse_diff_accepts_emit_yaml() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "diff",
         "10",
         "20",
@@ -425,7 +425,7 @@ fn parse_diff_accepts_emit_yaml() {
 
 #[test]
 fn parse_diff_rejects_missing_db() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "diff", "1", "2"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "diff", "1", "2"]));
     assert!(
         matches!(parsed, Err(ParseError::MissingArgument("--db"))),
         "unexpected: {parsed:?}"
@@ -434,7 +434,7 @@ fn parse_diff_rejects_missing_db() {
 
 #[test]
 fn parse_diff_rejects_missing_run_id() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "diff", "1"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "diff", "1"]));
     assert!(
         matches!(parsed, Err(ParseError::MissingArgument(_))),
         "expected MissingArgument, got {parsed:?}"
@@ -443,7 +443,7 @@ fn parse_diff_rejects_missing_run_id() {
 
 #[test]
 fn parse_doctor_without_db_is_stateless_text_mode() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "doctor"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "doctor"]));
     if let Ok(Command::Doctor { db, output }) = parsed {
         assert_eq!(db, None);
         assert_eq!(output, OutputFormat::Text);
@@ -455,7 +455,7 @@ fn parse_doctor_without_db_is_stateless_text_mode() {
 #[test]
 fn parse_doctor_accepts_optional_db_and_yaml_output() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "doctor",
         "--db",
         "journal-db",

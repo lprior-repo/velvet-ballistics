@@ -14,7 +14,7 @@ All required obligations were re-executed in the isolated workspace. Results mat
 | Obligation | Claimed | Verified | Evidence Match |
 |---|---|---|---|
 | COMP-001 | PASS | PASS | `cargo check -p vb_ipc` → exit 0, 0 errors/warnings |
-| COMP-002 | PASS | PASS | `cargo check -p velvet-ballastics-workspace-tests --tests` → exit 0 |
+| COMP-002 | PASS | PASS | `cargo check -p velvet-ballistics-workspace-tests --tests` → exit 0 |
 | COMP-003 | PASS | PASS | `cargo clippy -p vb_ipc -- -D warnings` → exit 0, no issues |
 | SAFE-001 | WAIVED (grandfathered) | WAIVED (grandfathered) | `/usr/bin/grep` returns 100 lines; all pre-existing test/encoding patterns |
 | SAFE-002 | PASS | PASS | Exactly 1 match: `#![forbid(unsafe_code)]` at line 1 |
@@ -25,7 +25,7 @@ All required obligations were re-executed in the isolated workspace. Results mat
 
 ```bash
 rtk cargo check -p vb_ipc                          # EXIT:0
-rtk cargo check -p velvet-ballastics-workspace-tests --tests  # EXIT:0
+rtk cargo check -p velvet-ballistics-workspace-tests --tests  # EXIT:0
 rtk cargo clippy -p vb_ipc -- -D warnings          # EXIT:0
 /usr/bin/grep -n 'unwrap\|expect\|panic!\|todo!\|unimplemented!' crates/vb_ipc/src/server/handlers.rs | wc -l  # 100
 rtk grep -n 'unsafe' crates/vb_ipc/src/server/handlers.rs    # 1 match: line 1

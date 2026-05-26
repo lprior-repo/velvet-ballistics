@@ -7,7 +7,7 @@
 
 ## Summary
 
-The Moon :test gate failed during the `velvet-ballastics:check` task.
+The Moon :test gate failed during the `velvet-ballistics:check` task.
 
 ## Errors
 

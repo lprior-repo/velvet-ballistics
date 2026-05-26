@@ -24,10 +24,10 @@ rm -rf "target/vb-nf2u-acceptance.lock" && cargo nextest run --test vb_nf2u_ui_r
 Finished `test` profile [unoptimized + debuginfo] target(s) in 0.15s
 Nextest run ID ef292eeb-1632-4c10-8bfd-929de12b1d8b with nextest profile: default
 Starting 4 tests across 1 binary
-FAIL velvet-ballastics-workspace::vb_nf2u_ui_release_acceptance test_secret_values_are_redacted_in_every_screen
-FAIL velvet-ballastics-workspace::vb_nf2u_ui_release_acceptance test_intentional_secret_fixture_fails_redaction_gate
-FAIL velvet-ballastics-workspace::vb_nf2u_ui_release_acceptance test_intentional_overlap_fixture_fails_gate
-FAIL velvet-ballastics-workspace::vb_nf2u_ui_release_acceptance test_all_eight_screens_pass_reachability_and_overlap_gates
+FAIL velvet-ballistics-workspace::vb_nf2u_ui_release_acceptance test_secret_values_are_redacted_in_every_screen
+FAIL velvet-ballistics-workspace::vb_nf2u_ui_release_acceptance test_intentional_secret_fixture_fails_redaction_gate
+FAIL velvet-ballistics-workspace::vb_nf2u_ui_release_acceptance test_intentional_overlap_fixture_fails_gate
+FAIL velvet-ballistics-workspace::vb_nf2u_ui_release_acceptance test_all_eight_screens_pass_reachability_and_overlap_gates
 Summary [0.373s] 4 tests run: 0 passed, 4 failed, 0 skipped
 error: test run failed
 ```

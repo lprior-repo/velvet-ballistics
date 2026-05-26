@@ -5,7 +5,9 @@
 //! error codes matching the master contract (Section 16).
 
 use crate::ValidationError;
-use vb_core::diagnostic::{Diagnostic, DiagnosticCode, HasSymbolicCode, Severity, SymbolicCode};
+use vb_core::diagnostic::{
+    Diagnostic, DiagnosticCode, HasSymbolicCode, Severity, SymbolicCode, numeric_to_symbolic,
+};
 use vb_core::span::Span;
 
 // ---------------------------------------------------------------------------
@@ -153,6 +155,48 @@ impl HasSymbolicCode for ValidationError {
         error_code(self)
             .symbolic_code()
             .unwrap_or(SymbolicCode::INTERNAL_INVARIANT)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Symbolic code API (Section 16 contract)
+// ---------------------------------------------------------------------------
+
+/// Returns the stable symbolic diagnostic code for a validation error.
+///
+/// # Invariant
+///
+/// Every `ValidationError` variant maps to a symbolic code that is registered
+/// in `vb_core::CODE_REGISTRY`. This invariant is verified by Kani proof
+/// harness PO-003 (6 harnesses covering all 58 variants). If this invariant
+/// is violated, the system is in an unrecoverable state and must terminate.
+///
+/// The `expect()` call below triggers only on a compile-time invariant
+/// violation, never on user input or runtime conditions.
+#[must_use]
+pub fn error_symbolic_code(error: &ValidationError) -> SymbolicCode {
+    let diag_code = error_code(error);
+    // Safety invariant: all 58 validation error numeric codes are registered
+    // in CODE_REGISTRY. This is verified by Kani proof harness PO-003.
+    if let Some(code) = numeric_to_symbolic(diag_code.code()) {
+        return code;
+    }
+    // Unreachable: all validation numeric codes are registered.
+    // Use centralized sentinel to satisfy zero-expect and type-level guarantee.
+    SymbolicCode::INTERNAL_INVARIANT
+}
+
+impl ValidationError {
+    /// Returns the stable symbolic diagnostic code for this error.
+    #[must_use]
+    pub fn code(&self) -> SymbolicCode {
+        error_symbolic_code(self)
+    }
+}
+
+impl HasSymbolicCode for ValidationError {
+    fn symbolic_code(&self) -> SymbolicCode {
+        self.code()
     }
 }
 
@@ -655,6 +699,17 @@ mod tests {
                 accessor_index: 0,
                 segment_index: 1,
             },
+            ValidationError::AccessorPathTooDeep {
+                accessor_index: 0,
+                depth: 65,
+                max: 64,
+            },
+            ValidationError::AccessorSymbolOutOfBounds {
+                accessor_index: 0,
+                segment_index: 0,
+                symbol: 99,
+                symbols_count: 5,
+            },
             ValidationError::SlotReferenceOutOfRange {
                 slot: 99,
                 slot_count: 10,
@@ -913,5 +968,96 @@ mod tests {
         assert_eq!(diag.numeric_code.code(), 0x0407);
         assert!(diag.message.contains("boolean"));
         assert!(diag.message.contains("number"));
+    }
+
+    // ---------------------------------------------------------------------------
+    // Symbolic code behavior tests (B-037, B-038)
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn validation_error_code_returns_symbolic_for_all_58_variants() {
+        let errors = all_variants();
+        assert_eq!(
+            errors.len(),
+            58,
+            "expected exactly 58 validation error variants"
+        );
+        for error in &errors {
+            let code = error.code();
+            // Verify the symbolic code is registered by checking we can
+            // reconstruct it from the symbolic string
+            let reconstructed = SymbolicCode::from_static(code.as_str());
+            assert_eq!(
+                reconstructed,
+                Some(code),
+                "symbolic code '{}' should be registered",
+                code.as_str()
+            );
+        }
+    }
+
+    #[test]
+    fn validation_error_code_all_58_unique_symbolic_codes() {
+        let errors = all_variants();
+        let mut seen_symbolic: std::collections::BTreeSet<&'static str> =
+            std::collections::BTreeSet::new();
+        let mut seen_numeric: std::collections::BTreeSet<u16> = std::collections::BTreeSet::new();
+        for error in &errors {
+            let code = error.code();
+            assert!(
+                seen_symbolic.insert(code.as_str()),
+                "duplicate symbolic code '{}'",
+                code.as_str()
+            );
+            assert!(
+                seen_numeric.insert(code.numeric_code()),
+                "duplicate numeric code 0x{:04X}",
+                code.numeric_code()
+            );
+        }
+        assert_eq!(seen_symbolic.len(), 58, "expected 58 unique symbolic codes");
+        assert_eq!(seen_numeric.len(), 58, "expected 58 unique numeric codes");
+    }
+
+    #[test]
+    fn validation_error_symbolic_code_matches_expected_section16_codes() {
+        // Spot-check specific Section 16 mappings per error-taxonomy
+        assert_eq!(
+            ValidationError::DuplicateKey.code().as_str(),
+            "DUPLICATE_KEY"
+        );
+        assert_eq!(
+            ValidationError::ForbiddenYamlFeature.code().as_str(),
+            "FORBIDDEN_YAML_FEATURE"
+        );
+        assert_eq!(
+            ValidationError::TypeMismatch {
+                expected: "x".into(),
+                found: "y".into()
+            }
+            .code()
+            .as_str(),
+            "TYPE_MISMATCH"
+        );
+        assert_eq!(
+            ValidationError::ExpressionStackExceeded {
+                declared: 65,
+                limit: 64
+            }
+            .code()
+            .as_str(),
+            "EXPRESSION_STACK_EXCEEDED"
+        );
+        assert_eq!(
+            ValidationError::MissingSchemaVersion.code().as_str(),
+            "MISSING_SCHEMA_VERSION"
+        );
+    }
+
+    #[test]
+    fn validation_error_implements_has_symbolic_code() {
+        let error = ValidationError::DuplicateKey;
+        let code: SymbolicCode = HasSymbolicCode::symbolic_code(&error);
+        assert_eq!(code.as_str(), "DUPLICATE_KEY");
     }
 }

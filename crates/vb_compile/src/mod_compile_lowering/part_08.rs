@@ -1,5 +1,7 @@
 #![allow(unused_imports)]
 use super::*;
+use crate::expression::ParsedExpression;
+use crate::expression_bytecode::compile_expr_to_bytecode_with_step_slots;
 use crate::mod_compile_errors::{CompileError, CompileErrors, non_string_key_error};
 use crate::mod_compile_validation::{
     reject_unsupported_for_each_fields, validate_canonical_compile_scope,
@@ -55,6 +57,22 @@ impl SlotCompiler {
         Ok(vb_core::AccessorIdx::new(index))
     }
 
+    /// Compiles an expression with step slot resolution, pushing constants and
+    /// accessors into the builder's internal vectors.
+    pub fn compile_expression_with_step_slots(
+        &mut self,
+        expr: &ParsedExpression,
+        step_slots: &[(Box<str>, SlotIdx)],
+    ) -> Result<ExprIdx, CompileError> {
+        let program = compile_expr_to_bytecode_with_step_slots(
+            expr,
+            &mut self.constants,
+            &mut self.accessors,
+            step_slots,
+        )?;
+        self.push_expression(program)
+    }
+
     /// Records a slot reference for slot count tracking.
     pub fn record_slot(&mut self, slot: SlotIdx) {
         let value = slot.as_usize();
@@ -100,6 +118,8 @@ impl SlotCompiler {
             accessors: self.accessors.into_boxed_slice(),
             constants: self.constants.into_boxed_slice(),
             entry: StepIdx::new(0),
+            // NB: ResourceContract::DEFAULT is used when no explicit contract is provided.
+            // Callers needing a specific contract should use compile_source(contract).
             resource_contract: ResourceContract::DEFAULT,
             step_names: Box::new([]),
         })

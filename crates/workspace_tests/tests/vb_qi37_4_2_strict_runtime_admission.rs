@@ -854,11 +854,11 @@ fn given_raw_or_malformed_storage_bytes_when_strict_run_created_then_decode_fail
         ),
         (
             "yaml",
-            b"version: velvet-ballastics/v1\nname: raw\n".to_vec(),
+            b"version: velvet-ballistics/v1\nname: raw\n".to_vec(),
         ),
         (
             "json",
-            br#"{"version":"velvet-ballastics/v1","name":"raw"}"#.to_vec(),
+            br#"{"version":"velvet-ballistics/v1","name":"raw"}"#.to_vec(),
         ),
         ("empty", Vec::new()),
         ("truncated-postcard", vec![0x01, 0x02, 0x03]),

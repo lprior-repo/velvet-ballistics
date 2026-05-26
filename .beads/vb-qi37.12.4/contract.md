@@ -19,7 +19,7 @@
 ## Assumptions
 
 - `xtask/src` is first-party tooling and remains in the scan domain unless implementation records explicit path-bound exclusions.
-- Existing observed `crates/velvet_ballastics/src/main.rs` discard candidates are not accepted as clean; final acceptance must either fail on them or remove/replace them in another state/bead before the gate passes.
+- Existing observed `crates/velvet_ballistics/src/main.rs` discard candidates are not accepted as clean; final acceptance must either fail on them or remove/replace them in another state/bead before the gate passes.
 - No new external dependencies are required for this contract; if implementation adds one, supply-chain verification becomes required.
 
 ## Preconditions

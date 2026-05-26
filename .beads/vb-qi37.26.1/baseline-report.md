@@ -7,7 +7,7 @@ source_checkout: /home/lewis/src/velvet-ballistics
 isolated_workspace: /home/lewis/src/femdation-vb-qi37-26-1
 
 baseline_commands:
-  - cmd: cargo check --package velvet-ballastics-workspace-tests --tests
+  - cmd: cargo check --package velvet-ballistics-workspace-tests --tests
     exit_code: 0
     result: PASS
     output_path: .beads/vb-qi37.26.1/baseline-workspace-tests-check.log

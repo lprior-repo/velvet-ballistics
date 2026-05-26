@@ -25,7 +25,7 @@ STATUS: APPROVED
 
 ## Commands run by reviewer
 
-- `rustup run nightly-2026-04-28 cargo test -p velvet-ballastics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract` => `11 passed; 0 failed; 0 ignored`.
+- `rustup run nightly-2026-04-28 cargo test -p velvet-ballistics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract` => `11 passed; 0 failed; 0 ignored`.
 - `rustup run nightly-2026-04-28 cargo test -p vb_storage hydrate_run_frame_from_events` => `5 passed; 0 failed; 0 ignored` for the filtered storage hydration tests.
 - `rustup run nightly-2026-04-28 cargo test -p vb_runtime storage_runtime_journal_maps_action_wait_and_ask_events` => focused runtime journal mapping test passed.
 - `rustup run nightly-2026-04-28 cargo test -p vb_runtime collect_pagination_extra_recovered_journal_round_trips_and_resumes_next_page` => focused collect extra compatibility test passed.

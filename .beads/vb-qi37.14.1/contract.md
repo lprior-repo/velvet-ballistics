@@ -2,7 +2,7 @@
 
 ## Context
 
-- **Feature**: `velvet-ballastics run --step <id> --step-input <path> [--output text|json|jsonl]`
+- **Feature**: `velvet-ballistics run --step <id> --step-input <path> [--output text|json|jsonl]`
 - **Bead ID**: vb-qi37.14.1
 - **Domain terms**:
   - `StepIdx`: u16 newtype, index into compiled workflow node array

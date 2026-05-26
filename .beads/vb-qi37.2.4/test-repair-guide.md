@@ -102,11 +102,11 @@ After completing repairs:
 
 ```bash
 # Compile check
-cargo build --package velvet-ballastics-workspace-tests --tests
+cargo build --package velvet-ballistics-workspace-tests --tests
 cargo build --package vb_core --tests
 
 # Run integration tests
-cargo nextest run --package velvet-ballastics-workspace-tests --test vb_qi37_2_4_integration_budget_errors
+cargo nextest run --package velvet-ballistics-workspace-tests --test vb_qi37_2_4_integration_budget_errors
 
 # Run unit tests
 cargo nextest run --package vb_core budget::vb_qi37_2_4_state8_tests

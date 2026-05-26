@@ -35,17 +35,17 @@ The runtime and IPC layers already have cancel infrastructure. The CLI surface i
   - **Missing**: no `reason` field.
 - `vb_ipc/src/server/handlers.rs:158` — `handle_cancel_run` delegates to `runtime.cancel_run()`.
 
-### CLI Layer (velvet_ballastics)
-- `velvet_ballastics/src/args.rs` — **NO** `Cancel` variant in `Command` enum.
-- `velvet_ballastics/src/args.rs:178` — `VALID_COMMANDS` does not include "cancel".
-- `velvet_ballastics/src/main.rs` — **NO** `cmd_cancel` function or dispatch arm.
-- `velvet_ballastics/src/main.rs:53-91` — HELP text has no cancel entry.
+### CLI Layer (velvet_ballistics)
+- `velvet_ballistics/src/args.rs` — **NO** `Cancel` variant in `Command` enum.
+- `velvet_ballistics/src/args.rs:178` — `VALID_COMMANDS` does not include "cancel".
+- `velvet_ballistics/src/main.rs` — **NO** `cmd_cancel` function or dispatch arm.
+- `velvet_ballistics/src/main.rs:53-91` — HELP text has no cancel entry.
 - CLI HAS lifecycle commands: `inspect`, `events`, `replay`, `trace`, `retry`, `resume`, `answer`, `submit`.
 - These commands all take `<run_id> --db <path> [--json|--jsonl]`.
 
 ## Files to Modify
-1. `crates/velvet_ballastics/src/args.rs` — Add `Cancel` command variant, parsing, HELP text.
-2. `crates/velvet_ballastics/src/main.rs` — Add `cmd_cancel` dispatch and implementation.
+1. `crates/velvet_ballistics/src/args.rs` — Add `Cancel` command variant, parsing, HELP text.
+2. `crates/velvet_ballistics/src/main.rs` — Add `cmd_cancel` dispatch and implementation.
 3. `crates/vb_runtime/src/journal.rs` — Add optional `reason` to `RunCancelled`.
 4. `crates/vb_runtime/src/shard/lifecycle.rs` — Pass reason through `handle_cancel`.
 5. `crates/vb_runtime/src/shard/types.rs` — Add `reason` to `ShardCommand::Cancel`.
@@ -58,7 +58,7 @@ The runtime and IPC layers already have cancel infrastructure. The CLI surface i
 2. `crates/vb_runtime/tests/durability_matrix_integration.rs` — Add cancel with reason.
 3. `crates/vb_storage/src/tests.rs` — `RunCancelled` roundtrip tests; add reason variant.
 4. `crates/vb_ipc/src/tests.rs` — `CancelRun` payload roundtrip; add reason.
-5. `crates/velvet_ballastics/src/main.rs` — CLI tests (inline in main.rs file).
+5. `crates/velvet_ballistics/src/main.rs` — CLI tests (inline in main.rs file).
 
 ## Idempotency Behavior (Already Implemented)
 - Canceling a non-existent run: silent `Ok(())` (no journal event, no trace, no counter increment).

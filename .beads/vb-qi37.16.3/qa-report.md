@@ -58,8 +58,8 @@ cargo test: 14 passed, 1323 filtered out (1 suite, 0.00s)
 ### `moon run :test`
 
 ```
-velvet-ballastics:test | Starting 9860 tests across 58 binaries
-velvet-ballastics:test | Summary [  11.575s] 9860 tests run: 9860 passed, 0 skipped
+velvet-ballistics:test | Starting 9860 tests across 58 binaries
+velvet-ballistics:test | Summary [  11.575s] 9860 tests run: 9860 passed, 0 skipped
 Tasks: 4 completed (1 cached)
 Time: 22s 459ms
 ```

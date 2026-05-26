@@ -10,10 +10,10 @@
 ### moon ci Status
 - **Result:** 6 completed, 4 failed, 11 skipped
 - **Failed tasks:**
-  - `velvet-ballastics:fuzz-smoke` - compilation error in fuzz crate (E0061: wrong argument count for `replay_events`)
-  - `velvet-ballastics:fmt` - encountered diff marker
-  - `velvet-ballastics:lint-src` - compilation errors in `vb_cli` + clippy denials (`map_or` simplification, string indexing, arithmetic-side-effects)
-  - `velvet-ballastics:check` - compilation errors propagated
+  - `velvet-ballistics:fuzz-smoke` - compilation error in fuzz crate (E0061: wrong argument count for `replay_events`)
+  - `velvet-ballistics:fmt` - encountered diff marker
+  - `velvet-ballistics:lint-src` - compilation errors in `vb_cli` + clippy denials (`map_or` simplification, string indexing, arithmetic-side-effects)
+  - `velvet-ballistics:check` - compilation errors propagated
 - **Passed tasks:** beads-server-mode, workspace-assertions, agent-cli-contract, lint-src (lint only), nightly-feature-gate, fmt (lint only), source-length, miri
 - **Skipped tasks:** test, coverage, hardened-build, mutants-smoke, bench-build, feature-powerset, doc-test, maxperf, maxperf-native, nightly-feature-cargo-probe, doc
 

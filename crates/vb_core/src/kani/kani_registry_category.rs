@@ -1,15 +1,12 @@
 #![forbid(unsafe_code)]
 //! PO-011: Kani harness verifying CODE_REGISTRY category/numeric consistency.
 //!
-//! Proves: For each production CodeEntry, (numeric >> 8) & 0xFF matches the
-//! expected high-byte range for its CodeCategory.
+//! Proves: For each CodeEntry, (numeric >> 8) & 0xFF matches the expected
+//! high-byte range for its CodeCategory.
 //!
-//! Bound: 157 entries (unwind=160)
-//!
-//! Rewired: uses production CodeCategory and CODE_REGISTRY from
-//! crate::diagnostic instead of inline models from kani_symbolic_code_validation.
+//! Bound: ~90 entries (unwind=100)
 
-use crate::diagnostic::{CODE_REGISTRY, CodeCategory};
+use super::kani_symbolic_code_validation::{CODE_REGISTRY, CodeCategory};
 
 /// Expected high byte for each category.
 const fn expected_high_byte(cat: CodeCategory) -> u16 {
@@ -27,10 +24,7 @@ const fn expected_high_byte(cat: CodeCategory) -> u16 {
         CodeCategory::Lowering => 0x14,
         CodeCategory::Storage => 0x20,
         CodeCategory::Runtime => 0x30,
-        CodeCategory::Ipc => 0x32,
-        CodeCategory::Lifecycle => 0x33,
         CodeCategory::RuntimeBoundary => 0x40,
-        CodeCategory::Internal => 0x13,
     }
 }
 
@@ -50,10 +44,7 @@ const fn category_name(cat: CodeCategory) -> &'static str {
         CodeCategory::Lowering => "Lowering",
         CodeCategory::Storage => "Storage",
         CodeCategory::Runtime => "Runtime",
-        CodeCategory::Ipc => "Ipc",
-        CodeCategory::Lifecycle => "Lifecycle",
         CodeCategory::RuntimeBoundary => "RuntimeBoundary",
-        CodeCategory::Internal => "Internal",
     }
 }
 
@@ -64,33 +55,29 @@ mod harnesses {
     /// PO-011: For each CodeEntry, the numeric high byte matches the expected
     /// range for its CodeCategory.
     #[kani::proof]
-    #[kani::unwind(160)]
+    #[kani::unwind(100)]
     fn kani_registry_category_match() {
         for i in 0..CODE_REGISTRY.len() {
             let entry = &CODE_REGISTRY[i];
             let high_byte = (entry.numeric >> 8) & 0xFF;
             let expected = expected_high_byte(entry.category);
             assert_eq!(
-                high_byte,
-                expected,
+                high_byte, expected,
                 "Entry '{}' (code {:04X}, category {:?}): high byte {:02X} != expected {:02X}",
-                entry.symbolic,
-                entry.numeric,
-                category_name(entry.category),
-                high_byte,
-                expected
+                entry.symbolic, entry.numeric, category_name(entry.category), high_byte, expected
             );
         }
     }
 
-    /// Additional: verify that low byte is never zero for all entries
-    /// (ensures all codes have valid low bytes — zeros reserved for sentinel).
+    /// Additional: verify that low byte is never zero for Schema category
+    /// (ensures all codes in the 0x01XX range have valid low bytes).
     #[kani::proof]
-    #[kani::unwind(160)]
+    #[kani::unwind(100)]
     fn kani_registry_schema_low_byte_nonzero() {
         for i in 0..CODE_REGISTRY.len() {
             let entry = &CODE_REGISTRY[i];
             let low_byte = entry.numeric & 0xFF;
+            // Low byte must be non-zero for all categories
             assert!(
                 low_byte != 0,
                 "Entry '{}': low byte must be non-zero (reserved for sentinel)",

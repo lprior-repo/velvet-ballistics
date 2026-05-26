@@ -6,7 +6,7 @@
 - External systems excluded from Lean proof: operating system filesystem, Git state, bead database storage, Moon task runner, terminal output.
 
 ## Lean-Owned Clauses
-- INV-001 -> `VelvetBallastics.Naming.Canonical::product_binary_package_rig_are_ballastics`
+- INV-001 -> `VelvetBallastics.Naming.Canonical::product_binary_package_rig_are_ballistics`
 - INV-002 -> `VelvetBallastics.Naming.Canonical::crate_module_database_are_underscore_ballistics`
 - INV-003 -> `VelvetBallastics.Naming.Canonical::language_version_is_v1`
 - INV-004 -> `VelvetBallastics.Naming.Allowlist::legacy_occurrence_requires_documented_exception`
@@ -27,7 +27,7 @@
 - Contract clause: INV-001
 - Rust/spec target: `canonical_spelling_table`
 - Lean module: `VelvetBallastics.Naming.Canonical`
-- Theorem shape: `product_binary_package_rig_are_ballastics`
+- Theorem shape: `product_binary_package_rig_are_ballistics`
 - Model: finite mapping from canonical name kind to ASCII token.
 - Refinement: Rust `CanonicalSpellingTable` validates into the Lean finite mapping with exact string equality for product, binary, package, and bead rig.
 - Shell exclusions: filesystem, CLI parsing, report rendering, Moon integration.

@@ -13,7 +13,6 @@ use std::path::{Path, PathBuf};
 /// Default first-party crates to scan when no globs are provided.
 const DEFAULT_FIRST_PARTY_CRATES: &[&str] = &[
     "vb_benchmark",
-    "vb_codegen",
     "vb_compile",
     "vb_core",
     "vb_doc",
@@ -22,10 +21,6 @@ const DEFAULT_FIRST_PARTY_CRATES: &[&str] = &[
     "vb_proof_kernels",
     "vb_runtime",
     "vb_storage",
-    "vb_ui",
-    "vb_ui_makepad",
-    "vb_ui_model",
-    "vb_ui_snapshot",
     "vb_validate",
     "vb_yaml",
     "vb_cli",
@@ -392,8 +387,7 @@ fn cfg_test_lines(lines: &[&str]) -> std::collections::HashSet<usize> {
         let trimmed = line.trim();
         if test_depth > 0 {
             ignored.insert(index);
-            test_depth += count_char(line, '{');
-            test_depth -= count_char(line, '}');
+            test_depth = update_depth(test_depth, line);
             continue;
         }
         if trimmed.starts_with("#[cfg(test)]") {
@@ -413,7 +407,7 @@ fn cfg_test_lines(lines: &[&str]) -> std::collections::HashSet<usize> {
         if attr_pending {
             ignored.insert(index);
             if trimmed.contains("fn ") {
-                test_depth = count_char(line, '{') - count_char(line, '}');
+                test_depth = line_depth_delta(line);
                 if test_depth <= 0 {
                     test_depth = 1;
                 }
@@ -423,7 +417,7 @@ fn cfg_test_lines(lines: &[&str]) -> std::collections::HashSet<usize> {
         if cfg_test_pending {
             ignored.insert(index);
             if trimmed.contains("mod ") || trimmed.contains("fn ") {
-                test_depth = count_char(line, '{') - count_char(line, '}');
+                test_depth = line_depth_delta(line);
                 if test_depth <= 0 {
                     test_depth = 1;
                 }
@@ -431,6 +425,21 @@ fn cfg_test_lines(lines: &[&str]) -> std::collections::HashSet<usize> {
         }
     }
     ignored
+}
+
+fn update_depth(current: i32, line: &str) -> i32 {
+    let opened = count_char(line, '{');
+    let closed = count_char(line, '}');
+    current
+        .checked_add(opened)
+        .and_then(|value| value.checked_sub(closed))
+        .unwrap_or_default()
+}
+
+fn line_depth_delta(line: &str) -> i32 {
+    count_char(line, '{')
+        .checked_sub(count_char(line, '}'))
+        .unwrap_or_default()
 }
 
 fn count_char(line: &str, needle: char) -> i32 {

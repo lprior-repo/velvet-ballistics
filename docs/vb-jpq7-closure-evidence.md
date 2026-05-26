@@ -24,7 +24,7 @@ Non-zero rows are not passing closure evidence. They must declare
 `waiver_id`. Reusing one split bead requires a distinct rationale per row.
 
 ```json
-{"bead_id":"vb-jpq7.14","command":"moon ci","cwd":"/home/lewis/src/velvet-ballastics","commit_sha":"abcdef1","tool_version":"moon 1.35.5; cargo 1.91.0-nightly","timestamp":"2026-05-23T00:00:00Z","raw_log_path":"/home/lewis/.local/share/opencode/tool-output/tool_example","stdout_summary":"Tasks completed; tests passed","stderr_summary":"empty","exit_code":0,"status":"PASS","evidence_kind":"raw-command"}
+{"bead_id":"vb-jpq7.14","command":"moon ci","cwd":"/home/lewis/src/velvet-ballistics","commit_sha":"abcdef1","tool_version":"moon 1.35.5; cargo 1.91.0-nightly","timestamp":"2026-05-23T00:00:00Z","raw_log_path":"/home/lewis/.local/share/opencode/tool-output/tool_example","stdout_summary":"Tasks completed; tests passed","stderr_summary":"empty","exit_code":0,"status":"PASS","evidence_kind":"raw-command"}
 ```
 
 Useful commands:

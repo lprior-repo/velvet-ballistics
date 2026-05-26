@@ -85,7 +85,7 @@ The proof-strategy.md (State 4 artifact) incorrectly stated 16 `JournalEvent` va
 
 ### Artifact Path Correction
 
-`proof-obligations.jsonl` (State 3) referenced `crates/velvet_ballastics/src/commands_journal.rs` which does not exist. Corrected path is `crates/vb_cli/src/commands_journal.rs`. Proof artifact uses the corrected path.
+`proof-obligations.jsonl` (State 3) referenced `crates/velvet_ballistics/src/commands_journal.rs` which does not exist. Corrected path is `crates/vb_cli/src/commands_journal.rs`. Proof artifact uses the corrected path.
 
 ### Seq Construction Limitation
 

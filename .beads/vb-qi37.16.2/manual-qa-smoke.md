@@ -72,7 +72,7 @@ This panic occurs in a test that checks state after `Submit` — the assertion t
 ## Residual Risk
 
 - **Pre-existing lib test failure**: `resume_inv001_only_resumable_permits_resume_via_private_state` is broken on `main` before vb-qi37.16.2 was introduced. Not a regression from this bead.
-- **No CLI E2E smoke**: The `velvet_ballastics resume` CLI command was not exercised end-to-end (requires runtime journal setup). Integration tests cover the CLI-runtime boundary per test-plan.
+- **No CLI E2E smoke**: The `velvet_ballistics resume` CLI command was not exercised end-to-end (requires runtime journal setup). Integration tests cover the CLI-runtime boundary per test-plan.
 - **No fuzz/property-based smoke**: Formal verification (proptest, Kani) not run in this smoke pass.
 
 ---

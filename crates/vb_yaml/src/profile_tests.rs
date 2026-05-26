@@ -69,14 +69,14 @@ fn reject_duplicate_keys_finds_dup() {
 
 #[test]
 fn strict_profile_rejects_duplicate_top_level_key() {
-    let yaml = "version: velvet-ballastics/v1\nname: first\nname: second\nwhen:\n  manual: {}\nsteps: []\n";
+    let yaml = "version: velvet-ballistics/v1\nname: first\nname: second\nwhen:\n  manual: {}\nsteps: []\n";
     let result = validate_yaml_profile(yaml);
     assert!(matches!(result, Err(YamlError::DuplicateKey { key }) if key.as_ref() == "name"));
 }
 
 #[test]
 fn strict_profile_rejects_duplicate_nested_key() {
-    let yaml = "version: velvet-ballastics/v1\nname: wf\nwhen:\n  ipc:\n    name: a\n    name: b\nsteps: []\n";
+    let yaml = "version: velvet-ballistics/v1\nname: wf\nwhen:\n  ipc:\n    name: a\n    name: b\nsteps: []\n";
     let result = validate_yaml_profile(yaml);
     assert!(matches!(result, Err(YamlError::DuplicateKey { key }) if key.as_ref() == "name"));
 }
@@ -420,14 +420,14 @@ fn reject_yaml_1_1_ambiguous_allows_true_exact() {
 
 #[test]
 fn duplicate_top_level_key_exact() {
-    let yaml = "version: velvet-ballastics/v1\nname: first\nname: second\nwhen:\n  manual: {}\nsteps: []\n";
+    let yaml = "version: velvet-ballistics/v1\nname: first\nname: second\nwhen:\n  manual: {}\nsteps: []\n";
     let result = validate_yaml_profile(yaml);
     assert_eq!(result, Err(YamlError::DuplicateKey { key: "name".into() }));
 }
 
 #[test]
 fn duplicate_nested_key_exact() {
-    let yaml = "version: velvet-ballastics/v1\nname: wf\nwhen:\n  ipc:\n    name: a\n    name: b\nsteps: []\n";
+    let yaml = "version: velvet-ballistics/v1\nname: wf\nwhen:\n  ipc:\n    name: a\n    name: b\nsteps: []\n";
     let result = validate_yaml_profile(yaml);
     assert_eq!(result, Err(YamlError::DuplicateKey { key: "name".into() }));
 }

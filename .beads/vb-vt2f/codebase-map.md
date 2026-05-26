@@ -72,8 +72,8 @@ Minimum scenarios should use public `vb_runtime`/`vb_core` APIs only and explici
 
 ## Required verifier modes for later states
 
-- State 8/11 scoped test lane: `cargo nextest run -p velvet-ballastics-workspace-tests --test vb_vt2f_direct_runtime_api_acceptance` or repository-equivalent Moon task once represented.
-- Catalog regression lane: `cargo nextest run -p velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog`.
+- State 8/11 scoped test lane: `cargo nextest run -p velvet-ballistics-workspace-tests --test vb_vt2f_direct_runtime_api_acceptance` or repository-equivalent Moon task once represented.
+- Catalog regression lane: `cargo nextest run -p velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog`.
 - Runtime focused lane if runtime code changes: `cargo nextest run -p vb_runtime` plus clippy for touched crates.
 - Canonical gate at landing: `moon ci`, unless classified as pre-existing global debt with raw evidence.
 - No Kani/TLA/Verus lane is required for BDD-only workspace tests unless runtime/admission semantics are changed.

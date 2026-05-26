@@ -27,8 +27,8 @@ Planning refresh consumes repaired State 3 artifacts and State 6 rejection artif
 
 - `pwd -P` exited 0 and returned `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-atomic-admission`.
 - `test -s ".beads/vb-core-atomic-admission/contract.md" && test -s ".beads/vb-core-atomic-admission/traceability-matrix.jsonl" && test -s ".beads/vb-core-atomic-admission/delivery-scope.jsonl"` exited 0.
-- `/usr/bin/rg -n "unsafe|unwrap\(|expect\(|panic!|todo!|unimplemented!|assert!|spawn|tokio|Mutex|RwLock|Atomic|serialize|deserialize|state|transition|lease|queue|retry|cancel" crates/vb_storage/src crates/vb_runtime/src crates/velvet_ballastics/src crates/velvet_ballastics/tests/admission_evidence_integration verification/tla verification/verus` exited 0; output was large and persisted by the tool at `/home/lewis/.local/share/opencode/tool-output/tool_e2d6758c70016F4jHexEuCyf3c`.
-- `/usr/bin/rg -n "requires|ensures|proof fn|invariant|kani::|loom::|proptest!|fuzz_target|Flux|TLA|Miri|unsafe" crates/vb_storage/src crates/vb_runtime/src crates/velvet_ballastics/src crates/velvet_ballastics/tests/admission_evidence_integration verification/tla verification/verus` exited 0.
+- `/usr/bin/rg -n "unsafe|unwrap\(|expect\(|panic!|todo!|unimplemented!|assert!|spawn|tokio|Mutex|RwLock|Atomic|serialize|deserialize|state|transition|lease|queue|retry|cancel" crates/vb_storage/src crates/vb_runtime/src crates/velvet_ballistics/src crates/velvet_ballistics/tests/admission_evidence_integration verification/tla verification/verus` exited 0; output was large and persisted by the tool at `/home/lewis/.local/share/opencode/tool-output/tool_e2d6758c70016F4jHexEuCyf3c`.
+- `/usr/bin/rg -n "requires|ensures|proof fn|invariant|kani::|loom::|proptest!|fuzz_target|Flux|TLA|Miri|unsafe" crates/vb_storage/src crates/vb_runtime/src crates/velvet_ballistics/src crates/velvet_ballistics/tests/admission_evidence_integration verification/tla verification/verus` exited 0.
 
 No scoped discovery command was blocked.
 

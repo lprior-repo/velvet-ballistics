@@ -21,7 +21,7 @@ import "list"
 
     // Specific preconditions that must be verified
     precondition_checks: [
-      "OutputFormat enum exists in crates/velvet_ballastics/src/main.rs with Text, Json, Jsonl variants",
+      "OutputFormat enum exists in crates/velvet_ballistics/src/main.rs with Text, Json, Jsonl variants",
       "parse_output_format function currently checks --jsonl and --json flags",
       "json_out and json_error helpers produce structured JSON output",
       "postcard crate is already a dependency for IR serialization",

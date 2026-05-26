@@ -10,10 +10,10 @@ STATUS: APPROVED
 
 ## Command Evidence
 
-- `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_1_1_red_recovery_contract_test`: exit 0; `cargo test: 19 passed (1 suite, 0.03s)`.
+- `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_1_1_red_recovery_contract_test`: exit 0; `cargo test: 19 passed (1 suite, 0.03s)`.
 - `rtk cargo test -p vb_storage recovery::tests::`: exit 0; `cargo test: 77 passed, 906 filtered out (6 suites, 0.10s)`.
 - `rtk cargo test -p vb_runtime recovery::tests::`: exit 0; `cargo test: 9 passed, 1451 filtered out (9 suites, 0.00s)`.
-- `PROPTEST_CASES=1000 rtk cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_1_1_red_recovery_contract_test proptest`: exit 0; `cargo test: 3 passed, 16 filtered out (1 suite, 0.08s)`.
+- `PROPTEST_CASES=1000 rtk cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_1_1_red_recovery_contract_test proptest`: exit 0; `cargo test: 3 passed, 16 filtered out (1 suite, 0.08s)`.
 
 ## Scope
 

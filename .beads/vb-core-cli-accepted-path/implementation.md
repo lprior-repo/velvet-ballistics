@@ -173,8 +173,8 @@ STATUS: IMPLEMENTATION_COMPLETE
 **Files Modified:**
 - `crates/vb_runtime/src/admission.rs` - Changed `admit_run` parameter type and internal call
 - `crates/vb_runtime/src/admission.rs` - Updated test stubs (`NeverPresentStore`) to implement `AcceptedArtifactStore`
-- `benches/velvet_ballastics.rs` - Changed `shared_artifact()` to `shared()`
-- `crates/workspace_tests/benches/velvet_ballastics.rs` - Changed `shared_artifact()` to `shared()`
+- `benches/velvet_ballistics.rs` - Changed `shared_artifact()` to `shared()`
+- `crates/workspace_tests/benches/velvet_ballistics.rs` - Changed `shared_artifact()` to `shared()`
 
 **Verification:**
 - `cargo build -p vb_runtime`: PASS

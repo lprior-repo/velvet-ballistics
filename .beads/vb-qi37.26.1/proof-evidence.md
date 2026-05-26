@@ -26,11 +26,11 @@ EXIT:0
 
 ---
 
-## Obligation COMP-002 — `cargo check -p velvet-ballastics-workspace-tests --tests`
+## Obligation COMP-002 — `cargo check -p velvet-ballistics-workspace-tests --tests`
 
 **Command:**
 ```bash
-rtk cargo check -p velvet-ballastics-workspace-tests --tests; echo "EXIT:$?"
+rtk cargo check -p velvet-ballistics-workspace-tests --tests; echo "EXIT:$?"
 ```
 
 **Output:**

@@ -32,7 +32,7 @@ requiring test execution evidence before State 8 black-hat review and landing.
 ### TO-001: BDD-CAT-001 — Acceptance Catalog Validation
 
 **Contract clauses:** PRE-001, PRE-002, POST-005, INV-001, INV-006
-**Command:** `cargo test --package velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog`
+**Command:** `cargo test --package velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog`
 **Evidence location:** `crates/workspace_tests/tests/vb_hxm0_acceptance_catalog.rs`
 
 #### Sub-obligation results:
@@ -62,7 +62,7 @@ requiring test execution evidence before State 8 black-hat review and landing.
 
 **Run command used:**
 ```bash
-cargo test --package velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog
+cargo test --package velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog
 ```
 **Result:** `cargo test: 13 passed (1 suite, 0.00s)`
 
@@ -71,7 +71,7 @@ cargo test --package velvet-ballastics-workspace-tests --test vb_hxm0_acceptance
 ### TO-002: MUT-PLAN-002 — Mutation Plan Scope Validation
 
 **Contract clauses:** PRE-003, POST-001, INV-003
-**Command:** `cargo test --package velvet-ballastics-workspace-tests --test vb_c3k9_current_api_mutation_plan`
+**Command:** `cargo test --package velvet-ballistics-workspace-tests --test vb_c3k9_current_api_mutation_plan`
 **Evidence location:** `crates/workspace_tests/tests/vb_c3k9_current_api_mutation_plan.rs`
 **Plan document:** `docs/current-api-mutation-plan.md`
 
@@ -97,7 +97,7 @@ cargo test --package velvet-ballastics-workspace-tests --test vb_hxm0_acceptance
 
 **Run command used:**
 ```bash
-cargo test --package velvet-ballastics-workspace-tests --test vb_c3k9_current_api_mutation_plan
+cargo test --package velvet-ballistics-workspace-tests --test vb_c3k9_current_api_mutation_plan
 ```
 **Result:** `cargo test: 8 passed (1 suite, 0.00s)`
 
@@ -214,7 +214,7 @@ cargo test --package vb_storage --lib proptests::ppi_001_deterministic_replay_in
 ### TO-006: BOUNDARY-FUZZ-001 — Boundary Inventory Contract
 
 **Contract clauses:** POST-004, PRE-006, INV-005
-**Command:** `cargo test --package velvet-ballastics-workspace-tests --test vb_y1zq_boundary_inventory_contract`
+**Command:** `cargo test --package velvet-ballistics-workspace-tests --test vb_y1zq_boundary_inventory_contract`
 **Evidence location:** `crates/workspace_tests/tests/vb_y1zq_boundary_inventory_contract.rs`
 **Sub-modules:** `classification_evidence`, `discovery`, `inventory_constructors`, `parser_evidence`,
 `status_equality`, `support`, `validation_core`, `validation_evidence_review`
@@ -244,7 +244,7 @@ cargo test --package vb_storage --lib proptests::ppi_001_deterministic_replay_in
 
 **Run command used:**
 ```bash
-cargo test --package velvet-ballastics-workspace-tests --test vb_y1zq_boundary_inventory_contract
+cargo test --package velvet-ballistics-workspace-tests --test vb_y1zq_boundary_inventory_contract
 ```
 **Result:** `cargo test: 112 passed (1 suite, 0.00s)`
 
@@ -253,7 +253,7 @@ cargo test --package velvet-ballastics-workspace-tests --test vb_y1zq_boundary_i
 ### TO-007: BOUNDARY-REL-002 — Release Gate Boundary Fuzz Failure
 
 **Contract clauses:** POST-004, INV-005
-**Command:** `cargo test --package velvet-ballastics-workspace-tests --test vb_njju_mutation_fuzz_property_closure`
+**Command:** `cargo test --package velvet-ballistics-workspace-tests --test vb_njju_mutation_fuzz_property_closure`
 **Evidence location:** `crates/workspace_tests/tests/vb_njju_mutation_fuzz_property_closure.rs`
 
 #### Sub-obligation results:
@@ -274,7 +274,7 @@ cargo test --package velvet-ballastics-workspace-tests --test vb_y1zq_boundary_i
 
 **Run command used:**
 ```bash
-cargo test --package velvet-ballastics-workspace-tests --test vb_njju_mutation_fuzz_property_closure
+cargo test --package velvet-ballistics-workspace-tests --test vb_njju_mutation_fuzz_property_closure
 ```
 **Result:** `cargo test: 5 passed (1 suite, 0.00s)`
 

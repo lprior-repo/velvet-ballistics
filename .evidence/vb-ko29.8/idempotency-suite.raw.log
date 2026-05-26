@@ -1,8 +1,8 @@
     Blocking waiting for file lock on package cache
    Compiling vb_runtime v0.1.0 (/home/lewis/src/velvet-ballistics/crates/vb_runtime)
    Compiling vb_ipc v0.1.0 (/home/lewis/src/velvet-ballistics/crates/vb_ipc)
-   Compiling velvet-ballastics v0.1.0 (/home/lewis/src/velvet-ballistics/crates/vb_cli)
-   Compiling velvet-ballastics-idempotency-workspace-tests v0.1.0 (/home/lewis/src/velvet-ballistics/crates/workspace_tests/idempotency_suite)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/velvet-ballistics/crates/vb_cli)
+   Compiling velvet-ballistics-idempotency-workspace-tests v0.1.0 (/home/lewis/src/velvet-ballistics/crates/workspace_tests/idempotency_suite)
     Finished `test` profile [unoptimized + debuginfo] target(s) in 0.77s
      Running tests/vb_ko29_5_public_idempotency.rs (target/debug/deps/vb_ko29_5_public_idempotency-c0a831fea99e61fc)
 

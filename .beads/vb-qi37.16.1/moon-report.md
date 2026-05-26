@@ -10,8 +10,8 @@ updated_at: 2026-05-09T00:00:00Z
 
 ## Modified Crate Tests
 
-### velvet_ballastics
-- `cargo test -p velvet_ballastics cancel`: 16 passed, 0 failed
+### velvet_ballistics
+- `cargo test -p velvet_ballistics cancel`: 16 passed, 0 failed
 - Tests cover: CLI parsing (6), CLI integration (3), args validation, JSON/JSONL output
 
 ### vb_runtime

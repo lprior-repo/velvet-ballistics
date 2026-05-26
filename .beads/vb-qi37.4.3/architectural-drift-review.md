@@ -19,7 +19,7 @@ STATUS: REFACTORED
 - `crates/vb_runtime/src/shard/impl_.rs`: 799 lines.
 - `crates/vb_runtime/src/shard/lifecycle.rs`: 2106 lines.
 - `crates/vb_runtime/src/shard/tests.rs`: 7005 lines.
-- `crates/velvet_ballastics/tests/admission_evidence_integration.rs`: 877 lines.
+- `crates/velvet_ballistics/tests/admission_evidence_integration.rs`: 877 lines.
 
 ## DDD Notes
 - Scoped scan also found workflow-state `Option<...>` fields in `RunState`/inspection paths and public shell methods returning `Option<InspectResponse>`; these may be valid boundary/state encodings but require targeted DDD split/review before approval.
@@ -49,7 +49,7 @@ STATUS: REFACTORED
 - Rechecked only isolated workspace `/home/lewis/src/Velvet-ballistics-vb-qi37-4-3-go`; forbidden source checkout `/home/lewis/src/Velvet-ballistics` was not touched.
 - Mandatory architectural-drift sources read before acting: `/home/lewis/.claude/skills/architectural-drift/SKILL.md` and `/home/lewis/.agents/skills/architectural-drift/SKILL.md`; both require any `.rs` file over 300 lines to be split, with the `.agents` copy canonical if conflicts exist.
 - Go-skill State 13 rule checked: code-changing drift work must mark `STATUS: REFACTORED` and rerun from State 8; blocked/no-safe-code-change remains a State 13 blocker.
-- Workspace status evidence from `jj status`: bead artifacts are added; touched Rust files are `crates/vb_runtime/src/journal.rs`, `crates/vb_runtime/src/runtime.rs`, `crates/vb_runtime/src/shard/impl_.rs`, `crates/vb_runtime/src/shard/lifecycle.rs`, `crates/vb_runtime/src/shard/tests.rs`, `crates/vb_runtime/src/shard/types.rs`, and `crates/velvet_ballastics/tests/admission_evidence_integration.rs`.
+- Workspace status evidence from `jj status`: bead artifacts are added; touched Rust files are `crates/vb_runtime/src/journal.rs`, `crates/vb_runtime/src/runtime.rs`, `crates/vb_runtime/src/shard/impl_.rs`, `crates/vb_runtime/src/shard/lifecycle.rs`, `crates/vb_runtime/src/shard/tests.rs`, `crates/vb_runtime/src/shard/types.rs`, and `crates/velvet_ballistics/tests/admission_evidence_integration.rs`.
 - Current scoped line-count command (`python3` over the six known blockers) produced: `journal.rs:1191`, `runtime.rs:2240`, `shard/impl_.rs:799`, `shard/lifecycle.rs:2106`, `shard/tests.rs:7005`, `admission_evidence_integration.rs:877`.
 - `jj diff --stat` shows the bead-local Rust delta is small (`journal.rs` 10 changed lines, `runtime.rs` 54, `shard/impl_.rs` 5, `shard/lifecycle.rs` 64, `shard/tests.rs` 31, `shard/types.rs` 9, integration test 62) but it is embedded in very large modules.
 - Safe-minimal repair decision: no code refactor was applied. Moving only the new tests/helpers would still leave modified/scoped source files over 300 lines. Splitting `runtime.rs`, `journal.rs`, `shard/impl_.rs`, and `shard/lifecycle.rs` under 300 lines requires broad module decomposition across runtime admission, shard lifecycle, command dispatch, tests, imports, and visibility; that is beyond a safe State 13 local repair for this durability bead.
@@ -65,13 +65,13 @@ STATUS: REFACTORED
   - `crates/vb_runtime/src/shard/impl_.rs` -> façade plus `shard/impl_parts/chunk_*.rs` and `shard/impl_tests/chunk_*.rs`.
   - `crates/vb_runtime/src/shard/lifecycle.rs` -> façade plus `shard/lifecycle/chunk_*.rs` and `shard/lifecycle_tests/chunk_*.rs`.
   - `crates/vb_runtime/src/shard/tests.rs` -> façade plus `shard/tests/chunk_*.rs`.
-  - `crates/velvet_ballastics/tests/admission_evidence_integration.rs` -> façade plus `admission_evidence_integration/chunk_*.rs`.
+  - `crates/velvet_ballistics/tests/admission_evidence_integration.rs` -> façade plus `admission_evidence_integration/chunk_*.rs`.
 - Touched/scoped split line-count gate passed: every generated split file and façade is <=300 lines.
 - Focused tests passed:
   - `rtk cargo test -p vb_runtime runtime::tests::submit_direct_returns_durability_error_before_ack_when_header_cannot_persist`.
   - `rtk cargo test -p vb_runtime submit_rejects_duplicate_run_id`.
-  - `rtk cargo test -p velvet_ballastics --test admission_evidence_integration storage_failure_before_header_prevents_ack`.
-  - `rtk cargo test -p velvet_ballastics --test admission_evidence_integration restart_lookup_finds_persisted_header`.
+  - `rtk cargo test -p velvet_ballistics --test admission_evidence_integration storage_failure_before_header_prevents_ack`.
+  - `rtk cargo test -p velvet_ballistics --test admission_evidence_integration restart_lookup_finds_persisted_header`.
 - State 13 changed code; per go-skill, States 8-14 must rerun before landing.
 - State 8 rerun started: `moon run :quick` and `moon run :test` passed; `moon ci` remains red on global lint/feature-powerset items recorded in `moon-report.md` and `regression-diff.md`.
 

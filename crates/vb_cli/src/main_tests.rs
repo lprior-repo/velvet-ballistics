@@ -1,4 +1,4 @@
-//! Tests for velvet_ballastics binary entrypoint.
+//! Tests for velvet_ballistics binary entrypoint.
 #![forbid(unsafe_code)]
 #![allow(clippy::doc_markdown)]
 
@@ -33,7 +33,7 @@ fn main_test_tempdir() -> std::io::Result<tempfile::TempDir> {
 #[test]
 fn parse_ai_context_accepts_run_id_db_and_defaults_to_text_output() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "ai-context",
         "42",
         "--db",
@@ -50,7 +50,7 @@ fn parse_ai_context_accepts_run_id_db_and_defaults_to_text_output() {
 
 #[test]
 fn parse_ai_context_requires_db() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "ai-context", "42"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "ai-context", "42"]));
 
     assert!(matches!(parsed, Err(ParseError::MissingArgument("--db"))));
 }
@@ -130,7 +130,7 @@ fn finish_workflow() -> Option<CompiledWorkflow> {
 #[test]
 fn parse_run_accepts_db_for_journaled_mode() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "run",
         "workflow.yaml",
         "--input-bin",
@@ -163,7 +163,7 @@ fn parse_run_accepts_db_for_journaled_mode() {
 #[test]
 fn parse_run_compiled_requires_db_for_strict_mode() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "run-compiled",
         "workflow.vbir",
         "--input-bin",
@@ -181,7 +181,7 @@ fn parse_run_compiled_requires_db_for_strict_mode() {
 #[test]
 fn parse_run_none_mode_keeps_db_optional() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "run",
         "workflow.yaml",
         "--input-bin",
@@ -234,7 +234,7 @@ fn input_mapping_errors_render_exact_variant_messages() {
 
 #[test]
 fn parse_action_list_defaults_to_registered_text_output() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "action", "list"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "action", "list"]));
 
     assert!(
         matches!(
@@ -251,7 +251,7 @@ fn parse_action_list_defaults_to_registered_text_output() {
 #[test]
 fn parse_action_list_accepts_empty_registry_defaults_to_text() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "action",
         "list",
         "--registry",
@@ -272,7 +272,7 @@ fn parse_action_list_accepts_empty_registry_defaults_to_text() {
 
 #[test]
 fn parse_action_inspect_accepts_action_id_defaults_to_text() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "action", "inspect", "2"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "action", "inspect", "2"]));
 
     assert!(
         matches!(
@@ -290,7 +290,7 @@ fn parse_action_inspect_accepts_action_id_defaults_to_text() {
 #[test]
 fn parse_action_inspect_rejects_invalid_action_id() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "action",
         "inspect",
         "not-a-number",
@@ -305,7 +305,7 @@ fn parse_action_inspect_rejects_invalid_action_id() {
 #[test]
 fn parse_action_list_rejects_invalid_registry() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "action",
         "list",
         "--registry",
@@ -321,7 +321,7 @@ fn parse_action_list_rejects_invalid_registry() {
 #[test]
 fn parse_action_list_rejects_missing_registry_value() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "action",
         "list",
         "--registry",
@@ -337,7 +337,7 @@ fn parse_action_list_rejects_missing_registry_value() {
 #[test]
 fn parse_action_list_rejects_registry_value_consuming_flag() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "action",
         "list",
         "--registry",
@@ -349,7 +349,7 @@ fn parse_action_list_rejects_registry_value_consuming_flag() {
 
 #[test]
 fn parse_action_list_rejects_unknown_flag() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "action", "list", "--bogus"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "action", "list", "--bogus"]));
 
     assert_eq!(
         parsed,
@@ -359,7 +359,7 @@ fn parse_action_list_rejects_unknown_flag() {
 
 #[test]
 fn parse_action_list_rejects_trailing_argument() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "action", "list", "junk"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "action", "list", "junk"]));
 
     assert_eq!(
         parsed,
@@ -655,7 +655,7 @@ fn ipc_storage_resolver_returns_not_found_for_missing_digest() {
 #[test]
 fn parse_run_without_step_flags_produces_none_step() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "run",
         "workflow.yaml",
         "--input-bin",
@@ -675,7 +675,7 @@ fn parse_run_without_step_flags_produces_none_step() {
 #[test]
 fn parse_run_step_requires_step_input() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "run",
         "workflow.yaml",
         "--input-bin",
@@ -793,7 +793,7 @@ fn build_step_frame_out_of_range_returns_error() {
 fn parse_error_exact_variant_coverage() {
     assert_eq!(
         parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "compile",
             "workflow.yaml",
             "--emit",
@@ -805,7 +805,7 @@ fn parse_error_exact_variant_coverage() {
     );
     assert_eq!(
         parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "run",
             "workflow.yaml",
             "--input-bin",
@@ -816,12 +816,12 @@ fn parse_error_exact_variant_coverage() {
         Err(ParseError::UnknownDurability("eventual".into()))
     );
     assert_eq!(
-        parse_args(&args(&["velvet-ballastics", "action", "show"])),
+        parse_args(&args(&["velvet-ballistics", "action", "show"])),
         Err(ParseError::UnknownActionCommand("show".into()))
     );
     assert_eq!(
         parse_args(&args(&[
-            "velvet-ballastics",
+            "velvet-ballistics",
             "answer",
             "run-1",
             "--step",

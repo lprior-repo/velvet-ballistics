@@ -1920,13 +1920,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "vb_codegen"
-version = "0.1.0"
-dependencies = [
- "thiserror",
-]
-
-[[package]]
 name = "vb_compile"
 version = "0.1.0"
 dependencies = [
@@ -1936,7 +1929,6 @@ dependencies = [
  "saphyr",
  "saphyr-parser",
  "thiserror",
- "vb_codegen",
  "vb_core",
  "vb_validate",
  "vb_yaml",
@@ -2035,6 +2027,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "vb_test_util"
+version = "0.1.0"
+dependencies = [
+ "fjall",
+ "postcard",
+ "rand",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "vb_validate"
 version = "0.1.0"
 dependencies = [
@@ -2064,7 +2067,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "velvet-ballastics"
+name = "velvet-ballistics"
 version = "0.1.0"
 dependencies = [
  "blake3",
@@ -2088,14 +2091,50 @@ dependencies = [
 ]
 
 [[package]]
-name = "velvet-ballastics-idempotency-workspace-tests"
+name = "velvet-ballistics-idempotency-workspace-tests"
 version = "0.1.0"
 dependencies = [
  "tempfile",
  "vb_core",
  "vb_runtime",
  "vb_storage",
- "velvet-ballastics",
+ "velvet-ballistics",
+]
+
+[[package]]
+name = "velvet-ballistics-workspace-tests"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "bytes",
+ "criterion",
+ "crossbeam-queue",
+ "mio",
+ "postcard",
+ "proptest",
+ "rand",
+ "rtrb",
+ "saphyr",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tempfile",
+ "toml",
+ "vb_benchmark",
+ "vb_boundary_inventory",
+ "vb_compile",
+ "vb_core",
+ "vb_doc",
+ "vb_expr",
+ "vb_ipc",
+ "vb_proof_kernels",
+ "vb_runtime",
+ "vb_storage",
+ "vb_test_util",
+ "vb_validate",
+ "vb_yaml",
+ "velvet-ballistics",
+ "xtask",
 ]
 
 [[package]]

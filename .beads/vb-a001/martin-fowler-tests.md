@@ -195,9 +195,9 @@
 ### Scenario 1: Basic compiled parity — happy path
 **Given:** `for_each.yaml` corpus artifact with `/dev/null` input
 **Given:** workflow has 1 for_each body step (SetConst output=seen, value=1)
-**When:** `velvet-ballastics run for_each.yaml --input-bin /dev/null` executes
-**When:** `velvet-ballastics compile --emit postcard --out /tmp/for_each.vbir for_each.yaml`
-**When:** `velvet-ballastics run-compiled /tmp/for_each.vbir --input-bin /dev/null` executes
+**When:** `velvet-ballistics run for_each.yaml --input-bin /dev/null` executes
+**When:** `velvet-ballistics compile --emit postcard --out /tmp/for_each.vbir for_each.yaml`
+**When:** `velvet-ballistics run-compiled /tmp/for_each.vbir --input-bin /dev/null` executes
 **Then:**
 - Both commands exit 0
 - Both produce "run completed" in stdout

@@ -1,7 +1,7 @@
 # Contract Specification: vb-qi37.1
 
 ## Context
-- Feature: runtime/storage full live-frame recovery hydration for `velvet-ballastics`.
+- Feature: runtime/storage full live-frame recovery hydration for `velvet-ballistics`.
 - Bead: `vb-qi37.1` - `runtime/storage: Complete full live-frame recovery hydration`.
 - Source constraints read from State 2 artifacts and `bd --db /home/lewis/src/velvet-ballistics/.beads/dolt show vb-qi37.1 --json`.
 - Scope: recovery from durable Fjall journal/run headers plus optional snapshots into `RecoveryRuntimeSummary`, `RecoveryFrameSeed`, and runtime `RunFrame` hydration boundaries.

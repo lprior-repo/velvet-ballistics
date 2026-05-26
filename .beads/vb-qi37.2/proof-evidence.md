@@ -40,7 +40,7 @@
 ## ResourceContract Parity
 
 - `rtk cargo test -p vb_core resource_contract -- --nocapture` -> PASS, raw log `.beads/vb-qi37.2/resource-contract-vb-core.raw.log`: `51 passed, 1744 filtered out`.
-- `rtk cargo test -p velvet-ballastics-workspace resource_contract -- --nocapture` -> PASS, raw log `.beads/vb-qi37.2/resource-contract-workspace.raw.log`: `0 passed, 340 filtered out`.
+- `rtk cargo test -p velvet-ballistics-workspace resource_contract -- --nocapture` -> PASS, raw log `.beads/vb-qi37.2/resource-contract-workspace.raw.log`: `0 passed, 340 filtered out`.
 - Source-review classification: `workflow/mod.rs::ResourceContract` is active runtime contract for validation/admission; `compiled_workflow.rs::ResourceContract` is an active compiled-workflow API wrapper. Parity is accepted for this bead because focused tests cover current active resource-contract diagnostics and no production behavior changed this wrapper boundary in this repair.
 
 ## Focused Regression Tests

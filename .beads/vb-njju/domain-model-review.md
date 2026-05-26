@@ -32,7 +32,7 @@
 
 ## Public-surface rule
 
-- State 4 must prefer `velvet_ballastics_workspace_tests::acceptance_catalog::{Scenario,catalog,validate_catalog}` and public quality validation APIs listed in `delivery-scope.jsonl`.
+- State 4 must prefer `velvet_ballistics_workspace_tests::acceptance_catalog::{Scenario,catalog,validate_catalog}` and public quality validation APIs listed in `delivery-scope.jsonl`.
 - If a missing public quality API blocks exact evidence, State 4 should add a workspace-test-facing public helper rather than couple tests to private module internals.
 
 ## Review result

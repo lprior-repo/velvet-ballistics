@@ -8,7 +8,7 @@ attempt: 1-of-7
 
 ## Existing Benchmark Harnesses
 
-### Main Suite: benches/velvet_ballastics.rs (2715 lines)
+### Main Suite: benches/velvet_ballistics.rs (2715 lines)
 - Criterion-based with 17 benchmark groups
 - Groups: yaml_parse, compile_validate, expression, runtime_core, storage_ipc, generated_mode, ir_vs_generated, generated_execution, ir_vs_generated_ratio, taint_scalar_expr, taint_slot_loading, taint_build_object, taint_build_list, taint_full_workflow, submit_artifact, budget_compute, evidence_chain, admission_gate, capability_check
 - Metadata embedded in benchmark IDs via `metadata()` function: name, BENCH_METADATA constant, extra tags, fixture_bytes, fixture_digest (blake3)
@@ -37,7 +37,7 @@ attempt: 1-of-7
 
 ### cargo deny
 - License allowlist: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, BSL-1.0, Unicode-3.0, Zlib
-- Pre-existing failures: libfuzzer-sys (NCSA), resvg/usvg (MPL-2.0), velvet-ballastics-fuzz (unlicensed), fxhash (RUSTSEC-2025-0057)
+- Pre-existing failures: libfuzzer-sys (NCSA), resvg/usvg (MPL-2.0), velvet-ballistics-fuzz (unlicensed), fxhash (RUSTSEC-2025-0057)
 
 ### cargo vet
 - Store at supply-chain/ (audits.toml, config.toml, imports.lock)

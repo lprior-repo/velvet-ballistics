@@ -32,25 +32,25 @@ TMPDIR=/home/lewis/src/vb-scxh/target/tmp RUSTC_WRAPPER= moon ci --force --summa
 Result: PASS, exit `0`. Summary markers:
 
 ```text
-pass RunTask(velvet-ballastics:agent-cli-contract) (62ms, 2c7f7221)
-pass RunTask(velvet-ballastics:fuzz-smoke) (170ms, c7842f37)
-pass RunTask(velvet-ballastics:lint-src) (1s 138ms, 99c2dfcf)
-pass RunTask(velvet-ballastics:source-length) (1s 402ms, 002f7ee9)
-pass RunTask(velvet-ballastics:fmt) (1s 846ms, 2a367c99)
-pass RunTask(velvet-ballastics:nightly-feature-gate) (3s 963ms, 096b388d)
-pass RunTask(velvet-ballastics:check) (163ms, 937c9cba)
-pass RunTask(velvet-ballastics:nightly-feature-cargo-probe) (24ms, 68327fa4)
-pass RunTask(velvet-ballastics:feature-powerset) (4s 457ms, f73e9329)
-pass RunTask(velvet-ballastics:coverage) (7s 866ms, aae27c63)
-pass RunTask(velvet-ballastics:bench-build) (7s 908ms, cc71bd49)
-pass RunTask(velvet-ballastics:mutants-smoke) (13s 153ms, af1a6180)
-pass RunTask(velvet-ballastics:miri) (19s 877ms, 98d4ae4b)
-pass RunTask(velvet-ballastics:test) (27s 964ms, 77014bd2)
-pass RunTask(velvet-ballastics:hardened-build) (205ms, 7537c1cb)
-pass RunTask(velvet-ballastics:doc-test) (1s 383ms, 0c8572dc)
-pass RunTask(velvet-ballastics:doc) (2s 389ms, 2d21c395)
-pass RunTask(velvet-ballastics:maxperf) (2s 743ms, aee33bed)
-pass RunTask(velvet-ballastics:maxperf-native) (2s 745ms, 1de9bd78)
+pass RunTask(velvet-ballistics:agent-cli-contract) (62ms, 2c7f7221)
+pass RunTask(velvet-ballistics:fuzz-smoke) (170ms, c7842f37)
+pass RunTask(velvet-ballistics:lint-src) (1s 138ms, 99c2dfcf)
+pass RunTask(velvet-ballistics:source-length) (1s 402ms, 002f7ee9)
+pass RunTask(velvet-ballistics:fmt) (1s 846ms, 2a367c99)
+pass RunTask(velvet-ballistics:nightly-feature-gate) (3s 963ms, 096b388d)
+pass RunTask(velvet-ballistics:check) (163ms, 937c9cba)
+pass RunTask(velvet-ballistics:nightly-feature-cargo-probe) (24ms, 68327fa4)
+pass RunTask(velvet-ballistics:feature-powerset) (4s 457ms, f73e9329)
+pass RunTask(velvet-ballistics:coverage) (7s 866ms, aae27c63)
+pass RunTask(velvet-ballistics:bench-build) (7s 908ms, cc71bd49)
+pass RunTask(velvet-ballistics:mutants-smoke) (13s 153ms, af1a6180)
+pass RunTask(velvet-ballistics:miri) (19s 877ms, 98d4ae4b)
+pass RunTask(velvet-ballistics:test) (27s 964ms, 77014bd2)
+pass RunTask(velvet-ballistics:hardened-build) (205ms, 7537c1cb)
+pass RunTask(velvet-ballistics:doc-test) (1s 383ms, 0c8572dc)
+pass RunTask(velvet-ballistics:doc) (2s 389ms, 2d21c395)
+pass RunTask(velvet-ballistics:maxperf) (2s 743ms, aee33bed)
+pass RunTask(velvet-ballistics:maxperf-native) (2s 745ms, 1de9bd78)
 Actions: 21 completed
 Time: 34s 838ms
 ```
@@ -82,10 +82,10 @@ moon ci --force --summary normal
 Result: FAIL. Summary markers:
 
 ```text
-fail RunTask(velvet-ballastics:fmt) (1s 676ms, 8c38de8d)
-fail RunTask(velvet-ballastics:lint-src) (2s 322ms, c69bee08)
-fail RunTask(velvet-ballastics:fuzz-smoke) (2s 643ms, 8f34d24a)
-fail RunTask(velvet-ballastics:check) (1s 137ms, 42df0c1e)
+fail RunTask(velvet-ballistics:fmt) (1s 676ms, 8c38de8d)
+fail RunTask(velvet-ballistics:lint-src) (2s 322ms, c69bee08)
+fail RunTask(velvet-ballistics:fuzz-smoke) (2s 643ms, 8f34d24a)
+fail RunTask(velvet-ballistics:check) (1s 137ms, 42df0c1e)
 Actions: 6 completed, 4 failed, 11 skipped
 Time: 26s 923ms
 ```
@@ -109,14 +109,14 @@ TMPDIR=/home/lewis/src/vb-scxh/.beads/vb-scxh/tmp RUSTC_WRAPPER= moon ci --force
 Result: FAIL. Summary markers:
 
 ```text
-pass RunTask(velvet-ballastics:agent-cli-contract)
-pass RunTask(velvet-ballastics:source-length)
-fail RunTask(velvet-ballastics:fmt) (1s 635ms, be362cbc)
-pass RunTask(velvet-ballastics:nightly-feature-gate)
-fail RunTask(velvet-ballastics:lint-src) (9s 730ms, 3fe90829)
-fail RunTask(velvet-ballastics:check) (8s 479ms, 6955ae05)
-fail RunTask(velvet-ballastics:fuzz-smoke) (15s 847ms, 8f34d24a)
-pass RunTask(velvet-ballastics:miri) (20s 519ms, 808b9f06)
+pass RunTask(velvet-ballistics:agent-cli-contract)
+pass RunTask(velvet-ballistics:source-length)
+fail RunTask(velvet-ballistics:fmt) (1s 635ms, be362cbc)
+pass RunTask(velvet-ballistics:nightly-feature-gate)
+fail RunTask(velvet-ballistics:lint-src) (9s 730ms, 3fe90829)
+fail RunTask(velvet-ballistics:check) (8s 479ms, 6955ae05)
+fail RunTask(velvet-ballistics:fuzz-smoke) (15s 847ms, 8f34d24a)
+pass RunTask(velvet-ballistics:miri) (20s 519ms, 808b9f06)
 Actions: 6 completed, 4 failed, 11 skipped
 Time: 20s 519ms
 ```
@@ -137,14 +137,14 @@ TMPDIR=/home/lewis/src/vb-scxh/.beads/vb-scxh/tmp RUSTC_WRAPPER= moon ci --force
 Result: FAIL, exit `1`. Summary markers:
 
 ```text
-pass RunTask(velvet-ballastics:agent-cli-contract)
-pass RunTask(velvet-ballastics:source-length)
-fail RunTask(velvet-ballastics:fmt)
-fail RunTask(velvet-ballastics:lint-src)
-pass RunTask(velvet-ballastics:nightly-feature-gate)
-fail RunTask(velvet-ballastics:check)
-fail RunTask(velvet-ballastics:fuzz-smoke)
-pass RunTask(velvet-ballastics:miri)
+pass RunTask(velvet-ballistics:agent-cli-contract)
+pass RunTask(velvet-ballistics:source-length)
+fail RunTask(velvet-ballistics:fmt)
+fail RunTask(velvet-ballistics:lint-src)
+pass RunTask(velvet-ballistics:nightly-feature-gate)
+fail RunTask(velvet-ballistics:check)
+fail RunTask(velvet-ballistics:fuzz-smoke)
+pass RunTask(velvet-ballistics:miri)
 Actions: 6 completed, 4 failed, 11 skipped
 ```
 
@@ -158,7 +158,7 @@ Final failure packets:
 
 ## Moon Task Availability / Canonical Command
 
-- `.moon/workspace.yml` maps project `velvet-ballastics` to `.` and default project `velvet-ballastics`.
+- `.moon/workspace.yml` maps project `velvet-ballistics` to `.` and default project `velvet-ballistics`.
 - `.moon/tasks/all.yml` defines CI-enabled tasks including `fmt`, `lint-src`, `check`, `test`, `doc-test`, `feature-powerset`, `fuzz-smoke`, `miri`, coverage/build lanes, plus gauntlet rollups.
 - Canonical green evidence command for this obligation remains the approved obligation command: `moon ci` from `/home/lewis/src/vb-scxh`. Because normal `moon ci` previously resolved zero changed targets, `moon ci --force --summary normal` is the valid forced freshness probe; the post-repair rerun passed with repo-local `TMPDIR` and `RUSTC_WRAPPER=`.
 

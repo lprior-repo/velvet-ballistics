@@ -2,7 +2,7 @@
 //! Kani harnesses for `lower_repeat` and `lower_ask` id+1 control lowering.
 //! Bead: vb-onsk; scope: current public `vb_compile` APIs.
 
-use crate::{CompileError, SlotCompiler, lower_ask, lower_repeat};
+use crate::{CompileError, SlotCompiler, lower_ask, lower_choose, lower_repeat};
 use vb_core::{CompiledNode, CompiledNodeKind, SlotIdx, StepIdx};
 
 const MAX_NON_OVERFLOWING_STEP_RAW: u16 = 65_534;
@@ -276,3 +276,101 @@ fn lower_ask_rejects_max_id_without_overflow() {
     }
     std::mem::forget(builder);
 }
+
+// ───────────────────────────────────────────────────────────────────────────
+// vb-awhr harnesses: fanout limit and otherwise label resolution
+// ───────────────────────────────────────────────────────────────────────────
+
+use vb_core::workflow::SlotBranch;
+
+/// PO-001 H1: lower_choose correctly enforces the 64-branch fanout limit.
+#[kani::proof]
+#[kani::unwind(128)]
+fn lower_choose_fanout_bound() {
+    let test_rejection: bool = kani::any();
+
+    let branches: Vec<SlotBranch> = if test_rejection {
+        (0..65)
+            .map(|_| SlotBranch {
+                condition: SlotIdx::new(kani::any()),
+                target: StepIdx::new(kani::any()),
+            })
+            .collect()
+    } else {
+        (0..64)
+            .map(|_| SlotBranch {
+                condition: SlotIdx::new(kani::any()),
+                target: StepIdx::new(kani::any()),
+            })
+            .collect()
+    };
+
+    let mut builder = SlotCompiler::new();
+    let result = lower_choose(
+        StepIdx::new(0),
+        branches,
+        Some(StepIdx::new(1)),
+        &mut builder,
+    );
+
+    if test_rejection {
+        match result {
+            Err(CompileError::PrimitiveLoweringLimitExceeded {
+                primitive,
+                field,
+                value,
+                limit,
+            }) => {
+                kani::assert(primitive == "choose", "error primitive is choose");
+                kani::assert(field == "branches", "error field is branches");
+                kani::assert(value == 65, "error value matches branch count");
+                kani::assert(limit == 64, "error limit is 64");
+            }
+            _ => {
+                kani::assert(
+                    false,
+                    ">64 branches must reject with PrimitiveLoweringLimitExceeded",
+                );
+            }
+        }
+    } else {
+        kani::assert(result.is_ok(), "≤64 branches must be accepted");
+    }
+    std::mem::forget(builder);
+}
+
+/// PO-001 H2: Public lower_choose API enforces the fanout limit.
+#[kani::proof]
+#[kani::unwind(128)]
+fn lower_choose_live_api_has_fanout_check() {
+    let branches: Vec<SlotBranch> = (0..65)
+        .map(|_| SlotBranch {
+            condition: SlotIdx::new(kani::any()),
+            target: StepIdx::new(kani::any()),
+        })
+        .collect();
+
+    let mut builder = SlotCompiler::new();
+    let result = lower_choose(
+        StepIdx::new(0),
+        branches,
+        Some(StepIdx::new(1)),
+        &mut builder,
+    );
+
+    match result {
+        Err(CompileError::PrimitiveLoweringLimitExceeded { .. }) => {}
+        Ok(_) => {
+            kani::assert(false, "public lower_choose must reject 65 branches");
+        }
+        Err(_) => {
+            kani::assert(
+                false,
+                "public lower_choose must reject with PrimitiveLoweringLimitExceeded",
+            );
+        }
+    }
+    std::mem::forget(builder);
+}
+
+// otherwise label resolution harness is in mod_compile_lowering/kani_vb_awhr.rs

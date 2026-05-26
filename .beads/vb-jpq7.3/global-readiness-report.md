@@ -35,11 +35,11 @@ Prior result: PASS on fresh rerun. Output saved by the shell tool at:
 Observed final summary:
 
 - `Tasks: 24 completed (3 cached)`.
-- `velvet-ballastics:test`: `12165 tests run: 12165 passed (5 slow), 0 skipped`.
-- `velvet-ballastics:panic-surface`: `NoViolationFound`.
-- `velvet-ballastics:ignored-fallible-results`: `NoViolationFound`.
-- `velvet-ballastics:test-integrity`: `PASS base=HEAD`.
-- `velvet-ballastics:source-length`: PASS; only `DEFERRED_GLOBAL` compile split notices remain.
+- `velvet-ballistics:test`: `12165 tests run: 12165 passed (5 slow), 0 skipped`.
+- `velvet-ballistics:panic-surface`: `NoViolationFound`.
+- `velvet-ballistics:ignored-fallible-results`: `NoViolationFound`.
+- `velvet-ballistics:test-integrity`: `PASS base=HEAD`.
+- `velvet-ballistics:source-length`: PASS; only `DEFERRED_GLOBAL` compile split notices remain.
 
 Superseded closure rerun after supplemental test-integrity repair:
 
@@ -50,11 +50,11 @@ Superseded closure rerun after supplemental test-integrity repair:
 Observed final summary:
 
 - `Tasks: 24 completed (5 cached)`.
-- `velvet-ballastics:test-integrity`: `test integrity: PASS base=HEAD`.
-- `velvet-ballastics:test`: `12165 tests run: 12165 passed (5 slow, 14 leaky), 0 skipped`.
-- `velvet-ballastics:panic-surface`: `NoViolationFound`.
-- `velvet-ballastics:ignored-fallible-results`: `NoViolationFound`.
-- `velvet-ballastics:source-length`: PASS; only `DEFERRED_GLOBAL` compile split notices remain.
+- `velvet-ballistics:test-integrity`: `test integrity: PASS base=HEAD`.
+- `velvet-ballistics:test`: `12165 tests run: 12165 passed (5 slow, 14 leaky), 0 skipped`.
+- `velvet-ballistics:panic-surface`: `NoViolationFound`.
+- `velvet-ballistics:ignored-fallible-results`: `NoViolationFound`.
+- `velvet-ballistics:source-length`: PASS; only `DEFERRED_GLOBAL` compile split notices remain.
 
 Latest closure rerun after P0 taint/scanner/supply-chain repair:
 
@@ -65,12 +65,12 @@ Latest closure rerun after P0 taint/scanner/supply-chain repair:
 Observed final summary:
 
 - `Tasks: 25 completed (5 cached)`.
-- `velvet-ballastics:test-integrity`: `test integrity: PASS base=HEAD`.
-- `velvet-ballastics:test`: `12167 tests run: 12167 passed (5 slow), 0 skipped`.
-- `velvet-ballastics:panic-surface`: `NoViolationFound`.
-- `velvet-ballastics:ignored-fallible-results`: fixture checks for embedded/split `.ok()` passed and final scan returned `NoViolationFound`.
-- `velvet-ballastics:supply-chain`: completed successfully.
-- `velvet-ballastics:source-length`: PASS; only `DEFERRED_GLOBAL` compile split notices remain.
+- `velvet-ballistics:test-integrity`: `test integrity: PASS base=HEAD`.
+- `velvet-ballistics:test`: `12167 tests run: 12167 passed (5 slow), 0 skipped`.
+- `velvet-ballistics:panic-surface`: `NoViolationFound`.
+- `velvet-ballistics:ignored-fallible-results`: fixture checks for embedded/split `.ok()` passed and final scan returned `NoViolationFound`.
+- `velvet-ballistics:supply-chain`: completed successfully.
+- `velvet-ballistics:source-length`: PASS; only `DEFERRED_GLOBAL` compile split notices remain.
 
 Latest closure rerun after versioned slot-write extra envelope repair:
 
@@ -81,12 +81,12 @@ Latest closure rerun after versioned slot-write extra envelope repair:
 Observed final summary:
 
 - `Tasks: 25 completed (3 cached)`.
-- `velvet-ballastics:test-integrity`: `test integrity: PASS base=HEAD`.
-- `velvet-ballastics:test`: `12169 tests run: 12169 passed (5 slow), 0 skipped`.
-- `velvet-ballastics:panic-surface`: `NoViolationFound`.
-- `velvet-ballastics:ignored-fallible-results`: `NoViolationFound`.
-- `velvet-ballastics:supply-chain`: completed successfully.
-- `velvet-ballastics:source-length`: PASS; only `DEFERRED_GLOBAL` compile split notices remain.
+- `velvet-ballistics:test-integrity`: `test integrity: PASS base=HEAD`.
+- `velvet-ballistics:test`: `12169 tests run: 12169 passed (5 slow), 0 skipped`.
+- `velvet-ballistics:panic-surface`: `NoViolationFound`.
+- `velvet-ballistics:ignored-fallible-results`: `NoViolationFound`.
+- `velvet-ballistics:supply-chain`: completed successfully.
+- `velvet-ballistics:source-length`: PASS; only `DEFERRED_GLOBAL` compile split notices remain.
 
 ## Scoped Mitigation
 
@@ -96,7 +96,7 @@ Observed final summary:
   - source-length hot-function and cargo-mutants residue blockers.
 - Scoped vb-jpq7.3 behavior gates still pass.
 - Superseded rerun evidence `/home/lewis/.local/share/opencode/tool-output/tool_e5452fd53001Mc2ed6UxB8v3AY` is **not** closure evidence: it failed
-  `velvet-ballastics:test-integrity` with `WeakenedAssertion|crates/workspace_tests/tests/vb_jpq7_3_fail_closed_storage_recovery_contract.rs|removed_exact=2 added_exact=1`.
+  `velvet-ballistics:test-integrity` with `WeakenedAssertion|crates/workspace_tests/tests/vb_jpq7_3_fail_closed_storage_recovery_contract.rs|removed_exact=2 added_exact=1`.
 - The public hydration behavior test now carries supplemental exact source assertions to repair that integrity finding; reruns `tool_e5464d5ba001pbGsXBRAO78L6g`, `tool_e54ad4ea40019LkG7p2r0N30AH`, and latest `tool_e54cfc867001em3UkY7dnDZZ7z` pass.
 
 ## Required Before Closure

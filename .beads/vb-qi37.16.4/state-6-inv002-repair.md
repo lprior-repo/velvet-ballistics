@@ -69,7 +69,7 @@ let answer = AskAnswer {
 
 | File | Change |
 |------|--------|
-| `crates/velvet_ballastics/src/main.rs:2662` | Added `taint: None` |
+| `crates/velvet_ballistics/src/main.rs:2662` | Added `taint: None` |
 | `crates/vb_ui/src/ipc_bridge.rs:394` | Added `taint: None` |
 
 ### 4. Existing Tests Updated (added `taint: None`)
@@ -114,7 +114,7 @@ EXIT: 0
 ### Compile Gate
 
 ```bash
-$ rtk cargo check -p vb_ipc -p vb_runtime -p velvet_ballastics --all-targets --all-features
+$ rtk cargo check -p vb_ipc -p vb_runtime -p velvet_ballistics --all-targets --all-features
 cargo build: 0 errors, 1 warnings (5 crates)
 EXIT: 0
 ```
@@ -194,7 +194,7 @@ INV-002 is now enforced, not bypassed.
 | `crates/vb_ipc/src/lib.rs` | Added `taint: Option<Taint>` field to `AnswerAsk` variant |
 | `crates/vb_ipc/src/server/handlers.rs` | Destructure `taint`, use `unwrap_or`, add 4 new tests |
 | `crates/vb_ipc/src/tests.rs` | Added `taint: None` to 3 existing test constructions |
-| `crates/velvet_ballastics/src/main.rs` | Added `taint: None` to `IpcPayload::AnswerAsk` construction |
+| `crates/velvet_ballistics/src/main.rs` | Added `taint: None` to `IpcPayload::AnswerAsk` construction |
 | `crates/vb_ui/src/ipc_bridge.rs` | Added `taint: None` to `IpcPayload::AnswerAsk` construction |
 
 ---

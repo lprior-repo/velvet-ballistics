@@ -73,13 +73,13 @@ exit: 0 (0 warnings)
 
 ### BDD integration test compile
 ```
-$ cargo test --package velvet-ballastics-workspace-tests vb_te1i_binary_ipc_acceptance --no-run
+$ cargo test --package velvet-ballistics-workspace-tests vb_te1i_binary_ipc_acceptance --no-run
 exit: 0 (compiles successfully)
 ```
 
 ### BDD integration tests run
 ```
-$ cargo test --package velvet-ballastics-workspace-tests ipc_ -- --test-threads=1
+$ cargo test --package velvet-ballistics-workspace-tests ipc_ -- --test-threads=1
 cargo test: 20 passed, 1218 filtered out (56 suites, 0.00s)
 ```
 Note: 20 tests include 7 BDD + 13 ipc_* tests from other integration files.

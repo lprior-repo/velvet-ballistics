@@ -17,7 +17,7 @@ All commands were run with workdir `/home/lewis/src/Velvet-ballistics-vb-qi37-16
 
 Command:
 ```bash
-cargo test --package velvet_ballastics --test lifecycle_integration -- --test-threads=1
+cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1
 ```
 
 Exit: `0`
@@ -76,14 +76,14 @@ test result: ok. 43 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fin
 
 Command:
 ```bash
-target/debug/velvet-ballastics --help
+target/debug/velvet-ballistics --help
 ```
 
 Exit: `0`
 
 Stdout excerpt:
 ```text
-velvet-ballastics - compiled workflow runtime
+velvet-ballistics - compiled workflow runtime
 
 commands:
   replay     <run_id> --db <path> [--json|--jsonl]     Replay a run from journal
@@ -96,21 +96,21 @@ commands:
 
 Command:
 ```bash
-target/debug/velvet-ballastics version
+target/debug/velvet-ballistics version
 ```
 
 Exit: `0`
 
 Stdout:
 ```text
-velvet-ballastics 0.1.0
+velvet-ballistics 0.1.0
 ```
 
 ### 4. Doctor smoke
 
 Command:
 ```bash
-target/debug/velvet-ballastics doctor --db /tmp/velvet-final-qa-vb-qi37-16-5-db
+target/debug/velvet-ballistics doctor --db /tmp/velvet-final-qa-vb-qi37-16-5-db
 ```
 
 Exit: `0`

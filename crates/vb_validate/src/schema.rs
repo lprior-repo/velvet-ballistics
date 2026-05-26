@@ -6,7 +6,7 @@
 
 use crate::{ValidationError, ValidationResult};
 
-const CANONICAL_VERSION: &str = "velvet-ballastics/v1";
+const CANONICAL_VERSION: &str = "velvet-ballistics/v1";
 
 const REQUIRED_TOP_LEVEL_FIELDS: &[&str] = &["version", "name", "when", "steps"];
 
@@ -23,9 +23,9 @@ const ALLOWED_STEP_FIELDS: &[&str] = &[
     "set",
     "choose",
     "for_each",
-    "parallel",
+    "together",
     "collect",
-    "aggregate",
+    "reduce",
     "repeat",
     "wait",
     "ask",
@@ -36,16 +36,7 @@ const ALLOWED_STEP_FIELDS: &[&str] = &[
 ];
 
 const STEP_PRIMITIVES: &[&str] = &[
-    "set",
-    "do",
-    "choose",
-    "for_each",
-    "parallel",
-    "collect",
-    "aggregate",
-    "repeat",
-    "wait",
-    "ask",
+    "set", "do", "choose", "for_each", "together", "collect", "reduce", "repeat", "wait", "ask",
     "finish",
 ];
 
@@ -71,9 +62,7 @@ const RESERVED_IDS: &[&str] = &[
     "set",
     "choose",
     "for_each",
-    "parallel",
     "collect",
-    "aggregate",
     "repeat",
     "wait",
     "ask",
@@ -158,7 +147,7 @@ pub fn validate_trigger(doc: &WorkflowDoc) -> ValidationResult<()> {
     match kind.as_str() {
         "manual" | "webhook" => validate_empty_trigger(kind, body),
         "schedule" => validate_named_string_trigger(kind, body, "cron"),
-        "event" => validate_named_string_trigger(kind, body, "name"),
+        "event" => validate_named_string_trigger(kind, body, "type"),
         "http" => Err(ValidationError::HttpTriggerOutOfCore),
         other => Err(ValidationError::UnsupportedTrigger {
             trigger: other.to_owned(),
@@ -476,7 +465,7 @@ mod tests {
         make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("test".to_owned())),
             (
@@ -552,7 +541,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("test".to_owned())),
             (
@@ -652,7 +641,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("test".to_owned())),
             (
@@ -680,7 +669,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("first".to_owned())),
             ("name", FieldValue::String("second".to_owned())),
@@ -708,7 +697,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("test".to_owned())),
             (
@@ -736,7 +725,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("test".to_owned())),
             (
@@ -764,7 +753,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             (
                 "when",
@@ -795,7 +784,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("test".to_owned())),
             (
@@ -834,7 +823,7 @@ mod tests {
         // Given a workflow doc with the canonical version
         let doc = make_workflow(vec![(
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         )]);
         // When validate_version is called
         let result = validate_version(&doc);
@@ -896,7 +885,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("test".to_owned())),
             (
@@ -928,7 +917,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("test".to_owned())),
             (
@@ -989,7 +978,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("my_workflow".to_owned())),
             (
@@ -1022,7 +1011,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("test".to_owned())),
             (
@@ -1054,7 +1043,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("test".to_owned())),
             (
@@ -1086,7 +1075,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("test".to_owned())),
             (
@@ -1151,13 +1140,13 @@ mod tests {
 
     #[test]
     fn validate_trigger_accepts_event_trigger() {
-        // Given a workflow doc with an event trigger carrying name
+        // Given a workflow doc with an event trigger carrying type
         let doc = make_workflow(vec![(
             "when",
             FieldValue::Mapping(vec![(
                 "event".to_owned(),
                 FieldValue::Mapping(vec![(
-                    "name".to_owned(),
+                    "type".to_owned(),
                     FieldValue::String("job.created".to_owned()),
                 )]),
             )]),
@@ -1493,7 +1482,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("multi_test".to_owned())),
         ]);
@@ -1501,7 +1490,7 @@ mod tests {
         let version = doc.get_string("version");
         let name = doc.get_string("name");
         // Then each returns its exact value
-        assert_eq!(version, Some("velvet-ballastics/v1"));
+        assert_eq!(version, Some("velvet-ballistics/v1"));
         assert_eq!(name, Some("multi_test"));
     }
 
@@ -1567,7 +1556,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("test".to_owned())),
         ]);
@@ -1616,7 +1605,7 @@ mod tests {
         let pairs = vec![
             (
                 "version".to_owned(),
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             (
                 "name".to_owned(),
@@ -1626,7 +1615,7 @@ mod tests {
         // When WorkflowDoc::from_pairs is called
         let doc = WorkflowDoc::from_pairs(pairs);
         // Then the fields are accessible
-        assert_eq!(doc.get_string("version"), Some("velvet-ballastics/v1"));
+        assert_eq!(doc.get_string("version"), Some("velvet-ballistics/v1"));
         assert_eq!(doc.get_string("name"), Some("roundtrip"));
     }
 
@@ -1672,7 +1661,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("test".to_owned())),
             (
@@ -1704,7 +1693,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("test".to_owned())),
             (
@@ -1736,7 +1725,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("test".to_owned())),
             (
@@ -1768,7 +1757,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("test".to_owned())),
             (
@@ -1800,7 +1789,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("test".to_owned())),
             (
@@ -1832,7 +1821,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("test".to_owned())),
             (
@@ -1944,7 +1933,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("dup_test".to_owned())),
             (
@@ -2071,7 +2060,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("empty_steps".to_owned())),
             (
@@ -2097,7 +2086,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("test".to_owned())),
             (
@@ -2181,7 +2170,7 @@ mod tests {
         let doc = make_workflow(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String("no_id_test".to_owned())),
             (

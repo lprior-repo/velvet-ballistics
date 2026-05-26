@@ -7,7 +7,7 @@ updated_at: 2026-05-09T20:25:00Z
 
 ### Relevant Files
 
-#### Doctor CLI (`crates/velvet_ballastics/src/main.rs`)
+#### Doctor CLI (`crates/velvet_ballistics/src/main.rs`)
 - `cmd_doctor(db: &Path, output: OutputFormat) -> ExitCode` at line 3644
 - Currently performs 3 checks: open_journal, strict_persist, append+read_back_event
 - Outputs either text (`outln!`) or structured JSON (`json_out` / `json_error`)

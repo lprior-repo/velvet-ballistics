@@ -21,7 +21,7 @@ STATUS: PASS
 - `bd update vb-nf2u --claim` — PASS; Dolt auto-push warned non-fast-forward remote.
 - `rtk cargo fmt --all` — PASS.
 - `rtk cargo clippy -p vb_ui_snapshot -p vb_ui_makepad -p xtask --tests --all-features -- -D warnings` — PASS: 0 errors, 2 warnings.
-- `cargo nextest run -p velvet-ballastics-workspace --test vb_nf2u_ui_release_acceptance` — PASS: 8 run, 8 passed, 0 skipped.
+- `cargo nextest run -p velvet-ballistics-workspace --test vb_nf2u_ui_release_acceptance` — PASS: 8 run, 8 passed, 0 skipped.
 - `cargo nextest run -p vb_ui_snapshot -p vb_ui_makepad -p xtask` — PASS: 131 run, 131 passed, 0 skipped.
 - `rtk cargo fmt --all --check` — PASS.
 

@@ -27,7 +27,7 @@ STATUS: READY_FOR_PROOF_PLAN_REVIEW
 
 - `pwd -P` confirmed isolated workspace.
 - Required repaired State 3 input artifacts exist.
-- Scoped risk discovery used `/usr/bin/rg` over `crates/vb_storage/src`, `crates/vb_runtime/src`, `crates/velvet_ballastics/src`, `crates/velvet_ballastics/tests/admission_evidence_integration`, `verification/tla`, and `verification/verus`.
+- Scoped risk discovery used `/usr/bin/rg` over `crates/vb_storage/src`, `crates/vb_runtime/src`, `crates/velvet_ballistics/src`, `crates/velvet_ballistics/tests/admission_evidence_integration`, `verification/tla`, and `verification/verus`.
 - Scoped verifier discovery used `/usr/bin/rg` over the same paths and found existing Verus, Kani, Loom, proptest, and Miri-related infrastructure, but no exact accepted-run sequence-binding Kani harness or exact strict AcceptedArtifact fuzz target.
 - No discovery command was blocked.
 

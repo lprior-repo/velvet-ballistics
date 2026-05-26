@@ -35,7 +35,7 @@ Result: PASS, no output.
 ### Acceptance command
 Command:
 ```text
-cargo nextest run -p velvet-ballastics-workspace --test vb_nf2u_ui_release_acceptance
+cargo nextest run -p velvet-ballistics-workspace --test vb_nf2u_ui_release_acceptance
 ```
 Result:
 ```text

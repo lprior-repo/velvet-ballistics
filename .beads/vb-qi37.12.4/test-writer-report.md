@@ -10,7 +10,7 @@ No new Rust test files were required. The repaired gate contains executable fixt
 - `rtk cargo test -p vb_runtime` -> 1460 passed.
 - `rtk cargo test -p vb_ipc` -> 407 passed.
 - `rtk cargo test -p vb_storage` -> 983 passed.
-- `rtk cargo test -p velvet_ballastics -- --test-threads=1` -> 471 passed.
+- `rtk cargo test -p velvet_ballistics -- --test-threads=1` -> 471 passed.
 - `moon run :verify-standard` -> all standard lanes passed.
 
 ## Non-Blocking Baseline Debt

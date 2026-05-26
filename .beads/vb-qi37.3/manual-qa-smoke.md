@@ -19,7 +19,7 @@ STATUS: PASS
 
 - Workspace: `/home/lewis/src/Velvet-ballistics-vb-qi37-3-go`
 - Bead: `vb-qi37.3`
-- Product CLI smoke: `velvet-ballastics --help` through `cargo run`.
+- Product CLI smoke: `velvet-ballistics --help` through `cargo run`.
 - Runtime behavior smoke: actual `cargo nextest` invocations for black-hat repaired collect behavior.
 - Source/tests were not modified by this QA pass. This artifact was overwritten as requested.
 
@@ -30,7 +30,7 @@ STATUS: PASS
 Command:
 
 ```bash
-rustup run nightly-2026-04-28 cargo run -p velvet_ballastics --bin velvet-ballastics -- --help
+rustup run nightly-2026-04-28 cargo run -p velvet_ballistics --bin velvet-ballistics -- --help
 ```
 
 Exit code: 0
@@ -44,10 +44,10 @@ in favor of /cache/cargo-shared/git/checkouts/makepad-ec2f134f34cd9f98/20b6c53/l
 
    Compiling vb_runtime v0.1.0 (/home/lewis/src/Velvet-ballistics-vb-qi37-3-go/crates/vb_runtime)
    Compiling vb_ipc v0.1.0 (/home/lewis/src/Velvet-ballistics-vb-qi37-3-go/crates/vb_ipc)
-   Compiling velvet_ballastics v0.1.0 (/home/lewis/src/Velvet-ballistics-vb-qi37-3-go/crates/velvet_ballastics)
+   Compiling velvet_ballistics v0.1.0 (/home/lewis/src/Velvet-ballistics-vb-qi37-3-go/crates/velvet_ballistics)
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.87s
-     Running `target/debug/velvet-ballastics --help`
-velvet-ballastics - compiled workflow runtime
+     Running `target/debug/velvet-ballistics --help`
+velvet-ballistics - compiled workflow runtime
 
 commands:
   validate   <workflow.yaml> [--json|--jsonl]          Validate a workflow definition

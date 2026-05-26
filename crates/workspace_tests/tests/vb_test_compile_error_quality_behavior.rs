@@ -38,7 +38,7 @@ fn all_parse_ast_errors(source: &[u8]) -> CompileErrors {
 #[test]
 fn compile_errors_display_format() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 name: test2
 when:
@@ -64,7 +64,7 @@ steps:
 #[test]
 fn compile_errors_diagnostic_codes_iterates_all() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 name: test2
 when:
@@ -85,7 +85,10 @@ steps:
         "diagnostic_codes count must match errors count"
     );
     for code in &codes {
-        assert!(!code.as_str().is_empty(), "diagnostic code must not be empty");
+        assert!(
+            !code.as_str().is_empty(),
+            "diagnostic code must not be empty"
+        );
     }
 }
 
@@ -97,7 +100,7 @@ steps:
 #[test]
 fn compile_error_code_duplicate_key() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 name: test2
 when:
@@ -110,7 +113,8 @@ steps:
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "DUPLICATE_KEY",
+        code.as_str(),
+        "DUPLICATE_KEY",
         "DuplicateKey code must be DUPLICATE_KEY: {code}"
     );
 }
@@ -119,7 +123,7 @@ steps:
 #[test]
 fn compile_error_code_duplicate_step_id() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -132,7 +136,8 @@ steps:
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "DUPLICATE_ID",
+        code.as_str(),
+        "DUPLICATE_ID",
         "DuplicateStepId code must be DUPLICATE_ID: {code}"
     );
 }
@@ -141,7 +146,7 @@ steps:
 #[test]
 fn compile_error_code_non_string_key() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -152,7 +157,8 @@ steps:
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "FORBIDDEN_YAML_FEATURE",
+        code.as_str(),
+        "FORBIDDEN_YAML_FEATURE",
         "NonStringKey code must be FORBIDDEN_YAML_FEATURE: {code}"
     );
 }
@@ -174,7 +180,8 @@ key: *anchor
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "FORBIDDEN_YAML_FEATURE",
+        code.as_str(),
+        "FORBIDDEN_YAML_FEATURE",
         "AliasForbidden code must be FORBIDDEN_YAML_FEATURE: {code}"
     );
 }
@@ -183,7 +190,7 @@ key: *anchor
 #[test]
 fn compile_error_code_tag_forbidden() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: !badtag test
 when:
   manual: {}
@@ -194,7 +201,8 @@ steps:
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "FORBIDDEN_YAML_FEATURE",
+        code.as_str(),
+        "FORBIDDEN_YAML_FEATURE",
         "TagForbidden code must be FORBIDDEN_YAML_FEATURE: {code}"
     );
 }
@@ -205,7 +213,8 @@ fn compile_error_code_empty_source() {
     let error = parse_ast_error(b"").expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "MISSING_REQUIRED_FIELD",
+        code.as_str(),
+        "MISSING_REQUIRED_FIELD",
         "EmptySource code must be MISSING_REQUIRED_FIELD: {code}"
     );
 }
@@ -214,7 +223,7 @@ fn compile_error_code_empty_source() {
 #[test]
 fn compile_error_code_unknown_toplevel_field() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -226,7 +235,8 @@ steps:
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "UNKNOWN_TOP_LEVEL_FIELD",
+        code.as_str(),
+        "UNKNOWN_TOP_LEVEL_FIELD",
         "UnknownTopLevelField code must be UNKNOWN_TOP_LEVEL_FIELD: {code}"
     );
 }
@@ -235,7 +245,7 @@ steps:
 #[test]
 fn compile_error_code_unknown_step_field() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -247,7 +257,8 @@ steps:
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "UNKNOWN_STEP_FIELD",
+        code.as_str(),
+        "UNKNOWN_STEP_FIELD",
         "UnknownStepField code must be UNKNOWN_STEP_FIELD: {code}"
     );
 }
@@ -267,7 +278,8 @@ steps:
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "INVALID_VERSION",
+        code.as_str(),
+        "INVALID_VERSION",
         "InvalidVersion code must be INVALID_VERSION: {code}"
     );
 }
@@ -276,7 +288,7 @@ steps:
 #[test]
 fn compile_error_code_empty_steps() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -285,7 +297,8 @@ steps: []
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "MISSING_STEP_PRIMITIVE",
+        code.as_str(),
+        "MISSING_STEP_PRIMITIVE",
         "EmptySteps code must be MISSING_STEP_PRIMITIVE: {code}"
     );
 }
@@ -294,7 +307,7 @@ steps: []
 #[test]
 fn compile_error_code_missing_step_id() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -304,7 +317,8 @@ steps:
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "MISSING_REQUIRED_FIELD",
+        code.as_str(),
+        "MISSING_REQUIRED_FIELD",
         "MissingStepId code must be MISSING_REQUIRED_FIELD: {code}"
     );
 }
@@ -313,7 +327,7 @@ steps:
 #[test]
 fn compile_error_code_step_shape_not_mapping() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -323,7 +337,8 @@ steps:
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "TYPE_MISMATCH",
+        code.as_str(),
+        "TYPE_MISMATCH",
         "StepShape code must be TYPE_MISMATCH: {code}"
     );
 }
@@ -332,7 +347,7 @@ steps:
 #[test]
 fn compile_error_code_multiple_step_primitives() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -344,7 +359,8 @@ steps:
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "MULTIPLE_STEP_PRIMITIVES",
+        code.as_str(),
+        "MULTIPLE_STEP_PRIMITIVES",
         "MultipleStepPrimitives code must be MULTIPLE_STEP_PRIMITIVES: {code}"
     );
 }
@@ -353,7 +369,7 @@ steps:
 #[test]
 fn compile_error_code_missing_step_primitive() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -363,7 +379,8 @@ steps:
     let error = parse_ast_error(source).expect("expected error");
     let code = error.code();
     assert_eq!(
-        code, "MISSING_STEP_PRIMITIVE",
+        code.as_str(),
+        "MISSING_STEP_PRIMITIVE",
         "MissingStepPrimitive code must be MISSING_STEP_PRIMITIVE: {code}"
     );
 }
@@ -391,9 +408,9 @@ fn expression_error_includes_byte_index_and_char() {
         "ExpressionUnexpectedChar message should include the unexpected char '@': {msg}"
     );
     assert!(
-        err.code() == "INVALID_EXPRESSION",
+        err.code().as_str() == "INVALID_EXPRESSION",
         "Expression lexer error must have code INVALID_EXPRESSION: {}",
-        err.code()
+        err.code().as_str()
     );
 }
 
@@ -413,9 +430,9 @@ fn expression_error_unterminated_string_includes_index() {
         "Expression error message should mention byte/index: {msg}"
     );
     assert!(
-        err.code() == "INVALID_EXPRESSION",
+        err.code().as_str() == "INVALID_EXPRESSION",
         "Expression error code must be INVALID_EXPRESSION: {}",
-        err.code()
+        err.code().as_str()
     );
 }
 
@@ -434,9 +451,9 @@ fn expression_error_integer_out_of_range_includes_index() {
         "ExpressionIntegerOutOfRange message should mention byte/index: {msg}"
     );
     assert!(
-        err.code() == "INVALID_EXPRESSION",
+        err.code().as_str() == "INVALID_EXPRESSION",
         "ExpressionIntegerOutOfRange code must be INVALID_EXPRESSION: {}",
-        err.code()
+        err.code().as_str()
     );
 }
 
@@ -448,7 +465,7 @@ fn expression_error_integer_out_of_range_includes_index() {
 #[test]
 fn duplicate_key_message_includes_key_name() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 name: duplicate_name
 when:
@@ -471,7 +488,7 @@ steps:
 #[test]
 fn duplicate_step_id_message_includes_id() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -494,7 +511,7 @@ steps:
 #[test]
 fn unknown_step_field_message_includes_step_index_and_field() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -516,7 +533,7 @@ steps:
 #[test]
 fn invalid_name_message_includes_field_and_value() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: "invalid name with spaces"
 when:
   manual: {}
@@ -542,7 +559,7 @@ fn backward_branch_target_message_mentions_step_info() {
     // the error message, if it occurs, is informative.
     // The key assertion is that error messages have meaningful content.
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -601,7 +618,7 @@ fn document_count_message_includes_count() {
 #[test]
 fn diagnostic_code_alias_for_code() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 name: duplicate
 when:
@@ -633,7 +650,7 @@ fn all_error_variants_display_non_empty() {
     // DuplicateKey - must produce non-empty Display
     let dup_err = parse_ast_error(
         br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: a
 name: b
 when:
@@ -655,7 +672,7 @@ steps:
 #[test]
 fn unknown_trigger_kind_message_contains_trigger_value() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   unknown_trigger_type: {}
@@ -676,7 +693,7 @@ steps:
 #[test]
 fn field_shape_message_mentions_field_and_expected() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -704,7 +721,7 @@ steps:
 #[test]
 fn error_messages_have_specific_content() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -741,7 +758,7 @@ steps:
 fn error_codes_are_string_constants() {
     // Verify codes are all uppercase ASCII identifiers
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 name: duplicate
 when:
@@ -754,11 +771,13 @@ steps:
     let code = error.code();
 
     assert!(
-        code.chars().all(|c| c.is_ascii_uppercase() || c == '_'),
+        code.as_str()
+            .chars()
+            .all(|c| c.is_ascii_uppercase() || c == '_'),
         "Error code must be uppercase ASCII with underscores only: {code}"
     );
     assert!(
-        !code.contains(' '),
+        !code.as_str().contains(' '),
         "Error code must not contain spaces: {code}"
     );
 }
@@ -767,7 +786,7 @@ steps:
 #[test]
 fn compile_errors_first_gives_primary_error() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 name: duplicate
 when:
@@ -785,7 +804,8 @@ steps:
     // The first error should be about duplicate name
     let first_code = first.map(|e| e.code());
     assert!(
-        first_code == Some("DUPLICATE_KEY") || first_code == Some("MISSING_REQUIRED_FIELD"),
+        first_code.as_ref().map(|c| c.as_str()) == Some("DUPLICATE_KEY")
+            || first_code.as_ref().map(|c| c.as_str()) == Some("MISSING_REQUIRED_FIELD"),
         "first() error should be DUPLICATE_KEY or MISSING_REQUIRED_FIELD, got: {first_code:?}"
     );
 }
@@ -794,7 +814,7 @@ steps:
 #[test]
 fn compile_errors_len_is_accurate() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 name: duplicate
 when:
@@ -815,7 +835,7 @@ steps:
 #[test]
 fn compile_error_code_merge_key_forbidden() {
     let source = br#"
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: test
 when:
   manual: {}
@@ -828,7 +848,11 @@ steps:
     assert!(result.is_err(), "should produce an error");
     if let Err(CompileErrors(errors)) = result {
         assert!(!errors.is_empty(), "errors should not be empty");
-        let code = errors.first().map(|e| e.code()).unwrap_or("");
-        assert!(!code.is_empty(), "error code must not be empty: {code}");
+        if let Some(code) = errors.first().map(|e| e.code()) {
+            assert!(
+                !code.as_str().is_empty(),
+                "error code must not be empty: {code}"
+            );
+        }
     }
 }

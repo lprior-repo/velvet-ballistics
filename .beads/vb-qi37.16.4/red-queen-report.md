@@ -96,7 +96,7 @@ EXIT: 0
 ### Focus Challenger 8: CLI invalid run_id (text)
 
 ```bash
-$ cargo run -p velvet_ballastics --bin velvet-ballastics -- \
+$ cargo run -p velvet_ballistics --bin velvet-ballistics -- \
     answer nonexistent_run --step 0 --value-file /tmp/val.bin --db /tmp/db
 invalid run_id 'nonexistent_run': invalid digit found in string
 EXIT: 1
@@ -107,7 +107,7 @@ EXIT: 1
 ### Focus Challenger 9: CLI invalid run_id (JSON)
 
 ```bash
-$ cargo run -p velvet_ballastics --bin velvet-ballastics -- \
+$ cargo run -p velvet_ballistics --bin velvet-ballistics -- \
     answer nonexistent_run --step 0 --value-file /tmp/val.bin --db /tmp/db --json
 {"error":"invalid run_id 'nonexistent_run': invalid digit found in string","success":false}
 EXIT: 1
@@ -118,7 +118,7 @@ EXIT: 1
 ### Focus Challenger 10: CLI invalid run_id (JSONL)
 
 ```bash
-$ cargo run -p velvet_ballastics --bin velvet-ballastics -- \
+$ cargo run -p velvet_ballistics --bin velvet-ballistics -- \
     answer nonexistent_run --step 0 --value-file /tmp/val.bin --db /tmp/db --jsonl
 {"error":"invalid run_id 'nonexistent_run': invalid digit found in string","success":false}
 EXIT: 1
@@ -129,7 +129,7 @@ EXIT: 1
 ### Focus Challenger 11: CLI missing value_file (text)
 
 ```bash
-$ cargo run -p velvet_ballastics --bin velvet-ballastics -- \
+$ cargo run -p velvet_ballistics --bin velvet-ballistics -- \
     answer 123 --step 0 --value-file /nonexistent/file.bin --db /tmp/db
 error reading value file /nonexistent/file.bin: No such file or directory (os error 2)
 EXIT: 1
@@ -140,7 +140,7 @@ EXIT: 1
 ### Focus Challenger 12: CLI missing value_file (JSON)
 
 ```bash
-$ cargo run -p velvet_ballastics --bin velvet-ballastics -- \
+$ cargo run -p velvet_ballistics --bin velvet-ballistics -- \
     answer 123 --step 0 --value-file /nonexistent/file.bin --db /tmp/db --json
 {"error":"error reading value file /nonexistent/file.bin: No such file or directory (os error 2)","success":false}
 EXIT: 1
@@ -178,7 +178,7 @@ EXIT: 0
 
 ```bash
 $ moon run :test
-velvet-ballastics:test | 9867 tests run: 9867 passed, 0 skipped
+velvet-ballistics:test | 9867 tests run: 9867 passed, 0 skipped
 Tasks: 4 completed (1 cached)
 EXIT: 0
 ```

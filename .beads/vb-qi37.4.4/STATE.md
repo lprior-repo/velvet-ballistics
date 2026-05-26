@@ -9,8 +9,8 @@
 
 ## Evidence
 - State 9/10/11 downstream rerun were already approved after State 13 refactor per handoff.
-- State 12 repair restored `API-ADM-001` in the approved obligation path `crates/velvet_ballastics/tests/admission_evidence_integration.rs`.
-- `cargo test -p velvet_ballastics --test admission_evidence_integration api_envelope_preserves_admission_durability_code` PASS: 1 passed, 6 filtered out.
+- State 12 repair restored `API-ADM-001` in the approved obligation path `crates/velvet_ballistics/tests/admission_evidence_integration.rs`.
+- `cargo test -p velvet_ballistics --test admission_evidence_integration api_envelope_preserves_admission_durability_code` PASS: 1 passed, 6 filtered out.
 - Added bounded TLA model and config at `specs/admission_header_before_ack.tla` / `.cfg` for `TLA-ERR-001`.
 - `tlc -config specs/admission_header_before_ack.cfg specs/admission_header_before_ack.tla` PASS: 8 states generated, 4 distinct states, diameter 2, no errors.
 - `moon run :verify-proof` PASS: Kani found no proof harnesses; Lean skipped because no proof directory exists.

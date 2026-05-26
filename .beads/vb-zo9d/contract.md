@@ -86,7 +86,7 @@ impl FjallJournal {
 }
 ```
 
-### CLI Layer (velvet_ballastics)
+### CLI Layer (velvet_ballistics)
 ```rust
 fn cmd_doctor(db: &Path, output: OutputFormat) -> ExitCode {
     // Existing checks: open_journal, strict_persist, append+read_back

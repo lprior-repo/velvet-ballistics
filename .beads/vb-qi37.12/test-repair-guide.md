@@ -67,13 +67,13 @@ Run from `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-12`:
 
 ```bash
 # Tier 1 compile
-TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract --no-run
+TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract --no-run
 
 # Tier 1 execution (expect: 38 passed, 9 failed — unchanged)
-TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract -- --nocapture
+TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract -- --nocapture
 
 # Tier 1 proptest (expect: 1 passed, 46 filtered)
-TMPDIR=target/tmp RUSTC_WRAPPER= PROPTEST_CASES=1000 rtk cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract proptest -- --nocapture
+TMPDIR=target/tmp RUSTC_WRAPPER= PROPTEST_CASES=1000 rtk cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract proptest -- --nocapture
 
 # Tier 0 banned pattern check on vb_qi37_12 target
 rtk grep -rn "assert!(result\.is_ok())\|assert!(result\.is_err())" crates/workspace_tests/tests/vb_qi37_12_state8_silent_discard_contract.rs

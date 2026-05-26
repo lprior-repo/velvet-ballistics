@@ -121,7 +121,7 @@ fn ensure_finish_const_value(source: &[u8], expected: ConstValue) -> Result<(), 
 }
 
 fn initialized_boolean_slot_choose_source() -> &'static [u8] {
-    br#"version: velvet-ballastics/v1
+    br#"version: velvet-ballistics/v1
 name: choose_case
 when:
   manual: {}
@@ -141,7 +141,7 @@ steps:
 }
 
 fn literal_boolean_choose_source() -> &'static [u8] {
-    br#"version: velvet-ballastics/v1
+    br#"version: velvet-ballistics/v1
 name: choose_case
 when:
   manual: {}
@@ -162,7 +162,7 @@ steps:
 
 fn finish_literal_source(value: &str) -> Vec<u8> {
     format!(
-        "version: velvet-ballastics/v1\nname: finish_case\nwhen:\n  manual: {{}}\nsteps:\n  - id: done\n    finish:\n      result: {value}\n"
+        "version: velvet-ballistics/v1\nname: finish_case\nwhen:\n  manual: {{}}\nsteps:\n  - id: done\n    finish:\n      result: {value}\n"
     )
     .into_bytes()
 }
@@ -277,27 +277,27 @@ fn ensure_slot_index_out_of_range(error: CompileError) -> Result<(), String> {
 
 fn initialized_slot_condition_source(value: &str) -> Vec<u8> {
     format!(
-        "version: velvet-ballastics/v1\nname: choose_case\nwhen:\n  manual: {{}}\nsteps:\n  - id: captured\n    save:\n      value: {value}\n  - id: route\n    choose:\n      condition: 0\n      on_true: 2\n      on_false: 2\n  - id: done\n    finish:\n      result: null\n"
+        "version: velvet-ballistics/v1\nname: choose_case\nwhen:\n  manual: {{}}\nsteps:\n  - id: captured\n    save:\n      value: {value}\n  - id: route\n    choose:\n      condition: 0\n      on_true: 2\n      on_false: 2\n  - id: done\n    finish:\n      result: null\n"
     )
     .into_bytes()
 }
 
 fn literal_choose_condition_source(condition: &str) -> Vec<u8> {
     format!(
-        "version: velvet-ballastics/v1\nname: choose_case\nwhen:\n  manual: {{}}\nsteps:\n  - id: route\n    choose:\n      condition:{condition}\n      on_true: 1\n      on_false: 1\n  - id: done\n    finish:\n      result: 0\n"
+        "version: velvet-ballistics/v1\nname: choose_case\nwhen:\n  manual: {{}}\nsteps:\n  - id: route\n    choose:\n      condition:{condition}\n      on_true: 1\n      on_false: 1\n  - id: done\n    finish:\n      result: 0\n"
     )
     .into_bytes()
 }
 
 fn finish_result_fragment_source(result: &str) -> Vec<u8> {
     format!(
-        "version: velvet-ballastics/v1\nname: finish_case\nwhen:\n  manual: {{}}\nsteps:\n  - id: done\n    finish:\n      result:{result}\n"
+        "version: velvet-ballistics/v1\nname: finish_case\nwhen:\n  manual: {{}}\nsteps:\n  - id: done\n    finish:\n      result:{result}\n"
     )
     .into_bytes()
 }
 
 fn large_finish_slot_source() -> Vec<u8> {
-    let prefix = "version: velvet-ballastics/v1\nname: finish_case\nwhen:\n  manual: {}\nsteps:\n";
+    let prefix = "version: velvet-ballistics/v1\nname: finish_case\nwhen:\n  manual: {}\nsteps:\n";
     let saves = (0_u32..65_536)
         .map(|index| format!("  - id: pad_{index}\n    save:\n      value: null\n"))
         .collect::<String>();
@@ -306,7 +306,7 @@ fn large_finish_slot_source() -> Vec<u8> {
 
 fn secret_tainted_finish_ast() -> WorkflowAst {
     WorkflowAst {
-        version: "velvet-ballastics/v1".into(),
+        version: "velvet-ballistics/v1".into(),
         name: "taint_case".into(),
         trigger: TriggerAst::Manual { mark: None },
         inputs: Vec::new(),
@@ -336,7 +336,7 @@ fn secret_tainted_finish_step() -> StepAst {
 }
 
 fn nested_secret_list_finish_source() -> &'static [u8] {
-    br#"version: velvet-ballastics/v1
+    br#"version: velvet-ballistics/v1
 name: taint_case
 when:
   manual: {}
@@ -354,7 +354,7 @@ steps:
 }
 
 fn nested_secret_object_finish_source() -> &'static [u8] {
-    br#"version: velvet-ballastics/v1
+    br#"version: velvet-ballistics/v1
 name: taint_case
 when:
   manual: {}
@@ -372,7 +372,7 @@ steps:
 }
 
 fn clean_input_finish_source() -> &'static [u8] {
-    br#"version: velvet-ballastics/v1
+    br#"version: velvet-ballistics/v1
 name: clean_case
 when:
   manual: {}
@@ -386,7 +386,7 @@ steps:
 }
 
 fn clean_vars_finish_source() -> &'static [u8] {
-    br#"version: velvet-ballastics/v1
+    br#"version: velvet-ballistics/v1
 name: clean_case
 when:
   manual: {}
@@ -400,7 +400,7 @@ steps:
 }
 
 fn forward_finish_slot_source() -> &'static [u8] {
-    br#"version: velvet-ballastics/v1
+    br#"version: velvet-ballistics/v1
 name: finish_case
 when:
   manual: {}
@@ -415,7 +415,7 @@ steps:
 }
 
 fn reference_preempt_source() -> &'static [u8] {
-    br#"version: velvet-ballastics/v1
+    br#"version: velvet-ballistics/v1
 name: preempt_case
 when:
   manual: {}
@@ -454,7 +454,7 @@ fn ensure_forward_finish_slot(error: CompileError) -> Result<(), String> {
 
 fn ensure_supported_scalar_finish_const(value: &str, expected: ConstValue) -> Result<(), String> {
     let source = format!(
-        "version: velvet-ballastics/v1\nname: finish_case\nwhen:\n  manual: {{}}\nsteps:\n  - id: build\n    set: {{ output: answer, value: \"{value}\" }}\n  - id: done\n    finish: {{ result: answer }}\n"
+        "version: velvet-ballistics/v1\nname: finish_case\nwhen:\n  manual: {{}}\nsteps:\n  - id: build\n    set: {{ output: answer, value: \"{value}\" }}\n  - id: done\n    finish: {{ result: answer }}\n"
     )
     .into_bytes();
 
@@ -493,7 +493,7 @@ fn ensure_supported_integer_finish_asts() -> Result<(), String> {
 
 #[test]
 fn compile_and_parse_ast_reject_non_boolean_choose_condition() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: type_case
 when:
   manual: {}
@@ -538,7 +538,7 @@ fn parse_ast_accepts_boolean_literal_choose_condition() -> Result<(), String> {
 
 #[test]
 fn compile_and_parse_ast_reject_uninitialized_choose_slot() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: choose_case
 when:
   manual: {}
@@ -558,7 +558,7 @@ steps:
 
 #[test]
 fn compile_and_parse_ast_reject_choose_slot_index_out_of_range_exactly() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: choose_case
 when:
   manual: {}
@@ -578,7 +578,7 @@ steps:
 
 #[test]
 fn compile_and_parse_ast_reject_missing_finish_slot() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: finish_case
 when:
   manual: {}
@@ -622,7 +622,7 @@ fn validator_accepts_secret_tainted_finish_result() -> Result<(), String> {
 #[test]
 fn compile_and_parse_ast_accept_secret_reference_finish_result_exactly() -> Result<(), String> {
     // Section 47: No rejection of Secret or DerivedFromSecret results in Finish
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: taint_case
 when:
   manual: {}
@@ -640,7 +640,7 @@ steps:
 #[test]
 fn compile_and_parse_ast_accept_secret_slot_finish_result_exactly() -> Result<(), String> {
     // Section 47: No rejection of Secret or DerivedFromSecret results in Finish
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: taint_case
 when:
   manual: {}
@@ -706,7 +706,7 @@ fn compile_and_parse_ast_reject_initialized_non_boolean_slot_conditions() -> Res
 #[test]
 fn compile_and_parse_ast_accept_secret_object_finish_result_exactly() -> Result<(), String> {
     // Section 47: No rejection of Secret or DerivedFromSecret results in Finish
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: taint_case
 when:
   manual: {}
@@ -786,7 +786,7 @@ fn reference_errors_preempt_type_taint_errors() -> Result<(), String> {
 
 #[test]
 fn type_taint_errors_preempt_control_flow_errors() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: preempt_case
 when:
   manual: {}
@@ -809,7 +809,7 @@ steps:
 
 #[test]
 fn type_taint_errors_preempt_backward_branch_errors() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: preempt_case
 when:
   manual: {}
@@ -832,7 +832,7 @@ steps:
 
 #[test]
 fn type_taint_errors_preempt_self_branch_errors() -> Result<(), String> {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: preempt_case
 when:
   manual: {}

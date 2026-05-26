@@ -59,7 +59,7 @@ vb_validate::shared::validate()
 | `crates/vb_validate` | Core validation pipeline implementation |
 | `crates/vb_compile` | Calls shared validation at compile boundary |
 | `crates/vb_core` | Provides WorkflowParts, CompiledNode, ActionContract types |
-| `crates/velvet_ballastics` | CLI commands that invoke validation |
+| `crates/velvet_ballistics` | CLI commands that invoke validation |
 | `fuzz` | Fuzz harnesses that exercise the validation pipeline |
 
 ### Public APIs
@@ -155,7 +155,7 @@ pub struct CompiledNode {
 | `crates/vb_compile/src/schema.rs:651` | `validate(&parts)` |
 | `crates/vb_compile/src/types.rs:155` | `validate(&parts)` |
 | `crates/vb_compile/src/lib.rs:163,221,280` | `validate` and `validate_with_contracts` |
-| `crates/velvet_ballastics/src/commands_verify.rs:76` | `validate(&parts)` |
+| `crates/velvet_ballistics/src/commands_verify.rs:76` | `validate(&parts)` |
 | `fuzz/src/lib.rs:40,60` | `validate_with_contracts` for fuzzing |
 
 ### Validation Error Variants (37 total)

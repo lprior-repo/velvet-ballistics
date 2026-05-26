@@ -16,11 +16,11 @@
 ## Interface Surface
 
 ### CLI Commands Verified
-- `velvet-ballastics retry <run_id> --db <path>` — Retry a failed run
-- `velvet-ballastics status` — Report runtime shard status
-- `velvet-ballastics action list` — List registered action contracts
-- `velvet-ballastics version` — Print version
-- `velvet-ballastics --help` — Show all commands
+- `velvet-ballistics retry <run_id> --db <path>` — Retry a failed run
+- `velvet-ballistics status` — Report runtime shard status
+- `velvet-ballistics action list` — List registered action contracts
+- `velvet-ballistics version` — Print version
+- `velvet-ballistics --help` — Show all commands
 
 ### Test Suites Executed
 - `durable_retry_red_phase` — RED-phase retry contract tests
@@ -44,13 +44,13 @@
 | 5 | Happy | `cargo test -p vb_runtime --lib` | 1337 passed | 1337 passed | **PASS** |
 | 6 | Happy | `cargo test -p vb_runtime --test '*'` | 18 passed | 18 passed | **PASS** |
 | 7 | Happy | `moon run :test` | 9860 passed | 9860 passed | **PASS** |
-| 8 | Happy | `cargo build -p velvet_ballastics --release` | 0 errors | 0 errors | **PASS** |
+| 8 | Happy | `cargo build -p velvet_ballistics --release` | 0 errors | 0 errors | **PASS** |
 | 9 | Happy | `cargo clippy -p vb_runtime --lib --bins --examples` | 0 errors | 0 errors, 1 warning | **PASS** |
-| 10 | Missing | `velvet-ballastics retry` (no args) | usage error | "missing argument: run_id" | **PASS** |
-| 11 | Invalid | `velvet-ballastics retry nonexistent_run --db /tmp/test.db` | error | "invalid digit found in string" | **PASS** |
-| 12 | Happy | `velvet-ballastics version` | version output | "velvet-ballastics 0.1.0" | **PASS** |
-| 13 | Happy | `velvet-ballastics status` | JSON status | running=true, active_runs=0 | **PASS** |
-| 14 | Happy | `velvet-ballastics action list` | action table | 3 actions listed | **PASS** |
+| 10 | Missing | `velvet-ballistics retry` (no args) | usage error | "missing argument: run_id" | **PASS** |
+| 11 | Invalid | `velvet-ballistics retry nonexistent_run --db /tmp/test.db` | error | "invalid digit found in string" | **PASS** |
+| 12 | Happy | `velvet-ballistics version` | version output | "velvet-ballistics 0.1.0" | **PASS** |
+| 13 | Happy | `velvet-ballistics status` | JSON status | running=true, active_runs=0 | **PASS** |
+| 14 | Happy | `velvet-ballistics action list` | action table | 3 actions listed | **PASS** |
 
 ---
 
@@ -95,14 +95,14 @@ cargo test: 18 passed (2 suites, 0.00s)
 ### Moon Full Test Suite
 ```
 $ moon run :test 2>&1 | tail -5
-velvet-ballastics:test |      Summary [  10.559s] 9860 tests run: 9860 passed, 0 skipped
+velvet-ballistics:test |      Summary [  10.559s] 9860 tests run: 9860 passed, 0 skipped
 Tasks: 4 completed (1 cached)
  Time: 21s 785ms
 ```
 
 ### Binary Build
 ```
-$ rtk cargo build -p velvet_ballastics --release --bin velvet-ballastics 2>&1
+$ rtk cargo build -p velvet_ballistics --release --bin velvet-ballistics 2>&1
 ═══════════════════════════════════════
 cargo build: 0 errors, 1 warnings (0 crates)
 ```
@@ -115,31 +115,31 @@ cargo clippy: 0 errors, 1 warnings
 
 ### CLI Error Handling — Missing Args
 ```
-$ ./target/release/velvet-ballastics retry 2>&1
+$ ./target/release/velvet-ballistics retry 2>&1
 missing argument: run_id
 ```
 
 ### CLI Error Handling — Invalid Run ID
 ```
-$ ./target/release/velvet-ballastics retry nonexistent_run --db /tmp/test.db 2>&1
+$ ./target/release/velvet-ballistics retry nonexistent_run --db /tmp/test.db 2>&1
 invalid run_id 'nonexistent_run': invalid digit found in string
 ```
 
 ### CLI Version
 ```
-$ ./target/release/velvet-ballastics version 2>&1
-velvet-ballastics 0.1.0
+$ ./target/release/velvet-ballistics version 2>&1
+velvet-ballistics 0.1.0
 ```
 
 ### CLI Status
 ```
-$ ./target/release/velvet-ballastics status 2>&1
+$ ./target/release/velvet-ballistics status 2>&1
 {"running":true,"shutting_down":false,"command_queue":"depth=0 capacity=1024","active_runs":"active=0 max_active_runs=1024","trace_ring":"capacity=4096 dropped=0","step_budget_per_tick":1000,"RuntimePolicy":"Strict"}
 ```
 
 ### CLI Action List
 ```
-$ ./target/release/velvet-ballastics action list 2>&1
+$ ./target/release/velvet-ballistics action list 2>&1
 id	idempotency	retry_safety	side_effect	input_slots	output_slots	timeout_ms
 1	deterministic_pure	safe	none	1	1	1000
 2	idempotent_external	key_required	writes	2	1	5000

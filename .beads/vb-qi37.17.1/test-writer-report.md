@@ -49,7 +49,7 @@ This report covers State 8 (test-writer) of the go-skill bead delivery pipeline 
 
 ### Integration test helpers (`vb_qi37_17_1_incident_command.rs`):
 - `JournalGuard` — RAII guard holding temp directory + journal path
-- `run_cli(args)` — invokes the `velvet-ballastics` binary
+- `run_cli(args)` — invokes the `velvet-ballistics` binary
 - `make_args(parts)` — converts `&[&str]` to `Vec<OsString>`
 - `setup_test_journal(events)` — creates temp FjallDB + writes events
 - `failed_run_events()` — produces `[StepStarted(1), StepStarted(2), RunFailed]` for run 42

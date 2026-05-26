@@ -9,7 +9,7 @@ attempt: 1-of-7
 ## Evidence Audit
 
 ### Raw Command Evidence (verified in-session)
-1. `cargo check --package velvet-ballastics-fuzz` - Exit 0, compiled successfully
+1. `cargo check --package velvet-ballistics-fuzz` - Exit 0, compiled successfully
 2. `cargo run --bin ipc_frame_fuzz_boundary --features fuzz < /dev/null` - Exit 0, no panic
 3. `cargo run --bin storage_envelope_fuzz_boundary --features fuzz < /dev/null` - Exit 0, no panic
 4. `cargo run --bin binary_payload_fuzz_boundary --features fuzz < /dev/null` - Exit 0, no panic

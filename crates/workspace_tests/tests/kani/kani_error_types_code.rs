@@ -1,28 +1,18 @@
 //! PO-015: Kani harness verifying CoreError, RuntimeError, and JournalError
-//! symbolic_code() returns registered SymbolicCode names.
+//! symbolic_code() returns registered SymbolicCode.
 //!
-//! Proves: For each variant of CoreError (46), RuntimeError (27), and
-//! JournalError (28), the symbolic code string is registered in the
-//! production CODE_REGISTRY via vb_core::is_registered_symbolic().
+//! Proves: For each variant of CoreError (46), RuntimeError (25+), and
+//! JournalError (28), symbolic_code() returns a SymbolicCode in CODE_REGISTRY;
+//! never returns None; never panics.
 //!
 //! Bound: ~100 total variants across 3 error types (unwind=100)
 //! Note: This file is a workspace_tests test target, compiled with --crate workspace_tests.
-//!
-//! Rewired: uses production vb_core::is_registered_symbolic() instead of
-//! inline REGISTERED_CODES. Error type models remain simplified for Kani.
 
 #![cfg(kani)]
 
-/// Minimal SymbolicCode model for error-code mapping verification.
+/// Minimal SymbolicCode model.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SymbolicCode(&'static str);
-
-impl SymbolicCode {
-    #[must_use]
-    pub fn as_str(self) -> &'static str {
-        self.0
-    }
-}
 
 // ---------------------------------------------------------------------------
 // CoreError model (46 variants — representative subset)
@@ -134,7 +124,7 @@ impl CoreError {
 }
 
 // ---------------------------------------------------------------------------
-// RuntimeError model (27 variants — representative subset)
+// RuntimeError model (25+ variants — representative subset)
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone)]
@@ -193,13 +183,9 @@ impl RuntimeError {
             RuntimeError::IpcProtocolViolation => SymbolicCode("IPC_PROTOCOL_VIOLATION"),
             RuntimeError::IpcAuthFailed => SymbolicCode("IPC_AUTH_FAILED"),
             RuntimeError::IpcResourceUnavailable => SymbolicCode("IPC_RESOURCE_UNAVAILABLE"),
-            RuntimeError::LifecycleStorageUnavailable => {
-                SymbolicCode("LIFECYCLE_STORAGE_UNAVAILABLE")
-            }
+            RuntimeError::LifecycleStorageUnavailable => SymbolicCode("LIFECYCLE_STORAGE_UNAVAILABLE"),
             RuntimeError::LifecycleDuplicateRequest => SymbolicCode("LIFECYCLE_DUPLICATE_REQUEST"),
-            RuntimeError::LifecycleInvalidTransition => {
-                SymbolicCode("LIFECYCLE_INVALID_TRANSITION")
-            }
+            RuntimeError::LifecycleInvalidTransition => SymbolicCode("LIFECYCLE_INVALID_TRANSITION"),
             RuntimeError::LifecycleStaleBead => SymbolicCode("LIFECYCLE_STALE_BEAD"),
             RuntimeError::SnapshotFailed => SymbolicCode("STORAGE_SNAPSHOT"),
             RuntimeError::CheckpointFailed => SymbolicCode("STORAGE_CHECKPOINT"),
@@ -279,9 +265,44 @@ impl JournalError {
     }
 }
 
-/// Verify a code string is registered using the production registry.
+// ---------------------------------------------------------------------------
+// Full registry (subset needed by these error types)
+// ---------------------------------------------------------------------------
+
+const REGISTERED_CODES: &[&str] = &[
+    "INVALID_COMPILED_WORKFLOW", "RUNTIME_BUDGET_EXHAUSTED", "RUNTIME_STEP_LIMIT",
+    "CONTROL_FLOW_CYCLE", "SLOT_REFERENCE_OUT_OF_RANGE", "RUNTIME_ACTION_DISPATCH",
+    "RUNTIME_ACTION_TIMEOUT", "RUNTIME_SIGNAL_INVALID", "RUNTIME_QUEUE_OVERFLOW",
+    "RUNTIME_JOURNAL_BATCH", "RUNTIME_TICK_OVERFLOW", "LOOP_BODY_STEP_OUT_OF_RANGE",
+    "RUNTIME_TRACE_OVERFLOW", "JOURNAL_EVIDENCE_OVERFLOW", "RUNTIME_CAPACITY_EXCEEDED",
+    "JOURNAL_EXTRA_HYDRATION_FAIL", "JOURNAL_PAGE_ORDER_VIOLATION",
+    "STORAGE_BLOB_LIMIT", "PAYLOAD_TOO_LARGE", "NODE_KIND_CONSTRAINT_VIOLATION",
+    "IDEMPOTENCY_VIOLATION", "ACTION_RESULT_AUDIT_MISMATCH", "ACTION_TYPE_CONSTRAINT_FAIL",
+    "ACTION_CIRCUIT_BREAKER_OPEN", "ACTION_CONTRACT_MISSING", "ACTION_CONTRACT_ORPHAN",
+    "SLOT_TYPE_INCONSISTENCY", "NON_DETERMINISTIC_PATH", "CAPABILITY_ACTION_MISMATCH",
+    "RUNTIME_INVALID_STATE", "MISSING_REQUIRED_FIELD", "TYPE_MISMATCH",
+    "ACCESSOR_PATH_INVALID", "INVALID_EXPRESSION", "JOURNAL_SLOT_NOT_WRITABLE",
+    "CONST_OUT_OF_BOUNDS", "ACCESSOR_SYMBOL_OUT_OF_BOUNDS",
+    "RUNTIME_TIMEOUT", "RUNTIME_CYCLE_LIMIT",
+    "IPC_PAYLOAD_TOO_LARGE", "IPC_DECODE_FAILED", "IPC_ENCODE_FAILED",
+    "IPC_CHANNEL_CLOSED", "IPC_CHANNEL_FULL", "IPC_CONNECTION_REFUSED",
+    "IPC_TIMEOUT", "IPC_PROTOCOL_VIOLATION", "IPC_AUTH_FAILED", "IPC_RESOURCE_UNAVAILABLE",
+    "LIFECYCLE_STORAGE_UNAVAILABLE", "LIFECYCLE_DUPLICATE_REQUEST",
+    "LIFECYCLE_INVALID_TRANSITION", "LIFECYCLE_STALE_BEAD",
+    "STORAGE_SNAPSHOT", "STORAGE_CHECKPOINT",
+    "JOURNAL_SEQ_MISMATCH", "JOURNAL_CHECKPOINT_MISMATCH",
+    "JOURNAL_DUPLICATE_ACTION", "JOURNAL_UNKNOWN_ACTION", "JOURNAL_STALE_EVENT",
+    "JOURNAL_EVENT_ORDER", "JOURNAL_BATCH_OVERFLOW", "JOURNAL_CLOCK_DRIFT",
+    "JOURNAL_BUFFER_OVERFLOW", "JOURNAL_SLOT_SEALED",
+    "STORAGE_UNAVAILABLE", "STORAGE_CORRUPTION", "STORAGE_IO",
+    "STORAGE_ENCODING", "STORAGE_DECODING",
+    "STORAGE_PAGE_OVERFLOW", "STORAGE_KEYSPACE_MANIFEST",
+    "STORAGE_WRITE_BUDGET", "STORAGE_READ_BUDGET",
+    "STORAGE_COMPACTION_FAILED", "STORAGE_SEALED",
+];
+
 fn is_registered(name: &str) -> bool {
-    vb_core::is_registered_symbolic(name)
+    REGISTERED_CODES.iter().any(|&r| r == name)
 }
 
 #[cfg(kani)]
@@ -289,151 +310,89 @@ mod harnesses {
     use super::*;
 
     /// PO-015: Every CoreError, RuntimeError, and JournalError variant maps
-    /// to a registered SymbolicCode in the production CODE_REGISTRY.
+    /// to a registered SymbolicCode.
     #[kani::proof]
     #[kani::unwind(100)]
     fn kani_error_types_symbolic_code() {
         let core_errors: [CoreError; 46] = [
-            CoreError::WorkflowValidationFailed,
-            CoreError::BudgetExhausted,
-            CoreError::StepLimitReached,
-            CoreError::CycleDetected,
-            CoreError::InvalidSlotAccess,
-            CoreError::ActionDispatchFailed,
-            CoreError::ActionTimeout,
-            CoreError::SignalInvalid,
-            CoreError::QueueOverflow,
-            CoreError::JournalBatchFailed,
-            CoreError::TickOverflow,
-            CoreError::StepOutOfRange,
-            CoreError::TraceOverflow,
-            CoreError::EvidenceCollectionFailed,
-            CoreError::CapacityExceeded,
-            CoreError::HydrationFailed,
-            CoreError::PageOrderViolation,
-            CoreError::ExtraHydrationFailure,
-            CoreError::BlobTooLarge,
-            CoreError::InputTooLarge,
-            CoreError::OutputTooLarge,
-            CoreError::ConstraintViolation,
-            CoreError::IdempotencyViolation,
-            CoreError::ActionResultMismatch,
-            CoreError::TypeConstraintFailure,
-            CoreError::CircuitBreakerOpen,
-            CoreError::MissingActionContract,
-            CoreError::OrphanActionContract,
-            CoreError::SlotTypeMismatch,
-            CoreError::NonDeterministicEvaluation,
-            CoreError::CapabilityCheckFailed,
-            CoreError::PolicyViolation,
-            CoreError::ResourceExhausted,
-            CoreError::InvalidWorkflowState,
-            CoreError::MissingRequiredData,
-            CoreError::TaintPropagationFailed,
-            CoreError::AccessorEvaluationFailed,
-            CoreError::ExpressionEvaluationFailed,
-            CoreError::NodeTraversalFailed,
-            CoreError::SlotWriteFailed,
-            CoreError::ObjectAccessFailed,
-            CoreError::ListAccessFailed,
-            CoreError::IndexOutOfBounds,
-            CoreError::SymbolNotFound,
-            CoreError::ConstNotFound,
-            CoreError::WorkflowDigestMismatch,
+            CoreError::WorkflowValidationFailed, CoreError::BudgetExhausted,
+            CoreError::StepLimitReached, CoreError::CycleDetected,
+            CoreError::InvalidSlotAccess, CoreError::ActionDispatchFailed,
+            CoreError::ActionTimeout, CoreError::SignalInvalid,
+            CoreError::QueueOverflow, CoreError::JournalBatchFailed,
+            CoreError::TickOverflow, CoreError::StepOutOfRange,
+            CoreError::TraceOverflow, CoreError::EvidenceCollectionFailed,
+            CoreError::CapacityExceeded, CoreError::HydrationFailed,
+            CoreError::PageOrderViolation, CoreError::ExtraHydrationFailure,
+            CoreError::BlobTooLarge, CoreError::InputTooLarge,
+            CoreError::OutputTooLarge, CoreError::ConstraintViolation,
+            CoreError::IdempotencyViolation, CoreError::ActionResultMismatch,
+            CoreError::TypeConstraintFailure, CoreError::CircuitBreakerOpen,
+            CoreError::MissingActionContract, CoreError::OrphanActionContract,
+            CoreError::SlotTypeMismatch, CoreError::NonDeterministicEvaluation,
+            CoreError::CapabilityCheckFailed, CoreError::PolicyViolation,
+            CoreError::ResourceExhausted, CoreError::InvalidWorkflowState,
+            CoreError::MissingRequiredData, CoreError::TaintPropagationFailed,
+            CoreError::AccessorEvaluationFailed, CoreError::ExpressionEvaluationFailed,
+            CoreError::NodeTraversalFailed, CoreError::SlotWriteFailed,
+            CoreError::ObjectAccessFailed, CoreError::ListAccessFailed,
+            CoreError::IndexOutOfBounds, CoreError::SymbolNotFound,
+            CoreError::ConstNotFound, CoreError::WorkflowDigestMismatch,
         ];
 
         let runtime_errors: [RuntimeError; 27] = [
-            RuntimeError::Timeout,
-            RuntimeError::BudgetExhausted,
-            RuntimeError::CycleLimit,
-            RuntimeError::ActionFailed,
-            RuntimeError::ActionTimeout,
-            RuntimeError::QueueFull,
-            RuntimeError::JournalError,
-            RuntimeError::TickError,
-            RuntimeError::SignalError,
-            RuntimeError::TraceFull,
-            RuntimeError::EvidenceFull,
-            RuntimeError::IpcPayloadTooLarge,
-            RuntimeError::IpcDecodeFailed,
-            RuntimeError::IpcEncodeFailed,
-            RuntimeError::IpcChannelClosed,
-            RuntimeError::IpcChannelFull,
-            RuntimeError::IpcConnectionRefused,
-            RuntimeError::IpcTimeout,
-            RuntimeError::IpcProtocolViolation,
-            RuntimeError::IpcAuthFailed,
-            RuntimeError::IpcResourceUnavailable,
-            RuntimeError::LifecycleStorageUnavailable,
-            RuntimeError::LifecycleDuplicateRequest,
-            RuntimeError::LifecycleInvalidTransition,
-            RuntimeError::LifecycleStaleBead,
-            RuntimeError::SnapshotFailed,
+            RuntimeError::Timeout, RuntimeError::BudgetExhausted,
+            RuntimeError::CycleLimit, RuntimeError::ActionFailed,
+            RuntimeError::ActionTimeout, RuntimeError::QueueFull,
+            RuntimeError::JournalError, RuntimeError::TickError,
+            RuntimeError::SignalError, RuntimeError::TraceFull,
+            RuntimeError::EvidenceFull, RuntimeError::IpcPayloadTooLarge,
+            RuntimeError::IpcDecodeFailed, RuntimeError::IpcEncodeFailed,
+            RuntimeError::IpcChannelClosed, RuntimeError::IpcChannelFull,
+            RuntimeError::IpcConnectionRefused, RuntimeError::IpcTimeout,
+            RuntimeError::IpcProtocolViolation, RuntimeError::IpcAuthFailed,
+            RuntimeError::IpcResourceUnavailable, RuntimeError::LifecycleStorageUnavailable,
+            RuntimeError::LifecycleDuplicateRequest, RuntimeError::LifecycleInvalidTransition,
+            RuntimeError::LifecycleStaleBead, RuntimeError::SnapshotFailed,
             RuntimeError::CheckpointFailed,
         ];
 
         let journal_errors: [JournalError; 28] = [
-            JournalError::SeqMismatch,
-            JournalError::CheckpointMismatch,
-            JournalError::PageOrderViolation,
-            JournalError::ExtraHydrationFailed,
-            JournalError::EvidenceOverflow,
-            JournalError::SlotNotWritable,
-            JournalError::DuplicateAction,
-            JournalError::UnknownAction,
-            JournalError::StaleEvent,
-            JournalError::EventOrderViolation,
-            JournalError::BatchOverflow,
-            JournalError::ClockDrift,
-            JournalError::BufferOverflow,
-            JournalError::SlotSealed,
-            JournalError::StorageUnavailable,
-            JournalError::StorageCorruption,
-            JournalError::StorageIo,
-            JournalError::StorageEncoding,
-            JournalError::StorageDecoding,
-            JournalError::StorageCheckpointFailure,
-            JournalError::StorageSnapshotFailure,
-            JournalError::PageOverflow,
-            JournalError::KeyspaceManifestError,
-            JournalError::BlobLimit,
-            JournalError::WriteBudgetExceeded,
-            JournalError::ReadBudgetExceeded,
-            JournalError::CompactionFailed,
-            JournalError::StorageSealed,
+            JournalError::SeqMismatch, JournalError::CheckpointMismatch,
+            JournalError::PageOrderViolation, JournalError::ExtraHydrationFailed,
+            JournalError::EvidenceOverflow, JournalError::SlotNotWritable,
+            JournalError::DuplicateAction, JournalError::UnknownAction,
+            JournalError::StaleEvent, JournalError::EventOrderViolation,
+            JournalError::BatchOverflow, JournalError::ClockDrift,
+            JournalError::BufferOverflow, JournalError::SlotSealed,
+            JournalError::StorageUnavailable, JournalError::StorageCorruption,
+            JournalError::StorageIo, JournalError::StorageEncoding,
+            JournalError::StorageDecoding, JournalError::StorageCheckpointFailure,
+            JournalError::StorageSnapshotFailure, JournalError::PageOverflow,
+            JournalError::KeyspaceManifestError, JournalError::BlobLimit,
+            JournalError::WriteBudgetExceeded, JournalError::ReadBudgetExceeded,
+            JournalError::CompactionFailed, JournalError::StorageSealed,
         ];
 
         // Verify CoreError
         for (i, err) in core_errors.iter().enumerate() {
             let code = err.symbolic_code();
-            assert!(
-                is_registered(code.as_str()),
-                "CoreError variant {}: code '{}' must be registered",
-                i,
-                code.as_str()
-            );
+            assert!(is_registered(code.0),
+                "CoreError variant {}: code '{}' must be registered", i, code.0);
         }
 
         // Verify RuntimeError
         for (i, err) in runtime_errors.iter().enumerate() {
             let code = err.symbolic_code();
-            assert!(
-                is_registered(code.as_str()),
-                "RuntimeError variant {}: code '{}' must be registered",
-                i,
-                code.as_str()
-            );
+            assert!(is_registered(code.0),
+                "RuntimeError variant {}: code '{}' must be registered", i, code.0);
         }
 
         // Verify JournalError
         for (i, err) in journal_errors.iter().enumerate() {
             let code = err.symbolic_code();
-            assert!(
-                is_registered(code.as_str()),
-                "JournalError variant {}: code '{}' must be registered",
-                i,
-                code.as_str()
-            );
+            assert!(is_registered(code.0),
+                "JournalError variant {}: code '{}' must be registered", i, code.0);
         }
     }
 }

@@ -10,7 +10,7 @@
 // - write_evidence_bundle(): serializes results to YAML evidence bundle
 //
 // Evidence contract: every BddScenarioResult.scenario_id maps to
-// velvet_ballastics_workspace_tests::acceptance_catalog::Scenario::id
+// velvet_ballistics_workspace_tests::acceptance_catalog::Scenario::id
 
 #![forbid(unsafe_code)]
 

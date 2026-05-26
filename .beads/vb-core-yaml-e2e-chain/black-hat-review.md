@@ -42,7 +42,7 @@ No defects found in verification artifacts:
 - **Verus**: 8 verified, 0 errors. Digest role abstractions proven.
 - **Kani**: 1 harness, 7 checks all SUCCESS. Admission matrix bounded proof complete.
 - **Tests**: vb_storage 983 PASS, vb_runtime 1460 PASS, CLI 86 PASS, strict YAML 10 PASS, contract 35 PASS.
-- **E2E-REC-008**: Package name corrected (`velvet-ballastics-workspace` → `velvet-ballastics-workspace-tests`). 19 tests PASS.
+- **E2E-REC-008**: Package name corrected (`velvet-ballistics-workspace` → `velvet-ballistics-workspace-tests`). 19 tests PASS.
 
 Zero unsafe, unwrap, panic, or todo constructs in bead verification code.
 

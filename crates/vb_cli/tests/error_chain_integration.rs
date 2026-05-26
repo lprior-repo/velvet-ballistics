@@ -26,7 +26,7 @@ where
 /// Compile error propagates to CLI with proper Display and source chain.
 #[test]
 fn compile_error_propagates_to_cli() {
-    let source = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
+    let source = b"version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
     let compiled = vb_compile::compile_workflow(source);
     assert!(compiled.is_err(), "expected compile error for empty steps");
     let errors = match compiled {
@@ -81,7 +81,7 @@ fn validation_error_propagates_into_compile_error() {
         "CompileError should preserve the exact ValidationError::DuplicateKey source"
     );
     assert_eq!(
-        compile_error.diagnostic_code(),
+        compile_error.diagnostic_code().as_str(),
         "INVALID_COMPILED_WORKFLOW",
         "diagnostic code should be preserved through From conversion"
     );
@@ -383,7 +383,7 @@ fn all_compile_error_variants_have_non_empty_display() {
         );
         let code = error.diagnostic_code();
         assert!(
-            !code.is_empty(),
+            !code.as_str().is_empty(),
             "compile error variant must have non-empty diagnostic code: {error:?}"
         );
     }

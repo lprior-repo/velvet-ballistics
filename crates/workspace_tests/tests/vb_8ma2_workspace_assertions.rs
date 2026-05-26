@@ -6,25 +6,25 @@ use std::process::{Command, Output};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-const EXTRA_MEMBER_MANIFESTS: [(&str, &str); 15] = [
+const EXTRA_MEMBER_MANIFESTS: [(&str, &str); 12] = [
     ("crates/vb_boundary_inventory", "vb_boundary_inventory"),
     ("crates/vb_yaml", "vb_yaml"),
     ("crates/vb_validate", "vb_validate"),
     ("crates/vb_expr", "vb_expr"),
     ("crates/vb_compile", "vb_compile"),
     ("crates/vb_doc", "vb_doc"),
-    ("crates/vb_codegen", "vb_codegen"),
-    ("crates/vb_ui_makepad", "vb_ui_makepad"),
-    ("crates/vb_ui_model", "vb_ui_model"),
-    ("crates/vb_ui_snapshot", "vb_ui_snapshot"),
     ("crates/vb_proof_kernels", "vb_proof_kernels"),
-    ("crates/vb_cli", "velvet-ballastics"),
+    ("crates/vb_cli", "velvet-ballistics"),
+    ("crates/vb_verification", "vb_verification"),
+    (
+        "crates/workspace_tests/idempotency_suite",
+        "velvet-ballistics-idempotency-workspace-tests",
+    ),
     (
         "crates/workspace_tests",
-        "velvet-ballastics-workspace-tests",
+        "velvet-ballistics-workspace-tests",
     ),
     ("crates/vb_benchmark", "vb_benchmark"),
-    ("xtask", "xtask"),
 ];
 
 fn repo_root() -> Result<PathBuf, std::env::VarError> {
@@ -70,15 +70,12 @@ members = [
     "crates/vb_runtime",
     "crates/vb_doc",
     "crates/vb_ipc",
-    "crates/vb_codegen",
-    "crates/vb_ui_makepad",
-    "crates/vb_ui_model",
-    "crates/vb_ui_snapshot",
     "crates/vb_proof_kernels",
     "crates/vb_cli",
+    "crates/vb_verification",
+    "crates/workspace_tests/idempotency_suite",
     "crates/workspace_tests",
     "crates/vb_benchmark",
-    "xtask",
 {extra}]
 exclude = ["target/miri-tmp", "crates/vb_ui", "fuzz"]
 "#
@@ -113,7 +110,6 @@ edition = "2024"
 {dependency}
 [features]
 default = []
-generated = []
 bench = []
 volatile = []
 test-util = []
@@ -129,24 +125,14 @@ fn write_extra_member_manifests(root: &Path) -> Result<(), std::io::Error> {
         let mut manifest =
             format!("[package]\nname = \"{package_name}\"\nedition = \"2024\"\n\n[dependencies]\n");
         if member == "crates/vb_cli" {
-            manifest.push_str("\n[lib]\nname = \"vb_cli\"\npath = \"src/lib.rs\"\n\n[[bin]]\nname = \"velvet-ballastics\"\npath = \"src/main.rs\"\n");
+            manifest.push_str("\n[lib]\nname = \"vb_cli\"\npath = \"src/lib.rs\"\n\n[[bin]]\nname = \"velvet-ballistics\"\npath = \"src/main.rs\"\n");
         }
         if member == "crates/vb_validate" {
             manifest.push_str("\n[features]\ndefault = []\nverus = []\n");
         }
-        if member == "crates/vb_ui_snapshot" {
-            manifest.push_str("\n[features]\ndefault = [\"std\"]\nstd = []\n");
-        }
         write_file(&root.join(member).join("Cargo.toml"), &manifest)?;
     }
     Ok(())
-}
-
-fn write_generated_source(root: &Path, contents: &str) -> Result<(), std::io::Error> {
-    write_file(
-        &root.join("crates/vb_codegen/src/generated/workflow.rs"),
-        contents,
-    )
 }
 
 fn workspace_with(
@@ -260,27 +246,5 @@ fn path_aliased_forbidden_ui_dependency_fails_target_crate() -> TestResult {
     assert!(!output.status.success());
     assert!(stderr.contains("forbidden UI dependency"), "{stderr}");
     assert!(stderr.contains("vb_ui_makepad"), "{stderr}");
-    Ok(())
-}
-
-#[test]
-fn generated_boundary_forbidden_token_fails_target_source() -> TestResult {
-    let workspace = workspace_with(None, None)?;
-    write_generated_source(
-        workspace.path(),
-        "pub const FORMAT: &str = \"serde_json\";\n",
-    )?;
-    let output = run_assertions(workspace.path())?;
-    let stderr = stderr_text(&output);
-    assert!(!output.status.success());
-    assert!(
-        stderr.contains("crates/vb_codegen/src/generated/workflow.rs"),
-        "{stderr}"
-    );
-    assert!(
-        stderr.contains("forbidden generated boundary token"),
-        "{stderr}"
-    );
-    assert!(stderr.contains("serde_json"), "{stderr}");
     Ok(())
 }

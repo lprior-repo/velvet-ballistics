@@ -40,7 +40,7 @@ Evidence:
 
 Master violated:
 
-- Section 33: `velvet-ballastics action inspect <action-name> --emit yaml`.
+- Section 33: `velvet-ballistics action inspect <action-name> --emit yaml`.
 
 Impact: Operator contract mismatch.
 

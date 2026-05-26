@@ -42,7 +42,7 @@ STATUS: APPROVED
 - scope: bead-local
 - layer: proptest
 - checker: cargo test
-- command: cargo test --package velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog
+- command: cargo test --package velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog
 - required: true
 - owner_state: 4
 - result: PASS
@@ -54,7 +54,7 @@ STATUS: APPROVED
 - scope: bead-local
 - layer: cargo-mutants
 - checker: cargo mutants
-- command: cargo mutants --package velvet-ballastics-workspace-tests --test vb_njju_mutation_fuzz_property_closure
+- command: cargo mutants --package velvet-ballistics-workspace-tests --test vb_njju_mutation_fuzz_property_closure
 - required: true
 - owner_state: 4
 - result: PASS
@@ -66,7 +66,7 @@ STATUS: APPROVED
 - scope: bead-local
 - layer: cargo-mutants
 - checker: cargo test
-- command: cargo test --package velvet-ballastics-workspace-tests --test vb_c3k9_current_api_mutation_plan
+- command: cargo test --package velvet-ballistics-workspace-tests --test vb_c3k9_current_api_mutation_plan
 - required: true
 - owner_state: 4
 - result: PASS
@@ -126,7 +126,7 @@ STATUS: APPROVED
 - scope: unsafe-boundary
 - layer: cargo-fuzz
 - checker: cargo test
-- command: cargo test --package velvet-ballastics-workspace-tests --test vb_y1zq_boundary_inventory_contract
+- command: cargo test --package velvet-ballistics-workspace-tests --test vb_y1zq_boundary_inventory_contract
 - required: true
 - owner_state: 4
 - result: PASS
@@ -138,7 +138,7 @@ STATUS: APPROVED
 - scope: unsafe-boundary
 - layer: gauntlet-all
 - checker: cargo test
-- command: cargo test --package velvet-ballastics-workspace-tests --test vb_njju_mutation_fuzz_property_closure
+- command: cargo test --package velvet-ballistics-workspace-tests --test vb_njju_mutation_fuzz_property_closure
 - required: true
 - owner_state: 4
 - result: PASS

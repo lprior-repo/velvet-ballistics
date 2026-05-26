@@ -34,9 +34,9 @@
     "structured_output_flag": "--emit yaml"
   },
   "binary_aliases": [
-    "velvet-ballastics"
+    "velvet-ballistics"
   ],
-  "cli": "velvet-ballastics",
+  "cli": "velvet-ballistics",
   "commands": {
     "agent-context": {
       "outputs": [
@@ -591,7 +591,7 @@
       }
     ]
   },
-  "language_version": "velvet-ballastics/v1",
+  "language_version": "velvet-ballistics/v1",
   "planned_agent_primitives": {
     "async_wait_flag": "--wait",
     "delivery_flag": "--deliver",
@@ -608,7 +608,7 @@
       "profile delete"
     ]
   },
-  "schema_version": "velvet-ballastics/cli-output/v1",
+  "schema_version": "velvet-ballistics/cli-output/v1",
   "version": "0.1.0",
   "vocabulary_policy": {
     "banned_flags": [

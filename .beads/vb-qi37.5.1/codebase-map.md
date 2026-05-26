@@ -20,9 +20,9 @@
   - Gate 12 implementation validates every Do action has matching `ActionContract` and no orphan contracts.
 - `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/vb_validate/src/lib.rs`
   - `ValidationError` currently has `ActionContractMissing`, `ActionContractOrphan`, determinism/type/slot errors; no verifier-specific idempotency contract error variant.
-- `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballastics/src/commands_verify.rs`
+- `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballistics/src/commands_verify.rs`
   - CLI `verify` pipeline uses `vb_validate::shared::validate(&parts)` only, so contract-aware Gate 12/idempotency checks are not included by default.
-- `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballastics/src/main.rs`
+- `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballistics/src/main.rs`
   - CLI action registry/spec display uses three sample `CliActionSpec`s and string renderers for idempotency/retry/side-effect names and idempotency rules.
 - `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/vb_ipc/src/server/handlers.rs`
   - Certificate/gate handler manually invokes gates and currently calls Gate 12 with `&[]`, which will fail for workflows with Do nodes unless contract data is wired in.
@@ -43,7 +43,7 @@
 - If this is a verifier gate, likely add a new `ValidationError` variant and a new gate/export in `vb_validate::shared` rather than only relying on `vb_compile::check_idempotency_gates`.
 - `commands_verify::run_verification` may need a contract-aware path if `verify` must prove idempotency contracts. Today it has no registered `ActionContract` input.
 - IPC verification certificate code in `vb_ipc/src/server/handlers.rs` likely needs real contract data, not `&[]`, before a contract model can be meaningful in UI certificates.
-- CLI action contract presentation in `velvet_ballastics/src/main.rs` may need to display any new model fields/rules if public UX changes.
+- CLI action contract presentation in `velvet_ballistics/src/main.rs` may need to display any new model fields/rules if public UX changes.
 - Avoid diverging duplicate logic between `vb_compile/src/slot.rs`, `vb_compile/src/api_validation.rs`, and `vb_compile/src/lib.rs`.
 
 ## Test locations to inspect later
@@ -52,8 +52,8 @@
 - `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/vb_compile/src/tests/test_20.rs` covers boundary behavior for `check_idempotency_gates`.
 - `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/vb_compile/src/tests/test_21.rs` covers additional idempotency gate cases and multiple violation accumulation.
 - `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/vb_validate/src/gate_12_14_15.rs` unit tests cover action contract completeness and are the closest verifier-gate pattern.
-- `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballastics/tests/cli_integration.rs` covers CLI action list/inspect JSON/text fields and taint propagation helpers.
-- `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballastics/tests/cross_crate_adversarial.rs` has cross-crate action/idempotency/taint assertions.
+- `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballistics/tests/cli_integration.rs` covers CLI action list/inspect JSON/text fields and taint propagation helpers.
+- `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballistics/tests/cross_crate_adversarial.rs` has cross-crate action/idempotency/taint assertions.
 - `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/fuzz/src/bin/verifier_gates.rs` may need later fuzz coverage if a verifier gate is added.
 
 ## Risks/dependencies

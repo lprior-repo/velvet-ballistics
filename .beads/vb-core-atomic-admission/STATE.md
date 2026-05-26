@@ -124,7 +124,7 @@ completion_status: PASS
 artifacts_written:
 - `.beads/vb-core-atomic-admission/codebase-map.md`
 - `.beads/vb-core-atomic-admission/delivery-scope.jsonl`
-scope_evidence: mapped isolated workspace crates/files/APIs/current behavior/risks from `vb_storage`, `vb_runtime`, and `velvet_ballastics` without production code, test, proof, or source-checkout writes.
+scope_evidence: mapped isolated workspace crates/files/APIs/current behavior/risks from `vb_storage`, `vb_runtime`, and `velvet_ballistics` without production code, test, proof, or source-checkout writes.
 bd_reality_check: `bd --db /home/lewis/src/velvet-ballistics/.beads/dolt show vb-core-atomic-admission --json` exit=0 from isolated workspace.
 next_gate: State 3 contract artifacts may consume non-empty codebase-map.md and valid delivery-scope.jsonl after verification.
 
@@ -358,8 +358,8 @@ artifacts_written:
 commands_run:
 - `pwd -P` exit=0; returned isolated workspace `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-atomic-admission`.
 - `test -s ".beads/vb-core-atomic-admission/contract.md" && test -s ".beads/vb-core-atomic-admission/traceability-matrix.jsonl" && test -s ".beads/vb-core-atomic-admission/delivery-scope.jsonl"` exit=0.
-- `/usr/bin/rg -n "unsafe|unwrap\(|expect\(|panic!|todo!|unimplemented!|assert!|spawn|tokio|Mutex|RwLock|Atomic|serialize|deserialize|state|transition|lease|queue|retry|cancel" crates/vb_storage/src crates/vb_runtime/src crates/velvet_ballastics/src crates/velvet_ballastics/tests/admission_evidence_integration verification/tla verification/verus` exit=0; large output persisted by tool.
-- `/usr/bin/rg -n "requires|ensures|proof fn|invariant|kani::|loom::|proptest!|fuzz_target|Flux|TLA|Miri|unsafe" crates/vb_storage/src crates/vb_runtime/src crates/velvet_ballastics/src crates/velvet_ballastics/tests/admission_evidence_integration verification/tla verification/verus` exit=0.
+- `/usr/bin/rg -n "unsafe|unwrap\(|expect\(|panic!|todo!|unimplemented!|assert!|spawn|tokio|Mutex|RwLock|Atomic|serialize|deserialize|state|transition|lease|queue|retry|cancel" crates/vb_storage/src crates/vb_runtime/src crates/velvet_ballistics/src crates/velvet_ballistics/tests/admission_evidence_integration verification/tla verification/verus` exit=0; large output persisted by tool.
+- `/usr/bin/rg -n "requires|ensures|proof fn|invariant|kani::|loom::|proptest!|fuzz_target|Flux|TLA|Miri|unsafe" crates/vb_storage/src crates/vb_runtime/src crates/velvet_ballistics/src crates/velvet_ballistics/tests/admission_evidence_integration verification/tla verification/verus` exit=0.
 - `jq -c . .beads/vb-core-atomic-admission/proof-obligations.planned.jsonl >/dev/null` exit=0.
 - `jq -s -e 'all(.[]; has("id") and has("requirement_id") and has("contract_clause") and has("risk") and has("verifier") and has("artifact") and has("command") and has("expected_evidence") and has("assumptions") and has("required") and has("mode") and has("owner_state") and has("rerun_from") and has("status") and has("waiver"))' .beads/vb-core-atomic-admission/proof-obligations.planned.jsonl >/dev/null` exit=0.
 blocked_commands: none.
@@ -642,7 +642,7 @@ commands_run:
 - `mkdir -p "target/tmp" && TMPDIR="/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-atomic-admission/target/tmp" RUSTC_WRAPPER= rtk cargo test -p vb_storage --test vb_core_atomic_admission_red --no-run` exit=0.
 - `mkdir -p "target/tmp" && TMPDIR="/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-atomic-admission/target/tmp" RUSTC_WRAPPER= rtk cargo test -p vb_storage --test vb_core_atomic_admission_red -- --nocapture` exit=nonzero as expected; 0 passed, 5 failed.
 - `mkdir -p "target/tmp" && TMPDIR="/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-atomic-admission/target/tmp" RUSTC_WRAPPER= PROPTEST_CASES=256 rtk cargo test -p vb_storage proptest` exit=0; 0 passed, 988 filtered out.
-- `printf '\0\1raw-workflow-parts' | TMPDIR="/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-atomic-admission/target/tmp" RUSTC_WRAPPER= rtk cargo run -p velvet-ballastics-fuzz --features fuzz --bin admission_fuzz` exit=0.
+- `printf '\0\1raw-workflow-parts' | TMPDIR="/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-atomic-admission/target/tmp" RUSTC_WRAPPER= rtk cargo run -p velvet-ballistics-fuzz --features fuzz --bin admission_fuzz` exit=0.
 
 red_test_evidence:
 - strict accepted artifact proof gate count actual `2`, expected `15`.
@@ -1351,7 +1351,7 @@ verification_evidence:
 - `TMPDIR=target/tmp RUSTC_WRAPPER= cargo test -p vb_storage --test vb_core_atomic_admission_red 'given_'` - **12 passed**
 - `TMPDIR=target/tmp RUSTC_WRAPPER= cargo test -p vb_storage --test vb_core_atomic_admission_red` - **21 passed; 5 failed** (same proptest anti-cases as before)
 - `TMPDIR=target/tmp RUSTC_WRAPPER= cargo miri test -p vb_storage --lib codec_miri_tests` - **20 passed; 0 failed**
-- `TMPDIR=target/tmp RUSTC_WRAPPER= cargo clippy -p velvet-ballastics-fuzz --lib --all-features` - PASS
+- `TMPDIR=target/tmp RUSTC_WRAPPER= cargo clippy -p velvet-ballistics-fuzz --lib --all-features` - PASS
 
 scope_evidence:
 - Work executed only inside isolated workspace `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-atomic-admission`.
@@ -1530,7 +1530,7 @@ truth_serum_result: PASS
 clippy_gate_results:
 - vb_storage: No issues found (strict deny flags)
 - vb_runtime: No issues found (strict deny flags)
-- velvet_ballastics: No issues found (strict deny flags)
+- velvet_ballistics: No issues found (strict deny flags)
 
 command_evidence:
 - `test -s <artifact>` for all required artifacts: ALL PASS
@@ -1538,7 +1538,7 @@ command_evidence:
 - `rg '^STATUS: APPROVED$'` on key review docs: ALL FOUND
 - `cargo clippy --package vb_storage -- -D warnings -D unsafe_code -D clippy::unwrap_used ...`: No issues found
 - `cargo clippy --package vb_runtime -- -D warnings -D unsafe_code -D clippy::unwrap_used ...`: No issues found
-- `cargo clippy --package velvet_ballastics -- -D warnings -D unsafe_code -D clippy::unwrap_used ...`: No issues found
+- `cargo clippy --package velvet_ballistics -- -D warnings -D unsafe_code -D clippy::unwrap_used ...`: No issues found
 - `cargo build --package vb_storage`: Finished successfully
 
 obligation_summary:

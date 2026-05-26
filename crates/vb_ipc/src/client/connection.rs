@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-//! IPC client for connecting to a velvet_ballastics runtime.
+//! IPC client for connecting to a velvet_ballistics runtime.
 
 use std::io::Write;
 use std::path::Path;

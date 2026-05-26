@@ -77,9 +77,9 @@ Status: COMPLETE
 Status: COMPLETE
 
 ### Evidence
-- moon-report.md: velvet-ballastics:quick PASS, scoped checks PASS
-- velvet-ballastics:check FAILED due to pre-existing compile errors in vb_storage test files
-- Modified crates (vb_storage, velvet_ballastics) compile cleanly
+- moon-report.md: velvet-ballistics:quick PASS, scoped checks PASS
+- velvet-ballistics:check FAILED due to pre-existing compile errors in vb_storage test files
+- Modified crates (vb_storage, velvet_ballistics) compile cleanly
 - 4/4 integration tests pass
 
 ## State 9: QA and QA review
@@ -193,8 +193,8 @@ Status: COMPLETE
 - `crates/vb_storage/src/trimming.rs`: Added TrimEligibility, TrimBlocker, TrimDiagnostic, trim_eligibility_diagnostic, count_trimmable_events
 - `crates/vb_storage/src/error.rs`: Added JournalError::Trim variant, From<TrimError> impl
 - `crates/vb_storage/src/lib.rs`: Added re-exports
-- `crates/velvet_ballastics/src/main.rs`: Extended cmd_doctor with trim eligibility check
-- `crates/velvet_ballastics/tests/cli_integration.rs`: Added 4 doctor integration tests
+- `crates/velvet_ballistics/src/main.rs`: Extended cmd_doctor with trim eligibility check
+- `crates/velvet_ballistics/tests/cli_integration.rs`: Added 4 doctor integration tests
 - `crates/vb_storage/src/trimming.rs` (tests): Added 8 unit tests for diagnostic
 
 ## Verification

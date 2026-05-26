@@ -7,11 +7,11 @@
 
 ## Summary
 
-The `:test` gate failed during the `velvet-ballastics:check` task.
+The `:test` gate failed during the `velvet-ballistics:check` task.
 
 ## Failed Tasks
 
-- `velvet-ballastics:check` - exit code 101
+- `velvet-ballistics:check` - exit code 101
 
 ## Error Categories
 

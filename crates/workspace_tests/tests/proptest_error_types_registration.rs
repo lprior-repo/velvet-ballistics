@@ -1,74 +1,173 @@
-#![forbid(unsafe_code)]
-//! PO-025: proptest for error type diagnostic code registration.
+//! Property test: CoreError, RuntimeError, JournalError symbolic code registration.
 //!
-//! Tests: Error code ranges (Storage E2xxx, Runtime E3xxx, Boundary E4xxx)
-//! produce parseable DiagnosticCode values via from_str.
-//!
-//! Bound: enumeration of code ranges per error category.
+//! Compensates: BLOCKED PO-015.
+//! Invariant: Every sampled variant maps to a SymbolicCode registered in CODE_REGISTRY.
 
-use std::str::FromStr;
-use vb_core::diagnostic::DiagnosticCode;
-
-fn can_parse(code: u16) -> bool {
-    let input = format!("E{:04X}", code);
-    DiagnosticCode::from_str(&input).is_ok()
-}
+use vb_core::diagnostic::{CODE_REGISTRY, SymbolicCode};
+use vb_core::errors::CoreError;
+use vb_core::ids::{SlotIdx, StepIdx};
 
 #[test]
-fn storage_error_codes_parseable() {
-    for code in 0x2001u16..=0x200F {
-        assert!(can_parse(code), "Storage code E{:04X} must parse", code);
-    }
-}
-
-#[test]
-fn runtime_error_codes_parseable() {
-    for code in 0x3001u16..=0x300E {
-        assert!(can_parse(code), "Runtime code E{:04X} must parse", code);
-    }
-}
-
-#[test]
-fn boundary_error_codes_parseable() {
-    for code in 0x4001u16..=0x401B {
-        assert!(can_parse(code), "Boundary code E{:04X} must parse", code);
-    }
-}
-
-#[test]
-fn all_error_type_ranges_are_non_overlapping() {
-    let ranges: &[(u16, u16, &str)] = &[
-        (0x0101, 0x010B, "Schema"),
-        (0x0201, 0x0204, "Reference"),
-        (0x0301, 0x0309, "ControlFlow"),
-        (0x0401, 0x040C, "TypeTaint"),
-        (0x1001, 0x1002, "Compilation"),
-        (0x1011, 0x1013, "CanonicalCompilation"),
-        (0x1101, 0x1104, "WorkflowIR"),
-        (0x1201, 0x1202, "Expression"),
-        (0x1301, 0x130D, "Accessor"),
-        (0x1311, 0x1314, "AccessorIdempotency"),
-        (0x1401, 0x1407, "Lowering"),
-        (0x2001, 0x200F, "Storage"),
-        (0x3001, 0x300E, "Runtime"),
-        (0x4001, 0x401B, "Boundary"),
+fn core_error_symbolic_codes_are_registered() {
+    let errors: Vec<CoreError> = vec![
+        CoreError::DivisionByZero,
+        CoreError::NonFiniteNumber,
+        CoreError::StepBudgetExhausted,
+        CoreError::StepCounterOverflow,
+        CoreError::QueueFull,
+        CoreError::AllocationFailed,
+        CoreError::ExpressionStackUnderflow,
+        CoreError::CollectPageLimitExceeded,
+        CoreError::CollectItemLimitExceeded,
+        CoreError::CollectTimeLimitExceeded,
+        CoreError::InvalidProgramCounter {
+            step: StepIdx::new(0),
+        },
+        CoreError::SlotOutOfBounds {
+            slot: SlotIdx::new(0),
+        },
+        CoreError::TypeMismatch {
+            expected: "u64",
+            found: "string",
+        },
+        CoreError::NonBoolCondition {
+            slot: SlotIdx::new(0),
+        },
+        CoreError::ResourceLimitExceeded { resource: "cpu" },
+        CoreError::ExpressionStackOverflow { max: 64 },
+        CoreError::MissingOutputSlot {
+            step: StepIdx::new(0),
+        },
+        CoreError::StepStateOutOfBounds {
+            step: StepIdx::new(0),
+        },
+        CoreError::UnsupportedPrimitive { primitive: "wait" },
+        CoreError::InternalInvariantViolation { reason: "test" },
+        CoreError::UnsupportedAccessorTraversal {
+            segment: "field",
+            found: "map",
+        },
+        CoreError::IterationLimitExceeded { resource: "cpu" },
+        CoreError::RepeatExhausted { max: 3 },
+        CoreError::TogetherBranchLimitExceeded { max: 1 },
+        CoreError::BudgetExceeded {
+            budget: "cpu",
+            limit: 100,
+        },
+        CoreError::BudgetParse { reason: "invalid" },
+        CoreError::ParallelLimitExceeded { limit: 1 },
+        CoreError::InvalidCompiledWorkflow { reason: "test" },
+        CoreError::ObjectFieldNotFound {
+            field: vb_core::ids::SymbolId::new(0),
+        },
+        CoreError::ListIndexOutOfBounds { index: 999 },
+        CoreError::SymbolOutOfBounds {
+            symbol: vb_core::ids::SymbolId::new(0),
+        },
+        CoreError::ListOutOfBounds {
+            list: vb_core::ids::ListId::new(0),
+        },
+        CoreError::ObjectOutOfBounds {
+            object: vb_core::ids::ObjectId::new(0),
+        },
+        CoreError::BlobOutOfBounds {
+            blob: vb_core::ids::BlobId::new(0),
+        },
     ];
 
-    // Verify ranges don't overlap
-    for i in 0..ranges.len() {
-        for j in (i + 1)..ranges.len() {
-            let (lo_i, hi_i, name_i) = ranges[i];
-            let (lo_j, hi_j, name_j) = ranges[j];
-            assert!(
-                hi_i < lo_j || hi_j < lo_i,
-                "Ranges overlap: {} ({:#06X}-{:#06X}) and {} ({:#06X}-{:#06X})",
-                name_i,
-                lo_i,
-                hi_i,
-                name_j,
-                lo_j,
-                hi_j
-            );
-        }
+    for error in &errors {
+        let code = error.symbolic_code();
+        let reconstructed = SymbolicCode::from_static(code.as_str());
+        assert!(
+            reconstructed.is_some(),
+            "CoreError symbolic code '{}' must be registered",
+            code.as_str()
+        );
+        assert!(
+            CODE_REGISTRY.iter().any(|e| e.symbolic == code.as_str()),
+            "CoreError code '{}' must have a CODE_REGISTRY entry",
+            code.as_str()
+        );
+    }
+}
+
+#[test]
+fn runtime_error_symbolic_codes_are_registered() {
+    use vb_runtime::RuntimeError;
+
+    let errors: Vec<RuntimeError> = vec![
+        RuntimeError::QueueFull,
+        RuntimeError::RunNotFound,
+        RuntimeError::RunAlreadyExists,
+        RuntimeError::UnsupportedOperation { operation: "test" },
+        RuntimeError::ShutdownInProgress,
+        RuntimeError::JournalPoisoned,
+        RuntimeError::UnsupportedAsyncStrictAck,
+        RuntimeError::FramePoolUnavailable,
+        RuntimeError::InvalidActionCompletion,
+        RuntimeError::InvalidTimerFire,
+        RuntimeError::UnsupportedFullRecoveryHydration,
+        RuntimeError::InvalidRecoveryHydration,
+        RuntimeError::ActiveRunCapacityZero,
+        RuntimeError::EncodeFailed,
+        RuntimeError::SecretResultNotAllowed,
+        RuntimeError::MigrateSelf,
+    ];
+
+    for error in &errors {
+        let code = error.symbolic_code();
+        let reconstructed = SymbolicCode::from_static(code.as_str());
+        assert!(
+            reconstructed.is_some(),
+            "RuntimeError symbolic code '{}' must be registered",
+            code.as_str()
+        );
+        assert!(
+            CODE_REGISTRY.iter().any(|e| e.symbolic == code.as_str()),
+            "RuntimeError code '{}' must have a CODE_REGISTRY entry",
+            code.as_str()
+        );
+    }
+}
+
+#[test]
+fn journal_error_symbolic_codes_are_registered() {
+    use vb_storage::JournalError;
+
+    let errors: Vec<JournalError> = vec![
+        JournalError::KeyCapacity,
+        JournalError::QueueFull,
+        JournalError::WriteLockPoisoned,
+        JournalError::UnexpectedEof,
+        JournalError::PostcardDecodeFailed,
+        JournalError::QueueShutdown,
+        JournalError::ArtifactMalformed,
+        JournalError::ArtifactChecksumMismatch,
+        JournalError::InvalidEvent,
+        JournalError::AdmissionRequired,
+        JournalError::InputSchemaMismatch,
+        JournalError::CapabilityDenied,
+        JournalError::SecretUnavailable,
+        JournalError::RunAlreadyExists,
+        JournalError::ActiveRunCapacityExceeded,
+        JournalError::FrameAllocationFailed,
+        JournalError::AdmissionJournalFailed,
+        JournalError::StrictDurabilityFailed,
+        JournalError::ClockUnavailable,
+    ];
+
+    for error in &errors {
+        let code = error.symbolic_code();
+        let reconstructed = SymbolicCode::from_static(code.as_str());
+        assert!(
+            reconstructed.is_some(),
+            "JournalError symbolic code '{}' must be registered",
+            code.as_str()
+        );
+        assert!(
+            CODE_REGISTRY.iter().any(|e| e.symbolic == code.as_str()),
+            "JournalError code '{}' must have a CODE_REGISTRY entry",
+            code.as_str()
+        );
     }
 }

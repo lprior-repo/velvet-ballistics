@@ -1,4 +1,4 @@
-//! Proof system commands for velvet-ballastics.
+//! Proof system commands for velvet-ballistics.
 //!
 //! Provides:
 //! - `proof-plan --changed` - maps changed files to proof obligations

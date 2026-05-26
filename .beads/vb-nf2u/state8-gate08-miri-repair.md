@@ -30,7 +30,7 @@ Gate 08 was correctly treating `PathSegment::Field(SymbolId::new(n))` as valid o
 
 - PASS: `cargo +nightly-2026-04-28 miri test -p vb_validate --lib 'gate_08_accessor::tests::proptest_gate_08_reports_first_invalid_accessor_with_root_precedence'`
 - PASS: `cargo +nightly-2026-04-28 miri test -p vb_validate --lib 'gates::tests::gate_08_accepts_valid_accessor'`
-- PASS: `moon run 'velvet-ballastics:miri'` (`908 passed; 0 failed`; task completed)
+- PASS: `moon run 'velvet-ballistics:miri'` (`908 passed; 0 failed`; task completed)
 
 ## Full CI Status
 

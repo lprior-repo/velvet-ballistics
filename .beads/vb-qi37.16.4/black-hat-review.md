@@ -28,7 +28,7 @@ STATUS: APPROVED
 | `crates/vb_ipc/src/server/handlers.rs` | 218 | Destructures `taint` from payload | ✅ |
 | `crates/vb_ipc/src/server/handlers.rs` | 265 | `taint: taint.unwrap_or(Taint::Clean)` | ✅ |
 | `crates/vb_runtime/src/shard/lifecycle.rs` | 326-330 | INV-002 enforcement: rejects `Taint::Secret` when `!allows_secret_results` | ✅ |
-| `crates/velvet_ballastics/src/main.rs` | 2666 | Caller sends `taint: None` | ✅ |
+| `crates/velvet_ballistics/src/main.rs` | 2666 | Caller sends `taint: None` | ✅ |
 | `crates/vb_ui/src/ipc_bridge.rs` | 398 | Caller sends `taint: None` | ✅ |
 
 **Invariant Enforcement Chain (Verified End-to-End):**
@@ -117,7 +117,7 @@ INV-002 is no longer structurally bypassed. The fix is minimal, backward-compati
 | Gate | Evidence | Status |
 |------|----------|--------|
 | Format | `rtk cargo fmt -- --check` | ✅ PASS |
-| Compile | `rtk cargo check -p vb_ipc -p vb_runtime -p velvet_ballastics --all-targets --all-features` | ✅ 0 errors |
+| Compile | `rtk cargo check -p vb_ipc -p vb_runtime -p velvet_ballistics --all-targets --all-features` | ✅ 0 errors |
 | IPC answer tests | `rtk cargo test -p vb_ipc --lib answer` → 13 passed | ✅ |
 | Runtime ask_answer tests | `rtk cargo test -p vb_runtime --lib ask_answer` → 24 passed | ✅ |
 | INV-002 enforcement | `rtk cargo test -p vb_runtime --lib red_ask_answer_secret_redaction` → 1 passed | ✅ |

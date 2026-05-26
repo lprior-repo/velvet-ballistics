@@ -10,7 +10,7 @@ STATUS: PASS
 - `MIRIFLAGS="-Zmiri-disable-isolation" cargo +nightly-2025-11-21 miri test -p vb_core value_store -- --nocapture` -> PASS with 3 reported ignores.
 - `rtk cargo test -p vb_core budget -- --nocapture` -> PASS.
 - `rtk cargo test -p vb_core resource_contract -- --nocapture` -> PASS.
-- `rtk cargo test -p velvet-ballastics-workspace resource_contract -- --nocapture` -> PASS, no matching tests.
+- `rtk cargo test -p velvet-ballistics-workspace resource_contract -- --nocapture` -> PASS, no matching tests.
 - `CXX=clang++ RUSTFLAGS='' cargo fuzz run budget_compute --target x86_64-unknown-linux-gnu -- -runs=1000` -> PASS, `.beads/vb-qi37.2/fuzz-budget-compute-gnu-final.raw.log`, `EXIT_STATUS=0`.
 - `CXX=clang++ RUSTFLAGS='' cargo fuzz run aggregate_workflow_budget --target x86_64-unknown-linux-gnu -- -runs=1000` -> PASS, `.beads/vb-qi37.2/fuzz-aggregate-workflow-budget-gnu-final.raw.log`, `EXIT_STATUS=0`.
 - `CXX=clang++ RUSTFLAGS='' cargo fuzz run step_budget_new --target x86_64-unknown-linux-gnu -- -runs=1000` -> PASS, `.beads/vb-qi37.2/fuzz-step-budget-new-gnu-final.raw.log`, `EXIT_STATUS=0`.

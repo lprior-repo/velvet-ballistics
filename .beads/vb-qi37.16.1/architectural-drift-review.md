@@ -30,7 +30,7 @@ updated_at: 2026-05-09T00:00:00Z
 
 ## Post-Refactor Verification
 - `cargo check --workspace`: PASS
-- `cargo test -p velvet_ballastics cancel`: 16 pass, 0 fail
+- `cargo test -p velvet_ballistics cancel`: 16 pass, 0 fail
 - `cargo test -p vb_runtime --lib shard_cancel_with`: 2 pass, 0 fail
 
 ## Rerun States 8-14 Required?

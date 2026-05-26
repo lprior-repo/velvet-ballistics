@@ -22,6 +22,15 @@ pub fn lower_choose(
     otherwise: Option<StepIdx>,
     builder: &mut SlotCompiler,
 ) -> Result<CompiledNode, CompileError> {
+    // Fanout limit: choose cannot have more than 64 branches
+    if branches.len() > 64 {
+        return Err(CompileError::PrimitiveLoweringLimitExceeded {
+            primitive: "choose",
+            field: "branches",
+            value: branches.len(),
+            limit: 64,
+        });
+    }
     for branch in &branches {
         builder.record_slot(branch.condition);
     }
@@ -92,7 +101,7 @@ pub fn lower_together(
 ) -> Result<Vec<CompiledNode>, CompileError> {
     let branch_count = u16::try_from(branches.len()).map_err(|_| {
         CompileError::PrimitiveLoweringLimitExceeded {
-            primitive: "parallel",
+            primitive: "together",
             field: "branches",
             value: branches.len(),
             limit: usize::from(u16::MAX),

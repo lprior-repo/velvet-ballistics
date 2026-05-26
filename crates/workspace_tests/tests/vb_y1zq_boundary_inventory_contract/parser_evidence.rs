@@ -146,7 +146,7 @@ fn parse_inventory_returns_external_binary_class_when_json_class_is_external_bin
 
 #[test]
 fn parse_inventory_returns_generated_code_class_when_json_class_is_generated_code() {
-    let bytes = br#"{"schema_version":1,"boundaries":[{"id":"generated-code-boundary","class":"generated_code","source_path":"crates/vb_codegen/src/generated/interface.rs"}]}"#;
+    let bytes = br#"{"schema_version":1,"boundaries":[{"id":"generated-code-boundary","class":"generated_code","source_path":"crates/vb_runtime/src/generated/interface.rs"}]}"#;
 
     let result = parse_inventory(bytes).map(|inventory| record_classes(&inventory));
 

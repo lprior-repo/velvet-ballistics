@@ -1376,7 +1376,7 @@ Test loop (States 7→8→9) has now been executed.
 
 #### PO-005: cli_integration (INT-CLI-001)
 ```bash
-rustup run nightly-2026-04-28 cargo test --package velvet_ballastics --test cli_integration
+rustup run nightly-2026-04-28 cargo test --package velvet_ballistics --test cli_integration
 ```
 **Result: 82 PASSED, 4 FAILED**
 
@@ -1393,13 +1393,13 @@ rustup run nightly-2026-04-28 cargo test --package velvet_ballastics --test cli_
 
 #### PO-006: admission_evidence_integration (INT-CLI-002)
 ```bash
-rustup run nightly-2026-04-28 cargo test --package velvet_ballastics --test admission_evidence_integration
+rustup run nightly-2026-04-28 cargo test --package velvet_ballistics --test admission_evidence_integration
 ```
 **Result: 8 PASSED, 0 FAILED**
 
 #### PO-008: ir_artifact_admission (INT-BYPASS-001)
 ```bash
-rustup run nightly-2026-04-28 cargo test --package velvet_ballastics --test ir_artifact_admission
+rustup run nightly-2026-04-28 cargo test --package velvet_ballistics --test ir_artifact_admission
 ```
 **Result: 8 PASSED, 0 FAILED**
 
@@ -1549,7 +1549,7 @@ pub fn admit_run(
 **Supporting Changes:**
 - `AlwaysPresentArtifactStore::shared_artifact()` → `AlwaysPresentArtifactStore::shared()` in tests and benchmarks
 - `NeverPresentStore` test stubs updated to implement `AcceptedArtifactStore` instead of `ArtifactStore`
-- `benches/velvet_ballastics.rs` and `crates/workspace_tests/benches/velvet_ballastics.rs` updated to use `shared()` instead of `shared_artifact()`
+- `benches/velvet_ballistics.rs` and `crates/workspace_tests/benches/velvet_ballistics.rs` updated to use `shared()` instead of `shared_artifact()`
 
 **Verification:**
 - `cargo build -p vb_runtime`: PASS (5 crates compiled)

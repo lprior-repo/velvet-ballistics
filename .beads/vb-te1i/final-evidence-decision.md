@@ -44,7 +44,7 @@ All acceptance criteria for State 13 have been satisfied:
 ## Raw Evidence References
 
 - **Unit tests**: `cargo test --package vb_ipc` → 686 passed
-- **BDD tests**: `cargo test --package velvet-ballastics-workspace-tests --test vb_te1i_binary_ipc_acceptance` → 7 passed
+- **BDD tests**: `cargo test --package velvet-ballistics-workspace-tests --test vb_te1i_binary_ipc_acceptance` → 7 passed
 - **Clippy**: `cargo clippy --package vb_ipc --lib --bins --examples -- -D warnings` → No issues found
 - **Formatting**: `cargo fmt -- crates/workspace_tests/tests/vb_te1i_binary_ipc_acceptance.rs` → Applied
 - **Verification ledger**: `.beads/vb-te1i/verification-ledger.jsonl` → 28 obligations, 18 PASS, 10 WAIVED/DEFERRED

@@ -5,8 +5,8 @@
 {"id":"VERUS-DIGEST-005","result":"PASS","evidence":"verus verification/verus/admission_artifact_model.rs exit 0; 6 verified, 0 errors"}
 {"id":"KANI-ADMIT-006","result":"PASS","evidence":"moon run :verify-deep exit 0 plus targeted admission integration tests passed"}
 {"id":"FUZZ-ARTIFACT-007","result":"PASS","evidence":"moon run :fuzz-smoke exit 0 and accepted artifact tests passed"}
-{"id":"INT-HEADER-008","result":"PASS","evidence":"cargo test -p velvet_ballastics --test admission_evidence_integration exit 0; 8 passed; moon ci --stdin passed"}
-{"id":"INT-RECOVERY-009","result":"PASS","evidence":"cargo test -p velvet_ballastics --test admission_evidence_integration exit 0; 8 passed; moon ci --stdin passed"}
+{"id":"INT-HEADER-008","result":"PASS","evidence":"cargo test -p velvet_ballistics --test admission_evidence_integration exit 0; 8 passed; moon ci --stdin passed"}
+{"id":"INT-RECOVERY-009","result":"PASS","evidence":"cargo test -p velvet_ballistics --test admission_evidence_integration exit 0; 8 passed; moon ci --stdin passed"}
 {"id":"STATIC-NO-YAML-010","result":"PASS","evidence":"moon run :lint-src exit 0; moon ci --stdin lint-src passed"}
 {"id":"MUT-ERR-011","result":"PASS","evidence":"moon run :mutants-smoke exit 0; 1 mutant tested, 1 caught"}
 {"id":"LOOM-JOURNAL-012","result":"PASS","evidence":"RUSTFLAGS=--cfg loom cargo test -p vb_runtime journal_writer_queue exit 0; 3 passed"}

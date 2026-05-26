@@ -17,7 +17,7 @@
 
 ### THM-INV-002
 - Contract clause: INV-002
-- Rust/spec target: `velvet_ballastics::quality::boundary_inventory::validate_inventory`
+- Rust/spec target: `velvet_ballistics::quality::boundary_inventory::validate_inventory`
 - Lean module: `BoundaryInventory.Completeness`
 - Theorem shape: `complete_requires_required_fields`
 - Model: Abstract `BoundaryRecord` with optional owner, threat, evidence path, class, source path, and review status fields.
@@ -27,7 +27,7 @@
 
 ### THM-INV-003
 - Contract clause: INV-003
-- Rust/spec target: `velvet_ballastics::quality::boundary_inventory::required_evidence`
+- Rust/spec target: `velvet_ballistics::quality::boundary_inventory::required_evidence`
 - Lean module: `BoundaryInventory.Evidence`
 - Theorem shape: `crossing_boundary_requires_evidence`
 - Model: Abstract boundary class plus booleans `ingests_external_bytes` and `crosses_process_or_language_limit`.
@@ -37,7 +37,7 @@
 
 ### THM-INV-004
 - Contract clause: INV-004
-- Rust/spec target: `velvet_ballastics::quality::boundary_inventory::boundary_id`
+- Rust/spec target: `velvet_ballistics::quality::boundary_inventory::boundary_id`
 - Lean module: `BoundaryInventory.Identity`
 - Theorem shape: `stable_ids_are_unique_when_sources_unique`
 - Model: Normalized class and normalized source identity produce an abstract boundary id.
@@ -47,7 +47,7 @@
 
 ### THM-INV-005
 - Contract clause: INV-005
-- Rust/spec target: `velvet_ballastics::quality::boundary_inventory::inventory_completion_status`
+- Rust/spec target: `velvet_ballistics::quality::boundary_inventory::inventory_completion_status`
 - Lean module: `BoundaryInventory.Status`
 - Theorem shape: `invalid_inventory_cannot_complete`
 - Model: Algebraic lattice with `Complete`, `Incomplete`, and `Blocked` statuses.
@@ -57,7 +57,7 @@
 
 ### THM-POST-002
 - Contract clause: POST-002
-- Rust/spec target: `velvet_ballastics::quality::boundary_inventory::required_evidence`
+- Rust/spec target: `velvet_ballistics::quality::boundary_inventory::required_evidence`
 - Lean module: `BoundaryInventory.Evidence`
 - Theorem shape: `required_evidence_assigned_for_risky_classes`
 - Model: Abstract risk class to evidence requirement relation.
@@ -67,7 +67,7 @@
 
 ### THM-POST-003
 - Contract clause: POST-003
-- Rust/spec target: `velvet_ballastics::quality::boundary_inventory::inventory_completion_status`
+- Rust/spec target: `velvet_ballistics::quality::boundary_inventory::inventory_completion_status`
 - Lean module: `BoundaryInventory.Status`
 - Theorem shape: `unknown_class_blocks_completion`
 - Model: Completion lattice over classified boundary records.

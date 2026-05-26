@@ -294,7 +294,7 @@ All latest local `vb_codegen` cleanup and parity commands pass. No performance c
 - `rtk cargo fmt --check` — PASS; no formatting repair required.
 - `rtk cargo check -p vb_codegen --all-targets --all-features` — PASS.
 - `rtk cargo test -p vb_codegen reduce_generated_parity -- --nocapture` — PASS, 3 passed / 364 filtered.
-- `moon ci` — FAIL, `velvet-ballastics:lint-src` passed after this repair; first relevant blocker is unrelated environment quota / CLI integration failure: `Disk quota exceeded (os error 122)` while writing temp workflow/journal files and moon cache state. Classified `DEFERRED_GLOBAL` / environment blocker, not scoped to `crates/vb_codegen/src/lib.rs`.
+- `moon ci` — FAIL, `velvet-ballistics:lint-src` passed after this repair; first relevant blocker is unrelated environment quota / CLI integration failure: `Disk quota exceeded (os error 122)` while writing temp workflow/journal files and moon cache state. Classified `DEFERRED_GLOBAL` / environment blocker, not scoped to `crates/vb_codegen/src/lib.rs`.
 
 ### Residual risk
 

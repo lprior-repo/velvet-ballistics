@@ -1,5 +1,6 @@
 #![allow(unused_imports)]
 use super::*;
+use crate::expression::parse_expression;
 use crate::mod_compile_errors::{CompileError, CompileErrors, non_string_key_error};
 use crate::mod_compile_validation::{
     reject_unsupported_for_each_fields, validate_canonical_compile_scope,
@@ -25,14 +26,6 @@ pub(super) fn lower_canonical_step(
 ) -> Result<(), CompileErrors> {
     match &step.primitive {
         vb_yaml::ast::StepPrimitive::Set { output, value } => {
-            if step.id.starts_with("save") {
-                return Err(CompileErrors(vec![
-                    CompileError::UnsupportedStepPrimitive {
-                        step: index,
-                        primitive: "save",
-                    },
-                ]));
-            }
             let slot = slot_idx_for_step(index).map_err(|e| CompileErrors(vec![e]))?;
             lower_canonical_set(id, slot, output, value, next, outputs, builder)
         }
@@ -46,7 +39,7 @@ pub(super) fn lower_canonical_step(
             ..
         } => lower_canonical_for_each(index, id, input, *at_once, body, builder),
         vb_yaml::ast::StepPrimitive::Together { branches } => {
-            lower_canonical_parallel(index, id, branches, builder)
+            lower_canonical_parallel(index, id, branches, next, builder)
         }
         vb_yaml::ast::StepPrimitive::Collect {
             source,
@@ -54,15 +47,26 @@ pub(super) fn lower_canonical_step(
             items,
             body,
             ..
-        } => lower_canonical_collect(index, id, source, *pages, *items, body, builder),
+        } => lower_canonical_collect(
+            index,
+            id,
+            CollectLowering {
+                source,
+                pages: *pages,
+                items: *items,
+                body,
+                next,
+            },
+            builder,
+        ),
         vb_yaml::ast::StepPrimitive::Aggregate {
             input,
             initial,
             body,
             ..
-        } => lower_canonical_aggregate(index, id, input, initial, body, builder),
+        } => lower_canonical_aggregate(index, id, input, initial, body, next, builder),
         vb_yaml::ast::StepPrimitive::Repeat { max_attempts, body } => {
-            lower_canonical_repeat(index, id, *max_attempts, body, builder)
+            lower_canonical_repeat(index, id, *max_attempts, body, next, builder)
         }
         vb_yaml::ast::StepPrimitive::Wait { event, timeout } => lower_canonical_wait(
             index,
@@ -75,6 +79,18 @@ pub(super) fn lower_canonical_step(
         vb_yaml::ast::StepPrimitive::Ask { prompt, timeout } => {
             lower_canonical_ask(index, id, prompt, timeout.as_deref(), next, builder)
         }
+        vb_yaml::ast::StepPrimitive::Choose {
+            branches,
+            otherwise,
+        } => lower_canonical_choose(
+            index,
+            id,
+            branches,
+            otherwise.as_deref(),
+            next,
+            step_names.as_ref(),
+            builder,
+        ),
         other => Err(CompileErrors(vec![
             CompileError::UnsupportedStepPrimitive {
                 step: index,
@@ -110,12 +126,14 @@ pub(super) fn lower_canonical_set(
             name: Box::from(output),
         }]));
     }
-    let constant = parse_i64_field(value, id.as_usize(), "set.value")?;
-    let value = builder
+    outputs.insert(output.to_owned(), slot);
+    builder.record_slot(slot);
+    // set.value must be an integer string - use parse_i64_field for proper StepFieldShape error
+    let constant = parse_i64_field(value, usize::from(id.get()), "set.value")?;
+    let value_idx = builder
         .push_constant(ConstValue::I64(constant))
         .map_err(|e| CompileErrors(vec![e]))?;
-    outputs.insert(output.to_owned(), slot);
-    builder.push_node(lower_set(id, slot, value, next));
+    builder.push_node(lower_set(id, slot, value_idx, next));
     Ok(())
 }
 
@@ -174,6 +192,7 @@ pub(super) fn lower_canonical_for_each(
     emit_single_body_set(
         body,
         body_step,
+        index,
         SlotIdx::new(1),
         Some(next_step),
         builder,
@@ -191,5 +210,85 @@ pub(super) fn lower_canonical_for_each(
             done,
         },
     });
+    Ok(())
+}
+
+pub(super) fn lower_canonical_choose(
+    index: usize,
+    id: StepIdx,
+    branches: &[vb_yaml::ast::ChooseBranch],
+    otherwise: Option<&str>,
+    next: Option<StepIdx>,
+    step_names: &[Box<str>],
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    // Fanout limit: choose cannot have more than 64 branches
+    if branches.len() > 64 {
+        return Err(CompileErrors(vec![
+            CompileError::PrimitiveLoweringLimitExceeded {
+                primitive: "choose",
+                field: "branches",
+                value: branches.len(),
+                limit: 64,
+            },
+        ]));
+    }
+    // Empty branch table requires otherwise to be set
+    if branches.is_empty() && otherwise.is_none() {
+        return Err(CompileErrors(vec![CompileError::Workflow(
+            WorkflowError::EmptyBranchTable,
+        )]));
+    }
+    // All branches must have empty bodies (fall-through to next)
+    // and we need a next step to fall through to
+    let target = next.ok_or_else(|| {
+        CompileErrors(vec![CompileError::StepFieldShape {
+            step: index,
+            field: "choose",
+            expected: "non-empty next step for choose fallthrough",
+        }])
+    })?;
+    for branch in branches {
+        if !branch.steps.is_empty() {
+            return Err(CompileErrors(vec![
+                CompileError::UnsupportedStepPrimitive {
+                    step: index,
+                    primitive: "choose",
+                },
+            ]));
+        }
+    }
+    // Resolve otherwise label to step index via step_names lookup
+    let otherwise_target = match otherwise {
+        Some(label) => {
+            let step_index = step_names
+                .iter()
+                .position(|name| name.as_ref() == label)
+                .ok_or_else(|| {
+                    CompileErrors(vec![CompileError::UnknownStepLabel {
+                        step: index,
+                        label: Box::from(label),
+                    }])
+                })?;
+            Some(StepIdx::new(u16::try_from(step_index).map_err(|_| {
+                CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
+                    primitive: "choose",
+                    field: "otherwise_target",
+                    value: step_index,
+                    limit: usize::from(u16::MAX),
+                }])
+            })?))
+        }
+        None => None,
+    };
+    // Build slot branches from all branches
+    let mut slot_branches: Vec<SlotBranch> = Vec::with_capacity(branches.len());
+    for branch in branches {
+        let condition = slot_from_text(&branch.when, index, "choose.branches[].when")?;
+        slot_branches.push(SlotBranch { condition, target });
+    }
+    let node = lower_choose(id, slot_branches, otherwise_target, builder)
+        .map_err(|e| CompileErrors(vec![e]))?;
+    builder.push_node(node);
     Ok(())
 }

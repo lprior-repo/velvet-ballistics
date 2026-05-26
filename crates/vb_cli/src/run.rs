@@ -1,4 +1,4 @@
-//! Run commands for velvet-ballastics.
+//! Run commands for velvet-ballistics.
 #![forbid(unsafe_code)]
 
 use crate::args::DurabilityMode;

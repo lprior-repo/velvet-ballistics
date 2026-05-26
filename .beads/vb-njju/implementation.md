@@ -17,7 +17,7 @@ STATUS: APPROVED
 
 ## Production Code Changed
 
-**NO** - This bead touched only test code in `velvet-ballastics-workspace-tests` crate:
+**NO** - This bead touched only test code in `velvet-ballistics-workspace-tests` crate:
 
 - `crates/workspace_tests/src/acceptance_catalog.rs` - Scenario data model and catalog validation (test infrastructure, not production)
 - `crates/workspace_tests/tests/vb_njju_mutation_fuzz_property_closure.rs` - BDD evidence validation tests (test code only)
@@ -43,7 +43,7 @@ Finished `dev` profile [unoptimized + debuginfo] target(s) in 7.87s
 ```
 **PASSED**
 
-### cargo clippy --package velvet-ballastics-workspace-tests --lib --all-features
+### cargo clippy --package velvet-ballistics-workspace-tests --lib --all-features
 ```
 cargo clippy: No issues found
 ```
@@ -52,13 +52,13 @@ cargo clippy: No issues found
 ### cargo fmt --all -- --check
 **PASSED** (no output = no formatting drift)
 
-### cargo test --package velvet-ballastics-workspace-tests --test vb_njju_mutation_fuzz_property_closure
+### cargo test --package velvet-ballistics-workspace-tests --test vb_njju_mutation_fuzz_property_closure
 ```
 cargo test: 5 passed (1 suite, 0.00s)
 ```
 **PASSED**
 
-### cargo test --package velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog
+### cargo test --package velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog
 ```
 cargo test: 13 passed (1 suite, 0.00s)
 ```

@@ -14,7 +14,7 @@
 ## Verification Command
 
 ```bash
-rtk cargo test --package velvet_ballastics --test lifecycle_integration -- --test-threads=1
+rtk cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1
 ```
 
 **Result:**
@@ -29,17 +29,17 @@ cargo test: 43 passed (1 suite, 1.14s)
 ### Binary Existence
 
 ```bash
-$ ls -la target/debug/velvet-ballastics
--rwxr-xr-x 4 lewis lewis 70100000 May 11 09:xx target/debug/velvet-ballastics
+$ ls -la target/debug/velvet-ballistics
+-rwxr-xr-x 4 lewis lewis 70100000 May 11 09:xx target/debug/velvet-ballistics
 ```
 
-Binary: `velvet-ballastics` (70.1M debug build)
+Binary: `velvet-ballistics` (70.1M debug build)
 
 ### CLI Help
 
 ```bash
-$ target/debug/velvet-ballastics --help
-velvet-ballastics - compiled workflow runtime
+$ target/debug/velvet-ballistics --help
+velvet-ballistics - compiled workflow runtime
 
 commands:
   validate   <workflow.yaml> [--json|--jsonl]          Validate a workflow definition
@@ -67,14 +67,14 @@ commands:
 ### Version Command
 
 ```bash
-$ target/debug/velvet-ballastics version
-velvet-ballastics 0.1.0
+$ target/debug/velvet-ballistics version
+velvet-ballistics 0.1.0
 ```
 
 ### Doctor Command (Minimal Smoke)
 
 ```bash
-$ target/debug/velvet-ballastics doctor --db /tmp/velvet-smoke-test-db
+$ target/debug/velvet-ballistics doctor --db /tmp/velvet-smoke-test-db
 doctor: trim eligibility — 0 total, 0 eligible, 0 blocked, 0 events trimmable
 doctor: all checks passed
 ```
@@ -85,7 +85,7 @@ doctor: all checks passed
 
 | Test | Result |
 |------|--------|
-| `rtk cargo test --package velvet_ballastics --test lifecycle_integration -- --test-threads=1` | **PASS** (43 passed, 0 failed) |
+| `rtk cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1` | **PASS** (43 passed, 0 failed) |
 | CLI binary exists and is executable | **PASS** |
 | CLI --help responds | **PASS** |
 | Lifecycle commands present (replay, retry, resume, answer) | **PASS** |

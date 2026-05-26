@@ -6,7 +6,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
-# vb_ui_snapshot moved to velvet-optional repo (deferred)
+# vb_ui_snapshot is removed from current workspace scope.
 vb_validate = { path = "../crates/vb_validate" }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }

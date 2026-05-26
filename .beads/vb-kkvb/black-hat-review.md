@@ -58,8 +58,8 @@ Result: PASS.
 ## Evidence Executed
 
 - `rtk cargo build -p xtask --quiet` → PASS.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_kkvb_xtask_red_phase --quiet` → 368 passed.
-- `cargo +nightly test -p velvet-ballastics-workspace-tests --test vb_kkvb_xtask_density_explicit --quiet` → 286 passed.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_kkvb_xtask_red_phase --quiet` → 368 passed.
+- `cargo +nightly test -p velvet-ballistics-workspace-tests --test vb_kkvb_xtask_density_explicit --quiet` → 286 passed.
 - `cargo +nightly test -p xtask cmd_ai_deep --quiet` → focused mutation resilience passed, including 2 `cmd_ai_deep` tests.
 - Static function-shape probe over `xtask/src/*.rs` → `violations=0` for functions over 25 lines.
 - CLI probe over all 20 required families with `--format jsonl` → every command returned valid one-line JSON with required fields and `status=deferred`.

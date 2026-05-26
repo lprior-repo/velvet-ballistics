@@ -1,4 +1,4 @@
-//! Benchmark and diagnostic commands for velvet-ballastics.
+//! Benchmark and diagnostic commands for velvet-ballistics.
 #![forbid(unsafe_code)]
 
 use crate::io::{errln, outln};

@@ -49,9 +49,9 @@ import "list"
 
     // Required happy path tests
     required_happy_tests: [
-      "velvet-ballastics validate workflow.yaml works",
-      "velvet-ballastics run --step classify --step-input input.vbin works",
-      "velvet-ballastics compile --emit ir --out output.rs works",
+      "velvet-ballistics validate workflow.yaml works",
+      "velvet-ballistics run --step classify --step-input input.vbin works",
+      "velvet-ballistics compile --emit ir --out output.rs works",
     ]
 
     // Required error path tests

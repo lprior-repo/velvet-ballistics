@@ -78,10 +78,10 @@ fn parse_schedule(body: &saphyr::Yaml<'_>) -> YamlResult<TriggerAst> {
 }
 
 fn parse_event(body: &saphyr::Yaml<'_>) -> YamlResult<TriggerAst> {
-    reject_unknown_fields(body, &["name"])?;
-    let Some(event_name) = lookup(body, "name").and_then(saphyr::Yaml::as_str) else {
+    reject_unknown_fields(body, &["type"])?;
+    let Some(event_name) = lookup(body, "type").and_then(saphyr::Yaml::as_str) else {
         return Err(YamlError::MissingField {
-            field: "when.event.name",
+            field: "when.event.type",
         });
     };
     if event_name.is_empty() {

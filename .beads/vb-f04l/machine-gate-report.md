@@ -38,6 +38,6 @@ STATUS: APPROVED
 
 - `moon ci` -> DEFERRED_GLOBAL.
 - Completed 13 tasks, failed 2, skipped 5.
-- `velvet-ballastics:source-length`: `fatal: not a git repository` and `cargo-mutants residue check failed` in the jj isolated workspace.
-- `velvet-ballastics:test`: `vb_ipc server::impl_tests::serve_ipc_with_resolver_none_timeout_none_resolver_returns_ok_when_client_connected` failed with `BindFailed ... path must be shorter than SUN_LEN`.
+- `velvet-ballistics:source-length`: `fatal: not a git repository` and `cargo-mutants residue check failed` in the jj isolated workspace.
+- `velvet-ballistics:test`: `vb_ipc server::impl_tests::serve_ipc_with_resolver_none_timeout_none_resolver_returns_ok_when_client_connected` failed with `BindFailed ... path must be shorter than SUN_LEN`.
 - Classification: unrelated global/environmental debt for vb-f04l scope.

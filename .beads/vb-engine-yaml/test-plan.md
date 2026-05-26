@@ -15,7 +15,7 @@ Test plan based on: `contract.md`, `traceability-matrix.jsonl`, `proof-obligatio
 - `crates/vb_yaml/src/profile_tests.rs`: `single_document_accepted`, `empty_source_rejected`, `multiple_documents_rejected`, `anchor_rejected`, `duplicate_keys_rejected`, `flow_collection_rejected`
 - `crates/vb_yaml/src/profile_tests_adversarial.rs`: adversarial YAML inputs
 - `crates/vb_validate/tests/capability_contract_schema.rs`: capability schema validation
-- `crates/velvet_ballastics/tests/ir_artifact_admission.rs`: IR artifact admission tests
+- `crates/velvet_ballistics/tests/ir_artifact_admission.rs`: IR artifact admission tests
 
 **Gaps:** None identified. Coverage adequate for admission gate behavior.
 
@@ -52,7 +52,7 @@ Test plan based on: `contract.md`, `traceability-matrix.jsonl`, `proof-obligatio
 
 **Existing tests:**
 - `crates/vb_yaml/src/profile_tests_adversarial.rs`: adversarial YAML including unsupported constructs
-- `crates/velvet_ballastics/tests/admission_evidence_integration.rs`: admission evidence integration
+- `crates/velvet_ballistics/tests/admission_evidence_integration.rs`: admission evidence integration
 - IPC/backpressure scenarios: not covered by unit tests; covered by TLA+ model (PO-005) and Loom (PO-013)
 
 **Gaps:** IPC backpressure scenarios are covered by formal verification (TLA+ PO-005, Loom PO-013). Unit test gaps for direct IPC submit rejection are not critical given formal proof coverage.
@@ -81,7 +81,7 @@ Test plan based on: `contract.md`, `traceability-matrix.jsonl`, `proof-obligatio
 ## Verification Approach
 
 - **Unit tests**: Run `cargo test -p vb_yaml` and `cargo test -p vb_runtime` to verify existing tests pass
-- **Integration tests**: Run `cargo test -p velvet_ballastics --test ir_artifact_admission` for admission scenarios
+- **Integration tests**: Run `cargo test -p velvet_ballistics --test ir_artifact_admission` for admission scenarios
 - **Formal verification**: TLA+ (PO-002 through PO-006) and Loom (PO-013) already provide coverage for temporal/concurrent behavior
 - **Property tests**: Proptest already covers in `crates/vb_core/tests/proptest_core_types.rs`
 

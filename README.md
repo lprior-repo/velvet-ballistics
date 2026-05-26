@@ -1,27 +1,27 @@
-# velvet-ballastics
+# velvet-ballistics
 
 A formally bounded workflow runtime for AI agent orchestration.
 
 **TigerBeetle's engineering discipline applied to LangGraph's market.**
 
-velvet-ballastics is a nightly-Rust, single-binary orchestration engine that compiles YAML workflows into compact IR, dispatches them through a shard-owned in-memory runtime with native action dispatch, and persists events through Fjall-backed append-only storage. No HTTP, no JSON, no async runtime in the hot path. Every transition is bounded, numeric, and benchmarkable.
+velvet-ballistics is a nightly-Rust, single-binary orchestration engine that compiles YAML workflows into compact IR, dispatches them through a shard-owned in-memory runtime with native action dispatch, and persists events through Fjall-backed append-only storage. No HTTP, no JSON, no async runtime in the hot path. Every transition is bounded, numeric, and benchmarkable.
 
 ## Why This Exists
 
-Existing workflow engines (Temporal, Restate, Inngest, Prefect, BullMQ) share a common trait: they trust the runtime to behave. They don't bound memory, don't track information flow, and interpret IR at runtime. This works for traditional workflows but fails for AI agent orchestration where:
+Existing workflow engines (Temporal, Inngest, Prefect, BullMQ) share a common trait: they trust the runtime to behave. They don't bound memory, don't track information flow, and interpret IR at runtime. This works for traditional workflows but fails for AI agent orchestration where:
 
 - **Agent loops can explode** — unbounded retry, fan-out, and list processing need hard resource limits, not soft timeouts
 - **Secrets leak through control flow** — a secret-tainted value choosing which public branch runs is an information channel
 - **Interpretation overhead compounds** — agent workflows run tight loops with expression evaluation at every step
 
-velvet-ballastics addresses all four dimensions:
+velvet-ballistics addresses all four dimensions:
 
-| | velvet-ballastics | Temporal | Restate | LangGraph |
-|---|---|---|---|---|
-| Formal resource bounds | Checked arithmetic, bounded frames, slot budgets | Timeouts only | Timeouts only | No |
-| Taint tracking | Clean/DerivedFromSecret/Secret lattice | No | No | No |
-| IR compilation | 34 CompiledNodeKind variants with exact semantics | Interpreted | Interpreted | Interpreted |
-| Native code generation | maxperf profile generates Rust, zero interpreter | No | No | No |
+| | velvet-ballistics | Temporal | LangGraph |
+|---|---|---|---|
+| Formal resource bounds | Checked arithmetic, bounded frames, slot budgets | Timeouts only | No |
+| Taint tracking | Clean/DerivedFromSecret/Secret lattice | No | No |
+| IR compilation | 34 CompiledNodeKind variants with exact semantics | Interpreted | Interpreted |
+| Native code generation | maxperf profile generates Rust, zero interpreter | No | No |
 
 ## Architecture
 
@@ -51,7 +51,7 @@ crates/vb_compile      Full compilation pipeline (YAML -> validated IR)
 crates/vb_storage      Fjall journal, envelope, recovery, snapshots
 crates/vb_runtime      Shard engine, action dispatch, primitives, frame pool
 crates/vb_ipc          Unix domain socket server/client, binary protocol
-crates/vb_codegen      Generated Rust code output (maxperf)
+velvet-optional        Optional generated Rust code track
 benches/               Benchmark evidence for speed claims
 ```
 

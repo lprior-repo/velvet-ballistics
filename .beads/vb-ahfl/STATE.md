@@ -210,8 +210,8 @@ input_artifacts_read:
 discovery_commands:
 - `pwd -P`
 - `test -s ".beads/vb-ahfl/contract.md" && test -s ".beads/vb-ahfl/traceability-matrix.jsonl" && test -s ".beads/vb-ahfl/delivery-scope.jsonl"`
-- `rtk grep -n "unsafe|unwrap\(|expect\(|panic!|todo!|unimplemented!|assert!|spawn|tokio|Mutex|RwLock|Atomic|serialize|deserialize|state|transition|lease|queue|retry|cancel" "crates/vb_ui_model" "crates/vb_ui_makepad" "crates/velvet_ballastics" "velvet-ballistics-MASTER.md"`
-- `rtk grep -n "requires|ensures|proof fn|invariant|kani::|loom::|proptest!|fuzz_target|Flux|TLA|Miri|unsafe" "crates/vb_ui_model" "crates/vb_ui_makepad" "crates/velvet_ballastics" "velvet-ballistics-MASTER.md"`
+- `rtk grep -n "unsafe|unwrap\(|expect\(|panic!|todo!|unimplemented!|assert!|spawn|tokio|Mutex|RwLock|Atomic|serialize|deserialize|state|transition|lease|queue|retry|cancel" "crates/vb_ui_model" "crates/vb_ui_makepad" "crates/velvet_ballistics" "velvet-ballistics-MASTER.md"`
+- `rtk grep -n "requires|ensures|proof fn|invariant|kani::|loom::|proptest!|fuzz_target|Flux|TLA|Miri|unsafe" "crates/vb_ui_model" "crates/vb_ui_makepad" "crates/velvet_ballistics" "velvet-ballistics-MASTER.md"`
 written_artifacts:
 - `.beads/vb-ahfl/proof-strategy.md`
 - `.beads/vb-ahfl/proof-plan-review-input.md`
@@ -419,8 +419,8 @@ input_artifacts_read:
 discovery_commands:
 - `pwd -P` exit=0, output=`/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-ahfl`
 - `test -s ".beads/vb-ahfl/contract.md" && test -s ".beads/vb-ahfl/traceability-matrix.jsonl" && test -s ".beads/vb-ahfl/delivery-scope.jsonl"` exit=0
-- `rtk grep -n "unsafe|unwrap\(|expect\(|panic!|todo!|unimplemented!|assert!|spawn|tokio|Mutex|RwLock|Atomic|serialize|deserialize|state|transition|lease|queue|retry|cancel" "crates/vb_ui_model" "crates/vb_ui_makepad" "crates/velvet_ballastics" "velvet-ballistics-MASTER.md"` exit=0; matched scoped risk terms; no pass result inferred.
-- `rtk grep -n "requires|ensures|proof fn|invariant|kani::|loom::|proptest!|fuzz_target|Flux|TLA|Miri|unsafe" "crates/vb_ui_model" "crates/vb_ui_makepad" "crates/velvet_ballastics" "velvet-ballistics-MASTER.md"` exit=0; matched scoped verifier/proof terms; no pass result inferred.
+- `rtk grep -n "unsafe|unwrap\(|expect\(|panic!|todo!|unimplemented!|assert!|spawn|tokio|Mutex|RwLock|Atomic|serialize|deserialize|state|transition|lease|queue|retry|cancel" "crates/vb_ui_model" "crates/vb_ui_makepad" "crates/velvet_ballistics" "velvet-ballistics-MASTER.md"` exit=0; matched scoped risk terms; no pass result inferred.
+- `rtk grep -n "requires|ensures|proof fn|invariant|kani::|loom::|proptest!|fuzz_target|Flux|TLA|Miri|unsafe" "crates/vb_ui_model" "crates/vb_ui_makepad" "crates/velvet_ballistics" "velvet-ballistics-MASTER.md"` exit=0; matched scoped verifier/proof terms; no pass result inferred.
 blocked_discovery_commands: none.
 written_artifacts:
 - `.beads/vb-ahfl/proof-strategy.md`
@@ -620,7 +620,7 @@ workspace_evidence:
 - Path guard passed with `test "$(pwd -P)" = "/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-ahfl"`.
 input_repairs_read:
 - `.beads/vb-ahfl/contract.md` records `BLOCKER-SCOPE-001` resolved for the UI artifact schema parity stack and engine YAML-to-IR excluded unless State 2/3/4/5 are regenerated.
-- `.beads/vb-ahfl/delivery-scope.jsonl` records `vb-ahfl`, touched crates `crates/vb_ui_model`, `crates/vb_ui_makepad`, `crates/velvet_ballastics`, and the cold-path UI model boundary clause.
+- `.beads/vb-ahfl/delivery-scope.jsonl` records `vb-ahfl`, touched crates `crates/vb_ui_model`, `crates/vb_ui_makepad`, `crates/velvet_ballistics`, and the cold-path UI model boundary clause.
 - `.beads/vb-ahfl/verification-layers.md` records the repaired static boundary command as dependency/import scoped and comment-text tolerant.
 - Prior State 6 reviews were read from `.beads/vb-ahfl/proof-review.md`, `.beads/vb-ahfl/proof-findings.jsonl`, `.beads/vb-ahfl/proof-repair-guide.md`, and `.beads/vb-ahfl/contract-verification-review.md`.
 repair_delta:
@@ -668,7 +668,7 @@ workspace_evidence:
 - Focused commands ran with `TMPDIR=target/tmp` after `target/tmp` was created in the isolated workspace.
 input_repairs_read:
 - `.beads/vb-ahfl/contract.md` records `SCOPE-001` / `BLOCKER-SCOPE-001` resolved for the UI artifact schema parity stack, with engine YAML-to-IR excluded unless State 2/3/4/5 are regenerated.
-- `.beads/vb-ahfl/delivery-scope.jsonl` records bead `vb-ahfl`, touched crates `crates/vb_ui_model`, `crates/vb_ui_makepad`, and `crates/velvet_ballastics`, plus metadata and cold-path boundary clauses.
+- `.beads/vb-ahfl/delivery-scope.jsonl` records bead `vb-ahfl`, touched crates `crates/vb_ui_model`, `crates/vb_ui_makepad`, and `crates/velvet_ballistics`, plus metadata and cold-path boundary clauses.
 - `.beads/vb-ahfl/proof-strategy.md`, `.beads/vb-ahfl/proof-plan-review-input.md`, and `.beads/vb-ahfl/proof-obligations.planned.jsonl` from State 4 attempt 4.
 - Prior State 6 reviews from `.beads/vb-ahfl/proof-review.md`, `.beads/vb-ahfl/proof-findings.jsonl`, `.beads/vb-ahfl/proof-repair-guide.md`, and `.beads/vb-ahfl/contract-verification-review.md`.
 commands_run:

@@ -9,7 +9,7 @@ rerun_from: 6
 ## Verification Command
 
 ```bash
-rtk cargo test --package velvet_ballastics --test lifecycle_integration -- --test-threads=1
+rtk cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1
 ```
 
 ## Test Results: 39 passed; 4 failed
@@ -91,7 +91,7 @@ But the actual code does NOT corrupt anything:
 ```rust
 fn replay_with_malformed_event_returns_replay_corruption() {
     let (_dir, journal) = temp_journal();  // clean journal
-    let result = velvet_ballastics::lifecycle::replay(&journal);  // no corruption applied
+    let result = velvet_ballistics::lifecycle::replay(&journal);  // no corruption applied
     // ...
 }
 ```
@@ -124,7 +124,7 @@ But the actual code does NOT create any gap:
 ```rust
 fn replay_with_missing_event_returns_replay_corruption() {
     let (_dir, journal) = temp_journal();  // clean journal, no events
-    let result = velvet_ballastics::lifecycle::replay(&journal);  // no gap created
+    let result = velvet_ballistics::lifecycle::replay(&journal);  // no gap created
     // ...
 }
 ```

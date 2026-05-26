@@ -4,7 +4,7 @@
 - **Bead ID:** vb-qi37.16.4
 - **Title:** cli/runtime: Implement durable answer command
 - **State:** GoMasterOrchestrator State 3 (contract synthesis only, no implementation)
-- **Touched crates:** `velvet_ballastics`, `vb_runtime`, `vb_storage`
+- **Touched crates:** `velvet_ballistics`, `vb_runtime`, `vb_storage`
 - **Domain terms:** AskTicket, AskAnswer, AskAnswered journal event, SlotWritten, answer routing, secret redaction, journal replay, durable answer
 
 ## Assumptions
@@ -12,8 +12,8 @@
 - `AskTicket` and `AskAnswer` types are already declared in `vb_runtime/src/shard/types.rs`.
 - `handle_ask_answer` exists in `Shard` with journal events `AskAnswered` and `SlotWritten`.
 - Runtime trace events for ask-answer diagnostics are declared in `vb_runtime/src/trace.rs`.
-- Answer routing lives under `crates/velvet_ballastics/src/storage.rs`.
-- Integration tests live under `crates/velvet_ballastics/tests/cli_integration.rs`.
+- Answer routing lives under `crates/velvet_ballistics/src/storage.rs`.
+- Integration tests live under `crates/velvet_ballistics/tests/cli_integration.rs`.
 
 ## Open Questions
 - Whether the answer value is loaded from `value_file` as raw bytes or as a pre-parsed `SlotValue` handle — **resolve before implementation**.
@@ -55,7 +55,7 @@
 
 ## Contract Signatures
 ```rust
-// CLI surface (velvet_ballastics/src/args.rs already declares this variant)
+// CLI surface (velvet_ballistics/src/args.rs already declares this variant)
 Command::Answer { run_id, step, value_file, db, output }
 
 // Runtime journal event

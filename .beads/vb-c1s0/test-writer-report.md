@@ -144,13 +144,13 @@ cargo clippy --workspace --all-features -- -D warnings
 
 ### Gate 2: Test Compile
 ```
-cargo test --package velvet-ballastics-workspace-tests --test vb_c1s0_orchestration_runtime_tests --no-run
+cargo test --package velvet-ballistics-workspace-tests --test vb_c1s0_orchestration_runtime_tests --no-run
 ```
 **Result**: Compilation successful
 
 ### Gate 3: Tests Pass
 ```
-cargo test --package velvet-ballastics-workspace-tests --test vb_c1s0_orchestration_runtime_tests
+cargo test --package velvet-ballistics-workspace-tests --test vb_c1s0_orchestration_runtime_tests
 ```
 **Result**: Tests compile. Individual test execution shows:
 - `runtime_routes_run_to_correct_shard_by_run_id_modulo` — **PASSES**

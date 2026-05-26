@@ -49,14 +49,14 @@ This bead covers **evidence tests for the idempotency gate verifier**: static an
   - 2 proptest harnesses covering action IDs 0..128
   - Tests: validate_action_idempotency_contract (5 variants), collect_idempotency_contract_violations (6 variants), is_statically_idempotent_contract (11 variants), runtime verify_idempotency (4 variants), validate_idempotency_key_ingredients (2 variants), validate_workflow_idempotency_contracts (4 variants)
 
-### velvet_ballastics — CLI and Action Table
-- **`crates/velvet_ballastics/src/main.rs`**
+### velvet_ballistics — CLI and Action Table
+- **`crates/velvet_ballistics/src/main.rs`**
   - `action_idempotency_name(value)` → maps Idempotency to string (line 638)
   - `action_idempotency_rule(idempotency, retry_safety)` → idempotency rule description (line 678)
   - Action table output with idempotency column (lines 363, 434, 476, 540–545)
 
 ### lifecycle integration tests — retry/replay
-- **`crates/velvet_ballastics/tests/lifecycle_integration.rs`**
+- **`crates/velvet_ballistics/tests/lifecycle_integration.rs`**
   - `replay(&journal)` calls (lines 116, 160, 203, 246, 290)
   - `retry(run, &journal)` tests for all state transitions
 
@@ -156,7 +156,7 @@ No dependency changes anticipated for this bead. This bead is test/infrastructur
 | Kani proofs | `kani/` | NO coverage for idempotency gate (only uses idempotency as test data) |
 | Verus proofs | `verification/verus/` | lemma_join_idempotent (taint lattice), lemma_terminal_idempotency (state machine) — not gate-specific |
 | Unit tests | `crates/vb_validate/tests/idempotency_contract_red.rs` | EXISTS — 28+ tests |
-| Integration tests | `crates/velvet_ballastics/tests/lifecycle_integration.rs` | EXISTS — retry/replay coverage |
+| Integration tests | `crates/velvet_ballistics/tests/lifecycle_integration.rs` | EXISTS — retry/replay coverage |
 | Fuzz targets | `fuzz/src/bin/replay_events.rs` | EXISTS |
 
 ---

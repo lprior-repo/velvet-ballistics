@@ -4,7 +4,7 @@
 use crate::ids::{ConstIdx, SlotIdx, StepIdx};
 use crate::limits::{MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE};
 
-use crate::compiled_workflow::{ExprBranch, SlotBranch, WorkflowParts};
+use crate::workflow::{ExprBranch, SlotBranch, WorkflowParts};
 use crate::nodes::{CompiledNode, CompiledNodeKind};
 use crate::validation::{
     validate_const, validate_expr, validate_optional_slot, validate_optional_step, validate_slot,

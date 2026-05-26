@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sharp workspace architecture assertions for velvet-ballastics."""
+"""Sharp workspace architecture assertions for velvet-ballistics."""
 
 from __future__ import annotations
 
@@ -26,7 +26,6 @@ ACTIVE_MEMBERS = frozenset(
 
 DEFERRED_MEMBERS = frozenset(
     {
-        "crates/vb_codegen",
         "crates/vb_ui_makepad",
         "crates/vb_ui_snapshot",
         "crates/vb_proof_kernels",
@@ -57,17 +56,16 @@ EXPECTED_PACKAGE_NAMES = {
     "crates/vb_runtime": "vb_runtime",
     "crates/vb_doc": "vb_doc",
     "crates/vb_ipc": "vb_ipc",
-    "crates/vb_codegen": "vb_codegen",
     "crates/vb_ui_makepad": "vb_ui_makepad",
     "crates/vb_ui_snapshot": "vb_ui_snapshot",
     "crates/vb_proof_kernels": "vb_proof_kernels",
-    "crates/vb_cli": "velvet-ballastics",
+    "crates/vb_cli": "velvet-ballistics",
     "crates/vb_verification": "vb_verification",
-    "crates/workspace_tests": "velvet-ballastics-workspace-tests",
+    "crates/workspace_tests": "velvet-ballistics-workspace-tests",
     "crates/vb_benchmark": "vb_benchmark",
-    "fuzz": "velvet-ballastics-fuzz",
+    "fuzz": "velvet-ballistics-fuzz",
 }
-EXPECTED_BINARIES = {"crates/vb_cli": {"velvet-ballastics"}}
+EXPECTED_BINARIES = {"crates/vb_cli": {"velvet-ballistics"}}
 EXPECTED_FEATURES = {
     "crates/vb_core": {"default", "generated", "bench", "volatile", "test-util"},
     "crates/vb_validate": {"default", "verus"},

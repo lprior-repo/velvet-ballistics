@@ -34,12 +34,12 @@
 
 ## Focused Gate Evidence
 
-- Compile: `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract --no-run` exited 0.
-- Focused State 8 tests: `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract -- --nocapture` exited non-zero as failing-first evidence: 11 passed, 2 failed.
+- Compile: `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract --no-run` exited 0.
+- Focused State 8 tests: `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract -- --nocapture` exited non-zero as failing-first evidence: 11 passed, 2 failed.
   - Failing test: `given_recovery_critical_slot_payload_when_accessor_contract_is_scanned_then_decode_error_is_not_erased`.
   - Failing test: `given_persisted_payload_fuzz_target_when_oracle_is_scanned_then_malformed_decode_classes_are_exhaustive`.
   - Full output: `/home/lewis/.local/share/rtk/tee/1778907508_cargo_test.log`.
-- Proptest: `TMPDIR=target/tmp RUSTC_WRAPPER= PROPTEST_CASES=1000 rtk cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract proptest -- --nocapture` exited 0: 1 passed, 12 filtered.
+- Proptest: `TMPDIR=target/tmp RUSTC_WRAPPER= PROPTEST_CASES=1000 rtk cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract proptest -- --nocapture` exited 0: 1 passed, 12 filtered.
 - Fuzz list: `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo fuzz list` exited 0 and listed `vb_qi37_12_persisted_payload_decode`.
 - Fuzz execution: `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo fuzz run vb_qi37_12_persisted_payload_decode --target x86_64-unknown-linux-gnu -- -runs=100` exited 0 after compiling and launching the target.
 - Focused storage decode: `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p vb_storage decode_rejects -- --nocapture` exited 0: 36 passed, 947 filtered.
@@ -188,7 +188,7 @@ Added 23 new tests to reach toward the 36-test plan (Section 14.3):
 
 ### Final Gate Evidence
 
-- **Compile:** `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract --no-run` → exit 0
+- **Compile:** `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract --no-run` → exit 0
 - **Tests:** `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test ... -- --nocapture` → 38 passed, 9 failed, 0 ignored
 - **Proptest:** `PROPTEST_CASES=1000 ... proptest -- --nocapture` → 1 passed, 46 filtered
 - **Banned pattern check:** `rtk grep -rn "assert!(result\.is_ok())\|assert!(result\.is_err())" tests/ crates/workspace_tests/tests/` → all 4 hits are quarantined with `#[ignore]`
@@ -252,7 +252,7 @@ prop_assert!(report_contains_static_test, "report must contain static test 323; 
 
 ### Final Gate Evidence
 
-- **Compile**: `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract --no-run` → exit 0
+- **Compile**: `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_12_state8_silent_discard_contract --no-run` → exit 0
 - **Tests**: 38 passed, 9 failed, 0 ignored (unchanged — 9 failures are intentional red-first)
 - **Proptest**: 1 passed, 46 filtered → exit 0
 - **Banned x==x check**: `rtk grep -n "prop_assert_eq!\(\s*model_total"` → 0 matches (hollow tautology gone)

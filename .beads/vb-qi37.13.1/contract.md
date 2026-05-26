@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Define the contract for typed structured CLI output envelope schemas for `velvet-ballastics` v1. This bead is schema-definition only: it may introduce or specify cold-path CLI schema types, kind vocabulary, version constants, validation rules, and mapping rules, but it must not flip existing command emitters from JSON/JSONL to YAML/Postcard and must not implement production code or tests in this State 3 artifact.
+Define the contract for typed structured CLI output envelope schemas for `velvet-ballistics` v1. This bead is schema-definition only: it may introduce or specify cold-path CLI schema types, kind vocabulary, version constants, validation rules, and mapping rules, but it must not flip existing command emitters from JSON/JSONL to YAML/Postcard and must not implement production code or tests in this State 3 artifact.
 
 The canonical v1 structured output formats are:
 
@@ -16,17 +16,17 @@ JSON/JSONL are not canonical v1 structured output formats. If retained temporari
 Inputs inspected:
 
 - `.beads/vb-qi37.13.1/codebase-map.md`
-- `crates/velvet_ballastics/src/args.rs`
-- `crates/velvet_ballastics/src/main.rs` search results for current JSON helpers and help text
-- `crates/velvet_ballastics/src/agent_context.rs`
-- `crates/velvet_ballastics/src/exit_code.rs`
-- `crates/velvet_ballastics/src/commands_verify.rs`
-- `crates/velvet_ballastics/src/commands_status.rs`
-- `crates/velvet_ballastics/src/commands_ai_context.rs`
-- `crates/velvet_ballastics/src/commands_diff.rs`
-- `crates/velvet_ballastics/src/commands_incident.rs`
-- `crates/velvet_ballastics/src/commands_journal.rs`
-- `crates/velvet_ballastics/src/commands_workflow.rs`
+- `crates/velvet_ballistics/src/args.rs`
+- `crates/velvet_ballistics/src/main.rs` search results for current JSON helpers and help text
+- `crates/velvet_ballistics/src/agent_context.rs`
+- `crates/velvet_ballistics/src/exit_code.rs`
+- `crates/velvet_ballistics/src/commands_verify.rs`
+- `crates/velvet_ballistics/src/commands_status.rs`
+- `crates/velvet_ballistics/src/commands_ai_context.rs`
+- `crates/velvet_ballistics/src/commands_diff.rs`
+- `crates/velvet_ballistics/src/commands_incident.rs`
+- `crates/velvet_ballistics/src/commands_journal.rs`
+- `crates/velvet_ballistics/src/commands_workflow.rs`
 - `crates/vb_storage/src/types.rs`
 - `crates/vb_storage/src/codec.rs`
 - `velvet-ballistics-MASTER.md` search results for CLI and envelope constraints
@@ -44,8 +44,8 @@ Inputs inspected:
 
 ## 4. Assumptions
 
-- Schema types will live in `crates/velvet_ballastics/src/` or a future cold CLI-support crate, not in runtime crates.
-- `velvet-ballastics/cli-output/v1` is the canonical text schema version string.
+- Schema types will live in `crates/velvet_ballistics/src/` or a future cold CLI-support crate, not in runtime crates.
+- `velvet-ballistics/cli-output/v1` is the canonical text schema version string.
 - Binary CLI schema version is `1_u16` unless a later approved migration contract changes it.
 - The existing `CliExitCode` discriminants remain canonical for process status and envelope status semantics.
 - `agent-context` may remain JSON temporarily only as a compatibility exception until a downstream migration bead updates it.
@@ -63,11 +63,11 @@ This contract resolves the ambiguity as follows for v1: stdout envelopes may inc
 
 ### P1. Runtime-core isolation
 
-Envelope schema definitions must be added only to `velvet_ballastics` cold CLI code or a cold CLI-support crate. They must not be added to `vb_core`, `vb_runtime`, `vb_storage`, `vb_ipc`, or generated workflow code.
+Envelope schema definitions must be added only to `velvet_ballistics` cold CLI code or a cold CLI-support crate. They must not be added to `vb_core`, `vb_runtime`, `vb_storage`, `vb_ipc`, or generated workflow code.
 
 ### P2. Stable version constants
 
-Every structured text envelope must use schema version `velvet-ballastics/cli-output/v1`. Every binary envelope must use schema version `1_u16`.
+Every structured text envelope must use schema version `velvet-ballistics/cli-output/v1`. Every binary envelope must use schema version `1_u16`.
 
 ### P3. Stable kind selection
 
@@ -95,7 +95,7 @@ Any field with secret or uncertain taint must be redacted or summarized before i
 
 Every successful YAML structured output is representable as:
 
-- `schema_version: velvet-ballastics/cli-output/v1`
+- `schema_version: velvet-ballistics/cli-output/v1`
 - `kind: <stable CliOutputKind name>`
 - `command: <canonical command name>`
 - `exit_code: <CliExitCode discriminant>`
@@ -106,7 +106,7 @@ Every successful YAML structured output is representable as:
 
 Every structured diagnostic is representable as:
 
-- `schema_version: velvet-ballastics/cli-output/v1`
+- `schema_version: velvet-ballistics/cli-output/v1`
 - `kind: DiagnosticReport`
 - `command: <canonical command name if known>`
 - `exit_code: <CliExitCode discriminant>`
@@ -149,7 +149,7 @@ Unknown, older, or newer binary schema versions never decode silently. They retu
 
 ### I1. Version invariant
 
-`schema_version` is non-empty, stable, and equal to `velvet-ballastics/cli-output/v1` for text envelopes in v1.
+`schema_version` is non-empty, stable, and equal to `velvet-ballistics/cli-output/v1` for text envelopes in v1.
 
 ### I2. Kind invariant
 
@@ -329,7 +329,7 @@ Every error path must be testable without panics and must map to a `CliExitCode`
 
 Given a valid workflow and a successful verification result
 When the result is wrapped as `VerificationReport` for `verify --emit yaml`
-Then the envelope has schema version `velvet-ballastics/cli-output/v1`
+Then the envelope has schema version `velvet-ballistics/cli-output/v1`
 And kind `VerificationReport`
 And command `verify`
 And exit code `0`

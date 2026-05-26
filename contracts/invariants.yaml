@@ -1,4 +1,4 @@
-# Mechanical Invariants for velvet-ballastics
+# Mechanical Invariants for velvet-ballistics
 # Executable rules checked by `cargo xtask invariants`
 # Source of truth for what "mechanically enforced" means
 
@@ -308,7 +308,6 @@ invariants:
       - crates/vb_storage/**
       - crates/vb_runtime/**
       - crates/vb_ipc/**
-      - crates/vb_codegen/**
     description: "First-party crates must have #![forbid(unsafe_code)]"
 
   # ============================================================
@@ -323,7 +322,6 @@ invariants:
       - crates/vb_storage/**
       - crates/vb_runtime/**
       - crates/vb_ipc/**
-      - crates/vb_codegen/**
     forbidden:
       - panic!
       - todo!
@@ -345,6 +343,22 @@ invariants:
     applies_to:
       - crates/vb_runtime/src/idempotency.rs
     description: "Non-idempotent actions are not re-executed during replay"
+
+  # ============================================================
+  # ============================================================
+  # COMPILE DIGEST COMPLETENESS
+  # ============================================================
+  - id: digest_primitive_coverage
+    applies_to:
+      - crates/vb_compile/src/mod_compile_lowering/part_05.rs
+    description: "digest_step_primitive must consume all semantic fields of each StepPrimitive variant (not just the variant name). Currently fixed for Repeat; ForEach, Together, Collect, Aggregate, Wait, Ask deferred."
+    tracking_bead: vb-xi2f.31
+
+  - id: digest_no_dead_code_regression
+    applies_to:
+      - crates/vb_compile/src/compile/mod.rs
+    description: "compile/mod.rs is dead code (no module declaration in lib.rs). If reconnected, both duplicate implementations must stay synchronized per TBL-004."
+    tracking_bead: vb-xi2f.31
 
   # ============================================================
   # SHARD OWNERSHIP

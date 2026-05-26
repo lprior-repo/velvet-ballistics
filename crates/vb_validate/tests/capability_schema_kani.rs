@@ -97,7 +97,7 @@ proptest! {
     ) {
         let doc = make_doc(vec![(
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         )]);
         prop_assert_eq!(validate_version(&doc), Ok(()));
     }
@@ -107,7 +107,7 @@ proptest! {
         version_len in 0usize..64usize,
     ) {
         let version: String = "x".repeat(version_len);
-        prop_assume!(version != "velvet-ballastics/v1");
+        prop_assume!(version != "velvet-ballistics/v1");
         let doc = make_doc(vec![("version", FieldValue::String(version.clone()))]);
         let result = validate_version(&doc);
         prop_assert!(result.is_err());
@@ -118,8 +118,8 @@ proptest! {
         prim_idx in 0usize..11usize,
     ) {
         let prims = [
-            "set", "do", "choose", "for_each", "parallel", "collect",
-            "aggregate", "repeat", "wait", "ask", "finish",
+            "set", "do", "choose", "for_each", "together", "collect",
+            "reduce", "repeat", "wait", "ask", "finish",
         ];
         let prim = prims[prim_idx];
         let step = make_step(vec![
@@ -150,8 +150,8 @@ proptest! {
         prim2_idx in 0usize..11usize,
     ) {
         let prims = [
-            "set", "do", "choose", "for_each", "parallel", "collect",
-            "aggregate", "repeat", "wait", "ask", "finish",
+            "set", "do", "choose", "for_each", "together", "collect",
+            "reduce", "repeat", "wait", "ask", "finish",
         ];
         prop_assume!(prim1_idx != prim2_idx);
         let step = make_step(vec![
@@ -246,8 +246,8 @@ proptest! {
         prim_idx in 0usize..11usize,
     ) {
         let prims = [
-            "set", "do", "choose", "for_each", "parallel", "collect",
-            "aggregate", "repeat", "wait", "ask", "finish",
+            "set", "do", "choose", "for_each", "together", "collect",
+            "reduce", "repeat", "wait", "ask", "finish",
         ];
         let doc = make_doc(vec![(
             "steps",
@@ -467,7 +467,7 @@ mod kani_harnesses {
         let doc = make_doc(vec![
             (
                 "version",
-                FieldValue::String("velvet-ballastics/v1".to_owned()),
+                FieldValue::String("velvet-ballistics/v1".to_owned()),
             ),
             ("name", FieldValue::String(name)),
         ]);
@@ -547,7 +547,7 @@ fn kani_integration_valid_workflow_passes_all_schema_gates() {
     let doc = make_doc(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
         (
@@ -639,7 +639,7 @@ fn kani_integration_get_string_returns_correct_value() {
 fn kani_integration_has_field_positive_and_negative() {
     let doc = make_doc(vec![(
         "version",
-        FieldValue::String("velvet-ballastics/v1".to_owned()),
+        FieldValue::String("velvet-ballistics/v1".to_owned()),
     )]);
     assert!(doc.has_field("version"));
     assert!(!doc.has_field("name"));
@@ -670,13 +670,13 @@ fn kani_integration_schedule_trigger_with_cron_accepted() {
 }
 
 #[test]
-fn kani_integration_event_trigger_with_name_accepted() {
+fn kani_integration_event_trigger_with_type_accepted() {
     let doc = make_doc(vec![(
         "when",
         FieldValue::Mapping(vec![(
             "event".to_owned(),
             FieldValue::Mapping(vec![(
-                "name".to_owned(),
+                "type".to_owned(),
                 FieldValue::String("job.created".to_owned()),
             )]),
         )]),
@@ -725,7 +725,7 @@ fn kani_integration_unknown_top_level_field_is_caught() {
     let doc = make_doc(vec![
         (
             "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
         ),
         ("name", FieldValue::String("test".to_owned())),
         (
@@ -751,7 +751,7 @@ fn kani_integration_unknown_top_level_field_is_caught() {
 fn kani_integration_step_with_reduce_primitive_accepted() {
     let step = make_step(vec![
         ("id", FieldValue::String("reduce_step".to_owned())),
-        ("aggregate", FieldValue::Empty),
+        ("reduce", FieldValue::Empty),
     ]);
     assert_eq!(validate_single_primitive(&step), Ok(()));
 }

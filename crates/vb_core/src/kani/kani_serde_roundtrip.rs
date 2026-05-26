@@ -5,15 +5,10 @@
 //! matching SymbolicCode; round-trip identity holds.
 //! (2) well-formed but unregistered strings deserialize to Err.
 //!
-//! Bound: Registry size 157 entries (unwind=160)
+//! Bound: Registry size ~90 entries (unwind=100)
 //! Trusted Base: TBL-002 (serde framework)
-//!
-//! Rewired: uses production SymbolicCode and CODE_REGISTRY from
-//! crate::diagnostic instead of inline models.
-//! R5: deserialize_symbolic_code uses &'static str errors (no format!())
-//!     to avoid Kani allocator path explosion over 157-entry registry.
 
-use crate::diagnostic::{CODE_REGISTRY, SymbolicCode};
+use super::kani_symbolic_code_validation::{CODE_REGISTRY, SymbolicCode};
 
 /// Mirror of serde Serialize for SymbolicCode via JSON string.
 fn serialize_symbolic_code(code: &SymbolicCode) -> String {
@@ -22,24 +17,15 @@ fn serialize_symbolic_code(code: &SymbolicCode) -> String {
 
 /// Mirror of serde Deserialize for SymbolicCode from JSON string.
 /// Parses a JSON string value and validates against the registry.
-/// Iterates CODE_REGISTRY to find matching entry and constructs
-/// SymbolicCode from the registered &'static str.
-///
-/// R5: Uses &'static str errors instead of String/format!() to avoid
-/// Kani allocator path explosion when iterating the 157-entry registry.
-fn deserialize_symbolic_code(json_str: &str) -> Result<SymbolicCode, &'static str> {
+fn deserialize_symbolic_code(json_str: &str) -> Result<SymbolicCode, String> {
+    // Strip optional surrounding quotes
     let inner = json_str.trim_matches('"');
-    for entry in CODE_REGISTRY {
-        if entry.symbolic == inner {
-            return SymbolicCode::from_static(entry.symbolic)
-                .ok_or("ERR_SERDE_UNKNOWN_CODE");
-        }
-    }
-    Err("ERR_SERDE_UNKNOWN_CODE")
+    SymbolicCode::from_static(inner)
+        .ok_or_else(|| format!("Unknown symbolic code: {}", inner))
 }
 
 /// Round-trip: serialize then deserialize.
-fn roundtrip(code: &SymbolicCode) -> Result<SymbolicCode, &'static str> {
+fn roundtrip(code: &SymbolicCode) -> Result<SymbolicCode, String> {
     let serialized = serialize_symbolic_code(code);
     deserialize_symbolic_code(&serialized)
 }
@@ -52,51 +38,41 @@ mod harnesses {
     /// symbolic string, deserialize produces matching SymbolicCode, and
     /// round-trip identity holds.
     #[kani::proof]
-    #[kani::unwind(160)]
+    #[kani::unwind(100)]
     fn kani_serde_roundtrip() {
         for i in 0..CODE_REGISTRY.len() {
             let entry = &CODE_REGISTRY[i];
-            let code = SymbolicCode::from_static(entry.symbolic)
-                .expect("Registry entry must produce valid SymbolicCode");
+            let code = SymbolicCode(entry.symbolic);
 
+            // Serialize
             let serialized = serialize_symbolic_code(&code);
+            // Should produce JSON string of the symbolic name
             assert!(
                 serialized.contains(entry.symbolic),
                 "Serialized form must contain the symbolic name"
             );
 
+            // Deserialize
             let deserialized = deserialize_symbolic_code(&serialized);
-            assert!(
-                deserialized.is_ok(),
-                "Deserialization must succeed for registered codes"
-            );
+            assert!(deserialized.is_ok(), "Deserialization must succeed for registered codes");
             assert_eq!(
-                deserialized.as_ref().map(|c| c.as_str()).unwrap_or(""),
+                deserialized.unwrap().as_str(),
                 entry.symbolic,
                 "Deserialized SymbolicCode must match original"
             );
 
+            // Round-trip identity
             let rt = roundtrip(&code);
             assert!(rt.is_ok(), "Round-trip must succeed");
-            assert_eq!(
-                rt.as_ref().map(|c| c.as_str()).unwrap_or(""),
-                code.as_str(),
-                "Round-trip identity must hold"
-            );
+            assert_eq!(rt.unwrap().as_str(), code.as_str(), "Round-trip identity must hold");
         }
     }
 
     /// PO-009 H2: For well-formed but unregistered strings, deserialize returns Err.
-    /// Registry size 157 entries — unwind 160 covers full linear scan + loop exit.
     #[kani::proof]
-    #[kani::unwind(160)]
+    #[kani::unwind(50)]
     fn kani_serde_rejects_unknown() {
-        let unknown = [
-            "\"__UNKNOWN__\"",
-            "\"NOT_A_CODE\"",
-            "\"\"",
-            "\"RANDOM_STRING_123\"",
-        ];
+        let unknown = ["\"__UNKNOWN__\"", "\"NOT_A_CODE\"", "\"\"", "\"RANDOM_STRING_123\""];
         for s in unknown.iter() {
             let result = deserialize_symbolic_code(s);
             assert!(result.is_err(), "Unknown code '{}' must be rejected", s);

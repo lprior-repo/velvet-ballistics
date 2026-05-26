@@ -24,7 +24,7 @@
 |-------|------|
 | `vb_core` | Core runtime: budget, value store, limits, engine |
 | `vb_validate` | Validation: type_taint resource contract checks |
-| `velvet_ballastics` (root) | Integration tests: adversarial cross-crate tests |
+| `velvet_ballistics` (root) | Integration tests: adversarial cross-crate tests |
 | `fuzz` | Fuzz targets: resource budget fuzzing |
 | `workspace_tests` | Bench integration tests |
 | `vb_runtime` | DEFERRED_GLOBAL (build failure, not in scope) |
@@ -79,7 +79,7 @@
 - `crates/vb_core/src/engine/tests/integration_budget.rs` (184 lines) — step budget integration tests
 - `crates/vb_validate/src/type_taint_tests.rs` — blackhat tests: `blackhat_zero_max_step_budget_per_tick_rejected`, `blackhat_max_step_budget_per_tick_exceeding_hard_limit_rejected`
 - `fuzz/src/lib.rs::fuzz_resource_budget` — fuzz target for resource budget exhaustion
-- `crates/velvet_ballastics/tests/cross_crate_adversarial.rs` (1538 lines) — adversarial integration tests
+- `crates/velvet_ballistics/tests/cross_crate_adversarial.rs` (1538 lines) — adversarial integration tests
 
 ### Verification Artifacts
 - `verification/verus/resource_budget.rs` — Verus specs for budget composition lemmas

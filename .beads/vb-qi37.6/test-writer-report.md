@@ -49,7 +49,7 @@ FUZZ_BINS_PRESENT
 Command:
 
 ```bash
-TMPDIR=/home/lewis/src/vb-qi37-6/.tmp RUSTC_WRAPPER= cargo test -p velvet-ballastics-workspace-tests --test vb_qi37_6_state8_setup
+TMPDIR=/home/lewis/src/vb-qi37-6/.tmp RUSTC_WRAPPER= cargo test -p velvet-ballistics-workspace-tests --test vb_qi37_6_state8_setup
 ```
 
 Result: `2 passed; 0 failed`.
@@ -60,8 +60,8 @@ Result: `2 passed; 0 failed`.
 - `cargo test -p vb_runtime admit_artifact_run_rejects_missing_grants_without_allocation --lib` -> `1 passed; 0 failed`.
 - `cargo test -p vb_runtime admit_artifact_run_rejects_non_exact_grant_without_allocation --lib` -> `1 passed; 0 failed`.
 - `cargo test -p vb_ui_model action_description_view_required_capabilities_roundtrip --lib` -> `1 passed; 0 failed`.
-- `cargo test -p velvet-ballastics-fuzz --features fuzz --bin capability_name_schema --no-run` -> compiled; existing unrelated `fuzz/src/lib.rs:1433` unused-comparison warning remains.
-- `cargo test -p velvet-ballastics-fuzz --features fuzz --bin capability_contract_schema --no-run` -> compiled; same existing fuzz warning remains.
+- `cargo test -p velvet-ballistics-fuzz --features fuzz --bin capability_name_schema --no-run` -> compiled; existing unrelated `fuzz/src/lib.rs:1433` unused-comparison warning remains.
+- `cargo test -p velvet-ballistics-fuzz --features fuzz --bin capability_contract_schema --no-run` -> compiled; same existing fuzz warning remains.
 
 ## Not claimed in State 8
 

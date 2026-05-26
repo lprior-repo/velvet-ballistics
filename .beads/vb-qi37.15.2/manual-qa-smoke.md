@@ -7,7 +7,7 @@ STATUS: PASS
 
 # Manual QA Smoke
 
-Command: `rtk cargo run -p velvet_ballastics --bin vb -- submit /tmp/tmp.2Da1hBOuR6/workflow.yaml --input-bin /tmp/tmp.2Da1hBOuR6/input.bin --db /tmp/tmp.2Da1hBOuR6/db --durability journaled --json`
+Command: `rtk cargo run -p velvet_ballistics --bin vb -- submit /tmp/tmp.2Da1hBOuR6/workflow.yaml --input-bin /tmp/tmp.2Da1hBOuR6/input.bin --db /tmp/tmp.2Da1hBOuR6/db --durability journaled --json`
 
 Verbatim output excerpt:
 

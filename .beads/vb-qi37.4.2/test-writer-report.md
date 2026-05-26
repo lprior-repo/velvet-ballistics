@@ -121,7 +121,7 @@ Coverage against plan:
 
 ### Static bypass/parser scan
 
-- Command: `TMPDIR=target/tmp rtk grep -n "AlwaysPresentArtifactStore|compiled_ir_exists\(|serde_yaml|serde_json|WorkflowParts" crates/vb_runtime/src crates/velvet_ballastics/src`
+- Command: `TMPDIR=target/tmp rtk grep -n "AlwaysPresentArtifactStore|compiled_ir_exists\(|serde_yaml|serde_json|WorkflowParts" crates/vb_runtime/src crates/velvet_ballistics/src`
 - Result: exit 0 with 358 matches.
 - Evidence classification: RED/static-risk. Matches include `AlwaysPresentArtifactStore` in `crates/vb_runtime/src/admission.rs`, strict/journaled legacy `compiled_ir_exists` checks in `admit_run`/`admit_run_with_budget`, default shard construction through `AlwaysPresentArtifactStore::shared()`, and raw `WorkflowParts`/`serde_json` surfaces in runtime/CLI code. This scan is not by itself proof of protected-path violation, but it is sufficient evidence that State 8 cannot claim B12/B13/B14 static gates as green.
 
@@ -210,14 +210,14 @@ No production implementation code, dependency file, CI config, or source checkou
 
 ### Static evidence
 
-- Bypass scan command: `TMPDIR=target/tmp rtk grep -n "AlwaysPresentArtifactStore|compiled_ir_exists\(|admit_run\(|admit_run_with_budget\(" crates/vb_runtime/src crates/velvet_ballastics/src`
+- Bypass scan command: `TMPDIR=target/tmp rtk grep -n "AlwaysPresentArtifactStore|compiled_ir_exists\(|admit_run\(|admit_run_with_budget\(" crates/vb_runtime/src crates/velvet_ballistics/src`
 - Result: exit 0 with 21 matches, including `AlwaysPresentArtifactStore`, legacy `admit_run`, `admit_run_with_budget`, and default shard construction through `AlwaysPresentArtifactStore::shared()`.
-- Parser scan command: `TMPDIR=target/tmp rtk grep -n "serde_yaml|serde_json|WorkflowParts" crates/vb_runtime/src crates/velvet_ballastics/src`
+- Parser scan command: `TMPDIR=target/tmp rtk grep -n "serde_yaml|serde_json|WorkflowParts" crates/vb_runtime/src crates/velvet_ballistics/src`
 - Result: exit 0 with 343 matches. This is red/static-risk evidence; the focused B13 test narrows the strict `admit_artifact_run` body, while broader CLI/runtime parser reachability still requires implementation/reviewer proof.
 
 ### Fuzz compile evidence
 
-- Command: `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo check -p velvet-ballastics-fuzz --features fuzz --bin accepted_artifact_envelope_qi37_4_2`
+- Command: `TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo check -p velvet-ballistics-fuzz --features fuzz --bin accepted_artifact_envelope_qi37_4_2`
 - Result: exit 0.
 
 ### Kani / mutation evidence boundary

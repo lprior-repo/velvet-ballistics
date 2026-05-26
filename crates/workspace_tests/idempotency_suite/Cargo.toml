@@ -1,5 +1,5 @@
 [package]
-name = "velvet-ballastics-idempotency-workspace-tests"
+name = "velvet-ballistics-idempotency-workspace-tests"
 edition.workspace = true
 license.workspace = true
 version.workspace = true
@@ -10,7 +10,7 @@ workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
-vb_cli = { package = "velvet-ballastics", path = "../../vb_cli" }
+vb_cli = { package = "velvet-ballistics", path = "../../vb_cli" }
 vb_core = { path = "../../vb_core" }
 vb_runtime = { path = "../../vb_runtime" }
 vb_storage = { path = "../../vb_storage" }

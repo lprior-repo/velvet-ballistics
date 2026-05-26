@@ -28,14 +28,14 @@ STATUS: PASS
 ## Commands run
 - `bd prime` — PASS for workflow context; Dolt auto-push warning reported non-fast-forward remote.
 - `cargo nextest run -p vb_ui_snapshot -p vb_ui_makepad -p xtask` — initially FAIL, then PASS: 128 run, 128 passed, 0 skipped.
-- `cargo nextest run -p velvet-ballastics-workspace --test vb_nf2u_ui_release_acceptance` — initially FAIL from shared fixture races before serialization, then PASS: 8 run, 8 passed, 0 skipped.
+- `cargo nextest run -p velvet-ballistics-workspace --test vb_nf2u_ui_release_acceptance` — initially FAIL from shared fixture races before serialization, then PASS: 8 run, 8 passed, 0 skipped.
 - `rtk cargo fmt --all` — PASS.
 - `rtk cargo fmt --all --check` — PASS.
 - `cargo fuzz run ui_redaction_artifact -- -runs=1` — FAIL: target is registered, but the environment builds fuzzing for `x86_64-unknown-linux-musl`; sanitizer build failed with `sanitizer is incompatible with statically linked libc, disable it using -C target-feature=-crt-static`.
-- `moon run velvet-ballastics:test` — FAIL before tests in `velvet-ballastics:supply-chain`: cargo-vet rejected newly resolved fuzz dependencies `arbitrary:1.4.2`, `jobserver:0.1.34`, and `libfuzzer-sys:0.4.12` as unvetted, with existing allowed advisory warnings also printed.
+- `moon run velvet-ballistics:test` — FAIL before tests in `velvet-ballistics:supply-chain`: cargo-vet rejected newly resolved fuzz dependencies `arbitrary:1.4.2`, `jobserver:0.1.34`, and `libfuzzer-sys:0.4.12` as unvetted, with existing allowed advisory warnings also printed.
 
 ## Residual risks and skipped gates
 - `cargo fuzz run ui_redaction_artifact -- -runs=1` did not execute the fuzzer body because the local cargo-fuzz sanitizer target is incompatible with static musl libc.
-- `moon run velvet-ballastics:test` remains blocked by supply-chain vetting for cargo-fuzz transitive dependencies introduced while wiring the target.
+- `moon run velvet-ballistics:test` remains blocked by supply-chain vetting for cargo-fuzz transitive dependencies introduced while wiring the target.
 - No performance claim was made; no benchmark or profiler was run.
 - Full `moon ci`, full workspace clippy, Miri, Kani, coverage, mutation, and supply-chain acceptance were not completed in this repair pass.

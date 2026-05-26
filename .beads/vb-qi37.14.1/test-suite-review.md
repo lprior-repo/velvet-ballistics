@@ -84,7 +84,7 @@
   "exit_code": 1,
   "kind": "DiagnosticReport",
   "message": "step 99 not found in workflow",
-  "schema_version": "velvet-ballastics/cli-output/v1"
+  "schema_version": "velvet-ballistics/cli-output/v1"
 }
 ```
 

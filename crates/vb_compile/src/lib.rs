@@ -18,16 +18,36 @@ mod expression_bytecode;
 mod limits;
 mod mod_compile_core;
 mod mod_compile_errors;
-mod mod_compile_lowering;
+pub mod mod_compile_lowering;
 mod mod_compile_validation;
 mod references;
 mod schema;
 pub mod strict_yaml;
 mod type_taint;
 
+// Proptest properties for Finish digest verification (vb-xi2f.34).
+#[cfg(test)]
+mod proptest_finish_digest;
+
+// Kani harnesses for Finish digest verification (vb-xi2f.34).
+#[cfg(kani)]
+pub mod kani_finish_digest;
+
 // TEMPORARILY DISABLED: pre-existing proptest macro compatibility issue in bytecode_ast_parity.rs
 // #[cfg(test)]
 // mod property_tests;
+
+// Internal test modules (error variant completeness, together digest unit tests).
+#[cfg(test)]
+mod tests;
+
+// Kani harnesses for canonical_primitive_name coverage (vb-xi2f.16, vb-xi2f.29).
+#[cfg(kani)]
+pub mod kani_canonical_name;
+
+// Kani harnesses for together digest step verification (vb-xi2f.29).
+#[cfg(kani)]
+pub mod together_digest_kani;
 
 // Kani harnesses for idempotency gate parity verification (State 5 proof-writer).
 #[cfg(kani)]
@@ -43,6 +63,29 @@ pub mod kani_foreach_parity;
 #[cfg(kani)]
 pub mod kani_lower_control;
 
+// Kani harnesses for vb-xi2f.33: digest covering Ask primitives.
+#[cfg(kani)]
+pub mod kani_digest_ask_empty_prompt;
+#[cfg(kani)]
+pub mod kani_digest_ask_field_ordering;
+#[cfg(kani)]
+pub mod kani_digest_ask_prompt_sensitivity;
+#[cfg(kani)]
+pub mod kani_digest_ask_timeout_sensitivity;
+#[cfg(kani)]
+pub mod kani_digest_ask_timeout_sentinel;
+#[cfg(kani)]
+pub mod kani_digest_step_primitive_no_panic;
+
+// Kani harnesses for wait digest coverage verification (vb-xi2f.32).
+#[cfg(kani)]
+pub mod kani_wait_digest;
+
+// Kani harnesses for Repeat digest coverage (bead vb-xi2f.31).
+// PO-001 through PO-005: digest_step_primitive Repeat { max_attempts, body }.
+#[cfg(kani)]
+pub mod kani_digest_repeat;
+
 pub use expression_bytecode::{compile_expr_to_bytecode, compile_expr_to_bytecode_with_accessors};
 
 use mod_compile_core as core;
@@ -52,16 +95,18 @@ use mod_compile_validation as validation;
 
 pub use core::{
     YamlCompiler, YamlLimits, build_accessor_table, build_constant_pool, build_slot_layout,
-    check_idempotency_gates, compile_to_generated_rust, compile_workflow,
-    compile_workflow_with_contracts, compute_compiled_digest, emit_compiled_artifact,
-    is_compile_idempotency_gate_accepted,
+    check_idempotency_gates, compile_workflow, compile_workflow_with_contracts,
+    compute_compiled_digest, emit_compiled_artifact, is_compile_idempotency_gate_accepted,
 };
 pub use errors::{CompileError, CompileErrors, SourceMark};
 pub(crate) use errors::{collect, non_string_key_error};
+#[allow(unused_imports)]
+pub(crate) use lwr::digest_step_primitive as digest_step_primitive_part05;
 pub use lwr::{
-    SlotCompiler, WaitKind, compile_source, lower_ask, lower_choose, lower_collect, lower_do,
-    lower_finish, lower_for_each, lower_reduce, lower_repeat, lower_set, lower_steps_to_ir,
-    lower_together, lower_wait, validate_ir,
+    SlotCompiler, WaitKind, canonical_digest, canonical_digest as canonical_digest_part05,
+    compile_source, lower_ask, lower_choose, lower_collect, lower_do, lower_finish, lower_for_each,
+    lower_reduce, lower_repeat, lower_set, lower_steps_to_ir, lower_together, lower_wait,
+    validate_ir,
 };
 pub(crate) use validation::validate_public_name;
 

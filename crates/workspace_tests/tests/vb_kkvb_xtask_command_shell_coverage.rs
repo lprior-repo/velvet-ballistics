@@ -44,6 +44,7 @@ fn xtask_version_prints_package_version_when_requested() -> Result<(), Box<dyn E
 }
 
 #[test]
+#[ignore] // UI commands moved to velvet-optional repo
 fn xtask_legacy_separator_routes_ui_overlap_check_and_reports_missing_screen()
 -> Result<(), Box<dyn Error>> {
     // Given
@@ -76,6 +77,7 @@ fn xtask_legacy_separator_routes_ui_overlap_check_and_reports_missing_screen()
 }
 
 #[test]
+#[ignore] // UI commands moved to velvet-optional repo
 fn xtask_ui_tokens_writes_rust_constants_when_tokens_are_valid() -> Result<(), Box<dyn Error>> {
     // Given
     let workspace = TempDir::new()?;
@@ -108,6 +110,7 @@ fn xtask_ui_tokens_writes_rust_constants_when_tokens_are_valid() -> Result<(), B
 }
 
 #[test]
+#[ignore] // UI commands moved to velvet-optional repo
 fn xtask_ui_tokens_check_confirms_generated_tokens_when_file_matches() -> Result<(), Box<dyn Error>>
 {
     // Given
@@ -143,6 +146,7 @@ fn xtask_ui_tokens_check_confirms_generated_tokens_when_file_matches() -> Result
 }
 
 #[test]
+#[ignore] // UI commands moved to velvet-optional repo
 fn xtask_ui_tokens_check_rejects_stale_generated_tokens() -> Result<(), Box<dyn Error>> {
     // Given
     let workspace = TempDir::new()?;
@@ -173,6 +177,7 @@ fn xtask_ui_tokens_check_rejects_stale_generated_tokens() -> Result<(), Box<dyn 
 }
 
 #[test]
+#[ignore] // UI commands moved to velvet-optional repo
 fn xtask_ui_snapshot_captures_named_fixture_and_writes_report() -> Result<(), Box<dyn Error>> {
     // Given
     let workspace = TempDir::new()?;
@@ -205,6 +210,7 @@ fn xtask_ui_snapshot_captures_named_fixture_and_writes_report() -> Result<(), Bo
 }
 
 #[test]
+#[ignore] // UI commands moved to velvet-optional repo
 fn xtask_ui_snapshot_rejects_invocation_without_all_or_fixture() -> Result<(), Box<dyn Error>> {
     // Given
     let workspace = TempDir::new()?;

@@ -59,7 +59,7 @@ impl Display for RuntimeError { ... fmt() for EngineDriveFailed ... }
 
 ```bash
 # Focused tests
-TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballastics-workspace-tests \
+TMPDIR=target/tmp RUSTC_WRAPPER= rtk cargo test -p velvet-ballistics-workspace-tests \
   --test vb_qi37_12_state8_silent_discard_contract
 
 # Compile check

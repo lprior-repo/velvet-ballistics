@@ -24,7 +24,7 @@ STATUS: APPROVED
 Focused coverage command:
 
 ```bash
-cargo llvm-cov nextest -p xtask -p velvet-ballastics-workspace-tests -p velvet-ballastics-workspace
+cargo llvm-cov nextest -p xtask -p velvet-ballistics-workspace-tests -p velvet-ballistics-workspace
 ```
 
 Focused xtask coverage evidence:

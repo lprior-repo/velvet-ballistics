@@ -71,6 +71,64 @@ pub enum YamlError {
 
     #[error("forbidden YAML feature: {detail}")]
     ForbiddenFeature { detail: &'static str },
+
+    #[error("legacy primitive not supported: {primitive} (use {canonical} instead)")]
+    LegacyPrimitive {
+        primitive: &'static str,
+        canonical: &'static str,
+    },
+}
+
+impl YamlError {
+    /// Returns the stable symbolic diagnostic code for this YAML error.
+    ///
+    /// Mapping matches error-taxonomy §2.3:
+    /// - `DUPLICATE_KEY`: DuplicateKey
+    /// - `FORBIDDEN_YAML_FEATURE`: ForbiddenFeature, AnchorAliasMerge, CustomTag, BinaryScalar, AmbiguousScalar, UnsupportedFeature, MultipleDocuments, ParseError, LegacyPrimitive
+    /// - `UNSUPPORTED_TRIGGER`: UnsupportedTrigger
+    /// - `PAYLOAD_TOO_LARGE`: SourceTooLarge
+    /// - `LIMIT_EXCEEDED`: NestingTooDeep, NodeLimitExceeded, ScalarTooLong, SequenceTooLong, MappingTooLarge
+    /// - `UNKNOWN_TOP_LEVEL_FIELD`: UnknownField
+    /// - `MISSING_REQUIRED_FIELD`: EmptySource, MissingField
+    /// - `TYPE_MISMATCH`: FieldShape
+    #[must_use]
+    pub fn code(&self) -> SymbolicCode {
+        let s: &'static str = match self {
+            Self::DuplicateKey { .. } => "DUPLICATE_KEY",
+            Self::ForbiddenFeature { .. }
+            | Self::AnchorAliasMerge
+            | Self::CustomTag { .. }
+            | Self::BinaryScalar
+            | Self::MultipleDocuments { .. }
+            | Self::AmbiguousScalar { .. }
+            | Self::UnsupportedFeature { .. }
+            | Self::ParseError { .. }
+            | Self::LegacyPrimitive { .. } => "FORBIDDEN_YAML_FEATURE",
+            Self::UnsupportedTrigger { .. } => "UNSUPPORTED_TRIGGER",
+            Self::SourceTooLarge { .. } => "PAYLOAD_TOO_LARGE",
+            Self::NestingTooDeep { .. }
+            | Self::NodeLimitExceeded { .. }
+            | Self::ScalarTooLong { .. }
+            | Self::SequenceTooLong { .. }
+            | Self::MappingTooLarge { .. } => "LIMIT_EXCEEDED",
+            Self::UnknownField { .. } => "UNKNOWN_TOP_LEVEL_FIELD",
+            Self::EmptySource | Self::MissingField { .. } => "MISSING_REQUIRED_FIELD",
+            Self::FieldShape { .. } => "TYPE_MISMATCH",
+        };
+        // Safety invariant: all YamlError symbolic codes are registered
+        // in vb_core::CODE_REGISTRY (verified by Kani).
+        if let Some(code) = SymbolicCode::from_static(s) {
+            return code;
+        }
+        // Unreachable: all match arms use registered symbolic names.
+        SymbolicCode::INTERNAL_INVARIANT
+    }
+}
+
+impl HasSymbolicCode for YamlError {
+    fn symbolic_code(&self) -> SymbolicCode {
+        self.code()
+    }
 }
 
 impl HasSymbolicCode for YamlError {

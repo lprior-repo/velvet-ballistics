@@ -877,7 +877,7 @@ fn cli_exit_code_all_9_variants_distinct() {
 #[test]
 fn parse_error_unknown_command_exit_code_is_1() {
     // ERR-Taxonomy: UnknownCommand → CliExitCode::ValidationFailed (exit 1)
-    let parsed = crate::args::parse_args(&args(&["velvet-ballastics", "foobar"]));
+    let parsed = crate::args::parse_args(&args(&["velvet-ballistics", "foobar"]));
     assert!(
         matches!(parsed, Err(ParseError::UnknownCommand(_))),
         "foobar must be UnknownCommand"
@@ -909,7 +909,7 @@ proptest! {
     ) {
         // Property 1: Every valid command string is handled without panic
         // Some commands need additional args, so Err is acceptable
-        let parsed = crate::args::parse_args(&args(&["velvet-ballastics", cmd_name]));
+        let parsed = crate::args::parse_args(&args(&["velvet-ballistics", cmd_name]));
         assert!(matches!(parsed, Ok(_) | Err(_)));
     }
 
@@ -925,7 +925,7 @@ proptest! {
         ];
         prop_assume!(!known.contains(&cmd_name.as_str()));
 
-        let parsed = crate::args::parse_args(&args(&["velvet-ballastics", &cmd_name]));
+        let parsed = crate::args::parse_args(&args(&["velvet-ballistics", &cmd_name]));
         assert!(matches!(parsed, Err(ParseError::UnknownCommand(_))));
     }
 
@@ -937,7 +937,7 @@ proptest! {
     ][..])) {
         // Property: Only "strict", "journaled", "none" parse successfully
         let parsed = crate::args::parse_args(&args(&[
-            "velvet-ballastics", "run", "w.yaml", "--input-bin", "i.bin",
+            "velvet-ballistics", "run", "w.yaml", "--input-bin", "i.bin",
             "--durability", input, "--db", "/tmp/j",
         ]));
         let expected_mode = match input {
@@ -958,7 +958,7 @@ proptest! {
     fn parse_durability_rejects_invalid_durability(input in "invalid_durability_[a-z]{5,20}") {
         // Property: Invalid durability strings return UnknownDurability
         let parsed = crate::args::parse_args(&args(&[
-            "velvet-ballastics", "run", "w.yaml", "--input-bin", "i.bin",
+            "velvet-ballistics", "run", "w.yaml", "--input-bin", "i.bin",
             "--durability", &input,
         ]));
         assert!(matches!(parsed, Err(ParseError::UnknownDurability(_))));

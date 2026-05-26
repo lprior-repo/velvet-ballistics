@@ -21,7 +21,7 @@ Attempt 3 repair scope: fix exact obligation commands rejected in State 11 only.
 - `cargo +nightly fmt --all --check`.
 - `cargo +nightly clippy -p vb_compile --lib --bins --examples --all-features -- -D warnings` (strict source lint per repository governance; test clippy is not strict).
 - `cargo +nightly test -p vb_compile --all-targets --all-features`.
-- Selected workspace compile/error integration tests under actual package `velvet-ballastics-workspace-tests`.
+- Selected workspace compile/error integration tests under actual package `velvet-ballistics-workspace-tests`.
 - `moon ci` rollup.
 - Static source review/checks for facade/private modules, no new public internal modules, acyclic module dependencies, stale scaffolding disposition, visibility leakage, forbidden constructs, and source length.
 - Kani idempotency parity: `cargo kani --package vb_compile --harness idempotency_gate_parity --quiet`.
@@ -41,7 +41,7 @@ Attempt 3 repair scope: fix exact obligation commands rejected in State 11 only.
 3. Is the TLA+ non-applicability rationale acceptable, or is there an actual temporal risk hidden in the refactor?
 4. Is the Kani command sufficiently repository-supported by existing `scripts/rust-verification-gauntlet.sh` command style and in-crate harness declaration?
 5. Should Miri be promoted to required for this refactor, or is optional/deep with compensating evidence acceptable?
-6. Are the attempt 3 exact-command repairs acceptable: `workspace_tests` package references corrected to `velvet-ballastics-workspace-tests`, and `STATIC-001` aligned to source-only strict clippy because test clippy is not strict under repository governance?
+6. Are the attempt 3 exact-command repairs acceptable: `workspace_tests` package references corrected to `velvet-ballistics-workspace-tests`, and `STATIC-001` aligned to source-only strict clippy because test clippy is not strict under repository governance?
 
 ## Reviewer Inputs
 

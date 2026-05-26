@@ -5,5 +5,5 @@ attempt: 1-of-7
 
 # Proof evidence
 
-- `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_ssei_verification_admission_acceptance -- --nocapture` -> `cargo test: 4 passed (1 suite, 0.00s)`.
-- `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog -- --nocapture` -> `cargo test: 6 passed (1 suite, 0.00s)`.
+- `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_ssei_verification_admission_acceptance -- --nocapture` -> `cargo test: 4 passed (1 suite, 0.00s)`.
+- `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog -- --nocapture` -> `cargo test: 6 passed (1 suite, 0.00s)`.

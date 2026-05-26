@@ -9,9 +9,9 @@ STATUS: APPROVED
 
 ## Tests Executed
 
-- `cargo test -p velvet_ballastics --test admission_evidence_integration`: 8 passed.
+- `cargo test -p velvet_ballistics --test admission_evidence_integration`: 8 passed.
 - `cargo test -p vb_storage --test accepted_artifact_red_phase`: 29 passed.
-- `cargo test -p velvet_ballastics --test admission_durability_code`: 1 passed.
+- `cargo test -p velvet_ballistics --test admission_durability_code`: 1 passed.
 - `RUSTFLAGS="--cfg loom" cargo test -p vb_runtime journal_writer_queue`: 3 passed.
 - `RUSTFLAGS="--cfg loom" cargo test -p vb_runtime timer_fired_cancel`: 1 passed.
 - `RUSTFLAGS="--cfg loom" cargo test -p vb_runtime shutdown_drain`: 3 passed.

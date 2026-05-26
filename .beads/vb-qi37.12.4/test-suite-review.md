@@ -14,7 +14,7 @@ STATUS: APPROVED
 - `rtk cargo test -p vb_runtime` -> 1460 passed.
 - `rtk cargo test -p vb_ipc` -> 407 passed.
 - `rtk cargo test -p vb_storage` -> 983 passed.
-- `rtk cargo test -p velvet_ballastics -- --test-threads=1` -> 471 passed.
+- `rtk cargo test -p velvet_ballistics -- --test-threads=1` -> 471 passed.
 - `moon run :verify-standard` -> exit 0, all standard lanes passed.
 
 ## Residual Risk

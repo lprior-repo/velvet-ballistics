@@ -127,7 +127,7 @@ Status: `required: false` per proof-obligations.jsonl
 
 ## Corrected Artifact Paths
 
-The proof-obligations.jsonl references `crates/velvet_ballastics/src/commands_journal.rs` which does not exist in this workspace. The correct path is `crates/vb_cli/src/commands_journal.rs`. Proof-writer must use the corrected path.
+The proof-obligations.jsonl references `crates/velvet_ballistics/src/commands_journal.rs` which does not exist in this workspace. The correct path is `crates/vb_cli/src/commands_journal.rs`. Proof-writer must use the corrected path.
 
 | Obligation | Corrected Artifact Path |
 |---|---|

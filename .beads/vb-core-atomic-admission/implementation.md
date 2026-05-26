@@ -169,7 +169,7 @@ Added lint allows to `fuzz/src/lib.rs`:
 - `TMPDIR=target/tmp RUSTC_WRAPPER= cargo test -p vb_storage --test vb_core_atomic_admission_red 'given_'` - **12 passed** (BDD scenarios)
 - `TMPDIR=target/tmp RUSTC_WRAPPER= cargo test -p vb_storage --test vb_core_atomic_admission_red` - **21 passed; 5 failed** (same proptest anti-cases as before)
 - `TMPDIR=target/tmp RUSTC_WRAPPER= cargo miri test -p vb_storage --lib codec_miri_tests` - **20 passed; 0 failed**
-- `TMPDIR=target/tmp RUSTC_WRAPPER= cargo clippy -p velvet-ballastics-fuzz --lib --all-features` - **PASS** (no clippy errors)
+- `TMPDIR=target/tmp RUSTC_WRAPPER= cargo clippy -p velvet-ballistics-fuzz --lib --all-features` - **PASS** (no clippy errors)
 
 ### gate_count assertion updates verified
 - `gate_count_fifteen_for_journaled` - PASS

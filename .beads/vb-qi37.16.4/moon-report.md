@@ -28,14 +28,14 @@ Primary failure class: `FORMAT`.
 Evidence excerpt:
 
 ```text
-velvet-ballastics:fmt | Diff in crates/vb_runtime/src/shard/tests.rs
+velvet-ballistics:fmt | Diff in crates/vb_runtime/src/shard/tests.rs
 ... encoded_len indentation changes required ...
-velvet-ballastics:fmt | Diff in crates/vb_storage/src/codec_miri_tests.rs
-velvet-ballastics:fmt | Diff in crates/vb_storage/src/kani_codec.rs
-velvet-ballastics:fmt | Diff in crates/vb_storage/src/lib.rs
-velvet-ballastics:fmt | Diff in fuzz/fuzz_targets/decode_record.rs
-velvet-ballastics:fmt | Diff in xtask/src/main.rs
-velvet-ballastics:fmt | Diff in xtask/src/proof.rs
+velvet-ballistics:fmt | Diff in crates/vb_storage/src/codec_miri_tests.rs
+velvet-ballistics:fmt | Diff in crates/vb_storage/src/kani_codec.rs
+velvet-ballistics:fmt | Diff in crates/vb_storage/src/lib.rs
+velvet-ballistics:fmt | Diff in fuzz/fuzz_targets/decode_record.rs
+velvet-ballistics:fmt | Diff in xtask/src/main.rs
+velvet-ballistics:fmt | Diff in xtask/src/proof.rs
 ```
 
 Additional compile failures observed after the format gate:
@@ -87,7 +87,7 @@ Final status: `PASS_AFTER_REPAIR`.
 
 After the State 11 Black Hat repair added real CLI `answer` IPC handling,
 the current State 8 rerun initially failed at the formatter gate in scoped
-file `crates/velvet_ballastics/src/main.rs`. That local `FORMAT` failure was
+file `crates/velvet_ballistics/src/main.rs`. That local `FORMAT` failure was
 repaired by `holzman-rust`; see `state-8-format-repair.md`.
 
 Current orchestrator rerun from isolated workspace
@@ -95,7 +95,7 @@ Current orchestrator rerun from isolated workspace
 
 ```bash
 rtk cargo fmt -- --check && \
-rtk cargo check -p velvet_ballastics -p vb_ipc --all-targets --all-features && \
+rtk cargo check -p velvet_ballistics -p vb_ipc --all-targets --all-features && \
 moon run :test && \
 moon ci
 ```
@@ -104,7 +104,7 @@ Result:
 
 ```text
 rtk cargo fmt -- --check: PASS
-rtk cargo check -p velvet_ballastics -p vb_ipc --all-targets --all-features: cargo build: 0 errors, 1 warnings (1 crates)
+rtk cargo check -p velvet_ballistics -p vb_ipc --all-targets --all-features: cargo build: 0 errors, 1 warnings (1 crates)
 moon run :test: 9863 tests run: 9863 passed, 0 skipped
 moon ci: Tasks: 19 completed (2 cached), Time: 2m 23s 196ms
 ```
@@ -122,7 +122,7 @@ Current orchestrator rerun from isolated workspace
 
 ```bash
 rtk cargo fmt -- --check && \
-rtk cargo check -p vb_ipc -p vb_runtime -p velvet_ballastics --all-targets --all-features && \
+rtk cargo check -p vb_ipc -p vb_runtime -p velvet_ballistics --all-targets --all-features && \
 rtk cargo test -p vb_ipc --lib answer && \
 rtk cargo test -p vb_runtime --lib ask_answer && \
 moon run :test && \
@@ -133,7 +133,7 @@ Result:
 
 ```text
 rtk cargo fmt -- --check: PASS
-rtk cargo check -p vb_ipc -p vb_runtime -p velvet_ballastics --all-targets --all-features: cargo build: 0 errors, 1 warnings
+rtk cargo check -p vb_ipc -p vb_runtime -p velvet_ballistics --all-targets --all-features: cargo build: 0 errors, 1 warnings
 rtk cargo test -p vb_ipc --lib answer: 13 passed, 391 filtered out
 rtk cargo test -p vb_runtime --lib ask_answer: 24 passed, 1325 filtered out
 moon run :test: 9867 tests run: 9867 passed, 0 skipped

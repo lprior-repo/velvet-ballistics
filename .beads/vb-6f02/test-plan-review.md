@@ -131,7 +131,7 @@ All 18 public items from `xtask::contracts` are accessible (verified via `pub` d
 - `gate_evidence_from_report` — pass/fail/empty/multiple errors
 - `GateEvidence`, `GateStatus`, `WhyFailed` — construction and serialization
 
-**Verification**: `cargo test -p velvet-ballastics-workspace-tests --test contracts_production_binding` → 31 passed.
+**Verification**: `cargo test -p velvet-ballistics-workspace-tests --test contracts_production_binding` → 31 passed.
 
 ---
 

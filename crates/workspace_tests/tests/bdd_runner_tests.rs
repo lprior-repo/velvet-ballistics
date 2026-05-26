@@ -15,8 +15,8 @@
 // Currently using serde_json for the test assertions (JSON is available in workspace_tests).
 // The actual implementation uses serde_yaml for evidence bundle output.
 
-use velvet_ballastics_workspace_tests::acceptance_catalog::{self};
-use velvet_ballastics_workspace_tests::bdd_runner::{
+use velvet_ballistics_workspace_tests::acceptance_catalog::{self};
+use velvet_ballistics_workspace_tests::bdd_runner::{
     BddRunnerError, BddScenarioResult, BddScenarioStatus, BddSuiteResult, ExecutorContext,
 };
 

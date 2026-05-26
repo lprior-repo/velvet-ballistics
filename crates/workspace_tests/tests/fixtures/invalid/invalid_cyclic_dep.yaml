@@ -2,7 +2,7 @@
 # This workflow uses an integer list instead of proper TogetherBranch objects
 # for the parallel.branches field, causing a YAML-level parse failure
 ---
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: malformed_parallel_branches
 
 when:

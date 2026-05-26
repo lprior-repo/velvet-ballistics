@@ -14,7 +14,9 @@ use std::path::PathBuf;
 // ============================================================
 
 /// ContractKind mirrors the 6 valid enum values.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
 pub enum ContractKind {
     CliEnvelope,
     UiTokens,
@@ -537,8 +539,8 @@ proptest! {
 ///
 /// Returns true if the content has both schema_version and a valid kind.
 fn is_valid_contract_cue(content: &str) -> bool {
-    let has_version = content.contains("schema_version:")
-        && !content.contains("schema_version: \"\"");
+    let has_version =
+        content.contains("schema_version:") && !content.contains("schema_version: \"\"");
 
     let valid_kinds = [
         "cli_envelope",
@@ -549,7 +551,9 @@ fn is_valid_contract_cue(content: &str) -> bool {
         "gate_output",
     ];
 
-    let has_valid_kind = valid_kinds.iter().any(|k| content.contains(&format!("kind: \"{}\"", k)));
+    let has_valid_kind = valid_kinds
+        .iter()
+        .any(|k| content.contains(&format!("kind: \"{}\"", k)));
 
     has_version && has_valid_kind
 }

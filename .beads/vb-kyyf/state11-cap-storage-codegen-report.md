@@ -33,7 +33,7 @@ STATUS: APPROVED
 - Evidence: `cargo test: 367 passed (4 suites, 23.48s)`
 
 ### cap-storage-codegen-cli-check
-- Command: `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo check -p vb_cli -p vb_storage -p velvet-ballastics-workspace-tests --all-targets`
+- Command: `TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo check -p vb_cli -p vb_storage -p velvet-ballistics-workspace-tests --all-targets`
 - Exit status: 0
 - Result: PASS
 - Evidence: `cargo build (0 crates compiled)` and `Finished dev profile [unoptimized + debuginfo] target(s) in 0.45s`

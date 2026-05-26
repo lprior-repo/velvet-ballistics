@@ -43,10 +43,10 @@ error[E0004]: non-exhaustive patterns:
   `&ValidationError::CapabilityNameTooLong { .. }`,
   `&ValidationError::CapabilityNameInvalid { .. }`
   and 2 more not covered
-    --> crates/velvet_ballastics/src/main.rs:3215:11
+    --> crates/velvet_ballistics/src/main.rs:3215:11
 ```
 
-**Root Cause**: `explain_validation_error()` match in `velvet_ballastics/src/main.rs` is missing 5 `ValidationError` variants:
+**Root Cause**: `explain_validation_error()` match in `velvet_ballistics/src/main.rs` is missing 5 `ValidationError` variants:
 - `CapabilityNameEmpty`
 - `CapabilityNameTooLong`
 - `CapabilityNameInvalid`
@@ -63,7 +63,7 @@ These variants exist in `vb_validate/src/lib.rs` but the match was never updated
 
 **Actual Finding**: The vb_storage tests **ALL PASS**. No trimming test failure exists. The user may be confused about the nature of the failure.
 
-**Actual Pre-existing Failure**: `moon run :check` fails due to a **compilation error** in `velvet_ballastics/src/main.rs`, not a trimming test failure. This is a **CRITICAL** build-blocking issue.
+**Actual Pre-existing Failure**: `moon run :check` fails due to a **compilation error** in `velvet_ballistics/src/main.rs`, not a trimming test failure. This is a **CRITICAL** build-blocking issue.
 
 ---
 
@@ -73,7 +73,7 @@ These variants exist in `vb_validate/src/lib.rs` but the match was never updated
 
 The bead vb-2yb8 **CANNOT proceed to State 10** until:
 
-1. **CRITICAL**: Fix the non-exhaustive match in `velvet_ballastics/src/main.rs:3215` by adding the 5 missing `ValidationError` arms
+1. **CRITICAL**: Fix the non-exhaustive match in `velvet_ballistics/src/main.rs:3215` by adding the 5 missing `ValidationError` arms
 2. **CRITICAL**: Push the fix so `moon run :check` passes
 3. **NOTE**: The bead record needs to be synced to Dolt (`bd show vb-2yb8` returns no match)
 
@@ -113,7 +113,7 @@ ValidationError::CapabilityNameEmpty { action_id, capability_index } => {
 
 ## 7. Next Steps
 
-1. **Fix**: Add 5 missing `ValidationError` match arms to `velvet_ballastics/src/main.rs`
+1. **Fix**: Add 5 missing `ValidationError` match arms to `velvet_ballistics/src/main.rs`
 2. **Verify**: `moon run :check` passes
 3. **Sync**: Push bead data to Dolt
 4. **Re-QA**: Re-run State 9 after fix

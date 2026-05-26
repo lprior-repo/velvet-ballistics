@@ -3,6 +3,9 @@
 # Each over-limit file must have a validated entry or be split below 300 lines.
 # Rows below are the pre-existing architectural-drift baseline captured by vb-jpq7.47.
 
+verification/flux/vb_rpch_flux_r8.rs|lewis|vb-rpch|split-proof-artifact-before-release|Pre-existing Flux verification artifact (319 lines); retained as single proof harness until verifier-lane artifact split.
+verification/flux/vb_rpch_flux_r9.rs|lewis|vb-rpch|split-proof-artifact-before-release|Pre-existing Flux verification artifact (470 lines); retained as single proof harness until verifier-lane artifact split.
+
 contracts/verus/contracts_as_data_spec.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (672 lines); must be split by domain responsibility or retired before removing exception.
 crates/vb_benchmark/src/lib.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (938 lines); must be split by domain responsibility or retired before removing exception.
 crates/vb_boundary_inventory/src/tests/api_tests.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (1317 lines); must be split by domain responsibility or retired before removing exception.
@@ -294,7 +297,7 @@ crates/workspace_tests/benches/ir_traversal_root_migrated.rs|lewis|vb-jpq7.47|sp
 crates/workspace_tests/benches/pagination_cost_root_migrated.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (325 lines); must be split by domain responsibility or retired before removing exception.
 crates/workspace_tests/benches/timer_wheel_tick.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (332 lines); must be split by domain responsibility or retired before removing exception.
 crates/workspace_tests/benches/timer_wheel_tick_root_migrated.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (320 lines); must be split by domain responsibility or retired before removing exception.
-crates/workspace_tests/benches/velvet_ballastics.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (2715 lines); must be split by domain responsibility or retired before removing exception.
+crates/workspace_tests/benches/velvet_ballistics.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (2715 lines); must be split by domain responsibility or retired before removing exception.
 crates/workspace_tests/src/acceptance_catalog.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (576 lines); must be split by domain responsibility or retired before removing exception.
 crates/workspace_tests/src/bdd_runner.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (458 lines); must be split by domain responsibility or retired before removing exception.
 crates/workspace_tests/idempotency_suite/tests/vb_ko29_5_public_idempotency.rs|lewis|vb-fq6u|split-idempotency-suite-tests|Current idempotency public behavior integration suite is 584 lines; split by admission/replay/lifecycle scenario families after global CI is restored.

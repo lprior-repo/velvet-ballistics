@@ -53,7 +53,7 @@ All 16 repaired `proof-obligation/v1` rows are represented by the bridge rows be
    - `crates/vb_storage/src/kani_recovery_hydrate.rs` — `replay_next_seq_overflow_boundary`, `tail_seq_scan_matches_any_metadata_batch_len_le_4`, and `tail_run_scan_matches_any_metadata_batch_len_le_4` verify bounded sequence/metadata seams under Kani.
 - **Exact commands**
   - `rustup run nightly-2026-04-28 cargo test -p vb_storage events_for_run`
-  - `rustup run nightly-2026-04-28 cargo test -p velvet-ballastics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract`
+  - `rustup run nightly-2026-04-28 cargo test -p velvet-ballistics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract`
   - Formal lane commands if claimed: `verus verification/verus/vb_jpq724_events_for_run_production.rs`; `tlc -workers 1 -config verification/tla/EngineYamlRecovery.cfg verification/tla/EngineYamlRecovery.tla`
   - Kani evidence command subset: `cargo kani --harness kani_recovery_hydrate::replay_next_seq_overflow_boundary --exact`; `cargo kani --harness kani_recovery_hydrate::tail_seq_scan_matches_any_metadata_batch_len_le_4 --exact`; `cargo kani --harness kani_recovery_hydrate::tail_run_scan_matches_any_metadata_batch_len_le_4 --exact` from `crates/vb_storage` (raw log `/home/lewis/.local/share/opencode/tool-output/tool_e543ab843002yJmWdm7rPpi1ed`).
 - **Bridge status:** behavior mapped; TLA+/Verus/Kani accepted with explicit limitations by proof-review.
@@ -72,7 +72,7 @@ All 16 repaired `proof-obligation/v1` rows are represented by the bridge rows be
 - **Refinement / formal refs:** `crates/vb_storage/src/kani_recovery_hydrate.rs::replay_push_limit_decision_matches_checked_count` verifies the allocation-free replay push limit decision over arbitrary `usize` current length and positive raw limit.
 - **Exact commands**
   - `rustup run nightly-2026-04-28 cargo test -p vb_storage events_for_run`
-  - `rustup run nightly-2026-04-28 cargo test -p velvet-ballastics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract`
+  - `rustup run nightly-2026-04-28 cargo test -p velvet-ballistics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract`
   - Kani evidence command: `cargo kani --harness kani_recovery_hydrate::replay_push_limit_decision_matches_checked_count --exact` from `crates/vb_storage` (raw log `/home/lewis/.local/share/opencode/tool-output/tool_e543ab843002yJmWdm7rPpi1ed`).
 - **Bridge status:** behavior mapped; Kani seam mapped for limit arithmetic/overflow; live Fjall collection remains behavior-tested.
 
@@ -88,7 +88,7 @@ All 16 repaired `proof-obligation/v1` rows are represented by the bridge rows be
 - **Refinement / formal refs:** none accepted for Fjall lexicographic lower-bound behavior; `trusted-base-plan.md` records Fjall ordering/prefix behavior as trusted base.
 - **Exact commands**
   - `rustup run nightly-2026-04-28 cargo test -p vb_storage events_for_run`
-  - `rustup run nightly-2026-04-28 cargo test -p velvet-ballastics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract`
+  - `rustup run nightly-2026-04-28 cargo test -p velvet-ballistics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract`
 - **Bridge status:** behavior mapped; refinement is trusted-base/source-review only.
 
 ### POT-SNAPSHOT-001 — validated snapshot authority
@@ -147,7 +147,7 @@ All 16 repaired `proof-obligation/v1` rows are represented by the bridge rows be
    - `rustup run nightly-2026-04-28 cargo test -p vb_runtime collect_pagination_extra_recovered_journal_round_trips_and_resumes_next_page`
    - `rustup run nightly-2026-04-28 cargo test -p vb_runtime storage_runtime_journal_maps_action_wait_and_ask_events`
    - `rustup run nightly-2026-04-28 cargo test -p vb_storage recovery`
-   - `rustup run nightly-2026-04-28 cargo test -p velvet-ballastics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract`
+   - `rustup run nightly-2026-04-28 cargo test -p velvet-ballistics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract`
   - Formal lane command if claimed: `verus verification/verus/recovery_hydration_contracts.rs`
   - Kani evidence command subset: `cargo kani --harness kani_recovery_hydrate::slot_taint_resolution_fails_closed_on_read_failure --exact`; `cargo kani --harness kani_recovery_hydrate::slot_taint_resolution_defaults_clean_only_for_uninitialized --exact`; `cargo kani --harness kani_recovery_hydrate::slot_taint_resolution_preserves_existing_taint --exact` from `crates/vb_storage` (raw log `/home/lewis/.local/share/opencode/tool-output/tool_e543ab843002yJmWdm7rPpi1ed`).
 - **Bridge status:** behavior mapped; Kani taint seam is production-linked through `resolve_slot_taint_read`; Verus artifact remains auxiliary.
@@ -168,7 +168,7 @@ All 16 repaired `proof-obligation/v1` rows are represented by the bridge rows be
 - **Refinement / formal refs:** none accepted for close/persist error propagation or `Drop` non-discard behavior.
 - **Exact commands**
   - `rustup run nightly-2026-04-28 cargo test -p vb_storage close_propagates_persist_errors`
-  - `rustup run nightly-2026-04-28 cargo test -p velvet-ballastics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract`
+  - `rustup run nightly-2026-04-28 cargo test -p velvet-ballistics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract`
 - **Bridge status:** behavior mapped; no separate refinement harness.
 
 ### POT-DISCARD-001 — no silent discard

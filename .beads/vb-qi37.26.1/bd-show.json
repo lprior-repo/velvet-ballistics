@@ -2,8 +2,8 @@
   {
     "id": "vb-qi37.26.1",
     "title": "fix: vb_ipc typed handler compile errors blocking workspace-tests",
-    "description": "workspace-tests compile prerequisite for vb-qi37.26 fails because vb_ipc does not compile. cargo check --package velvet-ballastics-workspace-tests --tests reports 25 E0308 mismatched-type errors in crates/vb_ipc/src/server/handlers.rs. This prerequisite must be repaired before vb-qi37.26 can produce required proptest/nextest/mutation evidence.",
-    "acceptance_criteria": "cargo check --package velvet-ballastics-workspace-tests --tests reaches the target workspace-tests compilation without vb_ipc E0308 handler mismatches; no unwrap/expect/panic/unsafe introduced; repair evidence recorded in an isolated workspace; vb-qi37.26 can rerun State 11 prerequisite.",
+    "description": "workspace-tests compile prerequisite for vb-qi37.26 fails because vb_ipc does not compile. cargo check --package velvet-ballistics-workspace-tests --tests reports 25 E0308 mismatched-type errors in crates/vb_ipc/src/server/handlers.rs. This prerequisite must be repaired before vb-qi37.26 can produce required proptest/nextest/mutation evidence.",
+    "acceptance_criteria": "cargo check --package velvet-ballistics-workspace-tests --tests reaches the target workspace-tests compilation without vb_ipc E0308 handler mismatches; no unwrap/expect/panic/unsafe introduced; repair evidence recorded in an isolated workspace; vb-qi37.26 can rerun State 11 prerequisite.",
     "status": "in_progress",
     "priority": 0,
     "issue_type": "bug",

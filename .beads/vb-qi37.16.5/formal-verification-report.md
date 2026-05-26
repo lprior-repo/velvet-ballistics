@@ -18,10 +18,10 @@ STATUS: APPROVED
 ## TLA+ / Integration / Replay Evidence
 
 - TLA-LIFECYCLE-001..006: PASS; prior TLC run reported no invariant violation, 35647 states generated, 15463 distinct, depth 16.
-- INTEGRATION-001..006: PASS; `cargo test --package velvet_ballastics --test lifecycle_integration -- --test-threads=1` reported `43 passed`.
-- REPLAY-001: PASS; `cargo test --package velvet_ballastics --test lifecycle_integration replay_ -- --test-threads=1` reported `4 passed, 39 filtered out`.
-- REPLAY-002: PASS; `cargo test --package velvet_ballastics --test lifecycle_integration replay_full -- --test-threads=1` reported `1 passed, 42 filtered out`.
-- REPLAY-003: PASS; `cargo test --package velvet_ballastics --test lifecycle_integration replay_corruption -- --test-threads=1` reported `2 passed, 41 filtered out`.
+- INTEGRATION-001..006: PASS; `cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1` reported `43 passed`.
+- REPLAY-001: PASS; `cargo test --package velvet_ballistics --test lifecycle_integration replay_ -- --test-threads=1` reported `4 passed, 39 filtered out`.
+- REPLAY-002: PASS; `cargo test --package velvet_ballistics --test lifecycle_integration replay_full -- --test-threads=1` reported `1 passed, 42 filtered out`.
+- REPLAY-003: PASS; `cargo test --package velvet_ballistics --test lifecycle_integration replay_corruption -- --test-threads=1` reported `2 passed, 41 filtered out`.
 - MANUAL-QA-001: PASS using existing `manual-qa-smoke.md` evidence.
 
 ## Verus Obligation Results

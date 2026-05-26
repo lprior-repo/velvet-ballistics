@@ -25,7 +25,7 @@ Prove and test that storage/recovery durability paths fail closed rather than si
 ## Evidence Already Collected
 
 - `cargo check -p vb_storage --all-targets --all-features`: PASS.
-- `cargo test -p velvet-ballastics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract`: PASS, 9 tests.
+- `cargo test -p velvet-ballistics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract`: PASS, 9 tests.
 - `cargo test -p vb_storage events_for_run`: PASS, 24 tests after adding corrupt latest snapshot payload digest and postcard decode cases.
 - `cargo test -p vb_storage recovery`: PASS, 186 tests after adding direct taint read fail-closed behavior.
 - `cargo test -p vb_storage trimming`: PASS, 25 tests after adding snapshot key/payload run and sequence authority cases.

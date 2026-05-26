@@ -21,9 +21,9 @@ Dependencies that shape scope: `vb-ahfl`, `vb-core-cli-accepted-path`, `vb-core-
 
 ## Relevant crate clusters
 
-### CLI/end-to-end orchestration: `crates/velvet_ballastics`
+### CLI/end-to-end orchestration: `crates/velvet_ballistics`
 
-- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-yaml-e2e-chain/crates/velvet_ballastics/src/main.rs`
+- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-yaml-e2e-chain/crates/velvet_ballistics/src/main.rs`
   - `cmd_run` lines 1144-1200 reads YAML, calls `vb_compile::compile_workflow`, stores workflow artifacts for journaled/strict durability, then calls `run_compiled_workflow`.
   - `store_workflow_artifacts` lines 1203-1246 writes `WorkflowSourceRecord` and `CompiledIrRecord` to `vb_storage::FjallJournal`.
   - `cmd_submit` lines 1256-1411 compiles YAML, writes source, run header, and `JournalEvent::RunAccepted` for durable submit.
@@ -32,7 +32,7 @@ Dependencies that shape scope: `vb-ahfl`, `vb-core-cli-accepted-path`, `vb-core-
   - `cmd_inspect` lines 2060-2131 summarizes status from persisted run events.
   - `cmd_events` / `event_to_json` lines 2133-2429 expose journal events including `RunAccepted` and `RunAdmission` with digests.
 - Existing integration evidence:
-  - `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-yaml-e2e-chain/crates/velvet_ballastics/tests/cli_integration.rs` lines 1230-1300 prove journaled YAML run emits `RunAccepted`, `RunFinished`, and inspect status.
+  - `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-yaml-e2e-chain/crates/velvet_ballistics/tests/cli_integration.rs` lines 1230-1300 prove journaled YAML run emits `RunAccepted`, `RunFinished`, and inspect status.
   - same file lines 2030-2076 prove strict YAML run completes and emits `RunAccepted`/`RunFinished`.
   - same file lines 2220-2309 constructs persisted journal/snapshot data for doctor/trim checks.
 
@@ -67,7 +67,7 @@ Dependencies that shape scope: `vb-ahfl`, `vb-core-cli-accepted-path`, `vb-core-
   - `admit_run` lines 353-375 performs existence-only admission.
   - `admit_artifact_run` lines 377-448 performs full accepted-artifact validation and capability checks.
 - Existing integration evidence:
-  - `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-yaml-e2e-chain/crates/velvet_ballastics/tests/admission_evidence_integration/chunk_002.rs` lines 6-92 proves compile -> `vb_storage::submit_artifact` -> stored artifact -> runtime completion under relaxed policy.
+  - `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-yaml-e2e-chain/crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs` lines 6-92 proves compile -> `vb_storage::submit_artifact` -> stored artifact -> runtime completion under relaxed policy.
 
 ### Fjall journal/events/recovery: `crates/vb_storage`, `crates/vb_runtime`
 
@@ -91,7 +91,7 @@ Dependencies that shape scope: `vb-ahfl`, `vb-core-cli-accepted-path`, `vb-core-
 
 ## Dependency/config files likely in scope
 
-- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-yaml-e2e-chain/crates/velvet_ballastics/Cargo.toml` depends on `postcard`, `serde-saphyr`, `blake3`.
+- `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-yaml-e2e-chain/crates/velvet_ballistics/Cargo.toml` depends on `postcard`, `serde-saphyr`, `blake3`.
 - `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-yaml-e2e-chain/crates/vb_compile/Cargo.toml` depends on `blake3`, `postcard`, `saphyr`, `saphyr-parser`.
 - `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-yaml-e2e-chain/crates/vb_yaml/Cargo.toml` depends on `saphyr`, `saphyr-parser`.
 - `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-yaml-e2e-chain/crates/vb_storage/Cargo.toml` depends on `blake3`, `fjall`, `postcard`.

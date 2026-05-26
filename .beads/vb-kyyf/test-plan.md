@@ -36,7 +36,7 @@
 | Static / proof gate | 1 | PO-010 | `moon ci` plus scoped source-lint/proof gates | Release closure must reject missing evidence or bead-local failures. |
 | Unit / Calc | 5 | Pure kernel behaviors 8-12 | `cargo test -p vb_proof_kernels vb_kyyf_normalization --all-features` | Pure comparison algebra is small, deterministic, and must exhaust exact variants. |
 | Integration / BDD | 7 | BDD-KYYF-001..007 | `cargo test -p workspace_tests --test vb_kyyf_cross_run_determinism -- --test-threads=1`; `cargo test -p vb_storage --test replay_resume`; `cargo test -p vb_storage --test recovery_bdd_tests`; `cargo test -p vb_codegen`; `cargo test -p workspace_tests --test vb_hxm0_acceptance_catalog` | Widest layer because contract is public-surface runtime/storage/codegen/CLI behavior with real stores and durable evidence. |
-| E2E / CLI acceptance | 1 | CLI portions of BDD-KYYF-002 and BDD-KYYF-007 | CLI `velvet-ballastics replay/events/inspect` via existing binary harness conventions | Narrow layer validates user-facing replay/event/inspect reports and catalog evidence shape. If CLI missing, assert typed `ScenarioSurfaceUnavailable`. |
+| E2E / CLI acceptance | 1 | CLI portions of BDD-KYYF-002 and BDD-KYYF-007 | CLI `velvet-ballistics replay/events/inspect` via existing binary harness conventions | Narrow layer validates user-facing replay/event/inspect reports and catalog evidence shape. If CLI missing, assert typed `ScenarioSurfaceUnavailable`. |
 
 Deviation from 60/30/5/5: integration is intentionally dominant because this bead certifies cross-run/replay behavior across runtime, storage, codegen, and CLI boundaries; unit tests cover only the pure normalization kernel.
 
@@ -115,7 +115,7 @@ Strategies must generate typed public observations and journal event sequences. 
 1. `FjallJournal::events_for_run` / journal record decoding: input bytes representing stored events; risk = panic, OOM, silent record skip, unstable corrupt-error mapping; seeds = empty store, single event, duplicate seq, gap, out-of-order, malformed payload, max seq.
 2. `recover_full_journal` / recovery event stream: arbitrary bounded `JournalEvent` vectors; risk = side-effect re-dispatch, nonterminal oscillation, wrong latest-attempt filtering, sequence acceptance bug; seeds = strict run, journaled run, scheduled external action, digest mismatch.
 3. `recover_runtime_frame_seed` and `recover_runtime_summary`: arbitrary event lists; risk = unchecked indexing/order assumptions, inconsistent summary/frame seed across replay; seeds = no events, admission-only, terminal-only, suspended, failed, blocked.
-4. CLI `velvet-ballastics replay/events/inspect`: arbitrary invalid paths/run ids/report bytes where harness supports CLI invocation; risk = panic, nondeterministic diagnostics, untraceable evidence; seeds = missing store, corrupt store, wrong run id, unsupported command.
+4. CLI `velvet-ballistics replay/events/inspect`: arbitrary invalid paths/run ids/report bytes where harness supports CLI invocation; risk = panic, nondeterministic diagnostics, untraceable evidence; seeds = missing store, corrupt store, wrong run id, unsupported command.
 5. Generated-subset validation/parity input: arbitrary supported/unsupported IR-family fixtures; risk = unsupported workflow accepted as parity evidence or supported workflow rejected nondeterministically; seeds = minimal supported workflow, unsupported IR family, mixed supported/unsupported graph.
 
 ## 6. Kani Harnesses

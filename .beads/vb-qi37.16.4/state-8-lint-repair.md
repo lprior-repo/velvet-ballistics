@@ -49,12 +49,12 @@ cargo clippy: 0 errors, 1 warnings
 ### 3. `moon run :quick`
 
 ```
-▮▮▮▮ velvet-ballastics:quick (86063843)
+▮▮▮▮ velvet-ballistics:quick (86063843)
 Hello, world!
 Hello, world!
 Hello, world!
 Hello, world!
-▮▮▮▮ velvet-ballastics:quick (43ms, 86063843)
+▮▮▮▮ velvet-ballistics:quick (43ms, 86063843)
 
 Tasks: 1 completed
  Time: 49s 89ms

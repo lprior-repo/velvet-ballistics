@@ -28,16 +28,16 @@ test -s ".beads/vb-qi37.13/contract.md" && test -s ".beads/vb-qi37.13/traceabili
 Risk discovery commands:
 
 ```bash
-rg -n "unsafe|unwrap\(|expect\(|panic!|todo!|unimplemented!|assert!|spawn|tokio|Mutex|RwLock|Atomic|serialize|deserialize|state|transition|lease|queue|retry|cancel" crates/velvet_ballastics/src/exit_code.rs crates/velvet_ballastics/src/main.rs crates/velvet_ballastics/src/mode_error.rs crates/velvet_ballastics/src/mode_activation_tests.rs crates/velvet_ballastics/src/args.rs crates/velvet_ballastics/src/cli_postcard.rs verification/verus/diagnostic_envelope_verus.rs fuzz/Cargo.toml fuzz/fuzz_targets.rs fuzz/src/lib.rs fuzz/src/bin/vb_ui_model_postcard_decode.rs
-rg -n "requires|ensures|proof fn|invariant|kani::|loom::|proptest!|fuzz_target|Flux|TLA|Miri|unsafe" crates/velvet_ballastics/src/exit_code.rs crates/velvet_ballastics/src/main.rs crates/velvet_ballastics/src/mode_error.rs crates/velvet_ballastics/src/mode_activation_tests.rs crates/velvet_ballastics/src/args.rs crates/velvet_ballastics/src/cli_postcard.rs verification/verus/diagnostic_envelope_verus.rs fuzz/Cargo.toml fuzz/fuzz_targets.rs fuzz/src/lib.rs fuzz/src/bin/vb_ui_model_postcard_decode.rs
+rg -n "unsafe|unwrap\(|expect\(|panic!|todo!|unimplemented!|assert!|spawn|tokio|Mutex|RwLock|Atomic|serialize|deserialize|state|transition|lease|queue|retry|cancel" crates/velvet_ballistics/src/exit_code.rs crates/velvet_ballistics/src/main.rs crates/velvet_ballistics/src/mode_error.rs crates/velvet_ballistics/src/mode_activation_tests.rs crates/velvet_ballistics/src/args.rs crates/velvet_ballistics/src/cli_postcard.rs verification/verus/diagnostic_envelope_verus.rs fuzz/Cargo.toml fuzz/fuzz_targets.rs fuzz/src/lib.rs fuzz/src/bin/vb_ui_model_postcard_decode.rs
+rg -n "requires|ensures|proof fn|invariant|kani::|loom::|proptest!|fuzz_target|Flux|TLA|Miri|unsafe" crates/velvet_ballistics/src/exit_code.rs crates/velvet_ballistics/src/main.rs crates/velvet_ballistics/src/mode_error.rs crates/velvet_ballistics/src/mode_activation_tests.rs crates/velvet_ballistics/src/args.rs crates/velvet_ballistics/src/cli_postcard.rs verification/verus/diagnostic_envelope_verus.rs fuzz/Cargo.toml fuzz/fuzz_targets.rs fuzz/src/lib.rs fuzz/src/bin/vb_ui_model_postcard_decode.rs
 ```
 
 Discovery summary:
 
 - Scoped production files use `#![forbid(unsafe_code)]`; `fuzz/fuzz_targets.rs` uses Rust 2024 `#[unsafe(no_mangle)]` export wrappers for libFuzzer targets.
 - `verification/verus/diagnostic_envelope_verus.rs` now contains `lemma_exit_code_range_0_to_8` and `spec_exit_code_in_range_0_to_8`.
-- `crates/velvet_ballastics/src/cli_postcard.rs` contains postcard decode/encode tests with test-only `unwrap()` calls.
-- `crates/velvet_ballastics/src/mode_activation_tests.rs` contains a `proptest!` parser test unrelated to the postcard proof route.
+- `crates/velvet_ballistics/src/cli_postcard.rs` contains postcard decode/encode tests with test-only `unwrap()` calls.
+- `crates/velvet_ballistics/src/mode_activation_tests.rs` contains a `proptest!` parser test unrelated to the postcard proof route.
 - `fuzz/src/lib.rs` contains postcard schema/kind assertions for the integrated `vb_ui_model_postcard_decode` route.
 
 ## Required Lanes

@@ -53,10 +53,13 @@ pub mod kani_record_crc;
 pub mod kani_digest_checks_vb_2bzz;
 
 #[cfg(kani)]
-pub mod kani_recovery_hydrate;
+pub mod kani_hydrate_proofs;
 
 #[cfg(kani)]
 pub mod kani_admission;
+
+#[cfg(kani)]
+pub mod kani_postcard_envelope_wire;
 
 pub mod keys;
 pub mod process_lock;

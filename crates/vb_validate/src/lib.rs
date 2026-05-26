@@ -10,7 +10,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::return_self_not_must_use)]
 
-//! Cold-path workflow validation for velvet-ballastics.
+//! Cold-path workflow validation for velvet-ballistics.
 //!
 //! Validates schema structure, references, control flow, type/taint, and
 //! resource limits for YAML workflows. Runs only at compile time.

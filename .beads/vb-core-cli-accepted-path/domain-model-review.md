@@ -44,6 +44,6 @@ The domain model must make illegal strict admission states unrepresentable: a st
 
 ## Handoff Constraints
 
-- Implementation agents must preserve canonical product spelling `velvet-ballastics` in new user-facing text.
+- Implementation agents must preserve canonical product spelling `velvet-ballistics` in new user-facing text.
 - No runtime YAML/JSON/HTTP interpretation may be introduced.
 - Any new constructor or wrapper must encode policy/store constraints rather than relying on comments.

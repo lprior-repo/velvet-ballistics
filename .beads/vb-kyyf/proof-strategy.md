@@ -3,11 +3,11 @@
 ## Rerun Note
 
 **ATTEMPT 3 — COMMAND REPAIR AFTER STATE 11 REJECTION.**
-State 11 formal-verifier rejected obligations due to invalid `-p workspace_tests` package name. Controller patched `proof-obligations.planned.jsonl` to use `-p velvet-ballastics-workspace-tests`. This attempt repairs proof-strategy.md to match.
+State 11 formal-verifier rejected obligations due to invalid `-p workspace_tests` package name. Controller patched `proof-obligations.planned.jsonl` to use `-p velvet-ballistics-workspace-tests`. This attempt repairs proof-strategy.md to match.
 
 **Repair summary:**
-- Line 54: `cargo test -p workspace_tests --test vb_kyyf_cross_run_determinism` → `cargo test -p velvet-ballastics-workspace-tests --test vb_kyyf_cross_run_determinism`
-- Line 58: `cargo test -p workspace_tests --test vb_hxm0_acceptance_catalog` → `cargo test -p velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog`
+- Line 54: `cargo test -p workspace_tests --test vb_kyyf_cross_run_determinism` → `cargo test -p velvet-ballistics-workspace-tests --test vb_kyyf_cross_run_determinism`
+- Line 58: `cargo test -p workspace_tests --test vb_hxm0_acceptance_catalog` → `cargo test -p velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog`
 - proof-obligations.planned.jsonl already correctly patched by controller (verified: 0 invalid commands)
 
 ---
@@ -50,11 +50,11 @@ DISCOVERY: verification/verus/ (existing files: idempotency_replay_tracker.rs, r
 
 **Commands**:
 ```
-cargo test -p velvet-ballastics-workspace-tests --test vb_kyyf_cross_run_determinism
+cargo test -p velvet-ballistics-workspace-tests --test vb_kyyf_cross_run_determinism
 cargo test -p vb_storage --test replay_resume
 cargo test -p vb_storage --test recovery_bdd_tests
 cargo test -p vb_codegen
-cargo test -p velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog
+cargo test -p velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog
 ```
 **Owner state**: 8 (tests authored in State 5, pass in State 8)
 **Rerun from**: 5

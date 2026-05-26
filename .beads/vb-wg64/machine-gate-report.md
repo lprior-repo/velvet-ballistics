@@ -9,10 +9,10 @@
 
 ## Additional Focused Gates
 
-- `rtk cargo check -p velvet-ballastics-workspace-tests`: PASS, exit 0.
+- `rtk cargo check -p velvet-ballistics-workspace-tests`: PASS, exit 0.
 - `rtk cargo build --manifest-path fuzz/Cargo.toml --bins`: PASS, exit 0.
 - `rustup run nightly-2026-04-28 cargo check --quiet --manifest-path crates/vb_ui_model/Cargo.toml --no-default-features`: PASS, exit 0.
-- `rustup run nightly-2026-04-28 cargo bench --quiet -p velvet-ballastics-workspace-tests --bench velvet_ballastics --bench vb_qi37_1_1_recovery --all-features --no-run`: PASS, exit 0.
+- `rustup run nightly-2026-04-28 cargo bench --quiet -p velvet-ballistics-workspace-tests --bench velvet_ballistics --bench vb_qi37_1_1_recovery --all-features --no-run`: PASS, exit 0.
 
 ## Final Gate
 

@@ -22,9 +22,9 @@
 8. File discovery includes source, docs, manifests, scripts, and configured bead references when deterministic discovery runs.
 9. File discovery excludes VCS internals, build outputs, binary blobs, embedded database state, and generated lock/runtime artifacts when deterministic discovery runs.
 10. File discovery reports `NamingScanError::FileDiscoveryFailed` when traversal cannot complete.
-11. Occurrence classifier accepts canonical `velvet-ballastics` spelling in product, binary, package, and bead rig contexts when text is scanned.
-12. Occurrence classifier accepts canonical `velvet_ballastics` spelling in crate/module and bead database contexts when text is scanned.
-13. Occurrence classifier accepts canonical `velvet-ballastics/v1` spelling in language-version contexts when text is scanned.
+11. Occurrence classifier accepts canonical `velvet-ballistics` spelling in product, binary, package, and bead rig contexts when text is scanned.
+12. Occurrence classifier accepts canonical `velvet_ballistics` spelling in crate/module and bead database contexts when text is scanned.
+13. Occurrence classifier accepts canonical `velvet-ballistics/v1` spelling in language-version contexts when text is scanned.
 14. Occurrence classifier accepts legacy repository path exception only when the occurrence is the current external repository path.
 15. Occurrence classifier accepts legacy master filename exception only when the occurrence is the current master filename.
 16. Occurrence classifier accepts legacy migration reference only when explicitly labeled as a migration reference to a pre-existing external artifact.
@@ -69,9 +69,9 @@
 
 | # | Behavior | Layer | Tool | Rationale |
 |---|----------|-------|------|-----------|
-| 1 | Product/binary/package/rig exact token | Unit + proof | `#[test]`, Lean | Pure table value; assert exact `velvet-ballastics`. |
-| 2 | Crate/module/database exact token | Unit + proof | `#[test]`, Lean | Pure table value; assert exact `velvet_ballastics`. |
-| 3 | Language-version exact token | Unit + proof | `#[test]`, Lean | Pure table value; assert exact `velvet-ballastics/v1`. |
+| 1 | Product/binary/package/rig exact token | Unit + proof | `#[test]`, Lean | Pure table value; assert exact `velvet-ballistics`. |
+| 2 | Crate/module/database exact token | Unit + proof | `#[test]`, Lean | Pure table value; assert exact `velvet_ballistics`. |
+| 3 | Language-version exact token | Unit + proof | `#[test]`, Lean | Pure table value; assert exact `velvet-ballistics/v1`. |
 | 4 | Complete config accepted | Unit | `#[test]`, proptest | Pure validation with exact accepted `ScanConfig` contents. |
 | 5 | Missing entries rejected | Unit | `#[test]`, proptest | Exhaustive malformed config behavior. |
 | 6 | Duplicate/contradictory/wildcard rejected | Unit | `#[test]`, proptest, cargo-mutants | Pure validation; mutation must kill relaxed predicates. |
@@ -106,12 +106,12 @@ Allocation target: integration remains widest for end-to-end behavioral confiden
 The test writer must implement these as unit tests against public Calc/kernel APIs or approved public constructors. These do not replace integration tests.
 
 #### `canonical_spelling_table()` — 6 unit tests
-1. `canonical_table_returns_ballastics_for_product_when_loaded`
-2. `canonical_table_returns_ballastics_for_binary_when_loaded`
-3. `canonical_table_returns_ballastics_for_package_when_loaded`
-4. `canonical_table_returns_ballastics_for_bead_rig_when_loaded`
-5. `canonical_table_returns_underscore_ballastics_for_crate_module_and_database_when_loaded`
-6. `canonical_table_returns_ballastics_v1_when_language_version_is_loaded`
+1. `canonical_table_returns_ballistics_for_product_when_loaded`
+2. `canonical_table_returns_ballistics_for_binary_when_loaded`
+3. `canonical_table_returns_ballistics_for_package_when_loaded`
+4. `canonical_table_returns_ballistics_for_bead_rig_when_loaded`
+5. `canonical_table_returns_underscore_ballistics_for_crate_module_and_database_when_loaded`
+6. `canonical_table_returns_ballistics_v1_when_language_version_is_loaded`
 
 #### `validate_scan_config(config)` — 14 unit tests
 7. `validate_scan_config_returns_scan_config_when_minimum_valid_config_is_supplied`
@@ -130,8 +130,8 @@ The test writer must implement these as unit tests against public Calc/kernel AP
 20. `validate_scan_config_returns_pattern_compilation_failed_when_scan_pattern_is_invalid`
 
 #### `classify_occurrence(path, line, column, text, config)` — 12 unit tests
-21. `classify_occurrence_returns_canonical_product_when_ballastics_product_token_is_seen`
-22. `classify_occurrence_returns_canonical_crate_module_when_underscore_ballastics_token_is_seen`
+21. `classify_occurrence_returns_canonical_product_when_ballistics_product_token_is_seen`
+22. `classify_occurrence_returns_canonical_crate_module_when_underscore_ballistics_token_is_seen`
 23. `classify_occurrence_returns_canonical_language_version_when_v1_token_is_seen`
 24. `classify_occurrence_returns_allowed_repository_path_with_exact_payload_when_current_external_repository_path_is_seen`
 25. `classify_occurrence_returns_allowed_master_filename_with_exact_payload_when_current_master_filename_is_seen`
@@ -162,27 +162,27 @@ The test writer must implement these as unit tests against public Calc/kernel AP
 ## 3. BDD Scenarios
 
 ### Behavior 1: Canonical table exposes product, binary, package, and bead rig spelling
-Test function: `fn canonical_table_returns_ballastics_for_product_binary_package_and_rig_when_loaded()`
+Test function: `fn canonical_table_returns_ballistics_for_product_binary_package_and_rig_when_loaded()`
 
 Given: the default canonical spelling table.
 When: product, binary, package, and bead rig entries are read through the public table API.
-Then: each entry equals exactly `velvet-ballastics`.
+Then: each entry equals exactly `velvet-ballistics`.
 And: the table contains no `velvet-ballistics` value for these kinds.
 
 ### Behavior 2: Canonical table exposes crate/module and database spelling
-Test function: `fn canonical_table_returns_underscore_ballastics_for_crate_module_and_database_when_loaded()`
+Test function: `fn canonical_table_returns_underscore_ballistics_for_crate_module_and_database_when_loaded()`
 
 Given: the default canonical spelling table.
 When: crate/module and bead database entries are read through the public table API.
-Then: each entry equals exactly `velvet_ballastics`.
+Then: each entry equals exactly `velvet_ballistics`.
 And: no hyphenated token is returned for these kinds.
 
 ### Behavior 3: Canonical table exposes language-version spelling
-Test function: `fn canonical_table_returns_ballastics_v1_when_language_version_is_loaded()`
+Test function: `fn canonical_table_returns_ballistics_v1_when_language_version_is_loaded()`
 
 Given: the default canonical spelling table.
 When: the language-version entry is read through the public table API.
-Then: the entry equals exactly `velvet-ballastics/v1`.
+Then: the entry equals exactly `velvet-ballistics/v1`.
 
 ### Behavior 4: Complete scan config validates
 Test functions:
@@ -293,25 +293,25 @@ When: `discover_scan_inputs` runs.
 Then: it returns `Err(NamingScanError::FileDiscoveryFailed { path, source })` with the failing path.
 
 ### Behavior 18: Product-class canonical spelling is accepted
-Test function: `fn classify_occurrence_returns_canonical_product_when_ballastics_product_token_is_seen()`
+Test function: `fn classify_occurrence_returns_canonical_product_when_ballistics_product_token_is_seen()`
 
-Given: text contains `velvet-ballastics` in a product, binary, package, or bead rig context.
+Given: text contains `velvet-ballistics` in a product, binary, package, or bead rig context.
 When: `classify_occurrence` evaluates the occurrence.
-Then: it returns exactly `Ok(OccurrenceClass::CanonicalProduct { canonical: "velvet-ballastics", kind: CanonicalNameKind::ProductBinaryPackageRig })`.
+Then: it returns exactly `Ok(OccurrenceClass::CanonicalProduct { canonical: "velvet-ballistics", kind: CanonicalNameKind::ProductBinaryPackageRig })`.
 
 ### Behavior 19: Crate-class canonical spelling is accepted
-Test function: `fn classify_occurrence_returns_canonical_crate_when_underscore_ballastics_token_is_seen()`
+Test function: `fn classify_occurrence_returns_canonical_crate_when_underscore_ballistics_token_is_seen()`
 
-Given: text contains `velvet_ballastics` in a crate/module or bead database context.
+Given: text contains `velvet_ballistics` in a crate/module or bead database context.
 When: `classify_occurrence` evaluates the occurrence.
-Then: it returns exactly `Ok(OccurrenceClass::CanonicalCrateModule { canonical: "velvet_ballastics", kind: CanonicalNameKind::CrateModuleDatabase })`.
+Then: it returns exactly `Ok(OccurrenceClass::CanonicalCrateModule { canonical: "velvet_ballistics", kind: CanonicalNameKind::CrateModuleDatabase })`.
 
 ### Behavior 20: Language-version canonical spelling is accepted
 Test function: `fn classify_occurrence_returns_canonical_language_version_when_v1_token_is_seen()`
 
-Given: text contains `velvet-ballastics/v1` in a language-version context.
+Given: text contains `velvet-ballistics/v1` in a language-version context.
 When: `classify_occurrence` evaluates the occurrence.
-Then: it returns exactly `Ok(OccurrenceClass::CanonicalLanguageVersion { canonical: "velvet-ballastics/v1", kind: CanonicalNameKind::LanguageVersion })`.
+Then: it returns exactly `Ok(OccurrenceClass::CanonicalLanguageVersion { canonical: "velvet-ballistics/v1", kind: CanonicalNameKind::LanguageVersion })`.
 
 ### Behavior 21: Repository path exception is exact
 Test function: `fn classify_occurrence_returns_allowed_legacy_when_current_external_repository_path_is_seen()`
@@ -342,14 +342,14 @@ Test function: `fn classify_occurrence_returns_invalid_legacy_when_exception_sub
 
 Given: text contains a neighboring path, substring, generated name, or unrelated legacy spelling that merely contains an exception token.
 When: `classify_occurrence` evaluates it.
-Then: it returns exactly `Ok(OccurrenceClass::InvalidLegacy { spelling_class: SpellingClass::LegacyProjectSpelling, remediation: "velvet-ballastics" })` for product/package contexts, or the context-specific canonical remediation for crate/database/language-version contexts.
+Then: it returns exactly `Ok(OccurrenceClass::InvalidLegacy { spelling_class: SpellingClass::LegacyProjectSpelling, remediation: "velvet-ballistics" })` for product/package contexts, or the context-specific canonical remediation for crate/database/language-version contexts.
 
 ### Behavior 25: Findings contain exact fields
 Test function: `fn scan_file_returns_exact_finding_fields_when_invalid_occurrence_is_present()`
 
 Given: a selected text file `docs/naming.md` contains `velvet-ballistics` at line 3, column 7 in a non-exception context.
 When: `scan_file` runs.
-Then: it returns a `Vec<NamingFinding>` equal to one finding with path `docs/naming.md`, line `3`, column `7`, spelling class `SpellingClass::LegacyProjectSpelling`, and remediation equal to exact canonical replacement `velvet-ballastics` for product/package contexts or the exact context-specific token (`velvet_ballastics` / `velvet-ballastics/v1`) for crate/database/language-version contexts.
+Then: it returns a `Vec<NamingFinding>` equal to one finding with path `docs/naming.md`, line `3`, column `7`, spelling class `SpellingClass::LegacyProjectSpelling`, and remediation equal to exact canonical replacement `velvet-ballistics` for product/package contexts or the exact context-specific token (`velvet_ballistics` / `velvet-ballistics/v1`) for crate/database/language-version contexts.
 
 ### Behavior 26: Multiple invalid occurrences are all reported
 Test function: `fn scan_file_returns_all_findings_when_multiple_invalid_occurrences_share_one_line()`
@@ -375,7 +375,7 @@ Then: it returns `Err(NamingScanError::InputReadFailed { path, source })` with t
 ### Behavior 29: Canonical-only repository passes
 Test function: `fn scan_repository_returns_zero_finding_report_when_inputs_are_canonical_or_allowed_exceptions()`
 
-Given: a repository fixture contains only `velvet-ballastics`, `velvet_ballastics`, `velvet-ballastics/v1`, and documented legacy exceptions.
+Given: a repository fixture contains only `velvet-ballistics`, `velvet_ballistics`, `velvet-ballistics/v1`, and documented legacy exceptions.
 When: `scan_repository` runs with complete config.
 Then: it returns exactly `Ok(ScanReport { root, config_fingerprint, selected_input_count, scanned_text_input_count, findings: [] })` where `root` equals the fixture root, `config_fingerprint` equals the complete config fingerprint, `selected_input_count` equals the fixture's eligible input count, and `scanned_text_input_count` equals the fixture's supported text input count.
 And: `Ok(Default::default())` fails because root, fingerprint, and counts would not match.
@@ -480,7 +480,7 @@ Test function: `fn classify_occurrence_returns_invalid_legacy_when_case_variant_
 
 Given: text contains `Velvet-Ballastics`, `VELVET-BALLASTICS`, or mixed-case variants in an eligible context.
 When: `classify_occurrence` runs.
-Then: it returns exactly `Ok(OccurrenceClass::InvalidLegacy { spelling_class: SpellingClass::LegacyProjectSpelling, remediation: "velvet-ballastics" })` or the exact context-specific canonical remediation.
+Then: it returns exactly `Ok(OccurrenceClass::InvalidLegacy { spelling_class: SpellingClass::LegacyProjectSpelling, remediation: "velvet-ballistics" })` or the exact context-specific canonical remediation.
 
 ### Behavior 44: Unicode confusables are not canonical
 Test function: `fn classify_occurrence_returns_invalid_legacy_when_unicode_confusable_is_seen()`
@@ -651,9 +651,9 @@ Rationale: `PRE-005` and `INV-007` require all fallible/data operations to remai
 Minimum command: `moon run :verify-deep` must run `cargo-mutants` or the repository-approved mutation lane. Kill threshold: >=90% overall and 100% for critical mutants below.
 
 Critical mutants that must be killed:
-- Change canonical product token from `velvet-ballastics` to `velvet-ballistics`; caught by `canonical_table_returns_ballastics_for_product_binary_package_and_rig_when_loaded`.
-- Change canonical crate token from `velvet_ballastics` to `velvet_ballistics`; caught by `canonical_table_returns_underscore_ballastics_for_crate_module_and_database_when_loaded`.
-- Change language version from `velvet-ballastics/v1` to any other version; caught by `canonical_table_returns_ballastics_v1_when_language_version_is_loaded`.
+- Change canonical product token from `velvet-ballistics` to `velvet-ballistics`; caught by `canonical_table_returns_ballistics_for_product_binary_package_and_rig_when_loaded`.
+- Change canonical crate token from `velvet_ballistics` to `velvet_ballistics`; caught by `canonical_table_returns_underscore_ballistics_for_crate_module_and_database_when_loaded`.
+- Change language version from `velvet-ballistics/v1` to any other version; caught by `canonical_table_returns_ballistics_v1_when_language_version_is_loaded`.
 - Remove generic missing-entry validation; caught by `validate_scan_config_returns_invalid_configuration_when_product_kind_is_missing`, `validate_scan_config_returns_invalid_configuration_when_crate_module_kind_is_missing`, and `validate_scan_config_returns_invalid_configuration_when_language_version_kind_is_missing`.
 - Remove empty-config validation; caught by `validate_scan_config_returns_invalid_configuration_when_config_is_empty`.
 - Remove product-kind missing validation; caught by `validate_scan_config_returns_invalid_configuration_when_product_kind_is_missing`.
@@ -720,9 +720,9 @@ Critical mutants that must be killed:
 
 | Scenario | Input Class | Expected Output | Layer |
 |----------|-------------|-----------------|-------|
-| canonical product | `velvet-ballastics` valid context | `Ok(OccurrenceClass::CanonicalProduct { canonical: "velvet-ballastics", kind: ProductBinaryPackageRig })` | unit |
-| canonical crate | `velvet_ballastics` valid context | `Ok(OccurrenceClass::CanonicalCrateModule { canonical: "velvet_ballastics", kind: CrateModuleDatabase })` | unit |
-| canonical language version | `velvet-ballastics/v1` | `Ok(OccurrenceClass::CanonicalLanguageVersion { canonical: "velvet-ballastics/v1", kind: LanguageVersion })` | unit |
+| canonical product | `velvet-ballistics` valid context | `Ok(OccurrenceClass::CanonicalProduct { canonical: "velvet-ballistics", kind: ProductBinaryPackageRig })` | unit |
+| canonical crate | `velvet_ballistics` valid context | `Ok(OccurrenceClass::CanonicalCrateModule { canonical: "velvet_ballistics", kind: CrateModuleDatabase })` | unit |
+| canonical language version | `velvet-ballistics/v1` | `Ok(OccurrenceClass::CanonicalLanguageVersion { canonical: "velvet-ballistics/v1", kind: LanguageVersion })` | unit |
 | repository path exception | exact configured external path | `Ok(OccurrenceClass::AllowedLegacy { exception: RepositoryPath { path } })` with exact path payload | unit/Lean |
 | master filename exception | exact configured master filename | `Ok(OccurrenceClass::AllowedLegacy { exception: MasterFilename { filename } })` with exact filename payload | unit/Lean |
 | migration reference | explicitly labeled migration reference | `Ok(OccurrenceClass::AllowedLegacy { exception: MigrationReference { artifact, label, legacy_text } })` with exact payloads | unit |
@@ -789,9 +789,9 @@ Critical mutants that must be killed:
 
 ## 9. Fixtures and Test Data
 
-- `canonical_repo_fixture`: temp repo containing eligible source/docs/manifests/scripts/bead references with only `velvet-ballastics`, `velvet_ballastics`, `velvet-ballastics/v1`, and exact documented legacy exceptions.
+- `canonical_repo_fixture`: temp repo containing eligible source/docs/manifests/scripts/bead references with only `velvet-ballistics`, `velvet_ballistics`, `velvet-ballistics/v1`, and exact documented legacy exceptions.
 - `invalid_legacy_repo_fixture`: temp repo with one invalid legacy project spelling outside migration context in an eligible file; expected exact path/line/column is fixed in fixture notes.
-- `wrong_crate_repo_fixture`: temp repo with wrong crate/module spelling in Rust source or manifest; expected remediation is `velvet_ballastics`.
+- `wrong_crate_repo_fixture`: temp repo with wrong crate/module spelling in Rust source or manifest; expected remediation is `velvet_ballistics`.
 - `exception_near_miss_fixture`: texts where exception strings appear as substrings, child paths, generated names, and unlabeled migration-like prose; all must fail closed.
 - `discovery_surface_fixture`: temp tree with eligible files and excluded surfaces `.git/`, `target/`, binary blobs, `.beads/dolt`, `.beads/backup`, `.beads/embeddeddolt`, locks, and runtime DB state.
 - `unreadable_input_fixture`: permission-denied or otherwise unreadable selected file for platforms that support permissions; if platform cannot model permission denial, use a documented broken selected input fake at the filesystem boundary.

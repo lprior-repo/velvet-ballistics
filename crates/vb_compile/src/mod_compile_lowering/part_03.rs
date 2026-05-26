@@ -16,6 +16,7 @@ pub(super) fn lower_canonical_parallel(
     index: usize,
     id: StepIdx,
     branches: &[vb_yaml::ast::TogetherBranch],
+    next: Option<StepIdx>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     let accumulator = SlotIdx::new(0);
@@ -63,11 +64,11 @@ pub(super) fn lower_canonical_parallel(
             join,
         },
     });
-    emit_together_branches(id, branches, join, accumulator, builder)?;
+    emit_together_branches(id, branches, join, accumulator, index, builder)?;
     builder.push_node(CompiledNode {
         id: join,
         output: Some(accumulator),
-        next: None,
+        next,
         error_slot: None,
         on_error: None,
         kind: CompiledNodeKind::TogetherJoin {
@@ -75,7 +76,6 @@ pub(super) fn lower_canonical_parallel(
             accumulator,
         },
     });
-    builder.max_slot = Some(accumulator.as_usize());
     Ok(())
 }
 
@@ -94,6 +94,7 @@ pub(super) fn emit_together_branches(
     branches: &[vb_yaml::ast::TogetherBranch],
     join: StepIdx,
     accumulator: SlotIdx,
+    diagnostic_step: usize,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     let mut cursor = 1u16;
@@ -135,6 +136,7 @@ pub(super) fn emit_together_branches(
         emit_single_body_set(
             &branch.steps,
             entry,
+            diagnostic_step,
             branch_id.to_slot(),
             None,
             builder,
@@ -156,16 +158,21 @@ pub(super) fn emit_together_branches(
     Ok(())
 }
 
+pub(super) struct CollectLowering<'a> {
+    pub(super) source: &'a str,
+    pub(super) pages: Option<u32>,
+    pub(super) items: Option<u32>,
+    pub(super) body: &'a [vb_yaml::ast::StepAst],
+    pub(super) next: Option<StepIdx>,
+}
+
 pub(super) fn lower_canonical_collect(
     index: usize,
     id: StepIdx,
-    source: &str,
-    pages: Option<u32>,
-    items: Option<u32>,
-    body: &[vb_yaml::ast::StepAst],
+    collect: CollectLowering<'_>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
-    let source = slot_from_text(source, index, "collect.source")?;
+    let source = slot_from_text(collect.source, index, "collect.source")?;
     let body_step =
         checked_step_offset(id, 1, "collect", "body").map_err(|e| CompileErrors(vec![e]))?;
     let page = checked_step_offset(id, 2, "collect", "page").map_err(|e| CompileErrors(vec![e]))?;
@@ -179,13 +186,21 @@ pub(super) fn lower_canonical_collect(
         on_error: None,
         kind: CompiledNodeKind::CollectStart {
             source,
-            limit: pages.unwrap_or(1),
-            page_size: items.unwrap_or(1),
+            limit: collect.pages.unwrap_or(1),
+            page_size: collect.items.unwrap_or(1),
             body: body_step,
             done,
         },
     });
-    emit_single_body_set(body, body_step, SlotIdx::new(1), None, builder, false)?;
+    emit_single_body_set(
+        collect.body,
+        body_step,
+        index,
+        SlotIdx::new(1),
+        Some(page),
+        builder,
+        false,
+    )?;
     builder.push_node(CompiledNode {
         id: page,
         output: None,
@@ -201,13 +216,12 @@ pub(super) fn lower_canonical_collect(
     builder.push_node(CompiledNode {
         id: done,
         output: None,
-        next: None,
+        next: collect.next,
         error_slot: None,
         on_error: None,
         kind: CompiledNodeKind::CollectFinish {
             collector_slot: source,
         },
     });
-    builder.max_slot = Some(source.as_usize());
     Ok(())
 }

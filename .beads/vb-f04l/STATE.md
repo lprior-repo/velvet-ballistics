@@ -738,7 +738,7 @@ red_queen: forbidden and not invoked.
 - compile_command: `mkdir -p target/tmp && TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rtk cargo test -p vb_compile --test v1_primitive_lowering --no-run`; exit=0.
 - focused_test_command: `mkdir -p target/tmp && TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rtk cargo test -p vb_compile --test v1_primitive_lowering`; exit=non-zero expected failing-first; result `1 passed; 5 failed`; first failures are unsupported `for_each`, unsupported `wait`, and unsupported `repeat` instead of exact field-shape diagnostic.
 - proptest_command: `mkdir -p target/tmp && TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rtk cargo test -p vb_compile --test v1_primitive_lowering proptest`; exit=non-zero expected failing-first; result `0 passed; 2 failed`; minimal failing input is valid `for_each` primitive source.
-- fuzz_compile_command: `mkdir -p target/tmp && TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rtk cargo test -p velvet-ballastics-fuzz --no-run`; exit=0.
+- fuzz_compile_command: `mkdir -p target/tmp && TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rtk cargo test -p velvet-ballistics-fuzz --no-run`; exit=0.
 - tooling_note: earlier compile attempts using `/tmp` through sccache failed with disk quota; absolute `TMPDIR` and `RUSTC_WRAPPER=` fixed compile evidence.
 
 ## State 8 status
@@ -819,7 +819,7 @@ source_checkout_write_policy: no writes to `/home/lewis/src/velvet-ballistics`; 
 - focused_red_run_command: `TMPDIR="target/tmp" RUSTC_WRAPPER= rtk cargo test -p vb_compile --test v1_primitive_lowering`; exit=non-zero expected failing-first; result `6 passed; 9 failed`; failures expose unsupported in-scope primitives, `repeat` shape rejection gap, and `Save` compiling as Set instead of `UnsupportedStepPrimitive`.
 - proptest_command: `TMPDIR="target/tmp" RUSTC_WRAPPER= PROPTEST_CASES=1000 rtk cargo test -p vb_compile --test v1_primitive_lowering proptest`; exit=non-zero expected failing-first; result `0 passed; 2 failed`; minimal failing input is valid `for_each` primitive source.
 - fuzz_compile_command_initial: `TMPDIR="target/tmp" RUSTC_WRAPPER= rtk cargo test -p fuzz --no-run`; exit=non-zero because package name is not `fuzz`.
-- fuzz_compile_command_corrected: `TMPDIR="target/tmp" RUSTC_WRAPPER= rtk cargo test -p velvet-ballastics-fuzz --no-run`; exit=0.
+- fuzz_compile_command_corrected: `TMPDIR="target/tmp" RUSTC_WRAPPER= rtk cargo test -p velvet-ballistics-fuzz --no-run`; exit=0.
 
 ## State 8 repair status
 
@@ -856,7 +856,7 @@ source_checkout_write_policy: no writes to `/home/lewis/src/velvet-ballistics`; 
 - compile_command: `TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rtk cargo test -p vb_compile --test v1_primitive_lowering --no-run`; exit=0.
 - focused_red_run_command: `TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rtk cargo test -p vb_compile --test v1_primitive_lowering`; exit=non-zero expected failing-first; result `6 passed; 9 failed; 0 ignored`; failures expose unsupported in-scope primitives, repeat shape rejection gap, and Save unsupported-policy gap.
 - proptest_red_run_command: `TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= PROPTEST_CASES=1000 rtk cargo test -p vb_compile --test v1_primitive_lowering proptest`; exit=non-zero expected failing-first; result `0 passed; 2 failed`; minimal failing input valid `for_each`.
-- fuzz_compile_command: `TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rtk cargo test -p velvet-ballastics-fuzz --no-run`; exit=0.
+- fuzz_compile_command: `TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rtk cargo test -p velvet-ballistics-fuzz --no-run`; exit=0.
 - review_focus: public API parity, exact error coverage, Save coverage, and positive exact assertions all repaired sufficiently for failing-first State 9 approval.
 
 ## State 9 retry artifacts written
@@ -907,7 +907,7 @@ source_checkout_write_policy: no writes to `/home/lewis/src/velvet-ballistics`; 
 - focused_test_command: `mkdir -p "target/tmp" && TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rtk cargo test -p vb_compile --test v1_primitive_lowering`; exit=0; result `15 passed`.
 - focused_proptest_command: `mkdir -p "target/tmp" && TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= PROPTEST_CASES=1000 rtk cargo test -p vb_compile --test v1_primitive_lowering proptest`; exit=0; result `2 passed, 13 filtered out`.
 - focused_check_command: `mkdir -p "target/tmp" && TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rtk cargo check -p vb_compile --all-targets`; exit=0.
-- fuzz_compile_command: `mkdir -p "target/tmp" && TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rtk cargo test -p velvet-ballastics-fuzz --no-run`; exit=0.
+- fuzz_compile_command: `mkdir -p "target/tmp" && TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rtk cargo test -p velvet-ballistics-fuzz --no-run`; exit=0.
 - fmt_command: `mkdir -p "target/tmp" && TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rtk cargo fmt --check`; exit=0.
 - strict_clippy_command: `mkdir -p "target/tmp" && TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rtk cargo clippy -p vb_compile --lib --all-features -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap -D clippy::arithmetic_side_effects -D clippy::as_conversions -D clippy::let_underscore_must_use -D clippy::await_holding_lock`; exit=0.
 
@@ -1056,7 +1056,7 @@ source_checkout_write_policy: no writes to `/home/lewis/src/velvet-ballistics`; 
 
 ### Fuzz target compile
 
-- Command: `TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rtk cargo test -p velvet-ballastics-fuzz --no-run`
+- Command: `TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rtk cargo test -p velvet-ballistics-fuzz --no-run`
 - Exit: 0
 
 ### Clippy check
@@ -1128,7 +1128,7 @@ source_checkout_write_policy: no writes to `/home/lewis/src/velvet-ballistics`; 
 - Test compile: `cargo test -p vb_compile --test v1_primitive_lowering --no-run` — exit 0.
 - Focused tests: `cargo test -p vb_compile --test v1_primitive_lowering` — 15 passed (1 suite, 0.08s).
 - Proptest: `PROPTEST_CASES=1000 cargo test ... proptest` — 2 passed, 13 filtered out (1 suite, 1.34s).
-- Fuzz compile: `cargo test -p velvet-ballastics-fuzz --no-run` — exit 0.
+- Fuzz compile: `cargo test -p velvet-ballistics-fuzz --no-run` — exit 0.
 - Clippy: `cargo clippy -p vb_compile --lib --all-features -- -D warnings` — No issues found.
 - Nextest: `cargo nextest run -p vb_compile --test v1_primitive_lowering` — 15 passed (1 binary, 0.074s).
 
@@ -1365,7 +1365,7 @@ source_checkout_write_policy: no writes to `/home/lewis/src/velvet-ballistics`; 
 - Test compile: `cargo test -p vb_compile --test v1_primitive_lowering --no-run` — exit 0.
 - Focused tests: `cargo test -p vb_compile --test v1_primitive_lowering` — 15 passed (1 suite, 0.07s).
 - Proptest: `PROPTEST_CASES=1000 cargo test ... proptest` — 2 passed, 13 filtered out (1 suite, 1.60s).
-- Fuzz compile: `cargo test -p velvet-ballastics-fuzz --no-run` — exit 0.
+- Fuzz compile: `cargo test -p velvet-ballistics-fuzz --no-run` — exit 0.
 - Clippy: `cargo clippy -p vb_compile --lib --all-features -- -D warnings` — No issues found.
 - Nextest: `cargo nextest run -p vb_compile --test v1_primitive_lowering` — 15 passed (1 binary, 0.077s).
 

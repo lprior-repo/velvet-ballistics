@@ -33,11 +33,11 @@ Full output capture:
 
 Observed failing tasks:
 
-- `velvet-ballastics:fmt`: rustfmt diffs in scoped resume files:
+- `velvet-ballistics:fmt`: rustfmt diffs in scoped resume files:
   - `crates/vb_runtime/src/shard/lifecycle.rs`
   - `crates/vb_runtime/tests/durable_resume_red_phase.rs`
-- `velvet-ballastics:fmt`: `xtask/src/main.rs` contains an unclosed delimiter and leftover conflict marker at line 787: `>>>>>>> conflict 2 of 2 ends`.
-- `velvet-ballastics:lint-src` / `check`: `crates/vb_proof_kernels/src/envelope_header.rs` has conflicting `Default` implementations: `#[derive(Default)]` plus manual `impl Default`.
+- `velvet-ballistics:fmt`: `xtask/src/main.rs` contains an unclosed delimiter and leftover conflict marker at line 787: `>>>>>>> conflict 2 of 2 ends`.
+- `velvet-ballistics:lint-src` / `check`: `crates/vb_proof_kernels/src/envelope_header.rs` has conflicting `Default` implementations: `#[derive(Default)]` plus manual `impl Default`.
 
 Passing evidence before the full release gate:
 

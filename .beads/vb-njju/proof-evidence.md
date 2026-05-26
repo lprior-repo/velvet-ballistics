@@ -28,7 +28,7 @@ cargo mutants \
 
 ### Baseline Verification
 ```
-cargo test --package velvet-ballastics-workspace-tests --test vb_ssei_verification_admission_acceptance
+cargo test --package velvet-ballistics-workspace-tests --test vb_ssei_verification_admission_acceptance
 ```
 **Result: 4 passed (1 suite, 0.00s)**
 

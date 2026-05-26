@@ -39,9 +39,9 @@ Workspace: `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25`
 - `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/docs/compiled-ir.md`
   - Describes compiled IR as the runtime contract between cold compiler and hot engine; states `WorkflowParts` is untrusted compiler output and `CompiledWorkflow::try_from_parts` validates numeric references.
 - Runtime/consumer touchpoints that deserialize or revalidate compiled artifacts:
-  - `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballastics/src/run.rs`
-  - `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballastics/src/storage.rs`
-  - `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballastics/src/commands_verify.rs`
+  - `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballistics/src/run.rs`
+  - `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballistics/src/storage.rs`
+  - `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballistics/src/commands_verify.rs`
   - `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/vb_storage/src/admission.rs`
   - `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/vb_ipc/src/server/handlers.rs`
 
@@ -84,11 +84,11 @@ Workspace: `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25`
   - Large aggregate tests include comments about shared validation catching invalid together IR.
 - `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/vb_validate/src/shared.rs`
   - Unit tests for pipeline defaults, disabled gates, short-circuit behavior.
-- `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballastics/tests/error_chain_integration.rs`
+- `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballistics/tests/error_chain_integration.rs`
   - Asserts user-visible error text for shared validation failures, including `compiled workflow IR failed validation: ...`.
-- `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballastics/tests/cross_crate_adversarial.rs`
+- `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballistics/tests/cross_crate_adversarial.rs`
   - Cross-crate seam tests for `vb_compile -> vb_core` and deterministic compiled output.
-- `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballastics/tests/cli_integration.rs`
+- `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/velvet_ballistics/tests/cli_integration.rs`
   - CLI compile/run compiled IR paths and compiled artifact digest/equality checks.
 - `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25/crates/vb_core/src/workflow/tests.rs`
   - Core IR construction/to_parts invariants; useful to distinguish core structural validation from shared validation.

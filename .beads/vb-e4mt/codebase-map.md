@@ -10,7 +10,7 @@
 
 ## 1. Scope Summary
 
-This bead covers BDD acceptance scenarios for **resource bounds and budget enforcement** in the velvet-ballastics workflow engine. Focus areas:
+This bead covers BDD acceptance scenarios for **resource bounds and budget enforcement** in the velvet-ballistics workflow engine. Focus areas:
 
 - Bounded queues, frame pools, expression stacks
 - Retry budgets and fanout limits

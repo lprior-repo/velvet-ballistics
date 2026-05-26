@@ -11,4 +11,4 @@ WAIVED:
 - Raw Verus ingress command failed to resolve Cargo dependencies. Waived as invalid lane selection for this facade-only refactor.
 
 DEFERRED_GLOBAL:
-- `moon run velvet-ballastics:check` failed in unrelated `crates/vb_storage/tests/recovery_bdd_tests.rs` unused warnings.
+- `moon run velvet-ballistics:check` failed in unrelated `crates/vb_storage/tests/recovery_bdd_tests.rs` unused warnings.

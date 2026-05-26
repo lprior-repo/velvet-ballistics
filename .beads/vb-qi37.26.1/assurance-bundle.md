@@ -52,7 +52,7 @@ cargo clippy -p vb_ipc -- -D warnings
 
 **Command evidence:**
 ```bash
-cargo check -p velvet-ballastics-workspace-tests --tests
+cargo check -p velvet-ballistics-workspace-tests --tests
 ```
 - **Exit code:** 0
 - **Output:** `Finished dev profile [unoptimized + debuginfo] target(s) in 0.07s`
@@ -177,7 +177,7 @@ test -f crates/vb_ipc/src/server/handlers/mod.rs; echo $?
 | Obligation | Contract Clause | Status | Exit Code | Evidence |
 |---|---|---|---|---|
 | COMP-001 | C1 | PASS | 0 | `cargo check -p vb_ipc` clean |
-| COMP-002 | C2 | PASS | 0 | `cargo check -p velvet-ballastics-workspace-tests --tests` clean |
+| COMP-002 | C2 | PASS | 0 | `cargo check -p velvet-ballistics-workspace-tests --tests` clean |
 | COMP-003 | C1 | PASS | 0 | `cargo clippy -p vb_ipc -- -D warnings` clean |
 | SAFE-001 | C3 / INV-003 | PASS (grandfathered) | 0 | 100 pre-existing grep matches; zero new in diff |
 | SAFE-002 | C3 / INV-003 | PASS | 0 | 1 match: `#![forbid(unsafe_code)]` |

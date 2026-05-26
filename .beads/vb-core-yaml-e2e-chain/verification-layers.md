@@ -60,8 +60,8 @@
 
 ## Runtime Shell Evidence
 
-- Focused CLI E2E: `cargo test -p velvet_ballastics --test cli_integration -- --nocapture` with downstream-added targeted tests for YAML strict run/submit/events/inspect/recovery chain.
-- Storage/admission/recovery unit/integration: `cargo test -p vb_storage -- --nocapture` and `cargo test -p velvet-ballastics-workspace --test vb_qi37_1_1_red_recovery_contract_test -- --nocapture`.
+- Focused CLI E2E: `cargo test -p velvet_ballistics --test cli_integration -- --nocapture` with downstream-added targeted tests for YAML strict run/submit/events/inspect/recovery chain.
+- Storage/admission/recovery unit/integration: `cargo test -p vb_storage -- --nocapture` and `cargo test -p velvet-ballistics-workspace --test vb_qi37_1_1_red_recovery_contract_test -- --nocapture`.
 - Runtime admission: `cargo test -p vb_runtime -- --nocapture`.
 - Strict YAML rejection: `cargo test -p vb_compile -- --nocapture` with focused malformed YAML cases.
 - Kani strict admission matrix: `cargo kani -p vb_runtime --harness yaml_e2e_admission_matrix`; currently BLOCKED until the harness is wired into a Kani-discoverable `vb_runtime` target.

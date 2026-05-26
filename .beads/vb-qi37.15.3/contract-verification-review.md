@@ -86,7 +86,7 @@ All deferred obligations are correctly routed to State 8 (test-writer) with `rer
 ## Artifact Path Observations
 
 - `proof-obligations.planned.jsonl` (State 4) records wrong artifact path (`vb_cli/commands_journal.rs` vs actual `vb_cli_commands_journal_trace.rs`) and wrong variant count (16 vs 18). These are State 4 documentation issues, not proof defects. Proof uses correct paths.
-- `proof-obligations.jsonl` (State 3) records wrong crate path (`velvet_ballastics` vs actual `vb_cli`). Production code confirmed at `crates/vb_cli/src/commands_journal.rs`.
+- `proof-obligations.jsonl` (State 3) records wrong crate path (`velvet_ballistics` vs actual `vb_cli`). Production code confirmed at `crates/vb_cli/src/commands_journal.rs`.
 
 These path errors do not affect proof validity or contract adequacy.
 

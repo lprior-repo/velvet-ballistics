@@ -184,214 +184,214 @@ fn deny_toml_allows_zlib_license_pattern() -> Result<(), String> {
 }
 
 #[test]
-fn benches_velvet_ballastics_rs_exists() -> Result<(), String> {
-    require_workspace_path("benches/velvet_ballastics.rs")?;
+fn benches_velvet_ballistics_rs_exists() -> Result<(), String> {
+    require_workspace_path("benches/velvet_ballistics.rs")?;
     Ok(())
 }
 
 #[test]
-fn benches_velvet_ballastics_has_yaml_parse_group() -> Result<(), String> {
+fn benches_velvet_ballistics_has_yaml_parse_group() -> Result<(), String> {
     require_file_contains(
-        "benches/velvet_ballastics.rs",
+        "benches/velvet_ballistics.rs",
         "yaml_parse",
         "benchmark group",
     )
 }
 
 #[test]
-fn benches_velvet_ballastics_has_compile_validate_group() -> Result<(), String> {
+fn benches_velvet_ballistics_has_compile_validate_group() -> Result<(), String> {
     require_file_contains(
-        "benches/velvet_ballastics.rs",
+        "benches/velvet_ballistics.rs",
         "compile_validate",
         "benchmark group",
     )
 }
 
 #[test]
-fn benches_velvet_ballastics_has_expression_group() -> Result<(), String> {
+fn benches_velvet_ballistics_has_expression_group() -> Result<(), String> {
     require_file_contains(
-        "benches/velvet_ballastics.rs",
+        "benches/velvet_ballistics.rs",
         "expression",
         "benchmark group",
     )
 }
 
 #[test]
-fn benches_velvet_ballastics_has_runtime_core_group() -> Result<(), String> {
+fn benches_velvet_ballistics_has_runtime_core_group() -> Result<(), String> {
     require_file_contains(
-        "benches/velvet_ballastics.rs",
+        "benches/velvet_ballistics.rs",
         "runtime_core",
         "benchmark group",
     )
 }
 
 #[test]
-fn benches_velvet_ballastics_has_storage_ipc_group() -> Result<(), String> {
+fn benches_velvet_ballistics_has_storage_ipc_group() -> Result<(), String> {
     require_file_contains(
-        "benches/velvet_ballastics.rs",
+        "benches/velvet_ballistics.rs",
         "storage_ipc",
         "benchmark group",
     )
 }
 
 #[test]
-fn benches_velvet_ballastics_has_generated_mode_group() -> Result<(), String> {
+fn benches_velvet_ballistics_has_generated_mode_group() -> Result<(), String> {
     require_file_contains(
-        "benches/velvet_ballastics.rs",
+        "benches/velvet_ballistics.rs",
         "generated_mode",
         "benchmark group",
     )
 }
 
 #[test]
-fn benches_velvet_ballastics_metadata_has_profile() -> Result<(), String> {
-    require_file_contains("benches/velvet_ballastics.rs", "profile=bench", "metadata")
+fn benches_velvet_ballistics_metadata_has_profile() -> Result<(), String> {
+    require_file_contains("benches/velvet_ballistics.rs", "profile=bench", "metadata")
 }
 
 #[test]
-fn benches_velvet_ballastics_metadata_has_criterion_tool() -> Result<(), String> {
+fn benches_velvet_ballistics_metadata_has_criterion_tool() -> Result<(), String> {
     require_file_contains(
-        "benches/velvet_ballastics.rs",
+        "benches/velvet_ballistics.rs",
         "tool=criterion-0.8",
         "metadata",
     )
 }
 
 #[test]
-fn benches_velvet_ballastics_metadata_has_durability() -> Result<(), String> {
-    require_file_contains("benches/velvet_ballastics.rs", "durability=", "metadata")
+fn benches_velvet_ballistics_metadata_has_durability() -> Result<(), String> {
+    require_file_contains("benches/velvet_ballistics.rs", "durability=", "metadata")
 }
 
 #[test]
-fn benches_velvet_ballastics_metadata_has_latency() -> Result<(), String> {
-    require_file_contains("benches/velvet_ballastics.rs", "latency=", "metadata")
+fn benches_velvet_ballistics_metadata_has_latency() -> Result<(), String> {
+    require_file_contains("benches/velvet_ballistics.rs", "latency=", "metadata")
 }
 
 #[test]
-fn benches_velvet_ballastics_metadata_has_allocations() -> Result<(), String> {
-    require_file_contains("benches/velvet_ballastics.rs", "allocations=", "metadata")
+fn benches_velvet_ballistics_metadata_has_allocations() -> Result<(), String> {
+    require_file_contains("benches/velvet_ballistics.rs", "allocations=", "metadata")
 }
 
 #[test]
-fn benches_velvet_ballastics_metadata_has_fixture_digest() -> Result<(), String> {
+fn benches_velvet_ballistics_metadata_has_fixture_digest() -> Result<(), String> {
     require_file_contains(
-        "benches/velvet_ballastics.rs",
+        "benches/velvet_ballistics.rs",
         "fixture_digest=",
         "metadata",
     )
 }
 
 #[test]
-fn benches_velvet_ballastics_has_step_once_benchmark_id() -> Result<(), String> {
+fn benches_velvet_ballistics_has_step_once_benchmark_id() -> Result<(), String> {
     require_file_contains(
-        "benches/velvet_ballastics.rs",
+        "benches/velvet_ballistics.rs",
         "bench_engine_step_once_save_const_single_transition",
         "master traceable benchmark id",
     )
 }
 
 #[test]
-fn benches_velvet_ballastics_has_run_chain_10_benchmark_id() -> Result<(), String> {
+fn benches_velvet_ballistics_has_run_chain_10_benchmark_id() -> Result<(), String> {
     require_file_contains(
-        "benches/velvet_ballastics.rs",
+        "benches/velvet_ballistics.rs",
         "bench_engine_run_save_chain_10_steps",
         "master traceable benchmark id",
     )
 }
 
 #[test]
-fn benches_velvet_ballastics_has_run_chain_1000_benchmark_id() -> Result<(), String> {
+fn benches_velvet_ballistics_has_run_chain_1000_benchmark_id() -> Result<(), String> {
     require_file_contains(
-        "benches/velvet_ballastics.rs",
+        "benches/velvet_ballistics.rs",
         "bench_engine_run_save_chain_1000_steps",
         "master traceable benchmark id",
     )
 }
 
 #[test]
-fn benches_velvet_ballastics_has_choose_true_benchmark_id() -> Result<(), String> {
+fn benches_velvet_ballistics_has_choose_true_benchmark_id() -> Result<(), String> {
     require_file_contains(
-        "benches/velvet_ballastics.rs",
+        "benches/velvet_ballistics.rs",
         "bench_engine_choose_true_branch",
         "master traceable benchmark id",
     )
 }
 
 #[test]
-fn benches_velvet_ballastics_has_choose_false_benchmark_id() -> Result<(), String> {
+fn benches_velvet_ballistics_has_choose_false_benchmark_id() -> Result<(), String> {
     require_file_contains(
-        "benches/velvet_ballastics.rs",
+        "benches/velvet_ballistics.rs",
         "bench_engine_choose_false_branch",
         "master traceable benchmark id",
     )
 }
 
 #[test]
-fn benches_velvet_ballastics_has_finish_benchmark_id() -> Result<(), String> {
+fn benches_velvet_ballistics_has_finish_benchmark_id() -> Result<(), String> {
     require_file_contains(
-        "benches/velvet_ballastics.rs",
+        "benches/velvet_ballistics.rs",
         "bench_engine_finish_no_observability",
         "master traceable benchmark id",
     )
 }
 
 #[test]
-fn benches_velvet_ballastics_has_numeric_slots_benchmark_id() -> Result<(), String> {
+fn benches_velvet_ballistics_has_numeric_slots_benchmark_id() -> Result<(), String> {
     require_file_contains(
-        "benches/velvet_ballastics.rs",
+        "benches/velvet_ballistics.rs",
         "bench_engine_numeric_slots_read_write_i64",
         "master traceable benchmark id",
     )
 }
 
 #[test]
-fn benches_velvet_ballastics_has_ingress_capacity_benchmark_id() -> Result<(), String> {
+fn benches_velvet_ballistics_has_ingress_capacity_benchmark_id() -> Result<(), String> {
     require_file_contains(
-        "benches/velvet_ballastics.rs",
+        "benches/velvet_ballistics.rs",
         "bench_memory_ingress_try_submit_capacity_1024",
         "master traceable benchmark id",
     )
 }
 
 #[test]
-fn benches_velvet_ballastics_has_ingress_submit_recv_benchmark_id() -> Result<(), String> {
+fn benches_velvet_ballistics_has_ingress_submit_recv_benchmark_id() -> Result<(), String> {
     require_file_contains(
-        "benches/velvet_ballastics.rs",
+        "benches/velvet_ballistics.rs",
         "bench_memory_ingress_submit_recv_single_thread",
         "master traceable benchmark id",
     )
 }
 
 #[test]
-fn benches_velvet_ballastics_has_ingress_backpressure_benchmark_id() -> Result<(), String> {
+fn benches_velvet_ballistics_has_ingress_backpressure_benchmark_id() -> Result<(), String> {
     require_file_contains(
-        "benches/velvet_ballastics.rs",
+        "benches/velvet_ballistics.rs",
         "bench_memory_ingress_backpressure_full_queue",
         "master traceable benchmark id",
     )
 }
 
 #[test]
-fn benches_velvet_ballastics_has_fjall_append_benchmark_id() -> Result<(), String> {
+fn benches_velvet_ballistics_has_fjall_append_benchmark_id() -> Result<(), String> {
     require_file_contains(
-        "benches/velvet_ballastics.rs",
+        "benches/velvet_ballistics.rs",
         "bench_fjall_append_run_accepted_no_persist",
         "master traceable benchmark id",
     )
 }
 
 #[test]
-fn benches_velvet_ballastics_has_replay_journal_benchmark_id() -> Result<(), String> {
+fn benches_velvet_ballistics_has_replay_journal_benchmark_id() -> Result<(), String> {
     require_file_contains(
-        "benches/velvet_ballastics.rs",
+        "benches/velvet_ballistics.rs",
         "bench_replay_ordered_journal_1000_events",
         "master traceable benchmark id",
     )
 }
 
 #[test]
-fn benches_velvet_ballastics_uses_black_box() -> Result<(), String> {
-    let contents = read_workspace_file("benches/velvet_ballastics.rs")?;
+fn benches_velvet_ballistics_uses_black_box() -> Result<(), String> {
+    let contents = read_workspace_file("benches/velvet_ballistics.rs")?;
 
     ensure(
         contents.contains("black_box"),
@@ -400,7 +400,7 @@ fn benches_velvet_ballastics_uses_black_box() -> Result<(), String> {
 }
 
 #[test]
-fn benches_velvet_ballastics_compiles() -> Result<(), String> {
+fn benches_velvet_ballistics_compiles() -> Result<(), String> {
     let manifest_path = workspace_path("Cargo.toml");
     let status = Command::new("cargo")
         .args(["check", "--benches", "--all-features", "--manifest-path"])
@@ -416,7 +416,7 @@ fn benches_velvet_ballastics_compiles() -> Result<(), String> {
 
     ensure(
         status.success(),
-        "benches/velvet_ballastics.rs must compile with cargo check --benches --all-features"
+        "benches/velvet_ballistics.rs must compile with cargo check --benches --all-features"
             .to_string(),
     )
 }

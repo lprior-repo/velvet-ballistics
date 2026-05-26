@@ -3,7 +3,7 @@
 
 use crate::ids::StepIdx;
 use crate::nodes::CompiledNodeKind;
-use crate::compiled_workflow::WorkflowParts;
+use crate::workflow::WorkflowParts;
 use crate::validation::WorkflowError;
 
 pub(crate) mod targets {

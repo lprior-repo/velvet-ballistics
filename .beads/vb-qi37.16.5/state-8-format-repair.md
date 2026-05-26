@@ -116,7 +116,7 @@ rtk cargo fmt -- --check
 ### Gate 3: Lifecycle integration test
 
 ```bash
-rtk cargo test --package velvet_ballastics --test lifecycle_integration -- --test-threads=1
+rtk cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1
 ```
 **Result:** 43 passed (1 suite, 0.61s)
 

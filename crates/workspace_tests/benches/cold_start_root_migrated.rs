@@ -24,7 +24,7 @@ fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
 }
 
 /// Small workflow YAML.
-const SMALL_WORKFLOW_YAML: &str = r#"version: velvet-ballastics/v1
+const SMALL_WORKFLOW_YAML: &str = r#"version: velvet-ballistics/v1
 name: bench_minimal
 when:
   manual: {}
@@ -83,7 +83,7 @@ fn save_chain_workflow(count: u16) -> Option<CompiledWorkflow> {
 /// Builds a workflow with `count` steps from YAML string.
 fn many_step_workflow(count: u16) -> String {
     let mut source = String::from(
-        "version: velvet-ballastics/v1\nname: many_steps\nwhen:\n  manual: {}\nsteps:\n",
+        "version: velvet-ballistics/v1\nname: many_steps\nwhen:\n  manual: {}\nsteps:\n",
     );
     let mut step = 0_u16;
     while step < count {

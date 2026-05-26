@@ -56,7 +56,7 @@
 | **Static Analysis** | 3 checks | `cargo clippy`, `cargo-deny` license audit, compile-fail test for `JournalError` typo fix (contract-verification-review.md:55) |
 | **Unit / Calc** | 25 tests | Pure lifecycle transition logic, `RuntimeState::is_resumable` predicate, journal append-only SEQ behavior, `ResumeResult` field presence, error propagation paths, AlreadyRunning variant handling, StructuredOutputFailed schema validation |
 | **Integration** | 9 tests | CLI-runtime boundary routing, journal replay survival, incomplete hydration rejection, journal unchanged after replay, output format validation |
-| **E2E** | 2 tests | Full `velvet_ballastics resume` CLI command end-to-end with temp database |
+| **E2E** | 2 tests | Full `velvet_ballistics resume` CLI command end-to-end with temp database |
 | **Property-based** | 5 invariants | RuntimeState exhaustive variant coverage, is_resumable predicate, is_hydration_complete, append immutability, result field presence |
 | **Formal (TLA+)** | 4 model-checks | `ValidTransition`, `JournalAppendBeforeSuccess`, `JournalImmutable`, `FailedNotResumable` invariants |
 | **Formal (Verus)** | 5 proofs | Pure state predicates, append-only SEQ, typestate field presence |
@@ -83,7 +83,7 @@ Deviation from pure trophy: higher formal layer weight (TLA+ + Verus) is justifi
 #### Scenario: `cli_resume_run_id_not_found`
 ```
 Given: a runtime journal with no entry for run_id "run-999"
-When:  velvet_ballastics resume is invoked with run_id="run-999"
+When:  velvet_ballistics resume is invoked with run_id="run-999"
 Then:  Command::Resume returns Error::RunIdNotFound("run-999")
 And:   runtime state is unchanged (no transition attempted)
 ```
@@ -91,7 +91,7 @@ And:   runtime state is unchanged (no transition attempted)
 #### Scenario: `cli_resume_run_id_exists`
 ```
 Given: a runtime journal with an existing entry for run_id "run-001" in Resumable state
-When:  velvet_ballastics resume is invoked with run_id="run-001"
+When:  velvet_ballistics resume is invoked with run_id="run-001"
 Then:  resume proceeds to Running state
 And:   RuntimeJournalEvent::Resumed is appended
 ```
@@ -199,7 +199,7 @@ And:   RuntimeState remains Resumable (no partial state)
 #### Scenario: `cli_resume_output_format`
 ```
 Given: a valid resumable run_id "run-004"
-When:  velvet_ballastics resume --run-id run-004 --db /tmp/test.db --output json is invoked
+When:  velvet_ballistics resume --run-id run-004 --db /tmp/test.db --output json is invoked
 Then:  stdout contains valid JSON where run_id == "run-004" exactly
 And:   status == "resumed" exactly (not "running", not "already_running")
 And:   timestamp conforms to ISO 8601 format
@@ -210,7 +210,7 @@ And:   no error fields are present in the JSON output
 #### Scenario: `cli_resume_output_format_yaml`
 ```
 Given: a valid resumable run_id "run-005"
-When:  velvet_ballastics resume --run-id run-005 --db /tmp/test.db --output yaml is invoked
+When:  velvet_ballistics resume --run-id run-005 --db /tmp/test.db --output yaml is invoked
 Then:  stdout contains valid YAML with keys: run_id, status, timestamp
 And:   exit code is 0
 ```
@@ -218,7 +218,7 @@ And:   exit code is 0
 #### Scenario: `structured_output_failure_returns_partial_with_error`
 ```
 Given: a valid resumable run_id "run-006" but output formatting fails
-When:  velvet_ballastics resume is invoked
+When:  velvet_ballistics resume is invoked
 Then:  ResumeResult is still produced internally
 And:   Error::StructuredOutputFailed is logged but does not block success
 And:   exit code is 0 (non-fatal error)
@@ -227,7 +227,7 @@ And:   exit code is 0 (non-fatal error)
 #### Scenario: `structured_output_failed_result_schema`
 ```
 Given: a valid resumable run_id "run-006" and output formatting is configured but fails
-When:  velvet_ballastics resume is invoked
+When:  velvet_ballistics resume is invoked
 Then:  Error::StructuredOutputFailed result schema is:
 │ RunId:     Some("run-006")          // run_id preserved in error context
 │ ErrorKind: StructuredOutputFailed   // exact error variant
@@ -376,7 +376,7 @@ And:   Invariant FailedNotResumable is preserved
 - **Expected**: no panic; return `Err` for malformed input
 
 ### Fuzz Target: `Command::Resume` CLI argument parsing
-- **Input type**: arbitrary string arguments to `velvet_ballastics resume`
+- **Input type**: arbitrary string arguments to `velvet_ballistics resume`
 - **Risk**: argument parser panic, path traversal in `--db`, format string injection in `--output`
 - **Corpus seeds**: valid args, empty run_id, run_id with special chars, non-existent db path, invalid output format
 - **Target function**: `args::parse_resume` or equivalent
@@ -478,8 +478,8 @@ And:   Invariant FailedNotResumable is preserved
 
 | Scenario | Input | Expected Output | Test Layer |
 |----------|-------|-----------------|------------|
-| `velvet_ballastics resume --run-id X` | valid resumable run | exit 0 + structured output | e2e |
-| `velvet_ballastics resume --run-id X` | non-existent run | exit != 0 + error message | e2e |
+| `velvet_ballistics resume --run-id X` | valid resumable run | exit 0 + structured output | e2e |
+| `velvet_ballistics resume --run-id X` | non-existent run | exit != 0 + error message | e2e |
 
 ---
 
@@ -531,7 +531,7 @@ verus crates/vb_runtime/src/journal.rs
 
 # Integration
 cargo test --package vb_storage --test replay_resume -- --nocapture
-cargo test --package velvet_ballastics --test cli_integration resume -- --nocapture
+cargo test --package velvet_ballistics --test cli_integration resume -- --nocapture
 
 # Unit
 cargo test --package vb_runtime --lib -- shard::lifecycle::tests -- --nocapture
@@ -563,10 +563,10 @@ cargo test --package vb_runtime --lib -- properties -- --nocapture
 | Unit (lifecycle) | `crates/vb_runtime/src/shard/lifecycle.rs` (inline `#[cfg(test)]` module) |
 | Unit (journal) | `crates/vb_runtime/src/journal.rs` (inline `#[cfg(test)]` module) |
 | Unit (types) | `crates/vb_runtime/src/shard/types.rs` (inline `#[cfg(test)]` module) |
-| Integration (CLI) | `crates/velvet_ballastics/tests/cli_integration.rs` |
+| Integration (CLI) | `crates/velvet_ballistics/tests/cli_integration.rs` |
 | Integration (replay) | `crates/vb_storage/tests/replay_resume.rs` |
 | Property-based | `crates/vb_runtime/src/shard/properties.rs` or `crates/vb_runtime/src/properties.rs` |
-| E2E | `crates/velvet_ballastics/tests/e2e_resume.rs` |
+| E2E | `crates/velvet_ballistics/tests/e2e_resume.rs` |
 | Fuzz | `fuzz/fuzz_targets/resume_deserialization.rs` |
 
 ---

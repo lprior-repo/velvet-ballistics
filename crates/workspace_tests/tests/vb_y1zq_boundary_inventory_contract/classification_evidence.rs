@@ -45,7 +45,7 @@ fn classify_boundary_returns_decoder_when_candidate_ingests_external_bytes() {
 
 #[test]
 fn classify_boundary_returns_generated_code_when_candidate_is_generated_interface() {
-    let source = "crates/vb_codegen/src/generated/interface.rs";
+    let source = "crates/vb_runtime/src/generated/interface.rs";
     let result = classify_boundary(candidate(source, "generated-interface-boundary"));
 
     assert_eq!(result, Ok(classified(BoundaryClass::GeneratedCode, source)));
@@ -171,7 +171,7 @@ fn required_evidence_returns_required_evidence_for_generated_code_even_without_r
     let boundary = ClassifiedBoundary::new(ClassifiedBoundaryInput {
         id: String::from("vb-y1zq-generated-policy-risk"),
         class: BoundaryClass::GeneratedCode,
-        source_path: PathBuf::from("crates/vb_codegen/src/generated/interface.rs"),
+        source_path: PathBuf::from("crates/vb_runtime/src/generated/interface.rs"),
         exposure: BoundaryExposure::none(),
     });
 

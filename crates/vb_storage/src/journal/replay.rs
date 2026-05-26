@@ -54,6 +54,20 @@ impl FjallJournal {
         self.events_for_run_bounded(run, EventReplayLimit::DEFAULT)
     }
 
+    /// Returns the raw bytes for a specific event by (run, seq) key.
+    ///
+    /// This is a public query API to support external verification of event writes
+    /// from outside the `vb_storage` crate (e.g., integration tests).
+    pub fn get_event_bytes(
+        &self,
+        run: vb_core::RunId,
+        seq: EventSeq,
+    ) -> Result<Option<Vec<u8>>, JournalError> {
+        let key = run_event_key(run, seq)?;
+        let result: Result<Option<fjall::Slice>, fjall::Error> = self.events.get(key);
+        Ok(result?.map(|s| s.to_vec()))
+    }
+
     /// Replays one run's events with an explicit event collection bound.
     pub fn events_for_run_bounded(
         &self,

@@ -6,7 +6,7 @@
 |-------|-------|
 | **STATUS** | NOT_AVAILABLE |
 | **Version** | cargo-kani 0.67.0 |
-| **Command** | `cargo kani -p velvet-ballastics-workspace-tests` |
+| **Command** | `cargo kani -p velvet-ballistics-workspace-tests` |
 | **Harnesses found** | 0 of 9 written |
 | **Errors** | None (compiled but no harnesses discovered) |
 | **Root cause** | `contracts_as_data_kani.rs` has `#![cfg(kani)]` crate-level gating. Integration test files in `tests/` directory are not compiled by `cargo kani`, so proof harnesses with `#[kani::proof]` are never seen. |

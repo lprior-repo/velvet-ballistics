@@ -11,7 +11,7 @@ STATUS: COMPLETE
 - `crates/vb_ipc/src/server/impl_tests.rs`: cleanup errors are reported instead of silently dropped.
 - `crates/vb_storage/src/process_lock.rs`: PID write errors now propagate; holder PID read errors return `None` explicitly.
 - `crates/vb_ui/src/ipc_bridge.rs`, `crates/vb_ui/src/ipc_wiring.rs`, `crates/vb_ui/src/workflow/execution_details.rs`, `crates/vb_ui/src/verify/durability_tests.rs`: converted lossy `.ok()` calls to assertions or explicit matches.
-- `crates/velvet_ballastics/src/commands_ai_context.rs`, `io.rs`, `main.rs`, `main_tests.rs`: converted swallowed write/input results to error reporting or returned errors.
+- `crates/velvet_ballistics/src/commands_ai_context.rs`, `io.rs`, `main.rs`, `main_tests.rs`: converted swallowed write/input results to error reporting or returned errors.
 
 ## Contract Mapping
 

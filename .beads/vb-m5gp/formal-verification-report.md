@@ -37,7 +37,7 @@ STATUS: APPROVED
 
 - STRUCT-001: PASS — `cargo +nightly check -p vb_compile --all-targets --all-features` exit 0; `lib.rs` declares private `mod_compile_core`, `mod_compile_errors`, `mod_compile_lowering`, and `mod_compile_validation` modules and preserves crate-root re-exports.
 - API-001: PASS — `cargo +nightly test -p vb_compile --all-targets --all-features` exit 0; 245 lib tests, 9 idempotency tests, 15 primitive-lowering tests, and 10 strict-yaml tests passed.
-- API-002: PASS — `cargo +nightly test -p velvet-ballastics-workspace-tests --test integration_compile_codegen_pipeline --test integration_compile_codegen_runtime_e2e --test integration_compile_error_message_quality --test integration_validate_yaml_parsing` exit 0; selected integration suites passed: 15, 23, 21 passed/4 ignored, and 29 tests.
+- API-002: PASS — `cargo +nightly test -p velvet-ballistics-workspace-tests --test integration_compile_codegen_pipeline --test integration_compile_codegen_runtime_e2e --test integration_compile_error_message_quality --test integration_validate_yaml_parsing` exit 0; selected integration suites passed: 15, 23, 21 passed/4 ignored, and 29 tests.
 - BEHAV-001: PASS — `moon ci` exit 0; 23 tasks completed; nextest summary 10771 passed, 44 skipped; source-length lane emitted only DEFERRED_GLOBAL pre-existing unrelated files.
 - ERR-001: PASS — exact diagnostics command exit 0; diagnostic integration suite passed 21 tests with 4 ignored pre-existing tests.
 - STRUCT-002: PASS — manual source review after dependency-edge repair found `errors_to_validation=0 matches`, `validation_to_lowering_or_core=0 matches`, no `include!` bodies, and executable dependency-edge test passed.

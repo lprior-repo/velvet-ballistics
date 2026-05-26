@@ -18,7 +18,7 @@ STATUS: APPROVED
 
 ## Commands Run
 
-- `moon run :verify-proof`: exit 0; `velvet-ballastics:verify-proof` reported `[PASS] All proof checks passed` after configured Kani proof harnesses.
+- `moon run :verify-proof`: exit 0; `velvet-ballistics:verify-proof` reported `[PASS] All proof checks passed` after configured Kani proof harnesses.
 - `tlc -config specs/admission_header_before_ack.cfg specs/admission_header_before_ack.tla`: exit 0; 25 states generated, 13 distinct states found, 2 temporal branches checked, no errors.
 - `verus verification/verus/admission_artifact_model.rs`: exit 0; `verification results:: 6 verified, 0 errors`.
 - `verus verification/verus/capability_artifact_model.rs`: exit 0; `verification results:: 8 verified, 0 errors`.

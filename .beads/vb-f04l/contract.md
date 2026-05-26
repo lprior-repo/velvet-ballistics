@@ -36,7 +36,7 @@
 ## Preconditions
 
 - PRE-001: Caller provides a parsed, canonical `WorkflowSource` accepted by `vb_yaml`; `source.steps()` is non-empty.
-- PRE-002: `WorkflowSource` uses `version == "velvet-ballastics/v1"` and canonical trigger forms supported by `vb_yaml`.
+- PRE-002: `WorkflowSource` uses `version == "velvet-ballistics/v1"` and canonical trigger forms supported by `vb_yaml`.
 - PRE-003: Canonical compile scope excludes unsupported top-level declarations until the dedicated values/actions/reference bead extends it: non-empty `inputs`, `vars`, `secrets`, `examples`, and top-level `result` must produce explicit compile errors.
 - PRE-004: Step IDs are unique in every lowered scope; duplicate IDs in the top-level source or nested bodies must be rejected before runtime validation.
 - PRE-005: Unsupported step control fields in the current compile scope (`name`, `if`, `with`, `try_again`, `on_error`, `then`) must produce explicit compile errors unless a primitive-specific contract extension consumes them.

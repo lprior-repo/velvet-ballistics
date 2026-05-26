@@ -9,7 +9,7 @@
 ## Verification Command
 
 ```bash
-rtk cargo test --package velvet_ballastics --test lifecycle_integration -- --test-threads=1
+rtk cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1
 ```
 
 ## Previous State: 39 passed; 4 failed

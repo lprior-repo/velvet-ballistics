@@ -5,7 +5,7 @@
 - Bead: `vb-core-atomic-admission`
 - Feature: persist strict accepted-run creation as a single durable Fjall admission boundary before acknowledgement.
 - Source inputs: State 2 `codebase-map.md`, State 2 `delivery-scope.jsonl`, and `bd --db /home/lewis/src/velvet-ballistics/.beads/dolt show vb-core-atomic-admission --json`.
-- Touched crates: `vb_storage`, `vb_runtime`, `velvet_ballastics`.
+- Touched crates: `vb_storage`, `vb_runtime`, `velvet_ballistics`.
 - Critical acceptance: source, accepted artifact, run header, `RunAccepted`, and required indexes are all durable together; injected persistence failure leaves no partially accepted run; `accepted_at_seq` is the real committed journal sequence.
 
 ## Domain Terms

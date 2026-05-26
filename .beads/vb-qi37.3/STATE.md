@@ -234,7 +234,7 @@ Next exact state/gate:
 
 State 14 final manual QA evidence:
 - `hands-on-qa` final task `ses_1ea02d8fdffesB0xvR5b1kZCJG` wrote `.beads/vb-qi37.3/manual-qa-final.md` with `STATUS: PASS`.
-- Final QA command evidence: product CLI `--help` exited 0; product `version` exited 0 and printed `velvet-ballastics 0.1.0`; product `status --json` exited 0 with runtime status JSON; focused black-hat repair tests passed 3/3; Red Queen lineage tests passed 4/4; Red Queen capacity tests passed 3/3; Red Queen hydration tests passed 5/5; broad `rustup run nightly-2026-04-28 cargo nextest run -p vb_runtime collect_` passed 102/102 with Nextest run ID `428f7f0e-73f9-4faf-b605-b07eec63b332`.
+- Final QA command evidence: product CLI `--help` exited 0; product `version` exited 0 and printed `velvet-ballistics 0.1.0`; product `status --json` exited 0 with runtime status JSON; focused black-hat repair tests passed 3/3; Red Queen lineage tests passed 4/4; Red Queen capacity tests passed 3/3; Red Queen hydration tests passed 5/5; broad `rustup run nightly-2026-04-28 cargo nextest run -p vb_runtime collect_` passed 102/102 with Nextest run ID `428f7f0e-73f9-4faf-b605-b07eec63b332`.
 - Orchestrator verified `.beads/vb-qi37.3/manual-qa-final.md` is non-empty and contains standalone `STATUS: PASS`; report length is 245 lines.
 - Final QA found no bead-local CRITICAL, MAJOR, or MINOR defects. It recorded only observations that no collect-specific CLI/API route is exposed and that collect behavior is therefore manually smoked through runtime/library nextest invocations.
 - Known global FORMAT/CLIPPY/`vb_ui_model` debt remains `DEFERRED_GLOBAL` under follow-up bead `vb-bkgo` and is not a State 14 blocker.

@@ -48,7 +48,7 @@ STATUS: PASS
 - `cargo xtask ai-release --bead vb-nf2u` — PASS; emitted six passing UI release subgates.
 - `if cargo xtask ai-release --bead vb-nf2u-missing; then exit 64; else true; fi` — PASS as negative check; unknown bead fails closed.
 - `rm -rf "target/vb-nf2u-negative-fixtures" && if cargo xtask ai-release --bead vb-nf2u; then exit 64; else true; fi` — PASS as negative check; missing required fixture fails closed.
-- `cargo nextest run -p velvet-ballastics-workspace --test vb_nf2u_ui_release_acceptance` — PASS.
+- `cargo nextest run -p velvet-ballistics-workspace --test vb_nf2u_ui_release_acceptance` — PASS.
 - `cargo nextest run -p vb_ui_snapshot -p xtask` — PASS; 130 tests.
 - `cargo kani -p vb_ui_snapshot --harness inventory` — PASS; output `/home/lewis/.local/share/opencode/tool-output/tool_e114f2b19001yyl1106y4HPu5N`.
 - `cargo kani -p vb_ui_snapshot --harness layout_` — PASS; output `/home/lewis/.local/share/opencode/tool-output/tool_e114f3cd2001kwaJ49A4LR9pPx`.

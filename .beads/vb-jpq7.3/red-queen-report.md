@@ -7,7 +7,7 @@ Verdict: **APPROVE — crown defended for requested current evidence/test scope*
 ## Commands Run In This Review
 
 - `rtk git status --short` -> **observed pre-existing modified/untracked worktree state**; no staging/commit/push performed.
-- `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract -- --nocapture` -> **PASS**, 11 passed.
+- `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract -- --nocapture` -> **PASS**, 11 passed.
 - `bash scripts/check-ignored-fallible-results.sh` -> **PASS**, embedded/split `.ok()` fixtures caught and production scan printed `NoViolationFound`.
 - `rtk cargo test -p vb_runtime collect_pagination_extra_recovered_journal_round_trips_and_resumes_next_page storage_runtime_journal_maps_action_wait_and_ask_events -- --exact --nocapture` -> **operator error**, Cargo accepts one test filter; no product verdict drawn.
 - `rtk cargo test -p vb_runtime collect_pagination_extra_recovered_journal_round_trips_and_resumes_next_page -- --exact --nocapture` -> **0 tests run** because the exact filter did not match the fully-qualified test name; no product verdict drawn.
@@ -20,7 +20,7 @@ Verdict: **APPROVE — crown defended for requested current evidence/test scope*
 - Latest Moon CI raw log: `/home/lewis/.local/share/opencode/tool-output/tool_e54cfc867001em3UkY7dnDZZ7z`.
   - Lines 520-521: ignored-fallible fixtures include `DISCARD-003 embedded ok lossy` and `DISCARD-003 split ok lossy`, both exit 2.
   - Line 548: ignored-fallible production scan `NoViolationFound`.
-  - Lines 543-546: `velvet-ballastics:supply-chain` completed.
+  - Lines 543-546: `velvet-ballistics:supply-chain` completed.
   - Line 558: `test integrity: PASS base=HEAD`.
   - Lines 808 and 872: `Starting 12169 tests across 171 binaries`; `12169 tests run: 12169 passed (5 slow), 0 skipped`.
   - Line 983: `Tasks: 25 completed (3 cached)`.

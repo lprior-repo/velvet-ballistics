@@ -48,7 +48,7 @@ STATUS: APPROVED
 - claim: workspace-tests package compiles with zero errors under cargo check --tests
 - layer: static-scan
 - checker: cargo
-- command: `cargo check -p velvet-ballastics-workspace-tests --tests`
+- command: `cargo check -p velvet-ballistics-workspace-tests --tests`
 - required: true
 - scope: workspace
 - owner_state: 3

@@ -94,7 +94,7 @@
 
 ### BDD-001 (REQ-POST-002, POST-002)
 **Artifact**: `crates/workspace_tests/tests/vb_te1i_binary_ipc_acceptance.rs`
-**Command**: `cargo test --package velvet-ballastics-workspace-tests --test vb_te1i_binary_ipc_acceptance ipc_health_and_shutdown_return_expected_responses -- --nocapture`
+**Command**: `cargo test --package velvet-ballistics-workspace-tests --test vb_te1i_binary_ipc_acceptance ipc_health_and_shutdown_return_expected_responses -- --nocapture`
 **Evidence**:
 - Health command with correlation `0xDEAD_BEEF` returns `IpcResponse::Healthy` with correlation preserved
 - Shutdown command with correlation `0xCAFEBABE` returns `IpcResponse::ShuttingDown` with correlation preserved
@@ -105,7 +105,7 @@
 
 ### BDD-002 (REQ-POST-004, POST-004)
 **Artifact**: `crates/workspace_tests/tests/vb_te1i_binary_ipc_acceptance.rs`
-**Command**: `cargo test --package velvet-ballastics-workspace-tests --test vb_te1i_binary_ipc_acceptance ipc_submit_run_roundtrips_when_frame_is_valid -- --nocapture`
+**Command**: `cargo test --package velvet-ballistics-workspace-tests --test vb_te1i_binary_ipc_acceptance ipc_submit_run_roundtrips_when_frame_is_valid -- --nocapture`
 **Evidence**:
 - Valid `SubmitRunPayload` encoded and sent via `IpcCommand::SubmitRun`
 - Response is `IpcResponse::AcceptedRun { run_id: _ }` or `IpcResponse::WorkflowResolutionRequired` (acceptable when no resolver wired)
@@ -116,7 +116,7 @@
 
 ### BDD-003 (REQ-POST-005, POST-005)
 **Artifact**: `crates/workspace_tests/tests/vb_te1i_binary_ipc_acceptance.rs`
-**Command**: `cargo test --package velvet-ballastics-workspace-tests --test vb_te1i_binary_ipc_acceptance ipc_rejects_bad_magic_before_payload_allocation -- --nocapture`
+**Command**: `cargo test --package velvet-ballistics-workspace-tests --test vb_te1i_binary_ipc_acceptance ipc_rejects_bad_magic_before_payload_allocation -- --nocapture`
 **Evidence**:
 - Frame with magic `0xDEAD_BEEF` sent to server
 - Server returns `IpcResponse::FrameError { message }` containing "invalid IPC frame magic"
@@ -127,7 +127,7 @@
 
 ### BDD-004 (REQ-POST-011, POST-011)
 **Artifact**: `crates/workspace_tests/tests/vb_te1i_binary_ipc_acceptance.rs`
-**Command**: `cargo test --package velvet-ballastics-workspace-tests --test vb_te1i_binary_ipc_acceptance ipc_returns_queue_full_when_backpressure_limit_is_hit -- --nocapture`
+**Command**: `cargo test --package velvet-ballistics-workspace-tests --test vb_te1i_binary_ipc_acceptance ipc_returns_queue_full_when_backpressure_limit_is_hit -- --nocapture`
 **Evidence**:
 - SubmitRun sent to server with minimum-capacity runtime
 - Response is a valid typed response (no crash/panic)
@@ -140,7 +140,7 @@
 
 ### BDD-005 (REQ-INV-003, INV-003)
 **Artifact**: `crates/workspace_tests/tests/vb_te1i_binary_ipc_acceptance.rs`
-**Command**: `cargo test --package velvet-ballastics-workspace-tests --test vb_te1i_binary_ipc_acceptance ipc_all_16_commands_have_typed_responses -- --nocapture`
+**Command**: `cargo test --package velvet-ballistics-workspace-tests --test vb_te1i_binary_ipc_acceptance ipc_all_16_commands_have_typed_responses -- --nocapture`
 **Evidence**:
 - All 16 v1 commands (1..=16) sent with valid wire encoding
 - Each returns a typed `IpcResponse` variant (not `UnknownCommand`)
@@ -151,7 +151,7 @@
 
 ### BDD-006 (REQ-POST-001, POST-001)
 **Artifact**: `crates/workspace_tests/tests/vb_te1i_binary_ipc_acceptance.rs`
-**Command**: `cargo test --package velvet-ballastics-workspace-tests --test vb_te1i_binary_ipc_acceptance ipc_correlation_ids_preserved_across_roundtrip -- --nocapture`
+**Command**: `cargo test --package velvet-ballistics-workspace-tests --test vb_te1i_binary_ipc_acceptance ipc_correlation_ids_preserved_across_roundtrip -- --nocapture`
 **Evidence**:
 - 4 distinct correlation IDs tested: `0x1111`, `0x2222`, `0x3333_4444`, `0xDEAD_BEEF_CAFE`
 - Each response header's correlation field exactly matches the request
@@ -164,7 +164,7 @@
 
 ### BDD-007 (REQ-POST-009, POST-009)
 **Artifact**: `crates/workspace_tests/tests/vb_te1i_binary_ipc_acceptance.rs`
-**Command**: `cargo test --package velvet-ballastics-workspace-tests --test vb_te1i_binary_ipc_acceptance ipc_rejects_oversize_payload -- --nocapture`
+**Command**: `cargo test --package velvet-ballistics-workspace-tests --test vb_te1i_binary_ipc_acceptance ipc_rejects_oversize_payload -- --nocapture`
 **Evidence**:
 - Frame with `payload_len = 2 MiB` (exceeds `MaxPayloadBytes::DEFAULT = 1 MiB`) sent
 - Server returns `IpcResponse::FrameError { message }` containing "too large" or "payload too large"

@@ -3,8 +3,7 @@ use super::*;
 use saphyr_parser::Span;
 use std::str;
 use thiserror::Error;
-use vb_core::diagnostic::{HasSymbolicCode, SymbolicCode};
-use vb_core::{ActionId, SideEffect, WorkflowError};
+use vb_core::{ActionId, HasSymbolicCode, SideEffect, SymbolicCode, WorkflowError};
 
 impl CompileError {
     /// Stable machine-readable validation diagnostic code.
@@ -66,9 +65,9 @@ impl CompileError {
             Self::UnsupportedStepPrimitive { primitive, .. } => primitive_code(primitive),
             Self::UnsupportedStepControlField { field, .. } => control_field_code(field),
             Self::StepFieldShape { field, .. } => step_field_shape_code(field),
-            Self::BackwardBranchTarget { .. } | Self::UnknownStepTarget { .. } => {
-                "INVALID_THEN_TARGET"
-            }
+            Self::BackwardBranchTarget { .. }
+            | Self::UnknownStepTarget { .. }
+            | Self::UnknownStepLabel { .. } => "INVALID_THEN_TARGET",
             Self::UnknownReferenceRoot { .. } => "UNKNOWN_REFERENCE",
             Self::IllegalReference { .. } => "DIRECT_RUNTIME_REFERENCE",
             Self::UnknownReferenceName { kind, .. } => unknown_reference_code(kind),
@@ -88,7 +87,15 @@ impl CompileError {
             Self::Validation(error) => validation_error_code(error),
             Self::CanonicalYaml { category, .. } => canonical_yaml_code(category),
         };
-        SymbolicCode::from_static(s).unwrap_or(SymbolicCode::INTERNAL_INVARIANT)
+        // Safety invariant: all symbolic strings returned by CompileError::code()
+        // are registered in vb_core::CODE_REGISTRY. This is verified by
+        // behavior tests (B-040) and proptest coverage.
+        if let Some(code) = SymbolicCode::from_static(s) {
+            return code;
+        }
+        // Unreachable: all match arms use strings registered in CODE_REGISTRY.
+        // Use centralized sentinel to satisfy zero-expect.
+        SymbolicCode::INTERNAL_INVARIANT
     }
 
     /// Alias for integrations that name the machine field explicitly.
@@ -99,9 +106,6 @@ impl CompileError {
 }
 
 impl HasSymbolicCode for CompileError {
-    /// Returns the [`SymbolicCode`] for this compile error.
-    ///
-    /// Delegates to [`CompileError::code`].
     fn symbolic_code(&self) -> SymbolicCode {
         self.code()
     }

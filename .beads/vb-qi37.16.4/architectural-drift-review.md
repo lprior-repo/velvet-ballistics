@@ -25,14 +25,14 @@ Delivery-scope expected files plus implementation-recorded answer IPC files were
 
 | File | Lines | Drift result |
 |---|---:|---|
-| `crates/velvet_ballastics/src/args.rs` | 1697 | Residual oversized file; answer command uses typed `Command::Answer` path. |
-| `crates/velvet_ballastics/src/storage.rs` | 295 | Within 300-line limit. |
-| `crates/velvet_ballastics/tests/cli_integration.rs` | 2552 | Residual oversized test file. |
+| `crates/velvet_ballistics/src/args.rs` | 1697 | Residual oversized file; answer command uses typed `Command::Answer` path. |
+| `crates/velvet_ballistics/src/storage.rs` | 295 | Within 300-line limit. |
+| `crates/velvet_ballistics/tests/cli_integration.rs` | 2552 | Residual oversized test file. |
 | `crates/vb_runtime/src/shard/lifecycle.rs` | 2751 | Residual oversized file; reviewed `handle_ask_answer`. |
 | `crates/vb_runtime/src/shard/types.rs` | 298 | Within 300-line limit; `AskTicket`/`AskAnswer` typed boundary present. |
 | `crates/vb_runtime/src/journal.rs` | 1191 | Residual oversized file; `RuntimeJournalEvent::AskAnswered`/`SlotWritten` typed events present. |
 | `crates/vb_runtime/src/trace.rs` | 1039 | Residual oversized file; typed trace event model retained. |
-| `crates/velvet_ballastics/src/main.rs` | 4281 | Residual oversized CLI file; reviewed `cmd_answer`. |
+| `crates/velvet_ballistics/src/main.rs` | 4281 | Residual oversized CLI file; reviewed `cmd_answer`. |
 | `crates/vb_ipc/src/server/handlers.rs` | 2122 | Residual oversized IPC handler file; reviewed `handle_answer_ask`. |
 
 ## Scott DDD / Drift Findings

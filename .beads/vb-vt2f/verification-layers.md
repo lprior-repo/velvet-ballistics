@@ -3,7 +3,7 @@
 ## Boundary
 
 - Primary evidence: executable Given/When/Then scenarios through direct Rust public APIs.
-- Touched crates expected later: `velvet-ballastics-workspace-tests`, catalog module, and possibly `vb_runtime`/`vb_core` only if public fixture/API gaps prevent scenario implementation.
+- Touched crates expected later: `velvet-ballistics-workspace-tests`, catalog module, and possibly `vb_runtime`/`vb_core` only if public fixture/API gaps prevent scenario implementation.
 - Formal proof stance: State 5 TLA+ obligations are primary temporal proof gates and have PASS evidence. The two Kani obligations are owner-authorized projection proof-kernel gates, not full concrete `Runtime`/`Shard` execution gates. Earlier BDD-only TLA/Verus void waivers are retained only as historical audit records and are not approval paths.
 - Canonical release gate: `moon ci`, with scoped nextest evidence required first.
 
@@ -29,9 +29,9 @@
 
 ## Exact Evidence Commands Known At Contract Time
 
-- `cargo nextest run -p velvet-ballastics-workspace-tests --test vb_vt2f_direct_runtime_api_acceptance`
-- `cargo nextest run -p velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog`
-- `cargo nextest run -p velvet-ballastics-workspace-tests --test vb_vt2f_direct_runtime_api_acceptance --test vb_hxm0_acceptance_catalog`
+- `cargo nextest run -p velvet-ballistics-workspace-tests --test vb_vt2f_direct_runtime_api_acceptance`
+- `cargo nextest run -p velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog`
+- `cargo nextest run -p velvet-ballistics-workspace-tests --test vb_vt2f_direct_runtime_api_acceptance --test vb_hxm0_acceptance_catalog`
 - `tlc -config verification/tla/Vt2fRuntimeLifecycle.cfg verification/tla/Vt2fRuntimeLifecycle.tla`
 - `tlc -config verification/tla/Vt2fStrictAdmission.cfg verification/tla/Vt2fStrictAdmission.tla`
 - `cargo kani -p vb_runtime --harness vt2f_runtime_facade_semantics` (owner-authorized projection kernel; not full concrete Runtime API execution)

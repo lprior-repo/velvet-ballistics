@@ -20,7 +20,7 @@ No blocking defects found in this retry.
 
 2. **Executable dependency gate now exists and passed.**
    - `crates/workspace_tests/tests/vb_m5gp_compile_split_contract.rs:645-680` rejects the exact forbidden edges from the prior rejection.
-   - I reran `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract mod_compile_dependency_edges_remain_acyclic_and_diagnostic_leaf`: PASS, 1 passed.
+   - I reran `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract mod_compile_dependency_edges_remain_acyclic_and_diagnostic_leaf`: PASS, 1 passed.
 
 3. **Real split and hidden-include repairs hold.**
    - `crates/vb_compile/src/lib.rs:14-26` declares private split modules directly.
@@ -31,7 +31,7 @@ No blocking defects found in this retry.
    - `scripts/check-source-length.sh:96-127` recursively scans `crates/vb_compile/src/mod_compile_*/**/*.rs`.
    - `crates/workspace_tests/tests/vb_m5gp_compile_split_contract.rs:703-752` recursively enforces bead-local `lib.rs` and `mod_compile_*` sources below `SOURCE_LINE_LIMIT`.
    - Independent count found no bead-local oversized split source; max observed was `crates/vb_compile/src/mod_compile_errors/collection.rs` at 286 lines.
-   - I reran `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_m5gp_compile_split_contract vb_compile_production_sources_remain_under_agreed_line_limit`: PASS, 1 passed.
+   - I reran `rtk cargo test -p velvet-ballistics-workspace-tests --test vb_m5gp_compile_split_contract vb_compile_production_sources_remain_under_agreed_line_limit`: PASS, 1 passed.
    - I reran `bash scripts/check-source-length.sh`: PASS with only DEFERRED_GLOBAL pre-existing unrelated files.
 
 5. **Formal evidence updated after repair.**

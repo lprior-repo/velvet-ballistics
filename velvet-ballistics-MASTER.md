@@ -1,14 +1,14 @@
-# velvet-ballastics — Master Mechanical Build Contract
+# velvet-ballistics — Master Mechanical Build Contract
 
 **Status:** current backend/IR-interpreter scope; single source of truth for this repository
 **Audience:** AI coding agents, runtime implementers, performance engineers, QA agents
-**Product name:** `velvet-ballastics`
-**Binary name:** `velvet-ballastics`
-**Package name:** `velvet-ballastics`
-**Rust crate/module prefix:** `velvet_ballastics`
-**Bead rig:** `velvet-ballastics`
-**Bead database:** `velvet_ballastics`
-**Language version:** `velvet-ballastics/v1`
+**Product name:** `velvet-ballistics`
+**Binary name:** `velvet-ballistics`
+**Package name:** `velvet-ballistics`
+**Rust crate/module prefix:** `velvet_ballistics`
+**Bead rig:** `velvet-ballistics`
+**Bead database:** `velvet_ballistics`
+**Language version:** `velvet-ballistics/v1`
 
 This file, `/velvet-ballistics-MASTER.md`, is the authoritative build plan, lifecycle tracker, architecture contract, and implementation acceptance contract for this repository. Other docs provide context only and cannot override this document.
 
@@ -18,23 +18,23 @@ Project spelling rule: any use of `velvet-ballistics` is invalid except for exac
 
 ## 0. Prime Directive
 
-`velvet-ballastics` is a Rust-nightly, no-unsafe, no-panic, single-server, ultra-low-latency durable execution engine for workflow orchestration. YAML is an authoring format only. The runtime never interprets YAML, parses JSON, serves HTTP, or routes text commands. Workflows compile into numeric state machines over numeric slots, numeric actions, numeric steps, and bounded resource contracts.
+`velvet-ballistics` is a Rust-nightly, no-unsafe, no-panic, single-server, ultra-low-latency durable execution engine for workflow orchestration. YAML is an authoring format only. The runtime never interprets YAML, parses JSON, serves HTTP, or routes text commands. Workflows compile into numeric state machines over numeric slots, numeric actions, numeric steps, and bounded resource contracts.
 
-The current implementation goal is **Backend / IR Interpreter Complete**: strict YAML authoring, validation, verification, compiled numeric IR, IR-interpreter execution, Fjall durability, direct Rust API, binary IPC, CLI observability, replay/recovery, and evidence gates. Rust workflow code generation, `maxperf` acceptance, and all native UI/Makepad work are deferred and are not part of the current core feature set. Deferred Rust codegen/maxperf notes live under `docs/generated-workflows.md` and `docs/deferred-codegen-maxperf.md`; deferred UI notes live under `docs/deferred-ui.md`.
+The current implementation goal is **Backend / IR Interpreter Complete**: strict YAML authoring, validation, verification, compiled numeric IR, IR-interpreter execution, Fjall durability, direct Rust API, binary IPC, CLI observability, replay/recovery, and evidence gates. Rust workflow code generation, `maxperf` acceptance, and all native UI/Makepad work are removed from the current core feature set. Residual codegen/UI/maxperf material is cleanup debt unless it is explicitly quarantined as historical evidence.
 
-The runtime uses numeric state machines, numeric slots, numeric actions, shard-owned state, and deterministic synchronous execution until suspension. Fjall is required for persistence. Postcard is required for compact binary records. Ingress is direct Rust API plus binary IPC. `CompiledWorkflow` IR is the active execution artifact for the current milestone. Any section explicitly marked **Deferred** is non-normative for the current milestone and cannot block Backend / IR Interpreter Complete acceptance.
+The runtime uses numeric state machines, numeric slots, numeric actions, shard-owned state, and deterministic synchronous execution until suspension. Fjall is required for persistence. Postcard is required for compact binary records. Ingress is direct Rust API plus binary IPC. `CompiledWorkflow` IR is the only active execution artifact for the current milestone. Any section explicitly marked removed, historical, or quarantined is non-normative for the current milestone and cannot block Backend / IR Interpreter Complete acceptance.
 
 ### Product Positioning Contract
 
-Publicly, `velvet-ballastics` must not be described as a generic DAG runner, low-code graph editor, YAML-as-programming framework, Airflow replacement, or Temporal clone. Those frames hide the actual wedge and invite false comparisons.
+Publicly, `velvet-ballistics` must not be described as a generic DAG runner, low-code graph editor, YAML-as-programming framework, Airflow replacement, or Temporal clone. Those frames hide the actual wedge and invite false comparisons.
 
-The product identity is: an AI-safe, local-first, single-server durable execution engine that verifies AI-authored workflows before admission, persists an inspectable journal, protects side effects with idempotency evidence, and enforces resource and taint bounds. Future generated Rust execution is an optimization path, not a current acceptance requirement.
+The product identity is: an AI-safe, local-first, single-server durable execution engine that verifies AI-authored workflows before admission, persists an inspectable journal, protects side effects with idempotency evidence, and enforces resource and taint bounds. Generated Rust execution is not a current product path.
 
 The unit of trust is the accepted artifact, not the YAML source. YAML is a cold authoring surface. Verification certificates, compiled IR digests, resource budgets, action contracts, capability grants, journals, snapshots, and replay reports are the operational truth.
 
 Competitive comparison is allowed only with scope discipline:
 
-1. Compare durability and replay semantics to Restate, Temporal, DBOS, and AWS Step Functions.
+1. Compare durability and replay semantics to Temporal, DBOS, and AWS Step Functions.
 2. State the v1 single-server boundary plainly: no replication, no quorum, no leader election, no distributed control plane.
 3. Compare data orchestration ergonomics to Airflow and Dagster only when explaining non-goals.
 4. Never claim production readiness, performance superiority, or crash safety without executable evidence and benchmark/recovery artifacts attached to the bead or release.
@@ -67,13 +67,13 @@ HTTP/JSON exclusion rule: HTTP and JSON are excluded from the v1 runtime core. A
 
 | Concept | Canonical spelling |
 |---------|--------------------|
-| Product | `velvet-ballastics` |
-| Binary | `velvet-ballastics` |
-| Cargo package | `velvet-ballastics` |
-| Rust crate/module | `velvet_ballastics` |
-| Bead rig | `velvet-ballastics` |
-| Bead database | `velvet_ballastics` |
-| Language version | `velvet-ballastics/v1` |
+| Product | `velvet-ballistics` |
+| Binary | `velvet-ballistics` |
+| Cargo package | `velvet-ballistics` |
+| Rust crate/module | `velvet_ballistics` |
+| Bead rig | `velvet-ballistics` |
+| Bead database | `velvet_ballistics` |
+| Language version | `velvet-ballistics/v1` |
 
 Mechanical rule: if an implementation agent introduces `velvet-ballistics` in a new file, test, path, diagnostic, bead, package, crate, command, or generated artifact, the change is rejected unless the text explicitly documents migration from a pre-existing external artifact.
 
@@ -109,7 +109,7 @@ Dependency rule: third-party crates may contain internal unsafe only if pinned a
 
 ## 3. Holzmann Compliance Matrix
 
-| Holzmann rule | `velvet-ballastics` build contract |
+| Holzmann rule | `velvet-ballistics` build contract |
 |---------------|-------------------------------------|
 | Simple control flow | Runtime transitions are explicit `StepIdx -> StepIdx`; no hidden graph mutation after compile. |
 | Bounded loops | `for_each`, `collect`, `reduce`, `repeat`, retries, scheduler ticks, trace rings, storage batches, IPC frames, and expression stacks require explicit limits. |
@@ -118,7 +118,7 @@ Dependency rule: third-party crates may contain internal unsafe only if pinned a
 | Assertions/contracts | User errors return typed errors. Debug assertions may check compiler invariants that are unreachable for validated IR. |
 | Small scopes | Each run belongs to exactly one shard. Shards own mutable runtime state. No global mutable run map. |
 | Checked parameters/returns | Parse, validate, compile, eval, storage, IPC, action dispatch, and scheduler return typed `Result`. |
-| Restricted macros | No macro-hidden business logic in current backend crates. Future codegen work must remain explicit Rust and carry its own compile-fail/equivalence evidence before it returns to scope. |
+| Restricted macros | No macro-hidden business logic in current backend crates. Codegen work is removed from current scope and cannot be used as release evidence. |
 | Restricted pointer complexity | No first-party pointer manipulation. Tables are addressed by checked numeric IDs. |
 | Zero warnings | CI denies first-party warnings, clippy violations, forbidden constructs, and missing benchmark metadata. Advisory dependency/supply-chain/API report warnings do not block release under the owner waiver unless a specific bead opts in. |
 
@@ -137,7 +137,7 @@ Dependency rule: third-party crates may contain internal unsafe only if pinned a
 | `iai-callgrind` | Instruction/cache benchmark gates. |
 | `proptest` | Property and invariant tests. |
 | `cargo-fuzz` | Parser, decoder, and IR fuzzing. |
-| `trybuild` | Compile-fail tests for public macro/schema contracts when such contracts are active. Generated Rust compile-fail testing is deferred with codegen. |
+| `trybuild` | Compile-fail tests for public macro/schema contracts when such contracts are active. Generated Rust compile-fail testing is removed with codegen. |
 | `cargo-audit` | Advisory vulnerability report; non-blocking under the owner waiver unless a bead opts in. |
 | `cargo-deny` | Advisory license, duplicate, source, and advisory report; non-blocking under the owner waiver unless a bead opts in. |
 | `cargo-vet` | Advisory supply-chain review report; non-blocking under the owner waiver unless a bead opts in. |
@@ -163,7 +163,7 @@ Mandatory tooling categories:
 - Property/fuzz/compile diagnostics: `proptest`, `cargo-fuzz`, `arbitrary`, `trybuild` where active compile-fail contracts exist, and `insta` only when approved for golden diagnostics.
 - Feature matrix: `cargo hack`.
 - Advisory dependency/API reports: `cargo audit`, `cargo deny`, `cargo vet`, `cargo geiger`, `cargo machete`, `cargo semver-checks`, `cargo public-api`, and `cargo bloat`; these are non-blocking under the 2026-05-23 owner waiver unless a bead explicitly opts in.
-- Performance: `criterion`, `iai-callgrind`, `flamegraph`, `samply`/`perf`, `hyperfine`, `callgrind`, `cachegrind`, and `DHAT` for current-scope evidence. PGO and `target-cpu=native` are deferred with maxperf.
+- Performance: `criterion`, `iai-callgrind`, `flamegraph`, `samply`/`perf`, `hyperfine`, `callgrind`, `cachegrind`, and `DHAT` for current-scope IR-interpreter evidence. PGO, `target-cpu=native`, and maxperf release workflows are removed.
 - Nightly/dynamic verification: Miri, sanitizers, and coverage.
 
 Bootstrap install block:
@@ -216,7 +216,7 @@ Strict nightly governance:
 | `iai-callgrind` | Instruction/cache benchmarks | Required for CI performance gates. |
 | `proptest` | Property tests | Required for invariants. |
 | `cargo-fuzz` | Fuzzing | Required for parsers/decoders. |
-| `trybuild` | Compile-fail tests | Required only for active public macro/schema contracts in the current milestone; generated Rust contracts are deferred. |
+| `trybuild` | Compile-fail tests | Required only for active public macro/schema contracts in the current milestone; generated Rust contracts are removed. |
 | `cargo-nextest` | Test execution | Required CI test runner. |
 | `cargo-audit` | Vulnerability scan | Advisory report; non-blocking under the owner waiver unless a bead opts in. |
 | `cargo-deny` | Policy scan | Advisory report; non-blocking under the owner waiver unless a bead opts in. |
@@ -235,7 +235,7 @@ Strict nightly governance:
 
 ## 6. Current Performance Rules — IR Interpreter Scope
 
-The current performance goal is a fast, bounded IR-interpreter backend. Rust workflow code generation, generated-vs-IR ratio targets, `maxperf` acceptance, PGO release workflows, and public maximum-throughput claims are deferred to `docs/generated-workflows.md` and `docs/deferred-codegen-maxperf.md`.
+The current performance goal is a fast, bounded IR-interpreter backend. Rust workflow code generation, generated-vs-IR ratio targets, `maxperf` acceptance, PGO release workflows, and public maximum-throughput claims are removed from the current contract.
 
 Current rules:
 
@@ -246,7 +246,7 @@ Current rules:
 5. No async task is spawned per step.
 6. No text formatting, YAML parsing, JSON parsing, HTTP handling, or string reference resolution on hot execution paths.
 7. Any optimization must include before/after benchmark output, benchmark metadata, and no correctness regression.
-8. `target-cpu=native`, PGO, and generated workflow execution are future release-engineering tracks, not current semantic requirements.
+8. `target-cpu=native`, PGO, and generated workflow execution are not current semantic or release-engineering requirements.
 9. Runtime architecture is shard-owned, single-server, synchronous deterministic execution until suspension.
 10. Data layout is hot/cold split: hot state has numeric IDs and handles; cold side tables carry spans, names, YAML paths, messages, and diagnostics.
 11. Queues and scheduling use bounded `ArrayQueue`/`rtrb`, explicit backpressure, and no task-per-step spawning.
@@ -264,7 +264,7 @@ Nightly update contract:
 
 1. Nightly version changes require a dedicated bead.
 2. The bead must record current nightly, target nightly, motivation, changed compiler behavior, and rollback plan.
-3. Full CI, Miri, fuzz smoke, benchmarks, and recovery tests must pass. Generated Rust compile tests are required only when the deferred codegen track is active again.
+3. Full CI, Miri, fuzz smoke, benchmarks, and recovery tests must pass. Generated Rust compile tests are not current-scope gates.
 4. Benchmark deltas must be recorded before and after the update.
 5. Any new lint allowance requires explicit documented justification.
 
@@ -273,12 +273,12 @@ Nightly update contract:
 ## 8. Language Specification
 
 **Title:** Velvet Ballastics Workflow Language v1
-**Canonical version string:** `velvet-ballastics/v1`
+**Canonical version string:** `velvet-ballistics/v1`
 
 Required top-level fields:
 
 ```yaml
-version: velvet-ballastics/v1
+version: velvet-ballistics/v1
 name: <workflow_name>
 when: <trigger>
 steps: <step_list>
@@ -658,7 +658,7 @@ Jump
 Finish
 ```
 
-Current execution is through the IR interpreter. Any future generated Rust execution must first prove identical step states, slot writes, taint behavior, suspension semantics, journal events, typed errors, and result values as IR mode before returning to the active master scope.
+Current execution is through the IR interpreter only. Generated Rust execution is removed from active master scope.
 
 **`Finish` taint contract:** The `Finish` IR node reads the taint from the result slot and emits `EngineSignal::Finished(SlotValue, Taint)`. Taint is joined from all slots contributing to the result. Runtime preserves `Clean`, `DerivedFromSecret`, and `Secret` result taints; validation does not reject tainted finish results.
 
@@ -1073,20 +1073,20 @@ IPC decoder requirements:
 
 ---
 
-## 22. Deferred Rust Codegen and Maxperf
+## 22. Removed Rust Codegen and Maxperf
 
 Rust workflow code generation is **out of the current core feature set**. The active product goal is backend execution through compiled IR and the IR interpreter.
 
 Current command surface excludes `compile --emit rust`. Current acceptance excludes generated Rust semantic parity, generated compile-fail fixtures, generated-vs-IR ratio benchmarks, PGO release workflows, and `maxperf` release claims.
 
-Deferred requirements and historical notes live in:
+Historical notes live in:
 
 ```text
 docs/generated-workflows.md
 docs/deferred-codegen-maxperf.md
 ```
 
-If codegen returns to scope, it must be reintroduced by a dedicated architecture/spec bead and must prove exact observable equivalence with IR execution before becoming a release gate.
+Codegen is not in current scope. Any future reintroduction requires a dedicated master amendment and cannot inherit acceptance credit from historical notes.
 
 ---
 
@@ -1095,7 +1095,7 @@ If codegen returns to scope, it must be reintroduced by a dedicated architecture
 Target structure:
 
 ```text
-velvet-ballastics/
+velvet-ballistics/
   Cargo.toml
   rust-toolchain.toml
   clippy.toml
@@ -1112,15 +1112,15 @@ velvet-ballastics/
     vb_storage/
     vb_runtime/
     vb_ipc/
-    velvet_ballastics/
+    velvet_ballistics/
   benches/
   fuzz/
   crates/workspace_tests/
 ```
 
-Current state: the active backend workspace target is the underscore crate contract above (`vb_core`, `vb_yaml`, `vb_validate`, `vb_expr`, `vb_compile`, `vb_storage`, `vb_runtime`, `vb_ipc`, and `velvet_ballastics`). Any future hyphenated internal crate name is a regression unless it is explicitly labeled as a migration artifact.
+Current state: the active backend workspace target is the underscore crate contract above (`vb_core`, `vb_yaml`, `vb_validate`, `vb_expr`, `vb_compile`, `vb_storage`, `vb_runtime`, `vb_ipc`, and `velvet_ballistics`). Any future hyphenated internal crate name is a regression unless it is explicitly labeled as a migration artifact.
 
-Deferred crates: `vb_codegen`, `vb_ui_model`, and `vb_ui_makepad` are not active current-scope workspace requirements. Their future contracts live in docs and require dedicated reactivation beads before returning to the master scope.
+Removed crates: `vb_codegen`, `vb_ui_model`, and `vb_ui_makepad` are not active current-scope workspace requirements. They must not appear as active workspace members or current release gates.
 
 ---
 
@@ -1261,37 +1261,37 @@ Required coverage areas:
 
 ---
 
-## 32. Deferred Function Surface: `vb_codegen`
+## 32. Removed Function Surface: `vb_codegen`
 
-`vb_codegen` is deferred. No current-scope implementation bead may treat generated Rust workflow mode as required for acceptance. Historical/future codegen requirements live in `docs/generated-workflows.md` and `docs/deferred-codegen-maxperf.md`.
+`vb_codegen` is removed from current scope. No current-scope implementation bead may treat generated Rust workflow mode as required for acceptance.
 
 ---
 
 ## 33. CLI Commands
 
 ```bash
-velvet-ballastics validate <workflow.yaml>
-velvet-ballastics compile <workflow.yaml> --emit ir --out <file.vbir>
-velvet-ballastics run <workflow.yaml> --input-bin <input.vbin> --durability <mode>
-velvet-ballastics run-compiled <workflow.vbir> --input-bin <input.vbin> --durability <mode>
-velvet-ballastics ipc-serve --socket <path> --db <path>
-velvet-ballastics agent-context
-velvet-ballastics inspect <run_id> --db <path>
-velvet-ballastics events <run_id> --db <path>
-velvet-ballastics replay <run_id> --db <path>
-velvet-ballastics graph <workflow.yaml> --emit yaml
-velvet-ballastics system status --emit yaml
-velvet-ballastics action list --emit yaml
-velvet-ballastics action inspect <action-name> --emit yaml
-velvet-ballastics incident <run_id> --db <path> --emit yaml
-velvet-ballastics ai context <run_id> --db <path> --emit yaml
-velvet-ballastics bench-run <workflow.yaml>
-velvet-ballastics doctor --db <path>
+velvet-ballistics validate <workflow.yaml>
+velvet-ballistics compile <workflow.yaml> --emit ir --out <file.vbir>
+velvet-ballistics run <workflow.yaml> --input-bin <input.vbin> --durability <mode>
+velvet-ballistics run-compiled <workflow.vbir> --input-bin <input.vbin> --durability <mode>
+velvet-ballistics ipc-serve --socket <path> --db <path>
+velvet-ballistics agent-context
+velvet-ballistics inspect <run_id> --db <path>
+velvet-ballistics events <run_id> --db <path>
+velvet-ballistics replay <run_id> --db <path>
+velvet-ballistics graph <workflow.yaml> --emit yaml
+velvet-ballistics system status --emit yaml
+velvet-ballistics action list --emit yaml
+velvet-ballistics action inspect <action-name> --emit yaml
+velvet-ballistics incident <run_id> --db <path> --emit yaml
+velvet-ballistics ai context <run_id> --db <path> --emit yaml
+velvet-ballistics bench-run <workflow.yaml>
+velvet-ballistics doctor --db <path>
 ```
 
 CLI structured output is a cold-path operator/agent contract and never enters `vb_core`, `vb_runtime`, `vb_storage`, or `vb_ipc`. `--emit yaml` is the canonical structured text flag for v1; `--emit postcard` is the canonical binary machine-output flag where supported. JSON may be added later as a separate cold adapter. Runtime machine artifacts remain binary/Postcard.
 
-The `ui` command and Makepad desktop application are deferred. Deferred UI requirements live in `docs/deferred-ui.md`; they cannot block the current Backend / IR Interpreter Complete milestone.
+The `ui` command and Makepad desktop application are removed from the current command surface.
 
 ---
 
@@ -1308,7 +1308,7 @@ members = [
   "crates/vb_storage",
   "crates/vb_runtime",
   "crates/vb_ipc",
-  "crates/velvet_ballastics",
+  "crates/velvet_ballistics",
   "crates/workspace_tests",
   "fuzz",
 ]
@@ -1376,7 +1376,7 @@ lto = "thin"
 codegen-units = 1
 ```
 
-Deferred workspace members and dependencies (`vb_codegen`, `vb_ui_model`, `vb_ui_makepad`, Makepad, generated workflow dependencies, and maxperf-only profile policy) are documented under `docs/` only. They must not be treated as current workspace acceptance requirements.
+Removed workspace members and dependencies (`vb_codegen`, `vb_ui_model`, `vb_ui_makepad`, Makepad, generated workflow dependencies, and maxperf-only profile policy) must not be treated as current workspace acceptance requirements.
 
 ---
 
@@ -1444,7 +1444,7 @@ Round 2 current implementation state, observed in this tree and not a final rele
 | Storage/recovery | `vb_storage` exposes required keyspace names, key encoders, record envelope encode/decode, journal writer queue, snapshots, replay helpers, recovery summaries, and frame-seed hydration for slot values/taint/step states. | Pending-action hydration, strict persistence-before-ack behavior, digest mismatch coverage, and end-to-end crash recovery evidence remain release gates. |
 | Runtime/direct API | `vb_runtime` exposes direct API, shard/frame-pool/action/wait/ask/trace/counter surfaces, admission/capability surfaces, and typed runtime errors. | Strict persistence-before-ack behavior, shutdown/cancellation edge cases, pending-action recovery, and full lifecycle evidence remain gates. |
 | IPC | `vb_ipc` exposes bounded frame/header/payload validation, typed payloads, memory ingress, client/server surfaces, and required command handlers. | Socket-loop fuzz/backpressure evidence and runtime integration gates remain required. |
-| Deferred codegen/UI | `vb_codegen`, `vb_ui_model`, and `vb_ui_makepad` are documented as deferred tracks. | They are not current acceptance gates and must not block Backend / IR Interpreter Complete. |
+| Removed codegen/UI | `vb_codegen`, `vb_ui_model`, and `vb_ui_makepad` are removed from active workspace scope. | They are not current acceptance gates and must not block Backend / IR Interpreter Complete. |
 | Tests/audits | Error-variant completeness and diagnostic-code range tests exist; companion docs record benchmark and dependency policy constraints. | Full matrix gates, fuzz, Miri, coverage, mutants, sanitizer, benchmark metadata, and bead closure evidence are still required. Supply-chain/dependency reports are advisory under the owner waiver. |
 
 Round 2 status rule: a public function existing in a crate is only API surface evidence. It is not proof that the phase is complete unless the required tests, fuzz/property coverage, benchmark evidence where applicable, and bead closure evidence have actually passed.
@@ -1525,7 +1525,7 @@ Required coverage:
 
 Required coverage:
 - Active public macro/schema contracts reject invalid usage at compile time when such contracts exist.
-- Generated Rust compile-fail tests are deferred with `vb_codegen`.
+- Generated Rust compile-fail tests are removed with `vb_codegen`.
 
 ---
 
@@ -1564,7 +1564,7 @@ Required proptest coverage areas:
 
 ## 39. Mandatory Benchmarks
 
-**Benchmark naming:** Exact benchmark names are not mandated. Benchmarks must exist covering the following areas. The authoritative benchmark list is `benches/velvet_ballastics.rs`.
+**Benchmark naming:** Exact benchmark names are not mandated. Benchmarks must exist covering the following areas. The authoritative benchmark list is `benches/velvet_ballistics.rs`.
 
 Required coverage areas:
 
@@ -1674,9 +1674,9 @@ Moon expectation: each mandatory command above must have a Moon task before rele
 
 ---
 
-## 41. Deferred PGO and Maxperf Build
+## 41. Removed PGO and Maxperf Build
 
-PGO, `target-cpu=native`, `maxperf`, and generated Rust benchmark workflows are deferred. They are documented in `docs/deferred-codegen-maxperf.md` and do not block the current Backend / IR Interpreter Complete milestone.
+PGO, `target-cpu=native`, `maxperf`, and generated Rust benchmark workflows are removed. They do not block the current Backend / IR Interpreter Complete milestone and must not be current release gates.
 
 ---
 
@@ -1762,7 +1762,7 @@ test-plan-current-api-mutation-refresh
 full-gate-evidence-refresh
 ```
 
-Deferred codegen and UI gaps are tracked in docs only until dedicated reactivation beads pull them back into the master scope.
+Codegen and UI gaps are cleanup debt unless a bead explicitly deletes or quarantines residue. They are not reactivation tracks in the current master scope.
 
 The previous `error-variant-completeness-audit` gap has Round 2 implementation evidence in `tests/error_variant_completeness_test.rs` and `docs/error-variant-completeness.md`; it remains subject to the full gate matrix like every other test surface.
 
@@ -1781,7 +1781,7 @@ holzmann-matrix
 forbidden-hot-path-apis
 ```
 
-UI beads are deferred. See `docs/deferred-ui.md` for the preserved future track.
+UI beads are limited to deletion or quarantine of residue unless the master scope is explicitly amended.
 
 Example bead commands:
 
@@ -1841,7 +1841,7 @@ new velvet-ballistics spelling outside the exact allowlist
 
 ## 44. Backend / IR Interpreter Definition of Done
 
-The current `velvet-ballastics` backend milestone is done when all 24 points are satisfied:
+The current `velvet-ballistics` backend milestone is done when all 24 points are satisfied:
 
 1. Canonical spelling is enforced for product, binary, package, crate/module, bead rig, bead database, and language version.
 2. Any `velvet-ballistics` spelling outside the exact allowlist for `/home/lewis/src/Velvet-ballistics`, `/velvet-ballistics-MASTER.md`, or explicitly labeled pre-existing external migration artifacts is rejected.
@@ -2386,7 +2386,7 @@ Parenthesized groups reset to minimum binding power. Max nesting depth: 64. Max 
 
 ### F64 Status
 
-`ExprType::F64`, `SlotValue::F64(FiniteF64)`, `ConstValue::F64`, `ExprLiteral::F64`, expression float lexing/parsing, bytecode constant lowering, and F64/F64 evaluator arithmetic/comparison arms exist. Strict YAML scalar floats remain forbidden by the YAML profile; float values enter authored workflows through expression strings, runtime slot initialization, or action outputs. Remaining gap: the typechecker still accepts broader numeric coercion than the evaluator. Mixed I64/F64 arithmetic and evaluator/typechecker parity remain current-scope expression evidence gaps. Generated F64 arithmetic semantics and codegen lint parity are deferred with `vb_codegen`.
+`ExprType::F64`, `SlotValue::F64(FiniteF64)`, `ConstValue::F64`, `ExprLiteral::F64`, expression float lexing/parsing, bytecode constant lowering, and F64/F64 evaluator arithmetic/comparison arms exist. Strict YAML scalar floats remain forbidden by the YAML profile; float values enter authored workflows through expression strings, runtime slot initialization, or action outputs. Remaining gap: the typechecker still accepts broader numeric coercion than the evaluator. Mixed I64/F64 arithmetic and evaluator/typechecker parity remain current-scope expression evidence gaps. Generated F64 arithmetic semantics and codegen lint parity are removed with `vb_codegen`.
 
 ### Helper Signatures
 
@@ -2398,8 +2398,8 @@ Parenthesized groups reset to minimum binding power. Max nesting depth: 64. Max 
 | `empty` | 1 | List or Null | Bool | Implemented store-aware for symbol/list/object/null emptiness. |
 | `unique` | 1 | List | List | Implemented store-aware list deduplication preserving first occurrence order. |
 | `contains` | 2 | List, T | Bool | Implemented in current evaluators as store-aware Symbol substring search; list-membership/spec parity evidence remains open. |
-| `starts_with` | 2 | Symbol, Symbol | Bool | Implemented store-aware text helper; generated-mode behavior is deferred with `vb_codegen`. |
-| `ends_with` | 2 | Symbol, Symbol | Bool | Implemented store-aware text helper; generated-mode behavior is deferred with `vb_codegen`. |
+| `starts_with` | 2 | Symbol, Symbol | Bool | Implemented store-aware text helper; generated-mode behavior is removed with `vb_codegen`. |
+| `ends_with` | 2 | Symbol, Symbol | Bool | Implemented store-aware text helper; generated-mode behavior is removed with `vb_codegen`. |
 | `has` | 2 | Object, Symbol | Bool | Partially converged: `vb_expr` implements object-field lookup, while the core hot evaluator currently uses list membership semantics; helper parity evidence remains open. |
 | `append` | 2 | List, T | List | Implemented store-aware list append. |
 | `append_if` | 3 | List, T, Bool | List | Implemented store-aware conditional append. |
@@ -2649,7 +2649,7 @@ No allocation after admission, no formatting, no maps, no string operations:
 - `vb_runtime::primitives::*`
 - `vb_ipc` decoder after header validation
 
-Generated workflow code is deferred; if reactivated, it must be classified hot and obey equivalent constraints.
+Generated workflow code is removed from current scope; any residue must be deleted or quarantined.
 
 ### Cold Path Modules
 
@@ -2733,7 +2733,7 @@ max_journal_batch_bytes: 1 MiB
 | `test` | Volatile + deterministic tracing | On-demand | IR interpreter |
 | `turbo` | Journaled | Preallocated frames, bounded queues | IR interpreter |
 
-`maxperf` is deferred to `docs/deferred-codegen-maxperf.md` and is not a current runtime profile requirement.
+`maxperf` is removed and is not a current runtime profile requirement.
 
 ---
 
@@ -2743,7 +2743,7 @@ max_journal_batch_bytes: 1 MiB
 - `bench` feature: enables benchmark-only harness code.
 - `volatile` feature: enables volatile storage mode (test-only).
 - Forbidden features: `json`, `http` in v1 runtime crates.
-- `generated` and `maxperf` are deferred and must not be current default or release features.
+- `generated` and `maxperf` are removed and must not be current default or release features.
 
 ---
 
@@ -2894,7 +2894,7 @@ When a workflow passes all verification gates, the compiler persists a verifiabl
 pub struct AcceptedArtifact {
     pub artifact_version: &'static str,  // "velvet.artifact/v1"
     pub workflow_name: Box<str>,
-    pub workflow_version: &'static str,  // "velvet-ballastics/v1"
+    pub workflow_version: &'static str,  // "velvet-ballistics/v1"
     pub workflow_digest: WorkflowDigest, // BLAKE3 of YAML source
     pub ir_digest: WorkflowDigest,       // BLAKE3 of compiled IR
     pub action_contract_digest: WorkflowDigest, // BLAKE3 of action contracts
@@ -2933,7 +2933,7 @@ Accepted artifacts are stored in the `compiled_ir` keyspace keyed by `ir_digest`
 For AI-authored workflows, strict mode is available:
 
 ```text
-velvet-ballastics verify flow.yaml --profile strict --emit yaml
+velvet-ballistics verify flow.yaml --profile strict --emit yaml
 ```
 
 Strict mode rejects not only errors but selected warnings:
@@ -3349,7 +3349,7 @@ This section tracks known architectural defects discovered through adversarial r
 
 > **Target contract.** The invariants in this section describe the intended architecture. Current implementation has frame-seed hydration for recovered slot values, taint, and step states, but live pending-action hydration and strict async acknowledgement paths remain gated. Summary-only recovery still returns `UnsupportedFullRecoveryHydration`, and `UnsupportedAsyncStrictAck` remains in the code until strict durability acknowledgement evidence is complete.
 
-`velvet-ballastics` is a log-first durable execution engine. The architecture follows the same core model as production-grade orchestrators (Restate, AWS Step Functions): journal events are the ground truth, state is deterministically derived from the journal, and side effects are never re-executed without explicit idempotency proof.
+`velvet-ballistics` is a log-first durable execution engine. The architecture follows the same core model as production-grade orchestrators (AWS Step Functions): journal events are the ground truth, state is deterministically derived from the journal, and side effects are never re-executed without explicit idempotency proof.
 
 ### Log-First Invariants
 
@@ -3373,7 +3373,7 @@ Epoch-based recovery (future): Crash recovery should support a "seal and start n
 
 ### Single-Server Contract
 
-`velvet-ballastics` is a single-server engine. There is no distributed replication, no leader election, no quorum consensus, and no control plane. These are explicit v1 exclusions:
+`velvet-ballistics` is a single-server engine. There is no distributed replication, no leader election, no quorum consensus, and no control plane. These are explicit v1 exclusions:
 
 - No Raft/Paxos consensus.
 - No multi-node replication.
@@ -3397,13 +3397,13 @@ The single-server constraint means:
 
 ### Compilation vs Interpretation
 
-Unlike orchestrators that interpret journal entries against SDK code (opaque foreign processes), the current `velvet-ballastics` milestone compiles workflows to numeric IR and executes that IR through the interpreter:
+Unlike orchestrators that interpret journal entries against SDK code (opaque foreign processes), the current `velvet-ballistics` milestone compiles workflows to numeric IR and executes that IR through the interpreter:
 
 | Mode | Execution | When to Use |
 |------|-----------|-------------|
 | IR interpreter | Dispatch through `CompiledNodeKind` enum | Current backend execution, debugging, portability, replay validation |
 
-Generated Rust remains a deferred optimization track. If reactivated, it must preserve identical observable semantics to IR execution before becoming an accepted execution mode.
+Generated Rust is removed from the current execution model. IR interpreter is the only accepted execution mode.
 
 ### Bounded Execution Contract
 
@@ -3441,37 +3441,37 @@ The CLI is the primary interface for operators and AI agents. It must provide th
 ### Canonical Command Surface
 
 ```text
-velvet-ballastics validate <workflow.yaml>
-velvet-ballastics compile  <workflow.yaml> --emit ir --out <file>
-velvet-ballastics explain  <workflow.yaml> [--emit yaml|postcard]
-velvet-ballastics diff     <workflow.yaml> [--against <old.yaml>] [--emit yaml|postcard]
-velvet-ballastics run      <workflow.yaml> --input-bin <file> --durability <mode> [--db <path>]
-velvet-ballastics run      <workflow.yaml> --step <step-id> --step-input <file> [--durability <mode>]
-velvet-ballastics run-compiled <workflow.vbir> --input-bin <file> --durability <mode> [--db <path>]
-velvet-ballastics inspect <run-id> --db <path> [--emit yaml|postcard]
-velvet-ballastics events  <run-id> --db <path> [--emit yaml|postcard] [--step <id>] [--tail <n>] [--limit <n>]
-velvet-ballastics trace   <run-id> --db <path> [--emit yaml|postcard]
-velvet-ballastics replay  <run-id> --db <path> [--emit yaml|postcard]
-velvet-ballastics cancel  <run-id> --db <path>
-velvet-ballastics resume  <run-id> --db <path>
-velvet-ballastics retry   <run-id> --step <step-id> --db <path>
-velvet-ballastics answer  <run-id> --slot <slot-id> --value <file> --db <path>
-velvet-ballastics ipc-serve --socket <path> --db <path>
-velvet-ballastics graph <workflow.yaml> --emit yaml
-velvet-ballastics system status --emit yaml
-velvet-ballastics action list --emit yaml
-velvet-ballastics action inspect <action-name> --emit yaml
-velvet-ballastics incident <run-id> --db <path> --emit yaml
-velvet-ballastics ai context <run-id> --db <path> --emit yaml
-velvet-ballastics bench-run <workflow.yaml>
-velvet-ballastics doctor  --db <path> [--emit yaml|postcard]
+velvet-ballistics validate <workflow.yaml>
+velvet-ballistics compile  <workflow.yaml> --emit ir --out <file>
+velvet-ballistics explain  <workflow.yaml> [--emit yaml|postcard]
+velvet-ballistics diff     <workflow.yaml> [--against <old.yaml>] [--emit yaml|postcard]
+velvet-ballistics run      <workflow.yaml> --input-bin <file> --durability <mode> [--db <path>]
+velvet-ballistics run      <workflow.yaml> --step <step-id> --step-input <file> [--durability <mode>]
+velvet-ballistics run-compiled <workflow.vbir> --input-bin <file> --durability <mode> [--db <path>]
+velvet-ballistics inspect <run-id> --db <path> [--emit yaml|postcard]
+velvet-ballistics events  <run-id> --db <path> [--emit yaml|postcard] [--step <id>] [--tail <n>] [--limit <n>]
+velvet-ballistics trace   <run-id> --db <path> [--emit yaml|postcard]
+velvet-ballistics replay  <run-id> --db <path> [--emit yaml|postcard]
+velvet-ballistics cancel  <run-id> --db <path>
+velvet-ballistics resume  <run-id> --db <path>
+velvet-ballistics retry   <run-id> --step <step-id> --db <path>
+velvet-ballistics answer  <run-id> --slot <slot-id> --value <file> --db <path>
+velvet-ballistics ipc-serve --socket <path> --db <path>
+velvet-ballistics graph <workflow.yaml> --emit yaml
+velvet-ballistics system status --emit yaml
+velvet-ballistics action list --emit yaml
+velvet-ballistics action inspect <action-name> --emit yaml
+velvet-ballistics incident <run-id> --db <path> --emit yaml
+velvet-ballistics ai context <run-id> --db <path> --emit yaml
+velvet-ballistics bench-run <workflow.yaml>
+velvet-ballistics doctor  --db <path> [--emit yaml|postcard]
 ```
 
-The only supported CLI binary name is `velvet-ballastics`. Short aliases such as
+The only supported CLI binary name is `velvet-ballistics`. Short aliases such as
 `vb` are not part of the canonical interface and must not be added as Cargo bin
 targets.
 
-The `ui` command and native Makepad command center are deferred. They are preserved in `docs/deferred-ui.md` and are not part of the current Backend / IR Interpreter Complete milestone.
+There is no `ui` command or native Makepad command center in the current contract.
 
 ### Single-Step Testing
 
@@ -3568,7 +3568,7 @@ The CLI contract must preserve these ten principles:
 
 Mechanical enforcement required before release:
 
-- `velvet-ballastics agent-context` emits a versioned JSON schema with command names, flags, enums, exit codes, output conventions, and planned agent primitives.
+- `velvet-ballistics agent-context` emits a versioned JSON schema with command names, flags, enums, exit codes, output conventions, and planned agent primitives.
 - CI runs `scripts/check-agent-cli-contract.sh` through Moon to reject banned parser vocabulary and require the introspection surface.
 - Any generated CLI/schema pipeline must generate the CLI, agent context, skill manifest, and MCP/tool descriptions from one source; hand-written divergence is a release blocker.
 
@@ -3588,61 +3588,53 @@ The following phases extend Section 35 for operator-facing features:
 | 55 | Timer wheel | Replace `IndexMap<RunId, PendingTimer>` with `TimerWheel` backed by `BTreeMap<Instant, Vec<TimerEntry>>`. Automatic timer-driven resume in shard tick. Tests: timer firing, cancellation, next-deadline accuracy. |
 | 56 | Collect hardening | Per-run pagination state (replace global Mutex), time-based pagination limit, `RunId`-keyed state. Tests: concurrent collect runs, time limit enforcement, crash-recovery of pagination state. |
 | 57 | Recovery evidence chain | `SlotWritten` + `StepSucceeded` per deterministic step, `UnsupportedRecoveryState` hydration gate, fix stubbed `verify_digests` at `Full` level. Tests: crash recovery with full evidence chain, hydration failure on missing state. |
-| 58 | Deferred codegen expansion | Out of current scope. Preserved in `docs/deferred-codegen-maxperf.md`. |
+| 58 | Codegen residue removal | Delete or quarantine codegen stubs, tests, proof residue, and generated-mode references. |
 | 59 | Behavioral property tests | Current-scope properties from Section 38: constant folding parity, bytecode/AST parity, digest stability, layout stability, replay determinism, snapshot equivalence, ordering invariants, bound enforcement, state machine, and taint safety. |
-| 60 | Canonical CLI binary | Cargo.toml exposes only the canonical `velvet-ballastics` binary. Short aliases such as `vb` are rejected to preserve the naming contract. |
-| 61-74 | Deferred UI phases | Out of current scope. Preserved in `docs/deferred-ui.md`. |
+| 60 | Canonical CLI binary | Cargo.toml exposes only the canonical `velvet-ballistics` binary. Short aliases such as `vb` are rejected to preserve the naming contract. |
+| 61-74 | UI residue removal | Delete or quarantine UI/Makepad/Figma/snapshot/perf-gate residue. |
 
 ---
 
 ## 71. Competitive Performance Targets
 
-The following are internal engineering targets derived from published benchmarks of production-grade durable execution engines (Restate 1.2 on AWS c6id.8xlarge, 3-way replicated cluster, 1200 concurrent clients). They are not public performance claims. As a single-server engine with no replication overhead, `velvet-ballastics` is designed to meet or exceed these on equivalent hardware, but no external claim is allowed until the measurement contract below is satisfied.
+The following are internal engineering targets for `velvet-ballistics` as a single-server engine. They are not public performance claims, but no external claim is allowed until the measurement contract below is satisfied.
 
 ### Step-Level Latency Targets
 
-| Metric | Restate (replicated) | Velvet Ballastics (single-server) | Notes |
-|--------|---------------------|-----------------------------------|-------|
-| Single step p50 (no replication) | 3ms | <= 1ms | No network roundtrip for quorum |
-| Single step p50 (journaled) | 10ms | <= 5ms | Fjall group commit vs quorum replication |
-| Single step p50 (strict) | N/A (same as journaled) | <= 10ms | fsync on every step; Restate has no equivalent |
-| Full workflow p50 (9 steps, low load) | 31ms | <= 15ms | Compiled IR, no SDK roundtrip |
-| Full workflow p50 (9 steps, high load) | 116ms | <= 60ms | Single-server removes coordination overhead |
-| Full workflow p99 (9 steps, high load) | 163ms | <= 100ms | Tight bound from no-unsafe, checked arithmetic |
+| Metric | Velvet Ballastics (single-server) | Notes |
+|--------|-----------------------------------|-------|
+| Single step p50 (no replication) | <= 1ms | No network roundtrip for quorum |
+| Single step p50 (journaled) | <= 5ms | Fjall group commit |
+| Single step p50 (strict) | <= 10ms | fsync on every step |
+| Full workflow p50 (9 steps, low load) | <= 15ms | Compiled IR, no SDK roundtrip |
+| Full workflow p50 (9 steps, high load) | <= 60ms | Single-server removes coordination overhead |
+| Full workflow p99 (9 steps, high load) | <= 100ms | Tight bound from no-unsafe, checked arithmetic |
 
 ### Throughput Targets
 
-| Metric | Restate | Velvet Ballastics | Notes |
-|--------|---------|-------------------|-------|
-| Actions (steps) per second | 94,286 | Deferred maxperf target | Requires deferred generated Rust/maxperf work. |
-| Full workflows per second (9 steps) | 8,571 | >= 10,000 | Single-server removes replication overhead |
-| Concurrent active runs | 1,200 (test clients) | >= 4,096 | Frame pool capacity |
+| Metric | Velvet Ballastics | Notes |
+|--------|-------------------|-------|
+| Full workflows per second (9 steps) | >= 10,000 | Single-server removes replication overhead |
+| Concurrent active runs | >= 4,096 | Frame pool capacity |
 
 ### Why These Targets Are Achievable
 
-Restate pays for every step:
-1. Network roundtrip for quorum replication (fastest path is one RTT to 2 of 3 nodes)
-2. Epoch checking and leader validation on every event
-3. SDK roundtrip: server pushes to service process, service responds over network
-4. Tokio async overhead (scheduler, waker, polling)
-5. RocksDB async flush competing with event processing
-
-`velvet-ballastics` eliminates all five:
+`velvet-ballistics` eliminates replication overhead:
 1. No replication — local Fjall write
 2. No leader — single shard owns the run
 3. No SDK — action dispatch is a function call within the same process
 4. No async — synchronous deterministic loop
 5. No competing flush — Fjall writes happen through bounded writer queue, not in the hot path
 
-Generated Rust performance advantages are deferred to `docs/deferred-codegen-maxperf.md`. Current speed claims must be scoped to the IR interpreter.
+Generated Rust performance advantages are out of scope. Current speed claims must be scoped to the IR interpreter.
 
 ### Measurement Contract
 
 Every performance claim must include:
 - `criterion` or `iai-callgrind` output with p50/p95/p99
 - Hardware: CPU model, cores, RAM, disk type (NVMe vs SSD)
-- Build profile: debug, release, bench for current scope; maxperf/PGO only when the deferred track is active
-- Execution mode: IR interpreter for current scope; generated Rust only when the deferred track is active
+- Build profile: debug, release, bench for current scope; maxperf/PGO removed
+- Execution mode: IR interpreter only
 - Durability profile: volatile, journaled, strict
 - Number of concurrent runs
 - Benchmark fixture digest (reproducible)
@@ -3662,7 +3654,7 @@ When a run fails and is retried, the engine must reject stale events from previo
 5. Recovery replays events for the latest attempt only. Events from earlier attempts are ignored.
 6. The attempt counter is journaled as part of `RunAccepted` and persists across crashes.
 
-This mirrors Restate's invocation execution attempt tracking, adapted for single-server synchronous execution.
+This provides invocation execution attempt tracking for single-server synchronous execution.
 
 ---
 
@@ -3684,7 +3676,7 @@ This prevents unbounded disk growth in long-running production deployments.
 
 ## 74. Converged Binary Design
 
-`velvet-ballastics` ships as a single binary that operates in different modes depending on the command invoked. This mirrors Restate's converged single-binary design, adapted for single-server operation.
+`velvet-ballistics` ships as a single binary that operates in different modes depending on the command invoked. This converged single-binary design is adapted for single-server operation.
 
 ### Modes
 
@@ -3709,17 +3701,17 @@ No mode starts components it doesn't need. The `validate` command never opens Fj
 
 ### Future Extension
 
-If `velvet-ballastics` ever supports distributed operation (v2+), the binary gains additional roles (log-server, controller, ingress) but the converged model persists: a single binary, configured by role, no separate services to deploy.
+If `velvet-ballistics` ever supports distributed operation (v2+), the binary gains additional roles (log-server, controller, ingress) but the converged model persists: a single binary, configured by role, no separate services to deploy.
 
 ---
 
 ## 75. AI-Native CLI Control Plane
 
-The CLI is the AI-native control plane. The future UI is for humans to see the system, but it is deferred. The CLI is for humans and AI agents to operate, verify, repair, replay, and explain the system now.
+The CLI is the AI-native control plane for humans and AI agents to operate, verify, repair, replay, and explain the system now.
 
 North star:
 
-1. Anything a future UI can show, the CLI must be able to emit as structured data first.
+1. Anything an adapter can show, the CLI must be able to emit as structured data first.
 2. Anything an operator can inspect, an AI agent can inspect safely.
 3. Anything that fails produces a machine-readable explanation.
 
@@ -3730,10 +3722,10 @@ The CLI has two modes of output:
 **Human mode** — Pretty, readable, fast:
 
 ```text
-velvet-ballastics verify workflow.yaml
-velvet-ballastics run issue_triage --input input.vbin
-velvet-ballastics inspect run_123
-velvet-ballastics replay run_123
+velvet-ballistics verify workflow.yaml
+velvet-ballistics run issue_triage --input input.vbin
+velvet-ballistics inspect run_123
+velvet-ballistics replay run_123
 ```
 
 Output is colored, summarized, and ergonomic.
@@ -3741,10 +3733,10 @@ Output is colored, summarized, and ergonomic.
 **AI mode** — Stable, structured, boring:
 
 ```text
-velvet-ballastics verify workflow.yaml --emit yaml
-velvet-ballastics inspect run_123 --emit yaml
-velvet-ballastics replay run_123 --explain --emit yaml
-velvet-ballastics incident run_123 --emit yaml
+velvet-ballistics verify workflow.yaml --emit yaml
+velvet-ballistics inspect run_123 --emit yaml
+velvet-ballistics replay run_123 --explain --emit yaml
+velvet-ballistics incident run_123 --emit yaml
 ```
 
 No fragile pretty text. No hidden state. No "look at the dashboard." AI mode emits schemas that are documented and versioned.
@@ -3754,22 +3746,22 @@ No fragile pretty text. No hidden state. No "look at the dashboard." AI mode emi
 Command groups mirror the system lifecycle:
 
 ```text
-velvet-ballastics validate workflow.yaml
-velvet-ballastics verify   workflow.yaml
-velvet-ballastics compile  workflow.yaml
-velvet-ballastics graph    workflow.yaml
-velvet-ballastics simulate workflow.yaml
-velvet-ballastics run-compiled workflow.vbir
-velvet-ballastics submit   issue_triage
-velvet-ballastics inspect  run_123
-velvet-ballastics events   run_123
-velvet-ballastics replay   run_123
-velvet-ballastics incident run_123
-velvet-ballastics action list
-velvet-ballastics action inspect github.issue.create
-velvet-ballastics system status
-velvet-ballastics doctor
-velvet-ballastics ai context run_123
+velvet-ballistics validate workflow.yaml
+velvet-ballistics verify   workflow.yaml
+velvet-ballistics compile  workflow.yaml
+velvet-ballistics graph    workflow.yaml
+velvet-ballistics simulate workflow.yaml
+velvet-ballistics run-compiled workflow.vbir
+velvet-ballistics submit   issue_triage
+velvet-ballistics inspect  run_123
+velvet-ballistics events   run_123
+velvet-ballistics replay   run_123
+velvet-ballistics incident run_123
+velvet-ballistics action list
+velvet-ballistics action inspect github.issue.create
+velvet-ballistics system status
+velvet-ballistics doctor
+velvet-ballistics ai context run_123
 ```
 
 The CLI is not just "run workflow." It is a compiler/debugger/operator interface.
@@ -3779,7 +3771,7 @@ The CLI is not just "run workflow." It is a compiler/debugger/operator interface
 `verify` is the flagship. It answers: *is this workflow safe to run, and if not, what must change?*
 
 ```text
-velvet-ballastics verify workflow.yaml --profile strict
+velvet-ballistics verify workflow.yaml --profile strict
 ```
 
 Human output:
@@ -3801,7 +3793,7 @@ max frame bytes: 19.2 KiB
 AI output (`--emit yaml`):
 
 ```yaml
-schema_version: velvet-ballastics/cli-output/v1
+schema_version: velvet-ballistics/cli-output/v1
 kind: VerificationReport
 workflow:
   name: issue_triage
@@ -3847,7 +3839,7 @@ certificates:
 When validation fails, the CLI emits structured repair hints — not just text:
 
 ```yaml
-schema_version: velvet-ballastics/cli-output/v1
+schema_version: velvet-ballistics/cli-output/v1
 kind: DiagnosticReport
 status: fail
 diagnostics:
@@ -3872,7 +3864,7 @@ This lets an AI agent read error → patch YAML → verify again. No guessing.
 ### explain Command
 
 ```text
-velvet-ballastics explain workflow.yaml --emit yaml
+velvet-ballistics explain workflow.yaml --emit yaml
 ```
 
 Output includes: what the workflow does, what actions it calls, what secrets it touches, what can fail, what is durable, what is safe to retry, what resource bounds exist.
@@ -3911,10 +3903,10 @@ durability:
 ### graph Command
 
 ```text
-velvet-ballastics graph workflow.yaml --emit yaml
+velvet-ballistics graph workflow.yaml --emit yaml
 ```
 
-Emits a graph artifact consumable by Makepad UI, Figma/Miro prototype importers, AI reasoning, CLI summaries, and documentation generators. One source, many consumers.
+Emits a graph artifact consumable by AI reasoning, CLI summaries, and documentation generators. One source, many consumers.
 
 ```yaml
 kind: WorkflowGraph
@@ -3944,7 +3936,7 @@ edges:
 ### simulate Command
 
 ```text
-velvet-ballastics simulate workflow.yaml --input input.vbin --mocks mocks.yaml --emit yaml
+velvet-ballistics simulate workflow.yaml --input input.vbin --mocks mocks.yaml --emit yaml
 ```
 
 Runs deterministically with mocked actions. Output:
@@ -3987,7 +3979,7 @@ This lets AI agents test before running.
 **Submit:**
 
 ```text
-velvet-ballastics submit issue_triage --input-bin input.vbin --emit yaml
+velvet-ballistics submit issue_triage --input-bin input.vbin --emit yaml
 ```
 
 ```yaml
@@ -4005,7 +3997,7 @@ durability:
 **Inspect:**
 
 ```text
-velvet-ballastics inspect run_123 --emit yaml
+velvet-ballistics inspect run_123 --emit yaml
 ```
 
 ```yaml
@@ -4030,7 +4022,7 @@ replay:
 **Events:**
 
 ```text
-velvet-ballastics events run_123 --tail 20 --emit yaml
+velvet-ballistics events run_123 --tail 20 --emit yaml
 ```
 
 ```yaml
@@ -4050,7 +4042,7 @@ events:
 **Replay:**
 
 ```text
-velvet-ballastics replay run_123 --explain --emit yaml
+velvet-ballistics replay run_123 --explain --emit yaml
 ```
 
 ```yaml
@@ -4074,7 +4066,7 @@ action_recovery:
 ### incident Command
 
 ```text
-velvet-ballastics incident run_123 --emit yaml
+velvet-ballistics incident run_123 --emit yaml
 ```
 
 Produces the AI-safe black box report:
@@ -4120,7 +4112,7 @@ repair_hints:
 ### Action Discovery
 
 ```text
-velvet-ballastics action list --emit yaml
+velvet-ballistics action list --emit yaml
 ```
 
 ```yaml
@@ -4139,7 +4131,7 @@ actions:
 ```
 
 ```text
-velvet-ballastics action inspect github.issue.create --emit yaml
+velvet-ballistics action inspect github.issue.create --emit yaml
 ```
 
 ```yaml
@@ -4179,7 +4171,7 @@ examples:
 ### doctor Command
 
 ```text
-velvet-ballastics doctor --emit yaml
+velvet-ballistics doctor --emit yaml
 ```
 
 Checks: runtime daemon reachable, Fjall DB healthy, action packs loaded, action ABI digest, compiled workflows available, IPC socket permissions, strict durability available, journal writer healthy.
@@ -4204,7 +4196,7 @@ checks:
 Specifically for AI agents. Emits a compact, redacted packet:
 
 ```text
-velvet-ballastics ai context run_123 --emit yaml
+velvet-ballistics ai context run_123 --emit yaml
 ```
 
 ```yaml
@@ -4224,9 +4216,9 @@ redactions:
   secrets_redacted: 2
   blobs_summarized: 1
 suggested_next_commands:
-  - velvet-ballastics replay run_123 --explain --emit yaml
-  - velvet-ballastics events run_123 --tail 50 --emit yaml
-  - velvet-ballastics verify workflow.yaml --profile strict --emit yaml
+  - velvet-ballistics replay run_123 --explain --emit yaml
+  - velvet-ballistics events run_123 --tail 50 --emit yaml
+  - velvet-ballistics verify workflow.yaml --profile strict --emit yaml
 ```
 
 This is a stable AI interface, not a gimmick.
@@ -4302,10 +4294,10 @@ Build CLI before any future UI. The UI must not invent concepts — it visualize
 ### The Killer Demo
 
 ```text
-velvet-ballastics verify issue-triage.yaml --profile strict --emit yaml
-velvet-ballastics simulate issue-triage.yaml --input example.vbin --mocks mocks.yaml --emit yaml
-velvet-ballastics submit issue_triage --input-bin prod.vbin --emit yaml
-velvet-ballastics incident run_123 --emit yaml
+velvet-ballistics verify issue-triage.yaml --profile strict --emit yaml
+velvet-ballistics simulate issue-triage.yaml --input example.vbin --mocks mocks.yaml --emit yaml
+velvet-ballistics submit issue_triage --input-bin prod.vbin --emit yaml
+velvet-ballistics incident run_123 --emit yaml
 ```
 
 Then hand the output to an AI and ask: *What failed, is it safe to retry, and what should I change?* If the AI can answer correctly from the CLI packet, the design works.
@@ -4314,11 +4306,11 @@ Then hand the output to an AI and ask: *What failed, is it safe to retry, and wh
 
 ## 76. Workflow Command-Center Front-End
 
-> **Deferred.** The command-center front-end is not part of the current Backend / IR Interpreter Complete milestone. This section is retained as a pointer to future product direction only. The active deferred UI contract lives in `docs/deferred-ui.md` and requires dedicated reactivation beads before implementation.
+> **Removed.** The command-center front-end is not part of the current Backend / IR Interpreter Complete milestone. The remaining section content is historical residue only and not an implementation contract.
 
 ### Vision
 
-The `velvet-ballastics` front-end is a premium native command center for workflow execution observability, verification, replay, and incident response. It is not a generic SaaS dashboard, not a low-code canvas, and not a decorative graph editor.
+The `velvet-ballistics` front-end is a premium native command center for workflow execution observability, verification, replay, and incident response. It is not a generic SaaS dashboard, not a low-code canvas, and not a decorative graph editor.
 
 The UI product identity is:
 
@@ -4342,20 +4334,20 @@ The v1 UI uses a crisp Apple Pro-style light shell:
 - Monospace only for run IDs, action IDs, digests, slot IDs, timestamps, sequence numbers, and binary/record metadata.
 - No cyberpunk treatment, no overuse of neon, no overuse of glass, no thick borders, no 3D effects, and no generic web-dashboard chrome.
 
-The UI may borrow broad observability structure from AWS Step Functions-style execution pages — execution summary, graph/table/event views, selected-step details, event history, recovery controls — but it must reinterpret these into the `velvet-ballastics` product model: accepted artifacts, verification certificates, typed journals, replay safety, idempotency evidence, and taint/resource contracts.
+The UI may borrow broad observability structure from AWS Step Functions-style execution pages — execution summary, graph/table/event views, selected-step details, event history, recovery controls — but it must reinterpret these into the `velvet-ballistics` product model: accepted artifacts, verification certificates, typed journals, replay safety, idempotency evidence, and taint/resource contracts.
 
 ### Presentation Board and Figma Contract
 
-The current canonical intake bundle is the 2026-05-08 23:51 zip at `/home/lewis/Downloads/velvet_ballastics_makepad_ui_master_plan_with_images.zip`. Its extracted repository copy is:
+The current canonical intake bundle is the 2026-05-08 23:51 zip at `/home/lewis/Downloads/velvet_ballistics_makepad_ui_master_plan_with_images.zip`. Its extracted repository copy is:
 
 ```text
-velvet_ballastics_makepad_ui_master_plan_with_images/
-  velvet-ballastics-MASTER-makepad-ui-update.md
+velvet_ballistics_makepad_ui_master_plan_with_images/
+  velvet-ballistics-MASTER-makepad-ui-update.md
   design_assets/canonical/
     figma_makepad_notes.md
-    velvet_ballastics_figma_ready_tightened_board.png
-  design_assets/velvet_ballastics_figma_ready_tightened/png/
-  design_assets/velvet_ballastics_figma_ready_tightened/svg/
+    velvet_ballistics_figma_ready_tightened_board.png
+  design_assets/velvet_ballistics_figma_ready_tightened/png/
+  design_assets/velvet_ballistics_figma_ready_tightened/svg/
 ```
 
 The design review artifact is an 8-screen desktop board:
@@ -4385,7 +4377,7 @@ Figma files, SVGs, and PNG boards are design reference only. The implementation 
 
 Every screen uses one shared shell:
 
-- Left sidebar with `velvet-ballastics` branding.
+- Left sidebar with `velvet-ballistics` branding.
 - Minimal icon navigation: Overview, Workflow Graph, Executions, Verification, Replay, Incidents, Actions, Storage, AI Context, Settings.
 - Top action bar with compact capsule buttons: Verify, Simulate, Submit.
 - Status chips: Strict durability, Running, Verified, Replay safe, Needs operator.
@@ -4668,7 +4660,7 @@ moon ci
 
 Supply-chain/advisory reports are non-blocking under the 2026-05-23 owner waiver unless a future bead explicitly opts in.
 
-The maxperf lane is deferred with generated Rust and is not part of current release closure.
+The maxperf lane is removed and is not part of current release closure.
 
 ### 77.3 Evidence Bundles
 
@@ -5014,7 +5006,7 @@ Verified by `cargo +nightly test --doc --workspace --all-features`. Doc examples
 
 ### 77.18 Trybuild Compile-Fail Suites
 
-For active public macro/schema contracts, compile-fail tests pin policy. Generated-code trybuild suites are deferred with `vb_codegen`; they become mandatory only if the generated workflow track is reactivated.
+For active public macro/schema contracts, compile-fail tests pin policy. Generated-code trybuild suites are removed with `vb_codegen` and are not current-scope tests.
 
 ### 77.19 Minimal Repro Generator
 
@@ -5047,7 +5039,7 @@ Every stable contract emitted as data in `contracts/`:
 | `contracts/tests.yaml` | Required test metadata |
 | `contracts/perf-budget.yaml` | Performance regression thresholds |
 
-Current-scope generators may produce Rust enums, docs, CLI schemas, AI context, and tests from these sources. UI schemas and generated workflow code are deferred tracks. Contracts-as-data reduce drift because AI reasons from the same source that generates active code and documentation.
+Current-scope generators may produce Rust enums, docs, CLI schemas, AI context, and tests from these sources. UI schemas and generated workflow code are removed from current scope. Contracts-as-data reduce drift because AI reasons from the same source that generates active code and documentation.
 
 ### 77.21 Failure Explanation
 
@@ -5151,7 +5143,7 @@ This turns AI from "creative coder" into "mechanical implementer."
 
 ## 78. Makepad UI Implementation Contract
 
-> **Deferred.** Makepad UI implementation is not part of the current core feature set. The preserved future contract lives in `docs/deferred-ui.md`; no current backend bead may be blocked by Makepad, UI model artifacts, screenshot gates, or UI perf gates.
+> **Removed.** Makepad UI implementation is not part of the current core feature set. Remaining details in Sections 78-83 are historical residue only; no current backend bead may be blocked by Makepad, UI model artifacts, screenshot gates, or UI perf gates.
 
 ### Makepad Scope
 
@@ -5162,11 +5154,9 @@ vb_core
 vb_runtime
 vb_storage
 vb_ipc
-vb_codegen generated output
-generated workflow code
 ```
 
-Makepad dependencies must not change runtime semantics, binary IPC semantics, persistence semantics, or generated Rust workflow semantics.
+Makepad dependencies must not change runtime semantics, binary IPC semantics, or persistence semantics.
 
 ### Makepad Rationale
 
@@ -5178,7 +5168,7 @@ Makepad is selected for the UI because the design requires a native, GPU-driven 
 |------|------|--------------------------|
 | `vb_ui_model` | Typed UI artifacts shared by CLI/UI. No Makepad. | Cold path only |
 | `vb_ui_makepad` | Native Makepad desktop app. | UI only |
-| `velvet_ballastics` | CLI command dispatch, including `ui`. | Cold path command |
+| `velvet_ballistics` | CLI command dispatch, including `ui`. | Cold path command |
 
 ### `vb_ui_model` Required Types
 
@@ -5230,9 +5220,9 @@ The UI consumes typed artifacts. It does not parse YAML, does not execute workfl
 
 | Mode | Command | Data source | Purpose |
 |------|---------|-------------|---------|
-| Embedded | `velvet-ballastics ui --db <path>` | Direct storage/runtime readers | Local desktop app with DB access |
-| Attached | `velvet-ballastics ui --socket <path>` | Binary IPC | Operator app connected to running server |
-| Demo | `velvet-ballastics ui --demo-fixture <fixture>` | Deterministic fixtures | Design review, screenshot tests, demos |
+| Embedded | `velvet-ballistics ui --db <path>` | Direct storage/runtime readers | Local desktop app with DB access |
+| Attached | `velvet-ballistics ui --socket <path>` | Binary IPC | Operator app connected to running server |
+| Demo | `velvet-ballistics ui --demo-fixture <fixture>` | Deterministic fixtures | Design review, screenshot tests, demos |
 
 HTTP and JSON are not required for the UI. If a future streaming adapter is needed, it must be a separate cold-path adapter crate.
 

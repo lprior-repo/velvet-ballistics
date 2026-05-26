@@ -7,14 +7,14 @@ updated_at: 2026-05-09T21:35:00Z
 
 ## Moon Gates Executed
 
-### velvet-ballastics:quick
+### velvet-ballistics:quick
 ```
 Tasks: 1 completed
 Time: 29s 512ms
 Status: PASS
 ```
 
-### velvet-ballastics:check
+### velvet-ballistics:check
 **Status: FAILED** (pre-existing errors, not related to vb-zo9d)
 
 The `check` task runs `cargo check --workspace --all-targets --all-features`.
@@ -31,11 +31,11 @@ and exist on the main branch (parent commit 2168cac0).
 | Crate | Target | Status |
 |---|---|---|
 | vb_storage | --lib | PASS (1 warning: unused_mut in batch.rs) |
-| velvet_ballastics | bin | PASS |
+| velvet_ballistics | bin | PASS |
 
 ### Integration Tests
 ```bash
-cargo test -p velvet_ballastics --test cli_integration cli_doctor
+cargo test -p velvet_ballistics --test cli_integration cli_doctor
 ```
 Result: 4 passed, 0 failed
 

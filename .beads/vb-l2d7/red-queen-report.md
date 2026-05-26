@@ -40,7 +40,7 @@ doc taint consistency: PASS
 ### Focused doc suite
 
 ```bash
-rtk cargo nextest run -p velvet-ballastics-workspace --test vb_l2d7_doc_reconciliation_contract_red
+rtk cargo nextest run -p velvet-ballistics-workspace --test vb_l2d7_doc_reconciliation_contract_red
 ```
 
 Result:
@@ -64,8 +64,8 @@ cargo nextest: 24 passed (1 binary, 0.471s)
 ### Ordering probes
 
 ```bash
-RUST_TEST_THREADS=1 rtk cargo nextest run -p velvet-ballastics-workspace --test vb_l2d7_doc_reconciliation_contract_red scan_for_stale_clean_only_text
-RUST_TEST_THREADS=8 rtk cargo nextest run -p velvet-ballastics-workspace --test vb_l2d7_doc_reconciliation_contract_red scan_for_stale_clean_only_text
+RUST_TEST_THREADS=1 rtk cargo nextest run -p velvet-ballistics-workspace --test vb_l2d7_doc_reconciliation_contract_red scan_for_stale_clean_only_text
+RUST_TEST_THREADS=8 rtk cargo nextest run -p velvet-ballistics-workspace --test vb_l2d7_doc_reconciliation_contract_red scan_for_stale_clean_only_text
 ```
 
 Results:

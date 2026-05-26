@@ -14,7 +14,7 @@ finding_count: 0
 ### Scope Guard
 
 - Review executed only in `/home/lewis/src/vb-qi37-13-r2`.
-- Focused suite reviewed: `crates/velvet_ballastics/tests/vb_qi37_13_structured_reconciliation.rs`.
+- Focused suite reviewed: `crates/velvet_ballistics/tests/vb_qi37_13_structured_reconciliation.rs`.
 - Postcard evidence lane reviewed with `cargo test -p vb_ui_model --all-features postcard`.
 
 ### Tier 0 — Static
@@ -31,7 +31,7 @@ finding_count: 0
 
 [PASS] Mock interrogation: no mocks in changed tests.
 
-[PASS] Integration test purity: `crates/velvet_ballastics/tests/vb_qi37_13_structured_reconciliation.rs` has no `use crate::`; it drives the public binary only.
+[PASS] Integration test purity: `crates/velvet_ballistics/tests/vb_qi37_13_structured_reconciliation.rs` has no `use crate::`; it drives the public binary only.
 
 [PASS] Assertion-strength repair verified: `assert_structured_validation_diagnostic` now asserts exact `message` equality at lines 99-103, and the JSONL unknown-command case asserts exact `message` equality at lines 254-258.
 
@@ -42,7 +42,7 @@ finding_count: 0
 [PASS] CLI focused test target compiles:
 
 ```text
-TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballastics --test vb_qi37_13_structured_reconciliation --all-features --no-run
+TMPDIR=/home/lewis/src/vb-qi37-13-r2/target/tmp RUSTC_WRAPPER= cargo test -p velvet_ballistics --test vb_qi37_13_structured_reconciliation --all-features --no-run
 Finished `test` profile [unoptimized + debuginfo] target(s) in 0.12s
 ```
 

@@ -35,9 +35,9 @@ STATUS: REJECTED
    - `mutants-smoke` no longer failed with workspace-local recursive `File name too long`.
    - Remaining blocker:
      ```text
-     velvet-ballastics:mutants-smoke | Error: Failed to copy /home/lewis/src/bd-vb-kyyf-bdd/target-test/debug/deps/libenum_dispatch-3f1f56c5aae4b342.so to /tmp/opencode/vb-kyyf-moon-ci-tmp/cargo-mutants-bd-vb-kyyf-bdd-WdAqSX.tmp/target-test/debug/deps/libenum_dispatch-3f1f56c5aae4b342.so
-     velvet-ballastics:mutants-smoke | Caused by:
-     velvet-ballastics:mutants-smoke |     Disk quota exceeded (os error 122)
+     velvet-ballistics:mutants-smoke | Error: Failed to copy /home/lewis/src/bd-vb-kyyf-bdd/target-test/debug/deps/libenum_dispatch-3f1f56c5aae4b342.so to /tmp/opencode/vb-kyyf-moon-ci-tmp/cargo-mutants-bd-vb-kyyf-bdd-WdAqSX.tmp/target-test/debug/deps/libenum_dispatch-3f1f56c5aae4b342.so
+     velvet-ballistics:mutants-smoke | Caused by:
+     velvet-ballistics:mutants-smoke |     Disk quota exceeded (os error 122)
      ```
 
 ## Decision

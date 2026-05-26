@@ -15,5 +15,5 @@
 ## Required Evidence for Next Review
 
 - `rtk cargo test -p vb_compile --test vb_core_yaml_e2e_chain_strict_yaml -- --nocapture` passes with 10 tests.
-- `rtk cargo test -p velvet-ballastics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture` passes with all 35 tests.
+- `rtk cargo test -p velvet-ballistics-workspace --test vb_core_yaml_e2e_chain_contract -- --nocapture` passes with all 35 tests.
 - The three fuzz bins `strict_yaml_profile`, `accepted_artifact_decode`, and `recovery_decode` remain present and smoke-runnable or are replaced by stricter cargo-fuzz evidence.

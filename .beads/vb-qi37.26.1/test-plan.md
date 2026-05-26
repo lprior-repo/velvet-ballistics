@@ -20,7 +20,7 @@
 | ID | Behavior |
 |----|----------|
 | B1 | `vb_ipc` crate compiles without errors when checked |
-| B2 | `velvet-ballastics-workspace-tests` compiles with `--tests` target |
+| B2 | `velvet-ballistics-workspace-tests` compiles with `--tests` target |
 | B3 | `vb_ipc` crate passes clippy with warnings-as-errors |
 | B4 | Changed code in `handlers.rs` introduces no new panicking APIs |
 | B5 | `handlers.rs` contains no `unsafe` blocks beyond the `#![forbid(unsafe_code)]` directive |
@@ -34,7 +34,7 @@
 | Behavior | Test Layer | Rationale |
 |----------|-----------|-----------|
 | B1 | Static Analysis | `cargo check -p vb_ipc` is the canonical compilation gate |
-| B2 | Static Analysis | `cargo check -p velvet-ballastics-workspace-tests --tests` validates downstream compilation |
+| B2 | Static Analysis | `cargo check -p velvet-ballistics-workspace-tests --tests` validates downstream compilation |
 | B3 | Static Analysis | `cargo clippy -p vb_ipc -- -D warnings` enforces source lint zero tolerance |
 | B4 | Static Analysis | `grep` diff-scoped scan for `unwrap`, `expect`, `panic!`, `todo!`, `unimplemented!` |
 | B5 | Static Analysis | `grep` for `unsafe` confirms `#![forbid(unsafe_code)]` is the only match |
@@ -57,7 +57,7 @@ And:   Zero errors or warnings are emitted
 ### Behavior B2: workspace-tests compiles cleanly
 ```
 Given: The workspace checkout is clean on commit 0ebc5270
-When:  cargo check -p velvet-ballastics-workspace-tests --tests is executed
+When:  cargo check -p velvet-ballistics-workspace-tests --tests is executed
 Then:  The command exits with code 0
 And:   Zero errors or warnings are emitted
 ```
@@ -173,7 +173,7 @@ cargo check -p vb_ipc
 
 ### T2 — cargo check workspace-tests
 ```bash
-cargo check -p velvet-ballastics-workspace-tests --tests
+cargo check -p velvet-ballistics-workspace-tests --tests
 ```
 *Expected:* Exit code `0`, zero errors.
 
@@ -218,7 +218,7 @@ test -f crates/vb_ipc/src/server/handlers/mod.rs; echo $?
 ## 11. Exit Criteria
 
 - [ ] T1 passes: `cargo check -p vb_ipc` exits 0
-- [ ] T2 passes: `cargo check -p velvet-ballastics-workspace-tests --tests` exits 0
+- [ ] T2 passes: `cargo check -p velvet-ballistics-workspace-tests --tests` exits 0
 - [ ] T3 passes: `cargo clippy -p vb_ipc -- -D warnings` exits 0
 - [ ] T4 passes: No new `unwrap`, `expect`, `panic!`, `todo!`, or `unimplemented!` in the diff
 - [ ] T5 passes: Only `#![forbid(unsafe_code)]` matches for `unsafe` in `handlers.rs`

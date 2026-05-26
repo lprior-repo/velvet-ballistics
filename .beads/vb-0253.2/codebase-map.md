@@ -15,8 +15,8 @@
 | crates/vb_ipc/src/error.rs | IpcError types including ingress errors | error-handling |
 | crates/vb_ipc/src/frame/tests.rs | Ingress frame tests | test |
 | crates/vb_ipc/src/tests.rs | MemoryIngress tests | test |
-| crates/workspace_tests/benches/velvet_ballastics.rs | Ingress benchmarks | performance |
-| crates/velvet_ballastics/tests/cross_crate_adversarial.rs | Cross-crate IPC tests | test |
+| crates/workspace_tests/benches/velvet_ballistics.rs | Ingress benchmarks | performance |
+| crates/velvet_ballistics/tests/cross_crate_adversarial.rs | Cross-crate IPC tests | test |
 
 ### Key Symbols
 - `MemoryIngress::bounded(capacity)`

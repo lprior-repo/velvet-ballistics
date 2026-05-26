@@ -38,7 +38,7 @@
   - `crates/vb_runtime/src/shard/lifecycle.rs` — typestate `enum LifecycleState`, transition functions
   - `crates/vb_runtime/src/journal.rs` — `append_event`, `replay`
   - `crates/vb_storage/src/journal.rs` — `write_event`, `read_journal`
-  - `crates/velvet_ballastics/src/storage.rs` — command validation
+  - `crates/velvet_ballistics/src/storage.rs` — command validation
 
 - **Spec/proof surface**:
   - `spec_transition(bead_id, cmd, state_before) -> state_after` — pure state transition function

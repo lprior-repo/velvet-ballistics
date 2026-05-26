@@ -89,7 +89,7 @@ TLA+ would add modeling overhead with zero proof value. INV-001 (determinism) is
 
 ## Corrected Artifact Paths (vs. proof-obligations.jsonl)
 
-The obligations JSON contains `crates/velvet_ballastics/src/commands_journal.rs` which does not exist. Correct path is `crates/vb_cli/src/commands_journal.rs`. Proof-writer must use the corrected path.
+The obligations JSON contains `crates/velvet_ballistics/src/commands_journal.rs` which does not exist. Correct path is `crates/vb_cli/src/commands_journal.rs`. Proof-writer must use the corrected path.
 
 ---
 
@@ -102,5 +102,5 @@ The obligations JSON contains `crates/velvet_ballastics/src/commands_journal.rs`
 - [ ] TLA+ waiver is documented with compensating evidence (Verus + proptest)
 - [ ] All waived lanes have explicit waiver reason and owner
 - [ ] No `unsafe`, `unwrap`, `expect`, `panic` in `commands_journal.rs` (confirmed by discovery)
-- [ ] moon ci commands reference correct crate (`vb_cli` not `velvet_ballastics`)
+- [ ] moon ci commands reference correct crate (`vb_cli` not `velvet_ballistics`)
 - [ ] Every obligation maps to a requirement or contract clause (INV-001, POST-001–007, ERR-001/002/004)

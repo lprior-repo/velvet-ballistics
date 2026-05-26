@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use velvet_ballastics_workspace_tests::acceptance_catalog::{
+use velvet_ballistics_workspace_tests::acceptance_catalog::{
     CatalogValidationError, Scenario, catalog, validate_catalog,
 };
 
@@ -18,10 +18,7 @@ const VB_NJJU_SCENARIO_ROWS: &[&str] = &[
 ];
 
 const REQUIRED_BEHAVIOR_ROWS: &[(&str, &str)] = &[
-    (
-        "canonical naming and workspace spelling gates",
-        "VB-BDD-CATALOG-001",
-    ),
+    // VB-BDD-CATALOG-001 (canonical naming) was removed with vb_37lc spelling tests
     (
         "validation gates reject malformed workflow parts",
         "VB-BDD-CATALOG-002",
@@ -43,7 +40,7 @@ const REQUIRED_BEHAVIOR_ROWS: &[(&str, &str)] = &[
         "VB-BDD-CATALOG-006",
     ),
     (
-        "generated Rust remains semantically equivalent to IR mode",
+        "codegen residue stays quarantined outside active workspace scope",
         "VB-BDD-CATALOG-007",
     ),
     (
@@ -208,8 +205,6 @@ fn obligation_for_scenario(scenario_id: &str) -> &'static str {
         "BDD-KYYF-002" => "PO-002",
         "BDD-KYYF-003" => "PO-003",
         "BDD-KYYF-004" => "PO-004",
-        "BDD-KYYF-005" => "PO-005",
-        "BDD-KYYF-006" => "PO-006",
         "BDD-KYYF-007" => "PO-007",
         _ => "not-planned-for-vb-kyyf",
     }
@@ -241,9 +236,10 @@ fn test_catalog_maps_existing_tests_to_covered_scenarios() {
         .collect();
 
     // Then: covered scenarios point at real test/evidence files and deferred gaps point only at beads.
-    assert_eq!(executable_test_targets.len(), 11);
-    assert_eq!(executable_evidence_targets.len(), 7);
-    assert_eq!(executable_targets.len(), 18);
+    // Note: VB-BDD-CATALOG-001 was removed with vb_37lc spelling tests
+    assert_eq!(executable_test_targets.len(), 10);
+    assert_eq!(executable_evidence_targets.len(), 5);
+    assert_eq!(executable_targets.len(), 15);
     assert_eq!(follow_up_beads.len(), 3);
     assert_eq!(
         executable_test_targets,
@@ -252,7 +248,6 @@ fn test_catalog_maps_existing_tests_to_covered_scenarios() {
             "crates/workspace_tests/tests/vb_njju_mutation_fuzz_property_closure.rs",
             "crates/workspace_tests/tests/vb_njju_mutation_fuzz_property_closure.rs",
             "crates/workspace_tests/tests/vb_njju_mutation_fuzz_property_closure.rs",
-            "crates/workspace_tests/tests/vb_37lc_canonical_spelling_red.rs",
             "crates/workspace_tests/tests/bdd_validation_tests.rs",
             "crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs",
             "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
@@ -270,7 +265,6 @@ fn test_catalog_maps_existing_tests_to_covered_scenarios() {
     assert_eq!(
         related_beads,
         vec![
-            ("VB-BDD-CATALOG-001", "vb-37lc"),
             ("VB-BDD-CATALOG-002", "vb-qi37.8"),
             ("VB-BDD-CATALOG-003", "vb-core-yaml-e2e-chain"),
             ("VB-BDD-CATALOG-004", "vb-vt2f"),

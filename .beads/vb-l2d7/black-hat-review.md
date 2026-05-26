@@ -13,7 +13,7 @@ STATUS: APPROVED
 ## Commands Executed
 
 ```text
-rtk cargo nextest run -p velvet-ballastics-workspace --test vb_l2d7_doc_reconciliation_contract_red
+rtk cargo nextest run -p velvet-ballistics-workspace --test vb_l2d7_doc_reconciliation_contract_red
 => cargo nextest: 65 passed (1 binary, 1.931s)
 
 rtk cargo nextest run -p vb_runtime --test vb_l2d7_joined_taint_propagation_red

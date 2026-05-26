@@ -27,7 +27,7 @@ fn compile_workflow(source: &[u8]) -> Result<crate::CompiledWorkflow, CompileErr
 /// EXPECTED:   Ok(CompiledWorkflow) per Section 47
 #[test]
 fn compile_accepts_secret_finish_result() {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: secret_finish_case
 when:
   manual: {}
@@ -51,7 +51,7 @@ steps:
 /// Then:  The compilation succeeds
 #[test]
 fn compile_accepts_secret_slot_relay_in_finish() {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: secret_slot_relay_case
 when:
   manual: {}
@@ -78,7 +78,7 @@ steps:
 /// Then:  The compilation succeeds
 #[test]
 fn compile_accepts_secret_composite_in_finish() {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: secret_composite_case
 when:
   manual: {}
@@ -103,7 +103,7 @@ steps:
 /// Then:  The compilation succeeds
 #[test]
 fn compile_accepts_secret_list_in_finish() {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: secret_list_case
 when:
   manual: {}
@@ -129,7 +129,7 @@ steps:
 /// Then:  The compilation succeeds
 #[test]
 fn compile_accepts_clean_finish() {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: clean_finish_case
 when:
   manual: {}
@@ -153,7 +153,7 @@ steps:
 /// Then:  The compilation succeeds
 #[test]
 fn compile_accepts_literal_finish() {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: literal_finish_case
 when:
   manual: {}
@@ -175,7 +175,7 @@ steps:
 /// Then:  The compilation succeeds
 #[test]
 fn compile_accepts_var_finish() {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: var_finish_case
 when:
   manual: {}
@@ -199,7 +199,7 @@ steps:
 /// Then:  The compilation succeeds
 #[test]
 fn compile_accepts_deep_slot_chain_in_finish() {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: deep_chain_case
 when:
   manual: {}
@@ -245,7 +245,7 @@ steps:
 /// accidentally break the Save rejection logic.
 #[test]
 fn compile_rejects_secret_in_save() {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: secret_save_case
 when:
   manual: {}
@@ -272,7 +272,7 @@ steps:
 /// Then:  The compilation returns `Err(CompileErrors(...))` with `SecretTaintLeak`
 #[test]
 fn compile_rejects_secret_input_in_save() {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: secret_input_save_case
 when:
   manual: {}
@@ -301,7 +301,7 @@ steps:
 /// Then:  The compilation returns `Err(CompileErrors(...))` with `SecretTaintLeak`
 #[test]
 fn compile_rejects_secret_composite_in_save() {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: secret_composite_save_case
 when:
   manual: {}
@@ -329,7 +329,7 @@ steps:
 /// Then:  The compilation returns `Err(CompileErrors(...))` with `SecretTaintLeak`
 #[test]
 fn compile_rejects_secret_via_two_hop_relay() {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: secret_relay_case
 when:
   manual: {}
@@ -359,7 +359,7 @@ steps:
 /// Then:  The compilation returns `Err(CompileErrors(...))` with `SecretTaintLeak`
 #[test]
 fn compile_rejects_nested_secret_in_save() {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: nested_secret_save_case
 when:
   manual: {}
@@ -387,7 +387,7 @@ steps:
 /// Then:  The compilation succeeds (unknown references resolve as clean)
 #[test]
 fn compile_accepts_unknown_reference_in_finish() {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: unknown_ref_case
 when:
   manual: {}
@@ -409,7 +409,7 @@ steps:
 /// Then:  The compilation succeeds (non-$ references are clean)
 #[test]
 fn compile_accepts_non_dollar_reference_in_finish() {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: non_dollar_ref_case
 when:
   manual: {}
@@ -436,7 +436,7 @@ steps:
 /// After fix: should return `Ok(CompiledWorkflow)`
 #[test]
 fn regression_compile_rejects_secret_finish_incorrectly() {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: secret_finish_case
 when:
   manual: {}
@@ -467,7 +467,7 @@ steps:
 /// nor clearly secret - it may be external user data that hasn't been validated.
 #[test]
 fn compile_handles_untrusted_data_in_non_finish() {
-    let source = br#"version: velvet-ballastics/v1
+    let source = br#"version: velvet-ballistics/v1
 name: untrusted_case
 when:
   manual: {}
@@ -501,7 +501,7 @@ steps:
 proptest! {
     #[test]
     fn proptest_compile_rejects_secret_in_save_any_path(secret_name in "[a-z][a-z0-9_]{0,30}") {
-        let source = format!(r#"version: velvet-ballastics/v1
+        let source = format!(r#"version: velvet-ballistics/v1
 name: secret_save_proptest
 when:
   manual: {{}}
@@ -530,7 +530,7 @@ steps:
 proptest! {
     #[test]
     fn proptest_compile_rejects_secret_input_in_save(input_name in "[a-z][a-z0-9_]{0,30}") {
-        let source = format!(r#"version: velvet-ballastics/v1
+        let source = format!(r#"version: velvet-ballistics/v1
 name: secret_input_save_proptest
 when:
   manual: {{}}
@@ -561,7 +561,7 @@ steps:
 proptest! {
     #[test]
     fn proptest_compile_accepts_clean_finish(input_name in "[a-z][a-z0-9_]{0,30}") {
-        let source = format!(r#"version: velvet-ballastics/v1
+        let source = format!(r#"version: velvet-ballistics/v1
 name: clean_finish_proptest
 when:
   manual: {{}}
@@ -583,7 +583,7 @@ steps:
 proptest! {
     #[test]
     fn proptest_compile_accepts_literal_finish(value: i32) {
-        let source = format!(r#"version: velvet-ballastics/v1
+        let source = format!(r#"version: velvet-ballistics/v1
 name: literal_finish_proptest
 when:
   manual: {{}}

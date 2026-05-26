@@ -53,7 +53,7 @@ Mode 2 — Suite Inquisition (implementation + executed tests)
 - Status: **PASS**
 
 **[PASS] T2 — cargo check workspace-tests**
-- Command: `cargo check -p velvet-ballastics-workspace-tests --tests`
+- Command: `cargo check -p velvet-ballistics-workspace-tests --tests`
 - Independent result: exit 0, zero errors.
 - Status: **PASS**
 

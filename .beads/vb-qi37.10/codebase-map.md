@@ -169,7 +169,7 @@ Expected changes: none unless generated expression helper semantics reveal a mis
 
 Cross-crate tests and benchmarks. Relevant existing surfaces:
 
-- `benches/velvet_ballastics.rs` has generated-mode and IR-vs-generated benchmark groups.
+- `benches/velvet_ballistics.rs` has generated-mode and IR-vs-generated benchmark groups.
 - `tests/phase0_scaffold_test.rs` checks generated benchmark group presence.
 - No focused workspace integration test currently owns full generated final-IR parity; most codegen coverage is in `vb_codegen/src/tests.rs`.
 

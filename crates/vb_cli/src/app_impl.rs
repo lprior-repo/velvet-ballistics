@@ -55,7 +55,7 @@ macro_rules! emit_json_or_return {
 }
 
 const HELP: &str = "\
-velvet-ballastics - compiled workflow runtime
+velvet-ballistics - compiled workflow runtime
 
 commands:
   validate   <workflow.yaml> [--emit text|yaml|postcard]          Validate a workflow definition
@@ -1430,9 +1430,15 @@ fn cmd_submit(
     }
 
     // Record the run header
-    let accepted_at_ms = match SystemTime::now().duration_since(UNIX_EPOCH) {
-        Ok(d) => d.as_millis().try_into().unwrap_or(0),
-        Err(_) => 0,
+    let accepted_at_ms: u64 = match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(d) => match u64::try_from(d.as_millis()) {
+            Ok(ms) => ms,
+            Err(_) => {
+                errln!("warning: system clock value does not fit in u64; using 0");
+                0_u64
+            }
+        },
+        Err(_) => 0_u64,
     };
     let header = vb_storage::RunHeaderRecord {
         run: run_id,
@@ -3401,10 +3407,10 @@ fn write_cancel_event(
     reason: Option<String>,
     events: &[vb_storage::JournalEvent],
 ) -> Result<(), vb_storage::JournalError> {
-    let next_seq = events
-        .last()
-        .map(|e| e.seq().get().saturating_add(1))
-        .unwrap_or(0);
+    let next_seq = match events.last() {
+        Some(e) => e.seq().get().saturating_add(1),
+        None => 0,
+    };
     let event = vb_storage::JournalEvent::RunCancelled {
         run: rid,
         seq: vb_storage::EventSeq::new(next_seq),
@@ -4016,7 +4022,7 @@ fn explain_error(err: &vb_compile::CompileError) {
         }
         CompileError::InvalidVersion { actual } => {
             outln!("Invalid Workflow Version");
-            outln!("  Found version '{actual}', but Velvet v1 requires 'velvet-ballastics/v1'.");
+            outln!("  Found version '{actual}', but Velvet v1 requires 'velvet-ballistics/v1'.");
         }
         CompileError::InvalidTriggerCount { count } => {
             outln!("Invalid Trigger Count");
@@ -4302,7 +4308,7 @@ fn explain_compile_repair_hint(err: &vb_compile::CompileError) {
             "Consult the Velvet v1 schema for valid top-level fields",
         ],
         CompileError::InvalidVersion { .. } => &[
-            "Set version to 'velvet-ballastics/v1'",
+            "Set version to 'velvet-ballistics/v1'",
             "The version field is required at the top level",
         ],
         CompileError::InvalidTriggerCount { .. } => &[
@@ -4624,11 +4630,11 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
         }
         ValidationError::InvalidVersion { version } => {
             outln!("Invalid Version");
-            outln!("  Found version '{version}', but Velvet v1 requires 'velvet-ballastics/v1'.");
+            outln!("  Found version '{version}', but Velvet v1 requires 'velvet-ballistics/v1'.");
             explain_repair_hint(
                 "validation",
                 &[
-                    "Set version to 'velvet-ballastics/v1'",
+                    "Set version to 'velvet-ballistics/v1'",
                     "The version field is required and must be the Velvet v1 identifier",
                 ],
             );
@@ -5348,7 +5354,7 @@ fn cmd_simulate(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
             .collect();
         emit_json_or_return!(
             &serde_json::json!({
-                "schema_version": "velvet-ballastics/v1",
+                "schema_version": "velvet-ballistics/v1",
                 "kind": "simulate",
                 "success": true,
                 "total_steps": result.total_steps,
@@ -5849,7 +5855,7 @@ fn write_help_stdout() -> io::Result<()> {
 fn write_version_stdout() -> io::Result<()> {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
-    writeln!(handle, "velvet-ballastics {VERSION}")
+    writeln!(handle, "velvet-ballistics {VERSION}")
 }
 
 fn write_error_stderr(error: &ParseError) -> io::Result<()> {

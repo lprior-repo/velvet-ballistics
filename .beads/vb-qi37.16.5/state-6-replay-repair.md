@@ -9,7 +9,7 @@
 ## Verification Command
 
 ```bash
-rtk cargo test --package velvet_ballastics --test lifecycle_integration -- --test-threads=1
+rtk cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1
 ```
 
 ## Test Results: 43 passed; 0 failed
@@ -40,7 +40,7 @@ This meant:
 ### Problem 2: Tests could not inject corruption
 
 The `events` keyspace in `FjallJournal` is `pub(crate)`, inaccessible from integration tests
-in `velvet_ballastics/tests/`. Tests could not inject malformed bytes or create sequence gaps
+in `velvet_ballistics/tests/`. Tests could not inject malformed bytes or create sequence gaps
 because there was no public API for test fault injection.
 
 ### Problem 3: No run header meant `run_headers()` was empty
@@ -147,7 +147,7 @@ assert!(matches!(result, Err(CoreError::ReplayCorruption { .. })));
 ## Commands Run
 
 ```bash
-rtk cargo test --package velvet_ballastics --test lifecycle_integration -- --test-threads=1
+rtk cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1
 ```
 
 **Result: 43 passed; 0 failed**

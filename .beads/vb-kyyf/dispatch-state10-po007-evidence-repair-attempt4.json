@@ -24,7 +24,7 @@
     "id": "PO-007",
     "result": "FAIL_LOCAL",
     "goal": "catalog validation passes and .evidence/vb-kyyf/acceptance-catalog-traceability.md populated",
-    "command": "cargo test -p velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog",
+    "command": "cargo test -p velvet-ballistics-workspace-tests --test vb_hxm0_acceptance_catalog",
     "artifact_check": "test -s .evidence/vb-kyyf/acceptance-catalog-traceability.md",
     "last_output": "test command passed: 6 passed, 0 failed; ACCEPTANCE_CATALOG_EVIDENCE_TEST_EXIT_STATUS=1",
     "owner_state": 8,

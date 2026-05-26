@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-//! Recovery module for velvet-ballastics journal.
+//! Recovery module for velvet-ballistics journal.
 //!
 //! Organized into:
 //! - `types`: Recovery error types and state types

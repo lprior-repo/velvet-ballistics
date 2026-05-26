@@ -116,14 +116,14 @@
 - `crates/vb_runtime/src/admission.rs` unit tests
   - Cover runtime `RunAdmission`, artifact-not-found, capability checks, and `admit_run` behavior.
 
-- `crates/velvet_ballastics/tests/admission_evidence_integration.rs`
+- `crates/velvet_ballistics/tests/admission_evidence_integration.rs`
   - Cross-crate integration tests for `submit_artifact` plus runtime execution.
   - Current happy path persists an artifact but still runs via `runtime.submit_direct`, so it proves storage plus raw runtime execution, not full accepted-artifact runtime admission.
 
-- `crates/velvet_ballastics/tests/cross_crate_adversarial.rs`
+- `crates/velvet_ballistics/tests/cross_crate_adversarial.rs`
   - Contains cross-crate `RunAccepted` and raw `submit_direct` coverage.
 
-- `crates/velvet_ballastics/tests/cli_integration.rs`
+- `crates/velvet_ballistics/tests/cli_integration.rs`
   - Contains CLI flows that assert `RunAccepted` appears in event output and may need update once accepted artifact admission is surfaced in CLI.
 
 ## Patterns To Reuse
@@ -142,7 +142,7 @@
 - Runtime artifact store trait: `crates/vb_runtime/src/admission.rs` probably needs more than `compiled_ir_exists`; it may need `load_accepted_artifact` or `verify_accepted_artifact` semantics.
 - Runtime submit path: `crates/vb_runtime/src/runtime.rs`, `crates/vb_runtime/src/shard/types.rs`, and `crates/vb_runtime/src/shard/lifecycle.rs` are the path from public submission to frame allocation/drive.
 - Durable evidence: `crates/vb_storage/src/events.rs`, runtime journal adapter code, and CLI event projections may need alignment if `RunAdmission` gains fields.
-- CLI/runtime integration: `crates/velvet_ballastics/src/main.rs`, `commands_journal.rs`, `commands_diff.rs`, `commands_ai_context.rs`, and related tests may be affected if accepted artifact envelopes become externally visible.
+- CLI/runtime integration: `crates/velvet_ballistics/src/main.rs`, `commands_journal.rs`, `commands_diff.rs`, `commands_ai_context.rs`, and related tests may be affected if accepted artifact envelopes become externally visible.
 
 ## Risks And Dependencies
 
@@ -160,7 +160,7 @@
 
 - Define the exact envelope identity: is the accepted artifact payload stored inside `CompiledIrRecord.ir`, adjacent to it, or as a new record family?
 - Define digest semantics precisely: source `workflow_digest`, compiled `ir_digest`, `action_contract_digest`, and storage key digest must not be conflated.
-- Define minimum required fields for `AcceptedArtifact` v1 and whether `artifact_version = "velvet.artifact/v1"` and `workflow_version = "velvet-ballastics/v1"` are encoded as strings, enums, or constants.
+- Define minimum required fields for `AcceptedArtifact` v1 and whether `artifact_version = "velvet.artifact/v1"` and `workflow_version = "velvet-ballistics/v1"` are encoded as strings, enums, or constants.
 - Define `VerificationProof` v1 as either the full MASTER.md proof or an explicitly staged subset; include a rule for gate count/status consistency.
 - Define load-time validation: storage envelope header validation, postcard decode, internal digest checks, version check, proof consistency, capabilities shape, and resource budget bounds.
 - Define runtime admission preconditions: artifact must load and validate, input digest/schema must be checked, capabilities must cover required capabilities, secrets must be present, frame capacity must be reserved, and no run state mutates before all preconditions pass.

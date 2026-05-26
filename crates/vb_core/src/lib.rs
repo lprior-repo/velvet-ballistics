@@ -14,6 +14,7 @@
 pub mod action;
 pub mod budget;
 pub mod capability;
+pub mod contract_encoding;
 pub mod diagnostic;
 pub mod engine;
 pub mod error;
@@ -91,9 +92,7 @@ pub use budget::{
 pub use capability::{Capability, CapabilitySet};
 pub use diagnostic::{
     CODE_REGISTRY, CodeCategory, CodeEntry, Diagnostic, DiagnosticCode, DiagnosticCodeParseError,
-    HasSymbolicCode, Severity, SymbolicCode, SymbolicCodeParseError, category_from_numeric,
-    is_registered_numeric, is_registered_symbolic, numeric_to_symbolic, numeric_to_symbolic_code,
-    symbolic_to_numeric,
+    HasSymbolicCode, Severity, SymbolicCode, SymbolicCodeParseError,
 };
 pub use engine::{
     EngineSignal, ErrorHandlerOutcome, ErrorSlotData, StepBudget, build_list, build_object,

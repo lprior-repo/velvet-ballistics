@@ -37,7 +37,7 @@ This repaired plan explicitly addresses every finding in `.beads/vb-qi37.4.1/tes
 19. Accepted artifact validator accepts warning gates 1 and 15 when warnings are tied to accepted gates.
 20. Accepted artifact validator accepts empty optional lists and exactly maximum lists when duplicate-free and bounded.
 21. Accepted artifact validator rejects unsupported artifact version when version is not `velvet.artifact/v1`.
-22. Accepted artifact validator rejects unsupported workflow version when language is not `velvet-ballastics/v1`.
+22. Accepted artifact validator rejects unsupported workflow version when language is not `velvet-ballistics/v1`.
 23. Accepted artifact validator rejects empty workflow name when workflow name is empty.
 24. Accepted artifact validator rejects invalid workflow name when name/scope validation fails.
 25. Accepted artifact validator rejects empty IR when `ir_bytes` is empty.
@@ -95,7 +95,7 @@ Unit-density requirement: test writer must implement at least 42 named unit scen
 ### Behavior: accepted artifact encoder returns compiled-IR envelope when artifact is valid
 
 - Test function name: `accepted_artifact_encoder_returns_compiled_ir_envelope_when_artifact_is_valid`
-- Given: `AcceptedArtifactV1` with `artifact_version = "velvet.artifact/v1"`, `workflow_version = "velvet-ballastics/v1"`, workflow name `scope.valid_workflow`, non-zero `workflow_digest`, non-empty `ir_bytes = [0x01, 0x02]`, `ir_digest = blake3([0x01, 0x02])`, non-zero `action_contract_digest`, non-zero `input_schema_digest`, timestamp `1`, all 15 gate statuses accepted, proof flags all true, duplicate-free capabilities/secrets/action IDs, and warning gates in `1..=15`.
+- Given: `AcceptedArtifactV1` with `artifact_version = "velvet.artifact/v1"`, `workflow_version = "velvet-ballistics/v1"`, workflow name `scope.valid_workflow`, non-zero `workflow_digest`, non-empty `ir_bytes = [0x01, 0x02]`, `ir_digest = blake3([0x01, 0x02])`, non-zero `action_contract_digest`, non-zero `input_schema_digest`, timestamp `1`, all 15 gate statuses accepted, proof flags all true, duplicate-free capabilities/secrets/action IDs, and warning gates in `1..=15`.
 - When: `encode_accepted_artifact_v1(&artifact)` is called.
 - Then: returned bytes length equals `RECORD_HEADER_LEN + payload_len`, header magic equals `MAGIC_COMPILED_ARTIFACT`, record kind equals `RecordKind::CompiledIr`, header length equals `RECORD_HEADER_LEN`, payload digest equals `blake3(payload)`, and CRC32C header checksum equals the recomputed CRC32C.
 
@@ -156,7 +156,7 @@ Unit-density requirement: test writer must implement at least 42 named unit scen
 ### Behavior: accepted artifact validator rejects every `ArtifactEnvelopeError` semantic variant
 
 - `accepted_artifact_validator_returns_unsupported_artifact_version_when_version_differs`: Given version `velvet.artifact/v2`, When validation runs, Then `Err(ArtifactEnvelopeError::UnsupportedArtifactVersion { version: "velvet.artifact/v2" })`.
-- `accepted_artifact_validator_returns_unsupported_workflow_version_when_language_differs`: Given workflow version `velvet-ballastics/v2`, When validation runs, Then `Err(ArtifactEnvelopeError::UnsupportedWorkflowVersion { version: "velvet-ballastics/v2" })`.
+- `accepted_artifact_validator_returns_unsupported_workflow_version_when_language_differs`: Given workflow version `velvet-ballistics/v2`, When validation runs, Then `Err(ArtifactEnvelopeError::UnsupportedWorkflowVersion { version: "velvet-ballistics/v2" })`.
 - `accepted_artifact_validator_returns_empty_workflow_name_when_name_is_empty`: Given name `""`, When validation runs, Then `Err(ArtifactEnvelopeError::EmptyWorkflowName)`.
 - `accepted_artifact_validator_returns_invalid_workflow_name_when_name_scope_is_invalid`: Given name `"../bad name"`, When validation runs, Then `Err(ArtifactEnvelopeError::InvalidWorkflowName)`.
 - `accepted_artifact_validator_returns_empty_ir_when_ir_bytes_are_empty`: Given `ir_bytes = []`, When validation runs, Then `Err(ArtifactEnvelopeError::EmptyIr)`.
@@ -244,7 +244,7 @@ Minimum: `cargo-mutants` >=90% killed for accepted artifact envelope, real store
 
 Critical mutants that must be killed:
 
-- Change `velvet.artifact/v1` or `velvet-ballastics/v1`: killed by unsupported version scenarios.
+- Change `velvet.artifact/v1` or `velvet-ballistics/v1`: killed by unsupported version scenarios.
 - Accept empty or max+1 required fields: killed by minimal/max/bound-exceeded scenarios.
 - Change `>` to `>=` for max IR/warnings/capabilities/secrets/idempotency/message/payload/input: killed by exact-max encoder/decoder/validator/admission scenarios.
 - Remove forged-length preallocation guard: killed by `accepted_artifact_decoder_rejects_forged_overflowing_payload_length_without_allocation` and Kani forged-length harness.

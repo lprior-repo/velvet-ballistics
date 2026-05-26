@@ -28,7 +28,7 @@ fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
 }
 
 /// Small workflow for memory testing.
-const SMALL_WORKFLOW_YAML: &str = r#"version: velvet-ballastics/v1
+const SMALL_WORKFLOW_YAML: &str = r#"version: velvet-ballistics/v1
 name: bench_minimal
 when:
   manual: {}

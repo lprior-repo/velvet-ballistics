@@ -31,8 +31,8 @@ The bead asks for proof and evidence that workflow admission and runtime executi
 - `crates/vb_core/src/workflow/tests.rs`: Existing workflow validation tests map every `BudgetError` variant to exact `WorkflowError::BudgetPolicyExceeded` detail strings and include workflow-level budget-policy rejection cases.
 - `crates/vb_core/src/engine/tests/integration_budget.rs`: Existing engine budget tests exercise `run_until_blocked` with zero and small step budgets.
 - `crates/vb_core/tests/proptest_core_types.rs`: Property tests assert mixed ValueStore insert sequences never exceed `ValueStore::with_max_slots` cap and over-cap inserts fail with `CoreError::BudgetExceeded`.
-- `crates/velvet_ballastics/tests/cross_crate_adversarial.rs`: Cross-crate adversarial tests include runtime step-budget exhaustion evidence and broader seam tests around resource limit enforcement.
-- `crates/workspace_tests/benches/velvet_ballastics.rs`: Benchmark group includes `WholeWorkflowBudget::compute`, `BoundednessPolicy::DEFAULT.validate`, `run_until_blocked`, `StepBudget::new`, and `ValueStore` budget variants. These are performance scaffolds, not proof by themselves.
+- `crates/velvet_ballistics/tests/cross_crate_adversarial.rs`: Cross-crate adversarial tests include runtime step-budget exhaustion evidence and broader seam tests around resource limit enforcement.
+- `crates/workspace_tests/benches/velvet_ballistics.rs`: Benchmark group includes `WholeWorkflowBudget::compute`, `BoundednessPolicy::DEFAULT.validate`, `run_until_blocked`, `StepBudget::new`, and `ValueStore` budget variants. These are performance scaffolds, not proof by themselves.
 - `fuzz/src/bin/resource_budget.rs`, `fuzz/src/bin/budget_compute.rs`, `fuzz/src/bin/aggregate_workflow_budget.rs`, `fuzz/src/bin/aggregate_artifact_budget.rs`, `fuzz/src/bin/step_budget_new.rs`: Existing fuzz entrypoints for budget and step-budget surfaces.
 - `verification/verus/resource_budget.rs`, `verification/verus/step_budget.rs`, `verification/verus/budget_monotonic.rs`, `verification/verus/budget_bounded.rs`: Existing Verus proof surfaces for budget composition/monotonic/bounded obligations.
 

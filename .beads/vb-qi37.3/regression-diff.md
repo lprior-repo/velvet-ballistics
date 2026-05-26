@@ -45,8 +45,8 @@ No `vb_proof_kernels`, fuzz target, `xtask`, `vb_ui_model`, or global rustfmt-di
 
 - Output artifact: `/home/lewis/.local/share/opencode/tool-output/tool_e15e2afb6001ZnfdEBf0ifxqwI`.
 - Summary: `Tasks: 12 completed (2 cached), 3 failed, 3 skipped`.
-- Primary explicit failure: `velvet-ballastics:fmt` with rustfmt diffs in pre-existing global files.
-- Secondary explicit failure: `velvet-ballastics:lint-src` with Clippy failure outside the bead's changed files.
+- Primary explicit failure: `velvet-ballistics:fmt` with rustfmt diffs in pre-existing global files.
+- Secondary explicit failure: `velvet-ballistics:lint-src` with Clippy failure outside the bead's changed files.
 - Additional explicit global failure: `feature-powerset` / no-default-features compile error in `vb_ui_model`.
 
 Clean-main reproduction already recorded:

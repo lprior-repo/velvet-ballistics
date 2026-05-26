@@ -18,6 +18,7 @@ pub(super) fn lower_canonical_aggregate(
     input: &str,
     initial: &str,
     body: &[vb_yaml::ast::StepAst],
+    next: Option<StepIdx>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     let input = slot_from_text(input, index, "aggregate.input")?;
@@ -48,7 +49,15 @@ pub(super) fn lower_canonical_aggregate(
             done,
         },
     });
-    emit_single_body_set(body, body_step, accumulator, None, builder, false)?;
+    emit_single_body_set(
+        body,
+        body_step,
+        index,
+        accumulator,
+        Some(next_step),
+        builder,
+        false,
+    )?;
     builder.push_node(CompiledNode {
         id: next_step,
         output: None,
@@ -65,7 +74,7 @@ pub(super) fn lower_canonical_aggregate(
     builder.push_node(CompiledNode {
         id: done,
         output: None,
-        next: None,
+        next,
         error_slot: None,
         on_error: None,
         kind: CompiledNodeKind::ReduceFinish { accumulator },
@@ -78,6 +87,7 @@ pub(super) fn lower_canonical_repeat(
     id: StepIdx,
     max_attempts: u16,
     body: &[vb_yaml::ast::StepAst],
+    next: Option<StepIdx>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     if max_attempts == 0 {
@@ -106,7 +116,15 @@ pub(super) fn lower_canonical_repeat(
             done,
         },
     });
-    emit_single_body_set(body, body_step, SlotIdx::new(1), None, builder, false)?;
+    emit_single_body_set(
+        body,
+        body_step,
+        index,
+        SlotIdx::new(1),
+        Some(attempt),
+        builder,
+        false,
+    )?;
     builder.push_node(CompiledNode {
         id: attempt,
         output: Some(attempt_slot),
@@ -122,7 +140,7 @@ pub(super) fn lower_canonical_repeat(
     builder.push_node(CompiledNode {
         id: done,
         output: None,
-        next: None,
+        next,
         error_slot: None,
         on_error: None,
         kind: CompiledNodeKind::RepeatFinish {
@@ -195,14 +213,22 @@ pub(super) fn lower_canonical_ask(
 pub(super) fn emit_single_body_set(
     body: &[vb_yaml::ast::StepAst],
     id: StepIdx,
+    diagnostic_step: usize,
     slot: SlotIdx,
     next: Option<StepIdx>,
     builder: &mut SlotCompiler,
     reuse_first_constant: bool,
 ) -> Result<(), CompileErrors> {
+    if body.len() != 1 {
+        return Err(CompileErrors(vec![CompileError::StepFieldShape {
+            step: diagnostic_step,
+            field: "steps",
+            expected: "exactly one set step",
+        }]));
+    }
     let step = body.first().ok_or_else(|| {
         CompileErrors(vec![CompileError::StepFieldShape {
-            step: id.as_usize(),
+            step: diagnostic_step,
             field: "steps",
             expected: "one set step",
         }])
@@ -210,14 +236,60 @@ pub(super) fn emit_single_body_set(
     match &step.primitive {
         vb_yaml::ast::StepPrimitive::Set { value, .. } => {
             let constant =
-                body_constant_index(builder, value, id.as_usize(), reuse_first_constant)?;
+                body_constant_index(builder, value, diagnostic_step, reuse_first_constant)?;
             builder.record_slot(slot);
             builder.push_node(lower_set(id, slot, constant, next));
             Ok(())
         }
+        vb_yaml::ast::StepPrimitive::Do { action, input } => {
+            // Parse action as integer (ActionId) - action field contains numeric ID
+            let action_value = action.parse::<i64>().map_err(|_| {
+                CompileErrors(vec![CompileError::StepFieldShape {
+                    step: diagnostic_step,
+                    field: "do.action",
+                    expected: "integer action id",
+                }])
+            })?;
+            let action_id = u16::try_from(action_value).map_err(|_| {
+                CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
+                    primitive: "do",
+                    field: "action",
+                    value: integer_error_value(action_value),
+                    limit: usize::from(u16::MAX),
+                }])
+            })?;
+            // Parse input as SlotIdx
+            let input_value = input.parse::<i64>().map_err(|_| {
+                CompileErrors(vec![CompileError::StepFieldShape {
+                    step: diagnostic_step,
+                    field: "do.input",
+                    expected: "integer slot index",
+                }])
+            })?;
+            let input_idx = u16::try_from(input_value).map_err(|_| {
+                CompileErrors(vec![CompileError::SlotIndexOutOfRange {
+                    value: input_value,
+                }])
+            })?;
+            let input_slot = SlotIdx::new(input_idx);
+            builder.record_slot(input_slot);
+            // Construct Do node directly to avoid double-borrow of builder
+            builder.push_node(CompiledNode {
+                id,
+                output: None,
+                next,
+                error_slot: None,
+                on_error: None,
+                kind: CompiledNodeKind::Do {
+                    action: vb_core::ActionId::new(action_id),
+                    input: input_slot,
+                },
+            });
+            Ok(())
+        }
         other => Err(CompileErrors(vec![
             CompileError::UnsupportedStepPrimitive {
-                step: id.as_usize(),
+                step: diagnostic_step,
                 primitive: canonical_primitive_name(other),
             },
         ])),

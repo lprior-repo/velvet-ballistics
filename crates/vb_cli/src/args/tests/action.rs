@@ -3,7 +3,7 @@ use crate::args::{ActionRegistryMode, Command, OutputFormat, ParseError, parse_a
 
 #[test]
 fn parse_action_list_defaults_to_text_and_registered() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "action", "list"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "action", "list"]));
     if let Ok(Command::ActionList { output, registry }) = parsed {
         assert_eq!(output, OutputFormat::Text);
         assert_eq!(registry, ActionRegistryMode::Registered);
@@ -14,20 +14,20 @@ fn parse_action_list_defaults_to_text_and_registered() {
 
 #[test]
 fn parse_action_list_legacy_json_flag_is_rejected() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "action", "list", "--json"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "action", "list", "--json"]));
     assert!(matches!(parsed, Err(ParseError::UnknownActionListFlag(flag)) if flag == "--json"));
 }
 
 #[test]
 fn parse_action_list_legacy_jsonl_flag_is_rejected() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "action", "list", "--jsonl"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "action", "list", "--jsonl"]));
     assert!(matches!(parsed, Err(ParseError::UnknownActionListFlag(flag)) if flag == "--jsonl"));
 }
 
 #[test]
 fn parse_action_list_accepts_emit_yaml() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "action",
         "list",
         "--emit",
@@ -44,7 +44,7 @@ fn parse_action_list_accepts_emit_yaml() {
 #[test]
 fn parse_action_list_accepts_emit_postcard() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "action",
         "list",
         "--emit",
@@ -61,7 +61,7 @@ fn parse_action_list_accepts_emit_postcard() {
 #[test]
 fn parse_action_list_accepts_registry_empty() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "action",
         "list",
         "--registry",
@@ -77,7 +77,7 @@ fn parse_action_list_accepts_registry_empty() {
 #[test]
 fn parse_action_list_accepts_registry_uninitialized() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "action",
         "list",
         "--registry",
@@ -93,7 +93,7 @@ fn parse_action_list_accepts_registry_uninitialized() {
 #[test]
 fn parse_action_list_rejects_unknown_registry_value() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "action",
         "list",
         "--registry",
@@ -108,7 +108,7 @@ fn parse_action_list_rejects_unknown_registry_value() {
 #[test]
 fn parse_action_list_rejects_missing_registry_value() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "action",
         "list",
         "--registry",
@@ -121,7 +121,7 @@ fn parse_action_list_rejects_missing_registry_value() {
 
 #[test]
 fn parse_action_list_rejects_unknown_flag() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "action", "list", "--bogus"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "action", "list", "--bogus"]));
     assert!(matches!(
         parsed,
         Err(ParseError::UnknownActionListFlag(ref f)) if f == "--bogus"
@@ -130,7 +130,7 @@ fn parse_action_list_rejects_unknown_flag() {
 
 #[test]
 fn parse_action_list_rejects_positional_argument() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "action", "list", "extra"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "action", "list", "extra"]));
     assert!(matches!(
         parsed,
         Err(ParseError::UnexpectedActionListArgument(ref a)) if a == "extra"
@@ -139,7 +139,7 @@ fn parse_action_list_rejects_positional_argument() {
 
 #[test]
 fn parse_action_inspect_accepts_valid_id_and_defaults() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "action", "inspect", "42"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "action", "inspect", "42"]));
     if let Ok(Command::ActionInspect {
         action_id,
         output,
@@ -157,7 +157,7 @@ fn parse_action_inspect_accepts_valid_id_and_defaults() {
 #[test]
 fn parse_action_inspect_accepts_registry_and_emit_postcard() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "action",
         "inspect",
         "7",
@@ -182,7 +182,7 @@ fn parse_action_inspect_accepts_registry_and_emit_postcard() {
 
 #[test]
 fn parse_action_inspect_rejects_missing_action_id() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "action", "inspect"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "action", "inspect"]));
     assert!(matches!(
         parsed,
         Err(ParseError::MissingArgument("action_id"))
@@ -191,14 +191,14 @@ fn parse_action_inspect_rejects_missing_action_id() {
 
 #[test]
 fn parse_action_inspect_rejects_non_numeric_action_id() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "action", "inspect", "abc"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "action", "inspect", "abc"]));
     assert!(matches!(parsed, Err(ParseError::InvalidActionId(_))));
 }
 
 #[test]
 fn parse_action_inspect_rejects_unknown_flag() {
     let parsed = parse_args(&args(&[
-        "velvet-ballastics",
+        "velvet-ballistics",
         "action",
         "inspect",
         "1",
@@ -212,7 +212,7 @@ fn parse_action_inspect_rejects_unknown_flag() {
 
 #[test]
 fn parse_action_rejects_unknown_subcommand() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "action", "delete"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "action", "delete"]));
     assert!(matches!(
         parsed,
         Err(ParseError::UnknownActionCommand(ref c)) if c == "delete"
@@ -221,7 +221,7 @@ fn parse_action_rejects_unknown_subcommand() {
 
 #[test]
 fn parse_action_rejects_missing_subcommand() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "action"]));
+    let parsed = parse_args(&args(&["velvet-ballistics", "action"]));
     assert!(matches!(
         parsed,
         Err(ParseError::MissingArgument("action subcommand"))

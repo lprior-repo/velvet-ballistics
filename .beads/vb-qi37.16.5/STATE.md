@@ -22,15 +22,15 @@ updated_at: 2026-05-12T03:45:00Z
     .beads/vb-qi37.16.5/proof-obligations.jsonl (22 lines)
     .beads/vb-qi37.16.5/traceability-matrix.jsonl (18 lines)
 - state_4_evidence: contract-verification-review.md and test-plan-review.md say STATUS: APPROVED; test-plan.md exists
-- state_5_evidence: lifecycle integration red tests added at `crates/velvet_ballastics/tests/lifecycle_integration.rs`; `rtk cargo test --package velvet_ballastics --test lifecycle_integration` fails with E0433 because lifecycle API is not implemented
-- state_6_evidence: partial lifecycle API/storage event implementation attempted by holzman-rust; lib target and `velvet_ballastics::lifecycle` module added, but focused integration test still fails to compile with 23 test/API mismatch errors
+- state_5_evidence: lifecycle integration red tests added at `crates/velvet_ballistics/tests/lifecycle_integration.rs`; `rtk cargo test --package velvet_ballistics --test lifecycle_integration` fails with E0433 because lifecycle API is not implemented
+- state_6_evidence: partial lifecycle API/storage event implementation attempted by holzman-rust; lib target and `velvet_ballistics::lifecycle` module added, but focused integration test still fails to compile with 23 test/API mismatch errors
 - state_6_verification: BLOCK_LOCAL; see `state-6-block.md`
 - state_15_preflight_repair: |
     Rebased workspace revision onto current main with `jj rebase -s @ -d main`.
     Resolved rebase conflicts locally and repaired fmt, doctest, and source-lint blockers.
     Final gates:
       - `rtk cargo fmt --all`: PASS
-      - `rtk cargo test --package velvet_ballastics --test lifecycle_integration -- --test-threads=1`: 43 passed
+      - `rtk cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1`: 43 passed
       - `rtk cargo test --package vb_storage --doc inject_seq_gap`: 1 passed
       - `moon ci`: PASS, 19 completed (1 cached), 0 failed
 - owner_state: 15

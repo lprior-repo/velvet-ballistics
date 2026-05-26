@@ -44,7 +44,7 @@ fn build_has_cli_name() {
     let context = build("0.1.0");
     assert_eq!(
         context.get("cli").and_then(Value::as_str),
-        Some("velvet-ballastics")
+        Some("velvet-ballistics")
     );
 }
 
@@ -58,7 +58,7 @@ fn build_has_binary_aliases() {
     assert!(
         aliases
             .iter()
-            .any(|v| v.as_str() == Some("velvet-ballastics"))
+            .any(|v| v.as_str() == Some("velvet-ballistics"))
     );
     assert!(!aliases.iter().any(|v| v.as_str() == Some("vb")));
 }
@@ -68,7 +68,7 @@ fn build_has_language_version() {
     let context = build("0.1.0");
     assert_eq!(
         context.get("language_version").and_then(Value::as_str),
-        Some("velvet-ballastics/v1")
+        Some("velvet-ballistics/v1")
     );
 }
 

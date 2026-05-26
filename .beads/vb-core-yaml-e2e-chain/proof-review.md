@@ -25,7 +25,7 @@ STATUS: APPROVED
 - Kani rerun: `mkdir -p target/tmp && TMPDIR=target/tmp cargo kani -p vb_runtime --harness yaml_e2e_admission_matrix` exited 0; `Complete - 1 successfully verified harnesses, 0 failures, 1 total`.
 - Storage compensation rerun: `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p vb_storage -- --nocapture` exited 0; `983 passed (7 suites, 23.27s)`.
 - Runtime compensation rerun: `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p vb_runtime -- --nocapture` exited 0; `1460 passed (10 suites, 1.09s)`.
-- CLI compensation rerun: `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet_ballastics --test cli_integration -- --nocapture` exited 0; `86 passed (1 suite, 1.14s)`.
+- CLI compensation rerun: `RUSTC_WRAPPER= TMPDIR=target/tmp TEMP=target/tmp TMP=target/tmp CFLAGS=-pipe HOST_CFLAGS=-pipe rtk cargo test -p velvet_ballistics --test cli_integration -- --nocapture` exited 0; `86 passed (1 suite, 1.14s)`.
 
 ## Obligation Decision
 

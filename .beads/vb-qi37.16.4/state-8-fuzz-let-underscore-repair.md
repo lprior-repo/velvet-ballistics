@@ -65,7 +65,7 @@ FORMAT: PASS
 (no diff output)
 ```
 
-### 2. `rtk cargo clippy -p velvet-ballastics-fuzz --lib --bins -- -D clippy::let_underscore_must_use`
+### 2. `rtk cargo clippy -p velvet-ballistics-fuzz --lib --bins -- -D clippy::let_underscore_must_use`
 
 ```
 LINT: PASS
@@ -74,7 +74,7 @@ cargo clippy: 0 errors, 1 warnings
 
 The 1 warning is a pre-existing duplicate package warning unrelated to lint failures.
 
-### 3. `rtk cargo check -p velvet-ballastics-fuzz --all-targets`
+### 3. `rtk cargo check -p velvet-ballistics-fuzz --all-targets`
 
 ```
 CHECK: PASS
@@ -88,8 +88,8 @@ cargo build: 0 errors, 1 warnings (1 crates)
 | Gate | Result |
 |------|--------|
 | `rtk cargo fmt -- --check` | PASS (clean) |
-| `rtk cargo clippy -p velvet-ballastics-fuzz -- -D clippy::let_underscore_must_use` | PASS (0 errors) |
-| `rtk cargo check -p velvet-ballastics-fuzz --all-targets` | PASS (0 errors) |
+| `rtk cargo clippy -p velvet-ballistics-fuzz -- -D clippy::let_underscore_must_use` | PASS (0 errors) |
+| `rtk cargo check -p velvet-ballistics-fuzz --all-targets` | PASS (0 errors) |
 
 **All three required gates pass.**
 

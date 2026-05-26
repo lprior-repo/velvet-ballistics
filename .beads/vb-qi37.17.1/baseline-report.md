@@ -39,10 +39,10 @@ Acceptance criteria: "incident returns structured failure evidence without stack
 ### moon ci --force Result: 6 completed, 4 failed, 11 skipped (35s)
 
 #### Failed Tasks
-1. **velvet-ballastics:fuzz-smoke** - `replay_events()` takes 3 args but 2 supplied (fuzz target)
-2. **velvet-ballastics:lint-src** - `recover_full_journal()` takes 5 args but 3 supplied (vb_cli); 10 xtask lint errors
-3. **velvet-ballastics:fmt** - diff marker encountered
-4. **velvet-ballastics:check** - `vb_storage` recovery_bdd_tests + replay_resume tests; 10+ recover_full_journal call-site errors
+1. **velvet-ballistics:fuzz-smoke** - `replay_events()` takes 3 args but 2 supplied (fuzz target)
+2. **velvet-ballistics:lint-src** - `recover_full_journal()` takes 5 args but 3 supplied (vb_cli); 10 xtask lint errors
+3. **velvet-ballistics:fmt** - diff marker encountered
+4. **velvet-ballistics:check** - `vb_storage` recovery_bdd_tests + replay_resume tests; 10+ recover_full_journal call-site errors
 
 #### Root Cause of Build Blockers
 - `recovery/replay/core.rs` changed function signatures:

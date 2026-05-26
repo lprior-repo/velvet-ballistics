@@ -105,7 +105,7 @@ fn reject_duplicate_keys_returns_duplicate_key_for_same_keys() {
 #[test]
 fn reject_forbidden_features_returns_unsupported_feature_for_complex_key() {
     let yaml = indoc::indoc! {r#"
-        version: velvet-ballastics/v1
+        version: velvet-ballistics/v1
         name: t
         when:
           http: {}
@@ -240,7 +240,7 @@ fn reject_yaml_profile_returns_ok_for_clean_yaml() {
 #[test]
 fn parse_workflow_source_returns_ok_for_minimal_valid_workflow() {
     let yaml = indoc::indoc! {r#"
-        version: velvet-ballastics/v1
+        version: velvet-ballistics/v1
         name: minimal
         when:
           manual: {}
@@ -263,7 +263,7 @@ fn parse_workflow_source_returns_ok_for_minimal_valid_workflow() {
 #[test]
 fn parse_workflow_source_returns_ok_for_workflow_with_version() {
     let yaml = indoc::indoc! {"
-        version: velvet-ballastics/v1
+        version: velvet-ballistics/v1
         name: versioned
         when:
           manual: {}
@@ -272,7 +272,7 @@ fn parse_workflow_source_returns_ok_for_workflow_with_version() {
     let result = parse_workflow_source(yaml);
     match result {
         Ok(wf) => {
-            assert_eq!(wf.version(), "velvet-ballastics/v1");
+            assert_eq!(wf.version(), "velvet-ballistics/v1");
         }
         Err(e) => fail_assert!("expected Ok, got Err: {e}"),
     }
@@ -281,7 +281,7 @@ fn parse_workflow_source_returns_ok_for_workflow_with_version() {
 #[test]
 fn parse_workflow_source_returns_ok_for_multi_step_workflow() {
     let yaml = indoc::indoc! {"
-        version: velvet-ballastics/v1
+        version: velvet-ballistics/v1
         name: multi
         when:
           manual: {}
@@ -370,7 +370,7 @@ fn validate_yaml_profile_accepts_simple_key_value_yaml() {
 #[test]
 fn validate_yaml_profile_accepts_workflow_with_all_step_types() {
     let yaml = indoc::indoc! {"
-        version: velvet-ballastics/v1
+        version: velvet-ballistics/v1
         name: comprehensive
         when:
           manual: {}
@@ -399,7 +399,7 @@ fn validate_yaml_profile_accepts_workflow_with_all_step_types() {
 #[test]
 fn load_fixture_source_returns_content_for_valid_fixture() {
     let yaml = indoc::indoc! {"
-        version: velvet-ballastics/v1
+        version: velvet-ballistics/v1
         name: fixture
         when:
           manual: {}
@@ -419,7 +419,7 @@ fn load_fixture_source_returns_content_for_valid_fixture() {
 #[test]
 fn parse_workflow_source_rejects_step_with_multiple_primitives() {
     let yaml = indoc::indoc! {r#"
-        version: velvet-ballastics/v1
+        version: velvet-ballistics/v1
         name: duplicate-primitive
         when:
           manual: {}
@@ -441,7 +441,7 @@ fn parse_workflow_source_rejects_step_with_multiple_primitives() {
 #[test]
 fn parse_workflow_source_rejects_canonical_and_alias_duplicate_primitives() {
     let yaml = indoc::indoc! {r#"
-        version: velvet-ballastics/v1
+        version: velvet-ballistics/v1
         name: duplicate-alias-primitive
         when:
           manual: {}
@@ -583,7 +583,7 @@ fn yaml_limits_default_has_expected_values() {
 #[test]
 fn parse_workflow_source_returns_error_for_duplicate_step_ids() {
     let yaml =
-        "version: velvet-ballastics/v1\nname: dup\nwhen:\n  manual: {}\nname: dup2\nsteps: []\n";
+        "version: velvet-ballistics/v1\nname: dup\nwhen:\n  manual: {}\nname: dup2\nsteps: []\n";
     let result = parse_workflow_source(yaml);
     assert_eq!(result, Err(YamlError::DuplicateKey { key: "name".into() }));
 }
@@ -620,7 +620,7 @@ fn adversarial_api_null_byte_in_source_rejected() {
 
 #[test]
 fn adversarial_api_null_byte_workflow_rejected() {
-    let yaml = "version: velvet-ballastics/v1\nname: \x00bad\nwhen:\n  manual: {}\nsteps: []\n";
+    let yaml = "version: velvet-ballistics/v1\nname: \x00bad\nwhen:\n  manual: {}\nsteps: []\n";
     let result = parse_workflow_source(yaml);
     assert!(result.is_err(), "expected error for null byte in workflow");
 }
@@ -654,7 +654,7 @@ fn adversarial_api_scalar_one_over_limit_rejected() {
 #[test]
 fn adversarial_api_workflow_with_unsupported_trigger_rejected() {
     let yaml = indoc::indoc! {"
-        version: velvet-ballastics/v1
+        version: velvet-ballistics/v1
         name: bad-trigger
         when:
           ipc: {}
@@ -672,14 +672,14 @@ fn adversarial_api_workflow_with_unsupported_trigger_rejected() {
 
 #[test]
 fn adversarial_api_workflow_with_missing_when_rejected() {
-    let yaml = "version: velvet-ballastics/v1\nname: no-when\nsteps: []\n";
+    let yaml = "version: velvet-ballistics/v1\nname: no-when\nsteps: []\n";
     let result = parse_workflow_source(yaml);
     assert_eq!(result, Err(YamlError::MissingField { field: "when" }));
 }
 
 #[test]
 fn adversarial_api_workflow_with_non_mapping_when_rejected() {
-    let yaml = "version: velvet-ballastics/v1\nname: bad\nwhen: manual\nsteps: []\n";
+    let yaml = "version: velvet-ballistics/v1\nname: bad\nwhen: manual\nsteps: []\n";
     let result = parse_workflow_source(yaml);
     assert!(result.is_err(), "expected error for non-mapping when");
 }
@@ -687,11 +687,11 @@ fn adversarial_api_workflow_with_non_mapping_when_rejected() {
 #[test]
 fn canonical_triggers_and_aliases_parse() {
     let yaml = indoc::indoc! {r#"
-        version: velvet-ballastics/v1
+        version: velvet-ballistics/v1
         name: canonical
         when:
           event:
-            name: invoice.created
+            type: invoice.created
         inputs:
           payload:
             nested: [1, "$kept_text"]
@@ -724,7 +724,7 @@ fn parse_workflow_source_accepts_all_v1_triggers() {
         (
             "manual",
             indoc::indoc! {"
-                version: velvet-ballastics/v1
+                version: velvet-ballistics/v1
                 name: manual-trigger
                 when:
                   manual: {}
@@ -734,7 +734,7 @@ fn parse_workflow_source_accepts_all_v1_triggers() {
         (
             "webhook",
             indoc::indoc! {"
-                version: velvet-ballastics/v1
+                version: velvet-ballistics/v1
                 name: webhook-trigger
                 when:
                   webhook: {}
@@ -744,18 +744,18 @@ fn parse_workflow_source_accepts_all_v1_triggers() {
         (
             "event",
             indoc::indoc! {"
-                version: velvet-ballastics/v1
+                version: velvet-ballistics/v1
                 name: event-trigger
                 when:
                   event:
-                    name: invoice.created
+                    type: invoice.created
                 steps: []
             "},
         ),
         (
             "schedule",
             indoc::indoc! {"
-                version: velvet-ballastics/v1
+                version: velvet-ballistics/v1
                 name: schedule-trigger
                 when:
                   schedule:
@@ -787,7 +787,7 @@ fn parse_workflow_source_accepts_all_v1_triggers() {
 #[test]
 fn parse_workflow_source_accepts_schedule_with_cron_mapping() {
     let yaml = indoc::indoc! {"
-        version: velvet-ballastics/v1
+        version: velvet-ballistics/v1
         name: scheduled
         when:
           schedule:
@@ -806,7 +806,7 @@ fn parse_workflow_source_accepts_schedule_with_cron_mapping() {
 #[test]
 fn parse_workflow_source_rejects_schedule_non_mapping_shape() {
     let yaml = indoc::indoc! {"
-        version: velvet-ballastics/v1
+        version: velvet-ballistics/v1
         name: bad-schedule
         when:
           schedule: '*/5 * * * *'
@@ -825,7 +825,7 @@ fn parse_workflow_source_rejects_schedule_non_mapping_shape() {
 #[test]
 fn parse_workflow_source_rejects_schedule_missing_cron() {
     let yaml = indoc::indoc! {"
-        version: velvet-ballastics/v1
+        version: velvet-ballistics/v1
         name: missing-schedule-cron
         when:
           schedule: {}
@@ -843,7 +843,7 @@ fn parse_workflow_source_rejects_schedule_missing_cron() {
 #[test]
 fn parse_workflow_source_rejects_schedule_empty_cron() {
     let yaml = indoc::indoc! {"
-        version: velvet-ballastics/v1
+        version: velvet-ballistics/v1
         name: empty-schedule-cron
         when:
           schedule:
@@ -863,7 +863,7 @@ fn parse_workflow_source_rejects_schedule_empty_cron() {
 #[test]
 fn parse_workflow_source_rejects_multiple_triggers() {
     let yaml = indoc::indoc! {"
-        version: velvet-ballastics/v1
+        version: velvet-ballistics/v1
         name: many-triggers
         when:
           manual: {}
@@ -884,7 +884,7 @@ fn parse_workflow_source_rejects_multiple_triggers() {
 #[test]
 fn strict_rejects_retry_and_unknown_example_fields() {
     let retry_yaml = indoc::indoc! {r#"
-        version: velvet-ballastics/v1
+        version: velvet-ballistics/v1
         name: bad_retry
         when: { manual: {} }
         steps:
@@ -897,7 +897,7 @@ fn strict_rejects_retry_and_unknown_example_fields() {
         Err(YamlError::UnknownField { .. })
     ));
     let example_yaml = indoc::indoc! {"
-        version: velvet-ballastics/v1
+        version: velvet-ballistics/v1
         name: bad_example
         when: { manual: {} }
         steps: []
@@ -913,7 +913,7 @@ fn strict_rejects_retry_and_unknown_example_fields() {
 #[test]
 fn semantic_source_map_tracks_trigger_and_block_scalar() {
     let yaml = indoc::indoc! {"
-        version: velvet-ballastics/v1
+        version: velvet-ballistics/v1
         name: spans
         when:
           manual: {}
@@ -1031,7 +1031,7 @@ fn reject_forbidden_yaml_features_rejects_custom_tag() {
 #[test]
 fn load_fixture_source_parses_valid_workflow() {
     let yaml = indoc::indoc! {r#"
-        version: velvet-ballastics/v1
+        version: velvet-ballistics/v1
         name: test-workflow
         when:
           manual: {}

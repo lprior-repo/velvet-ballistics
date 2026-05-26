@@ -7,7 +7,6 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::JournalEvent;
 use crate::recovery::hydrate_support::{
     verified_action_envelope_digest, verify_action_ticket_event,
 };
@@ -17,6 +16,7 @@ use crate::recovery::types::{
     RecoveryHydration, RecoveryResult, RecoveryRuntimeSummary, UnsupportedRecoveryState,
 };
 use crate::slot_extra::DecodedSlotWrittenExtra;
+use crate::{EventSeq, JournalEvent};
 use vb_core::replay::{ReplayEngine, ReplayError};
 use vb_core::value_store::ValueStore;
 use vb_core::{
@@ -61,6 +61,9 @@ pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &Journal
         JournalEvent::AskAnsweredEvent { .. } => {}
         JournalEvent::RunCancelled { .. } => {
             summary.terminal = Some(crate::recovery::types::RecoveryTerminalState::Cancelled);
+        }
+        JournalEvent::RunKilled { .. } => {
+            summary.terminal = Some(crate::recovery::types::RecoveryTerminalState::Killed);
         }
         JournalEvent::RunFinished { result, .. } => {
             summary.terminal =
@@ -123,6 +126,15 @@ pub fn summarize_recovery_events(events: &[JournalEvent]) -> RecoveryResult<Reco
             return Err(RecoveryError::ReplayDivergence {
                 step: StepIdx::ZERO,
                 detail: "recovery summary received events for multiple runs".to_owned(),
+            });
+        }
+        if event.seq() == EventSeq::MAX {
+            return Err(RecoveryError::ReplayDivergence {
+                step: StepIdx::ZERO,
+                detail: format!(
+                    "overflow sentinel sequence {} is not valid",
+                    event.seq().get()
+                ),
             });
         }
         summary.last_seq = event.seq();
@@ -448,6 +460,15 @@ impl FrameSeedAccumulator {
                 detail: "frame seed recovery received events for multiple runs".to_owned(),
             });
         }
+        if event.seq() == EventSeq::MAX {
+            return Err(RecoveryError::ReplayDivergence {
+                step: StepIdx::ZERO,
+                detail: format!(
+                    "overflow sentinel sequence {} is not valid",
+                    event.seq().get()
+                ),
+            });
+        }
         self.summary.last_seq = event.seq();
         if !matches!(
             event,
@@ -756,6 +777,35 @@ fn dimension_count<T: RecoveryIndex>(max: Option<T>, run: RunId) -> RecoveryResu
             .ok_or(RecoveryError::FrameDimensionOverflow { run })
     })
     .map_or(Ok(0), |result| result)
+}
+
+/// Production proof surface for turning a maximum zero-based dimension into a count.
+pub fn recovery_dimension_count_from_index(
+    max_index: Option<u16>,
+    run: RunId,
+) -> RecoveryResult<u16> {
+    max_index
+        .map(|value| {
+            value
+                .checked_add(1)
+                .ok_or(RecoveryError::FrameDimensionOverflow { run })
+        })
+        .map_or(Ok(0), |result| result)
+}
+
+/// Production proof surface for successful non-empty/evidence-bearing seed dimensions.
+#[must_use]
+pub const fn recovery_seed_dimensions_positive(seed: &RecoveryFrameSeed) -> bool {
+    seed.step_count > 0 && seed.slot_count > 0
+}
+
+/// Production proof surface for an observed dimension requiring positive count.
+#[must_use]
+pub const fn recovery_observed_dimension_is_positive(max_index: Option<u16>, count: u16) -> bool {
+    match max_index {
+        Some(_) => count > 0,
+        None => count == 0,
+    }
 }
 
 fn recovered_steps(step_states: HashMap<StepIdx, RecoveredStepState>) -> Vec<RecoveredStepEntry> {
