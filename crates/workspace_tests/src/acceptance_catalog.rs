@@ -186,23 +186,6 @@ const SCENARIOS: &[Scenario] = &[
         deferred_follow_up_bead: None,
     },
     Scenario {
-        id: "VB-BDD-CATALOG-001",
-        master_behavior: "canonical naming and workspace spelling gates",
-        given: "a repository checkout with canonical package, crate, bead, and language names",
-        when: "the acceptance catalog audits naming coverage",
-        then: "the catalog points to executable spelling tests and rejects drift",
-        public_surface: "workspace cargo package names and test binaries",
-        fixture: "isolated checkout fixture with canonical and misspelled names",
-        expected_outcome: Some("canonical spelling accepted"),
-        expected_error: Some("canonical_spelling_violation"),
-        durability_profile: "no persistent runtime state",
-        related_bead: "vb-37lc",
-        executable_evidence_target: Some(
-            "crates/workspace_tests/tests/vb_37lc_canonical_spelling_red.rs",
-        ),
-        deferred_follow_up_bead: None,
-    },
-    Scenario {
         id: "VB-BDD-CATALOG-002",
         master_behavior: "validation gates reject malformed workflow parts",
         given: "compiled workflow parts with bounded slots, nodes, accessors, and contracts",

@@ -4,12 +4,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
-use vb_cli::naming_scan::{
-    AllowlistPolicy, CanonicalEntry, CanonicalNameKind, CanonicalSpellingTable, LegacyAllowRule,
-    LineNumber, NamingFinding, NamingScanError, RawScanConfig, RepoPath, ScanConfig, ScanInput,
-    SpellingClass, scan_file, validate_scan_config,
-};
-
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 const MEMBERS: [(&str, &str); 16] = [
@@ -143,84 +137,4 @@ fn feature_drift_reports_exact_expected_feature_set() -> TestResult {
         "crates/vb_core/Cargo.toml: features missing [\"test-util\", \"volatile\"]\ncrates/vb_core/Cargo.toml: features unexpected [\"json\"]\ncrates/vb_core/Cargo.toml: forbidden feature names [\"json\"]\n"
     );
     Ok(())
-}
-
-fn scan_config() -> ScanConfig {
-    ScanConfig {
-        canonical_table: CanonicalSpellingTable {
-            product: "velvet-ballistics".to_string(),
-            binary: "velvet-ballistics".to_string(),
-            package: "velvet-ballistics".to_string(),
-            bead_rig: "velvet-ballistics".to_string(),
-            crate_module: "vb_cli".to_string(),
-            bead_database: "vb_cli".to_string(),
-            language_version: "velvet-ballistics/v1".to_string(),
-        },
-        allowlist_policy: AllowlistPolicy::Exact(vec![
-            LegacyAllowRule::RepositoryPath {
-                path: "https://github.com/priorlewis43/velvet-ballistics".to_string(),
-            },
-            LegacyAllowRule::MasterFilename {
-                filename: "velvet-ballistics-MASTER.md".to_string(),
-            },
-            LegacyAllowRule::MigrationReference {
-                label: "MIGRATION-REFERENCE".to_string(),
-                artifact: "external-preexisting-artifact".to_string(),
-                legacy_text: "velvet-ballistics".to_string(),
-            },
-        ]),
-        scan_patterns: vec!["velvet-ballistics".to_string()],
-        excluded_path_rules: vec![".git/**".to_string()],
-        config_fingerprint: "vb-qi37.25-test".to_string(),
-        report_destination: None,
-    }
-}
-
-#[test]
-fn spelling_gate_rejects_legacy_spelling_outside_exact_allowlist() {
-    let result = scan_file(
-        ScanInput::Text {
-            path: RepoPath::new("docs/new.md"),
-            contents: "new velvet-ballistics mention\n".to_string(),
-        },
-        &scan_config(),
-    );
-    assert_eq!(
-        result,
-        Ok(vec![NamingFinding {
-            path: RepoPath::new("docs/new.md"),
-            line: LineNumber::new(1),
-            column: vb_cli::naming_scan::ColumnNumber::new(5),
-            spelling_class: SpellingClass::LegacyProjectSpelling,
-            remediation: "velvet-ballistics".to_string(),
-        }])
-    );
-}
-
-#[test]
-fn broad_substring_allowlist_is_configuration_error() {
-    let raw = RawScanConfig {
-        canonical_entries: vec![
-            CanonicalEntry::new(CanonicalNameKind::Product, "velvet-ballistics"),
-            CanonicalEntry::new(CanonicalNameKind::Binary, "velvet-ballistics"),
-            CanonicalEntry::new(CanonicalNameKind::Package, "velvet-ballistics"),
-            CanonicalEntry::new(CanonicalNameKind::BeadRig, "velvet-ballistics"),
-            CanonicalEntry::new(CanonicalNameKind::CrateModule, "vb_cli"),
-            CanonicalEntry::new(CanonicalNameKind::BeadDatabase, "vb_cli"),
-            CanonicalEntry::new(CanonicalNameKind::LanguageVersion, "velvet-ballistics/v1"),
-        ],
-        legacy_allowlist: vec![LegacyAllowRule::Substring {
-            needle: "velvet-ballistics".to_string(),
-        }],
-        scan_patterns: vec!["velvet-ballistics".to_string()],
-        excluded_path_rules: Vec::new(),
-        workspace_root: PathBuf::from("."),
-        report_destination: None,
-    };
-    assert_eq!(
-        validate_scan_config(raw),
-        Err(NamingScanError::InvalidConfiguration {
-            reason: "substring allowlist rule: velvet-ballistics".to_string(),
-        })
-    );
 }

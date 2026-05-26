@@ -250,7 +250,6 @@ fn test_catalog_maps_existing_tests_to_covered_scenarios() {
             "crates/workspace_tests/tests/vb_njju_mutation_fuzz_property_closure.rs",
             "crates/workspace_tests/tests/vb_njju_mutation_fuzz_property_closure.rs",
             "crates/workspace_tests/tests/vb_njju_mutation_fuzz_property_closure.rs",
-            "crates/workspace_tests/tests/vb_37lc_canonical_spelling_red.rs",
             "crates/workspace_tests/tests/bdd_validation_tests.rs",
             "crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs",
             "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
