@@ -163,7 +163,7 @@ Update `.moon/tasks/all.yml` `fuzz-smoke` task to run top-20 targets for 60 seco
 - Run AFL++ on top-10 targets alongside libfuzzer nightly
 
 ### Mutation Testing
-- `cargo mutants -p velvet-ballistics-fuzz`
+- `cargo mutants -p velvet-ballastics-fuzz`
 - Target: ≥90% mutation kill rate on fuzz harnesses
 - Fix any harness that doesn't catch a deletion of its own assertion
 

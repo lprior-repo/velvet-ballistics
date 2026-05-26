@@ -759,7 +759,7 @@ llvm-cov show fuzz/target/.../TARGET -instr-profile=default.profdata
 cargo llvm-cov --fuzz TARGET
 
 # === MUTATION TESTING ===
-cargo mutants -p velvet-ballistics-fuzz -- --target x86_64-unknown-linux-gnu
+cargo mutants -p velvet-ballastics-fuzz -- --target x86_64-unknown-linux-gnu
 
 # === BATCH SMOKE ALL ===
 for target in $(cargo fuzz list); do

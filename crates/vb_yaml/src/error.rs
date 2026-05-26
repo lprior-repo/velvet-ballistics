@@ -126,12 +126,6 @@ impl YamlError {
 }
 
 impl HasSymbolicCode for YamlError {
-    fn symbolic_code(&self) -> SymbolicCode {
-        self.code()
-    }
-}
-
-impl HasSymbolicCode for YamlError {
     /// Returns the [`SymbolicCode`] for this YAML error variant.
     ///
     /// Every variant maps to a code name registered in

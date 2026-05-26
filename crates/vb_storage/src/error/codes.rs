@@ -182,12 +182,6 @@ impl JournalError {
 }
 
 impl HasSymbolicCode for JournalError {
-    fn symbolic_code(&self) -> SymbolicCode {
-        self.symbolic_code()
-    }
-}
-
-impl HasSymbolicCode for JournalError {
     /// Returns the [`SymbolicCode`] for this journal error.
     ///
     /// Delegates to [`JournalError::diagnostic_code`] and converts the
