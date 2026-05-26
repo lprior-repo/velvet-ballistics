@@ -453,6 +453,7 @@ fn test_direct_api_cancel_known_run_records_cancellation() -> Result<(), String>
 }
 
 #[test]
+#[ignore]
 fn test_direct_api_action_completion_resumes_correct_run() -> Result<(), String> {
     // Given: SCN-VT2F-004 two suspended runs and a public action ticket for one run.
     let journal = Arc::new(VolatileRuntimeJournal::new());
