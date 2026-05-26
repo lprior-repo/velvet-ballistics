@@ -26,9 +26,9 @@
 
 #![forbid(unsafe_code)]
 
+use proptest::prelude::*;
 use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest, WorkflowId};
 use vb_storage::{EventSeq, FjallJournal, JournalError, JournalEvent, JournalWriteBatch};
-use proptest::prelude::*;
 
 // ============================================================================
 // Test helpers
@@ -142,8 +142,16 @@ fn journal_batch_accepts_event_when_bytes_within_limit() {
     let event = make_run_accepted(run, 0);
 
     let result = batch.append_event(&event);
-    assert!(result.is_ok(), "append_event should succeed for small event, got {:?}", result);
-    assert_eq!(batch.len(), 1, "batch.len() should be 1 after successful append");
+    assert!(
+        result.is_ok(),
+        "append_event should succeed for small event, got {:?}",
+        result
+    );
+    assert_eq!(
+        batch.len(),
+        1,
+        "batch.len() should be 1 after successful append"
+    );
 }
 
 /// B01 boundary: rejects event at exactly byte limit boundary.
@@ -245,10 +253,7 @@ fn journal_batch_accepts_event_at_count_limit_minus_one() {
     }
 
     let len_at_boundary = batch.len();
-    assert!(
-        len_at_boundary > 0,
-        "batch should have at least one event"
-    );
+    assert!(len_at_boundary > 0, "batch should have at least one event");
 }
 
 /// B02: accepts event at exactly count limit.
@@ -500,7 +505,10 @@ fn append_event_does_not_mutate_batch_state_on_limit_exceeded() {
         }
         // Safety valve - should not exceed MAX_BATCH_COUNT
         if count > vb_storage::constants::MAX_BATCH_COUNT {
-            panic!("exceeded MAX_BATCH_COUNT ({}) without QueueFull", vb_storage::constants::MAX_BATCH_COUNT);
+            panic!(
+                "exceeded MAX_BATCH_COUNT ({}) without QueueFull",
+                vb_storage::constants::MAX_BATCH_COUNT
+            );
         }
     }
 
@@ -513,7 +521,11 @@ fn append_event_does_not_mutate_batch_state_on_limit_exceeded() {
 
     let len_before = batch.len();
     let is_empty_before = batch.is_empty();
-    assert_eq!(len_before, vb_storage::constants::MAX_BATCH_COUNT, "batch should be at limit");
+    assert_eq!(
+        len_before,
+        vb_storage::constants::MAX_BATCH_COUNT,
+        "batch should be at limit"
+    );
     assert!(!is_empty_before, "batch should not be empty");
 
     // Try to exceed count limit - should fail with QueueFull
@@ -612,7 +624,9 @@ fn append_strict_batch_checks_limits_before_fsync() {
 
     // Verify no events from the failed batch are in the journal
     // (batch.append_event doesn't mutate journal until commit)
-    let events_after = journal.events_for_run(run).expect("events_for_run should succeed");
+    let events_after = journal
+        .events_for_run(run)
+        .expect("events_for_run should succeed");
     assert_eq!(
         events_after.len(),
         5,
@@ -660,7 +674,9 @@ fn batch_commit_is_all_or_nothing() {
     );
 
     // Verify ALL events are durable
-    let durable_events = journal.events_for_run(run).expect("events_for_run should succeed");
+    let durable_events = journal
+        .events_for_run(run)
+        .expect("events_for_run should succeed");
     assert_eq!(
         durable_events.len(),
         events.len(),
@@ -687,9 +703,7 @@ fn batch_commit_failure_leaves_no_partial_state() {
     let run = RunId::new(70);
 
     // Create and commit a batch successfully first
-    let events: Vec<JournalEvent> = (0..3)
-        .map(|i| make_run_accepted(run, i))
-        .collect();
+    let events: Vec<JournalEvent> = (0..3).map(|i| make_run_accepted(run, i)).collect();
 
     {
         let mut batch = JournalWriteBatch::new(&journal);
@@ -717,7 +731,9 @@ fn batch_commit_failure_leaves_no_partial_state() {
     }
 
     // Verify original events are still intact — no partial state from failed batch
-    let durable_events = journal.events_for_run(run).expect("events_for_run should succeed");
+    let durable_events = journal
+        .events_for_run(run)
+        .expect("events_for_run should succeed");
     assert_eq!(
         durable_events.len(),
         3,

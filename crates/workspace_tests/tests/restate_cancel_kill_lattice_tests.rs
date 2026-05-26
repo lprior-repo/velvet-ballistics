@@ -12,8 +12,8 @@ use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use vb_core::action::{
-    ActionFailure, ActionFailureCode, ActionOutputReady, ActionTicket, Idempotency,
-    RetryPolicy, RetrySafety, SideEffect,
+    ActionFailure, ActionFailureCode, ActionOutputReady, ActionTicket, Idempotency, RetryPolicy,
+    RetrySafety, SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
@@ -40,12 +40,7 @@ fn test_config() -> ShardConfig {
     }
 }
 
-fn node(
-    id: u16,
-    output: Option<u16>,
-    next: Option<u16>,
-    kind: CompiledNodeKind,
-) -> CompiledNode {
+fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(id),
         output: output.map(SlotIdx::new),
@@ -247,8 +242,7 @@ fn make_action_failure(code: ActionFailureCode) -> ActionFailure {
 #[test]
 fn cancel_running_run_transitions_to_cancelled() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime =
-        Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
     let run = RunId::new(10001);
 
     assert_eq!(
@@ -283,8 +277,7 @@ fn cancel_running_run_transitions_to_cancelled() -> Result<(), String> {
 #[test]
 fn cancel_produces_run_cancelled_journal_event() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime =
-        Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
     let run = RunId::new(10002);
 
     assert_eq!(
@@ -317,8 +310,7 @@ fn cancel_produces_run_cancelled_journal_event() -> Result<(), String> {
 #[test]
 fn cancel_action_suspended_run_records_cancellation() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime =
-        Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
     let run = RunId::new(20001);
 
     assert_eq!(
@@ -361,8 +353,7 @@ fn cancel_action_suspended_run_records_cancellation() -> Result<(), String> {
 #[test]
 fn action_completion_after_cancel_returns_error_on_tick() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime =
-        Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
     let run = RunId::new(30001);
 
     assert_eq!(
@@ -379,7 +370,8 @@ fn action_completion_after_cancel_returns_error_on_tick() -> Result<(), String> 
         action_output(SlotValue::I64(42)),
     );
     assert_eq!(
-        result, Ok(()),
+        result,
+        Ok(()),
         "action completion enqueue after cancel succeeds"
     );
 
@@ -391,10 +383,7 @@ fn action_completion_after_cancel_returns_error_on_tick() -> Result<(), String> 
     );
 
     let counters = runtime.counters_snapshot();
-    assert_eq!(
-        counters.runs_completed, 0,
-        "run must NOT be completed"
-    );
+    assert_eq!(counters.runs_completed, 0, "run must NOT be completed");
 
     Ok(())
 }
@@ -403,8 +392,7 @@ fn action_completion_after_cancel_returns_error_on_tick() -> Result<(), String> 
 #[test]
 fn action_failure_after_cancel_returns_error_on_tick() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime =
-        Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
     let run = RunId::new(30002);
 
     assert_eq!(
@@ -420,7 +408,8 @@ fn action_failure_after_cancel_returns_error_on_tick() -> Result<(), String> {
     let failure = make_action_failure(ActionFailureCode::Unknown);
     let result = runtime.fail_action(ticket, failure);
     assert_eq!(
-        result, Ok(()),
+        result,
+        Ok(()),
         "action failure enqueue after cancel succeeds"
     );
 
@@ -438,8 +427,7 @@ fn action_failure_after_cancel_returns_error_on_tick() -> Result<(), String> {
 #[test]
 fn resume_after_cancel_returns_error_on_tick() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime =
-        Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
     let run = RunId::new(30003);
 
     assert_eq!(
@@ -452,10 +440,7 @@ fn resume_after_cancel_returns_error_on_tick() -> Result<(), String> {
     tick_count(&mut runtime, 2)?;
 
     let result = runtime.resume_run(run);
-    assert_eq!(
-        result, Ok(()),
-        "resume enqueue after cancel succeeds"
-    );
+    assert_eq!(result, Ok(()), "resume enqueue after cancel succeeds");
 
     let tick_result = runtime.tick_all();
     assert!(
@@ -510,8 +495,7 @@ fn completed_terminal_state_is_notfound() -> Result<(), String> {
 #[test]
 fn cancelled_terminal_state_is_notfound_and_idempotent() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime =
-        Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
     let run = RunId::new(40002);
 
     assert_eq!(
@@ -551,8 +535,7 @@ fn cancelled_terminal_state_is_notfound_and_idempotent() -> Result<(), String> {
 #[test]
 fn cancelled_terminal_state_has_correct_counters() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime =
-        Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
     let run = RunId::new(50001);
 
     assert_eq!(
@@ -579,13 +562,15 @@ fn cancel_of_nonexistent_run_is_idempotent() -> Result<(), String> {
 
     let result1 = runtime.cancel_run(run);
     assert_eq!(
-        result1, Ok(()),
+        result1,
+        Ok(()),
         "first cancel of nonexistent run must succeed (idempotent)"
     );
 
     let result2 = runtime.cancel_run(run);
     assert_eq!(
-        result2, Ok(()),
+        result2,
+        Ok(()),
         "second cancel of nonexistent run must also succeed (idempotent)"
     );
 
@@ -596,8 +581,7 @@ fn cancel_of_nonexistent_run_is_idempotent() -> Result<(), String> {
 #[test]
 fn counters_invariant_completed_plus_failed_equals_terminal() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime =
-        Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
 
     let run1 = RunId::new(60001);
     let run2 = RunId::new(60002);
@@ -621,7 +605,9 @@ fn counters_invariant_completed_plus_failed_equals_terminal() -> Result<(), Stri
     );
     tick_count(&mut runtime, 2)?;
 
-    runtime.cancel_run(run3).map_err(|e| format!("cancel_run failed: {e:?}"))?;
+    runtime
+        .cancel_run(run3)
+        .map_err(|e| format!("cancel_run failed: {e:?}"))?;
     tick_count(&mut runtime, 2)?;
 
     let counters = runtime.counters_snapshot();
@@ -631,10 +617,7 @@ fn counters_invariant_completed_plus_failed_equals_terminal() -> Result<(), Stri
     assert_eq!(
         total_terminal, total_submitted,
         "invariant: completed({}) + failed({}) = terminal({}) must equal submitted({})",
-        counters.runs_completed,
-        counters.runs_failed,
-        total_terminal,
-        total_submitted
+        counters.runs_completed, counters.runs_failed, total_terminal, total_submitted
     );
 
     Ok(())
@@ -644,8 +627,7 @@ fn counters_invariant_completed_plus_failed_equals_terminal() -> Result<(), Stri
 #[test]
 fn cancel_is_idempotent_counters_unchanged() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime =
-        Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
     let run = RunId::new(60004);
 
     assert_eq!(
