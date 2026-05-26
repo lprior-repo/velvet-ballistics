@@ -13,7 +13,7 @@ use vb_core::limits::{
     MAX_ACCESSORS, MAX_CONSTANTS, MAX_EXPRESSION_DEPTH, MAX_EXPRESSIONS, MAX_RUN_NAME_LENGTH,
     MAX_SLOTS_PER_STEP, MAX_SLOTS_PER_WORKFLOW, MAX_STEPS_PER_WORKFLOW,
 };
-use vb_core::span::{Located, SourceMap, Span, Spanned};
+use vb_core::span::{Located, Span, Spanned};
 use vb_core::value::{FiniteF64, SlotValue, Taint};
 use vb_core::value_store::{ObjectField, ValueStore};
 use vb_core::{ExprBranch, ResourceContract, SlotBranch};
@@ -121,7 +121,7 @@ fn phase12_resource_and_branch_scaffolding_is_public() {
 }
 
 #[test]
-fn spans_locations_and_source_map_are_constructible() {
+fn spans_and_locations_are_constructible() {
     let span = Span::new(0, 5);
     let located = Located {
         value: 42_u32,
@@ -130,27 +130,63 @@ fn spans_locations_and_source_map_are_constructible() {
     let spanned: Spanned<u32> = located.clone();
 
     assert!(Span::ZERO.is_empty());
+    assert_eq!(Span::default(), Span::ZERO);
     assert_eq!(span.end, 5);
     assert_eq!(located.value, 42);
     assert_eq!(spanned.span, span);
-    assert_eq!(SourceMap::new(), SourceMap::default());
     assert_eq!(roundtrip_span(span), span);
 }
 
 #[test]
-fn diagnostics_parse_display_and_own_messages() {
-    let code = DiagnosticCode::new(0x0101);
-    let diagnostic = Diagnostic::from_numeric(
-        code,
-        Box::<str>::from("invalid program counter"),
-        Severity::Error,
-        Span::ZERO,
-    )
-    .expect("0x0101 should be registered in CODE_REGISTRY");
+fn enriched_span_maintains_line_column_pairing_invariant() {
+    // Invariant: line.is_some() == column.is_some() (both present or both absent)
+    // Invariant: Span::ZERO has no location data
 
-    assert_eq!(code.code(), 0x0101);
-    assert_eq!(code.to_string(), "E0101");
-    assert_eq!(DiagnosticCode::from_str("E0101"), Ok(code));
+    // Span::new produces no location
+    let byte_only = Span::new(0, 10);
+    assert_eq!(byte_only.line, None);
+    assert_eq!(byte_only.column, None);
+    assert_eq!(byte_only.location(), None);
+
+    // Span::with_location produces paired line + column
+    let enriched = Span::with_location(1, 20, 3, 10);
+    assert_eq!(enriched.line, Some(3));
+    assert_eq!(enriched.column, Some(10));
+    assert_eq!(enriched.location(), Some((3, 10)));
+
+    // ZERO has no location
+    assert_eq!(Span::ZERO.line, None);
+    assert_eq!(Span::ZERO.column, None);
+    assert_eq!(Span::ZERO.location(), None);
+
+    // Roundtrip preserves enriched span data
+    let postcard_roundtripped = roundtrip_span(enriched);
+    assert_eq!(postcard_roundtripped.line, Some(3));
+    assert_eq!(postcard_roundtripped.column, Some(10));
+    assert_eq!(postcard_roundtripped.location(), Some((3, 10)));
+    assert_eq!(postcard_roundtripped, enriched);
+
+    // Empty span with location still has location pairing
+    let empty_with_loc = Span::with_location(42, 42, 7, 1);
+    assert_eq!(empty_with_loc.is_empty(), true);
+    assert_eq!(empty_with_loc.line, Some(7));
+    assert_eq!(empty_with_loc.column, Some(1));
+}
+
+#[test]
+fn diagnostics_parse_display_and_own_messages() {
+    let code = DiagnosticCode::new(0x1001);
+    let diagnostic = Diagnostic {
+        code,
+        message: Box::<str>::from("invalid program counter"),
+        severity: Severity::Error,
+        span: Span::ZERO,
+        source_file: None,
+    };
+
+    assert_eq!(code.code(), 0x1001);
+    assert_eq!(code.to_string(), "E1001");
+    assert_eq!(DiagnosticCode::from_str("E1001"), Ok(code));
     assert!(matches!(
         DiagnosticCode::from_str("E9999"),
         Err(vb_core::diagnostic::DiagnosticCodeParseError::UnsupportedCode)

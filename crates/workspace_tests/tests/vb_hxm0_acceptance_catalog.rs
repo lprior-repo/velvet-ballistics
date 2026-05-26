@@ -7,6 +7,7 @@ use velvet_ballistics_workspace_tests::acceptance_catalog::{
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use vb_core::span::Span;
 
 const VB_KYYF_TRACEABILITY_PATH: &str = ".evidence/vb-kyyf/acceptance-catalog-traceability.md";
 const VB_KYYF_PROOF_OBLIGATIONS_PATH: &str = ".beads/vb-kyyf/proof-obligations.planned.jsonl";
@@ -344,7 +345,7 @@ fn test_catalog_gate_fails_when_scenario_has_no_test_target() {
         validation,
         Err(CatalogValidationError::MissingEvidenceDisposition {
             scenario_id: "VB-BDD-CATALOG-BAD-TARGET".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -375,7 +376,7 @@ fn test_catalog_gate_fails_when_follow_up_is_disguised_as_executable_evidence() 
         validation,
         Err(CatalogValidationError::InvalidExecutableEvidenceTarget {
             scenario_id: "VB-BDD-CATALOG-BAD-EVIDENCE".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -406,7 +407,7 @@ fn test_catalog_gate_fails_when_deferred_gap_does_not_match_related_bead() {
         validation,
         Err(CatalogValidationError::InvalidDeferredFollowUpBead {
             scenario_id: "VB-BDD-CATALOG-BAD-FOLLOW-UP".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -425,7 +426,7 @@ fn test_catalog_gate_fails_when_given_when_then_is_missing() {
         validation,
         Err(CatalogValidationError::MissingGivenWhenThen {
             scenario_id: "VB-BDD-CATALOG-MISSING-GWT".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -445,7 +446,7 @@ fn test_catalog_gate_fails_when_exact_assertion_is_missing() {
         validation,
         Err(CatalogValidationError::MissingExactAssertion {
             scenario_id: "VB-BDD-CATALOG-MISSING-ASSERTION".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -464,7 +465,7 @@ fn test_catalog_gate_fails_when_evidence_dispositions_conflict() {
         validation,
         Err(CatalogValidationError::ConflictingEvidenceDisposition {
             scenario_id: "VB-BDD-CATALOG-CONFLICTING-EVIDENCE".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -483,7 +484,7 @@ fn test_catalog_gate_fails_when_public_surface_names_private_or_helper_api() {
         validation,
         Err(CatalogValidationError::PrivateSurface {
             scenario_id: "VB-BDD-CATALOG-PRIVATE-SURFACE".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -502,7 +503,7 @@ fn test_catalog_gate_fails_when_fixture_is_not_isolated() {
         validation,
         Err(CatalogValidationError::SharedFixture {
             scenario_id: "VB-BDD-CATALOG-SHARED-FIXTURE".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -521,6 +522,6 @@ fn test_catalog_gate_fails_when_scenario_id_is_duplicate() {
         validation,
         Err(CatalogValidationError::DuplicateScenarioId {
             scenario_id: "VB-BDD-CATALOG-DUPLICATE".to_owned(),
-        })
+         span: Span::ZERO})
     );
 }

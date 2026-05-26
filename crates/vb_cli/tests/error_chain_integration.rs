@@ -6,6 +6,7 @@
 
 use std::error::Error;
 use std::sync::Arc;
+use vb_core::span::Span;
 
 fn source_as<'a, T>(error: &'a (dyn Error + 'static)) -> &'a T
 where
@@ -66,7 +67,7 @@ fn compile_error_propagates_to_cli() {
 /// ValidationError converts into CompileError preserving the diagnostic code.
 #[test]
 fn validation_error_propagates_into_compile_error() {
-    let validation = vb_validate::ValidationError::DuplicateKey;
+    let validation = vb_validate::ValidationError::DuplicateKey { span: Span::ZERO };
     let compile_error: vb_compile::CompileError = validation.into();
     let display = format!("{compile_error}");
     assert_eq!(
@@ -76,9 +77,11 @@ fn validation_error_propagates_into_compile_error() {
     assert!(
         matches!(
             &compile_error,
-            &vb_compile::CompileError::Validation(vb_validate::ValidationError::DuplicateKey)
+            &vb_compile::CompileError::Validation(vb_validate::ValidationError::DuplicateKey {
+                span: Span::ZERO
+            })
         ),
-        "CompileError should preserve the exact ValidationError::DuplicateKey source"
+        "CompileError should preserve the exact ValidationError::DuplicateKey {{ span: Span::ZERO }} source"
     );
     assert_eq!(
         compile_error.diagnostic_code().as_str(),
@@ -373,7 +376,9 @@ fn all_compile_error_variants_have_non_empty_display() {
     let errors: &[vb_compile::CompileError] = &[
         vb_compile::CompileError::EmptySource,
         vb_compile::CompileError::EmptySteps,
-        vb_compile::CompileError::Validation(vb_validate::ValidationError::DuplicateKey),
+        vb_compile::CompileError::Validation(vb_validate::ValidationError::DuplicateKey {
+            span: Span::ZERO,
+        }),
     ];
     for error in errors {
         let display = format!("{error}");

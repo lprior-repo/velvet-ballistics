@@ -4,29 +4,75 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Byte-offset span into a source document.
+/// Byte-offset span with optional human-readable line/column coordinates.
+///
+/// # Invariants
+/// - `start <= end`
+/// - `line.is_some() == column.is_some()` (both present or both absent)
+/// - `Span::ZERO` is the canonical empty/unknown span
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct Span {
     /// Inclusive starting byte offset.
     pub start: u32,
     /// Exclusive ending byte offset.
     pub end: u32,
+    /// One-indexed start line (authoring usage).
+    pub line: Option<u32>,
+    /// One-indexed start column (authoring usage).
+    pub column: Option<u32>,
 }
 
 impl Span {
     /// Empty span at the beginning of a source document.
-    pub const ZERO: Self = Self { start: 0, end: 0 };
+    pub const ZERO: Self = Self {
+        start: 0,
+        end: 0,
+        line: None,
+        column: None,
+    };
 
-    /// Creates a span from byte offsets.
+    /// Creates a span from byte offsets only (runtime core usage).
+    ///
+    /// `line` and `column` are set to `None`.
     #[must_use]
     pub const fn new(start: u32, end: u32) -> Self {
-        Self { start, end }
+        Self {
+            start,
+            end,
+            line: None,
+            column: None,
+        }
+    }
+
+    /// Creates a span with full location data (authoring usage).
+    ///
+    /// # Preconditions (caller must ensure)
+    /// - `start <= end`
+    /// - `line >= 1`
+    /// - `column >= 1`
+    #[must_use]
+    pub const fn with_location(start: u32, end: u32, line: u32, column: u32) -> Self {
+        Self {
+            start,
+            end,
+            line: Some(line),
+            column: Some(column),
+        }
     }
 
     /// Returns true when the span covers no bytes.
     #[must_use]
     pub const fn is_empty(self) -> bool {
         self.start == self.end
+    }
+
+    /// Returns the human-readable location if available.
+    #[must_use]
+    pub const fn location(self) -> Option<(u32, u32)> {
+        match (self.line, self.column) {
+            (Some(l), Some(c)) => Some((l, c)),
+            _ => None,
+        }
     }
 }
 
@@ -50,28 +96,21 @@ impl<T> Located<T> {
 /// Alias used when APIs prefer the term spanned.
 pub type Spanned<T> = Located<T>;
 
-/// Placeholder source map until later phases attach workflow sources.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct SourceMap {
-    _private: (),
-}
-
-impl SourceMap {
-    /// Creates an empty source map placeholder.
-    #[must_use]
-    pub const fn new() -> Self {
-        Self { _private: () }
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{Located, SourceMap, Span, Spanned};
+    use super::{Located, Span, Spanned};
 
     #[test]
     fn zero_span_is_empty() {
         assert!(Span::ZERO.is_empty());
         assert_eq!(Span::ZERO, Span::new(0, 0));
+    }
+
+    #[test]
+    fn zero_span_has_no_location() {
+        assert_eq!(Span::ZERO.line, None);
+        assert_eq!(Span::ZERO.column, None);
+        assert_eq!(Span::ZERO.location(), None);
     }
 
     #[test]
@@ -84,19 +123,30 @@ mod tests {
     }
 
     #[test]
+    fn span_new_produces_no_location() {
+        let span = Span::new(10, 20);
+        assert_eq!(span.line, None);
+        assert_eq!(span.column, None);
+        assert_eq!(span.location(), None);
+    }
+
+    #[test]
+    fn with_location_produces_paired_fields() {
+        let span = Span::with_location(1, 10, 3, 5);
+        assert_eq!(span.start, 1);
+        assert_eq!(span.end, 10);
+        assert_eq!(span.line, Some(3));
+        assert_eq!(span.column, Some(5));
+        assert_eq!(span.location(), Some((3, 5)));
+    }
+
+    #[test]
     fn located_and_spanned_hold_value_and_span() {
         let located = Located::new(42_u32, Span::ZERO);
         let spanned: Spanned<u32> = located.clone();
 
         assert_eq!(located.value, 42);
         assert_eq!(spanned.span, Span::ZERO);
-    }
-
-    #[test]
-    fn source_map_placeholder_is_constructible() {
-        let map = SourceMap::new();
-
-        assert_eq!(map, SourceMap::default());
     }
 
     // =========================================================================
@@ -145,6 +195,14 @@ mod tests {
     }
 
     #[test]
+    fn span_inequality_different_line() {
+        assert_ne!(
+            Span::with_location(0, 10, 1, 1),
+            Span::with_location(0, 10, 2, 1)
+        );
+    }
+
+    #[test]
     fn span_copy_preserves_equality() {
         let a = Span::new(5, 15);
         let b = a;
@@ -190,22 +248,6 @@ mod tests {
     }
 
     #[test]
-    fn source_map_equality() {
-        assert_eq!(SourceMap::new(), SourceMap::new());
-        assert_eq!(SourceMap::new(), SourceMap::default());
-    }
-
-    #[test]
-    fn source_map_debug_format() {
-        let map = SourceMap::new();
-        let debug = format!("{map:?}");
-        assert!(
-            debug.contains("SourceMap"),
-            "Debug must contain 'SourceMap'"
-        );
-    }
-
-    #[test]
     fn span_single_byte_span() {
         let span = Span::new(5, 6);
         assert!(!span.is_empty());
@@ -217,5 +259,84 @@ mod tests {
     fn span_large_span() {
         let span = Span::new(0, u32::MAX);
         assert!(!span.is_empty());
+    }
+
+    #[test]
+    fn span_with_location_at_min_valid_line_col() {
+        let span = Span::with_location(0, 5, 1, 1);
+        assert_eq!(span.line, Some(1));
+        assert_eq!(span.column, Some(1));
+    }
+
+    #[test]
+    fn span_with_location_at_max_line_col() {
+        let span = Span::with_location(0, 5, u32::MAX, u32::MAX);
+        assert_eq!(span.line, Some(u32::MAX));
+        assert_eq!(span.column, Some(u32::MAX));
+    }
+
+    #[test]
+    fn span_equality_considers_line_and_column() {
+        let a = Span::with_location(0, 10, 1, 5);
+        let b = Span::with_location(0, 10, 1, 5);
+        assert_eq!(a, b);
+
+        // Different column is not equal
+        let c = Span::with_location(0, 10, 1, 6);
+        assert_ne!(a, c);
+    }
+
+    #[test]
+    fn span_serde_round_trip_preserves_all_fields() {
+        // B16: Span serialization round-trip using postcard (binary)
+        let spans = vec![
+            Span::ZERO,
+            Span::new(0, 10),
+            Span::new(5, 15),
+            Span::with_location(1, 20, 3, 10),
+            Span::with_location(0, 5, 1, 1),
+        ];
+        for original in spans {
+            let bytes = postcard::to_allocvec(&original).expect("serialization must succeed");
+            let recovered: Span =
+                postcard::from_bytes(&bytes).expect("deserialization must succeed");
+            assert_eq!(
+                recovered, original,
+                "span round-trip must preserve equality"
+            );
+        }
+    }
+
+    #[test]
+    fn span_with_location_at_max_offsets_no_panic() {
+        // B18: Span at max offsets does not panic
+        let span = Span::with_location(u32::MAX, u32::MAX, u32::MAX, u32::MAX);
+        assert_eq!(span.start, u32::MAX);
+        assert_eq!(span.end, u32::MAX);
+        assert_eq!(span.line, Some(u32::MAX));
+        assert_eq!(span.column, Some(u32::MAX));
+    }
+
+    #[test]
+    fn located_carries_enriched_span_with_line_and_column() {
+        // B17: Located<T> preserves enriched span with line/column
+        let enriched = Span::with_location(10, 30, 5, 12);
+        let located = Located::new("payload", enriched);
+        assert_eq!(located.value, "payload");
+        assert_eq!(located.span.start, 10);
+        assert_eq!(located.span.line, Some(5));
+        assert_eq!(located.span.column, Some(12));
+        assert_eq!(located.span.location(), Some((5, 12)));
+    }
+
+    #[test]
+    fn spanned_carries_enriched_span_with_line_and_column() {
+        // B17: Spanned<T> preserves enriched span
+        let enriched = Span::with_location(0, 42, 8, 3);
+        let spanned: Spanned<f64> = Spanned::new(3.14, enriched);
+        assert_eq!(spanned.value, 3.14);
+        assert_eq!(spanned.span.start, 0);
+        assert_eq!(spanned.span.line, Some(8));
+        assert_eq!(spanned.span.column, Some(3));
     }
 }

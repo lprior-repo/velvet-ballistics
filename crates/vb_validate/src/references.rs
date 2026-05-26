@@ -12,6 +12,7 @@
 
 use crate::{ValidationError, ValidationResult};
 use std::collections::HashSet;
+use vb_core::span::Span;
 
 /// Builds reference tables and validates all references in a workflow.
 pub fn validate_references(workflow: &WorkflowRefs) -> ValidationResult<()> {
@@ -134,10 +135,11 @@ pub fn validate_single_reference_with_context(
 
 fn validate_bare_reference(reference: &str, body: &str) -> ValidationResult<()> {
     if matches!(body, "now" | "random") {
-        Err(ValidationError::DirectRuntimeReference)
+        Err(ValidationError::DirectRuntimeReference { span: Span::ZERO })
     } else {
         Err(ValidationError::UnknownReference {
             reference: reference.to_owned(),
+            span: Span::ZERO,
         })
     }
 }
@@ -153,15 +155,24 @@ fn validate_rooted_reference(
         "input" => validate_declared(reference, tail, "input", &tables.inputs),
         "var" | "vars" => validate_declared(reference, tail, "var", &tables.vars),
         "secrets" => validate_declared(reference, tail, "secrets", &tables.secrets),
+<<<<<<< HEAD
         "runtime" => Err(ValidationError::DirectRuntimeReference),
+=======
+        "runtime" => Err(ValidationError::DirectRuntimeReference { span: Span::ZERO }),
+>>>>>>> landing/vb-xi2f.9
         "step" | "steps" => validate_step_reference(reference, tail, tables, current_step_index),
         _ => Err(ValidationError::UnknownReference {
             reference: reference.to_owned(),
+            span: Span::ZERO,
         }),
     }
 }
 
+<<<<<<< HEAD
 /// Parses a step reference of the form "$<step_id>.<field>" or "$steps.<step_id>.<field>".
+=======
+/// Parses a step reference of the form `$step_id.field` or `$steps.step_id.field`.
+>>>>>>> landing/vb-xi2f.9
 ///
 /// Returns `Some((step_id, field))` if the reference is a valid step reference,
 /// or `None` if the reference is not a step reference.
@@ -190,6 +201,10 @@ fn validate_step_reference(
                     // Future or same-step reference - not allowed at runtime
                     Err(ValidationError::FutureReference {
                         reference: reference.to_owned(),
+<<<<<<< HEAD
+=======
+                        span: Span::ZERO,
+>>>>>>> landing/vb-xi2f.9
                     })
                 } else {
                     // Prior step reference - allowed
@@ -204,6 +219,7 @@ fn validate_step_reference(
     } else {
         Err(ValidationError::UnknownReference {
             reference: reference.to_owned(),
+            span: Span::ZERO,
         })
     }
 }
@@ -220,6 +236,7 @@ fn validate_declared(
     } else {
         Err(ValidationError::UnknownReference {
             reference: reference.to_owned(),
+            span: Span::ZERO,
         })
     }
 }
@@ -323,7 +340,7 @@ mod tests {
         let tables = make_tables(&[], &[], &[], &[]);
         assert!(matches!(
             validate_single_reference("$runtime.now", &tables),
-            Err(ValidationError::DirectRuntimeReference)
+            Err(ValidationError::DirectRuntimeReference { span: Span::ZERO })
         ));
     }
 
@@ -332,7 +349,7 @@ mod tests {
         let tables = make_tables(&[], &[], &[], &[]);
         assert!(matches!(
             validate_single_reference("$now", &tables),
-            Err(ValidationError::DirectRuntimeReference)
+            Err(ValidationError::DirectRuntimeReference { span: Span::ZERO })
         ));
     }
 
@@ -341,7 +358,7 @@ mod tests {
         let tables = make_tables(&[], &[], &[], &[]);
         assert!(matches!(
             validate_single_reference("$random", &tables),
-            Err(ValidationError::DirectRuntimeReference)
+            Err(ValidationError::DirectRuntimeReference { span: Span::ZERO })
         ));
     }
 
@@ -462,6 +479,7 @@ mod tests {
             result,
             Err(ValidationError::UnknownReference {
                 reference: "$input.nonexistent".to_owned(),
+                span: Span::ZERO
             })
         );
     }
@@ -479,7 +497,10 @@ mod tests {
         // When validate_references is called
         let result = validate_references(&workflow);
         // Then it returns DirectRuntimeReference
-        assert_eq!(result, Err(ValidationError::DirectRuntimeReference));
+        assert_eq!(
+            result,
+            Err(ValidationError::DirectRuntimeReference { span: Span::ZERO })
+        );
     }
 
     #[test]
@@ -495,7 +516,10 @@ mod tests {
         // When validate_references is called
         let result = validate_references(&workflow);
         // Then it returns DirectRuntimeReference
-        assert_eq!(result, Err(ValidationError::DirectRuntimeReference));
+        assert_eq!(
+            result,
+            Err(ValidationError::DirectRuntimeReference { span: Span::ZERO })
+        );
     }
 
     #[test]
@@ -515,6 +539,7 @@ mod tests {
             result,
             Err(ValidationError::UnknownReference {
                 reference: "$env.HOME".to_owned(),
+                span: Span::ZERO
             })
         );
     }
@@ -550,6 +575,7 @@ mod tests {
             result,
             Err(ValidationError::UnknownReference {
                 reference: "$secrets.api_key".to_owned(),
+                span: Span::ZERO
             })
         );
     }
@@ -588,6 +614,7 @@ mod tests {
             result,
             Err(ValidationError::UnknownReference {
                 reference: "$steps.ghost.output".to_owned(),
+                span: Span::ZERO
             })
         );
     }
@@ -605,7 +632,10 @@ mod tests {
         // When validate_references is called
         let result = validate_references(&workflow);
         // Then it returns DirectRuntimeReference (E0204)
-        assert_eq!(result, Err(ValidationError::DirectRuntimeReference));
+        assert_eq!(
+            result,
+            Err(ValidationError::DirectRuntimeReference { span: Span::ZERO })
+        );
     }
 
     #[test]
@@ -621,7 +651,10 @@ mod tests {
         // When validate_references is called
         let result = validate_references(&workflow);
         // Then it returns DirectRuntimeReference (E0204)
-        assert_eq!(result, Err(ValidationError::DirectRuntimeReference));
+        assert_eq!(
+            result,
+            Err(ValidationError::DirectRuntimeReference { span: Span::ZERO })
+        );
     }
 
     #[test]
@@ -637,7 +670,10 @@ mod tests {
         // When validate_references is called
         let result = validate_references(&workflow);
         // Then it returns DirectRuntimeReference (E0204)
-        assert_eq!(result, Err(ValidationError::DirectRuntimeReference));
+        assert_eq!(
+            result,
+            Err(ValidationError::DirectRuntimeReference { span: Span::ZERO })
+        );
     }
 
     #[test]
@@ -657,6 +693,7 @@ mod tests {
             result,
             Err(ValidationError::UnknownReference {
                 reference: "$env.HOME".to_owned(),
+                span: Span::ZERO
             })
         );
     }
@@ -683,6 +720,7 @@ mod tests {
             result,
             Err(ValidationError::UnknownReference {
                 reference: "$input.ghost".to_owned(),
+                span: Span::ZERO
             })
         );
     }
@@ -755,6 +793,7 @@ mod tests {
             result,
             Err(ValidationError::UnknownReference {
                 reference: "$steps.ghost".to_owned(),
+                span: Span::ZERO
             })
         );
     }
@@ -770,6 +809,7 @@ mod tests {
             result,
             Err(ValidationError::UnknownReference {
                 reference: "$something".to_owned(),
+                span: Span::ZERO
             })
         );
     }

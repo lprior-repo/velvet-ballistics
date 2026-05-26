@@ -6,6 +6,7 @@
 //! from the workflow entry.
 
 use crate::{ValidationError, ValidationResult};
+use vb_core::span::Span;
 
 /// Validates control flow for a workflow's step graph.
 ///
@@ -35,6 +36,7 @@ pub fn validate_reachability(flow: &WorkflowFlow) -> ValidationResult<()> {
     if flow.steps.is_empty() {
         return Err(ValidationError::UnreachableStep {
             step: "workflow has no steps".to_owned(),
+            span: Span::ZERO,
         });
     }
     let mut reachable = vec![false; flow.steps.len()];
@@ -47,7 +49,7 @@ fn validate_forward_targets(flow: &WorkflowFlow) -> ValidationResult<()> {
         for &target in &step.branch_targets {
             validate_target_index(target, flow.steps.len())?;
             if target <= step_index {
-                return Err(ValidationError::ControlFlowCycle);
+                return Err(ValidationError::ControlFlowCycle { span: Span::ZERO });
             }
         }
     }
@@ -56,7 +58,7 @@ fn validate_forward_targets(flow: &WorkflowFlow) -> ValidationResult<()> {
 
 fn validate_target_index(target: usize, step_count: usize) -> ValidationResult<()> {
     if target >= step_count {
-        return Err(ValidationError::InvalidThenTarget);
+        return Err(ValidationError::InvalidThenTarget { span: Span::ZERO });
     }
     Ok(())
 }
@@ -68,7 +70,7 @@ fn validate_forward_target(
 ) -> ValidationResult<()> {
     validate_target_index(target, step_count)?;
     if target <= step_index {
-        return Err(ValidationError::ControlFlowCycle);
+        return Err(ValidationError::ControlFlowCycle { span: Span::ZERO });
     }
     Ok(())
 }
@@ -79,13 +81,13 @@ fn mark_reachable(flow: &WorkflowFlow, reachable: &mut [bool]) -> ValidationResu
     while let Some(index) = stack.pop() {
         if *reachable
             .get(index)
-            .ok_or(ValidationError::InvalidThenTarget)?
+            .ok_or(ValidationError::InvalidThenTarget { span: Span::ZERO })?
         {
             continue;
         }
         *reachable
             .get_mut(index)
-            .ok_or(ValidationError::InvalidThenTarget)? = true;
+            .ok_or(ValidationError::InvalidThenTarget { span: Span::ZERO })? = true;
         push_successors(flow, index, &mut stack);
     }
     Ok(())
@@ -116,7 +118,10 @@ fn reject_unreachable(flow: &WorkflowFlow, reachable: &[bool]) -> ValidationResu
                 Some(step_id) => step_id,
                 None => format!("step_{index}"),
             };
-            return Err(ValidationError::UnreachableStep { step: id });
+            return Err(ValidationError::UnreachableStep {
+                step: id,
+                span: Span::ZERO,
+            });
         }
     }
     Ok(())
@@ -226,7 +231,7 @@ mod tests {
         };
         assert!(matches!(
             validate_control_flow(&flow),
-            Err(ValidationError::ControlFlowCycle)
+            Err(ValidationError::ControlFlowCycle { span: Span::ZERO })
         ));
     }
 
@@ -253,7 +258,7 @@ mod tests {
         };
         assert!(matches!(
             validate_control_flow(&flow),
-            Err(ValidationError::ControlFlowCycle)
+            Err(ValidationError::ControlFlowCycle { span: Span::ZERO })
         ));
     }
 
@@ -300,7 +305,7 @@ mod tests {
         };
         assert!(matches!(
             validate_control_flow(&flow),
-            Err(ValidationError::InvalidThenTarget)
+            Err(ValidationError::InvalidThenTarget { span: Span::ZERO })
         ));
     }
 
@@ -369,7 +374,10 @@ mod tests {
         // When validate_control_flow is called
         let result = validate_control_flow(&flow);
         // Then it returns ControlFlowCycle
-        assert_eq!(result, Err(ValidationError::ControlFlowCycle));
+        assert_eq!(
+            result,
+            Err(ValidationError::ControlFlowCycle { span: Span::ZERO })
+        );
     }
 
     #[test]
@@ -416,6 +424,7 @@ mod tests {
             result,
             Err(ValidationError::UnreachableStep {
                 step: "orphaned".to_owned(),
+                span: Span::ZERO
             })
         );
     }
@@ -440,7 +449,10 @@ mod tests {
         // When validate_forward_only_then is called
         let result = validate_forward_only_then(&flow);
         // Then it returns ControlFlowCycle
-        assert_eq!(result, Err(ValidationError::ControlFlowCycle));
+        assert_eq!(
+            result,
+            Err(ValidationError::ControlFlowCycle { span: Span::ZERO })
+        );
     }
 
     #[test]
@@ -484,7 +496,10 @@ mod tests {
         // When validate_control_flow is called
         let result = validate_control_flow(&flow);
         // Then it returns InvalidThenTarget
-        assert_eq!(result, Err(ValidationError::InvalidThenTarget));
+        assert_eq!(
+            result,
+            Err(ValidationError::InvalidThenTarget { span: Span::ZERO })
+        );
     }
 
     #[test]
@@ -498,6 +513,7 @@ mod tests {
             result,
             Err(ValidationError::UnreachableStep {
                 step: "workflow has no steps".to_owned(),
+                span: Span::ZERO
             })
         );
     }
@@ -531,7 +547,10 @@ mod tests {
         // When validate_control_flow is called
         let result = validate_control_flow(&flow);
         // Then it returns ControlFlowCycle (E0302) -- step 0 has backward branch from step 1
-        assert_eq!(result, Err(ValidationError::ControlFlowCycle));
+        assert_eq!(
+            result,
+            Err(ValidationError::ControlFlowCycle { span: Span::ZERO })
+        );
     }
 
     #[test]
@@ -547,7 +566,10 @@ mod tests {
         // When validate_forward_only_then is called
         let result = validate_forward_only_then(&flow);
         // Then it returns ControlFlowCycle (E0302)
-        assert_eq!(result, Err(ValidationError::ControlFlowCycle));
+        assert_eq!(
+            result,
+            Err(ValidationError::ControlFlowCycle { span: Span::ZERO })
+        );
     }
 
     #[test]
@@ -570,7 +592,10 @@ mod tests {
         // When validate_forward_only_then is called
         let result = validate_forward_only_then(&flow);
         // Then it returns InvalidThenTarget (E0301)
-        assert_eq!(result, Err(ValidationError::InvalidThenTarget));
+        assert_eq!(
+            result,
+            Err(ValidationError::InvalidThenTarget { span: Span::ZERO })
+        );
     }
 
     #[test]
@@ -593,7 +618,10 @@ mod tests {
         // When validate_forward_only_then is called
         let result = validate_forward_only_then(&flow);
         // Then it returns ControlFlowCycle (E0302)
-        assert_eq!(result, Err(ValidationError::ControlFlowCycle));
+        assert_eq!(
+            result,
+            Err(ValidationError::ControlFlowCycle { span: Span::ZERO })
+        );
     }
 
     #[test]
@@ -609,7 +637,10 @@ mod tests {
         // When validate_control_flow is called
         let result = validate_control_flow(&flow);
         // Then it returns InvalidThenTarget (E0301)
-        assert_eq!(result, Err(ValidationError::InvalidThenTarget));
+        assert_eq!(
+            result,
+            Err(ValidationError::InvalidThenTarget { span: Span::ZERO })
+        );
     }
 
     #[test]
@@ -642,6 +673,7 @@ mod tests {
             result,
             Err(ValidationError::UnreachableStep {
                 step: "orphan".to_owned(),
+                span: Span::ZERO
             })
         );
     }
@@ -675,6 +707,7 @@ mod tests {
             result,
             Err(ValidationError::UnreachableStep {
                 step: "step_1".to_owned(),
+                span: Span::ZERO
             })
         );
     }
@@ -725,7 +758,10 @@ mod tests {
         // When validate_control_flow is called
         let result = validate_control_flow(&flow);
         // Then it returns ControlFlowCycle (E0302) -- target <= step_index
-        assert_eq!(result, Err(ValidationError::ControlFlowCycle));
+        assert_eq!(
+            result,
+            Err(ValidationError::ControlFlowCycle { span: Span::ZERO })
+        );
     }
 
     #[test]
@@ -748,6 +784,9 @@ mod tests {
         // When validate_control_flow is called
         let result = validate_control_flow(&flow);
         // Then it returns InvalidThenTarget (E0301) -- index 2 out of bounds
-        assert_eq!(result, Err(ValidationError::InvalidThenTarget));
+        assert_eq!(
+            result,
+            Err(ValidationError::InvalidThenTarget { span: Span::ZERO })
+        );
     }
 }

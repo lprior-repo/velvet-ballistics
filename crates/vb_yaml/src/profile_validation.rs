@@ -14,9 +14,39 @@
 //! - Unbounded depth or node counts
 
 use crate::events::YamlEvent;
+use crate::source_map::SourceSpan;
 use crate::{YamlError, YamlLimits, YamlResult};
 
 use super::profile_dupkeys::reject_duplicate_mapping_keys;
+
+/// Create a point SourceSpan from a saphyr-parser Marker.
+///
+/// Parse errors only have a marker (single position), not a full span.
+/// This creates a zero-width span at the marker position.
+fn marker_span(marker: &saphyr_parser::Marker) -> Option<SourceSpan> {
+    Some(SourceSpan::new(
+        marker.index(),
+        marker.index(),
+        marker.line(),
+        marker.col(),
+        marker.line(),
+        marker.col(),
+    ))
+}
+
+/// Convert a YamlEvent EventSpan into a SourceSpan for error span propagation.
+///
+/// This preserves the start/end byte offsets and line/column from the parser event stream.
+fn event_span_to_source_span(span: crate::events::EventSpan) -> Option<SourceSpan> {
+    Some(SourceSpan::new(
+        span.start,
+        span.end,
+        span.line,
+        span.column,
+        span.line,
+        span.column,
+    ))
+}
 
 /// Validate that the given YAML text conforms to the strict profile.
 ///
@@ -73,9 +103,13 @@ pub(crate) fn collect_and_validate_events(
     let mut expecting_key: Vec<bool> = Vec::new(); // for mappings: next scalar is a key if true
 
     while let Some(result) = parser.next_event() {
-        let (event, span) = result.map_err(|e| YamlError::ParseError {
-            line: e.marker().line(),
-            reason: e.info().into(),
+        let (event, span) = result.map_err(|e| {
+            let marker = e.marker();
+            YamlError::ParseError {
+                line: marker.line(),
+                reason: e.info().into(),
+                span: marker_span(marker),
+            }
         })?;
 
         match &event {
@@ -85,9 +119,13 @@ pub(crate) fn collect_and_validate_events(
             | saphyr_parser::Event::Alias(_)
             | saphyr_parser::Event::Nothing => {}
             saphyr_parser::Event::DocumentStart(_) => {
-                document_count = document_count
-                    .checked_add(1)
-                    .ok_or(YamlError::MultipleDocuments { count: usize::MAX })?;
+                document_count =
+                    document_count
+                        .checked_add(1)
+                        .ok_or(YamlError::MultipleDocuments {
+                            count: usize::MAX,
+                            span: None,
+                        })?;
             }
             saphyr_parser::Event::MappingStart(_, _) => {
                 depth = depth.checked_add(1).ok_or(YamlError::NestingTooDeep {
@@ -142,6 +180,7 @@ pub(crate) fn collect_and_validate_events(
                                     return Err(YamlError::MappingTooLarge {
                                         count: *counter,
                                         max: limits.max_mapping_entries,
+                                        span: None,
                                     });
                                 }
                             }
@@ -168,6 +207,7 @@ pub(crate) fn collect_and_validate_events(
                                 return Err(YamlError::SequenceTooLong {
                                     len: *counter,
                                     max: limits.max_sequence_len,
+                                    span: None,
                                 });
                             }
                         }
@@ -242,6 +282,7 @@ pub(crate) fn check_scalar_length(value: &str, max_bytes: usize) -> YamlResult<(
         return Err(YamlError::ScalarTooLong {
             len,
             max: max_bytes,
+            span: None,
         });
     }
     Ok(())
@@ -251,6 +292,7 @@ pub(crate) fn check_scalar_length(value: &str, max_bytes: usize) -> YamlResult<(
 pub(crate) fn check_null_bytes(value: &str) -> YamlResult<()> {
     if value.contains('\x00') {
         return Err(YamlError::ForbiddenFeature {
+            span: None,
             detail: "null_byte_in_scalar",
         });
     }
@@ -261,6 +303,7 @@ pub(crate) fn check_null_bytes(value: &str) -> YamlResult<()> {
 pub(crate) fn check_null_bytes_in_source(text: &str) -> YamlResult<()> {
     if text.contains('\x00') {
         return Err(YamlError::ForbiddenFeature {
+            span: None,
             detail: "null_byte_in_source",
         });
     }
@@ -273,7 +316,10 @@ pub fn reject_forbidden_features(events: &[YamlEvent]) -> YamlResult<()> {
         if let Some(tag) = event.tag()
             && !is_allowed_tag(tag)
         {
-            return Err(YamlError::CustomTag { tag: tag.into() });
+            return Err(YamlError::CustomTag {
+                span: event_span_to_source_span(event.span()),
+                tag: tag.into(),
+            });
         }
         if let YamlEvent::Scalar { style, value, .. } = event {
             reject_binary_scalar(value, *style);
@@ -305,19 +351,40 @@ pub(crate) fn reject_binary_scalar(_value: &str, _style: crate::events::ScalarSt
 pub fn reject_anchors_aliases_merges(events: &[YamlEvent]) -> YamlResult<()> {
     for event in events {
         match event {
-            YamlEvent::Alias { .. } => {
-                return Err(YamlError::AnchorAliasMerge);
+            YamlEvent::Alias { span, .. } => {
+                return Err(YamlError::AnchorAliasMerge {
+                    span: event_span_to_source_span(*span),
+                });
             }
-            YamlEvent::Scalar { anchor_id, tag, .. }
-            | YamlEvent::SequenceStart { anchor_id, tag, .. }
-            | YamlEvent::MappingStart { anchor_id, tag, .. } => {
+            YamlEvent::Scalar {
+                anchor_id,
+                tag,
+                span,
+                ..
+            }
+            | YamlEvent::SequenceStart {
+                anchor_id,
+                tag,
+                span,
+                ..
+            }
+            | YamlEvent::MappingStart {
+                anchor_id,
+                tag,
+                span,
+                ..
+            } => {
                 if *anchor_id != 0 {
-                    return Err(YamlError::AnchorAliasMerge);
+                    return Err(YamlError::AnchorAliasMerge {
+                        span: event_span_to_source_span(*span),
+                    });
                 }
                 if let Some(t) = tag
                     && is_merge_key_tag(t)
                 {
-                    return Err(YamlError::AnchorAliasMerge);
+                    return Err(YamlError::AnchorAliasMerge {
+                        span: event_span_to_source_span(*span),
+                    });
                 }
             }
             _ => {}
@@ -335,7 +402,7 @@ pub(crate) fn is_merge_key_tag(tag: &str) -> bool {
 pub fn reject_multiple_documents(events: &[YamlEvent]) -> YamlResult<()> {
     let count = events.iter().filter(|e| e.is_document_start()).count();
     if count > 1 {
-        return Err(YamlError::MultipleDocuments { count });
+        return Err(YamlError::MultipleDocuments { count, span: None });
     }
     Ok(())
 }
@@ -346,6 +413,7 @@ pub fn reject_yaml_1_1_ambiguous_scalars(scalars: &[&str]) -> YamlResult<()> {
         if is_yaml_1_1_ambiguous(scalar) {
             return Err(YamlError::AmbiguousScalar {
                 scalar: (*scalar).into(),
+                span: None,
             });
         }
     }
@@ -361,12 +429,15 @@ fn is_yaml_1_1_ambiguous(scalar: &str) -> bool {
 /// Check collected scalar events for YAML 1.1 ambiguous values.
 pub(crate) fn check_scalar_ambiguity(events: &[YamlEvent]) -> YamlResult<()> {
     for event in events {
-        if let YamlEvent::Scalar { value, style, .. } = event
+        if let YamlEvent::Scalar {
+            value, style, span, ..
+        } = event
             && *style == crate::events::ScalarStyle::Plain
             && is_yaml_1_1_ambiguous(value)
         {
             return Err(YamlError::AmbiguousScalar {
                 scalar: value.clone(),
+                span: event_span_to_source_span(*span),
             });
         }
     }

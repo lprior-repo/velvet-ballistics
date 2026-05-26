@@ -23,6 +23,7 @@ use crate::{
     commands_incident, commands_journal, commands_status, commands_system_status, commands_verify,
     commands_workflow, deliver_sink,
 };
+use vb_core::span::Span;
 use vb_ipc::client::IpcClient;
 use vb_ipc::{IpcCommand, IpcPayload};
 use vb_runtime::action::ActionRegistry;
@@ -4573,7 +4574,7 @@ fn explain_verification_failure(err: &commands_verify::VerifyError) {
 fn explain_validation_error(err: &vb_validate::ValidationError) {
     use vb_validate::ValidationError;
     match err {
-        ValidationError::DuplicateKey => {
+        ValidationError::DuplicateKey { span: Span::ZERO } => {
             outln!("Duplicate Key");
             outln!("  A YAML mapping contains duplicate keys, which is not allowed.");
             explain_repair_hint(
@@ -4584,7 +4585,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::ForbiddenYamlFeature => {
+        ValidationError::ForbiddenYamlFeature { span: Span::ZERO } => {
             outln!("Forbidden YAML Feature");
             outln!("  The workflow uses a YAML feature that is not allowed in Velvet.");
             explain_repair_hint(
@@ -4595,7 +4596,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::UnknownTopLevelField => {
+        ValidationError::UnknownTopLevelField { span: Span::ZERO } => {
             outln!("Unknown Top-Level Field");
             outln!("  The workflow contains an unrecognized top-level field.");
             explain_repair_hint(
@@ -4606,7 +4607,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::UnknownStepField => {
+        ValidationError::UnknownStepField { span: Span::ZERO } => {
             outln!("Unknown Step Field");
             outln!("  A step contains an unrecognized field.");
             explain_repair_hint(
@@ -4617,7 +4618,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::MissingRequiredField { field } => {
+        ValidationError::MissingRequiredField {
+            field,
+            span: Span::ZERO,
+        } => {
             outln!("Missing Required Field");
             outln!("  Required field '{field}' is missing from the workflow.");
             explain_repair_hint(
@@ -4628,7 +4632,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::InvalidVersion { version } => {
+        ValidationError::InvalidVersion {
+            version,
+            span: Span::ZERO,
+        } => {
             outln!("Invalid Version");
             outln!("  Found version '{version}', but Velvet v1 requires 'velvet-ballistics/v1'.");
             explain_repair_hint(
@@ -4639,7 +4646,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::InvalidId { id } => {
+        ValidationError::InvalidId {
+            id,
+            span: Span::ZERO,
+        } => {
             outln!("Invalid Identifier");
             outln!("  '{id}' is not a valid Velvet identifier.");
             explain_repair_hint(
@@ -4650,7 +4660,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::ReservedId { id } => {
+        ValidationError::ReservedId {
+            id,
+            span: Span::ZERO,
+        } => {
             outln!("Reserved Identifier");
             outln!("  '{id}' is a reserved identifier and cannot be used.");
             explain_repair_hint(
@@ -4661,7 +4674,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::DuplicateId { id } => {
+        ValidationError::DuplicateId {
+            id,
+            span: Span::ZERO,
+        } => {
             outln!("Duplicate Identifier");
             outln!("  The identifier '{id}' appears more than once.");
             explain_repair_hint(
@@ -4672,7 +4688,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::MultipleStepPrimitives => {
+        ValidationError::MultipleStepPrimitives { span: Span::ZERO } => {
             outln!("Multiple Step Primitives");
             outln!("  A step contains multiple primitive actions.");
             explain_repair_hint(
@@ -4683,7 +4699,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::MissingStepPrimitive => {
+        ValidationError::MissingStepPrimitive { span: Span::ZERO } => {
             outln!("Missing Step Primitive");
             outln!("  A step is missing its primitive action.");
             explain_repair_hint(
@@ -4694,7 +4710,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::UnknownReference { reference } => {
+        ValidationError::UnknownReference {
+            reference,
+            span: Span::ZERO,
+        } => {
             outln!("Unknown Reference");
             outln!("  Reference '{reference}' is not declared in the workflow.");
             explain_repair_hint(
@@ -4705,7 +4724,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::FutureReference { reference } => {
+        ValidationError::FutureReference {
+            reference,
+            span: Span::ZERO,
+        } => {
             outln!("Future Reference");
             outln!("  Reference '{reference}' refers to a step that hasn't been defined yet.");
             explain_repair_hint(
@@ -4716,7 +4738,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::SecretNotDeclared { secret } => {
+        ValidationError::SecretNotDeclared {
+            secret,
+            span: Span::ZERO,
+        } => {
             outln!("Undeclared Secret");
             outln!("  Secret '{secret}' is referenced but not declared in the workflow secrets.");
             explain_repair_hint(
@@ -4727,7 +4752,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::DirectRuntimeReference => {
+        ValidationError::DirectRuntimeReference { span: Span::ZERO } => {
             outln!("Direct Runtime Reference");
             outln!("  References to runtime state are not allowed in this context.");
             explain_repair_hint(
@@ -4738,7 +4763,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::InvalidThenTarget => {
+        ValidationError::InvalidThenTarget { span: Span::ZERO } => {
             outln!("Invalid Branch Target");
             outln!("  A 'then' branch targets an invalid step.");
             explain_repair_hint(
@@ -4749,7 +4774,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::ControlFlowCycle => {
+        ValidationError::ControlFlowCycle { span: Span::ZERO } => {
             outln!("Control Flow Cycle");
             outln!("  The workflow contains a cycle in its control flow graph.");
             explain_repair_hint(
@@ -4761,7 +4786,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::UnreachableStep { step } => {
+        ValidationError::UnreachableStep {
+            step,
+            span: Span::ZERO,
+        } => {
             outln!("Unreachable Step");
             outln!("  Step '{step}' cannot be reached from the workflow entry.");
             explain_repair_hint(
@@ -4772,7 +4800,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::InvalidChoose => {
+        ValidationError::InvalidChoose { span: Span::ZERO } => {
             outln!("Invalid Choose");
             outln!("  The 'choose' (conditional) construct is invalid.");
             explain_repair_hint(
@@ -4783,7 +4811,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::InvalidForEach => {
+        ValidationError::InvalidForEach { span: Span::ZERO } => {
             outln!("Invalid ForEach");
             outln!("  The 'for_each' loop construct is invalid.");
             explain_repair_hint(
@@ -4794,7 +4822,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::InvalidTogether => {
+        ValidationError::InvalidTogether { span: Span::ZERO } => {
             outln!("Invalid Together");
             outln!("  The 'together' (parallel) construct is invalid.");
             explain_repair_hint(
@@ -4805,7 +4833,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::InvalidCollect => {
+        ValidationError::InvalidCollect { span: Span::ZERO } => {
             outln!("Invalid Collect");
             outln!("  The 'collect' pagination construct is invalid.");
             explain_repair_hint(
@@ -4816,7 +4844,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::InvalidReduce => {
+        ValidationError::InvalidReduce { span: Span::ZERO } => {
             outln!("Invalid Reduce");
             outln!("  The 'reduce' fold construct is invalid.");
             explain_repair_hint(
@@ -4827,7 +4855,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::InvalidRepeat => {
+        ValidationError::InvalidRepeat { span: Span::ZERO } => {
             outln!("Invalid Repeat");
             outln!("  The 'repeat' loop construct is invalid.");
             explain_repair_hint(
@@ -4838,7 +4866,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::InvalidWait => {
+        ValidationError::InvalidWait { span: Span::ZERO } => {
             outln!("Invalid Wait");
             outln!("  The 'wait' step is invalid.");
             explain_repair_hint(
@@ -4849,7 +4877,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::InvalidAsk => {
+        ValidationError::InvalidAsk { span: Span::ZERO } => {
             outln!("Invalid Ask");
             outln!("  The 'ask' (interaction) step is invalid.");
             explain_repair_hint(
@@ -4860,7 +4888,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::InvalidFinish => {
+        ValidationError::InvalidFinish { span: Span::ZERO } => {
             outln!("Invalid Finish");
             outln!("  The 'finish' step is invalid.");
             explain_repair_hint(
@@ -4871,7 +4899,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::InvalidRetry => {
+        ValidationError::InvalidRetry { span: Span::ZERO } => {
             outln!("Invalid Retry");
             outln!("  The 'retry' construct is invalid.");
             explain_repair_hint(
@@ -4882,7 +4910,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::InvalidOnError => {
+        ValidationError::InvalidOnError { span: Span::ZERO } => {
             outln!("Invalid OnError");
             outln!("  The 'on_error' error handler is invalid.");
             explain_repair_hint(
@@ -4893,7 +4921,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::SecretResultLeak => {
+        ValidationError::SecretResultLeak { span: Span::ZERO } => {
             outln!("Secret Result Leak");
             outln!("  A secret value may be exposed in the workflow result.");
             explain_repair_hint(
@@ -4904,7 +4932,11 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::TypeMismatch { expected, found } => {
+        ValidationError::TypeMismatch {
+            expected,
+            found,
+            span: Span::ZERO,
+        } => {
             outln!("Type Mismatch");
             outln!("  Expected type: {expected}");
             outln!("  Found type: {found}");
@@ -4916,7 +4948,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::PayloadTooLarge => {
+        ValidationError::PayloadTooLarge { span: Span::ZERO } => {
             outln!("Payload Too Large");
             outln!("  The workflow payload exceeds size limits.");
             explain_repair_hint(
@@ -4927,7 +4959,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::LimitRequired { resource } => {
+        ValidationError::LimitRequired {
+            resource,
+            span: Span::ZERO,
+        } => {
             outln!("Limit Required");
             outln!("  Resource '{resource}' requires an explicit limit.");
             explain_repair_hint(
@@ -4938,7 +4973,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::LimitExceeded { resource } => {
+        ValidationError::LimitExceeded {
+            resource,
+            span: Span::ZERO,
+        } => {
             outln!("Limit Exceeded");
             outln!("  Resource '{resource}' has exceeded its configured limit.");
             explain_repair_hint(
@@ -4949,7 +4987,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::UnsupportedTrigger { trigger } => {
+        ValidationError::UnsupportedTrigger {
+            trigger,
+            span: Span::ZERO,
+        } => {
             outln!("Unsupported Trigger");
             outln!("  Trigger type '{trigger}' is not supported.");
             explain_repair_hint(
@@ -4960,7 +5001,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::HttpTriggerOutOfCore => {
+        ValidationError::HttpTriggerOutOfCore { span: Span::ZERO } => {
             outln!("HTTP Trigger Out of Core");
             outln!("  HTTP triggers are not available in the core runtime.");
             explain_repair_hint(
@@ -4971,7 +5012,11 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::ExpressionStackExceeded { declared, limit } => {
+        ValidationError::ExpressionStackExceeded {
+            declared,
+            limit,
+            span: Span::ZERO,
+        } => {
             outln!("Expression Stack Exceeded");
             outln!("  Expression stack depth {declared} exceeds limit {limit}.");
             explain_repair_hint(
@@ -4986,6 +5031,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             expr_index,
             declared,
             computed,
+            span: Span::ZERO,
         } => {
             outln!("Expression Stack Mismatch");
             outln!(
@@ -5003,6 +5049,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             accessor_index,
             slot,
             slot_count,
+            span: Span::ZERO,
         } => {
             outln!("Accessor Slot Out of Range");
             outln!(
@@ -5019,6 +5066,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
         ValidationError::AccessorPathInvalid {
             accessor_index,
             segment_index,
+            span: Span::ZERO,
         } => {
             outln!("Accessor Path Invalid");
             outln!("  Accessor {accessor_index} has invalid segment at index {segment_index}.");
@@ -5034,6 +5082,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             slot,
             slot_count,
             context,
+            span: Span::ZERO,
         } => {
             outln!("Slot Reference Out of Range");
             outln!(
@@ -5052,6 +5101,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             node_count,
             source_node,
             label: _,
+            span: Span::ZERO,
         } => {
             outln!("Loop Body Step Out of Range");
             outln!(
@@ -5065,7 +5115,11 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::SlotDependencyCycle { slot, chain } => {
+        ValidationError::SlotDependencyCycle {
+            slot,
+            chain,
+            span: Span::ZERO,
+        } => {
             outln!("Slot Dependency Cycle");
             outln!("  Slot {slot} has a dependency cycle: {chain}.");
             explain_repair_hint(
@@ -5076,7 +5130,11 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::NodeKindConstraintViolation { node_index, detail } => {
+        ValidationError::NodeKindConstraintViolation {
+            node_index,
+            detail,
+            span: Span::ZERO,
+        } => {
             outln!("Node Kind Constraint Violation");
             outln!("  Node {node_index}: {detail}.");
             explain_repair_hint(
@@ -5090,6 +5148,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
         ValidationError::ActionContractMissing {
             action_id,
             node_index,
+            span: Span::ZERO,
         } => {
             outln!("Action Contract Missing");
             outln!(
@@ -5103,7 +5162,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::ActionContractOrphan { action_id } => {
+        ValidationError::ActionContractOrphan {
+            action_id,
+            span: Span::ZERO,
+        } => {
             outln!("Action Contract Orphan");
             outln!("  Action contract {action_id} has no corresponding Do node.");
             explain_repair_hint(
@@ -5114,7 +5176,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::SlotTypeInconsistency { slot } => {
+        ValidationError::SlotTypeInconsistency {
+            slot,
+            span: Span::ZERO,
+        } => {
             outln!("Slot Type Inconsistency");
             outln!("  Slot {slot} has writers with incompatible type kinds.");
             explain_repair_hint(
@@ -5125,7 +5190,11 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::NonDeterministicPath { from_node, to_node } => {
+        ValidationError::NonDeterministicPath {
+            from_node,
+            to_node,
+            span: Span::ZERO,
+        } => {
             outln!("Non-Deterministic Path");
             outln!("  Path from node {from_node} to {to_node} contains no suspension point.");
             explain_repair_hint(
@@ -5140,6 +5209,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             accessor_index,
             depth,
             max,
+            span: Span::ZERO,
         } => {
             outln!("Accessor Path Too Deep");
             outln!(
@@ -5158,6 +5228,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             segment_index,
             symbol,
             symbols_count,
+            span: Span::ZERO,
         } => {
             outln!("Accessor Symbol Out of Bounds");
             outln!(
@@ -5174,6 +5245,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
         ValidationError::CapabilityNameEmpty {
             action_id,
             capability_index,
+            span: Span::ZERO,
         } => {
             outln!("Capability Name Empty");
             outln!("  Action {action_id}: capability {capability_index} has an empty name.");
@@ -5190,6 +5262,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             capability_index,
             len,
             max,
+            span: Span::ZERO,
         } => {
             outln!("Capability Name Too Long");
             outln!(
@@ -5207,6 +5280,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             action_id,
             capability_index,
             name,
+            span: Span::ZERO,
         } => {
             outln!("Capability Name Invalid");
             outln!("  Action {action_id}: capability {capability_index} name '{name}' is invalid.");
@@ -5222,6 +5296,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             contract_action_id,
             capability_action_id,
             capability_index,
+            span: Span::ZERO,
         } => {
             outln!("Capability Action Mismatch");
             outln!(
@@ -5240,6 +5315,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             first_index,
             duplicate_index,
             name,
+            span: Span::ZERO,
         } => {
             outln!("Capability Duplicate");
             outln!(
@@ -5253,7 +5329,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::MissingSchemaVersion => {
+        ValidationError::MissingSchemaVersion { span: Span::ZERO } => {
             outln!("Missing Schema Version");
             outln!("  The workflow does not declare a schema version.");
             explain_repair_hint(
@@ -5264,7 +5340,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::CueVetFailed { file } => {
+        ValidationError::CueVetFailed {
+            file,
+            span: Span::ZERO,
+        } => {
             outln!("CUE Vet Failed");
             outln!("  The CUE schema validation failed for '{file}'.");
             explain_repair_hint(
@@ -5279,6 +5358,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             file,
             expected,
             actual,
+            span: Span::ZERO,
         } => {
             outln!("Version Monotonicity Breach");
             outln!("  File '{file}': version {actual} is not >= expected {expected}.");

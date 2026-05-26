@@ -6,6 +6,7 @@
 use crate::gates::validate_gate_08_accessor_path_segments;
 use proptest::prelude::*;
 use vb_core::ids::{SlotIdx, StepIdx, SymbolId};
+use vb_core::span::Span;
 use vb_core::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, PathSegment, ResourceContract, WorkflowParts,
 };
@@ -107,7 +108,7 @@ proptest! {
                     segment_index: 0,
                     symbol: actual_symbol,
                     symbols_count: actual_symbols_count,
-                } if *actual_symbol == symbol && *actual_symbols_count == symbols_count
+                 span: Span::ZERO} if *actual_symbol == symbol && *actual_symbols_count == symbols_count
             ),
             "wrong error variant or field values: got {err:?}"
         );
@@ -146,7 +147,7 @@ proptest! {
                     segment_index: 0,
                     symbol: actual_symbol,
                     symbols_count: actual_symbols_count,
-                } if *actual_symbol == sym1 && *actual_symbols_count == symbols_count
+                 span: Span::ZERO} if *actual_symbol == sym1 && *actual_symbols_count == symbols_count
             ),
             "expected error at accessor_index=1 with symbol={sym1}, symbols_count={symbols_count}, got {err:?}"
         );

@@ -225,6 +225,7 @@ fn validate_types_returns_type_mismatch_for_wrong_type() {
         Err(ValidationError::TypeMismatch {
             expected: "boolean".to_owned(),
             found: "number".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -279,6 +280,7 @@ fn validate_resource_limits_rejects_too_many_steps() {
         result,
         Err(ValidationError::LimitExceeded {
             resource: "max_steps".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -308,6 +310,7 @@ fn validate_resource_limits_rejects_declared_limit_exceeding_hard() {
         result,
         Err(ValidationError::LimitExceeded {
             resource: "max_steps".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -330,6 +333,7 @@ fn validate_resource_limits_returns_limit_required_for_zero_declared_runtime_lim
         result,
         Err(ValidationError::LimitRequired {
             resource: "max_fanout".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -355,6 +359,7 @@ fn validate_resource_limits_rejects_declared_fanout_exceeding_hard() {
         result,
         Err(ValidationError::LimitExceeded {
             resource: "max_fanout".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -420,6 +425,7 @@ fn validate_types_rejects_null_choose_exact() {
         Err(ValidationError::TypeMismatch {
             expected: "boolean".to_owned(),
             found: "null".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -436,6 +442,7 @@ fn validate_types_rejects_text_choose_exact() {
         Err(ValidationError::TypeMismatch {
             expected: "boolean".to_owned(),
             found: "text".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -579,6 +586,7 @@ fn adversarial_type_mismatch_object_in_choose_is_rejected() {
         Err(ValidationError::TypeMismatch {
             expected: "boolean".to_owned(),
             found: "object".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -595,6 +603,7 @@ fn adversarial_type_mismatch_list_in_choose_is_rejected() {
         Err(ValidationError::TypeMismatch {
             expected: "boolean".to_owned(),
             found: "list".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -619,6 +628,7 @@ fn adversarial_resource_limit_declared_exceeding_hard_limit_is_rejected() {
         result,
         Err(ValidationError::LimitExceeded {
             resource: "max_slots".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -643,6 +653,7 @@ fn adversarial_resource_limit_actual_exceeding_declared_is_rejected() {
         result,
         Err(ValidationError::LimitExceeded {
             resource: "max_steps".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -706,6 +717,7 @@ fn adversarial_deeply_nested_composite_taint_propagates() {
 // =========================================================================
 
 use proptest::prelude::*;
+use vb_core::span::Span;
 
 fn arb_value_type() -> impl Strategy<Value = ValueType> {
     prop_oneof![
@@ -899,7 +911,10 @@ fn blackhat_resource_limits_max_slots_uses_step_count_not_slot_count() {
     };
     let hard = ResourceLimits::default();
     match validate_resource_limits(&wf, &hard) {
-        Err(ValidationError::LimitExceeded { resource }) => {
+        Err(ValidationError::LimitExceeded {
+            resource,
+            span: Span::ZERO,
+        }) => {
             assert_eq!(resource, "max_slots");
         }
         Err(ValidationError::LimitRequired { .. }) => {}
@@ -983,7 +998,11 @@ fn blackhat_zero_declared_limit_rejected() {
         matches!(result, Err(ValidationError::LimitRequired { .. })),
         "blackhat: zero declared limit should be rejected, got {result:?}"
     );
-    if let Err(ValidationError::LimitRequired { resource }) = result {
+    if let Err(ValidationError::LimitRequired {
+        resource,
+        span: Span::ZERO,
+    }) = result
+    {
         assert_eq!(resource, "max_input_bytes");
     }
 }
@@ -1234,6 +1253,7 @@ fn blackhat_zero_max_accessors_rejected() {
         result,
         Err(ValidationError::LimitRequired {
             resource: "max_accessors".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: zero max_accessors must be rejected"
     );
@@ -1257,6 +1277,7 @@ fn blackhat_zero_max_expressions_rejected() {
         result,
         Err(ValidationError::LimitRequired {
             resource: "max_expressions".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: zero max_expressions must be rejected"
     );
@@ -1280,6 +1301,7 @@ fn blackhat_zero_max_expr_stack_rejected() {
         result,
         Err(ValidationError::LimitRequired {
             resource: "max_expr_stack".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: zero max_expr_stack must be rejected"
     );
@@ -1303,6 +1325,7 @@ fn blackhat_zero_max_step_budget_per_tick_rejected() {
         result,
         Err(ValidationError::LimitRequired {
             resource: "max_step_budget_per_tick".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: zero max_step_budget_per_tick must be rejected"
     );
@@ -1326,6 +1349,7 @@ fn blackhat_zero_max_output_bytes_rejected() {
         result,
         Err(ValidationError::LimitRequired {
             resource: "max_output_bytes".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: zero max_output_bytes must be rejected"
     );
@@ -1349,6 +1373,7 @@ fn blackhat_zero_max_blob_bytes_rejected() {
         result,
         Err(ValidationError::LimitRequired {
             resource: "max_blob_bytes".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: zero max_blob_bytes must be rejected"
     );
@@ -1372,6 +1397,7 @@ fn blackhat_zero_max_ipc_payload_bytes_rejected() {
         result,
         Err(ValidationError::LimitRequired {
             resource: "max_ipc_payload_bytes".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: zero max_ipc_payload_bytes must be rejected"
     );
@@ -1395,6 +1421,7 @@ fn blackhat_zero_max_retry_attempts_rejected() {
         result,
         Err(ValidationError::LimitRequired {
             resource: "max_retry_attempts".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: zero max_retry_attempts must be rejected"
     );
@@ -1418,6 +1445,7 @@ fn blackhat_zero_max_journal_batch_bytes_rejected() {
         result,
         Err(ValidationError::LimitRequired {
             resource: "max_journal_batch_bytes".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: zero max_journal_batch_bytes must be rejected"
     );
@@ -1441,6 +1469,7 @@ fn blackhat_zero_max_steps_rejected() {
         result,
         Err(ValidationError::LimitRequired {
             resource: "max_steps".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: zero max_steps must be rejected"
     );
@@ -1464,6 +1493,7 @@ fn blackhat_zero_max_slots_rejected() {
         result,
         Err(ValidationError::LimitRequired {
             resource: "max_slots".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: zero max_slots must be rejected"
     );
@@ -1491,6 +1521,7 @@ fn blackhat_max_accessors_exceeding_hard_limit_rejected() {
         result,
         Err(ValidationError::LimitExceeded {
             resource: "max_accessors".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: max_accessors exceeding hard limit must be rejected"
     );
@@ -1514,6 +1545,7 @@ fn blackhat_max_expressions_exceeding_hard_limit_rejected() {
         result,
         Err(ValidationError::LimitExceeded {
             resource: "max_expressions".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: max_expressions exceeding hard limit must be rejected"
     );
@@ -1537,6 +1569,7 @@ fn blackhat_max_expr_stack_exceeding_hard_limit_rejected() {
         result,
         Err(ValidationError::LimitExceeded {
             resource: "max_expr_stack".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: max_expr_stack exceeding hard limit must be rejected"
     );
@@ -1560,6 +1593,7 @@ fn blackhat_max_step_budget_per_tick_exceeding_hard_limit_rejected() {
         result,
         Err(ValidationError::LimitExceeded {
             resource: "max_step_budget_per_tick".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: max_step_budget_per_tick exceeding hard limit must be rejected"
     );
@@ -1583,6 +1617,7 @@ fn blackhat_max_input_bytes_exceeding_hard_limit_rejected() {
         result,
         Err(ValidationError::LimitExceeded {
             resource: "max_input_bytes".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: max_input_bytes exceeding hard limit must be rejected"
     );
@@ -1606,6 +1641,7 @@ fn blackhat_max_output_bytes_exceeding_hard_limit_rejected() {
         result,
         Err(ValidationError::LimitExceeded {
             resource: "max_output_bytes".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: max_output_bytes exceeding hard limit must be rejected"
     );
@@ -1629,6 +1665,7 @@ fn blackhat_max_blob_bytes_exceeding_hard_limit_rejected() {
         result,
         Err(ValidationError::LimitExceeded {
             resource: "max_blob_bytes".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: max_blob_bytes exceeding hard limit must be rejected"
     );
@@ -1652,6 +1689,7 @@ fn blackhat_max_ipc_payload_bytes_exceeding_hard_limit_rejected() {
         result,
         Err(ValidationError::LimitExceeded {
             resource: "max_ipc_payload_bytes".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: max_ipc_payload_bytes exceeding hard limit must be rejected"
     );
@@ -1675,6 +1713,7 @@ fn blackhat_max_journal_batch_bytes_exceeding_hard_limit_rejected() {
         result,
         Err(ValidationError::LimitExceeded {
             resource: "max_journal_batch_bytes".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: max_journal_batch_bytes exceeding hard limit must be rejected"
     );
@@ -1695,6 +1734,7 @@ fn blackhat_choose_with_number_slot_fails_type_check() {
         Err(ValidationError::TypeMismatch {
             expected: "boolean".to_owned(),
             found: "number".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: choose with number slot must fail type check"
     );
@@ -1711,6 +1751,7 @@ fn blackhat_choose_with_text_slot_fails_type_check() {
         Err(ValidationError::TypeMismatch {
             expected: "boolean".to_owned(),
             found: "text".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: choose with text slot must fail type check"
     );
@@ -1727,6 +1768,7 @@ fn blackhat_choose_with_null_literal_fails_type_check() {
         Err(ValidationError::TypeMismatch {
             expected: "boolean".to_owned(),
             found: "null".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: choose with null literal must fail type check"
     );
@@ -1774,6 +1816,7 @@ fn blackhat_multiple_chooses_first_bad_stops_early() {
         Err(ValidationError::TypeMismatch {
             expected: "boolean".to_owned(),
             found: "number".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: first bad choose must stop validation early"
     );
@@ -2060,6 +2103,7 @@ fn blackhat_resource_limits_one_over_hard_limit_rejected() {
         result,
         Err(ValidationError::LimitExceeded {
             resource: "max_steps".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: max_steps one over hard limit must be rejected"
     );
@@ -2116,6 +2160,7 @@ fn blackhat_resource_limits_actual_exceeds_declared_rejected() {
         result,
         Err(ValidationError::LimitExceeded {
             resource: "max_steps".to_owned(),
+            span: Span::ZERO
         }),
         "blackhat: 4 actual steps with declared max_steps=3 must be rejected"
     );
@@ -2240,7 +2285,11 @@ fn blackhat_resource_limits_all_zero_rejected() {
         matches!(result, Err(ValidationError::LimitRequired { .. })),
         "blackhat: all-zero resource limits must be rejected with LimitRequired, got {result:?}"
     );
-    if let Err(ValidationError::LimitRequired { resource }) = result {
+    if let Err(ValidationError::LimitRequired {
+        resource,
+        span: Span::ZERO,
+    }) = result
+    {
         assert_eq!(
             resource, "max_steps",
             "blackhat: first zero limit checked should be max_steps"
@@ -2280,7 +2329,11 @@ fn blackhat_resource_limits_all_exceeding_hard_rejected() {
         matches!(result, Err(ValidationError::LimitExceeded { .. })),
         "blackhat: all limits exceeding hard must be rejected with LimitExceeded, got {result:?}"
     );
-    if let Err(ValidationError::LimitExceeded { resource }) = result {
+    if let Err(ValidationError::LimitExceeded {
+        resource,
+        span: Span::ZERO,
+    }) = result
+    {
         assert_eq!(
             resource, "max_steps",
             "blackhat: first limit exceeding hard should be max_steps"
@@ -2382,6 +2435,7 @@ fn edge_resource_limits_zero_max_steps_with_non_empty_steps_fails_limit_required
         result,
         Err(ValidationError::LimitRequired {
             resource: "max_steps".to_owned(),
+            span: Span::ZERO
         }),
         "edge: max_steps=0 with non-empty steps must fail with LimitRequired"
     );

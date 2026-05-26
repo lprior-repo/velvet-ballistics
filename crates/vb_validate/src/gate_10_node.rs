@@ -7,6 +7,7 @@
 
 use crate::{ValidationError, ValidationResult};
 use vb_core::ids::{AccessorIdx, ConstIdx};
+use vb_core::span::Span;
 use vb_core::workflow::{CompiledNodeKind, ExprOp, WorkflowParts};
 
 pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationResult<()> {
@@ -28,6 +29,7 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                         detail: format!(
                             "Finish result slot out of range (slot_count {slot_count})"
                         ),
+                        span: Span::ZERO,
                     });
                 }
             }
@@ -42,6 +44,7 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                             detail: format!(
                                 "Choose branch {bi} expr index out of range (expr_count {expr_count})"
                             ),
+                            span: Span::ZERO,
                         });
                     }
                     if branch.target.as_usize() >= node_count {
@@ -50,6 +53,7 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                             detail: format!(
                                 "Choose branch {bi} target step out of range (node_count {node_count})"
                             ),
+                            span: Span::ZERO,
                         });
                     }
                 }
@@ -60,6 +64,7 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                             detail: format!(
                                 "Choose otherwise target step out of range (node_count {node_count})"
                             ),
+                            span: Span::ZERO,
                         });
                     }
                 }
@@ -75,6 +80,7 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                             detail: format!(
                                 "ChooseSlot branch {bi} condition slot out of range (slot_count {slot_count})"
                             ),
+                            span: Span::ZERO,
                         });
                     }
                     if branch.target.as_usize() >= node_count {
@@ -83,6 +89,7 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                             detail: format!(
                                 "ChooseSlot branch {bi} target step out of range (node_count {node_count})"
                             ),
+                            span: Span::ZERO,
                         });
                     }
                 }
@@ -93,6 +100,7 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                             detail: format!(
                                 "ChooseSlot otherwise target step out of range (node_count {node_count})"
                             ),
+                            span: Span::ZERO,
                         });
                     }
                 }
@@ -104,6 +112,7 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                         detail: format!(
                             "SetConst value index out of range (const_count {const_count})"
                         ),
+                        span: Span::ZERO,
                     });
                 }
             }
@@ -114,6 +123,7 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                         detail: format!(
                             "EvalExpr expr index out of range (expr_count {expr_count})"
                         ),
+                        span: Span::ZERO,
                     });
                 }
             }
@@ -122,12 +132,14 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                     return Err(ValidationError::NodeKindConstraintViolation {
                         node_index,
                         detail: format!("Do input slot out of range (slot_count {slot_count})"),
+                        span: Span::ZERO,
                     });
                 }
                 if action.get() == u16::MAX {
                     return Err(ValidationError::NodeKindConstraintViolation {
                         node_index,
                         detail: String::from("Do action_id is sentinel value u16::MAX"),
+                        span: Span::ZERO,
                     });
                 }
             }
@@ -144,6 +156,7 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                         detail: format!(
                             "ForEachStart input slot out of range (slot_count {slot_count})"
                         ),
+                        span: Span::ZERO,
                     });
                 }
                 if item_slot.as_usize() >= slot_count {
@@ -152,6 +165,7 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                         detail: format!(
                             "ForEachStart item_slot out of range (slot_count {slot_count})"
                         ),
+                        span: Span::ZERO,
                     });
                 }
                 if body.as_usize() >= node_count {
@@ -160,6 +174,7 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                         detail: format!(
                             "ForEachStart body step out of range (node_count {node_count})"
                         ),
+                        span: Span::ZERO,
                     });
                 }
                 if done.as_usize() >= node_count {
@@ -168,6 +183,7 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                         detail: format!(
                             "ForEachStart done step out of range (node_count {node_count})"
                         ),
+                        span: Span::ZERO,
                     });
                 }
             }
@@ -179,6 +195,7 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                             detail: format!(
                                 "TogetherStart branch {bi} step out of range (node_count {node_count})"
                             ),
+                            span: Span::ZERO,
                         });
                     }
                 }
@@ -188,6 +205,7 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                         detail: format!(
                             "TogetherStart join step out of range (node_count {node_count})"
                         ),
+                        span: Span::ZERO,
                     });
                 }
             }
@@ -200,6 +218,7 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                                 "BuildObject field {fi} symbol {} out of range (symbols_count {symbols_count})",
                                 symbol.get()
                             ),
+                            span: Span::ZERO,
                         });
                     }
                     if slot.as_usize() >= slot_count {
@@ -208,6 +227,7 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                             detail: format!(
                                 "BuildObject field {fi} slot out of range (slot_count {slot_count})"
                             ),
+                            span: Span::ZERO,
                         });
                     }
                 }
@@ -220,6 +240,7 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                             detail: format!(
                                 "BuildList item {ii} slot out of range (slot_count {slot_count})"
                             ),
+                            span: Span::ZERO,
                         });
                     }
                 }
@@ -264,6 +285,7 @@ fn validate_load_const_reference(
             detail: format!(
                 "Expression {expr_index} LoadConst const index {const_usize} out of range (const_count {const_count})"
             ),
+            span: Span::ZERO,
         });
     }
     Ok(())
@@ -281,6 +303,7 @@ fn validate_load_accessor_reference(
             detail: format!(
                 "Expression {expr_index} LoadAccessor accessor index {accessor_usize} out of range (accessor_count {accessor_count})"
             ),
+            span: Span::ZERO,
         });
     }
     Ok(())

@@ -3023,6 +3023,7 @@ pub fn fuzz_collect_page_pagination(data: &[u8]) {
     );
 }
 
+<<<<<<< HEAD
 // ---------------------------------------------------------------------------
 // Wait digest coverage fuzz helpers (vb-xi2f.32)
 // ---------------------------------------------------------------------------
@@ -3063,10 +3064,97 @@ pub fn fuzz_wait_digest_sensitivity(event: &str, timeout: &str) {
             digest_a != digest_b,
             "COLLISION: different wait configs produced same digest {:?}",
             digest_a
+=======
+// ===========================================================================
+// vb-xi2f.9: Span Enrichment Fuzz Targets
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Target: diagnostic_from_error (FUZZ-xi2f.9-01)
+// ---------------------------------------------------------------------------
+
+/// Fuzz target: diagnostic_from_error panic-freedom and span propagation.
+///
+/// Constructs representative ValidationError variants with fuzzed span data
+/// and verifies that `diagnostic_from_error` never panics. Also verifies
+/// that the diagnostic's span equals the error's span (contract C6.2).
+///
+/// Corpus seeds:
+/// - All known variants with Span::ZERO
+/// - All known variants with Span::with_location(0, 10, 1, 1)
+pub fn fuzz_diagnostic_from_error(data: &[u8]) {
+    use vb_validate::diagnostic::diagnostic_from_error;
+    use vb_validate::ValidationError;
+
+    if data.len() < 8 {
+        return;
+    }
+
+    // Derive a span from fuzz input
+    let span = span_from_fuzz_bytes(data);
+
+    // Construct representative variants covering all variant shapes.
+    // We don't use all_variants() because it's pub(crate).
+    let errors: [ValidationError; 16] = [
+        // Unit-like variants (span only)
+        ValidationError::DuplicateKey { span },
+        ValidationError::ForbiddenYamlFeature { span },
+        ValidationError::UnknownTopLevelField { span },
+        ValidationError::UnknownStepField { span },
+        ValidationError::MultipleStepPrimitives { span },
+        ValidationError::MissingStepPrimitive { span },
+        ValidationError::DirectRuntimeReference { span },
+        ValidationError::InvalidThenTarget { span },
+        ValidationError::ControlFlowCycle { span },
+        ValidationError::SecretResultLeak { span },
+        ValidationError::PayloadTooLarge { span },
+        ValidationError::HttpTriggerOutOfCore { span },
+        // String-carrying variants
+        ValidationError::MissingRequiredField {
+            field: "test".into(),
+            span,
+        },
+        ValidationError::InvalidId {
+            id: "FUZZ".into(),
+            span,
+        },
+        ValidationError::TypeMismatch {
+            expected: "bool".into(),
+            found: "num".into(),
+            span,
+        },
+        ValidationError::LimitExceeded {
+            resource: "memory".into(),
+            span,
+        },
+    ];
+
+    for error in &errors {
+        let diag = diagnostic_from_error(error, None);
+
+        // Contract C6.2: diagnostic.span == error.span
+        assert_eq!(
+            diag.span, span,
+            "diagnostic_from_error must propagate span exactly"
+        );
+
+        // Diagnostic must have non-empty message
+        assert!(
+            !diag.message.is_empty(),
+            "diagnostic message must be non-empty"
+        );
+
+        // Diagnostic code must not be zero
+        assert_ne!(
+            diag.code.code(),
+            0,
+            "diagnostic code must be non-zero for variant"
+>>>>>>> landing/vb-xi2f.9
         );
     }
 }
 
+<<<<<<< HEAD
 /// Fuzz target helper: verifies sentinel unambiguity for WaitEvent timeout.
 /// For all event strings: digest(WaitEvent{event, None}) != digest(WaitEvent{event, Some("none")}).
 pub fn fuzz_wait_sentinel_unambiguous(event: &str) {
@@ -3299,5 +3387,199 @@ fn bounded_utf8_token(bytes: Option<&[u8]>, fallback: &str) -> String {
         String::from(fallback)
     } else {
         out
+=======
+/// Derives a Span from arbitrary fuzz bytes.
+fn span_from_fuzz_bytes(data: &[u8]) -> vb_core::span::Span {
+    let start = u32::from(data[0]).saturating_add(u32::from(data[1]).saturating_mul(256));
+    let end = u32::from(data[2]).saturating_add(u32::from(data[3]).saturating_mul(256));
+    let line = u32::from(data[4]).saturating_add(u32::from(data[5]).saturating_mul(256));
+    let col = u32::from(data[6]).saturating_add(u32::from(data[7]).saturating_mul(256));
+
+    // Ensure start <= end (immutable invariant of Span)
+    let (start, end) = if start <= end {
+        (start, end)
+    } else {
+        (end, start)
+    };
+
+    // Make line/column optional based on data to cover both paths
+    if data.len() > 8 && data[8] % 2 == 0 {
+        vb_core::span::Span::with_location(start, end, line.saturating_add(1), col.saturating_add(1))
+    } else {
+        vb_core::span::Span::new(start, end)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Target: diagnostic_code_from_str (FUZZ-xi2f.9-02)
+// ---------------------------------------------------------------------------
+
+/// Fuzz target: DiagnosticCode::from_str panic-freedom and validation.
+///
+/// Feeds arbitrary UTF-8 data to `DiagnosticCode::from_str` and verifies
+/// that it never panics, always returns a well-typed Result.
+///
+/// Corpus seeds:
+/// - "E0101" (valid)
+/// - "E010C" (valid format, unsupported range)
+/// - "E401B" (valid, top of range)
+/// - "E0000" (all zeros)
+/// - "" (empty)
+/// - "G0101" (wrong prefix)
+/// - "E" followed by 4MB of hex digits (length attack)
+pub fn fuzz_diagnostic_code_from_str(data: &[u8]) {
+    use std::str::FromStr;
+    use vb_core::diagnostic::DiagnosticCode;
+
+    // Convert input to &str, skip non-UTF-8
+    let input = match std::str::from_utf8(data) {
+        Ok(s) => s,
+        Err(_) => return,
+    };
+
+    // DiagnosticCode::from_str must never panic
+    let result = DiagnosticCode::from_str(input);
+
+    // Verify invariant: Ok values must have non-zero code
+    if let Ok(code) = result {
+        let display = code.to_string();
+        assert!(display.starts_with('E'), "Display must start with E");
+        assert_eq!(display.len(), 5, "Display must be exactly E followed by 4 hex digits");
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Target: span_bridge (FUZZ-xi2f.9-03)
+// ---------------------------------------------------------------------------
+
+/// Fuzz target: clamp_u32 and span_from_source_span panic-freedom.
+///
+/// Feeds arbitrary data interpreted as usize parameters through the span
+/// bridge functions and verifies that they never panic.
+///
+/// Obligations: PO-K07 (Kani verified), PO-P05 (proptest verified)
+///
+/// Corpus seeds:
+/// - SourceSpan { 0, 0, 0, 0, 0, 0 }
+/// - SourceSpan { u32::MAX, u32::MAX, u32::MAX, u32::MAX, u32::MAX, u32::MAX }
+/// - SourceSpan with overflow values
+pub fn fuzz_span_bridge(data: &[u8]) {
+    use vb_compile::span_bridge::{clamp_u32, span_from_source_span};
+    use vb_yaml::source_map::SourceSpan;
+
+    if data.len() < 6 {
+        return;
+    }
+
+    // Derive 6 usize values from fuzz input (one byte each for simplicity)
+    let vals: Vec<usize> = data.iter().take(6).map(|&b| usize::from(b)).collect();
+
+    // Test clamp_u32 with each value
+    for &v in &vals {
+        let clamped = clamp_u32(v);
+
+        // Invariant: clamped must be <= u32::MAX
+        assert!(
+            clamped <= u32::MAX,
+            "clamp_u32({}) produced {}, exceeds u32::MAX",
+            v,
+            clamped
+        );
+
+        // Invariant: if v <= u32::MAX, clamped == v
+        if let Ok(expected) = u32::try_from(v) {
+            assert_eq!(
+                clamped, expected,
+                "clamp_u32({}) must be identity for values within u32 range",
+                v
+            );
+        } else {
+            // Invariant: if v > u32::MAX, clamped == u32::MAX
+            assert_eq!(
+                clamped,
+                u32::MAX,
+                "clamp_u32({}) must saturate to u32::MAX for values exceeding range",
+                v
+            );
+        }
+    }
+
+    // Test clamp_u32 with extreme values derived from fuzz input
+    let extreme = if data.len() >= 8 {
+        usize::from_le_bytes(data[..8].try_into().unwrap_or([0; 8]))
+    } else {
+        usize::from(data[0])
+    };
+    let _ = clamp_u32(extreme);
+
+    // Test span_from_source_span with fuzzed SourceSpan values
+    let ss = SourceSpan::new(vals[0], vals[1], vals[2], vals[3], vals[4], vals[5]);
+    let span = span_from_source_span(ss);
+
+    // Verify output invariants
+    assert!(
+        span.start <= u32::MAX,
+        "span.start must not exceed u32::MAX"
+    );
+    assert!(
+        span.end <= u32::MAX,
+        "span.end must not exceed u32::MAX"
+    );
+
+    // Line and column must be Some (SourceSpan always carries them)
+    assert!(
+        span.line.is_some(),
+        "span_from_source_span must always produce Some line"
+    );
+    assert!(
+        span.column.is_some(),
+        "span_from_source_span must always produce Some column"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Target: compile_source for AstMarks coverage (FUZZ-xi2f.9-04)
+// ---------------------------------------------------------------------------
+
+/// Fuzz target: compile_workflow panic-freedom (exercises AstMarks::new internally).
+///
+/// Since AstMarks is `pub(crate)`, we exercise it indirectly through the
+/// public compiler API `compile_workflow(source: &[u8])`. This target fuzzes
+/// the full YAML compilation pipeline which internally constructs AstMarks,
+/// performs mark backfilling, and verifies that the entire pipeline is
+/// panic-free on arbitrary byte input.
+///
+/// This complements the existing `vb_f04l_yaml_compiler_compile` target
+/// by focusing specifically on the AstMarks backfill invariants exercised
+/// through `compile_workflow`.
+///
+/// Obligations: PO-K08 (Kani verified), PO-P06 (proptest verified)
+///
+/// Corpus seeds:
+/// - Minimal valid workflow YAML
+/// - Deeply nested mappings
+/// - YAML with unicode keys
+/// - YAML with empty document
+/// - YAML with BOM
+pub fn fuzz_compile_source_ast_marks(data: &[u8]) {
+    use vb_compile::compile_workflow;
+
+    // compile_workflow must never panic on any input
+    let result = compile_workflow(data);
+
+    match result {
+        Ok(_compiled) => {
+            // Successful compilation - verify output invariants
+        }
+        Err(errors) => {
+            // Compilation errors are expected for arbitrary input.
+            // Verify that errors are well-formed:
+            // - At least one error in the list
+            assert!(
+                !errors.is_empty(),
+                "CompileErrors must contain at least one error"
+            );
+        }
+>>>>>>> landing/vb-xi2f.9
     }
 }

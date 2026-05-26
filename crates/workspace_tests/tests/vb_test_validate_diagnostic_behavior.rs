@@ -1,7 +1,7 @@
 //! Behavior tests for vb_validate diagnostic and error reporting.
 //!
 //! Tests the public API of `vb_validate::diagnostic`:
-//! - `diagnostic_from_error(&ValidationError) -> Diagnostic`
+//! - `diagnostic_from_error(&ValidationError, None) -> Diagnostic`
 //! - `error_code(&ValidationError) -> DiagnosticCode`
 //!
 //! These tests focus on observable behavior:
@@ -23,25 +23,25 @@ mod schema_error_codes {
 
     #[test]
     fn duplicate_key_code_is_e0101() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::DuplicateKey);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::DuplicateKey { span: Span::ZERO });
         assert_eq!(code.code(), 0x0101);
     }
 
     #[test]
     fn forbidden_yaml_feature_code_is_e0102() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::ForbiddenYamlFeature);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::ForbiddenYamlFeature { span: Span::ZERO });
         assert_eq!(code.code(), 0x0102);
     }
 
     #[test]
     fn unknown_top_level_field_code_is_e0103() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::UnknownTopLevelField);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::UnknownTopLevelField { span: Span::ZERO });
         assert_eq!(code.code(), 0x0103);
     }
 
     #[test]
     fn unknown_step_field_code_is_e0104() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::UnknownStepField);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::UnknownStepField { span: Span::ZERO });
         assert_eq!(code.code(), 0x0104);
     }
 
@@ -49,7 +49,7 @@ mod schema_error_codes {
     fn missing_required_field_code_is_e0105() {
         let code = vb_validate::diagnostic::error_code(&ValidationError::MissingRequiredField {
             field: "steps".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x0105);
     }
 
@@ -57,7 +57,7 @@ mod schema_error_codes {
     fn invalid_version_code_is_e0106() {
         let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidVersion {
             version: "v0".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x0106);
     }
 
@@ -65,7 +65,7 @@ mod schema_error_codes {
     fn invalid_id_code_is_e0107() {
         let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidId {
             id: "123bad".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x0107);
     }
 
@@ -73,7 +73,7 @@ mod schema_error_codes {
     fn reserved_id_code_is_e0108() {
         let code = vb_validate::diagnostic::error_code(&ValidationError::ReservedId {
             id: "runtime".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x0108);
     }
 
@@ -81,19 +81,19 @@ mod schema_error_codes {
     fn duplicate_id_code_is_e0109() {
         let code = vb_validate::diagnostic::error_code(&ValidationError::DuplicateId {
             id: "step1".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x0109);
     }
 
     #[test]
     fn multiple_step_primitives_code_is_e010a() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::MultipleStepPrimitives);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::MultipleStepPrimitives { span: Span::ZERO });
         assert_eq!(code.code(), 0x010A);
     }
 
     #[test]
     fn missing_step_primitive_code_is_e010b() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::MissingStepPrimitive);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::MissingStepPrimitive { span: Span::ZERO });
         assert_eq!(code.code(), 0x010B);
     }
 }
@@ -109,7 +109,7 @@ mod reference_error_codes {
     fn unknown_reference_code_is_e0201() {
         let code = vb_validate::diagnostic::error_code(&ValidationError::UnknownReference {
             reference: "$input.missing".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x0201);
     }
 
@@ -117,7 +117,7 @@ mod reference_error_codes {
     fn future_reference_code_is_e0202() {
         let code = vb_validate::diagnostic::error_code(&ValidationError::FutureReference {
             reference: "$steps.later".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x0202);
     }
 
@@ -125,13 +125,13 @@ mod reference_error_codes {
     fn secret_not_declared_code_is_e0203() {
         let code = vb_validate::diagnostic::error_code(&ValidationError::SecretNotDeclared {
             secret: "api_key".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x0203);
     }
 
     #[test]
     fn direct_runtime_reference_code_is_e0204() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::DirectRuntimeReference);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::DirectRuntimeReference { span: Span::ZERO });
         assert_eq!(code.code(), 0x0204);
     }
 }
@@ -145,13 +145,13 @@ mod control_flow_error_codes {
 
     #[test]
     fn invalid_then_target_code_is_e0301() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidThenTarget);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidThenTarget { span: Span::ZERO });
         assert_eq!(code.code(), 0x0301);
     }
 
     #[test]
     fn control_flow_cycle_code_is_e0302() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::ControlFlowCycle);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::ControlFlowCycle { span: Span::ZERO });
         assert_eq!(code.code(), 0x0302);
     }
 
@@ -159,43 +159,43 @@ mod control_flow_error_codes {
     fn unreachable_step_code_is_e0303() {
         let code = vb_validate::diagnostic::error_code(&ValidationError::UnreachableStep {
             step: "orphan".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x0303);
     }
 
     #[test]
     fn invalid_choose_code_is_e0304() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidChoose);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidChoose { span: Span::ZERO });
         assert_eq!(code.code(), 0x0304);
     }
 
     #[test]
     fn invalid_for_each_code_is_e0305() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidForEach);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidForEach { span: Span::ZERO });
         assert_eq!(code.code(), 0x0305);
     }
 
     #[test]
     fn invalid_together_code_is_e0306() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidTogether);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidTogether { span: Span::ZERO });
         assert_eq!(code.code(), 0x0306);
     }
 
     #[test]
     fn invalid_collect_code_is_e0307() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidCollect);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidCollect { span: Span::ZERO });
         assert_eq!(code.code(), 0x0307);
     }
 
     #[test]
     fn invalid_reduce_code_is_e0308() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidReduce);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidReduce { span: Span::ZERO });
         assert_eq!(code.code(), 0x0308);
     }
 
     #[test]
     fn invalid_repeat_code_is_e0309() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidRepeat);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidRepeat { span: Span::ZERO });
         assert_eq!(code.code(), 0x0309);
     }
 }
@@ -209,37 +209,37 @@ mod type_taint_error_codes {
 
     #[test]
     fn invalid_wait_code_is_e0401() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidWait);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidWait { span: Span::ZERO });
         assert_eq!(code.code(), 0x0401);
     }
 
     #[test]
     fn invalid_ask_code_is_e0402() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidAsk);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidAsk { span: Span::ZERO });
         assert_eq!(code.code(), 0x0402);
     }
 
     #[test]
     fn invalid_finish_code_is_e0403() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidFinish);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidFinish { span: Span::ZERO });
         assert_eq!(code.code(), 0x0403);
     }
 
     #[test]
     fn invalid_retry_code_is_e0404() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidRetry);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidRetry { span: Span::ZERO });
         assert_eq!(code.code(), 0x0404);
     }
 
     #[test]
     fn invalid_on_error_code_is_e0405() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidOnError);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::InvalidOnError { span: Span::ZERO });
         assert_eq!(code.code(), 0x0405);
     }
 
     #[test]
     fn secret_result_leak_code_is_e0406() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::SecretResultLeak);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::SecretResultLeak { span: Span::ZERO });
         assert_eq!(code.code(), 0x0406);
     }
 
@@ -248,13 +248,13 @@ mod type_taint_error_codes {
         let code = vb_validate::diagnostic::error_code(&ValidationError::TypeMismatch {
             expected: "boolean".into(),
             found: "number".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x0407);
     }
 
     #[test]
     fn payload_too_large_code_is_e0408() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::PayloadTooLarge);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::PayloadTooLarge { span: Span::ZERO });
         assert_eq!(code.code(), 0x0408);
     }
 
@@ -262,7 +262,7 @@ mod type_taint_error_codes {
     fn limit_required_code_is_e0409() {
         let code = vb_validate::diagnostic::error_code(&ValidationError::LimitRequired {
             resource: "max_steps".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x0409);
     }
 
@@ -270,7 +270,7 @@ mod type_taint_error_codes {
     fn limit_exceeded_code_is_e040a() {
         let code = vb_validate::diagnostic::error_code(&ValidationError::LimitExceeded {
             resource: "max_steps".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x040A);
     }
 
@@ -278,13 +278,13 @@ mod type_taint_error_codes {
     fn unsupported_trigger_code_is_e040b() {
         let code = vb_validate::diagnostic::error_code(&ValidationError::UnsupportedTrigger {
             trigger: "cron".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x040B);
     }
 
     #[test]
     fn http_trigger_out_of_core_code_is_e040c() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::HttpTriggerOutOfCore);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::HttpTriggerOutOfCore { span: Span::ZERO });
         assert_eq!(code.code(), 0x040C);
     }
 }
@@ -301,7 +301,7 @@ mod gate_error_codes {
         let code = vb_validate::diagnostic::error_code(&ValidationError::ExpressionStackExceeded {
             declared: 65,
             limit: 64,
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x0501);
     }
 
@@ -311,7 +311,7 @@ mod gate_error_codes {
             expr_index: 0,
             declared: 2,
             computed: 1,
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x0502);
     }
 
@@ -321,7 +321,7 @@ mod gate_error_codes {
             accessor_index: 0,
             slot: 5,
             slot_count: 2,
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x0503);
     }
 
@@ -330,7 +330,7 @@ mod gate_error_codes {
         let code = vb_validate::diagnostic::error_code(&ValidationError::AccessorPathInvalid {
             accessor_index: 0,
             segment_index: 1,
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x0504);
     }
 
@@ -340,7 +340,7 @@ mod gate_error_codes {
             slot: 99,
             slot_count: 10,
             context: "node 0".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x0505);
     }
 
@@ -351,7 +351,7 @@ mod gate_error_codes {
             node_count: 5,
             source_node: 0,
             label: "for_each body".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x0506);
     }
 
@@ -360,7 +360,7 @@ mod gate_error_codes {
         let code = vb_validate::diagnostic::error_code(&ValidationError::SlotDependencyCycle {
             slot: 0,
             chain: "slot 0 -> slot 1 -> slot 0".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x0507);
     }
 
@@ -370,7 +370,7 @@ mod gate_error_codes {
             vb_validate::diagnostic::error_code(&ValidationError::NodeKindConstraintViolation {
                 node_index: 0,
                 detail: "test".into(),
-            });
+             span: Span::ZERO});
         assert_eq!(code.code(), 0x0508);
     }
 
@@ -379,7 +379,7 @@ mod gate_error_codes {
         let code = vb_validate::diagnostic::error_code(&ValidationError::ActionContractMissing {
             action_id: 1,
             node_index: 0,
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x0509);
     }
 
@@ -387,7 +387,7 @@ mod gate_error_codes {
     fn action_contract_orphan_code_is_e050a() {
         let code = vb_validate::diagnostic::error_code(&ValidationError::ActionContractOrphan {
             action_id: 2,
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x050A);
     }
 
@@ -395,7 +395,7 @@ mod gate_error_codes {
     fn slot_type_inconsistency_code_is_e050b() {
         let code = vb_validate::diagnostic::error_code(&ValidationError::SlotTypeInconsistency {
             slot: 0,
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x050B);
     }
 
@@ -404,7 +404,7 @@ mod gate_error_codes {
         let code = vb_validate::diagnostic::error_code(&ValidationError::NonDeterministicPath {
             from_node: 0,
             to_node: 1,
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x050C);
     }
 
@@ -413,7 +413,7 @@ mod gate_error_codes {
         let code = vb_validate::diagnostic::error_code(&ValidationError::CapabilityNameEmpty {
             action_id: 1,
             capability_index: 0,
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x050D);
     }
 
@@ -424,7 +424,7 @@ mod gate_error_codes {
             capability_index: 0,
             len: 129,
             max: 128,
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x050E);
     }
 
@@ -434,7 +434,7 @@ mod gate_error_codes {
             action_id: 1,
             capability_index: 0,
             name: "network:github".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x050F);
     }
 
@@ -445,7 +445,7 @@ mod gate_error_codes {
                 contract_action_id: 1,
                 capability_action_id: 2,
                 capability_index: 0,
-            });
+             span: Span::ZERO});
         assert_eq!(code.code(), 0x0510);
     }
 
@@ -456,7 +456,7 @@ mod gate_error_codes {
             first_index: 0,
             duplicate_index: 1,
             name: "network".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x0511);
     }
 
@@ -466,7 +466,7 @@ mod gate_error_codes {
             accessor_index: 0,
             depth: 17,
             max: 16,
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x0512);
     }
 
@@ -478,7 +478,7 @@ mod gate_error_codes {
                 segment_index: 0,
                 symbol: 42,
                 symbols_count: 10,
-            });
+             span: Span::ZERO});
         assert_eq!(code.code(), 0x0513);
     }
 }
@@ -492,7 +492,7 @@ mod contract_discovery_error_codes {
 
     #[test]
     fn missing_schema_version_code_is_e0601() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::MissingSchemaVersion);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::MissingSchemaVersion { span: Span::ZERO });
         assert_eq!(code.code(), 0x0601);
     }
 
@@ -500,7 +500,7 @@ mod contract_discovery_error_codes {
     fn cue_vet_failed_code_is_e0602() {
         let code = vb_validate::diagnostic::error_code(&ValidationError::CueVetFailed {
             file: "workflow.cue".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(code.code(), 0x0602);
     }
 
@@ -511,7 +511,7 @@ mod contract_discovery_error_codes {
                 file: "lib.cue".into(),
                 expected: "v2.0".into(),
                 actual: "v1.9".into(),
-            });
+             span: Span::ZERO});
         assert_eq!(code.code(), 0x0603);
     }
 }
@@ -528,7 +528,7 @@ mod error_message_formatting {
         let diag = vb_validate::diagnostic::diagnostic_from_error(
             &ValidationError::MissingRequiredField {
                 field: "version".into(),
-            },
+             span: Span::ZERO},
         );
         assert_eq!(&*diag.message, "missing required field: version");
     }
@@ -538,7 +538,7 @@ mod error_message_formatting {
         let diag =
             vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidVersion {
                 version: "v2".into(),
-            });
+             span: Span::ZERO});
         assert_eq!(&*diag.message, "invalid version: v2");
     }
 
@@ -546,7 +546,7 @@ mod error_message_formatting {
     fn invalid_id_message_exact_format() {
         let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidId {
             id: "bad-id".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(&*diag.message, "invalid ID: bad-id");
     }
 
@@ -554,7 +554,7 @@ mod error_message_formatting {
     fn reserved_id_message_exact_format() {
         let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::ReservedId {
             id: "runtime".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(&*diag.message, "reserved ID: runtime");
     }
 
@@ -562,7 +562,7 @@ mod error_message_formatting {
     fn duplicate_id_message_exact_format() {
         let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::DuplicateId {
             id: "step1".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(&*diag.message, "duplicate ID: step1");
     }
 
@@ -571,7 +571,7 @@ mod error_message_formatting {
         let diag =
             vb_validate::diagnostic::diagnostic_from_error(&ValidationError::UnknownReference {
                 reference: "$input.missing".into(),
-            });
+             span: Span::ZERO});
         assert_eq!(&*diag.message, "unknown reference: $input.missing");
     }
 
@@ -580,7 +580,7 @@ mod error_message_formatting {
         let diag =
             vb_validate::diagnostic::diagnostic_from_error(&ValidationError::FutureReference {
                 reference: "$steps.build".into(),
-            });
+             span: Span::ZERO});
         assert_eq!(&*diag.message, "future reference: $steps.build");
     }
 
@@ -589,7 +589,7 @@ mod error_message_formatting {
         let diag =
             vb_validate::diagnostic::diagnostic_from_error(&ValidationError::SecretNotDeclared {
                 secret: "api_key".into(),
-            });
+             span: Span::ZERO});
         assert_eq!(&*diag.message, "secret not declared: api_key");
     }
 
@@ -598,7 +598,7 @@ mod error_message_formatting {
         let diag =
             vb_validate::diagnostic::diagnostic_from_error(&ValidationError::UnreachableStep {
                 step: "orphan_step".into(),
-            });
+             span: Span::ZERO});
         assert_eq!(&*diag.message, "unreachable step: orphan_step");
     }
 
@@ -607,7 +607,7 @@ mod error_message_formatting {
         let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::TypeMismatch {
             expected: "boolean".into(),
             found: "number".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(
             &*diag.message,
             "type mismatch: expected boolean, found number"
@@ -619,7 +619,7 @@ mod error_message_formatting {
         let diag =
             vb_validate::diagnostic::diagnostic_from_error(&ValidationError::LimitRequired {
                 resource: "max_slots".into(),
-            });
+             span: Span::ZERO});
         assert_eq!(&*diag.message, "limit required: max_slots");
     }
 
@@ -628,7 +628,7 @@ mod error_message_formatting {
         let diag =
             vb_validate::diagnostic::diagnostic_from_error(&ValidationError::LimitExceeded {
                 resource: "max_steps".into(),
-            });
+             span: Span::ZERO});
         assert_eq!(&*diag.message, "limit exceeded: max_steps");
     }
 
@@ -637,7 +637,7 @@ mod error_message_formatting {
         let diag =
             vb_validate::diagnostic::diagnostic_from_error(&ValidationError::UnsupportedTrigger {
                 trigger: "cron".into(),
-            });
+             span: Span::ZERO});
         assert_eq!(&*diag.message, "unsupported trigger: cron");
     }
 
@@ -647,7 +647,7 @@ mod error_message_formatting {
             &ValidationError::ExpressionStackExceeded {
                 declared: 100,
                 limit: 64,
-            },
+             span: Span::ZERO},
         );
         assert_eq!(
             &*diag.message,
@@ -662,7 +662,7 @@ mod error_message_formatting {
                 expr_index: 3,
                 declared: 4,
                 computed: 2,
-            },
+             span: Span::ZERO},
         );
         assert_eq!(
             &*diag.message,
@@ -677,7 +677,7 @@ mod error_message_formatting {
                 accessor_index: 1,
                 slot: 10,
                 slot_count: 5,
-            },
+             span: Span::ZERO},
         );
         assert_eq!(
             &*diag.message,
@@ -691,7 +691,7 @@ mod error_message_formatting {
             vb_validate::diagnostic::diagnostic_from_error(&ValidationError::AccessorPathInvalid {
                 accessor_index: 0,
                 segment_index: 2,
-            });
+             span: Span::ZERO});
         assert_eq!(
             &*diag.message,
             "accessor path invalid: accessor 0, segment 2"
@@ -705,7 +705,7 @@ mod error_message_formatting {
                 accessor_index: 0,
                 depth: 17,
                 max: 16,
-            });
+             span: Span::ZERO});
         assert_eq!(
             &*diag.message,
             "accessor path too deep: accessor 0, depth 17, max 16"
@@ -720,7 +720,7 @@ mod error_message_formatting {
                 segment_index: 3,
                 symbol: 42,
                 symbols_count: 10,
-            },
+             span: Span::ZERO},
         );
         assert_eq!(
             &*diag.message,
@@ -735,7 +735,7 @@ mod error_message_formatting {
                 slot: 99,
                 slot_count: 10,
                 context: "node 0".into(),
-            },
+             span: Span::ZERO},
         );
         assert_eq!(
             &*diag.message,
@@ -751,7 +751,7 @@ mod error_message_formatting {
                 node_count: 5,
                 source_node: 0,
                 label: "for_each body".into(),
-            },
+             span: Span::ZERO},
         );
         assert_eq!(
             &*diag.message,
@@ -765,7 +765,7 @@ mod error_message_formatting {
             vb_validate::diagnostic::diagnostic_from_error(&ValidationError::SlotDependencyCycle {
                 slot: 0,
                 chain: "slot 0 -> slot 1 -> slot 0".into(),
-            });
+             span: Span::ZERO});
         assert_eq!(
             &*diag.message,
             "slot dependency cycle: slot 0, chain slot 0 -> slot 1 -> slot 0"
@@ -778,7 +778,7 @@ mod error_message_formatting {
             &ValidationError::NodeKindConstraintViolation {
                 node_index: 5,
                 detail: "expected Action node".into(),
-            },
+             span: Span::ZERO},
         );
         assert_eq!(
             &*diag.message,
@@ -792,7 +792,7 @@ mod error_message_formatting {
             &ValidationError::ActionContractMissing {
                 action_id: 42,
                 node_index: 3,
-            },
+             span: Span::ZERO},
         );
         assert_eq!(
             &*diag.message,
@@ -803,7 +803,7 @@ mod error_message_formatting {
     #[test]
     fn action_contract_orphan_message_exact_format() {
         let diag = vb_validate::diagnostic::diagnostic_from_error(
-            &ValidationError::ActionContractOrphan { action_id: 7 },
+            &ValidationError::ActionContractOrphan { action_id: 7 , span: Span::ZERO},
         );
         assert_eq!(
             &*diag.message,
@@ -817,7 +817,7 @@ mod error_message_formatting {
             vb_validate::diagnostic::diagnostic_from_error(&ValidationError::CapabilityNameEmpty {
                 action_id: 1,
                 capability_index: 0,
-            });
+             span: Span::ZERO});
         assert_eq!(
             &*diag.message,
             "capability name is empty for action 1 at required_capabilities[0]"
@@ -832,7 +832,7 @@ mod error_message_formatting {
                 capability_index: 2,
                 len: 200,
                 max: 128,
-            },
+             span: Span::ZERO},
         );
         assert_eq!(
             &*diag.message,
@@ -847,7 +847,7 @@ mod error_message_formatting {
                 action_id: 1,
                 capability_index: 0,
                 name: "network:github".into(),
-            },
+             span: Span::ZERO},
         );
         assert_eq!(
             &*diag.message,
@@ -862,7 +862,7 @@ mod error_message_formatting {
                 contract_action_id: 5,
                 capability_action_id: 3,
                 capability_index: 1,
-            },
+             span: Span::ZERO},
         );
         assert_eq!(
             &*diag.message,
@@ -878,7 +878,7 @@ mod error_message_formatting {
                 first_index: 0,
                 duplicate_index: 2,
                 name: "network".into(),
-            });
+             span: Span::ZERO});
         assert_eq!(
             &*diag.message,
             "duplicate capability requirement for action 1: network at required_capabilities[0] and required_capabilities[2]"
@@ -888,7 +888,7 @@ mod error_message_formatting {
     #[test]
     fn slot_type_inconsistency_message_exact_format() {
         let diag = vb_validate::diagnostic::diagnostic_from_error(
-            &ValidationError::SlotTypeInconsistency { slot: 4 },
+            &ValidationError::SlotTypeInconsistency { slot: 4 , span: Span::ZERO},
         );
         assert_eq!(
             &*diag.message,
@@ -902,7 +902,7 @@ mod error_message_formatting {
             &ValidationError::NonDeterministicPath {
                 from_node: 1,
                 to_node: 7,
-            },
+             span: Span::ZERO},
         );
         assert_eq!(
             &*diag.message,
@@ -913,7 +913,7 @@ mod error_message_formatting {
     #[test]
     fn missing_schema_version_message_exact_format() {
         let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::MissingSchemaVersion);
+            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::MissingSchemaVersion { span: Span::ZERO }, None);
         assert_eq!(&*diag.message, "missing schema_version field");
     }
 
@@ -921,7 +921,7 @@ mod error_message_formatting {
     fn cue_vet_failed_message_exact_format() {
         let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::CueVetFailed {
             file: "workflow.cue".into(),
-        });
+         span: Span::ZERO});
         assert_eq!(&*diag.message, "cue vet failed for workflow.cue");
     }
 
@@ -932,7 +932,7 @@ mod error_message_formatting {
                 file: "lib.cue".into(),
                 expected: "v2.0".into(),
                 actual: "v1.9".into(),
-            },
+             span: Span::ZERO},
         );
         assert_eq!(
             &*diag.message,
@@ -946,35 +946,35 @@ mod error_message_formatting {
 
     #[test]
     fn duplicate_key_message() {
-        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::DuplicateKey);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::DuplicateKey { span: Span::ZERO }, None);
         assert_eq!(&*diag.message, "duplicate key");
     }
 
     #[test]
     fn forbidden_yaml_feature_message() {
         let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::ForbiddenYamlFeature);
+            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::ForbiddenYamlFeature { span: Span::ZERO }, None);
         assert_eq!(&*diag.message, "forbidden YAML feature");
     }
 
     #[test]
     fn unknown_top_level_field_message() {
         let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::UnknownTopLevelField);
+            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::UnknownTopLevelField { span: Span::ZERO }, None);
         assert_eq!(&*diag.message, "unknown top-level field");
     }
 
     #[test]
     fn unknown_step_field_message() {
         let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::UnknownStepField);
+            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::UnknownStepField { span: Span::ZERO }, None);
         assert_eq!(&*diag.message, "unknown step field");
     }
 
     #[test]
     fn multiple_step_primitives_message() {
         let diag = vb_validate::diagnostic::diagnostic_from_error(
-            &ValidationError::MultipleStepPrimitives,
+            &ValidationError::MultipleStepPrimitives { span: Span::ZERO },
         );
         assert_eq!(&*diag.message, "multiple step primitives");
     }
@@ -982,14 +982,14 @@ mod error_message_formatting {
     #[test]
     fn missing_step_primitive_message() {
         let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::MissingStepPrimitive);
+            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::MissingStepPrimitive { span: Span::ZERO }, None);
         assert_eq!(&*diag.message, "missing step primitive");
     }
 
     #[test]
     fn direct_runtime_reference_message() {
         let diag = vb_validate::diagnostic::diagnostic_from_error(
-            &ValidationError::DirectRuntimeReference,
+            &ValidationError::DirectRuntimeReference { span: Span::ZERO },
         );
         assert_eq!(&*diag.message, "direct runtime reference");
     }
@@ -997,102 +997,102 @@ mod error_message_formatting {
     #[test]
     fn invalid_then_target_message() {
         let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidThenTarget);
+            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidThenTarget { span: Span::ZERO }, None);
         assert_eq!(&*diag.message, "invalid then target");
     }
 
     #[test]
     fn control_flow_cycle_message() {
         let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::ControlFlowCycle);
+            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::ControlFlowCycle { span: Span::ZERO }, None);
         assert_eq!(&*diag.message, "control-flow cycle");
     }
 
     #[test]
     fn invalid_choose_message() {
-        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidChoose);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidChoose { span: Span::ZERO }, None);
         assert_eq!(&*diag.message, "invalid choose");
     }
 
     #[test]
     fn invalid_for_each_message() {
-        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidForEach);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidForEach { span: Span::ZERO }, None);
         assert_eq!(&*diag.message, "invalid for_each");
     }
 
     #[test]
     fn invalid_together_message() {
         let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidTogether);
+            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidTogether { span: Span::ZERO }, None);
         assert_eq!(&*diag.message, "invalid together");
     }
 
     #[test]
     fn invalid_collect_message() {
-        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidCollect);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidCollect { span: Span::ZERO }, None);
         assert_eq!(&*diag.message, "invalid collect");
     }
 
     #[test]
     fn invalid_reduce_message() {
-        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidReduce);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidReduce { span: Span::ZERO }, None);
         assert_eq!(&*diag.message, "invalid reduce");
     }
 
     #[test]
     fn invalid_repeat_message() {
-        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidRepeat);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidRepeat { span: Span::ZERO }, None);
         assert_eq!(&*diag.message, "invalid repeat");
     }
 
     #[test]
     fn invalid_wait_message() {
-        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidWait);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidWait { span: Span::ZERO }, None);
         assert_eq!(&*diag.message, "invalid wait");
     }
 
     #[test]
     fn invalid_ask_message() {
-        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidAsk);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidAsk { span: Span::ZERO }, None);
         assert_eq!(&*diag.message, "invalid ask");
     }
 
     #[test]
     fn invalid_finish_message() {
-        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidFinish);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidFinish { span: Span::ZERO }, None);
         assert_eq!(&*diag.message, "invalid finish");
     }
 
     #[test]
     fn invalid_retry_message() {
-        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidRetry);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidRetry { span: Span::ZERO }, None);
         assert_eq!(&*diag.message, "invalid retry");
     }
 
     #[test]
     fn invalid_on_error_message() {
-        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidOnError);
+        let diag = vb_validate::diagnostic::diagnostic_from_error(&ValidationError::InvalidOnError { span: Span::ZERO }, None);
         assert_eq!(&*diag.message, "invalid on_error");
     }
 
     #[test]
     fn secret_result_leak_message() {
         let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::SecretResultLeak);
+            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::SecretResultLeak { span: Span::ZERO }, None);
         assert_eq!(&*diag.message, "secret result leak");
     }
 
     #[test]
     fn payload_too_large_message() {
         let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::PayloadTooLarge);
+            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::PayloadTooLarge { span: Span::ZERO }, None);
         assert_eq!(&*diag.message, "payload too large");
     }
 
     #[test]
     fn http_trigger_out_of_core_message() {
         let diag =
-            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::HttpTriggerOutOfCore);
+            vb_validate::diagnostic::diagnostic_from_error(&ValidationError::HttpTriggerOutOfCore { span: Span::ZERO }, None);
         assert_eq!(&*diag.message, "HTTP trigger out of core");
     }
 }
@@ -1108,11 +1108,11 @@ mod diagnostic_structure_invariants {
     fn diagnostic_severity_is_always_error() {
         let variants = all_validation_errors();
         for error in variants {
-            let diag = vb_validate::diagnostic::diagnostic_from_error(&error);
+            let diag = vb_validate::diagnostic::diagnostic_from_error(&error, None);
             assert_eq!(
                 diag.severity,
                 Severity::Error,
-                "diagnostic_from_error({error:?}) should have Severity::Error"
+                "diagnostic_from_error({error:?}, None) should have Severity::Error"
             );
         }
     }
@@ -1121,11 +1121,11 @@ mod diagnostic_structure_invariants {
     fn diagnostic_span_is_zero_for_all_variants() {
         let variants = all_validation_errors();
         for error in variants {
-            let diag = vb_validate::diagnostic::diagnostic_from_error(&error);
+            let diag = vb_validate::diagnostic::diagnostic_from_error(&error, None);
             assert_eq!(
                 diag.span,
                 Span::ZERO,
-                "diagnostic_from_error({error:?}) should have Span::ZERO"
+                "diagnostic_from_error({error:?}, None) should have Span::ZERO"
             );
         }
     }
@@ -1134,10 +1134,10 @@ mod diagnostic_structure_invariants {
     fn diagnostic_message_is_non_empty_for_all_variants() {
         let variants = all_validation_errors();
         for error in variants {
-            let diag = vb_validate::diagnostic::diagnostic_from_error(&error);
+            let diag = vb_validate::diagnostic::diagnostic_from_error(&error, None);
             assert!(
                 !diag.message.is_empty(),
-                "diagnostic_from_error({error:?}) should have non-empty message"
+                "diagnostic_from_error({error:?}, None) should have non-empty message"
             );
         }
     }
@@ -1172,156 +1172,156 @@ mod diagnostic_structure_invariants {
     /// Returns every ValidationError variant with representative field values.
     fn all_validation_errors() -> Vec<ValidationError> {
         vec![
-            ValidationError::DuplicateKey,
-            ValidationError::ForbiddenYamlFeature,
-            ValidationError::UnknownTopLevelField,
-            ValidationError::UnknownStepField,
+            ValidationError::DuplicateKey { span: Span::ZERO },
+            ValidationError::ForbiddenYamlFeature { span: Span::ZERO },
+            ValidationError::UnknownTopLevelField { span: Span::ZERO },
+            ValidationError::UnknownStepField { span: Span::ZERO },
             ValidationError::MissingRequiredField {
                 field: "test".into(),
-            },
+             span: Span::ZERO},
             ValidationError::InvalidVersion {
                 version: "v0".into(),
-            },
-            ValidationError::InvalidId { id: "BAD".into() },
+             span: Span::ZERO},
+            ValidationError::InvalidId { id: "BAD".into() , span: Span::ZERO},
             ValidationError::ReservedId {
                 id: "runtime".into(),
-            },
-            ValidationError::DuplicateId { id: "dup".into() },
-            ValidationError::MultipleStepPrimitives,
-            ValidationError::MissingStepPrimitive,
+             span: Span::ZERO},
+            ValidationError::DuplicateId { id: "dup".into() , span: Span::ZERO},
+            ValidationError::MultipleStepPrimitives { span: Span::ZERO },
+            ValidationError::MissingStepPrimitive { span: Span::ZERO },
             ValidationError::UnknownReference {
                 reference: "$x".into(),
-            },
+             span: Span::ZERO},
             ValidationError::FutureReference {
                 reference: "$steps.s".into(),
-            },
+             span: Span::ZERO},
             ValidationError::SecretNotDeclared {
                 secret: "tok".into(),
-            },
-            ValidationError::DirectRuntimeReference,
-            ValidationError::InvalidThenTarget,
-            ValidationError::ControlFlowCycle,
-            ValidationError::UnreachableStep { step: "s".into() },
-            ValidationError::InvalidChoose,
-            ValidationError::InvalidForEach,
-            ValidationError::InvalidTogether,
-            ValidationError::InvalidCollect,
-            ValidationError::InvalidReduce,
-            ValidationError::InvalidRepeat,
-            ValidationError::InvalidWait,
-            ValidationError::InvalidAsk,
-            ValidationError::InvalidFinish,
-            ValidationError::InvalidRetry,
-            ValidationError::InvalidOnError,
-            ValidationError::SecretResultLeak,
+             span: Span::ZERO},
+            ValidationError::DirectRuntimeReference { span: Span::ZERO },
+            ValidationError::InvalidThenTarget { span: Span::ZERO },
+            ValidationError::ControlFlowCycle { span: Span::ZERO },
+            ValidationError::UnreachableStep { step: "s".into() , span: Span::ZERO},
+            ValidationError::InvalidChoose { span: Span::ZERO },
+            ValidationError::InvalidForEach { span: Span::ZERO },
+            ValidationError::InvalidTogether { span: Span::ZERO },
+            ValidationError::InvalidCollect { span: Span::ZERO },
+            ValidationError::InvalidReduce { span: Span::ZERO },
+            ValidationError::InvalidRepeat { span: Span::ZERO },
+            ValidationError::InvalidWait { span: Span::ZERO },
+            ValidationError::InvalidAsk { span: Span::ZERO },
+            ValidationError::InvalidFinish { span: Span::ZERO },
+            ValidationError::InvalidRetry { span: Span::ZERO },
+            ValidationError::InvalidOnError { span: Span::ZERO },
+            ValidationError::SecretResultLeak { span: Span::ZERO },
             ValidationError::TypeMismatch {
                 expected: "a".into(),
                 found: "b".into(),
-            },
-            ValidationError::PayloadTooLarge,
+             span: Span::ZERO},
+            ValidationError::PayloadTooLarge { span: Span::ZERO },
             ValidationError::LimitRequired {
                 resource: "r".into(),
-            },
+             span: Span::ZERO},
             ValidationError::LimitExceeded {
                 resource: "r".into(),
-            },
+             span: Span::ZERO},
             ValidationError::UnsupportedTrigger {
                 trigger: "cron".into(),
-            },
-            ValidationError::HttpTriggerOutOfCore,
+             span: Span::ZERO},
+            ValidationError::HttpTriggerOutOfCore { span: Span::ZERO },
             ValidationError::ExpressionStackExceeded {
                 declared: 65,
                 limit: 64,
-            },
+             span: Span::ZERO},
             ValidationError::ExpressionStackMismatch {
                 expr_index: 0,
                 declared: 2,
                 computed: 1,
-            },
+             span: Span::ZERO},
             ValidationError::AccessorSlotOutOfRange {
                 accessor_index: 0,
                 slot: 5,
                 slot_count: 2,
-            },
+             span: Span::ZERO},
             ValidationError::AccessorPathInvalid {
                 accessor_index: 0,
                 segment_index: 1,
-            },
+             span: Span::ZERO},
             ValidationError::AccessorPathTooDeep {
                 accessor_index: 0,
                 depth: 17,
                 max: 16,
-            },
+             span: Span::ZERO},
             ValidationError::AccessorSymbolOutOfBounds {
                 accessor_index: 0,
                 segment_index: 0,
                 symbol: 42,
                 symbols_count: 10,
-            },
+             span: Span::ZERO},
             ValidationError::SlotReferenceOutOfRange {
                 slot: 99,
                 slot_count: 10,
                 context: "node 0".into(),
-            },
+             span: Span::ZERO},
             ValidationError::LoopBodyStepOutOfRange {
                 step: 99,
                 node_count: 5,
                 source_node: 0,
                 label: "for_each body".into(),
-            },
+             span: Span::ZERO},
             ValidationError::SlotDependencyCycle {
                 slot: 0,
                 chain: "slot 0 -> slot 1 -> slot 0".into(),
-            },
+             span: Span::ZERO},
             ValidationError::NodeKindConstraintViolation {
                 node_index: 0,
                 detail: "test".into(),
-            },
+             span: Span::ZERO},
             ValidationError::ActionContractMissing {
                 action_id: 1,
                 node_index: 0,
-            },
-            ValidationError::ActionContractOrphan { action_id: 2 },
+             span: Span::ZERO},
+            ValidationError::ActionContractOrphan { action_id: 2 , span: Span::ZERO},
             ValidationError::CapabilityNameEmpty {
                 action_id: 1,
                 capability_index: 0,
-            },
+             span: Span::ZERO},
             ValidationError::CapabilityNameTooLong {
                 action_id: 1,
                 capability_index: 0,
                 len: 129,
                 max: 128,
-            },
+             span: Span::ZERO},
             ValidationError::CapabilityNameInvalid {
                 action_id: 1,
                 capability_index: 0,
                 name: "network:github".into(),
-            },
+             span: Span::ZERO},
             ValidationError::CapabilityActionMismatch {
                 contract_action_id: 1,
                 capability_action_id: 2,
                 capability_index: 0,
-            },
+             span: Span::ZERO},
             ValidationError::CapabilityDuplicate {
                 action_id: 1,
                 first_index: 0,
                 duplicate_index: 1,
                 name: "network".into(),
-            },
-            ValidationError::SlotTypeInconsistency { slot: 0 },
+             span: Span::ZERO},
+            ValidationError::SlotTypeInconsistency { slot: 0 , span: Span::ZERO},
             ValidationError::NonDeterministicPath {
                 from_node: 0,
                 to_node: 1,
-            },
-            ValidationError::MissingSchemaVersion,
+             span: Span::ZERO},
+            ValidationError::MissingSchemaVersion { span: Span::ZERO },
             ValidationError::CueVetFailed {
                 file: "test.cue".into(),
-            },
+             span: Span::ZERO},
             ValidationError::VersionMonotonicityBreach {
                 file: "test.cue".into(),
                 expected: "v2.0".into(),
                 actual: "v1.9".into(),
-            },
+             span: Span::ZERO},
         ]
     }
 }
@@ -1336,7 +1336,7 @@ mod diagnostic_code_display {
 
     #[test]
     fn diagnostic_code_display_is_e_prefixed_hex() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::DuplicateKey);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::DuplicateKey { span: Span::ZERO });
         let mut s = String::new();
         write!(&mut s, "{}", code).unwrap();
         assert_eq!(s, "E0101");
@@ -1344,7 +1344,7 @@ mod diagnostic_code_display {
 
     #[test]
     fn diagnostic_code_display_e040c() {
-        let code = vb_validate::diagnostic::error_code(&ValidationError::HttpTriggerOutOfCore);
+        let code = vb_validate::diagnostic::error_code(&ValidationError::HttpTriggerOutOfCore { span: Span::ZERO });
         let mut s = String::new();
         write!(&mut s, "{}", code).unwrap();
         assert_eq!(s, "E040C");
@@ -1358,7 +1358,7 @@ mod diagnostic_code_display {
                 segment_index: 0,
                 symbol: 1,
                 symbols_count: 10,
-            });
+             span: Span::ZERO});
         let mut s = String::new();
         write!(&mut s, "{}", code).unwrap();
         assert_eq!(s, "E0513");

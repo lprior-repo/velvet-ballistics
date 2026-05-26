@@ -8,6 +8,7 @@
 mod tests {
     use crate::ref_validate::{RefTables, WorkflowRefs, string_set, validate_references, validate_single_reference};
     use crate::ValidationError;
+use vb_core::span::Span;
 
     fn make_tables(
         inputs: &[&str],
@@ -70,7 +71,7 @@ mod tests {
         let tables = make_tables(&[], &[], &[], &[]);
         assert!(matches!(
             validate_single_reference("$runtime.now", &tables),
-            Err(ValidationError::DirectRuntimeReference)
+            Err(ValidationError::DirectRuntimeReference { span: Span::ZERO })
         ));
     }
 
@@ -79,7 +80,7 @@ mod tests {
         let tables = make_tables(&[], &[], &[], &[]);
         assert!(matches!(
             validate_single_reference("$now", &tables),
-            Err(ValidationError::DirectRuntimeReference)
+            Err(ValidationError::DirectRuntimeReference { span: Span::ZERO })
         ));
     }
 
@@ -88,7 +89,7 @@ mod tests {
         let tables = make_tables(&[], &[], &[], &[]);
         assert!(matches!(
             validate_single_reference("$random", &tables),
-            Err(ValidationError::DirectRuntimeReference)
+            Err(ValidationError::DirectRuntimeReference { span: Span::ZERO })
         ));
     }
 

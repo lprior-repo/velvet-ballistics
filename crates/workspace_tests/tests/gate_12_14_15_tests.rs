@@ -13,6 +13,7 @@ use vb_core::value::ConstValue;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 use vb_validate::ValidationError;
 use vb_validate::gates::{
+use vb_core::span::Span;
     validate_gate_12_action_contract_completeness, validate_gate_14_slot_type_consistency,
     validate_gate_15_determinism_proof,
 };
@@ -130,7 +131,7 @@ fn gate_12_rejects_missing_contract() {
         Err(ValidationError::ActionContractMissing {
             action_id: 99,
             node_index: 0
-        })
+        , span: Span::ZERO})
     ));
 }
 
@@ -141,7 +142,7 @@ fn gate_12_rejects_orphan_contract() {
     let contracts = vec![make_contract(42)]; // No Do node uses action 42
     assert!(matches!(
         validate_gate_12_action_contract_completeness(&parts, &contracts),
-        Err(ValidationError::ActionContractOrphan { action_id: 42 })
+        Err(ValidationError::ActionContractOrphan { action_id: 42 , span: Span::ZERO})
     ));
 }
 
@@ -187,7 +188,7 @@ fn gate_12_contract_capability_validation() {
         Err(ValidationError::CapabilityNameEmpty {
             action_id: 1,
             capability_index: 0
-        })
+        , span: Span::ZERO})
     ));
 }
 
@@ -282,7 +283,7 @@ fn gate_14_rejects_incompatible_types() {
     parts.constants = Box::new([ConstValue::I64(1), ConstValue::Bool(true)]);
     assert!(matches!(
         validate_gate_14_slot_type_consistency(&parts),
-        Err(ValidationError::SlotTypeInconsistency { slot: 0 })
+        Err(ValidationError::SlotTypeInconsistency { slot: 0 , span: Span::ZERO})
     ));
 }
 
@@ -355,7 +356,7 @@ fn gate_15_rejects_adjacent_nd_nodes() {
         Err(ValidationError::NonDeterministicPath {
             from_node: 0,
             to_node: 1
-        })
+        , span: Span::ZERO})
     ));
 }
 

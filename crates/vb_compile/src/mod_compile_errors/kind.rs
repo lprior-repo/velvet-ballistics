@@ -19,7 +19,7 @@ pub enum CompileError {
     #[error("YAML parse failed: {0}")]
     Parse(#[from] saphyr::ScanError),
     #[error("canonical YAML parse failed ({category}): {message}")]
-    CanonicalYaml { category: &'static str, message: Box<str> },
+    CanonicalYaml { category: &'static str, message: Box<str>, mark: SourceMark },
     #[error("expected exactly one YAML document, found {count}")]
     DocumentCount { count: usize },
     #[error("top-level YAML document must be a mapping")]

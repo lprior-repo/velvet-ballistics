@@ -4,6 +4,7 @@
 use std::collections::HashSet;
 
 use proptest::prelude::*;
+use vb_core::span::Span;
 use vb_validate::ValidationError;
 use vb_validate::schema::{
     FieldValue, StepDoc, WorkflowDoc, validate_single_primitive, validate_step_fields,
@@ -141,7 +142,7 @@ proptest! {
         }
         let step = make_step(step_fields);
         let result = validate_single_primitive(&step);
-        prop_assert_eq!(result, Err(ValidationError::MissingStepPrimitive));
+        prop_assert_eq!(result, Err(ValidationError::MissingStepPrimitive { span: Span::ZERO }));
     }
 
     #[test]
@@ -161,7 +162,7 @@ proptest! {
         ]);
         prop_assert_eq!(
             validate_single_primitive(&step),
-            Err(ValidationError::MultipleStepPrimitives)
+            Err(ValidationError::MultipleStepPrimitives { span: Span::ZERO })
         );
     }
 
@@ -274,7 +275,7 @@ proptest! {
         )]);
         prop_assert_eq!(
             validate_step_fields(&doc),
-            Err(ValidationError::UnknownStepField)
+            Err(ValidationError::UnknownStepField { span: Span::ZERO })
         );
     }
 
@@ -288,7 +289,7 @@ proptest! {
             result,
             Err(ValidationError::MissingRequiredField {
                 field: "when".to_owned(),
-            })
+             span: Span::ZERO})
         );
     }
 }
@@ -301,6 +302,7 @@ proptest! {
 mod kani_harnesses {
     use super::*;
 
+    use vb_core::span::Span;
     use vb_validate::ValidationError;
     use vb_validate::schema::{
         FieldValue, StepDoc, WorkflowDoc, validate_ids, validate_single_primitive,
@@ -572,6 +574,7 @@ fn kani_integration_version_mismatch_is_invalid_version() {
         validate_version(&doc),
         Err(ValidationError::InvalidVersion {
             version: "v2.0".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -584,7 +587,7 @@ fn kani_integration_http_trigger_is_rejected() {
     )]);
     assert_eq!(
         validate_trigger(&doc),
-        Err(ValidationError::HttpTriggerOutOfCore)
+        Err(ValidationError::HttpTriggerOutOfCore { span: Span::ZERO })
     );
 }
 
@@ -602,7 +605,7 @@ fn kani_integration_duplicate_field_caught() {
     ]);
     assert_eq!(
         validate_workflow_schema(&doc),
-        Err(ValidationError::DuplicateKey)
+        Err(ValidationError::DuplicateKey { span: Span::ZERO })
     );
 }
 
@@ -616,7 +619,7 @@ fn kani_integration_multiple_primitives_caught() {
     ]);
     assert_eq!(
         validate_single_primitive(&step),
-        Err(ValidationError::MultipleStepPrimitives)
+        Err(ValidationError::MultipleStepPrimitives { span: Span::ZERO })
     );
 }
 
@@ -625,7 +628,7 @@ fn kani_integration_missing_primitive_caught() {
     let step = make_step(vec![("id", FieldValue::String("bare_step".to_owned()))]);
     assert_eq!(
         validate_single_primitive(&step),
-        Err(ValidationError::MissingStepPrimitive)
+        Err(ValidationError::MissingStepPrimitive { span: Span::ZERO })
     );
 }
 
@@ -743,7 +746,7 @@ fn kani_integration_unknown_top_level_field_is_caught() {
     ]);
     assert_eq!(
         validate_workflow_schema(&doc),
-        Err(ValidationError::UnknownTopLevelField)
+        Err(ValidationError::UnknownTopLevelField { span: Span::ZERO })
     );
 }
 
@@ -769,6 +772,7 @@ fn kani_integration_multiple_triggers_rejected() {
         validate_trigger(&doc),
         Err(ValidationError::UnsupportedTrigger {
             trigger: "multiple triggers".to_owned(),
+            span: Span::ZERO
         })
     );
 }

@@ -90,32 +90,32 @@ pub struct GateEvidence {
 #[verifier::external]
 pub fn parse_schema_version(raw: &str) -> std::result::Result<String, ValidationError> {
     if raw.is_empty() {
-        return Err(ValidationError::MissingSchemaVersion);
+        return Err(ValidationError::MissingSchemaVersion { span: Span::ZERO });
     }
 
     let parts: Vec<&str> = raw.splitn(3, '.').collect();
     if parts.len() != 3 {
         return Err(ValidationError::InvalidVersion {
             version: raw.to_string(),
-        });
+         span: Span::ZERO});
     }
 
     for part in &parts {
         if part.is_empty() {
             return Err(ValidationError::InvalidVersion {
                 version: raw.to_string(),
-            });
+             span: Span::ZERO});
         }
         // Check for leading zeros (e.g., "01.0.0" is invalid)
         if part.len() > 1 && part.starts_with('0') {
             return Err(ValidationError::InvalidVersion {
                 version: raw.to_string(),
-            });
+             span: Span::ZERO});
         }
         if part.parse::<u32>().is_err() {
             return Err(ValidationError::InvalidVersion {
                 version: raw.to_string(),
-            });
+             span: Span::ZERO});
         }
     }
 
@@ -136,7 +136,7 @@ pub fn parse_contract_kind(raw: &str) -> std::result::Result<ContractKind, Valid
         "gate_output" => Ok(ContractKind::GateOutput),
         unknown => Err(ValidationError::InvalidKind {
             kind: unknown.to_string(),
-        }),
+         span: Span::ZERO}),
     }
 }
 
@@ -150,7 +150,7 @@ pub fn parse_vet_exit_code(exit_code: i32) -> std::result::Result<(), Validation
     } else {
         Err(ValidationError::CueVetFailed {
             file: "unknown".to_string(),
-        })
+         span: Span::ZERO})
     }
 }
 
@@ -218,6 +218,7 @@ pub fn gate_evidence_from_report(
 // ============================================================
 
 use kani::Arbitrary;
+use vb_core::span::Span;
 
 impl Arbitrary for ContractKind {
     fn any() -> Self {
@@ -303,11 +304,11 @@ fn kani_schema_version_no_panic() {
                 );
             }
         }
-        Err(ValidationError::MissingSchemaVersion) => {
+        Err(ValidationError::MissingSchemaVersion { span: Span::ZERO }) => {
             // Called for empty/missing input
             assert!(raw.is_empty());
         }
-        Err(ValidationError::InvalidVersion { version: _ }) => {
+        Err(ValidationError::InvalidVersion { version: _ , span: Span::ZERO}) => {
             // Called for malformed input — must not match ^\d+\.\d+\.\d+$
             let parts: Vec<&str> = raw.split('.').collect();
             if parts.len() == 3 {
@@ -354,7 +355,7 @@ fn kani_schema_version_rejects_malformed() {
     // Empty string should return MissingSchemaVersion
     let result = parse_schema_version("");
     assert!(
-        matches!(result, Err(ValidationError::MissingSchemaVersion)),
+        matches!(result, Err(ValidationError::MissingSchemaVersion { span: Span::ZERO })),
         "parse_schema_version should return MissingSchemaVersion for empty string"
     );
 }
