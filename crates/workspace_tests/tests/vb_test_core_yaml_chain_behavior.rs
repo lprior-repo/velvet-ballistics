@@ -513,7 +513,7 @@ fn validate_with_contracts_rejects_missing_action_contract() {
             Err(ValidationError::ActionContractMissing {
                 action_id: 99,
                 node_index: 0
-            })
+            , span: Span::ZERO})
         ),
         "expected ActionContractMissing{{action_id: 99, node_index: 0}}, got: {result:?}"
     );
@@ -569,7 +569,7 @@ fn validate_with_contracts_rejects_orphan_action_contract() {
     assert!(
         matches!(
             result,
-            Err(ValidationError::ActionContractOrphan { action_id: 99 })
+            Err(ValidationError::ActionContractOrphan { action_id: 99 , span: Span::ZERO})
         ),
         "expected ActionContractOrphan{{action_id: 99}}, got: {result:?}"
     );
@@ -711,6 +711,7 @@ fn action_contract_side_effects_require_key_when_not_safe() {
 fn workflow_parts_accepts_resource_contract_at_exact_usage_bounds() {
     use vb_core::ids::{SlotIdx, StepIdx};
     use vb_core::workflow::{CompiledNode, CompiledNodeKind};
+use vb_core::span::Span;
 
     // Workflow with exact bounds matching DEFAULT contract
     let finish_node = CompiledNode {
@@ -884,13 +885,13 @@ fn validation_error_all_contract_variants_are_exhaustive() {
     let err = ValidationError::ActionContractMissing {
         action_id: 1,
         node_index: 0,
-    };
+     span: Span::ZERO};
     assert_eq!(
         check_contract_error_variant(&err),
         Some("ActionContractMissing")
     );
 
-    let err = ValidationError::ActionContractOrphan { action_id: 99 };
+    let err = ValidationError::ActionContractOrphan { action_id: 99 , span: Span::ZERO};
     assert_eq!(
         check_contract_error_variant(&err),
         Some("ActionContractOrphan")

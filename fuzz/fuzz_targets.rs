@@ -99,3 +99,27 @@ pub fn admission_fuzz(data: &[u8]) {
 pub fn vb_ui_model_postcard_decode(data: &[u8]) {
     fuzz_lib::fuzz_vb_ui_model_postcard_decode(data);
 }
+
+// ===========================================================================
+// vb-xi2f.9: Span Enrichment Fuzz Target Stubs
+// ===========================================================================
+
+/// diagnostic_from_error span propagation fuzz target.
+pub fn diagnostic_from_error(data: &[u8]) {
+    fuzz_lib::fuzz_diagnostic_from_error(data);
+}
+
+/// DiagnosticCode::from_str parsing fuzz target.
+pub fn diagnostic_code_from_str(data: &[u8]) {
+    fuzz_lib::fuzz_diagnostic_code_from_str(data);
+}
+
+/// span_bridge clamp_u32 / span_from_source_span fuzz target.
+pub fn span_bridge_fuzz(data: &[u8]) {
+    fuzz_lib::fuzz_span_bridge(data);
+}
+
+/// compile_source AstMarks coverage fuzz target.
+pub fn compile_source_ast_marks(data: &[u8]) {
+    fuzz_lib::fuzz_compile_source_ast_marks(data);
+}

@@ -13,6 +13,7 @@ use vb_core::workflow::{
 
 use vb_validate::ValidationError;
 use vb_validate::shared::{ValidationPipeline, validate, validate_with_contracts};
+use vb_core::span::Span;
 
 // ---------------------------------------------------------------------------
 // Helper constructors
@@ -233,7 +234,7 @@ fn bdd_validate_with_contracts_rejects_missing_do_node() {
         Err(ValidationError::ActionContractMissing {
             action_id: 99,
             node_index: 0
-        })
+        , span: Span::ZERO})
     ));
 }
 
@@ -248,7 +249,7 @@ fn bdd_validate_with_contracts_rejects_orphan_contract() {
     // Then: returns Err(ValidationError) with GATE_12 code
     assert!(matches!(
         result,
-        Err(ValidationError::ActionContractOrphan { action_id: 42 })
+        Err(ValidationError::ActionContractOrphan { action_id: 42 , span: Span::ZERO})
     ));
 }
 
@@ -499,7 +500,7 @@ fn bdd_g09_rejects_output_slot_out_of_bounds() {
     // Then: returns Err(ValidationError) with GATE_09 code
     assert!(matches!(
         result,
-        Err(ValidationError::SlotReferenceOutOfRange { slot: 99, .. })
+        Err(ValidationError::SlotReferenceOutOfRange { slot: 99, .. , span: Span::ZERO})
     ));
 }
 
@@ -889,7 +890,7 @@ fn bdd_g12_rejects_missing_do_node_for_contract() {
     // Then: returns Err(GATE_12) indicating orphan contract
     assert!(matches!(
         result,
-        Err(ValidationError::ActionContractOrphan { action_id: 1 })
+        Err(ValidationError::ActionContractOrphan { action_id: 1 , span: Span::ZERO})
     ));
 }
 
@@ -908,7 +909,7 @@ fn bdd_g12_rejects_missing_contract_for_do_node() {
         Err(ValidationError::ActionContractMissing {
             action_id: 99,
             node_index: 0
-        })
+        , span: Span::ZERO})
     ));
 }
 
@@ -1146,7 +1147,7 @@ fn bdd_g14_rejects_incompatible_multi_writer_types() {
     // Then: returns Err(GATE_14) indicating type mismatch
     assert!(matches!(
         result,
-        Err(ValidationError::SlotTypeInconsistency { slot: 0 })
+        Err(ValidationError::SlotTypeInconsistency { slot: 0 , span: Span::ZERO})
     ));
 }
 
@@ -1195,7 +1196,7 @@ fn bdd_g15_rejects_adjacent_nd_nodes() {
         Err(ValidationError::NonDeterministicPath {
             from_node: 0,
             to_node: 1
-        })
+        , span: Span::ZERO})
     ));
 }
 
@@ -1223,134 +1224,134 @@ fn bdd_all_37_error_variants_constructible() {
     // Given: ValidationError enum
     // When: each variant is constructed with required fields
     // Then: all 37 compile successfully
-    let _ = ValidationError::DuplicateKey;
-    let _ = ValidationError::ForbiddenYamlFeature;
-    let _ = ValidationError::UnknownTopLevelField;
-    let _ = ValidationError::UnknownStepField;
+    let _ = ValidationError::DuplicateKey { span: Span::ZERO };
+    let _ = ValidationError::ForbiddenYamlFeature { span: Span::ZERO };
+    let _ = ValidationError::UnknownTopLevelField { span: Span::ZERO };
+    let _ = ValidationError::UnknownStepField { span: Span::ZERO };
     let _ = ValidationError::MissingRequiredField {
         field: "test".into(),
-    };
+     span: Span::ZERO};
     let _ = ValidationError::InvalidVersion {
         version: "v1".into(),
-    };
-    let _ = ValidationError::InvalidId { id: "id".into() };
-    let _ = ValidationError::ReservedId { id: "id".into() };
-    let _ = ValidationError::DuplicateId { id: "id".into() };
-    let _ = ValidationError::MultipleStepPrimitives;
-    let _ = ValidationError::MissingStepPrimitive;
+     span: Span::ZERO};
+    let _ = ValidationError::InvalidId { id: "id".into() , span: Span::ZERO};
+    let _ = ValidationError::ReservedId { id: "id".into() , span: Span::ZERO};
+    let _ = ValidationError::DuplicateId { id: "id".into() , span: Span::ZERO};
+    let _ = ValidationError::MultipleStepPrimitives { span: Span::ZERO };
+    let _ = ValidationError::MissingStepPrimitive { span: Span::ZERO };
     let _ = ValidationError::UnknownReference {
         reference: "$x".into(),
-    };
+     span: Span::ZERO};
     let _ = ValidationError::FutureReference {
         reference: "$steps.x".into(),
-    };
+     span: Span::ZERO};
     let _ = ValidationError::SecretNotDeclared {
         secret: "tok".into(),
-    };
-    let _ = ValidationError::DirectRuntimeReference;
-    let _ = ValidationError::InvalidThenTarget;
-    let _ = ValidationError::ControlFlowCycle;
-    let _ = ValidationError::UnreachableStep { step: "s".into() };
-    let _ = ValidationError::InvalidChoose;
-    let _ = ValidationError::InvalidForEach;
-    let _ = ValidationError::InvalidTogether;
-    let _ = ValidationError::InvalidCollect;
-    let _ = ValidationError::InvalidReduce;
-    let _ = ValidationError::InvalidRepeat;
-    let _ = ValidationError::InvalidWait;
-    let _ = ValidationError::InvalidAsk;
-    let _ = ValidationError::InvalidFinish;
-    let _ = ValidationError::InvalidRetry;
-    let _ = ValidationError::InvalidOnError;
-    let _ = ValidationError::SecretResultLeak;
+     span: Span::ZERO};
+    let _ = ValidationError::DirectRuntimeReference { span: Span::ZERO };
+    let _ = ValidationError::InvalidThenTarget { span: Span::ZERO };
+    let _ = ValidationError::ControlFlowCycle { span: Span::ZERO };
+    let _ = ValidationError::UnreachableStep { step: "s".into() , span: Span::ZERO};
+    let _ = ValidationError::InvalidChoose { span: Span::ZERO };
+    let _ = ValidationError::InvalidForEach { span: Span::ZERO };
+    let _ = ValidationError::InvalidTogether { span: Span::ZERO };
+    let _ = ValidationError::InvalidCollect { span: Span::ZERO };
+    let _ = ValidationError::InvalidReduce { span: Span::ZERO };
+    let _ = ValidationError::InvalidRepeat { span: Span::ZERO };
+    let _ = ValidationError::InvalidWait { span: Span::ZERO };
+    let _ = ValidationError::InvalidAsk { span: Span::ZERO };
+    let _ = ValidationError::InvalidFinish { span: Span::ZERO };
+    let _ = ValidationError::InvalidRetry { span: Span::ZERO };
+    let _ = ValidationError::InvalidOnError { span: Span::ZERO };
+    let _ = ValidationError::SecretResultLeak { span: Span::ZERO };
     let _ = ValidationError::TypeMismatch {
         expected: "a".into(),
         found: "b".into(),
-    };
-    let _ = ValidationError::PayloadTooLarge;
+     span: Span::ZERO};
+    let _ = ValidationError::PayloadTooLarge { span: Span::ZERO };
     let _ = ValidationError::LimitRequired {
         resource: "r".into(),
-    };
+     span: Span::ZERO};
     let _ = ValidationError::LimitExceeded {
         resource: "r".into(),
-    };
+     span: Span::ZERO};
     let _ = ValidationError::UnsupportedTrigger {
         trigger: "cron".into(),
-    };
-    let _ = ValidationError::HttpTriggerOutOfCore;
+     span: Span::ZERO};
+    let _ = ValidationError::HttpTriggerOutOfCore { span: Span::ZERO };
     let _ = ValidationError::ExpressionStackExceeded {
         declared: 65,
         limit: 64,
-    };
+     span: Span::ZERO};
     let _ = ValidationError::ExpressionStackMismatch {
         expr_index: 0,
         declared: 2,
         computed: 1,
-    };
+     span: Span::ZERO};
     let _ = ValidationError::AccessorSlotOutOfRange {
         accessor_index: 0,
         slot: 5,
         slot_count: 2,
-    };
+     span: Span::ZERO};
     let _ = ValidationError::AccessorPathInvalid {
         accessor_index: 0,
         segment_index: 1,
-    };
+     span: Span::ZERO};
     let _ = ValidationError::SlotReferenceOutOfRange {
         slot: 99,
         slot_count: 10,
         context: "node 0".into(),
-    };
+     span: Span::ZERO};
     let _ = ValidationError::LoopBodyStepOutOfRange {
         step: 99,
         node_count: 5,
         source_node: 0,
         label: "for_each body".into(),
-    };
+     span: Span::ZERO};
     let _ = ValidationError::SlotDependencyCycle {
         slot: 0,
         chain: "slot 0 -> slot 1".into(),
-    };
+     span: Span::ZERO};
     let _ = ValidationError::NodeKindConstraintViolation {
         node_index: 0,
         detail: "test".into(),
-    };
+     span: Span::ZERO};
     let _ = ValidationError::ActionContractMissing {
         action_id: 1,
         node_index: 0,
-    };
-    let _ = ValidationError::ActionContractOrphan { action_id: 2 };
+     span: Span::ZERO};
+    let _ = ValidationError::ActionContractOrphan { action_id: 2 , span: Span::ZERO};
     let _ = ValidationError::CapabilityNameEmpty {
         action_id: 1,
         capability_index: 0,
-    };
+     span: Span::ZERO};
     let _ = ValidationError::CapabilityNameTooLong {
         action_id: 1,
         capability_index: 0,
         len: 129,
         max: 128,
-    };
+     span: Span::ZERO};
     let _ = ValidationError::CapabilityNameInvalid {
         action_id: 1,
         capability_index: 0,
         name: "network:github".into(),
-    };
+     span: Span::ZERO};
     let _ = ValidationError::CapabilityActionMismatch {
         contract_action_id: 1,
         capability_action_id: 2,
         capability_index: 0,
-    };
+     span: Span::ZERO};
     let _ = ValidationError::CapabilityDuplicate {
         action_id: 1,
         first_index: 0,
         duplicate_index: 1,
         name: "network".into(),
-    };
-    let _ = ValidationError::SlotTypeInconsistency { slot: 0 };
+     span: Span::ZERO};
+    let _ = ValidationError::SlotTypeInconsistency { slot: 0 , span: Span::ZERO};
     let _ = ValidationError::NonDeterministicPath {
         from_node: 0,
         to_node: 1,
-    };
+     span: Span::ZERO};
 }
 
 #[test]

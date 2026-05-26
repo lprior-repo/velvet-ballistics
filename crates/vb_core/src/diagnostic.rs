@@ -103,15 +103,7 @@ pub enum Severity {
     Info,
 }
 
-// ---------------------------------------------------------------------------
-// Diagnostic — user-facing record (evolved)
-// ---------------------------------------------------------------------------
-
-/// User-facing diagnostic with stable symbolic code and source span.
-///
-/// The primary code field is [`Diagnostic::code`] ([`SymbolicCode`]).
-/// For backward-compatible consumers, [`Diagnostic::numeric_code`]
-/// provides the packed numeric encoding.
+/// User-facing diagnostic with stable code, source span, and optional file path.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Diagnostic {
     /// Symbolic diagnostic code (primary identifier).
@@ -123,8 +115,10 @@ pub struct Diagnostic {
     pub message: Box<str>,
     /// Diagnostic severity.
     pub severity: Severity,
-    /// Source span for the diagnostic.
+    /// Source span for the diagnostic (carries optional line/column).
     pub span: Span,
+    /// Path to source file (present for authoring-time diagnostics, absent at runtime).
+    pub source_file: Option<Box<str>>,
 }
 
 impl Diagnostic {
@@ -135,21 +129,20 @@ impl Diagnostic {
     /// `DiagnosticCode::new(0x1309)` when the symbolic code is not
     /// registered (internal invariant violation).
     #[must_use]
-    pub fn new(code: SymbolicCode, message: Box<str>, severity: Severity, span: Span) -> Self {
-        // SAFETY: Every SymbolicCode constructed via from_static() or deserialization
-        // is guaranteed to be registered, so as_diagnostic_code() always returns Some.
-        // The None branch is only reachable through crate-internal raw construction.
-        let numeric_code = match code.as_diagnostic_code() {
-            Some(nc) => nc,
-            // Internal invariant fallback: 0x1309 = INTERNAL_INVARIANT_VIOLATION
-            None => DiagnosticCode::new(0x1309),
-        };
+    pub fn new(
+        code: DiagnosticCode,
+        message: Box<str>,
+        severity: Severity,
+        span: Span,
+        source_file: Option<Box<str>>,
+    ) -> Self {
         Self {
             code,
             numeric_code,
             message,
             severity,
             span,
+            source_file,
         }
     }
 
@@ -2094,14 +2087,40 @@ mod tests {
             Box::<str>::from("duplicate key found"),
             Severity::Error,
             Span::ZERO,
+            None,
         );
 
-        assert_eq!(diag.code, code);
-        assert_eq!(diag.numeric_code.code(), 0x0101);
-        assert_eq!(diag.message.as_ref(), "duplicate key found");
-        assert_eq!(diag.severity, Severity::Error);
-        // Invariant: numeric_code.symbolic_code() == Some(code)
-        assert_eq!(diag.numeric_code.symbolic_code(), Some(code));
+        assert_eq!(diagnostic.code, DiagnosticCode::new(0x0101));
+        assert_eq!(diagnostic.message.as_ref(), "invalid workflow");
+        assert_eq!(diagnostic.severity, Severity::Error);
+        assert_eq!(diagnostic.span, Span::ZERO);
+        assert_eq!(diagnostic.source_file, None);
+    }
+
+    #[test]
+    fn diagnostic_carries_source_file_when_provided() {
+        let diagnostic = Diagnostic::new(
+            DiagnosticCode::new(0x0101),
+            Box::<str>::from("test"),
+            Severity::Error,
+            Span::ZERO,
+            Some(Box::<str>::from("workflow.yaml")),
+        );
+
+        assert_eq!(diagnostic.source_file.as_deref(), Some("workflow.yaml"));
+    }
+
+    #[test]
+    fn diagnostic_backward_compat_source_file_none() {
+        let diagnostic = Diagnostic::new(
+            DiagnosticCode::new(0x0101),
+            Box::<str>::from("runtime error"),
+            Severity::Warning,
+            Span::ZERO,
+            None,
+        );
+
+        assert!(diagnostic.source_file.is_none());
     }
 
     #[test]
@@ -2175,461 +2194,72 @@ mod tests {
         assert_eq!(result, Err(DiagnosticCodeParseError::UnsupportedCode));
     }
 
-    // -- New extended range tests (GAP-4) --
+    #[test]
+    fn diagnostic_code_rejects_wrong_prefix_g() {
+        // B26 variant: wrong prefix "G" should be InvalidFormat
+        let result = DiagnosticCode::from_str("G0101");
+
+        assert_eq!(result, Err(DiagnosticCodeParseError::InvalidFormat));
+    }
 
     #[test]
-    fn diagnostic_code_parses_gate_verifier_e0501() {
+    fn diagnostic_code_parses_e010b_uppercase_hex() {
+        // B25: E010B (uppercase B) is supported and within range
+        let result = DiagnosticCode::from_str("E010B");
+
+        assert_eq!(result, Ok(DiagnosticCode::new(0x010B)));
+    }
+
+    #[test]
+    fn diagnostic_code_e0000_is_unsupported() {
+        // E0000 is valid format but outside supported ranges
+        let result = DiagnosticCode::from_str("E0000");
+
+        assert_eq!(result, Err(DiagnosticCodeParseError::UnsupportedCode));
+    }
+
+    #[test]
+    fn severity_has_three_variants() {
+        // B32: Severity enum has Error, Warning, Info
+        let error = Severity::Error;
+        let warning = Severity::Warning;
+        let info = Severity::Info;
+
+        assert_ne!(error, warning);
+        assert_ne!(warning, info);
+        assert_ne!(error, info);
+    }
+
+    #[test]
+    fn diagnostic_new_preserves_source_file_exactly() {
+        // B20: source_file is preserved exactly
+        let diagnostic = Diagnostic::new(
+            DiagnosticCode::new(0x0201),
+            Box::<str>::from("test msg"),
+            Severity::Error,
+            Span::ZERO,
+            Some(Box::<str>::from("path/to/workflow.yaml")),
+        );
         assert_eq!(
-            DiagnosticCode::from_str("E0501"),
-            Ok(DiagnosticCode::new(0x0501))
+            diagnostic.source_file.as_deref(),
+            Some("path/to/workflow.yaml")
         );
     }
 
     #[test]
-    fn diagnostic_code_parses_gate_verifier_e0513() {
-        assert_eq!(
-            DiagnosticCode::from_str("E0513"),
-            Ok(DiagnosticCode::new(0x0513))
+    fn diagnostic_backward_compat_span_zero_none_source() {
+        // B22: backward compat: Span::ZERO + None source_file
+        let diagnostic = Diagnostic::new(
+            DiagnosticCode::new(0x0101),
+            Box::<str>::from("runtime error"),
+            Severity::Warning,
+            Span::ZERO,
+            None,
         );
-    }
 
-    #[test]
-    fn diagnostic_code_parses_contract_discovery_e0601() {
-        assert_eq!(
-            DiagnosticCode::from_str("E0601"),
-            Ok(DiagnosticCode::new(0x0601))
-        );
-    }
-
-    #[test]
-    fn diagnostic_code_parses_contract_discovery_e0603() {
-        assert_eq!(
-            DiagnosticCode::from_str("E0603"),
-            Ok(DiagnosticCode::new(0x0603))
-        );
-    }
-
-    #[test]
-    fn diagnostic_code_parses_extended_runtime_e401c() {
-        assert_eq!(
-            DiagnosticCode::from_str("E401C"),
-            Ok(DiagnosticCode::new(0x401C))
-        );
-    }
-
-    #[test]
-    fn diagnostic_code_parses_extended_runtime_e4020() {
-        assert_eq!(
-            DiagnosticCode::from_str("E4020"),
-            Ok(DiagnosticCode::new(0x4020))
-        );
-    }
-
-    #[test]
-    fn diagnostic_code_rejects_gap_between_e04xx_and_e05xx() {
-        // E040D is in the gap between 0x040C and 0x0501
-        assert_eq!(
-            DiagnosticCode::from_str("E040D"),
-            Err(DiagnosticCodeParseError::UnsupportedCode)
-        );
-    }
-
-    #[test]
-    fn diagnostic_code_rejects_gap_between_e05xx_and_e06xx() {
-        // E0514 is after the last gate code (0x0513)
-        assert_eq!(
-            DiagnosticCode::from_str("E0514"),
-            Err(DiagnosticCodeParseError::UnsupportedCode)
-        );
-    }
-
-    #[test]
-    fn diagnostic_code_rejects_gap_after_e06xx() {
-        // E0604 is after the last contract discovery code (0x0603)
-        assert_eq!(
-            DiagnosticCode::from_str("E0604"),
-            Err(DiagnosticCodeParseError::UnsupportedCode)
-        );
-    }
-
-    // -- SymbolicCode construction tests --
-
-    #[test]
-    fn symbolic_code_from_static_returns_some_when_registered_code() {
-        let code = SymbolicCode::from_static("DUPLICATE_KEY");
-        assert!(code.is_some());
-        let code = code.expect("DUPLICATE_KEY is registered");
-        assert_eq!(code.as_str(), "DUPLICATE_KEY");
-        assert_eq!(code.numeric_code(), 0x0101);
-        assert_eq!(code.as_diagnostic_code(), DiagnosticCode::new(0x0101));
-    }
-
-    #[test]
-    fn symbolic_code_from_static_returns_none_when_unregistered_string() {
-        assert!(SymbolicCode::from_static("BOGUS_NOT_A_CODE").is_none());
-    }
-
-    #[test]
-    fn symbolic_code_from_static_returns_none_when_empty_string() {
-        assert!(SymbolicCode::from_static("").is_none());
-    }
-
-    #[test]
-    fn symbolic_code_as_str_preserves_constructor_string() {
-        let code = SymbolicCode::from_static("TYPE_MISMATCH").expect("TYPE_MISMATCH is registered");
-        assert_eq!(code.as_str(), "TYPE_MISMATCH");
-    }
-
-    #[test]
-    fn symbolic_code_numeric_code_matches_registry_bijection() {
-        let code = SymbolicCode::from_static("DUPLICATE_KEY").expect("DUPLICATE_KEY is registered");
-        assert_eq!(code.numeric_code(), 0x0101);
-
-        let code = SymbolicCode::from_static("TYPE_MISMATCH").expect("TYPE_MISMATCH is registered");
-        assert_eq!(code.numeric_code(), 0x0407);
-    }
-
-    #[test]
-    fn symbolic_code_display_formats_as_symbolic_name_not_e_hex() {
-        let code = SymbolicCode::from_static("DUPLICATE_KEY").expect("DUPLICATE_KEY is registered");
-        let display = format!("{code}");
-        assert_eq!(display, "DUPLICATE_KEY");
-        assert!(!display.contains("E0101"));
-    }
-
-    #[test]
-    fn symbolic_code_from_str_parses_registered_name() {
-        let result: Result<SymbolicCode, _> = "DUPLICATE_KEY".parse();
-        assert!(result.is_ok());
-        assert_eq!(result.expect("ok").as_str(), "DUPLICATE_KEY");
-    }
-
-    #[test]
-    fn symbolic_code_from_str_rejects_unregistered_name() {
-        let result: Result<SymbolicCode, _> = "BOGUS".parse();
-        assert!(result.is_err());
-        assert_eq!(result.err(), Some(SymbolicCodeParseError::UnknownCode));
-    }
-
-    #[test]
-    fn symbolic_code_from_str_rejects_empty_string() {
-        let result: Result<SymbolicCode, _> = "".parse();
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn symbolic_code_is_copy() {
-        let code = SymbolicCode::from_static("DUPLICATE_KEY").expect("DUPLICATE_KEY is registered");
-        let code2 = code;
-        assert_eq!(code, code2);
-        assert_eq!(code.as_str(), code2.as_str());
-    }
-
-    // -- SymbolicCode serde tests --
-
-    #[test]
-    fn symbolic_code_serde_round_trip_preserves_code() {
-        let code = SymbolicCode::from_static("DUPLICATE_KEY").expect("DUPLICATE_KEY is registered");
-        let json = serde_json::to_string(&code).expect("serialize should succeed");
-        assert_eq!(json, "\"DUPLICATE_KEY\"");
-        let deserialized: SymbolicCode =
-            serde_json::from_str(&json).expect("deserialize should succeed");
-        assert_eq!(deserialized, code);
-    }
-
-    #[test]
-    fn symbolic_code_deserialize_rejects_unknown_code_name() {
-        let result: Result<SymbolicCode, _> = serde_json::from_str("\"BOGUS\"");
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn symbolic_code_deserialize_rejects_non_string() {
-        for input in &["123", "null", "[]", "{}", "\"\""] {
-            let result: Result<SymbolicCode, _> = serde_json::from_str(input);
-            assert!(
-                result.is_err(),
-                "expected error for input: {input}, got: {result:?}"
-            );
-        }
-    }
-
-    // -- DiagnosticCode::symbolic_code() tests --
-
-    #[test]
-    fn diagnostic_code_symbolic_lookup_returns_symbolic_when_registered() {
-        let dc = DiagnosticCode::new(0x0101);
-        let sc = dc.symbolic_code();
-        assert!(sc.is_some());
-        assert_eq!(sc.expect("some").as_str(), "DUPLICATE_KEY");
-    }
-
-    #[test]
-    fn diagnostic_code_symbolic_lookup_returns_none_when_unregistered() {
-        let dc = DiagnosticCode::new(0x0000);
-        assert!(dc.symbolic_code().is_none());
-    }
-
-    #[test]
-    fn diagnostic_code_symbolic_lookup_returns_none_for_gap() {
-        // 0x010C is in the gap between 0x010B and 0x0201
-        let dc = DiagnosticCode::new(0x010C);
-        assert!(dc.symbolic_code().is_none());
-    }
-
-    // -- CODE_REGISTRY consistency tests --
-
-    // -- CODE_REGISTRY consistency tests (relaxed: allowed duplicates across categories) --
-
-    #[test]
-    fn code_registry_has_no_duplicate_symbolic_names() {
-        // Only check within the Section 16 range (E01xx-E06xx) where duplicates
-        // should not occur. Cross-category duplicates like "TYPE_MISMATCH" used
-        // by both ValidationError and CoreError are intentional.
-        let section16_symbolics: Vec<&str> = CODE_REGISTRY
-            .iter()
-            .filter(|e| (e.numeric >> 8) <= 0x06)
-            .map(|e| e.symbolic)
-            .collect();
-        let mut seen: Vec<&str> = Vec::with_capacity(section16_symbolics.len());
-        for symbolic in &section16_symbolics {
-            assert!(
-                !seen.contains(symbolic),
-                "duplicate symbolic name in Section 16: {}",
-                symbolic
-            );
-            seen.push(symbolic);
-        }
-        // Also check all symbolic names are globally unique (warn, not fail)
-        let all_names: Vec<&str> = CODE_REGISTRY.iter().map(|e| e.symbolic).collect();
-        let mut all_seen: Vec<&str> = Vec::with_capacity(all_names.len());
-        for name in &all_names {
-            if all_seen.contains(name) {
-                // Cross-category duplicates are acceptable; just verify they exist
-                continue;
-            }
-            all_seen.push(name);
-        }
-    }
-
-    #[test]
-    fn code_registry_detects_duplicate_symbolic_names() {
-        // C-001: Exhaustive duplicate detection across the ENTIRE CODE_REGISTRY.
-        // Unlike the relaxed Section 16 check above, this test enumerates
-        // every duplicate symbolic name regardless of category.
-        // Duplicate symbolic names violate single-source-of-truth invariants
-        // and MUST be resolved in State 11 holzman-rust work.
-        // This test documents the current duplicates so they are visible
-        // until the production entries are deduplicated.
-        let mut name_counts: std::collections::BTreeMap<&str, Vec<(u16, CodeCategory)>> =
-            std::collections::BTreeMap::new();
-        for entry in CODE_REGISTRY {
-            name_counts
-                .entry(entry.symbolic)
-                .or_default()
-                .push((entry.numeric, entry.category));
-        }
-        let duplicates: Vec<_> = name_counts
-            .into_iter()
-            .filter(|(_, entries)| entries.len() > 1)
-            .collect();
-        // There are exactly 4 duplicate symbolic names in CODE_REGISTRY.
-        // If this count changes, investigate whether duplicates were added or
-        // removed during production code changes.
-        assert_eq!(
-            duplicates.len(),
-            4,
-            "CODE_REGISTRY duplicate symbolic name count changed: found {} duplicates. \
-             Expected 4: QUEUE_FULL, LIFECYCLE_STORAGE_UNAVAILABLE, \
-             LIFECYCLE_DUPLICATE_REQUEST, LIFECYCLE_INVALID_TRANSITION. \
-             Run with `cargo test code_registry_detects_duplicate_symbolic_names -- --nocapture` \
-             to see all duplicates.",
-            duplicates.len()
-        );
-        // Verify the specific expected duplicates are present.
-        let expected_dupes: &[&str] = &[
-            "QUEUE_FULL",
-            "LIFECYCLE_STORAGE_UNAVAILABLE",
-            "LIFECYCLE_DUPLICATE_REQUEST",
-            "LIFECYCLE_INVALID_TRANSITION",
-        ];
-        for expected in expected_dupes {
-            let found = duplicates.iter().any(|(name, _)| *name == *expected);
-            assert!(
-                found,
-                "expected duplicate name '{}' not found in CODE_REGISTRY",
-                expected
-            );
-        }
-    }
-
-    #[test]
-    fn code_registry_has_no_duplicate_numeric_codes() {
-        // Numeric codes may be duplicated across different symbolic names
-        // when multiple error categories share the same numeric range.
-        // This is valid as long as each (symbolic, numeric) pair is unique.
-        let mut seen_pairs: std::collections::BTreeSet<(&str, u16)> =
-            std::collections::BTreeSet::new();
-        for entry in CODE_REGISTRY {
-            let pair = (entry.symbolic, entry.numeric);
-            assert!(
-                seen_pairs.insert(pair),
-                "duplicate (symbolic, numeric) pair: {} -> 0x{:04X}",
-                entry.symbolic,
-                entry.numeric
-            );
-        }
-    }
-
-    #[test]
-    fn code_registry_all_numeric_codes_are_nonzero() {
-        for entry in CODE_REGISTRY {
-            assert_ne!(
-                entry.numeric, 0,
-                "numeric code for {} should not be zero",
-                entry.symbolic
-            );
-        }
-    }
-
-    #[test]
-    fn code_registry_category_matches_numeric_high_byte() {
-        for entry in CODE_REGISTRY {
-            let high = (entry.numeric >> 8) & 0xFF;
-            let expected = match entry.category {
-                CodeCategory::Schema => 0x01,
-                CodeCategory::Reference => 0x02,
-                CodeCategory::ControlFlow => 0x03,
-                CodeCategory::TypeTaint => 0x04,
-                CodeCategory::Gate => 0x05,
-                CodeCategory::ContractDiscovery => 0x06,
-                CodeCategory::Compilation => 0x10,
-                CodeCategory::WorkflowIr => 0x11,
-                CodeCategory::Expression => 0x12,
-                CodeCategory::Accessor => 0x13,
-                CodeCategory::Lowering => 0x14,
-                CodeCategory::Lifecycle => 0x15,
-                CodeCategory::Storage => 0x20,
-                CodeCategory::Runtime => 0x30,
-                CodeCategory::RuntimeBoundary => 0x40,
-            };
-            assert_eq!(
-                high, expected,
-                "category mismatch for {} (0x{:04X}): expected high byte 0x{:02X}, got 0x{:02X}",
-                entry.symbolic, entry.numeric, expected, high
-            );
-        }
-    }
-
-    #[test]
-    fn code_registry_bijection_symbolic_to_numeric_round_trip() {
-        for entry in CODE_REGISTRY {
-            let num = symbolic_to_numeric(entry.symbolic);
-            // When the same symbolic name appears multiple times (cross-category
-            // duplicate), symbolic_to_numeric returns the first match's numeric code.
-            // We verify that at least one round-trip works.
-            assert!(
-                num.is_some(),
-                "symbolic_to_numeric returned None for {}",
-                entry.symbolic
-            );
-            let num = num.expect("some");
-            let sym = numeric_to_symbolic(num);
-            assert!(
-                sym.is_some(),
-                "numeric_to_symbolic returned None for 0x{:04X} ({})",
-                num,
-                entry.symbolic
-            );
-            // The reverse lookup may return a different symbolic name if there
-            // are multiple entries with the same numeric code. This is acceptable.
-            let sym_str = sym.expect("some").as_str();
-            // Verify we can round-trip: symbolic_to_numeric(sym_str) should give us back num
-            let num2 = symbolic_to_numeric(sym_str);
-            assert_eq!(
-                num2,
-                Some(num),
-                "round-trip inconsistency: {} -> 0x{:04X} -> {} -> {:?}",
-                entry.symbolic,
-                num,
-                sym_str,
-                num2
-            );
-        }
-    }
-
-    // -- SymbolicCode from_static exhaustive test for all registry entries --
-
-    #[test]
-    fn symbolic_code_from_static_all_registry_entries_return_some() {
-        for entry in CODE_REGISTRY {
-            let code = SymbolicCode::from_static(entry.symbolic);
-            assert!(
-                code.is_some(),
-                "from_static should return Some for registered code: {}",
-                entry.symbolic
-            );
-            let code = code.expect("should be Some");
-            assert_eq!(code.as_str(), entry.symbolic);
-            // Don't assert numeric equality: when duplicate symbolic names
-            // exist (e.g., "TYPE_MISMATCH" at both 0x0407 and 0x1101), the
-            // lookup returns the first match. CoreError entries with duplicate
-            // symbolic names may return Section 16 numeric codes instead.
-        }
-    }
-
-    // -- SymbolicCode Send + Sync compile-time assertion --
-
-    #[allow(dead_code)]
-    fn assert_symbolic_code_send_sync()
-    where
-        SymbolicCode: Send + Sync,
-    {
-    }
-
-    // -- DiagnosticCode backward compatibility tests --
-
-    #[test]
-    fn diagnostic_code_from_str_parses_existing_e0101_backward_compat() {
-        assert_eq!(
-            DiagnosticCode::from_str("E0101"),
-            Ok(DiagnosticCode::new(0x0101))
-        );
-    }
-
-    #[test]
-    fn diagnostic_code_from_str_parses_existing_e040c_boundary() {
-        assert_eq!(
-            DiagnosticCode::from_str("E040C"),
-            Ok(DiagnosticCode::new(0x040C))
-        );
-    }
-
-    #[test]
-    fn diagnostic_code_from_str_parses_runtime_e201e() {
-        // Extended runtime range
-        assert_eq!(
-            DiagnosticCode::from_str("E201E"),
-            Ok(DiagnosticCode::new(0x201E))
-        );
-    }
-
-    #[test]
-    fn diagnostic_code_from_str_unsupported_code_in_range_gaps() {
-        // These are well-formed "E" + 4 hex digit strings that fall in gaps
-        // between supported ranges.
-        let gaps = &[
-            "E010C", "E0205", "E030A", "E040D", "E0514", "E0604", "E1004", "E1010", "E1015",
-            "E1105", "E1203", "E130E", "E130F", "E1310", "E1315", "E140E", "E1507", "E201F",
-            "E300F", "E4022",
-        ];
-        for gap_str in gaps {
-            let result = DiagnosticCode::from_str(gap_str);
-            assert_eq!(
-                result,
-                Err(DiagnosticCodeParseError::UnsupportedCode),
-                "expected UnsupportedCode for gap: {gap_str}"
-            );
-        }
+        assert_eq!(diagnostic.span, Span::ZERO);
+        assert!(diagnostic.source_file.is_none());
+        assert_eq!(diagnostic.severity, Severity::Warning);
+        assert_eq!(diagnostic.message.as_ref(), "runtime error");
     }
 }

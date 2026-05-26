@@ -4,7 +4,7 @@ use saphyr_parser::{Event, Parser};
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct AstMarks {
+pub(crate) struct AstMarks {
     document: Option<SourceMark>,
     nested: BTreeMap<(Box<str>, Box<str>), SourceMark>,
     trigger: BTreeMap<Box<str>, SourceMark>,
@@ -33,7 +33,7 @@ struct SequenceFrame {
 }
 
 impl AstMarks {
-    pub(super) fn new(source: &str) -> Result<Self, CompileError> {
+    pub(crate) fn new(source: &str) -> Result<Self, CompileError> {
         let mut builder = MarkBuilder::default();
         let mut parser = Parser::new_from_str(source);
         while let Some((event, span)) = parser.next_event().transpose()? {
@@ -42,23 +42,41 @@ impl AstMarks {
         Ok(builder.finish())
     }
 
+    /// Creates an empty AstMarks with no mark lookups.
+    ///
+    /// Useful for testing and for compilation paths where source mark
+    /// tracking is not available.  Gated behind `kani` because the sole
+    /// production-crate consumer is the Kani proof harness
+    /// (`kani_tree_mark_enrich`).  Integration tests exercise marks
+    /// indirectly through the public compiler API.
     #[must_use]
-    pub(super) const fn document(&self) -> Option<SourceMark> {
+    #[cfg(kani)]
+    pub(crate) fn empty() -> Self {
+        Self {
+            document: None,
+            nested: BTreeMap::new(),
+            trigger: BTreeMap::new(),
+            step: BTreeMap::new(),
+        }
+    }
+
+    #[must_use]
+    pub(crate) const fn document(&self) -> Option<SourceMark> {
         self.document
     }
 
     #[must_use]
-    pub(super) fn nested_key(&self, parent: &str, key: &str) -> Option<SourceMark> {
+    pub(crate) fn nested_key(&self, parent: &str, key: &str) -> Option<SourceMark> {
         self.nested.get(&(parent.into(), key.into())).copied()
     }
 
     #[must_use]
-    pub(super) fn trigger(&self, kind: &str) -> Option<SourceMark> {
+    pub(crate) fn trigger(&self, kind: &str) -> Option<SourceMark> {
         self.trigger.get(kind).copied()
     }
 
     #[must_use]
-    pub(super) fn step(&self, id: &str) -> Option<SourceMark> {
+    pub(crate) fn step(&self, id: &str) -> Option<SourceMark> {
         self.step.get(id).copied()
     }
 }

@@ -60,6 +60,21 @@ impl SemanticSourceMap {
             .iter()
             .find_map(|(candidate, span)| if candidate == path { Some(*span) } else { None })
     }
+
+    /// Reverse lookup: find the YAML author path for a byte-offset span.
+    ///
+    /// This is used during diagnostic rendering to annotate error messages
+    /// with the YAML author path (e.g., `$.inputs.name`) when available.
+    #[must_use]
+    pub fn find_path_for_offset(&self, start_offset: usize, end_offset: usize) -> Option<&str> {
+        self.spans.iter().find_map(|(path, span)| {
+            if span.start_offset <= start_offset && span.end_offset >= end_offset {
+                Some(path.as_str())
+            } else {
+                None
+            }
+        })
+    }
 }
 
 /// A source map that tracks YAML node positions.

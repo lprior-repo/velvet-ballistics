@@ -76,7 +76,7 @@ fn reject_anchors_aliases_merges_returns_anchor_alias_merge_for_anchor() {
         return;
     };
     let result = reject_anchors_aliases_merges(&events);
-    assert_eq!(result, Err(YamlError::AnchorAliasMerge));
+    assert!(matches!(result, Err(YamlError::AnchorAliasMerge { .. })));
 }
 
 #[test]
@@ -87,19 +87,14 @@ fn reject_anchors_aliases_merges_returns_anchor_alias_merge_for_alias() {
         return;
     };
     let result = reject_anchors_aliases_merges(&events);
-    assert_eq!(result, Err(YamlError::AnchorAliasMerge));
+    assert!(matches!(result, Err(YamlError::AnchorAliasMerge { .. })));
 }
 
 #[test]
 fn reject_duplicate_keys_returns_duplicate_key_for_same_keys() {
     let keys = vec!["alpha", "beta", "alpha"];
     let result = reject_duplicate_keys(&keys);
-    assert_eq!(
-        result,
-        Err(YamlError::DuplicateKey {
-            key: "alpha".into()
-        })
-    );
+    assert!(matches!(result, Err(YamlError::DuplicateKey { key, .. }) if key.as_ref() == "alpha"));
 }
 
 #[test]
@@ -114,7 +109,10 @@ fn reject_forbidden_features_returns_unsupported_feature_for_complex_key() {
     let result = parse_workflow_source(yaml);
     assert_eq!(
         result,
-        Err(YamlError::UnsupportedTrigger { trigger: "http" })
+        Err(YamlError::UnsupportedTrigger {
+            span: None,
+            trigger: "http"
+        })
     );
 }
 
@@ -126,7 +124,13 @@ fn reject_multiple_documents_returns_multiple_documents_for_doc_separator() {
         return;
     };
     let result = reject_multiple_documents(&events);
-    assert_eq!(result, Err(YamlError::MultipleDocuments { count: 2 }));
+    assert_eq!(
+        result,
+        Err(YamlError::MultipleDocuments {
+            span: None,
+            count: 2
+        })
+    );
 }
 
 #[test]
@@ -204,7 +208,7 @@ fn reject_yaml_profile_returns_custom_tag_for_tags() {
     let yaml = "key: !custom value\n";
     let result = validate_yaml_profile(yaml);
     match result {
-        Err(YamlError::CustomTag { tag }) => {
+        Err(YamlError::CustomTag { tag, .. }) => {
             assert!(
                 tag.contains("custom"),
                 "tag should contain 'custom', got: {tag}"
@@ -218,11 +222,8 @@ fn reject_yaml_profile_returns_custom_tag_for_tags() {
 fn reject_yaml_profile_returns_ambiguous_scalar_for_unquoted_special() {
     let yaml = "flag: yes\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(
-        result,
-        Err(YamlError::AmbiguousScalar {
-            scalar: "yes".into()
-        })
+    assert!(
+        matches!(result, Err(YamlError::AmbiguousScalar { scalar, .. }) if scalar.as_ref() == "yes")
     );
 }
 
@@ -321,6 +322,7 @@ fn parse_workflow_source_returns_error_for_non_mapping_root() {
     assert_eq!(
         result,
         Err(YamlError::FieldShape {
+            span: None,
             field: "workflow",
             expected: "mapping"
         })
@@ -331,32 +333,35 @@ fn parse_workflow_source_returns_error_for_non_mapping_root() {
 fn parse_workflow_source_returns_error_for_anchors() {
     let yaml = "a: &anc value\n";
     let result = parse_workflow_source(yaml);
-    assert_eq!(result, Err(YamlError::AnchorAliasMerge));
+    assert!(matches!(result, Err(YamlError::AnchorAliasMerge { .. })));
 }
 
 #[test]
 fn parse_workflow_source_returns_error_for_aliases() {
     let yaml = "a: &anc value\nb: *anc\n";
     let result = parse_workflow_source(yaml);
-    assert_eq!(result, Err(YamlError::AnchorAliasMerge));
+    assert!(matches!(result, Err(YamlError::AnchorAliasMerge { .. })));
 }
 
 #[test]
 fn parse_workflow_source_returns_error_for_multiple_documents() {
     let yaml = "---\na: 1\n---\nb: 2\n";
     let result = parse_workflow_source(yaml);
-    assert_eq!(result, Err(YamlError::MultipleDocuments { count: 2 }));
+    assert_eq!(
+        result,
+        Err(YamlError::MultipleDocuments {
+            span: None,
+            count: 2
+        })
+    );
 }
 
 #[test]
 fn parse_workflow_source_returns_error_for_ambiguous_scalar_unquoted_special() {
     let yaml = "flag: no\n";
     let result = parse_workflow_source(yaml);
-    assert_eq!(
-        result,
-        Err(YamlError::AmbiguousScalar {
-            scalar: "no".into()
-        })
+    assert!(
+        matches!(result, Err(YamlError::AmbiguousScalar { scalar, .. }) if scalar.as_ref() == "no")
     );
 }
 
@@ -432,6 +437,7 @@ fn parse_workflow_source_rejects_step_with_multiple_primitives() {
     assert_eq!(
         result,
         Err(YamlError::FieldShape {
+            span: None,
             field: "step",
             expected: "exactly one primitive"
         })
@@ -454,6 +460,7 @@ fn parse_workflow_source_rejects_canonical_and_alias_duplicate_primitives() {
     assert_eq!(
         result,
         Err(YamlError::FieldShape {
+            span: None,
             field: "step",
             expected: "exactly one primitive"
         })
@@ -470,11 +477,8 @@ fn load_fixture_source_returns_error_for_missing_fixture() {
 fn reject_yaml_1_1_ambiguous_rejects_no() {
     let scalars = vec!["no"];
     let result = reject_yaml_1_1_ambiguous_scalars(&scalars);
-    assert_eq!(
-        result,
-        Err(YamlError::AmbiguousScalar {
-            scalar: "no".into()
-        })
+    assert!(
+        matches!(result, Err(YamlError::AmbiguousScalar { scalar, .. }) if scalar.as_ref() == "no")
     );
 }
 
@@ -482,11 +486,8 @@ fn reject_yaml_1_1_ambiguous_rejects_no() {
 fn reject_yaml_1_1_ambiguous_rejects_on() {
     let scalars = vec!["on"];
     let result = reject_yaml_1_1_ambiguous_scalars(&scalars);
-    assert_eq!(
-        result,
-        Err(YamlError::AmbiguousScalar {
-            scalar: "on".into()
-        })
+    assert!(
+        matches!(result, Err(YamlError::AmbiguousScalar { scalar, .. }) if scalar.as_ref() == "on")
     );
 }
 
@@ -494,11 +495,8 @@ fn reject_yaml_1_1_ambiguous_rejects_on() {
 fn reject_yaml_1_1_ambiguous_rejects_off() {
     let scalars = vec!["off"];
     let result = reject_yaml_1_1_ambiguous_scalars(&scalars);
-    assert_eq!(
-        result,
-        Err(YamlError::AmbiguousScalar {
-            scalar: "off".into()
-        })
+    assert!(
+        matches!(result, Err(YamlError::AmbiguousScalar { scalar, .. }) if scalar.as_ref() == "off")
     );
 }
 
@@ -506,9 +504,8 @@ fn reject_yaml_1_1_ambiguous_rejects_off() {
 fn reject_yaml_1_1_ambiguous_rejects_y() {
     let scalars = vec!["y"];
     let result = reject_yaml_1_1_ambiguous_scalars(&scalars);
-    assert_eq!(
-        result,
-        Err(YamlError::AmbiguousScalar { scalar: "y".into() })
+    assert!(
+        matches!(result, Err(YamlError::AmbiguousScalar { scalar, .. }) if scalar.as_ref() == "y")
     );
 }
 
@@ -516,9 +513,8 @@ fn reject_yaml_1_1_ambiguous_rejects_y() {
 fn reject_yaml_1_1_ambiguous_rejects_n() {
     let scalars = vec!["n"];
     let result = reject_yaml_1_1_ambiguous_scalars(&scalars);
-    assert_eq!(
-        result,
-        Err(YamlError::AmbiguousScalar { scalar: "n".into() })
+    assert!(
+        matches!(result, Err(YamlError::AmbiguousScalar { scalar, .. }) if scalar.as_ref() == "n")
     );
 }
 
@@ -526,11 +522,8 @@ fn reject_yaml_1_1_ambiguous_rejects_n() {
 fn reject_yaml_1_1_ambiguous_is_case_insensitive() {
     let scalars = vec!["YES"];
     let result = reject_yaml_1_1_ambiguous_scalars(&scalars);
-    assert_eq!(
-        result,
-        Err(YamlError::AmbiguousScalar {
-            scalar: "YES".into()
-        })
+    assert!(
+        matches!(result, Err(YamlError::AmbiguousScalar { scalar, .. }) if scalar.as_ref() == "YES")
     );
 }
 
@@ -561,12 +554,7 @@ fn parse_yaml_events_returns_error_for_invalid_yaml() {
 fn reject_duplicate_keys_returns_exact_key_for_duplicate() {
     let keys = vec!["first", "repeat", "repeat"];
     let result = reject_duplicate_keys(&keys);
-    assert_eq!(
-        result,
-        Err(YamlError::DuplicateKey {
-            key: "repeat".into()
-        })
-    );
+    assert!(matches!(result, Err(YamlError::DuplicateKey { key, .. }) if key.as_ref() == "repeat"));
 }
 
 #[test]
@@ -585,7 +573,7 @@ fn parse_workflow_source_returns_error_for_duplicate_step_ids() {
     let yaml =
         "version: velvet-ballistics/v1\nname: dup\nwhen:\n  manual: {}\nname: dup2\nsteps: []\n";
     let result = parse_workflow_source(yaml);
-    assert_eq!(result, Err(YamlError::DuplicateKey { key: "name".into() }));
+    assert!(matches!(result, Err(YamlError::DuplicateKey { key, .. }) if key.as_ref() == "name"));
 }
 
 #[test]
@@ -611,6 +599,7 @@ fn adversarial_api_null_byte_in_source_rejected() {
         matches!(
             result,
             Err(YamlError::ForbiddenFeature {
+                span: None,
                 detail: "null_byte_in_source"
             })
         ),
@@ -664,7 +653,10 @@ fn adversarial_api_workflow_with_unsupported_trigger_rejected() {
     assert!(
         matches!(
             result,
-            Err(YamlError::UnsupportedTrigger { trigger: "ipc" })
+            Err(YamlError::UnsupportedTrigger {
+                span: None,
+                trigger: "ipc"
+            })
         ),
         "expected UnsupportedTrigger for ipc trigger, got: {result:?}"
     );
@@ -674,7 +666,13 @@ fn adversarial_api_workflow_with_unsupported_trigger_rejected() {
 fn adversarial_api_workflow_with_missing_when_rejected() {
     let yaml = "version: velvet-ballistics/v1\nname: no-when\nsteps: []\n";
     let result = parse_workflow_source(yaml);
-    assert_eq!(result, Err(YamlError::MissingField { field: "when" }));
+    assert_eq!(
+        result,
+        Err(YamlError::MissingField {
+            span: None,
+            field: "when"
+        })
+    );
 }
 
 #[test]
@@ -816,6 +814,7 @@ fn parse_workflow_source_rejects_schedule_non_mapping_shape() {
     assert_eq!(
         result,
         Err(YamlError::FieldShape {
+            span: None,
             field: "mapping",
             expected: "mapping"
         })
@@ -835,6 +834,7 @@ fn parse_workflow_source_rejects_schedule_missing_cron() {
     assert_eq!(
         result,
         Err(YamlError::MissingField {
+            span: None,
             field: "when.schedule.cron"
         })
     );
@@ -854,6 +854,7 @@ fn parse_workflow_source_rejects_schedule_empty_cron() {
     assert_eq!(
         result,
         Err(YamlError::FieldShape {
+            span: None,
             field: "when.schedule.cron",
             expected: "non-empty string"
         })
@@ -875,6 +876,7 @@ fn parse_workflow_source_rejects_multiple_triggers() {
     assert_eq!(
         result,
         Err(YamlError::FieldShape {
+            span: None,
             field: "when",
             expected: "exactly one trigger"
         })
@@ -1042,4 +1044,348 @@ fn load_fixture_source_parses_valid_workflow() {
     "#};
     let result = load_fixture_source(yaml);
     assert!(result.is_ok(), "load_fixture_source failed: {result:?}");
+}
+
+// ---------------------------------------------------------------------------
+// YamlError::span() enrichment tests (B49-B55)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn yaml_error_all_variants_constructible_with_none_span() {
+    // B49: Every YamlError variant constructible with span: None
+    let errors: Vec<YamlError> = vec![
+        YamlError::UnsupportedTrigger {
+            trigger: "http",
+            span: None,
+        },
+        YamlError::UnsupportedFeature {
+            feature: "test",
+            span: None,
+        },
+        YamlError::DuplicateKey {
+            key: Box::from("k"),
+            span: None,
+        },
+        YamlError::AnchorAliasMerge { span: None },
+        YamlError::CustomTag {
+            tag: Box::from("tag"),
+            span: None,
+        },
+        YamlError::BinaryScalar { span: None },
+        YamlError::MultipleDocuments {
+            count: 2,
+            span: None,
+        },
+        YamlError::AmbiguousScalar {
+            scalar: Box::from("yes"),
+            span: None,
+        },
+        YamlError::SourceTooLarge { size: 100, max: 50 },
+        YamlError::NestingTooDeep { depth: 20, max: 16 },
+        YamlError::NodeLimitExceeded {
+            count: 5000,
+            max: 1000,
+        },
+        YamlError::EmptySource,
+        YamlError::ScalarTooLong {
+            len: 100,
+            max: 50,
+            span: None,
+        },
+        YamlError::SequenceTooLong {
+            len: 100,
+            max: 50,
+            span: None,
+        },
+        YamlError::MappingTooLarge {
+            count: 100,
+            max: 50,
+            span: None,
+        },
+        YamlError::UnknownField {
+            field: Box::from("x"),
+            span: None,
+        },
+        YamlError::MissingField {
+            field: "version",
+            span: None,
+        },
+        YamlError::FieldShape {
+            field: "steps",
+            expected: "sequence",
+            span: None,
+        },
+        YamlError::ParseError {
+            line: 1,
+            reason: Box::from("bad"),
+            span: None,
+        },
+        YamlError::ForbiddenFeature {
+            detail: "test",
+            span: None,
+        },
+    ];
+    // TF-VB-002b REPAIRED: Replace vacuous `let _ = error;` loop with
+    // exact .span() assertions proving backward-compatibility (C4.3).
+    assert_eq!(errors.len(), 20);
+    for error in &errors {
+        assert_eq!(
+            error.span(),
+            None,
+            "variant {error} constructed with span: None must return None from span()"
+        );
+    }
+}
+
+#[test]
+fn yaml_error_span_returns_none_for_limit_only_variants() {
+    // B50: span() returns None for limit-only variants
+    let errors: Vec<YamlError> = vec![
+        YamlError::SourceTooLarge { size: 100, max: 50 },
+        YamlError::NestingTooDeep { depth: 20, max: 16 },
+        YamlError::NodeLimitExceeded {
+            count: 5000,
+            max: 1000,
+        },
+        YamlError::EmptySource,
+    ];
+    for error in &errors {
+        assert_eq!(error.span(), None, "limit variant must return None span");
+    }
+}
+
+#[test]
+fn yaml_error_span_returns_some_for_span_carrying_variants() {
+    // B51/B53: span() returns Some and preserves exact SourceSpan
+    use crate::source_map::SourceSpan;
+    let ss = SourceSpan::new(10, 20, 3, 5, 3, 9);
+
+    let errors_with_span: Vec<YamlError> = vec![
+        YamlError::DuplicateKey {
+            key: Box::from("k"),
+            span: Some(ss),
+        },
+        YamlError::ParseError {
+            line: 5,
+            reason: Box::from("syntax"),
+            span: Some(ss),
+        },
+        YamlError::UnknownField {
+            field: Box::from("bad"),
+            span: Some(ss),
+        },
+        YamlError::ForbiddenFeature {
+            detail: "test",
+            span: Some(ss),
+        },
+        YamlError::AnchorAliasMerge { span: Some(ss) },
+        YamlError::CustomTag {
+            tag: Box::from("!bad"),
+            span: Some(ss),
+        },
+        YamlError::BinaryScalar { span: Some(ss) },
+        YamlError::AmbiguousScalar {
+            scalar: Box::from("on"),
+            span: Some(ss),
+        },
+        YamlError::MultipleDocuments {
+            count: 3,
+            span: Some(ss),
+        },
+        YamlError::UnsupportedTrigger {
+            trigger: "http",
+            span: Some(ss),
+        },
+        YamlError::UnsupportedFeature {
+            feature: "test",
+            span: Some(ss),
+        },
+        YamlError::ScalarTooLong {
+            len: 100,
+            max: 50,
+            span: Some(ss),
+        },
+        YamlError::SequenceTooLong {
+            len: 100,
+            max: 50,
+            span: Some(ss),
+        },
+        YamlError::MappingTooLarge {
+            count: 100,
+            max: 50,
+            span: Some(ss),
+        },
+        YamlError::MissingField {
+            field: "version",
+            span: Some(ss),
+        },
+        YamlError::FieldShape {
+            field: "steps",
+            expected: "sequence",
+            span: Some(ss),
+        },
+    ];
+    // 16 span-carrying variants
+    assert_eq!(errors_with_span.len(), 16);
+    for error in &errors_with_span {
+        assert_eq!(
+            error.span(),
+            Some(ss),
+            "span-carrying variant must return Some(exact_span)"
+        );
+    }
+}
+
+#[test]
+fn yaml_error_span_is_exhaustive_all_20_variants_covered() {
+    // B52: span() is exhaustive — all 20 variants have a match arm.
+    // This is compile-time enforced by the exhaustive match in YamlError::span().
+    // Runtime verification: constructing each of the 20 variants and calling span().
+    use crate::source_map::SourceSpan;
+    let ss = SourceSpan::new(0, 5, 1, 1, 1, 5);
+
+    let all: Vec<YamlError> = vec![
+        YamlError::UnsupportedTrigger {
+            trigger: "cron",
+            span: Some(ss),
+        },
+        YamlError::UnsupportedFeature {
+            feature: "f",
+            span: None,
+        },
+        YamlError::DuplicateKey {
+            key: Box::from("k"),
+            span: None,
+        },
+        YamlError::AnchorAliasMerge { span: None },
+        YamlError::CustomTag {
+            tag: Box::from("t"),
+            span: None,
+        },
+        YamlError::BinaryScalar { span: None },
+        YamlError::MultipleDocuments {
+            count: 1,
+            span: None,
+        },
+        YamlError::AmbiguousScalar {
+            scalar: Box::from("yes"),
+            span: None,
+        },
+        YamlError::SourceTooLarge { size: 100, max: 50 },
+        YamlError::NestingTooDeep { depth: 1, max: 16 },
+        YamlError::NodeLimitExceeded {
+            count: 1,
+            max: 1000,
+        },
+        YamlError::EmptySource,
+        YamlError::ScalarTooLong {
+            len: 1,
+            max: 10,
+            span: None,
+        },
+        YamlError::SequenceTooLong {
+            len: 1,
+            max: 10,
+            span: None,
+        },
+        YamlError::MappingTooLarge {
+            count: 1,
+            max: 10,
+            span: None,
+        },
+        YamlError::UnknownField {
+            field: Box::from("x"),
+            span: None,
+        },
+        YamlError::MissingField {
+            field: "v",
+            span: None,
+        },
+        YamlError::FieldShape {
+            field: "s",
+            expected: "seq",
+            span: None,
+        },
+        YamlError::ParseError {
+            line: 1,
+            reason: Box::from("e"),
+            span: None,
+        },
+        YamlError::ForbiddenFeature {
+            detail: "d",
+            span: None,
+        },
+    ];
+    assert_eq!(all.len(), 20);
+    for error in &all {
+        // Must not panic, must return Some or None based on variant
+        let span_opt = error.span();
+        // Verify the result is consistent with variant type
+        match error {
+            YamlError::SourceTooLarge { .. }
+            | YamlError::NestingTooDeep { .. }
+            | YamlError::NodeLimitExceeded { .. }
+            | YamlError::EmptySource => {
+                assert_eq!(span_opt, None, "limit variant must return None span");
+            }
+            _ => {
+                // Span-carrying variants: Some/None depends on construction
+                let _ = span_opt;
+            }
+        }
+    }
+}
+
+#[test]
+fn yaml_error_span_none_is_backward_compatible() {
+    // B54: YamlError with span: None is backward compatible (Display/Eq)
+    let err1 = YamlError::DuplicateKey {
+        key: Box::from("test"),
+        span: None,
+    };
+    let err2 = YamlError::DuplicateKey {
+        key: Box::from("test"),
+        span: None,
+    };
+    assert_eq!(err1, err2);
+    // Display and Debug must not panic
+    let _display = format!("{err1}");
+    let _debug = format!("{err1:?}");
+}
+
+#[test]
+fn yaml_error_parse_variants_carry_span_from_event_stream() {
+    // B55: parse-level variants (ParseError, AnchorAliasMerge, etc.)
+    // carry span from event stream
+    use crate::source_map::SourceSpan;
+    let parse_span = SourceSpan::new(15, 30, 2, 8, 2, 12);
+
+    let parse_err = YamlError::ParseError {
+        line: 2,
+        reason: Box::from("unexpected token"),
+        span: Some(parse_span),
+    };
+    assert_eq!(parse_err.span(), Some(parse_span));
+
+    let anchor_err = YamlError::AnchorAliasMerge {
+        span: Some(parse_span),
+    };
+    assert_eq!(anchor_err.span(), Some(parse_span));
+
+    let custom_tag_err = YamlError::CustomTag {
+        tag: Box::from("!invalid"),
+        span: Some(parse_span),
+    };
+    assert_eq!(custom_tag_err.span(), Some(parse_span));
+
+    let binary_err = YamlError::BinaryScalar {
+        span: Some(parse_span),
+    };
+    assert_eq!(binary_err.span(), Some(parse_span));
+
+    let ambiguous_err = YamlError::AmbiguousScalar {
+        scalar: Box::from("on"),
+        span: Some(parse_span),
+    };
+    assert_eq!(ambiguous_err.span(), Some(parse_span));
 }

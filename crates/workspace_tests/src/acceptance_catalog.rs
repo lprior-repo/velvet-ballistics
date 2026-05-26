@@ -356,13 +356,13 @@ fn validate_scenario(
     if scenario.given.is_empty() || scenario.when.is_empty() || scenario.then.is_empty() {
         return Err(CatalogValidationError::MissingGivenWhenThen {
             scenario_id: scenario.id.to_owned(),
-        });
+         span: Span::ZERO});
     }
 
     if scenario.expected_outcome.is_none() && scenario.expected_error.is_none() {
         return Err(CatalogValidationError::MissingExactAssertion {
             scenario_id: scenario.id.to_owned(),
-        });
+         span: Span::ZERO});
     }
 
     match (
@@ -372,12 +372,12 @@ fn validate_scenario(
         (None, None) => {
             return Err(CatalogValidationError::MissingEvidenceDisposition {
                 scenario_id: scenario.id.to_owned(),
-            });
+             span: Span::ZERO});
         }
         (Some(_), Some(_)) => {
             return Err(CatalogValidationError::ConflictingEvidenceDisposition {
                 scenario_id: scenario.id.to_owned(),
-            });
+             span: Span::ZERO});
         }
         (Some(target), None) => validate_executable_target(scenario.id, target)?,
         (None, Some(bead)) => validate_deferred_follow_up(scenario, bead)?,
@@ -386,19 +386,19 @@ fn validate_scenario(
     if scenario.public_surface.contains("private") || scenario.public_surface.contains("helper") {
         return Err(CatalogValidationError::PrivateSurface {
             scenario_id: scenario.id.to_owned(),
-        });
+         span: Span::ZERO});
     }
 
     if !scenario.fixture.contains("isolated") {
         return Err(CatalogValidationError::SharedFixture {
             scenario_id: scenario.id.to_owned(),
-        });
+         span: Span::ZERO});
     }
 
     if !seen.insert(scenario.id) {
         return Err(CatalogValidationError::DuplicateScenarioId {
             scenario_id: scenario.id.to_owned(),
-        });
+         span: Span::ZERO});
     }
 
     Ok(())
@@ -416,7 +416,7 @@ fn validate_executable_target(
     } else {
         Err(CatalogValidationError::InvalidExecutableEvidenceTarget {
             scenario_id: scenario_id.to_owned(),
-        })
+         span: Span::ZERO})
     }
 }
 
@@ -429,7 +429,7 @@ fn validate_deferred_follow_up(
     } else {
         Err(CatalogValidationError::InvalidDeferredFollowUpBead {
             scenario_id: scenario.id.to_owned(),
-        })
+         span: Span::ZERO})
     }
 }
 
@@ -440,6 +440,7 @@ fn validate_deferred_follow_up(
 #[cfg(test)]
 mod tests {
     use super::*;
+use vb_core::span::Span;
 
     fn valid_scenario(id: &'static str) -> Scenario {
         Scenario {
@@ -474,7 +475,7 @@ mod tests {
             validate_catalog(scenarios),
             Err(CatalogValidationError::DuplicateScenarioId {
                 scenario_id: "CAT-DUP".to_owned(),
-            })
+             span: Span::ZERO})
         );
     }
 
@@ -488,7 +489,7 @@ mod tests {
             validate_catalog(&[s1]),
             Err(CatalogValidationError::MissingGivenWhenThen {
                 scenario_id: "CAT-MISS-GIVEN".to_owned(),
-            })
+             span: Span::ZERO})
         );
 
         // Missing when
@@ -498,7 +499,7 @@ mod tests {
             validate_catalog(&[s2]),
             Err(CatalogValidationError::MissingGivenWhenThen {
                 scenario_id: "CAT-MISS-WHEN".to_owned(),
-            })
+             span: Span::ZERO})
         );
 
         // Missing then
@@ -508,7 +509,7 @@ mod tests {
             validate_catalog(&[s3]),
             Err(CatalogValidationError::MissingGivenWhenThen {
                 scenario_id: "CAT-MISS-THEN".to_owned(),
-            })
+             span: Span::ZERO})
         );
     }
 
@@ -523,7 +524,7 @@ mod tests {
             validate_catalog(&[scenario]),
             Err(CatalogValidationError::MissingExactAssertion {
                 scenario_id: "CAT-MISS-ASSERT".to_owned(),
-            })
+             span: Span::ZERO})
         );
     }
 }

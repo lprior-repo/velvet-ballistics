@@ -7,6 +7,7 @@
 //! protocol hard limits.
 
 use crate::{ValidationError, ValidationResult};
+use vb_core::span::Span;
 
 use crate::type_sigs::{ResourceLimits, WorkflowTypes};
 
@@ -110,6 +111,7 @@ fn check_resource_bound(
     if actual > declared {
         return Err(ValidationError::LimitExceeded {
             resource: resource.to_owned(),
+            span: Span::ZERO,
         });
     }
     Ok(())
@@ -123,11 +125,13 @@ fn check_declared_bound(
     if declared == 0 {
         return Err(ValidationError::LimitRequired {
             resource: resource.to_owned(),
+            span: Span::ZERO,
         });
     }
     if declared > hard_limit {
         return Err(ValidationError::LimitExceeded {
             resource: resource.to_owned(),
+            span: Span::ZERO,
         });
     }
     Ok(())
@@ -137,6 +141,7 @@ fn check_declared_bound(
 mod tests {
     use super::*;
     use crate::type_sigs::{StepKind, StepTypes, TypedValue, ValueType};
+    use vb_core::span::Span;
 
     fn make_workflow(steps: Vec<StepTypes>) -> WorkflowTypes {
         WorkflowTypes {
@@ -251,6 +256,7 @@ mod tests {
             validate_resource_limits(&wf, &hard),
             Err(ValidationError::LimitExceeded {
                 resource: "max_steps".to_owned(),
+                span: Span::ZERO
             })
         );
     }
@@ -293,6 +299,7 @@ mod tests {
             validate_resource_limits(&wf, &hard),
             Err(ValidationError::LimitExceeded {
                 resource: "max_fanout".to_owned(),
+                span: Span::ZERO
             })
         );
     }

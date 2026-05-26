@@ -264,19 +264,20 @@ fn semantic_source_map_repeated_fields_use_event_positions_not_text_find() {
 fn adversarial_source_map_null_byte_rejected_by_profile() {
     let yaml = "key: \x00value\n";
     let result = build_source_map(yaml);
-    assert_eq!(
+    assert!(matches!(
         result,
-        Err(crate::YamlError::ForbiddenFeature {
-            detail: "null_byte_in_source"
-        })
-    );
+        Err(crate::YamlError::ForbiddenFeature { .. })
+    ));
 }
 
 #[test]
 fn adversarial_source_map_anchor_rejected_by_profile() {
     let yaml = "a: &anchor value\nb: *anchor\n";
     let result = build_source_map(yaml);
-    assert_eq!(result, Err(crate::YamlError::AnchorAliasMerge));
+    assert!(matches!(
+        result,
+        Err(crate::YamlError::AnchorAliasMerge { .. })
+    ));
 }
 
 #[test]

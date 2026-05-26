@@ -37,7 +37,7 @@ fn multiple_documents_rejected() {
 fn anchor_rejected() {
     let yaml = "a: &anchor value\nb: *anchor\n";
     let result = validate_yaml_profile(yaml);
-    assert!(matches!(result, Err(YamlError::AnchorAliasMerge)));
+    assert!(matches!(result, Err(YamlError::AnchorAliasMerge { .. })));
 }
 
 #[test]
@@ -64,21 +64,21 @@ fn true_false_accepted() {
 fn reject_duplicate_keys_finds_dup() {
     let keys = vec!["a", "b", "a"];
     let result = reject_duplicate_keys(&keys);
-    assert!(matches!(result, Err(YamlError::DuplicateKey { key }) if key.as_ref() == "a"));
+    assert!(matches!(result, Err(YamlError::DuplicateKey { key, .. }) if key.as_ref() == "a"));
 }
 
 #[test]
 fn strict_profile_rejects_duplicate_top_level_key() {
     let yaml = "version: velvet-ballistics/v1\nname: first\nname: second\nwhen:\n  manual: {}\nsteps: []\n";
     let result = validate_yaml_profile(yaml);
-    assert!(matches!(result, Err(YamlError::DuplicateKey { key }) if key.as_ref() == "name"));
+    assert!(matches!(result, Err(YamlError::DuplicateKey { key, .. }) if key.as_ref() == "name"));
 }
 
 #[test]
 fn strict_profile_rejects_duplicate_nested_key() {
     let yaml = "version: velvet-ballistics/v1\nname: wf\nwhen:\n  ipc:\n    name: a\n    name: b\nsteps: []\n";
     let result = validate_yaml_profile(yaml);
-    assert!(matches!(result, Err(YamlError::DuplicateKey { key }) if key.as_ref() == "name"));
+    assert!(matches!(result, Err(YamlError::DuplicateKey { key, .. }) if key.as_ref() == "name"));
 }
 
 #[test]
@@ -146,25 +146,28 @@ fn single_document_accepted_exact() {
 fn multiple_documents_returns_exact_count() {
     let yaml = "---\na: 1\n---\nb: 2\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(result, Err(YamlError::MultipleDocuments { count: 2 }));
+    assert_eq!(
+        result,
+        Err(YamlError::MultipleDocuments {
+            span: None,
+            count: 2
+        })
+    );
 }
 
 #[test]
 fn anchor_rejected_exact() {
     let yaml = "a: &anc value\nb: *anc\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(result, Err(YamlError::AnchorAliasMerge));
+    assert!(matches!(result, Err(YamlError::AnchorAliasMerge { .. })));
 }
 
 #[test]
 fn ambiguous_yes_rejected_exact() {
     let yaml = "flag: yes\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(
-        result,
-        Err(YamlError::AmbiguousScalar {
-            scalar: "yes".into()
-        })
+    assert!(
+        matches!(result, Err(YamlError::AmbiguousScalar { scalar, .. }) if scalar.as_ref() == "yes")
     );
 }
 
@@ -172,11 +175,8 @@ fn ambiguous_yes_rejected_exact() {
 fn ambiguous_no_rejected_exact() {
     let yaml = "flag: no\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(
-        result,
-        Err(YamlError::AmbiguousScalar {
-            scalar: "no".into()
-        })
+    assert!(
+        matches!(result, Err(YamlError::AmbiguousScalar { scalar, .. }) if scalar.as_ref() == "no")
     );
 }
 
@@ -184,11 +184,8 @@ fn ambiguous_no_rejected_exact() {
 fn ambiguous_on_rejected_exact() {
     let yaml = "flag: on\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(
-        result,
-        Err(YamlError::AmbiguousScalar {
-            scalar: "on".into()
-        })
+    assert!(
+        matches!(result, Err(YamlError::AmbiguousScalar { scalar, .. }) if scalar.as_ref() == "on")
     );
 }
 
@@ -196,11 +193,8 @@ fn ambiguous_on_rejected_exact() {
 fn ambiguous_off_rejected_exact() {
     let yaml = "flag: off\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(
-        result,
-        Err(YamlError::AmbiguousScalar {
-            scalar: "off".into()
-        })
+    assert!(
+        matches!(result, Err(YamlError::AmbiguousScalar { scalar, .. }) if scalar.as_ref() == "off")
     );
 }
 
@@ -266,7 +260,7 @@ fn scalar_too_long_exact_values() {
     };
     let result = validate_yaml_profile_with_limits(&yaml, &limits);
     match result {
-        Err(YamlError::ScalarTooLong { len, max }) => {
+        Err(YamlError::ScalarTooLong { len, max, .. }) => {
             assert!(len > 50);
             assert_eq!(max, 50);
         }
@@ -298,7 +292,7 @@ fn node_limit_exceeded_exact_values() {
 fn reject_duplicate_keys_returns_exact_key() {
     let keys = vec!["a", "b", "a"];
     let result = reject_duplicate_keys(&keys);
-    assert_eq!(result, Err(YamlError::DuplicateKey { key: "a".into() }));
+    assert!(matches!(result, Err(YamlError::DuplicateKey { key, .. }) if key.as_ref() == "a"));
 }
 
 #[test]
@@ -317,7 +311,7 @@ fn reject_forbidden_features_rejects_custom_tag() {
     };
     let result = reject_forbidden_features(&events);
     match result {
-        Err(YamlError::CustomTag { tag }) => {
+        Err(YamlError::CustomTag { tag, .. }) => {
             assert!(tag.contains("mytag"), "expected 'mytag' in tag, got: {tag}");
         }
         other => fail_assert!("expected CustomTag, got {other:?}"),
@@ -343,7 +337,7 @@ fn reject_anchors_aliases_merges_rejects_anchor() {
         return;
     };
     let result = reject_anchors_aliases_merges(&events);
-    assert_eq!(result, Err(YamlError::AnchorAliasMerge));
+    assert!(matches!(result, Err(YamlError::AnchorAliasMerge { .. })));
 }
 
 #[test]
@@ -365,7 +359,13 @@ fn reject_multiple_documents_rejects_two_docs() {
         return;
     };
     let result = reject_multiple_documents(&events);
-    assert_eq!(result, Err(YamlError::MultipleDocuments { count: 2 }));
+    assert_eq!(
+        result,
+        Err(YamlError::MultipleDocuments {
+            span: None,
+            count: 2
+        })
+    );
 }
 
 #[test]
@@ -383,11 +383,8 @@ fn reject_multiple_documents_allows_single_doc() {
 fn reject_yaml_1_1_ambiguous_rejects_yes_exact() {
     let scalars = vec!["yes"];
     let result = reject_yaml_1_1_ambiguous_scalars(&scalars);
-    assert_eq!(
-        result,
-        Err(YamlError::AmbiguousScalar {
-            scalar: "yes".into()
-        })
+    assert!(
+        matches!(result, Err(YamlError::AmbiguousScalar { scalar, .. }) if scalar.as_ref() == "yes")
     );
 }
 
@@ -395,9 +392,8 @@ fn reject_yaml_1_1_ambiguous_rejects_yes_exact() {
 fn reject_yaml_1_1_ambiguous_rejects_y_exact() {
     let scalars = vec!["y"];
     let result = reject_yaml_1_1_ambiguous_scalars(&scalars);
-    assert_eq!(
-        result,
-        Err(YamlError::AmbiguousScalar { scalar: "y".into() })
+    assert!(
+        matches!(result, Err(YamlError::AmbiguousScalar { scalar, .. }) if scalar.as_ref() == "y")
     );
 }
 
@@ -405,9 +401,8 @@ fn reject_yaml_1_1_ambiguous_rejects_y_exact() {
 fn reject_yaml_1_1_ambiguous_rejects_n_exact() {
     let scalars = vec!["n"];
     let result = reject_yaml_1_1_ambiguous_scalars(&scalars);
-    assert_eq!(
-        result,
-        Err(YamlError::AmbiguousScalar { scalar: "n".into() })
+    assert!(
+        matches!(result, Err(YamlError::AmbiguousScalar { scalar, .. }) if scalar.as_ref() == "n")
     );
 }
 
@@ -422,14 +417,14 @@ fn reject_yaml_1_1_ambiguous_allows_true_exact() {
 fn duplicate_top_level_key_exact() {
     let yaml = "version: velvet-ballistics/v1\nname: first\nname: second\nwhen:\n  manual: {}\nsteps: []\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(result, Err(YamlError::DuplicateKey { key: "name".into() }));
+    assert!(matches!(result, Err(YamlError::DuplicateKey { key, .. }) if key.as_ref() == "name"));
 }
 
 #[test]
 fn duplicate_nested_key_exact() {
     let yaml = "version: velvet-ballistics/v1\nname: wf\nwhen:\n  ipc:\n    name: a\n    name: b\nsteps: []\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(result, Err(YamlError::DuplicateKey { key: "name".into() }));
+    assert!(matches!(result, Err(YamlError::DuplicateKey { key, .. }) if key.as_ref() == "name"));
 }
 
 #[test]
@@ -472,7 +467,7 @@ fn custom_tag_rejected_exact() {
     let yaml = "key: !custom value\n";
     let result = validate_yaml_profile(yaml);
     match result {
-        Err(YamlError::CustomTag { tag }) => {
+        Err(YamlError::CustomTag { tag, .. }) => {
             assert!(
                 tag.contains("custom"),
                 "tag should contain 'custom', got: {tag}"
@@ -494,7 +489,7 @@ fn unsupported_yaml_features_return_typed_diagnostics() {
     let yaml_anchor = "a: &anchor\nb: *anchor\n";
     let result_anchor = validate_yaml_profile(yaml_anchor);
     assert!(
-        matches!(result_anchor, Err(YamlError::AnchorAliasMerge)),
+        matches!(result_anchor, Err(YamlError::AnchorAliasMerge { .. })),
         "anchor/alias should produce AnchorAliasMerge error, got {result_anchor:?}"
     );
 

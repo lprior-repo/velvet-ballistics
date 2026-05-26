@@ -22,35 +22,35 @@ macro_rules! fail_assert {
 fn adversarial_duplicate_keys_nested_deep_mapping_rejected() {
     let yaml = "a:\n  b:\n    c: 1\n    c: 2\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(result, Err(YamlError::DuplicateKey { key: "c".into() }));
+    assert!(matches!(result, Err(YamlError::DuplicateKey { key, .. }) if key.as_ref() == "c"));
 }
 
 #[test]
 fn adversarial_duplicate_keys_top_level_rejected() {
     let yaml = "x: 1\nx: 2\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(result, Err(YamlError::DuplicateKey { key: "x".into() }));
+    assert!(matches!(result, Err(YamlError::DuplicateKey { key, .. }) if key.as_ref() == "x"));
 }
 
 #[test]
 fn adversarial_alias_without_anchor_rejected() {
     let yaml = "a: &anc value\nb: *anc\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(result, Err(YamlError::AnchorAliasMerge));
+    assert!(matches!(result, Err(YamlError::AnchorAliasMerge { .. })));
 }
 
 #[test]
 fn adversarial_anchor_on_sequence_rejected() {
     let yaml = "items: &seq\n  - a\n  - b\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(result, Err(YamlError::AnchorAliasMerge));
+    assert!(matches!(result, Err(YamlError::AnchorAliasMerge { .. })));
 }
 
 #[test]
 fn adversarial_anchor_on_mapping_rejected() {
     let yaml = "base: &map\n  k: v\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(result, Err(YamlError::AnchorAliasMerge));
+    assert!(matches!(result, Err(YamlError::AnchorAliasMerge { .. })));
 }
 
 #[test]
@@ -58,7 +58,7 @@ fn adversarial_custom_tag_double_bang_timestamp_rejected() {
     let yaml = "date: !!timestamp 2024-01-01\n";
     let result = validate_yaml_profile(yaml);
     match result {
-        Err(YamlError::CustomTag { tag }) => {
+        Err(YamlError::CustomTag { tag, .. }) => {
             assert!(
                 tag.contains("timestamp"),
                 "expected 'timestamp' in tag, got: {tag}"
@@ -73,7 +73,7 @@ fn adversarial_custom_tag_local_bang_rejected() {
     let yaml = "val: !myapp/special data\n";
     let result = validate_yaml_profile(yaml);
     match result {
-        Err(YamlError::CustomTag { tag }) => {
+        Err(YamlError::CustomTag { tag, .. }) => {
             assert!(tag.contains("myapp"), "expected 'myapp' in tag, got: {tag}");
         }
         other => fail_assert!("expected CustomTag, got {other:?}"),
@@ -85,7 +85,7 @@ fn adversarial_multi_document_with_explicit_markers_rejected() {
     let yaml = "---\na: 1\n...\n---\nb: 2\n";
     let result = validate_yaml_profile(yaml);
     assert!(
-        matches!(result, Err(YamlError::MultipleDocuments { count }) if count >= 2),
+        matches!(result, Err(YamlError::MultipleDocuments { span: None, count }) if count >= 2),
         "expected MultipleDocuments, got: {result:?}"
     );
 }
@@ -94,11 +94,8 @@ fn adversarial_multi_document_with_explicit_markers_rejected() {
 fn adversarial_yaml_11_yes_mixed_case_rejected() {
     let yaml = "flag: Yes\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(
-        result,
-        Err(YamlError::AmbiguousScalar {
-            scalar: "Yes".into()
-        })
+    assert!(
+        matches!(result, Err(YamlError::AmbiguousScalar { scalar, .. }) if scalar.as_ref() == "Yes")
     );
 }
 
@@ -106,11 +103,8 @@ fn adversarial_yaml_11_yes_mixed_case_rejected() {
 fn adversarial_yaml_11_no_uppercase_rejected() {
     let yaml = "flag: NO\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(
-        result,
-        Err(YamlError::AmbiguousScalar {
-            scalar: "NO".into()
-        })
+    assert!(
+        matches!(result, Err(YamlError::AmbiguousScalar { scalar, .. }) if scalar.as_ref() == "NO")
     );
 }
 
@@ -118,11 +112,8 @@ fn adversarial_yaml_11_no_uppercase_rejected() {
 fn adversarial_yaml_11_on_uppercase_rejected() {
     let yaml = "flag: ON\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(
-        result,
-        Err(YamlError::AmbiguousScalar {
-            scalar: "ON".into()
-        })
+    assert!(
+        matches!(result, Err(YamlError::AmbiguousScalar { scalar, .. }) if scalar.as_ref() == "ON")
     );
 }
 
@@ -130,11 +121,8 @@ fn adversarial_yaml_11_on_uppercase_rejected() {
 fn adversarial_yaml_11_off_mixed_case_rejected() {
     let yaml = "flag: Off\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(
-        result,
-        Err(YamlError::AmbiguousScalar {
-            scalar: "Off".into()
-        })
+    assert!(
+        matches!(result, Err(YamlError::AmbiguousScalar { scalar, .. }) if scalar.as_ref() == "Off")
     );
 }
 
@@ -142,9 +130,8 @@ fn adversarial_yaml_11_off_mixed_case_rejected() {
 fn adversarial_yaml_11_y_lowercase_rejected() {
     let yaml = "flag: y\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(
-        result,
-        Err(YamlError::AmbiguousScalar { scalar: "y".into() })
+    assert!(
+        matches!(result, Err(YamlError::AmbiguousScalar { scalar, .. }) if scalar.as_ref() == "y")
     );
 }
 
@@ -152,9 +139,8 @@ fn adversarial_yaml_11_y_lowercase_rejected() {
 fn adversarial_yaml_11_n_lowercase_rejected() {
     let yaml = "flag: n\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(
-        result,
-        Err(YamlError::AmbiguousScalar { scalar: "n".into() })
+    assert!(
+        matches!(result, Err(YamlError::AmbiguousScalar { scalar, .. }) if scalar.as_ref() == "n")
     );
 }
 
@@ -184,7 +170,7 @@ fn adversarial_scalar_over_limit_rejected() {
     let yaml = format!("key: \"{long_val}\"\n");
     let result = validate_yaml_profile(&yaml);
     match result {
-        Err(YamlError::ScalarTooLong { len, max }) => {
+        Err(YamlError::ScalarTooLong { len, max, .. }) => {
             assert!(len > 65_536, "expected len > 65536, got {len}");
             assert_eq!(max, 65_536);
         }
@@ -216,7 +202,7 @@ fn adversarial_node_limit_exceeded() {
 fn adversarial_duplicate_key_in_sequence_context_rejected() {
     let yaml = "items:\n  - name: a\n    name: b\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(result, Err(YamlError::DuplicateKey { key: "name".into() }));
+    assert!(matches!(result, Err(YamlError::DuplicateKey { key, .. }) if key.as_ref() == "name"));
 }
 
 #[test]
@@ -257,7 +243,7 @@ fn adversarial_tag_on_sequence_rejected() {
     let yaml = "items: !seq\n  - a\n  - b\n";
     let result = validate_yaml_profile(yaml);
     match result {
-        Err(YamlError::CustomTag { tag }) => {
+        Err(YamlError::CustomTag { tag, .. }) => {
             assert!(tag.contains("seq"), "expected 'seq' in tag, got: {tag}");
         }
         other => fail_assert!("expected CustomTag, got {other:?}"),
@@ -269,7 +255,7 @@ fn adversarial_tag_on_mapping_rejected() {
     let yaml = "data: !map\n  k: v\n";
     let result = validate_yaml_profile(yaml);
     match result {
-        Err(YamlError::CustomTag { tag }) => {
+        Err(YamlError::CustomTag { tag, .. }) => {
             assert!(tag.contains("map"), "expected 'map' in tag, got: {tag}");
         }
         other => fail_assert!("expected CustomTag, got {other:?}"),
@@ -295,5 +281,11 @@ fn adversarial_source_one_byte_over_limit_rejected() {
 fn adversarial_three_documents_rejected_with_count() {
     let yaml = "---\na: 1\n---\nb: 2\n---\nc: 3\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(result, Err(YamlError::MultipleDocuments { count: 3 }));
+    assert_eq!(
+        result,
+        Err(YamlError::MultipleDocuments {
+            span: None,
+            count: 3
+        })
+    );
 }

@@ -6,6 +6,7 @@
 
 use crate::{ValidationError, ValidationResult};
 use vb_core::ids::SlotIdx;
+use vb_core::span::Span;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, WorkflowParts};
 
 /// Validates that every slot reference in the compiled IR is within the declared slot_count.
@@ -52,6 +53,7 @@ fn validate_node_slots(
                     slot: input.as_usize(),
                     slot_count,
                     context: "Do.input".to_string(),
+                    span: Span::ZERO,
                 });
             }
         }
@@ -146,6 +148,7 @@ fn validate_node_slots(
             return Err(ValidationError::NodeKindConstraintViolation {
                 node_index,
                 detail: "unsupported node kind".to_string(),
+                span: Span::ZERO,
             });
         }
     }
@@ -164,6 +167,7 @@ fn validate_expr_slots(
                     slot: slot.as_usize(),
                     slot_count,
                     context: format!("expression {expr_index}"),
+                    span: Span::ZERO,
                 });
             }
         }
@@ -177,6 +181,7 @@ fn check_slot(slot: SlotIdx, node_index: usize, slot_count: usize) -> Validation
             slot: slot.as_usize(),
             slot_count,
             context: format!("node {node_index}"),
+            span: Span::ZERO,
         });
     }
     Ok(())

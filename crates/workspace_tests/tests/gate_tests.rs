@@ -11,6 +11,7 @@ use vb_core::workflow::{
 };
 use vb_validate::ValidationError;
 use vb_validate::gates::{
+use vb_core::span::Span;
     validate_gate_07_expression_stack_depth, validate_gate_08_accessor_path_segments,
     validate_gate_09_slot_references, validate_gate_10_node_kind_specific,
     validate_gate_11_loop_body_graph, validate_gate_13_no_slot_cycles,
@@ -199,7 +200,7 @@ fn gate_08_rejects_field_symbol_out_of_bounds_precisely() {
             segment_index: 1,
             symbol: 9,
             symbols_count: 2,
-        })
+         span: Span::ZERO})
     );
 }
 
@@ -292,7 +293,7 @@ fn gate_10_rejects_expression_const_reference_out_of_range() {
 
     assert!(matches!(
         validate_gate_10_node_kind_specific(&parts),
-        Err(ValidationError::NodeKindConstraintViolation { node_index: 0, detail })
+        Err(ValidationError::NodeKindConstraintViolation { node_index: 0, detail , span: Span::ZERO})
             if detail == "Expression 0 LoadConst const index 0 out of range (const_count 0)"
     ));
 }
@@ -307,7 +308,7 @@ fn gate_10_rejects_expression_accessor_reference_out_of_range() {
 
     assert!(matches!(
         validate_gate_10_node_kind_specific(&parts),
-        Err(ValidationError::NodeKindConstraintViolation { node_index: 0, detail })
+        Err(ValidationError::NodeKindConstraintViolation { node_index: 0, detail , span: Span::ZERO})
             if detail == "Expression 0 LoadAccessor accessor index 0 out of range (accessor_count 0)"
     ));
 }
@@ -329,7 +330,7 @@ fn gate_10_rejects_build_object_field_symbol_out_of_range() {
 
     assert!(matches!(
         validate_gate_10_node_kind_specific(&parts),
-        Err(ValidationError::NodeKindConstraintViolation { node_index: 0, detail })
+        Err(ValidationError::NodeKindConstraintViolation { node_index: 0, detail , span: Span::ZERO})
             if detail == "BuildObject field 0 symbol 7 out of range (symbols_count 2)"
     ));
 }

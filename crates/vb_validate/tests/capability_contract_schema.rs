@@ -4,6 +4,7 @@ use proptest::prelude::*;
 use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
 use vb_core::capability::Capability;
 use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::span::Span;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 use vb_validate::ValidationError;
 use vb_validate::diagnostic::diagnostic_from_error;
@@ -93,6 +94,7 @@ fn validation_pipeline_returns_capability_name_empty_when_requirement_name_is_em
         Err(ValidationError::CapabilityNameEmpty {
             action_id: 1,
             capability_index: 0,
+            span: Span::ZERO
         })
     );
 }
@@ -109,6 +111,7 @@ fn validation_pipeline_returns_capability_name_too_long_when_name_has_129_bytes(
             capability_index: 0,
             len: 129,
             max: MAX_CAPABILITY_NAME_BYTES,
+            span: Span::ZERO
         })
     );
 }
@@ -126,6 +129,7 @@ fn validation_pipeline_returns_capability_name_invalid_when_name_contains_colon(
             action_id: 1,
             capability_index: 0,
             name: "network:github".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -140,6 +144,7 @@ fn validation_pipeline_returns_capability_name_invalid_when_name_has_leading_dot
             action_id: 1,
             capability_index: 0,
             name: ".network".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -154,6 +159,7 @@ fn validation_pipeline_returns_capability_name_invalid_when_name_has_trailing_do
             action_id: 1,
             capability_index: 0,
             name: "network.".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -168,6 +174,7 @@ fn validation_pipeline_returns_capability_name_invalid_when_name_has_uppercase()
             action_id: 1,
             capability_index: 0,
             name: "Network".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -183,6 +190,7 @@ fn validation_pipeline_returns_capability_action_mismatch_when_requirement_actio
             contract_action_id: 1,
             capability_action_id: 2,
             capability_index: 0,
+            span: Span::ZERO
         })
     );
 }
@@ -202,6 +210,7 @@ fn validation_pipeline_returns_capability_duplicate_when_same_name_and_action_re
             first_index: 0,
             duplicate_index: 1,
             name: "network".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -225,6 +234,7 @@ fn validation_pipeline_returns_earliest_capability_duplicate_when_multiple_dupli
             first_index: 0,
             duplicate_index: 2,
             name: "network".to_owned(),
+            span: Span::ZERO
         })
     );
 }
@@ -249,6 +259,7 @@ fn validation_pipeline_returns_first_schema_error_before_duplicate_and_orphan_ch
         Err(ValidationError::CapabilityNameEmpty {
             action_id: 1,
             capability_index: 0,
+            span: Span::ZERO
         })
     );
 }
@@ -264,6 +275,7 @@ fn shared_validate_with_contracts_returns_capability_name_empty_when_live_gate_r
         Err(ValidationError::CapabilityNameEmpty {
             action_id: 1,
             capability_index: 0,
+            span: Span::ZERO
         })
     );
 }
@@ -273,9 +285,10 @@ fn diagnostic_conversion_returns_e050d_when_error_is_capability_name_empty() {
     let error = ValidationError::CapabilityNameEmpty {
         action_id: 1,
         capability_index: 0,
+        span: Span::ZERO,
     };
-    let diagnostic = diagnostic_from_error(&error);
-    assert_eq!(diagnostic.numeric_code.code(), 0x050D);
+    let diagnostic = diagnostic_from_error(&error, None);
+    assert_eq!(diagnostic.code.code(), 0x050D);
     assert_eq!(
         diagnostic.message.as_ref(),
         "capability name is empty for action 1 at required_capabilities[0]"
@@ -289,9 +302,10 @@ fn diagnostic_conversion_returns_e050e_when_error_is_capability_name_too_long() 
         capability_index: 0,
         len: 129,
         max: 128,
+        span: Span::ZERO,
     };
-    let diagnostic = diagnostic_from_error(&error);
-    assert_eq!(diagnostic.numeric_code.code(), 0x050E);
+    let diagnostic = diagnostic_from_error(&error, None);
+    assert_eq!(diagnostic.code.code(), 0x050E);
     assert_eq!(
         diagnostic.message.as_ref(),
         "capability name too long for action 1 at required_capabilities[0]: 129 > 128"
@@ -304,9 +318,10 @@ fn diagnostic_conversion_returns_e050f_when_error_is_capability_name_invalid() {
         action_id: 1,
         capability_index: 0,
         name: "network:github".to_owned(),
+        span: Span::ZERO,
     };
-    let diagnostic = diagnostic_from_error(&error);
-    assert_eq!(diagnostic.numeric_code.code(), 0x050F);
+    let diagnostic = diagnostic_from_error(&error, None);
+    assert_eq!(diagnostic.code.code(), 0x050F);
     assert_eq!(
         diagnostic.message.as_ref(),
         "invalid capability name for action 1 at required_capabilities[0]: network:github"
@@ -319,9 +334,10 @@ fn diagnostic_conversion_returns_e0510_when_error_is_capability_action_mismatch(
         contract_action_id: 1,
         capability_action_id: 2,
         capability_index: 0,
+        span: Span::ZERO,
     };
-    let diagnostic = diagnostic_from_error(&error);
-    assert_eq!(diagnostic.numeric_code.code(), 0x0510);
+    let diagnostic = diagnostic_from_error(&error, None);
+    assert_eq!(diagnostic.code.code(), 0x0510);
     assert_eq!(
         diagnostic.message.as_ref(),
         "capability action 2 does not match contract action 1 at required_capabilities[0]"
@@ -335,9 +351,10 @@ fn diagnostic_conversion_returns_e0511_when_error_is_capability_duplicate() {
         first_index: 0,
         duplicate_index: 1,
         name: "network".to_owned(),
+        span: Span::ZERO,
     };
-    let diagnostic = diagnostic_from_error(&error);
-    assert_eq!(diagnostic.numeric_code.code(), 0x0511);
+    let diagnostic = diagnostic_from_error(&error, None);
+    assert_eq!(diagnostic.code.code(), 0x0511);
     assert_eq!(
         diagnostic.message.as_ref(),
         "duplicate capability requirement for action 1: network at required_capabilities[0] and required_capabilities[1]"
@@ -362,7 +379,7 @@ proptest! {
                 capability_index: 0,
                 len,
                 max: MAX_CAPABILITY_NAME_BYTES,
-            })
+             span: Span::ZERO})
         );
     }
 
@@ -376,7 +393,7 @@ proptest! {
                 contract_action_id: 1,
                 capability_action_id: usize::from(capability_action),
                 capability_index: 0,
-            })
+             span: Span::ZERO})
         );
     }
 }

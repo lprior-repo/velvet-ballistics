@@ -8,6 +8,7 @@
 use std::collections::HashMap;
 
 use crate::ValidationResult;
+use vb_core::span::Span;
 
 use crate::type_sigs::{InputDecl, Taint, TypedValue, ValueFact, ValueType, WorkflowTypes};
 
@@ -19,6 +20,7 @@ pub(crate) fn require_boolean(actual: ValueType) -> ValidationResult<()> {
         Err(crate::ValidationError::TypeMismatch {
             expected: "boolean".to_owned(),
             found: actual.as_str().to_owned(),
+            span: Span::ZERO,
         })
     }
 }
@@ -168,6 +170,7 @@ mod tests {
     use super::*;
     use crate::ValidationError;
     use crate::type_sigs::{InputDecl, Taint, TypedValue, ValueFact, ValueType, WorkflowTypes};
+    use vb_core::span::Span;
 
     fn sample_workflow() -> WorkflowTypes {
         WorkflowTypes {
@@ -295,6 +298,7 @@ mod tests {
             Err(ValidationError::TypeMismatch {
                 expected: "boolean".to_owned(),
                 found: "text".to_owned(),
+                span: Span::ZERO
             }),
             "require_boolean should reject text type"
         );
@@ -308,6 +312,7 @@ mod tests {
             Err(ValidationError::TypeMismatch {
                 expected: "boolean".to_owned(),
                 found: "number".to_owned(),
+                span: Span::ZERO
             }),
             "require_boolean should reject number type"
         );
@@ -321,6 +326,7 @@ mod tests {
             Err(ValidationError::TypeMismatch {
                 expected: "boolean".to_owned(),
                 found: "null".to_owned(),
+                span: Span::ZERO
             }),
             "require_boolean should reject null type"
         );
@@ -334,6 +340,7 @@ mod tests {
             Err(ValidationError::TypeMismatch {
                 expected: "boolean".to_owned(),
                 found: "object".to_owned(),
+                span: Span::ZERO
             }),
             "require_boolean should reject object type"
         );
@@ -347,6 +354,7 @@ mod tests {
             Err(ValidationError::TypeMismatch {
                 expected: "boolean".to_owned(),
                 found: "list".to_owned(),
+                span: Span::ZERO
             }),
             "require_boolean should reject list type"
         );

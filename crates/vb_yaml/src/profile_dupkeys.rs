@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Duplicate key detection for YAML profile.
 
+use crate::source_map::SourceSpan;
 use crate::{YamlError, YamlResult, events::YamlEvent};
 
 #[derive(Debug)]
@@ -15,12 +16,27 @@ struct MappingFrame<'a> {
     expecting_key: bool,
 }
 
+/// Convert a YamlEvent EventSpan into a SourceSpan for error span propagation.
+fn event_span_to_source_span(span: crate::events::EventSpan) -> Option<SourceSpan> {
+    Some(SourceSpan::new(
+        span.start,
+        span.end,
+        span.line,
+        span.column,
+        span.line,
+        span.column,
+    ))
+}
+
 /// Reject duplicate keys in a list of key strings.
 pub fn reject_duplicate_keys(keys: &[&str]) -> YamlResult<()> {
     let mut seen = Vec::new();
     for key in keys {
         if seen.contains(key) {
-            return Err(YamlError::DuplicateKey { key: (*key).into() });
+            return Err(YamlError::DuplicateKey {
+                span: None,
+                key: (*key).into(),
+            });
         }
         seen.push(*key);
     }
@@ -49,8 +65,8 @@ pub fn reject_duplicate_mapping_keys(events: &[YamlEvent]) -> YamlResult<()> {
             YamlEvent::SequenceEnd { .. } => {
                 pop_container(&mut stack, "sequence end without matching start")?;
             }
-            YamlEvent::Scalar { value, .. } => {
-                handle_scalar_for_duplicate_key(value, &mut stack)?;
+            YamlEvent::Scalar { value, span, .. } => {
+                handle_scalar_for_duplicate_key(value, &mut stack, *span)?;
             }
             _ => {}
         }
@@ -62,6 +78,7 @@ fn pop_container(stack: &mut Vec<Container<'_>>, reason: &'static str) -> YamlRe
     match stack.pop() {
         Some(_) => Ok(()),
         None => Err(YamlError::ParseError {
+            span: None,
             line: 0,
             reason: reason.into(),
         }),
@@ -80,6 +97,7 @@ fn finish_mapping_value_if_needed(stack: &mut [Container<'_>]) {
 fn handle_scalar_for_duplicate_key<'a>(
     value: &'a str,
     stack: &mut [Container<'a>],
+    span: crate::events::EventSpan,
 ) -> YamlResult<()> {
     let Some(container) = stack.last_mut() else {
         return Ok(());
@@ -87,7 +105,10 @@ fn handle_scalar_for_duplicate_key<'a>(
     match container {
         Container::Mapping(frame) if frame.expecting_key => {
             if frame.keys.contains(&value) {
-                return Err(YamlError::DuplicateKey { key: value.into() });
+                return Err(YamlError::DuplicateKey {
+                    span: event_span_to_source_span(span),
+                    key: value.into(),
+                });
             }
             frame.keys.push(value);
             frame.expecting_key = false;
