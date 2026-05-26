@@ -488,19 +488,36 @@ fn append_event_does_not_mutate_batch_state_on_limit_exceeded() {
 
     let mut batch = JournalWriteBatch::new(&journal);
 
-    // Pre-populate batch to exactly MAX_BATCH_COUNT (500) events
-    for i in 0..500 {
-        let event = make_run_accepted(run, i);
-        batch.append_event(&event).expect("append should succeed");
+    // Fill batch to MAX_BATCH_COUNT by looping until QueueFull is returned
+    // This approach works regardless of what MAX_BATCH_COUNT actually is
+    let mut count = 0usize;
+    loop {
+        let event = make_run_accepted(run, count as u64);
+        match batch.append_event(&event) {
+            Ok(()) => count += 1,
+            Err(JournalError::QueueFull) => break,
+            Err(e) => panic!("unexpected error at count {}: {:?}", count, e),
+        }
+        // Safety valve - should not exceed MAX_BATCH_COUNT
+        if count > vb_storage::constants::MAX_BATCH_COUNT {
+            panic!("exceeded MAX_BATCH_COUNT ({}) without QueueFull", vb_storage::constants::MAX_BATCH_COUNT);
+        }
     }
+
+    // Verify we hit exactly MAX_BATCH_COUNT
+    assert_eq!(
+        count,
+        vb_storage::constants::MAX_BATCH_COUNT,
+        "should fill to exactly MAX_BATCH_COUNT"
+    );
 
     let len_before = batch.len();
     let is_empty_before = batch.is_empty();
-    assert_eq!(len_before, 500, "batch should be at limit");
+    assert_eq!(len_before, vb_storage::constants::MAX_BATCH_COUNT, "batch should be at limit");
     assert!(!is_empty_before, "batch should not be empty");
 
     // Try to exceed count limit - should fail with QueueFull
-    let event = make_run_accepted(run, 500);
+    let event = make_run_accepted(run, count as u64);
     let result = batch.append_event(&event);
 
     // Should fail with QueueFull

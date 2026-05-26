@@ -228,6 +228,7 @@ impl Shard {
                 kind,
             } => self.handle_timer(run, generation, deadline, kind)?,
             ShardCommand::Cancel { run, reason } => self.handle_cancel(run, reason)?,
+            ShardCommand::Kill { run, reason } => self.handle_kill(run, reason)?,
             ShardCommand::Inspect { run, correlation } => {
                 self.handle_inspect(run, correlation);
             }

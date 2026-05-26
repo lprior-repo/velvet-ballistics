@@ -59,6 +59,7 @@ fn replay_events_with_schedule_requirement(
             | JournalEvent::AskAnsweredEvent { .. }
             | JournalEvent::RetryScheduledEvent { .. }
             | JournalEvent::RunCancelled { .. }
+            | JournalEvent::RunKilled { .. }
             | JournalEvent::RunFinished { .. }
             | JournalEvent::RunFailedEvent { .. }
             | JournalEvent::RunResumed { .. }

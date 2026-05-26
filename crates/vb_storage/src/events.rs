@@ -209,6 +209,15 @@ pub enum JournalEvent {
         /// Optional cancellation reason.
         reason: Option<String>,
     },
+    /// Run killed.
+    RunKilled {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Attempt number (1-based).
+        attempt: u16,
+    },
     /// Run completed.
     RunFinished {
         /// Run identifier.
@@ -282,6 +291,7 @@ impl JournalEvent {
             | Self::AskAnsweredEvent { run, .. }
             | Self::RetryScheduledEvent { run, .. }
             | Self::RunCancelled { run, .. }
+            | Self::RunKilled { run, .. }
             | Self::RunFinished { run, .. }
             | Self::RunFailedEvent { run, .. }
             | Self::RunResumed { run, .. }
@@ -312,6 +322,7 @@ impl JournalEvent {
             | Self::AskAnsweredEvent { seq, .. }
             | Self::RetryScheduledEvent { seq, .. }
             | Self::RunCancelled { seq, .. }
+            | Self::RunKilled { seq, .. }
             | Self::RunFinished { seq, .. }
             | Self::RunFailedEvent { seq, .. }
             | Self::RunResumed { seq, .. }
@@ -340,6 +351,7 @@ impl JournalEvent {
             Self::AskAnsweredEvent { .. } => RecordKind::AskAnswered,
             Self::RetryScheduledEvent { .. } => RecordKind::RetryScheduled,
             Self::RunCancelled { .. } => RecordKind::RunCancelled,
+            Self::RunKilled { .. } => RecordKind::RunKilled,
             Self::RunFinished { .. } => RecordKind::RunFinished,
             Self::RunFailedEvent { .. } => RecordKind::RunFailed,
             Self::RunResumed { .. } => RecordKind::RunResumed,
@@ -405,6 +417,7 @@ impl JournalEvent {
             | Self::RetryScheduledEvent { attempt, .. }
             | Self::StepStarted { attempt, .. }
             | Self::RunCancelled { attempt, .. }
+            | Self::RunKilled { attempt, .. }
             | Self::RunFinished { attempt, .. }
             | Self::RunFailedEvent { attempt, .. } => Some(*attempt),
             Self::ActionScheduledTicket { ticket, .. }
@@ -449,6 +462,7 @@ impl JournalEvent {
             | Self::RetryScheduledEvent { attempt, .. }
             | Self::StepStarted { attempt, .. }
             | Self::RunCancelled { attempt, .. }
+            | Self::RunKilled { attempt, .. }
             | Self::RunFinished { attempt, .. }
             | Self::RunFailedEvent { attempt, .. } => *attempt != 0,
             Self::ActionScheduledTicket { ticket, .. }

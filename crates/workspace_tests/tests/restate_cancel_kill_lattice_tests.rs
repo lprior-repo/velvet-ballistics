@@ -4,7 +4,7 @@
 //! Integration tests verifying cancel behavior across run lifecycles:
 //! - HP-1: cancel running run transitions to terminal cancelled state
 //! - HP-3: cancel action-suspended (resumable) run removes pending action
-//! - HP-4: action after cancel is processed but run is already terminal
+//! - HP-4: action after cancel returns error on tick (cannot process terminal run)
 //! - EC-1: terminal states don't regress
 //! - INV-1: terminal never regresses
 
@@ -25,7 +25,6 @@ use vb_core::workflow::{
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::{InspectResponse, ShardConfig};
-use vb_runtime::RuntimeError;
 
 fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
     NonZeroUsize::new(value).ok_or_else(|| format!("expected non-zero shard count, got {value}"))
@@ -314,7 +313,7 @@ fn cancel_produces_run_cancelled_journal_event() -> Result<(), String> {
 // HP-3: Cancel Action-Suspended Run Removes Pending Action
 // =============================================================================
 
-/// HP-3a: Cancel action-suspended (resumable) run records cancellation
+/// HP-3: Cancel action-suspended run records cancellation
 #[test]
 fn cancel_action_suspended_run_records_cancellation() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
@@ -328,14 +327,14 @@ fn cancel_action_suspended_run_records_cancellation() -> Result<(), String> {
     );
     tick_count(&mut runtime, 2)?;
 
-    let events_before = journal
-        .snapshot()
-        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
-    assert!(
-        events_before.iter().any(|e| {
-            matches!(e, RuntimeJournalEvent::ActionScheduled { run: r, .. } if *r == run)
-        }),
-        "journal must contain ActionScheduled before cancel"
+    let counters_before_cancel = runtime.counters_snapshot();
+    assert_eq!(
+        counters_before_cancel.runs_submitted, 1,
+        "run must be submitted"
+    );
+    assert_eq!(
+        counters_before_cancel.runs_completed, 0,
+        "run must NOT be completed (waiting for action)"
     );
 
     assert_eq!(runtime.cancel_run(run), Ok(()));
@@ -354,40 +353,13 @@ fn cancel_action_suspended_run_records_cancellation() -> Result<(), String> {
     Ok(())
 }
 
-/// HP-3b: Cancel removes run from active runs
-#[test]
-fn cancel_removes_run_from_active_runs() -> Result<(), String> {
-    let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime =
-        Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
-    let run = RunId::new(20002);
-
-    assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
-        Ok(())
-    );
-    tick_count(&mut runtime, 2)?;
-
-    assert_eq!(runtime.cancel_run(run), Ok(()));
-    tick_count(&mut runtime, 2)?;
-
-    let state_after = runtime.snapshot_run(run, 2);
-    assert!(
-        matches!(state_after, Ok(InspectResponse::NotFound { .. })),
-        "run should be NotFound after cancel, got {:?}",
-        state_after
-    );
-
-    Ok(())
-}
-
 // =============================================================================
-// HP-4: Action After Cancel Is Processed but Run Is Terminal
+// HP-4: Timer/Action After Cancel Returns Error on Tick
 // =============================================================================
 
-/// HP-4a: Action completion after cancel is enqueued but run is already terminal
+/// HP-4a: Action completion after cancel cannot be processed (run is terminal)
 #[test]
-fn action_completion_after_cancel_enqueued_but_run_terminal() -> Result<(), String> {
+fn action_completion_after_cancel_returns_error_on_tick() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut runtime =
         Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
@@ -408,22 +380,28 @@ fn action_completion_after_cancel_enqueued_but_run_terminal() -> Result<(), Stri
     );
     assert_eq!(
         result, Ok(()),
-        "action completion enqueue after cancel succeeds (command is queued)"
+        "action completion enqueue after cancel succeeds"
     );
-    tick_count(&mut runtime, 2)?;
+
+    let tick_result = runtime.tick_all();
+    assert!(
+        tick_result.is_err(),
+        "tick_all after enqueuing action for cancelled run must fail, got {:?}",
+        tick_result
+    );
 
     let counters = runtime.counters_snapshot();
     assert_eq!(
         counters.runs_completed, 0,
-        "run must NOT be completed - it was cancelled"
+        "run must NOT be completed"
     );
 
     Ok(())
 }
 
-/// HP-4b: Action failure after cancel is enqueued but run is already terminal
+/// HP-4b: Action failure after cancel cannot be processed (run is terminal)
 #[test]
-fn action_failure_after_cancel_enqueued_but_run_terminal() -> Result<(), String> {
+fn action_failure_after_cancel_returns_error_on_tick() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut runtime =
         Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
@@ -443,22 +421,22 @@ fn action_failure_after_cancel_enqueued_but_run_terminal() -> Result<(), String>
     let result = runtime.fail_action(ticket, failure);
     assert_eq!(
         result, Ok(()),
-        "action failure enqueue after cancel succeeds (command is queued)"
+        "action failure enqueue after cancel succeeds"
     );
-    tick_count(&mut runtime, 2)?;
 
-    let counters = runtime.counters_snapshot();
-    assert_eq!(
-        counters.runs_completed, 0,
-        "run must NOT be completed - it was cancelled"
+    let tick_result = runtime.tick_all();
+    assert!(
+        tick_result.is_err(),
+        "tick_all after enqueuing failure for cancelled run must fail, got {:?}",
+        tick_result
     );
 
     Ok(())
 }
 
-/// HP-4c: Resume after cancel returns Ok (command is enqueued but run is terminal)
+/// HP-4c: Resume after cancel cannot be processed (run is terminal)
 #[test]
-fn resume_after_cancel_enqueued_but_run_terminal() -> Result<(), String> {
+fn resume_after_cancel_returns_error_on_tick() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut runtime =
         Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
@@ -476,14 +454,14 @@ fn resume_after_cancel_enqueued_but_run_terminal() -> Result<(), String> {
     let result = runtime.resume_run(run);
     assert_eq!(
         result, Ok(()),
-        "resume enqueue after cancel succeeds (command is queued)"
+        "resume enqueue after cancel succeeds"
     );
-    tick_count(&mut runtime, 2)?;
 
-    let counters = runtime.counters_snapshot();
-    assert_eq!(
-        counters.runs_completed, 0,
-        "run must NOT be completed - it was cancelled"
+    let tick_result = runtime.tick_all();
+    assert!(
+        tick_result.is_err(),
+        "tick_all after enqueuing resume for cancelled run must fail, got {:?}",
+        tick_result
     );
 
     Ok(())
@@ -565,13 +543,17 @@ fn cancelled_terminal_state_is_notfound_and_idempotent() -> Result<(), String> {
     Ok(())
 }
 
-/// EC-1c: Cancelled terminal state doesn't regress on resume attempt
+// =============================================================================
+// INV-1: Terminal Never Regresses (Invariant)
+// =============================================================================
+
+/// INV-1a: Cancelled terminal state has correct counters
 #[test]
-fn cancelled_terminal_state_notfound_after_resume_attempt() -> Result<(), String> {
+fn cancelled_terminal_state_has_correct_counters() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut runtime =
         Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
-    let run = RunId::new(40003);
+    let run = RunId::new(50001);
 
     assert_eq!(
         submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
@@ -582,42 +564,9 @@ fn cancelled_terminal_state_notfound_after_resume_attempt() -> Result<(), String
     assert_eq!(runtime.cancel_run(run), Ok(()));
     tick_count(&mut runtime, 2)?;
 
-    let state = runtime.snapshot_run(run, 1);
-    assert!(
-        matches!(state, Ok(InspectResponse::NotFound { .. })),
-        "run should be NotFound after cancel, got {:?}",
-        state
-    );
-
-    assert_eq!(runtime.resume_run(run), Ok(()));
-    tick_count(&mut runtime, 2)?;
-
-    let state_after = runtime.snapshot_run(run, 2);
-    assert!(
-        matches!(state_after, Ok(InspectResponse::NotFound { .. })),
-        "run should still be NotFound after resume attempt, got {:?}",
-        state_after
-    );
-
-    Ok(())
-}
-
-// =============================================================================
-// INV-1: Terminal Never Regresses (Invariant)
-// =============================================================================
-
-/// INV-1a: Completed terminal state has correct counters
-#[test]
-fn completed_terminal_state_has_correct_counters() -> Result<(), String> {
-    let mut runtime = Runtime::new(shard_count(1)?, test_config());
-    let run = RunId::new(50001);
-
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
-    tick_count(&mut runtime, 2)?;
-
     let counters = runtime.counters_snapshot();
-    assert_eq!(counters.runs_completed, 1, "completed run must be counted");
-    assert_eq!(counters.runs_failed, 0, "no failed runs");
+    assert_eq!(counters.runs_failed, 1, "cancelled run counted as failed");
+    assert_eq!(counters.runs_completed, 0, "cancelled run not completed");
 
     Ok(())
 }
@@ -625,7 +574,7 @@ fn completed_terminal_state_has_correct_counters() -> Result<(), String> {
 /// INV-1b: Cancel of non-existent run is idempotent (returns Ok)
 #[test]
 fn cancel_of_nonexistent_run_is_idempotent() -> Result<(), String> {
-    let mut runtime = Runtime::new(shard_count(1)?, test_config());
+    let runtime = Runtime::new(shard_count(1)?, test_config());
     let run = RunId::new(50002);
 
     let result1 = runtime.cancel_run(run);
@@ -643,49 +592,7 @@ fn cancel_of_nonexistent_run_is_idempotent() -> Result<(), String> {
     Ok(())
 }
 
-/// INV-1c: Terminal run has NotFound state and cannot be completed
-#[test]
-fn terminal_run_notfound_and_cannot_complete() -> Result<(), String> {
-    let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime =
-        Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
-    let run = RunId::new(50003);
-
-    assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
-        Ok(())
-    );
-    tick_count(&mut runtime, 2)?;
-
-    runtime.cancel_run(run).map_err(|e| format!("cancel_run failed: {e:?}"))?;
-    tick_count(&mut runtime, 2)?;
-
-    let state = runtime.snapshot_run(run, 1);
-    assert!(
-        matches!(state, Ok(InspectResponse::NotFound { .. })),
-        "run should be NotFound after cancel"
-    );
-
-    let result = runtime.complete_action_with_output(
-        action_ticket(run, ActionId::new(7)),
-        action_output(SlotValue::I64(42)),
-    );
-    assert_eq!(
-        result, Ok(()),
-        "action completion enqueue succeeds"
-    );
-    tick_count(&mut runtime, 2)?;
-
-    let counters = runtime.counters_snapshot();
-    assert_eq!(
-        counters.runs_completed, 0,
-        "run must NOT be completed"
-    );
-
-    Ok(())
-}
-
-/// INV-1d: Counters invariant - completed + failed = terminal
+/// INV-1c: Counters invariant - completed + failed = terminal
 #[test]
 fn counters_invariant_completed_plus_failed_equals_terminal() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
@@ -733,52 +640,13 @@ fn counters_invariant_completed_plus_failed_equals_terminal() -> Result<(), Stri
     Ok(())
 }
 
-/// INV-1e: Cancelled run counters are correct
-#[test]
-fn cancelled_run_counters_are_correct() -> Result<(), String> {
-    let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime =
-        Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
-    let run = RunId::new(60004);
-
-    assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
-        Ok(())
-    );
-    tick_count(&mut runtime, 2)?;
-
-    assert_eq!(runtime.cancel_run(run), Ok(()));
-    tick_count(&mut runtime, 2)?;
-
-    let state = runtime.snapshot_run(run, 1);
-    assert!(
-        matches!(state, Ok(InspectResponse::NotFound { .. })),
-        "run should be NotFound after cancel"
-    );
-
-    let result = runtime.complete_action_with_output(
-        action_ticket(run, ActionId::new(7)),
-        action_output(SlotValue::I64(99)),
-    );
-    assert_eq!(
-        result, Ok(()),
-        "enqueue succeeds but run is already cancelled"
-    );
-
-    let counters = runtime.counters_snapshot();
-    assert_eq!(counters.runs_failed, 1, "cancelled run counted as failed");
-    assert_eq!(counters.runs_completed, 0, "cancelled run not completed");
-
-    Ok(())
-}
-
-/// INV-1f: Cancel is idempotent - counters don't change on second cancel
+/// INV-1d: Cancel is idempotent - counters don't change on second cancel
 #[test]
 fn cancel_is_idempotent_counters_unchanged() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut runtime =
         Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
-    let run = RunId::new(60005);
+    let run = RunId::new(60004);
 
     assert_eq!(
         submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),

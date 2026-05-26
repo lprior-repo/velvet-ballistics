@@ -183,6 +183,7 @@ fn terminal_state_to_string(
     match terminal {
         None => "NoTerminal".to_owned(),
         Some(crate::recovery::types::RecoveryTerminalState::Cancelled) => "Cancelled".to_owned(),
+        Some(crate::recovery::types::RecoveryTerminalState::Killed) => "Killed".to_owned(),
         Some(crate::recovery::types::RecoveryTerminalState::Failed) => "Failed".to_owned(),
         Some(crate::recovery::types::RecoveryTerminalState::Finished { .. }) => {
             "Finished".to_owned()

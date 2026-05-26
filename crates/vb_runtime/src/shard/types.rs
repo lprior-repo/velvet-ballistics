@@ -166,6 +166,13 @@ pub enum ShardCommand {
         /// Optional cancellation reason.
         reason: Option<String>,
     },
+    /// Kill an active run unconditionally.
+    Kill {
+        /// Run identifier.
+        run: RunId,
+        /// Optional kill reason.
+        reason: Option<String>,
+    },
     /// Inspect run state for diagnostic purposes.
     Inspect {
         /// Run identifier.
