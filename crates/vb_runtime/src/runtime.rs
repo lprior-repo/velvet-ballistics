@@ -331,9 +331,8 @@ impl Runtime {
         output: ActionOutputReady,
     ) -> RuntimeResult<()> {
         let shard = self.shard_for_mut(ticket.run)?;
-        if !shard.runs.contains_key(&ticket.run) && shard.terminal_runs.contains(&ticket.run) {
-            return Err(RuntimeError::RunNotFound);
-        }
+        // Validate ticket before enqueuing — fail fast with InvalidActionCompletion
+        // if the ticket doesn't match the current run state.
         if let Some(state) = shard.runs.get(&ticket.run) {
             crate::shard::lifecycle::preflight_action_completion(state, ticket, output.clone())?;
         }
@@ -343,9 +342,6 @@ impl Runtime {
     /// Fails an action with a typed failure payload.
     pub fn fail_action(&self, ticket: ActionTicket, failure: ActionFailure) -> RuntimeResult<()> {
         let shard = self.shard_for(ticket.run)?;
-        if !shard.runs.contains_key(&ticket.run) && shard.terminal_runs.contains(&ticket.run) {
-            return Err(RuntimeError::RunNotFound);
-        }
         shard.enqueue(ShardCommand::RuntimeActionFailed { ticket, failure })
     }
 
