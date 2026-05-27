@@ -1,0 +1,11 @@
+{
+  "bd_show_returncode": 0,
+  "bd_show_stderr": "",
+  "bd_show_stdout_prefix": "[\n  {\n    \"id\": \"vb-om21\",\n    \"title\": \"storage: Add journal tail scan fallback tests\",\n    \"description\": \"# Black Hat Repaired Bead Spec\\n\\nSource docs:\\n- to-fix/09-restate-architecture-steal-plan.md\\n- to-fix/10-restate-exhaustive-sweep.md\\n\\nNo-copy fence:\\n- Restate is failure-mode inspiration only; do not copy code, APIs, data model, module structure, async architecture, HTTP/JSON paths, storage layout, wire formats, or distributed assumptions.\\n- Master contract overrides this bead. Runtime/core work stays single-server, shard-owned, numeric, bounded, and free of JSON/YAML/HTTP interpretation. CLI/doctor diagnostics are cold-path only.\\n\\nTest file:\\n- crates/workspace_tests/tests/restate_journal_tail_scan_fallback_tests.rs\\n\\nCommand evidence:\\n- cargo nextest run -p velvet-ballastics-workspace-tests --test restate_journal_tail_scan_fallback_tests\\n- moon ci\\n\\nScope:\\nAdd tests proving recovery can reconstruct journal tail by scanning the final big-endian journal key when metadata is absent or suspect.\\n\\nTarget public surface / files to read:\\n- /tmp/opencode/restate/crates/log-server/src/rocksdb_logstore/store.rs\\n- crates/vb_storage/src/recovery\\n- crates/vb_storage/src/keys.rs\\n\\nAcceptance tests:\\nHappy paths:\\n- Missing tail metadata is reconstructed from final run_event key\\n- Matching tail metadata and final key recover without warning\\n\\nError paths:\\n- invalid input tail below final key returns typed TailMismatch\\n- missing run_event prefix returns typed MissingJournal error\\n\\nEdge cases:\\n- empty run_event keyspace returns zero tail\\n- single event key reconstructs sequence one\\n\\nContract assertions:\\n- Tail scan never crosses keyspace prefix\\n- Reconstructed tail equals max encoded sequence\\n\\nPreconditions:\\n- Journal key encoding and recovery open path have been read\\n- Big-endian key ordering tests exist or are added first\\n\\nPostconditions:\\n- Missing tail metadata test recovers by final key\\n- Suspect metadata test returns typed mismatc",
+  "validator": {
+    "bead": "vb-om21",
+    "findings": [],
+    "state": 1,
+    "status": "PASS"
+  }
+}

@@ -31,35 +31,75 @@ pub mod events;
 pub mod headers;
 pub mod indexes;
 pub mod journal;
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_codec;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_record_magic;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_record_schema;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_record_kind;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_record_payload_len;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_record_crc;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_digest_checks_vb_2bzz;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_recovery_hydrate;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_admission;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_postcard_envelope_wire;
+
+// State 5 proof-writer repair for vb-om21: register Kani proof harness
+// modules so exact planned `cargo kani -p vb_storage --harness ...`
+// commands can discover and execute them. These modules are compiled only
+// under `cfg(kani)` and do not affect production runtime behavior.
+#[cfg(kani)]
+pub mod kani_vb_om21_big_endian_max;
+
+#[cfg(kani)]
+pub mod kani_vb_om21_bounded_scan;
+
+#[cfg(kani)]
+pub mod kani_vb_om21_model;
+
+#[cfg(kani)]
+pub mod kani_vb_om21_key_parse;
+
+#[cfg(kani)]
+pub mod kani_vb_om21_missing_journal;
+
+#[cfg(kani)]
+pub mod kani_vb_om21_prefix_bound;
+
+#[cfg(kani)]
+pub mod kani_vb_om21_replay_parity;
+
+#[cfg(kani)]
+pub mod kani_vb_om21_single_event_tail;
+
+#[cfg(kani)]
+pub mod kani_vb_om21_tail_mismatch;
+
+#[cfg(kani)]
+pub mod kani_vb_om21_tail_overflow;
+
+#[cfg(kani)]
+pub mod kani_vb_om21_typed_errors;
+
+#[cfg(kani)]
+pub mod kani_vb_om21_zero_tail_query;
 
 pub mod keys;
 pub mod process_lock;

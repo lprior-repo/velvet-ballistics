@@ -75,6 +75,13 @@ doc = false
 bench = false
 
 [[bin]]
+name = "vb_om21_key_parse_key_parser"
+path = "fuzz_targets/vb_om21_key_parse_key_parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "vb_qi37_12_persisted_payload_decode"
 path = "src/bin/vb_qi37_12_persisted_payload_decode.rs"
 test = false

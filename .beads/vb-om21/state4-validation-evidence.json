@@ -1,0 +1,13 @@
+{
+  "bead_id": "vb-om21",
+  "exit_status": 0,
+  "recorded_at": "2026-05-25T18:53:09.720848+00:00",
+  "schema_version": "controller-validation-evidence/v1",
+  "state": 4,
+  "validator": {
+    "bead": "vb-om21",
+    "findings": [],
+    "state": 4,
+    "status": "PASS"
+  }
+}

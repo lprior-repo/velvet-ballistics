@@ -1,0 +1,28 @@
+{
+  "attempt": 2,
+  "bead_id": "vb-om21",
+  "created_at": "2026-05-25T18:10:11.009541+00:00",
+  "delegate": "proof-plan-reviewer",
+  "expected_planner_invocation_id": "proof-planner-vb-om21-state4-004",
+  "expected_reviewer_invocation_id": "proof-plan-reviewer-vb-om21-state4-002",
+  "input_artifacts": [
+    ".beads/vb-om21/proof-strategy.md",
+    ".beads/vb-om21/verifier-lane-matrix.md",
+    ".beads/vb-om21/verifier-lane-decisions.jsonl",
+    ".beads/vb-om21/proof-coverage-matrix.md",
+    ".beads/vb-om21/proof-obligations.planned.jsonl",
+    ".beads/vb-om21/trusted-base-plan.md",
+    ".beads/vb-om21/waiver-candidates.jsonl",
+    ".beads/vb-om21/proof-to-implementation-input.md",
+    ".beads/vb-om21/state4-validation-before-review-attempt2.json"
+  ],
+  "isolated_workdir": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21",
+  "output_artifacts": [
+    ".beads/vb-om21/proof-plan-review.md",
+    ".beads/vb-om21/verifier-lane-review.jsonl",
+    ".beads/vb-om21/transcript-state4-proof-plan-reviewer.md"
+  ],
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "state": 4,
+  "sublane": "proof-plan-review"
+}

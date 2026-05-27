@@ -1,0 +1,33 @@
+{
+  "active_rejected_findings_exists": false,
+  "active_rejected_review_exists": false,
+  "archived_state6_artifacts": {
+    "prior-State6-rejection/2026-05-25T202000Z/proof-findings.jsonl": "30bc6b7729ab4aea77eab0f22d753bfa603d852eb1a3928a80bc7284eeaeeaa9",
+    "prior-State6-rejection/2026-05-25T202000Z/proof-review.md": "5e941c9c219949c599d45f79cd866fb6f7b49b7dc93d57ffd30975fc0819a8df",
+    "prior-State6-rejection/2026-05-25T202000Z/transcript-state6-proof-reviewer.md": "d29788014ba600b3383b62de88195d30f7bb0fdec6ee06354df40533869cc6f7"
+  },
+  "bead_id": "vb-om21",
+  "checked_at_utc": "2026-05-25T20:55:00Z",
+  "ledger_canonical_hash_rule": "sha256(json.dumps(entry_without_entry_hash, sort_keys=True, separators=(comma,colon)))",
+  "ledger_chain_tail_record": "tail is validated by recomputing agent-invocation-ledger.jsonl; omitted here to avoid recursive validation-hash dependency",
+  "ledger_rows": 13,
+  "ledger_sequences": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13
+  ],
+  "no_blocked_tooling_in_active_outputs": true,
+  "schema_version": "state5-proof-ledger-repair-validation/v1",
+  "state": 5,
+  "sublane": "proof-ledger-repair"
+}

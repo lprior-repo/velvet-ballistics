@@ -1,0 +1,332 @@
+{
+  "bead_id": "vb-om21",
+  "exit_status": 1,
+  "recorded_at": "2026-05-25T17:54:50.333755+00:00",
+  "schema_version": "controller-validation-evidence/v1",
+  "state": 4,
+  "validator": {
+    "bead": "vb-om21",
+    "findings": [
+      {
+        "code": "E_STATUS_NOT_APPROVED",
+        "message": "status tokens=['REJECTED']",
+        "path": "proof-plan-review.md",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-tail-overflow-kani not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-prefix-bound-tla not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-tail-mismatch-verus not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-key-parse-flux not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-bounded-scan-verus not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-typed-errors-verus not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-single-event-tail-proptest not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-prefix-bound-verus not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-big-endian-max-flux not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-prefix-bound-flux not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-tail-mismatch-proptest not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-zero-tail-query-proptest not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-replay-parity-tla not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-tail-overflow-verus not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-tail-overflow-proptest not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-bounded-scan-proptest not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-single-event-tail-kani not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-replay-parity-verus not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-tail-mismatch-tla not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-tail-overflow-flux not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-missing-journal-verus not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-key-parse-kani not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-prefix-bound-proptest not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-zero-tail-query-kani not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-typed-errors-tla not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-bounded-scan-kani not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-prefix-bound-kani not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-big-endian-max-verus not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-key-parse-miri not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-zero-tail-query-flux not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-single-event-tail-flux not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-replay-parity-proptest not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-key-parse-proptest not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-single-event-tail-verus not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-zero-tail-query-verus not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-tail-mismatch-kani not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-typed-errors-flux not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-bounded-scan-flux not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-key-parse-fuzz not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-zero-tail-query-tla not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-tail-mismatch-flux not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-replay-parity-flux not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-replay-parity-kani not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-big-endian-max-proptest not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-missing-journal-flux not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-key-parse-verus not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-typed-errors-kani not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-typed-errors-proptest not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-missing-journal-tla not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-missing-journal-kani not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-missing-journal-proptest not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_REJECTED",
+        "message": "lane VLD-vb-om21-big-endian-max-kani not accepted",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      }
+    ],
+    "state": 4,
+    "status": "FAIL"
+  }
+}

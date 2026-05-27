@@ -1,0 +1,11 @@
+{
+  "jq_proof_seeds_returncode": 0,
+  "jq_traceability_returncode": 0,
+  "validator": {
+    "bead": "vb-om21",
+    "findings": [],
+    "state": 3,
+    "status": "PASS"
+  },
+  "validator_returncode": 0
+}

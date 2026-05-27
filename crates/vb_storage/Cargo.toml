@@ -20,5 +20,11 @@ vb_core = { path = "../vb_core" }
 proptest = { workspace = true }
 tempfile.workspace = true
 
+[features]
+# PO-vb-om21-*-flux: verification-only feature named by planned Flux
+# commands. It intentionally enables no runtime code by itself.
+flux-proofs = []
+legacy-kani = []
+
 [lints]
 workspace = true

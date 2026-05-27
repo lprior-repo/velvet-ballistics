@@ -1,0 +1,585 @@
+{
+  "bead_id": "vb-om21",
+  "expected_review_missing_only": false,
+  "recorded_at": "2026-05-25T17:09:15.505932+00:00",
+  "schema_version": "controller-pre-review-validation/v1",
+  "state": 4,
+  "unexpected_findings": [
+    {
+      "code": "E_SCHEMA_MISSING_FIELD",
+      "line": 1,
+      "message": "missing ['review_status']",
+      "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/waiver-candidates.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_WAIVER_LIFECYCLE_INVALID",
+      "line": 1,
+      "message": "invalid candidate review_status",
+      "path": "waiver-candidates.jsonl",
+      "severity": "BLOCK"
+    }
+  ],
+  "validator": {
+    "bead": "vb-om21",
+    "findings": [
+      {
+        "code": "E_MISSING_ARTIFACT",
+        "message": "required artifact missing or empty",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_MISSING_ARTIFACT",
+        "message": "required artifact missing or empty",
+        "path": "proof-plan-review.md",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-zero-tail-query-tla",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-single-event-tail-kani",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-big-endian-max-kani",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-tail-overflow-kani",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-replay-parity-miri",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-zero-tail-query-miri",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-big-endian-max-tla",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-missing-journal-fuzz",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-replay-parity-tla",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-big-endian-max-miri",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-key-parse-fuzz",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-zero-tail-query-flux",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-single-event-tail-tla",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-zero-tail-query-kani",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-tail-overflow-loom",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-bounded-scan-verus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-replay-parity-proptest",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-big-endian-max-fuzz",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-single-event-tail-proptest",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-typed-errors-miri",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-prefix-bound-fuzz",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-typed-errors-verus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-tail-overflow-tla",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-prefix-bound-verus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-tail-overflow-proptest",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-key-parse-flux",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-bounded-scan-kani",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-tail-mismatch-loom",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-single-event-tail-loom",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-missing-journal-loom",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-single-event-tail-verus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-typed-errors-flux",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-tail-mismatch-verus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-big-endian-max-loom",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-typed-errors-kani",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-bounded-scan-tla",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-missing-journal-proptest",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-prefix-bound-tla",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-typed-errors-fuzz",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-prefix-bound-kani",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-tail-mismatch-tla",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-typed-errors-tla",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-big-endian-max-verus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-bounded-scan-loom",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-key-parse-verus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-bounded-scan-flux",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-missing-journal-tla",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-tail-mismatch-miri",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-zero-tail-query-verus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-replay-parity-loom",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-bounded-scan-fuzz",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-key-parse-kani",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-missing-journal-verus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-zero-tail-query-proptest",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-single-event-tail-flux",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-tail-overflow-miri",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-tail-mismatch-proptest",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-missing-journal-flux",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-key-parse-proptest",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-bounded-scan-miri",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-zero-tail-query-loom",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-tail-mismatch-kani",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-tail-mismatch-flux",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-replay-parity-verus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-key-parse-loom",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-typed-errors-proptest",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-bounded-scan-proptest",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-zero-tail-query-fuzz",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-typed-errors-loom",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-missing-journal-miri",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-prefix-bound-proptest",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-single-event-tail-miri",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-prefix-bound-flux",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-tail-overflow-verus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-single-event-tail-fuzz",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-missing-journal-kani",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-prefix-bound-miri",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-tail-overflow-fuzz",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-big-endian-max-flux",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-replay-parity-flux",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-tail-overflow-flux",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-prefix-bound-loom",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-replay-parity-kani",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-tail-mismatch-fuzz",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-key-parse-miri",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-big-endian-max-proptest",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-key-parse-tla",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-om21-replay-parity-fuzz",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 1,
+        "message": "missing ['review_status']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/waiver-candidates.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_WAIVER_LIFECYCLE_INVALID",
+        "line": 1,
+        "message": "invalid candidate review_status",
+        "path": "waiver-candidates.jsonl",
+        "severity": "BLOCK"
+      }
+    ],
+    "state": 4,
+    "status": "FAIL"
+  },
+  "validator_exit_status": 1
+}

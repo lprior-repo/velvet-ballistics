@@ -1,0 +1,426 @@
+{
+  "bead_id": "vb-om21",
+  "exit_status": 1,
+  "recorded_at": "2026-05-25T19:30:27.466625+00:00",
+  "schema_version": "controller-validation-evidence/v1",
+  "state": 5,
+  "validator": {
+    "bead": "vb-om21",
+    "findings": [
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 1,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 2,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 3,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 4,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 5,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 6,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 7,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 8,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 9,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 10,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 11,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 12,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 13,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 14,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 15,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 16,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 17,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 18,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 19,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 20,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 21,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 22,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 23,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 24,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 25,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 26,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 27,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 28,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 29,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 30,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 31,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 32,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 33,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 34,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 35,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 36,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 37,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 38,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 39,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 40,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 41,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 42,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 43,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 44,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 45,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 46,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 47,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 48,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 49,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 50,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 51,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_SCHEMA_MISSING_FIELD",
+        "line": 52,
+        "message": "missing ['behavior_affecting', 'compensating_evidence', 'expiry', 'id', 'impact', 'location', 'marker', 'owner', 'reason', 'reviewer_disposition', 'status', 'trusted_kind']",
+        "path": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21/.beads/vb-om21/trusted-base-ledger.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_TRUST_UNLEDGERED_MARKER",
+        "message": "trust marker admit lacks ledger row",
+        "path": "proof-evidence.md",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_TRUST_UNLEDGERED_MARKER",
+        "message": "trust marker assume lacks ledger row",
+        "path": "proof-evidence.md",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_TRUST_UNLEDGERED_MARKER",
+        "message": "trust marker trusted lacks ledger row",
+        "path": "proof-evidence.md",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_TRUST_UNLEDGERED_MARKER",
+        "message": "trust marker ignore lacks ledger row",
+        "path": "proof-evidence.md",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_TRUST_UNLEDGERED_MARKER",
+        "message": "trust marker trusted lacks ledger row",
+        "path": "proof-evidence.md",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_TRUST_UNLEDGERED_MARKER",
+        "message": "trust marker trusted lacks ledger row",
+        "path": "proof-writer-report.md",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_TRUST_UNLEDGERED_MARKER",
+        "message": "trust marker trusted lacks ledger row",
+        "path": "proof-writer-report.md",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_TRUST_UNLEDGERED_MARKER",
+        "message": "trust marker trusted lacks ledger row",
+        "path": "proof-writer-report.md",
+        "severity": "BLOCK"
+      }
+    ],
+    "state": 5,
+    "status": "FAIL"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "attempt": 2,
+  "bead_id": "vb-om21",
+  "created_at": "2026-05-25T19:30:27.466819+00:00",
+  "delegate": "proof-writer",
+  "failure_class": "validator/proof-review repair loop; see pre-dispatch validation and proof-findings if present",
+  "input_artifacts": [
+    ".beads/vb-om21/proof-review.md",
+    ".beads/vb-om21/proof-findings.jsonl",
+    ".beads/vb-om21/proof-writer-report.md",
+    ".beads/vb-om21/proof-evidence.md",
+    ".beads/vb-om21/trusted-base-ledger.jsonl",
+    ".beads/vb-om21/pre-dispatch-state5-repair-attempt2-validation.json"
+  ],
+  "isolated_workdir": "/home/lewis/isolated/femdation-velvet-ballistics/vb-om21",
+  "output_artifacts": [
+    ".beads/vb-om21/proof-writer-report.md",
+    ".beads/vb-om21/proof-evidence.md",
+    ".beads/vb-om21/trusted-base-ledger.jsonl",
+    ".beads/vb-om21/transcript-state5-proof-writer.md"
+  ],
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "state": 5,
+  "sublane": "proof-writing-repair"
+}
