@@ -122,10 +122,19 @@ Next ==
         \/ StaleCompletionRejected(run, step)
         \/ TerminalStutter
 
-(* Spec *)
 vars == <<runs, actionAttempts, framePC, stepState, maxAttempts, retryPolicy, stepHasRetryCheck, last_error>>
 
-Spec == Init /\ [][Next]_vars
+ActionFailedRetryable(run, step) == ActionFailed(run, step, "Retryable")
+
+(* Liveness is only meaningful under fairness. Without this, TLC correctly finds
+ * a stuttering counterexample where a Running step never receives another
+ * failure event. Weak fairness per (run, step) says: if a retryable failure
+ * remains continuously enabled for a running step, it eventually occurs. *)
+Fairness ==
+    \A run \in Runs, step \in Steps : WF_vars(ActionFailedRetryable(run, step))
+
+(* Spec *)
+Spec == Init /\ [][Next]_vars /\ Fairness
 
 TypeOK ==
     /\ runs \in SUBSET Runs
@@ -167,10 +176,10 @@ FramePCResetOnRetry ==
         run \in runs /\ (\E step \in Steps : stepState[run][step] = "Running") /\ framePC[run] \in Steps
             => stepState[run][framePC[run]] = "Running"
 
-(* Liveness: Eventually terminal or exhausted *)
+(* Liveness: every running step eventually reaches Failed under retryable-failure fairness. *)
 EventuallyTerminalOrExhausted ==
-    <>(/\ runs # {}
-       /\ \E run \in Runs, step \in Steps : stepState[run][step] = "Failed")
+    \A run \in Runs, step \in Steps :
+        (run \in runs /\ stepState[run][step] = "Running") ~> stepState[run][step] = "Failed"
 
 THEOREM Spec => []NoDoubleRetryAfterExhaustion
 THEOREM Spec => []RetryExhaustionIsTyped
