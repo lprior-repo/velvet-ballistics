@@ -112,4 +112,12 @@ Spec ==
     /\ WF_vars(PersistHeader)
     /\ WF_vars(Ack)
 
+(* Theorems: all invariants hold over all behaviors *)
+THEOREM Spec => []TypeOK
+THEOREM Spec => []FailurePreventsAck
+THEOREM Spec => []DuplicateRejectsNoLiveState
+THEOREM Spec => []AckRequiresPersistence
+THEOREM Spec => []LiveStateRequiresPersistence
+THEOREM Spec => []NoLiveStateBeforeDurableAdmission
+
 ====

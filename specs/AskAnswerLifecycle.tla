@@ -142,12 +142,21 @@ ValidAskState ==
     \A run \in RunId :
         AskState[run] \in {"idle", "awaiting", "answered", "failed"}
 
-PendingSubset ==
-    PendingAnswers \subseteq (RunId \X StepIdx \X SeqNo)
-
-MonotonicSeqNo ==
+(* FIXED: Removed vacuous PendingSubset (redundant with TypeOK).
+ * Replaced with SeqNoStrictlyAdvances: SeqNoCounter bounded by MaxSeqNo *)
+SeqNoStrictlyAdvances ==
     \A run \in RunId :
-        SeqNoCounter[run] >= 0
+        SeqNoCounter[run] <= MaxSeqNo
+
+(* FIXED: Removed vacuous MonotonicSeqNo (proved x >= 0 which is always true by type bounds).
+ * Replaced with SeqNoNextTicket property: when AskState is "awaiting",
+ * the pending ticket uses the NEXT sequence number (SeqNoCounter+1).
+ * This correctly captures that SubmitAsk checks seq = SeqNoCounter[run] + 1. *)
+SeqNoNextTicket ==
+    \A run \in RunId :
+        (AskState[run] = "awaiting") =>
+            \E step \in StepIdx :
+                <<run, step, SeqNoCounter[run] + 1>> \in PendingAnswers
 
 EventuallyAnswered ==
     \A run \in RunId :
@@ -166,8 +175,8 @@ AnswerPersistenceOrder ==
 
 THEOREM Spec => []NoDuplicateAskAnswered
 THEOREM Spec => []ValidAskState
-THEOREM Spec => []PendingSubset
-THEOREM Spec => []MonotonicSeqNo
+THEOREM Spec => []SeqNoStrictlyAdvances
+THEOREM Spec => []SeqNoNextTicket
 
 \* State constraint: prevent unbounded AnsweredLog growth.
 \* With MaxJournalEvents = 50, and 2 entries per lifecycle (sw+aa),

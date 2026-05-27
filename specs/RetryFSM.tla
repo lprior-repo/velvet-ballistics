@@ -157,11 +157,9 @@ NoSilentSaturation ==
         stepState[run][step] = "Running"
             => actionAttempts[run][step] < maxAttempts[run][step]
 
-(* Safety: No stale completion accepted *)
-NoStaleCompletion ==
-    \A run \in Runs, step \in Steps :
-        stepState[run][step] = "Running"
-            => actionAttempts[run][step] >= 0
+(* FIXED: Removed vacuous NoStaleCompletion (proved actionAttempts >= 0 always true by type bounds).
+ * The StaleCompletionRejected action is a no-op that records a stale event; the meaningful
+ * safety is NoDoubleRetryAfterExhaustion which prevents retry after max attempts. *)
 
 (* Safety: Frame PC reset on retry *)
 FramePCResetOnRetry ==
@@ -177,7 +175,9 @@ EventuallyTerminalOrExhausted ==
 THEOREM Spec => []NoDoubleRetryAfterExhaustion
 THEOREM Spec => []RetryExhaustionIsTyped
 THEOREM Spec => []NoSilentSaturation
-THEOREM Spec => []NoStaleCompletion
 THEOREM Spec => []FramePCResetOnRetry
+
+(* Liveness: eventually a failed state is reached *)
+THEOREM Spec => EventuallyTerminalOrExhausted
 
 ====

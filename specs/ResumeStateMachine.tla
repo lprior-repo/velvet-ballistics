@@ -86,14 +86,28 @@ NoDoubleRunning == \A r \in RunIds: runtimeState[r] = "Running" => r \notin pend
 
 FailedNotResumable == \A r \in RunIds: runtimeState[r] = "Failed" => ~ENABLED BeginResume(r)
 
+(* JournalAppendBeforeSuccess: for every resumed run, a "Resumed" journal entry exists.
+ * This is a existence check, not an ordering check — CompleteResume appends "Resumed"
+ * atomically before transitioning to Running state. *)
 JournalAppendBeforeSuccess ==
     \A r \in resumed:
         \E i \in DOMAIN journal:
             /\ journal[i].kind = "Resumed"
             /\ journal[i].run = r
 
+(* Note: JournalImmutable is redundant with TypeOK's Len(journal) <= MaxJournalLength.
+ * It is kept for clarity but adds no independent constraint. *)
 JournalImmutable == Len(journal) <= MaxJournalLength
 
 ValidTransition == TypeOK /\ NoDoubleRunning /\ FailedNotResumable
+
+(* Strengthened liveness: every non-terminal run eventually reaches a terminal state *)
+EventuallyTerminal ==
+    \A r \in RunIds : (<> (runtimeState[r] = "Failed")) \/ (<> (runtimeState[r] \in resumed))
+
+(* Theorems *)
+THEOREM Spec => []TypeOK
+THEOREM Spec => []ValidTransition
+THEOREM Spec => []JournalAppendBeforeSuccess
 
 ====
