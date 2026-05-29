@@ -442,6 +442,11 @@ proptest! {
 }
 ```
 
+## Proof/Refinement Coverage Matrix
+
+| Obligation ID | Proof ID | Verifier | Behavior Affecting | Rust Source Refs | Behavior Test Refs | Refinement Harness Refs | Evidence Command |
+|---|---|---|---|---|---|---|---|
+
 ## Test Execution
 
 ### Primary Command

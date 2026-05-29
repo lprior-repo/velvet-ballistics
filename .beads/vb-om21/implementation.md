@@ -43,6 +43,11 @@ moon ci
 # limit but this is a test file and the repo already exempts many test files.
 ```
 
+## Source Coverage Matrix
+
+| Source File | Symbol | Line(s) | Obligation IDs Covered | Proof IDs Covered | Test Functions Covering |
+|---|---|---|---|---|---|
+
 ## Production Code Impact
 
 ### Files Modified: 0

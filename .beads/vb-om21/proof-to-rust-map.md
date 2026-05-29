@@ -62,6 +62,8 @@
 | `test_bounded_scan` | `crates/workspace_tests/tests/restate_journal_tail_scan_fallback_tests.rs` | O(1) accumulator, no full-event collection |
 | `test_typed_error_distinction` | `crates/workspace_tests/tests/restate_journal_tail_scan_fallback_tests.rs` | Match/success, stale/TailMismatch, absent/MissingJournal distinct |
 
+| Proof ID | Claim | Behavior Affecting | Rust Source Refs | Behavior Test Refs | Refinement Harness Refs | Verifier | Evidence Command | Rerun From |
+
 ## Bridge Matrix: All 52 Proof Obligations
 
 ### 1. Prefix-Bound (PO-vb-om21-prefix-bound-*)
