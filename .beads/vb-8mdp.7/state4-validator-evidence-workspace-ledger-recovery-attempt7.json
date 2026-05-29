@@ -1,0 +1,44 @@
+{
+  "bead": "vb-8mdp.7",
+  "state": 4,
+  "attempt": 7,
+  "sublane": "workspace-verification-and-ledger-provenance-recovery",
+  "command": "/home/lewis/.opencode/skill/go-skill/tools/go-skill-v9-validate --workspace /home/lewis/isolated/velvet-ballistics-main-review/vb-8mdp.7 --bead vb-8mdp.7 --state 4 --source-checkout /home/lewis/src/velvet-ballistics --skill-root /home/lewis/.agents/skills/go-skill --mirror-root /home/lewis/.opencode/skill/go-skill --format json",
+  "workdir": "/home/lewis/isolated/velvet-ballistics-main-review/vb-8mdp.7",
+  "status": "FAIL",
+  "controller_policy_blocked": true,
+  "summary": {
+    "finding_count": 24,
+    "codes": {
+      "E_INVOCATION_LEDGER_FORGED": 24
+    },
+    "blocked_lines": [1, 2, 3, 4, 5],
+    "line_6_current_approved_artifacts_not_reported_by_validator": true
+  },
+  "raw_findings": [
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":1,"message":"transcript hash mismatch","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":1,"message":"artifact hash mismatch for proof-obligations.planned.jsonl","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":1,"message":"artifact hash mismatch for proof-plan-review.md","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":1,"message":"artifact hash mismatch for verifier-lane-review.jsonl","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":1,"message":"artifact hash mismatch for proof-plan-findings.jsonl","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":1,"message":"artifact hash mismatch for proof-plan-repair-guide.md","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":1,"message":"artifact hash mismatch for transcript-state4-proof-plan-reviewer-after-state6-replan.md","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":2,"message":"artifact hash mismatch for proof-obligations.planned.jsonl","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":3,"message":"transcript hash mismatch","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":3,"message":"artifact hash mismatch for proof-plan-review.md","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":3,"message":"artifact hash mismatch for proof-plan-findings.jsonl","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":3,"message":"artifact hash mismatch for proof-plan-repair-guide.md","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":3,"message":"artifact hash mismatch for proof-obligations.planned.jsonl","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":3,"message":"artifact hash mismatch for proof-obligations.planned.jsonl","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":3,"message":"artifact hash mismatch for transcript-state4-proof-planner-replan.md","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":4,"message":"artifact hash mismatch for proof-plan-review.md","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":4,"message":"artifact hash mismatch for proof-plan-findings.jsonl","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":4,"message":"artifact hash mismatch for proof-plan-repair-guide.md","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":5,"message":"transcript hash mismatch","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":5,"message":"artifact hash mismatch for proof-plan-review.md","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":5,"message":"artifact hash mismatch for verifier-lane-review.jsonl","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":5,"message":"artifact hash mismatch for proof-plan-findings.jsonl","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":5,"message":"artifact hash mismatch for proof-plan-repair-guide.md","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"},
+    {"code":"E_INVOCATION_LEDGER_FORGED","line":5,"message":"artifact hash mismatch for transcript-state4-proof-plan-reviewer-after-state6-replan.md","path":"agent-invocation-ledger.jsonl","severity":"BLOCK"}
+  ]
+}
