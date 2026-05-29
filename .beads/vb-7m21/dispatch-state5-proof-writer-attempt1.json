@@ -1,0 +1,30 @@
+{
+  "attempt": 1,
+  "bead_id": "vb-7m21",
+  "created_at": "2026-05-25T17:22:07.147156+00:00",
+  "delegate": "proof-writer",
+  "input_artifacts": [
+    ".beads/vb-7m21/proof-strategy.md",
+    ".beads/vb-7m21/verifier-lane-matrix.md",
+    ".beads/vb-7m21/verifier-lane-decisions.jsonl",
+    ".beads/vb-7m21/proof-coverage-matrix.md",
+    ".beads/vb-7m21/proof-obligations.planned.jsonl",
+    ".beads/vb-7m21/trusted-base-plan.md",
+    ".beads/vb-7m21/waiver-candidates.jsonl",
+    ".beads/vb-7m21/proof-to-implementation-input.md",
+    ".beads/vb-7m21/proof-plan-review.md",
+    ".beads/vb-7m21/verifier-lane-review.jsonl",
+    ".beads/vb-7m21/state4-validation-evidence.json"
+  ],
+  "isolated_workdir": "/home/lewis/isolated/femdation-velvet-ballistics/vb-7m21",
+  "output_artifacts": [
+    ".beads/vb-7m21/proof-writer-report.md",
+    ".beads/vb-7m21/proof-evidence.md",
+    ".beads/vb-7m21/trusted-base-ledger.jsonl",
+    ".beads/vb-7m21/transcript-state5-proof-writer.md"
+  ],
+  "parent_invocation_id": "proof-plan-reviewer-vb-7m21-state4-001",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "state": 5,
+  "sublane": "proof-writing"
+}

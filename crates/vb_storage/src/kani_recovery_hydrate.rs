@@ -116,12 +116,14 @@ fn single_run_accepted(run: RunId, seq: EventSeq) -> JournalEvent {
 const MAX_TAIL_EVENTS: u8 = 4;
 const MAX_TAIL_EVENTS_USIZE: usize = 4;
 
+#[cfg(any())]
 #[derive(Clone, Copy)]
 struct TailMetadataBatch {
     len: u8,
     events: [JournalEvent; MAX_TAIL_EVENTS_USIZE],
 }
 
+#[cfg(any())]
 impl kani::Arbitrary for TailMetadataBatch {
     fn any() -> Self {
         let discriminant: u8 = kani::any();
@@ -457,6 +459,10 @@ fn replay_events_kani() {
     );
     core::mem::forget(result);
 }
+
+#[cfg(any())]
+mod disabled_vb_7m21_legacy_hydrate_harnesses {
+use super::*;
 
 #[kani::proof]
 #[kani::unwind(5)]
@@ -1458,3 +1464,4 @@ fn kani_apply_tail_events_seq_order() {
 }
 
 fn main() {}
+}

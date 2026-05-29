@@ -371,6 +371,13 @@ test = false
 doc = false
 bench = false
 
+[[bin]]
+name = "vb_7m21_storage_envelope"
+path = "fuzz_targets/vb_7m21_storage_envelope.rs"
+test = false
+doc = false
+bench = false
+
 # === src/bin/ orphans (declared 2026-05-24 Phase 0) ===
 
 [[bin]]
@@ -490,6 +497,27 @@ bench = false
 [[bin]]
 name = "vb_rpch_replay_events_fuzz"
 path = "fuzz_targets/vb_rpch_replay_events_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_7m21_envelope_decode"
+path = "fuzz_targets/vb_7m21_envelope_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_7m21_header_parse"
+path = "fuzz_targets/vb_7m21_header_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_7m21_payload_decode"
+path = "fuzz_targets/vb_7m21_payload_decode.rs"
 test = false
 doc = false
 bench = false

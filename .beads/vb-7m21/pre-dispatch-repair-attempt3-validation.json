@@ -1,0 +1,20 @@
+{
+  "bead_id": "vb-7m21",
+  "exit_status": 1,
+  "recorded_at": "2026-05-25T18:53:09.389921+00:00",
+  "schema_version": "controller-validation-evidence/v1",
+  "state": 6,
+  "validator": {
+    "bead": "vb-7m21",
+    "findings": [
+      {
+        "code": "E_STATUS_NOT_APPROVED",
+        "message": "status tokens=['REJECTED']",
+        "path": "proof-review.md",
+        "severity": "BLOCK"
+      }
+    ],
+    "state": 6,
+    "status": "FAIL"
+  }
+}

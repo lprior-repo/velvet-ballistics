@@ -1,0 +1,22 @@
+{
+  "attempt": 1,
+  "bead_id": "vb-7m21",
+  "created_at": "2026-05-25T15:36:21.945559+00:00",
+  "delegate": "explore",
+  "input_artifacts": [
+    ".beads/vb-7m21/STATE.md",
+    ".beads/vb-7m21/baseline-report.md",
+    ".beads/vb-7m21/global-readiness-report.md",
+    "bd show vb-7m21 --json",
+    "velvet-ballistics-MASTER.md"
+  ],
+  "isolated_workdir": "/home/lewis/isolated/femdation-velvet-ballistics/vb-7m21",
+  "output_artifacts": [
+    ".beads/vb-7m21/codebase-map.md",
+    ".beads/vb-7m21/delivery-scope.jsonl"
+  ],
+  "prompt_shape": "[vb-7m21] p2-explore",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "state": 2,
+  "sublane": "explore"
+}

@@ -1,0 +1,460 @@
+{
+  "bead_id": "vb-7m21",
+  "expected_review_missing_only": true,
+  "recorded_at": "2026-05-25T17:09:15.465742+00:00",
+  "schema_version": "controller-pre-review-validation/v1",
+  "state": 4,
+  "unexpected_findings": [],
+  "validator": {
+    "bead": "vb-7m21",
+    "findings": [
+      {
+        "code": "E_MISSING_ARTIFACT",
+        "message": "required artifact missing or empty",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_MISSING_ARTIFACT",
+        "message": "required artifact missing or empty",
+        "path": "proof-plan-review.md",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-025",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-050",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-052",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-045",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-043",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-017",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-059",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-013",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-012",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-032",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-047",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-065",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-041",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-023",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-056",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-061",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-051",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-030",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-039",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-046",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-003",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-019",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-029",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-057",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-022",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-001",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-040",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-002",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-068",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-058",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-014",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-066",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-069",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-042",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-027",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-020",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-055",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-044",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-016",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-071",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-036",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-054",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-010",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-034",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-006",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-037",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-015",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-060",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-053",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-005",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-011",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-048",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-018",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-035",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-008",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-024",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-026",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-070",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-007",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-031",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-021",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-049",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-062",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-028",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-033",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-063",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-072",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-064",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-038",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-067",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-009",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-7m21-004",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      }
+    ],
+    "state": 4,
+    "status": "FAIL"
+  },
+  "validator_exit_status": 1
+}

@@ -1,0 +1,11 @@
+{
+  "bd_show_returncode": 0,
+  "bd_show_stderr": "",
+  "bd_show_stdout_prefix": "[\n  {\n    \"id\": \"vb-7m21\",\n    \"title\": \"storage: Add blackhat corruption fixture corpus\",\n    \"description\": \"# Black Hat Repaired Bead Spec\\n\\nSource docs:\\n- to-fix/09-restate-architecture-steal-plan.md\\n- to-fix/10-restate-exhaustive-sweep.md\\n\\nNo-copy fence:\\n- Restate is failure-mode inspiration only; do not copy code, APIs, data model, module structure, async architecture, HTTP/JSON paths, storage layout, wire formats, or distributed assumptions.\\n- Master contract overrides this bead. Runtime/core work stays single-server, shard-owned, numeric, bounded, and free of JSON/YAML/HTTP interpretation. CLI/doctor diagnostics are cold-path only.\\n\\nTest file:\\n- crates/workspace_tests/tests/restate_storage_blackhat_fixture_corpus.rs\\n\\nCommand evidence:\\n- cargo nextest run -p velvet-ballastics-workspace-tests --test restate_storage_blackhat_fixture_corpus\\n- moon ci\\n\\nScope:\\nAdd a storage fixture corpus covering corrupt envelopes, unknown versions, missing indexes, stale snapshots, journal gaps, duplicate idempotency keys, oversized records, and missing manifests.\\n\\nTarget public surface / files to read:\\n- /tmp/opencode/restate/crates/log-server/src/rocksdb_logstore/record_format.rs\\n- crates/vb_storage/src\\n- to-fix/09-restate-architecture-steal-plan.md\\n\\nAcceptance tests:\\nHappy paths:\\n- Fixture runner accepts a known-good minimal journal event\\n- Fixture runner accepts a known-good snapshot envelope\\n\\nError paths:\\n- invalid input unknown record version returns UnsupportedSchemaVersion\\n- missing index fixture returns IndexParityMismatch\\n\\nEdge cases:\\n- oversized record fixture rejects before payload allocation\\n- truncated header fixture returns UnexpectedEof\\n\\nContract assertions:\\n- Each fixture maps to one typed error\\n- Fixture corpus covers every storage error family\\n\\nPreconditions:\\n- Storage error taxonomy and codec bounds have been read\\n- Each fixture names the expected error variant\\n\\nPostconditions:\\n- Fixture corpus is checked by one d",
+  "validator": {
+    "bead": "vb-7m21",
+    "findings": [],
+    "state": 1,
+    "status": "PASS"
+  }
+}

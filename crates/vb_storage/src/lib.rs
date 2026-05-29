@@ -61,6 +61,29 @@ pub mod kani_admission;
 #[cfg(kani)]
 pub mod kani_postcard_envelope_wire;
 
+#[cfg(kani)]
+pub mod kani_vb_7m21_001;
+#[cfg(kani)]
+pub mod kani_vb_7m21_002;
+#[cfg(kani)]
+pub mod kani_vb_7m21_003;
+#[cfg(kani)]
+pub mod kani_vb_7m21_004;
+#[cfg(kani)]
+pub mod kani_vb_7m21_005;
+#[cfg(kani)]
+pub mod kani_vb_7m21_006;
+#[cfg(kani)]
+pub mod kani_vb_7m21_007;
+#[cfg(kani)]
+pub mod kani_vb_7m21_008;
+#[cfg(kani)]
+pub mod kani_vb_7m21_codec_panic;
+#[cfg(kani)]
+pub mod kani_vb_7m21_header_validate;
+#[cfg(kani)]
+pub mod kani_vb_7m21_payload_bounds;
+
 pub mod keys;
 pub mod process_lock;
 

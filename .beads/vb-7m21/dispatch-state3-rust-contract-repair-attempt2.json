@@ -1,0 +1,23 @@
+{
+  "attempt": 2,
+  "bead_id": "vb-7m21",
+  "created_at": "2026-05-25T16:33:25.627375+00:00",
+  "delegate": "rust-contract",
+  "failure_class": "validator:E_SCHEMA_MISSING_FIELD proof-seed/v1 required fields",
+  "input_artifacts": [
+    ".beads/vb-7m21/state3-validation-evidence.json",
+    ".beads/vb-7m21/proof-seeds.jsonl",
+    ".beads/vb-7m21/contract.md",
+    ".beads/vb-7m21/traceability-matrix.jsonl",
+    ".beads/vb-7m21/dispatch-state3-rust-contract-attempt1.json"
+  ],
+  "isolated_workdir": "/home/lewis/isolated/femdation-velvet-ballistics/vb-7m21",
+  "output_artifacts": [
+    ".beads/vb-7m21/proof-seeds.jsonl",
+    ".beads/vb-7m21/contract.md",
+    ".beads/vb-7m21/traceability-matrix.jsonl"
+  ],
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "state": 3,
+  "sublane": "proof-seed-schema-repair"
+}

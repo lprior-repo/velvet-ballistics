@@ -1,0 +1,63 @@
+{
+  "bead_id": "vb-7m21",
+  "commands": [
+    {
+      "cmd": [
+        "bd",
+        "show",
+        "vb-7m21",
+        "--json"
+      ],
+      "cwd": "/home/lewis/isolated/femdation-velvet-ballistics/vb-7m21",
+      "exit_status": 0,
+      "stderr": "",
+      "stdout": "[\n  {\n    \"id\": \"vb-7m21\",\n    \"title\": \"storage: Add blackhat corruption fixture corpus\",\n    \"description\": \"# Black Hat Repaired Bead Spec\\n\\nSource docs:\\n- to-fix/09-restate-architecture-steal-plan.md\\n- to-fix/10-restate-exhaustive-sweep.md\\n\\nNo-copy fence:\\n- Restate is failure-mode inspiration only; do not copy code, APIs, data model, module structure, async architecture, HTTP/JSON paths, storage layout, wire formats, or distributed assumptions.\\n- Master contract overrides this bead. Runtime/core work stays single-server, shard-owned, numeric, bounded, and free of JSON/YAML/HTTP interpretation. CLI/doctor diagnostics are cold-path only.\\n\\nTest file:\\n- crates/workspace_tests/tests/restate_storage_blackhat_fixture_corpus.rs\\n\\nCommand evidence:\\n- cargo nextest run -p velvet-ballastics-workspace-tests --test restate_storage_blackhat_fixture_corpus\\n- moon ci\\n\\nScope:\\nAdd a storage fixture corpus covering corrupt envelopes, unknown versions, missing indexes, stale snapshots, journal gaps, duplicate idempotency keys, oversized records, and missing manifests.\\n\\nTarget public surface / files to read:\\n- /tmp/opencode/restate/crates/log-server/src/rocksdb_logstore/record_format.rs\\n- crates/vb_storage/src\\n- to-fix/09-restate-architecture-steal-plan.md\\n\\nAcceptance tests:\\nHappy paths:\\n- Fixture runner accepts a known-good minimal journal event\\n- Fixture runner accepts a known-good snapshot envelope\\n\\nError paths:\\n- invalid input unknown record version returns UnsupportedSchemaVersion\\n- missing index fixture returns IndexParityMismatch\\n\\nEdge cases:\\n- oversized record fixture rejects before payload allocation\\n- truncated header fixture returns UnexpectedEof\\n\\nContract assertions:\\n- Each fixture maps to one typed error\\n- Fixture corpus covers every storage error family\\n\\nPreconditions:\\n- Storage error taxonomy and codec bounds have been read\\n- Each fixture names the expected error variant\\n\\nPostconditions:\\n- Fixture corpus is checked by one deterministic test runner\\n- Every fixture has exact typed error assertion\\n\\nInvariants:\\n- No fixture uses random bytes without seed\\n- Oversize fixture validates bound before decode\\n- Corruption tests never mutate production data\\n\\nImplementation gates:\\n- Write failing tests in the named workspace_tests file before production changes.\\n- Implement only the minimal VB change required by those tests.\\n- Close only with raw output from the scoped cargo nextest command and moon ci.\\n\\n\",\n    \"spec_id\": \"to-fix/09-restate-architecture-steal-plan.md\",\n    \"status\": \"in_progress\",\n    \"priority\": 1,\n    \"issue_type\": \"task\",\n    \"assignee\": \"Lewis\",\n    \"owner\": \"priorlewis43@gmail.com\",\n    \"created_at\": \"2026-05-25T04:50:17Z\",\n    \"created_by\": \"Lewis\",\n    \"updated_at\": \"2026-05-25T15:09:10Z\",\n    \"dependencies\": [\n      {\n        \"id\": \"vb-8mdp\",\n        \"title\": \"Restate architecture steal plan: Master-filtered test backlog\",\n        \"description\": \"Umbrella for Restate-derived tests and architecture risks that passed planner generation and Black Hat repair under the Master contract. Source artifacts: to-fix/09-restate-architecture-steal-plan.md and to-fix/10-restate-exhaustive-sweep.md. Restate is failure-mode inspiration only: do not copy code, APIs, data model, module structure, async architecture, HTTP/JSON paths, storage layout, wire formats, or distributed assumptions. All implementation must use VB types, numeric IR, binary IPC, Fjall/Postcard storage, bounded resources, and single-server shard-owned execution.\",\n        \"acceptance_criteria\": \"Child beads exist for IPC, storage, queues, idempotency, errors, CLI, doctor tooling, shutdown, and ingress identity. Each child maps Restate inspiration to a VB target crate and Master constraint.\",\n        \"spec_id\": \"to-fix/09-restate-architecture-steal-plan.md\",\n        \"status\": \"open\",\n        \"priority\": 1,\n        \"issue_type\": \"epic\",\n        \"owner\": \"priorlewis43@gmail.com\",\n        \"created_at\": \"2026-05-25T04:12:37Z\",\n        \"created_by\": \"Lewis\",\n        \"updated_at\": \"2026-05-25T10:44:27Z\",\n        \"labels\": [\n          \"architecture\",\n          \"master-contract\",\n          \"restate\",\n          \"tests\"\n        ],\n        \"dependency_type\": \"parent-child\"\n      }\n    ],\n    \"parent\": \"vb-8mdp\"\n  }\n]\n"
+    },
+    {
+      "cmd": [
+        "bash",
+        "-lc",
+        "test \"$(pwd -P)\" = \"/home/lewis/isolated/femdation-velvet-ballistics/vb-7m21\" && case \"$(pwd -P)\" in \"/home/lewis/src/velvet-ballistics\"|\"/home/lewis/src/velvet-ballistics\"/*) exit 1;; esac && test ! -e \"/home/lewis/src/velvet-ballistics/.beads/vb-7m21\" && test -s .beads/vb-7m21/STATE.md && test -s .beads/vb-7m21/baseline-report.md && jq -c . .beads/vb-7m21/delivery-scope.jsonl >/dev/null"
+      ],
+      "cwd": "/home/lewis/isolated/femdation-velvet-ballistics/vb-7m21",
+      "exit_status": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "cmd": [
+        "/home/lewis/.agents/skills/go-skill/tools/go-skill-v9-validate",
+        "--workspace",
+        "/home/lewis/isolated/femdation-velvet-ballistics/vb-7m21",
+        "--bead",
+        "vb-7m21",
+        "--state",
+        "3",
+        "--source-checkout",
+        "/home/lewis/src/velvet-ballistics",
+        "--skill-root",
+        "/home/lewis/.agents/skills/go-skill",
+        "--mirror-root",
+        "/home/lewis/.opencode/skill/go-skill",
+        "--format",
+        "json"
+      ],
+      "cwd": "/home/lewis/isolated/femdation-velvet-ballistics/vb-7m21",
+      "exit_status": 0,
+      "stderr": "",
+      "stdout": "{\n  \"bead\": \"vb-7m21\",\n  \"findings\": [],\n  \"state\": 3,\n  \"status\": \"PASS\"\n}\n"
+    }
+  ],
+  "isolated_workdir": "/home/lewis/isolated/femdation-velvet-ballistics/vb-7m21",
+  "recorded_at": "2026-05-25T16:47:24.406558+00:00",
+  "schema_version": "controller-validation-evidence/v1",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "state": 3,
+  "status": "PASS",
+  "validator": {
+    "bead": "vb-7m21",
+    "findings": [],
+    "state": 3,
+    "status": "PASS"
+  }
+}

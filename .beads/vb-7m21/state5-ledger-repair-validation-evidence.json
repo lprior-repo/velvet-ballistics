@@ -1,0 +1,18 @@
+{
+  "bead_id": "vb-7m21",
+  "checks": {
+    "active_proof_findings_exists": false,
+    "active_proof_review_exists": false,
+    "ledger_entries": 13,
+    "ledger_final_hash": "7d2f83dfa2ae70f40ed34d71b618c31c61283dcbb79ef201b53c2e3746bc4312",
+    "proof-evidence.md:reserved_BLOCKED_TOOLING": false,
+    "proof-writer-report.md:reserved_BLOCKED_TOOLING": false,
+    "transcript-state5-proof-writer.md:reserved_BLOCKED_TOOLING": false,
+    "trusted_rows": 24
+  },
+  "errors": [],
+  "generated_at": "2026-05-25T20:35:00+00:00",
+  "schema_version": "state5-ledger-repair-validation/v1",
+  "status": "pass",
+  "workdir": "/home/lewis/isolated/femdation-velvet-ballistics/vb-7m21"
+}

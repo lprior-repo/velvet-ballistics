@@ -1,0 +1,33 @@
+{
+  "attempt": 1,
+  "bead_id": "vb-7m21",
+  "created_at": "2026-05-25T16:49:45.339014+00:00",
+  "delegate": "proof-planner",
+  "input_artifacts": [
+    ".beads/vb-7m21/contract.md",
+    ".beads/vb-7m21/proof-seeds.jsonl",
+    ".beads/vb-7m21/traceability-matrix.jsonl",
+    ".beads/vb-7m21/domain-model.md",
+    ".beads/vb-7m21/type-contracts.md",
+    ".beads/vb-7m21/workflow-model.md",
+    ".beads/vb-7m21/error-taxonomy.md",
+    ".beads/vb-7m21/boundary-map.md",
+    ".beads/vb-7m21/hazard-analysis.md",
+    ".beads/vb-7m21/state3-validation-evidence.json"
+  ],
+  "isolated_workdir": "/home/lewis/isolated/femdation-velvet-ballistics/vb-7m21",
+  "output_artifacts": [
+    ".beads/vb-7m21/proof-strategy.md",
+    ".beads/vb-7m21/verifier-lane-matrix.md",
+    ".beads/vb-7m21/verifier-lane-decisions.jsonl",
+    ".beads/vb-7m21/proof-coverage-matrix.md",
+    ".beads/vb-7m21/proof-obligations.planned.jsonl",
+    ".beads/vb-7m21/trusted-base-plan.md",
+    ".beads/vb-7m21/waiver-candidates.jsonl",
+    ".beads/vb-7m21/proof-to-implementation-input.md",
+    ".beads/vb-7m21/transcript-state4-proof-planner.md"
+  ],
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "state": 4,
+  "sublane": "proof-planning"
+}

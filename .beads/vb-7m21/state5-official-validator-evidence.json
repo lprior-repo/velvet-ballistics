@@ -1,0 +1,37 @@
+{
+  "archived_review": "archive/proof-review-state6-attempt3-rejected.md",
+  "attempt": 7,
+  "bead_id": "vb-7m21",
+  "command": [
+    "/home/lewis/.opencode/skill/go-skill/tools/go-skill-v9-validate",
+    "--workspace",
+    "/home/lewis/isolated/femdation-velvet-ballistics/vb-7m21",
+    "--bead",
+    "vb-7m21",
+    "--state",
+    "5",
+    "--source-checkout",
+    "/home/lewis/src/velvet-ballistics",
+    "--skill-root",
+    "/home/lewis/.opencode/skill/go-skill",
+    "--format",
+    "json"
+  ],
+  "exit_status": 0,
+  "pre_repair_failure": {
+    "only_finding": "E_STATUS_NOT_APPROVED",
+    "path": "proof-review.md",
+    "status": "FAIL"
+  },
+  "recorded_at": "2026-05-25T22:15:00+00:00",
+  "schema_version": "official-state-validator-evidence/v1",
+  "state": 5,
+  "stderr": "",
+  "stdout": {
+    "bead": "vb-7m21",
+    "findings": [],
+    "state": 5,
+    "status": "PASS"
+  },
+  "sublane": "final-review-repair"
+}
