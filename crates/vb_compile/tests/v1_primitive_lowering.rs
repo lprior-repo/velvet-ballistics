@@ -1620,7 +1620,6 @@ fn unsupported_primitive_name(errors: &CompileErrors) -> Option<&'static str> {
     })
 }
 
-
 #[test]
 fn compile_workflow_rejects_empty_body_in_scoped_primitives() -> Result<(), String> {
     let cases = [
@@ -1648,7 +1647,10 @@ fn compile_workflow_rejects_empty_body_in_scoped_primitives() -> Result<(), Stri
         let first = first_compile_error(&errors)?;
         match first {
             CompileError::StepFieldShape {
-                step, field, expected, ..
+                step,
+                field,
+                expected,
+                ..
             } => {
                 assert_eq!(
                     (*step, field.as_ref(), expected.as_ref()),
@@ -1692,9 +1694,7 @@ fn compile_workflow_rejects_non_set_body_in_all_scoped_primitives() -> Result<()
         let first = first_compile_error(&errors)?;
         match first {
             CompileError::UnsupportedStepPrimitive {
-                step,
-                primitive,
-                ..
+                step, primitive, ..
             } => {
                 assert_eq!(
                     (*step, primitive.as_ref()),
@@ -1721,7 +1721,10 @@ fn compile_workflow_rejects_multi_step_body_at_non_zero_step() -> Result<(), Str
     let first = first_compile_error(&errors)?;
     match first {
         CompileError::StepFieldShape {
-            step, field, expected, ..
+            step,
+            field,
+            expected,
+            ..
         } => {
             assert_eq!(
                 (*step, field.as_ref(), expected.as_ref()),
@@ -1745,7 +1748,10 @@ fn compile_workflow_rejects_multi_step_together_branch() -> Result<(), String> {
     let first = first_compile_error(&errors)?;
     match first {
         CompileError::StepFieldShape {
-            step, field, expected, ..
+            step,
+            field,
+            expected,
+            ..
         } => {
             assert_eq!(
                 (*step, field.as_ref(), expected.as_ref()),

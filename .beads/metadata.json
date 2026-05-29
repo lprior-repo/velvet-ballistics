@@ -1,9 +1,10 @@
 {
-  "database": "dolt",
   "backend": "dolt",
-  "dolt_mode": "server",
+  "database": "dolt",
   "dolt_database": "velvet_ballistics",
+  "dolt_mode": "server",
   "dolt_server_host": "127.0.0.1",
-  "project_id": "3265bb22-ec7c-4f87-b1a5-6001b941b612",
-  "issue_prefix": "vb"
+  "dolt_server_port": 37421,
+  "issue_prefix": "vb",
+  "project_id": "3265bb22-ec7c-4f87-b1a5-6001b941b612"
 }

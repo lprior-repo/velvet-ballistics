@@ -874,8 +874,14 @@ fn hydrate_empty_run_seq_zero_cover() {
 
     let result = hydrate_run_frame(&snapshot, &tail_events, run_id);
 
-    kani::cover!(result.is_ok(), "hydrate_run_frame Ok for empty seq=0 covered");
-    kani::cover!(result.is_err(), "hydrate_run_frame Err for empty seq=0 covered");
+    kani::cover!(
+        result.is_ok(),
+        "hydrate_run_frame Ok for empty seq=0 covered"
+    );
+    kani::cover!(
+        result.is_err(),
+        "hydrate_run_frame Err for empty seq=0 covered"
+    );
 
     if tail_events.is_empty() && snapshot.slots.is_empty() && snapshot.taint.is_empty() {
         match result {
@@ -945,7 +951,10 @@ fn kani_key_determinism() {
     let key2 = compute_action_idempotency_key(run, seq, action);
 
     // Determinism: f(x) = f(x)
-    kani::assert(key1 == key2, "key computation is deterministic for same inputs");
+    kani::assert(
+        key1 == key2,
+        "key computation is deterministic for same inputs",
+    );
 
     // No panic: wrapping_mul/wrapping_add are defined behavior
     core::mem::forget((key1, key2));
@@ -978,10 +987,7 @@ fn kani_seq_after_snapshot() {
 
     // Preconditions must be false when seq is not strictly after snapshot
     kani::cover!(!result, "seq not after snapshot covered");
-    kani::assert(
-        !result,
-        "preconditions false when tail seq <= snapshot seq",
-    );
+    kani::assert(!result, "preconditions false when tail seq <= snapshot seq");
 
     // Now test the strictly-after case
     let tail_seq_after = snapshot.seq.get().saturating_add(1);
@@ -1001,11 +1007,8 @@ fn kani_seq_after_snapshot() {
         taint: vec![vb_core::value::Taint::Clean],
     };
 
-    let result_after = hydrate_snapshot_tail_preconditions(
-        &snapshot_with_data,
-        &tail_after_events,
-        snapshot.run,
-    );
+    let result_after =
+        hydrate_snapshot_tail_preconditions(&snapshot_with_data, &tail_after_events, snapshot.run);
     kani::cover!(result_after, "seq strictly after snapshot covered");
 }
 
@@ -1109,11 +1112,17 @@ fn kani_non_idempotent_blocked() {
     };
     let blocked = tracker.mark_scheduled_ticket_effect(ticket, SlotIdx::new(0), SlotIdx::new(0));
     kani::cover!(
-        matches!(blocked, Err(RecoveryError::NonIdempotentActionBlocked { .. })),
+        matches!(
+            blocked,
+            Err(RecoveryError::NonIdempotentActionBlocked { .. })
+        ),
         "non-idempotent blocked covered"
     );
     kani::assert(
-        matches!(blocked, Err(RecoveryError::NonIdempotentActionBlocked { .. })),
+        matches!(
+            blocked,
+            Err(RecoveryError::NonIdempotentActionBlocked { .. })
+        ),
         "resolved action is blocked",
     );
 
@@ -1123,7 +1132,10 @@ fn kani_non_idempotent_blocked() {
     kani::assert(tracker2.is_resolved(action, step), "failed is resolved");
     let blocked2 = tracker2.mark_scheduled_ticket_effect(ticket, SlotIdx::new(0), SlotIdx::new(0));
     kani::assert(
-        matches!(blocked2, Err(RecoveryError::NonIdempotentActionBlocked { .. })),
+        matches!(
+            blocked2,
+            Err(RecoveryError::NonIdempotentActionBlocked { .. })
+        ),
         "failed action is blocked",
     );
 }
@@ -1151,18 +1163,14 @@ fn kani_envelope_evidence_divergence() {
     let digest: [u8; 32] = kani::any();
 
     // First completion should apply
-    let first = tracker.mark_completed_envelope_effect(
-        ticket, output, encoded_len, taint, digest,
-    );
+    let first = tracker.mark_completed_envelope_effect(ticket, output, encoded_len, taint, digest);
     kani::assert(
         matches!(first, Ok(ActionReplayEffect::Apply)),
         "first envelope completion applies",
     );
 
     // Same envelope returns Duplicate
-    let second = tracker.mark_completed_envelope_effect(
-        ticket, output, encoded_len, taint, digest,
-    );
+    let second = tracker.mark_completed_envelope_effect(ticket, output, encoded_len, taint, digest);
     kani::cover!(
         matches!(second, Ok(ActionReplayEffect::Duplicate)),
         "same envelope duplicate covered"
@@ -1172,7 +1180,11 @@ fn kani_envelope_evidence_divergence() {
     let mut different_digest = digest;
     different_digest[0] = different_digest[0].wrapping_add(1);
     let divergent = tracker.mark_completed_envelope_effect(
-        ticket, output, encoded_len, taint, different_digest,
+        ticket,
+        output,
+        encoded_len,
+        taint,
+        different_digest,
     );
     kani::cover!(
         matches!(divergent, Err(RecoveryError::ReplayDivergence { .. })),
@@ -1216,11 +1228,17 @@ fn kani_already_resolved_envelope() {
         [0u8; 32],
     );
     kani::cover!(
-        matches!(blocked, Err(RecoveryError::NonIdempotentActionBlocked { .. })),
+        matches!(
+            blocked,
+            Err(RecoveryError::NonIdempotentActionBlocked { .. })
+        ),
         "already-resolved envelope blocked covered"
     );
     kani::assert(
-        matches!(blocked, Err(RecoveryError::NonIdempotentActionBlocked { .. })),
+        matches!(
+            blocked,
+            Err(RecoveryError::NonIdempotentActionBlocked { .. })
+        ),
         "already-resolved envelope is blocked",
     );
 }
@@ -1243,14 +1261,23 @@ fn kani_is_resolved() {
 
     // Both (already resolved, insert again)
     tracker.mark_completed(action, step);
-    kani::assert(tracker.is_resolved(action, step), "still resolved after duplicate mark_completed");
+    kani::assert(
+        tracker.is_resolved(action, step),
+        "still resolved after duplicate mark_completed",
+    );
 
     // Different action/step should not be resolved
     let other_action = ActionId::new(action.get() + 1);
-    kani::assert(!tracker.is_resolved(other_action, step), "other action unresolved");
+    kani::assert(
+        !tracker.is_resolved(other_action, step),
+        "other action unresolved",
+    );
 
     let other_step = StepIdx::new(step.get() + 1);
-    kani::assert(!tracker.is_resolved(action, other_step), "other step unresolved");
+    kani::assert(
+        !tracker.is_resolved(action, other_step),
+        "other step unresolved",
+    );
 
     // Failed
     let mut tracker2 = ActionReplayTracker::new();
@@ -1367,12 +1394,7 @@ fn kani_apply_tail_events_seq_order() {
     let run_id = RunId::new(kani::any::<u64>());
 
     // Build a frame with step/slot counts > 0
-    let frame = vb_core::frame::RunFrame::new(
-        run_id,
-        StepIdx::new(0),
-        2,
-        2,
-    );
+    let frame = vb_core::frame::RunFrame::new(run_id, StepIdx::new(0), 2, 2);
     let mut frame = match frame {
         Ok(f) => f,
         Err(_) => return,

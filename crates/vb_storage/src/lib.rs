@@ -31,35 +31,74 @@ pub mod events;
 pub mod headers;
 pub mod indexes;
 pub mod journal;
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani-harnesses"))]
 pub mod kani_codec;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani-harnesses"))]
 pub mod kani_record_magic;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani-harnesses"))]
 pub mod kani_record_schema;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani-harnesses"))]
 pub mod kani_record_kind;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani-harnesses"))]
 pub mod kani_record_payload_len;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani-harnesses"))]
 pub mod kani_record_crc;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani-harnesses"))]
 pub mod kani_digest_checks_vb_2bzz;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani-harnesses"))]
 pub mod kani_recovery_hydrate;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani-harnesses"))]
 pub mod kani_admission;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani-harnesses"))]
 pub mod kani_postcard_envelope_wire;
+
+#[cfg(kani)]
+pub mod vb_aoah_runtime_open_no_side_effects_kani;
+
+#[cfg(kani)]
+pub mod vb_aoah_migration_registry_totality_kani;
+
+#[cfg(kani)]
+pub mod vb_aoah_verify_before_manifest_advance_kani;
+
+#[cfg(kani)]
+pub mod vb_aoah_cleanup_success_requires_empty_old_keyspace_kani;
+
+#[cfg(kani)]
+pub mod vb_aoah_reopen_after_migration_no_rerun_kani;
+
+#[cfg(kani)]
+pub mod vb_aoah_empty_old_keyspace_noop_kani;
+
+#[cfg(kani)]
+pub mod vb_aoah_migration_accounting_checked_bounds_kani;
+
+#[cfg(feature = "proof-vb-aoah-migration")]
+pub mod vb_aoah_runtime_open_no_side_effects_flux;
+
+#[cfg(feature = "proof-vb-aoah-migration")]
+pub mod vb_aoah_migration_registry_totality_flux;
+
+#[cfg(feature = "proof-vb-aoah-migration")]
+pub mod vb_aoah_verify_before_manifest_advance_flux;
+
+#[cfg(feature = "proof-vb-aoah-migration")]
+pub mod vb_aoah_cleanup_success_requires_empty_old_keyspace_flux;
+
+#[cfg(feature = "proof-vb-aoah-migration")]
+pub mod vb_aoah_empty_old_keyspace_noop_flux;
+
+#[cfg(feature = "proof-vb-aoah-migration")]
+pub mod vb_aoah_migration_accounting_checked_bounds_flux;
 
 pub mod keys;
 pub mod process_lock;

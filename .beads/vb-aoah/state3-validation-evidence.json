@@ -1,0 +1,63 @@
+{
+  "bead_id": "vb-aoah",
+  "commands": [
+    {
+      "cmd": [
+        "bd",
+        "show",
+        "vb-aoah",
+        "--json"
+      ],
+      "cwd": "/home/lewis/isolated/femdation-velvet-ballistics/vb-aoah",
+      "exit_status": 0,
+      "stderr": "",
+      "stdout": "[\n  {\n    \"id\": \"vb-aoah\",\n    \"title\": \"storage: Add explicit migration skeleton and cleanup tests\",\n    \"description\": \"# Black Hat Repaired Bead Spec\\n\\nSource docs:\\n- to-fix/09-restate-architecture-steal-plan.md\\n- to-fix/10-restate-exhaustive-sweep.md\\n\\nNo-copy fence:\\n- Restate is failure-mode inspiration only; do not copy code, APIs, data model, module structure, async architecture, HTTP/JSON paths, storage layout, wire formats, or distributed assumptions.\\n- Master contract overrides this bead. Runtime/core work stays single-server, shard-owned, numeric, bounded, and free of JSON/YAML/HTTP interpretation. CLI/doctor diagnostics are cold-path only.\\n\\nTest file:\\n- crates/workspace_tests/tests/restate_explicit_migration_skeleton_tests.rs\\n\\nCommand evidence:\\n- cargo nextest run -p velvet-ballastics-workspace-tests --test restate_explicit_migration_skeleton_tests\\n- moon ci\\n\\nScope:\\nAdd a named migration test skeleton that seeds an old storage shape, runs an explicit CLI/tool migration, and verifies old keyspace cleanup and manifest version update.\\n\\nTarget public surface / files to read:\\n- /tmp/opencode/restate/crates/partition-store/src/migrations.rs\\n- crates/vb_storage/src\\n- velvet-ballistics-MASTER.md\\n\\nAcceptance tests:\\nHappy paths:\\n- Explicit migration moves old record shape into new keyspace and updates manifest\\n- Reopening after migration reads new records without invoking migration\\n\\nError paths:\\n- invalid input old schema at runtime open returns MigrationRequired\\n- missing migration verification prevents manifest update\\n\\nEdge cases:\\n- empty old keyspace migration leaves manifest unchanged or records no-op outcome\\n- partial old keyspace cleanup failure returns typed migration error\\n\\nContract assertions:\\n- Old keyspace is empty after migration when cleanup is required\\n- Every supported old version names a migration function\\n\\nPreconditions:\\n- Storage manifest version code has been read\\n- A minimal old-version fixture is defined in tests only\\n\\nPostconditions:\\n- Runtime open rejects old version with typed migration-required error\\n- Explicit migration test verifies old keys empty and new keys exact\\n\\nInvariants:\\n- Migrations are named\\n- Manifest advances after verification\\n- Runtime startup does not mutate old schema\\n\\nImplementation gates:\\n- Write failing tests in the named workspace_tests file before production changes.\\n- Implement only the minimal VB change required by those tests.\\n- Close only with raw output from the scoped cargo nextest command and moon ci.\\n\\n\",\n    \"spec_id\": \"to-fix/09-restate-architecture-steal-plan.md\",\n    \"status\": \"in_progress\",\n    \"priority\": 1,\n    \"issue_type\": \"task\",\n    \"assignee\": \"Lewis\",\n    \"owner\": \"priorlewis43@gmail.com\",\n    \"created_at\": \"2026-05-25T04:50:17Z\",\n    \"created_by\": \"Lewis\",\n    \"updated_at\": \"2026-05-25T15:09:27Z\",\n    \"dependencies\": [\n      {\n        \"id\": \"vb-8mdp\",\n        \"title\": \"Restate architecture steal plan: Master-filtered test backlog\",\n        \"description\": \"Umbrella for Restate-derived tests and architecture risks that passed planner generation and Black Hat repair under the Master contract. Source artifacts: to-fix/09-restate-architecture-steal-plan.md and to-fix/10-restate-exhaustive-sweep.md. Restate is failure-mode inspiration only: do not copy code, APIs, data model, module structure, async architecture, HTTP/JSON paths, storage layout, wire formats, or distributed assumptions. All implementation must use VB types, numeric IR, binary IPC, Fjall/Postcard storage, bounded resources, and single-server shard-owned execution.\",\n        \"acceptance_criteria\": \"Child beads exist for IPC, storage, queues, idempotency, errors, CLI, doctor tooling, shutdown, and ingress identity. Each child maps Restate inspiration to a VB target crate and Master constraint.\",\n        \"spec_id\": \"to-fix/09-restate-architecture-steal-plan.md\",\n        \"status\": \"open\",\n        \"priority\": 1,\n        \"issue_type\": \"epic\",\n        \"owner\": \"priorlewis43@gmail.com\",\n        \"created_at\": \"2026-05-25T04:12:37Z\",\n        \"created_by\": \"Lewis\",\n        \"updated_at\": \"2026-05-25T10:44:27Z\",\n        \"labels\": [\n          \"architecture\",\n          \"master-contract\",\n          \"restate\",\n          \"tests\"\n        ],\n        \"dependency_type\": \"parent-child\"\n      }\n    ],\n    \"parent\": \"vb-8mdp\"\n  }\n]\n"
+    },
+    {
+      "cmd": [
+        "bash",
+        "-lc",
+        "test \"$(pwd -P)\" = \"/home/lewis/isolated/femdation-velvet-ballistics/vb-aoah\" && case \"$(pwd -P)\" in \"/home/lewis/src/velvet-ballistics\"|\"/home/lewis/src/velvet-ballistics\"/*) exit 1;; esac && test ! -e \"/home/lewis/src/velvet-ballistics/.beads/vb-aoah\" && test -s .beads/vb-aoah/STATE.md && test -s .beads/vb-aoah/baseline-report.md && jq -c . .beads/vb-aoah/delivery-scope.jsonl >/dev/null"
+      ],
+      "cwd": "/home/lewis/isolated/femdation-velvet-ballistics/vb-aoah",
+      "exit_status": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "cmd": [
+        "/home/lewis/.agents/skills/go-skill/tools/go-skill-v9-validate",
+        "--workspace",
+        "/home/lewis/isolated/femdation-velvet-ballistics/vb-aoah",
+        "--bead",
+        "vb-aoah",
+        "--state",
+        "3",
+        "--source-checkout",
+        "/home/lewis/src/velvet-ballistics",
+        "--skill-root",
+        "/home/lewis/.agents/skills/go-skill",
+        "--mirror-root",
+        "/home/lewis/.opencode/skill/go-skill",
+        "--format",
+        "json"
+      ],
+      "cwd": "/home/lewis/isolated/femdation-velvet-ballistics/vb-aoah",
+      "exit_status": 0,
+      "stderr": "",
+      "stdout": "{\n  \"bead\": \"vb-aoah\",\n  \"findings\": [],\n  \"state\": 3,\n  \"status\": \"PASS\"\n}\n"
+    }
+  ],
+  "isolated_workdir": "/home/lewis/isolated/femdation-velvet-ballistics/vb-aoah",
+  "recorded_at": "2026-05-25T16:47:24.597179+00:00",
+  "schema_version": "controller-validation-evidence/v1",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "state": 3,
+  "status": "PASS",
+  "validator": {
+    "bead": "vb-aoah",
+    "findings": [],
+    "state": 3,
+    "status": "PASS"
+  }
+}

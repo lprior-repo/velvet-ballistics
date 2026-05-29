@@ -1,0 +1,16 @@
+{
+  "attempt": 7,
+  "bead_id": "vb-aoah",
+  "command": "/home/lewis/.agents/skills/go-skill/tools/go-skill-v9-validate --workspace /home/lewis/isolated/femdation-velvet-ballistics/vb-aoah --bead vb-aoah --state 5 --source-checkout /home/lewis/src/velvet-ballistics --skill-root /home/lewis/.agents/skills/go-skill --mirror-root /home/lewis/.opencode/skill/go-skill",
+  "completed_at": "2026-05-25T23:20:00.000000+00:00",
+  "exit_status": 0,
+  "expected_status": "PASS",
+  "notes": "Prepared before final validator execution; raw log records exact command output.",
+  "raw_log": ".beads/vb-aoah/raw-evidence/attempt7/state5-official-validator.log",
+  "raw_log_sha256": "61c8d0c5c2147efdb166acb7913422853e191edfdda5d8e4174ac3d6a5b264e1",
+  "schema_version": "state-validation-evidence/v1",
+  "state": 5,
+  "validator": "go-skill-v9-validate",
+  "validator_status": "PASS",
+  "workdir": "/home/lewis/isolated/femdation-velvet-ballistics/vb-aoah"
+}

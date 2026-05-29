@@ -64,8 +64,7 @@ impl FjallJournal {
         seq: EventSeq,
     ) -> Result<Option<Vec<u8>>, JournalError> {
         let key = run_event_key(run, seq)?;
-        let result: Result<Option<fjall::Slice>, fjall::Error> =
-            self.events.get(key);
+        let result: Result<Option<fjall::Slice>, fjall::Error> = self.events.get(key);
         Ok(result?.map(|s| s.to_vec()))
     }
 

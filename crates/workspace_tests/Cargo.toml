@@ -92,6 +92,10 @@ path = "tests/restate_postcard_envelope_wire_tests.rs"
 name = "restate_runtime_version_barrier_tests"
 path = "tests/restate_runtime_version_barrier_tests.rs"
 
+[[test]]
+name = "restate_explicit_migration_skeleton_tests"
+path = "tests/restate_explicit_migration_skeleton_tests.rs"
+
 [[bench]]
 name = "velvet_ballistics"
 harness = false

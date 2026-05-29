@@ -16,6 +16,10 @@ serde.workspace = true
 thiserror.workspace = true
 vb_core = { path = "../vb_core" }
 
+[features]
+legacy-kani-harnesses = []
+proof-vb-aoah-migration = []
+
 [dev-dependencies]
 proptest = { workspace = true }
 tempfile.workspace = true

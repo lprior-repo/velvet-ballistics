@@ -1,0 +1,11 @@
+{
+  "bd_show_returncode": 0,
+  "bd_show_stderr": "",
+  "bd_show_stdout_prefix": "[\n  {\n    \"id\": \"vb-aoah\",\n    \"title\": \"storage: Add explicit migration skeleton and cleanup tests\",\n    \"description\": \"# Black Hat Repaired Bead Spec\\n\\nSource docs:\\n- to-fix/09-restate-architecture-steal-plan.md\\n- to-fix/10-restate-exhaustive-sweep.md\\n\\nNo-copy fence:\\n- Restate is failure-mode inspiration only; do not copy code, APIs, data model, module structure, async architecture, HTTP/JSON paths, storage layout, wire formats, or distributed assumptions.\\n- Master contract overrides this bead. Runtime/core work stays single-server, shard-owned, numeric, bounded, and free of JSON/YAML/HTTP interpretation. CLI/doctor diagnostics are cold-path only.\\n\\nTest file:\\n- crates/workspace_tests/tests/restate_explicit_migration_skeleton_tests.rs\\n\\nCommand evidence:\\n- cargo nextest run -p velvet-ballastics-workspace-tests --test restate_explicit_migration_skeleton_tests\\n- moon ci\\n\\nScope:\\nAdd a named migration test skeleton that seeds an old storage shape, runs an explicit CLI/tool migration, and verifies old keyspace cleanup and manifest version update.\\n\\nTarget public surface / files to read:\\n- /tmp/opencode/restate/crates/partition-store/src/migrations.rs\\n- crates/vb_storage/src\\n- velvet-ballistics-MASTER.md\\n\\nAcceptance tests:\\nHappy paths:\\n- Explicit migration moves old record shape into new keyspace and updates manifest\\n- Reopening after migration reads new records without invoking migration\\n\\nError paths:\\n- invalid input old schema at runtime open returns MigrationRequired\\n- missing migration verification prevents manifest update\\n\\nEdge cases:\\n- empty old keyspace migration leaves manifest unchanged or records no-op outcome\\n- partial old keyspace cleanup failure returns typed migration error\\n\\nContract assertions:\\n- Old keyspace is empty after migration when cleanup is required\\n- Every supported old version names a migration function\\n\\nPreconditions:\\n- Storage manifest version code has been read\\n- A minimal old-version fixture is defin",
+  "validator": {
+    "bead": "vb-aoah",
+    "findings": [],
+    "state": 1,
+    "status": "PASS"
+  }
+}

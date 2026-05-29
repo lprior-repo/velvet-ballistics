@@ -1,0 +1,24 @@
+{
+  "attempt": 1,
+  "bead_id": "vb-aoah",
+  "created_at": "2026-05-25T18:53:09.754718+00:00",
+  "delegate": "proof-reviewer",
+  "expected_reviewer_invocation_id": "proof-reviewer-vb-aoah-state6-001",
+  "expected_writer_invocation_id": "proof-writer-vb-aoah-state5-002",
+  "input_artifacts": [
+    ".beads/vb-aoah/proof-writer-report.md",
+    ".beads/vb-aoah/proof-evidence.md",
+    ".beads/vb-aoah/trusted-base-ledger.jsonl",
+    ".beads/vb-aoah/proof-obligations.planned.jsonl",
+    ".beads/vb-aoah/state5-validation-evidence.json"
+  ],
+  "isolated_workdir": "/home/lewis/isolated/femdation-velvet-ballistics/vb-aoah",
+  "output_artifacts": [
+    ".beads/vb-aoah/proof-review.md",
+    ".beads/vb-aoah/proof-findings.jsonl",
+    ".beads/vb-aoah/transcript-state6-proof-reviewer.md"
+  ],
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "state": 6,
+  "sublane": "proof-review"
+}

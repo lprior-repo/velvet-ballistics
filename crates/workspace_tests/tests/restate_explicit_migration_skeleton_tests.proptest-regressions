@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 762617bf7c790924f4c5c2ed6bc47efec5fca7335167e8244033bfeb1a8777a7 # shrinks to f = Fixture { version: 0, old_records: 0, current_records: 0, bytes: 0, verified: false, manifest_current: true, cleanup_succeeded: false, migration_runs: 1 }
+cc fea106515ac8df2932a886742e703bbed8cda7ff4dd3dc9e76f2feb3e41e4358 # shrinks to f = Fixture { version: 0, old_records: 0, current_records: 0, bytes: 0, verified: false, manifest_current: false, cleanup_succeeded: false, migration_runs: 0, phase: Planned }

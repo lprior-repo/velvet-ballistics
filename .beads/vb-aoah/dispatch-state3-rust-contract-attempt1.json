@@ -1,0 +1,30 @@
+{
+  "attempt": 1,
+  "bead_id": "vb-aoah",
+  "created_at": "2026-05-25T16:03:27.560481+00:00",
+  "delegate": "rust-contract",
+  "input_artifacts": [
+    ".beads/vb-aoah/codebase-map.md",
+    ".beads/vb-aoah/delivery-scope.jsonl",
+    ".beads/vb-aoah/STATE.md",
+    ".beads/vb-aoah/state2-validation-evidence.json",
+    "bd show vb-aoah --json",
+    "velvet-ballistics-MASTER.md"
+  ],
+  "isolated_workdir": "/home/lewis/isolated/femdation-velvet-ballistics/vb-aoah",
+  "output_artifacts": [
+    ".beads/vb-aoah/domain-model.md",
+    ".beads/vb-aoah/type-contracts.md",
+    ".beads/vb-aoah/workflow-model.md",
+    ".beads/vb-aoah/error-taxonomy.md",
+    ".beads/vb-aoah/boundary-map.md",
+    ".beads/vb-aoah/hazard-analysis.md",
+    ".beads/vb-aoah/contract.md",
+    ".beads/vb-aoah/proof-seeds.jsonl",
+    ".beads/vb-aoah/traceability-matrix.jsonl"
+  ],
+  "prompt_shape": "[vb-aoah] p3-contract",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "state": 3,
+  "sublane": "domain-contract"
+}

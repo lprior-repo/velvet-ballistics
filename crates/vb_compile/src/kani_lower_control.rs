@@ -351,7 +351,12 @@ fn lower_choose_live_api_has_fanout_check() {
         .collect();
 
     let mut builder = SlotCompiler::new();
-    let result = lower_choose(StepIdx::new(0), branches, Some(StepIdx::new(1)), &mut builder);
+    let result = lower_choose(
+        StepIdx::new(0),
+        branches,
+        Some(StepIdx::new(1)),
+        &mut builder,
+    );
 
     match result {
         Err(CompileError::PrimitiveLoweringLimitExceeded { .. }) => {}

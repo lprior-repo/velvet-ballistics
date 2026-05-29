@@ -371,6 +371,34 @@ test = false
 doc = false
 bench = false
 
+[[bin]]
+name = "vb_aoah_runtime_open_no_side_effects"
+path = "fuzz_targets/vb_aoah_runtime_open_no_side_effects.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_aoah_cleanup_success_requires_empty_old_keyspace"
+path = "fuzz_targets/vb_aoah_cleanup_success_requires_empty_old_keyspace.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_aoah_empty_old_keyspace_noop"
+path = "fuzz_targets/vb_aoah_empty_old_keyspace_noop.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_aoah_migration_accounting_checked_bounds"
+path = "fuzz_targets/vb_aoah_migration_accounting_checked_bounds.rs"
+test = false
+doc = false
+bench = false
+
 # === src/bin/ orphans (declared 2026-05-24 Phase 0) ===
 
 [[bin]]
@@ -490,6 +518,34 @@ bench = false
 [[bin]]
 name = "vb_rpch_replay_events_fuzz"
 path = "fuzz_targets/vb_rpch_replay_events_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_aoah_runtime_open_hostile_manifest"
+path = "fuzz_targets/vb_aoah_runtime_open_hostile_manifest.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_aoah_cleanup_corrupt_old_keyspace"
+path = "fuzz_targets/vb_aoah_cleanup_corrupt_old_keyspace.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_aoah_empty_keyspace_malformed_input"
+path = "fuzz_targets/vb_aoah_empty_keyspace_malformed_input.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_aoah_migration_accounting_boundary_overflow"
+path = "fuzz_targets/vb_aoah_migration_accounting_boundary_overflow.rs"
 test = false
 doc = false
 bench = false

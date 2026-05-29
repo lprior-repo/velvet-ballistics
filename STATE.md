@@ -1,77 +1,122 @@
-# STATE.md — vb-rpch
+# STATE.md — vb-aoah
 
 ## Beacon
-- **Bead**: vb-rpch — "bdd: Durability and recovery acceptance scenarios"
-- **Workspace**: femdation-vb-rpch (isolated)
-- **Started**: 2026-05-17
-- **Pipeline**: proof-review state 6 completed — REJECTED, routed to state 5 (attempt 2)
-- **Parent**: vb-hjvq
-- **Blocks**: vb-oewy
-- **Depends on**: vb-hxm0, vb-ypnk
+- **Bead**: vb-aoah — "migration skeleton tests"
+- **Workspace**: femdation-velvet-ballistics/vb-aoah (isolated)
+- **Started**: 2026-05-25
+- **Pipeline**: States 13-15 completed (2026-05-27)
+- **Depends on**: reduced-scope proof plan (proof-planner-vb-aoah-state4-replan-001)
 
-## State 6 Review Result: REJECTED
+## Current State: 15 — Landing (COMPLETE for test-first skeleton)
 
-### proof-review.md findings (11 total):
-- 4 CRITICAL: False claims of Verus annotations (PF-VB-001/002/003), missing Kani harness (PF-VB-004)
-- 3 HIGH: TLC not run (PF-VB-005), TLA+ spec defects (PF-VB-006/007)
-- 3 MEDIUM: Missing cfg INVARIANT declarations (PF-VB-008), strategy failure (PF-VB-009), BDD execution not verified (PF-VB-010)
-- 1 LOW: GAP-3 waivers adequate (PF-VB-011)
+All states 1-15 are complete for the test-first phase. Production `migrations.rs` does not exist yet. All obligations verified against test-double adapters. Formal closure against production is deferred.
 
-### contract-verification-review.md findings:
-- 11/27 contract clauses have UNEXECUTED formal proofs
-- Verus: 7/7 UNEXECUTED
-- TLA+: 6/6 UNEXECUTED (theorems defined but TLC not run)
-- Kani: 3/3 UNEXECUTED (harness absent)
-- GAP-3 waivers: SOUND
+### State 15 Completed Actions (2026-05-27)
+1. **Wrote `landing-report.md`**: Documents all completed states, deferred production closure items, tracked gaps.
+2. **Appended ledger**: `landing-skill-vb-aoah-state15-001` (ledger_sequence 33).
 
-### Output Artifacts Produced
-- `proof-review.md` (8.4K) — full reviewer analysis
-- `proof-findings.jsonl` (6.5K) — 11 findings in JSONL
-- `proof-repair-guide.md` (8.1K) — repair steps for all defects
-- `contract-verification-review.md` (8.9K) — clause-by-clause adequacy
+### State 14 Completed Actions (2026-05-27)
+1. **Wrote `assurance-bundle.md`**: 10/10 requirements mapped to evidence, executed gates, artifact inventory.
+2. **Wrote `truth-serum-report.md`**: 6/6 gates performed, 0 hallucinated artifacts, 0 runtime panic vectors, PASS.
+3. **Wrote `final-evidence-decision.md`**: STATUS: APPROVED (PENDING_PRODUCTION_WIRING), 8/8 evidence gates PASS.
+4. **Appended ledger**: 3 entries (evidence-packaging, truth-serum, final-evidence-decision).
 
----
+### State 13 Completed Actions (2026-05-27)
+1. **Wrote `black-hat-review.md`**: APPROVED with parity matrix. 0 critical, 3 non-blocking, 1 gap-tracked. Replaced stale cross-bead file.
+2. **Appended ledger**: `black-hat-reviewer-vb-aoah-state13-001` (ledger_sequence 30).
 
-## State 5: Proof/Harness Writing (RETRY — Attempt 2)
+### State 12 Completed Actions
+1. **Wrote `formal-verification-report.md`**: Status PENDING_PRODUCTION_CLOSURE. All 18 proof obligations verified against adapters. Production gap documented.
+2. **Wrote `verification-ledger.jsonl`**: 18 rows with adapter-verified status, SHA256 entry hashes.
+3. **Appended ledger**: `formal-verifier-vb-aoah-state12-001` (ledger_sequence 29).
 
-### Previous Attempt Failed Because:
-1. **FALSE CLAIMS**: Proof-writer claimed Verus annotations added to source files but grep/read confirms ZERO exist
-2. **MISSING ARTIFACT**: `kani_recovery_hydrate.rs` does not exist
-3. **TLC NOT RUN**: TLA+ spec created but never verified
-4. **STRATEGY**: Inline Verus approach non-viable; must use standalone verification files
+### State 11 Completed Actions
+1. **Wrote `implementation.md`**: Test-first bead — no production code written. Cataloged 15 planned symbols, 17 error variants, 12 wiring mappings, Holzmann checklist.
+2. **Appended ledger**: `holzman-rust-vb-aoah-state11-001` (ledger_sequence 28).
 
-### Repairs Required (per proof-repair-guide.md)
-1. Create 5 standalone Verus files in `verification/verus/`:
-   - vb_rpch_unsupported_state.rs (INV-002)
-   - vb_rpch_action_tracker.rs (INV-004)
-   - vb_rpch_digest_check.rs (INV-005)
-   - vb_rpch_hydrate_preconditions.rs (PRE-001, PRE-002)
-   - vb_rpch_replay_invariants.rs (POST-009, INV-003)
-2. Create Kani harness file with bounded Vec sizes (use `#[kani::unwind(5)]`)
-3. Fix TLA+ spec defects (TailCausalAfterSnapshot guard, Sort operator, cfg INVARIANTs)
-4. Execute TLC and capture output
+### State 10 Completed Actions
+1. **Wrote `test-plan-review.md`**: APPROVED with 3 non-blocking findings. 100% contract coverage.
+2. **Wrote `test-suite-review.md`**: APPROVED. 51/51 tests pass, 0 clippy warnings, all assertions strong.
+3. **Appended ledger**: `test-reviewer-vb-aoah-state10-001` (ledger_sequence 27).
 
-### Next State
-- state: 6 (Proof and contract review) — attempt 2
+### State 9 Completed Actions
+1. **Wrote 51 tests** in `crates/workspace_tests/tests/restate_explicit_migration_skeleton_tests.rs` (1170 lines)
+   - 32 non-proptest unit/integration tests
+   - 19 proptest tests with combinatorial strategies
+   - All 22 BDD scenarios from test-plan.md covered
+   - Hardened 3 weak assertions per BR-F-002
+2. **Registered test** in `crates/workspace_tests/Cargo.toml`
+3. **Verification**:
+   - `cargo clippy -- -D warnings`: 0 warnings
+   - `cargo test`: 51 passed, 0 failed
+4. **Wrote `test-writer-report.md`**
+5. **Appended ledger**: `test-writer-vb-aoah-state9-001` (ledger_sequence 26).
 
----
+### State 8 Completed Actions
+1. **Wrote `test-plan.md`** (686 lines, 22 BDD scenarios, 12 property invariants)
+2. **Appended ledger**: `test-planner-vb-aoah-state8-001` (ledger_sequence 25).
+
+### State 7 Completed Actions
+1. **Wrote `proof-to-rust-map.md`**: 18 bridge rows across 6 domain clusters
+2. **Wrote `rust-refinement-obligations.jsonl`**: 18 bridge rows with SHA256 entry hashes
+3. **Bridge review**: APPROVED by `proof-reviewer-vb-aoah-state7-bridge-001` (ledger_sequence 24)
+4. **Appended ledger**: `proof-to-implementation-vb-aoah-state7-001` (ledger_sequence 23).
+
+### Test Suite Summary
+- **Test file**: `crates/workspace_tests/tests/restate_explicit_migration_skeleton_tests.rs` (1170 lines)
+- **Test count**: 51 (32 non-proptest + 19 proptest)
+- **BDD scenarios**: 22/22 covered
+- **Error variants**: 17 declared (8 exercised via adapters, 9 await production code)
+- **Proptest invariants**: 5 new + 7 existing = 12 total
+- **Kani harnesses**: 7 (VERIFIED against adapters, await production re-run)
+- **Fuzz targets**: 4 (BUILT, await production campaigns)
+
+### State 12 Closure Requires
+1. Create `crates/vb_storage/src/migrations.rs` with all planned symbols
+2. Add 15 new `JournalError` variants and diagnostic codes (0x4021-0x402F)
+3. Replace adapter functions with production API calls in all 51 behavior tests
+4. Re-run all 7 Kani harnesses against production code
+5. Execute all 4 fuzz campaigns against production code
+6. Run mutation testing (target: ≥95% kill rate)
+7. Run `moon ci` canonical CI gate
+8. Re-invoke formal-verifier to close all 18 obligations to production
 
 ## State History
 
 ### State 1-3: Contract artifacts from upstream ✓
-- Input contracts from `.beads/vb-rpch/`
+- Contract model, type contracts, domain model, hazard analysis written
 
-### State 4: Proof Planning ✓
-- proof-strategy.md, proof-obligations.planned.jsonl, traceability-matrix.jsonl written
+### State 4: Proof Planning (reduced scope) ✓
+- Reduced from 56 lanes/36 obligations to 18 obligations across 3 verifiers (kani, proptest, cargo-fuzz)
+- TLA+/Verus/Flux/Loom/Miri excluded per scope reduction approval
+- Proof plan approved by proof-plan-reviewer-vb-aoah-state4-replan-002
 
-### State 5: Proof/Model/Harness Writing (attempt 1) — FAILED
-- TLA+ RecoveryReplayFull.tla + cfg CREATED (only correct artifact)
-- FALSE CLAIMS: Verus annotations claimed but absent
-- MISSING: kani_recovery_hydrate.rs absent
-- TLC: not run
+### State 5: Proof/Harness Writing ✓ (attempt 8)
+- 7 differentiated Kani harnesses: 7/7 VERIFICATION SUCCESSFUL (cargo-kani 0.67.0)
+- 7 proptest test functions + 4 fuzz targets built
+- Approved by proof-reviewer-vb-aoah-state5-001
 
-### State 6: Proof and Contract Review — REJECTED
-- All 4 output artifacts produced
-- Routing back to State 5 (attempt 2)
+### State 6: Proof Review — APPROVED ✓
+- All 18 obligations reviewed and approved
+- Kani harnesses use `kani::Arbitrary` per GOD RULE
 
-### State 5: Proof/Harness Writing (RETRY — attempt 2) — CURRENT
+### State 7: Proof-to-Implementation Bridge ✓
+- Bridge mapping written and reviewed (APPROVED)
+- 18 bridge rows with explicit source/test/harness refs
+
+### State 8: Test Planning ✓
+- 22 BDD scenarios, 686-line test-plan.md
+- Trophy allocation: 5 unit / 12 integration / 2 E2E / 7 proptest / 4 fuzz / 7 Kani
+
+### State 9: Test Writing ✓
+- 51 tests, 1170 lines, 0 clippy warnings, all pass
+
+### State 10: Test Review ✓
+- Plan review APPROVED, suite review APPROVED
+
+### State 11: Implementation Planning ✓
+- implementation.md documenting all planned symbols, error variants, wiring
+
+### State 12: Formal Verification ✓
+- formal-verification-report.md: PENDING_PRODUCTION_CLOSURE
+- 18 verification-ledger entries with adapter-verified status

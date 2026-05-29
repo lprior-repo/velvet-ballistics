@@ -1,0 +1,25 @@
+{
+  "attempt": 2,
+  "bead_id": "vb-aoah",
+  "created_at": "2026-05-25T18:10:10.855140+00:00",
+  "delegate": "proof-writer",
+  "failure_class": "state5 validator unledgered trust marker",
+  "input_artifacts": [
+    ".beads/vb-aoah/proof-writer-report.md",
+    ".beads/vb-aoah/proof-evidence.md",
+    ".beads/vb-aoah/trusted-base-ledger.jsonl",
+    ".beads/vb-aoah/transcript-state5-proof-writer.md",
+    ".beads/vb-aoah/state5-validation-evidence.json",
+    ".beads/vb-aoah/dispatch-state5-proof-writer-attempt1.json"
+  ],
+  "isolated_workdir": "/home/lewis/isolated/femdation-velvet-ballistics/vb-aoah",
+  "output_artifacts": [
+    ".beads/vb-aoah/proof-writer-report.md",
+    ".beads/vb-aoah/proof-evidence.md",
+    ".beads/vb-aoah/trusted-base-ledger.jsonl",
+    ".beads/vb-aoah/transcript-state5-proof-writer.md"
+  ],
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "state": 5,
+  "sublane": "proof-writing-repair"
+}

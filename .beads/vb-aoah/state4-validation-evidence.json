@@ -1,0 +1,13 @@
+{
+  "bead_id": "vb-aoah",
+  "exit_status": 0,
+  "recorded_at": "2026-05-25T17:54:50.078669+00:00",
+  "schema_version": "controller-validation-evidence/v1",
+  "state": 4,
+  "validator": {
+    "bead": "vb-aoah",
+    "findings": [],
+    "state": 4,
+    "status": "PASS"
+  }
+}

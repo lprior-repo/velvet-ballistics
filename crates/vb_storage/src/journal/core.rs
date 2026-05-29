@@ -145,10 +145,7 @@ impl FjallJournal {
     /// # Errors
     ///
     /// Returns `JournalError` if the underlying keyspace query fails.
-    pub fn has_action_index_entry(
-        &self,
-        key: impl AsRef<[u8]>,
-    ) -> Result<bool, JournalError> {
+    pub fn has_action_index_entry(&self, key: impl AsRef<[u8]>) -> Result<bool, JournalError> {
         Ok(self.index_action.contains_key(key.as_ref())?)
     }
 
@@ -160,10 +157,7 @@ impl FjallJournal {
     /// # Errors
     ///
     /// Returns `JournalError` if the underlying keyspace query fails.
-    pub fn has_status_index_entry(
-        &self,
-        key: impl AsRef<[u8]>,
-    ) -> Result<bool, JournalError> {
+    pub fn has_status_index_entry(&self, key: impl AsRef<[u8]>) -> Result<bool, JournalError> {
         Ok(self.index_status.contains_key(key.as_ref())?)
     }
 
@@ -175,10 +169,7 @@ impl FjallJournal {
     /// # Errors
     ///
     /// Returns `JournalError` if the underlying keyspace query fails.
-    pub fn has_workflow_index_entry(
-        &self,
-        key: impl AsRef<[u8]>,
-    ) -> Result<bool, JournalError> {
+    pub fn has_workflow_index_entry(&self, key: impl AsRef<[u8]>) -> Result<bool, JournalError> {
         Ok(self.index_workflow.contains_key(key.as_ref())?)
     }
 

@@ -7,16 +7,14 @@
 //!
 //! PO-3t44-009 through PO-3t44-030: 22 proptest obligations for postcard envelope wire format.
 
-use vb_storage::{
-    decode_record, encode_record,
-    constants::{
-        MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    },
-    records::RecordKind,
-    JournalEvent, EventSeq,
-};
-use vb_core::{RunId, StepIdx, SlotIdx, WorkflowDigest, ActionId};
 use proptest::prelude::*;
+use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_storage::{
+    EventSeq, JournalEvent,
+    constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES},
+    decode_record, encode_record,
+    records::RecordKind,
+};
 
 // ---------------------------------------------------------------------------
 // PO-3t44-009 through PO-3t44-030: 22 proptest cases covering all RecordKind
