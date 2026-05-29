@@ -1,0 +1,11 @@
+{
+  "host_session_id": "velvet-ballistics-vb-t6hx-femdation-2026-05-25",
+  "isolated_workspace": "/home/lewis/isolated/femdation-velvet-ballistics/vb-t6hx",
+  "loaded_skill_name": "go-skill",
+  "loaded_skill_version": "10.1.0",
+  "mirror_source": "/home/lewis/.agents/skills/go-skill/SKILL.md",
+  "observed_state_range": "1..16",
+  "provenance_timestamp": "2026-05-25T15:33:03.342233+00:00",
+  "skill_source": "/home/lewis/.opencode/skill/go-skill/SKILL.md",
+  "source_checkout": "/home/lewis/src/velvet-ballistics"
+}

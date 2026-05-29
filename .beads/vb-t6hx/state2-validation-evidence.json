@@ -1,0 +1,11 @@
+{
+  "jq_returncode": 0,
+  "jq_stderr": "",
+  "validator": {
+    "bead": "vb-t6hx",
+    "findings": [],
+    "state": 2,
+    "status": "PASS"
+  },
+  "validator_returncode": 0
+}

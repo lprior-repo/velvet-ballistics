@@ -1,0 +1,48 @@
+# Trusted Base Plan — vb-t6hx
+
+State 4 planning ledger for assumptions, reductions, external semantics, and future trust closures. This file is not an approval artifact.
+
+| ID | Obligation | Trusted surface / bound | Reason | Closure expectation |
+|---|---|---|---|---|
+| TBP-vb-t6hx-001 | PO-vb-t6hx-001 | TLA+ abstracts Fjall as finite read/write operation labels. | Model checks workflow mutation exclusion, not Fjall internals. | State 6 reviewer accepts reduction; State 12 pairs with source/behavior evidence. |
+| TBP-vb-t6hx-002 | PO-vb-t6hx-002 | Verus proof must use implemented `ReadOnlyStorage` APIs, not standalone ghost enum. | Repository forbids vacuum Verus proofs. | Reject if no exec binding to implementation exists. |
+| TBP-vb-t6hx-003 | PO-vb-t6hx-003 | Kani command generator bounds keyspaces/commands. | Bounded model checking needs finite domain. | Bounds documented in harness and non-vacuity cover statements. |
+| TBP-vb-t6hx-004 | PO-vb-t6hx-004 | Flux annotations may require wrapper types. | Flux cannot prove private Fjall internals directly. | No trusted/ignore on behavior-affecting predicate. |
+| TBP-vb-t6hx-005 | PO-vb-t6hx-005 | Loom uses abstract storage cells, not real Fjall. | Real Fjall schedule cannot run under Loom. | Treat as interleaving-design proof only; behavior tests cover real fixture. |
+| TBP-vb-t6hx-006 | PO-vb-t6hx-006 | Engine metadata changes may be outside user-key inventory. | Hazard analysis notes read-only engine metadata ambiguity. | If metadata changes are observed, document non-user-key boundary; no user record/key mutation waiver allowed. |
+| TBP-vb-t6hx-007 | PO-vb-t6hx-007 | TLA+ finite row/limit bounds. | Checks induction-like invariant across representative finite bounds. | Include non-vacuity where rows > limit exists in model. |
+| TBP-vb-t6hx-008 | PO-vb-t6hx-008 | Verus requires pure accumulator/wrapper extraction. | Existing implementation is absent at State 4. | Bind requires/ensures to actual Rust after implementation. |
+| TBP-vb-t6hx-009 | PO-vb-t6hx-009 | Kani finite max rows/limit. | Exhaustive only inside declared bound. | Cover zero, one, limit-1, limit, limit+1, max. |
+| TBP-vb-t6hx-010 | PO-vb-t6hx-010 | Flux cap constant must match implementation constant. | Cap drift would invalidate refinement. | State 12 source alignment checks constant identity. |
+| TBP-vb-t6hx-011 | PO-vb-t6hx-011 | Output row counting parser in property test. | CLI text can contain headers/legends. | Test parser must count data rows only and assert stable categories separately. |
+| TBP-vb-t6hx-012 | PO-vb-t6hx-012 | 60-second fuzz smoke bound. | Planning minimum; not exhaustive. | Longer campaign optional; smoke evidence is not whole-input proof. |
+| TBP-vb-t6hx-013 | PO-vb-t6hx-013 | Optional `0x` prefix policy. | Contract allows prefix only if explicit. | Parser contract/test must pin accepted policy. |
+| TBP-vb-t6hx-014 | PO-vb-t6hx-014 | Storage-open effect is instrumented as ghost/spy. | Harness cannot open real storage for all generated parser inputs. | Spy must bind to actual parse/open boundary. |
+| TBP-vb-t6hx-015 | PO-vb-t6hx-015 | Max hex length only if introduced. | Contract allows optional max. | If no cap exists, reviewer must reject unbounded key allocation. |
+| TBP-vb-t6hx-016 | PO-vb-t6hx-016 | Test fixture open spy. | Need evidence parse error occurs before storage open. | Spy must be public-boundary compatible, not private-field cheating. |
+| TBP-vb-t6hx-017 | PO-vb-t6hx-017 | Fuzz harness simulates storage-open classification. | Real storage mutation forbidden in fuzz. | Classification function must be same parser used by CLI. |
+| TBP-vb-t6hx-018 | PO-vb-t6hx-018 | TLA+ bounded arithmetic must model overflow/error transitions. | GOD RULE forbids unbounded Nat hiding overflow. | TLC model includes max payload and Err states. |
+| TBP-vb-t6hx-019 | PO-vb-t6hx-019 | CRC/BLAKE3 treated as external equality oracles. | Cryptographic implementations are out of scope for this bead. | Only control-flow ordering may depend on digest comparison result. |
+| TBP-vb-t6hx-020 | PO-vb-t6hx-019 | Postcard decoder is external dependency. | We prove it is called only after envelope validation, not Postcard internals. | Behavior/error mapping evidence required downstream. |
+| TBP-vb-t6hx-021 | PO-vb-t6hx-020 | Existing Kani harness may require extension. | Existing coverage is storage-level, not CLI-specific. | State 5 must repair/extend rather than claiming stale coverage. |
+| TBP-vb-t6hx-022 | PO-vb-t6hx-021 | DecodeStage wrappers may be proof-only. | Need typestate proof without changing wire format. | Reviewer rejects if wrappers are disconnected from implementation. |
+| TBP-vb-t6hx-023 | PO-vb-t6hx-022 | Miri scope is filtered malformed decode test. | Miri does not prove whole-crate soundness. | Pair with Kani/proptest/fuzz and source review. |
+| TBP-vb-t6hx-024 | PO-vb-t6hx-023 | Controlled corruptions around canonical records. | Need valid base records to mutate. | Test must cover truncation, payload too large, digest mismatch, postcard failure. |
+| TBP-vb-t6hx-025 | PO-vb-t6hx-024 | Fuzz stage markers are instrumentation. | Need observe forbidden Postcard-before-validation. | Instrumentation must not alter production branch decisions. |
+| TBP-vb-t6hx-026 | PO-vb-t6hx-025 | CLI decode mapper fuzz uses bounded in-memory fixture. | Real filesystem not suitable for fuzz. | Mapper must be same code used by CLI output path. |
+| TBP-vb-t6hx-027 | PO-vb-t6hx-026 | TLA+ abstracts row bytes as malformed/valid flags. | Skip-decode must not inspect actual payload. | Non-vacuity requires malformed row in skip mode reaches output. |
+| TBP-vb-t6hx-028 | PO-vb-t6hx-027 | Verus effect marker is ghost/return metadata. | Rust lacks built-in effect system. | Marker must bind to decode wrapper call sites. |
+| TBP-vb-t6hx-029 | PO-vb-t6hx-028 | Kani decode-attempt marker instrumentation. | Need observe absence of decode call. | Instrumentation must be proof-only or test-only. |
+| TBP-vb-t6hx-030 | PO-vb-t6hx-029 | Flux effect token cannot be forged. | Typestate proof depends on constructor privacy. | Reviewer checks visibility and construction paths. |
+| TBP-vb-t6hx-031 | PO-vb-t6hx-030 | Fixture can store malformed bytes. | Storage APIs may validate on write. | If write path forbids malformed values, use lower-level fixture only with documented boundary. |
+| TBP-vb-t6hx-032 | PO-vb-t6hx-031 | Fuzz harness isolates projection formatter. | Fuzz should not mutate real journal. | Bind to production projection function. |
+| TBP-vb-t6hx-033 | PO-vb-t6hx-032 | Text escaping length abstraction. | Proof focuses byte preview cap, not every rendered glyph. | Behavior tests assert user-visible hint/metadata. |
+| TBP-vb-t6hx-034 | PO-vb-t6hx-033 | Kani finite max value bytes. | Exhaustive only within bound. | Include boundary classes around cap. |
+| TBP-vb-t6hx-035 | PO-vb-t6hx-034 | Flux does not prove hint string content. | Refinement checks length bound. | Behavior/property tests cover hint content. |
+| TBP-vb-t6hx-036 | PO-vb-t6hx-035 | Output assertions must avoid false positives. | Payload bytes may appear in metadata/hex. | Tests assert full raw payload absent and metadata present. |
+| TBP-vb-t6hx-037 | PO-vb-t6hx-036 | 60-second fuzz smoke bound. | Not exhaustive for all byte strings. | Deep campaign optional; smoke must at least run targeted harness. |
+| TBP-vb-t6hx-038 | PO-vb-t6hx-037 | Verus/static boundary proof cannot alone prove whole-repo absence. | Source/dependency inspection is required companion evidence. | State 12 must run targeted source checks for doctor types and JSON/YAML/HTTP in runtime crates. |
+
+## Waiver Boundary
+
+No behavior-affecting proof obligation is waived by this plan. `waiver-candidates.jsonl` contains only a non-behavior candidate for deep dependency/supply-chain attestation if no dependency manifests change for this bead.

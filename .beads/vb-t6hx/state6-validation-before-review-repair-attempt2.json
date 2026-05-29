@@ -1,0 +1,26 @@
+{
+  "bead_id": "vb-t6hx",
+  "exit_status": 1,
+  "recorded_at": "2026-05-25T18:53:09.790972+00:00",
+  "schema_version": "controller-validation-evidence/v1",
+  "state": 6,
+  "validator": {
+    "bead": "vb-t6hx",
+    "findings": [
+      {
+        "code": "E_REVIEW_PROVENANCE_MISSING",
+        "message": "missing reviewer_skill or reviewer_invocation_id header",
+        "path": "proof-review.md",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_STATUS_NOT_APPROVED",
+        "message": "status tokens=['REJECTED']",
+        "path": "proof-review.md",
+        "severity": "BLOCK"
+      }
+    ],
+    "state": 6,
+    "status": "FAIL"
+  }
+}

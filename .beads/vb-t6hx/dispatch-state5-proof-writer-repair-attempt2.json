@@ -1,0 +1,25 @@
+{
+  "attempt": 2,
+  "bead_id": "vb-t6hx",
+  "created_at": "2026-05-25T17:54:49.836272+00:00",
+  "delegate": "proof-writer",
+  "failure_class": "state5 validator findings; repair trusted-base-ledger schema/unledgered markers/BLOCKED_TOOLING as applicable",
+  "input_artifacts": [
+    ".beads/vb-t6hx/proof-writer-report.md",
+    ".beads/vb-t6hx/proof-evidence.md",
+    ".beads/vb-t6hx/trusted-base-ledger.jsonl",
+    ".beads/vb-t6hx/transcript-state5-proof-writer.md",
+    ".beads/vb-t6hx/state5-validation-evidence.json",
+    ".beads/vb-t6hx/dispatch-state5-proof-writer-attempt1.json"
+  ],
+  "isolated_workdir": "/home/lewis/isolated/femdation-velvet-ballistics/vb-t6hx",
+  "output_artifacts": [
+    ".beads/vb-t6hx/proof-writer-report.md",
+    ".beads/vb-t6hx/proof-evidence.md",
+    ".beads/vb-t6hx/trusted-base-ledger.jsonl",
+    ".beads/vb-t6hx/transcript-state5-proof-writer.md"
+  ],
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "state": 5,
+  "sublane": "proof-writing-repair"
+}

@@ -1,0 +1,11 @@
+{
+  "bd_show_returncode": 0,
+  "bd_show_stderr": "",
+  "bd_show_stdout_prefix": "[\n  {\n    \"id\": \"vb-t6hx\",\n    \"title\": \"cli: Add doctor storage scan get and envelope decode tests\",\n    \"description\": \"# Black Hat Repaired Bead Spec\\n\\nSource docs:\\n- to-fix/09-restate-architecture-steal-plan.md\\n- to-fix/10-restate-exhaustive-sweep.md\\n\\nNo-copy fence:\\n- Restate is failure-mode inspiration only; do not copy code, APIs, data model, module structure, async architecture, HTTP/JSON paths, storage layout, wire formats, or distributed assumptions.\\n- Master contract overrides this bead. Runtime/core work stays single-server, shard-owned, numeric, bounded, and free of JSON/YAML/HTTP interpretation. CLI/doctor diagnostics are cold-path only.\\n\\nTest file:\\n- crates/workspace_tests/tests/restate_doctor_storage_scan_decode_tests.rs\\n\\nCommand evidence:\\n- cargo nextest run -p velvet-ballastics-workspace-tests --test restate_doctor_storage_scan_decode_tests\\n- moon ci\\n\\nScope:\\nMerged CLI doctor/inspect bounded scanner bead: read-only storage open, bounded preview, envelope decode, projection skip-decode, safe numeric filters, and typed parse/decode errors.\\n\\nTarget public surface / files to read:\\n- /tmp/opencode/restate/tools/restate-doctor/src/commands/partition_store/scan.rs\\n- crates/vb_cli/src\\n- crates/vb_storage/src\\n\\nAcceptance tests:\\nHappy paths:\\n- doctor storage scan lists at most requested limit rows\\n- doctor envelope decode validates known-good fixture and prints fields\\n\\nError paths:\\n- invalid input bad hex key returns typed CLI parse error\\n- missing key returns typed not-found diagnostic\\n\\nEdge cases:\\n- large value prints truncated preview and hint to use raw get\\n- no-color mode prints stable plain legend\\n\\nContract assertions:\\n- Read-only doctor command does not write any key\\n- Envelope decode validates length before Postcard decode\\n\\nPreconditions:\\n- VB CLI storage commands and Fjall open modes have been read\\n- Restate doctor scan/get/colorize tests have been read\\n\\nPostconditions:\\n- Doctor tests cover scan limit get",
+  "validator": {
+    "bead": "vb-t6hx",
+    "findings": [],
+    "state": 1,
+    "status": "PASS"
+  }
+}

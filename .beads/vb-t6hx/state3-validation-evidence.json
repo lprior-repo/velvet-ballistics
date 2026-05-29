@@ -1,0 +1,63 @@
+{
+  "bead_id": "vb-t6hx",
+  "commands": [
+    {
+      "cmd": [
+        "bd",
+        "show",
+        "vb-t6hx",
+        "--json"
+      ],
+      "cwd": "/home/lewis/isolated/femdation-velvet-ballistics/vb-t6hx",
+      "exit_status": 0,
+      "stderr": "",
+      "stdout": "[\n  {\n    \"id\": \"vb-t6hx\",\n    \"title\": \"cli: Add doctor storage scan get and envelope decode tests\",\n    \"description\": \"# Black Hat Repaired Bead Spec\\n\\nSource docs:\\n- to-fix/09-restate-architecture-steal-plan.md\\n- to-fix/10-restate-exhaustive-sweep.md\\n\\nNo-copy fence:\\n- Restate is failure-mode inspiration only; do not copy code, APIs, data model, module structure, async architecture, HTTP/JSON paths, storage layout, wire formats, or distributed assumptions.\\n- Master contract overrides this bead. Runtime/core work stays single-server, shard-owned, numeric, bounded, and free of JSON/YAML/HTTP interpretation. CLI/doctor diagnostics are cold-path only.\\n\\nTest file:\\n- crates/workspace_tests/tests/restate_doctor_storage_scan_decode_tests.rs\\n\\nCommand evidence:\\n- cargo nextest run -p velvet-ballastics-workspace-tests --test restate_doctor_storage_scan_decode_tests\\n- moon ci\\n\\nScope:\\nMerged CLI doctor/inspect bounded scanner bead: read-only storage open, bounded preview, envelope decode, projection skip-decode, safe numeric filters, and typed parse/decode errors.\\n\\nTarget public surface / files to read:\\n- /tmp/opencode/restate/tools/restate-doctor/src/commands/partition_store/scan.rs\\n- crates/vb_cli/src\\n- crates/vb_storage/src\\n\\nAcceptance tests:\\nHappy paths:\\n- doctor storage scan lists at most requested limit rows\\n- doctor envelope decode validates known-good fixture and prints fields\\n\\nError paths:\\n- invalid input bad hex key returns typed CLI parse error\\n- missing key returns typed not-found diagnostic\\n\\nEdge cases:\\n- large value prints truncated preview and hint to use raw get\\n- no-color mode prints stable plain legend\\n\\nContract assertions:\\n- Read-only doctor command does not write any key\\n- Envelope decode validates length before Postcard decode\\n\\nPreconditions:\\n- VB CLI storage commands and Fjall open modes have been read\\n- Restate doctor scan/get/colorize tests have been read\\n\\nPostconditions:\\n- Doctor tests cover scan limit get raw and envelope decode failures\\n- Read-only open path is asserted\\n\\nInvariants:\\n- Doctor formatting stays in CLI\\n- Runtime core receives no doctor types\\n- Preview length is bounded\\n\\nImplementation gates:\\n- Write failing tests in the named workspace_tests file before production changes.\\n- Implement only the minimal VB change required by those tests.\\n- Close only with raw output from the scoped cargo nextest command and moon ci.\\n\\n\",\n    \"notes\": \"Black Hat merge amendment: this bead owns the merged CLI doctor/inspect bounded storage scanner scope: read-only open, bounded preview, envelope decode, projection skip-decode, safe numeric filters, typed parse/decode errors. vb-jnv6 and vb-rkdc are duplicates closed into this bead.\",\n    \"spec_id\": \"to-fix/09-restate-architecture-steal-plan.md\",\n    \"status\": \"in_progress\",\n    \"priority\": 1,\n    \"issue_type\": \"task\",\n    \"assignee\": \"Lewis\",\n    \"owner\": \"priorlewis43@gmail.com\",\n    \"created_at\": \"2026-05-25T04:50:20Z\",\n    \"created_by\": \"Lewis\",\n    \"updated_at\": \"2026-05-25T15:09:28Z\",\n    \"dependencies\": [\n      {\n        \"id\": \"vb-8mdp\",\n        \"title\": \"Restate architecture steal plan: Master-filtered test backlog\",\n        \"description\": \"Umbrella for Restate-derived tests and architecture risks that passed planner generation and Black Hat repair under the Master contract. Source artifacts: to-fix/09-restate-architecture-steal-plan.md and to-fix/10-restate-exhaustive-sweep.md. Restate is failure-mode inspiration only: do not copy code, APIs, data model, module structure, async architecture, HTTP/JSON paths, storage layout, wire formats, or distributed assumptions. All implementation must use VB types, numeric IR, binary IPC, Fjall/Postcard storage, bounded resources, and single-server shard-owned execution.\",\n        \"acceptance_criteria\": \"Child beads exist for IPC, storage, queues, idempotency, errors, CLI, doctor tooling, shutdown, and ingress identity. Each child maps Restate inspiration to a VB target crate and Master constraint.\",\n        \"spec_id\": \"to-fix/09-restate-architecture-steal-plan.md\",\n        \"status\": \"open\",\n        \"priority\": 1,\n        \"issue_type\": \"epic\",\n        \"owner\": \"priorlewis43@gmail.com\",\n        \"created_at\": \"2026-05-25T04:12:37Z\",\n        \"created_by\": \"Lewis\",\n        \"updated_at\": \"2026-05-25T10:44:27Z\",\n        \"labels\": [\n          \"architecture\",\n          \"master-contract\",\n          \"restate\",\n          \"tests\"\n        ],\n        \"dependency_type\": \"parent-child\"\n      }\n    ],\n    \"parent\": \"vb-8mdp\"\n  }\n]\n"
+    },
+    {
+      "cmd": [
+        "bash",
+        "-lc",
+        "test \"$(pwd -P)\" = \"/home/lewis/isolated/femdation-velvet-ballistics/vb-t6hx\" && case \"$(pwd -P)\" in \"/home/lewis/src/velvet-ballistics\"|\"/home/lewis/src/velvet-ballistics\"/*) exit 1;; esac && test ! -e \"/home/lewis/src/velvet-ballistics/.beads/vb-t6hx\" && test -s .beads/vb-t6hx/STATE.md && test -s .beads/vb-t6hx/baseline-report.md && jq -c . .beads/vb-t6hx/delivery-scope.jsonl >/dev/null"
+      ],
+      "cwd": "/home/lewis/isolated/femdation-velvet-ballistics/vb-t6hx",
+      "exit_status": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "cmd": [
+        "/home/lewis/.agents/skills/go-skill/tools/go-skill-v9-validate",
+        "--workspace",
+        "/home/lewis/isolated/femdation-velvet-ballistics/vb-t6hx",
+        "--bead",
+        "vb-t6hx",
+        "--state",
+        "3",
+        "--source-checkout",
+        "/home/lewis/src/velvet-ballistics",
+        "--skill-root",
+        "/home/lewis/.agents/skills/go-skill",
+        "--mirror-root",
+        "/home/lewis/.opencode/skill/go-skill",
+        "--format",
+        "json"
+      ],
+      "cwd": "/home/lewis/isolated/femdation-velvet-ballistics/vb-t6hx",
+      "exit_status": 0,
+      "stderr": "",
+      "stdout": "{\n  \"bead\": \"vb-t6hx\",\n  \"findings\": [],\n  \"state\": 3,\n  \"status\": \"PASS\"\n}\n"
+    }
+  ],
+  "isolated_workdir": "/home/lewis/isolated/femdation-velvet-ballistics/vb-t6hx",
+  "recorded_at": "2026-05-25T16:47:24.785862+00:00",
+  "schema_version": "controller-validation-evidence/v1",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "state": 3,
+  "status": "PASS",
+  "validator": {
+    "bead": "vb-t6hx",
+    "findings": [],
+    "state": 3,
+    "status": "PASS"
+  }
+}

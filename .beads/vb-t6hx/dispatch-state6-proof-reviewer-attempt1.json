@@ -1,0 +1,27 @@
+{
+  "attempt": 1,
+  "bead_id": "vb-t6hx",
+  "created_at": "2026-05-25T18:10:10.609267+00:00",
+  "delegate": "proof-reviewer",
+  "expected_reviewer_invocation_id": "proof-reviewer-vb-t6hx-state6-001",
+  "expected_writer_invocation_id": "proof-writer-vb-t6hx-state5-002",
+  "input_artifacts": [
+    ".beads/vb-t6hx/proof-writer-report.md",
+    ".beads/vb-t6hx/proof-evidence.md",
+    ".beads/vb-t6hx/trusted-base-ledger.jsonl",
+    ".beads/vb-t6hx/proof-obligations.planned.jsonl",
+    ".beads/vb-t6hx/verifier-lane-decisions.jsonl",
+    ".beads/vb-t6hx/verifier-lane-review.jsonl",
+    ".beads/vb-t6hx/proof-plan-review.md",
+    ".beads/vb-t6hx/state5-validation-evidence.json"
+  ],
+  "isolated_workdir": "/home/lewis/isolated/femdation-velvet-ballistics/vb-t6hx",
+  "output_artifacts": [
+    ".beads/vb-t6hx/proof-review.md",
+    ".beads/vb-t6hx/proof-findings.jsonl",
+    ".beads/vb-t6hx/transcript-state6-proof-reviewer.md"
+  ],
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "state": 6,
+  "sublane": "proof-review"
+}

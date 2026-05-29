@@ -1,0 +1,63 @@
+# Proof Strategy — vb-t6hx
+
+State 4 proof-planner output for bead `vb-t6hx`. This plan is planning only: it does not claim proof success, write verifier artifacts, write tests, or approve review.
+
+## Inputs Read
+
+- `.beads/vb-t6hx/contract.md`
+- `.beads/vb-t6hx/proof-seeds.jsonl`
+- `.beads/vb-t6hx/traceability-matrix.jsonl`
+- `.beads/vb-t6hx/domain-model.md`
+- `.beads/vb-t6hx/type-contracts.md`
+- `.beads/vb-t6hx/workflow-model.md`
+- `.beads/vb-t6hx/error-taxonomy.md`
+- `.beads/vb-t6hx/boundary-map.md`
+- `.beads/vb-t6hx/hazard-analysis.md`
+- `.beads/vb-t6hx/delivery-scope.jsonl`
+- `.beads/vb-t6hx/codebase-map.md`
+- `.beads/vb-t6hx/state3-validation-evidence.json`
+
+State 3 validator status: `PASS`.
+
+## Risk Classification
+
+| Risk class | Present | Evidence | Proof response |
+|---|---:|---|---|
+| Temporal/state-machine | Yes | `workflow-model.md` scan/get/decode states; parse-before-open and decode-order obligations | TLA+ required for read-only workflow, scan bound, decode order, skip-decode |
+| Rust-local invariant | Yes | smart constructors and result contracts in `type-contracts.md` | Verus required for bounded values, typed parse, decode preconditions, read-only capability |
+| Bounded state | Yes | scan/preview limits, finite parser classes, bounded record envelope | Kani required where bounded exhaustive state is honest |
+| Refinement/type-state | Yes | `HexKey`, `ScanLimit`, `PreviewLimit`, `DecodeMode`, `ReadOnlyStorage` | Flux required where predicates naturally fit refinements |
+| Concurrency/interleaving | Limited | read-only/open-existing lock hazard in `hazard-analysis.md` lines 46-51 | Loom required only for read-only open/query handle interleaving; otherwise not applicable |
+| Unsafe/UB | Limited | no first-party unsafe in inspected scope, but malformed decode has byte parsing/provenance risk | Miri required for envelope decode malformed inputs only |
+| Untrusted input | Yes | argv, hex, numeric limits, malformed envelopes, large values | proptest and cargo-fuzz required for parser/codec/preview hostile surfaces |
+| Dependency/supply-chain | Not directly changed by this bead plan | delivery scope identifies source/test additions, not dependency edits | non-behavior waiver candidate for deep supply-chain attestation only |
+| Performance/resource | Yes | unbounded scan/preview hazards | bounded-resource obligations via Verus/Kani/proptest/fuzz |
+| Release-critical gates | Yes | `moon ci` canonical final gate | included as downstream evidence expectation, not a State 4 proof claim |
+
+## Strategy
+
+1. Use TLA+ for workflows whose correctness depends on temporal ordering: invalid parse must terminate before storage open, scan row count must never exceed limit, read-only operation must not transition to mutation, and envelope decode must validate length/integrity before payload decode.
+2. Use Verus as the Rust-core proof spine for pure value-object and type-state contracts: bounded constructors, no unchecked arithmetic/indexing, row-count/preview-length ensures, decode-stage ordering, and capability separation.
+3. Use Kani for bounded panic-freedom and finite-state checks over generated/arbitrary inputs. Harnesses must not hardcode a single shape; they must use `kani::Arbitrary` or exhaustive `kani::any()` generators per repository GOD RULES.
+4. Use Flux refinements where illegal states are expressible as data predicates: non-empty/even hex bytes, positive capped limits, preview length bounded by cap, and decode stage typestate.
+5. Use Loom only for read-only storage/open/query interleavings because other seeds are single-threaded parser/format/decode invariants.
+6. Use Miri only for malformed envelope decode byte handling because parser/format/storage capability seeds do not introduce unsafe/FFI/raw pointer behavior.
+7. Use proptest and cargo-fuzz for broad CLI/parser/codec/resource surfaces. Behavior assertions remain downstream test states; this plan only names formal/property/fuzz obligations.
+
+## Required Planned Obligation Groups
+
+- Read-only no mutation: `PO-vb-t6hx-001` through `PO-vb-t6hx-006`.
+- Scan bounded rows/resources: `PO-vb-t6hx-007` through `PO-vb-t6hx-012`.
+- Hex key parser boundary: `PO-vb-t6hx-013` through `PO-vb-t6hx-017`.
+- Envelope decode order/safety: `PO-vb-t6hx-018` through `PO-vb-t6hx-025`.
+- Projection skip-decode: `PO-vb-t6hx-026` through `PO-vb-t6hx-031`.
+- Preview bounded formatting: `PO-vb-t6hx-032` through `PO-vb-t6hx-036`.
+- Runtime/core doctor boundary: `PO-vb-t6hx-037`.
+
+## Non-Applicable Lane Pattern
+
+Every non-applicable core verifier row in `verifier-lane-decisions.jsonl` cites concrete evidence from the contract artifacts. Non-applicable does not mean unimportant; it means the verifier lane does not match the risk class for that proof seed.
+
+## Blockers
+
+No State 4 planning blocker. Tool availability is intentionally not asserted here; State 5/12 executors must record actual versions and command evidence.

@@ -1,0 +1,22 @@
+{
+  "attempt": 1,
+  "bead_id": "vb-t6hx",
+  "created_at": "2026-05-25T15:36:21.945559+00:00",
+  "delegate": "explore",
+  "input_artifacts": [
+    ".beads/vb-t6hx/STATE.md",
+    ".beads/vb-t6hx/baseline-report.md",
+    ".beads/vb-t6hx/global-readiness-report.md",
+    "bd show vb-t6hx --json",
+    "velvet-ballistics-MASTER.md"
+  ],
+  "isolated_workdir": "/home/lewis/isolated/femdation-velvet-ballistics/vb-t6hx",
+  "output_artifacts": [
+    ".beads/vb-t6hx/codebase-map.md",
+    ".beads/vb-t6hx/delivery-scope.jsonl"
+  ],
+  "prompt_shape": "[vb-t6hx] p2-explore",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "state": 2,
+  "sublane": "explore"
+}

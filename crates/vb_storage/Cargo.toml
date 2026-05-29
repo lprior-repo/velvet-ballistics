@@ -17,8 +17,13 @@ thiserror.workspace = true
 vb_core = { path = "../vb_core" }
 
 [dev-dependencies]
+loom = "0.7"
 proptest = { workspace = true }
 tempfile.workspace = true
+
+[features]
+legacy-kani-recovery-hydrate = []
+loom = []
 
 [lints]
 workspace = true

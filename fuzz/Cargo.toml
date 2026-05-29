@@ -500,3 +500,47 @@ path = "fuzz_targets/choose_lowering_fuzzer.rs"
 test = false
 doc = false
 bench = false
+
+# === vb-t6hx proof-writer fuzz obligations ===
+
+[[bin]]
+name = "vb_t6hx_doctor_scan_args"
+path = "fuzz_targets/vb_t6hx_doctor_scan_args.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_t6hx_doctor_get_args"
+path = "fuzz_targets/vb_t6hx_doctor_get_args.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_t6hx_envelope_decode"
+path = "fuzz_targets/vb_t6hx_envelope_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_t6hx_doctor_decode_cli"
+path = "fuzz_targets/vb_t6hx_doctor_decode_cli.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_t6hx_projection_skip_decode"
+path = "fuzz_targets/vb_t6hx_projection_skip_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_t6hx_bounded_preview"
+path = "fuzz_targets/vb_t6hx_bounded_preview.rs"
+test = false
+doc = false
+bench = false

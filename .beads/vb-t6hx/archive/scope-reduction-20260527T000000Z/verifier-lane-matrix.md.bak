@@ -1,0 +1,20 @@
+# Verifier Lane Matrix — vb-t6hx
+
+Legend: `R` required planned obligation, `N/A` not applicable with evidence in `verifier-lane-decisions.jsonl`.
+
+| Proof seed | TLA+ | Verus | Kani | Flux | Loom | Miri | proptest | cargo-fuzz |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `vb-t6hx-seed-readonly-no-mutation` | R | R | R | R | R | N/A | R | N/A |
+| `vb-t6hx-seed-scan-bounded` | R | R | R | R | N/A | N/A | R | R |
+| `vb-t6hx-seed-hex-key-parser` | N/A | R | R | R | N/A | N/A | R | R |
+| `vb-t6hx-seed-decode-order` | R | R | R | R | N/A | R | R | R |
+| `vb-t6hx-seed-skip-decode-projection` | R | R | R | R | N/A | N/A | R | R |
+| `vb-t6hx-seed-preview-bounded` | N/A | R | R | R | N/A | N/A | R | R |
+| `vb-t6hx-seed-doctor-boundary` | N/A | R | N/A | N/A | N/A | N/A | N/A | N/A |
+
+## Counts
+
+- Required core verifier lane decisions: 36
+- Non-applicable core verifier lane decisions: 20
+- Blocked tooling lane decisions: 0
+- Planned proof obligations: 37

@@ -1,0 +1,141 @@
+# Proof Plan Review — vb-t6hx (Scope Reduction Replan)
+
+reviewer_skill: proof-plan-reviewer
+reviewer_invocation_id: proof-plan-reviewer-vb-t6hx-state4-002-scope-reduction
+planner_invocation_id: proof-planner-vb-t6hx-state4-001
+review_state: State 4 proof-plan-reviewer (scope reduction replan)
+bead: vb-t6hx
+workspace: /home/lewis/isolated/femdation-velvet-ballistics/vb-t6hx
+source_checkout: /home/lewis/src/velvet-ballistics
+
+## Reviewed Artifacts
+
+| Artifact | SHA-256 |
+|---|---|
+| `proof-strategy.md` | `76a696aba83c57a81e02aaa1e99fbfbd49bfeb3e47f328b3da47f62f8fb54dd3` |
+| `verifier-lane-decisions.jsonl` | `ae496e9a7b2cfafa0407e9ed8f633fd57655f5a56bbabe75527022db8ed9d7a1` |
+| `verifier-lane-matrix.md` | `33e39148dc707ec792bf17a6eed368b3c745b270ab7849ec9b33e25fb6286412` |
+| `proof-coverage-matrix.md` | `3755b7fad696b8605e4eaef43ee413a36c1da21963069f3a0050ec9b122a48c3` |
+| `proof-obligations.planned.jsonl` | `18573a11053fa38c223e80e1e1ef269fe9fb67803f4b7e66c7c7069549e48161` |
+| `trusted-base-plan.md` | `d6023fc0b9f011fd1714c682f5658564a67948a99f88e834a8a524282a7747c4` |
+| `waiver-candidates.jsonl` | `fce98203728ae82e91aa6252867e681340245c468ecc1ea8f255e6054b633301` |
+| `proof-to-implementation-input.md` | `cb8a275bc4b502561b874252fa14a7c1359483a92294ce16c93bf4b12fe1c596` |
+| `proof-plan-review.md` (prior, APPROVED) | `88472cfbb02f76527ed33bfd913b6b52702ad63c3ca26c1d83f9149c047935d8` |
+| `verifier-lane-review.jsonl` (prior) | `39eb836583feb7ae9071d6755a9d5148a8a7f0954d35a2f014c39055f7c25f59` |
+| `contract.md` | `dc1c4e022aa1e65dd67c80d29e4ebbcfc6ee9a1cf3a57d597b677acde69adb3e` |
+| `proof-seeds.jsonl` | `988c0b8496fe22b6a40bbe96a3e2b99986c5fe0598493c0596ba23e3efb954d9` |
+| `traceability-matrix.jsonl` | `6349dfcb755c0bd3bf27270a5a4f0baf76da9a14c724f72d8a1c313c89498c21` |
+| `proof-review.md` (State 6) | `e4d3bd6bb6ada6aa7fa1788d8c7a5ac3b813af7f472f69f27f191ec6013eebc1` |
+| `proof-findings.jsonl` (State 6) | `5ca1a88b09dc1621fc2c6bb8a879880cc76589bb6c0211611c872825fc7f3a03` |
+| `agent-invocation-ledger.jsonl` | `0a8e99bbe08a1e0d534bd95c04a911a693b0ed9bfb2ec48f95406891adac58be` |
+| `state4-replan-required-report.md` | (read, not hashed) |
+
+## Executive Summary
+
+The prior proof-plan-review (`proof-plan-reviewer-vb-t6hx-state4-001`, STATUS: APPROVED) approved a massively over-scoped plan for a CLI test-first bead. This replan REJECTS the old plan and APPROVES a reduced scope aligned with the bead's actual risk profile and delivery scope.
+
+### Bead Reality Check
+
+Bead vb-t6hx is a **CLI test-first bead** with three components:
+1. Behavioral tests in `crates/workspace_tests/tests/restate_doctor_storage_scan_decode_tests.rs`
+2. Minimal CLI implementation for read-only storage scan/get, envelope decode, and bounded preview
+3. No new storage engine logic, no new unsafe code, no new concurrency primitives, no new protocol
+
+### Why the Old Plan Was Over-Scoped
+
+The old plan (56 lane decisions, 37 proof obligations across 8 verifiers) planned formal proofs comparable to a new storage engine or distributed protocol. This is inappropriate because:
+
+1. **Verus plan (7 obligations)**: Verus proof of read-only capability separation, scan bounds, hex parser, decode order, decode mode dispatch, preview bounds, and runtime boundary is grossly disproportionate for CLI glue code that calls existing storage APIs. The bead adds a CLI command shell around existing `vb_storage` code; it does not write new storage invariants.
+
+2. **Flux plan (7 obligations)**: Flux refinements for CLI parser/formatting code. CLI formatting is not a hot path; refinement types add maintenance cost with no safety gain for cold diagnostic output.
+
+3. **TLA+ plan (4 required + 1 active)**: Temporal state-machine proofs for a read-only CLI command. The workflow is: parse → open-readonly → scan/get → print. This is a linear, single-invocation sequence with no retries, timeouts, leases, cancellation, or distributed state. Temporal modeling adds no safety beyond what behavior tests and bounded Kani can prove.
+
+4. **Loom plan (1 active obligation)**: Concurrency modeling for a CLI command that opens a read-only handle. If the underlying storage engine supports concurrent read-only handles, that is the storage engine's responsibility, not the CLI subcommand's. The CLI opens, scans/gets, closes — no interleaving to model.
+
+5. **Miri plan (1 active obligation)**: The existing `crates/vb_storage/src/codec_miri_tests.rs` already covers storage-level malformed decode safety. CLI glue passing bytes to existing decode does not introduce new unsafe/FFI/provenance risk.
+
+6. **E_LANE_OBLIGATION_MISMATCH**: The `state4-replan-required-report.md` documents contract-clause mismatches between lane decisions and planned obligations for all 37 obligations. This is a symptom of a plan that was too large to maintain consistency.
+
+7. **Cascading failures**: State 5 proof-writer produced 7 repair attempts, each failing. State 6 proof-reviewer rejected the final attempt (proof-review.md STATUS: REJECTED). The root cause is the plan: you cannot write working Verus/Flux/TLA+/Loom proofs for a CLI subcommand when those tools are inappropriate.
+
+### Reduced Scope
+
+This review APPROVES the following proof layers for vb-t6hx:
+
+| Layer | Rationale | Seed coverage |
+|---|---|---|
+| **proptest** | CLI argument parsing, scan limits, hex validation, preview bounds, envelope decode error classes are property-testable and match the test-first profile | All 7 seeds (where applicable) |
+| **Kani** | Bounded scan enumeration properties, hex parser bounded input, decode order over bounded envelopes, preview truncation, skip-decode bounded state are honest Kani targets | Seeds 1-6 |
+| **cargo-fuzz** | Hostile argv for scan/get, envelope decode bytes, preview adversarial inputs are untrusted CLI surfaces | Seeds 2-6 (parser/codec/preview) |
+| **Behavior tests (nextest)** | Primary evidence channel: scan limit rows, raw get, missing key, invalid hex, large value preview, no-color, read-only inventory, envelope decode, projection skip-decode | All 7 seeds |
+
+### Explicitly Excluded (Not Appropriate for CLI Test-First Bead)
+
+| Layer | Reason for exclusion |
+|---|---|
+| **Verus** | CLI glue wraps existing `vb_storage` APIs; no new Rust-local invariants justify Verus cost. Use existing storage-level Verus if already present; do not add CLI-specific Verus proofs. |
+| **Flux** | CLI output formatting is cold diagnostic path; refinement types provide no safety gain and add maintenance burden. |
+| **TLA+** | CLI workflow is single-invocation linear sequence (parse → open → scan/get → print). No retry, lease, cancellation, distributed state, or temporal interleaving. |
+| **Loom** | CLI opens a handle, reads, closes. No concurrent interleaving inside the CLI command. Storage-level Loom belongs to storage crate, not this bead. |
+| **Miri** | Existing `crates/vb_storage/src/codec_miri_tests.rs` already covers malformed decode safety. CLI glue does not introduce new unsafe/FFI/provenance risk. |
+
+### Seed-by-Seed Reduced Lane Map
+
+| Proof Seed | proptest | Kani | fuzz | Behavior test |
+|---|---|---|---|---|
+| `vb-t6hx-seed-readonly-no-mutation` | required | required | not_applicable | required |
+| `vb-t6hx-seed-scan-bounded` | required | required | required | required |
+| `vb-t6hx-seed-hex-key-parser` | required | required | required | required |
+| `vb-t6hx-seed-decode-order` | required | required | required | required |
+| `vb-t6hx-seed-skip-decode-projection` | required | required | required | required |
+| `vb-t6hx-seed-preview-bounded` | required | required | required | required |
+| `vb-t6hx-seed-doctor-boundary` | not_applicable | not_applicable | not_applicable | required |
+
+### Lane Review Summary
+
+- Reviewed 56 planner lane decisions from the old over-scoped plan.
+- **28 lanes rejected**: all Verus, Flux, TLA+, Loom, and Miri planned-as-required lanes are rejected as over-scoped for a CLI test-first bead.
+- **28 lanes accepted**: proptest, Kani, and fuzz lanes that match the reduced scope, plus correctly-marked not_applicable lanes.
+- Wrote one `verifier-lane-review/v1` row per planner `verifier-lane-decision/v1` row.
+- Reviewer invocation `proof-plan-reviewer-vb-t6hx-state4-002-scope-reduction` is independent from planner invocation `proof-planner-vb-t6hx-state4-001`.
+
+### Obligation Review
+
+- **37 planned obligations exist in the old plan.** Of these, 28 are tied to Verus, Flux, TLA+, Loom, or Miri and are REJECTED.
+- **9 obligations remain for the reduced scope** for proptest, Kani, and fuzz:
+  - Seeds 1-6 each get one proptest obligation, one Kani obligation, and (for seeds 2-6) one fuzz obligation.
+  - Seed 7 (doctor-boundary) uses behavior tests only; no formal obligation.
+- New reduced obligation IDs will be assigned by the proof-planner during replan (PO-vb-t6hx-R01 through PO-vb-t6hx-R18 approximately).
+
+### Trusted Base and Waiver Review
+
+- `WC-vb-t6hx-001`: non-behavior-affecting candidate for supply-chain attestation. Still valid for reduced scope; invalidated by any dependency manifest change.
+- Existing trusted-base entries tied to rejected Verus/Flux/TLA+/Loom/Miri obligations become obsolete. New trusted-base entries are needed only for Kani bound documentation.
+- No behavior-affecting proof obligation is waived.
+
+### Bridge Planning for Reduced Scope
+
+`proof-to-implementation-input.md` named concrete source targets. For the reduced scope:
+- `crates/workspace_tests/tests/restate_doctor_storage_scan_decode_tests.rs` is the primary behavior test file
+- `crates/vb_cli/src/` for CLI implementation (args.rs, app_impl.rs)
+- `crates/vb_storage/src/` for reused codec/storage APIs
+- Existing `crates/vb_storage/src/kani_postcard_envelope_wire.rs` can be extended or referenced
+- `fuzz/fuzz_targets/` for new fuzz targets
+
+### Repair Instructions
+
+1. Proof-planner must rewrite `proof-strategy.md` to reflect reduced scope (proptest, Kani, fuzz, behavior tests only).
+2. Proof-planner must rewrite `verifier-lane-decisions.jsonl` with lane decisions for the reduced 4-verifier profile.
+3. Proof-planner must rewrite `proof-obligations.planned.jsonl` with reduced obligations using consistent contract clauses.
+4. `verifier-lane-matrix.md`, `proof-coverage-matrix.md`, and `proof-to-implementation-input.md` must be updated.
+5. After replan passes State 4 validator, re-dispatch State 5 proof-writer with the reduced plan.
+6. State 5 proof-writer may reuse existing proptest/Kani/fuzz evidence that already works; do not discard working evidence.
+
+## Final Disposition
+
+The prior over-scoped plan (planner invocation `proof-planner-vb-t6hx-state4-001`, reviewer invocation `proof-plan-reviewer-vb-t6hx-state4-001`) is **REJECTED**. A CLI test-first bead does not need 56 lane decisions across 8 verifiers with 37 proof obligations.
+
+The reduced scope of **proptest + Kani + fuzz + behavior tests (nextest)** — approximately 18 proof obligations across 4 active verifier layers — is **APPROVED**. This scope matches the bead's risk profile, delivery scope, and the Go-skill verification-lane policy which defaults to Verus/Kani/Flux/proptest for Rust-local behavior but allows conditional TLA+/Loom/Miri only where the risk profile demands it. A read-only CLI subcommand calling existing storage APIs does not demand those conditional additions.
+
+STATUS: APPROVED

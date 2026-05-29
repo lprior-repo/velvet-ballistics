@@ -2016,6 +2016,7 @@ dependencies = [
  "chrono",
  "crc32c",
  "fjall",
+ "loom",
  "postcard",
  "proptest",
  "rustix",

@@ -1,0 +1,14 @@
+{
+  "bead_id": "vb-t6hx",
+  "command": "go-skill-v9-validate --state 4",
+  "exit_status": 0,
+  "recorded_at": "2026-05-25T17:22:07.258106+00:00",
+  "schema_version": "controller-validation-evidence/v1",
+  "state": 4,
+  "validator": {
+    "bead": "vb-t6hx",
+    "findings": [],
+    "state": 4,
+    "status": "PASS"
+  }
+}

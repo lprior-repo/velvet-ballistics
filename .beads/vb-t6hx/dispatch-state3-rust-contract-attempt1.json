@@ -1,0 +1,30 @@
+{
+  "attempt": 1,
+  "bead_id": "vb-t6hx",
+  "created_at": "2026-05-25T16:03:27.560481+00:00",
+  "delegate": "rust-contract",
+  "input_artifacts": [
+    ".beads/vb-t6hx/codebase-map.md",
+    ".beads/vb-t6hx/delivery-scope.jsonl",
+    ".beads/vb-t6hx/STATE.md",
+    ".beads/vb-t6hx/state2-validation-evidence.json",
+    "bd show vb-t6hx --json",
+    "velvet-ballistics-MASTER.md"
+  ],
+  "isolated_workdir": "/home/lewis/isolated/femdation-velvet-ballistics/vb-t6hx",
+  "output_artifacts": [
+    ".beads/vb-t6hx/domain-model.md",
+    ".beads/vb-t6hx/type-contracts.md",
+    ".beads/vb-t6hx/workflow-model.md",
+    ".beads/vb-t6hx/error-taxonomy.md",
+    ".beads/vb-t6hx/boundary-map.md",
+    ".beads/vb-t6hx/hazard-analysis.md",
+    ".beads/vb-t6hx/contract.md",
+    ".beads/vb-t6hx/proof-seeds.jsonl",
+    ".beads/vb-t6hx/traceability-matrix.jsonl"
+  ],
+  "prompt_shape": "[vb-t6hx] p3-contract",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "state": 3,
+  "sublane": "domain-contract"
+}

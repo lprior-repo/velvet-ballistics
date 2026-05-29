@@ -1,0 +1,334 @@
+{
+  "bead": "vb-t6hx",
+  "findings": [
+    {
+      "code": "E_INVOCATION_LEDGER_FORGED",
+      "line": 9,
+      "message": "transcript hash mismatch",
+      "path": "agent-invocation-ledger.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_INVOCATION_LEDGER_FORGED",
+      "line": 9,
+      "message": "artifact hash mismatch for transcript-state6-proof-reviewer.md",
+      "path": "agent-invocation-ledger.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_INVOCATION_LEDGER_FORGED",
+      "line": 10,
+      "message": "transcript hash mismatch",
+      "path": "agent-invocation-ledger.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_INVOCATION_LEDGER_FORGED",
+      "line": 10,
+      "message": "artifact hash mismatch for transcript-state6-proof-reviewer.md",
+      "path": "agent-invocation-ledger.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_INVOCATION_LEDGER_FORGED",
+      "line": 14,
+      "message": "transcript hash mismatch",
+      "path": "agent-invocation-ledger.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_INVOCATION_LEDGER_FORGED",
+      "line": 14,
+      "message": "artifact hash mismatch for transcript-state6-proof-reviewer.md",
+      "path": "agent-invocation-ledger.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_INVOCATION_LEDGER_FORGED",
+      "line": 16,
+      "message": "transcript hash mismatch",
+      "path": "agent-invocation-ledger.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_INVOCATION_LEDGER_FORGED",
+      "line": 16,
+      "message": "artifact hash mismatch for transcript-state6-proof-reviewer.md",
+      "path": "agent-invocation-ledger.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_REVIEW_PROVENANCE_MISSING",
+      "message": "missing reviewer_skill or reviewer_invocation_id header",
+      "path": "proof-review.md",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_STATUS_NOT_APPROVED",
+      "message": "status tokens=['REJECTED']",
+      "path": "proof-review.md",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 1,
+      "message": "obligation PO-vb-t6hx-001 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 2,
+      "message": "obligation PO-vb-t6hx-002 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 3,
+      "message": "obligation PO-vb-t6hx-003 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 4,
+      "message": "obligation PO-vb-t6hx-004 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 5,
+      "message": "obligation PO-vb-t6hx-005 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 7,
+      "message": "obligation PO-vb-t6hx-006 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 9,
+      "message": "obligation PO-vb-t6hx-007 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 10,
+      "message": "obligation PO-vb-t6hx-008 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 11,
+      "message": "obligation PO-vb-t6hx-009 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 12,
+      "message": "obligation PO-vb-t6hx-010 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 15,
+      "message": "obligation PO-vb-t6hx-011 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 16,
+      "message": "obligation PO-vb-t6hx-012 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 18,
+      "message": "obligation PO-vb-t6hx-013 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 19,
+      "message": "obligation PO-vb-t6hx-014 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 20,
+      "message": "obligation PO-vb-t6hx-015 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 23,
+      "message": "obligation PO-vb-t6hx-016 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 24,
+      "message": "obligation PO-vb-t6hx-017 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 25,
+      "message": "obligation PO-vb-t6hx-018 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 26,
+      "message": "obligation PO-vb-t6hx-019 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 27,
+      "message": "obligation PO-vb-t6hx-020 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 28,
+      "message": "obligation PO-vb-t6hx-021 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 30,
+      "message": "obligation PO-vb-t6hx-022 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 31,
+      "message": "obligation PO-vb-t6hx-023 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 32,
+      "message": "obligation PO-vb-t6hx-024 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 32,
+      "message": "obligation PO-vb-t6hx-025 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 33,
+      "message": "obligation PO-vb-t6hx-026 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 34,
+      "message": "obligation PO-vb-t6hx-027 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 35,
+      "message": "obligation PO-vb-t6hx-028 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 36,
+      "message": "obligation PO-vb-t6hx-029 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 39,
+      "message": "obligation PO-vb-t6hx-030 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 40,
+      "message": "obligation PO-vb-t6hx-031 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 42,
+      "message": "obligation PO-vb-t6hx-032 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 43,
+      "message": "obligation PO-vb-t6hx-033 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 44,
+      "message": "obligation PO-vb-t6hx-034 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 47,
+      "message": "obligation PO-vb-t6hx-035 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 48,
+      "message": "obligation PO-vb-t6hx-036 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    },
+    {
+      "code": "E_LANE_OBLIGATION_MISMATCH",
+      "line": 50,
+      "message": "obligation PO-vb-t6hx-037 contract_clause mismatch",
+      "path": "verifier-lane-decisions.jsonl",
+      "severity": "BLOCK"
+    }
+  ],
+  "state": 6,
+  "status": "FAIL"
+}

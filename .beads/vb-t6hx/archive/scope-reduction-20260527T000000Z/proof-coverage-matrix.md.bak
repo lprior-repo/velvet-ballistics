@@ -1,0 +1,16 @@
+# Proof Coverage Matrix — vb-t6hx
+
+| Requirement | Proof seed | Domain claim | Required obligation IDs | Non-applicable core lanes |
+|---|---|---|---|---|
+| REQ-08 | `vb-t6hx-seed-readonly-no-mutation` | Doctor storage scan/get cannot mutate journal records or user keys. | `PO-vb-t6hx-001`..`006` | Miri: no unsafe/FFI/provenance surface; cargo-fuzz: capability selection is not hostile byte input. |
+| REQ-02 | `vb-t6hx-seed-scan-bounded` | Scan emits no more than `ScanLimit` rows and avoids unbounded collection. | `PO-vb-t6hx-007`..`012` | Loom: no concurrent interleaving; Miri: safe Rust resource accounting. |
+| REQ-04 | `vb-t6hx-seed-hex-key-parser` | Invalid hex is rejected before storage open; valid keys become bytes. | `PO-vb-t6hx-013`..`017` | TLA+: parse-before-open covered by read-only workflow; Loom: pure parser; Miri: no unsafe/provenance surface. |
+| REQ-09 | `vb-t6hx-seed-decode-order` | Envelope length/integrity precedes Postcard decode. | `PO-vb-t6hx-018`..`025` | Loom only: deterministic byte-validation sequence. |
+| REQ-01 | `vb-t6hx-seed-skip-decode-projection` | Projection scan lists previews without decoding malformed envelopes by default. | `PO-vb-t6hx-026`..`031` | Loom: branch is synchronous; Miri: decode safety covered by decode-order Miri lane. |
+| REQ-06 | `vb-t6hx-seed-preview-bounded` | Large values render bounded previews with truncation metadata and hint. | `PO-vb-t6hx-032`..`036` | TLA+: pure formatting invariant; Loom: no concurrency; Miri: no unsafe/provenance surface. |
+| REQ-10 | `vb-t6hx-seed-doctor-boundary` | Doctor scanner types/formatting remain outside runtime core/hot paths. | `PO-vb-t6hx-037` | TLA+, Kani, Flux, Loom, Miri, proptest, cargo-fuzz: source/module boundary drift is not their risk class; evidence in lane decisions. |
+
+## Traceability Notes
+
+- Traceability rows with no proof seed (`REQ-05`, `REQ-07`, `REQ-12`) remain behavior-test or implementation contract coverage for downstream states; State 4 proof obligations are driven by the seven State 3 proof seeds.
+- Every `(requirement_id, contract_clause, proof_seed_id)` has eight core verifier lane decisions in `verifier-lane-decisions.jsonl`.
