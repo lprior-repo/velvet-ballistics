@@ -151,50 +151,33 @@ impl RuntimeError {
     /// Returns the stable symbolic diagnostic code for this error.
     #[must_use]
     pub fn symbolic_code(&self) -> SymbolicCode {
-        let s: &'static str = match self {
-            Self::QueueFull => "QUEUE_FULL",
-            Self::RunNotFound => "RUN_NOT_FOUND",
-            Self::ActiveRunCapacityExceeded { .. } => "ACTIVE_RUN_CAPACITY_EXCEEDED",
-            Self::RunAlreadyExists => "RUN_ALREADY_EXISTS",
-            Self::UnsupportedOperation { .. } => "UNSUPPORTED_OPERATION",
-            Self::ShutdownInProgress => "SHUTDOWN_IN_PROGRESS",
-            Self::JournalPoisoned => "JOURNAL_POISONED",
-            Self::JournalFull { .. } => "JOURNAL_FULL",
-            Self::StorageJournalAppend { .. } => "STORAGE_JOURNAL_APPEND",
-            Self::AdmissionHeaderPersistenceFailed { .. } => "ADMISSION_HEADER_PERSISTENCE_FAILED",
-            Self::Core { .. } => "STORAGE_JOURNAL_APPEND",
-            Self::UnsupportedAsyncStrictAck => "UNSUPPORTED_ASYNC_STRICT_ACK",
-            Self::FramePoolUnavailable => "FRAME_POOL_UNAVAILABLE",
-            Self::InvalidActionCompletion
-            | Self::StaleAttempt { .. }
-            | Self::AttemptBeyondMax { .. }
-            | Self::ActionOutputLengthMismatch { .. }
-            | Self::ActionOutputTooLarge { .. }
-            | Self::ActionOutputBlobTooLarge { .. }
-            | Self::ActionTaintDowngrade { .. } => "INVALID_ACTION_COMPLETION",
-            Self::InvalidTimerFire => "INVALID_TIMER_FIRE",
-            Self::UnsupportedFullRecoveryHydration => "UNSUPPORTED_FULL_RECOVERY_HYDRATION",
-            Self::InvalidRecoveryHydration => "INVALID_RECOVERY_HYDRATION",
-            Self::CommandQueueCapacityExceeded { .. } => "COMMAND_QUEUE_CAPACITY_EXCEEDED",
-            Self::ActiveRunCapacityZero => "ACTIVE_RUN_CAPACITY_ZERO",
-            Self::AdmissionArtifactNotFound { .. } => "ADMISSION_ARTIFACT_NOT_FOUND",
-            Self::AdmissionArtifactInvalid { .. } => "ADMISSION_ARTIFACT_INVALID",
-            Self::AdmissionArtifactDigestMismatch { .. } => "ADMISSION_ARTIFACT_DIGEST_MISMATCH",
-            Self::AdmissionCapabilityDenied { .. } => "ADMISSION_CAPABILITY_DENIED",
-            Self::AdmissionArtifactStale { .. } => "ADMISSION_ARTIFACT_STALE",
-            Self::AdmissionDigestMismatch { .. } => "ADMISSION_DIGEST_MISMATCH",
-            Self::EncodeFailed => "ENCODE_FAILED",
-            Self::SecretResultNotAllowed => "SECRET_RESULT_NOT_ALLOWED",
-            Self::IpcPayloadSizeExceeded { .. } => "IPC_PAYLOAD_SIZE_EXCEEDED",
-            Self::EngineDriveFailed { .. } => "ENGINE_DRIVE_FAILED",
-            Self::ShardNotFound { .. } => "SHARD_NOT_FOUND",
-            Self::MigrateSelf => "MIGRATE_SELF",
-        };
-        if let Some(code) = SymbolicCode::from_static(s) {
-            return code;
+        match self.legacy_unregistered_symbolic_code() {
+            Some(code) => code,
+            None => self.registered_symbolic_code(),
         }
-        // Unreachable: all match arms use registered symbolic names.
-        SymbolicCode::INTERNAL_INVARIANT
+    }
+
+    fn legacy_unregistered_symbolic_code(&self) -> Option<SymbolicCode> {
+        match self {
+            Self::StorageJournalAppend { .. } | Self::Core { .. } => {
+                Some(Self::storage_append_symbolic_code())
+            }
+            _ => None,
+        }
+    }
+
+    fn storage_append_symbolic_code() -> SymbolicCode {
+        match SymbolicCode::from_static("STORAGE_JOURNAL_APPEND") {
+            Some(code) => code,
+            None => SymbolicCode::INTERNAL_INVARIANT,
+        }
+    }
+
+    fn registered_symbolic_code(&self) -> SymbolicCode {
+        match self.diagnostic_code().symbolic_code() {
+            Some(code) => code,
+            None => SymbolicCode::INTERNAL_INVARIANT,
+        }
     }
 }
 

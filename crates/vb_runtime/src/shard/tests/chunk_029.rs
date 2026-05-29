@@ -260,6 +260,148 @@ fn shard_pending_timer_generation_overflow_fails_closed_without_wrap() {
     assert_eq!(shard.runs.contains_key(&run), true);
 }
 
+struct RejectTimerScheduledJournal {
+    rejected_kind: PendingTimerKind,
+    events: std::sync::Mutex<Vec<RuntimeJournalEvent>>,
+}
+
+impl RejectTimerScheduledJournal {
+    fn shared(rejected_kind: PendingTimerKind) -> std::sync::Arc<Self> {
+        std::sync::Arc::new(Self {
+            rejected_kind,
+            events: std::sync::Mutex::new(Vec::new()),
+        })
+    }
+
+    fn snapshot(&self) -> crate::RuntimeResult<Vec<RuntimeJournalEvent>> {
+        self.events
+            .lock()
+            .map(|events| events.clone())
+            .map_err(|_| RuntimeError::JournalPoisoned)
+    }
+}
+
+impl crate::journal::RuntimeJournal for RejectTimerScheduledJournal {
+    fn append(&self, event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
+        let reject_wait = matches!(event, RuntimeJournalEvent::WaitScheduled { .. })
+            && self.rejected_kind == PendingTimerKind::Wait;
+        let reject_ask = matches!(event, RuntimeJournalEvent::AskScheduled { .. })
+            && self.rejected_kind == PendingTimerKind::Ask;
+        if reject_wait || reject_ask {
+            return Err(RuntimeError::from(vb_storage::JournalError::QueueFull));
+        }
+        self.events
+            .lock()
+            .map_err(|_| RuntimeError::JournalPoisoned)?
+            .push(event);
+        Ok(())
+    }
+
+    fn probe(&self) -> crate::RuntimeResult<()> {
+        Ok(())
+    }
+}
+
+fn ask_timeout_only_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+    let set_prompt = CompiledNode {
+        id: vb_core::ids::StepIdx::ZERO,
+        output: Some(SlotIdx::ZERO),
+        next: Some(vb_core::ids::StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+    };
+    let set_timeout = CompiledNode {
+        id: vb_core::ids::StepIdx::new(1),
+        output: Some(SlotIdx::new(1)),
+        next: Some(vb_core::ids::StepIdx::new(2)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::SetConst {
+            value: ConstIdx::new(1),
+        },
+    };
+    let ask = CompiledNode {
+        id: vb_core::ids::StepIdx::new(2),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Ask {
+            prompt: SlotIdx::ZERO,
+            timeout_slot: Some(SlotIdx::new(1)),
+        },
+    };
+    let parts = WorkflowParts {
+        name: Box::from("ask_timeout_only"),
+        digest: WorkflowDigest::from_bytes([9; 32]),
+        nodes: Box::from([set_prompt, set_timeout, ask]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([
+            vb_core::value::ConstValue::Symbol(vb_core::ids::SymbolId::new(0)),
+            vb_core::value::ConstValue::I64(10),
+        ]),
+        slot_count: 2,
+        symbols_count: 1,
+        entry: vb_core::ids::StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+    };
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+#[test]
+fn runtime_ask_timer_append_failure_does_not_register_pending_timer() {
+    let journal = RejectTimerScheduledJournal::shared(PendingTimerKind::Ask);
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let Some(workflow) = ask_timeout_only_workflow() else {
+        panic!("ask_timeout_only_workflow fixture must compile for append failure test");
+    };
+    let run = super::RunId::new(7_208);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+
+    let result = shard.tick();
+    assert!(
+        matches!(
+            result,
+            Err(RuntimeError::StorageJournalAppend { ref source })
+                if matches!(source.as_ref(), vb_storage::JournalError::QueueFull)
+        ),
+        "expected StorageJournalAppend::QueueFull, got {result:?}, pending {:?}, events {:?}",
+        shard.pending_timers,
+        journal.snapshot()
+    );
+
+    assert_eq!(shard.pending_timers.get(&run).copied(), None);
+    assert_eq!(shard.runs.contains_key(&run), true);
+    assert_eq!(
+        shard.runtime_states.get(&run).copied(),
+        Some(super::RuntimeState::Initial)
+    );
+    match journal.snapshot() {
+        Ok(events) => {
+            assert_eq!(
+                events
+                    .iter()
+                    .any(|event| matches!(event, RuntimeJournalEvent::AskScheduled { .. })),
+                false
+            );
+        }
+        Err(error) => panic!("journal snapshot failed: {error:?}"),
+    }
+}
+
 #[test]
 fn runtime_timer_fired_rejects_wrong_generation_authority() {
     // Given a run with a live wait timer.

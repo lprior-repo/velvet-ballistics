@@ -136,6 +136,18 @@ impl Shard {
                     return Err(error);
                 }
             };
+            let append_result = match kind {
+                PendingTimerKind::Wait => {
+                    self.append_journal_event(RuntimeJournalEvent::WaitScheduled { run, step })
+                }
+                PendingTimerKind::Ask => {
+                    self.append_journal_event(RuntimeJournalEvent::AskScheduled { run, step })
+                }
+            };
+            if let Err(error) = append_result {
+                self.runs.insert(run, state);
+                return Err(error);
+            }
             self.pending_timers.insert(
                 run,
                 PendingTimer {
@@ -145,14 +157,6 @@ impl Shard {
                     deadline: Instant::now(),
                 },
             );
-            match kind {
-                PendingTimerKind::Wait => {
-                    self.append_journal_event(RuntimeJournalEvent::WaitScheduled { run, step })?;
-                }
-                PendingTimerKind::Ask => {
-                    self.append_journal_event(RuntimeJournalEvent::AskScheduled { run, step })?;
-                }
-            }
         }
         self.runs.insert(run, state);
         Ok(())

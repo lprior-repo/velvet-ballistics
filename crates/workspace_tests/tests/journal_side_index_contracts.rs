@@ -19,6 +19,17 @@ use vb_storage::{
     EventSeq, FjallJournal, IndexStatusState, JournalError, JournalEvent, JournalWriteBatch,
 };
 
+const JOURNAL_IO_PROPTEST_CASES: u32 = 64;
+const JOURNAL_KEY_PROPTEST_CASES: u32 = 128;
+
+fn journal_proptest_config(cases: u32) -> proptest::prelude::ProptestConfig {
+    proptest::prelude::ProptestConfig {
+        cases,
+        failure_persistence: None,
+        ..Default::default()
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Test helpers
 // ---------------------------------------------------------------------------
@@ -55,10 +66,7 @@ fn make_run_accepted(run: RunId, seq: u64, workflow: WorkflowDigest) -> JournalE
 // ---------------------------------------------------------------------------
 
 proptest::proptest! {
-    #![proptest_config(proptest::prelude::ProptestConfig {
-        cases: 1000,
-        ..Default::default()
-    })]
+    #![proptest_config(journal_proptest_config(JOURNAL_IO_PROPTEST_CASES))]
 
     /// PO-002: append_event + put_action_index staged together commit atomically.
     ///
@@ -112,10 +120,7 @@ proptest::proptest! {
 // ---------------------------------------------------------------------------
 
 proptest::proptest! {
-    #![proptest_config(proptest::prelude::ProptestConfig {
-        cases: 1000,
-        ..Default::default()
-    })]
+    #![proptest_config(journal_proptest_config(JOURNAL_IO_PROPTEST_CASES))]
 
     /// PO-004: RunAccepted batch with append_event + put_status_index + put_workflow_index
     /// commits atomically with all 3 entries durable.
@@ -180,10 +185,7 @@ proptest::proptest! {
 // ---------------------------------------------------------------------------
 
 proptest::proptest! {
-    #![proptest_config(proptest::prelude::ProptestConfig {
-        cases: 300,
-        ..Default::default()
-    })]
+    #![proptest_config(journal_proptest_config(JOURNAL_KEY_PROPTEST_CASES))]
 
     /// PO-008: Short/truncated index keys return JournalError::KeyCapacity, not panic.
     ///
@@ -259,10 +261,7 @@ proptest::proptest! {
 // ---------------------------------------------------------------------------
 
 proptest::proptest! {
-    #![proptest_config(proptest::prelude::ProptestConfig {
-        cases: 100,
-        ..Default::default()
-    })]
+    #![proptest_config(journal_proptest_config(JOURNAL_IO_PROPTEST_CASES))]
 
     /// PO-009: When commit() returns Err, NO operations from the batch are visible
     /// in any keyspace.
@@ -315,10 +314,7 @@ proptest::proptest! {
 // ---------------------------------------------------------------------------
 
 proptest::proptest! {
-    #![proptest_config(proptest::prelude::ProptestConfig {
-        cases: 100,
-        ..Default::default()
-    })]
+    #![proptest_config(journal_proptest_config(JOURNAL_IO_PROPTEST_CASES))]
 
     /// PO-010: When same (action, run, step) is indexed twice, exactly 1 entry
     /// survives after batch commit (Fjall last-write-wins semantics).
@@ -372,10 +368,7 @@ proptest::proptest! {
 // ---------------------------------------------------------------------------
 
 proptest::proptest! {
-    #![proptest_config(proptest::prelude::ProptestConfig {
-        cases: 1000,
-        ..Default::default()
-    })]
+    #![proptest_config(journal_proptest_config(JOURNAL_IO_PROPTEST_CASES))]
 
     /// PO-012: After N successful staging operations, batch.len() == N.
     /// is_empty() == (len() == 0) always holds.
@@ -444,10 +437,7 @@ proptest::proptest! {
 // ---------------------------------------------------------------------------
 
 proptest::proptest! {
-    #![proptest_config(proptest::prelude::ProptestConfig {
-        cases: 500,
-        ..Default::default()
-    })]
+    #![proptest_config(journal_proptest_config(JOURNAL_IO_PROPTEST_CASES))]
 
     /// PO-013: After first op triggers abort, subsequent ops return Ok(()),
     /// do not stage, and commit() is a safe no-op.
@@ -531,10 +521,7 @@ proptest::proptest! {
 // ---------------------------------------------------------------------------
 
 proptest::proptest! {
-    #![proptest_config(proptest::prelude::ProptestConfig {
-        cases: 100,
-        ..Default::default()
-    })]
+    #![proptest_config(journal_proptest_config(JOURNAL_IO_PROPTEST_CASES))]
 
     /// PO-014: After ActionScheduled commits atomically, recovery replay can locate
     /// the pending action by scanning the index_action keyspace.

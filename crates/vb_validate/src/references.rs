@@ -161,7 +161,8 @@ fn validate_rooted_reference(
     }
 }
 
-/// Parses a step reference of the form "$<step_id>.<field>" or "$steps.<step_id>.<field>".
+/// Parses a step reference of the form `$<step_id>.<field>` or
+/// `$steps.<step_id>.<field>`.
 ///
 /// Returns `Some((step_id, field))` if the reference is a valid step reference,
 /// or `None` if the reference is not a step reference.

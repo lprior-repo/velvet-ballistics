@@ -6,7 +6,7 @@ use std::process::{Command, Output};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-const EXTRA_MEMBER_MANIFESTS: [(&str, &str); 12] = [
+const EXTRA_MEMBER_MANIFESTS: [(&str, &str); 13] = [
     ("crates/vb_boundary_inventory", "vb_boundary_inventory"),
     ("crates/vb_yaml", "vb_yaml"),
     ("crates/vb_validate", "vb_validate"),
@@ -16,6 +16,7 @@ const EXTRA_MEMBER_MANIFESTS: [(&str, &str); 12] = [
     ("crates/vb_proof_kernels", "vb_proof_kernels"),
     ("crates/vb_cli", "velvet-ballistics"),
     ("crates/vb_verification", "vb_verification"),
+    ("crates/vb_test_util", "vb_test_util"),
     (
         "crates/workspace_tests/idempotency_suite",
         "velvet-ballistics-idempotency-workspace-tests",
@@ -73,6 +74,7 @@ members = [
     "crates/vb_proof_kernels",
     "crates/vb_cli",
     "crates/vb_verification",
+    "crates/vb_test_util",
     "crates/workspace_tests/idempotency_suite",
     "crates/workspace_tests",
     "crates/vb_benchmark",
@@ -111,6 +113,7 @@ edition = "2024"
 [features]
 default = []
 bench = []
+kani-diagnostic-codes = []
 volatile = []
 test-util = []
 "#

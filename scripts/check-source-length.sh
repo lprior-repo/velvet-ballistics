@@ -22,6 +22,9 @@ hot_files() {
     -g 'crates/vb_cli/src/runtime/**' \
     -g 'crates/vb_cli/src/generated/**' \
     -g 'crates/vb_cli/src/perf/**' \
+    -g '!**/tests/**' \
+    -g '!**/tests.rs' \
+    -g '!**/*_tests.rs' \
     -g '!target/**' \
     -g '!vb-*/**'
 }

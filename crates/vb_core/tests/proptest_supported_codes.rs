@@ -145,8 +145,7 @@ fn from_str_rejects_gap_after_e0603() {
 #[test]
 fn from_str_rejects_codes_not_in_registry() {
     use std::collections::BTreeSet;
-    let registered: BTreeSet<u16> =
-        all_registry_numeric_codes().into_iter().collect();
+    let registered: BTreeSet<u16> = all_registry_numeric_codes().into_iter().collect();
 
     // Sample unregistered codes across different ranges.
     // These are known to be absent from the registry after vb-xi2f.9/10 additions.

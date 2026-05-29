@@ -1,113 +1,176 @@
 ---- MODULE ResumeStateMachine ----
+
 EXTENDS Naturals, Sequences, FiniteSets
 
-CONSTANTS RunIds, MaxJournalLength
+CONSTANTS RunIds, MaxJournalLength, MaxOpLogLength
 
-VARIABLES runtimeState, journal, pending, resumed
+VARIABLES runtimeState, journal, opLog, lastOutcome, driveFailures
 
-vars == <<runtimeState, journal, pending, resumed>>
+vars == <<runtimeState, journal, opLog, lastOutcome, driveFailures>>
 
 States == {"Initial", "Running", "Resumable", "Resuming", "Failed"}
+JournalKinds == {"Started", "Resumed", "Failed"}
+RuntimeEventKinds == {"Submit", "Resume", "ResumeRollback", "DriveContinue", "Fail"}
+Outcomes == {"None", "AlreadyRunning", "NotResumable", "AppendFailed", "ResumedOk", "DriveFailed"}
+OpKinds == {"Journal", "RuntimeEvent"}
+OpEvents == JournalKinds \cup RuntimeEventKinds
+
+JournalEvent == [kind: JournalKinds, run: RunIds]
+OpEvent == [kind: OpKinds, event: OpEvents, run: RunIds]
 
 TypeOK ==
     /\ runtimeState \in [RunIds -> States]
-    /\ journal \in Seq([kind: {"Started", "Resumed", "Failed"}, run: RunIds])
-    /\ pending \subseteq RunIds
-    /\ resumed \subseteq RunIds
+    /\ journal \in Seq(JournalEvent)
+    /\ opLog \in Seq(OpEvent)
+    /\ lastOutcome \in [RunIds -> Outcomes]
+    /\ driveFailures \subseteq RunIds
     /\ Len(journal) <= MaxJournalLength
+    /\ Len(opLog) <= MaxOpLogLength
 
 Init ==
     /\ runtimeState = [r \in RunIds |-> "Initial"]
     /\ journal = <<>>
-    /\ pending = {}
-    /\ resumed = {}
+    /\ opLog = <<>>
+    /\ lastOutcome = [r \in RunIds |-> "None"]
+    /\ driveFailures = {}
 
-CanAppend == Len(journal) < MaxJournalLength
+CanAppendJournal == Len(journal) < MaxJournalLength
+CanAppendOp(n) == Len(opLog) + n <= MaxOpLogLength
 
-AppendEvent(kind, r) == Append(journal, [kind |-> kind, run |-> r])
+AppendJournal(kind, r) == Append(journal, [kind |-> kind, run |-> r])
+AppendOp(kind, event, r) == Append(opLog, [kind |-> kind, event |-> event, run |-> r])
+
+HasJournal(kind, r) ==
+    \E i \in DOMAIN journal :
+        /\ journal[i].kind = kind
+        /\ journal[i].run = r
+
+HasResumedJournal(r) == HasJournal("Resumed", r)
 
 StartRun(r) ==
-    /\ CanAppend
+    /\ CanAppendJournal
+    /\ CanAppendOp(2)
     /\ runtimeState[r] = "Initial"
     /\ runtimeState' = [runtimeState EXCEPT ![r] = "Running"]
-    /\ journal' = AppendEvent("Started", r)
-    /\ UNCHANGED <<pending, resumed>>
+    /\ journal' = AppendJournal("Started", r)
+    /\ opLog' = AppendOp("Journal", "Started", r)
+    /\ lastOutcome' = [lastOutcome EXCEPT ![r] = "None"]
+    /\ UNCHANGED driveFailures
 
 Suspend(r) ==
     /\ runtimeState[r] = "Running"
     /\ runtimeState' = [runtimeState EXCEPT ![r] = "Resumable"]
-    /\ UNCHANGED <<journal, pending, resumed>>
+    /\ lastOutcome' = [lastOutcome EXCEPT ![r] = "None"]
+    /\ UNCHANGED <<journal, opLog, driveFailures>>
 
-BeginResume(r) ==
+ResumeAlreadyRunning(r) ==
+    /\ runtimeState[r] = "Running"
+    /\ lastOutcome' = [lastOutcome EXCEPT ![r] = "AlreadyRunning"]
+    /\ UNCHANGED <<runtimeState, journal, opLog, driveFailures>>
+
+ResumeNotResumable(r) ==
+    /\ runtimeState[r] \in {"Initial", "Resuming", "Failed"}
+    /\ lastOutcome' = [lastOutcome EXCEPT ![r] = "NotResumable"]
+    /\ UNCHANGED <<runtimeState, journal, opLog, driveFailures>>
+
+AppendResumedEventOk(r) ==
+    /\ CanAppendJournal
+    /\ CanAppendOp(2)
     /\ runtimeState[r] = "Resumable"
     /\ runtimeState' = [runtimeState EXCEPT ![r] = "Resuming"]
-    /\ pending' = pending \cup {r}
-    /\ UNCHANGED <<journal, resumed>>
+    /\ journal' = AppendJournal("Resumed", r)
+    /\ opLog' = Append(AppendOp("RuntimeEvent", "Resume", r),
+                       [kind |-> "Journal", event |-> "Resumed", run |-> r])
+    /\ lastOutcome' = [lastOutcome EXCEPT ![r] = "None"]
+    /\ UNCHANGED driveFailures
 
-CompleteResume(r) ==
-    /\ CanAppend
-    /\ r \in pending
+AppendResumedEventFail(r) ==
+    /\ CanAppendOp(2)
+    /\ runtimeState[r] = "Resumable"
+    /\ runtimeState' = [runtimeState EXCEPT ![r] = "Resumable"]
+    /\ opLog' = Append(AppendOp("RuntimeEvent", "Resume", r),
+                       [kind |-> "RuntimeEvent", event |-> "ResumeRollback", run |-> r])
+    /\ lastOutcome' = [lastOutcome EXCEPT ![r] = "AppendFailed"]
+    /\ UNCHANGED <<journal, driveFailures>>
+
+ResumeDriveContinue(r) ==
+    /\ CanAppendOp(1)
     /\ runtimeState[r] = "Resuming"
+    /\ HasResumedJournal(r)
     /\ runtimeState' = [runtimeState EXCEPT ![r] = "Running"]
-    /\ journal' = AppendEvent("Resumed", r)
-    /\ pending' = pending \ {r}
-    /\ resumed' = resumed \cup {r}
+    /\ opLog' = AppendOp("RuntimeEvent", "DriveContinue", r)
+    /\ lastOutcome' = [lastOutcome EXCEPT ![r] = "ResumedOk"]
+    /\ UNCHANGED <<journal, driveFailures>>
 
-FailResume(r) ==
-    /\ CanAppend
-    /\ r \in pending
+ResumeDriveFailureRollback(r) ==
+    /\ CanAppendOp(1)
     /\ runtimeState[r] = "Resuming"
-    /\ runtimeState' = [runtimeState EXCEPT ![r] = "Failed"]
-    /\ journal' = AppendEvent("Failed", r)
-    /\ pending' = pending \ {r}
-    /\ UNCHANGED resumed
+    /\ HasResumedJournal(r)
+    /\ runtimeState' = [runtimeState EXCEPT ![r] = "Resumable"]
+    /\ opLog' = AppendOp("RuntimeEvent", "ResumeRollback", r)
+    /\ lastOutcome' = [lastOutcome EXCEPT ![r] = "DriveFailed"]
+    /\ driveFailures' = driveFailures \cup {r}
+    /\ UNCHANGED journal
 
 FailRun(r) ==
-    /\ CanAppend
+    /\ CanAppendJournal
+    /\ CanAppendOp(2)
     /\ runtimeState[r] = "Running"
     /\ runtimeState' = [runtimeState EXCEPT ![r] = "Failed"]
-    /\ journal' = AppendEvent("Failed", r)
-    /\ UNCHANGED <<pending, resumed>>
-
-Stutter == UNCHANGED vars
+    /\ journal' = AppendJournal("Failed", r)
+    /\ opLog' = Append(AppendOp("RuntimeEvent", "Fail", r),
+                       [kind |-> "Journal", event |-> "Failed", run |-> r])
+    /\ lastOutcome' = [lastOutcome EXCEPT ![r] = "None"]
+    /\ UNCHANGED driveFailures
 
 Next ==
-    \/ \E r \in RunIds: StartRun(r)
-    \/ \E r \in RunIds: Suspend(r)
-    \/ \E r \in RunIds: BeginResume(r)
-    \/ \E r \in RunIds: CompleteResume(r)
-    \/ \E r \in RunIds: FailResume(r)
-    \/ \E r \in RunIds: FailRun(r)
-    \/ Stutter
+    \/ \E r \in RunIds : StartRun(r)
+    \/ \E r \in RunIds : Suspend(r)
+    \/ \E r \in RunIds : ResumeAlreadyRunning(r)
+    \/ \E r \in RunIds : ResumeNotResumable(r)
+    \/ \E r \in RunIds : AppendResumedEventOk(r)
+    \/ \E r \in RunIds : AppendResumedEventFail(r)
+    \/ \E r \in RunIds : ResumeDriveContinue(r)
+    \/ \E r \in RunIds : ResumeDriveFailureRollback(r)
+    \/ \E r \in RunIds : FailRun(r)
 
 Spec == Init /\ [][Next]_vars
 
-NoDoubleRunning == \A r \in RunIds: runtimeState[r] = "Running" => r \notin pending
+ResumingImpliesResumedJournal ==
+    \A r \in RunIds : runtimeState[r] = "Resuming" => HasResumedJournal(r)
 
-FailedNotResumable == \A r \in RunIds: runtimeState[r] = "Failed" => ~ENABLED BeginResume(r)
+SuccessfulResumeHasResumedJournal ==
+    \A r \in RunIds : lastOutcome[r] = "ResumedOk" => HasResumedJournal(r)
 
-(* JournalAppendBeforeSuccess: for every resumed run, a "Resumed" journal entry exists.
- * This is a existence check, not an ordering check — CompleteResume appends "Resumed"
- * atomically before transitioning to Running state. *)
-JournalAppendBeforeSuccess ==
-    \A r \in resumed:
-        \E i \in DOMAIN journal:
-            /\ journal[i].kind = "Resumed"
-            /\ journal[i].run = r
+DriveFailureLeavesResumedJournal ==
+    \A r \in RunIds :
+        lastOutcome[r] = "DriveFailed" =>
+            /\ runtimeState[r] = "Resumable"
+            /\ HasResumedJournal(r)
 
-(* Note: JournalImmutable is redundant with TypeOK's Len(journal) <= MaxJournalLength.
- * It is kept for clarity but adds no independent constraint. *)
-JournalImmutable == Len(journal) <= MaxJournalLength
+RecordedDriveFailuresHaveResumedJournal ==
+    \A r \in driveFailures : HasResumedJournal(r)
 
-ValidTransition == TypeOK /\ NoDoubleRunning /\ FailedNotResumable
+AppendFailureRollsBackToResumable ==
+    \A r \in RunIds : lastOutcome[r] = "AppendFailed" => runtimeState[r] = "Resumable"
 
-(* Strengthened liveness: every non-terminal run eventually reaches a terminal state *)
-EventuallyTerminal ==
-    \A r \in RunIds : (<> (runtimeState[r] = "Failed")) \/ (<> (runtimeState[r] \in resumed))
+DriveContinueAfterResumedAppend ==
+    \A i \in DOMAIN opLog :
+        /\ opLog[i].kind = "RuntimeEvent"
+        /\ opLog[i].event = "DriveContinue"
+        => \E j \in 1..(i - 1) :
+            /\ opLog[j].kind = "Journal"
+            /\ opLog[j].event = "Resumed"
+            /\ opLog[j].run = opLog[i].run
 
-(* Theorems *)
+StateConstraint == Len(journal) <= MaxJournalLength /\ Len(opLog) <= MaxOpLogLength
+
 THEOREM Spec => []TypeOK
-THEOREM Spec => []ValidTransition
-THEOREM Spec => []JournalAppendBeforeSuccess
+THEOREM Spec => []ResumingImpliesResumedJournal
+THEOREM Spec => []SuccessfulResumeHasResumedJournal
+THEOREM Spec => []DriveFailureLeavesResumedJournal
+THEOREM Spec => []RecordedDriveFailuresHaveResumedJournal
+THEOREM Spec => []AppendFailureRollsBackToResumable
+THEOREM Spec => []DriveContinueAfterResumedAppend
 
 ====

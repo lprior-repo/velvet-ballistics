@@ -388,7 +388,7 @@ impl kani::Arbitrary for WorkflowParts {
         let mut step_names: Vec<Box<str>> = Vec::with_capacity(usize::from(step_name_count));
         i = 0;
         while i < step_name_count {
-            step_names.push(Box::from(format!("step_{}", i)));
+            step_names.push(kani_step_name(i));
             i += 1;
         }
         Self {
@@ -404,6 +404,15 @@ impl kani::Arbitrary for WorkflowParts {
             resource_contract: kani::any::<ResourceContract>(),
             step_names: step_names.into_boxed_slice(),
         }
+    }
+}
+
+fn kani_step_name(index: u8) -> Box<str> {
+    match index {
+        0 => Box::from("step_0"),
+        1 => Box::from("step_1"),
+        2 => Box::from("step_2"),
+        _ => Box::from("step_3"),
     }
 }
 

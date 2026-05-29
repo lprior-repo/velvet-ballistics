@@ -20,7 +20,6 @@ members = [
     # xtask excluded until the tooling crate is re-linted for workspace CI.
     # "xtask",
 ]
-default-members = ["."]
 resolver = "2"
 exclude = ["target/miri-tmp", "crates/vb_ui", "fuzz"]
 

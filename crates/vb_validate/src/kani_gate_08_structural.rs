@@ -25,29 +25,51 @@ use vb_core::workflow::{
 #[kani::proof]
 #[kani::unwind(5)]
 fn kani_gate_08_arbitrary_parts_valid_accessors_pass() {
-    let parts: WorkflowParts = kani::any();
-    kani::assume(parts.slot_count > 0);
-    kani::assume(parts.slot_count <= 256);
-    kani::assume(parts.symbols_count > 0);
-    kani::assume(parts.symbols_count <= 1024);
-
-    // Validate all accessors have bounded roots and field symbols.
-    for accessor in parts.accessors.iter() {
-        kani::assume(accessor.root.as_usize() < usize::from(parts.slot_count));
-        for segment in accessor.path.iter() {
-            match segment {
-                PathSegment::Field(symbol) => {
-                    kani::assume(symbol.get() < parts.symbols_count);
-                }
-                PathSegment::Index(index) => kani::assume(*index != u32::MAX),
-                _ => kani::assume(false),
-            }
-        }
-    }
+    let parts = arbitrary_parts_with_valid_accessors();
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(result.is_ok(), "arbitrary valid accessors pass Gate 8");
     std::mem::forget(parts);
+}
+
+fn arbitrary_parts_with_valid_accessors() -> WorkflowParts {
+    let mut parts: WorkflowParts = kani::any();
+    let slot_count: u16 = kani::any();
+    let symbols_count: u32 = kani::any();
+    let root: u16 = kani::any();
+    let symbol: u32 = kani::any();
+    let index: u32 = kani::any();
+
+    kani::assume(slot_count > 0);
+    kani::assume(slot_count <= 16);
+    kani::assume(symbols_count > 0);
+    kani::assume(symbols_count <= 64);
+    kani::assume(root < slot_count);
+    kani::assume(symbol < symbols_count);
+    kani::assume(index != u32::MAX);
+
+    parts.slot_count = slot_count;
+    parts.symbols_count = symbols_count;
+    parts.accessors = match kani::any::<u8>() {
+        0 => Box::new([]),
+        1 => Box::new([AccessorProgram {
+            root: SlotIdx::new(root),
+            path: Box::new([PathSegment::Field(SymbolId::new(symbol))]),
+        }]),
+        2 => Box::new([AccessorProgram {
+            root: SlotIdx::new(root),
+            path: Box::new([PathSegment::Index(index)]),
+        }]),
+        _ => Box::new([AccessorProgram {
+            root: SlotIdx::new(root),
+            path: Box::new([
+                PathSegment::Field(SymbolId::new(symbol)),
+                PathSegment::Index(index),
+            ]),
+        }]),
+    };
+
+    parts
 }
 
 /// Harness 2: Arbitrary WorkflowParts with root out of range is rejected.
@@ -60,11 +82,11 @@ fn kani_gate_08_arbitrary_parts_root_oob_rejected() {
     kani::assume(parts.slot_count > 0);
     kani::assume(parts.slot_count <= 8);
 
-    // Corrupt the first accessor root to be out of bounds.
-    if !parts.accessors.is_empty() {
-        let root = SlotIdx::new(parts.slot_count); // exactly slot_count = OOB
-        parts.accessors[0].root = root;
-    }
+    let root = SlotIdx::new(parts.slot_count); // exactly slot_count = OOB
+    parts.accessors = Box::new([AccessorProgram {
+        root,
+        path: Box::new([]),
+    }]);
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(
@@ -79,18 +101,23 @@ fn kani_gate_08_arbitrary_parts_root_oob_rejected() {
 #[kani::unwind(5)]
 fn kani_gate_08_arbitrary_parts_symbol_oob_rejected() {
     let mut parts: WorkflowParts = kani::any();
+    let root: u16 = kani::any();
+    let index: u32 = kani::any();
+
+    kani::assume(parts.slot_count > 0);
+    kani::assume(parts.slot_count <= 16);
     kani::assume(parts.symbols_count > 0);
     kani::assume(parts.symbols_count <= 64);
+    kani::assume(root < parts.slot_count);
+    kani::assume(index != u32::MAX);
 
-    // Corrupt the first accessor path to reference an out-of-bounds symbol.
-    if !parts.accessors.is_empty() && !parts.accessors[0].path.is_empty() {
-        for segment in parts.accessors[0].path.iter_mut() {
-            if matches!(segment, PathSegment::Field(_)) {
-                *segment = PathSegment::Field(SymbolId::new(parts.symbols_count));
-                break;
-            }
-        }
-    }
+    parts.accessors = Box::new([AccessorProgram {
+        root: SlotIdx::new(root),
+        path: Box::new([
+            PathSegment::Index(index),
+            PathSegment::Field(SymbolId::new(parts.symbols_count)),
+        ]),
+    }]);
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(

@@ -1,6 +1,18 @@
 impl Shard {
     pub(crate) fn handle_ask_answer(&mut self, answer: AskAnswer) -> RuntimeResult<()> {
         let run = answer.ticket.run;
+        if !self.runs.contains_key(&run) {
+            return Err(RuntimeError::RunNotFound);
+        }
+        let pending_timer = self
+            .pending_timers
+            .get(&run)
+            .copied()
+            .ok_or(RuntimeError::InvalidActionCompletion)?;
+        if pending_timer.step != answer.ticket.ask_step || pending_timer.kind != PendingTimerKind::Ask
+        {
+            return Err(RuntimeError::InvalidActionCompletion);
+        }
         let state = self.runs.get_mut(&run).ok_or(RuntimeError::RunNotFound)?;
         let contract = state.workflow.resource_contract();
         if answer.taint == Taint::Secret && !contract.allows_secret_results {
@@ -12,11 +24,7 @@ impl Shard {
                 max: contract.max_ipc_payload_bytes,
             });
         }
-        if let Some(timer) = self.pending_timers.get(&run)
-            && timer.step == answer.ticket.ask_step
-        {
-            self.pending_timers.swap_remove(&run);
-        }
+        self.pending_timers.swap_remove(&run);
         state
             .frame
             .write_slot_with_taint(answer.answer_slot, answer.value, answer.taint)
@@ -212,8 +220,9 @@ impl Shard {
         state: RunState,
         kind: PendingTimerKind,
     ) -> RuntimeResult<()> {
+        self.await_timer(run, state, kind)?;
         self.apply(run, RuntimeEvent::AwaitTimer);
-        self.await_timer(run, state, kind)
+        Ok(())
     }
 
     fn apply_terminal_finished(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {

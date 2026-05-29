@@ -20,11 +20,22 @@ pub(crate) fn validate_schema_version(version: u16) -> Result<(), JournalError> 
     }
 }
 
-pub(crate) fn validate_known_kind(kind: u16) -> Result<(), JournalError> {
-    if matches!(kind, 1 | 2 | 3 | 10..=27 | 30 | 40 | 50) {
-        Ok(())
+pub(crate) const fn is_known_record_kind(kind: u16) -> bool {
+    matches!(kind, 1 | 2 | 3 | 10..=27 | 30 | 40 | 50)
+}
+
+pub(crate) const fn unknown_record_kind_value(kind: u16) -> Option<u16> {
+    if is_known_record_kind(kind) {
+        None
     } else {
-        Err(JournalError::UnknownRecordKind { kind })
+        Some(kind)
+    }
+}
+
+pub(crate) fn validate_known_kind(kind: u16) -> Result<(), JournalError> {
+    match unknown_record_kind_value(kind) {
+        None => Ok(()),
+        Some(unknown) => Err(JournalError::UnknownRecordKind { kind: unknown }),
     }
 }
 

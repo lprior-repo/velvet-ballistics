@@ -370,7 +370,7 @@ impl ValidationError {
     /// Returns the stable [`SymbolicCode`] for this validation error variant.
     ///
     /// Every variant maps to a registered diagnostic code name.
-    /// The mapping matches the per-variant assignments in [`error_diagnostic_parts`].
+    /// The mapping matches the per-variant assignments in `error_diagnostic_parts`.
     #[must_use]
     pub fn code(&self) -> SymbolicCode {
         let s: &'static str = match self {

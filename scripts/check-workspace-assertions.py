@@ -20,7 +20,13 @@ ACTIVE_MEMBERS = frozenset(
         "crates/vb_runtime",
         "crates/vb_doc",
         "crates/vb_ipc",
+        "crates/vb_proof_kernels",
+        "crates/vb_cli",
+        "crates/vb_verification",
+        "crates/vb_test_util",
+        "crates/workspace_tests/idempotency_suite",
         "crates/workspace_tests",
+        "crates/vb_benchmark",
     }
 )
 
@@ -28,10 +34,6 @@ DEFERRED_MEMBERS = frozenset(
     {
         "crates/vb_ui_makepad",
         "crates/vb_ui_snapshot",
-        "crates/vb_proof_kernels",
-        "crates/vb_cli",
-        "crates/vb_verification",
-        "crates/vb_benchmark",
         "fuzz",
     }
 )
@@ -61,17 +63,26 @@ EXPECTED_PACKAGE_NAMES = {
     "crates/vb_proof_kernels": "vb_proof_kernels",
     "crates/vb_cli": "velvet-ballistics",
     "crates/vb_verification": "vb_verification",
+    "crates/vb_test_util": "vb_test_util",
+    "crates/workspace_tests/idempotency_suite": "velvet-ballistics-idempotency-workspace-tests",
     "crates/workspace_tests": "velvet-ballistics-workspace-tests",
     "crates/vb_benchmark": "vb_benchmark",
     "fuzz": "velvet-ballistics-fuzz",
 }
 EXPECTED_BINARIES = {"crates/vb_cli": {"velvet-ballistics"}}
 EXPECTED_FEATURES = {
-    "crates/vb_core": {"default", "generated", "bench", "volatile", "test-util"},
+    "crates/vb_core": {"default", "bench", "kani-diagnostic-codes", "volatile", "test-util"},
     "crates/vb_validate": {"default", "verus"},
     "crates/vb_ui_snapshot": {"default", "std", "tokio"},
 }
-FORBIDDEN_FEATURE_NAMES = {"json", "serde-json", "velvet-ballistics", "velvet_ballistics"}
+FORBIDDEN_FEATURE_NAMES = {
+    "json",
+    "serde-json",
+    "generated",
+    "maxperf",
+    "velvet-ballistics",
+    "velvet_ballistics",
+}
 
 
 def load_toml(path: Path) -> dict[str, object]:

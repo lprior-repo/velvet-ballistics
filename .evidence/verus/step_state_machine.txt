@@ -1,2 +1,2 @@
-[verus] verus verification/verus/step_state_machine.rs
+[verus] verus --crate-type=lib verification/verus/step_state_machine.rs
 verification results:: 16 verified, 0 errors

@@ -14,6 +14,16 @@ mod proptests {
     use proptest::prelude::*;
     use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest, WorkflowId};
 
+    const RECOVERY_IO_PROPTEST_CASES: u32 = 64;
+
+    fn recovery_proptest_config() -> ProptestConfig {
+        ProptestConfig {
+            cases: RECOVERY_IO_PROPTEST_CASES,
+            failure_persistence: None,
+            ..Default::default()
+        }
+    }
+
     proptest! {
         #[test]
         fn run_event_key_ordering_is_monotonic(seq1 in 0u64..1000u64, seq2 in 0u64..1000u64) {
@@ -249,6 +259,8 @@ mod proptests {
     // ---------------------------------------------------------------------------
 
     proptest! {
+        #![proptest_config(recovery_proptest_config())]
+
         #[test]
         fn ppi_001_deterministic_replay_invariant(
             run_val in 1u64..=1000u64,

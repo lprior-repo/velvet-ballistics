@@ -77,6 +77,14 @@ bd dolt push         # Push beads data to remote
 4. **No Loop Oscillations:** Follow strict Proof-Driven Development. If a Kani/Verus harness exposes a flaw in the implementation, **FIX THE IMPLEMENTATION**. You are strictly forbidden from altering the mathematical contract or proof harness just to make the test turn green.
 5. **No Blind Verification Mutations:** Differential verification only. Do not blindly trigger `cargo-mutants` or `kani` across the entire fleet for simple changes. Trim your verification scope to the call-graph blast radius of your specific bead to avoid melting the CI cluster.
 
+## Verifier Tooling Runbook
+
+- **Verus:** Use `bash scripts/verify-verus.sh` for registry-driven obligations. For one-off checks use `verus --crate-type=lib <file>` from the documented workdir. A standalone Verus model pass is not proof closure unless it is explicitly bound to production Rust behavior and cited in the proof/test/source bridge.
+- **Flux:** Use `bash scripts/flux-check-package.sh <package>` or `cargo flux -p <package> --message-format human`. The installed `cargo-flux` does not accept `--lib` or `--test`; do not write obligations with those flags. A package-level Flux pass is only a crate smoke check unless the named `verification/flux/*.rs` artifact is wired into that crate or checked by an explicit single-file Flux command.
+- **Kani inventory:** Do not run root `cargo kani list --format json` as proof evidence. Use `bash scripts/kani-list.sh <package> [...]` so package directories are selected explicitly and generated `kani-list.json` files are moved under `.evidence/kani-list/`. Use `KANI_FEATURES=<features>` for feature-gated harness groups.
+- **Kani harness isolation:** Bulky or stale harness groups must be behind package features, for example `vb_core/kani-diagnostic-codes` and `vb_runtime/kani-shard-command-queue`. Do not make every `#[cfg(kani)]` module compile for unrelated package lanes.
+- **Tooling evidence is not proof evidence:** Verus/Flux/Kani version checks, list/codegen, and package smoke commands prove setup health only. They do not close behavior-affecting proof obligations without the approved proof artifacts and raw verifier success logs.
+
 ## Non-Interactive Shell Commands
 
 **ALWAYS use non-interactive flags** with file operations to avoid hanging on confirmation prompts.

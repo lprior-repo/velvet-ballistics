@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Single-threaded shard owning mutable run state directly.
 
+pub mod completion_watermark;
 pub mod directive;
 pub mod helpers;
 pub mod impl_;
@@ -10,6 +11,7 @@ pub mod timer_wheel;
 pub mod transitions;
 pub mod types;
 
+pub use completion_watermark::{CompletionDrain, CompletionWatermark, CompletionWatermarkError};
 pub use directive::ShardDirective;
 pub use types::{
     AskAnswer, AskTicket, InspectHandle, InspectResponse, InspectSnapshot,

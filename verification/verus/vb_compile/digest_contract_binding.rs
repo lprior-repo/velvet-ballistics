@@ -19,6 +19,8 @@
 
 #![allow(unused_imports)]
 
+use vstd::prelude::*;
+
 verus! {
 
 use crate::encoding_injectivity::{

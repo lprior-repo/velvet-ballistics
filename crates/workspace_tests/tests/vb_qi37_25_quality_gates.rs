@@ -6,7 +6,7 @@ use std::process::{Command, Output};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-const MEMBERS: [(&str, &str); 16] = [
+const MEMBERS: [(&str, &str); 17] = [
     ("crates/vb_boundary_inventory", "vb_boundary_inventory"),
     ("crates/vb_core", "vb_core"),
     ("crates/vb_yaml", "vb_yaml"),
@@ -20,6 +20,7 @@ const MEMBERS: [(&str, &str); 16] = [
     ("crates/vb_proof_kernels", "vb_proof_kernels"),
     ("crates/vb_cli", "velvet-ballistics"),
     ("crates/vb_verification", "vb_verification"),
+    ("crates/vb_test_util", "vb_test_util"),
     (
         "crates/workspace_tests/idempotency_suite",
         "velvet-ballistics-idempotency-workspace-tests",
@@ -78,8 +79,9 @@ fn write_manifest(root: &Path, member: &str, package_name: &str) -> Result<(), s
         manifest.push_str("\n[lib]\nname = \"vb_cli\"\npath = \"src/lib.rs\"\n\n[[bin]]\nname = \"velvet-ballistics\"\npath = \"src/main.rs\"\n");
     }
     if member == "crates/vb_core" {
-        manifest
-            .push_str("\n[features]\ndefault = []\nbench = []\nvolatile = []\ntest-util = []\n");
+        manifest.push_str(
+            "\n[features]\ndefault = []\nbench = []\nkani-diagnostic-codes = []\nvolatile = []\ntest-util = []\n",
+        );
     }
     if member == "crates/vb_validate" {
         manifest.push_str("\n[features]\ndefault = []\nverus = []\n");
@@ -136,7 +138,7 @@ fn feature_drift_reports_exact_expected_feature_set() -> TestResult {
     assert!(!output.status.success());
     assert_eq!(
         stderr(&output),
-        "crates/vb_core/Cargo.toml: features missing [\"test-util\", \"volatile\"]\ncrates/vb_core/Cargo.toml: features unexpected [\"json\"]\ncrates/vb_core/Cargo.toml: forbidden feature names [\"json\"]\n"
+        "crates/vb_core/Cargo.toml: features missing [\"kani-diagnostic-codes\", \"test-util\", \"volatile\"]\ncrates/vb_core/Cargo.toml: features unexpected [\"json\"]\ncrates/vb_core/Cargo.toml: forbidden feature names [\"json\"]\n"
     );
     Ok(())
 }

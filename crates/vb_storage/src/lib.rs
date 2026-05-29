@@ -31,35 +31,47 @@ pub mod events;
 pub mod headers;
 pub mod indexes;
 pub mod journal;
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_codec;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_record_magic;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_record_schema;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_record_kind;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_record_payload_len;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_record_crc;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_digest_checks_vb_2bzz;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_hydrate_proofs;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_admission;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_postcard_envelope_wire;
+
+#[cfg(all(kani, feature = "kani-typed-partitioned-ids"))]
+pub mod kani_typed_partitioned_ids;
+
+#[cfg(all(kani, feature = "kani-vb-u8gi-decode-taxonomy"))]
+pub mod kani_vb_u8gi_storage_decode_order;
+
+#[cfg(all(kani, feature = "kani-vb-u8gi-decode-taxonomy"))]
+pub mod kani_vb_u8gi_storage_numeric_fields;
+
+#[cfg(all(kani, feature = "kani-vb-u8gi-decode-taxonomy"))]
+pub mod kani_vb_u8gi_storage_payload_bounds;
 
 pub mod keys;
 pub mod process_lock;

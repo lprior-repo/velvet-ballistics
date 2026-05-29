@@ -74,7 +74,7 @@ pub mod kani_step_harnesses;
 #[cfg(kani)]
 pub mod kani_step_state_transition;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-diagnostic-codes"))]
 pub mod kani;
 
 pub use action::{

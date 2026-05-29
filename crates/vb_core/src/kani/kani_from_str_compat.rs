@@ -7,8 +7,7 @@
 //!
 //! Bound: ~100 code constants (unwind=100)
 
-use super::kani_is_supported_code::is_supported_code;
-use super::kani_symbolic_code_validation::CODE_REGISTRY;
+use super::kani_symbolic_code_validation::{CODE_REGISTRY, is_supported_code};
 
 /// Mirror of DiagnosticCodeParseError.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -57,11 +56,15 @@ const fn pack_digits(a: u16, b: u16, c: u16, d: u16) -> Result<u16, DiagnosticCo
         Some(v) => v,
         None => return Err(DiagnosticCodeParseError::InvalidFormat),
     };
-    match a_s
-        .checked_add(b_s)
-        .and_then(|x| x.checked_add(c_s))
-        .and_then(|x| x.checked_add(d))
-    {
+    let ab = match a_s.checked_add(b_s) {
+        Some(v) => v,
+        None => return Err(DiagnosticCodeParseError::InvalidFormat),
+    };
+    let abc = match ab.checked_add(c_s) {
+        Some(v) => v,
+        None => return Err(DiagnosticCodeParseError::InvalidFormat),
+    };
+    match abc.checked_add(d) {
         Some(v) => Ok(v),
         None => Err(DiagnosticCodeParseError::InvalidFormat),
     }

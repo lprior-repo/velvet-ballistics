@@ -86,12 +86,10 @@ fn retryable_failure() -> vb_core::action::ActionFailure {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn shard_submit_with_inputs_seeds_slots_and_drives() {
+fn shard_submit_with_inputs_seeds_slots_and_drives() -> Result<(), &'static str> {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = finished_workflow() else {
-        return;
-    };
+    let workflow = finished_workflow().ok_or("finished workflow fixture construction failed")?;
     let run = super::RunId::new(700);
     let inputs = Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::Bool(true))]);
     assert_eq!(
@@ -106,15 +104,14 @@ fn shard_submit_with_inputs_seeds_slots_and_drives() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_submitted, 1);
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    Ok(())
 }
 
 #[test]
-fn shard_submit_with_inputs_rejects_duplicate_run() {
+fn shard_submit_with_inputs_rejects_duplicate_run() -> Result<(), &'static str> {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else {
-        return;
-    };
+    let workflow = suspended_workflow().ok_or("suspended workflow fixture construction failed")?;
     let run = super::RunId::new(701);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -136,10 +133,11 @@ fn shard_submit_with_inputs_rejects_duplicate_run() {
         Ok(())
     );
     assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
+    Ok(())
 }
 
 #[test]
-fn shard_submit_with_inputs_rejects_capacity_exceeded() {
+fn shard_submit_with_inputs_rejects_capacity_exceeded() -> Result<(), &'static str> {
     let config = ShardConfig {
         command_queue_capacity: 16,
         trace_capacity: 16,
@@ -148,12 +146,8 @@ fn shard_submit_with_inputs_rejects_capacity_exceeded() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
-    let Some(wf1) = suspended_workflow() else {
-        return;
-    };
-    let Some(wf2) = finished_workflow() else {
-        return;
-    };
+    let wf1 = suspended_workflow().ok_or("suspended workflow fixture construction failed")?;
+    let wf2 = finished_workflow().ok_or("finished workflow fixture construction failed")?;
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run: super::RunId::new(1),
@@ -177,6 +171,125 @@ fn shard_submit_with_inputs_rejects_capacity_exceeded() {
         shard.tick(),
         Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 1 })
     );
+    Ok(())
+}
+
+struct RejectAdmissionHeaderJournal {
+    reject_submitted: bool,
+    reject_admission: bool,
+    events: std::sync::Mutex<Vec<RuntimeJournalEvent>>,
+}
+
+impl RejectAdmissionHeaderJournal {
+    fn shared(reject_submitted: bool, reject_admission: bool) -> std::sync::Arc<Self> {
+        std::sync::Arc::new(Self {
+            reject_submitted,
+            reject_admission,
+            events: std::sync::Mutex::new(Vec::new()),
+        })
+    }
+
+    fn snapshot(&self) -> crate::RuntimeResult<Vec<RuntimeJournalEvent>> {
+        self.events
+            .lock()
+            .map(|events| events.clone())
+            .map_err(|_| RuntimeError::JournalPoisoned)
+    }
+}
+
+impl crate::journal::RuntimeJournal for RejectAdmissionHeaderJournal {
+    fn append(&self, event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
+        let reject_submitted =
+            matches!(event, RuntimeJournalEvent::RunSubmitted { .. }) && self.reject_submitted;
+        let reject_admission =
+            matches!(event, RuntimeJournalEvent::RunAdmission { .. }) && self.reject_admission;
+        if reject_submitted || reject_admission {
+            return Err(RuntimeError::from(vb_storage::JournalError::QueueFull));
+        }
+        self.events
+            .lock()
+            .map_err(|_| RuntimeError::JournalPoisoned)?
+            .push(event);
+        Ok(())
+    }
+
+    fn probe(&self) -> crate::RuntimeResult<()> {
+        Ok(())
+    }
+}
+
+fn assert_admission_header_persistence_failed(result: crate::RuntimeResult<bool>) {
+    let is_expected = matches!(
+        result,
+        Err(RuntimeError::AdmissionHeaderPersistenceFailed { source })
+            if matches!(source.as_ref(), vb_storage::JournalError::QueueFull)
+    );
+    assert!(is_expected, "expected AdmissionHeaderPersistenceFailed");
+}
+
+#[test]
+fn shard_submit_run_submitted_append_failure_maps_to_admission_header_persistence_failed(
+) -> Result<(), &'static str> {
+    let workflow = suspended_workflow().ok_or("suspended workflow fixture construction failed")?;
+    let journal = RejectAdmissionHeaderJournal::shared(true, false);
+    let mut shard = Shard::new_with_journal_and_artifact_store(
+        small_config(),
+        journal.clone(),
+        crate::admission::AlwaysPresentArtifactStore::shared(),
+    );
+    let run = super::RunId::new(712);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+
+    assert_admission_header_persistence_failed(shard.tick());
+
+    assert_eq!(shard.active_run_count(), 0);
+    assert_eq!(shard.counters().snapshot().runs_submitted, 0);
+    assert_eq!(journal.snapshot(), Ok(Vec::new()));
+    Ok(())
+}
+
+#[test]
+fn shard_submit_run_admission_append_failure_maps_to_admission_header_persistence_failed(
+) -> Result<(), &'static str> {
+    let workflow = suspended_workflow().ok_or("suspended workflow fixture construction failed")?;
+    let journal = RejectAdmissionHeaderJournal::shared(false, true);
+    let mut shard = Shard::new_with_journal_and_artifact_store(
+        small_config(),
+        journal.clone(),
+        crate::admission::AlwaysPresentArtifactStore::shared(),
+    );
+    let run = super::RunId::new(713);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+
+    assert_admission_header_persistence_failed(shard.tick());
+
+    assert_eq!(shard.active_run_count(), 0);
+    assert_eq!(shard.counters().snapshot().runs_submitted, 0);
+    match journal.snapshot() {
+        Ok(events) => {
+            assert_eq!(events.len(), 1);
+            assert!(matches!(
+                events.first(),
+                Some(RuntimeJournalEvent::RunSubmitted { .. })
+            ));
+        }
+        Err(error) => panic!("journal snapshot failed: {error:?}"),
+    }
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -184,13 +297,12 @@ fn shard_submit_with_inputs_rejects_capacity_exceeded() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn shard_resume_on_waiting_run_after_timer_removed_still_suspends() {
+fn shard_resume_on_waiting_run_after_timer_removed_still_suspends() -> Result<(), &'static str> {
     // Submit a timed wait workflow, which enters a wait-suspended state with a pending timer.
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = timed_wait_then_finish_workflow() else {
-        return;
-    };
+    let workflow =
+        timed_wait_then_finish_workflow().ok_or("timed wait workflow fixture construction failed")?;
     let run = super::RunId::new(710);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -222,6 +334,7 @@ fn shard_resume_on_waiting_run_after_timer_removed_still_suspends() {
         }
         other => assert_eq!(other, None),
     }
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -229,12 +342,11 @@ fn shard_resume_on_waiting_run_after_timer_removed_still_suspends() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn shard_cancel_on_finished_run_succeeds_silently_without_counter_increment() {
+fn shard_cancel_on_finished_run_succeeds_silently_without_counter_increment(
+) -> Result<(), &'static str> {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = finished_workflow() else {
-        return;
-    };
+    let workflow = finished_workflow().ok_or("finished workflow fixture construction failed")?;
     let run = super::RunId::new(720);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -253,4 +365,5 @@ fn shard_cancel_on_finished_run_succeeds_silently_without_counter_increment() {
     // Then no additional counter increment
     assert_eq!(shard.counters().snapshot().runs_failed, 0);
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    Ok(())
 }

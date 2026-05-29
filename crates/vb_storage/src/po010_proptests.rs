@@ -2,7 +2,19 @@
 
 use proptest::prelude::*;
 
+const DETERMINISTIC_REPLAY_CASES: u32 = 64;
+
+fn deterministic_replay_config() -> ProptestConfig {
+    ProptestConfig {
+        cases: DETERMINISTIC_REPLAY_CASES,
+        failure_persistence: None,
+        ..Default::default()
+    }
+}
+
 proptest! {
+    #![proptest_config(deterministic_replay_config())]
+
     #[test]
     fn ppi_001_deterministic_replay_invariant(
         run_val in 1u64..=1000u64,

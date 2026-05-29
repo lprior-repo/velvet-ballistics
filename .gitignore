@@ -59,6 +59,8 @@ callgrind.out.*
 mutants.out/
 mutants.out.old/
 mutants.out.*/
+kani-list.json
+/*.rlib
 .beads/moon-ci-output.md
 
 # TLA+/TLC generated model-checker state dumps

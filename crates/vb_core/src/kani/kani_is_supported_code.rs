@@ -7,31 +7,7 @@
 //! vb_storage::error::codes; Updated is_supported_code() ranges include
 //! E05xx, E06xx, and codes above 0x401B.
 
-use super::kani_symbolic_code_validation::CODE_REGISTRY;
-
-/// Mirror of the production is_supported_code() with updated ranges.
-/// This MUST match the production implementation exactly.
-const fn is_supported_code(code: u16) -> bool {
-    matches!(
-        code,
-        0x0101..=0x010B
-            | 0x0201..=0x0204
-            | 0x0301..=0x0309
-            | 0x0401..=0x040C
-            | 0x0501..=0x0513
-            | 0x0601..=0x0603
-            | 0x1001..=0x1002
-            | 0x1011..=0x1013
-            | 0x1101..=0x1104
-            | 0x1201..=0x1202
-            | 0x1301..=0x130D
-            | 0x1311..=0x1314
-            | 0x1401..=0x1407
-            | 0x2001..=0x200F
-            | 0x3001..=0x300E
-            | 0x4001..=0x401C
-    )
-}
+use super::kani_symbolic_code_validation::{CODE_REGISTRY, is_supported_code};
 
 #[cfg(kani)]
 mod harnesses {

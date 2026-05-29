@@ -20,5 +20,11 @@ vb_core = { path = "../vb_core" }
 proptest = { workspace = true }
 tempfile.workspace = true
 
+[features]
+default = []
+legacy-kani = []
+kani-typed-partitioned-ids = []
+kani-vb-u8gi-decode-taxonomy = []
+
 [lints]
 workspace = true

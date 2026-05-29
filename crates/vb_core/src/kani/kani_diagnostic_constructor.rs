@@ -6,9 +6,7 @@
 //! PO-014: It is impossible to construct a Diagnostic record where
 //! numeric_code.symbolic_code() != Some(code).
 
-use super::kani_symbolic_code_validation::{
-    CODE_REGISTRY, CodeEntry, DiagnosticCode, SymbolicCode,
-};
+use super::kani_symbolic_code_validation::{CODE_REGISTRY, DiagnosticCode, SymbolicCode};
 
 /// Mirror of the Severity enum.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -87,35 +85,6 @@ const fn string_eq_bytes(a: &[u8], b: &[u8]) -> bool {
         i += 1;
     }
     true
-}
-
-/// Reverse lookup: numeric → symbolic.
-const fn numeric_to_symbolic(numeric: u16) -> Option<&'static str> {
-    let mut i = 0;
-    while i < CODE_REGISTRY.len() {
-        if CODE_REGISTRY[i].numeric == numeric {
-            return Some(CODE_REGISTRY[i].symbolic);
-        }
-        i += 1;
-    }
-    None
-}
-
-/// DiagnosticCode::symbolic_code() — reverse lookup.
-impl DiagnosticCode {
-    #[must_use]
-    pub fn symbolic_code(self) -> Option<SymbolicCode> {
-        numeric_to_symbolic(self.code()).map(SymbolicCode::from_static_infallible)
-    }
-}
-
-impl SymbolicCode {
-    /// Infallible variant for already-registered symbols.
-    /// Panic-free: the caller guarantees the string is registered.
-    #[must_use]
-    pub const fn from_static_infallible(s: &'static str) -> Self {
-        SymbolicCode(s)
-    }
 }
 
 #[cfg(kani)]

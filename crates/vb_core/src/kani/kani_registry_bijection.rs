@@ -8,7 +8,7 @@
 //! Bound: Registry size ~90 entries (unwind=200 for pairwise, unwind=100 for non-zero).
 
 // Re-use the types declared in kani_symbolic_code_validation
-use super::kani_symbolic_code_validation::{CODE_REGISTRY, CodeEntry};
+use super::kani_symbolic_code_validation::CODE_REGISTRY;
 
 /// Const helper: check if a u16 value appears exactly once in the registry's numeric fields.
 const fn count_numeric(value: u16) -> usize {

@@ -1,0 +1,21 @@
+{
+  "kani-version": "0.67.0",
+  "file-version": "0.1",
+  "standard-harnesses": {
+    "crates/vb_runtime/src/primitives/reentry_proofs.rs": [
+      "primitives::reentry_proofs::reentry_harnesses::collect_next_reentry",
+      "primitives::reentry_proofs::reentry_harnesses::collect_page_reentry",
+      "primitives::reentry_proofs::reentry_harnesses::for_each_next_reentry",
+      "primitives::reentry_proofs::reentry_harnesses::reduce_next_reentry",
+      "primitives::reentry_proofs::reentry_harnesses::repeat_attempt_reentry",
+      "primitives::reentry_proofs::reentry_harnesses::repeat_check_reentry"
+    ]
+  },
+  "contract-harnesses": {},
+  "contracts": [],
+  "totals": {
+    "standard-harnesses": 6,
+    "contract-harnesses": 0,
+    "functions-under-contract": 0
+  }
+}

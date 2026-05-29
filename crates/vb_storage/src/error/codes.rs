@@ -188,7 +188,7 @@ impl HasSymbolicCode for JournalError {
     /// numeric code to its registered symbolic name via
     /// [`DiagnosticCode::symbolic_code`]. Falls back to
     /// [`SymbolicCode::INTERNAL_INVARIANT`] when the numeric code is
-    /// not yet registered in [`CODE_REGISTRY`].
+    /// not yet registered in `CODE_REGISTRY`.
     fn symbolic_code(&self) -> SymbolicCode {
         self.diagnostic_code()
             .symbolic_code()

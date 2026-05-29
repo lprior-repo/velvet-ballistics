@@ -3,6 +3,8 @@
 
 fileGroups:
   tla_sources:
+    - 'verification/tla/*.tla'
+    - 'verification/tla/*.cfg'
     - 'verification/tla/specs/**/*.tla'
     - 'verification/tla/specs/**/*.cfg'
   tla_scripts:
@@ -14,14 +16,37 @@ tasks:
       set -euo pipefail
       mkdir -p target/tlc-tmp
       mkdir -p target/moon-locks
-      # Run TLC model checker on all TLA+ specifications
-      # Using find to locate all .tla files and run TLC on each
-      for spec in verification/tla/specs/*.tla; do
-        if [ -f "$spec" ]; then
-          echo "Checking TLC model: $spec"
-          TMPDIR="$PWD/target/tlc-tmp" flock --shared target/moon-locks/source-mutation.lock \
-            java -jar tla2tools.jar -terse -death -config "$(echo $spec | sed 's/\.tla$/.cfg/')" "$spec"
+      if command -v tlc >/dev/null 2>&1; then
+        TLC=(tlc)
+      elif [ -n "${TLA2TOOLS_JAR:-}" ] && [ -f "$TLA2TOOLS_JAR" ]; then
+        TLC=(java -jar "$TLA2TOOLS_JAR")
+      else
+        echo "Missing TLC runner: install a tlc wrapper or set TLA2TOOLS_JAR to an existing tla2tools.jar" >&2
+        exit 127
+      fi
+      # Run the fail-closed CI baseline root models. Heavier exploratory specs stay
+      # outside this CI task until they have bounded, time-safe configs.
+      for spec in \
+        verification/tla/WorkflowBoundedAdmission.tla \
+        verification/tla/IdempotencySafety.tla
+      do
+        cfg="${spec%.tla}.cfg"
+        if [ ! -f "$spec" ]; then
+          echo "Missing TLC spec: $spec" >&2
+          exit 1
         fi
+        if [ ! -f "$cfg" ]; then
+          echo "Missing TLC config for $spec: $cfg" >&2
+          exit 1
+        fi
+        model_name="${spec##*/}"
+        model_name="${model_name%.tla}"
+        meta_dir="$PWD/target/tlc-tmp/verify-tlc-${model_name}-$$"
+        rm -rf "$meta_dir"
+        mkdir -p "$meta_dir"
+        echo "Checking TLC model: $spec"
+        TMPDIR="$PWD/target/tlc-tmp" flock --exclusive target/moon-locks/tlc-runner.lock \
+          "${TLC[@]}" -terse -metadir "$meta_dir" -config "$cfg" "$spec"
       done
     toolchains:
       - rust
@@ -37,15 +62,26 @@ tasks:
       set -euo pipefail
       mkdir -p target/tlc-tmp
       mkdir -p target/moon-locks
+      if command -v tlc >/dev/null 2>&1; then
+        TLC=(tlc)
+      elif [ -n "${TLA2TOOLS_JAR:-}" ] && [ -f "$TLA2TOOLS_JAR" ]; then
+        TLC=(java -jar "$TLA2TOOLS_JAR")
+      else
+        echo "Missing TLC runner: install a tlc wrapper or set TLA2TOOLS_JAR to an existing tla2tools.jar" >&2
+        exit 127
+      fi
       # Model check the core workflow specification
-      TMPDIR="$PWD/target/tlc-tmp" flock --shared target/moon-locks/source-mutation.lock \
-        java -jar tla2tools.jar -terse -death -config verification/tla/specs/WorkflowBoundedAdmission.cfg \
-        verification/tla/specs/WorkflowBoundedAdmission.tla
+      meta_dir="$PWD/target/tlc-tmp/verify-tlc-workflow-$$"
+      rm -rf "$meta_dir"
+      mkdir -p "$meta_dir"
+      TMPDIR="$PWD/target/tlc-tmp" flock --exclusive target/moon-locks/tlc-runner.lock \
+        "${TLC[@]}" -terse -metadir "$meta_dir" -config verification/tla/WorkflowBoundedAdmission.cfg \
+        verification/tla/WorkflowBoundedAdmission.tla
     toolchains:
       - rust
     inputs:
-      - 'verification/tla/specs/WorkflowBoundedAdmission.tla'
-      - 'verification/tla/specs/WorkflowBoundedAdmission.cfg'
+      - 'verification/tla/WorkflowBoundedAdmission.tla'
+      - 'verification/tla/WorkflowBoundedAdmission.cfg'
     options:
       runInCI: true
       cache: false
@@ -55,15 +91,26 @@ tasks:
       set -euo pipefail
       mkdir -p target/tlc-tmp
       mkdir -p target/moon-locks
+      if command -v tlc >/dev/null 2>&1; then
+        TLC=(tlc)
+      elif [ -n "${TLA2TOOLS_JAR:-}" ] && [ -f "$TLA2TOOLS_JAR" ]; then
+        TLC=(java -jar "$TLA2TOOLS_JAR")
+      else
+        echo "Missing TLC runner: install a tlc wrapper or set TLA2TOOLS_JAR to an existing tla2tools.jar" >&2
+        exit 127
+      fi
       # Model check the idempotency safety specification
-      TMPDIR="$PWD/target/tlc-tmp" flock --shared target/moon-locks/source-mutation.lock \
-        java -jar tla2tools.jar -terse -death -config verification/tla/specs/IdempotencySafety.cfg \
-        verification/tla/specs/IdempotencySafety.tla
+      meta_dir="$PWD/target/tlc-tmp/verify-tlc-idempotency-$$"
+      rm -rf "$meta_dir"
+      mkdir -p "$meta_dir"
+      TMPDIR="$PWD/target/tlc-tmp" flock --exclusive target/moon-locks/tlc-runner.lock \
+        "${TLC[@]}" -terse -metadir "$meta_dir" -config verification/tla/IdempotencySafety.cfg \
+        verification/tla/IdempotencySafety.tla
     toolchains:
       - rust
     inputs:
-      - 'verification/tla/specs/IdempotencySafety.tla'
-      - 'verification/tla/specs/IdempotencySafety.cfg'
+      - 'verification/tla/IdempotencySafety.tla'
+      - 'verification/tla/IdempotencySafety.cfg'
     options:
       runInCI: true
       cache: false

@@ -1,188 +1,221 @@
 (* AskAnswerLifecycle.tla
  *
- * Invariant: AskAnswer lifecycle state machine — no duplicate answers,
- * monotonic seqno, idempotent replay, and SlotWritten precedes AskAnswered.
+ * Rust-aligned model for ask answer journaling and timer handling.
+ * This model intentionally uses Rust-shaped state: live runs, RuntimeState,
+ * pending timer step/kind, per-run journal sequence, and concrete journal events.
  *)
 
 ---- MODULE AskAnswerLifecycle ----
 
 EXTENDS Integers, Sequences, TLC, FiniteSets
 
-CONSTANT
-    MaxRunId,
-    MaxStepIdx,
-    MaxSeqNo,
-    MaxJournalEvents
+CONSTANTS RunIds, StepIdxs, SlotIdxs, MaxSeq, MaxJournalEvents, NoStep, NoSlot
 
-\* Event kind tags for journal entry discrimination.
-\* "sw" = SlotWritten, "aa" = AskAnswered
-EventKind == {"sw", "aa"}
+VARIABLES runs, runtimeState, terminalRuns, pendingTimerStep, pendingTimerKind,
+          nextSeq, journal, framePc, slotWritten, answerPhase, answerRun,
+          answerAskStep, answerSlot, result
 
-VARIABLES
-    AskState,
-    PendingAnswers,
-    AnsweredLog,
-    SeqNoCounter
+States == {"Absent", "Initial", "Running", "Resumable", "Resuming", "Failed"}
+TimerKinds == {"None", "Ask", "Wait"}
+JournalKinds == {"RunAccepted", "AskScheduled", "WaitScheduled", "SlotWritten",
+                 "AskAnswered", "StepSucceeded", "RunFinished", "RunFailed"}
+AnswerPhases == {"None", "SlotWrittenDone", "AskAnsweredDone"}
+Results == {"Ok", "SequenceOverflow", "JournalFull"}
 
-vars == <<AskState, PendingAnswers, AnsweredLog, SeqNoCounter>>
+JournalRecord == [kind: JournalKinds,
+                  run: RunIds,
+                  seq: 0..MaxSeq,
+                  step: {NoStep} \cup StepIdxs,
+                  slot: {NoSlot} \cup SlotIdxs]
 
-RunId == 1..MaxRunId
-StepIdx == 1..MaxStepIdx
-SeqNo == 1..MaxSeqNo
+vars == <<runs, runtimeState, terminalRuns, pendingTimerStep, pendingTimerKind,
+          nextSeq, journal, framePc, slotWritten, answerPhase, answerRun,
+          answerAskStep, answerSlot, result>>
 
-\* AnsweredLog entries are 4-tuples: [event_kind, run, step, seq]
-\* event_kind distinguishes SlotWritten ("sw") from AskAnswered ("aa").
-\* Both entries for the same ticket share identical (run, step, seq).
 TypeOK ==
-    /\ AskState \in [RunId -> {"idle", "awaiting", "answered", "failed"}]
-    /\ PendingAnswers \in SUBSET (RunId \X StepIdx \X SeqNo)
-    /\ AnsweredLog \in Seq(EventKind \X RunId \X StepIdx \X SeqNo)
-    /\ SeqNoCounter \in [RunId -> 0..MaxSeqNo]
+    /\ runs \subseteq RunIds
+    /\ terminalRuns \subseteq RunIds
+    /\ runtimeState \in [RunIds -> States]
+    /\ pendingTimerStep \in [RunIds -> {NoStep} \cup StepIdxs]
+    /\ pendingTimerKind \in [RunIds -> TimerKinds]
+    /\ nextSeq \in [RunIds -> 0..MaxSeq]
+    /\ journal \in Seq(JournalRecord)
+    /\ Len(journal) <= MaxJournalEvents
+    /\ framePc \in [RunIds -> StepIdxs]
+    /\ slotWritten \subseteq RunIds \X SlotIdxs
+    /\ answerPhase \in AnswerPhases
+    /\ answerRun \in RunIds
+    /\ answerAskStep \in StepIdxs
+    /\ answerSlot \in SlotIdxs
+    /\ result \in Results
 
 Init ==
-    /\ AskState = [r \in RunId |-> "idle"]
-    /\ PendingAnswers = {}
-    /\ AnsweredLog = <<>>
-    /\ SeqNoCounter = [r \in RunId |-> 0]
+    /\ runs = {}
+    /\ runtimeState = [r \in RunIds |-> "Absent"]
+    /\ terminalRuns = {}
+    /\ pendingTimerStep = [r \in RunIds |-> NoStep]
+    /\ pendingTimerKind = [r \in RunIds |-> "None"]
+    /\ nextSeq = [r \in RunIds |-> 0]
+    /\ journal = <<>>
+    /\ framePc = [r \in RunIds |-> CHOOSE s \in StepIdxs : TRUE]
+    /\ slotWritten = {}
+    /\ answerPhase = "None"
+    /\ answerRun = CHOOSE r \in RunIds : TRUE
+    /\ answerAskStep = CHOOSE s \in StepIdxs : TRUE
+    /\ answerSlot = CHOOSE sl \in SlotIdxs : TRUE
+    /\ result = "Ok"
 
-AnswerAsk(run, step, seq) ==
-    /\ AskState[run] = "awaiting"
-    /\ <<run, step, seq>> \in PendingAnswers
-    /\ SeqNoCounter[run] < MaxSeqNo
-    \* Emit SlotWritten first, then AskAnswered — both appended in order.
-    /\ AnsweredLog' = Append(
-           Append(AnsweredLog, <<"sw", run, step, seq>>),
-           <<"aa", run, step, seq>>)
-    /\ SeqNoCounter' = [SeqNoCounter EXCEPT ![run] = SeqNoCounter[run] + 1]
-    /\ AskState' = [AskState EXCEPT ![run] = "answered"]
-    /\ PendingAnswers' = PendingAnswers \ {<<run, step, seq>>}
+AppendEvent(run, kind, step, slot) ==
+    /\ IF Len(journal) < MaxJournalEvents THEN
+        /\ journal' = Append(journal, [kind |-> kind, run |-> run, seq |-> nextSeq[run],
+                                      step |-> step, slot |-> slot])
+        /\ IF nextSeq[run] < MaxSeq THEN
+            /\ nextSeq' = [nextSeq EXCEPT ![run] = nextSeq[run] + 1]
+            /\ result' = "Ok"
+           ELSE
+            /\ nextSeq' = nextSeq
+            /\ result' = "SequenceOverflow"
+       ELSE
+        /\ journal' = journal
+        /\ nextSeq' = nextSeq
+        /\ result' = "JournalFull"
 
-ReplayAnswer(run, step, seq) ==
-    /\ AskState[run] = "answered"
-    /\ \E i \in 1..Len(AnsweredLog) :
-        \* Match AskAnswered entries by event kind tag and key.
-        AnsweredLog[i] = <<"aa", run, step, seq>>
-    /\ UNCHANGED <<AskState, PendingAnswers, AnsweredLog, SeqNoCounter>>
+CanAppendOk(run) == Len(journal) < MaxJournalEvents /\ nextSeq[run] < MaxSeq
 
-AdvanceToNextStep(run) ==
-    /\ AskState[run] = "answered"
-    /\ AskState' = [AskState EXCEPT ![run] = "idle"]
-    /\ UNCHANGED <<PendingAnswers, AnsweredLog, SeqNoCounter>>
+Submit(run) ==
+    /\ result = "Ok"
+    /\ run \notin runs
+    /\ runs' = runs \cup {run}
+    /\ runtimeState' = [runtimeState EXCEPT ![run] = "Initial"]
+    /\ terminalRuns' = terminalRuns \ {run}
+    /\ framePc' = [framePc EXCEPT ![run] = CHOOSE s \in StepIdxs : TRUE]
+    /\ UNCHANGED <<pendingTimerStep, pendingTimerKind, slotWritten,
+                  answerPhase, answerRun, answerAskStep, answerSlot>>
+    /\ AppendEvent(run, "RunAccepted", NoStep, NoSlot)
 
-(* SubmitAsk is a single-run lifecycle admission step.  It is gated on all runs
- * being idle, the per-run sequence counter having remaining bounded capacity,
- * and the submitted ticket using the next monotonic sequence number.  This
- * preserves the contract (no duplicate answered tickets, monotonic seqno, and
- * SlotWritten-before-AskAnswered) while removing the previous bounded-model
- * deadlock where TLC could submit an arbitrary stale seq after SeqNoCounter hit
- * MaxSeqNo. *)
-SubmitAsk(run, step, seq) ==
-    /\ AskState[run] = "idle"
-    /\ \A r \in RunId : AskState[r] = "idle"  \* all runs must be idle
-    /\ SeqNoCounter[run] < MaxSeqNo
-    /\ seq = SeqNoCounter[run] + 1
-    /\ ~\E i \in 1..Len(AnsweredLog) :  \* not already answered
-         AnsweredLog[i] = <<"aa", run, step, seq>>
-    /\ AskState' = [AskState EXCEPT ![run] = "awaiting"]
-    /\ PendingAnswers' = PendingAnswers \cup {<<run, step, seq>>}
-    /\ UNCHANGED <<AnsweredLog, SeqNoCounter>>
+AwaitAsk(run, step) ==
+    /\ result = "Ok"
+    /\ run \in runs
+    /\ runtimeState[run] \in {"Initial", "Running", "Resuming"}
+    /\ IF CanAppendOk(run) THEN
+        /\ runtimeState' = [runtimeState EXCEPT ![run] = "Resumable"]
+        /\ pendingTimerStep' = [pendingTimerStep EXCEPT ![run] = step]
+        /\ pendingTimerKind' = [pendingTimerKind EXCEPT ![run] = "Ask"]
+        /\ framePc' = [framePc EXCEPT ![run] = step]
+       ELSE
+        /\ runtimeState' = runtimeState
+        /\ pendingTimerStep' = pendingTimerStep
+        /\ pendingTimerKind' = pendingTimerKind
+        /\ framePc' = framePc
+    /\ UNCHANGED <<runs, terminalRuns, slotWritten, answerPhase,
+                  answerRun, answerAskStep, answerSlot>>
+    /\ AppendEvent(run, "AskScheduled", step, NoSlot)
 
-SubmitAny ==
-    \E run \in RunId, step \in StepIdx, seq \in SeqNo :
-        SubmitAsk(run, step, seq)
+StartAnswer(run, askStep, slot) ==
+    /\ result = "Ok"
+    /\ run \in runs
+    /\ answerPhase = "None"
+    /\ pendingTimerKind[run] = "Ask"
+    /\ pendingTimerStep[run] = askStep
+    /\ pendingTimerStep' = [pendingTimerStep EXCEPT ![run] = NoStep]
+    /\ pendingTimerKind' = [pendingTimerKind EXCEPT ![run] = "None"]
+    /\ slotWritten' = slotWritten \cup {<<run, slot>>}
+    /\ answerPhase' = "SlotWrittenDone"
+    /\ answerRun' = run
+    /\ answerAskStep' = askStep
+    /\ answerSlot' = slot
+    /\ UNCHANGED <<runs, runtimeState, terminalRuns, framePc>>
+    /\ AppendEvent(run, "SlotWritten", NoStep, slot)
 
-AnswerAny ==
-    \E run \in RunId, step \in StepIdx, seq \in SeqNo :
-        AnswerAsk(run, step, seq)
+AppendAskAnswered ==
+    /\ result = "Ok"
+    /\ answerPhase = "SlotWrittenDone"
+    /\ answerPhase' = "AskAnsweredDone"
+    /\ UNCHANGED <<runs, runtimeState, terminalRuns, pendingTimerStep,
+                  pendingTimerKind, framePc, slotWritten, answerRun,
+                  answerAskStep, answerSlot>>
+    /\ AppendEvent(answerRun, "AskAnswered", answerAskStep, answerSlot)
 
-ReplayAny ==
-    \E run \in RunId, step \in StepIdx, seq \in SeqNo :
-        ReplayAnswer(run, step, seq)
-
-AdvanceAny ==
-    \E run \in RunId :
-        AdvanceToNextStep(run)
-
-Terminal ==
-    /\ \A run \in RunId :
-        /\ AskState[run] = "idle"
-        /\ SeqNoCounter[run] = MaxSeqNo
-    /\ PendingAnswers = {}
-    /\ UNCHANGED vars
+AppendAskStepSucceeded ==
+    /\ result = "Ok"
+    /\ answerPhase = "AskAnsweredDone"
+    /\ answerPhase' = "None"
+    /\ UNCHANGED <<pendingTimerStep, pendingTimerKind, framePc, slotWritten,
+                  answerRun, answerAskStep, answerSlot>>
+    /\ AppendEvent(answerRun, "StepSucceeded", answerAskStep, answerSlot)
+    /\ \/ /\ runtimeState' = [runtimeState EXCEPT ![answerRun] = "Running"]
+          /\ runs' = runs
+          /\ terminalRuns' = terminalRuns
+       \/ /\ runtimeState' = [runtimeState EXCEPT ![answerRun] = "Resumable"]
+          /\ runs' = runs
+          /\ terminalRuns' = terminalRuns
+       \/ /\ runtimeState' = [runtimeState EXCEPT ![answerRun] = "Failed"]
+          /\ runs' = runs \ {answerRun}
+          /\ terminalRuns' = terminalRuns \cup {answerRun}
 
 Next ==
-    \/ SubmitAny
-    \/ AnswerAny
-    \/ ReplayAny
-    \/ AdvanceAny
-    \/ Terminal
+    \/ \E run \in RunIds : Submit(run)
+    \/ \E run \in RunIds, step \in StepIdxs : AwaitAsk(run, step)
+    \/ \E run \in RunIds, step \in StepIdxs, slot \in SlotIdxs : StartAnswer(run, step, slot)
+    \/ AppendAskAnswered
+    \/ AppendAskStepSucceeded
+    \/ /\ result # "Ok"
+       /\ UNCHANGED vars
 
-(* Fairness: liveness is only required for accepted work.  Weak fairness on the
- * progress actions forces an awaiting run to answer and an answered run to
- * advance, even though ReplayAnswer and terminal behavior are stuttering
- * no-ops.  No fairness is assumed for SubmitAsk, so the model does not require
- * the environment to submit new asks forever. *)
 Fairness ==
-    /\ WF_vars(AnswerAny)
-    /\ WF_vars(AdvanceAny)
+    /\ WF_vars(AppendAskAnswered)
+    /\ WF_vars(AppendAskStepSucceeded)
 
 Spec == Init /\ [][Next]_vars /\ Fairness
 
-NoDuplicateAskAnswered ==
-    \* Each (run, step, seq) ticket may appear at most once as AskAnswered.
-    \* SlotWritten entries are separate; they are ordered before their matching AskAnswered.
-    \A i \in 1..Len(AnsweredLog) :
-        \A j \in 1..Len(AnsweredLog) :
-            /\ AnsweredLog[i][1] = "aa"
-            /\ AnsweredLog[j][1] = "aa"
-            /\ AnsweredLog[i] = AnsweredLog[j]
-            => i = j
+LiveRunsHaveNonAbsentState ==
+    \A r \in runs : runtimeState[r] # "Absent"
 
-ValidAskState ==
-    \A run \in RunId :
-        AskState[run] \in {"idle", "awaiting", "answered", "failed"}
+TerminalRunsNotLive == terminalRuns \cap runs = {}
 
-(* FIXED: Removed vacuous PendingSubset (redundant with TypeOK).
- * Replaced with SeqNoStrictlyAdvances: SeqNoCounter bounded by MaxSeqNo *)
-SeqNoStrictlyAdvances ==
-    \A run \in RunId :
-        SeqNoCounter[run] <= MaxSeqNo
+PendingTimerOnlyForLiveResumableRun ==
+    \A r \in RunIds :
+        pendingTimerKind[r] # "None" =>
+            /\ r \in runs
+            /\ runtimeState[r] = "Resumable"
 
-(* FIXED: Removed vacuous MonotonicSeqNo (proved x >= 0 which is always true by type bounds).
- * Replaced with SeqNoNextTicket property: when AskState is "awaiting",
- * the pending ticket uses the NEXT sequence number (SeqNoCounter+1).
- * This correctly captures that SubmitAsk checks seq = SeqNoCounter[run] + 1. *)
-SeqNoNextTicket ==
-    \A run \in RunId :
-        (AskState[run] = "awaiting") =>
-            \E step \in StepIdx :
-                <<run, step, SeqNoCounter[run] + 1>> \in PendingAnswers
+AskTimerImpliesAskScheduled ==
+    \A r \in RunIds :
+        pendingTimerKind[r] = "Ask" =>
+            \E i \in 1..Len(journal) :
+                /\ journal[i].kind = "AskScheduled"
+                /\ journal[i].run = r
+                /\ journal[i].step = pendingTimerStep[r]
 
-EventuallyAnswered ==
-    \A run \in RunId :
-        (AskState[run] = "awaiting") ~> (AskState[run] \in {"answered", "failed"})
+NoDuplicateRunSeq ==
+    \A i, j \in 1..Len(journal) :
+        /\ journal[i].run = journal[j].run
+        /\ journal[i].seq = journal[j].seq
+        => i = j
 
-EventuallyAdvanced ==
-    \A run \in RunId :
-        (AskState[run] = "answered") ~> (AskState[run] = "idle")
+PerRunSeqStrictlyIncreasing ==
+    \A i, j \in 1..Len(journal) :
+        /\ i < j
+        /\ journal[i].run = journal[j].run
+        => journal[i].seq < journal[j].seq
 
-AnswerPersistenceOrder ==
-    \A run \in RunId, step \in StepIdx, seq \in SeqNo :
-        \A i \in 1..Len(AnsweredLog) :
-            AnsweredLog[i] = <<"aa", run, step, seq>>
-                => \E j \in 1..i-1 :
-                    AnsweredLog[j] = <<"sw", run, step, seq>>
+AskAnsweredAfterSlotWritten ==
+    \A i \in 1..Len(journal) :
+        journal[i].kind = "AskAnswered" =>
+            \E j \in 1..(i - 1) :
+                /\ journal[j].kind = "SlotWritten"
+                /\ journal[j].run = journal[i].run
+                /\ journal[j].slot = journal[i].slot
 
-THEOREM Spec => []NoDuplicateAskAnswered
-THEOREM Spec => []ValidAskState
-THEOREM Spec => []SeqNoStrictlyAdvances
-THEOREM Spec => []SeqNoNextTicket
+StateConstraint == Len(journal) <= MaxJournalEvents
 
-\* State constraint: prevent unbounded AnsweredLog growth.
-\* With MaxJournalEvents = 50, and 2 entries per lifecycle (sw+aa),
-\* this permits at most 25 full run-cycle completions, which is sufficient
-\* for the bounded model to prove all invariants and temporal properties.
-JournalBounded ==
-    Len(AnsweredLog) <= MaxJournalEvents
+THEOREM Spec => []TypeOK
+THEOREM Spec => []LiveRunsHaveNonAbsentState
+THEOREM Spec => []TerminalRunsNotLive
+THEOREM Spec => []PendingTimerOnlyForLiveResumableRun
+THEOREM Spec => []AskTimerImpliesAskScheduled
+THEOREM Spec => []NoDuplicateRunSeq
+THEOREM Spec => []PerRunSeqStrictlyIncreasing
+THEOREM Spec => []AskAnsweredAfterSlotWritten
 
 ====

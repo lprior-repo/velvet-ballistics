@@ -158,27 +158,21 @@ impl Shard {
         crate::shard::helpers::seed_input_slots(&mut frame, inputs)?;
         self.trace_ring.push(TraceEvent::RunSubmitted { run });
         if persist_header {
-            match self.append_journal_event(RuntimeJournalEvent::RunSubmitted {
+            self.append_admission_header_journal_event(
                 run,
-                workflow: digest,
-            }) {
-                Ok(()) => {}
-                Err(error) => {
-                    self.discard_journal_sequence(run);
-                    return Err(error);
-                }
-            }
+                RuntimeJournalEvent::RunSubmitted {
+                    run,
+                    workflow: digest,
+                },
+            )?;
         }
         if let Some(admission) = admission.as_ref() {
-            match self.append_journal_event(RuntimeJournalEvent::RunAdmission {
-                admission: admission.clone(),
-            }) {
-                Ok(()) => {}
-                Err(error) => {
-                    self.discard_journal_sequence(run);
-                    return Err(error);
-                }
-            }
+            self.append_admission_header_journal_event(
+                run,
+                RuntimeJournalEvent::RunAdmission {
+                    admission: admission.clone(),
+                },
+            )?;
         }
         self.counters.inc_submitted();
         let frame_step_count = frame.step_count();
@@ -202,6 +196,20 @@ impl Shard {
                     self.discard_journal_sequence(run);
                 }
                 Err(error)
+            }
+        }
+    }
+
+    fn append_admission_header_journal_event(
+        &mut self,
+        run: RunId,
+        event: RuntimeJournalEvent,
+    ) -> RuntimeResult<()> {
+        match self.append_journal_event(event) {
+            Ok(()) => Ok(()),
+            Err(error) => {
+                self.discard_journal_sequence(run);
+                Err(RuntimeError::admission_header_persistence_failed(error))
             }
         }
     }

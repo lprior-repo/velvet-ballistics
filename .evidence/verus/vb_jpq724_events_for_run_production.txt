@@ -1,4 +1,4 @@
-[verus] verus verification/verus/vb_jpq724_events_for_run_production.rs
+[verus] verus --crate-type=lib verification/verus/vb_jpq724_events_for_run_production.rs
 note: automatically chose triggers for this expression:
    --> verification/verus/vb_jpq724_events_for_run_production.rs:219:17
     |

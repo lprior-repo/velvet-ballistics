@@ -1,27 +1,36 @@
 # Proof-to-Rust Review
 
-Provenance: proof-reviewer + truth-serum audit of TLA+ branch `wip/tla-spec-audit-fixes` after direct active-context TLC execution.
+Provenance: proof-reviewer pass over repaired TLA+ models and bridge artifacts on `wip/tla-spec-audit-fixes` after direct TLC and targeted Rust behavior-test execution.
 
 STATUS: REJECTED
 
 ## Verdict
 
-The TLA+ artifacts now pass TLC in the bounded configs listed in `proof-to-rust-map.md`, but the proof-to-Rust bridge is not approved. Passing TLC is not implementation proof. Three behavior-affecting models are rejected outright for copy/reality gaps, and three are partial pending exact behavior/refinement evidence.
+The repaired TLA+ models now pass TLC in the bounded configs recorded in `proof-to-rust-map.md`, and selected Rust behavior tests pass. The bridge is still not approved as implementation proof because most rows lack an independent refinement harness or an explicit approved proportional waiver. The ask-answer storage-error repair now has source/test/TLC evidence recorded, but still needs independent proof-reviewer approval.
 
-## Findings
+This review approves the TLC evidence as bounded temporal-design evidence only. It does not approve any TLA+ row as full Rust implementation proof.
 
-{"kind":"finding/v1","id":"TLA-RUST-ASK-ANSWER-GAP","severity":"critical","artifact":"specs/AskAnswerLifecycle.tla","obligation":"RRO-TLA-ASK-ANSWER-001","summary":"TLA variables AskState/PendingAnswers/SeqNoCounter are not implemented as Rust state.","evidence":"Rust handle_ask_answer writes SlotWritten then AskAnswered at crates/vb_runtime/src/shard/lifecycle/chunk_002.rs:30-46, but no production SeqNoCounter or PendingAnswers was found in the Rust source scan.","required_fix":"Model Rust pending_timers/RuntimeState/journal sequence semantics or add the missing production state with behavior tests."}
-{"kind":"finding/v1","id":"TLA-RUST-RETRY-JOURNAL-KEY-MISMATCH","severity":"critical","artifact":"specs/RetryJournal.tla","obligation":"RRO-TLA-RETRY-JOURNAL-001","summary":"TLA duplicate idempotency is keyed by semantic run/step; Rust storage duplicate identity is run/seq.","evidence":"crates/vb_storage/src/journal/internal.rs:32 uses run_event_key(event.run_id(), event.seq()); duplicate branch at lines 33-38 returns DuplicateEvent by run/seq.","required_fix":"Align the TLA journal duplicate model to Rust run/seq keys or intentionally change Rust semantics."}
-{"kind":"finding/v1","id":"TLA-RUST-ADMISSION-ERROR-TAXONOMY","severity":"high","artifact":"specs/admission_header_before_ack.tla","obligation":"RRO-TLA-ADMISSION-001","summary":"TLA HeaderPersistenceFailed code does not match production error construction.","evidence":"RuntimeError::AdmissionHeaderPersistenceFailed exists at crates/vb_runtime/src/error/mod.rs:43-47, but JournalError converts to RuntimeError::StorageJournalAppend at crates/vb_runtime/src/error/conversions.rs:13-18; admission append failures return Err(error) at crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:166-179.","required_fix":"Map admission-header append failures to AdmissionHeaderPersistenceFailed or change TLA ErrorCodes and tests."}
-{"kind":"finding/v1","id":"TLA-RUST-RESUME-PENDING-GAP","severity":"high","artifact":"specs/ResumeStateMachine.tla","obligation":"RRO-TLA-RESUME-001","summary":"TLA pending set has no Rust counterpart, and drive failure after Resumed append is not modeled.","evidence":"Rust RuntimeState exists at crates/vb_runtime/src/shard/types.rs:722-733; handle_resume appends Resumed before drive_run at crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:299-301 and rolls back state on drive failure at lines 346-358.","required_fix":"Update the TLA model to include post-resume drive failure/rollback or change Rust behavior/tests."}
-{"kind":"finding/v1","id":"TLA-RUST-CHOOSE-SCOPE-MIX","severity":"medium","artifact":"verification/tla/ChooseSlot.tla","obligation":"RRO-TLA-CHOOSE-001","summary":"ChooseSlot model mixes compile-time lowering constraints and runtime branch-selection semantics.","evidence":"Fanout/empty validation is in lower_canonical_choose at crates/vb_compile/src/mod_compile_lowering/part_02.rs:225-240; first-true branch selection is in replay_choose_slot at crates/vb_core/src/replay/choose.rs:12-58.","required_fix":"Split the TLA model or create a bridge that maps each action to the correct Rust layer."}
+## Current Findings
+
+{"kind":"finding/v1","id":"TLA-BRIDGE-REFINEMENT-HARNESS-GAP","severity":"high","artifact":"verification/tla/rust-refinement-obligations.jsonl","obligation":"ALL-PARTIAL-RRO","summary":"Most bridge rows cite TLC plus behavior tests but no separate refinement harness or approved waiver.","evidence":"RRO rows for ChooseSlotLowering, ChooseSlotReplay, AskAnswerLifecycle, RetryJournal, ResumeStateMachine, and admission_header_before_ack have empty refinement_harness_refs. RetryFSM cites a Kani harness but its binding remains marked partial.","required_fix":"Add implementation-bound refinement harnesses or explicit proportional waivers for each behavior-affecting row, then rerun proof-reviewer."}
+
+## Resolved Prior Findings
+
+- `TLA-RUST-CHOOSE-SCOPE-MIX`: resolved at the model level by splitting `ChooseSlotLowering.tla` and `ChooseSlotReplay.tla`; bridge still partial pending refinement closure.
+- `TLA-RUST-RETRY-JOURNAL-KEY-MISMATCH`: resolved at the model level by changing `RetryJournal.tla` to `(run, seq)` storage identity; bridge still partial pending refinement closure.
+- `TLA-RUST-ADMISSION-ERROR-TAXONOMY`: repaired in production path via `append_admission_header_journal_event` mapping append failure to `AdmissionHeaderPersistenceFailed`; targeted admission tests pass.
+- `TLA-RUST-RESUME-PENDING-GAP`: resolved at the model level by removing the stale pending-set abstraction and modeling `Resumed` append plus rollback.
+- `TLA-RESUME-DRIVE-FAILURE-EVIDENCE-GAP`: exact behavior test command now recorded: `/home/lewis/.cargo/bin/cargo test -p vb_runtime failed_resumed_append_restores_resumable_for_retry -- --nocapture`.
+- `TLA-ASK-ERROR-SEMANTICS-GAP`: implementation repair recorded in `crates/vb_runtime/src/shard/transitions.rs:123-162::await_timer`, which appends `AskScheduled`/`WaitScheduled` before inserting `pending_timers`; targeted append-failure test `runtime_ask_timer_append_failure_does_not_register_pending_timer` passes, and `AskAnswerLifecycle.tla` now proves unconditional `AskTimerImpliesAskScheduled` under TLC. This is not independent proof-reviewer approval.
 
 ## Approved Subset
 
-- TLC execution itself is approved as bounded temporal evidence for the six repaired configs.
-- `RetryFSM.tla` liveness is now explicitly fairness-bound and passes TLC with `RunId={1,2}`, `StepId={1,2}`, `MaxAttemptsValue=2`.
+- TLC bounded checks listed in `proof-to-rust-map.md` are accepted as real TLC evidence with exit 0.
+- Targeted Rust behavior tests listed in `proof-to-rust-map.md` are accepted as behavior-test evidence with exit 0.
+- The bridge artifacts are materially improved and no longer have the original copy/reality gaps for ChooseSlot, RetryJournal, admission error taxonomy, or Resume pending-state modeling.
 
 ## Not Approved
 
-- No TLA+ claim here is approved as Rust implementation proof.
-- Kani/Verus/Loom evidence from earlier audits remains separately rejected unless rerun and reviewed with production-bound harnesses.
+- No TLA+ claim is approved as full Rust implementation proof.
+- The ask-answer storage-error repair lacks independent proof-reviewer approval and refinement-harness/waiver closure.
+- Rows with empty `refinement_harness_refs` are not closed unless a future reviewer approves an explicit proportional waiver.

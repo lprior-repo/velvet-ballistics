@@ -20,7 +20,12 @@ fn serialize_symbolic_code(code: &SymbolicCode) -> String {
 fn deserialize_symbolic_code(json_str: &str) -> Result<SymbolicCode, String> {
     // Strip optional surrounding quotes
     let inner = json_str.trim_matches('"');
-    SymbolicCode::from_static(inner).ok_or_else(|| format!("Unknown symbolic code: {}", inner))
+    for entry in CODE_REGISTRY {
+        if entry.symbolic == inner {
+            return Ok(SymbolicCode::from_static_infallible(entry.symbolic));
+        }
+    }
+    Err(format!("Unknown symbolic code: {}", inner))
 }
 
 /// Round-trip: serialize then deserialize.
@@ -41,7 +46,7 @@ mod harnesses {
     fn kani_serde_roundtrip() {
         for i in 0..CODE_REGISTRY.len() {
             let entry = &CODE_REGISTRY[i];
-            let code = SymbolicCode(entry.symbolic);
+            let code = SymbolicCode::from_static_infallible(entry.symbolic);
 
             // Serialize
             let serialized = serialize_symbolic_code(&code);
@@ -58,8 +63,8 @@ mod harnesses {
                 "Deserialization must succeed for registered codes"
             );
             assert_eq!(
-                deserialized.unwrap().as_str(),
-                entry.symbolic,
+                deserialized.map(|code| code.as_str()),
+                Ok(entry.symbolic),
                 "Deserialized SymbolicCode must match original"
             );
 
@@ -67,8 +72,8 @@ mod harnesses {
             let rt = roundtrip(&code);
             assert!(rt.is_ok(), "Round-trip must succeed");
             assert_eq!(
-                rt.unwrap().as_str(),
-                code.as_str(),
+                rt.map(|code| code.as_str()),
+                Ok(code.as_str()),
                 "Round-trip identity must hold"
             );
         }

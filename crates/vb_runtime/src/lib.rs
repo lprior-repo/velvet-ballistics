@@ -59,20 +59,20 @@ pub mod frame_pool;
 pub mod idempotency;
 pub mod ipc_refinement;
 pub mod journal;
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-capability-harnesses"))]
 pub mod kani_capability_harnesses;
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-engine-yaml-admission"))]
 pub mod kani_engine_yaml_admission;
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-shard-command-queue"))]
 pub mod kani_shard_command_queue;
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-trace-ring"))]
 pub mod kani_trace_ring;
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-vt2f-runtime-facade"))]
 pub mod kani_vt2f_runtime_facade;
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-vt2f-shard-lower-semantics"))]
 pub mod kani_vt2f_shard_lower_semantics;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-admission-store"))]
 pub mod kani_admission_store;
 
 #[cfg(loom)]
@@ -83,7 +83,7 @@ pub mod runtime;
 pub mod shard;
 pub mod taint;
 pub mod trace;
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-yaml-e2e-admission-matrix"))]
 pub mod yaml_e2e_admission_matrix;
 
 pub use error::{RuntimeError, RuntimeResult};

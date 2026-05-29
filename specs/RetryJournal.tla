@@ -1,141 +1,162 @@
 (* RetryJournal.tla
  *
- * Journal idempotency model for ActionFailed events.
- * Safety: appending the same ActionFailed event twice does not change
- * observable state beyond the duplicate event in the journal.
- * Safety: ActionFailed events appear in order in the journal.
+ * Rust-aligned storage idempotency model for ActionFailed events.
+ *
+ * Rust refinement target:
+ * - vb_storage::journal::internal::append_unpersisted keys events by (run, seq)
+ *   and rejects any existing key.
+ * - append_queued_unpersisted accepts an exact duplicate as an idempotent no-op,
+ *   but rejects same-key/different-payload writes.
  *)
 
 ---- MODULE RetryJournal ----
 
 EXTENDS Integers, Sequences, TLC, FiniteSets
 
-CONSTANT RunId, StepId, MaxJournalAttempts
+CONSTANT RunId, SeqId, StepId, AttemptId
 
 VARIABLES
-    journal,
-    runs,
-    actionAttempts,
-    framePC,
-    stepState,
-    duplicateCount
+    events,
+    eventKeys,
+    lastResult,
+    attemptedEvent,
+    insertedCount,
+    acceptedDuplicateCount,
+    rejectedDuplicateCount,
+    appendHistory
 
 Runs == RunId
+Seqs == SeqId
 Steps == StepId
-MaxAttempts == MaxJournalAttempts
+Attempts == AttemptId
 
-(* Init action *)
+RunSeqKeys == Runs \X Seqs
+ResultKinds == {"None", "Inserted", "DuplicateExactAccepted", "DuplicateRejected"}
+
+NullEvent == [type |-> "Null",
+              run |-> CHOOSE r \in Runs : TRUE,
+              seq |-> CHOOSE s \in Seqs : TRUE,
+              step |-> CHOOSE st \in Steps : TRUE,
+              attempt |-> CHOOSE a \in Attempts : TRUE]
+
+ActionFailedEvents ==
+    { [type |-> "ActionFailed", run |-> r, seq |-> s, step |-> st, attempt |-> a] :
+        r \in Runs, s \in Seqs, st \in Steps, a \in Attempts }
+
+EventDomain == ActionFailedEvents \cup {NullEvent}
+
+EventKey(e) == <<e.run, e.seq>>
+
+vars == <<events, eventKeys, lastResult, attemptedEvent,
+          insertedCount, acceptedDuplicateCount, rejectedDuplicateCount, appendHistory>>
+
 Init ==
-    /\ journal = <<>>
-    /\ runs = {}
-    /\ actionAttempts = [run \in Runs |-> [step \in Steps |-> 0]]
-    /\ framePC = [run \in Runs |-> 1]
-    /\ stepState = [run \in Runs |-> [step \in Steps |-> "Pending"]]
-    /\ duplicateCount = 0
+    /\ eventKeys = {}
+    /\ events = [k \in RunSeqKeys |-> NullEvent]
+    /\ lastResult = "None"
+    /\ attemptedEvent = NullEvent
+    /\ insertedCount = 0
+    /\ acceptedDuplicateCount = 0
+    /\ rejectedDuplicateCount = 0
+    /\ appendHistory = <<>>
 
-(* Add a run *)
-AddRun(run) ==
-    /\ run \notin runs
-    /\ runs' = runs \cup {run}
-    /\ actionAttempts' = [actionAttempts EXCEPT ![run] = [step \in Steps |-> 0]]
-    /\ stepState' = [stepState EXCEPT ![run] = [step \in Steps |-> "Pending"]]
-    /\ framePC' = [framePC EXCEPT ![run] = 1]
-    /\ UNCHANGED <<journal, duplicateCount>>
+AppendUnpersisted(e) ==
+    LET k == EventKey(e) IN
+    /\ attemptedEvent' = e
+    /\ IF k \notin eventKeys THEN
+        /\ eventKeys' = eventKeys \cup {k}
+        /\ events' = [events EXCEPT ![k] = e]
+        /\ lastResult' = "Inserted"
+        /\ insertedCount' = insertedCount + 1
+        /\ appendHistory' = Append(appendHistory, e)
+        /\ UNCHANGED <<acceptedDuplicateCount, rejectedDuplicateCount>>
+       ELSE
+        /\ eventKeys' = eventKeys
+        /\ events' = events
+        /\ lastResult' = "DuplicateRejected"
+        /\ rejectedDuplicateCount' = rejectedDuplicateCount + 1
+        /\ UNCHANGED <<insertedCount, acceptedDuplicateCount, appendHistory>>
 
-(* Start step *)
-StartStep(run, step) ==
-    /\ run \in runs
-    /\ stepState[run][step] = "Pending"
-    /\ stepState' = [stepState EXCEPT ![run][step] = "Running"]
-    /\ UNCHANGED <<runs, actionAttempts, framePC, journal, duplicateCount>>
+AppendQueuedUnpersisted(e) ==
+    LET k == EventKey(e) IN
+    /\ attemptedEvent' = e
+    /\ IF k \notin eventKeys THEN
+        /\ eventKeys' = eventKeys \cup {k}
+        /\ events' = [events EXCEPT ![k] = e]
+        /\ lastResult' = "Inserted"
+        /\ insertedCount' = insertedCount + 1
+        /\ appendHistory' = Append(appendHistory, e)
+        /\ UNCHANGED <<acceptedDuplicateCount, rejectedDuplicateCount>>
+       ELSE IF events[k] = e THEN
+        /\ eventKeys' = eventKeys
+        /\ events' = events
+        /\ lastResult' = "DuplicateExactAccepted"
+        /\ acceptedDuplicateCount' = acceptedDuplicateCount + 1
+        /\ UNCHANGED <<insertedCount, rejectedDuplicateCount, appendHistory>>
+       ELSE
+        /\ eventKeys' = eventKeys
+        /\ events' = events
+        /\ lastResult' = "DuplicateRejected"
+        /\ rejectedDuplicateCount' = rejectedDuplicateCount + 1
+        /\ UNCHANGED <<insertedCount, acceptedDuplicateCount, appendHistory>>
 
-(* Append ActionFailed event
- * attempt is derived from actionAttempts state, not existentially quantified
- *)
-AppendActionFailed(run, step) ==
-    /\ run \in runs
-    /\ stepState[run][step] = "Running"
-    /\ actionAttempts[run][step] < MaxAttempts
-    /\ LET attempt == actionAttempts[run][step] IN
-        /\ journal' = Append(journal, [type |-> "ActionFailed", run |-> run, step |-> step, attempt |-> attempt])
-        /\ actionAttempts' = [actionAttempts EXCEPT ![run][step] = actionAttempts[run][step] + 1]
-        /\ stepState' = [stepState EXCEPT ![run][step] = "Failed"]
-        /\ framePC' = framePC
-        /\ UNCHANGED <<runs, duplicateCount>>
-
-(* Append duplicate ActionFailed event (idempotency test)
- * Requires the event already exists in journal, and leaves all state unchanged except journal grows
- * attempt is derived from the first matching journal entry
- * duplicateCount bounds the number of duplicate appends to prevent state explosion
- *)
-AppendDuplicateActionFailed(run, step) ==
-    /\ duplicateCount < 2
-    /\ \E idx \in 1..Len(journal) :
-        LET existingAttempt == journal[idx].attempt IN
-            journal[idx] = [type |-> "ActionFailed", run |-> run, step |-> step, attempt |-> existingAttempt]
-    /\ \E idx \in 1..Len(journal) :
-        LET existingAttempt == journal[idx].attempt IN
-            journal' = Append(journal, [type |-> "ActionFailed", run |-> run, step |-> step, attempt |-> existingAttempt])
-    /\ actionAttempts' = actionAttempts
-    /\ framePC' = framePC
-    /\ stepState' = stepState
-    /\ duplicateCount' = duplicateCount + 1
-    /\ UNCHANGED runs
-
-(* Stale completion rejection
- * stale and current attempt values are derived from state
- * staleAttempt is always less than currentAttempt (previous vs current)
- *)
-StaleCompletionRejected(run, step) ==
-    /\ stepState[run][step] = "Running"
-    /\ actionAttempts[run][step] > 0
-    /\ LET currentAttempt == actionAttempts[run][step] IN
-        LET staleAttempt == currentAttempt - 1 IN
-            /\ journal' = journal
-            /\ actionAttempts' = actionAttempts
-            /\ framePC' = framePC
-            /\ stepState' = stepState
-            /\ UNCHANGED <<runs, duplicateCount>>
-
-(* JournalIdempotency: actionAttempts never exceeds MaxAttempts.
- * Duplicate appends don't change observable state (actionAttempts, stepState, framePC).
- * The journal can grow with duplicates, but observable state remains unchanged.
- *)
-JournalIdempotency ==
-    \A run \in Runs, step \in Steps :
-        actionAttempts[run][step] <= MaxAttempts
-
-(* ActionFailedEventOrder: ActionFailed events for the same (run, step) appear
- * in the journal in non-decreasing order of attempt number.
- * This is ensured by the model since we only append and check actionAttempts before appending.
- *)
-ActionFailedEventOrder ==
-    \A i \in 1..Len(journal), j \in 1..Len(journal) :
-        i < j /\ journal[i].type = "ActionFailed" /\ journal[j].type = "ActionFailed"
-            => (journal[i].run # journal[j].run \/ journal[i].step # journal[j].step
-                \/ journal[i].attempt <= journal[j].attempt)
-
-(* Next relation
- * Removed existential quantifiers over attempt values to prevent state explosion.
- * All attempt values are now derived from state (actionAttempts, journal).
- *)
 Next ==
-    \E run \in Runs, step \in Steps :
-        \/ AddRun(run)
-        \/ StartStep(run, step)
-        \/ AppendActionFailed(run, step)
-        \/ AppendDuplicateActionFailed(run, step)
-        \/ StaleCompletionRejected(run, step)
+    \E e \in ActionFailedEvents :
+        \/ AppendUnpersisted(e)
+        \/ AppendQueuedUnpersisted(e)
 
-(* Spec *)
-Spec == Init /\ [][Next]_<<journal, runs, actionAttempts, framePC, stepState, duplicateCount>>
+Spec == Init /\ [][Next]_vars
 
-(* State constraint: bound journal length and duplicate count for model checking *)
+TypeOK ==
+    /\ eventKeys \subseteq RunSeqKeys
+    /\ events \in [RunSeqKeys -> EventDomain]
+    /\ lastResult \in ResultKinds
+    /\ attemptedEvent \in EventDomain
+    /\ insertedCount \in Nat
+    /\ acceptedDuplicateCount \in Nat
+    /\ rejectedDuplicateCount \in Nat
+    /\ appendHistory \in Seq(ActionFailedEvents)
+
+StoredEventsHaveTheirOwnKey ==
+    \A k \in eventKeys : EventKey(events[k]) = k
+
+AbsentKeysAreNull ==
+    \A k \in RunSeqKeys \ eventKeys : events[k] = NullEvent
+
+InsertedCountEqualsStoredKeyCount ==
+    insertedCount = Cardinality(eventKeys)
+
+AcceptedQueuedDuplicateDoesNotInsert ==
+    lastResult = "DuplicateExactAccepted" => insertedCount = Cardinality(eventKeys)
+
+HistoryMatchesStoredKeys ==
+    /\ Len(appendHistory) = Cardinality(eventKeys)
+    /\ \A i, j \in 1..Len(appendHistory) :
+        i # j => EventKey(appendHistory[i]) # EventKey(appendHistory[j])
+    /\ \A i \in 1..Len(appendHistory) :
+        events[EventKey(appendHistory[i])] = appendHistory[i]
+
+SameStepAttemptDifferentSeqCanCoexist ==
+    \A i, j \in 1..Len(appendHistory) :
+        /\ appendHistory[i].run = appendHistory[j].run
+        /\ appendHistory[i].step = appendHistory[j].step
+        /\ appendHistory[i].attempt = appendHistory[j].attempt
+        /\ appendHistory[i].seq # appendHistory[j].seq
+        => /\ EventKey(appendHistory[i]) \in eventKeys
+           /\ EventKey(appendHistory[j]) \in eventKeys
+           /\ events[EventKey(appendHistory[i])] = appendHistory[i]
+           /\ events[EventKey(appendHistory[j])] = appendHistory[j]
+
 StateConstraint ==
-    /\ Len(journal) <= 10
-    /\ duplicateCount <= 2
+    /\ acceptedDuplicateCount <= 1
+    /\ rejectedDuplicateCount <= 1
 
-THEOREM Spec => []JournalIdempotency
-THEOREM Spec => []ActionFailedEventOrder
+THEOREM Spec => []TypeOK
+THEOREM Spec => []StoredEventsHaveTheirOwnKey
+THEOREM Spec => []AbsentKeysAreNull
+THEOREM Spec => []InsertedCountEqualsStoredKeyCount
+THEOREM Spec => []AcceptedQueuedDuplicateDoesNotInsert
+THEOREM Spec => []HistoryMatchesStoredKeys
+THEOREM Spec => []SameStepAttemptDifferentSeqCanCoexist
 
 ====

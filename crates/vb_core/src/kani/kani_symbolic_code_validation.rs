@@ -23,6 +23,15 @@ impl DiagnosticCode {
     pub const fn code(self) -> u16 {
         self.0
     }
+
+    /// Reverse lookup from numeric to a registered symbolic code.
+    #[must_use]
+    pub fn symbolic_code(self) -> Option<SymbolicCode> {
+        match numeric_to_symbolic(self.code()) {
+            Some(symbolic) => SymbolicCode::from_registered_static(symbolic),
+            None => None,
+        }
+    }
 }
 
 /// Stable symbolic diagnostic code.
@@ -34,7 +43,25 @@ impl SymbolicCode {
     /// Smart constructor. Accepts only registered symbolic strings.
     #[must_use]
     pub const fn from_static(s: &'static str) -> Option<Self> {
-        symbolic_to_numeric(s).map(|_| SymbolicCode(s))
+        match symbolic_to_numeric(s) {
+            Some(_) => Some(SymbolicCode(s)),
+            None => None,
+        }
+    }
+
+    /// Constructor for static strings already sourced from CODE_REGISTRY.
+    #[must_use]
+    pub const fn from_registered_static(s: &'static str) -> Option<Self> {
+        match symbolic_to_numeric(s) {
+            Some(_) => Some(SymbolicCode(s)),
+            None => None,
+        }
+    }
+
+    /// Infallible constructor for registry-derived static strings.
+    #[must_use]
+    pub const fn from_static_infallible(s: &'static str) -> Self {
+        SymbolicCode(s)
     }
 
     #[must_use]
@@ -851,6 +878,42 @@ pub const fn symbolic_to_numeric(symbolic: &str) -> Option<u16> {
     None
 }
 
+/// Lookup: numeric code → symbolic name. Linear scan.
+pub const fn numeric_to_symbolic(numeric: u16) -> Option<&'static str> {
+    let mut i = 0;
+    while i < CODE_REGISTRY.len() {
+        if CODE_REGISTRY[i].numeric == numeric {
+            return Some(CODE_REGISTRY[i].symbolic);
+        }
+        i += 1;
+    }
+    None
+}
+
+/// Mirror of the production supported-code predicate.
+#[must_use]
+pub const fn is_supported_code(code: u16) -> bool {
+    matches!(
+        code,
+        0x0101..=0x010B
+            | 0x0201..=0x0204
+            | 0x0301..=0x0309
+            | 0x0401..=0x040C
+            | 0x0501..=0x0513
+            | 0x0601..=0x0603
+            | 0x1001..=0x1002
+            | 0x1011..=0x1013
+            | 0x1101..=0x1104
+            | 0x1201..=0x1202
+            | 0x1301..=0x130D
+            | 0x1311..=0x1314
+            | 0x1401..=0x1407
+            | 0x2001..=0x200F
+            | 0x3001..=0x300E
+            | 0x4001..=0x401C
+    )
+}
+
 /// Const string equality (for const fn context).
 const fn string_eq(a: &str, b: &str) -> bool {
     let a_bytes = a.as_bytes();
@@ -866,11 +929,6 @@ const fn string_eq(a: &str, b: &str) -> bool {
         i += 1;
     }
     true
-}
-
-/// Helper: check if a string is in the registry.
-const fn is_registered(s: &str) -> bool {
-    symbolic_to_numeric(s).is_some()
 }
 
 #[cfg(kani)]

@@ -1,2 +1,2 @@
-[verus] verus verification/verus/step_budget.rs
+[verus] verus --crate-type=lib verification/verus/step_budget.rs
 verification results:: 6 verified, 0 errors

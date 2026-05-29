@@ -526,10 +526,8 @@ fn handle_submit_journal_before_state_insert_noorphan_journal_record() {
 
 /// BUG-TEST-04: Journal events must be durably written before drive_run executes.
 ///
-/// If journal append fails during handle_submit, the error should propagate
-/// and drive_run should NOT be called. Currently, journal appends for
-/// RunSubmitted and RunAdmission use `?` which does propagate errors correctly.
-/// But we should verify this contract is maintained.
+/// If admission-header journal append fails during handle_submit, the mapped
+/// admission-header error should propagate and drive_run should NOT be called.
 ///
 /// This test uses enqueue + tick() because handle_submit is pub(crate).
 /// tick() internally calls handle_submit and propagates its error.
@@ -551,14 +549,18 @@ fn handle_submit_propagates_journal_failure_before_drive_run() {
         })
         .expect("enqueue must succeed");
 
-    // Journal append for RunSubmitted should fail, propagating error.
+    // Journal append for RunSubmitted should fail, propagating admission-header error.
     // tick() calls handle_submit internally and should propagate the error.
     let tick_result = shard.tick();
 
     assert!(
-        matches!(tick_result, Err(RuntimeError::StorageJournalAppend { .. })),
+        matches!(
+            tick_result,
+            Err(RuntimeError::AdmissionHeaderPersistenceFailed { ref source })
+                if matches!(source.as_ref(), vb_storage::JournalError::WriteLockPoisoned)
+        ),
         "BUG: tick() returned {:?} but journal append failed. \
-         Expected Err(RuntimeError::StorageJournalAppend). \
+         Expected Err(RuntimeError::AdmissionHeaderPersistenceFailed). \
          Journal failure must propagate before drive_run is called.",
         tick_result
     );

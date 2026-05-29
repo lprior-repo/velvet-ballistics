@@ -63,15 +63,17 @@ for target in "${targets[@]}"; do
   fi
 
   evidence_file="$EVIDENCE_DIR/$(basename "${target%.rs}").txt"
-  printf '[verus] verus %s\n' "$target" | tee "$evidence_file"
+  printf '[verus] verus --crate-type=lib %s\n' "$target" | tee "$evidence_file"
   set +e
-  verus "$target" 2>&1 | tee -a "$evidence_file"
+  verus --crate-type=lib "$target" 2>&1 | tee -a "$evidence_file"
   status=${PIPESTATUS[0]}
   set -e
   generated_name="$(basename "${target%.rs}")"
-  if ! git ls-files --error-unmatch "$generated_name" >/dev/null 2>&1; then
-    rm -f -- "$generated_name"
-  fi
+  for generated_path in "$generated_name" "lib${generated_name}.rlib"; do
+    if ! git ls-files --error-unmatch "$generated_path" >/dev/null 2>&1; then
+      rm -f -- "$generated_path"
+    fi
+  done
   if [ "$status" -ne 0 ]; then
     printf 'Verus target failed: %s (exit %s)\n' "$target" "$status" >&2
     exit "$status"

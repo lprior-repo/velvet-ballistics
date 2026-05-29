@@ -134,6 +134,30 @@ path = "tests/vb_test_compile_error_quality_behavior.rs"
 name = "vb_test_validate_diagnostic_behavior"
 path = "tests/vb_test_validate_diagnostic_behavior.rs"
 
+[[test]]
+name = "restate_adapter_contamination_guard"
+path = "tests/restate_adapter_contamination_guard.rs"
+
+[[test]]
+name = "restate_completion_watermark_tests"
+path = "tests/restate_completion_watermark_tests.rs"
+
+[[test]]
+name = "restate_retry_policy_math_tests"
+path = "tests/restate_retry_policy_math_tests.rs"
+
+[[test]]
+name = "restate_typed_partitioned_id_tests"
+path = "tests/restate_typed_partitioned_id_tests.rs"
+
+[[test]]
+name = "restate_decode_error_taxonomy_tests"
+path = "tests/restate_decode_error_taxonomy_tests.rs"
+
+[[test]]
+name = "restate_postcard_newtype_compat_tests"
+path = "tests/restate_postcard_newtype_compat_tests.rs"
+
 [[bench]]
 name = "velvet_ballistics"
 harness = false

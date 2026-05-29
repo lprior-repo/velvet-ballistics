@@ -6,30 +6,7 @@
 //!
 //! Bound: ~90 registry entries (unwind=100), ~1000 u16 samples for None case
 
-use super::kani_symbolic_code_validation::{CODE_REGISTRY, DiagnosticCode, SymbolicCode};
-
-/// Reverse lookup: numeric → symbolic name.
-const fn numeric_to_symbolic(numeric: u16) -> Option<&'static str> {
-    let mut i = 0;
-    while i < CODE_REGISTRY.len() {
-        if CODE_REGISTRY[i].numeric == numeric {
-            return Some(CODE_REGISTRY[i].symbolic);
-        }
-        i += 1;
-    }
-    None
-}
-
-impl DiagnosticCode {
-    /// Reverse lookup from numeric to symbolic code.
-    #[must_use]
-    pub fn symbolic_code(self) -> Option<SymbolicCode> {
-        match numeric_to_symbolic(self.code()) {
-            Some(s) => Some(SymbolicCode(s)),
-            None => None,
-        }
-    }
-}
+use super::kani_symbolic_code_validation::{CODE_REGISTRY, DiagnosticCode, numeric_to_symbolic};
 
 /// Build a set of all registered numeric codes for fast membership testing.
 fn is_registered_numeric(code: u16) -> bool {

@@ -4845,7 +4845,44 @@ Loom is not used everywhere. Only where shared mutable state exists.
 
 **Prusti** is research/optional only in `verification/prusti/`. Not in the critical path until proven stable.
 
-### 77.9 Mutation Testing as AI Correctness Check
+### 77.9 Global Verifier Tooling Stabilization
+
+Formal verification work must not be parallelized across many beads until the shared verifier substrate is stable. If multiple beads fail on the same Kani, Flux, Verus, TLA+, proptest, or fuzz tooling issue, the global tooling defect is fixed once before more bead agents are launched.
+
+The approved execution pattern is five beads per wave, with one isolated workspace per bead. Do not run fifteen proof agents against one shared proof/tooling state.
+
+Required verifier tooling baseline before proof-heavy bead waves:
+
+| Tooling lane | Required baseline |
+|--------------|-------------------|
+| Kani | All bulky or stale `#[cfg(kani)]` harness groups are isolated behind package features. Package-specific Kani listing uses `bash scripts/kani-list.sh <package> [...]`, never root `cargo kani list --format json` as proof evidence. Unrelated Kani modules must not compile for a bead lane unless their feature is explicitly enabled. |
+| Flux | Commands use `bash scripts/flux-check-package.sh <package>` or `cargo flux -p <package> --message-format human`. Unsupported target flags such as `--lib`, `--test`, `--tests`, `--benches`, and `--all-targets` are invalid. A package smoke pass is not proof unless the named refinement artifact is wired into the checked crate or checked by an explicit approved single-file Flux command. |
+| Verus | Verus evidence uses `bash scripts/verify-verus.sh` for registry-driven obligations or `verus --crate-type=lib <file>` for one-off checks. Standalone algebra models are not production proof unless the proof artifact is explicitly bound to implementation behavior through source references, `requires`/`ensures`, bridge mapping, and raw verifier success logs. |
+| TLA+ | TLA+ commands must use an available `tlc` wrapper or an absolute path to the installed `tla2tools.jar`. Commands that assume repository-local `tools/tla2tools.jar` or missing `verification/tla+` directories are invalid until those paths exist. Specs must model bounded hardware limits and error transitions, not unbounded `Nat` success paths. |
+| proptest/fuzz | Proptest commands must execute real property tests and report nonzero applicable tests. Fuzz commands must target names present in `cargo fuzz list`, use the fuzz workspace conventions, and select a compatible target triple when sanitizer/libc constraints require it. Orphan fuzz files are not valid targets until registered in `fuzz/Cargo.toml`. |
+
+Wave execution contract:
+
+1. Create an isolated parent directory for proof waves, for example `/home/lewis/isolated/velvet-ballistics-proof-waves/`.
+2. Create one subdirectory per wave and one isolated bead workspace per bead.
+3. Run at most five bead agents per wave.
+4. Keep one controller lane responsible for global tooling fixes and validator interpretation.
+5. Do not start the next wave until repeated global blockers from the current wave are fixed or explicitly waived by a bead-linked decision.
+6. Archive stale rejected review artifacts before rerunning earlier states.
+7. Recompute invocation-ledger hashes only after real artifact repairs; never use ledger repair as proof evidence.
+8. Promote a bead only when validator output, proof-review status, and raw command evidence agree.
+
+Recommended proof waves for the current blocked verifier campaign:
+
+| Wave | Beads | Purpose |
+|------|-------|---------|
+| 1 | `vb-4c1k`, `vb-kd9p`, `vb-v0bm`, `vb-eepg`, `vb-u8gi` | Exercise Kani, Flux, Verus, fuzz, and proptest tooling without starting from the heaviest missing-TLA IPC cluster. |
+| 2 | `vb-8mdp.12`, `vb-8mdp.7`, `vb-8mdp.8`, `vb-klz0`, `vb-t6hx` | Address IPC/TLA/Kani-heavy proof closures after baseline tooling is normalized. |
+| 3 | `vb-7m21`, `vb-om21`, `vb-aoah`, `vb-wfi4`, `vb-dybj` | Close remaining proof-review rejects and tooling-dependent beads. |
+
+If all five agents in a wave report the same tooling failure, stop bead-local repair and fix the global verifier substrate first. More agents are not a substitute for a stable proof harness.
+
+### 77.10 Mutation Testing as AI Correctness Check
 
 AI writes tests that pass but often do not pin behavior. Mutation testing catches this.
 
@@ -4864,7 +4901,7 @@ survived:
 
 This tells the agent exactly what its tests failed to prove.
 
-### 77.10 Differential Testing
+### 77.11 Differential Testing
 
 The system has many pairs that must produce identical results. Differential tests assert equivalence.
 
@@ -4882,7 +4919,7 @@ Command: `cargo xtask diff-test --suite <name>`
 
 This is the most important correctness pattern for AI-generated code.
 
-### 77.11 Crash/Recovery Lab
+### 77.12 Crash/Recovery Lab
 
 Deterministic fault-injection harness. Every crash point asserts:
 
@@ -4899,7 +4936,7 @@ cargo xtask crash-lab --workflow issue_triage --all-crash-points
 
 AI must add crash points when it modifies journal, action, or replay behavior.
 
-### 77.12 Performance Regression Gates
+### 77.13 Performance Regression Gates
 
 AI will make "clean" Rust slower. Performance gates are first-class.
 
@@ -4921,7 +4958,7 @@ benchmarks:
 
 If AI changes code and `transition_set` regresses by 12%, the harness rejects it. Speed claims are impossible without stored benchmark evidence.
 
-### 77.13 Allocation Tracing Gates
+### 77.14 Allocation Tracing Gates
 
 For hot paths, performance is not just time — it is allocations. Tests run hot transitions with an allocation counter.
 
@@ -4933,7 +4970,7 @@ Rules:
 
 Command: `cargo xtask alloc-check --suite hotpath`
 
-### 77.14 Public API Diff Gate
+### 77.15 Public API Diff Gate
 
 `cargo xtask api-diff` uses `cargo-public-api` to detect accidental public contract changes.
 
@@ -4949,7 +4986,7 @@ risk: "stable error model changed"
 
 AI must not casually alter stable errors, action ABI structs, IPC commands, certificate schemas, or public function signatures.
 
-### 77.15 Supply-Chain Policy
+### 77.16 Supply-Chain Policy
 
 AI may not add a dependency without a dependency-scope bead that includes:
 
@@ -4963,7 +5000,7 @@ AI may not add a dependency without a dependency-scope bead that includes:
 
 This stops "AI added 14 crates because convenient." Existing tools `cargo audit`, `cargo deny`, `cargo vet`, `cargo geiger`, and `cargo machete` enforce this.
 
-### 77.16 Structured Patch Review
+### 77.17 Structured Patch Review
 
 Every patch gets a structured review report:
 
@@ -4988,7 +5025,7 @@ blocking_questions:
 
 `cargo xtask review --changed --emit yaml` classifies the patch and determines which deep checks apply.
 
-### 77.17 Rustdoc Examples as Executable Contracts
+### 77.18 Rustdoc Examples as Executable Contracts
 
 Every public API includes a `/// # Examples` doc block that compiles and runs:
 
@@ -5004,11 +5041,11 @@ Every public API includes a `/// # Examples` doc block that compiles and runs:
 
 Verified by `cargo +nightly test --doc --workspace --all-features`. Doc examples are runnable contracts.
 
-### 77.18 Trybuild Compile-Fail Suites
+### 77.19 Trybuild Compile-Fail Suites
 
 For active public macro/schema contracts, compile-fail tests pin policy. Generated-code trybuild suites are removed with `vb_codegen` and are not current-scope tests.
 
-### 77.19 Minimal Repro Generator
+### 77.20 Minimal Repro Generator
 
 When fuzz, property test, or crash lab fails, generate a tiny repro:
 
@@ -5022,7 +5059,7 @@ Then: `cargo xtask repro run repros/workflow_replay_divergence_001.yaml`
 
 Effective for AI repair loops — the agent gets the smallest possible failing case.
 
-### 77.20 Contracts as Data
+### 77.21 Contracts as Data
 
 Every stable contract emitted as data in `contracts/`:
 
@@ -5041,7 +5078,7 @@ Every stable contract emitted as data in `contracts/`:
 
 Current-scope generators may produce Rust enums, docs, CLI schemas, AI context, and tests from these sources. UI schemas and generated workflow code are removed from current scope. Contracts-as-data reduce drift because AI reasons from the same source that generates active code and documentation.
 
-### 77.21 Failure Explanation
+### 77.22 Failure Explanation
 
 `cargo xtask why-failed logs/ai-check.yaml` explains failures:
 
@@ -5056,7 +5093,7 @@ fix:
 
 Better harness explanations produce better AI behavior.
 
-### 77.22 AI Patch Protocol
+### 77.23 AI Patch Protocol
 
 Binding protocol for every code change, enforced by convention and `xtask`:
 
@@ -5079,7 +5116,7 @@ Evidence:
 - perf compare: not required, no hot path touched
 ```
 
-### 77.23 AI-Safe Code Zones
+### 77.24 AI-Safe Code Zones
 
 Code is marked by zone. Scanning rules vary by zone.
 
@@ -5093,7 +5130,7 @@ Code is marked by zone. Scanning rules vary by zone.
 
 This prevents blanket rules from blocking useful code in cold paths.
 
-### 77.24 Golden Internal Models
+### 77.25 Golden Internal Models
 
 Executable reference models live in `reference/`:
 
@@ -5108,7 +5145,7 @@ Differential tests assert: optimized runtime == reference model.
 
 AI modifies optimized code while the reference model keeps semantics pinned.
 
-### 77.25 Perf Annotations for Hot Functions
+### 77.26 Perf Annotations for Hot Functions
 
 Hot functions carry local rules that `xtask hotpath-scan` enforces:
 
@@ -5121,7 +5158,7 @@ fn step_once(...) -> CoreResult<EngineSignal> {
 
 Scanner checks: line count, allocation absence, formatting absence, bounded resource use. AI knows the local rules before editing.
 
-### 77.26 AI Context for Spec-to-Implementation
+### 77.27 AI Context for Spec-to-Implementation
 
 `cargo xtask ai-context` consumes contracts data to produce context packets. The AI agent flow for a bead is:
 

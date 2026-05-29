@@ -8,24 +8,11 @@
 //! Bound: Each HasSymbolicCode implementor — arbitrary instance (kani::any);
 //! For DiagnosticCode::symbolic_code(): 90-entry registry scan (unwind=100).
 
-use super::kani_reverse_lookup::numeric_to_symbolic;
 use super::kani_symbolic_code_validation::{CODE_REGISTRY, DiagnosticCode, SymbolicCode};
 
 /// Trait for types that carry a symbolic diagnostic code.
 pub trait HasSymbolicCode {
     fn symbolic_code(&self) -> SymbolicCode;
-}
-
-/// Implementation for DiagnosticCode — reverse lookups from numeric.
-/// This is the most complex impl: it scans CODE_REGISTRY (90 entries).
-impl DiagnosticCode {
-    #[must_use]
-    pub fn symbolic_code(&self) -> Option<SymbolicCode> {
-        match numeric_to_symbolic(self.code()) {
-            Some(s) => Some(SymbolicCode(s)),
-            None => None,
-        }
-    }
 }
 
 #[cfg(kani)]
