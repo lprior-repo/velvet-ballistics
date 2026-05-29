@@ -239,25 +239,6 @@ pub(super) fn lower_canonical_choose(
             WorkflowError::EmptyBranchTable,
         )]));
     }
-    // All branches must have empty bodies (fall-through to next)
-    // and we need a next step to fall through to
-    let target = next.ok_or_else(|| {
-        CompileErrors(vec![CompileError::StepFieldShape {
-            step: index,
-            field: "choose",
-            expected: "non-empty next step for choose fallthrough",
-        }])
-    })?;
-    for branch in branches {
-        if !branch.steps.is_empty() {
-            return Err(CompileErrors(vec![
-                CompileError::UnsupportedStepPrimitive {
-                    step: index,
-                    primitive: "choose",
-                },
-            ]));
-        }
-    }
     // Resolve otherwise label to step index via step_names lookup
     let otherwise_target = match otherwise {
         Some(label) => {
@@ -281,11 +262,86 @@ pub(super) fn lower_canonical_choose(
         }
         None => None,
     };
-    // Build slot branches from all branches
+    // Build slot branches with per-branch targets.
+    // Branches with non-empty bodies get lowered into the slot stream
+    // between the ChooseSlot node and the fallthrough step.
+    let mut cursor = id;
     let mut slot_branches: Vec<SlotBranch> = Vec::with_capacity(branches.len());
     for branch in branches {
         let condition = slot_from_text(&branch.when, index, "choose.branches[].when")?;
-        slot_branches.push(SlotBranch { condition, target });
+        if branch.steps.is_empty() {
+            // Empty body: target is the fallthrough next step
+            let target = next.ok_or_else(|| {
+                CompileErrors(vec![CompileError::StepFieldShape {
+                    step: index,
+                    field: "choose",
+                    expected: "non-empty next step for choose fallthrough (empty branch body requires next)",
+                }])
+            })?;
+            slot_branches.push(SlotBranch { condition, target });
+        } else {
+            // Non-empty body: lower each body step with chained next pointers
+            let body_start = checked_step_offset(cursor, 1, "choose", "body")
+                .map_err(|e| CompileErrors(vec![e]))?;
+            let mut body_id = body_start;
+            let step_count = branch.steps.len();
+            for (si, step) in branch.steps.iter().enumerate() {
+                let is_last = si == step_count.saturating_sub(1);
+                let body_next = if is_last {
+                    next
+                } else {
+                    Some(checked_step_offset(body_id, 1, "choose", "body_next")
+                        .map_err(|e| CompileErrors(vec![e]))?)
+                };
+                let slot = slot_idx_for_step(usize::from(body_id.get()))
+                    .map_err(|e| CompileErrors(vec![e]))?;
+                match &step.primitive {
+                    vb_yaml::ast::StepPrimitive::Set { value, .. } => {
+                        let constant = body_constant_index(
+                            builder, value, index, false,
+                        )?;
+                        builder.record_slot(slot);
+                        builder.push_node(lower_set(body_id, slot, constant, body_next));
+                    }
+                    vb_yaml::ast::StepPrimitive::Do { action, input } => {
+                        let action_value = action.parse::<u16>().map_err(|_| {
+                            CompileErrors(vec![CompileError::StepFieldShape {
+                                step: index,
+                                field: "do.action",
+                                expected: "integer action id",
+                            }])
+                        })?;
+                        let input_slot = slot_from_text(input, index, "do.input")?;
+                        // lower_do records input_slot internally; record output slot separately
+                        let node = lower_do(
+                            body_id,
+                            vb_core::ActionId::new(action_value),
+                            input_slot,
+                            Some(slot),
+                            body_next,
+                            builder,
+                        );
+                        builder.record_slot(slot);
+                        builder.push_node(node);
+                    }
+                    other => {
+                        return Err(CompileErrors(vec![
+                            CompileError::UnsupportedStepPrimitive {
+                                step: index,
+                                primitive: canonical_primitive_name(other),
+                            },
+                        ]));
+                    }
+                }
+                cursor = body_id;
+                body_id = checked_step_offset(body_id, 1, "choose", "body_step")
+                    .map_err(|e| CompileErrors(vec![e]))?;
+            }
+            slot_branches.push(SlotBranch {
+                condition,
+                target: body_start,
+            });
+        }
     }
     let node = lower_choose(id, slot_branches, otherwise_target, builder)
         .map_err(|e| CompileErrors(vec![e]))?;

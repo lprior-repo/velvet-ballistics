@@ -1,0 +1,34 @@
+{"kind":"file","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/part_01.rs","symbol":"compile_source","scope":"HOT","risk_tags":["public-api","user-visible-behavior"]}
+{"kind":"file","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/part_01.rs","symbol":"choose_width","scope":"HOT","risk_tags":["parser/codec","user-visible-behavior"]}
+{"kind":"file","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/part_01.rs","symbol":"canonical_step_width","scope":"MEDIUM","risk_tags":["parser/codec"]}
+{"kind":"file","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/part_01.rs","symbol":"canonical_layout","scope":"MEDIUM","risk_tags":["parser/codec"]}
+{"kind":"file","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/part_02.rs","symbol":"lower_canonical_choose","scope":"HOT","risk_tags":["parser/codec","user-visible-behavior"]}
+{"kind":"file","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/part_02.rs","symbol":"lower_canonical_step","scope":"MEDIUM","risk_tags":["parser/codec"]}
+{"kind":"file","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/part_04.rs","symbol":"emit_single_body_set","scope":"REFERENCE","risk_tags":["parser/codec"]}
+{"kind":"file","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/part_05.rs","symbol":"slot_from_text","scope":"LOW","risk_tags":["parser/codec"]}
+{"kind":"file","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/part_05.rs","symbol":"checked_step_offset","scope":"LOW","risk_tags":["parser/codec"]}
+{"kind":"file","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/part_06.rs","symbol":"lower_choose","scope":"HOT","risk_tags":["parser/codec"]}
+{"kind":"file","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/part_11.rs","symbol":"slot_idx_for_step","scope":"LOW","risk_tags":["parser/codec"]}
+{"kind":"file","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/part_08.rs","symbol":"validate_branch_route","scope":"LOW","risk_tags":["parser/codec"]}
+{"kind":"file","crate":"vb_compile","path":"crates/vb_compile/src/compile/mod.rs","symbol":"compile_source","scope":"HOT","risk_tags":["public-api","user-visible-behavior"]}
+{"kind":"file","crate":"vb_compile","path":"crates/vb_compile/src/compile/mod.rs","symbol":"lower_choose","scope":"MEDIUM","risk_tags":["public-api"]}
+{"kind":"file","crate":"vb_compile","path":"crates/vb_compile/src/lib.rs","symbol":"compile_source","scope":"MEDIUM","risk_tags":["public-api"]}
+{"kind":"file","crate":"vb_yaml","path":"crates/vb_yaml/src/ast/types.rs","symbol":"ChooseBranch","scope":"LOW","risk_tags":["parser/codec"]}
+{"kind":"file","crate":"vb_yaml","path":"crates/vb_yaml/src/ast/types.rs","symbol":"StepPrimitive::Choose","scope":"LOW","risk_tags":["parser/codec"]}
+{"kind":"file","crate":"vb_yaml","path":"crates/vb_yaml/src/ast/parse_steps.rs","symbol":"parse_choose","scope":"LOW","risk_tags":["parser/codec"]}
+{"kind":"file","crate":"vb_core","path":"crates/vb_core/src/nodes.rs","symbol":"CompiledNodeKind::ChooseSlot","scope":"LOW","risk_tags":["user-visible-behavior"]}
+{"kind":"file","crate":"vb_core","path":"crates/vb_core/src/workflow/mod.rs","symbol":"SlotBranch","scope":"LOW","risk_tags":["user-visible-behavior"]}
+{"kind":"file","crate":"vb_core","path":"crates/vb_core/src/replay/choose.rs","symbol":"replay_choose_slot","scope":"LOW","risk_tags":["user-visible-behavior"]}
+{"kind":"file","crate":"vb_core","path":"crates/vb_core/src/engine/step.rs","symbol":"execute_node_step (ChooseSlot)","scope":"LOW","risk_tags":["user-visible-behavior"]}
+{"kind":"test","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/tests.rs","symbol":"lower_canonical_choose_accepts_two_branches","scope":"EXISTING","risk_tags":[]}
+{"kind":"test","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/tests.rs","symbol":"lower_canonical_choose_rejects_unknown_otherwise_label","scope":"EXISTING","risk_tags":[]}
+{"kind":"test","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/tests.rs","symbol":"lower_canonical_choose_rejects_65_branches","scope":"EXISTING","risk_tags":[]}
+{"kind":"test","crate":"vb_core","path":"crates/vb_core/src/replay/choose.rs","symbol":"choose_slot_true_branch_advances_pc","scope":"EXISTING","risk_tags":[]}
+{"kind":"test","crate":"vb_core","path":"crates/vb_core/src/engine/tests/integration_choose.rs","symbol":"integration_choose (file)","scope":"EXISTING","risk_tags":["user-visible-behavior"]}
+{"kind":"kani","crate":"vb_compile","path":"crates/vb_compile/src/mod_compile_lowering/kani_vb_awhr.rs","symbol":"lower_canonical_choose_otherwise_resolution","scope":"EXISTING","risk_tags":["temporal"]}
+{"kind":"dependency","crate":"vb_yaml","depends_on":"saphyr","scope":"LOW","risk_tags":[]}
+{"kind":"dependency","crate":"vb_compile","depends_on":"vb_yaml, vb_core, vb_validate","scope":"HOT","risk_tags":[]}
+{"kind":"dependency","crate":"vb_core","depends_on":"serde","scope":"LOW","risk_tags":[]}
+{"kind":"contract","crate":"vb_compile","symbol":"compile_source","constraint":"final IR must not carry YAML condition strings","risk_tags":["anti-hallucination"]}
+{"kind":"contract","crate":"vb_compile","symbol":"lower_canonical_choose","constraint":"conditions must be pre-materialized boolean SlotIdx, not raw YAML strings","risk_tags":["anti-hallucination"]}
+{"kind":"contract","crate":"vb_compile","symbol":"choose_width","constraint":"must emit exactly the correct number of nodes for layout","risk_tags":["parser/codec"]}

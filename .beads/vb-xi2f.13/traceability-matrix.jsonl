@@ -1,0 +1,62 @@
+{"schema_version":"proof-seed/v1","id":"TM-001","seed_id":"PS-TEMPORAL-001","artifact":"domain-model.md","section":"Invariant I5, Q3","relationship":"derived_from"}
+{"schema_version":"proof-seed/v1","id":"TM-002","seed_id":"PS-TEMPORAL-001","artifact":"contract.md","section":"2.1 choose_width","relationship":"verifies"}
+{"schema_version":"proof-seed/v1","id":"TM-003","seed_id":"PS-TEMPORAL-001","artifact":"hazard-analysis.md","section":"H1 Layout/Width Mismatch","relationship":"mitigates"}
+{"schema_version":"proof-seed/v1","id":"TM-004","seed_id":"PS-TEMPORAL-001","artifact":"workflow-model.md","section":"T5 LOWER_BODIES","relationship":"constrains"}
+
+{"schema_version":"proof-seed/v1","id":"TM-005","seed_id":"PS-TEMPORAL-002","artifact":"contract.md","section":"2.2 Postcondition 3","relationship":"verifies"}
+{"schema_version":"proof-seed/v1","id":"TM-006","seed_id":"PS-TEMPORAL-002","artifact":"hazard-analysis.md","section":"H2 Branch Body Steps Interleaving","relationship":"mitigates"}
+{"schema_version":"proof-seed/v1","id":"TM-007","seed_id":"PS-TEMPORAL-002","artifact":"workflow-model.md","section":"T5 constraints","relationship":"constrains"}
+
+{"schema_version":"proof-seed/v1","id":"TM-008","seed_id":"PS-TEMPORAL-003","artifact":"contract.md","section":"2.2 Postcondition 3","relationship":"verifies"}
+{"schema_version":"proof-seed/v1","id":"TM-009","seed_id":"PS-TEMPORAL-003","artifact":"hazard-analysis.md","section":"H3 Otherwise Target Amidst Branch Bodies","relationship":"mitigates"}
+{"schema_version":"proof-seed/v1","id":"TM-010","seed_id":"PS-TEMPORAL-003","artifact":"workflow-model.md","section":"T3 RESOLVE_OTHERWISE","relationship":"constrains"}
+
+{"schema_version":"proof-seed/v1","id":"TM-011","seed_id":"PS-ARITH-001","artifact":"contract.md","section":"2.1 overflow","relationship":"verifies"}
+{"schema_version":"proof-seed/v1","id":"TM-012","seed_id":"PS-ARITH-001","artifact":"hazard-analysis.md","section":"H4 Body Width Overflow","relationship":"mitigates"}
+{"schema_version":"proof-seed/v1","id":"TM-013","seed_id":"PS-ARITH-001","artifact":"type-contracts.md","section":"TC7 choose_width","relationship":"constrains"}
+
+{"schema_version":"proof-seed/v1","id":"TM-014","seed_id":"PS-ARITH-002","artifact":"contract.md","section":"2.2 Postcondition 1","relationship":"verifies"}
+{"schema_version":"proof-seed/v1","id":"TM-015","seed_id":"PS-ARITH-002","artifact":"hazard-analysis.md","section":"H7 StepIdx Overflow","relationship":"mitigates"}
+{"schema_version":"proof-seed/v1","id":"TM-016","seed_id":"PS-ARITH-002","artifact":"workflow-model.md","section":"Guards G5, G6","relationship":"constrains"}
+
+{"schema_version":"proof-seed/v1","id":"TM-017","seed_id":"PS-INVARIANT-001","artifact":"contract.md","section":"2.2 Postcondition 4","relationship":"verifies"}
+{"schema_version":"proof-seed/v1","id":"TM-018","seed_id":"PS-INVARIANT-001","artifact":"hazard-analysis.md","section":"H5 SlotIndex Reuse","relationship":"mitigates"}
+{"schema_version":"proof-seed/v1","id":"TM-019","seed_id":"PS-INVARIANT-001","artifact":"type-contracts.md","section":"TC9 slot allocation","relationship":"constrains"}
+{"schema_version":"proof-seed/v1","id":"TM-020","seed_id":"PS-INVARIANT-001","artifact":"boundary-map.md","section":"5 Slot Allocation Boundary","relationship":"constrains"}
+
+{"schema_version":"proof-seed/v1","id":"TM-021","seed_id":"PS-INVARIANT-002","artifact":"contract.md","section":"2.2 Postcondition 4","relationship":"verifies"}
+{"schema_version":"proof-seed/v1","id":"TM-022","seed_id":"PS-INVARIANT-002","artifact":"hazard-analysis.md","section":"H6 Condition Slot Overwritten by Body","relationship":"mitigates"}
+{"schema_version":"proof-seed/v1","id":"TM-023","seed_id":"PS-INVARIANT-002","artifact":"boundary-map.md","section":"5 Post-condition","relationship":"constrains"}
+
+{"schema_version":"proof-seed/v1","id":"TM-024","seed_id":"PS-FANOUT-001","artifact":"contract.md","section":"2.2 Precondition 1","relationship":"verifies"}
+{"schema_version":"proof-seed/v1","id":"TM-025","seed_id":"PS-FANOUT-001","artifact":"hazard-analysis.md","section":"H8 Branch Fanout Evasion","relationship":"mitigates"}
+{"schema_version":"proof-seed/v1","id":"TM-026","seed_id":"PS-FANOUT-001","artifact":"domain-model.md","section":"Invariant I2","relationship":"derived_from"}
+
+{"schema_version":"proof-seed/v1","id":"TM-027","seed_id":"PS-TYPE-001","artifact":"contract.md","section":"domain-model I1 / Non-Goals item 4","relationship":"verifies"}
+{"schema_version":"proof-seed/v1","id":"TM-028","seed_id":"PS-TYPE-001","artifact":"hazard-analysis.md","section":"H9 Boolean Slot Type Mismatch","relationship":"mitigates"}
+{"schema_version":"proof-seed/v1","id":"TM-029","seed_id":"PS-TYPE-001","artifact":"type-contracts.md","section":"TC10 boundary parse note","relationship":"identifies_gap"}
+
+{"schema_version":"proof-seed/v1","id":"TM-030","seed_id":"PS-LIVENESS-001","artifact":"contract.md","section":"2.2 All-branches-false","relationship":"verifies"}
+{"schema_version":"proof-seed/v1","id":"TM-031","seed_id":"PS-LIVENESS-001","artifact":"hazard-analysis.md","section":"H10 All-Branches-False","relationship":"mitigates"}
+{"schema_version":"proof-seed/v1","id":"TM-032","seed_id":"PS-LIVENESS-001","artifact":"error-taxonomy.md","section":"R-NO-MATCH","relationship":"documents"}
+
+{"schema_version":"proof-seed/v1","id":"TM-033","seed_id":"PS-CONCURRENCY-001","artifact":"hazard-analysis.md","section":"H11 Concurrency Hazards","relationship":"assesses"}
+{"schema_version":"proof-seed/v1","id":"TM-034","seed_id":"PS-CONCURRENCY-001","artifact":"domain-model.md","section":"choose is sequential","relationship":"derived_from"}
+
+{"schema_version":"proof-seed/v1","id":"TM-035","seed_id":"PS-INPUT-001","artifact":"contract.md","section":"2.2 boundary","relationship":"verifies"}
+{"schema_version":"proof-seed/v1","id":"TM-036","seed_id":"PS-INPUT-001","artifact":"hazard-analysis.md","section":"H12 YAML Injection via when String","relationship":"mitigates"}
+{"schema_version":"proof-seed/v1","id":"TM-037","seed_id":"PS-INPUT-001","artifact":"error-taxonomy.md","section":"C-BODY-COND / R-SLOT-OOB","relationship":"documents"}
+
+{"schema_version":"proof-seed/v1","id":"TM-038","seed_id":"PS-INPUT-002","artifact":"contract.md","section":"2.2 boundary","relationship":"verifies"}
+{"schema_version":"proof-seed/v1","id":"TM-039","seed_id":"PS-INPUT-002","artifact":"hazard-analysis.md","section":"H13 Excessively Deep Body Nesting","relationship":"mitigates"}
+{"schema_version":"proof-seed/v1","id":"TM-040","seed_id":"PS-INPUT-002","artifact":"type-contracts.md","section":"Limits at parser level","relationship":"documents"}
+
+{"schema_version":"proof-seed/v1","id":"TM-041","seed_id":"PS-EMISSION-PARITY","artifact":"contract.md","section":"2.1 Postcondition","relationship":"verifies"}
+{"schema_version":"proof-seed/v1","id":"TM-042","seed_id":"PS-EMISSION-PARITY","artifact":"hazard-analysis.md","section":"H1 Layout/Width Mismatch","relationship":"mitigates"}
+{"schema_version":"proof-seed/v1","id":"TM-043","seed_id":"PS-EMISSION-PARITY","artifact":"workflow-model.md","section":"T5 constraints","relationship":"constrains"}
+{"schema_version":"proof-seed/v1","id":"TM-044","seed_id":"PS-EMISSION-PARITY","artifact":"contract.md","section":"5 Acceptance Criteria AC1","relationship":"validates"}
+
+{"schema_version":"proof-seed/v1","id":"TM-045","seed_id":"PS-YAML-FREE-IR","artifact":"contract.md","section":"2.2 Postcondition 5","relationship":"verifies"}
+{"schema_version":"proof-seed/v1","id":"TM-046","seed_id":"PS-YAML-FREE-IR","artifact":"domain-model.md","section":"Invariant I1","relationship":"derived_from"}
+{"schema_version":"proof-seed/v1","id":"TM-047","seed_id":"PS-YAML-FREE-IR","artifact":"boundary-map.md","section":"2 Anti-hallucination rule","relationship":"enforces"}
+{"schema_version":"proof-seed/v1","id":"TM-048","seed_id":"PS-YAML-FREE-IR","artifact":"type-contracts.md","section":"TC1","relationship":"verifies"}
