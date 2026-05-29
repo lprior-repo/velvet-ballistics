@@ -73,6 +73,9 @@ pub mod kani_step_harnesses;
 #[cfg(kani)]
 pub mod kani_step_state_transition;
 
+#[cfg(kani)]
+pub mod kani_vb_dybj_run_id_postcard;
+
 pub use action::{
     ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionInput, ActionJournalEvent,
     ActionOutcome, ActionOutput, ActionOutputReady, ActionResult, ActionTicket, Idempotency,

@@ -13,11 +13,13 @@ workspace = true
 verus = []
 
 [dependencies]
+postcard.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
 saphyr.workspace = true
 toml.workspace = true
+vb_core = { path = "../vb_core" }
 
 [dev-dependencies]
 blake3.workspace = true
@@ -87,6 +89,10 @@ path = "tests/restate_journal_side_index_contracts.rs"
 [[test]]
 name = "restate_postcard_envelope_wire_tests"
 path = "tests/restate_postcard_envelope_wire_tests.rs"
+
+[[test]]
+name = "restate_postcard_newtype_compat_tests"
+path = "tests/restate_postcard_newtype_compat_tests.rs"
 
 [[test]]
 name = "restate_runtime_version_barrier_tests"

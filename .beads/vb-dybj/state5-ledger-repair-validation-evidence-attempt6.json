@@ -1,0 +1,66 @@
+{
+  "bead_id": "vb-dybj",
+  "attempt": 6,
+  "state": 5,
+  "sublane": "ledger-repair",
+  "delegate": "proof-writer",
+  "schema_version": "controller-validation-evidence/v1",
+  "recorded_at": "2026-05-25T21:39:15Z",
+  "obligation_ids": [
+    "PO-VB-DYBJ-001",
+    "PO-VB-DYBJ-002",
+    "PO-VB-DYBJ-003",
+    "PO-VB-DYBJ-004",
+    "PO-VB-DYBJ-005",
+    "PO-VB-DYBJ-006",
+    "PO-VB-DYBJ-007",
+    "PO-VB-DYBJ-008",
+    "PO-VB-DYBJ-009",
+    "PO-VB-DYBJ-010",
+    "PO-VB-DYBJ-011",
+    "PO-VB-DYBJ-012",
+    "PO-VB-DYBJ-013",
+    "PO-VB-DYBJ-014",
+    "PO-VB-DYBJ-015",
+    "PO-VB-DYBJ-016",
+    "PO-VB-DYBJ-017",
+    "PO-VB-DYBJ-018"
+  ],
+  "validator": {
+    "name": "agent-invocation-ledger-integrity-validator",
+    "status": "PASS",
+    "rows_checked": 13,
+    "failures": [],
+    "last_entry_hash": "7a0d9cfb63ec66ef714cfda32281e4806ed6b95b72cb319e86ddb912675080c6"
+  },
+  "repairs": [
+    {
+      "row": 9,
+      "field": "transcript_artifact",
+      "value": "archive/state6-rejected-20260525-rereview-002/transcript-state6-proof-reviewer.md",
+      "sha256": "e042c34a77a9bddf0f8e5fcb224093d00c3ea5f5d4bdd98f40fd6819a6166ff1"
+    },
+    {
+      "row": 13,
+      "field": "input_artifact_hashes.proof-obligations.planned.jsonl",
+      "sha256": "cfbd1defd75a4a485ca86e1a463b51b66847afa58731eae0c71976abe7fed83b"
+    },
+    {
+      "row": 13,
+      "field": "input_artifact_hashes.dispatch-state5-proof-writer-repair-attempt4.json",
+      "sha256": "bb5ad031668b4d4f37d56aa1e7b2d89eab921ec923fbbea2e01bc824d1f10e6d"
+    }
+  ],
+  "command_evidence": {
+    "workdir": "/home/lewis/isolated/femdation-velvet-ballistics/vb-dybj",
+    "command": "python3 - <<'PY' ... ledger integrity validator ... PY",
+    "exit_status": 0,
+    "stdout_summary": {
+      "status": "PASS",
+      "failures": [],
+      "rows": 13,
+      "last_entry_hash": "7a0d9cfb63ec66ef714cfda32281e4806ed6b95b72cb319e86ddb912675080c6"
+    }
+  },
+  "proof_success_claimed": false
+}

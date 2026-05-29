@@ -1,0 +1,13 @@
+{
+  "bead_id": "vb-dybj",
+  "exit_status": 0,
+  "recorded_at": "2026-05-25T18:10:10.814419+00:00",
+  "schema_version": "controller-validation-evidence/v1",
+  "state": 5,
+  "validator": {
+    "bead": "vb-dybj",
+    "findings": [],
+    "state": 5,
+    "status": "PASS"
+  }
+}

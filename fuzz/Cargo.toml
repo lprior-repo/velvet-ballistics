@@ -159,6 +159,20 @@ doc = false
 bench = false
 
 [[bin]]
+name = "vb_dybj_storage_short_decode"
+path = "fuzz_targets/vb_dybj_storage_short_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_dybj_trailing_decode"
+path = "fuzz_targets/vb_dybj_trailing_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "accessor_traversal"
 path = "src/bin/accessor_traversal.rs"
 test = false

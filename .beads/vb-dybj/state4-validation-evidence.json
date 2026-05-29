@@ -1,0 +1,14 @@
+{
+  "bead_id": "vb-dybj",
+  "command": "go-skill-v9-validate --state 4",
+  "exit_status": 0,
+  "recorded_at": "2026-05-25T17:22:07.437794+00:00",
+  "schema_version": "controller-validation-evidence/v1",
+  "state": 4,
+  "validator": {
+    "bead": "vb-dybj",
+    "findings": [],
+    "state": 4,
+    "status": "PASS"
+  }
+}

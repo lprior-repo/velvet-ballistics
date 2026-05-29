@@ -1,0 +1,32 @@
+{
+  "bead_id": "vb-dybj",
+  "exit_status": 1,
+  "recorded_at": "2026-05-25T19:30:27.776862+00:00",
+  "schema_version": "controller-validation-evidence/v1",
+  "state": 5,
+  "validator": {
+    "bead": "vb-dybj",
+    "findings": [
+      {
+        "code": "E_STATUS_NOT_APPROVED",
+        "message": "status tokens=['REJECTED']",
+        "path": "proof-review.md",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_BLOCKED_TOOLING_ADVANCE",
+        "message": "BLOCKED_TOOLING is a blocker, not State 5 exit evidence",
+        "path": "proof-evidence.md",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_BLOCKED_TOOLING_ADVANCE",
+        "message": "BLOCKED_TOOLING is a blocker, not State 5 exit evidence",
+        "path": "proof-writer-report.md",
+        "severity": "BLOCK"
+      }
+    ],
+    "state": 5,
+    "status": "FAIL"
+  }
+}

@@ -1,0 +1,24 @@
+PO-VB-DYBJ-018 source-scan evidence
+
+Planned command:
+python3 scripts/check_forbidden_tokens.py --paths crates/workspace_tests/tests/restate_postcard_newtype_compat_tests.rs crates/workspace_tests/Cargo.toml Cargo.toml --forbid serde_json bilrost protobuf prost tonic hyper reqwest yaml serde_yaml /tmp/opencode/restate
+
+Substitution used because checked-in scripts/check_forbidden_tokens.py was not present in this checkout: deterministic Python scan over the same paths and tokens plus a diff-only added-line scan.
+
+Whole-file scan output:
+paths crates/workspace_tests/tests/restate_postcard_newtype_compat_tests.rs crates/workspace_tests/Cargo.toml Cargo.toml
+forbid serde_json bilrost protobuf prost tonic hyper reqwest yaml serde_yaml /tmp/opencode/restate
+hit_count 8
+crates/workspace_tests/Cargo.toml:17:serde_json:serde_json.workspace = true
+crates/workspace_tests/Cargo.toml:18:yaml:serde_yaml.workspace = true
+crates/workspace_tests/Cargo.toml:18:serde_yaml:serde_yaml.workspace = true
+crates/workspace_tests/Cargo.toml:48:yaml:vb_yaml = { path = "../vb_yaml" }
+Cargo.toml:5:yaml:"crates/vb_yaml",
+Cargo.toml:58:serde_json:serde_json = { version = "1", default-features = false, features = ["std", "alloc"] }
+Cargo.toml:59:yaml:serde_yaml = "0.9"
+Cargo.toml:59:serde_yaml:serde_yaml = "0.9"
+
+Diff-only added-line scan output:
+diff_added_hit_count 0
+
+Disposition: no forbidden token was added by PO-VB-DYBJ-018 touched diff. Whole-file hits are pre-existing manifest dependencies/path names and are not introduced by this proof-writing state.

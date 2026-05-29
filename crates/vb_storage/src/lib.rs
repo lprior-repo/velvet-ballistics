@@ -61,6 +61,12 @@ pub mod kani_admission;
 #[cfg(kani)]
 pub mod kani_postcard_envelope_wire;
 
+#[cfg(kani)]
+pub mod kani_vb_dybj_record_kind_surface;
+
+#[cfg(kani)]
+pub mod kani_vb_dybj_storage_short_decode;
+
 pub mod keys;
 pub mod process_lock;
 

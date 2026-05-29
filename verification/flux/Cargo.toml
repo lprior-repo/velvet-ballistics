@@ -1,0 +1,10 @@
+[package]
+name = "vb-dybj-flux-artifacts"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[lib]
+path = "vb_dybj_workflow_digest_shape.rs"

@@ -16,6 +16,9 @@ criterion.workspace = true
 postcard.workspace = true
 proptest = { workspace = true }
 
+[target.'cfg(kani)'.dependencies]
+postcard.workspace = true
+
 [[bench]]
 name = "aggregate_resource_budget"
 harness = false

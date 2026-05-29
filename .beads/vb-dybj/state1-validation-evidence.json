@@ -1,0 +1,11 @@
+{
+  "bd_show_returncode": 0,
+  "bd_show_stderr": "",
+  "bd_show_stdout_prefix": "[\n  {\n    \"id\": \"vb-dybj\",\n    \"title\": \"core: Add Postcard newtype compatibility tests\",\n    \"description\": \"# Black Hat Repaired Bead Spec\\n\\nSource docs:\\n- to-fix/09-restate-architecture-steal-plan.md\\n- to-fix/10-restate-exhaustive-sweep.md\\n\\nNo-copy fence:\\n- Restate is failure-mode inspiration only; do not copy code, APIs, data model, module structure, async architecture, HTTP/JSON paths, storage layout, wire formats, or distributed assumptions.\\n- Master contract overrides this bead. Runtime/core work stays single-server, shard-owned, numeric, bounded, and free of JSON/YAML/HTTP interpretation. CLI/doctor diagnostics are cold-path only.\\n\\nTest file:\\n- crates/workspace_tests/tests/restate_postcard_newtype_compat_tests.rs\\n\\nCommand evidence:\\n- cargo nextest run -p velvet-ballastics-workspace-tests --test restate_postcard_newtype_compat_tests\\n- moon ci\\n\\nScope:\\nAdd fixed-wire Postcard tests for numeric newtypes, digests, and persisted record identifiers inspired by Restate encoding compatibility tests.\\n\\nTarget public surface / files to read:\\n- /tmp/opencode/restate/crates/encoding/src/common.rs\\n- crates/vb_core/src/ids/mod.rs\\n- crates/vb_storage/src\\n\\nAcceptance tests:\\nHappy paths:\\n- RunId Postcard bytes match golden fixture\\n- RecordKind Postcard bytes match golden fixture\\n\\nError paths:\\n- invalid input trailing bytes return typed decode error\\n- missing bytes return typed short decode error\\n\\nEdge cases:\\n- zero value newtype behavior matches constructor contract\\n- maximum value newtype behavior matches bound contract\\n\\nContract assertions:\\n- Changing golden bytes requires named migration\\n- Postcard path contains no JSON wrapper\\n\\nPreconditions:\\n- Core ID and storage record types have been read\\n- Postcard encoding behavior is verified in existing deps\\n\\nPostconditions:\\n- Golden byte tests exist for selected IDs and record tags\\n- Compatibility tests document migration requirement for changes\\n\\nInvariants:\\n- Persisted newtypes hav",
+  "validator": {
+    "bead": "vb-dybj",
+    "findings": [],
+    "state": 1,
+    "status": "PASS"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "attempt": 1,
+  "bead_id": "vb-dybj",
+  "created_at": "2026-05-25T16:49:45.339726+00:00",
+  "delegate": "proof-planner",
+  "input_artifacts": [
+    ".beads/vb-dybj/contract.md",
+    ".beads/vb-dybj/proof-seeds.jsonl",
+    ".beads/vb-dybj/traceability-matrix.jsonl",
+    ".beads/vb-dybj/domain-model.md",
+    ".beads/vb-dybj/type-contracts.md",
+    ".beads/vb-dybj/workflow-model.md",
+    ".beads/vb-dybj/error-taxonomy.md",
+    ".beads/vb-dybj/boundary-map.md",
+    ".beads/vb-dybj/hazard-analysis.md",
+    ".beads/vb-dybj/state3-validation-evidence.json"
+  ],
+  "isolated_workdir": "/home/lewis/isolated/femdation-velvet-ballistics/vb-dybj",
+  "output_artifacts": [
+    ".beads/vb-dybj/proof-strategy.md",
+    ".beads/vb-dybj/verifier-lane-matrix.md",
+    ".beads/vb-dybj/verifier-lane-decisions.jsonl",
+    ".beads/vb-dybj/proof-coverage-matrix.md",
+    ".beads/vb-dybj/proof-obligations.planned.jsonl",
+    ".beads/vb-dybj/trusted-base-plan.md",
+    ".beads/vb-dybj/waiver-candidates.jsonl",
+    ".beads/vb-dybj/proof-to-implementation-input.md",
+    ".beads/vb-dybj/transcript-state4-proof-planner.md"
+  ],
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "state": 4,
+  "sublane": "proof-planning"
+}

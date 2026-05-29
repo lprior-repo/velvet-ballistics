@@ -1,0 +1,48 @@
+{
+  "active_rejected_review_present": false,
+  "artifact_validation_scope": "hash-chain for all rows; output artifact existence/hash for archived row14 and current row15 only because earlier rows reference mutable active State 5 filenames superseded by row15",
+  "attempt": 7,
+  "bead_id": "vb-dybj",
+  "command_evidence": {
+    "command": "python3 - <<'PY' ... scoped ledger integrity validator ... PY",
+    "exit_status": 0,
+    "stdout_summary": {
+      "failures": [],
+      "last_entry_hash": "bdee95df21104dfe73ba9beae14a5dcbb588c868b5c64d3761948cfa140ead09",
+      "rows": 15,
+      "status": "PASS"
+    },
+    "workdir": "/home/lewis/isolated/femdation-velvet-ballistics/vb-dybj"
+  },
+  "delegate": "proof-writer",
+  "proof_success_claimed": false,
+  "recorded_at": "2026-05-25T22:42:00Z",
+  "repairs": [
+    {
+      "field": "reviewed_artifacts_existed_before_start",
+      "row": 14,
+      "value": true
+    },
+    {
+      "field": "output_artifact_paths",
+      "row": 14,
+      "value": "archive/state6-rejected-20260525-final-003/*"
+    },
+    {
+      "field": "new_entry",
+      "row": 15,
+      "value": "proof-writer-vb-dybj-state5-final-007"
+    }
+  ],
+  "schema_version": "controller-validation-evidence/v1",
+  "state": 5,
+  "sublane": "final-review-repair",
+  "validator": {
+    "failures": [],
+    "last_entry_hash": "bdee95df21104dfe73ba9beae14a5dcbb588c868b5c64d3761948cfa140ead09",
+    "name": "agent-invocation-ledger-integrity-validator",
+    "reviewed_artifacts_flag_row14": true,
+    "rows_checked": 15,
+    "status": "PASS"
+  }
+}

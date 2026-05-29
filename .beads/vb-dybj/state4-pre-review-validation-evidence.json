@@ -1,0 +1,364 @@
+{
+  "bead_id": "vb-dybj",
+  "expected_review_missing_only": true,
+  "recorded_at": "2026-05-25T17:09:16.041674+00:00",
+  "schema_version": "controller-pre-review-validation/v1",
+  "state": 4,
+  "unexpected_findings": [],
+  "validator": {
+    "bead": "vb-dybj",
+    "findings": [
+      {
+        "code": "E_MISSING_ARTIFACT",
+        "message": "required artifact missing or empty",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_MISSING_ARTIFACT",
+        "message": "required artifact missing or empty",
+        "path": "proof-plan-review.md",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-007-flux-rs",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-001-kani",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-005-verus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-006-tla-plus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-006-verus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-005-miri",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-001-tla-plus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-001-loom",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-006-loom",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-003-loom",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-005-cargo-fuzz",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-007-loom",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-002-miri",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-002-flux-rs",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-003-verus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-007-kani",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-001-cargo-fuzz",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-004-miri",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-004-kani",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-003-kani",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-001-flux-rs",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-002-loom",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-002-tla-plus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-003-miri",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-007-proptest",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-003-cargo-fuzz",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-007-verus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-001-verus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-002-cargo-fuzz",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-004-flux-rs",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-006-miri",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-001-proptest",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-004-verus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-006-proptest",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-002-proptest",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-003-proptest",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-003-flux-rs",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-003-tla-plus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-004-cargo-fuzz",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-001-miri",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-007-cargo-fuzz",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-004-tla-plus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-006-flux-rs",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-005-tla-plus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-007-tla-plus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-002-verus",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-004-proptest",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-005-proptest",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-005-kani",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-006-cargo-fuzz",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-005-loom",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-004-loom",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-007-miri",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-006-kani",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-002-kani",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      },
+      {
+        "code": "E_LANE_REVIEW_MISSING",
+        "message": "missing review for lane VLD-vb-dybj-seed-005-flux-rs",
+        "path": "verifier-lane-review.jsonl",
+        "severity": "BLOCK"
+      }
+    ],
+    "state": 4,
+    "status": "FAIL"
+  },
+  "validator_exit_status": 1
+}
