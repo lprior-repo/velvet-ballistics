@@ -518,7 +518,43 @@ fn direct_digest_collect_empty_vs_nonempty_body() {
 // vb-awhr: choose otherwise handling and fanout limit
 // ─────────────────────────────────────────────────────────────────
 
+use crate::mod_compile_lowering::part_01::choose_width;
 use crate::mod_compile_lowering::part_02::lower_canonical_choose;
+
+fn choose_body_set_step(id: &str, value: &str) -> vb_yaml::ast::StepAst {
+    vb_yaml::ast::StepAst {
+        id: id.to_string(),
+        name: None,
+        condition: None,
+        primitive: vb_yaml::ast::StepPrimitive::Set {
+            output: id.to_string(),
+            value: value.to_string(),
+        },
+        with: None,
+        retry: None,
+        on_error: None,
+        then: None,
+    }
+}
+
+#[test]
+fn choose_width_counts_branch_body_steps() {
+    let branches = vec![
+        vb_yaml::ast::ChooseBranch {
+            when: "0".to_string(),
+            steps: vec![choose_body_set_step("body_a", "1")],
+        },
+        vb_yaml::ast::ChooseBranch {
+            when: "1".to_string(),
+            steps: vec![
+                choose_body_set_step("body_b", "2"),
+                choose_body_set_step("body_c", "3"),
+            ],
+        },
+    ];
+    let width = choose_width(&branches).expect("valid Set bodies must compute width");
+    assert_eq!(width, 4, "ChooseSlot plus three body nodes");
+}
 
 #[test]
 fn lower_canonical_choose_accepts_two_branches() {
@@ -548,6 +584,70 @@ fn lower_canonical_choose_accepts_two_branches() {
         "two-branch choose must compile: {:?}",
         result
     );
+}
+
+#[test]
+fn lower_canonical_choose_single_body_set_targets_body_start() {
+    let branches = vec![vb_yaml::ast::ChooseBranch {
+        when: "0".to_string(),
+        steps: vec![choose_body_set_step("body_a", "7")],
+    }];
+    let step_names: [Box<str>; 2] = [Box::from("pick"), Box::from("done")];
+    let mut builder = crate::SlotCompiler::new();
+    lower_canonical_choose(
+        0,
+        vb_core::ids::StepIdx::new(0),
+        &branches,
+        Some("done"),
+        Some(vb_core::ids::StepIdx::new(2)),
+        &step_names,
+        &mut builder,
+    )
+    .expect("single Set body must lower");
+
+    assert_eq!(builder.nodes.len(), 2, "ChooseSlot plus body node");
+    assert_eq!(builder.nodes[0].id, vb_core::ids::StepIdx::new(0));
+    match &builder.nodes[0].kind {
+        vb_core::CompiledNodeKind::ChooseSlot { branches, .. } => {
+            assert_eq!(branches[0].target, vb_core::ids::StepIdx::new(1));
+        }
+        other => panic!("expected ChooseSlot, got {other:?}"),
+    }
+    assert_eq!(builder.nodes[1].id, vb_core::ids::StepIdx::new(1));
+    assert_eq!(builder.nodes[1].next, Some(vb_core::ids::StepIdx::new(2)));
+}
+
+#[test]
+fn lower_canonical_choose_multi_body_steps_chain_to_common_next() {
+    let branches = vec![vb_yaml::ast::ChooseBranch {
+        when: "0".to_string(),
+        steps: vec![
+            choose_body_set_step("body_a", "7"),
+            choose_body_set_step("body_b", "8"),
+        ],
+    }];
+    let step_names: [Box<str>; 2] = [Box::from("pick"), Box::from("done")];
+    let mut builder = crate::SlotCompiler::new();
+    lower_canonical_choose(
+        0,
+        vb_core::ids::StepIdx::new(0),
+        &branches,
+        Some("done"),
+        Some(vb_core::ids::StepIdx::new(3)),
+        &step_names,
+        &mut builder,
+    )
+    .expect("multi-step Set body must lower");
+
+    assert_eq!(builder.nodes.len(), 3, "ChooseSlot plus two body nodes");
+    match &builder.nodes[0].kind {
+        vb_core::CompiledNodeKind::ChooseSlot { branches, .. } => {
+            assert_eq!(branches[0].target, vb_core::ids::StepIdx::new(1));
+        }
+        other => panic!("expected ChooseSlot, got {other:?}"),
+    }
+    assert_eq!(builder.nodes[1].next, Some(vb_core::ids::StepIdx::new(2)));
+    assert_eq!(builder.nodes[2].next, Some(vb_core::ids::StepIdx::new(3)));
 }
 
 #[test]

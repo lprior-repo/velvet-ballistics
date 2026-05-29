@@ -114,11 +114,17 @@ pub(super) fn body_width(
     Ok(width)
 }
 
-pub(super) fn choose_width(
-    _branches: &[vb_yaml::ast::ChooseBranch],
-) -> Result<usize, CompileError> {
-    // All branches must have empty bodies and compile to a single ChooseSlot node.
-    Ok(1)
+pub(super) fn choose_width(branches: &[vb_yaml::ast::ChooseBranch]) -> Result<usize, CompileError> {
+    // ChooseSlot node itself (1) + sum of body widths across all branches.
+    // body_width uses canonical_body_step_width, so each step contributes 1
+    // (Set or Do) and unsupported primitives produce Err.
+    let mut width = 1usize;
+    for branch in branches {
+        width = width
+            .checked_add(body_width(&branch.steps, 0)?)
+            .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
+    }
+    Ok(width)
 }
 
 pub(super) fn together_width(

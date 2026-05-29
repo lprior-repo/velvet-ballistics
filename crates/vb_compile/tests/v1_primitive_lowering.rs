@@ -2366,6 +2366,23 @@ fn compile_workflow_choose_two_branches_with_otherwise() -> Result<(), String> {
 }
 
 #[test]
+fn compile_workflow_choose_branch_body_emits_dense_order() -> Result<(), String> {
+    let yaml = workflow_yaml(
+        "  - id: pick\n    choose:\n      branches:\n        - when: \"0\"\n          steps:\n            - id: body_a\n              set:\n                output: branch_value\n                value: \"7\"\n      otherwise: done\n  - id: done\n    finish:\n      result: 0\n",
+    );
+    let workflow = compile_yaml(&yaml)?;
+    let parts = workflow.to_parts();
+    let kinds = node_kind_names(parts.nodes.as_ref());
+    assert_eq!(
+        kinds,
+        vec!["ChooseSlot", "SetConst", "Finish"],
+        "choose body must preserve StepIdx-indexed node order"
+    );
+    assert_dense_node_ids(&workflow, "choose_branch_body")?;
+    Ok(())
+}
+
+#[test]
 fn compile_workflow_choose_rejects_unknown_otherwise_label() -> Result<(), String> {
     let yaml = workflow_yaml(
         "  - id: pick\n    choose:\n      branches:\n        - when: \"0\"\n          steps: []\n      otherwise: missing_label\n  - id: done\n    finish:\n      result: 0\n",

@@ -1,4 +1,5 @@
 #![allow(unused_imports)]
+pub(crate) use super::part_14::lower_canonical_choose;
 use super::*;
 use crate::expression::parse_expression;
 use crate::mod_compile_errors::{CompileError, CompileErrors, non_string_key_error};
@@ -210,85 +211,5 @@ pub(super) fn lower_canonical_for_each(
             done,
         },
     });
-    Ok(())
-}
-
-pub(super) fn lower_canonical_choose(
-    index: usize,
-    id: StepIdx,
-    branches: &[vb_yaml::ast::ChooseBranch],
-    otherwise: Option<&str>,
-    next: Option<StepIdx>,
-    step_names: &[Box<str>],
-    builder: &mut SlotCompiler,
-) -> Result<(), CompileErrors> {
-    // Fanout limit: choose cannot have more than 64 branches
-    if branches.len() > 64 {
-        return Err(CompileErrors(vec![
-            CompileError::PrimitiveLoweringLimitExceeded {
-                primitive: "choose",
-                field: "branches",
-                value: branches.len(),
-                limit: 64,
-            },
-        ]));
-    }
-    // Empty branch table requires otherwise to be set
-    if branches.is_empty() && otherwise.is_none() {
-        return Err(CompileErrors(vec![CompileError::Workflow(
-            WorkflowError::EmptyBranchTable,
-        )]));
-    }
-    // All branches must have empty bodies (fall-through to next)
-    // and we need a next step to fall through to
-    let target = next.ok_or_else(|| {
-        CompileErrors(vec![CompileError::StepFieldShape {
-            step: index,
-            field: "choose",
-            expected: "non-empty next step for choose fallthrough",
-        }])
-    })?;
-    for branch in branches {
-        if !branch.steps.is_empty() {
-            return Err(CompileErrors(vec![
-                CompileError::UnsupportedStepPrimitive {
-                    step: index,
-                    primitive: "choose",
-                },
-            ]));
-        }
-    }
-    // Resolve otherwise label to step index via step_names lookup
-    let otherwise_target = match otherwise {
-        Some(label) => {
-            let step_index = step_names
-                .iter()
-                .position(|name| name.as_ref() == label)
-                .ok_or_else(|| {
-                    CompileErrors(vec![CompileError::UnknownStepLabel {
-                        step: index,
-                        label: Box::from(label),
-                    }])
-                })?;
-            Some(StepIdx::new(u16::try_from(step_index).map_err(|_| {
-                CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
-                    primitive: "choose",
-                    field: "otherwise_target",
-                    value: step_index,
-                    limit: usize::from(u16::MAX),
-                }])
-            })?))
-        }
-        None => None,
-    };
-    // Build slot branches from all branches
-    let mut slot_branches: Vec<SlotBranch> = Vec::with_capacity(branches.len());
-    for branch in branches {
-        let condition = slot_from_text(&branch.when, index, "choose.branches[].when")?;
-        slot_branches.push(SlotBranch { condition, target });
-    }
-    let node = lower_choose(id, slot_branches, otherwise_target, builder)
-        .map_err(|e| CompileErrors(vec![e]))?;
-    builder.push_node(node);
     Ok(())
 }
