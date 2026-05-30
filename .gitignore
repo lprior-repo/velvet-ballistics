@@ -81,6 +81,9 @@ agent-invocation-ledger.jsonl
 # Evidence and landing artifacts
 .evidence/
 
+# JJ working copies
+arch-drift-hammer/
+
 # Isolates
 isolates/
 

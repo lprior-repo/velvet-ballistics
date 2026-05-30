@@ -99,3 +99,8 @@ mod test_harness;
 mod verification {
     pub(crate) mod proptest;
 }
+
+#[cfg(kani)]
+mod verification {
+    pub(crate) mod kani;
+}

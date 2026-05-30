@@ -55,7 +55,7 @@ fn kani_journal_key_injectivity() {
     let key1 = run_event_key(RunId::new(run1), EventSeq::new(seq1));
     let key2 = run_event_key(RunId::new(run2), EventSeq::new(seq2));
 
-    match (key1, key2) {
+    match (&key1, &key2) {
         (Ok(k1), Ok(k2)) => {
             // Keys must differ when (run, seq) pairs differ
             kani::assert(
@@ -88,13 +88,14 @@ fn kani_journal_key_runid_injectivity() {
     let key1 = run_event_key(RunId::new(run1), EventSeq::new(seq));
     let key2 = run_event_key(RunId::new(run2), EventSeq::new(seq));
 
-    match (key1, key2) {
+    let both_ok_run = key1.is_ok() && key2.is_ok();
+    match (&key1, &key2) {
         (Ok(k1), Ok(k2)) => {
             kani::assert(k1 != k2, "different run ids must produce different keys");
         }
         _ => {}
     }
-    kani::cover!(key1.is_ok() && key2.is_ok(), "runid_injectivity_ok");
+    kani::cover!(both_ok_run, "runid_injectivity_ok");
 }
 
 // =========================================================================
@@ -113,7 +114,9 @@ fn kani_journal_key_seq_injectivity() {
     let key1 = run_event_key(RunId::new(run), EventSeq::new(seq1));
     let key2 = run_event_key(RunId::new(run), EventSeq::new(seq2));
 
-    match (key1, key2) {
+    let both_ok_seq = key1.is_ok() && key2.is_ok();
+
+    match (&key1, &key2) {
         (Ok(k1), Ok(k2)) => {
             kani::assert(
                 k1 != k2,
@@ -122,7 +125,7 @@ fn kani_journal_key_seq_injectivity() {
         }
         _ => {}
     }
-    kani::cover!(key1.is_ok() && key2.is_ok(), "seq_injectivity_ok");
+    kani::cover!(both_ok_seq, "seq_injectivity_ok");
 }
 
 // =========================================================================

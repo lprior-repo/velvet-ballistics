@@ -1,5 +1,7 @@
 #![cfg(kani)]
 #![forbid(unsafe_code)]
+#![allow(unused_must_use)]
+#![allow(unused_results)]
 
 //! Kani harnesses for Finish digest encoding verification (vb-xi2f.34).
 //!

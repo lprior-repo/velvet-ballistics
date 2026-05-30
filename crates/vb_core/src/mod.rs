@@ -4,3 +4,4 @@ pub mod kani_step_budget_one;
 pub mod kani_step_budget;
 pub mod kani_index_access;
 pub mod kani_resource_budget_bounded;
+pub mod kani_vbjpq733_proofs;

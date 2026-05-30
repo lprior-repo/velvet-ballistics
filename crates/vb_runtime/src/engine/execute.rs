@@ -370,4 +370,5 @@ pub fn execute_node_full(
     }
 }
 
+#[cfg(test)]
 mod execute_tests;

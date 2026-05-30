@@ -17,6 +17,25 @@
 // Re-export path (kani_canonical_name.rs already accesses part_05 this way)
 use crate::mod_compile_lowering::part_05::{canonical_primitive_name, digest_step_primitive};
 
+/// Generate a bounded Option<String> via byte-array construction.
+/// Produces None ~50% of the time; Some values are constructed from
+/// bounded ASCII alphanumeric bytes.
+fn any_optional_bounded_string(max_len: usize) -> Option<String> {
+    let is_some: bool = kani::any();
+    if !is_some {
+        return None;
+    }
+    let num_bytes: usize = kani::any();
+    let num_bytes = num_bytes.min(max_len);
+    let mut out = String::with_capacity(num_bytes);
+    for _ in 0..num_bytes {
+        let b: u8 = kani::any();
+        kani::assume(b.is_ascii_alphanumeric() || b == b'_');
+        out.push(b as char);
+    }
+    Some(out)
+}
+
 // =========================================================================
 // PO-001: Panic-freedom of digest_step_primitive Wait arm
 // HARNESS: wait_digest_step_primitive_no_panic
@@ -33,23 +52,8 @@ use crate::mod_compile_lowering::part_05::{canonical_primitive_name, digest_step
 #[kani::unwind(10)]
 fn wait_digest_step_primitive_no_panic() {
     // Generate arbitrary event and timeout fields
-    let event: Option<String> = kani::any();
-    let timeout: Option<String> = kani::any();
-
-    // Bound string lengths to 16 chars as per proof plan
-    if let Some(ref s) = event {
-        kani::assume(s.len() <= 16);
-        // Restrict to safe alphabet: a-z, A-Z, 0-9, _
-        for ch in s.chars() {
-            kani::assume(ch.is_ascii_alphanumeric() || ch == '_');
-        }
-    }
-    if let Some(ref s) = timeout {
-        kani::assume(s.len() <= 16);
-        for ch in s.chars() {
-            kani::assume(ch.is_ascii_alphanumeric() || ch == '_');
-        }
-    }
+    let event = any_optional_bounded_string(16);
+    let timeout = any_optional_bounded_string(16);
 
     // Exclude illegal (None, None) — validated upstream
     kani::assume(event.is_some() || timeout.is_some());
@@ -79,22 +83,8 @@ fn wait_digest_step_primitive_no_panic() {
 #[kani::unwind(8)]
 fn wait_until_vs_wait_event_no_collision() {
     // Generate arbitrary slot text for timeout and event
-    let timeout_text: Option<String> = kani::any();
-    let event_text: Option<String> = kani::any();
-
-    // Bound and restrict
-    if let Some(ref s) = timeout_text {
-        kani::assume(s.len() <= 8);
-        for ch in s.chars() {
-            kani::assume(ch.is_ascii_alphanumeric() || ch == '_');
-        }
-    }
-    if let Some(ref s) = event_text {
-        kani::assume(s.len() <= 8);
-        for ch in s.chars() {
-            kani::assume(ch.is_ascii_alphanumeric() || ch == '_');
-        }
-    }
+    let timeout_text = any_optional_bounded_string(8);
+    let event_text = any_optional_bounded_string(8);
 
     // WaitUntil: event=None, timeout=Some
     let wait_until = vb_yaml::ast::StepPrimitive::Wait {
@@ -147,28 +137,9 @@ fn wait_until_vs_wait_event_no_collision() {
 #[kani::unwind(6)]
 fn wait_configurations_pairwise_distinct() {
     // Generate tiny slot text — alphabet a-z only, max 4 chars
-    let t1_text: Option<String> = kani::any();
-    let t2_text: Option<String> = kani::any();
-    let e_text: Option<String> = kani::any();
-
-    if let Some(ref s) = t1_text {
-        kani::assume(s.len() <= 4);
-        for ch in s.chars() {
-            kani::assume(ch.is_ascii_lowercase());
-        }
-    }
-    if let Some(ref s) = t2_text {
-        kani::assume(s.len() <= 4);
-        for ch in s.chars() {
-            kani::assume(ch.is_ascii_lowercase());
-        }
-    }
-    if let Some(ref s) = e_text {
-        kani::assume(s.len() <= 4);
-        for ch in s.chars() {
-            kani::assume(ch.is_ascii_lowercase());
-        }
-    }
+    let t1_text = any_optional_bounded_string(4);
+    let t2_text = any_optional_bounded_string(4);
+    let e_text = any_optional_bounded_string(4);
 
     let config_1 = vb_yaml::ast::StepPrimitive::Wait {
         event: None,
@@ -224,21 +195,8 @@ fn wait_configurations_pairwise_distinct() {
 #[kani::proof]
 #[kani::unwind(10)]
 fn wait_digest_both_copies_no_panic() {
-    let event: Option<String> = kani::any();
-    let timeout: Option<String> = kani::any();
-
-    if let Some(ref s) = event {
-        kani::assume(s.len() <= 16);
-        for ch in s.chars() {
-            kani::assume(ch.is_ascii_alphanumeric() || ch == '_');
-        }
-    }
-    if let Some(ref s) = timeout {
-        kani::assume(s.len() <= 16);
-        for ch in s.chars() {
-            kani::assume(ch.is_ascii_alphanumeric() || ch == '_');
-        }
-    }
+    let event = any_optional_bounded_string(16);
+    let timeout = any_optional_bounded_string(16);
 
     // Cover all legal shapes
     let shapes: &[(Option<String>, Option<String>)] = &[
