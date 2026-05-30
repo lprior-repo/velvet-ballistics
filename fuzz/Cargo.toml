@@ -495,3 +495,33 @@ path = "fuzz_targets/compile_source_ast_marks.rs"
 test = false
 doc = false
 bench = false
+
+# === vb-shvxy tooling fuzz targets (State 9) ===
+
+[[bin]]
+name = "tooling_kani_list_args"
+path = "fuzz_targets/tooling_kani_list_args.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "tooling_flux_check_selector"
+path = "fuzz_targets/tooling_flux_check_selector.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "tooling_guard_zero_parser"
+path = "fuzz_targets/tooling_guard_zero_parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "tooling_loom_list_xtask"
+path = "fuzz_targets/tooling_loom_list_xtask.rs"
+test = false
+doc = false
+bench = false
