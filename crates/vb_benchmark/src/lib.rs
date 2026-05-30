@@ -322,5 +322,5 @@ pub fn check_evidence_gate(
 }
 
 #[cfg(test)]
-#[path = "benchmark/tests.rs"]
+#[path = "../benchmark/tests.rs"]
 mod tests;

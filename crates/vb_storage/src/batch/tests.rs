@@ -15,9 +15,10 @@ use crate::{
     recovery::RunSnapshot,
 };
 use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
+use tempfile::TempDir;
 
-fn temp_journal() -> (tempfile::TempDir, crate::FjallJournal) {
-    let temp = tempfile::tempdir().expect("tempdir creation should succeed");
+fn temp_journal() -> (TempDir, crate::FjallJournal) {
+    let temp = TempDir::new().expect("tempdir creation should succeed");
     let journal =
         crate::FjallJournal::open(temp.path(), None).expect("journal open should succeed");
     (temp, journal)
