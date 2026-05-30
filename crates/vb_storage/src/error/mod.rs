@@ -255,3 +255,9 @@ impl From<crate::TrimError> for JournalError {
         }
     }
 }
+
+impl From<std::io::Error> for JournalError {
+    fn from(_: std::io::Error) -> Self {
+        JournalError::UnexpectedEof
+    }
+}

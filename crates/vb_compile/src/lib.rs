@@ -29,6 +29,10 @@ mod type_taint;
 #[cfg(test)]
 mod proptest_finish_digest;
 
+// Proptest properties for ChooseSlot lowering (vb-282my).
+#[cfg(test)]
+mod proptest_choose_lowering;
+
 // Kani harnesses for Finish digest verification (vb-xi2f.34).
 #[cfg(kani)]
 pub mod kani_finish_digest;

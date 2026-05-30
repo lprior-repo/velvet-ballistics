@@ -1064,4 +1064,27 @@ mod tests {
         assert!(terminal.is_some());
         assert!(matches!(terminal, Some(JournalEvent::RunCancelled { .. })));
     }
+
+    // ══ vb-hbav B15: RecoveryError exhaustiveness compile-time check ════════
+    #[test]
+    fn recovery_error_match_covers_all_variants() {
+        fn _exhaustive_match(e: &RecoveryError) -> &'static str {
+            match e {
+                RecoveryError::Journal(_) => "journal",
+                RecoveryError::WorkflowSourceDigestMismatch { .. } => "workflow_source_digest_mismatch",
+                RecoveryError::CompiledIrDigestMismatch { .. } => "compiled_ir_digest_mismatch",
+                RecoveryError::ActionAbiMismatch { .. } => "action_abi_mismatch",
+                RecoveryError::PolicyDigestMismatch { .. } => "policy_digest_mismatch",
+                RecoveryError::NonIdempotentActionBlocked { .. } => "non_idempotent_action_blocked",
+                RecoveryError::ReplayDivergence { .. } => "replay_divergence",
+                RecoveryError::SlotTaintReadFailed { .. } => "slot_taint_read_failed",
+                RecoveryError::CorruptSlotTaint { .. } => "corrupt_slot_taint",
+                RecoveryError::NoRecoveryData { .. } => "no_recovery_data",
+                RecoveryError::CorruptSnapshot { .. } => "corrupt_snapshot",
+                RecoveryError::TerminalStateMismatch { .. } => "terminal_state_mismatch",
+                RecoveryError::FrameDimensionOverflow { .. } => "frame_dimension_overflow",
+            }
+        }
+        let _ = _exhaustive_match;
+    }
 }

@@ -3610,3 +3610,129 @@ fn collect_hydration_corrupt_slot_value_with_collect_extra_returns_decode_failed
     assert_eq!(states.capture_state(run_id, collector), None);
     Ok(())
 }
+
+// =========================================================================
+// vb-hbav B01-B09: collect_page behavior hardening tests.
+// Sharp assertions on exact error variants, PC advancement, signal values,
+// empty/boundary/heterogeneous inputs, and collector slot boundaries.
+// =========================================================================
+
+#[test]
+fn collect_page_returns_continue_signal_on_success() {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let collector = SlotIdx::new(0);
+    let body = StepIdx::new(1);
+    let done = StepIdx::new(2);
+    list_in_slot(
+        &mut run,
+        &mut store,
+        collector,
+        vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
+    );
+    let result = collect_page(&mut run, &mut store, &mut states, collector, body, done);
+    assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+}
+
+#[test]
+fn collect_page_returns_type_mismatch_when_collector_is_bool() {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let collector = SlotIdx::new(0);
+    run.write_slot(collector, SlotValue::Bool(true)).ok().unwrap_or_else(|| panic!("write must succeed"));
+    let result = collect_page(
+        &mut run,
+        &mut store,
+        &mut states,
+        collector,
+        StepIdx::new(1),
+        StepIdx::new(2),
+    );
+    assert_eq!(
+        result,
+        Err(EngineError::TypeMismatch { expected: "list", found: "boolean" })
+    );
+}
+
+#[test]
+fn collect_page_returns_type_mismatch_when_collector_is_null() {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let collector = SlotIdx::new(0);
+    run.write_slot(collector, SlotValue::Null).ok().unwrap_or_else(|| panic!("write must succeed"));
+    let result = collect_page(
+        &mut run,
+        &mut store,
+        &mut states,
+        collector,
+        StepIdx::new(1),
+        StepIdx::new(2),
+    );
+    assert_eq!(
+        result,
+        Err(EngineError::TypeMismatch { expected: "list", found: "null" })
+    );
+}
+
+#[test]
+fn collect_page_handles_empty_list_collector() {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let collector = SlotIdx::new(0);
+    let body = StepIdx::new(1);
+    let done = StepIdx::new(2);
+    list_in_slot(&mut run, &mut store, collector, vec![]);
+    let result = collect_page(&mut run, &mut store, &mut states, collector, body, done);
+    assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+    assert_eq!(run.pc(), body);
+}
+
+#[test]
+fn collect_page_works_with_collector_slot_at_zero() {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let collector = SlotIdx::ZERO;
+    let body = StepIdx::new(1);
+    let done = StepIdx::new(2);
+    list_in_slot(&mut run, &mut store, collector, vec![SlotValue::I64(42)]);
+    let result = collect_page(&mut run, &mut store, &mut states, collector, body, done);
+    assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+    assert_eq!(run.pc(), body);
+}
+
+#[test]
+fn collect_page_does_not_panic_with_max_slot_collector() {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let collector = SlotIdx::new(7);
+    let body = StepIdx::new(1);
+    let done = StepIdx::new(2);
+    list_in_slot(&mut run, &mut store, collector, vec![SlotValue::I64(99)]);
+    let result = collect_page(&mut run, &mut store, &mut states, collector, body, done);
+    assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+    assert_eq!(run.pc(), body);
+}
+
+#[test]
+fn collect_page_succeeds_with_heterogeneous_list_items() {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let collector = SlotIdx::new(0);
+    let body = StepIdx::new(1);
+    let done = StepIdx::new(2);
+    list_in_slot(
+        &mut run,
+        &mut store,
+        collector,
+        vec![SlotValue::I64(1), SlotValue::Bool(true), SlotValue::Null, SlotValue::I64(2)],
+    );
+    let result = collect_page(&mut run, &mut store, &mut states, collector, body, done);
+    assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+}

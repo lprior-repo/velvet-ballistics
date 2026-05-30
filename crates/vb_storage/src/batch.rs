@@ -38,6 +38,7 @@ use crate::journal::FjallJournal;
 pub struct JournalWriteBatch<'j> {
     inner: fjall::OwnedWriteBatch,
     journal: &'j FjallJournal,
+    // DEAD_FIELD: confirmed unused — initialized but never read or modified after construction
     #[allow(dead_code)]
     staged_event_keys: HashSet<[u8; JOURNAL_KEY_BYTES]>,
     aborted: bool,

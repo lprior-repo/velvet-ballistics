@@ -635,6 +635,120 @@ fn adversarial_read_frame_header_bounded_enforces_limit() {
     assert_eq!(result, Err(IpcError::PayloadTooLarge { actual: 50, limit: 1 }));
 }
 
+// =========================================================================
+// vb-hbav B20-B21: IpcFrameHeader encode/decode roundtrip with all fields verified.
+// =========================================================================
+
+/// Helper: encode header then decode it, asserting all 4 fields roundtrip.
+fn assert_header_roundtrip_all_fields(command: IpcCommand, flags: u16, correlation: u64, payload_len: u32) {
+    let original = IpcFrameHeader::new(command, flags, correlation, payload_len);
+    let encoded = original.encode();
+    if let Err(ref e) = encoded {
+        panic!("encode failed for {command:?} flags={flags:#06x} corr={correlation}: {e:?}");
+    }
+    let Ok(encoded_arr) = encoded else { return };
+
+    let decoded = IpcFrameHeader::decode(&encoded_arr, MaxPayloadBytes::DEFAULT);
+    if let Err(ref e) = decoded {
+        panic!("decode failed for {command:?}: {e:?}");
+    }
+    let Ok(decoded) = decoded else { return };
+
+    assert_eq!(decoded.command, original.command,
+        "command mismatch for {command:?}");
+    assert_eq!(decoded.flags, original.flags,
+        "flags mismatch: expected {flags:#06x}, got {:#06x}", decoded.flags);
+    assert_eq!(decoded.correlation, original.correlation,
+        "correlation mismatch: expected {correlation}, got {}", decoded.correlation);
+    assert_eq!(decoded.payload_len, original.payload_len,
+        "payload_len mismatch: expected {payload_len}, got {}", decoded.payload_len);
+}
+
+macro_rules! ipc_header_roundtrip_test {
+    ($test_name:ident, $command:expr) => {
+        #[test]
+        fn $test_name() {
+            assert_header_roundtrip_all_fields($command, 0xABCD, u64::MAX, 0);
+            assert_header_roundtrip_all_fields($command, 0x0000, 0, 42);
+            assert_header_roundtrip_all_fields($command, 0xFFFF, 1, 0);
+        }
+    };
+}
+
+ipc_header_roundtrip_test!(ipc_header_roundtrip_preserves_fields_for_submit_run_command, IpcCommand::SubmitRun);
+ipc_header_roundtrip_test!(ipc_header_roundtrip_preserves_fields_for_submit_run_inline_command, IpcCommand::SubmitRunInline);
+ipc_header_roundtrip_test!(ipc_header_roundtrip_preserves_fields_for_cancel_run_command, IpcCommand::CancelRun);
+ipc_header_roundtrip_test!(ipc_header_roundtrip_preserves_fields_for_inspect_run_command, IpcCommand::InspectRun);
+ipc_header_roundtrip_test!(ipc_header_roundtrip_preserves_fields_for_list_events_command, IpcCommand::ListEvents);
+ipc_header_roundtrip_test!(ipc_header_roundtrip_preserves_fields_for_answer_ask_command, IpcCommand::AnswerAsk);
+ipc_header_roundtrip_test!(ipc_header_roundtrip_preserves_fields_for_complete_action_command, IpcCommand::CompleteAction);
+ipc_header_roundtrip_test!(ipc_header_roundtrip_preserves_fields_for_fail_action_command, IpcCommand::FailAction);
+ipc_header_roundtrip_test!(ipc_header_roundtrip_preserves_fields_for_drain_trace_command, IpcCommand::DrainTrace);
+ipc_header_roundtrip_test!(ipc_header_roundtrip_preserves_fields_for_health_command, IpcCommand::Health);
+ipc_header_roundtrip_test!(ipc_header_roundtrip_preserves_fields_for_shutdown_command, IpcCommand::Shutdown);
+ipc_header_roundtrip_test!(ipc_header_roundtrip_preserves_fields_for_list_runs_command, IpcCommand::ListRuns);
+ipc_header_roundtrip_test!(ipc_header_roundtrip_preserves_fields_for_get_metrics_command, IpcCommand::GetMetrics);
+ipc_header_roundtrip_test!(ipc_header_roundtrip_preserves_fields_for_get_workflow_graph_command, IpcCommand::GetWorkflowGraph);
+ipc_header_roundtrip_test!(ipc_header_roundtrip_preserves_fields_for_get_taint_report_command, IpcCommand::GetTaintReport);
+ipc_header_roundtrip_test!(ipc_header_roundtrip_preserves_fields_for_verify_workflow_command, IpcCommand::VerifyWorkflow);
+
+#[test]
+fn ipc_frame_payload_roundtrip_preserves_boundary_bytes() {
+    let payload: &[u8] = &[0x00, 0xFF, 0xAA, 0x55];
+    let result = encode_frame(IpcCommand::Health, 0, 1, payload);
+    if let Err(ref e) = result {
+        panic!("encode_frame failed: {e:?}");
+    }
+    let Ok(frame) = result else { return };
+
+    let header_slice = match frame.get(..IPC_HEADER_LEN) {
+        Some(s) => s,
+        None => { panic!("frame too short for header"); return; }
+    };
+    let header_arr: [u8; IPC_HEADER_LEN] = match header_slice.try_into() {
+        Ok(h) => h,
+        Err(_) => { panic!("header slice wrong length"); return; }
+    };
+    let header = match decode_frame_header(&header_arr) {
+        Ok(h) => h,
+        Err(e) => { panic!("header decode failed: {e:?}"); return; }
+    };
+    assert_eq!(header.payload_len, 4, "payload_len should be 4");
+
+    let payload_slice = match frame.get(IPC_HEADER_LEN..) {
+        Some(s) => s,
+        None => { panic!("no payload bytes"); return; }
+    };
+    assert_eq!(payload_slice, payload, "payload bytes must match bitwise");
+}
+
+// ══ vb-hbav B18: IpcError exhaustiveness compile-time check ════════════
+
+#[test]
+fn ipc_error_match_covers_all_variants() {
+    // This match statically enforces all 14 IpcError variants are listed.
+    // Adding a new variant without updating this match causes a compile error.
+    fn _exhaustive_match(e: &IpcError) -> &'static str {
+        match e {
+            IpcError::Full => "full",
+            IpcError::Disconnected => "disconnected",
+            IpcError::PayloadTooLarge { .. } => "payload_too_large",
+            IpcError::InvalidMagic { .. } => "invalid_magic",
+            IpcError::UnsupportedVersion { .. } => "unsupported_version",
+            IpcError::UnknownCommand(_) => "unknown_command",
+            IpcError::ReservedNonZero { .. } => "reserved_non_zero",
+            IpcError::PayloadLengthMismatch { .. } => "payload_length_mismatch",
+            IpcError::HeaderEncodeFailed => "header_encode_failed",
+            IpcError::HeaderDecodeFailed => "header_decode_failed",
+            IpcError::PayloadLengthOutOfRange { .. } => "payload_length_out_of_range",
+            IpcError::PayloadEncodeFailed => "payload_encode_failed",
+            IpcError::PayloadDecodeFailed => "payload_decode_failed",
+            IpcError::ResponseDecodeFailed => "response_decode_failed",
+        }
+    }
+    let _ = _exhaustive_match;
+}
+
 #[test]
 fn adversarial_byte_order_swap_magic_rejected() {
     let be_magic_bytes = 0x5642_4C54_u32.to_be_bytes();

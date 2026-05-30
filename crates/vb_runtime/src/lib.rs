@@ -75,6 +75,9 @@ pub mod kani_vt2f_shard_lower_semantics;
 #[cfg(all(kani, feature = "kani-admission-store"))]
 pub mod kani_admission_store;
 
+#[cfg(all(kani, feature = "kani-shard-lifecycle"))]
+pub mod kani_shard_lifecycle;
+
 #[cfg(loom)]
 pub mod models;
 pub mod primitives;

@@ -2,6 +2,7 @@
 //! Events module tests.
 
 use super::*;
+use crate::YamlError;
 
 fn assertion_failed(_message: std::fmt::Arguments<'_>) -> bool {
     false
@@ -527,4 +528,35 @@ fn adversarial_events_folded_scalar_preserves_value() {
         _ => None,
     });
     assert_eq!(scalar, Some(true), "expected Folded scalar");
+}
+
+// ══ vb-hbav B17: YamlError exhaustiveness compile-time check ════════
+#[test]
+fn yaml_error_match_covers_all_variants() {
+    fn _exhaustive_match(e: &YamlError) -> &'static str {
+        match e {
+            YamlError::UnsupportedTrigger { .. } => "unsupported_trigger",
+            YamlError::UnsupportedFeature { .. } => "unsupported_feature",
+            YamlError::DuplicateKey { .. } => "duplicate_key",
+            YamlError::AnchorAliasMerge => "anchor_alias_merge",
+            YamlError::CustomTag { .. } => "custom_tag",
+            YamlError::BinaryScalar => "binary_scalar",
+            YamlError::MultipleDocuments { .. } => "multiple_documents",
+            YamlError::AmbiguousScalar { .. } => "ambiguous_scalar",
+            YamlError::SourceTooLarge { .. } => "source_too_large",
+            YamlError::NestingTooDeep { .. } => "nesting_too_deep",
+            YamlError::NodeLimitExceeded { .. } => "node_limit_exceeded",
+            YamlError::ScalarTooLong { .. } => "scalar_too_long",
+            YamlError::SequenceTooLong { .. } => "sequence_too_long",
+            YamlError::MappingTooLarge { .. } => "mapping_too_large",
+            YamlError::UnknownField { .. } => "unknown_field",
+            YamlError::EmptySource => "empty_source",
+            YamlError::MissingField { .. } => "missing_field",
+            YamlError::FieldShape { .. } => "field_shape",
+            YamlError::ParseError { .. } => "parse_error",
+            YamlError::ForbiddenFeature { .. } => "forbidden_feature",
+            YamlError::LegacyPrimitive { .. } => "legacy_primitive",
+        }
+    }
+    let _ = _exhaustive_match;
 }

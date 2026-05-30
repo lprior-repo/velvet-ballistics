@@ -127,7 +127,7 @@ fn resolve_choose_otherwise(
     Ok(Some(StepIdx::new(target)))
 }
 
-fn add_body_offset(
+pub(crate) fn add_body_offset(
     start_offset: u16,
     index: usize,
     diagnostic_step: usize,

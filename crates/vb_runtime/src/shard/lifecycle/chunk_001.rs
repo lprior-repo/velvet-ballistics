@@ -285,7 +285,8 @@ impl Shard {
         digest: vb_core::ids::WorkflowDigest,
         caps: CapabilitySet,
     ) -> RuntimeResult<()> {
-        self.build_admission(run, digest, caps).map(|_| ())
+        self.build_admission(run, digest, caps)?;
+        Ok(())
     }
 
     pub fn handle_resume(&mut self, run: RunId) -> Result<ResumeResult, ResumeError> {

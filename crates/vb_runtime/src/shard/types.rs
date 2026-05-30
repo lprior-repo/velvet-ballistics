@@ -850,6 +850,8 @@ impl ResumeError {
     pub fn source_runtime_error(&self) -> Option<crate::RuntimeError> {
         match self {
             Self::JournalAppendFailedWithSource { source } => Some(source.as_ref().clone()),
+            // NOTE: #[non_exhaustive] - new ResumeError variants return None for source_runtime_error.
+            // Implementations should add explicit variant handling.
             _ => None,
         }
     }

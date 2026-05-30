@@ -2,6 +2,11 @@ use std::ffi::OsString;
 
 use super::{ActionRegistryMode, Command, OutputFormat, ParseError};
 
+// DESIGN NOTE: These structs are structurally identical (same fields, same derives).
+// However, they are kept separate for semantic type safety - one represents
+// the parsing state for `action list` subcommand, the other for `action inspect`.
+// This prevents mixing up context in match arms and provides compile-time
+// guarantees that the correct state type is used for each subcommand.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct ActionListParseState {
     output: OutputFormat,

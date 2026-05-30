@@ -161,6 +161,13 @@ impl RetryPolicy {
         }
     }
 
+    /// Computes delay using exponential backoff with base 2.
+    ///
+    /// WHY base 2: Standard exponential backoff uses base 2 for good convergence
+    /// while avoiding thundering herd. Each attempt doubles the wait time.
+    ///
+    /// WHY saturating_mul: Prevents overflow when delay exceeds u64::MAX.
+    /// When max_interval_ms is hit, we clamp rather than wrap.
     fn delay_after_valid_attempt(self, max_interval_ms: u64, attempt: u16) -> u64 {
         if !self.exponential_backoff {
             return self.base_delay_ms.min(max_interval_ms);

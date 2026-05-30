@@ -908,6 +908,74 @@ fn gate_13_rejects_three_slot_cycle_through_eval_expr() {
             validate_gate_13_no_slot_cycles(&parts),
             Err(ValidationError::SlotDependencyCycle { .. })
         ),
-        "gate 13 must detect 3-slot cycle through EvalExpr"
+         "gate 13 must detect 3-slot cycle through EvalExpr"
     );
+}
+
+// ══ vb-hbav B16: ValidationError exhaustiveness compile-time check ════════
+#[test]
+fn validation_error_match_covers_all_variants() {
+    fn _exhaustive_match(e: &ValidationError) -> &'static str {
+        match e {
+            ValidationError::DuplicateKey => "duplicate_key",
+            ValidationError::ForbiddenYamlFeature => "forbidden_yaml_feature",
+            ValidationError::UnknownTopLevelField => "unknown_top_level_field",
+            ValidationError::UnknownStepField => "unknown_step_field",
+            ValidationError::MissingRequiredField { .. } => "missing_required_field",
+            ValidationError::InvalidVersion { .. } => "invalid_version",
+            ValidationError::InvalidId { .. } => "invalid_id",
+            ValidationError::ReservedId { .. } => "reserved_id",
+            ValidationError::DuplicateId { .. } => "duplicate_id",
+            ValidationError::MultipleStepPrimitives => "multiple_step_primitives",
+            ValidationError::MissingStepPrimitive => "missing_step_primitive",
+            ValidationError::UnknownReference { .. } => "unknown_reference",
+            ValidationError::FutureReference { .. } => "future_reference",
+            ValidationError::SecretNotDeclared { .. } => "secret_not_declared",
+            ValidationError::DirectRuntimeReference => "direct_runtime_reference",
+            ValidationError::InvalidThenTarget => "invalid_then_target",
+            ValidationError::ControlFlowCycle => "control_flow_cycle",
+            ValidationError::UnreachableStep { .. } => "unreachable_step",
+            ValidationError::InvalidChoose => "invalid_choose",
+            ValidationError::InvalidForEach => "invalid_for_each",
+            ValidationError::InvalidTogether => "invalid_together",
+            ValidationError::InvalidCollect => "invalid_collect",
+            ValidationError::InvalidReduce => "invalid_reduce",
+            ValidationError::InvalidRepeat => "invalid_repeat",
+            ValidationError::InvalidWait => "invalid_wait",
+            ValidationError::InvalidAsk => "invalid_ask",
+            ValidationError::InvalidFinish => "invalid_finish",
+            ValidationError::InvalidRetry => "invalid_retry",
+            ValidationError::InvalidOnError => "invalid_on_error",
+            ValidationError::SecretResultLeak => "secret_result_leak",
+            ValidationError::TypeMismatch { .. } => "type_mismatch",
+            ValidationError::PayloadTooLarge => "payload_too_large",
+            ValidationError::LimitRequired { .. } => "limit_required",
+            ValidationError::LimitExceeded { .. } => "limit_exceeded",
+            ValidationError::UnsupportedTrigger { .. } => "unsupported_trigger",
+            ValidationError::HttpTriggerOutOfCore => "http_trigger_out_of_core",
+            ValidationError::ExpressionStackExceeded { .. } => "expression_stack_exceeded",
+            ValidationError::ExpressionStackMismatch { .. } => "expression_stack_mismatch",
+            ValidationError::AccessorSlotOutOfRange { .. } => "accessor_slot_out_of_range",
+            ValidationError::AccessorPathInvalid { .. } => "accessor_path_invalid",
+            ValidationError::AccessorPathTooDeep { .. } => "accessor_path_too_deep",
+            ValidationError::AccessorSymbolOutOfBounds { .. } => "accessor_symbol_out_of_bounds",
+            ValidationError::SlotReferenceOutOfRange { .. } => "slot_reference_out_of_range",
+            ValidationError::LoopBodyStepOutOfRange { .. } => "loop_body_step_out_of_range",
+            ValidationError::SlotDependencyCycle { .. } => "slot_dependency_cycle",
+            ValidationError::NodeKindConstraintViolation { .. } => "node_kind_constraint_violation",
+            ValidationError::ActionContractMissing { .. } => "action_contract_missing",
+            ValidationError::ActionContractOrphan { .. } => "action_contract_orphan",
+            ValidationError::CapabilityNameEmpty { .. } => "capability_name_empty",
+            ValidationError::CapabilityNameTooLong { .. } => "capability_name_too_long",
+            ValidationError::CapabilityNameInvalid { .. } => "capability_name_invalid",
+            ValidationError::CapabilityActionMismatch { .. } => "capability_action_mismatch",
+            ValidationError::CapabilityDuplicate { .. } => "capability_duplicate",
+            ValidationError::SlotTypeInconsistency { .. } => "slot_type_inconsistency",
+            ValidationError::NonDeterministicPath { .. } => "non_deterministic_path",
+            ValidationError::MissingSchemaVersion => "missing_schema_version",
+            ValidationError::CueVetFailed { .. } => "cue_vet_failed",
+            ValidationError::VersionMonotonicityBreach { .. } => "version_monotonicity_breach",
+        }
+    }
+    let _ = _exhaustive_match;
 }

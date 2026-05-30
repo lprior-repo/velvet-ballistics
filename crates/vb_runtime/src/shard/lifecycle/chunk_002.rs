@@ -1,4 +1,18 @@
 impl Shard {
+    /// Handles an ask answer for a suspended run.
+    ///
+    /// # Flux refinement (PO-vb282my-AA-FLUX-001):
+    /// SlotWritten-before-AskAnswered ordering guarantee:
+    /// The AskAnswered journal append at line 50-54 is only reachable
+    /// AFTER a successful SlotWritten journal append at line 38-44.
+    /// If SlotWritten fails (returns Err), AskAnswered is never attempted.
+    ///
+    /// Flux signature (requires flux-rs toolchain):
+    /// ```flux
+    /// #[flux_rs::sig(fn(&mut Shard, answer: AskAnswer) -> RuntimeResult<()>
+    ///     ensures result.is_err() || journal_has(SlotWritten{run, slot})
+    /// )]
+    /// ```
     pub(crate) fn handle_ask_answer(&mut self, answer: AskAnswer) -> RuntimeResult<()> {
         let run = answer.ticket.run;
         if !self.runs.contains_key(&run) {

@@ -137,6 +137,7 @@ pub(super) fn validate_branch_route(
     }
 }
 
+// DEAD_CODE: confirmed unused via grep
 #[derive(Debug, Default)]
 #[allow(dead_code)]
 pub(super) struct WorkflowBuilder {
@@ -146,6 +147,7 @@ pub(super) struct WorkflowBuilder {
 }
 
 impl WorkflowBuilder {
+    // DEAD_CODE: confirmed unused via grep
     #[allow(dead_code)]
     pub(super) fn new() -> Self {
         Self::default()

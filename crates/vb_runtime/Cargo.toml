@@ -32,6 +32,7 @@ kani-trace-ring = []
 kani-vt2f-runtime-facade = []
 kani-vt2f-shard-lower-semantics = []
 kani-yaml-e2e-admission-matrix = []
+kani-shard-lifecycle = []
 
 [lints]
 workspace = true

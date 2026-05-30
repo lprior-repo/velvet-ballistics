@@ -17,11 +17,11 @@ impl Capability {
         Self { name, action }
     }
 
-    pub fn name(&self) -> &str {
+    pub const fn name(&self) -> &str {
         &self.name
     }
 
-    pub fn action_id(&self) -> ActionId {
+    pub const fn action_id(&self) -> ActionId {
         self.action
     }
 }
@@ -68,11 +68,11 @@ impl CapabilitySet {
         false
     }
 
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.grants.len()
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.grants.is_empty()
     }
 }

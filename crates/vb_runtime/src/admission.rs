@@ -793,6 +793,9 @@ pub fn admit_run_with_budget_policy(
 }
 
 fn map_budget_error(error: AggregateBudgetError) -> AdmissionError {
+    // NOTE: AggregateBudgetError is #[non_exhaustive]. This catch-all ensures
+    // new error variants don't break existing code, but they lose specific semantics.
+    // Consider adding explicit arms for new variants as they are added.
     match error {
         AggregateBudgetError::PolicyExceeded {
             resource,
@@ -845,7 +848,7 @@ fn map_budget_error(error: AggregateBudgetError) -> AdmissionError {
             limit: 0,
         },
         _ => AdmissionError::BudgetPolicyExceeded {
-            resource: "unknown_aggregate_budget_error",
+            resource: "unknown_aggregate_budget_error", // DEAD: #[non_exhaustive] catch-all
             actual: u64::MAX,
             limit: 0,
         },
@@ -1926,6 +1929,30 @@ mod tests {
         );
 
         assert_eq!(result, Err(AdmissionError::ArtifactNotFound { digest }));
+    }
+
+    // ══ vb-hbav B14: AdmissionError exhaustiveness compile-time check ════════
+    #[test]
+    fn admission_error_match_covers_all_variants() {
+        fn _exhaustive_match(e: &AdmissionError) -> &'static str {
+            match e {
+                AdmissionError::ArtifactNotFound { .. } => "artifact_not_found",
+                AdmissionError::CapabilityDenied { .. } => "capability_denied",
+                AdmissionError::ResourceCapacityExceeded { .. } => "resource_capacity_exceeded",
+                AdmissionError::BudgetPolicyExceeded { .. } => "budget_policy_exceeded",
+                AdmissionError::ResourceBudgetOverflow { .. } => "resource_budget_overflow",
+                AdmissionError::ResourceBudgetUnderflow { .. } => "resource_budget_underflow",
+                AdmissionError::ResourceBudgetInvalidCapacity { .. } => "resource_budget_invalid_capacity",
+                AdmissionError::ResourceStepCeilingExceeded { .. } => "resource_step_ceiling_exceeded",
+                AdmissionError::ResourcePerTickCeilingExceeded { .. } => "resource_per_tick_ceiling_exceeded",
+                AdmissionError::ArtifactEnvelopeDecodeFailed => "artifact_envelope_decode_failed",
+                AdmissionError::ArtifactInvalidGateCount { .. } => "artifact_invalid_gate_count",
+                AdmissionError::ArtifactInvalidProofFlag { .. } => "artifact_invalid_proof_flag",
+                AdmissionError::ArtifactDigestMismatch { .. } => "artifact_digest_mismatch",
+                AdmissionError::ArtifactCertificateStale { .. } => "artifact_certificate_stale",
+            }
+        }
+        let _ = _exhaustive_match;
     }
 }
 

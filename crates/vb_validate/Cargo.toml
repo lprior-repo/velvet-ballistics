@@ -14,7 +14,6 @@ proptest = { workspace = true }
 
 [features]
 default = []
-verus = []
 
 [lints]
 workspace = true

@@ -175,6 +175,12 @@ pub enum RuntimeError {
     MigrateSelf,
 }
 
+impl From<std::io::Error> for RuntimeError {
+    fn from(_: std::io::Error) -> Self {
+        RuntimeError::JournalPoisoned
+    }
+}
+
 /// Result alias for runtime operations.
 pub type RuntimeResult<T> = Result<T, RuntimeError>;
 
@@ -185,5 +191,7 @@ mod equality;
 
 #[cfg(test)]
 mod tests_basic;
+#[cfg(test)]
+mod tests_conversion_refinement;
 #[cfg(test)]
 mod tests_diagnostics;

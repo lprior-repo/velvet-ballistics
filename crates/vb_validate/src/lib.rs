@@ -105,54 +105,71 @@ pub mod kani;
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ValidationError {
+    /// Returned when a YAML document contains duplicate mapping keys.
     #[error("DUPLICATE_KEY")]
     DuplicateKey,
 
+    /// Returned when a YAML feature (e.g., anchors, tags) is used that is forbidden by policy.
     #[error("FORBIDDEN_YAML_FEATURE")]
     ForbiddenYamlFeature,
 
+    /// Returned when a top-level field name is not recognized in the schema.
     #[error("UNKNOWN_TOP_LEVEL_FIELD")]
     UnknownTopLevelField,
 
+    /// Returned when a field within a step is not recognized in the schema.
     #[error("UNKNOWN_STEP_FIELD")]
     UnknownStepField,
 
+    /// Returned when a required field is absent from a document or step.
     #[error("MISSING_REQUIRED_FIELD: {field}")]
     MissingRequiredField { field: String },
 
+    /// Returned when the document version string is not supported or malformed.
     #[error("INVALID_VERSION: {version}")]
     InvalidVersion { version: String },
 
+    /// Returned when an identifier does not conform to the required format.
     #[error("INVALID_ID: {id}")]
     InvalidId { id: String },
 
+    /// Returned when an identifier collides with a reserved name.
     #[error("RESERVED_ID: {id}")]
     ReservedId { id: String },
 
+    /// Returned when an identifier is used more than once in the same scope.
     #[error("DUPLICATE_ID: {id}")]
     DuplicateId { id: String },
 
+    /// Returned when a step contains more than one primitive value (e.g., both a string and a list).
     #[error("MULTIPLE_STEP_PRIMITIVES")]
     MultipleStepPrimitives,
 
+    /// Returned when a step lacks any primitive value.
     #[error("MISSING_STEP_PRIMITIVE")]
     MissingStepPrimitive,
 
+    /// Returned when a reference target does not exist in the registry.
     #[error("UNKNOWN_REFERENCE: {reference}")]
     UnknownReference { reference: String },
 
+    /// Returned when a reference points to a version newer than the current document.
     #[error("FUTURE_REFERENCE: {reference}")]
     FutureReference { reference: String },
 
+    /// Returned when a secret is referenced without being declared in the secrets section.
     #[error("SECRET_NOT_DECLARED: {secret}")]
     SecretNotDeclared { secret: String },
 
+    /// Returned when a step directly references runtime data without an indirection.
     #[error("DIRECT_RUNTIME_REFERENCE")]
     DirectRuntimeReference,
 
+    /// Returned when the target of a `then` branch is not a valid step reference.
     #[error("INVALID_THEN_TARGET")]
     InvalidThenTarget,
 
+    /// Returned when control flow forms a cycle (e.g., step references itself).
     #[error("CONTROL_FLOW_CYCLE")]
     ControlFlowCycle,
 

@@ -162,6 +162,8 @@ impl RuntimeError {
             Self::StorageJournalAppend { .. } | Self::Core { .. } => {
                 Some(Self::storage_append_symbolic_code())
             }
+            // NOTE: #[non_exhaustive] - new RuntimeError variants return None for symbolic code.
+            // Add explicit match arms for new variants.
             _ => None,
         }
     }

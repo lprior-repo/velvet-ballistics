@@ -11,13 +11,13 @@ use crate::{
     },
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct QueuedJournalEvent {
     event: JournalEvent,
     profile: DurabilityProfile,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct JournalWriterQueueState {
     pending: VecDeque<QueuedJournalEvent>,
     shutdown: bool,

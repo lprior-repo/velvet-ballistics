@@ -1938,6 +1938,7 @@ dependencies = [
 name = "vb_core"
 version = "0.1.0"
 dependencies = [
+ "blake3",
  "bytes",
  "chrono",
  "criterion",
@@ -2108,6 +2109,7 @@ dependencies = [
  "blake3",
  "bytes",
  "chrono",
+ "crc32c",
  "criterion",
  "crossbeam-queue",
  "mio",

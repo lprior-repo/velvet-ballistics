@@ -12,6 +12,7 @@ serde.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+blake3.workspace = true
 criterion.workspace = true
 postcard.workspace = true
 proptest = { workspace = true }
@@ -23,9 +24,7 @@ harness = false
 
 [features]
 default = []
-bench = []
 kani-diagnostic-codes = []
-volatile = []
 test-util = []
 
 [lints]

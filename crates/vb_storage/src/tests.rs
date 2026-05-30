@@ -7511,4 +7511,60 @@ mod tests {
             "no new files should appear when lock fails"
         );
     }
+
+    // ══ vb-hbav B19: JournalError exhaustiveness compile-time check ════════
+    #[test]
+    fn journal_error_match_covers_all_variants() {
+        fn _exhaustive_match(e: &JournalError) -> &'static str {
+            match e {
+                JournalError::Fjall(_) => "fjall",
+                JournalError::Encode(_) => "encode",
+                JournalError::KeyCapacity => "key_capacity",
+                JournalError::DuplicateEvent { .. } => "duplicate_event",
+                JournalError::WriteLockPoisoned => "write_lock_poisoned",
+                JournalError::QueueCapacity => "queue_capacity",
+                JournalError::QueueFull => "queue_full",
+                JournalError::QueueShutdown => "queue_shutdown",
+                JournalError::WrongRun { .. } => "wrong_run",
+                JournalError::SequenceGap { .. } => "sequence_gap",
+                JournalError::SequenceOverflow => "sequence_overflow",
+                JournalError::BadMagic { .. } => "bad_magic",
+                JournalError::UnsupportedSchemaVersion { .. } => "unsupported_schema_version",
+                JournalError::MigrationRequired { .. } => "migration_required",
+                JournalError::UnknownRecordKind { .. } => "unknown_record_kind",
+                JournalError::RecordKindFamilyMismatch { .. } => "record_kind_family_mismatch",
+                JournalError::HeaderLengthMismatch { .. } => "header_length_mismatch",
+                JournalError::PayloadTooLarge { .. } => "payload_too_large",
+                JournalError::HeaderChecksumMismatch => "header_checksum_mismatch",
+                JournalError::PayloadDigestMismatch => "payload_digest_mismatch",
+                JournalError::UnexpectedEof => "unexpected_eof",
+                JournalError::PostcardDecodeFailed => "postcard_decode_failed",
+                JournalError::InvalidEvent => "invalid_event",
+                JournalError::ArtifactMalformed => "artifact_malformed",
+                JournalError::ArtifactChecksumMismatch => "artifact_checksum_mismatch",
+                JournalError::InvalidGateCount { .. } => "invalid_gate_count",
+                JournalError::MissingRequiredProofFlag { .. } => "missing_required_proof_flag",
+                JournalError::ArtifactNotFound { .. } => "artifact_not_found",
+                JournalError::AdmissionRequired => "admission_required",
+                JournalError::ArtifactInvalid { .. } => "artifact_invalid",
+                JournalError::InputTooLarge { .. } => "input_too_large",
+                JournalError::InputSchemaMismatch => "input_schema_mismatch",
+                JournalError::CapabilityDenied => "capability_denied",
+                JournalError::SecretUnavailable => "secret_unavailable",
+                JournalError::RunAlreadyExists => "run_already_exists",
+                JournalError::InvalidRunId { .. } => "invalid_run_id",
+                JournalError::ActiveRunCapacityExceeded => "active_run_capacity_exceeded",
+                JournalError::FrameAllocationFailed => "frame_allocation_failed",
+                JournalError::AdmissionJournalFailed => "admission_journal_failed",
+                JournalError::StrictDurabilityFailed => "strict_durability_failed",
+                JournalError::TooManyEvents { .. } => "too_many_events",
+                JournalError::ReplayAllocationFailed { .. } => "replay_allocation_failed",
+                JournalError::ClockUnavailable => "clock_unavailable",
+                JournalError::ProcessLockHeld { .. } => "process_lock_held",
+                JournalError::ProcessLockIo { .. } => "process_lock_io",
+                JournalError::Trim(_) => "trim",
+            }
+        }
+        let _ = _exhaustive_match;
+    }
 }

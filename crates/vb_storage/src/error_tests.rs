@@ -9,6 +9,58 @@
     clippy::panic_in_result_fn,
     clippy::unwrap_used
 )]
+// JOURNALERROR TEST COVERAGE AUDIT
+//
+// Tested variants:
+// - AdmissionRequired: admission_required_variant_and_display
+// - ArtifactInvalid: artifact_invalid_variant_and_fields, artifact_invalid_display_format, artifact_invalid_error_code
+// - InputTooLarge: input_too_large_variant_and_fields, input_too_large_display_format, input_too_large_error_code
+// - InputSchemaMismatch: input_schema_mismatch_variant_and_display, input_schema_mismatch_error_code
+// - CapabilityDenied: capability_denied_variant_and_display, capability_denied_error_code
+// - SecretUnavailable: secret_unavailable_variant_and_display, secret_unavailable_error_code
+// - RunAlreadyExists: run_already_exists_variant_and_display, run_already_exists_error_code
+// - ActiveRunCapacityExceeded: active_run_capacity_exceeded_variant_and_display, active_run_capacity_exceeded_error_code
+// - FrameAllocationFailed: frame_allocation_failed_variant_and_display, frame_allocation_failed_error_code
+// - AdmissionJournalFailed: admission_journal_failed_variant_and_display, admission_journal_failed_error_code
+// - TooManyEvents: too_many_events_variant_and_fields, too_many_events_display_format, too_many_events_error_code
+// - ReplayAllocationFailed: replay_allocation_failed_variant_and_fields, replay_allocation_failed_display_format, replay_allocation_failed_error_code
+// - ClockUnavailable: clock_unavailable_variant_and_display, clock_unavailable_error_code
+// - InvalidGateCount: invalid_gate_count_variant_and_fields, invalid_gate_count_display_format, invalid_gate_count_error_code
+// - MissingRequiredProofFlag: missing_required_proof_flag_variant_and_fields, missing_required_proof_flag_display_format, missing_required_proof_flag_error_code
+//
+// Untested variants:
+// - Fjall: no direct test (requires fjall mock/integration)
+// - Encode: no direct test (requires postcard mock)
+// - KeyCapacity: no direct test
+// - DuplicateEvent: no direct test
+// - WriteLockPoisoned: no direct test
+// - QueueCapacity: no direct test
+// - QueueFull: no direct test
+// - QueueShutdown: no direct test
+// - WrongRun: no direct test
+// - SequenceGap: no direct test
+// - SequenceOverflow: no direct test
+// - BadMagic: no direct test
+// - UnsupportedSchemaVersion: no direct test
+// - MigrationRequired: no direct test
+// - UnknownRecordKind: no direct test
+// - RecordKindFamilyMismatch: no direct test
+// - HeaderLengthMismatch: no direct test
+// - PayloadTooLarge: no direct test
+// - HeaderChecksumMismatch: no direct test
+// - PayloadDigestMismatch: no direct test
+// - UnexpectedEof: no direct test
+// - PostcardDecodeFailed: no direct test
+// - InvalidEvent: no direct test
+// - ArtifactMalformed: no direct test
+// - ArtifactChecksumMismatch: no direct test
+// - ArtifactNotFound: no direct test
+// - InvalidRunId: no direct test
+// - StrictDurabilityFailed: no direct test
+// - ProcessLockHeld: no direct test
+// - ProcessLockIo: no direct test
+// - Trim: no direct test
+//
 mod error_tests {
     use crate::JournalError;
     use crate::error::ArtifactInvalidSource;

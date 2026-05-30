@@ -3,13 +3,13 @@
 
 use crate::{YamlError, YamlResult, events::YamlEvent};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Container<'a> {
     Mapping(MappingFrame<'a>),
     Sequence,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct MappingFrame<'a> {
     keys: Vec<&'a str>,
     expecting_key: bool,

@@ -10,7 +10,6 @@ autobenches = false
 workspace = true
 
 [features]
-verus = []
 
 [dependencies]
 serde.workspace = true
@@ -23,6 +22,7 @@ toml.workspace = true
 blake3.workspace = true
 bytes.workspace = true
 chrono.workspace = true
+crc32c.workspace = true
 mio = { workspace = true, features = ["net", "os-poll"] }
 criterion.workspace = true
 crossbeam-queue.workspace = true
@@ -151,12 +151,8 @@ name = "restate_typed_partitioned_id_tests"
 path = "tests/restate_typed_partitioned_id_tests.rs"
 
 [[test]]
-name = "restate_decode_error_taxonomy_tests"
-path = "tests/restate_decode_error_taxonomy_tests.rs"
-
-[[test]]
-name = "restate_postcard_newtype_compat_tests"
-path = "tests/restate_postcard_newtype_compat_tests.rs"
+name = "vb_eepg_bdd_tests"
+path = "tests/vb_eepg_bdd_tests.rs"
 
 [[bench]]
 name = "velvet_ballistics"

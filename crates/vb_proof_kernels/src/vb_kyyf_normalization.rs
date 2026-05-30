@@ -433,6 +433,7 @@ fn taint_statuses_equal(left: TaintStatus, right: TaintStatus) -> (equal: bool)
 
 #[cfg(not(verus_keep_ghost))]
 mod cargo_kernel {
+    /// Result of a terminal step evaluation.
     #[derive(Clone, Copy)]
     pub enum TerminalResult {
         Ok,
@@ -441,6 +442,7 @@ mod cargo_kernel {
         None,
     }
 
+    /// Taint classification for a value.
     #[derive(Clone, Copy)]
     pub enum TaintStatus {
         Clean,
@@ -448,6 +450,7 @@ mod cargo_kernel {
         Unknown,
     }
 
+    /// Errors that can occur during determinism verification.
     #[derive(Clone, Copy)]
     pub enum DeterminismError {
         NondeterministicObservation,
@@ -458,6 +461,7 @@ mod cargo_kernel {
         UnsupportedGeneratedSubset,
     }
 
+    /// Status of a workflow digest comparison.
     #[derive(Clone, Copy)]
     pub struct DigestStatus {
         pub workflow_source_matches: bool,
@@ -473,6 +477,7 @@ mod cargo_kernel {
         }
     }
 
+    /// Observable properties of a workflow execution.
     #[derive(Clone, Copy)]
     pub struct PublicObservation {
         pub result: TerminalResult,
@@ -492,6 +497,7 @@ mod cargo_kernel {
         pub generated_run_signature: u64,
     }
 
+    /// Normalized form of an observation for comparison.
     #[derive(Clone, Copy)]
     pub struct NormalizedObservation {
         pub result: TerminalResult,
@@ -507,11 +513,13 @@ mod cargo_kernel {
         pub semantic_taint_signature: u64,
     }
 
+    /// Normalizes a public observation by extracting comparison-relevant fields.
     #[must_use]
     pub const fn normalize_observation(raw: PublicObservation) -> NormalizedObservation {
         normalize_observation_body!(raw)
     }
 
+    /// Compares observations across two different workflow runs for determinism.
     pub fn compare_cross_run(
         left: PublicObservation,
         right: PublicObservation,
@@ -519,6 +527,7 @@ mod cargo_kernel {
         compare_normalized_observations(normalize_observation(left), normalize_observation(right))
     }
 
+    /// Compares observations from two replays of the same run for determinism.
     pub fn compare_replay(
         first: PublicObservation,
         second: PublicObservation,
@@ -526,6 +535,7 @@ mod cargo_kernel {
         compare_replay_body!(first, second)
     }
 
+    /// Compares IR-generated observations against reference for consistency.
     pub fn compare_generated_ir(
         ir: PublicObservation,
         generated: PublicObservation,

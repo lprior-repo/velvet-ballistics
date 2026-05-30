@@ -60,7 +60,7 @@ const DEFAULT_EVIDENCE_CAPACITY: usize = 3 * 1024;
 /// growth from malicious or buggy workflows. When at capacity, new events
 /// are silently dropped (the evidence chain becomes incomplete but the
 /// system remains memory-safe).
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EvidenceCollector {
     events: Vec<EvidenceEvent>,
     capacity: usize,

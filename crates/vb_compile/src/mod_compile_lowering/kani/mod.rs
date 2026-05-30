@@ -11,6 +11,7 @@
 #![cfg(kani)]
 
 mod kani_choose_body;
+mod kani_choose_lowering;
 mod kani_choose_slots;
 mod kani_choose_width;
 

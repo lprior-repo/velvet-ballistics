@@ -54,6 +54,9 @@ anyhow = "1"
 name = "fuzz_lib"
 path = "src/lib.rs"
 
+[dev-dependencies]
+proptest = "1"
+
 [package.metadata.cargo-machete]
 ignored = ["bytes"]
 
@@ -161,13 +164,6 @@ bench = false
 [[bin]]
 name = "accessor_traversal"
 path = "src/bin/accessor_traversal.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "action_tracker"
-path = "src/bin/action_tracker.rs"
 test = false
 doc = false
 bench = false
@@ -492,6 +488,22 @@ bench = false
 [[bin]]
 name = "compile_source_ast_marks"
 path = "fuzz_targets/compile_source_ast_marks.rs"
+test = false
+doc = false
+bench = false
+
+# === vb-xi2f.13 Choose Lowering Fuzz Targets ===
+
+[[bin]]
+name = "fuzz_choose_when_parse"
+path = "fuzz_targets/fuzz_choose_when_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_choose_depth"
+path = "fuzz_targets/fuzz_choose_depth.rs"
 test = false
 doc = false
 bench = false

@@ -759,4 +759,70 @@ mod tests {
         assert_eq!(prefix.len(), RUN_ONLY_KEY_BYTES);
         Ok(())
     }
+
+    // =========================================================================
+    // vb-282my: Journal key injectivity tests (RJ-01..RJ-04)
+    // =========================================================================
+
+    #[test]
+    fn run_event_key_injectivity_distinct_pairs_produce_distinct_keys() -> Result<(), JournalError> {
+        let run_a = RunId::new(1);
+        let run_b = RunId::new(2);
+        let seq_1 = EventSeq::new(1);
+        let seq_2 = EventSeq::new(2);
+
+        let key_a1 = run_event_key(run_a, seq_1)?;
+        let key_b2 = run_event_key(run_b, seq_2)?;
+
+        assert_ne!(key_a1, key_b2, "distinct (run,seq) pairs must produce distinct keys");
+        Ok(())
+    }
+
+    #[test]
+    fn run_event_key_differentiates_by_run_id_with_same_seq() -> Result<(), JournalError> {
+        let run_a = RunId::new(1);
+        let run_b = RunId::new(42);
+        let seq = EventSeq::new(7);
+
+        let key_a = run_event_key(run_a, seq)?;
+        let key_b = run_event_key(run_b, seq)?;
+
+        assert_ne!(key_a, key_b, "same seq but different run must produce distinct keys");
+        Ok(())
+    }
+
+    #[test]
+    fn run_event_key_differentiates_by_seq_with_same_run_id() -> Result<(), JournalError> {
+        let run = RunId::new(5);
+        let seq_1 = EventSeq::new(1);
+        let seq_2 = EventSeq::new(999);
+
+        let key_1 = run_event_key(run, seq_1)?;
+        let key_2 = run_event_key(run, seq_2)?;
+
+        assert_ne!(key_1, key_2, "same run but different seq must produce distinct keys");
+        Ok(())
+    }
+
+    #[test]
+    fn run_event_key_is_deterministic() -> Result<(), JournalError> {
+        let run = RunId::new(7);
+        let seq = EventSeq::new(3);
+
+        let key1 = run_event_key(run, seq)?;
+        let key2 = run_event_key(run, seq)?;
+
+        assert_eq!(key1, key2, "same inputs must produce identical keys");
+        Ok(())
+    }
+
+    #[test]
+    fn run_event_key_output_length_is_17_bytes() -> Result<(), JournalError> {
+        let run = RunId::new(u64::MAX);
+        let seq = EventSeq::new(u64::MAX);
+
+        let key = run_event_key(run, seq)?;
+        assert_eq!(key.len(), JOURNAL_KEY_BYTES, "key must be exactly 17 bytes");
+        Ok(())
+    }
 }

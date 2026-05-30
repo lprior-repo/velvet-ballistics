@@ -32,3 +32,25 @@ path = "tests/vb_xi2f_error_variant_proptest.rs"
 [[test]]
 name = "proptest_digest_foreach"
 path = "tests/proptest_digest_foreach.rs"
+
+# === vb-xi2f.13 Choose Lowering Proptest Targets ===
+
+[[test]]
+name = "proptest_choose_width"
+path = "tests/proptest/proptest_choose_width.rs"
+
+[[test]]
+name = "proptest_choose_fallthrough"
+path = "tests/proptest/proptest_choose_fallthrough.rs"
+
+[[test]]
+name = "proptest_choose_otherwise"
+path = "tests/proptest/proptest_choose_otherwise.rs"
+
+[[test]]
+name = "proptest_choose_depth"
+path = "tests/proptest/proptest_choose_depth.rs"
+
+[[test]]
+name = "proptest_choose_emission"
+path = "tests/proptest/proptest_choose_emission.rs"

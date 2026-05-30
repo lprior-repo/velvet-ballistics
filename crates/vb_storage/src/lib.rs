@@ -73,6 +73,9 @@ pub mod kani_vb_u8gi_storage_numeric_fields;
 #[cfg(all(kani, feature = "kani-vb-u8gi-decode-taxonomy"))]
 pub mod kani_vb_u8gi_storage_payload_bounds;
 
+#[cfg(kani)]
+pub mod kani_journal_duplicate;
+
 pub mod keys;
 pub mod process_lock;
 
@@ -111,7 +114,45 @@ pub mod vb_2bok_durability_gate_tests;
 // ============================================================================
 
 // Core types
-pub use constants::*;
+pub use constants::{
+    KEYSPACE_WORKFLOW_SOURCE,
+    KEYSPACE_COMPILED_IR,
+    KEYSPACE_RUN_HEADER,
+    KEYSPACE_RUN_EVENT,
+    KEYSPACE_RUN_SNAPSHOT,
+    KEYSPACE_BLOB,
+    KEYSPACE_INDEX_STATUS,
+    KEYSPACE_INDEX_WORKFLOW,
+    KEYSPACE_INDEX_ACTION,
+    PREFIX_WORKFLOW_SOURCE,
+    PREFIX_COMPILED_IR,
+    PREFIX_RUN_HEADER,
+    PREFIX_RUN_EVENT,
+    PREFIX_RUN_SNAPSHOT,
+    PREFIX_BLOB,
+    PREFIX_INDEX_STATUS,
+    PREFIX_INDEX_WORKFLOW,
+    PREFIX_INDEX_ACTION,
+    RECORD_HEADER_LEN,
+    CURRENT_SCHEMA_VERSION,
+    MAGIC_COMPILED_ARTIFACT,
+    MAGIC_JOURNAL_EVENT,
+    MAGIC_SNAPSHOT,
+    MAGIC_BLOB,
+    MAGIC_IPC_FRAME,
+    MAGIC_WORKFLOW_SOURCE,
+    MAGIC_INDEX_RECORD,
+    DIGEST_BYTES,
+    RECORD_HEADER_BYTES,
+    CRC_OFFSET,
+    MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    MAX_WORKFLOW_SOURCE_BYTES,
+    MAX_COMPILED_IR_BYTES,
+    MAX_RUN_HEADER_BYTES,
+    MAX_SNAPSHOT_BYTES,
+    MAX_BLOB_BYTES,
+    MAX_BATCH_COUNT,
+};
 pub use error::JournalError;
 pub use events::{DurableActionOutcome, JournalEvent};
 pub use records::{
@@ -122,7 +163,22 @@ pub use slot_extra::{
     DecodedSlotWrittenExtra, SLOT_WRITTEN_EXTRA_PREFIX, SlotWrittenExtraEnvelope,
     SlotWrittenExtraError, decode_slot_written_extra, encode_slot_written_extra,
 };
-pub use types::*;
+pub use types::{
+    DurabilityProfile,
+    EventSeq,
+    FjallConfig,
+    IndexStatusState,
+    JournalBatchSize,
+    JournalQueueCapacity,
+    JournalWriterFlushReport,
+    JournalWriterQueueProfileCounts,
+    KeyspaceProfile,
+    RecordEnvelope,
+    RecordHeader,
+    StorageKey,
+    StorageLimits,
+    keyspace_options_for,
+};
 
 // Journal
 pub use journal::incident::{
@@ -136,9 +192,6 @@ pub use batch::JournalWriteBatch;
 
 // Queue
 pub use queue::JournalWriterQueue;
-
-// Types
-pub use types::JournalWriterFlushReport;
 
 // Trimming
 pub use trimming::{

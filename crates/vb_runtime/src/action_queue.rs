@@ -69,7 +69,7 @@ pub struct BoundedActionCompletionQueue {
     backpressure_tx: Option<SyncSender<BackpressureWarning>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Inner {
     items: VecDeque<ActionTicket>,
 }

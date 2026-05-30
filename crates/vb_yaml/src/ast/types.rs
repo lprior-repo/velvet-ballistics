@@ -30,6 +30,13 @@ pub struct WorkflowSource {
     pub(crate) examples: Vec<ExampleAst>,
 }
 
+// Visibility architecture for WorkflowSource types.
+//
+// Production code uses `#[cfg(not(any(test, feature = "test-util")))]` to hide
+// test-only constructors. During `cargo test`, `cfg(test)` is active, making
+// both paths visible. The `test-util` feature allows test utilities to access
+// these types without full test compilation.
+
 impl WorkflowSource {
     /// Production-visible constructor: restricted to crate-internal use.
     #[doc(hidden)]

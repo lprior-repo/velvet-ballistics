@@ -1554,22 +1554,32 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
 ///
 /// Returns `None` if the symbolic name is not registered.
 #[must_use]
-pub fn symbolic_to_numeric(symbolic: &str) -> Option<u16> {
-    CODE_REGISTRY
-        .iter()
-        .find(|entry| entry.symbolic == symbolic)
-        .map(|entry| entry.numeric)
+#[allow(clippy::indexing_slicing)]
+pub const fn symbolic_to_numeric(symbolic: &str) -> Option<u16> {
+    let mut i = 0;
+    while i < CODE_REGISTRY.len() {
+        if CODE_REGISTRY[i].symbolic == symbolic {
+            return Some(CODE_REGISTRY[i].numeric);
+        }
+        i = i.wrapping_add(1);
+    }
+    None
 }
 
 /// Looks up a numeric code and returns its symbolic name.
 ///
 /// Returns `None` if the numeric code is not in the registry.
 #[must_use]
-pub fn numeric_to_symbolic(numeric: u16) -> Option<&'static str> {
-    CODE_REGISTRY
-        .iter()
-        .find(|entry| entry.numeric == numeric)
-        .map(|entry| entry.symbolic)
+#[allow(clippy::indexing_slicing)]
+pub const fn numeric_to_symbolic(numeric: u16) -> Option<&'static str> {
+    let mut i = 0;
+    while i < CODE_REGISTRY.len() {
+        if CODE_REGISTRY[i].numeric == numeric {
+            return Some(CODE_REGISTRY[i].symbolic);
+        }
+        i = i.wrapping_add(1);
+    }
+    None
 }
 
 /// Looks up a numeric code and returns the corresponding [`SymbolicCode`].
