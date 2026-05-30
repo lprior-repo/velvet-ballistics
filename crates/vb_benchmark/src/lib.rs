@@ -212,11 +212,8 @@ pub fn capture_metadata(
 
     // Duration::as_micros() returns u128 on nightly; convert to u64 for struct fields.
     // Benchmark durations are always well under u64::MAX microseconds (~584k years).
-    // The truncation is safe because no benchmark can run for 584k years.
-    #[allow(clippy::as_conversions)]
-    let baseline_us = baseline.map(|d| d.as_micros() as u64);
-    #[allow(clippy::as_conversions)]
-    let result_us = result.as_micros() as u64;
+    let baseline_us = baseline.map(|d| u64::try_from(d.as_micros()).unwrap_or(u64::MAX));
+    let result_us = u64::try_from(result.as_micros()).unwrap_or(u64::MAX);
 
     Ok(BenchmarkMetadata {
         name: name.to_string(),
@@ -270,14 +267,10 @@ pub fn budget_utilization_percent(elapsed: Duration, budget_us: u64) -> u128 {
     // Duration::as_micros() returns u128 on nightly; budget_us converts to u128 for division
     let elapsed_us = elapsed.as_micros();
     let budget_us_u128 = u128::from(budget_us);
-    // Use checked_mul to avoid overflow; on overflow return u128::MAX (100% utilization)
-    // Division is safe here because we checked budget_us != 0 above.
-    #[allow(clippy::arithmetic_side_effects)]
-    let result = match elapsed_us.checked_mul(10000) {
-        Some(v) => v / budget_us_u128,
+    match elapsed_us.checked_mul(10000) {
+        Some(v) => v.checked_div(budget_us_u128).unwrap_or(u128::MAX),
         None => u128::MAX,
-    };
-    result
+    }
 }
 
 /// Checks the evidence gate for a benchmark result.
