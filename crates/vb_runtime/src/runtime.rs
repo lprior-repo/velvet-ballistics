@@ -176,6 +176,12 @@ impl Runtime {
         shard.enqueue(ShardCommand::Cancel { run, reason: None })
     }
 
+    /// Kills a run unconditionally.
+    pub fn kill_run(&self, run: RunId) -> RuntimeResult<()> {
+        let shard = self.shard_for(run)?;
+        shard.enqueue(ShardCommand::Kill { run, reason: None })
+    }
+
     /// Resumes a suspended run from its current program counter.
     pub fn resume_run(&self, run: RunId) -> RuntimeResult<()> {
         let shard = self.shard_for(run)?;

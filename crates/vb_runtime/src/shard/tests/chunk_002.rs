@@ -95,7 +95,7 @@ fn tick_returns_true_when_queue_is_empty() {
 }
 
 #[test]
-fn cancel_nonexistent_run_succeeds_silently() {
+fn cancel_nonexistent_run_returns_run_not_found() {
     let config = ShardConfig::default();
     let mut shard = Shard::new(config);
     assert_eq!(
@@ -104,7 +104,7 @@ fn cancel_nonexistent_run_succeeds_silently() {
         reason: None}),
         Ok(())
     );
-    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
 }
 
 #[test]

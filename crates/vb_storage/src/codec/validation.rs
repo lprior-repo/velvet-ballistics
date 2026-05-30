@@ -21,7 +21,7 @@ pub(crate) fn validate_schema_version(version: u16) -> Result<(), JournalError> 
 }
 
 pub(crate) const fn is_known_record_kind(kind: u16) -> bool {
-    matches!(kind, 1 | 2 | 3 | 10..=27 | 30 | 40 | 50)
+    matches!(kind, 1 | 2 | 3 | 10..=28 | 30 | 40 | 50)
 }
 
 pub(crate) const fn unknown_record_kind_value(kind: u16) -> Option<u16> {
@@ -43,7 +43,7 @@ pub(crate) fn validate_kind_family(magic: u32, kind: u16) -> Result<(), JournalE
     let valid = match magic {
         MAGIC_WORKFLOW_SOURCE => kind == RecordKind::WorkflowSource.id(),
         MAGIC_COMPILED_ARTIFACT => kind == RecordKind::CompiledIr.id(),
-        MAGIC_JOURNAL_EVENT => matches!(kind, 10..=27),
+        MAGIC_JOURNAL_EVENT => matches!(kind, 10..=28),
         MAGIC_SNAPSHOT => kind == RecordKind::Snapshot.id(),
         MAGIC_BLOB => kind == RecordKind::Blob.id(),
         MAGIC_INDEX_RECORD => matches!(kind, 3 | 50),

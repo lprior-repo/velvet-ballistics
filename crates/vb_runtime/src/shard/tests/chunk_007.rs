@@ -42,7 +42,7 @@ fn shard_cancel_nonexistent_does_not_increment_failed() {
         }),
         Ok(())
     );
-    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
     // Then the failed counter is NOT incremented (run didn't exist)
     assert_eq!(shard.counters().snapshot().runs_failed, 0);
 }

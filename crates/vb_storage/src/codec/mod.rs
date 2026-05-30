@@ -92,3 +92,6 @@ pub(crate) fn validate_replayed_event(
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(feature = "flux")]
+pub mod flux_validation;

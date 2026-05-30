@@ -484,3 +484,498 @@ fn inv1_completed_run_terminal_never_regresses() -> Result<(), String> {
 
     Ok(())
 }
+
+// =============================================================================
+// C2: Cancel/Kill Missing and Already-Terminal — Cancel-Based Tests (vb-b8i8f)
+// TDD RED: handle_cancel always returns Ok(()). After State 10, it should
+// return typed errors. Current behavior IS side-effect-free for missing/
+// terminal runs, so these tests verify side-effect-free contract.
+// =============================================================================
+
+/// B07/B11/B15: cancel on never-submitted run returns typed error during tick.
+#[test]
+fn cancel_missing_run_returns_run_not_found_error() -> Result<(), String> {
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let run = RunId::new(40001);
+
+    let counters_before = runtime.counters_snapshot();
+    let journal_before = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+
+    // C2: enqueue succeeds; error returned during tick processing.
+    assert_eq!(runtime.cancel_run(run), Ok(()));
+
+    let tick_result = runtime.tick_all();
+    assert!(
+        tick_result.is_err(),
+        "tick must return error for missing run cancel, got {:?}",
+        tick_result
+    );
+
+    let counters_after = runtime.counters_snapshot();
+    assert_eq!(
+        counters_before.runs_failed, counters_after.runs_failed,
+        "failed counter unchanged for missing run cancel"
+    );
+
+    let journal_after = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    assert_eq!(
+        journal_after.len(),
+        journal_before.len(),
+        "journal unchanged"
+    );
+
+    Ok(())
+}
+
+/// B08/B12/B16: cancel on already-terminal run produces no side effects.
+#[test]
+fn cancel_terminal_run_produces_no_side_effects() -> Result<(), String> {
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let run = RunId::new(40002);
+
+    assert_eq!(
+        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        Ok(())
+    );
+    tick_count(&mut runtime, 2)?;
+
+    assert_eq!(runtime.cancel_run(run), Ok(()));
+    tick_and_drain(&mut runtime)?;
+
+    let counters_before = runtime.counters_snapshot();
+    let journal_before = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    let event_count_before = journal_before.len();
+
+    // Second cancel on already-cancelled run
+    assert_eq!(runtime.cancel_run(run), Ok(()));
+    tick_and_drain(&mut runtime)?;
+
+    let counters_after = runtime.counters_snapshot();
+    assert_eq!(
+        counters_before.runs_failed, counters_after.runs_failed,
+        "failed counter unchanged on second cancel"
+    );
+
+    let journal_after = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    let cancelled_count = journal_after
+        .iter()
+        .filter(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r, .. } if *r == run))
+        .count();
+    assert_eq!(cancelled_count, 1, "exactly one RunCancelled event");
+    assert_eq!(journal_after.len(), event_count_before, "journal unchanged");
+
+    Ok(())
+}
+
+// =============================================================================
+// C3: Single Terminal Journal Event — Cancel Strengthened Tests (vb-b8i8f)
+// =============================================================================
+
+/// B25: second cancel after first cancel retains exactly one journal event.
+#[test]
+fn second_cancel_after_first_cancel_retains_one_event() -> Result<(), String> {
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let run = RunId::new(50007);
+
+    assert_eq!(
+        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        Ok(())
+    );
+    tick_count(&mut runtime, 2)?;
+
+    assert_eq!(runtime.cancel_run(run), Ok(()));
+    tick_and_drain(&mut runtime)?;
+
+    let events_after_first = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    let cancel_count_first = events_after_first
+        .iter()
+        .filter(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r, .. } if *r == run))
+        .count();
+    assert_eq!(cancel_count_first, 1);
+
+    assert_eq!(runtime.cancel_run(run), Ok(()));
+    tick_and_drain(&mut runtime)?;
+
+    let events_after_second = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    let cancel_count_second = events_after_second
+        .iter()
+        .filter(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r, .. } if *r == run))
+        .count();
+    assert_eq!(
+        cancel_count_second, 1,
+        "still exactly one RunCancelled event"
+    );
+
+    Ok(())
+}
+
+// =============================================================================
+// C4: Stale Action/Timer Cleanup — Cancel-Based Tests (vb-b8i8f)
+// =============================================================================
+
+/// B33/B34: Action completion after cancel returns error during tick.
+#[test]
+fn action_completion_after_cancel_returns_error() -> Result<(), String> {
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let run = RunId::new(60001);
+
+    assert_eq!(
+        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        Ok(())
+    );
+    tick_count(&mut runtime, 2)?;
+
+    assert_eq!(runtime.cancel_run(run), Ok(()));
+    tick_and_drain(&mut runtime)?;
+
+    // C4: enqueue succeeds; error is returned during tick processing.
+    assert_eq!(
+        runtime.complete_action_with_output(
+            action_ticket(run, ActionId::new(7)),
+            action_output(SlotValue::I64(42)),
+        ),
+        Ok(())
+    );
+
+    let tick_result = runtime.tick_all();
+    assert!(
+        tick_result.is_err(),
+        "tick must return error for stale action completion, got {:?}",
+        tick_result
+    );
+
+    Ok(())
+}
+
+/// B34: Action failure after cancel returns error during tick.
+#[test]
+fn action_failure_after_cancel_returns_error() -> Result<(), String> {
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let run = RunId::new(60002);
+
+    assert_eq!(
+        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        Ok(())
+    );
+    tick_count(&mut runtime, 2)?;
+
+    assert_eq!(runtime.cancel_run(run), Ok(()));
+    tick_and_drain(&mut runtime)?;
+
+    let failure = ActionFailure {
+        code: ActionFailureCode::Rejected,
+        retry_policy: RetryPolicy::NonRetryable,
+        taint: Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    };
+    // C4: enqueue succeeds; error is returned during tick processing.
+    assert_eq!(
+        runtime.fail_action(action_ticket(run, ActionId::new(7)), failure),
+        Ok(())
+    );
+
+    let tick_result = runtime.tick_all();
+    assert!(
+        tick_result.is_err(),
+        "tick must return error for stale action failure, got {:?}",
+        tick_result
+    );
+
+    Ok(())
+}
+
+/// B41: Stale action does not mutate state (counters, journal unchanged).
+#[test]
+fn stale_action_after_cancel_does_not_mutate_state() -> Result<(), String> {
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let run = RunId::new(60005);
+
+    assert_eq!(
+        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        Ok(())
+    );
+    tick_count(&mut runtime, 2)?;
+
+    assert_eq!(runtime.cancel_run(run), Ok(()));
+    tick_and_drain(&mut runtime)?;
+
+    let counters_before = runtime.counters_snapshot();
+    let journal_before = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    let event_count_before = journal_before.len();
+
+    // Stale action completion — enqueue succeeds; tick returns error.
+    let _ = runtime.complete_action_with_output(
+        action_ticket(run, ActionId::new(7)),
+        action_output(SlotValue::I64(99)),
+    );
+    let _ = runtime.tick_all();
+
+    let counters_after = runtime.counters_snapshot();
+    assert_eq!(
+        counters_before.runs_failed, counters_after.runs_failed,
+        "failed counter unchanged after stale action"
+    );
+    assert_eq!(
+        counters_before.runs_completed, counters_after.runs_completed,
+        "completed counter unchanged after stale action"
+    );
+
+    let journal_after = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    assert_eq!(
+        journal_after.len(),
+        event_count_before,
+        "journal unchanged after stale action attempt"
+    );
+
+    Ok(())
+}
+
+// =============================================================================
+// K1: Kill live run — kill_run public API (vb-b8i8f State 11)
+// =============================================================================
+
+/// K1: kill_run enqueues ShardCommand::Kill and after tick produces RunKilled journal event.
+#[test]
+fn kill_live_run_produces_runkilled_journal_event() -> Result<(), String> {
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let run = RunId::new(70001);
+
+    assert_eq!(
+        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        Ok(())
+    );
+    tick_count(&mut runtime, 2)?;
+
+    let counters_before = runtime.counters_snapshot();
+    assert_eq!(counters_before.runs_completed, 0);
+
+    assert_eq!(runtime.kill_run(run), Ok(()));
+    tick_and_drain(&mut runtime)?;
+
+    let counters = runtime.counters_snapshot();
+    assert_eq!(counters.runs_failed, 1, "killed run counts as failed");
+
+    let events = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    assert!(
+        events.iter().any(|e| matches!(
+            e,
+            RuntimeJournalEvent::RunKilled { run: r } if *r == run
+        )),
+        "journal must contain RunKilled event after kill"
+    );
+
+    Ok(())
+}
+
+/// K2: kill on never-submitted run returns typed error during tick.
+#[test]
+fn kill_missing_run_returns_run_not_found_error() -> Result<(), String> {
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let run = RunId::new(70002);
+
+    let counters_before = runtime.counters_snapshot();
+
+    // C2: enqueue succeeds; error returned during tick processing.
+    assert_eq!(runtime.kill_run(run), Ok(()));
+
+    let tick_result = runtime.tick_all();
+    assert!(
+        tick_result.is_err(),
+        "tick must return error for missing run kill, got {:?}",
+        tick_result
+    );
+
+    let counters_after = runtime.counters_snapshot();
+    assert_eq!(
+        counters_before.runs_failed, counters_after.runs_failed,
+        "failed counter unchanged for missing run kill"
+    );
+
+    Ok(())
+}
+
+/// K3: kill on already-cancelled run is idempotent (no side effects).
+#[test]
+fn kill_on_cancelled_run_is_idempotent() -> Result<(), String> {
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let run = RunId::new(70003);
+
+    assert_eq!(
+        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        Ok(())
+    );
+    tick_count(&mut runtime, 2)?;
+
+    assert_eq!(runtime.cancel_run(run), Ok(()));
+    tick_and_drain(&mut runtime)?;
+
+    let counters_before = runtime.counters_snapshot();
+
+    // Kill on already-cancelled run: idempotent, no side effects.
+    assert_eq!(runtime.kill_run(run), Ok(()));
+    tick_and_drain(&mut runtime)?;
+
+    let counters_after = runtime.counters_snapshot();
+    assert_eq!(
+        counters_before.runs_failed, counters_after.runs_failed,
+        "failed counter unchanged after kill on cancelled run"
+    );
+
+    let events = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    let killed_count = events
+        .iter()
+        .filter(|e| matches!(e, RuntimeJournalEvent::RunKilled { run: r } if *r == run))
+        .count();
+    assert_eq!(
+        killed_count, 0,
+        "no RunKilled event for already-cancelled run"
+    );
+
+    Ok(())
+}
+
+/// K4: second kill after first kill has no effect (single journal event).
+#[test]
+fn second_kill_after_first_kill_produces_no_extra_event() -> Result<(), String> {
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let run = RunId::new(70004);
+
+    assert_eq!(
+        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        Ok(())
+    );
+    tick_count(&mut runtime, 2)?;
+
+    assert_eq!(runtime.kill_run(run), Ok(()));
+    tick_and_drain(&mut runtime)?;
+
+    let counters_before = runtime.counters_snapshot();
+
+    assert_eq!(runtime.kill_run(run), Ok(()));
+    tick_and_drain(&mut runtime)?;
+
+    let counters_after = runtime.counters_snapshot();
+    assert_eq!(
+        counters_before.runs_failed, counters_after.runs_failed,
+        "failed counter unchanged on second kill"
+    );
+
+    let events = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    let killed_count = events
+        .iter()
+        .filter(|e| matches!(e, RuntimeJournalEvent::RunKilled { run: r } if *r == run))
+        .count();
+    assert_eq!(
+        killed_count, 1,
+        "exactly one RunKilled event after double kill"
+    );
+
+    Ok(())
+}
+
+/// K5: Action completion after kill returns error during tick.
+#[test]
+fn action_completion_after_kill_returns_error() -> Result<(), String> {
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let run = RunId::new(70005);
+
+    assert_eq!(
+        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        Ok(())
+    );
+    tick_count(&mut runtime, 2)?;
+
+    assert_eq!(runtime.kill_run(run), Ok(()));
+    tick_and_drain(&mut runtime)?;
+
+    // C4: enqueue succeeds; error returned during tick processing.
+    assert_eq!(
+        runtime.complete_action_with_output(
+            action_ticket(run, ActionId::new(7)),
+            action_output(SlotValue::I64(42)),
+        ),
+        Ok(())
+    );
+
+    let tick_result = runtime.tick_all();
+    assert!(
+        tick_result.is_err(),
+        "tick must return error for stale action completion after kill, got {:?}",
+        tick_result
+    );
+
+    Ok(())
+}
+
+/// K6: cancel after kill is idempotent (no RunCancelled appended).
+#[test]
+fn cancel_after_kill_is_idempotent() -> Result<(), String> {
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let run = RunId::new(70006);
+
+    assert_eq!(
+        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        Ok(())
+    );
+    tick_count(&mut runtime, 2)?;
+
+    assert_eq!(runtime.kill_run(run), Ok(()));
+    tick_and_drain(&mut runtime)?;
+
+    let counters_before = runtime.counters_snapshot();
+
+    assert_eq!(runtime.cancel_run(run), Ok(()));
+    tick_and_drain(&mut runtime)?;
+
+    let counters_after = runtime.counters_snapshot();
+    assert_eq!(
+        counters_before.runs_failed, counters_after.runs_failed,
+        "failed counter unchanged after cancel-on-killed"
+    );
+
+    let events = journal
+        .snapshot()
+        .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
+    let cancelled_count = events
+        .iter()
+        .filter(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r, .. } if *r == run))
+        .count();
+    assert_eq!(cancelled_count, 0, "no RunCancelled after cancel-on-killed");
+
+    Ok(())
+}

@@ -106,7 +106,7 @@ fn shard_queue_len_decrements_after_tick() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
-    // Cancel for a non-existent run succeeds silently
+    // Cancel for a non-existent run returns typed error
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
             run: super::RunId::new(999),
@@ -116,7 +116,7 @@ fn shard_queue_len_decrements_after_tick() {
     );
     assert_eq!(shard.command_queue_len(), 1);
     // When ticking
-    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
     // Then queue length is 0
     assert_eq!(shard.command_queue_len(), 0);
 }
