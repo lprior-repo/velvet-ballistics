@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 #![feature(const_cmp)]
 #![feature(const_trait_impl)]
+#![feature(const_index)]
 // Pedantic allows: these lints are documentation-only or would require pervasive
 // changes with no functional impact on correctness or safety.
 #![allow(clippy::missing_errors_doc)]
