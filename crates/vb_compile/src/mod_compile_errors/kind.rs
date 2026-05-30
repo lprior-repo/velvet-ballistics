@@ -7,7 +7,7 @@ use vb_core::{ActionId, SideEffect, WorkflowError};
 
 /// YAML compiler errors.
 #[rustfmt::skip]
-#[derive(Debug, Clone, Error)]
+#[derive(Debug, Clone, Error, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum CompileError {
     #[error("YAML source exceeds byte limit: actual={actual}, limit={limit}")]

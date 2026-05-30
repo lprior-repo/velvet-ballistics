@@ -11,7 +11,7 @@ use vb_core::ids::{ActionId, RunId, StepIdx, WorkflowDigest};
 use vb_storage::{FjallJournal, JournalEvent};
 
 /// Errors that can occur when deriving run or workflow status.
-/// 
+///
 /// #[non_exhaustive] - new variants may be added in the future.
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]

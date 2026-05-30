@@ -805,11 +805,7 @@ mod kani_collect_verification {
         match result {
             Ok(ps) => {
                 assert!(ps > 0, "page_size > 0 must produce usize > 0");
-                assert!(
-                    ps <= 1024,
-                    "page_size {} must not exceed input",
-                    ps
-                );
+                assert!(ps <= 1024, "page_size {} must not exceed input", ps);
             }
             Err(_) => {
                 // May fail for u32 > usize::MAX on 32-bit platforms,
@@ -838,7 +834,10 @@ mod kani_collect_verification {
         // Test copy_prefix with empty items.
         let empty_items: &[SlotValue] = &[];
         let copy_result = copy_prefix(empty_items, 1);
-        assert!(copy_result.is_ok(), "copy_prefix on empty items must succeed");
+        assert!(
+            copy_result.is_ok(),
+            "copy_prefix on empty items must succeed"
+        );
         if let Ok(page) = copy_result {
             assert!(page.is_empty(), "empty items must produce empty page");
         }

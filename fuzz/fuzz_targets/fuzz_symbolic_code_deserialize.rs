@@ -1,4 +1,6 @@
 #![no_main]
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::panic)]
+
 //! PO-022: Fuzz target for DiagnosticCode deserialization from
 //! arbitrary JSON payloads.
 //!
@@ -10,36 +12,24 @@
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
-    // Attempt to interpret arbitrary bytes as a str
-    let Ok(input) = std::str::from_utf8(data) else {
-        // Non-UTF8 bytes should be rejected before any serde processing
+    let input = match std::str::from_utf8(data) {
+        Ok(s) => s,
+        Err(_) => return,
+    };
+
+    let Ok(dc) = serde_json::from_str::<vb_core::diagnostic::DiagnosticCode>(input) else {
         return;
     };
 
-    // Attempt deserialization of DiagnosticCode from arbitrary JSON
-    let result: Result<vb_core::diagnostic::DiagnosticCode, _> = serde_json::from_str(input);
+    let formatted = dc.to_string();
+    assert!(
+        formatted.starts_with('E'),
+        "Deserialized DiagnosticCode must display as E-format: got '{}'",
+        formatted
+    );
 
-    // Either Ok (valid JSON number matching DiagnosticCode format)
-    // or Err (invalid JSON, wrong type, etc.)
-    // IMPORTANT: Must never panic, segfault, or UB
-    match result {
-        Ok(dc) => {
-            // Verify the deserialized value is well-formed:
-            // Display must produce a valid E-format string
-            let formatted = dc.to_string();
-            assert!(
-                formatted.starts_with('E'),
-                "Deserialized DiagnosticCode must display as E-format: got '{}'",
-                formatted
-            );
-
-            // Re-serialize must produce valid JSON
-            let re_serialized = serde_json::to_string(&dc).expect("Re-serialization must succeed");
-            let _: serde_json::Value = serde_json::from_str(&re_serialized)
-                .expect("Re-serialized output must be valid JSON");
-        }
-        Err(_) => {
-            // Expected for most inputs — serde rejects malformed JSON
-        }
-    }
+    let re_serialized = serde_json::to_string(&dc)
+        .expect("Re-serialization must succeed after successful parse");
+    let _: serde_json::Value = serde_json::from_str(&re_serialized)
+        .expect("Re-serialized output must be valid JSON");
 });

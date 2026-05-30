@@ -73,9 +73,7 @@ fn compile_workflow_choose_body_set_success() {
         choose_node.kind
     );
     // Verify the body node exists at index 2
-    let body_node = wf
-        .node(StepIdx::new(2))
-        .expect("body node must exist");
+    let body_node = wf.node(StepIdx::new(2)).expect("body node must exist");
     assert!(
         matches!(body_node.kind, CompiledNodeKind::SetConst { .. }),
         "body node must be SetConst, got {:?}",
@@ -141,9 +139,7 @@ fn compile_workflow_choose_body_do_success() {
         choose_node.kind
     );
     // Verify the Do body node exists at index 2
-    let body_node = wf
-        .node(StepIdx::new(2))
-        .expect("body node must exist");
+    let body_node = wf.node(StepIdx::new(2)).expect("body node must exist");
     assert!(
         matches!(body_node.kind, CompiledNodeKind::Do { .. }),
         "body node must be Do, got {:?}",

@@ -126,15 +126,10 @@ pub(crate) fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) 
 /// Does not panic. All error paths are handled by `validate_branch_counts` before
 /// hashing. The `u16::try_from` inside `digest_step_primitive` is guaranteed to
 /// succeed because branch counts > `u16::MAX` are rejected first.
-#[allow(clippy::expect_used)]
-pub fn canonical_digest(source: &vb_yaml::ast::WorkflowSource) -> WorkflowDigest {
-    // Validation must run first so that `digest_step_primitive` can safely
-    // use `u16::try_from` without hitting overflow.
-    // This `.expect` is safe: `validate_branch_counts` succeeds for all
-    // structurally valid inputs, and `compile_source` calls it before
-    // reaching this function in the compilation pipeline.
-    validate_branch_counts(source)
-        .expect("branch count validation must pass before canonical_digest");
+pub fn canonical_digest(
+    source: &vb_yaml::ast::WorkflowSource,
+) -> Result<WorkflowDigest, CompileErrors> {
+    validate_branch_counts(source)?;
 
     let mut hasher = blake3::Hasher::new();
     hasher.update(source.version().as_bytes());
@@ -154,11 +149,9 @@ pub fn canonical_digest(source: &vb_yaml::ast::WorkflowSource) -> WorkflowDigest
     };
     for step in source.steps() {
         hasher.update(step.id.as_bytes());
-        // Safe: branch counts already validated above
-        digest_step_primitive(&mut hasher, &step.primitive)
-            .expect("digest_step_primitive failed after branch count validation");
+        digest_step_primitive(&mut hasher, &step.primitive)?;
     }
-    WorkflowDigest::from_bytes(hasher.finalize().into())
+    Ok(WorkflowDigest::from_bytes(hasher.finalize().into()))
 }
 
 /// Compile-time validation: reject workflows where any Together branch count

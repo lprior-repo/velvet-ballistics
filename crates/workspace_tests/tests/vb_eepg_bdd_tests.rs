@@ -6,10 +6,10 @@
 
 use vb_core::{ActionId, RunId, SeqNo, StepIdx, WorkflowId};
 use vb_storage::{
+    JournalError, RecordKind,
     codec::{decode_record_header, encode_record},
     keys,
     types::EventSeq,
-    JournalError, RecordKind,
 };
 // =============================================================================
 // Helper Functions
@@ -176,8 +176,7 @@ mod workflow_id_roundtrip {
         );
 
         // And: each field decodes to its original value
-        let recovered_workflow =
-            WorkflowId::new(u32::from_be_bytes(key[1..5].try_into().unwrap()));
+        let recovered_workflow = WorkflowId::new(u32::from_be_bytes(key[1..5].try_into().unwrap()));
         let recovered_run_id = RunId::new(u64::from_be_bytes(key[5..13].try_into().unwrap()));
         assert_eq!(recovered_workflow, workflow_id);
         assert_eq!(recovered_run_id, run_id);
@@ -269,11 +268,9 @@ mod action_ticket_key_roundtrip {
         );
 
         // And: each field decodes to its original value
-        let recovered_action =
-            ActionId::new(u16::from_be_bytes(key[1..3].try_into().unwrap()));
+        let recovered_action = ActionId::new(u16::from_be_bytes(key[1..3].try_into().unwrap()));
         let recovered_run_id = RunId::new(u64::from_be_bytes(key[3..11].try_into().unwrap()));
-        let recovered_step =
-            StepIdx::new(u16::from_be_bytes(key[11..13].try_into().unwrap()));
+        let recovered_step = StepIdx::new(u16::from_be_bytes(key[11..13].try_into().unwrap()));
         assert_eq!(recovered_action, action_id);
         assert_eq!(recovered_run_id, run_id);
         assert_eq!(recovered_step, step_idx);
@@ -326,10 +323,7 @@ mod seqno_overflow_rejection {
         let result = seq.checked_add(1);
 
         // Then: the result is None
-        assert!(
-            result.is_none(),
-            "u64::MAX + 1 must return None (overflow)"
-        );
+        assert!(result.is_none(), "u64::MAX + 1 must return None (overflow)");
     }
 
     #[test]
@@ -357,11 +351,7 @@ mod seqno_overflow_rejection {
         let result = seq.checked_add(50);
 
         // Then: the result is Some(SeqNo::new(150))
-        assert_eq!(
-            result,
-            Some(SeqNo::new(150)),
-            "100 + 50 must equal 150"
-        );
+        assert_eq!(result, Some(SeqNo::new(150)), "100 + 50 must equal 150");
     }
 
     #[test]
@@ -374,7 +364,10 @@ mod seqno_overflow_rejection {
         let ab = a.checked_add(b.get()).and_then(|x| x.checked_add(c.get()));
         let ac = a.checked_add((b.get() + c.get()) as u64);
 
-        assert_eq!(ab, ac, "checked_add must be associative for non-overflowing values");
+        assert_eq!(
+            ab, ac,
+            "checked_add must be associative for non-overflowing values"
+        );
     }
 }
 
@@ -403,10 +396,7 @@ mod unknown_record_kind_rejection {
             Err(JournalError::UnknownRecordKind { kind }) => {
                 assert_eq!(kind, 255, "unknown kind must be 255");
             }
-            other => panic!(
-                "expected UnknownRecordKind(255), got {:?}",
-                other
-            ),
+            other => panic!("expected UnknownRecordKind(255), got {:?}", other),
         }
         Ok(())
     }
@@ -446,8 +436,8 @@ mod unknown_record_kind_rejection {
         // Note: Some kinds will fail with RecordKindFamilyMismatch because they don't
         // match MAGIC_JOURNAL_EVENT, but they should NOT fail with UnknownRecordKind.
         let valid_kinds: Vec<u16> = vec![
-            1, 2, 3, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
-            30, 40, 50,
+            1, 2, 3, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 30,
+            40, 50,
         ];
 
         for &kind in &valid_kinds {
@@ -477,13 +467,13 @@ mod unknown_record_kind_rejection {
         // Given: kind values 0, 4..=9, 28, 29, 31..=39, 41..=49, 51..=65535
         // We test a representative sample due to the large range
         let invalid_kinds: Vec<u16> = vec![
-            0, 4, 5, 6, 7, 8, 9,     // 4..=9
-            28, 29,                    // gap after 27
+            0, 4, 5, 6, 7, 8, 9, // 4..=9
+            28, 29, // gap after 27
             31, 32, 33, 34, 35, 36, 37, 38, 39, // 31..=39
             41, 42, 43, 44, 45, 46, 47, 48, 49, // 41..=49
-            51, 52,                    // small sample after 50
-            100, 255,                  // edge cases
-            65535,                     // max u16
+            51, 52, // small sample after 50
+            100, 255,   // edge cases
+            65535, // max u16
         ];
 
         for &kind in &invalid_kinds {
@@ -576,13 +566,29 @@ mod record_kind_stable_ids {
 
         // Then: the result equals the wire protocol constant for WorkflowSource
         assert_eq!(id, 1, "WorkflowSource.id() must equal 1");
-        assert_eq!(RecordKind::CompiledIr.id(), 2, "CompiledIr.id() must equal 2");
+        assert_eq!(
+            RecordKind::CompiledIr.id(),
+            2,
+            "CompiledIr.id() must equal 2"
+        );
         assert_eq!(RecordKind::RunHeader.id(), 3, "RunHeader.id() must equal 3");
-        assert_eq!(RecordKind::RunAccepted.id(), 10, "RunAccepted.id() must equal 10");
-        assert_eq!(RecordKind::RunAnswered.id(), 27, "RunAnswered.id() must equal 27");
+        assert_eq!(
+            RecordKind::RunAccepted.id(),
+            10,
+            "RunAccepted.id() must equal 10"
+        );
+        assert_eq!(
+            RecordKind::RunAnswered.id(),
+            27,
+            "RunAnswered.id() must equal 27"
+        );
         assert_eq!(RecordKind::Snapshot.id(), 30, "Snapshot.id() must equal 30");
         assert_eq!(RecordKind::Blob.id(), 40, "Blob.id() must equal 40");
-        assert_eq!(RecordKind::IndexUpdate.id(), 50, "IndexUpdate.id() must equal 50");
+        assert_eq!(
+            RecordKind::IndexUpdate.id(),
+            50,
+            "IndexUpdate.id() must equal 50"
+        );
     }
 }
 
@@ -611,11 +617,7 @@ mod storage_key_family_separation {
             keys::workflow_source_key(digest)?[0],
             keys::compiled_ir_key(digest)?[0],
             keys::blob_key(digest)?[0],
-            keys::index_status_key(
-                vb_storage::types::IndexStatusState::Submitted,
-                0,
-                run_id,
-            )?[0],
+            keys::index_status_key(vb_storage::types::IndexStatusState::Submitted, 0, run_id)?[0],
             keys::index_workflow_key(workflow_id, run_id)?[0],
             keys::index_action_key(action_id, run_id, step_idx)?[0],
         ];
@@ -649,9 +651,18 @@ mod storage_key_family_separation {
         assert_eq!(header_prefix, 0x10, "run_header prefix must be 0x10");
         assert_eq!(event_prefix, 0x11, "run_event prefix must be 0x11");
         assert_eq!(snapshot_prefix, 0x12, "run_snapshot prefix must be 0x12");
-        assert_ne!(header_prefix, event_prefix, "header and event prefixes must differ");
-        assert_ne!(header_prefix, snapshot_prefix, "header and snapshot prefixes must differ");
-        assert_ne!(event_prefix, snapshot_prefix, "event and snapshot prefixes must differ");
+        assert_ne!(
+            header_prefix, event_prefix,
+            "header and event prefixes must differ"
+        );
+        assert_ne!(
+            header_prefix, snapshot_prefix,
+            "header and snapshot prefixes must differ"
+        );
+        assert_ne!(
+            event_prefix, snapshot_prefix,
+            "event and snapshot prefixes must differ"
+        );
         Ok(())
     }
 }
@@ -703,10 +714,8 @@ mod min_max_numeric_id_roundtrip {
         let key_max = keys::index_workflow_key(max_workflow, run_id)?;
 
         // Then: each decoded WorkflowId equals its original
-        let decoded_min =
-            WorkflowId::new(u32::from_be_bytes(key_min[1..5].try_into().unwrap()));
-        let decoded_max =
-            WorkflowId::new(u32::from_be_bytes(key_max[1..5].try_into().unwrap()));
+        let decoded_min = WorkflowId::new(u32::from_be_bytes(key_min[1..5].try_into().unwrap()));
+        let decoded_max = WorkflowId::new(u32::from_be_bytes(key_max[1..5].try_into().unwrap()));
 
         assert_eq!(
             decoded_min, min_workflow,
@@ -751,8 +760,7 @@ mod integration_full_roundtrip {
         let key = keys::index_workflow_key(workflow_id, run_id)?;
 
         // Then: the extracted workflow_id matches 12345 and run_id matches 67890
-        let extracted_workflow =
-            WorkflowId::new(u32::from_be_bytes(key[1..5].try_into().unwrap()));
+        let extracted_workflow = WorkflowId::new(u32::from_be_bytes(key[1..5].try_into().unwrap()));
         let extracted_run_id = RunId::new(u64::from_be_bytes(key[5..13].try_into().unwrap()));
 
         assert_eq!(extracted_workflow, workflow_id);

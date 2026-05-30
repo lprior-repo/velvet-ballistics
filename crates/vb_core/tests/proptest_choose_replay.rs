@@ -13,9 +13,9 @@ use proptest::prelude::*;
 use vb_core::{
     frame::RunFrame,
     ids::{RunId, SlotIdx, StepIdx},
+    replay::{ReplayAction, ReplayError, choose::replay_choose_slot},
     value::SlotValue,
     workflow::SlotBranch,
-    replay::{ReplayAction, ReplayError, choose::replay_choose_slot},
 };
 
 proptest! {

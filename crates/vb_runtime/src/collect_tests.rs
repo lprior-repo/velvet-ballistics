@@ -3641,7 +3641,9 @@ fn collect_page_returns_type_mismatch_when_collector_is_bool() {
     let mut store = ValueStore::new();
     let mut states = fresh_states();
     let collector = SlotIdx::new(0);
-    run.write_slot(collector, SlotValue::Bool(true)).ok().unwrap_or_else(|| panic!("write must succeed"));
+    run.write_slot(collector, SlotValue::Bool(true))
+        .ok()
+        .unwrap_or_else(|| panic!("write must succeed"));
     let result = collect_page(
         &mut run,
         &mut store,
@@ -3652,7 +3654,10 @@ fn collect_page_returns_type_mismatch_when_collector_is_bool() {
     );
     assert_eq!(
         result,
-        Err(EngineError::TypeMismatch { expected: "list", found: "boolean" })
+        Err(EngineError::TypeMismatch {
+            expected: "list",
+            found: "boolean"
+        })
     );
 }
 
@@ -3662,7 +3667,9 @@ fn collect_page_returns_type_mismatch_when_collector_is_null() {
     let mut store = ValueStore::new();
     let mut states = fresh_states();
     let collector = SlotIdx::new(0);
-    run.write_slot(collector, SlotValue::Null).ok().unwrap_or_else(|| panic!("write must succeed"));
+    run.write_slot(collector, SlotValue::Null)
+        .ok()
+        .unwrap_or_else(|| panic!("write must succeed"));
     let result = collect_page(
         &mut run,
         &mut store,
@@ -3673,7 +3680,10 @@ fn collect_page_returns_type_mismatch_when_collector_is_null() {
     );
     assert_eq!(
         result,
-        Err(EngineError::TypeMismatch { expected: "list", found: "null" })
+        Err(EngineError::TypeMismatch {
+            expected: "list",
+            found: "null"
+        })
     );
 }
 
@@ -3731,7 +3741,12 @@ fn collect_page_succeeds_with_heterogeneous_list_items() {
         &mut run,
         &mut store,
         collector,
-        vec![SlotValue::I64(1), SlotValue::Bool(true), SlotValue::Null, SlotValue::I64(2)],
+        vec![
+            SlotValue::I64(1),
+            SlotValue::Bool(true),
+            SlotValue::Null,
+            SlotValue::I64(2),
+        ],
     );
     let result = collect_page(&mut run, &mut store, &mut states, collector, body, done);
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));

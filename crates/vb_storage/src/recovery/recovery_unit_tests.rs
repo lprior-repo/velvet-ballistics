@@ -1071,7 +1071,9 @@ mod tests {
         fn _exhaustive_match(e: &RecoveryError) -> &'static str {
             match e {
                 RecoveryError::Journal(_) => "journal",
-                RecoveryError::WorkflowSourceDigestMismatch { .. } => "workflow_source_digest_mismatch",
+                RecoveryError::WorkflowSourceDigestMismatch { .. } => {
+                    "workflow_source_digest_mismatch"
+                }
                 RecoveryError::CompiledIrDigestMismatch { .. } => "compiled_ir_digest_mismatch",
                 RecoveryError::ActionAbiMismatch { .. } => "action_abi_mismatch",
                 RecoveryError::PolicyDigestMismatch { .. } => "policy_digest_mismatch",

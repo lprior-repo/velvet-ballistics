@@ -972,10 +972,7 @@ fn slot_from_text_out_of_range() {
                 errors
             );
         }
-        other => panic!(
-            "expected SlotIndexOutOfRange error, got: {:?}",
-            other
-        ),
+        other => panic!("expected SlotIndexOutOfRange error, got: {:?}", other),
     }
 }
 
@@ -1004,10 +1001,7 @@ fn slot_from_text_non_integer() {
                 errors
             );
         }
-        other => panic!(
-            "expected StepFieldShape error, got: {:?}",
-            other
-        ),
+        other => panic!("expected StepFieldShape error, got: {:?}", other),
     }
 }
 
@@ -1038,10 +1032,7 @@ fn slot_from_text_empty_string() {
                 errors
             );
         }
-        other => panic!(
-            "expected StepFieldShape error, got: {:?}",
-            other
-        ),
+        other => panic!("expected StepFieldShape error, got: {:?}", other),
     }
 }
 
@@ -1071,10 +1062,7 @@ fn slot_from_text_negative() {
                 errors
             );
         }
-        other => panic!(
-            "expected SlotIndexOutOfRange error, got: {:?}",
-            other
-        ),
+        other => panic!("expected SlotIndexOutOfRange error, got: {:?}", other),
     }
 }
 
@@ -1096,12 +1084,7 @@ fn lower_choose_fanout_exceeds_limit() {
         .collect();
     let mut builder = crate::SlotCompiler::new();
     // When: lower_choose is called with 65 branches
-    let result = lower_choose(
-        vb_core::ids::StepIdx::new(0),
-        branches,
-        None,
-        &mut builder,
-    );
+    let result = lower_choose(vb_core::ids::StepIdx::new(0), branches, None, &mut builder);
     // Then: returns PrimitiveLoweringLimitExceeded
     assert!(
         matches!(
@@ -1250,8 +1233,7 @@ fn lower_canonical_choose_slots_disjoint_from_conditions() {
         .expect("body Set node must have an output slot");
     // Verify that the condition slot does NOT match the body output slot
     assert_ne!(
-        condition_slot,
-        body_output_slot,
+        condition_slot, body_output_slot,
         "condition slot ({condition_slot:?}) must be disjoint from body output slot ({body_output_slot:?})"
     );
     // Verify the ChooseSlot node has the correct condition
@@ -1261,8 +1243,7 @@ fn lower_canonical_choose_slots_disjoint_from_conditions() {
             ..
         } => {
             assert_eq!(
-                slot_branches[0].condition,
-                condition_slot,
+                slot_branches[0].condition, condition_slot,
                 "condition must be SlotIdx(99)"
             );
         }
@@ -1271,7 +1252,8 @@ fn lower_canonical_choose_slots_disjoint_from_conditions() {
     // Verify the body Set node has a different output
     assert_eq!(builder.nodes[1].id, vb_core::ids::StepIdx::new(1));
     assert!(
-        matches!(&builder.nodes[1].kind,
+        matches!(
+            &builder.nodes[1].kind,
             vb_core::CompiledNodeKind::SetConst { .. }
         ),
         "body node must be SetConst"
@@ -1364,10 +1346,13 @@ fn lower_canonical_choose_empty_branches_without_otherwise_returns_empty_branch_
     match result {
         Err(crate::CompileErrors(errors)) => {
             assert!(
-                errors.iter().any(|e| matches!(e, crate::CompileError::Workflow(
-                    // Use the same pattern as part_08: vb_core::WorkflowError
-                    vb_core::WorkflowError::EmptyBranchTable
-                ))),
+                errors.iter().any(|e| matches!(
+                    e,
+                    crate::CompileError::Workflow(
+                        // Use the same pattern as part_08: vb_core::WorkflowError
+                        vb_core::WorkflowError::EmptyBranchTable
+                    )
+                )),
                 "empty branches without otherwise must return EmptyBranchTable, got: {errors:?}"
             );
         }

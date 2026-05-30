@@ -11,9 +11,8 @@
 use proptest::prelude::*;
 
 fn choose_workflow_yaml(branch_body_counts: &[u8]) -> String {
-    let mut yaml = String::from(
-        "version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n",
-    );
+    let mut yaml =
+        String::from("version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n");
 
     // Setup step: create an output that the finish step can reference
     yaml.push_str("  - id: setup\n    set:\n      output: result\n      value: \"0\"\n");

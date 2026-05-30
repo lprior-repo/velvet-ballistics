@@ -232,7 +232,7 @@ pub(super) fn unknown_reference_code(kind: &str) -> &'static str {
 }
 
 /// Multiple compilation errors collected in one pass (railway programming).
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct CompileErrors(pub Vec<CompileError>);
 
 impl CompileErrors {

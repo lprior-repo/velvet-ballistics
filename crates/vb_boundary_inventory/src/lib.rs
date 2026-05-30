@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Velvet Ballistics Workspace
 //!
 //! This is a virtual workspace container. The actual crates are in `crates/`.

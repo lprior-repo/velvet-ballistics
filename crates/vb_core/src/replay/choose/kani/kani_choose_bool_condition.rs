@@ -26,7 +26,10 @@ fn kani_choose_bool_condition() {
     let finite_f64 = match FiniteF64::new(0.0) {
         Ok(v) => v,
         Err(_) => {
-            kani::cover!(true, "FiniteF64 construction failed — should not happen with 0.0");
+            kani::cover!(
+                true,
+                "FiniteF64 construction failed — should not happen with 0.0"
+            );
             return;
         }
     };

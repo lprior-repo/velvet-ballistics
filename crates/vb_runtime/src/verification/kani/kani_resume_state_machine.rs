@@ -20,10 +20,8 @@ use vb_core::ids::{RunId, StepIdx};
 use vb_core::value::SlotValue;
 use vb_core::workflow::{CompiledWorkflow, ResourceContract, WorkflowParts};
 
-use crate::shard::types::{
-    ResumeStatus, RunState, RuntimeEvent, RuntimeState, Shard, ShardConfig,
-};
 use crate::shard::ResumeError;
+use crate::shard::types::{ResumeStatus, RunState, RuntimeEvent, RuntimeState, Shard, ShardConfig};
 
 // =========================================================================
 // Bounded generators
@@ -110,8 +108,7 @@ fn minimal_workflow() -> CompiledWorkflow {
 /// This is used for handle_resume() guard-path testing where
 /// the RunState internals are not deeply accessed.
 fn minimal_run_state(run: RunId) -> RunState {
-    let frame =
-        RunFrame::new(run, StepIdx::new(0), 1, 1).expect("minimal RunFrame construction");
+    let frame = RunFrame::new(run, StepIdx::new(0), 1, 1).expect("minimal RunFrame construction");
     let workflow = minimal_workflow();
     RunState {
         frame,
@@ -311,8 +308,16 @@ fn kani_resume_rollback_consistency() {
     // Verify all transitions produce correct states
     // Test each event individually
     let test_events: [(RuntimeEvent, RuntimeState, &str); 6] = [
-        (RuntimeEvent::Submit, RuntimeState::Initial, "Submit->Initial"),
-        (RuntimeEvent::Resume, RuntimeState::Resuming, "Resume->Resuming"),
+        (
+            RuntimeEvent::Submit,
+            RuntimeState::Initial,
+            "Submit->Initial",
+        ),
+        (
+            RuntimeEvent::Resume,
+            RuntimeState::Resuming,
+            "Resume->Resuming",
+        ),
         (
             RuntimeEvent::AwaitAction,
             RuntimeState::Resumable,

@@ -12,6 +12,7 @@
 // GOD RULE 2: Binds to actual Rust canonical_digest() implementation.
 
 #![no_main]
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::panic)]
 
 use libfuzzer_sys::fuzz_target;
 
@@ -21,16 +22,13 @@ fuzz_target!(|data: &[u8]| {
 
 /// Reconstruct a WorkflowSource from arbitrary fuzz bytes and verify digest behavior.
 fn fuzz_canonical_digest_ask(data: &[u8]) {
-    // Use raw bytes as prompt content; truncate to reasonable bounds
     let prompt = match std::str::from_utf8(data) {
         Ok(s) => s.to_string(),
         Err(_) => String::from_utf8_lossy(data).into_owned(),
     };
 
-    // Bound prompt to prevent OOM on adversarial large inputs
     let prompt: String = prompt.chars().take(4096).collect();
 
-    // Extract timeout from first byte: 0=no timeout, 1=empty timeout, 2+=use rest as timeout
     let timeout: Option<String> = data.first().copied().map_or(None, |b| match b {
         0 => None,
         1 => Some(String::new()),
@@ -50,7 +48,6 @@ fn fuzz_canonical_digest_ask(data: &[u8]) {
         }
     });
 
-    // Reconstruct the source
     use vb_yaml::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
 
     let steps = vec![StepAst {
@@ -81,43 +78,26 @@ fn fuzz_canonical_digest_ask(data: &[u8]) {
         })
     })) {
         Ok(s) => s,
-        Err(_) => return, // Construction failure: invalid input, not a digest bug
+        Err(_) => return,
     };
 
-    // Invoke canonical_digest under panic catch
     use vb_compile::canonical_digest;
 
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        canonical_digest(&source)
-    }));
+    let digest_first = match canonical_digest(&source) {
+        Ok(d) => d,
+        Err(_) => return,
+    };
 
-    match result {
-        Ok(digest_first) => {
-            // Verify determinism: same source produces same digest
-            let digest_second = canonical_digest(&source);
-            assert_eq!(
-                digest_first, digest_second,
-                "PO-FUZZ-001 violated: canonical_digest non-deterministic for fuzz input"
-            );
+    let digest_second = canonical_digest(&source).expect("canonical_digest should succeed");
 
-            // Verify the digest is well-formed (32 bytes)
-            assert_eq!(
-                digest_first.as_bytes().len(),
-                32,
-                "PO-FUZZ-001 violated: WorkflowDigest has wrong byte length"
-            );
-        }
-        Err(panic_payload) => {
-            // Extract panic message if possible
-            let msg = panic_payload
-                .downcast_ref::<String>()
-                .map(|s| s.as_str())
-                .or_else(|| panic_payload.downcast_ref::<&str>().copied())
-                .unwrap_or("(unknown panic payload)");
-            panic!(
-                "PO-FUZZ-001 FAILED: canonical_digest panicked on Ask input: {}",
-                msg
-            );
-        }
-    }
+    assert_eq!(
+        digest_first, digest_second,
+        "PO-FUZZ-001 violated: canonical_digest non-deterministic for fuzz input"
+    );
+
+    assert_eq!(
+        digest_first.as_bytes().len(),
+        32,
+        "PO-FUZZ-001 violated: WorkflowDigest has wrong byte length"
+    );
 }

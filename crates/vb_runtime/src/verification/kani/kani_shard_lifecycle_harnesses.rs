@@ -21,21 +21,24 @@
 
 use kani::cover;
 
-use vb_core::action::{ActionFailure, ActionOutputReady, ActionTicket, RetryPolicy as VbCoreRetryPolicy};
+use vb_core::action::{
+    ActionFailure, ActionOutputReady, ActionTicket, RetryPolicy as VbCoreRetryPolicy,
+};
 use vb_core::frame::StepState;
 use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
+use crate::ValueStore;
 use crate::engine::RetryPolicy;
 use crate::primitives::collect::CollectStates;
 use crate::runtime::RuntimeError;
 use crate::shard::helpers::{
-    record_retry_attempt, record_scheduled_attempt, reject_invalid_ticket_key, validate_action_completion,
+    record_retry_attempt, record_scheduled_attempt, reject_invalid_ticket_key,
+    validate_action_completion,
 };
 use crate::shard::timer_wheel::{TimerEntry, TimerWheel};
 use crate::shard::types::{PendingTimer, PendingTimerKind, RunState};
-use crate::ValueStore;
 
 // =========================================================================
 // Bounded generators
@@ -249,7 +252,9 @@ fn kani_next_generation_monotonicity() {
         kind: PendingTimerKind::Wait,
     };
     // Use internal API to set up the state (BTreeMap/HashMap depending on cfg)
-    wheel_overflow.insert(max_run, max_deadline, PendingTimerKind::Wait).ok();
+    wheel_overflow
+        .insert(max_run, max_deadline, PendingTimerKind::Wait)
+        .ok();
 
     // next_generation on a u64::MAX entry must fail
     let overflow_result = wheel_overflow.next_generation(max_run);
@@ -341,7 +346,10 @@ fn kani_retry_attempt_monotonicity() {
 
     // record_retry_attempt should succeed when attempt < max_attempts
     let result = record_retry_attempt(&mut state, ticket, policy);
-    kani::assert(result.is_ok() || result.is_err(), "record_retry_attempt must not panic");
+    kani::assert(
+        result.is_ok() || result.is_err(),
+        "record_retry_attempt must not panic",
+    );
 
     // If attempt >= max_attempts, validate_retry_attempt should reject
     let ticket_at_max = ActionTicket {
@@ -380,13 +388,28 @@ fn kani_ticket_retry_capacity_bounds() {
     let expected_capacity = ticket.capacity.max(max_attempts);
 
     // The contract is: capacity = ticket.capacity.max(policy.max_attempts)
-    kani::cover(expected_capacity >= ticket.capacity, "capacity >= ticket.capacity");
-    kani::cover(expected_capacity >= max_attempts, "capacity >= max_attempts");
-    kani::cover(expected_capacity == ticket.capacity || expected_capacity == max_attempts, "capacity is max of the two");
+    kani::cover(
+        expected_capacity >= ticket.capacity,
+        "capacity >= ticket.capacity",
+    );
+    kani::cover(
+        expected_capacity >= max_attempts,
+        "capacity >= max_attempts",
+    );
+    kani::cover(
+        expected_capacity == ticket.capacity || expected_capacity == max_attempts,
+        "capacity is max of the two",
+    );
 
     // Verify the max relationship
-    kani::assert(expected_capacity >= ticket.capacity, "expected >= ticket.capacity");
-    kani::assert(expected_capacity >= max_attempts, "expected >= max_attempts");
+    kani::assert(
+        expected_capacity >= ticket.capacity,
+        "expected >= ticket.capacity",
+    );
+    kani::assert(
+        expected_capacity >= max_attempts,
+        "expected >= max_attempts",
+    );
 }
 
 // =========================================================================
@@ -402,11 +425,8 @@ fn kani_idempotency_key_canonical() {
     let ticket = any_ticket();
 
     // Compute the canonical key
-    let canonical_key = crate::engine::action::compute_idempotency_key(
-        ticket.run,
-        ticket.seq,
-        ticket.action,
-    );
+    let canonical_key =
+        crate::engine::action::compute_idempotency_key(ticket.run, ticket.seq, ticket.action);
 
     // Case 1: key matches -> should pass
     let matching_ticket = ActionTicket {
@@ -424,10 +444,7 @@ fn kani_idempotency_key_canonical() {
         ..ticket
     };
     let wrong_result = reject_invalid_ticket_key(wrong_ticket);
-    kani::assert(
-        wrong_result.is_err(),
-        "mismatched key must be rejected",
-    );
+    kani::assert(wrong_result.is_err(), "mismatched key must be rejected");
 }
 
 // =========================================================================
@@ -447,10 +464,7 @@ fn kani_timer_fire_consumes_atomically() {
     kani::assume(run.get() > 0);
 
     // Construct a pending timer with known authority
-    let authority_timer = PendingTimer {
-        run,
-        ..timer
-    };
+    let authority_timer = PendingTimer { run, ..timer };
 
     // Verify: authority check must pass BEFORE swap_remove
     // If any authority component mismatches, the timer is not consumed
@@ -464,13 +478,13 @@ fn kani_timer_fire_consumes_atomically() {
 
     // If there's a mismatch, the function should return Err(InvalidTimerFire)
     // BEFORE attempting to consume the timer
-    let would_be_rejected = !authority_timer.matches_authority(
-        mismatched_gen,
-        mismatched_deadline,
-        mismatched_kind,
-    );
+    let would_be_rejected =
+        !authority_timer.matches_authority(mismatched_gen, mismatched_deadline, mismatched_kind);
 
-    kani::assert(has_mismatch == would_be_rejected, "mismatch detection must be consistent");
+    kani::assert(
+        has_mismatch == would_be_rejected,
+        "mismatch detection must be consistent",
+    );
 }
 
 // =========================================================================

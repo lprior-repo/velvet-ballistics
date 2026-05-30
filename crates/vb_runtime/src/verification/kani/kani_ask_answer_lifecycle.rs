@@ -19,9 +19,7 @@
 use vb_core::ids::{EventSeq, RunId};
 
 use crate::journal::RuntimeJournalEvent;
-use crate::shard::types::{
-    PendingTimerKind, RuntimeEvent, RuntimeState, Shard, ShardConfig,
-};
+use crate::shard::types::{PendingTimerKind, RuntimeEvent, RuntimeState, Shard, ShardConfig};
 
 // =========================================================================
 // Bounded generators

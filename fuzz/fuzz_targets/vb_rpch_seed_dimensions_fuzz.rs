@@ -1,5 +1,6 @@
 #![no_main]
 #![forbid(unsafe_code)]
+#![allow(clippy::panic)]
 
 use libfuzzer_sys::fuzz_target;
 use vb_core::RunId;

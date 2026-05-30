@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Core benchmark metadata types for Velvet Ballastics performance tracking.
 //!
 //! This module provides the data structures for capturing benchmark evidence,

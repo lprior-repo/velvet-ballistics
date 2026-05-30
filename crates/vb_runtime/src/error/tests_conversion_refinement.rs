@@ -12,8 +12,8 @@ use std::sync::Arc;
 // ============================================================================
 
 #[test]
-fn admission_header_persistence_failed_converts_storage_journal_append_to_admission_header_persistence_failed(
-) {
+fn admission_header_persistence_failed_converts_storage_journal_append_to_admission_header_persistence_failed()
+ {
     // Given: RuntimeError::StorageJournalAppend with a known source
     let source = Arc::new(vb_storage::JournalError::QueueFull);
     let input = RuntimeError::StorageJournalAppend {

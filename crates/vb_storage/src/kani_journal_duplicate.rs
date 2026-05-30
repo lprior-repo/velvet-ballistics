@@ -21,8 +21,8 @@
 #![forbid(unsafe_code)]
 #![cfg(kani)]
 
-use vb_core::ids::RunId;
 use crate::{EventSeq, JournalError, keys::run_event_key};
+use vb_core::ids::RunId;
 
 // =========================================================================
 // Helpers
@@ -115,7 +115,10 @@ fn kani_journal_key_seq_injectivity() {
 
     match (key1, key2) {
         (Ok(k1), Ok(k2)) => {
-            kani::assert(k1 != k2, "different seq numbers must produce different keys");
+            kani::assert(
+                k1 != k2,
+                "different seq numbers must produce different keys",
+            );
         }
         _ => {}
     }

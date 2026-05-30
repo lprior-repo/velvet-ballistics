@@ -19,7 +19,7 @@
 use std::sync::Arc;
 
 use vb_core::ids::RunId;
-use vb_storage::{types::EventSeq as StorageEventSeq, JournalError};
+use vb_storage::{JournalError, types::EventSeq as StorageEventSeq};
 
 use crate::RuntimeError;
 use crate::journal::RuntimeJournalEvent;
@@ -257,16 +257,12 @@ fn kani_admission_no_live_state_on_failure() {
     );
 
     // Test: admission_header_persistence_failed returns an error
-    let error = RuntimeError::admission_header_persistence_failed(
-        RuntimeError::StorageJournalAppend {
+    let error =
+        RuntimeError::admission_header_persistence_failed(RuntimeError::StorageJournalAppend {
             source: Arc::new(JournalError::QueueFull),
-        },
-    );
+        });
     kani::assert!(
-        matches!(
-            error,
-            RuntimeError::AdmissionHeaderPersistenceFailed { .. }
-        ),
+        matches!(error, RuntimeError::AdmissionHeaderPersistenceFailed { .. }),
         "error conversion must produce AdmissionHeaderPersistenceFailed",
     );
 

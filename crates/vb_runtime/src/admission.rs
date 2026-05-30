@@ -1942,9 +1942,15 @@ mod tests {
                 AdmissionError::BudgetPolicyExceeded { .. } => "budget_policy_exceeded",
                 AdmissionError::ResourceBudgetOverflow { .. } => "resource_budget_overflow",
                 AdmissionError::ResourceBudgetUnderflow { .. } => "resource_budget_underflow",
-                AdmissionError::ResourceBudgetInvalidCapacity { .. } => "resource_budget_invalid_capacity",
-                AdmissionError::ResourceStepCeilingExceeded { .. } => "resource_step_ceiling_exceeded",
-                AdmissionError::ResourcePerTickCeilingExceeded { .. } => "resource_per_tick_ceiling_exceeded",
+                AdmissionError::ResourceBudgetInvalidCapacity { .. } => {
+                    "resource_budget_invalid_capacity"
+                }
+                AdmissionError::ResourceStepCeilingExceeded { .. } => {
+                    "resource_step_ceiling_exceeded"
+                }
+                AdmissionError::ResourcePerTickCeilingExceeded { .. } => {
+                    "resource_per_tick_ceiling_exceeded"
+                }
                 AdmissionError::ArtifactEnvelopeDecodeFailed => "artifact_envelope_decode_failed",
                 AdmissionError::ArtifactInvalidGateCount { .. } => "artifact_invalid_gate_count",
                 AdmissionError::ArtifactInvalidProofFlag { .. } => "artifact_invalid_proof_flag",

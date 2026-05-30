@@ -13,9 +13,8 @@ use proptest::prelude::*;
 /// Build a YAML workflow with a single choose step with varying complexity.
 /// Varies: branch count, body step count per branch, with/without otherwise.
 fn varied_choose_yaml(branch_count: u8, max_body: u8, has_otherwise: bool) -> String {
-    let mut yaml = String::from(
-        "version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n",
-    );
+    let mut yaml =
+        String::from("version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n");
     yaml.push_str("  - id: pick\n    choose:\n      branches:\n");
 
     let actual_count = branch_count.min(64);

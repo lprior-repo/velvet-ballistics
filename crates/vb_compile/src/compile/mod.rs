@@ -94,7 +94,7 @@ pub fn compile_source(
     }
     let parts = WorkflowParts {
         name: Box::from(source.name()),
-        digest: canonical_digest(source),
+        digest: canonical_digest(source)?,
         slot_count: builder.slot_count().map_err(|e| CompileErrors(vec![e]))?,
         symbols_count: 0,
         nodes: builder.nodes.into_boxed_slice(),

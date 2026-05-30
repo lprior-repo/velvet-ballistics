@@ -4858,7 +4858,9 @@ mod tests {
                 next: None,
                 on_error: None,
                 error_slot: None,
-                kind: CompiledNodeKind::Finish { result: SlotIdx::ZERO },
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::ZERO,
+                },
             }]),
             expressions: Box::new([]),
             accessors: Box::new([]),
@@ -4879,8 +4881,11 @@ mod tests {
         let bytes2 = postcard::to_allocvec(&parts2).expect("serialize should succeed");
         let hash1 = blake3::hash(&bytes1);
         let hash2 = blake3::hash(&bytes2);
-        assert_eq!(hash1.as_bytes(), hash2.as_bytes(),
-            "identical WorkflowParts must produce identical digests");
+        assert_eq!(
+            hash1.as_bytes(),
+            hash2.as_bytes(),
+            "identical WorkflowParts must produce identical digests"
+        );
     }
 
     #[test]
@@ -4891,8 +4896,11 @@ mod tests {
         let bytes_beta = postcard::to_allocvec(&parts_beta).expect("serialize should succeed");
         let hash_alpha = blake3::hash(&bytes_alpha);
         let hash_beta = blake3::hash(&bytes_beta);
-        assert_ne!(hash_alpha.as_bytes(), hash_beta.as_bytes(),
-            "different name must produce different digest");
+        assert_ne!(
+            hash_alpha.as_bytes(),
+            hash_beta.as_bytes(),
+            "different name must produce different digest"
+        );
     }
 
     #[test]
@@ -4904,7 +4912,9 @@ mod tests {
             next: None,
             on_error: None,
             error_slot: None,
-            kind: CompiledNodeKind::Finish { result: SlotIdx::ZERO },
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::ZERO,
+            },
         };
         let parts1 = WorkflowParts {
             name: "test".into(),
@@ -4925,7 +4935,9 @@ mod tests {
             next: None,
             on_error: None,
             error_slot: None,
-            kind: CompiledNodeKind::Finish { result: SlotIdx::ZERO },
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::ZERO,
+            },
         };
         let parts2 = WorkflowParts {
             name: "test".into(),
@@ -4940,20 +4952,30 @@ mod tests {
             resource_contract: ResourceContract::DEFAULT,
             step_names: Box::new([]),
         };
-        let hash1 = blake3::hash(&postcard::to_allocvec(&parts1).expect("serialize should succeed"));
-        let hash2 = blake3::hash(&postcard::to_allocvec(&parts2).expect("serialize should succeed"));
-        assert_ne!(hash1.as_bytes(), hash2.as_bytes(),
-            "different node_count must produce different digest");
+        let hash1 =
+            blake3::hash(&postcard::to_allocvec(&parts1).expect("serialize should succeed"));
+        let hash2 =
+            blake3::hash(&postcard::to_allocvec(&parts2).expect("serialize should succeed"));
+        assert_ne!(
+            hash1.as_bytes(),
+            hash2.as_bytes(),
+            "different node_count must produce different digest"
+        );
     }
 
     #[test]
     fn blake3_digest_differs_when_entry_step_differs() {
         let parts_entry0 = make_minimal_workflow_parts("test", StepIdx::ZERO, 1);
         let parts_entry1 = make_minimal_workflow_parts("test", StepIdx::new(1), 1);
-        let hash0 = blake3::hash(&postcard::to_allocvec(&parts_entry0).expect("serialize should succeed"));
-        let hash1 = blake3::hash(&postcard::to_allocvec(&parts_entry1).expect("serialize should succeed"));
-        assert_ne!(hash0.as_bytes(), hash1.as_bytes(),
-            "different entry step must produce different digest");
+        let hash0 =
+            blake3::hash(&postcard::to_allocvec(&parts_entry0).expect("serialize should succeed"));
+        let hash1 =
+            blake3::hash(&postcard::to_allocvec(&parts_entry1).expect("serialize should succeed"));
+        assert_ne!(
+            hash0.as_bytes(),
+            hash1.as_bytes(),
+            "different entry step must produce different digest"
+        );
     }
 
     #[test]

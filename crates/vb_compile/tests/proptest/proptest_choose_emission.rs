@@ -12,9 +12,8 @@ use proptest::prelude::*;
 use vb_core::{CompiledNodeKind, StepIdx};
 
 fn choose_yaml(branch_body_counts: &[u8]) -> String {
-    let mut yaml = String::from(
-        "version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n",
-    );
+    let mut yaml =
+        String::from("version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n");
     yaml.push_str("  - id: setup\n    set:\n      output: result\n      value: \"1\"\n");
     yaml.push_str("  - id: pick\n    choose:\n      branches:\n");
     for (i, &count) in branch_body_counts.iter().enumerate() {
