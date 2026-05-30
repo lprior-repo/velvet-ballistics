@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![feature(const_cmp)]
 #![feature(const_trait_impl)]
 // Pedantic allows: these lints are documentation-only or would require pervasive
 // changes with no functional impact on correctness or safety.
