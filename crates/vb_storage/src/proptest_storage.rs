@@ -106,13 +106,10 @@ mod proptest_storage {
             let replayed = journal.events_for_run(run).unwrap();
             prop_assert_eq!(replayed, events);
         }
-    }
 
-    // =========================================================================
-    // Proptest 2: Codec encode-decode roundtrip (exhaustive)
-    // =========================================================================
-
-    proptest! {
+        // =========================================================================
+        // Proptest 2: Codec encode-decode roundtrip (exhaustive)
+        // =========================================================================
         #[test]
         fn codec_encode_decode_roundtrip_all_kinds(
             kind_id in 10u16..=27u16,
@@ -217,13 +214,10 @@ mod proptest_storage {
             );
             let _ = crate::decode_record_header(&data, MAGIC_JOURNAL_EVENT, 1024);
         }
-    }
 
-    // =========================================================================
-    // Proptest 3: Queue FIFO ordering
-    // =========================================================================
-
-    proptest! {
+        // =========================================================================
+        // Proptest 3: Queue FIFO ordering
+        // =========================================================================
         #[test]
         fn queue_fifo_ordering_invariant(
             num_events in 1usize..8usize,
