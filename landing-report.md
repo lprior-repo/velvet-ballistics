@@ -1,103 +1,127 @@
 # Session Complete — Landing Report
 
-## Bead: vb-xi2f.34 — Finish Digest Verification
+## Bead: vb-vzcuf — Journal Batch Byte Accounting
 
-**Date**: 2026-05-25
-**Phase**: p15-landing
-**Workspace**: /home/lewis/src/vb-workspaces/vb-xi2f.34
-**Source**: /home/lewis/src/velvet-ballistics
-**Truth-Serum**: CONDITIONAL PASS (process note TS-001 only)
+**Date**: 2026-05-30
+**Phase**: State 15 (landing)
+**Workspace**: /home/lewis/isolated/velvet-ballistics-fresh-replacements/vb-vzcuf
+**Source checkout** (control plane only): /home/lewis/src/velvet-ballistics
+**Branch**: fresh/vb-vzcuf
+**Commit**: 7ca9257bd1c15056c6d50630a94e35b4a6af80d8
 
 ---
 
 ## Work Completed
 
-- Landed bead vb-xi2f.34 Finish digest verification evidence and gate fixes
-- Registered `kani_finish_digest` and `proptest_finish_digest` modules in `lib.rs`
-- Added inline `#[cfg(test)]` test module for `digest_unit_tests` in `part_05.rs`
-- Fixed `velvet-ballastics` → `velvet-ballistics` version typos in test YAML
-- Fixed event trigger `name` → `type` field for schema compliance (schema change since bead was authored)
-- Commits pushed: 2 (1 bead commit + 1 merge commit)
-- Merge commit: `7f7105f22` on origin/main
+- Landed bead vb-vzcuf: Journal batch byte accounting implementation with full evidence chain
+- Implemented `JournalWriteBatch` byte accounting in `crates/vb_storage/src/batch.rs`:
+  - `DEFAULT_JOURNAL_BATCH_BYTE_LIMIT` constant (1 MiB = 1,048,576 bytes)
+  - `staged_bytes: u64` field tracking accumulated encoded-byte total
+  - `byte_limit: Option<u64>` field for budget enforcement
+  - `append_event` byte admission guard with C6 precedence ordering
+  - `staged_event_bytes()` and `byte_limit()` public accessors
+  - `JournalBatchBytesExceeded { attempted, limit }` error variant
+- Added `JOURNAL_BATCH_BYTES_EXCEEDED` diagnostic code: `0x402F` (RuntimeBoundary)
+- Fixed diagnostic code conflict: original `0x4022` conflicted with `JOURNAL_CHECKPOINT_MISMATCH`, `0x402A` conflicted with `JOURNAL_EVENT_ORDER`; resolved to `0x402F`
+- Fixed unused imports in test module: removed `BlobRecord`, `CompiledIrRecord`, `RunHeaderRecord`, `WorkflowSourceRecord`, `recovery::RunSnapshot`
+- Applied `cargo fmt` to all changed files (formatting cleanup across batch.rs, kani harnesses, proptest harnesses, fuzz targets, flux artifacts, verus artifacts)
+- Evidence packaged from State 14 (APPROVED)
+- GOD RULE 2 (Verus implementation binding) deferred per approval
 
----
+## Files Changed (121 files, +11,958 insertions, -94 deletions)
 
-## Main Status
-
-- Branch: main
-- Remote sync: up to date with origin/main
-- Quality Gates: ALL PASSING
-
-| Gate | Result |
-|------|--------|
-| Build | PASS |
-| Tests (vb_compile) | 407 passed, 5 ignored, 0 failed |
-| Clippy (deny all) | PASS — zero warnings |
-| Format | PASS — clean |
-
----
-
-## Smells Surfaced (Filed)
-
-None — all bead issues were fixed inline:
-- TS-001 (process note): `black-hat-review.md` is stale (REJECTED RETRY 2) but actual evidence (E-1, E-4) is resolved. Non-blocking documentation issue.
-
----
-
-## Changes Landed
-
+### Production Code
 | File | Change |
 |------|--------|
-| `crates/vb_compile/src/lib.rs` | +8: module declarations for `kani_finish_digest` and `proptest_finish_digest` |
-| `crates/vb_compile/src/mod_compile_lowering/part_05.rs` | +6: inline `#[cfg(test)]` test module |
-| `crates/vb_compile/src/proptest_finish_digest.rs` | Fix version string typo |
-| `crates/vb_compile/tests/finish_digest_integration.rs` | Fix version string typo and event trigger `name`→`type` |
+| `crates/vb_storage/src/batch.rs` | +859: byte accounting implementation, 18 unit tests |
+| `crates/vb_storage/src/error/codes.rs` | +4: JournalBatchBytesExceeded variant |
+| `crates/vb_storage/src/error/mod.rs` | +8: error variant fields |
+| `crates/vb_storage/src/lib.rs` | +20: module declarations |
+| `crates/vb_storage/Cargo.toml` | +1: dependency |
+| `crates/vb_core/src/diagnostic.rs` | +6: JOURNAL_BATCH_BYTES_EXCEEDED code entry |
+| `fuzz/Cargo.toml` | +65: fuzz target configuration |
 
-Already on main from prior commits:
-- `crates/vb_compile/src/kani_finish_digest.rs`
-- `crates/vb_compile/src/proptest_finish_digest.rs` (base)
-- `crates/vb_compile/src/tests/digest_unit_tests.rs`
-- `crates/vb_compile/tests/finish_digest_integration.rs` (base)
-- `crates/vb_compile/tests/finish_digest_structural.rs`
-- `fuzz/fuzz_targets/fuzz_digest_compile.rs`
-- `fuzz/fuzz_targets/fuzz_finish_digest_encoding.rs`
-- `evidence/proof-evidence.md`
-- `evidence/proof-writer-report.md`
-- `formal-verification-report.md`
-- `verification-ledger.jsonl`
-- `.beads/vb-xi2f.34/` (all bead artifacts)
+### Verification Artifacts (new, previously untracked)
+| Directory | Count | Description |
+|-----------|-------|-------------|
+| `crates/vb_storage/src/kani_vb_vzcuf_ps*.rs` | 9 | Kani proof harnesses (PS-001 through PS-009) |
+| `crates/vb_storage/tests/proptest_vb_vzcuf_PS_*.rs` | 9 | Proptest property-based test files |
+| `crates/vb_storage/tests/proptest_vb_vzcuf_PS_007.proptest-regressions` | 1 | Proptest regression file |
+| `fuzz/fuzz_targets/vb_vzcuf_PS_*.rs` | 9 | LibFuzzer fuzz targets |
+| `verification/flux/vb-vzcuf-PS-*.rs` | 9 | Flux refinement-type artifacts |
+| `verification/kani/vb-vzcuf-PS-*.rs` | 9 | Kani verification harnesses |
+| `verification/verus/vb-vzcuf-PS-*.rs` | 9 | Verus spec artifacts |
 
----
+### Evidence & Reports
+| File | Description |
+|------|-------------|
+| `formal-verification-report.md` | Updated formal verification report |
+| `verification-ledger.jsonl` | Updated verification ledger |
+| `.beads/vb-vzcuf/*` | 58 bead artifact files (full go-skill chain) |
 
-## Evidence Summary
+## Quality Gates
 
-- **Truth-Serum**: CONDITIONAL PASS — all 10 contract clauses have evidence, all 12 refinement obligations PASS
-- **Black-Hat**: E-1 (unwind alignment) and E-4 (stale evidence removal) both resolved in evidence chain
-- **GOD RULES**: All 5 rules passed — no hardcoded Kani shapes, no vacuum proofs, bounded math, no loop oscillations, no blind mutations
-- **Defense-in-Depth**: 4 layers confirmed — Kani (L1), proptest (L2), integration tests (L3), structural checks (L4)
+| Gate | Result | Details |
+|------|--------|---------|
+| **Tests** | PASS | 12,860 passed, 27 ignored, 0 failed (238 suites, 42.46s) |
+| **Clippy** | PASS | Zero warnings (`-D warnings`) |
+| **Format** | PASS | `cargo fmt --check` clean |
 
----
+### Gate Fixes During Landing
+- **Fix 1**: Diagnostic code conflict — `JOURNAL_BATCH_BYTES_EXCEEDED` assigned conflicting codes `0x4022`/`0x402A`; resolved to `0x402F` (next available in RuntimeBoundary range)
+- **Fix 2**: Unused imports in test module `byte_accounting_tests` — removed 5 unused imports (`BlobRecord`, `CompiledIrRecord`, `RunHeaderRecord`, `WorkflowSourceRecord`, `recovery::RunSnapshot`)
+- **Fix 3**: `cargo fmt` applied across all changed files (batch.rs, kani harnesses, proptest files, fuzz targets, flux/verus artifacts)
 
-## Cleanup Performed
+## GOD RULES Status
 
-- [x] Landing branch `landing/vb-xi2f.34` deleted locally
-- [x] Working tree clean on main
-- [x] All commits pushed to origin
-- [ ] Workspace `/home/lewis/src/vb-workspaces/vb-xi2f.34` preserved for audit
+| Rule | Status | Notes |
+|------|--------|-------|
+| GOD RULE 1 (No Hardcoded Kani Shapes) | PASS | All harnesses use `kani::any()` / `kani::Arbitrary` |
+| GOD RULE 2 (No Vacuum Verus Proofs) | DEFERRED | Per State 14 approval; specs scaffolded, implementation binding deferred |
+| GOD RULE 3 (No Unbounded TLA+ Math) | PASS | Bounded u64 arithmetic enforced |
+| GOD RULE 4 (No Loop Oscillations) | PASS | No counterexample-driven harness weakening |
+| GOD RULE 5 (No Blind Verification Mutations) | PASS | Trimmed scope to call-graph blast radius |
 
----
+## Remote Status
+
+- **Branch**: `fresh/vb-vzcuf` pushed to `origin` (https://github.com/lprior-repo/velvet-ballistics.git)
+- **Commit**: `7ca9257bd1c15056c6d50630a94e35b4a6af80d8`
+- **Sync**: Up to date with remote (no unpushed commits)
+- **Force push**: `--force-with-lease` used for amended commit (proptest-regressions file added)
+
+## Smells Surfaced
+
+None — all issues found during landing were fixed inline:
+- Diagnostic code conflict (fixed: 0x4022 → 0x402F)
+- Unused imports (fixed: removed 5 names)
+- Formatting (fixed: `cargo fmt`)
+
+## Cleanup
+
+- [x] All modified files committed
+- [x] All evidence/verification artifacts committed
+- [x] Branch pushed to remote
+- [x] Working tree clean (source files only; build artifacts gitignored)
+- [ ] Workspace `/home/lewis/isolated/velvet-ballistics-fresh-replacements/vb-vzcuf` preserved for audit
 
 ## Next Steps
 
-- Update `black-hat-review.md` to reflect resolved E-1/E-4 (TS-001 process note)
-- Update `STATE.md` from state 3 to state 15 (landed)
-- Workspace can be archived after audit confirmation
-
----
+- GOD RULE 2 resolution: Complete Verus implementation binding for journal batch byte accounting
+- Merge `fresh/vb-vzcuf` to main via PR or merge queue
+- Update `STATE.md` to state 15 (landed)
+- Close bead vb-vzcuf in beads tracker
 
 ## Notes
 
-- The bead's production code and most test files were already present on main from prior bead landings (vb-xi2f.28 merge)
-- Only 4 files needed changes: lib.rs module registrations, part_05.rs test module, and typo fixes in test YAML
-- The YAML schema changed between bead authorship and landing (`name` → `type` in event triggers, version field validation)
-- `rtk` (Rust Token Killer) was observed to revert file edits in some circumstances; direct shell `sed` and atomic git staging was used to work around this
+- The workspace contains compiled artifacts (`.rlib`, binary outputs) that are gitignored and not committed
+- The proptest-regressions file was missed in initial staging and added via amend + force-push
+- All 9 proof seam groups (PS-001 through PS-009) cover the full implementation contract:
+  - PS-001: encode_record structural bounds
+  - PS-002: checked_add overflow safety
+  - PS-003: error variant semantics
+  - PS-004: encode_record determinism
+  - PS-005: encode_record kind mapping
+  - PS-006: byte limit constant bounds
+  - PS-007: storage/core bridge alignment
+  - PS-008: guard precedence ordering (C6)
+  - PS-009: byte admission idempotency
