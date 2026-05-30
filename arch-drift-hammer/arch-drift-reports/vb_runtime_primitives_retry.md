@@ -1,157 +1,110 @@
-# Architectural Drift Report: vb_runtime_primitives_retry
+# Architectural Drift Report: `vb_runtime::primitives::retry`
 
-**File**: `crates/vb_runtime/src/primitives/retry.rs`
-**Date**: 2026-05-29
-**Analyst**: architectural-drift agent
+**File**: `crates/vb_runtime/src/primitives/retry.rs`  
+**Analysis Date**: 2026-05-29  
+**Status**: `VIOLATION_DETECTED`
 
 ---
 
-## Executive Summary
+## 1. Line Count Analysis
 
 | Metric | Value | Limit | Status |
 |--------|-------|-------|--------|
-| Total Lines | **1712** | 300 | 🔴 FAIL (471% over) |
-| Production Code | ~437 | 300 | 🔴 FAIL (46% over) |
-| Test Code | ~1275 | N/A | 🔴 SMELL (74% of file) |
-| DDD Cohesion | LOW | HIGH | 🔴 FAIL |
+| Total lines | **1712** | 300 | ❌ EXCEEDED |
+| Production code | **437** | 300 | ❌ EXCEEDED |
+| Test code | **1275** | N/A | Informational |
 
----
-
-## 1. Line Count Violations
-
-### Total: 1712 lines (LIMIT: 300)
-
-| Section | Lines | % of Limit | Status |
-|---------|-------|------------|--------|
-| Production code (1-437) | 437 | 146% | 🔴 FAIL |
-| Test code (438-1712) | 1275 | 425% | 🔴 SMELL |
-| **Total** | **1712** | **571%** | **🔴 FAIL** |
-
-The file is **5.7x the maximum allowed size**.
+**Verdict**: File is **5.7x over the 300-line limit**. Production code alone is **1.5x over limit**.
 
 ---
 
 ## 2. DDD Cohesion Analysis
 
-### Single File Contains Multiple Bounded Contexts
+### Domain Concepts Identified (5 types)
 
-| DDD Concept | Type | Responsibility | Smell |
-|-------------|------|-----------------|-------|
-| `DelayStrategy` | Value Object | Delay enumeration | ✓ Cohesive |
-| `RetryPolicy` | Value Object | Configuration | ✓ Cohesive |
-| `RetryPolicyError` | Error Type | Domain errors | ✓ Cohesive |
-| `RetryState` | Entity | State machine | ✓ Cohesive |
-| `RetryDecision` | Enum | Outcome | ✓ Cohesive |
-| `is_failure_retriable` | Domain Function | Policy evaluation | ✓ Cohesive |
-| `evaluate_retry` | Domain Function | State transitions | ✓ Cohesive |
-| `compute_delay` | Domain Function | Delay calculation | ✓ Cohesive |
-| `exhaustion_error` | Domain Function | Error mapping | ✓ Cohesive |
-| `retry_start` | Application Service | Frame slot init | 🔴 INFRASTRUCTURE |
-| `retry_on_failure` | Application Service | Frame slot ops | 🔴 INFRASTRUCTURE |
-| `RetryState::write_to_slot` | Infrastructure | Serialization | 🔴 INFRASTRUCTURE |
-| `RetryState::read_from_slot` | Infrastructure | Deserialization | 🔴 INFRASTRUCTURE |
-| **Tests (438-1712)** | **Test Module** | **~1275 lines** | 🔴 MIXED |
+| Type | Responsibility | Cohesion |
+|------|-----------------|----------|
+| `DelayStrategy` | Delay enumeration | ✅ Cohesive |
+| `RetryPolicy` | Retry configuration VO | ✅ Cohesive |
+| `RetryState` | Retry state machine state | ⚠️ Mixed with infrastructure |
+| `RetryPolicyError` | Error enumeration | ✅ Cohesive |
+| `RetryDecision` | Outcome enumeration | ✅ Cohesive |
 
-### Cohesion Verdict: **LOW**
+### DDD Smells
 
-The file violates:
-- **Single Responsibility Principle**: Infrastructure concerns (RunFrame slot I/O) mixed with domain logic
-- **Package Cohesion**: 5+ distinct concepts crammed into one file
-- **Separation of Concerns**: Tests consume 74% of the file
+#### SMELL 1: Infrastructure Intrusion (HIGH SEVERITY)
+- **Location**: `RetryState::encode()`, `RetryState::decode()`, `RetryState::write_to_slot()`, `RetryState::read_from_slot()`
+- **Problem**: The `RetryState` domain type directly encodes/decodes to `i64` and manipulates `RunFrame` slots. This is persistence/infrastructure concern bleeding into the domain primitive.
+- **Violation**: DDD "Pure Domain" principle — domain types should not know about storage representation.
 
----
+#### SMELL 2: Workflow Orchestration Mixed with Domain Logic (HIGH SEVERITY)
+- **Location**: `retry_start()` and `retry_on_failure()` functions
+- **Problem**: These are workflow-level orchestration functions that operate on `RunFrame`. They mix imperative shell concerns with the domain primitive module.
+- **Violation**: These should be in a separate orchestration or workflow module.
 
-## 3. All Violations
-
-### Critical (MUST FIX)
-
-| # | Violation | Rule | Location |
-|---|-----------|------|----------|
-| 1 | **Line count 1712 > 300** | File size limit | Entire file |
-| 2 | **Production code exceeds 300 lines** | File size limit | Lines 1-437 |
-| 3 | **Inline tests 1275 lines** | Test separation | Lines 438-1712 |
-
-### Major (SHOULD FIX)
-
-| # | Violation | Rule | Location |
-|---|-----------|------|----------|
-| 4 | **Infrastructure in domain file** | Hexagonal boundary | `write_to_slot`, `read_from_slot` at lines 254-277 |
-| 5 | **RunFrame dependency** | Dependency inversion | Lines 254-277, 410-436 |
-
-### Minor (NICE TO FIX)
-
-| # | Violation | Guideline |
-|---|-----------|-----------|
-| 6 | `#[allow(unreachable_code)]` at line 313 | Future-proofing catch-all is questionable |
+#### SMELL 3: Test Code Bloat (MEDIUM SEVERITY)
+- **Problem**: 1275 lines of tests (74% of file) obscures the production code structure.
+- **Violation**: File is difficult to navigate; tests should be in a separate `tests/` or `tests/retry.rs` integration module.
 
 ---
 
-## 4. DDD Smell Assessment
+## 3. Violations Summary
 
+| ID | Violation | Severity | Category |
+|----|-----------|----------|----------|
+| V1 | Total file exceeds 300 lines (1712) | CRITICAL | Size |
+| V2 | Production code exceeds 300 lines (437) | CRITICAL | Size |
+| V3 | `RetryState` encodes to `i64` — infrastructure leak | HIGH | DDD |
+| V4 | `RetryState::write_to_slot/read_from_slot` — frame manipulation | HIGH | DDD |
+| V5 | `retry_start`/`retry_on_failure` — orchestration in domain module | HIGH | DDD |
+| V6 | Test code mixed with production code | MEDIUM | Structure |
+
+---
+
+## 4. Remediation Priority
+
+### P0 — Immediate (File exceeds hard limit)
+**Action**: Mandatory split into multiple files.
+
+**Proposed Structure**:
 ```
-SMELL: God File Pattern
+primitives/
+├── mod.rs           # Re-exports
+├── delay.rs         # DelayStrategy + compute_delay() (≈80 lines)
+├── policy.rs        # RetryPolicy + RetryPolicyError (≈150 lines)
+├── state.rs         # RetryState + RetryDecision + encode/decode (≈200 lines)
+├── decision.rs      # RetryDecision + is_failure_retriable (≈50 lines)
+└── orchestration.rs # retry_start, retry_on_failure, exhaustion_error (≈80 lines)
 ```
 
-The file exhibits the **"God File" anti-pattern**:
-- 1712 lines of tightly coupled concepts
-- 14 public types/functions in a single file
-- 3 distinct architectural layers (domain, application, infrastructure) in one file
-- Tests are 3.4x larger than production code
+**Tests**: Move to `crates/vb_runtime/tests/retry_tests.rs` or `retry.rs` under `tests/`.
 
-**Scott Wlaschin DDD Violations**:
-1. ❌ One file contains multiple aggregates (`RetryPolicy`, `RetryState`)
-2. ❌ Value objects and entities not separated
-3. ❌ Infrastructure polluting domain layer
-4. ❌ Application services (`retry_start`, `retry_on_failure`) in same file as domain
+### P1 — Short Term (DDD Hygiene)
+1. Extract slot encoding from `RetryState` into a separate `RetryStateCodec` or `RetryStateSlot` adapter.
+2. Move `retry_start`/`retry_on_failure` to a workflow/handler module.
+3. Add proper module boundaries with `#[cfg(test)]` isolation.
 
----
-
-## 5. Remediation Priority
-
-| Priority | Action | Effort | Impact |
-|----------|--------|--------|--------|
-| **P0 - CRITICAL** | Extract tests to `retry/tests.rs` | Medium | Reduces file to 437 lines |
-| **P0 - CRITICAL** | Split domain from infrastructure | High | Reduces production to ~300 lines |
-| **P1 - MAJOR** | Create `retry/policy.rs` for RetryPolicy, DelayStrategy, RetryPolicyError | Medium | Improves cohesion |
-| **P1 - MAJOR** | Create `retry/state.rs` for RetryState entity | Medium | Isolates state machine |
-| **P2 - MINOR** | Create `retry/decision.rs` for RetryDecision and evaluation | Low | Completes split |
+### P2 — Medium Term (Cohesion Polish)
+1. Ensure each module has a single responsibility.
+2. Consider `SlotIdx` newtype wrapper to make slot operations more explicit.
+3. Review `compute_delay` loop — the manual exponentiation loop (lines 386-395) could use `u32::pow()`.
 
 ---
 
-## 6. Recommended File Structure
+## 5. Proof Binding Review
 
-```
-crates/vb_runtime/src/primitives/retry/
-├── mod.rs           # Re-exports, line ~50
-├── policy.rs        # RetryPolicy, DelayStrategy, RetryPolicyError (~150 lines)
-├── state.rs         # RetryState entity (~200 lines)
-├── decision.rs      # RetryDecision, evaluate_retry, compute_delay (~150 lines)
-└── tests.rs         # All tests (~1275 lines) or move to workspace_tests/
-```
+✅ **Loop bounds**: `compute_delay` while-loop bounded by `exponent ≤ u16::MAX`  
+✅ **Arithmetic safety**: Uses `checked_mul`, `saturating_add`, `checked_shl`  
+✅ **No unsafe code**: `#![forbid(unsafe_code)]` present  
+✅ **No panic paths**: All public functions return `Result` or `RetryDecision`  
+✅ **Determinism**: State machine is pure function of inputs  
 
 ---
 
-## 7. Verification Commands
+## 6. Conclusion
 
-```bash
-# Count lines
-wc -l crates/vb_runtime/src/primitives/retry.rs
-# Expected: < 300
+**STATUS**: `REFACTOR_REQUIRED`
 
-# Check for infrastructure leaks
-grep -n "write_to_slot\|read_from_slot\|RunFrame" crates/vb_runtime/src/primitives/retry.rs
-# Expected: Only in infrastructure layer after split
-```
+This file demonstrates strong domain modeling discipline (proof invariants, arithmetic safety, clear state machine semantics) but **violates the architectural size constraint by 5.7x**. The DDD smells are moderate — the infrastructure intrusion into `RetryState` is the most concerning pattern.
 
----
-
-## Conclusion
-
-**Status**: 🔴 **ARCHITECTURAL DRIFT DETECTED**
-
-This file is in **serious violation** of the architectural guidelines:
-- 5.7x over the line count limit
-- Infrastructure and domain mixed together
-- Tests consume 74% of the file
-
-**Immediate action required** to restore architectural integrity.
+**Priority**: Split immediately. The file cannot land in this state per architectural rules.

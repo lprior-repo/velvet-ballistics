@@ -1,115 +1,184 @@
-# Architectural Drift Report: `vb_ipc/src/payloads.rs`
+# Architectural Drift Report: `vb_ipc_payloads.rs`
 
-**File**: `crates/vb_ipc/src/payloads.rs`  
-**Analysis Date**: 2026-05-29  
-**Status**: REFACTOR REQUIRED
+**File:** `crates/vb_ipc/src/payloads.rs`
+**Analyzed:** 2026-05-29
+**Status:** REFACTOR REQUIRED
 
 ---
 
-## 1. Line Count Check
+## 1. Line Count Analysis
 
 | Metric | Value | Limit | Status |
 |--------|-------|-------|--------|
-| Total Lines | **575** | 300 | ❌ VIOLATION |
+| Total lines | **575** | 300 | ❌ OVER LIMIT |
+| Code lines (excl tests) | ~460 | 300 | ❌ OVER LIMIT |
+| Test lines | ~60 | — | ✓ |
 
-**Finding**: File exceeds the 300-line limit by **275 lines (192% over)**.
+**Verdict:** File MUST be split. At 575 lines, this is **91% over the 300-line limit**.
 
 ---
 
 ## 2. DDD Cohesion Analysis
 
-### Domain Concept Map
+### Bounded Contexts Identified
 
-| Area | Types | Cohesion |
-|------|-------|----------|
-| **IPC Control Surface** | `IpcPayload`, `SubmitRunPayload` | ✅ Core IPC |
-| **Run State** | `RunListState`, `RunSummary` | ✅ Workflow Execution |
-| **Verification** | `GateKind`, `ParseGateKindError`, `PassFail`, `CertificateWire`, `VerificationResult` | ⚠️ Separate Domain |
-| **Workflow Graph** | `NodeKind`, `EdgeType`, `NodeDescriptor`, `EdgeDescriptor` | ⚠️ Separate Domain |
-| **Taint Analysis** | `TaintPathStatus`, `TaintPathWire` | ⚠️ Separate Domain |
-| **Trace Events** | `IpcTraceEvent`, `IpcTraceEventKind` | ⚠️ Separate Domain |
-| **Runtime Control** | `Health`, `Shutdown`, `GetMetrics` variants | ⚠️ Infrastructure |
+The file mixes **three distinct DDD bounded contexts** in a single 575-line file:
 
-### DDD Smell: **Feature-Based Package Smell** (Heuristics 5 & 6)
+| Context | Types | Cohesion |
+|--------|-------|----------|
+| **IPC Command Surface** | `IpcPayload`, `SubmitRunPayload` | High — these ARE the IPC commands |
+| **Workflow Graph Wire Format** | `NodeKind`, `EdgeType`, `NodeDescriptor`, `EdgeDescriptor`, `GateKind`, `CertificateWire`, `VerificationResult`, `PassFail` | Medium — IPC transport of workflow structure |
+| **Trace/Event Wire Format** | `IpcTraceEvent`, `IpcTraceEventKind`, `TaintPathWire`, `TaintPathStatus`, `RunListState`, `RunSummary` | Medium — IPC transport of runtime events |
+| **Parse Errors** | `ParseGateKindError` | Low — belongs with GateKind, not standalone |
 
-The file crams **6+ distinct bounded contexts** into a single file:
-1. Workflow execution control
-2. Verification/certification
-3. Workflow graph structure
-4. Taint propagation analysis
-5. Trace event instrumentation
-6. Runtime introspection
+### Cohesion Verdict
 
-This violates the **Pure Fabrication** principle — IPC boundary objects should not embed deep domain models.
+**COHESION SMELL: Low**. The file serves as a catch-all for all IPC wire types, violating the principle of **single responsibility for bounded contexts**. A DDD-aligned structure would split this into:
+
+```
+vb_ipc/src/payloads/
+├── mod.rs           (reexports)
+├── commands.rs      (IpcPayload, SubmitRunPayload)
+├── graph_wire.rs    (NodeKind, EdgeType, NodeDescriptor, EdgeDescriptor, GateKind, CertificateWire, VerificationResult, PassFail)
+├── trace_wire.rs    (IpcTraceEvent, IpcTraceEventKind, RunListState, RunSummary, TaintPathWire, TaintPathStatus)
+└── errors.rs        (ParseGateKindError — if standalone)
+```
 
 ---
 
 ## 3. Violations
 
-### 🔴 Critical Violations
+### 🔴 CRITICAL: Structural Violations
 
-| ID | Violation | Rule | Location |
-|----|-----------|------|----------|
-| V1 | **File exceeds 300 lines** | Hard limit | Entire file (575 lines) |
-| V2 | **Cross-domain bleeding** | DDD cohesion | Lines 1-575 |
+#### V-001: File Size Exceeded (575 > 300 lines)
+- **Severity:** Critical
+- **Rule:** `<300 lines per .rs file`
+- **Impact:** Maintainability, compilation unit isolation, cognitive load
+- **Fix:** Split into `commands.rs`, `graph_wire.rs`, `trace_wire.rs`
 
-### 🟡 Moderate Violations
+#### V-002: Multiple Bounded Contexts in One File
+- **Severity:** Critical
+- **Rule:** DDD cohesion — one bounded context per module
+- **Impact:** Violates single responsibility, makes IPC context monolithic
+- **Fix:** Split by context as described above
 
-| ID | Violation | Rule | Location |
-|----|-----------|------|----------|
-| V3 | **Primitive obsession** — `u64` used for `ticket` identifiers | NewType pattern | Lines 51, 64, 72 |
-| V4 | **Primitive obsession** — `u32` for `max_records`, `limit` | NewType pattern | Lines 82, 87 |
-| V5 | **Primitive obsession** — `u16` for `step_idx`, `from`, `to` | NewType pattern | Lines 428-430, 439-440, 452-454 |
-| V6 | **Large enum** — `IpcPayload` has 15 variants | Single Responsibility | Lines 22-112 |
-| V7 | **Large enum** — `IpcTraceEventKind` has 13 variants | Single Responsibility | Lines 471-512 |
-| V8 | **Large enum** — `NodeKind` has 33 variants | Single Responsibility | Lines 244-281 |
-| V9 | **Duplicate wire-serializer pattern** — `as_str()` + `TryFrom<&str>` implemented identically for 4 enums | DRY | Lines 189-224, 283-365, 381-411 |
+### 🟠 HIGH: Parse, Don't Validate Violations
 
-### 🟢 Advisory Violations
+#### V-003: `NodeKind::from(&str)` Silently Falls Through to `Nop`
+```rust
+impl From<&str> for NodeKind {
+    fn from(s: &str) -> Self {
+        match s {
+            "Nop" => NodeKind::Nop,
+            // ... 30+ variants ...
+            _ => NodeKind::Nop,  // ← SILENT FALLTHROUGH
+        }
+    }
+}
+```
+- **Severity:** High
+- **Rule:** Parse, don't validate — unknown input should return Error
+- **Impact:** Corrupted data silently becomes `Nop`, masking errors
+- **Fix:** Implement `TryFrom<&str>` returning `ParseNodeKindError` for unknown strings, keep `From<&str>` for known-only contexts or deprecate
 
-| ID | Violation | Rule | Location |
-|----|-----------|------|----------|
-| V10 | **Silent fallthrough** — `NodeKind::from("unknown") => Nop` | Parse don't validate | Line 362 |
-| V11 | **Silent fallthrough** — `EdgeType::from("unknown") => Fallthrough` | Parse don't validate | Line 408 |
+#### V-004: `EdgeType::from(&str)` Silently Falls Through to `Fallthrough`
+```rust
+impl From<&str> for EdgeType {
+    fn from(s: &str) -> Self {
+        match s {
+            "branch" => EdgeType::Branch,
+            // ... 7 variants ...
+            _ => EdgeType::Fallthrough,  // ← SILENT FALLTHROUGH
+        }
+    }
+}
+```
+- **Severity:** High
+- **Rule:** Parse, don't validate
+- **Impact:** Unknown edge type becomes `Fallthrough`, corrupting graph semantics
+- **Fix:** Implement `TryFrom<&str>` returning `ParseEdgeTypeError`
+
+### 🟡 MEDIUM: Primitive Obsession
+
+#### V-005: Untyped Ticket Identifiers
+- **Locations:** `IpcPayload::AnswerAsk { ticket: u64 }`, `IpcPayload::CompleteAction { ticket: u64 }`, `IpcPayload::FailAction { ticket: u64 }`
+- **Issue:** `u64` is used for ticket IDs without a NewType wrapper
+- **Impact:** Mixable with other `u64` values (run_id, sequence numbers)
+- **Fix:** Create `TicketId(u64)` NewType with `TryFrom<u64>` validation
+
+#### V-006: Untyped Index Primitives in Wire Types
+- **Locations:** `TaintPathWire { from: u16, to: u16 }`, `NodeDescriptor { step_idx: u16, next: Option<u16> }`, `EdgeDescriptor { from: u16, to: u16 }`
+- **Issue:** `u16` for step indices while `vb_core::ids::StepIdx` exists
+- **Impact:** Type-level confusion between different index spaces
+- **Fix:** Use `StepIdx` from `vb_core::ids` for wire types (requires bytes serialization compatibility check)
+
+### 🟢 LOW: Additional Observations
+
+#### V-007: `IpcTraceEventKind::Unknown` Lossy Parsing
+- The `Unknown` variant for future compatibility is acceptable, but parsing into `Unknown` loses information that might be needed for debugging. Consider logging unknown variants when encountered.
+
+#### V-008: Redundant `as_str()` + `TryFrom` Pairs
+- `GateKind` has both `as_str()` and `TryFrom<&str>` correctly implemented
+- `NodeKind` and `EdgeType` have `as_str()` but only `From<&str>` (should be `TryFrom`)
+- This asymmetry is a maintenance hazard
+
+#### V-009: Test Coverage Only on GateKind
+- Tests only cover `GateKind` parsing (lines 518-574)
+- `NodeKind` and `EdgeType` `From` implementations have NO test coverage
+- This is risky given their fallthrough behavior
 
 ---
 
-## 4. Remediation Priority
+## 4. DDD Smell Summary
 
-| Priority | ID | Action | Effort |
-|----------|----|--------|--------|
-| **P0** | V1 | **Split file** into domain-specific modules | High |
-| **P0** | V2 | Extract verification types to `payloads/verification.rs` | High |
-| **P0** | V2 | Extract graph types to `payloads/graph.rs` | High |
-| **P1** | V3-V5 | Wrap primitives in newtypes (`TicketId`, `StepIdx16`, `RecordLimit`) | Medium |
-| **P1** | V9 | Extract shared `WireFormat` trait for enum serialization | Medium |
-| **P2** | V10-V11 | Return `Result` instead of silent fallback | Low |
+| Smell | Category | Severity |
+|-------|----------|----------|
+| Monolithic IPC payload file | Feature Envy / Silo | 🔴 Critical |
+| Silent fallthrough on unknown parse | Parse not validate | 🟠 High |
+| Untyped primitives in wire format | Primitive Obsession | 🟡 Medium |
+| Asymmetric TryFrom/From implementation | Inconsistent API | 🟡 Medium |
+| No test coverage on NodeKind/EdgeType parse | Test gap | 🟡 Medium |
 
-### Proposed Module Structure
+---
 
-```
-crates/vb_ipc/src/payloads/
-├── mod.rs          # Re-exports + IpcPayload (control surface only)
-├── run_state.rs    # RunListState, RunSummary
-├── verification.rs # GateKind, CertificateWire, VerificationResult, PassFail
-├── graph.rs        # NodeKind, EdgeType, NodeDescriptor, EdgeDescriptor
-├── taint.rs        # TaintPathStatus, TaintPathWire
-└── trace.rs        # IpcTraceEvent, IpcTraceEventKind
+## 5. Remediation Priority
+
+| Priority | Action | Effort | Impact |
+|----------|--------|--------|--------|
+| **P0** | Split file into `commands.rs` + `graph_wire.rs` + `trace_wire.rs` | High | Fixes V-001, V-002 |
+| **P0** | Implement `TryFrom<&str>` for `NodeKind` and `EdgeType` with explicit errors | Medium | Fixes V-003, V-004 |
+| **P1** | Add test coverage for `NodeKind` and `EdgeType` parsing | Medium | Fixes V-009 |
+| **P2** | Add `TicketId(u64)` NewType wrapper | Low | Fixes V-005 |
+| **P2** | Evaluate `StepIdx` usage in wire types (bytes compat) | Low | Fixes V-006 |
+| **P3** | Add logging for `Unknown` trace event variants | Low | Fixes V-007 |
+
+---
+
+## 6. Recommended Module Structure
+
+```rust
+// vb_ipc/src/payloads/mod.rs
+pub mod commands;    // IpcPayload, SubmitRunPayload (~100 lines)
+pub mod graph_wire;  // NodeKind, EdgeType, GateKind, VerificationResult, Certificates (~250 lines)
+pub mod trace_wire;  // IpcTraceEvent, RunSummary, TaintPathWire (~150 lines)
+pub mod errors;      // ParseGateKindError, ParseNodeKindError, ParseEdgeTypeError (~30 lines)
 ```
 
 ---
 
-## 5. Summary
+## 7. Verification Commands
 
-```
-Lines:         575 / 300  ❌ EXCEEDED
-DDD Cohesion:  LOW          ❌ CROSS-DOMAIN BLEEDING
-Violations:    11 total (3 critical, 5 moderate, 3 advisory)
-Remediation:   P0 — Mandatory file split
-```
+```bash
+# Check line counts after refactor
+wc -l crates/vb_ipc/src/payloads/*.rs
 
-**Recommendation**: Split into domain modules before any new IPC features are added. The current structure will become unmaintainable as the IPC surface grows.
+# Verify no unsafe code
+grep -r "unsafe" crates/vb_ipc/src/payloads/ && echo "VIOLATION: unsafe found" || echo "CLEAN"
+
+# Verify all TryFrom implementations exist
+grep -E "impl.*TryFrom.*str.*for (NodeKind|EdgeType|GateKind)" crates/vb_ipc/src/payloads/*.rs
+```
 
 ---
 
-*Report generated by architectural-drift agent*
+**END REPORT**
