@@ -1,4 +1,6 @@
-#![allow(
+#![forbid(unsafe_code)]
+#[cfg(test)]
+#[allow(
     clippy::as_conversions,
     clippy::cast_possible_truncation,
     clippy::expect_used,
@@ -7,9 +9,7 @@
     clippy::panic_in_result_fn,
     clippy::unwrap_used
 )]
-
-#[cfg(test)]
-mod proptest_storage {
+mod storage_tests {
     use crate::{
         BlobRecord, DIGEST_BYTES, EventSeq, FjallJournal, JournalEvent, JournalWriterQueue,
         MAGIC_BLOB, MAGIC_JOURNAL_EVENT, MAX_BLOB_BYTES, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
