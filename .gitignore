@@ -69,3 +69,21 @@ verification/tla/**/_apalache-out/
 vb_oewy_bdd_runner_invariant
 crates/workspace_tests/journal-db/
 crates/workspace_tests/nonexistent-db/
+
+# Binary files and corpora
+*.bin
+fuzz/corpus/
+
+# Large test artifacts
+test_string
+agent-invocation-ledger.jsonl
+
+# Evidence and landing artifacts
+.evidence/
+
+# Isolates
+isolates/
+
+# Beads workspace state
+.beads/
+.beads/*/agent-invocation-ledger.jsonl
