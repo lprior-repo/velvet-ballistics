@@ -44,8 +44,8 @@ steps:
 "#;
     let s10 = parse_workflow_source(yaml_10s.trim()).expect("parse");
     let s60 = parse_workflow_source(yaml_60s.trim()).expect("parse");
-    let digest_10s = canonical_digest(&s10);
-    let digest_60s = canonical_digest(&s60);
+    let digest_10s = canonical_digest(&s10).expect("valid test input");
+    let digest_60s = canonical_digest(&s60).expect("valid test input");
     assert_ne!(
         digest_10s, digest_60s,
         "E2E: different Ask timeouts must produce distinct canonical digests"
@@ -76,8 +76,8 @@ steps:
 "#;
     let s1 = parse_workflow_source(yaml_no_timeout.trim()).expect("parse");
     let s2 = parse_workflow_source(yaml_with_timeout.trim()).expect("parse");
-    let digest_no_timeout = canonical_digest(&s1);
-    let digest_with_timeout = canonical_digest(&s2);
+    let digest_no_timeout = canonical_digest(&s1).expect("valid test input");
+    let digest_with_timeout = canonical_digest(&s2).expect("valid test input");
     assert_ne!(
         digest_no_timeout, digest_with_timeout,
         "E2E: Ask with no timeout vs with timeout must produce distinct digests"
@@ -97,7 +97,7 @@ steps:
     finish: { result: done }
 "#;
     let source = parse_workflow_source(yaml.trim()).expect("parse");
-    let digest = canonical_digest(&source);
+    let digest = canonical_digest(&source).expect("valid test input");
     assert_eq!(
         digest.as_bytes().len(),
         32,
@@ -129,8 +129,8 @@ steps:
 "#;
     let s1 = parse_workflow_source(yaml_a.trim()).expect("parse");
     let s2 = parse_workflow_source(yaml_b.trim()).expect("parse");
-    let digest_a = canonical_digest(&s1);
-    let digest_b = canonical_digest(&s2);
+    let digest_a = canonical_digest(&s1).expect("valid test input");
+    let digest_b = canonical_digest(&s2).expect("valid test input");
     assert_ne!(
         digest_a, digest_b,
         "E2E: different Ask prompts must produce distinct digests"
@@ -151,8 +151,8 @@ steps:
 "#;
     let s1 = parse_workflow_source(yaml.trim()).expect("parse");
     let s2 = parse_workflow_source(yaml.trim()).expect("parse");
-    let digest_a = canonical_digest(&s1);
-    let digest_b = canonical_digest(&s2);
+    let digest_a = canonical_digest(&s1).expect("valid test input");
+    let digest_b = canonical_digest(&s2).expect("valid test input");
     assert_eq!(
         digest_a, digest_b,
         "E2E: Set+Finish workflow digest must be deterministic"
@@ -180,8 +180,8 @@ steps:
 "#;
     let s1 = parse_workflow_source(yaml.trim()).expect("parse");
     let s2 = parse_workflow_source(yaml.trim()).expect("parse");
-    let digest_a = canonical_digest(&s1);
-    let digest_b = canonical_digest(&s2);
+    let digest_a = canonical_digest(&s1).expect("valid test input");
+    let digest_b = canonical_digest(&s2).expect("valid test input");
     assert_eq!(
         digest_a, digest_b,
         "E2E: multi-step Ask workflow digest must be deterministic"
@@ -213,8 +213,8 @@ steps:
 "#;
     let s1 = parse_workflow_source(yaml_compact.trim()).expect("parse");
     let s2 = parse_workflow_source(yaml_spacious.trim()).expect("parse");
-    let digest_compact = canonical_digest(&s1);
-    let digest_spacious = canonical_digest(&s2);
+    let digest_compact = canonical_digest(&s1).expect("valid test input");
+    let digest_spacious = canonical_digest(&s2).expect("valid test input");
     assert_eq!(
         digest_compact, digest_spacious,
         "E2E: YAML formatting differences must not affect canonical digest"

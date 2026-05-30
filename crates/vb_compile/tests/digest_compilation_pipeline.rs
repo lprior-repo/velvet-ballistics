@@ -70,7 +70,7 @@ fn compiled_workflow_digest_matches_canonical_digest_for_ask_workflow() {
     // Given: a YAML string with Ask step
     let source = parse_fixture(ASK_YAML);
     // When: canonical_digest computed
-    let direct_digest = canonical_digest(&source);
+    let direct_digest = canonical_digest(&source).expect("valid test input");
     // Then: digest is valid 32-byte hash
     assert_eq!(
         direct_digest.as_bytes().len(),
@@ -85,8 +85,8 @@ fn compiled_workflow_digest_is_deterministic_across_parses() {
     let source_a = parse_fixture(ASK_YAML);
     let source_b = parse_fixture(ASK_YAML);
     // When: canonical_digest computed for both
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
     // Then: digests are identical (parsing is deterministic)
     assert_eq!(
         digest_a, digest_b,
@@ -100,8 +100,8 @@ fn compiled_workflow_digests_differ_when_ask_prompt_differs_in_yaml() {
     let source_a = parse_fixture(ASK_YAML);
     let source_b = parse_fixture(ASK_DIFFERENT_PROMPT_YAML);
     // When
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
     // Then: different prompts → different digests
     assert_ne!(
         digest_a, digest_b,
@@ -115,8 +115,8 @@ fn compiled_workflow_digests_differ_when_workflow_name_differs_in_yaml() {
     let source_a = parse_fixture(ASK_YAML);
     let source_b = parse_fixture(DIFFERENT_NAME_YAML);
     // When
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
     // Then: different names → different digests
     assert_ne!(
         digest_a, digest_b,
@@ -129,7 +129,7 @@ fn compiled_workflow_digest_unchanged_for_set_finish_workflow() {
     // Given: a YAML string with Set + Finish only (no Ask)
     let source = parse_fixture(SET_FINISH_YAML);
     // When
-    let digest = canonical_digest(&source);
+    let digest = canonical_digest(&source).expect("valid test input");
     // Then: valid digest, no panic
     assert_eq!(
         digest.as_bytes().len(),
@@ -138,7 +138,7 @@ fn compiled_workflow_digest_unchanged_for_set_finish_workflow() {
     );
     // And: deterministic across two parses
     let source2 = parse_fixture(SET_FINISH_YAML);
-    let digest2 = canonical_digest(&source2);
+    let digest2 = canonical_digest(&source2).expect("valid test input");
     assert_eq!(
         digest, digest2,
         "Set+Finish workflow digest must be deterministic across parses"

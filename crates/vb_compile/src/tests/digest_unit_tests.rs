@@ -50,7 +50,7 @@ fn hash_primitive(primitive: &StepPrimitive) -> [u8; 32] {
 /// Parse a minimal YAML source and return its canonical digest.
 fn digest_yaml(yaml: &str) -> WorkflowDigest {
     let source = parse_workflow_source(yaml).expect("valid YAML must parse");
-    canonical_digest(&source)
+    canonical_digest(&source).expect("valid test input")
 }
 
 // ── UT-1: Finish discriminator prefix (B9) ─────────────────────────

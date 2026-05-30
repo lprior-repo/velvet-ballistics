@@ -25,7 +25,7 @@ fn canonical_digest_produces_valid_digest_when_source_has_no_steps() {
     // Given: source with zero steps
     let source = empty_source();
     // When
-    let digest = canonical_digest(&source);
+    let digest = canonical_digest(&source).expect("valid test input");
     // Then: must produce a valid 32-byte digest without panic
     assert_eq!(
         digest.as_bytes().len(),
@@ -44,8 +44,8 @@ fn canonical_digest_is_deterministic_when_source_has_no_steps() {
     // Given
     let source = empty_source();
     // When: called twice
-    let d1 = canonical_digest(&source);
-    let d2 = canonical_digest(&source);
+    let d1 = canonical_digest(&source).expect("valid test input");
+    let d2 = canonical_digest(&source).expect("valid test input");
     // Then
     assert_eq!(
         d1, d2,
@@ -73,8 +73,8 @@ fn canonical_digest_produces_distinct_digests_when_version_differs() {
     let source_a = versioned_source("velvet-ballistics/v1", "test", steps.clone());
     let source_b = versioned_source("velvet-ballistics/v2", "test", steps);
     // When
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
     // Then
     assert_ne!(
         digest_a, digest_b,
@@ -118,8 +118,8 @@ fn canonical_digest_produces_distinct_digests_when_name_differs() {
     ];
     let source_b = named_source("different_workflow_name", steps);
     // When
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
     // Then
     assert_ne!(
         digest_a, digest_b,
@@ -147,8 +147,8 @@ fn canonical_digest_produces_distinct_digests_when_trigger_is_manual_vs_webhook(
     let source_a = triggered_source(TriggerAst::Manual, steps.clone());
     let source_b = triggered_source(TriggerAst::Webhook, steps);
     // When
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
     // Then
     assert_ne!(
         digest_a, digest_b,
@@ -184,8 +184,8 @@ fn canonical_digest_produces_distinct_digests_when_trigger_schedule_cron_differs
         steps,
     );
     // When
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
     // Then
     assert_ne!(
         digest_a, digest_b,
@@ -216,8 +216,8 @@ fn canonical_digest_produces_distinct_digests_when_trigger_is_manual_vs_event() 
         steps,
     );
     // When
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
     // Then
     assert_ne!(
         digest_a, digest_b,
@@ -280,8 +280,8 @@ fn canonical_digest_produces_distinct_digests_when_step_id_differs() {
         examples: vec![],
     });
     // When
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
     // Then: step ID is hashed, so different IDs → different digests
     assert_ne!(
         digest_a, digest_b,
@@ -344,8 +344,8 @@ fn canonical_digest_produces_distinct_digests_when_step_order_differs_ask_set_vs
         examples: vec![],
     });
     // When
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
     // Then: different step order → different digest
     assert_ne!(
         digest_a, digest_b,
@@ -406,8 +406,8 @@ fn canonical_digest_produces_distinct_digests_when_step_order_differs_within_sam
         examples: vec![],
     });
     // When
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
     // Then
     assert_ne!(
         digest_a, digest_b,
@@ -423,8 +423,8 @@ fn canonical_digest_produces_distinct_digests_when_step_is_added() {
     let source_a = set_source("x", "1");
     let source_b = set_finish_source_test();
     // When
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
     // Then: different step counts → different digests
     assert_ne!(
         digest_a, digest_b,

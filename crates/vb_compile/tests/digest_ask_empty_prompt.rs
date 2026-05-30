@@ -18,8 +18,8 @@ fn canonical_digest_produces_distinct_digest_when_ask_prompt_is_empty_vs_nonempt
     let source_a = ask_source("", None);
     let source_b = ask_source("hello", None);
     // When
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
     // Then: INV-ASK-004 — empty prompt must produce distinct digest
     assert_ne!(
         digest_a, digest_b,
@@ -32,7 +32,7 @@ fn canonical_digest_returns_valid_hash_when_ask_prompt_is_empty() {
     // Given: source with empty prompt
     let source = ask_source("", None);
     // When
-    let digest = canonical_digest(&source);
+    let digest = canonical_digest(&source).expect("valid test input");
     let bytes = digest.as_bytes();
     // Then: digest is a valid 32-byte hash, not all zeros
     assert_eq!(
@@ -53,8 +53,8 @@ fn canonical_digest_produces_identical_digests_when_both_prompts_are_empty() {
     let source_a = ask_source("", None);
     let source_b = ask_source("", None);
     // When
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
     // Then: identical sources produce identical digests (determinism holds)
     assert_eq!(
         digest_a, digest_b,
@@ -68,8 +68,8 @@ fn canonical_digest_empty_prompt_distinct_from_single_char() {
     let source_a = ask_source("", None);
     let source_b = ask_source("x", None);
     // When
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
     // Then: empty vs single char must be distinct
     assert_ne!(
         digest_a, digest_b,

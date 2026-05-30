@@ -41,8 +41,8 @@ fn digest_step_primitive_ask_produces_different_result_than_catch_all_would() {
     let source_a = ask_source("hello", None);
     let source_b = ask_source("world", None);
 
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
 
     // If Ask used catch-all, both digests would be identical (only "ask" name hashed).
     // With explicit arm, prompt differences change the digest.
@@ -60,8 +60,8 @@ fn digest_step_primitive_ask_hashes_prompt_proving_explicit_arm() {
     let source_a = ask_source("short_prompt", Some("30s"));
     let source_b = ask_source("a_different_prompt", Some("30s"));
 
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
 
     // If prompt content doesn't affect digest, Ask fell through to catch-all
     assert_ne!(
@@ -77,7 +77,7 @@ fn digest_step_primitive_accepts_empty_prompt_without_panic_none_timeout() {
     // Given: Ask with empty prompt, No timeout
     let source = ask_source("", None);
     // When/Then: must not panic
-    let digest = canonical_digest(&source);
+    let digest = canonical_digest(&source).expect("valid test input");
     // And: must produce valid 32-byte digest
     assert_eq!(
         digest.as_bytes().len(),
@@ -91,7 +91,7 @@ fn digest_step_primitive_accepts_empty_prompt_without_panic_some_empty_timeout()
     // Given: Ask with empty prompt, Some("") timeout
     let source = ask_source("", Some(""));
     // When/Then: must not panic
-    let digest = canonical_digest(&source);
+    let digest = canonical_digest(&source).expect("valid test input");
     assert_eq!(
         digest.as_bytes().len(),
         32,
@@ -104,7 +104,7 @@ fn digest_step_primitive_accepts_empty_prompt_without_panic_some_nonempty_timeou
     // Given: Ask with empty prompt, Some("30s") timeout
     let source = ask_source("", Some("30s"));
     // When/Then: must not panic
-    let digest = canonical_digest(&source);
+    let digest = canonical_digest(&source).expect("valid test input");
     assert_eq!(
         digest.as_bytes().len(),
         32,
@@ -124,8 +124,8 @@ fn digest_step_primitive_uses_distinct_sentinel_for_none_timeout() {
     let source_none = ask_source("prompt", None);
     let source_some_empty = ask_source("prompt", Some(""));
 
-    let digest_none = canonical_digest(&source_none);
-    let digest_some_empty = canonical_digest(&source_some_empty);
+    let digest_none = canonical_digest(&source_none).expect("valid test input");
+    let digest_some_empty = canonical_digest(&source_some_empty).expect("valid test input");
 
     // If same sentinel were used for both, digests would be identical
     assert_ne!(
@@ -140,20 +140,20 @@ fn digest_step_primitive_uses_distinct_sentinel_for_none_timeout() {
 fn digest_step_primitive_does_not_panic_for_ask_normal_variant() {
     let source = ask_source("hello", Some("30s"));
     // Must not panic
-    let _ = canonical_digest(&source);
+    let _ = canonical_digest(&source).expect("valid test input");
 }
 
 #[test]
 fn digest_step_primitive_does_not_panic_for_ask_empty_prompt_none_timeout() {
     let source = ask_source("", None);
-    let _ = canonical_digest(&source);
+    let _ = canonical_digest(&source).expect("valid test input");
 }
 
 #[test]
 fn digest_step_primitive_does_not_panic_for_ask_large_prompt() {
     let large_prompt = "a".repeat(10240);
     let source = ask_source(&large_prompt, None);
-    let _ = canonical_digest(&source);
+    let _ = canonical_digest(&source).expect("valid test input");
 }
 
 #[test]
@@ -161,31 +161,31 @@ fn digest_step_primitive_does_not_panic_for_ask_prompt_with_all_visible_controls
     // Test all printable ASCII including control-looking chars
     let prompt: String = (0u8..=127).map(|c| c as char).collect();
     let source = ask_source(&prompt, None);
-    let _ = canonical_digest(&source);
+    let _ = canonical_digest(&source).expect("valid test input");
 }
 
 #[test]
 fn digest_step_primitive_does_not_panic_for_set_primitive() {
     let source = set_source("x", "1");
-    let _ = canonical_digest(&source);
+    let _ = canonical_digest(&source).expect("valid test input");
 }
 
 #[test]
 fn digest_step_primitive_does_not_panic_for_finish_string_primitive() {
     let source = finish_source_string("done");
-    let _ = canonical_digest(&source);
+    let _ = canonical_digest(&source).expect("valid test input");
 }
 
 #[test]
 fn digest_step_primitive_does_not_panic_for_finish_integer_primitive() {
     let source = finish_source_integer(42);
-    let _ = canonical_digest(&source);
+    let _ = canonical_digest(&source).expect("valid test input");
 }
 
 #[test]
 fn digest_step_primitive_does_not_panic_for_empty_source() {
     let source = empty_source();
-    let _ = canonical_digest(&source);
+    let _ = canonical_digest(&source).expect("valid test input");
 }
 
 #[test]
@@ -215,17 +215,17 @@ fn digest_step_primitive_does_not_panic_for_do_primitive_catch_all() {
         result: None,
         examples: vec![],
     });
-    let _ = canonical_digest(&source);
+    let _ = canonical_digest(&source).expect("valid test input");
 }
 
 #[test]
 fn canonical_digest_does_not_panic_for_ask_with_empty_timeout() {
     let source = ask_source("hello", Some(""));
-    let _ = canonical_digest(&source);
+    let _ = canonical_digest(&source).expect("valid test input");
 }
 
 #[test]
 fn canonical_digest_does_not_panic_for_set_finish_source() {
     let source = set_finish_source();
-    let _ = canonical_digest(&source);
+    let _ = canonical_digest(&source).expect("valid test input");
 }

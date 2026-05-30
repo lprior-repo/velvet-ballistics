@@ -18,7 +18,7 @@ fn canonical_digest_produces_valid_digest_for_set_only_source() {
     // Given: source with only a Set step
     let source = set_source("x", "1");
     // When
-    let digest = canonical_digest(&source);
+    let digest = canonical_digest(&source).expect("valid test input");
     // Then: valid 32-byte digest, no panic
     assert_eq!(
         digest.as_bytes().len(),
@@ -32,8 +32,8 @@ fn canonical_digest_is_deterministic_for_set_only_source() {
     // Given: Set-only source
     let source = set_source("x", "1");
     // When: called twice
-    let digest_a = canonical_digest(&source);
-    let digest_b = canonical_digest(&source);
+    let digest_a = canonical_digest(&source).expect("valid test input");
+    let digest_b = canonical_digest(&source).expect("valid test input");
     // Then: deterministic
     assert_eq!(
         digest_a, digest_b,
@@ -47,8 +47,8 @@ fn canonical_digest_produces_distinct_digests_when_set_output_differs() {
     let source_a = set_source("x", "1");
     let source_b = set_source("y", "1");
     // When
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
     // Then: different output → different digest
     assert_ne!(
         digest_a, digest_b,
@@ -62,8 +62,8 @@ fn canonical_digest_produces_distinct_digests_when_set_value_differs() {
     let source_a = set_source("x", "1");
     let source_b = set_source("x", "2");
     // When
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
     // Then: different value → different digest
     assert_ne!(
         digest_a, digest_b,
@@ -78,7 +78,7 @@ fn canonical_digest_produces_valid_digest_for_finish_string_only_source() {
     // Given: source with only a Finish(String) step
     let source = finish_source_string("done");
     // When
-    let digest = canonical_digest(&source);
+    let digest = canonical_digest(&source).expect("valid test input");
     // Then: valid 32-byte digest
     assert_eq!(
         digest.as_bytes().len(),
@@ -92,7 +92,7 @@ fn canonical_digest_produces_valid_digest_for_finish_integer_only_source() {
     // Given: source with only a Finish(Integer) step
     let source = finish_source_integer(0);
     // When
-    let digest = canonical_digest(&source);
+    let digest = canonical_digest(&source).expect("valid test input");
     // Then: valid 32-byte digest
     assert_eq!(
         digest.as_bytes().len(),
@@ -106,8 +106,8 @@ fn canonical_digest_is_deterministic_for_finish_source() {
     // Given: Finish source
     let source = finish_source_string("result");
     // When: called twice
-    let digest_a = canonical_digest(&source);
-    let digest_b = canonical_digest(&source);
+    let digest_a = canonical_digest(&source).expect("valid test input");
+    let digest_b = canonical_digest(&source).expect("valid test input");
     // Then: deterministic
     assert_eq!(
         digest_a, digest_b,
@@ -121,8 +121,8 @@ fn canonical_digest_produces_distinct_digests_when_finish_result_string_differs(
     let source_a = finish_source_string("done_a");
     let source_b = finish_source_string("done_b");
     // When
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
     // Then: different results → different digests
     assert_ne!(
         digest_a, digest_b,
@@ -136,8 +136,8 @@ fn canonical_digest_produces_distinct_digests_when_finish_result_integer_differs
     let source_a = finish_source_integer(0);
     let source_b = finish_source_integer(1);
     // When
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
     // Then: different results → different digests
     assert_ne!(
         digest_a, digest_b,
@@ -151,8 +151,8 @@ fn canonical_digest_finish_string_vs_integer_produce_distinct_digests() {
     let source_a = finish_source_string("0");
     let source_b = finish_source_integer(0);
     // When
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
     // Then: different ScalarValue types → different digests
     // Note: Finish hashing differs for String (as_bytes) vs Integer (to_le_bytes)
     assert_ne!(
@@ -166,9 +166,9 @@ fn canonical_digest_is_deterministic_for_set_finish_source() {
     // Given: Set+Finish source
     let source = set_finish_source();
     // When: called three times
-    let d1 = canonical_digest(&source);
-    let d2 = canonical_digest(&source);
-    let d3 = canonical_digest(&source);
+    let d1 = canonical_digest(&source).expect("valid test input");
+    let d2 = canonical_digest(&source).expect("valid test input");
+    let d3 = canonical_digest(&source).expect("valid test input");
     // Then: all identical
     assert_eq!(d1, d2);
     assert_eq!(d1, d3);
@@ -222,8 +222,8 @@ fn canonical_digest_produces_distinct_digests_when_step_order_differs_set_vs_fin
         examples: vec![],
     });
     // When
-    let digest_a = canonical_digest(&source_a);
-    let digest_b = canonical_digest(&source_b);
+    let digest_a = canonical_digest(&source_a).expect("valid test input");
+    let digest_b = canonical_digest(&source_b).expect("valid test input");
     // Then: different order → different digest (step order matters for hash)
     assert_ne!(
         digest_a, digest_b,

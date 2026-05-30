@@ -114,7 +114,7 @@ fn private_canonical_digest(source: &vb_yaml::ast::WorkflowSource) -> WorkflowDi
 #[test]
 fn ask_prompt_some_timeout_parity() {
     let source = common::ask_source("test prompt", Some("30s"));
-    let digest_public = public_canonical_digest(&source);
+    let digest_public = public_canonical_digest(&source).expect("valid test input");
     let digest_private = private_canonical_digest(&source);
     assert_eq!(
         digest_public, digest_private,
@@ -126,7 +126,7 @@ fn ask_prompt_some_timeout_parity() {
 #[test]
 fn ask_prompt_none_timeout_parity() {
     let source = common::ask_source("another prompt", None);
-    let digest_public = public_canonical_digest(&source);
+    let digest_public = public_canonical_digest(&source).expect("valid test input");
     let digest_private = private_canonical_digest(&source);
     assert_eq!(
         digest_public, digest_private,
@@ -138,7 +138,7 @@ fn ask_prompt_none_timeout_parity() {
 #[test]
 fn ask_empty_prompt_parity() {
     let source = common::ask_source("", None);
-    let digest_public = public_canonical_digest(&source);
+    let digest_public = public_canonical_digest(&source).expect("valid test input");
     let digest_private = private_canonical_digest(&source);
     assert_eq!(
         digest_public, digest_private,
@@ -151,7 +151,7 @@ fn ask_empty_prompt_parity() {
 #[test]
 fn set_finish_parity() {
     let source = common::set_finish_source();
-    let digest_public = public_canonical_digest(&source);
+    let digest_public = public_canonical_digest(&source).expect("valid test input");
     let digest_private = private_canonical_digest(&source);
     assert_eq!(
         digest_public, digest_private,
