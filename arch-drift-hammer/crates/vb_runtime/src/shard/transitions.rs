@@ -1,0 +1,202 @@
+#![forbid(unsafe_code)]
+//! Run state transition helpers: keep, finish, await action, await timer, fail.
+
+use std::time::Instant;
+use vb_core::action::ActionTicket;
+use vb_core::ids::{RunId, SlotIdx};
+
+use crate::journal::RuntimeJournalEvent;
+use crate::trace::TraceEvent;
+use crate::{RuntimeError, RuntimeResult};
+
+use crate::shard::types::{
+    PendingTimer, PendingTimerKind, RunState, RuntimeEvent, RuntimeState, Shard,
+};
+
+impl Shard {
+    /// Applies a RuntimeEvent to mutate runtime_states.
+    ///
+    /// This is the single routing method for all runtime_states mutations,
+    /// replacing direct insert/swap_remove call sites.
+    ///
+    /// # Arguments
+    /// * `run` - The run identifier
+    /// * `event` - The runtime event variant
+    ///
+    /// # State Transitions
+    /// * `Submit` → `runtime_states.insert(run, RuntimeState::Initial)`
+    /// * `Resume` → `runtime_states.insert(run, RuntimeState::Resuming)`
+    /// * `ResumeRollback` → `runtime_states.insert(run, RuntimeState::Resumable)` (journal failure)
+    /// * `DriveContinue` → `runtime_states.insert(run, RuntimeState::Running)`
+    /// * `AwaitAction` → `runtime_states.insert(run, RuntimeState::Resumable)`
+    /// * `AwaitTimer` → `runtime_states.insert(run, RuntimeState::Resumable)`
+    /// * `Fail` → `runtime_states.insert(run, RuntimeState::Failed)`
+    /// * `TerminalRemove` → `runtime_states.swap_remove(&run)`
+    /// * `DriveFinished` → `runtime_states.swap_remove(&run)`
+    ///
+    /// # Flux refinement (PO-vb282my-RS-FLUX-001):
+    /// RuntimeState FSM contract:
+    /// - `Resume` transition requires `runtime_states[run] == Resumable`
+    /// - `ResumeRollback` transition ensures `runtime_states[run] == Resumable`
+    /// - `Running` state rejects repeated `Resume` transitions
+    ///
+    /// Flux signature (requires flux-rs toolchain):
+    /// ```flux
+    /// #[flux_rs::sig(fn(&mut Shard, run: RunId, event: RuntimeEvent)
+    ///     requires event == Resume => runtime_states[run] == Resumable,
+    ///     ensures event == ResumeRollback => runtime_states[run] == Resumable
+    /// )]
+    /// ```
+    pub(crate) fn apply(&mut self, run: RunId, event: RuntimeEvent) {
+        match event {
+            RuntimeEvent::Submit => {
+                self.runtime_states.insert(run, RuntimeState::Initial);
+            }
+            RuntimeEvent::Resume => {
+                self.runtime_states.insert(run, RuntimeState::Resuming);
+            }
+            RuntimeEvent::ResumeRollback => {
+                // Journal append failed during resume, revert to Resumable
+                self.runtime_states.insert(run, RuntimeState::Resumable);
+            }
+            RuntimeEvent::DriveContinue => {
+                self.runtime_states.insert(run, RuntimeState::Running);
+            }
+            RuntimeEvent::AwaitAction | RuntimeEvent::AwaitTimer => {
+                self.runtime_states.insert(run, RuntimeState::Resumable);
+            }
+            RuntimeEvent::Fail => {
+                self.runtime_states.insert(run, RuntimeState::Failed);
+            }
+            RuntimeEvent::TerminalRemove | RuntimeEvent::DriveFinished => {
+                self.runtime_states.swap_remove(&run);
+            }
+        }
+    }
+
+    /// Re-inserts a run that has remaining work into the active runs map.
+    pub(crate) fn keep_run(&mut self, run: RunId, state: RunState) {
+        self.counters.add_steps(state.frame.executed());
+        self.runs.insert(run, state);
+    }
+
+    /// Marks a run as finished, releases its frame, and updates counters.
+    pub(crate) fn finish_run(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
+        self.pending_timers.swap_remove(&run);
+        self.terminal_runs.insert(run);
+        self.counters.inc_completed();
+        self.counters.add_steps(state.frame.executed());
+        self.trace_ring.push(TraceEvent::RunFinished { run });
+        let result = match crate::shard::helpers::result_slot_for_finished_run(&state) {
+            Some(slot) => slot,
+            None => SlotIdx::ZERO,
+        };
+        // Note: StepSucceeded for the Finish step is now emitted by the evidence
+        // collector during flush_evidence, before apply_drive_result is called.
+        self.append_journal_event(RuntimeJournalEvent::RunFinished { run, result })?;
+        self.release_frame(state.frame);
+        self.discard_journal_sequence(run);
+        Ok(())
+    }
+
+    /// Transitions a run to awaiting an external action response.
+    pub(crate) fn await_action(
+        &mut self,
+        run: RunId,
+        mut state: RunState,
+        ticket: ActionTicket,
+    ) -> RuntimeResult<()> {
+        self.counters.add_steps(state.frame.executed());
+        let step = state.frame.pc();
+        let capacity = match crate::shard::helpers::retry_policy_after_action(&state, ticket.step) {
+            Ok(policy) => policy.max_attempts,
+            Err(RuntimeError::UnsupportedOperation {
+                operation: "retry_metadata_missing",
+            }) => ticket.capacity,
+            Err(error) => return Err(error),
+        };
+        let ticket = crate::shard::helpers::normalize_scheduled_ticket(
+            &state,
+            ActionTicket { capacity, ..ticket },
+        )?;
+        crate::shard::helpers::record_scheduled_attempt(&mut state, ticket);
+        self.trace_ring
+            .push(TraceEvent::ActionScheduled { run, step });
+        let output = crate::shard::helpers::action_output_slot(&state, ticket.step)?;
+        let input = crate::shard::helpers::action_input_slot(&state, ticket.step)?;
+        self.append_journal_event(RuntimeJournalEvent::ActionScheduledTicket {
+            ticket,
+            input,
+            output,
+        })?;
+        self.runs.insert(run, state);
+        Ok(())
+    }
+
+    /// Transitions a run to awaiting a timer (wait or ask timeout).
+    pub(crate) fn await_timer(
+        &mut self,
+        run: RunId,
+        state: RunState,
+        kind: PendingTimerKind,
+    ) -> RuntimeResult<()> {
+        self.counters.add_steps(state.frame.executed());
+        let step = state.frame.pc();
+        if crate::shard::helpers::timer_registration_required(&state, step) {
+            let generation = match self.next_pending_timer_generation(run) {
+                Ok(generation) => generation,
+                Err(error) => {
+                    self.runs.insert(run, state);
+                    return Err(error);
+                }
+            };
+            let append_result = match kind {
+                PendingTimerKind::Wait => {
+                    self.append_journal_event(RuntimeJournalEvent::WaitScheduled { run, step })
+                }
+                PendingTimerKind::Ask => {
+                    self.append_journal_event(RuntimeJournalEvent::AskScheduled { run, step })
+                }
+            };
+            if let Err(error) = append_result {
+                self.runs.insert(run, state);
+                return Err(error);
+            }
+            self.pending_timers.insert(
+                run,
+                PendingTimer {
+                    step,
+                    kind,
+                    generation,
+                    deadline: Instant::now(),
+                },
+            );
+        }
+        self.runs.insert(run, state);
+        Ok(())
+    }
+
+    fn next_pending_timer_generation(&self, run: RunId) -> RuntimeResult<u64> {
+        match self.pending_timers.get(&run).copied() {
+            Some(timer) => timer
+                .generation
+                .checked_add(1)
+                .ok_or(RuntimeError::InvalidTimerFire),
+            None => Ok(1),
+        }
+    }
+
+    /// Marks a run as failed, releases its frame, and updates counters.
+    /// NOTE: runtime_states mutation (inserting Failed) is handled by apply() before this is called.
+    /// This function only handles cleanup: pending_timers, counters, trace, journal, frame, sequence.
+    pub(crate) fn fail_run_state(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
+        self.pending_timers.swap_remove(&run);
+        self.terminal_runs.insert(run);
+        self.counters.inc_failed();
+        self.trace_ring.push(TraceEvent::RunFailed { run });
+        self.append_journal_event(RuntimeJournalEvent::RunFailed { run })?;
+        self.release_frame(state.frame);
+        self.discard_journal_sequence(run);
+        Ok(())
+    }
+}

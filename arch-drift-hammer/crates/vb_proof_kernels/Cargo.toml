@@ -1,0 +1,30 @@
+# Proof Kernels for velvet-ballistics
+#
+# Tiny, pure, sequential Rust kernels suitable for formal verification.
+# These are extracted from vb_core for Verus/Aeneas verification.
+#
+# Rules:
+# - safe Rust only
+# - sequential only
+# - no IO
+# - no Fjall
+# - no IPC sockets
+# - no Makepad
+# - no threads
+# - no HashMap
+# - small functions
+#
+# These kernels are extracted and verified with Verus/Aeneas.
+# The full runtime is verified through other means (Kani, fuzz, TLA+).
+
+[package]
+name = "vb_proof_kernels"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dependencies]
+
+[lints]
+workspace = true

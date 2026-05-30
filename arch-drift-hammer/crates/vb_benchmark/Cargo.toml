@@ -1,0 +1,13 @@
+[package]
+name = "vb_benchmark"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+publish = false
+
+[dev-dependencies]
+proptest.workspace = true
+criterion.workspace = true
+
+[lints]
+workspace = true

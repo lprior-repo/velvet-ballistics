@@ -1,0 +1,89 @@
+# Rust build output
+target/
+fuzz/target/
+
+# Local agent/search state
+.memsearch/
+.claude/worktrees/
+
+# Local workspace snapshots and duplicated export bundles
+/refactor/
+/vb-*/
+/velvet_ballistics_figma_ready_tightened_screens/
+/velvet_ballistics_makepad_ui_master_plan_with_images/
+
+# Moon local cache
+.moon/cache/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Beads / Dolt local state
+.dolt/
+.beads/dolt/
+.beads/backup/
+.beads/embeddeddolt/
+.beads-credential-key
+
+# Runtime lock/log/socket state
+*.lock
+*.log
+*.pid
+*.sock
+*.socket
+states/
+run/
+runtime/
+tmp/
+
+# Local databases
+*.db
+*.db-shm
+*.db-wal
+
+# Coverage and performance artifacts
+*.profraw
+*.profdata
+*.gcda
+*.gcno
+*.lcov
+coverage/
+criterion/
+perf.data*
+flamegraph.svg
+heaptrack.*
+callgrind.out.*
+mutants.out/
+mutants.out.old/
+mutants.out.*/
+kani-list.json
+/*.rlib
+.beads/moon-ci-output.md
+
+# TLA+/TLC generated model-checker state dumps
+specs/tla/states/
+verification/tla/**/_apalache-out/
+vb_oewy_bdd_runner_invariant
+crates/workspace_tests/journal-db/
+crates/workspace_tests/nonexistent-db/
+
+# Binary files and corpora
+*.bin
+fuzz/corpus/
+
+# Large test artifacts
+test_string
+agent-invocation-ledger.jsonl
+
+# Evidence and landing artifacts
+.evidence/
+
+# Isolates
+isolates/
+
+# Beads workspace state
+.beads/
+.beads/*/agent-invocation-ledger.jsonl

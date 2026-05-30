@@ -68,17 +68,20 @@ pub mod kani_foreach_parity;
 pub mod kani_lower_control;
 
 // Kani harnesses for vb-xi2f.33: digest covering Ask primitives.
-#[cfg(kani)]
+// Feature-gated behind test-util because these harnesses depend on
+// WorkflowSourceParts which is pub(crate) in production and only
+// re-exported as pub when test-util feature is active.
+#[cfg(all(kani, any(test, feature = "test-util")))]
 pub mod kani_digest_ask_empty_prompt;
-#[cfg(kani)]
+#[cfg(all(kani, any(test, feature = "test-util")))]
 pub mod kani_digest_ask_field_ordering;
-#[cfg(kani)]
+#[cfg(all(kani, any(test, feature = "test-util")))]
 pub mod kani_digest_ask_prompt_sensitivity;
-#[cfg(kani)]
+#[cfg(all(kani, any(test, feature = "test-util")))]
 pub mod kani_digest_ask_timeout_sensitivity;
-#[cfg(kani)]
+#[cfg(all(kani, any(test, feature = "test-util")))]
 pub mod kani_digest_ask_timeout_sentinel;
-#[cfg(kani)]
+#[cfg(all(kani, any(test, feature = "test-util")))]
 pub mod kani_digest_step_primitive_no_panic;
 
 // Kani harnesses for wait digest coverage verification (vb-xi2f.32).

@@ -1,0 +1,20 @@
+[package]
+name = "velvet-ballistics-idempotency-workspace-tests"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+vb_cli = { package = "velvet-ballistics", path = "../../vb_cli" }
+vb_core = { path = "../../vb_core" }
+vb_runtime = { path = "../../vb_runtime" }
+vb_storage = { path = "../../vb_storage" }
+
+[[test]]
+name = "vb_ko29_5_public_idempotency"
+path = "tests/vb_ko29_5_public_idempotency.rs"

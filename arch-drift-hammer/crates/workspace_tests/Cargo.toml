@@ -1,0 +1,231 @@
+[package]
+name = "velvet-ballistics-workspace-tests"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+publish = false
+autobenches = false
+
+[lints]
+workspace = true
+
+[features]
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+saphyr.workspace = true
+toml.workspace = true
+
+[dev-dependencies]
+blake3.workspace = true
+bytes.workspace = true
+chrono.workspace = true
+crc32c.workspace = true
+mio = { workspace = true, features = ["net", "os-poll"] }
+criterion.workspace = true
+crossbeam-queue.workspace = true
+postcard.workspace = true
+proptest.workspace = true
+rand.workspace = true
+rtrb.workspace = true
+saphyr.workspace = true
+serde.workspace = true
+tempfile.workspace = true
+toml.workspace = true
+xtask = { path = "../../xtask" }
+vb_compile = { path = "../vb_compile" }
+vb_core = { path = "../vb_core" }
+vb_expr = { path = "../vb_expr" }
+vb_ipc = { path = "../vb_ipc" }
+vb_proof_kernels = { path = "../vb_proof_kernels" }
+vb_runtime = { path = "../vb_runtime" }
+vb_storage = { path = "../vb_storage" }
+vb_validate = { path = "../vb_validate" }
+vb_benchmark = { path = "../vb_benchmark" }
+vb_boundary_inventory = { path = "../vb_boundary_inventory" }
+vb_doc = { path = "../vb_doc" }
+vb_yaml = { path = "../vb_yaml" }
+vb_cli = { package = "velvet-ballistics", path = "../vb_cli" }
+vb_test_util = { path = "../vb_test_util" }
+
+[[test]]
+name = "vb_test_util_crate"
+path = "tests/vb_test_util_crate.rs"
+
+[[test]]
+name = "journal_batch_accounting_tests"
+path = "tests/journal_batch_accounting_tests.rs"
+
+[[test]]
+name = "cancel_kill_lattice_tests"
+path = "tests/cancel_kill_lattice_tests.rs"
+
+[[test]]
+name = "journal_side_index_contracts"
+path = "tests/journal_side_index_contracts.rs"
+
+[[test]]
+name = "postcard_envelope_wire_tests"
+path = "tests/postcard_envelope_wire_tests.rs"
+
+[[test]]
+name = "runtime_version_barrier_tests"
+path = "tests/runtime_version_barrier_tests.rs"
+
+[[test]]
+name = "bounded_memory_lease_tests"
+path = "tests/bounded_memory_lease_tests.rs"
+
+[[test]]
+name = "fjall_keyspace_manifest_tests"
+path = "tests/fjall_keyspace_manifest_tests.rs"
+
+[[test]]
+name = "derived_status_replay_timeline_tests"
+path = "tests/derived_status_replay_timeline_tests.rs"
+
+[[test]]
+name = "raii_introspection_registry_tests"
+path = "tests/raii_introspection_registry_tests.rs"
+
+[[test]]
+name = "recovery_watermark_tests"
+path = "tests/recovery_watermark_tests.rs"
+
+[[test]]
+name = "snapshot_sequence_precondition_tests"
+path = "tests/snapshot_sequence_precondition_tests.rs"
+
+[[test]]
+name = "storage_contract_pack_runner"
+path = "tests/storage_contract_pack_runner.rs"
+
+[[test]]
+name = "contracts_production_binding"
+path = "tests/contracts_production_binding.rs"
+
+[[test]]
+name = "contracts_as_data_props"
+path = "tests/contracts_as_data_props.rs"
+
+[[test]]
+name = "contracts_as_data_kani"
+path = "tests/contracts_as_data_kani.rs"
+
+[[test]]
+name = "contracts_integration"
+path = "tests/contracts_integration.rs"
+
+[[test]]
+name = "vb_c1s0_orchestration_runtime_tests"
+path = "tests/vb_c1s0_orchestration_runtime_tests.rs"
+
+[[test]]
+name = "vb_te1i_binary_ipc_acceptance"
+path = "tests/vb_te1i_binary_ipc_acceptance.rs"
+
+[[test]]
+name = "vb_test_compile_error_quality_behavior"
+path = "tests/vb_test_compile_error_quality_behavior.rs"
+
+[[test]]
+name = "vb_test_validate_diagnostic_behavior"
+path = "tests/vb_test_validate_diagnostic_behavior.rs"
+
+[[test]]
+name = "restate_adapter_contamination_guard"
+path = "tests/restate_adapter_contamination_guard.rs"
+
+[[test]]
+name = "restate_completion_watermark_tests"
+path = "tests/restate_completion_watermark_tests.rs"
+
+[[test]]
+name = "restate_retry_policy_math_tests"
+path = "tests/restate_retry_policy_math_tests.rs"
+
+[[test]]
+name = "restate_typed_partitioned_id_tests"
+path = "tests/restate_typed_partitioned_id_tests.rs"
+
+[[test]]
+name = "vb_eepg_bdd_tests"
+path = "tests/vb_eepg_bdd_tests.rs"
+
+[[bench]]
+name = "velvet_ballistics"
+harness = false
+
+[[bench]]
+name = "vb_qi37_1_1_recovery"
+harness = false
+
+[[bench]]
+name = "vb_kkvb_xtask_routing_red"
+harness = false
+
+[[bench]]
+name = "ir_traversal"
+harness = false
+
+[[bench]]
+name = "collect_page"
+harness = false
+
+[[bench]]
+name = "action_dispatch"
+harness = false
+
+[[bench]]
+name = "memory_footprint"
+harness = false
+
+[[bench]]
+name = "cold_start"
+harness = false
+
+[[bench]]
+name = "pagination_cost"
+harness = false
+
+[[bench]]
+name = "action_queuing"
+harness = false
+
+[[bench]]
+name = "timer_wheel_tick"
+harness = false
+
+[[bench]]
+name = "snapshot_save"
+harness = false
+
+[[bench]]
+name = "snapshot_restore"
+harness = false
+
+[[bench]]
+name = "array_queue"
+harness = false
+
+[[test]]
+name = "proptest_error_types_registration"
+path = "tests/proptest_error_types_registration.rs"
+
+[[test]]
+name = "proptest_compile_error_codes"
+path = "tests/proptest_compile_error_codes.rs"
+
+[[test]]
+name = "behavior_symbolic_code_serde"
+path = "tests/behavior_symbolic_code_serde.rs"
+
+[[test]]
+name = "e2e_diagnostic_chain"
+path = "tests/e2e_diagnostic_chain.rs"
+
+[[bench]]
+name = "rtrb"
+harness = false

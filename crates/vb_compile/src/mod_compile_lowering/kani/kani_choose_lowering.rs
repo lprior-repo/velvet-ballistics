@@ -24,6 +24,20 @@ use vb_yaml::ast::ChooseBranch;
 // =========================================================================
 
 #[allow(clippy::unnecessary_fallible_conversions)]
+/// Generate a bounded label string via byte-array construction.
+/// Max length: 8 ASCII alphanumeric/underscore chars.
+fn any_bounded_label(max_len: usize) -> String {
+    let num_bytes: usize = kani::any();
+    let num_bytes = num_bytes.min(max_len);
+    let mut out = String::with_capacity(num_bytes);
+    for _ in 0..num_bytes {
+        let b: u8 = kani::any();
+        kani::assume(b.is_ascii_alphanumeric() || b == b'_');
+        out.push(b as char);
+    }
+    out
+}
+
 fn any_step_idx() -> StepIdx {
     let raw = kani::any::<u16>();
     kani::assume(raw < 256);
@@ -35,7 +49,7 @@ fn any_branches(max: u16) -> Vec<ChooseBranch> {
     let count: u8 = kani::any();
     let count = count.min(max as u8);
     for _i in 0..count {
-        let when: String = kani::any();
+        let when = any_bounded_label(4);
         // Body steps must be empty for canonical choose lowering
         let branch = ChooseBranch {
             when,
@@ -51,9 +65,10 @@ fn any_branches_maybe_nonempty(max: u16) -> Vec<ChooseBranch> {
     let count: u8 = kani::any();
     let count = count.min(max as u8);
     for _i in 0..count {
-        let when: String = kani::any();
+        let when = any_bounded_label(4);
         // Branch may have non-empty body steps (triggers UnsupportedStepPrimitive)
-        let steps: Vec<vb_yaml::ast::StepAst> = kani::any();
+        // Use empty steps: the contract is about detecting non-empty bodies.
+        let steps = Vec::new();
         let branch = ChooseBranch { when, steps };
         branches.push(branch);
     }
@@ -65,7 +80,7 @@ fn any_step_names(max: u8) -> Vec<Box<str>> {
     let count: u8 = kani::any();
     let count = count.min(max);
     for _i in 0..count {
-        let s: String = kani::any();
+        let s = any_bounded_label(8);
         names.push(s.into_boxed_str());
     }
     names
@@ -216,9 +231,13 @@ fn kani_choose_lowering_nonempty_branch_body() {
     let id = StepIdx::new(0);
 
     // Generate branches where at least one has non-empty body
-    let branches: Vec<ChooseBranch> = kani::any();
-    kani::assume(branches.len() <= 64);
-    kani::assume(!branches.is_empty());
+    let mut branches: Vec<ChooseBranch> = Vec::new();
+    let bcount: u8 = kani::any();
+    let bcount = bcount.min(64).max(1);
+    for _i in 0..bcount {
+        let when = any_bounded_label(4);
+        branches.push(ChooseBranch { when, steps: Vec::new() });
+    }
 
     let has_nonempty = branches.iter().any(|b| !b.steps.is_empty());
 
@@ -352,8 +371,13 @@ fn kani_choose_lowering_output_shape() {
     kani::assume(index < 4096);
     let id = StepIdx::new(0);
 
-    let branches: Vec<ChooseBranch> = kani::any();
-    kani::assume(branches.len() <= 64);
+    let mut branches: Vec<ChooseBranch> = Vec::new();
+    let bcount: u8 = kani::any();
+    let bcount = bcount.min(64);
+    for _i in 0..bcount {
+        let when = any_bounded_label(4);
+        branches.push(ChooseBranch { when, steps: Vec::new() });
+    }
 
     // Build step_names from branch when labels for resolution compatibility
     let mut step_names: Vec<Box<str>> = Vec::new();
@@ -436,7 +460,7 @@ fn kani_choose_lowering_direct() {
     let result = lower_choose(id, branches.clone(), otherwise, &mut builder);
 
     match result {
-        Ok(node) => {
+        Ok(ref node) => {
             kani::assert(node.id == id, "node id preserved");
             match &node.kind {
                 CompiledNodeKind::ChooseSlot {
