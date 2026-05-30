@@ -22,7 +22,6 @@ tempfile.workspace = true
 
 [features]
 default = []
-flux = []
 legacy-kani = []
 kani-typed-partitioned-ids = []
 kani-vb-u8gi-decode-taxonomy = []

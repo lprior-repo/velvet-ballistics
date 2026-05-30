@@ -93,5 +93,7 @@ pub(crate) fn validate_replayed_event(
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "flux")]
-pub mod flux_validation;
+// vb-b8i8f: flux_validation requires flux_rs crate (not in workspace).
+// Keep as artifact; re-enable when flux_rs dependency is added.
+// #[cfg(feature = "flux")]
+// pub mod flux_validation;
