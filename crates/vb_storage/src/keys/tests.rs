@@ -1,11 +1,17 @@
-use super::*;
-use crate::IndexStatusState;
 use crate::constants::{
     DIGEST_KEY_BYTES, INDEX_ACTION_KEY_BYTES, INDEX_STATUS_KEY_BYTES, INDEX_WORKFLOW_KEY_BYTES,
-    JOURNAL_KEY_BYTES, PREFIX_BLOB, PREFIX_COMPILED_IR, PREFIX_INDEX_ACTION,
-    PREFIX_INDEX_STATUS, PREFIX_INDEX_WORKFLOW, PREFIX_RUN_EVENT, PREFIX_RUN_HEADER,
-    PREFIX_RUN_SNAPSHOT, PREFIX_WORKFLOW_SOURCE, RUN_ONLY_KEY_BYTES,
+    JOURNAL_KEY_BYTES, PREFIX_BLOB, PREFIX_COMPILED_IR, PREFIX_INDEX_ACTION, PREFIX_INDEX_STATUS,
+    PREFIX_INDEX_WORKFLOW, PREFIX_RUN_EVENT, PREFIX_RUN_HEADER, PREFIX_RUN_SNAPSHOT,
+    PREFIX_WORKFLOW_SOURCE, RUN_ONLY_KEY_BYTES,
 };
+use crate::keys::{
+    blob_key, compiled_ir_key, encode_key, index_action_key, index_status_key, index_workflow_key,
+    journal_key, run_event_key, run_header_key, run_prefix_key, run_snapshot_key,
+    workflow_source_key,
+};
+use crate::types::{EventSeq, IndexStatusState, StorageKey};
+use crate::JournalError;
+use vb_core::{ActionId, RunId, WorkflowId};
 
 // =========================================================================
 // Key construction: workflow_source_key
@@ -582,8 +588,7 @@ fn run_prefix_key_is_9_bytes() -> Result<(), JournalError> {
 // =========================================================================
 
 #[test]
-fn run_event_key_injectivity_distinct_pairs_produce_distinct_keys() -> Result<(), JournalError>
-{
+fn run_event_key_injectivity_distinct_pairs_produce_distinct_keys() -> Result<(), JournalError> {
     let run_a = RunId::new(1);
     let run_b = RunId::new(2);
     let seq_1 = EventSeq::new(1);
