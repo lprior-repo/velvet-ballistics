@@ -86,13 +86,11 @@ pub mod trace;
 #[cfg(all(kani, feature = "kani-yaml-e2e-admission-matrix"))]
 pub mod yaml_e2e_admission_matrix;
 
+// Verification harnesses gated internally (kani/test/verus/flux via cfg)
+mod verification;
+
 pub use error::{RuntimeError, RuntimeResult};
 pub use shard::{AskAnswer, AskTicket, ResumeError, ResumeResult, ResumeStatus};
 
 #[cfg(test)]
 mod test_harness;
-
-#[cfg(test)]
-mod verification {
-    pub(crate) mod proptest;
-}

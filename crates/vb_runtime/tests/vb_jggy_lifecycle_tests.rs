@@ -420,8 +420,8 @@ fn action_failed_carries_attempt_field() {
     submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
-    // Fail action with attempt=2
-    let ticket = make_ticket(run, StepIdx::ZERO, 2, 3);
+    // Fail action with attempt=1 (matching current after scheduling)
+    let ticket = make_ticket(run, StepIdx::ZERO, 1, 3);
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
             ticket,
@@ -451,8 +451,8 @@ fn action_failed_carries_attempt_field() {
         "ActionFailed event should be in journal"
     );
     assert_eq!(
-        action_failed_events[0], 2,
-        "ActionFailed should carry attempt=2 from ticket"
+        action_failed_events[0], 1,
+        "ActionFailed should carry attempt=1 from ticket"
     );
 }
 
@@ -852,8 +852,8 @@ fn validate_ticket_attempt_accepts_valid_ticket() {
         }
     }
 
-    // Complete with attempt=2 (valid: 2 >= 1 && 2 <= capacity=3)
-    let ticket = make_ticket(run, StepIdx::ZERO, 2, 3);
+    // Complete with attempt=1 (equal to current=1 — valid)
+    let ticket = make_ticket(run, StepIdx::ZERO, 1, 3);
     let output = ActionOutputReady {
         output_slot: SlotIdx::ZERO,
         value: SlotValue::I64(100),
@@ -905,12 +905,12 @@ fn equal_attempt_is_not_stale() {
 }
 
 // =============================================================================
-// BDD Scenario: future attempt when current > 0 is rejected
+// BDD Scenario: future attempt when current > 0 is rejected (G005 fixed)
 // =============================================================================
 
-/// Future attempt within ticket capacity is accepted.
+/// Future attempt within ticket capacity is rejected.
 #[test]
-fn future_attempt_within_capacity_is_accepted() {
+fn future_attempt_within_capacity_is_rejected() {
     let mut shard = Shard::new(small_config());
     let Some(wf) = suspended_workflow() else {
         panic!("missing workflow fixture");
@@ -921,7 +921,7 @@ fn future_attempt_within_capacity_is_accepted() {
     assert_eq!(shard.tick(), Ok(true));
 
     // action_attempts[0] = 1
-    // Try to complete with attempt=3 (future but within ticket capacity).
+    // Try to complete with attempt=3 (future but within ticket capacity — must be rejected).
     let ticket = make_ticket(run, StepIdx::ZERO, 3, 5);
     let output = ActionOutputReady {
         output_slot: SlotIdx::ZERO,
@@ -933,10 +933,11 @@ fn future_attempt_within_capacity_is_accepted() {
         shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
         Ok(())
     );
+    // G005: future attempt within capacity must be rejected with InvalidActionCompletion
     assert_eq!(
         shard.tick(),
-        Ok(true),
-        "future attempt within capacity should be accepted"
+        Err(RuntimeError::InvalidActionCompletion),
+        "future attempt within capacity must be rejected"
     );
 }
 

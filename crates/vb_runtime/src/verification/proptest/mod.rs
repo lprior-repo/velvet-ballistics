@@ -1,3 +1,7 @@
+// vb-y9d3v: ActionTicket fence proptest harnesses
+#[cfg(test)]
+mod proptest_attempt_fence;
+
 #[cfg(test)]
 mod proptest_idempotency {
     use proptest::prelude::*;

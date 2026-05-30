@@ -32,6 +32,8 @@ kani-trace-ring = []
 kani-vt2f-runtime-facade = []
 kani-vt2f-shard-lower-semantics = []
 kani-yaml-e2e-admission-matrix = []
+vb-y9d3v-attempt-fence = []
+vb-y9d3v-flux-refinements = []
 
 [lints]
 workspace = true
