@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-pub(crate) const CANONICAL_HYPHEN: &str = "velvet-ballastics";
+pub(crate) const CANONICAL_HYPHEN: &str = "velvet-ballistics";
 pub(crate) const CANONICAL_UNDERSCORE: &str = "vb_cli";
 pub(crate) const CANONICAL_LANGUAGE_VERSION: &str = "velvet-ballastics/v1";
 pub(crate) const LEGACY_PROJECT: &str = "velvet-ballistics";

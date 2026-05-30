@@ -1906,4 +1906,5 @@ impl RunState {
     }
 }
 
+#[cfg(test)]
 mod tests;

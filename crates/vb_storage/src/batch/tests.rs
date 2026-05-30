@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 #[cfg(test)]
 #[allow(
     clippy::as_conversions,
@@ -8,10 +9,10 @@
     clippy::panic_in_result_fn,
     clippy::unwrap_used
 )]
-mod internal_tests {
-    use super::super::*;
+mod tests {
+    use super::*;
     use crate::{
-        BlobRecord, CompiledIrRecord, EventSeq, JournalEvent, RunHeaderRecord,
+        BlobRecord, CompiledIrRecord, EventSeq, IndexStatusState, JournalEvent, RunHeaderRecord,
         WorkflowSourceRecord, constants::DIGEST_BYTES, recovery::RunSnapshot,
     };
     use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
@@ -41,6 +42,10 @@ mod internal_tests {
         }
     }
 
+    // =========================================================================
+    // JournalWriteBatch construction and initial state
+    // =========================================================================
+
     #[test]
     fn new_batch_is_empty_with_zero_length() {
         let (_temp, journal) = temp_journal();
@@ -60,6 +65,10 @@ mod internal_tests {
         assert!(batch.is_empty());
         assert_eq!(batch.len(), 0);
     }
+
+    // =========================================================================
+    // JournalWriteBatch len/is_empty tracking
+    // =========================================================================
 
     #[test]
     fn len_increments_after_each_append_event() {
@@ -95,7 +104,7 @@ mod internal_tests {
         let run = RunId::new(20);
         let mut batch = JournalWriteBatch::new(&journal);
         batch
-            .put_status_index(IndexStatusState::Submitted, 12345, run)
+            .put_status_index(IndexStatusState::Active, 12345, run)
             .expect("put status index");
         assert_eq!(batch.len(), 1);
     }
@@ -125,6 +134,10 @@ mod internal_tests {
         assert_eq!(batch.len(), 1);
     }
 
+    // =========================================================================
+    // Batch flush: empty batch commit
+    // =========================================================================
+
     #[test]
     fn empty_batch_commit_succeeds() {
         let (_temp, journal) = temp_journal();
@@ -136,6 +149,10 @@ mod internal_tests {
             result
         );
     }
+
+    // =========================================================================
+    // Batch flush: single event
+    // =========================================================================
 
     #[test]
     fn commit_with_single_event_is_readable() {
@@ -156,6 +173,10 @@ mod internal_tests {
         );
         assert_eq!(events[0], event);
     }
+
+    // =========================================================================
+    // Batch flush: multiple events of different kinds
+    // =========================================================================
 
     #[test]
     fn commit_with_multiple_events_is_readable() {
@@ -197,6 +218,10 @@ mod internal_tests {
         assert_eq!(events[2], e2);
     }
 
+    // =========================================================================
+    // Batch with put_workflow_source (valid digest)
+    // =========================================================================
+
     #[test]
     fn batch_put_workflow_source_with_valid_digest_commits() {
         let (_temp, journal) = temp_journal();
@@ -221,6 +246,10 @@ mod internal_tests {
         assert_eq!(found.source, source);
     }
 
+    // =========================================================================
+    // Batch with put_compiled_ir (valid)
+    // =========================================================================
+
     #[test]
     fn batch_put_compiled_ir_with_valid_digest_commits() {
         let (_temp, journal) = temp_journal();
@@ -243,6 +272,10 @@ mod internal_tests {
         assert_eq!(found.ir, ir);
     }
 
+    // =========================================================================
+    // Batch with put_run_header
+    // =========================================================================
+
     #[test]
     fn batch_put_run_header_commits_and_is_readable() {
         let (_temp, journal) = temp_journal();
@@ -260,6 +293,10 @@ mod internal_tests {
         assert_eq!(found.run, run);
         assert_eq!(found.status, 1);
     }
+
+    // =========================================================================
+    // Batch with put_snapshot
+    // =========================================================================
 
     #[test]
     fn batch_put_snapshot_commits_and_is_readable() {
@@ -288,6 +325,10 @@ mod internal_tests {
         assert_eq!(loaded.taint, vec![0]);
     }
 
+    // =========================================================================
+    // Batch with put_blob (valid digest)
+    // =========================================================================
+
     #[test]
     fn batch_put_blob_with_valid_digest_commits() {
         let (_temp, journal) = temp_journal();
@@ -310,6 +351,10 @@ mod internal_tests {
         assert_eq!(found.bytes, payload);
     }
 
+    // =========================================================================
+    // Batch strict durability mode
+    // =========================================================================
+
     #[test]
     fn batch_strict_mode_commits_successfully() {
         let (_temp, journal) = temp_journal();
@@ -324,6 +369,10 @@ mod internal_tests {
         let events = journal.events_for_run(run).expect("replay should succeed");
         assert_eq!(events.len(), 1);
     }
+
+    // =========================================================================
+    // Cross-keyspace batch with mixed operation types
+    // =========================================================================
 
     #[test]
     fn batch_mixed_operations_across_keyspaces_commit_atomically() {
@@ -362,7 +411,9 @@ mod internal_tests {
         batch.put_compiled_ir(&ir_record).expect("compiled ir");
         batch.put_run_header(&header).expect("run header");
         batch.append_event(&event).expect("event");
-        batch.put_status_index(IndexStatusState::Submitted, 100, run).expect("status index");
+        batch
+            .put_status_index(IndexStatusState::Active, 100, run)
+            .expect("status index");
         batch
             .put_workflow_index(WorkflowId::new(42), run)
             .expect("workflow index");
@@ -373,6 +424,7 @@ mod internal_tests {
         assert_eq!(batch.len(), 7, "batch should track 7 operations");
         batch.commit().expect("mixed batch commit should succeed");
 
+        // Verify all keyspaces were written
         assert!(
             journal
                 .workflow_source(source_digest)
@@ -392,6 +444,10 @@ mod internal_tests {
         assert_eq!(events.len(), 1, "should have 1 event");
     }
 
+    // =========================================================================
+    // Edge case: batch put_workflow_source with wrong digest
+    // =========================================================================
+
     #[test]
     fn batch_put_workflow_source_rejects_digest_mismatch() {
         let (_temp, journal) = temp_journal();
@@ -405,12 +461,17 @@ mod internal_tests {
         let mut batch = JournalWriteBatch::new(&journal);
         let result = batch.put_workflow_source(&record);
         assert!(
-            matches!(result, Err(crate::error::JournalError::PayloadDigestMismatch)),
+            matches!(result, Err(JournalError::PayloadDigestMismatch)),
             "batch must reject digest mismatch, got {:?}",
             result
         );
+        // Batch length should still be 0 since the put failed
         assert_eq!(batch.len(), 0);
     }
+
+    // =========================================================================
+    // Edge case: batch put_blob with wrong digest
+    // =========================================================================
 
     #[test]
     fn batch_put_blob_rejects_digest_mismatch() {
@@ -425,12 +486,16 @@ mod internal_tests {
         let mut batch = JournalWriteBatch::new(&journal);
         let result = batch.put_blob(&record);
         assert!(
-            matches!(result, Err(crate::error::JournalError::PayloadDigestMismatch)),
+            matches!(result, Err(JournalError::PayloadDigestMismatch)),
             "batch must reject blob digest mismatch, got {:?}",
             result
         );
         assert_eq!(batch.len(), 0);
     }
+
+    // =========================================================================
+    // Edge case: zero-length batch followed by strict commit
+    // =========================================================================
 
     #[test]
     fn empty_strict_batch_commit_succeeds() {
@@ -444,6 +509,10 @@ mod internal_tests {
             .expect("empty strict batch commit should succeed");
     }
 
+    // =========================================================================
+    // Edge case: put index operations do not carry payloads
+    // =========================================================================
+
     #[test]
     fn batch_index_operations_increment_len_without_payloads() {
         let (_temp, journal) = temp_journal();
@@ -453,7 +522,9 @@ mod internal_tests {
         let step = StepIdx::new(1);
 
         let mut batch = JournalWriteBatch::new(&journal);
-        batch.put_status_index(IndexStatusState::Completed, 5000, run).expect("status idx");
+        batch
+            .put_status_index(IndexStatusState::Completed, 5000, run)
+            .expect("status idx");
         batch.put_workflow_index(wf, run).expect("workflow idx");
         batch
             .put_action_index(action, run, step)
@@ -462,6 +533,7 @@ mod internal_tests {
         assert!(!batch.is_empty());
         batch.commit().expect("index batch commit should succeed");
 
+        // Verify index markers are present
         let mut status_count = 0usize;
         for item in journal.index_status.iter() {
             let _ = item.key();
@@ -484,8 +556,16 @@ mod internal_tests {
         assert_eq!(action_count, 1, "should have 1 action index marker");
     }
 
+    // =========================================================================
+    // RED PHASE: vb-fb52 failing tests — Atomic Journal and Index Write Batches
+    // =========================================================================
+    // NOTE: batch_is_not_send_or_sync is now enforced at the type level via
+    // PhantomData<*mut FjallJournal>. The type literally cannot implement Send
+    // or Sync without unsafe code, so no runtime test is needed.
+
     #[test]
     fn batch_put_compiled_ir_commits_and_is_readable() {
+        // I3: compiled_ir readable after batch commit
         let (_temp, journal) = temp_journal();
         let ir = b"compiled-artifact-bytes".to_vec();
         let digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
@@ -507,6 +587,7 @@ mod internal_tests {
 
     #[test]
     fn batch_append_event_commits_and_is_readable() {
+        // I6: event readable after batch commit
         let (_temp, journal) = temp_journal();
         let run = RunId::new(100);
         let event = make_event(run, 0);
@@ -522,20 +603,23 @@ mod internal_tests {
 
     #[test]
     fn batch_append_event_rejects_duplicate_event() {
+        // EP-7, I20: DuplicateEvent on second batch append with same run_id+seq
         let (_temp, journal) = temp_journal();
         let run = RunId::new(200);
         let event = make_event(run, 0);
 
+        // First append via batch
         let mut batch1 = JournalWriteBatch::new(&journal);
         batch1
             .append_event(&event)
             .expect("first append should succeed");
         batch1.commit().expect("commit should succeed");
 
+        // Second append with same run_id+seq should fail
         let mut batch2 = JournalWriteBatch::new(&journal);
         let result = batch2.append_event(&event);
         assert!(
-            matches!(result, Err(crate::error::JournalError::DuplicateEvent { .. })),
+            matches!(result, Err(JournalError::DuplicateEvent { .. })),
             "duplicate event must be rejected with DuplicateEvent, got {:?}",
             result
         );
@@ -548,12 +632,14 @@ mod internal_tests {
 
     #[test]
     fn len_equals_staged_count_after_random_operations() {
+        // P1: len() always equals actual staged operation count
         let (_temp, journal) = temp_journal();
         let run = RunId::new(400);
 
         let mut batch = JournalWriteBatch::new(&journal);
         let mut expected_len = 0;
 
+        // Stage 3 events
         for i in 0..3 {
             let evt = JournalEvent::RunAccepted {
                 run,
@@ -569,6 +655,7 @@ mod internal_tests {
             );
         }
 
+        // Stage a header
         let header = make_run_header(run);
         batch.put_run_header(&header).expect("put header");
         expected_len += 1;
@@ -579,22 +666,26 @@ mod internal_tests {
 
     #[test]
     fn is_empty_equals_len_zero_invariant() {
+        // P2: is_empty() == (len() == 0) holds after every operation
         let (_temp, journal) = temp_journal();
         let run = RunId::new(500);
 
         let mut batch = JournalWriteBatch::new(&journal);
 
+        // Initially empty
         assert!(
             batch.is_empty() == (batch.len() == 0),
             "is_empty() must match (len() == 0) for new batch"
         );
 
+        // After one operation
         batch.append_event(&make_event(run, 0)).expect("append");
         assert!(
             batch.is_empty() == (batch.len() == 0),
             "is_empty() must match (len() == 0) after one operation"
         );
 
+        // After more operations
         batch
             .put_run_header(&make_run_header(run))
             .expect("put header");
@@ -606,6 +697,7 @@ mod internal_tests {
 
     #[test]
     fn batch_len_never_decreases() {
+        // P3: len() monotonically increases (never decreases)
         let (_temp, journal) = temp_journal();
         let run = RunId::new(600);
 
@@ -634,6 +726,7 @@ mod internal_tests {
 
     #[test]
     fn all_or_nothing_commit_across_keyspaces() {
+        // P5: commit is all-or-nothing; no partial state visible
         let (_temp, journal) = temp_journal();
         let run = RunId::new(800);
         let digest = WorkflowDigest::from_bytes([0xCC; DIGEST_BYTES]);
@@ -660,6 +753,7 @@ mod internal_tests {
             batch.commit().expect("commit should succeed");
         }
 
+        // All or nothing: both must be present or neither
         let ws_present = journal
             .workflow_source(source_digest)
             .expect("get ws")
@@ -673,6 +767,7 @@ mod internal_tests {
 
     #[test]
     fn digest_verification_mandatory_on_workflow_source() {
+        // P7: BLAKE3 digest verification cannot be skipped for workflow_source
         let (_temp, journal) = temp_journal();
         let source = b"content to forge".to_vec();
         let forged_digest = WorkflowDigest::from_bytes([0xFF; 32]);
@@ -685,13 +780,14 @@ mod internal_tests {
         let mut batch = JournalWriteBatch::new(&journal);
         let result = batch.put_workflow_source(&record);
         assert!(
-            matches!(result, Err(crate::error::JournalError::PayloadDigestMismatch)),
+            matches!(result, Err(JournalError::PayloadDigestMismatch)),
             "workflow_source digest verification must be mandatory"
         );
     }
 
     #[test]
     fn digest_verification_mandatory_on_blob() {
+        // P8: BLAKE3 digest verification cannot be skipped for blob
         let (_temp, journal) = temp_journal();
         let payload = vec![1, 2, 3, 4, 5];
         let forged_digest: [u8; DIGEST_BYTES] = [0xAB; 32];
@@ -704,7 +800,7 @@ mod internal_tests {
         let mut batch = JournalWriteBatch::new(&journal);
         let result = batch.put_blob(&record);
         assert!(
-            matches!(result, Err(crate::error::JournalError::PayloadDigestMismatch)),
+            matches!(result, Err(JournalError::PayloadDigestMismatch)),
             "blob digest verification must be mandatory"
         );
     }

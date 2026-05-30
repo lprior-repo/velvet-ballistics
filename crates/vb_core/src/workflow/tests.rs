@@ -1,4 +1,3 @@
-#[cfg(test)]
 mod tests {
     use super::super::validate_budget_result;
     use crate::budget::BudgetError;

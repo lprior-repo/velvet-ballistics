@@ -6288,9 +6288,5 @@ fn json_error(value: &serde_json::Value, format: OutputFormat) {
 }
 
 #[cfg(test)]
-#[path = "main_tests.rs"]
+#[path = "app_impl_tests.rs"]
 mod tests;
-
-#[cfg(test)]
-#[path = "mode_activation_tests.rs"]
-mod mode_activation_tests;
