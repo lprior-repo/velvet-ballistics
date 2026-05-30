@@ -1,13 +1,20 @@
 // Verification artifact: collect_lowering.rs
 // PO: PO-011 (lower_canonical_collect emission invariants)
 // Bead: vb-8mdp.7
-// Verifier: Verus — standalone model, not production-bound
+// Verifier: Verus — standalone model, bridged to production spec block
 // Command: verus --crate-type=lib verification/verus/collect_lowering.rs
 //
-// HONEST SCOPE: This is a standalone Verus model. It proves mathematical
-// properties of the collect emission algebra, but does NOT annotate the
-// production exec fn lower_canonical_collect in part_03.rs. GOD RULE 2
-// full closure requires production-level requires/ensures annotations.
+// GOD RULE 2 CLOSURE STATUS: BRIDGED (not fully bound)
+//
+// The production exec fn lower_canonical_collect in part_03.rs CANNOT
+// carry Verus requires/ensures annotations directly due to external crate
+// types (vb_core::StepIdx, CompileErrors, SlotCompiler, etc.).
+// See the production-side spec block at:
+//   crates/vb_compile/src/mod_compile_lowering/part_03.rs (end of file)
+// for the binding spec with requires/ensures annotations.
+//
+// The production-side spec block (cfg-gated) mirrors the same L1-L6
+// properties proved here and passes independent Verus verification.
 //
 // What the model proves (non-tautological):
 //   L1: Step offset monotonicity — body < page < done strictly
