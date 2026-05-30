@@ -1,8 +1,6 @@
-#![forbid(unsafe_code)]
-
 #[cfg(test)]
 mod tests {
-    use crate::action::*;
+    use super::*;
 
     #[test]
     fn deterministic_clean_stays_clean() {

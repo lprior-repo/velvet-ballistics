@@ -2386,6 +2386,7 @@ fn update_workflow_metrics(
 mod tests_and_verification;
 
 #[cfg(test)]
+#[path = "budget/tests.rs"]
 mod tests;
 
 #[cfg(test)]

@@ -342,6 +342,7 @@ pub use ops::pop_pair;
 pub use step::replay_step;
 
 #[cfg(test)]
+#[path = "tests.rs"]
 mod tests;
 
 #[cfg(kani)]

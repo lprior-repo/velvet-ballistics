@@ -872,5 +872,5 @@ mod kani_collect_verification {
 }
 
 #[cfg(test)]
-#[path = "../collect_tests.rs"]
+#[path = "collect/tests.rs"]
 mod tests;

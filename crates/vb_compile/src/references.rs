@@ -357,4 +357,5 @@ fn map_validation_error(reference: &str, error: &vb_validate::ValidationError) -
 }
 
 #[cfg(test)]
+#[path = "references/tests.rs"]
 mod tests;

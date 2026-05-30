@@ -1,6 +1,3 @@
-// Extracted test module from admission.rs
-// See: admission::tests
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1073,11 +1070,4 @@ mod tests {
         }
         let _ = _exhaustive_match;
     }
-}
-
-// Artifact envelope tests - external module
-// Tests are in admission/artifact_envelope_tests.rs
-#[cfg(test)]
-mod artifact_envelope_tests {
-    include!("admission/artifact_envelope_tests.rs");
 }

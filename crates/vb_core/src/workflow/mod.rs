@@ -1907,4 +1907,5 @@ impl RunState {
 }
 
 #[cfg(test)]
+#[path = "tests.rs"]
 mod tests;

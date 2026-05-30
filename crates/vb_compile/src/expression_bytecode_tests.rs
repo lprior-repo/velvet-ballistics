@@ -1,8 +1,5 @@
 #![forbid(unsafe_code)]
 //! Tests for expression bytecode lowering.
-
-#[cfg(test)]
-mod tests {
     use super::{
         compile_expr_to_bytecode, compile_expr_to_bytecode_with_accessors,
         compile_expr_to_bytecode_with_step_slots,
@@ -1981,4 +1978,3 @@ mod tests {
         }
         Ok(())
     }
-}
