@@ -130,10 +130,10 @@ impl Shard {
         let step = state.frame.pc();
         if crate::shard::helpers::timer_registration_required(&state, step) {
             let generation = match self.next_pending_timer_generation(run) {
-                Ok(generation) => generation,
-                Err(error) => {
+                Some(generation) => generation,
+                None => {
                     self.runs.insert(run, state);
-                    return Err(error);
+                    return Err(RuntimeError::InvalidTimerFire);
                 }
             };
             let append_result = match kind {
@@ -160,16 +160,6 @@ impl Shard {
         }
         self.runs.insert(run, state);
         Ok(())
-    }
-
-    fn next_pending_timer_generation(&self, run: RunId) -> RuntimeResult<u64> {
-        match self.pending_timers.get(&run).copied() {
-            Some(timer) => timer
-                .generation
-                .checked_add(1)
-                .ok_or(RuntimeError::InvalidTimerFire),
-            None => Ok(1),
-        }
     }
 
     /// Marks a run as failed, releases its frame, and updates counters.

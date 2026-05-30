@@ -30,6 +30,7 @@ impl Shard {
             artifact_store,
             inspect_response: None,
             shutting_down: false,
+            current_tick: TimerTick::new(0),
             journal,
         }
     }
@@ -144,6 +145,42 @@ impl Shard {
     #[must_use]
     pub fn pending_timer_count(&self) -> usize {
         self.pending_timers.len()
+    }
+
+    /// Advances the deterministic clock to the given tick.
+    ///
+    /// The new tick must be >= the current tick. Returns an error if
+    /// the supplied tick is in the past, preventing backward clock jumps.
+    ///
+    /// This operates the numeric timer seam alongside the existing
+    /// wall-clock `Instant`-based timers; it does not modify or affect
+    /// `Instant`-derived deadlines.
+    pub fn advance_clock_to(&mut self, new_tick: TimerTick) -> RuntimeResult<()> {
+        if new_tick < self.current_tick {
+            return Err(RuntimeError::InvalidTimerFire);
+        }
+        self.current_tick = new_tick;
+        Ok(())
+    }
+
+    /// Returns the current tick of the deterministic clock.
+    #[must_use]
+    pub fn current_tick(&self) -> TimerTick {
+        self.current_tick
+    }
+
+    /// Returns the next freshness generation for a run's pending timer.
+    ///
+    /// - `Some(n)` where `n > 0` is the next generation to use.
+    /// - `None` if generation would overflow `u64`.
+    ///
+    /// If no timer exists for the run, returns `Some(1)`.
+    #[must_use]
+    pub fn next_pending_timer_generation(&self, run: RunId) -> Option<u64> {
+        match self.pending_timers.get(&run).copied() {
+            Some(timer) => timer.generation.checked_add(1),
+            None => Some(1),
+        }
     }
 
     /// Returns frame pool metrics across all pools: (free, total_capacity).
