@@ -495,3 +495,68 @@ path = "fuzz_targets/compile_source_ast_marks.rs"
 test = false
 doc = false
 bench = false
+
+# === vb-vzcuf JournalWriteBatch Fuzz Targets (PS-001 through PS-009) ===
+
+[[bin]]
+name = "vb_vzcuf_PS_001"
+path = "fuzz_targets/vb_vzcuf_PS_001.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_002"
+path = "fuzz_targets/vb_vzcuf_PS_002.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_003"
+path = "fuzz_targets/vb_vzcuf_PS_003.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_004"
+path = "fuzz_targets/vb_vzcuf_PS_004.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_005"
+path = "fuzz_targets/vb_vzcuf_PS_005.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_006"
+path = "fuzz_targets/vb_vzcuf_PS_006.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_007"
+path = "fuzz_targets/vb_vzcuf_PS_007.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_008"
+path = "fuzz_targets/vb_vzcuf_PS_008.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_009"
+path = "fuzz_targets/vb_vzcuf_PS_009.rs"
+test = false
+doc = false
+bench = false

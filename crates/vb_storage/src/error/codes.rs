@@ -68,6 +68,8 @@ impl JournalError {
     pub const REPLAY_ALLOCATION_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x401F);
     /// Diagnostic code for invalid run identifier (run_id=0).
     pub const INVALID_RUN_ID_CODE: DiagnosticCode = DiagnosticCode::new(0x4021);
+    /// Diagnostic code for journal batch accumulated byte budget exceeded.
+    pub const JOURNAL_BATCH_BYTES_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x4022);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -119,6 +121,7 @@ impl JournalError {
             Self::ProcessLockIo { .. } => Self::PROCESS_LOCK_IO_CODE,
             Self::Trim(_) => Self::FJALL_CODE, // Map trim errors to a generic code
             Self::InvalidRunId { .. } => Self::INVALID_RUN_ID_CODE,
+            Self::JournalBatchBytesExceeded { .. } => Self::JOURNAL_BATCH_BYTES_EXCEEDED_CODE,
         }
     }
 
@@ -172,6 +175,7 @@ impl JournalError {
             Self::ProcessLockIo { .. } => "PROCESS_LOCK_IO",
             Self::Trim(_) => "FJALL_ERROR",
             Self::InvalidRunId { .. } => "INVALID_RUN_ID",
+            Self::JournalBatchBytesExceeded { .. } => "JOURNAL_BATCH_BYTES_EXCEEDED",
         };
         if let Some(code) = SymbolicCode::from_static(s) {
             return code;

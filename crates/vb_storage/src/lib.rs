@@ -73,6 +73,26 @@ pub mod kani_vb_u8gi_storage_numeric_fields;
 #[cfg(all(kani, feature = "kani-vb-u8gi-decode-taxonomy"))]
 pub mod kani_vb_u8gi_storage_payload_bounds;
 
+// --- vb-vzcuf Kani harnesses (PS-001 through PS-009) ---
+#[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+pub mod kani_vb_vzcuf_ps001;
+#[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+pub mod kani_vb_vzcuf_ps002;
+#[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+pub mod kani_vb_vzcuf_ps003;
+#[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+pub mod kani_vb_vzcuf_ps004;
+#[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+pub mod kani_vb_vzcuf_ps005;
+#[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+pub mod kani_vb_vzcuf_ps006;
+#[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+pub mod kani_vb_vzcuf_ps007;
+#[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+pub mod kani_vb_vzcuf_ps008;
+#[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+pub mod kani_vb_vzcuf_ps009;
+
 pub mod keys;
 pub mod process_lock;
 

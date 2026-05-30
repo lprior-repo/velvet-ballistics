@@ -1058,6 +1058,12 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
         deprecated: false,
     },
     CodeEntry {
+        symbolic: "JOURNAL_BATCH_BYTES_EXCEEDED",
+        numeric: 0x402F,
+        category: CodeCategory::RuntimeBoundary,
+        deprecated: false,
+    },
+    CodeEntry {
         symbolic: "JOURNAL_WRONG_RUN",
         numeric: 0x4008,
         category: CodeCategory::RuntimeBoundary,
