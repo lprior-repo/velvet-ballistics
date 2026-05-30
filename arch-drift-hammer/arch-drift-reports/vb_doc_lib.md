@@ -1,97 +1,97 @@
 # Architectural Drift Report: `vb_doc/src/lib.rs`
 
-**File:** `crates/vb_doc/src/lib.rs`  
-**Analysis Date:** 2026-05-29  
-**Status:** PERFECT (no edits required)
+**File**: `crates/vb_doc/src/lib.rs`  
+**Total Lines**: 188  
+**Status**: PERFECT (no edits required)
 
 ---
 
-## 1. Line Count
+## 1. Line Count Check
 
-| Metric | Value | Limit | Status |
-|--------|-------|-------|--------|
-| Total Lines | 188 | 300 | ✅ PASS |
+| Metric | Value | Threshold | Result |
+|--------|-------|-----------|--------|
+| Total lines | 188 | 300 max | ✅ PASS |
 
 ---
 
 ## 2. DDD Cohesion Analysis
 
-### Domain Boundary Assessment
+### Module Purpose
+This is the public API surface for `vb_doc` — a document reconciliation and evidence policy domain module. It exports snapshot, policy, and patch-plan types.
 
-**Domain:** Documentation Reconciliation (`vb_doc`)
+### Cohesion Score: **GOOD**
+All exported types form a coherent domain concept around:
+- **Master document snapshots** (`MasterDocSnapshot`)
+- **Evidence policy enforcement** (`EvidencePolicy`, `RequiredEvidence`)
+- **Patch plan construction** (`DocPatchPlan`, `PatchTarget`, `PatchEdit`, `PatchPlanStatus`)
+- **Reconciliation errors** (`DocReconcileError` variants)
+- **Domain reports** (`ContradictionReport`, `EvidenceBoundedReport`, `TaintVocabularyReport`)
 
-**Core Types Identified:**
-- `MasterDocSnapshot` — Value object representing a point-in-time doc state
-- `EvidencePolicy` — Policy for evidence requirements
-- `DocPatchPlan` — Aggregate root for patch planning
-- `DocReconcileError` — Error taxonomy
-- `ContradictionReport`, `EvidenceBoundedReport`, `TaintVocabularyReport` — Report types
-
-**Submodules:**
-- `evidence` — Evidence tracking
-- `reconcile` — Reconciliation logic
-
-**Cohesion Score:** HIGH — All types belong to the documentation reconciliation bounded context.
+Submodules (`evidence`, `reconcile`) provide implementation detail and are correctly separated.
 
 ---
 
 ## 3. Violations
 
-### Primitive Obsession (Medium Severity)
+### Primitive Obsession (LOW SEVERITY)
 
-| Field | Type | Suggested Newtype |
-|-------|------|-------------------|
-| `MasterDocSnapshot.text` | `String` | `DocText` |
-| `MasterDocSnapshot.path` | `PathBuf` | `MasterDocPath` |
-| `DocPatchPlan.contradiction_count` | `usize` | `ContradictionCount` |
-| `DocReconcileError.OutOfScopeChange.change_kind` | `String` | `ChangeKind` |
-| `DocReconcileError.OutOfScopeChange.path_or_operation` | `String` | `OperationId` |
-| `DocReconcileError.StaleCleanOnlyTaintText.phrase` | `String` | `StalePhraseText` |
-| `DocReconcileError.UnsupportedEvidenceClaim.sentence` | `String` | `ClaimSentence` |
-| `DocReconcileError.TaintVocabularyConflict.sentence` | `String` | `ConflictSentence` |
-| `DocReconcileError.TaintVocabularyConflict.term` | `Option<String>` | `TaintTerm` |
-| `DocReconcileError.MissingTraceability.clause` | `String` | `TraceClause` |
-| `TaintVocabularyReport.lattice` | `Vec<String>` | `TaintLattice` |
-| `DocPatchPlan.forbidden_actions` | `Vec<String>` | `ForbiddenActions` |
+The following fields use raw `String` where domain newtypes could be used:
 
-### State Machine Absence (Low Severity)
+| Location | Field | Smell |
+|----------|-------|-------|
+| `DocReconcileError::OutOfScopeChange` | `change_kind: String` | Primitive obsession |
+| `DocReconcileError::OutOfScopeChange` | `path_or_operation: String` | Primitive obsession |
+| `DocReconcileError::StaleCleanOnlyTaintText` | `phrase: String` | Primitive obsession |
+| `DocReconcileError::UnsupportedEvidenceClaim` | `sentence: String` | Primitive obsession |
+| `DocReconcileError::TaintVocabularyConflict` | `sentence: String` | Primitive obsession |
+| `DocReconcileError::TaintVocabularyConflict` | `term: Option<String>` | Primitive obsession |
+| `DocReconcileError::MissingTraceability` | `clause: String` | Primitive obsession |
+| `DocReconcileError::ControlFlowTaintConflation` | `sentence: String` | Primitive obsession |
+| `TaintVocabularyReport::lattice` | `Vec<String>` | Primitive obsession |
+| `PatchPlan::forbidden_actions` | `Vec<String>` | Primitive obsession |
 
-The `DocPatchPlan` represents a workflow but is modeled as a static struct rather than explicit state transitions. Consider:
-- `PatchPlanState` enum already exists but `status: PatchPlanStatus` is data, not behavior
-- No `PatchPlan::transition()` or similar workflow function visible in this file
+**Note**: These are in error types (`DocReconcileError`), which is somewhat acceptable since error messages often need flexibility. However, a stricter DDD approach would define domain-specific error detail types.
 
-### Missing `Parse, Don't Validate` (Informational)
+### Structural Observations
 
-The `EvidencePolicy::strict_bounded()` factory is good, but several string fields flow through without parsing validation.
+1. **Error variants are data-heavy** — `DocReconcileError` carries rich context in each variant, which is good for debugging but makes exhaustive matching harder. Consider `#[non_exhaustive]` on the enum (already present).
+
+2. **No workflow state machine** — The module defines data types but doesn't expose explicit state-transition functions. If `DocPatchPlan` represents a workflow, consider adding `impl DocPatchPlan { pub fn transition(...) }` methods.
+
+3. **Two submodules suggest split** — If `evidence` and `reconcile` grow, this lib.rs could become a pure re-export barrel. Current state is acceptable.
 
 ---
 
 ## 4. DDD Smell Assessment
 
-| Smell | Severity | Present |
-|-------|----------|---------|
-| Primitive Obsession | Medium | Yes (String/PathBuf/usize) |
-| State Machine as Data | Low | Yes |
-| Anemic Domain Model | Low | Partial — behavior in submodules |
-| Type-Driven Validation | Low | Missing for string fields |
-
-**Overall Smell Level:** MODERATE
-
----
-
-## 5. Priority Recommendation
-
-| Priority | Action |
-|----------|--------|
-| **P2** | Wrap `PathBuf` in `MasterDocPath` newtype |
-| **P2** | Wrap `String` fields in domain-specific newtypes |
-| **P3** | Add explicit state transition methods to `DocPatchPlan` |
-| **P3** | Consider `NonEmptyString` / `NonZeroUsize` for positive-constraint fields |
+| Smell | Present | Severity |
+|-------|---------|----------|
+| Primitive Obsession | Yes (in error variants) | LOW |
+| Data Clumps | No | — |
+| Feature Envy | No | — |
+| God Objects | No | — |
+| Parallel Inheritance | No | — |
+| Shotgun Surgery | No | — |
+| Incomplete Abstraction | No | — |
 
 ---
 
-## 6. Conclusion
+## 5. Priority
 
-File is **under 300 lines** and **cohesive** within its domain. No architectural drift requiring immediate refactoring. The primitive obsession violations are stylistic improvements rather than architectural defects.
+| Issue | Priority | Effort |
+|-------|----------|--------|
+| Primitive obsession in error types | LOW | Could be addressed with domain error detail types but not critical |
+| No explicit state transitions | LOW | Would improve discoverability if patch plans are workflows |
+
+**Overall Priority: LOW** — The module is well-structured, under line limit, and exhibits only minor DDD smells in error handling that are pragmatic for flexible error reporting.
+
+---
+
+## 6. Recommendation
+
+No refactoring required. The file is production-ready as-is. The primitive obsession in error types is acceptable given that:
+1. Error messages require flexibility
+2. The domain types themselves (`MasterDocSnapshot`, `DocPatchPlan`, etc.) are properly modeled
+3. Line count is well under threshold
 
 **STATUS: PERFECT**
