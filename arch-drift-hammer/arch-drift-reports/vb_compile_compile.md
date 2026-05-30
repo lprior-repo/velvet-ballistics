@@ -1,0 +1,136 @@
+# Architectural Drift Report: `vb_compile/src/compile/mod.rs`
+
+**Analyzed:** `/home/lewis/src/velvet-ballistics/crates/vb_compile/src/compile/mod.rs`
+**Date:** 2026-05-29
+**Status:** 🔴 CRITICAL VIOLATIONS
+
+---
+
+## 1. Line Count Analysis
+
+| File | Lines | Limit | Status |
+|------|-------|-------|--------|
+| `compile/mod.rs` | **894** | 300 | 🔴 **598 lines over** |
+| `compile/type_taint.rs` | 513 | 300 | 🔴 **213 lines over** |
+| `compile/` directory total | **1407** | 300 | 🔴 **CRITICAL** |
+
+**VERDICT:** File is **298% over** the 300-line limit.
+
+---
+
+## 2. DDD Cohesion Analysis
+
+### Cohesion Score: POOR (0.15)
+
+The `mod.rs` file exhibits ** shotgun surgery** - it contains 15+ distinct responsibilities:
+
+| Responsibility | Lines | Concern |
+|----------------|-------|---------|
+| Workflow compilation orchestration | 21-110 | Workflow |
+| Scope validation | 112-180 | Validation |
+| Slot/index resolution | 182-218 | Infra |
+| Digest computation | 220-261 | Infra |
+| Contract compilation | 263-273 | Workflow |
+| Accessor/constant builders | 275-285 | Infra |
+| IR lowering: `lower_set` | 315-329 | Domain |
+| IR lowering: `lower_do` | 331-348 | Domain |
+| IR lowering: `lower_choose` | 350-372 | Domain |
+| IR lowering: `lower_for_each` | 374-414 | Domain |
+| IR lowering: `lower_together` | 416-454 | Domain |
+| IR lowering: `lower_collect` | 463-510 | Domain |
+| IR lowering: `lower_reduce` | 512-561 | Domain |
+| IR lowering: `lower_repeat` | 563-612 | Domain |
+| IR lowering: `lower_wait` | 614-650 | Domain |
+| IR lowering: `lower_ask` | 652-690 | Domain |
+| IR lowering: `lower_finish` | 692-702 | Domain |
+| Validation helpers | 704-707, 875-884 | Validation |
+| Digest/serialization | 709-730 | Infra |
+| Idempotency gates | 732-778 | Domain |
+| `SlotCompiler` builder | 780-894 | Infra |
+
+**Ideal module size: 1 responsibility, max 300 lines.**
+
+---
+
+## 3. Violations
+
+### 🔴 CRITICAL
+
+| ID | Violation | Category |
+|----|-----------|----------|
+| V1 | File is 894 lines (limit 300) | **File Size** |
+| V2 | `compile/` directory is 1407 lines total | **File Size** |
+| V3 | 10+ `lower_*` functions in single file | **Low Cohesion** |
+| V4 | `SlotCompiler` (115 lines) is infrastructure, not domain | **Low Cohesion** |
+
+### 🟡 MODERATE
+
+| ID | Violation | Category |
+|----|-----------|----------|
+| V5 | `canonical_digest` computes hash by accessing raw YAML fields | **Feature Envy** |
+| V6 | Raw `usize` used for slot/step indices; should be newtypes | **Primitive Obsession** |
+| V7 | `check_idempotency_gates` is a pure domain rule but lives in infra module | **Domain/Infra Mix** |
+| V8 | `emit_compiled_artifact` (postcard) is infra serialization, not domain | **Domain/Infra Mix** |
+| V9 | `compile_to_generated_rust` (codegen) is a separate concern | **Low Cohesion** |
+
+---
+
+## 4. DDD Smell Summary
+
+| Smell | Severity | Evidence |
+|-------|----------|----------|
+| **Low Cohesion** | 🔴 Critical | 15+ responsibilities in one file |
+| **Primitive Obsession** | 🟡 Moderate | `usize` for `StepIdx`, `SlotIdx` instead of type-wrapped |
+| **Feature Envy** | 🟡 Moderate | `canonical_digest` reaches into `WorkflowSource` internals |
+| **Data Class** | 🟡 Moderate | `SlotCompiler` has no encapsulated behavior |
+| **Shotgun Surgery** | 🟡 Moderate | 10+ `lower_*` functions should be in submodule |
+
+---
+
+## 5. Recommended Refactor
+
+```
+compile/
+├── mod.rs                    # 150 lines: re-exports + orchestration only
+├── lowering/
+│   ├── mod.rs                # 100 lines: lower_* dispatch
+│   ├── set.rs                #  50 lines: lower_set
+│   ├── do.rs                 #  50 lines: lower_do
+│   ├── choose.rs             #  50 lines: lower_choose
+│   ├── for_each.rs           #  80 lines: lower_for_each
+│   ├── together.rs           #  80 lines: lower_together + lower_collect + lower_reduce
+│   ├── repeat.rs             #  80 lines: lower_repeat + lower_wait
+│   └── ask.rs                #  60 lines: lower_ask + lower_finish
+├── compiler/
+│   ├── mod.rs                # 150 lines: SlotCompiler + slot management
+│   └── slot.rs               #  80 lines: step_idx, slot_idx_for_step
+├── validation/
+│   ├── mod.rs                # 100 lines: validate_canonical_compile_scope
+│   └── idempotency.rs        #  60 lines: check_idempotency_gates
+└── type_taint.rs             # 513 lines: (separate issue - also too large)
+```
+
+---
+
+## 6. Priority Assessment
+
+| Priority | Score | Justification |
+|----------|-------|---------------|
+| **P0 - Immediate** | 10/10 | File is 298% over limit. Blocks CI/linting. |
+| **P1 - This Sprint** | 8/10 | Low cohesion causes maintenance burden. |
+| **P2 - Next Sprint** | 5/10 | Primitive obsession causes subtle bugs. |
+
+---
+
+## 7. Metrics
+
+- **Current LOC:** 894
+- **Target LOC:** 300
+- **Lines Over:** 594
+- **Cohesion Score:** 0.15 (poor)
+- **Responsibilities:** 15+ (too many)
+- **Recommended Modules:** 10+
+
+---
+
+*Report generated by architectural-drift agent*
