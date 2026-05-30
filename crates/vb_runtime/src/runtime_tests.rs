@@ -4,9 +4,9 @@
 use crate::AskTicket;
 use crate::journal::{RuntimeJournal, RuntimeJournalEvent, VolatileRuntimeJournal};
 use crate::trace::TraceEvent;
-use crate::Runtime;
+use crate::runtime::Runtime;
 use crate::RuntimeError;
-use crate::ShardConfig;
+use crate::shard::ShardConfig;
 use std::sync::{Arc, Mutex};
 use vb_core::action::{
     ActionContract, ActionFailureCode, ActionOutputReady, ActionTicket, Idempotency,

@@ -2054,5 +2054,5 @@ pub(crate) fn is_supported_code(code: u16) -> bool {
 // Tests
 // ---------------------------------------------------------------------------
 
-#[cfg(test)]
-mod tests_and_verification;
+// Tests extracted to: crates/workspace_tests/tests/vb_test_validate_diagnostic_behavior.rs
+// and related diagnostic test files.

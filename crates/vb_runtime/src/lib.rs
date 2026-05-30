@@ -104,3 +104,6 @@ mod verification {
 mod verification {
     pub(crate) mod kani;
 }
+
+#[cfg(test)]
+mod admission_vb_8mdp_7_prop_tests;

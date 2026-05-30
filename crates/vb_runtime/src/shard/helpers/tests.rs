@@ -10,8 +10,8 @@ mod tests {
     use crate::RuntimeError;
     use crate::primitives::collect::CollectStates;
 
-    use super::super::types::RunState;
-    use super::{
+    use crate::shard::types::RunState;
+    use super::super::{
         PendingTimer, PendingTimerKind, advance_after_action_completion, advance_after_timer_fire,
         find_error_handler_for_failure, new_action_attempts, normalize_scheduled_ticket,
         record_retry_attempt, record_scheduled_attempt, result_slot_for_finished_run,

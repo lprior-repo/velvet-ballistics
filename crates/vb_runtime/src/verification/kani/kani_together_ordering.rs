@@ -121,7 +121,11 @@ fn kani_together_branch_first_branch() {
         Err(_) => {}
     }
 
-    kani::cover!(true);
+    kani::cover!(true, "first_branch_without_accumulation_path");
+    kani::cover!(
+        run.pc() == entry,
+        "first_branch_jumps_to_entry"
+    );
 }
 
 /// PO-KANI-006: Proves that together_join reduces PIF and
@@ -195,5 +199,13 @@ fn kani_together_join_pif_reduction() {
         Err(_) => {}
     }
 
-    kani::cover!(true);
+    kani::cover!(true, "join_pif_reduction_path");
+    kani::cover!(
+        run.pc() == next_step,
+        "join_advances_to_next_step"
+    );
+    kani::cover!(
+        run.parallel_in_flight() < pif_before,
+        "pif_decreased_after_join"
+    );
 }

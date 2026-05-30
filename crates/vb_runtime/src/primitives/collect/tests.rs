@@ -1,7 +1,12 @@
 use super::*;
+use crate::primitives::collect::CollectStates;
 use crate::test_harness::list_in_slot;
 use std::path::PathBuf;
+use vb_core::errors::{CollectExtraHydrationFailureKind, EngineError};
 use vb_core::EventSeq as CoreEventSeq;
+use vb_core::frame::RunFrame;
+use vb_core::ids::SlotIdx;
+use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 use vb_storage::recovery::{ActionReplayTracker, recover_full_journal};
 use vb_storage::{EventSeq, JournalEvent};

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::super::*;
     use vb_core::action::{Idempotency, RetrySafety, SideEffect};
     use vb_core::ids::{RunId, SeqNo, SlotIdx, StepIdx};
 

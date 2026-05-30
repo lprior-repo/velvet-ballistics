@@ -1476,7 +1476,9 @@ fn bh_evidence_events_always_alternate_started_succeeded() {
 #[cfg(test)]
 mod proptests {
 
-    use super::*;
+    use super::super::*;
+    use crate::engine::action::compute_idempotency_key;
+    use vb_core::ids::{ActionId, RunId, SeqNo};
     use proptest::prelude::*;
 
     proptest! {

@@ -17,12 +17,10 @@
 //!   I6: Budget errors map to RuntimeError::AdmissionArtifactInvalid with correct digest (by design)
 
 use proptest::prelude::*;
-use vb_core::budget::AggregateBudgetError;
 use vb_core::capability::{Capability, CapabilitySet};
-use vb_core::ids::{ActionId, RunId, WorkflowDigest};
-use vb_core::policy::RuntimePolicy;
+use vb_core::ids::{ActionId, WorkflowDigest};
 use crate::admission::AdmissionError;
-use crate::{RuntimeError, RuntimeResult};
+use crate::RuntimeError;
 use vb_storage::EventSeq;
 
 /// Replicates the mapping logic from `Shard::build_admission` in

@@ -762,7 +762,7 @@ fn shard_timer_entry_returns_none_for_unknown_run() {
 
 #[cfg(kani)]
 mod kani_proofs {
-    use super::*;
+    use super::super::*;
 
     #[kani::proof]
     fn verify_command_queue_capacity_never_exceeded() {

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::super::*;
     use vb_core::action::{ActionFailureCode, RetryPolicy as VbRetryPolicy};
     use vb_core::value::Taint;
 

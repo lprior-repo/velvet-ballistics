@@ -367,5 +367,5 @@ pub fn snapshot_from_state(
 
 
 #[cfg(test)]
-#[path = "shard/helpers/tests.rs"]
+#[path = "helpers/tests.rs"]
 mod tests;

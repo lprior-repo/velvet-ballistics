@@ -200,6 +200,29 @@ pub struct ActionFailure {
     pub encoded_len: u32,
 }
 
+impl From<ActionFailureCode> for ActionFailure {
+    fn from(code: ActionFailureCode) -> Self {
+        let retry_policy = match code {
+            ActionFailureCode::Rejected => RetryPolicy::NonRetryable,
+            ActionFailureCode::Timeout => RetryPolicy::Retryable,
+            ActionFailureCode::RateLimited => RetryPolicy::Retryable,
+            ActionFailureCode::ResourceExhausted => RetryPolicy::Retryable,
+            ActionFailureCode::ExternalUnavailable => RetryPolicy::Retryable,
+            ActionFailureCode::InvalidInput => RetryPolicy::NonRetryable,
+            ActionFailureCode::PermissionDenied => RetryPolicy::NonRetryable,
+            ActionFailureCode::Conflict => RetryPolicy::Retryable,
+            ActionFailureCode::Unknown => RetryPolicy::NonRetryable,
+        };
+        Self {
+            code,
+            retry_policy,
+            taint: Taint::Clean,
+            detail: None,
+            encoded_len: 0,
+        }
+    }
+}
+
 /// Machine-readable action failure codes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]

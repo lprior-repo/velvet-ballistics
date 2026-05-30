@@ -1,6 +1,8 @@
 //! Tests for frame_pool
 
-use vb_core::ids::SlotIdx;
+use super::{FramePool, MAX_POOL_CAPACITY};
+use vb_core::frame::RunFrame;
+use vb_core::ids::{RunId, SlotIdx, StepIdx};
 
 fn new_pool(step_count: u16, slot_count: u16, capacity: usize) -> FramePool {
     let result = FramePool::new(step_count, slot_count, capacity);

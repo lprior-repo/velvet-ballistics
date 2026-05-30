@@ -589,5 +589,5 @@ impl Runtime {
 
 
 #[cfg(test)]
-#[path = "runtime/tests.rs"]
+#[path = "runtime_tests.rs"]
 mod tests;
