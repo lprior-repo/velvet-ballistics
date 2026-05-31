@@ -417,14 +417,10 @@ impl kani::Arbitrary for RunFrame {
         kani::assume(first_step < step_count);
         let run_id = crate::ids::RunId::new(kani::any::<u64>());
         let first_step_idx = StepIdx::new(first_step);
-        kani::assume(first_step_idx.as_usize() < usize::from(step_count));
-        match RunFrame::new(run_id, first_step_idx, step_count, slot_count) {
-            Ok(frame) => frame,
-            Err(_) => {
-                kani::cover(false, "RunFrame::new should not fail with valid assumes");
-                unsafe { std::hint::unreachable_unchecked() }
-            }
-        }
+        // With valid assumes, RunFrame::new always succeeds (step_count > 0, first_step < step_count).
+        // The Ok variant is guaranteed; Err is unreachable under these assumes.
+        RunFrame::new(run_id, first_step_idx, step_count, slot_count)
+            .unwrap_or_else(|_| unreachable!("RunFrame::new failed with valid assumes"))
     }
 }
 
