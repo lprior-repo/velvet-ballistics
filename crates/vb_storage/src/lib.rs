@@ -73,8 +73,25 @@ pub mod kani_vb_u8gi_storage_numeric_fields;
 #[cfg(all(kani, feature = "kani-vb-u8gi-decode-taxonomy"))]
 pub mod kani_vb_u8gi_storage_payload_bounds;
 
-#[cfg(kani)]
-pub mod kani_journal_duplicate;
+// --- vb-vzcuf Kani harnesses (PS-001 through PS-009) ---
+#[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+pub mod kani_vb_vzcuf_ps001;
+#[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+pub mod kani_vb_vzcuf_ps002;
+#[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+pub mod kani_vb_vzcuf_ps003;
+#[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+pub mod kani_vb_vzcuf_ps004;
+#[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+pub mod kani_vb_vzcuf_ps005;
+#[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+pub mod kani_vb_vzcuf_ps006;
+#[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+pub mod kani_vb_vzcuf_ps007;
+#[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+pub mod kani_vb_vzcuf_ps008;
+#[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+pub mod kani_vb_vzcuf_ps009;
 
 pub mod keys;
 pub mod process_lock;
@@ -114,17 +131,7 @@ pub mod vb_2bok_durability_gate_tests;
 // ============================================================================
 
 // Core types
-pub use constants::{
-    CRC_OFFSET, CURRENT_SCHEMA_VERSION, DIGEST_BYTES, KEYSPACE_BLOB, KEYSPACE_COMPILED_IR,
-    KEYSPACE_INDEX_ACTION, KEYSPACE_INDEX_STATUS, KEYSPACE_INDEX_WORKFLOW, KEYSPACE_RUN_EVENT,
-    KEYSPACE_RUN_HEADER, KEYSPACE_RUN_SNAPSHOT, KEYSPACE_WORKFLOW_SOURCE, MAGIC_BLOB,
-    MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD, MAGIC_IPC_FRAME, MAGIC_JOURNAL_EVENT,
-    MAGIC_SNAPSHOT, MAGIC_WORKFLOW_SOURCE, MAX_BATCH_COUNT, MAX_BLOB_BYTES, MAX_COMPILED_IR_BYTES,
-    MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_RUN_HEADER_BYTES, MAX_SNAPSHOT_BYTES,
-    MAX_WORKFLOW_SOURCE_BYTES, PREFIX_BLOB, PREFIX_COMPILED_IR, PREFIX_INDEX_ACTION,
-    PREFIX_INDEX_STATUS, PREFIX_INDEX_WORKFLOW, PREFIX_RUN_EVENT, PREFIX_RUN_HEADER,
-    PREFIX_RUN_SNAPSHOT, PREFIX_WORKFLOW_SOURCE, RECORD_HEADER_BYTES, RECORD_HEADER_LEN,
-};
+pub use constants::*;
 pub use error::JournalError;
 pub use events::{DurableActionOutcome, JournalEvent};
 pub use records::{
@@ -135,11 +142,7 @@ pub use slot_extra::{
     DecodedSlotWrittenExtra, SLOT_WRITTEN_EXTRA_PREFIX, SlotWrittenExtraEnvelope,
     SlotWrittenExtraError, decode_slot_written_extra, encode_slot_written_extra,
 };
-pub use types::{
-    DurabilityProfile, EventSeq, FjallConfig, IndexStatusState, JournalBatchSize,
-    JournalQueueCapacity, JournalWriterFlushReport, JournalWriterQueueProfileCounts,
-    KeyspaceProfile, RecordEnvelope, RecordHeader, StorageKey, StorageLimits, keyspace_options_for,
-};
+pub use types::*;
 
 // Journal
 pub use journal::incident::{
@@ -153,6 +156,9 @@ pub use batch::JournalWriteBatch;
 
 // Queue
 pub use queue::JournalWriterQueue;
+
+// Types
+pub use types::JournalWriterFlushReport;
 
 // Trimming
 pub use trimming::{

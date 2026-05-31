@@ -44,6 +44,14 @@ pub enum JournalError {
     /// Queue has no room for another event.
     #[error("journal writer queue is full")]
     QueueFull,
+    /// Journal batch accumulated encoded-byte budget exceeded.
+    #[error("journal batch byte budget exceeded: attempted {attempted} > limit {limit}")]
+    JournalBatchBytesExceeded {
+        /// Computed total staged bytes that would have exceeded the budget.
+        attempted: u64,
+        /// Configured byte budget for this batch.
+        limit: u64,
+    },
     /// Queue has started deterministic shutdown and rejects new writes.
     #[error("journal writer queue is shut down")]
     QueueShutdown,

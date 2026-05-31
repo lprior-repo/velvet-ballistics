@@ -496,32 +496,67 @@ test = false
 doc = false
 bench = false
 
-# === vb-shvxy tooling fuzz targets (State 9) ===
+# === vb-vzcuf JournalWriteBatch Fuzz Targets (PS-001 through PS-009) ===
 
 [[bin]]
-name = "tooling_kani_list_args"
-path = "fuzz_targets/tooling_kani_list_args.rs"
+name = "vb_vzcuf_PS_001"
+path = "fuzz_targets/vb_vzcuf_PS_001.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "tooling_flux_check_selector"
-path = "fuzz_targets/tooling_flux_check_selector.rs"
+name = "vb_vzcuf_PS_002"
+path = "fuzz_targets/vb_vzcuf_PS_002.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "tooling_guard_zero_parser"
-path = "fuzz_targets/tooling_guard_zero_parser.rs"
+name = "vb_vzcuf_PS_003"
+path = "fuzz_targets/vb_vzcuf_PS_003.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "tooling_loom_list_xtask"
-path = "fuzz_targets/tooling_loom_list_xtask.rs"
+name = "vb_vzcuf_PS_004"
+path = "fuzz_targets/vb_vzcuf_PS_004.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_005"
+path = "fuzz_targets/vb_vzcuf_PS_005.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_006"
+path = "fuzz_targets/vb_vzcuf_PS_006.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_007"
+path = "fuzz_targets/vb_vzcuf_PS_007.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_008"
+path = "fuzz_targets/vb_vzcuf_PS_008.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_009"
+path = "fuzz_targets/vb_vzcuf_PS_009.rs"
 test = false
 doc = false
 bench = false

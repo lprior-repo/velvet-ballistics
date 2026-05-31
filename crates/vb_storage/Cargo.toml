@@ -25,6 +25,7 @@ default = []
 legacy-kani = []
 kani-typed-partitioned-ids = []
 kani-vb-u8gi-decode-taxonomy = []
+kani-vb-vzcuf = []
 
 [lints]
 workspace = true
