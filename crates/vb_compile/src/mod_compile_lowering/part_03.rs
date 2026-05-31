@@ -22,20 +22,20 @@ pub(super) fn lower_canonical_parallel(
     let accumulator = SlotIdx::new(0);
     builder.record_slot(accumulator);
     let join_offset = together_join_offset(branches).map_err(|e| CompileErrors(vec![e]))?;
-    let join = checked_step_offset(id, join_offset, "parallel", "join")
+    let join = checked_step_offset(id, join_offset, "together", "join")
         .map_err(|e| CompileErrors(vec![e]))?;
     let mut branch_targets = Vec::with_capacity(branches.len());
     let mut cursor = 1u16;
     for branch in branches {
         branch_targets.push(
-            checked_step_offset(id, cursor, "parallel", "branch")
+            checked_step_offset(id, cursor, "together", "branch")
                 .map_err(|e| CompileErrors(vec![e]))?,
         );
         let width =
             u16::try_from(body_width(&branch.steps, 1).map_err(|e| CompileErrors(vec![e]))?)
                 .map_err(|_| {
                     CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
-                        primitive: "parallel",
+                        primitive: "together",
                         field: "branches",
                         value: branches.len(),
                         limit: usize::from(u16::MAX),
@@ -99,7 +99,7 @@ pub(super) fn emit_together_branches(
 ) -> Result<(), CompileErrors> {
     let mut cursor = 1u16;
     for (branch_index, branch) in branches.iter().enumerate() {
-        let branch_id = checked_step_offset(base, cursor, "parallel", "branch")
+        let branch_id = checked_step_offset(base, cursor, "together", "branch")
             .map_err(|e| CompileErrors(vec![e]))?;
         let entry = checked_step_offset(
             base,
@@ -108,13 +108,13 @@ pub(super) fn emit_together_branches(
                     value: branch_index,
                 }])
             })?,
-            "parallel",
+            "together",
             "entry",
         )
         .map_err(|e| CompileErrors(vec![e]))?;
         let branch_number = u16::try_from(branch_index).map_err(|_| {
             CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
-                primitive: "parallel",
+            primitive: "together",
                 field: "branches",
                 value: branch_index,
                 limit: usize::from(u16::MAX),

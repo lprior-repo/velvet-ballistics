@@ -136,8 +136,6 @@ fn reject_unknown_step_fields(node: &saphyr::Yaml<'_>) -> YamlResult<()> {
             "wait",
             "ask",
             "finish",
-            "parallel",
-            "aggregate",
             "with",
             "try_again",
             "on_error",
@@ -240,7 +238,7 @@ fn parse_reduce(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
     let input = require_str_in(node, "input", "reduce.input")?;
     let initial = require_str_in(node, "initial", "reduce.initial")?;
     let body = parse_body_steps(node)?;
-    Ok(StepPrimitive::Aggregate {
+    Ok(StepPrimitive::Reduce {
         variable,
         input,
         initial,

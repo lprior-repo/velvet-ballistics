@@ -90,7 +90,7 @@ fn canonical_name_aggregate_harness() {
     kani::assume(label_char.is_ascii_alphanumeric());
     let label = String::from_utf8(vec![label_char]).unwrap_or_default();
 
-    let aggregate_primitive = StepPrimitive::Aggregate {
+    let aggregate_primitive = StepPrimitive::Reduce {
         variable: label.clone(),
         input: label,
         initial: "0".to_string(),
@@ -182,7 +182,7 @@ fn canonical_name_all_harness() {
             items: None,
             body: vec![],
         },
-        7 => StepPrimitive::Aggregate {
+        7 => StepPrimitive::Reduce {
             variable: label.clone(),
             input: value.clone(),
             initial: value.clone(),

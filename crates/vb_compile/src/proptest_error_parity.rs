@@ -48,7 +48,7 @@ pub fn non_set_primitive_strategy() -> impl Strategy<Value = StepPrimitive> {
             }
         }),
         // Aggregate
-        ("[a-z]+", "\\d+").prop_map(|(input, initial)| StepPrimitive::Aggregate {
+        ("[a-z]+", "\\d+").prop_map(|(input, initial)| StepPrimitive::Reduce {
             variable: "acc".to_string(),
             input,
             initial: vb_yaml::ast::ScalarValue::Integer(initial),

@@ -500,7 +500,7 @@ fn canonical_primitive_name_returns_non_empty_distinct_name_for_every_variant() 
         ),
         (
             "reduce",
-            StepPrimitive::Aggregate {
+            StepPrimitive::Reduce {
                 variable: "acc".into(),
                 input: "0".into(),
                 initial: "0".into(),

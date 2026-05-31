@@ -220,14 +220,14 @@ pub(super) fn compile_step(
             compile_choose(body, index, last_step, id, source_ir_starts, builder)
         }
         StepPrimitive::ForEach => return compile_for_each(body, index, last_step, id, builder),
-        StepPrimitive::Parallel => {
-            return compile_parallel(body, index, last_step, id, source_ir_starts, builder);
+        StepPrimitive::Together => {
+            return compile_together(body, index, last_step, id, source_ir_starts, builder);
         }
         StepPrimitive::Collect => {
             return compile_collect(body, index, last_step, id, next, builder);
         }
-        StepPrimitive::Aggregate => {
-            return compile_aggregate(body, index, last_step, id, next, builder);
+        StepPrimitive::Reduce => {
+            return compile_reduce(body, index, last_step, id, next, builder);
         }
         StepPrimitive::Repeat => {
             return compile_repeat(body, index, last_step, id, next, builder);
@@ -247,9 +247,9 @@ pub(super) enum StepPrimitive {
     Save,
     Choose,
     ForEach,
-    Parallel,
+    Together,
     Collect,
-    Aggregate,
+    Reduce,
     Repeat,
     Wait,
     Ask,
