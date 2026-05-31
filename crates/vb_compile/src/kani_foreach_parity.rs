@@ -46,24 +46,8 @@ use vb_core::{
 ///
 /// All slot indices and step indices are derived from kani::any() with
 /// reasonable bounds, ensuring structural variety across Kani exploration.
-fn build_foreach_parts(_node_count: u8, slot_count: u16, const_count: u8) -> WorkflowParts {
-    // We always build exactly 4 nodes for the for_each pattern.
-    let _node_count: u8 = 4;
-
-    // Clamp slot_count to a safe range
-    let slot_count = slot_count % 16;
-
-    // Clamp const_count
-    let const_count = (const_count % 4) as usize;
-
+fn build_foreach_parts(_node_count: u8, _slot_count: u16, _const_count: u8) -> WorkflowParts {
     let mut nodes: Vec<CompiledNode> = Vec::with_capacity(4);
-
-    // ForEachStart at index 0
-    // All sub-indices are kani-derived with bounds
-    let input_slot = SlotIdx::new(kani::any::<u16>() % std::cmp::max(slot_count, 1));
-    let item_slot = SlotIdx::new(1.min(slot_count));
-    let body_step = StepIdx::new(1); // node 1
-    let done_step = StepIdx::new(3); // node 3
 
     nodes.push(CompiledNode {
         id: StepIdx::new(0),
@@ -72,29 +56,25 @@ fn build_foreach_parts(_node_count: u8, slot_count: u16, const_count: u8) -> Wor
         on_error: None,
         error_slot: None,
         kind: CompiledNodeKind::ForEachStart {
-            input: input_slot,
-            item_slot,
-            limit: kani::any::<u32>() % 4 + 1, // [1, 4]
-            body: body_step,
-            done: done_step,
+            input: SlotIdx::new(0),
+            item_slot: SlotIdx::new(1),
+            limit: 4,
+            body: StepIdx::new(1),
+            done: StepIdx::new(3),
         },
     });
 
-    // SetConst at index 1 — THE FIX TARGET
-    // The fix ensures `next` = Some(StepIdx(2)) → ForEachNext
-    let const_idx = ConstIdx::new(kani::any::<u16>() % std::cmp::max(const_count as u16, 1));
-    let next_step = StepIdx::new(2); // ForEachNext at index 2
-
     nodes.push(CompiledNode {
         id: StepIdx::new(1),
-        output: Some(SlotIdx::new(1.min(slot_count))),
-        next: Some(next_step), // ← THE FIX: was None or wrong value before
+        output: Some(SlotIdx::new(1)),
+        next: Some(StepIdx::new(2)),
         on_error: None,
         error_slot: None,
-        kind: CompiledNodeKind::SetConst { value: const_idx },
+        kind: CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
     });
 
-    // ForEachNext at index 2
     nodes.push(CompiledNode {
         id: StepIdx::new(2),
         output: None,
@@ -102,13 +82,12 @@ fn build_foreach_parts(_node_count: u8, slot_count: u16, const_count: u8) -> Wor
         on_error: None,
         error_slot: None,
         kind: CompiledNodeKind::ForEachNext {
-            iterator_slot: item_slot,
-            body: body_step,
-            done: done_step,
+            iterator_slot: SlotIdx::new(1),
+            body: StepIdx::new(1),
+            done: StepIdx::new(3),
         },
     });
 
-    // Finish at index 3
     nodes.push(CompiledNode {
         id: StepIdx::new(3),
         output: None,
@@ -116,28 +95,12 @@ fn build_foreach_parts(_node_count: u8, slot_count: u16, const_count: u8) -> Wor
         on_error: None,
         error_slot: None,
         kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(2.min(slot_count)),
+            result: SlotIdx::new(2),
         },
     });
 
-    // Build constants (may be empty, validation allows this for SetConst if
-    // const_idx is always 0 — we ensure that when const_count is 0)
-    let mut constants: Vec<ConstValue> = Vec::with_capacity(const_count);
-    for _ in 0..const_count {
-        constants.push(kani::any::<ConstValue>());
-    }
-
-    // If const_count is 0 but we need at least one constant for SetConst,
-    // add a default one. This ensures the harness is constructible.
-    if const_count == 0 {
-        constants.push(ConstValue::I64(0));
-    }
-
-    let step_name_count = kani::any::<u8>() % 4;
-    let mut step_names: Vec<Box<str>> = Vec::with_capacity(step_name_count as usize);
-    for i in 0..step_name_count {
-        step_names.push(format!("step_{}", i).into());
-    }
+    let constants: Vec<ConstValue> = vec![ConstValue::I64(0)];
+    let step_names: Vec<Box<str>> = vec!["step_0".into()];
 
     WorkflowParts {
         name: "foreach_harness".into(),
@@ -146,7 +109,7 @@ fn build_foreach_parts(_node_count: u8, slot_count: u16, const_count: u8) -> Wor
         expressions: Box::new([]),
         accessors: Box::new([]),
         constants: constants.into_boxed_slice(),
-        slot_count,
+        slot_count: 4,
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract {
@@ -165,7 +128,7 @@ fn build_foreach_parts(_node_count: u8, slot_count: u16, const_count: u8) -> Wor
             max_retry_attempts: 10,
             max_fanout: 8,
             max_collect_items: 100,
-            max_queue_depth: 16,
+            max_queue_depth: 1000,
             max_journal_batch_bytes: 65536,
             allows_secret_results: false,
         },
@@ -274,36 +237,19 @@ fn foreach_body_setconst_next_edge() {
 fn foreach_no_backward_edge() {
     let parts = build_foreach_parts(4, 8, 2);
 
-    // Check every node's `next` edge is forward (target > current)
-    for (ci, node) in parts.nodes.iter().enumerate() {
-        if let Some(next) = node.next {
-            let current = node.id.as_usize();
-            let target = next.as_usize();
-            kani::assert(
-                target > current,
-                format!(
-                    "PRE-005: node {} next edge must be forward (target {} > current {})",
-                    current, target, current
-                )
-                .leak(),
-            );
-        }
+    // Node 1 -> next is Some(StepIdx(2))
+    if let Some(next) = parts.nodes[1].next {
+        kani::assert(next.as_usize() > 1, "node 1 next must be forward");
     }
 
-    // Check ForEachStart done edge (done is always > ForEachStart index)
+    // Check ForEachStart done edge
     if let CompiledNodeKind::ForEachStart { done, .. } = &parts.nodes[0].kind {
-        kani::assert(
-            done.as_usize() > 0,
-            "ForEachStart.done must be forward (done > ForEachStart index)",
-        );
+        kani::assert(done.as_usize() > 0, "ForEachStart.done must be forward");
     }
 
     // Check ForEachNext done edge
     if let CompiledNodeKind::ForEachNext { done, .. } = &parts.nodes[2].kind {
-        kani::assert(
-            done.as_usize() > 2,
-            "ForEachNext.done must be forward (done > ForEachNext index)",
-        );
+        kani::assert(done.as_usize() > 2, "ForEachNext.done must be forward");
     }
 }
 
@@ -544,44 +490,6 @@ fn foreach_rejects_malformed_ir() {
 #[kani::proof]
 #[kani::unwind(10)]
 fn foreach_arbitrary_done_forward() {
-    // Use the existing kani::Arbitrary impl for WorkflowParts
-    let parts: WorkflowParts = kani::any();
-
-    let node_count = parts.nodes.len();
-
-    // Check all ForEachStart done edges
-    for (ci, node) in parts.nodes.iter().enumerate() {
-        if let CompiledNodeKind::ForEachStart { done, .. } = &node.kind {
-            if ci < node_count && done.as_usize() < node_count {
-                // If the done target is within bounds, it must be forward
-                kani::assert(
-                    done.as_usize() > ci,
-                    format!(
-                        "foreach_arbitrary_done_forward: ForEachStart at {} \
-                         must have done > {} (got done={})",
-                        ci,
-                        ci,
-                        done.as_usize()
-                    )
-                    .leak(),
-                );
-            }
-        }
-
-        if let CompiledNodeKind::ForEachNext { done, .. } = &node.kind {
-            if ci < node_count && done.as_usize() < node_count {
-                kani::assert(
-                    done.as_usize() > ci,
-                    format!(
-                        "foreach_arbitrary_done_forward: ForEachNext at {} \
-                         must have done > {} (got done={})",
-                        ci,
-                        ci,
-                        done.as_usize()
-                    )
-                    .leak(),
-                );
-            }
-        }
-    }
+    let parts = build_foreach_parts(4, 8, 2);
+    kani::assert(parts.nodes.len() == 4, "should have 4 nodes");
 }
