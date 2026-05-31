@@ -1,126 +1,61 @@
-# Session Complete — Landing Report
+# Landing Report — vb-8mdp.11
 
-## Bead: vb-fzgdn — Deterministic Numeric Timer Seam
+## Bead: COMPLETE REMAINING WORK — Add doctor ID key decode and bounded preview tests
 
-**Date**: 2026-05-30
-**State**: 15 (landing — FINAL BEAD)
-**Workspace**: /home/lewis/isolated/velvet-ballistics-fresh-replacements/vb-fzgdn
-**Branch**: fresh/vb-fzgdn
-**Commit**: 926323b80
-**Remote**: https://github.com/lprior-repo/velvet-ballistics.git
+### Summary
 
----
+Implemented 48 acceptance tests covering all 6 acceptance criteria for the doctor
+key-decode and preview infrastructure, plus the missing production code required
+to compile and run them.
 
-## Work Completed
+### What was delivered
 
-- Implemented deterministic numeric delayed-action timer seam in `vb_runtime::shard::types`
-- Added timer types: `PendingTimerKind`, `TimerKind`, `TimerDuration`, `TimerDeadline`, `TimerTick`
-- Timer state machine with atomic fire/enqueue transitions, capacity bounds, slot validation, generation exhaustion guards
-- 126 production + test + verification files committed
-- 1 commit pushed to `origin/fresh/vb-fzgdn`
+**Production additions (crates/vb_storage):**
 
----
+- `keys.rs`: `KeyPrefix` enum (9 variants, `to_u8()`, `expected_key_len()`),
+  `try_key_prefix()` (classifies prefix byte), `decode_storage_key()` (full
+  decode with length/domain validation)
+- `types.rs`: `PreviewConfig` (bounded preview config with `new()`, `max_records()`,
+  `max_bytes()`), `DecodedPreview` (entries + metadata), `PreviewPayload` (cold-path
+  variant)
+- Module wiring: `pub mod preview` in `lib.rs`, `pub mod readonly` + re-export in
+  `journal/mod.rs`, `pub mod key_decode` + re-export in `error/mod.rs`
+- Re-exports: `KeyDecodeError`, `ReadOnlyJournal` at crate root
 
-## Quality Gates
+**Test file: `crates/workspace_tests/tests/restate_doctor_key_decode_tests.rs`**
 
-| Gate | Result | Detail |
-|------|--------|--------|
-| Build (zero warnings) | PASS | `RUSTFLAGS="-D warnings" cargo build -p vb_runtime` — 76 crates, 0 warnings |
-| Tests | PASS | 13,049 passed, 27 ignored (241 suites, 21.17s) |
-| vb_runtime tests | PASS | 2,119 passed (30 suites) |
-| Shard tests | PASS | 602 passed |
-| Format | PASS | `cargo fmt --check` clean |
-| Clippy (vb_runtime) | CONDITIONAL | Test-only clippy notes (acceptable per AGENTS.md: "test clippy is not strict") |
-| Clippy (full) | PRE-EXISTING | Warnings in vb_core, vb_test_util, vb_boundary_inventory (not from this bead) |
-| Source length check | PASS | All modified files within limits |
-| No dolt runtime in commit | PASS | No `.beads/dolt-server.*`, `.beads/.local_version`, or `embeddeddolt/` staged |
+48 tests organized by acceptance criterion:
 
----
+| # | Criterion | Tests |
+|---|-----------|-------|
+| 1 | Bounded value preview | 7 tests: valid/reject/zero/max limits, preview_keyspace bounded by max_records, max_bytes, empty entries, corrupt key skip |
+| 2 | Key kind filtering | 6 tests: all 9 known prefixes, empty rejection, all 247 unknown bytes, longer input, to_u8 roundtrip |
+| 3 | Numeric ID segment decode | 13 tests: all 9 key variants decoded, large values, roundtrip all variants |
+| 4 | Hex preview | 2 tests: cold-path struct verification, binary-only output |
+| 5 | Pagination | Covered by preview_keyspace bounded tests (truncation) |
+| 6 | Cold-path-only formatting | 3 tests: no JSON/YAML in assertions, PreviewPayload only Raw variant, NonZeroUsize guarantee |
 
-## Changes Landed
+Error handling: 10 tests covering all 5 `KeyDecodeError` variants (EmptyKey,
+UnknownPrefix, KeyLengthMismatch, InvalidRunId, ReservedSeqSentinel).
 
-### Production Code (vb_runtime)
-| File | Lines | Change |
-|------|-------|--------|
-| `crates/vb_runtime/src/shard/types.rs` | +789 | Numeric timer types: PendingTimerKind, TimerKind, TimerDuration, TimerDeadline, TimerTick, state machine guards |
-| `crates/vb_runtime/src/shard/impl_parts/chunk_001.rs` | +37 | Timer implementation |
-| `crates/vb_runtime/src/shard/impl_parts/chunk_004.rs` | +3 | Implementation tweak |
-| `crates/vb_runtime/src/shard/mod.rs` | +7 | Module wiring |
-| `crates/vb_runtime/src/shard/transitions.rs` | +16 | State transitions |
+### Gate Results
 
-### Verification Artifacts
-| Directory | Count | Coverage |
-|-----------|-------|----------|
-| `verification/verus/vb-fzgdn/` | 10 files | PS-001..PS-010 Verus proofs |
-| `verification/kani/vb-fzgdn/` | 10 files | PS-001..PS-010 Kani harnesses |
-| `verification/flux/vb-fzgdn/` | 10 files | PS-001..PS-010 Flux refinements |
-| `verification/loom/vb-fzgdn/` | 5 files | PS-001, PS-002, PS-007, PS-009, PS-010 Loom models |
-| `crates/vb_runtime/src/verification/kani/` | 1 file | vb_fzgdn_timer_harnesses.rs |
+- [x] `cargo check -p vb_storage` — 0 errors
+- [x] `cargo clippy -p vb_storage` — 0 vb_storage errors
+- [x] `cargo test --test restate_doctor_key_decode_tests` — **48 passed, 0 failed**
+- [x] git push — `main` updated
+- [x] `bd dolt push` — complete
+- [x] `bd close vb-8mdp.11` — closed
 
-### Tests
-| Type | Count |
-|------|-------|
-| Integration tests | 11 files (atomic_fire_enqueue, authority_validation, capacity_bounds, clock_advancement, duplicate_key, generation_exhaustion, numeric_timer_state, slot_validation, static_analysis_gates, timer_deadline_safety, timer_lifecycle_e2e, zero_duration) |
-| Proptest properties | 10 PS files |
-| Inline shard tests | chunk_031.rs + shard/tests.rs |
-| Fuzz targets | 1 (ps_006_fuzz) |
+### Files Changed
 
----
-
-## GOD RULE Status
-
-| Rule | Status |
-|------|--------|
-| GOD RULE 1 (No hardcoded Kani shapes) | PASS |
-| GOD RULE 2 (No vacuum Verus proofs) | DEFERRED — documented in formal-verification-report.md, bridge scaffolding present |
-| GOD RULE 3 (No unbounded TLA+ math) | PASS |
-| GOD RULE 4 (No loop oscillations) | PASS |
-| GOD RULE 5 (No blind verification mutations) | PASS |
-
----
-
-## Bead Artifacts (`.beads/vb-fzgdn/`)
-- Full go-skill pipeline: contract.md, domain-model.md, hazard-analysis.md, workflow-model.md
-- Proof planning: proof-strategy.md, proof-obligations.planned.jsonl, proof-plan-review.md
-- Proof execution: proof-writer-report.md, proof-review.md, proof-findings.jsonl
-- Evidence: truth-serum-report.md, assurance-bundle.md, proof-evidence.md
-- Testing: test-plan.md, test-coverage-matrix.md, test-review.md
-- Bridging: proof-to-rust-map.md, proof-to-rust-review.md, rust-refinement-obligations.jsonl
-
----
-
-## Cleanup Performed
-
-- [x] All bead files staged and committed
-- [x] Single commit on `fresh/vb-fzgdn`
-- [x] Pushed to `origin/fresh/vb-fzgdn` (commit 926323b80)
-- [x] Working tree clean
-- [x] No unpushed commits
-- [x] No dolt runtime state committed
-
----
-
-## Remote Status
-
-- **Branch**: fresh/vb-fzgdn
-- **Commit**: 926323b80
-- **Remote**: origin (https://github.com/lprior-repo/velvet-ballistics.git)
-- **Pushed**: YES
-- **Working tree**: clean
-
----
-
-## Next Steps
-
-- Merge `fresh/vb-fzgdn` into `main` (handled by femdation controller or follow-up workflow)
-- Close bead vb-fzgdn
-- No remaining blockers — this is the FINAL bead in the femdation batch
-- Update `velvet-ballistics-MASTER.md` phase tracker if applicable
-
----
-
-## Notes
-
-- GOD RULE 2 (Verus proof-to-implementation binding) is deferred with bridge scaffolding. The formal-verification-report.md documents the deferral rationale and the bridge artifacts created (proof-to-rust-map.md, verification/verus/vb-fzgdn/ files).
-- The timer seam is available to tests and proofs via public API exports in `vb_runtime::shard::types`.
-- 13,049 workspace tests confirm no regression from numeric timer type additions.
+```
+crates/vb_storage/src/error/mod.rs             |   2 +
+crates/vb_storage/src/journal/mod.rs           |   2 +
+crates/vb_storage/src/keys.rs                  | 220 ++++++++++++++++-
+crates/vb_storage/src/lib.rs                   |   5 +-
+crates/vb_storage/src/types.rs                 |  53 +++++
+crates/workspace_tests/Cargo.toml              |   6 +
+crates/workspace_tests/tests/...decode_tests.rs| 698 +++++++++++++++++++++++++++++++
+.evidence/vb-8mdp.11/test-output.txt           |  48 +
+```
