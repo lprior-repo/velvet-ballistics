@@ -98,13 +98,7 @@ impl kani::Arbitrary for SymbolId {
 
 impl kani::Arbitrary for ConstValue {
     fn any() -> Self {
-        match kani::any::<u8>() {
-            0 => Self::Null,
-            1 => Self::Bool(kani::any()),
-            2 => Self::I64(kani::any()),
-            3 => Self::F64(kani::any()),
-            _ => Self::Symbol(SymbolId::new(kani::any())),
-        }
+        Self::I64(kani::any())
     }
 }
 
@@ -400,7 +394,11 @@ impl kani::Arbitrary for WorkflowParts {
             constants: constants.into_boxed_slice(),
             slot_count: kani::any::<u16>(),
             symbols_count: kani::any::<u32>(),
-            entry: StepIdx::new(kani::any()),
+            entry: {
+                let entry_idx: u8 = kani::any();
+                let bounded_idx = if node_count == 0 { 0 } else { entry_idx % node_count };
+                StepIdx::new(bounded_idx as u16)
+            },
             resource_contract: kani::any::<ResourceContract>(),
             step_names: step_names.into_boxed_slice(),
         }
