@@ -365,57 +365,6 @@ fn health_sends_command_and_receives_healthy() {
 }
 
 #[test]
-fn shutdown_sends_shutdown_command() {
-    let path = temp_socket_path("shutdown_cmd");
-    let _cleanup = CleanupPath(&path);
-    let mut server = IpcServer::bind(&path).unwrap();
-    let mut runtime = make_runtime();
-    let mut client = IpcClient::connect(&path).unwrap();
-
-    server
-        .poll_once(&mut runtime, Some(Duration::from_millis(100)))
-        .unwrap();
-    client.shutdown(202).unwrap();
-    server
-        .poll_once(&mut runtime, Some(Duration::from_millis(100)))
-        .unwrap();
-
-    let (header, response) = client
-        .recv_response(crate::MaxPayloadBytes::DEFAULT)
-        .unwrap();
-    assert_eq!(header.command, crate::IpcCommand::Shutdown);
-    assert_eq!(header.correlation, 202);
-    assert_eq!(response, IpcResponse::ShuttingDown);
-}
-
-#[test]
-fn list_runs_sends_list_runs_command() {
-    let path = temp_socket_path("list_runs_cmd");
-    let _cleanup = CleanupPath(&path);
-    let mut server = IpcServer::bind(&path).unwrap();
-    let mut runtime = make_runtime();
-    let mut client = IpcClient::connect(&path).unwrap();
-
-    server
-        .poll_once(&mut runtime, Some(Duration::from_millis(100)))
-        .unwrap();
-    client.list_runs(303, 10, None).unwrap();
-    server
-        .poll_once(&mut runtime, Some(Duration::from_millis(100)))
-        .unwrap();
-
-    let (header, response) = client
-        .recv_response(crate::MaxPayloadBytes::DEFAULT)
-        .unwrap();
-    assert_eq!(header.command, crate::IpcCommand::ListRuns);
-    assert_eq!(header.correlation, 303);
-    match response {
-        IpcResponse::RunList { runs } => assert!(runs.is_empty()),
-        other => panic!("expected RunList, got {other:?}"),
-    }
-}
-
-#[test]
 fn send_command_writes_bytes_to_stream() {
     let (client_stream, mut server_stream) = std::os::unix::net::UnixStream::pair().unwrap();
     server_stream
@@ -484,27 +433,7 @@ fn shutdown_writes_bytes_to_stream() {
     assert_eq!(header.correlation, 99);
 }
 
-#[test]
-fn list_runs_writes_bytes_to_stream() {
-    let (client_stream, mut server_stream) = std::os::unix::net::UnixStream::pair().unwrap();
-    server_stream
-        .set_read_timeout(Some(std::time::Duration::from_millis(100)))
-        .unwrap();
-    let mut client = IpcClient {
-        stream: client_stream,
-    };
-    client.list_runs(111, 5, None).unwrap();
 
-    let mut buf = vec![0u8; crate::IPC_HEADER_LEN];
-    server_stream
-        .read_exact(&mut buf)
-        .expect("list_runs should write header bytes");
-    let header =
-        crate::IpcFrameHeader::decode(&buf.try_into().unwrap(), crate::MaxPayloadBytes::DEFAULT)
-            .unwrap();
-    assert_eq!(header.command, crate::IpcCommand::ListRuns);
-    assert_eq!(header.correlation, 111);
-}
 
 // ── failure path tests ──────────────────────────────────────────────────────
 

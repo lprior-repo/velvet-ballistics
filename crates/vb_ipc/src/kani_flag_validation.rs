@@ -85,12 +85,9 @@ const fn valid_mask_model(command: IpcCommand) -> u16 {
         IpcCommand::DrainTrace => 0x0007,
         IpcCommand::Health => 0x0000,
         IpcCommand::Shutdown => 0x0000,
-        IpcCommand::ListRuns => 0x00FF,
-        IpcCommand::GetMetrics => 0x0000,
-        IpcCommand::GetWorkflowGraph => 0x0001,
-        IpcCommand::GetTaintReport => 0x0000,
-        IpcCommand::VerifyWorkflow => 0x0003,
+        IpcCommand::UnknownCommand(_) => 0x0000,
     }
+}
 }
 
 /// Model of `CommandFlags::validate()` per contract §2.1.
@@ -202,8 +199,7 @@ const fn is_zero_mask_command(command: IpcCommand) -> bool {
             | IpcCommand::FailAction
             | IpcCommand::Health
             | IpcCommand::Shutdown
-            | IpcCommand::GetMetrics
-            | IpcCommand::GetTaintReport
+            | IpcCommand::UnknownCommand(_)
     )
 }
 
@@ -219,7 +215,7 @@ const fn is_zero_mask_command(command: IpcCommand) -> bool {
 fn differential_model_matches_production() {
     // --- Select command symbolically ---
     let cmd_raw: u16 = kani::any();
-    kani::assume(cmd_raw >= 1 && cmd_raw <= 16);
+    kani::assume(cmd_raw >= 1 && cmd_raw <= 11);
     let command = match IpcCommand::from_u16(cmd_raw) {
         Ok(cmd) => cmd,
         Err(_) => return,
@@ -273,7 +269,7 @@ fn differential_model_matches_production() {
 #[kani::proof]
 fn differential_zero_mask_consistency() {
     let cmd_raw: u16 = kani::any();
-    kani::assume(cmd_raw >= 1 && cmd_raw <= 16);
+    kani::assume(cmd_raw >= 1 && cmd_raw <= 11);
     let command = IpcCommand::from_u16(cmd_raw);
 
     match command {
@@ -329,7 +325,7 @@ fn differential_zero_mask_consistency() {
 fn flag_roundtrip_small_masks() {
     // --- Select command symbolically ---
     let cmd_raw: u16 = kani::any();
-    kani::assume(cmd_raw >= 1 && cmd_raw <= 16);
+    kani::assume(cmd_raw >= 1 && cmd_raw <= 11);
     let command = IpcCommand::from_u16(cmd_raw);
 
     // F-006: move domain constraint into assume before match
@@ -422,7 +418,7 @@ fn flag_roundtrip_small_masks() {
 #[kani::proof]
 fn flag_validate_zero_mask() {
     let cmd_raw: u16 = kani::any();
-    kani::assume(cmd_raw >= 1 && cmd_raw <= 16);
+    kani::assume(cmd_raw >= 1 && cmd_raw <= 11);
     let command = IpcCommand::from_u16(cmd_raw);
 
     match command {
@@ -522,7 +518,7 @@ fn flag_validate_zero_mask() {
 #[kani::proof]
 fn flag_validate_small_mask() {
     let cmd_raw: u16 = kani::any();
-    kani::assume(cmd_raw >= 1 && cmd_raw <= 16);
+    kani::assume(cmd_raw >= 1 && cmd_raw <= 11);
     let command = IpcCommand::from_u16(cmd_raw);
 
     match command {
@@ -613,7 +609,7 @@ fn flag_validate_small_mask() {
 #[kani::proof]
 fn reserved_bits_all_commands() {
     let cmd_raw: u16 = kani::any();
-    kani::assume(cmd_raw >= 1 && cmd_raw <= 16);
+    kani::assume(cmd_raw >= 1 && cmd_raw <= 11);
     let command = IpcCommand::from_u16(cmd_raw);
 
     match command {
@@ -702,7 +698,7 @@ fn decode_roundtrip_valid_flags() {
 
     // --- Select command symbolically ---
     let cmd_raw: u16 = kani::any();
-    kani::assume(cmd_raw >= 1 && cmd_raw <= 16);
+    kani::assume(cmd_raw >= 1 && cmd_raw <= 11);
     let command = match IpcCommand::from_u16(cmd_raw) {
         Ok(cmd) => cmd,
         Err(_) => return,
@@ -805,7 +801,7 @@ fn decode_roundtrip_valid_flags() {
 fn decode_rejects_invalid_flags() {
     // --- Select command symbolically ---
     let cmd_raw: u16 = kani::any();
-    kani::assume(cmd_raw >= 1 && cmd_raw <= 16);
+    kani::assume(cmd_raw >= 1 && cmd_raw <= 11);
     let command = match IpcCommand::from_u16(cmd_raw) {
         Ok(cmd) => cmd,
         Err(_) => return,
@@ -928,7 +924,7 @@ fn decode_rejects_invalid_flags() {
 #[kani::proof]
 fn model_invariant_disjoint_masks() {
     let cmd_raw: u16 = kani::any();
-    kani::assume(cmd_raw >= 1 && cmd_raw <= 16);
+    kani::assume(cmd_raw >= 1 && cmd_raw <= 11);
     let command = IpcCommand::from_u16(cmd_raw);
 
     match command {
@@ -950,7 +946,7 @@ fn model_invariant_disjoint_masks() {
 #[kani::proof]
 fn model_zero_flags_always_valid() {
     let cmd_raw: u16 = kani::any();
-    kani::assume(cmd_raw >= 1 && cmd_raw <= 16);
+    kani::assume(cmd_raw >= 1 && cmd_raw <= 11);
     let command = IpcCommand::from_u16(cmd_raw);
 
     match command {
@@ -972,7 +968,7 @@ fn model_zero_flags_always_valid() {
 #[kani::proof]
 fn model_flag_validation_no_panic() {
     let cmd_raw: u16 = kani::any();
-    kani::assume(cmd_raw >= 1 && cmd_raw <= 16);
+    kani::assume(cmd_raw >= 1 && cmd_raw <= 11);
     let raw_flags: u16 = kani::any();
 
     let command = IpcCommand::from_u16(cmd_raw);
@@ -991,7 +987,7 @@ fn model_flag_validation_no_panic() {
 #[kani::proof]
 fn production_impl_no_panic() {
     let cmd_raw: u16 = kani::any();
-    kani::assume(cmd_raw >= 1 && cmd_raw <= 16);
+    kani::assume(cmd_raw >= 1 && cmd_raw <= 11);
     let raw_flags: u16 = kani::any();
 
     let command = IpcCommand::from_u16(cmd_raw);

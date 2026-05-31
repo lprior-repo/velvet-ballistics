@@ -2,7 +2,7 @@
 //! IPC command flag matrix tests — vb-39jp
 //!
 //! Exhaustive test coverage for IPC command flag roundtrip and
-//! reserved-bit validation across all 16 v1 commands.
+//! reserved-bit validation across all 11 v1 commands.
 //!
 //! ## Test Plan Reference
 //! - 22 behaviors identified
@@ -66,18 +66,13 @@ const fn valid_mask_ref(command: IpcCommand) -> u16 {
         IpcCommand::DrainTrace => 0x0007,
         IpcCommand::Health => 0x0000,
         IpcCommand::Shutdown => 0x0000,
-        IpcCommand::ListRuns => 0x00FF,
-        IpcCommand::GetMetrics => 0x0000,
-        IpcCommand::GetWorkflowGraph => 0x0001,
-        IpcCommand::GetTaintReport => 0x0000,
-        IpcCommand::VerifyWorkflow => 0x0003,
         // Future commands: no flags (mask=0) by default
         _ => 0x0000,
     }
 }
 
-/// All 16 IPC v1 commands in declaration order.
-const ALL_COMMANDS: [IpcCommand; 16] = [
+/// All 11 IPC v1 commands in declaration order.
+const ALL_COMMANDS: [IpcCommand; 11] = [
     IpcCommand::SubmitRun,
     IpcCommand::SubmitRunInline,
     IpcCommand::CancelRun,
@@ -89,35 +84,25 @@ const ALL_COMMANDS: [IpcCommand; 16] = [
     IpcCommand::DrainTrace,
     IpcCommand::Health,
     IpcCommand::Shutdown,
-    IpcCommand::ListRuns,
-    IpcCommand::GetMetrics,
-    IpcCommand::GetWorkflowGraph,
-    IpcCommand::GetTaintReport,
-    IpcCommand::VerifyWorkflow,
 ];
 
 /// Commands with a zero valid mask (accept no flags). Contract §2.2.
-const ZERO_MASK_COMMANDS: [IpcCommand; 8] = [
+const ZERO_MASK_COMMANDS: [IpcCommand; 6] = [
     IpcCommand::CancelRun,
     IpcCommand::AnswerAsk,
     IpcCommand::CompleteAction,
     IpcCommand::FailAction,
     IpcCommand::Health,
     IpcCommand::Shutdown,
-    IpcCommand::GetMetrics,
-    IpcCommand::GetTaintReport,
 ];
 
 /// Commands with a non-zero valid mask (accept flags). Contract §2.2.
-const NONZERO_MASK_COMMANDS: [IpcCommand; 8] = [
+const NONZERO_MASK_COMMANDS: [IpcCommand; 5] = [
     IpcCommand::SubmitRun,
     IpcCommand::SubmitRunInline,
     IpcCommand::InspectRun,
     IpcCommand::ListEvents,
     IpcCommand::DrainTrace,
-    IpcCommand::ListRuns,
-    IpcCommand::GetWorkflowGraph,
-    IpcCommand::VerifyWorkflow,
 ];
 
 // ============================================================================
@@ -201,7 +186,7 @@ fn proptest_header_roundtrip_preserves_all_fields() {
 
     for _ in 0..1000 {
         // Select random command
-        let cmd_idx: usize = rng.random_range(0..16);
+        let cmd_idx: usize = rng.random_range(0..11);
         let command = ALL_COMMANDS[cmd_idx];
 
         // Generate flags within low byte only (0x00..=0xFF)
@@ -277,7 +262,7 @@ fn proptest_decode_rejects_invalid_flags_per_command() {
         None
     }
 
-    // Enumerate all 16 commands × sample flag values.
+    // Enumerate all 11 commands × sample flag values.
     // After GAP resolution, replace with actual decode() assertions.
     for command in &ALL_COMMANDS {
         for &test_flag in &[0x0000_u16, 0x0001, 0x00FF, 0x0100, 0xFF00, 0xFF01, 0xFFFF] {
@@ -300,7 +285,7 @@ fn proptest_idempotent_header_encode_decode_roundtrip() {
     let mut rng = StdRng::seed_from_u64(0xCAFE_FADE_FEED_FACE);
 
     for _ in 0..500 {
-        let cmd_idx: usize = rng.random_range(0..16);
+        let cmd_idx: usize = rng.random_range(0..11);
         let command = ALL_COMMANDS[cmd_idx];
         let flags: u16 = rng.random_range(0..=0x00FF_u16);
         let correlation: u64 = rng.random();
@@ -339,7 +324,7 @@ fn proptest_encode_succeeds_for_any_flags_value() {
     let mut rng = StdRng::seed_from_u64(0xFEED_FACE_CAFE_BABE);
 
     for _ in 0..500 {
-        let cmd_idx: usize = rng.random_range(0..16);
+        let cmd_idx: usize = rng.random_range(0..11);
         let command = ALL_COMMANDS[cmd_idx];
         // Generate ANY u16 flags value — full range including reserved bits
         let flags: u16 = rng.random();
@@ -371,7 +356,7 @@ fn proptest_encode_succeeds_for_any_flags_value() {
 
 /// PO-VB39JP-015:
 /// For every command, `valid_mask(C) & reserved_global_mask == 0`.
-/// This is an enumeration over all 16 commands, not random generation.
+/// This is an enumeration over all 11 commands, not random generation.
 #[test]
 fn proptest_valid_mask_is_disjoint_from_reserved_global_mask() {
     for command in &ALL_COMMANDS {
@@ -398,7 +383,7 @@ fn proptest_decode_reserved_field_error_takes_precedence_over_flag_error() {
     let mut rng = StdRng::seed_from_u64(0xBEEF_DEAD_FADE_CAFE);
 
     for _ in 0..200 {
-        let cmd_idx: usize = rng.random_range(0..16);
+        let cmd_idx: usize = rng.random_range(0..11);
         let command = ALL_COMMANDS[cmd_idx];
 
         // Flags with at least one invalid aspect (reserved bit or outside mask)
@@ -443,7 +428,7 @@ fn proptest_decode_reserved_field_error_takes_precedence_over_flag_error() {
 /// PRE-INTEGRATION: Blocked until GAP-1 (CommandFlags struct).
 #[test]
 #[ignore = "GAP-1: CommandFlags struct and validate() not yet implemented"]
-fn validate_zero_flags_succeeds_for_all_16_commands() {
+fn validate_zero_flags_succeeds_for_all_11_commands() {
     // TODO(GAP-1): Replace comment body with:
     // for command in &ALL_COMMANDS {
     //     let result = CommandFlags::validate(*command, 0x0000);
@@ -505,7 +490,7 @@ fn validate_accepts_flags_within_valid_mask_for_each_command() {
 /// PRE-INTEGRATION: Blocked until GAP-1 and GAP-3.
 #[test]
 #[ignore = "GAP-1,GAP-3: CommandFlags::validate and IpcError::ReservedBitsSet not yet implemented"]
-fn validate_returns_reserved_bits_set_for_all_16_commands() {
+fn validate_returns_reserved_bits_set_for_all_11_commands() {
     // TODO(GAP-1,GAP-3): Replace with:
     // for command in &ALL_COMMANDS {
     //     for &reserved_flag in &[0x0100_u16, 0x8000, 0xFF00, 0x0F00] {
@@ -795,11 +780,11 @@ fn submit_run_inline_command_header_with_payload_len_at_bound_roundtrips() {
 }
 
 /// B-ROUNDTRIP-003:
-/// All 16 IPC command variants roundtrip through encode→decode with
+/// All 11 IPC command variants roundtrip through encode→decode with
 /// command-appropriate valid flags. Zero-mask commands use flags=0x0000.
 /// Non-zero-mask commands use their maximum valid flag value.
 #[test]
-fn all_16_ipc_commands_roundtrip_header_with_valid_flags() {
+fn all_11_ipc_commands_roundtrip_header_with_valid_flags() {
     for command in &ALL_COMMANDS {
         let mask = valid_mask_ref(*command);
         // Use the maximum valid flag for this command (or 0 for zero-mask)
@@ -974,7 +959,7 @@ fn decode_accepts_payload_len_equal_to_max_bound() {
 
 /// B-ROUNDTRIP-008:
 /// Header encode→decode is idempotent: two cycles produce identical
-/// headers. Tested for all 16 commands with valid flags.
+/// headers. Tested for all 11 commands with valid flags.
 #[test]
 fn header_encode_decode_is_idempotent_for_valid_headers() {
     for command in &ALL_COMMANDS {
@@ -1144,7 +1129,7 @@ fn decode_returns_reserved_non_zero_not_reserved_bits_set_when_reserved_field_is
 /// IDs 0 and 17..=65535. Flag validation is never reached because
 /// command resolution fails first.
 #[test]
-fn decode_returns_unknown_command_for_command_ids_0_and_above_16() {
+fn decode_returns_unknown_command_for_command_ids_0_and_above_11() {
     // Command ID 0
     {
         let header_bytes = raw_header_cmd_id(0, 0x0000);
@@ -1368,15 +1353,15 @@ fn decode_accepts_payload_len_exactly_at_tight_max_bound() {
     assert_eq!(decoded.payload_len, 1024);
 }
 
-/// Verify that all 16 commands report their expected wire command ID
-/// via as_u16(), and that from_u16() roundtrips correctly for 1..=16.
+/// Verify that all 11 commands report their expected wire command ID
+/// via as_u16(), and that from_u16() roundtrips correctly for 1..=11.
 #[test]
-fn all_16_commands_have_correct_wire_ids_and_roundtrip_from_u16() {
+fn all_11_commands_have_correct_wire_ids_and_roundtrip_from_u16() {
     for &command in &ALL_COMMANDS {
         let wire_id = command.as_u16();
         assert!(
-            (1..=16).contains(&wire_id),
-            "command {:?} has wire ID {} outside 1..=16",
+            (1..=11).contains(&wire_id),
+            "command {:?} has wire ID {} outside 1..=11",
             command,
             wire_id
         );
@@ -1467,15 +1452,15 @@ fn regression_submit_run_with_flags_0x_abcd_currently_roundtrips() {
 }
 
 // ============================================================================
-// Section J: Comprehensive flag test matrix — all 16 commands × flag classes
+// Section J: Comprehensive flag test matrix — all 11 commands × flag classes
 // ============================================================================
 
-/// Combinatorial test: for each of the 16 commands, test the current
+/// Combinatorial test: for each of the 11 commands, test the current
 /// roundtrip behavior across all flag classes defined in the contract
 /// matrix (§8.1). This documents the pre-GAP-5 acceptance of all flag
 /// values and provides a structured matrix for post-GAP migration.
 #[test]
-fn flag_matrix_all_16_commands_all_classes_roundtrip_in_current_code() {
+fn flag_matrix_all_11_commands_all_classes_roundtrip_in_current_code() {
     /// Represents a flag test case in the contract matrix.
     struct FlagCase {
         label: &'static str,
