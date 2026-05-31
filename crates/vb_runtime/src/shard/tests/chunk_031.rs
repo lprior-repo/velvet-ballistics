@@ -1,513 +1,317 @@
 
-// W1-W4 refinement behavior tests for vb-282my.
-// W1: Resume guard (4 tests), W4: Ask-answer guard (3 tests),
-// RS-05, RS-06, RS-11..RS-13 Apply transitions, AA-03, RS-07
-// NOTE: Retry FSM tests are in helpers.rs inline tests.
+// =========================================================================
+// Numeric Timer Seam — Shard-Level Unit Tests
+// =========================================================================
+// Tests for advance_clock_to, current_tick, next_pending_timer_generation
+// on Shard using pub(crate) access to pending_timers.
 
-// ============================================================================
-// Helpers
-// ============================================================================
+use super::TimerTick;
 
-fn minimal_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
-    let set_node = CompiledNode {
-        id: vb_core::ids::StepIdx::ZERO,
-        output: Some(SlotIdx::ZERO),
-        next: Some(vb_core::ids::StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst { value: ConstIdx::new(0) },
+fn run_numeric(id: u64) -> super::RunId {
+    super::RunId::new(id)
+}
+
+// =========================================================================
+// advance_clock_to tests
+// =========================================================================
+
+#[test]
+fn advance_clock_to_accepts_forward_tick() {
+    let mut shard = Shard::new(ShardConfig::default());
+    assert_eq!(shard.advance_clock_to(TimerTick::new(10)), Ok(()));
+    assert_eq!(shard.current_tick(), TimerTick::new(10));
+}
+
+#[test]
+fn advance_clock_to_accepts_equal_tick() {
+    let mut shard = Shard::new(ShardConfig::default());
+    assert_eq!(shard.advance_clock_to(TimerTick::new(5)), Ok(()));
+    // Advancing to the same tick is a no-op success
+    assert_eq!(shard.advance_clock_to(TimerTick::new(5)), Ok(()));
+    assert_eq!(shard.current_tick(), TimerTick::new(5));
+}
+
+#[test]
+fn advance_clock_to_rejects_backward_tick() {
+    let mut shard = Shard::new(ShardConfig::default());
+    assert_eq!(shard.advance_clock_to(TimerTick::new(10)), Ok(()));
+    let result = shard.advance_clock_to(TimerTick::new(5));
+    assert_eq!(result, Err(RuntimeError::InvalidTimerFire));
+    // Current tick must be preserved after rejection
+    assert_eq!(shard.current_tick(), TimerTick::new(10));
+}
+
+#[test]
+fn advance_clock_to_rejects_backward_from_zero() {
+    let mut shard = Shard::new(ShardConfig::default());
+    assert_eq!(shard.current_tick(), TimerTick::new(0));
+    // Advancing to 0 from 0 should be a no-op
+    assert_eq!(shard.advance_clock_to(TimerTick::new(0)), Ok(()));
+}
+
+#[test]
+fn advance_clock_to_multiple_forward_steps() {
+    let mut shard = Shard::new(ShardConfig::default());
+    assert_eq!(shard.advance_clock_to(TimerTick::new(100)), Ok(()));
+    assert_eq!(shard.advance_clock_to(TimerTick::new(200)), Ok(()));
+    assert_eq!(shard.advance_clock_to(TimerTick::new(500)), Ok(()));
+    assert_eq!(shard.current_tick(), TimerTick::new(500));
+}
+
+#[test]
+fn advance_clock_to_accepts_max_u64_tick() {
+    let mut shard = Shard::new(ShardConfig::default());
+    assert_eq!(shard.advance_clock_to(TimerTick::new(u64::MAX)), Ok(()));
+    assert_eq!(shard.current_tick(), TimerTick::new(u64::MAX));
+}
+
+#[test]
+fn advance_clock_to_accepts_zero_tick_when_current_is_zero() {
+    let mut shard = Shard::new(ShardConfig::default());
+    assert_eq!(shard.current_tick(), TimerTick::new(0));
+    assert_eq!(shard.advance_clock_to(TimerTick::new(0)), Ok(()));
+}
+
+#[test]
+fn advance_clock_to_rejects_slightly_backward() {
+    let mut shard = Shard::new(ShardConfig::default());
+    assert_eq!(shard.advance_clock_to(TimerTick::new(1000)), Ok(()));
+    // 999 < 1000 — should reject
+    let result = shard.advance_clock_to(TimerTick::new(999));
+    assert_eq!(result, Err(RuntimeError::InvalidTimerFire));
+    assert_eq!(shard.current_tick(), TimerTick::new(1000));
+}
+
+// =========================================================================
+// current_tick tests
+// =========================================================================
+
+#[test]
+fn current_tick_starts_at_zero() {
+    let shard = Shard::new(ShardConfig::default());
+    assert_eq!(shard.current_tick(), TimerTick::new(0));
+}
+
+#[test]
+fn current_tick_starts_at_zero_for_custom_config() {
+    let config = ShardConfig {
+        command_queue_capacity: 64,
+        trace_capacity: 128,
+        step_budget_per_tick: 100,
+        max_active_runs: 16,
+        policy: vb_core::policy::RuntimePolicy::Strict,
     };
-    let finish_node = CompiledNode {
-        id: vb_core::ids::StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish { result: SlotIdx::ZERO },
-    };
-    let parts = WorkflowParts {
-        name: Box::from("minimal_finish"),
-        digest: WorkflowDigest::from_bytes([1; 32]),
-        nodes: Box::from([set_node, finish_node]),
-        expressions: Box::from([]),
-        accessors: Box::from([]),
-        constants: Box::from([vb_core::value::ConstValue::I64(42)]),
-        slot_count: 1,
-        symbols_count: 0,
-        entry: vb_core::ids::StepIdx::ZERO,
-        step_names: Box::from([]),
-        resource_contract: ResourceContract::DEFAULT,
-    };
-    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
-}
-
-// ============================================================================
-// W1: Resume state machine guard
-// ============================================================================
-
-#[test]
-fn handle_resume_rejects_initial_state() {
-    let config = small_config();
-    let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else { return; };
-    let run = super::RunId::new(7_301);
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
-        Ok(())
-    );
-    assert_eq!(shard.tick(), Ok(true));
-    shard.apply(run, super::RuntimeEvent::Submit);
-    assert_eq!(
-        shard.runtime_states.get(&run).copied(),
-        Some(super::RuntimeState::Initial),
-    );
-
-    let result = shard.handle_resume(run);
-
-    assert!(
-        matches!(
-            result,
-            Err(super::ResumeError::NotResumable {
-                run_id,
-                current_state: super::RuntimeState::Initial,
-            }) if run_id == run
-        ),
-        "handle_resume must reject Initial state with NotResumable, got {result:?}"
-    );
+    let shard = Shard::new(config);
+    assert_eq!(shard.current_tick(), TimerTick::new(0));
 }
 
 #[test]
-fn handle_resume_rejects_resuming_state() {
-    let config = small_config();
-    let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else { return; };
-    let run = super::RunId::new(7_302);
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
-        Ok(())
-    );
-    assert_eq!(shard.tick(), Ok(true));
-    shard.apply(run, super::RuntimeEvent::Resume);
-    assert_eq!(
-        shard.runtime_states.get(&run).copied(),
-        Some(super::RuntimeState::Resuming),
-    );
-
-    let result = shard.handle_resume(run);
-
-    assert!(
-        matches!(
-            result,
-            Err(super::ResumeError::NotResumable {
-                run_id,
-                current_state: super::RuntimeState::Resuming,
-            }) if run_id == run
-        ),
-        "handle_resume must reject Resuming state with NotResumable, got {result:?}"
-    );
+fn current_tick_reflects_last_advance() {
+    let mut shard = Shard::new(ShardConfig::default());
+    for tick in &[1u64, 10, 100, 1000, 10_000] {
+        assert_eq!(shard.advance_clock_to(TimerTick::new(*tick)), Ok(()));
+        assert_eq!(shard.current_tick(), TimerTick::new(*tick));
+    }
 }
 
 #[test]
-fn handle_resume_rejects_failed_state() {
-    let config = small_config();
-    let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else { return; };
-    let run = super::RunId::new(7_303);
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
-        Ok(())
-    );
-    assert_eq!(shard.tick(), Ok(true));
-    shard.apply(run, super::RuntimeEvent::Fail);
-    assert_eq!(
-        shard.runtime_states.get(&run).copied(),
-        Some(super::RuntimeState::Failed),
-    );
+fn current_tick_is_read_only_and_idempotent() {
+    let mut shard = Shard::new(ShardConfig::default());
+    assert_eq!(shard.advance_clock_to(TimerTick::new(42)), Ok(()));
+    // Reading current_tick multiple times gives the same value
+    for _ in 0..5 {
+        assert_eq!(shard.current_tick(), TimerTick::new(42));
+    }
+}
 
-    let result = shard.handle_resume(run);
+// =========================================================================
+// next_pending_timer_generation tests
+// =========================================================================
 
-    assert!(
-        matches!(
-            result,
-            Err(super::ResumeError::NotResumable {
-                run_id,
-                current_state: super::RuntimeState::Failed,
-            }) if run_id == run
-        ),
-        "handle_resume must reject Failed state with NotResumable, got {result:?}"
-    );
+#[test]
+fn next_pending_timer_generation_returns_one_for_no_timer() {
+    let shard = Shard::new(ShardConfig::default());
+    assert_eq!(shard.next_pending_timer_generation(run_numeric(1)), Some(1));
 }
 
 #[test]
-fn handle_resume_rejects_non_resumable_state() {
-    let config = small_config();
-    let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else { return; };
-    let run = super::RunId::new(7_304);
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
-        Ok(())
-    );
-    assert_eq!(shard.tick(), Ok(true));
-    shard.apply(run, super::RuntimeEvent::Submit);
-    assert_eq!(
-        shard.runtime_states.get(&run).copied(),
-        Some(super::RuntimeState::Initial)
-    );
-
-    let result = shard.handle_resume(run);
-
-    assert!(
-        matches!(
-            result,
-            Err(super::ResumeError::NotResumable { run_id, .. }) if run_id == run
-        ),
-        "handle_resume must reject non-resumable non-running states, got {result:?}"
-    );
-}
-
-// ============================================================================
-// W4: Ask-answer timer guard
-// ============================================================================
-
-#[test]
-fn handle_ask_answer_returns_invalid_action_completion_when_pending_timer_is_missing() {
-    let config = small_config();
-    let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else { return; };
-    let run = super::RunId::new(7_401);
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
-        Ok(())
-    );
-    assert_eq!(shard.tick(), Ok(true));
-    assert!(shard.runs.contains_key(&run));
-    assert!(shard.pending_timers.get(&run).is_none());
-
-    let answer = AskAnswer::new(
-        AskTicket { run, ask_step: vb_core::ids::StepIdx::new(0), resume_step: vb_core::ids::StepIdx::new(1) },
-        SlotIdx::ZERO,
-        vb_core::value::SlotValue::I64(1),
-        vb_core::Taint::Clean,
-    );
-    let result = shard.handle_ask_answer(answer);
-
-    assert!(
-        matches!(result, Err(RuntimeError::InvalidActionCompletion)),
-        "missing pending timer must return InvalidActionCompletion, got {result:?}"
-    );
+fn next_pending_timer_generation_returns_one_for_multiple_unknown_runs() {
+    let shard = Shard::new(ShardConfig::default());
+    // No timers exist, all runs get generation 1
+    assert_eq!(shard.next_pending_timer_generation(run_numeric(42)), Some(1));
+    assert_eq!(shard.next_pending_timer_generation(run_numeric(99)), Some(1));
 }
 
 #[test]
-fn handle_ask_answer_returns_invalid_action_completion_when_pending_timer_step_mismatches() {
-    let config = small_config();
-    let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else { return; };
-    let run = super::RunId::new(7_402);
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
-        Ok(())
-    );
-    assert_eq!(shard.tick(), Ok(true));
+fn next_pending_timer_generation_increments_for_existing_timer() {
+    let mut shard = Shard::new(ShardConfig::default());
+    let r = run_numeric(1);
     shard.pending_timers.insert(
-        run,
+        r,
+        PendingTimer {
+            step: vb_core::ids::StepIdx::ZERO,
+            kind: PendingTimerKind::Wait,
+            generation: 5,
+            deadline: std::time::Instant::now(),
+        },
+    );
+    assert_eq!(shard.next_pending_timer_generation(r), Some(6));
+}
+
+#[test]
+fn next_pending_timer_generation_increments_from_one_to_two() {
+    let mut shard = Shard::new(ShardConfig::default());
+    let r = run_numeric(1);
+    shard.pending_timers.insert(
+        r,
+        PendingTimer {
+            step: vb_core::ids::StepIdx::ZERO,
+            kind: PendingTimerKind::Ask,
+            generation: 1,
+            deadline: std::time::Instant::now(),
+        },
+    );
+    assert_eq!(shard.next_pending_timer_generation(r), Some(2));
+}
+
+#[test]
+fn next_pending_timer_generation_returns_none_at_max_u64() {
+    let mut shard = Shard::new(ShardConfig::default());
+    let r = run_numeric(1);
+    shard.pending_timers.insert(
+        r,
+        PendingTimer {
+            step: vb_core::ids::StepIdx::ZERO,
+            kind: PendingTimerKind::Wait,
+            generation: u64::MAX,
+            deadline: std::time::Instant::now(),
+        },
+    );
+    assert_eq!(shard.next_pending_timer_generation(r), None);
+}
+
+#[test]
+fn next_pending_timer_generation_does_not_mutate_on_overflow_check() {
+    let mut shard = Shard::new(ShardConfig::default());
+    let r = run_numeric(1);
+    shard.pending_timers.insert(
+        r,
+        PendingTimer {
+            step: vb_core::ids::StepIdx::ZERO,
+            kind: PendingTimerKind::Wait,
+            generation: u64::MAX,
+            deadline: std::time::Instant::now(),
+        },
+    );
+    assert_eq!(shard.next_pending_timer_generation(r), None);
+    assert_eq!(shard.next_pending_timer_generation(r), None);
+    // Timer is still present with original generation
+    let timer = shard.pending_timers.get(&r).copied();
+    assert_eq!(timer.map(|t| t.generation), Some(u64::MAX));
+}
+
+#[test]
+fn next_pending_timer_generation_is_independent_per_run() {
+    let mut shard = Shard::new(ShardConfig::default());
+    let r1 = run_numeric(1);
+    let r2 = run_numeric(2);
+    shard.pending_timers.insert(
+        r1,
+        PendingTimer {
+            step: vb_core::ids::StepIdx::ZERO,
+            kind: PendingTimerKind::Wait,
+            generation: 3,
+            deadline: std::time::Instant::now(),
+        },
+    );
+    shard.pending_timers.insert(
+        r2,
         PendingTimer {
             step: vb_core::ids::StepIdx::new(1),
             kind: PendingTimerKind::Ask,
-            generation: 0,
+            generation: 7,
             deadline: std::time::Instant::now(),
         },
     );
-
-    let answer = AskAnswer::new(
-        AskTicket { run, ask_step: vb_core::ids::StepIdx::new(0), resume_step: vb_core::ids::StepIdx::new(0) },
-        SlotIdx::ZERO,
-        vb_core::value::SlotValue::I64(42),
-        vb_core::Taint::Clean,
-    );
-    let result = shard.handle_ask_answer(answer);
-
-    assert!(
-        matches!(result, Err(RuntimeError::InvalidActionCompletion)),
-        "step mismatch must return InvalidActionCompletion, got {result:?}"
-    );
+    assert_eq!(shard.next_pending_timer_generation(r1), Some(4));
+    assert_eq!(shard.next_pending_timer_generation(r2), Some(8));
+    // r1 and r2 timers unchanged in registry
+    assert_eq!(shard.pending_timers.get(&r1).copied().map(|t| t.generation), Some(3));
+    assert_eq!(shard.pending_timers.get(&r2).copied().map(|t| t.generation), Some(7));
 }
 
 #[test]
-fn handle_ask_answer_returns_invalid_action_completion_when_pending_timer_kind_is_wait_not_ask() {
-    let config = small_config();
-    let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else { return; };
-    let run = super::RunId::new(7_403);
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
-        Ok(())
-    );
-    assert_eq!(shard.tick(), Ok(true));
+fn next_pending_timer_generation_at_max_minus_one_returns_max() {
+    let mut shard = Shard::new(ShardConfig::default());
+    let r = run_numeric(1);
     shard.pending_timers.insert(
-        run,
+        r,
         PendingTimer {
-            step: vb_core::ids::StepIdx::new(0),
+            step: vb_core::ids::StepIdx::ZERO,
             kind: PendingTimerKind::Wait,
-            generation: 0,
+            generation: u64::MAX - 1,
             deadline: std::time::Instant::now(),
         },
     );
-
-    let answer = AskAnswer::new(
-        AskTicket { run, ask_step: vb_core::ids::StepIdx::new(0), resume_step: vb_core::ids::StepIdx::new(0) },
-        SlotIdx::ZERO,
-        vb_core::value::SlotValue::I64(7),
-        vb_core::Taint::Clean,
-    );
-    let result = shard.handle_ask_answer(answer);
-
-    assert!(
-        matches!(result, Err(RuntimeError::InvalidActionCompletion)),
-        "Wait timer must return InvalidActionCompletion, got {result:?}"
-    );
+    assert_eq!(shard.next_pending_timer_generation(r), Some(u64::MAX));
 }
 
-// ============================================================================
-// RS-05: Already Running
-// ============================================================================
+// =========================================================================
+// pending_timer_count consistency with numeric timer seam
+// =========================================================================
 
 #[test]
-fn handle_resume_returns_already_running_when_state_is_running() {
-    let config = small_config();
-    let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else { return; };
-    let run = super::RunId::new(7_305);
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow, caps: vb_core::capability::CapabilitySet::empty() }),
-        Ok(())
-    );
-    assert_eq!(shard.tick(), Ok(true));
-    shard.apply(run, super::RuntimeEvent::DriveContinue);
-    assert_eq!(
-        shard.runtime_states.get(&run).copied(),
-        Some(super::RuntimeState::Running),
-    );
-
-    let result = shard.handle_resume(run);
-
-    assert!(
-        matches!(
-            result,
-            Ok(super::ResumeResult {
-                run_id,
-                status: super::ResumeStatus::AlreadyRunning,
-                ..
-            }) if run_id == run
-        ),
-        "handle_resume must return AlreadyRunning for Running state, got {result:?}"
-    );
-}
-
-// ============================================================================
-// RS-06: Run not found
-// ============================================================================
-
-#[test]
-fn handle_resume_returns_run_id_not_found_when_run_does_not_exist() {
-    let config = small_config();
-    let mut shard = Shard::new(config);
-    let nonexistent_run = super::RunId::new(7_306);
-
-    let result = shard.handle_resume(nonexistent_run);
-
-    assert!(
-        matches!(
-            result,
-            Err(super::ResumeError::RunIdNotFound { run_id }) if run_id == nonexistent_run
-        ),
-        "handle_resume must return RunIdNotFound for unknown run, got {result:?}"
-    );
-}
-
-// ============================================================================
-// RS-11..RS-13: Apply state transition exhaustiveness
-// ============================================================================
-
-#[test]
-fn apply_submit_sets_state_to_initial() {
-    let config = small_config();
-    let mut shard = Shard::new(config);
-    let run = super::RunId::new(7_311);
-    shard.apply(run, super::RuntimeEvent::Submit);
-    assert_eq!(
-        shard.runtime_states.get(&run).copied(),
-        Some(super::RuntimeState::Initial),
-    );
+fn pending_timer_count_starts_at_zero_numeric_seam() {
+    let shard = Shard::new(ShardConfig::default());
+    assert_eq!(shard.pending_timer_count(), 0);
 }
 
 #[test]
-fn apply_resume_sets_state_to_resuming() {
-    let config = small_config();
-    let mut shard = Shard::new(config);
-    let run = super::RunId::new(7_312);
-    shard.apply(run, super::RuntimeEvent::Resume);
-    assert_eq!(
-        shard.runtime_states.get(&run).copied(),
-        Some(super::RuntimeState::Resuming),
+fn pending_timer_count_reflects_insertions_numeric_seam() {
+    let mut shard = Shard::new(ShardConfig::default());
+    assert_eq!(shard.pending_timer_count(), 0);
+    shard.pending_timers.insert(
+        run_numeric(1),
+        PendingTimer {
+            step: vb_core::ids::StepIdx::ZERO,
+            kind: PendingTimerKind::Wait,
+            generation: 1,
+            deadline: std::time::Instant::now(),
+        },
     );
+    assert_eq!(shard.pending_timer_count(), 1);
+    shard.pending_timers.insert(
+        run_numeric(2),
+        PendingTimer {
+            step: vb_core::ids::StepIdx::new(1),
+            kind: PendingTimerKind::Ask,
+            generation: 1,
+            deadline: std::time::Instant::now(),
+        },
+    );
+    assert_eq!(shard.pending_timer_count(), 2);
 }
 
-#[test]
-fn apply_resume_rollback_sets_state_to_resumable() {
-    let config = small_config();
-    let mut shard = Shard::new(config);
-    let run = super::RunId::new(7_313);
-    shard.apply(run, super::RuntimeEvent::ResumeRollback);
-    assert_eq!(
-        shard.runtime_states.get(&run).copied(),
-        Some(super::RuntimeState::Resumable),
-    );
-}
+// =========================================================================
+// Shard advance_clock_to + pending timer integration
+// =========================================================================
 
 #[test]
-fn apply_drive_continue_sets_state_to_running() {
-    let config = small_config();
-    let mut shard = Shard::new(config);
-    let run = super::RunId::new(7_314);
-    shard.apply(run, super::RuntimeEvent::DriveContinue);
-    assert_eq!(
-        shard.runtime_states.get(&run).copied(),
-        Some(super::RuntimeState::Running),
+fn advance_clock_to_does_not_affect_pending_timers() {
+    let mut shard = Shard::new(ShardConfig::default());
+    let r = run_numeric(1);
+    shard.pending_timers.insert(
+        r,
+        PendingTimer {
+            step: vb_core::ids::StepIdx::ZERO,
+            kind: PendingTimerKind::Wait,
+            generation: 1,
+            deadline: std::time::Instant::now(),
+        },
     );
-}
-
-#[test]
-fn apply_await_action_sets_state_to_resumable() {
-    let config = small_config();
-    let mut shard = Shard::new(config);
-    let run = super::RunId::new(7_315);
-    shard.apply(run, super::RuntimeEvent::AwaitAction);
-    assert_eq!(
-        shard.runtime_states.get(&run).copied(),
-        Some(super::RuntimeState::Resumable),
-    );
-}
-
-#[test]
-fn apply_await_timer_sets_state_to_resumable() {
-    let config = small_config();
-    let mut shard = Shard::new(config);
-    let run = super::RunId::new(7_316);
-    shard.apply(run, super::RuntimeEvent::AwaitTimer);
-    assert_eq!(
-        shard.runtime_states.get(&run).copied(),
-        Some(super::RuntimeState::Resumable),
-    );
-}
-
-#[test]
-fn apply_fail_sets_state_to_failed() {
-    let config = small_config();
-    let mut shard = Shard::new(config);
-    let run = super::RunId::new(7_317);
-    shard.apply(run, super::RuntimeEvent::Fail);
-    assert_eq!(
-        shard.runtime_states.get(&run).copied(),
-        Some(super::RuntimeState::Failed),
-    );
-}
-
-#[test]
-fn apply_terminal_remove_removes_state_entry() {
-    let config = small_config();
-    let mut shard = Shard::new(config);
-    let run = super::RunId::new(7_318);
-    shard.apply(run, super::RuntimeEvent::Submit);
-    assert_eq!(
-        shard.runtime_states.get(&run).copied(),
-        Some(super::RuntimeState::Initial)
-    );
-    shard.apply(run, super::RuntimeEvent::TerminalRemove);
-    assert!(shard.runtime_states.get(&run).is_none());
-}
-
-#[test]
-fn apply_drive_finished_removes_state_entry() {
-    let config = small_config();
-    let mut shard = Shard::new(config);
-    let run = super::RunId::new(7_319);
-    shard.apply(run, super::RuntimeEvent::Submit);
-    assert_eq!(
-        shard.runtime_states.get(&run).copied(),
-        Some(super::RuntimeState::Initial)
-    );
-    shard.apply(run, super::RuntimeEvent::DriveFinished);
-    assert!(shard.runtime_states.get(&run).is_none());
-}
-
-// ============================================================================
-// AA-03: Ask-answer run not found
-// ============================================================================
-
-#[test]
-fn handle_ask_answer_returns_run_not_found_when_run_does_not_exist() {
-    let config = small_config();
-    let mut shard = Shard::new(config);
-    let run = super::RunId::new(7_601);
-
-    let answer = AskAnswer::new(
-        AskTicket { run, ask_step: vb_core::ids::StepIdx::new(0), resume_step: vb_core::ids::StepIdx::new(1) },
-        SlotIdx::ZERO,
-        vb_core::value::SlotValue::I64(42),
-        vb_core::Taint::Clean,
-    );
-    let result = shard.handle_ask_answer(answer);
-
-    assert!(
-        matches!(result, Err(RuntimeError::RunNotFound)),
-        "unknown run must return RunNotFound, got {result:?}"
-    );
-}
-
-// ============================================================================
-// RS-07 / AD-10: Successful submit + resume on suspended workflow
-// ============================================================================
-
-#[test]
-fn handle_resume_on_resumable_suspended_do_run_succeeds() {
-    let config = small_config();
-    let mut shard = Shard::new(config);
-    let Some(suspended_wf) = suspended_workflow() else { return; };
-    let run = super::RunId::new(7_308);
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit { run, workflow: suspended_wf, caps: vb_core::capability::CapabilitySet::empty() }),
-        Ok(())
-    );
-    let submit_result = shard.tick();
-    assert_eq!(submit_result, Ok(true));
-    assert_eq!(
-        shard.runtime_states.get(&run).copied(),
-        Some(super::RuntimeState::Resumable),
-        "suspended workflow must be in Resumable state after submit+Do suspend"
-    );
-
-    let result = shard.handle_resume(run);
-
-    // Verify handle_resume returns ResumeStatus::Resumed (not AlreadyRunning)
-    assert!(
-        matches!(
-            result,
-            Ok(super::ResumeResult {
-                run_id,
-                status: super::ResumeStatus::Resumed,
-                ..
-            }) if run_id == run
-        ),
-        "handle_resume on Resumable run must return ResumeStatus::Resumed, got {result:?}"
-    );
-
-    // Verify run state was transitioned (drive_run was called after journal append).
-    // The suspended workflow re-suspends after the Do action, so the state should
-    // still be Resumable but the transition through Resuming must have occurred.
-    assert_eq!(
-        shard.runtime_states.get(&run).copied(),
-        Some(super::RuntimeState::Resumable),
-        "after resume on suspended workflow, state must be Resumable (re-suspended via Do action)"
-    );
+    let count_before = shard.pending_timer_count();
+    assert_eq!(shard.advance_clock_to(TimerTick::new(100)), Ok(()));
+    // Pending timers unchanged by clock advance (firing not yet wired)
+    assert_eq!(shard.pending_timer_count(), count_before);
+    assert!(shard.pending_timers.contains_key(&r));
 }

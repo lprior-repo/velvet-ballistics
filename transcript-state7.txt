@@ -1,0 +1,51 @@
+# State 7 Transcript: vb-fzgdn proof-to-implementation bridge
+
+## Agent
+proof-to-implementation, vb-fzgdn-state7-proof-to-implementation-attempt1
+
+## Inputs
+- .beads/vb-fzgdn/proof-obligations.planned.jsonl (46 obligations)
+- .beads/vb-fzgdn/proof-review.md (State 6 Attempt 2, REJECTED with GOD RULE 2 finding)
+- .beads/vb-fzgdn/proof-review-findings.jsonl (6 findings)
+- .beads/vb-fzgdn/proof-findings.jsonl (11 findings from Attempt 1)
+- .beads/vb-fzgdn/contract.md
+- .beads/vb-fzgdn/domain-model.md
+- .beads/vb-fzgdn/delivery-scope.jsonl
+- Production code: timer_wheel.rs, types.rs, helpers.rs, transitions.rs, lifecycle/chunk_002.rs
+- vb_core nodes.rs for CompiledNodeKind variants
+
+## Actions
+1. Loaded skill: proof-to-implementation (references: bridge-mapping-guide.md, bridge-review-rubric.md, proof-schemas.md)
+2. Read all State 4+5 artifacts and production code
+3. Mapped each of 46 proof obligations to concrete production source locations
+4. Wrote proof-to-rust-map.md mapping map with GOD RULE 2 deferral to State 11
+5. Wrote rust-refinement-obligations.jsonl with 46 RRO rows
+6. Verified RRO schema: rust-refinement-obligation/v1, all required fields present
+7. All 46 rows have mapping_status: planned (valid for State 7)
+8. 10 Verus rows marked mapping_status: deferred_to_state11 per GOD RULE 2 finding
+
+## Outputs
+- proof-to-rust-map.md
+- rust-refinement-obligations.jsonl (46 rows)
+
+## GOD RULE 2 Documentation
+Per proof-review.md (State 6 Attempt 2, finding F-vb-fzgdn-002-R2): all 10 Verus proofs
+define and prove properties of local models disconnected from production Rust code.
+This gap is documented as deferred to State 11. Compensating coverage exists through
+Kani, Proptest, and Flux lanes for the same seed+requirement pairs.
+
+## Verification
+- 46/46 obligations mapped to production source refs (no file-only refs)
+- Behavior test refs planned for all rows (materialized at State 12)
+- Refinement harness refs separate from behavior tests (materialized at State 12)
+- TLA+ claims not used as Rust implementation evidence
+- No implementation claims with only copied model as proof target
+- Agent-invocation-ledger seq 10 appended
+
+## Evidence command summary
+- Verus: verus --crate-type=lib verification/verus/vb-fzgdn/PS-XXX-proof.rs (10 obligations)
+- Kani: cargo kani -p vb_runtime --harness ps_XXX_check (10 obligations)
+- Flux: cargo flux -p vb_runtime (10 obligations)
+- Proptest: cargo test -p vb_runtime --test proptest -- ps_XXX (10 obligations)
+- Loom: cargo test -p vb_runtime --test loom -- ps_XXX (5 obligations)
+- Cargo-fuzz: cargo fuzz run ps_006_fuzz -- -max_total_time=300 (1 obligation)

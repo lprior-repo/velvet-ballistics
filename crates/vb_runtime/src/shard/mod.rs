@@ -15,9 +15,10 @@ pub use completion_watermark::{CompletionDrain, CompletionWatermark, CompletionW
 pub use directive::ShardDirective;
 pub use types::{
     AskAnswer, AskTicket, InspectHandle, InspectResponse, InspectSnapshot,
-    InspectSnapshotFormatter, IntrospectionRegistry, MAX_COMMAND_QUEUE_CAPACITY,
-    RegisterOverlapOutcome, ResumeError, ResumeResult, ResumeStatus, RunState, RuntimeEvent,
-    RuntimeState, Shard, ShardCommand, ShardConfig, ShardHealth, ShardStatus, UnregisterOutcome,
+    InspectSnapshotFormatter, IntrospectionRegistry, MAX_COMMAND_QUEUE_CAPACITY, PendingTimer,
+    PendingTimerKind, RegisterOverlapOutcome, ResumeError, ResumeResult, ResumeStatus, RunState,
+    RuntimeEvent, RuntimeState, Shard, ShardCommand, ShardConfig, ShardHealth, ShardStatus,
+    TimerDeadline, TimerDuration, TimerKind, TimerTick, UnregisterOutcome,
 };
 
 // Re-export vb_core types needed by tests
