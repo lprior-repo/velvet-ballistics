@@ -41,7 +41,7 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_old_replaced_timer_event_
     let after_replacement_pending = shard.pending_timer_clone();
     assert_eq!(after_replacement_pending.len(), 1);
     assert_eq!(
-        after_replacement_pending.get(run.get() as usize).and_then(|opt| *opt),
+        after_replacement_pending.get(&run).copied(),
         Some(replacement_timer)
     );
 

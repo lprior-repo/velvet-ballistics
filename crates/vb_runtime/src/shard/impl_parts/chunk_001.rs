@@ -231,8 +231,8 @@ impl Shard {
 
     /// Returns a clone of all pending timers.
     #[must_use]
-    pub fn pending_timer_clone(&self) -> Vec<Option<PendingTimer>> {
-        unimplemented!("pending_timer_clone is not implemented for IndexMap-based storage")
+    pub fn pending_timer_clone(&self) -> IndexMap<RunId, PendingTimer> {
+        self.pending_timers.clone()
     }
 
     /// Removes and returns the pending timer for the given run ID.
