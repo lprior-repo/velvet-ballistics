@@ -2,6 +2,31 @@
 
 Generated 2026-05-24. Maps each defect from the master doc audit (`vb-3tew`) to resolution bead and status.
 
+## Truth Serum Update 2026-05-31
+
+Live bead DB was repaired back to the authoritative DoltHub remote before this update. The 2026-05-24 tables below are preserved as historical tracker output, but the following rows are now corrected by bead evidence:
+
+| Tracker/doc gap | Current bead disposition |
+|---|---|
+| 02: Action completion mutates frame before durable evidence | Closed under `vb-w678.4`; umbrella `vb-w678` is closed. |
+| 02: Durable action events lose ActionTicket/idempotency key | Closed under `vb-w678.1`; umbrella `vb-w678` is closed. |
+| 02: Action output size/taint policy not enforced on completion | Closed under `vb-w678.3`; umbrella `vb-w678` is closed. |
+| 02: Runtime::new defaults to dropping all journal events | Closed under `vb-w678.5`. |
+| 02: Frame pool allocates on empty pool | Newly tracked as `vb-n70qh`. |
+| 04: Root Cargo profiles missing | Tracked as `vb-esq9.1`. |
+| 05: File-size drift / source-length gate too narrow | Tracked by `vb-zxgb`, `vb-ui6k`, `vb-9kwz`, and closed `vb-jpq7.47`. |
+| 03: Pending action index keyspace not maintained | Tracked as `vb-mrwe.6`. |
+| 03: Journaled writer queue group commit not proven | Tracked as `vb-mrwe.7`. |
+| 05: Hot shard state uses map-like structures | Tracked as `vb-jpq7.9` and related `vb-9kwz` notes. |
+| 05: Timer wheel uses map/vector-backed storage | Tracked as `vb-vi3g`. |
+| 05: Workspace shape / deferred codegen residue / duplicate compiler tree | Tracked as `vb-esq9`, `vb-esq9.1`, and `vb-esq9.4`; `vb-esq9.2` and `vb-esq9.3` are closed. |
+| BIG audit compile-fail/trybuild silent-pass risk | Newly tracked as `vb-j58jl`. |
+| vb-fzgdn State 12 formal blockers and missing raw evidence | Newly tracked as `vb-u831a`. |
+| TLA-to-Rust partial RRO bridge rows | Newly tracked as `vb-b69gz`. |
+| vb-fzgdn numeric timer trusted-base claim conflicts with `Instant` source | Newly tracked as `vb-uwg7d`. |
+
+Direct checks run for this update: `bd status`, `bd show` for listed bead IDs, `bd search` for untracked terms, `/home/lewis/.cargo/bin/cargo test -p vb_boundary_inventory -- --list`, and `/home/lewis/.cargo/bin/cargo test -p vb_doc -- --list`.
+
 ## Resolved (this session)
 
 | Defect | Bead | Status | Resolution |

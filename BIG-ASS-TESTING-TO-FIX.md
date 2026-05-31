@@ -5,6 +5,20 @@
 4 rounds × 12 agents = 48 subagent reviews of all velvet-ballistics crates against master plan test criteria.
 Findings drive remediation beads in beads.
 
+## TRUTH SERUM UPDATE 2026-05-31
+
+This file is a historical four-round audit. It is no longer a live blocker list unless a row below has a current bead reference or fresh command evidence.
+
+Current bead reconciliation found:
+
+- The prior action-completion MUST_FIX set is closed under `vb-w678`, with child beads `vb-w678.1` through `vb-w678.5` covering full ticket persistence, prevalidation, taint/output bounds, append-before-mutate ordering, and explicit non-durable runtime construction.
+- `journal_event` fuzz target work is tracked/closed by `vb-jpq7.37`; Section 37 fuzz naming is closed by `vb-481r.8`, with residual compiled-IR naming tracked by `vb-481r.9`.
+- The old zero-test claims for `vb_boundary_inventory` and `vb_doc` are stale. Direct commands on 2026-05-31 listed 202 `vb_boundary_inventory` tests and 65 `vb_doc` integration tests.
+- The trybuild silent-pass concern is not currently backed by a first-party trybuild harness under `crates/`; it is now tracked as `vb-j58jl` to either add a fail-closed compile-fail gate or reconcile the stale contract.
+- Remaining formal evidence risks found during this truth-serum pass are tracked as `vb-u831a` (vb-fzgdn State 12 formal blockers), `vb-b69gz` (partial TLA RRO bridge closure), and `vb-uwg7d` (numeric timer trusted-base mismatch).
+
+Do not cite the “Shipping is BLOCKED by 8 LETHALs” line below as current truth without re-running the referenced commands and checking the bead IDs above.
+
 ---
 
 ## MASTER PLAN REFERENCE
