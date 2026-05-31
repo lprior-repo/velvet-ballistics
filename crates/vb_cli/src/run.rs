@@ -1,57 +1,16 @@
-//! Run commands for velvet-ballistics.
-#![forbid(unsafe_code)]
-
-use crate::args::DurabilityMode;
-use crate::io::{errln, outln};
-use crate::workflow::{run_compiled_workflow, InputMappingError};
-use std::path::Path;
-use std::process::ExitCode;
-use vb_core::{CompiledWorkflow, SlotIdx, SlotValue, WorkflowParts};
-
-pub const INPUT_MAPPING_DECODE_FAILED_MESSAGE: &str = "INPUT_MAPPING_FAILED: input-bin decode failed";
-pub const INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE: &str =
-    "INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count";
-pub const INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE: &str =
-    "INPUT_MAPPING_FAILED: input slot index out of range";
-
-pub fn cmd_validate(workflow: &Path) -> ExitCode {
-    let bytes = match read_file(workflow) {
+//! Workflow run command and artifact storage.
+    workflow: &std::path::Path,
+    input_bin: &std::path::Path,
+    durability: DurabilityMode,
+    db: Option<&std::path::Path>,
+    output: OutputFormat,
+) -> ExitCode {
+    let input_data = match read_file(input_bin, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,
     };
 
-    let text = match std::str::from_utf8(&bytes) {
-        Ok(t) => t,
-        Err(e) => {
-            errln!("file is not valid UTF-8: {e}");
-            return ExitCode::FAILURE;
-        }
-    };
-
-    match vb_yaml::parse_workflow_source(text) {
-        Ok(_ast) => {}
-        Err(e) => {
-            errln!("YAML parse error: {e}");
-            return ExitCode::FAILURE;
-        }
-    }
-
-    match vb_compile::compile_workflow(&bytes) {
-        Ok(_compiled) => {}
-        Err(errors) => {
-            for err in &errors.0 {
-                errln!("compile error: {err}");
-            }
-            return ExitCode::FAILURE;
-        }
-    }
-
-    outln!("valid");
-    ExitCode::SUCCESS
-}
-
-pub fn cmd_compile(workflow: &Path, emit: crate::args::EmitTarget, out: &Path) -> ExitCode {
-    let bytes = match read_file(workflow) {
+    let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,
     };
@@ -59,146 +18,117 @@ pub fn cmd_compile(workflow: &Path, emit: crate::args::EmitTarget, out: &Path) -
     let compiled = match vb_compile::compile_workflow(&bytes) {
         Ok(c) => c,
         Err(errors) => {
-            for err in &errors.0 {
-                errln!("compile error: {err}");
-            }
-            return ExitCode::FAILURE;
-        }
-    };
-
-    match emit {
-        crate::args::EmitTarget::Ir => {
-            let parts = compiled.to_parts();
-            let encoded = match postcard::to_allocvec(&parts) {
-                Ok(data) => data,
-                Err(e) => {
-                    errln!("IR serialization error: {e}");
-                    return ExitCode::FAILURE;
+            if output != OutputFormat::Text {
+                write_failure_message(
+                    &compile_errors_message(&errors.0),
+                    output,
+                    CliExitCode::CompileFailed,
+                );
+            } else {
+                for err in &errors.0 {
+                    errln!("compile error: {err}");
                 }
-            };
-            if let Err(e) = std::fs::write(out, &encoded) {
-                errln!("error writing {}: {e}", out.display());
-                return ExitCode::FAILURE;
             }
-            outln!("compiled IR written to {}", out.display());
-        }
-        crate::args::EmitTarget::Yaml | crate::args::EmitTarget::Postcard => {
-            errln!("legacy compile runner supports only --emit ir");
-            return ExitCode::FAILURE;
-        }
-    }
-
-    ExitCode::SUCCESS
-}
-
-pub fn cmd_run(
-    workflow: &Path,
-    input_bin: &Path,
-    durability: DurabilityMode,
-    db: Option<&Path>,
-) -> ExitCode {
-    let input_data = match read_file(input_bin) {
-        Ok(b) => b,
-        Err(code) => return code,
-    };
-
-    let bytes = match read_file(workflow) {
-        Ok(b) => b,
-        Err(code) => return code,
-    };
-
-    let compiled = match vb_compile::compile_workflow(&bytes) {
-        Ok(c) => c,
-        Err(errors) => {
-            for err in &errors.0 {
-                errln!("compile error: {err}");
-            }
-            return ExitCode::FAILURE;
+            return CliExitCode::CompileFailed.into();
         }
     };
 
     let inputs = match map_runtime_inputs(&compiled, &input_data) {
         Ok(inputs) => inputs,
         Err(error) => {
-            errln!("{error}");
-            return ExitCode::FAILURE;
-        }
-    };
-
-    run_compiled_workflow(&compiled, inputs, durability, db)
-}
-
-pub fn cmd_run_compiled(
-    vbir_path: &Path,
-    input_bin: &Path,
-    durability: DurabilityMode,
-    db: Option<&Path>,
-) -> ExitCode {
-    let input_data = match read_file(input_bin) {
-        Ok(b) => b,
-        Err(code) => return code,
-    };
-
-    let ir_bytes = match read_file(vbir_path) {
-        Ok(b) => b,
-        Err(code) => return code,
-    };
-
-    let compiled: CompiledWorkflow = match postcard::from_bytes::<WorkflowParts>(&ir_bytes) {
-        Ok(parts) => match CompiledWorkflow::try_from_parts(parts) {
-            Ok(c) => c,
-            Err(e) => {
-                errln!("compiled IR validation error: {e}");
-                return ExitCode::FAILURE;
+            if output != OutputFormat::Text {
+                write_failure_message(&error.to_string(), output, CliExitCode::RuntimeFailed);
+            } else {
+                errln!("{error}");
             }
-        },
-        Err(e) => {
-            errln!("error deserializing compiled IR: {e}");
-            return ExitCode::FAILURE;
+            return CliExitCode::RuntimeFailed.into();
         }
     };
 
-    let inputs = match map_runtime_inputs(&compiled, &input_data) {
-        Ok(inputs) => inputs,
-        Err(error) => {
-            errln!("{error}");
-            return ExitCode::FAILURE;
+    match durability {
+        DurabilityMode::None => {}
+        _ => {
+            if let Err(code) = store_workflow_artifacts(&compiled, &bytes, db, output) {
+                return code;
+            }
+        }
+    }
+
+    run_compiled_workflow(&compiled, inputs, durability, db, output)
+}
+
+pub(crate) fn store_workflow_artifacts(
+    compiled: &vb_core::CompiledWorkflow,
+    source: &[u8],
+    db: Option<&std::path::Path>,
+    output: OutputFormat,
+) -> Result<(), ExitCode> {
+    let Some(db) = db else {
+        return Ok(());
+    };
+    let parts = compiled.to_parts();
+    let ir_bytes = match postcard::to_allocvec(&parts) {
+        Ok(ir) => ir,
+        Err(e) => {
+            report_compiled_ir_store_error(format_args!("compiled IR encode error: {e}"), output);
+            return Err(CliExitCode::StorageError.into());
         }
     };
-
-    run_compiled_workflow(&compiled, inputs, durability, db)
-}
-
-pub fn map_runtime_inputs(
-    compiled: &CompiledWorkflow,
-    input_data: &[u8],
-) -> Result<Box<[(SlotIdx, SlotValue)]>, InputMappingError> {
-    if input_data.is_empty() {
-        return Ok(Box::from([]));
-    }
-    let values =
-        postcard::from_bytes::<Box<[SlotValue]>>(input_data).map_err(|_| InputMappingError::DecodeFailed)?;
-    if values.len() > usize::from(compiled.slot_count()) {
-        return Err(InputMappingError::SlotCountExceeded);
-    }
-    values
-        .iter()
-        .copied()
-        .enumerate()
-        .map(|(index, value)| {
-            let slot = u16::try_from(index).map_err(|_| InputMappingError::SlotIndexOutOfRange)?;
-            Ok((SlotIdx::new(slot), value))
-        })
-        .collect::<Result<Vec<_>, _>>()
-        .map(Vec::into_boxed_slice)
-}
-
-fn read_file(path: &std::path::Path) -> Result<Vec<u8>, ExitCode> {
-    match std::fs::read(path) {
-        Ok(bytes) => Ok(bytes),
+    let journal = match vb_storage::FjallJournal::open(db, None) {
+        Ok(journal) => journal,
         Err(e) => {
-            errln!("error reading {}: {e}", path.display());
-            Err(ExitCode::FAILURE)
+            report_compiled_ir_store_error(
+                format_args!("error opening journal at {}: {e}", db.display()),
+                output,
+            );
+            return Err(CliExitCode::StorageError.into());
         }
+    };
+    let source_record = vb_storage::WorkflowSourceRecord {
+        digest: vb_core::WorkflowDigest::from_bytes(blake3::hash(source).into()),
+        source: source.to_vec(),
+    };
+    if let Err(e) = journal.put_workflow_source(&source_record) {
+        report_compiled_ir_store_error(format_args!("workflow source write error: {e}"), output);
+        return Err(CliExitCode::StorageError.into());
+    }
+    let proof = vb_storage::admission::VerificationProof::new(
+        compiled.digest(),
+        vb_runtime::admission::REQUIRED_GATE_COUNT,
+        true,
+    );
+    let artifact = vb_storage::admission::AcceptedArtifact {
+        digest: compiled.digest(),
+        source_digest: compiled.digest(),
+        policy_digest: vb_storage::admission::compute_policy_digest(compiled),
+        ir: ir_bytes,
+        verification: proof,
+        accepted_at_seq: vb_storage::EventSeq::new(0),
+        required_capabilities: Box::new([]),
+    };
+    let artifact_bytes = match postcard::to_allocvec(&artifact) {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            report_compiled_ir_store_error(format_args!("artifact encode error: {e}"), output);
+            return Err(CliExitCode::StorageError.into());
+        }
+    };
+    let record = vb_storage::CompiledIrRecord {
+        digest: compiled.digest(),
+        ir: artifact_bytes,
+    };
+    journal.put_compiled_ir(&record).map_err(|e| {
+        report_compiled_ir_store_error(format_args!("compiled IR write error: {e}"), output);
+        CliExitCode::StorageError.into()
+    })
+}
+
+pub(crate) fn report_compiled_ir_store_error(args: std::fmt::Arguments<'_>, output: OutputFormat) {
+    if output != OutputFormat::Text {
+        write_failure_message(&args.to_string(), output, CliExitCode::StorageError);
+    } else {
+        errln!("{args}");
     }
 }
+
+pub(crate) fn cmd_submit(
