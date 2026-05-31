@@ -84,6 +84,9 @@ impl std::fmt::Display for ParseError {
             Self::InvalidActionId(action_id) => {
                 write!(formatter, "invalid action id: {action_id}")
             }
+            Self::InvalidActionName(name) => {
+                write!(formatter, "invalid action name: {name}")
+            }
             Self::NoCommand => write!(formatter, "no command provided"),
             Self::InvalidStep(step) => write!(formatter, "invalid step: {step}"),
             Self::ReasonTooLong => {

@@ -89,7 +89,7 @@ pub(crate) enum Command {
         registry: ActionRegistryMode,
     },
     ActionInspect {
-        action_id: u16,
+        action_name: String,
         output: OutputFormat,
         registry: ActionRegistryMode,
     },
@@ -308,6 +308,7 @@ pub(crate) enum ParseError {
     UnexpectedActionInspectArgument(String),
     InvalidActionInspectArgument(String),
     InvalidActionId(String),
+    InvalidActionName(String),
     UnknownFlag { command: &'static str, flag: String },
     InvalidArgument(String),
     NoCommand,
@@ -709,14 +710,27 @@ fn parse_action(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 fn parse_action_inspect(args: &[OsString]) -> Result<Command, ParseError> {
-    let (raw_id, rest) = args
+    let (raw_name, rest) = args
         .split_first()
-        .ok_or(ParseError::MissingArgument("action_id"))?;
-    let id = raw_id
+        .ok_or(ParseError::MissingArgument("action_name"))?;
+    let action_name = raw_name
         .to_str()
-        .ok_or_else(|| ParseError::InvalidActionId(format!("{raw_id:?}")))?
-        .parse::<u16>()
-        .map_err(|_| ParseError::InvalidActionId(raw_id.to_string_lossy().into_owned()))?;
+        .ok_or_else(|| ParseError::InvalidActionName(format!("{raw_name:?}")))?
+        .trim()
+        .to_string();
+    if action_name.is_empty() {
+        return Err(ParseError::InvalidActionName("action name is empty".into()));
+    }
+    if action_name.len() > 64 {
+        return Err(ParseError::InvalidActionName(
+            "action name exceeds maximum length of 64 characters".into(),
+        ));
+    }
+    if action_name.chars().any(|c| c.is_whitespace()) {
+        return Err(ParseError::InvalidActionName(
+            "action name contains whitespace".into(),
+        ));
+    }
     let parsed = parse_action_inspect_args(
         rest,
         ActionInspectParseState {
@@ -725,7 +739,7 @@ fn parse_action_inspect(args: &[OsString]) -> Result<Command, ParseError> {
         },
     )?;
     Ok(Command::ActionInspect {
-        action_id: id,
+        action_name,
         output: parsed.output,
         registry: parsed.registry,
     })
@@ -1786,6 +1800,9 @@ impl std::fmt::Display for ParseError {
             }
             Self::InvalidActionId(action_id) => {
                 write!(formatter, "invalid action id: {action_id}")
+            }
+            Self::InvalidActionName(name) => {
+                write!(formatter, "invalid action name: {name}")
             }
             Self::UnknownFlag { command, flag } => {
                 write!(formatter, "unknown flag for {command}: {flag}")

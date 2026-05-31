@@ -2,8 +2,11 @@
 
 //! Action registry for compile-time contract resolution and runtime dispatch.
 
+use std::collections::HashMap;
+
 use vb_core::action::{
-    ActionContract, ActionError, ActionInput, ActionOutcome, ActionResult, ActionTicket,
+    ActionContract, ActionError, ActionInput, ActionName, ActionOutcome, ActionResult,
+    ActionTicket,
 };
 use vb_core::ids::ActionId;
 
@@ -16,6 +19,7 @@ const MAX_REGISTERED_ACTIONS: usize = 65_535;
 #[derive(Debug, Clone)]
 pub struct ActionRegistry {
     slots: Vec<ActionSlot>,
+    by_name: HashMap<ActionName, ActionId>,
 }
 
 #[derive(Debug, Clone)]
@@ -28,7 +32,10 @@ impl ActionRegistry {
     /// Creates an empty action registry.
     #[must_use]
     pub fn new() -> Self {
-        Self { slots: Vec::new() }
+        Self {
+            slots: Vec::new(),
+            by_name: HashMap::new(),
+        }
     }
 
     /// Registers an action contract. Returns an error if the action id is
@@ -42,7 +49,24 @@ impl ActionRegistry {
             });
         }
         self.ensure_slot_capacity(slot)?;
-        self.write_empty_slot(slot, contract)
+
+        // Check for duplicate name
+        if self.by_name.contains_key(&contract.name) {
+            return Err(ActionError::UnknownAction {
+                action: contract.id,
+            });
+        }
+
+        // Save name and id before moving contract
+        let contract_name = contract.name.clone();
+        let contract_id = contract.id;
+
+        self.write_empty_slot(slot, contract)?;
+
+        // Register by name for lookup
+        self.by_name.insert(contract_name, contract_id);
+
+        Ok(())
     }
 
     fn ensure_slot_capacity(&mut self, slot: usize) -> ActionResult<()> {
@@ -72,6 +96,20 @@ impl ActionRegistry {
             .and_then(ActionSlot::registered_contract)
             .filter(|contract| contract.id == action)
             .ok_or(ActionError::UnknownAction { action })
+    }
+
+    /// Resolves an action name to its contract.
+    ///
+    /// Returns a reference to the contract if found, or an error if the name
+    /// is not registered.
+    pub fn resolve_by_name(&self, name: &ActionName) -> ActionResult<&ActionContract> {
+        let action_id = self
+            .by_name
+            .get(name)
+            .ok_or_else(|| ActionError::UnknownAction {
+                action: ActionId::new(0), // dummy id for error
+            })?;
+        self.resolve_compile_time(*action_id)
     }
 
     /// Dispatches an action input through the registry and produces an outcome.

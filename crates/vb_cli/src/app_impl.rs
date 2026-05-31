@@ -116,10 +116,10 @@ pub(crate) fn run_from_env() -> ExitCode {
         Ok(Command::SystemStatus { options, output }) => cmd_system_status(options, output),
         Ok(Command::ActionList { output, registry }) => cmd_action_list(output, registry),
         Ok(Command::ActionInspect {
-            action_id,
+            action_name,
             output,
             registry,
-        }) => cmd_action_inspect(action_id, output, registry),
+        }) => cmd_action_inspect(action_name, output, registry),
         Ok(Command::Verify {
             workflow,
             profile,
@@ -385,18 +385,18 @@ fn cmd_action_list(output: OutputFormat, registry_mode: ActionRegistryMode) -> E
 }
 
 fn cmd_action_inspect(
-    action_id: u16,
+    action_name: String,
     output: OutputFormat,
     registry_mode: ActionRegistryMode,
 ) -> ExitCode {
     match registry_mode {
         ActionRegistryMode::Registered => match registered_cli_actions() {
-            Ok(registry) => write_action_inspect(&registry, action_id, output),
+            Ok(registry) => write_action_inspect(&registry, action_name, output),
             Err(error) => write_action_registry_error(&error, output),
         },
         ActionRegistryMode::Empty => {
             let registry = ActionRegistry::new();
-            write_action_inspect(&registry, action_id, output)
+            write_action_inspect(&registry, action_name, output)
         }
         ActionRegistryMode::Uninitialized => {
             write_action_registry_uninitialized(output);
@@ -476,28 +476,46 @@ fn write_action_registry(registry: &ActionRegistry, output: OutputFormat) -> Exi
 
 fn write_action_inspect(
     registry: &ActionRegistry,
-    action_id: u16,
+    action_name: String,
     output: OutputFormat,
 ) -> ExitCode {
-    match registry.resolve_compile_time(vb_core::ActionId::new(action_id)) {
-        Ok(contract) => write_action_contract(contract, output),
-        Err(error) => write_action_inspect_error(action_id, &error, output),
+    match vb_core::action::ActionName::new(&action_name) {
+        Ok(name) => match registry.resolve_by_name(&name) {
+            Ok(contract) => write_action_contract(contract, output),
+            Err(error) => write_action_inspect_error(&action_name, &error, output),
+        },
+        Err(e) => {
+            let message = format!("invalid action name: {}", e);
+            if output == OutputFormat::Text {
+                errln!("{message}");
+            } else {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "action_name": action_name,
+                        "error": message,
+                    }),
+                    output,
+                );
+            }
+            CliExitCode::ValidationFailed.into()
+        }
     }
 }
 
 fn write_action_inspect_error(
-    action_id: u16,
+    action_name: &str,
     error: &vb_core::action::ActionError,
     output: OutputFormat,
 ) -> ExitCode {
-    let message = format!("action {action_id} is not registered: {error}");
+    let message = format!("action '{action_name}' is not registered: {error}");
     if output == OutputFormat::Text {
         errln!("{message}");
     } else {
         json_error(
             &serde_json::json!({
                 "success": false,
-                "action_id": action_id,
+                "action_name": action_name,
                 "error": message,
             }),
             output,
@@ -5945,6 +5963,9 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
         ),
         ParseError::InvalidActionId(action_id) => {
             writeln!(handle, "invalid action id: {action_id}\n\n{HELP}")
+        }
+        ParseError::InvalidActionName(name) => {
+            writeln!(handle, "invalid action name: {name}\n\n{HELP}")
         }
         ParseError::UnknownFlag { command, flag } => {
             writeln!(handle, "unknown flag for {command}: {flag}\n\n{HELP}")
