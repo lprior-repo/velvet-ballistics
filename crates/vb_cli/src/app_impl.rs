@@ -83,7 +83,7 @@ commands:
   incident   <run_id> --db <path> [--emit text|yaml|postcard]     Black-box failure report
   submit     <workflow.yaml> --input-bin <file> --db <path> --durability <mode> [--emit text|yaml|postcard]  Submit workflow run
   simulate   <workflow.yaml> [--emit text|yaml|postcard]     Dry-run workflow without executing actions
-  ai-context <run_id> --db <path> [--emit text|yaml|postcard]  Emit compact AI context packet for a run
+  ai-context <run_id> --db <path> [--json] [--emit text|yaml|postcard]  Emit compact AI context packet for a run
   help                                                Print this message
   version                                             Print version
   agent-context [--deliver stdout|file:<path>]       Emit or deliver versioned AI-agent CLI schema

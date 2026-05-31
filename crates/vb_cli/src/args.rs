@@ -506,6 +506,9 @@ fn parse_status_options(
         match args.split_first() {
             None => return validate_status_options(options),
             Some((flag, rest)) => match flag.to_str() {
+                Some("--json" | "--jsonl") => {
+                    args = rest;
+                }
                 Some("--emit") => match rest.split_first() {
                     Some((emit, remaining)) => match emit.to_str() {
                         Some("yaml") => {
@@ -586,6 +589,7 @@ fn parse_system_status_options(
     match args.split_first() {
         None => Ok(options),
         Some((flag, rest)) => match flag.to_str() {
+            Some("--json" | "--jsonl") => parse_system_status_options(rest, options),
             Some("--emit") => parse_system_status_emit(rest, options),
             Some("--profile") => parse_system_status_profile(rest, options),
             Some("--server") => parse_system_status_server(rest, options),
@@ -1468,6 +1472,9 @@ fn parse_server_mode(raw: &str) -> Result<DurabilityMode, ParseError> {
 
 /// Parse canonical `--emit text|yaml|postcard` output flags.
 fn parse_output_format(args: &[OsString]) -> OutputFormat {
+    if has_flag(args, "--json") || has_flag(args, "--jsonl") {
+        return OutputFormat::Text;
+    }
     match named_flag(args, "--emit").as_deref() {
         Some("yaml") => OutputFormat::Yaml,
         Some("postcard") => OutputFormat::Postcard,
@@ -1500,6 +1507,10 @@ fn named_flag(args: &[OsString], flag: &str) -> Option<String> {
         }
     }
     None
+}
+
+fn has_flag(args: &[OsString], flag: &str) -> bool {
+    args.iter().any(|arg| arg == flag)
 }
 
 fn optional_named_flag(
@@ -1624,11 +1635,15 @@ fn argument_index_overflow() -> ParseError {
 fn known_flag_spec(command: &'static str, token: &str) -> Option<FlagSpec> {
     match command {
         "validate" | "explain" | "bench-run" | "graph" | "simulate" => output_flag_spec(token),
-        "ai-context" | "inspect" | "replay" | "retry" | "resume" | "incident" => {
+        "ai-context" => switch_flag_spec(token, "--json")
+            .or_else(|| output_flag_spec(token))
+            .or_else(|| value_flag_spec(token, "--db")),
+        "inspect" | "replay" | "retry" | "resume" | "incident" => {
             output_flag_spec(token).or_else(|| value_flag_spec(token, "--db"))
         }
         "verify" => output_flag_spec(token).or_else(|| value_flag_spec(token, "--profile")),
         "compile" => match token {
+            "--json" | "--jsonl" => Some(FlagSpec::Switch),
             "--emit" => Some(FlagSpec::Value("--emit")),
             "--out" => Some(FlagSpec::Value("--out")),
             _ => None,
@@ -1693,6 +1708,7 @@ fn known_flag_spec(command: &'static str, token: &str) -> Option<FlagSpec> {
 
 fn output_flag_spec(token: &str) -> Option<FlagSpec> {
     match token {
+        "--json" | "--jsonl" => Some(FlagSpec::Switch),
         "--emit" => Some(FlagSpec::Value("--emit")),
         _ => None,
     }
@@ -1701,6 +1717,14 @@ fn output_flag_spec(token: &str) -> Option<FlagSpec> {
 fn value_flag_spec(token: &str, flag: &'static str) -> Option<FlagSpec> {
     if token == flag {
         Some(FlagSpec::Value(flag))
+    } else {
+        None
+    }
+}
+
+fn switch_flag_spec(token: &str, flag: &'static str) -> Option<FlagSpec> {
+    if token == flag {
+        Some(FlagSpec::Switch)
     } else {
         None
     }

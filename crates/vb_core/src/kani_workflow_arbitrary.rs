@@ -397,7 +397,11 @@ impl kani::Arbitrary for WorkflowParts {
             symbols_count: kani::any::<u32>(),
             entry: {
                 let entry_idx: u8 = kani::any();
-                let bounded_idx = if node_count == 0 { 0 } else { entry_idx % node_count };
+                let bounded_idx = if node_count == 0 {
+                    0
+                } else {
+                    entry_idx % node_count
+                };
                 StepIdx::new(bounded_idx as u16)
             },
             resource_contract: kani::any::<ResourceContract>(),
