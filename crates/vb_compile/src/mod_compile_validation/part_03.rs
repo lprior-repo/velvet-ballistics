@@ -18,7 +18,7 @@ impl StepPrimitive {
             "save" => Some(Self::Save),
             "choose" => Some(Self::Choose),
             "for_each" => Some(Self::ForEach),
-            "parallel" => Some(Self::Parallel),
+            "together" | "parallel" => Some(Self::Parallel),
             "collect" => Some(Self::Collect),
             "aggregate" => Some(Self::Aggregate),
             "repeat" => Some(Self::Repeat),

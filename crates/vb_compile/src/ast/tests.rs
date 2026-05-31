@@ -203,6 +203,62 @@ steps:
 }
 
 #[test]
+fn parse_ast_accepts_together_primitive_name() -> Result<(), String> {
+    let ast = parse(
+        br#"version: velvet-ballistics/v1
+name: ast_together
+when:
+  manual: {}
+steps:
+  - id: fanout
+    together:
+      branches: [1]
+  - id: done
+    finish:
+      result: 0
+"#,
+    )?;
+
+    let together_step = ast
+        .steps
+        .first()
+        .ok_or_else(|| "missing together step".to_owned())?;
+
+    ensure(
+        together_step.primitive == StepPrimitiveAst::Together,
+        "together source primitive was not retained",
+    )
+}
+
+#[test]
+fn parse_ast_accepts_parallel_primitive_name_as_alias() -> Result<(), String> {
+    let ast = parse(
+        br#"version: velvet-ballistics/v1
+name: ast_parallel_alias
+when:
+  manual: {}
+steps:
+  - id: fanout
+    parallel:
+      branches: [1]
+  - id: done
+    finish:
+      result: 0
+"#,
+    )?;
+
+    let together_step = ast
+        .steps
+        .first()
+        .ok_or_else(|| "missing parallel step".to_owned())?;
+
+    ensure(
+        together_step.primitive == StepPrimitiveAst::Together,
+        "parallel alias was not mapped to Together variant",
+    )
+}
+
+#[test]
 fn parse_ast_rejects_multiple_triggers_before_lowering() -> Result<(), String> {
     let error = parse_err(
         br#"version: velvet-ballistics/v1

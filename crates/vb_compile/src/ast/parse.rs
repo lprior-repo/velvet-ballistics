@@ -313,6 +313,7 @@ fn is_supported_primitive(field: &str) -> bool {
             | "save"
             | "choose"
             | "for_each"
+            | "together"
             | "parallel"
             | "collect"
             | "reduce"
