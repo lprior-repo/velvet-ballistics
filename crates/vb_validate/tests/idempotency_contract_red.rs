@@ -1,7 +1,7 @@
 use proptest::prelude::*;
 use vb_core::action::{
-    ActionContract, ActionName, ActionTicket, Idempotency, IdempotencyViolation, RetrySafety, SideEffect,
-    validate_idempotency_key_ingredients, verify_idempotency,
+    ActionContract, ActionName, ActionTicket, Idempotency, IdempotencyViolation, RetrySafety,
+    SideEffect, validate_idempotency_key_ingredients, verify_idempotency,
 };
 use vb_core::capability::Capability;
 use vb_core::frame::RunFrame;

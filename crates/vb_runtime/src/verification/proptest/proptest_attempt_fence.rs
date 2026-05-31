@@ -22,6 +22,7 @@ use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
 
+use crate::RuntimeError;
 use crate::engine::RetryPolicy;
 use crate::primitives::collect::CollectStates;
 use crate::shard::helpers::{
@@ -29,7 +30,6 @@ use crate::shard::helpers::{
     record_scheduled_attempt, validate_action_completion,
 };
 use crate::shard::types::RunState;
-use crate::{RuntimeError, RuntimeResult};
 
 // =========================================================================
 // Arbitrary strategies for production types
@@ -230,7 +230,6 @@ proptest! {
     /// Property: Future attempts beyond capacity are rejected.
     #[test]
     fn prop_future_attempt_beyond_capacity_rejected(
-        current in 1u16..50,
         capacity in 1u16..30,
     ) {
         let incoming = capacity.saturating_add(1);

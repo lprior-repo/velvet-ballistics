@@ -2,7 +2,7 @@
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::super::*;
     use crate::IpcCommand;
     use crate::constants::IPC_HEADER_LEN;
     use bytes::Bytes;

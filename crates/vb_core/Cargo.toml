@@ -23,9 +23,11 @@ name = "aggregate_resource_budget"
 harness = false
 
 [features]
+bench = []
 default = []
 kani-diagnostic-codes = []
 test-util = []
+volatile = []
 
 [lints]
 workspace = true

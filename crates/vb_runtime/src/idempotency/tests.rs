@@ -1,6 +1,6 @@
 //! Idempotency tracker tests.
 
-use vb_core::action::{ActionError, ActionTicket, Idempotency};
+use vb_core::action::{ActionTicket, Idempotency};
 use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
 
 use super::IdempotencyTracker;

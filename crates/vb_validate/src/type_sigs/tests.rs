@@ -1,8 +1,5 @@
 #[cfg(test)]
-use crate::type_sigs::{
-    ResourceLimits, Taint, ValueFact, ValueType,
-    WorkflowTypes,
-};
+use crate::type_sigs::{ResourceLimits, Taint, ValueFact, ValueType, WorkflowTypes};
 
 // -- ValueType::as_str tests --
 

@@ -23,11 +23,11 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 // Import from the crate — these exist
-use crate::CliExitCode;
 use crate::args::{
     ActionRegistryMode, Command, DurabilityMode, EmitTarget, OutputFormat, ParseError,
     StatusOptions, VerifyProfile,
 };
+use crate::exit_code::CliExitCode;
 use proptest::prelude::*;
 
 // Import from mode_error — this module does NOT exist yet (RED phase)
@@ -307,7 +307,7 @@ fn command_mode_action_list_is_pure() {
 #[test]
 fn command_mode_action_inspect_is_pure() {
     let cmd = Command::ActionInspect {
-        action_id: 1,
+        action_name: "send_email".into(),
         output: OutputFormat::Text,
         registry: ActionRegistryMode::Registered,
     };
@@ -567,7 +567,7 @@ fn command_mode_all_25_command_variants_are_classified() {
     );
     assert_eq!(
         command_mode(&Command::ActionInspect {
-            action_id: 1,
+            action_name: "send_email".into(),
             output: OutputFormat::Text,
             registry: ActionRegistryMode::Registered,
         }),

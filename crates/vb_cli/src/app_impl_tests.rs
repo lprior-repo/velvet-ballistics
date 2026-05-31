@@ -25,14 +25,6 @@ use vb_core::workflow::{
 };
 use vb_storage::{CompiledIrRecord, EventSeq, JournalEvent};
 
-// Import mode_error types used by mode activation tests
-#[cfg(test)]
-use super::mode_error::{CommandMode, ModeError, command_mode};
-
-#[cfg(test)]
-#[path = "mode_activation_tests.rs"]
-mod mode_activation;
-
 fn main_test_tempdir() -> std::io::Result<tempfile::TempDir> {
     let root =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/vb-cli-main-tests-tmp");
@@ -283,34 +275,41 @@ fn parse_action_list_accepts_empty_registry_defaults_to_text() {
 }
 
 #[test]
-fn parse_action_inspect_accepts_action_id_defaults_to_text() {
-    let parsed = parse_args(&args(&["velvet-ballistics", "action", "inspect", "2"]));
+fn parse_action_inspect_accepts_action_name_defaults_to_text() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballistics",
+        "action",
+        "inspect",
+        "send_email",
+    ]));
 
     assert!(
         matches!(
             parsed,
             Ok(Command::ActionInspect {
-                action_id: 2,
+                ref action_name,
                 output: super::OutputFormat::Text,
                 registry: ActionRegistryMode::Registered,
-            })
+            }) if action_name == "send_email"
         ),
         "unexpected parse result: {parsed:?}"
     );
 }
 
 #[test]
-fn parse_action_inspect_rejects_invalid_action_id() {
+fn parse_action_inspect_rejects_invalid_action_name() {
     let parsed = parse_args(&args(&[
         "velvet-ballistics",
         "action",
         "inspect",
-        "not-a-number",
+        "bad name",
     ]));
 
     assert_eq!(
         parsed,
-        Err(ParseError::InvalidActionId("not-a-number".into()))
+        Err(ParseError::InvalidActionName(
+            "action name contains whitespace".into()
+        ))
     );
 }
 
@@ -1281,7 +1280,7 @@ mod mode_activation {
     #[test]
     fn command_mode_action_inspect_is_pure() {
         let cmd = Command::ActionInspect {
-            action_id: 1,
+            action_name: "send_email".into(),
             output: OutputFormat::Text,
             registry: ActionRegistryMode::Registered,
         };
@@ -1541,7 +1540,7 @@ mod mode_activation {
         );
         assert_eq!(
             command_mode(&Command::ActionInspect {
-                action_id: 1,
+                action_name: "send_email".into(),
                 output: OutputFormat::Text,
                 registry: ActionRegistryMode::Registered,
             }),

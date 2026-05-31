@@ -22,9 +22,7 @@
 
 use proptest::prelude::*;
 use vb_core::RunId;
-use vb_storage::constants::{
-    PREFIX_RUN_EVENT, PREFIX_RUN_HEADER,
-};
+use vb_storage::constants::{PREFIX_RUN_EVENT, PREFIX_RUN_HEADER};
 
 /// Key byte-length constants (reproduced because JOURNAL_KEY_BYTES/RUN_ONLY_KEY_BYTES
 /// are `pub(crate)` and inaccessible from workspace integration tests).
@@ -237,8 +235,7 @@ fn run_event_key_ordering_matches_numeric_comparison() {
     let run = run_id(42);
     let key0 = run_event_key(run, event_seq(0)).expect("key at seq=0 must encode");
     let key255 = run_event_key(run, event_seq(255)).expect("key at seq=255 must encode");
-    let key_max = run_event_key(run, event_seq(u64::MAX))
-        .expect("key at seq=u64::MAX must encode");
+    let key_max = run_event_key(run, event_seq(u64::MAX)).expect("key at seq=u64::MAX must encode");
 
     // When: comparing lexicographically
     // Then: ordering matches numeric comparison
@@ -268,8 +265,7 @@ fn sequence_bytes_decoded_to_correct_u64_values() {
     ];
 
     for &(seq_val, label) in &tests {
-        let key = run_event_key(run, event_seq(seq_val))
-            .expect("key must encode successfully");
+        let key = run_event_key(run, event_seq(seq_val)).expect("key must encode successfully");
         let seq_bytes = event_key_seq_bytes(&key);
         let decoded = u64::from_be_bytes(seq_bytes);
 
@@ -392,10 +388,7 @@ fn sequence_gap_detected_when_gap_exists_in_keyspace() {
             );
         }
         other => {
-            panic!(
-                "expected SequenceGap at seq=3, got {:?}",
-                other
-            );
+            panic!("expected SequenceGap at seq=3, got {:?}", other);
         }
     }
 }
@@ -616,7 +609,12 @@ fn single_event_at_seq_seven_replays_with_one_event() {
                 "expected seq must be 0 for replay, got {}",
                 expected.get()
             );
-            assert_eq!(actual.get(), 7, "actual seq must be 7, got {}", actual.get());
+            assert_eq!(
+                actual.get(),
+                7,
+                "actual seq must be 7, got {}",
+                actual.get()
+            );
         }
         Ok(events) => {
             // If the implementation handles this differently (e.g., snapshot-aware),
@@ -664,12 +662,8 @@ fn single_event_at_max_minus_one_replays_correctly() {
 
     // Use inject_raw_event because append_journaled may have constraints
     // and we need precise control over the sequence number
-    let result = journal.inject_raw_event(
-        run,
-        event_seq(u64::MAX - 1),
-        RecordKind::RunAccepted,
-        &[],
-    );
+    let result =
+        journal.inject_raw_event(run, event_seq(u64::MAX - 1), RecordKind::RunAccepted, &[]);
 
     // This should either succeed or fail in a typed way
     // The key point: it must NOT panic
@@ -809,11 +803,7 @@ fn run_event_key_construction_with_various_sequences_does_not_panic() {
 fn run_event_key_has_correct_byte_length_for_all_boundary_sequences() {
     // Given: boundary sequence values
     let run = run_id(0xABCD);
-    let boundaries = [
-        (0u64, "zero"),
-        (1, "one"),
-        (u64::MAX, "max"),
-    ];
+    let boundaries = [(0u64, "zero"), (1, "one"), (u64::MAX, "max")];
 
     for &(seq_val, label) in &boundaries {
         let key = run_event_key(run, event_seq(seq_val))
@@ -858,7 +848,8 @@ fn prefix_extraction_from_full_key_matches_manual_prefix() {
 
     // Then: extracted first 9 bytes match the manual prefix
     assert_eq!(
-        extracted_prefix, &manual_prefix[..],
+        extracted_prefix,
+        &manual_prefix[..],
         "extracted prefix from full key must match manually built prefix"
     );
 }
@@ -900,8 +891,7 @@ fn sequence_bytes_at_offset_9_to_17_are_correct_for_all_boundary_values() {
     ];
 
     for &(seq_val, ref expected_bytes) in &test_cases {
-        let key = run_event_key(run, event_seq(seq_val))
-            .expect("key at test sequence must encode");
+        let key = run_event_key(run, event_seq(seq_val)).expect("key at test sequence must encode");
         let seq_bytes = event_key_seq_bytes(&key);
         assert_eq!(
             &seq_bytes[..],
@@ -924,9 +914,7 @@ fn replay_returns_contiguous_events_in_sequence_order() {
     seed_contiguous_events(&journal, run, 5);
 
     // When: replaying
-    let events = journal
-        .events_for_run(run)
-        .expect("replay must succeed");
+    let events = journal.events_for_run(run).expect("replay must succeed");
 
     // Then: all 6 events returned in sequential order
     assert_eq!(
@@ -1047,11 +1035,17 @@ fn get_event_bytes_retrieves_individual_events_by_key() {
     // Then: present events return Some(bytes), absent returns None
     match event_0 {
         Ok(Some(_bytes)) => { /* expected */ }
-        other => panic!("get_event_bytes(seq=0) must return Some(bytes), got {:?}", other),
+        other => panic!(
+            "get_event_bytes(seq=0) must return Some(bytes), got {:?}",
+            other
+        ),
     }
     match event_3 {
         Ok(Some(_bytes)) => { /* expected */ }
-        other => panic!("get_event_bytes(seq=3) must return Some(bytes), got {:?}", other),
+        other => panic!(
+            "get_event_bytes(seq=3) must return Some(bytes), got {:?}",
+            other
+        ),
     }
     match event_99 {
         Ok(None) => { /* expected - no event at seq=99 */ }
@@ -1172,10 +1166,7 @@ fn distinct_error_types_differ_for_different_failure_conditions() {
 
     // Verify SequenceGap is distinct from SequenceOverflow
     assert!(
-        !matches!(
-            &result_b,
-            Err(JournalError::SequenceOverflow)
-        ),
+        !matches!(&result_b, Err(JournalError::SequenceOverflow)),
         "SequenceGap must be distinct from SequenceOverflow"
     );
 }
@@ -1243,7 +1234,10 @@ fn duplicate_event_error_is_distinct_from_other_insert_errors() {
 
     // Then: DuplicateEvent is returned (or Fjall error depending on implementation)
     match result {
-        Err(JournalError::DuplicateEvent { run: dup_run, seq: dup_seq }) => {
+        Err(JournalError::DuplicateEvent {
+            run: dup_run,
+            seq: dup_seq,
+        }) => {
             assert_eq!(dup_run, run, "duplicate must reference correct run");
             assert_eq!(dup_seq.get(), 0, "duplicate seq must be 0");
         }
@@ -1434,4 +1428,3 @@ proptest! {
         prop_assert_ne!(key1, key2, "different sequence keys must be different");
     }
 }
-

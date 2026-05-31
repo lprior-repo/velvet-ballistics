@@ -4,11 +4,11 @@
 use proptest::prelude::*;
 use vb_core::{RunId, WorkflowDigest};
 use vb_storage::{
-    decode_record, decode_record_header, encode_record, JournalError, RecordKind, RecordEnvelope,
+    EventSeq, JournalEvent, MAGIC_BLOB, MAGIC_JOURNAL_EVENT, MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES,
+    RECORD_HEADER_BYTES, RunSnapshot,
 };
 use vb_storage::{
-    JournalEvent, RunSnapshot, EventSeq, MAX_SNAPSHOT_BYTES, MAGIC_BLOB, MAGIC_JOURNAL_EVENT,
-    MAGIC_SNAPSHOT, RECORD_HEADER_BYTES,
+    JournalError, RecordEnvelope, RecordKind, decode_record, decode_record_header, encode_record,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -155,22 +155,35 @@ fn known_good_journal_event_encodes_successfully() {
     let event = make_minimal_journal_event();
 
     // When: encoding with the correct magic, kind, and max payload
-    let result =
-        encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &event, u32::MAX);
+    let result = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunAccepted,
+        0,
+        &event,
+        u32::MAX,
+    );
 
     // Then: encoding succeeds
     let encoded = result.expect("encode_record should succeed for valid journal event");
     assert!(!encoded.is_empty(), "encoded record should not be empty");
-    assert!(encoded.len() > RECORD_HEADER_BYTES, "encoded record should include payload");
+    assert!(
+        encoded.len() > RECORD_HEADER_BYTES,
+        "encoded record should include payload"
+    );
 }
 
 #[test]
 fn known_good_journal_event_decodes_successfully() {
     // Given: an encoded valid JournalEvent
     let event = make_minimal_journal_event();
-    let encoded =
-        encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &event, u32::MAX)
-            .expect("encode should succeed");
+    let encoded = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunAccepted,
+        0,
+        &event,
+        u32::MAX,
+    )
+    .expect("encode should succeed");
 
     // When: decoding with correct magic and max payload
     let result: Result<(RecordEnvelope, JournalEvent), JournalError> =
@@ -190,17 +203,30 @@ fn known_good_journal_event_round_trips_identically() {
     let event = make_minimal_journal_event();
 
     // When: encode → decode → re-encode the same event
-    let encoded1 =
-        encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &event, u32::MAX)
-            .expect("first encode should succeed");
+    let encoded1 = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunAccepted,
+        0,
+        &event,
+        u32::MAX,
+    )
+    .expect("first encode should succeed");
     let (_envelope, decoded_event): (RecordEnvelope, JournalEvent) =
         decode_record(&encoded1, MAGIC_JOURNAL_EVENT, u32::MAX).expect("decode should succeed");
-    let encoded2 =
-        encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &decoded_event, u32::MAX)
-            .expect("second encode should succeed");
+    let encoded2 = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunAccepted,
+        0,
+        &decoded_event,
+        u32::MAX,
+    )
+    .expect("second encode should succeed");
 
     // Then: re-encoded bytes match original encoded bytes
-    assert_eq!(encoded1, encoded2, "round-trip re-encode should produce identical bytes");
+    assert_eq!(
+        encoded1, encoded2,
+        "round-trip re-encode should produce identical bytes"
+    );
 }
 
 // =============================================================================
@@ -213,22 +239,35 @@ fn known_good_snapshot_envelope_encodes_successfully() {
     let snapshot = make_minimal_snapshot();
 
     // When: encoding with snapshot magic, kind, and max
-    let result =
-        encode_record(MAGIC_SNAPSHOT, RecordKind::Snapshot, snapshot.seq.get(), &snapshot, MAX_SNAPSHOT_BYTES);
+    let result = encode_record(
+        MAGIC_SNAPSHOT,
+        RecordKind::Snapshot,
+        snapshot.seq.get(),
+        &snapshot,
+        MAX_SNAPSHOT_BYTES,
+    );
 
     // Then: encoding succeeds
     let encoded = result.expect("encode_record should succeed for valid snapshot");
     assert!(!encoded.is_empty(), "encoded snapshot should not be empty");
-    assert!(encoded.len() > RECORD_HEADER_BYTES, "encoded snapshot should include payload");
+    assert!(
+        encoded.len() > RECORD_HEADER_BYTES,
+        "encoded snapshot should include payload"
+    );
 }
 
 #[test]
 fn known_good_snapshot_envelope_decodes_successfully() {
     // Given: an encoded valid RunSnapshot
     let snapshot = make_minimal_snapshot();
-    let encoded =
-        encode_record(MAGIC_SNAPSHOT, RecordKind::Snapshot, snapshot.seq.get(), &snapshot, MAX_SNAPSHOT_BYTES)
-            .expect("encode should succeed");
+    let encoded = encode_record(
+        MAGIC_SNAPSHOT,
+        RecordKind::Snapshot,
+        snapshot.seq.get(),
+        &snapshot,
+        MAX_SNAPSHOT_BYTES,
+    )
+    .expect("encode should succeed");
 
     // When: decoding with snapshot magic and max
     let result: Result<(RecordEnvelope, RunSnapshot), JournalError> =
@@ -248,17 +287,31 @@ fn known_good_snapshot_envelope_round_trips_identically() {
     let snapshot = make_minimal_snapshot();
 
     // When: encode → decode → re-encode
-    let encoded1 =
-        encode_record(MAGIC_SNAPSHOT, RecordKind::Snapshot, snapshot.seq.get(), &snapshot, MAX_SNAPSHOT_BYTES)
-            .expect("first encode should succeed");
+    let encoded1 = encode_record(
+        MAGIC_SNAPSHOT,
+        RecordKind::Snapshot,
+        snapshot.seq.get(),
+        &snapshot,
+        MAX_SNAPSHOT_BYTES,
+    )
+    .expect("first encode should succeed");
     let (_envelope, decoded_snapshot): (RecordEnvelope, RunSnapshot) =
-        decode_record(&encoded1, MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES).expect("decode should succeed");
-    let encoded2 =
-        encode_record(MAGIC_SNAPSHOT, RecordKind::Snapshot, decoded_snapshot.seq.get(), &decoded_snapshot, MAX_SNAPSHOT_BYTES)
-            .expect("second encode should succeed");
+        decode_record(&encoded1, MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES)
+            .expect("decode should succeed");
+    let encoded2 = encode_record(
+        MAGIC_SNAPSHOT,
+        RecordKind::Snapshot,
+        decoded_snapshot.seq.get(),
+        &decoded_snapshot,
+        MAX_SNAPSHOT_BYTES,
+    )
+    .expect("second encode should succeed");
 
     // Then: re-encoded bytes match original
-    assert_eq!(encoded1, encoded2, "snapshot round-trip re-encode should produce identical bytes");
+    assert_eq!(
+        encoded1, encoded2,
+        "snapshot round-trip re-encode should produce identical bytes"
+    );
 }
 
 // =============================================================================
@@ -269,9 +322,14 @@ fn known_good_snapshot_envelope_round_trips_identically() {
 fn header_crc_corruption_returns_checksum_mismatch() {
     // Given: a validly encoded journal event header
     let event = make_minimal_journal_event();
-    let encoded =
-        encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &event, u32::MAX)
-            .expect("encode should succeed");
+    let encoded = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunAccepted,
+        0,
+        &event,
+        u32::MAX,
+    )
+    .expect("encode should succeed");
     // The header is the first RECORD_HEADER_BYTES bytes.
     let mut header = [0u8; RECORD_HEADER_BYTES];
     header.copy_from_slice(&encoded[..RECORD_HEADER_BYTES]);
@@ -296,9 +354,14 @@ fn header_crc_corruption_returns_checksum_mismatch() {
 fn payload_digest_corruption_returns_digest_mismatch() {
     // Given: a validly encoded journal event
     let event = make_minimal_journal_event();
-    let mut encoded =
-        encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &event, u32::MAX)
-            .expect("encode should succeed");
+    let mut encoded = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunAccepted,
+        0,
+        &event,
+        u32::MAX,
+    )
+    .expect("encode should succeed");
 
     // When: the payload bytes are corrupted (change one byte after the header)
     let payload_start = RECORD_HEADER_BYTES;
@@ -325,9 +388,14 @@ fn invalid_postcard_payload_returns_decode_failed() {
     // The header is valid (digest matches, CRC correct), but the payload
     // deserialization fails for the expected type.
     let bogus_payload: u32 = 42;
-    let encoded =
-        encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &bogus_payload, u32::MAX)
-            .expect("encode should succeed for u32 payload");
+    let encoded = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunAccepted,
+        0,
+        &bogus_payload,
+        u32::MAX,
+    )
+    .expect("encode should succeed for u32 payload");
 
     // When: decoding as JournalEvent
     let result: Result<(RecordEnvelope, JournalEvent), JournalError> =
@@ -348,9 +416,14 @@ fn invalid_postcard_payload_returns_decode_failed() {
 fn unknown_magic_bytes_return_bad_magic() {
     // Given: a validly encoded journal event (magic=MAGIC_JOURNAL_EVENT)
     let event = make_minimal_journal_event();
-    let encoded =
-        encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &event, u32::MAX)
-            .expect("encode should succeed");
+    let encoded = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunAccepted,
+        0,
+        &event,
+        u32::MAX,
+    )
+    .expect("encode should succeed");
 
     // When: decoding with a different expected magic (snapshot magic)
     let result = decode_record_header(&encoded, MAGIC_SNAPSHOT, u32::MAX);
@@ -370,9 +443,14 @@ fn unknown_magic_bytes_return_bad_magic() {
 fn unknown_record_kind_rejected_with_diagnostics() {
     // Given: a validly encoded journal event header
     let event = make_minimal_journal_event();
-    let encoded =
-        encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &event, u32::MAX)
-            .expect("encode should succeed");
+    let encoded = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunAccepted,
+        0,
+        &event,
+        u32::MAX,
+    )
+    .expect("encode should succeed");
     let mut header = [0u8; RECORD_HEADER_BYTES];
     header.copy_from_slice(&encoded[..RECORD_HEADER_BYTES]);
 
@@ -399,9 +477,14 @@ fn unknown_record_kind_rejected_with_diagnostics() {
 fn record_kind_family_mismatch_rejected_with_diagnostics() {
     // Given: a validly encoded journal event header
     let event = make_minimal_journal_event();
-    let encoded =
-        encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &event, u32::MAX)
-            .expect("encode should succeed");
+    let encoded = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunAccepted,
+        0,
+        &event,
+        u32::MAX,
+    )
+    .expect("encode should succeed");
     let mut header = [0u8; RECORD_HEADER_BYTES];
     header.copy_from_slice(&encoded[..RECORD_HEADER_BYTES]);
 
@@ -427,9 +510,14 @@ fn record_kind_family_mismatch_rejected_with_diagnostics() {
 fn corrupt_envelope_errors_include_diagnostics() {
     // Given: a validly encoded journal event
     let event = make_minimal_journal_event();
-    let encoded =
-        encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &event, u32::MAX)
-            .expect("encode should succeed");
+    let encoded = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunAccepted,
+        0,
+        &event,
+        u32::MAX,
+    )
+    .expect("encode should succeed");
 
     // When: decoding with wrong expected magic
     let result = decode_record_header(&encoded, MAGIC_BLOB, u32::MAX);
@@ -437,7 +525,10 @@ fn corrupt_envelope_errors_include_diagnostics() {
     // Then: error carries diagnostic fields
     match result {
         Err(JournalError::BadMagic { found }) => {
-            assert_eq!(found, MAGIC_JOURNAL_EVENT, "BadMagic found should be the actual magic");
+            assert_eq!(
+                found, MAGIC_JOURNAL_EVENT,
+                "BadMagic found should be the actual magic"
+            );
         }
         other => panic!("expected BadMagic, got: {other:?}"),
     }

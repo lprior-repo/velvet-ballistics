@@ -4,7 +4,6 @@ use vb_storage::EventSeq;
 use vb_storage::batch::JournalWriteBatch;
 use vb_storage::codec::encode_record;
 use vb_storage::constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES};
-use vb_storage::error::JournalError;
 use vb_storage::events::JournalEvent;
 use vb_storage::journal::FjallJournal;
 use vb_storage::records::RecordKind;

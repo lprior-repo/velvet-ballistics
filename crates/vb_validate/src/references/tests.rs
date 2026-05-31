@@ -3,12 +3,12 @@
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]
+use crate::ValidationError;
+#[cfg(test)]
 use crate::references::{
     RefTables, WorkflowRefs, parse_step_reference, validate_references, validate_single_reference,
     validate_single_reference_with_context,
 };
-#[cfg(test)]
-use crate::ValidationError;
 
 fn make_tables(inputs: &[&str], vars: &[&str], secrets: &[&str], step_ids: &[&str]) -> RefTables {
     RefTables {

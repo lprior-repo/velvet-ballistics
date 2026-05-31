@@ -97,23 +97,62 @@ enum CleanupResult {
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[allow(dead_code)]
 enum MigErr {
-    MigrationRequired { from: u16, to: u16 },
-    UnsupportedSchemaVersion { version: u16 },
-    UnsupportedMigrationSource { from: u16, to: u16 },
-    MissingMigrationRegistryEntry { from: u16, to: u16 },
-    DuplicateMigrationRegistryEntry { from: u16, to: u16 },
+    MigrationRequired {
+        from: u16,
+        to: u16,
+    },
+    UnsupportedSchemaVersion {
+        version: u16,
+    },
+    UnsupportedMigrationSource {
+        from: u16,
+        to: u16,
+    },
+    MissingMigrationRegistryEntry {
+        from: u16,
+        to: u16,
+    },
+    DuplicateMigrationRegistryEntry {
+        from: u16,
+        to: u16,
+    },
     MigrationManifestMissing,
-    MigrationManifestCorrupt { reason_code: u16 },
-    MigrationManifestAdvanceRejected { from: u16, to: u16, phase: Phase },
-    MigrationReadFailed { keyspace: &'static str },
-    MigrationWriteFailed { keyspace: &'static str },
-    MigrationRecordDecodeFailed { record_kind: u16 },
-    MigrationRecordEncodeFailed { record_kind: u16 },
-    MigrationBatchLimitExceeded { limit: u64 },
-    MigrationVerificationFailed { reason_code: u16, checked_count: u64 },
-    MigrationMissingNewRecord { record_kind: u16 },
-    MigrationUnexpectedNewRecord { record_kind: u16 },
-    MigrationCleanupFailed { remaining: u64 },
+    MigrationManifestCorrupt {
+        reason_code: u16,
+    },
+    MigrationManifestAdvanceRejected {
+        from: u16,
+        to: u16,
+        phase: Phase,
+    },
+    MigrationReadFailed {
+        keyspace: &'static str,
+    },
+    MigrationWriteFailed {
+        keyspace: &'static str,
+    },
+    MigrationRecordDecodeFailed {
+        record_kind: u16,
+    },
+    MigrationRecordEncodeFailed {
+        record_kind: u16,
+    },
+    MigrationBatchLimitExceeded {
+        limit: u64,
+    },
+    MigrationVerificationFailed {
+        reason_code: u16,
+        checked_count: u64,
+    },
+    MigrationMissingNewRecord {
+        record_kind: u16,
+    },
+    MigrationUnexpectedNewRecord {
+        record_kind: u16,
+    },
+    MigrationCleanupFailed {
+        remaining: u64,
+    },
 }
 
 // ============================================================================
@@ -395,9 +434,7 @@ fn cleanup_then_advance(old_records: u64, cleanup_required: bool) -> Result<Phas
 fn manifest_version_after_phase(phase: Phase) -> u16 {
     match phase {
         Phase::Committed => CURRENT_SCHEMA_VERSION,
-        Phase::Planned | Phase::Copied | Phase::Verified | Phase::Cleaned => {
-            RESTATE_V1_VERSION
-        }
+        Phase::Planned | Phase::Copied | Phase::Verified | Phase::Cleaned => RESTATE_V1_VERSION,
     }
 }
 
@@ -886,10 +923,7 @@ fn registry_lookup_matrix_covers_all_version_classes() {
     // (version, expected_result)
     let cases: Vec<(u16, Result<&str, MigErr>)> = vec![
         // Known old version with registered entry
-        (
-            RESTATE_V1_VERSION,
-            Ok("restate-v1-to-current"),
-        ),
+        (RESTATE_V1_VERSION, Ok("restate-v1-to-current")),
         // Current version
         (
             CURRENT_SCHEMA_VERSION,

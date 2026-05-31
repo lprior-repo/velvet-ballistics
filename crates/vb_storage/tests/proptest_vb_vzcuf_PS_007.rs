@@ -22,7 +22,6 @@ proptest! {
     #[test]
     fn ps007_accommodates(_dummy in proptest::bool::ANY) {
         let max_encoded = RECORD_HEADER_LEN as u64 + MAX_JOURNAL_EVENT_PAYLOAD_BYTES as u64;
-        let limit: u64 = 1_048_576;
         prop_assert!(max_encoded < u64::MAX);
     }
     #[test]

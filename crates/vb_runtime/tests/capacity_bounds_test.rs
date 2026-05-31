@@ -14,12 +14,7 @@
 //! Tests Shard capacity and command queue bounds alongside the numeric timer seam.
 //! The Shard's command queue capacity is bounded by MAX_COMMAND_QUEUE_CAPACITY (65,536).
 
-use vb_core::ids::RunId;
-use vb_runtime::shard::types::{MAX_COMMAND_QUEUE_CAPACITY, Shard, ShardCommand, ShardConfig};
-
-fn run(id: u64) -> RunId {
-    RunId::new(id)
-}
+use vb_runtime::shard::types::{MAX_COMMAND_QUEUE_CAPACITY, Shard, ShardConfig};
 
 // ---------- Command queue capacity bounds ----------
 

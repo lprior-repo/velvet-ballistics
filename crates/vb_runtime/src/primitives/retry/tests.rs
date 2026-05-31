@@ -1,4 +1,4 @@
-use super::super::*;
+use super::*;
 use vb_core::action::{ActionFailureCode, RetryPolicy as VbRetryPolicy};
 use vb_core::value::Taint;
 

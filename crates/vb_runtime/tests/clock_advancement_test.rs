@@ -14,12 +14,7 @@
 //! Tests the numeric timer seam `advance_clock_to` and `current_tick` API
 //! on `Shard`. Uses deterministic `TimerTick` values instead of `Instant`.
 
-use vb_core::ids::RunId;
 use vb_runtime::shard::types::{Shard, ShardConfig, TimerTick};
-
-fn run(id: u64) -> RunId {
-    RunId::new(id)
-}
 
 // ---------- Behavior G1: Backward clock advance rejected ----------
 

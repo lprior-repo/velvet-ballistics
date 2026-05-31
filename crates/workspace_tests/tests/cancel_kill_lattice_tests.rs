@@ -17,7 +17,7 @@
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 
-use vb_core::action::{ActionName, 
+use vb_core::action::{
     ActionFailure, ActionFailureCode, ActionOutputReady, ActionTicket, Idempotency, RetryPolicy,
     RetrySafety, SideEffect,
 };

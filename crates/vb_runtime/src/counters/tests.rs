@@ -1,4 +1,4 @@
-use super::super::*;
+use super::*;
 
 const fn snapshot(
     runs_submitted: u64,

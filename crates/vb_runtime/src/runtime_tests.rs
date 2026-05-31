@@ -2,15 +2,13 @@
 //! Tests for the multi-shard runtime.
 
 use crate::AskTicket;
-use crate::RuntimeError;
 use crate::journal::{RuntimeJournal, RuntimeJournalEvent, VolatileRuntimeJournal};
 use crate::runtime::Runtime;
 use crate::shard::ShardConfig;
-use crate::trace::TraceEvent;
 use std::sync::{Arc, Mutex};
 use vb_core::action::{
     ActionContract, ActionFailureCode, ActionName, ActionOutputReady, ActionTicket, Idempotency,
-    RetryPolicy, RetrySafety, SideEffect,
+    RetrySafety, SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
@@ -22,10 +20,8 @@ use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, Workfl
 mod tests {
     use super::*;
     use crate::RuntimeError;
-    use crate::counters::RuntimeMetricsSnapshot;
     use crate::engine::action::compute_idempotency_key;
-    use crate::shard::timer_wheel::TimerEntry;
-    use crate::shard::{AskAnswer, InspectResponse, Shard, ShardCommand, ShardDirective};
+    use crate::shard::{AskAnswer, InspectResponse, ShardDirective};
     use crate::trace::TraceEvent;
     use std::num::NonZeroUsize;
 
@@ -184,25 +180,6 @@ mod tests {
 
     fn action_grants(action: ActionId) -> CapabilitySet {
         CapabilitySet::from_grants(Box::from([contract_required_capability(action)]))
-    }
-
-    fn ticket(
-        run: vb_core::ids::RunId,
-        step: StepIdx,
-        seq: SeqNo,
-        action: ActionId,
-        attempt: u16,
-        capacity: u16,
-    ) -> ActionTicket {
-        ActionTicket {
-            run,
-            step,
-            seq,
-            action,
-            attempt,
-            idempotency_key: compute_idempotency_key(run, seq, action),
-            capacity,
-        }
     }
 
     fn encoded_len(value: &SlotValue) -> u32 {

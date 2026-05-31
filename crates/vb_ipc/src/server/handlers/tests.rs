@@ -1,5 +1,5 @@
 mod tests {
-    use super::*;
+    use super::super::*;
 
     use vb_core::ids::StepIdx;
     use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};

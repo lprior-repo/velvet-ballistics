@@ -1,11 +1,11 @@
 //! Tests for resource limit validation.
 
 #[cfg(test)]
+use crate::ValidationError;
+#[cfg(test)]
 use crate::secret_leak::validate_resource_limits;
 #[cfg(test)]
 use crate::type_sigs::{ResourceLimits, StepKind, StepTypes, TypedValue, ValueType, WorkflowTypes};
-#[cfg(test)]
-use crate::ValidationError;
 
 fn make_workflow(steps: Vec<StepTypes>) -> WorkflowTypes {
     WorkflowTypes {

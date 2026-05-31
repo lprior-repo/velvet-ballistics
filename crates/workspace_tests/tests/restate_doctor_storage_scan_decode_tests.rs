@@ -23,16 +23,16 @@
 
 use std::path::Path;
 use vb_core::{RunId, StepIdx, WorkflowDigest};
+use vb_storage::codec::decode_journal_event;
 use vb_storage::constants::{
     CURRENT_SCHEMA_VERSION, DIGEST_BYTES, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     RECORD_HEADER_BYTES, RECORD_HEADER_LEN,
 };
 use vb_storage::error::JournalError;
 use vb_storage::types::EventSeq;
-use vb_storage::codec::decode_journal_event;
 use vb_storage::{
-    decode_record_header, encode_record, encode_record_header, verify_digest_match, FjallJournal,
-    JournalEvent, RecordKind,
+    FjallJournal, JournalEvent, RecordKind, decode_record_header, encode_record,
+    encode_record_header, verify_digest_match,
 };
 
 // ======================================================================
@@ -173,11 +173,8 @@ mod envelope_decode_tests {
         let short = [0u8; 30];
 
         // When: calling decode_record_header
-        let result = decode_record_header(
-            &short,
-            MAGIC_JOURNAL_EVENT,
-            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        );
+        let result =
+            decode_record_header(&short, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
 
         // Then: it fails with UnexpectedEof, not a postcard error
         assert!(
@@ -213,7 +210,8 @@ mod envelope_decode_tests {
     /// T8-ED-04: A header with an unknown schema version yields
     /// UnsupportedSchemaVersion.
     #[test]
-    fn envelope_decode_unknown_schema_yields_unsupported_schema_version() -> Result<(), JournalError> {
+    fn envelope_decode_unknown_schema_yields_unsupported_schema_version() -> Result<(), JournalError>
+    {
         // Given: a valid header with schema_version overwritten to 999
         let event = make_test_event(2, 0);
         let mut header = build_valid_header(&event)?;
@@ -287,7 +285,8 @@ mod envelope_decode_tests {
 
     /// T8-ED-07: A header with wrong header_len yields HeaderLengthMismatch.
     #[test]
-    fn envelope_decode_wrong_header_len_yields_header_length_mismatch() -> Result<(), JournalError> {
+    fn envelope_decode_wrong_header_len_yields_header_length_mismatch() -> Result<(), JournalError>
+    {
         // Given: a valid header with header_len overwritten to 99
         let event = make_test_event(5, 0);
         let mut header = build_valid_header(&event)?;
@@ -491,9 +490,7 @@ mod read_only_tests {
     fn read_only_scan_does_not_append_new_events() -> Result<(), JournalError> {
         // Given: a seeded journal with 5 known events for run 10
         let dir = temp_dir();
-        let events: Vec<JournalEvent> = (0..5)
-            .map(|i| make_test_event(10, i))
-            .collect();
+        let events: Vec<JournalEvent> = (0..5).map(|i| make_test_event(10, i)).collect();
         let journal = seed_and_reopen(dir.path(), &events)?;
 
         // When: reading events for run 10 (simulating a read-only scan)
@@ -517,9 +514,7 @@ mod read_only_tests {
     fn read_only_get_does_not_write_test_entries() -> Result<(), JournalError> {
         // Given: a seeded journal with events for run 20
         let dir = temp_dir();
-        let events: Vec<JournalEvent> = (0..3)
-            .map(|i| make_test_event(20, i))
-            .collect();
+        let events: Vec<JournalEvent> = (0..3).map(|i| make_test_event(20, i)).collect();
         let journal = seed_and_reopen(dir.path(), &events)?;
 
         // When: reading events for run 20 (simulating a get)
@@ -554,7 +549,10 @@ mod read_only_tests {
         );
 
         // Verify the file was not modified or turned into a directory
-        assert!(file_path.is_file(), "file should still be a file, not a directory");
+        assert!(
+            file_path.is_file(),
+            "file should still be a file, not a directory"
+        );
     }
 
     /// T8-RO-04: Deterministic read: reading the same events twice produces
@@ -563,9 +561,7 @@ mod read_only_tests {
     fn read_only_deterministic_read_produces_identical_output() -> Result<(), JournalError> {
         // Given: a seeded journal
         let dir = temp_dir();
-        let events: Vec<JournalEvent> = (0..5)
-            .map(|i| make_test_event(30, i))
-            .collect();
+        let events: Vec<JournalEvent> = (0..5).map(|i| make_test_event(30, i)).collect();
         let journal = seed_and_reopen(dir.path(), &events)?;
 
         // When: reading events twice
@@ -591,9 +587,7 @@ mod read_only_tests {
     fn read_only_open_events_enumeration_is_non_mutating() -> Result<(), JournalError> {
         // Given: a seeded journal with events
         let dir = temp_dir();
-        let events: Vec<JournalEvent> = (0..3)
-            .map(|i| make_test_event(40, i))
-            .collect();
+        let events: Vec<JournalEvent> = (0..3).map(|i| make_test_event(40, i)).collect();
         // Read events from the first open, then drop before re-opening
         let read_count = {
             let journal = seed_and_reopen(dir.path(), &events)?;
@@ -626,9 +620,7 @@ mod bounded_scan_tests {
     fn bounded_scan_limit_le_event_count_returns_error() -> Result<(), JournalError> {
         // Given: a journal with 10 events for run 50
         let dir = temp_dir();
-        let events: Vec<JournalEvent> = (0..10)
-            .map(|i| make_test_event(50, i))
-            .collect();
+        let events: Vec<JournalEvent> = (0..10).map(|i| make_test_event(50, i)).collect();
         let journal = seed_and_reopen(dir.path(), &events)?;
 
         // When: reading with a bounded limit of 5 (less than 10)
@@ -649,9 +641,7 @@ mod bounded_scan_tests {
     fn bounded_scan_limit_gt_event_count_returns_all_events() -> Result<(), JournalError> {
         // Given: a journal with 7 events
         let dir = temp_dir();
-        let events: Vec<JournalEvent> = (0..7)
-            .map(|i| make_test_event(51, i))
-            .collect();
+        let events: Vec<JournalEvent> = (0..7).map(|i| make_test_event(51, i)).collect();
         let journal = seed_and_reopen(dir.path(), &events)?;
 
         // When: reading with a limit of 100 (greater than 7)
@@ -683,9 +673,7 @@ mod bounded_scan_tests {
     fn bounded_scan_limit_one_returns_typed_error() -> Result<(), JournalError> {
         // Given: a journal with 5 events
         let dir = temp_dir();
-        let events: Vec<JournalEvent> = (0..5)
-            .map(|i| make_test_event(53, i))
-            .collect();
+        let events: Vec<JournalEvent> = (0..5).map(|i| make_test_event(53, i)).collect();
         let journal = seed_and_reopen(dir.path(), &events)?;
 
         // When: reading with limit=1 (less than event count)
@@ -741,9 +729,7 @@ mod bounded_scan_tests {
     fn bounded_scan_overflow_limit_handled_safely() -> Result<(), JournalError> {
         // Given: a journal with a small number of events
         let dir = temp_dir();
-        let events: Vec<JournalEvent> = (0..3)
-            .map(|i| make_test_event(54, i))
-            .collect();
+        let events: Vec<JournalEvent> = (0..3).map(|i| make_test_event(54, i)).collect();
         let journal = seed_and_reopen(dir.path(), &events)?;
 
         // When: reading with a very large limit
@@ -778,7 +764,8 @@ mod skip_decode_tests {
     /// T8-SD-01: Header-only decode (decode_record_header) extracts metadata
     /// without performing postcard decode on the payload body.
     #[test]
-    fn skip_decode_header_only_extracts_metadata_without_payload_decode() -> Result<(), JournalError> {
+    fn skip_decode_header_only_extracts_metadata_without_payload_decode() -> Result<(), JournalError>
+    {
         // Given: a valid record
         let event = make_step_started_event(60, 1, 3, 1);
         let record_bytes = encode_valid_record(&event)?;
@@ -843,7 +830,10 @@ mod skip_decode_tests {
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
         // Full decode fails with some error (postcard or pre-postcard)
-        assert!(full_result.is_err(), "full decode should fail on garbage payload");
+        assert!(
+            full_result.is_err(),
+            "full decode should fail on garbage payload"
+        );
 
         // Both paths are typed errors, not panics
         let _ = header_result;
@@ -952,7 +942,10 @@ mod skip_decode_tests {
         // Then: header metadata matches between modes
         assert_eq!(header.sequence, envelope.sequence, "seq mismatch");
         assert_eq!(header.record_kind, envelope.record_kind, "kind mismatch");
-        assert_eq!(header.schema_version, envelope.schema_version, "schema mismatch");
+        assert_eq!(
+            header.schema_version, envelope.schema_version,
+            "schema mismatch"
+        );
         Ok(())
     }
 }
@@ -970,9 +963,7 @@ mod safe_numeric_tests {
     fn safe_numeric_range_from_5_to_10_returns_events_in_range() -> Result<(), JournalError> {
         // Given: a journal with events seq=0..=14 for run 70
         let dir = temp_dir();
-        let events: Vec<JournalEvent> = (0..=14)
-            .map(|i| make_test_event(70, i))
-            .collect();
+        let events: Vec<JournalEvent> = (0..=14).map(|i| make_test_event(70, i)).collect();
         let journal = seed_and_reopen(dir.path(), &events)?;
 
         // When: reading all events for run 70, then filtering to [5,10]
@@ -999,17 +990,12 @@ mod safe_numeric_tests {
     fn safe_numeric_from_only_scans_to_end() -> Result<(), JournalError> {
         // Given: events seq=0..=19
         let dir = temp_dir();
-        let events: Vec<JournalEvent> = (0..=19)
-            .map(|i| make_test_event(71, i))
-            .collect();
+        let events: Vec<JournalEvent> = (0..=19).map(|i| make_test_event(71, i)).collect();
         let journal = seed_and_reopen(dir.path(), &events)?;
 
         // When: filtering from seq 15 onwards
         let all = journal.events_for_run(RunId::new(71))?;
-        let filtered: Vec<&JournalEvent> = all
-            .iter()
-            .filter(|e| e.seq().get() >= 15)
-            .collect();
+        let filtered: Vec<&JournalEvent> = all.iter().filter(|e| e.seq().get() >= 15).collect();
 
         // Then: events seq>=15 present, events seq<15 absent
         assert_eq!(filtered.len(), 5); // seq 15..=19
@@ -1024,17 +1010,12 @@ mod safe_numeric_tests {
     fn safe_numeric_to_only_scans_from_beginning() -> Result<(), JournalError> {
         // Given: events seq=0..=19
         let dir = temp_dir();
-        let events: Vec<JournalEvent> = (0..=19)
-            .map(|i| make_test_event(72, i))
-            .collect();
+        let events: Vec<JournalEvent> = (0..=19).map(|i| make_test_event(72, i)).collect();
         let journal = seed_and_reopen(dir.path(), &events)?;
 
         // When: filtering to seq <= 5
         let all = journal.events_for_run(RunId::new(72))?;
-        let filtered: Vec<&JournalEvent> = all
-            .iter()
-            .filter(|e| e.seq().get() <= 5)
-            .collect();
+        let filtered: Vec<&JournalEvent> = all.iter().filter(|e| e.seq().get() <= 5).collect();
 
         // Then: events seq<=5 present, events seq>5 absent
         assert_eq!(filtered.len(), 6); // seq 0..=5
@@ -1049,9 +1030,7 @@ mod safe_numeric_tests {
     fn safe_numeric_from_gt_to_yields_empty_result() -> Result<(), JournalError> {
         // Given: events seq=0..=9
         let dir = temp_dir();
-        let events: Vec<JournalEvent> = (0..=9)
-            .map(|i| make_test_event(73, i))
-            .collect();
+        let events: Vec<JournalEvent> = (0..=9).map(|i| make_test_event(73, i)).collect();
         let journal = seed_and_reopen(dir.path(), &events)?;
 
         // When: filtering from 10 to 5 (impossible range)
@@ -1074,9 +1053,7 @@ mod safe_numeric_tests {
     fn safe_numeric_from_zero_handled_safely() -> Result<(), JournalError> {
         // Given: events with seq starting at 0
         let dir = temp_dir();
-        let events: Vec<JournalEvent> = (0..=4)
-            .map(|i| make_test_event(74, i))
-            .collect();
+        let events: Vec<JournalEvent> = (0..=4).map(|i| make_test_event(74, i)).collect();
         let journal = seed_and_reopen(dir.path(), &events)?;
 
         // When: reading all events (from=0 concept: zero lower bound is safe)
@@ -1093,17 +1070,13 @@ mod safe_numeric_tests {
     fn safe_numeric_u64_max_handled_safely() -> Result<(), JournalError> {
         // Given: events with small sequence numbers
         let dir = temp_dir();
-        let events: Vec<JournalEvent> = (0..=2)
-            .map(|i| make_test_event(75, i))
-            .collect();
+        let events: Vec<JournalEvent> = (0..=2).map(|i| make_test_event(75, i)).collect();
         let journal = seed_and_reopen(dir.path(), &events)?;
 
         // When: filtering from u64::MAX
         let all = journal.events_for_run(RunId::new(75))?;
-        let filtered: Vec<&JournalEvent> = all
-            .iter()
-            .filter(|e| e.seq().get() >= u64::MAX)
-            .collect();
+        let filtered: Vec<&JournalEvent> =
+            all.iter().filter(|e| e.seq().get() >= u64::MAX).collect();
 
         // Then: empty result, no panic, no overflow
         assert_eq!(filtered.len(), 0);
@@ -1150,10 +1123,7 @@ mod parse_decode_error_tests {
         let result = FjallJournal::open(nonexistent, None);
 
         // Then: error returned (no panic); error is a typed JournalError
-        assert!(
-            result.is_err(),
-            "expected error opening nonexistent path"
-        );
+        assert!(result.is_err(), "expected error opening nonexistent path");
 
         match result {
             Err(JournalError::Fjall(_)) => { /* expected: Fjall-level I/O error */ }
@@ -1316,9 +1286,7 @@ mod parse_decode_error_tests {
     fn parse_decode_error_multiple_valid_operations_combined() -> Result<(), JournalError> {
         // Given: a seeded journal
         let dir = temp_dir();
-        let events: Vec<JournalEvent> = (0..5)
-            .map(|i| make_test_event(82, i))
-            .collect();
+        let events: Vec<JournalEvent> = (0..5).map(|i| make_test_event(82, i)).collect();
         let journal = seed_and_reopen(dir.path(), &events)?;
 
         // When: performing multiple read operations in combination
@@ -1337,7 +1305,10 @@ mod parse_decode_error_tests {
             MAGIC_JOURNAL_EVENT,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
-        assert!(decoded_header.is_ok(), "raw bytes should decode as valid header");
+        assert!(
+            decoded_header.is_ok(),
+            "raw bytes should decode as valid header"
+        );
         Ok(())
     }
 
@@ -1349,11 +1320,8 @@ mod parse_decode_error_tests {
         let noise = [0xFFu8; 64];
 
         // When: attempting to decode as a record header
-        let result = decode_record_header(
-            &noise,
-            MAGIC_JOURNAL_EVENT,
-            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        );
+        let result =
+            decode_record_header(&noise, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
 
         // Then: error is returned (typed JournalError, no panic)
         assert!(result.is_err(), "random noise must be rejected");
@@ -1484,7 +1452,10 @@ fn journal_error_bad_magic_carries_found_value() {
 
 #[test]
 fn journal_error_payload_too_large_carries_len_and_max() {
-    let err = JournalError::PayloadTooLarge { len: 5000, max: 1024 };
+    let err = JournalError::PayloadTooLarge {
+        len: 5000,
+        max: 1024,
+    };
     let msg = format!("{err}");
     assert!(msg.contains("5000") || msg.contains("1024"));
 }

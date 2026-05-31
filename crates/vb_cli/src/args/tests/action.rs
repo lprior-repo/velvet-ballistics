@@ -138,15 +138,20 @@ fn parse_action_list_rejects_positional_argument() {
 }
 
 #[test]
-fn parse_action_inspect_accepts_valid_id_and_defaults() {
-    let parsed = parse_args(&args(&["velvet-ballistics", "action", "inspect", "42"]));
+fn parse_action_inspect_accepts_valid_name_and_defaults() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballistics",
+        "action",
+        "inspect",
+        "send_email",
+    ]));
     if let Ok(Command::ActionInspect {
-        action_id,
+        action_name,
         output,
         registry,
     }) = parsed
     {
-        assert_eq!(action_id, 42);
+        assert_eq!(action_name, "send_email");
         assert_eq!(output, OutputFormat::Text);
         assert_eq!(registry, ActionRegistryMode::Registered);
     } else {
@@ -160,19 +165,19 @@ fn parse_action_inspect_accepts_registry_and_emit_postcard() {
         "velvet-ballistics",
         "action",
         "inspect",
-        "7",
+        "send_email",
         "--registry",
         "empty",
         "--emit",
         "postcard",
     ]));
     if let Ok(Command::ActionInspect {
-        action_id,
+        action_name,
         output,
         registry,
     }) = parsed
     {
-        assert_eq!(action_id, 7);
+        assert_eq!(action_name, "send_email");
         assert_eq!(output, OutputFormat::Postcard);
         assert_eq!(registry, ActionRegistryMode::Empty);
     } else {
@@ -181,18 +186,23 @@ fn parse_action_inspect_accepts_registry_and_emit_postcard() {
 }
 
 #[test]
-fn parse_action_inspect_rejects_missing_action_id() {
+fn parse_action_inspect_rejects_missing_action_name() {
     let parsed = parse_args(&args(&["velvet-ballistics", "action", "inspect"]));
     assert!(matches!(
         parsed,
-        Err(ParseError::MissingArgument("action_id"))
+        Err(ParseError::MissingArgument("action_name"))
     ));
 }
 
 #[test]
-fn parse_action_inspect_rejects_non_numeric_action_id() {
-    let parsed = parse_args(&args(&["velvet-ballistics", "action", "inspect", "abc"]));
-    assert!(matches!(parsed, Err(ParseError::InvalidActionId(_))));
+fn parse_action_inspect_rejects_whitespace_action_name() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballistics",
+        "action",
+        "inspect",
+        "bad name",
+    ]));
+    assert!(matches!(parsed, Err(ParseError::InvalidActionName(_))));
 }
 
 #[test]

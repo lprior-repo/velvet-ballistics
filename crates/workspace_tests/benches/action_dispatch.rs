@@ -6,8 +6,8 @@
 
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;
-use vb_core::{
 use vb_core::action::ActionName;
+use vb_core::{
     action::{ActionContract, ActionInput, ActionOutcome, Idempotency, RetrySafety, SideEffect},
     ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx},
 };

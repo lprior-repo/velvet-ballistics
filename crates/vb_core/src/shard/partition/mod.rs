@@ -135,10 +135,18 @@ impl KeyRange {
 
     #[must_use]
     pub fn is_adjacent_to(self, other: Self) -> bool {
-        if self.end.checked_add(1).is_some_and(|next| next == other.start) {
+        if self
+            .end
+            .checked_add(1)
+            .is_some_and(|next| next == other.start)
+        {
             return true;
         }
-        if other.end.checked_add(1).is_some_and(|next| next == self.start) {
+        if other
+            .end
+            .checked_add(1)
+            .is_some_and(|next| next == self.start)
+        {
             return true;
         }
         false

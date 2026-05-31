@@ -9,7 +9,7 @@ pub(crate) mod proptest;
 // Flux refinement modules (compiled with flux-rs; extern specs)
 // Gated behind a cfg to avoid compilation under normal rustc.
 // Actual verification: `cargo flux -p vb_runtime`
-#[cfg(feature = "vb-y9d3v-flux-refinements")]
+#[cfg(all(flux, feature = "vb-y9d3v-flux-refinements"))]
 pub mod flux {
     pub mod vb_y9d3v_action_ticket_refinements;
 }

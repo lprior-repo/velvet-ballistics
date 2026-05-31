@@ -1,4 +1,4 @@
-use super::super::*;
+use super::*;
 use vb_core::ids::WorkflowDigest;
 
 struct FixedAcceptedStore {

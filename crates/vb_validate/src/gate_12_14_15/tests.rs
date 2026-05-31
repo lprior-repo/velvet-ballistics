@@ -6,11 +6,11 @@ use vb_core::ids::{ActionId, ConstIdx, SlotIdx, StepIdx};
 use vb_core::value::ConstValue;
 use vb_core::workflow::{CompiledNode, ResourceContract};
 
+use crate::ValidationError;
 use crate::gate_12_14_15::{
     validate_gate_12_action_contract_completeness, validate_gate_14_slot_type_consistency,
     validate_gate_15_determinism_proof,
 };
-use crate::ValidationError;
 
 fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
     WorkflowParts {

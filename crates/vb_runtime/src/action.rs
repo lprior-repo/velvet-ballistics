@@ -5,8 +5,7 @@
 use std::collections::HashMap;
 
 use vb_core::action::{
-    ActionContract, ActionError, ActionInput, ActionName, ActionOutcome, ActionResult,
-    ActionTicket,
+    ActionContract, ActionError, ActionInput, ActionName, ActionOutcome, ActionResult, ActionTicket,
 };
 use vb_core::ids::ActionId;
 
