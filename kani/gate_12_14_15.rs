@@ -36,52 +36,28 @@ fn make_contract(action_id: u16) -> ActionContract {
 
 /// K16: Every Do node has a corresponding ActionContract.
 ///
-/// Note: This harness tests a specific scenario (one Do node with matching contract).
-/// Gate 12 requires contract-Do matching, which is difficult with arbitrary workflows.
-/// Using arbitrary action_id while keeping fixed workflow structure.
+/// GOD RULE 1: Uses kani::any::<WorkflowParts>() with bounded assumes for structure.
+/// Gate 12 requires exactly one Do node — we use assume to constrain arbitrary generation.
 #[kani::proof]
 fn kani_gate_12_do_to_contract() {
     let action_id: u16 = kani::any();
     kani::assume(action_id > 0);
     kani::assume(action_id < 100);
 
-    let nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Do {
-                action: ActionId::new(action_id),
-                input: SlotIdx::new(0),
-            },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
-                result: SlotIdx::new(0),
-            },
-        },
-    ];
-
-    let parts = WorkflowParts {
-        name: Box::from("kani_g12"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: nodes.into_boxed_slice(),
-        expressions: Box::new([]),
-        accessors: Box::new([]),
-        constants: Box::new([]),
-        slot_count: 1,
-        symbols_count: 0,
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::new([]),
-    };
+    // GOD RULE 1: Use kani::any for WorkflowParts, constrain to 2-node structure
+    let mut parts: WorkflowParts = kani::any();
+    // Constrain to exactly 2 nodes: Do + Finish
+    kani::assume(parts.nodes.len() == 2);
+    // Constrain first node is Do with our action_id
+    kani::assume(matches!(
+        parts.nodes[0].kind,
+        CompiledNodeKind::Do { action, input: _ } if action.get() == action_id
+    ));
+    // Constrain second node is Finish
+    kani::assume(matches!(parts.nodes[1].kind, CompiledNodeKind::Finish { .. }));
+    // Ensure exactly 1 Do node (no extras)
+    let do_count = parts.nodes.iter().filter(|n| matches!(n.kind, CompiledNodeKind::Do { .. })).count();
+    kani::assume(do_count == 1);
 
     let contracts = vec![make_contract(action_id)];
 
