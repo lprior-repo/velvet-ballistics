@@ -1628,7 +1628,7 @@ fn canonical_primitive_name_returns_correct_names_for_all_variants() {
                 initial: "0".into(),
                 body: vec![],
             },
-            "aggregate",
+            "reduce",
         ),
         (
             StepPrimitive::Repeat {

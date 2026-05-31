@@ -104,7 +104,7 @@ pub(crate) fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) 
         vb_yaml::ast::StepPrimitive::ForEach { .. } => "for_each",
         vb_yaml::ast::StepPrimitive::Together { .. } => "together",
         vb_yaml::ast::StepPrimitive::Collect { .. } => "collect",
-        vb_yaml::ast::StepPrimitive::Aggregate { .. } => "aggregate",
+        vb_yaml::ast::StepPrimitive::Aggregate { .. } => "reduce",
         vb_yaml::ast::StepPrimitive::Repeat { .. } => "repeat",
         vb_yaml::ast::StepPrimitive::Wait { .. } => "wait",
         vb_yaml::ast::StepPrimitive::Ask { .. } => "ask",
