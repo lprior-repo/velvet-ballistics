@@ -11,17 +11,17 @@ Benchmarks are part of the product contract. The first benchmark targets are:
 - Fjall journal append without strict persist.
 - Fjall journal append with group commit.
 - replay from ordered journal events.
-- JSONL projection cost outside the hot loop.
+- YAML/Postcard projection cost outside the hot loop.
 
-Current Criterion IDs implemented in `benches/velvet_ballistics.rs` include the cheap real engine, memory ingress, append, and replay surfaces named in `test-plan.md`. Deferred IDs are recorded there when the current runtime model or harness cannot yet report the required measurement honestly.
+Current Criterion IDs implemented in `crates/workspace_tests/benches/velvet_ballistics.rs` include the cheap real engine, memory ingress, append, and replay surfaces named in `test-plan.md`. Deferred IDs are recorded there when the current runtime model or harness cannot yet report the required measurement honestly.
 
 Acceptance rule: runtime changes that claim latency or throughput improvements must include before/after numbers on the affected benchmark.
 
 ## Evidence: 2026-05-01 `vb-ws4m`
 
-Environment: local Linux workspace `/home/lewis/src/Velvet-ballistics-r3/vb-ws4m`, Cargo bench profile, Criterion 0.8. Gnuplot was not installed, so Criterion used the plotters backend.
+Environment: historical local Linux workspace path recorded in the original benchmark log, Cargo bench profile, Criterion 0.8. Gnuplot was not installed, so Criterion used the plotters backend.
 
-Build proof:
+Historical build proof, kept verbatim from the original run; root `benches/` is not the current workspace policy:
 
 ```text
 $ cargo bench --bench velvet_ballistics --no-run

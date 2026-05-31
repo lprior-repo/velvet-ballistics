@@ -1,11 +1,11 @@
-# Velvet Ballastics Workflow Language v1
+# velvet-ballistics Workflow Language v1
 
 Status: draft
 Canonical workflow version: `velvet-ballistics/v1`
 Canonical action manifest version: `velvet/action/v1`
 Suggested file extensions: `.velvet.yaml`, `.vb.yaml`, `.workflow.yaml`
 
-Velvet Ballastics is a strict YAML workflow language and durable execution model for high-performance workflow orchestration.
+`velvet-ballistics` is a strict YAML workflow language and durable execution model for high-performance workflow orchestration.
 
 The language is built around one sentence:
 
@@ -29,30 +29,28 @@ YAML document
 
 ## Product Naming
 
-Product name:
+Product, binary, and package name:
 
 ```text
-Velvet Ballastics
+velvet-ballistics
 ```
 
-Language name:
+Rust crate/module prefix:
 
 ```text
-Velvet Ballastics Workflow Language
+velvet_ballistics
 ```
 
-Suggested abbreviations:
+Language version:
 
 ```text
-VBWL
-Velvet
+velvet-ballistics/v1
 ```
 
-Suggested CLI names:
+CLI name:
 
 ```bash
-velvet
-vb
+velvet-ballistics
 ```
 
 ## Core Concepts
@@ -79,7 +77,7 @@ when:
 steps:
   - id: greeting
     save:
-      text: Hello from Velvet Ballastics
+      text: Hello from velvet-ballistics
 
 result:
   message: $greeting.text
@@ -87,13 +85,13 @@ result:
 
 ## Design Goals
 
-Velvet Ballastics v1 is designed to be strict, small, typed, durable, inspectable, AI-generatable, AI-debuggable, graph-renderable, high-performance, single-binary friendly, Docker-optional, and Kubernetes-optional.
+`velvet-ballistics/v1` is designed to be strict, small, typed, durable, inspectable, AI-generatable, AI-debuggable, graph-renderable, high-performance, single-binary friendly, Docker-optional, and Kubernetes-optional.
 
 The language favors explicit bounded primitives over arbitrary code and arbitrary cycles.
 
 ## Non-Goals
 
-v1 does not support arbitrary scripting in YAML, backward graph jumps, unbounded loops, unbounded retries, unbounded pagination, global mutable variables, hidden UI-only semantics, exactly-once external side effects, or Docker/Kubernetes as language requirements.
+v1 does not support arbitrary scripting in YAML, backward graph jumps, unbounded loops, unbounded retries, unbounded pagination, global mutable variables, hidden view-only semantics, exactly-once external side effects, or Docker/Kubernetes as language requirements.
 
 Shell execution is allowed only as a registered action, usually:
 
@@ -135,22 +133,22 @@ The YAML parser must preserve source locations where practical: file, line, colu
 
 ## Value Model
 
-Runtime values are JSON-compatible:
+Runtime values are compact, bounded values that can be projected for diagnostics:
 
 ```text
 text
 number
 boolean
 null
-list
-object
+list handle
+object handle
 ```
 
 Rules:
 
 - `number` must be finite.
 - `NaN`, `Infinity`, and `-Infinity` are invalid.
-- Object keys are strings.
+- Object field names are resolved before hot runtime execution.
 - Binary blobs are not inline runtime values in v1.
 - Large binary/file payloads must use action-specific handles or external storage.
 - Runtime output size limits apply before redaction.
@@ -196,7 +194,7 @@ result:
   message: $greeting.text
 ```
 
-Current scaffold note: the Phase 0 compiler executes only a numeric-slot subset of `save`, `choose`, and `finish`. It validates `inputs` schema syntax and constraints but does not yet compile input mapping into runtime slots. It accepts `vars`, `secrets`, and `examples` only after shallow shape validation. It accepts `id` and string `name` step metadata, but rejects `if`, `with`, `try_again`, `on_error`, and `then` until those control semantics are compiled. Phase 0 `choose` accepts only `condition`, `on_true`, and `on_false`; Phase 0 `finish` accepts only `result`. It accepts an empty top-level `result` object but rejects non-empty result mappings until result-object IR exists. This is an implementation subset, not a different public language.
+Implementation coverage note: this document defines the public language shape, not a stale compiler phase subset. Current implementation coverage and gaps are governed by repo-root `velvet-ballistics-MASTER.md` plus the current coverage and mutation-plan docs.
 
 ## Names And IDs
 
@@ -249,7 +247,7 @@ All step IDs must be globally unique within one workflow, including nested scope
 
 v1 is strict. These legacy/internal aliases are not accepted as public YAML primitives:
 
-| Forbidden alias | Canonical Velvet word |
+| Forbidden alias | Canonical v1 primitive |
 | --- | --- |
 | `do` | `run` |
 | `set` | `save` |
@@ -258,10 +256,10 @@ v1 is strict. These legacy/internal aliases are not accepted as public YAML prim
 | `reduce` | `aggregate` |
 | `together` | `parallel` |
 
-A future CLI migration command may rewrite old files into canonical v1 syntax:
+A future migration tool may rewrite old files into canonical v1 syntax:
 
 ```bash
-velvet migrate old.yaml --from twerk/v1 --to velvet-ballistics/v1
+velvet-ballistics migrate old.yaml --from twerk/v1 --to velvet-ballistics/v1
 ```
 
 ## Triggers
@@ -466,7 +464,7 @@ secret
 
 `optional`, `nullable`, and `secret` must be booleans.
 
-`pattern` is allowed only if the runtime adopts a bounded RE2-style regex engine. The current Phase 0 compiler rejects `pattern` until that engine exists.
+`pattern` is allowed only if the runtime adopts a bounded RE2-style regex engine. The current compiler rejects `pattern` until bounded regex support exists.
 
 ## Vars And Secrets
 
@@ -496,7 +494,7 @@ Secret rules:
 - Workflow files never contain literal secret values.
 - Undeclared secret references are validation errors.
 - Missing required secrets fail before observable use.
-- Secrets are redacted from logs, traces, events, bundles, examples, UI previews, and errors.
+- Secrets are redacted from logs, traces, events, bundles, examples, debug previews, and errors.
 - Any value derived from a secret becomes secret-tainted.
 - Secret-tainted values are blocked from `result` by default.
 - Secret-tainted values may be passed to action input fields marked `secret: true`.
@@ -1290,7 +1288,7 @@ Rules:
 - Examples must validate against `inputs`.
 - Real secrets are forbidden.
 - Fake example secrets are still masked.
-- Examples should be runnable by `velvet test flow.yaml` and `velvet dry-run flow.yaml --example bug_report`.
+- Examples should be runnable through validation, compilation, and volatile execution fixtures, for example `velvet-ballistics validate flow.yaml` followed by `velvet-ballistics run flow.yaml --input-bin input.vbin --durability volatile`.
 
 ## Duration Grammar
 
@@ -1632,31 +1630,28 @@ The workflow validator must use action manifests to check unknown action names, 
 Core commands:
 
 ```bash
-velvet validate flow.yaml
-velvet explain flow.yaml
-velvet graph flow.yaml --format mermaid
-velvet dry-run flow.yaml --input input.json
-velvet run flow.yaml --input input.json --jsonl
-velvet inspect <run_id> --json
-velvet events <run_id> --jsonl
-velvet logs <run_id> --jsonl
-velvet trace <run_id> --json
-velvet replay <run_id> --from-step classify --json
-velvet bundle <run_id> --json
-velvet actions list --json
-velvet actions show http.get --json
-velvet test flow.yaml --json
-velvet serve
+velvet-ballistics validate flow.yaml
+velvet-ballistics compile flow.yaml --emit ir --out flow.vbir
+velvet-ballistics graph flow.yaml --emit yaml
+velvet-ballistics run flow.yaml --input-bin input.vbin --durability volatile
+velvet-ballistics run-compiled flow.vbir --input-bin input.vbin --durability volatile
+velvet-ballistics inspect <run_id> --db <path> --emit yaml
+velvet-ballistics events <run_id> --db <path> --emit yaml
+velvet-ballistics trace <run_id> --db <path> --emit yaml
+velvet-ballistics replay <run_id> --db <path> --emit yaml
+velvet-ballistics action list --emit yaml
+velvet-ballistics action inspect <action-name> --emit yaml
+velvet-ballistics doctor --db <path> --emit yaml
 ```
 
 Machine output rules:
 
-- `--json` emits one JSON document.
-- `--jsonl` emits one JSON object per line.
+- `--emit yaml` emits one structured YAML document for cold operator output.
+- `--emit postcard` emits compact binary output where supported.
 - No ANSI color in machine mode.
 - No progress spinners in machine mode.
 - No interactive prompts in machine mode.
-- Errors must be structured JSON in machine mode.
+- Errors must be structured and redacted in machine mode.
 - Secrets are redacted by default.
 
 ## Event Journal
@@ -1876,18 +1871,20 @@ Use compiled workflow IR, interned IDs, compact numeric step indexes, precompile
 
 Avoid string map lookups in hot loops, runtime YAML traversal, dynamic schema interpretation during every step, allocation per expression token, revalidating static workflow structure during runs, unbounded async task spawning, and unbounded event buffers.
 
-Suggested Rust crate layout:
+Current Rust crate layout:
 
 ```text
 crates/
-  velvet-core/
-  velvet-runtime/
-  velvet-storage/
-  velvet-actions/
-  velvet-cli/
-  velvet-server/
-  velvet-web/
-  velvet/
+  vb_core/
+  vb_yaml/
+  vb_validate/
+  vb_expr/
+  vb_compile/
+  vb_storage/
+  vb_runtime/
+  vb_ipc/
+  vb_cli/
+  workspace_tests/
 ```
 
 Recommended Fjall keyspaces:
@@ -1917,24 +1914,24 @@ ready-step scheduler
 timer scanner
 event-wait matcher
 journal committer
-SSE broadcaster
+cold observability projection
 ```
 
 On restart, the runtime must load unfinished runs, replay/materialize journal state, restore timers, restore waits, enqueue runnable steps, and avoid rerunning completed steps.
 
-Nightly Rust may be used for LTO, PGO, target-cpu=native local builds, panic=abort release builds, codegen-units=1, allocator benchmarking, portable SIMD experiments, build-std experiments, allocator API experiments, and feature-gated specialization experiments. Nightly features must not leak into the public language.
+Nightly Rust is pinned for current safe/bounded Rust governance, verifier support, Miri/model-checking hooks, benchmark-only experiments, allocator benchmarking, portable SIMD experiments, and other explicitly gated experiments. PGO, `target-cpu=native`, maxperf release gates, and generated Rust performance workflows are deferred outside the current backend milestone. Nightly features must not leak into the public language.
 
 Recommended discipline:
 
 ```text
-No unsafe in core runtime unless benchmark-proven.
+No unsafe in core runtime.
 No nightly-only public API.
 No optimization that weakens determinism.
 No optimization that weakens durability.
 No performance shortcut that bypasses the event journal.
 ```
 
-Runtime values should move toward a compact internal representation instead of raw `serde_json::Value` after the prototype works.
+Runtime values are compact handles and finite scalars; JSON is not a runtime-core value representation.
 
 Expressions compile once from source string to tokens, AST, typed expression tree, and bytecode or compact executable form. Runtime evaluation uses scoped value environments and precompiled path segments.
 
@@ -1952,7 +1949,7 @@ The scheduler should mostly operate on numeric indexes:
 }
 ```
 
-Events should be append-only and streamable. Slow UI clients must not block workflow execution.
+Events should be append-only and streamable. Slow observability clients must not block workflow execution.
 
 ## v1 Implementation Order
 
@@ -1977,16 +1974,16 @@ Recommended build order:
 16. on_error
 17. choose
 18. wait
-19. webhook/manual triggers
-20. Leptos read-only graph UI
-21. Leptos run inspector
+19. manual and binary IPC ingress
+20. replay/recovery
+21. binary operator inspection
 22. for_each
 23. parallel
 24. repeat
 25. gather
 26. aggregate
 27. ask
-28. visual editor
+28. debug bundle export
 ```
 
 ## v1 North Star
@@ -1995,11 +1992,9 @@ The first killer demo should be:
 
 ```text
 Download one binary.
-Run `velvet serve`.
-Open the Leptos UI.
-Create or paste YAML.
-Validate it.
-Run it.
+Run `velvet-ballistics validate workflow.yaml`.
+Compile it to accepted IR.
+Run it through direct API or binary IPC.
 Kill the process mid-run.
 Restart it.
 The run resumes.
@@ -2011,6 +2006,6 @@ Export a debug bundle.
 The language and runtime should prove this thesis:
 
 ```text
-Velvet Ballastics is a truly open-source, single-binary, durable workflow orchestrator
-with Step Functions clarity, n8n approachability, and a beautiful inspectable UI.
+velvet-ballistics is a truly open-source, single-binary, durable workflow orchestrator
+with Step Functions clarity, bounded AI-authored workflows, and inspectable event history.
 ```

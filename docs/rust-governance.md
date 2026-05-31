@@ -1,6 +1,6 @@
 # Rust Governance
 
-Velvet Ballastics uses pinned nightly Rust for bounded, explicit performance work. The pin is `nightly-2026-04-28` in `rust-toolchain.toml` and must be used for first-party builds.
+`velvet-ballistics` uses pinned nightly Rust for bounded, explicit performance work. The pin is `nightly-2026-04-28` in `rust-toolchain.toml` and must be used for first-party builds.
 
 ## Nightly Feature Gate
 
@@ -9,7 +9,7 @@ Allowed unstable features are intentionally narrow:
 | Tier | Features | Rule |
 |------|----------|------|
 | Normal | `try_blocks`, `portable_simd` | May be used in first-party crates when the code stays safe, bounded, and justified by the implementation need. `portable_simd` still requires benchmark evidence for performance claims. |
-| Perf-only | `allocator_api`, `generic_const_exprs` | May appear only in `crates/*/src/perf/**`, `crates/*/src/generated/**`, `benches/**`, or another first-party Rust file carrying the marker text `velvet-allow-perf-nightly-feature` if the feature-gate script implements that marker exception. |
+| Perf-only | `allocator_api`, `generic_const_exprs` | May appear only in `crates/*/src/perf/**`, `crates/*/src/generated/**`, `crates/workspace_tests/benches/**`, or another first-party Rust file carrying the marker text `velvet-allow-perf-nightly-feature` if the feature-gate script implements that marker exception. |
 
 First-party mechanical gate:
 
@@ -41,7 +41,7 @@ SIMD work must provide:
 
 ## Unsafe And Panic Policy
 
-Runtime, core, storage, IPC, generated workflow, and other production first-party implementations must not use `unsafe`, `.unwrap()`, `.expect()`, `panic!`, `todo!`, `unimplemented!`, or `dbg!`. Runtime/core/generated code has a zero-unsafe policy. Fuzz scaffolding should also be safe first-party Rust; if an FFI boundary ever requires `unsafe`, it must be isolated behind a narrow audited exception naming the file, reason, invariants, and owner. Do not describe fuzz unsafe as governed unless that exception is documented and mechanically covered.
+Runtime, core, storage, IPC, current-scope generated support code, and other production first-party implementations must not use `unsafe`, `.unwrap()`, `.expect()`, `panic!`, `todo!`, `unimplemented!`, or `dbg!`. Generated workflow execution is deferred unless reactivated by master amendment. Runtime/core/current-scope generated code has a zero-unsafe policy. First-party FFI/unsafe is rejected unless the master contract is amended. Fuzz scaffolding should also be safe first-party Rust; do not describe fuzz unsafe as governed unless a future master amendment documents and mechanically covers an exception.
 
 Third-party unsafe is allowed only when the dependency is pinned, audited, justified, and covered by the dependency policy plus `cargo audit`, `cargo deny`, `cargo vet`, and `cargo geiger`.
 
@@ -58,7 +58,7 @@ Holzmann bounds are mandatory:
 
 ## Profiles
 
-`release` is optimized for normal release builds. `hardened` inherits release settings but enables debug assertions, overflow checks, and debug info for verification builds. `maxperf` keeps fat LTO and one codegen unit for benchmarked performance builds.
+`release` is optimized for normal release builds. `hardened` inherits release settings but enables debug assertions, overflow checks, and debug info for verification builds. Maxperf, PGO, native CPU release builds, and generated Rust performance workflows are deferred to `docs/deferred-codegen-maxperf.md`.
 
 ## Required Gates
 
@@ -82,18 +82,15 @@ Governance and deeper verification are represented as Moon tasks. A represented 
 - `bench-build`: compiles benchmarks.
 - `benchmark-regression-policy`: validates `contracts/perf-budget.yaml` and `evidence/benchmark-evidence.jsonl` so every speed claim has baseline/result/raw-log evidence, explicit thresholds, and current-milestone `ir-interpreter` scope.
 - `benchmark-proof`: records a Criterion baseline named `vb-current` when real benchmarks exist; it is not itself acceptance evidence until paired with `benchmark-regression-policy` metadata.
-- `pgo-instrument-build`: builds with `-Cprofile-generate=target/pgo/profiles`.
-- `pgo-optimized-build`: builds with `-Cprofile-use=target/pgo/merged.profdata` after profile merge.
-
-PGO collection requires running representative workloads between instrumented build and optimized build, then merging raw profiles into `target/pgo/merged.profdata` with `llvm-profdata` from the pinned toolchain.
+- Deferred PGO/maxperf tasks are not current Backend / IR Interpreter Complete gates. If they reappear in local tooling, reports must label them deferred/non-blocking unless the master contract reactivates them.
 
 ## Performance Crate And Tool Policy
 
 Performance crates are allowed only when they beat simple first-party code or provide audited primitives that cannot be maintained locally. Each addition must name the hot path, the alternative considered, the expected resource bound, and the benchmark that proves value.
 
-Performance tools must measure the claimed behavior. Use Criterion for statistical microbenchmarks, `iai-callgrind` or Valgrind for instruction/cache evidence, `perf` or `samply` for CPU profiles, `cargo bloat` for size investigation, and PGO only after a representative workload exists.
+Performance tools must measure the claimed behavior. Use Criterion for statistical microbenchmarks, `iai-callgrind` or Valgrind for instruction/cache evidence, `perf` or `samply` for CPU profiles, and `cargo bloat` for size investigation. PGO is deferred outside the current release scope.
 
-Current Criterion scaffold benchmarks that only compile placeholder harnesses are compileability checks, not performance evidence. They cannot justify latency, throughput, allocation, instruction-count, or maxperf claims.
+Current Criterion scaffold benchmarks that only compile placeholder harnesses are compileability checks, not performance evidence. They cannot justify latency, throughput, allocation, instruction-count, generated-mode, or maxperf claims.
 
 ## Benchmark-Proof Optimization
 
@@ -109,4 +106,4 @@ If a change cannot be measured yet, describe it as a cleanup or enabling change,
 
 ## AI-Agent Rules
 
-Agents must keep changes mechanical, minimal, bounded, and explicit. Do not use functional-Rust rewrites for this repository unless the user explicitly changes governance. Do not add unstable features outside the whitelist and documented scope. Do not add first-party unsafe or panic APIs. Do not add dependencies without the dependency policy review. Do not claim performance wins without real baseline/result benchmark evidence.
+Agents must keep changes mechanical, minimal, bounded, and explicit. The `functional-rust` skill may be used for no-panic, no-unsafe, bounded Rust discipline; do not perform broad functional-style rewrites unless the user explicitly changes governance. Do not add unstable features outside the whitelist and documented scope. Do not add first-party unsafe or panic APIs. Do not add dependencies without the dependency policy review. Do not claim performance wins without real baseline/result benchmark evidence.

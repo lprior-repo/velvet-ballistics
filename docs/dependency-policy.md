@@ -1,6 +1,6 @@
 # Dependency Policy
 
-**Velvet Ballistics** is a performance-critical workflow orchestration engine. This document
+`velvet-ballistics` is a performance-critical workflow orchestration engine. This document
 defines the criteria and process for adding dependencies to the project.
 
 ## License Policy
@@ -70,7 +70,7 @@ Dependencies must not require:
 - DNS resolution or network connectivity
 - License check-in or telemetry
 
-**Rationale**: Velvet Ballistics is designed for edge deployment where network
+**Rationale**: `velvet-ballistics` is designed for edge deployment where network
 connectivity may be limited or nonexistent.
 
 ### 3. No Async in Core Runtime Path
@@ -162,6 +162,6 @@ CI will fail if:
 
 ## Summary
 
-Velvet Ballistics maintains a minimal, audited dependency surface. Every dependency
+`velvet-ballistics` maintains a minimal, audited dependency surface. Every dependency
 exists because it solves a problem that cannot be reasonably solved in-house.
 We prefer pure Rust, permissive licensing, and auditable code.

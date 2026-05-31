@@ -1,6 +1,6 @@
 # Runtime Architecture
 
-Velvet Ballastics is optimized for raw in-process orchestration performance. YAML is source input only. The hot path never interprets YAML, never resolves string references, and never performs HTTP request handling.
+`velvet-ballistics` is optimized for raw in-process orchestration performance. YAML is source input only. The hot path never interprets YAML, never resolves string references, and never performs HTTP request handling.
 
 ## Pipeline
 
@@ -31,16 +31,16 @@ workflow.yaml
 
 ## Workspace Mapping
 
-`vb-core` owns the hot loop and compiled IR. It has no YAML, no async runtime, no storage dependency, and no HTTP dependency.
+`vb_core` owns the hot loop and compiled IR. It has no YAML, no async runtime, no storage dependency, and no HTTP dependency.
 
-`vb-compiler` owns the cold native-Rust YAML boundary. It uses `saphyr` for strict-profile parsing and emits `vb-core` compiled IR; no YAML value crosses into the hot runtime.
+`vb_compile` owns the cold native-Rust YAML boundary. It uses `saphyr` for strict-profile parsing and emits `vb_core` compiled IR; no YAML value crosses into the hot runtime.
 
-`vb-ipc` owns bounded in-memory ingress primitives. It is the place to add Unix-domain sockets, shared memory rings, or io_uring-backed IPC later. It must not grow an HTTP layer.
+`vb_ipc` owns bounded in-memory ingress primitives. It is the place to add Unix-domain sockets, shared memory rings, or io_uring-backed IPC later. It must not grow an HTTP layer.
 
-`vb-storage` owns the Fjall durability boundary. It writes append-only binary journal events and exposes explicit persistence barriers.
+`vb_storage` owns the Fjall durability boundary. It writes append-only binary journal events and exposes explicit persistence barriers.
 
 `velvet-ballistics` wires the binary surface. The binary may expose operator commands, but the runtime control plane remains memory/IPC-first.
 
 ## Nightly Rust Policy
 
-The repo is pinned to `nightly` through `rust-toolchain.toml`. Nightly is used for max-performance build profiles, forward-looking compiler optimizations, Miri/model-checking hooks, and benchmark-only experiments. Unstable features must stay behind explicit feature gates until proven useful by benchmark data.
+The repo is pinned to `nightly` through `rust-toolchain.toml` for current safe/bounded Rust governance, verifier hooks, Miri/model-checking support, and benchmark-only experiments. Maxperf, PGO, and native-CPU release gates are deferred; unstable features must stay behind explicit feature gates until proven useful by benchmark data.

@@ -1,53 +1,50 @@
-# Deferred Rust Codegen and Maxperf Track
+# Deferred Codegen / Maxperf Track
 
-Rust workflow code generation and `maxperf` are intentionally outside the current
-Backend / IR Interpreter Complete milestone.
+Rust workflow code generation, generated-vs-IR ratio targets, PGO release workflows, `target-cpu=native`, and public maxperf claims are outside the current Backend / IR Interpreter Complete milestone.
 
 ## Current Status
 
-- Current execution target: compiled `CompiledWorkflow` IR through the IR interpreter.
-- Current CLI compile target: `compile --emit ir` only.
-- Current performance evidence target: IR interpreter, storage, IPC, direct API, scheduler.
-- Current release blocker set excludes generated Rust equivalence, generated compile-fail tests,
-  generated-vs-IR benchmark ratios, PGO, and `target-cpu=native` maxperf release gates.
+- Required runtime mode: compiled `CompiledWorkflow` IR interpreted by shard-owned synchronous runtime state.
+- Current CLI compile target: IR only.
+- Current performance evidence target: IR interpreter, storage, IPC, direct API, and scheduler.
+- Current release blockers exclude generated Rust equivalence, generated compile-fail tests, generated-vs-IR benchmark ratios, PGO, and maxperf release gates.
+- Any residual codegen or maxperf material is historical evidence or cleanup debt unless repo-root `velvet-ballistics-MASTER.md` explicitly reactivates it.
+
+## Active Performance Rules
+
+1. Optimize the IR interpreter, not generated execution.
+2. Keep runtime state numeric and handle-based.
+3. Keep queues, frames, expression stacks, IPC frames, trace rings, and persistence batches bounded.
+4. Do not allocate in deterministic hot transitions after run admission; admission and explicitly resource-contracted paths must be bounded or reservation-checked.
+5. Do not format text, parse YAML/JSON, route HTTP, or resolve string references on hot runtime paths.
+6. Do not claim speed without before/after benchmark output, workload shape, host metadata, and regression threshold.
 
 ## Deferred Scope
 
-The following remain future work:
+The following are future tracks only:
 
 1. `vb_codegen` as an active workspace crate.
-2. `velvet-ballistics compile <workflow.yaml> --emit rust`.
+2. `compile --emit rust` or equivalent generated Rust emission.
 3. Generated Rust execution for accepted workflow artifacts.
-4. Generated Rust semantic equivalence against IR execution for:
-   - terminal result,
-   - typed error variants and fields,
-   - final program counter,
-   - slot values,
-   - slot taints,
-   - step states,
-   - journal event sequence,
-   - action tickets,
-   - retry counts,
-   - wait/ask scheduling,
-   - replay behavior.
-5. Generated Rust compile-fail tests forbidding unsafe, unwrap, expect, panic,
-   unchecked indexing/slicing/casts/arithmetic, runtime YAML, JSON, HTTP, and runtime string lookup.
-6. `maxperf` profile acceptance.
-7. PGO training and `target-cpu=native` benchmark workflows.
+4. Generated Rust semantic equivalence against IR execution.
+5. Generated compile-fail fixtures forbidding unsafe, unwrap, expect, panic, unchecked operations, runtime YAML, JSON, HTTP, and runtime string lookup.
+6. Maxperf profile acceptance gates.
+7. PGO collection and optimized release workflows.
 8. Public generated-mode speed claims.
 
 ## Reactivation Contract
 
-Codegen may return to the master scope only through a dedicated architecture/spec bead.
-That bead must define:
+Codegen or maxperf may return only through dedicated reactivation beads that update the master contract and prove:
 
 - why IR interpreter performance is insufficient,
 - which IR node families are accepted,
 - how unsupported IR fails closed before emission,
-- the exact equivalence harness,
-- the compile-fail suite,
-- the benchmark matrix,
+- exact semantic parity with IR execution,
+- identical journal, slot, taint, error, terminal result, and replay behavior,
+- no first-party unsafe or panic paths,
+- generated output passes formatting, linting, compile, behavior, and compile-fail gates,
+- performance claims have real baseline/result evidence,
 - rollback behavior if generated execution diverges,
-- evidence required before `maxperf` becomes a release gate.
+- generated dependencies do not enter runtime core unless explicitly accepted by the master contract.
 
-Until then, generated Rust and maxperf are documentation-only future tracks.
+Until then, codegen and maxperf are not current release gates.

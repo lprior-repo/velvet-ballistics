@@ -10,9 +10,9 @@
 **Bead database:** `velvet_ballistics`
 **Language version:** `velvet-ballistics/v1`
 
-This file, `/velvet-ballistics-MASTER.md`, is the authoritative build plan, lifecycle tracker, architecture contract, and implementation acceptance contract for this repository. Other docs provide context only and cannot override this document.
+This repo-root file, `velvet-ballistics-MASTER.md`, is the authoritative build plan, lifecycle tracker, architecture contract, and implementation acceptance contract for this repository. Other docs provide context only and cannot override this document.
 
-Project spelling rule: any use of `velvet-ballistics` is invalid except for exactly these allowlisted legacy references: the current repository root path `/home/lewis/src/Velvet-ballistics`, the current master filename `/velvet-ballistics-MASTER.md`, and explicitly labeled migration references to pre-existing external artifacts. New code, docs, beads, crate names, package names, generated paths, CLI examples, diagnostics, and implementation artifacts must use the canonical names above.
+Project spelling rule: any use of legacy capitalized product spelling is invalid except for explicitly labeled migration references to pre-existing external artifacts. The current repository root path is `/home/lewis/src/velvet-ballistics`; the current master filename is repo-root `velvet-ballistics-MASTER.md`. New code, docs, beads, crate names, package names, generated paths, CLI examples, diagnostics, and implementation artifacts must use the canonical names above.
 
 ---
 
@@ -75,7 +75,7 @@ HTTP/JSON exclusion rule: HTTP and JSON are excluded from the v1 runtime core. A
 | Bead database | `velvet_ballistics` |
 | Language version | `velvet-ballistics/v1` |
 
-Mechanical rule: if an implementation agent introduces `velvet-ballistics` in a new file, test, path, diagnostic, bead, package, crate, command, or generated artifact, the change is rejected unless the text explicitly documents migration from a pre-existing external artifact.
+Mechanical rule: if an implementation agent introduces legacy capitalized product spelling or any non-canonical product/crate/database/language spelling in a new file, test, path, diagnostic, bead, package, crate, command, or generated artifact, the change is rejected unless the text explicitly documents migration from a pre-existing external artifact.
 
 ---
 
@@ -191,7 +191,7 @@ Strict nightly governance:
 - `RUSTC_BOOTSTRAP` is rejected in developer shells, CI, scripts, and docs.
 - CI must include a first-party source check equivalent to `moon run :nightly-feature-gate`; a strict Cargo `-Zallow-features=try_blocks,portable_simd,allocator_api,generic_const_exprs` probe is required where transitive dependency feature attributes permit it. A represented task or probe is not proof that all governance policies passed; reports must state the actual command outcome.
 - Normal source-allowed features: `try_blocks`, `portable_simd`.
-- Perf-only features: `allocator_api`, `generic_const_exprs`, restricted to `crates/*/src/perf/**`, `crates/*/src/generated/**`, `benches/**`, or a file carrying `velvet-allow-perf-nightly-feature` if the feature-gate script implements that marker exception.
+- Perf-only features: `allocator_api`, `generic_const_exprs`, restricted to `crates/*/src/perf/**`, `crates/*/src/generated/**`, `crates/workspace_tests/benches/**`, or a file carrying `velvet-allow-perf-nightly-feature` if the feature-gate script implements that marker exception.
 - Detailed operational policy lives in `docs/rust-governance.md` and is subordinate to this master contract.
 
 ---
@@ -272,7 +272,7 @@ Nightly update contract:
 
 ## 8. Language Specification
 
-**Title:** Velvet Ballastics Workflow Language v1
+**Title:** velvet-ballistics Workflow Language v1
 **Canonical version string:** `velvet-ballistics/v1`
 
 Required top-level fields:
@@ -1121,13 +1121,12 @@ velvet-ballistics/
     vb_storage/
     vb_runtime/
     vb_ipc/
-    velvet_ballistics/
-  benches/
+    vb_cli/
   fuzz/
   crates/workspace_tests/
 ```
 
-Current state: the active backend workspace target is the underscore crate contract above (`vb_core`, `vb_yaml`, `vb_validate`, `vb_expr`, `vb_compile`, `vb_storage`, `vb_runtime`, `vb_ipc`, and `velvet_ballistics`). Any future hyphenated internal crate name is a regression unless it is explicitly labeled as a migration artifact.
+Current state: the active backend workspace target is the underscore crate contract above (`vb_core`, `vb_yaml`, `vb_validate`, `vb_expr`, `vb_compile`, `vb_storage`, `vb_runtime`, `vb_ipc`, and `vb_cli`). Any future hyphenated internal crate name is a regression unless it is explicitly labeled as a migration artifact.
 
 Removed crates: `vb_codegen`, `vb_ui_model`, and `vb_ui_makepad` are not active current-scope workspace requirements. They must not appear as active workspace members or current release gates.
 
@@ -1317,7 +1316,7 @@ members = [
   "crates/vb_storage",
   "crates/vb_runtime",
   "crates/vb_ipc",
-  "crates/velvet_ballistics",
+  "crates/vb_cli",
   "crates/workspace_tests",
   "fuzz",
 ]
@@ -1573,7 +1572,7 @@ Required proptest coverage areas:
 
 ## 39. Mandatory Benchmarks
 
-**Benchmark naming:** Exact benchmark names are not mandated. Benchmarks must exist covering the following areas. The authoritative benchmark list is `benches/velvet_ballistics.rs`.
+**Benchmark naming:** Exact benchmark names are not mandated. Benchmarks must exist covering the following areas. The authoritative benchmark directory is `crates/workspace_tests/benches/`; the migrated aggregate benchmark entry is `crates/workspace_tests/benches/velvet_ballistics.rs`.
 
 Required coverage areas:
 
@@ -1853,7 +1852,7 @@ new velvet-ballistics spelling outside the exact allowlist
 The current `velvet-ballistics` backend milestone is done when all 24 points are satisfied:
 
 1. Canonical spelling is enforced for product, binary, package, crate/module, bead rig, bead database, and language version.
-2. Any `velvet-ballistics` spelling outside the exact allowlist for `/home/lewis/src/Velvet-ballistics`, `/velvet-ballistics-MASTER.md`, or explicitly labeled pre-existing external migration artifacts is rejected.
+2. Any legacy capitalized product spelling outside explicitly labeled pre-existing external migration artifacts is rejected. The active repository root path is `/home/lewis/src/velvet-ballistics`; the active master filename is repo-root `velvet-ballistics-MASTER.md`.
 3. Every primitive validates, compiles, runs, persists, recovers, and replays.
 4. v1 supports both `manual` direct API submission and `ipc` binary IPC submission.
 5. Runtime never interprets YAML and recovery never reparses YAML for existing runs.
@@ -2866,9 +2865,9 @@ v1 runtime core must not depend on `tokio`, `async-std`, `smol`, `futures` execu
 
 ### Core Principle
 
-AI may propose workflows. Velvet verifies them. Only accepted artifacts run.
+AI may propose workflows. `velvet-ballistics` verifies them. Only accepted artifacts run.
 
-The compiler does not merely check syntax. It acts as a safety gate: if Velvet cannot prove the plan is bounded, inspectable, retry-safe, and durable, the plan is rejected before execution. No accepted workflow has unknown bounds.
+The compiler does not merely check syntax. It acts as a safety gate: if `velvet-ballistics` cannot prove the plan is bounded, inspectable, retry-safe, and durable, the plan is rejected before execution. No accepted workflow has unknown bounds.
 
 ### Verification Gate Pipeline
 
@@ -3610,7 +3609,7 @@ The following are internal engineering targets for `velvet-ballistics` as a sing
 
 ### Step-Level Latency Targets
 
-| Metric | Velvet Ballastics (single-server) | Notes |
+| Metric | velvet-ballistics (single-server) | Notes |
 |--------|-----------------------------------|-------|
 | Single step p50 (no replication) | <= 1ms | No network roundtrip for quorum |
 | Single step p50 (journaled) | <= 5ms | Fjall group commit |
@@ -3621,7 +3620,7 @@ The following are internal engineering targets for `velvet-ballistics` as a sing
 
 ### Throughput Targets
 
-| Metric | Velvet Ballastics | Notes |
+| Metric | velvet-ballistics | Notes |
 |--------|-------------------|-------|
 | Full workflows per second (9 steps) | >= 10,000 | Single-server removes replication overhead |
 | Concurrent active runs | >= 4,096 | Frame pool capacity |

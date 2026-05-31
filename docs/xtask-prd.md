@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft product requirements document for extracting the Velvet Ballastics `xtask` lessons into a reusable Rust-only AI software delivery harness.
+Draft product requirements document for extracting the `velvet-ballistics` `xtask` lessons into a reusable Rust-only AI software delivery harness.
 
 ## Summary
 
@@ -431,7 +431,7 @@ crates/
   xtask_proof         TLA+, Verus, Prusti/Creusot, Kani, Flux, Miri, Loom proof planning and ledgers
   xtask_static        Clippy, Dylint, dependency and source-policy scans
   xtask_mutation      cargo-mutants orchestration and survivor reporting
-  xtask_perf          benchmark plans, Criterion output parsing, PGO eligibility
+  xtask_perf          benchmark plans, Criterion output parsing, deferred profile-guided optimization eligibility
   xtask_agents        opencode, Claude Code, Codex, Cursor, and local agent adapters
   xtask_git           diff, status, scope, branch, commit metadata
   xtask_store         run event log, evidence store, replay index
@@ -439,7 +439,7 @@ crates/
   xtaskd              optional local daemon for long-running agent/gate sessions
 ```
 
-The core must not depend on a specific repository, issue tracker, UI fixture, or bead ID. Velvet Ballastics becomes one profile/adaptor, not the product kernel.
+The core must not depend on a specific repository, issue tracker, UI fixture, or bead ID. `velvet-ballistics` becomes one profile/adaptor, not the product kernel.
 
 ## Core Domain Model
 
@@ -842,7 +842,7 @@ Stable Rust performance levers:
 - dense IDs and prevalidated artifacts
 - `criterion` benchmarks
 - `iai-callgrind` where available for CI-friendly instruction regression
-- PGO for representative production workloads
+- deferred PGO only for future representative production workloads
 - audited high-performance dependencies
 
 SIMD policy under stable Rust:

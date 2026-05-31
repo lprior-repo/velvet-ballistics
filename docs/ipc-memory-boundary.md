@@ -1,10 +1,10 @@
 # IPC And Memory Boundary
 
-Velvet Ballastics does not use HTTP as the runtime control plane. The primary ingress shape is a bounded memory queue carrying binary frames.
+`velvet-ballistics` does not use HTTP as the runtime control plane. The primary ingress shape is a bounded memory queue carrying binary frames.
 
 ## Initial Boundary
 
-`vb-ipc` provides `MemoryIngress`, a bounded multi-producer/single-consumer queue. Producers use `try_submit`; a full queue returns backpressure immediately instead of blocking or allocating without limit.
+`vb_ipc` provides `MemoryIngress`, a bounded multi-producer/single-consumer queue. Producers use `try_submit`; a full queue returns backpressure immediately instead of blocking or allocating without limit.
 
 ## Future IPC Options
 
