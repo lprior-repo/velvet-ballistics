@@ -591,7 +591,6 @@ fn decoded_preview_struct_fields_are_cold_path() {
 
     // Verify entries contain only binary data: (StorageKey, Vec<u8>, PreviewPayload).
     // No JSON/YAML strings involved.
-    let digest = [0x42_u8; 32];
     let run = RunId::new(1);
     let seq = EventSeq::new(0);
     let entry_key = StorageKey::RunEvent { run, seq };

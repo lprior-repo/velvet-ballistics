@@ -20,8 +20,8 @@ use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use vb_core::action::{
-    ActionFailure, ActionFailureCode, ActionName, ActionOutputReady, ActionTicket, Idempotency,
-    RetryPolicy, RetrySafety, SideEffect,
+    ActionFailure, ActionFailureCode, ActionOutputReady, ActionTicket, Idempotency, RetryPolicy,
+    RetrySafety, SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};

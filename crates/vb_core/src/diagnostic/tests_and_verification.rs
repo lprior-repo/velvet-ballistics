@@ -5,8 +5,8 @@
 #[cfg(test)]
 mod tests {
     use crate::diagnostic::{
-        CodeCategory, Diagnostic, DiagnosticCode, DiagnosticCodeParseError, Severity, SymbolicCode,
-        CODE_REGISTRY, is_supported_code, numeric_to_symbolic, symbolic_to_numeric,
+        CODE_REGISTRY, CodeCategory, Diagnostic, DiagnosticCode, DiagnosticCodeParseError,
+        Severity, SymbolicCode, is_supported_code, numeric_to_symbolic, symbolic_to_numeric,
     };
     use crate::span::Span;
     use core::str::FromStr;
@@ -356,26 +356,17 @@ mod tests {
 
     #[test]
     fn is_supported_code_accepts_e3020() {
-        assert!(
-            is_supported_code(0x3020),
-            "ACTION_RESULT_AUDIT_MISMATCH"
-        );
+        assert!(is_supported_code(0x3020), "ACTION_RESULT_AUDIT_MISMATCH");
     }
 
     #[test]
     fn is_supported_code_accepts_e3021() {
-        assert!(
-            is_supported_code(0x3021),
-            "ACTION_TYPE_CONSTRAINT_FAIL"
-        );
+        assert!(is_supported_code(0x3021), "ACTION_TYPE_CONSTRAINT_FAIL");
     }
 
     #[test]
     fn is_supported_code_accepts_e3022() {
-        assert!(
-            is_supported_code(0x3022),
-            "ACTION_CIRCUIT_BREAKER_OPEN"
-        );
+        assert!(is_supported_code(0x3022), "ACTION_CIRCUIT_BREAKER_OPEN");
     }
 
     #[test]
@@ -383,11 +374,7 @@ mod tests {
         // 0x301C-0x301F are genuine gaps between Runtime 0x301B and
         // action/audit codes at 0x3020-0x3022.
         for code in 0x301Cu16..=0x301F {
-            assert!(
-                !is_supported_code(code),
-                "E{:04X} must be rejected",
-                code
-            );
+            assert!(!is_supported_code(code), "E{:04X} must be rejected", code);
         }
     }
 }

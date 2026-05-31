@@ -12,7 +12,7 @@
 use vb_core::action::{ActionTicket, compute_action_idempotency_key};
 use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
 use vb_runtime::action_queue::{
-    BackpressureWarning, BoundedActionCompletionQueue, MAX_ACTION_COMPLETION_QUEUE_CAPACITY,
+    BoundedActionCompletionQueue, MAX_ACTION_COMPLETION_QUEUE_CAPACITY,
 };
 
 // ---------------------------------------------------------------------------

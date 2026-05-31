@@ -1849,10 +1849,6 @@ fn handle_readable_returns_false_on_would_block() {
         .expect("write partial");
     client.flush().expect("flush");
 
-    server
-        .poll_once(&mut runtime, Some(Duration::from_millis(100)))
-        .expect("poll should succeed");
-
     let result = server.handle_readable(1, &mut runtime, None);
     let Ok(val) = result else {
         panic!("handle_readable should not error")
@@ -1872,7 +1868,7 @@ fn handle_readable_returns_false_for_partial_header() {
     let mut client = make_client(&path);
     server.accept_client().expect("accept should succeed");
 
-    let partial = &[0x56, 0x42, 0x4C, 0x54, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00];
+    let partial = &[0x54, 0x4C, 0x42, 0x56, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00];
     client.write_all(partial).expect("write partial header");
     client.flush().expect("flush");
 
@@ -2276,10 +2272,11 @@ fn handle_readable_propagates_send_response_error_for_bad_header() {
     test_hooks::FORCE_POSTCARD_FAIL.set(true);
     let _guard = ForcePostcardFailGuard;
 
-    // Send a bad header (invalid magic) so handle_readable enters the error branch
+    // Send a bad header with valid magic so early magic validation passes and
+    // handle_readable reaches the frame-decode error response branch.
     let mut bad_header = [0u8; IPC_HEADER_LEN];
-    bad_header[..4].copy_from_slice(&0u32.to_le_bytes());
-    bad_header[4..6].copy_from_slice(&IPC_VERSION.to_le_bytes());
+    bad_header[..4].copy_from_slice(&IPC_MAGIC.to_le_bytes());
+    bad_header[4..6].copy_from_slice(&99u16.to_le_bytes());
     bad_header[6..8].copy_from_slice(&IpcCommand::Health.as_u16().to_le_bytes());
     client.write_all(&bad_header).expect("write bad header");
     client.flush().expect("flush");

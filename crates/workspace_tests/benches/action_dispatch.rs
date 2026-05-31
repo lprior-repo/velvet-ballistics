@@ -6,9 +6,11 @@
 
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;
-use vb_core::action::ActionName;
 use vb_core::{
-    action::{ActionContract, ActionInput, ActionOutcome, Idempotency, RetrySafety, SideEffect},
+    action::{
+        ActionContract, ActionInput, ActionName, ActionOutcome, Idempotency, RetrySafety,
+        SideEffect,
+    },
     ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx},
 };
 use vb_runtime::action::ActionRegistry;
@@ -28,20 +30,11 @@ fn registry_with_n_actions(count: usize) -> ActionRegistry {
     let mut registry = ActionRegistry::new();
     let mut i = 0usize;
     while i < count {
-        let id = ActionId::new(u16::try_from(i).unwrap_or(0));
-        let contract = ActionContract {
-            id,
-            name: ActionName::new("test-action").unwrap(),
-            input_slot_count: 1,
-            output_slot_count: 1,
-            max_input_bytes: 1024,
-            max_output_bytes: 1024,
-            timeout_ms: 5000,
-            idempotency: Idempotency::DeterministicPure,
-            side_effect: SideEffect::None,
-            retry_safety: RetrySafety::Safe,
-            required_capabilities: Box::from([]),
+        let raw_id = match u16::try_from(i) {
+            Ok(value) => value,
+            Err(error) => panic!("bench action id must fit in u16: {error}"),
         };
+        let contract = action_contract(ActionId::new(raw_id));
         let _ = registry.register(contract);
         i = i.saturating_add(1);
     }
@@ -69,9 +62,13 @@ fn action_input(action: ActionId) -> ActionInput {
 
 /// Creates an ActionContract for the given action ID.
 fn action_contract(action: ActionId) -> ActionContract {
+    let name = match ActionName::new(format!("test-action-{}", action.get())) {
+        Ok(value) => value,
+        Err(error) => panic!("bench action name must be valid: {error}"),
+    };
     ActionContract {
         id: action,
-        name: ActionName::new("test-action").unwrap(),
+        name,
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,

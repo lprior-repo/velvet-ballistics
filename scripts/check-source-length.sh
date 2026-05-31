@@ -104,7 +104,7 @@ is_excluded_source_path() {
   local file="$1"
 
   case "$file" in
-    target/*|.jj/*|.beads/*|.evidence/*|.cargo_temp/*|*/target/*|*/.jj/*|*/.beads/*|*/.evidence/*|*/.cargo_temp/*)
+    target/*|.jj/*|.beads/*|.evidence/*|.cargo_temp/*|arch-drift-hammer/*|*/target/*|*/.jj/*|*/.beads/*|*/.evidence/*|*/.cargo_temp/*|*/arch-drift-hammer/*)
       return 0
       ;;
     cargo-home/*|cargo_home/*|.cargo/registry/*|*/cargo-home/*|*/cargo_home/*|*/.cargo/registry/*)

@@ -49,7 +49,11 @@ pub fn preview_keyspace(
     let mut records_yielded: usize = 0;
     let mut bytes_accumulated: u32 = 0;
     let mut truncated = false;
-    let total_entries = entries.len() as u64;
+    let total_entries =
+        u64::try_from(entries.len()).map_err(|_| JournalError::PayloadTooLarge {
+            len: u32::MAX,
+            max: u32::MAX,
+        })?;
 
     for (key_bytes, value_bytes) in entries {
         // Decode the key. Corrupt keys are silently skipped

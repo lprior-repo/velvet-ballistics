@@ -707,7 +707,7 @@ fn command_flags_as_u16_returns_the_validated_value() {
 /// PRE-INTEGRATION: Blocked until GAP-2 and GAP-4.
 #[test]
 #[ignore = "GAP-2,GAP-4: IpcError::InvalidCommandFlags variant and diagnostic code 0x300F not yet implemented"]
-fn invalid_command_flags_error_returns_diagnostic_code_0x300F() {
+fn invalid_command_flags_error_returns_diagnostic_code_0x300_f() {
     // TODO(post-GAP-2): Replace with actual assertions when IpcError::InvalidCommandFlags exists.
     // TODO(post-GAP-2): assert_eq!(err.diagnostic_code(), DiagnosticCode::new(0x300F));
     //
@@ -1008,7 +1008,7 @@ fn header_encode_decode_is_idempotent_for_valid_headers() {
 /// After GAP-5: flags=0xFFFF should REJECT (ReservedBitsSet), not roundtrip.
 /// This test will be replaced by decode rejection tests.
 #[test]
-fn header_roundtrip_accepts_flags_FFFF_when_no_validation() {
+fn header_roundtrip_accepts_flags_ffff_when_no_validation() {
     let header = IpcFrameHeader::new(IpcCommand::Health, 0xFFFF, 99, 0);
     let encoded = header.encode().expect("encode must succeed");
     let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT)
@@ -1438,7 +1438,7 @@ fn regression_existing_roundtrip_macro_flag_values_currently_pass() {
 /// frame_validation_roundtrip_encode_decode_preserves_all_fields test)
 /// currently roundtrips but will fail after GAP-5.
 #[test]
-fn regression_complete_action_with_flags_0xABCD_currently_roundtrips() {
+fn regression_complete_action_with_flags_0x_abcd_currently_roundtrips() {
     let header = IpcFrameHeader::new(IpcCommand::CompleteAction, 0xABCD, 0x1234_5678_9ABC_DEF0, 8);
     let encoded = header.encode().expect("encode must succeed");
     let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT)
@@ -1454,7 +1454,7 @@ fn regression_complete_action_with_flags_0xABCD_currently_roundtrips() {
 /// header_encode_decode_roundtrip_preserves_flags test) currently
 /// roundtrips but will fail after GAP-5.
 #[test]
-fn regression_submit_run_with_flags_0xABCD_currently_roundtrips() {
+fn regression_submit_run_with_flags_0x_abcd_currently_roundtrips() {
     let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0xABCD, 999, 10);
     let encoded = header.encode().expect("encode must succeed");
     let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT)

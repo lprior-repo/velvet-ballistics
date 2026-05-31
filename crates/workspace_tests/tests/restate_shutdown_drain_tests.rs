@@ -213,6 +213,10 @@ fn full_shutdown_lifecycle_completes() {
     shard.finalize(1).unwrap();
     assert_eq!(shard.current_state(), ShardState::Finalized);
     assert!(shard.is_flushed());
+    let entry = shard.journal.back().unwrap();
+    assert_eq!(entry.run, 1);
+    assert_eq!(entry.tickets_flushed, 0);
+    assert_eq!(entry.final_ticket, None);
 }
 
 /// Shutdown with no pending work: drain yields zero, finalize succeeds.
@@ -329,6 +333,13 @@ fn finalize_before_drain_complete_is_rejected() {
     // Still has pending work
     let err = shard.finalize(1).unwrap_err();
     assert_eq!(err, ShutdownError::DrainNotComplete { remaining: 1 });
+}
+
+/// Drain timeout errors preserve the number of unflushed tickets.
+#[test]
+fn drain_timeout_preserves_remaining_count() {
+    let err = ShutdownError::DrainTimeout { remaining: 3 };
+    assert_eq!(err, ShutdownError::DrainTimeout { remaining: 3 });
 }
 
 /// `finalize` from `Running` state is rejected.

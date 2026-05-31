@@ -5,6 +5,7 @@
 //! followed by the payload fields in big-endian byte order.
 
 use arrayvec::ArrayVec;
+use std::ops::Range;
 use vb_core::{ActionId, RunId, WorkflowId};
 
 use crate::{
@@ -217,6 +218,32 @@ pub fn try_key_prefix(bytes: &[u8]) -> Result<KeyPrefix, KeyDecodeError> {
     }
 }
 
+fn key_length_mismatch(prefix: KeyPrefix, actual: usize) -> KeyDecodeError {
+    KeyDecodeError::KeyLengthMismatch {
+        prefix: prefix.to_u8(),
+        expected: prefix.expected_key_len(),
+        actual,
+    }
+}
+
+fn key_array<const N: usize>(
+    bytes: &[u8],
+    prefix: KeyPrefix,
+    range: Range<usize>,
+) -> Result<[u8; N], KeyDecodeError> {
+    let slice = bytes
+        .get(range)
+        .ok_or_else(|| key_length_mismatch(prefix, bytes.len()))?;
+    <[u8; N]>::try_from(slice).map_err(|_| key_length_mismatch(prefix, bytes.len()))
+}
+
+fn key_byte(bytes: &[u8], prefix: KeyPrefix, index: usize) -> Result<u8, KeyDecodeError> {
+    bytes
+        .get(index)
+        .copied()
+        .ok_or_else(|| key_length_mismatch(prefix, bytes.len()))
+}
+
 /// Decodes a raw byte slice into a typed `StorageKey`.
 ///
 /// 1. Classifies the prefix byte via `try_key_prefix`.
@@ -254,8 +281,11 @@ pub fn decode_storage_key(bytes: &[u8]) -> Result<StorageKey, KeyDecodeError> {
 
     match prefix {
         KeyPrefix::WorkflowSource | KeyPrefix::CompiledIr | KeyPrefix::Blob => {
-            let mut digest = [0u8; crate::constants::DIGEST_BYTES];
-            digest.copy_from_slice(&bytes[1..]);
+            let digest = key_array::<{ crate::constants::DIGEST_BYTES }>(
+                bytes,
+                prefix,
+                1..DIGEST_KEY_BYTES,
+            )?;
             match prefix {
                 KeyPrefix::WorkflowSource => Ok(StorageKey::WorkflowSource { digest }),
                 KeyPrefix::CompiledIr => Ok(StorageKey::CompiledIr { digest }),
@@ -263,9 +293,7 @@ pub fn decode_storage_key(bytes: &[u8]) -> Result<StorageKey, KeyDecodeError> {
             }
         }
         KeyPrefix::RunHeader => {
-            let mut run_bytes = [0u8; 8];
-            run_bytes.copy_from_slice(&bytes[1..9]);
-            let run_val = u64::from_be_bytes(run_bytes);
+            let run_val = u64::from_be_bytes(key_array::<8>(bytes, prefix, 1..9)?);
             if run_val == 0 {
                 return Err(KeyDecodeError::InvalidRunId);
             }
@@ -274,15 +302,11 @@ pub fn decode_storage_key(bytes: &[u8]) -> Result<StorageKey, KeyDecodeError> {
             })
         }
         KeyPrefix::RunEvent | KeyPrefix::RunSnapshot => {
-            let mut run_bytes = [0u8; 8];
-            run_bytes.copy_from_slice(&bytes[1..9]);
-            let run_val = u64::from_be_bytes(run_bytes);
+            let run_val = u64::from_be_bytes(key_array::<8>(bytes, prefix, 1..9)?);
             if run_val == 0 {
                 return Err(KeyDecodeError::InvalidRunId);
             }
-            let mut seq_bytes = [0u8; 8];
-            seq_bytes.copy_from_slice(&bytes[9..17]);
-            let seq_val = u64::from_be_bytes(seq_bytes);
+            let seq_val = u64::from_be_bytes(key_array::<8>(bytes, prefix, 9..17)?);
             if seq_val == u64::MAX {
                 return Err(KeyDecodeError::ReservedSeqSentinel);
             }
@@ -294,14 +318,10 @@ pub fn decode_storage_key(bytes: &[u8]) -> Result<StorageKey, KeyDecodeError> {
             }
         }
         KeyPrefix::IndexStatus => {
-            let state_byte = bytes[1];
+            let state_byte = key_byte(bytes, prefix, 1)?;
             let state = IndexStatusState::from_u8(state_byte);
-            let mut ts_bytes = [0u8; 8];
-            ts_bytes.copy_from_slice(&bytes[2..10]);
-            let timestamp = u64::from_be_bytes(ts_bytes);
-            let mut run_bytes = [0u8; 8];
-            run_bytes.copy_from_slice(&bytes[10..18]);
-            let run_val = u64::from_be_bytes(run_bytes);
+            let timestamp = u64::from_be_bytes(key_array::<8>(bytes, prefix, 2..10)?);
+            let run_val = u64::from_be_bytes(key_array::<8>(bytes, prefix, 10..18)?);
             if run_val == 0 {
                 return Err(KeyDecodeError::InvalidRunId);
             }
@@ -312,12 +332,8 @@ pub fn decode_storage_key(bytes: &[u8]) -> Result<StorageKey, KeyDecodeError> {
             })
         }
         KeyPrefix::IndexWorkflow => {
-            let mut wf_bytes = [0u8; 4];
-            wf_bytes.copy_from_slice(&bytes[1..5]);
-            let workflow_val = u32::from_be_bytes(wf_bytes);
-            let mut run_bytes = [0u8; 8];
-            run_bytes.copy_from_slice(&bytes[5..13]);
-            let run_val = u64::from_be_bytes(run_bytes);
+            let workflow_val = u32::from_be_bytes(key_array::<4>(bytes, prefix, 1..5)?);
+            let run_val = u64::from_be_bytes(key_array::<8>(bytes, prefix, 5..13)?);
             if run_val == 0 {
                 return Err(KeyDecodeError::InvalidRunId);
             }
@@ -327,18 +343,12 @@ pub fn decode_storage_key(bytes: &[u8]) -> Result<StorageKey, KeyDecodeError> {
             })
         }
         KeyPrefix::IndexAction => {
-            let mut action_bytes = [0u8; 2];
-            action_bytes.copy_from_slice(&bytes[1..3]);
-            let action_val = u16::from_be_bytes(action_bytes);
-            let mut run_bytes = [0u8; 8];
-            run_bytes.copy_from_slice(&bytes[3..11]);
-            let run_val = u64::from_be_bytes(run_bytes);
+            let action_val = u16::from_be_bytes(key_array::<2>(bytes, prefix, 1..3)?);
+            let run_val = u64::from_be_bytes(key_array::<8>(bytes, prefix, 3..11)?);
             if run_val == 0 {
                 return Err(KeyDecodeError::InvalidRunId);
             }
-            let mut step_bytes = [0u8; 2];
-            step_bytes.copy_from_slice(&bytes[11..13]);
-            let step_val = u16::from_be_bytes(step_bytes);
+            let step_val = u16::from_be_bytes(key_array::<2>(bytes, prefix, 11..13)?);
             Ok(StorageKey::IndexAction {
                 action: ActionId::new(action_val),
                 run: RunId::new(run_val),

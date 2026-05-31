@@ -12,7 +12,7 @@
 #![allow(clippy::len_zero)]
 
 use vb_core::WorkflowParts;
-use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::capability::Capability;
 use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract};
@@ -35,10 +35,13 @@ pub fn fuzz_capability_name_schema(data: &[u8]) {
     };
     let bounded_name = bounded_capability_name(name);
     let parts = fuzz_parts_with_actions(&[1]);
-    let contracts = [fuzz_action_contract(
+    let Some(contract) = fuzz_action_contract(
         1,
         Box::new([Capability::new(Box::from(bounded_name), ActionId::new(1))]),
-    )];
+    ) else {
+        return;
+    };
+    let contracts = [contract];
     let result = vb_validate::shared::validate_with_contracts(&parts, &contracts);
     if bounded_name.is_empty() {
         assert!(matches!(
@@ -65,13 +68,16 @@ pub fn fuzz_capability_contract_schema(data: &[u8]) {
     };
     let name = std::str::from_utf8(tail).map_or("network", bounded_capability_name);
     let parts = fuzz_parts_with_actions(&[first]);
-    let contracts = [fuzz_action_contract(
+    let Some(contract) = fuzz_action_contract(
         first,
         Box::new([
             Capability::new(Box::from(name), ActionId::new(second)),
             Capability::new(Box::from(name), ActionId::new(second)),
         ]),
-    )];
+    ) else {
+        return;
+    };
+    let contracts = [contract];
     let result = vb_validate::shared::validate_with_contracts(&parts, &contracts);
     if name.is_empty() {
         assert!(matches!(
@@ -122,9 +128,14 @@ fn capability_segment_is_valid(segment: &str) -> bool {
     chars.all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || ch == '_')
 }
 
-fn fuzz_action_contract(action: u16, required_capabilities: Box<[Capability]>) -> ActionContract {
-    ActionContract {
+fn fuzz_action_contract(
+    action: u16,
+    required_capabilities: Box<[Capability]>,
+) -> Option<ActionContract> {
+    let name = ActionName::new(format!("fuzz_action_{action}")).ok()?;
+    Some(ActionContract {
         id: ActionId::new(action),
+        name,
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -134,7 +145,7 @@ fn fuzz_action_contract(action: u16, required_capabilities: Box<[Capability]>) -
         side_effect: SideEffect::Writes,
         retry_safety: RetrySafety::KeyRequired,
         required_capabilities,
-    }
+    })
 }
 
 fn fuzz_parts_with_actions(actions: &[u16]) -> WorkflowParts {

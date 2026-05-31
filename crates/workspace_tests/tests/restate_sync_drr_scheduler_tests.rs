@@ -207,20 +207,6 @@ fn mk_ticket(run: u64, seq: u32, action: u16, attempt: u16) -> ActionTicket {
     }
 }
 
-fn enqueue_tickets(
-    queues: &[BoundedActionCompletionQueue],
-    tickets: &[ActionTicket],
-) -> Vec<usize> {
-    let mut enqueued = Vec::new();
-    for (qi, t) in tickets.iter().enumerate() {
-        let q = &queues[qi % queues.len()];
-        if q.enqueue(*t).is_ok() {
-            enqueued.push(qi % queues.len());
-        }
-    }
-    enqueued
-}
-
 // ---------------------------------------------------------------------------
 // Properties
 // ---------------------------------------------------------------------------
