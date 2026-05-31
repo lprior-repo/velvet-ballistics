@@ -421,7 +421,7 @@ fn runtime_timer_fired_rejects_wrong_generation_authority() {
     );
     assert_eq!(shard.tick(), Ok(true));
     let pending_before = shard.pending_timer_clone();
-    let Some(active_timer) = pending_before.get(run.get() as usize).and_then(|opt| *opt) else {
+    let Some(active_timer) = pending_before.get(&run).copied() else {
         panic!("timed wait must register one pending timer before generation mismatch test");
     };
 
@@ -461,7 +461,7 @@ fn runtime_timer_fired_rejects_wrong_deadline_authority() {
     );
     assert_eq!(shard.tick(), Ok(true));
     let pending_before = shard.pending_timer_clone();
-    let Some(active_timer) = pending_before.get(run.get() as usize).and_then(|opt| *opt) else {
+    let Some(active_timer) = pending_before.get(&run).copied() else {
         panic!("timed wait must register one pending timer before deadline mismatch test");
     };
     let wrong_deadline = std::time::Instant::now() + std::time::Duration::from_secs(86_400);
@@ -502,7 +502,7 @@ fn runtime_timer_fired_rejects_wrong_kind_authority() {
     );
     assert_eq!(shard.tick(), Ok(true));
     let pending_before = shard.pending_timer_clone();
-    let Some(active_timer) = pending_before.get(run.get() as usize).and_then(|opt| *opt) else {
+    let Some(active_timer) = pending_before.get(&run).copied() else {
         panic!("timed wait must register one pending timer before kind mismatch test");
     };
 

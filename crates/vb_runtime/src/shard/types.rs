@@ -2,7 +2,7 @@
 //! Single-threaded shard owning mutable run state directly.
 
 use crossbeam_queue::ArrayQueue;
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexMap;
 use std::time::Instant;
 use vb_core::action::ActionContract;
 use vb_core::capability::CapabilitySet;
