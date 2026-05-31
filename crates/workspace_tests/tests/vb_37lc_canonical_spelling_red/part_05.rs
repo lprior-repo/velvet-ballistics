@@ -8,7 +8,7 @@ fn scan_repository_report_kernel_returns_all_findings_when_valid_and_invalid_inp
     write_fixture_file(
         temp.path(),
         "docs/bad.md",
-        "ok\nok\nlegacy velvet-ballistics\n",
+        "ok\nok\nlegacy Velvet-Ballastics\n",
     )?;
     let root = RepoRoot::new(temp.path().to_path_buf());
     let config = minimum_valid_scan_config();
@@ -48,7 +48,7 @@ fn render_scan_report_preserves_single_finding_fields_when_report_has_one_findin
     assert_eq!(
         result,
         Ok(RenderedReport {
-            body: "docs/naming.md:3:7 LegacyProjectSpelling -> velvet-ballastics\n".to_string(),
+            body: format!("docs/naming.md:3:7 LegacyProjectSpelling -> {CANONICAL_HYPHEN}\n"),
         })
     );
 }
@@ -64,7 +64,7 @@ fn render_scan_report_orders_duplicate_sort_keys_deterministically_when_findings
         result,
         Ok(RenderedReport {
             body: format!(
-                "docs/naming.md:3:7 LegacyProjectSpelling -> velvet-ballastics\ndocs/naming.md:3:7 LegacyCrateModuleSpelling -> {CANONICAL_UNDERSCORE}\n"
+                "docs/naming.md:3:7 LegacyProjectSpelling -> {CANONICAL_HYPHEN}\ndocs/naming.md:3:7 LegacyCrateModuleSpelling -> {CANONICAL_UNDERSCORE}\n"
             ),
         })
     );
@@ -220,7 +220,7 @@ fn discover_scan_inputs_skips_unreadable_child_directory_without_failing_root_sc
     write_fixture_file(temp.path(), "docs/visible.md", "velvet-ballastics\n")?;
     let unreadable = temp.path().join("restricted");
     std::fs::create_dir_all(&unreadable)?;
-    std::fs::write(unreadable.join("hidden.md"), "velvet-ballistics\n")?;
+    std::fs::write(unreadable.join("hidden.md"), "Velvet-Ballastics\n")?;
     std::fs::set_permissions(&unreadable, std::fs::Permissions::from_mode(0o000))?;
     let root = RepoRoot::new(temp.path().to_path_buf());
     let config = minimum_valid_scan_config();

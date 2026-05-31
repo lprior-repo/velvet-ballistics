@@ -164,5 +164,6 @@ fn reference_name(tail: &str) -> &str {
 }
 
 #[cfg(test)]
+#[cfg(test)]
 #[path = "fact_table/tests.rs"]
 mod tests;

@@ -73,5 +73,6 @@ pub const CODE_CUE_VET_FAILED: u16 = 0x0602;
 pub const CODE_VERSION_MONOTONICITY_BREACH: u16 = 0x0603;
 
 #[cfg(test)]
+#[cfg(test)]
 #[path = "diag_codes/tests.rs"]
 mod tests;

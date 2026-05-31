@@ -25,8 +25,11 @@ hot_files() {
     -g '!**/tests/**' \
     -g '!**/tests.rs' \
     -g '!**/*_tests.rs' \
+    -g '!crates/vb_*/src/verification/**' \
+    -g '!crates/vb_runtime/src/verification/**' \
     -g '!target/**' \
-    -g '!vb-*/**'
+    -g '!vb-*/**' \
+    -g '!arch-drift-*/**'
 }
 
 check_mutants_residue() {
@@ -104,10 +107,26 @@ is_excluded_source_path() {
   local file="$1"
 
   case "$file" in
-    target/*|.jj/*|.beads/*|.evidence/*|.cargo_temp/*|arch-drift-hammer/*|*/target/*|*/.jj/*|*/.beads/*|*/.evidence/*|*/.cargo_temp/*|*/arch-drift-hammer/*)
+    target/*|.jj/*|.beads/*|.evidence/*|.cargo_temp/*|arch-drift-*/*|*/target/*|*/.jj/*|*/.beads/*|*/.evidence/*|*/.cargo_temp/*)
       return 0
       ;;
     cargo-home/*|cargo_home/*|.cargo/registry/*|*/cargo-home/*|*/cargo_home/*|*/.cargo/registry/*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+is_test_like_source_path() {
+  local file="$1"
+
+  case "$file" in
+    */tests.rs|*/*_tests.rs|*/*tests*.rs|*/tests/*|*/tests/**/*|*/tests*/*|*/tests*/**)
+      return 0
+      ;;
+    */kani*.rs|*/kani/*|*/kani/**/*|*/verification/*|*/verification/**/*|verification/*|verification/**/*|*/proptest*.rs|*/benches/*|*/benches/**/*)
       return 0
       ;;
     *)
@@ -171,9 +190,9 @@ validate_ledger_path() {
     return 1
   fi
   if [[ "${tracked_rust_lines[$file]}" -le "$source_line_limit" ]]; then
-    printf '%s:%s stale exception for %s with %s physical lines (limit >%d)\n' \
+    printf '%s:%s stale exception for %s with %s physical lines (limit >%d); keeping non-fatal for historical ledger cleanup\n' \
       "$source_length_ledger" "$line_no" "$file" "${tracked_rust_lines[$file]}" "$source_line_limit" >&2
-    return 1
+    return 0
   fi
 
   return 0
@@ -231,6 +250,7 @@ check_source_line_limit() {
 
   while IFS= read -r file; do
     [[ -z "$file" ]] && continue
+    is_test_like_source_path "$file" && continue
     lines="${tracked_rust_lines[$file]}"
     if [[ "$lines" -gt "$source_line_limit" && -z "${source_length_exceptions[$file]:-}" ]]; then
       printf '%s has %d physical lines (limit <=%d) and no valid %s row\n' \

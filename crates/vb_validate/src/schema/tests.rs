@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 use super::*;
+use crate::ValidationError;
 
 #[allow(dead_code)]
 fn make_workflow(fields: Vec<(&str, FieldValue)>) -> WorkflowDoc {

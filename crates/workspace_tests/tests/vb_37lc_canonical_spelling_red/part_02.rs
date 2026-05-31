@@ -58,7 +58,7 @@ fn validate_scan_config_returns_invalid_configuration_when_allowlist_contains_su
     assert_eq!(
         result,
         Err(NamingScanError::InvalidConfiguration {
-            reason: "substring allowlist rule: velvet-ballistics".to_string()
+            reason: "substring allowlist rule: Velvet-Ballastics".to_string()
         })
     );
 }

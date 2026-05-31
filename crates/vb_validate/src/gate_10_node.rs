@@ -287,5 +287,6 @@ fn validate_load_accessor_reference(
 }
 
 #[cfg(test)]
+#[cfg(test)]
 #[path = "gate_10_node/tests.rs"]
 mod tests;

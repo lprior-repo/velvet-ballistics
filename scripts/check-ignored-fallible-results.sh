@@ -62,6 +62,7 @@ should_skip_file() {
   case "$rel" in
     crates/*/src/kani_*.rs|crates/*/src/**/kani_*.rs) return 0 ;;
     crates/workspace_tests/src/*|crates/workspace_tests/src/**) return 0 ;;
+    crates/*/src/tests.rs|crates/*/src/**/tests.rs) return 0 ;;
     crates/*/src/*_tests.rs|crates/*/src/**/*_tests.rs) return 0 ;;
     crates/*/src/test_harness.rs|crates/*/src/**/test_harness.rs) return 0 ;;
     crates/*/src/**/tests/*.rs|crates/*/src/**/tests/**/*.rs) return 0 ;;

@@ -102,6 +102,7 @@ done < <(
     -g '!.git/**' \
     -g '!.beads/**' \
     -g '!vb-*/**' \
+    -g '!arch-drift-*/**' \
     -g '!**/target/**' \
     -g '!**/generated-build/**' \
     -g '!**/build-output/**'

@@ -1561,14 +1561,10 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
 /// Returns `None` if the symbolic name is not registered.
 #[must_use]
 pub fn symbolic_to_numeric(symbolic: &str) -> Option<u16> {
-    let mut i = 0;
-    while i < CODE_REGISTRY.len() {
-        if let Some(entry) = CODE_REGISTRY.get(i)
-            && entry.symbolic == symbolic
-        {
+    for entry in CODE_REGISTRY {
+        if entry.symbolic == symbolic {
             return Some(entry.numeric);
         }
-        i = i.wrapping_add(1);
     }
     None
 }
@@ -1578,14 +1574,10 @@ pub fn symbolic_to_numeric(symbolic: &str) -> Option<u16> {
 /// Returns `None` if the numeric code is not in the registry.
 #[must_use]
 pub fn numeric_to_symbolic(numeric: u16) -> Option<&'static str> {
-    let mut i = 0;
-    while i < CODE_REGISTRY.len() {
-        if let Some(entry) = CODE_REGISTRY.get(i)
-            && entry.numeric == numeric
-        {
+    for entry in CODE_REGISTRY {
+        if entry.numeric == numeric {
             return Some(entry.symbolic);
         }
-        i = i.wrapping_add(1);
     }
     None
 }
@@ -2063,6 +2055,9 @@ pub(crate) fn is_supported_code(code: u16) -> bool {
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
+
+// Tests extracted to: crates/workspace_tests/tests/vb_test_validate_diagnostic_behavior.rs
+// and related diagnostic test files.
 
 #[cfg(test)]
 #[path = "diagnostic/tests_and_verification.rs"]

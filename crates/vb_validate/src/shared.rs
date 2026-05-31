@@ -174,5 +174,6 @@ pub fn validate_with_contracts(
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]
+#[cfg(test)]
 #[path = "shared/tests.rs"]
 mod tests;

@@ -35,7 +35,7 @@ fn scan_file_decodes_valid_utf8_bytes_and_reports_exact_finding() {
     let config = minimum_valid_scan_config();
     let input = binary_scan_input(
         "docs/bytes.md",
-        "legacy velvet-ballistics\n".as_bytes().to_vec(),
+        "legacy Velvet-Ballastics\n".as_bytes().to_vec(),
     );
 
     let result = scan_file(input, &config);
@@ -119,7 +119,7 @@ fn scan_repository_returns_invalid_canonical_spelling_when_legacy_language_versi
 #[test]
 fn scan_file_location_kernel_returns_column_one_when_token_starts_at_first_column() {
     let config = minimum_valid_scan_config();
-    let input = text_scan_input("docs/naming.md", "velvet-ballistics must be fixed\n");
+    let input = text_scan_input("docs/naming.md", "Velvet-Ballastics must be fixed\n");
 
     let result = scan_file(input, &config);
 
@@ -132,7 +132,7 @@ fn scan_file_location_kernel_returns_column_one_when_token_starts_at_first_colum
 #[test]
 fn scan_file_location_kernel_preserves_crlf_columns_when_invalid_token_is_seen() {
     let config = minimum_valid_scan_config();
-    let input = text_scan_input("docs/naming.md", "ok\r\nfix: velvet-ballistics\r\n");
+    let input = text_scan_input("docs/naming.md", "ok\r\nfix: Velvet-Ballastics\r\n");
 
     let result = scan_file(input, &config);
 
@@ -145,7 +145,7 @@ fn scan_file_location_kernel_preserves_crlf_columns_when_invalid_token_is_seen()
 #[test]
 fn scan_file_location_kernel_preserves_final_line_without_newline_when_invalid_token_is_seen() {
     let config = minimum_valid_scan_config();
-    let input = text_scan_input("docs/naming.md", "first line\nfinal velvet-ballistics");
+    let input = text_scan_input("docs/naming.md", "first line\nfinal Velvet-Ballastics");
 
     let result = scan_file(input, &config);
 
@@ -160,7 +160,7 @@ fn scan_file_finding_kernel_returns_all_occurrences_when_many_tokens_share_one_l
     let config = minimum_valid_scan_config();
     let input = text_scan_input(
         "docs/naming.md",
-        "velvet-ballistics then velvet-ballistics\n",
+        "Velvet-Ballastics then Velvet-Ballastics\n",
     );
 
     let result = scan_file(input, &config);

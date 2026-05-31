@@ -183,5 +183,6 @@ fn check_slot(slot: SlotIdx, node_index: usize, slot_count: usize) -> Validation
 }
 
 #[cfg(test)]
+#[cfg(test)]
 #[path = "gate_09_slots/tests.rs"]
 mod tests;

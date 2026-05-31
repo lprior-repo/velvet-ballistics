@@ -149,5 +149,6 @@ pub struct StepFlow {
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]
+#[cfg(test)]
 #[path = "control_flow/tests.rs"]
 mod tests;

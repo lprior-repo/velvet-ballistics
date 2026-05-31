@@ -5,7 +5,7 @@ fn classify_occurrence_returns_allowed_migration_reference_with_exact_payload_wh
  {
     let config = minimum_valid_scan_config();
     let path = repo_path("docs/migration.md");
-    let text = "MIGRATION-REFERENCE external-preexisting-artifact velvet-ballistics";
+    let text = "MIGRATION-REFERENCE external-preexisting-artifact Velvet-Ballastics";
 
     let result = classify_occurrence(path, line(6), column(1), text, &config);
 
@@ -25,7 +25,7 @@ fn classify_occurrence_returns_allowed_migration_reference_with_exact_payload_wh
 fn classify_occurrence_returns_invalid_legacy_when_repository_path_is_only_a_substring() {
     let config = minimum_valid_scan_config();
     let path = repo_path("docs/bad.md");
-    let text = "prefix-https://github.com/priorlewis43/velvet-ballistics-suffix";
+    let text = "prefix-https://github.com/priorlewis43/Velvet-Ballastics-suffix";
 
     let result = classify_occurrence(path, line(1), column(1), text, &config);
 
@@ -47,7 +47,7 @@ fn classify_occurrence_returns_invalid_legacy_when_master_filename_is_embedded_i
 fn classify_occurrence_returns_invalid_legacy_when_migration_label_is_absent() {
     let config = minimum_valid_scan_config();
     let path = repo_path("docs/bad.md");
-    let text = "external-preexisting-artifact velvet-ballistics";
+    let text = "external-preexisting-artifact Velvet-Ballastics";
 
     let result = classify_occurrence(path, line(3), column(31), text, &config);
 
@@ -159,7 +159,7 @@ fn scan_file_allows_documented_external_legacy_repository_url_inside_sentence() 
     let config = minimum_valid_scan_config();
     let input = text_scan_input(
         "docs/migration.md",
-        "legacy source: https://github.com/priorlewis43/velvet-ballistics.\n",
+        "legacy source: https://github.com/priorlewis43/Velvet-Ballastics.\n",
     );
 
     let result = scan_file(input, &config);
@@ -172,7 +172,7 @@ fn scan_file_allows_documented_external_legacy_repository_url_when_exact_boundar
     let config = minimum_valid_scan_config();
     let input = text_scan_input(
         "docs/migration.md",
-        "https://github.com/priorlewis43/velvet-ballistics\n",
+        "https://github.com/priorlewis43/Velvet-Ballastics\n",
     );
 
     let result = scan_file(input, &config);
@@ -185,7 +185,7 @@ fn scan_file_rejects_documented_external_legacy_repository_url_when_left_boundar
     let config = minimum_valid_scan_config();
     let input = text_scan_input(
         "docs/migration.md",
-        "xhttps://github.com/priorlewis43/velvet-ballistics\n",
+        "xhttps://github.com/priorlewis43/Velvet-Ballastics\n",
     );
 
     let result = scan_file(input, &config);
@@ -201,7 +201,7 @@ fn scan_file_rejects_documented_external_legacy_repository_url_when_right_bounda
     let config = minimum_valid_scan_config();
     let input = text_scan_input(
         "docs/migration.md",
-        "https://github.com/priorlewis43/velvet-ballistics-extra\n",
+        "https://github.com/priorlewis43/Velvet-Ballastics-extra\n",
     );
 
     let result = scan_file(input, &config);
@@ -214,16 +214,22 @@ fn scan_file_rejects_documented_external_legacy_repository_url_when_right_bounda
 
 #[test]
 fn scan_file_ignores_non_exact_allowlist_rule_when_config_was_not_validated() {
-    let mut config = minimum_valid_scan_config();
+    let mut config = maximum_bounded_scan_config();
     config.allowlist_policy = AllowlistPolicy::Exact(vec![LegacyAllowRule::Wildcard {
         pattern: "*".to_string(),
     }]);
-    let input = text_scan_input("docs/bad.md", "legacy velvet-ballistics\n");
+    let input = text_scan_input("docs/bad.md", "legacy velvet_ballistics\n");
 
     let result = scan_file(input, &config);
 
     assert_eq!(
         result,
-        Ok(vec![finding("docs/bad.md", 1, 8, CANONICAL_HYPHEN)])
+        Ok(vec![finding_with_class(
+            "docs/bad.md",
+            1,
+            8,
+            SpellingClass::LegacyCrateModuleSpelling,
+            CANONICAL_UNDERSCORE,
+        )])
     );
 }

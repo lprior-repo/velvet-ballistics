@@ -73,5 +73,6 @@ fn validate_accessor_root(
 }
 
 #[cfg(test)]
+#[cfg(test)]
 #[path = "gate_08_accessor/tests.rs"]
 mod tests;

@@ -256,5 +256,6 @@ pub struct WorkflowRefs {
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]
+#[cfg(test)]
 #[path = "references/tests.rs"]
 mod tests;

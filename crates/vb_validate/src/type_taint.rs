@@ -587,5 +587,6 @@ fn require_boolean(actual: ValueType) -> ValidationResult<()> {
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]
+#[cfg(test)]
 #[path = "type_taint_tests.rs"]
 mod tests;

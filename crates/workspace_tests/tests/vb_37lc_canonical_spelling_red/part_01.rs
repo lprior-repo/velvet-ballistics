@@ -194,7 +194,7 @@ fn validate_scan_config_returns_invalid_configuration_when_canonical_token_contr
     assert_eq!(
         result,
         Err(NamingScanError::InvalidConfiguration {
-            reason: "contradictory token for crate_module: velvet-ballistics".to_string()
+            reason: "contradictory token for crate_module: Velvet-Ballastics".to_string()
         })
     );
 }

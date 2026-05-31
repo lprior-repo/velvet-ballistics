@@ -42,7 +42,7 @@ pub struct SymbolicCode(&'static str);
 impl SymbolicCode {
     /// Smart constructor. Accepts only registered symbolic strings.
     #[must_use]
-    pub const fn from_static(s: &'static str) -> Option<Self> {
+    pub fn from_static(s: &'static str) -> Option<Self> {
         match symbolic_to_numeric(s) {
             Some(_) => Some(SymbolicCode(s)),
             None => None,
@@ -51,7 +51,7 @@ impl SymbolicCode {
 
     /// Constructor for static strings already sourced from CODE_REGISTRY.
     #[must_use]
-    pub const fn from_registered_static(s: &'static str) -> Option<Self> {
+    pub fn from_registered_static(s: &'static str) -> Option<Self> {
         match symbolic_to_numeric(s) {
             Some(_) => Some(SymbolicCode(s)),
             None => None,
@@ -867,25 +867,21 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
 ];
 
 /// Lookup: symbolic name → numeric code. Linear scan.
-pub const fn symbolic_to_numeric(symbolic: &str) -> Option<u16> {
-    let mut i = 0;
-    while i < CODE_REGISTRY.len() {
-        if string_eq(CODE_REGISTRY[i].symbolic, symbolic) {
-            return Some(CODE_REGISTRY[i].numeric);
+pub fn symbolic_to_numeric(symbolic: &str) -> Option<u16> {
+    for entry in CODE_REGISTRY {
+        if entry.symbolic == symbolic {
+            return Some(entry.numeric);
         }
-        i += 1;
     }
     None
 }
 
 /// Lookup: numeric code → symbolic name. Linear scan.
-pub const fn numeric_to_symbolic(numeric: u16) -> Option<&'static str> {
-    let mut i = 0;
-    while i < CODE_REGISTRY.len() {
-        if CODE_REGISTRY[i].numeric == numeric {
-            return Some(CODE_REGISTRY[i].symbolic);
+pub fn numeric_to_symbolic(numeric: u16) -> Option<&'static str> {
+    for entry in CODE_REGISTRY {
+        if entry.numeric == numeric {
+            return Some(entry.symbolic);
         }
-        i += 1;
     }
     None
 }
@@ -912,23 +908,6 @@ pub const fn is_supported_code(code: u16) -> bool {
             | 0x3001..=0x300E
             | 0x4001..=0x401C
     )
-}
-
-/// Const string equality (for const fn context).
-const fn string_eq(a: &str, b: &str) -> bool {
-    let a_bytes = a.as_bytes();
-    let b_bytes = b.as_bytes();
-    if a_bytes.len() != b_bytes.len() {
-        return false;
-    }
-    let mut i = 0;
-    while i < a_bytes.len() {
-        if a_bytes[i] != b_bytes[i] {
-            return false;
-        }
-        i += 1;
-    }
-    true
 }
 
 #[cfg(kani)]

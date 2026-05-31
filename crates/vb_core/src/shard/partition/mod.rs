@@ -23,6 +23,10 @@ pub const MAX_SHARD_COUNT: usize = 65_536;
 /// Maximum shard count for Kani bounded verification (TB-005).
 pub const KANI_MAX_SHARD_COUNT: usize = 32;
 
+fn usize_to_u64(value: usize) -> u64 {
+    u64::try_from(value).map_or(u64::MAX, core::convert::identity)
+}
+
 // ============================================================================
 // PartitionError
 // ============================================================================
@@ -135,17 +139,13 @@ impl KeyRange {
 
     #[must_use]
     pub fn is_adjacent_to(self, other: Self) -> bool {
-        if self
-            .end
-            .checked_add(1)
-            .is_some_and(|next| next == other.start)
+        if let Some(next) = self.end.checked_add(1)
+            && next == other.start
         {
             return true;
         }
-        if other
-            .end
-            .checked_add(1)
-            .is_some_and(|next| next == self.start)
+        if let Some(next) = other.end.checked_add(1)
+            && next == self.start
         {
             return true;
         }
@@ -165,11 +165,10 @@ impl ShardCount {
         if raw == 0 {
             return Err(PartitionError::ZeroShardCount);
         }
-        #[allow(clippy::as_conversions)]
         if raw > MAX_SHARD_COUNT {
             return Err(PartitionError::ShardCountExceedsMax {
-                requested: raw as u64,
-                maximum: MAX_SHARD_COUNT as u64,
+                requested: usize_to_u64(raw),
+                maximum: usize_to_u64(MAX_SHARD_COUNT),
             });
         }
         Ok(Self(raw))
@@ -180,9 +179,8 @@ impl ShardCount {
         self.0
     }
     #[must_use]
-    #[allow(clippy::as_conversions)]
-    pub const fn as_u64(self) -> u64 {
-        self.0 as u64
+    pub fn as_u64(self) -> u64 {
+        usize_to_u64(self.0)
     }
     #[must_use]
     pub const fn is_single_shard(self) -> bool {
@@ -267,11 +265,12 @@ impl PartitionPlan {
             }
         };
 
-        let step_u128 = match span.checked_div(u128::from(n)) {
+        let n_u128 = u128::from(n);
+        let step_u128 = match span.checked_div(n_u128) {
             Some(s) => s,
             None => return Err(PartitionError::ArithmeticOverflow { shard_index: 0 }),
         };
-        let rem_u128 = match span.checked_rem(u128::from(n)) {
+        let rem_u128 = match span.checked_rem(n_u128) {
             Some(r) => r,
             None => return Err(PartitionError::ArithmeticOverflow { shard_index: 0 }),
         };
@@ -285,8 +284,10 @@ impl PartitionPlan {
             Err(_) => return Err(PartitionError::ArithmeticOverflow { shard_index: 0 }),
         };
 
-        #[allow(clippy::as_conversions)]
-        let capacity = n as usize;
+        let capacity = match usize::try_from(n) {
+            Ok(value) => value,
+            Err(_) => return Err(PartitionError::ArithmeticOverflow { shard_index: 0 }),
+        };
         let mut ranges = Vec::with_capacity(capacity);
         let mut cursor = kmin;
 
@@ -338,18 +339,16 @@ impl PartitionPlan {
 
     #[must_use]
     pub fn shard_for_key(&self, key: u64) -> Option<usize> {
-        let first = self.ranges.first()?;
-        let last = self.ranges.last()?;
-        let first_start = first.start();
-        let last_end = last.end();
+        let first_start = self.ranges.first()?.start();
+        let last_end = self.ranges.last()?.end();
         if key < first_start || key > last_end {
             return None;
         }
         let mut lo = 0usize;
         let mut hi = self.ranges.len();
         while lo < hi {
-            let diff = hi.checked_sub(lo)?;
-            let half = diff.checked_div(2)?;
+            let width = hi.checked_sub(lo)?;
+            let half = width.checked_div(2)?;
             let mid = lo.checked_add(half)?;
             let range = self.ranges.get(mid)?;
             if key < range.start() {
@@ -365,42 +364,31 @@ impl PartitionPlan {
 
     pub fn validate_invariants(&self) -> Result<(), &'static str> {
         let ranges = &self.ranges;
-        let n = ranges.len();
-        if n == 0 {
+        if ranges.is_empty() {
             return Err("partition plan has no ranges");
         }
-        for _r in ranges.iter() {
-            if _r.start() > _r.end() {
+        for range in ranges.iter() {
+            if range.start() > range.end() {
                 return Err("range has start > end");
             }
         }
-        for i in 0..n.saturating_sub(1) {
-            let Some(curr) = ranges.get(i).copied() else {
-                return Err("range index out of bounds");
+        for pair in ranges.windows(2) {
+            let curr = match pair.first().copied() {
+                Some(value) => value,
+                None => return Err("partition plan pair missing current range"),
             };
-            let Some(next_idx) = i.checked_add(1) else {
-                return Err("arithmetic overflow computing next index");
-            };
-            let Some(next) = ranges.get(next_idx).copied() else {
-                return Err("range index out of bounds");
+            let next = match pair.get(1).copied() {
+                Some(value) => value,
+                None => return Err("partition plan pair missing next range"),
             };
             match curr.end().checked_add(1) {
                 Some(expected) if expected == next.start() => {}
                 _ => return Err("ranges are not contiguous"),
             }
         }
-        for i in 0..n {
-            let Some(a) = ranges.get(i).copied() else {
-                return Err("range index out of bounds");
-            };
-            let Some(start) = i.checked_add(1) else {
-                return Err("arithmetic overflow computing next index");
-            };
-            for j in start..n {
-                let Some(b) = ranges.get(j).copied() else {
-                    return Err("range index out of bounds");
-                };
-                if !a.is_disjoint(b) {
+        for (index, left) in ranges.iter().enumerate() {
+            for right in ranges.iter().skip(index.saturating_add(1)) {
+                if !left.is_disjoint(*right) {
                     return Err("ranges overlap");
                 }
             }

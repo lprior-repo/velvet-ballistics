@@ -36,6 +36,21 @@ pub mod fuzz_validation {
 pub use self::header::{decode_record_header, encode_record_header};
 pub use self::payload::verify_digest_match;
 
+/// Returns whether a raw wire record-kind value is recognized by storage.
+pub const fn is_known_record_kind(kind: u16) -> bool {
+    self::validation::is_known_record_kind(kind)
+}
+
+/// Validates a raw wire record-kind value before semantic family checks.
+pub fn validate_known_record_kind(kind: u16) -> Result<(), JournalError> {
+    self::validation::validate_known_kind(kind)
+}
+
+/// Validates that a raw wire record-kind value belongs to the magic family.
+pub fn validate_record_kind_family(magic: u32, kind: u16) -> Result<(), JournalError> {
+    self::validation::validate_kind_family(magic, kind)
+}
+
 /// Encodes a postcard payload behind the 60-byte storage envelope.
 pub fn encode_record<T: Serialize>(
     magic: u32,
@@ -44,7 +59,7 @@ pub fn encode_record<T: Serialize>(
     payload: &T,
     max_payload_len: u32,
 ) -> Result<Vec<u8>, JournalError> {
-    self::validation::validate_kind_family(magic, kind.id())?;
+    validate_record_kind_family(magic, kind.id())?;
     let payload_bytes = postcard::to_allocvec(payload)?;
     let payload_len = self::payload::payload_len_u32(payload_bytes.len(), max_payload_len)?;
     self::payload::encode_record_payload(magic, kind, sequence, &payload_bytes, payload_len)
