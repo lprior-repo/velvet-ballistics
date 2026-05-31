@@ -39,6 +39,9 @@ use super::{
     append_read_bytes, borrow_workflow_resolver, extract_payload, frame_error_response,
     frame_total_len, read_buffer_header, send_response,
 };
+use super::helpers::{
+    validate_magic_early, AWAITING_MAGIC_MAX_BYTES, MagicValidationState,
+};
 
 const SERVER_TOKEN: Token = Token(0);
 const FIRST_CLIENT_TOKEN: usize = 1;
@@ -155,6 +158,7 @@ impl IpcServer {
             stream,
             read_buffer: Vec::new(),
             write_buffer: Vec::new(),
+            magic_state: MagicValidationState::AwaitingMagic,
         };
 
         self.poll
@@ -193,6 +197,31 @@ impl IpcServer {
         };
 
         append_read_bytes(&mut client.read_buffer, &temp_buf, bytes_read)?;
+
+        // Early magic validation — reject immediately if magic bytes are invalid.
+        // This prevents unbounded buffer growth from a malicious peer.
+        if client.magic_state == MagicValidationState::AwaitingMagic
+            && client.read_buffer.len() >= AWAITING_MAGIC_MAX_BYTES
+        {
+            match validate_magic_early(&client.read_buffer) {
+                Ok(MagicValidationState::AwaitingMagic) => {
+                    // Not enough bytes yet — wait for more.
+                    return Ok(false);
+                }
+                Ok(MagicValidationState::MagicValidated) => {
+                    client.magic_state = MagicValidationState::MagicValidated;
+                }
+                Err(_error) => {
+                    // Invalid magic — close connection immediately.
+                    return Ok(true);
+                }
+            }
+        }
+
+        // Only process frames after magic is validated.
+        if client.magic_state != MagicValidationState::MagicValidated {
+            return Ok(false);
+        }
 
         while client.read_buffer.len() >= IPC_HEADER_LEN {
             let header_bytes = read_buffer_header(&client.read_buffer)?;

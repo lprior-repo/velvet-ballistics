@@ -51,6 +51,8 @@ struct ClientConnection {
     stream: mio::net::UnixStream,
     read_buffer: Vec<u8>,
     write_buffer: Vec<u8>,
+    /// Magic validation state — starts as AwaitingMagic, transitions to MagicValidated.
+    magic_state: helpers::MagicValidationState,
 }
 
 /// Response payload sent back to IPC clients after command processing.

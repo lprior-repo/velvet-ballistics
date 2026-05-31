@@ -5,11 +5,43 @@ use super::IpcResponse;
 use super::error::IpcServerError;
 use crate::IpcError;
 use crate::IpcFrameHeader;
-use crate::{IPC_HEADER_LEN, MaxPayloadBytes};
+use crate::{IPC_HEADER_LEN, IPC_MAGIC, MaxPayloadBytes};
 use mio::Registry;
 use mio::Token;
 use mio::net::UnixStream;
 use std::io::Write;
+
+/// Maximum bytes to read while still in AwaitingMagic state.
+pub const AWAITING_MAGIC_MAX_BYTES: usize = 4;
+
+/// Magic validation state for IPC frame header parsing.
+///
+/// Tracks whether we have validated the magic bytes at the start of a frame.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MagicValidationState {
+    /// Have not yet validated magic bytes.
+    AwaitingMagic,
+    /// Magic bytes validated successfully.
+    MagicValidated,
+}
+
+/// Validates magic bytes early, before allocating a large read buffer.
+///
+/// Returns `MagicValidated` if the magic matches `IPC_MAGIC`.
+/// Returns `AwaitingMagic` if not enough bytes have been collected.
+/// Returns an `IpcError::InvalidMagic` if the magic bytes are present but do not match.
+#[must_use]
+pub fn validate_magic_early(bytes: &[u8]) -> Result<MagicValidationState, IpcError> {
+    if bytes.len() < 4 {
+        return Ok(MagicValidationState::AwaitingMagic);
+    }
+    let magic = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+    if magic == IPC_MAGIC {
+        Ok(MagicValidationState::MagicValidated)
+    } else {
+        Err(IpcError::InvalidMagic { actual: magic })
+    }
+}
 
 /// Appends read bytes into the read buffer with bounds checking.
 pub fn append_read_bytes(

@@ -39,7 +39,10 @@ pub fn decode_envelope_only(
 
     // Extract the raw payload: bytes[60..60+payload_len]
     let payload_start = RECORD_HEADER_BYTES;
-    let payload_len = header.payload_len as usize;
+    let payload_len: usize = header
+        .payload_len
+        .try_into()
+        .map_err(|_| JournalError::UnexpectedEof)?;
     let payload_end = payload_start
         .checked_add(payload_len)
         .ok_or(JournalError::UnexpectedEof)?;

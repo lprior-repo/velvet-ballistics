@@ -2,6 +2,9 @@
   "kani-version": "0.67.0",
   "file-version": "0.1",
   "standard-harnesses": {
+    "crates/vb_runtime/src/primitives/collect.rs": [
+      "primitives::collect::kani_collect_verification::collect_page_pagination_bounds"
+    ],
     "crates/vb_runtime/src/primitives/reentry_proofs.rs": [
       "primitives::reentry_proofs::reentry_harnesses::collect_next_reentry",
       "primitives::reentry_proofs::reentry_harnesses::collect_page_reentry",
@@ -29,7 +32,7 @@
   "contract-harnesses": {},
   "contracts": [],
   "totals": {
-    "standard-harnesses": 19,
+    "standard-harnesses": 20,
     "contract-harnesses": 0,
     "functions-under-contract": 0
   }
