@@ -97,6 +97,7 @@ pub mod kani_vb_vzcuf_ps009;
 pub mod kani_vbjpq733_proofs;
 
 pub mod keys;
+pub mod preview;
 pub mod process_lock;
 
 // PO-010: register the deterministic replay proptest module for `cargo test --lib`
@@ -138,7 +139,7 @@ pub mod vb_2bok_durability_gate_tests;
 
 // Core types
 pub use constants::*;
-pub use error::JournalError;
+pub use error::{JournalError, KeyDecodeError};
 pub use events::{DurableActionOutcome, JournalEvent};
 pub use records::{
     BlobRecord, CompiledIrRecord, RecordKind, RunHeaderRecord, WorkflowSourceRecord,
@@ -155,7 +156,7 @@ pub use journal::incident::{
     IncidentAnalysis, SideEffect, SideEffectCertainty, analyze_incident_events, build_repair_hints,
     derive_lifecycle_state_from_events, lifecycle_state_to_inspect_status,
 };
-pub use journal::{EventReplayLimit, FjallJournal};
+pub use journal::{EventReplayLimit, FjallJournal, ReadOnlyJournal};
 
 // Batch
 pub use batch::JournalWriteBatch;

@@ -226,6 +226,12 @@ path = "tests/behavior_symbolic_code_serde.rs"
 name = "e2e_diagnostic_chain"
 path = "tests/e2e_diagnostic_chain.rs"
 
+# === vb-8mdp.11 Doctor Key-Decode Tests ===
+
+[[test]]
+name = "restate_doctor_key_decode_tests"
+path = "tests/restate_doctor_key_decode_tests.rs"
+
 # === vb-8mdp.7 Resource Admission Proptests ===
 
 [[test]]

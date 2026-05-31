@@ -7,9 +7,11 @@ use vb_core::{RunId, WorkflowDigest};
 
 mod artifact;
 pub(crate) mod codes;
+pub mod key_decode;
 pub mod warnings;
 
 pub use self::artifact::{ArtifactEnvelopeError, ArtifactInvalidSource};
+pub use self::key_decode::KeyDecodeError;
 pub use self::warnings::{
     AdmissionWarnings, VERIFICATION_WARNING_SCHEMA_MISMATCH_CODE, VerificationWarning,
 };
