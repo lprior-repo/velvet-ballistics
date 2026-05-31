@@ -339,7 +339,7 @@ impl Runtime {
         let shard = self.shard_for_mut(ticket.run)?;
         // Validate ticket before enqueuing — fail fast with InvalidActionCompletion
         // if the ticket doesn't match the current run state.
-        if let Some(state) = shard.runs.get(&ticket.run) {
+        if let Some(state) = shard.run_state_get(ticket.run) {
             crate::shard::lifecycle::preflight_action_completion(state, ticket, output.clone())?;
         }
         shard.enqueue(ShardCommand::ActionCompleted { ticket, output })
@@ -364,8 +364,8 @@ impl Runtime {
     /// Answers an ask with an explicit typed payload and resume ticket.
     pub fn answer_ask(&self, answer: AskAnswer) -> RuntimeResult<()> {
         let shard = self.shard_for(answer.ticket.run)?;
-        if !shard.runs.contains_key(&answer.ticket.run)
-            && shard.terminal_runs.contains(&answer.ticket.run)
+        if !shard.run_state_contains(answer.ticket.run)
+            && shard.terminal_runs_contains(answer.ticket.run)
         {
             return Err(RuntimeError::RunNotFound);
         }
@@ -508,16 +508,14 @@ impl Runtime {
         };
         let mut summaries = Vec::new();
         for shard in &self.shards {
-            let mut index = 0usize;
-            while index < shard.runs.len() && summaries.len() < max {
-                let Some((run_id, state)) = shard.runs.get_index(index) else {
+            for (run_id, state) in shard.runs.iter() {
+                if summaries.len() >= max {
                     break;
-                };
+                }
                 let digest = state.workflow.digest();
                 if let Some(filter) = workflow_filter
                     && digest != filter
                 {
-                    index = index.saturating_add(1);
                     continue;
                 }
                 let step_count = state.workflow.node_count();
@@ -548,10 +546,6 @@ impl Runtime {
                     step_count,
                     steps_completed,
                 });
-                index = index.saturating_add(1);
-            }
-            if summaries.len() >= max {
-                break;
             }
         }
         summaries.sort_by_key(|s| s.run_id);

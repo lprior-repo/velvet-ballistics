@@ -49,7 +49,7 @@ fn kani_ask_answer_append_before_insert() {
     // AFTER the journal append in the production await_timer function
     shard.apply(run, RuntimeEvent::AwaitTimer);
 
-    let state = shard.runtime_states.get(&run).copied();
+    let state = shard.runtime_state_get(run);
     kani::assert(
         state == Some(RuntimeState::Resumable),
         "apply(AwaitTimer) must set Resumable state",
@@ -60,7 +60,7 @@ fn kani_ask_answer_append_before_insert() {
     let mut s2 = new_shard();
     let r2 = any_run_id();
     s2.apply(r2, RuntimeEvent::AwaitAction);
-    let state2 = s2.runtime_states.get(&r2).copied();
+    let state2 = s2.runtime_state_get(r2);
     kani::assert(
         state2 == Some(RuntimeState::Resumable),
         "apply(AwaitAction) must set Resumable state",
@@ -184,7 +184,7 @@ fn kani_ask_answer_slot_written_before_ask_answered() {
     // for the SlotWritten→AskAnswered sequence.
 
     shard.apply(run, RuntimeEvent::AwaitTimer);
-    let state = shard.runtime_states.get(&run).copied();
+    let state = shard.runtime_state_get(run);
     kani::assert(
         state == Some(RuntimeState::Resumable),
         "AwaitTimer must set Resumable before SlotWritten",
@@ -213,7 +213,7 @@ fn kani_ask_answer_slot_written_failure_skip_ask_answered() {
     // after SlotWritten failure. The AskAnswered append path is not reached.
 
     shard.apply(run, RuntimeEvent::AwaitTimer);
-    let state = shard.runtime_states.get(&run).copied();
+    let state = shard.runtime_state_get(run);
     kani::assert!(
         state == Some(RuntimeState::Resumable),
         "after AwaitTimer, state is Resumable",
@@ -221,7 +221,7 @@ fn kani_ask_answer_slot_written_failure_skip_ask_answered() {
 
     // Verify that calling apply(AwaitTimer) again is idempotent
     shard.apply(run, RuntimeEvent::AwaitTimer);
-    let state2 = shard.runtime_states.get(&run).copied();
+    let state2 = shard.runtime_state_get(run);
     kani::assert!(
         state2 == Some(RuntimeState::Resumable),
         "apply(AwaitTimer) is idempotent",
@@ -244,7 +244,7 @@ fn kani_ask_answer_journal_monotonicity() {
     let run = any_run_id();
 
     // Record initial sequence state
-    let initial_seq = shard.journal_sequences.get(&run).copied();
+    let initial_seq = shard.journal_seq_get(run);
 
     // Call production append_journal_event (stubbed under kani — returns kani::any())
     // When it returns Ok, advance_journal_sequence is called internally.
@@ -258,7 +258,7 @@ fn kani_ask_answer_journal_monotonicity() {
     match result {
         Ok(()) => {
             // On success, advance_journal_sequence should have incremented the sequence
-            let after_seq = shard.journal_sequences.get(&run).copied();
+            let after_seq = shard.journal_seq_get(run);
             match (initial_seq, after_seq) {
                 (None, Some(new_seq)) => {
                     // First append: sequence should be ZERO + 1 = 1
@@ -277,7 +277,7 @@ fn kani_ask_answer_journal_monotonicity() {
         Err(_) => {
             // On failure, sequence must NOT be advanced
             // (advance_journal_sequence is only called on Ok path)
-            let after_seq = shard.journal_sequences.get(&run).copied();
+            let after_seq = shard.journal_seq_get(run);
             kani::assert!(
                 after_seq == initial_seq,
                 "append failure must not advance sequence",

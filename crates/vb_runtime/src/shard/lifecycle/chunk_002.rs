@@ -15,20 +15,18 @@ impl Shard {
     /// ```
     pub(crate) fn handle_ask_answer(&mut self, answer: AskAnswer) -> RuntimeResult<()> {
         let run = answer.ticket.run;
-        if !self.runs.contains_key(&run) {
+        if !self.run_state_contains(run) {
             return Err(RuntimeError::RunNotFound);
         }
         let pending_timer = self
-            .pending_timers
-            .get(&run)
-            .copied()
+            .pending_timer_get(run)
             .ok_or(RuntimeError::InvalidActionCompletion)?;
         if pending_timer.step != answer.ticket.ask_step
             || pending_timer.kind != PendingTimerKind::Ask
         {
             return Err(RuntimeError::InvalidActionCompletion);
         }
-        let state = self.runs.get_mut(&run).ok_or(RuntimeError::RunNotFound)?;
+        let state = self.run_state_get_mut(run).ok_or(RuntimeError::RunNotFound)?;
         let contract = state.workflow.resource_contract();
         if answer.taint == Taint::Secret && !contract.allows_secret_results {
             return Err(RuntimeError::SecretResultNotAllowed);
@@ -39,15 +37,17 @@ impl Shard {
                 max: contract.max_ipc_payload_bytes,
             });
         }
-        self.pending_timers.swap_remove(&run);
-        state
-            .frame
-            .write_slot_with_taint(answer.answer_slot, answer.value, answer.taint)
-            .map_err(|_| RuntimeError::RunNotFound)?;
-        state
-            .frame
-            .set_pc(answer.ticket.resume_step)
-            .map_err(|_| RuntimeError::RunNotFound)?;
+        {
+            state
+                .frame
+                .write_slot_with_taint(answer.answer_slot, answer.value, answer.taint)
+                .map_err(|_| RuntimeError::RunNotFound)?;
+            state
+                .frame
+                .set_pc(answer.ticket.resume_step)
+                .map_err(|_| RuntimeError::RunNotFound)?;
+        }
+        self.pending_timer_remove(run);
         let encoded_answer_value =
             postcard::to_allocvec(&answer.value).map_err(|_| RuntimeError::EncodeFailed)?;
         self.append_journal_event(RuntimeJournalEvent::SlotWritten {
@@ -83,17 +83,17 @@ impl Shard {
         deadline: std::time::Instant,
         kind: PendingTimerKind,
     ) -> RuntimeResult<()> {
-        let Some(current_timer) = self.pending_timers.get(&run).copied() else {
+        let Some(current_timer) = self.pending_timer_get(run) else {
             return Err(RuntimeError::InvalidTimerFire);
         };
         if !current_timer.matches_authority(generation, deadline, kind) {
             return Err(RuntimeError::InvalidTimerFire);
         }
         let mut state = self.take_run_state(run)?;
-        let timer = match self.pending_timers.swap_remove(&run) {
+        let timer = match self.pending_timer_remove(run) {
             Some(timer) => timer,
             None => {
-                self.runs.insert(run, state);
+                self.run_state_insert(run, state);
                 return Err(RuntimeError::InvalidTimerFire);
             }
         };
@@ -119,14 +119,14 @@ impl Shard {
         reason: Option<String>,
     ) -> RuntimeResult<()> {
         // C2: Reject missing runs with a typed error.
-        if !self.runs.contains_key(&run) && !self.terminal_runs.contains(&run) {
+        if !self.run_state_contains(run) && !self.terminal_runs_contains(run) {
             return Err(RuntimeError::RunNotFound);
         }
-        self.pending_timers.swap_remove(&run);
-        if let Some(state) = self.runs.swap_remove(&run) {
+        self.pending_timer_remove(run);
+        if let Some(state) = self.run_state_remove(run) {
             self.append_journal_event(RuntimeJournalEvent::RunCancelled { run, reason })?;
             self.release_frame(state.frame);
-            self.terminal_runs.insert(run);
+            self.terminal_runs_insert(run);
             self.counters.inc_failed();
             self.trace_ring.push(TraceEvent::RunCancelled { run });
         }
@@ -136,13 +136,13 @@ impl Shard {
 
     pub(crate) fn handle_kill(&mut self, run: RunId, _reason: Option<String>) -> RuntimeResult<()> {
         // C2: Reject missing runs with a typed error.
-        if !self.runs.contains_key(&run) && !self.terminal_runs.contains(&run) {
+        if !self.run_state_contains(run) && !self.terminal_runs_contains(run) {
             return Err(RuntimeError::RunNotFound);
         }
-        self.pending_timers.swap_remove(&run);
-        if let Some(state) = self.runs.swap_remove(&run) {
+        self.pending_timer_remove(run);
+        if let Some(state) = self.run_state_remove(run) {
             self.release_frame(state.frame);
-            self.terminal_runs.insert(run);
+            self.terminal_runs_insert(run);
             self.counters.inc_failed();
             self.trace_ring.push(TraceEvent::RunKilled { run });
             self.append_journal_event(RuntimeJournalEvent::RunKilled { run })?;
@@ -164,7 +164,7 @@ impl Shard {
     }
 
     fn take_run_state(&mut self, run: RunId) -> RuntimeResult<RunState> {
-        match self.runs.swap_remove(&run) {
+        match self.run_state_remove(run) {
             Some(state) => Ok(state),
             None => Err(RuntimeError::RunNotFound),
         }

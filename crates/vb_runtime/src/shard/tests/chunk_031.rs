@@ -146,7 +146,7 @@ fn next_pending_timer_generation_returns_one_for_multiple_unknown_runs() {
 fn next_pending_timer_generation_increments_for_existing_timer() {
     let mut shard = Shard::new(ShardConfig::default());
     let r = run_numeric(1);
-    shard.pending_timers.insert(
+    shard.pending_timer_insert(
         r,
         PendingTimer {
             step: vb_core::ids::StepIdx::ZERO,
@@ -162,7 +162,7 @@ fn next_pending_timer_generation_increments_for_existing_timer() {
 fn next_pending_timer_generation_increments_from_one_to_two() {
     let mut shard = Shard::new(ShardConfig::default());
     let r = run_numeric(1);
-    shard.pending_timers.insert(
+    shard.pending_timer_insert(
         r,
         PendingTimer {
             step: vb_core::ids::StepIdx::ZERO,
@@ -178,7 +178,7 @@ fn next_pending_timer_generation_increments_from_one_to_two() {
 fn next_pending_timer_generation_returns_none_at_max_u64() {
     let mut shard = Shard::new(ShardConfig::default());
     let r = run_numeric(1);
-    shard.pending_timers.insert(
+    shard.pending_timer_insert(
         r,
         PendingTimer {
             step: vb_core::ids::StepIdx::ZERO,
@@ -194,7 +194,7 @@ fn next_pending_timer_generation_returns_none_at_max_u64() {
 fn next_pending_timer_generation_does_not_mutate_on_overflow_check() {
     let mut shard = Shard::new(ShardConfig::default());
     let r = run_numeric(1);
-    shard.pending_timers.insert(
+    shard.pending_timer_insert(
         r,
         PendingTimer {
             step: vb_core::ids::StepIdx::ZERO,
@@ -206,7 +206,7 @@ fn next_pending_timer_generation_does_not_mutate_on_overflow_check() {
     assert_eq!(shard.next_pending_timer_generation(r), None);
     assert_eq!(shard.next_pending_timer_generation(r), None);
     // Timer is still present with original generation
-    let timer = shard.pending_timers.get(&r).copied();
+    let timer = shard.pending_timer_get(r);
     assert_eq!(timer.map(|t| t.generation), Some(u64::MAX));
 }
 
@@ -215,7 +215,7 @@ fn next_pending_timer_generation_is_independent_per_run() {
     let mut shard = Shard::new(ShardConfig::default());
     let r1 = run_numeric(1);
     let r2 = run_numeric(2);
-    shard.pending_timers.insert(
+    shard.pending_timer_insert(
         r1,
         PendingTimer {
             step: vb_core::ids::StepIdx::ZERO,
@@ -224,7 +224,7 @@ fn next_pending_timer_generation_is_independent_per_run() {
             deadline: std::time::Instant::now(),
         },
     );
-    shard.pending_timers.insert(
+    shard.pending_timer_insert(
         r2,
         PendingTimer {
             step: vb_core::ids::StepIdx::new(1),
@@ -236,15 +236,15 @@ fn next_pending_timer_generation_is_independent_per_run() {
     assert_eq!(shard.next_pending_timer_generation(r1), Some(4));
     assert_eq!(shard.next_pending_timer_generation(r2), Some(8));
     // r1 and r2 timers unchanged in registry
-    assert_eq!(shard.pending_timers.get(&r1).copied().map(|t| t.generation), Some(3));
-    assert_eq!(shard.pending_timers.get(&r2).copied().map(|t| t.generation), Some(7));
+    assert_eq!(shard.pending_timer_get(r1).map(|t| t.generation), Some(3));
+    assert_eq!(shard.pending_timer_get(r2).map(|t| t.generation), Some(7));
 }
 
 #[test]
 fn next_pending_timer_generation_at_max_minus_one_returns_max() {
     let mut shard = Shard::new(ShardConfig::default());
     let r = run_numeric(1);
-    shard.pending_timers.insert(
+    shard.pending_timer_insert(
         r,
         PendingTimer {
             step: vb_core::ids::StepIdx::ZERO,
@@ -270,7 +270,7 @@ fn pending_timer_count_starts_at_zero_numeric_seam() {
 fn pending_timer_count_reflects_insertions_numeric_seam() {
     let mut shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.pending_timer_count(), 0);
-    shard.pending_timers.insert(
+    shard.pending_timer_insert(
         run_numeric(1),
         PendingTimer {
             step: vb_core::ids::StepIdx::ZERO,
@@ -280,7 +280,7 @@ fn pending_timer_count_reflects_insertions_numeric_seam() {
         },
     );
     assert_eq!(shard.pending_timer_count(), 1);
-    shard.pending_timers.insert(
+    shard.pending_timer_insert(
         run_numeric(2),
         PendingTimer {
             step: vb_core::ids::StepIdx::new(1),
@@ -300,7 +300,7 @@ fn pending_timer_count_reflects_insertions_numeric_seam() {
 fn advance_clock_to_does_not_affect_pending_timers() {
     let mut shard = Shard::new(ShardConfig::default());
     let r = run_numeric(1);
-    shard.pending_timers.insert(
+    shard.pending_timer_insert(
         r,
         PendingTimer {
             step: vb_core::ids::StepIdx::ZERO,
@@ -313,5 +313,5 @@ fn advance_clock_to_does_not_affect_pending_timers() {
     assert_eq!(shard.advance_clock_to(TimerTick::new(100)), Ok(()));
     // Pending timers unchanged by clock advance (firing not yet wired)
     assert_eq!(shard.pending_timer_count(), count_before);
-    assert!(shard.pending_timers.contains_key(&r));
+    assert!(shard.pending_timer_contains(r));
 }

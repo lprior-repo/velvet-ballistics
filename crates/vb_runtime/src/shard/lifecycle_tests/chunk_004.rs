@@ -16,7 +16,7 @@ fn future_attempt_completion_rejected_when_current_attempt_exists() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    let Some(state) = shard.runs.get_mut(&run) else {
+    let Some(state) = shard.run_state_get_mut(run) else {
         assert_eq!(None::<()>, Some(()), "run should remain active");
         return;
     };
@@ -98,7 +98,7 @@ fn stale_attempt_completion_leaves_run_counters_journal_and_frame_unchanged() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    let Some(state) = shard.runs.get_mut(&run) else {
+    let Some(state) = shard.run_state_get_mut(run) else {
         assert_eq!(None::<()>, Some(()), "run should remain active");
         return;
     };
@@ -136,7 +136,7 @@ fn stale_attempt_completion_leaves_run_counters_journal_and_frame_unchanged() {
             current: 3,
         })
     );
-    let Some(state_after) = shard.runs.get(&run) else {
+    let Some(state_after) = shard.run_state_get_mut(run) else {
         assert_eq!(
             None::<()>,
             Some(()),
@@ -276,7 +276,7 @@ fn future_attempt_completion_does_not_mutate_state() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    let Some(state) = shard.runs.get_mut(&run) else {
+    let Some(state) = shard.run_state_get_mut(run) else {
         return;
     };
     if let Some(attempt) = state.action_attempts.get_mut(0) {
@@ -356,7 +356,7 @@ fn noncanonical_key_completion_does_not_mutate_state() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    let Some(state) = shard.runs.get_mut(&run) else {
+    let Some(state) = shard.run_state_get_mut(run) else {
         return;
     };
     if let Some(attempt) = state.action_attempts.get_mut(0) {
@@ -409,7 +409,7 @@ fn wrong_step_state_completion_does_not_mutate_state() {
     );
     assert_eq!(shard.tick(), Ok(true));
     // Step is in Running state after scheduling. Mark it succeeded to make it invalid.
-    let Some(state) = shard.runs.get_mut(&run) else {
+    let Some(state) = shard.run_state_get_mut(run) else {
         return;
     };
     assert_eq!(state.frame.mark_succeeded(StepIdx::ZERO), Ok(()));
@@ -575,7 +575,7 @@ fn handle_action_failure_returns_stale_attempt_when_attempt_mismatch() {
     let run = RunId::new(431);
     submit_run(&mut shard, run, wf);
     // Set current attempt to 3
-    let Some(state) = shard.runs.get_mut(&run) else {
+    let Some(state) = shard.run_state_get_mut(run) else {
         return;
     };
     if let Some(attempt) = state.action_attempts.get_mut(0) {

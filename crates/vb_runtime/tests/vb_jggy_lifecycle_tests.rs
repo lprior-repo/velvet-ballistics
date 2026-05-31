@@ -308,7 +308,7 @@ fn handle_submit_with_inputs_records_first_action_attempts() {
     assert_eq!(shard.tick(), Ok(true));
 
     // Verify action_attempts records scheduled attempt state after tick.
-    let Some(state) = shard.runs.get(&run) else {
+    let Some(state) = shard.run_state_get_mut(run) else {
         panic!("run should exist");
     };
     assert_eq!(state.action_attempts.len(), 2, "workflow has 2 steps");
@@ -336,7 +336,7 @@ fn handle_submit_records_first_action_attempt_single_step() {
     submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
-    let Some(state) = shard.runs.get(&run) else {
+    let Some(state) = shard.run_state_get_mut(run) else {
         panic!("run should exist");
     };
     assert_eq!(state.action_attempts.len(), 1, "workflow has 1 step");
@@ -475,7 +475,7 @@ fn step_succeeded_carries_retry_attempt_number() {
 
     // Simulate: action_attempts[0] was advanced to 3 via record_scheduled_attempt
     {
-        let Some(state) = shard.runs.get_mut(&run) else {
+        let Some(state) = shard.run_state_get_mut(run) else {
             panic!("run should exist");
         };
         if let Some(attempt) = state.action_attempts.get_mut(0) {
@@ -535,7 +535,7 @@ fn stale_attempt_completion_rejected_before_journal_write() {
 
     // Manually advance action_attempts[0] to 3 (simulating prior attempt)
     {
-        let Some(state) = shard.runs.get_mut(&run) else {
+        let Some(state) = shard.run_state_get_mut(run) else {
             panic!("run should exist");
         };
         if let Some(attempt) = state.action_attempts.get_mut(0) {
@@ -607,7 +607,7 @@ fn stale_attempt_failure_rejected_before_journal_write() {
 
     // Manually advance action_attempts[0] to 5
     {
-        let Some(state) = shard.runs.get_mut(&run) else {
+        let Some(state) = shard.run_state_get_mut(run) else {
             panic!("run should exist");
         };
         if let Some(attempt) = state.action_attempts.get_mut(0) {
@@ -668,7 +668,7 @@ fn action_attempts_advances_after_scheduling() {
     submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
-    let state = shard.runs.get(&run).expect("run should exist");
+    let state = shard.run_state_get_mut(run).expect("run should exist");
     assert_eq!(
         state.action_attempts.get(0).copied(),
         Some(1),
@@ -694,7 +694,7 @@ fn action_attempts_monotonically_advances_on_retry() {
 
     // action_attempts[1] should be 1 after first scheduling
     {
-        let state = shard.runs.get(&run).expect("run should exist");
+        let state = shard.run_state_get_mut(run).expect("run should exist");
         assert_eq!(
             state.action_attempts.get(1).copied(),
             Some(1),
@@ -715,7 +715,9 @@ fn action_attempts_monotonically_advances_on_retry() {
 
     // action_attempts[1] should now be 2 (retry scheduled)
     {
-        let state = shard.runs.get(&run).expect("run should exist after retry");
+        let state = shard
+            .run_state_get_mut(run)
+            .expect("run should exist after retry");
         assert_eq!(
             state.action_attempts.get(1).copied(),
             Some(2),
@@ -736,7 +738,7 @@ fn action_attempts_monotonically_advances_on_retry() {
 
     // action_attempts[1] should now be 3
     {
-        let state = shard.runs.get(&run).expect("run should exist");
+        let state = shard.run_state_get_mut(run).expect("run should exist");
         assert_eq!(
             state.action_attempts.get(1).copied(),
             Some(3),
@@ -762,8 +764,7 @@ fn action_attempts_never_decreases_across_operations() {
     assert_eq!(shard.tick(), Ok(true));
 
     let initial_attempt = shard
-        .runs
-        .get(&run)
+        .run_state_get(run)
         .expect("run exists")
         .action_attempts
         .get(0)
@@ -772,8 +773,7 @@ fn action_attempts_never_decreases_across_operations() {
 
     // Verify normal scheduling did not create a zero/underflowed attempt.
     let final_attempt = shard
-        .runs
-        .get(&run)
+        .run_state_get(run)
         .expect("run exists")
         .action_attempts
         .get(0)
@@ -809,7 +809,10 @@ fn encode_failed_completion_returns_error_and_leaves_state_unchanged() {
     assert_eq!(shard.tick(), Ok(true));
 
     // Verify run is active and in correct state
-    let _state_before = shard.runs.get(&run).expect("run should exist").clone();
+    let _state_before = shard
+        .run_state_get_mut(run)
+        .expect("run should exist")
+        .clone();
 
     // Complete action normally (happy path to verify event structure)
     let ticket = make_ticket(run, StepIdx::ZERO, 1, 1);
@@ -845,7 +848,7 @@ fn validate_ticket_attempt_accepts_valid_ticket() {
 
     // Advance action_attempts[0] to 1
     {
-        let Some(state) = shard.runs.get_mut(&run) else {
+        let Some(state) = shard.run_state_get_mut(run) else {
             panic!("run should exist");
         };
         if let Some(attempt) = state.action_attempts.get_mut(0) {
@@ -960,7 +963,7 @@ fn each_step_has_independent_attempt_counter() {
 
     // Step 0 should have attempt=1 (first action scheduled)
     // Step 1 should have attempt=0 (not yet reached)
-    let state = shard.runs.get(&run).expect("run should exist");
+    let state = shard.run_state_get_mut(run).expect("run should exist");
     assert_eq!(
         state.action_attempts.get(0).copied(),
         Some(1),

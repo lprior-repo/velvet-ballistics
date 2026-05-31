@@ -135,8 +135,8 @@ fn kani_resume_non_resumable_guard() {
     kani::assume(!matches!(state, RuntimeState::Resumable));
 
     // Set up: run exists in runs with a non-Resumable runtime state
-    shard.runs.insert(run, minimal_run_state(run));
-    shard.runtime_states.insert(run, state);
+    shard.run_state_insert(run, minimal_run_state(run));
+    shard.runtime_state_insert(run, state);
 
     // Call production function handle_resume
     let result = shard.handle_resume(run);
@@ -172,8 +172,8 @@ fn kani_resume_already_running() {
     let run = any_run_id();
 
     // Set up: run exists in runs, runtime state is Running
-    shard.runs.insert(run, minimal_run_state(run));
-    shard.runtime_states.insert(run, RuntimeState::Running);
+    shard.run_state_insert(run, minimal_run_state(run));
+    shard.runtime_state_insert(run, RuntimeState::Running);
 
     // Call production function
     let result = shard.handle_resume(run);
@@ -206,13 +206,13 @@ fn kani_resume_append_before_drive() {
     let run = any_run_id();
 
     // Set initial state to Resumable (precondition for resume)
-    shard.runtime_states.insert(run, RuntimeState::Resumable);
+    shard.runtime_state_insert(run, RuntimeState::Resumable);
 
     // apply(Resume) sets state to Resuming — this is called BEFORE drive_run
     shard.apply(run, RuntimeEvent::Resume);
 
     // After apply(Resume), state must be Resuming
-    let state_after = shard.runtime_states.get(&run).copied();
+    let state_after = shard.runtime_state_get(run);
     kani::assert(
         matches!(state_after, Some(RuntimeState::Resuming)),
         "apply(Resume) must transition to Resuming",
@@ -233,13 +233,13 @@ fn kani_resume_append_failure_rollback() {
     let run = any_run_id();
 
     // Set initial state to Resuming (as if resume was attempted)
-    shard.runtime_states.insert(run, RuntimeState::Resuming);
+    shard.runtime_state_insert(run, RuntimeState::Resuming);
 
     // Call production apply with ResumeRollback
     shard.apply(run, RuntimeEvent::ResumeRollback);
 
     // Assert: state must be restored to Resumable
-    let state_after = shard.runtime_states.get(&run).copied();
+    let state_after = shard.runtime_state_get(run);
     kani::assert(
         matches!(state_after, Some(RuntimeState::Resumable)),
         "apply(ResumeRollback) must restore to Resumable",
@@ -261,14 +261,14 @@ fn kani_resume_drive_failure_preserves_journal() {
     let run = any_run_id();
 
     // Set initial state to Resuming (appended journal, about to drive)
-    shard.runtime_states.insert(run, RuntimeState::Resuming);
+    shard.runtime_state_insert(run, RuntimeState::Resuming);
 
     // Simulate: journal append succeeded, then drive failed
     // → restore_resumable_after_drive_failure calls apply(ResumeRollback)
     shard.apply(run, RuntimeEvent::ResumeRollback);
 
     // Assert: state is Resumable (journal entry preserved, state rollback only)
-    let state_after = shard.runtime_states.get(&run).copied();
+    let state_after = shard.runtime_state_get(run);
     kani::assert(
         matches!(state_after, Some(RuntimeState::Resumable)),
         "drive failure rollback must restore Resumable",
@@ -291,13 +291,13 @@ fn kani_resume_rollback_consistency() {
 
     // Start from any state
     let initial_state = any_runtime_state();
-    shard.runtime_states.insert(run, initial_state);
+    shard.runtime_state_insert(run, initial_state);
 
     // Apply ResumeRollback always → Resumable
     shard.apply(run, RuntimeEvent::ResumeRollback);
 
     // Verify
-    let state_after = shard.runtime_states.get(&run).copied();
+    let state_after = shard.runtime_state_get(run);
     kani::assert(
         matches!(state_after, Some(RuntimeState::Resumable)),
         "apply(ResumeRollback) must always result in Resumable",
@@ -340,7 +340,7 @@ fn kani_resume_rollback_consistency() {
         let mut s = new_shard();
         let r = any_run_id();
         s.apply(r, *event);
-        let got = s.runtime_states.get(&r).copied();
+        let got = s.runtime_state_get(r);
         kani::assert(
             got == Some(*expected),
             &format!("{} transition must produce correct state", label),
@@ -362,7 +362,7 @@ fn kani_resume_apply_state_transitions() {
 
     // Test Submit → Initial
     shard.apply(run, RuntimeEvent::Submit);
-    let state = shard.runtime_states.get(&run).copied();
+    let state = shard.runtime_state_get(run);
     kani::assert(
         state == Some(RuntimeState::Initial),
         "Submit must set Initial state",
@@ -373,7 +373,7 @@ fn kani_resume_apply_state_transitions() {
     let mut s2 = new_shard();
     let r2 = any_run_id();
     s2.apply(r2, RuntimeEvent::Resume);
-    let state2 = s2.runtime_states.get(&r2).copied();
+    let state2 = s2.runtime_state_get(r2);
     kani::assert(
         state2 == Some(RuntimeState::Resuming),
         "Resume must set Resuming state",
@@ -384,7 +384,7 @@ fn kani_resume_apply_state_transitions() {
     let mut s3 = new_shard();
     let r3 = any_run_id();
     s3.apply(r3, RuntimeEvent::ResumeRollback);
-    let state3 = s3.runtime_states.get(&r3).copied();
+    let state3 = s3.runtime_state_get(r3);
     kani::assert(
         state3 == Some(RuntimeState::Resumable),
         "ResumeRollback must set Resumable state",
@@ -395,7 +395,7 @@ fn kani_resume_apply_state_transitions() {
     let mut s4 = new_shard();
     let r4 = any_run_id();
     s4.apply(r4, RuntimeEvent::DriveContinue);
-    let state4 = s4.runtime_states.get(&r4).copied();
+    let state4 = s4.runtime_state_get(r4);
     kani::assert(
         state4 == Some(RuntimeState::Running),
         "DriveContinue must set Running state",
@@ -406,7 +406,7 @@ fn kani_resume_apply_state_transitions() {
     let mut s5 = new_shard();
     let r5 = any_run_id();
     s5.apply(r5, RuntimeEvent::AwaitAction);
-    let state5 = s5.runtime_states.get(&r5).copied();
+    let state5 = s5.runtime_state_get(r5);
     kani::assert(
         state5 == Some(RuntimeState::Resumable),
         "AwaitAction must set Resumable state",
@@ -417,7 +417,7 @@ fn kani_resume_apply_state_transitions() {
     let mut s6 = new_shard();
     let r6 = any_run_id();
     s6.apply(r6, RuntimeEvent::AwaitTimer);
-    let state6 = s6.runtime_states.get(&r6).copied();
+    let state6 = s6.runtime_state_get(r6);
     kani::assert(
         state6 == Some(RuntimeState::Resumable),
         "AwaitTimer must set Resumable state",
@@ -428,7 +428,7 @@ fn kani_resume_apply_state_transitions() {
     let mut s7 = new_shard();
     let r7 = any_run_id();
     s7.apply(r7, RuntimeEvent::Fail);
-    let state7 = s7.runtime_states.get(&r7).copied();
+    let state7 = s7.runtime_state_get(r7);
     kani::assert(
         state7 == Some(RuntimeState::Failed),
         "Fail must set Failed state",
@@ -438,9 +438,9 @@ fn kani_resume_apply_state_transitions() {
     // Test TerminalRemove → swap_remove (state is removed)
     let mut s8 = new_shard();
     let r8 = any_run_id();
-    s8.runtime_states.insert(r8, RuntimeState::Initial);
+    s8.runtime_state_insert(r8, RuntimeState::Initial);
     s8.apply(r8, RuntimeEvent::TerminalRemove);
-    let state8 = s8.runtime_states.get(&r8).copied();
+    let state8 = s8.runtime_state_get(r8);
     kani::assert(
         state8.is_none(),
         "TerminalRemove must remove state from runtime_states",
@@ -450,9 +450,9 @@ fn kani_resume_apply_state_transitions() {
     // Test DriveFinished → swap_remove (state is removed)
     let mut s9 = new_shard();
     let r9 = any_run_id();
-    s9.runtime_states.insert(r9, RuntimeState::Running);
+    s9.runtime_state_insert(r9, RuntimeState::Running);
     s9.apply(r9, RuntimeEvent::DriveFinished);
-    let state9 = s9.runtime_states.get(&r9).copied();
+    let state9 = s9.runtime_state_get(r9);
     kani::assert(
         state9.is_none(),
         "DriveFinished must remove state from runtime_states",

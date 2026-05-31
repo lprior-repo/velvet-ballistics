@@ -256,7 +256,7 @@ fn vb1u88_multiple_sequential_finished_runs_no_leakage() {
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
-        assert_eq!(shard.runs.get(&run_id), None);
+        assert_eq!(shard.run_state_get(run_id), None);
     }
     assert_eq!(shard.counters().snapshot().runs_completed, 10);
     assert_eq!(shard.counters().snapshot().runs_failed, 0);

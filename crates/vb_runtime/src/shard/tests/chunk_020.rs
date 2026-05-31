@@ -154,7 +154,7 @@ fn shard_pending_timer_fields_are_correct() {
     );
     assert_eq!(shard.tick(), Ok(true));
 
-    let timer = shard.pending_timers.get(&run).copied();
+    let timer = shard.pending_timer_get(run);
     match timer {
         Some(t) => {
             assert_eq!(t.step, vb_core::ids::StepIdx::new(1)); // WaitUntil is at step 1

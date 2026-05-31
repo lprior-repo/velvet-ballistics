@@ -122,7 +122,7 @@ fn kani_admission_run_submitted_before_insert() {
     // apply(Submit) sets state to Initial — this happens after journal appends
     shard.apply(run, RuntimeEvent::Submit);
 
-    let state = shard.runtime_states.get(&run).copied();
+    let state = shard.runtime_state_get(run);
     kani::assert(
         state == Some(RuntimeState::Initial),
         "apply(Submit) must set Initial state",
@@ -145,7 +145,7 @@ fn kani_admission_run_admission_before_insert() {
     // apply(Submit) is called in handle_submit after all journal appends
     shard.apply(run, RuntimeEvent::Submit);
 
-    let state = shard.runtime_states.get(&run).copied();
+    let state = shard.runtime_state_get(run);
     kani::assert(
         state == Some(RuntimeState::Initial),
         "apply(Submit) produces Initial state",
@@ -182,9 +182,9 @@ fn kani_admission_run_submitted_failure() {
     // Test 2: discard_journal_sequence removes the journal sequence entry
     let mut shard = new_shard();
     let seq = StorageEventSeq(42);
-    shard.journal_sequences.insert(run, seq);
+    shard.journal_seq_insert(run, seq);
     kani::assert!(
-        shard.journal_sequences.contains_key(&run),
+        shard.journal_seq_contains(run),
         "sequence must be present before discard"
     );
 
@@ -192,7 +192,7 @@ fn kani_admission_run_submitted_failure() {
     shard.discard_journal_sequence(run);
 
     kani::assert!(
-        !shard.journal_sequences.contains_key(&run),
+        !shard.journal_seq_contains(run),
         "discard_journal_sequence must remove the sequence entry",
     );
     kani::cover!(true, "discard_journal_sequence_cleanup");
@@ -212,11 +212,11 @@ fn kani_admission_run_admission_failure() {
 
     // Set up: run has a journal sequence (RunSubmitted succeeded)
     let seq = StorageEventSeq(kani::any::<u64>());
-    shard.journal_sequences.insert(run, seq);
+    shard.journal_seq_insert(run, seq);
 
     // Verify it exists
     kani::assert!(
-        shard.journal_sequences.contains_key(&run),
+        shard.journal_seq_contains(run),
         "sequence must exist before cleanup",
     );
 
@@ -225,12 +225,12 @@ fn kani_admission_run_admission_failure() {
 
     // Verify sequence is cleaned up
     kani::assert!(
-        !shard.journal_sequences.contains_key(&run),
+        !shard.journal_seq_contains(run),
         "discard_journal_sequence must remove sequence on RunAdmission failure",
     );
 
     // Verify that apply(Submit) was never called — no state in runtime_states
-    let state = shard.runtime_states.get(&run).copied();
+    let state = shard.runtime_state_get(run);
     kani::assert!(
         state.is_none(),
         "on RunAdmission failure, no runtime state must exist",
@@ -252,7 +252,7 @@ fn kani_admission_no_live_state_on_failure() {
 
     // Before submit, runs does NOT contain the run
     kani::assert!(
-        !shard.runs.contains_key(&run),
+        !shard.run_state_contains(run),
         "run must not exist before submission",
     );
 
@@ -268,20 +268,20 @@ fn kani_admission_no_live_state_on_failure() {
 
     // The error call itself doesn't mutate shard state
     kani::assert!(
-        !shard.runs.contains_key(&run),
+        !shard.run_state_contains(run),
         "runs must not contain run after error conversion (no side effect)",
     );
 
     // On success: apply(Submit) sets Initial but does NOT insert into runs
     shard.apply(run, RuntimeEvent::Submit);
-    let state = shard.runtime_states.get(&run).copied();
+    let state = shard.runtime_state_get(run);
     kani::assert!(
         state == Some(RuntimeState::Initial),
         "apply(Submit) sets Initial in runtime_states",
     );
     // runs is still empty — apply only touches runtime_states
     kani::assert!(
-        !shard.runs.contains_key(&run),
+        !shard.run_state_contains(run),
         "apply does not insert into runs",
     );
 

@@ -196,7 +196,7 @@ mod tests {
         runtime
             .shards
             .get(runtime.shard_index(run))
-            .and_then(|shard| shard.runs.get(&run))
+            .and_then(|shard| shard.run_state_get(run))
             .map(|state| state.frame.clone())
     }
 

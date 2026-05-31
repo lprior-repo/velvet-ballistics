@@ -17,7 +17,7 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_old_replaced_timer_event_
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    let old_timer = match shard.pending_timers.get(&run).copied() {
+    let old_timer = match shard.pending_timer_get(run) {
         Some(timer) => timer,
         None => panic!("timed wait must register one pending timer before replacement"),
     };
@@ -35,13 +35,13 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_old_replaced_timer_event_
     };
     assert_ne!(old_timer, replacement_timer);
     assert_eq!(
-        shard.pending_timers.insert(run, replacement_timer),
+        shard.pending_timer_insert(run, replacement_timer),
         Some(old_timer)
     );
-    let after_replacement_pending = shard.pending_timers.clone();
+    let after_replacement_pending = shard.pending_timer_clone();
     assert_eq!(after_replacement_pending.len(), 1);
     assert_eq!(
-        after_replacement_pending.get(&run).copied(),
+        after_replacement_pending.get(run.get() as usize).and_then(|opt| *opt),
         Some(replacement_timer)
     );
 
@@ -99,7 +99,7 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_cancelled_timer_event_arr
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    let active_timer = match shard.pending_timers.get(&run).copied() {
+    let active_timer = match shard.pending_timer_get(run) {
         Some(timer) => timer,
         None => panic!("timed wait must register one pending timer before cancel"),
     };
@@ -119,7 +119,7 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_cancelled_timer_event_arr
     // Then stale delivery must map to InvalidTimerFire, not RunNotFound/no-op/success.
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
     assert_eq!(shard.pending_timers.len(), 0);
-    assert_eq!(shard.pending_timers.get(&run).copied(), None);
+    assert_eq!(shard.pending_timer_get(run), None);
     assert_eq!(active_timer.kind, PendingTimerKind::Wait);
     assert_eq!(shard.counters().snapshot().runs_completed, 0);
 }
@@ -142,7 +142,7 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_terminal_timer_event_arri
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    let terminal_timer = match shard.pending_timers.get(&run).copied() {
+    let terminal_timer = match shard.pending_timer_get(run) {
         Some(timer) => timer,
         None => panic!("timed wait must register one pending timer before valid fire"),
     };
@@ -155,7 +155,7 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_terminal_timer_event_arri
     assert_eq!(shard.enqueue(terminal_command.clone()), Ok(()));
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timers.len(), 0);
-    assert_eq!(shard.pending_timers.get(&run).copied(), None);
+    assert_eq!(shard.pending_timer_get(run), None);
     assert_eq!(terminal_timer.kind, PendingTimerKind::Wait);
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
 
@@ -165,7 +165,7 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_terminal_timer_event_arri
     // Then it must be rejected as stale timer authority and must not resurrect/progress.
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
     assert_eq!(shard.pending_timers.len(), 0);
-    assert_eq!(shard.pending_timers.get(&run).copied(), None);
+    assert_eq!(shard.pending_timer_get(run), None);
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
 }
 
@@ -240,12 +240,12 @@ fn shard_pending_timer_generation_overflow_fails_closed_without_wrap() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    let Some(mut timer) = shard.pending_timers.get(&run).copied() else {
+    let Some(mut timer) = shard.pending_timer_get(run) else {
         panic!("timed wait must register one pending timer before overflow test");
     };
     timer.generation = u64::MAX;
-    assert_eq!(shard.pending_timers.insert(run, timer).is_some(), true);
-    let Some(state) = shard.runs.get(&run).cloned() else {
+    assert_eq!(shard.pending_timer_insert(run, timer).is_some(), true);
+    let Some(state) = shard.run_state_get(run).cloned() else {
         panic!("waiting run state must remain available for overflow test");
     };
 
@@ -256,8 +256,8 @@ fn shard_pending_timer_generation_overflow_fails_closed_without_wrap() {
     );
 
     // Then the existing max-generation timer and run state remain intact.
-    assert_eq!(shard.pending_timers.get(&run).copied(), Some(timer));
-    assert_eq!(shard.runs.contains_key(&run), true);
+    assert_eq!(shard.pending_timer_get(run), Some(timer));
+    assert_eq!(shard.run_state_contains(run), true);
 }
 
 struct RejectTimerScheduledJournal {
@@ -383,10 +383,10 @@ fn runtime_ask_timer_append_failure_does_not_register_pending_timer() {
         journal.snapshot()
     );
 
-    assert_eq!(shard.pending_timers.get(&run).copied(), None);
-    assert_eq!(shard.runs.contains_key(&run), true);
+    assert_eq!(shard.pending_timer_get(run), None);
+    assert_eq!(shard.run_state_contains(run), true);
     assert_eq!(
-        shard.runtime_states.get(&run).copied(),
+        shard.runtime_state_get(run),
         Some(super::RuntimeState::Initial)
     );
     match journal.snapshot() {
@@ -420,8 +420,8 @@ fn runtime_timer_fired_rejects_wrong_generation_authority() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    let pending_before = shard.pending_timers.clone();
-    let Some(active_timer) = pending_before.get(&run).copied() else {
+    let pending_before = shard.pending_timer_clone();
+    let Some(active_timer) = pending_before.get(run.get() as usize).and_then(|opt| *opt) else {
         panic!("timed wait must register one pending timer before generation mismatch test");
     };
 
@@ -460,8 +460,8 @@ fn runtime_timer_fired_rejects_wrong_deadline_authority() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    let pending_before = shard.pending_timers.clone();
-    let Some(active_timer) = pending_before.get(&run).copied() else {
+    let pending_before = shard.pending_timer_clone();
+    let Some(active_timer) = pending_before.get(run.get() as usize).and_then(|opt| *opt) else {
         panic!("timed wait must register one pending timer before deadline mismatch test");
     };
     let wrong_deadline = std::time::Instant::now() + std::time::Duration::from_secs(86_400);
@@ -501,8 +501,8 @@ fn runtime_timer_fired_rejects_wrong_kind_authority() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    let pending_before = shard.pending_timers.clone();
-    let Some(active_timer) = pending_before.get(&run).copied() else {
+    let pending_before = shard.pending_timer_clone();
+    let Some(active_timer) = pending_before.get(run.get() as usize).and_then(|opt| *opt) else {
         panic!("timed wait must register one pending timer before kind mismatch test");
     };
 

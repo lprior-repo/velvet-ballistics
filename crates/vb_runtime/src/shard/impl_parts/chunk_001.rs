@@ -1,3 +1,6 @@
+use indexmap::IndexSet;
+use crate::shard::types::RuntimeState;
+
 impl Shard {
     /// Creates a new shard with the given configuration.
     pub fn new(config: ShardConfig) -> Self {
@@ -158,6 +161,89 @@ impl Shard {
     #[must_use]
     pub fn pending_timer_count(&self) -> usize {
         self.pending_timers.len()
+    }
+
+    /// Returns the run state for the given run ID, if it exists.
+    #[must_use]
+    pub fn run_state_get(&self, run_id: RunId) -> Option<&RunState> {
+        self.runs.get(&run_id)
+    }
+
+    /// Returns a mutable reference to the run state for the given run ID, if it exists.
+    #[must_use]
+    pub fn run_state_get_mut(&mut self, run_id: RunId) -> Option<&mut RunState> {
+        self.runs.get_mut(&run_id)
+    }
+
+    /// Returns true if a run with the given ID exists.
+    #[must_use]
+    pub fn run_state_contains(&self, run_id: RunId) -> bool {
+        self.runs.contains_key(&run_id)
+    }
+
+    /// Removes and returns the run state for the given run ID.
+    pub fn run_state_remove(&mut self, run_id: RunId) -> Option<RunState> {
+        self.runs.swap_remove(&run_id)
+    }
+
+    /// Returns the runtime state for the given run ID, if it exists.
+    #[must_use]
+    pub fn runtime_state_get(&self, run_id: RunId) -> Option<RuntimeState> {
+        self.runtime_states.get(&run_id).copied()
+    }
+
+    /// Inserts a runtime state for the given run ID.
+    pub fn runtime_state_insert(&mut self, run_id: RunId, state: RuntimeState) {
+        self.runtime_states.insert(run_id, state);
+    }
+
+    /// Returns true if the given run ID is in the terminal state.
+    #[must_use]
+    pub fn terminal_runs_contains(&self, run_id: RunId) -> bool {
+        self.terminal_runs.contains(&run_id)
+    }
+
+    /// Inserts a run state for the given run ID.
+    pub fn run_state_insert(&mut self, run_id: RunId, state: RunState) {
+        self.runs.insert(run_id, state);
+    }
+
+    /// Inserts a run into the terminal runs set.
+    pub fn terminal_runs_insert(&mut self, run_id: RunId) {
+        self.terminal_runs.insert(run_id);
+    }
+
+    /// Removes a run from the terminal runs set.
+    pub fn terminal_runs_remove(&mut self, run_id: RunId) {
+        self.terminal_runs.swap_remove(&run_id);
+    }
+
+    /// Inserts a pending timer for the given run ID.
+    pub fn pending_timer_insert(&mut self, run_id: RunId, timer: PendingTimer) -> Option<PendingTimer> {
+        self.pending_timers.insert(run_id, timer)
+    }
+
+    /// Returns the pending timer for the given run ID, if it exists.
+    #[must_use]
+    pub fn pending_timer_get(&self, run_id: RunId) -> Option<PendingTimer> {
+        self.pending_timers.get(&run_id).copied()
+    }
+
+    /// Returns a clone of all pending timers.
+    #[must_use]
+    pub fn pending_timer_clone(&self) -> Vec<Option<PendingTimer>> {
+        unimplemented!("pending_timer_clone is not implemented for IndexMap-based storage")
+    }
+
+    /// Removes and returns the pending timer for the given run ID.
+    pub fn pending_timer_remove(&mut self, run_id: RunId) -> Option<PendingTimer> {
+        self.pending_timers.swap_remove(&run_id)
+    }
+
+    /// Returns true if a pending timer exists for the given run ID.
+    #[must_use]
+    pub fn pending_timer_contains(&self, run_id: RunId) -> bool {
+        self.pending_timers.contains_key(&run_id)
     }
 
     /// Advances the deterministic clock to the given tick.

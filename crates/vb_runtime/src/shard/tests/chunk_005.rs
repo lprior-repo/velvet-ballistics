@@ -44,7 +44,7 @@ fn shard_wait_suspension_registers_pending_timer() {
 
     assert_eq!(shard.pending_timers.len(), 1);
     assert_eq!(
-        shard.pending_timers.get(&run).map(|timer| timer.step),
+        shard.pending_timer_get(run).map(|timer| timer.step),
         Some(vb_core::ids::StepIdx::new(1))
     );
 }

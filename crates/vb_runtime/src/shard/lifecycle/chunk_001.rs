@@ -144,10 +144,10 @@ impl Shard {
         action_contracts: &[vb_core::action::ActionContract],
         persist_header: bool,
     ) -> RuntimeResult<()> {
-        if self.runs.contains_key(&run) {
+        if self.run_state_contains(run) {
             return Err(RuntimeError::RunAlreadyExists);
         }
-        if self.runs.len() >= self.max_active_runs {
+        if self.active_run_count() >= self.max_active_runs {
             return Err(RuntimeError::ActiveRunCapacityExceeded {
                 capacity: self.max_active_runs,
             });
@@ -186,13 +186,13 @@ impl Shard {
             collect_states: CollectStates::new(),
             action_contracts: action_contracts.to_vec().into_boxed_slice(),
         };
-        self.terminal_runs.swap_remove(&run);
-        self.runs.insert(run, state);
+        self.terminal_runs_remove(run);
+        self.run_state_insert(run, state);
         self.apply(run, RuntimeEvent::Submit);
         match self.drive_run(run) {
             Ok(()) => Ok(()),
             Err(error) => {
-                if !self.runs.contains_key(&run) {
+                if !self.run_state_contains(run) {
                     self.discard_journal_sequence(run);
                 }
                 Err(error)
@@ -316,17 +316,14 @@ impl Shard {
     }
 
     fn validate_run_exists(&self, run: RunId) -> Result<(), ResumeError> {
-        if !self.runs.contains_key(&run) {
+        if !self.run_state_contains(run) {
             return Err(ResumeError::RunIdNotFound { run_id: run });
         }
         Ok(())
     }
 
     fn get_runtime_state_or_running(&self, run: RunId) -> RuntimeState {
-        self.runtime_states
-            .get(&run)
-            .copied()
-            .unwrap_or(RuntimeState::Running)
+        self.runtime_state_get(run).unwrap_or(RuntimeState::Running)
     }
 
     fn append_resumed_event(&mut self, run: RunId) -> Result<u64, ResumeError> {
@@ -344,7 +341,7 @@ impl Shard {
     }
 
     fn is_run_tracked(&self, run: RunId) -> bool {
-        self.runtime_states.contains_key(&run)
+        self.runtime_state_get(run).is_some()
     }
 
     fn observe_resume_drive_result(
@@ -375,7 +372,7 @@ impl Shard {
     ) -> RuntimeResult<()> {
         let run = ticket.run;
         let preflight = {
-            let state = self.runs.get(&run).ok_or(RuntimeError::RunNotFound)?;
+            let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
             preflight_action_completion(state, ticket, output)?
         };
         self.append_journal_event(RuntimeJournalEvent::ActionCompletedEnvelope {
@@ -386,7 +383,7 @@ impl Shard {
             taint: preflight.taint,
             value_digest: preflight.value_digest,
         })?;
-        let state = self.runs.get_mut(&run).ok_or(RuntimeError::RunNotFound)?;
+        let state = self.run_state_get_mut(run).ok_or(RuntimeError::RunNotFound)?;
         state
             .frame
             .write_slot_with_taint(preflight.output_slot, preflight.value, preflight.taint)
@@ -413,7 +410,7 @@ impl Shard {
         run: RunId,
         step: StepIdx,
     ) -> RuntimeResult<()> {
-        let state = self.runs.get_mut(&run).ok_or(RuntimeError::RunNotFound)?;
+        let state = self.run_state_get_mut(run).ok_or(RuntimeError::RunNotFound)?;
         state
             .frame
             .mark_succeeded(step)
@@ -470,7 +467,7 @@ impl Shard {
         ticket: ActionTicket,
         retry_policy: VbCoreRetryPolicy,
     ) -> RuntimeResult<ActionTicket> {
-        let Some(state) = self.runs.get(&ticket.run) else {
+        let Some(state) = self.run_state_get(ticket.run) else {
             return Err(RuntimeError::RunNotFound);
         };
         if retry_policy != VbCoreRetryPolicy::Retryable
@@ -491,8 +488,7 @@ impl Shard {
         failure: ActionFailure,
     ) -> RuntimeResult<ActionFailureOutcome> {
         let state = self
-            .runs
-            .get_mut(&ticket.run)
+            .run_state_get_mut(ticket.run)
             .ok_or(RuntimeError::InvalidActionCompletion)?;
         crate::shard::helpers::validate_action_completion(state, ticket)?;
         if retry_is_available(state, ticket, failure.retry_policy)? {

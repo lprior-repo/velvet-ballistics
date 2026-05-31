@@ -130,7 +130,7 @@ fn vb1u88_bdd_cancel_run_removes_from_runs_emits_events() {
         events.contains(&RuntimeJournalEvent::RunCancelled { run, reason: None}),
         "RunCancelled journal event should be present"
     );
-    assert_eq!(shard.runs.get(&run), None);
+    assert_eq!(shard.run_state_get(run), None);
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
 }
 
@@ -251,7 +251,7 @@ fn test_drain_for_shutdown_handles_timers_without_valid_backing_runs_gracefully(
     let config = small_config();
     let mut shard = Shard::new(config);
     let orphaned_run = super::RunId::new(9003);
-    shard.pending_timers.insert(
+    shard.pending_timer_insert(
         orphaned_run,
         PendingTimer {
             step: vb_core::ids::StepIdx::new(1),

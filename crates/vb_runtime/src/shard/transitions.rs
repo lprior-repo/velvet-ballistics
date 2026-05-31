@@ -50,23 +50,23 @@ impl Shard {
     pub(crate) fn apply(&mut self, run: RunId, event: RuntimeEvent) {
         match event {
             RuntimeEvent::Submit => {
-                self.runtime_states.insert(run, RuntimeState::Initial);
+                self.runtime_state_insert(run, RuntimeState::Initial);
             }
             RuntimeEvent::Resume => {
-                self.runtime_states.insert(run, RuntimeState::Resuming);
+                self.runtime_state_insert(run, RuntimeState::Resuming);
             }
             RuntimeEvent::ResumeRollback => {
                 // Journal append failed during resume, revert to Resumable
-                self.runtime_states.insert(run, RuntimeState::Resumable);
+                self.runtime_state_insert(run, RuntimeState::Resumable);
             }
             RuntimeEvent::DriveContinue => {
-                self.runtime_states.insert(run, RuntimeState::Running);
+                self.runtime_state_insert(run, RuntimeState::Running);
             }
             RuntimeEvent::AwaitAction | RuntimeEvent::AwaitTimer => {
-                self.runtime_states.insert(run, RuntimeState::Resumable);
+                self.runtime_state_insert(run, RuntimeState::Resumable);
             }
             RuntimeEvent::Fail => {
-                self.runtime_states.insert(run, RuntimeState::Failed);
+                self.runtime_state_insert(run, RuntimeState::Failed);
             }
             RuntimeEvent::TerminalRemove | RuntimeEvent::DriveFinished => {
                 self.runtime_states.swap_remove(&run);
@@ -77,13 +77,13 @@ impl Shard {
     /// Re-inserts a run that has remaining work into the active runs map.
     pub(crate) fn keep_run(&mut self, run: RunId, state: RunState) {
         self.counters.add_steps(state.frame.executed());
-        self.runs.insert(run, state);
+        self.run_state_insert(run, state);
     }
 
     /// Marks a run as finished, releases its frame, and updates counters.
     pub(crate) fn finish_run(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
-        self.pending_timers.swap_remove(&run);
-        self.terminal_runs.insert(run);
+        self.pending_timer_remove(run);
+        self.terminal_runs_insert(run);
         self.counters.inc_completed();
         self.counters.add_steps(state.frame.executed());
         self.trace_ring.push(TraceEvent::RunFinished { run });
@@ -129,7 +129,7 @@ impl Shard {
             input,
             output,
         })?;
-        self.runs.insert(run, state);
+        self.run_state_insert(run, state);
         Ok(())
     }
 
@@ -146,7 +146,7 @@ impl Shard {
             let generation = match self.next_pending_timer_generation(run) {
                 Some(generation) => generation,
                 None => {
-                    self.runs.insert(run, state);
+                    self.run_state_insert(run, state);
                     return Err(RuntimeError::InvalidTimerFire);
                 }
             };
@@ -159,10 +159,10 @@ impl Shard {
                 }
             };
             if let Err(error) = append_result {
-                self.runs.insert(run, state);
+                self.run_state_insert(run, state);
                 return Err(error);
             }
-            self.pending_timers.insert(
+            self.pending_timer_insert(
                 run,
                 PendingTimer {
                     step,
@@ -172,7 +172,7 @@ impl Shard {
                 },
             );
         }
-        self.runs.insert(run, state);
+        self.run_state_insert(run, state);
         Ok(())
     }
 
@@ -180,8 +180,8 @@ impl Shard {
     /// NOTE: runtime_states mutation (inserting Failed) is handled by apply() before this is called.
     /// This function only handles cleanup: pending_timers, counters, trace, journal, frame, sequence.
     pub(crate) fn fail_run_state(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
-        self.pending_timers.swap_remove(&run);
-        self.terminal_runs.insert(run);
+        self.pending_timer_remove(run);
+        self.terminal_runs_insert(run);
         self.counters.inc_failed();
         self.trace_ring.push(TraceEvent::RunFailed { run });
         self.append_journal_event(RuntimeJournalEvent::RunFailed { run })?;

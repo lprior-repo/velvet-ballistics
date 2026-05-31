@@ -287,7 +287,7 @@
         // Finished workflow should complete immediately
         assert_eq!(shard.counters().snapshot().runs_completed, 1);
         // terminal_runs should contain the finished run
-        assert!(shard.terminal_runs.contains(&run));
+        assert!(shard.terminal_runs_contains(run));
         // Journal should contain RunFinished event
         let events = require_snapshot(&journal)?;
         let has_run_finished = events.iter().any(|e| {
@@ -310,7 +310,7 @@
         submit_run(&mut shard, run, retry_workflow()?);
         // After submission, the run should be suspended on action step 1
         // with attempt 1 and capacity 2 from the retry policy
-        let state = shard.runs.get(&run).ok_or("run should exist")?;
+        let state = shard.run_state_get(run).ok_or("run should exist")?;
         assert_eq!(state.action_attempts.get(1).copied(), Some(1));
         // Send action failure with Retryable — should retry
         assert_eq!(
@@ -322,7 +322,7 @@
         );
         assert_eq!(shard.tick(), Ok(true));
         // Check that attempt was incremented
-        let state = shard.runs.get(&run).ok_or("run should exist after retry")?;
+        let state = shard.run_state_get(run).ok_or("run should exist after retry")?;
         assert_eq!(state.action_attempts.get(1).copied(), Some(2));
         // Run is still active
         assert_eq!(shard.active_run_count(), 1);

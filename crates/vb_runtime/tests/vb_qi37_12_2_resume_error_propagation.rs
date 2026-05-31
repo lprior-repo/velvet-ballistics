@@ -684,7 +684,7 @@ fn handle_resume_propagates_flush_evidence_failure() {
     //
     // For now, we document the bug: observe_resume_drive_result drops errors.
     // The BUG CONFIRMED assertion below describes the expected behavior after fix.
-    let run_exists = shard.runs.contains_key(&run_id);
+    let run_exists = shard.run_state_contains(run_id);
 
     // BUG CONFIRMED: due to observe_resume_drive_result dropping the error,
     // the run may or may not exist depending on whether the drive failure
