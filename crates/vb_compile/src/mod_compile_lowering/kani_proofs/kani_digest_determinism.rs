@@ -4,6 +4,7 @@
 // Model bounds: max_string_len=16, tool: --unwind 5
 
 #![cfg(kani)]
+#![allow(unused_must_use)]
 
 use vb_yaml::ast::{StepAst, StepPrimitive};
 

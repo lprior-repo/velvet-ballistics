@@ -11,6 +11,7 @@
 //! GOD RULE 2: Calls actual production lower_canonical_choose and lower_choose.
 
 #![forbid(unsafe_code)]
+#![allow(unused_must_use)]
 
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 use crate::mod_compile_lowering::{

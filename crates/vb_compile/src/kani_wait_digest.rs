@@ -1,5 +1,6 @@
 #![cfg(kani)]
 #![forbid(unsafe_code)]
+#![allow(unused_must_use)]
 
 //! Kani harnesses for Wait digest coverage verification (vb-xi2f.32).
 //!

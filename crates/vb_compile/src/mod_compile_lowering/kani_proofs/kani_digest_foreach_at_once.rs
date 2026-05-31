@@ -3,6 +3,7 @@
 // Bead: vb-xi2f.28 | State: 5 (proof-writer)
 
 #![cfg(kani)]
+#![allow(unused_must_use)]
 
 use vb_yaml::ast::{StepAst, StepPrimitive};
 

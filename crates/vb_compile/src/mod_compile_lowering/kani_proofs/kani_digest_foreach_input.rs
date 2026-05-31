@@ -5,6 +5,7 @@
 // Larger strings covered by proptest PO-P-FE-01.
 
 #![cfg(kani)]
+#![allow(unused_must_use)]
 
 use vb_yaml::ast::{StepAst, StepPrimitive};
 

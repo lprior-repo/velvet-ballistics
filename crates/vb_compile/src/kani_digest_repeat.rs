@@ -1,5 +1,6 @@
 #![cfg(kani)]
 #![forbid(unsafe_code)]
+#![allow(unused_must_use)]
 //! Kani harnesses for Repeat digest coverage (bead vb-xi2f.31).
 //!
 //! Proof obligations: PO-001 through PO-005.

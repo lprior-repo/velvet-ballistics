@@ -5,6 +5,7 @@
 // Harness compiles but verification fails at runtime due to Kani limitation.
 
 #![cfg(kani)]
+#![allow(unused_must_use)]
 
 use vb_yaml::ast::{ScalarValue, StepAst, StepPrimitive};
 

@@ -4,6 +4,7 @@
 // Model bounds: delimiter=0x3A, yaml_id_chars=[a-zA-Z0-9_-], char_range=full u8, tool: --unwind 2
 
 #![cfg(kani)]
+#![allow(unused_must_use)]
 
 use vb_yaml::ast::StepPrimitive;
 

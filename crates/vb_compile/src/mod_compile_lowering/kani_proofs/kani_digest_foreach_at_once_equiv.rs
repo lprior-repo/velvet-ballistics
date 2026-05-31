@@ -8,6 +8,7 @@
 // generated via kani::any() with valid YAML identifier constraints.
 
 #![cfg(kani)]
+#![allow(unused_must_use)]
 
 use vb_yaml::ast::StepPrimitive;
 

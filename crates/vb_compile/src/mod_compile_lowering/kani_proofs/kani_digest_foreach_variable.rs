@@ -4,6 +4,7 @@
 // Note: blake3-dependent harness — blocked by InlineAsm (BLOCKED-TOOL-01).
 
 #![cfg(kani)]
+#![allow(unused_must_use)]
 
 use vb_yaml::ast::{StepAst, StepPrimitive};
 
