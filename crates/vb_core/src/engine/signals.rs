@@ -550,3 +550,42 @@ mod tests {
         assert_eq!(result, Ok(true));
     }
 }
+
+
+// Verified by: OBL-VB-BUDGET-KANI-006 (overflow guard)
+#[cfg(kani)]
+mod kani_overflow_guard {
+    use super::StepBudget;
+    use crate::errors::EngineError;
+    use crate::limits::MAX_STEP_BUDGET;
+
+    #[kani::proof]
+    #[kani::unwind(4)]
+    fn step_budget_overflow_guard() {
+        let remaining: u64 = kani::any();
+        kani::assume(remaining > MAX_STEP_BUDGET);
+        let mut budget = StepBudget { remaining };
+        let result = budget.try_take();
+        match result {
+            Err(EngineError::StepCounterOverflow) => {
+                kani::assert(budget.remaining() == remaining, "remaining unchanged after overflow error");
+            }
+            Err(_) => { kani::assert(false, "must return StepCounterOverflow when remaining > MAX"); }
+            Ok(_) => { kani::assert(false, "must return StepCounterOverflow when remaining > MAX"); }
+        }
+    }
+
+    #[kani::proof]
+    #[kani::unwind(4)]
+    fn step_budget_no_overflow_for_valid_range() {
+        let remaining: u64 = kani::any();
+        kani::assume(remaining <= MAX_STEP_BUDGET);
+        let mut budget = StepBudget { remaining };
+        let result = budget.try_take();
+        match result {
+            Err(EngineError::StepCounterOverflow) => { kani::assert(false, "should not overflow when remaining <= MAX"); }
+            Err(_) => {}
+            Ok(_) => {}
+        }
+    }
+}
