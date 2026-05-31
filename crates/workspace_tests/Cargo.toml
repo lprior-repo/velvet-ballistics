@@ -95,6 +95,10 @@ name = "recovery_watermark_tests"
 path = "tests/recovery_watermark_tests.rs"
 
 [[test]]
+name = "restate_doctor_storage_scan_decode_tests"
+path = "tests/restate_doctor_storage_scan_decode_tests.rs"
+
+[[test]]
 name = "snapshot_sequence_precondition_tests"
 path = "tests/snapshot_sequence_precondition_tests.rs"
 
