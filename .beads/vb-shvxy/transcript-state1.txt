@@ -1,0 +1,130 @@
+# State 1 Transcript: vb-shvxy
+
+timestamp: 2026-05-29T19:19:41Z
+source_checkout: /home/lewis/src/velvet-ballistics
+isolated_workdir: /home/lewis/isolated/velvet-ballistics-fresh-replacements/vb-shvxy
+branch: fresh/vb-shvxy
+main_base_commit: 46cf61591
+
+## bd show vb-shvxy --json
+```json
+[
+  {
+    "id": "vb-shvxy",
+    "title": "Global blocker: restore formal verifier tooling lanes",
+    "description": "Separate global blocker pass outside capped bead gates. Restore required formal verifier lanes: scripts/kani-list.sh, scripts/flux-check-package.sh, tools/tla2tools.jar or documented TLC path, executable proptest filters, cargo-fuzz sanitizer configuration, and Loom cfg/dependency wiring. This unblocks vb-ttyc State 12 and proof lanes for related beads.",
+    "acceptance_criteria": "Scoped commands used by State 12 run from clean worktree; Kani/Flux/TLA/proptest/fuzz/Loom failures are either fixed or converted to valid non-behavior tooling evidence accepted by validator; no behavior-affecting waiver for missing required lanes.",
+    "status": "in_progress",
+    "priority": 0,
+    "issue_type": "task",
+    "assignee": "Lewis",
+    "owner": "priorlewis43@gmail.com",
+    "created_at": "2026-05-29T19:16:46Z",
+    "created_by": "Lewis",
+    "updated_at": "2026-05-29T19:17:18Z",
+    "labels": [
+      "flux",
+      "formal",
+      "fuzz",
+      "global-blocker",
+      "kani",
+      "loom",
+      "tla",
+      "tooling"
+    ],
+    "dependencies": [
+      {
+        "id": "vb-8mdp.4",
+        "title": "Add bounded journal batch accounting tests",
+        "description": "# Black Hat Repaired Bead Spec\n\nSource docs:\n- to-fix/09-restate-architecture-steal-plan.md\n- to-fix/10-restate-exhaustive-sweep.md\n\nNo-copy fence:\n- Restate is failure-mode inspiration only; do not copy code, APIs, data model, module structure, async architecture, HTTP/JSON paths, storage layout, wire formats, or distributed assumptions.\n- velvet-ballistics-MASTER.md controls. Runtime/core work stays single-server, shard-owned, numeric, bounded, and free of runtime YAML/JSON/HTTP interpretation. CLI/doctor diagnostics are cold-path only.\n\nScope:\nMaster-filtered journal writer accounting tests inspired by Restate failure modes only. Prove VB journal batches enforce byte and count limits before durable append, preserve group-commit ordering, and return exact typed QueueFull/BudgetExceeded errors without partial mutation.\n",
+        "acceptance_criteria": "Tests cover can-fit-by-bytes, can-fit-by-count, accumulated bytes, boundary equality, over-limit rejection, and group-commit evidence or explicit failure mode.",
+        "spec_id": "to-fix/09-restate-architecture-steal-plan.md",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-05-25T04:12:57Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-05-25T12:00:06Z",
+        "labels": [
+          "architecture",
+          "batching",
+          "journal",
+          "master-contract",
+          "restate",
+          "storage",
+          "tests"
+        ],
+        "dependency_type": "discovered-from"
+      },
+      {
+        "id": "vb-8mdp.5",
+        "title": "Add ActionTicket stale wake-up fencing and retry generation tests",
+        "description": "# Black Hat Repaired Bead Spec\n\nSource docs:\n- to-fix/09-restate-architecture-steal-plan.md\n- to-fix/10-restate-exhaustive-sweep.md\n\nNo-copy fence:\n- Restate is failure-mode inspiration only; do not copy code, APIs, data model, module structure, async architecture, HTTP/JSON paths, storage layout, wire formats, or distributed assumptions.\n- velvet-ballistics-MASTER.md controls. Runtime/core work stays single-server, shard-owned, numeric, bounded, and free of runtime YAML/JSON/HTTP interpretation. CLI/doctor diagnostics are cold-path only.\n\nScope:\nMaster-filtered ActionTicket stale wake-up and retry-generation tests. Depends on core deadline/retry math beads. Prove stale timer/action completions are fenced by numeric attempt/generation, late completions cannot resurrect terminal runs, and duplicate retries do not emit duplicate side-effect tickets.\n",
+        "acceptance_criteria": "Tests prove stale wake-ups are ignored, current-generation wake-ups resume exactly once, errors while parked become typed retry-state outcomes, and no fallible result is ignored.",
+        "spec_id": "to-fix/09-restate-architecture-steal-plan.md",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-05-25T04:12:57Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-05-25T12:00:06Z",
+        "labels": [
+          "architecture",
+          "idempotency",
+          "master-contract",
+          "restate",
+          "retry",
+          "runtime",
+          "tests"
+        ],
+        "dependency_type": "discovered-from"
+      },
+      {
+        "id": "vb-nru0",
+        "title": "runtime: Add deterministic delayed-action timer admission tests",
+        "description": "# Black Hat Repaired Bead Spec\n\nSource docs:\n- to-fix/09-restate-architecture-steal-plan.md\n- to-fix/10-restate-exhaustive-sweep.md\n\nNo-copy fence:\n- Restate is failure-mode inspiration only; do not copy code, APIs, data model, module structure, async architecture, HTTP/JSON paths, storage layout, wire formats, or distributed assumptions.\n- Master contract overrides this bead. Runtime/core work stays single-server, shard-owned, numeric, bounded, and free of JSON/YAML/HTTP interpretation. CLI/doctor diagnostics are cold-path only.\n\nTest file:\n- crates/workspace_tests/tests/restate_delayed_action_timer_tests.rs\n\nCommand evidence:\n- cargo nextest run -p velvet-ballastics-workspace-tests --test restate_delayed_action_timer_tests\n- moon ci\n\nScope:\nAdd VB tests inspired by Restate delayed_send.rs proving delayed actions register bounded timers, do not execute before their deterministic tick, and preserve idempotency evidence.\n\nTarget public surface / files to read:\n- /tmp/opencode/restate/crates/worker/src/partition/state_machine/tests/delayed_send.rs\n- crates/vb_runtime/src\n- crates/vb_core/src/action.rs\n\nAcceptance tests:\nHappy paths:\n- Admitted delayed action records one timer and zero dispatched actions before target tick\n- Firing the target tick dispatches exactly one ActionTicket with the recorded generation\n\nError paths:\n- missing timer capacity returns typed QueueFull or admission error\n- invalid input tick ordering returns typed validation error before runtime mutation\n\nEdge cases:\n- duplicate delayed idempotency key preserves original scheduled tick\n- zero-delay action follows the immediate dispatch path without timer storage\n\nContract assertions:\n- Timer state remains numeric and replayable\n- No wall-clock source is used in the test path\n\nPreconditions:\n- Restate delayed_send.rs and VB timer/admission files have been read\n- A deterministic test tick source exists or is introduced only for tests\n\nPostconditions:\n- Delayed action tests assert registered timer state before dispatch\n- Timer firing tests assert exactly one numeric ActionTicket is emitted\n\nInvariants:\n- Runtime core receives numeric IDs only\n- No wall-clock read decides test outcome\n- Timer queue capacity failure returns a typed error\n\nImplementation gates:\n- Write failing tests in the named workspace_tests file before production changes.\n- Implement only the minimal VB change required by those tests.\n- Close only with raw output from the scoped cargo nextest command and moon ci.\n\n",
+        "spec_id": "to-fix/09-restate-architecture-steal-plan.md",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-05-25T04:50:00Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-05-25T12:00:06Z",
+        "dependency_type": "discovered-from"
+      },
+      {
+        "id": "vb-ttyc",
+        "title": "runtime: Add artifact version barrier tests",
+        "description": "# Black Hat Repaired Bead Spec\n\nSource docs:\n- to-fix/09-restate-architecture-steal-plan.md\n- to-fix/10-restate-exhaustive-sweep.md\n\nNo-copy fence:\n- Restate is failure-mode inspiration only; do not copy code, APIs, data model, module structure, async architecture, HTTP/JSON paths, storage layout, wire formats, or distributed assumptions.\n- Master contract overrides this bead. Runtime/core work stays single-server, shard-owned, numeric, bounded, and free of JSON/YAML/HTTP interpretation. CLI/doctor diagnostics are cold-path only.\n\nTest file:\n- crates/workspace_tests/tests/restate_runtime_version_barrier_tests.rs\n\nCommand evidence:\n- cargo nextest run -p velvet-ballastics-workspace-tests --test restate_runtime_version_barrier_tests\n- moon ci\n\nScope:\nAdd admission tests proving compiled workflow artifacts with unsupported runtime features or schema versions are rejected before execution.\n\nTarget public surface / files to read:\n- /tmp/opencode/restate/crates/worker/src/partition/state_machine/mod.rs\n- crates/vb_core/src/workflow/mod.rs\n- crates/vb_runtime/src\n\nAcceptance tests:\nHappy paths:\n- Supported artifact version admits and records one run header\n- Supported feature set executes first deterministic step after admission\n\nError paths:\n- invalid input future schema version returns typed UnsupportedVersion error\n- missing feature compatibility table returns typed admission error\n\nEdge cases:\n- same artifact is not admitted twice for one run id\n- unknown feature id rejects before journal append\n\nContract assertions:\n- Unsupported artifact causes zero step execution\n- Admission error contains artifact digest and version fields\n\nPreconditions:\n- CompiledWorkflow version fields and runtime admission path have been read\n- Existing validation errors are mapped to typed runtime admission errors\n\nPostconditions:\n- Unsupported versions fail before execution\n- Known supported version admits once and records expected evidence\n\nInvariants:\n- Accepted artifact is the unit of trust\n- No implicit migration happens during admission\n- Version errors are typed and stable\n\nImplementation gates:\n- Write failing tests in the named workspace_tests file before production changes.\n- Implement only the minimal VB change required by those tests.\n- Close only with raw output from the scoped cargo nextest command and moon ci.\n\n",
+        "spec_id": "to-fix/09-restate-architecture-steal-plan.md",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-05-25T04:50:16Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-05-25T12:00:05Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  }
+]
+```
+
+## git branch --show-current
+```text
+fresh/vb-shvxy
+```
+
+## git status --short --branch
+```text
+## fresh/vb-shvxy
+```
+

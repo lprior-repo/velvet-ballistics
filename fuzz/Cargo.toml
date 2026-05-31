@@ -54,9 +54,6 @@ anyhow = "1"
 name = "fuzz_lib"
 path = "src/lib.rs"
 
-[dev-dependencies]
-proptest = "1"
-
 [package.metadata.cargo-machete]
 ignored = ["bytes"]
 
@@ -164,6 +161,13 @@ bench = false
 [[bin]]
 name = "accessor_traversal"
 path = "src/bin/accessor_traversal.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "action_tracker"
+path = "src/bin/action_tracker.rs"
 test = false
 doc = false
 bench = false
@@ -492,18 +496,32 @@ test = false
 doc = false
 bench = false
 
-# === vb-xi2f.13 Choose Lowering Fuzz Targets ===
+# === vb-shvxy tooling fuzz targets (State 9) ===
 
 [[bin]]
-name = "fuzz_choose_when_parse"
-path = "fuzz_targets/fuzz_choose_when_parse.rs"
+name = "tooling_kani_list_args"
+path = "fuzz_targets/tooling_kani_list_args.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "fuzz_choose_depth"
-path = "fuzz_targets/fuzz_choose_depth.rs"
+name = "tooling_flux_check_selector"
+path = "fuzz_targets/tooling_flux_check_selector.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "tooling_guard_zero_parser"
+path = "fuzz_targets/tooling_guard_zero_parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "tooling_loom_list_xtask"
+path = "fuzz_targets/tooling_loom_list_xtask.rs"
 test = false
 doc = false
 bench = false

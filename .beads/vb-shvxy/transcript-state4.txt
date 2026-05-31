@@ -1,0 +1,47 @@
+# Transcript: vb-shvxy State 4 proof-planner (attempt 1, revision 2)
+
+## Invocation: vb-shvxy-state4-proof-planner-attempt1
+- Skill: proof-planner
+- Start: 2026-05-30T01:00:00.000000+00:00
+- Complete: 2026-05-30T01:15:00.000000+00:00
+
+## Actions Performed
+
+1. Loaded proof-planner skill from /home/lewis/.opencode/skill/proof-planner/SKILL.md
+2. Read all State 3 artifacts (11 files): contract.md, proof-seeds.jsonl (7 seeds), traceability-matrix.jsonl (9 rows), codebase-map.md, delivery-scope.jsonl (6 entries), domain-model.md, type-contracts.md, workflow-model.md, error-taxonomy.md, boundary-map.md, hazard-analysis.md
+3. Read reference schemas: proof-schemas.md, verification-lane-policy.md
+4. Read existing infrastructure: verify-verus.sh, kani-list.sh, flux-check-package.sh, run-tlc-checks.sh, xtask/src/loom.rs
+5. Classified 7 proof seeds across 4 default verifiers (verus, flux-rs, kani, proptest) + conditional (cargo-fuzz, loom)
+6. Applied TLA+ global removal directive: seed-003 all verifiers = not_applicable
+7. Produced 32 lane decisions (one per seed × verifier combination)
+8. Produced 16 proof obligations (PO-001 through PO-012L)
+9. Produced 2 waiver candidates
+
+## Revision 2 fixes (after validator FAIL)
+- Fixed requirement_id/contract_clause to match seed-level identifiers exactly
+- Added lane decisions for ALL default verifier × seed combinations (32 total)
+- Fixed tla-plus unknown verifier: seed-003 uses standard verifier names
+- Split PO-012 into per-verifier closure obligations (PO-012K, PO-012F, PO-012P, PO-012C, PO-012L)
+- Fixed waiver review_status to planned_by_planner
+
+## Artifacts Produced
+
+| Artifact | Hash |
+|----------|------|
+| proof-strategy.md | 2eaf349fb1594d4b5ebe1504bf8f2c4d71951980490db9b5cb9b98c50643c317 |
+| verifier-lane-matrix.md | d0666ad0ae1875296e447d18766c354640f56f2b39dcf9d1a352673474de97e1 |
+| verifier-lane-decisions.jsonl | 93607e0004da41c7001fbe64fca8c2f8caf528ae2bbcf044a66b2159ee0b1c06 |
+| proof-coverage-matrix.md | 97d3dd44e824fe3d18ed18fab14bdd5e763318c68340abfe824c9d2a0deac38d |
+| proof-obligations.planned.jsonl | 3ab8a4025d1098e74c3a922d0913dca5343dd8848b62b62471a743e80b8344a2 |
+| trusted-base-plan.md | 983684551386c6fabd724dc8f4e9b18504cee8e38b1d982f2344139468c7026b |
+| waiver-candidates.jsonl | e27207e4270c180030078e5ededa1bbd22dd3ca089101226b3fb802ef1f4df01 |
+| proof-to-implementation-input.md | 62d00375948555afdabcaffdfa9421d123a3e4b7eee60a416c957e0af6441a6c |
+
+## Summary
+- Proof seeds: 7
+- Lane decisions: 32 (5 required, 27 not_applicable)
+- Proof obligations: 16 (11 tooling + 5 closure)
+- Waiver candidates: 2 (both non-behavior)
+- Trusted base entries: 5
+- TLA+ globally removed: confirmed in all artifacts
+- Lane decisions cover all 7 seeds × 4 default verifiers = 28 combos + 4 conditional = 32 total
