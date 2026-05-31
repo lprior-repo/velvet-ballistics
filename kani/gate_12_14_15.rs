@@ -71,39 +71,23 @@ fn kani_gate_12_do_to_contract() {
 
 /// K17: Every ActionContract corresponds to a Do node.
 ///
-/// Note: This harness tests orphan contracts (contracts without matching Do nodes).
-/// Gate 12 requires specific workflow structures for this error case testing.
+/// GOD RULE 1: Uses kani::any::<WorkflowParts>() with bounded assumes for structure.
+/// Gate 12 requires exactly zero Do nodes — we use assume to constrain arbitrary generation.
 #[kani::proof]
 fn kani_gate_12_contract_to_do() {
     let action_id: u16 = kani::any();
     kani::assume(action_id > 0);
     kani::assume(action_id < 100);
 
-    // No Do nodes at all
-    let nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        },
-    }];
-
-    let parts = WorkflowParts {
-        name: Box::from("kani_g12_orphan"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: nodes.into_boxed_slice(),
-        expressions: Box::new([]),
-        accessors: Box::new([]),
-        constants: Box::new([]),
-        slot_count: 1,
-        symbols_count: 0,
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::new([]),
-    };
+    // GOD RULE 1: Use kani::any for WorkflowParts, constrain to zero Do nodes
+    let mut parts: WorkflowParts = kani::any();
+    // Constrain to exactly 1 node (Finish only)
+    kani::assume(parts.nodes.len() == 1);
+    // Constrain the single node is Finish (not a Do)
+    kani::assume(matches!(parts.nodes[0].kind, CompiledNodeKind::Finish { .. }));
+    // Ensure exactly 0 Do nodes
+    let do_count = parts.nodes.iter().filter(|n| matches!(n.kind, CompiledNodeKind::Do { .. })).count();
+    kani::assume(do_count == 0);
 
     // Contract exists but no Do node uses it
     let contracts = vec![make_contract(action_id)];
