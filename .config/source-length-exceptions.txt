@@ -3,6 +3,13 @@
 # Each over-limit file must have a validated entry or be split below 300 lines.
 # Rows below are the pre-existing architectural-drift baseline captured by vb-jpq7.47.
 
+# vb-b8i8f: cancel/kill lattice verification artifacts (added by bead vb-b8i8f)
+crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs|lewis|vb-b8i8f|split-after-bead-landing|vb-b8i8f cancel/kill lattice Kani harness (380 lines); will split by proof obligation after landing.
+crates/vb_storage/src/codec/tests/kill_kind_admission.rs|lewis|vb-b8i8f|split-after-bead-landing|vb-b8i8f kill kind admission tests (486 lines); will split by test scenario after landing.
+crates/vb_storage/src/codec/tests/replay_integrity.rs|lewis|vb-b8i8f|split-after-bead-landing|vb-b8i8f replay integrity tests (321 lines); will split by test scenario after landing.
+crates/workspace_tests/tests/cancel_kill_lattice_props.rs|lewis|vb-b8i8f|split-after-bead-landing|vb-b8i8f cancel/kill lattice property tests (378 lines); will split by property group after landing.
+verification/verus/cancel_kill_lattice.rs|lewis|vb-b8i8f|split-after-bead-landing|vb-b8i8f cancel/kill lattice Verus spec (352 lines); will split after formal review.
+
 verification/flux/vb_rpch_flux_r8.rs|lewis|vb-rpch|split-proof-artifact-before-release|Pre-existing Flux verification artifact (319 lines); retained as single proof harness until verifier-lane artifact split.
 verification/flux/vb_rpch_flux_r9.rs|lewis|vb-rpch|split-proof-artifact-before-release|Pre-existing Flux verification artifact (470 lines); retained as single proof harness until verifier-lane artifact split.
 

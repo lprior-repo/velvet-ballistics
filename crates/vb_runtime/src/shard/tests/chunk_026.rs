@@ -89,7 +89,7 @@ fn vb1u88_bdd_cancel_non_existent_run_is_idempotent() {
         reason: None}),
         Ok(())
     );
-    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
     assert_eq!(shard.counters().snapshot().runs_failed, before_failed);
     assert_eq!(shard.counters().snapshot().runs_completed, 0);
 }

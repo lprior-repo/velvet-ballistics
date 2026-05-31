@@ -23,7 +23,8 @@ impl Shard {
             .get(&run)
             .copied()
             .ok_or(RuntimeError::InvalidActionCompletion)?;
-        if pending_timer.step != answer.ticket.ask_step || pending_timer.kind != PendingTimerKind::Ask
+        if pending_timer.step != answer.ticket.ask_step
+            || pending_timer.kind != PendingTimerKind::Ask
         {
             return Err(RuntimeError::InvalidActionCompletion);
         }
@@ -117,11 +118,13 @@ impl Shard {
         run: RunId,
         reason: Option<String>,
     ) -> RuntimeResult<()> {
-        self.pending_timers.swap_remove(&run);
-        if self.runs.contains_key(&run) {
-            self.append_journal_event(RuntimeJournalEvent::RunCancelled { run, reason })?;
+        // C2: Reject missing runs with a typed error.
+        if !self.runs.contains_key(&run) && !self.terminal_runs.contains(&run) {
+            return Err(RuntimeError::RunNotFound);
         }
+        self.pending_timers.swap_remove(&run);
         if let Some(state) = self.runs.swap_remove(&run) {
+            self.append_journal_event(RuntimeJournalEvent::RunCancelled { run, reason })?;
             self.release_frame(state.frame);
             self.terminal_runs.insert(run);
             self.counters.inc_failed();
@@ -131,11 +134,11 @@ impl Shard {
         Ok(())
     }
 
-    pub(crate) fn handle_kill(
-        &mut self,
-        run: RunId,
-        _reason: Option<String>,
-    ) -> RuntimeResult<()> {
+    pub(crate) fn handle_kill(&mut self, run: RunId, _reason: Option<String>) -> RuntimeResult<()> {
+        // C2: Reject missing runs with a typed error.
+        if !self.runs.contains_key(&run) && !self.terminal_runs.contains(&run) {
+            return Err(RuntimeError::RunNotFound);
+        }
         self.pending_timers.swap_remove(&run);
         if let Some(state) = self.runs.swap_remove(&run) {
             self.release_frame(state.frame);

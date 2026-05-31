@@ -258,6 +258,6 @@
             reason: None}),
             Ok(())
         );
-        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
         assert_eq!(shard.counters().snapshot().runs_failed, 0);
     }

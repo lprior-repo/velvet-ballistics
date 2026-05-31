@@ -12,6 +12,9 @@ use crate::{
 };
 use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest};
 
+mod kill_kind_admission;
+mod replay_integrity;
+
 #[test]
 fn encode_decode_roundtrip_journal_event_run_accepted() -> Result<(), JournalError> {
     let event = JournalEvent::RunAccepted {

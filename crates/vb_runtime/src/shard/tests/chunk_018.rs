@@ -8,7 +8,7 @@ fn bh_shd_10_cancel_nonexistent_run_no_journal_event() {
     let mut shard = Shard::new_with_journal(config, shared);
     let run = super::RunId::new(810);
     assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
-    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
     let events = journal.snapshot().unwrap_or_default();
     let cancelled_count = events
         .iter()

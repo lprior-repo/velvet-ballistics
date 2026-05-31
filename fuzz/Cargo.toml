@@ -365,6 +365,20 @@ bench = false
 # [[bin]] name = "vb_5xs4_scan_source_text" ...
 
 [[bin]]
+name = "kind_validation"
+path = "fuzz_targets/kind_validation.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "journal_decode"
+path = "fuzz_targets/journal_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "vb_storage_codec"
 path = "fuzz_targets/vb_storage_codec.rs"
 test = false

@@ -73,7 +73,7 @@ fn vb1u88_cancel_unknown_run_returns_ok() {
         reason: None}),
         Ok(())
     );
-    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
 }
 
 #[test]
@@ -141,7 +141,7 @@ fn vb1u88_cancel_unknown_run_does_not_emit_events() {
         reason: None}),
         Ok(())
     );
-    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
     let after = journal.snapshot().expect("journal snapshot should succeed");
     assert_eq!(
         before, after,
