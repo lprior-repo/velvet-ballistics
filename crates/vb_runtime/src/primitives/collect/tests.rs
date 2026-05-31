@@ -99,14 +99,9 @@ fn assert_slot_list_items(
     slot: SlotIdx,
     expected: &[SlotValue],
 ) {
-    match *run
-        .read_slot(slot)
-        .expect("read must succeed")
-    {
+    match *run.read_slot(slot).expect("read must succeed") {
         SlotValue::List(id) => {
-            let items = store
-                .list(id)
-                .expect("list read must succeed");
+            let items = store.list(id).expect("list read must succeed");
             assert_eq!(items, expected);
         }
         other => {
@@ -323,9 +318,7 @@ fn collect_start_initializes_collector() {
     );
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(run.pc(), body);
-    let slot_val = *run
-        .read_slot(output)
-        .expect("read must succeed");
+    let slot_val = *run.read_slot(output).expect("read must succeed");
     assert!(matches!(slot_val, SlotValue::List(_)));
 }
 
@@ -403,8 +396,7 @@ fn collect_finish_materializes_output() {
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(run.pc(), next_step);
     assert_eq!(
-        *run.read_slot(output)
-            .expect("read must succeed"),
+        *run.read_slot(output).expect("read must succeed"),
         SlotValue::I64(99)
     );
 }
@@ -685,14 +677,9 @@ fn collect_start_writes_first_page_to_collector() {
         None,
     );
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-    match *run
-        .read_slot(output)
-        .expect("read must succeed")
-    {
+    match *run.read_slot(output).expect("read must succeed") {
         SlotValue::List(id) => {
-            let items = store
-                .list(id)
-                .expect("list read must succeed");
+            let items = store.list(id).expect("list read must succeed");
             assert_eq!(items.len(), 2);
             assert_eq!(items.get(0), Some(&SlotValue::I64(1)));
             assert_eq!(items.get(1), Some(&SlotValue::I64(2)));
@@ -1016,10 +1003,7 @@ fn collect_start_first_page_smaller_than_total() {
         None,
     );
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-    match *run
-        .read_slot(output)
-        .expect("must read")
-    {
+    match *run.read_slot(output).expect("must read") {
         SlotValue::List(id) => {
             let items = store.list(id).expect("must read");
             assert_eq!(items.len(), 2);
@@ -1058,10 +1042,7 @@ fn collect_start_page_size_larger_than_items_clamps_to_item_count() {
         None,
     );
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-    match *run
-        .read_slot(output)
-        .expect("must read")
-    {
+    match *run.read_slot(output).expect("must read") {
         SlotValue::List(id) => {
             let items = store.list(id).expect("must read");
             assert_eq!(items.len(), 2);
@@ -1122,8 +1103,7 @@ fn collect_start_null_source_returns_type_mismatch() {
     let mut store = ValueStore::new();
     let mut states = fresh_states();
     let source = SlotIdx::new(0);
-    run.write_slot(source, SlotValue::Null)
-        .expect("write");
+    run.write_slot(source, SlotValue::Null).expect("write");
     let result = collect_start(
         &mut run,
         &mut store,
@@ -1173,10 +1153,7 @@ fn collect_start_page_size_one_single_item_per_page() {
         None,
     );
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-    match *run
-        .read_slot(output)
-        .expect("must read")
-    {
+    match *run.read_slot(output).expect("must read") {
         SlotValue::List(id) => {
             let items = store.list(id).expect("must read");
             assert_eq!(items.len(), 1);

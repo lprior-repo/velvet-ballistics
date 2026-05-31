@@ -4,7 +4,7 @@ use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use vb_core::action::{
-    ActionContract, ActionFailure, ActionFailureCode, ActionOutputReady, ActionTicket, Idempotency,
+    ActionContract, ActionName, ActionFailure, ActionFailureCode, ActionOutputReady, ActionTicket, Idempotency,
     RetryPolicy, RetrySafety, SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
@@ -200,6 +200,7 @@ fn required_capability(action: ActionId) -> Capability {
 fn action_contract(action: ActionId, output_slots: u16) -> ActionContract {
     ActionContract {
         id: action,
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: output_slots,
         max_input_bytes: 1024,

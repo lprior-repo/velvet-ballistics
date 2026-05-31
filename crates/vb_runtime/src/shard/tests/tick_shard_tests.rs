@@ -13,7 +13,7 @@
 //!    (shard alive) from `Ok(false)` (shard dead) with separate explicit assertions.
 
 use vb_core::action::{
-    ActionContract, ActionOutputReady, ActionTicket, Idempotency, RetryPolicy, RetrySafety,
+    ActionContract, ActionName, ActionOutputReady, ActionTicket, Idempotency, RetryPolicy, RetrySafety,
     SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
@@ -154,6 +154,7 @@ fn contract_required_capability(action: ActionId) -> Capability {
 fn action_contract(action: ActionId, input_slots: u16, output_slots: u16) -> ActionContract {
     ActionContract {
         id: action,
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: input_slots,
         output_slot_count: output_slots,
         max_input_bytes: 1024,

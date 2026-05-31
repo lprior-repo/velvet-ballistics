@@ -8,7 +8,7 @@
 
 #![forbid(unsafe_code)]
 
-use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::ids::ActionId;
 
 use crate::idempotency_contract::is_statically_idempotent_contract as static_check;
@@ -47,6 +47,7 @@ fn kani_decision_001_all_combinations() {
 
                 let contract = ActionContract {
                     id: ActionId::new(0),
+                    name: ActionName::new("test-action").unwrap(),
                     input_slot_count: 1,
                     output_slot_count: 1,
                     max_input_bytes: 1024,
@@ -108,6 +109,7 @@ fn decision_table_ok_branch() {
 
             let contract = ActionContract {
                 id: ActionId::new(0),
+                name: ActionName::new("test-action").unwrap(),
                 input_slot_count: 0,
                 output_slot_count: 0,
                 max_input_bytes: 0,
@@ -154,6 +156,7 @@ fn decision_table_ok_branch() {
 
             let contract = ActionContract {
                 id: ActionId::new(0),
+                name: ActionName::new("test-action").unwrap(),
                 input_slot_count: 1,
                 output_slot_count: 1,
                 max_input_bytes: 1024,
@@ -213,6 +216,7 @@ fn decision_table_unsafe_rejected() {
 
             let contract = ActionContract {
                 id: ActionId::new(0),
+                name: ActionName::new("test-action").unwrap(),
                 input_slot_count: 1,
                 output_slot_count: 1,
                 max_input_bytes: 1024,
@@ -275,6 +279,7 @@ fn decision_table_at_least_once_rejected() {
 
             let contract = ActionContract {
                 id: ActionId::new(0),
+                name: ActionName::new("test-action").unwrap(),
                 input_slot_count: 1,
                 output_slot_count: 1,
                 max_input_bytes: 1024,
@@ -341,6 +346,7 @@ fn decision_table_deterministic_rejected() {
 
             let contract = ActionContract {
                 id: ActionId::new(0),
+                name: ActionName::new("test-action").unwrap(),
                 input_slot_count: 1,
                 output_slot_count: 1,
                 max_input_bytes: 1024,

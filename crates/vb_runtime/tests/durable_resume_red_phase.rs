@@ -14,7 +14,7 @@
 //! These tests verify the durable resume contract clauses: PRE-001 through
 //! PRE-003, POST-001 through POST-004, and INV-001 through INV-004.
 
-use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::ActionId;
 use vb_core::ids::RunId;
@@ -35,6 +35,7 @@ fn suspended_action_contracts() -> Box<[ActionContract]> {
     let action = ActionId::new(0);
     Box::from([ActionContract {
         id: action,
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,

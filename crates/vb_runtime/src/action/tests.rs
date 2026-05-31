@@ -1,11 +1,11 @@
-
 use super::super::*;
-use vb_core::action::{Idempotency, RetrySafety, SideEffect};
+use vb_core::action::{ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::ids::{RunId, SeqNo, SlotIdx, StepIdx};
 
 fn contract_fixture(id: u16) -> ActionContract {
     ActionContract {
         id: ActionId::new(id),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -126,6 +126,7 @@ fn validate_input_bytes_rejects_when_max_input_bytes_is_zero() {
     let mut registry = ActionRegistry::new();
     let contract = ActionContract {
         id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 0,
         max_input_bytes: 0,
@@ -196,6 +197,7 @@ fn action_registry_dispatch_rejects_mismatched_contract() {
     let input = input_fixture(5);
     let wrong_contract = ActionContract {
         id: ActionId::new(3),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -321,6 +323,7 @@ fn action_contract_fields_are_preserved() {
     // Given a contract with specific fields
     let contract = ActionContract {
         id: ActionId::new(42),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 3,
         output_slot_count: 2,
         max_input_bytes: 2048,
@@ -432,6 +435,7 @@ fn action_registry_register_max_action_id_does_not_overflow() {
     // When registering action at max valid index (65534)
     let contract = ActionContract {
         id: ActionId::new(65534),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -454,6 +458,7 @@ fn action_registry_validate_input_bytes_rejects_zero_with_slots() {
     let mut registry = ActionRegistry::new();
     let contract = ActionContract {
         id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 0,
         max_input_bytes: 0,
@@ -489,6 +494,7 @@ fn action_registry_dispatch_with_contract_zero_bytes_and_zero_slots_succeeds() {
     let mut registry = ActionRegistry::new();
     let contract = ActionContract {
         id: ActionId::new(2),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 0,
         output_slot_count: 0,
         max_input_bytes: 0,

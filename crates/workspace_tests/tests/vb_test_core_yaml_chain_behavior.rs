@@ -9,7 +9,7 @@
 //! - Contract parity between spec and implementation
 
 use vb_compile::compile_workflow;
-use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::capability::Capability;
 use vb_core::ids::ActionId;
 use vb_core::workflow::ResourceContract;
@@ -308,6 +308,7 @@ fn resource_contract_serialization_parity() {
 fn action_contract_complete_construction() {
     let contract = ActionContract {
         id: ActionId::new(42),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 3,
         output_slot_count: 2,
         max_input_bytes: 4096,
@@ -335,6 +336,7 @@ fn action_contract_complete_construction() {
 fn action_contract_serialization_parity() {
     let contract = ActionContract {
         id: ActionId::new(10),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -365,6 +367,7 @@ fn action_contract_all_idempotency_variants_constructable() {
     for variant in variants {
         let contract = ActionContract {
             id: ActionId::new(1),
+            name: ActionName::new("test-action").unwrap(),
             input_slot_count: 0,
             output_slot_count: 0,
             max_input_bytes: 0,
@@ -391,6 +394,7 @@ fn action_contract_all_side_effect_variants_constructable() {
     for variant in variants {
         let contract = ActionContract {
             id: ActionId::new(1),
+            name: ActionName::new("test-action").unwrap(),
             input_slot_count: 0,
             output_slot_count: 0,
             max_input_bytes: 0,
@@ -415,6 +419,7 @@ fn action_contract_all_retry_safety_variants_constructable() {
     for variant in variants {
         let contract = ActionContract {
             id: ActionId::new(1),
+            name: ActionName::new("test-action").unwrap(),
             input_slot_count: 0,
             output_slot_count: 0,
             max_input_bytes: 0,
@@ -553,6 +558,7 @@ fn validate_with_contracts_rejects_orphan_action_contract() {
     // Contract for action 99, but no Do node uses action 99
     let orphan_contract = ActionContract {
         id: ActionId::new(99),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -620,6 +626,7 @@ fn validate_with_contracts_accepts_matching_contract() {
     // Contract for action 42 matching the Do node
     let matching_contract = ActionContract {
         id: ActionId::new(42),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -663,6 +670,7 @@ fn action_contract_idempotency_determinism_parity() {
     // This is a semantic contract requirement
     let contract = ActionContract {
         id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 0,
         output_slot_count: 0,
         max_input_bytes: 0,
@@ -685,6 +693,7 @@ fn action_contract_side_effects_require_key_when_not_safe() {
     // Actions with side effects that are not Safe must require key
     let contract = ActionContract {
         id: ActionId::new(2),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,

@@ -1,7 +1,7 @@
 //! Tests for Gates 12, 14, 15.
 
 use super::*;
-use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::ids::{ActionId, ConstIdx, SlotIdx, StepIdx};
 use vb_core::value::ConstValue;
 use vb_core::workflow::{CompiledNode, ResourceContract};
@@ -10,7 +10,7 @@ use crate::gate_12_14_15::{
     validate_gate_12_action_contract_completeness, validate_gate_14_slot_type_consistency,
     validate_gate_15_determinism_proof,
 };
-use crate::{ValidationError, ValidationResult};
+use crate::ValidationError;
 
 fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
     WorkflowParts {
@@ -69,6 +69,7 @@ fn do_node(index: u16, action: u16, input: u16) -> CompiledNode {
 fn make_contract(action_id: u16) -> ActionContract {
     ActionContract {
         id: ActionId::new(action_id),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,

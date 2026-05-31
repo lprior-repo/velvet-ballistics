@@ -1,8 +1,6 @@
 #[cfg(test)]
-use crate::ValidationError;
-#[cfg(test)]
 use crate::type_sigs::{
-    InputDecl, ResourceLimits, StepKind, StepTypes, Taint, TypedValue, ValueFact, ValueType,
+    ResourceLimits, Taint, ValueFact, ValueType,
     WorkflowTypes,
 };
 

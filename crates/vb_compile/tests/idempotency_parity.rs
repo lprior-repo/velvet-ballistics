@@ -1,5 +1,5 @@
 use vb_compile::check_idempotency_gates;
-use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::ids::ActionId;
 use vb_validate::idempotency_contract::is_statically_idempotent_contract;
 
@@ -11,6 +11,7 @@ fn contract(
 ) -> ActionContract {
     ActionContract {
         id: ActionId::new(id),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,

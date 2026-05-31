@@ -16,7 +16,7 @@ Backend / IR Interpreter Complete milestone.
 The following remain future work:
 
 1. `vb_codegen` as an active workspace crate.
-2. `velvet-ballastics compile <workflow.yaml> --emit rust`.
+2. `velvet-ballistics compile <workflow.yaml> --emit rust`.
 3. Generated Rust execution for accepted workflow artifacts.
 4. Generated Rust semantic equivalence against IR execution for:
    - terminal result,

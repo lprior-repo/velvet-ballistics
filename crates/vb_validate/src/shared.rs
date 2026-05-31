@@ -11,9 +11,6 @@ use crate::gates;
 use vb_core::action::ActionContract;
 use vb_core::workflow::WorkflowParts;
 
-#[cfg(test)]
-use crate::ValidationError;
-
 // Re-export gate functions so external callers can import from this module.
 pub use gates::validate_gate_07_expression_stack_depth;
 pub use gates::validate_gate_08_accessor_path_segments;

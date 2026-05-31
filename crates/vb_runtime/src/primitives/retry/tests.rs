@@ -1,4 +1,3 @@
-
 use super::super::*;
 use vb_core::action::{ActionFailureCode, RetryPolicy as VbRetryPolicy};
 use vb_core::value::Taint;
@@ -238,7 +237,6 @@ fn retry_state_read_from_slot_rejects_non_i64() {
     let slot = SlotIdx::new(0);
     frame
         .write_slot(slot, SlotValue::Bool(true))
-        .ok()
         .expect("write must succeed");
     let result = RetryState::read_from_slot(&frame, slot);
     assert_eq!(
@@ -1022,7 +1020,6 @@ fn retry_on_failure_returns_error_on_corrupted_slot() {
     let slot = SlotIdx::new(0);
     frame
         .write_slot(slot, SlotValue::Bool(false))
-        .ok()
         .expect("write must succeed");
 
     let policy = RetryPolicy::new(3, 100, 1, DelayStrategy::Fixed)
@@ -1051,7 +1048,6 @@ fn retry_state_read_from_slot_returns_error_on_null() {
     let slot = SlotIdx::new(0);
     frame
         .write_slot(slot, SlotValue::Null)
-        .ok()
         .expect("write must succeed");
     let result = RetryState::read_from_slot(&frame, slot);
     assert_eq!(

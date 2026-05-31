@@ -193,7 +193,7 @@ mod tests {
         EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeEngineError, RuntimeSignal,
     };
     use crate::primitives::collect::CollectStates;
-    use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+    use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
     use vb_core::capability::{Capability, CapabilitySet};
     use vb_core::engine::StepBudget;
     use vb_core::frame::RunFrame;
@@ -787,6 +787,7 @@ mod tests {
         let contracts = [
             ActionContract {
                 id: ActionId::new(0),
+                name: ActionName::new("test-action").unwrap(),
                 input_slot_count: 0,
                 output_slot_count: 0,
                 max_input_bytes: 0,
@@ -799,6 +800,7 @@ mod tests {
             },
             ActionContract {
                 id: ActionId::new(1),
+                name: ActionName::new("test-action").unwrap(),
                 input_slot_count: 1,
                 output_slot_count: 0,
                 max_input_bytes: 1024,

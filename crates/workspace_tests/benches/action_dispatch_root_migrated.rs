@@ -7,6 +7,7 @@
 use criterion::{criterion_group, criterion_main, Criterion, Throughput};
 use std::hint::black_box;
 use vb_core::{
+use vb_core::action::ActionName;
     action::{ActionContract, ActionInput, ActionOutcome, Idempotency, SideEffect, RetrySafety},
     ids::{ActionId, RunId, SeqNo, StepIdx, SlotIdx},
 };
@@ -31,6 +32,7 @@ fn registry_with_n_actions(count: usize) -> ActionRegistry {
         let id = ActionId::new(u16::try_from(i).unwrap_or(0));
         let contract = ActionContract {
             id,
+            name: ActionName::new("test-action").unwrap(),
             input_slot_count: 1,
             output_slot_count: 1,
             max_input_bytes: 1024,
@@ -70,6 +72,7 @@ fn action_input(action: ActionId) -> ActionInput {
 fn action_contract(action: ActionId) -> ActionContract {
     ActionContract {
         id: action,
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,

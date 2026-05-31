@@ -3,7 +3,7 @@
 //!
 //! All 62 BDD scenarios from test-plan.md covering behaviors B1-B62.
 
-use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::ids::{ActionId, ConstIdx, SlotIdx, StepIdx, SymbolId};
 use vb_core::value::ConstValue;
 use vb_core::workflow::{
@@ -75,6 +75,7 @@ fn do_node(index: u16, action: u16, input: u16, next: Option<StepIdx>) -> Compil
 fn make_contract(action_id: u16) -> ActionContract {
     ActionContract {
         id: ActionId::new(action_id),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,

@@ -546,6 +546,7 @@ fn test_action_contract(
     };
     vb_core::action::ActionContract {
         id: action,
+        name: vb_core::action::ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,

@@ -135,15 +135,11 @@ impl KeyRange {
 
     #[must_use]
     pub fn is_adjacent_to(self, other: Self) -> bool {
-        if let Some(next) = self.end.checked_add(1) {
-            if next == other.start {
-                return true;
-            }
+        if self.end.checked_add(1).is_some_and(|next| next == other.start) {
+            return true;
         }
-        if let Some(next) = other.end.checked_add(1) {
-            if next == self.start {
-                return true;
-            }
+        if other.end.checked_add(1).is_some_and(|next| next == self.start) {
+            return true;
         }
         false
     }
@@ -161,6 +157,7 @@ impl ShardCount {
         if raw == 0 {
             return Err(PartitionError::ZeroShardCount);
         }
+        #[allow(clippy::as_conversions)]
         if raw > MAX_SHARD_COUNT {
             return Err(PartitionError::ShardCountExceedsMax {
                 requested: raw as u64,
@@ -175,6 +172,7 @@ impl ShardCount {
         self.0
     }
     #[must_use]
+    #[allow(clippy::as_conversions)]
     pub const fn as_u64(self) -> u64 {
         self.0 as u64
     }
@@ -248,8 +246,8 @@ impl PartitionPlan {
         }
 
         // Compute span using u128 to avoid overflow for full keyspace
-        let span = match (kmax as u128)
-            .checked_sub(kmin as u128)
+        let span = match u128::from(kmax)
+            .checked_sub(u128::from(kmin))
             .and_then(|s| s.checked_add(1))
         {
             Some(s) => s,
@@ -261,11 +259,11 @@ impl PartitionPlan {
             }
         };
 
-        let step_u128 = match span.checked_div(n as u128) {
+        let step_u128 = match span.checked_div(u128::from(n)) {
             Some(s) => s,
             None => return Err(PartitionError::ArithmeticOverflow { shard_index: 0 }),
         };
-        let rem_u128 = match span.checked_rem(n as u128) {
+        let rem_u128 = match span.checked_rem(u128::from(n)) {
             Some(r) => r,
             None => return Err(PartitionError::ArithmeticOverflow { shard_index: 0 }),
         };
@@ -279,6 +277,7 @@ impl PartitionPlan {
             Err(_) => return Err(PartitionError::ArithmeticOverflow { shard_index: 0 }),
         };
 
+        #[allow(clippy::as_conversions)]
         let capacity = n as usize;
         let mut ranges = Vec::with_capacity(capacity);
         let mut cursor = kmin;
@@ -331,23 +330,24 @@ impl PartitionPlan {
 
     #[must_use]
     pub fn shard_for_key(&self, key: u64) -> Option<usize> {
-        if self.ranges.is_empty() {
-            return None;
-        }
-        let first_start = self.ranges[0].start();
-        let last_end = self.ranges[self.ranges.len() - 1].end();
+        let first = self.ranges.first()?;
+        let last = self.ranges.last()?;
+        let first_start = first.start();
+        let last_end = last.end();
         if key < first_start || key > last_end {
             return None;
         }
         let mut lo = 0usize;
         let mut hi = self.ranges.len();
         while lo < hi {
-            let mid = lo + (hi - lo) / 2;
-            let range = &self.ranges[mid];
+            let diff = hi.checked_sub(lo)?;
+            let half = diff.checked_div(2)?;
+            let mid = lo.checked_add(half)?;
+            let range = self.ranges.get(mid)?;
             if key < range.start() {
                 hi = mid;
             } else if key > range.end() {
-                lo = mid + 1;
+                lo = mid.checked_add(1)?;
             } else {
                 return Some(mid);
             }
@@ -355,7 +355,6 @@ impl PartitionPlan {
         None
     }
 
-    #[must_use]
     pub fn validate_invariants(&self) -> Result<(), &'static str> {
         let ranges = &self.ranges;
         let n = ranges.len();
@@ -368,16 +367,32 @@ impl PartitionPlan {
             }
         }
         for i in 0..n.saturating_sub(1) {
-            let curr = ranges[i];
-            let next = ranges[i + 1];
+            let Some(curr) = ranges.get(i).copied() else {
+                return Err("range index out of bounds");
+            };
+            let Some(next_idx) = i.checked_add(1) else {
+                return Err("arithmetic overflow computing next index");
+            };
+            let Some(next) = ranges.get(next_idx).copied() else {
+                return Err("range index out of bounds");
+            };
             match curr.end().checked_add(1) {
                 Some(expected) if expected == next.start() => {}
                 _ => return Err("ranges are not contiguous"),
             }
         }
         for i in 0..n {
-            for j in (i + 1)..n {
-                if !ranges[i].is_disjoint(ranges[j]) {
+            let Some(a) = ranges.get(i).copied() else {
+                return Err("range index out of bounds");
+            };
+            let Some(start) = i.checked_add(1) else {
+                return Err("arithmetic overflow computing next index");
+            };
+            for j in start..n {
+                let Some(b) = ranges.get(j).copied() else {
+                    return Err("range index out of bounds");
+                };
+                if !a.is_disjoint(b) {
                     return Err("ranges overlap");
                 }
             }

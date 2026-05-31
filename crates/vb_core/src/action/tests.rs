@@ -311,6 +311,7 @@ fn action_error_output_slot_out_of_bounds_reports_exact_boundary() {
 fn action_contract_with_zero_output_bytes_is_constructable() {
     let contract = ActionContract {
         id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 0,
         max_input_bytes: 0,
@@ -329,6 +330,7 @@ fn action_contract_with_zero_output_bytes_is_constructable() {
 fn action_contract_with_zero_timeout_is_constructable() {
     let contract = ActionContract {
         id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -535,6 +537,7 @@ fn idempotency_violation_time_in_key_carries_slot() {
 fn verify_idempotency_pure_action_always_passes() {
     let action = ActionContract {
         id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 0,
         output_slot_count: 1,
         max_input_bytes: 0,
@@ -556,6 +559,7 @@ fn verify_idempotency_pure_action_always_passes() {
 fn verify_idempotency_safe_action_with_side_effect_passes() {
     let action = ActionContract {
         id: ActionId::new(2),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -577,6 +581,7 @@ fn verify_idempotency_safe_action_with_side_effect_passes() {
 fn verify_idempotency_unsafe_action_rejected() {
     let action = ActionContract {
         id: ActionId::new(3),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -601,6 +606,7 @@ fn verify_idempotency_unsafe_action_rejected() {
 fn verify_idempotency_key_required_empty_keys_rejected() {
     let action = ActionContract {
         id: ActionId::new(4),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -625,6 +631,7 @@ fn verify_idempotency_key_required_empty_keys_rejected() {
 fn verify_idempotency_key_required_clean_keys_passes() {
     let action = ActionContract {
         id: ActionId::new(5),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -647,6 +654,7 @@ fn verify_idempotency_key_required_clean_keys_passes() {
 fn verify_idempotency_key_required_secret_key_rejected() {
     let action = ActionContract {
         id: ActionId::new(6),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -698,6 +706,7 @@ fn validate_key_ingredients_derived_secret_rejected() {
 fn verify_idempotency_sends_side_effect_key_required_rejected_without_key() {
     let action = ActionContract {
         id: ActionId::new(7),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -722,6 +731,7 @@ fn verify_idempotency_sends_side_effect_key_required_rejected_without_key() {
 fn verify_idempotency_creates_side_effect_unsafe_rejected() {
     let action = ActionContract {
         id: ActionId::new(8),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -746,6 +756,7 @@ fn verify_idempotency_creates_side_effect_unsafe_rejected() {
 fn action_contract_serializes_with_new_fields() {
     let contract = ActionContract {
         id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -789,6 +800,7 @@ fn retry_safety_is_copy() {
 fn verify_idempotency_writes_with_safe_passes() {
     let action = ActionContract {
         id: ActionId::new(100),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -810,6 +822,7 @@ fn verify_idempotency_writes_with_safe_passes() {
 fn verify_idempotency_destroys_with_unsafe_rejected_even_with_keys() {
     let action = ActionContract {
         id: ActionId::new(101),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -836,6 +849,7 @@ fn verify_idempotency_destroys_with_unsafe_rejected_even_with_keys() {
 fn verify_idempotency_destroys_with_unsafe_rejected_without_keys() {
     let action = ActionContract {
         id: ActionId::new(102),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -860,6 +874,7 @@ fn verify_idempotency_destroys_with_unsafe_rejected_without_keys() {
 fn verify_idempotency_key_required_rejects_secret_tainted_key_slot() {
     let action = ActionContract {
         id: ActionId::new(103),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -906,6 +921,7 @@ fn verify_idempotency_key_required_rejects_secret_tainted_key_slot() {
 fn verify_idempotency_key_required_rejects_when_first_slot_clean_but_second_secret() {
     let action = ActionContract {
         id: ActionId::new(104),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -935,6 +951,7 @@ fn verify_idempotency_none_side_effect_always_passes_even_unsafe() {
     // Actions with SideEffect::None always pass, regardless of retry_safety.
     let action = ActionContract {
         id: ActionId::new(105),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 0,
         output_slot_count: 1,
         max_input_bytes: 0,
@@ -956,6 +973,7 @@ fn verify_idempotency_none_side_effect_always_passes_even_unsafe() {
 fn verify_idempotency_sends_side_effect_unsafe_rejected() {
     let action = ActionContract {
         id: ActionId::new(106),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -986,6 +1004,7 @@ fn verify_idempotency_sends_side_effect_unsafe_rejected() {
 fn validate_action_dispatch_succeeds_with_populated_input_and_output_slot() {
     let contract = ActionContract {
         id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -1012,6 +1031,7 @@ fn validate_action_dispatch_succeeds_with_populated_input_and_output_slot() {
 fn validate_action_dispatch_fails_on_uninitialized_input() {
     let contract = ActionContract {
         id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -1034,6 +1054,7 @@ fn validate_action_dispatch_fails_on_uninitialized_input() {
 fn validate_action_dispatch_fails_on_out_of_bounds_input() {
     let contract = ActionContract {
         id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -1055,6 +1076,7 @@ fn validate_action_dispatch_fails_on_out_of_bounds_input() {
 fn validate_action_dispatch_succeeds_with_zero_output_count() {
     let contract = ActionContract {
         id: ActionId::new(2),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 0,
         max_input_bytes: 1024,
@@ -1135,6 +1157,7 @@ fn issue_action_ticket_with_max_values() {
 fn validate_action_outcome_ready_succeeds_with_valid_slot() {
     let contract = ActionContract {
         id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 2,
         max_input_bytes: 1024,
@@ -1160,6 +1183,7 @@ fn validate_action_outcome_ready_succeeds_with_valid_slot() {
 fn validate_action_outcome_ready_rejects_out_of_bounds_slot() {
     let contract = ActionContract {
         id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -1191,6 +1215,7 @@ fn validate_action_outcome_ready_rejects_out_of_bounds_slot() {
 fn validate_action_outcome_failed_always_succeeds() {
     let contract = ActionContract {
         id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -1217,6 +1242,7 @@ fn validate_action_outcome_failed_always_succeeds() {
 fn validate_action_outcome_suspended_rejected() {
     let contract = ActionContract {
         id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -1454,6 +1480,7 @@ fn action_ticket_construction_all_fields_accessible() {
 fn action_ticket_with_zero_timeout_via_contract() {
     let contract = ActionContract {
         id: ActionId::new(10),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 512,
@@ -1591,6 +1618,7 @@ fn action_id_max_value() {
 fn action_contract_fields_and_required_capabilities() {
     let contract = ActionContract {
         id: ActionId::new(5),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 3,
         output_slot_count: 2,
         max_input_bytes: 4096,
@@ -1621,6 +1649,7 @@ fn action_contract_default_like_values() {
     // Verify a minimal "default-like" contract with zero-count fields.
     let contract = ActionContract {
         id: ActionId::new(0),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 0,
         output_slot_count: 0,
         max_input_bytes: 0,

@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::capability::CapabilitySet;
 use vb_core::engine::StepBudget;
 use vb_core::frame::{RunFrame, StepState};
@@ -139,6 +139,7 @@ fn drive_with_contracts(
 fn action_contract(action: ActionId) -> ActionContract {
     ActionContract {
         id: action,
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,

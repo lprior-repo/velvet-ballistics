@@ -1,8 +1,6 @@
 #[cfg(test)]
 use crate::ValidationError;
 #[cfg(test)]
-use crate::ValidationResult;
-#[cfg(test)]
 use crate::shared::{ValidationPipeline, validate};
 #[cfg(test)]
 use vb_core::ids::{SlotIdx, StepIdx};

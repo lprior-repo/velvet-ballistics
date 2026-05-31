@@ -8,9 +8,9 @@
 //! (key bytes + value bytes). The caller (doctor command) is responsible
 //! for reading entries from the journal keyspace.
 
-use crate::types::{DecodedPreview, PreviewConfig, PreviewPayload, StorageKey};
-use crate::keys::decode_storage_key;
 use crate::JournalError;
+use crate::keys::decode_storage_key;
+use crate::types::{DecodedPreview, PreviewConfig, PreviewPayload, StorageKey};
 
 /// Produces a bounded preview from a slice of keyspace entries.
 ///
@@ -59,8 +59,8 @@ pub fn preview_keyspace(
             Err(_) => continue,
         };
 
-        let payload_len = u32::try_from(value_bytes.len())
-            .map_err(|_| JournalError::PayloadTooLarge {
+        let payload_len =
+            u32::try_from(value_bytes.len()).map_err(|_| JournalError::PayloadTooLarge {
                 len: u32::MAX,
                 max: u32::MAX,
             })?;
@@ -97,8 +97,6 @@ pub fn preview_keyspace(
 mod tests {
     use super::*;
     use crate::types::PreviewConfig;
-    use std::num::NonZeroUsize;
-
     #[test]
     fn empty_entries_produces_empty_preview() {
         let config = PreviewConfig::new(10, 1024).unwrap();
@@ -131,11 +129,7 @@ mod tests {
         // Each entry is 20 bytes, max_bytes is 50. At most 2 entries (40 bytes) +
         // the 3rd would be 60 which exceeds 50, so max 2 entries.
         assert!(result.entries.len() <= 5);
-        let total: u32 = result
-            .entries
-            .iter()
-            .map(|(_, v, _)| v.len() as u32)
-            .sum();
+        let total: u32 = result.entries.iter().map(|(_, v, _)| v.len() as u32).sum();
         assert!(total <= 50);
     }
 }

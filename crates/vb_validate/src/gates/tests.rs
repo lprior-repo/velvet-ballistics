@@ -1161,6 +1161,7 @@ fn blackhat_gate_12_rejects_orphan_contract() {
     let parts = make_parts(nodes, 1);
     let contracts = vec![vb_core::action::ActionContract {
         id: ActionId::new(99),
+        name: vb_core::action::ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,

@@ -6,9 +6,9 @@
 //! wrapper. Rust's type system enforces this at compile time;
 //! the crate also uses `#![forbid(unsafe_code)]` to prevent circumvention.
 
-use crate::journal::core::FjallJournal;
 use crate::error::JournalError;
 use crate::events::JournalEvent;
+use crate::journal::core::FjallJournal;
 use vb_core::RunId;
 
 /// A newtype wrapper that exposes only read methods of the underlying journal.
@@ -31,6 +31,7 @@ impl core::fmt::Debug for ReadOnlyJournal {
 impl ReadOnlyJournal {
     /// Wraps an existing `FjallJournal`.
     #[must_use]
+    #[expect(dead_code)]
     pub(crate) fn new(inner: FjallJournal) -> Self {
         Self(inner)
     }
@@ -39,9 +40,7 @@ impl ReadOnlyJournal {
     ///
     /// This is just the normal open — the read-only guarantee comes from
     /// the wrapper type, not from the filesystem.
-    pub fn open_read_only(
-        path: impl AsRef<std::path::Path>,
-    ) -> Result<Self, JournalError> {
+    pub fn open_read_only(path: impl AsRef<std::path::Path>) -> Result<Self, JournalError> {
         let journal = FjallJournal::open(path, None)?;
         Ok(Self(journal))
     }
@@ -66,26 +65,17 @@ impl ReadOnlyJournal {
     }
 
     /// Returns whether the action index contains an entry for the given key.
-    pub fn has_action_index_entry(
-        &self,
-        key: impl AsRef<[u8]>,
-    ) -> Result<bool, JournalError> {
+    pub fn has_action_index_entry(&self, key: impl AsRef<[u8]>) -> Result<bool, JournalError> {
         self.0.has_action_index_entry(key)
     }
 
     /// Returns whether the status index contains an entry for the given key.
-    pub fn has_status_index_entry(
-        &self,
-        key: impl AsRef<[u8]>,
-    ) -> Result<bool, JournalError> {
+    pub fn has_status_index_entry(&self, key: impl AsRef<[u8]>) -> Result<bool, JournalError> {
         self.0.has_status_index_entry(key)
     }
 
     /// Returns whether the workflow index contains an entry for the given key.
-    pub fn has_workflow_index_entry(
-        &self,
-        key: impl AsRef<[u8]>,
-    ) -> Result<bool, JournalError> {
+    pub fn has_workflow_index_entry(&self, key: impl AsRef<[u8]>) -> Result<bool, JournalError> {
         self.0.has_workflow_index_entry(key)
     }
 }

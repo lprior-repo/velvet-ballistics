@@ -1,6 +1,6 @@
 use proptest::prelude::*;
 use vb_core::action::{
-    ActionContract, ActionTicket, Idempotency, IdempotencyViolation, RetrySafety, SideEffect,
+    ActionContract, ActionName, ActionTicket, Idempotency, IdempotencyViolation, RetrySafety, SideEffect,
     validate_idempotency_key_ingredients, verify_idempotency,
 };
 use vb_core::capability::Capability;
@@ -34,6 +34,7 @@ fn contract(
 ) -> ActionContract {
     ActionContract {
         id,
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1_024,

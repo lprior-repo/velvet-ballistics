@@ -372,7 +372,7 @@ fn decode_storage_key_returns_invalid_run_id_for_zero_index_status_run() {
     // Build a valid 18-byte key but with run_id = 0.
     let mut key = vec![0u8; 18];
     key[0] = 0x30; // PREFIX_INDEX_STATUS
-    key[1] = 1;    // state = Active
+    key[1] = 1; // state = Active
     // timestamp bytes (2..10) are already zero
     // run_id bytes (10..18) are already zero
     let result = decode_storage_key(&key);

@@ -7,7 +7,7 @@
 //! harnesses exercise arbitrary shapes — nodes, expressions, constants,
 //! step_names, and resource_contract — not just accessor variations.
 
-use crate::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+use crate::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use crate::capability::Capability;
 use crate::ids::{
     AccessorIdx, ActionId, BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId,
@@ -573,6 +573,7 @@ impl kani::Arbitrary for ActionContract {
         }
         ActionContract {
             id: kani::any(),
+            name: ActionName::new("test-action").unwrap(),
             input_slot_count: kani::any(),
             output_slot_count: kani::any(),
             max_input_bytes: kani::any(),

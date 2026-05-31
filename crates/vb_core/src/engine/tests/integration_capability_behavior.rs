@@ -11,7 +11,7 @@
 //! - Kani: determinism, short-circuit, monotonicity, empty-set, cross-action
 
 use crate::action::{
-    ActionContract, Idempotency, IdempotencyViolation, RetrySafety, SideEffect,
+    ActionContract, ActionName, Idempotency, IdempotencyViolation, RetrySafety, SideEffect,
     validate_idempotency_key_ingredients, verify_idempotency,
 };
 use crate::capability::{Capability, CapabilitySet};
@@ -234,6 +234,7 @@ fn capability_set_serialization_roundtrip() -> Result<(), String> {
 fn idempotency_same_key_slots_twice_yields_same_ok_result() -> Result<(), String> {
     let contract = ActionContract {
         id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -258,6 +259,7 @@ fn idempotency_same_key_slots_twice_yields_same_ok_result() -> Result<(), String
 fn idempotency_same_key_twice_yields_same_err_result() -> Result<(), String> {
     let contract = ActionContract {
         id: ActionId::new(2),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -281,6 +283,7 @@ fn idempotency_same_key_twice_yields_same_err_result() -> Result<(), String> {
 fn idempotency_different_key_slots_produce_independent_results() -> Result<(), String> {
     let contract = ActionContract {
         id: ActionId::new(3),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 2,
         output_slot_count: 2,
         max_input_bytes: 1024,
@@ -309,6 +312,7 @@ fn idempotency_different_key_slots_produce_independent_results() -> Result<(), S
 fn idempotency_key_reuse_after_completion_deterministic() -> Result<(), String> {
     let contract = ActionContract {
         id: ActionId::new(4),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -334,6 +338,7 @@ fn idempotency_key_reuse_after_completion_deterministic() -> Result<(), String> 
 fn idempotency_same_key_no_side_effect_always_ok_even_unsafe_retry() -> Result<(), String> {
     let contract = ActionContract {
         id: ActionId::new(5),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 0,
         output_slot_count: 1,
         max_input_bytes: 0,
@@ -359,6 +364,7 @@ fn idempotency_same_key_no_side_effect_always_ok_even_unsafe_retry() -> Result<(
 fn idempotency_storage_is_stateless_no_persistent_state_between_calls() -> Result<(), String> {
     let contract = ActionContract {
         id: ActionId::new(6),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -383,6 +389,7 @@ fn idempotency_storage_is_stateless_no_persistent_state_between_calls() -> Resul
 fn idempotency_stateless_new_frame_with_same_slots_returns_same_result() -> Result<(), String> {
     let contract = ActionContract {
         id: ActionId::new(7),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -433,6 +440,7 @@ fn capability_and_idempotency_are_independent_correctness_dimensions() -> Result
     let required_cap = cap("network", ActionId::new(10));
     let contract = ActionContract {
         id: ActionId::new(10),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -457,6 +465,7 @@ fn capability_and_idempotency_are_independent_correctness_dimensions() -> Result
 fn capability_grants_while_idempotency_fails_with_secret_key() -> Result<(), String> {
     let contract = ActionContract {
         id: ActionId::new(11),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -484,6 +493,7 @@ fn capability_grants_while_idempotency_fails_with_secret_key() -> Result<(), Str
 fn retry_safety_safe_with_writes_passes() -> Result<(), String> {
     let contract = ActionContract {
         id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -503,6 +513,7 @@ fn retry_safety_safe_with_writes_passes() -> Result<(), String> {
 fn retry_safety_safe_with_sends_passes() -> Result<(), String> {
     let contract = ActionContract {
         id: ActionId::new(2),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -521,6 +532,7 @@ fn retry_safety_safe_with_sends_passes() -> Result<(), String> {
 fn retry_safety_safe_with_creates_passes() -> Result<(), String> {
     let contract = ActionContract {
         id: ActionId::new(3),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -539,6 +551,7 @@ fn retry_safety_safe_with_creates_passes() -> Result<(), String> {
 fn retry_safety_safe_with_destroys_passes() -> Result<(), String> {
     let contract = ActionContract {
         id: ActionId::new(4),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -557,6 +570,7 @@ fn retry_safety_safe_with_destroys_passes() -> Result<(), String> {
 fn retry_safety_unsafe_with_writes_fails() -> Result<(), String> {
     let contract = ActionContract {
         id: ActionId::new(5),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -578,6 +592,7 @@ fn retry_safety_unsafe_with_writes_fails() -> Result<(), String> {
 fn retry_safety_unsafe_with_sends_fails() -> Result<(), String> {
     let contract = ActionContract {
         id: ActionId::new(6),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -599,6 +614,7 @@ fn retry_safety_unsafe_with_sends_fails() -> Result<(), String> {
 fn retry_safety_unsafe_with_creates_fails() -> Result<(), String> {
     let contract = ActionContract {
         id: ActionId::new(7),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -620,6 +636,7 @@ fn retry_safety_unsafe_with_creates_fails() -> Result<(), String> {
 fn retry_safety_unsafe_with_destroys_fails() -> Result<(), String> {
     let contract = ActionContract {
         id: ActionId::new(8),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -642,6 +659,7 @@ fn retry_safety_key_required_with_empty_keys_all_side_effects_fail() -> Result<(
     for se in [SideEffect::Writes, SideEffect::Sends, SideEffect::Creates, SideEffect::Destroys] {
         let contract = ActionContract {
             id: ActionId::new(100),
+            name: ActionName::new("test-action").unwrap(),
             input_slot_count: 1,
             output_slot_count: 1,
             max_input_bytes: 1024,
@@ -666,6 +684,7 @@ fn retry_safety_key_required_with_clean_keys_all_side_effects_pass() -> Result<(
     for se in [SideEffect::Writes, SideEffect::Sends, SideEffect::Creates, SideEffect::Destroys] {
         let contract = ActionContract {
             id: ActionId::new(200),
+            name: ActionName::new("test-action").unwrap(),
             input_slot_count: 1,
             output_slot_count: 1,
             max_input_bytes: 1024,
@@ -689,6 +708,7 @@ fn retry_safety_none_side_effect_passes_for_all_retry_safeties() -> Result<(), S
     for rs in [RetrySafety::Safe, RetrySafety::KeyRequired, RetrySafety::Unsafe] {
         let contract = ActionContract {
             id: ActionId::new(300),
+            name: ActionName::new("test-action").unwrap(),
             input_slot_count: 0,
             output_slot_count: 1,
             max_input_bytes: 0,

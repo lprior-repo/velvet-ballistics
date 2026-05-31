@@ -12,14 +12,12 @@ use vstd::prelude::*;
 verus! {
 
 /// Model of a timer generation value constrained to u64.
-#[verifier::external_body]
 pub struct TimerGeneration {
     pub value: u64,
 }
 
 impl TimerGeneration {
     /// Creates a new timer generation value, bound by u64::MAX.
-    #[verifier::external_body]
     pub spec fn new_spec(value: u64) -> Self {
         TimerGeneration { value }
     }

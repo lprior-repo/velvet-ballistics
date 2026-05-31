@@ -1,16 +1,18 @@
 #![forbid(unsafe_code)]
 
 use super::*;
-use crate::{ValidationError, ValidationResult};
 
+#[allow(dead_code)]
 fn make_workflow(fields: Vec<(&str, FieldValue)>) -> WorkflowDoc {
     WorkflowDoc::from_pairs(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
 }
 
+#[allow(dead_code)]
 fn make_step(fields: Vec<(&str, FieldValue)>) -> StepDoc {
     StepDoc::from_pairs(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
 }
 
+#[allow(dead_code)]
 fn valid_workflow_doc() -> WorkflowDoc {
     make_workflow(vec![
         (

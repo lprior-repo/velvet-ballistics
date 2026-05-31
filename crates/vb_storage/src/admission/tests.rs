@@ -407,6 +407,7 @@ fn submit_artifact_persists_non_empty_required_capabilities_when_contract_requir
     );
     let contract = vb_core::action::ActionContract {
         id: vb_core::ActionId::new(7),
+        name: vb_core::action::ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -444,6 +445,7 @@ fn submit_artifact_carries_idempotency_evidence_from_contracts() -> Result<(), S
     let action = vb_core::ActionId::new(11);
     let contract = vb_core::action::ActionContract {
         id: action,
+        name: vb_core::action::ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -478,6 +480,7 @@ fn submit_artifact_rejects_failed_idempotency_contract() -> Result<(), String> {
     let workflow = minimal_workflow()?;
     let contract = vb_core::action::ActionContract {
         id: vb_core::ActionId::new(12),
+        name: vb_core::action::ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,

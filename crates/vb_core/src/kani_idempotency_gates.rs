@@ -7,7 +7,7 @@
 #![forbid(unsafe_code)]
 
 use crate::action::{
-    ActionContract, ActionFailure, ActionFailureCode, ActionOutcome, ActionOutputReady,
+    ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutcome, ActionOutputReady,
     ActionTicket, Idempotency, IdempotencyViolation, RetryPolicy, RetrySafety, SideEffect,
     validate_action_outcome, verify_idempotency,
 };
@@ -27,6 +27,7 @@ fn bounded_contract_for_retry(retry_safety: RetrySafety) -> ActionContract {
 fn symbolic_contract_no_caps() -> ActionContract {
     ActionContract {
         id: ActionId::new(kani::any()),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: kani::any(),
         output_slot_count: kani::any(),
         max_input_bytes: kani::any(),
@@ -671,6 +672,7 @@ fn kani_verify_idempotency_missing_key() {
     // Build a non-None side-effect contract
     let make_contract = |retry_safety| ActionContract {
         id: ActionId::new(kani::any()),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,

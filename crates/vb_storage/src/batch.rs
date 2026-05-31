@@ -1170,7 +1170,7 @@ mod byte_accounting_tests {
         error::JournalError,
         records::RecordKind,
     };
-    use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
+    use vb_core::{RunId, StepIdx, WorkflowDigest, WorkflowId};
 
     fn temp_journal() -> (tempfile::TempDir, crate::FjallJournal) {
         let temp = tempfile::tempdir().expect("tempdir creation should succeed");
@@ -1215,7 +1215,7 @@ mod byte_accounting_tests {
     #[test]
     fn encode_record_returns_at_least_record_header_bytes() {
         // B02.1: encode_record always produces output >= RECORD_HEADER_BYTES (60).
-        let (_temp, journal) = temp_journal();
+        let (_temp, _journal) = temp_journal();
         let run = RunId::new(1);
         let event = make_event(run, 0);
         let value = encode_record(
@@ -1242,7 +1242,7 @@ mod byte_accounting_tests {
     #[test]
     fn encoded_length_exceeds_postcard_payload_length() {
         // B02.2: encode_record length exceeds postcard payload length.
-        let (_temp, journal) = temp_journal();
+        let (_temp, _journal) = temp_journal();
         let run = RunId::new(2);
         let event = make_event(run, 0);
         let value = encode_record(
@@ -1273,7 +1273,7 @@ mod byte_accounting_tests {
     fn accounting_uses_full_encoded_length_not_payload_length() {
         // B02.3: Accounting uses full Vec::len(), not payload_len_u32.
         // We verify by checking that encode_record produces the header + payload.
-        let (_temp, journal) = temp_journal();
+        let (_temp, _journal) = temp_journal();
         let run = RunId::new(3);
         let event = make_event(run, 0);
         let value = encode_record(
@@ -1297,7 +1297,7 @@ mod byte_accounting_tests {
     #[test]
     fn encode_record_rejects_oversize_payload_with_payload_too_large() {
         // B02.5: encode_record fails with PayloadTooLarge when payload > max.
-        let (_temp, journal) = temp_journal();
+        let (_temp, _journal) = temp_journal();
         let run = RunId::new(4);
         let event = make_event(run, 0);
         // Use max=0 to force PayloadTooLarge
@@ -1317,7 +1317,7 @@ mod byte_accounting_tests {
     #[test]
     fn encode_record_accepts_payload_at_exact_cap() {
         // B02.5 variant: exact cap is valid.
-        let (_temp, journal) = temp_journal();
+        let (_temp, _journal) = temp_journal();
         let run = RunId::new(5);
         let event = make_event(run, 0);
         let result = encode_record(
@@ -1336,8 +1336,8 @@ mod byte_accounting_tests {
     #[test]
     fn encode_record_failure_does_not_enter_write_batch() {
         // B02.6: encode_record failure does not mutate staged bytes (batch state).
-        let (_temp, journal) = temp_journal();
-        let mut batch = JournalWriteBatch::new(&journal);
+        let (_temp, _journal) = temp_journal();
+        let batch = JournalWriteBatch::new(&_journal);
         let initial_len = batch.len();
 
         // append_event will auto-encode and should reject impossible payload
@@ -1555,7 +1555,11 @@ mod byte_accounting_tests {
                 .expect("append");
         }
         // This one gets rejected
-        let _ = batch.append_event(&make_event(run, MAX_BATCH_COUNT as u64));
+        let result = batch.append_event(&make_event(run, MAX_BATCH_COUNT as u64));
+        assert!(
+            matches!(result, Err(JournalError::QueueFull)),
+            "overflow must be QueueFull"
+        );
 
         batch.commit().expect("commit must succeed");
 
@@ -1580,7 +1584,11 @@ mod byte_accounting_tests {
                 .expect("append");
         }
         // QueueFull for seq MAX_BATCH_COUNT
-        let _ = batch1.append_event(&make_event(run, MAX_BATCH_COUNT as u64));
+        let result = batch1.append_event(&make_event(run, MAX_BATCH_COUNT as u64));
+        assert!(
+            matches!(result, Err(JournalError::QueueFull)),
+            "overflow must be QueueFull"
+        );
         batch1.commit().expect("commit 1");
 
         // New batch - seq MAX_BATCH_COUNT is still unused
@@ -1843,7 +1851,11 @@ mod byte_accounting_tests {
 
         // Second: duplicate aborts
         let mut batch2 = JournalWriteBatch::new(&journal);
-        let _ = batch2.append_event(&event); // DuplicateEvent + abort
+        let result = batch2.append_event(&event); // DuplicateEvent + abort
+        assert!(
+            matches!(result, Err(JournalError::DuplicateEvent { run: _, seq: _ })),
+            "duplicate event must produce DuplicateEvent error, got {result:?}"
+        );
         // Commit should succeed (no-op for aborted batch)
         batch2.commit().expect("aborted batch commit must succeed");
 

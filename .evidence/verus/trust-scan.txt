@@ -1,3 +1,1 @@
-verification/verus/vb-fzgdn/PS-001-proof.rs:15:#[verifier::external_body]
-verification/verus/vb-fzgdn/PS-001-proof.rs:22:    #[verifier::external_body]
-verification/verus/cancel_kill_lattice.rs:88:#[verifier::external_body]
+VERUS_TRUST_SCAN_OK no assume/external/axiom matches in verification/verus contracts/verus

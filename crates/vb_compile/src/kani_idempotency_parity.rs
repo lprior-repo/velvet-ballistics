@@ -9,7 +9,7 @@
 #![forbid(unsafe_code)]
 
 use crate::is_compile_idempotency_gate_accepted;
-use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::ids::ActionId;
 use vb_validate::idempotency_contract::is_statically_idempotent_contract;
 
@@ -57,6 +57,7 @@ fn idempotency_gate_parity() {
 
                 let contract = ActionContract {
                     id: ActionId::new(0),
+                    name: ActionName::new("test-action").unwrap(),
                     input_slot_count: 1,
                     output_slot_count: 1,
                     max_input_bytes: 1024,

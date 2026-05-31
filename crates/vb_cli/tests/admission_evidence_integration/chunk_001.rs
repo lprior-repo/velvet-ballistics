@@ -2,7 +2,7 @@ use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use vb_core::action::{
-    ActionContract, Idempotency, RetrySafety, SideEffect, compute_action_idempotency_key,
+    ActionContract, ActionName, Idempotency, RetrySafety, SideEffect, compute_action_idempotency_key,
 };
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
@@ -185,6 +185,7 @@ fn action_contract(action: ActionId, required: bool) -> ActionContract {
     };
     ActionContract {
         id: action,
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 2,
         max_input_bytes: 1024,

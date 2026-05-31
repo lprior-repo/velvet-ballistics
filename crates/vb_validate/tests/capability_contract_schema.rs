@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 
 use proptest::prelude::*;
-use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::capability::Capability;
 use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
@@ -60,6 +60,7 @@ fn capability(name: &str, action: u16) -> Capability {
 fn action_contract(action: u16, required_capabilities: Box<[Capability]>) -> ActionContract {
     ActionContract {
         id: ActionId::new(action),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,

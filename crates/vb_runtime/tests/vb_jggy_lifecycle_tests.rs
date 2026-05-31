@@ -20,8 +20,8 @@
 //! These tests are expected to FAIL until vb-jggy implementation is complete.
 
 use vb_core::action::{
-    ActionContract, ActionFailure, ActionFailureCode, ActionOutputReady, ActionTicket, Idempotency,
-    RetryPolicy as VbRetryPolicy, RetrySafety, SideEffect,
+    ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutputReady, ActionTicket,
+    Idempotency, RetryPolicy as VbRetryPolicy, RetrySafety, SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
@@ -60,6 +60,7 @@ fn action_contract(action: ActionId, required: bool) -> ActionContract {
     };
     ActionContract {
         id: action,
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,

@@ -7,9 +7,7 @@
 #[allow(clippy::panic_in_result_fn)]
 mod tests {
     use crate::errors::{CoreError, CoreResult};
-    use crate::frame::{
-        RunFrame, SlotIdx, SlotValue, StepIdx, StepState, Taint,
-    };
+    use crate::frame::{RunFrame, SlotIdx, SlotValue, StepIdx, StepState, Taint};
     use crate::ids::RunId;
 
     #[test]
@@ -1658,7 +1656,10 @@ mod frame_kani_harnesses {
         let mut frame = frame.unwrap();
 
         let result = frame.write_slot_with_taint(slot, value, taint);
-        kani::assert(result.is_ok(), "write_slot_with_taint succeeds for valid slot");
+        kani::assert(
+            result.is_ok(),
+            "write_slot_with_taint succeeds for valid slot",
+        );
     }
 
     /// K-EXEC1: executed counter starts at 0.
@@ -1706,8 +1707,14 @@ mod frame_kani_harnesses {
 
         let result = frame.reinitialize(new_run_id, new_pc, step_count, slot_count);
         kani::assert(result.is_ok(), "reinitialize succeeds with valid params");
-        kani::assert(frame.executed() == 0, "executed reset to 0 after reinitialize");
-        kani::assert(frame.run_id() == new_run_id, "run_id updated after reinitialize");
+        kani::assert(
+            frame.executed() == 0,
+            "executed reset to 0 after reinitialize",
+        );
+        kani::assert(
+            frame.run_id() == new_run_id,
+            "run_id updated after reinitialize",
+        );
         kani::assert(frame.pc() == new_pc, "pc updated after reinitialize");
     }
 

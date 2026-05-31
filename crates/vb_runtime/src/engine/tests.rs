@@ -3,6 +3,7 @@
 //! Engine tests moved from engine.rs for line count compliance.
 #![allow(unused_imports)]
 
+use vb_core::action::ActionName;
 use vb_core::action::Idempotency;
 use vb_core::action::RetrySafety;
 use vb_core::action::SideEffect;
@@ -451,6 +452,7 @@ fn execute_do_returns_awaiting_action_for_known_action() {
     }
     let contract = vb_core::action::ActionContract {
         id: ActionId::new(1),
+        name: vb_core::action::ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 0,
         max_input_bytes: 1024,
@@ -464,6 +466,7 @@ fn execute_do_returns_awaiting_action_for_known_action() {
     let registry_contracts: Vec<vb_core::action::ActionContract> = vec![
         vb_core::action::ActionContract {
             id: ActionId::new(0),
+            name: vb_core::action::ActionName::new("test-action").unwrap(),
             input_slot_count: 0,
             output_slot_count: 0,
             max_input_bytes: 0,
@@ -511,6 +514,7 @@ fn execute_do_propagates_taint_from_secret_input_without_violation() {
     assert_eq!(write_result.map(|_| ()), Ok(()));
     let contract = vb_core::action::ActionContract {
         id: ActionId::new(1),
+        name: vb_core::action::ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 0,
         max_input_bytes: 1024,
@@ -524,6 +528,7 @@ fn execute_do_propagates_taint_from_secret_input_without_violation() {
     let registry_contracts: Vec<vb_core::action::ActionContract> = vec![
         vb_core::action::ActionContract {
             id: ActionId::new(0),
+            name: vb_core::action::ActionName::new("test-action").unwrap(),
             input_slot_count: 0,
             output_slot_count: 0,
             max_input_bytes: 0,
@@ -569,6 +574,7 @@ fn execute_do_returns_unknown_action_for_unregistered_action() {
     let empty_contracts: Vec<vb_core::action::ActionContract> = Vec::new();
     let dummy_contract = vb_core::action::ActionContract {
         id: ActionId::new(0),
+        name: vb_core::action::ActionName::new("test-action").unwrap(),
         input_slot_count: 0,
         output_slot_count: 0,
         max_input_bytes: 0,
@@ -644,6 +650,7 @@ fn make_original_ticket() -> ActionTicket {
 fn dummy_contract() -> vb_core::action::ActionContract {
     vb_core::action::ActionContract {
         id: ActionId::new(0),
+        name: vb_core::action::ActionName::new("test-action").unwrap(),
         input_slot_count: 0,
         output_slot_count: 0,
         max_input_bytes: 0,
@@ -1393,6 +1400,7 @@ fn bh_execute_do_propagates_taint_through_ticket_for_at_least_once() {
 
     let contract = vb_core::action::ActionContract {
         id: ActionId::new(0),
+        name: vb_core::action::ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -1545,8 +1553,8 @@ mod proptests {
 mod blackhat_engine {
 
     use vb_core::action::{
-        ActionContract, ActionFailure, ActionFailureCode, ActionOutcome, ActionTicket, Idempotency,
-        RetryPolicy as VbRetryPolicy, RetrySafety, SideEffect,
+        ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutcome, ActionTicket,
+        Idempotency, RetryPolicy as VbRetryPolicy, RetrySafety, SideEffect,
     };
     use vb_core::capability::CapabilitySet;
     use vb_core::engine::EngineSignal;
@@ -1569,6 +1577,7 @@ mod blackhat_engine {
     fn dummy_contract() -> ActionContract {
         ActionContract {
             id: ActionId::new(0),
+            name: ActionName::new("test-action").unwrap(),
             input_slot_count: 0,
             output_slot_count: 0,
             max_input_bytes: 0,
@@ -1975,6 +1984,7 @@ mod blackhat_engine {
         };
         let contracts = vec![ActionContract {
             id: ActionId::new(0),
+            name: ActionName::new("test-action").unwrap(),
             input_slot_count: 1,
             output_slot_count: 1,
             max_input_bytes: 1024,
@@ -2291,6 +2301,7 @@ mod blackhat_engine {
         );
         let contract = ActionContract {
             id: ActionId::new(0),
+            name: ActionName::new("test-action").unwrap(),
             input_slot_count: 1,
             output_slot_count: 1,
             max_input_bytes: 1024,

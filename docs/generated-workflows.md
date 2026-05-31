@@ -112,7 +112,7 @@ unique
 ## Deferred Target Command
 
 ```bash
-velvet-ballastics compile workflow.yaml --emit rust --out generated/issue_triage.rs
+velvet-ballistics compile workflow.yaml --emit rust --out generated/issue_triage.rs
 ```
 
 ## Generated Code Rules

@@ -10,6 +10,7 @@
 //! tests verify the contract is satisfied.
 
 use vb_core::{
+use vb_core::action::ActionName;
     action::verify_idempotency,
     ActionContract, ActionId, Idempotency, RetrySafety, RunFrame, RunId,
     SideEffect, SlotIdx, SlotValue, StepIdx, Taint,
@@ -122,6 +123,7 @@ fn retry_safety_idempotent_allows_retry_without_key() {
 
     let contract = ActionContract {
         id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -152,6 +154,7 @@ fn retry_safety_not_retry_safe_rejects_retry() {
 
     let contract = ActionContract {
         id: ActionId::new(2),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -186,6 +189,7 @@ fn retry_safety_requires_idempotency_key_passes_with_key() {
 
     let contract = ActionContract {
         id: ActionId::new(3),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -222,6 +226,7 @@ fn retry_safety_requires_idempotency_key_fails_without_key() {
 
     let contract = ActionContract {
         id: ActionId::new(4),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -255,6 +260,7 @@ fn retry_safety_unknown_rejects_retry() {
 
     let contract = ActionContract {
         id: ActionId::new(5),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -289,6 +295,7 @@ fn verify_idempotency_match_is_exhaustive_for_all_master_plan_variants() {
     fn check_variant(safety: RetrySafety, should_pass: bool) {
         let contract = ActionContract {
             id: ActionId::new(99),
+            name: ActionName::new("test-action").unwrap(),
             input_slot_count: 1,
             output_slot_count: 1,
             max_input_bytes: 1024,

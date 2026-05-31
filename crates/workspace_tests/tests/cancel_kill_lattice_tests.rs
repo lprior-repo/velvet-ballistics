@@ -17,7 +17,7 @@
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 
-use vb_core::action::{
+use vb_core::action::{ActionName, 
     ActionFailure, ActionFailureCode, ActionOutputReady, ActionTicket, Idempotency, RetryPolicy,
     RetrySafety, SideEffect,
 };
@@ -148,6 +148,7 @@ fn action_contract(
 ) -> vb_core::action::ActionContract {
     vb_core::action::ActionContract {
         id: action,
+        name: vb_core::action::ActionName::new("test-action").unwrap(),
         input_slot_count: input_slots,
         output_slot_count: output_slots,
         max_input_bytes: 1024,

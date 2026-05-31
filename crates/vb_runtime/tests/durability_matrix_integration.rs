@@ -11,7 +11,7 @@
 //! Integration tests for durability matrix: handler persistence-before-ack.
 
 use std::sync::Arc;
-use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::{SlotValue, Taint};
@@ -27,6 +27,7 @@ fn suspended_action_contracts() -> Box<[ActionContract]> {
     let action = ActionId::new(0);
     Box::from([ActionContract {
         id: action,
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,

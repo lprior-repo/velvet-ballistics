@@ -1560,7 +1560,7 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
 ///
 /// Returns `None` if the symbolic name is not registered.
 #[must_use]
-pub const fn symbolic_to_numeric(symbolic: &str) -> Option<u16> {
+pub fn symbolic_to_numeric(symbolic: &str) -> Option<u16> {
     let mut i = 0;
     while i < CODE_REGISTRY.len() {
         if let Some(entry) = CODE_REGISTRY.get(i)
@@ -1577,7 +1577,7 @@ pub const fn symbolic_to_numeric(symbolic: &str) -> Option<u16> {
 ///
 /// Returns `None` if the numeric code is not in the registry.
 #[must_use]
-pub const fn numeric_to_symbolic(numeric: u16) -> Option<&'static str> {
+pub fn numeric_to_symbolic(numeric: u16) -> Option<&'static str> {
     let mut i = 0;
     while i < CODE_REGISTRY.len() {
         if let Some(entry) = CODE_REGISTRY.get(i)

@@ -1,4 +1,3 @@
-
 use vb_core::action::ActionTicket;
 use vb_core::frame::{RunFrame, StepState};
 use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
@@ -189,7 +188,9 @@ fn error_handler_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    Some(vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("error_handler_workflow"))
+    Some(
+        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("error_handler_workflow"),
+    )
 }
 
 fn retry_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
@@ -287,7 +288,10 @@ fn wait_event_no_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflo
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    Some(vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("wait_event_no_timeout_workflow"))
+    Some(
+        vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
+            .expect("wait_event_no_timeout_workflow"),
+    )
 }
 
 // ---- advance_after_timer_fire rejects terminal WaitUntil (no next) ----
@@ -376,7 +380,10 @@ fn wait_event_with_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkf
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    Some(vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("wait_event_with_timeout_workflow"))
+    Some(
+        vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
+            .expect("wait_event_with_timeout_workflow"),
+    )
 }
 
 #[test]
@@ -437,7 +444,10 @@ fn ask_with_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    Some(vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("ask_with_timeout_workflow"))
+    Some(
+        vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
+            .expect("ask_with_timeout_workflow"),
+    )
 }
 
 #[test]
@@ -488,7 +498,10 @@ fn ask_without_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow>
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    Some(vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("ask_without_timeout_workflow"))
+    Some(
+        vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
+            .expect("ask_without_timeout_workflow"),
+    )
 }
 
 #[test]
@@ -860,7 +873,8 @@ fn retry_policy_after_action_rejects_non_i64_policy_slot() {
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("retry_policy_after_action_rejects_non_i64_policy_slot");
+    let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
+        .expect("retry_policy_after_action_rejects_non_i64_policy_slot");
     let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
         return;
     };
@@ -964,7 +978,8 @@ fn retry_policy_after_action_rejects_negative_max_attempts() {
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("retry_policy_after_action_rejects_negative_max_attempts");
+    let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
+        .expect("retry_policy_after_action_rejects_negative_max_attempts");
     let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
         return;
     };
@@ -1047,7 +1062,8 @@ fn retry_policy_after_action_rejects_zero_max_attempts() {
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("retry_policy_after_action_rejects_zero_max_attempts");
+    let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
+        .expect("retry_policy_after_action_rejects_zero_max_attempts");
     let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
         return;
     };
@@ -1180,7 +1196,10 @@ fn error_handler_with_slot_workflow() -> Option<vb_core::workflow::CompiledWorkf
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    Some(vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("error_handler_with_slot_workflow"))
+    Some(
+        vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
+            .expect("error_handler_with_slot_workflow"),
+    )
 }
 
 #[test]
@@ -1292,7 +1311,8 @@ fn seed_input_slots_writes_multiple_distinct_values() {
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("seed_input_slots_writes_multiple_distinct_values");
+    let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
+        .expect("seed_input_slots_writes_multiple_distinct_values");
     let Some(mut frame) =
         RunFrame::new(RunId::new(1), wf.entry(), wf.node_count(), wf.slot_count()).ok()
     else {
@@ -1597,7 +1617,8 @@ fn validate_action_completion_rejects_when_node_is_not_do() {
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("validate_action_completion_rejects_when_node_is_not_do");
+    let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
+        .expect("validate_action_completion_rejects_when_node_is_not_do");
     let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
         return;
     };
@@ -1856,7 +1877,8 @@ mod proptest_tests {
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
         };
-        let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("make_simple_state");
+        let wf =
+            vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("make_simple_state");
         let mut state = make_run_state(wf, RunId::new(1))?;
         assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
         if let Some(attempt) = state.action_attempts.get_mut(0) {

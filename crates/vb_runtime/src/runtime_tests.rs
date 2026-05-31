@@ -9,8 +9,8 @@ use crate::shard::ShardConfig;
 use crate::trace::TraceEvent;
 use std::sync::{Arc, Mutex};
 use vb_core::action::{
-    ActionContract, ActionFailureCode, ActionOutputReady, ActionTicket, Idempotency, RetryPolicy,
-    RetrySafety, SideEffect,
+    ActionContract, ActionFailureCode, ActionName, ActionOutputReady, ActionTicket, Idempotency,
+    RetryPolicy, RetrySafety, SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
@@ -149,6 +149,7 @@ mod tests {
     fn action_contract(action: ActionId, input_slots: u16, output_slots: u16) -> ActionContract {
         ActionContract {
             id: action,
+            name: ActionName::new("test-action").unwrap(),
             input_slot_count: input_slots,
             output_slot_count: output_slots,
             max_input_bytes: 1024,

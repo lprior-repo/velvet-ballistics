@@ -34,13 +34,11 @@ use crate::{
     IpcTraceEventKind, SubmitRunPayload,
 };
 
+use super::helpers::{AWAITING_MAGIC_MAX_BYTES, MagicValidationState, validate_magic_early};
 use super::{
     ClientConnection, IpcResponse, IpcServer, WorkflowResolutionError, WorkflowResolver,
     append_read_bytes, borrow_workflow_resolver, extract_payload, frame_error_response,
     frame_total_len, read_buffer_header, send_response,
-};
-use super::helpers::{
-    validate_magic_early, AWAITING_MAGIC_MAX_BYTES, MagicValidationState,
 };
 
 const SERVER_TOKEN: Token = Token(0);

@@ -8,7 +8,7 @@ use crate::references::{
     validate_single_reference_with_context,
 };
 #[cfg(test)]
-use crate::{ValidationError, ValidationResult};
+use crate::ValidationError;
 
 fn make_tables(inputs: &[&str], vars: &[&str], secrets: &[&str], step_ids: &[&str]) -> RefTables {
     RefTables {

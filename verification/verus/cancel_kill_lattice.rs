@@ -75,24 +75,6 @@ pub enum CommandResult {
 // Trusted Bridge: Spec-to-Production Correspondence
 // ─────────────────────────────────────────────────────────────────
 
-/// Trusted spec function modeling the production Shard's run classification.
-/// Production ref: crates/vb_runtime/src/shard/lifecycle/chunk_002.rs
-/// - self.runs.contains_key(&run) → Live
-/// - self.terminal_runs.contains(&run) → Terminal (with kind determined by last journal event)
-/// - neither → Missing
-///
-/// TRUSTED BOUNDARY: This is a mathematical model. The production Shard maintains
-/// runs and terminal_runs as IndexMap/IndexSet; this spec captures the logical
-/// state classification that the production handlers depend on.
-/// Trusted-base ref: TBR-001, TBR-006
-#[verifier::external_body]
-pub proof fn classify_run_has_correct_semantics(run_lifecycle: RunLifecycle) -> bool {
-    // This is a trusted bridge: production Shard's runs.contains_key and
-    // terminal_runs.contains jointly determine which handler path executes.
-    // See chunk_002:101-135 for the mapping.
-    true
-}
-
 // ─────────────────────────────────────────────────────────────────
 // PO-VERUS-001: Live-Only Transition Rules
 // ─────────────────────────────────────────────────────────────────

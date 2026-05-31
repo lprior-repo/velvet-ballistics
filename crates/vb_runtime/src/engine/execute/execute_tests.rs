@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::primitives::collect::CollectStates;
-use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::frame::RunFrame;
 use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, Taint};
@@ -243,6 +243,7 @@ fn execute_do_with_known_contract_returns_awaiting_action() {
     let contracts: Vec<ActionContract> = vec![
         ActionContract {
             id: ActionId::new(0),
+            name: ActionName::new("test-action").unwrap(),
             input_slot_count: 0,
             output_slot_count: 0,
             max_input_bytes: 0,
@@ -255,6 +256,7 @@ fn execute_do_with_known_contract_returns_awaiting_action() {
         },
         ActionContract {
             id: ActionId::new(1),
+            name: ActionName::new("test-action").unwrap(),
             input_slot_count: 1,
             output_slot_count: 0,
             max_input_bytes: 1024,
@@ -315,6 +317,7 @@ fn execute_do_with_unknown_contract_returns_error() {
     };
     let contracts: Vec<ActionContract> = vec![ActionContract {
         id: ActionId::new(0),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 0,
         output_slot_count: 0,
         max_input_bytes: 0,
@@ -377,6 +380,7 @@ fn execute_do_taint_violation_for_deterministic_pure_with_secret_input() {
     };
     let contracts: Vec<ActionContract> = vec![ActionContract {
         id: ActionId::new(0),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 0,
         max_input_bytes: 1024,

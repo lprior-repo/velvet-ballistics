@@ -10,6 +10,7 @@
 //! tests verify the contract is satisfied.
 
 use vb_core::{
+use vb_core::action::ActionName;
     action::verify_idempotency,
     ActionContract, ActionId, Idempotency, RetrySafety, RunFrame, RunId,
     SideEffect, SlotIdx, SlotValue, StepIdx, Taint,
@@ -153,6 +154,7 @@ fn side_effect_verify_idempotency_handles_pure_correctly() {
 
     let contract = ActionContract {
         id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 0,
         output_slot_count: 1,
         max_input_bytes: 0,

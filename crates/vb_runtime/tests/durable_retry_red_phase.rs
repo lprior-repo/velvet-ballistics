@@ -13,7 +13,7 @@
 // This file is Cargo-discovered evidence of the gap between contract and implementation.
 
 use vb_core::action::{
-    ActionContract, ActionFailure, ActionFailureCode, ActionTicket, Idempotency,
+    ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionTicket, Idempotency,
     RetryPolicy as VbRetryPolicy, RetrySafety, SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
@@ -338,6 +338,7 @@ fn action_contract(action: ActionId, required: bool) -> ActionContract {
     };
     ActionContract {
         id: action,
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,

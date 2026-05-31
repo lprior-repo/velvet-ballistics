@@ -12,7 +12,7 @@
 //! - R20: vb_cli::commands_verify.rs:76 calls validate
 //! - R21: fuzz::lib.rs:40,60 calls validate_with_contracts
 
-use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::ids::{ActionId, SlotIdx, StepIdx};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 use vb_validate::ValidationError;
@@ -41,6 +41,7 @@ fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
 fn make_contract(action_id: u16) -> ActionContract {
     ActionContract {
         id: ActionId::new(action_id),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,

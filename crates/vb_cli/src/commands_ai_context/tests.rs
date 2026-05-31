@@ -1,4 +1,3 @@
-
 use super::latest_snapshot_from_events;
 use vb_storage::{EventSeq, JournalError, JournalEvent};
 

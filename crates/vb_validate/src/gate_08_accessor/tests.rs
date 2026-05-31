@@ -1,4 +1,3 @@
-
 use super::*;
 use proptest::prelude::*;
 use vb_core::ids::{SlotIdx, StepIdx, SymbolId};

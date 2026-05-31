@@ -3,7 +3,7 @@
 //! Action execution helpers for runtime engine.
 
 use vb_core::action::{
-    ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionOutcome, ActionTicket,
+    ActionContract, ActionName, ActionError, ActionFailure, ActionFailureCode, ActionOutcome, ActionTicket,
     Idempotency, propagate_action_taint,
 };
 use vb_core::capability::CapabilitySet;
@@ -223,7 +223,7 @@ pub fn resolve_contract(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vb_core::action::{Idempotency, RetrySafety, SideEffect};
+    use vb_core::action::{ActionName, Idempotency, RetrySafety, SideEffect};
     use vb_core::capability::Capability;
     use vb_core::ids::{RunId, SeqNo};
 
@@ -424,6 +424,7 @@ mod tests {
     fn make_contract(id: u16) -> ActionContract {
         ActionContract {
             id: ActionId::new(id),
+            name: ActionName::new("test-action").unwrap(),
             input_slot_count: 0,
             output_slot_count: 0,
             max_input_bytes: 0,
@@ -505,6 +506,7 @@ mod tests {
     fn make_contract_with_capability(action_id: ActionId, cap: Capability) -> ActionContract {
         ActionContract {
             id: action_id,
+            name: ActionName::new("test-action").unwrap(),
             input_slot_count: 1,
             output_slot_count: 1,
             max_input_bytes: 1024,

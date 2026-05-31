@@ -19,7 +19,7 @@
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 
-use vb_core::action::{
+use vb_core::action::{ActionName, 
     ActionFailure, ActionFailureCode, ActionOutputReady, ActionTicket, Idempotency, RetryPolicy,
     RetrySafety, SideEffect,
 };
@@ -152,6 +152,7 @@ fn required_capability(action: ActionId) -> Capability {
 fn action_contract(action: ActionId, output_slots: u16) -> vb_core::action::ActionContract {
     vb_core::action::ActionContract {
         id: action,
+        name: vb_core::action::ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: output_slots,
         max_input_bytes: 1024,

@@ -6,7 +6,7 @@
 //! and ND node separation.
 
 use proptest::prelude::*;
-use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::ids::{ActionId, SlotIdx, StepIdx};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ExprOp, ResourceContract, WorkflowParts};
 
@@ -37,6 +37,7 @@ fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16, symbols_count: u32) -> 
 fn make_contract(action_id: u16) -> ActionContract {
     ActionContract {
         id: ActionId::new(action_id),
+        name: ActionName::new("test-action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
