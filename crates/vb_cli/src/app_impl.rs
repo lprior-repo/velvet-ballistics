@@ -669,7 +669,7 @@ fn registered_cli_actions() -> vb_core::action::ActionResult<ActionRegistry> {
     cli_action_specs()
         .iter()
         .try_fold(ActionRegistry::new(), |mut registry, spec| {
-            registry.register(action_contract(*spec))?;
+            registry.register(action_contract(spec))?;
             Ok(registry)
         })
 }

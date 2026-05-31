@@ -1292,9 +1292,7 @@ fn seed_input_slots_writes_multiple_distinct_values() {
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    let Some(wf) = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok() else {
-        return;
-    };
+    let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("seed_input_slots_writes_multiple_distinct_values");
     let Some(mut frame) =
         RunFrame::new(RunId::new(1), wf.entry(), wf.node_count(), wf.slot_count()).ok()
     else {
@@ -1599,9 +1597,7 @@ fn validate_action_completion_rejects_when_node_is_not_do() {
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    let Some(wf) = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok() else {
-        return;
-    };
+    let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("validate_action_completion_rejects_when_node_is_not_do");
     let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
         return;
     };
