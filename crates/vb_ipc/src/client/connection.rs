@@ -8,7 +8,6 @@ use super::error::IpcClientError;
 use crate::frame::{read_frame_header_bounded, read_frame_payload_bounded};
 use crate::server::IpcResponse;
 use crate::{IpcCommand, IpcError, IpcPayload, MaxPayloadBytes};
-use vb_core::WorkflowDigest;
 
 /// IPC client connected to a Unix domain socket.
 pub struct IpcClient {
@@ -90,20 +89,6 @@ impl IpcClient {
     /// Sends a shutdown command.
     pub fn shutdown(&mut self, correlation: u64) -> Result<(), IpcClientError> {
         self.send_raw(IpcCommand::Shutdown, correlation, &[])
-    }
-
-    /// Sends a list-runs command.
-    pub fn list_runs(
-        &mut self,
-        correlation: u64,
-        limit: u32,
-        workflow: Option<WorkflowDigest>,
-    ) -> Result<(), IpcClientError> {
-        self.send_command(
-            IpcCommand::ListRuns,
-            correlation,
-            &IpcPayload::ListRuns { limit, workflow },
-        )
     }
 }
 

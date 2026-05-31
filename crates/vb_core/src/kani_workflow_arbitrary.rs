@@ -13,6 +13,7 @@ use crate::ids::{
     AccessorIdx, ActionId, BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId,
     WorkflowDigest,
 };
+use crate::frame::{RunFrame, StepState};
 use crate::value::{ConstValue, FiniteF64, SlotValue, Taint};
 use crate::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, ExprBranch, ExprOp, ExprProgram, PathSegment,
@@ -402,6 +403,24 @@ impl kani::Arbitrary for WorkflowParts {
             resource_contract: kani::any::<ResourceContract>(),
             step_names: step_names.into_boxed_slice(),
         }
+    }
+}
+
+impl kani::Arbitrary for RunFrame {
+    fn any() -> Self {
+        let step_count: u16 = kani::any();
+        kani::assume(step_count > 0);
+        kani::assume(step_count <= 8);
+        let slot_count: u16 = kani::any();
+        kani::assume(slot_count <= 8);
+        let first_step: u16 = kani::any();
+        kani::assume(first_step < step_count);
+        let run_id = crate::ids::RunId::new(kani::any::<u64>());
+        let first_step_idx = StepIdx::new(first_step);
+        // With valid assumes, RunFrame::new always succeeds (step_count > 0, first_step < step_count).
+        // The Ok variant is guaranteed; Err is unreachable under these assumes.
+        RunFrame::new(run_id, first_step_idx, step_count, slot_count)
+            .unwrap_or_else(|_| unreachable!("RunFrame::new failed with valid assumes"))
     }
 }
 

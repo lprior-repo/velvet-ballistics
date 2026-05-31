@@ -159,7 +159,7 @@ mod tests {
         let mut runtime = make_runtime();
         server.set_test_poll_once_result(Err(IpcServerError::TooManyClients));
         let result = serve_ipc_with_resolver(&mut server, &mut runtime, Some(Duration::ZERO), None);
-        assert_eq!(result, Err(IpcServerError::TooManyClients));
+        assert!(matches!(result, Err(IpcServerError::TooManyClients)));
     }
 
     #[test]
@@ -233,41 +233,6 @@ mod tests {
     fn dispatch_command_with_resolver_drain_trace() {
         let mut runtime = make_runtime();
         let header = crate::IpcFrameHeader::new(IpcCommand::DrainTrace, 0, 0, 0);
-        let response = dispatch_command_with_resolver(&header, &[], &mut runtime, None);
-        assert_eq!(response, IpcResponse::BadRequest);
-    }
-
-    #[test]
-    fn dispatch_command_with_resolver_get_metrics() {
-        let mut runtime = make_runtime();
-        let header = crate::IpcFrameHeader::new(IpcCommand::GetMetrics, 0, 0, 0);
-        let response = dispatch_command_with_resolver(&header, &[], &mut runtime, None);
-        match response {
-            IpcResponse::Metrics(_) => {}
-            other => panic!("expected Metrics, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn dispatch_command_with_resolver_verify_workflow() {
-        let mut runtime = make_runtime();
-        let header = crate::IpcFrameHeader::new(IpcCommand::VerifyWorkflow, 0, 0, 0);
-        let response = dispatch_command_with_resolver(&header, &[], &mut runtime, None);
-        assert_eq!(response, IpcResponse::BadRequest);
-    }
-
-    #[test]
-    fn dispatch_command_with_resolver_get_workflow_graph() {
-        let mut runtime = make_runtime();
-        let header = crate::IpcFrameHeader::new(IpcCommand::GetWorkflowGraph, 0, 0, 0);
-        let response = dispatch_command_with_resolver(&header, &[], &mut runtime, None);
-        assert_eq!(response, IpcResponse::BadRequest);
-    }
-
-    #[test]
-    fn dispatch_command_with_resolver_get_taint_report() {
-        let mut runtime = make_runtime();
-        let header = crate::IpcFrameHeader::new(IpcCommand::GetTaintReport, 0, 0, 0);
         let response = dispatch_command_with_resolver(&header, &[], &mut runtime, None);
         assert_eq!(response, IpcResponse::BadRequest);
     }

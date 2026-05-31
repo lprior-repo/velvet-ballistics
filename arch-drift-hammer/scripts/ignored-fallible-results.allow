@@ -1,3 +1,0 @@
-# Path-scoped exceptions for scripts/check-ignored-fallible-results.sh.
-# Format:
-# crates/<crate>/src/<file>.rs|DISCARD-001|owner=<name>|expiry=YYYY-MM-DD|follow_up=<bead>|reason=<why>

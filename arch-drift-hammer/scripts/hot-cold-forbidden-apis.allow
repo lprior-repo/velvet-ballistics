@@ -1,3 +1,0 @@
-# Path-scoped exceptions for scripts/check-hot-cold-forbidden-apis.sh.
-# Format:
-# crates/<crate>/src/<file>.rs|CLASS|owner=<name>|reviewed_by=<name>|test=<evidence>|reason=<why>
