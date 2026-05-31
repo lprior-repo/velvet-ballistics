@@ -32,16 +32,6 @@ pub enum IpcCommand {
     Health = 10,
     /// Request graceful shutdown.
     Shutdown = 11,
-    /// List active runs.
-    ListRuns = 12,
-    /// Query runtime metrics (queue depths, shard load, throughput).
-    GetMetrics = 13,
-    /// Retrieve the graph structure of a compiled workflow.
-    GetWorkflowGraph = 14,
-    /// Get taint report for a compiled workflow (secret-to-sink paths).
-    GetTaintReport = 15,
-    /// Verify a compiled workflow and return validation certificates.
-    VerifyWorkflow = 16,
 }
 
 impl IpcCommand {
