@@ -9,11 +9,11 @@
 
 use crate::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use crate::capability::Capability;
+use crate::frame::RunFrame;
 use crate::ids::{
     AccessorIdx, ActionId, BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId,
     WorkflowDigest,
 };
-use crate::frame::{RunFrame, StepState};
 use crate::value::{ConstValue, FiniteF64, SlotValue, Taint};
 use crate::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, ExprBranch, ExprOp, ExprProgram, PathSegment,

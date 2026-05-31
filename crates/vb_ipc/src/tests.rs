@@ -821,7 +821,15 @@ fn header_decode_accepts_unknown_command_id() {
 
     let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
 
-    assert_eq!(decoded, Ok(IpcFrameHeader::new(IpcCommand::UnknownCommand(200), 0, 1, 0)));
+    assert_eq!(
+        decoded,
+        Ok(IpcFrameHeader::new(
+            IpcCommand::UnknownCommand(200),
+            0,
+            1,
+            0
+        ))
+    );
 }
 
 #[test]
@@ -1719,7 +1727,10 @@ fn frame_validation_zero_command_id_returns_unknown_command() {
 
     let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
 
-    assert_eq!(result, Ok(IpcFrameHeader::new(IpcCommand::UnknownCommand(0), 0, 0, 0)));
+    assert_eq!(
+        result,
+        Ok(IpcFrameHeader::new(IpcCommand::UnknownCommand(0), 0, 0, 0))
+    );
 }
 
 #[test]
@@ -1731,7 +1742,10 @@ fn frame_validation_unrecognized_command_id_returns_unknown_command() {
 
     let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
 
-    assert_eq!(result, Ok(IpcFrameHeader::new(IpcCommand::UnknownCommand(99), 0, 0, 0)));
+    assert_eq!(
+        result,
+        Ok(IpcFrameHeader::new(IpcCommand::UnknownCommand(99), 0, 0, 0))
+    );
 }
 
 #[test]

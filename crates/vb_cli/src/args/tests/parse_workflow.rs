@@ -1,11 +1,4 @@
-use crate::args::Command, DurabilityMode, EmitTarget, OutputFormat, ParseError, StepTarget, parse_args;
-use crate::commands_journal::TraceStatus;
-use std::ffi::OsString;
-use std::path::PathBuf;
-
-pub fn args(parts: &[&str]) -> Vec<OsString> {
-    parts.iter().map(|part| OsString::from(*part)).collect()
-}
+use super::*;
 
 #[test]
 fn parse_validate_accepts_json_flag() {
@@ -128,4 +121,3 @@ fn parse_compile_rejects_deferred_rust_emit_target() {
         "expected UnknownEmitTarget(rust), got {parsed:?}"
     );
 }
-

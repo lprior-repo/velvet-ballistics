@@ -1,3 +1,5 @@
+use super::*;
+
 #[test]
 fn parse_system_status_rejects_unknown_profile() {
     let parsed = parse_args(&args(&[

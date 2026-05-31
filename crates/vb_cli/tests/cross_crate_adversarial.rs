@@ -640,13 +640,13 @@ fn runtime_to_ipc_frame_header_roundtrip_preserves_all_fields() {
 }
 
 #[test]
-fn runtime_to_ipc_invalid_command_id_returns_unknown_command_error() {
+fn runtime_to_ipc_invalid_command_id_preserves_unknown_command_variant() {
     // Given: an invalid command identifier
     let value: u16 = 999;
     // When: parsing the command
     let result = vb_ipc::IpcCommand::from_u16(value);
-    // Then: UnknownCommand error with the exact value
-    assert_eq!(result, Err(vb_ipc::IpcError::UnknownCommand(999)));
+    // Then: UnknownCommand command variant preserves the exact value for dispatch
+    assert_eq!(result, Ok(vb_ipc::IpcCommand::UnknownCommand(999)));
 }
 
 #[test]

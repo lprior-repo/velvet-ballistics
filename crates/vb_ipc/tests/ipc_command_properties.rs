@@ -113,5 +113,9 @@ fn test_exactly_eleven_variants() {
         IpcCommand::Shutdown,
     ];
 
-    assert_eq!(variants.len(), 11, "Expected exactly 11 IpcCommand variants");
+    assert_eq!(
+        variants.len(),
+        11,
+        "Expected exactly 11 IpcCommand variants"
+    );
 }

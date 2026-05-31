@@ -388,11 +388,11 @@ fn ipc_returns_queue_full_when_backpressure_limit_is_hit() {
 // Contract: INV-003
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Scenario: Each of the 16 defined v1 IPC commands (1..=16) returns a
+/// Scenario: Each of the 11 canonical v1 IPC commands (1..=11) returns a
 /// typed IpcResponse variant (not UnknownCommand or unhandled panic) when
 /// sent with valid encoding over the wire.
 #[test]
-fn ipc_all_16_commands_have_typed_responses() {
+fn ipc_all_11_commands_have_typed_responses() {
     let path = temp_socket_path("bdd005_all_commands");
     let _cleanup = CleanupPath(path.clone());
 
@@ -404,7 +404,7 @@ fn ipc_all_16_commands_have_typed_responses() {
         .poll_once(&mut runtime, Some(Duration::from_millis(100)))
         .expect("accept poll should succeed");
 
-    // All 16 v1 commands in wire order.
+    // All 11 canonical v1 commands in wire order.
     let commands: &[IpcCommand] = &[
         IpcCommand::SubmitRun,
         IpcCommand::SubmitRunInline,
@@ -417,11 +417,6 @@ fn ipc_all_16_commands_have_typed_responses() {
         IpcCommand::DrainTrace,
         IpcCommand::Health,
         IpcCommand::Shutdown,
-        IpcCommand::ListRuns,
-        IpcCommand::GetMetrics,
-        IpcCommand::GetWorkflowGraph,
-        IpcCommand::GetTaintReport,
-        IpcCommand::VerifyWorkflow,
     ];
 
     for (i, &command) in commands.iter().enumerate() {
@@ -474,17 +469,7 @@ fn ipc_all_16_commands_have_typed_responses() {
                 max_records: 10,
             })
             .unwrap_or_default(),
-            IpcCommand::ListRuns => postcard::to_allocvec(&IpcPayload::ListRuns {
-                limit: 10,
-                workflow: None,
-            })
-            .unwrap_or_default(),
-            IpcCommand::GetTaintReport => postcard::to_allocvec(&IpcPayload::GetTaintReport {
-                digest: WorkflowDigest::from_bytes([0xAB; 32]),
-            })
-            .unwrap_or_default(),
-            // Health, Shutdown, GetMetrics, GetWorkflowGraph, VerifyWorkflow
-            // have no payload.
+            // Health and Shutdown have no payload.
             _ => vec![],
         };
 

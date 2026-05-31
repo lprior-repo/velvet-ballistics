@@ -194,8 +194,6 @@ mod tests {
         assert_eq!(decoded, payload);
     }
 
-
-
     #[test]
     fn decode_payload_roundtrips_submit_run() {
         let payload = crate::IpcPayload::SubmitRun(SubmitRunPayload {
@@ -421,8 +419,6 @@ mod tests {
         }
     }
 
-
-
     /// Verifies that all_successors for a Choose node with many branches
     /// does not lose any targets (completeness check for edge extraction).
     #[test]
@@ -444,8 +440,6 @@ mod tests {
         }
         assert!(succs.contains(&200), "should contain otherwise target");
     }
-
-
 
     // -- Black-hat security regression tests (round 5) --
 
@@ -820,8 +814,6 @@ mod tests {
         );
     }
 
-
-
     // -- Runtime integration tests --
 
     use std::num::NonZeroUsize;
@@ -1115,8 +1107,6 @@ mod tests {
         let response = handle_fail_action(garbage, &mut runtime);
         assert_eq!(response, IpcResponse::BadRequest);
     }
-
-
 
     // Additional tests for handler branches
 

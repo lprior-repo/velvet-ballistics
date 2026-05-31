@@ -3,6 +3,10 @@
 
 use std::path::PathBuf;
 
+mod error;
+
+pub(crate) use error::ParseError;
+
 /// Structured output format for CLI commands.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) enum OutputFormat {
@@ -268,36 +272,4 @@ impl DurabilityMode {
 pub(crate) struct StepTarget {
     pub(crate) step_id: u16,
     pub(crate) step_input: PathBuf,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[allow(dead_code)]
-pub(crate) enum ParseError {
-    MissingArgument(&'static str),
-    UnknownEmitTarget(String),
-    UnknownDurability(String),
-    UnknownProfile(String),
-    UnknownCommand(String),
-    UnknownServerMode(String),
-    UnknownEventStatus(String),
-    InvalidAgentContextArgument(String),
-    InvalidTraceArgument(String),
-    InvalidStatusArgument(String),
-    InvalidSystemStatusArgument(String),
-    UnknownActionCommand(String),
-    UnknownActionRegistry(String),
-    MissingActionRegistryValue,
-    UnknownActionListFlag(String),
-    UnexpectedActionListArgument(String),
-    InvalidActionListArgument(String),
-    UnknownActionInspectFlag(String),
-    UnexpectedActionInspectArgument(String),
-    InvalidActionInspectArgument(String),
-    InvalidActionId(String),
-    InvalidActionName(String),
-    UnknownFlag { command: &'static str, flag: String },
-    InvalidArgument(String),
-    NoCommand,
-    InvalidStep(String),
-    ReasonTooLong,
 }

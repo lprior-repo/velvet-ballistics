@@ -1,11 +1,4 @@
-use crate::args::Command, OutputFormat, ParseError, StepTarget, parse_args;
-use crate::commands_journal::TraceStatus;
-use std::ffi::OsString;
-use std::path::PathBuf;
-
-pub fn args(parts: &[&str]) -> Vec<OsString> {
-    parts.iter().map(|part| OsString::from(*part)).collect()
-}
+use super::*;
 
 #[test]
 fn step_target_holds_step_id_and_path() {
@@ -343,4 +336,3 @@ fn parse_system_status_accepts_profile_server_and_emit_yaml() {
         assert_eq!(output, OutputFormat::Yaml);
     }
 }
-

@@ -526,12 +526,7 @@ fn direct_digest_collect_empty_vs_nonempty_body() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /// Helper: create a minimal StepPrimitive::Aggregate (reduce) with given field overrides.
-fn make_reduce(
-    variable: &str,
-    input: &str,
-    initial: &str,
-    body: Vec<StepAst>,
-) -> StepPrimitive {
+fn make_reduce(variable: &str, input: &str, initial: &str, body: Vec<StepAst>) -> StepPrimitive {
     StepPrimitive::Aggregate {
         variable: variable.to_string(),
         input: input.to_string(),

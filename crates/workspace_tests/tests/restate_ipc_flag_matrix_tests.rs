@@ -894,14 +894,10 @@ fn encode_accepts_all_flags_bits_even_those_rejected_at_decode() {
 
 /// B-ROUNDTRIP-006:
 /// IpcFrameHeader decodes successfully when payload length is zero for
-/// commands that allow zero payload (Health, Shutdown, GetMetrics).
+/// commands that allow zero payload (Health, Shutdown).
 #[test]
 fn decode_accepts_payload_len_zero_for_commands_that_allow_it() {
-    let test_commands = [
-        IpcCommand::Health,
-        IpcCommand::Shutdown,
-        IpcCommand::GetMetrics,
-    ];
+    let test_commands = [IpcCommand::Health, IpcCommand::Shutdown];
 
     for &command in &test_commands {
         let header = IpcFrameHeader::new(command, 0x0000, 1, 0);
@@ -1125,9 +1121,8 @@ fn decode_returns_reserved_non_zero_not_reserved_bits_set_when_reserved_field_is
 }
 
 /// B-DECODE-004:
-/// IpcFrameHeader::decode() returns Err(UnknownCommand(n)) for command
-/// IDs 0 and 17..=65535. Flag validation is never reached because
-/// command resolution fails first.
+/// IpcFrameHeader::decode() preserves UnknownCommand(n) for command
+/// IDs 0 and 12..=65535. Downstream dispatch rejects the typed command.
 #[test]
 fn decode_returns_unknown_command_for_command_ids_0_and_above_11() {
     // Command ID 0
@@ -1136,8 +1131,8 @@ fn decode_returns_unknown_command_for_command_ids_0_and_above_11() {
         let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
         assert_eq!(
             result,
-            Err(IpcError::UnknownCommand(0)),
-            "command ID 0 must return UnknownCommand(0)"
+            Ok(IpcFrameHeader::new(IpcCommand::UnknownCommand(0), 0, 0, 0)),
+            "command ID 0 must preserve UnknownCommand(0)"
         );
     }
 
@@ -1147,8 +1142,8 @@ fn decode_returns_unknown_command_for_command_ids_0_and_above_11() {
         let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
         assert_eq!(
             result,
-            Err(IpcError::UnknownCommand(17)),
-            "command ID 17 must return UnknownCommand(17)"
+            Ok(IpcFrameHeader::new(IpcCommand::UnknownCommand(17), 0, 0, 0)),
+            "command ID 17 must preserve UnknownCommand(17)"
         );
     }
 
@@ -1158,8 +1153,13 @@ fn decode_returns_unknown_command_for_command_ids_0_and_above_11() {
         let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
         assert_eq!(
             result,
-            Err(IpcError::UnknownCommand(65535)),
-            "command ID 65535 must return UnknownCommand(65535)"
+            Ok(IpcFrameHeader::new(
+                IpcCommand::UnknownCommand(65535),
+                0,
+                0,
+                0,
+            )),
+            "command ID 65535 must preserve UnknownCommand(65535)"
         );
     }
 
@@ -1169,8 +1169,13 @@ fn decode_returns_unknown_command_for_command_ids_0_and_above_11() {
         let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
         assert_eq!(
             result,
-            Err(IpcError::UnknownCommand(cmd_id)),
-            "command ID {} must return UnknownCommand({})",
+            Ok(IpcFrameHeader::new(
+                IpcCommand::UnknownCommand(cmd_id),
+                0,
+                0,
+                0,
+            )),
+            "command ID {} must preserve UnknownCommand({})",
             cmd_id,
             cmd_id
         );

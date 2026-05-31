@@ -88,7 +88,6 @@ const fn valid_mask_model(command: IpcCommand) -> u16 {
         IpcCommand::UnknownCommand(_) => 0x0000,
     }
 }
-}
 
 /// Model of `CommandFlags::validate()` per contract §2.1.
 ///

@@ -1,11 +1,4 @@
-use crate::args::ActionRegistryMode, Command, EmitTarget, OutputFormat, ParseError, StepTarget, VerifyProfile, parse_args;
-use crate::commands_journal::TraceStatus;
-use std::ffi::OsString;
-use std::path::PathBuf;
-
-pub fn args(parts: &[&str]) -> Vec<OsString> {
-    parts.iter().map(|part| OsString::from(*part)).collect()
-}
+use super::*;
 
 #[test]
 fn parse_answer_rejects_invalid_step_with_exact_variant() {
@@ -192,4 +185,3 @@ fn parse_doctor_accepts_optional_db_and_yaml_output() {
         assert_eq!(output, OutputFormat::Yaml);
     }
 }
-

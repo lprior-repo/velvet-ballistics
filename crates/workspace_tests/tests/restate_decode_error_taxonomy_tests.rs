@@ -103,7 +103,7 @@ proptest! {
         match selector % 6 {
             0 => { let magic = if value == IPC_MAGIC { 0 } else { value }; write_u32(&mut bytes, 0, magic); let ok = matches!(IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT), Err(IpcError::InvalidMagic { .. })); prop_assert!(ok); }
             1 => { write_u16(&mut bytes, 4, IPC_VERSION.saturating_add(1)); let ok = matches!(IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT), Err(IpcError::UnsupportedVersion { .. })); prop_assert!(ok); }
-            2 => { write_u16(&mut bytes, 6, 9000); let ok = matches!(IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT), Err(IpcError::UnknownCommand(9000))); prop_assert!(ok); }
+            2 => { write_u16(&mut bytes, 6, 9000); let ok = matches!(IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT), Ok(header) if header.command == IpcCommand::UnknownCommand(9000)); prop_assert!(ok); }
             3 => { write_u16(&mut bytes, 10, 1); let ok = matches!(IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT), Err(IpcError::ReservedNonZero { actual: 1 })); prop_assert!(ok); }
             4 => { write_u32(&mut bytes, 20, u32::MAX); let ok = matches!(IpcFrameHeader::decode(&bytes, MaxPayloadBytes::new(NonZeroUsize::MIN)), Err(IpcError::PayloadTooLarge { .. })); prop_assert!(ok); }
             _ => { let header = decode_ipc_header(&bytes)?; let ok = matches!(decode_frame_payload(&header, &[255]), Err(IpcError::PayloadLengthMismatch { .. }) | Err(IpcError::PayloadDecodeFailed)); prop_assert!(ok); }

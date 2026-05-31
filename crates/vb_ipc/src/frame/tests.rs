@@ -678,7 +678,15 @@ fn adversarial_unknown_command_id_rejected() {
     let result = decode_frame_header(&header_bytes);
 
     // Then: UnknownCommand(200)
-    assert_eq!(result, Ok(IpcFrameHeader::new(IpcCommand::UnknownCommand(200), 0, 0, 0)));
+    assert_eq!(
+        result,
+        Ok(IpcFrameHeader::new(
+            IpcCommand::UnknownCommand(200),
+            0,
+            0,
+            0
+        ))
+    );
 }
 
 #[test]
@@ -693,7 +701,10 @@ fn adversarial_command_id_zero_rejected() {
     let result = decode_frame_header(&header_bytes);
 
     // Then: UnknownCommand(0)
-    assert_eq!(result, Ok(IpcFrameHeader::new(IpcCommand::UnknownCommand(0), 0, 0, 0)));
+    assert_eq!(
+        result,
+        Ok(IpcFrameHeader::new(IpcCommand::UnknownCommand(0), 0, 0, 0))
+    );
 }
 
 #[test]
@@ -708,7 +719,15 @@ fn adversarial_command_id_max_u16_rejected() {
     let result = decode_frame_header(&header_bytes);
 
     // Then: UnknownCommand(u16::MAX)
-    assert_eq!(result, Ok(IpcFrameHeader::new(IpcCommand::UnknownCommand(u16::MAX), 0, 0, 0)));
+    assert_eq!(
+        result,
+        Ok(IpcFrameHeader::new(
+            IpcCommand::UnknownCommand(u16::MAX),
+            0,
+            0,
+            0
+        ))
+    );
 }
 
 #[test]
