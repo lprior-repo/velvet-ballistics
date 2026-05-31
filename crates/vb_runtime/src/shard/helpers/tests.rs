@@ -1856,7 +1856,7 @@ mod proptest_tests {
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
         };
-        let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()?;
+        let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("make_simple_state");
         let mut state = make_run_state(wf, RunId::new(1))?;
         assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
         if let Some(attempt) = state.action_attempts.get_mut(0) {
