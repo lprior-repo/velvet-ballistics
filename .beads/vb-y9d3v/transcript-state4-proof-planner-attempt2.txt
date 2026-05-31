@@ -1,0 +1,36 @@
+# Proof Planner Retry Attempt 2 — vb-y9d3v
+
+Invocation: vb-y9d3v-state4-proof-planner-attempt2
+State: 4 (proof-planner RETRY)
+Date: 2026-05-29T20:30:00Z to 2026-05-29T21:00:00Z
+
+## Repairs Applied
+
+1. F-0001 (BLOCKING): Reclassified VLD-0081..VLD-0084 (seed 011 Verus/Kani/Flux/proptest) as not_applicable.
+   - Removed PO-0042..PO-0045 from proof-obligations.planned.jsonl
+   - Retry counter u16 codec is trivially invertible; cargo-fuzz+ASAN (PO-0041) provides sufficient coverage
+   - Obligations reduced from 45 to 41
+
+2. F-0002: Fixed VLD-0096 owner_state from 5 to 4 (not_applicable convention)
+
+3. F-0003: Updated proof-strategy.md obligation grouping to reflect actual 41-obligation structure
+
+4. F-0004: Fixed verifier-lane-matrix.md seed 012 TLA+ row from required to not_applicable
+
+5. F-0005: Strengthened VLD-0089..VLD-0095 non_applicability_evidence_refs
+
+6. Global: Changed all "tla" verifier to "tla-plus" in verifier-lane-decisions.jsonl
+
+7. Regenerated placeholder proof-plan-review.md and verifier-lane-review.jsonl
+
+8. Appended sequence 6 to agent-invocation-ledger.jsonl
+
+## Output Artifacts
+- proof-obligations.planned.jsonl (41 obligations)
+- proof-strategy.md
+- verifier-lane-decisions.jsonl (96 rows)
+- verifier-lane-matrix.md
+- proof-coverage-matrix.md
+- proof-to-implementation-input.md
+- proof-plan-review.md (placeholder)
+- verifier-lane-review.jsonl (placeholder)

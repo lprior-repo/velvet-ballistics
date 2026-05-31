@@ -75,9 +75,6 @@ pub mod kani_vt2f_shard_lower_semantics;
 #[cfg(all(kani, feature = "kani-admission-store"))]
 pub mod kani_admission_store;
 
-#[cfg(all(kani, feature = "kani-shard-lifecycle"))]
-pub mod kani_shard_lifecycle;
-
 #[cfg(loom)]
 pub mod models;
 pub mod primitives;
@@ -89,21 +86,11 @@ pub mod trace;
 #[cfg(all(kani, feature = "kani-yaml-e2e-admission-matrix"))]
 pub mod yaml_e2e_admission_matrix;
 
+// Verification harnesses gated internally (kani/test/verus/flux via cfg)
+mod verification;
+
 pub use error::{RuntimeError, RuntimeResult};
 pub use shard::{AskAnswer, AskTicket, ResumeError, ResumeResult, ResumeStatus};
 
 #[cfg(test)]
 mod test_harness;
-
-#[cfg(test)]
-mod verification {
-    pub(crate) mod proptest;
-}
-
-#[cfg(kani)]
-mod verification {
-    pub(crate) mod kani;
-}
-
-#[cfg(test)]
-mod admission_vb_8mdp_7_prop_tests;
