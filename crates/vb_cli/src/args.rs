@@ -506,9 +506,6 @@ fn parse_status_options(
         match args.split_first() {
             None => return validate_status_options(options),
             Some((flag, rest)) => match flag.to_str() {
-                Some("--json" | "--jsonl") => {
-                    args = rest;
-                }
                 Some("--emit") => match rest.split_first() {
                     Some((emit, remaining)) => match emit.to_str() {
                         Some("yaml") => {
@@ -589,7 +586,6 @@ fn parse_system_status_options(
     match args.split_first() {
         None => Ok(options),
         Some((flag, rest)) => match flag.to_str() {
-            Some("--json" | "--jsonl") => parse_system_status_options(rest, options),
             Some("--emit") => parse_system_status_emit(rest, options),
             Some("--profile") => parse_system_status_profile(rest, options),
             Some("--server") => parse_system_status_server(rest, options),
@@ -1204,9 +1200,6 @@ fn validate_trace_args(args: &[OsString]) -> Result<(), ParseError> {
             ));
         };
         match raw {
-            "--json" | "--jsonl" => {
-                index = index.saturating_add(1);
-            }
             "--db" | "--step" | "--action" | "--status" | "--since-seq" | "--until-seq"
             | "--limit" | "--emit" => {
                 let Some(value) = args
@@ -1636,7 +1629,6 @@ fn known_flag_spec(command: &'static str, token: &str) -> Option<FlagSpec> {
         }
         "verify" => output_flag_spec(token).or_else(|| value_flag_spec(token, "--profile")),
         "compile" => match token {
-            "--json" | "--jsonl" => Some(FlagSpec::Switch),
             "--emit" => Some(FlagSpec::Value("--emit")),
             "--out" => Some(FlagSpec::Value("--out")),
             _ => None,
@@ -1701,7 +1693,6 @@ fn known_flag_spec(command: &'static str, token: &str) -> Option<FlagSpec> {
 
 fn output_flag_spec(token: &str) -> Option<FlagSpec> {
     match token {
-        "--json" | "--jsonl" => Some(FlagSpec::Switch),
         "--emit" => Some(FlagSpec::Value("--emit")),
         _ => None,
     }
