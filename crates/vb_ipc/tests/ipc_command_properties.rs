@@ -22,17 +22,18 @@ fn test_eleven_commands_parse_ok() {
     }
 }
 
-/// Test that values 12-16 (removed commands) return UnknownCommand error.
+/// Test that values 12-16 (removed commands) return UnknownCommand.
 #[test]
-fn test_removed_commands_return_error() {
+fn test_removed_commands_return_unknown_command() {
     for i in 12..=16 {
         let result = IpcCommand::from_u16(i);
         assert!(
-            result.is_err(),
-            "Expected Err for removed command {}, got {:?}",
+            result.is_ok(),
+            "Expected Ok for removed command {}, got {:?}",
             i,
             result
         );
+        assert_eq!(result.unwrap(), IpcCommand::UnknownCommand(i));
     }
 }
 
