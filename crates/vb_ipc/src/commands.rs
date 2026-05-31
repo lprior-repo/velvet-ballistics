@@ -28,20 +28,10 @@ pub enum IpcCommand {
     FailAction = 8,
     /// Drain bounded trace records.
     DrainTrace = 9,
-    /// List active runs.
-    ListRuns = 12,
-    /// Request runtime metrics.
-    GetMetrics = 13,
-    /// Verify a compiled workflow against validation gates.
-    VerifyWorkflow = 14,
-    /// Get the workflow graph structure.
-    GetWorkflowGraph = 15,
-    /// Get taint report for a workflow.
-    GetTaintReport = 16,
     /// Probe runtime health.
-    Health = 17,
+    Health = 10,
     /// Request graceful shutdown.
-    Shutdown = 18,
+    Shutdown = 11,
 }
 
 impl IpcCommand {
@@ -57,13 +47,8 @@ impl IpcCommand {
             7 => Ok(Self::CompleteAction),
             8 => Ok(Self::FailAction),
             9 => Ok(Self::DrainTrace),
-            12 => Ok(Self::ListRuns),
-            13 => Ok(Self::GetMetrics),
-            14 => Ok(Self::VerifyWorkflow),
-            15 => Ok(Self::GetWorkflowGraph),
-            16 => Ok(Self::GetTaintReport),
-            17 => Ok(Self::Health),
-            18 => Ok(Self::Shutdown),
+            10 => Ok(Self::Health),
+            11 => Ok(Self::Shutdown),
             other => Err(IpcError::UnknownCommand(other)),
         }
     }
@@ -81,13 +66,8 @@ impl IpcCommand {
             Self::CompleteAction => 7,
             Self::FailAction => 8,
             Self::DrainTrace => 9,
-            Self::ListRuns => 12,
-            Self::GetMetrics => 13,
-            Self::VerifyWorkflow => 14,
-            Self::GetWorkflowGraph => 15,
-            Self::GetTaintReport => 16,
-            Self::Health => 17,
-            Self::Shutdown => 18,
+            Self::Health => 10,
+            Self::Shutdown => 11,
         }
     }
 }
