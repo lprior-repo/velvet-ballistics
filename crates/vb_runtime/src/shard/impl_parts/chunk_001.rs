@@ -1,4 +1,3 @@
-use indexmap::IndexSet;
 use crate::shard::types::RuntimeState;
 
 impl Shard {
@@ -19,16 +18,17 @@ impl Shard {
     ) -> Self {
         Self {
             command_queue: ShardCommandQueue::from_config(config),
-            runs: IndexMap::new(),
-            runtime_states: IndexMap::new(),
-            terminal_runs: IndexSet::new(),
-            journal_sequences: IndexMap::new(),
-            pending_timers: IndexMap::new(),
+            runs: Vec::new(),
+            runtime_states: Vec::new(),
+            terminal_runs: Vec::new(),
+            journal_sequences: Vec::new(),
+            pending_timers: Vec::new(),
             frame_pools: IndexMap::new(),
             trace_ring: TraceRing::new(config.trace_capacity),
             counters: ShardCounters::new(),
             step_budget_per_tick: config.step_budget_per_tick,
             max_active_runs: config.max_active_runs,
+            active_run_count: 0,
             policy: config.policy,
             artifact_store,
             inspect_response: None,
