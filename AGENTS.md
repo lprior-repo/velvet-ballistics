@@ -15,6 +15,13 @@
 
 This repository uses a pure virtual workspace pattern.
 
+## Absolute Workspace Rule
+
+- All repository work MUST be executed from the Git root `/home/lewis/src/velvet-ballistics`; do not work from any sibling clone, parent checkout, or other `~/src/*` path.
+- Before editing, committing, pushing, or running broad verification, verify `git rev-parse --show-toplevel` resolves to `/home/lewis/src/velvet-ballistics`.
+- If `jj root` resolves above this repository, treat that as an enclosing workspace only; never commit, describe, rebase, or push from the parent JJ workspace for this repo.
+- If the Git root, JJ root, command working directory, or requested path disagree, stop and ask for clarification before modifying files.
+
 - `crates/`: Contains all production code crates (e.g., `vb_core`, `vb_boundary_inventory`).
 - `crates/workspace_tests/`: Contains all cross-crate integration tests and benchmarks. Do not place `tests/` or `benches/` at the repository root.
 - `fuzz/`: Fuzzing targets.
