@@ -14,7 +14,8 @@ Current bead reconciliation found:
 - The prior action-completion MUST_FIX set is closed under `vb-w678`, with child beads `vb-w678.1` through `vb-w678.5` covering full ticket persistence, prevalidation, taint/output bounds, append-before-mutate ordering, and explicit non-durable runtime construction.
 - `journal_event` fuzz target work is tracked/closed by `vb-jpq7.37`; Section 37 fuzz naming is closed by `vb-481r.8`, with residual compiled-IR naming tracked by `vb-481r.9`.
 - The old zero-test claims for `vb_boundary_inventory` and `vb_doc` are stale. Direct commands on 2026-05-31 listed 202 `vb_boundary_inventory` tests and 65 `vb_doc` integration tests.
-- The trybuild silent-pass concern is not currently backed by a first-party trybuild harness under `crates/`; it is now tracked as `vb-j58jl` to either add a fail-closed compile-fail gate or reconcile the stale contract.
+- The trybuild silent-pass concern is resolved under `vb-j58jl`: current master requires `trybuild` only for active public macro/schema contracts, and the active negative-fixture release gate is `xtask ai-release` for `vb-nf2u`.
+- `vb-j58jl` command evidence: `! rtk cargo run -p xtask -- ai-release --bead vb-nf2u` fails closed on missing `target/vb-nf2u-negative-fixtures/intentional_overlap_fixture.txt`; `rtk cargo test -p xtask --test ui_release_gates ai_release_includes_ui_release_gates -- --exact`, `rtk cargo test -p xtask --test ui_release_errors missing_evidence_error_returns_typed_variant_and_diagnostic -- --exact`, and `rtk cargo test -p xtask --test ui_release_errors false_pass_fixture_violation_returns_typed_variant_and_diagnostic -- --exact` pass.
 - Remaining formal evidence risks found during this truth-serum pass are tracked as `vb-u831a` (vb-fzgdn State 12 formal blockers), `vb-b69gz` (partial TLA RRO bridge closure), and `vb-uwg7d` (numeric timer trusted-base mismatch).
 
 Do not cite the “Shipping is BLOCKED by 8 LETHALs” line below as current truth without re-running the referenced commands and checking the bead IDs above.
@@ -106,7 +107,7 @@ workspace_tests/, fuzz/, benches/
 - **vb_runtime**: tick_shard exists in one location but API is not consistent
 
 ### LETHAL CROSS-CUTTING (9)
-1. **trybuild silently passes** when no compile-fail fixtures exist — Section 36 mandate invisible in CI
+1. **Resolved under `vb-j58jl`:** historical trybuild silent-pass concern is stale; no active first-party trybuild harness exists under `crates/`, and the active `xtask ai-release` negative-fixture gate fails closed when required fixtures are missing.
 2. **Pattern rejection scanner** (slots[, Vec<, as) untested for injection attacks
 3. **CodegenError::UnsupportedIr** not tested for missing compilation step
 4. **ui command not implemented** — Section 33 requires it
@@ -172,7 +173,7 @@ workspace_tests/, fuzz/, benches/
 - **Section 39 benchmarks:** 12/22 groups MISSING (IR_traversal, collect_page, action_dispatch, memory_footprint, cold_start, pagination_cost, action_queuing, timer_wheel_tick, snapshot_save/restore, digest_computation, ArrayQueue, rtrb); expression_evaluation REJECTED (sin/cos/tan/div missing)
 - **taint_propagation (Section 47):** vb_validate rejects SecretResultLeak for Finish (WRONG per Section 47); vb_compile same violation; no end-to-end pipeline test; AND/OR short-circuit untested
 - **helper_coverage (Section 46):** starts_with missing edge+error; ends_with missing edge+error; has missing error; append missing edge; append_if missing edge+error; merge missing edge; sum missing edge
-- **CI gate adequacy:** Only 3/25 LETHALs caught by CI; moon miri runs only 3 tests; verify-* tasks all runInCI:false; fuzz-smoke only builds not runs; bench-build uses --no-run; trybuild silently passes
+- **CI gate adequacy:** Only 3/25 LETHALs caught by CI; moon miri runs only 3 tests; verify-* tasks all runInCI:false; fuzz-smoke only builds not runs; bench-build uses --no-run; historical trybuild silent-pass claim is stale after `vb-j58jl` reconciliation
 - **Section 30 tick_shard:** MISSING entirely — tick_shard API absent, ShardDirective enum absent, bounded action completion queue absent, no tick_shard tests
 - **Section 33 CLI:** ui command MISSING (required); evaluate command MISSING (simulate doesn't satisfy --env/--budget); benchmark command lacks --iterations/--warmup
 - **Section 50 IPC:** crossbeam_channel used instead of ArrayQueue (FORBIDDEN by Section 50)
@@ -193,7 +194,7 @@ workspace_tests/, fuzz/, benches/
 10. **3/10 helpers fully covered** (empty, unique, contains); 7/10 have edge/error gaps
 11. **moon ci miri runs only 3 tests** — 22 LETHALs unmri'd
 12. **all verify-* tasks have runInCI:false** — Kani/Verus not in CI
-13. **trybuild_tests.rs silently passes** when compile-fail/ directory is empty
+13. **Resolved under `vb-j58jl`:** stale `trybuild_tests.rs` silent-pass claim; current active negative-fixture gate is `xtask ai-release`, which fails closed on missing fixture files
 14. **density audit Tier 0 not automated** in CI
 15. **nightly-feature-gate only checks Rust features** — not $attempt.number/$random/$time restrictions
 16. **tick_shard API MISSING** — Section 30 master plan violation
@@ -220,7 +221,7 @@ workspace_tests/, fuzz/, benches/
 
 **6 SHOULD_FIX (quality degradations):**
 1. ArrayQueue vs channel (Section 50)
-2. trybuild silent pass (Section 36)
+2. Resolved under `vb-j58jl`: stale trybuild silent-pass concern; active negative-fixture release gate fails closed (Section 36)
 3. 11/11 property tests missing (Section 38)
 4. ~24/40 benchmarks missing (Section 39)
 5. $attempt.number restriction not implemented

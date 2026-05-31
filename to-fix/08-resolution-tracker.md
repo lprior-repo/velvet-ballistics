@@ -20,12 +20,12 @@ Live bead DB was repaired back to the authoritative DoltHub remote before this u
 | 05: Hot shard state uses map-like structures | Tracked as `vb-jpq7.9` and related `vb-9kwz` notes. |
 | 05: Timer wheel uses map/vector-backed storage | Tracked as `vb-vi3g`. |
 | 05: Workspace shape / deferred codegen residue / duplicate compiler tree | Tracked as `vb-esq9`, `vb-esq9.1`, and `vb-esq9.4`; `vb-esq9.2` and `vb-esq9.3` are closed. |
-| BIG audit compile-fail/trybuild silent-pass risk | Newly tracked as `vb-j58jl`. |
+| BIG audit compile-fail/trybuild silent-pass risk | Resolved under `vb-j58jl`: current master requires `trybuild` only for active public macro/schema contracts, and `xtask ai-release --bead vb-nf2u` fails closed when required negative fixtures are missing. |
 | vb-fzgdn State 12 formal blockers and missing raw evidence | Newly tracked as `vb-u831a`. |
 | TLA-to-Rust partial RRO bridge rows | Newly tracked as `vb-b69gz`. |
 | vb-fzgdn numeric timer trusted-base claim conflicts with `Instant` source | Newly tracked as `vb-uwg7d`. |
 
-Direct checks run for this update: `bd status`, `bd show` for listed bead IDs, `bd search` for untracked terms, `/home/lewis/.cargo/bin/cargo test -p vb_boundary_inventory -- --list`, and `/home/lewis/.cargo/bin/cargo test -p vb_doc -- --list`.
+Direct checks run for this update: `bd status`, `bd show` for listed bead IDs, `bd search` for untracked terms, `/home/lewis/.cargo/bin/cargo test -p vb_boundary_inventory -- --list`, `/home/lewis/.cargo/bin/cargo test -p vb_doc -- --list`, `! rtk cargo run -p xtask -- ai-release --bead vb-nf2u`, `rtk cargo test -p xtask --test ui_release_gates ai_release_includes_ui_release_gates -- --exact`, `rtk cargo test -p xtask --test ui_release_errors missing_evidence_error_returns_typed_variant_and_diagnostic -- --exact`, `rtk cargo test -p xtask --test ui_release_errors false_pass_fixture_violation_returns_typed_variant_and_diagnostic -- --exact`, and `bash scripts/check-test-integrity.sh --self-test`.
 
 ## Resolved (this session)
 
