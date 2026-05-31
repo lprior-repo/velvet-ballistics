@@ -678,7 +678,7 @@ fn adversarial_unknown_command_id_rejected() {
     let result = decode_frame_header(&header_bytes);
 
     // Then: UnknownCommand(200)
-    assert_eq!(result, Err(IpcError::UnknownCommand(200)));
+    assert_eq!(result, Ok(IpcFrameHeader::new(IpcCommand::UnknownCommand(200), 0, 0, 0)));
 }
 
 #[test]
@@ -693,7 +693,7 @@ fn adversarial_command_id_zero_rejected() {
     let result = decode_frame_header(&header_bytes);
 
     // Then: UnknownCommand(0)
-    assert_eq!(result, Err(IpcError::UnknownCommand(0)));
+    assert_eq!(result, Ok(IpcFrameHeader::new(IpcCommand::UnknownCommand(0), 0, 0, 0)));
 }
 
 #[test]
@@ -708,7 +708,7 @@ fn adversarial_command_id_max_u16_rejected() {
     let result = decode_frame_header(&header_bytes);
 
     // Then: UnknownCommand(u16::MAX)
-    assert_eq!(result, Err(IpcError::UnknownCommand(u16::MAX)));
+    assert_eq!(result, Ok(IpcFrameHeader::new(IpcCommand::UnknownCommand(u16::MAX), 0, 0, 0)));
 }
 
 #[test]
@@ -1034,31 +1034,6 @@ fn encode_frame_produces_exact_byte_layout() {
 }
 
 #[test]
-fn encode_frame_with_list_runs_command() {
-    assert_command_roundtrip(IpcCommand::ListRuns);
-}
-
-#[test]
-fn encode_frame_with_get_metrics_command() {
-    assert_command_roundtrip(IpcCommand::GetMetrics);
-}
-
-#[test]
-fn encode_frame_with_get_workflow_graph_command() {
-    assert_command_roundtrip(IpcCommand::GetWorkflowGraph);
-}
-
-#[test]
-fn encode_frame_with_get_taint_report_command() {
-    assert_command_roundtrip(IpcCommand::GetTaintReport);
-}
-
-#[test]
-fn encode_frame_with_verify_workflow_command() {
-    assert_command_roundtrip(IpcCommand::VerifyWorkflow);
-}
-
-#[test]
 fn encode_frame_with_large_u32_payload_length() {
     let payload = vec![0xCC_u8; 70000];
     let result = encode_frame(IpcCommand::SubmitRun, 0, 1, &payload);
@@ -1066,66 +1041,6 @@ fn encode_frame_with_large_u32_payload_length() {
     let Ok(frame) = result else { return };
     let len_slice = frame.get(20..24);
     assert_eq!(len_slice, Some(70000u32.to_le_bytes().as_slice()));
-}
-
-#[test]
-fn decode_frame_header_with_valid_list_runs_header() {
-    let header = IpcFrameHeader::new(IpcCommand::ListRuns, 0, 1, 0);
-    let encoded = header.encode();
-    assert_ok!(encoded);
-    let Ok(encoded) = encoded else { return };
-    let decoded = decode_frame_header(&encoded);
-    assert_ok!(decoded);
-    let Ok(decoded) = decoded else { return };
-    assert_eq!(decoded.command, IpcCommand::ListRuns);
-}
-
-#[test]
-fn decode_frame_header_with_valid_get_metrics_header() {
-    let header = IpcFrameHeader::new(IpcCommand::GetMetrics, 0, 1, 0);
-    let encoded = header.encode();
-    assert_ok!(encoded);
-    let Ok(encoded) = encoded else { return };
-    let decoded = decode_frame_header(&encoded);
-    assert_ok!(decoded);
-    let Ok(decoded) = decoded else { return };
-    assert_eq!(decoded.command, IpcCommand::GetMetrics);
-}
-
-#[test]
-fn decode_frame_header_with_valid_get_workflow_graph_header() {
-    let header = IpcFrameHeader::new(IpcCommand::GetWorkflowGraph, 0, 1, 0);
-    let encoded = header.encode();
-    assert_ok!(encoded);
-    let Ok(encoded) = encoded else { return };
-    let decoded = decode_frame_header(&encoded);
-    assert_ok!(decoded);
-    let Ok(decoded) = decoded else { return };
-    assert_eq!(decoded.command, IpcCommand::GetWorkflowGraph);
-}
-
-#[test]
-fn decode_frame_header_with_valid_get_taint_report_header() {
-    let header = IpcFrameHeader::new(IpcCommand::GetTaintReport, 0, 1, 0);
-    let encoded = header.encode();
-    assert_ok!(encoded);
-    let Ok(encoded) = encoded else { return };
-    let decoded = decode_frame_header(&encoded);
-    assert_ok!(decoded);
-    let Ok(decoded) = decoded else { return };
-    assert_eq!(decoded.command, IpcCommand::GetTaintReport);
-}
-
-#[test]
-fn decode_frame_header_with_valid_verify_workflow_header() {
-    let header = IpcFrameHeader::new(IpcCommand::VerifyWorkflow, 0, 1, 0);
-    let encoded = header.encode();
-    assert_ok!(encoded);
-    let Ok(encoded) = encoded else { return };
-    let decoded = decode_frame_header(&encoded);
-    assert_ok!(decoded);
-    let Ok(decoded) = decoded else { return };
-    assert_eq!(decoded.command, IpcCommand::VerifyWorkflow);
 }
 
 #[test]

@@ -85,11 +85,7 @@ const fn valid_mask_model(command: IpcCommand) -> u16 {
         IpcCommand::DrainTrace => 0x0007,
         IpcCommand::Health => 0x0000,
         IpcCommand::Shutdown => 0x0000,
-        IpcCommand::ListRuns => 0x00FF,
-        IpcCommand::GetMetrics => 0x0000,
-        IpcCommand::GetWorkflowGraph => 0x0001,
-        IpcCommand::GetTaintReport => 0x0000,
-        IpcCommand::VerifyWorkflow => 0x0003,
+        IpcCommand::UnknownCommand(_) => 0x0000,
     }
 }
 
@@ -202,8 +198,7 @@ const fn is_zero_mask_command(command: IpcCommand) -> bool {
             | IpcCommand::FailAction
             | IpcCommand::Health
             | IpcCommand::Shutdown
-            | IpcCommand::GetMetrics
-            | IpcCommand::GetTaintReport
+            | IpcCommand::UnknownCommand(_)
     )
 }
 

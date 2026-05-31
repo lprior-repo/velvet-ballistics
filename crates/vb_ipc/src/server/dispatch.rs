@@ -61,6 +61,7 @@ pub fn dispatch_command_with_resolver(
         IpcCommand::CompleteAction => handle_complete_action(payload, runtime),
         IpcCommand::FailAction => handle_fail_action(payload, runtime),
         IpcCommand::DrainTrace => handle_drain_trace(payload, runtime),
+        IpcCommand::UnknownCommand(_) => IpcResponse::BadRequest,
     }
 }
 

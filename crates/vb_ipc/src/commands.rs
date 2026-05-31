@@ -32,6 +32,8 @@ pub enum IpcCommand {
     Health = 10,
     /// Request graceful shutdown.
     Shutdown = 11,
+    /// Unknown command identifier (reserved for wire compatibility).
+    UnknownCommand(u16) = 12,
 }
 
 impl IpcCommand {
@@ -49,7 +51,7 @@ impl IpcCommand {
             9 => Ok(Self::DrainTrace),
             10 => Ok(Self::Health),
             11 => Ok(Self::Shutdown),
-            other => Err(IpcError::UnknownCommand(other)),
+            other => Ok(Self::UnknownCommand(other)),
         }
     }
 
@@ -68,6 +70,7 @@ impl IpcCommand {
             Self::DrainTrace => 9,
             Self::Health => 10,
             Self::Shutdown => 11,
+            Self::UnknownCommand(id) => id,
         }
     }
 }

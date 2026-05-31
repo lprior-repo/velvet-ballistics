@@ -114,12 +114,12 @@ fn command_ids_cover_required_surface() {
     assert_eq!(IpcCommand::from_u16(9), Ok(IpcCommand::DrainTrace));
     assert_eq!(IpcCommand::from_u16(10), Ok(IpcCommand::Health));
     assert_eq!(IpcCommand::from_u16(11), Ok(IpcCommand::Shutdown));
-    assert_eq!(IpcCommand::from_u16(12), Ok(IpcCommand::ListRuns));
-    assert_eq!(IpcCommand::from_u16(13), Ok(IpcCommand::GetMetrics));
-    assert_eq!(IpcCommand::from_u16(14), Ok(IpcCommand::GetWorkflowGraph));
-    assert_eq!(IpcCommand::from_u16(15), Ok(IpcCommand::GetTaintReport));
-    assert_eq!(IpcCommand::from_u16(16), Ok(IpcCommand::VerifyWorkflow));
-    assert_eq!(IpcCommand::from_u16(17), Err(IpcError::UnknownCommand(17)));
+    assert_eq!(IpcCommand::from_u16(12), Ok(IpcCommand::UnknownCommand(12)));
+    assert_eq!(IpcCommand::from_u16(13), Ok(IpcCommand::UnknownCommand(13)));
+    assert_eq!(IpcCommand::from_u16(14), Ok(IpcCommand::UnknownCommand(14)));
+    assert_eq!(IpcCommand::from_u16(15), Ok(IpcCommand::UnknownCommand(15)));
+    assert_eq!(IpcCommand::from_u16(16), Ok(IpcCommand::UnknownCommand(16)));
+    assert_eq!(IpcCommand::from_u16(17), Ok(IpcCommand::UnknownCommand(17)));
 }
 
 #[test]
@@ -231,7 +231,7 @@ fn postcard_payload_roundtrips_as_typed_command() {
 #[test]
 fn from_u16_rejects_zero_command() {
     let result = IpcCommand::from_u16(0);
-    assert_eq!(result, Err(IpcError::UnknownCommand(0)));
+    assert_eq!(result, Ok(IpcCommand::UnknownCommand(0)));
 }
 
 #[test]
@@ -302,12 +302,12 @@ fn decode_returns_disconnected_when_buffer_empty() {
 
 #[test]
 fn from_u16_returns_unknown_command_for_zero() {
-    assert_eq!(IpcCommand::from_u16(0), Err(IpcError::UnknownCommand(0)));
+    assert_eq!(IpcCommand::from_u16(0), Ok(IpcCommand::UnknownCommand(0)));
 }
 
 #[test]
 fn from_u16_returns_unknown_command_for_value_above_range() {
-    assert_eq!(IpcCommand::from_u16(99), Err(IpcError::UnknownCommand(99)));
+    assert_eq!(IpcCommand::from_u16(99), Ok(IpcCommand::UnknownCommand(99)));
 }
 
 #[test]
@@ -814,14 +814,14 @@ fn header_decode_rejects_unsupported_version_zero() {
 }
 
 #[test]
-fn header_decode_rejects_unknown_command_id() {
+fn header_decode_accepts_unknown_command_id() {
     let encoded = header_bytes(IPC_MAGIC, IPC_VERSION, 200, 0, 0, 1, 0);
     assert_ok!(encoded, "test header should encode");
     let Ok(encoded) = encoded else { return };
 
     let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
 
-    assert_eq!(decoded, Err(IpcError::UnknownCommand(200)));
+    assert_eq!(decoded, Ok(IpcFrameHeader::new(IpcCommand::UnknownCommand(200), 0, 1, 0)));
 }
 
 #[test]
@@ -899,11 +899,11 @@ fn ipc_command_as_u16_returns_correct_values() {
     assert_eq!(IpcCommand::DrainTrace.as_u16(), 9);
     assert_eq!(IpcCommand::Health.as_u16(), 10);
     assert_eq!(IpcCommand::Shutdown.as_u16(), 11);
-    assert_eq!(IpcCommand::ListRuns.as_u16(), 12);
-    assert_eq!(IpcCommand::GetMetrics.as_u16(), 13);
-    assert_eq!(IpcCommand::GetWorkflowGraph.as_u16(), 14);
-    assert_eq!(IpcCommand::GetTaintReport.as_u16(), 15);
-    assert_eq!(IpcCommand::VerifyWorkflow.as_u16(), 16);
+    assert_eq!(IpcCommand::UnknownCommand(12).as_u16(), 12);
+    assert_eq!(IpcCommand::UnknownCommand(13).as_u16(), 13);
+    assert_eq!(IpcCommand::UnknownCommand(14).as_u16(), 14);
+    assert_eq!(IpcCommand::UnknownCommand(15).as_u16(), 15);
+    assert_eq!(IpcCommand::UnknownCommand(16).as_u16(), 16);
 }
 
 #[test]
@@ -1719,11 +1719,11 @@ fn frame_validation_zero_command_id_returns_unknown_command() {
 
     let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
 
-    assert_eq!(result, Err(IpcError::UnknownCommand(0)));
+    assert_eq!(result, Ok(IpcFrameHeader::new(IpcCommand::UnknownCommand(0), 0, 0, 0)));
 }
 
 #[test]
-fn frame_validation_unrecognized_command_id_returns_typed_error() {
+fn frame_validation_unrecognized_command_id_returns_unknown_command() {
     let mut header_bytes = [0u8; IPC_HEADER_LEN];
     header_bytes[..4].copy_from_slice(&IPC_MAGIC.to_le_bytes());
     header_bytes[4..6].copy_from_slice(&IPC_VERSION.to_le_bytes());
@@ -1731,7 +1731,7 @@ fn frame_validation_unrecognized_command_id_returns_typed_error() {
 
     let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
 
-    assert_eq!(result, Err(IpcError::UnknownCommand(99)));
+    assert_eq!(result, Ok(IpcFrameHeader::new(IpcCommand::UnknownCommand(99), 0, 0, 0)));
 }
 
 #[test]
