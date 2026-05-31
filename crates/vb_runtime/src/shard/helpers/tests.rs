@@ -160,7 +160,7 @@ fn wait_event_with_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkf
     let resume = CompiledNode {
         id: StepIdx::new(1),
         output: None,
-        next: Some(StepIdx::new(2)),
+        next: None,
         on_error: None,
         error_slot: None,
         kind: CompiledNodeKind::Finish {
@@ -291,7 +291,7 @@ fn ask_without_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow>
         nodes: Box::from([ask, resume]),
         expressions: Box::from([]),
         accessors: Box::from([]),
-        constants: Box::from([ConstValue::Symbol(vb_core::ids::SymbolId::new(1))]),
+        constants: Box::from([]),
         slot_count: 2,
         symbols_count: 0,
         entry: StepIdx::ZERO,
@@ -327,6 +327,9 @@ fn validate_action_completion_accepts_running_step_with_matching_action() {
     };
     // Mark step 0 as running so validate passes
     assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
+    if let Some(attempt) = state.action_attempts.get_mut(0) {
+        *attempt = 1;
+    }
 
     let t = ticket(RunId::new(1), StepIdx::ZERO, 1);
     let result = validate_action_completion(&state, t);
@@ -1266,6 +1269,24 @@ fn validate_action_completion_rejects_future_attempt_when_attempt_exceeds_curren
 }
 
 #[test]
+fn validate_action_completion_rejects_unscheduled_first_attempt() {
+    let Some(wf) = suspended_workflow() else {
+        return;
+    };
+    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+        return;
+    };
+    assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
+    assert_eq!(state.action_attempts.get(0).copied(), Some(0));
+    let t = ActionTicket {
+        capacity: 10,
+        ..ticket(RunId::new(1), StepIdx::ZERO, 1)
+    };
+    let result = validate_action_completion(&state, t);
+    assert_eq!(result, Err(RuntimeError::InvalidActionCompletion));
+}
+
+#[test]
 fn validate_action_completion_rejects_when_attempt_is_zero() {
     let Some(wf) = suspended_workflow() else {
         return;
@@ -1354,8 +1375,10 @@ fn validate_action_completion_rejects_when_step_is_pending() {
     let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
         return;
     };
-    assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
-    assert_eq!(state.frame.mark_pending(StepIdx::ZERO), Ok(()));
+    assert_eq!(
+        state.frame.step_state(StepIdx::ZERO),
+        Ok(StepState::Pending)
+    );
     if let Some(attempt) = state.action_attempts.get_mut(0) {
         *attempt = 1;
     }

@@ -34,14 +34,14 @@ fuzz_target!(|data: &[u8]| {
     };
 
     // Test 1: is_known_record_kind — must not panic
-    let _known = vb_storage::codec::validation::is_known_record_kind(kind);
+    let _known = vb_storage::codec::fuzz_validation::is_known_record_kind(kind);
 
     // Test 2: validate_known_kind — must not panic
-    let known_result = vb_storage::codec::validation::validate_known_kind(kind);
+    let known_result = vb_storage::codec::fuzz_validation::validate_known_kind(kind);
     match known_result {
         Ok(()) => {
             // Kind is known. Verify that is_known_record_kind agrees.
-            assert!(vb_storage::codec::validation::is_known_record_kind(kind),
+            assert!(vb_storage::codec::fuzz_validation::is_known_record_kind(kind),
                 "validate_known_kind Ok but is_known_record_kind false for kind {}", kind);
         }
         Err(e) => {
@@ -51,7 +51,7 @@ fuzz_target!(|data: &[u8]| {
     }
 
     // Test 3: validate_kind_family — must not panic
-    let family_result = vb_storage::codec::validation::validate_kind_family(magic, kind);
+    let family_result = vb_storage::codec::fuzz_validation::validate_kind_family(magic, kind);
     match family_result {
         Ok(()) => {
             // Kind-magic pair is valid. Verify invariants based on magic.
@@ -86,12 +86,12 @@ fuzz_target!(|data: &[u8]| {
     ];
 
     for test_magic in all_magics {
-        let _ = vb_storage::codec::validation::validate_kind_family(test_magic, kind);
+        let _ = vb_storage::codec::fuzz_validation::validate_kind_family(test_magic, kind);
     }
 
     // Test 5: Boundary magic values
     for boundary_magic in [0xFFFF_FFFFu32, 0x0000_0000u32] {
-        let _ = vb_storage::codec::validation::validate_kind_family(boundary_magic, kind);
+        let _ = vb_storage::codec::fuzz_validation::validate_kind_family(boundary_magic, kind);
     }
 });
 

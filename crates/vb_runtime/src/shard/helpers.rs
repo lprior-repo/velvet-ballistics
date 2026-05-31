@@ -93,10 +93,9 @@ fn validate_ticket_attempt(
             current,
         });
     }
-    // Future-attempt rejection (G005): reject completions that reference a
-    // later attempt than what is recorded. Zero means no attempt has been
-    // scheduled yet, so any positive attempt is acceptable.
-    if current > 0 && ticket.attempt > current {
+    // Future-attempt rejection (G005): only the scheduled attempt may complete.
+    // A zero current attempt means no ticket has been issued for this step yet.
+    if ticket.attempt > current {
         return Err(RuntimeError::InvalidActionCompletion);
     }
     Ok(())

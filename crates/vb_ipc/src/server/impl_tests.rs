@@ -401,7 +401,7 @@ fn slow_client_oversized_frame_disconnects_without_unbounded_growth() {
 // ── invalid frame header handling ───────────────────────────────────────────
 
 #[test]
-fn server_responds_with_error_for_invalid_magic() {
+fn server_disconnects_invalid_magic_without_response() {
     let path = temp_socket_path("bad_magic");
     let _cleanup = CleanupPath(&path);
     let mut server = IpcServer::bind(&path).expect("bind should succeed");
@@ -429,52 +429,9 @@ fn server_responds_with_error_for_invalid_magic() {
         .poll_once(&mut runtime, Some(Duration::from_millis(100)))
         .expect("process poll should succeed");
 
-    // Read response header.
-    let response_header_bytes = read_exact_timeout(&mut client, IPC_HEADER_LEN);
-    assert!(
-        response_header_bytes.is_ok(),
-        "should read error response header"
-    );
-
-    // Read response payload.
-    let response_header = response_header_bytes.expect("header");
-    let payload_len = u32::from_le_bytes(
-        response_header
-            .get(20..24)
-            .map(|s| <[u8; 4]>::try_from(s).ok())
-            .flatten()
-            .unwrap_or([0; 4]),
-    );
-    let payload_len_usize = match usize::try_from(payload_len) {
-        Ok(v) => v,
-        Err(_) => return,
-    };
-    if payload_len_usize > 0 {
-        let response_payload = read_exact_timeout(&mut client, payload_len_usize);
-        assert!(
-            response_payload.is_ok(),
-            "should read error response payload"
-        );
-        let payload = response_payload.expect("read payload");
-        let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
-        match decoded {
-            Ok(IpcResponse::FrameError { message }) => {
-                assert!(
-                    message.contains("magic") || message.contains("invalid"),
-                    "frame error should mention invalid magic, got '{message}'"
-                );
-            }
-            Ok(other) => {
-                assert!(false, "expected FrameError, got {other:?}");
-            }
-            Err(e) => {
-                assert!(false, "error response decode failed: {e}");
-            }
-        }
-    }
     assert!(
         server.clients.is_empty(),
-        "unsupported version frame must disconnect the client after the error response"
+        "invalid magic frame must disconnect the client without allocating a response"
     );
 }
 

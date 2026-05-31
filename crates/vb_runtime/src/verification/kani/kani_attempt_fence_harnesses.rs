@@ -365,6 +365,7 @@ fn proof_attempt_comparison_panic_free() {
     // 1. Check attempt == 0 || capacity == 0 || attempt > capacity => Err
     // 2. Get current from action_attempts => Err if missing
     // 3. Check attempt < current => Err StaleAttempt
+    // 4. Check attempt > current => Err InvalidActionCompletion
 
     let step_count: u16 = 1;
     let mut state = any_do_run_state(step_count, current);

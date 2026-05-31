@@ -721,20 +721,20 @@ fn cli_action_inspect_text_output_has_contract_details() {
     let output = run_cli(&[
         std::ffi::OsStr::new("action"),
         std::ffi::OsStr::new("inspect"),
-        std::ffi::OsStr::new("2"),
+        std::ffi::OsStr::new("write"),
     ]);
     let output = match output {
         Some(output) => output,
         None => {
             assert!(
                 forced_assertion_failure(),
-                "failed to execute velvet_ballistics CLI for action inspect 2"
+                "failed to execute velvet_ballistics CLI for action inspect write"
             );
             return;
         }
     };
 
-    assert_cli_success(&output, "action inspect 2");
+    assert_cli_success(&output, "action inspect write");
     let stdout = output_stdout(&output);
     assert!(stdout.contains("action 2"));
     assert!(stdout.contains("idempotency: idempotent_external"));
@@ -748,7 +748,7 @@ fn cli_action_inspect_json_output_has_full_contract() {
     let output = run_cli(&[
         std::ffi::OsStr::new("action"),
         std::ffi::OsStr::new("inspect"),
-        std::ffi::OsStr::new("2"),
+        std::ffi::OsStr::new("write"),
         std::ffi::OsStr::new("--emit"),
         std::ffi::OsStr::new("yaml"),
     ]);
@@ -757,13 +757,13 @@ fn cli_action_inspect_json_output_has_full_contract() {
         None => {
             assert!(
                 forced_assertion_failure(),
-                "failed to execute velvet_ballistics CLI for action inspect 2 --emit yaml"
+                "failed to execute velvet_ballistics CLI for action inspect write --emit yaml"
             );
             return;
         }
     };
 
-    assert_cli_success(&output, "action inspect 2 --emit yaml");
+    assert_cli_success(&output, "action inspect write --emit yaml");
     let stdout = output_stdout(&output);
     assert!(
         stdout.contains("success: true"),
@@ -809,7 +809,11 @@ fn cli_action_inspect_unregistered_action_fails() {
         }
     };
 
-    assert_cli_failure_contains(&output, "action inspect 99", "action 99 is not registered");
+    assert_cli_failure_contains(
+        &output,
+        "action inspect 99",
+        "action '99' is not registered",
+    );
 }
 
 // ---------------------------------------------------------------------------

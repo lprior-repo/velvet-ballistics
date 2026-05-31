@@ -49,7 +49,12 @@ impl ActionRegistry {
         }
         self.ensure_slot_capacity(slot)?;
 
-        // Check for duplicate name
+        if matches!(self.slots.get(slot), Some(ActionSlot::Registered(_))) {
+            return Err(ActionError::DispatchFailed);
+        }
+
+        // Check for duplicate name after duplicate-id rejection so id collisions
+        // keep their existing error contract.
         if self.by_name.contains_key(&contract.name) {
             return Err(ActionError::UnknownAction {
                 action: contract.id,

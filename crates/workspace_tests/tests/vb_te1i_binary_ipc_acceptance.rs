@@ -5,7 +5,7 @@
 //! acceptance criteria for the binary IPC surface:
 //! - BDD-001: Health and shutdown return expected typed responses
 //! - BDD-002: SubmitRun roundtrips correctly when frame is valid
-//! - BDD-003: Bad magic is rejected before any payload allocation
+//! - BDD-003: Bad magic is rejected by disconnect before any payload allocation
 //! - BDD-004: Queue full condition returns IpcError::Full
 //! - BDD-005: All 16 v1 commands return typed responses
 //! - BDD-006: Correlation IDs are preserved across the roundtrip
@@ -267,8 +267,7 @@ fn ipc_submit_run_roundtrips_when_frame_is_valid() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Scenario: Sending a frame whose magic bytes are invalid (not 0x5642_4C54)
-/// causes the server to return IpcResponse::FrameError with "invalid IPC frame magic"
-/// before the server attempts to read the payload bytes.
+/// causes the server to disconnect before it attempts to read the payload bytes.
 #[test]
 fn ipc_rejects_bad_magic_before_payload_allocation() {
     let path = temp_socket_path("bdd003_bad_magic");
@@ -295,32 +294,12 @@ fn ipc_rejects_bad_magic_before_payload_allocation() {
         .poll_once(&mut runtime, Some(Duration::from_millis(100)))
         .expect("process poll should succeed");
 
-    // Read error response header.
-    let response_header =
-        read_response_header(&mut client).expect("error response header should decode");
-
-    // The server echoes back the Health command in the fallback header.
-    assert_eq!(
-        response_header.command,
-        IpcCommand::Health,
-        "error response must use Health command"
-    );
-
-    let payload_len = response_header.payload_len as usize;
-    if payload_len > 0 {
-        let response_payload =
-            read_exact_timeout(&mut client, payload_len).expect("should read error payload");
-        let response: IpcResponse =
-            postcard::from_bytes(&response_payload).expect("error response should decode");
-        match response {
-            IpcResponse::FrameError { message } => {
-                assert!(
-                    message.contains("invalid IPC frame magic"),
-                    "error message should mention invalid magic, got: {message}"
-                );
-            }
-            other => panic!("expected FrameError response for bad magic, got {other:?}"),
-        }
+    match read_response_header(&mut client) {
+        Err(message) => assert_eq!(
+            message, "eof",
+            "bad magic must disconnect without allocating or writing a response"
+        ),
+        Ok(header) => panic!("bad magic unexpectedly produced response header {header:?}"),
     }
 }
 

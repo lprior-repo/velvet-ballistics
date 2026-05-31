@@ -90,7 +90,7 @@ commands:
   status     [--active-runs <N>] [--queue-depth <N>] [--trace-dropped <N>] [--emit text|yaml]  Report runtime shard status
   system status [--profile <quick|standard|full>] [--server none] [--emit text|yaml]  Report bounded system health
   action list [--emit text|yaml|postcard]                       List registered action contracts
-  action inspect <action_id> [--emit text|yaml|postcard]         Show one registered action contract
+  action inspect <action-name> [--emit text|yaml|postcard]       Show one registered action contract
 
 options:
   --emit text      Output human-readable text (default)
@@ -687,7 +687,7 @@ fn registered_cli_actions() -> vb_core::action::ActionResult<ActionRegistry> {
     cli_action_specs()
         .iter()
         .try_fold(ActionRegistry::new(), |mut registry, spec| {
-            registry.register(action_contract(spec))?;
+            registry.register(action_contract(spec)?)?;
             Ok(registry)
         })
 }
@@ -739,10 +739,14 @@ fn cli_action_specs() -> &'static [CliActionSpec] {
     ]
 }
 
-fn action_contract(spec: &CliActionSpec) -> vb_core::action::ActionContract {
-    vb_core::action::ActionContract {
+fn action_contract(
+    spec: &CliActionSpec,
+) -> vb_core::action::ActionResult<vb_core::action::ActionContract> {
+    let name = vb_core::action::ActionName::new(spec.name)
+        .map_err(|_| vb_core::action::ActionError::DispatchFailed)?;
+    Ok(vb_core::action::ActionContract {
         id: vb_core::ActionId::new(spec.id),
-        name: vb_core::action::ActionName::new(spec.name).expect("valid action name"),
+        name,
         input_slot_count: spec.input_slot_count,
         output_slot_count: spec.output_slot_count,
         max_input_bytes: 65_536,
@@ -752,7 +756,7 @@ fn action_contract(spec: &CliActionSpec) -> vb_core::action::ActionContract {
         side_effect: spec.side_effect,
         retry_safety: spec.retry_safety,
         required_capabilities: Box::new([]),
-    }
+    })
 }
 
 fn action_idempotency_name(value: vb_core::action::Idempotency) -> &'static str {

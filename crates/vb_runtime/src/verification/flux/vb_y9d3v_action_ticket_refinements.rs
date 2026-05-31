@@ -40,8 +40,7 @@ struct ActionTicket {
 /// Refinement: the validate_ticket_attempt function ensures that:
 /// 1. If attempt < current, it returns StaleAttempt error.
 /// 2. If attempt == current within capacity, it returns Ok(()).
-/// 3. Future attempt handling (attempt > current): currently accepted by
-///    production code; the refinement documents the planned future-contract.
+/// 3. If attempt > current within capacity, it returns InvalidActionCompletion.
 ///
 /// Production function: crates/vb_runtime/src/shard/helpers.rs:72-94
 #[extern_spec]
@@ -51,7 +50,7 @@ struct ActionTicket {
 #[ensures(
     |result: &Result<(), RuntimeError>| {
         // Postcondition: the function terminates normally (no panics).
-        // If the attempt is less than current, the result is an error.
+        // If the attempt differs from current, the result is an error.
         true // Structural refinement; detailed invariants in Verus/Kani
     }
 )]

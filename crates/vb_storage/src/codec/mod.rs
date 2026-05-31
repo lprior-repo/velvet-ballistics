@@ -14,6 +14,25 @@ pub(crate) mod header;
 pub(crate) mod payload;
 pub(crate) mod validation;
 
+#[cfg(fuzzing)]
+pub mod fuzz_validation {
+    //! Public fuzz-only accessors for codec validation invariants.
+
+    use crate::JournalError;
+
+    pub const fn is_known_record_kind(kind: u16) -> bool {
+        super::validation::is_known_record_kind(kind)
+    }
+
+    pub fn validate_known_kind(kind: u16) -> Result<(), JournalError> {
+        super::validation::validate_known_kind(kind)
+    }
+
+    pub fn validate_kind_family(magic: u32, kind: u16) -> Result<(), JournalError> {
+        super::validation::validate_kind_family(magic, kind)
+    }
+}
+
 pub use self::header::{decode_record_header, encode_record_header};
 pub use self::payload::verify_digest_match;
 

@@ -30,12 +30,13 @@ pub enum MagicValidationState {
 /// Returns `MagicValidated` if the magic matches `IPC_MAGIC`.
 /// Returns `AwaitingMagic` if not enough bytes have been collected.
 /// Returns an `IpcError::InvalidMagic` if the magic bytes are present but do not match.
-#[must_use]
 pub fn validate_magic_early(bytes: &[u8]) -> Result<MagicValidationState, IpcError> {
-    if bytes.len() < 4 {
+    let Some(prefix) = bytes.get(..AWAITING_MAGIC_MAX_BYTES) else {
         return Ok(MagicValidationState::AwaitingMagic);
-    }
-    let magic = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+    };
+    let magic_bytes = <[u8; AWAITING_MAGIC_MAX_BYTES]>::try_from(prefix)
+        .map_err(|_| IpcError::HeaderDecodeFailed)?;
+    let magic = u32::from_le_bytes(magic_bytes);
     if magic == IPC_MAGIC {
         Ok(MagicValidationState::MagicValidated)
     } else {

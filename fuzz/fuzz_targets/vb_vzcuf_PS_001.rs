@@ -17,7 +17,7 @@
 
 use libfuzzer_sys::fuzz_target;
 use vb_storage::codec::encode_record;
-use vb_storage::constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_LEN};
+use vb_storage::constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES};
 use vb_storage::records::RecordKind;
 use vb_storage::events::JournalEvent;
 use vb_storage::types::EventSeq;

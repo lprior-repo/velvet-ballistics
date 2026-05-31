@@ -97,10 +97,9 @@ proptest! {
     fn proptest_ranges_intersections_empty(config in partition_config_strategy()) {
         let plan = assert_ok(PartitionPlan::from_config(&config), "from_config")?;
         let ranges = plan.ranges();
-        for i in 0..ranges.len() {
-            for j in (i + 1)..ranges.len() {
-                assert!(ranges[i].is_disjoint(ranges[j]), "overlap at ({i}, {j})");
-            }
+        for (left, right) in ranges.iter().zip(ranges.iter().skip(1)) {
+            assert!(left.is_disjoint(*right), "adjacent ranges overlap");
+            assert!(left.end() < right.start(), "ranges are not strictly ordered");
         }
     }
 }

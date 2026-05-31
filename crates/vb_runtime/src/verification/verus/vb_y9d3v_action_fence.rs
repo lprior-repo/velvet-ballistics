@@ -53,11 +53,7 @@ pub closed spec fn spec_validate_exact_attempt(
     } else if incoming == current {
         Ok(())
     } else {
-        // Future attempt: currently accepted by production code but
-        // noted as a planned implementation gap.
-        // Per the proof plan, future attempt rejection is an implementation fix.
-        // The spec models the CURRENT production behavior (accepts future attempts).
-        Ok(())
+        Err(AttemptFenceError::InvalidActionCompletion)
     }
 }
 
@@ -109,45 +105,8 @@ pub proof fn proof_attempt_beyond_max_error(attempt: u16, capacity: u16)
 // Spec: Future attempt validation (PO-0006)
 // =========================================================================
 
-/// The spec of the CURRENT production behavior: future attempts (incoming > current)
-/// are accepted if within capacity. This models the existing code path where
-/// the stale-attempt check only catches `attempt < current`.
-///
-/// NOTE: The proof plan identifies this as an implementation gap.
-/// When the production code adds future-attempt rejection, this spec must be updated.
+/// Future attempts (incoming > current) are rejected even when within capacity.
 pub closed spec fn spec_validate_future_attempt(
-    incoming: u16,
-    current: u16,
-    capacity: u16,
-) -> Result<(), AttemptFenceError> {
-    // Mirror of production validate_ticket_attempt (helpers.rs:72-94):
-    // Checks only: attempt==0, capacity==0, attempt>capacity, attempt<current.
-    // Does NOT check attempt>current.
-    if incoming == 0 || capacity == 0 || incoming > capacity {
-        Err(AttemptFenceError::AttemptBeyondMax { attempt: incoming, max: capacity })
-    } else if incoming < current {
-        Err(AttemptFenceError::StaleAttempt { incoming, current })
-    } else {
-        Ok(()) // Future attempt accepted (current production behavior)
-    }
-}
-
-/// Proof: with the current code, future attempts (incoming > current) within capacity pass.
-pub proof fn proof_future_attempt_currently_accepted(incoming: u16, current: u16, capacity: u16)
-    requires
-        incoming > 0,
-        capacity > 0,
-        incoming > current,
-        incoming <= capacity,
-    ensures
-        spec_validate_future_attempt(incoming, current, capacity).is_ok(),
-{
-    assert(spec_validate_future_attempt(incoming, current, capacity).is_ok()) by (compute);
-}
-
-/// Desired future spec: future attempts are rejected.
-/// This is the CONTRACT target — when implementation is fixed, this spec becomes the truth.
-pub closed spec fn spec_validate_future_attempt_desired(
     incoming: u16,
     current: u16,
     capacity: u16,
@@ -159,8 +118,25 @@ pub closed spec fn spec_validate_future_attempt_desired(
     } else if incoming > current {
         Err(AttemptFenceError::InvalidActionCompletion)
     } else {
-        Ok(()) // Only exact match passes
+        Ok(())
     }
+}
+
+/// Proof: future attempts (incoming > current) within capacity are rejected.
+pub proof fn proof_future_attempt_rejected(incoming: u16, current: u16, capacity: u16)
+    requires
+        incoming > 0,
+        capacity > 0,
+        incoming > current,
+        incoming <= capacity,
+    ensures
+        spec_validate_future_attempt(incoming, current, capacity)
+            == Err(AttemptFenceError::InvalidActionCompletion),
+{
+    assert(
+        spec_validate_future_attempt(incoming, current, capacity)
+            == Err(AttemptFenceError::InvalidActionCompletion)
+    ) by (compute);
 }
 
 // =========================================================================

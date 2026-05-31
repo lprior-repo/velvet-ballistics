@@ -5,7 +5,7 @@ use vb_core::ids::{RunId, SeqNo, SlotIdx, StepIdx};
 fn contract_fixture(id: u16) -> ActionContract {
     ActionContract {
         id: ActionId::new(id),
-        name: ActionName::new("test-action").unwrap(),
+        name: ActionName::new(format!("test-action-{id}")).unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -97,6 +97,24 @@ fn register_duplicate_returns_error() {
     assert_eq!(
         registry.register(duplicate),
         Err(ActionError::DispatchFailed)
+    );
+}
+
+#[test]
+fn register_duplicate_name_returns_unknown_action() {
+    let mut registry = ActionRegistry::new();
+    assert_eq!(registry.register(contract_fixture(3)), Ok(()));
+
+    let duplicate_name = ActionContract {
+        id: ActionId::new(4),
+        ..contract_fixture(3)
+    };
+
+    assert_eq!(
+        registry.register(duplicate_name),
+        Err(ActionError::UnknownAction {
+            action: ActionId::new(4)
+        })
     );
 }
 

@@ -12,11 +12,11 @@ pub fn classify_occurrence(
     if text.is_empty() {
         return Ok(OccurrenceClass::NoOccurrence);
     }
-    if let Some(canonical) = canonical_occurrence(text, &config.canonical_table) {
-        return Ok(canonical);
-    }
     if let Some(exception) = exact_exception(text, config) {
         return Ok(OccurrenceClass::AllowedLegacy { exception });
+    }
+    if let Some(canonical) = canonical_occurrence(text, &config.canonical_table) {
+        return Ok(canonical);
     }
     if contains_legacy(text) {
         return Ok(class_for_text(text));
