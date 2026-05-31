@@ -151,6 +151,10 @@ name = "restate_typed_partitioned_id_tests"
 path = "tests/restate_typed_partitioned_id_tests.rs"
 
 [[test]]
+name = "restate_journal_tail_scan_fallback_tests"
+path = "tests/restate_journal_tail_scan_fallback_tests.rs"
+
+[[test]]
 name = "vb_eepg_bdd_tests"
 path = "tests/vb_eepg_bdd_tests.rs"
 
