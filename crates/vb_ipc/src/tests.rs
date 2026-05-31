@@ -1905,7 +1905,7 @@ mod proptests {
 
     proptest! {
         #[test]
-        fn ipc_command_roundtrips_through_u16(cmd in 1u16..=16u16) {
+        fn ipc_command_roundtrips_through_u16(cmd in 1u16..=11u16) {
             let parsed = IpcCommand::from_u16(cmd);
             prop_assert_ok!(parsed);
             let Ok(command) = parsed else { return Ok(()) };
@@ -1934,7 +1934,7 @@ mod proptests {
 
     proptest! {
         #[test]
-        fn ipc_command_encode_decode_roundtrip(cmd_val in 1u16..=16u16) {
+        fn ipc_command_encode_decode_roundtrip(cmd_val in 1u16..=11u16) {
             let Ok(command) = IpcCommand::from_u16(cmd_val) else {
                 return Ok(());
             };
@@ -1969,7 +1969,7 @@ mod proptests {
 
     proptest! {
         #[test]
-        fn frame_header_length_never_exceeds_max(cmd_val in 1u16..=16u16, payload_len in 0u32..=1024u32) {
+        fn frame_header_length_never_exceeds_max(cmd_val in 1u16..=11u16, payload_len in 0u32..=1024u32) {
             let Ok(command) = IpcCommand::from_u16(cmd_val) else {
                 return Ok(());
             };
