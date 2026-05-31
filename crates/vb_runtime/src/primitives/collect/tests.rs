@@ -101,14 +101,12 @@ fn assert_slot_list_items(
 ) {
     match *run
         .read_slot(slot)
-        .ok()
-        .unwrap_or_else(|| panic!("read must succeed"))
+        .expect("read must succeed")
     {
         SlotValue::List(id) => {
             let items = store
                 .list(id)
-                .ok()
-                .unwrap_or_else(|| panic!("list read must succeed"));
+                .expect("list read must succeed");
             assert_eq!(items, expected);
         }
         other => {
@@ -327,8 +325,7 @@ fn collect_start_initializes_collector() {
     assert_eq!(run.pc(), body);
     let slot_val = *run
         .read_slot(output)
-        .ok()
-        .unwrap_or_else(|| panic!("read must succeed"));
+        .expect("read must succeed");
     assert!(matches!(slot_val, SlotValue::List(_)));
 }
 
@@ -394,8 +391,7 @@ fn collect_finish_materializes_output() {
     let output = SlotIdx::new(1);
     let next_step = StepIdx::new(3);
     run.write_slot(collector, SlotValue::I64(99))
-        .ok()
-        .unwrap_or_else(|| panic!("slot write must succeed"));
+        .expect("slot write must succeed");
     let result = collect_finish(
         &mut run,
         &mut states,
@@ -408,8 +404,7 @@ fn collect_finish_materializes_output() {
     assert_eq!(run.pc(), next_step);
     assert_eq!(
         *run.read_slot(output)
-            .ok()
-            .unwrap_or_else(|| panic!("read must succeed")),
+            .expect("read must succeed"),
         SlotValue::I64(99)
     );
 }
@@ -421,8 +416,7 @@ fn collect_start_returns_error_when_source_is_not_list() {
     let mut states = fresh_states();
     let source = SlotIdx::new(0);
     run.write_slot(source, SlotValue::Bool(true))
-        .ok()
-        .unwrap_or_else(|| panic!("write must succeed"));
+        .expect("write must succeed");
     let result = collect_start(
         &mut run,
         &mut store,
@@ -593,8 +587,7 @@ fn collect_finish_returns_error_when_output_missing() {
     let mut states = fresh_states();
     let collector = SlotIdx::new(0);
     run.write_slot(collector, SlotValue::I64(1))
-        .ok()
-        .unwrap_or_else(|| panic!("write must succeed"));
+        .expect("write must succeed");
     let result = collect_finish(
         &mut run,
         &mut states,
@@ -620,8 +613,7 @@ fn collect_finish_returns_error_when_next_missing() {
     let collector = SlotIdx::new(0);
     let output = SlotIdx::new(1);
     run.write_slot(collector, SlotValue::I64(1))
-        .ok()
-        .unwrap_or_else(|| panic!("write must succeed"));
+        .expect("write must succeed");
     let result = collect_finish(
         &mut run,
         &mut states,
@@ -647,8 +639,7 @@ fn collect_page_returns_error_when_collector_not_list() {
     let mut states = fresh_states();
     let collector = SlotIdx::new(0);
     run.write_slot(collector, SlotValue::I64(42))
-        .ok()
-        .unwrap_or_else(|| panic!("write must succeed"));
+        .expect("write must succeed");
     let result = collect_page(
         &mut run,
         &mut store,
@@ -696,14 +687,12 @@ fn collect_start_writes_first_page_to_collector() {
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
     match *run
         .read_slot(output)
-        .ok()
-        .unwrap_or_else(|| panic!("read must succeed"))
+        .expect("read must succeed")
     {
         SlotValue::List(id) => {
             let items = store
                 .list(id)
-                .ok()
-                .unwrap_or_else(|| panic!("list read must succeed"));
+                .expect("list read must succeed");
             assert_eq!(items.len(), 2);
             assert_eq!(items.get(0), Some(&SlotValue::I64(1)));
             assert_eq!(items.get(1), Some(&SlotValue::I64(2)));
@@ -805,8 +794,7 @@ fn collect_finish_increments_executed_counter() {
     let collector = SlotIdx::new(0);
     let output = SlotIdx::new(1);
     run.write_slot(collector, SlotValue::I64(99))
-        .ok()
-        .unwrap_or_else(|| panic!("write must succeed"));
+        .expect("write must succeed");
     let before = run.executed();
     let result = collect_finish(
         &mut run,
@@ -856,8 +844,7 @@ fn collect_next_returns_error_when_not_list() {
     let mut states = fresh_states();
     let collector = SlotIdx::new(0);
     run.write_slot(collector, SlotValue::Bool(true))
-        .ok()
-        .unwrap_or_else(|| panic!("write must succeed"));
+        .expect("write must succeed");
     let result = collect_next(
         &mut run,
         &mut store,
@@ -1031,11 +1018,10 @@ fn collect_start_first_page_smaller_than_total() {
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
     match *run
         .read_slot(output)
-        .ok()
-        .unwrap_or_else(|| panic!("must read"))
+        .expect("must read")
     {
         SlotValue::List(id) => {
-            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+            let items = store.list(id).expect("must read");
             assert_eq!(items.len(), 2);
             assert_eq!(items.get(0), Some(&SlotValue::I64(1)));
             assert_eq!(items.get(1), Some(&SlotValue::I64(2)));
@@ -1074,11 +1060,10 @@ fn collect_start_page_size_larger_than_items_clamps_to_item_count() {
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
     match *run
         .read_slot(output)
-        .ok()
-        .unwrap_or_else(|| panic!("must read"))
+        .expect("must read")
     {
         SlotValue::List(id) => {
-            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+            let items = store.list(id).expect("must read");
             assert_eq!(items.len(), 2);
         }
         other => {
@@ -1138,8 +1123,7 @@ fn collect_start_null_source_returns_type_mismatch() {
     let mut states = fresh_states();
     let source = SlotIdx::new(0);
     run.write_slot(source, SlotValue::Null)
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+        .expect("write");
     let result = collect_start(
         &mut run,
         &mut store,
@@ -1191,11 +1175,10 @@ fn collect_start_page_size_one_single_item_per_page() {
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
     match *run
         .read_slot(output)
-        .ok()
-        .unwrap_or_else(|| panic!("must read"))
+        .expect("must read")
     {
         SlotValue::List(id) => {
-            let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
+            let items = store.list(id).expect("must read");
             assert_eq!(items.len(), 1);
             assert_eq!(items.get(0), Some(&SlotValue::I64(10)));
         }
@@ -3647,8 +3630,7 @@ fn collect_page_returns_type_mismatch_when_collector_is_bool() {
     let mut states = fresh_states();
     let collector = SlotIdx::new(0);
     run.write_slot(collector, SlotValue::Bool(true))
-        .ok()
-        .unwrap_or_else(|| panic!("write must succeed"));
+        .expect("write must succeed");
     let result = collect_page(
         &mut run,
         &mut store,
@@ -3673,8 +3655,7 @@ fn collect_page_returns_type_mismatch_when_collector_is_null() {
     let mut states = fresh_states();
     let collector = SlotIdx::new(0);
     run.write_slot(collector, SlotValue::Null)
-        .ok()
-        .unwrap_or_else(|| panic!("write must succeed"));
+        .expect("write must succeed");
     let result = collect_page(
         &mut run,
         &mut store,

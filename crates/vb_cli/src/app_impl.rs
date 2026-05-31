@@ -674,9 +674,10 @@ fn registered_cli_actions() -> vb_core::action::ActionResult<ActionRegistry> {
         })
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct CliActionSpec {
     id: u16,
+    name: &'static str,
     idempotency: vb_core::action::Idempotency,
     retry_safety: vb_core::action::RetrySafety,
     side_effect: vb_core::action::SideEffect,
@@ -689,6 +690,7 @@ fn cli_action_specs() -> &'static [CliActionSpec] {
     &[
         CliActionSpec {
             id: 1,
+            name: "noop",
             idempotency: vb_core::action::Idempotency::DeterministicPure,
             retry_safety: vb_core::action::RetrySafety::Safe,
             side_effect: vb_core::action::SideEffect::None,
@@ -698,6 +700,7 @@ fn cli_action_specs() -> &'static [CliActionSpec] {
         },
         CliActionSpec {
             id: 2,
+            name: "write",
             idempotency: vb_core::action::Idempotency::IdempotentExternal,
             retry_safety: vb_core::action::RetrySafety::KeyRequired,
             side_effect: vb_core::action::SideEffect::Writes,
@@ -707,6 +710,7 @@ fn cli_action_specs() -> &'static [CliActionSpec] {
         },
         CliActionSpec {
             id: 3,
+            name: "send",
             idempotency: vb_core::action::Idempotency::AtLeastOnceExternal,
             retry_safety: vb_core::action::RetrySafety::Unsafe,
             side_effect: vb_core::action::SideEffect::Sends,
@@ -717,9 +721,10 @@ fn cli_action_specs() -> &'static [CliActionSpec] {
     ]
 }
 
-fn action_contract(spec: CliActionSpec) -> vb_core::action::ActionContract {
+fn action_contract(spec: &CliActionSpec) -> vb_core::action::ActionContract {
     vb_core::action::ActionContract {
         id: vb_core::ActionId::new(spec.id),
+        name: vb_core::action::ActionName::new(spec.name).expect("valid action name"),
         input_slot_count: spec.input_slot_count,
         output_slot_count: spec.output_slot_count,
         max_input_bytes: 65_536,

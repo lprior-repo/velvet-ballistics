@@ -45,7 +45,7 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    Some(vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("suspended_workflow"))
 }
 
 fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
@@ -82,7 +82,7 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    Some(vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("finished_workflow"))
 }
 
 fn wait_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
@@ -129,7 +129,7 @@ fn wait_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    Some(vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("wait_workflow"))
 }
 
 fn error_handler_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
@@ -189,7 +189,7 @@ fn error_handler_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    Some(vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("error_handler_workflow"))
 }
 
 fn retry_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
@@ -249,7 +249,7 @@ fn retry_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    Some(vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("retry_workflow"))
 }
 
 fn wait_event_no_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
@@ -287,776 +287,7 @@ fn wait_event_no_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflo
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
-}
-
-// ---- Test state helpers ----
-
-fn make_run_state(
-    workflow: vb_core::workflow::CompiledWorkflow,
-    run_id: RunId,
-) -> Option<RunState> {
-    let step_count = workflow.node_count();
-    let slot_count = workflow.slot_count();
-    let frame = RunFrame::new(run_id, workflow.entry(), step_count, slot_count).ok()?;
-    Some(RunState {
-        frame,
-        workflow,
-        store: ValueStore::new(),
-        action_attempts: new_action_attempts(step_count),
-        admission: None,
-        collect_states: CollectStates::new(),
-        action_contracts: Box::new([]),
-    })
-}
-
-fn ticket(run: RunId, step: StepIdx, attempt: u16) -> ActionTicket {
-    ActionTicket {
-        run,
-        step,
-        seq: SeqNo::ZERO,
-        action: ActionId::new(0),
-        attempt,
-        idempotency_key: 0,
-        capacity: 1,
-    }
-}
-
-// =======================================================================
-// new_action_attempts
-// =======================================================================
-
-#[test]
-fn new_action_attempts_creates_zeroed_tracker() {
-    let attempts = new_action_attempts(3);
-    assert_eq!(attempts.len(), 3);
-    assert_eq!(attempts.get(0).copied(), Some(0));
-    assert_eq!(attempts.get(1).copied(), Some(0));
-    assert_eq!(attempts.get(2).copied(), Some(0));
-}
-
-#[test]
-fn new_action_attempts_with_single_step() {
-    let attempts = new_action_attempts(1);
-    assert_eq!(attempts.len(), 1);
-    assert_eq!(attempts.get(0).copied(), Some(0));
-}
-
-#[test]
-fn new_action_attempts_with_many_steps() {
-    let attempts = new_action_attempts(100);
-    assert_eq!(attempts.len(), 100);
-    assert!(attempts.iter().copied().all(|attempt| attempt == 0));
-}
-
-#[test]
-fn new_action_attempts_with_zero_steps() {
-    let attempts = new_action_attempts(0);
-    assert_eq!(attempts.len(), 0);
-}
-
-// =======================================================================
-// record_scheduled_attempt
-// =======================================================================
-
-#[test]
-fn record_scheduled_attempt_records_first_attempt() {
-    let Some(wf) = suspended_workflow() else {
-        assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
-        return;
-    };
-    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
-        assert_eq!(None::<()>, Some(()), "missing run state fixture");
-        return;
-    };
-    let t = ticket(RunId::new(1), StepIdx::ZERO, 1);
-    record_scheduled_attempt(&mut state, t);
-    assert_eq!(state.action_attempts.get(0).copied(), Some(1));
-}
-
-#[test]
-fn record_scheduled_attempt_updates_higher_attempt() {
-    let Some(wf) = suspended_workflow() else {
-        assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
-        return;
-    };
-    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
-        assert_eq!(None::<()>, Some(()), "missing run state fixture");
-        return;
-    };
-    let t1 = ticket(RunId::new(1), StepIdx::ZERO, 1);
-    record_scheduled_attempt(&mut state, t1);
-    let t2 = ticket(RunId::new(1), StepIdx::ZERO, 3);
-    record_scheduled_attempt(&mut state, t2);
-    assert_eq!(state.action_attempts.get(0).copied(), Some(3));
-}
-
-#[test]
-fn record_scheduled_attempt_ignores_lower_attempt() {
-    let Some(wf) = suspended_workflow() else {
-        assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
-        return;
-    };
-    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
-        assert_eq!(None::<()>, Some(()), "missing run state fixture");
-        return;
-    };
-    let t_high = ticket(RunId::new(1), StepIdx::ZERO, 5);
-    record_scheduled_attempt(&mut state, t_high);
-    let t_low = ticket(RunId::new(1), StepIdx::ZERO, 2);
-    record_scheduled_attempt(&mut state, t_low);
-    assert_eq!(state.action_attempts.get(0).copied(), Some(5));
-}
-
-#[test]
-fn record_scheduled_attempt_on_out_of_bounds_step_is_noop() {
-    let Some(wf) = suspended_workflow() else {
-        assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
-        return;
-    };
-    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
-        assert_eq!(None::<()>, Some(()), "missing run state fixture");
-        return;
-    };
-    let t = ticket(RunId::new(1), StepIdx::new(99), 1);
-    record_scheduled_attempt(&mut state, t);
-    assert_eq!(state.action_attempts.len(), 1);
-    assert_eq!(state.action_attempts.get(0).copied(), Some(0));
-}
-
-// =======================================================================
-// seed_input_slots
-// =======================================================================
-
-#[test]
-fn seed_input_slots_writes_clean_values() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let Some(mut frame) =
-        RunFrame::new(RunId::new(1), wf.entry(), wf.node_count(), wf.slot_count()).ok()
-    else {
-        return;
-    };
-    let inputs = Box::from([(SlotIdx::new(0), SlotValue::I64(42))]);
-    let result = seed_input_slots(&mut frame, &inputs);
-    assert_eq!(result, Ok(()));
-    match frame.read_slot(SlotIdx::new(0)) {
-        Ok(v) => assert_eq!(*v, SlotValue::I64(42)),
-        other => {
-            let msg = format!("expected Ok(I64(42)), got {other:?}");
-            panic!("{msg}");
-        }
-    }
-}
-
-#[test]
-fn seed_input_slots_with_empty_inputs_succeeds() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let Some(mut frame) =
-        RunFrame::new(RunId::new(1), wf.entry(), wf.node_count(), wf.slot_count()).ok()
-    else {
-        return;
-    };
-    let result = seed_input_slots(&mut frame, &[]);
-    assert_eq!(result, Ok(()));
-}
-
-#[test]
-fn seed_input_slots_multiple_slots() {
-    let Some(wf) = retry_workflow() else {
-        return;
-    };
-    let Some(mut frame) =
-        RunFrame::new(RunId::new(2), wf.entry(), wf.node_count(), wf.slot_count()).ok()
-    else {
-        return;
-    };
-    let inputs = Box::from([
-        (SlotIdx::new(0), SlotValue::I64(10)),
-        (SlotIdx::new(1), SlotValue::I64(20)),
-    ]);
-    let result = seed_input_slots(&mut frame, &inputs);
-    assert_eq!(result, Ok(()));
-    assert_eq!(frame.read_slot(SlotIdx::new(0)), Ok(&SlotValue::I64(10)));
-    assert_eq!(frame.read_slot(SlotIdx::new(1)), Ok(&SlotValue::I64(20)));
-}
-
-// =======================================================================
-// validate_action_completion
-// =======================================================================
-
-#[test]
-fn validate_action_completion_rejects_non_running_step() {
-    let Some(wf) = suspended_workflow() else {
-        assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
-        return;
-    };
-    let Some(state) = make_run_state(wf, RunId::new(1)) else {
-        assert_eq!(None::<()>, Some(()), "missing run state fixture");
-        return;
-    };
-    // Step 0 is in Pending state (not Running), so validation should fail.
-    let t = ticket(RunId::new(1), StepIdx::ZERO, 1);
-    let result = validate_action_completion(&state, t);
-    assert_eq!(result, Err(RuntimeError::InvalidActionCompletion));
-}
-
-#[test]
-fn validate_action_completion_rejects_out_of_bounds_step() {
-    let Some(wf) = suspended_workflow() else {
-        assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
-        return;
-    };
-    let Some(state) = make_run_state(wf, RunId::new(1)) else {
-        assert_eq!(None::<()>, Some(()), "missing run state fixture");
-        return;
-    };
-    let t = ticket(RunId::new(1), StepIdx::new(99), 1);
-    let result = validate_action_completion(&state, t);
-    assert_eq!(result, Err(RuntimeError::InvalidActionCompletion));
-}
-
-// =======================================================================
-// advance_after_action_completion
-// =======================================================================
-
-#[test]
-fn advance_after_action_completion_for_terminal_node_returns_ok() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
-    // The Do node at step 0 has no next, so advance returns Ok(()) but does nothing.
-    let result = advance_after_action_completion(&mut state, StepIdx::ZERO);
-    assert_eq!(result, Ok(()));
-}
-
-#[test]
-fn advance_after_action_completion_returns_error_for_missing_node() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
-    let result = advance_after_action_completion(&mut state, StepIdx::new(99));
-    assert_eq!(result, Err(RuntimeError::InvalidActionCompletion));
-}
-
-// =======================================================================
-// timer_registration_required
-// =======================================================================
-
-#[test]
-fn timer_registration_required_for_wait_until() {
-    let Some(wf) = wait_workflow() else {
-        return;
-    };
-    let Some(state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
-    assert_eq!(timer_registration_required(&state, StepIdx::new(1)), true);
-}
-
-#[test]
-fn timer_not_required_for_do_node() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let Some(state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
-    assert_eq!(timer_registration_required(&state, StepIdx::ZERO), false);
-}
-
-#[test]
-fn timer_not_required_for_missing_step() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let Some(state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
-    assert_eq!(timer_registration_required(&state, StepIdx::new(99)), false);
-}
-
-#[test]
-fn timer_not_required_for_wait_event_without_timeout() {
-    let Some(wf) = wait_event_no_timeout_workflow() else {
-        return;
-    };
-    let Some(state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
-    assert_eq!(timer_registration_required(&state, StepIdx::ZERO), false);
-}
-
-// =======================================================================
-// retry_metadata_exists
-// =======================================================================
-
-#[test]
-fn retry_metadata_exists_when_retry_check_follows() {
-    let Some(wf) = retry_workflow() else {
-        return;
-    };
-    let Some(state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
-    assert_eq!(retry_metadata_exists(&state, StepIdx::new(1)), true);
-}
-
-#[test]
-fn retry_metadata_absent_when_no_retry_check_follows() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let Some(state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
-    assert_eq!(retry_metadata_exists(&state, StepIdx::ZERO), false);
-}
-
-#[test]
-fn retry_metadata_absent_for_missing_step() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let Some(state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
-    assert_eq!(retry_metadata_exists(&state, StepIdx::new(99)), false);
-}
-
-// =======================================================================
-// retry_policy_after_action
-// =======================================================================
-
-#[test]
-fn retry_policy_after_action_extracts_max_attempts() {
-    let Some(wf) = retry_workflow() else {
-        return;
-    };
-    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
-    // Drive step 0 (SetConst) and manually write the policy value.
-    // The deterministic engine is not running in this unit test, so
-    // we populate the slot directly.
-    assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
-    assert_eq!(state.frame.mark_succeeded(StepIdx::ZERO), Ok(()));
-    assert_eq!(state.frame.set_pc(StepIdx::new(1)), Ok(()));
-    assert_eq!(
-        state
-            .frame
-            .write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(3), Taint::Clean),
-        Ok(())
-    );
-
-    let policy = retry_policy_after_action(&state, StepIdx::new(1));
-    match policy {
-        Ok(p) => assert_eq!(p.max_attempts, 3),
-        Err(e) => {
-            let reason = format!("{e:?}");
-            assert_eq!(reason, "should not reach here");
-        }
-    }
-}
-
-#[test]
-fn retry_policy_after_action_rejects_missing_node() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let Some(state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
-    let result = retry_policy_after_action(&state, StepIdx::new(99));
-    assert_eq!(result, Err(RuntimeError::InvalidActionCompletion));
-}
-
-#[test]
-fn retry_policy_after_action_rejects_no_next() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let Some(state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
-    let result = retry_policy_after_action(&state, StepIdx::ZERO);
-    assert_eq!(
-        result,
-        Err(RuntimeError::UnsupportedOperation {
-            operation: "retry_metadata_missing"
-        })
-    );
-}
-
-// =======================================================================
-// record_retry_attempt
-// =======================================================================
-
-#[test]
-fn record_retry_attempt_increments_and_allows_retry() {
-    let Some(wf) = suspended_workflow() else {
-        assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
-        return;
-    };
-    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
-        assert_eq!(None::<()>, Some(()), "missing run state fixture");
-        return;
-    };
-    let t = ticket(RunId::new(1), StepIdx::ZERO, 1);
-    let policy = crate::engine::RetryPolicy {
-        max_attempts: 3,
-        base_delay_ms: 0,
-        exponential_backoff: false,
-    };
-    assert_eq!(record_retry_attempt(&mut state, t, policy), Ok(true));
-    assert_eq!(state.action_attempts.get(0).copied(), Some(2));
-}
-
-#[test]
-fn record_retry_attempt_blocks_when_max_reached() {
-    let Some(wf) = suspended_workflow() else {
-        assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
-        return;
-    };
-    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
-        assert_eq!(None::<()>, Some(()), "missing run state fixture");
-        return;
-    };
-    let t = ticket(RunId::new(1), StepIdx::ZERO, 1);
-    let policy = crate::engine::RetryPolicy {
-        max_attempts: 2,
-        base_delay_ms: 0,
-        exponential_backoff: false,
-    };
-    assert_eq!(record_retry_attempt(&mut state, t, policy), Ok(true));
-    assert_eq!(record_retry_attempt(&mut state, t, policy), Ok(false));
-}
-
-#[test]
-fn record_retry_attempt_rejects_out_of_bounds_step() {
-    let Some(wf) = suspended_workflow() else {
-        assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
-        return;
-    };
-    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
-        assert_eq!(None::<()>, Some(()), "missing run state fixture");
-        return;
-    };
-    let t = ticket(RunId::new(1), StepIdx::new(99), 1);
-    let policy = crate::engine::RetryPolicy {
-        max_attempts: 3,
-        base_delay_ms: 0,
-        exponential_backoff: false,
-    };
-    assert_eq!(
-        record_retry_attempt(&mut state, t, policy),
-        Err(RuntimeError::InvalidActionCompletion)
-    );
-}
-
-#[test]
-fn record_retry_attempt_rejects_zero_attempt() {
-    let Some(wf) = suspended_workflow() else {
-        assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
-        return;
-    };
-    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
-        assert_eq!(None::<()>, Some(()), "missing run state fixture");
-        return;
-    };
-    let t = ticket(RunId::new(1), StepIdx::ZERO, 0);
-    let policy = crate::engine::RetryPolicy {
-        max_attempts: 3,
-        base_delay_ms: 0,
-        exponential_backoff: false,
-    };
-    assert_eq!(
-        record_retry_attempt(&mut state, t, policy),
-        Err(RuntimeError::AttemptBeyondMax { attempt: 0, max: 3 })
-    );
-    assert_eq!(state.action_attempts.get(0).copied(), Some(0));
-}
-
-#[test]
-fn record_retry_attempt_rejects_zero_policy_capacity() {
-    let Some(wf) = suspended_workflow() else {
-        assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
-        return;
-    };
-    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
-        assert_eq!(None::<()>, Some(()), "missing run state fixture");
-        return;
-    };
-    let t = ticket(RunId::new(1), StepIdx::ZERO, 1);
-    let policy = crate::engine::RetryPolicy {
-        max_attempts: 0,
-        base_delay_ms: 0,
-        exponential_backoff: false,
-    };
-    assert_eq!(
-        record_retry_attempt(&mut state, t, policy),
-        Err(RuntimeError::AttemptBeyondMax { attempt: 1, max: 0 })
-    );
-    assert_eq!(state.action_attempts.get(0).copied(), Some(0));
-}
-
-// =======================================================================
-// find_error_handler_for_failure
-// =======================================================================
-
-#[test]
-fn find_error_handler_finds_handler_for_body_step() {
-    let Some(wf) = error_handler_workflow() else {
-        return;
-    };
-    let result = find_error_handler_for_failure(&wf, StepIdx::new(1));
-    match result {
-        Some((handler, error_slot)) => {
-            assert_eq!(handler, StepIdx::new(2));
-            assert_eq!(error_slot, None);
-        }
-        None => assert_eq!(result.is_some(), true),
-    }
-}
-
-#[test]
-fn find_error_handler_finds_handler_for_guard_step() {
-    let Some(wf) = error_handler_workflow() else {
-        return;
-    };
-    let result = find_error_handler_for_failure(&wf, StepIdx::ZERO);
-    assert_eq!(result.map(|(handler, _)| handler), Some(StepIdx::new(2)));
-}
-
-#[test]
-fn find_error_handler_returns_none_for_unprotected_step() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let result = find_error_handler_for_failure(&wf, StepIdx::ZERO);
-    assert_eq!(result, None);
-}
-
-#[test]
-fn find_error_handler_returns_none_for_missing_step() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let result = find_error_handler_for_failure(&wf, StepIdx::new(99));
-    assert_eq!(result, None);
-}
-
-#[test]
-fn find_error_handler_returns_none_for_finished_workflow() {
-    let Some(wf) = finished_workflow() else {
-        return;
-    };
-    let result = find_error_handler_for_failure(&wf, StepIdx::ZERO);
-    assert_eq!(result, None);
-}
-
-// =======================================================================
-// result_slot_for_finished_run
-// =======================================================================
-
-#[test]
-fn result_slot_for_finished_run_returns_finish_slot() {
-    let Some(wf) = finished_workflow() else {
-        return;
-    };
-    let run_id = RunId::new(1);
-    let Some(mut state) = make_run_state(wf, run_id) else {
-        return;
-    };
-    // Drive to the Finish node (step 1).
-    assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
-    assert_eq!(state.frame.mark_succeeded(StepIdx::ZERO), Ok(()));
-    assert_eq!(state.frame.set_pc(StepIdx::new(1)), Ok(()));
-    let slot = result_slot_for_finished_run(&state);
-    assert_eq!(slot, Some(SlotIdx::new(0)));
-}
-
-#[test]
-fn result_slot_for_finished_run_returns_none_for_non_finish() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let Some(state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
-    let slot = result_slot_for_finished_run(&state);
-    assert_eq!(slot, None);
-}
-
-// =======================================================================
-// snapshot_from_state
-// =======================================================================
-
-#[test]
-fn snapshot_from_state_captures_pc_and_executed() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let Some(state) = make_run_state(wf, RunId::new(42)) else {
-        return;
-    };
-    let snapshot = snapshot_from_state(RunId::new(42), 99, &state);
-    assert_eq!(snapshot.run, RunId::new(42));
-    assert_eq!(snapshot.correlation, 99);
-    assert_eq!(snapshot.pc, StepIdx::ZERO);
-    assert_eq!(snapshot.executed, 0);
-}
-
-#[test]
-fn snapshot_from_state_reflects_advanced_pc() {
-    let Some(wf) = finished_workflow() else {
-        return;
-    };
-    let run_id = RunId::new(7);
-    let Some(mut state) = make_run_state(wf, run_id) else {
-        return;
-    };
-    assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
-    assert_eq!(state.frame.mark_succeeded(StepIdx::ZERO), Ok(()));
-    assert_eq!(state.frame.set_pc(StepIdx::new(1)), Ok(()));
-    // executed is incremented by increment_executed, not by mark_succeeded,
-    // so it remains 0 in this manual state manipulation.
-    let snapshot = snapshot_from_state(run_id, 0, &state);
-    assert_eq!(snapshot.pc, StepIdx::new(1));
-    assert_eq!(snapshot.executed, 0);
-}
-
-#[test]
-fn snapshot_from_state_with_zero_correlation() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let Some(state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
-    let snapshot = snapshot_from_state(RunId::new(1), 0, &state);
-    assert_eq!(snapshot.correlation, 0);
-}
-
-#[test]
-fn snapshot_from_state_with_max_run_id() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let run_id = RunId::new(u64::MAX);
-    let Some(state) = make_run_state(wf, run_id) else {
-        return;
-    };
-    let snapshot = snapshot_from_state(run_id, u64::MAX, &state);
-    assert_eq!(snapshot.run, run_id);
-    assert_eq!(snapshot.correlation, u64::MAX);
-}
-
-// =======================================================================
-// advance_after_timer_fire
-// =======================================================================
-
-#[test]
-fn advance_after_timer_fire_rejects_wrong_node_kind() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
-    let timer = PendingTimer {
-        step: StepIdx::ZERO,
-        kind: PendingTimerKind::Wait,
-        generation: 1,
-        deadline: std::time::Instant::now(),
-    };
-    let result = advance_after_timer_fire(&mut state, timer);
-    assert_eq!(result, Err(RuntimeError::InvalidTimerFire));
-}
-
-#[test]
-fn advance_after_timer_fire_rejects_missing_node() {
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
-    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
-    let timer = PendingTimer {
-        step: StepIdx::new(99),
-        kind: PendingTimerKind::Wait,
-        generation: 1,
-        deadline: std::time::Instant::now(),
-    };
-    let result = advance_after_timer_fire(&mut state, timer);
-    assert_eq!(result, Err(RuntimeError::InvalidTimerFire));
-}
-
-// =======================================================================
-// Additional edge-case tests for helpers
-// =======================================================================
-
-// ---- advance_after_timer_fire for valid WaitUntil node ----
-
-#[test]
-fn advance_after_timer_fire_succeeds_for_wait_until_node() {
-    let Some(wf) = wait_workflow() else {
-        return;
-    };
-    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
-    // Drive to step 1 (WaitUntil) first.
-    assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
-    assert_eq!(state.frame.mark_succeeded(StepIdx::ZERO), Ok(()));
-    assert_eq!(state.frame.set_pc(StepIdx::new(1)), Ok(()));
-    // Mark step 1 as running to satisfy advance_after_timer_fire
-    assert_eq!(state.frame.mark_running(StepIdx::new(1)), Ok(()));
-
-    let timer = PendingTimer {
-        step: StepIdx::new(1),
-        kind: PendingTimerKind::Wait,
-        generation: 1,
-        deadline: std::time::Instant::now(),
-    };
-    let result = advance_after_timer_fire(&mut state, timer);
-    assert_eq!(result, Ok(()));
-    assert_eq!(state.frame.pc(), StepIdx::new(2));
-}
-
-// ---- advance_after_timer_fire rejects wrong timer kind ----
-
-#[test]
-fn advance_after_timer_fire_rejects_ask_kind_on_wait_node() {
-    let Some(wf) = wait_workflow() else {
-        return;
-    };
-    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
-        return;
-    };
-    // Drive to step 1 (WaitUntil)
-    assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
-    assert_eq!(state.frame.mark_succeeded(StepIdx::ZERO), Ok(()));
-    assert_eq!(state.frame.set_pc(StepIdx::new(1)), Ok(()));
-    assert_eq!(state.frame.mark_running(StepIdx::new(1)), Ok(()));
-
-    let timer = PendingTimer {
-        step: StepIdx::new(1),
-        kind: PendingTimerKind::Ask,
-        generation: 1,
-        deadline: std::time::Instant::now(),
-    };
-    let result = advance_after_timer_fire(&mut state, timer);
-    assert_eq!(result, Err(RuntimeError::InvalidTimerFire));
+    Some(vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("wait_event_no_timeout_workflow"))
 }
 
 // ---- advance_after_timer_fire rejects terminal WaitUntil (no next) ----
@@ -1069,12 +300,12 @@ fn wait_workflow_no_next() -> Option<vb_core::workflow::CompiledWorkflow> {
         on_error: None,
         error_slot: None,
         kind: CompiledNodeKind::WaitUntil {
-            deadline_slot: SlotIdx::ZERO,
+            deadline: SlotIdx::new(0),
         },
     };
     let parts = WorkflowParts {
         name: Box::from("wait_no_next"),
-        digest: WorkflowDigest::from_bytes([0xCC; 32]),
+        digest: WorkflowDigest::from_bytes([0xAA; 32]),
         nodes: Box::from([wait]),
         expressions: Box::from([]),
         accessors: Box::from([]),
@@ -1085,7 +316,7 @@ fn wait_workflow_no_next() -> Option<vb_core::workflow::CompiledWorkflow> {
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    Some(vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("wait_workflow_no_next"))
 }
 
 #[test]
@@ -1122,20 +353,20 @@ fn wait_event_with_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkf
             timeout_slot: Some(SlotIdx::new(1)),
         },
     };
-    let finish = CompiledNode {
+    let resume = CompiledNode {
         id: StepIdx::new(1),
         output: None,
-        next: None,
+        next: Some(StepIdx::new(2)),
         on_error: None,
         error_slot: None,
         kind: CompiledNodeKind::Finish {
-            result: SlotIdx::ZERO,
+            result: SlotIdx::new(0),
         },
     };
     let parts = WorkflowParts {
-        name: Box::from("wait_event_with_timeout"),
-        digest: WorkflowDigest::from_bytes([0xDD; 32]),
-        nodes: Box::from([wait_event, finish]),
+        name: Box::from("wait_event_timeout"),
+        digest: WorkflowDigest::from_bytes([0xBB; 32]),
+        nodes: Box::from([wait_event, resume]),
         expressions: Box::from([]),
         accessors: Box::from([]),
         constants: Box::from([ConstValue::I64(10), ConstValue::I64(100)]),
@@ -1145,7 +376,7 @@ fn wait_event_with_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkf
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    Some(vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("wait_event_with_timeout_workflow"))
 }
 
 #[test]
@@ -1164,7 +395,7 @@ fn timer_required_for_wait_event_with_timeout() {
 fn ask_with_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let ask = CompiledNode {
         id: StepIdx::ZERO,
-        output: None,
+        output: Some(SlotIdx::new(2)),
         next: Some(StepIdx::new(1)),
         on_error: None,
         error_slot: None,
@@ -1190,26 +421,23 @@ fn ask_with_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         on_error: None,
         error_slot: None,
         kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(2),
+            result: SlotIdx::new(0),
         },
     };
     let parts = WorkflowParts {
         name: Box::from("ask_with_timeout"),
-        digest: WorkflowDigest::from_bytes([0xEE; 32]),
+        digest: WorkflowDigest::from_bytes([0xCC; 32]),
         nodes: Box::from([ask, resume, finish]),
         expressions: Box::from([]),
         accessors: Box::from([]),
-        constants: Box::from([
-            ConstValue::Symbol(vb_core::ids::SymbolId::new(1)),
-            ConstValue::I64(50),
-        ]),
+        constants: Box::from([ConstValue::I64(10), ConstValue::I64(100)]),
         slot_count: 3,
         symbols_count: 0,
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    Some(vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("ask_with_timeout_workflow"))
 }
 
 #[test]
@@ -1228,7 +456,7 @@ fn timer_required_for_ask_with_timeout() {
 fn ask_without_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let ask = CompiledNode {
         id: StepIdx::ZERO,
-        output: None,
+        output: Some(SlotIdx::new(1)),
         next: Some(StepIdx::new(1)),
         on_error: None,
         error_slot: None,
@@ -1240,27 +468,17 @@ fn ask_without_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow>
     let resume = CompiledNode {
         id: StepIdx::new(1),
         output: None,
-        next: Some(StepIdx::new(2)),
+        next: None,
         on_error: None,
         error_slot: None,
         kind: CompiledNodeKind::AskResume {
             answer: SlotIdx::new(1),
         },
     };
-    let finish = CompiledNode {
-        id: StepIdx::new(2),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(1),
-        },
-    };
     let parts = WorkflowParts {
         name: Box::from("ask_no_timeout"),
-        digest: WorkflowDigest::from_bytes([0xFF; 32]),
-        nodes: Box::from([ask, resume, finish]),
+        digest: WorkflowDigest::from_bytes([0xDD; 32]),
+        nodes: Box::from([ask, resume]),
         expressions: Box::from([]),
         accessors: Box::from([]),
         constants: Box::from([ConstValue::Symbol(vb_core::ids::SymbolId::new(1))]),
@@ -1270,7 +488,7 @@ fn ask_without_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow>
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    Some(vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("ask_without_timeout_workflow"))
 }
 
 #[test]
@@ -1642,9 +860,7 @@ fn retry_policy_after_action_rejects_non_i64_policy_slot() {
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    let Some(wf) = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok() else {
-        return;
-    };
+    let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("retry_policy_after_action_rejects_non_i64_policy_slot");
     let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
         return;
     };
@@ -1748,9 +964,7 @@ fn retry_policy_after_action_rejects_negative_max_attempts() {
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    let Some(wf) = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok() else {
-        return;
-    };
+    let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("retry_policy_after_action_rejects_negative_max_attempts");
     let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
         return;
     };
@@ -1833,9 +1047,7 @@ fn retry_policy_after_action_rejects_zero_max_attempts() {
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    let Some(wf) = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok() else {
-        return;
-    };
+    let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("retry_policy_after_action_rejects_zero_max_attempts");
     let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
         return;
     };
@@ -1968,7 +1180,7 @@ fn error_handler_with_slot_workflow() -> Option<vb_core::workflow::CompiledWorkf
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    Some(vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("error_handler_with_slot_workflow"))
 }
 
 #[test]

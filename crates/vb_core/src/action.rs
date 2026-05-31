@@ -9,6 +9,73 @@ use crate::value::{SlotValue, Taint};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+/// Maximum length for an action name.
+const MAX_ACTION_NAME_LENGTH: usize = 64;
+
+/// Error type for invalid action names.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum ActionNameError {
+    /// Action name is empty or whitespace-only.
+    #[error("action name is empty")]
+    Empty,
+    /// Action name exceeds maximum length of 64 characters.
+    #[error("action name exceeds maximum length of {MAX_ACTION_NAME_LENGTH} characters")]
+    TooLong,
+    /// Action name contains whitespace.
+    #[error("action name contains whitespace")]
+    ContainsWhitespace,
+}
+
+/// A validated action name.
+///
+/// An action name is a non-empty string with no whitespace and at most 64 characters.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct ActionName(String);
+
+impl ActionName {
+    /// Creates a new validated action name.
+    ///
+    /// Returns `Err(ActionNameError)` if the name is empty, too long, or contains whitespace.
+    pub fn new(s: impl Into<String>) -> Result<Self, ActionNameError> {
+        let s = s.into();
+        Self::validate(&s)?;
+        Ok(Self(s))
+    }
+
+    /// Validates an action name string.
+    fn validate(s: &str) -> Result<(), ActionNameError> {
+        let trimmed = s.trim();
+        if trimmed.is_empty() {
+            return Err(ActionNameError::Empty);
+        }
+        if trimmed.len() > MAX_ACTION_NAME_LENGTH {
+            return Err(ActionNameError::TooLong);
+        }
+        if trimmed.chars().any(|c| c.is_whitespace()) {
+            return Err(ActionNameError::ContainsWhitespace);
+        }
+        Ok(())
+    }
+
+    /// Returns the action name as a string slice.
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        self.0.trim()
+    }
+}
+
+impl std::fmt::Display for ActionName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl AsRef<str> for ActionName {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
 /// Declares how an action behaves with respect to repeated execution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
@@ -86,6 +153,8 @@ pub enum IdempotencyViolation {
 pub struct ActionContract {
     /// Numeric action identifier used for dispatch.
     pub id: ActionId,
+    /// Action name used for name-based lookup.
+    pub name: ActionName,
     /// Number of input slots consumed.
     pub input_slot_count: u16,
     /// Number of output slots produced.
