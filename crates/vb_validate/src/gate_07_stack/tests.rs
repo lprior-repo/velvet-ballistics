@@ -1,5 +1,3 @@
-#[cfg(test)]
-mod tests {
     use super::*;
     use vb_core::ids::{SlotIdx, StepIdx};
     use vb_core::workflow::{CompiledNode, CompiledNodeKind, ExprProgram, ResourceContract};
@@ -219,4 +217,3 @@ mod tests {
             Ok(3)
         );
     }
-}

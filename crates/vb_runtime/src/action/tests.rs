@@ -1,5 +1,3 @@
-#[cfg(test)]
-mod tests {
     use super::super::*;
     use vb_core::action::{Idempotency, RetrySafety, SideEffect};
     use vb_core::ids::{RunId, SeqNo, SlotIdx, StepIdx};
@@ -734,4 +732,3 @@ mod tests {
         assert_eq!(default.len(), new.len());
         assert_eq!(default.is_empty(), new.is_empty());
     }
-}

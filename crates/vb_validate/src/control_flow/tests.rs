@@ -1,5 +1,3 @@
-#[cfg(test)]
-mod tests {
     use super::*;
 
     fn linear_flow(count: usize) -> WorkflowFlow {
@@ -600,4 +598,3 @@ mod tests {
         // Then it returns InvalidThenTarget (E0301) -- index 2 out of bounds
         assert_eq!(result, Err(ValidationError::InvalidThenTarget));
     }
-}

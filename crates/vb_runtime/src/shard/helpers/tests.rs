@@ -1,5 +1,3 @@
-#[cfg(test)]
-mod tests {
     use vb_core::action::ActionTicket;
     use vb_core::frame::{RunFrame, StepState};
     use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
@@ -2730,4 +2728,3 @@ mod tests {
             }
         }
     }
-}

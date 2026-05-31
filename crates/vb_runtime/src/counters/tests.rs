@@ -1,5 +1,3 @@
-#[cfg(test)]
-mod tests {
     use super::super::*;
 
     const fn snapshot(
@@ -418,4 +416,3 @@ mod tests {
         assert_eq!(ab.runs_submitted, 30);
         assert_eq!(ab.runs_completed, 15);
     }
-}

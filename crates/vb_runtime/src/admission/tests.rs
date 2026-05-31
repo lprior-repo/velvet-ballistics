@@ -1,5 +1,3 @@
-#[cfg(test)]
-mod tests {
     use super::super::*;
     use vb_core::ids::WorkflowDigest;
 
@@ -1070,4 +1068,3 @@ mod tests {
         }
         let _ = _exhaustive_match;
     }
-}

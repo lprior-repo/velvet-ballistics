@@ -1,5 +1,3 @@
-#[cfg(test)]
-mod tests {
     use super::*;
     use chrono::Utc;
     use proptest::proptest;
@@ -720,4 +718,3 @@ mod tests {
             assert_eq!(entry.index, idx, "trace_one index must match provided index");
         }
     }
-}

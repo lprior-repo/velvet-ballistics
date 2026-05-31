@@ -1,5 +1,3 @@
-#[cfg(test)]
-mod tests {
     use super::super::*;
     use vb_core::action::{ActionFailureCode, RetryPolicy as VbRetryPolicy};
     use vb_core::value::Taint;
@@ -1272,4 +1270,3 @@ mod tests {
             .expect("must succeed");
         assert_eq!(compute_delay(&policy, 0), 100);
     }
-}

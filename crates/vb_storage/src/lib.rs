@@ -93,6 +93,9 @@ pub mod kani_vb_vzcuf_ps008;
 #[cfg(all(kani, feature = "kani-vb-vzcuf"))]
 pub mod kani_vb_vzcuf_ps009;
 
+#[cfg(kani)]
+pub mod kani_vbjpq733_proofs;
+
 pub mod keys;
 pub mod process_lock;
 

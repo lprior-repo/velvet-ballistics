@@ -1,5 +1,3 @@
-#[cfg(test)]
-mod tests {
     use super::*;
     use bytes::Bytes;
     use std::num::NonZeroUsize;
@@ -174,4 +172,3 @@ mod tests {
         ingress.disconnect_sender();
         assert!(matches!(ingress.try_recv(), Err(IpcError::Disconnected)));
     }
-}

@@ -7563,6 +7563,7 @@ mod tests {
                 JournalError::ProcessLockHeld { .. } => "process_lock_held",
                 JournalError::ProcessLockIo { .. } => "process_lock_io",
                 JournalError::Trim(_) => "trim",
+                JournalError::JournalBatchBytesExceeded { .. } => "journal_batch_bytes_exceeded",
             }
         }
         let _ = _exhaustive_match;

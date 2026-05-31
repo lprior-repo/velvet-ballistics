@@ -1,5 +1,3 @@
-#[cfg(test)]
-mod tests {
     use super::*;
 
     // --- All constants are non-zero ---
@@ -328,4 +326,3 @@ mod tests {
             "journal batch bytes must be at least 1 MiB, got {mb}"
         );
     }
-}

@@ -1,6 +1,5 @@
-#[cfg(test)]
-mod tests {
     use super::*;
+    use crate::workflow::ResourceContract;
 
     // ---------------------------------------------------------------------------
     // I1: Encoding determinism
@@ -366,4 +365,3 @@ mod tests {
             }
         }
     }
-}

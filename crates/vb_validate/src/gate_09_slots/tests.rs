@@ -1,5 +1,3 @@
-#[cfg(test)]
-mod tests {
     use super::*;
     use vb_core::ids::{ConstIdx, StepIdx, SymbolId};
     use vb_core::workflow::ResourceContract;
@@ -243,4 +241,3 @@ mod tests {
             Err(ValidationError::SlotReferenceOutOfRange { .. })
         ));
     }
-}

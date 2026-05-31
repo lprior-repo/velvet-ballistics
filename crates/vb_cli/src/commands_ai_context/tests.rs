@@ -1,5 +1,3 @@
-#[cfg(test)]
-mod tests {
     use super::latest_snapshot_from_events;
     use vb_storage::{EventSeq, JournalError, JournalEvent};
 
@@ -21,4 +19,3 @@ mod tests {
             Ok(v) => Err(format!("expected Err(WriteLockPoisoned), got Ok({v:?})")),
         }
     }
-}

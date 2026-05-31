@@ -1,5 +1,3 @@
-#[cfg(test)]
-mod tests {
     use super::*;
 
     // -- ValueType::as_str tests --
@@ -130,4 +128,3 @@ mod tests {
         assert_eq!(Taint::Secret, Taint::Secret);
         assert_ne!(Taint::Clean, Taint::Secret);
     }
-}

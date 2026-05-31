@@ -1,5 +1,3 @@
-#[cfg(test)]
-mod tests {
     use super::{
         ActionRegistryMode, Command, DurabilityMode, EmitTarget, OutputFormat, ParseError,
         StepTarget, VerifyProfile, parse_args,
@@ -1158,4 +1156,3 @@ mod tests {
             "unexpected: {parsed:?}"
         );
     }
-}

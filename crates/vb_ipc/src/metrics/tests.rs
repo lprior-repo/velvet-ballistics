@@ -1,5 +1,3 @@
-#[cfg(test)]
-mod tests {
     use super::*;
 
     // ── Postcard serialization roundtrip tests ──
@@ -916,4 +914,3 @@ mod tests {
             postcard::from_bytes(&encoded).expect("decoding should succeed");
         assert_eq!(decoded, metrics);
     }
-}

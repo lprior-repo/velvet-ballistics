@@ -1,5 +1,3 @@
-#[cfg(test)]
-mod tests {
     use super::*;
 
     #[test]
@@ -167,4 +165,3 @@ mod tests {
         assert_eq!(result.total_steps, 0);
         assert!(result.steps.is_empty());
     }
-}

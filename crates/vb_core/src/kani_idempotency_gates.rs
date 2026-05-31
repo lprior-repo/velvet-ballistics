@@ -7,9 +7,9 @@
 #![forbid(unsafe_code)]
 
 use crate::action::{
-    ActionContract, ActionFailure, ActionFailureCode, ActionOutcome, ActionOutputReady,
-    ActionTicket, Idempotency, IdempotencyViolation, RetryPolicy, RetrySafety, SideEffect,
-    validate_action_outcome, verify_idempotency,
+    validate_action_outcome, verify_idempotency, ActionContract, ActionFailure, ActionFailureCode,
+    ActionOutcome, ActionOutputReady, ActionTicket, Idempotency, IdempotencyViolation, RetryPolicy,
+    RetrySafety, SideEffect,
 };
 use crate::frame::RunFrame;
 use crate::ids::{ActionId, BlobId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
@@ -664,8 +664,8 @@ fn kani_action_ticket_has_valid_key() {
 #[kani::unwind(8)]
 fn kani_verify_idempotency_missing_key() {
     use crate::action::{
-        ActionContract, Idempotency, IdempotencyViolation, RetrySafety, SideEffect,
-        verify_idempotency,
+        verify_idempotency, ActionContract, Idempotency, IdempotencyViolation, RetrySafety,
+        SideEffect,
     };
 
     // Build a non-None side-effect contract

@@ -27,6 +27,7 @@ pub mod ids;
 pub mod limits;
 pub mod policy;
 pub mod replay;
+pub mod shard;
 pub mod span;
 pub mod value;
 pub mod value_store;
