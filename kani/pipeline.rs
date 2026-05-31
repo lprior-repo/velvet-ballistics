@@ -1,12 +1,14 @@
 //! Kani harness for Pipeline composition soundness.
 //!
 //! K30: Pipeline composition soundness
+//!
+//! GOD RULE 1: Uses kani::Arbitrary for WorkflowParts - no hardcoded shapes.
 
 #![forbid(unsafe_code)]
 
 use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
-use vb_core::ids::{ActionId, SlotIdx, StepIdx};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+use vb_core::ids::ActionId;
+use vb_core::workflow::{CompiledNodeKind, WorkflowParts};
 use vb_validate::shared::{validate_with_contracts, ValidationPipeline};
 
 fn make_contract(action_id: u16) -> ActionContract {
@@ -29,51 +31,27 @@ fn make_contract(action_id: u16) -> ActionContract {
 /// Conjunction of all gate postconditions.
 #[kani::proof]
 fn kani_pipeline_composition_soundness() {
-    let action_id: u16 = kani::any();
-    kani::assume(action_id > 0);
-    kani::assume(action_id < 100);
+    // GOD RULE 1: Use kani::Arbitrary for WorkflowParts
+    let parts: WorkflowParts = kani::any();
 
-    let nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Do {
-                action: ActionId::new(action_id),
-                input: SlotIdx::new(0),
-            },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
-                result: SlotIdx::new(0),
-            },
-        },
-    ];
+    // Extract action_ids from Do nodes to build matching contracts
+    let mut action_ids: Vec<u16> = Vec::new();
+    for node in parts.nodes.iter() {
+        if let CompiledNodeKind::Do { action, .. } = &node.kind {
+            let id_val = action.get();
+            if !action_ids.contains(&id_val) {
+                action_ids.push(id_val);
+            }
+        }
+    }
 
-    let parts = WorkflowParts {
-        name: Box::from("kani_pipeline"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: nodes.into_boxed_slice(),
-        expressions: Box::new([]),
-        accessors: Box::new([]),
-        constants: Box::new([]),
-        slot_count: 1,
-        symbols_count: 0,
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::new([]),
-    };
+    // Build contracts for all action_ids in the workflow
+    let contracts: Vec<ActionContract> = action_ids
+        .iter()
+        .map(|id| make_contract(*id))
+        .collect();
 
-    let contracts = vec![make_contract(action_id)];
     let pipeline = ValidationPipeline::default();
-
     let result = pipeline.validate_with_contracts(&parts, &contracts);
 
     // If result is Ok, all gates passed
