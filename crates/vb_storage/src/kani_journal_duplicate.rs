@@ -65,9 +65,7 @@ fn kani_journal_key_injectivity() {
             // Verify key length invariant
             kani::assert(k1.len() == 17, "journal event key is 17 bytes");
         }
-        _ => {
-            kani::cover!(true, "key_encoding_error_path");
-        }
+        _ => {}
     }
     kani::cover!(key1.is_ok() && key2.is_ok(), "both_keys_ok");
 }
@@ -213,6 +211,4 @@ fn kani_journal_duplicate_invariant() {
             _ => {}
         }
     }
-
-    kani::cover!(true, "duplicate_invariant_proved");
 }

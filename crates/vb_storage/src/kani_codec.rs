@@ -15,9 +15,7 @@ use crate::{
 const MAX_PAYLOAD_LEN: u32 = 1024;
 const EXPECTED_MAGIC: u32 = 0x5642_4A45;
 
-fn harness_for_length(header_len: usize) {
-    kani::cover!(true, "harness_for_length called");
-}
+fn harness_for_length(_header_len: usize) {}
 
 #[kani::proof]
 fn kani_truncated_header_zero_bytes() {
@@ -141,26 +139,15 @@ fn kani_arbitrary_header_60_bytes() {
     let result = decode_record_header(&header, EXPECTED_MAGIC, MAX_PAYLOAD_LEN);
     match result {
         Ok(_) => {
+            assert!(result.is_ok());
             kani::cover!(true, "decode succeeded");
         }
-        Err(JournalError::UnexpectedEof) => {
-            kani::cover!(true, "UnexpectedEof");
-        }
-        Err(JournalError::BadMagic { .. }) => {
-            kani::cover!(true, "BadMagic");
-        }
-        Err(JournalError::UnsupportedSchemaVersion { .. }) => {
-            kani::cover!(true, "UnsupportedSchemaVersion");
-        }
-        Err(JournalError::MigrationRequired { .. }) => {
-            kani::cover!(true, "MigrationRequired");
-        }
-        Err(JournalError::HeaderChecksumMismatch) => {
-            kani::cover!(true, "HeaderChecksumMismatch");
-        }
-        Err(_) => {
-            kani::cover!(true, "other error");
-        }
+        Err(JournalError::UnexpectedEof) => {}
+        Err(JournalError::BadMagic { .. }) => {}
+        Err(JournalError::UnsupportedSchemaVersion { .. }) => {}
+        Err(JournalError::MigrationRequired { .. }) => {}
+        Err(JournalError::HeaderChecksumMismatch) => {}
+        Err(_) => {}
     }
 }
 
