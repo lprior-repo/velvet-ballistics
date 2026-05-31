@@ -5,7 +5,10 @@ use vb_core::action::ActionTicket;
 use vb_core::frame::{RunFrame, StepState};
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, Taint};
+use vb_core::value_store::ValueStore;
 use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
+
+use crate::primitives::collect::CollectStates;
 
 use crate::engine::RetryPolicy;
 use crate::{RuntimeError, RuntimeResult};
@@ -189,6 +192,24 @@ pub fn advance_after_timer_fire(
 /// Creates a new action attempts tracker.
 pub fn new_action_attempts(step_count: u16) -> Box<[u16]> {
     vec![0; usize::from(step_count)].into_boxed_slice()
+}
+
+pub fn make_run_state(
+    workflow: CompiledWorkflow,
+    run_id: RunId,
+) -> Option<crate::shard::types::RunState> {
+    let step_count = workflow.node_count();
+    let slot_count = workflow.slot_count();
+    let frame = RunFrame::new(run_id, workflow.entry(), step_count, slot_count).ok()?;
+    Some(crate::shard::types::RunState {
+        frame,
+        workflow,
+        store: ValueStore::new(),
+        action_attempts: new_action_attempts(step_count),
+        admission: None,
+        collect_states: CollectStates::new(),
+        action_contracts: Box::new([]),
+    })
 }
 
 /// Records a scheduled action attempt.
