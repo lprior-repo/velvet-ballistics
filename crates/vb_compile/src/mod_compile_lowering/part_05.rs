@@ -299,6 +299,24 @@ pub(crate) fn digest_step_primitive(
                 digest_sub_step(hasher, step)?;
             }
         }
+        vb_yaml::ast::StepPrimitive::Aggregate {
+            variable,
+            input,
+            initial,
+            body,
+        } => {
+            hasher.update(b"reduce");
+            hasher.update(b":variable:");
+            hasher.update(variable.as_bytes());
+            hasher.update(b":input:");
+            hasher.update(input.as_bytes());
+            hasher.update(b":initial:");
+            hasher.update(initial.as_bytes());
+            hasher.update(b":body:");
+            for step in body {
+                digest_sub_step(hasher, step)?;
+            }
+        }
         vb_yaml::ast::StepPrimitive::Wait { event, timeout } => {
             hasher.update(b"wait");
             match event {

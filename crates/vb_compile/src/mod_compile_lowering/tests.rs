@@ -514,6 +514,191 @@ fn direct_digest_collect_empty_vs_nonempty_body() {
     );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// REDUCE DIGEST TESTS (vb-xi2f.39)
+// These tests verify that different Reduce field values produce different
+// digests when compiled through `digest_step_primitive`.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Helper: create a minimal StepPrimitive::Aggregate (reduce) with given field overrides.
+fn make_reduce(
+    variable: &str,
+    input: &str,
+    initial: &str,
+    body: Vec<StepAst>,
+) -> StepPrimitive {
+    StepPrimitive::Aggregate {
+        variable: variable.to_string(),
+        input: input.to_string(),
+        initial: initial.to_string(),
+        body,
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PO-R1: Variable (accumulator) field hashing
+// ─────────────────────────────────────────────────────────────────
+
+#[test]
+fn direct_digest_reduce_variable_field() {
+    let reduce_a = make_reduce("acc", "items", "0", vec![]);
+    let reduce_b = make_reduce("result", "items", "0", vec![]);
+
+    let digest_a = digest_primitive(&reduce_a);
+    let digest_b = digest_primitive(&reduce_b);
+
+    assert_ne!(
+        digest_a, digest_b,
+        "different variable (accumulator) fields must produce different digests via digest_step_primitive"
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PO-R2: Input collection field hashing
+// ─────────────────────────────────────────────────────────────────
+
+#[test]
+fn direct_digest_reduce_input_field() {
+    let reduce_a = make_reduce("acc", "items_a", "0", vec![]);
+    let reduce_b = make_reduce("acc", "items_b", "0", vec![]);
+
+    let digest_a = digest_primitive(&reduce_a);
+    let digest_b = digest_primitive(&reduce_b);
+
+    assert_ne!(
+        digest_a, digest_b,
+        "different input collection fields must produce different digests via digest_step_primitive"
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PO-R3: Initial accumulator value hashing
+// ─────────────────────────────────────────────────────────────────
+
+#[test]
+fn direct_digest_reduce_initial_field() {
+    let reduce_a = make_reduce("acc", "items", "0", vec![]);
+    let reduce_b = make_reduce("acc", "items", "1", vec![]);
+
+    let digest_a = digest_primitive(&reduce_a);
+    let digest_b = digest_primitive(&reduce_b);
+
+    assert_ne!(
+        digest_a, digest_b,
+        "different initial accumulator values must produce different digests via digest_step_primitive"
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PO-R4: Body steps hashing
+// ─────────────────────────────────────────────────────────────────
+
+#[test]
+fn direct_digest_reduce_body_steps() {
+    let body_a = vec![StepAst {
+        id: "step_a".to_string(),
+        name: None,
+        condition: None,
+        primitive: StepPrimitive::Set {
+            output: "x".to_string(),
+            value: "1".to_string(),
+        },
+        with: None,
+        retry: None,
+        on_error: None,
+        then: None,
+    }];
+    let body_b = vec![StepAst {
+        id: "step_b".to_string(),
+        name: None,
+        condition: None,
+        primitive: StepPrimitive::Set {
+            output: "y".to_string(),
+            value: "2".to_string(),
+        },
+        with: None,
+        retry: None,
+        on_error: None,
+        then: None,
+    }];
+
+    let reduce_a = make_reduce("acc", "items", "0", body_a);
+    let reduce_b = make_reduce("acc", "items", "0", body_b);
+
+    let digest_a = digest_primitive(&reduce_a);
+    let digest_b = digest_primitive(&reduce_b);
+
+    assert_ne!(
+        digest_a, digest_b,
+        "different body steps must produce different digests via digest_step_primitive"
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PO-R5: Empty body vs non-empty body
+// ─────────────────────────────────────────────────────────────────
+
+#[test]
+fn direct_digest_reduce_empty_vs_nonempty_body() {
+    let body = vec![StepAst {
+        id: "inner".to_string(),
+        name: None,
+        condition: None,
+        primitive: StepPrimitive::Set {
+            output: "x".to_string(),
+            value: "1".to_string(),
+        },
+        with: None,
+        retry: None,
+        on_error: None,
+        then: None,
+    }];
+
+    let reduce_empty = make_reduce("acc", "items", "0", vec![]);
+    let reduce_nonempty = make_reduce("acc", "items", "0", body);
+
+    let digest_empty = digest_primitive(&reduce_empty);
+    let digest_nonempty = digest_primitive(&reduce_nonempty);
+
+    assert_ne!(
+        digest_empty, digest_nonempty,
+        "empty body vs non-empty body must produce different digests via digest_step_primitive"
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PO-R6: Idempotence — same input produces same digest
+// ─────────────────────────────────────────────────────────────────
+
+#[test]
+fn direct_digest_reduce_idempotence() {
+    let reduce = make_reduce("acc", "items", "0", vec![]);
+
+    let digest_a = digest_primitive(&reduce);
+    let digest_b = digest_primitive(&reduce);
+
+    assert_eq!(
+        digest_a, digest_b,
+        "same StepPrimitive::Aggregate must produce same digest (idempotence)"
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PO-R7: Determinism — repeated calls produce same digest
+// ─────────────────────────────────────────────────────────────────
+
+#[test]
+fn direct_digest_reduce_repeated_calls_same_digest() {
+    let reduce = make_reduce("acc", "items", "0", vec![]);
+
+    let d1 = digest_primitive(&reduce);
+    let d2 = digest_primitive(&reduce);
+    let d3 = digest_primitive(&reduce);
+
+    assert_eq!(d1, d2, "first and second call must match");
+    assert_eq!(d2, d3, "second and third call must match");
+}
+
 // ─────────────────────────────────────────────────────────────────
 // vb-awhr: choose otherwise handling and fanout limit
 // ─────────────────────────────────────────────────────────────────
