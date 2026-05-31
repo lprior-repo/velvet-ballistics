@@ -78,12 +78,7 @@ pub(super) fn validate_reduce_shape(
     last_step: usize,
 ) -> Result<(), CompileError> {
     reject_last_non_finish(index, last_step)?;
-    reject_unknown_primitive_fields(
-        body,
-        index,
-        "reduce",
-        &["input", "accumulator", "initial"],
-    )?;
+    reject_unknown_primitive_fields(body, index, "reduce", &["input", "accumulator", "initial"])?;
     required_slot(body, index, "input")?;
     required_slot(body, index, "accumulator")?;
     let initial = required_step_field(body, index, "initial")?;
