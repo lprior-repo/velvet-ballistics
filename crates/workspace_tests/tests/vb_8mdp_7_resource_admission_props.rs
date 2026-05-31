@@ -18,8 +18,8 @@ use vb_core::policy::RuntimePolicy;
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
-use vb_runtime::shard::{Shard, ShardCommand, ShardConfig};
 use vb_runtime::RuntimeError;
+use vb_runtime::shard::{Shard, ShardCommand, ShardConfig};
 
 // ─────────────────────────────────────────────────────────────────
 // Helpers
@@ -90,16 +90,22 @@ fn enqueue_returns_queue_full_when_command_queue_at_capacity() {
     let shard = Shard::new(new_shard_config(capacity));
 
     for i in 0..capacity {
-        assert!(shard.enqueue(submit_command(i as u64)).is_ok(),
-            "enqueue {} should succeed", i);
+        assert!(
+            shard.enqueue(submit_command(i as u64)).is_ok(),
+            "enqueue {} should succeed",
+            i
+        );
     }
 
     assert_eq!(shard.command_queue_len(), capacity);
     assert!(shard.is_queue_full());
 
     let result = shard.enqueue(submit_command(capacity as u64));
-    assert_eq!(result, Err(RuntimeError::QueueFull),
-        "enqueue on full queue must return QueueFull");
+    assert_eq!(
+        result,
+        Err(RuntimeError::QueueFull),
+        "enqueue on full queue must return QueueFull"
+    );
 }
 
 #[test]
@@ -115,7 +121,10 @@ fn queue_full_preserves_queue_length() {
     let _result = shard.enqueue(submit_command(99));
     let len_after = shard.command_queue_len();
 
-    assert_eq!(len_after, len_before, "queue length must not change after QueueFull");
+    assert_eq!(
+        len_after, len_before,
+        "queue length must not change after QueueFull"
+    );
     assert_eq!(len_before, capacity);
 }
 
@@ -138,8 +147,10 @@ fn queue_full_preserves_active_run_count() {
     assert_eq!(result, Err(RuntimeError::QueueFull));
 
     let active_after = shard.active_run_count();
-    assert_eq!(active_after, active_before,
-        "active_run_count must not change after QueueFull");
+    assert_eq!(
+        active_after, active_before,
+        "active_run_count must not change after QueueFull"
+    );
 }
 
 #[test]
@@ -161,8 +172,10 @@ fn pre_enqueue_rejection_preserves_shard_state_when_full() {
     assert_eq!(shard.command_queue_len(), queue_len_before);
     assert_eq!(shard.active_run_count(), active_before);
     let (pool_free_after, _) = shard.frame_pool_metrics();
-    assert_eq!(pool_free_after, pool_free_before,
-        "frame pool metrics unchanged after QueueFull rejection");
+    assert_eq!(
+        pool_free_after, pool_free_before,
+        "frame pool metrics unchanged after QueueFull rejection"
+    );
 }
 
 #[test]
@@ -220,18 +233,28 @@ fn active_run_count_unchanged_when_submit_fails_due_to_duplicate_run() {
     let mut shard = Shard::new(new_shard_config(8));
 
     // Submit a unique run — must succeed
-    shard.enqueue(submit_command(1)).expect("enqueue should succeed");
+    shard
+        .enqueue(submit_command(1))
+        .expect("enqueue should succeed");
     let tick_1 = shard.tick();
-    assert!(tick_1.is_ok(), "first tick should succeed for unique run: {tick_1:?}");
+    assert!(
+        tick_1.is_ok(),
+        "first tick should succeed for unique run: {tick_1:?}"
+    );
     let active_before = shard.active_run_count();
 
     // Submit the SAME run_id again — must be rejected with typed error
-    shard.enqueue(submit_command(1)).expect("enqueue should succeed");
+    shard
+        .enqueue(submit_command(1))
+        .expect("enqueue should succeed");
     let tick_result = shard.tick();
 
     // B-011: active_run_count must equal pre-submit value
-    assert_eq!(shard.active_run_count(), active_before,
-        "active_run_count unchanged after dup run rejection");
+    assert_eq!(
+        shard.active_run_count(),
+        active_before,
+        "active_run_count unchanged after dup run rejection"
+    );
 
     // TRF-006: Verify typed error variant is returned (if the run is still active)
     // If the run completed, the duplicate might be accepted (re-created).
@@ -243,8 +266,11 @@ fn active_run_count_unchanged_when_submit_fails_due_to_duplicate_run() {
         );
     }
     // Queue must be consumed
-    assert_eq!(shard.command_queue_len(), 0,
-        "command queue consumed after tick");
+    assert_eq!(
+        shard.command_queue_len(),
+        0,
+        "command queue consumed after tick"
+    );
 }
 
 /// No run state is inserted for a rejected (duplicate) run.
@@ -252,21 +278,31 @@ fn active_run_count_unchanged_when_submit_fails_due_to_duplicate_run() {
 fn no_run_state_inserted_on_rejection_duplicate() {
     let mut shard = Shard::new(new_shard_config(8));
 
-    shard.enqueue(submit_command(1)).expect("enqueue should succeed");
+    shard
+        .enqueue(submit_command(1))
+        .expect("enqueue should succeed");
     let _ = shard.tick();
     let runs_before = shard.active_run_count();
 
     // Duplicate submission
-    shard.enqueue(submit_command(1)).expect("enqueue should succeed");
+    shard
+        .enqueue(submit_command(1))
+        .expect("enqueue should succeed");
     let tick_result = shard.tick();
 
     // B-012: no phantom run created — active_run_count unchanged
-    assert_eq!(shard.active_run_count(), runs_before,
-        "no new run state inserted for duplicate run");
+    assert_eq!(
+        shard.active_run_count(),
+        runs_before,
+        "no new run state inserted for duplicate run"
+    );
 
     // Queue consumed
-    assert_eq!(shard.command_queue_len(), 0,
-        "command queue consumed after tick");
+    assert_eq!(
+        shard.command_queue_len(),
+        0,
+        "command queue consumed after tick"
+    );
     let _ = tick_result; // used — suppresses unused warning
 }
 
@@ -282,17 +318,24 @@ fn no_run_inserted_when_active_run_capacity_exceeded() {
         policy: RuntimePolicy::Relaxed,
     });
 
-    shard.enqueue(submit_command(1)).expect("enqueue should succeed");
+    shard
+        .enqueue(submit_command(1))
+        .expect("enqueue should succeed");
     let _ = shard.tick();
     let runs_before = shard.active_run_count();
 
     // Try to submit another — should be rejected at admission
-    shard.enqueue(submit_command(2)).expect("enqueue should succeed");
+    shard
+        .enqueue(submit_command(2))
+        .expect("enqueue should succeed");
     let tick_result = shard.tick();
 
     // B-011: run count must equal pre-submit value
-    assert_eq!(shard.active_run_count(), runs_before,
-        "no second run inserted when at capacity");
+    assert_eq!(
+        shard.active_run_count(),
+        runs_before,
+        "no second run inserted when at capacity"
+    );
 
     // Frame pool must not leak — exact count preservation
     let (free, _total) = shard.frame_pool_metrics();
@@ -322,7 +365,9 @@ fn frame_pool_count_exactly_preserved_after_capacity_rejection() {
     let (initial_free, initial_total) = shard.frame_pool_metrics();
 
     // Acceptance of first run creates the pool and consumes 1 frame
-    shard.enqueue(submit_command(1)).expect("enqueue should succeed");
+    shard
+        .enqueue(submit_command(1))
+        .expect("enqueue should succeed");
     let _ = shard.tick();
 
     let (free_before_reject, total_before_reject) = shard.frame_pool_metrics();
@@ -332,15 +377,21 @@ fn frame_pool_count_exactly_preserved_after_capacity_rejection() {
     // Either way, after rejection of the second run, frames must be unchanged.
 
     // Submission that exceeds capacity — MUST be rejected without consuming a frame
-    shard.enqueue(submit_command(2)).expect("enqueue should succeed");
+    shard
+        .enqueue(submit_command(2))
+        .expect("enqueue should succeed");
     let _ = shard.tick();
 
     // B-010: Frame pool free count must be exactly the same as before rejection
     let (free_after_reject, total_after_reject) = shard.frame_pool_metrics();
-    assert_eq!(free_after_reject, free_before_reject,
-        "frame pool free count exactly preserved after capacity rejection (B-010)");
-    assert_eq!(total_after_reject, total_before_reject,
-        "frame pool total capacity unchanged after rejection");
+    assert_eq!(
+        free_after_reject, free_before_reject,
+        "frame pool free count exactly preserved after capacity rejection (B-010)"
+    );
+    assert_eq!(
+        total_after_reject, total_before_reject,
+        "frame pool total capacity unchanged after rejection"
+    );
     let _ = (initial_free, initial_total); // suppress unused warning
 }
 
@@ -353,21 +404,29 @@ fn frame_pool_count_exactly_preserved_after_duplicate_rejection() {
     let mut shard = Shard::new(new_shard_config(8));
 
     // Accept run 1
-    shard.enqueue(submit_command(1)).expect("enqueue should succeed");
+    shard
+        .enqueue(submit_command(1))
+        .expect("enqueue should succeed");
     let _ = shard.tick();
 
     let (free_before_reject, total_before_reject) = shard.frame_pool_metrics();
 
     // Duplicate run 1 — MUST be rejected without consuming a frame
-    shard.enqueue(submit_command(1)).expect("enqueue should succeed");
+    shard
+        .enqueue(submit_command(1))
+        .expect("enqueue should succeed");
     let _ = shard.tick();
 
     // B-010: Exact frame pool restoration
     let (free_after_reject, total_after_reject) = shard.frame_pool_metrics();
-    assert_eq!(free_after_reject, free_before_reject,
-        "frame pool free count exactly preserved after duplicate rejection");
-    assert_eq!(total_after_reject, total_before_reject,
-        "frame pool total unchanged after duplicate rejection");
+    assert_eq!(
+        free_after_reject, free_before_reject,
+        "frame pool free count exactly preserved after duplicate rejection"
+    );
+    assert_eq!(
+        total_after_reject, total_before_reject,
+        "frame pool total unchanged after duplicate rejection"
+    );
 }
 
 /// Staged rollback integration: frame allocation and release lifecycle.
@@ -392,7 +451,9 @@ fn staged_frame_release_integration_accept_then_reject() {
     assert_eq!(shard.active_run_count(), 0);
 
     // Accept run 1 — this triggers frame pool creation
-    shard.enqueue(submit_command(1)).expect("enqueue should succeed");
+    shard
+        .enqueue(submit_command(1))
+        .expect("enqueue should succeed");
     let accept_1 = shard.tick();
     assert!(accept_1.is_ok(), "run 1 accepted: {accept_1:?}");
     let (free_after_1, _total_after_1) = shard.frame_pool_metrics();
@@ -400,22 +461,30 @@ fn staged_frame_release_integration_accept_then_reject() {
 
     // Reject duplicate run 1 — no additional frame consumed
     let (free_before_dup, total_before) = shard.frame_pool_metrics();
-    shard.enqueue(submit_command(1)).expect("enqueue should succeed");
+    shard
+        .enqueue(submit_command(1))
+        .expect("enqueue should succeed");
     let _ = shard.tick();
     let (free_after_dup, total_after_dup) = shard.frame_pool_metrics();
-    assert_eq!(free_after_dup, free_before_dup,
-        "frame free count unchanged after duplicate rejection");
-    assert_eq!(total_after_dup, total_before,
-        "frame pool total unchanged");
+    assert_eq!(
+        free_after_dup, free_before_dup,
+        "frame free count unchanged after duplicate rejection"
+    );
+    assert_eq!(total_after_dup, total_before, "frame pool total unchanged");
 
     // Accept run 2
     let (free_before_2, _) = shard.frame_pool_metrics();
-    shard.enqueue(submit_command(2)).expect("enqueue should succeed");
+    shard
+        .enqueue(submit_command(2))
+        .expect("enqueue should succeed");
     let accept_2 = shard.tick();
     assert!(accept_2.is_ok(), "run 2 accepted: {accept_2:?}");
     let (free_after_2, _) = shard.frame_pool_metrics();
     // After any frame operations, free count must be bounded
-    assert!(free_after_2 < 1_000_000, "frame pool free count within bounds");
+    assert!(
+        free_after_2 < 1_000_000,
+        "frame pool free count within bounds"
+    );
     let _ = (free_before_2, free_after_1);
 }
 
@@ -435,8 +504,11 @@ fn accepted_admission_consumes_queue_command() {
     assert!(tick_ok.is_ok(), "tick should succeed for valid submission");
 
     // Queue should be empty after tick pops the command
-    assert_eq!(shard.command_queue_len(), 0,
-        "tick consumes the queued command");
+    assert_eq!(
+        shard.command_queue_len(),
+        0,
+        "tick consumes the queued command"
+    );
 }
 
 /// A rejected admission (duplicate) does not create extra runs.
@@ -452,8 +524,11 @@ fn rejected_admission_does_not_create_run() {
     shard.enqueue(submit_command(1)).ok();
     let _ = shard.tick();
 
-    assert_eq!(shard.active_run_count(), runs_before,
-        "rejected admission does not create a new run");
+    assert_eq!(
+        shard.active_run_count(),
+        runs_before,
+        "rejected admission does not create a new run"
+    );
 }
 
 /// Rejected run does not appear in shard run state.
@@ -466,7 +541,9 @@ fn rejected_run_not_found_in_shard_state() {
     let mut shard = Shard::new(new_shard_config(8));
 
     // First submission — accept and verify observable effects
-    shard.enqueue(submit_command(1)).expect("enqueue should succeed");
+    shard
+        .enqueue(submit_command(1))
+        .expect("enqueue should succeed");
     assert_eq!(shard.command_queue_len(), 1, "command enqueued");
     let tick1 = shard.tick();
     assert!(tick1.is_ok(), "first tick should succeed: {tick1:?}");
@@ -477,25 +554,37 @@ fn rejected_run_not_found_in_shard_state() {
     let trace_after_first = shard.trace_ring().len();
     let counters_after_first = shard.counters().snapshot();
     // At least runs_submitted must be incremented
-    assert!(counters_after_first.runs_submitted > 0,
-        "submitted counter must increment on acceptance");
+    assert!(
+        counters_after_first.runs_submitted > 0,
+        "submitted counter must increment on acceptance"
+    );
 
     // Duplicate submission — the shard must process it without
     // creating phantom state or leaking resources
-    shard.enqueue(submit_command(1)).expect("enqueue should succeed");
+    shard
+        .enqueue(submit_command(1))
+        .expect("enqueue should succeed");
     let tick2 = shard.tick();
 
     // B-012: After rejection, active_runs must not exceed
     // the post-first-submission count (no phantom run created)
-    assert_eq!(shard.active_run_count(), active_after_first,
-        "rejected duplicate must not increase active runs");
+    assert_eq!(
+        shard.active_run_count(),
+        active_after_first,
+        "rejected duplicate must not increase active runs"
+    );
 
     // Shard status must be consistent
     let status = shard.status();
-    assert_eq!(status.active_runs, active_after_first,
-        "status.active_runs matches active_run_count");
-    assert_eq!(shard.command_queue_len(), 0,
-        "command queue consumed after rejection");
+    assert_eq!(
+        status.active_runs, active_after_first,
+        "status.active_runs matches active_run_count"
+    );
+    assert_eq!(
+        shard.command_queue_len(),
+        0,
+        "command queue consumed after rejection"
+    );
 
     // Trace ring and counters must not have phantom entries
     // beyond what the rejection path adds (rejection may add
@@ -519,21 +608,29 @@ fn supersession_preserves_prior_runs() {
     let mut shard = Shard::new(new_shard_config(8));
 
     // Submit run 1 — accepted
-    shard.enqueue(submit_command(1)).expect("enqueue should succeed");
+    shard
+        .enqueue(submit_command(1))
+        .expect("enqueue should succeed");
     let tick1 = shard.tick();
     assert!(tick1.is_ok(), "first submission must succeed: {tick1:?}");
     let runs_after_1 = shard.active_run_count();
 
     // Submit run 1 again — rejected (or re-accepted if run1 completed)
-    shard.enqueue(submit_command(1)).expect("enqueue should succeed");
+    shard
+        .enqueue(submit_command(1))
+        .expect("enqueue should succeed");
     let tick2 = shard.tick();
     // After rejection/recreation, verify no phantom run leakage
     let runs_after_reject = shard.active_run_count();
-    assert!(runs_after_reject <= runs_after_1 + 1,
-        "rejection must not create phantom runs; before={runs_after_1} after={runs_after_reject}");
+    assert!(
+        runs_after_reject <= runs_after_1 + 1,
+        "rejection must not create phantom runs; before={runs_after_1} after={runs_after_reject}"
+    );
 
     // Submit run 2 — accepted (supersession: prior run preserved + new run added)
-    shard.enqueue(submit_command(2)).expect("enqueue should succeed");
+    shard
+        .enqueue(submit_command(2))
+        .expect("enqueue should succeed");
     let tick3 = shard.tick();
     assert!(tick3.is_ok(), "run 2 submission must succeed: {tick3:?}");
 
@@ -541,8 +638,10 @@ fn supersession_preserves_prior_runs() {
     // Supersession invariant: new runs add without evicting prior runs
     // If run1 was active, run2 adds exactly 1 more.
     // The test validates that the shard doesn't incorrectly evict runs.
-    assert!(runs_after_2 >= runs_after_reject,
-        "accepting run 2 must not EVICT prior runs (before reject={runs_after_reject}, now={runs_after_2})");
+    assert!(
+        runs_after_2 >= runs_after_reject,
+        "accepting run 2 must not EVICT prior runs (before reject={runs_after_reject}, now={runs_after_2})"
+    );
     let _ = (tick2, tick3);
 }
 
@@ -574,23 +673,37 @@ fn invocation_ledger_records_workflow_on_accept() {
     assert_eq!(shard.command_queue_len(), 1, "command enqueued");
 
     let tick_result = shard.tick();
-    assert!(tick_result.is_ok(), "tick should succeed on valid submission: {tick_result:?}");
+    assert!(
+        tick_result.is_ok(),
+        "tick should succeed on valid submission: {tick_result:?}"
+    );
 
     // Behavior B-015: acceptance consumes the queued command
-    assert_eq!(shard.command_queue_len(), 0,
-        "command queue consumed after accepted submission");
+    assert_eq!(
+        shard.command_queue_len(),
+        0,
+        "command queue consumed after accepted submission"
+    );
 
     // Counters: runs_submitted incremented (the ledger includes the submission)
     let counter_after = shard.counters().snapshot();
-    assert_eq!(counter_after.runs_submitted, counter_before.runs_submitted + 1,
-        "runs_submitted counter incremented on acceptance — ledger recorded");
-    assert!(counter_after.steps_executed > 0 || counter_after.runs_completed > 0
-        || counter_after.runs_failed > 0,
-        "submission produced observable counter changes beyond just the submit increment");
+    assert_eq!(
+        counter_after.runs_submitted,
+        counter_before.runs_submitted + 1,
+        "runs_submitted counter incremented on acceptance — ledger recorded"
+    );
+    assert!(
+        counter_after.steps_executed > 0
+            || counter_after.runs_completed > 0
+            || counter_after.runs_failed > 0,
+        "submission produced observable counter changes beyond just the submit increment"
+    );
 
     // Trace ring: RunSubmitted event recorded (ledger event traced)
-    assert!(shard.trace_ring().len() > trace_before,
-        "trace ring must record RunSubmitted event for accepted run");
+    assert!(
+        shard.trace_ring().len() > trace_before,
+        "trace ring must record RunSubmitted event for accepted run"
+    );
 
     // Frame pool was consumed during admission processing
     let (pool_free, pool_total) = shard.frame_pool_metrics();
@@ -600,8 +713,10 @@ fn invocation_ledger_records_workflow_on_accept() {
     // submission that allocates a frame.
     if pool_total > 0 {
         // Frame pool exists — verify it's in a consistent state
-        assert!(pool_free <= pool_total,
-            "frame pool free ({pool_free}) <= total ({pool_total})");
+        assert!(
+            pool_free <= pool_total,
+            "frame pool free ({pool_free}) <= total ({pool_total})"
+        );
     }
 }
 
@@ -669,8 +784,11 @@ proptest! {
 fn tick_on_empty_queue_returns_ok_true() {
     let mut shard = Shard::new(new_shard_config(8));
     let result = shard.tick();
-    assert_eq!(result, Ok(true),
-        "tick on empty queue should return Ok(true)");
+    assert_eq!(
+        result,
+        Ok(true),
+        "tick on empty queue should return Ok(true)"
+    );
 }
 
 #[test]
@@ -689,6 +807,9 @@ fn enqueue_then_tick_consumes_command() {
 
     let tick_result = shard.tick();
     assert!(tick_result.is_ok());
-    assert_eq!(shard.command_queue_len(), 0,
-        "queue should be empty after tick consumes the command");
+    assert_eq!(
+        shard.command_queue_len(),
+        0,
+        "queue should be empty after tick consumes the command"
+    );
 }

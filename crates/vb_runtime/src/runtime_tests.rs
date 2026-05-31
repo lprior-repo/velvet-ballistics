@@ -2,15 +2,15 @@
 //! Tests for the multi-shard runtime.
 
 use crate::AskTicket;
-use crate::journal::{RuntimeJournal, RuntimeJournalEvent, VolatileRuntimeJournal};
-use crate::trace::TraceEvent;
-use crate::runtime::Runtime;
 use crate::RuntimeError;
+use crate::journal::{RuntimeJournal, RuntimeJournalEvent, VolatileRuntimeJournal};
+use crate::runtime::Runtime;
 use crate::shard::ShardConfig;
+use crate::trace::TraceEvent;
 use std::sync::{Arc, Mutex};
 use vb_core::action::{
-    ActionContract, ActionFailureCode, ActionOutputReady, ActionTicket, Idempotency,
-    RetryPolicy, RetrySafety, SideEffect,
+    ActionContract, ActionFailureCode, ActionOutputReady, ActionTicket, Idempotency, RetryPolicy,
+    RetrySafety, SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
@@ -21,12 +21,12 @@ use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, Workfl
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::RuntimeError;
     use crate::counters::RuntimeMetricsSnapshot;
     use crate::engine::action::compute_idempotency_key;
     use crate::shard::timer_wheel::TimerEntry;
     use crate::shard::{AskAnswer, InspectResponse, Shard, ShardCommand, ShardDirective};
     use crate::trace::TraceEvent;
-    use crate::RuntimeError;
     use std::num::NonZeroUsize;
 
     #[derive(Debug)]
@@ -387,8 +387,14 @@ mod tests {
         let Some(wf2) = suspended_workflow() else {
             return;
         };
-        assert_eq!(submit_suspended(&runtime, vb_core::ids::RunId::new(1), wf1), Ok(()));
-        assert_eq!(submit_suspended(&runtime, vb_core::ids::RunId::new(2), wf2), Ok(()));
+        assert_eq!(
+            submit_suspended(&runtime, vb_core::ids::RunId::new(1), wf1),
+            Ok(())
+        );
+        assert_eq!(
+            submit_suspended(&runtime, vb_core::ids::RunId::new(2), wf2),
+            Ok(())
+        );
         assert_eq!(runtime.tick_all(), Ok(true));
         let snap = runtime.counters_snapshot();
         assert_eq!(snap.runs_submitted, 2);
@@ -406,8 +412,14 @@ mod tests {
         let Some(wf2) = suspended_workflow() else {
             return;
         };
-        assert_eq!(submit_suspended(&runtime, vb_core::ids::RunId::new(1), wf1), Ok(()));
-        assert_eq!(submit_suspended(&runtime, vb_core::ids::RunId::new(2), wf2), Ok(()));
+        assert_eq!(
+            submit_suspended(&runtime, vb_core::ids::RunId::new(1), wf1),
+            Ok(())
+        );
+        assert_eq!(
+            submit_suspended(&runtime, vb_core::ids::RunId::new(2), wf2),
+            Ok(())
+        );
         assert_eq!(runtime.tick_all(), Ok(true));
         let events = runtime.drain_trace();
         // Each submit produces: RunSubmitted + initial SlotWritten + StepStarted
@@ -533,8 +545,7 @@ mod tests {
             return;
         };
         let journal = Arc::new(VolatileRuntimeJournal::new());
-        let mut runtime =
-            Runtime::new_with_journal(shard_count, runtime_config(), journal.clone());
+        let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), journal.clone());
         let Some(wf) = action_then_finish_workflow() else {
             return;
         };
@@ -604,8 +615,7 @@ mod tests {
             return;
         };
         let journal = RejectCompletionJournal::shared();
-        let mut runtime =
-            Runtime::new_with_journal(shard_count, runtime_config(), journal.clone());
+        let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), journal.clone());
         let Some(wf) = action_then_finish_workflow() else {
             return;
         };
@@ -1436,10 +1446,7 @@ mod tests {
             return;
         };
         let run = vb_core::ids::RunId::new(400);
-        assert_eq!(
-            submit_suspended(&runtime, run, wf.clone()),
-            Ok(())
-        );
+        assert_eq!(submit_suspended(&runtime, run, wf.clone()), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         assert_eq!(runtime.cancel_run(run), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
@@ -1496,7 +1503,10 @@ mod tests {
         // Shutdown first (processes shutdown tick)
         assert_eq!(runtime.shutdown_graceful(), Ok(()));
         // When trying to submit after shutdown (enqueue still works but tick ignores)
-        assert_eq!(runtime.submit_direct(vb_core::ids::RunId::new(402), wf), Ok(()));
+        assert_eq!(
+            runtime.submit_direct(vb_core::ids::RunId::new(402), wf),
+            Ok(())
+        );
         // Then tick_all returns false (shard shutting down)
         assert_eq!(runtime.tick_all(), Ok(false));
         assert_eq!(runtime.counters_snapshot().runs_submitted, 0);
@@ -1509,8 +1519,7 @@ mod tests {
             return;
         };
         let journal = Arc::new(VolatileRuntimeJournal::new());
-        let mut runtime =
-            Runtime::new_with_journal(shard_count, runtime_config(), journal.clone());
+        let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), journal.clone());
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -1764,8 +1773,7 @@ mod tests {
             return;
         };
         let journal = Arc::new(VolatileRuntimeJournal::new());
-        let mut runtime =
-            Runtime::new_with_journal(shard_count, runtime_config(), journal.clone());
+        let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), journal.clone());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1800,8 +1808,7 @@ mod tests {
             return;
         };
         let journal = Arc::new(VolatileRuntimeJournal::new());
-        let mut runtime =
-            Runtime::new_with_journal(shard_count, runtime_config(), journal.clone());
+        let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), journal.clone());
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -1965,7 +1972,11 @@ mod tests {
         }
     }
 
-    fn assert_suspended_run_is_found(runtime: &Runtime, run: vb_core::ids::RunId, correlation: u64) {
+    fn assert_suspended_run_is_found(
+        runtime: &Runtime,
+        run: vb_core::ids::RunId,
+        correlation: u64,
+    ) {
         match runtime.snapshot_run(run, correlation) {
             Ok(InspectResponse::Found(s)) => {
                 assert_eq!(s.run, run);

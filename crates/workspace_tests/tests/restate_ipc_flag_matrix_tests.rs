@@ -28,7 +28,7 @@ use std::num::NonZeroUsize;
 #[allow(unused_imports)]
 use vb_core::DiagnosticCode;
 use vb_ipc::{
-    IpcCommand, IpcError, IpcFrameHeader, MaxPayloadBytes, IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION,
+    IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION, IpcCommand, IpcError, IpcFrameHeader, MaxPayloadBytes,
 };
 
 /// Default max payload bytes in u32. Mirrors `MaxPayloadBytes::DEFAULT` (1 MiB)
@@ -151,8 +151,16 @@ fn raw_header_bytes(
 
 /// Builds a valid raw header with specified flags for a given command.
 fn raw_header_with_flags(command: IpcCommand, flags: u16, reserved: u16) -> [u8; IPC_HEADER_LEN] {
-    raw_header_bytes(IPC_MAGIC, IPC_VERSION, command.as_u16(), flags, reserved, 0, 0)
-        .expect("raw_header_bytes must succeed for valid inputs")
+    raw_header_bytes(
+        IPC_MAGIC,
+        IPC_VERSION,
+        command.as_u16(),
+        flags,
+        reserved,
+        0,
+        0,
+    )
+    .expect("raw_header_bytes must succeed for valid inputs")
 }
 
 /// Builds a valid raw header for a command with given command_id and flags.
@@ -185,8 +193,8 @@ fn raw_header_cmd_id(command_id: u16, flags: u16) -> [u8; IPC_HEADER_LEN] {
 fn proptest_header_roundtrip_preserves_all_fields() {
     // Run deterministic random sampling: 1000 cases.
     use rand::Rng;
-    use rand::rngs::StdRng;
     use rand::SeedableRng;
+    use rand::rngs::StdRng;
 
     // Use a fixed seed for determinism.
     let mut rng = StdRng::seed_from_u64(0xDEAD_BEEF_CAFE_BABE);
@@ -203,8 +211,7 @@ fn proptest_header_roundtrip_preserves_all_fields() {
         let correlation: u64 = rng.random();
 
         // Generate payload_len: 0..=DEFAULT
-        let payload_len: u32 =
-            rng.random_range(0..=(DEFAULT_MAX_PAYLOAD));
+        let payload_len: u32 = rng.random_range(0..=(DEFAULT_MAX_PAYLOAD));
 
         let header = IpcFrameHeader::new(command, flags, correlation, payload_len);
         let encoded = header.encode().expect("encode must succeed for any header");
@@ -287,8 +294,8 @@ fn proptest_decode_rejects_invalid_flags_per_command() {
 #[test]
 fn proptest_idempotent_header_encode_decode_roundtrip() {
     use rand::Rng;
-    use rand::rngs::StdRng;
     use rand::SeedableRng;
+    use rand::rngs::StdRng;
 
     let mut rng = StdRng::seed_from_u64(0xCAFE_FADE_FEED_FACE);
 
@@ -297,8 +304,7 @@ fn proptest_idempotent_header_encode_decode_roundtrip() {
         let command = ALL_COMMANDS[cmd_idx];
         let flags: u16 = rng.random_range(0..=0x00FF_u16);
         let correlation: u64 = rng.random();
-        let payload_len: u32 =
-            rng.random_range(0..=(DEFAULT_MAX_PAYLOAD));
+        let payload_len: u32 = rng.random_range(0..=(DEFAULT_MAX_PAYLOAD));
 
         let header = IpcFrameHeader::new(command, flags, correlation, payload_len);
 
@@ -327,8 +333,8 @@ fn proptest_idempotent_header_encode_decode_roundtrip() {
 #[test]
 fn proptest_encode_succeeds_for_any_flags_value() {
     use rand::Rng;
-    use rand::rngs::StdRng;
     use rand::SeedableRng;
+    use rand::rngs::StdRng;
 
     let mut rng = StdRng::seed_from_u64(0xFEED_FACE_CAFE_BABE);
 
@@ -338,8 +344,7 @@ fn proptest_encode_succeeds_for_any_flags_value() {
         // Generate ANY u16 flags value — full range including reserved bits
         let flags: u16 = rng.random();
         let correlation: u64 = rng.random();
-        let payload_len: u32 =
-            rng.random_range(0..=(DEFAULT_MAX_PAYLOAD));
+        let payload_len: u32 = rng.random_range(0..=(DEFAULT_MAX_PAYLOAD));
 
         let header = IpcFrameHeader::new(command, flags, correlation, payload_len);
 
@@ -355,8 +360,7 @@ fn proptest_encode_succeeds_for_any_flags_value() {
         let bytes = encoded.expect("just checked is_ok");
 
         // Verify the flag bytes at offset 8..10 match the original flags.
-        let encoded_flags =
-            u16::from_le_bytes([bytes[8], bytes[9]]);
+        let encoded_flags = u16::from_le_bytes([bytes[8], bytes[9]]);
         assert_eq!(
             encoded_flags, flags,
             "encoded flags at offset 8..10 must match input: expected {:#06x}, got {:#06x}",
@@ -388,8 +392,8 @@ fn proptest_valid_mask_is_disjoint_from_reserved_global_mask() {
 #[test]
 fn proptest_decode_reserved_field_error_takes_precedence_over_flag_error() {
     use rand::Rng;
-    use rand::rngs::StdRng;
     use rand::SeedableRng;
+    use rand::rngs::StdRng;
 
     let mut rng = StdRng::seed_from_u64(0xBEEF_DEAD_FADE_CAFE);
 
@@ -413,8 +417,7 @@ fn proptest_decode_reserved_field_error_takes_precedence_over_flag_error() {
             }
         };
 
-        let header_bytes =
-            raw_header_with_flags(command, flags, reserved);
+        let header_bytes = raw_header_with_flags(command, flags, reserved);
 
         let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
 
@@ -423,7 +426,9 @@ fn proptest_decode_reserved_field_error_takes_precedence_over_flag_error() {
             result,
             Err(IpcError::ReservedNonZero { actual: reserved }),
             "ReservedNonZero must take precedence over flag errors: command={:?} flags={:#06x} reserved={:#06x}",
-            command, flags, reserved
+            command,
+            flags,
+            reserved
         );
     }
 }
@@ -481,7 +486,13 @@ fn validate_accepts_flags_within_valid_mask_for_each_command() {
             vec![0x0000]
         };
         for &f in &test_flags {
-            assert!(f <= mask, "test flag {:#06x} must be <= mask {:#06x} for {:?}", f, mask, command);
+            assert!(
+                f <= mask,
+                "test flag {:#06x} must be <= mask {:#06x} for {:?}",
+                f,
+                mask,
+                command
+            );
         }
         let _ = test_flags;
     }
@@ -513,9 +524,11 @@ fn validate_returns_reserved_bits_set_for_all_16_commands() {
     for command in &ALL_COMMANDS {
         for &reserved_flag in &[0x0100_u16, 0x8000, 0xFF00, 0x0F00] {
             assert_ne!(
-                reserved_flag & RESERVED_GLOBAL_MASK, 0,
+                reserved_flag & RESERVED_GLOBAL_MASK,
+                0,
                 "test flag {:#06x} must have bits in reserved mask for {:?}",
-                reserved_flag, command
+                reserved_flag,
+                command
             );
         }
     }
@@ -550,10 +563,16 @@ fn validate_returns_invalid_command_flags_when_flags_outside_valid_mask() {
             assert!(
                 (f & !mask) != 0,
                 "test flag {:#06x} must be outside mask {:#06x} for {:?}",
-                f, mask, command
+                f,
+                mask,
+                command
             );
-            assert_eq!(f & RESERVED_GLOBAL_MASK, 0,
-                "test flag {:#06x} must not have reserved bits for InvalidCommandFlags test", f);
+            assert_eq!(
+                f & RESERVED_GLOBAL_MASK,
+                0,
+                "test flag {:#06x} must not have reserved bits for InvalidCommandFlags test",
+                f
+            );
         }
     }
 }
@@ -581,10 +600,19 @@ fn validate_returns_reserved_bits_set_not_invalid_command_flags_when_both_condit
     // Test with each command to ensure precedence is universal:
     for command in &ALL_COMMANDS {
         let raw = 0xFF01_u16;
-        assert_ne!(raw & RESERVED_GLOBAL_MASK, 0,
-            "test flag {:#06x} has reserved bits", raw);
-        assert_ne!(raw & !valid_mask_ref(*command), 0,
-            "test flag {:#06x} has invalid bits for {:?}", raw, command);
+        assert_ne!(
+            raw & RESERVED_GLOBAL_MASK,
+            0,
+            "test flag {:#06x} has reserved bits",
+            raw
+        );
+        assert_ne!(
+            raw & !valid_mask_ref(*command),
+            0,
+            "test flag {:#06x} has invalid bits for {:?}",
+            raw,
+            command
+        );
         // When implemented: reserved check must fire first
         let _ = command;
     }
@@ -610,13 +638,20 @@ fn validate_rejects_every_nonzero_flag_for_zero_mask_commands() {
     //     }
     // }
     for command in &ZERO_MASK_COMMANDS {
-        assert_eq!(valid_mask_ref(*command), 0,
-            "zero-mask command {:?} must have valid_mask=0", command);
+        assert_eq!(
+            valid_mask_ref(*command),
+            0,
+            "zero-mask command {:?} must have valid_mask=0",
+            command
+        );
         for &flag in &[0x0001_u16, 0x0002, 0x00FF, 0x0055] {
             assert!(flag != 0, "test flag must be non-zero");
             // After GAP-2: verify this is InvalidCommandFlags, not ReservedBitsSet
-            assert_eq!(flag & RESERVED_GLOBAL_MASK, 0,
-                "test flag must not have reserved bits");
+            assert_eq!(
+                flag & RESERVED_GLOBAL_MASK,
+                0,
+                "test flag must not have reserved bits"
+            );
             let _ = (command, flag);
         }
     }
@@ -653,7 +688,12 @@ fn command_flags_as_u16_returns_the_validated_value() {
     // Also test with zero:
     // let flags = CommandFlags::validate(IpcCommand::Health, 0).unwrap();
     // assert_eq!(flags.as_u16(), 0);
-    let _ = (IpcCommand::SubmitRunInline, 0x00FF_u16, IpcCommand::Health, 0x0000_u16);
+    let _ = (
+        IpcCommand::SubmitRunInline,
+        0x00FF_u16,
+        IpcCommand::Health,
+        0x0000_u16,
+    );
 }
 
 // ============================================================================
@@ -718,7 +758,9 @@ fn health_command_header_with_zero_payload_roundtrips() {
     let header = IpcFrameHeader::new(IpcCommand::Health, 0x0000, 42, 0);
 
     // When: the frame is encoded to 24 bytes and decoded back
-    let encoded = header.encode().expect("encode must succeed for Health header");
+    let encoded = header
+        .encode()
+        .expect("encode must succeed for Health header");
     let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT)
         .expect("decode must succeed for valid Health header");
 
@@ -738,12 +780,7 @@ fn submit_run_inline_command_header_with_payload_len_at_bound_roundtrips() {
     // Given: SubmitRunInline, flags=0x00FF (valid mask max), correlation=u64::MAX,
     //        payload_len=MaxPayloadBytes::DEFAULT
     let max_payload = DEFAULT_MAX_PAYLOAD;
-    let header = IpcFrameHeader::new(
-        IpcCommand::SubmitRunInline,
-        0x00FF,
-        u64::MAX,
-        max_payload,
-    );
+    let header = IpcFrameHeader::new(IpcCommand::SubmitRunInline, 0x00FF, u64::MAX, max_payload);
 
     // When
     let encoded = header.encode().expect("encode must succeed");
@@ -777,7 +814,8 @@ fn all_16_ipc_commands_roundtrip_header_with_valid_flags() {
 
         assert_eq!(
             decoded.command, *command,
-            "command mismatch for {:?} with flags={:#06x}", command, flags
+            "command mismatch for {:?} with flags={:#06x}",
+            command, flags
         );
         assert_eq!(
             decoded.flags, flags,
@@ -786,11 +824,13 @@ fn all_16_ipc_commands_roundtrip_header_with_valid_flags() {
         );
         assert_eq!(
             decoded.correlation, correlation,
-            "correlation mismatch for {:?}", command
+            "correlation mismatch for {:?}",
+            command
         );
         assert_eq!(
             decoded.payload_len, 0,
-            "payload_len mismatch for {:?}", command
+            "payload_len mismatch for {:?}",
+            command
         );
     }
 }
@@ -824,7 +864,8 @@ fn header_flag_bits_roundtrip_at_zero_min_and_max_for_each_command() {
             );
             assert_eq!(
                 decoded.command, *command,
-                "command mismatch for {:?} with flags={:#06x}", command, flags
+                "command mismatch for {:?} with flags={:#06x}",
+                command, flags
             );
         }
     }
@@ -845,12 +886,19 @@ fn encode_accepts_all_flags_bits_even_those_rejected_at_decode() {
     let encoded = header.encode();
 
     // Then: encode succeeds
-    assert!(encoded.is_ok(), "encode must succeed even with flags=0xFFFF");
+    assert!(
+        encoded.is_ok(),
+        "encode must succeed even with flags=0xFFFF"
+    );
 
     let bytes = encoded.expect("just checked is_ok");
 
     // And: the encoded bytes at offset 8..10 contain 0xFFFF in little-endian
-    assert_eq!(bytes.len(), IPC_HEADER_LEN, "encoded header must be 24 bytes");
+    assert_eq!(
+        bytes.len(),
+        IPC_HEADER_LEN,
+        "encoded header must be 24 bytes"
+    );
     let actual_flags = u16::from_le_bytes([bytes[8], bytes[9]]);
     assert_eq!(
         actual_flags, 0xFFFF,
@@ -876,12 +924,21 @@ fn decode_accepts_payload_len_zero_for_commands_that_allow_it() {
         let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT)
             .expect("decode must succeed for valid header with zero payload");
 
-        assert_eq!(decoded.command, command,
-            "command mismatch for {:?}", command);
-        assert_eq!(decoded.payload_len, 0,
-            "payload_len must be 0 for {:?}", command);
-        assert_eq!(decoded.flags, 0x0000,
-            "flags must be 0x0000 for {:?}", command);
+        assert_eq!(
+            decoded.command, command,
+            "command mismatch for {:?}",
+            command
+        );
+        assert_eq!(
+            decoded.payload_len, 0,
+            "payload_len must be 0 for {:?}",
+            command
+        );
+        assert_eq!(
+            decoded.flags, 0x0000,
+            "flags must be 0x0000 for {:?}",
+            command
+        );
     }
 }
 
@@ -893,12 +950,7 @@ fn decode_accepts_payload_len_equal_to_max_bound() {
     let max_payload = DEFAULT_MAX_PAYLOAD;
 
     // Given: SubmitRunInline with payload_len = MaxPayloadBytes::DEFAULT
-    let header = IpcFrameHeader::new(
-        IpcCommand::SubmitRunInline,
-        0x0000,
-        1,
-        max_payload,
-    );
+    let header = IpcFrameHeader::new(IpcCommand::SubmitRunInline, 0x0000, 1, max_payload);
 
     let encoded = header.encode().expect("encode must succeed");
 
@@ -934,13 +986,11 @@ fn header_encode_decode_is_idempotent_for_valid_headers() {
 
         // Cycle 1
         let enc1 = header.encode().expect("encode1 failed");
-        let dec1 = IpcFrameHeader::decode(&enc1, MaxPayloadBytes::DEFAULT)
-            .expect("decode1 failed");
+        let dec1 = IpcFrameHeader::decode(&enc1, MaxPayloadBytes::DEFAULT).expect("decode1 failed");
 
         // Cycle 2 — re-encode the decoded header and decode again
         let enc2 = dec1.encode().expect("encode2 failed");
-        let dec2 = IpcFrameHeader::decode(&enc2, MaxPayloadBytes::DEFAULT)
-            .expect("decode2 failed");
+        let dec2 = IpcFrameHeader::decode(&enc2, MaxPayloadBytes::DEFAULT).expect("decode2 failed");
 
         assert_eq!(
             dec1, dec2,
@@ -1071,8 +1121,8 @@ fn decode_returns_reserved_non_zero_not_reserved_bits_set_when_reserved_field_is
         IPC_MAGIC,
         IPC_VERSION,
         IpcCommand::Health.as_u16(),
-        0x0100,  // flags with reserved bit set
-        0x0007,  // reserved field non-zero
+        0x0100, // flags with reserved bit set
+        0x0007, // reserved field non-zero
         42,
         0,
     )
@@ -1201,8 +1251,10 @@ fn decode_distinguishes_reserved_non_zero_field_from_reserved_bits_in_flags() {
 
         // Verify the decoded header has the correct flags
         let decoded = result.expect("just checked");
-        assert_eq!(decoded.flags, 0x0100,
-            "current decoder preserves reserved flags bits");
+        assert_eq!(
+            decoded.flags, 0x0100,
+            "current decoder preserves reserved flags bits"
+        );
         assert_eq!(decoded.command, IpcCommand::Health);
     }
 
@@ -1220,10 +1272,7 @@ fn decode_distinguishes_reserved_non_zero_field_from_reserved_bits_in_flags() {
         .expect("raw_header_bytes must succeed");
 
         let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
-        assert!(
-            result.is_ok(),
-            "clean header must decode successfully"
-        );
+        assert!(result.is_ok(), "clean header must decode successfully");
         let decoded = result.expect("just checked");
         assert_eq!(decoded.command, IpcCommand::Health);
         assert_eq!(decoded.flags, 0x0000);
@@ -1269,8 +1318,7 @@ fn decode_rejects_payload_len_exceeding_max_bound() {
 /// with a smaller MaxPayloadBytes bound (tight bound test).
 #[test]
 fn decode_rejects_payload_len_with_tight_max_bound() {
-    let tight_max =
-        MaxPayloadBytes::new(NonZeroUsize::new(1024).expect("1024 > 0"));
+    let tight_max = MaxPayloadBytes::new(NonZeroUsize::new(1024).expect("1024 > 0"));
     let oversized: u32 = 1025;
 
     let header_bytes = raw_header_bytes(
@@ -1298,8 +1346,7 @@ fn decode_rejects_payload_len_with_tight_max_bound() {
 /// Verify exact payload_len matches when at max bound but not exceeding.
 #[test]
 fn decode_accepts_payload_len_exactly_at_tight_max_bound() {
-    let tight_max =
-        MaxPayloadBytes::new(NonZeroUsize::new(1024).expect("1024 > 0"));
+    let tight_max = MaxPayloadBytes::new(NonZeroUsize::new(1024).expect("1024 > 0"));
 
     let header_bytes = raw_header_bytes(
         IPC_MAGIC,
@@ -1374,14 +1421,15 @@ fn regression_existing_roundtrip_macro_flag_values_currently_pass() {
         for &flags in &dangerous_flags {
             let header = IpcFrameHeader::new(*command, flags, 0, 0);
             let encoded = header.encode().expect("encode must succeed");
-            let decoded =
-                IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT)
-                    .expect("decode must succeed in pre-GAP-5 state");
+            let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT)
+                .expect("decode must succeed in pre-GAP-5 state");
 
             assert_eq!(decoded.command, *command);
-            assert_eq!(decoded.flags, flags,
+            assert_eq!(
+                decoded.flags, flags,
                 "flags={:#06x} must roundtrip in pre-GAP-5 state for {:?}",
-                flags, command);
+                flags, command
+            );
         }
     }
 }
@@ -1391,12 +1439,7 @@ fn regression_existing_roundtrip_macro_flag_values_currently_pass() {
 /// currently roundtrips but will fail after GAP-5.
 #[test]
 fn regression_complete_action_with_flags_0xABCD_currently_roundtrips() {
-    let header = IpcFrameHeader::new(
-        IpcCommand::CompleteAction,
-        0xABCD,
-        0x1234_5678_9ABC_DEF0,
-        8,
-    );
+    let header = IpcFrameHeader::new(IpcCommand::CompleteAction, 0xABCD, 0x1234_5678_9ABC_DEF0, 8);
     let encoded = header.encode().expect("encode must succeed");
     let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT)
         .expect("decode must succeed in pre-GAP-5 state");
@@ -1446,16 +1489,25 @@ fn flag_matrix_all_16_commands_all_classes_roundtrip_in_current_code() {
         let mut cases = Vec::new();
 
         // Class: Flags=0 (always valid)
-        cases.push(FlagCase { label: "zero", flags: 0x0000 });
+        cases.push(FlagCase {
+            label: "zero",
+            flags: 0x0000,
+        });
 
         // Class: Valid Low (non-zero valid flag, if mask > 0)
         if mask > 0 {
-            cases.push(FlagCase { label: "valid_low", flags: 0x0001 });
+            cases.push(FlagCase {
+                label: "valid_low",
+                flags: 0x0001,
+            });
         }
 
         // Class: Valid Max (if mask > 0 and > 1)
         if mask > 1 {
-            cases.push(FlagCase { label: "valid_max", flags: mask });
+            cases.push(FlagCase {
+                label: "valid_max",
+                flags: mask,
+            });
         }
 
         // Class: Invalid Low (bit outside mask, no reserved)
@@ -1472,12 +1524,21 @@ fn flag_matrix_all_16_commands_all_classes_roundtrip_in_current_code() {
             None
         };
         if let Some(f) = invalid_low {
-            cases.push(FlagCase { label: "invalid_low", flags: f });
+            cases.push(FlagCase {
+                label: "invalid_low",
+                flags: f,
+            });
         }
 
         // Class: Reserved (bit in high byte, low byte clean)
-        cases.push(FlagCase { label: "reserved", flags: 0x0100 });
-        cases.push(FlagCase { label: "reserved_high", flags: 0x8000 });
+        cases.push(FlagCase {
+            label: "reserved",
+            flags: 0x0100,
+        });
+        cases.push(FlagCase {
+            label: "reserved_high",
+            flags: 0x8000,
+        });
 
         // Class: Reserved + Invalid (bits in both high byte and outside mask)
         let reserved_invalid = if mask == 0 {
@@ -1488,7 +1549,10 @@ fn flag_matrix_all_16_commands_all_classes_roundtrip_in_current_code() {
         } else {
             0xFF00_u16 // mask == 0x00FF: all low bits valid, just reserved
         };
-        cases.push(FlagCase { label: "reserved_plus_invalid", flags: reserved_invalid });
+        cases.push(FlagCase {
+            label: "reserved_plus_invalid",
+            flags: reserved_invalid,
+        });
 
         cases
     };

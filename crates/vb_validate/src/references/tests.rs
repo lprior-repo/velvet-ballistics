@@ -3,19 +3,14 @@
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]
-use crate::{ValidationError, ValidationResult};
-#[cfg(test)]
 use crate::references::{
-    parse_step_reference, validate_references, validate_single_reference,
-    validate_single_reference_with_context, RefTables, WorkflowRefs,
+    RefTables, WorkflowRefs, parse_step_reference, validate_references, validate_single_reference,
+    validate_single_reference_with_context,
 };
+#[cfg(test)]
+use crate::{ValidationError, ValidationResult};
 
-fn make_tables(
-    inputs: &[&str],
-    vars: &[&str],
-    secrets: &[&str],
-    step_ids: &[&str],
-) -> RefTables {
+fn make_tables(inputs: &[&str], vars: &[&str], secrets: &[&str], step_ids: &[&str]) -> RefTables {
     RefTables {
         inputs: string_set(
             &inputs
@@ -555,8 +550,7 @@ fn prior_step_reference_allowed_with_context() {
     // Given step_ids ["step1", "step2", "step3"] and current step index 2
     let tables = make_tables(&[], &[], &[], &["step1", "step2", "step3"]);
     // When validating a reference to step1 (index 0) from step3 (index 2)
-    let result =
-        validate_single_reference_with_context("$steps.step1.output", &tables, Some(2));
+    let result = validate_single_reference_with_context("$steps.step1.output", &tables, Some(2));
     // Then it succeeds (prior step reference)
     assert_eq!(result, Ok(()));
 }
@@ -566,8 +560,7 @@ fn future_step_reference_rejected_with_context() {
     // Given step_ids ["step1", "step2", "step3"] and current step index 1
     let tables = make_tables(&[], &[], &[], &["step1", "step2", "step3"]);
     // When validating a reference to step3 (index 2) from step2 (index 1)
-    let result =
-        validate_single_reference_with_context("$steps.step3.output", &tables, Some(1));
+    let result = validate_single_reference_with_context("$steps.step3.output", &tables, Some(1));
     // Then it fails (future step reference)
     assert!(matches!(
         result,
@@ -580,8 +573,7 @@ fn same_step_reference_rejected_with_context() {
     // Given step_ids ["step1", "step2", "step3"] and current step index 1
     let tables = make_tables(&[], &[], &[], &["step1", "step2", "step3"]);
     // When validating a reference to step2 (index 1) from step2 (index 1)
-    let result =
-        validate_single_reference_with_context("$steps.step2.output", &tables, Some(1));
+    let result = validate_single_reference_with_context("$steps.step2.output", &tables, Some(1));
     // Then it fails (same-step reference)
     assert!(matches!(
         result,

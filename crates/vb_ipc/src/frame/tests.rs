@@ -26,8 +26,7 @@ fn assert_command_roundtrip(command: IpcCommand) {
     let header = decode_frame_header(&header_arr);
 
     assert_ok!(header, "header should decode for {command:?}");
-    let header =
-        header.unwrap_or_else(|e| panic!("header should decode for {command:?}: {e:?}"));
+    let header = header.unwrap_or_else(|e| panic!("header should decode for {command:?}: {e:?}"));
     assert_eq!(header.command, command, "command should roundtrip");
 }
 
@@ -46,8 +45,7 @@ fn assert_payload_roundtrip(command: IpcCommand) {
     let decoded = decode_frame_header(&header_arr);
 
     assert_ok!(decoded, "decode should succeed for {command:?}");
-    let header =
-        decoded.unwrap_or_else(|e| panic!("decode should succeed for {command:?}: {e:?}"));
+    let header = decoded.unwrap_or_else(|e| panic!("decode should succeed for {command:?}: {e:?}"));
     assert_eq!(
         header.command, command,
         "command should roundtrip for {command:?}"
@@ -536,8 +534,8 @@ fn write_frame_produces_valid_frame_on_writer() {
 fn decode_frame_payload_succeeds_for_matching_length() {
     // Given: a valid IpcPayload encoded as postcard bytes
     let payload = crate::IpcPayload::Health;
-    let payload_bytes = postcard::to_allocvec(&payload)
-        .unwrap_or_else(|e| panic!("payload should encode: {e:?}"));
+    let payload_bytes =
+        postcard::to_allocvec(&payload).unwrap_or_else(|e| panic!("payload should encode: {e:?}"));
     let payload_len = match u32::try_from(payload_bytes.len()) {
         Ok(v) => v,
         Err(_) => panic!("payload_len should fit u32"),
@@ -1306,8 +1304,7 @@ fn encode_frame_with_all_flags_set() {
 
 #[test]
 fn decode_frame_header_preserves_all_fields() {
-    let header =
-        IpcFrameHeader::new(IpcCommand::SubmitRun, 0xABCD, 0x1234_5678_9ABC_DEF0, 4096);
+    let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0xABCD, 0x1234_5678_9ABC_DEF0, 4096);
     let encoded = header.encode();
     assert_ok!(encoded);
     let Ok(encoded) = encoded else {

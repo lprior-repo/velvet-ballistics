@@ -184,11 +184,7 @@ fn all_14_ipc_error_variants_nonzero() {
     // All codes are non-zero
     for err in variants {
         let code = err.diagnostic_code();
-        assert_ne!(
-            code.code(),
-            0,
-            "IpcError variant returned zero code"
-        );
+        assert_ne!(code.code(), 0, "IpcError variant returned zero code");
     }
 
     // Note: IpcError codes (0x3001-0x300E) are in the Runtime E30xx range

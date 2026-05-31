@@ -77,19 +77,18 @@ impl DrrScheduler {
         queue_capacity: usize,
     ) -> Result<Self, SchedulerError> {
         if per_tick_cap == 0 {
-            return Err(SchedulerError::InvalidPerTickCap {
-                cap: per_tick_cap,
-            });
+            return Err(SchedulerError::InvalidPerTickCap { cap: per_tick_cap });
         }
         if queue_count == 0 {
-            return Err(SchedulerError::InvalidQueueCount {
-                count: queue_count,
-            });
+            return Err(SchedulerError::InvalidQueueCount { count: queue_count });
         }
         let mut queues = Vec::with_capacity(queue_count);
         for i in 0..queue_count {
-            let q = BoundedActionCompletionQueue::new(queue_capacity)
-                .map_err(|_| SchedulerError::InvalidPerTickCap { cap: queue_capacity })?;
+            let q = BoundedActionCompletionQueue::new(queue_capacity).map_err(|_| {
+                SchedulerError::InvalidPerTickCap {
+                    cap: queue_capacity,
+                }
+            })?;
             queues.push(SchedulerQueue {
                 inner: q,
                 priority: i as u8,
@@ -176,7 +175,10 @@ impl DrrScheduler {
     /// Returns the number of ready queues.
     #[allow(dead_code)]
     fn ready_count(&self) -> usize {
-        self.queues.iter().filter(|q| q.state == QueueState::Ready).count()
+        self.queues
+            .iter()
+            .filter(|q| q.state == QueueState::Ready)
+            .count()
     }
 
     /// Returns the current unconfirmed ticket count.

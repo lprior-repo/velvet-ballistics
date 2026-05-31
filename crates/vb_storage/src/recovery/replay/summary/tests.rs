@@ -1,10 +1,10 @@
-use crate::recovery::replay::summary::*;
 use crate::EventSeq;
+use crate::recovery::replay::summary::*;
 use crate::recovery::types::RecoveryTerminalState;
 use vb_core::replay::SuspensionKind;
 use vb_core::{
-    ActionId, CapabilitySet, FiniteF64, ListId, ObjectId, RunId, RuntimePolicy, SlotIdx,
-    StepIdx, Taint, WorkflowDigest,
+    ActionId, CapabilitySet, FiniteF64, ListId, ObjectId, RunId, RuntimePolicy, SlotIdx, StepIdx,
+    Taint, WorkflowDigest,
 };
 
 fn fresh_summary() -> RecoveryRuntimeSummary {
@@ -348,8 +348,10 @@ fn frame_seed_slot_dimension_overflow_reports_exact_variant() {
     let seed = result.unwrap();
     assert_eq!(seed.step_count, 1);
     assert!(
-        seed.steps.iter().any(|entry| entry.step == StepIdx::new(0)
-            && entry.state == RecoveredStepState::Succeeded)
+        seed.steps
+            .iter()
+            .any(|entry| entry.step == StepIdx::new(0)
+                && entry.state == RecoveredStepState::Succeeded)
     );
 }
 

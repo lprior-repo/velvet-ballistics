@@ -3,7 +3,7 @@
 use vb_core::ids::{ActionId, RunId, StepIdx, WorkflowDigest};
 use vb_storage::JournalEvent;
 
-use crate::{derive_status_from_events, DerivedStatus};
+use crate::{DerivedStatus, derive_status_from_events};
 
 fn dummy_digest() -> WorkflowDigest {
     WorkflowDigest::from_bytes([0xAB_u8; 32])

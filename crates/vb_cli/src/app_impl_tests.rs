@@ -30,6 +30,7 @@ use vb_storage::{CompiledIrRecord, EventSeq, JournalEvent};
 use super::mode_error::{CommandMode, ModeError, command_mode};
 
 #[cfg(test)]
+#[path = "mode_activation_tests.rs"]
 mod mode_activation;
 
 fn main_test_tempdir() -> std::io::Result<tempfile::TempDir> {

@@ -11,10 +11,10 @@
 //!   B-017: Max valid start ID = u16::MAX - 3.
 
 use proptest::prelude::*;
-use vb_compile::{compile_workflow, lower_collect, SlotCompiler};
+use vb_compile::{SlotCompiler, compile_workflow, lower_collect};
 use vb_core::{
-    ids::{SlotIdx, StepIdx},
     CompiledNodeKind,
+    ids::{SlotIdx, StepIdx},
 };
 
 // =========================================================================
@@ -22,10 +22,7 @@ use vb_core::{
 // =========================================================================
 
 /// Convenience: fetch node i from the compiled workflow.
-fn node_at(
-    wf: &vb_core::CompiledWorkflow,
-    step: u16,
-) -> Option<&vb_core::CompiledNode> {
+fn node_at(wf: &vb_core::CompiledWorkflow, step: u16) -> Option<&vb_core::CompiledNode> {
     wf.node(StepIdx::new(step))
 }
 
@@ -67,11 +64,7 @@ fn collect_yaml(
 
 /// Build a YAML string where the collect step is NOT the first step, so
 /// its StepIdx is offset from 0.
-fn collect_yaml_with_preamble(
-    source_slot: &str,
-    pages: Option<u32>,
-    items: Option<u32>,
-) -> String {
+fn collect_yaml_with_preamble(source_slot: &str, pages: Option<u32>, items: Option<u32>) -> String {
     let mut yaml = String::from(
         "version: velvet-ballistics/v1\nname: collect-test\nwhen:\n  manual: {}\nsteps:\n",
     );
@@ -102,8 +95,6 @@ fn collect_yaml_with_preamble(
 fn collect_yaml_no_budget() -> String {
     collect_yaml("0", None, None, "7")
 }
-
-
 
 // =========================================================================
 // Strategies
@@ -357,9 +348,7 @@ fn collect_defaults_limit_and_page_size_to_one() {
     let start = node_at(&wf, 0).expect("CollectStart must exist");
     match &start.kind {
         CompiledNodeKind::CollectStart {
-            limit,
-            page_size,
-            ..
+            limit, page_size, ..
         } => {
             assert_eq!(*limit, 1, "default limit (pages) should be 1 when omitted");
             assert_eq!(
@@ -380,7 +369,10 @@ fn step_idx_checked_add_three_at_boundary() {
     // u16::MAX - 3 = 65532: should succeed
     let valid = StepIdx::new(65532);
     let result = valid.checked_add(3);
-    assert!(result.is_some(), "id = 65532 (u16::MAX - 3) should allow +3 offset");
+    assert!(
+        result.is_some(),
+        "id = 65532 (u16::MAX - 3) should allow +3 offset"
+    );
     if let Some(stepped) = result {
         assert_eq!(stepped.get(), 65535, "65532 + 3 = 65535 (u16::MAX)");
     }
@@ -401,14 +393,20 @@ fn step_idx_max_is_u16_max_minus_three_for_offset_three() {
         let max_id = u16::MAX.saturating_sub(offset);
         let step = StepIdx::new(max_id);
         let result = step.checked_add(offset);
-        assert!(result.is_some(), "id={max_id} should allow +{offset} offset");
+        assert!(
+            result.is_some(),
+            "id={max_id} should allow +{offset} offset"
+        );
         if let Some(s) = result {
             assert_eq!(s.get(), max_id.saturating_add(offset));
         }
     }
     // One beyond: fails
     let over = StepIdx::new(u16::MAX.wrapping_sub(2)); // 65533
-    assert!(over.checked_add(3).is_none(), "id=65533 must fail for +3 offset");
+    assert!(
+        over.checked_add(3).is_none(),
+        "id=65533 must fail for +3 offset"
+    );
 }
 
 /// B-017: With a moderate preamble (100 steps), verify the collect step
@@ -439,7 +437,11 @@ fn collect_with_moderate_preamble_has_correct_offsets() {
     yaml.push_str("  - id: done\n    finish:\n      result: 0\n");
 
     let result = compile_workflow(yaml.as_bytes());
-    assert!(result.is_ok(), "collect after 100-step preamble should compile: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "collect after 100-step preamble should compile: {:?}",
+        result.err()
+    );
     let wf = result.unwrap();
 
     // CollectStart at ID 100
@@ -457,7 +459,10 @@ fn collect_with_moderate_preamble_has_correct_offsets() {
 
     // CollectFinish at ID 103
     let finish_node = node_at(&wf, 103).expect("CollectFinish must exist at id 103");
-    assert!(matches!(&finish_node.kind, CompiledNodeKind::CollectFinish { .. }));
+    assert!(matches!(
+        &finish_node.kind,
+        CompiledNodeKind::CollectFinish { .. }
+    ));
 
     match &start.kind {
         CompiledNodeKind::CollectStart { body, done, .. } => {
@@ -550,7 +555,8 @@ fn lower_collect_collectpage_has_correct_slot_reference() {
             done: d,
         } => {
             assert_eq!(
-                collector_slot.get(), 7,
+                collector_slot.get(),
+                7,
                 "CollectPage.collector_slot matches source"
             );
             assert_eq!(b.get(), 11, "CollectPage.body preserved");
@@ -574,7 +580,8 @@ fn lower_collect_collectfinish_has_correct_slot_reference() {
     match &nodes[2].kind {
         CompiledNodeKind::CollectFinish { collector_slot } => {
             assert_eq!(
-                collector_slot.get(), 7,
+                collector_slot.get(),
+                7,
                 "CollectFinish.collector_slot matches source"
             );
         }
@@ -638,6 +645,9 @@ fn lower_collect_preserves_source_in_builder() {
     assert!(count.is_ok(), "slot_count should be valid: {count:?}");
     // source slot 42 means slot_count should be at least 43
     if let Ok(c) = count {
-        assert!(c >= 43, "slot_count should be at least source.get()+1=43, got {c}");
+        assert!(
+            c >= 43,
+            "slot_count should be at least source.get()+1=43, got {c}"
+        );
     }
 }

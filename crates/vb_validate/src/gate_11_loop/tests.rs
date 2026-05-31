@@ -1,5 +1,6 @@
 //! Tests for gate 11 loop body graph validation.
 
+use super::*;
 use crate::{ValidationError, ValidationResult};
 use vb_core::ids::{ConstIdx, SlotIdx, StepIdx};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};

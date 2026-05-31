@@ -1478,8 +1478,8 @@ mod proptests {
 
     use super::super::*;
     use crate::engine::action::compute_idempotency_key;
-    use vb_core::ids::{ActionId, RunId, SeqNo};
     use proptest::prelude::*;
+    use vb_core::ids::{ActionId, RunId, SeqNo};
 
     proptest! {
         #[test]

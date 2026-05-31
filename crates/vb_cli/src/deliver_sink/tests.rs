@@ -124,11 +124,7 @@ fn deliver_sink_writes_value_unchanged_as_one_json_line_to_writer() {
     assert_eq!(write_json_line_to_writer(&mut out, &value), Ok(()));
     assert_eq!(
         out,
-        br#"{"a":"text","b":[true,null,3]}"#
-            .iter()
-            .copied()
-            .chain([b'\n'])
-            .collect::<Vec<u8>>()
+        br#"{"a":"text","b":[true,null,3]}"#.iter().copied().chain([b'\n']).collect::<Vec<u8>>()
     );
 }
 
@@ -178,8 +174,8 @@ fn path_text(path: &Path) -> Result<String, String> {
 }
 
 fn deliver_test_tempdir() -> Result<tempfile::TempDir, String> {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../target/deliver-sink-unit-tmp");
+    let root =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/deliver-sink-unit-tmp");
     std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
     tempfile::Builder::new()
         .prefix("vb-deliver-unit-")

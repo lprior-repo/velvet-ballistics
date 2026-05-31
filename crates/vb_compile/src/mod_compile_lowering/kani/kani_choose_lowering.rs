@@ -236,7 +236,10 @@ fn kani_choose_lowering_nonempty_branch_body() {
     let bcount = bcount.min(64).max(1);
     for _i in 0..bcount {
         let when = any_bounded_label(4);
-        branches.push(ChooseBranch { when, steps: Vec::new() });
+        branches.push(ChooseBranch {
+            when,
+            steps: Vec::new(),
+        });
     }
 
     let has_nonempty = branches.iter().any(|b| !b.steps.is_empty());
@@ -376,7 +379,10 @@ fn kani_choose_lowering_output_shape() {
     let bcount = bcount.min(64);
     for _i in 0..bcount {
         let when = any_bounded_label(4);
-        branches.push(ChooseBranch { when, steps: Vec::new() });
+        branches.push(ChooseBranch {
+            when,
+            steps: Vec::new(),
+        });
     }
 
     // Build step_names from branch when labels for resolution compatibility

@@ -17,10 +17,10 @@
 //! - F-005: Replaced `cover!(false, ...)` with `kani::assert(false, ...)`
 //! - F-006: Moved domain constraints to `kani::assume` before match statements
 
+use crate::bounded::MaxPayloadBytes;
 use crate::commands::IpcCommand;
 use crate::constants::IPC_HEADER_LEN;
 use crate::frame_types::IpcFrameHeader;
-use crate::bounded::MaxPayloadBytes;
 
 // ============================================================================
 // Trusted Base Constants
@@ -41,7 +41,11 @@ enum FlagCheckResult {
     /// Flags pass all validation checks.
     Valid,
     /// Reserved bits (in the global 0xFF00 mask) are set.
-    ReservedBitsSet { command: IpcCommand, actual: u16, reserved_mask: u16 },
+    ReservedBitsSet {
+        command: IpcCommand,
+        actual: u16,
+        reserved_mask: u16,
+    },
     /// Flag bits outside the command's valid mask are set (and no reserved bits).
     InvalidFlags { command: IpcCommand, flags: u16 },
 }
@@ -70,22 +74,22 @@ impl FlagCheckResult {
 /// Contract invariant INV-6: ∀ C: valid_mask(C) & 0xFF00 == 0
 const fn valid_mask_model(command: IpcCommand) -> u16 {
     match command {
-        IpcCommand::SubmitRun        => 0x00FF,
-        IpcCommand::SubmitRunInline  => 0x00FF,
-        IpcCommand::CancelRun        => 0x0000,
-        IpcCommand::InspectRun       => 0x0003,
-        IpcCommand::ListEvents       => 0x00FF,
-        IpcCommand::AnswerAsk        => 0x0000,
-        IpcCommand::CompleteAction   => 0x0000,
-        IpcCommand::FailAction       => 0x0000,
-        IpcCommand::DrainTrace       => 0x0007,
-        IpcCommand::Health           => 0x0000,
-        IpcCommand::Shutdown         => 0x0000,
-        IpcCommand::ListRuns         => 0x00FF,
-        IpcCommand::GetMetrics       => 0x0000,
+        IpcCommand::SubmitRun => 0x00FF,
+        IpcCommand::SubmitRunInline => 0x00FF,
+        IpcCommand::CancelRun => 0x0000,
+        IpcCommand::InspectRun => 0x0003,
+        IpcCommand::ListEvents => 0x00FF,
+        IpcCommand::AnswerAsk => 0x0000,
+        IpcCommand::CompleteAction => 0x0000,
+        IpcCommand::FailAction => 0x0000,
+        IpcCommand::DrainTrace => 0x0007,
+        IpcCommand::Health => 0x0000,
+        IpcCommand::Shutdown => 0x0000,
+        IpcCommand::ListRuns => 0x00FF,
+        IpcCommand::GetMetrics => 0x0000,
         IpcCommand::GetWorkflowGraph => 0x0001,
-        IpcCommand::GetTaintReport   => 0x0000,
-        IpcCommand::VerifyWorkflow   => 0x0003,
+        IpcCommand::GetTaintReport => 0x0000,
+        IpcCommand::VerifyWorkflow => 0x0003,
     }
 }
 
@@ -231,19 +235,28 @@ fn differential_model_matches_production() {
     // --- Prove equivalence: model classification ⇔ production outcome ---
     match (&model_result, prod_result) {
         (FlagCheckResult::Valid, ValidationOutcome::Valid) => {
-            kani::cover!(true, "differential: Valid case — model and production agree");
+            kani::cover!(
+                true,
+                "differential: Valid case — model and production agree"
+            );
         }
         (FlagCheckResult::ReservedBitsSet { .. }, ValidationOutcome::ReservedBitsSet) => {
-            kani::cover!(true, "differential: ReservedBitsSet case — model and production agree");
+            kani::cover!(
+                true,
+                "differential: ReservedBitsSet case — model and production agree"
+            );
         }
         (FlagCheckResult::InvalidFlags { .. }, ValidationOutcome::InvalidFlags) => {
-            kani::cover!(true, "differential: InvalidFlags case — model and production agree");
+            kani::cover!(
+                true,
+                "differential: InvalidFlags case — model and production agree"
+            );
         }
         _ => {
             // Mismatch — model and production disagree
             kani::assert(
                 false,
-                "DIFFERENTIAL FAILURE: model and production implementations disagree"
+                "DIFFERENTIAL FAILURE: model and production implementations disagree",
             );
         }
     }
@@ -275,24 +288,30 @@ fn differential_zero_mask_consistency() {
             let prod_ok = is_prod_valid(prod);
 
             kani::cover!(model_valid, "diff-zero: model says Valid");
-            kani::cover!(!model_valid && model.is_reserved_bits_set(), "diff-zero: model says ReservedBitsSet");
-            kani::cover!(!model_valid && model.is_invalid_flags(), "diff-zero: model says InvalidFlags");
+            kani::cover!(
+                !model_valid && model.is_reserved_bits_set(),
+                "diff-zero: model says ReservedBitsSet"
+            );
+            kani::cover!(
+                !model_valid && model.is_invalid_flags(),
+                "diff-zero: model says InvalidFlags"
+            );
 
             kani::assert(
                 model_valid == prod_ok,
-                "zero-mask differential: model and production agree on validity"
+                "zero-mask differential: model and production agree on validity",
             );
 
             if !model_valid {
                 if model.is_reserved_bits_set() {
                     kani::assert(
                         is_prod_reserved(prod),
-                        "zero-mask differential: ReservedBitsSet ⇔ ReservedBitsSet outcome"
+                        "zero-mask differential: ReservedBitsSet ⇔ ReservedBitsSet outcome",
                     );
                 } else if model.is_invalid_flags() {
                     kani::assert(
                         is_prod_invalid(prod),
-                        "zero-mask differential: InvalidFlags ⇔ InvalidFlags outcome"
+                        "zero-mask differential: InvalidFlags ⇔ InvalidFlags outcome",
                     );
                 }
             }
@@ -351,30 +370,33 @@ fn flag_roundtrip_small_masks() {
                             // Roundtrip property: all fields preserved
                             kani::assert(
                                 decoded_header.command == cmd,
-                                "roundtrip: command preserved"
+                                "roundtrip: command preserved",
                             );
                             kani::assert(
                                 decoded_header.flags == flags,
-                                "roundtrip: flags preserved"
+                                "roundtrip: flags preserved",
                             );
                             kani::assert(
                                 decoded_header.correlation == correlation,
-                                "roundtrip: correlation preserved"
+                                "roundtrip: correlation preserved",
                             );
                             kani::assert(
                                 decoded_header.payload_len == payload_len,
-                                "roundtrip: payload_len preserved"
+                                "roundtrip: payload_len preserved",
                             );
                         }
                         Err(_e) => {
-                            kani::cover!(true, "decode returned Err for valid-flag header (PRE-INTEGRATION: should not happen)");
+                            kani::cover!(
+                                true,
+                                "decode returned Err for valid-flag header (PRE-INTEGRATION: should not happen)"
+                            );
                             // F-005: replace cover!(false, ...) with assert(false, ...)
                             // Decode should succeed for structurally valid headers with valid flags.
                             // If this fails, the codec is corrupting valid data or flag validation
                             // was added but is rejecting legitimate flags.
                             kani::assert(
                                 false,
-                                "decode rejected structurally valid header with model-valid flags"
+                                "decode rejected structurally valid header with model-valid flags",
                             );
                         }
                     }
@@ -418,23 +440,29 @@ fn flag_validate_zero_mask() {
             // --- F-002: Differential assertion: model and production agree ---
             kani::assert(
                 model.is_valid() == is_prod_valid(prod),
-                "zero-mask: model and production agree on validity classification"
+                "zero-mask: model and production agree on validity classification",
             );
 
             // --- Classification-specific assertions ---
             if raw_flags == 0 {
                 kani::cover!(true, "zero_mask: flags=0 path (expected Valid)");
-                kani::assert(model.is_valid(), "zero-mask command with flags=0 must validate");
-                kani::assert(is_prod_valid(prod), "zero-mask production: flags=0 must be Ok");
+                kani::assert(
+                    model.is_valid(),
+                    "zero-mask command with flags=0 must validate",
+                );
+                kani::assert(
+                    is_prod_valid(prod),
+                    "zero-mask production: flags=0 must be Ok",
+                );
             } else if (raw_flags & RESERVED_GLOBAL_MASK) != 0 {
                 kani::cover!(true, "zero_mask: reserved bits set path → ReservedBitsSet");
                 kani::assert(
                     model.is_reserved_bits_set(),
-                    "zero-mask: flags with reserved bits → ReservedBitsSet"
+                    "zero-mask: flags with reserved bits → ReservedBitsSet",
                 );
                 kani::assert(
                     is_prod_reserved(prod),
-                    "zero-mask production: reserved bits → Err(reserved_bits_set)"
+                    "zero-mask production: reserved bits → Err(reserved_bits_set)",
                 );
 
                 match model {
@@ -444,24 +472,36 @@ fn flag_validate_zero_mask() {
                         reserved_mask: err_mask,
                     } => {
                         kani::assert(err_cmd == cmd, "ReservedBitsSet: command field matches");
-                        kani::assert(err_actual == raw_flags, "ReservedBitsSet: actual field matches");
-                        kani::assert(err_mask == RESERVED_GLOBAL_MASK, "ReservedBitsSet: reserved_mask == 0xFF00");
+                        kani::assert(
+                            err_actual == raw_flags,
+                            "ReservedBitsSet: actual field matches",
+                        );
+                        kani::assert(
+                            err_mask == RESERVED_GLOBAL_MASK,
+                            "ReservedBitsSet: reserved_mask == 0xFF00",
+                        );
                     }
                     _ => {}
                 }
             } else {
-                kani::cover!(true, "zero_mask: flags≠0, low-byte only path → InvalidFlags");
+                kani::cover!(
+                    true,
+                    "zero_mask: flags≠0, low-byte only path → InvalidFlags"
+                );
                 kani::assert(
                     model.is_invalid_flags(),
-                    "zero-mask: low-byte-only non-zero flags → InvalidFlags"
+                    "zero-mask: low-byte-only non-zero flags → InvalidFlags",
                 );
                 kani::assert(
                     is_prod_invalid(prod),
-                    "zero-mask production: invalid low-byte → Err(invalid_flags)"
+                    "zero-mask production: invalid low-byte → Err(invalid_flags)",
                 );
 
                 match model {
-                    FlagCheckResult::InvalidFlags { command: err_cmd, flags: err_flags } => {
+                    FlagCheckResult::InvalidFlags {
+                        command: err_cmd,
+                        flags: err_flags,
+                    } => {
                         kani::assert(err_cmd == cmd, "InvalidFlags: command field matches");
                         kani::assert(err_flags == raw_flags, "InvalidFlags: flags field matches");
                     }
@@ -500,7 +540,7 @@ fn flag_validate_small_mask() {
 
             kani::assert(
                 model.is_valid() == is_prod_valid(prod),
-                "small-mask: model and production agree on validity"
+                "small-mask: model and production agree on validity",
             );
 
             // --- Determine expected outcome ---
@@ -511,11 +551,11 @@ fn flag_validate_small_mask() {
                 kani::cover!(true, "small_mask: reserved bits set path → ReservedBitsSet");
                 kani::assert(
                     model.is_reserved_bits_set(),
-                    "small-mask: reserved bits → ReservedBitsSet"
+                    "small-mask: reserved bits → ReservedBitsSet",
                 );
                 kani::assert(
                     is_prod_reserved(prod),
-                    "small-mask production: reserved → Err(reserved_bits_set)"
+                    "small-mask production: reserved → Err(reserved_bits_set)",
                 );
 
                 match model {
@@ -526,7 +566,10 @@ fn flag_validate_small_mask() {
                     } => {
                         kani::assert(err_cmd == cmd, "ReservedBitsSet command matches");
                         kani::assert(err_actual == raw_flags, "ReservedBitsSet actual matches");
-                        kani::assert(err_mask == RESERVED_GLOBAL_MASK, "ReservedBitsSet reserved_mask == 0xFF00");
+                        kani::assert(
+                            err_mask == RESERVED_GLOBAL_MASK,
+                            "ReservedBitsSet reserved_mask == 0xFF00",
+                        );
                     }
                     _ => {}
                 }
@@ -534,15 +577,18 @@ fn flag_validate_small_mask() {
                 kani::cover!(true, "small_mask: invalid flags path → InvalidFlags");
                 kani::assert(
                     model.is_invalid_flags(),
-                    "small-mask: invalid bits → InvalidFlags"
+                    "small-mask: invalid bits → InvalidFlags",
                 );
                 kani::assert(
                     is_prod_invalid(prod),
-                    "small-mask production: invalid → Err(invalid_flags)"
+                    "small-mask production: invalid → Err(invalid_flags)",
                 );
 
                 match model {
-                    FlagCheckResult::InvalidFlags { command: err_cmd, flags: err_flags } => {
+                    FlagCheckResult::InvalidFlags {
+                        command: err_cmd,
+                        flags: err_flags,
+                    } => {
                         kani::assert(err_cmd == cmd, "InvalidFlags command matches");
                         kani::assert(err_flags == raw_flags, "InvalidFlags flags matches");
                     }
@@ -588,11 +634,11 @@ fn reserved_bits_all_commands() {
             // Must be ReservedBitsSet (first check, takes precedence)
             kani::assert(
                 model.is_reserved_bits_set(),
-                "any reserved bit → ReservedBitsSet"
+                "any reserved bit → ReservedBitsSet",
             );
             kani::assert(
                 is_prod_reserved(prod),
-                "production: reserved bits → Err(reserved_bits_set)"
+                "production: reserved bits → Err(reserved_bits_set)",
             );
 
             kani::cover!(true, "reserved_bits: ReservedBitsSet path reached");
@@ -604,23 +650,35 @@ fn reserved_bits_all_commands() {
                     actual: err_actual,
                     reserved_mask: err_mask,
                 } => {
-                    kani::assert(err_cmd == cmd, "ReservedBitsSet.command matches input command");
-                    kani::assert(err_actual == raw_flags, "ReservedBitsSet.actual matches raw flags");
-                    kani::assert(err_mask == RESERVED_GLOBAL_MASK, "ReservedBitsSet.reserved_mask == 0xFF00");
+                    kani::assert(
+                        err_cmd == cmd,
+                        "ReservedBitsSet.command matches input command",
+                    );
+                    kani::assert(
+                        err_actual == raw_flags,
+                        "ReservedBitsSet.actual matches raw flags",
+                    );
+                    kani::assert(
+                        err_mask == RESERVED_GLOBAL_MASK,
+                        "ReservedBitsSet.reserved_mask == 0xFF00",
+                    );
                 }
                 FlagCheckResult::InvalidFlags { .. } => {
-                    kani::cover!(false, "reserved_bits: InvalidFlags path (SHOULD NOT BE REACHED — precedence violation)");
+                    kani::cover!(
+                        false,
+                        "reserved_bits: InvalidFlags path (SHOULD NOT BE REACHED — precedence violation)"
+                    );
                     kani::assert(
                         false,
-                        "ReservedBitsSet must be returned, not InvalidFlags, when reserved bits are set"
+                        "ReservedBitsSet must be returned, not InvalidFlags, when reserved bits are set",
                     );
                 }
                 FlagCheckResult::Valid => {
-                    kani::cover!(false, "reserved_bits: Valid path (SHOULD NOT BE REACHED — reserved bits accepted)");
-                    kani::assert(
+                    kani::cover!(
                         false,
-                        "flags with reserved bits must never be Valid"
+                        "reserved_bits: Valid path (SHOULD NOT BE REACHED — reserved bits accepted)"
                     );
+                    kani::assert(false, "flags with reserved bits must never be Valid");
                 }
             }
         }
@@ -681,40 +739,43 @@ fn decode_roundtrip_valid_flags() {
 
     match decoded {
         Ok(decoded_header) => {
-            kani::cover!(true, "decode_valid: decode Ok path — valid flags roundtrip succeeds");
+            kani::cover!(
+                true,
+                "decode_valid: decode Ok path — valid flags roundtrip succeeds"
+            );
 
             // Verify roundtrip: all fields preserved
             kani::assert(
                 decoded_header.command == command,
-                "decode roundtrip valid flags: command preserved"
+                "decode roundtrip valid flags: command preserved",
             );
             kani::assert(
                 decoded_header.flags == flags,
-                "decode roundtrip valid flags: flags preserved"
+                "decode roundtrip valid flags: flags preserved",
             );
             kani::assert(
                 decoded_header.correlation == correlation,
-                "decode roundtrip valid flags: correlation preserved"
+                "decode roundtrip valid flags: correlation preserved",
             );
             kani::assert(
                 decoded_header.payload_len == payload_len,
-                "decode roundtrip valid flags: payload_len preserved"
+                "decode roundtrip valid flags: payload_len preserved",
             );
 
             // Verify the decoded flags still pass model validation
             let post_check = validate_flags_model(decoded_header.command, decoded_header.flags);
             kani::assert(
                 post_check.is_valid(),
-                "decoded flags still pass model validation (typestate invariant)"
+                "decoded flags still pass model validation (typestate invariant)",
             );
         }
         Err(_e) => {
-            kani::cover!(true, "decode_valid: decode Err path — valid flags rejected (regression)");
-            // Decode should succeed for valid flags
-            kani::assert(
-                false,
-                "decode rejected model-valid flags (should succeed)"
+            kani::cover!(
+                true,
+                "decode_valid: decode Err path — valid flags rejected (regression)"
             );
+            // Decode should succeed for valid flags
+            kani::assert(false, "decode rejected model-valid flags (should succeed)");
         }
     }
 }
@@ -781,31 +842,43 @@ fn decode_rejects_invalid_flags() {
             // Verify roundtrip: decode preserves flags faithfully
             kani::assert(
                 decoded_header.flags == flags,
-                "decode preserves flags: roundtrip fidelity"
+                "decode preserves flags: roundtrip fidelity",
             );
             kani::assert(
                 decoded_header.command == command,
-                "decode preserves command: roundtrip fidelity"
+                "decode preserves command: roundtrip fidelity",
             );
             kani::assert(
                 decoded_header.correlation == correlation,
-                "decode preserves correlation: roundtrip fidelity"
+                "decode preserves correlation: roundtrip fidelity",
             );
 
             // PRE-INTEGRATION: verify that the model also says these flags are valid.
             // If the model says invalid but decode returned Ok, we hit the
             // implementation gap (flag validation not yet integrated).
             if model.is_valid() {
-                kani::cover!(true, "decode_reject: Valid path — model and production agree");
+                kani::cover!(
+                    true,
+                    "decode_reject: Valid path — model and production agree"
+                );
             } else {
                 // PRE-INTEGRATION GAP: invalid flags accepted by decode
                 // This path documents the current behavior where decode doesn't
                 // validate flags. POST-INTEGRATION: this should never happen.
-                kani::cover!(true, "decode_reject: PRE-INTEGRATION GAP — invalid flags accepted by decode");
+                kani::cover!(
+                    true,
+                    "decode_reject: PRE-INTEGRATION GAP — invalid flags accepted by decode"
+                );
                 if model.is_reserved_bits_set() {
-                    kani::cover!(true, "PRE-INTEGRATION GAP: ReservedBitsSet predicted but decode returned Ok");
+                    kani::cover!(
+                        true,
+                        "PRE-INTEGRATION GAP: ReservedBitsSet predicted but decode returned Ok"
+                    );
                 } else if model.is_invalid_flags() {
-                    kani::cover!(true, "PRE-INTEGRATION GAP: InvalidFlags predicted but decode returned Ok");
+                    kani::cover!(
+                        true,
+                        "PRE-INTEGRATION GAP: InvalidFlags predicted but decode returned Ok"
+                    );
                 }
 
                 // POST-INTEGRATION assertion (commented — activate when flag validation is wired):
@@ -863,7 +936,7 @@ fn model_invariant_disjoint_masks() {
             let mask = valid_mask_model(cmd);
             kani::assert(
                 (mask & RESERVED_GLOBAL_MASK) == 0,
-                "INV-6: valid_mask and reserved_global_mask are disjoint"
+                "INV-6: valid_mask and reserved_global_mask are disjoint",
             );
             kani::cover!(true, "INV-6: mask disjointness verified for this command");
         }
@@ -885,7 +958,7 @@ fn model_zero_flags_always_valid() {
             let result = validate_flags_model(cmd, 0);
             kani::assert(
                 result.is_valid(),
-                "flags=0 must always be valid for any command"
+                "flags=0 must always be valid for any command",
             );
             kani::cover!(true, "zero-flags: valid for this command");
         }
@@ -925,7 +998,10 @@ fn production_impl_no_panic() {
     match command {
         Ok(cmd) => {
             let _result = validate_production_impl(cmd, raw_flags);
-            kani::cover!(true, "production_impl: full input space exercised without panic");
+            kani::cover!(
+                true,
+                "production_impl: full input space exercised without panic"
+            );
         }
         Err(_) => {
             kani::cover!(true, "production_impl: invalid command ID path (skipped)");

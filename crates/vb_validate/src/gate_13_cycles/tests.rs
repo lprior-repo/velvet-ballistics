@@ -1,5 +1,6 @@
 //! Tests for gate 13: No circular references in slot dependency graph.
 
+use super::*;
 use vb_core::ids::{ConstIdx, ExprIdx, StepIdx};
 use vb_core::workflow::{CompiledNode, ResourceContract};
 
@@ -52,7 +53,10 @@ fn copy_node(index: u16, source: u16, output: u16) -> CompiledNode {
 #[test]
 fn accepts_empty_slots() {
     let parts = make_parts(vec![finish_node(0, 0)], 0);
-    assert_eq!(crate::gate_13_cycles::validate_gate_13_no_slot_cycles(&parts), Ok(()));
+    assert_eq!(
+        crate::gate_13_cycles::validate_gate_13_no_slot_cycles(&parts),
+        Ok(())
+    );
 }
 
 #[test]
@@ -68,7 +72,10 @@ fn accepts_single_slot_no_deps() {
         },
     };
     let parts = make_parts(vec![node], 1);
-    assert_eq!(crate::gate_13_cycles::validate_gate_13_no_slot_cycles(&parts), Ok(()));
+    assert_eq!(
+        crate::gate_13_cycles::validate_gate_13_no_slot_cycles(&parts),
+        Ok(())
+    );
 }
 
 #[test]
@@ -97,7 +104,10 @@ fn accepts_linear_chain() {
         },
     ];
     let parts = make_parts(nodes, 3);
-    assert_eq!(crate::gate_13_cycles::validate_gate_13_no_slot_cycles(&parts), Ok(()));
+    assert_eq!(
+        crate::gate_13_cycles::validate_gate_13_no_slot_cycles(&parts),
+        Ok(())
+    );
 }
 
 #[test]
@@ -113,7 +123,10 @@ fn accepts_self_copy_not_cycle() {
         },
     }];
     let parts = make_parts(nodes, 1);
-    assert_eq!(crate::gate_13_cycles::validate_gate_13_no_slot_cycles(&parts), Ok(()));
+    assert_eq!(
+        crate::gate_13_cycles::validate_gate_13_no_slot_cycles(&parts),
+        Ok(())
+    );
 }
 
 #[test]
@@ -152,7 +165,10 @@ fn accepts_diamond_dependency() {
         },
     ];
     let parts = make_parts(nodes, 4);
-    assert_eq!(crate::gate_13_cycles::validate_gate_13_no_slot_cycles(&parts), Ok(()));
+    assert_eq!(
+        crate::gate_13_cycles::validate_gate_13_no_slot_cycles(&parts),
+        Ok(())
+    );
 }
 
 #[test]
@@ -186,7 +202,10 @@ fn accepts_linear_chain_through_eval_expr() {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
         max_stack: 1,
     }]);
-    assert_eq!(crate::gate_13_cycles::validate_gate_13_no_slot_cycles(&parts), Ok(()));
+    assert_eq!(
+        crate::gate_13_cycles::validate_gate_13_no_slot_cycles(&parts),
+        Ok(())
+    );
 }
 
 // -- Fail cases --

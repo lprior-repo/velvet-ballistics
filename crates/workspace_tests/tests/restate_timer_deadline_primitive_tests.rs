@@ -15,7 +15,7 @@
 use std::time::{Duration, Instant};
 
 use vb_core::action::{
-    ActionFailure, ActionFailureCode, RetrySafety, RetryPolicy as VbRetryPolicy,
+    ActionFailure, ActionFailureCode, RetryPolicy as VbRetryPolicy, RetrySafety,
 };
 use vb_core::errors::CoreError;
 use vb_core::ids::RunId;
@@ -24,8 +24,8 @@ use vb_runtime::engine::{
     RetryCursor, RetryPolicy as EngineRetryPolicy, RetryPolicyLimits, RetryPolicyMathError,
 };
 use vb_runtime::primitives::retry::{
-    compute_delay, evaluate_retry, exhaustion_error, is_failure_retriable, DelayStrategy,
-    RetryDecision, RetryPolicy, RetryPolicyError, RetryState,
+    DelayStrategy, RetryDecision, RetryPolicy, RetryPolicyError, RetryState, compute_delay,
+    evaluate_retry, exhaustion_error, is_failure_retriable,
 };
 use vb_runtime::shard::timer_wheel::{TimerEntry, TimerWheel, TimerWheelError};
 use vb_runtime::shard::types::PendingTimerKind;
@@ -154,7 +154,10 @@ mod collect_expired_keys_purity {
         let fired = wheel.fire_expired(now);
         assert_eq!(fired.len(), 1);
         assert_eq!(wheel.len(), 1);
-        assert_eq!(wheel.get_entry(make_run(2)).map(|e| e.run), Some(make_run(2)));
+        assert_eq!(
+            wheel.get_entry(make_run(2)).map(|e| e.run),
+            Some(make_run(2))
+        );
     }
 
     #[test]
@@ -256,7 +259,12 @@ mod collect_expired_keys_purity {
 mod compute_delay_loop_bounds {
     use super::*;
 
-    fn policy_with(max_attempts: u16, delay_ms: u32, multiplier: u32, strategy: DelayStrategy) -> RetryPolicy {
+    fn policy_with(
+        max_attempts: u16,
+        delay_ms: u32,
+        multiplier: u32,
+        strategy: DelayStrategy,
+    ) -> RetryPolicy {
         RetryPolicy::new(max_attempts, delay_ms, multiplier, strategy).expect("valid policy")
     }
 
@@ -309,26 +317,26 @@ mod compute_delay_loop_bounds {
     #[test]
     fn compute_delay_exponential_doubles_each_step() {
         let policy = policy_with(5, 100, 2, DelayStrategy::ExponentialBackoff);
-        assert_eq!(compute_delay(&policy, 1), 100);  // 100 * 2^0
-        assert_eq!(compute_delay(&policy, 2), 200);  // 100 * 2^1
-        assert_eq!(compute_delay(&policy, 3), 400);  // 100 * 2^2
-        assert_eq!(compute_delay(&policy, 4), 800);  // 100 * 2^3
+        assert_eq!(compute_delay(&policy, 1), 100); // 100 * 2^0
+        assert_eq!(compute_delay(&policy, 2), 200); // 100 * 2^1
+        assert_eq!(compute_delay(&policy, 3), 400); // 100 * 2^2
+        assert_eq!(compute_delay(&policy, 4), 800); // 100 * 2^3
     }
 
     #[test]
     fn compute_delay_exponential_with_multiplier_3() {
         let policy = policy_with(5, 50, 3, DelayStrategy::ExponentialBackoff);
-        assert_eq!(compute_delay(&policy, 1), 50);   // 50 * 3^0
-        assert_eq!(compute_delay(&policy, 2), 150);  // 50 * 3^1
-        assert_eq!(compute_delay(&policy, 3), 450);  // 50 * 3^2
+        assert_eq!(compute_delay(&policy, 1), 50); // 50 * 3^0
+        assert_eq!(compute_delay(&policy, 2), 150); // 50 * 3^1
+        assert_eq!(compute_delay(&policy, 3), 450); // 50 * 3^2
     }
 
     #[test]
     fn compute_delay_exponential_with_multiplier_10() {
         let policy = policy_with(4, 2, 10, DelayStrategy::ExponentialBackoff);
-        assert_eq!(compute_delay(&policy, 1), 2);    // 2 * 10^0
-        assert_eq!(compute_delay(&policy, 2), 20);   // 2 * 10^1
-        assert_eq!(compute_delay(&policy, 3), 200);  // 2 * 10^2
+        assert_eq!(compute_delay(&policy, 1), 2); // 2 * 10^0
+        assert_eq!(compute_delay(&policy, 2), 20); // 2 * 10^1
+        assert_eq!(compute_delay(&policy, 3), 200); // 2 * 10^2
     }
 
     #[test]
@@ -633,9 +641,18 @@ mod timer_wheel_documented_invariants {
         let _ = wheel.insert(make_run(30), d3, PendingTimerKind::Wait);
         // Each run should have exactly one entry
         assert_eq!(wheel.len(), 3);
-        assert_eq!(wheel.get_entry(make_run(10)).map(|e| e.run), Some(make_run(10)));
-        assert_eq!(wheel.get_entry(make_run(20)).map(|e| e.run), Some(make_run(20)));
-        assert_eq!(wheel.get_entry(make_run(30)).map(|e| e.run), Some(make_run(30)));
+        assert_eq!(
+            wheel.get_entry(make_run(10)).map(|e| e.run),
+            Some(make_run(10))
+        );
+        assert_eq!(
+            wheel.get_entry(make_run(20)).map(|e| e.run),
+            Some(make_run(20))
+        );
+        assert_eq!(
+            wheel.get_entry(make_run(30)).map(|e| e.run),
+            Some(make_run(30))
+        );
     }
 
     #[test]
@@ -682,7 +699,11 @@ mod timer_wheel_documented_invariants {
         let now = Instant::now();
         let _ = wheel.insert(make_run(1), now, PendingTimerKind::Wait);
         // Inserting same run_id again replaces the entry
-        let _ = wheel.insert(make_run(1), now + Duration::from_millis(10), PendingTimerKind::Ask);
+        let _ = wheel.insert(
+            make_run(1),
+            now + Duration::from_millis(10),
+            PendingTimerKind::Ask,
+        );
         assert_eq!(wheel.len(), 1);
     }
 
@@ -751,9 +772,15 @@ mod timer_wheel_documented_invariants {
         for i in 0u64..10 {
             let deadline = base + Duration::from_millis(i * 10);
             let _ = wheel.insert(make_run(1), deadline, PendingTimerKind::Wait);
-            let current = wheel.get_entry(make_run(1)).map(|e| e.generation).expect("must exist");
+            let current = wheel
+                .get_entry(make_run(1))
+                .map(|e| e.generation)
+                .expect("must exist");
             if let Some(prev) = prev_gen {
-                assert!(current > prev, "generation must increase: {prev} -> {current}");
+                assert!(
+                    current > prev,
+                    "generation must increase: {prev} -> {current}"
+                );
             }
             prev_gen = Some(current);
         }
@@ -762,7 +789,10 @@ mod timer_wheel_documented_invariants {
     #[test]
     fn generation_exhausted_error_is_publicly_accessible() {
         // Verify the error variant exists and is equal to itself
-        assert_eq!(TimerWheelError::GenerationExhausted, TimerWheelError::GenerationExhausted);
+        assert_eq!(
+            TimerWheelError::GenerationExhausted,
+            TimerWheelError::GenerationExhausted
+        );
     }
 
     // ── invariant 4: deadline ordering ─────────────────────────────────
@@ -805,10 +835,25 @@ mod timer_wheel_documented_invariants {
         let mut wheel = TimerWheel::new();
         let base = Instant::now();
         // Insert in non-chronological order
-        let _ = wheel.insert(make_run(1), base + Duration::from_millis(100), PendingTimerKind::Wait);
-        let _ = wheel.insert(make_run(2), base + Duration::from_millis(10), PendingTimerKind::Ask);
-        let _ = wheel.insert(make_run(3), base + Duration::from_millis(50), PendingTimerKind::Wait);
-        assert_eq!(wheel.next_deadline(), Some(base + Duration::from_millis(10)));
+        let _ = wheel.insert(
+            make_run(1),
+            base + Duration::from_millis(100),
+            PendingTimerKind::Wait,
+        );
+        let _ = wheel.insert(
+            make_run(2),
+            base + Duration::from_millis(10),
+            PendingTimerKind::Ask,
+        );
+        let _ = wheel.insert(
+            make_run(3),
+            base + Duration::from_millis(50),
+            PendingTimerKind::Wait,
+        );
+        assert_eq!(
+            wheel.next_deadline(),
+            Some(base + Duration::from_millis(10))
+        );
     }
 
     // ── invariant 5: bounded operations ────────────────────────────────
@@ -921,7 +966,11 @@ mod timer_wheel_documented_invariants {
         let base = Instant::now();
         // Insert 5
         for i in 0u64..5 {
-            let _ = wheel.insert(make_run(i), base + Duration::from_millis(10), PendingTimerKind::Wait);
+            let _ = wheel.insert(
+                make_run(i),
+                base + Duration::from_millis(10),
+                PendingTimerKind::Wait,
+            );
         }
         assert_eq!(wheel.len(), 5);
         // Cancel 2
@@ -929,7 +978,11 @@ mod timer_wheel_documented_invariants {
         wheel.cancel(make_run(3));
         assert_eq!(wheel.len(), 3);
         // Replace 1
-        let _ = wheel.insert(make_run(0), base + Duration::from_millis(20), PendingTimerKind::Ask);
+        let _ = wheel.insert(
+            make_run(0),
+            base + Duration::from_millis(20),
+            PendingTimerKind::Ask,
+        );
         assert_eq!(wheel.len(), 3);
         // Fire expired at base
         let fired = wheel.fire_expired(base);
@@ -943,11 +996,19 @@ mod timer_wheel_documented_invariants {
         let d1 = Instant::now();
         let _ = wheel.insert(make_run(1), d1, PendingTimerKind::Wait);
         let gen1 = wheel.get_entry(make_run(1)).map(|e| e.generation);
-        let _ = wheel.insert(make_run(1), d1 + Duration::from_millis(1), PendingTimerKind::Ask);
+        let _ = wheel.insert(
+            make_run(1),
+            d1 + Duration::from_millis(1),
+            PendingTimerKind::Ask,
+        );
         let gen2 = wheel.get_entry(make_run(1)).map(|e| e.generation);
         // After cancel+reinsert, generation resets to 1 (run no longer in by_run)
         wheel.cancel(make_run(1));
-        let _ = wheel.insert(make_run(1), d1 + Duration::from_millis(2), PendingTimerKind::Wait);
+        let _ = wheel.insert(
+            make_run(1),
+            d1 + Duration::from_millis(2),
+            PendingTimerKind::Wait,
+        );
         let gen3 = wheel.get_entry(make_run(1)).map(|e| e.generation);
         match (gen1, gen2, gen3) {
             (Some(g1), Some(g2), Some(g3)) => {
@@ -1025,7 +1086,9 @@ mod retry_state_invariants {
         let failure = retryable_failure(ActionFailureCode::Timeout);
         let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
         match decision {
-            RetryDecision::Retry { state: mid_state, .. } => {
+            RetryDecision::Retry {
+                state: mid_state, ..
+            } => {
                 let packed = mid_state.encode().expect("encode must succeed");
                 let decoded = RetryState::decode(packed).expect("decode must succeed");
                 assert_eq!(decoded.current_attempt(), mid_state.current_attempt());
@@ -1119,7 +1182,9 @@ mod retry_state_invariants {
         let failure = retryable_failure(ActionFailureCode::Timeout);
         let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
         match decision {
-            RetryDecision::Retry { state: exhausted, .. } => {
+            RetryDecision::Retry {
+                state: exhausted, ..
+            } => {
                 assert!(exhausted.is_exhausted());
                 assert_eq!(exhausted.remaining(), 0);
             }
@@ -1188,12 +1253,7 @@ mod evaluate_retry_invariants {
         };
         assert_eq!(exhausted_state.remaining(), 0);
         // Second try with the same policy but using the exhausted state
-        let decision2 = evaluate_retry(
-            &exhausted_state,
-            &policy_1,
-            &failure,
-            RetrySafety::Safe,
-        );
+        let decision2 = evaluate_retry(&exhausted_state, &policy_1, &failure, RetrySafety::Safe);
         assert_eq!(decision2, RetryDecision::Exhausted { max_attempts: 1 });
     }
 
@@ -1795,9 +1855,21 @@ mod value_semantics {
         let failure = retryable_failure(ActionFailureCode::Timeout);
         let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
         match decision {
-            RetryDecision::Retry { state: _s, delay_ms: d } => {
-                let d2 = RetryDecision::Retry { state: _s, delay_ms: d };
-                assert_eq!(RetryDecision::Retry { state: _s, delay_ms: d }, d2);
+            RetryDecision::Retry {
+                state: _s,
+                delay_ms: d,
+            } => {
+                let d2 = RetryDecision::Retry {
+                    state: _s,
+                    delay_ms: d,
+                };
+                assert_eq!(
+                    RetryDecision::Retry {
+                        state: _s,
+                        delay_ms: d
+                    },
+                    d2
+                );
             }
             other => {
                 let s = format!("{other:?}");

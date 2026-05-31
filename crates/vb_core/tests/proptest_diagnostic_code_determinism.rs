@@ -103,9 +103,7 @@ fn diagnostic_code_determinism_for_all_variants_with_field_variation() {
 
     // ResourceLimitExceeded with different resource names
     let a = CoreError::ResourceLimitExceeded { resource: "cpu" };
-    let b = CoreError::ResourceLimitExceeded {
-        resource: "memory",
-    };
+    let b = CoreError::ResourceLimitExceeded { resource: "memory" };
     assert_eq!(a.diagnostic_code(), b.diagnostic_code());
 
     // ExpressionStackOverflow with different max values
@@ -140,9 +138,7 @@ fn diagnostic_code_determinism_for_all_variants_with_field_variation() {
 
     // IterationLimitExceeded with different resource names
     let a = CoreError::IterationLimitExceeded { resource: "cpu" };
-    let b = CoreError::IterationLimitExceeded {
-        resource: "memory",
-    };
+    let b = CoreError::IterationLimitExceeded { resource: "memory" };
     assert_eq!(a.diagnostic_code(), b.diagnostic_code());
 
     // RepeatExhausted with different max values

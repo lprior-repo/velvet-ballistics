@@ -736,4 +736,3 @@ impl HasSymbolicCode for CoreError {
 #[cfg(test)]
 #[path = "errors/tests.rs"]
 mod tests;
-

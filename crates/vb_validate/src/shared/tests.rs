@@ -3,7 +3,7 @@ use crate::ValidationError;
 #[cfg(test)]
 use crate::ValidationResult;
 #[cfg(test)]
-use crate::shared::{validate, ValidationPipeline};
+use crate::shared::{ValidationPipeline, validate};
 #[cfg(test)]
 use vb_core::ids::{SlotIdx, StepIdx};
 #[cfg(test)]

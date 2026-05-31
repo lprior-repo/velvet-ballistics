@@ -70,32 +70,80 @@ impl KeyRange {
         Ok(Self { start, end })
     }
 
-    #[must_use] pub const fn from_single_key(key: u64) -> Self { Self { start: key, end: key } }
-    #[must_use] pub const fn full_keyspace() -> Self { Self { start: 0, end: u64::MAX } }
-    #[must_use] pub const fn start(self) -> u64 { self.start }
-    #[must_use] pub const fn end(self) -> u64 { self.end }
-    #[must_use] pub const fn contains(self, key: u64) -> bool { self.start <= key && key <= self.end }
-    #[must_use] pub const fn size(self) -> u64 { self.end.wrapping_sub(self.start) }
-    #[must_use] pub fn count(self) -> Option<u64> { self.end.checked_sub(self.start)?.checked_add(1) }
-    #[must_use] pub const fn is_singleton(self) -> bool { self.start == self.end }
-
     #[must_use]
-    pub fn intersection(self, other: Self) -> Option<Self> {
-        let start = if self.start > other.start { self.start } else { other.start };
-        let end = if self.end < other.end { self.end } else { other.end };
-        if start <= end { Some(Self { start, end }) } else { None }
+    pub const fn from_single_key(key: u64) -> Self {
+        Self {
+            start: key,
+            end: key,
+        }
+    }
+    #[must_use]
+    pub const fn full_keyspace() -> Self {
+        Self {
+            start: 0,
+            end: u64::MAX,
+        }
+    }
+    #[must_use]
+    pub const fn start(self) -> u64 {
+        self.start
+    }
+    #[must_use]
+    pub const fn end(self) -> u64 {
+        self.end
+    }
+    #[must_use]
+    pub const fn contains(self, key: u64) -> bool {
+        self.start <= key && key <= self.end
+    }
+    #[must_use]
+    pub const fn size(self) -> u64 {
+        self.end.wrapping_sub(self.start)
+    }
+    #[must_use]
+    pub fn count(self) -> Option<u64> {
+        self.end.checked_sub(self.start)?.checked_add(1)
+    }
+    #[must_use]
+    pub const fn is_singleton(self) -> bool {
+        self.start == self.end
     }
 
     #[must_use]
-    pub fn is_disjoint(self, other: Self) -> bool { self.intersection(other).is_none() }
+    pub fn intersection(self, other: Self) -> Option<Self> {
+        let start = if self.start > other.start {
+            self.start
+        } else {
+            other.start
+        };
+        let end = if self.end < other.end {
+            self.end
+        } else {
+            other.end
+        };
+        if start <= end {
+            Some(Self { start, end })
+        } else {
+            None
+        }
+    }
+
+    #[must_use]
+    pub fn is_disjoint(self, other: Self) -> bool {
+        self.intersection(other).is_none()
+    }
 
     #[must_use]
     pub fn is_adjacent_to(self, other: Self) -> bool {
         if let Some(next) = self.end.checked_add(1) {
-            if next == other.start { return true; }
+            if next == other.start {
+                return true;
+            }
         }
         if let Some(next) = other.end.checked_add(1) {
-            if next == self.start { return true; }
+            if next == self.start {
+                return true;
+            }
         }
         false
     }
@@ -122,13 +170,24 @@ impl ShardCount {
         Ok(Self(raw))
     }
 
-    #[must_use] pub const fn get(self) -> usize { self.0 }
-    #[must_use] pub const fn as_u64(self) -> u64 { self.0 as u64 }
-    #[must_use] pub const fn is_single_shard(self) -> bool { self.0 == 1 }
+    #[must_use]
+    pub const fn get(self) -> usize {
+        self.0
+    }
+    #[must_use]
+    pub const fn as_u64(self) -> u64 {
+        self.0 as u64
+    }
+    #[must_use]
+    pub const fn is_single_shard(self) -> bool {
+        self.0 == 1
+    }
 }
 
 impl Default for ShardCount {
-    fn default() -> Self { Self(1) }
+    fn default() -> Self {
+        Self(1)
+    }
 }
 
 // ============================================================================
@@ -142,14 +201,21 @@ pub struct PartitionConfig {
 }
 
 impl PartitionConfig {
-    #[must_use] pub const fn new(shard_count: ShardCount, keyspace: KeyRange) -> Self {
-        Self { shard_count, keyspace }
+    #[must_use]
+    pub const fn new(shard_count: ShardCount, keyspace: KeyRange) -> Self {
+        Self {
+            shard_count,
+            keyspace,
+        }
     }
 }
 
 impl Default for PartitionConfig {
     fn default() -> Self {
-        Self { shard_count: ShardCount::default(), keyspace: KeyRange::full_keyspace() }
+        Self {
+            shard_count: ShardCount::default(),
+            keyspace: KeyRange::full_keyspace(),
+        }
     }
 }
 
@@ -176,13 +242,23 @@ impl PartitionPlan {
         }
         if n == 1 {
             let range = KeyRange::new(kmin, kmax)?;
-            return Ok(Self { ranges: Box::new([range]) });
+            return Ok(Self {
+                ranges: Box::new([range]),
+            });
         }
 
         // Compute span using u128 to avoid overflow for full keyspace
-        let span = match (kmax as u128).checked_sub(kmin as u128).and_then(|s| s.checked_add(1)) {
+        let span = match (kmax as u128)
+            .checked_sub(kmin as u128)
+            .and_then(|s| s.checked_add(1))
+        {
             Some(s) => s,
-            None => return Err(PartitionError::InvalidKeyRange { start: kmin, end: kmax }),
+            None => {
+                return Err(PartitionError::InvalidKeyRange {
+                    start: kmin,
+                    end: kmax,
+                });
+            }
         };
 
         let step_u128 = match span.checked_div(n as u128) {
@@ -235,27 +311,46 @@ impl PartitionPlan {
         let final_range = KeyRange::new(cursor, kmax)?;
         ranges.push(final_range);
 
-        Ok(Self { ranges: ranges.into_boxed_slice() })
+        Ok(Self {
+            ranges: ranges.into_boxed_slice(),
+        })
     }
 
-    #[must_use] pub fn shard_count(&self) -> usize { self.ranges.len() }
-    #[must_use] pub fn range_for(&self, shard: usize) -> Option<&KeyRange> { self.ranges.get(shard) }
-    #[must_use] pub fn ranges(&self) -> &[KeyRange] { &self.ranges }
+    #[must_use]
+    pub fn shard_count(&self) -> usize {
+        self.ranges.len()
+    }
+    #[must_use]
+    pub fn range_for(&self, shard: usize) -> Option<&KeyRange> {
+        self.ranges.get(shard)
+    }
+    #[must_use]
+    pub fn ranges(&self) -> &[KeyRange] {
+        &self.ranges
+    }
 
     #[must_use]
     pub fn shard_for_key(&self, key: u64) -> Option<usize> {
-        if self.ranges.is_empty() { return None; }
+        if self.ranges.is_empty() {
+            return None;
+        }
         let first_start = self.ranges[0].start();
         let last_end = self.ranges[self.ranges.len() - 1].end();
-        if key < first_start || key > last_end { return None; }
+        if key < first_start || key > last_end {
+            return None;
+        }
         let mut lo = 0usize;
         let mut hi = self.ranges.len();
         while lo < hi {
             let mid = lo + (hi - lo) / 2;
             let range = &self.ranges[mid];
-            if key < range.start() { hi = mid; }
-            else if key > range.end() { lo = mid + 1; }
-            else { return Some(mid); }
+            if key < range.start() {
+                hi = mid;
+            } else if key > range.end() {
+                lo = mid + 1;
+            } else {
+                return Some(mid);
+            }
         }
         None
     }
@@ -264,9 +359,13 @@ impl PartitionPlan {
     pub fn validate_invariants(&self) -> Result<(), &'static str> {
         let ranges = &self.ranges;
         let n = ranges.len();
-        if n == 0 { return Err("partition plan has no ranges"); }
+        if n == 0 {
+            return Err("partition plan has no ranges");
+        }
         for _r in ranges.iter() {
-            if _r.start() > _r.end() { return Err("range has start > end"); }
+            if _r.start() > _r.end() {
+                return Err("range has start > end");
+            }
         }
         for i in 0..n.saturating_sub(1) {
             let curr = ranges[i];
@@ -278,7 +377,9 @@ impl PartitionPlan {
         }
         for i in 0..n {
             for j in (i + 1)..n {
-                if !ranges[i].is_disjoint(ranges[j]) { return Err("ranges overlap"); }
+                if !ranges[i].is_disjoint(ranges[j]) {
+                    return Err("ranges overlap");
+                }
             }
         }
         Ok(())
@@ -314,7 +415,10 @@ mod kani_arbitrary {
         fn any() -> Self {
             let shard_count: ShardCount = kani::any();
             let keyspace: KeyRange = kani::any();
-            Self { shard_count, keyspace }
+            Self {
+                shard_count,
+                keyspace,
+            }
         }
     }
 }
@@ -324,6 +428,7 @@ mod kani_arbitrary {
 // ============================================================================
 
 #[cfg(test)]
+#[allow(unused_imports)]
 pub mod proptest_strategies {
     use super::*;
     use proptest::prelude::*;

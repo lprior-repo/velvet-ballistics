@@ -221,16 +221,49 @@ fn runtime_code_determinism_capability_denied() {
 #[test]
 fn runtime_code_none_for_unmapped_variants() {
     // These variants have no runtime_code() mapping
-    assert_eq!(CoreError::InvalidProgramCounter { step: StepIdx::new(1) }.runtime_code(), None);
-    assert_eq!(CoreError::MissingNextStep { step: StepIdx::new(1) }.runtime_code(), None);
-    assert_eq!(CoreError::SlotOutOfBounds { slot: SlotIdx::new(1) }.runtime_code(), None);
-    assert_eq!(CoreError::SlotUninitialized { slot: SlotIdx::new(1) }.runtime_code(), None);
-    assert_eq!(CoreError::ExprOutOfBounds { expr: vb_core::ids::ExprIdx::new(1) }.runtime_code(), None);
+    assert_eq!(
+        CoreError::InvalidProgramCounter {
+            step: StepIdx::new(1)
+        }
+        .runtime_code(),
+        None
+    );
+    assert_eq!(
+        CoreError::MissingNextStep {
+            step: StepIdx::new(1)
+        }
+        .runtime_code(),
+        None
+    );
+    assert_eq!(
+        CoreError::SlotOutOfBounds {
+            slot: SlotIdx::new(1)
+        }
+        .runtime_code(),
+        None
+    );
+    assert_eq!(
+        CoreError::SlotUninitialized {
+            slot: SlotIdx::new(1)
+        }
+        .runtime_code(),
+        None
+    );
+    assert_eq!(
+        CoreError::ExprOutOfBounds {
+            expr: vb_core::ids::ExprIdx::new(1)
+        }
+        .runtime_code(),
+        None
+    );
     assert_eq!(CoreError::NonFiniteNumber.runtime_code(), None);
     assert_eq!(CoreError::DivisionByZero.runtime_code(), None);
     assert_eq!(CoreError::StepBudgetExhausted.runtime_code(), None);
     assert_eq!(CoreError::StepCounterOverflow.runtime_code(), None);
-    assert_eq!(CoreError::ResourceLimitExceeded { resource: "cpu" }.runtime_code(), None);
+    assert_eq!(
+        CoreError::ResourceLimitExceeded { resource: "cpu" }.runtime_code(),
+        None
+    );
     assert_eq!(CoreError::AllocationFailed.runtime_code(), None);
     assert_eq!(
         CoreError::UnsupportedAccessorTraversal {
@@ -247,7 +280,10 @@ fn runtime_code_none_for_unmapped_variants() {
         .runtime_code(),
         None
     );
-    assert_eq!(CoreError::ListIndexOutOfBounds { index: 0 }.runtime_code(), None);
+    assert_eq!(
+        CoreError::ListIndexOutOfBounds { index: 0 }.runtime_code(),
+        None
+    );
     assert_eq!(
         CoreError::SymbolOutOfBounds {
             symbol: vb_core::ids::SymbolId::new(0),
@@ -276,12 +312,18 @@ fn runtime_code_none_for_unmapped_variants() {
         .runtime_code(),
         None
     );
-    assert_eq!(CoreError::IterationLimitExceeded { resource: "cpu" }.runtime_code(), None);
+    assert_eq!(
+        CoreError::IterationLimitExceeded { resource: "cpu" }.runtime_code(),
+        None
+    );
     assert_eq!(
         CoreError::TogetherBranchLimitExceeded { max: 1 }.runtime_code(),
         None
     );
-    assert_eq!(CoreError::BudgetParse { reason: "bad" }.runtime_code(), None);
+    assert_eq!(
+        CoreError::BudgetParse { reason: "bad" }.runtime_code(),
+        None
+    );
     assert_eq!(
         CoreError::ParallelLimitExceeded { limit: 1 }.runtime_code(),
         None

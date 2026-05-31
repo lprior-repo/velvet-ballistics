@@ -371,7 +371,6 @@ pub fn snapshot_from_state(
     }
 }
 
-
 #[cfg(test)]
 #[path = "helpers/tests.rs"]
 mod tests;

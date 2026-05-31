@@ -15,9 +15,7 @@ fn boxed_queue_full() -> Box<vb_core::errors::CoreError> {
 }
 
 fn boxed_invariant_violation() -> Box<vb_core::errors::CoreError> {
-    Box::new(vb_core::errors::CoreError::InternalInvariantViolation {
-        reason: "test",
-    })
+    Box::new(vb_core::errors::CoreError::InternalInvariantViolation { reason: "test" })
 }
 
 #[test]
@@ -62,9 +60,7 @@ fn run_already_exists_returns_correct_code() {
 
 #[test]
 fn unsupported_operation_returns_correct_code() {
-    let err = RuntimeError::UnsupportedOperation {
-        operation: "test",
-    };
+    let err = RuntimeError::UnsupportedOperation { operation: "test" };
     assert_eq!(
         err.diagnostic_code(),
         DiagnosticCode::new(0x2005),
@@ -412,10 +408,7 @@ fn secret_result_not_allowed_returns_correct_code() {
 
 #[test]
 fn ipc_payload_size_exceeded_returns_correct_code() {
-    let err = RuntimeError::IpcPayloadSizeExceeded {
-        size: 100,
-        max: 50,
-    };
+    let err = RuntimeError::IpcPayloadSizeExceeded { size: 100, max: 50 };
     assert_eq!(
         err.diagnostic_code(),
         DiagnosticCode::new(0x2017),
@@ -467,9 +460,7 @@ fn all_34_runtime_error_variants_covered() {
         RuntimeError::RunNotFound,
         RuntimeError::ActiveRunCapacityExceeded { capacity: 5 },
         RuntimeError::RunAlreadyExists,
-        RuntimeError::UnsupportedOperation {
-            operation: "test",
-        },
+        RuntimeError::UnsupportedOperation { operation: "test" },
         RuntimeError::ShutdownInProgress,
         RuntimeError::JournalPoisoned,
         RuntimeError::JournalFull { capacity: 1000 },
@@ -542,10 +533,7 @@ fn all_34_runtime_error_variants_covered() {
         },
         RuntimeError::EncodeFailed,
         RuntimeError::SecretResultNotAllowed,
-        RuntimeError::IpcPayloadSizeExceeded {
-            size: 100,
-            max: 50,
-        },
+        RuntimeError::IpcPayloadSizeExceeded { size: 100, max: 50 },
         RuntimeError::EngineDriveFailed {
             run: RunId::new(42),
             source: boxed_invariant_violation(),
@@ -553,11 +541,14 @@ fn all_34_runtime_error_variants_covered() {
         RuntimeError::ShardNotFound { shard: 0 },
         RuntimeError::MigrateSelf,
     ];
-    assert_eq!(variants.len(), 37,
+    assert_eq!(
+        variants.len(),
+        37,
         "RuntimeError has 34 variants in the enum, but we count 37 in this list because \
          InvalidActionCompletion/StaleAttempt/AttemptBeyondMax/ActionOutputLengthMismatch/ \
          ActionOutputTooLarge/ActionOutputBlobTooLarge/ActionTaintDowngrade are 7 separate \
-         variants despite sharing a diagnostic_code; we expect 34 variants total.");
+         variants despite sharing a diagnostic_code; we expect 34 variants total."
+    );
     // Re-count: the enum has exactly these variants:
     // 1.QueueFull, 2.RunNotFound, 3.ActiveRunCapacityExceeded, 4.RunAlreadyExists,
     // 5.UnsupportedOperation, 6.ShutdownInProgress, 7.JournalPoisoned, 8.JournalFull,

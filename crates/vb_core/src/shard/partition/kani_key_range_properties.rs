@@ -23,7 +23,10 @@ fn key_range_contains_correct() {
     let result = range.contains(key);
     let expected = range.start() <= key && key <= range.end();
 
-    kani::assert(result == expected, "contains must equal (start <= key && key <= end)");
+    kani::assert(
+        result == expected,
+        "contains must equal (start <= key && key <= end)",
+    );
 
     kani::cover!(key == range.start(), "key at range start");
     kani::cover!(key == range.end(), "key at range end");
@@ -40,24 +43,43 @@ fn key_range_intersection_correct() {
 
     let result = a.intersection(b);
 
-    let expected_start = if a.start() > b.start() { a.start() } else { b.start() };
+    let expected_start = if a.start() > b.start() {
+        a.start()
+    } else {
+        b.start()
+    };
     let expected_end = if a.end() < b.end() { a.end() } else { b.end() };
 
     if expected_start <= expected_end {
         match result {
             Some(r) => {
-                kani::assert(r.start() == expected_start, "intersection start must be max of inputs");
-                kani::assert(r.end() == expected_end, "intersection end must be min of inputs");
+                kani::assert(
+                    r.start() == expected_start,
+                    "intersection start must be max of inputs",
+                );
+                kani::assert(
+                    r.end() == expected_end,
+                    "intersection end must be min of inputs",
+                );
             }
             None => {
-                kani::assert(false, "intersection must exist when expected_start <= expected_end");
+                kani::assert(
+                    false,
+                    "intersection must exist when expected_start <= expected_end",
+                );
             }
         }
     } else {
-        kani::assert(result.is_none(), "intersection must be None when ranges are disjoint");
+        kani::assert(
+            result.is_none(),
+            "intersection must be None when ranges are disjoint",
+        );
     }
 
-    kani::cover!(a.start() == b.start() && a.end() == b.end(), "identical ranges");
+    kani::cover!(
+        a.start() == b.start() && a.end() == b.end(),
+        "identical ranges"
+    );
     kani::cover!(a.end() < b.start(), "a entirely before b");
 }
 
@@ -73,7 +95,10 @@ fn key_range_disjoint_consistent() {
     let disjoint = a.is_disjoint(b);
     let intersection_none = a.intersection(b).is_none();
 
-    kani::assert(disjoint == intersection_none, "is_disjoint must equal intersection().is_none()");
+    kani::assert(
+        disjoint == intersection_none,
+        "is_disjoint must equal intersection().is_none()",
+    );
 
     // Stronger: overlapping ranges must NOT be disjoint
     let overlap = a.start() <= b.end() && b.start() <= a.end();
@@ -96,19 +121,31 @@ fn key_range_adjacent_correctness() {
 
     let result = a.is_adjacent_to(b);
 
-    let expected = a.end().checked_add(1) == Some(b.start())
-        || b.end().checked_add(1) == Some(a.start());
+    let expected =
+        a.end().checked_add(1) == Some(b.start()) || b.end().checked_add(1) == Some(a.start());
 
-    kani::assert(result == expected, "is_adjacent_to must match mathematical definition");
+    kani::assert(
+        result == expected,
+        "is_adjacent_to must match mathematical definition",
+    );
 
     // Symmetry
-    kani::assert(a.is_adjacent_to(b) == b.is_adjacent_to(a), "is_adjacent_to must be symmetric");
+    kani::assert(
+        a.is_adjacent_to(b) == b.is_adjacent_to(a),
+        "is_adjacent_to must be symmetric",
+    );
 
     // Overlapping ranges are never adjacent
     if a.intersection(b).is_some() {
         kani::assert(!result, "overlapping ranges must not be adjacent");
     }
 
-    kani::cover!(a.end().checked_add(1) == Some(b.start()), "a adjacent before b");
-    kani::cover!(b.end().checked_add(1) == Some(a.start()), "b adjacent before a");
+    kani::cover!(
+        a.end().checked_add(1) == Some(b.start()),
+        "a adjacent before b"
+    );
+    kani::cover!(
+        b.end().checked_add(1) == Some(a.start()),
+        "b adjacent before a"
+    );
 }

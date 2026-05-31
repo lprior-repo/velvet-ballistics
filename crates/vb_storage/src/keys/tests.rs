@@ -1,3 +1,4 @@
+use crate::JournalError;
 use crate::constants::{
     DIGEST_KEY_BYTES, INDEX_ACTION_KEY_BYTES, INDEX_STATUS_KEY_BYTES, INDEX_WORKFLOW_KEY_BYTES,
     JOURNAL_KEY_BYTES, PREFIX_BLOB, PREFIX_COMPILED_IR, PREFIX_INDEX_ACTION, PREFIX_INDEX_STATUS,
@@ -10,7 +11,6 @@ use crate::keys::{
     workflow_source_key,
 };
 use crate::types::{EventSeq, IndexStatusState, StorageKey};
-use crate::JournalError;
 use vb_core::{ActionId, RunId, WorkflowId};
 
 // =========================================================================

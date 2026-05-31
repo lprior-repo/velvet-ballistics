@@ -15,12 +15,8 @@ use vb_yaml::YamlError;
 
 fn all_yaml_error_variants() -> Vec<YamlError> {
     vec![
-        YamlError::UnsupportedTrigger {
-            trigger: "http",
-        },
-        YamlError::UnsupportedFeature {
-            feature: "anchors",
-        },
+        YamlError::UnsupportedTrigger { trigger: "http" },
+        YamlError::UnsupportedFeature { feature: "anchors" },
         YamlError::DuplicateKey {
             key: Box::from("steps"),
         },
@@ -49,10 +45,7 @@ fn all_yaml_error_variants() -> Vec<YamlError> {
             len: 10000,
             max: 1000,
         },
-        YamlError::SequenceTooLong {
-            len: 500,
-            max: 100,
-        },
+        YamlError::SequenceTooLong { len: 500, max: 100 },
         YamlError::MappingTooLarge {
             count: 500,
             max: 100,
@@ -101,9 +94,7 @@ fn every_yaml_error_code_is_registered_symbolic_code() {
         );
         // Verify the code appears in CODE_REGISTRY
         assert!(
-            CODE_REGISTRY
-                .iter()
-                .any(|e| e.symbolic == code.as_str()),
+            CODE_REGISTRY.iter().any(|e| e.symbolic == code.as_str()),
             "YamlError code '{}' not found in CODE_REGISTRY. Variant: {:?}",
             code.as_str(),
             error
@@ -161,9 +152,7 @@ fn yaml_error_forbidden_yaml_feature_variants() {
         YamlError::AmbiguousScalar {
             scalar: Box::from("yes"),
         },
-        YamlError::UnsupportedFeature {
-            feature: "anchors",
-        },
+        YamlError::UnsupportedFeature { feature: "anchors" },
         YamlError::ParseError {
             line: 1,
             reason: Box::from("bad"),

@@ -1,8 +1,8 @@
 #[allow(
-clippy::assertions_on_constants,
-clippy::panic,
-clippy::panic_in_result_fn,
-clippy::unwrap_used
+    clippy::assertions_on_constants,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::unwrap_used
 )]
 use crate::admission::*;
 use crate::error::JournalError;
@@ -226,8 +226,8 @@ fn minimal_workflow() -> Result<vb_core::CompiledWorkflow, String> {
     };
 
     // Compute the correct BLAKE3 digest from the zeroed-digest serialization.
-    let hash_bytes = postcard::to_allocvec(&parts)
-        .map_err(|e| format!("serialize parts for digest: {e}"))?;
+    let hash_bytes =
+        postcard::to_allocvec(&parts).map_err(|e| format!("serialize parts for digest: {e}"))?;
     let computed = blake3::hash(&hash_bytes);
     parts.digest = WorkflowDigest::from_bytes(computed.into());
 
@@ -514,8 +514,7 @@ fn verification_proof_serde_roundtrip() -> Result<(), String> {
         gate: 5,
     });
 
-    let serialized =
-        postcard::to_allocvec(&proof).map_err(|e| format!("serialize failed: {e}"))?;
+    let serialized = postcard::to_allocvec(&proof).map_err(|e| format!("serialize failed: {e}"))?;
     let deserialized: VerificationProof =
         postcard::from_bytes(&serialized).map_err(|e| format!("deserialize failed: {e}"))?;
 
@@ -631,8 +630,7 @@ fn verification_warning_serde_roundtrip() -> Result<(), String> {
         message: Box::from("serde test warning"),
         gate: 7,
     };
-    let bytes =
-        postcard::to_allocvec(&warning).map_err(|e| format!("serialize failed: {e}"))?;
+    let bytes = postcard::to_allocvec(&warning).map_err(|e| format!("serialize failed: {e}"))?;
     let back: VerificationWarning =
         postcard::from_bytes(&bytes).map_err(|e| format!("deserialize failed: {e}"))?;
     assert_eq!(warning, back);
@@ -714,8 +712,8 @@ fn gap_proof_flags_true_for_any_digest_value() -> Result<(), String> {
 
     let arbitrary_digest = vb_core::WorkflowDigest::from_bytes([
         0x12_u8, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66,
-        0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11, 0x22, 0x33, 0x44,
-        0x55, 0x66, 0x77, 0x88,
+        0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55,
+        0x66, 0x77, 0x88,
     ]);
     let proof_arb = VerificationProof::new(arbitrary_digest, 15, false);
     assert!(

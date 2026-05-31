@@ -22,7 +22,10 @@ fn vbjpq733_step_budget_try_take_no_panic() {
     let value: u64 = kani::any();
     let mut budget = StepBudget::new(value);
     let _ = budget.try_take();
-    kani::assert(budget.remaining() <= MAX_STEP_BUDGET, "remaining bounded after try_take");
+    kani::assert(
+        budget.remaining() <= MAX_STEP_BUDGET,
+        "remaining bounded after try_take",
+    );
 }
 
 /// PO-010 H2: production StepBudget::new ensures remaining <= MAX_STEP_BUDGET
@@ -31,7 +34,10 @@ fn vbjpq733_step_budget_try_take_no_panic() {
 fn vbjpq733_step_budget_remaining_bounded() {
     let value: u64 = kani::any();
     let budget = StepBudget::new(value);
-    kani::assert(budget.remaining() <= MAX_STEP_BUDGET, "remaining <= MAX after production new");
+    kani::assert(
+        budget.remaining() <= MAX_STEP_BUDGET,
+        "remaining <= MAX after production new",
+    );
 }
 
 /// PO-010 H3: zero budget returns Ok(false)
@@ -41,7 +47,7 @@ fn vbjpq733_step_budget_zero_returns_false() {
     let mut budget = StepBudget::new(0);
     kani::assert(budget.remaining() == 0, "zero budget has 0 remaining");
     match budget.try_take() {
-        Ok(false) => {},
+        Ok(false) => {}
         Ok(true) => kani::assert(false, "zero budget must NOT return Ok(true)"),
         Err(_) => kani::assert(false, "zero budget must NOT error"),
     }
@@ -74,7 +80,10 @@ fn vbjpq733_step_budget_new_clamp_above_max() {
     let value: u64 = kani::any();
     kani::assume(value > MAX_STEP_BUDGET);
     let budget = StepBudget::new(value);
-    kani::assert(budget.remaining() == MAX_STEP_BUDGET, "value > MAX must clamp to MAX");
+    kani::assert(
+        budget.remaining() == MAX_STEP_BUDGET,
+        "value > MAX must clamp to MAX",
+    );
 }
 
 /// PO-012 H2: production StepBudget::new passes through value <= MAX
@@ -84,7 +93,10 @@ fn vbjpq733_step_budget_new_pass_through() {
     let value: u64 = kani::any();
     kani::assume(value <= MAX_STEP_BUDGET);
     let budget = StepBudget::new(value);
-    kani::assert(budget.remaining() == value, "value <= MAX passes through unchanged");
+    kani::assert(
+        budget.remaining() == value,
+        "value <= MAX passes through unchanged",
+    );
 }
 
 /// PO-012 H3: clamp is idempotent
@@ -94,14 +106,20 @@ fn vbjpq733_step_budget_new_clamp_idempotent() {
     let value: u64 = kani::any();
     let once = StepBudget::new(value);
     let twice = StepBudget::new(once.remaining());
-    kani::assert(once.remaining() == twice.remaining(), "production clamp must be idempotent");
+    kani::assert(
+        once.remaining() == twice.remaining(),
+        "production clamp must be idempotent",
+    );
 }
 
 /// PO-012 H4: MAX constant equals MAX_STEP_BUDGET
 #[kani::proof]
 #[kani::unwind(4)]
 fn vbjpq733_step_budget_max_equals_constant() {
-    kani::assert(StepBudget::MAX.remaining() == MAX_STEP_BUDGET, "MAX.remaining() == MAX_STEP_BUDGET");
+    kani::assert(
+        StepBudget::MAX.remaining() == MAX_STEP_BUDGET,
+        "MAX.remaining() == MAX_STEP_BUDGET",
+    );
 }
 
 // ───────────────────────────────────────────────────────────
@@ -124,7 +142,10 @@ fn taint_discriminant(t: Taint) -> u8 {
 fn vbjpq733_join_taint_commutative() {
     let a: Taint = kani::any();
     let b: Taint = kani::any();
-    kani::assert(join_taint(a, b) == join_taint(b, a), "join_taint must be commutative");
+    kani::assert(
+        join_taint(a, b) == join_taint(b, a),
+        "join_taint must be commutative",
+    );
 }
 
 /// PO-001 H2: production join_taint is associative
@@ -153,8 +174,14 @@ fn vbjpq733_join_taint_idempotent() {
 #[kani::unwind(4)]
 fn vbjpq733_join_taint_clean_identity() {
     let a: Taint = kani::any();
-    kani::assert(join_taint(a, Taint::Clean) == a, "Clean must be right identity");
-    kani::assert(join_taint(Taint::Clean, a) == a, "Clean must be left identity");
+    kani::assert(
+        join_taint(a, Taint::Clean) == a,
+        "Clean must be right identity",
+    );
+    kani::assert(
+        join_taint(Taint::Clean, a) == a,
+        "Clean must be left identity",
+    );
 }
 
 /// PO-001 H5: monotonicity — discriminant never decreases
@@ -164,7 +191,11 @@ fn vbjpq733_join_taint_monotonic() {
     let a: Taint = kani::any();
     let b: Taint = kani::any();
     let result = join_taint(a, b);
-    let discs = [taint_discriminant(a), taint_discriminant(b), taint_discriminant(result)];
+    let discs = [
+        taint_discriminant(a),
+        taint_discriminant(b),
+        taint_discriminant(result),
+    ];
     kani::assert(discs[2] >= discs[0], "result disc >= a disc");
     kani::assert(discs[2] >= discs[1], "result disc >= b disc");
 }

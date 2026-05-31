@@ -11,7 +11,7 @@ use proptest::prelude::*;
 use proptest::test_runner::TestCaseError;
 use vb_core::ids::RunId;
 use vb_core::shard::partition::{
-    KeyRange, PartitionConfig, PartitionError, PartitionPlan, ShardCount, MAX_SHARD_COUNT,
+    KeyRange, MAX_SHARD_COUNT, PartitionConfig, PartitionError, PartitionPlan, ShardCount,
 };
 
 // ============================================================================
@@ -19,7 +19,10 @@ use vb_core::shard::partition::{
 // ============================================================================
 
 /// Assert Ok and return value, or fail the proptest.
-fn assert_ok<T, E: std::fmt::Debug>(result: Result<T, E>, context: &str) -> Result<T, TestCaseError> {
+fn assert_ok<T, E: std::fmt::Debug>(
+    result: Result<T, E>,
+    context: &str,
+) -> Result<T, TestCaseError> {
     match result {
         Ok(v) => Ok(v),
         Err(e) => Err(TestCaseError::fail(format!("{context}: {e:?}"))),
@@ -52,13 +55,13 @@ fn shard_count_strategy() -> impl Strategy<Value = ShardCount> {
 }
 
 fn partition_config_strategy() -> impl Strategy<Value = PartitionConfig> {
-    (shard_count_strategy(), key_range_strategy())
-        .prop_map(|(sc, kr)| PartitionConfig::new(sc, kr))
+    (shard_count_strategy(), key_range_strategy()).prop_map(|(sc, kr)| PartitionConfig::new(sc, kr))
 }
 
 fn partition_plan_strategy() -> impl Strategy<Value = PartitionPlan> {
-    partition_config_strategy()
-        .prop_filter_map("valid plan", |config| PartitionPlan::from_config(&config).ok())
+    partition_config_strategy().prop_filter_map("valid plan", |config| {
+        PartitionPlan::from_config(&config).ok()
+    })
 }
 
 // ============================================================================
@@ -363,7 +366,10 @@ fn test_four_shards_contiguous() {
 
 #[test]
 fn test_boundary_rejections() {
-    assert!(matches!(ShardCount::try_new(0), Err(PartitionError::ZeroShardCount)));
+    assert!(matches!(
+        ShardCount::try_new(0),
+        Err(PartitionError::ZeroShardCount)
+    ));
     assert!(matches!(
         ShardCount::try_new(MAX_SHARD_COUNT + 1),
         Err(PartitionError::ShardCountExceedsMax { .. })

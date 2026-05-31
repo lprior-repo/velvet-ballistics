@@ -328,10 +328,7 @@ fn finalize_before_drain_complete_is_rejected() {
     shard.begin_shutdown().unwrap();
     // Still has pending work
     let err = shard.finalize(1).unwrap_err();
-    assert_eq!(
-        err,
-        ShutdownError::DrainNotComplete { remaining: 1 }
-    );
+    assert_eq!(err, ShutdownError::DrainNotComplete { remaining: 1 });
 }
 
 /// `finalize` from `Running` state is rejected.

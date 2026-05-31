@@ -1,6 +1,5 @@
 #[cfg(test)]
 #[allow(clippy::panic_in_result_fn)]
-
 use crate::errors::CoreError;
 use crate::frame::RunFrame;
 use crate::ids::{
@@ -85,9 +84,7 @@ fn replay_err_to_core(e: ReplayError) -> CoreError {
         ReplayError::StepNotFound { step } => CoreError::InvalidProgramCounter { step },
         ReplayError::SlotNotAvailable { slot } => CoreError::SlotOutOfBounds { slot },
         ReplayError::ExpressionEvalFailed { step } => CoreError::InvalidProgramCounter { step },
-        ReplayError::NonDeterministicStep { step, .. } => {
-            CoreError::InvalidProgramCounter { step }
-        }
+        ReplayError::NonDeterministicStep { step, .. } => CoreError::InvalidProgramCounter { step },
         ReplayError::Internal { reason } => CoreError::InternalInvariantViolation { reason },
     }
 }
@@ -145,9 +142,9 @@ fn expr_stack_push_overflow_returns_error() -> Result<(), CoreError> {
 fn expr_stack_max_capacity_boundary() -> Result<(), CoreError> {
     let mut stack = ReplayExprStack::new(MAX_EXPRESSION_STACK).map_err(replay_err_to_core)?;
     let values: [i64; 64] = [
-        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-        24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45,
-        46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+        25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
+        48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
     ];
     values
         .iter()

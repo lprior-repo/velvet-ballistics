@@ -1741,4 +1741,4 @@ fn adversarial_step_without_id_field_is_rejected() {
             field: "step id".to_owned(),
         })
     );
-    }
+}

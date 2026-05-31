@@ -1,5 +1,5 @@
-use crate::{CompileError, CompileErrors, YamlCompiler};
 use crate::schema::validate_input_schemas;
+use crate::{CompileError, CompileErrors, YamlCompiler};
 use saphyr::{LoadableYamlNode, Yaml};
 use vb_core::SymbolicCode;
 
@@ -30,8 +30,7 @@ fn input_schema_rejects_unknown_fields() {
 
 #[test]
 fn input_schema_rejects_invalid_bounds() {
-    let result =
-        validate_inputs("  value:\n    is: text\n    min_length: 9\n    max_length: 1\n");
+    let result = validate_inputs("  value:\n    is: text\n    min_length: 9\n    max_length: 1\n");
 
     assert!(matches!(
         result,

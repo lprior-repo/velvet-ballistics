@@ -30,10 +30,7 @@ fn shard_index_bounded() {
             "shard_index must be strictly less than shard_count",
         );
     } else {
-        kani::assert(
-            result == 0,
-            "shard_index must be 0 when shard_count == 0",
-        );
+        kani::assert(result == 0, "shard_index must be 0 when shard_count == 0");
     }
 
     // Non-vacuity: prove domain includes boundary values

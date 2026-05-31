@@ -5,9 +5,9 @@ use crate::ids::{
 use crate::limits::{MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE, MAX_PATH_DEPTH};
 use crate::value::ConstValue;
 use crate::workflow::{
-    validate_budget_result, AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow,
-    CoreError, ExprBranch, ExprOp, ExprProgram, PathSegment, ResourceContract, SlotBranch,
-    WorkflowError, WorkflowParts, check_expr_stack_bound,
+    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, CoreError, ExprBranch,
+    ExprOp, ExprProgram, PathSegment, ResourceContract, SlotBranch, WorkflowError, WorkflowParts,
+    check_expr_stack_bound, validate_budget_result,
 };
 use std::fmt::Debug;
 
@@ -83,8 +83,7 @@ fn workflow_parts_accept_resource_contract_at_exact_usage_bounds() -> Result<(),
     let contract = resource_contract(1, 0, 1, 1, 1);
     let parts = finish_const_parts_with(contract, vec![expression].into_boxed_slice());
 
-    let workflow =
-        CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
 
     if workflow.resource_contract() == contract {
         Ok(())
@@ -193,8 +192,7 @@ fn workflow_parts_reject_accessors_hard_limit_exceeding_contract() -> Result<(),
 }
 
 #[test]
-fn workflow_parts_reject_expression_stack_hard_limit_exceeding_contract() -> Result<(), String>
-{
+fn workflow_parts_reject_expression_stack_hard_limit_exceeding_contract() -> Result<(), String> {
     let contract = resource_contract(1, 0, 1, 0, 0);
     let parts = finish_const_parts_with(
         ResourceContract {
@@ -427,11 +425,9 @@ fn workflow_parts_reject_build_list_item_slot_out_of_bounds() -> Result<(), Stri
 
 #[test]
 fn workflow_parts_accept_build_object_at_exact_field_limit() -> Result<(), String> {
-    let fields =
-        vec![(crate::ids::SymbolId::new(0), SlotIdx::new(0)); MAX_OBJECT_FIELDS_PER_VALUE]
-            .into_boxed_slice();
-    let parts =
-        construction_parts_with_symbols(CompiledNodeKind::BuildObject { fields }, 1, 1, 1);
+    let fields = vec![(crate::ids::SymbolId::new(0), SlotIdx::new(0)); MAX_OBJECT_FIELDS_PER_VALUE]
+        .into_boxed_slice();
+    let parts = construction_parts_with_symbols(CompiledNodeKind::BuildObject { fields }, 1, 1, 1);
 
     CompiledWorkflow::try_from_parts(parts)
         .map(|_| ())
@@ -445,8 +441,7 @@ fn workflow_parts_reject_build_object_over_field_limit() -> Result<(), String> {
         MAX_OBJECT_FIELDS_PER_VALUE.saturating_add(1)
     ]
     .into_boxed_slice();
-    let parts =
-        construction_parts_with_symbols(CompiledNodeKind::BuildObject { fields }, 1, 1, 1);
+    let parts = construction_parts_with_symbols(CompiledNodeKind::BuildObject { fields }, 1, 1, 1);
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
@@ -481,11 +476,9 @@ fn workflow_parts_reject_build_object_field_slot_out_of_bounds() -> Result<(), S
 fn workflow_parts_preserve_build_object_duplicate_field_order() -> Result<(), String> {
     let key = crate::ids::SymbolId::new(5);
     let fields = vec![(key, SlotIdx::new(0)), (key, SlotIdx::new(1))].into_boxed_slice();
-    let parts =
-        construction_parts_with_symbols(CompiledNodeKind::BuildObject { fields }, 2, 2, 6);
+    let parts = construction_parts_with_symbols(CompiledNodeKind::BuildObject { fields }, 2, 2, 6);
 
-    let workflow =
-        CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let copied = workflow.to_parts();
     let node = copied
         .nodes
@@ -508,11 +501,7 @@ fn load(index: u16) -> ExprOp {
     ExprOp::LoadConst(ConstIdx::new(index))
 }
 
-fn construction_parts(
-    kind: CompiledNodeKind,
-    slot_count: u16,
-    max_slots: u16,
-) -> WorkflowParts {
+fn construction_parts(kind: CompiledNodeKind, slot_count: u16, max_slots: u16) -> WorkflowParts {
     construction_parts_with_symbols(kind, slot_count, max_slots, 0)
 }
 
@@ -545,16 +534,11 @@ fn construction_parts_with_symbols(
     }
 }
 
-fn expect_resource_error(
-    contract: ResourceContract,
-    resource: &'static str,
-) -> Result<(), String> {
+fn expect_resource_error(contract: ResourceContract, resource: &'static str) -> Result<(), String> {
     let parts = finish_const_parts_with(contract, Box::new([]));
 
     match CompiledWorkflow::try_from_parts(parts) {
-        Err(WorkflowError::ResourceContractExceeded { resource: found })
-            if found == resource =>
-        {
+        Err(WorkflowError::ResourceContractExceeded { resource: found }) if found == resource => {
             Ok(())
         }
         other => Err(format!("unexpected result: {other:?}")),
@@ -949,8 +933,7 @@ fn workflow_entry_step_at_node_count_rejected_with_entry_out_of_bounds() -> Resu
 // --- SetConst with out-of-bounds constant pool index ---
 
 #[test]
-fn workflow_set_const_out_of_bounds_constant_returns_const_out_of_bounds() -> Result<(), String>
-{
+fn workflow_set_const_out_of_bounds_constant_returns_const_out_of_bounds() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(1, 1, 1, 0, 0), Box::new([]));
     parts.nodes = vec![CompiledNode {
         id: StepIdx::new(0),
@@ -1073,8 +1056,7 @@ fn workflow_jump_target_out_of_bounds_returns_step_out_of_bounds() -> Result<(),
 // --- Finish with result slot out of bounds ---
 
 #[test]
-fn workflow_finish_result_slot_out_of_bounds_returns_slot_out_of_bounds() -> Result<(), String>
-{
+fn workflow_finish_result_slot_out_of_bounds_returns_slot_out_of_bounds() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(1, 1, 1, 0, 0), Box::new([]));
     parts.nodes = vec![CompiledNode {
         id: StepIdx::new(0),
@@ -1119,8 +1101,8 @@ fn workflow_nop_next_step_out_of_bounds_returns_step_out_of_bounds() -> Result<(
 // --- Resource contract max_steps set to 0 with 1 node ---
 
 #[test]
-fn workflow_zero_max_steps_with_one_node_returns_resource_contract_exceeded()
--> Result<(), String> {
+fn workflow_zero_max_steps_with_one_node_returns_resource_contract_exceeded() -> Result<(), String>
+{
     let parts = WorkflowParts {
         name: Box::<str>::from("zero_max_steps"),
         digest: WorkflowDigest::from_bytes([2; 32]),
@@ -1178,8 +1160,7 @@ fn workflow_build_list_slot_out_of_bounds_returns_slot_out_of_bounds() -> Result
 // --- TogetherStart with out-of-bounds branch target ---
 
 #[test]
-fn workflow_together_start_branch_out_of_bounds_returns_step_out_of_bounds()
--> Result<(), String> {
+fn workflow_together_start_branch_out_of_bounds_returns_step_out_of_bounds() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(3, 0, 1, 0, 0), Box::new([]));
     parts.nodes = vec![
         CompiledNode {
@@ -1222,8 +1203,7 @@ fn workflow_together_start_branch_out_of_bounds_returns_step_out_of_bounds()
 // --- TogetherStart with out-of-bounds join target ---
 
 #[test]
-fn workflow_together_start_join_out_of_bounds_returns_step_out_of_bounds() -> Result<(), String>
-{
+fn workflow_together_start_join_out_of_bounds_returns_step_out_of_bounds() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(2, 0, 1, 0, 0), Box::new([]));
     parts.nodes = vec![
         CompiledNode {
@@ -1432,8 +1412,7 @@ fn compiled_workflow_to_parts_roundtrip_preserves_fields() -> Result<(), String>
         resource_contract(1, 0, 1, 1, 1),
         vec![expression].into_boxed_slice(),
     );
-    let workflow =
-        CompiledWorkflow::try_from_parts(original).map_err(|error| error.to_string())?;
+    let workflow = CompiledWorkflow::try_from_parts(original).map_err(|error| error.to_string())?;
 
     let recovered = workflow.to_parts();
     if recovered.name.as_ref() != workflow.name() {
@@ -2238,9 +2217,7 @@ fn phase46_rejects_accessor_field_symbol_out_of_bounds() -> Result<(), String> {
     };
 
     match CompiledWorkflow::try_from_parts(parts) {
-        Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(5) => {
-            Ok(())
-        }
+        Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(5) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
 }
@@ -2316,9 +2293,7 @@ fn phase46_rejects_accessor_field_symbol_zero_when_no_symbols() -> Result<(), St
     };
 
     match CompiledWorkflow::try_from_parts(parts) {
-        Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(0) => {
-            Ok(())
-        }
+        Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(0) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
 }
@@ -2478,9 +2453,7 @@ fn phase46_rejects_constant_symbol_out_of_bounds() -> Result<(), String> {
     };
 
     match CompiledWorkflow::try_from_parts(parts) {
-        Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(99) => {
-            Ok(())
-        }
+        Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(99) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
 }
@@ -2543,9 +2516,7 @@ fn phase46_rejects_constant_symbol_when_zero_symbols() -> Result<(), String> {
     };
 
     match CompiledWorkflow::try_from_parts(parts) {
-        Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(0) => {
-            Ok(())
-        }
+        Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(0) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
 }
@@ -2568,9 +2539,7 @@ fn phase46_rejects_build_object_symbol_out_of_bounds() -> Result<(), String> {
     );
 
     match CompiledWorkflow::try_from_parts(parts) {
-        Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(10) => {
-            Ok(())
-        }
+        Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(10) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
 }
@@ -2723,9 +2692,7 @@ fn phase46_rejects_mixed_path_with_bad_symbol() -> Result<(), String> {
     };
 
     match CompiledWorkflow::try_from_parts(parts) {
-        Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(5) => {
-            Ok(())
-        }
+        Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(5) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
 }
@@ -2757,8 +2724,7 @@ fn phase46_symbols_count_roundtrip() -> Result<(), String> {
         resource_contract: resource_contract(1, 1, 1, 0, 0),
         step_names: Box::new([]),
     };
-    let workflow =
-        CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     if workflow.symbols_count() != 42 {
         return Err(format!(
             "expected symbols_count 42, got {}",
@@ -2820,9 +2786,7 @@ fn phase46_rejects_second_constant_symbol_out_of_bounds() -> Result<(), String> 
     };
 
     match CompiledWorkflow::try_from_parts(parts) {
-        Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(50) => {
-            Ok(())
-        }
+        Err(WorkflowError::SymbolOutOfBounds { symbol }) if symbol == SymbolId::new(50) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
 }
@@ -3721,8 +3685,8 @@ fn compiled_workflow_digest_returns_correct_value() -> Result<(), String> {
 
 #[test]
 fn compiled_workflow_expression_returns_some_for_valid_expression() -> Result<(), String> {
-    let expression = ExprProgram::try_from_ops(vec![load(0)].into_boxed_slice())
-        .map_err(|e| e.to_string())?;
+    let expression =
+        ExprProgram::try_from_ops(vec![load(0)].into_boxed_slice()).map_err(|e| e.to_string())?;
     let workflow = CompiledWorkflow::try_from_parts(finish_const_parts_with(
         resource_contract(1, 0, 1, 1, 1),
         vec![expression].into_boxed_slice(),
@@ -3912,21 +3876,14 @@ fn steps_executable_error() -> BudgetError {
 
 fn assert_budget_detail(error: BudgetError, detail: &'static str) -> Result<(), String> {
     match validate_budget_result(Err(error)) {
-        Err(WorkflowError::BudgetPolicyExceeded { detail: actual }) if actual == detail => {
-            Ok(())
-        }
+        Err(WorkflowError::BudgetPolicyExceeded { detail: actual }) if actual == detail => Ok(()),
         other => Err(format!("unexpected budget validation result: {other:?}")),
     }
 }
 
-fn assert_workflow_budget_detail(
-    parts: WorkflowParts,
-    detail: &'static str,
-) -> Result<(), String> {
+fn assert_workflow_budget_detail(parts: WorkflowParts, detail: &'static str) -> Result<(), String> {
     match CompiledWorkflow::try_from_parts(parts) {
-        Err(WorkflowError::BudgetPolicyExceeded { detail: actual }) if actual == detail => {
-            Ok(())
-        }
+        Err(WorkflowError::BudgetPolicyExceeded { detail: actual }) if actual == detail => Ok(()),
         other => Err(format!("unexpected workflow validation result: {other:?}")),
     }
 }
@@ -4164,11 +4121,7 @@ mod proptests {
         }
     }
 
-    fn duplicate_step_node(
-        index: usize,
-        total: usize,
-        duplicate_position: usize,
-    ) -> CompiledNode {
+    fn duplicate_step_node(index: usize, total: usize, duplicate_position: usize) -> CompiledNode {
         let claimed_id = if index == duplicate_position {
             StepIdx::new(0)
         } else {
@@ -4948,10 +4901,8 @@ fn blake3_digest_differs_when_node_count_differs() {
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
-    let hash1 =
-        blake3::hash(&postcard::to_allocvec(&parts1).expect("serialize should succeed"));
-    let hash2 =
-        blake3::hash(&postcard::to_allocvec(&parts2).expect("serialize should succeed"));
+    let hash1 = blake3::hash(&postcard::to_allocvec(&parts1).expect("serialize should succeed"));
+    let hash2 = blake3::hash(&postcard::to_allocvec(&parts2).expect("serialize should succeed"));
     assert_ne!(
         hash1.as_bytes(),
         hash2.as_bytes(),

@@ -27,12 +27,8 @@ fn all_validation_error_variants() -> Vec<ValidationError> {
         ValidationError::InvalidId {
             id: "bad-id!".into(),
         },
-        ValidationError::ReservedId {
-            id: "run".into(),
-        },
-        ValidationError::DuplicateId {
-            id: "step1".into(),
-        },
+        ValidationError::ReservedId { id: "run".into() },
+        ValidationError::DuplicateId { id: "step1".into() },
         ValidationError::MultipleStepPrimitives,
         ValidationError::MissingStepPrimitive,
         // Reference errors (E02xx)
@@ -183,9 +179,7 @@ fn every_validation_error_code_is_registered() {
         );
         // Verify in CODE_REGISTRY
         assert!(
-            CODE_REGISTRY
-                .iter()
-                .any(|e| e.symbolic == code.as_str()),
+            CODE_REGISTRY.iter().any(|e| e.symbolic == code.as_str()),
             "ValidationError code '{}' not found in CODE_REGISTRY. Variant: {:?}",
             code.as_str(),
             error

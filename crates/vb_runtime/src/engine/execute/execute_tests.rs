@@ -203,8 +203,7 @@ fn execute_do_without_contract_rejects_without_ticket() {
     );
     match result {
         Err(RuntimeEngineError::Core(vb_core::EngineError::CapabilityDenied {
-            action,
-            ..
+            action, ..
         })) => {
             assert_eq!(action, ActionId::new(5));
         }
@@ -337,9 +336,7 @@ fn execute_do_with_unknown_contract_returns_error() {
         &CapabilitySet::empty(),
     );
     match result {
-        Err(RuntimeEngineError::Action(vb_core::action::ActionError::UnknownAction {
-            action,
-        })) => {
+        Err(RuntimeEngineError::Action(vb_core::action::ActionError::UnknownAction { action })) => {
             assert_eq!(action, ActionId::new(99));
         }
         other => {

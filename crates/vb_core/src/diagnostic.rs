@@ -1563,7 +1563,9 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
 pub const fn symbolic_to_numeric(symbolic: &str) -> Option<u16> {
     let mut i = 0;
     while i < CODE_REGISTRY.len() {
-        if let Some(entry) = CODE_REGISTRY.get(i) && entry.symbolic == symbolic {
+        if let Some(entry) = CODE_REGISTRY.get(i)
+            && entry.symbolic == symbolic
+        {
             return Some(entry.numeric);
         }
         i = i.wrapping_add(1);
@@ -1578,7 +1580,9 @@ pub const fn symbolic_to_numeric(symbolic: &str) -> Option<u16> {
 pub const fn numeric_to_symbolic(numeric: u16) -> Option<&'static str> {
     let mut i = 0;
     while i < CODE_REGISTRY.len() {
-        if let Some(entry) = CODE_REGISTRY.get(i) && entry.numeric == numeric {
+        if let Some(entry) = CODE_REGISTRY.get(i)
+            && entry.numeric == numeric
+        {
             return Some(entry.symbolic);
         }
         i = i.wrapping_add(1);

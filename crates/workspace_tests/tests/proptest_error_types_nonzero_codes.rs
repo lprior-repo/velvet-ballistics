@@ -13,8 +13,8 @@ use vb_core::ids::{
 };
 use vb_ipc::IpcError;
 use vb_runtime::RuntimeError;
-use vb_storage::error::ArtifactInvalidSource;
 use vb_storage::JournalError;
+use vb_storage::error::ArtifactInvalidSource;
 
 // ---------------------------------------------------------------------------
 // CoreError
@@ -178,15 +178,11 @@ fn all_runtime_error_variants() -> Vec<RuntimeError> {
         RuntimeError::RunNotFound,
         RuntimeError::ActiveRunCapacityExceeded { capacity: 5 },
         RuntimeError::RunAlreadyExists,
-        RuntimeError::UnsupportedOperation {
-            operation: "test",
-        },
+        RuntimeError::UnsupportedOperation { operation: "test" },
         RuntimeError::ShutdownInProgress,
         RuntimeError::JournalPoisoned,
         RuntimeError::JournalFull { capacity: 1000 },
-        RuntimeError::Core {
-            source: boxed_core,
-        },
+        RuntimeError::Core { source: boxed_core },
         RuntimeError::StorageJournalAppend {
             source: std::sync::Arc::new(JournalError::QueueFull),
         },
@@ -253,10 +249,7 @@ fn all_runtime_error_variants() -> Vec<RuntimeError> {
         },
         RuntimeError::EncodeFailed,
         RuntimeError::SecretResultNotAllowed,
-        RuntimeError::IpcPayloadSizeExceeded {
-            size: 100,
-            max: 50,
-        },
+        RuntimeError::IpcPayloadSizeExceeded { size: 100, max: 50 },
         RuntimeError::EngineDriveFailed {
             run: RunId::new(42),
             source: Box::new(CoreError::InternalInvariantViolation { reason: "test" }),
@@ -297,9 +290,15 @@ fn all_journal_error_variants() -> Vec<JournalError> {
         JournalError::UnsupportedSchemaVersion { version: 99 },
         JournalError::MigrationRequired { from: 1, to: 2 },
         JournalError::UnknownRecordKind { kind: 0xFF },
-        JournalError::RecordKindFamilyMismatch { magic: 0xDEAD, kind: 2 },
+        JournalError::RecordKindFamilyMismatch {
+            magic: 0xDEAD,
+            kind: 2,
+        },
         JournalError::HeaderLengthMismatch { found: 12 },
-        JournalError::PayloadTooLarge { len: 2000, max: 1000 },
+        JournalError::PayloadTooLarge {
+            len: 2000,
+            max: 1000,
+        },
         JournalError::HeaderChecksumMismatch,
         JournalError::PayloadDigestMismatch,
         JournalError::UnexpectedEof,
@@ -326,7 +325,10 @@ fn all_journal_error_variants() -> Vec<JournalError> {
         JournalError::ArtifactInvalid {
             source: ArtifactInvalidSource::PayloadDigestMismatch,
         },
-        JournalError::InputTooLarge { len: 2000, max: 1000 },
+        JournalError::InputTooLarge {
+            len: 2000,
+            max: 1000,
+        },
         JournalError::InputSchemaMismatch,
         JournalError::CapabilityDenied,
         JournalError::SecretUnavailable,
