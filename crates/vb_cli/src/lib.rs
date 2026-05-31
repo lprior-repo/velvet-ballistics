@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-//! Velvet Ballastics is the CLI runtime for bead lifecycle management.
+//! Velvet Ballistics is the CLI runtime for bead lifecycle management.
 
 pub(crate) mod agent_context;
 pub mod cli_postcard;
@@ -16,7 +16,6 @@ pub mod agent_io;
 pub mod action;
 pub mod action_specs;
 pub mod verify;
-pub mod validate;
 pub mod compile;
 pub mod run;
 pub mod submit;
@@ -30,8 +29,10 @@ pub mod events;
 pub mod replay;
 pub mod trace;
 pub mod run_ops;
-pub mod run_ops2;
+pub mod run_resume;
+pub mod run_cancel;
 pub mod incident_diff;
+pub mod incident_ops;
 pub mod explain;
 pub mod explain_reports;
 pub mod explain_errors;
@@ -48,3 +49,4 @@ pub mod doctor_helpers;
 pub mod io_helpers;
 pub mod output_utils;
 pub mod output;
+

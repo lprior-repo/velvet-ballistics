@@ -1,3 +1,4 @@
+//! Command dispatch entry point — thin shell over extracted modules.
 pub(crate) fn run_from_env() -> ExitCode {
     let args: Vec<OsString> = std::env::args_os().collect();
     let requested_output = output_format_from_args(&args);

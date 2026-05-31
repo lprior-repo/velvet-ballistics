@@ -1,4 +1,4 @@
-//! Error and verification failure report formatting.
+fn explain_error(err: &vb_compile::CompileError) {
     use vb_compile::CompileError;
     match err {
         CompileError::SourceTooLarge { actual, limit } => {
@@ -285,4 +285,4 @@
 }
 
 /// Emit a structured repair hint for compilation errors.
-pub(crate) fn explain_compile_repair_hint(err: &vb_compile::CompileError) {
+fn explain_compile_repair_hint(err: &vb_compile::CompileError) {
