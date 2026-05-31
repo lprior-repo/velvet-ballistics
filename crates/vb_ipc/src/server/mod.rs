@@ -28,7 +28,7 @@ mod impl_tests;
 
 use crate::{
     IPC_HEADER_LEN, IpcActionOutputPayload, IpcCommand, IpcError, IpcFrameHeader, IpcPayload,
-    IpcTraceEvent, IpcTraceEventKind, MaxPayloadBytes, RunSummary, SubmitRunPayload,
+    IpcTraceEvent, IpcTraceEventKind, MaxPayloadBytes, SubmitRunPayload,
 };
 pub use error::IpcServerError;
 use handlers::{
@@ -89,30 +89,6 @@ pub enum IpcResponse {
     FrameError { message: String },
     /// Runtime rejected the command.
     RuntimeError { message: String },
-    /// List of run summaries.
-    RunList { runs: Vec<RunSummary> },
-    /// Runtime metrics snapshot.
-    Metrics(crate::RuntimeMetrics),
-    /// Verification result for a compiled workflow.
-    VerifyWorkflow { result: crate::VerificationResult },
-    /// Taint report for a compiled workflow.
-    TaintReport {
-        /// Secret source step indices.
-        sources: Vec<u16>,
-        /// Sink (Finish) step indices.
-        sinks: Vec<u16>,
-        /// True when no source can reach any sink.
-        finish_safe: bool,
-        /// Taint path edges coloured by severity.
-        paths: Vec<crate::TaintPathWire>,
-    },
-    /// Workflow graph structure with nodes and edges.
-    WorkflowGraph {
-        /// Node descriptors extracted from the compiled workflow.
-        nodes: Vec<crate::NodeDescriptor>,
-        /// Edge descriptors representing control flow between nodes.
-        edges: Vec<crate::EdgeDescriptor>,
-    },
 }
 
 /// Resolves compiled workflows for IPC submit commands.

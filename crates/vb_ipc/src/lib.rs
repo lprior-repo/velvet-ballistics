@@ -55,11 +55,7 @@ pub use crate::ingress::{IngressFrame, MemoryIngress, MemoryIngressSender};
 pub use crate::metrics::{
     AggregateMetrics, IpcMetrics, JournalMetrics, RuntimeMetrics, ShardMetrics,
 };
-pub use crate::payloads::{
-    CertificateWire, EdgeDescriptor, EdgeType, GateKind, IpcPayload, IpcTraceEvent,
-    IpcTraceEventKind, NodeDescriptor, NodeKind, PassFail, RunListState, RunSummary,
-    SubmitRunPayload, TaintPathStatus, TaintPathWire, VerificationResult,
-};
+pub use crate::payloads::{IpcPayload, IpcTraceEvent, IpcTraceEventKind, SubmitRunPayload};
 
 #[cfg(test)]
 mod tests;

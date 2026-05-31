@@ -515,11 +515,6 @@ fn ipc_all_11_commands_have_typed_responses() {
                 IpcResponse::CountOutOfRange { .. } => {}
                 IpcResponse::FrameError { .. } => {}
                 IpcResponse::RuntimeError { .. } => {}
-                IpcResponse::RunList { .. } => {}
-                IpcResponse::Metrics(_) => {}
-                IpcResponse::VerifyWorkflow { .. } => {}
-                IpcResponse::TaintReport { .. } => {}
-                IpcResponse::WorkflowGraph { .. } => {}
                 _ => {}
             }
         }

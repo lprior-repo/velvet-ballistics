@@ -1052,6 +1052,15 @@ Health
 Shutdown
 ```
 
+Architectural decision: IPC v1 has exactly the 11 supported command identifiers
+listed above. Their wire IDs are `1..=11` in that order. Every other `u16`
+command value is reserved for future protocol versions and must decode as a
+typed `UnknownCommand(value)`/equivalent and be rejected by dispatch. This
+reserved range explicitly includes the former semantic query/verification IDs
+`12..=16` (`ListRuns`, `GetMetrics`, `GetWorkflowGraph`, `GetTaintReport`, and
+`VerifyWorkflow`); they are not supported IPC v1 commands unless a future master
+contract revision assigns them explicit wire IDs and acceptance evidence.
+
 Forbidden on IPC:
 
 ```text

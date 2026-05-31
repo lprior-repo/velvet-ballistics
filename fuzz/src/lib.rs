@@ -349,13 +349,7 @@ pub fn fuzz_ipc_frame(data: &[u8]) {
                         let _ = run_id;
                         let _ = ticket;
                     }
-                    vb_ipc::IpcPayload::Shutdown => {}
-                    vb_ipc::IpcPayload::Health
-                    | vb_ipc::IpcPayload::GetMetrics
-                    | vb_ipc::IpcPayload::ListRuns { .. }
-                    | vb_ipc::IpcPayload::GetTaintReport { .. }
-                    | vb_ipc::IpcPayload::GetWorkflowGraph { .. }
-                    | vb_ipc::IpcPayload::VerifyWorkflow { .. } => {}
+                    vb_ipc::IpcPayload::Health | vb_ipc::IpcPayload::Shutdown => {}
                     _ => {}
                 }
             }
