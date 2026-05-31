@@ -177,9 +177,9 @@ All 25 unique source refs verified correct against production code.
 | ID | Kind | Status |
 |---|---|---|
 | TBP-001 | `arithmetic-bound` (u64 MAX ceiling) | approved, active |
-| TBP-002 | `boundary` (numeric fields, no Instant in deterministic path) | approved, active |
+| TBP-002 | `boundary` (numeric fields, no Instant in deterministic path) | rejected-stale; production still stores `Instant` |
 
-Both approved by prior review. No unledgered trust markers. No expansion scopes that affect bridge validity.
+TBP-001 remains approved by prior review. TBP-002 is no longer valid closure evidence because current production source still stores `Instant` in behavior-affecting timer state. No proof may cite TBP-002 as a numeric-only timer boundary until production migrates to a numeric seam or the bridge models `Instant` as an explicit trusted boundary.
 
 ## Bridge Mapping Completeness
 
@@ -205,7 +205,7 @@ These are honestly documented in the bridge and do not block State 7 approval:
 
 3. **Loom local types (5 obligations)**: Loom models use locally-defined types. Documented with mitigation note (meaningful concurrent interleavings mirror production). Requires bisimulation evidence or waiver by State 12. **Tracked.**
 
-4. **Numeric deadline fields not yet migrated**: PS-001 and PS-002 target production locations currently storing `Instant` (e.g., `PendingTimer::deadline:41`, `TimerFired::deadline:158`). Bridge maps to exact lines where numeric replacement must occur. **Tracked: implementation obligation for State 12.**
+4. **Numeric deadline fields not yet migrated**: PS-001 and PS-002 target production locations currently storing `Instant` (e.g., `PendingTimer::deadline:41`, `TimerFired::deadline:158`). Bridge maps to exact lines where numeric replacement must occur. **Tracked: implementation obligation for State 12. TBP-002 is stale/rejected until this is fixed or explicitly trusted.**
 
 5. **Kani harness quality (documented)**: PS-001-harness.rs has 3 `unwrap()` calls (lines 16, 27, 29) — project rule violation. Harnesses use `Instant::now()` (Kani-opaque) and some hardcoded values. **Tracked: documented as compensating coverage weakness.**
 
