@@ -129,14 +129,14 @@ fn make_do_run_state(step_count: u16) -> RunState {
 // =========================================================================
 
 proptest! {
-    /// Property: Exact attempt equality — stale (lower) attempts are rejected.
-    /// For any valid RunState with current_attempt > 1, a ticket with
-    /// attempt < current_attempt must produce a stale-attempt error.
+    /// Property: normalize_scheduled_ticket promotes stale (lower) attempts.
+    /// For any RunState with current_attempt > 1, a ticket with
+    /// attempt < current_attempt is accepted and promoted.
     #[test]
-    fn prop_stale_attempt_rejected(
+    fn prop_stale_attempt_normalize(
         current in 2u16..100,
     ) {
-        let capacity = current; // Ensure capacity >= current for normalization to succeed
+        let capacity = current;
         let mut state = make_do_run_state(1);
         if let Some(slot) = state.action_attempts.get_mut(0) {
             *slot = current;
@@ -147,26 +147,43 @@ proptest! {
             step: StepIdx::new(0),
             seq: SeqNo::new(0),
             action: ActionId::new(0),
-            attempt: current.saturating_sub(1), // stale
+            attempt: current.saturating_sub(1),
             idempotency_key: 0,
             capacity,
         };
 
-        // normalize_scheduled_ticket with stale attempt: promotes to current.
         let result = normalize_scheduled_ticket(&state, ticket);
-        prop_assert!(result.is_ok(),
-            "normalize_scheduled_ticket must succeed for stale (it promotes)");
+        prop_assert!(result.is_ok(), "normalize_scheduled_ticket must succeed for stale (it promotes)");
         let norm = result.unwrap();
-        prop_assert!(norm.attempt >= current,
-            "normalized attempt must be >= current (stale promoted)");
+        prop_assert!(norm.attempt >= current, "normalized attempt must be >= current (stale promoted)");
+    }
+}
 
-        // record_scheduled_attempt with lower attempt must not decrease counter
-        let mut state2 = make_do_run_state(1);
-        if let Some(slot) = state2.action_attempts.get_mut(0) {
+proptest! {
+    /// Property: record_scheduled_attempt is monotonic for stale attempts.
+    /// Recording a stale attempt must not decrease the action_attempts counter.
+    #[test]
+    fn prop_stale_attempt_record_monotonic(
+        current in 2u16..100,
+    ) {
+        let capacity = current;
+        let mut state = make_do_run_state(1);
+        if let Some(slot) = state.action_attempts.get_mut(0) {
             *slot = current;
         }
-        record_scheduled_attempt(&mut state2, ticket);
-        let after = state2.action_attempts.get(0).copied().unwrap_or(0);
+
+        let ticket = ActionTicket {
+            run: RunId::new(1),
+            step: StepIdx::new(0),
+            seq: SeqNo::new(0),
+            action: ActionId::new(0),
+            attempt: current.saturating_sub(1),
+            idempotency_key: 0,
+            capacity,
+        };
+
+        record_scheduled_attempt(&mut state, ticket);
+        let after = state.action_attempts.get(0).copied().unwrap_or(0);
         prop_assert!(after >= current,
             "scheduled attempt recording must be monotonic, got {after} vs current {current}");
     }
