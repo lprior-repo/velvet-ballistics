@@ -20,7 +20,6 @@ pub(crate) enum VerifyProfile {
     Standard,
     Full,
 }
-
 impl VerifyProfile {
     pub(crate) const fn as_str(&self) -> &'static str {
         match self {
@@ -41,7 +40,6 @@ pub(crate) enum EventStatus {
     Completed,
     Failed,
 }
-
 impl EventStatus {
     pub(crate) const fn as_str(&self) -> &'static str {
         match self {
@@ -54,7 +52,6 @@ impl EventStatus {
         }
     }
 }
-
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Command {
     Help,
@@ -203,9 +200,7 @@ pub(crate) enum Command {
         output: OutputFormat,
     },
 }
-
 pub(crate) const VALID_COMMANDS: &str = "help, version, agent-context, ai-context, status, system, action, validate, verify, explain, compile, run, run-compiled, ipc-serve, inspect, events, replay, trace, retry, resume, bench-run, doctor, answer, graph, diff, incident, submit, simulate, cancel";
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) struct StatusOptions {
     pub(crate) active_runs: Option<usize>,
