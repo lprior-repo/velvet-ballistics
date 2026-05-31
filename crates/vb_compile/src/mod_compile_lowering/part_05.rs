@@ -104,7 +104,7 @@ pub(crate) fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) 
         vb_yaml::ast::StepPrimitive::ForEach { .. } => "for_each",
         vb_yaml::ast::StepPrimitive::Together { .. } => "together",
         vb_yaml::ast::StepPrimitive::Collect { .. } => "collect",
-        vb_yaml::ast::StepPrimitive::Aggregate { .. } => "reduce",
+        vb_yaml::ast::StepPrimitive::Reduce { .. } => "reduce",
         vb_yaml::ast::StepPrimitive::Repeat { .. } => "repeat",
         vb_yaml::ast::StepPrimitive::Wait { .. } => "wait",
         vb_yaml::ast::StepPrimitive::Ask { .. } => "ask",
@@ -299,7 +299,7 @@ pub(crate) fn digest_step_primitive(
                 digest_sub_step(hasher, step)?;
             }
         }
-        vb_yaml::ast::StepPrimitive::Aggregate {
+        vb_yaml::ast::StepPrimitive::Reduce {
             variable,
             input,
             initial,

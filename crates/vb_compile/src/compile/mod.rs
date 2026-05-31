@@ -207,9 +207,9 @@ fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) -> &'static
         vb_yaml::ast::StepPrimitive::Do { .. } => "do",
         vb_yaml::ast::StepPrimitive::Choose { .. } => "choose",
         vb_yaml::ast::StepPrimitive::ForEach { .. } => "for_each",
-        vb_yaml::ast::StepPrimitive::Together { .. } => "parallel",
+        vb_yaml::ast::StepPrimitive::Together { .. } => "together",
         vb_yaml::ast::StepPrimitive::Collect { .. } => "collect",
-        vb_yaml::ast::StepPrimitive::Aggregate { .. } => "aggregate",
+        vb_yaml::ast::StepPrimitive::Reduce { .. } => "reduce",
         vb_yaml::ast::StepPrimitive::Repeat { .. } => "repeat",
         vb_yaml::ast::StepPrimitive::Wait { .. } => "wait",
         vb_yaml::ast::StepPrimitive::Ask { .. } => "ask",
@@ -421,7 +421,7 @@ pub fn lower_together(
 ) -> Result<Vec<CompiledNode>, CompileError> {
     let branch_count = u16::try_from(branches.len()).map_err(|_| {
         CompileError::PrimitiveLoweringLimitExceeded {
-            primitive: "parallel",
+            primitive: "together",
             field: "branches",
             value: branches.len(),
             limit: usize::from(u16::MAX),

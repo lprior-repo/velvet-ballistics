@@ -60,7 +60,7 @@ pub(super) fn lower_canonical_step(
             },
             builder,
         ),
-        vb_yaml::ast::StepPrimitive::Aggregate {
+        vb_yaml::ast::StepPrimitive::Reduce {
             input,
             initial,
             body,

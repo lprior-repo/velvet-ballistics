@@ -231,10 +231,10 @@ steps:
 }
 
 #[test]
-fn parse_ast_accepts_parallel_primitive_name_as_alias() -> Result<(), String> {
-    let ast = parse(
+fn parse_ast_rejects_parallel_primitive_name() {
+    let result = parse(
         br#"version: velvet-ballistics/v1
-name: ast_parallel_alias
+name: ast_parallel_reject
 when:
   manual: {}
 steps:
@@ -245,17 +245,14 @@ steps:
     finish:
       result: 0
 "#,
-    )?;
-
-    let together_step = ast
-        .steps
-        .first()
-        .ok_or_else(|| "missing parallel step".to_owned())?;
-
-    ensure(
-        together_step.primitive == StepPrimitiveAst::Together,
-        "parallel alias was not mapped to Together variant",
-    )
+    );
+    assert!(result.is_err(), "parallel must be rejected, not accepted as alias");
+    let err = result.unwrap_err();
+    let err_str = format!("{err:?}");
+    assert!(
+        err_str.contains("parallel") || err_str.contains("unknown"),
+        "error must mention parallel: {err_str}"
+    );
 }
 
 #[test]

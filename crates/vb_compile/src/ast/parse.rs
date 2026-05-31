@@ -273,7 +273,7 @@ fn parse_step_kind(
         "save" => parse_save(body).map(|kind| (StepPrimitiveAst::Save, kind)),
         "choose" => parse_choose(body, index).map(|kind| (StepPrimitiveAst::Choose, kind)),
         "for_each" => parse_for_each(body, index).map(|kind| (StepPrimitiveAst::ForEach, kind)),
-        "together" | "parallel" => {
+        "together" => {
             parse_together(body, index).map(|kind| (StepPrimitiveAst::Together, kind))
         }
         "collect" => parse_collect(body, index).map(|kind| (StepPrimitiveAst::Collect, kind)),
@@ -316,7 +316,6 @@ fn is_supported_primitive(field: &str) -> bool {
             | "choose"
             | "for_each"
             | "together"
-            | "parallel"
             | "collect"
             | "reduce"
             | "repeat"

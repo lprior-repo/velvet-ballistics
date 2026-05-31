@@ -22,7 +22,7 @@
 //! ## Reduce/Aggregate Tests (vb-xi2f.39, lines 517+)
 //!
 //! PO-R1 through PO-R7: Variable, input, initial, body, empty/non-empty,
-//! idempotence, and determinism for `StepPrimitive::Aggregate` (reduce).
+//! idempotence, and determinism for `StepPrimitive::Reduce` (reduce).
 
 use blake3::Hasher;
 use vb_yaml::ast::{StepAst, StepPrimitive};
@@ -525,9 +525,9 @@ fn direct_digest_collect_empty_vs_nonempty_body() {
 // digests when compiled through `digest_step_primitive`.
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Helper: create a minimal StepPrimitive::Aggregate (reduce) with given field overrides.
+/// Helper: create a minimal StepPrimitive::Reduce (reduce) with given field overrides.
 fn make_reduce(variable: &str, input: &str, initial: &str, body: Vec<StepAst>) -> StepPrimitive {
-    StepPrimitive::Aggregate {
+    StepPrimitive::Reduce {
         variable: variable.to_string(),
         input: input.to_string(),
         initial: initial.to_string(),
@@ -679,7 +679,7 @@ fn direct_digest_reduce_idempotence() {
 
     assert_eq!(
         digest_a, digest_b,
-        "same StepPrimitive::Aggregate must produce same digest (idempotence)"
+        "same StepPrimitive::Reduce must produce same digest (idempotence)"
     );
 }
 
@@ -712,7 +712,7 @@ fn direct_digest_collect_vs_aggregate_different_sentinels() {
         items: None,
         body: vec![],
     };
-    let aggregate = StepPrimitive::Aggregate {
+    let aggregate = StepPrimitive::Reduce {
         variable: "x".to_string(),
         input: "items".to_string(),
         initial: "0".to_string(),

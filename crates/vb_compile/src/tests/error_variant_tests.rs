@@ -1622,7 +1622,7 @@ fn canonical_primitive_name_returns_correct_names_for_all_variants() {
             "collect",
         ),
         (
-            StepPrimitive::Aggregate {
+            StepPrimitive::Reduce {
                 variable: "acc".into(),
                 input: "list".into(),
                 initial: "0".into(),
@@ -2033,7 +2033,7 @@ fn test_digest_step_primitive_other_arm_produces_deterministic_digest() {
         ),
         (
             "aggregate",
-            StepPrimitive::Aggregate {
+            StepPrimitive::Reduce {
                 variable: "acc".into(),
                 input: "list".into(),
                 initial: "0".into(),
