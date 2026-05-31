@@ -2,7 +2,7 @@
 //! Single-threaded shard owning mutable run state directly.
 
 use crossbeam_queue::ArrayQueue;
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use std::time::Instant;
 use vb_core::action::ActionContract;
 use vb_core::capability::CapabilitySet;
@@ -620,19 +620,20 @@ impl ShardCommandQueue {
 /// Single-threaded shard owning all mutable run state.
 pub struct Shard {
     pub(crate) command_queue: ShardCommandQueue,
-    pub runs: IndexMap<RunId, RunState>,
+    pub runs: Vec<Option<RunState>>,
     /// Per-run lifecycle state tracking for resume eligibility.
-    pub(crate) runtime_states: IndexMap<RunId, RuntimeState>,
+    pub(crate) runtime_states: Vec<Option<RuntimeState>>,
     /// Terminal run ids retained as direct runtime state, independent of trace retention.
-    pub(crate) terminal_runs: IndexSet<RunId>,
+    pub(crate) terminal_runs: Vec<Option<()>>,
     /// Next durable journal sequence by run, owned by this shard.
-    pub(crate) journal_sequences: IndexMap<RunId, EventSeq>,
-    pub(crate) pending_timers: IndexMap<RunId, PendingTimer>,
+    pub(crate) journal_sequences: Vec<Option<EventSeq>>,
+    pub(crate) pending_timers: Vec<Option<PendingTimer>>,
     pub(crate) frame_pools: IndexMap<FramePoolKey, FramePool>,
     pub(crate) trace_ring: TraceRing,
     pub(crate) counters: ShardCounters,
     pub(crate) step_budget_per_tick: u64,
     pub(crate) max_active_runs: usize,
+    pub(crate) active_run_count: usize,
     pub(crate) policy: vb_core::policy::RuntimePolicy,
     pub(crate) artifact_store: crate::admission::SharedAcceptedArtifactStore,
     pub(crate) inspect_response: Option<InspectResponse>,
