@@ -1175,7 +1175,7 @@ fn validate_action_outcome_ready_succeeds_with_valid_slot() {
         encoded_len: 8,
     };
     let outcome = ActionOutcome::Ready(output);
-    let result = validate_action_outcome(&contract, &outcome);
+    let result = validate_action_outcome(&contract, &outcome, Taint::Clean);
     assert_eq!(result, Ok(()));
 }
 
@@ -1201,7 +1201,7 @@ fn validate_action_outcome_ready_rejects_out_of_bounds_slot() {
         encoded_len: 8,
     };
     let outcome = ActionOutcome::Ready(output);
-    let result = validate_action_outcome(&contract, &outcome);
+    let result = validate_action_outcome(&contract, &outcome, Taint::Clean);
     assert_eq!(
         result,
         Err(ActionError::OutputSlotOutOfBounds {
@@ -1234,7 +1234,7 @@ fn validate_action_outcome_failed_always_succeeds() {
         encoded_len: 0,
     };
     let outcome = ActionOutcome::Failed(failure);
-    let result = validate_action_outcome(&contract, &outcome);
+    let result = validate_action_outcome(&contract, &outcome, Taint::Clean);
     assert_eq!(result, Ok(()));
 }
 
@@ -1263,8 +1263,183 @@ fn validate_action_outcome_suspended_rejected() {
         capacity: 1,
     };
     let outcome = ActionOutcome::Suspended(ticket);
-    let result = validate_action_outcome(&contract, &outcome);
+    let result = validate_action_outcome(&contract, &outcome, Taint::Clean);
     assert_eq!(result, Err(ActionError::DispatchFailed));
+}
+
+#[test]
+fn validate_action_outcome_rejects_taint_downgrade_deterministic_pure() {
+    let contract = ActionContract {
+        id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 2,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
+    };
+    let output = ActionOutputReady {
+        output_slot: SlotIdx::new(0),
+        value: SlotValue::I64(42),
+        taint: Taint::Clean,
+        encoded_len: 8,
+    };
+    let outcome = ActionOutcome::Ready(output);
+    let result = validate_action_outcome(&contract, &outcome, Taint::Secret);
+    assert_eq!(
+        result,
+        Err(ActionError::TaintViolation {
+            required: Taint::Clean,
+            supplied: Taint::Secret,
+        })
+    );
+}
+
+#[test]
+fn validate_action_outcome_accepts_clean_input_deterministic_pure() {
+    let contract = ActionContract {
+        id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 2,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
+    };
+    let output = ActionOutputReady {
+        output_slot: SlotIdx::new(0),
+        value: SlotValue::I64(42),
+        taint: Taint::Clean,
+        encoded_len: 8,
+    };
+    let outcome = ActionOutcome::Ready(output);
+    let result = validate_action_outcome(&contract, &outcome, Taint::Clean);
+    assert_eq!(result, Ok(()));
+}
+
+#[test]
+fn validate_action_outcome_rejects_taint_downgrade_idempotent_external() {
+    let contract = ActionContract {
+        id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 2,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::IdempotentExternal,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
+    };
+    let output = ActionOutputReady {
+        output_slot: SlotIdx::new(0),
+        value: SlotValue::I64(42),
+        taint: Taint::Clean,
+        encoded_len: 8,
+    };
+    let outcome = ActionOutcome::Ready(output);
+    let result = validate_action_outcome(&contract, &outcome, Taint::DerivedFromSecret);
+    assert_eq!(
+        result,
+        Err(ActionError::TaintViolation {
+            required: Taint::DerivedFromSecret,
+            supplied: Taint::Clean,
+        })
+    );
+}
+
+#[test]
+fn validate_action_outcome_accepts_correct_taint_idempotent_external() {
+    let contract = ActionContract {
+        id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 2,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::IdempotentExternal,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
+    };
+    let output = ActionOutputReady {
+        output_slot: SlotIdx::new(0),
+        value: SlotValue::I64(42),
+        taint: Taint::Secret,
+        encoded_len: 8,
+    };
+    let outcome = ActionOutcome::Ready(output);
+    let result = validate_action_outcome(&contract, &outcome, Taint::Secret);
+    assert_eq!(result, Ok(()));
+}
+
+#[test]
+fn validate_action_outcome_rejects_taint_downgrade_at_least_once() {
+    let contract = ActionContract {
+        id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 2,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::AtLeastOnceExternal,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
+    };
+    let output = ActionOutputReady {
+        output_slot: SlotIdx::new(0),
+        value: SlotValue::I64(42),
+        taint: Taint::Clean,
+        encoded_len: 8,
+    };
+    let outcome = ActionOutcome::Ready(output);
+    let result = validate_action_outcome(&contract, &outcome, Taint::Secret);
+    assert_eq!(
+        result,
+        Err(ActionError::TaintViolation {
+            required: Taint::DerivedFromSecret,
+            supplied: Taint::Clean,
+        })
+    );
+}
+
+#[test]
+fn validate_action_outcome_failed_ignores_taint() {
+    let contract = ActionContract {
+        id: ActionId::new(1),
+        name: ActionName::new("test-action").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
+    };
+    let failure = ActionFailure {
+        code: ActionFailureCode::Timeout,
+        retry_policy: RetryPolicy::Retryable,
+        taint: Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    };
+    let outcome = ActionOutcome::Failed(failure);
+    let result = validate_action_outcome(&contract, &outcome, Taint::Secret);
+    assert_eq!(result, Ok(()));
 }
 
 // --- ActionJournalEvent ---
