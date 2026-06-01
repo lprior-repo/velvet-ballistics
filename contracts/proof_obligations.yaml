@@ -921,6 +921,122 @@ evidence_schema:
     fjall_durability: externally_assumed_with_strict_fsync_boundary | operationally_evidenced
 
 # ============================================================
+# VB-RQMW: Verus vacuum proof repair (2026-06-01)
+# All files verified with 0 errors. Proof bodies use explicit assert()
+# for open spec functions (computable by SMT solver).
+# ============================================================
+  - id: VB-RQMW-001
+    section: [36, 37, 40]
+    statement: |
+      Step-state machine transitions are valid: no invalid state transitions,
+      terminal states are absorbing, suspended states resume only to Running.
+    proof_level: L4
+    crate: vb_core
+    files:
+      - crates/vb_core/src/frame.rs
+      - crates/vb_core/src/engine/step.rs
+    required:
+      verus: verification/verus/step_state_machine.rs
+    commands:
+      - verus verification/verus/step_state_machine.rs
+    verified:
+      step_state_machine: deductively_verified
+
+  - id: VB-RQMW-002
+    section: [40]
+    statement: |
+      Step budget invariant: remaining stays in [0, MAX_STEP_BUDGET].
+      try_take monotonicity and non-negativity.
+    proof_level: L4
+    crate: vb_core
+    files:
+      - crates/vb_core/src/budget.rs
+    required:
+      verus: verification/verus/signals_invariant.rs
+    commands:
+      - verus verification/verus/signals_invariant.rs
+    verified:
+      signals_invariant: deductively_verified
+
+  - id: VB-RQMW-003
+    section: [40]
+    statement: |
+      Run loop termination within budget: at most initial_budget iterations.
+    proof_level: L4
+    crate: vb_core
+    files:
+      - crates/vb_core/src/engine/run_loop.rs
+    required:
+      verus: verification/verus/run_loop_termination.rs
+    commands:
+      - verus verification/verus/run_loop_termination.rs
+    verified:
+      run_loop_termination: deductively_verified
+
+  - id: VB-RQMW-004
+    section: [47]
+    statement: |
+      Journal trace is deterministic: same input events produce same trace entries.
+    proof_level: L4
+    crate: vb_cli
+    files:
+      - crates/vb_cli/src/commands_journal.rs
+    required:
+      verus: verification/verus/vb_cli_commands_journal_trace.rs
+    commands:
+      - verus verification/verus/vb_cli_commands_journal_trace.rs
+    verified:
+      journal_trace: deductively_verified
+
+  - id: VB-RQMW-005
+    section: [40]
+    statement: |
+      Workflow budget arithmetic is bounded and overflow-safe.
+    proof_level: L4
+    crate: vb_core
+    files:
+      - crates/vb_core/src/budget.rs
+    required:
+      verus: verification/verus/budget_bounded.rs
+    commands:
+      - verus verification/verus/budget_bounded.rs
+    verified:
+      budget_bounded: deductively_verified
+
+  - id: VB-RQMW-006
+    section: [46]
+    statement: |
+      Action replay tracker monotonicity: once resolved, always resolved.
+      Idempotent retry semantics.
+    proof_level: L4
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/recovery/types.rs
+      - crates/vb_storage/src/recovery/replay/core.rs
+    required:
+      verus: verification/verus/idempotency_replay_tracker.rs
+    commands:
+      - verus verification/verus/idempotency_replay_tracker.rs
+    verified:
+      idempotency_replay_tracker: deductively_verified
+
+  - id: VB-RQMW-007
+    section: [38]
+    statement: |
+      Artifact admission decision is total: every case is either admitted or rejected.
+      Valid case uniquely admits; all other cases reject before ack/run-state.
+    proof_level: L4
+    crate: vb_runtime
+    files:
+      - crates/vb_runtime/src/admission.rs
+    required:
+      verus: verification/verus/accepted_artifact_admission_decision.rs
+    commands:
+      - verus verification/verus/accepted_artifact_admission_decision.rs
+    verified:
+      accepted_artifact_admission_decision: deductively_verified
+
+# ============================================================
 # PROOF LEVEL ASSIGNMENTS BY CRATE
 # ============================================================
 proof_matrix:

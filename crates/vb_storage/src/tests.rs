@@ -1884,6 +1884,34 @@ mod tests {
     }
 
     #[test]
+    fn put_compiled_ir_rejects_accepted_artifact_envelope_trailing_bytes() {
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+        let mut record = crate::accepted_compiled_ir_record_for_test(b"outer-trailing".to_vec());
+        let declared_end = record.ir.len();
+        record.ir.push(0xE7);
+
+        let result = journal.put_compiled_ir(&record);
+
+        let Err(JournalError::UnexpectedTrailingBytes {
+            declared_end: found_declared_end,
+            actual_len,
+        }) = result
+        else {
+            panic!("put_compiled_ir must reject AcceptedArtifact trailing bytes, got {result:?}");
+        };
+        assert_eq!(found_declared_end, declared_end);
+        assert_eq!(actual_len, record.ir.len());
+        assert!(
+            journal
+                .compiled_ir(record.digest)
+                .expect("compiled_ir lookup should succeed")
+                .is_none(),
+            "trailing-byte AcceptedArtifact must not be persisted"
+        );
+    }
+
+    #[test]
     fn compiled_ir_read_revalidates_persisted_record() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
@@ -1912,6 +1940,44 @@ mod tests {
             journal.compiled_ir(corrupt.digest),
             Err(JournalError::ArtifactMalformed)
         ));
+    }
+
+    #[test]
+    fn compiled_ir_rejects_workflow_parts_inner_trailing_bytes() {
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+        let mut record = crate::accepted_compiled_ir_record_for_test(b"inner-trailing".to_vec());
+        let mut artifact: crate::AcceptedArtifact =
+            postcard::from_bytes(&record.ir).expect("AcceptedArtifact should decode");
+        let declared_end = artifact.ir.len();
+        artifact.ir.push(0x7E);
+        record.ir = postcard::to_allocvec(&artifact).expect("AcceptedArtifact should encode");
+        let key = compiled_ir_key(record.digest.as_bytes())
+            .expect("compiled_ir key construction should succeed");
+        let value = encode_record(
+            MAGIC_COMPILED_ARTIFACT,
+            RecordKind::CompiledIr,
+            0,
+            &record,
+            MAX_COMPILED_IR_BYTES,
+        )
+        .expect("compiled_ir record encoding should succeed");
+
+        journal
+            .compiled_ir
+            .insert(key.to_vec(), value)
+            .expect("direct fixture insert should succeed");
+        let result = journal.compiled_ir(record.digest);
+
+        let Err(JournalError::UnexpectedTrailingBytes {
+            declared_end: found_declared_end,
+            actual_len,
+        }) = result
+        else {
+            panic!("compiled_ir must reject WorkflowParts trailing bytes, got {result:?}");
+        };
+        assert_eq!(found_declared_end, declared_end);
+        assert_eq!(actual_len, declared_end.saturating_add(1));
     }
 
     #[test]

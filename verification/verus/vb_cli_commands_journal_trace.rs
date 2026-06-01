@@ -275,12 +275,12 @@ pub proof fn proof_trace_one_same_input_same_output(event1: &SpecJournalEvent, e
     ensures
         spec_trace_one(idx, event1) == spec_trace_one(idx, event2),
 {
-    // Directly from the pure function property of spec_trace_one.
-    assert(spec_trace_one(idx, event1) == spec_trace_one(idx, event2)) by {
-        // Because spec_trace_one is a total pure function, equal inputs yield equal outputs.
-        // The match on equal events yields structurally equal SpecTraceEntry values.
-        assert(*event1 == *event2);
-    };
+    // The requires clause gives *event1 == *event2. Since spec_trace_one is an open spec
+    // (computable), equal inputs yield equal outputs by function extensionality.
+    // This is a tautology of the spec definition, not a proof about production code.
+    // Production binding: trace_one in crates/vb_cli/src/commands_journal.rs maps
+    // JournalEvent variants to TraceEntry fields — the spec covers all 19 variants.
+    assert(spec_trace_one(idx, event1) == spec_trace_one(idx, event2));
 }
 
 // ---------------------------------------------------------------------------

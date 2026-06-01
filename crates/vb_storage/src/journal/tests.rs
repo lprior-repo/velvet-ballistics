@@ -37,6 +37,38 @@ fn make_step_started(run: RunId, seq: u64, step: u16) -> JournalEvent {
     }
 }
 
+#[test]
+fn parse_event_rejects_trailing_bytes_with_exact_offsets() -> Result<(), JournalError> {
+    let event = JournalEvent::RunCancelled {
+        run: RunId::new(42),
+        seq: EventSeq::new(0),
+        attempt: 1,
+        reason: None,
+    };
+    let mut bytes = crate::codec::encode_record(
+        MAGIC_JOURNAL_EVENT,
+        crate::RecordKind::RunCancelled,
+        0,
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    let declared_end = bytes.len();
+    bytes.extend_from_slice(&[0xE7, 0x7E]);
+
+    let result = parse_event(&bytes);
+
+    let Err(JournalError::UnexpectedTrailingBytes {
+        declared_end: found_declared_end,
+        actual_len,
+    }) = result
+    else {
+        panic!("parse_event must reject trailing bytes, got {result:?}");
+    };
+    assert_eq!(found_declared_end, declared_end);
+    assert_eq!(actual_len, bytes.len());
+    Ok(())
+}
+
 fn corrupt_magic_preserving_crc(value: &mut [u8]) {
     let magic_bytes = 0xDEAD_BEEFu32.to_le_bytes();
     if let Some(slice) = value.get_mut(0..4) {

@@ -9,6 +9,7 @@ pub(crate) mod batch;
 pub mod incident;
 pub(crate) mod injection;
 pub(crate) mod internal;
+pub mod parse;
 pub mod readonly;
 pub(crate) mod replay;
 pub(crate) mod source;
@@ -17,4 +18,5 @@ pub(crate) mod source;
 mod tests;
 
 pub use self::core::{EventReplayLimit, FjallJournal};
+pub use self::parse::parse_event;
 pub use self::readonly::ReadOnlyJournal;

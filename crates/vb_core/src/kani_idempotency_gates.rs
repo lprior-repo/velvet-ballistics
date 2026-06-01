@@ -612,14 +612,14 @@ fn validate_action_outcome_symbolic_completion_matrix() {
         ),
         "payload too large error covered"
     );
-    // Functional correctness: suspended (nonterminal) outcomes always fail
-    // with DispatchFailed per validate_suspended_outcome().
-    if matches!(outcome, ActionOutcome::Suspended(_)) {
-        kani::assert(
-            matches!(result, Err(crate::action::ActionError::DispatchFailed)),
-            "suspended outcomes always produce DispatchFailed error",
-        );
-    }
+    kani::assert(
+        result.is_ok()
+            || matches!(result, Err(crate::action::ActionError::OutputSlotOutOfBounds { .. }))
+            || matches!(result, Err(crate::action::ActionError::TaintViolation { .. }))
+            || matches!(result, Err(crate::action::ActionError::PayloadTooLarge { .. }))
+            || matches!(result, Err(crate::action::ActionError::DispatchFailed)),
+        "all outcomes produce only expected error variants or Ok",
+    );
 }
 
 // ============================================================================

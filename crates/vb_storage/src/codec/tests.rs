@@ -1269,6 +1269,42 @@ fn decode_rejects_trailing_bytes_beyond_payload() -> Result<(), JournalError> {
     Ok(())
 }
 
+#[test]
+fn decode_envelope_only_rejects_trailing_bytes_with_exact_offsets() -> Result<(), JournalError> {
+    let event = JournalEvent::RunCancelled {
+        run: RunId::new(1),
+        seq: EventSeq::new(0),
+        attempt: 1,
+        reason: None,
+    };
+    let mut bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunCancelled,
+        0,
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    let declared_end = bytes.len();
+    bytes.extend_from_slice(&[0xE7, 0x7E]);
+
+    let result = decode_envelope_only(
+        &bytes,
+        MAGIC_JOURNAL_EVENT,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    );
+
+    let Err(JournalError::UnexpectedTrailingBytes {
+        declared_end: found_declared_end,
+        actual_len,
+    }) = result
+    else {
+        panic!("decode_envelope_only must reject trailing bytes, got {result:?}");
+    };
+    assert_eq!(found_declared_end, declared_end);
+    assert_eq!(actual_len, bytes.len());
+    Ok(())
+}
+
 fn assert_journal_trailing_suffix_rejected(suffix: &[u8]) -> Result<(), JournalError> {
     let event = JournalEvent::RunCancelled {
         run: RunId::new(1),
