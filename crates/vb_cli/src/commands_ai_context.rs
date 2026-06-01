@@ -412,6 +412,7 @@ fn slot_is_secret_or_derived(
         .is_some_and(|raw| matches!(*raw, 1 | 2))
 }
 
+#[allow(clippy::manual_ok_err)]
 fn ai_action_contracts(
     events: &[vb_storage::JournalEvent],
     workflow_actions: Option<&Value>,
@@ -423,11 +424,8 @@ fn ai_action_contracts(
         .filter_map(|value| match value.as_u64() {
             None => None,
             Some(raw) => match u32::try_from(raw) {
-                Ok(id) => Some(id),
-                Err(_) => {
-                    // u64 value does not fit in u32; drop it gracefully.
-                    None
-                }
+                Ok(n) => Some(n),
+                Err(_) => None,
             },
         });
     let event_ids = events.iter().filter_map(|event| match event {

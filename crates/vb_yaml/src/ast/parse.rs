@@ -120,13 +120,14 @@ pub(super) fn opt_str(node: &saphyr::Yaml<'_>, field: &str) -> Option<String> {
 }
 
 /// Optional u32 field.
+#[allow(clippy::manual_ok_err)]
 pub(super) fn opt_u32(node: &saphyr::Yaml<'_>, field: &str) -> Option<u32> {
     match lookup(node, field) {
         None => None,
         Some(v) => match v.as_integer() {
             None => None,
             Some(i) => match u32::try_from(i) {
-                Ok(u) => Some(u),
+                Ok(n) => Some(n),
                 Err(_) => None,
             },
         },
