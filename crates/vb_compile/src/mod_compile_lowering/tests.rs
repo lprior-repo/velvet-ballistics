@@ -1640,3 +1640,1118 @@ fn canonical_body_step_width_accepts_for_each() {
         "ForEach with single Set body has width 3"
     );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// vb-xi2f.24: Reduce Multi-Step Body Lowering Behavior Tests
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// PHASE 1: Tests that compile and PASS now (pre-implementation).
+//   Test canonical_body_step_width, canonical_step_width, body_width,
+//   and error codes that are already correct.
+//
+// PHASE 2: Tests that compile but FAIL at runtime (TDD red).
+//   Test lower_canonical_aggregate with multi-step bodies.
+//   Currently fail because emit_single_body_set rejects body.len() != 1.
+//   Will pass after emit_reduce_body_steps is implemented and wired in.
+//
+// PHASE 3: Direct emit_reduce_body_steps tests (BLOCKED).
+//   Will be unblocked after emit_reduce_body_steps exists in part_04.rs.
+//   Contract: emit_reduce_body_steps(body, body_step, idx, slot, next, builder)
+//   See Kani harness kani_reduce_regression.rs for signature reference.
+// ═══════════════════════════════════════════════════════════════════════════
+
+use crate::mod_compile_lowering::part_01::canonical_step_width;
+use crate::mod_compile_lowering::part_04::lower_canonical_aggregate;
+use crate::mod_compile_lowering::part_07::SlotCompiler;
+use crate::{CompileError, CompileErrors};
+use vb_core::ids::StepIdx;
+use vb_core::ids::SlotIdx;
+use vb_core::SymbolicCode;
+use vb_yaml::ast::ScalarValue;
+
+// ── Helpers ─────────────────────────────────────────────────────────────
+
+/// Create a StepAst with a Set primitive for reduce body steps.
+fn reduce_set_step(id: &str, value: &str) -> StepAst {
+    StepAst {
+        id: id.to_string(),
+        name: None,
+        condition: None,
+        primitive: StepPrimitive::Set {
+            output: id.to_string(),
+            value: value.to_string(),
+        },
+        with: None,
+        retry: None,
+        on_error: None,
+        then: None,
+    }
+}
+
+/// Create a StepAst with a Do primitive for reduce body steps.
+fn reduce_do_step(id: &str, action: &str, input: &str) -> StepAst {
+    StepAst {
+        id: id.to_string(),
+        name: None,
+        condition: None,
+        primitive: StepPrimitive::Do {
+            action: action.to_string(),
+            input: input.to_string(),
+        },
+        with: None,
+        retry: None,
+        on_error: None,
+        then: None,
+    }
+}
+
+/// Create a StepAst from a given StepPrimitive.
+fn reduce_step(id: &str, primitive: StepPrimitive) -> StepAst {
+    StepAst {
+        id: id.to_string(),
+        name: None,
+        condition: None,
+        primitive,
+        with: None,
+        retry: None,
+        on_error: None,
+        then: None,
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// PHASE 1: Width Calculation Tests (COMPILE AND PASS NOW)
+// ─────────────────────────────────────────────────────────────────────────
+
+// ── B01: canonical_body_step_width returns Ok(1) for Set ──
+
+#[test]
+fn canonical_body_step_width_returns_one_for_set() {
+    let set = StepPrimitive::Set {
+        output: "out".to_string(),
+        value: "42".to_string(),
+    };
+    let result = canonical_body_step_width(&set);
+    match result {
+        Ok(width) => assert_eq!(width, 1, "Set must have width 1"),
+        Err(e) => panic!("Set must be accepted in body, got error: {e:?}"),
+    }
+}
+
+// ── B02: canonical_body_step_width returns Ok(1) for Do ──
+
+#[test]
+fn canonical_body_step_width_returns_one_for_do() {
+    let do_step = StepPrimitive::Do {
+        action: "1".to_string(),
+        input: "0".to_string(),
+    };
+    let result = canonical_body_step_width(&do_step);
+    match result {
+        Ok(width) => assert_eq!(width, 1, "Do must have width 1"),
+        Err(e) => panic!("Do must be accepted in body, got error: {e:?}"),
+    }
+}
+
+// ── B03: canonical_body_step_width returns correct width for ForEach ──
+
+#[test]
+fn canonical_body_step_width_returns_overhead_for_foreach_with_empty_body() {
+    let foreach = StepPrimitive::ForEach {
+        variable: "x".to_string(),
+        input: "0".to_string(),
+        at_once: None,
+        body: vec![],
+    };
+    let result = canonical_body_step_width(&foreach);
+    match result {
+        Ok(width) => assert_eq!(
+            width, 2,
+            "ForEach with empty body: overhead 2 + 0 = 2"
+        ),
+        Err(e) => panic!("ForEach must be accepted in body, got error: {e:?}"),
+    }
+}
+
+#[test]
+fn canonical_body_step_width_returns_three_for_foreach_with_one_set_body() {
+    let foreach = StepPrimitive::ForEach {
+        variable: "x".to_string(),
+        input: "0".to_string(),
+        at_once: None,
+        body: vec![reduce_set_step("inner", "1")],
+    };
+    let result = canonical_body_step_width(&foreach);
+    match result {
+        Ok(width) => assert_eq!(
+            width, 3,
+            "ForEach with 1 Set: overhead 2 + Set(1) = 3"
+        ),
+        Err(e) => panic!("ForEach with body must be accepted, got error: {e:?}"),
+    }
+}
+
+#[test]
+fn canonical_body_step_width_returns_four_for_foreach_with_two_set_body() {
+    let foreach = StepPrimitive::ForEach {
+        variable: "x".to_string(),
+        input: "0".to_string(),
+        at_once: None,
+        body: vec![reduce_set_step("a", "1"), reduce_set_step("b", "2")],
+    };
+    let result = canonical_body_step_width(&foreach);
+    match result {
+        Ok(width) => assert_eq!(
+            width, 4,
+            "ForEach with 2 Sets: overhead 2 + Set(1) + Set(1) = 4"
+        ),
+        Err(e) => panic!("ForEach with 2-step body must be accepted, got error: {e:?}"),
+    }
+}
+
+// ── B08: canonical_body_step_width rejects Finish ──
+
+#[test]
+fn canonical_body_step_width_rejects_finish_with_unsupported_step_primitive() {
+    let finish = StepPrimitive::Finish {
+        result: ScalarValue::Integer(0),
+    };
+    let result = canonical_body_step_width(&finish);
+    match result {
+        Err(CompileError::UnsupportedStepPrimitive { step, primitive }) => {
+            assert_eq!(step, 0, "diagnostic step index must be 0");
+            assert_eq!(primitive, "finish", "primitive name must be 'finish'");
+        }
+        other => panic!("expected UnsupportedStepPrimitive for Finish, got: {other:?}"),
+    }
+}
+
+// ── B09: canonical_body_step_width rejects Wait ──
+
+#[test]
+fn canonical_body_step_width_rejects_wait_with_unsupported_step_primitive() {
+    let wait = StepPrimitive::Wait {
+        event: Some("0".to_string()),
+        timeout: None,
+    };
+    let result = canonical_body_step_width(&wait);
+    match result {
+        Err(CompileError::UnsupportedStepPrimitive { primitive, .. }) => {
+            assert_eq!(primitive, "wait", "primitive name must be 'wait'");
+        }
+        other => panic!("expected UnsupportedStepPrimitive for Wait, got: {other:?}"),
+    }
+}
+
+// ── B10: canonical_body_step_width rejects Ask ──
+
+#[test]
+fn canonical_body_step_width_rejects_ask_with_unsupported_step_primitive() {
+    let ask = StepPrimitive::Ask {
+        prompt: "?".to_string(),
+        timeout: None,
+    };
+    let result = canonical_body_step_width(&ask);
+    match result {
+        Err(CompileError::UnsupportedStepPrimitive { primitive, .. }) => {
+            assert_eq!(primitive, "ask", "primitive name must be 'ask'");
+        }
+        other => panic!("expected UnsupportedStepPrimitive for Ask, got: {other:?}"),
+    }
+}
+
+// Extended: reject all unsupported primitives in body step context
+
+#[test]
+fn canonical_body_step_width_rejects_collect_with_unsupported_step_primitive() {
+    let collect = StepPrimitive::Collect {
+        variable: "x".to_string(),
+        source: "items".to_string(),
+        pages: None,
+        items: None,
+        body: vec![],
+    };
+    let result = canonical_body_step_width(&collect);
+    match result {
+        Err(CompileError::UnsupportedStepPrimitive { primitive, .. }) => {
+            assert_eq!(primitive, "collect", "primitive name must be 'collect'");
+        }
+        other => panic!("expected UnsupportedStepPrimitive for Collect, got: {other:?}"),
+    }
+}
+
+#[test]
+fn canonical_body_step_width_rejects_repeat_with_unsupported_step_primitive() {
+    let repeat = StepPrimitive::Repeat {
+        max_attempts: 3,
+        body: vec![],
+    };
+    let result = canonical_body_step_width(&repeat);
+    match result {
+        Err(CompileError::UnsupportedStepPrimitive { primitive, .. }) => {
+            assert_eq!(primitive, "repeat", "primitive name must be 'repeat'");
+        }
+        other => panic!("expected UnsupportedStepPrimitive for Repeat, got: {other:?}"),
+    }
+}
+
+#[test]
+fn canonical_body_step_width_rejects_choose_with_unsupported_step_primitive() {
+    let choose = StepPrimitive::Choose {
+        branches: vec![],
+        otherwise: None,
+    };
+    let result = canonical_body_step_width(&choose);
+    match result {
+        Err(CompileError::UnsupportedStepPrimitive { primitive, .. }) => {
+            assert_eq!(primitive, "choose", "primitive name must be 'choose'");
+        }
+        other => panic!("expected UnsupportedStepPrimitive for Choose, got: {other:?}"),
+    }
+}
+
+#[test]
+fn canonical_body_step_width_rejects_together_with_unsupported_step_primitive() {
+    let together = StepPrimitive::Together {
+        branches: vec![],
+    };
+    let result = canonical_body_step_width(&together);
+    match result {
+        Err(CompileError::UnsupportedStepPrimitive { primitive, .. }) => {
+            assert_eq!(primitive, "together", "primitive name must be 'together'");
+        }
+        other => panic!("expected UnsupportedStepPrimitive for Together, got: {other:?}"),
+    }
+}
+
+// ── B11: canonical_step_width(Reduce) == body_width(body, 3) ──
+
+#[test]
+fn canonical_step_width_reduce_with_one_set_equals_body_width_plus_three() {
+    let body = vec![reduce_set_step("body0", "1")];
+    let reduce = StepPrimitive::Reduce {
+        variable: "acc".to_string(),
+        input: "items".to_string(),
+        initial: "0".to_string(),
+        body: body.clone(),
+    };
+    let width_from_step = canonical_step_width(&reduce)
+        .expect("canonical_step_width must handle Reduce");
+    let width_from_body = body_width(&body, 3)
+        .expect("body_width must succeed for Set body");
+    assert_eq!(
+        width_from_step, width_from_body,
+        "canonical_step_width(Reduce) must equal body_width(body, 3)"
+    );
+    assert_eq!(width_from_step, 4, "Reduce: overhead 3 + Set(1) = 4");
+}
+
+#[test]
+fn canonical_step_width_reduce_with_three_sets_equals_body_width_plus_three() {
+    let body = vec![
+        reduce_set_step("a", "1"),
+        reduce_set_step("b", "2"),
+        reduce_set_step("c", "3"),
+    ];
+    let reduce = StepPrimitive::Reduce {
+        variable: "acc".to_string(),
+        input: "items".to_string(),
+        initial: "0".to_string(),
+        body: body.clone(),
+    };
+    let width_from_step = canonical_step_width(&reduce)
+        .expect("canonical_step_width must handle Reduce");
+    let width_from_body = body_width(&body, 3)
+        .expect("body_width must succeed for Set body");
+    assert_eq!(
+        width_from_step, width_from_body,
+        "canonical_step_width(Reduce) must equal body_width(body, 3)"
+    );
+    assert_eq!(width_from_step, 6, "Reduce: overhead 3 + 3 Sets = 6");
+}
+
+#[test]
+fn canonical_step_width_reduce_with_mixed_body_equals_body_width_plus_three() {
+    let body = vec![reduce_set_step("a", "1"), reduce_do_step("b", "1", "0")];
+    let reduce = StepPrimitive::Reduce {
+        variable: "acc".to_string(),
+        input: "items".to_string(),
+        initial: "0".to_string(),
+        body: body.clone(),
+    };
+    let width_from_step = canonical_step_width(&reduce)
+        .expect("canonical_step_width must handle Reduce");
+    let width_from_body = body_width(&body, 3)
+        .expect("body_width must succeed for mixed body");
+    assert_eq!(
+        width_from_step, width_from_body,
+        "canonical_step_width(Reduce) must equal body_width(body, 3)"
+    );
+    assert_eq!(width_from_step, 5, "Reduce: overhead 3 + Set(1) + Do(1) = 5");
+}
+
+// ── body_width boundary and overflow tests ──
+
+#[test]
+fn body_width_returns_overhead_for_empty_body() {
+    let body: Vec<StepAst> = vec![];
+    let result = body_width(&body, 3);
+    match result {
+        Ok(width) => assert_eq!(width, 3, "empty body returns overhead only"),
+        Err(e) => panic!("empty body must succeed, got: {e:?}"),
+    }
+}
+
+#[test]
+fn body_width_returns_zero_for_empty_body_with_zero_overhead() {
+    let body: Vec<StepAst> = vec![];
+    let result = body_width(&body, 0);
+    match result {
+        Ok(width) => assert_eq!(width, 0, "empty body with zero overhead returns 0"),
+        Err(e) => panic!("zero overhead empty body must succeed, got: {e:?}"),
+    }
+}
+
+#[test]
+fn body_width_returns_overhead_plus_n_for_n_set_steps() {
+    let body = vec![reduce_set_step("a", "1"), reduce_set_step("b", "2")];
+    let result = body_width(&body, 3);
+    match result {
+        Ok(width) => assert_eq!(width, 5, "overhead 3 + Set(1) + Set(1) = 5"),
+        Err(e) => panic!("valid Set body must succeed, got: {e:?}"),
+    }
+}
+
+#[test]
+fn body_width_returns_correct_for_mixed_set_do_body() {
+    let body = vec![reduce_set_step("a", "1"), reduce_do_step("b", "1", "0")];
+    let result = body_width(&body, 3);
+    match result {
+        Ok(width) => assert_eq!(width, 5, "overhead 3 + Set(1) + Do(1) = 5"),
+        Err(e) => panic!("mixed Set+Do body must succeed, got: {e:?}"),
+    }
+}
+
+#[test]
+fn body_width_returns_correct_for_foreach_in_body() {
+    let foreach_step =
+        reduce_step("inner", StepPrimitive::ForEach {
+            variable: "x".to_string(),
+            input: "0".to_string(),
+            at_once: None,
+            body: vec![reduce_set_step("s", "1")],
+        });
+    let body = vec![foreach_step];
+    let result = body_width(&body, 3);
+    match result {
+        Ok(width) => assert_eq!(
+            width, 6,
+            "overhead 3 + ForEach(overhead 2 + Set(1) = 3) = 6"
+        ),
+        Err(e) => panic!("ForEach in body must succeed, got: {e:?}"),
+    }
+}
+
+#[test]
+fn body_width_returns_correct_for_for_each_empty_body() {
+    let foreach_step =
+        reduce_step("inner", StepPrimitive::ForEach {
+            variable: "x".to_string(),
+            input: "0".to_string(),
+            at_once: None,
+            body: vec![],
+        });
+    let body = vec![foreach_step];
+    let result = body_width(&body, 3);
+    match result {
+        Ok(width) => assert_eq!(
+            width, 5,
+            "overhead 3 + ForEach(overhead 2 + 0) = 5"
+        ),
+        Err(e) => panic!("ForEach empty body in body must succeed, got: {e:?}"),
+    }
+}
+
+#[test]
+fn body_width_nested_reduce_rejected_pre_widening() {
+    let nested_reduce = reduce_step("inner_fold", StepPrimitive::Reduce {
+        variable: "sum".to_string(),
+        input: "inner_items".to_string(),
+        initial: "0".to_string(),
+        body: vec![reduce_set_step("ns", "1")],
+    });
+    let body = vec![nested_reduce];
+    let result = body_width(&body, 3);
+    match result {
+        Ok(width) => {
+            // After canonical_body_step_width is widened for Reduce:
+            // overhead 3 + nested Reduce (3 + Set(1) = 4) = 7
+            assert_eq!(width, 7, "nested Reduce: 3 + 4 = 7 (post-widening)");
+        }
+        Err(CompileError::UnsupportedStepPrimitive { primitive, .. }) => {
+            // TDD red: currently expected until canonical_body_step_width accepts Reduce
+            assert_eq!(
+                primitive, "reduce",
+                "primitive must be 'reduce' before widening"
+            );
+        }
+        Err(e) => panic!("unexpected error for nested Reduce: {e:?}"),
+    }
+}
+
+#[test]
+fn body_width_returns_error_when_body_contains_unsupported_primitive() {
+    let finish_step = reduce_step("bad", StepPrimitive::Finish {
+        result: ScalarValue::Integer(0),
+    });
+    let body = vec![finish_step];
+    let result = body_width(&body, 3);
+    match result {
+        Err(CompileError::UnsupportedStepPrimitive { primitive, .. }) => {
+            assert_eq!(
+                primitive, "finish",
+                "error must propagate with correct primitive name"
+            );
+        }
+        other => panic!("expected UnsupportedStepPrimitive for Finish in body, got: {other:?}"),
+    }
+}
+
+// ── B46: Width overflow ──
+
+#[test]
+fn body_width_returns_step_index_out_of_range_when_width_overflows_usize() {
+    let body = vec![reduce_set_step("s", "1")];
+    let result = body_width(&body, usize::MAX);
+    match result {
+        Err(CompileError::StepIndexOutOfRange { value }) => {
+            assert_eq!(
+                value, usize::MAX,
+                "overflow error must report the value at overflow point"
+            );
+        }
+        other => panic!("expected StepIndexOutOfRange for overflow, got: {other:?}"),
+    }
+}
+
+#[test]
+fn body_width_handles_u16_max_boundary() {
+    let body = vec![reduce_set_step("s", "1")];
+    let result = body_width(&body, 65534);
+    match result {
+        Ok(width) => assert_eq!(
+            width, 65535,
+            "overhead 65534 + Set(1) = 65535 (u16::MAX)"
+        ),
+        Err(e) => panic!("u16::MAX boundary must succeed, got: {e:?}"),
+    }
+}
+
+#[test]
+fn body_width_single_step_zero_overhead_boundary() {
+    let body = vec![reduce_set_step("s", "1")];
+    let result = body_width(&body, 0);
+    match result {
+        Ok(width) => assert_eq!(width, 1, "overhead 0 + Set(1) = 1"),
+        Err(e) => panic!("zero overhead boundary must succeed, got: {e:?}"),
+    }
+}
+
+// ── B47: Error diagnostic code validity ──
+
+#[test]
+fn unsupported_step_primitive_error_code_is_not_internal_invariant() {
+    let finish = StepPrimitive::Finish {
+        result: ScalarValue::Integer(0),
+    };
+    let result = canonical_body_step_width(&finish);
+    match result {
+        Err(ref e) => {
+            let code = e.code();
+            assert_ne!(
+                code, SymbolicCode::INTERNAL_INVARIANT,
+                "UnsupportedStepPrimitive code must not be INTERNAL_INVARIANT"
+            );
+        }
+        other => panic!("expected error with valid code, got: {other:?}"),
+    }
+}
+
+#[test]
+fn step_index_out_of_range_error_code_is_not_internal_invariant() {
+    let body = vec![reduce_set_step("s", "1")];
+    let result = body_width(&body, usize::MAX);
+    match result {
+        Err(ref e) => {
+            let code = e.code();
+            assert_ne!(
+                code, SymbolicCode::INTERNAL_INVARIANT,
+                "StepIndexOutOfRange code must not be INTERNAL_INVARIANT"
+            );
+        }
+        other => panic!("expected error with valid code, got: {other:?}"),
+    }
+}
+
+// ── B48: Deterministic width (idempotent) ──
+
+#[test]
+fn canonical_body_step_width_returns_same_result_for_same_input() {
+    let set = StepPrimitive::Set {
+        output: "out".to_string(),
+        value: "42".to_string(),
+    };
+    let r1 = canonical_body_step_width(&set);
+    let r2 = canonical_body_step_width(&set);
+    assert_eq!(r1, r2, "same input must produce same result");
+    match (r1, r2) {
+        (Ok(w1), Ok(w2)) => assert_eq!(w1, w2, "widths must be identical"),
+        (Err(e1), Err(e2)) => assert_eq!(
+            format!("{e1:?}"), format!("{e2:?}"),
+            "errors must be identical"
+        ),
+        _ => panic!("results must be of the same variant"),
+    }
+}
+
+#[test]
+fn body_width_returns_same_result_for_same_input() {
+    let body = vec![reduce_set_step("a", "1"), reduce_set_step("b", "2")];
+    let r1 = body_width(&body, 3);
+    let r2 = body_width(&body, 3);
+    assert_eq!(r1, r2, "same body must produce same width");
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// PHASE 2: lower_canonical_aggregate Tests (COMPILE OK, FAIL RUNTIME)
+//
+// These tests call the existing lower_canonical_aggregate function.
+// Single-step body tests PASS now. Multi-step body tests FAIL now
+// because emit_single_body_set rejects body.len() != 1.
+// They will pass after emit_reduce_body_steps is wired in.
+// ─────────────────────────────────────────────────────────────────────────
+
+/// Helper: compile a reduce body through lower_canonical_aggregate.
+fn compile_reduce_body(
+    body: &[StepAst],
+) -> Result<SlotCompiler, CompileErrors> {
+    let mut builder = SlotCompiler::new();
+    lower_canonical_aggregate(
+        0,
+        StepIdx::new(0),
+        "0",   // input slot as integer string
+        "0",   // initial value
+        body,
+        Some(StepIdx::new(10)),
+        &mut builder,
+    )?;
+    Ok(builder)
+}
+
+// ── Single-step regression (PASS NOW) ──
+
+#[test]
+fn lower_canonical_aggregate_compiles_single_set_body() {
+    let body = vec![reduce_set_step("body0", "1")];
+    let result = compile_reduce_body(&body);
+    match result {
+        Ok(builder) => {
+            assert_eq!(
+                builder.nodes.len(), 4,
+                "single Set body must produce 4 nodes (ReduceStart+Set+ReduceNext+ReduceFinish)"
+            );
+        }
+        Err(errors) => panic!("single Set body must compile, got: {errors:?}"),
+    }
+}
+
+#[test]
+fn lower_canonical_aggregate_compiles_single_do_body() {
+    let body = vec![reduce_do_step("body0", "1", "0")];
+    let result = compile_reduce_body(&body);
+    match result {
+        Ok(builder) => {
+            assert_eq!(
+                builder.nodes.len(), 4,
+                "single Do body must produce 4 nodes"
+            );
+        }
+        Err(errors) => panic!("single Do body must compile, got: {errors:?}"),
+    }
+}
+
+// ── B29-B31: ReduceStart/ReduceNext/ReduceFinish field verification ──
+
+#[test]
+fn lower_canonical_aggregate_reduce_start_body_equals_id_plus_one() {
+    let body = vec![reduce_set_step("body0", "1")];
+    let builder = compile_reduce_body(&body).expect("single Set body must compile");
+    assert_eq!(
+        builder.nodes[0].id,
+        StepIdx::new(0),
+        "ReduceStart must be at id"
+    );
+    match &builder.nodes[0].kind {
+        vb_core::CompiledNodeKind::ReduceStart { body: body_step, done, .. } => {
+            assert_eq!(
+                *body_step, StepIdx::new(1),
+                "ReduceStart.body must be id + 1"
+            );
+            assert_eq!(
+                *done, StepIdx::new(3),
+                "ReduceStart.done must be id + 3"
+            );
+        }
+        other => panic!("expected ReduceStart at node 0, got {other:?}"),
+    }
+}
+
+#[test]
+fn lower_canonical_aggregate_reduce_next_has_correct_field_values() {
+    let body = vec![reduce_set_step("body0", "1")];
+    let builder = compile_reduce_body(&body).expect("single Set body must compile");
+    assert_eq!(
+        builder.nodes[2].id,
+        StepIdx::new(2),
+        "ReduceNext must be at id + 2"
+    );
+    match &builder.nodes[2].kind {
+        vb_core::CompiledNodeKind::ReduceNext { body: body_step, done, .. } => {
+            assert_eq!(
+                *body_step, StepIdx::new(1),
+                "ReduceNext.body must equal body_step (same as ReduceStart.body)"
+            );
+            assert_eq!(
+                *done, StepIdx::new(3),
+                "ReduceNext.done must equal done_step"
+            );
+        }
+        other => panic!("expected ReduceNext at node 2, got {other:?}"),
+    }
+}
+
+#[test]
+fn lower_canonical_aggregate_reduce_finish_id_is_next_step_plus_one() {
+    let body = vec![reduce_set_step("body0", "1")];
+    let builder = compile_reduce_body(&body).expect("single Set body must compile");
+    assert_eq!(
+        builder.nodes[3].id,
+        StepIdx::new(3),
+        "ReduceFinish.id must be id + 3 (next_step + 1)"
+    );
+    match &builder.nodes[3].kind {
+        vb_core::CompiledNodeKind::ReduceFinish { .. } => {}
+        other => panic!("expected ReduceFinish at node 3, got {other:?}"),
+    }
+}
+
+#[test]
+fn lower_canonical_aggregate_reduce_finish_next_is_passed_next_parameter() {
+    let body = vec![reduce_set_step("body0", "1")];
+    let builder = compile_reduce_body(&body).expect("single Set body must compile");
+    assert_eq!(
+        builder.nodes[3].next, Some(StepIdx::new(10)),
+        "ReduceFinish.next must equal the passed next parameter"
+    );
+}
+
+// ── B30: ReduceNext.body equals ReduceStart.body ──
+
+#[test]
+fn reduce_start_and_reduce_next_both_point_to_body_step() {
+    let body = vec![reduce_set_step("body0", "1")];
+    let builder = compile_reduce_body(&body).expect("single Set body must compile");
+    let start_body_step = match &builder.nodes[0].kind {
+        vb_core::CompiledNodeKind::ReduceStart { body, .. } => *body,
+        other => panic!("expected ReduceStart, got {other:?}"),
+    };
+    let next_body_step = match &builder.nodes[2].kind {
+        vb_core::CompiledNodeKind::ReduceNext { body, .. } => *body,
+        other => panic!("expected ReduceNext, got {other:?}"),
+    };
+    assert_eq!(
+        start_body_step, next_body_step,
+        "ReduceStart.body and ReduceNext.body must be identical"
+    );
+    assert_eq!(
+        start_body_step, StepIdx::new(1),
+        "body_step must be id + 1"
+    );
+}
+
+// ── B34: ReduceFinish.next is parent aggregate's next ──
+
+#[test]
+fn reduce_finish_next_is_parent_aggregate_next() {
+    let body = vec![reduce_set_step("body0", "1")];
+    let mut builder = SlotCompiler::new();
+    let parent_next = Some(StepIdx::new(20));
+    lower_canonical_aggregate(
+        0,
+        StepIdx::new(5),
+        "0",   // input slot as integer string
+        "0",   // initial value
+        &body,
+        parent_next,
+        &mut builder,
+    )
+    .expect("single Set body must compile");
+    assert_eq!(
+        builder.nodes[3].next, parent_next,
+        "ReduceFinish.next must equal the parent aggregate's next step"
+    );
+}
+
+// ── Body Set node fields ──
+
+#[test]
+fn lower_canonical_aggregate_body_set_node_has_correct_id_and_next() {
+    let body = vec![reduce_set_step("body0", "1")];
+    let builder = compile_reduce_body(&body).expect("single Set body must compile");
+    let body_node = &builder.nodes[1];
+    assert_eq!(
+        body_node.id, StepIdx::new(1),
+        "body Set node must be at body_step = id + 1"
+    );
+    assert_eq!(
+        body_node.next, Some(StepIdx::new(2)),
+        "body Set node's next must point to ReduceNext at id + 2"
+    );
+    match &body_node.kind {
+        vb_core::CompiledNodeKind::SetConst { .. } => {}
+        other => panic!("expected SetConst for body Set node, got {other:?}"),
+    }
+}
+
+// ── B54-B56: Empty body rejection ──
+
+#[test]
+fn lower_canonical_aggregate_rejects_empty_body_with_step_field_shape() {
+    let body: Vec<StepAst> = vec![];
+    let result = compile_reduce_body(&body);
+    match result {
+        Err(errors) => {
+            let has_step_field_shape = errors.0.iter().any(|e| {
+                matches!(e, CompileError::StepFieldShape { field: "steps", .. })
+            });
+            assert!(
+                has_step_field_shape,
+                "empty body must be rejected with StepFieldShape on 'steps', got: {errors:?}"
+            );
+        }
+        Ok(builder) => {
+            panic!(
+                "empty body must not compile (got {} nodes)",
+                builder.nodes.len()
+            );
+        }
+    }
+}
+
+// ── Multi-step body tests (TDD RED — FAIL RUNTIME NOW) ──
+
+#[test]
+fn lower_canonical_aggregate_multi_step_two_set_body_tdd_red() {
+    let body = vec![reduce_set_step("s1", "1"), reduce_set_step("s2", "2")];
+    let result = compile_reduce_body(&body);
+    match result {
+        Ok(builder) => {
+            // TDD GREEN: after emit_reduce_body_steps is implemented
+            // overhead 3 + 2 body steps = 5 nodes total
+            assert_eq!(
+                builder.nodes.len(), 5,
+                "two-step body: ReduceStart + Set + Set + ReduceNext + ReduceFinish = 5 nodes"
+            );
+        }
+        Err(errors) => {
+            // TDD RED: emit_single_body_set rejects body.len() != 1
+            let has_step_field_shape = errors.0.iter().any(|e| {
+                matches!(e, CompileError::StepFieldShape { .. })
+            });
+            assert!(
+                has_step_field_shape,
+                "multi-step body rejected (TDD red): {errors:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn lower_canonical_aggregate_multi_step_three_set_body_tdd_red() {
+    let body = vec![
+        reduce_set_step("s1", "1"),
+        reduce_set_step("s2", "2"),
+        reduce_set_step("s3", "3"),
+    ];
+    let result = compile_reduce_body(&body);
+    match result {
+        Ok(builder) => {
+            // TDD GREEN: 3 + 3 = 6 nodes total
+            assert_eq!(
+                builder.nodes.len(), 6,
+                "three-step body: 3 overhead + 3 Sets = 6 nodes"
+            );
+        }
+        Err(errors) => {
+            let has_step_field_shape = errors.0.iter().any(|e| {
+                matches!(e, CompileError::StepFieldShape { .. })
+            });
+            assert!(
+                has_step_field_shape,
+                "three-step body rejected (TDD red): {errors:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn lower_canonical_aggregate_multi_step_mixed_set_do_body_tdd_red() {
+    let body = vec![reduce_set_step("s1", "1"), reduce_do_step("s2", "1", "0")];
+    let result = compile_reduce_body(&body);
+    match result {
+        Ok(builder) => {
+            assert_eq!(
+                builder.nodes.len(), 5,
+                "mixed body: 3 overhead + Set + Do = 5 nodes"
+            );
+        }
+        Err(errors) => {
+            let has_step_field_shape = errors.0.iter().any(|e| {
+                matches!(e, CompileError::StepFieldShape { .. })
+            });
+            assert!(
+                has_step_field_shape,
+                "mixed body rejected (TDD red): {errors:?}"
+            );
+        }
+    }
+}
+
+// ── B12-B14: Width-node count parity (TDD RED) ──
+
+#[test]
+fn reduce_body_width_node_count_parity_single_set_body() {
+    let body = vec![reduce_set_step("s1", "1")];
+    let width = body_width(&body, 3).expect("width must compute");
+    let result = compile_reduce_body(&body);
+    match result {
+        Ok(builder) => {
+            assert_eq!(
+                builder.nodes.len(),
+                width,
+                "node count must equal body_width (3 overhead + 1 body = 4 nodes for single Set)"
+            );
+        }
+        Err(errors) => panic!("single Set body must compile via full pipeline, got: {errors:?}"),
+    }
+}
+
+#[test]
+fn reduce_body_width_node_count_parity_two_set_body_tdd_red() {
+    let body = vec![reduce_set_step("a", "1"), reduce_set_step("b", "2")];
+    let width = body_width(&body, 3).expect("width must compute");
+    assert_eq!(width, 5, "two-step body width: overhead 3 + 2 = 5");
+    let result = compile_reduce_body(&body);
+    match result {
+        Ok(builder) => {
+            assert_eq!(
+                builder.nodes.len(), width,
+                "node count ({}) must equal computed width ({}) (TDD green)",
+                builder.nodes.len(), width
+            );
+        }
+        Err(errors) => {
+            let has_step_field_shape = errors.0.iter().any(|e| {
+                matches!(e, CompileError::StepFieldShape { .. })
+            });
+            assert!(
+                has_step_field_shape,
+                "two-step body rejected (TDD red): {errors:?}"
+            );
+        }
+    }
+}
+
+// ── B21: No body IDs overlap with next_step ──
+
+#[test]
+fn lower_canonical_aggregate_body_ids_do_not_overlap_reduce_next_tdd_red() {
+    let body = vec![reduce_set_step("s1", "1"), reduce_set_step("s2", "2")];
+    let result = compile_reduce_body(&body);
+    match result {
+        Ok(builder) => {
+            // TDD GREEN: all body node IDs are < next_step (ReduceNext)
+            // body_step = id + 1 = StepIdx(1)
+            // body_width([Set,Set], 0) = 0 + 1 + 1 = 2
+            // next_step = body_step + body_width = StepIdx(1) + 2 = StepIdx(3)
+            // Body nodes at StepIdx(1) and StepIdx(2); both < StepIdx(3)
+            // ReduceNext at StepIdx(3), ReduceFinish at StepIdx(4)
+            let next_step = StepIdx::new(3);
+            for node in &builder.nodes {
+                assert!(
+                    node.id < next_step || matches!(node.kind, vb_core::CompiledNodeKind::ReduceNext { .. } | vb_core::CompiledNodeKind::ReduceFinish { .. }),
+                    "body node at {:?} must not occupy or exceed next_step {:?}",
+                    node.id, next_step
+                );
+            }
+        }
+        Err(errors) => {
+            let has_step_field_shape = errors.0.iter().any(|e| {
+                matches!(e, CompileError::StepFieldShape { .. })
+            });
+            assert!(
+                has_step_field_shape,
+                "multi-step body rejected (TDD red): {errors:?}"
+            );
+        }
+    }
+}
+
+// ── No panic: lower_canonical_aggregate returns Result for single step ──
+
+#[test]
+fn lower_canonical_aggregate_never_panics_for_single_set_body() {
+    let body = vec![reduce_set_step("s1", "1")];
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        compile_reduce_body(&body)
+    }));
+    match result {
+        Ok(inner) => match inner {
+            Ok(_) => {} // success
+            Err(_) => {} // error is OK, not a panic
+        },
+        Err(_) => panic!("lower_canonical_aggregate must not panic on valid input"),
+    }
+}
+
+// ── No panic: lower_canonical_aggregate returns Result for empty body ──
+
+#[test]
+fn lower_canonical_aggregate_never_panics_for_empty_body() {
+    let body: Vec<StepAst> = vec![];
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        compile_reduce_body(&body)
+    }));
+    match result {
+        Ok(inner) => match inner {
+            Err(_) => {} // error is expected, not a panic
+            Ok(_) => panic!("empty body must not succeed"),
+        },
+        Err(_) => panic!("lower_canonical_aggregate must not panic on empty body"),
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PHASE 3: Direct emit_reduce_body_steps Tests (NOW ACTIVE)
+// ═══════════════════════════════════════════════════════════════════════════
+
+use crate::mod_compile_lowering::part_04::emit_reduce_body_steps;
+
+#[test]
+fn emit_reduce_body_steps_assigns_sequential_distinct_step_indices() {
+    let body = vec![reduce_set_step("s1", "1"), reduce_set_step("s2", "2"), reduce_set_step("s3", "3")];
+    let mut builder = SlotCompiler::new();
+    let body_step = StepIdx::new(10);
+    let next = Some(StepIdx::new(20));
+    let result = emit_reduce_body_steps(&body, body_step, 0, SlotIdx::new(1), next, &mut builder);
+    match result {
+        Ok(()) => {
+            assert_eq!(builder.nodes.len(), 3, "must emit exactly 3 body nodes");
+            assert_eq!(builder.nodes[0].id, StepIdx::new(10), "first body node at body_step");
+            assert_eq!(builder.nodes[1].id, StepIdx::new(11), "second at body_step + Set width(1)");
+            assert_eq!(builder.nodes[2].id, StepIdx::new(12), "third at body_step + 2");
+        }
+        Err(e) => panic!("sequential assignment must succeed: {e:?}"),
+    }
+}
+
+#[test]
+fn emit_reduce_body_steps_single_step_next_points_to_next_parameter() {
+    let body = vec![reduce_set_step("s1", "1")];
+    let mut builder = SlotCompiler::new();
+    let next = Some(StepIdx::new(42));
+    let result = emit_reduce_body_steps(&body, StepIdx::new(0), 0, SlotIdx::new(1), next, &mut builder);
+    match result {
+        Ok(()) => {
+            assert_eq!(builder.nodes[0].next, Some(StepIdx::new(42)), "single body step next = next param");
+        }
+        Err(e) => panic!("single step must succeed: {e:?}"),
+    }
+}
+
+#[test]
+fn emit_reduce_body_steps_first_step_next_points_to_second_when_multi_step() {
+    let body = vec![reduce_set_step("s1", "1"), reduce_set_step("s2", "2")];
+    let mut builder = SlotCompiler::new();
+    let result = emit_reduce_body_steps(&body, StepIdx::new(0), 0, SlotIdx::new(1), Some(StepIdx::new(20)), &mut builder);
+    match result {
+        Ok(()) => {
+            assert_eq!(builder.nodes[0].next, Some(StepIdx::new(1)), "first step next = second step id");
+        }
+        Err(e) => panic!("multi-step must succeed: {e:?}"),
+    }
+}
+
+#[test]
+fn emit_reduce_body_steps_last_step_next_points_to_next_parameter() {
+    let body = vec![reduce_set_step("s1", "1"), reduce_set_step("s2", "2")];
+    let mut builder = SlotCompiler::new();
+    let next = Some(StepIdx::new(20));
+    let result = emit_reduce_body_steps(&body, StepIdx::new(0), 0, SlotIdx::new(1), next, &mut builder);
+    match result {
+        Ok(()) => {
+            assert_eq!(builder.nodes[1].next, next, "last body step next = next param");
+        }
+        Err(e) => panic!("multi-step must succeed: {e:?}"),
+    }
+}
+
+#[test]
+fn emit_reduce_body_steps_all_next_links_are_some() {
+    let body = vec![reduce_set_step("s1", "1"), reduce_set_step("s2", "2")];
+    let mut builder = SlotCompiler::new();
+    let result = emit_reduce_body_steps(&body, StepIdx::new(0), 0, SlotIdx::new(1), Some(StepIdx::new(20)), &mut builder);
+    match result {
+        Ok(()) => {
+            for (i, node) in builder.nodes.iter().enumerate() {
+                assert!(node.next.is_some(), "node {i} at {:?} must have Some(next), got None", node.id);
+            }
+        }
+        Err(e) => panic!("multi-step must succeed: {e:?}"),
+    }
+}
+
+#[test]
+fn emit_reduce_body_steps_empty_body_returns_step_field_shape() {
+    let body: Vec<StepAst> = vec![];
+    let mut builder = SlotCompiler::new();
+    let result = emit_reduce_body_steps(&body, StepIdx::new(0), 0, SlotIdx::new(1), None, &mut builder);
+    match result {
+        Err(errors) => {
+            let has_step_field_shape = errors.0.iter().any(|e| {
+                matches!(e, CompileError::StepFieldShape { field: "steps", .. })
+            });
+            assert!(has_step_field_shape, "empty body must be rejected with StepFieldShape on 'steps'");
+            assert_eq!(builder.nodes.len(), 0, "no nodes must be emitted for empty body");
+        }
+        Ok(()) => panic!("empty body must be rejected"),
+    }
+}
+
+#[test]
+fn emit_reduce_body_steps_produces_same_ir_as_emit_single_body_set_for_single_set() {
+    use crate::mod_compile_lowering::part_04::emit_single_body_set;
+    let body = vec![reduce_set_step("s1", "1")];
+    let mut builder_a = SlotCompiler::new();
+    let mut builder_b = SlotCompiler::new();
+    let id = StepIdx::new(0);
+    let next = Some(StepIdx::new(2));
+    let slot = SlotIdx::new(1);
+    emit_single_body_set(&body, id, 0, slot, next, &mut builder_a, false)
+        .expect("reference dispatcher must succeed");
+    emit_reduce_body_steps(&body, id, 0, slot, next, &mut builder_b)
+        .expect("multi-step dispatcher must succeed for single step");
+    assert_eq!(builder_a.nodes.len(), builder_b.nodes.len(), "both must emit same node count");
+    assert_eq!(builder_a.nodes[0].id, builder_b.nodes[0].id, "node IDs must match");
+    assert_eq!(builder_a.nodes[0].next, builder_b.nodes[0].next, "next links must match");
+}

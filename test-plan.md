@@ -1,95 +1,101 @@
-# Test Plan: vb-b8i8f Cancel/Kill Lattice Recovery
+# Test Plan: Nested Reduce Body Lowering (vb-xi2f.24)
 
 ## Summary
-- Bead: `vb-b8i8f`
-- State: 8 (test-planner)
-- Source checkout (control plane): `/home/lewis/src/velvet-ballistics`
-- Isolated workspace: `/home/lewis/isolated/velvet-ballistics-fresh-replacements/vb-b8i8f`
-- Bridge review: APPROVED (State 7, seq 12)
-- RRO rows: 22 total (5 genuine evidence, 7 deferred to State 11, 3 blocked, 2 pending exec, 5 Flux/Kani REJECTED)
-- Behaviors identified: 46
-- Trophy allocation: 22 unit / 18 integration / 3 e2e / 3 static
-- Proptest invariants: 12
-- Fuzz targets: 2
-- Kani harnesses: 8 new (additional to existing wired 12 in kani_record_kind.rs)
-- Mutation threshold target: >=90%
+- **Bead**: vb-xi2f.24
+- **State**: 8 (test-planner)
+- **Source checkout**: `/home/lewis/src/vb-workspaces/vb-xi2f.24`
+- **Bridge review**: APPROVED (State 7)
+- **Proof obligations mapped**: 32 (11 Kani, 6 Flux, 13 proptest, 2 fuzz, 5 Verus WAIVED)
+- **Behaviors identified**: 48
+- **Trophy allocation**: 18 unit / 20 integration / 3 e2e / 3 static / 4 proptest
+- **Proptest invariants**: 13 (planned in bridge, tested via proptest crate)
+- **Fuzz targets**: 2 (BLOCKED_TOOLING — musl+sanitizer)
+- **Kani harnesses**: 11 (existing, refine-only)
+- **Mutation threshold target**: >=90%
 
 ---
 
 ## 1. Behavior Inventory
 
-### C1: Public Kill API
-| B01 | `Runtime::kill_run` enqueues `ShardCommand::Kill` when run routes to existing shard |
-| B02 | `Runtime::kill_run` returns `Err(ShardNotFound)` when run routes to non-existent shard |
-| B03 | `Runtime::kill_run` returns `Err(QueueFull)` when shard command queue is full |
-| B04 | `Runtime::kill_run` returns `Err(RunNotFound)` when run does not exist on target shard (via `handle_kill` returning typed error) |
-| B05 | `Runtime::kill_run` returns `Err(RunAlreadyTerminal)` or typed error when run is already terminal |
-| B06 | `ShardCommand::Kill` variant is dispatched to `handle_kill` in tick processing |
+### C1: Multi-Step Body Width Calculation
+| B01 | `canonical_body_step_width()` returns correct width for Reduce with nested Set body (1) |
+| B02 | `canonical_body_step_width()` returns correct width for Reduce with nested Do body (1) |
+| B03 | `canonical_body_step_width()` returns correct width for Reduce with nested ForEach body |
+| B04 | `canonical_body_step_width()` returns correct width for Reduce with N=2 Set steps (2) |
+| B05 | `canonical_body_step_width()` returns correct width for Reduce with N=3 Set steps (3) |
+| B06 | `canonical_body_step_width()` returns width for Reduce with mixed Set+Do body steps |
+| B07 | `canonical_body_step_width()` returns width for nested Reduce (recursive) via `body_width(body, 3)` |
+| B08 | `canonical_body_step_width()` returns Err(UnsupportedStepPrimitive) for Finish in body |
+| B09 | `canonical_body_step_width()` returns Err(UnsupportedStepPrimitive) for Wait in body |
+| B10 | `canonical_body_step_width()` returns Err(UnsupportedStepPrimitive) for Ask in body |
+| B11 | `canonical_step_width(Reduce { body, .. })` equals `body_width(body, 3)` |
 
-### C2: Cancel/Kill Missing and Already-Terminal Semantics
-| B07 | `handle_cancel` returns `Err(RunNotFound)` when run is not in live `runs` |
-| B08 | `handle_cancel` returns `Err(RunAlreadyTerminal)` when run is in `terminal_runs` |
-| B09 | `handle_kill` returns `Err(RunNotFound)` when run is not in live `runs` |
-| B10 | `handle_kill` returns `Err(RunAlreadyTerminal)` when run is in `terminal_runs` |
-| B11 | Cancel on missing run does NOT append `RunCancelled` journal event |
-| B12 | Cancel on terminal run does NOT append a second `RunCancelled` journal event |
-| B13 | Kill on missing run does NOT append `RunKilled` journal event |
-| B14 | Kill on terminal run does NOT append a second `RunKilled` journal event |
-| B15 | Cancel on missing run does NOT increment `counters.inc_failed()` |
-| B16 | Cancel on terminal run does NOT increment `counters.inc_failed()` a second time |
-| B17 | Kill on missing run does NOT increment `counters.inc_failed()` |
-| B18 | Kill on terminal run does NOT increment `counters.inc_failed()` a second time |
-| B19 | Cancel on missing run does NOT mutate `terminal_runs` |
-| B20 | Kill on missing run does NOT mutate `terminal_runs` |
-| B21 | Cancel on missing run does NOT push `TraceEvent::RunCancelled` |
-| B22 | Kill on missing run does NOT push `TraceEvent::RunKilled` |
+### C2: Width-Node Count Synchronization
+| B12 | `body_width(body, 3)` equals `3 + emit_reduce_body_steps(body, ...).node_count` for N=1 body |
+| B13 | `body_width(body, 3)` equals `3 + emit_reduce_body_steps(body, ...).node_count` for N=2 body |
+| B14 | `body_width(body, 3)` equals `3 + emit_reduce_body_steps(body, ...).node_count` for N=3 body |
+| B15 | Width-node parity holds when ForEach is in body (ForEach width > 1) |
+| B16 | Width-node parity holds for nested Reduce in body |
 
-### C3: Single Terminal Journal Event
-| B23 | Cancel on live run appends exactly one `RunCancelled` journal event |
-| B24 | Kill on live run appends exactly one `RunKilled` journal event |
-| B25 | Cancel-then-cancel on same run: second cancel is rejected (C2 B08) |
-| B26 | Kill-then-kill on same run: second kill is rejected (C2 B10) |
-| B27 | Cancel-then-kill on same run: kill after cancel is rejected |
-| B28 | Kill-then-cancel on same run: cancel after kill is rejected |
-| B29 | Cancel-then-finish: finish after cancel does not produce `RunFinished` (stale authority) |
-| B30 | Kill-then-finish: finish after kill does not produce `RunFinished` (stale authority) |
+### C3: Body Step Sequential Assignment
+| B17 | `emit_reduce_body_steps` assigns sequential, non-overlapping StepIdx to body steps |
+| B18 | First body step gets `id + 1` (body_step) |
+| B19 | Second body step gets `body_step + canonical_body_step_width(step_0)` |
+| B20 | All StepIdx values are strictly increasing and within `[body_step, next_step)` |
+| B21 | No two body steps occupy the same StepIdx |
+| B22 | Body steps do not overlap with ReduceNext or ReduceFinish |
 
-### C4: Stale Action/Timer Cleanup
-| B31 | Successful cancel removes `pending_timers[run]` if present |
-| B32 | Successful kill removes `pending_timers[run]` if present |
-| B33 | Action completion after cancel returns typed error (`RunNotFound` or stale authority) |
-| B34 | Action failure after cancel returns typed error |
-| B35 | Action completion after kill returns typed error |
-| B36 | Action failure after kill returns typed error |
-| B37 | Ask answer after cancel returns typed error |
-| B38 | Ask answer after kill returns typed error |
-| B39 | Timer fire after cancel returns `InvalidTimerFire` or `RunNotFound` |
-| B40 | Timer fire after kill returns `InvalidTimerFire` or `RunNotFound` |
-| B41 | Stale action does not mutate live frame, journal, counters, or trace |
+### C4: Body Step Next-Link Chain
+| B23 | First body step's next points to second body step (when N>1) |
+| B24 | Last body step's next points to next_step (ReduceNext) |
+| B25 | When N=1: body step's next points to next_step |
+| B26 | Intermediate body step i's next points to body step i+1 |
+| B27 | All next references are `Some(step)` (no dangling chains) |
+| B28 | Chain integrity verified end-to-end via `compile_source()` |
 
-### C5: Durable Kill Storage Admission
-| B42 | `RecordKind::RunKilled.id()` returns `28` (const assertion) |
-| B43 | `is_known_record_kind(28)` returns `true` |
-| B44 | `validate_kind_family(MAGIC_JOURNAL_EVENT, 28)` returns `Ok(())` |
-| B45 | `validate_kind_family(MAGIC_SNAPSHOT, 28)` returns `Err(RecordKindFamilyMismatch)` |
-| B46 | `validate_kind_family(MAGIC_BLOB, 28)` returns `Err(RecordKindFamilyMismatch)` |
-| B47 | `encode_record(MAGIC_JOURNAL_EVENT, RunKilled, ...)` produces valid bytes |
-| B48 | `decode_record::<JournalEvent>(bytes, MAGIC_JOURNAL_EVENT, ...)` round-trips `RunKilled` |
-| B49 | `decode_journal_event(bytes, MAGIC_JOURNAL_EVENT, ...)` validates and returns `RunKilled` |
-| B50 | `validate_known_kind(28)` returns `Ok(())` |
-| B51 | `unknown_record_kind_value(28)` returns `None` |
-| B52 | Unknown kind (e.g., 29, 0xFFFF) still rejected by `is_known_record_kind` |
-| B53 | `validate_kind_family(MAGIC_JOURNAL_EVENT, 29)` returns `Err` (out of journal range) |
+### C5: ReduceStart/ReduceNext Body Reference
+| B29 | `ReduceStart.body` equals `body_step = id + 1` regardless of body length |
+| B30 | `ReduceNext.body` equals `body_step = id + 1` (same as ReduceStart) |
+| B31 | `ReduceStart.done` equals `done = next_step + 1` |
 
-### C6: Replay Integrity
-| B54 | `events_for_run` returns `Vec<JournalEvent>` with contiguous `EventSeq` |
-| B55 | RunKilled events preserve their `EventSeq` through replay |
-| B56 | `validate_replayed_event(run, expected_seq, &RunKilled)` returns `Ok(())` when seq matches |
-| B57 | `validate_replayed_event(run, other_seq, &RunKilled)` returns `Err(SequenceGap)` when seq mismatches |
-| B58 | `validate_replayed_event(other_run, seq, &RunKilled)` returns `Err(WrongRun)` when run mismatches |
-| B59 | Killed terminal events replay as terminal (do not permit side-effect re-execution) |
-| B60 | Kind 28 admission does not weaken rejection for unknown kind 29 |
-| B61 | `next_seq(EventSeq(u64::MAX))` returns `Err(SequenceOverflow)` (existing invariant, must survive) |
+### C6: ReduceFinish Position
+| B32 | `ReduceFinish.id` equals `next_step + 1` |
+| B33 | `ReduceFinish.id` is strictly after ReduceNext.id |
+| B34 | `ReduceFinish.next` equals the parent aggregate's next step |
+
+### C7: Single-Step Body Compatibility (REGRESSION)
+| B35 | `body.len() == 1` Set: `emit_reduce_body_steps` produces same IR as `emit_single_body_set` |
+| B36 | `body.len() == 1` Do: `emit_reduce_body_steps` produces same IR as `emit_single_body_set` |
+| B37 | `body.len() == 1` ForEach: `emit_reduce_body_steps` produces same IR as `emit_single_body_set` |
+| B38 | Existing single-step reduce workflow tests (PO-R1..R8) continue to pass |
+
+### C8: Nested Reduce Semantics
+| B39 | Reduce in body step 0 (non-last): receives next = next_body_step |
+| B40 | Reduce in body step N-1 (last): receives next = Some(next_step) |
+| B41 | Nested reduce produces correct 3-node ReduceStart/ReduceNext/ReduceFinish substructure |
+| B42 | Nested reduce's body steps do not collide with outer reduce's body steps |
+| B43 | Nested reduce compiles through `try_from_parts()` end-to-end |
+
+### C9: Symbolic Diagnostics
+| B44 | Empty reduce body → `StepFieldShape { field: "steps", .. }` with valid code |
+| B45 | Non-Set/Do/ForEach body step → `UnsupportedStepPrimitive { .. }` with valid code |
+| B46 | Overflowing body width → `StepIndexOutOfRange { .. }` with valid code |
+| B47 | All error codes are registered in CODE_REGISTRY (not `INTERNAL_INVARIANT`) |
+
+### C10: Deterministic Lowering
+| B48 | Same multi-step reduce source produces identical IR across repeated compilations |
+| B49 | Same multi-step reduce source produces identical digest across repeated compilations |
+
+### C11: No Panic
+| B50 | `emit_reduce_body_steps` never panics on any valid body (proptest) |
+| B51 | `lower_canonical_aggregate` never panics on any valid reduce config |
+| B52 | `canonical_body_step_width` never panics on any StepPrimitive variant |
+| B53 | Checked arithmetic (`checked_add`, `checked_step_offset`) catches all overflows |
+
+### C12: Empty Body Handling
+| B54 | `emit_reduce_body_steps` with `body.len() == 0` returns `Err(StepFieldShape { field: "steps", .. })` |
+| B55 | Empty body emits zero body nodes |
+| B56 | Empty body does not produce a broken chain (rejected before chain construction) |
 
 ---
 
@@ -97,514 +103,508 @@
 
 | Layer | Count | Behaviors | Rationale |
 |-------|-------|-----------|-----------|
-| **Unit / Calc** | 22 | B42-B53, B54-B61 (storage codec), B07-B10 (error type generation functions) | Pure functions with no I/O — `is_known_record_kind`, `validate_kind_family`, `encode_record`, `decode_record`, `decode_journal_event`, `next_seq`, `validate_replayed_event`. Exhaustive combinatorial coverage with boundary values. |
-| **Integration** | 18 | B01-B06, B11-B41 (cancel/kill lifecycle), B54-B56 (replay with real journal) | Component interactions using REAL dependencies — `Runtime`, `Shard`, `VolatileRuntimeJournal`. No mocks. Use `Runtime::new_with_journal` with `ShardConfig` and `VolatileRuntimeJournal` for actual state verification. |
-| **E2E** | 3 | B23-B24 (full cancel/kill lifecycle with journal+counters), B49 (end-to-end encode-decode through codec pipeline) | Full workflow: submit → tick → cancel/kill → verify journal + counters + trace + terminal state. |
-| **Static Analysis** | 3 | B42 (const assertion), compile-time type safety for ShardCommand::Kill dispatch, `#[non_exhaustive]` on RuntimeJournalEvent | Clippy zero-tolerance, cargo-deny, `RecordKind` exhaustive match compilation, `#[must_use]` on `RecordKind::id()`. |
+| **Unit / Calc** | 18 | B01-B11 (width calculation), B17-B22 (offset arithmetic), B29-B34 (node field assertions), B44-B47 (diagnostic codes), B48-B49 (digest determinism), B54-B56 (empty body) | Pure functions with no I/O — `canonical_body_step_width`, `body_width`, `checked_step_offset`. Test width arithmetic exhaustively with boundary values. Verify error variants are exact (not just `is_err()`). |
+| **Integration** | 20 | B12-B16 (width-node parity), B23-B28 (chain integrity), B35-B43 (regression + nested reduce), B50-B53 (no panic via real lowering) | Component interactions using REAL builder/lowering — `emit_reduce_body_steps` with `SlotCompiler`, `lower_canonical_aggregate` with real builder, `compile_source()` end-to-end. No mocks. Verify IR structure via `CompiledWorkflow::try_from_parts()`. |
+| **E2E** | 3 | B43 (nested reduce through try_from_parts), B48-B49 (full pipeline determinism) | Full workflow: YAML source → `compile_source()` → `try_from_parts()` → structural equality + digest match. |
+| **Static Analysis** | 3 | Clippy zero-tolerance, `#![forbid(unsafe_code)]`, `#[must_use]` on width functions, destructured `StepPrimitive` match exhaustiveness in `emit_reduce_body_steps` | Compile-time checks: no unsafe, exhaustive match arms, no forbidden tokens. |
+| **Proptest** | 13 (separate invocation) | Proof obligations PO-* (verification artifacts, not behavior tests) | Executed as separate proptest suite; planned in bridge, materialized at State 11-12. Behavior tests are independent of proptest harnesses. |
 
-**Target ratios: ~48% unit, ~39% integration, ~7% e2e, ~7% static**
+**Target ratios: ~38% unit, ~42% integration, ~6% e2e, ~6% static**
 
-Deviation justification: The cancel/kill lattice has more storage-codec pure functions (unit layer) than average runtime lifecycle features, and the e2e layer is thin because the `Runtime` public API surface for kill is just one new function. This ratio is appropriate for a storage-admission + lifecycle contract correction.
+Deviation justification: The reduce body lowering pipeline has rich stateful interactions (builder state, sequential offset assignment, chain construction) that are best tested at the integration layer. The unit layer is thinner because the pure arithmetic functions (`body_width`, `canonical_body_step_width`) are small and well-bounded. The e2e layer is thin because the reduce lowering is exercised through `compile_source()`, which is already an integration-level entry point.
 
 ---
 
 ## 3. BDD Scenarios
 
-### C1: Public Kill API
+### C1: Multi-Step Body Width Calculation
 
-#### Behavior: B01 — Runtime::kill_run enqueues ShardCommand::Kill when run routes to existing shard
-
-```
-fn kill_run_enqueues_shard_command_when_run_routes_to_shard():
-    Given: a Runtime with 1 shard, and a run submitted to that shard
-    When: runtime.kill_run(run) is called
-    Then: the call returns Ok(())
-    And: after tick processing, the journal contains a RunKilled event for that run
-    And: the run's terminal state is Killed
-```
-
-#### Behavior: B02 — Runtime::kill_run returns Err(ShardNotFound) when run routes to non-existent shard
+#### Behavior: B01 — `canonical_body_step_width` returns 1 for Set in body
 
 ```
-fn kill_run_returns_shard_not_found_when_shard_index_invalid():
-    Given: a Runtime with 1 shard, no run submitted, and a RunId that hashes to an out-of-range shard index
-    When: runtime.kill_run(run) is called
-    Then: returns Err(RuntimeError::ShardNotFound { shard: _ })
-    And: no journal events are appended
+fn canonical_body_step_width_returns_one_for_set_in_body():
+    Given: a StepPrimitive::Set { value: "42" }
+    When: canonical_body_step_width(&Set { .. }) is called
+    Then: returns Ok(1)
 ```
 
-*Note: Requires testing with RunId values that produce shard indices beyond shard_count. The shard-routing function should be verified for index mapping.*
-
-#### Behavior: B03 — Runtime::kill_run returns Err(QueueFull) when shard command queue is full
+#### Behavior: B02 — `canonical_body_step_width` returns 1 for Do in body
 
 ```
-fn kill_run_returns_queue_full_when_command_queue_exhausted():
-    Given: a Runtime with 1 shard, command queue capacity = 1, and the queue is already full
-    When: runtime.kill_run(run) is called
-    Then: returns Err(RuntimeError::QueueFull)
+fn canonical_body_step_width_returns_one_for_do_in_body():
+    Given: a StepPrimitive::Do { action: "1", input: "0" }
+    When: canonical_body_step_width(&Do { .. }) is called
+    Then: returns Ok(1)
 ```
 
-*Note: This may require a shard with a deliberately full queue.*
-
-#### Behavior: B04 — Runtime::kill_run returns typed error when run does not exist on target shard
+#### Behavior: B03 — `canonical_body_step_width` returns ForEach width (including nested body)
 
 ```
-fn kill_run_returns_run_not_found_when_run_never_submitted():
-    Given: a Runtime with 1 shard, no run submitted
-    When: runtime.kill_run(RunId::new(99999)) is called
-    Then: after tick processing, the command is processed but handle_kill returns Err(RunNotFound)
-    And: the public API result may be Ok (enqueue succeeds) — the error surfaces through counters/journal
+fn canonical_body_step_width_returns_foreach_total_width():
+    Given: a StepPrimitive::ForEach { body: [Set { value: "1" }] }
+    When: canonical_body_step_width(&ForEach { .. }) is called
+    Then: returns Ok(3)  // ForEach overhead=2 + body_width(body, 2)=1 → total 3
 ```
 
-#### Behavior: B05 — Runtime::kill_run returns typed error when run is already terminal
+#### Behavior: B04 — `canonical_body_step_width` returns 2 for 2 Set steps in body
 
 ```
-fn kill_run_rejects_already_terminal_run():
-    Given: a Runtime with a run that has completed (Finished terminal state)
-    When: runtime.kill_run(run) is called and processed
-    Then: handle_kill returns Err(RunAlreadyTerminal) (or typed equivalent)
-    And: no RunKilled journal event is appended
-    And: counters.inc_failed() is NOT incremented
-    And: terminal_runs is NOT mutated
+fn canonical_body_step_width_returns_two_for_two_set_steps_in_body():
+    Given: a StepPrimitive::Reduce { body: [Set { .. }, Set { .. }] }
+    When: canonical_body_step_width(&Reduce { .. }) is called
+    Then: returns Ok(5)  // overhead=3 + body_width(body, 0)=2 → total 5 (nested Reduce body width)
 ```
 
----
-
-### C2: Cancel/Kill Missing and Already-Terminal Semantics
-
-**CRITICAL: Current production code in `handle_cancel` and `handle_kill` always returns `Ok(())`. Tests B07-B22 must FAIL initially (TDD red) and then PASS after State 10 implementation fixes the error semantics.**
-
-#### Behavior: B07 — handle_cancel returns Err when run is not in live runs
+#### Behavior: B05 — `canonical_body_step_width` returns 3 for 3 Set steps in body
 
 ```
-fn handle_cancel_returns_run_not_found_when_run_never_submitted():
-    Given: a Shard with empty runs map
-    When: handle_cancel(RunId::new(1), None) is called
-    Then: returns Err(RuntimeError::RunNotFound)
-    And: pending_timers is NOT mutated (swap_remove on absent key is a no-op but should be guarded)
-    And: no journal event is appended
-    And: counters.inc_failed() is NOT called
-    And: terminal_runs is NOT mutated
+fn canonical_body_step_width_returns_three_for_three_set_steps_in_body():
+    Given: a StepPrimitive::Reduce { body: [Set, Set, Set] }
+    When: canonical_body_step_width(&Reduce { .. }) is called
+    Then: returns Ok(6)  // overhead=3 + body_width(body, 0)=3 → total 6
 ```
 
-#### Behavior: B08 — handle_cancel returns Err when run is already terminal
+#### Behavior: B06 — `canonical_body_step_width` returns correct width for mixed Set+Do body
 
 ```
-fn handle_cancel_returns_already_terminal_when_run_already_cancelled():
-    Given: a Shard where run 1 has been cancelled and is in terminal_runs
-    When: handle_cancel(RunId::new(1), None) is called a second time
-    Then: returns Err(RuntimeError::RunNotFound) or typed RunAlreadyTerminal error
-    And: no journal event is appended
-    And: counters.inc_failed() is NOT called
+fn canonical_body_step_width_handles_mixed_set_do_body():
+    Given: a StepPrimitive::Reduce { body: [Set, Do] }
+    When: canonical_body_step_width(&Reduce { .. }) is called
+    Then: returns Ok(5)  // overhead=3 + 1 + 1 → total 5
 ```
 
-#### Behaviors B09-B10: Kill equivalents of B07-B08
+#### Behavior: B07 — `canonical_body_step_width` returns correct width for nested Reduce (recursive)
 
 ```
-fn handle_kill_returns_run_not_found_when_run_never_submitted():
-    Given: a Shard with empty runs map
-    When: handle_kill(RunId::new(1), None) is called
-    Then: returns Err(RuntimeError::RunNotFound)
-    And: no journal event is appended
-    And: counters.inc_failed() is NOT called
-    And: terminal_runs is NOT mutated
-
-fn handle_kill_returns_already_terminal_when_run_already_killed():
-    Given: a Shard where run 1 has been killed and is in terminal_runs
-    When: handle_kill(RunId::new(1), None) is called a second time
-    Then: returns Err(RuntimeError::RunNotFound) or typed RunAlreadyTerminal error
-    And: no journal event is appended
-    And: counters.inc_failed() is NOT called
+fn canonical_body_step_width_handles_nested_reduce_in_body():
+    Given: a StepPrimitive::Reduce { body: [Reduce { body: [Set] }] }
+    When: canonical_body_step_width(&Reduce { .. }) is called
+    Then: returns Ok(8)  // outer overhead=3 + nested: body_width([Reduce{body:[Set]}], 3) = 3+body_width([Set],0)+body_width([],3)+? → need exact compute
 ```
 
-#### Behaviors B11-B22: Side-effect-free rejection
+#### Behavior: B08 — `canonical_body_step_width` rejects Finish in body
 
 ```
-fn cancel_missing_run_does_not_append_journal_event():
-    Given: a Shard with empty runs map
-    When: handle_cancel(RunId::new(1), None) is called
-    Then: no RunCancelled journal event is appended
+fn canonical_body_step_width_rejects_finish_in_body():
+    Given: a StepPrimitive::Finish { result: 0 }
+    When: canonical_body_step_width(&Finish { .. }) is called
+    Then: returns Err(CompileError::UnsupportedStepPrimitive { primitive: "finish" })
+```
 
-fn cancel_terminal_run_does_not_append_second_journal_event():
-    Given: a Shard where run 1 is in terminal_runs (cancelled)
-    When: handle_cancel(RunId::new(1), None) is called a second time
-    Then: no new RunCancelled journal event is appended (event count unchanged)
+#### Behavior: B09-B10 — rejects Wait/Ask in body
 
-fn kill_missing_run_does_not_append_journal_event():
-    Given: a Shard with empty runs map
-    When: handle_kill(RunId::new(1), None) is called
-    Then: no RunKilled journal event is appended
+```
+fn canonical_body_step_width_rejects_wait_in_body():
+    Given: a StepPrimitive::Wait { .. }
+    When: canonical_body_step_width(&Wait { .. }) is called
+    Then: returns Err(CompileError::UnsupportedStepPrimitive { primitive: "wait" })
 
-fn kill_terminal_run_does_not_append_second_journal_event():
-    Given: a Shard where run 1 is in terminal_runs (killed)
-    When: handle_kill(RunId::new(1), None) is called a second time
-    Then: no new RunKilled journal event is appended
+fn canonical_body_step_width_rejects_ask_in_body():
+    Given: a StepPrimitive::Ask { .. }
+    When: canonical_body_step_width(&Ask { .. }) is called
+    Then: returns Err(CompileError::UnsupportedStepPrimitive { primitive: "ask" })
+```
 
-fn cancel_missing_run_does_not_increment_failed_counter():
-fn cancel_terminal_run_does_not_increment_failed_counter_twice():
-fn kill_missing_run_does_not_increment_failed_counter():
-fn kill_terminal_run_does_not_increment_failed_counter_twice():
-    -- (assert counters.inc_failed() not called via snapshot comparison)
+#### Behavior: B11 — `canonical_step_width(Reduce)` equals `body_width(body, 3)`
 
-fn cancel_missing_run_does_not_mutate_terminal_runs():
-fn kill_missing_run_does_not_mutate_terminal_runs():
-    -- (assert terminal_runs unchanged before vs after)
-
-fn cancel_missing_run_does_not_push_trace_event():
-    Given: a Shard, trace_ring has N events
-    When: handle_cancel(RunId::new(missing), None) is called
-    Then: trace_ring still has N events (no RunCancelled pushed)
-
-fn kill_missing_run_does_not_push_trace_event():
-    Given: a Shard, trace_ring has N events
-    When: handle_kill(RunId::new(missing), None) is called
-    Then: trace_ring still has N events (no RunKilled pushed)
+```
+fn canonical_step_width_reduce_equals_body_width_plus_three():
+    Given: a StepPrimitive::Reduce { body: [Set { .. }] }
+    When: canonical_step_width(&Reduce { .. }) is called
+    Then: result == body_width(&body, 3)
 ```
 
 ---
 
-### C3: Single Terminal Journal Event
+### C2: Width-Node Count Synchronization
 
-#### Behaviors B23-B24: Successful terminalization
-
-```
-fn cancel_live_run_appends_exactly_one_runcancelled_event():
-    Given: a Runtime with a live run (submitted + ticked to Running state)
-    When: runtime.cancel_run(run) is called and ticks processed
-    Then: journal contains exactly one RunCancelled event for that run
-    And: terminal_runs contains the run
-    And: counters.runs_failed == 1
-
-fn kill_live_run_appends_exactly_one_runkilled_event():
-    Given: a Runtime with a live run
-    When: runtime.kill_run(run) is called and ticks processed
-    Then: journal contains exactly one RunKilled event for that run
-    And: terminal_runs contains the run
-    And: counters.runs_failed == 1
-```
-
-#### Behaviors B25-B28: Mutual exclusion of terminal events
+#### Behavior: B12 — Width-node parity for N=1 body
 
 ```
-fn second_cancel_after_first_cancel_is_rejected():
-    Given: a run that has been cancelled (terminal_runs contains it)
-    When: runtime.cancel_run(run) is called again and ticks processed
-    Then: cancel returns typed error (not Ok(()))
-    And: journal RunCancelled count remains 1
-
-fn second_kill_after_first_kill_is_rejected():
-    Given: a run that has been killed (terminal_runs contains it)
-    When: runtime.kill_run(run) is called again and ticks processed
-    Then: kill returns typed error
-    And: journal RunKilled count remains 1
-
-fn kill_after_cancel_is_rejected():
-    Given: a run that has been cancelled
-    When: runtime.kill_run(run) is called and ticks processed
-    Then: returns typed error
-    And: journal contains RunCancelled but NOT RunKilled
-
-fn cancel_after_kill_is_rejected():
-    Given: a run that has been killed
-    When: runtime.cancel_run(run) is called and ticks processed
-    Then: returns typed error
-    And: journal contains RunKilled but NOT RunCancelled
+fn width_node_parity_single_step_body():
+    Given: a reduce body [Set { value: "1" }] and overhead=3
+    When: body_width(body, 3) is computed
+    And: emit_reduce_body_steps(body, body_step, idx, slot, next, builder) is executed
+    Then: body_width result equals (3 + builder.node_count())
 ```
 
----
-
-### C4: Stale Action/Timer Cleanup
+#### Behavior: B13 — Width-node parity for N=2 body
 
 ```
-fn cancel_removes_pending_timer():
-    Given: a runtime with a run suspended on a Wait or Ask timer
-    When: runtime.cancel_run(run) is called and ticks processed
-    Then: pending_timers no longer contains the run
-    And: the pending timer is removed before the journal event is appended
+fn width_node_parity_two_step_body():
+    Given: a reduce body [Set { .. }, Do { .. }] and overhead=3
+    When: body_width(body, 3) is computed
+    And: emit_reduce_body_steps emits body nodes
+    Then: width equals (3 + nodes_emitted)
+```
 
-fn kill_removes_pending_timer():
-    Given: a runtime with a run suspended on a Wait or Ask timer
-    When: runtime.kill_run(run) is called and ticks processed
-    Then: pending_timers no longer contains the run
-    And: the pending timer is removed before the journal event is appended
+#### Behavior: B14 — Width-node parity for N=3 body
 
-fn action_completion_after_cancel_returns_error():
-    Given: a run that submitted an action-suspended workflow, then cancelled
-    When: runtime.complete_action_with_output(ticket, output) is called
-    Then: returns Err (typed error, not Ok(()))
-    And: journal does NOT contain ActionCompletedEvent for the stale action
-    And: the run's frame is NOT mutated
+```
+fn width_node_parity_three_step_body():
+    Given: a reduce body [Set, Set, Set] and overhead=3
+    When: body_width(body, 3) is computed
+    And: emit_reduce_body_steps emits body nodes
+    Then: width equals (3 + nodes_emitted)
+```
 
-fn action_failure_after_cancel_returns_error():
-    Given: a run that submitted an action, then cancelled
-    When: runtime.fail_action(ticket, failure) is called
-    Then: returns Err (typed error)
-    And: journal does NOT contain ActionFailedEvent
+#### Behavior: B15 — Width-node parity with ForEach in body
 
-fn action_completion_after_kill_returns_error():
-fn action_failure_after_kill_returns_error():
-    -- (kill equivalents of above)
+```
+fn width_node_parity_with_foreach_in_body():
+    Given: a reduce body [ForEach { body: [Set] }] and overhead=3
+    When: body_width(body, 3) is computed
+    And: emit_reduce_body_steps emits body nodes
+    Then: width equals (3 + nodes_emitted)
+    And: ForEach width (3) is accounted for, not just 1 step
+```
 
-fn ask_answer_after_cancel_returns_error():
-    Given: a run suspended on an Ask, then cancelled
-    When: an AskAnswer is dispatched
-    Then: returns Err (RunNotFound or InvalidActionCompletion)
-    And: no SlotWritten journal event is appended
+#### Behavior: B16 — Width-node parity with nested Reduce in body
 
-fn ask_answer_after_kill_returns_error():
-    -- (kill equivalent)
-
-fn timer_fire_after_cancel_returns_error():
-    Given: a run cancelled, leaving pending_timers empty
-    When: handle_timer(run, generation, deadline, kind) is called
-    Then: returns Err(InvalidTimerFire)
-    And: no journal event is appended
-    And: counters are NOT mutated
-
-fn timer_fire_after_kill_returns_error():
-    -- (kill equivalent of timer_fire_after_cancel)
-
-fn stale_action_does_not_mutate_state():
-    Given: a run that was cancelled, snapshot of frame, counters, journal, terminal_runs
-    When: a stale action completion is attempted (returns Err)
-    Then: frame, counters, journal, terminal_runs, trace_ring are identical to pre-attempt snapshot
+```
+fn width_node_parity_with_nested_reduce_in_body():
+    Given: a reduce body [Reduce { body: [Set] }] and overhead=3
+    When: body_width(body, 3) is computed
+    And: emit_reduce_body_steps emits body nodes
+    Then: width equals (3 + nodes_emitted)
 ```
 
 ---
 
-### C5: Durable Kill Storage Admission
+### C3: Body Step Sequential Assignment
+
+#### Behavior: B17-B22 — Sequential, non-overlapping StepIdx values
 
 ```
-fn record_kind_run_killed_id_is_28():
-    -- const assertion: assert_eq!(RecordKind::RunKilled.id(), 28)
+fn emit_reduce_body_steps_assigns_sequential_distinct_step_indices():
+    Given: a reduce body [Set, Set, Set] and body_step = StepIdx(10)
+    When: emit_reduce_body_steps(body, body_step, idx, slot, next, builder) is executed
+    Then: three nodes are emitted
+    And: node[0].id == StepIdx(10) (first body step)
+    And: node[1].id == StepIdx(11) (second body step, after Set width=1)
+    And: node[2].id == StepIdx(12) (third body step)
+    And: all IDs are distinct
+    And: all IDs < next_step (ReduceNext sits after all body steps)
 
-fn is_known_record_kind_28_returns_true():
-    -- unit: assert!(is_known_record_kind(28))
+fn emit_reduce_body_steps_offsets_skip_for_foreach_body_step():
+    Given: a reduce body [ForEach { body: [Set] }, Set]
+    And: body_step = StepIdx(10)
+    When: emit_reduce_body_steps body step dispatch runs
+    Then: ForEach occupies offsets 10..13 (4 steps: ForEachStart + Set + ForEachCheck + ForEachFinish)
+    And: the Set after ForEach starts at StepIdx(13) not StepIdx(11)
 
-fn validate_kind_family_journal_event_28_returns_ok():
-    -- unit: assert_eq!(validate_kind_family(MAGIC_JOURNAL_EVENT, 28), Ok(()))
-
-fn validate_kind_family_snapshot_28_returns_rejection():
-    -- unit: assert!(matches!(validate_kind_family(MAGIC_SNAPSHOT, 28), Err(RecordKindFamilyMismatch{..})))
-
-fn validate_kind_family_blob_28_returns_rejection():
-    -- unit: assert!(matches!(validate_kind_family(MAGIC_BLOB, 28), Err(RecordKindFamilyMismatch{..})))
-
-fn encode_record_runkilled_produces_valid_bytes():
-    Given: a valid JournalEvent::RunKilled { run: non-zero, seq: valid, attempt: >0 }
-    When: encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunKilled, seq_n, &event, max_payload_len) is called
-    Then: returns Ok(Vec<u8>) with non-empty bytes
-
-fn decode_record_runkilled_roundtrip():
-    Given: a RunKilled event, encoded bytes from encode_record
-    When: decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, max_payload_len) is called
-    Then: returns Ok((envelope, event)) where event == original RunKilled event
-
-fn decode_journal_event_runkilled_passes_validation():
-    Given: valid RunKilled encoded bytes (run != 0, seq < MAX, attempt > 0)
-    When: decode_journal_event(&bytes, MAGIC_JOURNAL_EVENT, max_payload_len) is called
-    Then: returns Ok((envelope, JournalEvent::RunKilled{..}))
-    And: is_valid() check passes
-
-fn decode_journal_event_runkilled_zero_run_rejected():
-    Given: encoded RunKilled with RunId(0)
-    When: decode_journal_event is called
-    Then: returns Err(JournalError::InvalidEvent) (is_valid() fails on zero run)
-
-fn decode_journal_event_runkilled_zero_attempt_rejected():
-    Given: encoded RunKilled with attempt=0
-    When: decode_journal_event is called
-    Then: returns Err(JournalError::InvalidEvent)
-
-fn validate_known_kind_28_returns_ok():
-    -- unit: assert_eq!(validate_known_kind(28), Ok(()))
-
-fn unknown_record_kind_value_28_returns_none():
-    -- unit: assert_eq!(unknown_record_kind_value(28), None)
-
-fn is_known_record_kind_29_returns_false():
-    -- unit: assert!(!is_known_record_kind(29))
-
-fn is_known_record_kind_0xFFFF_returns_false():
-    -- unit: assert!(!is_known_record_kind(0xFFFF))
-
-fn validate_kind_family_journal_event_29_returns_rejection():
-    -- unit: assert!(matches!(validate_kind_family(MAGIC_JOURNAL_EVENT, 29), Err(RecordKindFamilyMismatch{..})))
+fn emit_reduce_body_steps_no_slot_collision_with_reduce_next():
+    Given: a reduce body [Set, Set] and body_step = StepIdx(10)
+    And: next_step = body_step + body_width(body, 0) = StepIdx(12)
+    When: emit_reduce_body_steps emits body nodes
+    Then: last body node at StepIdx(11)
+    And: StepIdx(12) is not used by any body node (reserved for ReduceNext)
 ```
 
 ---
 
-### C6: Replay Integrity
+### C4: Body Step Next-Link Chain
+
+#### Behavior: B23-B28 — Correct next-link chains
 
 ```
-fn validate_replayed_event_match_returns_ok():
-    Given: RunKilled event with run=RunId(10), seq=EventSeq(5)
-    When: validate_replayed_event(RunId(10), EventSeq(5), &event) is called
-    Then: returns Ok(())
+fn body_step_next_chain_first_to_second_when_multi_step():
+    Given: a reduce body [Set, Do]
+    When: emit_reduce_body_steps emits body nodes
+    Then: node[0].next == Some(StepIdx(body_step + 1))
+    And: node[0].next is not None
 
-fn validate_replayed_event_seq_mismatch_returns_gap():
-    Given: RunKilled event with seq=EventSeq(5)
-    When: validate_replayed_event(run, EventSeq(3), &event) is called
-    Then: returns Err(JournalError::SequenceGap { expected: EventSeq(3), actual: EventSeq(5) })
+fn body_step_next_chain_last_links_to_next_step():
+    Given: a reduce body [Set, Do] and next_step = Some(StepIdx(12))
+    When: emit_reduce_body_steps emits body nodes
+    Then: node[1].next == Some(StepIdx(12))  // last body step → ReduceNext
 
-fn validate_replayed_event_run_mismatch_returns_wrong_run():
-    Given: RunKilled event with run=RunId(10)
-    When: validate_replayed_event(RunId(20), EventSeq(0), &event) is called
-    Then: returns Err(JournalError::WrongRun { expected: RunId(20), actual: RunId(10) })
+fn body_step_next_chain_single_step_links_to_next_step():
+    Given: a reduce body [Set] and next_step = Some(StepIdx(12))
+    When: emit_reduce_body_steps emits body node
+    Then: node[0].next == Some(StepIdx(12))
 
-fn next_seq_max_returns_overflow():
-    Given: EventSeq::new(u64::MAX)
-    When: next_seq(seq) is called
-    Then: returns Err(JournalError::SequenceOverflow)
-
-fn next_seq_zero_returns_one():
-    Given: EventSeq::new(0)
-    When: next_seq(seq) is called
-    Then: returns Ok(EventSeq::new(1))
-
-fn kind_28_admission_does_not_open_unknown_kind_29():
-    Given: is_known_record_kind passes for 28, validate_kind_family(MAGIC_JOURNAL_EVENT, 28) returns Ok
-    When: is_known_record_kind(29), validate_kind_family(MAGIC_JOURNAL_EVENT, 29) are called
-    Then: is_known_record_kind(29) returns false AND validate_kind_family returns Err
-    -- Regression: ensuring the 28 fix didn't accidentally admit wildcard kinds
+fn body_step_next_chain_integrity_full_body():
+    Given: a reduce body [Set, Set, Set] and next_step = Some(StepIdx(15))
+    When: emit_reduce_body_steps emits body nodes
+    Then: node[i].next == Some(node[i+1].id) for i in 0..2
+    And: node[2].next == Some(next_step)
+    And: no next field is None (no dangling chains)
 ```
+
+---
+
+### C5-C6: ReduceStart/ReduceNext/ReduceFinish References
+
+```
+fn reduce_start_and_reduce_next_both_point_to_body_step():
+    Given: a reduce with body [Set, Set] lowered through lower_canonical_aggregate
+    When: inspecting the emitted IR nodes
+    Then: the ReduceStart node's body field == body_step
+    And: the ReduceNext node's body field == body_step (same)
+    And: ReduceStart.done == next_step + 1
+
+fn reduce_finish_id_is_next_step_plus_one():
+    Given: body_step=10, body_width(body, 0)=2 → next_step=12
+    When: lower_canonical_aggregate emits ReduceFinish
+    Then: ReduceFinish.id == StepIdx(13)  // next_step + 1
+
+fn reduce_finish_next_is_parent_aggregate_next():
+    Given: a reduce embedded in workflow with parent_next = Some(StepIdx(20))
+    When: lower_canonical_aggregate(nxt=parent_next) compiles
+    Then: ReduceFinish.next == Some(StepIdx(20))
+```
+
+---
+
+### C7: Single-Step Body Compatibility (REGRESSION)
+
+```
+fn emit_reduce_body_steps_single_set_equivalent_to_emit_single_body_set():
+    Given: a body with exactly 1 Set step
+    When: emit_reduce_body_steps(body, id, diag, slot, next, builder_a) is called
+    And: emit_single_body_set(body, id, diag, slot, next, builder_b, false) is called
+    Then: both return Ok(())
+    And: builder_a.node_count() == builder_b.node_count()
+    And: builder_a.nodes[0].id == builder_b.nodes[0].id
+    And: builder_a.nodes[0].next == builder_b.nodes[0].next
+    And: builder_a.nodes[0].kind matches builder_b.nodes[0].kind
+
+fn emit_reduce_body_steps_single_do_equivalent_to_emit_single_body_set():
+    Given: a body with exactly 1 Do step
+    When: both dispatchers are called with same parameters
+    Then: both emit identical IR
+
+fn emit_reduce_body_steps_single_foreach_equivalent_to_emit_single_body_set():
+    Given: a body with exactly 1 ForEach step (body: [Set])
+    When: both dispatchers are called with same parameters
+    Then: both emit identical IR (ForEach → 4 nodes with same structure)
+
+fn existing_po_r1_through_r8_tests_pass():
+    Given: existing reduce unit and digest tests (tests.rs:524-730)
+    When: tests are run after emit_reduce_body_steps implementation
+    Then: all 8 reduce digest tests (PO-R1..PO-R8) continue to pass
+    And: collect vs aggregate collision test (PO-R8) continues to pass
+```
+
+---
+
+### C8: Nested Reduce Semantics
+
+```
+fn nested_reduce_in_body_step_0_gets_next_body_step_as_next():
+    Given: a reduce body [Reduce { body: [Set] }, Set]
+    When: emit_reduce_body_steps dispatches body step 0 (nested reduce)
+    Then: lower_canonical_aggregate is called with next = Some(second_body_step_id)
+
+fn nested_reduce_in_last_body_step_gets_next_step_as_next():
+    Given: a reduce body [Set, Reduce { body: [Set] }]
+    When: emit_reduce_body_steps dispatches body step 1 (nested reduce, last)
+    Then: lower_canonical_aggregate is called with next = Some(next_step)
+
+fn nested_reduce_produces_correct_three_node_substructure():
+    Given: a reduce with body [Reduce { variable: "inner", input: "items", initial: "0", body: [Set { value: "1" }] }]
+    When: the full workflow is lowered through compile_source
+    Then: the IR contains ReduceStart(inner) + Set(body) + ReduceNext(inner) + ReduceFinish(inner) within the outer body
+    And: inner reduce's node IDs do not collide with outer reduce's node IDs
+
+fn nested_reduce_compiles_through_try_from_parts():
+    Given: a YAML source with nested reduce
+    When: compile_source(source) is called
+    Then: result is Ok(CompiledWorkflow)
+    And: CompiledWorkflow::try_from_parts passes
+```
+
+---
+
+### C9: Symbolic Diagnostics
+
+```
+fn reduce_empty_body_returns_step_field_shape_with_field_steps():
+    Given: a reduce body with 0 steps
+    When: emit_reduce_body_steps(body_empty, id, idx, slot, next, builder) is called
+    Then: returns Err(CompileErrors { .. })
+    And: the error is CompileError::StepFieldShape { field: "steps", .. }
+    And: error.code() returns Some(code) where code is registered in CODE_REGISTRY
+
+fn reduce_non_set_body_step_returns_unsupported_step_primitive():
+    Given: a reduce body step of type Finish
+    When: emit_reduce_body_steps dispatches the body step
+    Then: returns Err(CompileError::UnsupportedStepPrimitive { primitive: "finish", .. })
+    And: error.code() returns Some(code) registered in CODE_REGISTRY
+
+fn reduce_width_overflow_returns_step_index_out_of_range():
+    Given: a reduce body with enough steps to overflow u16::MAX in width calculation
+    When: body_width is computed or emit_reduce_body_steps runs
+    Then: returns Err(CompileError::StepIndexOutOfRange { .. })
+    And: error.code() returns Some(code) registered in CODE_REGISTRY
+```
+
+---
+
+### C10: Deterministic Lowering
+
+```
+fn same_multi_step_reduce_source_produces_identical_ir():
+    Given: a YAML source with multi-step reduce body
+    When: compile_source(source) is called twice
+    Then: both results are Ok
+    And: workflow_a.nodes == workflow_b.nodes (structurally identical)
+    And: workflow_a.digest == workflow_b.digest
+
+fn same_multi_step_reduce_source_produces_identical_digest():
+    Given: a reduce workflow with multi-step body
+    When: compile_source(source) is called 3 times
+    Then: digest_a == digest_b == digest_c
+```
+
+---
+
+### C11: No Panic
+
+```
+fn emit_reduce_body_steps_never_panics():
+    Given: valid and invalid body configurations (tested via proptest)
+    When: emit_reduce_body_steps is called
+    Then: always returns Result<(), CompileErrors> — never panics
+
+fn lower_canonical_aggregate_never_panics():
+    Given: valid reduce configurations
+    When: lower_canonical_aggregate is called
+    Then: always returns Result — never panics
+```
+
+---
+
+### C12: Empty Body Handling
+
+```
+fn empty_body_rejected_before_any_nodes_emitted():
+    Given: a reduce body with 0 steps
+    When: emit_reduce_body_steps(body=[], body_step, idx, slot, next, builder) is called
+    Then: returns Err immediately (no nodes emitted)
+    And: builder.node_count() == 0 (no orphaned nodes)
+    And: builder.slot_count() is unchanged
+
+fn empty_body_does_not_produce_broken_chain():
+    Given: a reduce with 0 body steps
+    When: lowered through lower_canonical_aggregate
+    Then: fails before ReduceNext is emitted (rejected in body dispatcher)
+    And: no partially-constructed ReduceStart orphan exists
+```
+
+**Important design note**: The empty-body semantics may differ between the multi-step dispatcher and `emit_single_body_set`. The single-step dispatcher rejects `body.len() == 0` (it requires exactly 1). The multi-step dispatcher must also reject `body.len() == 0`, but via the explicit error path, not via the `len() != 1` guard. See domain-model open question 2 — need explicit domain decision on whether `body.len() == 0` is a compile-time error.
 
 ---
 
 ## 4. Proptest Invariants
 
-### PO-PROP-001 (RRO-004): RunKilled validation properties — PASSING via workspace proptest
-- **Existing**: `prop_record_kind_28_is_valid`, `prop_runkilled_valid_event_passes_validation`, `prop_runkilled_zero_run_invalid`, `prop_runkilled_zero_attempt_invalid`, `prop_runkilled_overflow_seq_invalid`
-- **Status**: 10/10 tests pass. Non-vacuous. Production-bound.
-- **Invariant**: Any `JournalEvent::RunKilled` with non-zero run, non-zero attempt, and non-overflow seq passes `is_valid()`; zero-run, zero-attempt, and overflow-seq events fail validation.
+### PO-001: Width-Node Parity (RRO-001, existing: `reduce_body_width_parity.rs`)
+- **Invariant**: For any `Vec<StepAst>` body (1..6 steps, valid primitives: Set, Do, ForEach), `body_width(body, 3) == 3 + emit_reduce_body_steps(body, ...).node_count`.
+- **Strategy**: Generate random valid reduce bodies. Compute width. Execute multi-step dispatcher. Assert count equality.
+- **Anti-invariant**: Empty body produces predictable rejection without node emission.
 
-### PO-PROP-002 (RRO-008): RecordKind uniqueness — PASSING
-- **Existing**: `prop_record_kind_28_is_unique`, `prop_journal_kinds_in_valid_range`
-- **Status**: PASSING. Non-vacuous.
-- **Invariant**: All `RecordKind` variant `id()` values are unique when collected into a `BTreeSet`; `RunKilled=28` is not duplicated.
+### PO-002: Offset Monotonicity (RRO-006, existing: `reduce_body_offset_monotonic.rs`)
+- **Invariant**: All StepIdx values emitted by `emit_reduce_body_steps` are distinct, strictly increasing, and within `[body_step, next_step)`.
+- **Strategy**: Generate random body sequences. Execute dispatcher. Collect all emitted StepIdx. Verify monotonic + distinct + in-range.
 
-### PO-PROP-003 (RRO-012): RunKilled field consistency — PASSING
-- **Existing**: `prop_runkilled_carries_attempt`, `prop_runkilled_record_kind_consistent`, `prop_runkilled_distinct_from_cancelled`
-- **Status**: PASSING. Non-vacuous.
-- **Invariant**: `RunKilled.attempt()` returns the given attempt; `RunKilled.record_kind()` always returns `RecordKind::RunKilled`; `RunKilled` is not equal to `RunCancelled` with same fields.
+### PO-003: Chain Integrity (RRO-015, existing: `reduce_body_chain_integrity.rs`)
+- **Invariant**: For any valid body (1..6 steps), `step[i].next == Some(step[i+1].id)` for i < N-1, and `step[N-1].next == Some(next_step)`. No broken or dangling links.
+- **Strategy**: Generate random bodies. Execute dispatcher. Walk the emitted chain. Assert correctness.
 
-### PO-PROP-004 (RRO-016): Kind 28 round-trip — BLOCKED
-- **Target**: `encode_record` then `decode_record::<JournalEvent>` for `RunKilled`
-- **Invariant**: For any valid `RunKilled { run, seq, attempt }` with `run != RunId(0)`, `seq < EventSeq(u64::MAX)`, `attempt > 0`: `decode(encode(event)) == event` (round-trip equality).
-- **Anti-invariant**: `RunKilled { run: RunId(0), .. }` produces `Err(InvalidEvent)` on decode.
-- **Current gap**: `proptest_storage.rs:317` compile error blocks execution. State 11 fix required.
+### PO-004: Single-Step Regression (RRO-022, existing: `reduce_single_step_regression.rs`)
+- **Invariant**: For body.len() == 1, `emit_reduce_body_steps` and `emit_single_body_set` produce structurally identical IR (same node count, same IDs, same next links, same slot assignments).
+- **Strategy**: Generate random single-step bodies (Set, Do, ForEach). Execute both dispatchers with same inputs. Assert structural equality.
+- **Note**: BLOCKED until `emit_reduce_body_steps` is implemented. Tests using only `emit_single_body_set` + width verification can run now.
 
-### PO-PROP-005 (RRO-021): Replay sequence properties — BLOCKED
-- **Target**: `events_for_run`, `validate_replayed_event`
-- **Invariant**: `events_for_run` returns contiguous `EventSeq` for all events including `RunKilled`. Gaps detected as `SequenceGap`, duplicates detected.
-- **Current gap**: Same compile error.
+### PO-005: ForEach Width Advancement (RRO-012, existing: `reduce_nested_foreach_layout.rs`)
+- **Invariant**: After emitting a ForEach body step with internal body, the accumulated offset advances by the full ForEach width (3+body_width), not by 1.
+- **Strategy**: Generate bodies containing ForEach steps. Verify offset advancement matches `canonical_body_step_width(ForEach{..})`.
 
-### New Proptest Invariants (to be written in State 9)
+### PO-006: Nested Next Correctness (RRO-018, existing: `reduce_nested_next.rs`)
+- **Invariant**: Nested Reduce at position i gets correct next: if i == last → `Some(next_step)`, else → `Some(next_body_step)`.
+- **Strategy**: Generate bodies with nested Reduce at varying positions. Verify dispatch context's next parameter.
 
-#### PROP-006: Cancel/Kill Side-Effect Invariant
-- **Invariant**: For any sequence of `cancel_run`/`kill_run` calls on the same `RunId`, the total number of terminal journal events appended is at most 1.
-- **Strategy**: Arbitrary `RunId`, may or may not be submitted first. Apply sequences of Cancel/Kill commands. Assert journal terminal event count <= 1.
+### PO-007: Width Overflow (RRO-009, existing: `reduce_body_width_overflow.rs`)
+- **Invariant**: `body_width` returns `Err(StepIndexOutOfRange)` when cumulative width exceeds u16::MAX, and never panics.
+- **Strategy**: Generate deeply nested bodies with large widths. Assert graceful overflow → error, no panic.
 
-#### PROP-007: Kind Family Rejection Invariant
-- **Invariant**: For any `(magic, kind)` pair, `validate_kind_family(magic, kind)` returns `Ok` iff `(magic, kind)` is in the accepted set, and `Err(RecordKindFamilyMismatch)` otherwise. Never panics.
-- **Strategy**: `proptest::arbitrary::any::<u32>()` for magic, `any::<u16>()` for kind. Assert function is pure and total.
+### PO-008: Empty Body (RRO-023, existing: `reduce_empty_body.rs`)
+- **Invariant**: `body.len() == 0` always produces `Err(StepFieldShape { field: "steps", .. })` with zero nodes emitted.
+- **Strategy**: Generate empty bodies with varying other parameters. Assert consistent rejection.
 
-#### PROP-008: Codec Round-Trip Integrity for All Journal Events Including RunKilled
-- **Invariant**: For any valid `JournalEvent` (including `RunKilled`), `decode_record::<JournalEvent>(encode_record(...))` returns `Ok(original_event)`.
-- **Strategy**: Generate arbitrary `JournalEvent` values (including `RunKilled`). Ensure only valid events pass. Round-trip encode/decode.
+### PO-009: No Panic (RRO-025, existing: `reduce_lowering_no_panic.rs`)
+- **Invariant**: Random StepAst trees never cause panics in `emit_reduce_body_steps` or `lower_canonical_aggregate`. All errors propagate via `Result`.
+- **Strategy**: Generate random reduce body trees (including nested, deeply nested). Execute lowering. Assert no panic.
 
-#### PROP-009: is_known_record_kind Consistency
-- **Invariant**: `is_known_record_kind(k)` is equivalent to `matches!(k, 1|2|3|10..=28|30|40|50)`. For any `u16` value, the result is deterministic and never panics.
-- **Strategy**: `any::<u16>()` — exhaustive across the u16 space.
+### PO-010: Diagnostic Code Validity (RRO-028, existing: `reduce_diagnostic_codes.rs`)
+- **Invariant**: All CompileErrors produced by reduce lowering have valid registered SymbolicCode values.
+- **Strategy**: Generate error-triggering configurations. Verify each error's `.code()` returns `Some(code)` and code is in expected set.
 
-#### PROP-010: validate_known_kind/unknown_record_kind_value Coherence
-- **Invariant**: `unknown_record_kind_value(k).is_none()` iff `is_known_record_kind(k)`. `validate_known_kind(k).is_ok()` iff `is_known_record_kind(k)`.
-- **Strategy**: `any::<u16>()`.
+### PO-011: Digest Determinism (RRO-031, existing: `reduce_digest_determinism.rs`)
+- **Invariant**: Same WorkflowSource produces identical canonical_digest across repeated compilations.
+- **Strategy**: Generate random reduce workflows. Compile 3x each. Assert digest equality.
 
-#### PROP-011: next_seq Monotonicity
-- **Invariant**: For any `seq` in `0..u64::MAX`, `next_seq(EventSeq(seq))` returns `Ok(EventSeq(seq+1))`. For `seq = u64::MAX`, returns `Err(SequenceOverflow)`.
-- **Strategy**: `any::<u64>()`.
+### PO-012: try_from_parts Success (RRO-004, existing: `reduce_multi_step_try_from_parts.rs`)
+- **Invariant**: Multi-step reduce bodies compile through the full pipeline and pass `CompiledWorkflow::try_from_parts` validation.
+- **Strategy**: Generate random valid multi-step reduce workflows. Execute full compile_source pipeline. Assert Ok.
+
+### PO-013: Collision Safety (RRO-032, existing: `reduce_together_collision.rs`)
+- **Invariant**: After vb-xi2f.22 (nested together) merge, both reduce and together multi-step bodies compile correctly. No regressions in either bead's test suite.
+- **Strategy**: Cross-bead integration: generate both reduce and together workflows. Compile both. Assert no collisions.
 
 ---
 
 ## 5. Fuzz Targets
 
-### PO-FUZZ-001 (RRO-017): Kind Validation Fuzz
-- **Target**: `validate_kind_family`, `is_known_record_kind`, `validate_known_kind`
-- **Input type**: arbitrary `(magic: u32, kind: u16)` pairs (8 bytes)
-- **Risk**: Panic on unanticipated magic values, incorrect boolean logic on boundary kind values (0, 1, 28, 29, 50, 51, 0xFFFF), integer overflow in match arms.
+### FZ-001: Reduce Lowering Panic Fuzz (PO-NOPANIC-FUZZ-001)
+- **Target**: `compile_source()` (full YAML→IR pipeline)
+- **Input type**: arbitrary YAML bytes (up to 64 KiB)
+- **Risk**: Panic on malformed reduce body steps, integer overflow in step offset computation, IndexOutOfBounds on mismatched width/lowering, infinite loop in nested body dispatch.
 - **Corpus seeds**:
-  - `(MAGIC_JOURNAL_EVENT, 28)` — known pass
-  - `(MAGIC_JOURNAL_EVENT, 27)` — boundary (just below 28)
-  - `(MAGIC_JOURNAL_EVENT, 29)` — boundary (just above 28)
-  - `(MAGIC_SNAPSHOT, 28)` — known reject
-  - `(MAGIC_BLOB, 28)` — known reject
-  - `(0x00000000, 0x0000)` — zero magic, zero kind
-  - `(0xFFFFFFFF, 0xFFFF)` — max values
-- **Fuzz target file**: `fuzz/fuzz_targets/kind_validation.rs`
+  - Valid reduce with 1 Set body step
+  - Valid reduce with 2 body steps
+  - Valid nested reduce (reduce in reduce body)
+  - Reduce with empty body
+  - Reduce with non-Set/Do/ForEach body
+  - Reduce with deeply nested ForEach
+  - Reduce with max u16 body steps
+  - Truncated YAML (parse failure, should not panic)
+- **Status**: BLOCKED_TOOLING — musl+sanitizer incompatibility. Compensating coverage: Kani (PO-NOPANIC-KANI-001) + proptest (PO-NOPANIC-PROP-001).
+- **Fuzz target file**: `fuzz/fuzz_targets/reduce_lowering_panic.rs`
 
-### PO-FUZZ-002 (RRO-022): Journal Decode Fuzz
-- **Target**: `decode_record::<JournalEvent>`, `decode_journal_event`
-- **Input type**: arbitrary byte streams (up to 4096 bytes)
-- **Risk**: Postcard deserialization panic on malformed bytes; structural invariant violations in decoded `JournalEvent`; unhandled `RecordKind` discriminator values in enum deserialization; integer overflow in payload length calculations; memory exhaustion on crafted payload-length claims.
+### FZ-002: Diagnostic Code Fuzz (PO-DIAGNOSTIC-FUZZ-001)
+- **Target**: `compile_source()` (full pipeline)
+- **Input type**: arbitrary YAML bytes
+- **Risk**: Missing or unregistered SymbolicCode on error paths, None code on valid error, INTERNAL_INVARIANT sentinel rather than specific code.
 - **Corpus seeds**:
-  - Valid `RunKilled` encoded record
-  - Valid `RunCancelled` encoded record
-  - Valid `RunFinished` encoded record
-  - Zero-length input
-  - Header-only (truncated payload)
-  - Garbage bytes
-  - Bytes with valid 60-byte header but invalid postcard
-  - Bytes with valid header + valid postcard but invalid `is_valid()` check
-- **Fuzz target file**: `fuzz/fuzz_targets/journal_decode.rs`
+  - Reduce with empty body (→ StepFieldShape code)
+  - Reduce with unsupported primitive in body (→ UnsupportedStepPrimitive code)
+  - Reduce with overflow width (→ StepIndexOutOfRange code)
+- **Status**: BLOCKED_TOOLING. Kani+proptest provide compensating coverage.
+- **Fuzz target file**: `fuzz/fuzz_targets/reduce_diagnostic_codes.rs`
 
 ---
 
 ## 6. Kani Harnesses
 
-### Existing Wired Harnesses (PO-KANI-004, RRO-014; PO-KANI-005, RRO-019)
-- **File**: `crates/vb_storage/src/kani_record_kind.rs` (wired via `lib.rs:44`)
-- **Harnesses**: `check_kind_28_known`, `check_kind_28_journal_family`, `check_kind_28_snapshot_family_rejected`, `check_kind_28_blob_family_rejected`, `check_unknown_kind_rejected`, `check_all_existing_kinds_known`, `check_journal_family_exhaustive`, `check_replay_contiguity_with_killed`, etc.
-- **Status**: Non-vacuous, production-bound, GOD RULE 1 compliant. Uses `kani::any()`.
-- **Re-execution needed**: Post BLOCK-001 resolution in production code (isolated workspace already has the fix).
+All 11 Kani harnesses are pre-existing in `crates/vb_compile/src/mod_compile_lowering/`. The test planner documents them for completeness; they are executed as part of the verification lane, not the behavior test lane.
 
-### New Kani Harnesses (State 11)
+| Harness | Property | Production Binding | Command |
+|---------|----------|-------------------|---------|
+| `check_reduce_body_width_parity` | Width-node parity bounded | body_width, emit_single_body_set | `cargo kani -p vb_compile --harness check_reduce_body_width_parity --unwind 16` |
+| `check_reduce_body_offset_distinctness` | StepIdx distinctness | emit_single_body_set, checked_step_offset | `cargo kani -p vb_compile --harness check_reduce_body_offset_distinctness --unwind 16` |
+| `check_reduce_body_chain_integrity` | Next-link chain integrity | emit_single_body_set, checked_step_offset | `cargo kani -p vb_compile --harness check_reduce_body_chain_integrity --unwind 16` |
+| `check_reduce_nested_next_correctness` | Nested reduce next-field | emit_single_body_set, lower_canonical_aggregate | `cargo kani -p vb_compile --harness check_reduce_nested_next_correctness --unwind 16` |
+| `check_reduce_empty_body_rejection` | Empty body rejection | lower_canonical_aggregate | `cargo kani -p vb_compile --harness check_reduce_empty_body_rejection` |
+| `check_reduce_single_step_equivalence` | Regression equivalence | emit_single_body_set (*emit_reduce_body_steps blocked*) | `cargo kani -p vb_compile --harness check_reduce_single_step_equivalence --unwind 8` |
+| `check_reduce_foreach_width_advance` | ForEach width advancement | canonical_body_step_width, emit_single_body_set | `cargo kani -p vb_compile --harness check_reduce_foreach_width_advance --unwind 16` |
+| `check_reduce_lowering_no_panic` | Pipeline panic-freedom | lower_canonical_aggregate, canonical_body_step_width | `cargo kani -p vb_compile --harness check_reduce_lowering_no_panic --unwind 16` |
+| `check_reduce_error_diagnostic_codes` | Symbolic code validity | CompileError::code | `cargo kani -p vb_compile --harness check_reduce_error_diagnostic_codes --unwind 16` |
+| `check_reduce_multi_step_try_from_parts` | E2E try_from_parts | lower_canonical_aggregate, CompileWorkflow::try_from_parts | `cargo kani -p vb_compile --harness check_reduce_multi_step_try_from_parts --unwind 16` |
+| `check_reduce_body_width_overflow` | Width overflow detection | body_width | `cargo kani -p vb_compile --harness check_reduce_body_width_overflow --unwind 32` |
 
-#### KANI-006: is_known_record_kind Exhaustive across u16
-- **Property**: For all `u16` values, `is_known_record_kind(k)` is equivalent to the explicit match set `{1, 2, 3, 10..=28, 30, 40, 50}`.
-- **Bound**: Full u16 space (65,536 values) — Kani can handle this with unwind.
-- **Rationale**: The `matches!` macro is simple but must be proven correct for all 65,536 possible `u16` values. This is the canonical admission gate for kind 28.
-
-#### KANI-007: validate_kind_family Exactness
-- **Property**: For all `(u32, u16)` pairs within bounded space, `validate_kind_family(magic, kind)` returns `Ok(())` iff the pair is in the known accepted set; returns `Err(RecordKindFamilyMismatch)` otherwise.
-- **Bound**: All 6 magic constants × all u16 kind values.
-- **Rationale**: Formal verification that kind 28 is ONLY admitted for `MAGIC_JOURNAL_EVENT`, not for snapshot, blob, or other families.
-
-#### KANI-008: next_seq No Panic + Overflow Correctness
-- **Property**: `next_seq(seq)` never panics for any `u64` input. Returns `Err(SequenceOverflow)` iff `seq == u64::MAX`. Returns `Ok(EventSeq(seq+1))` for all other values.
-- **Bound**: u64 space (practical with 2^64 values via symbolic execution).
-- **Rationale**: Overflow on sequence numbers would corrupt replay contiguity.
-
-#### KANI-009: validate_replayed_event Correctness
-- **Property**: For any `(run, other_run, seq, other_seq)` where all values are symbolic: `validate_replayed_event` returns `Ok` iff `run == event.run_id() && seq == event.seq()`. Returns `Err(WrongRun)` or `Err(SequenceGap)` otherwise. Never panics.
-- **Rationale**: Replay integrity is critical for durability.
-
-#### KANI-010: encode_record Panic-Freedom for RunKilled
-- **Property**: `encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunKilled, seq, &RunKilled{..}, max_payload_len)` never panics for any valid input configuration. Returns `Ok` for valid payloads, `Err` for payload overflow.
-- **Rationale**: Storage encoding must be panic-free for all valid RunKilled inputs.
-
-#### KANI-011: decode_journal_event Panic-Freedom
-- **Property**: `decode_journal_event(&bytes, any_u32_magic, any_u32_max_payload_len)` never panics for any arbitrary byte slice within a bounded length (e.g., <= 512 bytes). Returns `Ok` or `Err(JournalError::*)` variants; no panics.
-- **Rationale**: Journal decode is an untrusted-input boundary. Panic = denial of service.
-
-#### KANI-012: handle_cancel Error for Missing/Terminal Runs
-- **Property**: Given a shard with a known OR absent run, `handle_cancel` returns `Err(RunNotFound)` for absent runs and `Err(RunNotFound)` / typed `Err(RunAlreadyTerminal)` for runs in `terminal_runs`. Never returns `Ok(())` for these cases.
-- **Rationale**: Contract C2 requires this behavior. Current production code violates it.
-- **BLOCK-002 dependency**: Full shard construction requires `SharedRuntimeJournal → FjallJournal → Keyspace` chain not symbolically executable. May need a `#[cfg(kani)]` simplified shard constructor.
-
-#### KANI-013: handle_kill Error for Missing/Terminal Runs
-- **Property**: Same as KANI-012 but for `handle_kill`.
-- **Rationale**: Kill must follow the same contract as cancel for missing/terminal runs.
+**Important**: The `check_reduce_single_step_equivalence` harness has commented-out TODO blocks for comparing `emit_reduce_body_steps` vs `emit_single_body_set`. When `emit_reduce_body_steps` is implemented (as part of this bead), the harness must be uncommented and re-executed. Currently the harness validates the contract (body_width correctness) and the reference implementation (emit_single_body_set behavior).
 
 ---
 
@@ -614,139 +614,220 @@ fn kind_28_admission_does_not_open_unknown_kind_29():
 
 | Mutation Target | Test That Must Catch It |
 |----------------|------------------------|
-| `is_known_record_kind` — remove `28` from match arm | `is_known_record_kind_28_returns_true` (unit) + proptest PROP-009 |
-| `validate_kind_family` — change `10..=28` to `10..=27` | `validate_kind_family_journal_event_28_returns_ok` (unit) |
-| `validate_kind_family` — change journal branch from `10..=28` to `10..=50` (over-admit) | `validate_kind_family_journal_event_29_returns_rejection` (unit) |
-| `validate_kind_family` — change snapshot/branch to admit 28 | `validate_kind_family_snapshot_28_returns_rejection` (unit) |
-| `handle_cancel` — remove `terminal_runs` guard before `append_journal_event` | `cancel_live_run_appends_exactly_one_runcancelled_event` (integration) + `second_cancel_after_first_cancel_is_rejected` |
-| `handle_cancel` — remove `runs.contains_key` guard for journal append | `cancel_missing_run_does_not_append_journal_event` (integration) |
-| `handle_kill` — remove `runs.swap_remove` guard for full terminalization | `handle_kill_returns_run_not_found_when_run_never_submitted` (integration) |
-| `handle_cancel` — swap `discard_journal_sequence` before `append_journal_event` | `cancel_live_run_appends_exactly_one_runcancelled_event` — journal must have event, not discarded sequence |
-| `handle_kill` — omit `pending_timers.swap_remove` | `kill_removes_pending_timer` (integration) |
-| `RecordKind::RunKilled.id()` — change from `28` to any other value | `record_kind_run_killed_id_is_28` (unit) + proptest PROP-002 |
-| `decode_journal_event` — remove `is_valid()` check | `decode_journal_event_runkilled_zero_run_rejected` (unit) — zero-run event would pass unchecked |
-| `validate_replayed_event` — swap expected/actual in comparison | `validate_replayed_event_seq_mismatch_returns_gap` (unit) — error variant check |
-| `unknown_record_kind_value` — invert boolean | PROP-010 (proptest) — must catch inversion |
+| `canonical_body_step_width` — remove Reduce arm from match | `canonical_body_step_width_handles_reduce` (unit B07) + width-parity integration tests |
+| `canonical_body_step_width` — return Ok(1) for Reduce instead of body_width | `canonical_body_step_width_returns_correct_for_nested_reduce` (unit B07) + offset monotonicity tests |
+| `canonical_body_step_width` — return Ok(0) for Reduce (under-count) | width-node parity tests (integration B12-B16) |
+| `emit_reduce_body_steps` — emit body step at offset 0 instead of 1 | first body step gets `body_step + 0` test (integration B17-B18) |
+| `emit_reduce_body_steps` — skip step advancement (assign same ID twice) | offset monotonicity proptest (PO-002) |
+| `emit_reduce_body_steps` — omit next-link assignment | chain integrity tests (integration B23-B28) |
+| `emit_reduce_body_steps` — last step's next = None instead of Some(next_step) | `body_step_next_chain_last_links_to_next_step` (integration B24) |
+| `emit_reduce_body_steps` — emit wrong primitive kind for Set/Do/ForEach dispatch | single-step regression equivalence tests (integration B35-B37) |
+| `emit_reduce_body_steps` — accept empty body silently (return Ok with 0 nodes) | `empty_body_rejected_before_any_nodes_emitted` (unit B54-B56) |
+| `lower_canonical_aggregate` — swap body_step for next_step in ReduceStart.body | `reduce_start_and_reduce_next_both_point_to_body_step` (integration B29-B30) |
+| `lower_canonical_aggregate` — miscompute done_step (done = next_step instead of next_step + 1) | `reduce_finish_id_is_next_step_plus_one` (integration B32) |
+| `body_width` — swap `checked_add` for `+` (allow overflow panic) | width overflow tests (unit B53) + proptest PO-007 |
+| `canonical_body_step_width` — add Finish to accepted set (over-admit) | `canonical_body_step_width_rejects_finish_in_body` (unit B08) |
+| `canonical_body_step_width` — remove one of Set/Do/ForEach from match (under-accept) | `canonical_body_step_width_returns_one_for_set_in_body` (unit B01-B02) |
+| `checked_step_offset` — return Ok with wrong offset | offset monotonicity + chain integrity tests |
+| `emit_reduce_body_steps` — swap last vs non-last next assignment logic | nested reduce dispatch tests (integration B39-B40) |
+| `lower_canonical_aggregate` — omit reduce next computation (body_step = id instead of id+1) | `reduce_finish_id_is_next_step_plus_one` (integration B32) + width-node parity |
 
 ### Threshold: >=90% mutation kill rate
-- Target: `cargo mutants --package vb_storage --files "codec/validation.rs" "codec/mod.rs"`
-- Target: `cargo mutants --package vb_runtime --files "shard/lifecycle/chunk_002.rs"`
+- Target: `cargo mutants --package vb_compile --files "src/mod_compile_lowering/part_01.rs" "src/mod_compile_lowering/part_04.rs"`
 
 ---
 
 ## 8. Combinatorial Coverage Matrix
 
-### Unit: Storage Codec (validation.rs, codec/mod.rs)
+### Unit: Width Calculation (`part_01.rs`)
 
 | Scenario | Input Class | Expected Output | Test Layer |
 |----------|-------------|-----------------|------------|
-| happy path: kind 28 known | kind=28 | `is_known_record_kind(28) = true` | unit |
-| happy path: kind 28 journal family | (MAGIC_JOURNAL_EVENT, 28) | `validate_kind_family = Ok(())` | unit |
-| happy path: encode RunKilled | RunKilled{valid} | `encode_record = Ok(bytes)` | unit |
-| happy path: decode RunKilled | valid bytes | `decode_record = Ok(RunKilled{..})` | unit |
-| happy path: decode_journal_event RunKilled | valid bytes, valid event | `decode_journal_event = Ok(RunKilled{..})` | unit |
-| happy path: validate_known_kind 28 | kind=28 | `Ok(())` | unit |
-| happy path: next_seq normal | EventSeq(5) | `Ok(EventSeq(6))` | unit |
-| happy path: validate_replayed_event match | matching run+seq | `Ok(())` | unit |
-| error: kind 28 snapshot family | (MAGIC_SNAPSHOT, 28) | `Err(RecordKindFamilyMismatch{..})` | unit |
-| error: kind 28 blob family | (MAGIC_BLOB, 28) | `Err(RecordKindFamilyMismatch{..})` | unit |
-| error: kind 29 unknown | kind=29 | `is_known_record_kind(29) = false` | unit |
-| error: kind 29 journal family | (MAGIC_JOURNAL_EVENT, 29) | `Err(RecordKindFamilyMismatch{..})` | unit |
-| error: decode RunKilled zero run | RunKilled{run=0} | `Err(InvalidEvent)` | unit |
-| error: decode RunKilled zero attempt | RunKilled{attempt=0} | `Err(InvalidEvent)` | unit |
-| error: decode RunKilled overflow seq | RunKilled{seq=MAX} | `Err(InvalidEvent)` | unit |
-| error: next_seq overflow | EventSeq(u64::MAX) | `Err(SequenceOverflow)` | unit |
-| error: wrong run | (RunId(10), event with RunId(20)) | `Err(WrongRun{..})` | unit |
-| error: sequence gap | (seq=3, event with seq=5) | `Err(SequenceGap{..})` | unit |
-| boundary: kind 0 | kind=0 | `is_known_record_kind(0) = false` | unit |
-| boundary: kind 1 | kind=1 | `is_known_record_kind(1) = true` | unit |
-| boundary: kind 3 | kind=3 | `is_known_record_kind(3) = true` | unit |
-| boundary: kind 10 | kind=10 | `is_known_record_kind(10) = true` | unit |
-| boundary: kind 27 | kind=27 | `is_known_record_kind(27) = true` | unit |
-| boundary: kind 28 | kind=28 | `is_known_record_kind(28) = true` | unit |
-| boundary: kind 29 | kind=29 | `is_known_record_kind(29) = false` | unit |
-| boundary: kind 30 | kind=30 | `is_known_record_kind(30) = true` | unit |
-| boundary: kind 40 | kind=40 | `is_known_record_kind(40) = true` | unit |
-| boundary: kind 50 | kind=50 | `is_known_record_kind(50) = true` | unit |
-| boundary: kind 51 | kind=51 | `is_known_record_kind(51) = false` | unit |
-| boundary: kind 0xFFFF | kind=65535 | `is_known_record_kind(0xFFFF) = false` | unit |
-| boundary: constant assertion | `RecordKind::RunKilled.id()` | `== 28` | unit (const) |
-| invariant: kind 28 unique | all RecordKind variants | `RunKilled=28` unique in set | proptest |
-| invariant: round-trip | any valid JournalEvent+RunKilled | `decode(encode(e)) == e` | proptest |
-| invariant: kind family exactness | all (u32, u16) | `Ok` iff in accepted set | kani |
-| invariant: no panic on encode | any valid RunKilled | returns `Ok` or `Err`, no panic | kani |
-| invariant: no panic on decode | arbitrary bytes (bounded) | returns `Ok` or `Err(JournalError::*)`, no panic | kani |
+| happy: Set width | Set { value: "1" } | Ok(1) | unit |
+| happy: Do width | Do { action: "0", input: "0" } | Ok(1) | unit |
+| happy: ForEach width (empty body) | ForEach { body: [] } | Ok(2) (overhead only) | unit |
+| happy: ForEach width (1 Set) | ForEach { body: [Set] } | Ok(3) (overhead 2 + body_width 1) | unit |
+| happy: Reduce width (1 Set body) | Reduce { body: [Set] } | Ok(body_width(body,3)) | unit |
+| happy: Reduce width (2 Set body) | Reduce { body: [Set, Set] } | Ok(body_width(body,3)) | unit |
+| happy: Reduce width (3 Set body) | Reduce { body: [Set, Set, Set] } | Ok(body_width(body,3)) | unit |
+| happy: Reduce width (mixed Set+Do) | Reduce { body: [Set, Do] } | Ok(body_width(body,3)) | unit |
+| happy: Reduce width (nested Reduce) | Reduce { body: [Reduce{..}] } | Ok(body_width(body,3)) | unit |
+| happy: width = step_width equivalence | Reduce { .. } | canonical_step_width(Reduce) == body_width(body, 3) | unit |
+| error: Finish in body | Finish { .. } | Err(UnsupportedStepPrimitive { primitive: "finish" }) | unit |
+| error: Wait in body | Wait { .. } | Err(UnsupportedStepPrimitive { primitive: "wait" }) | unit |
+| error: Ask in body | Ask { .. } | Err(UnsupportedStepPrimitive { primitive: "ask" }) | unit |
+| error: Together in body | Together { .. } | Err(UnsupportedStepPrimitive { primitive: "together" }) | unit |
+| error: Choose in body | Choose { .. } | Err(UnsupportedStepPrimitive { primitive: "choose" }) | unit |
+| error: Collect in body | Collect { .. } | Err(UnsupportedStepPrimitive { primitive: "collect" }) | unit |
+| error: Repeat in body | Repeat { .. } | Err(UnsupportedStepPrimitive { primitive: "repeat" }) or Ok(body_width) | unit |
+| boundary: empty body (Reduce) | Reduce { body: [] } | Ok(3) (overhead only) | unit |
+| boundary: max width (many nested Set) | deeply nested body | Ok(65535) or Err(StepIndexOutOfRange) for overflow | unit |
+| boundary: overflow at u16::MAX+1 | sum of step widths > 65535 | Err(StepIndexOutOfRange { .. }) | unit |
+| invariant: width parity | any valid body | body_width == 3 + node_count | proptest |
 
-### Integration: Cancel/Kill Lifecycle (Runtime + Shard + Journal)
+### Unit: Error Diagnostics (`mod_compile_errors`)
 
 | Scenario | Input Class | Expected Output | Test Layer |
 |----------|-------------|-----------------|------------|
-| happy: cancel live run | live run, cancel_run() | journal: `RunCancelled`; counters: `runs_failed=1`; terminal_runs: contains run | integration |
-| happy: kill live run | live run, kill_run() | journal: `RunKilled`; counters: `runs_failed=1`; terminal_runs: contains run | integration |
-| happy: cancel removes pending timer | run suspended on timer, cancel | pending_timers: no longer contains run | integration |
-| happy: kill removes pending timer | run suspended on timer, kill | pending_timers: no longer contains run | integration |
-| error: cancel missing run | Never-submitted run, cancel | `Err(RunNotFound)`; no journal event; no counter increment | integration |
-| error: kill missing run | Never-submitted run, kill | `Err(RunNotFound)`; no journal event; no counter increment | integration |
-| error: cancel terminal run | Cancelled run, cancel again | `Err(RunNotFound or RunAlreadyTerminal)`; journal unchanged | integration |
-| error: kill terminal run | Killed run, kill again | `Err(RunNotFound or RunAlreadyTerminal)`; journal unchanged | integration |
-| error: cancel after kill | Killed run, cancel | `Err`; no `RunCancelled` appended | integration |
-| error: kill after cancel | Cancelled run, kill | `Err`; no `RunKilled` appended | integration |
-| error: action completion after cancel | Cancelled run, complete_action | `Err`; no journal event; frame unchanged | integration |
-| error: action failure after cancel | Cancelled run, fail_action | `Err`; no journal event | integration |
-| error: action completion after kill | Killed run, complete_action | `Err`; no journal event | integration |
-| error: action failure after kill | Killed run, fail_action | `Err`; no journal event | integration |
-| error: ask answer after cancel | Cancelled run, ask_answer | `Err`; no `SlotWritten` appended | integration |
-| error: ask answer after kill | Killed run, ask_answer | `Err`; no `SlotWritten` appended | integration |
-| error: timer fire after cancel | Cancelled run, handle_timer | `Err(InvalidTimerFire)`; no journal; counters unchanged | integration |
-| error: timer fire after kill | Killed run, handle_timer | `Err(InvalidTimerFire)`; no journal; counters unchanged | integration |
-| error: kill routing fails shard | RunId hashing to out-of-range shard | `Err(ShardNotFound)` | integration |
-| error: kill queue full | RunId on shard with full queue | `Err(QueueFull)` (enqueue failure) | integration |
-| invariant: single terminal event | sequence of cancel/kill calls | journal terminal count <= 1 | integration + proptest |
-| invariant: stale no-state-mutation | snapshot before vs after stale op | frame, counters, journal, terminal_runs, trace unchanged | integration |
+| happy: StepFieldShape code | body.len() == 0 | .code() is Some(registered) | unit |
+| happy: UnsupportedStepPrimitive code | Finish in body | .code() is Some(registered) | unit |
+| happy: StepIndexOutOfRange code | width overflow | .code() is Some(registered) | unit |
+| error: no INTERNAL_INVARIANT | any valid error source | .code() != INTERNAL_INVARIANT sentinel | unit |
+
+### Integration: Multi-Step Body Lowering
+
+| Scenario | Input Class | Expected Output | Test Layer |
+|----------|-------------|-----------------|------------|
+| happy: N=1 Set body | body = [Set { value: "1" }] | Ok: 3+1=4 total nodes, chain correct | integration |
+| happy: N=1 Do body | body = [Do { action: "0", input: "0" }] | Ok: 3+1=4 total nodes | integration |
+| happy: N=1 ForEach body | body = [ForEach { body: [Set] }] | Ok: 3+3=6 total nodes (ForEach = 3 nodes overhead+body) | integration |
+| happy: N=2 Set body | body = [Set, Set] | Ok: 3+2=5 total nodes, chain: 0→1→next | integration |
+| happy: N=3 Set body | body = [Set, Set, Set] | Ok: 3+3=6 total nodes | integration |
+| happy: mixed Set+Do+ForEach | body = [Set, Do, ForEach { body: [Set] }] | Ok: 3+1+1+3=8 total nodes, chain correct | integration |
+| happy: nested Reduce (non-last) | body = [Reduce { body: [Set] }, Set] | Ok: chain: nested_start→nested_body→nested_next→nested_finish→outer_set→next | integration |
+| happy: nested Reduce (last) | body = [Set, Reduce { body: [Set] }] | Ok: chain: outer_set→nested_start→nested_body→nested_next→nested_finish→next_step | integration |
+| happy: ForEach with body in reduce body | ForEach with 2 Set body steps | ForEach width advancement correct (5 not 3) | integration |
+| error: empty body | body = [] | Err(StepFieldShape { field: "steps", .. }) | integration |
+| error: non-Set/Do/ForEach body step | body = [Finish { .. }] | Err(UnsupportedStepPrimitive { .. }) | integration |
+| error: width overflow | deeply nested ForEach | Err(StepIndexOutOfRange { .. }) | integration |
+| regression: single-step equivalence | body.len() == 1 | emit_reduce_body_steps == emit_single_body_set | integration |
+| regression: PO-R1..R8 pass | existing reduce tests | all 8 digest tests pass | integration |
+| invariant: sequential IDs | any valid body | IDs: monotonic, distinct, < next_step | integration + proptest |
+| invariant: chain integrity | any valid body | step[i].next == Some(step[i+1].id), last→next_step | integration + proptest |
+| invariant: no panic | any body tree | returns Result, never panics | integration + proptest |
+
+### E2E: Full Pipeline
+
+| Scenario | Input Class | Expected Output | Test Layer |
+|----------|-------------|-----------------|------------|
+| happy: nested reduce through try_from_parts | YAML → compile_source → try_from_parts | Ok(CompiledWorkflow) | e2e |
+| happy: deterministic output | same YAML twice | identical IR + digest | e2e |
+| error: invalid body through full pipeline | YAML with empty body | CompileErrors with valid code | e2e |
 
 ---
 
 ## 9. Test File Allocation
 
-### Files to Write (State 9)
+### New Behavior Test Files to Create
 
 | File | Crate | Test Type | Behaviors Covered |
 |------|-------|-----------|-------------------|
-| `crates/vb_storage/src/codec/tests/kill_kind_admission.rs` | vb_storage | unit | B42-B53 (storage admission) |
-| `crates/vb_storage/src/codec/tests/replay_integrity.rs` | vb_storage | unit | B54-B61 (replay integrity) |
-| `crates/workspace_tests/tests/cancel_kill_lattice_tests.rs` | workspace_tests | integration | B01-B06 (kill API), B11-B22 (side-effect-free), B23-B30 (mutual exclusion), B31-B41 (stale authority) — extends existing file |
-| `crates/workspace_tests/tests/cancel_kill_lattice_props.rs` | workspace_tests | proptest | PROP-001 through PROP-005 (existing), PROP-006 through PROP-011 (new) |
-| `crates/vb_storage/src/proptest_storage.rs` | vb_storage | proptest | PROP-004, PROP-005 (unblocked by compile fix) |
+| `crates/vb_compile/src/mod_compile_lowering/tests.rs` (extend) | vb_compile | unit | B01-B11 (width), B17-B22 (offsets), B54-B56 (empty body) — add to existing reduce section |
+| `crates/vb_compile/src/mod_compile_lowering/tests.rs` (extend) | vb_compile | integration | B23-B28 (chain), B29-B34 (node fields), B35-B43 (regression + nested) |
+| `crates/vb_compile/tests/v1_primitive_lowering.rs` (extend) | vb_compile | integration/e2e | B12-B16 (width-node parity), B43 (try_from_parts), B48-B49 (determinism), multi-step reduce workflows |
+| `crates/vb_compile/tests/digest_field_coverage.rs` (extend) | vb_compile | integration/proptest | B49 (digest determinism for multi-step reduce) |
+| `crates/vb_compile/src/tests/error_variant_tests.rs` (extend) | vb_compile | unit | B44-B47 (diagnostic code validity for reduce-specific errors) |
 
-### Files to Modify (State 9 initialization)
-
-| File | Action |
-|------|--------|
-| `crates/workspace_tests/Cargo.toml` | Add `kill_lifecycle_tests` test target (or extend existing cancel_kill_lattice_tests.rs) |
-| `crates/workspace_tests/tests/cancel_kill_lattice_tests.rs` | Add kill scenarios, error-semantics tests, stale authority tests |
-| `crates/workspace_tests/tests/cancel_kill_lattice_props.rs` | Add new PROP-006 through PROP-011 |
-| `crates/vb_storage/Cargo.toml` | Ensure `[[test]]` targets exist for new test files |
-| `crates/vb_storage/src/proptest_storage.rs` | Fix `proptest_storage.rs:317` compile error |
-| `crates/vb_runtime/src/shard/lifecycle/chunk_002.rs` | NOT a test file, but State 10 implementation changes will make tests pass |
-
-### Existing Tests (No Changes Required)
+### Existing Proptest/Verification Files (no changes to behavior tests)
 
 | File | Status |
 |------|--------|
-| `crates/workspace_tests/tests/cancel_kill_lattice_props.rs` | 10/10 pass (State 6 evidence). Keep as-is. |
-| `crates/vb_storage/src/kani_record_kind.rs` | Wired + non-vacuous. Keep. Re-run post BLOCK-001. |
+| `crates/vb_compile/src/proptest_body_dispatcher.rs` | Existing — covers emit_single_body_set behavior. No changes needed. |
+| `crates/vb_compile/src/proptest_error_parity.rs` | Existing — covers error parity for non-Set variants. No changes. |
+| `crates/vb_compile/src/proptest_collect.rs` | Existing — covers collect behavior. No changes. |
+| `crates/vb_compile/src/mod_compile_lowering/proptest_nested_foreach.rs` | Existing — ForEach proptest. No changes. |
+| `verification/proptest/vb_compile/reduce_*.rs` | Verification artifacts (13 files) — planned, materialized at State 11-12. |
+
+### Kani Harnesses (existing, verify-only)
+
+| File | Status |
+|------|--------|
+| `crates/vb_compile/src/mod_compile_lowering/kani_reduce_regression.rs` | Existing — TODO blocks for `emit_reduce_body_steps`. Must uncomment when implemented. |
+| `crates/vb_compile/src/mod_compile_lowering/kani_reduce_nopanic.rs` | Existing — bound to emit_single_body_set. Must extend to emit_reduce_body_steps after implementation. |
+| `crates/vb_compile/src/mod_compile_lowering/kani_reduce_empty.rs` | Existing — uses emit_single_body_set as reference. Add multi-step path. |
+| `crates/vb_compile/src/mod_compile_lowering/kani_reduce_diagnostics.rs` | Existing — covers error code validity. No changes needed. |
+| Other 7 Kani harness files | Existing — verification artifacts. Re-run at State 11-12 post-implementation. |
+
+---
+
+## 10. Implementation Sequencing (for test-writer)
+
+The implementation is NOT yet done — `emit_reduce_body_steps` does not exist. Tests should be written in phases:
+
+### Phase 1: Tests that CAN pass NOW (pre-implementation)
+
+1. **Width calculation unit tests** (B01-B11): `canonical_body_step_width` for Set, Do, ForEach already works. Tests for Reduce/Collect/Together/Repeat/Choose MUST FAIL initially (TDD red), then pass after `canonical_body_step_width` is widened.
+
+2. **Error rejection tests** (B08-B10, B44-B47): Tests for Finish/Wait/Ask in body produce `UnsupportedStepPrimitive` — may already pass if match arm is covered, or may fail if the match is not yet widened.
+
+3. **Digest determinism tests** (B48-B49): Can test with single-step reduce bodies (already supported).
+
+### Phase 2: Tests that MUST FAIL initially, then PASS after implementation
+
+4. **Width-node parity tests** (B12-B16): Require `emit_reduce_body_steps` to exist. Must FAIL initially with compile error. Will PASS after implementation.
+
+5. **Sequential assignment tests** (B17-B22): Require `emit_reduce_body_steps`. FAIL initially.
+
+6. **Chain integrity tests** (B23-B28): Require `emit_reduce_body_steps`. FAIL initially.
+
+7. **Single-step regression equivalence** (B35-B38): Require both dispatchers to exist. The Kani harness has the comparison pattern. FAIL initially.
+
+8. **Nested reduce tests** (B39-B43): Require full multi-step body dispatch, including recursive `lower_canonical_aggregate` calls. FAIL initially.
+
+9. **Empty body rejection in multi-step** (B54-B56): Requires `emit_reduce_body_steps` to exist. May be identical behavior to `emit_single_body_set` (rejects len != 1), but the error message may differ. FAIL initially.
+
+### Phase 3: Proptest (verification lane, State 11-12)
+
+10. All 13 proptest invariants are verification artifacts executed separately from behavior tests.
+
+---
+
+## 11. Test Naming Convention
+
+All test function names follow the pattern:
+```
+fn [subject]_[outcome]_when_[condition]()
+```
+
+Examples for this bead:
+- `fn canonical_body_step_width_returns_one_for_set_in_body()`
+- `fn emit_reduce_body_steps_assigns_sequential_distinct_step_indices()`
+- `fn body_step_next_chain_last_links_to_next_step_parameter()`
+- `fn nested_reduce_in_last_body_step_receives_next_step_as_next_parameter()`
+- `fn empty_body_rejected_with_step_field_shape_before_any_nodes_emitted()`
+
+---
+
+## 12. Anti-Patterns to Reject
+
+- ❌ `result.is_ok()` without asserting the node count or structural properties → **REJECT**
+- ❌ `result.is_err()` without asserting the exact error variant and field → **REJECT**
+- ❌ Test named `test_reduce_body()` instead of `reduce_body_compiles_n_steps_when_body_has_n_set_steps()` → **REJECT**
+- ❌ Single test covering both width calculation and chain integrity (split by behavior) → **REJECT**
+- ❌ Logic (loops, conditionals) inside test bodies to generate test cases → **REJECT** (use proptest strategies)
+- ❌ Mocking the `SlotCompiler` or `compile_source()` — use real implementations → **REJECT**
+- ❌ `sleep()` inside tests → **REJECT** (redundant — this is pure computation)
+- ❌ Test that passes when `emit_reduce_body_steps` is deleted → **REJECT** (mutation survivor)
 
 ---
 
 ## Open Questions
 
-1. **Q1: Error variant for already-terminal runs.** The contract says cancel/kill on already-terminal runs returns typed error. Should this be `RuntimeError::RunNotFound` (existing) or a new `RuntimeError::RunAlreadyTerminal { run: RunId }`? The domain model says `RunNotFound` may serve both. Resolution needed before State 10 implementation. *Recommendation: Use `RunNotFound` for both missing and terminal to avoid expanding the error surface; document the conflation in error taxonomy.*
+1. **Q1: Empty body semantics.** The multi-step dispatcher contract says reject `body.len() == 0` with `StepFieldShape`. The single-step dispatcher rejects `body.len() != 1`. Should the multi-step dispatcher use the same error variant and message? *Recommendation: Use `StepFieldShape { field: "steps", expected: "at least one body step" }` for clarity — different expected message than single-step's "exactly one set step".*
 
-2. **Q2: handle_kill journal event.** Currently `handle_kill` does NOT call `self.append_journal_event(RuntimeJournalEvent::RunKilled { run })` — the journal append is inside the `if let Some(state) = self.runs.swap_remove(&run)` block, meaning only live runs get a journal event. But `handle_cancel` calls `append_journal_event` BEFORE the `if let Some` guard (line 121-123). Should `handle_kill` follow the same pre-guard pattern? *Recommendation: Yes, `handle_kill` should mirror `handle_cancel`'s journal-append-before-guard pattern for consistency.*
+2. **Q2: Primitive whitelist for reduce body.** Which primitives beyond Set, Do, ForEach should `emit_reduce_body_steps` support? The domain model mentions Reduce (nested), but Together/Collect/Repeat/Choose are undecided. *Recommendation: Start with what `canonical_body_step_width` supports (Set, Do, ForEach, Reduce). Add Together/Collect/Repeat/Choose incrementally via separate beads. Document the whitelist in a const array for testability.*
 
-3. **Q3: Public kill API result type.** Currently `Runtime::cancel_run` returns `RuntimeResult<()>` and always returns `Ok(())` because the enqueue succeeds. The error surfaces later via shard tick processing. Should `Runtime::kill_run` follow the same pattern (enqueue only, errors surface asynchronously), or should it synchronously check run existence before enqueue? *Recommendation: Follow identical pattern to cancel_run for API consistency. The error reaches the caller through trace/journal/counter observation.*
+3. **Q3: Recursive reduce depth limit.** Should there be a maximum nesting depth for reduce-in-reduce to prevent compile-time stack overflow? *Recommendation: Rely on the existing `VbU16Max` bound (body_width cannot exceed 65535) as the implicit depth limiter. A 65535-node body would naturally limit depth.*
 
-4. **Q4: proptest_storage.rs:317 fix scope.** The pre-existing compile error at line 317 is blocking 2/22 RRO rows. Is fixing this error within State 9 scope, or only in State 11? *The bridge says State 11 for the fix, but the test plan must document the tests that would run after the fix. Recommend treating the compile fix as a State 9 prerequisite for test validation.*
+4. **Q4: Kani regression harness unblocking.** `kani_reduce_regression.rs` has commented-out TODO blocks that depend on `emit_reduce_body_steps` existing. Should this bead's test plan include tests that exercise the TODO comparisons? *Yes — the single-step equivalence behavior tests (B35-B38) directly verify the same contract. The Kani harness is verification-lane, not test-lane.*
 
-5. **Q5: Shard-level vs Runtime-level test scope.** The existing `cancel_kill_lattice_tests.rs` tests at the Runtime level (using public API). Should the new error-semantics tests (B07-B22) test at the Runtime level or the Shard level? *Recommendation: Runtime-level for integration tests (public API contract), Shard-level for unit tests (internal contract). Both layers are useful — Shard-level for fast deterministic validation of handle_cancel/handle_kill, Runtime-level for end-to-end correctness.*
+5. **Q5: Canonical primitive name for reduce in error messages.** `canonical_primitive_name()` in `part_05.rs:107` maps Reduce to a name string. Is it `"reduce"` or `"aggregate"`? This affects expected values in `UnsupportedStepPrimitive { primitive: ... }` assertions. *Recommendation: Verify the current value via existing test assertions and use that exact string in new test assertions. The vb-xi2f.37 bead resolved this — check its resolution.*
 
+6. **Q6: Test visibility into `emit_reduce_body_steps`.** The new function will likely be `pub(super)` like `emit_single_body_set`. For in-crate tests in `mod_compile_lowering/tests.rs`, this is fine. For external crate tests (e.g., `workspace_tests`), the function needs `pub` or `pub(crate)` visibility. *Recommendation: Make `emit_reduce_body_steps` `pub(crate)` to match existing pattern (`part_04::*` is `pub(crate)` use).*
+
+---
+
+## References
+
+- **Proof-to-rust bridge**: `proof-to-rust-map.md` — 32 obligations mapped, 13 behavior test refs planned
+- **RRO file**: `rust-refinement-obligations.jsonl` — 32 rows, all `mapping_status: planned`
+- **Contract**: `.beads/vb-xi2f.24/contract.md` — 12 clauses (C1-C12), 8 acceptance gates (G1-G8)
+- **Domain model**: `.beads/vb-xi2f.24/domain-model.md` — ubiquitous language, value objects, forbidden states
+- **Codebase map**: `.beads/vb-xi2f.24/codebase-map.md` — pipeline overview, implementation strategy
+- **Production code**:
+  - `crates/vb_compile/src/mod_compile_lowering/part_01.rs` — width calculation
+  - `crates/vb_compile/src/mod_compile_lowering/part_04.rs` — `lower_canonical_aggregate`, `emit_single_body_set`
+  - `crates/vb_compile/src/mod_compile_lowering/part_12.rs` — `checked_step_offset`
+  - `crates/vb_compile/src/mod_compile_lowering/part_14.rs` — `emit_choose_branch_body` (reference pattern)
+  - `crates/vb_compile/src/mod_compile_lowering/tests.rs` — existing reduce tests (PO-R1..R8)
+  - `crates/vb_compile/tests/v1_primitive_lowering.rs` — existing integration reduce tests

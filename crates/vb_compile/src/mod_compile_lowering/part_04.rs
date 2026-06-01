@@ -29,9 +29,16 @@ pub(super) fn lower_canonical_aggregate(
         .map_err(|e| CompileErrors(vec![e]))?;
     let body_step =
         checked_step_offset(id, 1, "reduce", "body").map_err(|e| CompileErrors(vec![e]))?;
-    let next_step =
-        checked_step_offset(id, 2, "reduce", "next").map_err(|e| CompileErrors(vec![e]))?;
-    let done = checked_step_offset(id, 3, "reduce", "done").map_err(|e| CompileErrors(vec![e]))?;
+    let body_total_width = body_width(body, 0).map_err(|e| CompileErrors(vec![e]))?;
+    let body_total_width_u16 = u16::try_from(body_total_width).map_err(|_| {
+        CompileErrors(vec![CompileError::StepIndexOutOfRange {
+            value: index,
+        }])
+    })?;
+    let next_step = checked_step_offset(body_step, body_total_width_u16, "reduce", "next")
+        .map_err(|e| CompileErrors(vec![e]))?;
+    let done =
+        checked_step_offset(next_step, 1, "reduce", "done").map_err(|e| CompileErrors(vec![e]))?;
     builder.record_slot(input);
     builder.record_slot(accumulator);
     builder.push_node(CompiledNode {
@@ -48,14 +55,13 @@ pub(super) fn lower_canonical_aggregate(
             done,
         },
     });
-    emit_single_body_set(
+    emit_reduce_body_steps(
         body,
         body_step,
         index,
         accumulator,
         Some(next_step),
         builder,
-        false,
     )?;
     builder.push_node(CompiledNode {
         id: next_step,
@@ -296,6 +302,149 @@ pub(super) fn emit_single_body_set(
             },
         ])),
     }
+}
+
+pub(super) fn emit_reduce_body_steps(
+    body: &[vb_yaml::ast::StepAst],
+    body_step: StepIdx,
+    diagnostic_step: usize,
+    slot: SlotIdx,
+    next: Option<StepIdx>,
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    if body.is_empty() {
+        return Err(CompileErrors(vec![CompileError::StepFieldShape {
+            step: diagnostic_step,
+            field: "steps",
+            expected: "at least one body step",
+        }]));
+    }
+    let step_count = body.len();
+    let mut cumulative_offset = 0u16;
+    for (i, step) in body.iter().enumerate() {
+        let step_id = checked_step_offset(body_step, cumulative_offset, "reduce", "body")
+            .map_err(|e| CompileErrors(vec![e]))?;
+        let step_width =
+            canonical_body_step_width(&step.primitive).map_err(|e| CompileErrors(vec![e]))?;
+        let step_width_u16 = u16::try_from(step_width).map_err(|_| {
+            CompileErrors(vec![CompileError::StepIndexOutOfRange {
+                value: diagnostic_step,
+            }])
+        })?;
+        let next_index = i.checked_add(1).ok_or_else(|| {
+            CompileErrors(vec![CompileError::StepIndexOutOfRange {
+                value: diagnostic_step,
+            }])
+        })?;
+        let step_next = if next_index < step_count {
+            let next_offset = cumulative_offset
+                .checked_add(step_width_u16)
+                .ok_or_else(|| {
+                    CompileErrors(vec![CompileError::StepIndexOutOfRange {
+                        value: diagnostic_step,
+                    }])
+                })?;
+            Some(
+                checked_step_offset(body_step, next_offset, "reduce", "body")
+                    .map_err(|e| CompileErrors(vec![e]))?,
+            )
+        } else {
+            next
+        };
+        match &step.primitive {
+            vb_yaml::ast::StepPrimitive::Set { value, .. } => {
+                let constant =
+                    body_constant_index(builder, value, diagnostic_step, false)?;
+                builder.record_slot(slot);
+                builder.push_node(lower_set(step_id, slot, constant, step_next));
+            }
+            vb_yaml::ast::StepPrimitive::Do { action, input } => {
+                let action_value = action.parse::<i64>().map_err(|_| {
+                    CompileErrors(vec![CompileError::StepFieldShape {
+                        step: diagnostic_step,
+                        field: "do.action",
+                        expected: "integer action id",
+                    }])
+                })?;
+                let action_id = u16::try_from(action_value).map_err(|_| {
+                    CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
+                        primitive: "do",
+                        field: "action",
+                        value: integer_error_value(action_value),
+                        limit: usize::from(u16::MAX),
+                    }])
+                })?;
+                let input_value = input.parse::<i64>().map_err(|_| {
+                    CompileErrors(vec![CompileError::StepFieldShape {
+                        step: diagnostic_step,
+                        field: "do.input",
+                        expected: "integer slot index",
+                    }])
+                })?;
+                let input_idx = u16::try_from(input_value).map_err(|_| {
+                    CompileErrors(vec![CompileError::SlotIndexOutOfRange {
+                        value: input_value,
+                    }])
+                })?;
+                let input_slot = SlotIdx::new(input_idx);
+                builder.record_slot(input_slot);
+                builder.push_node(CompiledNode {
+                    id: step_id,
+                    output: None,
+                    next: step_next,
+                    error_slot: None,
+                    on_error: None,
+                    kind: CompiledNodeKind::Do {
+                        action: vb_core::ActionId::new(action_id),
+                        input: input_slot,
+                    },
+                });
+            }
+            vb_yaml::ast::StepPrimitive::ForEach {
+                input,
+                at_once,
+                body: foreach_body,
+                ..
+            } => lower_canonical_for_each(
+                diagnostic_step,
+                step_id,
+                input,
+                *at_once,
+                foreach_body,
+                builder,
+            )?,
+            vb_yaml::ast::StepPrimitive::Reduce {
+                input,
+                initial,
+                body: reduce_inner_body,
+                ..
+            } => lower_canonical_aggregate(
+                diagnostic_step,
+                step_id,
+                input,
+                initial,
+                reduce_inner_body,
+                step_next,
+                builder,
+            )?,
+            other => {
+                return Err(CompileErrors(vec![
+                    CompileError::UnsupportedStepPrimitive {
+                        step: diagnostic_step,
+                        primitive: canonical_primitive_name(other),
+                    },
+                ]));
+            }
+        }
+        cumulative_offset = cumulative_offset
+            .checked_add(step_width_u16)
+            .ok_or_else(|| {
+                CompileErrors(vec![CompileError::StepIndexOutOfRange {
+                    value: diagnostic_step,
+                }])
+            })?;
+    }
+    Ok(())
 }
 
 pub(super) fn body_constant_index(

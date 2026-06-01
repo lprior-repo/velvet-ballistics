@@ -297,8 +297,9 @@ fn compile_workflow_returns_step_field_shape_when_each_scoped_primitive_required
 
 #[test]
 fn compile_workflow_rejects_multi_step_body_in_scoped_primitives() -> Result<(), String> {
-    // Scoped primitives (repeat, for_each, collect, reduce) require exactly one set step
+    // Scoped primitives (repeat, for_each, collect) require exactly one set step
     // in their body. Multiple steps must be rejected with StepFieldShape error.
+    // Note: reduce now supports multi-step bodies (vb-xi2f.24).
     let cases = [
         (
             "repeat with two steps in body",
@@ -311,10 +312,6 @@ fn compile_workflow_rejects_multi_step_body_in_scoped_primitives() -> Result<(),
         (
             "collect with two steps in body",
             "  - id: collect_pages\n    collect:\n      variable: page\n      source: \"0\"\n      steps:\n        - id: step1\n          set:\n            output: out_x\n            value: \"1\"\n        - id: step2\n          set:\n            output: out_y\n            value: \"2\"\n  - id: done\n    finish:\n      result: 0\n",
-        ),
-        (
-            "reduce with two steps in body",
-            "  - id: fold\n    reduce:\n      variable: acc\n      input: \"0\"\n      initial: \"10\"\n      steps:\n        - id: step1\n          set:\n            output: out_x\n            value: \"1\"\n        - id: step2\n          set:\n            output: out_y\n            value: \"2\"\n  - id: done\n    finish:\n      result: 0\n",
         ),
     ];
 

@@ -575,6 +575,7 @@ test = false
 doc = false
 bench = false
 
+
 [[bin]]
 name = "ps_003_oversized_envelope"
 path = "fuzz_targets/ps_003_oversized_envelope.rs"
@@ -592,6 +593,22 @@ bench = false
 [[bin]]
 name = "ps_012_corrupted_read"
 path = "fuzz_targets/ps_012_corrupted_read.rs"
+test = false
+doc = false
+bench = false
+
+# === vb-xi2f.24 Reduce Lowering Fuzz Targets ===
+
+[[bin]]
+name = "reduce_lowering_panic"
+path = "fuzz_targets/reduce_lowering_panic.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "reduce_diagnostic_codes"
+path = "fuzz_targets/reduce_diagnostic_codes.rs"
 test = false
 doc = false
 bench = false
