@@ -49,10 +49,3 @@ pub mod submit;
 pub mod trace;
 pub mod verify;
 
-// Newly declared modules (previously missing from lib.rs).
-pub mod args;
-pub mod commands_journal;
-pub mod commands_verify;
-pub mod commands_workflow;
-pub mod deliver_sink;
-

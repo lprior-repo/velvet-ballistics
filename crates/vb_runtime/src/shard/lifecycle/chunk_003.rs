@@ -1,7 +1,7 @@
 use vb_core::ValueStore;
 use vb_core::action::{
     ActionContract, ActionError, ActionFailure, ActionOutputReady, ActionOutcome, ActionTicket,
-    RetryPolicy as VbCoreRetryPolicy,
+    Idempotency, RetryPolicy as VbCoreRetryPolicy,
 };
 use vb_core::capability::CapabilitySet;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
@@ -123,6 +123,16 @@ fn reject_taint_downgrade(
         .frame
         .read_taint(input)
         .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+    // DeterministicPure actions must operate only on Clean input.
+    // Defense-in-depth: engine-side check in execute_do also enforces this,
+    // but the completion path must independently reject non-Clean input
+    // before allowing frame mutation.
+    if contract.idempotency == Idempotency::DeterministicPure && input_taint != Taint::Clean {
+        return Err(RuntimeError::ActionTaintDowngrade {
+            required: Taint::Clean,
+            supplied: input_taint,
+        });
+    }
     let required = vb_core::action::propagate_action_taint(contract.idempotency, input_taint);
     if join_taint(required, supplied) == supplied {
         Ok(())
