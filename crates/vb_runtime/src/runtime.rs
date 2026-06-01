@@ -426,6 +426,10 @@ impl Runtime {
 
         for (index, shard) in self.shards.iter().enumerate() {
             let counters = shard.counters().snapshot();
+            // Use saturating conversion for metrics: values exceeding u32::MAX are
+            // capped at the maximum rather than silently discarded. This is intentional
+            // for metrics collection where we want to report "at least N" for
+            // pathological cases that cannot occur in practice.
             let active_runs = u32::try_from(shard.active_run_count()).unwrap_or(u32::MAX);
             let queue_depth = u32::try_from(shard.command_queue_len()).unwrap_or(u32::MAX);
             let queue_remaining = u32::try_from(shard.remaining_capacity()).unwrap_or(u32::MAX);
