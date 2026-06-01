@@ -259,3 +259,137 @@
             ),
         }
     }
+
+    // ── Proptest properties ──────────────────────────────────────────────
+
+    mod proptests {
+        use proptest::prelude::*;
+        use vb_core::value::Taint;
+        use vb_core::action::Idempotency;
+
+        use super::super::reject_taint_downgrade;
+        use super::super::super::types::RunState;
+        use super::{test_action_contract, test_workflow};
+        use vb_core::frame::RunFrame;
+        use vb_core::ids::{RunId, SlotIdx, StepIdx};
+        use vb_core::value::SlotValue;
+        use crate::primitives::collect::CollectStates;
+        use crate::RuntimeError;
+
+        fn all_taints() -> impl Strategy<Value = Taint> {
+            prop_oneof![
+                Just(Taint::Clean),
+                Just(Taint::DerivedFromSecret),
+                Just(Taint::Secret),
+                Just(Taint::Random),
+                Just(Taint::TimeDependent),
+            ]
+        }
+
+        fn all_idempotencies() -> impl Strategy<Value = Idempotency> {
+            prop_oneof![
+                Just(Idempotency::DeterministicPure),
+                Just(Idempotency::IdempotentExternal),
+                Just(Idempotency::AtLeastOnceExternal),
+            ]
+        }
+
+        fn make_proptest_run_state(input_taint: Taint) -> RunState {
+            let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, 1)
+                .expect("frame creation");
+            frame
+                .write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(42), input_taint)
+                .expect("slot write");
+            let workflow = test_workflow().expect("workflow creation");
+            let contract = test_action_contract(Idempotency::DeterministicPure);
+            RunState {
+                frame,
+                workflow,
+                store: vb_core::value_store::ValueStore::new(),
+                action_attempts: crate::shard::helpers::new_action_attempts(1),
+                admission: None,
+                collect_states: CollectStates::new(),
+                action_contracts: Box::from([contract]),
+            }
+        }
+
+        proptest! {
+            #[test]
+            fn prop_deterministicpure_rejects_all_non_clean(
+                input_taint in all_taints(),
+            ) {
+                prop_assume!(input_taint != Taint::Clean);
+                let state = make_proptest_run_state(input_taint);
+                let contract = test_action_contract(Idempotency::DeterministicPure);
+                let result = reject_taint_downgrade(
+                    &state, SlotIdx::ZERO, &contract, Taint::Clean
+                );
+                prop_assert!(result.is_err(),
+                    "DeterministicPure + {input_taint:?} input must reject");
+                match result {
+                    Ok(()) => unreachable!(),
+                    Err(RuntimeError::ActionTaintDowngrade { required, supplied }) => {
+                        prop_assert_eq!(required, Taint::Clean);
+                        prop_assert_eq!(supplied, input_taint);
+                    }
+                    other => panic!("unexpected error variant: {other:?}"),
+                }
+            }
+
+            #[test]
+            fn prop_clean_input_passes_for_all_idempotencies(
+                idempotency in all_idempotencies(),
+                supplied in all_taints(),
+            ) {
+                let state = make_proptest_run_state(Taint::Clean);
+                let contract = test_action_contract(idempotency);
+                let result = reject_taint_downgrade(
+                    &state, SlotIdx::ZERO, &contract, supplied
+                );
+                if let Err(RuntimeError::ActionTaintDowngrade { required, .. }) = &result {
+                    prop_assert_ne!(*required, Taint::Clean,
+                        "guard must not fire on Clean input (idem={idempotency:?})");
+                }
+            }
+
+            #[test]
+            fn prop_non_deterministicpure_never_fires_guard(
+                input_taint in all_taints(),
+                idempotency in all_idempotencies(),
+                supplied in all_taints(),
+            ) {
+                prop_assume!(idempotency != Idempotency::DeterministicPure);
+                let state = make_proptest_run_state(input_taint);
+                let contract = test_action_contract(idempotency);
+                let result = reject_taint_downgrade(
+                    &state, SlotIdx::ZERO, &contract, supplied
+                );
+                if let Err(RuntimeError::ActionTaintDowngrade { required, .. }) = &result {
+                    prop_assert_ne!(*required, Taint::Clean,
+                        "guard must not fire for non-DeterministicPure idempotency \
+                         (idem={idempotency:?}, input={input_taint:?})");
+                }
+            }
+
+            #[test]
+            fn prop_guard_reports_input_taint_not_supplied_param(
+                input_taint in all_taints(),
+                supplied in all_taints(),
+            ) {
+                prop_assume!(input_taint != Taint::Clean);
+                let state = make_proptest_run_state(input_taint);
+                let contract = test_action_contract(Idempotency::DeterministicPure);
+                let result = reject_taint_downgrade(
+                    &state, SlotIdx::ZERO, &contract, supplied
+                );
+                match result {
+                    Err(RuntimeError::ActionTaintDowngrade { supplied: err_supplied, .. }) => {
+                        prop_assert_eq!(err_supplied, input_taint,
+                            "supplied in error must be frame's input_taint, not the parameter \
+                             (input={input_taint:?}, param={supplied:?})");
+                    }
+                    _ => panic!("guard should have fired"),
+                }
+            }
+        }
+    }
