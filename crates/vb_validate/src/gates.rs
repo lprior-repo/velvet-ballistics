@@ -932,34 +932,64 @@ fn detect_cycle_dfs(
     adjacency: &[Vec<usize>],
     visited: &mut [u8],
 ) -> ValidationResult<()> {
+    let slot_count = visited.len();
+    // Iterative three-color DFS using a Vec stack of (slot, neighbor_index).
+    // White=0, Gray=1, Black=2.
+    let mut stack: Vec<(usize, usize)> = Vec::new();
+
+    // Seed with the starting slot.
     if let Some(state) = visited.get_mut(slot) {
         *state = 1; // gray
     }
+    let neighbor_count = adjacency.get(slot).map_or(0, |v| v.len());
+    if neighbor_count > 0 {
+        stack.push((slot, 0));
+    }
 
-    let neighbors = adjacency.get(slot).map_or(&[][..], |v| v.as_slice());
-    for &neighbor in neighbors {
-        let color = visited
-            .get(neighbor)
-            .copied()
-            .ok_or(ValidationError::SlotDependencyCycle {
-                slot,
-                chain: format!("slot {slot} -> slot {neighbor}"),
-            })?;
-        if color == 1 {
-            // Gray = cycle found.
-            return Err(ValidationError::SlotDependencyCycle {
-                slot,
-                chain: format!("slot {slot} -> slot {neighbor}"),
-            });
+    while let Some((current, idx)) = stack.pop() {
+        if idx == 0 {
+            // First visit to this neighbor list: already marked gray above.
         }
-        if color == 0 {
-            detect_cycle_dfs(neighbor, adjacency, visited)?;
+
+        let neighbors = adjacency.get(current).map_or(&[][..], |v| v.as_slice());
+
+        if idx < neighbors.len() {
+            // Push back the current node with the next neighbor index.
+            stack.push((current, idx + 1));
+
+            let neighbor = neighbors[idx];
+
+            // Bounds check: neighbor index must be within the slot count.
+            if neighbor >= slot_count {
+                return Err(ValidationError::SlotDependencyCycle {
+                    slot: current,
+                    chain: format!("slot {current} -> slot {neighbor}"),
+                });
+            }
+
+            let color = visited[neighbor];
+            if color == 1 {
+                // Gray = cycle found.
+                return Err(ValidationError::SlotDependencyCycle {
+                    slot: current,
+                    chain: format!("slot {current} -> slot {neighbor}"),
+                });
+            }
+            if color == 0 {
+                // White: unvisited, mark gray and start exploring.
+                visited[neighbor] = 1; // gray
+                let next_count = adjacency.get(neighbor).map_or(0, |v| v.len());
+                if next_count > 0 {
+                    stack.push((neighbor, 0));
+                }
+            }
+            // If color == 2 (black), neighbor already fully explored, skip.
+        } else {
+            // All neighbors of `current` have been processed; mark black.
+            visited[current] = 2; // black
         }
     }
 
-    if let Some(state) = visited.get_mut(slot) {
-        *state = 2; // black
-    }
     Ok(())
 }
 

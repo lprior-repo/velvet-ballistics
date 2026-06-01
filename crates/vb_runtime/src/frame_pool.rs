@@ -14,7 +14,7 @@ const MAX_POOL_CAPACITY: usize = 4_096;
 /// Frames are allocated with a fixed step_count and slot_count derived from
 /// the workflow's resource contract. Callers take frames for exclusive use
 /// and release them back when the run completes or is cancelled.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FramePool {
     frames: Vec<RunFrame>,
     step_count: u16,

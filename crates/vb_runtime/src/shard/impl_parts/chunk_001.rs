@@ -304,36 +304,41 @@ impl Shard {
             return Ok(true);
         };
 
+        self.dispatch_command(cmd)?;
+        Ok(true)
+    }
+
+    fn dispatch_command(&mut self, cmd: ShardCommand) -> RuntimeResult<()> {
         match cmd {
             ShardCommand::Submit {
                 run,
                 workflow,
                 caps,
-            } => self.handle_submit(run, workflow, caps)?,
+            } => self.dispatch_submit(run, workflow, caps)?,
             ShardCommand::SubmitPrePersisted {
                 run,
                 workflow,
                 caps,
-            } => self.handle_submit_pre_persisted(run, workflow, caps)?,
+            } => self.dispatch_submit_pre_persisted(run, workflow, caps)?,
             ShardCommand::SubmitWithInputs {
                 run,
                 workflow,
                 inputs,
                 caps,
-            } => self.handle_submit_with_inputs(run, workflow, &inputs, caps)?,
+            } => self.dispatch_submit_with_inputs(run, workflow, &inputs, caps)?,
             ShardCommand::SubmitWithContracts {
                 run,
                 workflow,
                 caps,
                 action_contracts,
-            } => self.handle_submit_with_contracts(run, workflow, caps, &action_contracts)?,
+            } => self.dispatch_submit_with_contracts(run, workflow, caps, &action_contracts)?,
             ShardCommand::SubmitWithInputsAndContracts {
                 run,
                 workflow,
                 inputs,
                 caps,
                 action_contracts,
-            } => self.handle_submit_with_inputs_and_contracts(
+            } => self.dispatch_submit_with_inputs_and_contracts(
                 run,
                 workflow,
                 &inputs,
@@ -344,17 +349,16 @@ impl Shard {
                 self.handle_resume(run).map_err(RuntimeError::from)?;
             }
             ShardCommand::ActionCompleted { ticket, output } => {
-                self.handle_action_completion(ticket, output)?;
+                self.dispatch_action_completion(ticket, output)?;
             }
             ShardCommand::ActionCompletedLegacy { run, step } => {
-                self.handle_legacy_action_completion(run, step)?;
+                self.dispatch_legacy_action_completion(run, step)?;
             }
             ShardCommand::ActionFailed { ticket, failure } => {
-                self.handle_action_failure(ticket, failure)?;
+                self.dispatch_action_failure(ticket, failure)?;
             }
             ShardCommand::RuntimeActionFailed { ticket, failure } => {
-                self.handle_action_failure(ticket, failure)
-                    .map_err(Self::runtime_action_failure_error)?;
+                self.dispatch_runtime_action_failure(ticket, failure)?;
             }
             ShardCommand::AskAnswered { answer } => self.handle_ask_answer(answer)?,
             ShardCommand::TimerFired {
@@ -370,11 +374,92 @@ impl Shard {
             }
             ShardCommand::Shutdown => {
                 self.shutting_down = true;
-                return Ok(false);
+                return Ok(());
             }
         }
+        Ok(())
+    }
 
-        Ok(true)
+    fn dispatch_submit(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        caps: CapabilitySet,
+    ) -> RuntimeResult<()> {
+        self.handle_submit(run, workflow, caps)
+    }
+
+    fn dispatch_submit_pre_persisted(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        caps: CapabilitySet,
+    ) -> RuntimeResult<()> {
+        self.handle_submit_pre_persisted(run, workflow, caps)
+    }
+
+    fn dispatch_submit_with_inputs(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        inputs: &[(vb_core::ids::SlotIdx, vb_core::value::SlotValue)],
+        caps: CapabilitySet,
+    ) -> RuntimeResult<()> {
+        self.handle_submit_with_inputs(run, workflow, inputs, caps)
+    }
+
+    fn dispatch_submit_with_contracts(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        caps: CapabilitySet,
+        action_contracts: &[ActionContract],
+    ) -> RuntimeResult<()> {
+        self.handle_submit_with_contracts(run, workflow, caps, action_contracts)
+    }
+
+    fn dispatch_submit_with_inputs_and_contracts(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        inputs: &[(vb_core::ids::SlotIdx, vb_core::value::SlotValue)],
+        caps: CapabilitySet,
+        action_contracts: &[ActionContract],
+    ) -> RuntimeResult<()> {
+        self.handle_submit_with_inputs_and_contracts(run, workflow, inputs, caps, action_contracts)
+    }
+
+    fn dispatch_action_completion(
+        &mut self,
+        ticket: ActionTicket,
+        output: vb_core::action::ActionOutputReady,
+    ) -> RuntimeResult<()> {
+        self.handle_action_completion(ticket, output)
+    }
+
+    fn dispatch_legacy_action_completion(
+        &mut self,
+        run: RunId,
+        step: StepIdx,
+    ) -> RuntimeResult<()> {
+        self.handle_legacy_action_completion(run, step)
+    }
+
+    fn dispatch_action_failure(
+        &mut self,
+        ticket: ActionTicket,
+        failure: ActionFailure,
+    ) -> RuntimeResult<()> {
+        self.handle_action_failure(ticket, failure)
+    }
+
+    fn dispatch_runtime_action_failure(
+        &mut self,
+        ticket: ActionTicket,
+        failure: ActionFailure,
+    ) -> RuntimeResult<()> {
+        self.handle_action_failure(ticket, failure)
+            .map_err(Self::runtime_action_failure_error)
     }
 
     fn runtime_action_failure_error(error: RuntimeError) -> RuntimeError {

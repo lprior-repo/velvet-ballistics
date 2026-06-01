@@ -5,6 +5,7 @@
 
 use super::types::{PendingTimer, RuntimeState, RunState};
 use core::fmt;
+use crate::frame_pool::FramePool;
 use vb_core::RunId;
 use vb_storage::EventSeq;
 
