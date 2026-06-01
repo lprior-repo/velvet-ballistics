@@ -33,5 +33,5 @@ fn read_array<const N: usize>(data: &[u8], start: usize) -> Result<[u8; N], Post
 }
 
 #[cfg(test)]
-#[path = "cli_postcard/tests.rs"]
+#[path = "tests.rs"]
 mod tests;
