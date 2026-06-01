@@ -1287,11 +1287,7 @@ fn decode_envelope_only_rejects_trailing_bytes_with_exact_offsets() -> Result<()
     let declared_end = bytes.len();
     bytes.extend_from_slice(&[0xE7, 0x7E]);
 
-    let result = decode_envelope_only(
-        &bytes,
-        MAGIC_JOURNAL_EVENT,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    );
+    let result = decode_envelope_only(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
 
     let Err(JournalError::UnexpectedTrailingBytes {
         declared_end: found_declared_end,

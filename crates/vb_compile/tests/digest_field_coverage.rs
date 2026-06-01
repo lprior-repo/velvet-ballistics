@@ -16,7 +16,8 @@ fn together_workflow_yaml(branches_yaml: &str) -> String {
 
 fn reduce_workflow_yaml(variable: &str, input: &str, initial: &str, body_yaml: &str) -> String {
     format!(
-        "version: velvet-ballistics/v1\nname: reduce-digest-test\nwhen:\n  manual: {{}}\nsteps:\n  - id: reduce\n    reduce:\n      variable: {}\n      input: {}\n      initial: \"{}\"\n      steps:\n{}\n  - id: done\n    finish:\n      result: 0\n",
+        "version: velvet-ballistics/v1\nname: reduce-digest-test\nwhen:\n  manual: {{}}\nsteps:\n  - id: reduce\n    reduce:\n      variable: \"{}\"\n      input: \"{}\"\n      initial: \"{}\"\n      steps:\n{}\n  - id: done\n    finish:\n      result: 0
+",
         variable, input, initial, body_yaml
     )
 }
@@ -92,12 +93,12 @@ proptest! {
         prop_assume!(var_a != var_b);
 
         let yaml_a = reduce_workflow_yaml(
-            &var_a, "items", "0",
+            &var_a, "0", "0",
             "            - id: set_acc\n              set:\n                output: acc\n                value: \"1\"\n"
         );
 
         let yaml_b = reduce_workflow_yaml(
-            &var_b, "items", "0",
+            &var_b, "0", "0",
             "            - id: set_acc\n              set:\n                output: acc\n                value: \"1\"\n"
         );
 
@@ -124,13 +125,13 @@ steps:
           steps:
             - id: set_1
               set:
-                output: x
+                output: "x"
                 value: "1"
         - label: "b"
           steps:
             - id: set_2
               set:
-                output: y
+                output: "y"
                 value: "2"
   - id: done
     finish:
@@ -140,6 +141,8 @@ steps:
     let digest_a = compile_and_digest(yaml).unwrap();
     let digest_b = compile_and_digest(yaml).unwrap();
 
-    assert_eq!(digest_a, digest_b,
-        "Identical together structures must produce identical digests (idempotence)");
+    assert_eq!(
+        digest_a, digest_b,
+        "Identical together structures must produce identical digests (idempotence)"
+    );
 }
