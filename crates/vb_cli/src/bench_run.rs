@@ -35,7 +35,7 @@ pub(crate) fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) ->
                 );
             } else {
                 for err in &errors.0 {
-                    errln!("compile error: {err}");
+                    crate::errln!("compile error: {err}");
                 }
             }
             return CliExitCode::CompileFailed.into();
@@ -55,7 +55,7 @@ pub(crate) fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) ->
                 output,
             );
         } else {
-            errln!("runtime configuration error: shard count must be non-zero");
+            crate::errln!("runtime configuration error: shard count must be non-zero");
         }
         return CliExitCode::RuntimeFailed.into();
     };
@@ -71,7 +71,7 @@ pub(crate) fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) ->
                 output,
             );
         } else {
-            errln!("runtime submit error: {e}");
+            crate::errln!("runtime submit error: {e}");
         }
         return CliExitCode::RuntimeFailed.into();
     }
@@ -85,7 +85,7 @@ pub(crate) fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) ->
                 output,
             );
         } else {
-            errln!("runtime tick error: {e}");
+            crate::errln!("runtime tick error: {e}");
         }
         return CliExitCode::RuntimeFailed.into();
     }
@@ -97,7 +97,7 @@ pub(crate) fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) ->
         .saturating_add(run_elapsed.as_micros());
 
     if output != OutputFormat::Text {
-        emit_json_or_return!(
+        crate::emit_json_or_return!(
             &serde_json::json!({
                 "success": counters.runs_failed == 0,
                 "compile_us": compile_elapsed.as_micros(),
@@ -113,10 +113,10 @@ pub(crate) fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) ->
             output,
         );
     } else {
-        outln!("compile: {}us", compile_elapsed.as_micros());
-        outln!("execute: {}us", run_elapsed.as_micros());
-        outln!("total:   {}us", total_us);
-        outln!(
+        crate::outln!("compile: {}us", compile_elapsed.as_micros());
+        crate::outln!("execute: {}us", run_elapsed.as_micros());
+        crate::outln!("total:   {}us", total_us);
+        crate::outln!(
             "runtime: submitted={} completed={} failed={} steps={}",
             counters.runs_submitted,
             counters.runs_completed,

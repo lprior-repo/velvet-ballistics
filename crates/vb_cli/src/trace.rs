@@ -16,18 +16,18 @@ pub(crate) fn cmd_trace(
     run_id: &str,
     db: &std::path::Path,
     output: OutputFormat,
-    filters: commands_journal::TraceFilters,
+    filters: crate::commands_journal::TraceFilters,
 ) -> ExitCode {
     let events = match read_journal_events(run_id, db, output) {
         Ok(ev) => ev,
         Err(code) => return code,
     };
-    let trace = commands_journal::filter_trace(commands_journal::build_trace(&events), filters);
+    let trace = crate::commands_journal::filter_trace(crate::commands_journal::build_trace(&events), filters);
     if trace.is_empty() {
         if output != OutputFormat::Text {
-            emit_json_or_return!(
+            crate::emit_json_or_return!(
                 &serde_json::json!({
-                    "schema_version": cli_envelope::SCHEMA_VERSION,
+                    "schema_version": crate::cli_envelope::SCHEMA_VERSION,
                     "kind": "trace_report",
                     "run_id": run_id,
                     "trace": [],
@@ -36,16 +36,16 @@ pub(crate) fn cmd_trace(
                 output,
             );
         } else {
-            outln!("no events found for run {run_id}");
+            crate::outln!("no events found for run {run_id}");
         }
         return CliExitCode::Success.into();
     }
     match output {
         OutputFormat::Yaml | OutputFormat::Postcard => {
             let entries: Vec<serde_json::Value> = trace.iter().map(trace_entry_to_json).collect();
-            emit_json_or_return!(
+            crate::emit_json_or_return!(
                 &serde_json::json!({
-                    "schema_version": cli_envelope::SCHEMA_VERSION,
+                    "schema_version": crate::cli_envelope::SCHEMA_VERSION,
                     "kind": "trace_report",
                     "run_id": run_id,
                     "trace": entries,
@@ -55,27 +55,27 @@ pub(crate) fn cmd_trace(
             );
         }
         OutputFormat::Text => {
-            outln!("execution trace for run {run_id}");
+            crate::outln!("execution trace for run {run_id}");
             for e in &trace {
                 match e.step {
-                    Some(step) => outln!(
+                    Some(step) => crate::outln!(
                         "  [{}] {} step {} (seq {})",
                         e.index,
                         e.event_type,
                         step,
                         e.seq
                     ),
-                    None => outln!("  [{}] {} (seq {})", e.index, e.event_type, e.seq),
+                    None => crate::outln!("  [{}] {} (seq {})", e.index, e.event_type, e.seq),
                 }
             }
-            outln!("{} event(s) total", trace.len());
+            crate::outln!("{} event(s) total", trace.len());
         }
     }
     CliExitCode::Success.into()
 }
 
 /// Convert a structured trace entry to its JSON representation.
-pub(crate) fn trace_entry_to_json(entry: &commands_journal::TraceEntry) -> serde_json::Value {
+pub(crate) fn trace_entry_to_json(entry: &crate::commands_journal::TraceEntry) -> serde_json::Value {
     let mut map = serde_json::Map::new();
     map.insert("seq".into(), serde_json::Value::from(entry.seq));
     map.insert("type".into(), serde_json::Value::from(entry.event_type));

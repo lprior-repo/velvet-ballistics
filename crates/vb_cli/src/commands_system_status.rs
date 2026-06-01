@@ -28,7 +28,7 @@ fn print_system_status_yaml(
     let config = vb_runtime::shard::ShardConfig::default();
     crate::write_stdout_line_checked(format_args!(
         "schema_version: {}",
-        cli_envelope::SCHEMA_VERSION
+        crate::cli_envelope::SCHEMA_VERSION
     ))?;
     crate::write_stdout_line_checked(format_args!("kind: SystemStatus"))?;
     crate::write_stdout_line_checked(format_args!("profile: {}", options.profile.as_str()))?;
@@ -91,7 +91,7 @@ pub(crate) fn system_status_payload(
         },
         "gate": {
             "cli_version": version,
-            "schema_version": cli_envelope::SCHEMA_VERSION
+            "schema_version": crate::cli_envelope::SCHEMA_VERSION
         }
     })
 }
@@ -102,7 +102,7 @@ fn print_json(
     version: &str,
 ) -> Result<(), crate::OutputError> {
     let payload = system_status_payload(options, version);
-    let envelope = cli_envelope::serialize_with_version(&payload, cli_envelope::Kind::SystemStatus);
+    let envelope = crate::cli_envelope::serialize_with_version(&payload, crate::cli_envelope::Kind::SystemStatus);
     crate::json_out(&envelope, output)
 }
 

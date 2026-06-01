@@ -55,9 +55,9 @@ pub(crate) fn action_contract_detail(contract: &vb_core::action::ActionContract)
 }
 
 pub(crate) fn write_action_table_rows(rows: &[ActionTableRow]) {
-    outln!("id\tidempotency\tretry_safety\tside_effect\tinput_slots\toutput_slots\ttimeout_ms");
+    crate::outln!("id\tidempotency\tretry_safety\tside_effect\tinput_slots\toutput_slots\ttimeout_ms");
     rows.iter().for_each(|row| {
-        outln!(
+        crate::outln!(
             "{}\t{}\t{}\t{}\t{}\t{}\t{}",
             row.id,
             row.idempotency,
@@ -73,10 +73,10 @@ pub(crate) fn write_action_table_rows(rows: &[ActionTableRow]) {
 pub(crate) fn write_no_registered_actions(output: OutputFormat) -> ExitCode {
     let message = "no registered actions";
     if output == OutputFormat::Text {
-        outln!("{message}");
+        crate::outln!("{message}");
         ExitCode::SUCCESS
     } else {
-        emit_json_or_return!(
+        crate::emit_json_or_return!(
             &serde_json::json!({
                 "success": true,
                 "actions": [],

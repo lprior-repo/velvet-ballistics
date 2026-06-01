@@ -1,3 +1,14 @@
+use crate::args::OutputFormat;
+use crate::exit_code::CliExitCode;
+use crate::output::{json_error, output_error_exit};
+use crate::output_utils::{infer_legacy_json_error_code, legacy_json_error_message, write_diagnostic_message_stderr};
+use crate::file_io::{parse_run_id, read_journal_events, report_storage_open_error};
+use std::path::Path;
+use std::process::ExitCode;
+use std::sync::Arc;
+use vb_core::RunId;
+use vb_runtime::journal::RuntimeJournalConfig;
+
 fn cmd_answer(
     run_id: &str,
     step: u16,
@@ -18,7 +29,7 @@ fn cmd_answer(
                     output,
                 );
             } else {
-                errln!("invalid run_id '{run_id}': {e}");
+                crate::errln!("invalid run_id '{run_id}': {e}");
             }
             return CliExitCode::ValidationFailed.into();
         }
@@ -37,7 +48,7 @@ fn cmd_answer(
                     output,
                 );
             } else {
-                errln!("error reading value file {}: {e}", value_file.display());
+                crate::errln!("error reading value file {}: {e}", value_file.display());
             }
             return CliExitCode::ValidationFailed.into();
         }
@@ -60,7 +71,7 @@ fn cmd_answer(
                     output,
                 );
             } else {
-                errln!(
+                crate::errln!(
                     "error connecting to IPC server at {}: {e}",
                     socket_path.display()
                 );
@@ -88,7 +99,7 @@ fn cmd_answer(
                 output,
             );
         } else {
-            errln!("error sending answer: {e}");
+            crate::errln!("error sending answer: {e}");
         }
         return CliExitCode::IpcError.into();
     }
@@ -98,7 +109,7 @@ fn cmd_answer(
         Ok((_header, response)) => match response {
             vb_ipc::server::IpcResponse::AcceptedRun { run_id: _ } => {
                 if output != OutputFormat::Text {
-                    emit_json_or_return!(
+                    crate::emit_json_or_return!(
                         &serde_json::json!({
                             "success": true,
                             "run_id": rid.get()
@@ -106,7 +117,7 @@ fn cmd_answer(
                         output,
                     );
                 } else {
-                    outln!("answer accepted for run {}", rid.get());
+                    crate::outln!("answer accepted for run {}", rid.get());
                 }
                 ExitCode::SUCCESS
             }
@@ -120,7 +131,7 @@ fn cmd_answer(
                         output,
                     );
                 } else {
-                    errln!("runtime error: {message}");
+                    crate::errln!("runtime error: {message}");
                 }
                 CliExitCode::RuntimeFailed.into()
             }
@@ -137,7 +148,7 @@ fn cmd_answer(
                         output,
                     );
                 } else {
-                    errln!("payload error: {message}");
+                    crate::errln!("payload error: {message}");
                 }
                 CliExitCode::ValidationFailed.into()
             }
@@ -151,7 +162,7 @@ fn cmd_answer(
                         output,
                     );
                 } else {
-                    errln!("unexpected response: {other:?}");
+                    crate::errln!("unexpected response: {other:?}");
                 }
                 CliExitCode::RuntimeFailed.into()
             }
@@ -166,7 +177,7 @@ fn cmd_answer(
                     output,
                 );
             } else {
-                errln!("error receiving response: {e}");
+                crate::errln!("error receiving response: {e}");
             }
             CliExitCode::IpcError.into()
         }
@@ -191,7 +202,7 @@ fn format_cancel_output(
     output: OutputFormat,
 ) -> ExitCode {
     if output != OutputFormat::Text {
-        emit_json_or_return!(
+        crate::emit_json_or_return!(
             &serde_json::json!({
                 "success": true,
                 "run_id": run_id,
@@ -207,7 +218,7 @@ fn format_cancel_output(
             Some(r) => format!(" (reason: {r})"),
             None => String::new(),
         };
-        outln!("Run {run_id} cancelled{detail} ({note})");
+        crate::outln!("Run {run_id} cancelled{detail} ({note})");
         ExitCode::SUCCESS
     }
 }

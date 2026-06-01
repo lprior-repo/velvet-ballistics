@@ -8,19 +8,6 @@ use crate::commands_verify::{exit_code_for_error, run_verification, VerifyError,
 use crate::exit_code::CliExitCode;
 use crate::file_io::read_file;
 use crate::output::{json_error, write_failure_message};
-use crate::output_utils::write_stdout_line;
-
-macro_rules! outln {
-    ($($arg:tt)*) => {{
-        write_stdout_line(format_args!($($arg)*));
-    }};
-}
-
-macro_rules! errln {
-    ($($arg:tt)*) => {{
-        crate::output_utils::write_stderr_line(format_args!($($arg)*));
-    }};
-}
 
 /// Run the `verify` command: full static analysis pipeline.
 ///
@@ -50,9 +37,9 @@ pub(crate) fn cmd_verify(
     match run_verification(text, &bytes, profile) {
         Ok(result) => {
             if output == OutputFormat::Text {
-                outln!("verified ({} nodes, profile={})", result.node_count, profile.as_str());
+                crate::outln!("verified ({} nodes, profile={})", result.node_count, profile.as_str());
             } else {
-                emit_json_or_return!(verify_success_report(&result, profile), output);
+                crate::emit_json_or_return!(verify_success_report(&result, profile), output);
             }
             ExitCode::SUCCESS
         }
@@ -74,7 +61,7 @@ pub(crate) fn cmd_verify(
                             output,
                         );
                     } else {
-                        errln!("{msg}");
+                        crate::errln!("{msg}");
                     }
                 }
                 VerifyError::Compile(errors) => {
@@ -90,7 +77,7 @@ pub(crate) fn cmd_verify(
                         );
                     } else {
                         for e in errors {
-                            errln!("compile error: {e}");
+                            crate::errln!("compile error: {e}");
                         }
                     }
                 }
@@ -105,7 +92,7 @@ pub(crate) fn cmd_verify(
                             output,
                         );
                     } else {
-                        errln!("{msg}");
+                        crate::errln!("{msg}");
                     }
                 }
                 VerifyError::BudgetPolicy(msg) => {
@@ -119,7 +106,7 @@ pub(crate) fn cmd_verify(
                             output,
                         );
                     } else {
-                        errln!("{msg}");
+                        crate::errln!("{msg}");
                     }
                 }
                 VerifyError::StorageError(msg) => {
@@ -133,7 +120,7 @@ pub(crate) fn cmd_verify(
                             output,
                         );
                     } else {
-                        errln!("{msg}");
+                        crate::errln!("{msg}");
                     }
                 }
                 VerifyError::ReplayDivergence(msg) => {
@@ -147,21 +134,13 @@ pub(crate) fn cmd_verify(
                             output,
                         );
                     } else {
-                        errln!("{msg}");
+                        crate::errln!("{msg}");
                     }
                 }
             }
             code.into()
         }
     }
-}
-
-macro_rules! emit_json_or_return {
-    ($value:expr, $format:expr $(,)?) => {{
-        if let Err(error) = crate::output::json_out($value, $format) {
-            return crate::output::output_error_exit(&error);
-        }
-    }};
 }
 
 pub(crate) fn verify_success_report(result: &VerifyOk, profile: VerifyProfile) -> serde_json::Value {

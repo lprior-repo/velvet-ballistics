@@ -64,7 +64,7 @@ pub(crate) fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> 
                     output,
                 );
             } else {
-                errln!("FAIL: cannot open journal at {}: {e}", db.display());
+                crate::errln!("FAIL: cannot open journal at {}: {e}", db.display());
             }
             return CliExitCode::StorageError.into();
         }
@@ -94,7 +94,7 @@ pub(crate) fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> 
                     output,
                 );
             } else {
-                errln!("FAIL: strict persist failed: {e}");
+                crate::errln!("FAIL: strict persist failed: {e}");
             }
             return CliExitCode::StorageError.into();
         }
@@ -123,7 +123,7 @@ pub(crate) fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> 
                 output,
             );
         } else {
-            errln!("FAIL: cannot append test event: {e}");
+            crate::errln!("FAIL: cannot append test event: {e}");
         }
         return CliExitCode::StorageError.into();
     }
@@ -150,7 +150,7 @@ pub(crate) fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> 
                         output,
                     );
                 } else {
-                    errln!("FAIL: test event not found after append");
+                    crate::errln!("FAIL: test event not found after append");
                 }
                 return CliExitCode::StorageError.into();
             }
@@ -175,7 +175,7 @@ pub(crate) fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> 
                     output,
                 );
             } else {
-                errln!("FAIL: cannot read test run events: {e}");
+                crate::errln!("FAIL: cannot read test run events: {e}");
             }
             return CliExitCode::StorageError.into();
         }
@@ -247,7 +247,7 @@ pub(crate) fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> 
                     output,
                 );
             } else {
-                errln!("FAIL: trim eligibility diagnostic failed: {e}");
+                crate::errln!("FAIL: trim eligibility diagnostic failed: {e}");
             }
             return CliExitCode::StorageError.into();
         }
@@ -260,7 +260,7 @@ pub(crate) fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> 
     }));
 
     if output != OutputFormat::Text {
-        emit_json_or_return!(
+        crate::emit_json_or_return!(
             &serde_json::json!({
                 "success": true,
                 "checks": checks
@@ -270,7 +270,7 @@ pub(crate) fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> 
     } else {
         // Print trim eligibility summary in text mode
         if let Ok(diag) = journal.trim_eligibility_diagnostic(vb_storage::TrimPolicy::default()) {
-            outln!(
+            crate::outln!(
                 "doctor: trim eligibility — {} total, {} eligible, {} blocked, {} events trimmable",
                 diag.total_runs,
                 diag.eligible_runs,
@@ -284,7 +284,7 @@ pub(crate) fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> 
                         safe_point,
                         events_trimmable,
                     } => {
-                        outln!(
+                        crate::outln!(
                             "doctor:   run {} eligible — safe_point={} events_trimmable={}",
                             r.get(),
                             safe_point.get(),
@@ -297,19 +297,19 @@ pub(crate) fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> 
                             vb_storage::TrimBlocker::RetentionPolicy { .. } => "retention_policy",
                             _ => "unknown",
                         };
-                        outln!(
+                        crate::outln!(
                             "doctor:   run {} blocked — blocker={}",
                             r.get(),
                             blocker_name
                         );
                     }
                     _ => {
-                        outln!("doctor:   unknown trim eligibility");
+                        crate::outln!("doctor:   unknown trim eligibility");
                     }
                 }
             }
         }
-        outln!("doctor: all checks passed");
+        crate::outln!("doctor: all checks passed");
     }
     ExitCode::SUCCESS
 }

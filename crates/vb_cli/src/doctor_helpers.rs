@@ -21,7 +21,7 @@ pub(crate) fn cmd_doctor_without_db(output: OutputFormat) -> ExitCode {
     })];
 
     if output != OutputFormat::Text {
-        emit_json_or_return!(
+        crate::emit_json_or_return!(
             &serde_json::json!({
                 "success": true,
                 "mode": "stateless",
@@ -32,8 +32,8 @@ pub(crate) fn cmd_doctor_without_db(output: OutputFormat) -> ExitCode {
             output,
         );
     } else {
-        outln!("doctor: no --db <path> provided; persistent journal checks skipped");
-        outln!("doctor: {remediation}");
+        crate::outln!("doctor: no --db <path> provided; persistent journal checks skipped");
+        crate::outln!("doctor: {remediation}");
     }
 
     ExitCode::SUCCESS

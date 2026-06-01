@@ -28,11 +28,11 @@ pub(crate) fn cmd_retry(run_id: &str, db: &std::path::Path, output: OutputFormat
                 output,
             );
         } else {
-            errln!("run {run_id}: no events found");
+            crate::errln!("run {run_id}: no events found");
         }
         return CliExitCode::StorageError.into();
     }
-    let analysis = commands_journal::analyze_retry(&events);
+    let analysis = crate::commands_journal::analyze_retry(&events);
     if !analysis.can_retry {
         if output != OutputFormat::Text {
             json_error(
@@ -40,13 +40,13 @@ pub(crate) fn cmd_retry(run_id: &str, db: &std::path::Path, output: OutputFormat
                 output,
             );
         } else {
-            errln!("run {run_id} {}", analysis.reason);
+            crate::errln!("run {run_id} {}", analysis.reason);
         }
         return CliExitCode::ValidationFailed.into();
     }
     let resume_step = analysis.last_successful_step.map(|s| s.saturating_add(1));
     if output != OutputFormat::Text {
-        emit_json_or_return!(
+        crate::emit_json_or_return!(
             &serde_json::json!({
                 "run_id": run_id, "failed_at_step": analysis.failed_at_step,
                 "last_successful_step": analysis.last_successful_step,
@@ -57,17 +57,17 @@ pub(crate) fn cmd_retry(run_id: &str, db: &std::path::Path, output: OutputFormat
     } else {
         match (analysis.failed_at_step, analysis.last_successful_step) {
             (Some(fail), Some(last)) => {
-                outln!("Run {run_id} failed at step {fail}. Last successful: step {last}.")
+                crate::outln!("Run {run_id} failed at step {fail}. Last successful: step {last}.")
             }
             (Some(fail), None) => {
-                outln!("Run {run_id} failed at step {fail}. No successful steps recorded.")
+                crate::outln!("Run {run_id} failed at step {fail}. No successful steps recorded.")
             }
-            (None, Some(last)) => outln!("Run {run_id} failed. Last successful: step {last}."),
-            (None, None) => outln!("Run {run_id} failed. No step progress recorded."),
+            (None, Some(last)) => crate::outln!("Run {run_id} failed. Last successful: step {last}."),
+            (None, None) => crate::outln!("Run {run_id} failed. No step progress recorded."),
         }
         match resume_step {
-            Some(step) => outln!("Retry would resume from step {step} with recovered state."),
-            None => outln!("Retry would resume from the beginning."),
+            Some(step) => crate::outln!("Retry would resume from step {step} with recovered state."),
+            None => crate::outln!("Retry would resume from the beginning."),
         }
     }
     ExitCode::SUCCESS
@@ -86,11 +86,11 @@ pub(crate) fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputForma
                 output,
             );
         } else {
-            errln!("run {run_id}: no events found");
+            crate::errln!("run {run_id}: no events found");
         }
         return CliExitCode::StorageError.into();
     }
-    let analysis = commands_journal::analyze_resume(&events);
+    let analysis = crate::commands_journal::analyze_resume(&events);
     if !analysis.can_resume {
         if output != OutputFormat::Text {
             json_error(
@@ -98,13 +98,13 @@ pub(crate) fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputForma
                 output,
             );
         } else {
-            errln!("run {run_id} {}", analysis.reason);
+            crate::errln!("run {run_id} {}", analysis.reason);
         }
         return CliExitCode::ValidationFailed.into();
     }
     let resume_step = analysis.suspended_at_step;
     if output != OutputFormat::Text {
-        emit_json_or_return!(
+        crate::emit_json_or_return!(
             &serde_json::json!({
                 "run_id": run_id, "suspended_at_step": analysis.suspended_at_step,
                 "status": "suspended", "resume_from_step": resume_step, "events": events.len()
@@ -113,10 +113,10 @@ pub(crate) fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputForma
         );
     } else {
         match resume_step {
-            Some(step) => outln!(
+            Some(step) => crate::outln!(
                 "Run {run_id} suspended at step {step}. Resume would continue from step {step} with recovered state."
             ),
-            None => outln!(
+            None => crate::outln!(
                 "Run {run_id} is active but no explicit suspension point found. Resume would continue from current state."
             ),
         }
@@ -145,7 +145,7 @@ pub(crate) fn cmd_answer(
                     output,
                 );
             } else {
-                errln!("invalid run_id '{run_id}': {e}");
+                crate::errln!("invalid run_id '{run_id}': {e}");
             }
             return CliExitCode::ValidationFailed.into();
         }
@@ -164,7 +164,7 @@ pub(crate) fn cmd_answer(
                     output,
                 );
             } else {
-                errln!("error reading value file {}: {e}", value_file.display());
+                crate::errln!("error reading value file {}: {e}", value_file.display());
             }
             return CliExitCode::ValidationFailed.into();
         }
@@ -187,7 +187,7 @@ pub(crate) fn cmd_answer(
                     output,
                 );
             } else {
-                errln!(
+                crate::errln!(
                     "error connecting to IPC server at {}: {e}",
                     socket_path.display()
                 );
@@ -215,7 +215,7 @@ pub(crate) fn cmd_answer(
                 output,
             );
         } else {
-            errln!("error sending answer: {e}");
+            crate::errln!("error sending answer: {e}");
         }
         return CliExitCode::IpcError.into();
     }
@@ -225,7 +225,7 @@ pub(crate) fn cmd_answer(
         Ok((_header, response)) => match response {
             vb_ipc::server::IpcResponse::AcceptedRun { run_id: _ } => {
                 if output != OutputFormat::Text {
-                    emit_json_or_return!(
+                    crate::emit_json_or_return!(
                         &serde_json::json!({
                             "success": true,
                             "run_id": rid.get()
@@ -233,7 +233,7 @@ pub(crate) fn cmd_answer(
                         output,
                     );
                 } else {
-                    outln!("answer accepted for run {}", rid.get());
+                    crate::outln!("answer accepted for run {}", rid.get());
                 }
                 ExitCode::SUCCESS
             }
@@ -247,7 +247,7 @@ pub(crate) fn cmd_answer(
                         output,
                     );
                 } else {
-                    errln!("runtime error: {message}");
+                    crate::errln!("runtime error: {message}");
                 }
                 CliExitCode::RuntimeFailed.into()
             }
@@ -264,7 +264,7 @@ pub(crate) fn cmd_answer(
                         output,
                     );
                 } else {
-                    errln!("payload error: {message}");
+                    crate::errln!("payload error: {message}");
                 }
                 CliExitCode::ValidationFailed.into()
             }
@@ -278,7 +278,7 @@ pub(crate) fn cmd_answer(
                         output,
                     );
                 } else {
-                    errln!("unexpected response: {other:?}");
+                    crate::errln!("unexpected response: {other:?}");
                 }
                 CliExitCode::RuntimeFailed.into()
             }
@@ -293,7 +293,7 @@ pub(crate) fn cmd_answer(
                     output,
                 );
             } else {
-                errln!("error receiving response: {e}");
+                crate::errln!("error receiving response: {e}");
             }
             CliExitCode::IpcError.into()
         }
@@ -320,7 +320,7 @@ pub(crate) fn format_cancel_output(
     output: OutputFormat,
 ) -> ExitCode {
     if output != OutputFormat::Text {
-        emit_json_or_return!(
+        crate::emit_json_or_return!(
             &serde_json::json!({
                 "success": true,
                 "run_id": run_id,
@@ -336,7 +336,7 @@ pub(crate) fn format_cancel_output(
             Some(r) => format!(" (reason: {r})"),
             None => String::new(),
         };
-        outln!("Run {run_id} cancelled{detail} ({note})");
+        crate::outln!("Run {run_id} cancelled{detail} ({note})");
         ExitCode::SUCCESS
     }
 }
@@ -388,7 +388,7 @@ pub(crate) fn cmd_cancel(
             if output != OutputFormat::Text {
                 write_failure_message(&message, output, CliExitCode::StorageError);
             } else {
-                errln!("{message}");
+                crate::errln!("{message}");
             }
             return CliExitCode::StorageError.into();
         }
@@ -424,7 +424,7 @@ pub(crate) fn cmd_cancel(
                 output,
             );
         } else {
-            errln!("error writing cancel event: {e}");
+            crate::errln!("error writing cancel event: {e}");
         }
         return CliExitCode::StorageError.into();
     }

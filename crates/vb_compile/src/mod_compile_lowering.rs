@@ -29,6 +29,12 @@ mod kani;
 #[cfg(test)]
 mod tests;
 
+// Proptest for nested for_each round-trip properties (vb-xi2f.21).
+// Obligations: PO-007, PO-008, PO-013, PO-014.
+// State: 5 (proof-writer)
+#[cfg(test)]
+mod proptest_nested_foreach;
+
 #[allow(unused_imports)]
 pub(crate) use part_01::*;
 // compile_source is needed by external integration tests.

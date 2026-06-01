@@ -67,7 +67,7 @@ pub(crate) fn handle(run_id: &str, db: &std::path::Path, output: OutputFormat) -
         "suggested_next_cli_commands": suggested_ai_commands(run_id, db, status),
     });
     let envelope =
-        cli_envelope::serialize_with_version(&payload, cli_envelope::Kind::AiContextPacket);
+        crate::cli_envelope::serialize_with_version(&payload, crate::cli_envelope::Kind::AiContextPacket);
     match crate::json_out(&envelope, output) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {

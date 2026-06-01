@@ -29,7 +29,7 @@ pub(crate) fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFor
                     output,
                 );
             } else {
-                errln!("error opening journal at {}: {e}", db.display());
+                crate::errln!("error opening journal at {}: {e}", db.display());
             }
             return CliExitCode::StorageError.into();
         }
@@ -47,7 +47,7 @@ pub(crate) fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFor
                     output,
                 );
             } else {
-                errln!("error reading events for run {run_id}: {e}");
+                crate::errln!("error reading events for run {run_id}: {e}");
             }
             return CliExitCode::StorageError.into();
         }
@@ -63,12 +63,12 @@ pub(crate) fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFor
                 output,
             );
         } else {
-            errln!("no events found for run {run_id}");
+            crate::errln!("no events found for run {run_id}");
         }
         return CliExitCode::StorageError.into();
     }
 
-    let report = commands_incident::build_incident_report(run_id, &events);
+    let report = crate::commands_incident::build_incident_report(run_id, &events);
     let failed_step_val = report
         .failed_at_step
         .map(|s| serde_json::Value::Number(serde_json::Number::from(s)))
@@ -84,18 +84,18 @@ pub(crate) fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFor
 
     match output {
         OutputFormat::Yaml | OutputFormat::Postcard => {
-            emit_json_or_return!(&json_report, output);
+            crate::emit_json_or_return!(&json_report, output);
         }
         OutputFormat::Text => {
-            outln!("incident report for run {run_id}");
-            outln!("  failure_code:  {}", report.failure_code);
+            crate::outln!("incident report for run {run_id}");
+            crate::outln!("  failure_code:  {}", report.failure_code);
             match report.failed_at_step {
-                Some(step) => outln!("  failed_at_step: {step}"),
-                None => outln!("  failed_at_step: unknown"),
+                Some(step) => crate::outln!("  failed_at_step: {step}"),
+                None => crate::outln!("  failed_at_step: unknown"),
             }
-            outln!("  side_effects:");
+            crate::outln!("  side_effects:");
             if report.side_effects.is_empty() {
-                outln!("    (none)");
+                crate::outln!("    (none)");
             } else {
                 for se in &report.side_effects {
                     let step = &se["step"];
@@ -103,15 +103,15 @@ pub(crate) fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFor
                     // WAIVER: Option::unwrap_or is not Result::unwrap — no panic path.
                     // This is safe fallback for missing JSON fields in CLI report display.
                     let certainty = se["certainty"].as_str().unwrap_or("unknown");
-                    outln!("    step={step} action={action} certainty={certainty}");
+                    crate::outln!("    step={step} action={action} certainty={certainty}");
                 }
             }
-            outln!("  repair_hints:");
+            crate::outln!("  repair_hints:");
             for hint in &report.repair_hints {
                 // WAIVER: Option::unwrap_or is not Result::unwrap — no panic path.
                 // This is safe fallback for missing hint strings in CLI report display.
                 let hint_str = hint.as_str().unwrap_or("unknown");
-                outln!("    - {hint_str}");
+                crate::outln!("    - {hint_str}");
             }
         }
     }
@@ -128,7 +128,7 @@ pub(crate) fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFor
                 output,
             );
         } else {
-            errln!("run {run_id} has no failure event; not an incident");
+            crate::errln!("run {run_id} has no failure event; not an incident");
         }
         CliExitCode::StorageError.into()
     }
@@ -154,7 +154,7 @@ pub(crate) fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: O
                     output,
                 );
             } else {
-                errln!("error opening journal at {}: {e}", db.display());
+                crate::errln!("error opening journal at {}: {e}", db.display());
             }
             return CliExitCode::StorageError.into();
         }
@@ -169,7 +169,7 @@ pub(crate) fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: O
                     output,
                 );
             } else {
-                errln!("error reading run {run_a}: {e}");
+                crate::errln!("error reading run {run_a}: {e}");
             }
             return CliExitCode::StorageError.into();
         }
@@ -184,19 +184,19 @@ pub(crate) fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: O
                     output,
                 );
             } else {
-                errln!("error reading run {run_b}: {e}");
+                crate::errln!("error reading run {run_b}: {e}");
             }
             return CliExitCode::StorageError.into();
         }
     };
 
-    let result = commands_diff::compute_diff(&events_a, &events_b);
+    let result = crate::commands_diff::compute_diff(&events_a, &events_b);
 
     match output {
         OutputFormat::Yaml | OutputFormat::Postcard => {
-            emit_json_or_return!(
+            crate::emit_json_or_return!(
                 &serde_json::json!({
-                    "schema_version": cli_envelope::SCHEMA_VERSION,
+                    "schema_version": crate::cli_envelope::SCHEMA_VERSION,
                     "kind": "diff_report",
                     "run_a": run_a,
                     "run_b": run_b,
@@ -209,15 +209,15 @@ pub(crate) fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: O
             );
         }
         OutputFormat::Text => {
-            outln!("diff: run {run_a} vs run {run_b}");
-            outln!("  events: {} vs {}", result.events_a, result.events_b);
+            crate::outln!("diff: run {run_a} vs run {run_b}");
+            crate::outln!("  events: {} vs {}", result.events_a, result.events_b);
             if result.diffs.is_empty() {
-                outln!("  no differences found");
+                crate::outln!("  no differences found");
             } else {
                 for diff in &result.diffs {
                     print_diff_entry(diff);
                 }
-                outln!("  {} difference(s) total", result.diffs.len());
+                crate::outln!("  {} difference(s) total", result.diffs.len());
             }
         }
     }
@@ -233,23 +233,23 @@ pub(crate) fn print_diff_entry(diff: &serde_json::Value) {
     match kind {
         "only_in_a" => {
             let idx = diff.get("index").and_then(|v| v.as_u64()).unwrap_or(0);
-            outln!("  [{idx}] - only in run A");
+            crate::outln!("  [{idx}] - only in run A");
         }
         "only_in_b" => {
             let idx = diff.get("index").and_then(|v| v.as_u64()).unwrap_or(0);
-            outln!("  [{idx}] + only in run B");
+            crate::outln!("  [{idx}] + only in run B");
         }
         "changed" => {
             let idx = diff.get("index").and_then(|v| v.as_u64()).unwrap_or(0);
-            outln!("  [{idx}] ~ changed");
+            crate::outln!("  [{idx}] ~ changed");
         }
         "step_missing_in_b" => {
             let s = diff.get("step").and_then(|v| v.as_u64()).unwrap_or(0);
-            outln!("  step {s}: - present in run A only");
+            crate::outln!("  step {s}: - present in run A only");
         }
         "step_missing_in_a" => {
             let s = diff.get("step").and_then(|v| v.as_u64()).unwrap_or(0);
-            outln!("  step {s}: + present in run B only");
+            crate::outln!("  step {s}: + present in run B only");
         }
         "step_outcome_differs" => {
             let s = diff.get("step").and_then(|v| v.as_u64()).unwrap_or(0);
@@ -261,24 +261,24 @@ pub(crate) fn print_diff_entry(diff: &serde_json::Value) {
                 .get("outcome_b")
                 .and_then(|v| v.as_str())
                 .unwrap_or("?");
-            outln!("  step {s}: ~ {oa} vs {ob}");
+            crate::outln!("  step {s}: ~ {oa} vs {ob}");
         }
         "slot_missing_in_b" => {
             let s = diff.get("slot").and_then(|v| v.as_u64()).unwrap_or(0);
-            outln!("  slot {s}: - present in run A only");
+            crate::outln!("  slot {s}: - present in run A only");
         }
         "slot_missing_in_a" => {
             let s = diff.get("slot").and_then(|v| v.as_u64()).unwrap_or(0);
-            outln!("  slot {s}: + present in run B only");
+            crate::outln!("  slot {s}: + present in run B only");
         }
         "slot_value_differs" => {
             let s = diff.get("slot").and_then(|v| v.as_u64()).unwrap_or(0);
             let va = diff.get("value_a").and_then(|v| v.as_str()).unwrap_or("?");
             let vb = diff.get("value_b").and_then(|v| v.as_str()).unwrap_or("?");
-            outln!("  slot {s}: ~ {va} vs {vb}");
+            crate::outln!("  slot {s}: ~ {va} vs {vb}");
         }
         _ => {
-            outln!("  unknown diff kind: {kind}");
+            crate::outln!("  unknown diff kind: {kind}");
         }
     }
 }

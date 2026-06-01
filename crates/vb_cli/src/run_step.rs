@@ -29,7 +29,7 @@ pub(crate) fn cmd_run_step(
                 output,
             );
         } else {
-            errln!("{msg}");
+            crate::errln!("{msg}");
         }
         return CliExitCode::ValidationFailed.into();
     }
@@ -56,7 +56,7 @@ pub(crate) fn cmd_run_step(
                     output,
                 );
             } else {
-                errln!("{msg}");
+                crate::errln!("{msg}");
             }
             return CliExitCode::ValidationFailed.into();
         }
@@ -93,7 +93,7 @@ pub(crate) fn compile_bytes_json(
                 );
             } else {
                 for err in &errors.0 {
-                    errln!("compile error: {err}");
+                    crate::errln!("compile error: {err}");
                 }
             }
             Err(CliExitCode::ValidationFailed.into())

@@ -41,14 +41,14 @@ pub(crate) fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputForm
                         output,
                     );
                 } else {
-                    errln!("run {run_id}: no events found");
+                    crate::errln!("run {run_id}: no events found");
                 }
                 return CliExitCode::ValidationFailed.into();
             } else {
                 let state = vb_storage::derive_lifecycle_state_from_events(&events);
                 let status = vb_storage::lifecycle_state_to_inspect_status(state);
                 if output != OutputFormat::Text {
-                    emit_json_or_return!(
+                    crate::emit_json_or_return!(
                         &serde_json::json!({
                             "run_id": run_id,
                             "status": status,
@@ -57,7 +57,7 @@ pub(crate) fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputForm
                         output,
                     );
                 } else {
-                    outln!("run {run_id}: status={status}, events={}", events.len());
+                    crate::outln!("run {run_id}: status={status}, events={}", events.len());
                     write_vb_kyyf_trace("inspect", run_id, events.len());
                 }
             }
@@ -67,7 +67,7 @@ pub(crate) fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputForm
             if output != OutputFormat::Text {
                 write_failure_message(&message, output, CliExitCode::StorageError);
             } else {
-                errln!("{message}");
+                crate::errln!("{message}");
             }
             return CliExitCode::StorageError.into();
         }
@@ -77,7 +77,7 @@ pub(crate) fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputForm
 }
 
 pub(crate) fn write_vb_kyyf_trace(command: &str, run_id: &str, events_len: usize) {
-    outln!(
+    crate::outln!(
         "BDD-KYYF-002 command={command} run_id={run_id} evidence=.evidence/vb-kyyf/storage-replay-resume.md digest=normalized-replay events={events_len}"
     );
 }

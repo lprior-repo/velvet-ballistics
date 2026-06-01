@@ -15,32 +15,32 @@ pub(crate) fn explain_step_errors(err: &vb_compile::CompileError) {
     use vb_compile::CompileError;
     match err {
         CompileError::StepMissingField { step, field } => {
-            outln!("Step Missing Field");
-            outln!("  Step {step} is missing required field '{field}'.");
+            crate::outln!("Step Missing Field");
+            crate::outln!("  Step {step} is missing required field '{field}'.");
         }
         CompileError::StepFieldShape {
             step,
             field,
             expected: _,
         } => {
-            outln!("Invalid Step Field Shape");
-            outln!("  Step {step} field '{field}' has wrong structure.");
+            crate::outln!("Invalid Step Field Shape");
+            crate::outln!("  Step {step} field '{field}' has wrong structure.");
         }
         CompileError::StepIndexOutOfRange { value } => {
-            outln!("Step Index Out of Range");
-            outln!("  Step index {value} exceeds the u16 representation limit.");
+            crate::outln!("Step Index Out of Range");
+            crate::outln!("  Step index {value} exceeds the u16 representation limit.");
         }
         CompileError::SlotIndexOutOfRange { value } => {
-            outln!("Slot Index Out of Range");
-            outln!("  Slot index {value} is outside the valid u16 range.");
+            crate::outln!("Slot Index Out of Range");
+            crate::outln!("  Slot index {value} is outside the valid u16 range.");
         }
         CompileError::BranchTargetOutOfRange { value } => {
-            outln!("Branch Target Out of Range");
-            outln!("  Branch target {value} is outside the valid u16 range.");
+            crate::outln!("Branch Target Out of Range");
+            crate::outln!("  Branch target {value} is outside the valid u16 range.");
         }
         CompileError::BackwardBranchTarget { step, target } => {
-            outln!("Backward Branch Target");
-            outln!("  Step {step} branches to {target}, but forward branches are required.");
+            crate::outln!("Backward Branch Target");
+            crate::outln!("  Step {step} branches to {target}, but forward branches are required.");
         }
         CompileError::PrimitiveLoweringLimitExceeded {
             primitive,
@@ -48,71 +48,71 @@ pub(crate) fn explain_step_errors(err: &vb_compile::CompileError) {
             value,
             limit,
         } => {
-            outln!("Primitive Limit Exceeded");
-            outln!(
+            crate::outln!("Primitive Limit Exceeded");
+            crate::outln!(
                 "  Primitive '{primitive}' field '{field}' value {value} exceeds limit {limit}."
             );
         }
         CompileError::LastStepMustFinish => {
-            outln!("Last Step Must Finish");
-            outln!("  The final step in a linear workflow must be a 'finish' step.");
+            crate::outln!("Last Step Must Finish");
+            crate::outln!("  The final step in a linear workflow must be a 'finish' step.");
         }
         CompileError::UnsupportedConstantValue { step } => {
-            outln!("Unsupported Constant Value");
-            outln!("  Step {step} constant value must be a scalar YAML value.");
+            crate::outln!("Unsupported Constant Value");
+            crate::outln!("  Step {step} constant value must be a scalar YAML value.");
         }
         CompileError::UnknownReferenceRoot { reference, root } => {
-            outln!("Unknown Reference Root");
-            outln!("  Reference '{reference}' uses unknown root '{root}'.");
+            crate::outln!("Unknown Reference Root");
+            crate::outln!("  Reference '{reference}' uses unknown root '{root}'.");
         }
         CompileError::IllegalReference { reference } => {
-            outln!("Illegal Reference");
-            outln!("  Reference '{reference}' is not allowed in deterministic workflows.");
+            crate::outln!("Illegal Reference");
+            crate::outln!("  Reference '{reference}' is not allowed in deterministic workflows.");
         }
         CompileError::UnknownReferenceName {
             kind,
             reference,
             name,
         } => {
-            outln!("Unknown Reference");
-            outln!("  Reference '{reference}' refers to unknown {kind} '{name}'.");
+            crate::outln!("Unknown Reference");
+            crate::outln!("  Reference '{reference}' refers to unknown {kind} '{name}'.");
         }
         CompileError::UnsupportedAccessorReference {
             reference,
             root,
             path,
         } => {
-            outln!("Unsupported Accessor Reference");
-            outln!(
+            crate::outln!("Unsupported Accessor Reference");
+            crate::outln!(
                 "  Accessor reference '{reference}' (root: {root}, path: {path}) is not supported."
             );
         }
         CompileError::UnknownStepTarget { step, target } => {
-            outln!("Unknown Step Target");
-            outln!("  Step {step} branches to undeclared step index {target}.");
+            crate::outln!("Unknown Step Target");
+            crate::outln!("  Step {step} branches to undeclared step index {target}.");
         }
         CompileError::UnreachableStep { step } => {
-            outln!("Unreachable Step");
-            outln!("  Step {step} cannot be reached from the workflow entry point.");
+            crate::outln!("Unreachable Step");
+            crate::outln!("  Step {step} cannot be reached from the workflow entry point.");
         }
         CompileError::TypeMismatch {
             field,
             expected,
             found,
         } => {
-            outln!("Type Mismatch");
-            outln!("  Field '{field}': expected {expected}, but found {found}.");
+            crate::outln!("Type Mismatch");
+            crate::outln!("  Field '{field}': expected {expected}, but found {found}.");
         }
         CompileError::Workflow(e) => {
-            outln!("Workflow IR Validation Error");
-            outln!("  {e}");
+            crate::outln!("Workflow IR Validation Error");
+            crate::outln!("  {e}");
         }
         CompileError::Validation(e) => {
             super::explain_validation::explain_validation_error(e);
         }
         _ => {
-            outln!("Compilation Error");
-            outln!("  {err}");
+            crate::outln!("Compilation Error");
+            crate::outln!("  {err}");
         }
     }
     super::explain_reports::explain_compile_repair_hint(err);

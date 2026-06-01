@@ -21,7 +21,7 @@ pub(crate) fn cmd_simulate(workflow: &std::path::Path, output: OutputFormat) -> 
         Err(code) => return code,
     };
 
-    let result = commands_workflow::simulate_workflow(&compiled);
+    let result = crate::commands_workflow::simulate_workflow(&compiled);
 
     if output != OutputFormat::Text {
         let trace: Vec<serde_json::Value> = result
@@ -35,7 +35,7 @@ pub(crate) fn cmd_simulate(workflow: &std::path::Path, output: OutputFormat) -> 
                 })
             })
             .collect();
-        emit_json_or_return!(
+        crate::emit_json_or_return!(
             &serde_json::json!({
                 "schema_version": "velvet-ballistics/v1",
                 "kind": "simulate",
@@ -49,14 +49,14 @@ pub(crate) fn cmd_simulate(workflow: &std::path::Path, output: OutputFormat) -> 
         );
     } else {
         for step in &result.steps {
-            outln!("Step {}: {}", step.index, step.description);
+            crate::outln!("Step {}: {}", step.index, step.description);
         }
-        outln!("");
-        outln!("simulation summary");
-        outln!("  steps:    {}", result.total_steps);
-        outln!("  actions:  {}", result.action_count);
-        outln!("  branches: {}", result.branch_count);
-        outln!("dry-run complete");
+        crate::outln!("");
+        crate::outln!("simulation summary");
+        crate::outln!("  steps:    {}", result.total_steps);
+        crate::outln!("  actions:  {}", result.action_count);
+        crate::outln!("  branches: {}", result.branch_count);
+        crate::outln!("dry-run complete");
     }
 
     CliExitCode::Success.into()

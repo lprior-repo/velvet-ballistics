@@ -7,7 +7,7 @@ use crate::agent_context;
 #[kani::unwind(5)]
 fn kani_build_no_panic() {
     let version: String = kani::any();
-    let _result = agent_context::build(&version);
+    let _result = crate::agent_context::build(&version);
 }
 
 /// OBL-002: build() output always contains required top-level fields.
@@ -15,7 +15,7 @@ fn kani_build_no_panic() {
 #[kani::unwind(5)]
 fn kani_build_has_required_fields() {
     let version: String = kani::any();
-    let result = agent_context::build(&version);
+    let result = crate::agent_context::build(&version);
 
     assert!(result.get("schema_version").is_some());
     assert!(result.get("kind").is_some());
@@ -28,7 +28,7 @@ fn kani_build_has_required_fields() {
 #[kani::unwind(5)]
 fn kani_build_has_runtime_policy_fields() {
     let version: String = kani::any();
-    let result = agent_context::build(&version);
+    let result = crate::agent_context::build(&version);
 
     assert!(result.get("active_gates").is_some());
     assert!(result.get("known_blockers").is_some());
@@ -39,7 +39,7 @@ fn kani_build_has_runtime_policy_fields() {
 #[kani::unwind(5)]
 fn kani_commands_includes_agent_context() {
     let version: String = kani::any();
-    let result = agent_context::build(&version);
+    let result = crate::agent_context::build(&version);
 
     let commands = result.get("commands");
     assert!(commands.is_some());
@@ -53,7 +53,7 @@ fn kani_commands_includes_agent_context() {
 #[kani::proof]
 #[kani::unwind(5)]
 fn kani_exit_codes_has_defined_range() {
-    let result = agent_context::build("0.1.0");
+    let result = crate::agent_context::build("0.1.0");
 
     let exit_codes = result.get("exit_codes");
     assert!(exit_codes.is_some());
@@ -74,7 +74,7 @@ fn kani_exit_codes_has_defined_range() {
 #[kani::proof]
 #[kani::unwind(5)]
 fn kani_known_blockers_has_all_categories() {
-    let result = agent_context::build("0.1.0");
+    let result = crate::agent_context::build("0.1.0");
 
     let blockers = result.get("known_blockers");
     assert!(blockers.is_some());
@@ -92,7 +92,7 @@ fn kani_known_blockers_has_all_categories() {
 fn kani_output_size_bounded() {
     let version: String = kani::any();
     kani::assume(version.len() <= 64);
-    let result = agent_context::build(&version);
+    let result = crate::agent_context::build(&version);
     let encoded = serde_json::to_string(&result);
     assert!(
         encoded.is_ok(),
@@ -112,8 +112,8 @@ fn kani_output_size_bounded() {
 fn kani_build_deterministic() {
     let version: String = kani::any();
     kani::assume(version.len() <= 32);
-    let first = agent_context::build(&version);
-    let second = agent_context::build(&version);
+    let first = crate::agent_context::build(&version);
+    let second = crate::agent_context::build(&version);
     assert_eq!(first, second);
 }
 
@@ -123,7 +123,7 @@ fn kani_build_deterministic() {
 fn kani_build_serializable_roundtrip() {
     let version: String = kani::any();
     kani::assume(version.len() <= 64);
-    let result = agent_context::build(&version);
+    let result = crate::agent_context::build(&version);
     let encoded = serde_json::to_string(&result);
     assert!(encoded.is_ok());
     let decoded: Result<serde_json::Value, _> = serde_json::from_str(&encoded.unwrap());
@@ -135,7 +135,7 @@ fn kani_build_serializable_roundtrip() {
 #[kani::unwind(5)]
 fn kani_agent_contract_booleans_are_bools() {
     let version: String = kani::any();
-    let result = agent_context::build(&version);
+    let result = crate::agent_context::build(&version);
     let contract = result.get("agent_contract");
     assert!(contract.is_some());
     if let Some(c) = contract {
@@ -158,7 +158,7 @@ fn kani_agent_contract_booleans_are_bools() {
 #[kani::unwind(5)]
 fn kani_vocabulary_policy_arrays_are_arrays() {
     let version: String = kani::any();
-    let result = agent_context::build(&version);
+    let result = crate::agent_context::build(&version);
     let policy = result.get("vocabulary_policy");
     assert!(policy.is_some());
     if let Some(p) = policy {
@@ -174,7 +174,7 @@ fn kani_vocabulary_policy_arrays_are_arrays() {
 #[kani::proof]
 #[kani::unwind(5)]
 fn kani_known_blockers_policy_count_exact() {
-    let result = agent_context::build("0.1.0");
+    let result = crate::agent_context::build("0.1.0");
     let policy = result.pointer("/known_blockers/policy");
     assert!(policy.is_some());
     if let Some(p) = policy {
@@ -187,7 +187,7 @@ fn kani_known_blockers_policy_count_exact() {
 #[kani::proof]
 #[kani::unwind(5)]
 fn kani_known_blockers_resource_count_exact() {
-    let result = agent_context::build("0.1.0");
+    let result = crate::agent_context::build("0.1.0");
     let resource = result.pointer("/known_blockers/resource");
     assert!(resource.is_some());
     if let Some(r) = resource {
@@ -200,7 +200,7 @@ fn kani_known_blockers_resource_count_exact() {
 #[kani::proof]
 #[kani::unwind(5)]
 fn kani_known_blockers_capability_count_exact() {
-    let result = agent_context::build("0.1.0");
+    let result = crate::agent_context::build("0.1.0");
     let capability = result.pointer("/known_blockers/capability");
     assert!(capability.is_some());
     if let Some(c) = capability {
@@ -214,7 +214,7 @@ fn kani_known_blockers_capability_count_exact() {
 #[kani::unwind(5)]
 fn kani_all_commands_have_summary() {
     let version: String = kani::any();
-    let result = agent_context::build(&version);
+    let result = crate::agent_context::build(&version);
     let commands = result.get("commands");
     assert!(commands.is_some());
     if let Some(cmds) = commands {
@@ -236,7 +236,7 @@ fn kani_all_commands_have_summary() {
 #[kani::unwind(5)]
 fn kani_build_output_is_object() {
     let version: String = kani::any();
-    let result = agent_context::build(&version);
+    let result = crate::agent_context::build(&version);
     assert!(result.is_object());
 }
 
@@ -245,7 +245,7 @@ fn kani_build_output_is_object() {
 #[kani::unwind(5)]
 fn kani_enums_has_all_variants() {
     let version: String = kani::any();
-    let result = agent_context::build(&version);
+    let result = crate::agent_context::build(&version);
     let enums = result.get("enums");
     assert!(enums.is_some());
     if let Some(e) = enums {
@@ -264,8 +264,8 @@ fn kani_non_version_fields_independent_of_version() {
     let v1: String = kani::any();
     let v2: String = kani::any();
 
-    let a = agent_context::build(&v1);
-    let b = agent_context::build(&v2);
+    let a = crate::agent_context::build(&v1);
+    let b = crate::agent_context::build(&v2);
 
     let structural_keys = [
         "active_gates",

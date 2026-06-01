@@ -2,7 +2,6 @@
 #![forbid(unsafe_code)]
 
 use crate::args::DurabilityMode;
-use crate::io::{errln, outln};
 use crate::workflow::{run_compiled_workflow, InputMappingError};
 use std::path::Path;
 use std::process::ExitCode;
@@ -23,7 +22,7 @@ pub fn cmd_validate(workflow: &Path) -> ExitCode {
     let text = match std::str::from_utf8(&bytes) {
         Ok(t) => t,
         Err(e) => {
-            errln!("file is not valid UTF-8: {e}");
+            crate::errln!("file is not valid UTF-8: {e}");
             return ExitCode::FAILURE;
         }
     };
@@ -31,7 +30,7 @@ pub fn cmd_validate(workflow: &Path) -> ExitCode {
     match vb_yaml::parse_workflow_source(text) {
         Ok(_ast) => {}
         Err(e) => {
-            errln!("YAML parse error: {e}");
+            crate::errln!("YAML parse error: {e}");
             return ExitCode::FAILURE;
         }
     }
@@ -40,13 +39,13 @@ pub fn cmd_validate(workflow: &Path) -> ExitCode {
         Ok(_compiled) => {}
         Err(errors) => {
             for err in &errors.0 {
-                errln!("compile error: {err}");
+                crate::errln!("compile error: {err}");
             }
             return ExitCode::FAILURE;
         }
     }
 
-    outln!("valid");
+    crate::outln!("valid");
     ExitCode::SUCCESS
 }
 
@@ -60,7 +59,7 @@ pub fn cmd_compile(workflow: &Path, emit: crate::args::EmitTarget, out: &Path) -
         Ok(c) => c,
         Err(errors) => {
             for err in &errors.0 {
-                errln!("compile error: {err}");
+                crate::errln!("compile error: {err}");
             }
             return ExitCode::FAILURE;
         }
@@ -72,18 +71,18 @@ pub fn cmd_compile(workflow: &Path, emit: crate::args::EmitTarget, out: &Path) -
             let encoded = match postcard::to_allocvec(&parts) {
                 Ok(data) => data,
                 Err(e) => {
-                    errln!("IR serialization error: {e}");
+                    crate::errln!("IR serialization error: {e}");
                     return ExitCode::FAILURE;
                 }
             };
             if let Err(e) = std::fs::write(out, &encoded) {
-                errln!("error writing {}: {e}", out.display());
+                crate::errln!("error writing {}: {e}", out.display());
                 return ExitCode::FAILURE;
             }
-            outln!("compiled IR written to {}", out.display());
+            crate::outln!("compiled IR written to {}", out.display());
         }
         crate::args::EmitTarget::Yaml | crate::args::EmitTarget::Postcard => {
-            errln!("legacy compile runner supports only --emit ir");
+            crate::errln!("legacy compile runner supports only --emit ir");
             return ExitCode::FAILURE;
         }
     }
@@ -111,7 +110,7 @@ pub fn cmd_run(
         Ok(c) => c,
         Err(errors) => {
             for err in &errors.0 {
-                errln!("compile error: {err}");
+                crate::errln!("compile error: {err}");
             }
             return ExitCode::FAILURE;
         }
@@ -120,7 +119,7 @@ pub fn cmd_run(
     let inputs = match map_runtime_inputs(&compiled, &input_data) {
         Ok(inputs) => inputs,
         Err(error) => {
-            errln!("{error}");
+            crate::errln!("{error}");
             return ExitCode::FAILURE;
         }
     };
@@ -148,12 +147,12 @@ pub fn cmd_run_compiled(
         Ok(parts) => match CompiledWorkflow::try_from_parts(parts) {
             Ok(c) => c,
             Err(e) => {
-                errln!("compiled IR validation error: {e}");
+                crate::errln!("compiled IR validation error: {e}");
                 return ExitCode::FAILURE;
             }
         },
         Err(e) => {
-            errln!("error deserializing compiled IR: {e}");
+            crate::errln!("error deserializing compiled IR: {e}");
             return ExitCode::FAILURE;
         }
     };
@@ -161,7 +160,7 @@ pub fn cmd_run_compiled(
     let inputs = match map_runtime_inputs(&compiled, &input_data) {
         Ok(inputs) => inputs,
         Err(error) => {
-            errln!("{error}");
+            crate::errln!("{error}");
             return ExitCode::FAILURE;
         }
     };
@@ -197,7 +196,7 @@ pub(crate) fn read_file(path: &std::path::Path) -> Result<Vec<u8>, ExitCode> {
     match std::fs::read(path) {
         Ok(bytes) => Ok(bytes),
         Err(e) => {
-            errln!("error reading {}: {e}", path.display());
+            crate::errln!("error reading {}: {e}", path.display());
             Err(ExitCode::FAILURE)
         }
     }

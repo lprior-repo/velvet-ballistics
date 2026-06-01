@@ -32,15 +32,15 @@ pub(crate) fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputForma
     match vb_storage::recovery::recover_full_journal(&journal, rid, &mut tracker, &[], &[]) {
         Ok(events) => {
             let terminal_name = vb_storage::recovery::extract_terminal(&events)
-                .map(|e| commands_diff::event_name(e).to_string());
+                .map(|e| crate::commands_diff::event_name(e).to_string());
 
             match output {
                 OutputFormat::Yaml | OutputFormat::Postcard => {
                     let event_list: Vec<serde_json::Value> =
                         events.iter().map(event_to_json).collect();
-                    emit_json_or_return!(
+                    crate::emit_json_or_return!(
                         &serde_json::json!({
-                            "schema_version": cli_envelope::SCHEMA_VERSION,
+                            "schema_version": crate::cli_envelope::SCHEMA_VERSION,
                             "kind": "replay_report",
                             "run_id": run_id,
                             "recovered": events.len(),
@@ -51,16 +51,16 @@ pub(crate) fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputForma
                     );
                 }
                 OutputFormat::Text => {
-                    outln!("recovered {} event(s) for run {run_id}", events.len());
+                    crate::outln!("recovered {} event(s) for run {run_id}", events.len());
                     for event in &events {
                         print_event(event);
                     }
                     match vb_storage::recovery::extract_terminal(&events) {
                         Some(terminal) => {
-                            outln!("terminal: {}", commands_diff::event_name(terminal));
+                            crate::outln!("terminal: {}", crate::commands_diff::event_name(terminal));
                         }
                         None => {
-                            outln!("terminal: none");
+                            crate::outln!("terminal: none");
                         }
                     }
                     write_vb_kyyf_trace("replay", run_id, events.len());
@@ -77,7 +77,7 @@ pub(crate) fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputForma
                     output,
                 );
             } else {
-                errln!("error replaying run {run_id}: {e}");
+                crate::errln!("error replaying run {run_id}: {e}");
             }
             return CliExitCode::StorageError.into();
         }
@@ -93,7 +93,7 @@ pub(crate) fn write_locked_read_surface(
 ) -> ExitCode {
     match output {
         OutputFormat::Text => {
-            outln!(
+            crate::outln!(
                 "{command} run {run_id}: storage is held by an active writer; public CLI surface is available"
             );
             write_vb_kyyf_trace(command, run_id, 0);

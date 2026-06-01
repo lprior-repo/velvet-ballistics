@@ -34,8 +34,8 @@ pub(crate) fn write_diagnostic_message_stderr(message: &str, code: CliExitCode, 
 
 pub(crate) fn diagnostic_value(message: &str, code: CliExitCode) -> serde_json::Value {
     serde_json::json!({
-        "schema_version": cli_envelope::SCHEMA_VERSION,
-        "kind": cli_envelope::kind::DIAGNOSTIC_REPORT,
+        "schema_version": crate::cli_envelope::SCHEMA_VERSION,
+        "kind": crate::cli_envelope::kind::DIAGNOSTIC_REPORT,
         "code": cli_exit_code_name(code),
         "exit_code": cli_exit_code_number(code),
         "message": message,
@@ -108,8 +108,8 @@ pub(crate) fn write_diagnostic_report_stderr_io(
     output: OutputFormat,
 ) -> io::Result<()> {
     let diagnostic = serde_json::json!({
-        "schema_version": cli_envelope::SCHEMA_VERSION,
-        "kind": cli_envelope::kind::DIAGNOSTIC_REPORT,
+        "schema_version": crate::cli_envelope::SCHEMA_VERSION,
+        "kind": crate::cli_envelope::kind::DIAGNOSTIC_REPORT,
         "code": cli_exit_code_name(code),
         "exit_code": cli_exit_code_number(code),
         "message": message,

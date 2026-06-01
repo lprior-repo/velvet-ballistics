@@ -163,7 +163,7 @@ fn print_json(status: &CliStatus, output: OutputFormat) -> Result<(), crate::Out
         "step_budget_per_tick": status.step_budget_per_tick,
         "runtime_policy": status.runtime_policy
     });
-    let envelope = cli_envelope::serialize_with_version(&payload, cli_envelope::Kind::CliStatus);
+    let envelope = crate::cli_envelope::serialize_with_version(&payload, crate::cli_envelope::Kind::CliStatus);
     crate::json_out(&envelope, output)
 }
 

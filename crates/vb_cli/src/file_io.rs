@@ -24,7 +24,7 @@ pub(crate) fn read_file(
 
 pub(crate) fn write_failure_message(message: &str, output: OutputFormat, exit_code: CliExitCode) {
     if output == OutputFormat::Text {
-        errln!("{message}");
+        crate::errln!("{message}");
     } else {
         write_diagnostic_message_stderr(message, exit_code, output);
     }
@@ -63,7 +63,7 @@ pub(crate) fn report_storage_open_error(
     if output != OutputFormat::Text {
         write_failure_message(&message, output, CliExitCode::StorageError);
     } else {
-        errln!("{message}");
+        crate::errln!("{message}");
     }
 }
 
@@ -78,7 +78,7 @@ pub(crate) fn read_journal_events(
         if output != OutputFormat::Text {
             write_failure_message(&msg, output, CliExitCode::StorageError);
         } else {
-            errln!("{msg}");
+            crate::errln!("{msg}");
         }
         return Err(CliExitCode::StorageError.into());
     }
@@ -94,7 +94,7 @@ pub(crate) fn read_journal_events(
                 CliExitCode::StorageError,
             );
         } else {
-            errln!("error reading run {run_id}: {e}");
+            crate::errln!("error reading run {run_id}: {e}");
         }
         CliExitCode::StorageError.into()
     })

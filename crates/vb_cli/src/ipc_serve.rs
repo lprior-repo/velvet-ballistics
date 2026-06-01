@@ -16,7 +16,7 @@ pub(crate) fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> E
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(e) => {
-            errln!("error opening journal at {}: {e}", db.display());
+            crate::errln!("error opening journal at {}: {e}", db.display());
             return CliExitCode::IpcError.into();
         }
     };
@@ -28,7 +28,7 @@ pub(crate) fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> E
         match vb_storage::JournalWriterQueue::new(1024, 64, vb_storage::StorageLimits::DEFAULT) {
             Ok(q) => Arc::new(q),
             Err(e) => {
-                errln!("error creating journal queue: {e}");
+                crate::errln!("error creating journal queue: {e}");
                 return CliExitCode::IpcError.into();
             }
         };
@@ -49,12 +49,12 @@ pub(crate) fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> E
     let mut server = match vb_ipc::server::IpcServer::bind(socket) {
         Ok(s) => s,
         Err(e) => {
-            errln!("error binding IPC socket at {}: {e}", socket.display());
+            crate::errln!("error binding IPC socket at {}: {e}", socket.display());
             return CliExitCode::IpcError.into();
         }
     };
 
-    outln!("ipc server listening on {}", socket.display());
+    crate::outln!("ipc server listening on {}", socket.display());
 
     // Event loop
     loop {
@@ -65,11 +65,11 @@ pub(crate) fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> E
         ) {
             Ok(true) => {}
             Ok(false) => {
-                outln!("shutdown requested");
+                crate::outln!("shutdown requested");
                 break;
             }
             Err(e) => {
-                errln!("ipc server error: {e}");
+                crate::errln!("ipc server error: {e}");
                 return CliExitCode::IpcError.into();
             }
         }
@@ -78,11 +78,11 @@ pub(crate) fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> E
         match runtime.tick_all() {
             Ok(true) => {}
             Ok(false) => {
-                outln!("runtime shut down");
+                crate::outln!("runtime shut down");
                 break;
             }
             Err(e) => {
-                errln!("runtime tick error: {e}");
+                crate::errln!("runtime tick error: {e}");
                 return CliExitCode::IpcError.into();
             }
         }
@@ -96,7 +96,7 @@ struct StorageWorkflowResolver {
 }
 
 impl vb_ipc::server::WorkflowResolver for StorageWorkflowResolver {
-    pub(crate) fn resolve_workflow(
+    fn resolve_workflow(
         &mut self,
         digest: vb_core::WorkflowDigest,
     ) -> Result<vb_core::CompiledWorkflow, vb_ipc::server::WorkflowResolutionError> {

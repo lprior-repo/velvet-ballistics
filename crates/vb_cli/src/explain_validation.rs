@@ -9,13 +9,13 @@ use crate::output_utils::*;
 use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
 use crate::explain_repair::explain_repair_hint;
 
-pub(crate) fn explain_verification_failure(err: &commands_verify::VerifyError) {
-    use commands_verify::VerifyError;
+pub(crate) fn explain_verification_failure(err: &crate::commands_verify::VerifyError) {
+    use crate::commands_verify::VerifyError;
     match err {
         VerifyError::YamlParse(msg) => {
-            outln!("YAML Parse Error:");
-            outln!("  {msg}");
-            outln!("");
+            crate::outln!("YAML Parse Error:");
+            crate::outln!("  {msg}");
+            crate::outln!("");
             explain_repair_hint(
                 "yaml_parse",
                 &[
@@ -26,11 +26,11 @@ pub(crate) fn explain_verification_failure(err: &commands_verify::VerifyError) {
             );
         }
         VerifyError::Compile(errors) => {
-            outln!("Compilation Error:");
+            crate::outln!("Compilation Error:");
             for e in errors {
-                outln!("  - {e}");
+                crate::outln!("  - {e}");
             }
-            outln!("");
+            crate::outln!("");
             explain_repair_hint(
                 "compilation",
                 &[
@@ -40,9 +40,9 @@ pub(crate) fn explain_verification_failure(err: &commands_verify::VerifyError) {
             );
         }
         VerifyError::IrValidation(msg) => {
-            outln!("IR Validation Error:");
-            outln!("  {msg}");
-            outln!("");
+            crate::outln!("IR Validation Error:");
+            crate::outln!("  {msg}");
+            crate::outln!("");
             explain_repair_hint(
                 "ir_validation",
                 &[
@@ -53,9 +53,9 @@ pub(crate) fn explain_verification_failure(err: &commands_verify::VerifyError) {
             );
         }
         VerifyError::BudgetPolicy(msg) => {
-            outln!("Budget Policy Violation:");
-            outln!("  {msg}");
-            outln!("");
+            crate::outln!("Budget Policy Violation:");
+            crate::outln!("  {msg}");
+            crate::outln!("");
             explain_repair_hint(
                 "budget_policy",
                 &[
@@ -67,9 +67,9 @@ pub(crate) fn explain_verification_failure(err: &commands_verify::VerifyError) {
             );
         }
         VerifyError::StorageError(msg) => {
-            outln!("Storage Error:");
-            outln!("  {msg}");
-            outln!("");
+            crate::outln!("Storage Error:");
+            crate::outln!("  {msg}");
+            crate::outln!("");
             explain_repair_hint(
                 "storage",
                 &[
@@ -79,9 +79,9 @@ pub(crate) fn explain_verification_failure(err: &commands_verify::VerifyError) {
             );
         }
         VerifyError::ReplayDivergence(msg) => {
-            outln!("Replay Divergence:");
-            outln!("  {msg}");
-            outln!("");
+            crate::outln!("Replay Divergence:");
+            crate::outln!("  {msg}");
+            crate::outln!("");
             explain_repair_hint(
                 "replay",
                 &[
@@ -99,8 +99,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
     use vb_validate::ValidationError;
     match err {
         ValidationError::DuplicateKey => {
-            outln!("Duplicate Key");
-            outln!("  A YAML mapping contains duplicate keys, which is not allowed.");
+            crate::outln!("Duplicate Key");
+            crate::outln!("  A YAML mapping contains duplicate keys, which is not allowed.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -110,8 +110,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::ForbiddenYamlFeature => {
-            outln!("Forbidden YAML Feature");
-            outln!("  The workflow uses a YAML feature that is not allowed in Velvet.");
+            crate::outln!("Forbidden YAML Feature");
+            crate::outln!("  The workflow uses a YAML feature that is not allowed in Velvet.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -121,8 +121,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::UnknownTopLevelField => {
-            outln!("Unknown Top-Level Field");
-            outln!("  The workflow contains an unrecognized top-level field.");
+            crate::outln!("Unknown Top-Level Field");
+            crate::outln!("  The workflow contains an unrecognized top-level field.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -132,8 +132,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::UnknownStepField => {
-            outln!("Unknown Step Field");
-            outln!("  A step contains an unrecognized field.");
+            crate::outln!("Unknown Step Field");
+            crate::outln!("  A step contains an unrecognized field.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -143,8 +143,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::MissingRequiredField { field } => {
-            outln!("Missing Required Field");
-            outln!("  Required field '{field}' is missing from the workflow.");
+            crate::outln!("Missing Required Field");
+            crate::outln!("  Required field '{field}' is missing from the workflow.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -154,8 +154,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::InvalidVersion { version } => {
-            outln!("Invalid Version");
-            outln!("  Found version '{version}', but Velvet v1 requires 'velvet-ballistics/v1'.");
+            crate::outln!("Invalid Version");
+            crate::outln!("  Found version '{version}', but Velvet v1 requires 'velvet-ballistics/v1'.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -165,8 +165,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::InvalidId { id } => {
-            outln!("Invalid Identifier");
-            outln!("  '{id}' is not a valid Velvet identifier.");
+            crate::outln!("Invalid Identifier");
+            crate::outln!("  '{id}' is not a valid Velvet identifier.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -176,8 +176,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::ReservedId { id } => {
-            outln!("Reserved Identifier");
-            outln!("  '{id}' is a reserved identifier and cannot be used.");
+            crate::outln!("Reserved Identifier");
+            crate::outln!("  '{id}' is a reserved identifier and cannot be used.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -187,8 +187,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::DuplicateId { id } => {
-            outln!("Duplicate Identifier");
-            outln!("  The identifier '{id}' appears more than once.");
+            crate::outln!("Duplicate Identifier");
+            crate::outln!("  The identifier '{id}' appears more than once.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -198,8 +198,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::MultipleStepPrimitives => {
-            outln!("Multiple Step Primitives");
-            outln!("  A step contains multiple primitive actions.");
+            crate::outln!("Multiple Step Primitives");
+            crate::outln!("  A step contains multiple primitive actions.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -209,8 +209,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::MissingStepPrimitive => {
-            outln!("Missing Step Primitive");
-            outln!("  A step is missing its primitive action.");
+            crate::outln!("Missing Step Primitive");
+            crate::outln!("  A step is missing its primitive action.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -220,8 +220,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::UnknownReference { reference } => {
-            outln!("Unknown Reference");
-            outln!("  Reference '{reference}' is not declared in the workflow.");
+            crate::outln!("Unknown Reference");
+            crate::outln!("  Reference '{reference}' is not declared in the workflow.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -231,8 +231,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::FutureReference { reference } => {
-            outln!("Future Reference");
-            outln!("  Reference '{reference}' refers to a step that hasn't been defined yet.");
+            crate::outln!("Future Reference");
+            crate::outln!("  Reference '{reference}' refers to a step that hasn't been defined yet.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -242,8 +242,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::SecretNotDeclared { secret } => {
-            outln!("Undeclared Secret");
-            outln!("  Secret '{secret}' is referenced but not declared in the workflow secrets.");
+            crate::outln!("Undeclared Secret");
+            crate::outln!("  Secret '{secret}' is referenced but not declared in the workflow secrets.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -253,8 +253,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::DirectRuntimeReference => {
-            outln!("Direct Runtime Reference");
-            outln!("  References to runtime state are not allowed in this context.");
+            crate::outln!("Direct Runtime Reference");
+            crate::outln!("  References to runtime state are not allowed in this context.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -264,8 +264,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::InvalidThenTarget => {
-            outln!("Invalid Branch Target");
-            outln!("  A 'then' branch targets an invalid step.");
+            crate::outln!("Invalid Branch Target");
+            crate::outln!("  A 'then' branch targets an invalid step.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -275,8 +275,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::ControlFlowCycle => {
-            outln!("Control Flow Cycle");
-            outln!("  The workflow contains a cycle in its control flow graph.");
+            crate::outln!("Control Flow Cycle");
+            crate::outln!("  The workflow contains a cycle in its control flow graph.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -287,8 +287,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::UnreachableStep { step } => {
-            outln!("Unreachable Step");
-            outln!("  Step '{step}' cannot be reached from the workflow entry.");
+            crate::outln!("Unreachable Step");
+            crate::outln!("  Step '{step}' cannot be reached from the workflow entry.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -298,8 +298,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::InvalidChoose => {
-            outln!("Invalid Choose");
-            outln!("  The 'choose' (conditional) construct is invalid.");
+            crate::outln!("Invalid Choose");
+            crate::outln!("  The 'choose' (conditional) construct is invalid.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -309,8 +309,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::InvalidForEach => {
-            outln!("Invalid ForEach");
-            outln!("  The 'for_each' loop construct is invalid.");
+            crate::outln!("Invalid ForEach");
+            crate::outln!("  The 'for_each' loop construct is invalid.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -320,8 +320,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::InvalidTogether => {
-            outln!("Invalid Together");
-            outln!("  The 'together' (parallel) construct is invalid.");
+            crate::outln!("Invalid Together");
+            crate::outln!("  The 'together' (parallel) construct is invalid.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -331,8 +331,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::InvalidCollect => {
-            outln!("Invalid Collect");
-            outln!("  The 'collect' pagination construct is invalid.");
+            crate::outln!("Invalid Collect");
+            crate::outln!("  The 'collect' pagination construct is invalid.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -342,8 +342,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::InvalidReduce => {
-            outln!("Invalid Reduce");
-            outln!("  The 'reduce' fold construct is invalid.");
+            crate::outln!("Invalid Reduce");
+            crate::outln!("  The 'reduce' fold construct is invalid.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -353,8 +353,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::InvalidRepeat => {
-            outln!("Invalid Repeat");
-            outln!("  The 'repeat' loop construct is invalid.");
+            crate::outln!("Invalid Repeat");
+            crate::outln!("  The 'repeat' loop construct is invalid.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -364,8 +364,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::InvalidWait => {
-            outln!("Invalid Wait");
-            outln!("  The 'wait' step is invalid.");
+            crate::outln!("Invalid Wait");
+            crate::outln!("  The 'wait' step is invalid.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -375,8 +375,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::InvalidAsk => {
-            outln!("Invalid Ask");
-            outln!("  The 'ask' (interaction) step is invalid.");
+            crate::outln!("Invalid Ask");
+            crate::outln!("  The 'ask' (interaction) step is invalid.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -386,8 +386,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::InvalidFinish => {
-            outln!("Invalid Finish");
-            outln!("  The 'finish' step is invalid.");
+            crate::outln!("Invalid Finish");
+            crate::outln!("  The 'finish' step is invalid.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -397,8 +397,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::InvalidRetry => {
-            outln!("Invalid Retry");
-            outln!("  The 'retry' construct is invalid.");
+            crate::outln!("Invalid Retry");
+            crate::outln!("  The 'retry' construct is invalid.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -408,8 +408,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::InvalidOnError => {
-            outln!("Invalid OnError");
-            outln!("  The 'on_error' error handler is invalid.");
+            crate::outln!("Invalid OnError");
+            crate::outln!("  The 'on_error' error handler is invalid.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -419,8 +419,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::SecretResultLeak => {
-            outln!("Secret Result Leak");
-            outln!("  A secret value may be exposed in the workflow result.");
+            crate::outln!("Secret Result Leak");
+            crate::outln!("  A secret value may be exposed in the workflow result.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -430,9 +430,9 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::TypeMismatch { expected, found } => {
-            outln!("Type Mismatch");
-            outln!("  Expected type: {expected}");
-            outln!("  Found type: {found}");
+            crate::outln!("Type Mismatch");
+            crate::outln!("  Expected type: {expected}");
+            crate::outln!("  Found type: {found}");
             explain_repair_hint(
                 "validation",
                 &[
@@ -442,8 +442,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::PayloadTooLarge => {
-            outln!("Payload Too Large");
-            outln!("  The workflow payload exceeds size limits.");
+            crate::outln!("Payload Too Large");
+            crate::outln!("  The workflow payload exceeds size limits.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -453,8 +453,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::LimitRequired { resource } => {
-            outln!("Limit Required");
-            outln!("  Resource '{resource}' requires an explicit limit.");
+            crate::outln!("Limit Required");
+            crate::outln!("  Resource '{resource}' requires an explicit limit.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -464,8 +464,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::LimitExceeded { resource } => {
-            outln!("Limit Exceeded");
-            outln!("  Resource '{resource}' has exceeded its configured limit.");
+            crate::outln!("Limit Exceeded");
+            crate::outln!("  Resource '{resource}' has exceeded its configured limit.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -475,8 +475,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::UnsupportedTrigger { trigger } => {
-            outln!("Unsupported Trigger");
-            outln!("  Trigger type '{trigger}' is not supported.");
+            crate::outln!("Unsupported Trigger");
+            crate::outln!("  Trigger type '{trigger}' is not supported.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -486,8 +486,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::HttpTriggerOutOfCore => {
-            outln!("HTTP Trigger Out of Core");
-            outln!("  HTTP triggers are not available in the core runtime.");
+            crate::outln!("HTTP Trigger Out of Core");
+            crate::outln!("  HTTP triggers are not available in the core runtime.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -497,8 +497,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::ExpressionStackExceeded { declared, limit } => {
-            outln!("Expression Stack Exceeded");
-            outln!("  Expression stack depth {declared} exceeds limit {limit}.");
+            crate::outln!("Expression Stack Exceeded");
+            crate::outln!("  Expression stack depth {declared} exceeds limit {limit}.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -512,8 +512,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             declared,
             computed,
         } => {
-            outln!("Expression Stack Mismatch");
-            outln!(
+            crate::outln!("Expression Stack Mismatch");
+            crate::outln!(
                 "  Expression {expr_index}: declared {declared} stack slots, computed {computed}."
             );
             explain_repair_hint(
@@ -529,8 +529,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             slot,
             slot_count,
         } => {
-            outln!("Accessor Slot Out of Range");
-            outln!(
+            crate::outln!("Accessor Slot Out of Range");
+            crate::outln!(
                 "  Accessor {accessor_index} references slot {slot}, but slot_count is {slot_count}."
             );
             explain_repair_hint(
@@ -545,8 +545,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             accessor_index,
             segment_index,
         } => {
-            outln!("Accessor Path Invalid");
-            outln!("  Accessor {accessor_index} has invalid segment at index {segment_index}.");
+            crate::outln!("Accessor Path Invalid");
+            crate::outln!("  Accessor {accessor_index} has invalid segment at index {segment_index}.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -560,8 +560,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             slot_count,
             context,
         } => {
-            outln!("Slot Reference Out of Range");
-            outln!(
+            crate::outln!("Slot Reference Out of Range");
+            crate::outln!(
                 "  Slot {slot} is out of range (slot_count={slot_count}) in context: {context}."
             );
             explain_repair_hint(
@@ -578,8 +578,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             source_node,
             label: _,
         } => {
-            outln!("Loop Body Step Out of Range");
-            outln!(
+            crate::outln!("Loop Body Step Out of Range");
+            crate::outln!(
                 "  Step {step}: loop body step out of range (node_count={node_count}, source_node={source_node})."
             );
             explain_repair_hint(
@@ -591,8 +591,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::SlotDependencyCycle { slot, chain } => {
-            outln!("Slot Dependency Cycle");
-            outln!("  Slot {slot} has a dependency cycle: {chain}.");
+            crate::outln!("Slot Dependency Cycle");
+            crate::outln!("  Slot {slot} has a dependency cycle: {chain}.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -602,8 +602,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::NodeKindConstraintViolation { node_index, detail } => {
-            outln!("Node Kind Constraint Violation");
-            outln!("  Node {node_index}: {detail}.");
+            crate::outln!("Node Kind Constraint Violation");
+            crate::outln!("  Node {node_index}: {detail}.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -616,8 +616,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             action_id,
             node_index,
         } => {
-            outln!("Action Contract Missing");
-            outln!(
+            crate::outln!("Action Contract Missing");
+            crate::outln!(
                 "  Do node {node_index} references action_id {action_id}, which has no contract."
             );
             explain_repair_hint(
@@ -629,8 +629,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::ActionContractOrphan { action_id } => {
-            outln!("Action Contract Orphan");
-            outln!("  Action contract {action_id} has no corresponding Do node.");
+            crate::outln!("Action Contract Orphan");
+            crate::outln!("  Action contract {action_id} has no corresponding Do node.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -640,8 +640,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::SlotTypeInconsistency { slot } => {
-            outln!("Slot Type Inconsistency");
-            outln!("  Slot {slot} has writers with incompatible type kinds.");
+            crate::outln!("Slot Type Inconsistency");
+            crate::outln!("  Slot {slot} has writers with incompatible type kinds.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -651,8 +651,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::NonDeterministicPath { from_node, to_node } => {
-            outln!("Non-Deterministic Path");
-            outln!("  Path from node {from_node} to {to_node} contains no suspension point.");
+            crate::outln!("Non-Deterministic Path");
+            crate::outln!("  Path from node {from_node} to {to_node} contains no suspension point.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -666,8 +666,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             depth,
             max,
         } => {
-            outln!("Accessor Path Too Deep");
-            outln!(
+            crate::outln!("Accessor Path Too Deep");
+            crate::outln!(
                 "  Accessor {accessor_index} has depth {depth}, which exceeds the maximum {max}."
             );
             explain_repair_hint(
@@ -684,8 +684,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             symbol,
             symbols_count,
         } => {
-            outln!("Accessor Symbol Out of Bounds");
-            outln!(
+            crate::outln!("Accessor Symbol Out of Bounds");
+            crate::outln!(
                 "  Accessor {accessor_index} segment {segment_index}: symbol {symbol} is out of bounds (symbols_count={symbols_count})."
             );
             explain_repair_hint(
@@ -700,8 +700,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             action_id,
             capability_index,
         } => {
-            outln!("Capability Name Empty");
-            outln!("  Action {action_id}: capability {capability_index} has an empty name.");
+            crate::outln!("Capability Name Empty");
+            crate::outln!("  Action {action_id}: capability {capability_index} has an empty name.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -716,8 +716,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             len,
             max,
         } => {
-            outln!("Capability Name Too Long");
-            outln!(
+            crate::outln!("Capability Name Too Long");
+            crate::outln!(
                 "  Action {action_id}: capability {capability_index} name length {len} exceeds max {max}."
             );
             explain_repair_hint(
@@ -733,8 +733,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             capability_index,
             name,
         } => {
-            outln!("Capability Name Invalid");
-            outln!("  Action {action_id}: capability {capability_index} name '{name}' is invalid.");
+            crate::outln!("Capability Name Invalid");
+            crate::outln!("  Action {action_id}: capability {capability_index} name '{name}' is invalid.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -748,8 +748,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             capability_action_id,
             capability_index,
         } => {
-            outln!("Capability Action Mismatch");
-            outln!(
+            crate::outln!("Capability Action Mismatch");
+            crate::outln!(
                 "  Contract action {contract_action_id} != capability action {capability_action_id} at index {capability_index}."
             );
             explain_repair_hint(
@@ -766,8 +766,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             duplicate_index,
             name,
         } => {
-            outln!("Capability Duplicate");
-            outln!(
+            crate::outln!("Capability Duplicate");
+            crate::outln!(
                 "  Action {action_id}: capability '{name}' first at {first_index}, duplicate at {duplicate_index}."
             );
             explain_repair_hint(
@@ -779,8 +779,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::MissingSchemaVersion => {
-            outln!("Missing Schema Version");
-            outln!("  The workflow does not declare a schema version.");
+            crate::outln!("Missing Schema Version");
+            crate::outln!("  The workflow does not declare a schema version.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -790,8 +790,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         ValidationError::CueVetFailed { file } => {
-            outln!("CUE Vet Failed");
-            outln!("  The CUE schema validation failed for '{file}'.");
+            crate::outln!("CUE Vet Failed");
+            crate::outln!("  The CUE schema validation failed for '{file}'.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -805,8 +805,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             expected,
             actual,
         } => {
-            outln!("Version Monotonicity Breach");
-            outln!("  File '{file}': version {actual} is not >= expected {expected}.");
+            crate::outln!("Version Monotonicity Breach");
+            crate::outln!("  File '{file}': version {actual} is not >= expected {expected}.");
             explain_repair_hint(
                 "validation",
                 &[
@@ -816,8 +816,8 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         _ => {
-            outln!("Unknown Validation Error");
-            outln!("  {err}");
+            crate::outln!("Unknown Validation Error");
+            crate::outln!("  {err}");
         }
     }
 }

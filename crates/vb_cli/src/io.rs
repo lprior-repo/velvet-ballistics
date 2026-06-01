@@ -25,20 +25,6 @@ architecture: nightly Rust, compiled IR, in-memory engine, bounded IPC, Fjall jo
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[macro_export]
-macro_rules! outln {
-    ($($arg:tt)*) => {{
-        $crate::io::write_stdout_line(format_args!($($arg)*));
-    }};
-}
-
-#[macro_export]
-macro_rules! errln {
-    ($($arg:tt)*) => {{
-        $crate::io::write_stderr_line(format_args!($($arg)*));
-    }};
-}
-
 pub fn write_help_stdout() -> io::Result<()> {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
@@ -102,6 +88,49 @@ pub fn exit_from_io(result: &io::Result<()>, success_code: std::process::ExitCod
         Ok(()) => success_code,
         Err(_) => std::process::ExitCode::FAILURE,
     }
+}
+
+/// Emit a formatted message to stdout with a trailing newline.
+#[macro_export]
+macro_rules! outln {
+    ($($arg:tt)*) => {{
+        use std::io::Write;
+        let stdout = std::io::stdout();
+        let mut handle = stdout.lock();
+        if let Err(_err) = handle.write_fmt(format_args!($($arg)*)) {
+            // best-effort
+        }
+        if let Err(_err) = handle.write_all(b"\n") {
+            // best-effort
+        }
+    }};
+}
+
+/// Emit a formatted message to stderr with a trailing newline.
+#[macro_export]
+macro_rules! errln {
+    ($($arg:tt)*) => {{
+        use std::io::Write;
+        let stderr = std::io::stderr();
+        let mut handle = stderr.lock();
+        if let Err(_err) = handle.write_fmt(format_args!($($arg)*)) {
+            // best-effort
+        }
+        if let Err(_err) = handle.write_all(b"\n") {
+            // best-effort
+        }
+    }};
+}
+
+/// Emit a JSON report to stdout and return on failure.
+#[macro_export]
+macro_rules! emit_json_or_return {
+    ($value:expr, $format:expr $(,)?) => {{
+        match $crate::output::json_out($value, $format) {
+            Ok(()) => {},
+            Err(error) => return $crate::output::output_error_exit(&error),
+        }
+    }};
 }
 
 #[cfg(test)]

@@ -1,6 +1,12 @@
 #![forbid(unsafe_code)]
 //! Output formatting and JSON/structured output functions.
 
+use std::io::{self, Write};
+use crate::args::OutputFormat;
+use crate::exit_code::CliExitCode;
+use crate::output_utils;
+use crate::io_helpers;
+
 pub(crate) fn write_structured_stderr(
     value: &serde_json::Value,
     output: OutputFormat,
@@ -62,7 +68,7 @@ pub(crate) enum OutputError {
     JsonSerialize(serde_json::Error),
     YamlSerialize(String),
     PostcardSerialize(postcard::Error),
-    PostcardFrame(cli_postcard::PostcardError),
+    PostcardFrame(crate::cli_postcard::PostcardError),
     Stdout(io::Error),
 }
 
@@ -128,19 +134,19 @@ fn write_json_pretty_stdout(value: &serde_json::Value) -> Result<(), OutputError
 
 fn encode_postcard_json_frame(value: &serde_json::Value) -> Result<Vec<u8>, OutputError> {
     let json_utf8 = serde_json::to_vec(value).map_err(OutputError::JsonSerialize)?;
-    let payload = cli_postcard::CliPostcardPayload::from_json_utf8(json_utf8)
+    let payload = crate::cli_postcard::CliPostcardPayload::from_json_utf8(json_utf8)
         .map_err(OutputError::PostcardFrame)?;
     let postcard_payload =
         postcard::to_allocvec(&payload).map_err(OutputError::PostcardSerialize)?;
-    cli_postcard::encode_postcard(
-        cli_postcard::CLI_SCHEMA_VERSION,
-        cli_postcard::CLI_POSTCARD_KIND,
+    crate::cli_postcard::encode_postcard(
+        crate::cli_postcard::CLI_SCHEMA_VERSION,
+        crate::cli_postcard::CLI_POSTCARD_KIND,
         &postcard_payload,
     )
     .map_err(OutputError::PostcardFrame)
 }
 
-fn write_stderr_line(args: std::fmt::Arguments<'_>) {
+pub(crate) fn write_stderr_line(args: std::fmt::Arguments<'_>) {
     let stderr = io::stderr();
     let mut handle = stderr.lock();
     if let Err(error) = handle.write_fmt(args) {
@@ -181,10 +187,10 @@ pub(crate) fn json_out(value: &serde_json::Value, format: OutputFormat) -> Resul
 ///
 /// Used for PRE-001 through PRE-004 failures where the contract specifies
 /// the exact error format with "error", "message", and optional context fields.
-fn write_contract_error_json(value: &serde_json::Value, format: OutputFormat) {
+pub(crate) fn write_contract_error_json(value: &serde_json::Value, format: OutputFormat) {
     if format == OutputFormat::Text {
         if let Some(msg) = value.get("message").and_then(serde_json::Value::as_str) {
-            errln!("{msg}");
+            crate::errln!("{msg}");
         }
     } else {
         if let Err(error) = write_structured_stderr(value, format) {
@@ -194,11 +200,11 @@ fn write_contract_error_json(value: &serde_json::Value, format: OutputFormat) {
 }
 
 /// Output a JSON error value to stderr in the specified format.
-fn json_error(value: &serde_json::Value, format: OutputFormat) {
+pub(crate) fn json_error(value: &serde_json::Value, format: OutputFormat) {
     let message = legacy_json_error_message(value);
     let code = infer_legacy_json_error_code(&message);
     if format == OutputFormat::Text {
-        errln!("{message}");
+        crate::errln!("{message}");
     } else {
         write_diagnostic_message_stderr(&message, code, format);
     }
@@ -206,3 +212,7 @@ fn json_error(value: &serde_json::Value, format: OutputFormat) {
 
 #[cfg(test)]
 #[path = "app_impl_tests.rs"]
+mod app_impl_tests;
+
+// Re-export from file_io for compatibility with existing imports.
+pub(crate) use crate::file_io::write_failure_message;

@@ -32,7 +32,7 @@ pub(crate) fn decode_step_inputs(
                     output,
                 );
             } else {
-                errln!("{msg}");
+                crate::errln!("{msg}");
             }
             Err(CliExitCode::ValidationFailed.into())
         }
@@ -75,7 +75,7 @@ pub(crate) fn execute_step_isolated(
                     output,
                 );
             } else {
-                errln!("{msg}");
+                crate::errln!("{msg}");
             }
             return CliExitCode::RuntimeFailed.into();
         }
@@ -132,7 +132,7 @@ pub(crate) fn build_step_frame(
     match vb_core::RunFrame::new(run_id, step_idx, step_count, slot_count) {
         Ok(frame) => Ok(frame),
         Err(e) => {
-            errln!("frame build error: {e}");
+            crate::errln!("frame build error: {e}");
             Err(setup_exit_code())
         }
     }
@@ -147,7 +147,7 @@ pub(crate) fn write_step_inputs(
         if let Ok(slot) = u16::try_from(i) {
             let slot_idx = vb_core::SlotIdx::new(slot);
             if let Err(error) = frame.write_slot(slot_idx, *value) {
-                errln!("step input write error: {error}");
+                crate::errln!("step input write error: {error}");
                 return Err(setup_exit_code());
             }
         }
@@ -317,13 +317,13 @@ pub(crate) fn print_step_result(
 ) -> Result<(), OutputError> {
     match output {
         OutputFormat::Text => {
-            outln!("step: {}", step.get());
-            outln!("kind: {}", node_kind_name(&node.kind));
+            crate::outln!("step: {}", step.get());
+            crate::outln!("kind: {}", node_kind_name(&node.kind));
             print_input_slots(frame);
             if let Some(output_slot) = node.output {
                 print_output_slot(frame, output_slot);
             }
-            outln!("signal: {}", signal_name(signal));
+            crate::outln!("signal: {}", signal_name(signal));
             if let Some(output_slot) = node.output {
                 print_taint(frame, output_slot);
             }
@@ -350,7 +350,7 @@ pub(crate) fn print_input_slots(frame: &vb_core::RunFrame) {
     for i in 0..count {
         let slot = vb_core::SlotIdx::new(i);
         if let Ok(value) = frame.read_slot(slot) {
-            outln!("  slot[{i}]: {value:?}");
+            crate::outln!("  slot[{i}]: {value:?}");
         }
     }
 }
@@ -358,14 +358,14 @@ pub(crate) fn print_input_slots(frame: &vb_core::RunFrame) {
 
 pub(crate) fn print_output_slot(frame: &vb_core::RunFrame, slot: vb_core::SlotIdx) {
     if let Ok(value) = frame.read_slot(slot) {
-        outln!("output: {value:?}");
+        crate::outln!("output: {value:?}");
     }
 }
 
 
 pub(crate) fn print_taint(frame: &vb_core::RunFrame, slot: vb_core::SlotIdx) {
     if let Ok(taint) = frame.read_taint(slot) {
-        outln!("taint: {taint:?}");
+        crate::outln!("taint: {taint:?}");
     }
 }
 

@@ -55,7 +55,7 @@ pub(crate) fn cmd_events(
                         output,
                     );
                 } else {
-                    errln!("run {run_id}: no events found");
+                    crate::errln!("run {run_id}: no events found");
                 }
                 return CliExitCode::ValidationFailed.into();
             } else {
@@ -63,9 +63,9 @@ pub(crate) fn cmd_events(
                     OutputFormat::Yaml | OutputFormat::Postcard => {
                         let event_list: Vec<serde_json::Value> =
                             events.iter().map(event_to_json).collect();
-                        emit_json_or_return!(
+                        crate::emit_json_or_return!(
                             &serde_json::json!({
-                                "schema_version": cli_envelope::SCHEMA_VERSION,
+                                "schema_version": crate::cli_envelope::SCHEMA_VERSION,
                                 "kind": "events_report",
                                 "run_id": run_id,
                                 "events": event_list,
@@ -78,7 +78,7 @@ pub(crate) fn cmd_events(
                         for event in &events {
                             print_event(event);
                         }
-                        outln!("{} event(s) total", events.len());
+                        crate::outln!("{} event(s) total", events.len());
                         write_vb_kyyf_trace("events", run_id, events.len());
                     }
                 }
@@ -94,7 +94,7 @@ pub(crate) fn cmd_events(
                     output,
                 );
             } else {
-                errln!("error reading events for run {run_id}: {e}");
+                crate::errln!("error reading events for run {run_id}: {e}");
             }
             return CliExitCode::StorageError.into();
         }
@@ -106,18 +106,18 @@ pub(crate) fn cmd_events(
 pub(crate) fn print_event(event: &vb_storage::JournalEvent) {
     match event {
         vb_storage::JournalEvent::RunAccepted { seq, .. } => {
-            outln!("  seq={}: RunAccepted", seq.get());
+            crate::outln!("  seq={}: RunAccepted", seq.get());
         }
         vb_storage::JournalEvent::RunAdmission { seq, policy, .. } => {
-            outln!("  seq={}: RunAdmission policy={policy:?}", seq.get());
+            crate::outln!("  seq={}: RunAdmission policy={policy:?}", seq.get());
         }
         vb_storage::JournalEvent::StepStarted { seq, step, .. } => {
-            outln!("  seq={}: StepStarted step={}", seq.get(), step.get());
+            crate::outln!("  seq={}: StepStarted step={}", seq.get(), step.get());
         }
         vb_storage::JournalEvent::StepSucceeded {
             seq, step, output, ..
         } => {
-            outln!(
+            crate::outln!(
                 "  seq={}: StepSucceeded step={} output={}",
                 seq.get(),
                 step.get(),
@@ -127,7 +127,7 @@ pub(crate) fn print_event(event: &vb_storage::JournalEvent) {
         vb_storage::JournalEvent::ActionScheduled {
             seq, step, action, ..
         } => {
-            outln!(
+            crate::outln!(
                 "  seq={}: ActionScheduled step={} action={}",
                 seq.get(),
                 step.get(),
@@ -137,7 +137,7 @@ pub(crate) fn print_event(event: &vb_storage::JournalEvent) {
         vb_storage::JournalEvent::ActionCompletedEvent {
             seq, step, action, ..
         } => {
-            outln!(
+            crate::outln!(
                 "  seq={}: ActionCompleted step={} action={}",
                 seq.get(),
                 step.get(),
@@ -147,7 +147,7 @@ pub(crate) fn print_event(event: &vb_storage::JournalEvent) {
         vb_storage::JournalEvent::ActionFailedEvent {
             seq, step, action, ..
         } => {
-            outln!(
+            crate::outln!(
                 "  seq={}: ActionFailed step={} action={}",
                 seq.get(),
                 step.get(),
@@ -155,40 +155,40 @@ pub(crate) fn print_event(event: &vb_storage::JournalEvent) {
             );
         }
         vb_storage::JournalEvent::SlotWrittenEvent { seq, slot, .. } => {
-            outln!("  seq={}: SlotWritten slot={}", seq.get(), slot.get());
+            crate::outln!("  seq={}: SlotWritten slot={}", seq.get(), slot.get());
         }
         vb_storage::JournalEvent::WaitScheduledEvent { seq, step, .. } => {
-            outln!("  seq={}: WaitScheduled step={}", seq.get(), step.get());
+            crate::outln!("  seq={}: WaitScheduled step={}", seq.get(), step.get());
         }
         vb_storage::JournalEvent::AskScheduledEvent { seq, step, .. } => {
-            outln!("  seq={}: AskScheduled step={}", seq.get(), step.get());
+            crate::outln!("  seq={}: AskScheduled step={}", seq.get(), step.get());
         }
         vb_storage::JournalEvent::AskAnsweredEvent { seq, step, .. } => {
-            outln!("  seq={}: AskAnswered step={}", seq.get(), step.get());
+            crate::outln!("  seq={}: AskAnswered step={}", seq.get(), step.get());
         }
         vb_storage::JournalEvent::RetryScheduledEvent { seq, step, .. } => {
-            outln!("  seq={}: RetryScheduled step={}", seq.get(), step.get());
+            crate::outln!("  seq={}: RetryScheduled step={}", seq.get(), step.get());
         }
         vb_storage::JournalEvent::RunCancelled { seq, .. } => {
-            outln!("  seq={}: RunCancelled", seq.get());
+            crate::outln!("  seq={}: RunCancelled", seq.get());
         }
         vb_storage::JournalEvent::RunFinished { seq, result, .. } => {
-            outln!("  seq={}: RunFinished result={}", seq.get(), result.get());
+            crate::outln!("  seq={}: RunFinished result={}", seq.get(), result.get());
         }
         vb_storage::JournalEvent::RunFailedEvent { seq, .. } => {
-            outln!("  seq={}: RunFailed", seq.get());
+            crate::outln!("  seq={}: RunFailed", seq.get());
         }
         vb_storage::JournalEvent::RunResumed { run, .. } => {
-            outln!("  RunResumed run={}", run.get());
+            crate::outln!("  RunResumed run={}", run.get());
         }
         vb_storage::JournalEvent::RunRetried { run, .. } => {
-            outln!("  RunRetried run={}", run.get());
+            crate::outln!("  RunRetried run={}", run.get());
         }
         vb_storage::JournalEvent::RunAnswered { run, slot_idx, .. } => {
-            outln!("  RunAnswered run={} slot={}", run.get(), slot_idx.get());
+            crate::outln!("  RunAnswered run={} slot={}", run.get(), slot_idx.get());
         }
         _ => {
-            outln!("  Unknown");
+            crate::outln!("  Unknown");
         }
     }
 }

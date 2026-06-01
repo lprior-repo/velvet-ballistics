@@ -44,7 +44,7 @@ pub(crate) fn cmd_run_compiled(
                             output,
                         );
                     } else {
-                        errln!("compiled IR validation error: {e}");
+                        crate::errln!("compiled IR validation error: {e}");
                     }
                     return CliExitCode::CompileFailed.into();
                 }
@@ -59,7 +59,7 @@ pub(crate) fn cmd_run_compiled(
                         output,
                     );
                 } else {
-                    errln!("error deserializing compiled IR: {e}");
+                    crate::errln!("error deserializing compiled IR: {e}");
                 }
                 return CliExitCode::CompileFailed.into();
             }
@@ -77,7 +77,7 @@ pub(crate) fn cmd_run_compiled(
                     output,
                 );
             } else {
-                errln!("{error}");
+                crate::errln!("{error}");
             }
             return CliExitCode::CompileFailed.into();
         }
@@ -94,7 +94,7 @@ enum InputMappingError {
 }
 
 impl std::fmt::Display for InputMappingError {
-    pub(crate) fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter.write_str(match self {
             Self::DecodeFailed => INPUT_MAPPING_DECODE_FAILED_MESSAGE,
             Self::SlotCountExceeded => INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,

@@ -7,7 +7,7 @@ fn write_action_registry_error(
 ) -> ExitCode {
     let message = format!("failed to register CLI action contracts: {error}");
     if output == OutputFormat::Text {
-        errln!("{message}");
+        crate::errln!("{message}");
     } else {
         json_error(
             &serde_json::json!({
@@ -24,7 +24,7 @@ fn write_action_registry_error(
 fn write_action_registry_uninitialized(output: OutputFormat) {
     let message = "action registry is not initialized";
     if output == OutputFormat::Text {
-        errln!("{message}");
+        crate::errln!("{message}");
     } else {
         json_error(
             &serde_json::json!({
@@ -62,7 +62,7 @@ fn write_action_registry(registry: &ActionRegistry, output: OutputFormat) -> Exi
             })
         })
         .collect();
-    emit_json_or_return!(
+    crate::emit_json_or_return!(
         &serde_json::json!({
             "success": true,
             "actions": actions,
@@ -86,7 +86,7 @@ fn write_action_inspect(
         Err(e) => {
             let message = format!("invalid action name: {}", e);
             if output == OutputFormat::Text {
-                errln!("{message}");
+                crate::errln!("{message}");
             } else {
                 json_error(
                     &serde_json::json!({
@@ -110,7 +110,7 @@ fn write_action_inspect_error(
 ) -> ExitCode {
     let message = format!("action '{action_name}' is not registered: {error}");
     if output == OutputFormat::Text {
-        errln!("{message}");
+        crate::errln!("{message}");
     } else {
         json_error(
             &serde_json::json!({
@@ -133,30 +133,30 @@ fn write_action_contract(
     if output == OutputFormat::Text {
         write_action_contract_text(&detail);
     } else {
-        emit_json_or_return!(&detail.to_json(), output);
+        crate::emit_json_or_return!(&detail.to_json(), output);
     }
     ExitCode::SUCCESS
 }
 
 
 fn write_action_contract_text(detail: &ActionContractDetail) {
-    outln!("action {}", detail.id);
-    outln!("  input_slot_count: {}", detail.input_slot_count);
-    outln!("  output_slot_count: {}", detail.output_slot_count);
-    outln!("  max_input_bytes: {}", detail.max_input_bytes);
-    outln!("  max_output_bytes: {}", detail.max_output_bytes);
-    outln!("  timeout_ms: {}", detail.timeout_ms);
-    outln!("  idempotency: {}", detail.idempotency);
-    outln!("  retry_safety: {}", detail.retry_safety);
-    outln!("  side_effect: {}", detail.side_effect);
-    outln!("  idempotency_rule: {}", detail.idempotency_rule);
-    outln!(
+    crate::outln!("action {}", detail.id);
+    crate::outln!("  input_slot_count: {}", detail.input_slot_count);
+    crate::outln!("  output_slot_count: {}", detail.output_slot_count);
+    crate::outln!("  max_input_bytes: {}", detail.max_input_bytes);
+    crate::outln!("  max_output_bytes: {}", detail.max_output_bytes);
+    crate::outln!("  timeout_ms: {}", detail.timeout_ms);
+    crate::outln!("  idempotency: {}", detail.idempotency);
+    crate::outln!("  retry_safety: {}", detail.retry_safety);
+    crate::outln!("  side_effect: {}", detail.side_effect);
+    crate::outln!("  idempotency_rule: {}", detail.idempotency_rule);
+    crate::outln!(
         "  required_capabilities: {}",
         detail.required_capabilities.join(",")
     );
-    outln!("  failure_codes: {}", detail.failure_codes.join(","));
-    outln!("  example_input_schema: {}", detail.example_input_schema);
-    outln!("  example_output_schema: {}", detail.example_output_schema);
+    crate::outln!("  failure_codes: {}", detail.failure_codes.join(","));
+    crate::outln!("  example_input_schema: {}", detail.example_input_schema);
+    crate::outln!("  example_output_schema: {}", detail.example_output_schema);
 }
 
 
@@ -254,9 +254,9 @@ fn action_contract_detail(contract: &vb_core::action::ActionContract) -> ActionC
 
 
 fn write_action_table_rows(rows: &[ActionTableRow]) {
-    outln!("id\tidempotency\tretry_safety\tside_effect\tinput_slots\toutput_slots\ttimeout_ms");
+    crate::outln!("id\tidempotency\tretry_safety\tside_effect\tinput_slots\toutput_slots\ttimeout_ms");
     rows.iter().for_each(|row| {
-        outln!(
+        crate::outln!(
             "{}\t{}\t{}\t{}\t{}\t{}\t{}",
             row.id,
             row.idempotency,
@@ -273,10 +273,10 @@ fn write_action_table_rows(rows: &[ActionTableRow]) {
 fn write_no_registered_actions(output: OutputFormat) -> ExitCode {
     let message = "no registered actions";
     if output == OutputFormat::Text {
-        outln!("{message}");
+        crate::outln!("{message}");
         ExitCode::SUCCESS
     } else {
-        emit_json_or_return!(
+        crate::emit_json_or_return!(
             &serde_json::json!({
                 "success": true,
                 "actions": [],

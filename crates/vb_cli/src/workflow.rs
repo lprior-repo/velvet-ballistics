@@ -2,7 +2,6 @@
 #![forbid(unsafe_code)]
 
 use crate::args::DurabilityMode;
-use crate::io::{errln, outln};
 use std::num::NonZeroUsize;
 use std::path::Path;
 use std::process::ExitCode;
@@ -42,7 +41,7 @@ pub fn run_compiled_workflow(
 ) -> ExitCode {
     let run_id = RunId::new(1);
     let Some(shard_count) = NonZeroUsize::new(1) else {
-        errln!("runtime configuration error: shard count must be non-zero");
+        crate::errln!("runtime configuration error: shard count must be non-zero");
         return ExitCode::FAILURE;
     };
     let config = ShardConfig::default();
@@ -53,17 +52,17 @@ pub fn run_compiled_workflow(
     let mut runtime = Runtime::new_with_journal(shard_count, config, journal);
 
     if let Err(e) = runtime.submit_compiled_with_inputs(run_id, compiled.clone(), inputs) {
-        errln!("runtime submit error: {e}");
+        crate::errln!("runtime submit error: {e}");
         return ExitCode::FAILURE;
     }
     if let Err(e) = runtime.tick_all() {
-        errln!("runtime tick error: {e}");
+        crate::errln!("runtime tick error: {e}");
         return ExitCode::FAILURE;
     }
 
     let counters = runtime.counters_snapshot();
     let traces = runtime.drain_trace();
-    outln!(
+    crate::outln!(
         "run {}: submitted={} completed={} failed={} steps={}",
         run_id.get(),
         counters.runs_submitted,
@@ -76,13 +75,13 @@ pub fn run_compiled_workflow(
     }
 
     if counters.runs_failed != 0 {
-        errln!("run failed");
+        crate::errln!("run failed");
         return ExitCode::FAILURE;
     }
     if counters.runs_completed != 0 {
-        outln!("run completed");
+        crate::outln!("run completed");
     } else {
-        outln!("run accepted but not terminal after one runtime tick");
+        crate::outln!("run accepted but not terminal after one runtime tick");
     }
 
     ExitCode::SUCCESS
@@ -104,13 +103,13 @@ fn open_storage_runtime_journal(
     strict: bool,
 ) -> Result<SharedRuntimeJournal, ExitCode> {
     let Some(path) = db else {
-        errln!("--db is required when --durability is strict or journaled");
+        crate::errln!("--db is required when --durability is strict or journaled");
         return Err(ExitCode::FAILURE);
     };
     let journal = match vb_storage::FjallJournal::open(path, None) {
         Ok(journal) => std::sync::Arc::new(journal),
         Err(e) => {
-            errln!("error opening journal at {}: {e}", path.display());
+            crate::errln!("error opening journal at {}: {e}", path.display());
             return Err(ExitCode::FAILURE);
         }
     };
@@ -127,37 +126,37 @@ fn open_storage_runtime_journal(
 pub fn print_trace_event(event: &TraceEvent) {
     match event {
         TraceEvent::StepStarted { step, .. } => {
-            outln!("  trace: StepStarted step={}", step.get());
+            crate::outln!("  trace: StepStarted step={}", step.get());
         }
         TraceEvent::StepEnded { step, .. } => {
-            outln!("  trace: StepEnded step={}", step.get());
+            crate::outln!("  trace: StepEnded step={}", step.get());
         }
         TraceEvent::SlotWritten { slot, .. } => {
-            outln!("  trace: SlotWritten slot={}", slot.get());
+            crate::outln!("  trace: SlotWritten slot={}", slot.get());
         }
         TraceEvent::ActionScheduled { step, .. } => {
-            outln!("  trace: ActionScheduled step={}", step.get());
+            crate::outln!("  trace: ActionScheduled step={}", step.get());
         }
         TraceEvent::ActionCompleted { step, .. } => {
-            outln!("  trace: ActionCompleted step={}", step.get());
+            crate::outln!("  trace: ActionCompleted step={}", step.get());
         }
         TraceEvent::ActionFailed { step, .. } => {
-            outln!("  trace: ActionFailed step={}", step.get());
+            crate::outln!("  trace: ActionFailed step={}", step.get());
         }
         TraceEvent::AskAnswered { step, slot, .. } => {
-            outln!("  trace: AskAnswered step={} slot={}", step.get(), slot.get());
+            crate::outln!("  trace: AskAnswered step={} slot={}", step.get(), slot.get());
         }
         TraceEvent::RunSubmitted { .. } => {
-            outln!("  trace: RunSubmitted");
+            crate::outln!("  trace: RunSubmitted");
         }
         TraceEvent::RunFinished { .. } => {
-            outln!("  trace: RunFinished");
+            crate::outln!("  trace: RunFinished");
         }
         TraceEvent::RunFailed { .. } => {
-            outln!("  trace: RunFailed");
+            crate::outln!("  trace: RunFailed");
         }
         TraceEvent::RunCancelled { .. } => {
-            outln!("  trace: RunCancelled");
+            crate::outln!("  trace: RunCancelled");
         }
     }
 }

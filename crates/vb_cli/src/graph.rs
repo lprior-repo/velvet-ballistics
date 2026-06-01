@@ -20,10 +20,10 @@ pub(crate) fn cmd_graph(workflow: &std::path::Path, output: OutputFormat) -> Exi
         Err(code) => return code,
     };
 
-    let graph = commands_workflow::generate_dot(&compiled);
+    let graph = crate::commands_workflow::generate_dot(&compiled);
 
     if output != OutputFormat::Text {
-        emit_json_or_return!(
+        crate::emit_json_or_return!(
             &serde_json::json!({
                 "format": "dot",
                 "nodes": graph.node_count,
@@ -33,7 +33,7 @@ pub(crate) fn cmd_graph(workflow: &std::path::Path, output: OutputFormat) -> Exi
             output,
         );
     } else {
-        outln!("{}", graph.dot);
+        crate::outln!("{}", graph.dot);
     }
 
     CliExitCode::Success.into()

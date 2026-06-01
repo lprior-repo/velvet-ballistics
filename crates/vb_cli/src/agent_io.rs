@@ -13,9 +13,9 @@ use crate::cli_envelope;
 use crate::deliver_sink;
 
 pub(crate) fn cmd_agent_context(deliver: Option<&str>) -> ExitCode {
-    let context = cli_envelope::serialize_with_version(
-        &agent_context::build(VERSION),
-        cli_envelope::Kind::AgentContext,
+    let context = crate::cli_envelope::serialize_with_version(
+        &crate::agent_context::build(VERSION),
+        crate::cli_envelope::Kind::AgentContext,
     );
     if let Some(raw_target) = deliver {
         return deliver_json_value(raw_target, &context);
@@ -30,14 +30,14 @@ pub(crate) fn deliver_json_value(raw_target: &str, value: &serde_json::Value) ->
     let target = match deliver_sink::parse_deliver_target(raw_target) {
         Ok(target) => target,
         Err(error) => {
-            errln!("deliver failed: {error}");
+            crate::errln!("deliver failed: {error}");
             return CliExitCode::ValidationFailed.into();
         }
     };
     match deliver_sink::write_json_line(&target, value) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
-            errln!("deliver failed: {error}");
+            crate::errln!("deliver failed: {error}");
             deliver_error_exit_code(error).into()
         }
     }
@@ -56,8 +56,8 @@ pub(crate) fn cmd_status(options: args::StatusOptions, output: OutputFormat) -> 
     } else {
         output
     };
-    let status = commands_status::build_status(options);
-    match commands_status::print_status(&status, requested_output) {
+    let status = crate::commands_crate::status::build_status(options);
+    match crate::commands_crate::status::print_status(&status, requested_output) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => output_error_exit(&error),
     }
@@ -69,7 +69,7 @@ pub(crate) fn cmd_system_status(options: args::SystemStatusOptions, output: Outp
     } else {
         output
     };
-    match commands_system_status::print_system_status(options, requested_output, VERSION) {
+    match crate::commands_system_crate::status::print_system_status(options, requested_output, VERSION) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => output_error_exit(&error),
     }
@@ -119,7 +119,7 @@ pub(crate) fn write_action_registry_error(
 ) -> ExitCode {
     let message = format!("failed to register CLI action contracts: {error}");
     if output == OutputFormat::Text {
-        errln!("{message}");
+        crate::errln!("{message}");
     } else {
         json_error(
             &serde_json::json!({

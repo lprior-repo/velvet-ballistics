@@ -32,7 +32,7 @@ pub(crate) fn cmd_compile(
                 );
             } else {
                 for err in &errors.0 {
-                    errln!("compile error: {err}");
+                    crate::errln!("compile error: {err}");
                 }
             }
             return CliExitCode::CompileFailed.into();
@@ -54,7 +54,7 @@ pub(crate) fn cmd_compile(
                             CliExitCode::CompileFailed,
                         );
                     } else {
-                        errln!("IR serialization error: {e}");
+                        crate::errln!("IR serialization error: {e}");
                     }
                     return CliExitCode::CompileFailed.into();
                 }
@@ -67,12 +67,12 @@ pub(crate) fn cmd_compile(
                         CliExitCode::CompileFailed,
                     );
                 } else {
-                    errln!("error writing {}: {e}", out.display());
+                    crate::errln!("error writing {}: {e}", out.display());
                 }
                 return CliExitCode::CompileFailed.into();
             }
             if output != OutputFormat::Text {
-                emit_json_or_return!(
+                crate::emit_json_or_return!(
                     &serde_json::json!({
                         "success": true,
                         "output": out.display().to_string(),
@@ -81,7 +81,7 @@ pub(crate) fn cmd_compile(
                     output,
                 );
             } else {
-                outln!("compiled IR written to {}", out.display());
+                crate::outln!("compiled IR written to {}", out.display());
             }
         }
         EmitTarget::Yaml => {
@@ -96,7 +96,7 @@ pub(crate) fn cmd_compile(
                             CliExitCode::CompileFailed,
                         );
                     } else {
-                        errln!("YAML serialization error: {e}");
+                        crate::errln!("YAML serialization error: {e}");
                     }
                     return CliExitCode::CompileFailed.into();
                 }
@@ -109,12 +109,12 @@ pub(crate) fn cmd_compile(
                         CliExitCode::CompileFailed,
                     );
                 } else {
-                    errln!("error writing {}: {e}", out.display());
+                    crate::errln!("error writing {}: {e}", out.display());
                 }
                 return CliExitCode::CompileFailed.into();
             }
             if output != OutputFormat::Text {
-                emit_json_or_return!(
+                crate::emit_json_or_return!(
                     &serde_json::json!({
                         "success": true,
                         "output": out.display().to_string(),
@@ -123,7 +123,7 @@ pub(crate) fn cmd_compile(
                     output,
                 );
             } else {
-                outln!("compiled YAML written to {}", out.display());
+                crate::outln!("compiled YAML written to {}", out.display());
             }
         }
         EmitTarget::Postcard => {
@@ -138,7 +138,7 @@ pub(crate) fn cmd_compile(
                             CliExitCode::CompileFailed,
                         );
                     } else {
-                        errln!("postcard serialization error: {e}");
+                        crate::errln!("postcard serialization error: {e}");
                     }
                     return CliExitCode::CompileFailed.into();
                 }
@@ -151,12 +151,12 @@ pub(crate) fn cmd_compile(
                         CliExitCode::CompileFailed,
                     );
                 } else {
-                    errln!("error writing {}: {e}", out.display());
+                    crate::errln!("error writing {}: {e}", out.display());
                 }
                 return CliExitCode::CompileFailed.into();
             }
             if output != OutputFormat::Text {
-                emit_json_or_return!(
+                crate::emit_json_or_return!(
                     &serde_json::json!({
                         "success": true,
                         "output": out.display().to_string(),
@@ -165,7 +165,7 @@ pub(crate) fn cmd_compile(
                     output,
                 );
             } else {
-                outln!("compiled postcard written to {}", out.display());
+                crate::outln!("compiled postcard written to {}", out.display());
             }
         }
     }

@@ -2,28 +2,33 @@
 //! Velvet Ballistics is the CLI runtime for bead lifecycle management.
 
 pub(crate) mod agent_context;
+pub(crate) mod app_impl;
+pub mod args;
+pub mod bench;
+pub mod cli_envelope;
+pub mod cli_error;
 pub mod cli_postcard;
+pub mod commands;
+pub mod commands_ai_context;
 pub mod commands_diff;
 pub mod commands_incident;
-pub mod lifecycle;
-pub mod naming_scan;
-pub mod status;
-
-// Re-enabled modules (files verified present with content).
-// Kept commented: run_resume, explain_validation3, explain_validation4 — files do not exist.
-// explain_repair was previously BROKEN; uncomment if syntax is fixed.
-pub mod action;
-pub mod action_specs;
-pub mod agent_io;
-pub mod bench_run;
+pub mod commands_journal;
+pub mod commands_status;
+pub mod commands_system_status;
+pub mod commands_verify;
+pub mod commands_workflow;
 pub mod compile;
 pub mod constants;
+pub mod deliver_sink;
 pub mod dispatcher;
 pub mod doctor;
 pub mod doctor_helpers;
 pub mod events;
+pub mod exit_code;
 pub mod explain;
+pub mod explain_compile;
 pub mod explain_errors;
+pub mod explain_repair;
 pub mod explain_reports;
 pub mod explain_validation;
 pub mod explain_validation2;
@@ -32,8 +37,16 @@ pub mod graph;
 pub mod incident_diff;
 pub mod incident_ops;
 pub mod inspect;
+pub mod io;
 pub mod io_helpers;
 pub mod ipc_serve;
+#[cfg(kani)]
+pub mod kani_lifecycle;
+pub mod lifecycle;
+pub mod main_tests;
+pub mod mode_activation_tests;
+pub mod mode_error;
+pub mod naming_scan;
 pub mod output;
 pub mod output_utils;
 pub mod replay;
@@ -44,15 +57,24 @@ pub mod run_compiled_runtime;
 pub mod run_ops;
 pub mod run_step;
 pub mod simulate;
+pub mod status;
 pub mod step_helpers;
+pub mod storage;
 pub mod submit;
 pub mod trace;
+pub mod validate;
 pub mod verify;
+pub mod verus_lifecycle;
+pub mod workflow;
 
-// Newly declared modules (previously missing from lib.rs).
-pub mod args;
-pub mod commands_journal;
-pub mod commands_verify;
-pub mod commands_workflow;
-pub mod deliver_sink;
+// Re-enabled modules (files verified present with content).
+// Kept commented: run_resume, explain_validation3, explain_validation4 — files do not exist.
+
+// Re-exports for convenience — items expected at crate root by many files.
+pub use crate::output::{json_error, json_out, write_stderr_line, write_stdout_line, write_stdout_line_checked};
+pub use crate::output::OutputError;
+pub use crate::output::write_contract_error_json;
+pub use crate::file_io::write_failure_message;
+pub use crate::args::OutputFormat;
+pub use crate::exit_code::CliExitCode;
 

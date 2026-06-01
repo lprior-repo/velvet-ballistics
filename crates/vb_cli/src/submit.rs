@@ -45,7 +45,7 @@ pub(crate) fn cmd_submit(
                 );
             } else {
                 for err in &errors.0 {
-                    errln!("compile error: {err}");
+                    crate::errln!("compile error: {err}");
                 }
             }
             return CliExitCode::CompileFailed.into();
@@ -93,7 +93,7 @@ pub(crate) fn cmd_submit(
                 output,
             );
         } else {
-            errln!("workflow source write error: {e}");
+            crate::errln!("workflow source write error: {e}");
         }
         return CliExitCode::StorageError.into();
     }
@@ -103,7 +103,7 @@ pub(crate) fn cmd_submit(
         Ok(d) => match u64::try_from(d.as_millis()) {
             Ok(ms) => ms,
             Err(_) => {
-                errln!("warning: system clock value does not fit in u64; using 0");
+                crate::errln!("warning: system clock value does not fit in u64; using 0");
                 0_u64
             }
         },
@@ -126,7 +126,7 @@ pub(crate) fn cmd_submit(
                 output,
             );
         } else {
-            errln!("run header write error: {e}");
+            crate::errln!("run header write error: {e}");
         }
         return CliExitCode::StorageError.into();
     }
@@ -147,7 +147,7 @@ pub(crate) fn cmd_submit(
                     output,
                 );
             } else {
-                errln!("journal append error: {e}");
+                crate::errln!("journal append error: {e}");
             }
             return CliExitCode::StorageError.into();
         }
@@ -155,7 +155,7 @@ pub(crate) fn cmd_submit(
     drop(journal);
 
     if output != OutputFormat::Text {
-        emit_json_or_return!(
+        crate::emit_json_or_return!(
             &serde_json::json!({
                 "run_id": run_id.get(),
                 "digest": digest_hex,
@@ -165,11 +165,11 @@ pub(crate) fn cmd_submit(
             output,
         );
     } else {
-        outln!("submitted run {}", run_id.get());
-        outln!("  digest:     {digest_hex}");
-        outln!("  steps:      {step_count}");
-        outln!("  durability: {}", durability_as_str(durability));
-        outln!("  status:     submitted");
+        crate::outln!("submitted run {}", run_id.get());
+        crate::outln!("  digest:     {digest_hex}");
+        crate::outln!("  steps:      {step_count}");
+        crate::outln!("  durability: {}", durability_as_str(durability));
+        crate::outln!("  status:     submitted");
     }
 
     CliExitCode::Success.into()
@@ -195,4 +195,3 @@ pub(crate) fn generate_submit_run_id() -> u64 {
     }
 }
 
-/// Executes a single step in isolation using `step_once`.

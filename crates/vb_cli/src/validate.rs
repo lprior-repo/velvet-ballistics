@@ -53,9 +53,9 @@ pub(crate) fn cmd_validate(workflow: &std::path::Path, output: OutputFormat) -> 
     }
 
     if output == OutputFormat::Text {
-        outln!("valid");
+        crate::outln!("valid");
     } else {
-        emit_json_or_return!(&validate_success_report(), output);
+        crate::emit_json_or_return!(&validate_success_report(), output);
     }
     ExitCode::SUCCESS
 }
@@ -63,7 +63,7 @@ pub(crate) fn cmd_validate(workflow: &std::path::Path, output: OutputFormat) -> 
 
 pub(crate) fn validate_success_report() -> serde_json::Value {
     serde_json::json!({
-        "schema_version": cli_envelope::SCHEMA_VERSION,
+        "schema_version": crate::cli_envelope::SCHEMA_VERSION,
         "kind": "validate_report",
         "success": true,
         "status": "valid",

@@ -139,7 +139,7 @@ pub(crate) fn run_compiled_workflow(
         "accepted"
     };
     if output != OutputFormat::Text {
-        emit_json_or_return!(
+        crate::emit_json_or_return!(
             &serde_json::json!({
                 "success": counters.runs_failed == 0,
                 "run_id": run_id.get(),
@@ -155,7 +155,7 @@ pub(crate) fn run_compiled_workflow(
             output,
         );
     } else {
-        outln!(
+        crate::outln!(
             "run {}: submitted={} completed={} failed={} steps={}",
             run_id.get(),
             counters.runs_submitted,
@@ -168,11 +168,11 @@ pub(crate) fn run_compiled_workflow(
         }
 
         if counters.runs_failed != 0 {
-            errln!("run failed");
+            crate::errln!("run failed");
         } else if counters.runs_completed != 0 {
-            outln!("run completed");
+            crate::outln!("run completed");
         } else {
-            outln!("run accepted but not terminal after one runtime tick");
+            crate::outln!("run accepted but not terminal after one runtime tick");
         }
     }
 
@@ -245,7 +245,7 @@ pub(crate) fn report_runtime_error(args: std::fmt::Arguments<'_>, output: Output
             output,
         );
     } else {
-        errln!("{args}");
+        crate::errln!("{args}");
     }
 }
 
@@ -253,44 +253,44 @@ pub(crate) fn report_runtime_error(args: std::fmt::Arguments<'_>, output: Output
 pub(crate) fn print_trace_event(event: &vb_runtime::trace::TraceEvent) {
     match event {
         vb_runtime::trace::TraceEvent::StepStarted { step, .. } => {
-            outln!("  trace: StepStarted step={}", step.get());
+            crate::outln!("  trace: StepStarted step={}", step.get());
         }
         vb_runtime::trace::TraceEvent::StepEnded { step, .. } => {
-            outln!("  trace: StepEnded step={}", step.get());
+            crate::outln!("  trace: StepEnded step={}", step.get());
         }
         vb_runtime::trace::TraceEvent::SlotWritten { slot, .. } => {
-            outln!("  trace: SlotWritten slot={}", slot.get());
+            crate::outln!("  trace: SlotWritten slot={}", slot.get());
         }
         vb_runtime::trace::TraceEvent::ActionScheduled { step, .. } => {
-            outln!("  trace: ActionScheduled step={}", step.get());
+            crate::outln!("  trace: ActionScheduled step={}", step.get());
         }
         vb_runtime::trace::TraceEvent::ActionCompleted { step, .. } => {
-            outln!("  trace: ActionCompleted step={}", step.get());
+            crate::outln!("  trace: ActionCompleted step={}", step.get());
         }
         vb_runtime::trace::TraceEvent::ActionFailed { step, .. } => {
-            outln!("  trace: ActionFailed step={}", step.get());
+            crate::outln!("  trace: ActionFailed step={}", step.get());
         }
         vb_runtime::trace::TraceEvent::AskAnswered { step, slot, .. } => {
-            outln!(
+            crate::outln!(
                 "  trace: AskAnswered step={} slot={}",
                 step.get(),
                 slot.get()
             );
         }
         vb_runtime::trace::TraceEvent::RunSubmitted { .. } => {
-            outln!("  trace: RunSubmitted");
+            crate::outln!("  trace: RunSubmitted");
         }
         vb_runtime::trace::TraceEvent::RunFinished { .. } => {
-            outln!("  trace: RunFinished");
+            crate::outln!("  trace: RunFinished");
         }
         vb_runtime::trace::TraceEvent::RunFailed { .. } => {
-            outln!("  trace: RunFailed");
+            crate::outln!("  trace: RunFailed");
         }
         vb_runtime::trace::TraceEvent::RunCancelled { .. } => {
-            outln!("  trace: RunCancelled");
+            crate::outln!("  trace: RunCancelled");
         }
         _ => {
-            outln!("  trace: Unknown");
+            crate::outln!("  trace: Unknown");
         }
     }
 }

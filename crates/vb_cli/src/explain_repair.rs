@@ -257,17 +257,16 @@ pub(crate) fn explain_compile_repair_hint(err: &vb_compile::CompileError) {
 /// Emit a structured repair hint header.
 
 pub(crate) fn explain_repair_hint(context: &str, hints: &[&str]) {
-    outln!("");
-    outln!("Repair hints ({context}):");
+    crate::outln!("");
+    crate::outln!("Repair hints ({context}):");
     for hint in hints {
-        outln!("  - {hint}");
+        crate::outln!("  - {hint}");
     }
 }
 
 /// Explain why a verification gate passed.
 
 pub(crate) fn explain_gate_pass(gate: &str) {
-    outln!("  ✓ {gate}");
+    crate::outln!("  ✓ {gate}");
 }
 
-/// Explain a verification failure with repair hints.
