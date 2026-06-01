@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Control flow graph generation command.
 
-fn cmd_graph(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
+pub(crate) fn cmd_graph(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,

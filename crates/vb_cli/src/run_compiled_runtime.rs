@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Runtime execution helpers for compiled workflows.
 
-fn map_runtime_inputs(
+pub(crate) fn map_runtime_inputs(
     compiled: &vb_core::CompiledWorkflow,
     input_data: &[u8],
 ) -> Result<Box<[(vb_core::SlotIdx, vb_core::SlotValue)]>, InputMappingError> {
@@ -26,7 +26,7 @@ fn map_runtime_inputs(
 }
 
 
-fn runtime_journal_for_mode(
+pub(crate) fn runtime_journal_for_mode(
     durability: DurabilityMode,
     db: Option<&std::path::Path>,
     output: OutputFormat,
@@ -39,7 +39,7 @@ fn runtime_journal_for_mode(
 }
 
 
-fn runtime_config_for_durability(durability: DurabilityMode) -> vb_runtime::shard::ShardConfig {
+pub(crate) fn runtime_config_for_durability(durability: DurabilityMode) -> vb_runtime::shard::ShardConfig {
     let mut config = vb_runtime::shard::ShardConfig::default();
     if durability == DurabilityMode::None {
         config.policy = vb_core::policy::RuntimePolicy::Relaxed;
@@ -48,7 +48,7 @@ fn runtime_config_for_durability(durability: DurabilityMode) -> vb_runtime::shar
 }
 
 
-fn open_storage_runtime_journal(
+pub(crate) fn open_storage_runtime_journal(
     db: Option<&std::path::Path>,
     strict: bool,
     output: OutputFormat,
@@ -79,7 +79,7 @@ fn open_storage_runtime_journal(
 }
 
 
-fn run_compiled_workflow(
+pub(crate) fn run_compiled_workflow(
     compiled: &vb_core::CompiledWorkflow,
     inputs: Box<[(vb_core::SlotIdx, vb_core::SlotValue)]>,
     durability: DurabilityMode,
@@ -171,7 +171,7 @@ fn run_compiled_workflow(
 }
 
 
-fn store_compiled_artifact(
+pub(crate) fn store_compiled_artifact(
     compiled: &vb_core::CompiledWorkflow,
     db: &std::path::Path,
     output: OutputFormat,
@@ -225,7 +225,7 @@ fn store_compiled_artifact(
 }
 
 
-fn report_runtime_error(args: std::fmt::Arguments<'_>, output: OutputFormat) {
+pub(crate) fn report_runtime_error(args: std::fmt::Arguments<'_>, output: OutputFormat) {
     if output != OutputFormat::Text {
         json_error(
             &serde_json::json!({"success": false, "error": args.to_string()}),
@@ -237,7 +237,7 @@ fn report_runtime_error(args: std::fmt::Arguments<'_>, output: OutputFormat) {
 }
 
 
-fn print_trace_event(event: &vb_runtime::trace::TraceEvent) {
+pub(crate) fn print_trace_event(event: &vb_runtime::trace::TraceEvent) {
     match event {
         vb_runtime::trace::TraceEvent::StepStarted { step, .. } => {
             outln!("  trace: StepStarted step={}", step.get());

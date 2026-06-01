@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Workflow submission command.
 
-fn cmd_submit(
+pub(crate) fn cmd_submit(
     workflow: &std::path::Path,
     input_bin: &std::path::Path,
     db: &std::path::Path,
@@ -164,7 +164,7 @@ fn cmd_submit(
 }
 
 
-fn durability_as_str(mode: DurabilityMode) -> &'static str {
+pub(crate) fn durability_as_str(mode: DurabilityMode) -> &'static str {
     match mode {
         DurabilityMode::Strict => "strict",
         DurabilityMode::Journaled => "journaled",
@@ -173,7 +173,7 @@ fn durability_as_str(mode: DurabilityMode) -> &'static str {
 }
 
 
-fn generate_submit_run_id() -> u64 {
+pub(crate) fn generate_submit_run_id() -> u64 {
     let Ok(now) = SystemTime::now().duration_since(UNIX_EPOCH) else {
         return u64::MAX;
     };

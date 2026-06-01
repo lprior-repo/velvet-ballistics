@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Trace inspection command.
 
-fn cmd_trace(
+pub(crate) fn cmd_trace(
     run_id: &str,
     db: &std::path::Path,
     output: OutputFormat,
@@ -64,7 +64,7 @@ fn cmd_trace(
 }
 
 /// Convert a structured trace entry to its JSON representation.
-fn trace_entry_to_json(entry: &commands_journal::TraceEntry) -> serde_json::Value {
+pub(crate) fn trace_entry_to_json(entry: &commands_journal::TraceEntry) -> serde_json::Value {
     let mut map = serde_json::Map::new();
     map.insert("seq".into(), serde_json::Value::from(entry.seq));
     map.insert("type".into(), serde_json::Value::from(entry.event_type));

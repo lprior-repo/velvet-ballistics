@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Run operations: retry, resume, answer, cancel.
 
-fn cmd_retry(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
+pub(crate) fn cmd_retry(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let events = match read_journal_events(run_id, db, output) {
         Ok(ev) => ev,
         Err(code) => return code,
@@ -59,7 +59,7 @@ fn cmd_retry(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCo
 }
 
 
-fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
+pub(crate) fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let events = match read_journal_events(run_id, db, output) {
         Ok(ev) => ev,
         Err(code) => return code,
@@ -110,7 +110,7 @@ fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
 }
 
 
-fn cmd_answer(
+pub(crate) fn cmd_answer(
     run_id: &str,
     step: u16,
     value_file: &std::path::Path,
@@ -286,7 +286,7 @@ fn cmd_answer(
 }
 
 
-fn run_is_terminal(events: &[vb_storage::JournalEvent]) -> bool {
+pub(crate) fn run_is_terminal(events: &[vb_storage::JournalEvent]) -> bool {
     events.iter().any(|e| {
         matches!(
             e,
@@ -298,7 +298,7 @@ fn run_is_terminal(events: &[vb_storage::JournalEvent]) -> bool {
 }
 
 
-fn format_cancel_output(
+pub(crate) fn format_cancel_output(
     run_id: &str,
     reason: Option<&str>,
     note: &str,
@@ -327,7 +327,7 @@ fn format_cancel_output(
 }
 
 
-fn write_cancel_event(
+pub(crate) fn write_cancel_event(
     journal: &vb_storage::FjallJournal,
     rid: vb_core::RunId,
     reason: Option<String>,
@@ -347,7 +347,7 @@ fn write_cancel_event(
 }
 
 
-fn cmd_cancel(
+pub(crate) fn cmd_cancel(
     run_id: &str,
     db: &std::path::Path,
     reason: Option<String>,

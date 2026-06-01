@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Workflow compilation command.
 
-fn cmd_compile(
+pub(crate) fn cmd_compile(
     workflow: &std::path::Path,
     emit: EmitTarget,
     out: &std::path::Path,

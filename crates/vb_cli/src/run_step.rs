@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Step execution command and helpers.
 
-fn cmd_run_step(
+pub(crate) fn cmd_run_step(
     workflow: &std::path::Path,
     durability: DurabilityMode,
     target: &StepTarget,
@@ -62,12 +62,12 @@ fn cmd_run_step(
 }
 
 
-fn setup_exit_code() -> ExitCode {
+pub(crate) fn setup_exit_code() -> ExitCode {
     CliExitCode::VerificationFailed.into()
 }
 
 
-fn compile_bytes_json(
+pub(crate) fn compile_bytes_json(
     bytes: &[u8],
     output: OutputFormat,
 ) -> Result<vb_core::CompiledWorkflow, ExitCode> {

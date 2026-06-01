@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Workflow validation command and helpers.
 
-fn cmd_validate(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
+pub(crate) fn cmd_validate(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,
@@ -51,7 +51,7 @@ fn cmd_validate(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
 }
 
 
-fn validate_success_report() -> serde_json::Value {
+pub(crate) fn validate_success_report() -> serde_json::Value {
     serde_json::json!({
         "schema_version": cli_envelope::SCHEMA_VERSION,
         "kind": "validate_report",

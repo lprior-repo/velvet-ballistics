@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Run compiled workflow command.
 
-fn cmd_run_compiled(
+pub(crate) fn cmd_run_compiled(
     vbir_path: &std::path::Path,
     input_bin: &std::path::Path,
     durability: DurabilityMode,
@@ -82,7 +82,7 @@ enum InputMappingError {
 }
 
 impl std::fmt::Display for InputMappingError {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    pub(crate) fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter.write_str(match self {
             Self::DecodeFailed => INPUT_MAPPING_DECODE_FAILED_MESSAGE,
             Self::SlotCountExceeded => INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,

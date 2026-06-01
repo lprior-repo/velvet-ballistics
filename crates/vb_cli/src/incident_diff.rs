@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Incident analysis and diff commands.
 
-fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
+pub(crate) fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let rid = match parse_run_id(run_id, output) {
         Ok(id) => id,
         Err(code) => return code,
@@ -125,7 +125,7 @@ fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exi
 }
 
 
-fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
+pub(crate) fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let rid_a = match parse_run_id(run_a, output) {
         Ok(id) => id,
         Err(code) => return code,
@@ -215,7 +215,7 @@ fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: OutputFormat
 }
 
 
-fn print_diff_entry(diff: &serde_json::Value) {
+pub(crate) fn print_diff_entry(diff: &serde_json::Value) {
     let kind = diff
         .get("kind")
         .and_then(|k| k.as_str())

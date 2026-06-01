@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! IPC server command.
 
-fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> ExitCode {
+pub(crate) fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> ExitCode {
     // Open the storage journal to validate the path
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
@@ -86,7 +86,7 @@ struct StorageWorkflowResolver {
 }
 
 impl vb_ipc::server::WorkflowResolver for StorageWorkflowResolver {
-    fn resolve_workflow(
+    pub(crate) fn resolve_workflow(
         &mut self,
         digest: vb_core::WorkflowDigest,
     ) -> Result<vb_core::CompiledWorkflow, vb_ipc::server::WorkflowResolutionError> {

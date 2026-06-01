@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Benchmark workflow execution command.
 
-fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
+pub(crate) fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,

@@ -1,5 +1,27 @@
-//! Action registry output formatting — table and JSON display.
-pub(crate) fn write_action_registry_uninitialized(output: OutputFormat) {
+#![forbid(unsafe_code)]
+//! Action registry read/write operations.
+
+fn write_action_registry_error(
+    error: &vb_core::action::ActionError,
+    output: OutputFormat,
+) -> ExitCode {
+    let message = format!("failed to register CLI action contracts: {error}");
+    if output == OutputFormat::Text {
+        errln!("{message}");
+    } else {
+        json_error(
+            &serde_json::json!({
+                "success": false,
+                "error": message,
+            }),
+            output,
+        );
+    }
+    CliExitCode::ValidationFailed.into()
+}
+
+
+fn write_action_registry_uninitialized(output: OutputFormat) {
     let message = "action registry is not initialized";
     if output == OutputFormat::Text {
         errln!("{message}");
@@ -14,7 +36,8 @@ pub(crate) fn write_action_registry_uninitialized(output: OutputFormat) {
     }
 }
 
-pub(crate) fn write_action_registry(registry: &ActionRegistry, output: OutputFormat) -> ExitCode {
+
+fn write_action_registry(registry: &ActionRegistry, output: OutputFormat) -> ExitCode {
     let rows = action_table_rows(registry);
     if rows.is_empty() {
         return write_no_registered_actions(output);
@@ -49,7 +72,8 @@ pub(crate) fn write_action_registry(registry: &ActionRegistry, output: OutputFor
     ExitCode::SUCCESS
 }
 
-pub(crate) fn write_action_inspect(
+
+fn write_action_inspect(
     registry: &ActionRegistry,
     action_name: String,
     output: OutputFormat,
@@ -78,7 +102,8 @@ pub(crate) fn write_action_inspect(
     }
 }
 
-pub(crate) fn write_action_inspect_error(
+
+fn write_action_inspect_error(
     action_name: &str,
     error: &vb_core::action::ActionError,
     output: OutputFormat,
@@ -99,7 +124,8 @@ pub(crate) fn write_action_inspect_error(
     CliExitCode::ValidationFailed.into()
 }
 
-pub(crate) fn write_action_contract(
+
+fn write_action_contract(
     contract: &vb_core::action::ActionContract,
     output: OutputFormat,
 ) -> ExitCode {
@@ -112,7 +138,8 @@ pub(crate) fn write_action_contract(
     ExitCode::SUCCESS
 }
 
-pub(crate) fn write_action_contract_text(detail: &ActionContractDetail) {
+
+fn write_action_contract_text(detail: &ActionContractDetail) {
     outln!("action {}", detail.id);
     outln!("  input_slot_count: {}", detail.input_slot_count);
     outln!("  output_slot_count: {}", detail.output_slot_count);
@@ -132,7 +159,7 @@ pub(crate) fn write_action_contract_text(detail: &ActionContractDetail) {
     outln!("  example_output_schema: {}", detail.example_output_schema);
 }
 
-#[derive(Debug, Clone)]
+
 struct ActionContractDetail {
     id: u16,
     input_slot_count: u16,
@@ -174,9 +201,90 @@ impl ActionContractDetail {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+
 struct ActionTableRow {
     id: u16,
     idempotency: &'static str,
+    retry_safety: &'static str,
+    side_effect: &'static str,
+    input_slot_count: u16,
+    output_slot_count: u16,
+    timeout_ms: u64,
+}
 
-pub(crate) fn write_action_registry_uninitialized(output: OutputFormat) {
+fn action_table_rows(registry: &ActionRegistry) -> Vec<ActionTableRow> {
+    registry
+        .registered_contracts()
+        .iter()
+        .map(|contract| ActionTableRow {
+            id: contract.id.get(),
+            idempotency: action_idempotency_name(contract.idempotency),
+            retry_safety: action_retry_safety_name(contract.retry_safety),
+            side_effect: action_side_effect_name(contract.side_effect),
+            input_slot_count: contract.input_slot_count,
+            output_slot_count: contract.output_slot_count,
+            timeout_ms: contract.timeout_ms,
+        })
+        .collect()
+}
+
+
+fn action_contract_detail(contract: &vb_core::action::ActionContract) -> ActionContractDetail {
+    ActionContractDetail {
+        id: contract.id.get(),
+        input_slot_count: contract.input_slot_count,
+        output_slot_count: contract.output_slot_count,
+        max_input_bytes: contract.max_input_bytes,
+        max_output_bytes: contract.max_output_bytes,
+        timeout_ms: contract.timeout_ms,
+        idempotency: action_idempotency_name(contract.idempotency),
+        retry_safety: action_retry_safety_name(contract.retry_safety),
+        side_effect: action_side_effect_name(contract.side_effect),
+        required_capabilities: contract
+            .required_capabilities
+            .iter()
+            .map(|capability| format!("{}:{}", capability.name(), capability.action_id().get()))
+            .collect(),
+        failure_codes: action_failure_code_names().to_vec(),
+        idempotency_rule: action_idempotency_rule(contract.idempotency, contract.retry_safety),
+        example_input_schema: "postcard(ActionInput { run, step, action, input, ticket })",
+        example_output_schema: "postcard(ActionOutcome::Ready|Suspended|Failed)",
+    }
+}
+
+
+fn write_action_table_rows(rows: &[ActionTableRow]) {
+    outln!("id\tidempotency\tretry_safety\tside_effect\tinput_slots\toutput_slots\ttimeout_ms");
+    rows.iter().for_each(|row| {
+        outln!(
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}",
+            row.id,
+            row.idempotency,
+            row.retry_safety,
+            row.side_effect,
+            row.input_slot_count,
+            row.output_slot_count,
+            row.timeout_ms
+        );
+    });
+}
+
+
+fn write_no_registered_actions(output: OutputFormat) -> ExitCode {
+    let message = "no registered actions";
+    if output == OutputFormat::Text {
+        outln!("{message}");
+        ExitCode::SUCCESS
+    } else {
+        emit_json_or_return!(
+            &serde_json::json!({
+                "success": true,
+                "actions": [],
+                "message": message,
+            }),
+            output,
+        );
+        ExitCode::SUCCESS
+    }
+}
+

@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Diagnostic check command.
 
-fn open_doctor_journal(
+pub(crate) fn open_doctor_journal(
     db: &std::path::Path,
 ) -> Result<vb_storage::FjallJournal, vb_storage::JournalError> {
     for delay in [
@@ -19,7 +19,7 @@ fn open_doctor_journal(
 }
 
 
-fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> ExitCode {
+pub(crate) fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> ExitCode {
     let Some(db) = db else {
         return cmd_doctor_without_db(output);
     };
@@ -303,7 +303,7 @@ fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> ExitCode {
 }
 
 
-fn unique_doctor_run_id() -> u64 {
+pub(crate) fn unique_doctor_run_id() -> u64 {
     let Ok(now) = SystemTime::now().duration_since(UNIX_EPOCH) else {
         return u64::MAX;
     };

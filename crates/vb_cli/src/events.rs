@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Event listing command.
 
-fn cmd_events(
+pub(crate) fn cmd_events(
     run_id: &str,
     db: &std::path::Path,
     output: OutputFormat,
@@ -90,7 +90,7 @@ fn cmd_events(
     ExitCode::SUCCESS
 }
 
-fn print_event(event: &vb_storage::JournalEvent) {
+pub(crate) fn print_event(event: &vb_storage::JournalEvent) {
     match event {
         vb_storage::JournalEvent::RunAccepted { seq, .. } => {
             outln!("  seq={}: RunAccepted", seq.get());
@@ -181,7 +181,7 @@ fn print_event(event: &vb_storage::JournalEvent) {
 }
 
 /// Convert a journal event to a JSON value for structured output.
-fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Value {
+pub(crate) fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Value {
     match event {
         vb_storage::JournalEvent::RunAccepted { seq, run, workflow } => {
             serde_json::json!({

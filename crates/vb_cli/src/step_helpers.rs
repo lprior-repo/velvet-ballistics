@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Step execution helpers for building frames and formatting output.
 
-fn decode_step_inputs(
+pub(crate) fn decode_step_inputs(
     data: &[u8],
     output: OutputFormat,
 ) -> Result<Box<[vb_core::SlotValue]>, ExitCode> {
@@ -29,7 +29,7 @@ fn decode_step_inputs(
 }
 
 
-fn execute_step_isolated(
+pub(crate) fn execute_step_isolated(
     compiled: &vb_core::CompiledWorkflow,
     step_idx: vb_core::StepIdx,
     node: &vb_core::workflow::CompiledNode,
@@ -111,7 +111,7 @@ fn execute_step_isolated(
 }
 
 
-fn build_step_frame(
+pub(crate) fn build_step_frame(
     compiled: &vb_core::CompiledWorkflow,
     step_idx: vb_core::StepIdx,
 ) -> Result<vb_core::RunFrame, ExitCode> {
@@ -128,7 +128,7 @@ fn build_step_frame(
 }
 
 
-fn write_step_inputs(
+pub(crate) fn write_step_inputs(
     frame: &mut vb_core::RunFrame,
     inputs: &[vb_core::SlotValue],
 ) -> Result<(), ExitCode> {
@@ -145,7 +145,7 @@ fn write_step_inputs(
 }
 
 
-fn compute_slot_deltas(
+pub(crate) fn compute_slot_deltas(
     before: &[Option<vb_core::SlotValue>],
     after: &[Option<vb_core::SlotValue>],
 ) -> Vec<serde_json::Value> {
@@ -164,7 +164,7 @@ fn compute_slot_deltas(
 }
 
 
-fn compute_taint_deltas(
+pub(crate) fn compute_taint_deltas(
     before: &[vb_core::Taint],
     after: &[vb_core::Taint],
 ) -> Vec<serde_json::Value> {
@@ -183,7 +183,7 @@ fn compute_taint_deltas(
 }
 
 
-fn compute_state_deltas(
+pub(crate) fn compute_state_deltas(
     before: &[vb_core::frame::StepState],
     after: &[vb_core::frame::StepState],
 ) -> Vec<serde_json::Value> {
@@ -214,7 +214,7 @@ struct StepStateSnapshots {
 }
 
 impl StepStateSnapshots {
-    fn to_before_json(&self) -> serde_json::Value {
+    pub(crate) fn to_before_json(&self) -> serde_json::Value {
         serde_json::json!({
             "pc": self.before_pc.get(),
             "slots": self.before_slots,
@@ -223,7 +223,7 @@ impl StepStateSnapshots {
         })
     }
 
-    fn to_after_json(&self) -> serde_json::Value {
+    pub(crate) fn to_after_json(&self) -> serde_json::Value {
         serde_json::json!({
             "pc": self.after_pc.get(),
             "slots": self.after_slots,
@@ -234,7 +234,7 @@ impl StepStateSnapshots {
 }
 
 
-fn build_step_result_json(
+pub(crate) fn build_step_result_json(
     step: vb_core::StepIdx,
     node: &vb_core::workflow::CompiledNode,
     frame: &vb_core::RunFrame,
@@ -275,7 +275,7 @@ fn build_step_result_json(
 }
 
 
-fn error_name(error: &vb_core::EngineError) -> &'static str {
+pub(crate) fn error_name(error: &vb_core::EngineError) -> &'static str {
     match error {
         vb_core::EngineError::InvalidProgramCounter { .. } => "invalid_program_counter",
         vb_core::EngineError::MissingNextStep { .. } => "missing_next_step",
@@ -295,7 +295,7 @@ fn error_name(error: &vb_core::EngineError) -> &'static str {
 }
 
 
-fn print_step_result(
+pub(crate) fn print_step_result(
     step: vb_core::StepIdx,
     node: &vb_core::workflow::CompiledNode,
     frame: &vb_core::RunFrame,
@@ -334,7 +334,7 @@ fn print_step_result(
 }
 
 
-fn print_input_slots(frame: &vb_core::RunFrame) {
+pub(crate) fn print_input_slots(frame: &vb_core::RunFrame) {
     let count = frame.slot_count();
     for i in 0..count {
         let slot = vb_core::SlotIdx::new(i);
@@ -345,21 +345,21 @@ fn print_input_slots(frame: &vb_core::RunFrame) {
 }
 
 
-fn print_output_slot(frame: &vb_core::RunFrame, slot: vb_core::SlotIdx) {
+pub(crate) fn print_output_slot(frame: &vb_core::RunFrame, slot: vb_core::SlotIdx) {
     if let Ok(value) = frame.read_slot(slot) {
         outln!("output: {value:?}");
     }
 }
 
 
-fn print_taint(frame: &vb_core::RunFrame, slot: vb_core::SlotIdx) {
+pub(crate) fn print_taint(frame: &vb_core::RunFrame, slot: vb_core::SlotIdx) {
     if let Ok(taint) = frame.read_taint(slot) {
         outln!("taint: {taint:?}");
     }
 }
 
 
-fn node_kind_name(kind: &vb_core::workflow::CompiledNodeKind) -> &'static str {
+pub(crate) fn node_kind_name(kind: &vb_core::workflow::CompiledNodeKind) -> &'static str {
     match kind {
         vb_core::workflow::CompiledNodeKind::Nop => "Nop",
         vb_core::workflow::CompiledNodeKind::SetConst { .. } => "SetConst",
@@ -400,7 +400,7 @@ fn node_kind_name(kind: &vb_core::workflow::CompiledNodeKind) -> &'static str {
 }
 
 
-fn signal_name(signal: &vb_core::EngineSignal) -> &'static str {
+pub(crate) fn signal_name(signal: &vb_core::EngineSignal) -> &'static str {
     match signal {
         vb_core::EngineSignal::Continue => "Continue",
         vb_core::EngineSignal::Finished(_, _) => "Finished",

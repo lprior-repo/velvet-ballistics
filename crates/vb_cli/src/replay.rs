@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Run replay command.
 
-fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
+pub(crate) fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let rid = match parse_run_id(run_id, output) {
         Ok(id) => id,
         Err(code) => return code,
@@ -76,7 +76,7 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
     ExitCode::SUCCESS
 }
 
-fn write_locked_read_surface(
+pub(crate) fn write_locked_read_surface(
     command: &'static str,
     run_id: &str,
     output: OutputFormat,

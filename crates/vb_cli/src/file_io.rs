@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! File reading and parsing utilities.
 
-fn read_file(
+pub(crate) fn read_file(
     path: &std::path::Path,
     output: OutputFormat,
     exit_code: CliExitCode,
@@ -16,7 +16,7 @@ fn read_file(
     }
 }
 
-fn write_failure_message(message: &str, output: OutputFormat, exit_code: CliExitCode) {
+pub(crate) fn write_failure_message(message: &str, output: OutputFormat, exit_code: CliExitCode) {
     if output == OutputFormat::Text {
         errln!("{message}");
     } else {
@@ -24,7 +24,7 @@ fn write_failure_message(message: &str, output: OutputFormat, exit_code: CliExit
     }
 }
 
-fn parse_run_id(raw: &str, output: OutputFormat) -> Result<vb_core::RunId, ExitCode> {
+pub(crate) fn parse_run_id(raw: &str, output: OutputFormat) -> Result<vb_core::RunId, ExitCode> {
     match raw.parse::<u64>() {
         Ok(id) => {
             if id == 0 {
@@ -48,7 +48,7 @@ fn parse_run_id(raw: &str, output: OutputFormat) -> Result<vb_core::RunId, ExitC
     }
 }
 
-fn report_storage_open_error(
+pub(crate) fn report_storage_open_error(
     e: &vb_storage::JournalError,
     db: &std::path::Path,
     output: OutputFormat,
@@ -61,7 +61,7 @@ fn report_storage_open_error(
     }
 }
 
-fn read_journal_events(
+pub(crate) fn read_journal_events(
     run_id: &str,
     db: &std::path::Path,
     output: OutputFormat,

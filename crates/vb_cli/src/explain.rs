@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Explain command main dispatch.
 
-fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
+pub(crate) fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,
@@ -118,7 +118,7 @@ fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
 }
 
 
-fn explain_failure_report(
+pub(crate) fn explain_failure_report(
     phase: &'static str,
     message: &str,
     repair_hints: &[&'static str],
@@ -137,7 +137,7 @@ fn explain_failure_report(
 }
 
 
-fn explain_compile_failure_report(errors: &[String]) -> serde_json::Value {
+pub(crate) fn explain_compile_failure_report(errors: &[String]) -> serde_json::Value {
     serde_json::json!({
         "schema_version": cli_envelope::SCHEMA_VERSION,
         "kind": "explain_report",
@@ -151,7 +151,7 @@ fn explain_compile_failure_report(errors: &[String]) -> serde_json::Value {
 }
 
 
-fn explain_success_report(result: &commands_verify::VerifyOk) -> serde_json::Value {
+pub(crate) fn explain_success_report(result: &commands_verify::VerifyOk) -> serde_json::Value {
     serde_json::json!({
         "schema_version": cli_envelope::SCHEMA_VERSION,
         "kind": "explain_report",
@@ -169,7 +169,7 @@ fn explain_success_report(result: &commands_verify::VerifyOk) -> serde_json::Val
 }
 
 
-fn explain_verification_failure_report(
+pub(crate) fn explain_verification_failure_report(
     err: &commands_verify::VerifyError,
     code: CliExitCode,
 ) -> serde_json::Value {
@@ -183,7 +183,7 @@ fn explain_verification_failure_report(
 }
 
 
-fn explain_error(err: &vb_compile::CompileError) {
+pub(crate) fn explain_error(err: &vb_compile::CompileError) {
     use vb_compile::CompileError;
     match err {
         CompileError::SourceTooLarge { actual, limit } => {
