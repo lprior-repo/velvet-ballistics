@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use super::types::*;
 
 #[must_use]
-pub fn canonical_spelling_table() -> CanonicalSpellingTable {
+pub(crate) fn canonical_spelling_table() -> CanonicalSpellingTable {
     CanonicalSpellingTable {
         product: CANONICAL_HYPHEN.to_owned(),
         binary: CANONICAL_HYPHEN.to_owned(),
@@ -15,7 +15,7 @@ pub fn canonical_spelling_table() -> CanonicalSpellingTable {
     }
 }
 
-pub fn validate_scan_config(config: RawScanConfig) -> Result<ScanConfig, NamingScanError> {
+pub(crate) fn validate_scan_config(config: RawScanConfig) -> Result<ScanConfig, NamingScanError> {
     if config.canonical_entries.is_empty() {
         return invalid_config("empty scan configuration");
     }

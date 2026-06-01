@@ -255,7 +255,6 @@ pub(crate) fn explain_compile_repair_hint(err: &vb_compile::CompileError) {
 }
 
 /// Emit a structured repair hint header.
-
 pub(crate) fn explain_repair_hint(context: &str, hints: &[&str]) {
     crate::outln!("");
     crate::outln!("Repair hints ({context}):");
@@ -265,7 +264,6 @@ pub(crate) fn explain_repair_hint(context: &str, hints: &[&str]) {
 }
 
 /// Explain why a verification gate passed.
-
 pub(crate) fn explain_gate_pass(gate: &str) {
     crate::outln!("  ✓ {gate}");
 }

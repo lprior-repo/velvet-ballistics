@@ -4,7 +4,7 @@ use super::ordering::compare_finding;
 use super::scan_file;
 use super::types::*;
 
-pub fn scan_repository(root: RepoRoot, config: ScanConfig) -> Result<ScanReport, NamingScanError> {
+pub(crate) fn scan_repository(root: RepoRoot, config: ScanConfig) -> Result<ScanReport, NamingScanError> {
     let inputs = discover_scan_inputs(root.clone(), &config)?;
     let selected_input_count = inputs.len();
     let mut findings = Vec::new();

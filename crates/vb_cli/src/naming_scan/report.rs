@@ -4,7 +4,7 @@ use std::path::Path;
 use super::ordering::compare_finding;
 use super::types::*;
 
-pub fn render_scan_report(report: &ScanReport) -> Result<RenderedReport, NamingScanError> {
+pub(crate) fn render_scan_report(report: &ScanReport) -> Result<RenderedReport, NamingScanError> {
     let mut findings = report.findings.clone();
     findings.sort_by(compare_finding);
     let body = render_body(report, findings);

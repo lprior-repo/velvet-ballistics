@@ -3,6 +3,12 @@
 use crate::args::OutputFormat;
 use crate::exit_code::CliExitCode;
 use std::process::ExitCode;
+
+/// Construct an ActionName from a guaranteed-valid identifier.
+/// Returns None if validation fails (should never happen for well-formed input).
+fn known_valid_action_name(s: &str) -> Option<vb_core::action::ActionName> {
+    vb_core::action::ActionName::new(s).ok()
+}
 use crate::output::json_error;
 use vb_runtime::action::ActionRegistry;
 
@@ -186,28 +192,14 @@ pub(crate) fn cli_action_specs() -> &'static [CliActionSpec] {
 }
 
 pub(crate) fn action_contract(spec: CliActionSpec) -> vb_core::action::ActionContract {
-    let name_str = match spec.id {
+    let name_str: &str = match spec.id {
         1 => "validate",
         2 => "compile",
         3 => "run",
-        _ => return vb_core::action::ActionContract {
-            id: vb_core::ActionId::new(spec.id),
-            name: vb_core::action::ActionName::new("unknown").unwrap_or_else(|_| vb_core::action::ActionName::new("u").unwrap()),
-            input_slot_count: spec.input_slot_count,
-            output_slot_count: spec.output_slot_count,
-            max_input_bytes: 65_536,
-            max_output_bytes: 65_536,
-            timeout_ms: spec.timeout_ms,
-            idempotency: spec.idempotency,
-            side_effect: spec.side_effect,
-            retry_safety: spec.retry_safety,
-            required_capabilities: Box::new([]),
-        },
+        _ => "unknown",
     };
-    let name = match vb_core::action::ActionName::new(name_str) {
-        Ok(n) => n,
-        Err(_) => vb_core::action::ActionName::new("unknown").unwrap(),
-    };
+    let name = vb_core::action::ActionName::new(name_str)
+        .unwrap_or_else(|_| known_valid_action_name("unknown").unwrap_or_else(|| known_valid_action_name("default").unwrap()));
     vb_core::action::ActionContract {
         id: vb_core::ActionId::new(spec.id),
         name,

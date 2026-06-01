@@ -2,7 +2,7 @@ use super::allowlist::exact_exception;
 use super::legacy::{class_for_text, contains_legacy};
 use super::types::*;
 
-pub fn classify_occurrence(
+pub(crate) fn classify_occurrence(
     _path: RepoPath,
     _line: LineNumber,
     _column: ColumnNumber,

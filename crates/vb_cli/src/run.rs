@@ -8,13 +8,13 @@ use std::path::Path;
 use std::process::ExitCode;
 use vb_core::{CompiledWorkflow, SlotIdx, SlotValue, WorkflowParts};
 
-pub const INPUT_MAPPING_DECODE_FAILED_MESSAGE: &str = "INPUT_MAPPING_FAILED: input-bin decode failed";
-pub const INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE: &str =
+pub(crate) const INPUT_MAPPING_DECODE_FAILED_MESSAGE: &str = "INPUT_MAPPING_FAILED: input-bin decode failed";
+pub(crate) const INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE: &str =
     "INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count";
-pub const INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE: &str =
+pub(crate) const INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE: &str =
     "INPUT_MAPPING_FAILED: input slot index out of range";
 
-pub fn cmd_validate(workflow: &Path) -> ExitCode {
+pub(crate) fn cmd_validate(workflow: &Path) -> ExitCode {
     let bytes = match read_file(workflow) {
         Ok(b) => b,
         Err(code) => return code,
@@ -50,7 +50,7 @@ pub fn cmd_validate(workflow: &Path) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-pub fn cmd_compile(workflow: &Path, emit: crate::args::EmitTarget, out: &Path) -> ExitCode {
+pub(crate) fn cmd_compile(workflow: &Path, emit: crate::args::EmitTarget, out: &Path) -> ExitCode {
     let bytes = match read_file(workflow) {
         Ok(b) => b,
         Err(code) => return code,
@@ -91,7 +91,7 @@ pub fn cmd_compile(workflow: &Path, emit: crate::args::EmitTarget, out: &Path) -
     ExitCode::SUCCESS
 }
 
-pub fn cmd_run(
+pub(crate) fn cmd_run(
     workflow: &Path,
     input_bin: &Path,
     durability: DurabilityMode,
@@ -128,7 +128,7 @@ pub fn cmd_run(
     run_compiled_workflow(&compiled, inputs, durability, db)
 }
 
-pub fn cmd_run_compiled(
+pub(crate) fn cmd_run_compiled(
     vbir_path: &Path,
     input_bin: &Path,
     durability: DurabilityMode,
@@ -169,7 +169,7 @@ pub fn cmd_run_compiled(
     run_compiled_workflow(&compiled, inputs, durability, db)
 }
 
-pub fn map_runtime_inputs(
+pub(crate) fn map_runtime_inputs(
     compiled: &CompiledWorkflow,
     input_data: &[u8],
 ) -> Result<Box<[(SlotIdx, SlotValue)]>, InputMappingError> {

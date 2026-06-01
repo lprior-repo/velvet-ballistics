@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use super::types::*;
 
-pub fn discover_scan_inputs(
+pub(crate) fn discover_scan_inputs(
     root: RepoRoot,
     config: &ScanConfig,
 ) -> Result<Vec<ScanInput>, NamingScanError> {

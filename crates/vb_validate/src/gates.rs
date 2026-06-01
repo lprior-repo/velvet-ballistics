@@ -955,9 +955,12 @@ fn detect_cycle_dfs(
 
         if idx < neighbors.len() {
             // Push back the current node with the next neighbor index.
-            stack.push((current, idx + 1));
+            let next_idx = idx.checked_add(1).unwrap_or(neighbors.len());
+            stack.push((current, next_idx));
 
-            let neighbor = neighbors[idx];
+            let Some(&neighbor) = neighbors.get(idx) else {
+                break;
+            };
 
             // Bounds check: neighbor index must be within the slot count.
             if neighbor >= slot_count {
@@ -967,7 +970,9 @@ fn detect_cycle_dfs(
                 });
             }
 
-            let color = visited[neighbor];
+            let Some(&color) = visited.get(neighbor) else {
+                break;
+            };
             if color == 1 {
                 // Gray = cycle found.
                 return Err(ValidationError::SlotDependencyCycle {
@@ -977,7 +982,9 @@ fn detect_cycle_dfs(
             }
             if color == 0 {
                 // White: unvisited, mark gray and start exploring.
-                visited[neighbor] = 1; // gray
+                if let Some(entry) = visited.get_mut(neighbor) {
+                    *entry = 1; // gray
+                }
                 let next_count = adjacency.get(neighbor).map_or(0, |v| v.len());
                 if next_count > 0 {
                     stack.push((neighbor, 0));
@@ -986,7 +993,9 @@ fn detect_cycle_dfs(
             // If color == 2 (black), neighbor already fully explored, skip.
         } else {
             // All neighbors of `current` have been processed; mark black.
-            visited[current] = 2; // black
+            if let Some(entry) = visited.get_mut(current) {
+                *entry = 2; // black
+            }
         }
     }
 

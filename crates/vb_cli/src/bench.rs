@@ -5,7 +5,7 @@ use std::path::Path;
 use std::process::ExitCode;
 use vb_core::{RunId, WorkflowDigest};
 
-pub fn cmd_bench_run(workflow: &Path) -> ExitCode {
+pub(crate) fn cmd_bench_run(workflow: &Path) -> ExitCode {
     let bytes = match read_file(workflow) {
         Ok(b) => b,
         Err(code) => return code,
@@ -63,7 +63,7 @@ pub fn cmd_bench_run(workflow: &Path) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-pub fn cmd_doctor(db: &Path) -> ExitCode {
+pub(crate) fn cmd_doctor(db: &Path) -> ExitCode {
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(e) => {

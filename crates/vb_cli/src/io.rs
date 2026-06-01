@@ -25,19 +25,19 @@ architecture: nightly Rust, compiled IR, in-memory engine, bounded IPC, Fjall jo
 
 pub(crate) const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-pub fn write_help_stdout() -> io::Result<()> {
+pub(crate) fn write_help_stdout() -> io::Result<()> {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
     writeln!(handle, "{HELP}")
 }
 
-pub fn write_version_stdout() -> io::Result<()> {
+pub(crate) fn write_version_stdout() -> io::Result<()> {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
     writeln!(handle, "velvet-ballistics {VERSION}")
 }
 
-pub fn write_error_stderr(error: &ParseError) -> io::Result<()> {
+pub(crate) fn write_error_stderr(error: &ParseError) -> io::Result<()> {
     let stderr = io::stderr();
     let mut handle = stderr.lock();
     match error {
@@ -125,7 +125,7 @@ pub fn write_error_stderr(error: &ParseError) -> io::Result<()> {
     }
 }
 
-pub fn write_stdout_line(args: std::fmt::Arguments<'_>) {
+pub(crate) fn write_stdout_line(args: std::fmt::Arguments<'_>) {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
     if let Err(error) = handle.write_fmt(args) {
@@ -137,7 +137,7 @@ pub fn write_stdout_line(args: std::fmt::Arguments<'_>) {
     }
 }
 
-pub fn write_stderr_line(args: std::fmt::Arguments<'_>) {
+pub(crate) fn write_stderr_line(args: std::fmt::Arguments<'_>) {
     let stderr = io::stderr();
     let mut handle = stderr.lock();
     if let Err(error) = handle.write_fmt(args) {
@@ -149,7 +149,7 @@ pub fn write_stderr_line(args: std::fmt::Arguments<'_>) {
     }
 }
 
-pub fn exit_from_io(result: &io::Result<()>, success_code: std::process::ExitCode) -> std::process::ExitCode {
+pub(crate) fn exit_from_io(result: &io::Result<()>, success_code: std::process::ExitCode) -> std::process::ExitCode {
     match result {
         Ok(()) => success_code,
         Err(_) => std::process::ExitCode::FAILURE,

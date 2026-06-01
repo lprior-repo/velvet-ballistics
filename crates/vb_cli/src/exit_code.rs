@@ -33,8 +33,11 @@ pub(crate) enum CliExitCode {
 
 impl From<CliExitCode> for ExitCode {
     fn from(code: CliExitCode) -> Self {
-        // #[repr(u8)] guarantees the discriminant fits in u8.
-        ExitCode::from(code as u8)
+        // #[repr(u8)] guarantees the discriminant fits in u8; all variants are 0-8.
+        #[allow(clippy::as_conversions)]
+        {
+            ExitCode::from(code as u8)
+        }
     }
 }
 

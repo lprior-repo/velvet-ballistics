@@ -11,7 +11,7 @@ use vb_storage::journal::incident::{
 };
 
 /// Structured incident report for CLI output.
-pub struct IncidentReport {
+pub(crate) struct IncidentReport {
     /// The run id string (as provided by the caller).
     pub run_id: String,
     /// Failure code, e.g. "RunFailed" or "RunCancelled". Empty if no failure.
@@ -27,7 +27,7 @@ pub struct IncidentReport {
 }
 
 /// Build an incident report from a run's event stream.
-pub fn build_incident_report(run_id: &str, events: &[JournalEvent]) -> IncidentReport {
+pub(crate) fn build_incident_report(run_id: &str, events: &[JournalEvent]) -> IncidentReport {
     let analysis = analyze_incident_events(events);
     let hints = build_repair_hints(
         &analysis.failure_code,

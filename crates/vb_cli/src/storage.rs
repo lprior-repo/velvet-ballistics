@@ -13,7 +13,7 @@ use vb_storage::{
     DurabilityProfile, EventSeq, FjallJournal, JournalEvent, JournalWriterQueue, StorageLimits,
 };
 
-pub fn cmd_ipc_serve(socket: &Path, db: &Path) -> ExitCode {
+pub(crate) fn cmd_ipc_serve(socket: &Path, db: &Path) -> ExitCode {
     let journal = match FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(e) => {
@@ -82,7 +82,7 @@ pub fn cmd_ipc_serve(socket: &Path, db: &Path) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-pub struct StorageWorkflowResolver {
+pub(crate) struct StorageWorkflowResolver {
     pub journal: Arc<FjallJournal>,
 }
 
@@ -106,7 +106,7 @@ impl WorkflowResolver for StorageWorkflowResolver {
     }
 }
 
-pub fn cmd_inspect(run_id: &str, db: &Path) -> ExitCode {
+pub(crate) fn cmd_inspect(run_id: &str, db: &Path) -> ExitCode {
     let rid = match parse_run_id(run_id) {
         Ok(id) => id,
         Err(code) => return code,
@@ -144,7 +144,7 @@ pub fn cmd_inspect(run_id: &str, db: &Path) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-pub fn cmd_events(run_id: &str, db: &Path) -> ExitCode {
+pub(crate) fn cmd_events(run_id: &str, db: &Path) -> ExitCode {
     let rid = match parse_run_id(run_id) {
         Ok(id) => id,
         Err(code) => return code,
@@ -178,7 +178,7 @@ pub fn cmd_events(run_id: &str, db: &Path) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-pub fn print_event(event: &JournalEvent) {
+pub(crate) fn print_event(event: &JournalEvent) {
     match event {
         JournalEvent::RunAccepted { seq, .. } => {
             crate::outln!("  seq={}: RunAccepted", seq.get());
@@ -226,7 +226,7 @@ pub fn print_event(event: &JournalEvent) {
     }
 }
 
-pub fn cmd_replay(run_id: &str, db: &Path) -> ExitCode {
+pub(crate) fn cmd_replay(run_id: &str, db: &Path) -> ExitCode {
     let rid = match parse_run_id(run_id) {
         Ok(id) => id,
         Err(code) => return code,
@@ -265,7 +265,7 @@ pub fn cmd_replay(run_id: &str, db: &Path) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-pub fn event_name(event: &JournalEvent) -> &'static str {
+pub(crate) fn event_name(event: &JournalEvent) -> &'static str {
     match event {
         JournalEvent::RunAccepted { .. } => "RunAccepted",
         JournalEvent::StepStarted { .. } => "StepStarted",

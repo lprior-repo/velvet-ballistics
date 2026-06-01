@@ -12,7 +12,7 @@ use vb_runtime::shard::ShardConfig;
 use vb_runtime::trace::TraceEvent;
 
 #[non_exhaustive]
-pub enum InputMappingError {
+pub(crate) enum InputMappingError {
     DecodeFailed,
     SlotCountExceeded,
     SlotIndexOutOfRange,
@@ -33,7 +33,7 @@ impl std::fmt::Display for InputMappingError {
     }
 }
 
-pub fn run_compiled_workflow(
+pub(crate) fn run_compiled_workflow(
     compiled: &CompiledWorkflow,
     inputs: Box<[(SlotIdx, SlotValue)]>,
     durability: DurabilityMode,
@@ -123,7 +123,7 @@ fn open_storage_runtime_journal(
     ))
 }
 
-pub fn print_trace_event(event: &TraceEvent) {
+pub(crate) fn print_trace_event(event: &TraceEvent) {
     match event {
         TraceEvent::StepStarted { step, .. } => {
             crate::outln!("  trace: StepStarted step={}", step.get());
