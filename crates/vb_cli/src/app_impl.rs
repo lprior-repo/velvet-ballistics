@@ -1,31 +1,85 @@
 //! Velvet Ballastics CLI application implementation.
 //!
 //! Holzman Rust: thin imperative shell over functional core.
-//! Each submodule is bounded to 300 lines per architectural drift policy.
-//!
+//! This module declares the extraction modules and re-exports public items.
 #![forbid(unsafe_code)]
 
 #![allow(clippy::too_many_arguments, clippy::too_many_lines)]
 #![allow(clippy::match_single_binding, clippy::match_wildcard_for_single_variants)]
 
-// Submodules removed - were never created (architectural drift cleanup)
+mod constants;
+mod file_io;
+mod agent_io;
+mod action;
+mod action_specs;
+mod verify;
+mod validate;
+mod compile;
+mod run;
+mod submit;
+mod run_step;
+mod step_helpers;
+mod run_compiled;
+mod run_compiled_runtime;
+mod ipc_serve;
+mod inspect;
+mod events;
+mod replay;
+mod trace;
+mod run_ops;
+mod incident_diff;
+mod explain;
+mod explain_reports;
+mod explain_errors;
+mod explain_repair;
+mod explain_validation;
+mod explain_validation2;
+mod graph;
+mod simulate;
+mod bench_run;
+mod doctor;
+mod doctor_helpers;
+mod io_helpers;
+mod output_utils;
+mod output;
+mod dispatcher;
 
+use std::io::Write;
 use std::process::ExitCode;
 
-// Re-exports for binary and tests - items that exist in the crate
+use crate::output::{json_out, output_error_exit, write_stderr_line, write_stdout_line};
+use crate::output_utils::cli_exit_code_name;
+
+/// Macro for writing to stdout with trailing newline.
+macro_rules! outln {
+    ($($arg:tt)*) => {{
+        write_stdout_line(format_args!($($arg)*));
+    }};
+}
+
+/// Macro for writing to stderr with trailing newline.
+macro_rules! errln {
+    ($($arg:tt)*) => {{
+        write_stderr_line(format_args!($($arg)*));
+    }};
+}
+
+/// Macro for emitting JSON output or returning an error exit code.
+macro_rules! emit_json_or_return {
+    ($value:expr, $format:expr $(,)?) => {{
+        if let Err(error) = json_out($value, $format) {
+            return output_error_exit(&error);
+        }
+    }};
+}
+
+pub(crate) use crate::dispatcher::run_from_env;
+
 pub(crate) use crate::exit_code::CliExitCode;
 pub(crate) use crate::args::{ActionRegistryMode, Command, DurabilityMode, OutputFormat, ParseError, StepTarget};
 pub(crate) use crate::commands_ai_context::{RunStatus, redacted_slot_value, suggested_ai_commands};
 
-// Module stubs re-exported for binary compatibility
-pub mod explain_repair {
-    // Stub module - implementation pending
-}
+pub(crate) use crate::output::{OutputError, json_out, write_stdout_line, write_stdout_line_checked};
 
-pub(crate) fn run_from_env() -> ExitCode {
-    // STUB: Full CLI implementation requires submodules that were never created.
-    // This stub allows the binary to compile while the full implementation
-    // is pending submodule creation.
-    eprintln!("error: CLI implementation incomplete (submodules not created)");
-    ExitCode::from(1)
-}
+#[path = "app_impl_tests.rs"]
+mod tests;

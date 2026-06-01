@@ -6,7 +6,7 @@ pub mod types;
 pub mod validation;
 
 // Re-export commonly used types at the workflow level for ergonomic API surface.
-pub use crate::workflow::lifecycle::{LifecycleCommand, LifecycleState, RunState};
+pub use crate::workflow::lifecycle::{check_lifecycle_transition, LifecycleCommand, LifecycleState, RunState};
 pub use crate::workflow::types::{
     check_expr_stack_bound, AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow,
     ExprBranch, ExprOp, ExprProgram, PathSegment, ResourceContract, SlotBranch, WorkflowError,

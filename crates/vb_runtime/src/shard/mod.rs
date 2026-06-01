@@ -9,6 +9,7 @@ pub mod lifecycle;
 pub mod tests;
 pub mod timer_wheel;
 pub mod transitions;
+pub mod arena;
 pub mod types;
 
 pub use completion_watermark::{CompletionDrain, CompletionWatermark, CompletionWatermarkError};
