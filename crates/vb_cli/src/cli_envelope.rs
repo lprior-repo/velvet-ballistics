@@ -65,7 +65,7 @@ pub(crate) enum Kind {
 impl Kind {
     /// Returns the string representation of this kind.
     #[must_use]
-    pub(crate) fn as_str(&self) -> &'static str {
+    fn as_str(&self) -> &'static str {
         match self {
             Kind::VerificationReport => kind::VERIFICATION_REPORT,
             Kind::DiagnosticReport => kind::DIAGNOSTIC_REPORT,
@@ -89,7 +89,7 @@ impl Kind {
 
     /// Parse a Kind from its string representation.
     #[allow(dead_code)]
-    pub(crate) fn from_str(s: &str) -> Option<Kind> {
+    fn from_str(s: &str) -> Option<Kind> {
         match s {
             kind::VERIFICATION_REPORT => Some(Kind::VerificationReport),
             kind::DIAGNOSTIC_REPORT => Some(Kind::DiagnosticReport),

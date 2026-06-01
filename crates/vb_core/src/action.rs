@@ -565,26 +565,61 @@ pub fn issue_action_ticket(
 
 /// Validates that an action completion outcome is consistent with the contract.
 ///
-/// For success completions, verifies the output slot is valid.
+/// For success completions, verifies the output slot is valid and the output taint
+/// satisfies the action's taint propagation contract (no downgrade).
 /// For failure completions, verifies the failure code is recognized.
 pub fn validate_action_outcome(
     contract: &ActionContract,
     outcome: &ActionOutcome,
+    input_taint: Taint,
 ) -> Result<(), ActionError> {
     match outcome {
-        ActionOutcome::Ready(output_ready) => validate_ready_outcome(contract, output_ready),
+        ActionOutcome::Ready(output_ready) => {
+            validate_ready_outcome(contract, output_ready, input_taint)
+        }
         ActionOutcome::Suspended(_) => validate_suspended_outcome(),
         ActionOutcome::Failed(_) => validate_failed_outcome(),
     }
 }
 
-/// Validates the output slot index for a Ready action outcome.
+/// Validates the output slot index and taint for a Ready action outcome.
+///
+/// Rejects completions that attempt to downgrade taint below the level
+/// required by the action's idempotency contract and input taint.
 fn validate_ready_outcome(
     contract: &ActionContract,
     output_ready: &ActionOutputReady,
+    input_taint: Taint,
 ) -> Result<(), ActionError> {
     check_output_slot_in_bounds(output_ready.output_slot, contract.output_slot_count)?;
     check_output_size_in_bounds(output_ready.encoded_len, contract.max_output_bytes)?;
+    check_taint_downgrade(contract.idempotency, input_taint, output_ready.taint)?;
+    Ok(())
+}
+
+/// Checks that the supplied output taint is not a downgrade from the required taint.
+///
+/// DeterministicPure actions additionally require that the input is Clean.
+/// For all actions, the supplied taint must be at least as restrictive as the
+/// taint propagated from the input according to the idempotency contract.
+fn check_taint_downgrade(
+    idempotency: Idempotency,
+    input_taint: Taint,
+    supplied: Taint,
+) -> Result<(), ActionError> {
+    // DeterministicPure actions must operate only on Clean input.
+    if idempotency == Idempotency::DeterministicPure && input_taint != Taint::Clean {
+        return Err(ActionError::TaintViolation {
+            required: Taint::Clean,
+            supplied: input_taint,
+        });
+    }
+    let required = propagate_action_taint(idempotency, input_taint);
+    // Use the value module's join_taint (least upper bound).
+    // If join(required, supplied) == supplied, then supplied >= required.
+    if crate::value::join_taint(required, supplied) != supplied {
+        return Err(ActionError::TaintViolation { required, supplied });
+    }
     Ok(())
 }
 

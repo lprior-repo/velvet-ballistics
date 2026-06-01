@@ -1175,7 +1175,7 @@ fn validate_action_outcome_ready_succeeds_with_valid_slot() {
         encoded_len: 8,
     };
     let outcome = ActionOutcome::Ready(output);
-    let result = validate_action_outcome(&contract, &outcome);
+    let result = validate_action_outcome(&contract, &outcome, Taint::Clean);
     assert_eq!(result, Ok(()));
 }
 
@@ -1201,7 +1201,7 @@ fn validate_action_outcome_ready_rejects_out_of_bounds_slot() {
         encoded_len: 8,
     };
     let outcome = ActionOutcome::Ready(output);
-    let result = validate_action_outcome(&contract, &outcome);
+    let result = validate_action_outcome(&contract, &outcome, Taint::Clean);
     assert_eq!(
         result,
         Err(ActionError::OutputSlotOutOfBounds {
@@ -1234,7 +1234,7 @@ fn validate_action_outcome_failed_always_succeeds() {
         encoded_len: 0,
     };
     let outcome = ActionOutcome::Failed(failure);
-    let result = validate_action_outcome(&contract, &outcome);
+    let result = validate_action_outcome(&contract, &outcome, Taint::Clean);
     assert_eq!(result, Ok(()));
 }
 

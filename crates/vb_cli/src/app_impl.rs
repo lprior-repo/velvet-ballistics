@@ -7,6 +7,20 @@
 #![allow(clippy::too_many_arguments, clippy::too_many_lines)]
 #![allow(clippy::match_single_binding, clippy::match_wildcard_for_single_variants)]
 
+
+macro_rules! outln {
+    ($($arg:tt)*) => {{
+        crate::output::write_stdout_line(format_args!($($arg)*));
+    }};
+}
+
+macro_rules! errln {
+    ($($arg:tt)*) => {{
+        crate::output::write_stderr_line(format_args!($($arg)*));
+    }};
+}
+
+
 mod constants;
 mod file_io;
 mod agent_io;

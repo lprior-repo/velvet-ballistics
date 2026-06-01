@@ -1,7 +1,16 @@
 #![forbid(unsafe_code)]
 //! Action registry read/write operations.
 
-fn write_action_registry_error(
+use std::process::ExitCode;
+use std::sync::Arc;
+use std::num::NonZeroUsize;
+use crate::args::{ActionRegistryMode, Command, DurabilityMode, EventStatus, OutputFormat, ParseError, StepTarget};
+use crate::exit_code::CliExitCode;
+use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, write_stderr_line, write_stderr_best_effort, write_structured_stderr, write_contract_error_json, write_failure_message};
+use crate::action_specs::{action_idempotency_name, action_retry_safety_name, action_side_effect_name};
+use vb_runtime::action::ActionRegistry;
+
+pub(crate) fn write_action_registry_error(
     error: &vb_core::action::ActionError,
     output: OutputFormat,
 ) -> ExitCode {
@@ -21,7 +30,7 @@ fn write_action_registry_error(
 }
 
 
-fn write_action_registry_uninitialized(output: OutputFormat) {
+pub(crate) fn write_action_registry_uninitialized(output: OutputFormat) {
     let message = "action registry is not initialized";
     if output == OutputFormat::Text {
         errln!("{message}");
@@ -37,7 +46,7 @@ fn write_action_registry_uninitialized(output: OutputFormat) {
 }
 
 
-fn write_action_registry(registry: &ActionRegistry, output: OutputFormat) -> ExitCode {
+pub(crate) fn write_action_registry(registry: &ActionRegistry, output: OutputFormat) -> ExitCode {
     let rows = action_table_rows(registry);
     if rows.is_empty() {
         return write_no_registered_actions(output);
@@ -73,7 +82,7 @@ fn write_action_registry(registry: &ActionRegistry, output: OutputFormat) -> Exi
 }
 
 
-fn write_action_inspect(
+pub(crate) fn write_action_inspect(
     registry: &ActionRegistry,
     action_name: String,
     output: OutputFormat,
@@ -103,7 +112,7 @@ fn write_action_inspect(
 }
 
 
-fn write_action_inspect_error(
+pub(crate) fn write_action_inspect_error(
     action_name: &str,
     error: &vb_core::action::ActionError,
     output: OutputFormat,
@@ -125,7 +134,7 @@ fn write_action_inspect_error(
 }
 
 
-fn write_action_contract(
+pub(crate) fn write_action_contract(
     contract: &vb_core::action::ActionContract,
     output: OutputFormat,
 ) -> ExitCode {
@@ -139,7 +148,7 @@ fn write_action_contract(
 }
 
 
-fn write_action_contract_text(detail: &ActionContractDetail) {
+pub(crate) fn write_action_contract_text(detail: &ActionContractDetail) {
     outln!("action {}", detail.id);
     outln!("  input_slot_count: {}", detail.input_slot_count);
     outln!("  output_slot_count: {}", detail.output_slot_count);
@@ -178,7 +187,7 @@ struct ActionContractDetail {
 }
 
 impl ActionContractDetail {
-    fn to_json(&self) -> serde_json::Value {
+    pub(crate) fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "success": true,
             "action": {
@@ -212,7 +221,7 @@ struct ActionTableRow {
     timeout_ms: u64,
 }
 
-fn action_table_rows(registry: &ActionRegistry) -> Vec<ActionTableRow> {
+pub(crate) fn action_table_rows(registry: &ActionRegistry) -> Vec<ActionTableRow> {
     registry
         .registered_contracts()
         .iter()
@@ -229,7 +238,7 @@ fn action_table_rows(registry: &ActionRegistry) -> Vec<ActionTableRow> {
 }
 
 
-fn action_contract_detail(contract: &vb_core::action::ActionContract) -> ActionContractDetail {
+pub(crate) fn action_contract_detail(contract: &vb_core::action::ActionContract) -> ActionContractDetail {
     ActionContractDetail {
         id: contract.id.get(),
         input_slot_count: contract.input_slot_count,
@@ -253,7 +262,7 @@ fn action_contract_detail(contract: &vb_core::action::ActionContract) -> ActionC
 }
 
 
-fn write_action_table_rows(rows: &[ActionTableRow]) {
+pub(crate) fn write_action_table_rows(rows: &[ActionTableRow]) {
     outln!("id\tidempotency\tretry_safety\tside_effect\tinput_slots\toutput_slots\ttimeout_ms");
     rows.iter().for_each(|row| {
         outln!(
@@ -270,7 +279,7 @@ fn write_action_table_rows(rows: &[ActionTableRow]) {
 }
 
 
-fn write_no_registered_actions(output: OutputFormat) -> ExitCode {
+pub(crate) fn write_no_registered_actions(output: OutputFormat) -> ExitCode {
     let message = "no registered actions";
     if output == OutputFormat::Text {
         outln!("{message}");

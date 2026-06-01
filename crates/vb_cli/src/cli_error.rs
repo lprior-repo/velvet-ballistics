@@ -46,7 +46,7 @@ const VALIDATION_FAILED_EXIT_CODE: u8 = 2;
 
 impl CliError {
     /// Returns the appropriate exit code for this error.
-    pub(crate) fn exit_code(&self) -> ExitCode {
+    fn exit_code(&self) -> ExitCode {
         match self {
             Self::InvalidWorkspace { .. } | Self::MissingWorkspaceFlag { .. } => {
                 ExitCode::from(VALIDATION_FAILED_EXIT_CODE)

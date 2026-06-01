@@ -1,6 +1,21 @@
 #![forbid(unsafe_code)]
 //! Velvet Ballistics is the CLI runtime for bead lifecycle management.
 
+
+#[macro_export]
+macro_rules! outln {
+    ($($arg:tt)*) => {{
+        crate::output::write_stdout_line(format_args!($($arg)*));
+    }};
+}
+
+#[macro_export]
+macro_rules! errln {
+    ($($arg:tt)*) => {{
+        crate::output::write_stderr_line(format_args!($($arg)*));
+    }};
+}
+
 pub(crate) mod agent_context;
 pub mod cli_postcard;
 pub mod commands_diff;
@@ -51,8 +66,20 @@ pub mod verify;
 
 // Newly declared modules (previously missing from lib.rs).
 pub mod args;
+pub mod cli_envelope;
+pub mod cli_error;
+pub mod commands_ai_context;
 pub mod commands_journal;
+pub mod commands_status;
+pub mod commands_system_status;
 pub mod commands_verify;
 pub mod commands_workflow;
 pub mod deliver_sink;
+pub mod exit_code;
+pub mod explain_compile;
+pub mod explain_repair;
+pub mod mode_error;
+pub mod storage;
+pub mod validate;
+pub mod workflow;
 
