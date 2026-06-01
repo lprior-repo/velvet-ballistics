@@ -1,4 +1,18 @@
-use super::*;
+use crate::commands_workflow::{
+    dot::generate_dot, simulate::simulate_workflow, DotGraph, SimulationResult, SimulationStep,
+};
+use vb_core::{CompiledNodeKind, ConstIdx, ExprBranch, ExprIdx, SlotIdx, StepIdx, ActionId};
+
+// ---------------------------------------------------------------------------
+// Helpers tests (re-exported from helpers module via parent)
+// ---------------------------------------------------------------------------
+
+use vb_core::CompiledNodeKind;
+use vb_core::ConstIdx;
+use vb_core::SlotIdx;
+
+#[allow(unused_imports)]
+use crate::commands_workflow::helpers::{node_kind_label, saturating_add};
 
 #[test]
 fn saturating_add_returns_sum_for_normal_values() {
@@ -24,7 +38,7 @@ fn node_kind_label_returns_nop_for_nop() {
 fn node_kind_label_returns_set_const() {
     assert_eq!(
         node_kind_label(&CompiledNodeKind::SetConst {
-            value: vb_core::ConstIdx::new(0)
+            value: ConstIdx::new(0)
         }),
         "set_const"
     );
@@ -34,7 +48,7 @@ fn node_kind_label_returns_set_const() {
 fn node_kind_label_returns_copy() {
     assert_eq!(
         node_kind_label(&CompiledNodeKind::Copy {
-            source: vb_core::SlotIdx::new(0)
+            source: SlotIdx::new(0)
         }),
         "copy"
     );
@@ -44,8 +58,8 @@ fn node_kind_label_returns_copy() {
 fn node_kind_label_returns_do() {
     assert_eq!(
         node_kind_label(&CompiledNodeKind::Do {
-            action: vb_core::ActionId::new(1),
-            input: vb_core::SlotIdx::new(0)
+            action: ActionId::new(1),
+            input: SlotIdx::new(0)
         }),
         "do"
     );
@@ -55,7 +69,7 @@ fn node_kind_label_returns_do() {
 fn node_kind_label_returns_finish() {
     assert_eq!(
         node_kind_label(&CompiledNodeKind::Finish {
-            result: vb_core::SlotIdx::new(0)
+            result: SlotIdx::new(0)
         }),
         "finish"
     );
@@ -65,7 +79,7 @@ fn node_kind_label_returns_finish() {
 fn node_kind_label_returns_ask() {
     assert_eq!(
         node_kind_label(&CompiledNodeKind::Ask {
-            prompt: vb_core::SlotIdx::new(0),
+            prompt: SlotIdx::new(0),
             timeout_slot: None
         }),
         "ask"
@@ -76,11 +90,18 @@ fn node_kind_label_returns_ask() {
 fn node_kind_label_returns_wait_until() {
     assert_eq!(
         node_kind_label(&CompiledNodeKind::WaitUntil {
-            deadline_slot: vb_core::SlotIdx::new(0)
+            deadline_slot: SlotIdx::new(0)
         }),
         "wait_until"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Simulate tests
+// ---------------------------------------------------------------------------
+
+#[allow(unused_imports)]
+use crate::commands_workflow::simulate::describe_node_for_simulate;
 
 #[test]
 fn describe_node_for_simulate_returns_entry_for_nop() {
@@ -96,8 +117,8 @@ fn describe_node_for_simulate_increments_action_count_for_do() {
     let mut bc = 0usize;
     let _ = describe_node_for_simulate(
         &CompiledNodeKind::Do {
-            action: vb_core::ActionId::new(1),
-            input: vb_core::SlotIdx::new(0),
+            action: ActionId::new(1),
+            input: SlotIdx::new(0),
         },
         &mut ac,
         &mut bc,
@@ -109,14 +130,14 @@ fn describe_node_for_simulate_increments_action_count_for_do() {
 fn describe_node_for_simulate_increments_branch_count_for_choose() {
     let mut ac = 0usize;
     let mut bc = 0usize;
-    let branches: Box<[vb_core::ExprBranch]> = Box::new([
-        vb_core::ExprBranch {
-            condition: vb_core::ExprIdx::new(0),
-            target: vb_core::StepIdx::new(2),
+    let branches: Box<[ExprBranch]> = Box::new([
+        ExprBranch {
+            condition: ExprIdx::new(0),
+            target: StepIdx::new(2),
         },
-        vb_core::ExprBranch {
-            condition: vb_core::ExprIdx::new(0),
-            target: vb_core::StepIdx::new(3),
+        ExprBranch {
+            condition: ExprIdx::new(0),
+            target: StepIdx::new(3),
         },
     ]);
     let _ = describe_node_for_simulate(
@@ -129,6 +150,10 @@ fn describe_node_for_simulate_increments_branch_count_for_choose() {
     );
     assert_eq!(bc, 2);
 }
+
+// ---------------------------------------------------------------------------
+// Struct access tests
+// ---------------------------------------------------------------------------
 
 #[test]
 fn dot_graph_fields_are_accessible() {

@@ -1,11 +1,14 @@
-//! Other command parsers (agent-context, ai-context, doctor, diff, answer, etc.).
+//! Other command parsers (agent-context, ai-context, doctor, diff).
 #![forbid(unsafe_code)]
 
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-use super::shared::{find_positional, named_flag, parse_output_format, validate_known_flags};
-use super::types::{Command, ParseError};
+use super::error::ParseError;
+use super::run_ops::RunDbArgs;
+use super::shared::{find_positional, named_flag, parse_output_format, positional_str,
+                    validate_known_flags};
+use super::types::{Command, OutputFormat};
 
 pub(super) fn parse_agent_context(args: &[OsString]) -> Result<Command, ParseError> {
     let mut deliver = None;
@@ -64,11 +67,11 @@ pub(super) fn parse_ai_context(args: &[OsString]) -> Result<Command, ParseError>
 struct AiContextArgs {
     run_id: String,
     db: PathBuf,
-    output: super::types::OutputFormat,
+    output: OutputFormat,
 }
 
 fn parse_ai_context_args(args: &[OsString]) -> Result<AiContextArgs, ParseError> {
-    let run_id = find_positional(args, 2, "ai-context")
+    let run_id = find_positional(args, 2)
         .and_then(|path| path.to_str().map(String::from))
         .ok_or(ParseError::MissingArgument("run_id"))?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
@@ -99,15 +102,4 @@ pub(super) fn parse_diff(args: &[OsString]) -> Result<Command, ParseError> {
         db: PathBuf::from(db),
         output,
     })
-}
-
-fn positional_str(
-    args: &[OsString],
-    index: usize,
-    name: &'static str,
-) -> Result<String, ParseError> {
-    args.get(index)
-        .and_then(|s| s.to_str())
-        .map(String::from)
-        .ok_or(ParseError::MissingArgument(name))
 }

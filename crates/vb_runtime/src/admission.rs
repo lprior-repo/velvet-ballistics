@@ -893,8 +893,5 @@ fn capability_count_mismatch_error(
 mod tests;
 
 #[cfg(test)]
-mod artifact_envelope_tests {
-    // Tests are in artifact_envelope_tests.rs
-    // but we include them here via the module system.
-    include!("admission/artifact_envelope_tests.rs");
-}
+#[path = "admission/artifact_envelope_tests.rs"]
+mod artifact_envelope_tests;

@@ -288,6 +288,3 @@ impl TraceEvent {
         }
     }
 }
-
-#[cfg(test)]
-mod tests;

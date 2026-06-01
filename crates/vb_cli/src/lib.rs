@@ -9,44 +9,44 @@ pub mod lifecycle;
 pub mod naming_scan;
 pub mod status;
 
-pub mod constants;
-pub mod dispatcher;
-pub mod file_io;
-pub mod agent_io;
-pub mod action;
-pub mod action_specs;
-pub mod verify;
-pub mod compile;
-pub mod run;
-pub mod submit;
-pub mod run_step;
-pub mod step_helpers;
-pub mod run_compiled;
-pub mod run_compiled_runtime;
-pub mod ipc_serve;
-pub mod inspect;
-pub mod events;
-pub mod replay;
-pub mod trace;
-pub mod run_ops;
-pub mod run_resume;
-pub mod run_cancel;
-pub mod incident_diff;
-pub mod incident_ops;
-pub mod explain;
-pub mod explain_reports;
-pub mod explain_errors;
-pub mod explain_repair;
-pub mod explain_validation;
-pub mod explain_validation2;
-pub mod explain_validation3;
-pub mod explain_validation4;
-pub mod graph;
-pub mod simulate;
-pub mod bench_run;
-pub mod doctor;
-pub mod doctor_helpers;
-pub mod io_helpers;
-pub mod output_utils;
-pub mod output;
+// pub mod constants; // MISSING
+// pub mod dispatcher; // MISSING
+// pub mod file_io; // MISSING
+// pub mod agent_io; // MISSING
+// pub mod action; // MISSING
+// pub mod action_specs; // MISSING
+// pub mod verify; // MISSING
+// pub mod compile; // MISSING
+// pub mod run; // MISSING
+// pub mod submit; // MISSING
+// pub mod run_step; // MISSING
+// pub mod step_helpers; // MISSING
+// pub mod run_compiled; // MISSING
+// pub mod run_compiled_runtime; // MISSING
+// pub mod ipc_serve; // MISSING
+// pub mod inspect; // MISSING
+// pub mod events; // MISSING
+// pub mod replay; // MISSING
+// pub mod trace; // MISSING
+// pub mod run_ops; // MISSING
+// pub mod run_resume; // MISSING
+// pub mod run_cancel; // MISSING
+// pub mod incident_diff; // MISSING
+// pub mod incident_ops; // MISSING
+// pub mod explain; // MISSING
+// pub mod explain_reports; // MISSING
+// pub mod explain_errors; // MISSING
+// pub mod explain_repair; // BROKEN - syntax error
+// pub mod explain_validation; // MISSING
+// pub mod explain_validation2; // MISSING
+// pub mod explain_validation3; // MISSING
+// pub mod explain_validation4; // MISSING
+// pub mod graph; // MISSING
+// pub mod simulate; // MISSING
+// pub mod bench_run; // MISSING
+// pub mod doctor; // MISSING
+// pub mod doctor_helpers; // MISSING
+// pub mod io_helpers; // MISSING
+// pub mod output_utils; // MISSING
+// pub mod output; // MISSING
 

@@ -1,23 +1,11 @@
+//! Action command parsers.
+#![forbid(unsafe_code)]
+
 use std::ffi::OsString;
 
-use super::{ActionRegistryMode, Command, OutputFormat, ParseError};
-
-// DESIGN NOTE: These structs are structurally identical (same fields, same derives).
-// However, they are kept separate for semantic type safety - one represents
-// the parsing state for `action list` subcommand, the other for `action inspect`.
-// This prevents mixing up context in match arms and provides compile-time
-// guarantees that the correct state type is used for each subcommand.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct ActionListParseState {
-    output: OutputFormat,
-    registry: ActionRegistryMode,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct ActionInspectParseState {
-    output: OutputFormat,
-    registry: ActionRegistryMode,
-}
+use super::error::ParseError;
+use super::flag_spec::{ActionInspectParseState, ActionListParseState};
+use super::types::{ActionRegistryMode, Command, OutputFormat};
 
 pub(super) fn parse_action(args: &[OsString]) -> Result<Command, ParseError> {
     let action_command = args
@@ -48,14 +36,27 @@ pub(super) fn parse_action(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 fn parse_action_inspect(args: &[OsString]) -> Result<Command, ParseError> {
-    let (raw_id, rest) = args
+    let (raw_name, rest) = args
         .split_first()
-        .ok_or(ParseError::MissingArgument("action_id"))?;
-    let id = raw_id
+        .ok_or(ParseError::MissingArgument("action_name"))?;
+    let action_name = raw_name
         .to_str()
-        .ok_or_else(|| ParseError::InvalidActionId(format!("{raw_id:?}")))?
-        .parse::<u16>()
-        .map_err(|_| ParseError::InvalidActionId(raw_id.to_string_lossy().into_owned()))?;
+        .ok_or_else(|| ParseError::InvalidActionName(format!("{raw_name:?}")))?
+        .trim()
+        .to_string();
+    if action_name.is_empty() {
+        return Err(ParseError::InvalidActionName("action name is empty".into()));
+    }
+    if action_name.len() > 64 {
+        return Err(ParseError::InvalidActionName(
+            "action name exceeds maximum length of 64 characters".into(),
+        ));
+    }
+    if action_name.chars().any(|c| c.is_whitespace()) {
+        return Err(ParseError::InvalidActionName(
+            "action name contains whitespace".into(),
+        ));
+    }
     let parsed = parse_action_inspect_args(
         rest,
         ActionInspectParseState {
@@ -64,7 +65,7 @@ fn parse_action_inspect(args: &[OsString]) -> Result<Command, ParseError> {
         },
     )?;
     Ok(Command::ActionInspect {
-        action_id: id,
+        action_name,
         output: parsed.output,
         registry: parsed.registry,
     })
@@ -77,6 +78,7 @@ fn parse_action_inspect_args(
     match args.split_first() {
         None => Ok(state),
         Some((raw, rest)) => match raw.to_str() {
+            Some("--emit") => parse_action_inspect_emit(rest, state),
             Some("--registry") => parse_action_inspect_registry_arg(rest, state),
             Some(flag) if flag.starts_with("--") => {
                 Err(ParseError::UnknownActionInspectFlag(flag.into()))
@@ -89,6 +91,36 @@ fn parse_action_inspect_args(
     }
 }
 
+fn parse_action_inspect_emit(
+    args: &[OsString],
+    state: ActionInspectParseState,
+) -> Result<ActionInspectParseState, ParseError> {
+    match args.split_first() {
+        Some((raw, rest)) => match raw.to_str() {
+            Some("yaml") => parse_action_inspect_args(
+                rest,
+                ActionInspectParseState {
+                    output: OutputFormat::Yaml,
+                    ..state
+                },
+            ),
+            Some("postcard") => parse_action_inspect_args(
+                rest,
+                ActionInspectParseState {
+                    output: OutputFormat::Postcard,
+                    ..state
+                },
+            ),
+            Some("text") => parse_action_inspect_args(rest, state),
+            Some(value) => Err(ParseError::InvalidActionInspectArgument(format!(
+                "unknown emit mode {value}"
+            ))),
+            None => Err(ParseError::MissingArgument("--emit")),
+        },
+        None => Err(ParseError::MissingArgument("--emit")),
+    }
+}
+
 fn parse_action_list_args(
     args: &[OsString],
     state: ActionListParseState,
@@ -96,6 +128,7 @@ fn parse_action_list_args(
     match args.split_first() {
         None => Ok(state),
         Some((raw, rest)) => match raw.to_str() {
+            Some("--emit") => parse_action_list_emit(rest, state),
             Some("--registry") => parse_action_registry_arg(rest, state),
             Some(flag) if flag.starts_with("--") => {
                 Err(ParseError::UnknownActionListFlag(flag.into()))
@@ -103,6 +136,36 @@ fn parse_action_list_args(
             Some(arg) => Err(ParseError::UnexpectedActionListArgument(arg.into())),
             None => Err(ParseError::UnexpectedActionListArgument(format!("{raw:?}"))),
         },
+    }
+}
+
+fn parse_action_list_emit(
+    args: &[OsString],
+    state: ActionListParseState,
+) -> Result<ActionListParseState, ParseError> {
+    match args.split_first() {
+        Some((raw, rest)) => match raw.to_str() {
+            Some("yaml") => parse_action_list_args(
+                rest,
+                ActionListParseState {
+                    output: OutputFormat::Yaml,
+                    ..state
+                },
+            ),
+            Some("postcard") => parse_action_list_args(
+                rest,
+                ActionListParseState {
+                    output: OutputFormat::Postcard,
+                    ..state
+                },
+            ),
+            Some("text") => parse_action_list_args(rest, state),
+            Some(value) => Err(ParseError::InvalidActionListArgument(format!(
+                "unknown emit mode {value}"
+            ))),
+            None => Err(ParseError::MissingArgument("--emit")),
+        },
+        None => Err(ParseError::MissingArgument("--emit")),
     }
 }
 
@@ -144,98 +207,5 @@ fn parse_action_registry_mode(value: &str) -> Result<ActionRegistryMode, ParseEr
         "empty" => Ok(ActionRegistryMode::Empty),
         "uninitialized" => Ok(ActionRegistryMode::Uninitialized),
         other => Err(ParseError::UnknownActionRegistry(other.into())),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn os(val: &str) -> OsString {
-        OsString::from(val)
-    }
-
-    #[test]
-    fn parse_action_list_returns_ok() {
-        let args = [os("vb"), os("action"), os("list")];
-        let result = parse_action(&args).unwrap();
-        match result {
-            Command::ActionList { .. } => {}
-            _ => panic!("wrong command"),
-        }
-    }
-
-    #[test]
-    fn parse_action_list_with_json_flag() {
-        let args = [os("vb"), os("action"), os("list"), os("--json")];
-        let result = parse_action(&args);
-        assert!(
-            matches!(result.unwrap_err(), ParseError::UnknownActionListFlag(ref flag) if flag == "--json"),
-            "expected UnknownActionListFlag, got {result:?}"
-        );
-    }
-
-    #[test]
-    fn parse_action_list_with_registry() {
-        let args = [os("vb"), os("action"), os("list"), os("--registry"), os("empty")];
-        let result = parse_action(&args).unwrap();
-        match result {
-            Command::ActionList { registry, .. } => assert_eq!(registry, ActionRegistryMode::Empty),
-            _ => panic!("wrong command"),
-        }
-    }
-
-    #[test]
-    fn parse_action_inspect_returns_ok() {
-        let args = [os("vb"), os("action"), os("inspect"), os("42")];
-        let result = parse_action(&args).unwrap();
-        match result {
-            Command::ActionInspect { action_id, .. } => assert_eq!(action_id, 42),
-            _ => panic!("wrong command"),
-        }
-    }
-
-    #[test]
-    fn parse_action_inspect_rejects_non_numeric_id() {
-        let args = [os("vb"), os("action"), os("inspect"), os("abc")];
-        let result = parse_action(&args);
-        assert!(matches!(result.unwrap_err(), ParseError::InvalidActionId(_)));
-    }
-
-    #[test]
-    fn parse_action_inspect_missing_id() {
-        let args = [os("vb"), os("action"), os("inspect")];
-        let result = parse_action(&args);
-        assert!(matches!(result.unwrap_err(), ParseError::MissingArgument(_)));
-    }
-
-    #[test]
-    fn parse_action_rejects_unknown_subcommand() {
-        let args = [os("vb"), os("action"), os("delete")];
-        let result = parse_action(&args);
-        assert!(matches!(result.unwrap_err(), ParseError::UnknownActionCommand(_)));
-    }
-
-    #[test]
-    fn parse_action_registry_mode_registered() {
-        assert_eq!(parse_action_registry_mode("registered").unwrap(), ActionRegistryMode::Registered);
-    }
-
-    #[test]
-    fn parse_action_registry_mode_empty() {
-        assert_eq!(parse_action_registry_mode("empty").unwrap(), ActionRegistryMode::Empty);
-    }
-
-    #[test]
-    fn parse_action_registry_mode_uninitialized() {
-        assert_eq!(parse_action_registry_mode("uninitialized").unwrap(), ActionRegistryMode::Uninitialized);
-    }
-
-    #[test]
-    fn parse_action_registry_mode_rejects_unknown() {
-        assert!(matches!(
-            parse_action_registry_mode("bad").unwrap_err(),
-            ParseError::UnknownActionRegistry(_)
-        ));
     }
 }

@@ -21,7 +21,6 @@ mod exit_code;
 #[cfg(test)]
 mod mode_error;
 
-pub(crate) use app_impl::{OutputError, json_out, write_stdout_line, write_stdout_line_checked};
 fn main() -> std::process::ExitCode {
     app_impl::run_from_env()
 }

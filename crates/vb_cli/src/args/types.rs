@@ -3,29 +3,34 @@
 
 use std::path::PathBuf;
 
-mod error;
-
-pub(crate) use error::ParseError;
+use crate::commands_journal::{TraceFilters, TraceStatus};
 
 /// Structured output format for CLI commands.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) enum OutputFormat {
+    /// Human-readable text output (default).
     #[default]
     Text,
+    /// YAML structured text output (canonical for v1).
     Yaml,
+    /// Postcard binary output (canonical machine format for v1).
     Postcard,
 }
 
 /// Verification profile controlling depth of static analysis.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) enum VerifyProfile {
+    /// Fast surface checks only.
     Quick,
+    /// Default verification depth.
     #[default]
     Standard,
+    /// Exhaustive verification including budget, capability, taint.
     Full,
 }
 
 impl VerifyProfile {
+    /// Returns the name used on the command line for this profile.
     pub(crate) const fn as_str(&self) -> &'static str {
         match self {
             Self::Quick => "quick",
@@ -95,6 +100,7 @@ pub(crate) enum Command {
     },
     Validate {
         workflow: PathBuf,
+        #[allow(dead_code)]
         output: OutputFormat,
     },
     Compile {
@@ -143,7 +149,7 @@ pub(crate) enum Command {
         run_id: String,
         db: PathBuf,
         output: OutputFormat,
-        filters: crate::commands_journal::TraceFilters,
+        filters: TraceFilters,
     },
     Retry {
         run_id: String,
@@ -165,6 +171,7 @@ pub(crate) enum Command {
     },
     Explain {
         workflow: PathBuf,
+        #[allow(dead_code)]
         output: OutputFormat,
     },
     Answer {
@@ -210,6 +217,7 @@ pub(crate) enum Command {
 
 pub(crate) const VALID_COMMANDS: &str = "help, version, agent-context, ai-context, status, system, action, validate, verify, explain, compile, run, run-compiled, ipc-serve, inspect, events, replay, trace, retry, resume, bench-run, doctor, answer, graph, diff, incident, submit, simulate, cancel";
 
+/// Optional diagnostic status values used when no live runtime handle exists.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) struct StatusOptions {
     pub(crate) active_runs: Option<usize>,
@@ -218,6 +226,7 @@ pub(crate) struct StatusOptions {
     pub(crate) emit_yaml: bool,
 }
 
+/// System-status probe depth and runtime selection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct SystemStatusOptions {
     pub(crate) profile: VerifyProfile,
@@ -268,6 +277,7 @@ impl DurabilityMode {
     }
 }
 
+/// Single-step isolation target for `run --step`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StepTarget {
     pub(crate) step_id: u16,

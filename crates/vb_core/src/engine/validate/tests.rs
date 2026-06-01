@@ -974,3 +974,9 @@ fn all_validators_accept_three_node_linear_chain() {
     assert_eq!(validate_node_bounds(&parts), Ok(()));
     assert_eq!(validate_transition_target(&parts), Ok(()));
 }
+
+// RED PHASE: additional resource contract tests
+#[path = "red_phase_behavior_tests.rs"]
+mod red_phase_behavior_tests;
+#[path = "red_phase_tests.rs"]
+mod red_phase_tests;
