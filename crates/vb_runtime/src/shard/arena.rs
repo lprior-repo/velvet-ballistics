@@ -502,7 +502,7 @@ mod tests {
 
         let (id1, gen1) = arena.allocate("test".to_string()).unwrap();
         assert_eq!(arena.get(id1).unwrap(), "test");
-        assert_eq!(gen1, Generation::INITIAL);
+        assert_eq!(gen1, Generation(1)); // First allocation returns successor of INITIAL
 
         arena.deallocate(id1).unwrap();
         assert!(arena.get(id1).is_err());
