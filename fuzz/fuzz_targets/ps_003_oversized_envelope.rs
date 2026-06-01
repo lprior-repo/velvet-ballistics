@@ -9,7 +9,7 @@
 // Defends against H13 resource exhaustion.
 //
 // PRODUCTION BINDING:
-//   vb_storage::admission::reject_oversized_compiled_ir_value
+//   vb_storage::admission::fuzz_access::reject_oversized_compiled_ir_value
 
 #![no_main]
 
@@ -18,10 +18,11 @@ use libfuzzer_sys::fuzz_target;
 fuzz_target!(|data: &[u8]| {
     // Interpret the fuzz input as a length value
     if data.len() >= 8 {
-        let len_bytes: [u8; 8] = data[..8].try_into().unwrap();
+        let mut len_bytes = [0_u8; 8];
+        len_bytes.copy_from_slice(&data[..8]);
         let len = usize::from_le_bytes(len_bytes);
 
-        let result = vb_storage::admission::reject_oversized_compiled_ir_value(len);
+        let result = vb_storage::admission::fuzz_access::reject_oversized_compiled_ir_value(len);
 
         // Verify no panic occurred — the function handled the input
         match result {

@@ -390,6 +390,29 @@ fn reject_oversized_compiled_ir_value(len: usize) -> Result<(), JournalError> {
     }
 }
 
+#[cfg(feature = "fuzz-access")]
+pub mod fuzz_access {
+    //! Public fuzz-only accessors for admission invariants.
+
+    use crate::{JournalError, records::CompiledIrRecord};
+
+    use super::AcceptedArtifact;
+
+    pub fn validate_compiled_ir_record(record: &CompiledIrRecord) -> Result<(), JournalError> {
+        super::validate_compiled_ir_record(record)
+    }
+
+    pub fn decode_accepted_artifact_envelope(
+        bytes: &[u8],
+    ) -> Result<AcceptedArtifact, JournalError> {
+        super::decode_accepted_artifact_envelope(bytes)
+    }
+
+    pub fn reject_oversized_compiled_ir_value(len: usize) -> Result<(), JournalError> {
+        super::reject_oversized_compiled_ir_value(len)
+    }
+}
+
 fn validate_accepted_artifact_digest(
     artifact: &AcceptedArtifact,
     digest: vb_core::WorkflowDigest,

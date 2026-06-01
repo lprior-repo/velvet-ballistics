@@ -33,11 +33,11 @@ pub(crate) fn write_stdout_line(args: std::fmt::Arguments<'_>) {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
     if let Err(error) = handle.write_fmt(args) {
-        eprintln!("stdout write failed: {error}");
+        report_write_failure("stdout write failed", &error);
         return;
     }
     if let Err(error) = handle.write_all(b"\n") {
-        eprintln!("stdout newline write failed: {error}");
+        report_write_failure("stdout newline write failed", &error);
     }
 }
 
@@ -45,11 +45,19 @@ pub(crate) fn write_stderr_line(args: std::fmt::Arguments<'_>) {
     let stderr = io::stderr();
     let mut handle = stderr.lock();
     if let Err(error) = handle.write_fmt(args) {
-        eprintln!("stderr write failed: {error}");
+        report_write_failure("stderr write failed", &error);
         return;
     }
     if let Err(error) = handle.write_all(b"\n") {
-        eprintln!("stderr newline write failed: {error}");
+        report_write_failure("stderr newline write failed", &error);
+    }
+}
+
+fn report_write_failure(context: &str, error: &io::Error) {
+    let stderr = io::stderr();
+    let mut handle = stderr.lock();
+    if let Err(_fallback_error) = writeln!(handle, "{context}: {error}") {
+        // stderr itself failed; no recoverable reporting channel remains.
     }
 }
 

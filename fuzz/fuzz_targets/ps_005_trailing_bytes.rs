@@ -8,8 +8,8 @@
 // trailing bytes rejected. Defends against concatenation attacks (H5).
 //
 // PRODUCTION BINDING:
-//   vb_storage::admission::decode_accepted_artifact_envelope
-//   vb_storage::codec::payload::reject_trailing_bytes
+//   vb_storage::admission::fuzz_access::decode_accepted_artifact_envelope
+//   vb_storage::codec::fuzz_validation::reject_trailing_bytes
 
 #![no_main]
 
@@ -24,7 +24,7 @@ fuzz_target!(|data: &[u8]| {
     }
 
     // Split: first byte determines the split point
-    let split_pct = data[0] as usize;
+    let split_pct = usize::from(data[0]);
     let split = if data.len() > 1 {
         (split_pct % data.len()).max(1).min(data.len().saturating_sub(1))
     } else {
@@ -37,7 +37,7 @@ fuzz_target!(|data: &[u8]| {
     // Test reject_trailing_bytes with various boundary values
     for declared in [0, split, data.len(), data.len().saturating_sub(1)] {
         for actual in [0, split, data.len(), data.len().saturating_add(1)] {
-            let _ = vb_storage::codec::payload::reject_trailing_bytes(
+            let _ = vb_storage::codec::fuzz_validation::reject_trailing_bytes(
                 declared.min(usize::MAX / 2),
                 actual.min(usize::MAX / 2),
             );
@@ -45,5 +45,5 @@ fuzz_target!(|data: &[u8]| {
     }
 
     // Test the full decode path with likely-trailing data
-    let _ = vb_storage::admission::decode_accepted_artifact_envelope(data);
+    let _ = vb_storage::admission::fuzz_access::decode_accepted_artifact_envelope(data);
 });

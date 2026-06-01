@@ -15,7 +15,7 @@ pub(crate) mod header;
 pub(crate) mod payload;
 pub(crate) mod validation;
 
-#[cfg(fuzzing)]
+#[cfg(any(fuzzing, feature = "fuzz-access"))]
 pub mod fuzz_validation {
     //! Public fuzz-only accessors for codec validation invariants.
 
@@ -31,6 +31,13 @@ pub mod fuzz_validation {
 
     pub fn validate_kind_family(magic: u32, kind: u16) -> Result<(), JournalError> {
         super::validation::validate_kind_family(magic, kind)
+    }
+
+    pub fn reject_trailing_bytes(
+        declared_end: usize,
+        actual_len: usize,
+    ) -> Result<(), JournalError> {
+        super::payload::reject_trailing_bytes(declared_end, actual_len)
     }
 }
 

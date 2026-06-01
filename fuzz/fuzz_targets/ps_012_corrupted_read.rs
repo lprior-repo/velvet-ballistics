@@ -9,7 +9,7 @@
 // silently returns Ok). Coverage-guided fuzzing of all corruption patterns.
 //
 // PRODUCTION BINDING:
-//   vb_storage::admission::validate_compiled_ir_record
+//   vb_storage::admission::fuzz_access::validate_compiled_ir_record
 
 #![no_main]
 
@@ -21,7 +21,8 @@ fuzz_target!(|data: &[u8]| {
     }
 
     // Extract a 32-byte digest
-    let digest_bytes: [u8; 32] = data[..32].try_into().unwrap();
+    let mut digest_bytes = [0_u8; 32];
+    digest_bytes.copy_from_slice(&data[..32]);
     let digest = vb_core::WorkflowDigest::from_bytes(digest_bytes);
 
     // The rest of the data is the (potentially corrupted) envelope
@@ -30,7 +31,7 @@ fuzz_target!(|data: &[u8]| {
     let record = vb_storage::records::CompiledIrRecord { digest, ir };
 
     // Re-validation must never panic
-    let result = vb_storage::admission::validate_compiled_ir_record(&record);
+    let result = vb_storage::admission::fuzz_access::validate_compiled_ir_record(&record);
 
     // Verify the function handles the corrupted input
     // It may return Ok (if the data happens to be valid) or Err (correctly rejected)

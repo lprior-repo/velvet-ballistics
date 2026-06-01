@@ -153,7 +153,7 @@ impl fmt::Display for ArenaError {
     }
 }
 
-/// Slot-based arena allocator using Vec<Option<T>> storage.
+/// Slot-based arena allocator using `Vec<Option<T>>` storage.
 ///
 /// # Type Parameters
 /// - `T`: The type stored in each slot.

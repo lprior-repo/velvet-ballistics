@@ -2730,7 +2730,7 @@ pub fn fuzz_accepted_artifact_decode(data: &[u8]) {
         digest,
         ir: data.to_vec(),
     };
-    if vb_storage::put_compiled_ir(&journal, &record).is_err() {
+    if journal.put_compiled_ir(&record).is_err() {
         return;
     }
     let store = vb_runtime::admission::StorageArtifactStore::new(std::sync::Arc::new(journal));
