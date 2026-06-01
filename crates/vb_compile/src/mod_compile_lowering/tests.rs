@@ -1634,5 +1634,9 @@ fn canonical_body_step_width_accepts_for_each() {
     };
     let result = canonical_body_step_width(&foreach);
     assert!(result.is_ok(), "ForEach must be accepted in body steps");
-    assert_eq!(result.ok(), Some(3), "ForEach with single Set body has width 3");
+    assert_eq!(
+        result.ok(),
+        Some(3),
+        "ForEach with single Set body has width 3"
+    );
 }

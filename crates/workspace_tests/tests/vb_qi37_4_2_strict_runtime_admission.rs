@@ -873,12 +873,14 @@ fn given_raw_or_malformed_storage_bytes_when_strict_run_created_then_decode_fail
         let dir = tempfile::tempdir().map_err(|error| error.to_string())?;
         let journal =
             vb_storage::FjallJournal::open(dir.path(), None).map_err(|error| error.to_string())?;
-        journal
-            .put_compiled_ir(&vb_storage::CompiledIrRecord {
-                digest: requested,
-                ir: bytes,
-            })
-            .map_err(|error| error.to_string())?;
+        let write_result = journal.put_compiled_ir(&vb_storage::CompiledIrRecord {
+            digest: requested,
+            ir: bytes,
+        });
+        assert!(
+            write_result.is_err(),
+            "malformed storage byte case {label} must be rejected at write"
+        );
         let store = vb_runtime::admission::StorageArtifactStore::new(Arc::new(journal));
 
         let result = admit_artifact_run(
@@ -891,8 +893,8 @@ fn given_raw_or_malformed_storage_bytes_when_strict_run_created_then_decode_fail
 
         assert_eq!(
             observed(result),
-            ObservedAdmissionDiagnostic::DecodeFailed,
-            "malformed storage byte case {label} must deny as decode_failed"
+            ObservedAdmissionDiagnostic::NotFound { digest: requested },
+            "malformed storage byte case {label} must deny as absent after failed write"
         );
     }
     Ok(())

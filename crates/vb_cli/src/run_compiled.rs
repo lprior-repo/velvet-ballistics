@@ -1,22 +1,27 @@
 #![forbid(unsafe_code)]
 //! Run compiled workflow command.
 
-use std::process::ExitCode;
-use std::io::{self, Write};
-use std::sync::Arc;
-use std::num::NonZeroUsize;
-use std::time::{SystemTime, UNIX_EPOCH};
-use crate::args::{ActionRegistryMode, Command, DurabilityMode, OutputFormat, ParseError, StepTarget};
+use crate::args::{
+    ActionRegistryMode, Command, DurabilityMode, OutputFormat, ParseError, StepTarget,
+};
 use crate::exit_code::CliExitCode;
-use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, write_stderr_line, write_failure_message, write_contract_error_json};
-use crate::output_utils::*;
-use crate::file_io::{read_file, parse_run_id, read_journal_events, report_storage_open_error};
+use crate::file_io::{parse_run_id, read_file, read_journal_events, report_storage_open_error};
 use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+use crate::output::{
+    json_error, json_out, output_error_exit, write_contract_error_json, write_failure_message,
+    write_stderr_line, write_stdout_line,
+};
+use crate::output_utils::*;
 use crate::run::{
     INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,
-    INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE, run_compiled_workflow,
+    INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
 };
-use crate::run_compiled_runtime::map_runtime_inputs;
+use crate::run_compiled_runtime::{map_runtime_inputs, run_compiled_workflow};
+use std::io::{self, Write};
+use std::num::NonZeroUsize;
+use std::process::ExitCode;
+use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub(crate) fn cmd_run_compiled(
     vbir_path: &std::path::Path,
@@ -88,7 +93,7 @@ pub(crate) fn cmd_run_compiled(
         }
     };
 
-    run_compiled_workflow(&compiled, inputs, durability, db)
+    run_compiled_workflow(&compiled, inputs, durability, db, output)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -107,4 +112,3 @@ impl std::fmt::Display for InputMappingError {
         })
     }
 }
-

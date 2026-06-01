@@ -1,8 +1,8 @@
 //! Unit tests for [`IpcActionOutputPayload`].
 
-use vb_ipc::action_output::IpcActionOutputPayload;
 use vb_core::ids::SlotIdx;
 use vb_core::value::{SlotValue, Taint};
+use vb_ipc::action_output::IpcActionOutputPayload;
 
 fn sample_payload() -> IpcActionOutputPayload {
     IpcActionOutputPayload {

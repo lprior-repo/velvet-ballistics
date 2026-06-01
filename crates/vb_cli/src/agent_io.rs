@@ -1,15 +1,24 @@
 //! Agent context, status, and action registry commands.
-use std::process::ExitCode;
-use crate::args::{ActionRegistryMode, Command, OutputFormat, ParseError, StepTarget, VerifyProfile, StatusOptions, SystemStatusOptions};
-use crate::exit_code::CliExitCode;
+use crate::action_specs::{
+    registered_cli_actions, write_action_inspect, write_action_registry,
+    write_action_registry_uninitialized,
+};
+use crate::args::{
+    ActionRegistryMode, Command, OutputFormat, ParseError, StatusOptions, StepTarget,
+    SystemStatusOptions, VerifyProfile,
+};
+use crate::cli_envelope;
 use crate::constants::VERSION;
-use crate::action_specs::{registered_cli_actions, write_action_registry, write_action_registry_uninitialized, write_action_inspect};
-use crate::output::{json_error, json_out, output_error_exit, write_failure_message, write_stdout_line, write_json_pretty_stdout};
-use crate::output_utils::*;
+use crate::deliver_sink;
+use crate::exit_code::CliExitCode;
 use crate::file_io::read_file;
 use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
-use crate::cli_envelope;
-use crate::deliver_sink;
+use crate::output::{
+    json_error, json_out, output_error_exit, write_failure_message, write_json_pretty_stdout,
+    write_stdout_line,
+};
+use crate::output_utils::*;
+use std::process::ExitCode;
 use vb_runtime::action::ActionRegistry;
 
 pub(crate) fn cmd_agent_context(deliver: Option<&str>) -> ExitCode {

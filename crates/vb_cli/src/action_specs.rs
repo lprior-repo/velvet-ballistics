@@ -4,11 +4,6 @@ use crate::args::OutputFormat;
 use crate::exit_code::CliExitCode;
 use std::process::ExitCode;
 
-/// Construct an ActionName from a guaranteed-valid identifier.
-/// Returns None if validation fails (should never happen for well-formed input).
-fn known_valid_action_name(s: &str) -> Option<vb_core::action::ActionName> {
-    vb_core::action::ActionName::new(s).ok()
-}
 use crate::output::json_error;
 use vb_runtime::action::ActionRegistry;
 
@@ -81,7 +76,9 @@ pub(crate) fn action_table_rows(registry: &ActionRegistry) -> Vec<ActionTableRow
         .collect()
 }
 
-pub(crate) fn action_contract_detail(contract: &vb_core::action::ActionContract) -> ActionContractDetail {
+pub(crate) fn action_contract_detail(
+    contract: &vb_core::action::ActionContract,
+) -> ActionContractDetail {
     ActionContractDetail {
         id: contract.id.get(),
         name: contract.name.to_string(),
@@ -106,7 +103,9 @@ pub(crate) fn action_contract_detail(contract: &vb_core::action::ActionContract)
 }
 
 pub(crate) fn write_action_table_rows(rows: &[ActionTableRow]) {
-    crate::outln!("id\tidempotency\tretry_safety\tside_effect\tinput_slots\toutput_slots\ttimeout_ms");
+    crate::outln!(
+        "id\tidempotency\tretry_safety\tside_effect\tinput_slots\toutput_slots\ttimeout_ms"
+    );
     rows.iter().for_each(|row| {
         crate::outln!(
             "{}\t{}\t{}\t{}\t{}\t{}\t{}",
@@ -143,7 +142,7 @@ pub(crate) fn registered_cli_actions() -> vb_core::action::ActionResult<ActionRe
     cli_action_specs()
         .iter()
         .try_fold(ActionRegistry::new(), |mut registry, spec| {
-            registry.register(action_contract(*spec))?;
+            registry.register(action_contract(*spec)?)?;
             Ok(registry)
         })
 }
@@ -191,16 +190,18 @@ pub(crate) fn cli_action_specs() -> &'static [CliActionSpec] {
     ]
 }
 
-pub(crate) fn action_contract(spec: CliActionSpec) -> vb_core::action::ActionContract {
+pub(crate) fn action_contract(
+    spec: CliActionSpec,
+) -> vb_core::action::ActionResult<vb_core::action::ActionContract> {
     let name_str: &str = match spec.id {
         1 => "validate",
-        2 => "compile",
+        2 => "write",
         3 => "run",
         _ => "unknown",
     };
     let name = vb_core::action::ActionName::new(name_str)
-        .unwrap_or_else(|_| known_valid_action_name("unknown").unwrap_or_else(|| known_valid_action_name("default").unwrap()));
-    vb_core::action::ActionContract {
+        .map_err(|_error| vb_core::action::ActionError::DispatchFailed)?;
+    Ok(vb_core::action::ActionContract {
         id: vb_core::ActionId::new(spec.id),
         name,
         input_slot_count: spec.input_slot_count,
@@ -212,7 +213,7 @@ pub(crate) fn action_contract(spec: CliActionSpec) -> vb_core::action::ActionCon
         side_effect: spec.side_effect,
         retry_safety: spec.retry_safety,
         required_capabilities: Box::new([]),
-    }
+    })
 }
 
 pub(crate) fn action_idempotency_name(value: vb_core::action::Idempotency) -> &'static str {
@@ -310,7 +311,10 @@ pub(crate) fn write_action_registry_uninitialized(output: OutputFormat) {
     }
 }
 
-pub(crate) fn write_action_registry(registry: &ActionRegistry, output: OutputFormat) -> std::process::ExitCode {
+pub(crate) fn write_action_registry(
+    registry: &ActionRegistry,
+    output: OutputFormat,
+) -> std::process::ExitCode {
     let rows = action_table_rows(registry);
     if rows.is_empty() {
         return write_no_registered_actions(output);
@@ -374,7 +378,10 @@ pub(crate) fn write_action_inspect(
     }
 }
 
-fn write_action_contract_json(contract: &vb_core::action::ActionContract, output: OutputFormat) -> std::process::ExitCode {
+fn write_action_contract_json(
+    contract: &vb_core::action::ActionContract,
+    output: OutputFormat,
+) -> std::process::ExitCode {
     let detail = action_contract_detail(contract);
     if output == OutputFormat::Text {
         write_action_contract_text(&detail);

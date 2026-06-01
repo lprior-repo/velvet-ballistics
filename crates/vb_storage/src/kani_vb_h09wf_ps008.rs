@@ -19,7 +19,7 @@
 #![forbid(unsafe_code)]
 #![cfg(kani)]
 
-use crate::admission::{is_accepted_gate_count, missing_proof_flag, VerificationProof};
+use crate::admission::{VerificationProof, is_accepted_gate_count, missing_proof_flag};
 
 /// PS-008a: Exhaustively verify is_accepted_gate_count for all 256 u8 values.
 #[kani::proof]
@@ -67,14 +67,23 @@ fn ps_008_proof_flags_exhaustive() {
     let all_true = bounded && taint_safe && retry_safe && idempotency_verified && replayable;
 
     if all_true {
-        assert!(missing.is_none(), "all flags true: missing_proof_flag must return None");
+        assert!(
+            missing.is_none(),
+            "all flags true: missing_proof_flag must return None"
+        );
     } else {
-        assert!(missing.is_some(), "missing flag must be detected: {bounded} {taint_safe} {retry_safe} {idempotency_verified} {replayable}");
+        assert!(
+            missing.is_some(),
+            "missing flag must be detected: {bounded} {taint_safe} {retry_safe} {idempotency_verified} {replayable}"
+        );
         // Verify the returned flag name matches the first missing one
         let flag = missing.unwrap();
         match flag {
             "bounded" => assert!(!bounded, "bounded was false"),
-            "taint_safe" => assert!(!taint_safe && bounded, "taint_safe was false and bounded was true"),
+            "taint_safe" => assert!(
+                !taint_safe && bounded,
+                "taint_safe was false and bounded was true"
+            ),
             "retry_safe" => assert!(!retry_safe && bounded && taint_safe, "retry_safe was false"),
             "idempotency_verified" => {
                 assert!(!idempotency_verified && bounded && taint_safe && retry_safe);

@@ -5,14 +5,14 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use super::error::ParseError;
-use super::shared::{find_positional, named_flag, parse_output_format, positional_str,
-                    validate_known_flags};
+use super::shared::{
+    find_positional, named_flag, parse_output_format, positional_str, validate_known_flags,
+};
 use super::types::{Command, DurabilityMode, EmitTarget, OutputFormat, StepTarget, VerifyProfile};
 
 pub(super) fn parse_verify(args: &[OsString]) -> Result<Command, ParseError> {
     validate_known_flags(args, "verify")?;
-    let workflow =
-        find_positional(args, 2).ok_or(ParseError::MissingArgument("workflow.yaml"))?;
+    let workflow = find_positional(args, 2).ok_or(ParseError::MissingArgument("workflow.yaml"))?;
     let profile = match named_flag(args, "--profile") {
         Some(raw) => match raw.as_str() {
             "quick" => VerifyProfile::Quick,
@@ -32,24 +32,21 @@ pub(super) fn parse_verify(args: &[OsString]) -> Result<Command, ParseError> {
 
 pub(super) fn parse_validate(args: &[OsString]) -> Result<Command, ParseError> {
     validate_known_flags(args, "validate")?;
-    let workflow =
-        find_positional(args, 2).ok_or(ParseError::MissingArgument("workflow.yaml"))?;
+    let workflow = find_positional(args, 2).ok_or(ParseError::MissingArgument("workflow.yaml"))?;
     let output = parse_output_format(args);
     Ok(Command::Validate { workflow, output })
 }
 
 pub(super) fn parse_explain(args: &[OsString]) -> Result<Command, ParseError> {
     validate_known_flags(args, "explain")?;
-    let workflow =
-        find_positional(args, 2).ok_or(ParseError::MissingArgument("workflow.yaml"))?;
+    let workflow = find_positional(args, 2).ok_or(ParseError::MissingArgument("workflow.yaml"))?;
     let output = parse_output_format(args);
     Ok(Command::Explain { workflow, output })
 }
 
 pub(super) fn parse_compile(args: &[OsString]) -> Result<Command, ParseError> {
     validate_known_flags(args, "compile")?;
-    let workflow =
-        find_positional(args, 2).ok_or(ParseError::MissingArgument("workflow.yaml"))?;
+    let workflow = find_positional(args, 2).ok_or(ParseError::MissingArgument("workflow.yaml"))?;
     let emit_raw = named_flag(args, "--emit").ok_or(ParseError::MissingArgument("--emit"))?;
     let emit = match emit_raw.as_str() {
         "ir" => EmitTarget::Ir,
@@ -69,8 +66,7 @@ pub(super) fn parse_compile(args: &[OsString]) -> Result<Command, ParseError> {
 
 pub(super) fn parse_run(args: &[OsString]) -> Result<Command, ParseError> {
     validate_known_flags(args, "run")?;
-    let workflow =
-        find_positional(args, 2).ok_or(ParseError::MissingArgument("workflow.yaml"))?;
+    let workflow = find_positional(args, 2).ok_or(ParseError::MissingArgument("workflow.yaml"))?;
     let input_bin =
         named_flag(args, "--input-bin").ok_or(ParseError::MissingArgument("--input-bin"))?;
     let durability_raw =
@@ -107,8 +103,7 @@ fn parse_optional_step(args: &[OsString]) -> Result<Option<StepTarget>, ParseErr
 
 pub(super) fn parse_run_compiled(args: &[OsString]) -> Result<Command, ParseError> {
     validate_known_flags(args, "run-compiled")?;
-    let workflow = find_positional(args, 2)
-        .ok_or(ParseError::MissingArgument("workflow.vbir"))?;
+    let workflow = find_positional(args, 2).ok_or(ParseError::MissingArgument("workflow.vbir"))?;
     let input_bin =
         named_flag(args, "--input-bin").ok_or(ParseError::MissingArgument("--input-bin"))?;
     let durability_raw =
@@ -151,32 +146,28 @@ pub(super) fn parse_ipc_serve(args: &[OsString]) -> Result<Command, ParseError> 
 
 pub(super) fn parse_bench_run(args: &[OsString]) -> Result<Command, ParseError> {
     validate_known_flags(args, "bench-run")?;
-    let workflow = find_positional(args, 2)
-        .ok_or(ParseError::MissingArgument("workflow.yaml"))?;
+    let workflow = find_positional(args, 2).ok_or(ParseError::MissingArgument("workflow.yaml"))?;
     let output = parse_output_format(args);
     Ok(Command::BenchRun { workflow, output })
 }
 
 pub(super) fn parse_graph(args: &[OsString]) -> Result<Command, ParseError> {
     validate_known_flags(args, "graph")?;
-    let workflow =
-        find_positional(args, 2).ok_or(ParseError::MissingArgument("workflow.yaml"))?;
+    let workflow = find_positional(args, 2).ok_or(ParseError::MissingArgument("workflow.yaml"))?;
     let output = parse_output_format(args);
     Ok(Command::Graph { workflow, output })
 }
 
 pub(super) fn parse_simulate(args: &[OsString]) -> Result<Command, ParseError> {
     validate_known_flags(args, "simulate")?;
-    let workflow =
-        find_positional(args, 2).ok_or(ParseError::MissingArgument("workflow.yaml"))?;
+    let workflow = find_positional(args, 2).ok_or(ParseError::MissingArgument("workflow.yaml"))?;
     let output = parse_output_format(args);
     Ok(Command::Simulate { workflow, output })
 }
 
 pub(super) fn parse_submit(args: &[OsString]) -> Result<Command, ParseError> {
     validate_known_flags(args, "submit")?;
-    let workflow =
-        find_positional(args, 2).ok_or(ParseError::MissingArgument("workflow.yaml"))?;
+    let workflow = find_positional(args, 2).ok_or(ParseError::MissingArgument("workflow.yaml"))?;
     let input_bin =
         named_flag(args, "--input-bin").ok_or(ParseError::MissingArgument("--input-bin"))?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;

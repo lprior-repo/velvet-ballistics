@@ -1,16 +1,21 @@
 #![forbid(unsafe_code)]
 //! IPC server command.
 
-use std::process::ExitCode;
+use crate::args::{
+    ActionRegistryMode, Command, DurabilityMode, OutputFormat, ParseError, StepTarget,
+};
+use crate::exit_code::CliExitCode;
+use crate::file_io::{parse_run_id, read_file, read_journal_events, report_storage_open_error};
+use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+use crate::output::{
+    json_error, json_out, output_error_exit, write_failure_message, write_stderr_line,
+    write_stdout_line,
+};
+use crate::output_utils::*;
 use std::io::{self, Write};
 use std::num::NonZeroUsize;
+use std::process::ExitCode;
 use std::sync::Arc;
-use crate::args::{ActionRegistryMode, Command, DurabilityMode, OutputFormat, ParseError, StepTarget};
-use crate::exit_code::CliExitCode;
-use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, write_stderr_line, write_failure_message};
-use crate::output_utils::*;
-use crate::file_io::{read_file, parse_run_id, read_journal_events, report_storage_open_error};
-use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
 
 pub(crate) fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> ExitCode {
     // Open the storage journal to validate the path
@@ -115,4 +120,3 @@ impl vb_ipc::server::WorkflowResolver for StorageWorkflowResolver {
             .map_err(|_| vb_ipc::server::WorkflowResolutionError::InvalidArtifact)
     }
 }
-

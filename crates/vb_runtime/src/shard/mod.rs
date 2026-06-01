@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Single-threaded shard owning mutable run state directly.
 
+pub mod arena;
 pub mod completion_watermark;
 pub mod directive;
 pub mod helpers;
@@ -9,7 +10,6 @@ pub mod lifecycle;
 pub mod tests;
 pub mod timer_wheel;
 pub mod transitions;
-pub mod arena;
 pub mod types;
 
 pub use completion_watermark::{CompletionDrain, CompletionWatermark, CompletionWatermarkError};

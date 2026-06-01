@@ -69,7 +69,10 @@ fn ps_012_corrupted_envelope_rejected() {
 
     // With corrupted data, the function should return an error
     // (unless the corruption happened to produce valid data by coincidence)
-    kani::cover!(result.is_ok(), "corruption coincidentally produced valid data");
+    kani::cover!(
+        result.is_ok(),
+        "corruption coincidentally produced valid data"
+    );
     kani::cover!(result.is_err(), "corrupted data correctly rejected");
 
     // Verify specific error types from corruption detection
@@ -101,5 +104,8 @@ fn ps_012_oversized_after_corruption_rejected() {
     let result = validate_compiled_ir_record(&record);
 
     // Must fail — size gate catches oversized stored data
-    assert!(result.is_err(), "oversized stored data must be rejected on read");
+    assert!(
+        result.is_err(),
+        "oversized stored data must be rejected on read"
+    );
 }

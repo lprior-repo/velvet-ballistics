@@ -14,11 +14,9 @@
 use vb_core::capability::CapabilitySet;
 use vb_core::ids::{ActionId, RunId, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
-use vb_runtime::admission::{
-    AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError,
-};
-use vb_storage::admission::{AcceptedArtifact, VerificationProof};
+use vb_runtime::admission::{AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError};
 use vb_storage::EventSeq;
+use vb_storage::admission::{AcceptedArtifact, VerificationProof};
 
 /// Helper: build a minimal valid VerificationProof with all flags true and 15 gates.
 fn valid_verification_proof(digest: WorkflowDigest) -> VerificationProof {
@@ -119,7 +117,10 @@ fn admit_run_accepts_valid_artifact_without_certificate_floor() {
         CapabilitySet::empty(),
     );
 
-    assert!(result.is_ok(), "Valid artifact should be admitted via admit_artifact_run");
+    assert!(
+        result.is_ok(),
+        "Valid artifact should be admitted via admit_artifact_run"
+    );
 }
 
 /// Missing artifact: store returns NotFound.
@@ -139,10 +140,7 @@ fn admit_rejects_when_artifact_not_found() {
         EventSeq::ZERO,
     );
 
-    assert!(
-        result.is_err(),
-        "Missing artifact should be rejected"
-    );
+    assert!(result.is_err(), "Missing artifact should be rejected");
     let err = result.unwrap_err();
     match err {
         AdmissionError::ArtifactNotFound { digest: found } => {
@@ -182,7 +180,10 @@ fn admit_rejects_artifact_with_wrong_gate_count() {
         EventSeq::ZERO,
     );
 
-    assert!(result.is_err(), "Artifact with wrong gate count should be rejected");
+    assert!(
+        result.is_err(),
+        "Artifact with wrong gate count should be rejected"
+    );
     let err = result.unwrap_err();
     match &err {
         AdmissionError::ArtifactInvalidGateCount { found, required } => {
@@ -191,8 +192,7 @@ fn admit_rejects_artifact_with_wrong_gate_count() {
         }
         other => panic!("Expected ArtifactInvalidGateCount, got {:?}", other),
     }
-
- }
+}
 
 /// Missing proof flag (bounded_claimed = false) causes admission rejection.
 #[test]
@@ -222,7 +222,10 @@ fn admit_rejects_artifact_with_missing_bounded_flag() {
         CapabilitySet::empty(),
         EventSeq::ZERO,
     );
-    assert!(result.is_err(), "Missing bounded flag should cause rejection");
+    assert!(
+        result.is_err(),
+        "Missing bounded flag should cause rejection"
+    );
 }
 
 /// Missing proof flag (taint_safe_claimed = false) causes admission rejection.
@@ -253,7 +256,10 @@ fn admit_rejects_artifact_with_missing_taint_safe_flag() {
         CapabilitySet::empty(),
         EventSeq::ZERO,
     );
-    assert!(result.is_err(), "Missing taint_safe flag should cause rejection");
+    assert!(
+        result.is_err(),
+        "Missing taint_safe flag should cause rejection"
+    );
 }
 
 /// Missing proof flag (retry_safe_claimed = false) causes admission rejection.
@@ -284,7 +290,10 @@ fn admit_rejects_artifact_with_missing_retry_safe_flag() {
         CapabilitySet::empty(),
         EventSeq::ZERO,
     );
-    assert!(result.is_err(), "Missing retry_safe flag should cause rejection");
+    assert!(
+        result.is_err(),
+        "Missing retry_safe flag should cause rejection"
+    );
 }
 
 /// Missing proof flag (durable = false) causes admission rejection.
@@ -315,7 +324,10 @@ fn admit_rejects_artifact_with_missing_durable_flag() {
         CapabilitySet::empty(),
         EventSeq::ZERO,
     );
-    assert!(result.is_err(), "Missing durable flag should cause rejection");
+    assert!(
+        result.is_err(),
+        "Missing durable flag should cause rejection"
+    );
 }
 
 /// Missing proof flag (idempotency_verified_claimed = false) causes admission rejection.
@@ -346,7 +358,10 @@ fn admit_rejects_artifact_with_missing_idempotency_verified_flag() {
         CapabilitySet::empty(),
         EventSeq::ZERO,
     );
-    assert!(result.is_err(), "Missing idempotency_verified flag should cause rejection");
+    assert!(
+        result.is_err(),
+        "Missing idempotency_verified flag should cause rejection"
+    );
 }
 
 /// Missing proof flag (replayable_claimed = false) causes admission rejection.
@@ -377,7 +392,10 @@ fn admit_rejects_artifact_with_missing_replayable_flag() {
         CapabilitySet::empty(),
         EventSeq::ZERO,
     );
-    assert!(result.is_err(), "Missing replayable flag should cause rejection");
+    assert!(
+        result.is_err(),
+        "Missing replayable flag should cause rejection"
+    );
 }
 
 /// Digest mismatch: verification.digest != artifact.digest.
@@ -411,10 +429,7 @@ fn admit_rejects_artifact_with_digest_mismatch() {
         EventSeq::ZERO,
     );
 
-    assert!(
-        result.is_err(),
-        "Digest mismatch should be rejected"
-    );
+    assert!(result.is_err(), "Digest mismatch should be rejected");
     match result.unwrap_err() {
         AdmissionError::ArtifactDigestMismatch {
             requested,
@@ -443,7 +458,6 @@ fn admit_run_accepts_under_relaxed_policy_without_artifact() {
         WorkflowDigest::from_bytes([0u8; 32]),
         run_id,
         caps,
-        
     );
 
     assert!(result.is_ok(), "Relaxed policy should always admit");
@@ -462,10 +476,12 @@ fn admit_rejects_missing_artifact_under_strict_policy() {
         WorkflowDigest::from_bytes([11u8; 32]),
         run_id,
         CapabilitySet::empty(),
-        
     );
 
-    assert!(result.is_err(), "Strict policy should reject missing artifact");
+    assert!(
+        result.is_err(),
+        "Strict policy should reject missing artifact"
+    );
     match result.unwrap_err() {
         AdmissionError::ArtifactNotFound { .. } => {}
         other => panic!("Expected ArtifactNotFound, got {:?}", other),
@@ -534,7 +550,10 @@ fn admit_result_is_always_admitted_or_rejected() {
         CapabilitySet::empty(),
         EventSeq::ZERO,
     );
-    assert!(valid_result.is_ok(), "Valid artifact must be admitted (not rejected)");
+    assert!(
+        valid_result.is_ok(),
+        "Valid artifact must be admitted (not rejected)"
+    );
 
     // Missing artifact → rejected
     let missing_store = TestStore::new(None);
@@ -546,13 +565,14 @@ fn admit_result_is_always_admitted_or_rejected() {
         CapabilitySet::empty(),
         EventSeq::ZERO,
     );
-    assert!(missing_result.is_err(), "Missing artifact must be rejected (not admitted)");
+    assert!(
+        missing_result.is_err(),
+        "Missing artifact must be rejected (not admitted)"
+    );
 
     // Every artifact is either admitted OR rejected, never neither.
     // This is the spec's outcome_admitted(case) || outcome_rejects(case) invariant.
 }
-
-
 
 /// Rejection before ack and run state insertion: rejected artifacts must not
 /// produce a RunAdmission record.
@@ -584,16 +604,27 @@ fn only_valid_artifact_case_admits() {
 
     // Create artifacts with each failure mode
     let test_cases = vec![
-        ("missing_flag", VerificationProof {
-            bounded_claimed: false, ..valid_verification_proof(digest)
-        }),
-        ("wrong_gate", VerificationProof {
-            gate_count: 14, ..valid_verification_proof(digest)
-        }),
-        ("digest_mismatch", VerificationProof {
-            digest: WorkflowDigest::from_bytes([99u8; 32]),
-            ..valid_verification_proof(digest)
-        }),
+        (
+            "missing_flag",
+            VerificationProof {
+                bounded_claimed: false,
+                ..valid_verification_proof(digest)
+            },
+        ),
+        (
+            "wrong_gate",
+            VerificationProof {
+                gate_count: 14,
+                ..valid_verification_proof(digest)
+            },
+        ),
+        (
+            "digest_mismatch",
+            VerificationProof {
+                digest: WorkflowDigest::from_bytes([99u8; 32]),
+                ..valid_verification_proof(digest)
+            },
+        ),
     ];
 
     for (name, verification) in test_cases {

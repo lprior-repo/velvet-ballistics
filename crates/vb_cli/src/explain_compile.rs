@@ -1,14 +1,17 @@
 #![forbid(unsafe_code)]
 //! Explain workflow compilation errors.
 
-use std::process::ExitCode;
 use crate::args::{OutputFormat, ParseError};
 use crate::exit_code::CliExitCode;
-use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, write_stderr_line, write_failure_message};
-use crate::output_utils::*;
-use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
 use crate::explain_repair::explain_repair_hint;
 use crate::explain_validation::explain_validation_error;
+use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+use crate::output::{
+    json_error, json_out, output_error_exit, write_failure_message, write_stderr_line,
+    write_stdout_line,
+};
+use crate::output_utils::*;
+use std::process::ExitCode;
 
 /// Explain workflow compilation errors related to step validation.
 pub(crate) fn explain_step_errors(err: &vb_compile::CompileError) {

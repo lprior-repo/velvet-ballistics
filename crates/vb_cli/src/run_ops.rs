@@ -1,20 +1,25 @@
 #![forbid(unsafe_code)]
 //! Run operations: retry, resume, answer, cancel.
 
-use std::process::ExitCode;
+use crate::args::{
+    ActionRegistryMode, Command, DurabilityMode, OutputFormat, ParseError, StepTarget,
+};
+use crate::commands_journal;
+use crate::exit_code::CliExitCode;
+use crate::file_io::{parse_run_id, read_file, read_journal_events, report_storage_open_error};
+use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+use crate::output::{
+    json_error, json_out, output_error_exit, write_contract_error_json, write_failure_message,
+    write_stderr_line, write_stdout_line,
+};
+use crate::output_utils::*;
 use std::io::{self, Write};
 use std::num::NonZeroUsize;
+use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use crate::args::{ActionRegistryMode, Command, DurabilityMode, OutputFormat, ParseError, StepTarget};
-use crate::exit_code::CliExitCode;
-use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, write_stderr_line, write_failure_message, write_contract_error_json};
-use crate::output_utils::*;
-use crate::file_io::{read_file, parse_run_id, read_journal_events, report_storage_open_error};
-use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
 use vb_ipc::client::IpcClient;
 use vb_ipc::{IpcCommand, IpcPayload};
-use crate::commands_journal;
 
 pub(crate) fn cmd_retry(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let events = match read_journal_events(run_id, db, output) {
@@ -62,17 +67,20 @@ pub(crate) fn cmd_retry(run_id: &str, db: &std::path::Path, output: OutputFormat
             (Some(fail), None) => {
                 crate::outln!("Run {run_id} failed at step {fail}. No successful steps recorded.")
             }
-            (None, Some(last)) => crate::outln!("Run {run_id} failed. Last successful: step {last}."),
+            (None, Some(last)) => {
+                crate::outln!("Run {run_id} failed. Last successful: step {last}.")
+            }
             (None, None) => crate::outln!("Run {run_id} failed. No step progress recorded."),
         }
         match resume_step {
-            Some(step) => crate::outln!("Retry would resume from step {step} with recovered state."),
+            Some(step) => {
+                crate::outln!("Retry would resume from step {step} with recovered state.")
+            }
             None => crate::outln!("Retry would resume from the beginning."),
         }
     }
     ExitCode::SUCCESS
 }
-
 
 pub(crate) fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let events = match read_journal_events(run_id, db, output) {
@@ -123,7 +131,6 @@ pub(crate) fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputForma
     }
     ExitCode::SUCCESS
 }
-
 
 pub(crate) fn cmd_answer(
     run_id: &str,
@@ -300,7 +307,6 @@ pub(crate) fn cmd_answer(
     }
 }
 
-
 pub(crate) fn run_is_terminal(events: &[vb_storage::JournalEvent]) -> bool {
     events.iter().any(|e| {
         matches!(
@@ -311,7 +317,6 @@ pub(crate) fn run_is_terminal(events: &[vb_storage::JournalEvent]) -> bool {
         )
     })
 }
-
 
 pub(crate) fn format_cancel_output(
     run_id: &str,
@@ -341,7 +346,6 @@ pub(crate) fn format_cancel_output(
     }
 }
 
-
 pub(crate) fn write_cancel_event(
     journal: &vb_storage::FjallJournal,
     rid: vb_core::RunId,
@@ -360,7 +364,6 @@ pub(crate) fn write_cancel_event(
     };
     journal.append_journaled(&event)
 }
-
 
 pub(crate) fn cmd_cancel(
     run_id: &str,
@@ -431,4 +434,3 @@ pub(crate) fn cmd_cancel(
 
     format_cancel_output(run_id, reason.as_deref(), "cancelled", output)
 }
-

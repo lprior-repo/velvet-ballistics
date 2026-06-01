@@ -63,9 +63,7 @@ fn make_do_step(action: &str, input_val: &str) -> StepAst {
 fn any_body_set_steps() -> Vec<StepAst> {
     let count: u8 = kani::any();
     let count = 1u8.saturating_add(count % 10); // 1..10
-    (0..count)
-        .map(|i| make_set_step(i as i64))
-        .collect()
+    (0..count).map(|i| make_set_step(i as i64)).collect()
 }
 
 /// Build a ForEach primitive with a body of arbitrary Set steps.
@@ -191,9 +189,7 @@ fn check_foreach_width_parity() {
     // Generate a ForEach primitive with a body of 1..5 Set steps
     let body_count: u8 = kani::any();
     let body_count = 1u8.saturating_add(body_count % 5);
-    let body: Vec<StepAst> = (0..body_count)
-        .map(|i| make_set_step(i as i64))
-        .collect();
+    let body: Vec<StepAst> = (0..body_count).map(|i| make_set_step(i as i64)).collect();
 
     let foreach_primitive = StepPrimitive::ForEach {
         variable: "x".to_string(),

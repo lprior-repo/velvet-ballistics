@@ -1,12 +1,15 @@
 #![forbid(unsafe_code)]
 //! Repair hints and verification failure formatting.
 
-use std::process::ExitCode;
 use crate::args::{OutputFormat, ParseError};
 use crate::exit_code::CliExitCode;
-use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, write_stderr_line, write_failure_message};
-use crate::output_utils::*;
 use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+use crate::output::{
+    json_error, json_out, output_error_exit, write_failure_message, write_stderr_line,
+    write_stdout_line,
+};
+use crate::output_utils::*;
+use std::process::ExitCode;
 
 pub(crate) fn explain_compile_repair_hint(err: &vb_compile::CompileError) {
     use vb_compile::CompileError;
@@ -267,4 +270,3 @@ pub(crate) fn explain_repair_hint(context: &str, hints: &[&str]) {
 pub(crate) fn explain_gate_pass(gate: &str) {
     crate::outln!("  ✓ {gate}");
 }
-

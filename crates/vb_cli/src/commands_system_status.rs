@@ -102,7 +102,10 @@ fn print_json(
     version: &str,
 ) -> Result<(), crate::OutputError> {
     let payload = system_status_payload(options, version);
-    let envelope = crate::cli_envelope::serialize_with_version(&payload, crate::cli_envelope::Kind::SystemStatus);
+    let envelope = crate::cli_envelope::serialize_with_version(
+        &payload,
+        crate::cli_envelope::Kind::SystemStatus,
+    );
     crate::json_out(&envelope, output)
 }
 

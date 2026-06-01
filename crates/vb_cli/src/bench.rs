@@ -46,7 +46,9 @@ pub(crate) fn cmd_bench_run(workflow: &Path) -> ExitCode {
     crate::outln!("execute: {}us", run_elapsed.as_micros());
     crate::outln!(
         "total:   {}us",
-        compile_elapsed.as_micros().saturating_add(run_elapsed.as_micros())
+        compile_elapsed
+            .as_micros()
+            .saturating_add(run_elapsed.as_micros())
     );
     crate::outln!(
         "runtime: submitted={} completed={} failed={} steps={}",

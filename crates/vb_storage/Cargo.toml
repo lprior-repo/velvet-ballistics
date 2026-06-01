@@ -28,6 +28,7 @@ kani-storage-trailing-bytes = []
 kani-vb-u8gi-decode-taxonomy = []
 kani-vb-vzcuf = []
 kani-vb-h09wf = []
+kani-vb-fn4vt = []
 
 [lints]
 workspace = true

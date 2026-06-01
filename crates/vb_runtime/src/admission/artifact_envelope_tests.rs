@@ -3,15 +3,15 @@
 
 #[cfg(test)]
 mod artifact_envelope_bdd_tests {
+    use crate::admission::{
+        AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, ArtifactStore,
+        REQUIRED_GATE_COUNT, admit_artifact_run, admit_run_with_budget,
+        validate_accepted_artifact_envelope,
+    };
     use vb_core::budget::{AggregateResourceBudget, AggregateResourceCapacity};
     use vb_core::capability::CapabilitySet;
     use vb_core::ids::{ActionId, RunId, WorkflowDigest};
     use vb_core::policy::RuntimePolicy;
-    use crate::admission::{
-        admit_artifact_run, admit_run_with_budget, validate_accepted_artifact_envelope,
-        AcceptedArtifactStore, AdmissionError,
-        ArtifactEnvelopeError, ArtifactStore, REQUIRED_GATE_COUNT,
-    };
     use vb_storage::admission::{AcceptedArtifact, VerificationProof};
     use vb_storage::types::EventSeq;
 
@@ -285,7 +285,10 @@ mod artifact_envelope_bdd_tests {
         let result = store.load_accepted_artifact(digest);
 
         assert!(
-            matches!(result, Err(ArtifactEnvelopeError::MissingRequiredProofFlagBounded)),
+            matches!(
+                result,
+                Err(ArtifactEnvelopeError::MissingRequiredProofFlagBounded)
+            ),
             "expected MissingRequiredProofFlagBounded, got {:?}",
             result
         );
@@ -302,7 +305,10 @@ mod artifact_envelope_bdd_tests {
         let result = store.load_accepted_artifact(digest);
 
         assert!(
-            matches!(result, Err(ArtifactEnvelopeError::MissingRequiredProofFlagTaintSafe)),
+            matches!(
+                result,
+                Err(ArtifactEnvelopeError::MissingRequiredProofFlagTaintSafe)
+            ),
             "expected MissingRequiredProofFlagTaintSafe, got {:?}",
             result
         );
@@ -319,7 +325,10 @@ mod artifact_envelope_bdd_tests {
         let result = store.load_accepted_artifact(digest);
 
         assert!(
-            matches!(result, Err(ArtifactEnvelopeError::MissingRequiredProofFlagRetrySafe)),
+            matches!(
+                result,
+                Err(ArtifactEnvelopeError::MissingRequiredProofFlagRetrySafe)
+            ),
             "expected MissingRequiredProofFlagRetrySafe, got {:?}",
             result
         );
@@ -336,7 +345,10 @@ mod artifact_envelope_bdd_tests {
         let result = store.load_accepted_artifact(digest);
 
         assert!(
-            matches!(result, Err(ArtifactEnvelopeError::MissingRequiredProofFlagDurable)),
+            matches!(
+                result,
+                Err(ArtifactEnvelopeError::MissingRequiredProofFlagDurable)
+            ),
             "expected MissingRequiredProofFlagDurable, got {:?}",
             result
         );
@@ -353,7 +365,10 @@ mod artifact_envelope_bdd_tests {
         let result = store.load_accepted_artifact(digest);
 
         assert!(
-            matches!(result, Err(ArtifactEnvelopeError::MissingRequiredProofFlagReplayable)),
+            matches!(
+                result,
+                Err(ArtifactEnvelopeError::MissingRequiredProofFlagReplayable)
+            ),
             "expected MissingRequiredProofFlagReplayable, got {:?}",
             result
         );
@@ -370,7 +385,10 @@ mod artifact_envelope_bdd_tests {
         let result = store.load_accepted_artifact(digest);
 
         assert!(
-            matches!(result, Err(ArtifactEnvelopeError::MissingRequiredProofFlagIdempotencyVerified)),
+            matches!(
+                result,
+                Err(ArtifactEnvelopeError::MissingRequiredProofFlagIdempotencyVerified)
+            ),
             "expected MissingRequiredProofFlagIdempotencyVerified, got {:?}",
             result
         );
@@ -495,10 +513,7 @@ mod artifact_envelope_bdd_tests {
     fn load_accepted_artifact_returns_missing_idempotency_attestation_when_keyed_not_attested() {
         let action = ActionId::new(99);
         // keyed = [action], attested = []  => action is keyed but NOT attested
-        let store = MissingAttestationStore::new(
-            Box::new([action]),
-            Box::new([]),
-        );
+        let store = MissingAttestationStore::new(Box::new([action]), Box::new([]));
         let digest = WorkflowDigest::from_bytes([0xDD_u8; 32]);
 
         let result = store.load_accepted_artifact(digest);

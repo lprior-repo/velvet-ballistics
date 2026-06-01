@@ -64,6 +64,14 @@ fn set_const_finish_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow>
     CompiledWorkflow::try_from_parts(parts).ok()
 }
 
+fn normalize_workflow_for_admission(workflow: &CompiledWorkflow) -> Option<CompiledWorkflow> {
+    let mut parts = workflow.to_parts();
+    parts.digest = WorkflowDigest::from_bytes([0u8; 32]);
+    let ir = postcard::to_allocvec(&parts).ok()?;
+    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
+    CompiledWorkflow::try_from_parts(parts).ok()
+}
+
 /// Creates a workflow with a Do node requiring action 7.
 fn do_action_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> {
     let node0 = CompiledNode {
@@ -267,11 +275,15 @@ fn storage_failure_before_header_prevents_ack() {
 
 #[test]
 fn restart_lookup_finds_persisted_header() {
-    let digest = WorkflowDigest::from_bytes([0x42u8; 32]);
-    let Some(workflow) = set_const_finish_workflow(digest) else {
+    let Some(raw_workflow) = set_const_finish_workflow(WorkflowDigest::from_bytes([0x42u8; 32]))
+    else {
         fail_assert!("workflow construction failed");
         return;
     };
+    let Some(workflow) = normalize_workflow_for_admission(&raw_workflow) else {
+        panic!("workflow normalization failed");
+    };
+    let digest = workflow.digest();
     let Some((_dir, journal)) = temp_journal() else {
         fail_assert!("temp journal open failed");
         return;
@@ -498,11 +510,15 @@ fn submit_with_tainted_input_propagates_taint_through_runtime() {
 
 #[test]
 fn journal_persistence_survives_runtime_drop_and_reopen() {
-    let digest = WorkflowDigest::from_bytes([0x47u8; 32]);
-    let Some(workflow) = set_const_finish_workflow(digest) else {
+    let Some(raw_workflow) = set_const_finish_workflow(WorkflowDigest::from_bytes([0x47u8; 32]))
+    else {
         fail_assert!("workflow construction failed");
         return;
     };
+    let Some(workflow) = normalize_workflow_for_admission(&raw_workflow) else {
+        panic!("workflow normalization failed");
+    };
+    let digest = workflow.digest();
     let Some((dir, journal)) = temp_journal() else {
         fail_assert!("temp journal open failed");
         return;

@@ -42,10 +42,7 @@ fn ps_003_size_bound() {
         // Oversized lengths rejected
         match result {
             Err(JournalError::PayloadTooLarge { len: reported, max }) => {
-                assert_eq!(
-                    reported, len as u32,
-                    "PayloadTooLarge.len must match input"
-                );
+                assert_eq!(reported, len as u32, "PayloadTooLarge.len must match input");
                 assert_eq!(
                     max, MAX_COMPILED_IR_BYTES,
                     "PayloadTooLarge.max must be MAX_COMPILED_IR_BYTES"
@@ -58,7 +55,7 @@ fn ps_003_size_bound() {
                 // Not acceptable — oversized must be rejected
                 kani::assert(
                     false,
-                    "Oversized payload len={len} must be rejected by size gate"
+                    "Oversized payload len={len} must be rejected by size gate",
                 );
             }
             Err(_) => {

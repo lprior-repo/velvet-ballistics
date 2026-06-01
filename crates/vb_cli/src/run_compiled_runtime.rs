@@ -1,18 +1,23 @@
 #![forbid(unsafe_code)]
 //! Runtime execution helpers for compiled workflows.
 
-use std::process::ExitCode;
-use std::io::{self, Write};
-use std::sync::Arc;
-use std::num::NonZeroUsize;
-use std::time::{SystemTime, UNIX_EPOCH, Instant};
-use crate::args::{ActionRegistryMode, Command, DurabilityMode, OutputFormat, ParseError, StepTarget};
+use crate::args::{
+    ActionRegistryMode, Command, DurabilityMode, OutputFormat, ParseError, StepTarget,
+};
 use crate::exit_code::CliExitCode;
-use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, write_stderr_line, write_failure_message, write_contract_error_json};
-use crate::output_utils::*;
-use crate::file_io::{read_file, parse_run_id, read_journal_events, report_storage_open_error};
+use crate::file_io::{parse_run_id, read_file, read_journal_events, report_storage_open_error};
 use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+use crate::output::{
+    json_error, json_out, output_error_exit, write_contract_error_json, write_failure_message,
+    write_stderr_line, write_stdout_line,
+};
+use crate::output_utils::*;
 use crate::run_compiled::InputMappingError;
+use std::io::{self, Write};
+use std::num::NonZeroUsize;
+use std::process::ExitCode;
+use std::sync::Arc;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 pub(crate) fn map_runtime_inputs(
     compiled: &vb_core::CompiledWorkflow,
@@ -38,7 +43,6 @@ pub(crate) fn map_runtime_inputs(
         .map(Vec::into_boxed_slice)
 }
 
-
 pub(crate) fn runtime_journal_for_mode(
     durability: DurabilityMode,
     db: Option<&std::path::Path>,
@@ -51,15 +55,15 @@ pub(crate) fn runtime_journal_for_mode(
     }
 }
 
-
-pub(crate) fn runtime_config_for_durability(durability: DurabilityMode) -> vb_runtime::shard::ShardConfig {
+pub(crate) fn runtime_config_for_durability(
+    durability: DurabilityMode,
+) -> vb_runtime::shard::ShardConfig {
     let mut config = vb_runtime::shard::ShardConfig::default();
     if durability == DurabilityMode::None {
         config.policy = vb_core::policy::RuntimePolicy::Relaxed;
     }
     config
 }
-
 
 pub(crate) fn open_storage_runtime_journal(
     db: Option<&std::path::Path>,
@@ -91,7 +95,6 @@ pub(crate) fn open_storage_runtime_journal(
     Ok(vb_runtime::journal::StorageRuntimeJournal::shared_journaled(journal))
 }
 
-
 pub(crate) fn run_compiled_workflow(
     compiled: &vb_core::CompiledWorkflow,
     inputs: Box<[(vb_core::SlotIdx, vb_core::SlotValue)]>,
@@ -99,6 +102,10 @@ pub(crate) fn run_compiled_workflow(
     db: Option<&std::path::Path>,
     output: OutputFormat,
 ) -> ExitCode {
+    let admitted_workflow = match workflow_for_durable_admission(compiled, durability, output) {
+        Ok(workflow) => workflow,
+        Err(code) => return code,
+    };
     let run_id = vb_core::RunId::new(1);
     let Some(shard_count) = NonZeroUsize::new(1) else {
         report_runtime_error(
@@ -110,7 +117,7 @@ pub(crate) fn run_compiled_workflow(
     let config = runtime_config_for_durability(durability);
     if durability != DurabilityMode::None
         && let Some(db_path) = db
-        && let Err(code) = store_compiled_artifact(compiled, db_path, output)
+        && let Err(code) = store_compiled_artifact(&admitted_workflow, db_path, durability, output)
     {
         return code;
     }
@@ -120,7 +127,7 @@ pub(crate) fn run_compiled_workflow(
     };
     let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(shard_count, config, journal);
 
-    if let Err(e) = runtime.submit_compiled_with_inputs(run_id, compiled.clone(), inputs) {
+    if let Err(e) = runtime.submit_compiled_with_inputs(run_id, admitted_workflow, inputs) {
         report_runtime_error(format_args!("runtime submit error: {e}"), output);
         return CliExitCode::RuntimeFailed.into();
     }
@@ -183,20 +190,36 @@ pub(crate) fn run_compiled_workflow(
     ExitCode::SUCCESS
 }
 
+fn workflow_for_durable_admission(
+    compiled: &vb_core::CompiledWorkflow,
+    durability: DurabilityMode,
+    output: OutputFormat,
+) -> Result<vb_core::CompiledWorkflow, ExitCode> {
+    if durability == DurabilityMode::None {
+        return Ok(compiled.clone());
+    }
+    let mut parts = compiled.to_parts();
+    parts.digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
+    let ir_bytes = postcard::to_allocvec(&parts).map_err(|error| {
+        report_runtime_error(format_args!("compiled IR encode error: {error}"), output);
+        ExitCode::from(CliExitCode::CompileFailed)
+    })?;
+    parts.digest = vb_core::WorkflowDigest::from_bytes(blake3::hash(&ir_bytes).into());
+    vb_core::CompiledWorkflow::try_from_parts(parts).map_err(|error| {
+        report_runtime_error(
+            format_args!("compiled IR validation error after digest normalization: {error}"),
+            output,
+        );
+        CliExitCode::CompileFailed.into()
+    })
+}
 
 pub(crate) fn store_compiled_artifact(
     compiled: &vb_core::CompiledWorkflow,
     db: &std::path::Path,
+    durability: DurabilityMode,
     output: OutputFormat,
 ) -> Result<(), ExitCode> {
-    let parts = compiled.to_parts();
-    let ir_bytes = match postcard::to_allocvec(&parts) {
-        Ok(ir) => ir,
-        Err(e) => {
-            report_compiled_ir_store_error(format_args!("compiled IR encode error: {e}"), output);
-            return Err(CliExitCode::StorageError.into());
-        }
-    };
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(journal) => journal,
         Err(e) => {
@@ -207,43 +230,18 @@ pub(crate) fn store_compiled_artifact(
             return Err(CliExitCode::StorageError.into());
         }
     };
-    let policy_digest = match vb_storage::admission::compute_policy_digest(compiled) {
-        Ok(digest) => digest,
-        Err(e) => {
-            report_compiled_ir_store_error(format_args!("policy digest encode error: {e}"), output);
-            return Err(CliExitCode::StorageError.into());
+    let policy = match durability {
+        DurabilityMode::Strict | DurabilityMode::Journaled => {
+            vb_core::policy::RuntimePolicy::Strict
         }
+        DurabilityMode::None => vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let artifact = vb_storage::admission::AcceptedArtifact {
-        digest: compiled.digest(),
-        source_digest: compiled.digest(),
-        policy_digest,
-        ir: ir_bytes,
-        verification: vb_storage::admission::VerificationProof::new(
-            compiled.digest(),
-            vb_runtime::admission::REQUIRED_GATE_COUNT,
-            true,
-        ),
-        accepted_at_seq: vb_storage::EventSeq::new(0),
-        required_capabilities: Box::new([]),
-    };
-    let artifact_bytes = match postcard::to_allocvec(&artifact) {
-        Ok(bytes) => bytes,
-        Err(e) => {
-            report_compiled_ir_store_error(format_args!("artifact encode error: {e}"), output);
-            return Err(CliExitCode::StorageError.into());
-        }
-    };
-    let record = vb_storage::CompiledIrRecord {
-        digest: compiled.digest(),
-        ir: artifact_bytes,
-    };
-    journal.put_compiled_ir(&record).map_err(|e| {
+    vb_storage::admission::submit_artifact(&journal, compiled, policy).map_err(|e| {
         report_compiled_ir_store_error(format_args!("compiled IR write error: {e}"), output);
-        CliExitCode::StorageError.into()
-    })
+        ExitCode::from(CliExitCode::StorageError)
+    })?;
+    Ok(())
 }
-
 
 pub(crate) fn report_runtime_error(args: std::fmt::Arguments<'_>, output: OutputFormat) {
     if output != OutputFormat::Text {
@@ -255,7 +253,6 @@ pub(crate) fn report_runtime_error(args: std::fmt::Arguments<'_>, output: Output
         crate::errln!("{args}");
     }
 }
-
 
 pub(crate) fn print_trace_event(event: &vb_runtime::trace::TraceEvent) {
     match event {

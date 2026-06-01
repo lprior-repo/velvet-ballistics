@@ -1,16 +1,21 @@
 #![forbid(unsafe_code)]
 //! Step execution helpers for building frames and formatting output.
 
-use std::process::ExitCode;
-use std::io::{self, Write};
-use std::sync::Arc;
-use std::num::NonZeroUsize;
-use crate::args::{ActionRegistryMode, Command, DurabilityMode, EventStatus, OutputFormat, ParseError, StepTarget};
+use crate::args::{
+    ActionRegistryMode, Command, DurabilityMode, EventStatus, OutputFormat, ParseError, StepTarget,
+};
 use crate::exit_code::CliExitCode;
-use crate::output::{OutputError, json_error, json_out, output_error_exit, write_stdout_line, write_stderr_line, write_failure_message, write_contract_error_json};
-use crate::output_utils::*;
-use crate::file_io::{read_file, parse_run_id, read_journal_events, report_storage_open_error};
+use crate::file_io::{parse_run_id, read_file, read_journal_events, report_storage_open_error};
 use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+use crate::output::{
+    OutputError, json_error, json_out, output_error_exit, write_contract_error_json,
+    write_failure_message, write_stderr_line, write_stdout_line,
+};
+use crate::output_utils::*;
+use std::io::{self, Write};
+use std::num::NonZeroUsize;
+use std::process::ExitCode;
+use std::sync::Arc;
 
 pub(crate) fn decode_step_inputs(
     data: &[u8],
@@ -38,7 +43,6 @@ pub(crate) fn decode_step_inputs(
         }
     }
 }
-
 
 pub(crate) fn execute_step_isolated(
     compiled: &vb_core::CompiledWorkflow,
@@ -121,7 +125,6 @@ pub(crate) fn execute_step_isolated(
     }
 }
 
-
 pub(crate) fn build_step_frame(
     compiled: &vb_core::CompiledWorkflow,
     step_idx: vb_core::StepIdx,
@@ -138,7 +141,6 @@ pub(crate) fn build_step_frame(
     }
 }
 
-
 pub(crate) fn write_step_inputs(
     frame: &mut vb_core::RunFrame,
     inputs: &[vb_core::SlotValue],
@@ -154,7 +156,6 @@ pub(crate) fn write_step_inputs(
     }
     Ok(())
 }
-
 
 pub(crate) fn compute_slot_deltas(
     before: &[Option<vb_core::SlotValue>],
@@ -174,7 +175,6 @@ pub(crate) fn compute_slot_deltas(
     deltas
 }
 
-
 pub(crate) fn compute_taint_deltas(
     before: &[vb_core::Taint],
     after: &[vb_core::Taint],
@@ -192,7 +192,6 @@ pub(crate) fn compute_taint_deltas(
     }
     deltas
 }
-
 
 pub(crate) fn compute_state_deltas(
     before: &[vb_core::frame::StepState],
@@ -213,7 +212,7 @@ pub(crate) fn compute_state_deltas(
 }
 
 /// Captures before/after state snapshots for structured output.
-struct StepStateSnapshots {
+pub(crate) struct StepStateSnapshots {
     before_pc: vb_core::StepIdx,
     after_pc: vb_core::StepIdx,
     before_slots: Vec<Option<vb_core::SlotValue>>,
@@ -243,7 +242,6 @@ impl StepStateSnapshots {
         })
     }
 }
-
 
 pub(crate) fn build_step_result_json(
     step: vb_core::StepIdx,
@@ -285,7 +283,6 @@ pub(crate) fn build_step_result_json(
     serde_json::Value::Object(map)
 }
 
-
 pub(crate) fn error_name(error: &vb_core::EngineError) -> &'static str {
     match error {
         vb_core::EngineError::InvalidProgramCounter { .. } => "invalid_program_counter",
@@ -304,7 +301,6 @@ pub(crate) fn error_name(error: &vb_core::EngineError) -> &'static str {
         _ => "internal_error",
     }
 }
-
 
 pub(crate) fn print_step_result(
     step: vb_core::StepIdx,
@@ -344,7 +340,6 @@ pub(crate) fn print_step_result(
     }
 }
 
-
 pub(crate) fn print_input_slots(frame: &vb_core::RunFrame) {
     let count = frame.slot_count();
     for i in 0..count {
@@ -355,20 +350,17 @@ pub(crate) fn print_input_slots(frame: &vb_core::RunFrame) {
     }
 }
 
-
 pub(crate) fn print_output_slot(frame: &vb_core::RunFrame, slot: vb_core::SlotIdx) {
     if let Ok(value) = frame.read_slot(slot) {
         crate::outln!("output: {value:?}");
     }
 }
 
-
 pub(crate) fn print_taint(frame: &vb_core::RunFrame, slot: vb_core::SlotIdx) {
     if let Ok(taint) = frame.read_taint(slot) {
         crate::outln!("taint: {taint:?}");
     }
 }
-
 
 pub(crate) fn node_kind_name(kind: &vb_core::workflow::CompiledNodeKind) -> &'static str {
     match kind {
@@ -410,7 +402,6 @@ pub(crate) fn node_kind_name(kind: &vb_core::workflow::CompiledNodeKind) -> &'st
     }
 }
 
-
 pub(crate) fn signal_name(signal: &vb_core::EngineSignal) -> &'static str {
     match signal {
         vb_core::EngineSignal::Continue => "Continue",
@@ -422,7 +413,6 @@ pub(crate) fn signal_name(signal: &vb_core::EngineSignal) -> &'static str {
         _ => "Unknown",
     }
 }
-
 
 fn setup_exit_code() -> std::process::ExitCode {
     std::process::ExitCode::FAILURE

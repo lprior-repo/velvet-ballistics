@@ -120,11 +120,11 @@ fn check_foreach_recursion_terminates() {
     let result = emit_single_body_set(
         &body,
         id,
-        0,          // diagnostic_step
+        0, // diagnostic_step
         slot,
-        None,       // next
+        None, // next
         &mut builder,
-        false,      // reuse_first_constant
+        false, // reuse_first_constant
     );
 
     // The function must produce a definite result (Ok or Err) without
@@ -139,10 +139,7 @@ fn check_foreach_recursion_terminates() {
         Ok(()) => {
             // Base case: body is exactly 1 Set step at depth 0
             // Verify a node was emitted
-            kani::assert(
-                !builder.nodes.is_empty(),
-                "base case must emit a node",
-            );
+            kani::assert(!builder.nodes.is_empty(), "base case must emit a node");
         }
         Err(_) => {
             // Error path: body.len() != 1 or unsupported primitive

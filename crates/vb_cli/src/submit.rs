@@ -1,17 +1,22 @@
 #![forbid(unsafe_code)]
 //! Workflow submission command.
 
-use std::process::ExitCode;
-use std::io::{self, Write};
-use std::sync::Arc;
-use std::num::NonZeroUsize;
-use std::time::{SystemTime, UNIX_EPOCH};
-use crate::args::{ActionRegistryMode, Command, DurabilityMode, OutputFormat, ParseError, StepTarget};
+use crate::args::{
+    ActionRegistryMode, Command, DurabilityMode, OutputFormat, ParseError, StepTarget,
+};
 use crate::exit_code::CliExitCode;
-use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, write_stderr_line, write_failure_message, write_contract_error_json};
-use crate::output_utils::*;
-use crate::file_io::{read_file, parse_run_id, read_journal_events, report_storage_open_error};
+use crate::file_io::{parse_run_id, read_file, read_journal_events, report_storage_open_error};
 use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+use crate::output::{
+    json_error, json_out, output_error_exit, write_contract_error_json, write_failure_message,
+    write_stderr_line, write_stdout_line,
+};
+use crate::output_utils::*;
+use std::io::{self, Write};
+use std::num::NonZeroUsize;
+use std::process::ExitCode;
+use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub(crate) fn cmd_submit(
     workflow: &std::path::Path,
@@ -175,7 +180,6 @@ pub(crate) fn cmd_submit(
     CliExitCode::Success.into()
 }
 
-
 pub(crate) fn durability_as_str(mode: DurabilityMode) -> &'static str {
     match mode {
         DurabilityMode::Strict => "strict",
@@ -183,7 +187,6 @@ pub(crate) fn durability_as_str(mode: DurabilityMode) -> &'static str {
         DurabilityMode::None => "none",
     }
 }
-
 
 pub(crate) fn generate_submit_run_id() -> u64 {
     let Ok(now) = SystemTime::now().duration_since(UNIX_EPOCH) else {
@@ -194,4 +197,3 @@ pub(crate) fn generate_submit_run_id() -> u64 {
         Err(_) => now.as_secs(),
     }
 }
-

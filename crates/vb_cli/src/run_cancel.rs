@@ -1,15 +1,17 @@
 use crate::args::OutputFormat;
 use crate::exit_code::CliExitCode;
-use crate::output::{json_error, output_error_exit};
-use crate::output_utils::{infer_legacy_json_error_code, legacy_json_error_message, write_diagnostic_message_stderr};
 use crate::file_io::{parse_run_id, read_journal_events, report_storage_open_error};
+use crate::output::{json_error, output_error_exit};
+use crate::output_utils::{
+    infer_legacy_json_error_code, legacy_json_error_message, write_diagnostic_message_stderr,
+};
 use std::path::Path;
 use std::process::ExitCode;
 use std::sync::Arc;
 use vb_core::RunId;
-use vb_runtime::journal::RuntimeJournalConfig;
-use vb_ipc::{IpcCommand, IpcPayload};
 use vb_ipc::client::IpcClient;
+use vb_ipc::{IpcCommand, IpcPayload};
+use vb_runtime::journal::RuntimeJournalConfig;
 
 fn cmd_answer(
     run_id: &str,
@@ -243,4 +245,3 @@ fn write_cancel_event(
     };
     journal.append_journaled(&event)
 }
-

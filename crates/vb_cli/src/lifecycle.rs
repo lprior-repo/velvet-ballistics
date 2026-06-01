@@ -30,7 +30,7 @@ use vb_core::workflow::{LifecycleCommand, LifecycleState, RunState, check_lifecy
 use vb_storage::{EventSeq, FjallJournal, JournalEvent, derive_lifecycle_state_from_events};
 
 /// Result type for lifecycle operations using CoreError.
-pub(crate) type LifecycleResult<T> = Result<T, CoreError>;
+pub type LifecycleResult<T> = Result<T, CoreError>;
 
 /// Derives the current lifecycle state for a run directly from the journal.
 ///
@@ -66,7 +66,7 @@ fn current_state_from_journal(
 /// - `LifecycleDuplicateRequest` if the run was already cancelled
 /// - `LifecycleStaleRequest` if the run state has advanced past the point where cancel is valid
 /// - `JournalWriteFailure` if the journal write fails
-pub(crate) fn cancel(run: RunId, journal: &FjallJournal) -> LifecycleResult<()> {
+pub fn cancel(run: RunId, journal: &FjallJournal) -> LifecycleResult<()> {
     let current_state = current_state_from_journal(run, journal)?;
 
     // Check for duplicate: if already cancelled, return error BEFORE transition check
@@ -147,7 +147,7 @@ pub(crate) fn cancel(run: RunId, journal: &FjallJournal) -> LifecycleResult<()> 
 /// - `LifecycleInvalidTransition` if the run is not in a resumable state
 /// - `LifecycleDuplicateRequest` if the run was already resumed
 /// - `LifecycleStaleRequest` if the run state has advanced past the point where resume is valid
-pub(crate) fn resume(run: RunId, journal: &FjallJournal) -> LifecycleResult<()> {
+pub fn resume(run: RunId, journal: &FjallJournal) -> LifecycleResult<()> {
     let current_state = current_state_from_journal(run, journal)?;
 
     // Check for duplicate: if already active (resumed), return before other checks
@@ -232,7 +232,7 @@ pub(crate) fn resume(run: RunId, journal: &FjallJournal) -> LifecycleResult<()> 
 /// - `LifecycleInvalidTransition` if the run is not in a retryable state
 /// - `LifecycleDuplicateRequest` if the run was already retried
 /// - `LifecycleStaleRequest` if the run state has advanced past the point where retry is valid
-pub(crate) fn retry(run: RunId, journal: &FjallJournal) -> LifecycleResult<()> {
+pub fn retry(run: RunId, journal: &FjallJournal) -> LifecycleResult<()> {
     let current_state = current_state_from_journal(run, journal)?;
 
     // Check for duplicate: if already retried, state is now Active (retry transitions Failed -> Active)
@@ -315,7 +315,7 @@ pub(crate) fn retry(run: RunId, journal: &FjallJournal) -> LifecycleResult<()> {
 /// - `LifecycleInvalidTransition` if the run is not waiting for an answer
 /// - `LifecycleDuplicateRequest` if the run already received an answer
 /// - `LifecycleStaleRequest` if the run state has advanced past the point where answer is valid
-pub(crate) fn answer(run: RunId, answer: String, journal: &FjallJournal) -> LifecycleResult<()> {
+pub fn answer(run: RunId, answer: String, journal: &FjallJournal) -> LifecycleResult<()> {
     let current_state = current_state_from_journal(run, journal)?;
 
     // Check for duplicate: if already answered, state is Completed
@@ -414,7 +414,7 @@ pub(crate) fn answer(run: RunId, answer: String, journal: &FjallJournal) -> Life
 ///
 /// Returns `CoreError`:
 /// - `ReplayCorruption` if the journal replay fails due to corruption or sequence gaps
-pub(crate) fn replay(journal: &FjallJournal) -> LifecycleResult<Vec<RunState>> {
+pub fn replay(journal: &FjallJournal) -> LifecycleResult<Vec<RunState>> {
     // Enumerate all runs from the journal header keyspace
     let headers = journal
         .run_headers()
@@ -460,7 +460,7 @@ impl EventSeqExt for EventSeq {
 
 // TEST INFRASTRUCTURE — NOT PRODUCTION API
 // These helpers bypass journal and are for integration test state setup only.
-pub(crate) mod test_helpers {
+pub mod test_helpers {
     use super::*;
 
     /// Creates a minimal run header in the journal so that run_headers() returns the run.
@@ -469,7 +469,7 @@ pub(crate) mod test_helpers {
     /// This is needed because cancel/resume/retry/answer write events but not headers.
     /// Without a header, replay's run_headers() iteration skips the run.
     #[allow(unreachable_pub)]
-    pub(crate) fn create_run_header(journal: &FjallJournal, run: RunId) {
+    pub fn create_run_header(journal: &FjallJournal, run: RunId) {
         use vb_core::WorkflowDigest;
         use vb_core::WorkflowId;
         let header = vb_storage::RunHeaderRecord {

@@ -276,8 +276,13 @@ pub fn put_workflow_source(
     journal.put_workflow_source(record)
 }
 
-/// Stores compiled IR bytes by digest.
-pub fn put_compiled_ir(
+// NOTE: put_compiled_ir is pub(crate) for internal use and tests only.
+// External code must use submit_artifact / admit_compiled_artifact which
+// perform proper validation and bind all artifact fields cryptographically.
+// Direct writes bypass admission validation and could allow mutation of
+// non-digest-bound fields (warnings, required_capabilities, accepted_at_seq).
+#[cfg(test)]
+pub(crate) fn put_compiled_ir(
     journal: &FjallJournal,
     record: &CompiledIrRecord,
 ) -> Result<(), JournalError> {

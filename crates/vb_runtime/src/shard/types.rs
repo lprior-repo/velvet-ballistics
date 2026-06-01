@@ -972,5 +972,3 @@ pub enum TimerKind {
     /// Delayed action bound to a specific action identifier.
     DelayedAction(ActionId),
 }
-
-

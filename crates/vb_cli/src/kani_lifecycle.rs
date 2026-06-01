@@ -20,8 +20,8 @@
 
 #![forbid(unsafe_code)]
 
-use vb_core::ids::RunId;
 use vb_core::errors::CoreError;
+use vb_core::ids::RunId;
 use vb_core::workflow::{LifecycleCommand, LifecycleState};
 
 /// proof_cancel_duplicate_no_append proves that calling cancel twice returns
@@ -46,11 +46,12 @@ fn proof_cancel_duplicate_no_append(run: RunId, state: LifecycleState, duplicate
     kani::assume(state == LifecycleState::Active || state == LifecycleState::WaitingAnswer);
 
     // Simulate first cancel: transitions to Cancelled
-    let state_after_first = if state == LifecycleState::Active || state == LifecycleState::WaitingAnswer {
-        LifecycleState::Cancelled
-    } else {
-        state
-    };
+    let state_after_first =
+        if state == LifecycleState::Active || state == LifecycleState::WaitingAnswer {
+            LifecycleState::Cancelled
+        } else {
+            state
+        };
 
     // If duplicate_call is true, simulate second cancel from Cancelled state
     if duplicate_call {
@@ -60,20 +61,20 @@ fn proof_cancel_duplicate_no_append(run: RunId, state: LifecycleState, duplicate
         // Assert: duplicate detection is accurate
         kani::assert(
             is_duplicate == (state_after_first == LifecycleState::Cancelled),
-            "duplicate detection must correctly identify Cancelled state"
+            "duplicate detection must correctly identify Cancelled state",
         );
 
         // Assert: duplicate cancel returns error without panicking
         // (modeled as assertion on state machine invariant)
         kani::assert(
             state_after_first == LifecycleState::Cancelled,
-            "after first cancel, state must be Cancelled for duplicate detection"
+            "after first cancel, state must be Cancelled for duplicate detection",
         );
     } else {
         // Non-duplicate path: first cancel transitions to Cancelled
         kani::assert(
             state_after_first == LifecycleState::Cancelled,
-            "first cancel from Active/WaitingAnswer must transition to Cancelled"
+            "first cancel from Active/WaitingAnswer must transition to Cancelled",
         );
     }
 }
@@ -93,7 +94,9 @@ fn kani_lifecycle_duplicate_cancel() {
     // Simulate the state machine path for duplicate cancel
     // State 1: Active or WaitingAnswer (cancelable)
     let initial_state = kani::any::<LifecycleState>();
-    kani::assume(initial_state == LifecycleState::Active || initial_state == LifecycleState::WaitingAnswer);
+    kani::assume(
+        initial_state == LifecycleState::Active || initial_state == LifecycleState::WaitingAnswer,
+    );
 
     // Simulate first cancel: state transitions to Cancelled
     let state_after_cancel = LifecycleState::Cancelled;
@@ -105,14 +108,14 @@ fn kani_lifecycle_duplicate_cancel() {
     // Assert: duplicate detection works
     kani::assert(
         is_duplicate,
-        "cancel from Cancelled state must be detected as duplicate"
+        "cancel from Cancelled state must be detected as duplicate",
     );
 
     // Assert: LifecycleState::Cancelled is terminal for cancel command
     // (cancel returns DuplicateRequest, not InvalidTransition)
     kani::assert(
         LifecycleState::Cancelled.is_terminal(),
-        "Cancelled is terminal"
+        "Cancelled is terminal",
     );
 }
 
@@ -132,13 +135,19 @@ fn proof_stale_no_append(state: LifecycleState) {
 
     kani::assert(
         is_terminal,
-        "Completed and Cancelled must be terminal states"
+        "Completed and Cancelled must be terminal states",
     );
 
     // Assert: stale cancel is detected (returns StaleRequest, not InvalidTransition)
     kani::assert(
-        !matches!(state, LifecycleState::Active | LifecycleState::WaitingAnswer | LifecycleState::Pending | LifecycleState::Failed),
-        "Only Completed and Cancelled are terminal for cancel"
+        !matches!(
+            state,
+            LifecycleState::Active
+                | LifecycleState::WaitingAnswer
+                | LifecycleState::Pending
+                | LifecycleState::Failed
+        ),
+        "Only Completed and Cancelled are terminal for cancel",
     );
 }
 
@@ -155,10 +164,7 @@ fn kani_stale_cancel_harness() {
     // If state is terminal, stale check should prevent invalid transition
     if is_stale {
         // Terminal state: cancel should return StaleRequest
-        kani::assert(
-            state.is_terminal(),
-            "terminal state detection works"
-        );
+        kani::assert(state.is_terminal(), "terminal state detection works");
     }
 }
 

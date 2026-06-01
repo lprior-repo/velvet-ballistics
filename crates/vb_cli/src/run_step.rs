@@ -1,17 +1,22 @@
 #![forbid(unsafe_code)]
 //! Step execution command and helpers.
 
-use std::process::ExitCode;
-use std::io::{self, Write};
-use std::sync::Arc;
-use std::num::NonZeroUsize;
-use crate::args::{ActionRegistryMode, Command, DurabilityMode, OutputFormat, ParseError, StepTarget};
+use crate::args::{
+    ActionRegistryMode, Command, DurabilityMode, OutputFormat, ParseError, StepTarget,
+};
 use crate::exit_code::CliExitCode;
-use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, write_stderr_line, write_failure_message, write_contract_error_json};
-use crate::output_utils::*;
-use crate::file_io::{read_file, parse_run_id, read_journal_events, report_storage_open_error};
+use crate::file_io::{parse_run_id, read_file, read_journal_events, report_storage_open_error};
 use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+use crate::output::{
+    json_error, json_out, output_error_exit, write_contract_error_json, write_failure_message,
+    write_stderr_line, write_stdout_line,
+};
+use crate::output_utils::*;
 use crate::step_helpers::{decode_step_inputs, execute_step_isolated};
+use std::io::{self, Write};
+use std::num::NonZeroUsize;
+use std::process::ExitCode;
+use std::sync::Arc;
 
 pub(crate) fn cmd_run_step(
     workflow: &std::path::Path,
@@ -73,11 +78,9 @@ pub(crate) fn cmd_run_step(
     execute_step_isolated(&compiled, step_idx, node, &inputs, output)
 }
 
-
 pub(crate) fn setup_exit_code() -> ExitCode {
     CliExitCode::VerificationFailed.into()
 }
-
 
 pub(crate) fn compile_bytes_json(
     bytes: &[u8],
@@ -101,4 +104,3 @@ pub(crate) fn compile_bytes_json(
         }
     }
 }
-

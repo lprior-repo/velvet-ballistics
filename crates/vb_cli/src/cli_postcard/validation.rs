@@ -2,9 +2,11 @@
 //!
 //! Validation helpers for CLI Postcard binary format.
 
-use super::{PostcardHeader, HEADER_SIZE, CLI_POSTCARD_KIND, CLI_SCHEMA_VERSION, PostcardError};
+use super::{CLI_POSTCARD_KIND, CLI_SCHEMA_VERSION, HEADER_SIZE, PostcardError, PostcardHeader};
 
-pub(crate) fn validate_cli_payload(payload: &super::CliPostcardPayload) -> Result<(), PostcardError> {
+pub(crate) fn validate_cli_payload(
+    payload: &super::CliPostcardPayload,
+) -> Result<(), PostcardError> {
     if payload.schema_version != CLI_SCHEMA_VERSION {
         return Err(PostcardError::PayloadMetadataMismatch);
     }

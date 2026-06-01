@@ -2,11 +2,12 @@
 //!
 //! Encoding and decoding functions for CLI Postcard binary format.
 
-use super::{PostcardHeader, HEADER_SIZE, HEADER_SIZE_U32, CLI_MAGIC,
-            MAX_PAYLOAD, PostcardError};
+use super::{CLI_MAGIC, HEADER_SIZE, HEADER_SIZE_U32, MAX_PAYLOAD, PostcardError, PostcardHeader};
 
 /// Decode CLI payload from postcard-encoded bytes.
-pub(crate) fn decode_cli_payload(payload: &[u8]) -> Result<super::CliPostcardPayload, PostcardError> {
+pub(crate) fn decode_cli_payload(
+    payload: &[u8],
+) -> Result<super::CliPostcardPayload, PostcardError> {
     postcard::from_bytes::<super::CliPostcardPayload>(payload)
         .map_err(|_| PostcardError::DecodeFailed)
 }

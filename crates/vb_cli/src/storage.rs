@@ -32,8 +32,8 @@ pub(crate) fn cmd_ipc_serve(socket: &Path, db: &Path) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let runtime_journal = RuntimeJournalConfig::new(DurabilityProfile::Journaled)
-        .shared_journal(journal, queue);
+    let runtime_journal =
+        RuntimeJournalConfig::new(DurabilityProfile::Journaled).shared_journal(journal, queue);
 
     let shard_count = std::num::NonZeroUsize::new(1).unwrap_or(std::num::NonZeroUsize::MIN);
     let config = ShardConfig::default();
@@ -99,8 +99,14 @@ impl WorkflowResolver for StorageWorkflowResolver {
         if record.digest != digest {
             return Err(WorkflowResolutionError::InvalidArtifact);
         }
-        let parts = postcard::from_bytes::<WorkflowParts>(&record.ir)
+        let artifact = postcard::from_bytes::<vb_storage::AcceptedArtifact>(&record.ir)
             .map_err(|_| WorkflowResolutionError::InvalidArtifact)?;
+        if artifact.digest != digest {
+            return Err(WorkflowResolutionError::InvalidArtifact);
+        }
+        let mut parts = postcard::from_bytes::<WorkflowParts>(&artifact.ir)
+            .map_err(|_| WorkflowResolutionError::InvalidArtifact)?;
+        parts.digest = artifact.digest;
         vb_core::CompiledWorkflow::try_from_parts(parts)
             .map_err(|_| WorkflowResolutionError::InvalidArtifact)
     }
@@ -183,20 +189,51 @@ pub(crate) fn print_event(event: &JournalEvent) {
         JournalEvent::RunAccepted { seq, .. } => {
             crate::outln!("  seq={}: RunAccepted", seq.get());
         }
+        JournalEvent::RunAdmission { seq, policy, .. } => {
+            crate::outln!("  seq={}: RunAdmission policy={policy:?}", seq.get());
+        }
         JournalEvent::StepStarted { seq, step, .. } => {
             crate::outln!("  seq={}: StepStarted step={}", seq.get(), step.get());
         }
-        JournalEvent::StepSucceeded { seq, step, output, .. } => {
-            crate::outln!("  seq={}: StepSucceeded step={} output={}", seq.get(), step.get(), output.get());
+        JournalEvent::StepSucceeded {
+            seq, step, output, ..
+        } => {
+            crate::outln!(
+                "  seq={}: StepSucceeded step={} output={}",
+                seq.get(),
+                step.get(),
+                output.get()
+            );
         }
-        JournalEvent::ActionScheduled { seq, step, action, .. } => {
-            crate::outln!("  seq={}: ActionScheduled step={} action={}", seq.get(), step.get(), action.get());
+        JournalEvent::ActionScheduled {
+            seq, step, action, ..
+        } => {
+            crate::outln!(
+                "  seq={}: ActionScheduled step={} action={}",
+                seq.get(),
+                step.get(),
+                action.get()
+            );
         }
-        JournalEvent::ActionCompletedEvent { seq, step, action, .. } => {
-            crate::outln!("  seq={}: ActionCompleted step={} action={}", seq.get(), step.get(), action.get());
+        JournalEvent::ActionCompletedEvent {
+            seq, step, action, ..
+        } => {
+            crate::outln!(
+                "  seq={}: ActionCompleted step={} action={}",
+                seq.get(),
+                step.get(),
+                action.get()
+            );
         }
-        JournalEvent::ActionFailedEvent { seq, step, action, .. } => {
-            crate::outln!("  seq={}: ActionFailed step={} action={}", seq.get(), step.get(), action.get());
+        JournalEvent::ActionFailedEvent {
+            seq, step, action, ..
+        } => {
+            crate::outln!(
+                "  seq={}: ActionFailed step={} action={}",
+                seq.get(),
+                step.get(),
+                action.get()
+            );
         }
         JournalEvent::SlotWrittenEvent { seq, slot, .. } => {
             crate::outln!("  seq={}: SlotWritten slot={}", seq.get(), slot.get());

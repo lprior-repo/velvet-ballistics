@@ -48,7 +48,7 @@ fn ps_005_trailing_bytes() {
             Ok(()) => {
                 kani::assert(
                     false,
-                    "trailing bytes (actual={actual_len} > declared={declared_end}) must be rejected"
+                    "trailing bytes (actual={actual_len} > declared={declared_end}) must be rejected",
                 );
             }
             Err(_) => {

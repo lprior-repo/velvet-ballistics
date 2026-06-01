@@ -8,10 +8,9 @@
 //! Tests are written in failing-first style to establish baseline behavior
 //! before implementing the contract-pack runner infrastructure.
 
-use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
+use vb_core::{RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 use vb_storage::{
-    BlobRecord, CompiledIrRecord, EventSeq, FjallJournal, JournalEvent, RunHeaderRecord,
-    WorkflowSourceRecord,
+    BlobRecord, EventSeq, FjallJournal, JournalEvent, RunHeaderRecord, WorkflowSourceRecord,
 };
 
 /// Minimum testable run id.
@@ -25,6 +24,34 @@ fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
     let temp = tempfile::tempdir().expect("tempdir should be created");
     let journal = FjallJournal::open(temp.path(), None).expect("journal should open");
     (temp, journal)
+}
+
+fn storage_admissible_workflow() -> vb_core::CompiledWorkflow {
+    let yaml = br#"version: velvet-ballistics/v1
+name: storage_contract_pack
+when:
+  manual: {}
+steps:
+  - id: make
+    set:
+      output: answer
+      value: "42"
+  - id: done
+    finish:
+      result: answer
+"#;
+    let workflow = vb_compile::compile_workflow(yaml).expect("workflow should compile");
+    let mut parts = workflow.to_parts();
+    parts.digest = WorkflowDigest::from_bytes([0u8; 32]);
+    let ir = postcard::to_allocvec(&parts).expect("workflow parts should encode");
+    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
+    vb_core::CompiledWorkflow::try_from_parts(parts).expect("workflow parts should validate")
+}
+
+fn submit_storage_artifact(journal: &FjallJournal) -> vb_storage::AcceptedArtifact {
+    let workflow = storage_admissible_workflow();
+    vb_storage::admission::submit_artifact(journal, &workflow, RuntimePolicy::Journaled)
+        .expect("compiled artifact submit should succeed")
 }
 
 // ============================================================================
@@ -177,17 +204,9 @@ fn invalid_key_prefix_returns_typed_error() {
 fn missing_compiled_ir_digest_returns_none() {
     let (_temp, journal) = temp_journal();
 
-    // Store a compiled IR with a specific digest.
-    let ir_bytes = b"test compiled ir payload".to_vec();
-    let ir_digest = WorkflowDigest::from_bytes(blake3::hash(&ir_bytes).into());
-
-    let ir_record = CompiledIrRecord {
-        digest: ir_digest,
-        ir: ir_bytes,
-    };
-    journal
-        .put_compiled_ir(&ir_record)
-        .expect("compiled ir put should succeed");
+    // Store a valid accepted artifact under a different digest first.
+    let artifact = submit_storage_artifact(&journal);
+    assert_ne!(artifact.digest, WorkflowDigest::from_bytes([0xCC; 32]));
 
     // Query with a different (non-existent) digest.
     let missing_digest = WorkflowDigest::from_bytes([0xCC; 32]);
@@ -407,17 +426,10 @@ fn range_scan_detects_mixed_prefix_keys() {
 fn compiled_ir_artifact_verification_contract() {
     let (_temp, journal) = temp_journal();
 
-    // Write a compiled IR artifact.
-    let ir_content = b"valid compiled workflow ir bytes".to_vec();
-    let ir_digest = WorkflowDigest::from_bytes(blake3::hash(&ir_content).into());
-
-    let ir_record = CompiledIrRecord {
-        digest: ir_digest,
-        ir: ir_content.clone(),
-    };
-    journal
-        .put_compiled_ir(&ir_record)
-        .expect("compiled ir put should succeed");
+    // Write a compiled IR artifact through public accepted-artifact admission.
+    let artifact = submit_storage_artifact(&journal);
+    let ir_digest = artifact.digest;
+    let accepted_envelope = postcard::to_allocvec(&artifact).expect("artifact should encode");
 
     // Retrieve and verify.
     let retrieved = journal
@@ -425,8 +437,8 @@ fn compiled_ir_artifact_verification_contract() {
         .expect("compiled_ir lookup should succeed")
         .expect("compiled_ir should exist after put");
     assert_eq!(
-        retrieved.ir, ir_content,
-        "retrieved IR should match original"
+        retrieved.ir, accepted_envelope,
+        "retrieved IR should match accepted-artifact envelope"
     );
     assert_eq!(
         retrieved.digest, ir_digest,

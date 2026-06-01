@@ -1,13 +1,16 @@
 #![forbid(unsafe_code)]
 //! Control flow graph generation command.
 
-use std::process::ExitCode;
 use crate::args::{ActionRegistryMode, Command, OutputFormat, ParseError, StepTarget};
 use crate::exit_code::CliExitCode;
-use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, write_stderr_line, write_failure_message};
-use crate::output_utils::*;
-use crate::file_io::{read_file, parse_run_id, read_journal_events, report_storage_open_error};
+use crate::file_io::{parse_run_id, read_file, read_journal_events, report_storage_open_error};
 use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+use crate::output::{
+    json_error, json_out, output_error_exit, write_failure_message, write_stderr_line,
+    write_stdout_line,
+};
+use crate::output_utils::*;
+use std::process::ExitCode;
 
 pub(crate) fn cmd_graph(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
@@ -39,11 +42,23 @@ pub(crate) fn cmd_graph(workflow: &std::path::Path, output: OutputFormat) -> Exi
     CliExitCode::Success.into()
 }
 
-
-pub(crate) fn compile_bytes_json(_bytes: &[u8], _output: crate::args::OutputFormat) -> Result<vb_core::CompiledWorkflow, std::process::ExitCode> {
-    compile_bytes_yaml(_bytes)
+pub(crate) fn compile_bytes_json(
+    bytes: &[u8],
+    output: crate::args::OutputFormat,
+) -> Result<vb_core::CompiledWorkflow, std::process::ExitCode> {
+    compile_bytes_yaml(bytes, output)
 }
 
-pub(crate) fn compile_bytes_yaml(_bytes: &[u8]) -> Result<vb_core::CompiledWorkflow, std::process::ExitCode> {
-    Err(std::process::ExitCode::FAILURE)
+pub(crate) fn compile_bytes_yaml(
+    bytes: &[u8],
+    output: crate::args::OutputFormat,
+) -> Result<vb_core::CompiledWorkflow, std::process::ExitCode> {
+    match vb_compile::compile_workflow(bytes) {
+        Ok(compiled) => Ok(compiled),
+        Err(errors) => {
+            let message = compile_errors_message(&errors.0);
+            write_failure_message(&message, output, CliExitCode::CompileFailed);
+            Err(CliExitCode::CompileFailed.into())
+        }
+    }
 }

@@ -1,16 +1,19 @@
 #![forbid(unsafe_code)]
 //! Trace inspection command.
 
-use std::process::ExitCode;
-use std::io::{self, Write};
 use crate::args::{ActionRegistryMode, Command, OutputFormat, ParseError, StepTarget};
-use crate::exit_code::CliExitCode;
-use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, write_stderr_line, write_failure_message};
-use crate::output_utils::*;
-use crate::file_io::{read_file, parse_run_id, read_journal_events, report_storage_open_error};
-use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
 use crate::cli_envelope;
 use crate::commands_journal;
+use crate::exit_code::CliExitCode;
+use crate::file_io::{parse_run_id, read_file, read_journal_events, report_storage_open_error};
+use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+use crate::output::{
+    json_error, json_out, output_error_exit, write_failure_message, write_stderr_line,
+    write_stdout_line,
+};
+use crate::output_utils::*;
+use std::io::{self, Write};
+use std::process::ExitCode;
 
 pub(crate) fn cmd_trace(
     run_id: &str,
@@ -22,7 +25,10 @@ pub(crate) fn cmd_trace(
         Ok(ev) => ev,
         Err(code) => return code,
     };
-    let trace = crate::commands_journal::filter_trace(crate::commands_journal::build_trace(&events), filters);
+    let trace = crate::commands_journal::filter_trace(
+        crate::commands_journal::build_trace(&events),
+        filters,
+    );
     if trace.is_empty() {
         if output != OutputFormat::Text {
             crate::emit_json_or_return!(
@@ -75,7 +81,9 @@ pub(crate) fn cmd_trace(
 }
 
 /// Convert a structured trace entry to its JSON representation.
-pub(crate) fn trace_entry_to_json(entry: &crate::commands_journal::TraceEntry) -> serde_json::Value {
+pub(crate) fn trace_entry_to_json(
+    entry: &crate::commands_journal::TraceEntry,
+) -> serde_json::Value {
     let mut map = serde_json::Map::new();
     map.insert("seq".into(), serde_json::Value::from(entry.seq));
     map.insert("type".into(), serde_json::Value::from(entry.event_type));
@@ -93,4 +101,3 @@ pub(crate) fn trace_entry_to_json(entry: &crate::commands_journal::TraceEntry) -
     }
     serde_json::Value::Object(map)
 }
-

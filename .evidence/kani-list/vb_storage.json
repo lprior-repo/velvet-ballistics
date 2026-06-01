@@ -2,20 +2,44 @@
   "kani-version": "0.67.0",
   "file-version": "0.1",
   "standard-harnesses": {
-    "crates/vb_storage/src/kani_vb_u8gi_storage_decode_order.rs": [
-      "kani_vb_u8gi_storage_decode_order::vb_u8gi_storage_decode_order_arbitrary"
+    "crates/vb_storage/src/kani_vbjpq733_proofs.rs": [
+      "kani_vbjpq733_proofs::vbjpq733_is_fully_supported_all_states",
+      "kani_vbjpq733_proofs::vbjpq733_is_fully_supported_each_flag",
+      "kani_vbjpq733_proofs::vbjpq733_is_fully_supported_supported_constant",
+      "kani_vbjpq733_proofs::vbjpq733_unsupported_union_all_combos",
+      "kani_vbjpq733_proofs::vbjpq733_unsupported_union_commutative",
+      "kani_vbjpq733_proofs::vbjpq733_unsupported_union_idempotent",
+      "kani_vbjpq733_proofs::vbjpq733_unsupported_union_supported_identity"
     ],
-    "crates/vb_storage/src/kani_vb_u8gi_storage_numeric_fields.rs": [
-      "kani_vb_u8gi_storage_numeric_fields::vb_u8gi_storage_numeric_fields_arbitrary"
+    "crates/vb_storage/src/verification/vb-fn4vt/kani/compiled_ir_envelope_mutation.rs": [
+      "verification::vb_fn4vt::kani::compiled_ir_envelope_mutation::arbitrary_envelope_mutation",
+      "verification::vb_fn4vt::kani::compiled_ir_envelope_mutation::no_mutation_validates",
+      "verification::vb_fn4vt::kani::compiled_ir_envelope_mutation::no_panic_on_arbitrary_record"
     ],
-    "crates/vb_storage/src/kani_vb_u8gi_storage_payload_bounds.rs": [
-      "kani_vb_u8gi_storage_payload_bounds::vb_u8gi_storage_payload_bounds_arbitrary"
+    "crates/vb_storage/src/verification/vb-fn4vt/kani/direct_write_mutated_metadata.rs": [
+      "verification::vb_fn4vt::kani::direct_write_mutated_metadata::direct_write_mutated_metadata",
+      "verification::vb_fn4vt::kani::direct_write_mutated_metadata::source_digest_equals_digest_invariant"
+    ],
+    "crates/vb_storage/src/verification/vb-fn4vt/kani/policy_digest_binding.rs": [
+      "verification::vb_fn4vt::kani::policy_digest_binding::compute_policy_digest_no_panic",
+      "verification::vb_fn4vt::kani::policy_digest_binding::policy_digest_binding",
+      "verification::vb_fn4vt::kani::policy_digest_binding::policy_digest_deterministic"
+    ],
+    "crates/vb_storage/src/verification/vb-fn4vt/kani/sequence_bounds_verification.rs": [
+      "verification::vb_fn4vt::kani::sequence_bounds_verification::sequence_bounds_no_panic",
+      "verification::vb_fn4vt::kani::sequence_bounds_verification::sequence_bounds_verification",
+      "verification::vb_fn4vt::kani::sequence_bounds_verification::sequence_bounds_window_boundary"
+    ],
+    "crates/vb_storage/src/verification/vb-fn4vt/kani/source_digest_binding.rs": [
+      "verification::vb_fn4vt::kani::source_digest_binding::accepted_artifact_sets_source_correctly",
+      "verification::vb_fn4vt::kani::source_digest_binding::source_digest_differs_rejected",
+      "verification::vb_fn4vt::kani::source_digest_binding::source_digest_equals_digest"
     ]
   },
   "contract-harnesses": {},
   "contracts": [],
   "totals": {
-    "standard-harnesses": 3,
+    "standard-harnesses": 21,
     "contract-harnesses": 0,
     "functions-under-contract": 0
   }

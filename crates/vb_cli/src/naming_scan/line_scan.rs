@@ -4,7 +4,7 @@ use super::classify_occurrence;
 use super::ordering::compare_finding;
 use super::types::*;
 
-pub(crate) fn scan_file(
+pub fn scan_file(
     input: ScanInput,
     config: &ScanConfig,
 ) -> Result<Vec<NamingFinding>, NamingScanError> {

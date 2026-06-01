@@ -155,4 +155,3 @@ pub fn build_list_with_taint(
         store.insert_list_with_taint(values.into_boxed_slice(), taints.into_boxed_slice())?;
     Ok((handle, accumulated_taint))
 }
-

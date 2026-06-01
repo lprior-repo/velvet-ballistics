@@ -9,7 +9,7 @@ use vb_core::ids::{SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::SlotValue;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
-#[path = "../src/cli_postcard.rs"]
+#[path = "../src/cli_postcard/mod.rs"]
 mod cli_postcard;
 
 const CLI_WORKFLOW: &str = r"version: velvet-ballistics/v1

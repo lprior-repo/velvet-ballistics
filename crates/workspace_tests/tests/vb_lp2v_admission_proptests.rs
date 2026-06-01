@@ -289,7 +289,7 @@ proptest! {
     }
 }
 
-/// PI-02 anti-invariant: tampered workflow digest is rejected by Journaled/Strict.
+/// PI-02 anti-invariant: tampered workflow digest is rejected by every policy.
 /// (Unit test — tampering requires structured construction, not arbitrary input.)
 #[test]
 fn pi_02_antiinvariant_tampered_digest_rejected() {
@@ -334,7 +334,7 @@ fn pi_02_antiinvariant_tampered_digest_rejected() {
     };
     let tampered = CompiledWorkflow::try_from_parts(parts).expect("structurally valid");
 
-    // Journaled/Strict must reject tampered digest
+    // Every policy must reject tampered artifact checksums.
     let result_journaled = submit_artifact(&journal, &tampered, RuntimePolicy::Journaled);
     assert!(
         matches!(
@@ -355,11 +355,14 @@ fn pi_02_antiinvariant_tampered_digest_rejected() {
         result_strict
     );
 
-    // Relaxed accepts any workflow regardless of digest (no checksum gate)
+    // Relaxed skips proof gates, not artifact checksum validation.
     let result_relaxed = submit_artifact(&journal, &tampered, RuntimePolicy::Relaxed);
     assert!(
-        result_relaxed.is_ok(),
-        "Relaxed must accept tampered digest (no checksum gate), got {:?}",
+        matches!(
+            result_relaxed,
+            Err(vb_storage::JournalError::ArtifactChecksumMismatch)
+        ),
+        "Relaxed must reject tampered digest, got {:?}",
         result_relaxed
     );
 }

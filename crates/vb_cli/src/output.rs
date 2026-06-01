@@ -1,13 +1,13 @@
 #![forbid(unsafe_code)]
 //! Output formatting and JSON/structured output functions.
 
+use crate::args::OutputFormat;
+use crate::cli_envelope;
+use crate::exit_code::CliExitCode;
+use crate::io_helpers;
+use crate::output_utils;
 use std::io::{self, Write};
 use std::process::ExitCode;
-use crate::args::OutputFormat;
-use crate::exit_code::CliExitCode;
-use crate::output_utils;
-use crate::io_helpers;
-use crate::cli_envelope;
 
 pub(crate) fn write_structured_stderr(
     value: &serde_json::Value,
@@ -248,7 +248,11 @@ pub(crate) fn infer_legacy_json_error_code(message: &str) -> CliExitCode {
 }
 
 /// Output a diagnostic message to stderr.
-pub(crate) fn write_diagnostic_message_stderr(message: &str, code: CliExitCode, output: OutputFormat) {
+pub(crate) fn write_diagnostic_message_stderr(
+    message: &str,
+    code: CliExitCode,
+    output: OutputFormat,
+) {
     let write_result = match output {
         OutputFormat::Yaml | OutputFormat::Postcard => {
             let diagnostic = serde_json::json!({
@@ -266,10 +270,6 @@ pub(crate) fn write_diagnostic_message_stderr(message: &str, code: CliExitCode, 
         write_stderr_best_effort(format_args!("diagnostic write failed: {error}"));
     }
 }
-
-#[cfg(test)]
-#[path = "app_impl_tests.rs"]
-mod app_impl_tests;
 
 // Re-export from file_io for compatibility with existing imports.
 pub(crate) use crate::file_io::write_failure_message;

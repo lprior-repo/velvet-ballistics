@@ -192,7 +192,3 @@ fn write_json_line_to_writer<W: Write>(
 fn to_io_error(error: io::Error) -> DeliverSinkError {
     DeliverSinkError::Io(error.kind())
 }
-
-#[cfg(test)]
-#[path = "deliver_sink/tests.rs"]
-mod tests;

@@ -4,20 +4,25 @@
 // Verifier: proptest
 // Command: cargo test -p vb_storage --test proptest -- ps_005_trailing_bytes
 //
-// Domain claim: >1000 cases: envelopes with trailing bytes fail postcard decode.
-// The trailing byte defense is verified at the postcard boundary.
+// Domain claim: >1000 cases: envelopes with trailing bytes fail public storage admission.
+// The trailing byte defense is verified at the storage boundary.
 //
 // PRODUCTION BINDING:
-//   postcard::from_bytes (public crate API)
+//   vb_storage::journal::FjallJournal::put_compiled_ir
 //   vb_storage::admission::submit_artifact
 
 use proptest::prelude::*;
-use vb_core::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, RuntimePolicy,
-    SlotIdx, StepIdx, WorkflowDigest, value::ConstValue,
-    workflow::{ResourceContract, WorkflowParts}};
+use vb_core::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, RuntimePolicy, SlotIdx, StepIdx,
+    WorkflowDigest,
+    value::ConstValue,
+    workflow::{ResourceContract, WorkflowParts},
+};
+use vb_storage::JournalError;
 use vb_storage::admission::AcceptedArtifact;
 use vb_storage::admission::submit_artifact;
 use vb_storage::journal::FjallJournal;
+use vb_storage::records::CompiledIrRecord;
 
 fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
     let temp = tempfile::tempdir().expect("tempdir");
@@ -31,19 +36,32 @@ fn make_workflow() -> CompiledWorkflow {
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         nodes: Box::new([
             CompiledNode {
-                id: StepIdx::new(0), output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)), on_error: None, error_slot: None,
-                kind: CompiledNodeKind::SetConst { value: ConstIdx::new(0) },
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                },
             },
             CompiledNode {
-                id: StepIdx::new(1), output: None, next: None,
-                on_error: None, error_slot: None,
-                kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) },
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
             },
         ]),
-        expressions: Box::new([]), accessors: Box::new([]),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
         constants: Box::new([ConstValue::I64(42)]),
-        slot_count: 1, symbols_count: 0, entry: StepIdx::new(0),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
@@ -71,7 +89,7 @@ proptest! {
 
     /// PS-005b: Envelope with appended random bytes has trailing bytes.
     #[test]
-    fn ps_005_envelope_with_trailer_has_remaining(_dummy in proptest::bool::ANY, 
+    fn ps_005_envelope_with_trailer_has_remaining(_dummy in proptest::bool::ANY,
         trailer_len in 1usize..=32usize,
     ) {
         let (_temp, journal) = temp_journal();
@@ -92,18 +110,29 @@ proptest! {
             "remaining bytes length must equal trailer length");
     }
 
-    /// PS-005c: postcard::from_bytes rejects trailered envelope (strict mode).
+    /// PS-005c: public storage write rejects trailered accepted-artifact envelope.
     #[test]
-    fn ps_005_strict_decode_rejects_trailer(_dummy in proptest::bool::ANY) {
+    fn ps_005_storage_write_rejects_trailer(_dummy in proptest::bool::ANY) {
         let (_temp, journal) = temp_journal();
         let workflow = make_workflow();
         let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Journaled)
             .expect("submit");
         let mut envelope = postcard::to_allocvec(&artifact).expect("serialize");
+        let declared_end = envelope.len();
         envelope.push(0xFF); // Add one trailing byte
+        let record = CompiledIrRecord {
+            digest: artifact.digest,
+            ir: envelope,
+        };
 
-        // postcard::from_bytes is strict: no trailing bytes allowed
-        let result: Result<AcceptedArtifact, _> = postcard::from_bytes(&envelope);
-        prop_assert!(result.is_err(), "strict decode must reject trailered envelope");
+        let result = journal.put_compiled_ir(&record);
+        prop_assert!(
+            matches!(
+                result,
+                Err(JournalError::UnexpectedTrailingBytes { declared_end: found, actual_len })
+                    if found == declared_end && actual_len == record.ir.len()
+            ),
+            "storage write must reject trailered accepted-artifact envelope"
+        );
     }
 }

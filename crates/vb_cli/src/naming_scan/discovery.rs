@@ -3,15 +3,15 @@ use std::path::{Path, PathBuf};
 
 use super::types::*;
 
-pub(crate) fn discover_scan_inputs(
+pub fn discover_scan_inputs(
     root: RepoRoot,
     config: &ScanConfig,
 ) -> Result<Vec<ScanInput>, NamingScanError> {
-    if !root.0.exists() || !root.0.is_dir() {
+    if !root.as_path().exists() || !root.as_path().is_dir() {
         return Err(NamingScanError::InvalidRoot { root });
     }
     let mut inputs = Vec::new();
-    collect_inputs(&root.0, &root.0, config, &mut inputs)?;
+    collect_inputs(root.as_path(), root.as_path(), config, &mut inputs)?;
     inputs.sort_by(|left, right| input_path(left).cmp(input_path(right)));
     Ok(inputs)
 }

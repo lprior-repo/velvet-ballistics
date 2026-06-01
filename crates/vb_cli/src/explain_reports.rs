@@ -3,7 +3,6 @@
 
 use crate::commands_verify::VerifyError;
 
-
 pub(crate) fn explain_compile_repair_hint(_err: &vb_compile::CompileError) {
     crate::outln!("For compilation errors, check the workflow YAML structure.");
 }

@@ -11,12 +11,12 @@
 //! public vb_storage and vb_ipc APIs.
 
 use std::sync::Arc;
-use vb_core::RunId;
 use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::ConstValue;
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
+use vb_core::{RunId, RuntimePolicy};
 use vb_ipc::server::WorkflowResolutionError;
 use vb_storage::{
     CompiledIrRecord, EventSeq, FjallJournal, JournalEvent,
@@ -82,9 +82,9 @@ fn finish_workflow() -> Option<CompiledWorkflow> {
             result: SlotIdx::ZERO,
         },
     };
-    let parts = WorkflowParts {
+    let mut parts = WorkflowParts {
         name: Box::from("finish"),
-        digest: WorkflowDigest::from_bytes([9; 32]),
+        digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::from([set_const, finish]),
         expressions: Box::from([]),
         accessors: Box::from([]),
@@ -95,6 +95,8 @@ fn finish_workflow() -> Option<CompiledWorkflow> {
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::default(),
     };
+    let ir = postcard::to_allocvec(&parts).ok()?;
+    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
     CompiledWorkflow::try_from_parts(parts).ok()
 }
 
@@ -123,8 +125,14 @@ impl TestStorageResolver {
         if record.digest != digest {
             return Err(WorkflowResolutionError::InvalidArtifact);
         }
-        let parts = postcard::from_bytes::<WorkflowParts>(&record.ir)
+        let artifact = postcard::from_bytes::<vb_storage::AcceptedArtifact>(&record.ir)
             .map_err(|_| WorkflowResolutionError::InvalidArtifact)?;
+        if artifact.digest != digest {
+            return Err(WorkflowResolutionError::InvalidArtifact);
+        }
+        let mut parts = postcard::from_bytes::<WorkflowParts>(&artifact.ir)
+            .map_err(|_| WorkflowResolutionError::InvalidArtifact)?;
+        parts.digest = artifact.digest;
         CompiledWorkflow::try_from_parts(parts)
             .map_err(|_| WorkflowResolutionError::InvalidArtifact)
     }
@@ -848,15 +856,8 @@ fn resolver_loads_compiled_ir_when_present() {
     let journal = FjallJournal::open(dir.path(), None).expect("journal must open");
 
     if let Some(compiled) = compiled {
-        let parts = compiled.to_parts();
-        let ir = postcard::to_allocvec(&parts).expect("workflow parts must encode");
-        let record = CompiledIrRecord {
-            digest: compiled.digest(),
-            ir,
-        };
-        journal
-            .put_compiled_ir(&record)
-            .expect("put_compiled_ir must succeed");
+        vb_storage::admission::submit_artifact(&journal, &compiled, RuntimePolicy::Journaled)
+            .expect("submit_artifact must succeed");
 
         drop(journal);
 
@@ -879,9 +880,11 @@ fn resolver_returns_invalid_artifact_for_corrupted_ir() {
         digest: dummy_digest(),
         ir: vec![0xDE, 0xAD, 0xBE, 0xEF], // Corrupted data
     };
-    journal
-        .put_compiled_ir(&record)
-        .expect("put_compiled_ir must succeed");
+    let write_result = journal.put_compiled_ir(&record);
+    assert!(
+        write_result.is_err(),
+        "corrupted IR must be rejected at write"
+    );
 
     drop(journal);
 
@@ -890,8 +893,8 @@ fn resolver_returns_invalid_artifact_for_corrupted_ir() {
 
     let result = resolver.resolve_workflow(record.digest);
     assert!(
-        matches!(result, Err(WorkflowResolutionError::InvalidArtifact)),
-        "corrupted IR must return InvalidArtifact"
+        matches!(result, Err(WorkflowResolutionError::NotFound)),
+        "rejected corrupted IR must resolve as NotFound"
     );
 }
 
@@ -905,15 +908,8 @@ fn resolver_returns_invalid_artifact_for_tampered_digest() {
     let journal = FjallJournal::open(dir.path(), None).expect("journal must open");
 
     if let Some(compiled) = compiled {
-        let parts = compiled.to_parts();
-        let ir = postcard::to_allocvec(&parts).expect("workflow parts must encode");
-        let record = CompiledIrRecord {
-            digest: compiled.digest(),
-            ir,
-        };
-        journal
-            .put_compiled_ir(&record)
-            .expect("put_compiled_ir must succeed");
+        vb_storage::admission::submit_artifact(&journal, &compiled, RuntimePolicy::Journaled)
+            .expect("submit_artifact must succeed");
 
         drop(journal);
 

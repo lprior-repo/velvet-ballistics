@@ -16,10 +16,13 @@ use vb_storage::recovery::{
 };
 use vb_storage::{
     CompiledIrRecord, EventSeq, FjallJournal, JournalError, JournalEvent, WorkflowSourceRecord,
-    put_compiled_ir,
 };
 
 struct MissingAcceptedArtifactStore;
+
+struct ReturningAcceptedArtifactStore {
+    artifact: AcceptedArtifact,
+}
 
 impl AcceptedArtifactStore for MissingAcceptedArtifactStore {
     fn load_accepted_artifact(
@@ -29,6 +32,15 @@ impl AcceptedArtifactStore for MissingAcceptedArtifactStore {
         Err(ArtifactEnvelopeError::ArtifactNotFound {
             digest: artifact_digest,
         })
+    }
+}
+
+impl AcceptedArtifactStore for ReturningAcceptedArtifactStore {
+    fn load_accepted_artifact(
+        &self,
+        _artifact_digest: WorkflowDigest,
+    ) -> Result<AcceptedArtifact, ArtifactEnvelopeError> {
+        Ok(self.artifact.clone())
     }
 }
 
@@ -70,12 +82,19 @@ fn workspace_path(relative: &str) -> std::path::PathBuf {
         .join(relative)
 }
 
-fn accepted_artifact_with_gate_count(digest: WorkflowDigest, gate_count: u8) -> AcceptedArtifact {
-    AcceptedArtifact {
+fn accepted_artifact_with_gate_count(gate_count: u8) -> Result<AcceptedArtifact, String> {
+    let workflow = compile_valid_yaml()?;
+    let mut parts = workflow.to_parts();
+    parts.digest = WorkflowDigest::from_bytes([0u8; 32]);
+    let ir = postcard::to_allocvec(&parts).map_err(|error| error.to_string())?;
+    let digest = workflow.digest();
+    let policy_digest = vb_storage::admission::compute_policy_digest(&workflow)
+        .map_err(|error| error.to_string())?;
+    Ok(AcceptedArtifact {
         digest,
         source_digest: digest,
-        policy_digest: digest,
-        ir: Vec::new(),
+        policy_digest,
+        ir,
         verification: VerificationProof {
             digest,
             gate_count,
@@ -91,29 +110,27 @@ fn accepted_artifact_with_gate_count(digest: WorkflowDigest, gate_count: u8) -> 
         },
         accepted_at_seq: EventSeq::new(0),
         required_capabilities: Box::new([]),
-    }
+    })
 }
 
 fn accepted_artifact_with_required_capability(
-    digest: WorkflowDigest,
     required: Capability,
-) -> AcceptedArtifact {
-    AcceptedArtifact {
-        required_capabilities: Box::new([required]),
-        ..accepted_artifact_with_gate_count(digest, REQUIRED_GATE_COUNT)
-    }
+) -> Result<AcceptedArtifact, String> {
+    let mut artifact = accepted_artifact_with_gate_count(REQUIRED_GATE_COUNT)?;
+    artifact.required_capabilities = Box::new([required]);
+    Ok(artifact)
 }
 
 fn persist_accepted_artifact(
     journal: &FjallJournal,
     artifact: &AcceptedArtifact,
-) -> Result<(), String> {
-    let payload = postcard::to_allocvec(artifact).map_err(|error| error.to_string())?;
+) -> Result<(), JournalError> {
+    let payload = postcard::to_allocvec(artifact).map_err(|_| JournalError::ArtifactMalformed)?;
     let record = CompiledIrRecord {
         digest: artifact.digest,
         ir: payload,
     };
-    put_compiled_ir(journal, &record).map_err(|error| error.to_string())
+    journal.put_compiled_ir(&record)
 }
 
 fn append_event(journal: &FjallJournal, event: &JournalEvent) -> Result<(), String> {
@@ -253,18 +270,25 @@ fn persist_source_and_artifact_returns_workflow_source_digest_mismatch_when_sour
 fn persist_source_and_artifact_returns_compiled_ir_digest_mismatch_when_artifact_digest_differs()
 -> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
-    let workflow = compile_valid_yaml()?;
+    let artifact = accepted_artifact_with_gate_count(REQUIRED_GATE_COUNT)?;
     let wrong_digest = WorkflowDigest::from_bytes([0xCC; 32]);
     let record = CompiledIrRecord {
         digest: wrong_digest,
-        ir: postcard::to_allocvec(&workflow.to_parts()).map_err(|error| error.to_string())?,
+        ir: postcard::to_allocvec(&artifact).map_err(|error| error.to_string())?,
     };
 
-    put_compiled_ir(&journal, &record).map_err(|error| error.to_string())?;
-    let store = StorageArtifactStore::new(Arc::new(journal));
-    let result = store.load_accepted_artifact(wrong_digest);
+    let result = journal.put_compiled_ir(&record);
 
-    assert_eq!(result, Err(ArtifactEnvelopeError::PostcardDecodeFailed));
+    assert!(
+        matches!(result, Err(JournalError::ArtifactChecksumMismatch)),
+        "expected ArtifactChecksumMismatch, got {result:?}"
+    );
+    assert_eq!(
+        journal
+            .compiled_ir(wrong_digest)
+            .map_err(|error| error.to_string())?,
+        None
+    );
     Ok(())
 }
 
@@ -314,9 +338,9 @@ fn persist_source_and_artifact_returns_durability_failure_and_no_ref_when_flush_
 fn admit_strict_artifact_run_accepts_storage_produced_yaml_artifact_when_gate_count_matches_required()
 -> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
-    let digest = WorkflowDigest::from_bytes([0x31; 32]);
-    let artifact = accepted_artifact_with_gate_count(digest, REQUIRED_GATE_COUNT);
-    persist_accepted_artifact(&journal, &artifact)?;
+    let artifact = accepted_artifact_with_gate_count(REQUIRED_GATE_COUNT)?;
+    let digest = artifact.digest;
+    persist_accepted_artifact(&journal, &artifact).map_err(|error| error.to_string())?;
     let store = StorageArtifactStore::new(Arc::new(journal));
     let run = RunId::new(8001);
 
@@ -355,10 +379,9 @@ fn admit_strict_artifact_run_returns_accepted_artifact_missing_when_envelope_abs
 #[test]
 fn admit_strict_artifact_run_returns_accepted_artifact_invalid_when_gate_count_under_required()
 -> Result<(), String> {
-    let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
-    let digest = WorkflowDigest::from_bytes([0x33; 32]);
-    persist_accepted_artifact(&journal, &accepted_artifact_with_gate_count(digest, 14))?;
-    let store = StorageArtifactStore::new(Arc::new(journal));
+    let artifact = accepted_artifact_with_gate_count(14)?;
+    let digest = artifact.digest;
+    let store = ReturningAcceptedArtifactStore { artifact };
 
     let result = admit_artifact_run(
         &store,
@@ -382,12 +405,10 @@ fn admit_strict_artifact_run_returns_accepted_artifact_invalid_when_gate_count_u
 fn admit_strict_artifact_run_returns_capability_mismatch_when_required_capability_ungranted()
 -> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
-    let digest = WorkflowDigest::from_bytes([0x34; 32]);
     let required = Capability::new("net.fetch".into(), ActionId::new(9));
-    persist_accepted_artifact(
-        &journal,
-        &accepted_artifact_with_required_capability(digest, required.clone()),
-    )?;
+    let artifact = accepted_artifact_with_required_capability(required.clone())?;
+    let digest = artifact.digest;
+    persist_accepted_artifact(&journal, &artifact).map_err(|error| error.to_string())?;
     let store = StorageArtifactStore::new(Arc::new(journal));
 
     let result = admit_artifact_run(
@@ -414,14 +435,14 @@ fn admit_strict_artifact_run_rejects_raw_workflow_parts_or_yaml_bypass_with_acce
 -> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
     let workflow = compile_valid_yaml()?;
-    put_compiled_ir(
-        &journal,
-        &CompiledIrRecord {
-            digest: workflow.digest(),
-            ir: postcard::to_allocvec(&workflow.to_parts()).map_err(|error| error.to_string())?,
-        },
-    )
-    .map_err(|error| error.to_string())?;
+    let result = journal.put_compiled_ir(&CompiledIrRecord {
+        digest: workflow.digest(),
+        ir: postcard::to_allocvec(&workflow.to_parts()).map_err(|error| error.to_string())?,
+    });
+    assert!(
+        matches!(result, Err(JournalError::ArtifactMalformed)),
+        "expected ArtifactMalformed, got {result:?}"
+    );
     let store = StorageArtifactStore::new(Arc::new(journal));
 
     let result = admit_artifact_run(
@@ -432,29 +453,36 @@ fn admit_strict_artifact_run_rejects_raw_workflow_parts_or_yaml_bypass_with_acce
         CapabilitySet::empty(),
     );
 
-    assert_eq!(result, Err(AdmissionError::ArtifactEnvelopeDecodeFailed));
+    assert_eq!(
+        result,
+        Err(AdmissionError::ArtifactNotFound {
+            digest: workflow.digest()
+        })
+    );
     Ok(())
 }
 
 #[test]
 fn runtime_storage_artifact_store_rejects_storage_gate_count_mismatch_with_exact_variant()
 -> Result<(), String> {
-    let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
-    let digest = WorkflowDigest::from_bytes([0xA5; 32]);
-    let artifact = accepted_artifact_with_gate_count(digest, 2);
-    persist_accepted_artifact(&journal, &artifact)?;
-    let store = StorageArtifactStore::new(Arc::new(journal));
+    let artifact = accepted_artifact_with_gate_count(2)?;
+    let digest = artifact.digest;
+    let store = ReturningAcceptedArtifactStore { artifact };
 
-    let result = store.load_accepted_artifact(digest);
+    let result = admit_artifact_run(
+        &store,
+        RuntimePolicy::Strict,
+        RunId::new(7007),
+        digest,
+        CapabilitySet::empty(),
+    );
 
     assert_eq!(
         result,
-        Err(
-            vb_runtime::admission::ArtifactEnvelopeError::InvalidGateCount {
-                found: 2,
-                required: REQUIRED_GATE_COUNT
-            }
-        )
+        Err(AdmissionError::ArtifactInvalidGateCount {
+            found: 2,
+            required: REQUIRED_GATE_COUNT
+        })
     );
     Ok(())
 }
@@ -462,11 +490,9 @@ fn runtime_storage_artifact_store_rejects_storage_gate_count_mismatch_with_exact
 #[test]
 fn strict_runtime_admission_rejects_storage_gate_count_mismatch_with_exact_variant()
 -> Result<(), String> {
-    let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
-    let digest = WorkflowDigest::from_bytes([0x5A; 32]);
-    let artifact = accepted_artifact_with_gate_count(digest, 2);
-    persist_accepted_artifact(&journal, &artifact)?;
-    let store = StorageArtifactStore::new(Arc::new(journal));
+    let artifact = accepted_artifact_with_gate_count(2)?;
+    let digest = artifact.digest;
+    let store = ReturningAcceptedArtifactStore { artifact };
 
     let result = admit_artifact_run(
         &store,

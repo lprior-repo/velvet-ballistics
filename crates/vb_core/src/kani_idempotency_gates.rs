@@ -614,9 +614,18 @@ fn validate_action_outcome_symbolic_completion_matrix() {
     );
     kani::assert(
         result.is_ok()
-            || matches!(result, Err(crate::action::ActionError::OutputSlotOutOfBounds { .. }))
-            || matches!(result, Err(crate::action::ActionError::TaintViolation { .. }))
-            || matches!(result, Err(crate::action::ActionError::PayloadTooLarge { .. }))
+            || matches!(
+                result,
+                Err(crate::action::ActionError::OutputSlotOutOfBounds { .. })
+            )
+            || matches!(
+                result,
+                Err(crate::action::ActionError::TaintViolation { .. })
+            )
+            || matches!(
+                result,
+                Err(crate::action::ActionError::PayloadTooLarge { .. })
+            )
             || matches!(result, Err(crate::action::ActionError::DispatchFailed)),
         "all outcomes produce only expected error variants or Ok",
     );

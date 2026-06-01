@@ -189,10 +189,10 @@ pub(super) fn lower_canonical_for_each(
             value: body_width_only,
         }])
     })?;
-    let next_step =
-        checked_step_offset(id, next_offset, "for_each", "next").map_err(|e| CompileErrors(vec![e]))?;
-    let done =
-        checked_step_offset(id, done_offset, "for_each", "done").map_err(|e| CompileErrors(vec![e]))?;
+    let next_step = checked_step_offset(id, next_offset, "for_each", "next")
+        .map_err(|e| CompileErrors(vec![e]))?;
+    let done = checked_step_offset(id, done_offset, "for_each", "done")
+        .map_err(|e| CompileErrors(vec![e]))?;
     builder.record_slot(input);
     builder.record_slot(SlotIdx::new(1));
     builder.push_node(CompiledNode {

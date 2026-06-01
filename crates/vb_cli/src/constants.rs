@@ -51,10 +51,8 @@ options:
 
 architecture: nightly Rust, compiled IR, in-memory engine, bounded IPC, Fjall journal, no HTTP hot path";
 
-
 const INPUT_MAPPING_DECODE_FAILED_MESSAGE: &str = "INPUT_MAPPING_FAILED: input-bin decode failed";
 const INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE: &str =
     "INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count";
 const INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE: &str =
     "INPUT_MAPPING_FAILED: input slot index out of range";
-

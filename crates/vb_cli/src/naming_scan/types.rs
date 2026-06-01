@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub(crate) const CANONICAL_HYPHEN: &str = "velvet-ballastics";
 pub(crate) const CANONICAL_UNDERSCORE: &str = "vb_cli";
@@ -8,7 +8,7 @@ pub(crate) const LEGACY_CRATE: &str = "velvet_ballistics";
 pub(crate) const LEGACY_LANGUAGE_VERSION: &str = "velvet-ballistics/v1";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct CanonicalSpellingTable {
+pub struct CanonicalSpellingTable {
     pub product: String,
     pub binary: String,
     pub package: String,
@@ -20,7 +20,7 @@ pub(crate) struct CanonicalSpellingTable {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 #[non_exhaustive]
-pub(crate) enum CanonicalNameKind {
+pub enum CanonicalNameKind {
     Product,
     Binary,
     Package,
@@ -31,14 +31,14 @@ pub(crate) enum CanonicalNameKind {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct CanonicalEntry {
+pub struct CanonicalEntry {
     pub kind: CanonicalNameKind,
     pub token: String,
 }
 
 impl CanonicalEntry {
     #[must_use]
-    pub(crate) fn new(kind: CanonicalNameKind, token: &str) -> Self {
+    pub fn new(kind: CanonicalNameKind, token: &str) -> Self {
         Self {
             kind,
             token: token.to_owned(),
@@ -46,7 +46,7 @@ impl CanonicalEntry {
     }
 
     #[must_use]
-    pub(crate) fn replace_token_when_kind_matches(self, kind: CanonicalNameKind, token: &str) -> Self {
+    pub fn replace_token_when_kind_matches(self, kind: CanonicalNameKind, token: &str) -> Self {
         if self.kind == kind {
             Self::new(kind, token)
         } else {
@@ -57,7 +57,7 @@ impl CanonicalEntry {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
-pub(crate) enum LegacyAllowRule {
+pub enum LegacyAllowRule {
     RepositoryPath {
         path: String,
     },
@@ -82,12 +82,12 @@ pub(crate) enum LegacyAllowRule {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
-pub(crate) enum AllowlistPolicy {
+pub enum AllowlistPolicy {
     Exact(Vec<LegacyAllowRule>),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct RawScanConfig {
+pub struct RawScanConfig {
     pub canonical_entries: Vec<CanonicalEntry>,
     pub legacy_allowlist: Vec<LegacyAllowRule>,
     pub scan_patterns: Vec<String>,
@@ -98,7 +98,7 @@ pub(crate) struct RawScanConfig {
 
 impl RawScanConfig {
     #[must_use]
-    pub(crate) fn empty() -> Self {
+    pub fn empty() -> Self {
         Self {
             canonical_entries: Vec::new(),
             legacy_allowlist: Vec::new(),
@@ -111,7 +111,7 @@ impl RawScanConfig {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct ScanConfig {
+pub struct ScanConfig {
     pub canonical_table: CanonicalSpellingTable,
     pub allowlist_policy: AllowlistPolicy,
     pub scan_patterns: Vec<String>,
@@ -121,11 +121,11 @@ pub(crate) struct ScanConfig {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
-pub(crate) struct RepoPath(String);
+pub struct RepoPath(String);
 
 impl RepoPath {
     #[must_use]
-    pub(crate) fn new(path: &str) -> Self {
+    pub fn new(path: &str) -> Self {
         Self(path.to_owned())
     }
 }
@@ -137,45 +137,60 @@ impl std::fmt::Display for RepoPath {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct RepoRoot(pub(crate) PathBuf);
+pub struct RepoRoot(pub(crate) PathBuf);
 
 impl RepoRoot {
     #[must_use]
-    pub(crate) fn new(path: PathBuf) -> Self {
+    pub fn new(path: PathBuf) -> Self {
         Self(path)
+    }
+
+    #[must_use]
+    pub fn as_path(&self) -> &Path {
+        &self.0
     }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
-pub(crate) struct LineNumber(pub(crate) u64);
+pub struct LineNumber(pub(crate) u64);
 
 impl LineNumber {
     #[must_use]
-    pub(crate) fn new(value: u64) -> Self {
+    pub fn new(value: u64) -> Self {
         Self(value)
+    }
+
+    #[must_use]
+    pub const fn get(self) -> u64 {
+        self.0
     }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
-pub(crate) struct ColumnNumber(pub(crate) u64);
+pub struct ColumnNumber(pub(crate) u64);
 
 impl ColumnNumber {
     #[must_use]
-    pub(crate) fn new(value: u64) -> Self {
+    pub fn new(value: u64) -> Self {
         Self(value)
+    }
+
+    #[must_use]
+    pub const fn get(self) -> u64 {
+        self.0
     }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 #[non_exhaustive]
-pub(crate) enum SpellingClass {
+pub enum SpellingClass {
     LegacyProjectSpelling,
     LegacyCrateModuleSpelling,
     LegacyLanguageVersionSpelling,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct NamingFinding {
+pub struct NamingFinding {
     pub path: RepoPath,
     pub line: LineNumber,
     pub column: ColumnNumber,
@@ -185,7 +200,7 @@ pub(crate) struct NamingFinding {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
-pub(crate) enum LegacyException {
+pub enum LegacyException {
     RepositoryPath {
         path: String,
     },
@@ -201,7 +216,7 @@ pub(crate) enum LegacyException {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
-pub(crate) enum OccurrenceClass {
+pub enum OccurrenceClass {
     NoOccurrence,
     CanonicalProduct {
         canonical: String,
@@ -226,7 +241,7 @@ pub(crate) enum OccurrenceClass {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
-pub(crate) enum ScanInput {
+pub enum ScanInput {
     Text {
         path: RepoPath,
         contents: String,
@@ -242,7 +257,7 @@ pub(crate) enum ScanInput {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct ScanReport {
+pub struct ScanReport {
     pub root: RepoRoot,
     pub config_fingerprint: String,
     pub selected_input_count: usize,
@@ -252,13 +267,13 @@ pub(crate) struct ScanReport {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct RenderedReport {
+pub struct RenderedReport {
     pub body: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
-pub(crate) enum NamingScanError {
+pub enum NamingScanError {
     InvalidRoot { root: RepoRoot },
     InvalidConfiguration { reason: String },
     FileDiscoveryFailed { path: RepoPath, source: String },

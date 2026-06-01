@@ -1,18 +1,26 @@
 #![forbid(unsafe_code)]
 //! Explain command main dispatch.
 
-use std::process::ExitCode;
-use std::io::{self, Write};
-use crate::args::{ActionRegistryMode, Command, OutputFormat, ParseError, StepTarget, VerifyProfile};
-use crate::exit_code::CliExitCode;
-use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, write_stderr_line, write_failure_message};
-use crate::output_utils::*;
-use crate::file_io::{read_file, parse_run_id, read_journal_events, report_storage_open_error};
-use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+use crate::args::{
+    ActionRegistryMode, Command, OutputFormat, ParseError, StepTarget, VerifyProfile,
+};
 use crate::cli_envelope;
+use crate::exit_code::CliExitCode;
 use crate::explain_repair::explain_repair_hint;
+use crate::explain_reports::{
+    explain_compile_repair_hint, explain_gate_pass, explain_verification_failure,
+    verify_error_message,
+};
 use crate::explain_validation::explain_validation_error;
-use crate::explain_reports::{explain_gate_pass, explain_compile_repair_hint, verify_error_message, explain_verification_failure};
+use crate::file_io::{parse_run_id, read_file, read_journal_events, report_storage_open_error};
+use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+use crate::output::{
+    json_error, json_out, output_error_exit, write_failure_message, write_stderr_line,
+    write_stdout_line,
+};
+use crate::output_utils::*;
+use std::io::{self, Write};
+use std::process::ExitCode;
 
 pub(crate) fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
@@ -79,7 +87,10 @@ pub(crate) fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> E
                     .iter()
                     .map(std::string::ToString::to_string)
                     .collect();
-                crate::emit_json_or_return!(&explain_compile_failure_report(&error_messages), output);
+                crate::emit_json_or_return!(
+                    &explain_compile_failure_report(&error_messages),
+                    output
+                );
             }
             return CliExitCode::ValidationFailed.into();
         }
@@ -90,6 +101,7 @@ pub(crate) fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> E
         Ok(result) => {
             if output == OutputFormat::Text {
                 crate::outln!("Workflow verification certificate:");
+                crate::outln!("  status:  valid");
                 crate::outln!("  digest:  {}", result.digest_hex);
                 crate::outln!("  nodes:   {}", result.node_count);
                 crate::outln!("");
@@ -123,13 +135,15 @@ pub(crate) fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> E
             if output == OutputFormat::Text {
                 explain_verification_failure(&err);
             } else {
-                crate::emit_json_or_return!(&explain_verification_failure_report(&err, code), output);
+                crate::emit_json_or_return!(
+                    &explain_verification_failure_report(&err, code),
+                    output
+                );
             }
             code.into()
         }
     }
 }
-
 
 pub(crate) fn explain_failure_report(
     phase: &'static str,
@@ -149,7 +163,6 @@ pub(crate) fn explain_failure_report(
     })
 }
 
-
 pub(crate) fn explain_compile_failure_report(errors: &[String]) -> serde_json::Value {
     serde_json::json!({
         "schema_version": crate::cli_envelope::SCHEMA_VERSION,
@@ -163,8 +176,9 @@ pub(crate) fn explain_compile_failure_report(errors: &[String]) -> serde_json::V
     })
 }
 
-
-pub(crate) fn explain_success_report(result: &crate::commands_verify::VerifyOk) -> serde_json::Value {
+pub(crate) fn explain_success_report(
+    result: &crate::commands_verify::VerifyOk,
+) -> serde_json::Value {
     serde_json::json!({
         "schema_version": crate::cli_envelope::SCHEMA_VERSION,
         "kind": "explain_report",
@@ -181,7 +195,6 @@ pub(crate) fn explain_success_report(result: &crate::commands_verify::VerifyOk) 
     })
 }
 
-
 pub(crate) fn explain_verification_failure_report(
     err: &crate::commands_verify::VerifyError,
     code: CliExitCode,
@@ -195,13 +208,14 @@ pub(crate) fn explain_verification_failure_report(
     )
 }
 
-
 pub(crate) fn explain_error(err: &vb_compile::CompileError) {
     use vb_compile::CompileError;
     match err {
         CompileError::SourceTooLarge { actual, limit } => {
             crate::outln!("Source Too Large");
-            crate::outln!("  The workflow YAML source is {actual} bytes, exceeds limit of {limit}.");
+            crate::outln!(
+                "  The workflow YAML source is {actual} bytes, exceeds limit of {limit}."
+            );
         }
         CompileError::EmptySource => {
             crate::outln!("Empty Source");
@@ -281,7 +295,9 @@ pub(crate) fn explain_error(err: &vb_compile::CompileError) {
         }
         CompileError::InvalidVersion { actual } => {
             crate::outln!("Invalid Workflow Version");
-            crate::outln!("  Found version '{actual}', but Velvet v1 requires 'velvet-ballistics/v1'.");
+            crate::outln!(
+                "  Found version '{actual}', but Velvet v1 requires 'velvet-ballistics/v1'."
+            );
         }
         CompileError::InvalidTriggerCount { count } => {
             crate::outln!("Invalid Trigger Count");
@@ -481,4 +497,3 @@ pub(crate) fn explain_error(err: &vb_compile::CompileError) {
     }
     explain_compile_repair_hint(err);
 }
-

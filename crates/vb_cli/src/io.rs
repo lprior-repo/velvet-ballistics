@@ -4,26 +4,8 @@
 use crate::args::ParseError;
 use std::io::{self, Write};
 
-pub(crate) const HELP: &str = "\
-velvet-ballistics - compiled workflow runtime
-
-commands:
-  validate   <workflow.yaml>                          Validate a workflow definition
-  compile    <workflow.yaml> --emit <ir|yaml|postcard> --out <file>  Compile a workflow artifact
-  run        <workflow.yaml> --input-bin <file> --durability <mode> [--db <path>]  Execute a workflow
-  run-compiled <workflow.vbir> --input-bin <file> --durability <mode> [--db <path>]  Execute compiled IR
-  ipc-serve  --socket <path> --db <path>               Start IPC server
-  inspect    <run_id> --db <path>                       Inspect a run
-  events     <run_id> --db <path>                       List run events
-  replay     <run_id> --db <path>                       Replay a run from journal
-  bench-run  <workflow.yaml>                            Benchmark a workflow
-  doctor     --db <path>                                Run diagnostic checks
-  help                                                Print this message
-  version                                             Print version
-
-architecture: nightly Rust, compiled IR, in-memory engine, bounded IPC, Fjall journal, no HTTP hot path";
-
-pub(crate) const VERSION: &str = env!("CARGO_PKG_VERSION");
+pub(crate) const HELP: &str = crate::constants::HELP;
+pub(crate) const VERSION: &str = crate::constants::VERSION;
 
 pub(crate) fn write_help_stdout() -> io::Result<()> {
     let stdout = io::stdout();
@@ -40,88 +22,10 @@ pub(crate) fn write_version_stdout() -> io::Result<()> {
 pub(crate) fn write_error_stderr(error: &ParseError) -> io::Result<()> {
     let stderr = io::stderr();
     let mut handle = stderr.lock();
-    match error {
-        ParseError::MissingArgument(name) => {
-            writeln!(handle, "missing argument: {name}\n\n{HELP}")
-        }
-        ParseError::UnknownEmitTarget(target) => {
-            writeln!(handle, "unknown emit target: {target} (expected: ir, yaml, postcard)\n\n{HELP}")
-        }
-        ParseError::UnknownDurability(mode) => {
-            writeln!(handle, "unknown durability mode: {mode} (expected: strict, journaled, none)\n\n{HELP}")
-        }
-        ParseError::UnknownProfile(profile) => {
-            writeln!(handle, "unknown verify profile: {profile} (expected: quick, standard, full)\n\n{HELP}")
-        }
-        ParseError::UnknownCommand(cmd) => {
-            writeln!(handle, "unknown command: {cmd}\n\n{HELP}")
-        }
-        ParseError::UnknownServerMode(mode) => {
-            writeln!(handle, "unknown server mode: {mode}\n\n{HELP}")
-        }
-        ParseError::UnknownEventStatus(status) => {
-            writeln!(handle, "unknown event status: {status}\n\n{HELP}")
-        }
-        ParseError::InvalidAgentContextArgument(reason) => {
-            writeln!(handle, "invalid agent-context argument: {reason}\n\n{HELP}")
-        }
-        ParseError::InvalidTraceArgument(reason) => {
-            writeln!(handle, "invalid trace argument: {reason}\n\n{HELP}")
-        }
-        ParseError::InvalidStatusArgument(reason) => {
-            writeln!(handle, "invalid status argument: {reason}\n\n{HELP}")
-        }
-        ParseError::InvalidSystemStatusArgument(reason) => {
-            writeln!(handle, "invalid system status argument: {reason}\n\n{HELP}")
-        }
-        ParseError::UnknownActionCommand(cmd) => {
-            writeln!(handle, "unknown action command: {cmd} (expected: list, inspect)\n\n{HELP}")
-        }
-        ParseError::UnknownActionRegistry(registry) => {
-            writeln!(handle, "unknown action registry: {registry}\n\n{HELP}")
-        }
-        ParseError::MissingActionRegistryValue => {
-            writeln!(handle, "missing action-args value for --registry\n\n{HELP}")
-        }
-        ParseError::UnknownActionListFlag(flag) => {
-            writeln!(handle, "unknown action list flag: {flag}\n\n{HELP}")
-        }
-        ParseError::UnexpectedActionListArgument(argument) => {
-            writeln!(handle, "unexpected action list argument: {argument}\n\n{HELP}")
-        }
-        ParseError::InvalidActionListArgument(reason) => {
-            writeln!(handle, "invalid action list argument: {reason}\n\n{HELP}")
-        }
-        ParseError::UnknownActionInspectFlag(flag) => {
-            writeln!(handle, "unknown action inspect flag: {flag}\n\n{HELP}")
-        }
-        ParseError::UnexpectedActionInspectArgument(argument) => {
-            writeln!(handle, "unexpected action inspect argument: {argument}\n\n{HELP}")
-        }
-        ParseError::InvalidActionInspectArgument(reason) => {
-            writeln!(handle, "invalid action inspect argument: {reason}\n\n{HELP}")
-        }
-        ParseError::InvalidActionId(action_id) => {
-            writeln!(handle, "invalid action id: {action_id}\n\n{HELP}")
-        }
-        ParseError::InvalidActionName(name) => {
-            writeln!(handle, "invalid action name: {name}\n\n{HELP}")
-        }
-        ParseError::UnknownFlag { command, flag } => {
-            writeln!(handle, "unknown flag for {command}: {flag}\n\n{HELP}")
-        }
-        ParseError::InvalidArgument(reason) => {
-            writeln!(handle, "invalid argument: {reason}\n\n{HELP}")
-        }
-        ParseError::InvalidStep(step) => {
-            writeln!(handle, "invalid step: {step}\n\n{HELP}")
-        }
-        ParseError::ReasonTooLong => {
-            writeln!(handle, "reason exceeds maximum length of 256 characters\n\n{HELP}")
-        }
-        ParseError::NoCommand => {
-            writeln!(handle, "{HELP}")
-        }
+    if matches!(error, ParseError::NoCommand) {
+        writeln!(handle, "{HELP}")
+    } else {
+        writeln!(handle, "{error}\n\n{HELP}")
     }
 }
 
@@ -149,7 +53,10 @@ pub(crate) fn write_stderr_line(args: std::fmt::Arguments<'_>) {
     }
 }
 
-pub(crate) fn exit_from_io(result: &io::Result<()>, success_code: std::process::ExitCode) -> std::process::ExitCode {
+pub(crate) fn exit_from_io(
+    result: &io::Result<()>,
+    success_code: std::process::ExitCode,
+) -> std::process::ExitCode {
     match result {
         Ok(()) => success_code,
         Err(_) => std::process::ExitCode::FAILURE,
@@ -193,7 +100,7 @@ macro_rules! errln {
 macro_rules! emit_json_or_return {
     ($value:expr, $format:expr $(,)?) => {{
         match $crate::output::json_out($value, $format) {
-            Ok(()) => {},
+            Ok(()) => {}
             Err(error) => return $crate::output::output_error_exit(&error),
         }
     }};

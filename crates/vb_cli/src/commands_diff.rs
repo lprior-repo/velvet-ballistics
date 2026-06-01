@@ -8,7 +8,7 @@ use vb_core::SlotValue;
 use vb_storage::events::JournalEvent;
 
 /// Result of comparing two event streams.
-pub(crate) struct DiffResult {
+pub struct DiffResult {
     /// Number of events in stream A.
     pub events_a: usize,
     /// Number of events in stream B.
@@ -18,7 +18,7 @@ pub(crate) struct DiffResult {
 }
 
 /// Compare two event streams and produce a structured diff.
-pub(crate) fn compute_diff(events_a: &[JournalEvent], events_b: &[JournalEvent]) -> DiffResult {
+pub fn compute_diff(events_a: &[JournalEvent], events_b: &[JournalEvent]) -> DiffResult {
     let len_a = events_a.len();
     let len_b = events_b.len();
     let max_len = len_a.max(len_b);
@@ -130,7 +130,7 @@ pub(crate) fn compute_diff(events_a: &[JournalEvent], events_b: &[JournalEvent])
 }
 
 /// Produce a short JSON summary of a single event for diff display.
-pub(crate) fn diff_event_summary(event: &JournalEvent) -> serde_json::Value {
+pub fn diff_event_summary(event: &JournalEvent) -> serde_json::Value {
     match event {
         JournalEvent::RunAccepted { seq, .. } => {
             serde_json::json!({"type": "RunAccepted", "seq": seq.get()})
@@ -216,7 +216,7 @@ pub(crate) fn diff_event_summary(event: &JournalEvent) -> serde_json::Value {
 }
 
 /// Return the static name string for an event variant.
-pub(crate) fn event_name(event: &JournalEvent) -> &'static str {
+pub fn event_name(event: &JournalEvent) -> &'static str {
     match event {
         JournalEvent::RunAccepted { .. } => "RunAccepted",
         JournalEvent::RunAdmission { .. } => "RunAdmission",
@@ -241,7 +241,7 @@ pub(crate) fn event_name(event: &JournalEvent) -> &'static str {
 }
 
 /// Check whether two events differ in a semantically meaningful way.
-pub(crate) fn events_differ(a: &JournalEvent, b: &JournalEvent) -> bool {
+pub fn events_differ(a: &JournalEvent, b: &JournalEvent) -> bool {
     match (a, b) {
         (
             JournalEvent::StepSucceeded {
@@ -355,7 +355,3 @@ pub(crate) fn collect_slot_values(events: &[JournalEvent]) -> HashMap<u16, Strin
     }
     slots
 }
-
-#[cfg(test)]
-#[path = "commands_diff/tests.rs"]
-mod tests;

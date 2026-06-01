@@ -1,18 +1,23 @@
 #![forbid(unsafe_code)]
 //! Event listing command.
 
-use std::process::ExitCode;
+use crate::args::{
+    ActionRegistryMode, Command, DurabilityMode, EventStatus, OutputFormat, ParseError, StepTarget,
+};
+use crate::cli_envelope;
+use crate::exit_code::CliExitCode;
+use crate::file_io::{parse_run_id, read_file, read_journal_events, report_storage_open_error};
+use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+use crate::output::{
+    json_error, json_out, output_error_exit, write_contract_error_json, write_failure_message,
+    write_stderr_line, write_stdout_line,
+};
+use crate::output_utils::*;
 use std::io::{self, Write};
 use std::num::NonZeroUsize;
+use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use crate::args::{ActionRegistryMode, Command, DurabilityMode, EventStatus, OutputFormat, ParseError, StepTarget};
-use crate::exit_code::CliExitCode;
-use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, write_stderr_line, write_failure_message, write_contract_error_json};
-use crate::output_utils::*;
-use crate::file_io::{read_file, parse_run_id, read_journal_events, report_storage_open_error};
-use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
-use crate::cli_envelope;
 
 pub(crate) fn cmd_events(
     run_id: &str,
@@ -362,12 +367,17 @@ pub(crate) fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Val
     }
 }
 
-
-fn write_locked_read_surface(_operation: &str, _run_id: &str, _output: crate::args::OutputFormat) -> std::process::ExitCode {
+fn write_locked_read_surface(
+    _operation: &str,
+    _run_id: &str,
+    _output: crate::args::OutputFormat,
+) -> std::process::ExitCode {
     crate::errln!("locked read surface not implemented");
     std::process::ExitCode::FAILURE
 }
 
-fn write_vb_kyyf_trace(_operation: &str, _run_id: &str, _event_count: usize) {
-    // stub - tracing not implemented
+fn write_vb_kyyf_trace(command: &str, run_id: &str, events_len: usize) {
+    crate::outln!(
+        "BDD-KYYF-002 command={command} run_id={run_id} evidence=.evidence/vb-kyyf/storage-replay-resume.md digest=normalized-replay events={events_len}"
+    );
 }

@@ -17,13 +17,9 @@
 
 use proptest::prelude::*;
 use vb_core::{CompiledNodeKind, StepIdx};
-use vb_yaml::ast::{
-    StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts,
-};
+use vb_yaml::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
 
-use super::part_01::{
-    canonical_step_width, compile_source,
-};
+use super::part_01::{canonical_step_width, compile_source};
 use super::part_02::lower_canonical_for_each;
 use super::part_07::SlotCompiler;
 
@@ -217,11 +213,19 @@ fn foreach_deterministic_output() {
     }];
     let mut b1 = SlotCompiler::new();
     let mut b2 = SlotCompiler::new();
-    assert!(lower_canonical_for_each(0, StepIdx::new(0), "0", None, &body, &mut b1).is_ok(),
-        "first compile must succeed");
-    assert!(lower_canonical_for_each(0, StepIdx::new(0), "0", None, &body, &mut b2).is_ok(),
-        "second compile must succeed");
-    assert_eq!(b1.nodes.len(), b2.nodes.len(), "same input must produce same node count");
+    assert!(
+        lower_canonical_for_each(0, StepIdx::new(0), "0", None, &body, &mut b1).is_ok(),
+        "first compile must succeed"
+    );
+    assert!(
+        lower_canonical_for_each(0, StepIdx::new(0), "0", None, &body, &mut b2).is_ok(),
+        "second compile must succeed"
+    );
+    assert_eq!(
+        b1.nodes.len(),
+        b2.nodes.len(),
+        "same input must produce same node count"
+    );
     for (i, (n1, n2)) in b1.nodes.iter().zip(b2.nodes.iter()).enumerate() {
         assert_eq!(n1.id, n2.id, "node {i} id must match");
     }

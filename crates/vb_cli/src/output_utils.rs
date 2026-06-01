@@ -1,13 +1,13 @@
 #![forbid(unsafe_code)]
 //! Output formatting utilities for parse errors, diagnostics, and exit codes.
 
-use std::process::ExitCode;
-use std::io::{self, Write};
 use crate::args::{ActionRegistryMode, Command, OutputFormat, ParseError, StepTarget};
-use crate::exit_code::CliExitCode;
 use crate::cli_envelope;
-use crate::output::{write_structured_stderr, write_stderr_line_io, write_stderr_best_effort};
+use crate::exit_code::CliExitCode;
 use crate::io::write_error_stderr;
+use crate::output::{write_stderr_best_effort, write_stderr_line_io, write_structured_stderr};
+use std::io::{self, Write};
+use std::process::ExitCode;
 
 pub(crate) fn write_parse_error_stderr(error: &ParseError, output: OutputFormat) -> io::Result<()> {
     match output {
@@ -18,11 +18,18 @@ pub(crate) fn write_parse_error_stderr(error: &ParseError, output: OutputFormat)
     }
 }
 
-pub(crate) fn write_diagnostic_report_stderr(error: &ParseError, output: OutputFormat) -> io::Result<()> {
+pub(crate) fn write_diagnostic_report_stderr(
+    error: &ParseError,
+    output: OutputFormat,
+) -> io::Result<()> {
     write_diagnostic_report_stderr_io(&error.to_string(), CliExitCode::ValidationFailed, output)
 }
 
-pub(crate) fn write_diagnostic_message_stderr(message: &str, code: CliExitCode, output: OutputFormat) {
+pub(crate) fn write_diagnostic_message_stderr(
+    message: &str,
+    code: CliExitCode,
+    output: OutputFormat,
+) {
     let write_result = match output {
         OutputFormat::Yaml | OutputFormat::Postcard => {
             write_structured_stderr(&diagnostic_value(message, code), output)
@@ -118,4 +125,3 @@ pub(crate) fn write_diagnostic_report_stderr_io(
     });
     write_structured_stderr(&diagnostic, output)
 }
-

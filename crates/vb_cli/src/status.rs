@@ -15,7 +15,7 @@ use vb_storage::{FjallJournal, JournalEvent};
 /// `#[non_exhaustive]` - new variants may be added in the future.
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum StatusError {
+pub enum StatusError {
     /// The requested run was not found in the journal.
     RunNotFound {
         /// The run identifier that was not found.
@@ -32,7 +32,7 @@ pub(crate) enum StatusError {
 ///
 /// This is a pure computation that does not access the runtime shard or YAML source.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum DerivedStatus {
+pub enum DerivedStatus {
     /// Run is pending (no events yet).
     Pending,
     /// Run is actively executing.
@@ -66,7 +66,7 @@ pub(crate) enum DerivedStatus {
 
 /// Entry in the replay timeline.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ReplayExplainEntry {
+pub struct ReplayExplainEntry {
     /// Sequence number of this event.
     pub seq: u64,
     /// The event type name.
@@ -83,7 +83,7 @@ pub(crate) struct ReplayExplainEntry {
 
 /// Snapshot boundary information.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct SnapshotBoundary {
+pub struct SnapshotBoundary {
     /// Sequence number at the snapshot boundary.
     pub seq: u64,
     /// The run identifier.
@@ -92,7 +92,7 @@ pub(crate) struct SnapshotBoundary {
 
 /// Timeline for a single run.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct RunReplayTimeline {
+pub struct RunReplayTimeline {
     /// The run identifier.
     pub run_id: RunId,
     /// Snapshot boundary marker (if a snapshot exists).
@@ -103,7 +103,7 @@ pub(crate) struct RunReplayTimeline {
 
 /// Replay timeline result.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum ReplayTimeline {
+pub enum ReplayTimeline {
     /// Valid timeline with run entries.
     Valid {
         /// All runs with their timelines.
@@ -126,7 +126,7 @@ pub(crate) enum ReplayTimeline {
 ///
 /// The derived status for the run
 #[must_use]
-pub(crate) fn derive_status_from_events(events: &[JournalEvent]) -> DerivedStatus {
+pub fn derive_status_from_events(events: &[JournalEvent]) -> DerivedStatus {
     // Empty events means Pending
     if events.is_empty() {
         return DerivedStatus::Pending;
@@ -220,7 +220,7 @@ pub(crate) fn derive_status_from_events(events: &[JournalEvent]) -> DerivedStatu
 /// # Returns
 ///
 /// The replay timeline or an error
-pub(crate) fn replay_explain(journal: &FjallJournal) -> Result<ReplayTimeline, StatusError> {
+pub fn replay_explain(journal: &FjallJournal) -> Result<ReplayTimeline, StatusError> {
     let headers = journal
         .run_headers()
         .map_err(|e| StatusError::Inconsistency {
@@ -257,7 +257,7 @@ pub(crate) fn replay_explain(journal: &FjallJournal) -> Result<ReplayTimeline, S
 /// # Returns
 ///
 /// The run's replay timeline or an error
-pub(crate) fn replay_explain_for_run(
+pub fn replay_explain_for_run(
     journal: &FjallJournal,
     run: RunId,
 ) -> Result<RunReplayTimeline, StatusError> {
@@ -468,7 +468,3 @@ fn build_explain_entry(event: &JournalEvent) -> ReplayExplainEntry {
         action,
     }
 }
-
-#[cfg(test)]
-#[path = "status/tests.rs"]
-mod tests;

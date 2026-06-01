@@ -1,18 +1,12 @@
-use crate::commands_workflow::{
-    dot::generate_dot, simulate::simulate_workflow, DotGraph, SimulationResult, SimulationStep,
+use super::{
+    DotGraph, SimulationResult, SimulationStep, describe_node_for_simulate, node_kind_label,
+    saturating_add,
 };
-use vb_core::{CompiledNodeKind, ConstIdx, ExprBranch, ExprIdx, SlotIdx, StepIdx, ActionId};
+use vb_core::{ActionId, CompiledNodeKind, ConstIdx, ExprBranch, ExprIdx, SlotIdx, StepIdx};
 
 // ---------------------------------------------------------------------------
 // Helpers tests (re-exported from helpers module via parent)
 // ---------------------------------------------------------------------------
-
-use vb_core::CompiledNodeKind;
-use vb_core::ConstIdx;
-use vb_core::SlotIdx;
-
-#[allow(unused_imports)]
-use crate::commands_workflow::helpers::{node_kind_label, saturating_add};
 
 #[test]
 fn saturating_add_returns_sum_for_normal_values() {
@@ -99,9 +93,6 @@ fn node_kind_label_returns_wait_until() {
 // ---------------------------------------------------------------------------
 // Simulate tests
 // ---------------------------------------------------------------------------
-
-#[allow(unused_imports)]
-use crate::commands_workflow::simulate::describe_node_for_simulate;
 
 #[test]
 fn describe_node_for_simulate_returns_entry_for_nop() {

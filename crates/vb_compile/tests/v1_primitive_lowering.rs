@@ -2484,32 +2484,64 @@ fn nested_for_each_body_lowers_to_final_ir() -> Result<(), String> {
 
     match &parts.nodes[0].kind {
         CompiledNodeKind::ForEachStart { body, done, .. } => {
-            assert_eq!(body.get(), 1, "outer ForEachStart.body must point to inner ForEachStart at 1");
-            assert_eq!(done.get(), 5, "outer ForEachStart.done must skip inner for_each → 5");
+            assert_eq!(
+                body.get(),
+                1,
+                "outer ForEachStart.body must point to inner ForEachStart at 1"
+            );
+            assert_eq!(
+                done.get(),
+                5,
+                "outer ForEachStart.done must jump past inner for_each to 5"
+            );
         }
         other => return Err(format!("expected outer ForEachStart at 0, got {other:?}")),
     }
 
     match &parts.nodes[1].kind {
         CompiledNodeKind::ForEachStart { body, done, .. } => {
-            assert_eq!(body.get(), 2, "inner ForEachStart.body must point to SetConst at 2");
-            assert_eq!(done.get(), 4, "inner ForEachStart.done must point past inner ForEachNext to 4");
+            assert_eq!(
+                body.get(),
+                2,
+                "inner ForEachStart.body must point to SetConst at 2"
+            );
+            assert_eq!(
+                done.get(),
+                4,
+                "inner ForEachStart.done must point past inner ForEachNext to 4"
+            );
         }
         other => return Err(format!("expected inner ForEachStart at 1, got {other:?}")),
     }
 
     match &parts.nodes[3].kind {
         CompiledNodeKind::ForEachNext { body, done, .. } => {
-            assert_eq!(body.get(), 2, "inner ForEachNext.body must point back to SetConst at 2");
-            assert_eq!(done.get(), 4, "inner ForEachNext.done must point past itself to 4");
+            assert_eq!(
+                body.get(),
+                2,
+                "inner ForEachNext.body must point back to SetConst at 2"
+            );
+            assert_eq!(
+                done.get(),
+                4,
+                "inner ForEachNext.done must point past itself to 4"
+            );
         }
         other => return Err(format!("expected inner ForEachNext at 3, got {other:?}")),
     }
 
     match &parts.nodes[4].kind {
         CompiledNodeKind::ForEachNext { body, done, .. } => {
-            assert_eq!(body.get(), 1, "outer ForEachNext.body must point back to inner ForEachStart at 1");
-            assert_eq!(done.get(), 5, "outer ForEachNext.done must point to Finish at 5");
+            assert_eq!(
+                body.get(),
+                1,
+                "outer ForEachNext.body must point back to inner ForEachStart at 1"
+            );
+            assert_eq!(
+                done.get(),
+                5,
+                "outer ForEachNext.done must point to Finish at 5"
+            );
         }
         other => return Err(format!("expected outer ForEachNext at 4, got {other:?}")),
     }
@@ -2525,10 +2557,17 @@ fn nested_for_each_empty_body_returns_step_field_shape() -> Result<(), String> {
     let errors = compile_yaml_error(&yaml)?;
     let first = first_compile_error(&errors)?;
     match first {
-        CompileError::StepFieldShape { step, field, expected } => {
+        CompileError::StepFieldShape {
+            step,
+            field,
+            expected,
+        } => {
             assert_eq!(*step, 0, "diagnostic must reference outer for_each step 0");
             assert_eq!(*field, "steps", "field must be 'steps'");
-            assert!(expected.contains("exactly one"), "expected must mention body constraint");
+            assert!(
+                expected.contains("exactly one"),
+                "expected must mention body constraint"
+            );
         }
         other => return Err(format!("expected StepFieldShape, got {other:?}")),
     }
@@ -2544,7 +2583,10 @@ fn nested_for_each_multi_step_body_returns_step_field_shape() -> Result<(), Stri
     let first = first_compile_error(&errors)?;
     match first {
         CompileError::StepFieldShape { step, field, .. } => {
-            assert_eq!(*step, 0, "multi-step inner body must error at outer for_each step 0");
+            assert_eq!(
+                *step, 0,
+                "multi-step inner body must error at outer for_each step 0"
+            );
             assert_eq!(*field, "steps", "field must be 'steps'");
         }
         other => return Err(format!("expected StepFieldShape, got {other:?}")),

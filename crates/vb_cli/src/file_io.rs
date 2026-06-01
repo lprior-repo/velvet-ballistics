@@ -1,12 +1,14 @@
 #![forbid(unsafe_code)]
 //! File reading and parsing utilities.
 
-use std::process::ExitCode;
-use std::io::{self, Write};
-use std::ffi::OsString;
-use crate::args::{ActionRegistryMode, Command, DurabilityMode, OutputFormat, ParseError, StepTarget};
+use crate::args::{
+    ActionRegistryMode, Command, DurabilityMode, OutputFormat, ParseError, StepTarget,
+};
 use crate::exit_code::CliExitCode;
 use crate::output::write_diagnostic_message_stderr;
+use std::ffi::OsString;
+use std::io::{self, Write};
+use std::process::ExitCode;
 
 pub(crate) fn read_file(
     path: &std::path::Path,
@@ -102,4 +104,3 @@ pub(crate) fn read_journal_events(
 }
 
 // --- Command implementations ---
-

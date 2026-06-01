@@ -16,8 +16,8 @@ mod tests;
 
 // Re-export public types used throughout the crate
 pub(crate) use error::ParseError;
+pub(crate) use shared::parse_args;
 pub(crate) use types::{
     ActionRegistryMode, Command, DurabilityMode, EmitTarget, EventStatus, OutputFormat,
-    StatusOptions, StepTarget, SystemStatusOptions, VerifyProfile, VALID_COMMANDS,
+    StatusOptions, StepTarget, SystemStatusOptions, VALID_COMMANDS, VerifyProfile,
 };
-pub(crate) use shared::parse_args;

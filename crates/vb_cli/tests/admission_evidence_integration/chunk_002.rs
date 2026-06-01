@@ -7,9 +7,8 @@
 fn submit_artifact_then_run_succeeds() {
     // Given: a compiled workflow and a Fjall journal.
     // We compile through the full pipeline (vb_yaml -> vb_validate -> vb_compile)
-    // and then submit the artifact under Relaxed policy (which skips checksum
-    // verification since the compile pipeline sets digest from source hash
-    // rather than from serialized IR hash).
+    // and then normalize the compiled digest to the storage admission contract
+    // before submitting the artifact under Relaxed policy.
     let workflow_yaml = b"version: velvet-ballistics/v1\nname: artifact_test\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      output: saved\n      value: \"42\"\n  - id: done\n    finish:\n      result: saved\n";
     let workflow = match vb_compile::compile_workflow(workflow_yaml) {
         Ok(w) => w,
@@ -17,6 +16,9 @@ fn submit_artifact_then_run_succeeds() {
             fail_assert!("compile_workflow failed: {err}");
             return;
         }
+    };
+    let Some(workflow) = normalize_workflow_for_admission(&workflow) else {
+        panic!("workflow normalization failed");
     };
     let digest = workflow.digest();
 
@@ -102,11 +104,14 @@ fn run_without_artifact_under_relaxed_policy() {
         fail_assert!("temp journal open failed");
         return;
     };
-    let digest = WorkflowDigest::from_bytes([2u8; 32]);
-    let Some(workflow) = set_const_finish_workflow(digest) else {
+    let Some(raw_workflow) = set_const_finish_workflow(WorkflowDigest::from_bytes([2u8; 32])) else {
         fail_assert!("workflow construction failed");
         return;
     };
+    let Some(workflow) = normalize_workflow_for_admission(&raw_workflow) else {
+        panic!("workflow normalization failed");
+    };
+    let digest = workflow.digest();
 
     // When: submitting under Relaxed policy (no verification required)
     let result = vb_storage::submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed);
@@ -165,6 +170,9 @@ fn submit_artifact_yaml_compiled_then_run_with_inputs_taints() {
             fail_assert!("compile_workflow failed: {err}");
             return;
         }
+    };
+    let Some(workflow) = normalize_workflow_for_admission(&workflow) else {
+        panic!("workflow normalization failed");
     };
     let Some((_dir, journal)) = temp_journal() else {
         fail_assert!("temp journal open failed");

@@ -1,13 +1,16 @@
 #![forbid(unsafe_code)]
 //! Validation error explanation and failure formatting.
 
-use std::process::ExitCode;
 use crate::args::{OutputFormat, ParseError};
 use crate::exit_code::CliExitCode;
-use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, write_stderr_line, write_failure_message};
-use crate::output_utils::*;
-use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
 use crate::explain_repair::explain_repair_hint;
+use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+use crate::output::{
+    json_error, json_out, output_error_exit, write_failure_message, write_stderr_line,
+    write_stdout_line,
+};
+use crate::output_utils::*;
+use std::process::ExitCode;
 
 pub(crate) fn explain_verification_failure(err: &crate::commands_verify::VerifyError) {
     use crate::commands_verify::VerifyError;
@@ -94,7 +97,6 @@ pub(crate) fn explain_verification_failure(err: &crate::commands_verify::VerifyE
     }
 }
 
-
 pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
     use vb_validate::ValidationError;
     match err {
@@ -155,7 +157,9 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
         }
         ValidationError::InvalidVersion { version } => {
             crate::outln!("Invalid Version");
-            crate::outln!("  Found version '{version}', but Velvet v1 requires 'velvet-ballistics/v1'.");
+            crate::outln!(
+                "  Found version '{version}', but Velvet v1 requires 'velvet-ballistics/v1'."
+            );
             explain_repair_hint(
                 "validation",
                 &[
@@ -232,7 +236,9 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
         }
         ValidationError::FutureReference { reference } => {
             crate::outln!("Future Reference");
-            crate::outln!("  Reference '{reference}' refers to a step that hasn't been defined yet.");
+            crate::outln!(
+                "  Reference '{reference}' refers to a step that hasn't been defined yet."
+            );
             explain_repair_hint(
                 "validation",
                 &[
@@ -243,7 +249,9 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
         }
         ValidationError::SecretNotDeclared { secret } => {
             crate::outln!("Undeclared Secret");
-            crate::outln!("  Secret '{secret}' is referenced but not declared in the workflow secrets.");
+            crate::outln!(
+                "  Secret '{secret}' is referenced but not declared in the workflow secrets."
+            );
             explain_repair_hint(
                 "validation",
                 &[
@@ -546,7 +554,9 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             segment_index,
         } => {
             crate::outln!("Accessor Path Invalid");
-            crate::outln!("  Accessor {accessor_index} has invalid segment at index {segment_index}.");
+            crate::outln!(
+                "  Accessor {accessor_index} has invalid segment at index {segment_index}."
+            );
             explain_repair_hint(
                 "validation",
                 &[
@@ -652,7 +662,9 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
         }
         ValidationError::NonDeterministicPath { from_node, to_node } => {
             crate::outln!("Non-Deterministic Path");
-            crate::outln!("  Path from node {from_node} to {to_node} contains no suspension point.");
+            crate::outln!(
+                "  Path from node {from_node} to {to_node} contains no suspension point."
+            );
             explain_repair_hint(
                 "validation",
                 &[
@@ -734,7 +746,9 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             name,
         } => {
             crate::outln!("Capability Name Invalid");
-            crate::outln!("  Action {action_id}: capability {capability_index} name '{name}' is invalid.");
+            crate::outln!(
+                "  Action {action_id}: capability {capability_index} name '{name}' is invalid."
+            );
             explain_repair_hint(
                 "validation",
                 &[
@@ -821,4 +835,3 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
         }
     }
 }
-

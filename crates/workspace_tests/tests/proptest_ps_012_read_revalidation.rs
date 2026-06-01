@@ -15,9 +15,12 @@
 // NOTE: This test goes in workspace_tests because it requires a live Fjall journal.
 
 use proptest::prelude::*;
-use vb_core::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, RuntimePolicy,
-    SlotIdx, StepIdx, WorkflowDigest, value::ConstValue,
-    workflow::{ResourceContract, WorkflowParts}};
+use vb_core::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, RuntimePolicy, SlotIdx, StepIdx,
+    WorkflowDigest,
+    value::ConstValue,
+    workflow::{ResourceContract, WorkflowParts},
+};
 use vb_storage::admission::submit_artifact;
 use vb_storage::journal::FjallJournal;
 
@@ -36,13 +39,21 @@ fn make_minimal_workflow() -> CompiledWorkflow {
                 id: StepIdx::new(0),
                 output: Some(SlotIdx::new(0)),
                 next: Some(StepIdx::new(1)),
-                on_error: None, error_slot: None,
-                kind: CompiledNodeKind::SetConst { value: ConstIdx::new(0) },
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                },
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None, next: None, on_error: None, error_slot: None,
-                kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) },
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
             },
         ]),
         expressions: Box::new([]),

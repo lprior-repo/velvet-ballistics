@@ -1,14 +1,19 @@
 //! Run commands for velvet-ballistics.
 #![forbid(unsafe_code)]
 
-use crate::args::DurabilityMode;
+use crate::args::{DurabilityMode, OutputFormat};
+use crate::exit_code::CliExitCode;
+use crate::file_io::{read_file as read_file_with_output, write_failure_message};
+use crate::run_compiled_runtime::{
+    map_runtime_inputs as runtime_map_inputs, run_compiled_workflow,
+};
 use crate::workflow::InputMappingError;
-pub(crate) use crate::workflow::run_compiled_workflow;
 use std::path::Path;
 use std::process::ExitCode;
 use vb_core::{CompiledWorkflow, SlotIdx, SlotValue, WorkflowParts};
 
-pub(crate) const INPUT_MAPPING_DECODE_FAILED_MESSAGE: &str = "INPUT_MAPPING_FAILED: input-bin decode failed";
+pub(crate) const INPUT_MAPPING_DECODE_FAILED_MESSAGE: &str =
+    "INPUT_MAPPING_FAILED: input-bin decode failed";
 pub(crate) const INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE: &str =
     "INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count";
 pub(crate) const INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE: &str =
@@ -96,13 +101,14 @@ pub(crate) fn cmd_run(
     input_bin: &Path,
     durability: DurabilityMode,
     db: Option<&Path>,
+    output: OutputFormat,
 ) -> ExitCode {
-    let input_data = match read_file(input_bin) {
+    let input_data = match read_file_with_output(input_bin, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,
     };
 
-    let bytes = match read_file(workflow) {
+    let bytes = match read_file_with_output(workflow, output, CliExitCode::CompileFailed) {
         Ok(b) => b,
         Err(code) => return code,
     };
@@ -110,22 +116,28 @@ pub(crate) fn cmd_run(
     let compiled = match vb_compile::compile_workflow(&bytes) {
         Ok(c) => c,
         Err(errors) => {
-            for err in &errors.0 {
-                crate::errln!("compile error: {err}");
+            if output == OutputFormat::Text {
+                errors
+                    .0
+                    .iter()
+                    .for_each(|err| crate::errln!("compile error: {err}"));
+            } else {
+                let message = crate::output_utils::compile_errors_message(&errors.0);
+                write_failure_message(&message, output, CliExitCode::CompileFailed);
             }
-            return ExitCode::FAILURE;
+            return CliExitCode::CompileFailed.into();
         }
     };
 
-    let inputs = match map_runtime_inputs(&compiled, &input_data) {
+    let inputs = match runtime_map_inputs(&compiled, &input_data) {
         Ok(inputs) => inputs,
         Err(error) => {
-            crate::errln!("{error}");
-            return ExitCode::FAILURE;
+            write_failure_message(&error.to_string(), output, CliExitCode::CompileFailed);
+            return CliExitCode::CompileFailed.into();
         }
     };
 
-    run_compiled_workflow(&compiled, inputs, durability, db)
+    run_compiled_workflow(&compiled, inputs, durability, db, output)
 }
 
 pub(crate) fn cmd_run_compiled(
@@ -166,7 +178,7 @@ pub(crate) fn cmd_run_compiled(
         }
     };
 
-    run_compiled_workflow(&compiled, inputs, durability, db)
+    run_compiled_workflow(&compiled, inputs, durability, db, OutputFormat::Text)
 }
 
 pub(crate) fn map_runtime_inputs(
@@ -176,8 +188,8 @@ pub(crate) fn map_runtime_inputs(
     if input_data.is_empty() {
         return Ok(Box::from([]));
     }
-    let values =
-        postcard::from_bytes::<Box<[SlotValue]>>(input_data).map_err(|_| InputMappingError::DecodeFailed)?;
+    let values = postcard::from_bytes::<Box<[SlotValue]>>(input_data)
+        .map_err(|_| InputMappingError::DecodeFailed)?;
     if values.len() > usize::from(compiled.slot_count()) {
         return Err(InputMappingError::SlotCountExceeded);
     }

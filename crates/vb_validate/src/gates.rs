@@ -937,14 +937,12 @@ fn detect_cycle_dfs(
     // White=0, Gray=1, Black=2.
     let mut stack: Vec<(usize, usize)> = Vec::new();
 
-    // Seed with the starting slot.
+    // Seed with the starting slot. Always push the frame, including leaves,
+    // so zero-dependency slots are marked black before later traversals see them.
     if let Some(state) = visited.get_mut(slot) {
         *state = 1; // gray
     }
-    let neighbor_count = adjacency.get(slot).map_or(0, |v| v.len());
-    if neighbor_count > 0 {
-        stack.push((slot, 0));
-    }
+    stack.push((slot, 0));
 
     while let Some((current, idx)) = stack.pop() {
         if idx == 0 {
@@ -955,7 +953,12 @@ fn detect_cycle_dfs(
 
         if idx < neighbors.len() {
             // Push back the current node with the next neighbor index.
-            let next_idx = idx.checked_add(1).unwrap_or(neighbors.len());
+            let next_idx = idx
+                .checked_add(1)
+                .ok_or(ValidationError::SlotDependencyCycle {
+                    slot: current,
+                    chain: format!("slot {current} has too many dependency edges"),
+                })?;
             stack.push((current, next_idx));
 
             let Some(&neighbor) = neighbors.get(idx) else {
@@ -985,10 +988,7 @@ fn detect_cycle_dfs(
                 if let Some(entry) = visited.get_mut(neighbor) {
                     *entry = 1; // gray
                 }
-                let next_count = adjacency.get(neighbor).map_or(0, |v| v.len());
-                if next_count > 0 {
-                    stack.push((neighbor, 0));
-                }
+                stack.push((neighbor, 0));
             }
             // If color == 2 (black), neighbor already fully explored, skip.
         } else {

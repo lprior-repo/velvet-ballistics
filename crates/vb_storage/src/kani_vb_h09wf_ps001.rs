@@ -122,10 +122,7 @@ fn ps_001_forged_digest_rejected() {
         "Forged digest must be rejected by validate_accepted_artifact_digest"
     );
 
-    kani::cover!(
-        result.is_err(),
-        "Forged digest always rejected"
-    );
+    kani::cover!(result.is_err(), "Forged digest always rejected");
 }
 
 /// PS-001c: No panic on any input within bounded domain.

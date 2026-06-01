@@ -25,13 +25,21 @@ struct EnvelopeBytes(Vec<u8>);
 struct IrBytes(Vec<u8>);
 
 impl EnvelopeBytes {
-    fn new(bytes: Vec<u8>) -> Self { Self(bytes) }
-    fn into_inner(self) -> Vec<u8> { self.0 }
+    fn new(bytes: Vec<u8>) -> Self {
+        Self(bytes)
+    }
+    fn into_inner(self) -> Vec<u8> {
+        self.0
+    }
 }
 
 impl IrBytes {
-    fn new(bytes: Vec<u8>) -> Self { Self(bytes) }
-    fn into_inner(self) -> Vec<u8> { self.0 }
+    fn new(bytes: Vec<u8>) -> Self {
+        Self(bytes)
+    }
+    fn into_inner(self) -> Vec<u8> {
+        self.0
+    }
 }
 
 proptest! {

@@ -67,8 +67,10 @@ pub(crate) fn handle(run_id: &str, db: &std::path::Path, output: OutputFormat) -
         "trace_ring_snapshot": trace_ring_snapshot(),
         "suggested_next_cli_commands": suggested_ai_commands(run_id, db, status),
     });
-    let envelope =
-        crate::cli_envelope::serialize_with_version(&payload, crate::cli_envelope::Kind::AiContextPacket);
+    let envelope = crate::cli_envelope::serialize_with_version(
+        &payload,
+        crate::cli_envelope::Kind::AiContextPacket,
+    );
     match crate::json_out(&envelope, output) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
@@ -671,7 +673,3 @@ pub(crate) fn write_stderr_best_effort(args: std::fmt::Arguments<'_>) {
 }
 
 // json_error is imported from crate::output
-
-#[cfg(test)]
-#[path = "commands_ai_context/tests.rs"]
-mod tests;

@@ -427,11 +427,3 @@ pub(crate) fn analyze_resume(events: &[JournalEvent]) -> ResumeAnalysis {
         reason: String::new(),
     }
 }
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
-#[cfg(test)]
-#[path = "commands_journal/tests.rs"]
-mod tests;

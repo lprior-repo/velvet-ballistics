@@ -1,18 +1,23 @@
 #![forbid(unsafe_code)]
 //! Diagnostic check command.
 
-use std::process::ExitCode;
+use crate::args::{
+    ActionRegistryMode, Command, DurabilityMode, OutputFormat, ParseError, StepTarget,
+};
+use crate::doctor_helpers::cmd_doctor_without_db;
+use crate::exit_code::CliExitCode;
+use crate::file_io::{parse_run_id, read_file, read_journal_events, report_storage_open_error};
+use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+use crate::output::{
+    json_error, json_out, output_error_exit, write_contract_error_json, write_failure_message,
+    write_stderr_line, write_stdout_line,
+};
+use crate::output_utils::*;
 use std::io::{self, Write};
 use std::num::NonZeroUsize;
+use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use crate::args::{ActionRegistryMode, Command, DurabilityMode, OutputFormat, ParseError, StepTarget};
-use crate::exit_code::CliExitCode;
-use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, write_stderr_line, write_failure_message, write_contract_error_json};
-use crate::output_utils::*;
-use crate::file_io::{read_file, parse_run_id, read_journal_events, report_storage_open_error};
-use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
-use crate::doctor_helpers::cmd_doctor_without_db;
 
 pub(crate) fn open_doctor_journal(
     db: &std::path::Path,
@@ -30,7 +35,6 @@ pub(crate) fn open_doctor_journal(
 
     vb_storage::FjallJournal::open(db, None)
 }
-
 
 pub(crate) fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> ExitCode {
     let Some(db) = db else {
@@ -315,7 +319,6 @@ pub(crate) fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> 
     ExitCode::SUCCESS
 }
 
-
 pub(crate) fn unique_doctor_run_id() -> u64 {
     let Ok(now) = SystemTime::now().duration_since(UNIX_EPOCH) else {
         return u64::MAX;
@@ -327,4 +330,3 @@ pub(crate) fn unique_doctor_run_id() -> u64 {
 }
 
 // --- Helpers ---
-

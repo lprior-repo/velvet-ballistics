@@ -72,11 +72,12 @@ pub(super) fn optional_named_flag(
 /// Find the first positional argument (not starting with `--`) starting at `start_idx`.
 /// This correctly skips over named flags and their values to locate the workflow path.
 pub(super) fn find_positional(args: &[OsString], start_idx: usize) -> Option<PathBuf> {
+    let command = command_flag_spec_name(args.get(1).and_then(|arg| arg.to_str()));
     let mut index = start_idx;
     while index < args.len() {
         let arg = args.get(index)?.to_str()?;
         if arg.starts_with('-') {
-            let step = match super::flag_spec::known_flag_spec("fake", arg) {
+            let step = match super::flag_spec::known_flag_spec(command, arg) {
                 Some(super::flag_spec::FlagSpec::Switch) | None => 1_usize,
                 Some(super::flag_spec::FlagSpec::Value(_)) => 2_usize,
             };
@@ -86,6 +87,35 @@ pub(super) fn find_positional(args: &[OsString], start_idx: usize) -> Option<Pat
         }
     }
     None
+}
+
+fn command_flag_spec_name(command: Option<&str>) -> &'static str {
+    match command {
+        Some("validate") => "validate",
+        Some("explain") => "explain",
+        Some("bench-run") => "bench-run",
+        Some("graph") => "graph",
+        Some("simulate") => "simulate",
+        Some("ai-context") => "ai-context",
+        Some("inspect") => "inspect",
+        Some("replay") => "replay",
+        Some("retry") => "retry",
+        Some("resume") => "resume",
+        Some("incident") => "incident",
+        Some("verify") => "verify",
+        Some("compile") => "compile",
+        Some("run") => "run",
+        Some("run-compiled") => "run-compiled",
+        Some("ipc-serve") => "ipc-serve",
+        Some("events") => "events",
+        Some("trace") => "trace",
+        Some("cancel") => "cancel",
+        Some("doctor") => "doctor",
+        Some("answer") => "answer",
+        Some("diff") => "diff",
+        Some("submit") => "submit",
+        _ => "fake",
+    }
 }
 
 pub(super) fn has_subcommand_help(args: &[OsString]) -> bool {
@@ -106,11 +136,12 @@ pub(super) fn validate_known_flags(
             .to_str()
             .ok_or_else(|| ParseError::InvalidArgument("invalid UTF-8 argument".into()))?;
         if token.starts_with('-') {
-            let spec = super::flag_spec::known_flag_spec(command, token)
-                .ok_or_else(|| ParseError::UnknownFlag {
+            let spec = super::flag_spec::known_flag_spec(command, token).ok_or_else(|| {
+                ParseError::UnknownFlag {
                     command,
                     flag: token.into(),
-                })?;
+                }
+            })?;
             index = validate_flag_value(args, index, command, spec)?;
         } else {
             index = advance_arg_index(index, 1_usize)?;

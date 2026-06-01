@@ -12,13 +12,15 @@
 //   vb_storage::admission::submit_artifact (exercises reject_oversized_compiled_ir_value internally)
 
 use proptest::prelude::*;
-use vb_core::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, RuntimePolicy,
-    SlotIdx, StepIdx, WorkflowDigest, value::ConstValue,
-    workflow::{ResourceContract, WorkflowParts}};
+use vb_core::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, RuntimePolicy, SlotIdx, StepIdx,
+    WorkflowDigest,
+    value::ConstValue,
+    workflow::{ResourceContract, WorkflowParts},
+};
 use vb_storage::admission::submit_artifact;
 use vb_storage::constants::MAX_COMPILED_IR_BYTES;
 use vb_storage::journal::FjallJournal;
-use vb_storage::records::CompiledIrRecord;
 
 fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
     let temp = tempfile::tempdir().expect("tempdir");
@@ -32,19 +34,32 @@ fn make_workflow() -> CompiledWorkflow {
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         nodes: Box::new([
             CompiledNode {
-                id: StepIdx::new(0), output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)), on_error: None, error_slot: None,
-                kind: CompiledNodeKind::SetConst { value: ConstIdx::new(0) },
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                },
             },
             CompiledNode {
-                id: StepIdx::new(1), output: None, next: None,
-                on_error: None, error_slot: None,
-                kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) },
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
             },
         ]),
-        expressions: Box::new([]), accessors: Box::new([]),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
         constants: Box::new([ConstValue::I64(42)]),
-        slot_count: 1, symbols_count: 0, entry: StepIdx::new(0),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };

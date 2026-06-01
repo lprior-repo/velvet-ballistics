@@ -70,7 +70,10 @@ fn ps_007_verification_digest_match() {
     let result = validate_accepted_artifact_digest(&artifact, record_digest);
 
     // Must be an error: verification.digest != record.digest
-    assert!(result.is_err(), "verification.digest mismatch must be rejected");
+    assert!(
+        result.is_err(),
+        "verification.digest mismatch must be rejected"
+    );
 
     kani::cover!(
         matches!(result, Err(JournalError::ArtifactChecksumMismatch)),
@@ -98,6 +101,9 @@ fn ps_007_matching_verification_digest_passes_gate() {
     if result.is_ok() {
         kani::cover!(true, "all gates passed including verification.digest");
     } else {
-        kani::cover!(true, "other gate failed but verification.digest check passed");
+        kani::cover!(
+            true,
+            "other gate failed but verification.digest check passed"
+        );
     }
 }

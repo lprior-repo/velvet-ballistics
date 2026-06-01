@@ -21,9 +21,7 @@
 use proptest::prelude::*;
 use vb_compile::mod_compile_lowering::compile_source;
 use vb_core::CompiledNodeKind;
-use vb_yaml::ast::{
-    StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts,
-};
+use vb_yaml::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
 
 // =========================================================================
 // Generation strategies
@@ -46,13 +44,8 @@ fn single_set_step() -> impl Strategy<Value = StepAst> {
 }
 
 fn foreach_with_single_body() -> impl Strategy<Value = StepAst> {
-    (
-        "[a-z]+",
-        "[a-z]+",
-        any::<Option<u32>>(),
-        single_set_step(),
-    )
-        .prop_map(|(variable, input, at_once, body_step)| StepAst {
+    ("[a-z]+", "[a-z]+", any::<Option<u32>>(), single_set_step()).prop_map(
+        |(variable, input, at_once, body_step)| StepAst {
             id: "foreach".to_string(),
             name: None,
             condition: None,
@@ -66,7 +59,8 @@ fn foreach_with_single_body() -> impl Strategy<Value = StepAst> {
             retry: None,
             on_error: None,
             then: None,
-        })
+        },
+    )
 }
 
 fn foreach_workflow_source() -> impl Strategy<Value = WorkflowSource> {

@@ -1,28 +1,25 @@
 #![forbid(unsafe_code)]
 //! CLI command dispatcher.
 
-use std::ffi::OsString;
-use std::process::ExitCode;
-use std::sync::Arc;
-use std::num::NonZeroUsize;
-use std::time::{SystemTime, Instant, UNIX_EPOCH};
-use vb_ipc::client::IpcClient;
-use vb_ipc::{IpcCommand, IpcPayload};
-use vb_runtime::action::ActionRegistry;
+use crate::action_specs::{
+    action_contract, cli_action_specs, registered_cli_actions, write_action_inspect,
+    write_action_registry, write_action_registry_error, write_action_registry_uninitialized,
+};
+use crate::agent_io::{
+    cmd_action_inspect, cmd_action_list, cmd_agent_context, cmd_status, cmd_system_status,
+};
 use crate::args::*;
-use crate::exit_code::CliExitCode;
-use crate::action_specs::{registered_cli_actions, cli_action_specs, action_contract, write_action_registry_uninitialized, write_action_registry, write_action_inspect, write_action_registry_error};
-use crate::agent_io::{cmd_agent_context, cmd_status, cmd_system_status, cmd_action_list, cmd_action_inspect};
 use crate::bench_run::cmd_bench_run;
 use crate::commands_ai_context::*;
 use crate::compile::cmd_compile;
 use crate::doctor::cmd_doctor;
 use crate::doctor_helpers::cmd_doctor_without_db;
 use crate::events::cmd_events;
+use crate::exit_code::CliExitCode;
 use crate::explain::cmd_explain;
 use crate::file_io::*;
 use crate::graph::cmd_graph;
-use crate::incident_diff::{cmd_incident, cmd_diff};
+use crate::incident_diff::{cmd_diff, cmd_incident};
 use crate::inspect::cmd_inspect;
 use crate::io_helpers::*;
 use crate::ipc_serve::cmd_ipc_serve;
@@ -40,8 +37,16 @@ use crate::submit::cmd_submit;
 use crate::trace::cmd_trace;
 use crate::validate::cmd_validate;
 use crate::verify::cmd_verify;
+use std::ffi::OsString;
+use std::num::NonZeroUsize;
+use std::process::ExitCode;
+use std::sync::Arc;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use vb_ipc::client::IpcClient;
+use vb_ipc::{IpcCommand, IpcPayload};
+use vb_runtime::action::ActionRegistry;
 
-pub(crate) fn run_from_env() -> ExitCode {
+pub fn run_from_env() -> ExitCode {
     let args: Vec<OsString> = std::env::args_os().collect();
     let requested_output = output_format_from_args(&args);
     let parsed = parse_args(&args);
@@ -83,7 +88,7 @@ pub(crate) fn run_from_env() -> ExitCode {
             output,
         }) => match step {
             Some(target) => cmd_run_step(&workflow, durability, &target, output),
-            None => cmd_run(&workflow, &input_bin, durability, db.as_deref()),
+            None => cmd_run(&workflow, &input_bin, durability, db.as_deref(), output),
         },
         Ok(Command::RunCompiled {
             workflow,

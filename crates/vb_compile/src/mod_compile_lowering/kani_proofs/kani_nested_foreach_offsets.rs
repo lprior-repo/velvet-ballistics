@@ -122,10 +122,16 @@ fn check_nested_foreach_offset_arithmetic() {
         kani::assert(width == 1, "body_width for single Set must be 1");
     }
     if let Ok(width) = body_width(&body, 1) {
-        kani::assert(width == 2, "body_width for single Set with overhead=1 must be 2");
+        kani::assert(
+            width == 2,
+            "body_width for single Set with overhead=1 must be 2",
+        );
     }
     if let Ok(width) = body_width(&body, 2) {
-        kani::assert(width == 3, "body_width for single Set with overhead=2 must be 3");
+        kani::assert(
+            width == 3,
+            "body_width for single Set with overhead=2 must be 3",
+        );
     }
 
     // --- Sub-proof 3: relationship: body_step = id + 1 ---
@@ -174,7 +180,11 @@ fn check_nested_foreach_panic_freedom() {
     let id_raw: u16 = kani::any();
     let id = StepIdx::new(id_raw);
     let at_once_raw: u32 = kani::any();
-    let at_once = if at_once_raw == 0 { None } else { Some(at_once_raw) };
+    let at_once = if at_once_raw == 0 {
+        None
+    } else {
+        Some(at_once_raw)
+    };
     let input = valid_slot_text();
     let body = make_single_set_body(42);
 
@@ -182,11 +192,11 @@ fn check_nested_foreach_panic_freedom() {
 
     // Call the production function — must not panic for any input
     let result = lower_canonical_for_each(
-        0,          // index
-        id,         // arbitrary StepIdx (may overflow)
-        &input,     // known-valid slot text
-        at_once,    // arbitrary u32
-        &body,      // single Set step
+        0,       // index
+        id,      // arbitrary StepIdx (may overflow)
+        &input,  // known-valid slot text
+        at_once, // arbitrary u32
+        &body,   // single Set step
         &mut builder,
     );
 

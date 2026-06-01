@@ -1,11 +1,10 @@
 #![forbid(unsafe_code)]
 //! Simple I/O helper functions for exit codes and help/version output.
 
-use std::process::ExitCode;
-use std::io::{self, Write};
+use crate::constants::{HELP, VERSION};
 use crate::exit_code::CliExitCode;
-use crate::io::HELP;
-use crate::constants::VERSION;
+use std::io::{self, Write};
+use std::process::ExitCode;
 
 pub(crate) fn exit_from_io(result: &io::Result<()>, success_code: ExitCode) -> ExitCode {
     match result {
@@ -25,4 +24,3 @@ pub(crate) fn write_version_stdout() -> io::Result<()> {
     let mut handle = stdout.lock();
     writeln!(handle, "velvet-ballistics {VERSION}")
 }
-

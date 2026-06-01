@@ -4,13 +4,27 @@ use std::sync::Arc;
 
 use vb_core::{ActionId, Capability, CapabilitySet, RunId, RuntimePolicy, WorkflowDigest};
 use vb_runtime::admission::{
-    AdmissionError, REQUIRED_GATE_COUNT, StorageArtifactStore, admit_artifact_run,
+    AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, REQUIRED_GATE_COUNT,
+    StorageArtifactStore, admit_artifact_run,
 };
 use vb_storage::admission::{AcceptedArtifact, VerificationProof};
-use vb_storage::{CompiledIrRecord, EventSeq, FjallJournal, put_compiled_ir};
+use vb_storage::{CompiledIrRecord, EventSeq, FjallJournal};
 
 fn digest(byte: u8) -> WorkflowDigest {
     WorkflowDigest::from_bytes([byte; 32])
+}
+
+struct ReturningAcceptedArtifactStore {
+    artifact: AcceptedArtifact,
+}
+
+impl AcceptedArtifactStore for ReturningAcceptedArtifactStore {
+    fn load_accepted_artifact(
+        &self,
+        _artifact_digest: WorkflowDigest,
+    ) -> Result<AcceptedArtifact, ArtifactEnvelopeError> {
+        Ok(self.artifact.clone())
+    }
 }
 
 fn required_capability() -> Capability {
@@ -21,15 +35,19 @@ fn granted_capabilities(required: Capability) -> CapabilitySet {
     CapabilitySet::from_grants(Box::new([required]))
 }
 
-fn accepted_artifact(
-    artifact_digest: WorkflowDigest,
-    proof_digest: WorkflowDigest,
-) -> AcceptedArtifact {
-    AcceptedArtifact {
+fn accepted_artifact(proof_digest: WorkflowDigest) -> Result<AcceptedArtifact, String> {
+    let workflow = compile_storage_workflow()?;
+    let mut parts = workflow.to_parts();
+    parts.digest = WorkflowDigest::from_bytes([0u8; 32]);
+    let ir = postcard::to_allocvec(&parts).map_err(|error| error.to_string())?;
+    let artifact_digest = workflow.digest();
+    let policy_digest = vb_storage::admission::compute_policy_digest(&workflow)
+        .map_err(|error| error.to_string())?;
+    Ok(AcceptedArtifact {
         digest: artifact_digest,
         source_digest: artifact_digest,
-        policy_digest: artifact_digest,
-        ir: Vec::new(),
+        policy_digest,
+        ir,
         verification: VerificationProof {
             digest: proof_digest,
             gate_count: REQUIRED_GATE_COUNT,
@@ -45,7 +63,29 @@ fn accepted_artifact(
         },
         accepted_at_seq: EventSeq::new(42),
         required_capabilities: Box::new([required_capability()]),
-    }
+    })
+}
+
+fn compile_storage_workflow() -> Result<vb_core::CompiledWorkflow, String> {
+    let yaml = br#"version: velvet-ballistics/v1
+name: proof_admission_bdd
+when:
+  manual: {}
+steps:
+  - id: make
+    set:
+      output: answer
+      value: "42"
+  - id: done
+    finish:
+      result: answer
+"#;
+    let workflow = vb_compile::compile_workflow(yaml).map_err(|errors| errors.to_string())?;
+    let mut parts = workflow.to_parts();
+    parts.digest = WorkflowDigest::from_bytes([0u8; 32]);
+    let ir = postcard::to_allocvec(&parts).map_err(|error| error.to_string())?;
+    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
+    vb_core::CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())
 }
 
 fn persist_artifact(journal: &FjallJournal, artifact: &AcceptedArtifact) -> Result<(), String> {
@@ -58,14 +98,12 @@ fn persist_artifact_as(
     artifact: &AcceptedArtifact,
 ) -> Result<(), String> {
     let ir = postcard::to_allocvec(artifact).map_err(|error| error.to_string())?;
-    put_compiled_ir(
-        journal,
-        &CompiledIrRecord {
+    journal
+        .put_compiled_ir(&CompiledIrRecord {
             digest: record_digest,
             ir,
-        },
-    )
-    .map_err(|error| error.to_string())
+        })
+        .map_err(|error| error.to_string())
 }
 
 #[test]
@@ -73,8 +111,9 @@ fn given_matching_proof_digest_when_strict_admission_runs_then_artifact_is_admit
 -> Result<(), String> {
     let temp = tempfile::tempdir().map_err(|error| error.to_string())?;
     let journal = FjallJournal::open(temp.path(), None).map_err(|error| error.to_string())?;
-    let requested = digest(0xA1);
-    let artifact = accepted_artifact(requested, requested);
+    let mut artifact = accepted_artifact(digest(0xA1))?;
+    artifact.verification.digest = artifact.digest;
+    let requested = artifact.digest;
     persist_artifact(&journal, &artifact)?;
     let store = StorageArtifactStore::new(Arc::new(journal));
     let run = RunId::new(9001);
@@ -93,13 +132,10 @@ fn given_matching_proof_digest_when_strict_admission_runs_then_artifact_is_admit
 #[test]
 fn given_mismatched_proof_digest_when_strict_admission_runs_then_digest_mismatch_denies()
 -> Result<(), String> {
-    let temp = tempfile::tempdir().map_err(|error| error.to_string())?;
-    let journal = FjallJournal::open(temp.path(), None).map_err(|error| error.to_string())?;
-    let requested = digest(0xB1);
     let found = digest(0xB2);
-    let artifact = accepted_artifact(requested, found);
-    persist_artifact(&journal, &artifact)?;
-    let store = StorageArtifactStore::new(Arc::new(journal));
+    let artifact = accepted_artifact(found)?;
+    let requested = artifact.digest;
+    let store = ReturningAcceptedArtifactStore { artifact };
 
     let result = admit_artifact_run(
         &store,
@@ -119,13 +155,11 @@ fn given_mismatched_proof_digest_when_strict_admission_runs_then_digest_mismatch
 #[test]
 fn given_storage_record_with_mismatched_artifact_digest_when_strict_admission_runs_then_digest_mismatch_denies()
 -> Result<(), String> {
-    let temp = tempfile::tempdir().map_err(|error| error.to_string())?;
-    let journal = FjallJournal::open(temp.path(), None).map_err(|error| error.to_string())?;
+    let mut artifact = accepted_artifact(digest(0xC2))?;
+    artifact.verification.digest = artifact.digest;
     let requested = digest(0xC1);
-    let found = digest(0xC2);
-    let artifact = accepted_artifact(found, found);
-    persist_artifact_as(&journal, requested, &artifact)?;
-    let store = StorageArtifactStore::new(Arc::new(journal));
+    let found = artifact.digest;
+    let store = ReturningAcceptedArtifactStore { artifact };
 
     let result = admit_artifact_run(
         &store,

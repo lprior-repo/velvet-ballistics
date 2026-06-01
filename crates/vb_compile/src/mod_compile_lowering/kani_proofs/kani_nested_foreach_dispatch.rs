@@ -90,7 +90,11 @@ fn check_emit_body_set_for_each_dispatch() {
     let slot = SlotIdx::new(slot_raw);
 
     let at_once_raw: u32 = kani::any();
-    let at_once = if at_once_raw == 0 { None } else { Some(at_once_raw) };
+    let at_once = if at_once_raw == 0 {
+        None
+    } else {
+        Some(at_once_raw)
+    };
 
     let input_str = "0".to_string(); // Known-valid slot text"0"
     let inner_value: i64 = kani::any();
@@ -103,9 +107,9 @@ fn check_emit_body_set_for_each_dispatch() {
     let result = emit_single_body_set(
         &body,
         id,
-        42,         // diagnostic_step (arbitrary)
+        42, // diagnostic_step (arbitrary)
         slot,
-        None,       // next
+        None, // next
         &mut builder,
         false,
     );
@@ -118,10 +122,7 @@ fn check_emit_body_set_for_each_dispatch() {
             // Post-implementation path: ForEach dispatch succeeded.
             // Verify nodes were emitted by lower_canonical_for_each.
             let nodes = &builder.nodes;
-            kani::assert(
-                !nodes.is_empty(),
-                "ForEach dispatch must emit nodes",
-            );
+            kani::assert(!nodes.is_empty(), "ForEach dispatch must emit nodes");
             // First emitted node should be ForEachStart with the correct ID
             if let Some(first) = nodes.first() {
                 kani::assert(
@@ -167,9 +168,7 @@ fn check_set_do_unchanged_with_foreach_present() {
             then: None,
         }];
         let mut builder = SlotCompiler::new();
-        let result = emit_single_body_set(
-            &set_body, id, 0, slot, None, &mut builder, false,
-        );
+        let result = emit_single_body_set(&set_body, id, 0, slot, None, &mut builder, false);
         kani::assert(result.is_ok(), "Set body must compile successfully");
         kani::assert(!builder.nodes.is_empty(), "Set must emit a node");
     }
@@ -190,9 +189,7 @@ fn check_set_do_unchanged_with_foreach_present() {
             then: None,
         }];
         let mut builder = SlotCompiler::new();
-        let result = emit_single_body_set(
-            &do_body, id, 0, slot, None, &mut builder, false,
-        );
+        let result = emit_single_body_set(&do_body, id, 0, slot, None, &mut builder, false);
         kani::assert(result.is_ok(), "Do body must compile successfully");
         kani::assert(!builder.nodes.is_empty(), "Do must emit a node");
     }

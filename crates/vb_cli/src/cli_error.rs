@@ -59,7 +59,11 @@ impl std::fmt::Display for CliError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::InvalidWorkspace { path, reason } => {
-                write!(formatter, "invalid workspace '{}': {reason}", path.display())
+                write!(
+                    formatter,
+                    "invalid workspace '{}': {reason}",
+                    path.display()
+                )
             }
             Self::MissingWorkspaceFlag => {
                 write!(formatter, "missing argument: --workspace")
@@ -151,12 +155,27 @@ mod tests {
     fn invalid_workspace_reason_display_messages() {
         let cases = vec![
             (InvalidWorkspaceReason::DoesNotExist, "path does not exist"),
-            (InvalidWorkspaceReason::IsNotDirectory, "path is not a directory"),
-            (InvalidWorkspaceReason::PermissionDenied, "permission denied"),
+            (
+                InvalidWorkspaceReason::IsNotDirectory,
+                "path is not a directory",
+            ),
+            (
+                InvalidWorkspaceReason::PermissionDenied,
+                "permission denied",
+            ),
             (InvalidWorkspaceReason::Empty, "path is empty"),
-            (InvalidWorkspaceReason::TraversalAttempt, "path traverses parent directory"),
-            (InvalidWorkspaceReason::NonUtf8, "path contains non-UTF-8 characters"),
-            (InvalidWorkspaceReason::MissingMarkers, "workspace marker files are missing"),
+            (
+                InvalidWorkspaceReason::TraversalAttempt,
+                "path traverses parent directory",
+            ),
+            (
+                InvalidWorkspaceReason::NonUtf8,
+                "path contains non-UTF-8 characters",
+            ),
+            (
+                InvalidWorkspaceReason::MissingMarkers,
+                "workspace marker files are missing",
+            ),
         ];
 
         for (reason, expected_substring) in cases {

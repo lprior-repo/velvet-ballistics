@@ -4,7 +4,7 @@ use std::path::Path;
 use super::ordering::compare_finding;
 use super::types::*;
 
-pub(crate) fn render_scan_report(report: &ScanReport) -> Result<RenderedReport, NamingScanError> {
+pub fn render_scan_report(report: &ScanReport) -> Result<RenderedReport, NamingScanError> {
     let mut findings = report.findings.clone();
     findings.sort_by(compare_finding);
     let body = render_body(report, findings);
@@ -31,7 +31,11 @@ fn render_body(report: &ScanReport, findings: Vec<NamingFinding>) -> String {
 fn render_finding(finding: &NamingFinding) -> String {
     format!(
         "{}:{}:{} {:?} -> {}\n",
-        finding.path, finding.line.0, finding.column.0, finding.spelling_class, finding.remediation
+        finding.path,
+        finding.line.get(),
+        finding.column.get(),
+        finding.spelling_class,
+        finding.remediation
     )
 }
 

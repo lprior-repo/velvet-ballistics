@@ -106,5 +106,8 @@ fn ps_006_matching_digest_passes_digest_check() {
     // The function may still fail on BLAKE3, policy_digest, or other gates.
     // We just verify no panic.
     kani::cover!(result.is_ok(), "all checks passed for matching digests");
-    kani::cover!(result.is_err(), "other gate failure despite matching digests");
+    kani::cover!(
+        result.is_err(),
+        "other gate failure despite matching digests"
+    );
 }

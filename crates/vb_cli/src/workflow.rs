@@ -25,9 +25,7 @@ impl std::fmt::Display for InputMappingError {
             Self::SlotCountExceeded => {
                 "INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count"
             }
-            Self::SlotIndexOutOfRange => {
-                "INPUT_MAPPING_FAILED: input slot index out of range"
-            }
+            Self::SlotIndexOutOfRange => "INPUT_MAPPING_FAILED: input slot index out of range",
         };
         write!(formatter, "{msg}")
     }
@@ -118,9 +116,7 @@ fn open_storage_runtime_journal(
             journal,
         ));
     }
-    Ok(vb_runtime::journal::StorageRuntimeJournal::shared_journaled(
-        journal,
-    ))
+    Ok(vb_runtime::journal::StorageRuntimeJournal::shared_journaled(journal))
 }
 
 pub(crate) fn print_trace_event(event: &TraceEvent) {
@@ -144,7 +140,11 @@ pub(crate) fn print_trace_event(event: &TraceEvent) {
             crate::outln!("  trace: ActionFailed step={}", step.get());
         }
         TraceEvent::AskAnswered { step, slot, .. } => {
-            crate::outln!("  trace: AskAnswered step={} slot={}", step.get(), slot.get());
+            crate::outln!(
+                "  trace: AskAnswered step={} slot={}",
+                step.get(),
+                slot.get()
+            );
         }
         TraceEvent::RunSubmitted { .. } => {
             crate::outln!("  trace: RunSubmitted");
@@ -165,6 +165,10 @@ pub(crate) fn print_trace_event(event: &TraceEvent) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn test_run() -> vb_core::RunId {
+        vb_core::RunId::new(1)
+    }
 
     #[test]
     fn input_mapping_error_decode_failed_displays_correct_message() {
@@ -192,49 +196,62 @@ mod tests {
 
     #[test]
     fn print_trace_event_step_started_does_not_panic() {
-        let event = TraceEvent::StepStarted { step: vb_core::StepIdx::new(1) };
+        let event = TraceEvent::StepStarted {
+            run: test_run(),
+            step: vb_core::StepIdx::new(1),
+        };
         print_trace_event(&event);
     }
 
     #[test]
     fn print_trace_event_step_ended_does_not_panic() {
-        let event = TraceEvent::StepEnded { step: vb_core::StepIdx::new(1) };
+        let event = TraceEvent::StepEnded {
+            run: test_run(),
+            step: vb_core::StepIdx::new(1),
+        };
         print_trace_event(&event);
     }
 
     #[test]
     fn print_trace_event_action_scheduled_does_not_panic() {
-        let event = TraceEvent::ActionScheduled { step: vb_core::StepIdx::new(1) };
+        let event = TraceEvent::ActionScheduled {
+            run: test_run(),
+            step: vb_core::StepIdx::new(1),
+        };
         print_trace_event(&event);
     }
 
     #[test]
     fn print_trace_event_run_submitted_does_not_panic() {
-        let event = TraceEvent::RunSubmitted {};
+        let event = TraceEvent::RunSubmitted { run: test_run() };
         print_trace_event(&event);
     }
 
     #[test]
     fn print_trace_event_run_finished_does_not_panic() {
-        let event = TraceEvent::RunFinished {};
+        let event = TraceEvent::RunFinished { run: test_run() };
         print_trace_event(&event);
     }
 
     #[test]
     fn print_trace_event_run_failed_does_not_panic() {
-        let event = TraceEvent::RunFailed {};
+        let event = TraceEvent::RunFailed { run: test_run() };
         print_trace_event(&event);
     }
 
     #[test]
     fn print_trace_event_run_cancelled_does_not_panic() {
-        let event = TraceEvent::RunCancelled {};
+        let event = TraceEvent::RunCancelled { run: test_run() };
         print_trace_event(&event);
     }
 
     #[test]
     fn print_trace_event_slot_written_does_not_panic() {
-        let event = TraceEvent::SlotWritten { slot: vb_core::SlotIdx::new(0) };
+        let event = TraceEvent::SlotWritten {
+            run: test_run(),
+            slot: vb_core::SlotIdx::new(0),
+            value: Vec::new(),
+        };
         print_trace_event(&event);
     }
 }
