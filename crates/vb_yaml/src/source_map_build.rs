@@ -94,6 +94,7 @@ fn semantic_source_map_from_events(text: &str, events: &[YamlEvent]) -> Semantic
                 // event emitted by the YAML parser (enforced by the event
                 // collector). The pop discards the path context because it is
                 // no longer needed once the container closes.
+                #[allow(clippy::let_underscore_must_use)]
                 let _popped = stack.pop();
             }
             YamlEvent::Scalar { value, span, .. } => {

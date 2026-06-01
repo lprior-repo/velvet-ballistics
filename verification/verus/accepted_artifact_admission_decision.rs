@@ -1,31 +1,63 @@
 // Verus verifier-only model for vb-core-cli-accepted-path PO-004.
 // Trusted shell boundary: postcard decoding is represented as an input case.
 //
-// BINDING: accepted_artifact_admission_decision
-// Rust types:
-//   - vb_runtime::admission::ArtifactEnvelopeError (source of ArtifactCase)
-//   - vb_runtime::admission::AdmissionError (result type)
-// Verified: Spec enums are now structurally aligned to the actual Rust types.
-// Each ArtifactCase variant maps to a corresponding
-// vb_runtime::admission::ArtifactEnvelopeError variant, and each
-// AdmissionError variant maps to a corresponding
-// vb_runtime::admission::AdmissionError variant.
+// STRUCTURAL ALIGNMENT (verified against vb_runtime::admission):
+//   ArtifactEnvelopeError variants (production):
+//     ArtifactNotFound { digest }
+//     PostcardDecodeFailed
+//     InvalidGateCount { found, required }
+//     MissingRequiredProofFlagBounded
+//     MissingRequiredProofFlagTaintSafe
+//     MissingRequiredProofFlagRetrySafe
+//     MissingRequiredProofFlagDurable
+//     MissingRequiredProofFlagReplayable
+//     MissingRequiredProofFlagIdempotencyVerified
+//     MissingIdempotencyAttestation { action }
+//     ArtifactDigestMismatch { requested, found }
+//   AdmissionError variants include all above mapped plus:
+//     ArtifactNotFound, ArtifactEnvelopeDecodeFailed, ArtifactInvalidGateCount,
+//     ArtifactInvalidProofFlag, ArtifactDigestMismatch,
+//     CapabilityDenied, ResourceCapacityExceeded, BudgetPolicyExceeded,
+//     ResourceBudgetOverflow, ResourceBudgetUnderflow, ResourceBudgetInvalidCapacity,
+//     ResourceStepCeilingExceeded, ResourcePerTickCeilingExceeded,
+//     ArtifactCertificateStale
+//
+// Spec ArtifactCase variants → production ArtifactEnvelopeError variants:
+//   Missing          ↔ ArtifactNotFound { digest }
+//   Malformed        ↔ PostcardDecodeFailed
+//   InvalidProof     ↔ MissingRequiredProofFlag* (any proof flag variant)
+//                        ∪ MissingIdempotencyAttestation { action }
+//   InvalidGateCount ↔ InvalidGateCount { found, required }
+//   InvalidCapability ↔ MissingRequiredProofFlagIdempotencyVerified
+//                        (capability checks require idempotency attestation)
+//   DigestMismatch   ↔ ArtifactDigestMismatch { requested, found }
+//   Valid            ↔ (no error — artifact passed all checks)
+//
+// Spec AdmissionError variants → production AdmissionError variants:
+//   NoError                          ↔ (none — admission succeeded)
+//   StrictAdmissionMissingArtifact   ↔ ArtifactNotFound { digest }
+//   MalformedAcceptedArtifact        ↔ ArtifactEnvelopeDecodeFailed
+//   InvalidVerificationProof         ↔ ArtifactInvalidProofFlag { flag }
+//   DigestMismatch                   ↔ ArtifactDigestMismatch { requested, found }
+//
+// NOTE: AdmissionError in production is #[non_exhaustive] with many additional
+// variants (capability, budget, certificate-related) not present in the spec.
+// The spec covers only the artifact-envelope admission path.
 
 use vstd::prelude::*;
 
 verus! {
 
-/// Spec enum mirroring vb_runtime::admission::ArtifactEnvelopeError variants.
+/// Spec enum for artifact admission outcomes.
 ///
-/// BINDING: Each variant corresponds one-to-one with a variant in
-/// `vb_runtime::admission::ArtifactEnvelopeError`. The mapping is:
-///   - Missing          ↔ ArtifactNotFound { digest }
-///   - Malformed        ↔ PostcardDecodeFailed
-///   - InvalidProof     ↔ MissingRequiredProofFlag*
-///   - InvalidGateCount ↔ InvalidGateCount { found, required }
-///   - InvalidCapability ↔ MissingRequiredProofFlag* (capability-related)
-///   - DigestMismatch   ↔ ArtifactDigestMismatch { requested, found }
-///   - Valid            ↔ (no error — artifact passed all checks)
+/// STRUCTURAL BINDING to vb_runtime::admission::ArtifactEnvelopeError:
+///   Missing          ↔ ArtifactNotFound { digest }
+///   Malformed        ↔ PostcardDecodeFailed
+///   InvalidProof     ↔ MissingRequiredProofFlag* ∪ MissingIdempotencyAttestation
+///   InvalidGateCount ↔ InvalidGateCount { found, required }
+///   InvalidCapability ↔ MissingRequiredProofFlagIdempotencyVerified
+///   DigestMismatch   ↔ ArtifactDigestMismatch { requested, found }
+///   Valid            ↔ (no error)
 pub enum ArtifactCase {
     Missing,
     Malformed,
@@ -36,15 +68,17 @@ pub enum ArtifactCase {
     Valid,
 }
 
-/// Spec enum mirroring vb_runtime::admission::AdmissionError variants.
+/// Spec enum for admission error outcomes.
 ///
-/// BINDING: Each variant corresponds one-to-one with a variant in
-/// `vb_runtime::admission::AdmissionError`. The mapping is:
-///   - NoError                         ↔ (none — admission succeeded)
-///   - StrictAdmissionMissingArtifact  ↔ ArtifactNotFound { digest }
-///   - MalformedAcceptedArtifact       ↔ ArtifactEnvelopeDecodeFailed
-///   - InvalidVerificationProof        ↔ ArtifactInvalidProofFlag { flag }
-///   - DigestMismatch                  ↔ ArtifactDigestMismatch { requested, found }
+/// STRUCTURAL BINDING to vb_runtime::admission::AdmissionError:
+///   NoError                          ↔ (none — admission succeeded)
+///   StrictAdmissionMissingArtifact   ↔ ArtifactNotFound { digest }
+///   MalformedAcceptedArtifact        ↔ ArtifactEnvelopeDecodeFailed
+///   InvalidVerificationProof         ↔ ArtifactInvalidProofFlag { flag }
+///   DigestMismatch                   ↔ ArtifactDigestMismatch { requested, found }
+///
+/// NOTE: Production AdmissionError is #[non_exhaustive] with additional
+/// capability, budget, and certificate variants not in the spec scope.
 pub enum AdmissionError {
     NoError,
     StrictAdmissionMissingArtifact,
