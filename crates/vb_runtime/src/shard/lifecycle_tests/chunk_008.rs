@@ -348,7 +348,7 @@
                 );
                 if let Err(RuntimeError::ActionTaintDowngrade { required, .. }) = &result {
                     prop_assert_ne!(*required, Taint::Clean,
-                        "guard must not fire on Clean input (idem={idempotency:?})");
+                        "guard must not fire on Clean input (idem={:?})", idempotency);
                 }
             }
 
@@ -367,7 +367,7 @@
                 if let Err(RuntimeError::ActionTaintDowngrade { required, .. }) = &result {
                     prop_assert_ne!(*required, Taint::Clean,
                         "guard must not fire for non-DeterministicPure idempotency \
-                         (idem={idempotency:?}, input={input_taint:?})");
+                         (idem={:?}, input={:?})", idempotency, input_taint);
                 }
             }
 
@@ -386,7 +386,7 @@
                     Err(RuntimeError::ActionTaintDowngrade { supplied: err_supplied, .. }) => {
                         prop_assert_eq!(err_supplied, input_taint,
                             "supplied in error must be frame's input_taint, not the parameter \
-                             (input={input_taint:?}, param={supplied:?})");
+                             (input={:?}, param={:?})", input_taint, supplied);
                     }
                     _ => panic!("guard should have fired"),
                 }
