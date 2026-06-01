@@ -3,13 +3,9 @@
 
 use crate::errors::{CoreError, CoreResult};
 use crate::ids::{
-    AccessorIdx, ActionId, ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest,
+    AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest,
 };
-use crate::limits::{
-    MAX_ACCESSORS, MAX_CONSTANTS, MAX_EXPRESSIONS, MAX_EXPRESSION_OPS, MAX_EXPRESSION_STACK,
-    MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE, MAX_PATH_DEPTH, MAX_SLOTS_PER_WORKFLOW,
-    MAX_STEPS_PER_WORKFLOW,
-};
+use crate::limits::{MAX_EXPRESSION_OPS, MAX_EXPRESSION_STACK};
 use crate::value::ConstValue;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;

@@ -1,7 +1,14 @@
 #![forbid(unsafe_code)]
 //! Repair hints and verification failure formatting.
 
-fn explain_compile_repair_hint(err: &vb_compile::CompileError) {
+use std::process::ExitCode;
+use crate::args::{OutputFormat, ParseError};
+use crate::exit_code::CliExitCode;
+use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, write_stderr_line, write_failure_message};
+use crate::output_utils::*;
+use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+
+pub(crate) fn explain_compile_repair_hint(err: &vb_compile::CompileError) {
     use vb_compile::CompileError;
     let hints: &[&str] = match err {
         CompileError::SourceTooLarge { .. } => &[
@@ -249,7 +256,7 @@ fn explain_compile_repair_hint(err: &vb_compile::CompileError) {
 
 /// Emit a structured repair hint header.
 
-fn explain_repair_hint(context: &str, hints: &[&str]) {
+pub(crate) fn explain_repair_hint(context: &str, hints: &[&str]) {
     outln!("");
     outln!("Repair hints ({context}):");
     for hint in hints {
@@ -259,7 +266,7 @@ fn explain_repair_hint(context: &str, hints: &[&str]) {
 
 /// Explain why a verification gate passed.
 
-fn explain_gate_pass(gate: &str) {
+pub(crate) fn explain_gate_pass(gate: &str) {
     outln!("  ✓ {gate}");
 }
 

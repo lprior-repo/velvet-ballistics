@@ -1,7 +1,15 @@
 #![forbid(unsafe_code)]
 //! Validation error explanation and failure formatting.
 
-fn explain_verification_failure(err: &commands_verify::VerifyError) {
+use std::process::ExitCode;
+use crate::args::{OutputFormat, ParseError};
+use crate::exit_code::CliExitCode;
+use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, write_stderr_line, write_failure_message};
+use crate::output_utils::*;
+use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+use crate::explain_repair::explain_repair_hint;
+
+pub(crate) fn explain_verification_failure(err: &commands_verify::VerifyError) {
     use commands_verify::VerifyError;
     match err {
         VerifyError::YamlParse(msg) => {
@@ -87,7 +95,7 @@ fn explain_verification_failure(err: &commands_verify::VerifyError) {
 }
 
 
-fn explain_validation_error(err: &vb_validate::ValidationError) {
+pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
     use vb_validate::ValidationError;
     match err {
         ValidationError::DuplicateKey => {

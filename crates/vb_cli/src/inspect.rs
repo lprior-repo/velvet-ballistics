@@ -1,6 +1,14 @@
 #![forbid(unsafe_code)]
 //! Run inspection command.
 
+use std::process::ExitCode;
+use crate::args::{ActionRegistryMode, Command, OutputFormat, ParseError, StepTarget};
+use crate::exit_code::CliExitCode;
+use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, write_stderr_line, write_failure_message};
+use crate::output_utils::*;
+use crate::file_io::{read_file, parse_run_id, read_journal_events, report_storage_open_error};
+use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+
 pub(crate) fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let rid = match parse_run_id(run_id, output) {
         Ok(id) => id,

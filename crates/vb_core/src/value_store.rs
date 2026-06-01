@@ -329,6 +329,7 @@ impl ValueStore {
     }
 }
 
+#[allow(clippy::as_conversions)]
 fn checked_len_to_u64(len: usize) -> u64 {
     // Lossless on all Rust targets: usize is either 32-bit or 64-bit.
     // Both fit in u64, so this cast never overflows or truncates.

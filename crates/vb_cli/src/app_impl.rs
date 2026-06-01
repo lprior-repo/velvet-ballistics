@@ -50,26 +50,13 @@ use std::process::ExitCode;
 use crate::output::{json_out, output_error_exit, write_stderr_line, write_stdout_line};
 use crate::output_utils::cli_exit_code_name;
 
-/// Macro for writing to stdout with trailing newline.
-macro_rules! outln {
-    ($($arg:tt)*) => {{
-        write_stdout_line(format_args!($($arg)*));
-    }};
+/// Macro for writing to stdout with trailing newline.};
 }
 
-/// Macro for writing to stderr with trailing newline.
-macro_rules! errln {
-    ($($arg:tt)*) => {{
-        write_stderr_line(format_args!($($arg)*));
-    }};
+/// Macro for writing to stderr with trailing newline.};
 }
 
 /// Macro for emitting JSON output or returning an error exit code.
-macro_rules! emit_json_or_return {
-    ($value:expr, $format:expr $(,)?) => {{
-        if let Err(error) = json_out($value, $format) {
-            return output_error_exit(&error);
-        }
     }};
 }
 

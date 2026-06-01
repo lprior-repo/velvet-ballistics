@@ -193,7 +193,7 @@ pub fn map_runtime_inputs(
         .map(Vec::into_boxed_slice)
 }
 
-fn read_file(path: &std::path::Path) -> Result<Vec<u8>, ExitCode> {
+pub(crate) fn read_file(path: &std::path::Path) -> Result<Vec<u8>, ExitCode> {
     match std::fs::read(path) {
         Ok(bytes) => Ok(bytes),
         Err(e) => {

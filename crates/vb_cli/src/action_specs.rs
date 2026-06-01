@@ -1,9 +1,18 @@
-//! CLI action specs, contract builders, and registration.
-    retry_safety: &'static str,
-    side_effect: &'static str,
-    input_slot_count: u16,
-    output_slot_count: u16,
-    timeout_ms: u64,
+//! Action table rows, contract specs, and CLI action registration.
+
+use crate::action::ActionContractDetail;
+use crate::args::OutputFormat;
+use crate::exit_code::CliExitCode;
+use vb_runtime::action::ActionRegistry;
+
+pub(crate) struct ActionTableRow {
+    pub(crate) id: u16,
+    pub(crate) idempotency: &'static str,
+    pub(crate) retry_safety: &'static str,
+    pub(crate) side_effect: &'static str,
+    pub(crate) input_slot_count: u16,
+    pub(crate) output_slot_count: u16,
+    pub(crate) timeout_ms: u64,
 }
 
 pub(crate) fn action_table_rows(registry: &ActionRegistry) -> Vec<ActionTableRow> {
@@ -83,28 +92,26 @@ pub(crate) fn registered_cli_actions() -> vb_core::action::ActionResult<ActionRe
     cli_action_specs()
         .iter()
         .try_fold(ActionRegistry::new(), |mut registry, spec| {
-            registry.register(action_contract(spec)?)?;
+            registry.register(action_contract(*spec))?;
             Ok(registry)
         })
 }
 
-#[derive(Debug, Clone)]
-struct CliActionSpec {
-    id: u16,
-    name: &'static str,
-    idempotency: vb_core::action::Idempotency,
-    retry_safety: vb_core::action::RetrySafety,
-    side_effect: vb_core::action::SideEffect,
-    input_slot_count: u16,
-    output_slot_count: u16,
-    timeout_ms: u64,
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct CliActionSpec {
+    pub(crate) id: u16,
+    pub(crate) idempotency: vb_core::action::Idempotency,
+    pub(crate) retry_safety: vb_core::action::RetrySafety,
+    pub(crate) side_effect: vb_core::action::SideEffect,
+    pub(crate) input_slot_count: u16,
+    pub(crate) output_slot_count: u16,
+    pub(crate) timeout_ms: u64,
 }
 
 pub(crate) fn cli_action_specs() -> &'static [CliActionSpec] {
     &[
         CliActionSpec {
             id: 1,
-            name: "noop",
             idempotency: vb_core::action::Idempotency::DeterministicPure,
             retry_safety: vb_core::action::RetrySafety::Safe,
             side_effect: vb_core::action::SideEffect::None,
@@ -114,7 +121,6 @@ pub(crate) fn cli_action_specs() -> &'static [CliActionSpec] {
         },
         CliActionSpec {
             id: 2,
-            name: "write",
             idempotency: vb_core::action::Idempotency::IdempotentExternal,
             retry_safety: vb_core::action::RetrySafety::KeyRequired,
             side_effect: vb_core::action::SideEffect::Writes,
@@ -124,7 +130,6 @@ pub(crate) fn cli_action_specs() -> &'static [CliActionSpec] {
         },
         CliActionSpec {
             id: 3,
-            name: "send",
             idempotency: vb_core::action::Idempotency::AtLeastOnceExternal,
             retry_safety: vb_core::action::RetrySafety::Unsafe,
             side_effect: vb_core::action::SideEffect::Sends,
@@ -135,14 +140,9 @@ pub(crate) fn cli_action_specs() -> &'static [CliActionSpec] {
     ]
 }
 
-pub(crate) fn action_contract(
-    spec: &CliActionSpec,
-) -> vb_core::action::ActionResult<vb_core::action::ActionContract> {
-    let name = vb_core::action::ActionName::new(spec.name)
-        .map_err(|_| vb_core::action::ActionError::DispatchFailed)?;
-    Ok(vb_core::action::ActionContract {
+pub(crate) fn action_contract(spec: CliActionSpec) -> vb_core::action::ActionContract {
+    vb_core::action::ActionContract {
         id: vb_core::ActionId::new(spec.id),
-        name,
         input_slot_count: spec.input_slot_count,
         output_slot_count: spec.output_slot_count,
         max_input_bytes: 65_536,
@@ -152,7 +152,7 @@ pub(crate) fn action_contract(
         side_effect: spec.side_effect,
         retry_safety: spec.retry_safety,
         required_capabilities: Box::new([]),
-    })
+    }
 }
 
 pub(crate) fn action_idempotency_name(value: vb_core::action::Idempotency) -> &'static str {
@@ -215,4 +215,3 @@ pub(crate) fn action_idempotency_rule(
         _ => "retry behavior follows the action contract",
     }
 }
-

@@ -1,6 +1,12 @@
 #![forbid(unsafe_code)]
 //! File reading and parsing utilities.
 
+use std::process::ExitCode;
+use std::io::{self, Write};
+use std::ffi::OsString;
+use crate::args::{ActionRegistryMode, Command, DurabilityMode, OutputFormat, ParseError, StepTarget};
+use crate::exit_code::CliExitCode;
+
 pub(crate) fn read_file(
     path: &std::path::Path,
     output: OutputFormat,

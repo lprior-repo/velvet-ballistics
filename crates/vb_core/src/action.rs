@@ -361,6 +361,14 @@ pub enum ActionError {
     /// Action dispatch failed internally.
     #[error("action dispatch failed")]
     DispatchFailed,
+    /// Action completion attempted to downgrade taint below the required level.
+    #[error("action taint violation: required {required:?}, supplied {supplied:?}")]
+    TaintViolation {
+        /// Taint required by the action's idempotency contract and input.
+        required: Taint,
+        /// Taint supplied by the action completion.
+        supplied: Taint,
+    },
 }
 
 impl ActionError {

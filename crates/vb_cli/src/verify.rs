@@ -210,6 +210,6 @@ pub(crate) fn verify_error_message(err: &VerifyError) -> String {
     }
 }
 
-fn cli_exit_code_number(code: CliExitCode) -> u8 {
+pub(crate) fn cli_exit_code_number(code: CliExitCode) -> u8 {
     code.into()
 }

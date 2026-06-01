@@ -1,3 +1,47 @@
+#![forbid(unsafe_code)]
+//! CLI command dispatcher.
+
+use std::ffi::OsString;
+use std::process::ExitCode;
+use std::sync::Arc;
+use std::num::NonZeroUsize;
+use std::time::{SystemTime, Instant, UNIX_EPOCH};
+use vb_ipc::client::IpcClient;
+use vb_ipc::{IpcCommand, IpcPayload};
+use vb_runtime::action::ActionRegistry;
+use crate::args::*;
+use crate::exit_code::CliExitCode;
+use crate::action::{write_action_registry_uninitialized, write_action_registry, write_action_inspect, write_action_registry_error};
+use crate::action_specs::{registered_cli_actions, cli_action_specs, action_contract};
+use crate::agent_io::{cmd_agent_context, cmd_status, cmd_system_status, cmd_action_list, cmd_action_inspect};
+use crate::bench_run::cmd_bench_run;
+use crate::commands_ai_context::*;
+use crate::compile::cmd_compile;
+use crate::doctor::cmd_doctor;
+use crate::doctor_helpers::cmd_doctor_without_db;
+use crate::events::cmd_events;
+use crate::explain::cmd_explain;
+use crate::file_io::*;
+use crate::graph::cmd_graph;
+use crate::incident_diff::{cmd_incident, cmd_diff};
+use crate::inspect::cmd_inspect;
+use crate::io_helpers::*;
+use crate::ipc_serve::cmd_ipc_serve;
+use crate::output::*;
+use crate::output_utils::*;
+use crate::replay::cmd_replay;
+use crate::run::cmd_run;
+use crate::run_compiled::cmd_run_compiled;
+use crate::run_compiled_runtime::*;
+use crate::run_ops::*;
+use crate::run_step::{cmd_run_step, compile_bytes_json};
+use crate::simulate::cmd_simulate;
+use crate::step_helpers::{build_step_frame, print_step_result};
+use crate::submit::cmd_submit;
+use crate::trace::cmd_trace;
+use crate::validate::cmd_validate;
+use crate::verify::cmd_verify;
+
 pub(crate) fn run_from_env() -> ExitCode {
     let args: Vec<OsString> = std::env::args_os().collect();
     let requested_output = output_format_from_args(&args);

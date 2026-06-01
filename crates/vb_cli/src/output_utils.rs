@@ -1,7 +1,13 @@
 #![forbid(unsafe_code)]
 //! Output formatting utilities for parse errors, diagnostics, and exit codes.
 
-fn write_parse_error_stderr(error: &ParseError, output: OutputFormat) -> io::Result<()> {
+use std::process::ExitCode;
+use std::io::{self, Write};
+use crate::args::{ActionRegistryMode, Command, OutputFormat, ParseError, StepTarget};
+use crate::exit_code::CliExitCode;
+use crate::cli_envelope;
+
+pub(crate) fn write_parse_error_stderr(error: &ParseError, output: OutputFormat) -> io::Result<()> {
     match output {
         OutputFormat::Text => write_error_stderr(error),
         OutputFormat::Yaml | OutputFormat::Postcard => {
@@ -10,11 +16,11 @@ fn write_parse_error_stderr(error: &ParseError, output: OutputFormat) -> io::Res
     }
 }
 
-fn write_diagnostic_report_stderr(error: &ParseError, output: OutputFormat) -> io::Result<()> {
+pub(crate) fn write_diagnostic_report_stderr(error: &ParseError, output: OutputFormat) -> io::Result<()> {
     write_diagnostic_report_stderr_io(&error.to_string(), CliExitCode::ValidationFailed, output)
 }
 
-fn write_diagnostic_message_stderr(message: &str, code: CliExitCode, output: OutputFormat) {
+pub(crate) fn write_diagnostic_message_stderr(message: &str, code: CliExitCode, output: OutputFormat) {
     let write_result = match output {
         OutputFormat::Yaml | OutputFormat::Postcard => {
             write_structured_stderr(&diagnostic_value(message, code), output)
@@ -26,7 +32,7 @@ fn write_diagnostic_message_stderr(message: &str, code: CliExitCode, output: Out
     }
 }
 
-fn diagnostic_value(message: &str, code: CliExitCode) -> serde_json::Value {
+pub(crate) fn diagnostic_value(message: &str, code: CliExitCode) -> serde_json::Value {
     serde_json::json!({
         "schema_version": cli_envelope::SCHEMA_VERSION,
         "kind": cli_envelope::kind::DIAGNOSTIC_REPORT,
@@ -36,7 +42,7 @@ fn diagnostic_value(message: &str, code: CliExitCode) -> serde_json::Value {
     })
 }
 
-fn cli_exit_code_name(code: CliExitCode) -> &'static str {
+pub(crate) fn cli_exit_code_name(code: CliExitCode) -> &'static str {
     match code {
         CliExitCode::Success => "Success",
         CliExitCode::ValidationFailed => "ValidationFailed",
@@ -50,11 +56,11 @@ fn cli_exit_code_name(code: CliExitCode) -> &'static str {
     }
 }
 
-fn cli_exit_code_number(code: CliExitCode) -> u8 {
+pub(crate) fn cli_exit_code_number(code: CliExitCode) -> u8 {
     u8::from(code)
 }
 
-fn compile_errors_message(errors: &[vb_compile::CompileError]) -> String {
+pub(crate) fn compile_errors_message(errors: &[vb_compile::CompileError]) -> String {
     let mut message = String::from("compilation failed");
     for err in errors {
         message.push_str("; compile error: ");
@@ -63,7 +69,7 @@ fn compile_errors_message(errors: &[vb_compile::CompileError]) -> String {
     message
 }
 
-fn legacy_json_error_message(value: &serde_json::Value) -> String {
+pub(crate) fn legacy_json_error_message(value: &serde_json::Value) -> String {
     if let Some(message) = value.get("message").and_then(serde_json::Value::as_str) {
         return message.to_string();
     }
@@ -73,7 +79,7 @@ fn legacy_json_error_message(value: &serde_json::Value) -> String {
     value.to_string()
 }
 
-fn infer_legacy_json_error_code(message: &str) -> CliExitCode {
+pub(crate) fn infer_legacy_json_error_code(message: &str) -> CliExitCode {
     if message.contains("journal")
         || message.contains("workflow source write")
         || message.contains("compiled IR write")
@@ -96,7 +102,7 @@ fn infer_legacy_json_error_code(message: &str) -> CliExitCode {
     CliExitCode::ValidationFailed
 }
 
-fn write_diagnostic_report_stderr_io(
+pub(crate) fn write_diagnostic_report_stderr_io(
     message: &str,
     code: CliExitCode,
     output: OutputFormat,
