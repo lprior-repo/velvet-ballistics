@@ -9,11 +9,13 @@ use crate::ids::{
 };
 use crate::limits::{MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE, MAX_PATH_DEPTH};
 use crate::value::ConstValue;
+use crate::errors::CoreError;
 use crate::workflow::{
-    check_expr_stack_bound, validate_budget_result, AccessorProgram, CompiledNode,
-    CompiledNodeKind, CompiledWorkflow, CoreError, ExprBranch, ExprOp, ExprProgram, PathSegment,
-    ResourceContract, SlotBranch, WorkflowError, WorkflowParts,
+    check_expr_stack_bound, AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow,
+    ExprBranch, ExprOp, ExprProgram, PathSegment, ResourceContract, SlotBranch, WorkflowError,
+    WorkflowParts,
 };
+use crate::workflow::validation::validate_budget_result;
 use std::fmt::Debug;
 
 pub(crate) fn assert_pairwise_distinct<T>(values: &[T])

@@ -43,7 +43,7 @@ pub fn validate_budget(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     validate_budget_result(BoundednessPolicy::DEFAULT.validate(&budget))
 }
 
-fn validate_budget_result(
+pub(crate) fn validate_budget_result(
     result: Result<(), crate::budget::BudgetError>,
 ) -> Result<(), WorkflowError> {
     match result {
