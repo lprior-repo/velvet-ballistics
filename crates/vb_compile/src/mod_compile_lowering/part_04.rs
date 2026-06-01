@@ -31,8 +31,7 @@ pub(super) fn lower_canonical_aggregate(
         checked_step_offset(id, 1, "reduce", "body").map_err(|e| CompileErrors(vec![e]))?;
     let next_step =
         checked_step_offset(id, 2, "reduce", "next").map_err(|e| CompileErrors(vec![e]))?;
-    let done =
-        checked_step_offset(id, 3, "reduce", "done").map_err(|e| CompileErrors(vec![e]))?;
+    let done = checked_step_offset(id, 3, "reduce", "done").map_err(|e| CompileErrors(vec![e]))?;
     builder.record_slot(input);
     builder.record_slot(accumulator);
     builder.push_node(CompiledNode {

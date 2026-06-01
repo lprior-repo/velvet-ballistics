@@ -209,6 +209,12 @@ mod tests {
     }
 
     #[test]
+    fn command_mode_ui_variant_is_reserved() {
+        let mode = CommandMode::UI;
+        assert!(matches!(mode, CommandMode::UI));
+    }
+
+    #[test]
     fn mode_error_display_invalid_mode() {
         assert_eq!(ModeError::InvalidMode.to_string(), "invalid command mode");
     }

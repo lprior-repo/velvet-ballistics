@@ -369,66 +369,6 @@ pub(crate) fn analyze_retry(events: &[JournalEvent]) -> RetryAnalysis {
 }
 
 // ---------------------------------------------------------------------------
-// Resume
-// ---------------------------------------------------------------------------
-
-/// Analysis result produced by [`analyze_resume`].
-#[derive(Debug, Clone)]
-pub(crate) struct ResumeAnalysis {
-    pub suspended_at_step: Option<u16>,
-    pub can_resume: bool,
-    pub reason: String,
-}
-
-/// Scan a journal and decide whether a resume is possible.
-///
-/// Returns structured data; the caller is responsible for formatting.
-pub(crate) fn analyze_resume(events: &[JournalEvent]) -> ResumeAnalysis {
-    // Scan for suspension indicators: WaitScheduled or AskScheduled
-    let mut suspended_at_step: Option<u16> = None;
-    for event in events {
-        match event {
-            JournalEvent::WaitScheduledEvent { step, .. } => {
-                suspended_at_step = Some(step.get());
-            }
-            JournalEvent::AskScheduledEvent { step, .. } => {
-                suspended_at_step = Some(step.get());
-            }
-            _ => {}
-        }
-    }
-
-    // Check terminal status - the run must not be finished/failed/cancelled
-    let terminal = events.last();
-    let is_terminal = matches!(
-        terminal,
-        Some(JournalEvent::RunFinished { .. })
-            | Some(JournalEvent::RunFailedEvent { .. })
-            | Some(JournalEvent::RunCancelled { .. })
-    );
-
-    if is_terminal {
-        let status = match terminal {
-            Some(JournalEvent::RunFinished { .. }) => "finished",
-            Some(JournalEvent::RunFailedEvent { .. }) => "failed",
-            Some(JournalEvent::RunCancelled { .. }) => "cancelled",
-            _ => "unknown",
-        };
-        return ResumeAnalysis {
-            suspended_at_step,
-            can_resume: false,
-            reason: format!("run is {status}, not suspended"),
-        };
-    }
-
-    ResumeAnalysis {
-        suspended_at_step,
-        can_resume: true,
-        reason: String::new(),
-    }
-}
-
-// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 

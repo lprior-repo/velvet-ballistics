@@ -1,11 +1,14 @@
 //! Tests for object_list module.
 
-use crate::errors::EngineError;
-use crate::ids::{RunId, SlotIdx, StepIdx, SymbolId};
-use crate::value::{SlotValue, Taint};
-use crate::value_store::ValueStore;
+use vb_core::errors::EngineError;
+use vb_core::ids::{RunId, SlotIdx, StepIdx, SymbolId};
+use vb_core::value::{SlotValue, Taint};
+use vb_core::value_store::ValueStore;
+use vb_core::{build_list, build_list_with_taint, build_object, build_object_with_taint};
 
-use crate::engine::object_list::{build_list, build_list_with_taint, build_object, build_object_with_taint};
+mod frame {
+    pub(crate) use vb_core::frame::RunFrame;
+}
 
 fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
 where
@@ -231,8 +234,7 @@ fn build_list_with_taint_joins_derived_from_secret() -> Result<(), String> {
 fn build_object_with_taint_rejects_out_of_bounds_slot() {
     let mut store = ValueStore::new();
     let run = test_frame(1).expect("frame");
-    let result =
-        build_object_with_taint(&mut store, &run, &[(SymbolId::new(0), SlotIdx::new(5))]);
+    let result = build_object_with_taint(&mut store, &run, &[(SymbolId::new(0), SlotIdx::new(5))]);
     assert_eq!(
         result,
         Err(EngineError::SlotOutOfBounds {
@@ -261,8 +263,7 @@ fn build_object_with_taint_rejects_uninitialized_slot() {
     let mut store = ValueStore::new();
     let run = test_frame(2).expect("frame");
     // Slot 0 is uninitialized
-    let result =
-        build_object_with_taint(&mut store, &run, &[(SymbolId::new(0), SlotIdx::new(0))]);
+    let result = build_object_with_taint(&mut store, &run, &[(SymbolId::new(0), SlotIdx::new(0))]);
     assert_eq!(
         result,
         Err(EngineError::SlotUninitialized {

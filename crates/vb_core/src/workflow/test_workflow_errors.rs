@@ -1,8 +1,8 @@
 //! WorkflowError variant and display tests.
 
 use super::super::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, ExprBranch, ExprIdx, ExprOp,
-    ExprProgram, ResourceContract, SlotBranch, SlotIdx, StepIdx, WorkflowError, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, ExprBranch, ExprIdx, ExprProgram,
+    SlotIdx, StepIdx, WorkflowError, WorkflowParts,
 };
 use super::tests::{
     action_tickets_error, assert_budget_detail, assert_workflow_budget_detail, choose_expr_parts,
@@ -11,9 +11,7 @@ use super::tests::{
     result_bytes_budget_parts, result_bytes_error, run_time_error, steps_executable_error,
     total_slots_error, total_steps_budget_parts, total_steps_error,
 };
-use crate::ids::{AccessorIdx, ConstIdx, SymbolId, WorkflowDigest};
-use crate::limits::MAX_PATH_DEPTH;
-use crate::workflow::{AccessorProgram, PathSegment};
+use crate::ids::{ConstIdx, SymbolId, WorkflowDigest};
 
 // -- WorkflowError exact variant assertions --
 

@@ -1,15 +1,15 @@
 //! Basic workflow validation tests.
 
 use super::super::{
-    check_expr_stack_bound, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue,
-    CoreError, ExprBranch, ExprIdx, ExprOp, ExprProgram, ResourceContract, SlotBranch, SlotIdx,
-    StepIdx, WorkflowError, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprBranch, ExprIdx, ExprOp, ExprProgram,
+    ResourceContract, SlotBranch, SlotIdx, StepIdx, WorkflowError,
 };
 use super::tests::{
-    assert_pairwise_distinct, choose_expr_parts, choose_slot_parts, construction_parts,
-    construction_parts_with_symbols, expect_resource_error, expect_step_out_of_bounds,
-    finish_const_parts_with, load, resource_contract,
+    choose_expr_parts, choose_slot_parts, construction_parts, construction_parts_with_symbols,
+    expect_resource_error, expect_step_out_of_bounds, finish_const_parts_with, load,
+    resource_contract,
 };
+use crate::CoreError;
 use crate::limits::{MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE};
 
 #[test]

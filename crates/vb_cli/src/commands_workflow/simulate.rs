@@ -51,7 +51,7 @@ pub(crate) fn simulate_workflow(workflow: &CompiledWorkflow) -> SimulationResult
     }
 }
 
-fn describe_node_for_simulate(
+pub(super) fn describe_node_for_simulate(
     kind: &CompiledNodeKind,
     action_count: &mut usize,
     branch_count: &mut usize,

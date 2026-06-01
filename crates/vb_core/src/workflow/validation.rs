@@ -4,7 +4,7 @@
 use crate::errors::CoreError;
 use crate::ids::{AccessorIdx, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
 use crate::limits::{
-    MAX_ACCESSORS, MAX_CONSTANTS, MAX_EXPRESSIONS, MAX_EXPRESSION_STACK, MAX_LIST_ITEMS_PER_VALUE,
+    MAX_ACCESSORS, MAX_CONSTANTS, MAX_EXPRESSION_STACK, MAX_EXPRESSIONS, MAX_LIST_ITEMS_PER_VALUE,
     MAX_OBJECT_FIELDS_PER_VALUE, MAX_PATH_DEPTH, MAX_SLOTS_PER_WORKFLOW, MAX_STEPS_PER_WORKFLOW,
 };
 use crate::value::ConstValue;
@@ -43,7 +43,7 @@ pub fn validate_budget(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     validate_budget_result(BoundednessPolicy::DEFAULT.validate(&budget))
 }
 
-fn validate_budget_result(
+pub(crate) fn validate_budget_result(
     result: Result<(), crate::budget::BudgetError>,
 ) -> Result<(), WorkflowError> {
     match result {

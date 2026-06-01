@@ -22,8 +22,10 @@ pub use expr_eval::eval_expr;
 pub use expr_eval::eval_expr_with_store;
 pub use object_list::build_list;
 pub use object_list::build_list as build_list_impl;
+pub use object_list::build_list_with_taint;
 pub use object_list::build_object;
 pub use object_list::build_object as build_object_impl;
+pub use object_list::build_object_with_taint;
 pub use run_loop::{drive_deterministic, run_until_blocked};
 pub use signals::{EngineSignal, StepBudget};
 pub use step::{

@@ -1983,7 +1983,6 @@ dependencies = [
  "thiserror",
  "vb_core",
  "vb_runtime",
- "vb_validate",
 ]
 
 [[package]]

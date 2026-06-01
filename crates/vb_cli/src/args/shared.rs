@@ -50,33 +50,15 @@ pub(super) fn has_flag(args: &[OsString], flag: &str) -> bool {
     args.iter().any(|arg| arg == flag)
 }
 
-pub(super) fn optional_named_flag(
-    args: &[OsString],
-    flag: &'static str,
-) -> Result<Option<String>, ParseError> {
-    for (index, arg) in args.iter().enumerate() {
-        if arg == flag {
-            let value = args
-                .get(index.saturating_add(1))
-                .and_then(|raw| raw.to_str())
-                .ok_or(ParseError::MissingArgument(flag))?;
-            if value.starts_with("--") {
-                return Err(ParseError::MissingArgument(flag));
-            }
-            return Ok(Some(value.to_string()));
-        }
-    }
-    Ok(None)
-}
-
 /// Find the first positional argument (not starting with `--`) starting at `start_idx`.
 /// This correctly skips over named flags and their values to locate the workflow path.
 pub(super) fn find_positional(args: &[OsString], start_idx: usize) -> Option<PathBuf> {
+    let command = args.get(1)?.to_str()?;
     let mut index = start_idx;
     while index < args.len() {
         let arg = args.get(index)?.to_str()?;
         if arg.starts_with('-') {
-            let step = match super::flag_spec::known_flag_spec("fake", arg) {
+            let step = match super::flag_spec::known_flag_spec(command, arg) {
                 Some(super::flag_spec::FlagSpec::Switch) | None => 1_usize,
                 Some(super::flag_spec::FlagSpec::Value(_)) => 2_usize,
             };
@@ -106,11 +88,12 @@ pub(super) fn validate_known_flags(
             .to_str()
             .ok_or_else(|| ParseError::InvalidArgument("invalid UTF-8 argument".into()))?;
         if token.starts_with('-') {
-            let spec = super::flag_spec::known_flag_spec(command, token)
-                .ok_or_else(|| ParseError::UnknownFlag {
+            let spec = super::flag_spec::known_flag_spec(command, token).ok_or_else(|| {
+                ParseError::UnknownFlag {
                     command,
                     flag: token.into(),
-                })?;
+                }
+            })?;
             index = validate_flag_value(args, index, command, spec)?;
         } else {
             index = advance_arg_index(index, 1_usize)?;

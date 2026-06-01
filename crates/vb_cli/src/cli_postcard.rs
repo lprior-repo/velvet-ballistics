@@ -10,17 +10,22 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
+#[path = "cli_postcard/codec.rs"]
 mod codec;
+#[path = "cli_postcard/error.rs"]
 mod error;
+#[path = "cli_postcard/types.rs"]
 mod types;
+#[path = "cli_postcard/validation.rs"]
 mod validation;
 
 pub(crate) use error::PostcardError;
+#[cfg(test)]
+pub(crate) use types::MAX_PAYLOAD_U32;
 pub(crate) use types::{
-    CliPostcardContentType, CliPostcardPayload, PostcardHeader, CLI_MAGIC, CLI_POSTCARD_KIND,
-    CLI_SCHEMA_VERSION, HEADER_SIZE, HEADER_SIZE_U32, MAX_PAYLOAD,
+    CLI_MAGIC, CLI_POSTCARD_KIND, CLI_SCHEMA_VERSION, CliPostcardContentType, CliPostcardPayload,
+    HEADER_SIZE, HEADER_SIZE_U32, MAX_PAYLOAD, PostcardHeader,
 };
-
 
 #[allow(unused_imports)]
 pub(crate) use codec::{decode_cli_payload, decode_postcard_json, encode_postcard};

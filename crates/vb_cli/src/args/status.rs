@@ -4,9 +4,8 @@
 use std::ffi::OsString;
 
 use super::error::ParseError;
-use super::shared::{named_flag, parse_output_format, validate_known_flags};
-use super::types::{Command, DurabilityMode, OutputFormat, StatusOptions, SystemStatusOptions,
-                    VerifyProfile};
+use super::shared::parse_output_format;
+use super::types::{Command, DurabilityMode, StatusOptions, SystemStatusOptions, VerifyProfile};
 
 pub(super) fn parse_status(args: &[OsString]) -> Result<Command, ParseError> {
     let tokens = args.get(2..).ok_or(ParseError::NoCommand)?;
@@ -165,9 +164,9 @@ fn parse_system_status_options(
             Some("--emit") => parse_system_status_emit(rest, options),
             Some("--profile") => parse_system_status_profile(rest, options),
             Some("--server") => parse_system_status_server(rest, options),
-            Some(other) if other.starts_with('-') => {
-                Err(ParseError::InvalidSystemStatusArgument(format!("unknown flag {other}")))
-            }
+            Some(other) if other.starts_with('-') => Err(ParseError::InvalidSystemStatusArgument(
+                format!("unknown flag {other}"),
+            )),
             Some(other) => Err(ParseError::InvalidSystemStatusArgument(format!(
                 "unexpected positional argument {other}"
             ))),

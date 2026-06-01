@@ -1,18 +1,18 @@
 #![forbid(unsafe_code)]
 //! Public API helper evaluation.
 
-use vb_core::value_store::ValueStore;
-use vb_core::SlotValue;
 use crate::parser::ExprHelper;
+use vb_core::SlotValue;
+use vb_core::value_store::ValueStore;
 
 use crate::ExprResult;
 
 use super::super::impls::{
-    eval_helper_append_if_with_store, eval_helper_append_with_store, eval_helper_contains_with_store,
-    eval_helper_count_with_store, eval_helper_empty_with_store, eval_helper_ends_with_with_store,
-    eval_helper_exists_with_store, eval_helper_has_with_store, eval_helper_length_with_store,
-    eval_helper_merge_with_store, eval_helper_starts_with_with_store, eval_helper_sum_with_store,
-    eval_helper_unique_with_store,
+    eval_helper_append_if_with_store, eval_helper_append_with_store,
+    eval_helper_contains_with_store, eval_helper_count_with_store, eval_helper_empty_with_store,
+    eval_helper_ends_with_with_store, eval_helper_exists_with_store, eval_helper_has_with_store,
+    eval_helper_length_with_store, eval_helper_merge_with_store,
+    eval_helper_starts_with_with_store, eval_helper_sum_with_store, eval_helper_unique_with_store,
 };
 use super::args::{one_arg, three_args, two_args};
 
@@ -92,12 +92,12 @@ pub fn eval_helper(helper: ExprHelper, args: &[SlotValue]) -> ExprResult<SlotVal
         // Exists works without store - it just checks for Null
         ExprHelper::Exists => {
             let value = one_arg(args, helper)?;
-            Ok(SlotValue::Bool(!matches!(**value, SlotValue::Null)))
+            Ok(SlotValue::Bool(!matches!(*value, SlotValue::Null)))
         }
         // Empty works for Null without store (returns true), but errors for other types
         ExprHelper::Empty => {
             let value = one_arg(args, helper)?;
-            match **value {
+            match *value {
                 SlotValue::Null => Ok(SlotValue::Bool(true)),
                 SlotValue::F64(_) => Err(crate::ExprError::TypeMismatch {
                     expected: "list, text, object, or null".into(),
@@ -116,7 +116,7 @@ pub fn eval_helper(helper: ExprHelper, args: &[SlotValue]) -> ExprResult<SlotVal
         // Length and Count: need store for List/Null, but return type error for non-list
         ExprHelper::Length | ExprHelper::Count => {
             let value = one_arg(args, helper)?;
-            match **value {
+            match *value {
                 SlotValue::F64(_) => Err(crate::ExprError::TypeMismatch {
                     expected: "list, text, or object".into(),
                     found: "number".into(),
@@ -134,7 +134,7 @@ pub fn eval_helper(helper: ExprHelper, args: &[SlotValue]) -> ExprResult<SlotVal
         // Unique: need store for List, but return type error for non-list
         ExprHelper::Unique => {
             let value = one_arg(args, helper)?;
-            match **value {
+            match *value {
                 SlotValue::List(_) => Err(crate::ExprError::TypeMismatch {
                     expected: "value-store context required for list deduplication".into(),
                     found: "list handle without store".into(),
@@ -148,7 +148,7 @@ pub fn eval_helper(helper: ExprHelper, args: &[SlotValue]) -> ExprResult<SlotVal
         // Contains: need store for list/text operations
         ExprHelper::Contains => {
             let (left, right) = two_args(args, helper)?;
-            if matches!(***left, SlotValue::F64(_)) || matches!(***right, SlotValue::F64(_)) {
+            if matches!(*left, SlotValue::F64(_)) || matches!(*right, SlotValue::F64(_)) {
                 return Err(crate::ExprError::TypeMismatch {
                     expected: "list, text, or object".into(),
                     found: "number".into(),

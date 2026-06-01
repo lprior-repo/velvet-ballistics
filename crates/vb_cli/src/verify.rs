@@ -2,9 +2,10 @@
 #![forbid(unsafe_code)]
 
 use std::path::Path;
+use std::process::ExitCode;
 
 use crate::args::{OutputFormat, VerifyProfile};
-use crate::commands_verify::{exit_code_for_error, run_verification, VerifyError, VerifyOk};
+use crate::commands_verify::{VerifyError, VerifyOk, exit_code_for_error, run_verification};
 use crate::exit_code::CliExitCode;
 use crate::file_io::read_file;
 use crate::output::{json_error, write_failure_message};
@@ -50,9 +51,10 @@ pub(crate) fn cmd_verify(
     match run_verification(text, &bytes, profile) {
         Ok(result) => {
             if output == OutputFormat::Text {
-                outln!("verified ({} nodes, profile={})", result.node_count, profile.as_str());
+                outln!("passed: {}", result.checks.join(","));
+                outln!("verified");
             } else {
-                emit_json_or_return!(verify_success_report(&result, profile), output);
+                emit_json_or_return!(&verify_success_report(&result, profile), output);
             }
             ExitCode::SUCCESS
         }
@@ -156,15 +158,10 @@ pub(crate) fn cmd_verify(
     }
 }
 
-macro_rules! emit_json_or_return {
-    ($value:expr, $format:expr $(,)?) => {{
-        if let Err(error) = crate::output::json_out($value, $format) {
-            return crate::output::output_error_exit(&error);
-        }
-    }};
-}
-
-pub(crate) fn verify_success_report(result: &VerifyOk, profile: VerifyProfile) -> serde_json::Value {
+pub(crate) fn verify_success_report(
+    result: &VerifyOk,
+    profile: VerifyProfile,
+) -> serde_json::Value {
     serde_json::json!({
         "schema_version": crate::cli_envelope::SCHEMA_VERSION,
         "kind": "verify_report",

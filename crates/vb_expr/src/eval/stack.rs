@@ -2,8 +2,8 @@
 //! Stack push/pop operations.
 
 use arrayvec::ArrayVec;
-use vb_core::limits::MAX_EXPRESSION_STACK_USIZE;
 use vb_core::SlotValue;
+use vb_core::limits::MAX_EXPRESSION_STACK_USIZE;
 
 use crate::ExprResult;
 
@@ -13,9 +13,11 @@ pub fn push_value(
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
     value: SlotValue,
 ) -> ExprResult<()> {
-    stack.try_push(value).map_err(|_| crate::ExprError::StackOverflow {
-        max: MAX_EXPRESSION_STACK,
-    })
+    stack
+        .try_push(value)
+        .map_err(|_| crate::ExprError::StackOverflow {
+            max: MAX_EXPRESSION_STACK,
+        })
 }
 
 pub fn pop_value(

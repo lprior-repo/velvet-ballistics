@@ -246,7 +246,10 @@ steps:
       result: 0
 "#,
     );
-    assert!(result.is_err(), "parallel must be rejected, not accepted as alias");
+    assert!(
+        result.is_err(),
+        "parallel must be rejected, not accepted as alias"
+    );
     let err = result.unwrap_err();
     let err_str = format!("{err:?}");
     assert!(

@@ -1,4 +1,6 @@
-//! Repair hints and verification failure formatting.
+//! Module: explain_repair
+
+pub(crate) fn explain_repair_hint(context: &str, hints: &[&str]) {
     outln!("");
     outln!("Repair hints ({context}):");
     for hint in hints {
@@ -97,4 +99,3 @@ pub(crate) fn explain_verification_failure(err: &commands_verify::VerifyError) {
     }
 }
 
-pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {

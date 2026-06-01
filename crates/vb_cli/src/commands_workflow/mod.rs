@@ -5,8 +5,12 @@ mod dot;
 mod helpers;
 mod simulate;
 
-pub use dot::{generate_dot, DotGraph};
-pub use simulate::{simulate_workflow, SimulationResult, SimulationStep};
+#[cfg(test)]
+pub(crate) use dot::DotGraph;
+pub(crate) use dot::generate_dot;
+pub(crate) use simulate::simulate_workflow;
+#[cfg(test)]
+pub(crate) use simulate::{SimulationResult, SimulationStep};
 
 #[cfg(test)]
 #[path = "tests.rs"]

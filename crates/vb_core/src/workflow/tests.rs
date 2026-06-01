@@ -4,30 +4,13 @@
 //! All actual tests have been extracted to separate files.
 
 use crate::budget::BudgetError;
-use crate::ids::{
-    AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest,
-};
-use crate::limits::{MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE, MAX_PATH_DEPTH};
+use crate::ids::{ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::ConstValue;
+use crate::workflow::validation::validate_budget_result;
 use crate::workflow::{
-    check_expr_stack_bound, validate_budget_result, AccessorProgram, CompiledNode,
-    CompiledNodeKind, CompiledWorkflow, CoreError, ExprBranch, ExprOp, ExprProgram, PathSegment,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprBranch, ExprOp, ExprProgram,
     ResourceContract, SlotBranch, WorkflowError, WorkflowParts,
 };
-use std::fmt::Debug;
-
-pub(crate) fn assert_pairwise_distinct<T>(values: &[T])
-where
-    T: PartialEq + Debug,
-{
-    assert!(
-        values.iter().enumerate().all(|(left_index, left)| values
-            .iter()
-            .enumerate()
-            .all(|(right_index, right)| (left_index == right_index) == (left == right))),
-        "variants must be pairwise distinct: {values:?}"
-    );
-}
 
 pub(crate) fn load(index: u16) -> ExprOp {
     ExprOp::LoadConst(ConstIdx::new(index))

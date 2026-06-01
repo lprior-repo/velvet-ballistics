@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use super::error::ParseError;
 use super::shared::{find_positional, named_flag, parse_output_format, validate_known_flags};
-use super::types::{Command, DurabilityMode, EventStatus, OutputFormat, StepTarget};
+use super::types::{Command, EventStatus, OutputFormat};
 
 pub(super) struct RunDbArgs {
     pub(super) run_id: String,
@@ -18,6 +18,7 @@ pub(super) fn parse_run_db_args(
     args: &[OsString],
     command: &'static str,
 ) -> Result<RunDbArgs, ParseError> {
+    validate_known_flags(args, command)?;
     let run_id = find_positional(args, 2)
         .and_then(|path| path.to_str().map(String::from))
         .ok_or(ParseError::MissingArgument("run_id"))?;

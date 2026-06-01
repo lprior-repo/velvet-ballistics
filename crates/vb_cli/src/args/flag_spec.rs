@@ -19,7 +19,7 @@ pub(crate) struct ActionInspectParseState {
     pub(crate) registry: super::ActionRegistryMode,
 }
 
-pub(crate) fn known_flag_spec(command: &'static str, token: &str) -> Option<FlagSpec> {
+pub(crate) fn known_flag_spec(command: &str, token: &str) -> Option<FlagSpec> {
     match command {
         "validate" | "explain" | "bench-run" | "graph" | "simulate" => output_flag_spec(token),
         "ai-context" => switch_flag_spec(token, "--json")

@@ -1,9 +1,7 @@
 //! Blake3 digest coherence tests (B25-B27).
 
-use super::{
-    CompiledNode, CompiledNodeKind, ConstValue, ResourceContract, SlotIdx, StepIdx, WorkflowDigest,
-    WorkflowParts,
-};
+use super::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+use crate::ids::{SlotIdx, StepIdx, WorkflowDigest};
 
 fn make_minimal_workflow_parts(name: &str, entry: StepIdx, slot_count: u16) -> WorkflowParts {
     let digest = WorkflowDigest::from_bytes([0u8; 32]);

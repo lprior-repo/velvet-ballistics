@@ -102,10 +102,11 @@ pub use diagnostic::{
     HasSymbolicCode, Severity, SymbolicCode, SymbolicCodeParseError,
 };
 pub use engine::{
-    EngineSignal, ErrorHandlerOutcome, ErrorSlotData, StepBudget, build_list, build_object,
-    drive_deterministic, eval_accessor, eval_expr, journal_action_suspended, new_run_frame,
-    resume_action_completion, resume_action_failure, route_error_handler, run_until_blocked,
-    step_once, validate_compiled_workflow, validate_node_bounds, validate_resource_contract,
+    EngineSignal, ErrorHandlerOutcome, ErrorSlotData, StepBudget, build_list,
+    build_list_with_taint, build_object, build_object_with_taint, drive_deterministic,
+    eval_accessor, eval_expr, journal_action_suspended, new_run_frame, resume_action_completion,
+    resume_action_failure, route_error_handler, run_until_blocked, step_once,
+    validate_compiled_workflow, validate_node_bounds, validate_resource_contract,
     validate_transition_target,
 };
 pub use errors::{CoreError, CoreResult, EngineError};

@@ -5,9 +5,9 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use super::error::ParseError;
-use super::run_ops::RunDbArgs;
-use super::shared::{find_positional, named_flag, parse_output_format, positional_str,
-                    validate_known_flags};
+use super::shared::{
+    find_positional, named_flag, parse_output_format, positional_str, validate_known_flags,
+};
 use super::types::{Command, OutputFormat};
 
 pub(super) fn parse_agent_context(args: &[OsString]) -> Result<Command, ParseError> {

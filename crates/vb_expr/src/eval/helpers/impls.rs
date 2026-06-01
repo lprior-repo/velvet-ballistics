@@ -1,13 +1,14 @@
 #![forbid(unsafe_code)]
 //! Store-aware helper implementations.
 
-use vb_core::value_store::{ObjectField, ValueStore};
 use vb_core::SlotValue;
+use vb_core::value_store::{ObjectField, ValueStore};
 
 use crate::ExprResult;
 
-use crate::eval::stack::pop_pair;
-use crate::eval::type_enforcers::{expect_bool, expect_i64, expect_list, expect_object, expect_symbol};
+use crate::eval::type_enforcers::{
+    expect_bool, expect_i64, expect_list, expect_object, expect_symbol,
+};
 
 pub fn eval_helper_exists_with_store(
     value: &SlotValue,
@@ -22,21 +23,27 @@ pub fn eval_helper_length_with_store(
 ) -> ExprResult<SlotValue> {
     let len = match *value {
         SlotValue::Symbol(id) => {
-            let s = store.symbol(id).map_err(|_| crate::ExprError::InvalidReference {
-                reference: format!("symbol:{id:?}"),
-            })?;
+            let s = store
+                .symbol(id)
+                .map_err(|_| crate::ExprError::InvalidReference {
+                    reference: format!("symbol:{id:?}"),
+                })?;
             s.len()
         }
         SlotValue::List(id) => {
-            let items = store.list(id).map_err(|_| crate::ExprError::InvalidReference {
-                reference: format!("list:{id:?}"),
-            })?;
+            let items = store
+                .list(id)
+                .map_err(|_| crate::ExprError::InvalidReference {
+                    reference: format!("list:{id:?}"),
+                })?;
             items.len()
         }
         SlotValue::Object(id) => {
-            let fields = store.object(id).map_err(|_| crate::ExprError::InvalidReference {
-                reference: format!("object:{id:?}"),
-            })?;
+            let fields = store
+                .object(id)
+                .map_err(|_| crate::ExprError::InvalidReference {
+                    reference: format!("object:{id:?}"),
+                })?;
             fields.len()
         }
         ref other => {
@@ -57,21 +64,27 @@ pub fn eval_helper_empty_with_store(
     let is_empty = match *value {
         SlotValue::Null => true,
         SlotValue::Symbol(id) => {
-            let s = store.symbol(id).map_err(|_| crate::ExprError::InvalidReference {
-                reference: format!("symbol:{id:?}"),
-            })?;
+            let s = store
+                .symbol(id)
+                .map_err(|_| crate::ExprError::InvalidReference {
+                    reference: format!("symbol:{id:?}"),
+                })?;
             s.is_empty()
         }
         SlotValue::List(id) => {
-            let items = store.list(id).map_err(|_| crate::ExprError::InvalidReference {
-                reference: format!("list:{id:?}"),
-            })?;
+            let items = store
+                .list(id)
+                .map_err(|_| crate::ExprError::InvalidReference {
+                    reference: format!("list:{id:?}"),
+                })?;
             items.is_empty()
         }
         SlotValue::Object(id) => {
-            let fields = store.object(id).map_err(|_| crate::ExprError::InvalidReference {
-                reference: format!("object:{id:?}"),
-            })?;
+            let fields = store
+                .object(id)
+                .map_err(|_| crate::ExprError::InvalidReference {
+                    reference: format!("object:{id:?}"),
+                })?;
             fields.is_empty()
         }
         ref other => {
@@ -133,11 +146,12 @@ pub fn eval_helper_contains_with_store(
     }
     let haystack_id = expect_symbol(*haystack)?;
     let needle_id = expect_symbol(*needle)?;
-    let haystack_str = store
-        .symbol(haystack_id)
-        .map_err(|_| crate::ExprError::InvalidReference {
-            reference: format!("symbol:{haystack_id:?}"),
-        })?;
+    let haystack_str =
+        store
+            .symbol(haystack_id)
+            .map_err(|_| crate::ExprError::InvalidReference {
+                reference: format!("symbol:{haystack_id:?}"),
+            })?;
     let needle_str = store
         .symbol(needle_id)
         .map_err(|_| crate::ExprError::InvalidReference {
@@ -290,7 +304,9 @@ pub fn eval_helper_sum_with_store(
     let mut sum: i64 = 0;
     for &item in items {
         let n = expect_i64(item)?;
-        sum = sum.checked_add(n).ok_or(crate::ExprError::IntegerOverflow)?;
+        sum = sum
+            .checked_add(n)
+            .ok_or(crate::ExprError::IntegerOverflow)?;
     }
     Ok(SlotValue::I64(sum))
 }

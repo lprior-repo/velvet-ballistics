@@ -1,15 +1,9 @@
-use crate::commands_workflow::{
-    dot::generate_dot, simulate::simulate_workflow, DotGraph, SimulationResult, SimulationStep,
-};
-use vb_core::{CompiledNodeKind, ConstIdx, ExprBranch, ExprIdx, SlotIdx, StepIdx, ActionId};
+use crate::commands_workflow::{DotGraph, SimulationResult, SimulationStep};
+use vb_core::{ActionId, CompiledNodeKind, ConstIdx, ExprBranch, ExprIdx, SlotIdx, StepIdx};
 
 // ---------------------------------------------------------------------------
 // Helpers tests (re-exported from helpers module via parent)
 // ---------------------------------------------------------------------------
-
-use vb_core::CompiledNodeKind;
-use vb_core::ConstIdx;
-use vb_core::SlotIdx;
 
 #[allow(unused_imports)]
 use crate::commands_workflow::helpers::{node_kind_label, saturating_add};

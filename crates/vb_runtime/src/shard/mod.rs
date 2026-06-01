@@ -6,7 +6,8 @@ pub mod directive;
 pub mod helpers;
 pub mod impl_;
 pub mod lifecycle;
-pub mod tests;
+#[cfg(test)]
+mod tests;
 pub mod timer_wheel;
 pub mod transitions;
 pub mod types;

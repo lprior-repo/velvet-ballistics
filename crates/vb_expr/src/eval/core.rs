@@ -10,8 +10,7 @@ use crate::lexer::{BinaryOp, UnaryOp};
 use crate::{ExprError, ExprResult};
 
 use super::ops::{eval_binary_op, eval_unary_op};
-use super::stack::{pop_pair, pop_value, pop_triple, push_value};
-use super::type_enforcers::expect_symbol;
+use super::stack::{pop_pair, pop_value, push_value};
 
 /// Evaluates a compiled expression program against slot and constant pools.
 ///

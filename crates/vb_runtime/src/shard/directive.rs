@@ -104,7 +104,3 @@ impl ShardDirective {
         !matches!(self, Self::Shutdown)
     }
 }
-
-#[cfg(test)]
-#[path = "tests.rs"]
-mod tests;

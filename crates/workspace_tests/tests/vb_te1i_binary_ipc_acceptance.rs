@@ -19,6 +19,7 @@
 use std::io::{Read, Write};
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use mio::net::UnixStream;
@@ -28,12 +29,13 @@ use vb_ipc::{IpcCommand, IpcFrameHeader, IpcPayload, MaxPayloadBytes, SubmitRunP
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::ShardConfig;
 
+static SOCKET_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
 /// Path to a temporary server socket. Each test uses a unique path.
 fn temp_socket_path(name: &str) -> PathBuf {
-    std::env::temp_dir().join(format!(
-        "vb_te1i_ipc_acceptance_test_{name}_{}",
-        std::process::id()
-    ))
+    let _ = name;
+    let sequence = SOCKET_COUNTER.fetch_add(1, Ordering::Relaxed);
+    PathBuf::from(format!("/tmp/vbi{}_{}.sock", std::process::id(), sequence))
 }
 
 /// Builds a minimal runtime for tests.

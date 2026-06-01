@@ -34,19 +34,7 @@ impl Shard {
     /// * `TerminalRemove` → `runtime_states.swap_remove(&run)`
     /// * `DriveFinished` → `runtime_states.swap_remove(&run)`
     ///
-    /// # Flux refinement (PO-vb282my-RS-FLUX-001):
-    /// RuntimeState FSM contract:
-    /// - `Resume` transition requires `runtime_states[run] == Resumable`
-    /// - `ResumeRollback` transition ensures `runtime_states[run] == Resumable`
-    /// - `Running` state rejects repeated `Resume` transitions
-    ///
-    /// Flux signature (requires flux-rs toolchain):
-    /// ```flux
-    /// #[flux_rs::sig(fn(&mut Shard, run: RunId, event: RuntimeEvent)
-    ///     requires event == Resume => runtime_states[run] == Resumable,
-    ///     ensures event == ResumeRollback => runtime_states[run] == Resumable
-    /// )]
-    /// ```
+    /// The transition gate is enforced by callers before this state mutation helper runs.
     pub(crate) fn apply(&mut self, run: RunId, event: RuntimeEvent) {
         match event {
             RuntimeEvent::Submit => {

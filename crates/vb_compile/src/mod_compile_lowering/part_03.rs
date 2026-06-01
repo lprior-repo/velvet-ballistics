@@ -114,7 +114,7 @@ pub(super) fn emit_together_branches(
         .map_err(|e| CompileErrors(vec![e]))?;
         let branch_number = u16::try_from(branch_index).map_err(|_| {
             CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
-            primitive: "together",
+                primitive: "together",
                 field: "branches",
                 value: branch_index,
                 limit: usize::from(u16::MAX),

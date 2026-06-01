@@ -21,9 +21,7 @@ pub use crate::{ExprError, ExprResult};
 pub use vb_core::limits::MAX_EXPRESSION_STACK;
 
 // Main entry points re-exported from core
-pub use core::{
-    eval_expr_program, eval_expr_program_with_store,
-};
+pub use core::{eval_expr_program, eval_expr_program_with_store};
 
 // Binary/unary ops re-exported from ops
 pub use ops::{eval_binary_op, eval_unary_op};

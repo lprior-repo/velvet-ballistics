@@ -2,23 +2,18 @@
 #![forbid(unsafe_code)]
 
 use std::path::Path;
+use std::process::ExitCode;
 
 use crate::args::OutputFormat;
 use crate::cli_envelope::SCHEMA_VERSION;
 use crate::exit_code::CliExitCode;
 use crate::file_io::read_file;
 use crate::output::{json_out, output_error_exit, write_failure_message};
-use crate::output_utils::{write_stdout_line, write_stderr_line};
+use crate::output_utils::write_stdout_line;
 
 macro_rules! outln {
     ($($arg:tt)*) => {{
         write_stdout_line(format_args!($($arg)*));
-    }};
-}
-
-macro_rules! errln {
-    ($($arg:tt)*) => {{
-        write_stderr_line(format_args!($($arg)*));
     }};
 }
 
@@ -86,10 +81,10 @@ pub(crate) fn cmd_validate(workflow: &Path, output: OutputFormat) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn compile_errors_message(errors: &[String]) -> String {
+fn compile_errors_message(errors: &[vb_compile::CompileError]) -> String {
     let mut msg = String::from("compilation failed:\n");
     for e in errors {
-        msg.push_str(&format!("  {e}\n"));
+        msg.push_str(&format!("  compile error: {e}\n"));
     }
     msg
 }

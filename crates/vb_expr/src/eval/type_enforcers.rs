@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 //! Type enforcement utilities for expression evaluation.
 
-use vb_core::ids::{ListId, ObjectId, SymbolId};
 use vb_core::SlotValue;
+use vb_core::ids::{ListId, ObjectId, SymbolId};
 
 use crate::ExprResult;
 

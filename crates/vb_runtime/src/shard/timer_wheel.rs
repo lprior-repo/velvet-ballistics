@@ -163,7 +163,3 @@ impl Default for TimerWheel {
         Self::new()
     }
 }
-
-#[cfg(test)]
-#[path = "tests.rs"]
-mod tests;
