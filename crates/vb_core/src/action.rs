@@ -409,14 +409,21 @@ pub enum ActionOutcome {
 /// Computes the output taint for an action given its idempotency and input taint.
 ///
 /// Rules:
-/// - DeterministicPure and IdempotentExternal: output taint >= input taint (join).
+/// - DeterministicPure and Idempotency::IdempotentExternal: output taint >= input taint (join).
 /// - AtLeastOnceExternal: DerivedFromSecret when any input is Secret/DerivedFromSecret.
 /// - Clean result from tainted input is rejected unless the action declares declassification
 ///   (not modeled here; caller must validate).
+///
+/// # Defense-in-depth note
+///
+/// This function is kept in sync with `vb_runtime::shard::lifecycle::reject_taint_downgrade`.
+/// Both are defense-in-depth layers; the runtime enforces at completion and the core enforces
+/// at validation. The duplication is architectural debt — do not refactor one without checking the other.
 #[must_use]
 pub const fn propagate_action_taint(idempotency: Idempotency, input_taint: Taint) -> Taint {
     match idempotency {
-        Idempotency::DeterministicPure | Idempotency::IdempotentExternal => join_taint(input_taint),
+        // Deterministic/idempotent actions propagate taint unchanged (identity join).
+        Idempotency::DeterministicPure | Idempotency::IdempotentExternal => input_taint,
         Idempotency::AtLeastOnceExternal => match input_taint {
             Taint::Clean => Taint::Clean,
             Taint::Secret | Taint::DerivedFromSecret | Taint::Random | Taint::TimeDependent => {
@@ -424,13 +431,6 @@ pub const fn propagate_action_taint(idempotency: Idempotency, input_taint: Taint
             }
         },
     }
-}
-
-/// Returns the least upper bound of the input taint and the output's own taint.
-/// Since deterministic/idempotent actions propagate taint upward, the output
-/// is always >= the input taint.
-const fn join_taint(input: Taint) -> Taint {
-    input
 }
 
 /// Validates that idempotency key ingredients do not contain prohibited values.
@@ -609,6 +609,12 @@ fn check_output_size_in_bounds(actual_bytes: u32, max_bytes: u32) -> Result<(), 
 
 /// Checks that the supplied output taint is not a downgrade from the required taint.
 ///
+/// # Defense-in-depth note
+///
+/// This function is kept in sync with `vb_runtime::shard::lifecycle::reject_taint_downgrade`.
+/// Both are defense-in-depth layers; the core validates here and the runtime enforces at
+/// completion. The duplication is architectural debt — do not refactor one without checking the other.
+///
 /// DeterministicPure and IdempotentExternal actions additionally require that the
 /// input is Clean and the output is Clean.
 /// For all actions, the supplied taint must be at least as restrictive as the
@@ -618,7 +624,8 @@ fn check_taint_downgrade(
     input_taint: Taint,
     supplied: Taint,
 ) -> Result<(), ActionError> {
-    if (idempotency == Idempotency::DeterministicPure || idempotency == Idempotency::IdempotentExternal)
+    if (idempotency == Idempotency::DeterministicPure
+        || idempotency == Idempotency::IdempotentExternal)
         && input_taint != Taint::Clean
     {
         return Err(ActionError::TaintViolation {
@@ -626,7 +633,8 @@ fn check_taint_downgrade(
             supplied: input_taint,
         });
     }
-    if (idempotency == Idempotency::DeterministicPure || idempotency == Idempotency::IdempotentExternal)
+    if (idempotency == Idempotency::DeterministicPure
+        || idempotency == Idempotency::IdempotentExternal)
         && supplied != Taint::Clean
     {
         return Err(ActionError::TaintViolation {

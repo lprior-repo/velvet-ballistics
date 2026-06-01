@@ -1,6 +1,6 @@
 use vb_core::ValueStore;
 use vb_core::action::{
-    ActionContract, ActionError, ActionFailure, ActionOutputReady, ActionOutcome, ActionTicket,
+    ActionContract, ActionError, ActionFailure, ActionOutcome, ActionOutputReady, ActionTicket,
     Idempotency, RetryPolicy as VbCoreRetryPolicy,
 };
 use vb_core::capability::CapabilitySet;
@@ -55,38 +55,75 @@ pub(crate) fn preflight_action_completion(
     let contract = resolve_completion_contract(state, ticket.action)?;
     let input = do_input_slot(state, ticket)?;
     let expected_output = do_output_slot(state, ticket)?;
-    if output.output_slot != expected_output {
-        return Err(RuntimeError::InvalidActionCompletion);
+    check_output_slot(output.output_slot, expected_output)?;
+    let input_taint = read_input_taint(state, input)?;
+    reject_taint_downgrade(input_taint, contract, output.taint)?;
+    let (encoded_value, encoded_len) =
+        encode_output_value(&output.value, contract.max_output_bytes)?;
+    check_output_encoding_size(encoded_len, output.encoded_len, contract.max_output_bytes, state.workflow.resource_contract().max_blob_bytes)?;
+    vb_core::action::validate_action_outcome(
+        contract,
+        &ActionOutcome::Ready(output.clone()),
+        input_taint,
+    )
+    .map_err(runtime_error_from_action_error)?;
+    let value_digest = *blake3::hash(&encoded_value).as_bytes();
+    Ok(build_action_preflight(ticket, output, encoded_value, encoded_len, value_digest))
+}
+
+fn check_output_slot(slot: SlotIdx, expected: SlotIdx) -> RuntimeResult<()> {
+    if slot == expected {
+        Ok(())
+    } else {
+        Err(RuntimeError::InvalidActionCompletion)
     }
-    reject_taint_downgrade(state, input, contract, output.taint)?;
-    let encoded_value = postcard::to_allocvec(&output.value).map_err(|_| RuntimeError::EncodeFailed)?;
-    let encoded_len = encoded_len_u32(encoded_value.len(), contract.max_output_bytes)?;
-    reject_encoded_len_mismatch(output.encoded_len, encoded_len)?;
-    reject_contract_output_size(encoded_len, contract.max_output_bytes)?;
-    reject_resource_output_size(encoded_len, state.workflow.resource_contract().max_blob_bytes)?;
-    let input_taint = state
+}
+
+fn read_input_taint(state: &RunState, input: SlotIdx) -> RuntimeResult<Taint> {
+    state
         .frame
         .read_taint(input)
-        .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-    vb_core::action::validate_action_outcome(contract, &ActionOutcome::Ready(output.clone()), input_taint)
-        .map_err(runtime_error_from_action_error)?;
-    Ok(ActionCompletionPreflight {
+        .map_err(|_| RuntimeError::InvalidActionCompletion)
+}
+
+fn build_action_preflight(
+    ticket: ActionTicket,
+    output: ActionOutputReady,
+    encoded_value: Vec<u8>,
+    encoded_len: u32,
+    value_digest: [u8; 32],
+) -> ActionCompletionPreflight {
+    ActionCompletionPreflight {
         ticket,
         output_slot: output.output_slot,
         value: output.value,
         taint: output.taint,
-        value_digest: *blake3::hash(&encoded_value).as_bytes(),
+        value_digest,
         encoded_value,
         encoded_len,
-    })
+    }
+}
+
+fn encode_output_value(output: &SlotValue, max_output_bytes: u32) -> RuntimeResult<(Vec<u8>, u32)> {
+    let encoded_value = postcard::to_allocvec(output).map_err(|_| RuntimeError::EncodeFailed)?;
+    let encoded_len = encoded_len_u32(encoded_value.len(), max_output_bytes)?;
+    Ok((encoded_value, encoded_len))
+}
+
+fn check_output_encoding_size(
+    encoded_len: u32,
+    output_encoded_len: u32,
+    max_output_bytes: u32,
+    max_blob_bytes: u64,
+) -> RuntimeResult<()> {
+    reject_encoded_len_mismatch(output_encoded_len, encoded_len)?;
+    reject_contract_output_size(encoded_len, max_output_bytes)?;
+    reject_resource_output_size(encoded_len, max_blob_bytes)
 }
 
 fn reject_invalid_ticket_key(ticket: ActionTicket) -> RuntimeResult<()> {
-    let expected = crate::engine::action::compute_idempotency_key(
-        ticket.run,
-        ticket.seq,
-        ticket.action,
-    );
+    let expected =
+        crate::engine::action::compute_idempotency_key(ticket.run, ticket.seq, ticket.action);
     if ticket.idempotency_key == expected {
         Ok(())
     } else {
@@ -117,16 +154,18 @@ fn do_output_slot(state: &RunState, ticket: ActionTicket) -> RuntimeResult<SlotI
         .ok_or(RuntimeError::InvalidActionCompletion)
 }
 
+/// Rejects a taint downgrade for an action completion.
+///
+/// # Defense-in-depth note
+///
+/// This function is kept in sync with `vb_core::action::check_taint_downgrade`.
+/// Both are defense-in-depth layers; the runtime enforces at completion and the core enforces
+/// at validation. The duplication is architectural debt — do not refactor one without checking the other.
 fn reject_taint_downgrade(
-    state: &RunState,
-    input: SlotIdx,
+    input_taint: Taint,
     contract: &ActionContract,
     supplied: Taint,
 ) -> RuntimeResult<()> {
-    let input_taint = state
-        .frame
-        .read_taint(input)
-        .map_err(|_| RuntimeError::InvalidActionCompletion)?;
     // DeterministicPure actions must operate only on Clean input.
     // Defense-in-depth: engine-side check in execute_do also enforces this,
     // but the completion path must independently reject non-Clean input
@@ -323,11 +362,16 @@ mod kani_taint_guard {
             idempotency == Idempotency::DeterministicPure && input_taint != Taint::Clean;
 
         if expected_fires {
-            assert_eq!(result, Some(Taint::Clean),
-                "guard must fire with required=Clean for DeterministicPure + non-Clean input");
+            assert_eq!(
+                result,
+                Some(Taint::Clean),
+                "guard must fire with required=Clean for DeterministicPure + non-Clean input"
+            );
         } else {
-            assert_eq!(result, None,
-                "guard must NOT fire when idempotency≠DeterministicPure or input=Clean");
+            assert_eq!(
+                result, None,
+                "guard must NOT fire when idempotency≠DeterministicPure or input=Clean"
+            );
         }
     }
 
@@ -338,8 +382,11 @@ mod kani_taint_guard {
         let input_taint = any_taint();
         kani::assume(input_taint != Taint::Clean);
         let result = guard_decision(Idempotency::DeterministicPure, input_taint);
-        assert_eq!(result, Some(Taint::Clean),
-            "DeterministicPure + non-Clean input must always fire the guard");
+        assert_eq!(
+            result,
+            Some(Taint::Clean),
+            "DeterministicPure + non-Clean input must always fire the guard"
+        );
     }
 
     /// Clean input never triggers the guard, regardless of idempotency.
@@ -348,8 +395,10 @@ mod kani_taint_guard {
     fn clean_input_never_triggers_guard() {
         let idempotency = any_idempotency();
         let result = guard_decision(idempotency, Taint::Clean);
-        assert_eq!(result, None,
-            "Clean input must never trigger the guard for any idempotency");
+        assert_eq!(
+            result, None,
+            "Clean input must never trigger the guard for any idempotency"
+        );
     }
 
     /// Non-DeterministicPure idempotency levels never trigger the guard.
@@ -360,7 +409,9 @@ mod kani_taint_guard {
         let idempotency = any_idempotency();
         kani::assume(idempotency != Idempotency::DeterministicPure);
         let result = guard_decision(idempotency, input_taint);
-        assert_eq!(result, None,
-            "Non-DeterministicPure idempotency must never trigger the DeterministicPure guard");
+        assert_eq!(
+            result, None,
+            "Non-DeterministicPure idempotency must never trigger the DeterministicPure guard"
+        );
     }
 }

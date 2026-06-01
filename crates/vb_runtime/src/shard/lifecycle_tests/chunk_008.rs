@@ -76,7 +76,8 @@
     fn deterministicpure_with_clean_input_passes_taint_check() {
         let state = test_run_state(Taint::Clean);
         let contract = test_action_contract(Idempotency::DeterministicPure);
-        let result = reject_taint_downgrade(&state, SlotIdx::ZERO, &contract, Taint::Clean);
+        let input_taint = state.frame.read_taint(SlotIdx::ZERO).unwrap();
+        let result = reject_taint_downgrade(input_taint, &contract, Taint::Clean);
         assert_eq!(
             result,
             Ok(()),
@@ -88,7 +89,8 @@
     fn deterministicpure_with_secret_input_returns_taintviolation() {
         let state = test_run_state(Taint::Secret);
         let contract = test_action_contract(Idempotency::DeterministicPure);
-        let result = reject_taint_downgrade(&state, SlotIdx::ZERO, &contract, Taint::Secret);
+        let input_taint = state.frame.read_taint(SlotIdx::ZERO).unwrap();
+        let result = reject_taint_downgrade(input_taint, &contract, Taint::Secret);
         match result {
             Err(RuntimeError::ActionTaintDowngrade { required, supplied }) => {
                 assert_eq!(required, Taint::Clean, "required must be Clean");
@@ -104,12 +106,8 @@
     fn deterministicpure_with_derivedfromsecret_input_returns_taintviolation() {
         let state = test_run_state(Taint::DerivedFromSecret);
         let contract = test_action_contract(Idempotency::DeterministicPure);
-        let result = reject_taint_downgrade(
-            &state,
-            SlotIdx::ZERO,
-            &contract,
-            Taint::DerivedFromSecret,
-        );
+        let input_taint = state.frame.read_taint(SlotIdx::ZERO).unwrap();
+        let result = reject_taint_downgrade(input_taint, &contract, Taint::DerivedFromSecret);
         match result {
             Err(RuntimeError::ActionTaintDowngrade { required, supplied }) => {
                 assert_eq!(required, Taint::Clean, "required must be Clean");
@@ -129,7 +127,8 @@
     fn deterministicpure_with_random_input_returns_taintviolation() {
         let state = test_run_state(Taint::Random);
         let contract = test_action_contract(Idempotency::DeterministicPure);
-        let result = reject_taint_downgrade(&state, SlotIdx::ZERO, &contract, Taint::Random);
+        let input_taint = state.frame.read_taint(SlotIdx::ZERO).unwrap();
+        let result = reject_taint_downgrade(input_taint, &contract, Taint::Random);
         match result {
             Err(RuntimeError::ActionTaintDowngrade { required, supplied }) => {
                 assert_eq!(required, Taint::Clean, "required must be Clean");
@@ -145,8 +144,8 @@
     fn deterministicpure_with_timedependent_input_returns_taintviolation() {
         let state = test_run_state(Taint::TimeDependent);
         let contract = test_action_contract(Idempotency::DeterministicPure);
-        let result =
-            reject_taint_downgrade(&state, SlotIdx::ZERO, &contract, Taint::TimeDependent);
+        let input_taint = state.frame.read_taint(SlotIdx::ZERO).unwrap();
+        let result = reject_taint_downgrade(input_taint, &contract, Taint::TimeDependent);
         match result {
             Err(RuntimeError::ActionTaintDowngrade { required, supplied }) => {
                 assert_eq!(required, Taint::Clean, "required must be Clean");
@@ -184,12 +183,8 @@
             collect_states: CollectStates::new(),
             action_contracts: Box::from([contract.clone()]),
         };
-        let result = reject_taint_downgrade(
-            &state,
-            SlotIdx::ZERO,
-            &contract,
-            Taint::DerivedFromSecret,
-        );
+        let input_taint = state.frame.read_taint(SlotIdx::ZERO).unwrap();
+        let result = reject_taint_downgrade(input_taint, &contract, Taint::DerivedFromSecret);
         assert_eq!(
             result,
             Ok(()),
@@ -222,7 +217,8 @@
             collect_states: CollectStates::new(),
             action_contracts: Box::from([contract.clone()]),
         };
-        let result = reject_taint_downgrade(&state, SlotIdx::ZERO, &contract, Taint::Clean);
+        let input_taint = state.frame.read_taint(SlotIdx::ZERO).unwrap();
+        let result = reject_taint_downgrade(input_taint, &contract, Taint::Clean);
         match result {
             Err(RuntimeError::ActionTaintDowngrade { required, supplied }) => {
                 assert_eq!(
@@ -244,8 +240,8 @@
         // reflect the frame's taint (the violation source), not the parameter.
         let state = test_run_state(Taint::Secret);
         let contract = test_action_contract(Idempotency::DeterministicPure);
-        let result =
-            reject_taint_downgrade(&state, SlotIdx::ZERO, &contract, Taint::DerivedFromSecret);
+        let input_taint = state.frame.read_taint(SlotIdx::ZERO).unwrap();
+        let result = reject_taint_downgrade(input_taint, &contract, Taint::DerivedFromSecret);
         match result {
             Err(RuntimeError::ActionTaintDowngrade { required, supplied }) => {
                 assert_eq!(required, Taint::Clean, "required must be Clean");
@@ -321,9 +317,8 @@
                 prop_assume!(input_taint != Taint::Clean);
                 let state = make_proptest_run_state(input_taint);
                 let contract = test_action_contract(Idempotency::DeterministicPure);
-                let result = reject_taint_downgrade(
-                    &state, SlotIdx::ZERO, &contract, Taint::Clean
-                );
+                let frame_taint = state.frame.read_taint(SlotIdx::ZERO).unwrap();
+                let result = reject_taint_downgrade(frame_taint, &contract, Taint::Clean);
                 prop_assert!(result.is_err(),
                     "DeterministicPure + {input_taint:?} input must reject");
                 match result {
@@ -343,9 +338,8 @@
             ) {
                 let state = make_proptest_run_state(Taint::Clean);
                 let contract = test_action_contract(idempotency);
-                let result = reject_taint_downgrade(
-                    &state, SlotIdx::ZERO, &contract, supplied
-                );
+                let frame_taint = state.frame.read_taint(SlotIdx::ZERO).unwrap();
+                let result = reject_taint_downgrade(frame_taint, &contract, supplied);
                 if let Err(RuntimeError::ActionTaintDowngrade { required, .. }) = &result {
                     prop_assert_ne!(*required, Taint::Clean,
                         "guard must not fire on Clean input (idem={:?})", idempotency);
@@ -361,9 +355,8 @@
                 prop_assume!(idempotency != Idempotency::DeterministicPure);
                 let state = make_proptest_run_state(input_taint);
                 let contract = test_action_contract(idempotency);
-                let result = reject_taint_downgrade(
-                    &state, SlotIdx::ZERO, &contract, supplied
-                );
+                let frame_taint = state.frame.read_taint(SlotIdx::ZERO).unwrap();
+                let result = reject_taint_downgrade(frame_taint, &contract, supplied);
                 if let Err(RuntimeError::ActionTaintDowngrade { required, .. }) = &result {
                     prop_assert_ne!(*required, Taint::Clean,
                         "guard must not fire for non-DeterministicPure idempotency \
@@ -379,9 +372,8 @@
                 prop_assume!(input_taint != Taint::Clean);
                 let state = make_proptest_run_state(input_taint);
                 let contract = test_action_contract(Idempotency::DeterministicPure);
-                let result = reject_taint_downgrade(
-                    &state, SlotIdx::ZERO, &contract, supplied
-                );
+                let frame_taint = state.frame.read_taint(SlotIdx::ZERO).unwrap();
+                let result = reject_taint_downgrade(frame_taint, &contract, supplied);
                 match result {
                     Err(RuntimeError::ActionTaintDowngrade { supplied: err_supplied, .. }) => {
                         prop_assert_eq!(err_supplied, input_taint,
