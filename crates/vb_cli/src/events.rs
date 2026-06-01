@@ -362,3 +362,12 @@ pub(crate) fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Val
     }
 }
 
+
+fn write_locked_read_surface(_operation: &str, _run_id: &str, _output: crate::args::OutputFormat) -> std::process::ExitCode {
+    crate::errln!("locked read surface not implemented");
+    std::process::ExitCode::FAILURE
+}
+
+fn write_vb_kyyf_trace(_operation: &str, _run_id: &str, _event_count: usize) {
+    // stub - tracing not implemented
+}

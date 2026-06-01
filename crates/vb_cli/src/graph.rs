@@ -39,3 +39,11 @@ pub(crate) fn cmd_graph(workflow: &std::path::Path, output: OutputFormat) -> Exi
     CliExitCode::Success.into()
 }
 
+
+pub(crate) fn compile_bytes_json(_bytes: &[u8], _output: crate::args::OutputFormat) -> Result<vb_core::CompiledWorkflow, std::process::ExitCode> {
+    compile_bytes_yaml(_bytes)
+}
+
+pub(crate) fn compile_bytes_yaml(_bytes: &[u8]) -> Result<vb_core::CompiledWorkflow, std::process::ExitCode> {
+    Err(std::process::ExitCode::FAILURE)
+}

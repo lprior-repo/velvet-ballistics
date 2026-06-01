@@ -1,9 +1,53 @@
 //! Action table rows, contract specs, and CLI action registration.
 
-use crate::action::ActionContractDetail;
 use crate::args::OutputFormat;
 use crate::exit_code::CliExitCode;
+use std::process::ExitCode;
+use crate::output::json_error;
 use vb_runtime::action::ActionRegistry;
+
+pub(crate) struct ActionContractDetail {
+    pub(crate) id: u16,
+    pub(crate) name: String,
+    pub(crate) input_slot_count: u16,
+    pub(crate) output_slot_count: u16,
+    pub(crate) max_input_bytes: u32,
+    pub(crate) max_output_bytes: u32,
+    pub(crate) timeout_ms: u64,
+    pub(crate) idempotency: &'static str,
+    pub(crate) retry_safety: &'static str,
+    pub(crate) side_effect: &'static str,
+    pub(crate) required_capabilities: Vec<String>,
+    pub(crate) failure_codes: Vec<&'static str>,
+    pub(crate) idempotency_rule: &'static str,
+    pub(crate) example_input_schema: &'static str,
+    pub(crate) example_output_schema: &'static str,
+}
+
+impl ActionContractDetail {
+    pub(crate) fn to_json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "success": true,
+            "action": {
+                "id": self.id,
+                "name": self.name.clone(),
+                "input_slot_count": self.input_slot_count,
+                "output_slot_count": self.output_slot_count,
+                "max_input_bytes": self.max_input_bytes,
+                "max_output_bytes": self.max_output_bytes,
+                "timeout_ms": self.timeout_ms,
+                "idempotency": self.idempotency,
+                "retry_safety": self.retry_safety,
+                "side_effect": self.side_effect,
+                "required_capabilities": self.required_capabilities.clone(),
+                "failure_codes": self.failure_codes.to_vec(),
+                "idempotency_rule": self.idempotency_rule,
+                "example_input_schema": self.example_input_schema,
+                "example_output_schema": self.example_output_schema,
+            }
+        })
+    }
+}
 
 pub(crate) struct ActionTableRow {
     pub(crate) id: u16,
@@ -34,6 +78,7 @@ pub(crate) fn action_table_rows(registry: &ActionRegistry) -> Vec<ActionTableRow
 pub(crate) fn action_contract_detail(contract: &vb_core::action::ActionContract) -> ActionContractDetail {
     ActionContractDetail {
         id: contract.id.get(),
+        name: contract.name.to_string(),
         input_slot_count: contract.input_slot_count,
         output_slot_count: contract.output_slot_count,
         max_input_bytes: contract.max_input_bytes,
@@ -141,8 +186,31 @@ pub(crate) fn cli_action_specs() -> &'static [CliActionSpec] {
 }
 
 pub(crate) fn action_contract(spec: CliActionSpec) -> vb_core::action::ActionContract {
+    let name_str = match spec.id {
+        1 => "validate",
+        2 => "compile",
+        3 => "run",
+        _ => return vb_core::action::ActionContract {
+            id: vb_core::ActionId::new(spec.id),
+            name: vb_core::action::ActionName::new("unknown").unwrap_or_else(|_| vb_core::action::ActionName::new("u").unwrap()),
+            input_slot_count: spec.input_slot_count,
+            output_slot_count: spec.output_slot_count,
+            max_input_bytes: 65_536,
+            max_output_bytes: 65_536,
+            timeout_ms: spec.timeout_ms,
+            idempotency: spec.idempotency,
+            side_effect: spec.side_effect,
+            retry_safety: spec.retry_safety,
+            required_capabilities: Box::new([]),
+        },
+    };
+    let name = match vb_core::action::ActionName::new(name_str) {
+        Ok(n) => n,
+        Err(_) => vb_core::action::ActionName::new("unknown").unwrap(),
+    };
     vb_core::action::ActionContract {
         id: vb_core::ActionId::new(spec.id),
+        name,
         input_slot_count: spec.input_slot_count,
         output_slot_count: spec.output_slot_count,
         max_input_bytes: 65_536,
@@ -214,4 +282,153 @@ pub(crate) fn action_idempotency_rule(
         }
         _ => "retry behavior follows the action contract",
     }
+}
+
+pub(crate) fn write_action_registry_error(
+    error: &vb_core::action::ActionError,
+    output: OutputFormat,
+) -> std::process::ExitCode {
+    let message = format!("failed to register CLI action contracts: {error}");
+    if output == OutputFormat::Text {
+        crate::errln!("{message}");
+    } else {
+        json_error(
+            &serde_json::json!({
+                "success": false,
+                "error": message,
+            }),
+            output,
+        );
+    }
+    crate::exit_code::CliExitCode::ValidationFailed.into()
+}
+
+pub(crate) fn write_action_registry_uninitialized(output: OutputFormat) {
+    let message = "action registry is not initialized";
+    if output == OutputFormat::Text {
+        crate::errln!("{message}");
+    } else {
+        json_error(
+            &serde_json::json!({
+                "success": false,
+                "error": message,
+            }),
+            output,
+        );
+    }
+}
+
+pub(crate) fn write_action_registry(registry: &ActionRegistry, output: OutputFormat) -> std::process::ExitCode {
+    let rows = action_table_rows(registry);
+    if rows.is_empty() {
+        return write_no_registered_actions(output);
+    }
+
+    if output == OutputFormat::Text {
+        write_action_table_rows(&rows);
+        return std::process::ExitCode::SUCCESS;
+    }
+
+    let actions: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|row| {
+            serde_json::json!({
+                "id": row.id,
+                "idempotency": row.idempotency,
+                "retry_safety": row.retry_safety,
+                "side_effect": row.side_effect,
+                "input_slot_count": row.input_slot_count,
+                "output_slot_count": row.output_slot_count,
+                "timeout_ms": row.timeout_ms,
+            })
+        })
+        .collect();
+    crate::emit_json_or_return!(
+        &serde_json::json!({
+            "success": true,
+            "actions": actions,
+        }),
+        output,
+    );
+    std::process::ExitCode::SUCCESS
+}
+
+pub(crate) fn write_action_inspect(
+    registry: &ActionRegistry,
+    action_name: String,
+    output: OutputFormat,
+) -> std::process::ExitCode {
+    match vb_core::action::ActionName::new(&action_name) {
+        Ok(name) => match registry.resolve_by_name(&name) {
+            Ok(contract) => write_action_contract_json(contract, output),
+            Err(error) => write_action_inspect_error(&action_name, &error, output),
+        },
+        Err(e) => {
+            let message = format!("invalid action name: {}", e);
+            if output == OutputFormat::Text {
+                crate::errln!("{message}");
+            } else {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "action_name": action_name,
+                        "error": message,
+                    }),
+                    output,
+                );
+            }
+            crate::exit_code::CliExitCode::ValidationFailed.into()
+        }
+    }
+}
+
+fn write_action_contract_json(contract: &vb_core::action::ActionContract, output: OutputFormat) -> std::process::ExitCode {
+    let detail = action_contract_detail(contract);
+    if output == OutputFormat::Text {
+        write_action_contract_text(&detail);
+    } else {
+        crate::emit_json_or_return!(&detail.to_json(), output);
+    }
+    std::process::ExitCode::SUCCESS
+}
+
+fn write_action_contract_text(detail: &ActionContractDetail) {
+    crate::outln!("action {} ({})", detail.id, detail.name);
+    crate::outln!("  input_slot_count: {}", detail.input_slot_count);
+    crate::outln!("  output_slot_count: {}", detail.output_slot_count);
+    crate::outln!("  max_input_bytes: {}", detail.max_input_bytes);
+    crate::outln!("  max_output_bytes: {}", detail.max_output_bytes);
+    crate::outln!("  timeout_ms: {}", detail.timeout_ms);
+    crate::outln!("  idempotency: {}", detail.idempotency);
+    crate::outln!("  retry_safety: {}", detail.retry_safety);
+    crate::outln!("  side_effect: {}", detail.side_effect);
+    crate::outln!("  idempotency_rule: {}", detail.idempotency_rule);
+    crate::outln!(
+        "  required_capabilities: {}",
+        detail.required_capabilities.join(",")
+    );
+    crate::outln!("  failure_codes: {}", detail.failure_codes.join(","));
+    crate::outln!("  example_input_schema: {}", detail.example_input_schema);
+    crate::outln!("  example_output_schema: {}", detail.example_output_schema);
+}
+
+fn write_action_inspect_error(
+    action_name: &str,
+    error: &vb_core::action::ActionError,
+    output: OutputFormat,
+) -> std::process::ExitCode {
+    let message = format!("action '{action_name}' is not registered: {error}");
+    if output == OutputFormat::Text {
+        crate::errln!("{message}");
+    } else {
+        json_error(
+            &serde_json::json!({
+                "success": false,
+                "action_name": action_name,
+                "error": message,
+            }),
+            output,
+        );
+    }
+    crate::exit_code::CliExitCode::ValidationFailed.into()
 }

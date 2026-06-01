@@ -9,6 +9,7 @@ use serde_json::{Map, Value};
 use crate::args::OutputFormat;
 use crate::cli_envelope;
 use crate::exit_code::CliExitCode;
+use crate::output::json_error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum RunStatus {
@@ -662,7 +663,7 @@ fn write_stderr_line(args: std::fmt::Arguments<'_>) {
     }
 }
 
-fn write_stderr_best_effort(args: std::fmt::Arguments<'_>) {
+pub(crate) fn write_stderr_best_effort(args: std::fmt::Arguments<'_>) {
     let stderr = io::stderr();
     let mut handle = stderr.lock();
     if let Err(_write_error) = handle
@@ -671,16 +672,7 @@ fn write_stderr_best_effort(args: std::fmt::Arguments<'_>) {
     {}
 }
 
-fn json_error(value: &Value, format: OutputFormat) {
-    match format {
-        OutputFormat::Yaml | OutputFormat::Postcard => {
-            if let Err(error) = crate::app_impl::write_structured_stderr(value, format) {
-                write_stderr_best_effort(format_args!("stderr write failed: {error}"));
-            }
-        }
-        OutputFormat::Text => write_stderr_line(format_args!("{value}")),
-    }
-}
+// json_error is imported from crate::output
 
 #[cfg(test)]
 #[path = "commands_ai_context/tests.rs"]

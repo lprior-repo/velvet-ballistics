@@ -222,6 +222,7 @@ pub fn print_event(event: &JournalEvent) {
         JournalEvent::RunFailedEvent { seq, .. } => {
             crate::outln!("  seq={}: RunFailed", seq.get());
         }
+        _ => {}
     }
 }
 
@@ -280,6 +281,7 @@ pub fn event_name(event: &JournalEvent) -> &'static str {
         JournalEvent::RunCancelled { .. } => "RunCancelled",
         JournalEvent::RunFinished { .. } => "RunFinished",
         JournalEvent::RunFailedEvent { .. } => "RunFailed",
+        _ => "UnknownEvent",
     }
 }
 

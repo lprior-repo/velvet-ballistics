@@ -193,8 +193,8 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<super::types::Command, Par
         }
         "agent-context" => super::other::parse_agent_context(args),
         "ai-context" => super::other::parse_ai_context(args),
-        "status" => crate::status::parse_status(args),
-        "system" => crate::status::parse_system(args),
+        "status" => super::status::parse_status(args),
+        "system" => super::status::parse_system(args),
         "action" => super::action::parse_action(args),
         "verify" => super::workflow::parse_verify(args),
         "validate" => super::workflow::parse_validate(args),

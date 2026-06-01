@@ -3,7 +3,7 @@
 
 use std::process::ExitCode;
 use std::io::{self, Write};
-use crate::args::{ActionRegistryMode, Command, OutputFormat, ParseError, StepTarget};
+use crate::args::{ActionRegistryMode, Command, OutputFormat, ParseError, StepTarget, VerifyProfile};
 use crate::exit_code::CliExitCode;
 use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, write_stderr_line, write_failure_message};
 use crate::output_utils::*;
@@ -12,6 +12,7 @@ use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
 use crate::cli_envelope;
 use crate::explain_repair::explain_repair_hint;
 use crate::explain_validation::explain_validation_error;
+use crate::explain_reports::{explain_gate_pass, explain_compile_repair_hint, verify_error_message, explain_verification_failure};
 
 pub(crate) fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {

@@ -12,6 +12,11 @@ use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, 
 use crate::output_utils::*;
 use crate::file_io::{read_file, parse_run_id, read_journal_events, report_storage_open_error};
 use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+use crate::run::{
+    INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,
+    INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE, run_compiled_workflow,
+};
+use crate::run_compiled_runtime::map_runtime_inputs;
 
 pub(crate) fn cmd_run_compiled(
     vbir_path: &std::path::Path,
@@ -83,11 +88,11 @@ pub(crate) fn cmd_run_compiled(
         }
     };
 
-    run_compiled_workflow(&compiled, inputs, durability, db, output)
+    run_compiled_workflow(&compiled, inputs, durability, db)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum InputMappingError {
+pub(crate) enum InputMappingError {
     DecodeFailed,
     SlotCountExceeded,
     SlotIndexOutOfRange,

@@ -3,6 +3,9 @@
 
 use std::process::ExitCode;
 use std::io::{self, Write};
+use crate::exit_code::CliExitCode;
+use crate::io::HELP;
+use crate::constants::VERSION;
 
 pub(crate) fn exit_from_io(result: &io::Result<()>, success_code: ExitCode) -> ExitCode {
     match result {

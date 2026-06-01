@@ -19,7 +19,8 @@ pub(crate) use crate::exit_code::CliExitCode;
 pub(crate) use crate::args::{ActionRegistryMode, Command, DurabilityMode, OutputFormat, ParseError, StepTarget};
 pub(crate) use crate::commands_ai_context::{RunStatus, redacted_slot_value, suggested_ai_commands};
 
-pub(crate) use crate::output::{OutputError, json_out, write_stdout_line, write_stdout_line_checked};
+pub(crate) use crate::output::{OutputError, write_stdout_line_checked, write_structured_stderr};
 
+#[cfg(test)]
 #[path = "app_impl_tests.rs"]
 mod tests;

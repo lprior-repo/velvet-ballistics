@@ -6,6 +6,8 @@ use std::io::{self, Write};
 use crate::args::{ActionRegistryMode, Command, OutputFormat, ParseError, StepTarget};
 use crate::exit_code::CliExitCode;
 use crate::cli_envelope;
+use crate::output::{write_structured_stderr, write_stderr_line_io, write_stderr_best_effort};
+use crate::io::write_error_stderr;
 
 pub(crate) fn write_parse_error_stderr(error: &ParseError, output: OutputFormat) -> io::Result<()> {
     match output {

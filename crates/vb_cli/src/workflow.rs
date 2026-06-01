@@ -158,6 +158,7 @@ pub fn print_trace_event(event: &TraceEvent) {
         TraceEvent::RunCancelled { .. } => {
             crate::outln!("  trace: RunCancelled");
         }
+        _ => {}
     }
 }
 

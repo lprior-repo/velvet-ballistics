@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 
 use std::path::Path;
+use std::process::ExitCode;
 
 use crate::args::{OutputFormat, VerifyProfile};
 use crate::commands_verify::{exit_code_for_error, run_verification, VerifyError, VerifyOk};
@@ -39,7 +40,7 @@ pub(crate) fn cmd_verify(
             if output == OutputFormat::Text {
                 crate::outln!("verified ({} nodes, profile={})", result.node_count, profile.as_str());
             } else {
-                crate::emit_json_or_return!(verify_success_report(&result, profile), output);
+                crate::emit_json_or_return!(&verify_success_report(&result, profile), output);
             }
             ExitCode::SUCCESS
         }

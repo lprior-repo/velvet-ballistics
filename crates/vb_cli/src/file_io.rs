@@ -6,6 +6,7 @@ use std::io::{self, Write};
 use std::ffi::OsString;
 use crate::args::{ActionRegistryMode, Command, DurabilityMode, OutputFormat, ParseError, StepTarget};
 use crate::exit_code::CliExitCode;
+use crate::output::write_diagnostic_message_stderr;
 
 pub(crate) fn read_file(
     path: &std::path::Path,

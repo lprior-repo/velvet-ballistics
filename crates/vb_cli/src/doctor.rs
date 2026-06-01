@@ -12,6 +12,7 @@ use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, 
 use crate::output_utils::*;
 use crate::file_io::{read_file, parse_run_id, read_journal_events, report_storage_open_error};
 use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+use crate::doctor_helpers::cmd_doctor_without_db;
 
 pub(crate) fn open_doctor_journal(
     db: &std::path::Path,

@@ -1,16 +1,16 @@
 //! Agent context, status, and action registry commands.
 use std::process::ExitCode;
-use crate::args::{ActionRegistryMode, Command, OutputFormat, ParseError, StepTarget, VerifyProfile};
+use crate::args::{ActionRegistryMode, Command, OutputFormat, ParseError, StepTarget, VerifyProfile, StatusOptions, SystemStatusOptions};
 use crate::exit_code::CliExitCode;
 use crate::constants::VERSION;
-use crate::action_specs::registered_cli_actions;
-use crate::action::{write_action_registry, write_action_registry_uninitialized, write_action_inspect};
-use crate::output::{json_error, json_out, output_error_exit, write_failure_message, write_stdout_line};
+use crate::action_specs::{registered_cli_actions, write_action_registry, write_action_registry_uninitialized, write_action_inspect};
+use crate::output::{json_error, json_out, output_error_exit, write_failure_message, write_stdout_line, write_json_pretty_stdout};
 use crate::output_utils::*;
 use crate::file_io::read_file;
 use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
 use crate::cli_envelope;
 use crate::deliver_sink;
+use vb_runtime::action::ActionRegistry;
 
 pub(crate) fn cmd_agent_context(deliver: Option<&str>) -> ExitCode {
     let context = crate::cli_envelope::serialize_with_version(
@@ -50,26 +50,26 @@ pub(crate) fn deliver_error_exit_code(error: deliver_sink::DeliverSinkError) -> 
     }
 }
 
-pub(crate) fn cmd_status(options: args::StatusOptions, output: OutputFormat) -> ExitCode {
+pub(crate) fn cmd_status(options: StatusOptions, output: OutputFormat) -> ExitCode {
     let requested_output = if options.emit_yaml {
         OutputFormat::Yaml
     } else {
         output
     };
-    let status = crate::commands_crate::status::build_status(options);
-    match crate::commands_crate::status::print_status(&status, requested_output) {
+    let status = crate::commands_status::build_status(options);
+    match crate::commands_status::print_status(&status, requested_output) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => output_error_exit(&error),
     }
 }
 
-pub(crate) fn cmd_system_status(options: args::SystemStatusOptions, output: OutputFormat) -> ExitCode {
+pub(crate) fn cmd_system_status(options: SystemStatusOptions, output: OutputFormat) -> ExitCode {
     let requested_output = if options.emit_yaml {
         OutputFormat::Yaml
     } else {
         output
     };
-    match crate::commands_system_crate::status::print_system_status(options, requested_output, VERSION) {
+    match crate::commands_system_status::print_system_status(options, requested_output, VERSION) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => output_error_exit(&error),
     }

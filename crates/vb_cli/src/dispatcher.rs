@@ -11,8 +11,7 @@ use vb_ipc::{IpcCommand, IpcPayload};
 use vb_runtime::action::ActionRegistry;
 use crate::args::*;
 use crate::exit_code::CliExitCode;
-use crate::action::{write_action_registry_uninitialized, write_action_registry, write_action_inspect, write_action_registry_error};
-use crate::action_specs::{registered_cli_actions, cli_action_specs, action_contract};
+use crate::action_specs::{registered_cli_actions, cli_action_specs, action_contract, write_action_registry_uninitialized, write_action_registry, write_action_inspect, write_action_registry_error};
 use crate::agent_io::{cmd_agent_context, cmd_status, cmd_system_status, cmd_action_list, cmd_action_inspect};
 use crate::bench_run::cmd_bench_run;
 use crate::commands_ai_context::*;
@@ -52,7 +51,7 @@ pub(crate) fn run_from_env() -> ExitCode {
         Ok(Command::Version) => exit_from_io(&write_version_stdout(), ExitCode::SUCCESS),
         Ok(Command::AgentContext { deliver }) => cmd_agent_context(deliver.as_deref()),
         Ok(Command::AiContext { run_id, db, output }) => {
-            commands_ai_context::handle(&run_id, &db, output)
+            crate::commands_ai_context::handle(&run_id, &db, output)
         }
         Ok(Command::Status { options, output }) => cmd_status(options, output),
         Ok(Command::SystemStatus { options, output }) => cmd_system_status(options, output),
@@ -84,7 +83,7 @@ pub(crate) fn run_from_env() -> ExitCode {
             output,
         }) => match step {
             Some(target) => cmd_run_step(&workflow, durability, &target, output),
-            None => cmd_run(&workflow, &input_bin, durability, db.as_deref(), output),
+            None => cmd_run(&workflow, &input_bin, durability, db.as_deref()),
         },
         Ok(Command::RunCompiled {
             workflow,

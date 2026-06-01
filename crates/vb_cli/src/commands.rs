@@ -3,7 +3,7 @@
 //! Thin re-export facade over sibling modules: run, storage, bench.
 
 // Re-export EmitTarget so callers can use it via commands::
-pub use crate::args::EmitTarget;
+pub(crate) use crate::args::EmitTarget;
 
 // Re-export run commands
 pub use crate::run::{

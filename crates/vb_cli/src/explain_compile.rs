@@ -14,7 +14,7 @@ use crate::explain_validation::explain_validation_error;
 pub(crate) fn explain_step_errors(err: &vb_compile::CompileError) {
     use vb_compile::CompileError;
     match err {
-        CompileError::StepMissingField { step, field } => {
+        CompileError::MissingStepField { step, field } => {
             crate::outln!("Step Missing Field");
             crate::outln!("  Step {step} is missing required field '{field}'.");
         }
@@ -115,5 +115,5 @@ pub(crate) fn explain_step_errors(err: &vb_compile::CompileError) {
             crate::outln!("  {err}");
         }
     }
-    super::explain_reports::explain_compile_repair_hint(err);
+    crate::explain_reports::explain_compile_repair_hint(err);
 }

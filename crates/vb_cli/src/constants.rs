@@ -3,9 +3,9 @@
 
 use std::process::ExitCode;
 
-const VERSION: &str = env!("CARGO_PKG_VERSION");
+pub(crate) const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const HELP: &str = "\
+pub(crate) const HELP: &str = "\
 velvet-ballistics - compiled workflow runtime
 
 commands:

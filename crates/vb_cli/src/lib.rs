@@ -1,8 +1,11 @@
 #![forbid(unsafe_code)]
 //! Velvet Ballistics is the CLI runtime for bead lifecycle management.
 
+pub(crate) mod action_specs;
 pub(crate) mod agent_context;
+pub(crate) mod agent_io;
 pub(crate) mod app_impl;
+pub(crate) mod bench_run;
 pub mod args;
 pub mod bench;
 pub mod cli_envelope;
@@ -43,7 +46,9 @@ pub mod ipc_serve;
 #[cfg(kani)]
 pub mod kani_lifecycle;
 pub mod lifecycle;
+#[cfg(test)]
 pub mod main_tests;
+#[cfg(test)]
 pub mod mode_activation_tests;
 pub mod mode_error;
 pub mod naming_scan;
@@ -64,6 +69,7 @@ pub mod submit;
 pub mod trace;
 pub mod validate;
 pub mod verify;
+#[cfg(verus)]
 pub mod verus_lifecycle;
 pub mod workflow;
 
@@ -71,10 +77,10 @@ pub mod workflow;
 // Kept commented: run_resume, explain_validation3, explain_validation4 — files do not exist.
 
 // Re-exports for convenience — items expected at crate root by many files.
-pub use crate::output::{json_error, json_out, write_stderr_line, write_stdout_line, write_stdout_line_checked};
-pub use crate::output::OutputError;
-pub use crate::output::write_contract_error_json;
-pub use crate::file_io::write_failure_message;
-pub use crate::args::OutputFormat;
-pub use crate::exit_code::CliExitCode;
+pub(crate) use crate::output::{json_error, json_out, write_stderr_line, write_stdout_line, write_stdout_line_checked};
+pub(crate) use crate::output::OutputError;
+pub(crate) use crate::output::write_contract_error_json;
+pub(crate) use crate::file_io::write_failure_message;
+pub(crate) use crate::args::OutputFormat;
+pub(crate) use crate::exit_code::CliExitCode;
 

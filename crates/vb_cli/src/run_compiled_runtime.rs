@@ -12,7 +12,7 @@ use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, 
 use crate::output_utils::*;
 use crate::file_io::{read_file, parse_run_id, read_journal_events, report_storage_open_error};
 use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
-use crate::run::report_compiled_ir_store_error;
+use crate::run_compiled::InputMappingError;
 
 pub(crate) fn map_runtime_inputs(
     compiled: &vb_core::CompiledWorkflow,
@@ -292,6 +292,14 @@ pub(crate) fn print_trace_event(event: &vb_runtime::trace::TraceEvent) {
         _ => {
             crate::outln!("  trace: Unknown");
         }
+    }
+}
+
+fn report_compiled_ir_store_error(msg: std::fmt::Arguments<'_>, output: OutputFormat) {
+    if output != OutputFormat::Text {
+        crate::errln!("{}", msg);
+    } else {
+        crate::errln!("compiled IR store error: {}", msg);
     }
 }
 

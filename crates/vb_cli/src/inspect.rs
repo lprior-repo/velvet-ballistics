@@ -82,3 +82,8 @@ pub(crate) fn write_vb_kyyf_trace(command: &str, run_id: &str, events_len: usize
     );
 }
 
+
+fn write_locked_read_surface(_operation: &str, _run_id: &str, _output: crate::args::OutputFormat) -> std::process::ExitCode {
+    crate::errln!("locked read surface not implemented");
+    std::process::ExitCode::FAILURE
+}

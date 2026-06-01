@@ -423,3 +423,7 @@ pub(crate) fn signal_name(signal: &vb_core::EngineSignal) -> &'static str {
     }
 }
 
+
+fn setup_exit_code() -> std::process::ExitCode {
+    std::process::ExitCode::FAILURE
+}

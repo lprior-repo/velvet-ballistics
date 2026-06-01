@@ -1,6 +1,7 @@
 use crate::args::OutputFormat;
 use crate::exit_code::CliExitCode;
 use crate::file_io::parse_run_id;
+use crate::output::json_error;
 use std::process::ExitCode;
 
 fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {

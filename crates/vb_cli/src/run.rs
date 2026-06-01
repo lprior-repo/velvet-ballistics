@@ -2,7 +2,8 @@
 #![forbid(unsafe_code)]
 
 use crate::args::DurabilityMode;
-use crate::workflow::{run_compiled_workflow, InputMappingError};
+use crate::workflow::InputMappingError;
+pub(crate) use crate::workflow::run_compiled_workflow;
 use std::path::Path;
 use std::process::ExitCode;
 use vb_core::{CompiledWorkflow, SlotIdx, SlotValue, WorkflowParts};

@@ -5,11 +5,13 @@ use std::process::ExitCode;
 use std::io::{self, Write};
 use crate::args::{ActionRegistryMode, Command, OutputFormat, ParseError, StepTarget};
 use crate::exit_code::CliExitCode;
-use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, write_stderr_line, write_failure_message};
+use crate::output::{json_error, json_out, json_out_exit, output_error_exit, write_stdout_line, write_stderr_line, write_failure_message};
 use crate::output_utils::*;
 use crate::file_io::{read_file, parse_run_id, read_journal_events, report_storage_open_error};
 use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
 use crate::cli_envelope;
+use crate::storage::print_event;
+use crate::events::event_to_json;
 
 pub(crate) fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let rid = match parse_run_id(run_id, output) {
@@ -111,3 +113,11 @@ pub(crate) fn write_locked_read_surface(
     }
 }
 
+
+fn print_event_stubs(_event: &vb_storage::JournalEvent) {
+    // stub - use storage::print_event instead
+}
+
+fn write_vb_kyyf_trace(_operation: &str, _run_id: &str, _event_count: usize) {
+    // stub - tracing not implemented
+}

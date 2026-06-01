@@ -3,6 +3,7 @@
 
 use std::process::ExitCode;
 use std::io::{self, Write};
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 use crate::args::{ActionRegistryMode, Command, DurabilityMode, OutputFormat, ParseError, StepTarget};
 use crate::exit_code::CliExitCode;

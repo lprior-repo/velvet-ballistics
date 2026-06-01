@@ -8,6 +8,8 @@ use std::process::ExitCode;
 use std::sync::Arc;
 use vb_core::RunId;
 use vb_runtime::journal::RuntimeJournalConfig;
+use vb_ipc::{IpcCommand, IpcPayload};
+use vb_ipc::client::IpcClient;
 
 fn cmd_answer(
     run_id: &str,

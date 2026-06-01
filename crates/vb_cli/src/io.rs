@@ -4,7 +4,7 @@
 use crate::args::ParseError;
 use std::io::{self, Write};
 
-const HELP: &str = "\
+pub(crate) const HELP: &str = "\
 velvet-ballistics - compiled workflow runtime
 
 commands:
@@ -23,7 +23,7 @@ commands:
 
 architecture: nightly Rust, compiled IR, in-memory engine, bounded IPC, Fjall journal, no HTTP hot path";
 
-const VERSION: &str = env!("CARGO_PKG_VERSION");
+pub(crate) const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub fn write_help_stdout() -> io::Result<()> {
     let stdout = io::stdout();
@@ -50,8 +50,74 @@ pub fn write_error_stderr(error: &ParseError) -> io::Result<()> {
         ParseError::UnknownDurability(mode) => {
             writeln!(handle, "unknown durability mode: {mode} (expected: strict, journaled, none)\n\n{HELP}")
         }
+        ParseError::UnknownProfile(profile) => {
+            writeln!(handle, "unknown verify profile: {profile} (expected: quick, standard, full)\n\n{HELP}")
+        }
         ParseError::UnknownCommand(cmd) => {
             writeln!(handle, "unknown command: {cmd}\n\n{HELP}")
+        }
+        ParseError::UnknownServerMode(mode) => {
+            writeln!(handle, "unknown server mode: {mode}\n\n{HELP}")
+        }
+        ParseError::UnknownEventStatus(status) => {
+            writeln!(handle, "unknown event status: {status}\n\n{HELP}")
+        }
+        ParseError::InvalidAgentContextArgument(reason) => {
+            writeln!(handle, "invalid agent-context argument: {reason}\n\n{HELP}")
+        }
+        ParseError::InvalidTraceArgument(reason) => {
+            writeln!(handle, "invalid trace argument: {reason}\n\n{HELP}")
+        }
+        ParseError::InvalidStatusArgument(reason) => {
+            writeln!(handle, "invalid status argument: {reason}\n\n{HELP}")
+        }
+        ParseError::InvalidSystemStatusArgument(reason) => {
+            writeln!(handle, "invalid system status argument: {reason}\n\n{HELP}")
+        }
+        ParseError::UnknownActionCommand(cmd) => {
+            writeln!(handle, "unknown action command: {cmd} (expected: list, inspect)\n\n{HELP}")
+        }
+        ParseError::UnknownActionRegistry(registry) => {
+            writeln!(handle, "unknown action registry: {registry}\n\n{HELP}")
+        }
+        ParseError::MissingActionRegistryValue => {
+            writeln!(handle, "missing action-args value for --registry\n\n{HELP}")
+        }
+        ParseError::UnknownActionListFlag(flag) => {
+            writeln!(handle, "unknown action list flag: {flag}\n\n{HELP}")
+        }
+        ParseError::UnexpectedActionListArgument(argument) => {
+            writeln!(handle, "unexpected action list argument: {argument}\n\n{HELP}")
+        }
+        ParseError::InvalidActionListArgument(reason) => {
+            writeln!(handle, "invalid action list argument: {reason}\n\n{HELP}")
+        }
+        ParseError::UnknownActionInspectFlag(flag) => {
+            writeln!(handle, "unknown action inspect flag: {flag}\n\n{HELP}")
+        }
+        ParseError::UnexpectedActionInspectArgument(argument) => {
+            writeln!(handle, "unexpected action inspect argument: {argument}\n\n{HELP}")
+        }
+        ParseError::InvalidActionInspectArgument(reason) => {
+            writeln!(handle, "invalid action inspect argument: {reason}\n\n{HELP}")
+        }
+        ParseError::InvalidActionId(action_id) => {
+            writeln!(handle, "invalid action id: {action_id}\n\n{HELP}")
+        }
+        ParseError::InvalidActionName(name) => {
+            writeln!(handle, "invalid action name: {name}\n\n{HELP}")
+        }
+        ParseError::UnknownFlag { command, flag } => {
+            writeln!(handle, "unknown flag for {command}: {flag}\n\n{HELP}")
+        }
+        ParseError::InvalidArgument(reason) => {
+            writeln!(handle, "invalid argument: {reason}\n\n{HELP}")
+        }
+        ParseError::InvalidStep(step) => {
+            writeln!(handle, "invalid step: {step}\n\n{HELP}")
+        }
+        ParseError::ReasonTooLong => {
+            writeln!(handle, "reason exceeds maximum length of 256 characters\n\n{HELP}")
         }
         ParseError::NoCommand => {
             writeln!(handle, "{HELP}")
