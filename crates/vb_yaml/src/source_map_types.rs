@@ -95,9 +95,16 @@ impl SourceMap {
     /// Looks up the span for a node by index.
     #[must_use]
     pub fn span_for_node(&self, node_index: u32) -> Option<SourceSpan> {
-        usize::try_from(node_index)
-            .ok()
-            .and_then(|i| self.spans.get(i).copied())
+        match usize::try_from(node_index) {
+            Ok(i) => self.spans.get(i).copied(),
+            Err(_conversion) => {
+                // SAFETY: node_index is u32; usize::try_from can only fail
+                // on 16-bit targets where usize < 32 bits. All supported
+                // Rust targets have usize >= 32 bits, so this branch is
+                // unreachable. The Err is retained only for correctness.
+                None
+            }
+        }
     }
 
     /// Returns an iterator over all (index, span) pairs.

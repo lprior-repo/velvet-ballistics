@@ -157,7 +157,13 @@ impl HasSymbolicCode for YamlError {
             YamlError::FieldShape { .. } => "TYPE_MISMATCH",
             YamlError::UnsupportedTrigger { .. } => "UNSUPPORTED_TRIGGER",
         };
-        SymbolicCode::from_static(s).unwrap_or(SymbolicCode::INTERNAL_INVARIANT)
+        match SymbolicCode::from_static(s) {
+            Some(code) => code,
+            // SAFETY: All YamlError match arms (lines 139-158) use symbolic
+            // name strings that are registered in vb_core::CODE_REGISTRY.
+            // This branch is unreachable; Kani verifies the registry coverage.
+            None => SymbolicCode::INTERNAL_INVARIANT,
+        }
     }
 }
 

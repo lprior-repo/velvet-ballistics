@@ -131,7 +131,7 @@ fn validate_evidence_reference(
 }
 
 fn validate_external_reference(value: &str) -> Result<(), BoundaryInventoryError> {
-    if value.starts_with("external:") && value.contains("#sha256=") || valid_bead_id(value) {
+    if (value.starts_with("external:") && value.contains("#sha256=")) || valid_bead_id(value) {
         Ok(())
     } else {
         Err(BoundaryInventoryError::InvalidEvidencePath)

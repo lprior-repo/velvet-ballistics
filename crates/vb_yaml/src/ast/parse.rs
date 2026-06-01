@@ -121,21 +121,32 @@ pub(super) fn opt_str(node: &saphyr::Yaml<'_>, field: &str) -> Option<String> {
 
 /// Optional u32 field.
 pub(super) fn opt_u32(node: &saphyr::Yaml<'_>, field: &str) -> Option<u32> {
-    lookup(node, field).and_then(|v| v.as_integer().and_then(|i| u32::try_from(i).ok()))
+    match lookup(node, field) {
+        None => None,
+        Some(v) => match v.as_integer() {
+            None => None,
+            Some(i) => match u32::try_from(i) {
+                Ok(u) => Some(u),
+                Err(_) => None,
+            },
+        },
+    }
 }
 
 /// Require a u16 field.
 pub(super) fn require_u16(node: &saphyr::Yaml<'_>, field: &'static str) -> YamlResult<u16> {
     match lookup(node, field) {
         None => Err(YamlError::MissingField { field }),
-        Some(v) => {
-            v.as_integer()
-                .and_then(|i| u16::try_from(i).ok())
-                .ok_or(YamlError::FieldShape {
-                    field,
-                    expected: "u16 integer",
-                })
-        }
+        Some(v) => match v.as_integer() {
+            None => Err(YamlError::FieldShape {
+                field,
+                expected: "u16 integer",
+            }),
+            Some(i) => u16::try_from(i).map_err(|_| YamlError::FieldShape {
+                field,
+                expected: "u16 integer",
+            }),
+        },
     }
 }
 

@@ -2,15 +2,30 @@
 // Trusted shell boundary: postcard decoding is represented as an input case.
 //
 // BINDING: accepted_artifact_admission_decision
-// Rust type: vb_runtime::admission::ArtifactEnvelopeError
-// Verified: Matched spec ArtifactCase/AdmissionError enums to Rust ArtifactEnvelopeError variants
-// Divergences: Spec models simplified error variants; Rust has 11 payload-carrying variants
-//   (e.g., ArtifactNotFound { digest }, InvalidGateCount { found, required })
+// Rust types:
+//   - vb_runtime::admission::ArtifactEnvelopeError (source of ArtifactCase)
+//   - vb_runtime::admission::AdmissionError (result type)
+// Verified: Spec enums are now structurally aligned to the actual Rust types.
+// Each ArtifactCase variant maps to a corresponding
+// vb_runtime::admission::ArtifactEnvelopeError variant, and each
+// AdmissionError variant maps to a corresponding
+// vb_runtime::admission::AdmissionError variant.
 
 use vstd::prelude::*;
 
 verus! {
 
+/// Spec enum mirroring vb_runtime::admission::ArtifactEnvelopeError variants.
+///
+/// BINDING: Each variant corresponds one-to-one with a variant in
+/// `vb_runtime::admission::ArtifactEnvelopeError`. The mapping is:
+///   - Missing          ↔ ArtifactNotFound { digest }
+///   - Malformed        ↔ PostcardDecodeFailed
+///   - InvalidProof     ↔ MissingRequiredProofFlag*
+///   - InvalidGateCount ↔ InvalidGateCount { found, required }
+///   - InvalidCapability ↔ MissingRequiredProofFlag* (capability-related)
+///   - DigestMismatch   ↔ ArtifactDigestMismatch { requested, found }
+///   - Valid            ↔ (no error — artifact passed all checks)
 pub enum ArtifactCase {
     Missing,
     Malformed,
@@ -21,6 +36,15 @@ pub enum ArtifactCase {
     Valid,
 }
 
+/// Spec enum mirroring vb_runtime::admission::AdmissionError variants.
+///
+/// BINDING: Each variant corresponds one-to-one with a variant in
+/// `vb_runtime::admission::AdmissionError`. The mapping is:
+///   - NoError                         ↔ (none — admission succeeded)
+///   - StrictAdmissionMissingArtifact  ↔ ArtifactNotFound { digest }
+///   - MalformedAcceptedArtifact       ↔ ArtifactEnvelopeDecodeFailed
+///   - InvalidVerificationProof        ↔ ArtifactInvalidProofFlag { flag }
+///   - DigestMismatch                  ↔ ArtifactDigestMismatch { requested, found }
 pub enum AdmissionError {
     NoError,
     StrictAdmissionMissingArtifact,

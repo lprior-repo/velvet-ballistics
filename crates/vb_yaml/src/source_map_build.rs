@@ -2,8 +2,8 @@
 //! Source map building functions.
 
 use super::source_map_types::{SemanticSourceMap, SourceMap, SourceSpan};
-use crate::YamlResult;
 use crate::events::{EventSpan, YamlEvent};
+use crate::YamlResult;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PendingKey {
@@ -90,6 +90,10 @@ fn semantic_source_map_from_events(text: &str, events: &[YamlEvent]) -> Semantic
                 });
             }
             YamlEvent::MappingEnd { .. } | YamlEvent::SequenceEnd { .. } => {
+                // The stack always contains a matching start entry for each end
+                // event emitted by the YAML parser (enforced by the event
+                // collector). The pop discards the path context because it is
+                // no longer needed once the container closes.
                 let _popped = stack.pop();
             }
             YamlEvent::Scalar { value, span, .. } => {

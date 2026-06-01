@@ -330,7 +330,9 @@ impl ValueStore {
 }
 
 fn checked_len_to_u64(len: usize) -> u64 {
-    u64::try_from(len).unwrap_or(u64::MAX)
+    // Lossless on all Rust targets: usize is either 32-bit or 64-bit.
+    // Both fit in u64, so this cast never overflows or truncates.
+    len as u64
 }
 
 fn next_symbol_id(len: usize) -> CoreResult<SymbolId> {
