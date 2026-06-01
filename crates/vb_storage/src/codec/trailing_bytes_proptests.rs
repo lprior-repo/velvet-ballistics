@@ -1,13 +1,13 @@
 #![forbid(unsafe_code)]
 
 use crate::{
-    BlobRecord, CompiledIrRecord, EventSeq, JournalError, JournalEvent, WorkflowSourceRecord,
     constants::{
         DIGEST_BYTES, MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_JOURNAL_EVENT,
         MAGIC_WORKFLOW_SOURCE, MAX_BLOB_BYTES, MAX_COMPILED_IR_BYTES,
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_WORKFLOW_SOURCE_BYTES,
     },
     records::RecordKind,
+    BlobRecord, CompiledIrRecord, EventSeq, JournalError, JournalEvent, WorkflowSourceRecord,
 };
 use proptest::prelude::*;
 use serde::de::DeserializeOwned;

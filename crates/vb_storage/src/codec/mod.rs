@@ -7,17 +7,18 @@ use crate::{
     records::RecordKind,
     types::{EventSeq, RecordEnvelope},
 };
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 
 pub(crate) mod envelope;
 pub(crate) mod header;
 pub(crate) mod payload;
 pub(crate) mod validation;
 
-#[cfg(any(fuzzing, feature = "fuzz-access"))]
+#[cfg(fuzzing)]
+#[doc(hidden)]
 pub mod fuzz_validation {
-    //! Public fuzz-only accessors for codec validation invariants.
+    //! Internal fuzz-harness accessors; unavailable in normal Cargo builds.
 
     use crate::JournalError;
 

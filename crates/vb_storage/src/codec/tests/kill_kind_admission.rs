@@ -13,11 +13,11 @@
 
 use super::*;
 use crate::{
-    JournalEvent,
     constants::{MAGIC_BLOB, MAGIC_JOURNAL_EVENT, MAGIC_SNAPSHOT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES},
     error::JournalError,
     records::RecordKind,
     types::EventSeq,
+    JournalEvent,
 };
 use vb_core::RunId;
 
