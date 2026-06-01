@@ -1,0 +1,26 @@
+{
+  "kani-version": "0.67.0",
+  "file-version": "0.1",
+  "standard-harnesses": {
+    "crates/vb_storage/src/kani_postcard_envelope_wire_trailing_bytes.rs": [
+      "kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_rejected",
+      "kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_required"
+    ],
+    "crates/vb_storage/src/kani_vbjpq733_proofs.rs": [
+      "kani_vbjpq733_proofs::vbjpq733_is_fully_supported_all_states",
+      "kani_vbjpq733_proofs::vbjpq733_is_fully_supported_each_flag",
+      "kani_vbjpq733_proofs::vbjpq733_is_fully_supported_supported_constant",
+      "kani_vbjpq733_proofs::vbjpq733_unsupported_union_all_combos",
+      "kani_vbjpq733_proofs::vbjpq733_unsupported_union_commutative",
+      "kani_vbjpq733_proofs::vbjpq733_unsupported_union_idempotent",
+      "kani_vbjpq733_proofs::vbjpq733_unsupported_union_supported_identity"
+    ]
+  },
+  "contract-harnesses": {},
+  "contracts": [],
+  "totals": {
+    "standard-harnesses": 9,
+    "contract-harnesses": 0,
+    "functions-under-contract": 0
+  }
+}

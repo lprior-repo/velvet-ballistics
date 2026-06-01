@@ -27,6 +27,7 @@ kani-typed-partitioned-ids = []
 kani-storage-trailing-bytes = []
 kani-vb-u8gi-decode-taxonomy = []
 kani-vb-vzcuf = []
+kani-vb-h09wf = []
 
 [lints]
 workspace = true

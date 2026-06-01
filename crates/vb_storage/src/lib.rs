@@ -99,6 +99,33 @@ pub mod kani_vb_vzcuf_ps009;
 #[cfg(kani)]
 pub mod kani_vbjpq733_proofs;
 
+// --- vb-h09wf Kani harnesses (PS-001 through PS-012) ---
+// Verification wiring only — no production behavior changes.
+#[cfg(all(kani, feature = "kani-vb-h09wf"))]
+pub mod kani_vb_h09wf_ps001;
+#[cfg(all(kani, feature = "kani-vb-h09wf"))]
+pub mod kani_vb_h09wf_ps002;
+#[cfg(all(kani, feature = "kani-vb-h09wf"))]
+pub mod kani_vb_h09wf_ps003;
+#[cfg(all(kani, feature = "kani-vb-h09wf"))]
+pub mod kani_vb_h09wf_ps004;
+#[cfg(all(kani, feature = "kani-vb-h09wf"))]
+pub mod kani_vb_h09wf_ps005;
+#[cfg(all(kani, feature = "kani-vb-h09wf"))]
+pub mod kani_vb_h09wf_ps006;
+#[cfg(all(kani, feature = "kani-vb-h09wf"))]
+pub mod kani_vb_h09wf_ps007;
+#[cfg(all(kani, feature = "kani-vb-h09wf"))]
+pub mod kani_vb_h09wf_ps008;
+#[cfg(all(kani, feature = "kani-vb-h09wf"))]
+pub mod kani_vb_h09wf_ps009;
+#[cfg(all(kani, feature = "kani-vb-h09wf"))]
+pub mod kani_vb_h09wf_ps010;
+#[cfg(all(kani, feature = "kani-vb-h09wf"))]
+pub mod kani_vb_h09wf_ps011;
+#[cfg(all(kani, feature = "kani-vb-h09wf"))]
+pub mod kani_vb_h09wf_ps012;
+
 pub mod keys;
 pub mod preview;
 pub mod process_lock;

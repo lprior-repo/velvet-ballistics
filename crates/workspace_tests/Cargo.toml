@@ -162,6 +162,10 @@ path = "tests/restate_journal_tail_scan_fallback_tests.rs"
 name = "vb_eepg_bdd_tests"
 path = "tests/vb_eepg_bdd_tests.rs"
 
+[[test]]
+name = "proptest_ps_012_read_revalidation"
+path = "tests/proptest_ps_012_read_revalidation.rs"
+
 [[bench]]
 name = "velvet_ballistics"
 harness = false

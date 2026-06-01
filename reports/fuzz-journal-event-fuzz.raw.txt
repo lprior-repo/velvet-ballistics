@@ -1,0 +1,31 @@
+Command: cargo fuzz run journal_event_fuzz --target x86_64-unknown-linux-gnu -- -runs=1024 -max_len=256
+Workdir: /home/lewis/src/velvet-ballistics/fuzz
+Result: PASS direct default-corpus smoke. This command used the default journal_event_fuzz corpus path, which was empty in this run.
+
+   Compiling velvet-ballastics-fuzz v0.1.0 (/home/lewis/src/velvet-ballistics/fuzz)
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.20s
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.03s
+     Running `target/x86_64-unknown-linux-gnu/release/journal_event_fuzz -artifact_prefix=/home/lewis/src/velvet-ballistics/fuzz/artifacts/journal_event_fuzz/ -runs=1024 -max_len=256 /home/lewis/src/velvet-ballistics/fuzz/corpus/journal_event_fuzz`
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 1904360566
+INFO: Loaded 1 modules   (7493 inline 8-bit counters): 7493 [0x5564fc4beb10, 0x5564fc4c0855),
+INFO: Loaded 1 PC tables (7493 PCs): 7493 [0x5564fc4c0858,0x5564fc4ddca8),
+INFO:        0 files found in /home/lewis/src/velvet-ballistics/fuzz/corpus/journal_event_fuzz
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 41 ft: 42 corp: 1/1b exec/s: 0 rss: 47Mb
+#1024	DONE   cov: 41 ft: 42 corp: 1/1b lim: 14 exec/s: 0 rss: 47Mb
+Done 1024 runs in 0 second(s)
+
+Command: moon run :fuzz-smoke
+Workdir: /home/lewis/src/velvet-ballistics
+Result: PASS seeded Moon smoke. The Moon task copies fuzz/corpus/journal_event into target/fuzz-smoke/corpus/journal_event_fuzz before executing journal_event_fuzz.
+
+Moon output:
+Tasks: 1 completed
+Time: 37s 969ms
+
+Raw journal_event_fuzz stderr excerpt from target/fuzz-smoke/journal_event_fuzz.err:
+INFO:        1 files found in /home/lewis/src/velvet-ballistics/target/fuzz-smoke/corpus/journal_event_fuzz
+INFO: seed corpus: files: 1 min: 64b max: 64b total: 64b rss: 32Mb
+#1165233	DONE   cov: 116 ft: 119 corp: 17/965b lim: 4096 exec/s: 582616 rss: 219Mb
+Done 1165233 runs in 2 second(s)

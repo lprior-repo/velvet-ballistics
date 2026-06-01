@@ -1,0 +1,186 @@
+Script started on 2026-06-01 09:42:21-05:00 [COMMAND="rtk cargo kani -p vb_storage --features kani-storage-trailing-bytes --harness kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_required --harness kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_rejected --exact -j 1 --output-format=regular" <not executed on terminal>]
+Kani Rust Verifier 0.67.0 (cargo plugin)
+[1m[92m   Compiling[0m vb_storage v0.1.0 (/home/lewis/src/velvet-ballistics/crates/vb_storage)
+[1m[33mwarning[0m[1m: struct `ReplayResolutionSet` is never constructed[0m
+  [1m[94m--> [0mcrates/vb_storage/src/recovery/types.rs:18:8
+   [1m[94m|[0m
+[1m[94m18[0m [1m[94m|[0m struct ReplayResolutionSet(Vec<(ActionId, StepIdx)>);
+   [1m[94m|[0m        [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+[1m[33mwarning[0m[1m: methods `insert` and `contains` are never used[0m
+  [1m[94m--> [0mcrates/vb_storage/src/recovery/types.rs:22:8
+   [1m[94m|[0m
+[1m[94m21[0m [1m[94m|[0m impl ReplayResolutionSet {
+   [1m[94m|[0m [1m[94m------------------------[0m [1m[94mmethods in this implementation[0m
+[1m[94m22[0m [1m[94m|[0m     fn insert(&mut self, value: (ActionId, StepIdx)) -> bool {
+   [1m[94m|[0m        [1m[33m^^^^^^[0m
+[1m[94m...[0m
+[1m[94m31[0m [1m[94m|[0m     fn contains(&self, value: &(ActionId, StepIdx)) -> bool {
+   [1m[94m|[0m        [1m[33m^^^^^^^^[0m
+
+[1m[92m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 1.23s
+Checking harness kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_rejected...
+CBMC 6.8.0 (cbmc-6.8.0)
+CBMC version 6.8.0 (cbmc-6.8.0) 64-bit x86_64 linux
+Reading GOTO program from file /home/lewis/src/velvet-ballistics/target/kani/x86_64-unknown-linux-gnu/debug/deps/vb_storage-72da5e353140ecd9__RNvNtCs5KK5WMwz4dJ_10vb_storage42kani_postcard_envelope_wire_trailing_bytes31vb_e7tl_trailing_bytes_rejected.out
+Generating GOTO Program
+Adding CPROVER library (x86_64)
+Removal of function pointers and virtual functions
+Generic Property Instrumentation
+Running with 16 object bits, 48 offset bits (user-specified)
+Starting Bounded Model Checking
+aborting path on assume(false) at file crates/vb_storage/src/kani_postcard_envelope_wire_trailing_bytes.rs line 45 column 11 function kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_rejected thread 0
+aborting path on assume(false) at file crates/vb_storage/src/kani_postcard_envelope_wire_trailing_bytes.rs line 57 column 13 function kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_rejected thread 0
+Runtime Symex: 0.00361181s
+size of program expression: 608 steps
+slicing removed 288 assignments
+Generated 15 VCC(s), 15 remaining after simplification
+Runtime Postprocess Equation: 3.8969e-05s
+Passing problem to propositional reduction
+converting SSA
+Runtime Convert SSA: 0.000576136s
+Running propositional reduction
+Post-processing
+Runtime Post-process: 4.84e-06s
+Solving with CaDiCaL 2.0.0
+1004 variables, 3372 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 9.195e-05s
+Runtime decision procedure: 0.000710035s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+1005 variables, 3373 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 0.00391879s
+Runtime decision procedure: 0.0039503s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+1006 variables, 3374 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 0.000243808s
+Runtime decision procedure: 0.000266308s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+1007 variables, 3375 clauses
+SAT checker: instance is UNSATISFIABLE
+Runtime Solver: 0.00157505s
+Runtime decision procedure: 0.00158716s
+
+RESULTS:
+Check 1: kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_rejected.assertion.1
+	 - Status: [32mSUCCESS[0m
+	 - Description: "attempt to subtract with overflow"
+	 - Location: crates/vb_storage/src/kani_postcard_envelope_wire_trailing_bytes.rs:35:34 in function kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_rejected
+
+Check 2: kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_rejected.cover.1
+	 - Status: [32mSATISFIED[0m
+	 - Description: "one trailing byte is covered"
+	 - Location: crates/vb_storage/src/kani_postcard_envelope_wire_trailing_bytes.rs:36:5 in function kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_rejected
+
+Check 3: kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_rejected.cover.2
+	 - Status: [32mSATISFIED[0m
+	 - Description: "max trailing length is covered"
+	 - Location: crates/vb_storage/src/kani_postcard_envelope_wire_trailing_bytes.rs:37:5 in function kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_rejected
+
+Check 4: kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_rejected.assertion.2
+	 - Status: [32mSUCCESS[0m
+	 - Description: "attempt to add with overflow"
+	 - Location: crates/vb_storage/src/kani_postcard_envelope_wire_trailing_bytes.rs:42:22 in function kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_rejected
+
+Check 5: kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_rejected.unreachable.1
+	 - Status: [32mSUCCESS[0m
+	 - Description: "unreachable code"
+	 - Location: crates/vb_storage/src/kani_postcard_envelope_wire_trailing_bytes.rs:45:11 in function kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_rejected
+
+Check 6: kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_rejected.assertion.3
+	 - Status: [32mSUCCESS[0m
+	 - Description: "declared_end is preserved in the error"
+	 - Location: crates/vb_storage/src/kani_postcard_envelope_wire_trailing_bytes.rs:47:13 in function kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_rejected
+
+Check 7: kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_rejected.assertion.4
+	 - Status: [32mSUCCESS[0m
+	 - Description: "actual_len is preserved in the error"
+	 - Location: crates/vb_storage/src/kani_postcard_envelope_wire_trailing_bytes.rs:51:13 in function kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_rejected
+
+Check 8: kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_rejected.assertion.5
+	 - Status: [33mUNREACHABLE[0m
+	 - Description: "larger actual length must not pass trailing-byte validation"
+	 - Location: crates/vb_storage/src/kani_postcard_envelope_wire_trailing_bytes.rs:57:13 in function kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_rejected
+
+
+SUMMARY:
+ ** 0 of 6 failed (1 unreachable)
+
+ ** 2 of 2 cover properties satisfied
+
+
+VERIFICATION:- [32mSUCCESSFUL[0m
+Verification Time: 0.027148956s
+
+Checking harness kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_required...
+CBMC 6.8.0 (cbmc-6.8.0)
+CBMC version 6.8.0 (cbmc-6.8.0) 64-bit x86_64 linux
+Reading GOTO program from file /home/lewis/src/velvet-ballistics/target/kani/x86_64-unknown-linux-gnu/debug/deps/vb_storage-72da5e353140ecd9__RNvNtCs5KK5WMwz4dJ_10vb_storage42kani_postcard_envelope_wire_trailing_bytes31vb_e7tl_trailing_bytes_required.out
+Generating GOTO Program
+Adding CPROVER library (x86_64)
+Removal of function pointers and virtual functions
+Generic Property Instrumentation
+Running with 16 object bits, 48 offset bits (user-specified)
+Starting Bounded Model Checking
+aborting path on assume(false) at file crates/vb_storage/src/kani_postcard_envelope_wire_trailing_bytes.rs line 15 column 11 function kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_required thread 0
+aborting path on assume(false) at file crates/vb_storage/src/kani_postcard_envelope_wire_trailing_bytes.rs line 20 column 13 function kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_required thread 0
+Runtime Symex: 0.00161774s
+size of program expression: 176 steps
+slicing removed 101 assignments
+Generated 5 VCC(s), 5 remaining after simplification
+Runtime Postprocess Equation: 1.967e-05s
+Passing problem to propositional reduction
+converting SSA
+Runtime Convert SSA: 0.000146609s
+Running propositional reduction
+Post-processing
+Runtime Post-process: 3.959e-06s
+Solving with CaDiCaL 2.0.0
+208 variables, 297 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 3.6669e-05s
+Runtime decision procedure: 0.000204458s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+209 variables, 298 clauses
+SAT checker: instance is UNSATISFIABLE
+Runtime Solver: 5.03e-06s
+Runtime decision procedure: 1.014e-05s
+
+RESULTS:
+Check 1: kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_required.unreachable.1
+	 - Status: [32mSUCCESS[0m
+	 - Description: "unreachable code"
+	 - Location: crates/vb_storage/src/kani_postcard_envelope_wire_trailing_bytes.rs:15:11 in function kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_required
+
+Check 2: kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_required.assertion.1
+	 - Status: [33mUNREACHABLE[0m
+	 - Description: "equal declared and actual lengths must not produce trailing-byte error"
+	 - Location: crates/vb_storage/src/kani_postcard_envelope_wire_trailing_bytes.rs:20:13 in function kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_required
+
+Check 3: kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_required.cover.1
+	 - Status: [32mSATISFIED[0m
+	 - Description: "equal lengths accepted"
+	 - Location: crates/vb_storage/src/kani_postcard_envelope_wire_trailing_bytes.rs:17:13 in function kani_postcard_envelope_wire_trailing_bytes::vb_e7tl_trailing_bytes_required
+
+
+SUMMARY:
+ ** 0 of 2 failed (1 unreachable)
+
+ ** 1 of 1 cover properties satisfied
+
+
+VERIFICATION:- [32mSUCCESSFUL[0m
+Verification Time: 0.012251654s
+
+Manual Harness Summary:
+Complete - 2 successfully verified harnesses, 0 failures, 2 total.
+
+Script done on 2026-06-01 09:42:22-05:00 [COMMAND_EXIT_CODE="0"]

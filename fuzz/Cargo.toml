@@ -574,3 +574,24 @@ path = "fuzz_targets/vb_vzcuf_PS_009.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "ps_003_oversized_envelope"
+path = "fuzz_targets/ps_003_oversized_envelope.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ps_005_trailing_bytes"
+path = "fuzz_targets/ps_005_trailing_bytes.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ps_012_corrupted_read"
+path = "fuzz_targets/ps_012_corrupted_read.rs"
+test = false
+doc = false
+bench = false
