@@ -222,8 +222,16 @@ fn check_foreach_width_parity() {
             // Lowering succeeded — verify node count matches layout width
             let node_count = builder.nodes.len();
             kani::assert(
-                node_count == lw || node_count == (2usize + body_count as usize),
-                "emitted node count must match layout width or 2 + body_count",
+                node_count == lw,
+                "emitted node count must equal layout width",
+            );
+            kani::assert(
+                node_count == 2usize + body_count as usize,
+                "emitted node count must equal 2 + body_count",
+            );
+            kani::assert(
+                lw == 2usize + body_count as usize,
+                "layout width must equal 2 + body_count",
             );
             // More precise: layout width = body_width(body, 2) = 2 + body_width(body, 0)
             // For Set steps, body_width(body, 0) = body_count

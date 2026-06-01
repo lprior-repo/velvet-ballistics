@@ -984,10 +984,8 @@ fn choose_width_overflow_returns_error() {
         id: "unsupported".to_string(),
         name: None,
         condition: None,
-        primitive: vb_yaml::ast::StepPrimitive::ForEach {
-            variable: "x".to_string(),
-            input: "items".to_string(),
-            at_once: None,
+        primitive: vb_yaml::ast::StepPrimitive::Repeat {
+            max_attempts: 3,
             body: vec![],
         },
         with: None,

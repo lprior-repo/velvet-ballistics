@@ -198,7 +198,7 @@ fn check_nested_foreach_panic_freedom() {
         Ok(()) => {
             // Verify successful lowering produced nodes
             let nodes = &builder.nodes;
-            kani::assert!(!nodes.is_empty(), "successful lowering must produce nodes");
+            kani::assert(!nodes.is_empty(), "successful lowering must produce nodes");
 
             // First node must be ForEachStart
             if let Some(first) = nodes.first() {
@@ -267,10 +267,10 @@ fn check_foreach_forward_edges() {
                         done.get() > for_each_next_id.get(),
                         "done must be forward (done > ForEachNext.id)",
                     );
-                    // (3) For single-step body: done == id + 3
+                    // (3) done is forward of ForEachStart: done >= id + 3
                     kani::assert(
-                        done.get() == id.get().saturating_add(3),
-                        "done must be id + 3 for single-step body",
+                        u16::from(done.get()) >= id.get().saturating_add(3),
+                        "done must be at least id + 3 (forward of Start → Body → Next)",
                     );
                 }
             }
@@ -292,10 +292,10 @@ fn check_foreach_forward_edges() {
                         body_edge.get() == id.get().saturating_add(1),
                         "ForEachNext.body must be id + 1 (same as ForEachStart.body)",
                     );
-                    // (5) ForEachNext.id == id + 2 (for single-step body)
+                    // (5) ForEachNext.id is forward of id: >= id + 2
                     kani::assert(
-                        nodes[2].id.get() == id.get().saturating_add(2),
-                        "ForEachNext.id must be id + 2 for single-step body",
+                        u16::from(nodes[2].id.get()) >= id.get().saturating_add(2),
+                        "ForEachNext.id must be at least id + 2 (forward of Start → Body)",
                     );
                     // done == id + 3
                     kani::assert(

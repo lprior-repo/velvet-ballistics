@@ -170,10 +170,21 @@ pub(super) fn lower_canonical_for_each(
     let input = slot_from_text(input, index, "for_each.input")?;
     let body_step =
         checked_step_offset(id, 1, "for_each", "body").map_err(|e| CompileErrors(vec![e]))?;
+    let body_width_only = body_width(body, 0).map_err(|e| CompileErrors(vec![e]))?;
+    let body_width_val = u16::try_from(body_width_only).map_err(|_| {
+        CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
+            primitive: "for_each",
+            field: "body",
+            value: body_width_only,
+            limit: usize::from(u16::MAX),
+        }])
+    })?;
+    let next_offset = u16::from(1u16.saturating_add(body_width_val));
+    let done_offset = u16::from(2u16.saturating_add(body_width_val));
     let next_step =
-        checked_step_offset(id, 2, "for_each", "next").map_err(|e| CompileErrors(vec![e]))?;
+        checked_step_offset(id, next_offset, "for_each", "next").map_err(|e| CompileErrors(vec![e]))?;
     let done =
-        checked_step_offset(id, 3, "for_each", "done").map_err(|e| CompileErrors(vec![e]))?;
+        checked_step_offset(id, done_offset, "for_each", "done").map_err(|e| CompileErrors(vec![e]))?;
     builder.record_slot(input);
     builder.record_slot(SlotIdx::new(1));
     builder.push_node(CompiledNode {

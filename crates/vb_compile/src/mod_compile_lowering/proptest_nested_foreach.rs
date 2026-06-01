@@ -22,9 +22,8 @@ use vb_yaml::ast::{
 };
 
 use super::part_01::{
-    body_width, canonical_step_width,
+    canonical_step_width, compile_source,
 };
-use super::part_01::compile_source;
 use super::part_02::lower_canonical_for_each;
 use super::part_07::SlotCompiler;
 

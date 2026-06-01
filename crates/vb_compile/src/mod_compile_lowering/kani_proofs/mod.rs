@@ -18,3 +18,10 @@ mod kani_digest_foreach_delimiter;
 mod kani_digest_foreach_exhaustive;
 mod kani_digest_foreach_input;
 mod kani_digest_foreach_variable;
+
+// === vb-xi2f.21 Nested ForEach Harnesses ===
+mod kani_emit_body_set;
+mod kani_nested_foreach_dispatch;
+mod kani_nested_foreach_offsets;
+mod kani_nested_foreach_recursion;
+mod kani_nested_foreach_width;

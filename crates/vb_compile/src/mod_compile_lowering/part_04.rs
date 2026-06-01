@@ -242,7 +242,6 @@ pub(super) fn emit_single_body_set(
             Ok(())
         }
         vb_yaml::ast::StepPrimitive::Do { action, input } => {
-            // Parse action as integer (ActionId) - action field contains numeric ID
             let action_value = action.parse::<i64>().map_err(|_| {
                 CompileErrors(vec![CompileError::StepFieldShape {
                     step: diagnostic_step,
@@ -258,7 +257,6 @@ pub(super) fn emit_single_body_set(
                     limit: usize::from(u16::MAX),
                 }])
             })?;
-            // Parse input as SlotIdx
             let input_value = input.parse::<i64>().map_err(|_| {
                 CompileErrors(vec![CompileError::StepFieldShape {
                     step: diagnostic_step,
@@ -273,7 +271,6 @@ pub(super) fn emit_single_body_set(
             })?;
             let input_slot = SlotIdx::new(input_idx);
             builder.record_slot(input_slot);
-            // Construct Do node directly to avoid double-borrow of builder
             builder.push_node(CompiledNode {
                 id,
                 output: None,
@@ -287,6 +284,12 @@ pub(super) fn emit_single_body_set(
             });
             Ok(())
         }
+        vb_yaml::ast::StepPrimitive::ForEach {
+            input,
+            at_once,
+            body,
+            ..
+        } => lower_canonical_for_each(diagnostic_step, id, input, *at_once, body, builder),
         other => Err(CompileErrors(vec![
             CompileError::UnsupportedStepPrimitive {
                 step: diagnostic_step,
