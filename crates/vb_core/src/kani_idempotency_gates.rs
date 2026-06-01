@@ -496,7 +496,7 @@ fn idempotency_divergent_digest_symbolic_certificate_rejected() {
 fn validate_action_outcome_certificate_stale_nonterminal() {
     let contract = symbolic_contract_no_caps();
     let outcome = ActionOutcome::Suspended(symbolic_ticket());
-    let result = validate_action_outcome(&contract, &outcome);
+    let result = validate_action_outcome(&contract, &outcome, kani::any::<Taint>());
     kani::cover!(
         matches!(result, Err(crate::action::ActionError::DispatchFailed)),
         "stale/nonterminal certificate covered"
@@ -515,7 +515,7 @@ fn validate_action_outcome_certificate_conflict_oob() {
         taint: kani::any::<Taint>(),
         encoded_len: kani::any(),
     });
-    let result = validate_action_outcome(&contract, &outcome);
+    let result = validate_action_outcome(&contract, &outcome, kani::any::<Taint>());
     kani::cover!(
         matches!(
             result,
@@ -562,7 +562,7 @@ fn validate_action_outcome_symbolic_completion_matrix() {
         _ => ActionOutcome::Suspended(symbolic_ticket()),
     };
 
-    let result = validate_action_outcome(&contract, &outcome);
+    let result = validate_action_outcome(&contract, &outcome, kani::any::<Taint>());
     kani::cover!(
         matches!(outcome, ActionOutcome::Ready(_)),
         "success certificate covered"

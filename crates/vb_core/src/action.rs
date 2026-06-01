@@ -614,6 +614,14 @@ fn check_taint_downgrade(
             supplied: input_taint,
         });
     }
+    // DeterministicPure actions must produce only Clean output (per §47:
+    // "Clean input → Clean output").
+    if idempotency == Idempotency::DeterministicPure && supplied != Taint::Clean {
+        return Err(ActionError::TaintViolation {
+            required: Taint::Clean,
+            supplied,
+        });
+    }
     let required = propagate_action_taint(idempotency, input_taint);
     // Use the value module's join_taint (least upper bound).
     // If join(required, supplied) == supplied, then supplied >= required.
