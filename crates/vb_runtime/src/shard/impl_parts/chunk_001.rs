@@ -305,6 +305,9 @@ impl Shard {
         };
 
         self.dispatch_command(cmd)?;
+        if self.shutting_down {
+            return Ok(false);
+        }
         Ok(true)
     }
 
