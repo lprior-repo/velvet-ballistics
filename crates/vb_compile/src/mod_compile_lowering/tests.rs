@@ -28,6 +28,7 @@ use blake3::Hasher;
 use vb_yaml::ast::{StepAst, StepPrimitive};
 
 use crate::compute_compiled_digest;
+use crate::mod_compile_lowering::part_01::canonical_body_step_width;
 use crate::mod_compile_lowering::part_05::digest_step_primitive;
 
 /// Helper: build a YAML source with a Collect step having the given field overrides.
@@ -979,7 +980,7 @@ fn lower_canonical_choose_rejects_65_branches() {
 /// `body_width` and then `choose_width`.
 #[test]
 fn choose_width_overflow_returns_error() {
-    // Given: a branch with an unsupported body primitive (ForEach)
+    // Given: a branch with an unsupported body primitive (Repeat — not yet allowed in body steps)
     let unsupported_step = vb_yaml::ast::StepAst {
         id: "unsupported".to_string(),
         name: None,
@@ -1620,3 +1621,18 @@ fn lower_canonical_choose_accepts_exactly_64_branches() {
 // - slot_from_text_empty_string       (StepFieldShape with step/field/expected)
 // - slot_from_text_negative           (SlotIndexOutOfRange with value -1)
 // No additional weak-assertion tests are needed here.
+
+// ── vb-xi2f.21: canonical_body_step_width accepts ForEach ──
+
+#[test]
+fn canonical_body_step_width_accepts_for_each() {
+    let foreach = vb_yaml::ast::StepPrimitive::ForEach {
+        variable: "x".to_string(),
+        input: "0".to_string(),
+        at_once: None,
+        body: vec![choose_body_set_step("s", "1")],
+    };
+    let result = canonical_body_step_width(&foreach);
+    assert!(result.is_ok(), "ForEach must be accepted in body steps");
+    assert_eq!(result.ok(), Some(3), "ForEach with single Set body has width 3");
+}

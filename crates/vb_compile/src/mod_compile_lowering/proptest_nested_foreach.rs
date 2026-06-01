@@ -161,16 +161,16 @@ proptest! {
                 0, id, "0", None, body, &mut builder,
             );
 
-            if let Ok(lw) = layout_width {
-                if lower_result.is_ok() {
-                    let node_count = builder.nodes.len();
-                    prop_assert_eq!(
-                        node_count, lw,
-                        "PO-008: emitted {} nodes, layout width {}, must match",
-                        node_count, lw,
-                    );
-                }
-            }
+            let lw = layout_width
+                .expect("width must compute for valid for_each");
+            lower_result
+                .expect("lowering must succeed for valid for_each");
+            let node_count = builder.nodes.len();
+            prop_assert_eq!(
+                node_count, lw,
+                "PO-008: emitted {} nodes, layout width {}, must match",
+                node_count, lw,
+            );
         }
     }
 }
@@ -217,8 +217,10 @@ fn foreach_deterministic_output() {
     }];
     let mut b1 = SlotCompiler::new();
     let mut b2 = SlotCompiler::new();
-    let _ = lower_canonical_for_each(0, StepIdx::new(0), "0", None, &body, &mut b1);
-    let _ = lower_canonical_for_each(0, StepIdx::new(0), "0", None, &body, &mut b2);
+    assert!(lower_canonical_for_each(0, StepIdx::new(0), "0", None, &body, &mut b1).is_ok(),
+        "first compile must succeed");
+    assert!(lower_canonical_for_each(0, StepIdx::new(0), "0", None, &body, &mut b2).is_ok(),
+        "second compile must succeed");
     assert_eq!(b1.nodes.len(), b2.nodes.len(), "same input must produce same node count");
     for (i, (n1, n2)) in b1.nodes.iter().zip(b2.nodes.iter()).enumerate() {
         assert_eq!(n1.id, n2.id, "node {i} id must match");

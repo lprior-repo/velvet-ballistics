@@ -2461,3 +2461,93 @@ fn compile_workflow_choose_64_branches_accepted() -> Result<(), String> {
     assert_eq!(kinds[1], "Finish", "second node must be Finish");
     Ok(())
 }
+
+// ── vb-xi2f.21: nested for_each body lowering ──
+
+#[test]
+fn nested_for_each_body_lowers_to_final_ir() -> Result<(), String> {
+    let yaml = workflow_yaml(
+        "  - id: outer\n    for_each:\n      variable: item\n      input: \"0\"\n      steps:\n        - id: inner\n          for_each:\n            variable: sub\n            input: \"1\"\n            steps:\n              - id: capture\n                set:\n                  output: seen\n                  value: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
+    );
+    let workflow = compile_yaml(&yaml)?;
+    let parts = workflow.to_parts();
+
+    assert_eq!(parts.nodes.len(), 6, "nested for_each must produce 6 nodes");
+
+    let kinds = node_kind_names(parts.nodes.as_ref());
+    assert_eq!(kinds[0], "ForEachStart", "node 0: outer ForEachStart");
+    assert_eq!(kinds[1], "ForEachStart", "node 1: inner ForEachStart");
+    assert_eq!(kinds[2], "SetConst", "node 2: inner body SetConst");
+    assert_eq!(kinds[3], "ForEachNext", "node 3: inner ForEachNext");
+    assert_eq!(kinds[4], "ForEachNext", "node 4: outer ForEachNext");
+    assert_eq!(kinds[5], "Finish", "node 5: Finish");
+
+    match &parts.nodes[0].kind {
+        CompiledNodeKind::ForEachStart { body, done, .. } => {
+            assert_eq!(body.get(), 1, "outer ForEachStart.body must point to inner ForEachStart at 1");
+            assert_eq!(done.get(), 5, "outer ForEachStart.done must skip inner for_each → 5");
+        }
+        other => return Err(format!("expected outer ForEachStart at 0, got {other:?}")),
+    }
+
+    match &parts.nodes[1].kind {
+        CompiledNodeKind::ForEachStart { body, done, .. } => {
+            assert_eq!(body.get(), 2, "inner ForEachStart.body must point to SetConst at 2");
+            assert_eq!(done.get(), 4, "inner ForEachStart.done must point past inner ForEachNext to 4");
+        }
+        other => return Err(format!("expected inner ForEachStart at 1, got {other:?}")),
+    }
+
+    match &parts.nodes[3].kind {
+        CompiledNodeKind::ForEachNext { body, done, .. } => {
+            assert_eq!(body.get(), 2, "inner ForEachNext.body must point back to SetConst at 2");
+            assert_eq!(done.get(), 4, "inner ForEachNext.done must point past itself to 4");
+        }
+        other => return Err(format!("expected inner ForEachNext at 3, got {other:?}")),
+    }
+
+    match &parts.nodes[4].kind {
+        CompiledNodeKind::ForEachNext { body, done, .. } => {
+            assert_eq!(body.get(), 1, "outer ForEachNext.body must point back to inner ForEachStart at 1");
+            assert_eq!(done.get(), 5, "outer ForEachNext.done must point to Finish at 5");
+        }
+        other => return Err(format!("expected outer ForEachNext at 4, got {other:?}")),
+    }
+
+    Ok(())
+}
+
+#[test]
+fn nested_for_each_empty_body_returns_step_field_shape() -> Result<(), String> {
+    let yaml = workflow_yaml(
+        "  - id: outer\n    for_each:\n      variable: item\n      input: \"0\"\n      steps:\n        - id: inner\n          for_each:\n            variable: sub\n            input: \"1\"\n            steps: []\n  - id: done\n    finish:\n      result: 0\n",
+    );
+    let errors = compile_yaml_error(&yaml)?;
+    let first = first_compile_error(&errors)?;
+    match first {
+        CompileError::StepFieldShape { step, field, expected } => {
+            assert_eq!(*step, 0, "diagnostic must reference outer for_each step 0");
+            assert_eq!(*field, "steps", "field must be 'steps'");
+            assert!(expected.contains("exactly one"), "expected must mention body constraint");
+        }
+        other => return Err(format!("expected StepFieldShape, got {other:?}")),
+    }
+    Ok(())
+}
+
+#[test]
+fn nested_for_each_multi_step_body_returns_step_field_shape() -> Result<(), String> {
+    let yaml = workflow_yaml(
+        "  - id: outer\n    for_each:\n      variable: item\n      input: \"0\"\n      steps:\n        - id: inner\n          for_each:\n            variable: sub\n            input: \"1\"\n            steps:\n              - id: step_one\n                set:\n                  output: a\n                  value: \"1\"\n              - id: step_two\n                set:\n                  output: b\n                  value: \"2\"\n  - id: done\n    finish:\n      result: 0\n",
+    );
+    let errors = compile_yaml_error(&yaml)?;
+    let first = first_compile_error(&errors)?;
+    match first {
+        CompileError::StepFieldShape { step, field, .. } => {
+            assert_eq!(*step, 0, "multi-step inner body must error at outer for_each step 0");
+            assert_eq!(*field, "steps", "field must be 'steps'");
+        }
+        other => return Err(format!("expected StepFieldShape, got {other:?}")),
+    }
+    Ok(())
+}

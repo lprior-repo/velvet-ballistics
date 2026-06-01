@@ -179,8 +179,16 @@ pub(super) fn lower_canonical_for_each(
             limit: usize::from(u16::MAX),
         }])
     })?;
-    let next_offset = 1u16.saturating_add(body_width_val);
-    let done_offset = 2u16.saturating_add(body_width_val);
+    let next_offset = body_width_val.checked_add(1).ok_or_else(|| {
+        CompileErrors(vec![CompileError::StepIndexOutOfRange {
+            value: body_width_only,
+        }])
+    })?;
+    let done_offset = body_width_val.checked_add(2).ok_or_else(|| {
+        CompileErrors(vec![CompileError::StepIndexOutOfRange {
+            value: body_width_only,
+        }])
+    })?;
     let next_step =
         checked_step_offset(id, next_offset, "for_each", "next").map_err(|e| CompileErrors(vec![e]))?;
     let done =
