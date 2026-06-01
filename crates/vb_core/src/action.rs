@@ -609,7 +609,8 @@ fn check_output_size_in_bounds(actual_bytes: u32, max_bytes: u32) -> Result<(), 
 
 /// Checks that the supplied output taint is not a downgrade from the required taint.
 ///
-/// DeterministicPure actions additionally require that the input is Clean.
+/// DeterministicPure and IdempotentExternal actions additionally require that the
+/// input is Clean and the output is Clean.
 /// For all actions, the supplied taint must be at least as restrictive as the
 /// taint propagated from the input according to the idempotency contract.
 fn check_taint_downgrade(
@@ -617,13 +618,17 @@ fn check_taint_downgrade(
     input_taint: Taint,
     supplied: Taint,
 ) -> Result<(), ActionError> {
-    if idempotency == Idempotency::DeterministicPure && input_taint != Taint::Clean {
+    if (idempotency == Idempotency::DeterministicPure || idempotency == Idempotency::IdempotentExternal)
+        && input_taint != Taint::Clean
+    {
         return Err(ActionError::TaintViolation {
             required: Taint::Clean,
             supplied: input_taint,
         });
     }
-    if idempotency == Idempotency::DeterministicPure && supplied != Taint::Clean {
+    if (idempotency == Idempotency::DeterministicPure || idempotency == Idempotency::IdempotentExternal)
+        && supplied != Taint::Clean
+    {
         return Err(ActionError::TaintViolation {
             required: Taint::Clean,
             supplied,
