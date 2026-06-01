@@ -7538,6 +7538,7 @@ mod tests {
                 JournalError::HeaderChecksumMismatch => "header_checksum_mismatch",
                 JournalError::PayloadDigestMismatch => "payload_digest_mismatch",
                 JournalError::UnexpectedEof => "unexpected_eof",
+                JournalError::UnexpectedTrailingBytes => "unexpected_trailing_bytes",
                 JournalError::PostcardDecodeFailed => "postcard_decode_failed",
                 JournalError::InvalidEvent => "invalid_event",
                 JournalError::ArtifactMalformed => "artifact_malformed",

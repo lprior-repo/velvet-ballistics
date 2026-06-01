@@ -70,6 +70,9 @@ pub(crate) fn decode_record_payload(
         .get(payload_start..payload_end)
         .ok_or(JournalError::UnexpectedEof)?;
     verify_digest_match(payload, header.payload_digest)?;
+    if payload_end != bytes.len() {
+        return Err(JournalError::UnexpectedTrailingBytes);
+    }
     Ok((
         RecordEnvelope {
             magic: header.magic,

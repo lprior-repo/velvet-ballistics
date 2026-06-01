@@ -1237,7 +1237,7 @@ fn encode_rejects_payload_one_byte_over_max() -> Result<(), JournalError> {
 }
 
 #[test]
-fn decode_ignores_trailing_bytes_beyond_payload() -> Result<(), JournalError> {
+fn decode_rejects_trailing_bytes_beyond_payload() -> Result<(), JournalError> {
     let event = JournalEvent::RunCancelled {
         run: RunId::new(1),
         seq: EventSeq::new(0),
@@ -1251,16 +1251,19 @@ fn decode_ignores_trailing_bytes_beyond_payload() -> Result<(), JournalError> {
         &event,
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     )?;
-    // Append garbage after the valid record
     bytes.push(0xFF);
     bytes.push(0xFE);
     bytes.push(0xFD);
-    let (_, decoded) = decode_record::<JournalEvent>(
+    let result = decode_record::<JournalEvent>(
         &bytes,
         MAGIC_JOURNAL_EVENT,
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    )?;
-    assert_eq!(decoded, event, "trailing bytes should be ignored on decode");
+    );
+    assert!(
+        matches!(result, Err(JournalError::UnexpectedTrailingBytes)),
+        "trailing bytes should be rejected, got {:?}",
+        result
+    );
     Ok(())
 }
 
@@ -2500,6 +2503,88 @@ fn decode_with_valid_header_but_garbage_payload_fails() -> Result<(), JournalErr
     assert!(
         matches!(result, Err(JournalError::PostcardDecodeFailed)),
         "garbage payload with valid header should yield PostcardDecodeFailed, got {:?}",
+        result
+    );
+    Ok(())
+}
+
+#[test]
+fn decode_with_trailing_bytes_fails() -> Result<(), JournalError> {
+    let event = JournalEvent::RunCancelled {
+        run: RunId::new(1),
+        seq: EventSeq::new(0),
+        attempt: 1,
+        reason: None,
+    };
+    let mut bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunCancelled,
+        0,
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+
+    bytes.push(0xAB);
+
+    let result =
+        decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+    assert!(
+        matches!(result, Err(JournalError::UnexpectedTrailingBytes)),
+        "record with trailing byte should yield UnexpectedTrailingBytes, got {:?}",
+        result
+    );
+    Ok(())
+}
+
+#[test]
+fn decode_with_many_trailing_bytes_fails() -> Result<(), JournalError> {
+    let event = JournalEvent::RunCancelled {
+        run: RunId::new(1),
+        seq: EventSeq::new(0),
+        attempt: 1,
+        reason: None,
+    };
+    let mut bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunCancelled,
+        0,
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+
+    bytes.extend_from_slice(&[0xAB; 100]);
+
+    let result =
+        decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+    assert!(
+        matches!(result, Err(JournalError::UnexpectedTrailingBytes)),
+        "record with 100 trailing bytes should yield UnexpectedTrailingBytes, got {:?}",
+        result
+    );
+    Ok(())
+}
+
+#[test]
+fn decode_exact_payload_without_trailing_bytes_succeeds() -> Result<(), JournalError> {
+    let event = JournalEvent::RunCancelled {
+        run: RunId::new(1),
+        seq: EventSeq::new(0),
+        attempt: 1,
+        reason: None,
+    };
+    let bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunCancelled,
+        0,
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+
+    let result =
+        decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+    assert!(
+        result.is_ok(),
+        "record without trailing bytes should decode successfully, got {:?}",
         result
     );
     Ok(())

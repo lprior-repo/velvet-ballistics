@@ -44,6 +44,8 @@ impl JournalError {
     pub const PAYLOAD_DIGEST_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x4013);
     /// Diagnostic code for unexpected eof.
     pub const UNEXPECTED_EOF_CODE: DiagnosticCode = DiagnosticCode::new(0x4014);
+    /// Diagnostic code for unexpected trailing bytes.
+    pub const UNEXPECTED_TRAILING_BYTES_CODE: DiagnosticCode = DiagnosticCode::new(0x401E);
     /// Diagnostic code for postcard decode failed.
     pub const POSTCARD_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x4015);
     /// Diagnostic code for semantically invalid journal event (run_id=0, seq overflow, or attempt=0).
@@ -96,6 +98,7 @@ impl JournalError {
             Self::HeaderChecksumMismatch => Self::HEADER_CHECKSUM_MISMATCH_CODE,
             Self::PayloadDigestMismatch => Self::PAYLOAD_DIGEST_MISMATCH_CODE,
             Self::UnexpectedEof => Self::UNEXPECTED_EOF_CODE,
+            Self::UnexpectedTrailingBytes => Self::UNEXPECTED_TRAILING_BYTES_CODE,
             Self::PostcardDecodeFailed => Self::POSTCARD_DECODE_FAILED_CODE,
             Self::InvalidEvent => Self::INVALID_EVENT_CODE,
             Self::ArtifactMalformed => Self::ARTIFACT_MALFORMED_CODE,
@@ -150,6 +153,7 @@ impl JournalError {
             Self::HeaderChecksumMismatch => "HEADER_CHECKSUM_MISMATCH",
             Self::PayloadDigestMismatch => "PAYLOAD_DIGEST_MISMATCH",
             Self::UnexpectedEof => "UNEXPECTED_EOF",
+            Self::UnexpectedTrailingBytes => "UNEXPECTED_TRAILING_BYTES",
             Self::PostcardDecodeFailed => "POSTCARD_DECODE_FAILED",
             Self::InvalidEvent => "INVALID_JOURNAL_EVENT",
             Self::ArtifactMalformed => "ARTIFACT_MALFORMED",
