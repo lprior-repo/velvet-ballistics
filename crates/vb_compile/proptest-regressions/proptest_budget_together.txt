@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 6697194f71420bdd38b71058b8441fbdf81f62885c4a060d573ef89cc0a2b9f9 # shrinks to body = [StepAst { id: "together", name: None, condition: None, primitive: Together { branches: [TogetherBranch { label: "b0", steps: [StepAst { id: "s0.0", name: None, condition: None, primitive: Set { output: "x", value: "1" }, with: None, retry: None, on_error: None, then: None }, StepAst { id: "s0.1", name: None, condition: None, primitive: Set { output: "x", value: "1" }, with: None, retry: None, on_error: None, then: None }] }] }, with: None, retry: None, on_error: None, then: None }]

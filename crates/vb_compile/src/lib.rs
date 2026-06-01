@@ -33,6 +33,30 @@ mod proptest_finish_digest;
 #[cfg(test)]
 mod proptest_choose_lowering;
 
+// ── vb-xi2f.22: Nested Together Body Lowering proptest properties ──
+// RESOLVED (State 12 formal-verifier RETRY):
+// - `crate::compile` → `crate::SlotCompiler` (pub re-export at crate root)
+// - `part_01`/`part_04` private modules → items made pub(crate) + correct paths used
+// - Syntax error in proptest_together_errors.rs:101 → resolved (was cascading import error)
+#[cfg(test)]
+mod proptest_body_step_width;
+#[cfg(test)]
+mod proptest_body_dispatcher_together;
+#[cfg(test)]
+mod proptest_together_errors;
+#[cfg(test)]
+mod proptest_gate11_together;
+#[cfg(test)]
+mod proptest_budget_together;
+// ── end vb-xi2f.22 proptest properties ──
+
+// ── vb-xi2f.22: Flux refinement annotations ──
+// PO-001-F: body step width refinement (canonical_body_step_width for Together).
+mod body_step_width_flux;
+// PO-002-F: body dispatcher together refinement (emit_single_body_set for Together).
+mod body_dispatcher_together_flux;
+// ── end vb-xi2f.22 flux refinements ──
+
 // Kani harnesses for Finish digest verification (vb-xi2f.34).
 #[cfg(kani)]
 pub mod kani_finish_digest;
@@ -92,6 +116,39 @@ pub mod kani_wait_digest;
 // PO-001 through PO-005: digest_step_primitive Repeat { max_attempts, body }.
 #[cfg(kani)]
 pub mod kani_digest_repeat;
+
+// ── vb-xi2f.22: Nested Together Body Lowering Kani harnesses ──
+// Kani harness for PO-001-K: body step width acceptance (GOD RULE 1: varied primitives).
+#[cfg(kani)]
+pub mod body_step_width_kani;
+// Kani harness for PO-002-K: body dispatcher together acceptance.
+#[cfg(kani)]
+pub mod body_dispatcher_together_kani;
+// Kani harness for PO-003-K: width/node parity (TH-1 defense).
+#[cfg(kani)]
+pub mod width_parity_kani;
+// Kani harness for PO-004-K: emission order monotonicity.
+#[cfg(kani)]
+pub mod emit_order_together_kani;
+// Kani harness for PO-005-K: nested together 2-level lowering.
+#[cfg(kani)]
+pub mod nested_together_kani;
+// Kani harness for PO-006-K: together error paths panic-free.
+#[cfg(kani)]
+pub mod together_error_paths_kani;
+// Kani harness for PO-007-K: together digest nested.
+#[cfg(kani)]
+pub mod together_digest_nested_kani;
+// Kani harness for PO-008-K: gate 11 together body acceptance.
+#[cfg(kani)]
+pub mod gate11_together_kani;
+// Kani harness for PO-009-K: budget together body compliance.
+#[cfg(kani)]
+pub mod budget_together_kani;
+// Kani harness for PO-010-K: comprehensive panic-freedom.
+#[cfg(kani)]
+pub mod panic_free_together_lowering_kani;
+// ── end vb-xi2f.22 Kani harnesses ──
 
 pub use expression_bytecode::{compile_expr_to_bytecode, compile_expr_to_bytecode_with_accessors};
 

@@ -14,8 +14,8 @@
 #![forbid(unsafe_code)]
 
 use proptest::prelude::*;
-use vb_compile::mod_compile_lowering::part_04::emit_single_body_set;
-use vb_compile::compile::SlotCompiler;
+use crate::mod_compile_lowering::emit_single_body_set;
+use crate::SlotCompiler;
 use vb_core::ids::{SlotIdx, StepIdx};
 use vb_yaml::ast::{StepAst, StepPrimitive};
 

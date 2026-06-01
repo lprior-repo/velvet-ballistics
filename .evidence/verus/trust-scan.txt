@@ -1,1 +1,13 @@
-VERUS_TRUST_SCAN_OK no assume/external/axiom matches in verification/verus contracts/verus
+verification/verus/vb_compile/recursive_lowering_proof.rs:11://   Uses #[verifier::external_body] to declare the contract of
+verification/verus/vb_compile/recursive_lowering_proof.rs:75:#[verifier::external_body]
+verification/verus/vb_compile/emit_order_proof.rs:11://   Uses #[verifier::external_body] to declare the contract of
+verification/verus/vb_compile/emit_order_proof.rs:75:#[verifier::external_body]
+verification/verus/vb_compile/width_parity_proof.rs:11://   Uses #[verifier::external_body] to declare contracts for BOTH
+verification/verus/vb_compile/width_parity_proof.rs:60:#[verifier::external_body]
+verification/verus/vb_compile/width_parity_proof.rs:75:#[verifier::external_body]
+verification/verus/vb_compile/body_dispatcher_proof.rs:11://   Uses #[verifier::external_body] to declare the contract of the production
+verification/verus/vb_compile/body_dispatcher_proof.rs:70:#[verifier::external_body]
+verification/verus/vb_compile/body_dispatcher_proof.rs:146:// (part_04.rs:213) for Together via #[verifier::external_body].
+verification/verus/vb_compile/body_step_width_proof.rs:11://   Uses #[verifier::external_body] to declare the contract of the production
+verification/verus/vb_compile/body_step_width_proof.rs:72:#[verifier::external_body]
+verification/verus/vb_compile/body_step_width_proof.rs:150:// (part_01.rs:142) for Together via #[verifier::external_body].

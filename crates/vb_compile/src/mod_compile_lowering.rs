@@ -99,6 +99,17 @@ mod kani;
 #[cfg(test)]
 mod tests;
 
+// ── vb-xi2f.22: Nested Together Body Lowering tests ──
+#[cfg(test)]
+mod together_e2e_tests;
+#[cfg(test)]
+mod together_integration_tests;
+#[cfg(test)]
+mod together_lowering_tests;
+#[cfg(test)]
+mod together_width_tests;
+// ── end vb-xi2f.22 tests ──
+
 // Proptest for nested for_each round-trip properties (vb-xi2f.21).
 // Obligations: PO-007, PO-008, PO-013, PO-014.
 // State: 5 (proof-writer)

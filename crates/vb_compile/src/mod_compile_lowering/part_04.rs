@@ -215,7 +215,7 @@ pub(super) fn lower_canonical_ask(
     Ok(())
 }
 
-pub(super) fn emit_single_body_set(
+pub(crate) fn emit_single_body_set(
     body: &[vb_yaml::ast::StepAst],
     id: StepIdx,
     diagnostic_step: usize,
@@ -295,6 +295,30 @@ pub(super) fn emit_single_body_set(
             body,
             ..
         } => lower_canonical_for_each(diagnostic_step, id, input, *at_once, body, builder),
+        vb_yaml::ast::StepPrimitive::Together { branches } => {
+            // C-3: Width-node parity defense-in-depth (TH-1 mitigation).
+            // debug_assert_eq! is supplemental documentation in debug builds;
+            // the release path still relies on checked arithmetic and typed errors.
+            let nodes_before = builder.nodes.len();
+            let result =
+                emit_single_body_together(branches, id, diagnostic_step, slot, next, builder);
+            let nodes_after = builder.nodes.len();
+            if result.is_ok() {
+                if let Ok(expected_width) = canonical_body_step_width(&step.primitive) {
+                    #[cfg(not(kani))]
+                    debug_assert_eq!(
+                        expected_width,
+                        nodes_after - nodes_before,
+                        "together width mismatch: computed {}, emitted {}",
+                        expected_width,
+                        nodes_after - nodes_before,
+                    );
+                    #[cfg(kani)]
+                    let _ = (expected_width, nodes_after - nodes_before);
+                }
+            }
+            result
+        }
         other => Err(CompileErrors(vec![
             CompileError::UnsupportedStepPrimitive {
                 step: diagnostic_step,
@@ -444,6 +468,97 @@ pub(super) fn emit_reduce_body_steps(
                 }])
             })?;
     }
+    Ok(())
+}
+
+/// Lowers a nested `Together` primitive appearing inside a compound body position.
+///
+/// Emits: TogetherStart → (TogetherBranch + branch body)* → TogetherJoin.
+/// Uses the caller-provided accumulator `slot` and forwards `next` to the join node.
+pub(super) fn emit_single_body_together(
+    branches: &[vb_yaml::ast::TogetherBranch],
+    id: StepIdx,
+    diagnostic_step: usize,
+    slot: SlotIdx,
+    next: Option<StepIdx>,
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    if branches.is_empty() {
+        return Err(CompileErrors(vec![CompileError::StepFieldShape {
+            step: diagnostic_step,
+            field: "together.branches",
+            expected: "at least one branch",
+        }]));
+    }
+    let accumulator = slot;
+    builder.record_slot(accumulator);
+    let join_offset = together_join_offset(branches).map_err(|e| CompileErrors(vec![e]))?;
+    let join = checked_step_offset(id, join_offset, "together", "join")
+        .map_err(|e| CompileErrors(vec![e]))?;
+
+    // Collect branch target StepIdx values.
+    let mut branch_targets = Vec::with_capacity(branches.len());
+    let mut cursor = 1u16;
+    for branch in branches.iter() {
+        branch_targets.push(
+            checked_step_offset(id, cursor, "together", "branch")
+                .map_err(|e| CompileErrors(vec![e]))?,
+        );
+        let width =
+            u16::try_from(body_width(&branch.steps, 1).map_err(|e| CompileErrors(vec![e]))?)
+                .map_err(|_| {
+                    CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
+                        primitive: "together",
+                        field: "branches",
+                        value: branches.len(),
+                        limit: usize::from(u16::MAX),
+                    }])
+                })?;
+        cursor = cursor.checked_add(width).ok_or_else(|| {
+            CompileErrors(vec![CompileError::StepIndexOutOfRange {
+                value: diagnostic_step,
+            }])
+        })?;
+    }
+
+    let branch_count = u16::try_from(branches.len()).map_err(|_| {
+        CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
+            primitive: "together",
+            field: "branches",
+            value: branches.len(),
+            limit: usize::from(u16::MAX),
+        }])
+    })?;
+
+    // TogetherStart
+    builder.push_node(CompiledNode {
+        id,
+        output: Some(accumulator),
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::TogetherStart {
+            branches: branch_targets.into_boxed_slice(),
+            join,
+        },
+    });
+
+    // Emit each branch with its body.
+    emit_together_branches(id, branches, join, accumulator, diagnostic_step, builder)?;
+
+    // TogetherJoin
+    builder.push_node(CompiledNode {
+        id: join,
+        output: Some(accumulator),
+        next,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::TogetherJoin {
+            branch_count,
+            accumulator,
+        },
+    });
+
     Ok(())
 }
 

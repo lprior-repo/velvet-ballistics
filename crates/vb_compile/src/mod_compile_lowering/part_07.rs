@@ -183,7 +183,7 @@ pub fn validate_ir(parts: WorkflowParts) -> Result<CompiledWorkflow, CompileErro
 /// programs during step lowering.
 #[derive(Debug, Default)]
 pub struct SlotCompiler {
-    pub(super) nodes: Vec<CompiledNode>,
+    pub(crate) nodes: Vec<CompiledNode>,
     pub(super) constants: Vec<ConstValue>,
     pub(super) expressions: Vec<ExprProgram>,
     pub(super) accessors: Vec<AccessorProgram>,

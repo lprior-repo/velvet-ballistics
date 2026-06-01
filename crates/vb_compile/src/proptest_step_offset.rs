@@ -17,7 +17,7 @@
 #![forbid(unsafe_code)]
 
 use proptest::prelude::*;
-use vb_compile::mod_compile_lowering::part_03::checked_step_offset;
+use crate::mod_compile_lowering::checked_step_offset;
 use vb_core::ids::StepIdx;
 
 // ─────────────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@
 #![forbid(unsafe_code)]
 
 use proptest::prelude::*;
-use vb_compile::compile_workflow;
+use crate::compile_workflow;
 
 #[test]
 fn together_empty_branches() {

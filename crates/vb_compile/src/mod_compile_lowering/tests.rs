@@ -1912,15 +1912,15 @@ fn canonical_body_step_width_rejects_choose_with_unsupported_step_primitive() {
 
 #[test]
 fn canonical_body_step_width_rejects_together_with_unsupported_step_primitive() {
+    // Together is now supported in body position (vb-xi2f.22).
+    // Width computation succeeds; error handling for empty branches
+    // occurs at IR emission time (emit_single_body_together → StepFieldShape).
     let together = StepPrimitive::Together {
         branches: vec![],
     };
-    let result = canonical_body_step_width(&together);
-    match result {
-        Err(CompileError::UnsupportedStepPrimitive { primitive, .. }) => {
-            assert_eq!(primitive, "together", "primitive name must be 'together'");
-        }
-        other => panic!("expected UnsupportedStepPrimitive for Together, got: {other:?}"),
+    match canonical_body_step_width(&together) {
+        Ok(width) => assert_eq!(width, 2, "Together width with 0 branches is 2 (base)"),
+        Err(e) => panic!("Together width should succeed, got: {e:?}"),
     }
 }
 
