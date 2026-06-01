@@ -1,7 +1,6 @@
 //! Blake3 digest coherence tests (B25-B27).
 
 use crate::ids::{SlotIdx, StepIdx, WorkflowDigest};
-use crate::value::ConstValue;
 use crate::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
 fn make_minimal_workflow_parts(name: &str, entry: StepIdx, slot_count: u16) -> WorkflowParts {

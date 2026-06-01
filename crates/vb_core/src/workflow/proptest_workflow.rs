@@ -4,7 +4,7 @@ use super::super::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, ResourceContract, WorkflowError,
     WorkflowParts,
 };
-use super::tests::{assert_pairwise_distinct, resource_contract};
+use super::tests::resource_contract;
 use crate::ids::{ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
 use proptest::prelude::*;
 
