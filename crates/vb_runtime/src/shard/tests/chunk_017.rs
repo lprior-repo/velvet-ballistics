@@ -9,7 +9,7 @@ fn bh_shd_02_run_removed_from_map_during_drive() {
     let Some(workflow) = suspended_workflow() else {
         return;
     };
-    let run = super::RunId::new(802);
+    let run = RunId::new(802);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run,
@@ -34,7 +34,7 @@ fn bh_shd_03_action_failure_trace_events_count() {
     let Some(workflow) = suspended_workflow() else {
         return;
     };
-    let run = super::RunId::new(803);
+    let run = RunId::new(803);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run,
@@ -119,7 +119,7 @@ fn bh_shd_04_find_error_handler_linear_scan_fallback() {
         Ok(w) => w,
         Err(_) => return,
     };
-    let result = super::helpers::find_error_handler_for_failure(
+    let result = crate::shard::helpers::find_error_handler_for_failure(
         // The body step (step 1) is protected by the ErrorHandler at step 0.
         // Steps 2..N-1 are NOT protected since they are not the body.
         &workflow,
@@ -166,7 +166,7 @@ fn bh_shd_06_submit_with_inputs_writes_slots_before_validation() {
     let Some(workflow) = suspended_workflow() else {
         return;
     };
-    let run = super::RunId::new(806);
+    let run = RunId::new(806);
     assert_eq!(
         shard.enqueue(ShardCommand::SubmitWithInputs {
             run,
@@ -201,9 +201,9 @@ fn bh_shd_07_frame_pool_allocates_beyond_pool_capacity() {
     let mut pool = crate::frame_pool::FramePool::new(2, 1, 2)
         .ok()
         .unwrap_or_else(|| panic!("FramePool::new failed"));
-    let f1 = pool.take(super::RunId::new(1), vb_core::ids::StepIdx::ZERO);
-    let f2 = pool.take(super::RunId::new(2), vb_core::ids::StepIdx::ZERO);
-    let f3 = pool.take(super::RunId::new(3), vb_core::ids::StepIdx::ZERO);
+    let f1 = pool.take(RunId::new(1), vb_core::ids::StepIdx::ZERO);
+    let f2 = pool.take(RunId::new(2), vb_core::ids::StepIdx::ZERO);
+    let f3 = pool.take(RunId::new(3), vb_core::ids::StepIdx::ZERO);
     assert!(f1.is_ok(), "BH-SHD-07: f1 should succeed");
     assert!(f2.is_ok(), "BH-SHD-07: f2 should succeed");
     assert!(
@@ -221,7 +221,7 @@ fn bh_shd_08_pending_timers_last_wins_per_run() {
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         return;
     };
-    let run = super::RunId::new(808);
+    let run = RunId::new(808);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run,
@@ -235,9 +235,9 @@ fn bh_shd_08_pending_timers_last_wins_per_run() {
     let timer1 = shard.pending_timer_get(run);
     shard.pending_timer_insert(
         run,
-        super::types::PendingTimer {
+        crate::shard::types::PendingTimer {
             step: vb_core::ids::StepIdx::new(99),
-            kind: super::types::PendingTimerKind::Ask,
+            kind: crate::shard::types::PendingTimerKind::Ask,
             generation: 2,
             deadline: std::time::Instant::now(),
         },
@@ -256,7 +256,7 @@ fn bh_shd_08_pending_timers_last_wins_per_run() {
 fn bh_shd_09_ask_answer_for_nonexistent_run_errors() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let run = super::RunId::new(809);
+    let run = RunId::new(809);
     let answer = AskAnswer {
         ticket: AskTicket {
             run,

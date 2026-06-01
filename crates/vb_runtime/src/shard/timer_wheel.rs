@@ -164,6 +164,3 @@ impl Default for TimerWheel {
     }
 }
 
-#[cfg(test)]
-#[path = "tests.rs"]
-mod tests;

@@ -7,7 +7,7 @@ fn shard_submit_finish_then_inspect_counters() {
     let Some(wf) = finished_workflow() else {
         return;
     };
-    let run = super::RunId::new(1030);
+    let run = RunId::new(1030);
 
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -129,23 +129,23 @@ fn shard_config_new_accepts_max_step_budget() {
 #[test]
 fn pending_timer_kind_equality_and_inequality() {
     assert_eq!(
-        super::types::PendingTimerKind::Wait,
-        super::types::PendingTimerKind::Wait
+        crate::shard::types::PendingTimerKind::Wait,
+        crate::shard::types::PendingTimerKind::Wait
     );
     assert_eq!(
-        super::types::PendingTimerKind::Ask,
-        super::types::PendingTimerKind::Ask
+        crate::shard::types::PendingTimerKind::Ask,
+        crate::shard::types::PendingTimerKind::Ask
     );
     assert_ne!(
-        super::types::PendingTimerKind::Wait,
-        super::types::PendingTimerKind::Ask
+        crate::shard::types::PendingTimerKind::Wait,
+        crate::shard::types::PendingTimerKind::Ask
     );
 }
 
 #[test]
 fn pending_timer_kind_debug_format() {
-    let wait = super::types::PendingTimerKind::Wait;
-    let ask = super::types::PendingTimerKind::Ask;
+    let wait = crate::shard::types::PendingTimerKind::Wait;
+    let ask = crate::shard::types::PendingTimerKind::Ask;
     let wait_debug = format!("{wait:?}");
     let ask_debug = format!("{ask:?}");
     assert!(
@@ -161,15 +161,15 @@ fn pending_timer_kind_debug_format() {
 #[test]
 fn pending_timer_equality_same_fields() {
     let deadline = std::time::Instant::now();
-    let a = super::types::PendingTimer {
+    let a = crate::shard::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(3),
-        kind: super::types::PendingTimerKind::Wait,
+        kind: crate::shard::types::PendingTimerKind::Wait,
         generation: 1,
         deadline,
     };
-    let b = super::types::PendingTimer {
+    let b = crate::shard::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(3),
-        kind: super::types::PendingTimerKind::Wait,
+        kind: crate::shard::types::PendingTimerKind::Wait,
         generation: 1,
         deadline,
     };
@@ -178,15 +178,15 @@ fn pending_timer_equality_same_fields() {
 
 #[test]
 fn pending_timer_inequality_different_step() {
-    let a = super::types::PendingTimer {
+    let a = crate::shard::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(1),
-        kind: super::types::PendingTimerKind::Ask,
+        kind: crate::shard::types::PendingTimerKind::Ask,
         generation: 1,
         deadline: std::time::Instant::now(),
     };
-    let b = super::types::PendingTimer {
+    let b = crate::shard::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(2),
-        kind: super::types::PendingTimerKind::Ask,
+        kind: crate::shard::types::PendingTimerKind::Ask,
         generation: 1,
         deadline: a.deadline,
     };
@@ -195,15 +195,15 @@ fn pending_timer_inequality_different_step() {
 
 #[test]
 fn pending_timer_inequality_different_kind() {
-    let a = super::types::PendingTimer {
+    let a = crate::shard::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(5),
-        kind: super::types::PendingTimerKind::Wait,
+        kind: crate::shard::types::PendingTimerKind::Wait,
         generation: 1,
         deadline: std::time::Instant::now(),
     };
-    let b = super::types::PendingTimer {
+    let b = crate::shard::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(5),
-        kind: super::types::PendingTimerKind::Ask,
+        kind: crate::shard::types::PendingTimerKind::Ask,
         generation: 1,
         deadline: a.deadline,
     };
@@ -213,12 +213,12 @@ fn pending_timer_inequality_different_kind() {
 #[test]
 fn ask_ticket_equality_and_inequality() {
     let a = AskTicket {
-        run: super::RunId::new(10),
+        run: RunId::new(10),
         ask_step: vb_core::ids::StepIdx::new(1),
         resume_step: vb_core::ids::StepIdx::new(2),
     };
     let b = AskTicket {
-        run: super::RunId::new(10),
+        run: RunId::new(10),
         ask_step: vb_core::ids::StepIdx::new(1),
         resume_step: vb_core::ids::StepIdx::new(2),
     };
@@ -226,7 +226,7 @@ fn ask_ticket_equality_and_inequality() {
 
     // Different run
     let c = AskTicket {
-        run: super::RunId::new(11),
+        run: RunId::new(11),
         ask_step: vb_core::ids::StepIdx::new(1),
         resume_step: vb_core::ids::StepIdx::new(2),
     };
@@ -234,7 +234,7 @@ fn ask_ticket_equality_and_inequality() {
 
     // Different ask_step
     let d = AskTicket {
-        run: super::RunId::new(10),
+        run: RunId::new(10),
         ask_step: vb_core::ids::StepIdx::new(99),
         resume_step: vb_core::ids::StepIdx::new(2),
     };
@@ -242,7 +242,7 @@ fn ask_ticket_equality_and_inequality() {
 
     // Different resume_step
     let e = AskTicket {
-        run: super::RunId::new(10),
+        run: RunId::new(10),
         ask_step: vb_core::ids::StepIdx::new(1),
         resume_step: vb_core::ids::StepIdx::new(99),
     };
@@ -252,13 +252,13 @@ fn ask_ticket_equality_and_inequality() {
 #[test]
 fn inspect_snapshot_equality_and_debug() {
     let snap = InspectSnapshot {
-        run: super::RunId::new(42),
+        run: RunId::new(42),
         correlation: 7,
         pc: vb_core::ids::StepIdx::new(3),
         executed: 100,
     };
     let snap2 = InspectSnapshot {
-        run: super::RunId::new(42),
+        run: RunId::new(42),
         correlation: 7,
         pc: vb_core::ids::StepIdx::new(3),
         executed: 100,

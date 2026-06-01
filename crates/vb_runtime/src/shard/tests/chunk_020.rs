@@ -16,7 +16,7 @@ fn shard_frame_pool_metrics_after_submit_and_finish() {
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
-            run: super::RunId::new(980),
+            run: RunId::new(980),
             workflow: wf,
             caps: vb_core::capability::CapabilitySet::empty(),
         }),
@@ -45,7 +45,7 @@ fn shard_snapshot_after_error_handler_finish() {
     let Some(wf) = action_with_error_handler_workflow() else {
         return;
     };
-    let run = super::RunId::new(990);
+    let run = RunId::new(990);
 
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -100,7 +100,7 @@ fn shard_capacity_one_submit_cancel_submit_sequence() {
     let Some(wf1) = suspended_workflow() else {
         return;
     };
-    let run1 = super::RunId::new(1000);
+    let run1 = RunId::new(1000);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run: run1,
@@ -119,7 +119,7 @@ fn shard_capacity_one_submit_cancel_submit_sequence() {
     let Some(wf2) = finished_workflow() else {
         return;
     };
-    let run2 = super::RunId::new(1001);
+    let run2 = RunId::new(1001);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run: run2,
@@ -142,7 +142,7 @@ fn shard_pending_timer_fields_are_correct() {
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         return;
     };
-    let run = super::RunId::new(1010);
+    let run = RunId::new(1010);
 
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -158,7 +158,7 @@ fn shard_pending_timer_fields_are_correct() {
     match timer {
         Some(t) => {
             assert_eq!(t.step, vb_core::ids::StepIdx::new(1)); // WaitUntil is at step 1
-            assert_eq!(t.kind, super::types::PendingTimerKind::Wait);
+            assert_eq!(t.kind, crate::shard::types::PendingTimerKind::Wait);
         }
         None => assert!(false, "expected pending timer"),
     }
@@ -172,7 +172,7 @@ fn shard_ask_answered_with_i64_value() {
     let Some(workflow) = ask_then_finish_workflow() else {
         return;
     };
-    let run = super::RunId::new(1020);
+    let run = RunId::new(1020);
 
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {

@@ -9,13 +9,14 @@ use crate::journal::{NoopRuntimeJournal, RuntimeJournalEvent, SharedRuntimeJourn
 use crate::trace::{TraceEvent, TraceRing};
 use crate::RuntimeError;
 
-use super::{
-    AskAnswer, AskTicket, InspectResponse, InspectSnapshot, MAX_COMMAND_QUEUE_CAPACITY, RunState,
-    Shard, ShardCommand, ShardConfig,
+use crate::shard::{
+    AskAnswer, AskTicket, InspectResponse, InspectSnapshot, MAX_COMMAND_QUEUE_CAPACITY,
+    new_action_attempts, record_retry_attempt, RunId, RunState, Shard, ShardCommand, ShardConfig,
+    TimerTick,
 };
 use crate::shard::types::{PendingTimer, PendingTimerKind};
 
-fn timer_command(shard: &Shard, run: super::RunId) -> Option<ShardCommand> {
+fn timer_command(shard: &Shard, run: RunId) -> Option<ShardCommand> {
     let entry = shard.timer_entry(run)?;
     Some(ShardCommand::TimerFired {
         run: entry.run,
@@ -25,7 +26,7 @@ fn timer_command(shard: &Shard, run: super::RunId) -> Option<ShardCommand> {
     })
 }
 
-fn invalid_timer_command(run: super::RunId) -> ShardCommand {
+fn invalid_timer_command(run: RunId) -> ShardCommand {
     ShardCommand::TimerFired {
         run,
         generation: 0,
@@ -122,7 +123,7 @@ fn action_with_error_handler_workflow() -> Option<vb_core::workflow::CompiledWor
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
 }
 
-fn action_ticket(run: super::RunId, step: vb_core::ids::StepIdx) -> vb_core::action::ActionTicket {
+fn action_ticket(run: RunId, step: vb_core::ids::StepIdx) -> vb_core::action::ActionTicket {
     let seq = vb_core::ids::SeqNo::ZERO;
     let action = ActionId::new(0);
     vb_core::action::ActionTicket {
@@ -152,7 +153,7 @@ fn retry_attempt_counter_increments_until_policy_exhaustion() {
         return;
     };
     let frame = match vb_core::frame::RunFrame::new(
-        super::RunId::new(9),
+        RunId::new(9),
         vb_core::ids::StepIdx::ZERO,
         1,
         1,
@@ -164,13 +165,13 @@ fn retry_attempt_counter_increments_until_policy_exhaustion() {
         frame,
         workflow,
         store: vb_core::value_store::ValueStore::new(),
-        action_attempts: super::new_action_attempts(1),
+        action_attempts: new_action_attempts(1),
         admission: None,
         collect_states: crate::primitives::collect::CollectStates::new(),
         action_contracts: Box::new([]),
     };
     let ticket = vb_core::action::ActionTicket {
-        run: super::RunId::new(9),
+        run: RunId::new(9),
         step: vb_core::ids::StepIdx::ZERO,
         seq: vb_core::ids::SeqNo::new(1),
         action: ActionId::new(0),
@@ -184,12 +185,12 @@ fn retry_attempt_counter_increments_until_policy_exhaustion() {
         exponential_backoff: false,
     };
     assert_eq!(
-        super::record_retry_attempt(&mut state, ticket, policy),
+        record_retry_attempt(&mut state, ticket, policy),
         Ok(true)
     );
     assert_eq!(state.action_attempts.get(0).copied(), Some(2));
     assert_eq!(
-        super::record_retry_attempt(&mut state, ticket, policy),
+        record_retry_attempt(&mut state, ticket, policy),
         Ok(false)
     );
 }
@@ -201,7 +202,7 @@ fn action_failed_routes_to_nearby_error_handler() {
     let Some(workflow) = action_with_error_handler_workflow() else {
         return;
     };
-    let run = super::RunId::new(301);
+    let run = RunId::new(301);
 
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -232,7 +233,7 @@ fn action_failed_without_error_handler_fails_run() {
     let Some(workflow) = suspended_workflow() else {
         return;
     };
-    let run = super::RunId::new(302);
+    let run = RunId::new(302);
 
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -262,7 +263,7 @@ fn submit_rejects_duplicate_run_id() {
     let Some(workflow) = suspended_workflow() else {
         return;
     };
-    let run = super::RunId::new(451);
+    let run = RunId::new(451);
 
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {

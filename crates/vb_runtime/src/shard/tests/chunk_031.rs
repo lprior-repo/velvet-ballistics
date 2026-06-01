@@ -5,10 +5,8 @@
 // Tests for advance_clock_to, current_tick, next_pending_timer_generation
 // on Shard using pub(crate) access to pending_timers.
 
-use super::TimerTick;
-
-fn run_numeric(id: u64) -> super::RunId {
-    super::RunId::new(id)
+fn run_numeric(id: u64) -> RunId {
+    RunId::new(id)
 }
 
 // =========================================================================

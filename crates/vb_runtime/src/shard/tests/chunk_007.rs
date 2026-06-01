@@ -3,13 +3,13 @@ fn shard_command_equality_timer_fired() {
     // Given two identical TimerFired commands
     let deadline = std::time::Instant::now();
     let a = ShardCommand::TimerFired {
-        run: super::RunId::new(1),
+        run: RunId::new(1),
         generation: 1,
         deadline,
         kind: PendingTimerKind::Wait,
     };
     let b = ShardCommand::TimerFired {
-        run: super::RunId::new(1),
+        run: RunId::new(1),
         generation: 1,
         deadline,
         kind: PendingTimerKind::Wait,
@@ -21,10 +21,10 @@ fn shard_command_equality_timer_fired() {
 fn shard_command_equality_resume() {
     // Given two identical Resume commands
     let a = ShardCommand::Resume {
-        run: super::RunId::new(1),
+        run: RunId::new(1),
     };
     let b = ShardCommand::Resume {
-        run: super::RunId::new(1),
+        run: RunId::new(1),
     };
     assert_eq!(a, b);
 }
@@ -37,7 +37,7 @@ fn shard_cancel_nonexistent_does_not_increment_failed() {
     // When cancelling a non-existent run
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
-            run: super::RunId::new(999),
+            run: RunId::new(999),
             reason: None
         }),
         Ok(())
@@ -55,7 +55,7 @@ fn shard_finished_workflow_sets_completed_counter() {
     let Some(wf) = finished_workflow() else {
         return;
     };
-    let run = super::RunId::new(50);
+    let run = RunId::new(50);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run,
@@ -78,7 +78,7 @@ fn shard_finished_workflow_produces_run_finished_trace() {
     let Some(wf) = finished_workflow() else {
         return;
     };
-    let run = super::RunId::new(51);
+    let run = RunId::new(51);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run,
@@ -102,7 +102,7 @@ fn shard_inspect_response_not_found_for_unknown_run() {
     // When inspecting a non-existent run
     assert_eq!(
         shard.enqueue(ShardCommand::Inspect {
-            run: super::RunId::new(999),
+            run: RunId::new(999),
             correlation: 1
         }),
         Ok(())
@@ -112,7 +112,7 @@ fn shard_inspect_response_not_found_for_unknown_run() {
     assert_eq!(
         shard.take_inspect_response(),
         Some(InspectResponse::NotFound {
-            run: super::RunId::new(999),
+            run: RunId::new(999),
             correlation: 1
         })
     );
@@ -122,13 +122,13 @@ fn shard_inspect_response_not_found_for_unknown_run() {
 fn inspect_response_found_equality() {
     // Given two identical Found responses
     let a = InspectResponse::Found(InspectSnapshot {
-        run: super::RunId::new(1),
+        run: RunId::new(1),
         correlation: 42,
         pc: vb_core::ids::StepIdx::new(0),
         executed: 5,
     });
     let b = InspectResponse::Found(InspectSnapshot {
-        run: super::RunId::new(1),
+        run: RunId::new(1),
         correlation: 42,
         pc: vb_core::ids::StepIdx::new(0),
         executed: 5,
@@ -140,13 +140,13 @@ fn inspect_response_found_equality() {
 fn inspect_response_found_differs_executed() {
     // Given two Found responses with different executed counts
     let a = InspectResponse::Found(InspectSnapshot {
-        run: super::RunId::new(1),
+        run: RunId::new(1),
         correlation: 1,
         pc: vb_core::ids::StepIdx::new(0),
         executed: 5,
     });
     let b = InspectResponse::Found(InspectSnapshot {
-        run: super::RunId::new(1),
+        run: RunId::new(1),
         correlation: 1,
         pc: vb_core::ids::StepIdx::new(0),
         executed: 10,
@@ -158,11 +158,11 @@ fn inspect_response_found_differs_executed() {
 fn inspect_response_not_found_equality() {
     // Given two identical NotFound responses
     let a = InspectResponse::NotFound {
-        run: super::RunId::new(1),
+        run: RunId::new(1),
         correlation: 42,
     };
     let b = InspectResponse::NotFound {
-        run: super::RunId::new(1),
+        run: RunId::new(1),
         correlation: 42,
     };
     assert_eq!(a, b);
@@ -175,7 +175,7 @@ fn run_state_equality() {
         return;
     };
     let frame = match vb_core::frame::RunFrame::new(
-        super::RunId::new(1),
+        RunId::new(1),
         vb_core::ids::StepIdx::ZERO,
         4,
         1,
@@ -187,13 +187,13 @@ fn run_state_equality() {
         frame,
         workflow: wf.clone(),
         store: vb_core::value_store::ValueStore::new(),
-        action_attempts: super::new_action_attempts(4),
+        action_attempts: new_action_attempts(4),
         admission: None,
         collect_states: crate::primitives::collect::CollectStates::new(),
         action_contracts: Box::new([]),
     };
     let frame2 = match vb_core::frame::RunFrame::new(
-        super::RunId::new(1),
+        RunId::new(1),
         vb_core::ids::StepIdx::ZERO,
         4,
         1,
@@ -205,7 +205,7 @@ fn run_state_equality() {
         frame: frame2,
         workflow: wf,
         store: vb_core::value_store::ValueStore::new(),
-        action_attempts: super::new_action_attempts(4),
+        action_attempts: new_action_attempts(4),
         admission: None,
         collect_states: crate::primitives::collect::CollectStates::new(),
         action_contracts: Box::new([]),
@@ -225,7 +225,7 @@ fn shard_cancel_then_inspect_returns_not_found() {
     let Some(workflow) = suspended_workflow() else {
         return;
     };
-    let run = super::RunId::new(200);
+    let run = RunId::new(200);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run,
@@ -266,7 +266,7 @@ fn adversarial_shard_action_failed_for_unknown_run_returns_run_not_found() {
     let mut shard = Shard::new(config);
     // When failing an action for a non-existent run
     let ticket = vb_core::action::ActionTicket {
-        run: super::RunId::new(999),
+        run: RunId::new(999),
         step: vb_core::ids::StepIdx::ZERO,
         seq: vb_core::ids::SeqNo::ZERO,
         action: ActionId::new(0),

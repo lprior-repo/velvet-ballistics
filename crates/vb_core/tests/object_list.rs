@@ -1,11 +1,11 @@
 //! Tests for object_list module.
 
-use crate::errors::EngineError;
-use crate::ids::{RunId, SlotIdx, StepIdx, SymbolId};
-use crate::value::{SlotValue, Taint};
-use crate::value_store::ValueStore;
+use vb_core::errors::EngineError;
+use vb_core::ids::{RunId, SlotIdx, StepIdx, SymbolId};
+use vb_core::value::{SlotValue, Taint};
+use vb_core::value_store::ValueStore;
 
-use crate::engine::object_list::{build_list, build_list_with_taint, build_object, build_object_with_taint};
+use vb_core::engine::{build_list, build_list_with_taint, build_object, build_object_with_taint};
 
 fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
 where
@@ -18,8 +18,8 @@ where
     }
 }
 
-fn test_frame(slot_count: u16) -> Result<crate::frame::RunFrame, String> {
-    crate::frame::RunFrame::new(RunId::new(1), StepIdx::new(0), 1, slot_count)
+fn test_frame(slot_count: u16) -> Result<vb_core::frame::RunFrame, String> {
+    vb_core::frame::RunFrame::new(RunId::new(1), StepIdx::new(0), 1, slot_count)
         .map_err(|e| e.to_string())
 }
 

@@ -14,7 +14,7 @@ fn shard_rejects_active_run_capacity_overflow() {
     };
 
     let first = shard.enqueue(ShardCommand::Submit {
-        run: super::RunId::new(1),
+        run: RunId::new(1),
         workflow: workflow.clone(),
         caps: vb_core::capability::CapabilitySet::empty(),
     });
@@ -22,7 +22,7 @@ fn shard_rejects_active_run_capacity_overflow() {
     assert_eq!(shard.tick(), Ok(true));
 
     let second = shard.enqueue(ShardCommand::Submit {
-        run: super::RunId::new(2),
+        run: RunId::new(2),
         workflow,
         caps: vb_core::capability::CapabilitySet::empty(),
     });
@@ -46,7 +46,7 @@ fn inspect_command_stores_retrievable_snapshot() {
     let Some(workflow) = suspended_workflow() else {
         return;
     };
-    let run = super::RunId::new(7);
+    let run = RunId::new(7);
 
     let submitted = shard.enqueue(ShardCommand::Submit {
         run,
@@ -100,7 +100,7 @@ fn cancel_nonexistent_run_returns_run_not_found() {
     let mut shard = Shard::new(config);
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
-            run: super::RunId::new(999),
+            run: RunId::new(999),
         reason: None}),
         Ok(())
     );
@@ -120,7 +120,7 @@ fn counters_reflect_submitted_after_submit_tick() {
     let Some(workflow) = suspended_workflow() else {
         return;
     };
-    let run = super::RunId::new(1);
+    let run = RunId::new(1);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run,
@@ -145,7 +145,7 @@ fn inspect_nonexistent_run_returns_not_found() {
     let mut shard = Shard::new(config);
     assert_eq!(
         shard.enqueue(ShardCommand::Inspect {
-            run: super::RunId::new(999),
+            run: RunId::new(999),
             correlation: 42,
         }),
         Ok(())
@@ -154,7 +154,7 @@ fn inspect_nonexistent_run_returns_not_found() {
     assert_eq!(
         shard.take_inspect_response(),
         Some(InspectResponse::NotFound {
-            run: super::RunId::new(999),
+            run: RunId::new(999),
             correlation: 42,
         })
     );

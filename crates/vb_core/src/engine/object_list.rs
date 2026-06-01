@@ -48,7 +48,7 @@ pub fn build_object(
 }
 
 /// Constructs an object handle and joins taint from all field source slots.
-pub(crate) fn build_object_with_taint(
+pub fn build_object_with_taint(
     store: &mut ValueStore,
     run: &crate::RunFrame,
     fields: &[(SymbolId, SlotIdx)],
@@ -120,7 +120,7 @@ pub fn build_list(
 }
 
 /// Constructs a list handle and joins taint from all item source slots.
-pub(crate) fn build_list_with_taint(
+pub fn build_list_with_taint(
     store: &mut ValueStore,
     run: &crate::RunFrame,
     items: &[SlotIdx],
