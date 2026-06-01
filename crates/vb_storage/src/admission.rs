@@ -5,7 +5,10 @@
 
 use std::fmt;
 
-use crate::{error::JournalError, records::CompiledIrRecord, types::EventSeq};
+use crate::{
+    constants::MAX_COMPILED_IR_BYTES, error::JournalError, records::CompiledIrRecord,
+    types::EventSeq,
+};
 
 use crate::journal::FjallJournal;
 use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
@@ -200,21 +203,13 @@ pub struct AcceptedArtifact {
 /// GAP-003 FIX: Added per review finding that `AcceptedArtifact` must bind
 /// to the policy digest that governed admission. The policy digest is derived
 /// from the resource contract by hashing its canonical serialization.
-#[must_use]
-pub fn compute_policy_digest(workflow: &vb_core::CompiledWorkflow) -> vb_core::WorkflowDigest {
-    // Serialize the resource contract to bytes for hashing.
-    let contract_bytes =
-        postcard::to_allocvec(&workflow.resource_contract()).unwrap_or_else(|_| {
-            // Fallback: serialize the entire workflow parts and extract resource_contract field
-            // This should never fail as ResourceContract serializes without error
-            let parts = workflow.to_parts();
-            postcard::to_allocvec(&parts.resource_contract).unwrap_or_else(|_| {
-                // Absolute fallback: use zero digest if serialization fails
-                vec![0u8; 32]
-            })
-        });
+pub fn compute_policy_digest(
+    workflow: &vb_core::CompiledWorkflow,
+) -> Result<vb_core::WorkflowDigest, JournalError> {
+    let contract_bytes = postcard::to_allocvec(&workflow.resource_contract())
+        .map_err(|_| JournalError::ArtifactMalformed)?;
     let hash = blake3::hash(&contract_bytes);
-    vb_core::WorkflowDigest::from_bytes(*hash.as_bytes())
+    Ok(vb_core::WorkflowDigest::from_bytes(*hash.as_bytes()))
 }
 
 /// Number of verification gates in the accepted artifact v1 admission flow.
@@ -248,95 +243,257 @@ pub fn submit_artifact_with_contracts(
     policy: vb_core::RuntimePolicy,
     action_contracts: &[ActionContract],
 ) -> Result<AcceptedArtifact, JournalError> {
-    let required_capabilities = required_capabilities_from_contracts(action_contracts)?;
-    let idempotency_evidence = idempotency_evidence_from_contracts(action_contracts)?;
+    let admission_inputs = admission_inputs_from_contracts(action_contracts)?;
+    submit_artifact_for_policy(journal, workflow, policy, admission_inputs)
+}
+
+fn admission_inputs_from_contracts(
+    action_contracts: &[ActionContract],
+) -> Result<AdmissionInputs, JournalError> {
+    Ok(AdmissionInputs {
+        required_capabilities: required_capabilities_from_contracts(action_contracts)?,
+        idempotency_evidence: idempotency_evidence_from_contracts(action_contracts)?,
+    })
+}
+
+fn submit_artifact_for_policy(
+    journal: &FjallJournal,
+    workflow: &vb_core::CompiledWorkflow,
+    policy: vb_core::RuntimePolicy,
+    admission_inputs: AdmissionInputs,
+) -> Result<AcceptedArtifact, JournalError> {
     match policy {
-        vb_core::RuntimePolicy::Relaxed => {
-            // Relaxed: skip gate validation, no durability, gate_count=0
-            let parts = workflow.to_parts();
-            let ir_bytes =
-                postcard::to_allocvec(&parts).map_err(|_| JournalError::ArtifactMalformed)?;
-            let mut proof = VerificationProof::new(workflow.digest(), 0, false);
-            proof.idempotency_keyed = idempotency_evidence.keyed.clone();
-            proof.idempotency_attested = idempotency_evidence.attested.clone();
-            let artifact = AcceptedArtifact {
-                digest: workflow.digest(),
-                source_digest: workflow.digest(),
-                policy_digest: compute_policy_digest(workflow),
-                ir: ir_bytes,
-                verification: proof,
-                accepted_at_seq: EventSeq::new(0),
-                required_capabilities,
-            };
-            let artifact_bytes =
-                postcard::to_allocvec(&artifact).map_err(|_| JournalError::ArtifactMalformed)?;
-            let record = CompiledIrRecord {
-                digest: workflow.digest(),
-                ir: artifact_bytes,
-            };
-            journal.put_compiled_ir(&record)?;
-            Ok(artifact)
-        }
+        vb_core::RuntimePolicy::Relaxed => admission_inputs.submit_relaxed(journal, workflow),
         vb_core::RuntimePolicy::Journaled | vb_core::RuntimePolicy::Strict => {
-            let parts = workflow.to_parts();
-
-            vb_core::CompiledWorkflow::try_from_parts(parts.clone())
-                .map_err(|_| JournalError::ArtifactMalformed)?;
-
-            let mut parts_for_hash = parts.clone();
-            parts_for_hash.digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
-            let hash_bytes = postcard::to_allocvec(&parts_for_hash)
-                .map_err(|_| JournalError::ArtifactMalformed)?;
-            let computed = blake3::hash(&hash_bytes);
-            if computed.as_bytes() != &workflow.digest().as_bytes() {
-                return Err(JournalError::ArtifactChecksumMismatch);
-            }
-
-            let durable = policy == vb_core::RuntimePolicy::Strict;
-
-            let mut proof =
-                VerificationProof::new(workflow.digest(), ADMISSION_GATE_COUNT, durable);
-            proof.idempotency_keyed = idempotency_evidence.keyed;
-            proof.idempotency_attested = idempotency_evidence.attested;
-
-            let ir_bytes =
-                postcard::to_allocvec(&parts).map_err(|_| JournalError::ArtifactMalformed)?;
-
-            let artifact = AcceptedArtifact {
-                digest: workflow.digest(),
-                source_digest: workflow.digest(),
-                policy_digest: compute_policy_digest(workflow),
-                ir: ir_bytes,
-                verification: proof,
-                accepted_at_seq: EventSeq::new(0),
-                required_capabilities,
-            };
-
-            let artifact_bytes =
-                postcard::to_allocvec(&artifact).map_err(|_| JournalError::ArtifactMalformed)?;
-            let record = CompiledIrRecord {
-                digest: workflow.digest(),
-                ir: artifact_bytes,
-            };
-            journal.put_compiled_ir(&record)?;
-
-            if durable {
-                journal.persist_strict()?;
-            }
-
-            let stored = journal
-                .compiled_ir(workflow.digest())
-                .map_err(|_| JournalError::ArtifactMalformed)?;
-            if stored.is_none() {
-                return Err(JournalError::ArtifactMalformed);
-            }
-
-            Ok(artifact)
+            admission_inputs.submit_checked(journal, workflow, policy)
         }
         // `RuntimePolicy` is `#[non_exhaustive]`; unknown variants
         // fail closed rather than silently accept malformed artifacts.
         _ => Err(JournalError::ArtifactMalformed),
     }
+}
+
+fn submit_relaxed_artifact_with_evidence(
+    journal: &FjallJournal,
+    workflow: &vb_core::CompiledWorkflow,
+    required_capabilities: Box<[vb_core::capability::Capability]>,
+    idempotency_evidence: &IdempotencyEvidence,
+) -> Result<AcceptedArtifact, JournalError> {
+    let parts = workflow.to_parts();
+    let ir_bytes = canonical_workflow_ir_bytes(&parts)?;
+    let mut proof = VerificationProof::new(workflow.digest(), 0, false);
+    proof.idempotency_keyed = idempotency_evidence.keyed.clone();
+    proof.idempotency_attested = idempotency_evidence.attested.clone();
+    let artifact = accepted_artifact(workflow, ir_bytes, proof, required_capabilities)?;
+    persist_accepted_artifact_ir(journal, &artifact)?;
+    Ok(artifact)
+}
+
+fn submit_checked_artifact_with_evidence(
+    journal: &FjallJournal,
+    workflow: &vb_core::CompiledWorkflow,
+    policy: vb_core::RuntimePolicy,
+    required_capabilities: Box<[vb_core::capability::Capability]>,
+    idempotency_evidence: IdempotencyEvidence,
+) -> Result<AcceptedArtifact, JournalError> {
+    let ir_bytes = validate_workflow_artifact_bytes(workflow)?;
+    let durable = policy == vb_core::RuntimePolicy::Strict;
+    let mut proof = VerificationProof::new(workflow.digest(), ADMISSION_GATE_COUNT, durable);
+    proof.idempotency_keyed = idempotency_evidence.keyed;
+    proof.idempotency_attested = idempotency_evidence.attested;
+    let artifact = accepted_artifact(workflow, ir_bytes, proof, required_capabilities)?;
+    persist_accepted_artifact_ir(journal, &artifact)?;
+    if durable {
+        journal.persist_strict()?;
+    }
+    verify_persisted_artifact_present(journal, workflow.digest())?;
+    Ok(artifact)
+}
+
+fn validate_workflow_artifact_bytes(
+    workflow: &vb_core::CompiledWorkflow,
+) -> Result<Vec<u8>, JournalError> {
+    let parts = workflow.to_parts();
+    vb_core::CompiledWorkflow::try_from_parts(parts.clone())
+        .map_err(|_| JournalError::ArtifactMalformed)?;
+    let ir_bytes = canonical_workflow_ir_bytes(&parts)?;
+    let computed = blake3::hash(&ir_bytes);
+    if computed.as_bytes() == &workflow.digest().as_bytes() {
+        Ok(ir_bytes)
+    } else {
+        Err(JournalError::ArtifactChecksumMismatch)
+    }
+}
+
+fn accepted_artifact(
+    workflow: &vb_core::CompiledWorkflow,
+    ir: Vec<u8>,
+    verification: VerificationProof,
+    required_capabilities: Box<[vb_core::capability::Capability]>,
+) -> Result<AcceptedArtifact, JournalError> {
+    Ok(AcceptedArtifact {
+        digest: workflow.digest(),
+        source_digest: workflow.digest(),
+        policy_digest: compute_policy_digest(workflow)?,
+        ir,
+        verification,
+        accepted_at_seq: EventSeq::new(0),
+        required_capabilities,
+    })
+}
+
+fn persist_accepted_artifact_ir(
+    journal: &FjallJournal,
+    artifact: &AcceptedArtifact,
+) -> Result<(), JournalError> {
+    let envelope = serialize_accepted_artifact(artifact)?;
+    let record = CompiledIrRecord {
+        digest: artifact.digest,
+        ir: envelope,
+    };
+    journal.put_compiled_ir(&record)
+}
+
+fn serialize_accepted_artifact(artifact: &AcceptedArtifact) -> Result<Vec<u8>, JournalError> {
+    postcard::to_allocvec(artifact).map_err(|_| JournalError::ArtifactMalformed)
+}
+
+pub(crate) fn validate_compiled_ir_record(record: &CompiledIrRecord) -> Result<(), JournalError> {
+    reject_oversized_compiled_ir_value(record.ir.len())?;
+    let artifact = decode_accepted_artifact_envelope(&record.ir)?;
+    validate_accepted_artifact_digest(&artifact, record.digest)
+}
+
+fn decode_accepted_artifact_envelope(bytes: &[u8]) -> Result<AcceptedArtifact, JournalError> {
+    let (artifact, remaining) =
+        postcard::take_from_bytes(bytes).map_err(|_| JournalError::ArtifactMalformed)?;
+    let declared_end = bytes
+        .len()
+        .checked_sub(remaining.len())
+        .ok_or(JournalError::UnexpectedEof)?;
+    crate::codec::payload::reject_trailing_bytes(declared_end, bytes.len())?;
+    Ok(artifact)
+}
+
+fn reject_oversized_compiled_ir_value(len: usize) -> Result<(), JournalError> {
+    let payload_len = u32::try_from(len).map_err(|_| JournalError::PayloadTooLarge {
+        len: u32::MAX,
+        max: MAX_COMPILED_IR_BYTES,
+    })?;
+    if payload_len > MAX_COMPILED_IR_BYTES {
+        Err(JournalError::PayloadTooLarge {
+            len: payload_len,
+            max: MAX_COMPILED_IR_BYTES,
+        })
+    } else {
+        Ok(())
+    }
+}
+
+fn validate_accepted_artifact_digest(
+    artifact: &AcceptedArtifact,
+    digest: vb_core::WorkflowDigest,
+) -> Result<(), JournalError> {
+    validate_accepted_artifact_metadata(artifact)?;
+    if artifact.digest != digest || artifact.verification.digest != digest {
+        return Err(JournalError::ArtifactChecksumMismatch);
+    }
+    let computed = blake3::hash(&artifact.ir);
+    if computed.as_bytes() == &digest.as_bytes() {
+        Ok(())
+    } else {
+        Err(JournalError::ArtifactChecksumMismatch)
+    }
+}
+
+fn validate_accepted_artifact_metadata(artifact: &AcceptedArtifact) -> Result<(), JournalError> {
+    if artifact.source_digest != artifact.digest {
+        return Err(JournalError::ArtifactMalformed);
+    }
+    validate_artifact_policy_digest(artifact)?;
+    validate_verification_proof(&artifact.verification)
+}
+
+fn validate_artifact_policy_digest(artifact: &AcceptedArtifact) -> Result<(), JournalError> {
+    let workflow = workflow_from_artifact_ir(artifact)?;
+    if artifact.policy_digest == compute_policy_digest(&workflow)? {
+        Ok(())
+    } else {
+        Err(JournalError::ArtifactMalformed)
+    }
+}
+
+fn workflow_from_artifact_ir(
+    artifact: &AcceptedArtifact,
+) -> Result<vb_core::CompiledWorkflow, JournalError> {
+    let (mut parts, remaining) = postcard::take_from_bytes::<vb_core::WorkflowParts>(&artifact.ir)
+        .map_err(|_| JournalError::ArtifactMalformed)?;
+    let declared_end = artifact
+        .ir
+        .len()
+        .checked_sub(remaining.len())
+        .ok_or(JournalError::UnexpectedEof)?;
+    crate::codec::payload::reject_trailing_bytes(declared_end, artifact.ir.len())?;
+    parts.digest = artifact.digest;
+    vb_core::CompiledWorkflow::try_from_parts(parts).map_err(|_| JournalError::ArtifactMalformed)
+}
+
+fn validate_verification_proof(proof: &VerificationProof) -> Result<(), JournalError> {
+    if !is_accepted_gate_count(proof.gate_count) {
+        return Err(JournalError::InvalidGateCount {
+            found: proof.gate_count,
+        });
+    }
+    if proof.gate_count == 0 && proof.durable {
+        return Err(JournalError::ArtifactMalformed);
+    }
+    if let Some(flag) = missing_proof_flag(proof) {
+        return Err(JournalError::MissingRequiredProofFlag { flag });
+    }
+    if !proof.warnings.iter().all(VerificationWarning::is_valid) {
+        return Err(JournalError::ArtifactMalformed);
+    }
+    Ok(())
+}
+
+fn missing_proof_flag(proof: &VerificationProof) -> Option<&'static str> {
+    if !proof.bounded_claimed {
+        Some("bounded")
+    } else if !proof.taint_safe_claimed {
+        Some("taint_safe")
+    } else if !proof.retry_safe_claimed {
+        Some("retry_safe")
+    } else if !proof.idempotency_verified_claimed {
+        Some("idempotency_verified")
+    } else if !proof.replayable_claimed {
+        Some("replayable")
+    } else {
+        None
+    }
+}
+
+fn is_accepted_gate_count(gate_count: u8) -> bool {
+    gate_count == 0 || gate_count == ADMISSION_GATE_COUNT
+}
+
+fn verify_persisted_artifact_present(
+    journal: &FjallJournal,
+    digest: vb_core::WorkflowDigest,
+) -> Result<(), JournalError> {
+    let stored = journal
+        .compiled_ir(digest)
+        .map_err(|_| JournalError::ArtifactMalformed)?;
+    if stored.is_some() {
+        Ok(())
+    } else {
+        Err(JournalError::ArtifactMalformed)
+    }
+}
+
+fn canonical_workflow_ir_bytes(parts: &vb_core::WorkflowParts) -> Result<Vec<u8>, JournalError> {
+    let mut parts_for_hash = parts.clone();
+    parts_for_hash.digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
+    postcard::to_allocvec(&parts_for_hash).map_err(|_| JournalError::ArtifactMalformed)
 }
 
 fn required_capabilities_from_contracts(
@@ -364,6 +521,43 @@ fn required_capabilities_from_contracts(
 struct IdempotencyEvidence {
     keyed: Box<[vb_core::ActionId]>,
     attested: Box<[vb_core::ActionId]>,
+}
+
+#[derive(Debug, Clone)]
+struct AdmissionInputs {
+    required_capabilities: Box<[vb_core::capability::Capability]>,
+    idempotency_evidence: IdempotencyEvidence,
+}
+
+impl AdmissionInputs {
+    fn submit_relaxed(
+        self,
+        journal: &FjallJournal,
+        workflow: &vb_core::CompiledWorkflow,
+    ) -> Result<AcceptedArtifact, JournalError> {
+        let evidence = self.idempotency_evidence;
+        submit_relaxed_artifact_with_evidence(
+            journal,
+            workflow,
+            self.required_capabilities,
+            &evidence,
+        )
+    }
+
+    fn submit_checked(
+        self,
+        journal: &FjallJournal,
+        workflow: &vb_core::CompiledWorkflow,
+        policy: vb_core::RuntimePolicy,
+    ) -> Result<AcceptedArtifact, JournalError> {
+        submit_checked_artifact_with_evidence(
+            journal,
+            workflow,
+            policy,
+            self.required_capabilities,
+            self.idempotency_evidence,
+        )
+    }
 }
 
 fn idempotency_evidence_from_contracts(
@@ -424,33 +618,8 @@ pub fn admit_compiled_artifact(
     journal: &FjallJournal,
     workflow: &vb_core::CompiledWorkflow,
 ) -> Result<vb_core::WorkflowDigest, JournalError> {
-    let parts = workflow.to_parts();
-
-    // Structure validation: must reconstruct successfully.
-    vb_core::CompiledWorkflow::try_from_parts(parts.clone())
-        .map_err(|_| JournalError::ArtifactMalformed)?;
-
-    // Checksum validation: hash content fields (digest zeroed) and compare
-    // to the claimed digest to avoid the circular dependency where the digest
-    // field is part of its own hash input.
-    let mut parts_for_hash = parts.clone();
-    parts_for_hash.digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
-    let hash_bytes =
-        postcard::to_allocvec(&parts_for_hash).map_err(|_| JournalError::ArtifactMalformed)?;
-    let computed = blake3::hash(&hash_bytes);
-    if computed.as_bytes() != &workflow.digest().as_bytes() {
-        return Err(JournalError::ArtifactChecksumMismatch);
-    }
-
-    // Persist accepted artifact with full serialization (includes digest).
-    let bytes = postcard::to_allocvec(&parts).map_err(|_| JournalError::ArtifactMalformed)?;
-    let record = CompiledIrRecord {
-        digest: workflow.digest(),
-        ir: bytes,
-    };
-    journal.put_compiled_ir(&record)?;
-
-    Ok(workflow.digest())
+    let artifact = submit_artifact(journal, workflow, vb_core::RuntimePolicy::Journaled)?;
+    Ok(artifact.digest)
 }
 
 #[cfg(test)]

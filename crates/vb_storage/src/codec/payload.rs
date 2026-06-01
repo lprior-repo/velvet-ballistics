@@ -3,7 +3,7 @@ use crate::{
     constants::{DIGEST_BYTES, RECORD_HEADER_BYTES},
     error::JournalError,
     records::RecordKind,
-    types::RecordEnvelope,
+    types::{RecordEnvelope, RecordHeader},
 };
 
 pub fn verify_digest_match(
@@ -53,6 +53,15 @@ pub(crate) fn encode_record_payload(
     Ok(encoded)
 }
 
+fn envelope_from_header(header: &RecordHeader) -> RecordEnvelope {
+    RecordEnvelope {
+        magic: header.magic,
+        schema_version: header.schema_version,
+        record_kind: header.record_kind,
+        sequence: header.sequence,
+    }
+}
+
 pub(crate) fn decode_record_payload(
     bytes: &[u8],
     expected_magic: u32,
@@ -70,16 +79,30 @@ pub(crate) fn decode_record_payload(
         .get(payload_start..payload_end)
         .ok_or(JournalError::UnexpectedEof)?;
     verify_digest_match(payload, header.payload_digest)?;
-    if payload_end != bytes.len() {
-        return Err(JournalError::UnexpectedTrailingBytes);
+    reject_trailing_bytes(payload_end, bytes.len())?;
+    Ok((envelope_from_header(&header), payload))
+}
+
+pub(crate) fn reject_trailing_bytes(
+    declared_end: usize,
+    actual_len: usize,
+) -> Result<(), JournalError> {
+    match trailing_byte_bounds(declared_end, actual_len) {
+        None => Ok(()),
+        Some((declared_end, actual_len)) => Err(JournalError::UnexpectedTrailingBytes {
+            declared_end,
+            actual_len,
+        }),
     }
-    Ok((
-        RecordEnvelope {
-            magic: header.magic,
-            schema_version: header.schema_version,
-            record_kind: header.record_kind,
-            sequence: header.sequence,
-        },
-        payload,
-    ))
+}
+
+pub(crate) const fn trailing_byte_bounds(
+    declared_end: usize,
+    actual_len: usize,
+) -> Option<(usize, usize)> {
+    if actual_len > declared_end {
+        Some((declared_end, actual_len))
+    } else {
+        None
+    }
 }

@@ -11,15 +11,13 @@
 #[cfg(test)]
 mod edge_case_tests {
     use crate::{
-        BlobRecord, CompiledIrRecord, EventSeq, FjallJournal, JournalError, JournalEvent,
-        JournalWriterQueue, RecordKind, RunHeaderRecord, RunSnapshot, StorageLimits,
-        WorkflowSourceRecord, MAGIC_BLOB, MAGIC_JOURNAL_EVENT,
-        MAGIC_INDEX_RECORD,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_RUN_HEADER_BYTES,
-        DIGEST_BYTES, decode_record, encode_record,
+        BlobRecord, DIGEST_BYTES, EventSeq, FjallJournal, JournalError, JournalEvent,
+        JournalWriterQueue, MAGIC_BLOB, MAGIC_INDEX_RECORD, MAGIC_JOURNAL_EVENT,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_RUN_HEADER_BYTES, RecordKind, RunHeaderRecord,
+        RunSnapshot, StorageLimits, WorkflowSourceRecord, decode_record, encode_record,
     };
-    use std::thread;
     use std::sync::Arc;
+    use std::thread;
     use vb_core::{RunId, StepIdx, WorkflowDigest, WorkflowId};
 
     fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
@@ -41,7 +39,9 @@ mod edge_case_tests {
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([0u8; 32]),
         };
-        journal.append_journaled(&event).expect("append should succeed");
+        journal
+            .append_journaled(&event)
+            .expect("append should succeed");
 
         journal.fail_next_persist_for_test();
         let result = journal.persist_strict();
@@ -50,7 +50,9 @@ mod edge_case_tests {
             "simulated disk failure must yield StrictDurabilityFailed"
         );
 
-        let replayed = journal.events_for_run(run).expect("replay after failure should succeed");
+        let replayed = journal
+            .events_for_run(run)
+            .expect("replay after failure should succeed");
         assert_eq!(replayed.len(), 1, "event should still be in WAL");
     }
 
@@ -111,7 +113,12 @@ mod edge_case_tests {
         for thread_idx in 0..8 {
             let run = RunId::new((thread_idx as u64) + 1);
             let events = journal.events_for_run(run).expect("replay should succeed");
-            assert_eq!(events.len(), 5, "thread {} should have 5 events", thread_idx);
+            assert_eq!(
+                events.len(),
+                5,
+                "thread {} should have 5 events",
+                thread_idx
+            );
             for (i, ev) in events.iter().enumerate() {
                 assert_eq!(ev.seq(), EventSeq::new(i as u64));
                 assert_eq!(ev.run_id(), run);
@@ -177,7 +184,9 @@ mod edge_case_tests {
                         step: StepIdx::new(seq as u16),
                         attempt: 1,
                     };
-                    batch.append_event(&event).expect("batch append should succeed");
+                    batch
+                        .append_event(&event)
+                        .expect("batch append should succeed");
                 }
                 batch.commit().expect("batch commit should succeed");
             });
@@ -255,7 +264,10 @@ mod edge_case_tests {
             bytes: large.clone(),
         };
         journal.put_blob(&record).expect("large blob put");
-        let loaded = journal.blob(digest).expect("get should succeed").expect("present");
+        let loaded = journal
+            .blob(digest)
+            .expect("get should succeed")
+            .expect("present");
         assert_eq!(loaded.bytes, large);
     }
 
@@ -263,14 +275,14 @@ mod edge_case_tests {
     fn very_large_compiled_ir_payload() {
         let (_temp, journal) = temp_journal();
         let large_ir = vec![0xAAu8; 512 * 1024];
-        let digest = WorkflowDigest::from_bytes(blake3::hash(&large_ir).into());
-        let record = CompiledIrRecord {
-            digest,
-            ir: large_ir.clone(),
-        };
+        let record = crate::accepted_compiled_ir_record_for_test(large_ir);
+        let digest = record.digest;
         journal.put_compiled_ir(&record).expect("large ir put");
-        let loaded = journal.compiled_ir(digest).expect("get should succeed").expect("present");
-        assert_eq!(loaded.ir, large_ir);
+        let loaded = journal
+            .compiled_ir(digest)
+            .expect("get should succeed")
+            .expect("present");
+        assert_eq!(loaded, record);
     }
 
     #[test]
@@ -282,8 +294,13 @@ mod edge_case_tests {
             digest,
             source: large_source.clone(),
         };
-        journal.put_workflow_source(&record).expect("large source put");
-        let loaded = journal.workflow_source(digest).expect("get should succeed").expect("present");
+        journal
+            .put_workflow_source(&record)
+            .expect("large source put");
+        let loaded = journal
+            .workflow_source(digest)
+            .expect("get should succeed")
+            .expect("present");
         assert_eq!(loaded.source, large_source);
     }
 
@@ -320,8 +337,13 @@ mod edge_case_tests {
             status: 255,
             accepted_at_ms: u64::MAX,
         };
-        journal.put_run_header(&header).expect("max-value header put");
-        let loaded = journal.run_header(run).expect("get should succeed").expect("present");
+        journal
+            .put_run_header(&header)
+            .expect("max-value header put");
+        let loaded = journal
+            .run_header(run)
+            .expect("get should succeed")
+            .expect("present");
         assert_eq!(loaded.run, run);
         assert_eq!(loaded.status, 255);
         assert_eq!(loaded.accepted_at_ms, u64::MAX);
@@ -340,7 +362,9 @@ mod edge_case_tests {
                 step: StepIdx::new((i % 256) as u16),
                 attempt: 1,
             };
-            journal.append_journaled(&ev).expect("append should succeed");
+            journal
+                .append_journaled(&ev)
+                .expect("append should succeed");
         }
 
         let events = journal.events_for_run(run).expect("replay should succeed");
@@ -445,13 +469,7 @@ mod edge_case_tests {
             digest: WorkflowDigest::from_bytes([0u8; 32]),
             source: vec![1],
         };
-        let result = encode_record(
-            0xFFFF_0000,
-            RecordKind::WorkflowSource,
-            0,
-            &record,
-            128,
-        );
+        let result = encode_record(0xFFFF_0000, RecordKind::WorkflowSource, 0, &record, 128);
         assert!(
             matches!(result, Err(JournalError::RecordKindFamilyMismatch { .. })),
             "unknown magic with valid kind must be rejected"
@@ -474,7 +492,10 @@ mod edge_case_tests {
             &record,
             MAX_RUN_HEADER_BYTES,
         );
-        assert!(result.is_ok(), "RunHeader kind 3 must be accepted by MAGIC_INDEX_RECORD");
+        assert!(
+            result.is_ok(),
+            "RunHeader kind 3 must be accepted by MAGIC_INDEX_RECORD"
+        );
     }
 
     #[test]
@@ -493,7 +514,10 @@ mod edge_case_tests {
             &record,
             MAX_RUN_HEADER_BYTES,
         );
-        assert!(result.is_ok(), "IndexUpdate kind 50 must be accepted by MAGIC_INDEX_RECORD");
+        assert!(
+            result.is_ok(),
+            "IndexUpdate kind 50 must be accepted by MAGIC_INDEX_RECORD"
+        );
     }
 
     #[test]
@@ -568,7 +592,11 @@ mod edge_case_tests {
 
         let mut batch = journal.batch();
         let _ = batch.put_workflow_source(&record);
-        assert_eq!(batch.len(), 0, "batch should report 0 after digest mismatch abort");
+        assert_eq!(
+            batch.len(),
+            0,
+            "batch should report 0 after digest mismatch abort"
+        );
     }
 
     #[test]
@@ -589,9 +617,14 @@ mod edge_case_tests {
         let (_temp, journal) = temp_journal();
         let queue = JournalWriterQueue::new(1, 1, StorageLimits::DEFAULT).expect("queue");
         let run = RunId::new(42);
-        queue.enqueue_journaled(JournalEvent::StepStarted {
-            run, seq: EventSeq::new(0), step: StepIdx::new(0), attempt: 1,
-        }).expect("enqueue");
+        queue
+            .enqueue_journaled(JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(0),
+                step: StepIdx::new(0),
+                attempt: 1,
+            })
+            .expect("enqueue");
         queue.flush_batch(&journal).expect("flush");
         let events = journal.events_for_run(run).expect("replay");
         assert_eq!(events.len(), 1);
@@ -603,9 +636,14 @@ mod edge_case_tests {
         let queue = JournalWriterQueue::new(4, 10, StorageLimits::DEFAULT).expect("queue");
         let run = RunId::new(100);
         for i in 0..4u64 {
-            queue.enqueue_journaled(JournalEvent::StepStarted {
-                run, seq: EventSeq::new(i), step: StepIdx::new(i as u16), attempt: 1,
-            }).expect("enqueue");
+            queue
+                .enqueue_journaled(JournalEvent::StepStarted {
+                    run,
+                    seq: EventSeq::new(i),
+                    step: StepIdx::new(i as u16),
+                    attempt: 1,
+                })
+                .expect("enqueue");
         }
         queue.drain_all(&journal).expect("drain_all");
         let events = journal.events_for_run(run).expect("replay");
@@ -618,19 +656,30 @@ mod edge_case_tests {
         let queue = JournalWriterQueue::new(4, 2, StorageLimits::DEFAULT).expect("queue");
         let run = RunId::new(1);
 
-        queue.enqueue_journaled(JournalEvent::StepStarted {
-            run, seq: EventSeq::new(0), step: StepIdx::new(0), attempt: 1,
-        }).expect("enqueue");
+        queue
+            .enqueue_journaled(JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(0),
+                step: StepIdx::new(0),
+                attempt: 1,
+            })
+            .expect("enqueue");
 
         queue.shutdown(&journal).expect("shutdown");
 
         let result_j = queue.enqueue_journaled(JournalEvent::StepStarted {
-            run, seq: EventSeq::new(1), step: StepIdx::new(1), attempt: 1,
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(1),
+            attempt: 1,
         });
         assert!(matches!(result_j, Err(JournalError::QueueShutdown)));
 
         let result_s = queue.enqueue_strict(JournalEvent::StepStarted {
-            run, seq: EventSeq::new(2), step: StepIdx::new(2), attempt: 1,
+            run,
+            seq: EventSeq::new(2),
+            step: StepIdx::new(2),
+            attempt: 1,
         });
         assert!(matches!(result_s, Err(JournalError::QueueShutdown)));
     }

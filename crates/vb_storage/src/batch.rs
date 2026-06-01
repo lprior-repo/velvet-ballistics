@@ -107,16 +107,27 @@ impl<'j> JournalWriteBatch<'j> {
 
     /// Inserts a compiled IR record into the batch.
     pub fn put_compiled_ir(&mut self, record: &CompiledIrRecord) -> Result<(), JournalError> {
-        let key = compiled_ir_key(record.digest.as_bytes())?;
-        let value = encode_record(
+        self.abort_on_error(crate::admission::validate_compiled_ir_record(record))?;
+        let key = self.abort_on_error(compiled_ir_key(record.digest.as_bytes()))?;
+        let value = self.abort_on_error(encode_record(
             MAGIC_COMPILED_ARTIFACT,
             RecordKind::CompiledIr,
             0,
             record,
             MAX_COMPILED_IR_BYTES,
-        )?;
+        ))?;
         self.inner.insert(&self.journal.compiled_ir, key, value);
         Ok(())
+    }
+
+    fn abort_on_error<T>(&mut self, result: Result<T, JournalError>) -> Result<T, JournalError> {
+        match result {
+            Ok(value) => Ok(value),
+            Err(error) => {
+                self.aborted = true;
+                Err(error)
+            }
+        }
     }
 
     /// Inserts a run header record into the batch.
@@ -343,7 +354,7 @@ impl<'j> JournalWriteBatch<'j> {
 mod tests {
     use super::*;
     use crate::{
-        BlobRecord, CompiledIrRecord, EventSeq, IndexStatusState, JournalEvent, RunHeaderRecord,
+        BlobRecord, EventSeq, IndexStatusState, JournalEvent, RunHeaderRecord,
         WorkflowSourceRecord, constants::DIGEST_BYTES, recovery::RunSnapshot,
     };
     use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
@@ -584,12 +595,8 @@ mod tests {
     #[test]
     fn batch_put_compiled_ir_with_valid_digest_commits() {
         let (_temp, journal) = temp_journal();
-        let ir = b"compiled-batch-test".to_vec();
-        let digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
-        let record = CompiledIrRecord {
-            digest,
-            ir: ir.clone(),
-        };
+        let record = crate::accepted_compiled_ir_record_for_test(b"compiled-batch-test".to_vec());
+        let digest = record.digest;
 
         let mut batch = JournalWriteBatch::new(&journal);
         batch.put_compiled_ir(&record).expect("put compiled ir");
@@ -600,7 +607,7 @@ mod tests {
         let Some(found) = loaded else {
             panic!("compiled IR should be found after batch commit");
         };
-        assert_eq!(found.ir, ir);
+        assert_eq!(found, record);
     }
 
     // =========================================================================
@@ -718,12 +725,7 @@ mod tests {
             source,
         };
 
-        let ir = b"batch mixed ops ir".to_vec();
-        let ir_digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
-        let ir_record = CompiledIrRecord {
-            digest: ir_digest,
-            ir,
-        };
+        let ir_record = crate::accepted_compiled_ir_record_for_test(b"batch mixed ops ir".to_vec());
 
         let header = RunHeaderRecord {
             run,
@@ -764,7 +766,10 @@ mod tests {
             "workflow source should exist"
         );
         assert!(
-            journal.compiled_ir(ir_digest).expect("get ir").is_some(),
+            journal
+                .compiled_ir(ir_record.digest)
+                .expect("get ir")
+                .is_some(),
             "compiled IR should exist"
         );
         assert!(
@@ -898,12 +903,9 @@ mod tests {
     fn batch_put_compiled_ir_commits_and_is_readable() {
         // I3: compiled_ir readable after batch commit
         let (_temp, journal) = temp_journal();
-        let ir = b"compiled-artifact-bytes".to_vec();
-        let digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
-        let record = CompiledIrRecord {
-            digest,
-            ir: ir.clone(),
-        };
+        let record =
+            crate::accepted_compiled_ir_record_for_test(b"compiled-artifact-bytes".to_vec());
+        let digest = record.digest;
 
         let mut batch = JournalWriteBatch::new(&journal);
         batch.put_compiled_ir(&record).expect("batch compiled ir");
@@ -913,7 +915,7 @@ mod tests {
         let Some(found) = loaded else {
             panic!("compiled IR should be found after batch commit");
         };
-        assert_eq!(found.ir, ir);
+        assert_eq!(found, record);
     }
 
     #[test]

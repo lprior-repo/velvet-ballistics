@@ -892,33 +892,20 @@ fn list_artifacts_empty_returns_empty() {
 
 #[test]
 fn list_artifacts_returns_stored_digests() {
-    use crate::{CompiledIrRecord, FjallJournal};
-    use vb_core::WorkflowDigest;
+    use crate::FjallJournal;
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
 
-    let d1 = WorkflowDigest::from_bytes([0x10; 32]);
-    let d2 = WorkflowDigest::from_bytes([0x20; 32]);
-    let d3 = WorkflowDigest::from_bytes([0x30; 32]);
+    let record1 = crate::accepted_compiled_ir_record_for_test(vec![1u8]);
+    let record2 = crate::accepted_compiled_ir_record_for_test(vec![2u8]);
+    let record3 = crate::accepted_compiled_ir_record_for_test(vec![3u8]);
+    let d1 = record1.digest;
+    let d2 = record2.digest;
+    let d3 = record3.digest;
 
-    journal
-        .put_compiled_ir(&CompiledIrRecord {
-            digest: d1,
-            ir: vec![1u8],
-        })
-        .expect("put d1");
-    journal
-        .put_compiled_ir(&CompiledIrRecord {
-            digest: d2,
-            ir: vec![2u8],
-        })
-        .expect("put d2");
-    journal
-        .put_compiled_ir(&CompiledIrRecord {
-            digest: d3,
-            ir: vec![3u8],
-        })
-        .expect("put d3");
+    journal.put_compiled_ir(&record1).expect("put d1");
+    journal.put_compiled_ir(&record2).expect("put d2");
+    journal.put_compiled_ir(&record3).expect("put d3");
 
     let mut artifacts = journal
         .list_artifacts()
@@ -933,26 +920,17 @@ fn list_artifacts_returns_stored_digests() {
 
 #[test]
 fn remove_artifact_removes_from_list() {
-    use crate::{CompiledIrRecord, FjallJournal};
-    use vb_core::WorkflowDigest;
+    use crate::FjallJournal;
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
 
-    let d1 = WorkflowDigest::from_bytes([0x40; 32]);
-    let d2 = WorkflowDigest::from_bytes([0x50; 32]);
+    let record1 = crate::accepted_compiled_ir_record_for_test(vec![1u8]);
+    let record2 = crate::accepted_compiled_ir_record_for_test(vec![2u8]);
+    let d1 = record1.digest;
+    let d2 = record2.digest;
 
-    journal
-        .put_compiled_ir(&CompiledIrRecord {
-            digest: d1,
-            ir: vec![1u8],
-        })
-        .expect("put d1");
-    journal
-        .put_compiled_ir(&CompiledIrRecord {
-            digest: d2,
-            ir: vec![2u8],
-        })
-        .expect("put d2");
+    journal.put_compiled_ir(&record1).expect("put d1");
+    journal.put_compiled_ir(&record2).expect("put d2");
 
     journal
         .remove_artifact(d1)
@@ -972,11 +950,10 @@ fn remove_artifact_removes_from_list() {
 #[test]
 fn remove_artifact_not_found_returns_error() {
     use crate::{FjallJournal, JournalError};
-    use vb_core::WorkflowDigest;
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
 
-    let missing = WorkflowDigest::from_bytes([0xFF; 32]);
+    let missing = vb_core::WorkflowDigest::from_bytes([0xFF; 32]);
     let result = journal.remove_artifact(missing);
 
     assert!(
@@ -991,12 +968,12 @@ fn remove_artifact_not_found_returns_error() {
 
 #[test]
 fn artifact_exists_returns_true_for_stored() {
-    use crate::{CompiledIrRecord, FjallJournal};
-    use vb_core::WorkflowDigest;
+    use crate::FjallJournal;
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
 
-    let digest = WorkflowDigest::from_bytes([0xAA; 32]);
+    let record = crate::accepted_compiled_ir_record_for_test(vec![42u8]);
+    let digest = record.digest;
 
     let exists_before = journal
         .artifact_exists(digest)
@@ -1004,10 +981,7 @@ fn artifact_exists_returns_true_for_stored() {
     assert!(!exists_before, "artifact should not exist before storage");
 
     journal
-        .put_compiled_ir(&CompiledIrRecord {
-            digest,
-            ir: vec![42u8],
-        })
+        .put_compiled_ir(&record)
         .expect("put should succeed");
 
     let exists_after = journal

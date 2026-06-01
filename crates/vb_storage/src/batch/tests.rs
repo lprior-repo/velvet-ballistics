@@ -10,12 +10,11 @@
 )]
 use crate::batch::*;
 use crate::{
-    BlobRecord, CompiledIrRecord, EventSeq, IndexStatusState, JournalError, JournalEvent,
-    RunHeaderRecord, WorkflowSourceRecord, constants::DIGEST_BYTES,
-    recovery::RunSnapshot,
+    BlobRecord, EventSeq, IndexStatusState, JournalError, JournalEvent, RunHeaderRecord,
+    WorkflowSourceRecord, constants::DIGEST_BYTES, recovery::RunSnapshot,
 };
-use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 use tempfile::TempDir;
+use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 
 fn temp_journal() -> (TempDir, crate::FjallJournal) {
     let temp = TempDir::new().expect("tempdir creation should succeed");
@@ -253,12 +252,8 @@ fn batch_put_workflow_source_with_valid_digest_commits() {
 #[test]
 fn batch_put_compiled_ir_with_valid_digest_commits() {
     let (_temp, journal) = temp_journal();
-    let ir = b"compiled-batch-test".to_vec();
-    let digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
-    let record = CompiledIrRecord {
-        digest,
-        ir: ir.clone(),
-    };
+    let record = crate::accepted_compiled_ir_record_for_test(b"compiled-batch-test".to_vec());
+    let digest = record.digest;
 
     let mut batch = JournalWriteBatch::new(&journal);
     batch.put_compiled_ir(&record).expect("put compiled ir");
@@ -269,7 +264,7 @@ fn batch_put_compiled_ir_with_valid_digest_commits() {
     let Some(found) = loaded else {
         panic!("compiled IR should be found after batch commit");
     };
-    assert_eq!(found.ir, ir);
+    assert_eq!(found, record);
 }
 
 // =========================================================================
@@ -387,12 +382,7 @@ fn batch_mixed_operations_across_keyspaces_commit_atomically() {
         source,
     };
 
-    let ir = b"batch mixed ops ir".to_vec();
-    let ir_digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
-    let ir_record = CompiledIrRecord {
-        digest: ir_digest,
-        ir,
-    };
+    let ir_record = crate::accepted_compiled_ir_record_for_test(b"batch mixed ops ir".to_vec());
 
     let header = RunHeaderRecord {
         run,
@@ -567,12 +557,8 @@ fn batch_index_operations_increment_len_without_payloads() {
 fn batch_put_compiled_ir_commits_and_is_readable() {
     // I3: compiled_ir readable after batch commit
     let (_temp, journal) = temp_journal();
-    let ir = b"compiled-artifact-bytes".to_vec();
-    let digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
-    let record = CompiledIrRecord {
-        digest,
-        ir: ir.clone(),
-    };
+    let record = crate::accepted_compiled_ir_record_for_test(b"compiled-artifact-bytes".to_vec());
+    let digest = record.digest;
 
     let mut batch = JournalWriteBatch::new(&journal);
     batch.put_compiled_ir(&record).expect("batch compiled ir");
@@ -582,7 +568,7 @@ fn batch_put_compiled_ir_commits_and_is_readable() {
     let Some(found) = loaded else {
         panic!("compiled IR should be found after batch commit");
     };
-    assert_eq!(found.ir, ir);
+    assert_eq!(found, record);
 }
 
 #[test]

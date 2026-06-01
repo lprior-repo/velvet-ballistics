@@ -9,8 +9,8 @@
 )]
 use super::*;
 use crate::{
-    BlobRecord, CompiledIrRecord, EventSeq, IndexStatusState, JournalError, JournalEvent,
-    RunHeaderRecord, WorkflowSourceRecord, constants::*, recovery::RunSnapshot,
+    BlobRecord, EventSeq, IndexStatusState, JournalError, JournalEvent, RunHeaderRecord,
+    WorkflowSourceRecord, constants::*, recovery::RunSnapshot,
 };
 use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 
@@ -86,12 +86,8 @@ fn workflow_source_returns_none_for_missing_digest() {
 #[test]
 fn compiled_ir_roundtrip() {
     let (_temp, journal) = temp_journal();
-    let ir = b"compiled-artifact-bytes".to_vec();
-    let digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
-    let record = CompiledIrRecord {
-        digest,
-        ir: ir.clone(),
-    };
+    let record = crate::accepted_compiled_ir_record_for_test(b"compiled-artifact-bytes".to_vec());
+    let digest = record.digest;
     journal
         .put_compiled_ir(&record)
         .expect("put should succeed");
@@ -99,7 +95,7 @@ fn compiled_ir_roundtrip() {
     let Some(found) = loaded else {
         panic!("compiled IR should be found");
     };
-    assert_eq!(found.ir, ir);
+    assert_eq!(found, record);
 }
 
 #[test]
@@ -982,12 +978,7 @@ fn batch_commits_across_multiple_keyspaces() {
         source,
     };
 
-    let ir = b"batch ir".to_vec();
-    let ir_digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
-    let ir_record = CompiledIrRecord {
-        digest: ir_digest,
-        ir,
-    };
+    let ir_record = crate::accepted_compiled_ir_record_for_test(b"batch ir".to_vec());
 
     let header = RunHeaderRecord {
         run,
@@ -1042,7 +1033,12 @@ fn batch_commits_across_multiple_keyspaces() {
             .expect("get ws")
             .is_some()
     );
-    assert!(journal.compiled_ir(ir_digest).expect("get ir").is_some());
+    assert!(
+        journal
+            .compiled_ir(ir_record.digest)
+            .expect("get ir")
+            .is_some()
+    );
     assert!(journal.run_header(run).expect("get header").is_some());
     let replayed = journal.events_for_run(run).expect("get events");
     assert_eq!(replayed.len(), 1);
@@ -1151,12 +1147,8 @@ fn blob_returns_none_for_unwritten_digest() {
 #[test]
 fn compiled_ir_roundtrip_large_payload() {
     let (_temp, journal) = temp_journal();
-    let ir = vec![0x42u8; 65536];
-    let digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
-    let record = CompiledIrRecord {
-        digest,
-        ir: ir.clone(),
-    };
+    let record = crate::accepted_compiled_ir_record_for_test(vec![0x42u8; 65536]);
+    let digest = record.digest;
     journal
         .put_compiled_ir(&record)
         .expect("put should succeed");
@@ -1164,7 +1156,7 @@ fn compiled_ir_roundtrip_large_payload() {
         .compiled_ir(digest)
         .expect("get should succeed")
         .expect("present");
-    assert_eq!(loaded.ir, ir);
+    assert_eq!(loaded, record);
 }
 
 // =========================================================================
@@ -1912,20 +1904,12 @@ fn events_for_run_skips_corrupt_pre_snapshot_event_by_key_range() -> Result<(), 
 #[test]
 fn compiled_ir_stores_multiple_distinct_digests() {
     let (_temp, journal) = temp_journal();
-    let ir_v1 = b"compiled-v1".to_vec();
-    let digest_v1 = WorkflowDigest::from_bytes(blake3::hash(&ir_v1).into());
-    let record_v1 = CompiledIrRecord {
-        digest: digest_v1,
-        ir: ir_v1.clone(),
-    };
+    let record_v1 = crate::accepted_compiled_ir_record_for_test(b"compiled-v1".to_vec());
+    let digest_v1 = record_v1.digest;
     journal.put_compiled_ir(&record_v1).expect("put v1");
 
-    let ir_v2 = b"compiled-v2".to_vec();
-    let digest_v2 = WorkflowDigest::from_bytes(blake3::hash(&ir_v2).into());
-    let record_v2 = CompiledIrRecord {
-        digest: digest_v2,
-        ir: ir_v2.clone(),
-    };
+    let record_v2 = crate::accepted_compiled_ir_record_for_test(b"compiled-v2".to_vec());
+    let digest_v2 = record_v2.digest;
     journal.put_compiled_ir(&record_v2).expect("put v2");
 
     let loaded_v1 = journal
@@ -1936,8 +1920,8 @@ fn compiled_ir_stores_multiple_distinct_digests() {
         .compiled_ir(digest_v2)
         .expect("get v2")
         .expect("present");
-    assert_eq!(loaded_v1.ir, ir_v1);
-    assert_eq!(loaded_v2.ir, ir_v2);
+    assert_eq!(loaded_v1, record_v1);
+    assert_eq!(loaded_v2, record_v2);
 }
 
 // =========================================================================

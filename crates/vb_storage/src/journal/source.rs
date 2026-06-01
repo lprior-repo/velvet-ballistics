@@ -1,4 +1,5 @@
 use crate::{
+    admission::validate_compiled_ir_record,
     codec::encode_record,
     constants::{
         MAGIC_COMPILED_ARTIFACT, MAGIC_WORKFLOW_SOURCE, MAX_COMPILED_IR_BYTES,
@@ -45,6 +46,7 @@ impl FjallJournal {
 
     /// Stores compiled IR bytes by digest.
     pub fn put_compiled_ir(&self, record: &CompiledIrRecord) -> Result<(), JournalError> {
+        validate_compiled_ir_record(record)?;
         let key = compiled_ir_key(record.digest.as_bytes())?;
         let value = encode_record(
             MAGIC_COMPILED_ARTIFACT,
@@ -63,11 +65,17 @@ impl FjallJournal {
         digest: vb_core::WorkflowDigest,
     ) -> Result<Option<CompiledIrRecord>, JournalError> {
         let key = compiled_ir_key(digest.as_bytes())?;
-        self.decode_optional(
+        match self.decode_optional(
             &self.compiled_ir,
             key.as_slice(),
             MAGIC_COMPILED_ARTIFACT,
             MAX_COMPILED_IR_BYTES,
-        )
+        )? {
+            Some(record) => {
+                validate_compiled_ir_record(&record)?;
+                Ok(Some(record))
+            }
+            None => Ok(None),
+        }
     }
 }

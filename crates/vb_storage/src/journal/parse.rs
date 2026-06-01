@@ -22,13 +22,11 @@ use crate::{
 /// - [`JournalError::UnknownRecordKind`] if the record kind is not a known journal event kind
 /// - [`JournalError::PayloadTooLarge`] if the payload exceeds `MAX_JOURNAL_EVENT_PAYLOAD_BYTES`
 /// - [`JournalError::PayloadDigestMismatch`] if the payload digest does not match
+/// - [`JournalError::UnexpectedTrailingBytes`] with byte offsets if bytes remain after the declared payload
 /// - [`JournalError::HeaderChecksumMismatch`] if the header CRC fails
 /// - [`JournalError::PostcardDecodeFailed`] if postcard deserialization fails
 pub fn parse_event(data: &[u8]) -> Result<JournalEvent, JournalError> {
-    let (_, event) = decode_record::<JournalEvent>(
-        data,
-        MAGIC_JOURNAL_EVENT,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    )?;
+    let (_, event) =
+        decode_record::<JournalEvent>(data, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES)?;
     Ok(event)
 }

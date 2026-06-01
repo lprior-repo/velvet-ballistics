@@ -33,7 +33,10 @@ mod tests {
         open_store, put_blob, put_compiled_ir, put_run_header, put_workflow_source, read_blob,
         read_run_events, replay_journal, verify_digest_match, write_snapshot,
     };
-    use vb_core::{ActionId, DiagnosticCode, RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
+    use vb_core::{
+        ActionId, CODE_REGISTRY, DiagnosticCode, RunId, SlotIdx, StepIdx, WorkflowDigest,
+        WorkflowId,
+    };
 
     #[test]
     fn journal_key_is_fixed_width() {
@@ -157,7 +160,8 @@ mod tests {
         let journal = open_store(temp.path()).expect("journal should open");
         let source_bytes = vec![b'a'];
         let workflow_digest = WorkflowDigest::from_bytes(blake3::hash(&source_bytes).into());
-        let compiled_digest = WorkflowDigest::from_bytes([2; 32]);
+        let compiled = crate::accepted_compiled_ir_record_for_test(vec![b'i']);
+        let compiled_digest = compiled.digest;
         let blob_bytes = vec![b'b'];
         let blob_digest: [u8; DIGEST_BYTES] = blake3::hash(&blob_bytes).into();
 
@@ -171,10 +175,6 @@ mod tests {
             .expect("workflow source lookup should succeed");
         assert_eq!(stored_source, Some(source));
 
-        let compiled = CompiledIrRecord {
-            digest: compiled_digest,
-            ir: vec![b'i'],
-        };
         put_compiled_ir(&journal, &compiled).expect("compiled ir should store");
         let stored_compiled = journal
             .compiled_ir(compiled_digest)
@@ -639,11 +639,9 @@ mod tests {
         assert_eq!(batch.len(), 1);
         assert!(!batch.is_empty());
 
+        let compiled = crate::accepted_compiled_ir_record_for_test(b"ir".to_vec());
         batch
-            .put_compiled_ir(&CompiledIrRecord {
-                digest,
-                ir: b"ir".to_vec(),
-            })
+            .put_compiled_ir(&compiled)
             .expect("action must succeed");
         assert_eq!(batch.len(), 2);
     }
@@ -706,14 +704,11 @@ mod tests {
 
         let source_bytes = vec![b'n', b'a', b'm', b'e'];
         let workflow_digest = WorkflowDigest::from_bytes(blake3::hash(&source_bytes).into());
-        let compiled_digest = WorkflowDigest::from_bytes([2; 32]);
+        let ir = crate::accepted_compiled_ir_record_for_test(vec![1, 2, 3]);
+        let compiled_digest = ir.digest;
         let source = WorkflowSourceRecord {
             digest: workflow_digest,
             source: source_bytes,
-        };
-        let ir = CompiledIrRecord {
-            digest: compiled_digest,
-            ir: vec![1, 2, 3],
         };
         let header = RunHeaderRecord {
             run: RunId::new(3),
@@ -1852,11 +1847,8 @@ mod tests {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
-        let digest = WorkflowDigest::from_bytes([3; 32]);
-        let record = CompiledIrRecord {
-            digest,
-            ir: vec![0xDE, 0xAD, 0xBE, 0xEF],
-        };
+        let record = crate::accepted_compiled_ir_record_for_test(vec![0xDE, 0xAD, 0xBE, 0xEF]);
+        let digest = record.digest;
         journal
             .put_compiled_ir(&record)
             .expect("journal.put_compiled_ir must succeed");
@@ -1865,6 +1857,61 @@ mod tests {
             .compiled_ir(digest)
             .expect("compiled_ir lookup should succeed");
         assert_eq!(retrieved, Some(record));
+    }
+
+    #[test]
+    fn put_compiled_ir_rejects_forged_digest() {
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+        let valid = crate::accepted_compiled_ir_record_for_test(b"direct-forgery".to_vec());
+        let forged_digest = WorkflowDigest::from_bytes([0xA5; DIGEST_BYTES]);
+        let forged = CompiledIrRecord {
+            digest: forged_digest,
+            ir: valid.ir,
+        };
+
+        assert!(matches!(
+            journal.put_compiled_ir(&forged),
+            Err(JournalError::ArtifactChecksumMismatch)
+        ));
+        assert!(
+            journal
+                .compiled_ir(forged_digest)
+                .expect("compiled_ir lookup should succeed")
+                .is_none(),
+            "forged compiled IR must not be persisted"
+        );
+    }
+
+    #[test]
+    fn compiled_ir_read_revalidates_persisted_record() {
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+        let valid = crate::accepted_compiled_ir_record_for_test(b"read-corrupt".to_vec());
+        let corrupt = CompiledIrRecord {
+            digest: valid.digest,
+            ir: vec![0xCA, 0xFE],
+        };
+        let key = compiled_ir_key(corrupt.digest.as_bytes())
+            .expect("compiled_ir key construction should succeed");
+        let value = encode_record(
+            MAGIC_COMPILED_ARTIFACT,
+            RecordKind::CompiledIr,
+            0,
+            &corrupt,
+            MAX_COMPILED_IR_BYTES,
+        )
+        .expect("compiled_ir record encoding should succeed");
+
+        journal
+            .compiled_ir
+            .insert(key.to_vec(), value)
+            .expect("direct fixture insert should succeed");
+
+        assert!(matches!(
+            journal.compiled_ir(corrupt.digest),
+            Err(JournalError::ArtifactMalformed)
+        ));
     }
 
     #[test]
@@ -2874,11 +2921,7 @@ mod tests {
         // When a different digest [2;32] is queried
         // Then it returns None
         let (_guard, journal) = open_journal();
-        let stored_digest = test_digest(1);
-        let record = CompiledIrRecord {
-            digest: stored_digest,
-            ir: vec![1, 2, 3],
-        };
+        let record = crate::accepted_compiled_ir_record_for_test(vec![1, 2, 3]);
         journal
             .put_compiled_ir(&record)
             .expect("journal.put_compiled_ir must succeed");
@@ -5215,6 +5258,45 @@ mod tests {
     }
 
     #[test]
+    fn journal_error_diagnostic_code_unexpected_trailing_bytes() {
+        assert_eq!(
+            JournalError::UnexpectedTrailingBytes {
+                declared_end: 0,
+                actual_len: 1,
+            }
+            .diagnostic_code(),
+            JournalError::JOURNAL_UNEXPECTED_TRAILING_BYTES_CODE
+        );
+        assert_eq!(
+            JournalError::JOURNAL_UNEXPECTED_TRAILING_BYTES_CODE,
+            DiagnosticCode::new(0x4030)
+        );
+    }
+
+    #[test]
+    fn journal_error_symbolic_code_unexpected_trailing_bytes() {
+        let symbolic = JournalError::UnexpectedTrailingBytes {
+            declared_end: 0,
+            actual_len: 1,
+        }
+        .symbolic_code();
+
+        assert_eq!(symbolic.as_str(), "JOURNAL_UNEXPECTED_TRAILING_BYTES");
+    }
+
+    #[test]
+    fn code_registry_contains_unexpected_trailing_bytes_numeric_and_symbolic_code() {
+        let matches: Vec<_> = CODE_REGISTRY
+            .iter()
+            .filter(|entry| {
+                entry.numeric == 0x4030 && entry.symbolic == "JOURNAL_UNEXPECTED_TRAILING_BYTES"
+            })
+            .collect();
+
+        assert_eq!(matches.len(), 1);
+    }
+
+    #[test]
     fn journal_error_diagnostic_code_postcard_decode_failed() {
         assert_eq!(
             JournalError::PostcardDecodeFailed.diagnostic_code(),
@@ -5961,11 +6043,8 @@ mod tests {
     fn journal_put_then_get_compiled_ir_consistent() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let digest = WorkflowDigest::from_bytes([0x88; 32]);
-        let record = CompiledIrRecord {
-            digest,
-            ir: b"consistent_ir".to_vec(),
-        };
+        let record = crate::accepted_compiled_ir_record_for_test(b"consistent_ir".to_vec());
+        let digest = record.digest;
         journal
             .put_compiled_ir(&record)
             .expect("put_compiled_ir must succeed");
@@ -6320,11 +6399,9 @@ mod tests {
             .put_workflow_source(&WorkflowSourceRecord { digest, source })
             .expect("put 1 must succeed");
         assert_eq!(batch.len(), 1, "batch must have len 1 after first put");
+        let compiled = crate::accepted_compiled_ir_record_for_test(b"ir".to_vec());
         batch
-            .put_compiled_ir(&CompiledIrRecord {
-                digest,
-                ir: b"ir".to_vec(),
-            })
+            .put_compiled_ir(&compiled)
             .expect("put 2 must succeed");
         assert_eq!(batch.len(), 2, "batch must have len 2 after second put");
         batch
@@ -6443,6 +6520,7 @@ mod tests {
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         let source_bytes = b"atomic_source".to_vec();
         let digest = WorkflowDigest::from_bytes(blake3::hash(&source_bytes).into());
+        let compiled = crate::accepted_compiled_ir_record_for_test(b"atomic_ir".to_vec());
         let mut batch = journal.batch();
         batch
             .put_workflow_source(&WorkflowSourceRecord {
@@ -6451,17 +6529,14 @@ mod tests {
             })
             .expect("put_workflow_source must succeed");
         batch
-            .put_compiled_ir(&CompiledIrRecord {
-                digest,
-                ir: b"atomic_ir".to_vec(),
-            })
+            .put_compiled_ir(&compiled)
             .expect("put_compiled_ir must succeed");
         batch.commit().expect("commit must succeed");
         let source = journal
             .workflow_source(digest)
             .expect("workflow_source must succeed");
         let ir = journal
-            .compiled_ir(digest)
+            .compiled_ir(compiled.digest)
             .expect("compiled_ir must succeed");
         assert!(
             source.is_some(),
@@ -6469,7 +6544,7 @@ mod tests {
         );
         assert!(ir.is_some(), "IR must be present after atomic commit");
         assert_eq!(source.unwrap().source, b"atomic_source".to_vec());
-        assert_eq!(ir.unwrap().ir, b"atomic_ir".to_vec());
+        assert_eq!(ir.unwrap(), compiled);
     }
 
     #[test]
@@ -6510,6 +6585,7 @@ mod tests {
         let path = temp_dir.path().to_path_buf();
         let ws_bytes = b"strict_ws".to_vec();
         let digest = WorkflowDigest::from_bytes(blake3::hash(&ws_bytes).into());
+        let compiled = crate::accepted_compiled_ir_record_for_test(b"strict_ir".to_vec());
         let blob_bytes = b"strict_blob".to_vec();
         let blob_digest: [u8; DIGEST_BYTES] = blake3::hash(&blob_bytes).into();
         {
@@ -6522,10 +6598,7 @@ mod tests {
                 })
                 .expect("put_workflow_source must succeed");
             batch
-                .put_compiled_ir(&CompiledIrRecord {
-                    digest,
-                    ir: b"strict_ir".to_vec(),
-                })
+                .put_compiled_ir(&compiled)
                 .expect("put_compiled_ir must succeed");
             batch
                 .put_blob(&BlobRecord {
@@ -6541,9 +6614,9 @@ mod tests {
             .expect("workflow_source must succeed");
         assert_eq!(ws.unwrap().source, b"strict_ws".to_vec());
         let ir = reopened
-            .compiled_ir(digest)
+            .compiled_ir(compiled.digest)
             .expect("compiled_ir must succeed");
-        assert_eq!(ir.unwrap().ir, b"strict_ir".to_vec());
+        assert_eq!(ir.unwrap(), compiled);
         let bl = reopened.blob(blob_digest).expect("blob must succeed");
         assert_eq!(bl.unwrap().bytes, b"strict_blob".to_vec());
     }
@@ -6566,7 +6639,7 @@ mod tests {
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         let ws_bytes = b"ws".to_vec();
         let digest_1 = WorkflowDigest::from_bytes(blake3::hash(&ws_bytes).into());
-        let digest_2 = WorkflowDigest::from_bytes([2; 32]);
+        let compiled = crate::accepted_compiled_ir_record_for_test(b"ir".to_vec());
         let blob_bytes = b"blob".to_vec();
         let blob_digest: [u8; DIGEST_BYTES] = blake3::hash(&blob_bytes).into();
         let run = RunId::new(9005);
@@ -6578,10 +6651,7 @@ mod tests {
             })
             .expect("put 1 must succeed");
         batch
-            .put_compiled_ir(&CompiledIrRecord {
-                digest: digest_2,
-                ir: b"ir".to_vec(),
-            })
+            .put_compiled_ir(&compiled)
             .expect("put 2 must succeed");
         batch
             .put_run_header(&RunHeaderRecord {
@@ -6609,7 +6679,7 @@ mod tests {
             .expect("put 5 must succeed");
         batch.commit().expect("commit must succeed");
         assert!(journal.workflow_source(digest_1).expect("ws").is_some());
-        assert!(journal.compiled_ir(digest_2).expect("ir").is_some());
+        assert!(journal.compiled_ir(compiled.digest).expect("ir").is_some());
         assert!(journal.run_header(run).expect("rh").is_some());
         assert!(journal.blob(blob_digest).expect("bl").is_some());
         assert!(
@@ -6685,22 +6755,62 @@ mod tests {
     fn journal_compiled_ir_after_batch_commit_matches_input() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let digest = WorkflowDigest::from_bytes([0xFC; 32]);
-        let record = CompiledIrRecord {
-            digest,
-            ir: b"exact_ir_bytes".to_vec(),
-        };
+        let record = crate::accepted_compiled_ir_record_for_test(b"exact_ir_bytes".to_vec());
+        let digest = record.digest;
         let mut batch = journal.batch();
         batch.put_compiled_ir(&record).expect("put must succeed");
         batch.commit().expect("commit must succeed");
         let found = journal.compiled_ir(digest).expect("lookup must succeed");
         let found_record = found.expect("record must exist");
-        assert_eq!(
-            found_record.ir,
-            b"exact_ir_bytes".to_vec(),
-            "IR bytes must match exactly"
+        assert_eq!(found_record, record, "IR record must match exactly");
+    }
+
+    #[test]
+    fn batch_put_compiled_ir_rejects_forged_digest_and_aborts() {
+        let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+        let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+        let valid = crate::accepted_compiled_ir_record_for_test(b"batch-forgery".to_vec());
+        let forged_digest = WorkflowDigest::from_bytes([0xB6; DIGEST_BYTES]);
+        let forged = CompiledIrRecord {
+            digest: forged_digest,
+            ir: valid.ir,
+        };
+        let run = RunId::new(0xB6);
+        let header = RunHeaderRecord {
+            run,
+            workflow_id: WorkflowId::new(0xB6),
+            compiled_digest: valid.digest,
+            status: 1,
+            accepted_at_ms: 1,
+        };
+
+        let mut batch = journal.batch();
+        assert!(matches!(
+            batch.put_compiled_ir(&forged),
+            Err(JournalError::ArtifactChecksumMismatch)
+        ));
+        assert_eq!(batch.len(), 0, "failed validation must abort batch");
+        batch
+            .put_run_header(&header)
+            .expect("post-abort staging call should not persist on commit");
+        batch
+            .commit()
+            .expect("aborted batch commit must be a no-op");
+
+        assert!(
+            journal
+                .compiled_ir(forged_digest)
+                .expect("compiled_ir lookup should succeed")
+                .is_none(),
+            "forged compiled IR must not be persisted"
         );
-        assert_eq!(found_record.digest, digest);
+        assert!(
+            journal
+                .run_header(run)
+                .expect("run_header lookup should succeed")
+                .is_none(),
+            "aborted batch must not persist later staged records"
+        );
     }
 
     #[test]
@@ -7223,18 +7333,13 @@ mod tests {
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         let source = b"s".to_vec();
         let d1 = WorkflowDigest::from_bytes(blake3::hash(&source).into());
-        let d2 = WorkflowDigest::from_bytes([2; 32]);
+        let compiled = crate::accepted_compiled_ir_record_for_test(b"ir".to_vec());
         let run = RunId::new(9050);
         let mut batch = journal.batch();
         batch
             .put_workflow_source(&WorkflowSourceRecord { digest: d1, source })
             .expect("put1");
-        batch
-            .put_compiled_ir(&CompiledIrRecord {
-                digest: d2,
-                ir: b"ir".to_vec(),
-            })
-            .expect("put2");
+        batch.put_compiled_ir(&compiled).expect("put2");
         batch
             .put_run_header(&RunHeaderRecord {
                 run,
@@ -7257,30 +7362,32 @@ mod tests {
             .expect("put5");
         batch.commit().expect("commit");
         assert!(journal.workflow_source(d1).expect("g1").is_some());
-        assert!(journal.compiled_ir(d2).expect("g2").is_some());
+        assert!(journal.compiled_ir(compiled.digest).expect("g2").is_some());
         assert!(journal.run_header(run).expect("g3").is_some());
         assert!(journal.blob(blob_digest).expect("g4").is_some());
     }
 
     #[test]
-    fn adversarial_compiled_ir_with_different_ir_same_digest_overwrites() {
+    fn adversarial_compiled_ir_with_same_digest_rewrites_valid_envelope() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let digest = WorkflowDigest::from_bytes([1; 32]);
-        journal
-            .put_compiled_ir(&CompiledIrRecord {
-                digest,
-                ir: b"version1".to_vec(),
-            })
-            .expect("put1");
-        journal
-            .put_compiled_ir(&CompiledIrRecord {
-                digest,
-                ir: b"version2".to_vec(),
-            })
-            .expect("put2");
-        let loaded = journal.compiled_ir(digest).expect("get").expect("exists");
-        assert_eq!(loaded.ir, b"version2".to_vec(), "second write must win");
+        let first = crate::accepted_compiled_ir_record_for_test(b"version".to_vec());
+        let mut second_artifact: crate::AcceptedArtifact =
+            postcard::from_bytes(&first.ir).expect("accepted artifact should decode");
+        second_artifact.accepted_at_seq = EventSeq::new(1);
+        let second_ir =
+            postcard::to_allocvec(&second_artifact).expect("accepted artifact should encode");
+        let second = CompiledIrRecord {
+            digest: first.digest,
+            ir: second_ir,
+        };
+        journal.put_compiled_ir(&first).expect("put1");
+        journal.put_compiled_ir(&second).expect("put2");
+        let loaded = journal
+            .compiled_ir(first.digest)
+            .expect("get")
+            .expect("exists");
+        assert_eq!(loaded, second, "second valid write must win");
     }
 
     #[test]
@@ -7410,17 +7517,13 @@ mod tests {
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         let source = b"src".to_vec();
         let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
+        let compiled = crate::accepted_compiled_ir_record_for_test(b"ir".to_vec());
         let run = RunId::new(9070);
         let mut batch = journal.batch();
         batch
             .put_workflow_source(&WorkflowSourceRecord { digest, source })
             .expect("ws");
-        batch
-            .put_compiled_ir(&CompiledIrRecord {
-                digest,
-                ir: b"ir".to_vec(),
-            })
-            .expect("ir");
+        batch.put_compiled_ir(&compiled).expect("ir");
         batch
             .put_run_header(&RunHeaderRecord {
                 run,
@@ -7433,7 +7536,7 @@ mod tests {
         batch.commit().expect("commit");
         // All three must be present — batch is atomic
         assert!(journal.workflow_source(digest).expect("g1").is_some());
-        assert!(journal.compiled_ir(digest).expect("g2").is_some());
+        assert!(journal.compiled_ir(compiled.digest).expect("g2").is_some());
         assert!(journal.run_header(run).expect("g3").is_some());
     }
 
@@ -7538,7 +7641,7 @@ mod tests {
                 JournalError::HeaderChecksumMismatch => "header_checksum_mismatch",
                 JournalError::PayloadDigestMismatch => "payload_digest_mismatch",
                 JournalError::UnexpectedEof => "unexpected_eof",
-                JournalError::UnexpectedTrailingBytes => "unexpected_trailing_bytes",
+                JournalError::UnexpectedTrailingBytes { .. } => "unexpected_trailing_bytes",
                 JournalError::PostcardDecodeFailed => "postcard_decode_failed",
                 JournalError::InvalidEvent => "invalid_event",
                 JournalError::ArtifactMalformed => "artifact_malformed",

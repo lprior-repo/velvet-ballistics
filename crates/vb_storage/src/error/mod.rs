@@ -133,9 +133,14 @@ pub enum JournalError {
     /// Record ended before the declared header or payload length.
     #[error("unexpected end of record")]
     UnexpectedEof,
-    /// Record has trailing bytes after the declared payload.
-    #[error("record has unexpected trailing bytes")]
-    UnexpectedTrailingBytes,
+    /// Record contained bytes after the declared payload ended.
+    #[error("record has trailing bytes: declared end {declared_end}, actual length {actual_len}")]
+    UnexpectedTrailingBytes {
+        /// Exclusive byte offset where the declared payload ended.
+        declared_end: usize,
+        /// Actual input length including trailing bytes.
+        actual_len: usize,
+    },
     /// Postcard payload decode failed.
     #[error("postcard payload decode failed")]
     PostcardDecodeFailed,

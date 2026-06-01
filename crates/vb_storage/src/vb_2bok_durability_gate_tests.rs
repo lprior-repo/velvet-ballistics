@@ -14,7 +14,7 @@
     clippy::unwrap_used
 )]
 mod durability_gate_tests {
-    use crate::admission::{admit_compiled_artifact, submit_artifact};
+    use crate::admission::{AcceptedArtifact, admit_compiled_artifact, submit_artifact};
     use crate::codec::{decode_record, encode_record};
     use crate::constants::{
         CRC_OFFSET, MAGIC_BLOB, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
@@ -869,12 +869,20 @@ mod durability_gate_tests {
             "stored digest must match submitted digest"
         );
 
-        // Verify ir bytes round-trip through postcard
-        let decoded: crate::admission::AcceptedArtifact =
+        // Verify AcceptedArtifact envelope round-trips through postcard.
+        let decoded: AcceptedArtifact =
             postcard::from_bytes(&record.ir).map_err(|e| format!("postcard decode: {e}"))?;
+        let raw_parts_decode: Result<vb_core::WorkflowParts, _> = postcard::from_bytes(&record.ir);
+        let computed = blake3::hash(&decoded.ir);
         assert_eq!(
-            decoded.digest, artifact.digest,
-            "decoded artifact digest must match original"
+            computed.as_bytes(),
+            &artifact.digest.as_bytes(),
+            "stored envelope inner IR bytes must hash to the submitted digest"
+        );
+        assert_eq!(decoded, artifact);
+        assert!(
+            raw_parts_decode.is_err(),
+            "stored compiled_ir value must not be raw WorkflowParts"
         );
         Ok(())
     }

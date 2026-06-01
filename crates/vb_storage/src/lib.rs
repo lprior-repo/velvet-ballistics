@@ -61,6 +61,9 @@ pub mod kani_admission;
 #[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_postcard_envelope_wire;
 
+#[cfg(all(kani, feature = "kani-storage-trailing-bytes"))]
+pub mod kani_postcard_envelope_wire_trailing_bytes;
+
 #[cfg(all(kani, feature = "kani-typed-partitioned-ids"))]
 pub mod kani_typed_partitioned_ids;
 
@@ -175,7 +178,8 @@ pub use trimming::{
 
 // Codec
 pub use codec::{
-    decode_record, decode_record_header, encode_record, encode_record_header, verify_digest_match,
+    decode_envelope_only, decode_record, decode_record_header, encode_record, encode_record_header,
+    verify_digest_match,
 };
 
 // Admission
@@ -263,6 +267,78 @@ pub fn write_snapshot(journal: &FjallJournal, snapshot: &RunSnapshot) -> Result<
 /// Stores a bounded blob by digest.
 pub fn put_blob(journal: &FjallJournal, record: &BlobRecord) -> Result<(), JournalError> {
     journal.put_blob(record)
+}
+
+#[cfg(test)]
+pub(crate) fn accepted_compiled_ir_record_for_test(ir: Vec<u8>) -> CompiledIrRecord {
+    let workflow = accepted_workflow_for_test(&ir);
+    let digest = workflow.digest();
+    let mut parts = workflow.to_parts();
+    parts.digest = vb_core::WorkflowDigest::from_bytes([0; constants::DIGEST_BYTES]);
+    let artifact_ir = postcard::to_allocvec(&parts).expect("WorkflowParts should encode");
+    let artifact = AcceptedArtifact {
+        digest,
+        source_digest: digest,
+        policy_digest: admission::compute_policy_digest(&workflow)
+            .expect("policy digest should compute"),
+        ir: artifact_ir,
+        verification: VerificationProof::new(digest, 15, true),
+        accepted_at_seq: EventSeq::new(0),
+        required_capabilities: Box::new([]),
+    };
+    let envelope = postcard::to_allocvec(&artifact).expect("AcceptedArtifact should encode");
+    CompiledIrRecord {
+        digest,
+        ir: envelope,
+    }
+}
+
+#[cfg(test)]
+fn accepted_workflow_for_test(seed: &[u8]) -> vb_core::CompiledWorkflow {
+    let mut parts = vb_core::WorkflowParts {
+        name: Box::<str>::from("accepted_compiled_ir_record_for_test"),
+        digest: vb_core::WorkflowDigest::from_bytes([0; constants::DIGEST_BYTES]),
+        nodes: Box::new([
+            vb_core::CompiledNode {
+                id: vb_core::StepIdx::new(0),
+                output: Some(vb_core::SlotIdx::new(0)),
+                next: Some(vb_core::StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: vb_core::CompiledNodeKind::SetConst {
+                    value: vb_core::ConstIdx::new(0),
+                },
+            },
+            vb_core::CompiledNode {
+                id: vb_core::StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: vb_core::CompiledNodeKind::Finish {
+                    result: vb_core::SlotIdx::new(0),
+                },
+            },
+        ]),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([vb_core::ConstValue::I64(seed_value_for_test(seed))]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: vb_core::StepIdx::new(0),
+        resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+    };
+    let digest_bytes = postcard::to_allocvec(&parts).expect("WorkflowParts should encode");
+    parts.digest = vb_core::WorkflowDigest::from_bytes(blake3::hash(&digest_bytes).into());
+    vb_core::CompiledWorkflow::try_from_parts(parts).expect("WorkflowParts should compile")
+}
+
+#[cfg(test)]
+fn seed_value_for_test(seed: &[u8]) -> i64 {
+    seed.iter().fold(0_i64, |acc, byte| {
+        acc.wrapping_mul(31).wrapping_add(i64::from(*byte))
+    })
 }
 
 /// Reads a stored blob by digest.

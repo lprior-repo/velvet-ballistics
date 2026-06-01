@@ -1013,7 +1013,7 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
         category: CodeCategory::Lifecycle,
         deprecated: false,
     },
-    // ---- RuntimeBoundary: E40xx (0x4001–0x4020) ----
+    // ---- RuntimeBoundary: E40xx (0x4001–0x4030) ----
     // Storage/Journal codes from vb_storage/src/error/codes.rs
     CodeEntry {
         symbolic: "JOURNAL_FJALL",
@@ -1060,6 +1060,12 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
     CodeEntry {
         symbolic: "JOURNAL_BATCH_BYTES_EXCEEDED",
         numeric: 0x402F,
+        category: CodeCategory::RuntimeBoundary,
+        deprecated: false,
+    },
+    CodeEntry {
+        symbolic: "JOURNAL_UNEXPECTED_TRAILING_BYTES",
+        numeric: 0x4030,
         category: CodeCategory::RuntimeBoundary,
         deprecated: false,
     },

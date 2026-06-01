@@ -1251,19 +1251,228 @@ fn decode_rejects_trailing_bytes_beyond_payload() -> Result<(), JournalError> {
         &event,
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     )?;
+    let declared_end = bytes.len();
     bytes.push(0xFF);
     bytes.push(0xFE);
     bytes.push(0xFD);
-    let result = decode_record::<JournalEvent>(
+    let result =
+        decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+    let Err(JournalError::UnexpectedTrailingBytes {
+        declared_end: found_declared_end,
+        actual_len,
+    }) = result
+    else {
+        panic!("trailing bytes must be rejected, got {result:?}");
+    };
+    assert_eq!(found_declared_end, declared_end);
+    assert_eq!(actual_len, bytes.len());
+    Ok(())
+}
+
+fn assert_journal_trailing_suffix_rejected(suffix: &[u8]) -> Result<(), JournalError> {
+    let event = JournalEvent::RunCancelled {
+        run: RunId::new(1),
+        seq: EventSeq::new(0),
+        attempt: 1,
+        reason: None,
+    };
+    let mut bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunCancelled,
+        0,
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    let declared_end = bytes.len();
+    bytes.extend_from_slice(suffix);
+
+    let result =
+        decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+
+    let Err(JournalError::UnexpectedTrailingBytes {
+        declared_end: found_declared_end,
+        actual_len,
+    }) = result
+    else {
+        panic!("trailing suffix must be rejected, got {result:?}");
+    };
+    assert_eq!(found_declared_end, declared_end);
+    assert_eq!(actual_len, bytes.len());
+    Ok(())
+}
+
+#[test]
+fn decode_rejects_one_trailing_byte() -> Result<(), JournalError> {
+    assert_journal_trailing_suffix_rejected(&[0xA5])
+}
+
+#[test]
+fn decode_rejects_hundred_trailing_bytes() -> Result<(), JournalError> {
+    assert_journal_trailing_suffix_rejected(&[0xBC; 100])
+}
+
+#[test]
+fn decode_rejects_large_trailing_boundary() -> Result<(), JournalError> {
+    assert_journal_trailing_suffix_rejected(&vec![0x5A; 4096])
+}
+
+#[test]
+fn trailing_gate_rejects_u32_max_minus_one_without_allocating() -> Result<(), JournalError> {
+    let declared_end = RECORD_HEADER_BYTES;
+    let max_u32 = usize::try_from(u32::MAX).map_err(|_| JournalError::UnexpectedEof)?;
+    let trailing_len = max_u32.checked_sub(1).ok_or(JournalError::UnexpectedEof)?;
+    let actual_len = declared_end
+        .checked_add(trailing_len)
+        .ok_or(JournalError::UnexpectedEof)?;
+
+    let result = payload::reject_trailing_bytes(declared_end, actual_len);
+    let Err(JournalError::UnexpectedTrailingBytes {
+        declared_end: found_declared_end,
+        actual_len: found_actual_len,
+    }) = result
+    else {
+        panic!("large trailing boundary must be rejected, got {result:?}");
+    };
+    let found_trailing_len = found_actual_len
+        .checked_sub(found_declared_end)
+        .ok_or(JournalError::UnexpectedEof)?;
+
+    assert_eq!(found_declared_end, declared_end);
+    assert_eq!(found_actual_len, actual_len);
+    assert_eq!(found_trailing_len, trailing_len);
+    Ok(())
+}
+
+#[test]
+fn decode_accepts_exact_declared_length() -> Result<(), JournalError> {
+    let event = JournalEvent::RunCancelled {
+        run: RunId::new(1),
+        seq: EventSeq::new(0),
+        attempt: 1,
+        reason: None,
+    };
+    let bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunCancelled,
+        0,
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+
+    let (_, decoded) = decode_record::<JournalEvent>(
         &bytes,
         MAGIC_JOURNAL_EVENT,
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    );
-    assert!(
-        matches!(result, Err(JournalError::UnexpectedTrailingBytes)),
-        "trailing bytes should be rejected, got {:?}",
-        result
-    );
+    )?;
+
+    assert_eq!(decoded, event);
+    Ok(())
+}
+
+#[test]
+fn decode_rejects_zero_payload_trailing_bytes() -> Result<(), JournalError> {
+    let mut bytes =
+        payload::encode_record_payload(MAGIC_JOURNAL_EVENT, RecordKind::RunCancelled, 0, &[], 0)?;
+    let declared_end = bytes.len();
+    bytes.push(0xE7);
+
+    let result =
+        decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+
+    let Err(JournalError::UnexpectedTrailingBytes {
+        declared_end: found_declared_end,
+        actual_len,
+    }) = result
+    else {
+        panic!("zero-payload trailing bytes must be rejected, got {result:?}");
+    };
+    assert_eq!(found_declared_end, declared_end);
+    assert_eq!(actual_len, bytes.len());
+    Ok(())
+}
+
+fn assert_typed_decode_trailing_error<T: serde::de::DeserializeOwned + std::fmt::Debug>(
+    mut bytes: Vec<u8>,
+    expected_magic: u32,
+    max_payload_len: u32,
+) -> Result<(), JournalError> {
+    let declared_end = bytes.len();
+    bytes.push(0xD1);
+    let result = decode_record::<T>(&bytes, expected_magic, max_payload_len);
+    let Err(JournalError::UnexpectedTrailingBytes {
+        declared_end: found_declared_end,
+        actual_len,
+    }) = result
+    else {
+        panic!("typed trailing-byte decode must be rejected, got {result:?}");
+    };
+    assert_eq!(found_declared_end, declared_end);
+    assert_eq!(actual_len, bytes.len());
+    Ok(())
+}
+
+#[test]
+fn decode_rejects_trailing_bytes_across_record_magic_families() -> Result<(), JournalError> {
+    let event = JournalEvent::RunCancelled {
+        run: RunId::new(1),
+        seq: EventSeq::new(0),
+        attempt: 1,
+        reason: None,
+    };
+    let journal_bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunCancelled,
+        0,
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    assert_typed_decode_trailing_error::<JournalEvent>(
+        journal_bytes,
+        MAGIC_JOURNAL_EVENT,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+
+    let source = WorkflowSourceRecord {
+        digest: WorkflowDigest::from_bytes([0x11; DIGEST_BYTES]),
+        source: vec![1, 2, 3],
+    };
+    let source_bytes = encode_record(
+        MAGIC_WORKFLOW_SOURCE,
+        RecordKind::WorkflowSource,
+        0,
+        &source,
+        MAX_WORKFLOW_SOURCE_BYTES,
+    )?;
+    assert_typed_decode_trailing_error::<WorkflowSourceRecord>(
+        source_bytes,
+        MAGIC_WORKFLOW_SOURCE,
+        MAX_WORKFLOW_SOURCE_BYTES,
+    )?;
+
+    let compiled = CompiledIrRecord {
+        digest: WorkflowDigest::from_bytes([0x22; DIGEST_BYTES]),
+        ir: vec![4, 5, 6],
+    };
+    let compiled_bytes = encode_record(
+        MAGIC_COMPILED_ARTIFACT,
+        RecordKind::CompiledIr,
+        0,
+        &compiled,
+        MAX_COMPILED_IR_BYTES,
+    )?;
+    assert_typed_decode_trailing_error::<CompiledIrRecord>(
+        compiled_bytes,
+        MAGIC_COMPILED_ARTIFACT,
+        MAX_COMPILED_IR_BYTES,
+    )?;
+
+    let blob = BlobRecord {
+        digest: [0x33; DIGEST_BYTES],
+        bytes: vec![7, 8, 9],
+    };
+    let blob_bytes = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, &blob, MAX_BLOB_BYTES)?;
+    assert_typed_decode_trailing_error::<BlobRecord>(blob_bytes, MAGIC_BLOB, MAX_BLOB_BYTES)?;
+
     Ok(())
 }
 
@@ -2529,7 +2738,7 @@ fn decode_with_trailing_bytes_fails() -> Result<(), JournalError> {
     let result =
         decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
     assert!(
-        matches!(result, Err(JournalError::UnexpectedTrailingBytes)),
+        matches!(result, Err(JournalError::UnexpectedTrailingBytes { .. })),
         "record with trailing byte should yield UnexpectedTrailingBytes, got {:?}",
         result
     );
@@ -2557,7 +2766,7 @@ fn decode_with_many_trailing_bytes_fails() -> Result<(), JournalError> {
     let result =
         decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
     assert!(
-        matches!(result, Err(JournalError::UnexpectedTrailingBytes)),
+        matches!(result, Err(JournalError::UnexpectedTrailingBytes { .. })),
         "record with 100 trailing bytes should yield UnexpectedTrailingBytes, got {:?}",
         result
     );

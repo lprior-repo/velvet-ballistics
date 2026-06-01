@@ -7,10 +7,10 @@
 //! and filtering operations that only need header data.
 
 use crate::{
+    codec::header::decode_record_header,
     constants::RECORD_HEADER_BYTES,
     error::JournalError,
     types::{RecordEnvelope, RecordHeader},
-    codec::header::decode_record_header,
 };
 
 /// Decodes a record header and returns envelope metadata + raw payload.
@@ -23,19 +23,14 @@ use crate::{
 ///
 /// Returns `JournalError` if the header is malformed, the magic is wrong,
 /// the schema is unsupported, the kind is unknown, the length is wrong,
-/// the payload is too large, or the CRC checksum fails.
+/// the payload is too large, trailing bytes remain, or the CRC checksum fails.
 pub fn decode_envelope_only(
     bytes: &[u8],
+    expected_magic: u32,
+    max_payload_len: u32,
 ) -> Result<(RecordEnvelope, &[u8]), JournalError> {
     // Validate and decode the header.
-    // We accept MAGIC_JOURNAL_EVENT as the default expected magic.
-    // For mixed-magic input, the caller should pre-filter or use
-    // a lower-level decode path.
-    let header: RecordHeader = decode_record_header(
-        bytes,
-        crate::constants::MAGIC_JOURNAL_EVENT,
-        crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    )?;
+    let header: RecordHeader = decode_record_header(bytes, expected_magic, max_payload_len)?;
 
     // Extract the raw payload: bytes[60..60+payload_len]
     let payload_start = RECORD_HEADER_BYTES;
@@ -49,6 +44,12 @@ pub fn decode_envelope_only(
     let raw_payload = bytes
         .get(payload_start..payload_end)
         .ok_or(JournalError::UnexpectedEof)?;
+    if payload_end != bytes.len() {
+        return Err(JournalError::UnexpectedTrailingBytes {
+            declared_end: payload_end,
+            actual_len: bytes.len(),
+        });
+    }
 
     let envelope = RecordEnvelope {
         magic: header.magic,

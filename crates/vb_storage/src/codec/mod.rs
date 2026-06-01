@@ -10,6 +10,7 @@ use crate::{
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
+pub(crate) mod envelope;
 pub(crate) mod header;
 pub(crate) mod payload;
 pub(crate) mod validation;
@@ -33,6 +34,7 @@ pub mod fuzz_validation {
     }
 }
 
+pub use self::envelope::decode_envelope_only;
 pub use self::header::{decode_record_header, encode_record_header};
 pub use self::payload::verify_digest_match;
 
@@ -66,6 +68,13 @@ pub fn encode_record<T: Serialize>(
 }
 
 /// Decodes and postcard-deserializes an enveloped record.
+///
+/// # Errors
+///
+/// Returns [`JournalError`] if the envelope header is invalid, the declared
+/// payload is missing, payload digest verification fails, trailing bytes remain
+/// after the declared payload (`JournalError::UnexpectedTrailingBytes`), or the
+/// postcard payload cannot be decoded as `T`.
 pub fn decode_record<T: DeserializeOwned>(
     bytes: &[u8],
     expected_magic: u32,
@@ -85,6 +94,13 @@ pub fn decode_record<T: DeserializeOwned>(
 /// deserialization succeeds.
 ///
 /// This is the correct decode function for untrusted input streams.
+///
+/// # Errors
+///
+/// Returns [`JournalError`] for every [`decode_record`] failure, including
+/// `JournalError::UnexpectedTrailingBytes` when bytes remain after the declared
+/// payload, and returns `JournalError::InvalidEvent` when the decoded event is
+/// semantically invalid.
 pub fn decode_journal_event(
     bytes: &[u8],
     expected_magic: u32,
@@ -126,6 +142,9 @@ pub(crate) fn validate_replayed_event(
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod trailing_bytes_proptests;
 
 // vb-b8i8f: flux_validation requires flux_rs crate (not in workspace).
 // Keep as artifact; re-enable when flux_rs dependency is added.

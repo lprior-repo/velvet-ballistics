@@ -8,7 +8,9 @@ mod status;
 pub use entities::{BlobRecord, CompiledIrRecord, RunHeaderRecord, WorkflowSourceRecord};
 pub use kinds::RecordKind;
 
-pub use status::{KnownRunHeaderStatus, RunHeaderStatus, RunHeaderStatusClass, UnknownRunHeaderStatus};
+pub use status::{
+    KnownRunHeaderStatus, RunHeaderStatus, RunHeaderStatusClass, UnknownRunHeaderStatus,
+};
 
 #[cfg(test)]
 mod tests {

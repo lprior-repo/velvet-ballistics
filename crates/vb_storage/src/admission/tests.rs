@@ -381,7 +381,11 @@ fn accepted_artifact_fields_are_populated() -> Result<(), String> {
 
     let artifact = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed)
         .map_err(|e| format!("submit failed: {e}"))?;
+    let policy_digest =
+        compute_policy_digest(&workflow).map_err(|e| format!("policy digest failed: {e}"))?;
 
+    assert_eq!(artifact.source_digest, workflow.digest());
+    assert_eq!(artifact.policy_digest, policy_digest);
     // accepted_at_seq should be 0 (no journal sequence tracking in current impl).
     assert_eq!(
         artifact.accepted_at_seq.get(),
@@ -397,7 +401,7 @@ fn accepted_artifact_fields_are_populated() -> Result<(), String> {
 }
 
 #[test]
-fn submit_artifact_persists_non_empty_required_capabilities_when_contract_requires_capability()
+fn submit_artifact_returns_required_capabilities_when_contract_requires_capability()
 -> Result<(), String> {
     let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
     let workflow = minimal_workflow()?;
@@ -426,15 +430,39 @@ fn submit_artifact_persists_non_empty_required_capabilities_when_contract_requir
         &[contract],
     )
     .map_err(|e| format!("submit_artifact_with_contracts failed: {e}"))?;
+
+    assert_eq!(artifact.required_capabilities.as_ref(), &[required.clone()]);
+    Ok(())
+}
+
+#[test]
+fn submit_artifact_persists_accepted_artifact_envelope() -> Result<(), String> {
+    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+    let workflow = minimal_workflow()?;
+
+    let artifact = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled)
+        .map_err(|e| format!("submit_artifact failed: {e}"))?;
     let loaded = journal
         .compiled_ir(workflow.digest())
         .map_err(|e| format!("compiled_ir read failed: {e}"))?
         .ok_or_else(|| String::from("persisted artifact not found"))?;
     let decoded: AcceptedArtifact = postcard::from_bytes(&loaded.ir)
-        .map_err(|e| format!("decode accepted artifact failed: {e}"))?;
+        .map_err(|e| format!("persisted AcceptedArtifact decode failed: {e}"))?;
+    let raw_parts_decode: Result<vb_core::workflow::WorkflowParts, _> =
+        postcard::from_bytes(&loaded.ir);
+    let inner_hash = blake3::hash(&decoded.ir);
+    let policy_digest =
+        compute_policy_digest(&workflow).map_err(|e| format!("policy digest failed: {e}"))?;
 
-    assert_eq!(artifact.required_capabilities.as_ref(), &[required.clone()]);
-    assert_eq!(decoded.required_capabilities.as_ref(), &[required]);
+    assert_eq!(loaded.digest, workflow.digest());
+    assert_eq!(decoded, artifact);
+    assert_eq!(decoded.source_digest, workflow.digest());
+    assert_eq!(decoded.policy_digest, policy_digest);
+    assert_eq!(inner_hash.as_bytes(), &loaded.digest.as_bytes());
+    assert!(
+        raw_parts_decode.is_err(),
+        "compiled_ir value must not be raw WorkflowParts"
+    );
     Ok(())
 }
 
