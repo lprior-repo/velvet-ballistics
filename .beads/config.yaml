@@ -54,3 +54,6 @@
 # - github.repo
 
 dolt.server-port: 43643
+sync.git-remote: https://doltremoteapi.dolthub.com/priorlewis43/velvet-ballistics
+
+federation.remote: "https://doltremoteapi.dolthub.com/priorlewis43/velvet-ballistics"

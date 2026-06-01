@@ -94,55 +94,46 @@ fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: OutputFormat
 }
 
 fn print_diff_entry(diff: &serde_json::Value) {
-    let kind = diff
-        .get("kind")
-        .and_then(|k| k.as_str())
-        .unwrap_or("unknown");
+    let kind = str_field(diff, "kind", "unknown");
     match kind {
         "only_in_a" => {
-            let idx = diff.get("index").and_then(|v| v.as_u64()).unwrap_or(0);
+            let idx = u64_field(diff, "index");
             crate::outln!("  [{idx}] - only in run A");
         }
         "only_in_b" => {
-            let idx = diff.get("index").and_then(|v| v.as_u64()).unwrap_or(0);
+            let idx = u64_field(diff, "index");
             crate::outln!("  [{idx}] + only in run B");
         }
         "changed" => {
-            let idx = diff.get("index").and_then(|v| v.as_u64()).unwrap_or(0);
+            let idx = u64_field(diff, "index");
             crate::outln!("  [{idx}] ~ changed");
         }
         "step_missing_in_b" => {
-            let s = diff.get("step").and_then(|v| v.as_u64()).unwrap_or(0);
+            let s = u64_field(diff, "step");
             crate::outln!("  step {s}: - present in run A only");
         }
         "step_missing_in_a" => {
-            let s = diff.get("step").and_then(|v| v.as_u64()).unwrap_or(0);
+            let s = u64_field(diff, "step");
             crate::outln!("  step {s}: + present in run B only");
         }
         "step_outcome_differs" => {
-            let s = diff.get("step").and_then(|v| v.as_u64()).unwrap_or(0);
-            let oa = diff
-                .get("outcome_a")
-                .and_then(|v| v.as_str())
-                .unwrap_or("?");
-            let ob = diff
-                .get("outcome_b")
-                .and_then(|v| v.as_str())
-                .unwrap_or("?");
+            let s = u64_field(diff, "step");
+            let oa = str_field(diff, "outcome_a", "?");
+            let ob = str_field(diff, "outcome_b", "?");
             crate::outln!("  step {s}: ~ {oa} vs {ob}");
         }
         "slot_missing_in_b" => {
-            let s = diff.get("slot").and_then(|v| v.as_u64()).unwrap_or(0);
+            let s = u64_field(diff, "slot");
             crate::outln!("  slot {s}: - present in run A only");
         }
         "slot_missing_in_a" => {
-            let s = diff.get("slot").and_then(|v| v.as_u64()).unwrap_or(0);
+            let s = u64_field(diff, "slot");
             crate::outln!("  slot {s}: + present in run B only");
         }
         "slot_value_differs" => {
-            let s = diff.get("slot").and_then(|v| v.as_u64()).unwrap_or(0);
-            let va = diff.get("value_a").and_then(|v| v.as_str()).unwrap_or("?");
-            let vb = diff.get("value_b").and_then(|v| v.as_str()).unwrap_or("?");
+            let s = u64_field(diff, "slot");
+            let va = str_field(diff, "value_a", "?");
+            let vb = str_field(diff, "value_b", "?");
             crate::outln!("  slot {s}: ~ {va} vs {vb}");
         }
         _ => {
@@ -151,3 +142,20 @@ fn print_diff_entry(diff: &serde_json::Value) {
     }
 }
 
+fn str_field<'value>(
+    value: &'value serde_json::Value,
+    field: &str,
+    fallback: &'static str,
+) -> &'value str {
+    value
+        .get(field)
+        .and_then(|entry| entry.as_str())
+        .map_or(fallback, std::convert::identity)
+}
+
+fn u64_field(value: &serde_json::Value, field: &str) -> u64 {
+    value
+        .get(field)
+        .and_then(|entry| entry.as_u64())
+        .map_or(0, std::convert::identity)
+}

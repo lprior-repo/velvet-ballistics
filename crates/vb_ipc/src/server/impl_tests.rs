@@ -11,6 +11,7 @@
 use std::io::{Read, Write};
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use mio::net::UnixStream;
@@ -31,8 +32,11 @@ use vb_core::{RunId, WorkflowDigest};
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-fn temp_socket_path(name: &str) -> PathBuf {
-    std::env::temp_dir().join(format!("vb_ipc_impl_test_{name}_{}", std::process::id()))
+static SOCKET_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+fn temp_socket_path(_name: &str) -> PathBuf {
+    let sequence = SOCKET_COUNTER.fetch_add(1, Ordering::Relaxed);
+    PathBuf::from(format!("/tmp/vbi{}_{}.sock", std::process::id(), sequence))
 }
 
 fn make_runtime() -> Runtime {

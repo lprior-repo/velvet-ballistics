@@ -1,15 +1,18 @@
 #![forbid(unsafe_code)]
 //! Incident analysis and diff commands.
 
-use std::process::ExitCode;
-use std::io::{self, Write};
 use crate::args::{ActionRegistryMode, Command, OutputFormat, ParseError, StepTarget};
-use crate::exit_code::CliExitCode;
-use crate::output::{json_error, json_out, output_error_exit, write_stdout_line, write_stderr_line, write_failure_message, write_contract_error_json};
-use crate::output_utils::*;
-use crate::file_io::{read_file, parse_run_id, read_journal_events, report_storage_open_error};
-use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
 use crate::cli_envelope;
+use crate::exit_code::CliExitCode;
+use crate::file_io::{parse_run_id, read_file, read_journal_events, report_storage_open_error};
+use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+use crate::output::{
+    json_error, json_out, output_error_exit, write_contract_error_json, write_failure_message,
+    write_stderr_line, write_stdout_line,
+};
+use crate::output_utils::*;
+use std::io::{self, Write};
+use std::process::ExitCode;
 
 pub(crate) fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let rid = match parse_run_id(run_id, output) {
@@ -69,10 +72,10 @@ pub(crate) fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFor
     }
 
     let report = crate::commands_incident::build_incident_report(run_id, &events);
-    let failed_step_val = report
-        .failed_at_step
-        .map(|s| serde_json::Value::Number(serde_json::Number::from(s)))
-        .unwrap_or(serde_json::Value::Null);
+    let failed_step_val = match report.failed_at_step {
+        Some(step) => serde_json::Value::Number(serde_json::Number::from(step)),
+        None => serde_json::Value::Null,
+    };
 
     let json_report = serde_json::json!({
         "run_id": report.run_id,
@@ -100,17 +103,15 @@ pub(crate) fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFor
                 for se in &report.side_effects {
                     let step = &se["step"];
                     let action = &se["action"];
-                    // WAIVER: Option::unwrap_or is not Result::unwrap — no panic path.
-                    // This is safe fallback for missing JSON fields in CLI report display.
-                    let certainty = se["certainty"].as_str().unwrap_or("unknown");
+                    let certainty = se["certainty"]
+                        .as_str()
+                        .map_or("unknown", std::convert::identity);
                     crate::outln!("    step={step} action={action} certainty={certainty}");
                 }
             }
             crate::outln!("  repair_hints:");
             for hint in &report.repair_hints {
-                // WAIVER: Option::unwrap_or is not Result::unwrap — no panic path.
-                // This is safe fallback for missing hint strings in CLI report display.
-                let hint_str = hint.as_str().unwrap_or("unknown");
+                let hint_str = hint.as_str().map_or("unknown", std::convert::identity);
                 crate::outln!("    - {hint_str}");
             }
         }
@@ -134,8 +135,12 @@ pub(crate) fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFor
     }
 }
 
-
-pub(crate) fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
+pub(crate) fn cmd_diff(
+    run_a: &str,
+    run_b: &str,
+    db: &std::path::Path,
+    output: OutputFormat,
+) -> ExitCode {
     let rid_a = match parse_run_id(run_a, output) {
         Ok(id) => id,
         Err(code) => return code,
@@ -224,57 +229,47 @@ pub(crate) fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: O
     CliExitCode::Success.into()
 }
 
-
 pub(crate) fn print_diff_entry(diff: &serde_json::Value) {
-    let kind = diff
-        .get("kind")
-        .and_then(|k| k.as_str())
-        .unwrap_or("unknown");
+    let kind = str_field(diff, "kind", "unknown");
     match kind {
         "only_in_a" => {
-            let idx = diff.get("index").and_then(|v| v.as_u64()).unwrap_or(0);
+            let idx = u64_field(diff, "index");
             crate::outln!("  [{idx}] - only in run A");
         }
         "only_in_b" => {
-            let idx = diff.get("index").and_then(|v| v.as_u64()).unwrap_or(0);
+            let idx = u64_field(diff, "index");
             crate::outln!("  [{idx}] + only in run B");
         }
         "changed" => {
-            let idx = diff.get("index").and_then(|v| v.as_u64()).unwrap_or(0);
+            let idx = u64_field(diff, "index");
             crate::outln!("  [{idx}] ~ changed");
         }
         "step_missing_in_b" => {
-            let s = diff.get("step").and_then(|v| v.as_u64()).unwrap_or(0);
+            let s = u64_field(diff, "step");
             crate::outln!("  step {s}: - present in run A only");
         }
         "step_missing_in_a" => {
-            let s = diff.get("step").and_then(|v| v.as_u64()).unwrap_or(0);
+            let s = u64_field(diff, "step");
             crate::outln!("  step {s}: + present in run B only");
         }
         "step_outcome_differs" => {
-            let s = diff.get("step").and_then(|v| v.as_u64()).unwrap_or(0);
-            let oa = diff
-                .get("outcome_a")
-                .and_then(|v| v.as_str())
-                .unwrap_or("?");
-            let ob = diff
-                .get("outcome_b")
-                .and_then(|v| v.as_str())
-                .unwrap_or("?");
+            let s = u64_field(diff, "step");
+            let oa = str_field(diff, "outcome_a", "?");
+            let ob = str_field(diff, "outcome_b", "?");
             crate::outln!("  step {s}: ~ {oa} vs {ob}");
         }
         "slot_missing_in_b" => {
-            let s = diff.get("slot").and_then(|v| v.as_u64()).unwrap_or(0);
+            let s = u64_field(diff, "slot");
             crate::outln!("  slot {s}: - present in run A only");
         }
         "slot_missing_in_a" => {
-            let s = diff.get("slot").and_then(|v| v.as_u64()).unwrap_or(0);
+            let s = u64_field(diff, "slot");
             crate::outln!("  slot {s}: + present in run B only");
         }
         "slot_value_differs" => {
-            let s = diff.get("slot").and_then(|v| v.as_u64()).unwrap_or(0);
-            let va = diff.get("value_a").and_then(|v| v.as_str()).unwrap_or("?");
-            let vb = diff.get("value_b").and_then(|v| v.as_str()).unwrap_or("?");
+            let s = u64_field(diff, "slot");
+            let va = str_field(diff, "value_a", "?");
+            let vb = str_field(diff, "value_b", "?");
             crate::outln!("  slot {s}: ~ {va} vs {vb}");
         }
         _ => {
@@ -283,3 +278,20 @@ pub(crate) fn print_diff_entry(diff: &serde_json::Value) {
     }
 }
 
+fn str_field<'value>(
+    value: &'value serde_json::Value,
+    field: &str,
+    fallback: &'static str,
+) -> &'value str {
+    value
+        .get(field)
+        .and_then(|entry| entry.as_str())
+        .map_or(fallback, std::convert::identity)
+}
+
+fn u64_field(value: &serde_json::Value, field: &str) -> u64 {
+    value
+        .get(field)
+        .and_then(|entry| entry.as_u64())
+        .map_or(0, std::convert::identity)
+}
