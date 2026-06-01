@@ -25,20 +25,6 @@ architecture: nightly Rust, compiled IR, in-memory engine, bounded IPC, Fjall jo
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[macro_export]
-macro_rules! outln {
-    ($($arg:tt)*) => {{
-        $crate::io::write_stdout_line(format_args!($($arg)*));
-    }};
-}
-
-#[macro_export]
-macro_rules! errln {
-    ($($arg:tt)*) => {{
-        $crate::io::write_stderr_line(format_args!($($arg)*));
-    }};
-}
-
 pub fn write_help_stdout() -> io::Result<()> {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
