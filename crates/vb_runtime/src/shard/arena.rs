@@ -3,10 +3,9 @@
 //! Replaces `IndexMap<RunId, T>` with `Vec<Option<T>>` plus generation-based handles
 //! to prevent ABA-style stale references after deallocation.
 
-use super::types::{PendingTimer, RuntimeState, RunState};
-use core::fmt;
+use super::types::{PendingTimer, RunState, RuntimeState};
 use crate::frame_pool::FramePool;
-use vb_core::RunId;
+use core::fmt;
 use vb_storage::EventSeq;
 
 /// Maximum number of slots per arena. u32::MAX reserved as INVALID sentinel.
@@ -66,7 +65,11 @@ impl Generation {
     #[inline]
     #[must_use]
     pub fn successor(self) -> Generation {
-        Generation(self.0.wrapping_add(1))
+        if self.is_terminal() {
+            self
+        } else {
+            Generation(self.0.saturating_add(1))
+        }
     }
 
     /// Returns true if this generation is terminal (slot permanently dead).
@@ -84,10 +87,10 @@ impl fmt::Display for Generation {
 }
 
 /// Stable handle to a slot in an arena.
-/// Combines RunId (for external identity) with Generation (for lifetime safety).
+/// Combines SlotId with Generation so stale handles can be rejected after reuse.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SlotHandle {
-    run_id: RunId,
+    slot_id: SlotId,
     generation: Generation,
 }
 
@@ -95,15 +98,18 @@ impl SlotHandle {
     /// Create a new SlotHandle.
     #[inline]
     #[must_use]
-    pub fn new(run_id: RunId, generation: Generation) -> Self {
-        Self { run_id, generation }
+    pub fn new(slot_id: SlotId, generation: Generation) -> Self {
+        Self {
+            slot_id,
+            generation,
+        }
     }
 
-    /// Returns the run id portion of the handle.
+    /// Returns the slot id portion of the handle.
     #[inline]
     #[must_use]
-    pub fn run_id(self) -> RunId {
-        self.run_id
+    pub fn slot_id(self) -> SlotId {
+        self.slot_id
     }
 
     /// Returns the generation portion of the handle.
@@ -116,9 +122,7 @@ impl SlotHandle {
 
 impl fmt::Display for SlotHandle {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // RunId only implements Debug (via numeric_id! macro), not Display.
-        // Use Debug format (:?) for run_id to satisfy Display contract.
-        write!(f, "Handle({:?}:{})", self.run_id, self.generation)
+        write!(f, "Handle({}:{})", self.slot_id, self.generation)
     }
 }
 
@@ -213,128 +217,144 @@ impl<T> Arena<T> {
     }
 
     /// Allocate a new slot with the given value.
-    /// Returns the SlotId and Generation for the new allocation.
+    /// Returns a generation-checked handle for the new allocation.
     ///
     /// # Errors
     /// Returns `ArenaError::ArenaExhausted` if the arena is at maximum capacity.
-    pub fn allocate(&mut self, value: T) -> Result<(SlotId, Generation), ArenaError> {
-        let slot_id = if let Some(free_id) = self.free_list.pop() {
-            free_id
-        } else {
-            let id = self.slots.len();
-            if id >= usize::try_from(MAX_ARENA_SLOTS).unwrap_or(usize::MAX) {
-                return Err(ArenaError::ArenaExhausted);
-            }
-            self.slots.push(None);
-            self.generations.push(Generation::INITIAL);
-            SlotId::new(u32::try_from(id).unwrap_or(MAX_ARENA_SLOTS))
-        };
-
-        let idx = usize::try_from(slot_id.0).unwrap_or(usize::MAX);
-        if let Some(g) = self.generations.get_mut(idx) {
-            *g = g.successor();
-        }
-
-         if idx < self.slots.len() {
-            if let Some(slot) = self.slots.get_mut(idx) {
-                *slot = Some(value);
-            }
-        }
+    pub fn allocate(&mut self, value: T) -> Result<SlotHandle, ArenaError> {
+        let slot_id = self.next_slot_id()?;
+        let idx = Self::slot_index(slot_id)?;
+        self.write_slot(idx, value)?;
         self.live_count = self.live_count.saturating_add(1);
+        let generation = self.generation_at(idx)?;
+        Ok(SlotHandle::new(slot_id, generation))
+    }
 
-          if let Some(generation) = self.generations.get(idx) {
-            Ok((slot_id, *generation))
-        } else {
-            Err(ArenaError::InvalidSlotId)
+    fn next_slot_id(&mut self) -> Result<SlotId, ArenaError> {
+        match self.free_list.pop() {
+            Some(free_id) => Ok(free_id),
+            None => self.push_new_slot(),
         }
     }
 
-    /// Deallocate the slot at the given SlotId.
-    /// The slot must be currently allocated.
+    fn push_new_slot(&mut self) -> Result<SlotId, ArenaError> {
+        let id = self.slots.len();
+        let max_slots = usize::try_from(MAX_ARENA_SLOTS).map_err(|_| ArenaError::ArenaExhausted)?;
+        if id >= max_slots {
+            return Err(ArenaError::ArenaExhausted);
+        }
+        self.slots.push(None);
+        self.generations.push(Generation::INITIAL);
+        let slot = u32::try_from(id).map_err(|_| ArenaError::ArenaExhausted)?;
+        Ok(SlotId::new(slot))
+    }
+
+    fn slot_index(slot_id: SlotId) -> Result<usize, ArenaError> {
+        if slot_id.is_invalid() {
+            return Err(ArenaError::InvalidSlotId);
+        }
+        usize::try_from(slot_id.raw()).map_err(|_| ArenaError::InvalidSlotId)
+    }
+
+    fn write_slot(&mut self, idx: usize, value: T) -> Result<(), ArenaError> {
+        let slot = self.slots.get_mut(idx).ok_or(ArenaError::InvalidSlotId)?;
+        *slot = Some(value);
+        Ok(())
+    }
+
+    fn generation_at(&self, idx: usize) -> Result<Generation, ArenaError> {
+        self.generations
+            .get(idx)
+            .copied()
+            .ok_or(ArenaError::InvalidSlotId)
+    }
+
+    /// Deallocate the slot referenced by the given handle.
+    /// The handle generation must match the live slot generation.
     ///
     /// # Errors
     /// Returns `ArenaError::SlotNotAllocated` if the slot is not currently allocated.
-    pub fn deallocate(&mut self, slot_id: SlotId) -> Result<(), ArenaError> {
-        let idx = usize::try_from(slot_id.0).unwrap_or(usize::MAX);
-        if idx >= self.slots.len() {
-            return Err(ArenaError::InvalidSlotId);
-        }
-        if self.slots.get(idx).map_or(true, Option::is_none) {
-            return Err(ArenaError::SlotNotAllocated);
-        }
+    pub fn deallocate(&mut self, handle: SlotHandle) -> Result<(), ArenaError> {
+        let idx = self.validated_handle_index(handle)?;
 
         if let Some(slot) = self.slots.get_mut(idx) {
             *slot = None;
         }
         self.live_count = self.live_count.saturating_sub(1);
 
-        // Add to free list for O(1) reuse
-        self.free_list.push(slot_id);
+        let generation = self
+            .generations
+            .get_mut(idx)
+            .ok_or(ArenaError::InvalidSlotId)?;
+        *generation = generation.successor();
+
+        // Terminal generations are retired permanently rather than wrapped.
+        if !generation.is_terminal() {
+            self.free_list.push(handle.slot_id());
+        }
 
         Ok(())
     }
 
-    /// Get an immutable reference to the value at the given SlotId.
+    /// Get an immutable reference to the value at the given handle.
     ///
     /// # Errors
     /// Returns `ArenaError::SlotNotAllocated` if the slot is not currently allocated.
-    pub fn get(&self, slot_id: SlotId) -> Result<&T, ArenaError> {
-        let idx = usize::try_from(slot_id.0).unwrap_or(usize::MAX);
-        if idx >= self.slots.len() {
-            return Err(ArenaError::InvalidSlotId);
-        }
+    pub fn get(&self, handle: SlotHandle) -> Result<&T, ArenaError> {
+        let idx = self.validated_handle_index(handle)?;
         match self.slots.get(idx) {
             Some(Some(v)) => Ok(v),
             _ => Err(ArenaError::SlotNotAllocated),
         }
     }
 
-    /// Get a mutable reference to the value at the given SlotId.
+    /// Get a mutable reference to the value at the given handle.
     ///
     /// # Errors
     /// Returns `ArenaError::SlotNotAllocated` if the slot is not currently allocated.
-    pub fn get_mut(&mut self, slot_id: SlotId) -> Result<&mut T, ArenaError> {
-        let idx = usize::try_from(slot_id.0).unwrap_or(usize::MAX);
-        if idx >= self.slots.len() {
-            return Err(ArenaError::InvalidSlotId);
-        }
+    pub fn get_mut(&mut self, handle: SlotHandle) -> Result<&mut T, ArenaError> {
+        let idx = self.validated_handle_index(handle)?;
         match self.slots.get_mut(idx) {
             Some(Some(v)) => Ok(v),
             _ => Err(ArenaError::SlotNotAllocated),
         }
     }
 
-    /// Returns true if the slot at the given SlotId is currently allocated.
+    /// Returns true if the given handle references a currently allocated slot.
     #[inline]
     #[must_use]
-    pub fn contains(&self, slot_id: SlotId) -> bool {
-        let idx = usize::try_from(slot_id.0).unwrap_or(usize::MAX);
-        if idx >= self.slots.len() {
-            return false;
+    pub fn contains(&self, handle: SlotHandle) -> bool {
+        self.validated_handle_index(handle).is_ok()
+    }
+
+    fn validated_handle_index(&self, handle: SlotHandle) -> Result<usize, ArenaError> {
+        let idx = Self::slot_index(handle.slot_id())?;
+        let generation = self.generation_at(idx)?;
+        if generation != handle.generation() {
+            return Err(ArenaError::GenerationMismatch);
         }
-        self.slots.get(idx).map_or(false, Option::is_some)
+        if self.slots.get(idx).is_none_or(Option::is_none) {
+            return Err(ArenaError::SlotNotAllocated);
+        }
+        Ok(idx)
     }
 
     /// Iterate over all live allocations as (SlotId, &T) pairs.
     #[inline]
     pub fn iter(&self) -> impl Iterator<Item = (SlotId, &T)> {
-        self.slots
-            .iter()
-            .enumerate()
-            .filter_map(|(i, slot)| {
-                slot.as_ref().map(|v| (SlotId::new(u32::try_from(i).unwrap_or(u32::MAX)), v))
-            })
+        self.slots.iter().enumerate().filter_map(|(i, slot)| {
+            slot.as_ref()
+                .map(|v| (SlotId::new(u32::try_from(i).unwrap_or(u32::MAX)), v))
+        })
     }
 
     /// Iterate over all live allocations as (SlotId, &mut T) pairs.
     #[inline]
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (SlotId, &mut T)> {
-        self.slots
-            .iter_mut()
-            .enumerate()
-            .filter_map(|(i, slot)| {
-                slot.as_mut().map(|v| (SlotId::new(u32::try_from(i).unwrap_or(u32::MAX)), v))
-            })
+        self.slots.iter_mut().enumerate().filter_map(|(i, slot)| {
+            slot.as_mut()
+                .map(|v| (SlotId::new(u32::try_from(i).unwrap_or(u32::MAX)), v))
+        })
     }
 
     /// Clear all allocations, resetting the arena to empty state.
@@ -366,41 +386,70 @@ impl SlotSet {
     #[inline]
     #[must_use]
     pub fn new() -> Self {
-        Self { arena: Arena::new() }
+        Self {
+            arena: Arena::new(),
+        }
     }
 
     /// Insert a slot into the set.
     #[inline]
-    pub fn insert(&mut self, slot_id: SlotId, generation: Generation) -> Result<(), ArenaError> {
-        let idx = usize::try_from(slot_id.0).unwrap_or(usize::MAX);
-        if idx >= self.arena.slots.len() {
-            // Extend slots and generations to accommodate this slot
-            while self.arena.slots.len() <= idx {
-                self.arena.slots.push(None);
-                self.arena.generations.push(Generation::INITIAL);
-            }
+    pub fn insert(&mut self, handle: SlotHandle) -> Result<(), ArenaError> {
+        let (idx, new_slot) = self.ensure_insert_slot(handle)?;
+        self.insert_at(idx, handle, new_slot)
+    }
+
+    fn ensure_insert_slot(&mut self, handle: SlotHandle) -> Result<(usize, bool), ArenaError> {
+        let idx = Arena::<()>::slot_index(handle.slot_id())?;
+        if idx > self.arena.slots.len() {
+            return Err(ArenaError::InvalidSlotId);
         }
-        if let Some(slot) = self.arena.slots.get_mut(idx) {
-            *slot = Some(());
+        if idx == self.arena.slots.len() {
+            self.arena.slots.push(None);
+            self.arena.generations.push(handle.generation());
+            Ok((idx, true))
+        } else {
+            Ok((idx, false))
         }
-        if let Some(gen_val) = self.arena.generations.get_mut(idx) {
-            *gen_val = generation;
+    }
+
+    fn insert_at(
+        &mut self,
+        idx: usize,
+        handle: SlotHandle,
+        new_slot: bool,
+    ) -> Result<(), ArenaError> {
+        let generation = self
+            .arena
+            .generations
+            .get_mut(idx)
+            .ok_or(ArenaError::InvalidSlotId)?;
+        if !new_slot && *generation != handle.generation() {
+            return Err(ArenaError::GenerationMismatch);
         }
+        let slot = self
+            .arena
+            .slots
+            .get_mut(idx)
+            .ok_or(ArenaError::InvalidSlotId)?;
+        if slot.is_some() {
+            return Ok(());
+        }
+        *slot = Some(());
         self.arena.live_count = self.arena.live_count.saturating_add(1);
         Ok(())
     }
 
     /// Remove a slot from the set.
     #[inline]
-    pub fn remove(&mut self, slot_id: SlotId) -> Result<(), ArenaError> {
-        self.arena.deallocate(slot_id)
+    pub fn remove(&mut self, handle: SlotHandle) -> Result<(), ArenaError> {
+        self.arena.deallocate(handle)
     }
 
     /// Returns true if the set contains the given slot.
     #[inline]
     #[must_use]
-    pub fn contains(&self, slot_id: SlotId) -> bool {
-        self.arena.contains(slot_id)
+    pub fn contains(&self, handle: SlotHandle) -> bool {
+        self.arena.contains(handle)
     }
 
     /// Returns the number of slots in the set.
@@ -456,18 +505,18 @@ impl ArenaManager {
         }
     }
 
-    /// Deallocate all state associated with a given SlotId from all arenas.
+    /// Deallocate all state associated with a given slot handle from all arenas.
     /// This is the synchronized deallocation operation — all 4 per-run arenas
     /// are freed together atomically.
-    pub fn deallocate_all(&mut self, slot_id: SlotId) -> Result<(), ArenaError> {
+    pub fn deallocate_all(&mut self, handle: SlotHandle) -> Result<(), ArenaError> {
         // Deallocate in dependency order (no deps first).
         // Errors are collected but we continue deallocating from remaining arenas.
-        let r1 = self.frame_pools.deallocate(slot_id);
-        let r2 = self.pending_timers.deallocate(slot_id);
-        let r3 = self.journal_sequences.deallocate(slot_id);
-        let r4 = self.runtime_states.deallocate(slot_id);
-        let r5 = self.run_states.deallocate(slot_id);
-        let r6 = self.terminal_runs.remove(slot_id);
+        let r1 = self.frame_pools.deallocate(handle);
+        let r2 = self.pending_timers.deallocate(handle);
+        let r3 = self.journal_sequences.deallocate(handle);
+        let r4 = self.runtime_states.deallocate(handle);
+        let r5 = self.run_states.deallocate(handle);
+        let r6 = self.terminal_runs.remove(handle);
         // Return the first error if any occurred, Ok(()) if all succeeded.
         r1.or(r2).or(r3).or(r4).or(r5).or(r6)
     }
@@ -493,6 +542,7 @@ mod tests {
     fn generation_successor() {
         let g = Generation::INITIAL;
         assert_eq!(g.successor(), Generation(1));
+        assert_eq!(Generation::TERMINAL.successor(), Generation::TERMINAL);
         assert!(!g.is_terminal());
     }
 
@@ -500,47 +550,85 @@ mod tests {
     fn arena_allocate_deallocate() {
         let mut arena: Arena<String> = Arena::new();
 
-        let (id1, gen1) = arena.allocate("test".to_string()).unwrap();
-        assert_eq!(arena.get(id1).unwrap(), "test");
-        assert_eq!(gen1, Generation(1)); // First allocation returns successor of INITIAL
+        let handle1 = arena.allocate("test".to_string()).unwrap();
+        assert_eq!(arena.get(handle1).unwrap(), "test");
+        assert_eq!(handle1.generation(), Generation::INITIAL);
 
-        arena.deallocate(id1).unwrap();
-        assert!(arena.get(id1).is_err());
+        arena.deallocate(handle1).unwrap();
+        assert!(matches!(
+            arena.get(handle1),
+            Err(ArenaError::GenerationMismatch)
+        ));
 
         // Reuse slot
-        let (id2, gen2) = arena.allocate("test2".to_string()).unwrap();
-        assert_eq!(id2, id1); // Same slot
-        assert_eq!(gen2, gen1.successor()); // Generation incremented
+        let handle2 = arena.allocate("test2".to_string()).unwrap();
+        assert_eq!(handle2.slot_id(), handle1.slot_id());
+        assert_eq!(handle2.generation(), handle1.generation().successor());
+        assert_eq!(arena.get(handle2).unwrap(), "test2");
+        assert!(matches!(
+            arena.get(handle1),
+            Err(ArenaError::GenerationMismatch)
+        ));
     }
 
     #[test]
     fn arena_contains() {
         let mut arena: Arena<i32> = Arena::new();
-        let (id, _) = arena.allocate(42).unwrap();
+        let handle = arena.allocate(42).unwrap();
 
-        assert!(arena.contains(id));
-        assert!(!Arena::<i32>::new().contains(id));
+        assert!(arena.contains(handle));
+        assert!(!Arena::<i32>::new().contains(handle));
 
-        arena.deallocate(id).unwrap();
-        assert!(!arena.contains(id));
+        arena.deallocate(handle).unwrap();
+        assert!(!arena.contains(handle));
     }
 
     #[test]
     fn slot_set_basic() {
         let mut set = SlotSet::new();
-        let (id, _gen) = set.arena.allocate(()).unwrap();
+        let handle = set.arena.allocate(()).unwrap();
 
-        assert!(set.contains(id));
+        assert!(set.contains(handle));
         assert_eq!(set.len(), 1);
 
-        set.remove(id).unwrap();
-        assert!(!set.contains(id));
+        set.insert(handle).unwrap();
+        assert_eq!(set.len(), 1);
+
+        set.remove(handle).unwrap();
+        assert!(!set.contains(handle));
         assert!(set.is_empty());
+    }
+
+    #[test]
+    fn slot_set_rejects_invalid_or_gapped_handle() {
+        let mut set = SlotSet::new();
+        let invalid = SlotHandle::new(SlotId::INVALID, Generation::INITIAL);
+        let gapped = SlotHandle::new(SlotId::new(8), Generation::INITIAL);
+
+        assert_eq!(set.insert(invalid), Err(ArenaError::InvalidSlotId));
+        assert_eq!(set.insert(gapped), Err(ArenaError::InvalidSlotId));
+        assert!(set.is_empty());
+    }
+
+    #[test]
+    fn slot_set_rejects_stale_reinsert() {
+        let mut set = SlotSet::new();
+        let handle = SlotHandle::new(SlotId::new(0), Generation::INITIAL);
+        let successor = SlotHandle::new(handle.slot_id(), handle.generation().successor());
+
+        set.insert(handle).unwrap();
+        set.remove(handle).unwrap();
+
+        assert_eq!(set.insert(handle), Err(ArenaError::GenerationMismatch));
+        set.insert(successor).unwrap();
+        assert!(set.contains(successor));
     }
 
     #[test]
     #[ignore = "types lack Default impl — must be rewritten with proper construction"]
     fn arena_manager_deallocate_all() {
-        todo!("arena_manager_deallocate_all requires Default on RunState, RuntimeState, PendingTimer, FramePool")
+        todo!(
+            "arena_manager_deallocate_all requires Default on RunState, RuntimeState, PendingTimer, FramePool"
+        )
     }
 }
