@@ -620,7 +620,7 @@ fn journal_action_suspended_captures_all_fields() -> Result<(), String> {
         idempotency_key: 12345,
         capacity: 1,
     };
-    let event = crate::action::journal_action_suspended(
+    let event = crate::journal_action_suspended(
         ticket,
         ActionId::new(5),
         SlotIdx::new(0),
