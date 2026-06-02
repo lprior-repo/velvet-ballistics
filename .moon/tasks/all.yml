@@ -41,6 +41,7 @@ tasks:
       - '@globs(tests)'
       - '@globs(configs)'
     options:
+      cache: false
       runInCI: true
 
   lint-src:
@@ -58,6 +59,7 @@ tasks:
       - '@globs(sources)'
       - '@globs(configs)'
     options:
+      cache: false
       runInCI: true
 
   panic-surface:
@@ -69,6 +71,7 @@ tasks:
       - 'scripts/check-panic-surface.sh'
       - '.moon/tasks/all.yml'
     options:
+      cache: false
       runInCI: true
 
   ignored-fallible-results:
@@ -81,6 +84,7 @@ tasks:
       - 'scripts/ignored-fallible-results.allow'
       - '.moon/tasks/all.yml'
     options:
+      cache: false
       runInCI: true
 
   check:
@@ -101,6 +105,7 @@ tasks:
       - '@globs(tests)'
       - '@globs(configs)'
     options:
+      cache: false
       runInCI: true
 
   nightly-feature-gate:
@@ -243,15 +248,21 @@ tasks:
       - '@globs(tests)'
       - '@globs(configs)'
     options:
+      cache: false
       runInCI: true
 
   source-length-self-test:
     command: 'bash scripts/check-source-length-tests.sh'
     inputs:
       - 'scripts/check-source-length.sh'
+      - 'scripts/check-source-length.rs'
       - 'scripts/check-source-length-tests.sh'
+      - 'scripts/source_length_gate.rs'
+      - 'scripts/source_length_ledger.rs'
+      - 'scripts/source_length_scan.rs'
       - '.moon/tasks/all.yml'
     options:
+      cache: false
       runInCI: true
 
   hardened-build:
