@@ -980,13 +980,16 @@ fn lower_canonical_choose_rejects_65_branches() {
 /// `body_width` and then `choose_width`.
 #[test]
 fn choose_width_overflow_returns_error() {
-    // Given: a branch with an unsupported body primitive (Repeat — not yet allowed in body steps)
+    // Given: a branch with an unsupported body primitive (Collect is not allowed in body steps)
     let unsupported_step = vb_yaml::ast::StepAst {
         id: "unsupported".to_string(),
         name: None,
         condition: None,
-        primitive: vb_yaml::ast::StepPrimitive::Repeat {
-            max_attempts: 3,
+        primitive: vb_yaml::ast::StepPrimitive::Collect {
+            variable: "x".to_string(),
+            source: "items".to_string(),
+            pages: None,
+            items: None,
             body: vec![],
         },
         with: None,
@@ -1875,18 +1878,19 @@ fn canonical_body_step_width_rejects_collect_with_unsupported_step_primitive() {
 }
 
 #[test]
-fn canonical_body_step_width_rejects_repeat_with_unsupported_step_primitive() {
+fn canonical_body_step_width_accepts_repeat_with_empty_body() {
+    // Repeat is now supported in body context, delegating to canonical_step_width
     let repeat = StepPrimitive::Repeat {
         max_attempts: 3,
         body: vec![],
     };
     let result = canonical_body_step_width(&repeat);
-    match result {
-        Err(CompileError::UnsupportedStepPrimitive { primitive, .. }) => {
-            assert_eq!(primitive, "repeat", "primitive name must be 'repeat'");
-        }
-        other => panic!("expected UnsupportedStepPrimitive for Repeat, got: {other:?}"),
-    }
+    // Empty body with overhead=3 yields Ok(3)
+    assert_eq!(
+        result,
+        Ok(3),
+        "Repeat with empty body should be accepted with width 3"
+    );
 }
 
 #[test]

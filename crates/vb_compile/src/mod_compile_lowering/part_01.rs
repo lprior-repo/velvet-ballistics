@@ -145,7 +145,8 @@ pub(crate) fn canonical_body_step_width(
     match primitive {
         vb_yaml::ast::StepPrimitive::Set { .. } | vb_yaml::ast::StepPrimitive::Do { .. } => Ok(1),
         vb_yaml::ast::StepPrimitive::ForEach { .. }
-        | vb_yaml::ast::StepPrimitive::Together { .. } => canonical_step_width(primitive),
+        | vb_yaml::ast::StepPrimitive::Together { .. }
+        | vb_yaml::ast::StepPrimitive::Repeat { .. } => canonical_step_width(primitive),
         vb_yaml::ast::StepPrimitive::Reduce { body, .. } => body_width(body, 3),
         other => Err(CompileError::UnsupportedStepPrimitive {
             step: 0,
