@@ -85,12 +85,13 @@ fn emit_single_body_set_flux_spec(
     _builder: &mut SlotCompiler,
     _reuse_first_constant: bool,
 ) -> Result<(), CompileErrors> {
-    // Stub: actual call delegates to part_04::emit_single_body_set
-    // This function exists only to carry Flux annotations.
-    // The annotations must be inlined into the production function.
-    unreachable!(
-        "flux spec stub -- replace with inline annotation on part_04::emit_single_body_set"
-    )
+    // Stub exists only to carry Flux annotations until the contract is inlined.
+    Err(CompileErrors(vec![
+        CompileError::UnsupportedStepPrimitive {
+            step: 0,
+            primitive: "flux-spec-stub",
+        },
+    ]))
 }
 
 /// Flux lemma: the together width correctly bounds the number of emitted nodes.

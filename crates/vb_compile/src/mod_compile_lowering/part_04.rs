@@ -300,19 +300,19 @@ pub(crate) fn emit_single_body_set(
             let result =
                 emit_single_body_together(branches, id, diagnostic_step, slot, next, builder);
             let nodes_after = builder.nodes.len();
-            if result.is_ok() {
-                if let Ok(expected_width) = canonical_body_step_width(&step.primitive) {
-                    #[cfg(not(kani))]
-                    debug_assert_eq!(
-                        expected_width,
-                        nodes_after - nodes_before,
-                        "together width mismatch: computed {}, emitted {}",
-                        expected_width,
-                        nodes_after - nodes_before,
-                    );
-                    #[cfg(kani)]
-                    let _ = (expected_width, nodes_after - nodes_before);
-                }
+            if result.is_ok()
+                && let Ok(expected_width) = canonical_body_step_width(&step.primitive)
+            {
+                #[cfg(not(kani))]
+                debug_assert_eq!(
+                    expected_width,
+                    nodes_after.wrapping_sub(nodes_before),
+                    "together width mismatch: computed {}, emitted {}",
+                    expected_width,
+                    nodes_after.wrapping_sub(nodes_before),
+                );
+                #[cfg(kani)]
+                let _ = (expected_width, nodes_after.wrapping_sub(nodes_before));
             }
             result
         }

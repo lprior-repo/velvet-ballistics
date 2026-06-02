@@ -79,9 +79,11 @@ use vb_yaml::ast::{StepAst, StepPrimitive, TogetherBranch};
 //   result -> Ok(n) where n >= 2 -- for Together inputs
 //   result -> Ok(n) where n == 1 -- for Set/Do inputs
 fn canonical_body_step_width_flux_spec(_primitive: &StepPrimitive) -> Result<usize, CompileError> {
-    // Stub: actual call delegates to part_01::canonical_body_step_width
-    // This function exists only to carry Flux annotations.
-    unreachable!("flux spec stub -- replace with #[flux_rs::extern_spec] or inline annotation")
+    // Stub exists only to carry Flux annotations until the contract is inlined.
+    Err(CompileError::UnsupportedStepPrimitive {
+        step: 0,
+        primitive: "flux-spec-stub",
+    })
 }
 
 /// Flux-refined signature for together_width.
@@ -101,7 +103,11 @@ fn canonical_body_step_width_flux_spec(_primitive: &StepPrimitive) -> Result<usi
 //       requires branches.len() >= 1
 //   )]
 fn together_width_flux_spec(_branches: &[TogetherBranch]) -> Result<usize, CompileError> {
-    unreachable!("flux spec stub -- replace with inline annotation on part_01::together_width")
+    // Stub exists only to carry Flux annotations until the contract is inlined.
+    Err(CompileError::UnsupportedStepPrimitive {
+        step: 0,
+        primitive: "flux-spec-stub",
+    })
 }
 
 /// Flux lemma: together width minimum bound.
