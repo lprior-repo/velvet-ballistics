@@ -7,6 +7,8 @@ use vb_runtime::admission::{
     AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, REQUIRED_GATE_COUNT,
     StorageArtifactStore, admit_artifact_run,
 };
+#[cfg(test)]
+use vb_storage::__put_compiled_ir_for_testing as put_compiled_ir;
 use vb_storage::admission::{AcceptedArtifact, VerificationProof};
 use vb_storage::{CompiledIrRecord, EventSeq, FjallJournal};
 
@@ -98,12 +100,14 @@ fn persist_artifact_as(
     artifact: &AcceptedArtifact,
 ) -> Result<(), String> {
     let ir = postcard::to_allocvec(artifact).map_err(|error| error.to_string())?;
-    journal
-        .put_compiled_ir(&CompiledIrRecord {
+    put_compiled_ir(
+        journal,
+        &CompiledIrRecord {
             digest: record_digest,
             ir,
-        })
-        .map_err(|error| error.to_string())
+        },
+    )
+    .map_err(|error| error.to_string())
 }
 
 #[test]

@@ -7,8 +7,8 @@ use crate::{
     records::RecordKind,
     types::{EventSeq, RecordEnvelope},
 };
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 pub(crate) mod envelope;
 pub(crate) mod header;

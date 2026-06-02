@@ -1,28 +1,32 @@
-// Proptest: Trailing bytes property (Gate 3) through public API.
+// Proptest: Trailing bytes property (Gate 3) through storage boundary.
 //
 // Obligation: PO-vb-h09wf-015
 // Verifier: proptest
-// Command: cargo test -p vb_storage --test proptest -- ps_005_trailing_bytes
+// Command: cargo test -p vb_storage -- ps_005_trailing_bytes
 //
-// Domain claim: >1000 cases: envelopes with trailing bytes fail public storage admission.
+// Domain claim: >1000 cases: envelopes with trailing bytes fail storage admission.
 // The trailing byte defense is verified at the storage boundary.
 //
-// PRODUCTION BINDING:
-//   vb_storage::journal::FjallJournal::put_compiled_ir
-//   vb_storage::admission::submit_artifact
+// SECURITY NOTE:
+// This test exercises the storage boundary directly with malformed data.
+// The direct `put_compiled_ir` API is restricted to internal use only;
+// external callers MUST use `submit_artifact` which properly validates
+// and binds all artifact metadata (warnings, capabilities, seq).
 
-use proptest::prelude::*;
+use crate::{
+    JournalError,
+    admission::{AcceptedArtifact, submit_artifact},
+    journal::FjallJournal,
+    records::CompiledIrRecord,
+};
+use proptest::prop_assert;
+use proptest::prop_assert_eq;
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, RuntimePolicy, SlotIdx, StepIdx,
     WorkflowDigest,
     value::ConstValue,
     workflow::{ResourceContract, WorkflowParts},
 };
-use vb_storage::JournalError;
-use vb_storage::admission::AcceptedArtifact;
-use vb_storage::admission::submit_artifact;
-use vb_storage::journal::FjallJournal;
-use vb_storage::records::CompiledIrRecord;
 
 fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
     let temp = tempfile::tempdir().expect("tempdir");
@@ -71,7 +75,7 @@ fn make_workflow() -> CompiledWorkflow {
     CompiledWorkflow::try_from_parts(parts).unwrap()
 }
 
-proptest! {
+proptest::proptest! {
     /// PS-005a: Valid envelope decodes without trailing bytes issue.
     #[test]
     fn ps_005_valid_envelope_no_trailing_issue(_dummy in proptest::bool::ANY) {
@@ -110,7 +114,11 @@ proptest! {
             "remaining bytes length must equal trailer length");
     }
 
-    /// PS-005c: public storage write rejects trailered accepted-artifact envelope.
+    /// PS-005c: storage write rejects trailered accepted-artifact envelope.
+    ///
+    /// SECURITY TEST: This verifies that the storage boundary rejects malformed
+    /// data. The direct `put_compiled_ir` API is internal; this test exercises
+    /// it to verify the security boundary works correctly.
     #[test]
     fn ps_005_storage_write_rejects_trailer(_dummy in proptest::bool::ANY) {
         let (_temp, journal) = temp_journal();
@@ -125,6 +133,7 @@ proptest! {
             ir: envelope,
         };
 
+        // SECURITY: This tests the internal storage boundary directly
         let result = journal.put_compiled_ir(&record);
         prop_assert!(
             matches!(

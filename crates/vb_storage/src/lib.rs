@@ -276,13 +276,18 @@ pub fn put_workflow_source(
     journal.put_workflow_source(record)
 }
 
-// NOTE: put_compiled_ir is pub(crate) for internal use and tests only.
+// NOTE: put_compiled_ir is pub(crate) for internal use only.
 // External code must use submit_artifact / admit_compiled_artifact which
 // perform proper validation and bind all artifact fields cryptographically.
 // Direct writes bypass admission validation and could allow mutation of
 // non-digest-bound fields (warnings, required_capabilities, accepted_at_seq).
-#[cfg(test)]
-pub(crate) fn put_compiled_ir(
+//
+// SECURITY: This function is provided for integration testing only.
+// It allows tests to verify storage boundary validation with malformed data.
+// Production code should always use submit_artifact.
+#[cfg(any(test, feature = "test-support"))]
+#[doc(hidden)]
+pub fn __put_compiled_ir_for_testing(
     journal: &FjallJournal,
     record: &CompiledIrRecord,
 ) -> Result<(), JournalError> {
@@ -394,3 +399,6 @@ pub fn read_run_events(
 ) -> Result<Vec<JournalEvent>, JournalError> {
     journal.events_for_run(run)
 }
+
+#[cfg(test)]
+mod ps_005_trailing_bytes_test;

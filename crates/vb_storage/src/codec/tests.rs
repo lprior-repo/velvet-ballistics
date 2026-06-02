@@ -7,8 +7,8 @@
 )]
 use super::*;
 use crate::{
-    constants::*, types::EventSeq, BlobRecord, CompiledIrRecord, JournalEvent, RecordKind,
-    WorkflowSourceRecord,
+    BlobRecord, CompiledIrRecord, JournalEvent, RecordKind, WorkflowSourceRecord, constants::*,
+    types::EventSeq,
 };
 use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest};
 

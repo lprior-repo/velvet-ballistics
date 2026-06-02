@@ -9,22 +9,27 @@ use std::collections::HashSet;
 use crate::{
     codec::encode_record,
     constants::{
-        JOURNAL_KEY_BYTES, MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD,
-        MAGIC_JOURNAL_EVENT, MAGIC_SNAPSHOT, MAGIC_WORKFLOW_SOURCE, MAX_BATCH_COUNT,
-        MAX_BLOB_BYTES, MAX_COMPILED_IR_BYTES, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        JOURNAL_KEY_BYTES, MAGIC_BLOB, MAGIC_INDEX_RECORD, MAGIC_JOURNAL_EVENT, MAGIC_SNAPSHOT,
+        MAGIC_WORKFLOW_SOURCE, MAX_BATCH_COUNT, MAX_BLOB_BYTES, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         MAX_RUN_HEADER_BYTES, MAX_SNAPSHOT_BYTES, MAX_WORKFLOW_SOURCE_BYTES,
     },
     error::JournalError,
     events::JournalEvent,
     keys::{
-        blob_key, compiled_ir_key, index_action_key, index_status_key, index_workflow_key,
-        run_event_key, run_header_key, run_snapshot_key, workflow_source_key,
+        blob_key, index_action_key, index_status_key, index_workflow_key, run_event_key,
+        run_header_key, run_snapshot_key, workflow_source_key,
     },
-    records::{BlobRecord, CompiledIrRecord, RecordKind, RunHeaderRecord, WorkflowSourceRecord},
+    records::{BlobRecord, RecordKind, RunHeaderRecord, WorkflowSourceRecord},
     recovery::RunSnapshot,
 };
 
 use crate::journal::FjallJournal;
+#[cfg(test)]
+use crate::{
+    constants::{MAGIC_COMPILED_ARTIFACT, MAX_COMPILED_IR_BYTES},
+    keys::compiled_ir_key,
+    records::CompiledIrRecord,
+};
 
 /// Default journal batch encoded-byte budget (1 MiB).
 ///
@@ -106,7 +111,15 @@ impl<'j> JournalWriteBatch<'j> {
     }
 
     /// Inserts a compiled IR record into the batch.
-    pub fn put_compiled_ir(&mut self, record: &CompiledIrRecord) -> Result<(), JournalError> {
+    ///
+    /// SECURITY: This is pub(crate) to restrict access to admission path only.
+    /// External callers MUST use `submit_artifact` or `admit_compiled_artifact`
+    /// which properly bind all artifact metadata (warnings, capabilities, seq).
+    #[cfg(test)]
+    pub(crate) fn put_compiled_ir(
+        &mut self,
+        record: &CompiledIrRecord,
+    ) -> Result<(), JournalError> {
         self.abort_on_error(crate::admission::validate_compiled_ir_record(record))?;
         let key = self.abort_on_error(compiled_ir_key(record.digest.as_bytes()))?;
         let value = self.abort_on_error(encode_record(
@@ -120,6 +133,7 @@ impl<'j> JournalWriteBatch<'j> {
         Ok(())
     }
 
+    #[cfg(test)]
     fn abort_on_error<T>(&mut self, result: Result<T, JournalError>) -> Result<T, JournalError> {
         match result {
             Ok(value) => Ok(value),

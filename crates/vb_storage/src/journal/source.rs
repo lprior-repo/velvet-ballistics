@@ -45,7 +45,11 @@ impl FjallJournal {
     }
 
     /// Stores compiled IR bytes by digest.
-    pub fn put_compiled_ir(&self, record: &CompiledIrRecord) -> Result<(), JournalError> {
+    ///
+    /// SECURITY: This is pub(crate) to restrict access to admission path only.
+    /// External callers MUST use `submit_artifact` or `admit_compiled_artifact`
+    /// which properly bind all artifact metadata (warnings, capabilities, seq).
+    pub(crate) fn put_compiled_ir(&self, record: &CompiledIrRecord) -> Result<(), JournalError> {
         validate_compiled_ir_record(record)?;
         let key = compiled_ir_key(record.digest.as_bytes())?;
         let value = encode_record(

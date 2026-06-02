@@ -14,8 +14,8 @@
 
 use super::*;
 use crate::{
-    constants::MAGIC_JOURNAL_EVENT, error::JournalError, records::RecordKind, types::EventSeq,
-    JournalEvent,
+    JournalEvent, constants::MAGIC_JOURNAL_EVENT, error::JournalError, records::RecordKind,
+    types::EventSeq,
 };
 use vb_core::RunId;
 

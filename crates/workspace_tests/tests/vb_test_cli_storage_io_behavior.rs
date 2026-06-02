@@ -18,6 +18,8 @@ use vb_core::workflow::{
 };
 use vb_core::{RunId, RuntimePolicy};
 use vb_ipc::server::WorkflowResolutionError;
+#[cfg(test)]
+use vb_storage::__put_compiled_ir_for_testing as put_compiled_ir;
 use vb_storage::{
     CompiledIrRecord, EventSeq, FjallJournal, JournalEvent,
     recovery::{ActionReplayTracker, extract_terminal, recover_full_journal},
@@ -880,7 +882,7 @@ fn resolver_returns_invalid_artifact_for_corrupted_ir() {
         digest: dummy_digest(),
         ir: vec![0xDE, 0xAD, 0xBE, 0xEF], // Corrupted data
     };
-    let write_result = journal.put_compiled_ir(&record);
+    let write_result = put_compiled_ir(&journal, &record);
     assert!(
         write_result.is_err(),
         "corrupted IR must be rejected at write"

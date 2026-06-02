@@ -401,8 +401,8 @@ fn accepted_artifact_fields_are_populated() -> Result<(), String> {
 }
 
 #[test]
-fn submit_artifact_returns_required_capabilities_when_contract_requires_capability(
-) -> Result<(), String> {
+fn submit_artifact_returns_required_capabilities_when_contract_requires_capability()
+-> Result<(), String> {
     let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
     let workflow = minimal_workflow()?;
     let required = vb_core::capability::Capability::new(

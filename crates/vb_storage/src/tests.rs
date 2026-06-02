@@ -30,8 +30,8 @@ mod tests {
         RECORD_HEADER_LEN, RecordKind, RunHeaderRecord, StorageKey, StorageLimits,
         WorkflowSourceRecord, append_journal_event, decode_record, decode_record_header,
         encode_record, encode_record_header, flush_profile, init_keyspaces, keyspace_options_for,
-        open_store, put_blob, put_compiled_ir, put_run_header, put_workflow_source, read_blob,
-        read_run_events, replay_journal, verify_digest_match, write_snapshot,
+        open_store, put_blob, put_run_header, put_workflow_source, read_blob, read_run_events,
+        replay_journal, verify_digest_match, write_snapshot,
     };
     use vb_core::{
         ActionId, CODE_REGISTRY, DiagnosticCode, RunId, SlotIdx, StepIdx, WorkflowDigest,
@@ -175,7 +175,9 @@ mod tests {
             .expect("workflow source lookup should succeed");
         assert_eq!(stored_source, Some(source));
 
-        put_compiled_ir(&journal, &compiled).expect("compiled ir should store");
+        journal
+            .put_compiled_ir(&compiled)
+            .expect("compiled ir should store");
         let stored_compiled = journal
             .compiled_ir(compiled_digest)
             .expect("compiled ir lookup should succeed");

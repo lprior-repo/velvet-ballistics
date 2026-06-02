@@ -16,6 +16,8 @@ use vb_runtime::admission::{
 };
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::shard::{Shard, ShardCommand, ShardConfig};
+#[cfg(test)]
+use vb_storage::__put_compiled_ir_for_testing as put_compiled_ir;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ObservedAdmissionDiagnostic {
@@ -873,10 +875,13 @@ fn given_raw_or_malformed_storage_bytes_when_strict_run_created_then_decode_fail
         let dir = tempfile::tempdir().map_err(|error| error.to_string())?;
         let journal =
             vb_storage::FjallJournal::open(dir.path(), None).map_err(|error| error.to_string())?;
-        let write_result = journal.put_compiled_ir(&vb_storage::CompiledIrRecord {
-            digest: requested,
-            ir: bytes,
-        });
+        let write_result = put_compiled_ir(
+            &journal,
+            &vb_storage::CompiledIrRecord {
+                digest: requested,
+                ir: bytes,
+            },
+        );
         assert!(
             write_result.is_err(),
             "malformed storage byte case {label} must be rejected at write"

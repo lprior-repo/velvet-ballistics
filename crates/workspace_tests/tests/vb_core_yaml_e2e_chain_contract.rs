@@ -10,6 +10,8 @@ use vb_runtime::admission::{
     AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, REQUIRED_GATE_COUNT,
     StorageArtifactStore, admit_artifact_run,
 };
+#[cfg(test)]
+use vb_storage::__put_compiled_ir_for_testing as put_compiled_ir;
 use vb_storage::admission::{AcceptedArtifact, VerificationProof, submit_artifact};
 use vb_storage::recovery::{
     RecoveryError, recover_runtime_frame_seed_from_events, summarize_recovery_events,
@@ -130,7 +132,7 @@ fn persist_accepted_artifact(
         digest: artifact.digest,
         ir: payload,
     };
-    journal.put_compiled_ir(&record)
+    put_compiled_ir(journal, &record)
 }
 
 fn append_event(journal: &FjallJournal, event: &JournalEvent) -> Result<(), String> {
@@ -277,7 +279,7 @@ fn persist_source_and_artifact_returns_compiled_ir_digest_mismatch_when_artifact
         ir: postcard::to_allocvec(&artifact).map_err(|error| error.to_string())?,
     };
 
-    let result = journal.put_compiled_ir(&record);
+    let result = put_compiled_ir(&journal, &record);
 
     assert!(
         matches!(result, Err(JournalError::ArtifactChecksumMismatch)),
@@ -435,10 +437,13 @@ fn admit_strict_artifact_run_rejects_raw_workflow_parts_or_yaml_bypass_with_acce
 -> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
     let workflow = compile_valid_yaml()?;
-    let result = journal.put_compiled_ir(&CompiledIrRecord {
-        digest: workflow.digest(),
-        ir: postcard::to_allocvec(&workflow.to_parts()).map_err(|error| error.to_string())?,
-    });
+    let result = put_compiled_ir(
+        &journal,
+        &CompiledIrRecord {
+            digest: workflow.digest(),
+            ir: postcard::to_allocvec(&workflow.to_parts()).map_err(|error| error.to_string())?,
+        },
+    );
     assert!(
         matches!(result, Err(JournalError::ArtifactMalformed)),
         "expected ArtifactMalformed, got {result:?}"

@@ -395,7 +395,7 @@ fn reject_oversized_compiled_ir_value(len: usize) -> Result<(), JournalError> {
 pub mod fuzz_access {
     //! Internal fuzz-harness accessors; unavailable in normal Cargo builds.
 
-    use crate::{records::CompiledIrRecord, JournalError};
+    use crate::{JournalError, records::CompiledIrRecord};
 
     use super::AcceptedArtifact;
 
