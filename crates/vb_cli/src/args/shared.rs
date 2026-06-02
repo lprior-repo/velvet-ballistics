@@ -50,6 +50,25 @@ pub(super) fn has_flag(args: &[OsString], flag: &str) -> bool {
     args.iter().any(|arg| arg == flag)
 }
 
+pub(super) fn optional_named_flag(
+    args: &[OsString],
+    flag: &'static str,
+) -> Result<Option<String>, ParseError> {
+    for (index, arg) in args.iter().enumerate() {
+        if arg == flag {
+            let value = args
+                .get(index.saturating_add(1))
+                .and_then(|raw| raw.to_str())
+                .ok_or(ParseError::MissingArgument(flag))?;
+            if value.starts_with("--") {
+                return Err(ParseError::MissingArgument(flag));
+            }
+            return Ok(Some(value.to_string()));
+        }
+    }
+    Ok(None)
+}
+
 /// Find the first positional argument (not starting with `--`) starting at `start_idx`.
 /// This correctly skips over named flags and their values to locate the workflow path.
 pub(super) fn find_positional(args: &[OsString], start_idx: usize) -> Option<PathBuf> {

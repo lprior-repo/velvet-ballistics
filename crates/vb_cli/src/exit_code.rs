@@ -58,7 +58,7 @@ impl From<CliExitCode> for u8 {
 }
 
 impl From<vb_core::errors::CoreError> for CliExitCode {
-    fn from(_err: vb_core::errors::CoreError) -> Self {
+    fn from(err: vb_core::errors::CoreError) -> Self {
         // The From trait requires returning a concrete CliExitCode
         // without propagating the error. All CoreError variants map to
         // RuntimeFailed because the CLI surface cannot carry domain error
@@ -69,7 +69,7 @@ impl From<vb_core::errors::CoreError> for CliExitCode {
 }
 
 impl From<vb_storage::error::JournalError> for CliExitCode {
-    fn from(_err: vb_storage::error::JournalError) -> Self {
+    fn from(err: vb_storage::error::JournalError) -> Self {
         // The From trait requires returning a concrete CliExitCode
         // without propagating the error. All JournalError variants map to
         // StorageError because the CLI surface cannot carry domain error

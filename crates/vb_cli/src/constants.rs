@@ -1,6 +1,8 @@
 #![forbid(unsafe_code)]
 //! CLI constants and static configuration.
 
+use std::process::ExitCode;
+
 pub(crate) const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub(crate) const HELP: &str = "\

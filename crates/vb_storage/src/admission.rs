@@ -279,8 +279,7 @@ fn submit_relaxed_artifact_with_evidence(
     required_capabilities: Box<[vb_core::capability::Capability]>,
     idempotency_evidence: &IdempotencyEvidence,
 ) -> Result<AcceptedArtifact, JournalError> {
-    let parts = workflow.to_parts();
-    let ir_bytes = canonical_workflow_ir_bytes(&parts)?;
+    let ir_bytes = validate_workflow_artifact_bytes(workflow)?;
     let mut proof = VerificationProof::new(workflow.digest(), 0, false);
     proof.idempotency_keyed = idempotency_evidence.keyed.clone();
     proof.idempotency_attested = idempotency_evidence.attested.clone();

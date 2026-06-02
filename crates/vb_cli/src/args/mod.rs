@@ -12,7 +12,6 @@ pub(crate) mod trace;
 pub(crate) mod types;
 pub(crate) mod workflow;
 
-#[cfg(test)]
 mod tests;
 
 // Re-export public types used throughout the crate

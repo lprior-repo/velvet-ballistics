@@ -10,7 +10,7 @@ use vb_runtime::admission::{
 #[cfg(test)]
 use vb_storage::__put_compiled_ir_for_testing as put_compiled_ir;
 use vb_storage::admission::{AcceptedArtifact, VerificationProof};
-use vb_storage::{CompiledIrRecord, EventSeq, FjallJournal};
+use vb_storage::{CompiledIrRecord, EventSeq, FjallJournal, JournalError};
 
 fn digest(byte: u8) -> WorkflowDigest {
     WorkflowDigest::from_bytes([byte; 32])
@@ -90,44 +90,6 @@ steps:
     vb_core::CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())
 }
 
-fn accepted_workflow_for_digest(digest: WorkflowDigest) -> vb_core::CompiledWorkflow {
-    let parts = vb_core::WorkflowParts {
-        name: Box::<str>::from("lp2v_proof_admission"),
-        digest,
-        nodes: Box::new([
-            vb_core::CompiledNode {
-                id: vb_core::StepIdx::new(0),
-                output: Some(vb_core::SlotIdx::new(0)),
-                next: Some(vb_core::StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: vb_core::CompiledNodeKind::SetConst {
-                    value: vb_core::ConstIdx::new(0),
-                },
-            },
-            vb_core::CompiledNode {
-                id: vb_core::StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: vb_core::CompiledNodeKind::Finish {
-                    result: vb_core::SlotIdx::new(0),
-                },
-            },
-        ]),
-        expressions: Box::new([]),
-        accessors: Box::new([]),
-        constants: Box::new([vb_core::ConstValue::I64(42)]),
-        slot_count: 1,
-        symbols_count: 0,
-        entry: vb_core::StepIdx::new(0),
-        resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
-        step_names: Box::new([]),
-    };
-    vb_core::CompiledWorkflow::try_from_parts(parts).expect("WorkflowParts should compile")
-}
-
 fn journal_error_label<T>(result: &Result<T, JournalError>) -> String {
     match result {
         Ok(_) => String::from("Ok"),
@@ -205,18 +167,18 @@ fn given_mismatched_proof_digest_when_strict_admission_runs_then_digest_mismatch
 #[test]
 fn given_storage_record_with_mismatched_artifact_digest_when_stored_then_storage_denies()
 -> Result<(), String> {
+    let temp = tempfile::tempdir().map_err(|error| error.to_string())?;
+    let journal = FjallJournal::open(temp.path(), None).map_err(|error| error.to_string())?;
     let mut artifact = accepted_artifact(digest(0xC2))?;
     artifact.verification.digest = artifact.digest;
     let requested = digest(0xC1);
-    let found = artifact.digest;
-    let store = ReturningAcceptedArtifactStore { artifact };
-
-    let result = admit_artifact_run(
-        &store,
-        RuntimePolicy::Strict,
-        RunId::new(9003),
-        requested,
-        granted_capabilities(required_capability()),
+    let ir = postcard::to_allocvec(&artifact).map_err(|error| error.to_string())?;
+    let result = put_compiled_ir(
+        &journal,
+        &CompiledIrRecord {
+            digest: requested,
+            ir,
+        },
     );
 
     assert_eq!(

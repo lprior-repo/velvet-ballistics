@@ -104,7 +104,6 @@ pub(crate) fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> E
                 crate::outln!("  status:  valid");
                 crate::outln!("  digest:  {}", result.digest_hex);
                 crate::outln!("  nodes:   {}", result.node_count);
-                crate::outln!("  status:  valid");
                 crate::outln!("");
                 crate::outln!("Passed gates ({}):", result.checks.len());
                 for check in &result.checks {

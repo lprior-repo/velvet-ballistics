@@ -896,8 +896,9 @@ fn given_raw_or_malformed_storage_bytes_when_stored_then_storage_admission_denie
                 ir: bytes,
             },
         );
-        assert!(
-            write_result.is_err(),
+        assert_eq!(
+            journal_error_label(&write_result),
+            "ArtifactMalformed",
             "malformed storage byte case {label} must be rejected at write"
         );
         let store = vb_runtime::admission::StorageArtifactStore::new(Arc::new(journal));

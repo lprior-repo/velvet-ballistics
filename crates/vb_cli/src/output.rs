@@ -148,6 +148,18 @@ fn encode_postcard_json_frame(value: &serde_json::Value) -> Result<Vec<u8>, Outp
     .map_err(OutputError::PostcardFrame)
 }
 
+pub(crate) fn write_stderr_line(args: std::fmt::Arguments<'_>) {
+    let stderr = io::stderr();
+    let mut handle = stderr.lock();
+    if let Err(error) = handle.write_fmt(args) {
+        write_stderr_best_effort(format_args!("stderr write failed: {error}"));
+        return;
+    }
+    if let Err(error) = handle.write_all(b"\n") {
+        write_stderr_best_effort(format_args!("stderr newline write failed: {error}"));
+    }
+}
+
 pub(crate) fn write_stderr_best_effort(args: std::fmt::Arguments<'_>) {
     let stderr = io::stderr();
     let mut handle = stderr.lock();

@@ -1,4 +1,10 @@
+use crate::args::{
+    ActionRegistryMode, Command, DurabilityMode, EmitTarget, OutputFormat, ParseError, StepTarget,
+    VerifyProfile, parse_args,
+};
+use crate::commands_journal::TraceStatus;
 use std::ffi::OsString;
+use std::path::PathBuf;
 
 fn args(parts: &[&str]) -> Vec<OsString> {
     parts.iter().map(|part| OsString::from(*part)).collect()

@@ -1,6 +1,7 @@
 //! Action table rows, contract specs, and CLI action registration.
 
 use crate::args::OutputFormat;
+use crate::exit_code::CliExitCode;
 use std::process::ExitCode;
 
 use crate::output::json_error;
@@ -149,7 +150,6 @@ pub(crate) fn registered_cli_actions() -> vb_core::action::ActionResult<ActionRe
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct CliActionSpec {
     pub(crate) id: u16,
-    pub(crate) name: &'static str,
     pub(crate) idempotency: vb_core::action::Idempotency,
     pub(crate) retry_safety: vb_core::action::RetrySafety,
     pub(crate) side_effect: vb_core::action::SideEffect,
@@ -162,7 +162,6 @@ pub(crate) fn cli_action_specs() -> &'static [CliActionSpec] {
     &[
         CliActionSpec {
             id: 1,
-            name: "noop",
             idempotency: vb_core::action::Idempotency::DeterministicPure,
             retry_safety: vb_core::action::RetrySafety::Safe,
             side_effect: vb_core::action::SideEffect::None,
@@ -172,7 +171,6 @@ pub(crate) fn cli_action_specs() -> &'static [CliActionSpec] {
         },
         CliActionSpec {
             id: 2,
-            name: "write",
             idempotency: vb_core::action::Idempotency::IdempotentExternal,
             retry_safety: vb_core::action::RetrySafety::KeyRequired,
             side_effect: vb_core::action::SideEffect::Writes,
@@ -182,7 +180,6 @@ pub(crate) fn cli_action_specs() -> &'static [CliActionSpec] {
         },
         CliActionSpec {
             id: 3,
-            name: "send",
             idempotency: vb_core::action::Idempotency::AtLeastOnceExternal,
             retry_safety: vb_core::action::RetrySafety::Unsafe,
             side_effect: vb_core::action::SideEffect::Sends,
@@ -278,6 +275,25 @@ pub(crate) fn action_idempotency_rule(
         }
         _ => "retry behavior follows the action contract",
     }
+}
+
+pub(crate) fn write_action_registry_error(
+    error: &vb_core::action::ActionError,
+    output: OutputFormat,
+) -> std::process::ExitCode {
+    let message = format!("failed to register CLI action contracts: {error}");
+    if output == OutputFormat::Text {
+        crate::errln!("{message}");
+    } else {
+        json_error(
+            &serde_json::json!({
+                "success": false,
+                "error": message,
+            }),
+            output,
+        );
+    }
+    crate::exit_code::CliExitCode::ValidationFailed.into()
 }
 
 pub(crate) fn write_action_registry_uninitialized(output: OutputFormat) {

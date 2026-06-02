@@ -1,8 +1,4 @@
-use super::args;
-use crate::args::{
-    ActionRegistryMode, Command, OutputFormat, ParseError, VerifyProfile, parse_args,
-};
-use std::path::PathBuf;
+use super::*;
 
 #[test]
 fn parse_system_status_rejects_unknown_profile() {

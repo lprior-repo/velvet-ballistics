@@ -115,44 +115,6 @@ fn accepted_artifact_with_gate_count(gate_count: u8) -> Result<AcceptedArtifact,
     })
 }
 
-fn accepted_workflow_for_digest(digest: WorkflowDigest) -> vb_core::CompiledWorkflow {
-    let parts = vb_core::WorkflowParts {
-        name: Box::<str>::from("yaml_e2e_chain_artifact"),
-        digest,
-        nodes: Box::new([
-            vb_core::CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: vb_core::CompiledNodeKind::SetConst {
-                    value: vb_core::ConstIdx::new(0),
-                },
-            },
-            vb_core::CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: vb_core::CompiledNodeKind::Finish {
-                    result: SlotIdx::new(0),
-                },
-            },
-        ]),
-        expressions: Box::new([]),
-        accessors: Box::new([]),
-        constants: Box::new([vb_core::ConstValue::I64(42)]),
-        slot_count: 1,
-        symbols_count: 0,
-        entry: StepIdx::new(0),
-        resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
-        step_names: Box::new([]),
-    };
-    vb_core::CompiledWorkflow::try_from_parts(parts).expect("WorkflowParts should compile")
-}
-
 fn accepted_artifact_with_required_capability(
     required: Capability,
 ) -> Result<AcceptedArtifact, String> {
@@ -324,7 +286,6 @@ fn persist_source_and_artifact_returns_compiled_ir_digest_mismatch_when_artifact
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
     let artifact = accepted_artifact_with_gate_count(REQUIRED_GATE_COUNT)?;
     let wrong_digest = WorkflowDigest::from_bytes([0xCC; 32]);
-    let artifact = accepted_artifact_with_gate_count(workflow.digest(), REQUIRED_GATE_COUNT);
     let record = CompiledIrRecord {
         digest: wrong_digest,
         ir: postcard::to_allocvec(&artifact).map_err(|error| error.to_string())?,
@@ -332,8 +293,9 @@ fn persist_source_and_artifact_returns_compiled_ir_digest_mismatch_when_artifact
 
     let result = put_compiled_ir(&journal, &record);
 
-    assert!(
-        matches!(result, Err(JournalError::ArtifactChecksumMismatch)),
+    assert_eq!(
+        journal_error_label(&result),
+        "ArtifactChecksumMismatch",
         "expected ArtifactChecksumMismatch, got {result:?}"
     );
     assert_eq!(
@@ -495,8 +457,9 @@ fn admit_strict_artifact_run_rejects_raw_workflow_parts_or_yaml_bypass_with_acce
             ir: postcard::to_allocvec(&workflow.to_parts()).map_err(|error| error.to_string())?,
         },
     );
-    assert!(
-        matches!(result, Err(JournalError::ArtifactMalformed)),
+    assert_eq!(
+        journal_error_label(&result),
+        "ArtifactMalformed",
         "expected ArtifactMalformed, got {result:?}"
     );
     let store = StorageArtifactStore::new(Arc::new(journal));

@@ -78,6 +78,39 @@ pub(crate) fn compile_errors_message(errors: &[vb_compile::CompileError]) -> Str
     message
 }
 
+pub(crate) fn legacy_json_error_message(value: &serde_json::Value) -> String {
+    if let Some(message) = value.get("message").and_then(serde_json::Value::as_str) {
+        return message.to_string();
+    }
+    if let Some(error) = value.get("error").and_then(serde_json::Value::as_str) {
+        return error.to_string();
+    }
+    value.to_string()
+}
+
+pub(crate) fn infer_legacy_json_error_code(message: &str) -> CliExitCode {
+    if message.contains("journal")
+        || message.contains("workflow source write")
+        || message.contains("compiled IR write")
+        || message.contains("error reading run")
+    {
+        return CliExitCode::StorageError;
+    }
+    if message.contains("runtime") || message.contains("INPUT_MAPPING_FAILED") {
+        return CliExitCode::RuntimeFailed;
+    }
+    if message.contains("compilation failed")
+        || message.contains("compile error")
+        || message.contains("compiled IR")
+        || message.contains("serialization error")
+        || message.contains("deserializing compiled IR")
+        || message.contains("codegen error")
+    {
+        return CliExitCode::CompileFailed;
+    }
+    CliExitCode::ValidationFailed
+}
+
 pub(crate) fn write_diagnostic_report_stderr_io(
     message: &str,
     code: CliExitCode,

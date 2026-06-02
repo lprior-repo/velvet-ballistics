@@ -21,8 +21,7 @@ use vb_ipc::server::WorkflowResolutionError;
 #[cfg(test)]
 use vb_storage::__put_compiled_ir_for_testing as put_compiled_ir;
 use vb_storage::{
-    AcceptedArtifact, CompiledIrRecord, EventSeq, FjallJournal, JournalError, JournalEvent,
-    VerificationProof,
+    CompiledIrRecord, EventSeq, FjallJournal, JournalError, JournalEvent,
     recovery::{ActionReplayTracker, extract_terminal, recover_full_journal},
 };
 
@@ -101,27 +100,6 @@ fn finish_workflow() -> Option<CompiledWorkflow> {
     let ir = postcard::to_allocvec(&parts).ok()?;
     parts.digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
     CompiledWorkflow::try_from_parts(parts).ok()
-}
-
-fn accepted_record_from_workflow(compiled: &CompiledWorkflow) -> CompiledIrRecord {
-    let mut parts = compiled.to_parts();
-    parts.digest = WorkflowDigest::from_bytes([0; 32]);
-    let artifact_ir = postcard::to_allocvec(&parts).expect("workflow parts must encode");
-    let digest = compiled.digest();
-    let artifact = AcceptedArtifact {
-        digest,
-        source_digest: digest,
-        policy_digest: vb_storage::admission::compute_policy_digest(compiled)
-            .expect("policy digest should compute"),
-        ir: artifact_ir,
-        verification: VerificationProof::new(digest, 15, true),
-        accepted_at_seq: EventSeq::new(0),
-        required_capabilities: Box::new([]),
-    };
-    CompiledIrRecord {
-        digest,
-        ir: postcard::to_allocvec(&artifact).expect("accepted artifact must encode"),
-    }
 }
 
 /// Local implementation mirroring vb_cli::StorageWorkflowResolver behavior.
@@ -906,7 +884,7 @@ fn storage_rejects_corrupted_ir_before_resolver_load() {
     };
     let write_result = put_compiled_ir(&journal, &record);
     assert!(
-        write_result.is_err(),
+        matches!(write_result, Err(JournalError::ArtifactMalformed)),
         "corrupted IR must be rejected at write"
     );
 

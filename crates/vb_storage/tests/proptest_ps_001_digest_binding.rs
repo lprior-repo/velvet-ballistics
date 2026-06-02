@@ -26,7 +26,7 @@ fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
     (temp, journal)
 }
 
-fn make_workflow(_digest_bytes: [u8; 32]) -> CompiledWorkflow {
+fn make_workflow(digest_bytes: [u8; 32]) -> CompiledWorkflow {
     let mut parts = WorkflowParts {
         name: Box::<str>::from("proptest_001"),
         digest: WorkflowDigest::from_bytes(digest_bytes),

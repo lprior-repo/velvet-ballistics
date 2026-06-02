@@ -1,6 +1,4 @@
-use super::args;
-use crate::args::{Command, EmitTarget, OutputFormat, ParseError, parse_args};
-use std::path::PathBuf;
+use super::*;
 
 #[test]
 fn parse_validate_accepts_json_flag() {
