@@ -114,8 +114,11 @@ impl vb_ipc::server::WorkflowResolver for StorageWorkflowResolver {
         if record.digest != digest {
             return Err(vb_ipc::server::WorkflowResolutionError::InvalidArtifact);
         }
-        let parts = postcard::from_bytes::<vb_core::WorkflowParts>(&record.ir)
+        let artifact = postcard::from_bytes::<vb_storage::AcceptedArtifact>(&record.ir)
             .map_err(|_| vb_ipc::server::WorkflowResolutionError::InvalidArtifact)?;
+        let mut parts = postcard::from_bytes::<vb_core::WorkflowParts>(&artifact.ir)
+            .map_err(|_| vb_ipc::server::WorkflowResolutionError::InvalidArtifact)?;
+        parts.digest = artifact.digest;
         vb_core::CompiledWorkflow::try_from_parts(parts)
             .map_err(|_| vb_ipc::server::WorkflowResolutionError::InvalidArtifact)
     }

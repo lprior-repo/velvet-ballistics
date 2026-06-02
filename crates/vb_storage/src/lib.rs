@@ -126,12 +126,6 @@ pub mod kani_vb_h09wf_ps011;
 #[cfg(all(kani, feature = "kani-vb-h09wf"))]
 pub mod kani_vb_h09wf_ps012;
 
-// --- vb-fn4vt Kani harnesses ---
-#[cfg(all(kani, feature = "kani-vb-fn4vt"))]
-pub mod verification;
-#[cfg(all(kani, feature = "kani-vb-fn4vt"))]
-pub use verification::vb_fn4vt;
-
 pub mod keys;
 pub mod preview;
 pub mod process_lock;

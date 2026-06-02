@@ -1,17 +1,10 @@
 #![forbid(unsafe_code)]
 //! Incident analysis and diff commands.
 
-use crate::args::{ActionRegistryMode, Command, OutputFormat, ParseError, StepTarget};
-use crate::cli_envelope;
+use crate::args::OutputFormat;
 use crate::exit_code::CliExitCode;
-use crate::file_io::{parse_run_id, read_file, read_journal_events, report_storage_open_error};
-use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
-use crate::output::{
-    json_error, json_out, output_error_exit, write_contract_error_json, write_failure_message,
-    write_stderr_line, write_stdout_line,
-};
-use crate::output_utils::*;
-use std::io::{self, Write};
+use crate::file_io::parse_run_id;
+use crate::output::json_error;
 use std::process::ExitCode;
 
 pub(crate) fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {

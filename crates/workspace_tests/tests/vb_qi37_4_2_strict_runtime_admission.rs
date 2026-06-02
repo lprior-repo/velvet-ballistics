@@ -99,6 +99,20 @@ fn digest(byte: u8) -> WorkflowDigest {
     WorkflowDigest::from_bytes([byte; 32])
 }
 
+fn journal_error_label<T>(result: &Result<T, vb_storage::JournalError>) -> String {
+    match result {
+        Ok(_) => String::from("Ok"),
+        Err(vb_storage::JournalError::ArtifactMalformed) => String::from("ArtifactMalformed"),
+        Err(vb_storage::JournalError::InvalidGateCount { found }) => {
+            format!("InvalidGateCount(found={found})")
+        }
+        Err(vb_storage::JournalError::MissingRequiredProofFlag { flag }) => {
+            format!("MissingRequiredProofFlag(flag={flag})")
+        }
+        Err(other) => format!("Other({other:?})"),
+    }
+}
+
 fn cap(name: &str, action: u16) -> Capability {
     Capability::new(name.into(), ActionId::new(action))
 }
@@ -845,7 +859,7 @@ proptest! {
 }
 
 #[test]
-fn given_raw_or_malformed_storage_bytes_when_strict_run_created_then_decode_failed_matrix_denies()
+fn given_raw_or_malformed_storage_bytes_when_stored_then_storage_admission_denies()
 -> Result<(), String> {
     // Given / When / Then
     let cases: [(&str, Vec<u8>); 6] = [

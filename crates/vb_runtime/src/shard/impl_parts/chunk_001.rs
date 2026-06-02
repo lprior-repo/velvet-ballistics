@@ -47,24 +47,21 @@ impl Shard {
     /// storage-backed accepted-artifact source rejects admission instead of silently
     /// accepting unbacked artifacts.
     pub fn new_with_journal(config: ShardConfig, journal: SharedRuntimeJournal) -> Self {
-        let artifact_store: crate::admission::SharedAcceptedArtifactStore =
-            if let Some(fjall_journal) = journal.storage_journal() {
-                // Storage-backed journal: use StorageArtifactStore for strict/journaled
-                // artifact validation. This ensures the shard can load and validate
-                // accepted artifacts from durable storage before admission.
-                std::sync::Arc::new(crate::admission::StorageArtifactStore::new(fjall_journal))
-            } else {
-                match config.policy {
-                    vb_core::policy::RuntimePolicy::Relaxed => {
-                        crate::admission::AlwaysPresentArtifactStore::shared()
-                    }
-                    vb_core::policy::RuntimePolicy::Strict
-                    | vb_core::policy::RuntimePolicy::Journaled => {
-                        crate::admission::MissingAcceptedArtifactStore::shared()
-                    }
-                    _ => crate::admission::MissingAcceptedArtifactStore::shared(),
+        let artifact_store: crate::admission::SharedAcceptedArtifactStore = match config.policy {
+            vb_core::policy::RuntimePolicy::Relaxed => {
+                crate::admission::AlwaysPresentArtifactStore::shared()
+            }
+            vb_core::policy::RuntimePolicy::Strict | vb_core::policy::RuntimePolicy::Journaled => {
+                if let Some(fjall_journal) = journal.storage_journal() {
+                    // Storage-backed strict/journaled runtime validates accepted artifacts
+                    // from durable storage before admission.
+                    std::sync::Arc::new(crate::admission::StorageArtifactStore::new(fjall_journal))
+                } else {
+                    crate::admission::MissingAcceptedArtifactStore::shared()
                 }
-            };
+            }
+            _ => crate::admission::MissingAcceptedArtifactStore::shared(),
+        };
         Self::new_with_journal_and_artifact_store(config, journal, artifact_store)
     }
 

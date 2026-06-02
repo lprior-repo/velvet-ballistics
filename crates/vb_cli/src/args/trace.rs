@@ -7,7 +7,6 @@ use crate::commands_journal::{TraceFilters, TraceStatus};
 
 use super::error::ParseError;
 use super::run_ops::parse_run_db_args;
-use super::shared::validate_known_flags;
 use super::types::Command;
 
 pub(super) fn parse_trace(args: &[OsString]) -> Result<Command, ParseError> {

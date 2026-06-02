@@ -90,6 +90,52 @@ steps:
     vb_core::CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())
 }
 
+fn accepted_workflow_for_digest(digest: WorkflowDigest) -> vb_core::CompiledWorkflow {
+    let parts = vb_core::WorkflowParts {
+        name: Box::<str>::from("lp2v_proof_admission"),
+        digest,
+        nodes: Box::new([
+            vb_core::CompiledNode {
+                id: vb_core::StepIdx::new(0),
+                output: Some(vb_core::SlotIdx::new(0)),
+                next: Some(vb_core::StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: vb_core::CompiledNodeKind::SetConst {
+                    value: vb_core::ConstIdx::new(0),
+                },
+            },
+            vb_core::CompiledNode {
+                id: vb_core::StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: vb_core::CompiledNodeKind::Finish {
+                    result: vb_core::SlotIdx::new(0),
+                },
+            },
+        ]),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([vb_core::ConstValue::I64(42)]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: vb_core::StepIdx::new(0),
+        resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+    };
+    vb_core::CompiledWorkflow::try_from_parts(parts).expect("WorkflowParts should compile")
+}
+
+fn journal_error_label<T>(result: &Result<T, JournalError>) -> String {
+    match result {
+        Ok(_) => String::from("Ok"),
+        Err(JournalError::ArtifactChecksumMismatch) => String::from("ArtifactChecksumMismatch"),
+        Err(other) => format!("Other({other:?})"),
+    }
+}
+
 fn persist_artifact(journal: &FjallJournal, artifact: &AcceptedArtifact) -> Result<(), String> {
     persist_artifact_as(journal, artifact.digest, artifact)
 }
@@ -157,7 +203,7 @@ fn given_mismatched_proof_digest_when_strict_admission_runs_then_digest_mismatch
 }
 
 #[test]
-fn given_storage_record_with_mismatched_artifact_digest_when_strict_admission_runs_then_digest_mismatch_denies()
+fn given_storage_record_with_mismatched_artifact_digest_when_stored_then_storage_denies()
 -> Result<(), String> {
     let mut artifact = accepted_artifact(digest(0xC2))?;
     artifact.verification.digest = artifact.digest;
@@ -174,8 +220,9 @@ fn given_storage_record_with_mismatched_artifact_digest_when_strict_admission_ru
     );
 
     assert_eq!(
-        result,
-        Err(AdmissionError::ArtifactDigestMismatch { requested, found })
+        journal_error_label(&result),
+        "ArtifactChecksumMismatch",
+        "storage must reject record/artifact digest mismatch before runtime admission"
     );
     Ok(())
 }

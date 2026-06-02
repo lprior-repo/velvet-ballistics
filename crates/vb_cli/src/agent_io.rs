@@ -78,6 +78,14 @@ pub(crate) fn cmd_system_status(options: SystemStatusOptions, output: OutputForm
     } else {
         output
     };
+    if options.server != crate::args::DurabilityMode::None {
+        crate::output::write_failure_message(
+            "strict and journaled require a backend probe that is not implemented",
+            requested_output,
+            CliExitCode::ValidationFailed,
+        );
+        return CliExitCode::ValidationFailed.into();
+    }
     match crate::commands_system_status::print_system_status(options, requested_output, VERSION) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => output_error_exit(&error),

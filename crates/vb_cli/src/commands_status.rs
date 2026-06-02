@@ -4,7 +4,6 @@
 use vb_runtime::shard::{Shard, ShardConfig, ShardHealth, ShardStatus};
 
 use crate::args::{OutputFormat, StatusOptions};
-use crate::cli_envelope;
 
 /// Serializable status view for CLI output.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

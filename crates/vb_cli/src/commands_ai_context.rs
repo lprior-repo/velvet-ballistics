@@ -7,7 +7,6 @@ use std::process::ExitCode;
 use serde_json::{Map, Value};
 
 use crate::args::OutputFormat;
-use crate::cli_envelope;
 use crate::exit_code::CliExitCode;
 use crate::output::json_error;
 
@@ -258,8 +257,9 @@ fn decode_accepted_artifact_workflow(
 ) -> Result<vb_core::CompiledWorkflow, DecodeCompiledWorkflowError> {
     let artifact = postcard::from_bytes::<vb_storage::admission::AcceptedArtifact>(ir)
         .map_err(|_| DecodeCompiledWorkflowError::AcceptedArtifactDecode)?;
-    let parts = postcard::from_bytes::<vb_core::WorkflowParts>(&artifact.ir)
+    let mut parts = postcard::from_bytes::<vb_core::WorkflowParts>(&artifact.ir)
         .map_err(|_| DecodeCompiledWorkflowError::AcceptedArtifactWorkflowPartsDecode)?;
+    parts.digest = artifact.digest;
     vb_core::CompiledWorkflow::try_from_parts(parts)
         .map_err(|_| DecodeCompiledWorkflowError::AcceptedArtifactWorkflowCompile)
 }

@@ -2,7 +2,6 @@
 #![forbid(unsafe_code)]
 
 use crate::args::{OutputFormat, SystemStatusOptions};
-use crate::cli_envelope;
 
 const NO_BACKEND_REASON: &str = "no live runtime or storage status backend is attached";
 

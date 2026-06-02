@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-use crate::commands_journal::{TraceFilters, TraceStatus};
+use crate::commands_journal::TraceFilters;
 
 /// Structured output format for CLI commands.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

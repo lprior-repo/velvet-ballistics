@@ -62,7 +62,6 @@ pub(crate) fn runtime_config_for_durability(
     if durability == DurabilityMode::None {
         config.policy = vb_core::policy::RuntimePolicy::Relaxed;
     }
-    config
 }
 
 pub(crate) fn open_storage_runtime_journal(
@@ -296,13 +295,5 @@ pub(crate) fn print_trace_event(event: &vb_runtime::trace::TraceEvent) {
         _ => {
             crate::outln!("  trace: Unknown");
         }
-    }
-}
-
-fn report_compiled_ir_store_error(msg: std::fmt::Arguments<'_>, output: OutputFormat) {
-    if output != OutputFormat::Text {
-        crate::errln!("{}", msg);
-    } else {
-        crate::errln!("compiled IR store error: {}", msg);
     }
 }

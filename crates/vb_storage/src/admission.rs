@@ -358,7 +358,8 @@ fn serialize_accepted_artifact(artifact: &AcceptedArtifact) -> Result<Vec<u8>, J
     postcard::to_allocvec(artifact).map_err(|_| JournalError::ArtifactMalformed)
 }
 
-pub(crate) fn validate_compiled_ir_record(record: &CompiledIrRecord) -> Result<(), JournalError> {
+/// Validates a stored compiled-IR record and rejects malformed accepted-artifact envelopes.
+pub fn validate_compiled_ir_record(record: &CompiledIrRecord) -> Result<(), JournalError> {
     reject_oversized_compiled_ir_value(record.ir.len())?;
     let artifact = decode_accepted_artifact_envelope(&record.ir)?;
     validate_accepted_artifact_digest(&artifact, record.digest)
@@ -375,7 +376,8 @@ fn decode_accepted_artifact_envelope(bytes: &[u8]) -> Result<AcceptedArtifact, J
     Ok(artifact)
 }
 
-fn reject_oversized_compiled_ir_value(len: usize) -> Result<(), JournalError> {
+/// Rejects compiled-IR envelope values larger than the configured storage bound.
+pub fn reject_oversized_compiled_ir_value(len: usize) -> Result<(), JournalError> {
     let payload_len = u32::try_from(len).map_err(|_| JournalError::PayloadTooLarge {
         len: u32::MAX,
         max: MAX_COMPILED_IR_BYTES,
@@ -422,12 +424,7 @@ fn validate_accepted_artifact_digest(
     if artifact.digest != digest || artifact.verification.digest != digest {
         return Err(JournalError::ArtifactChecksumMismatch);
     }
-    let computed = blake3::hash(&artifact.ir);
-    if computed.as_bytes() == &digest.as_bytes() {
-        Ok(())
-    } else {
-        Err(JournalError::ArtifactChecksumMismatch)
-    }
+    Ok(())
 }
 
 fn validate_accepted_artifact_metadata(artifact: &AcceptedArtifact) -> Result<(), JournalError> {

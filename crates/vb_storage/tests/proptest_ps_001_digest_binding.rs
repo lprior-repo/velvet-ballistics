@@ -29,7 +29,7 @@ fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
 fn make_workflow(_digest_bytes: [u8; 32]) -> CompiledWorkflow {
     let mut parts = WorkflowParts {
         name: Box::<str>::from("proptest_001"),
-        digest: WorkflowDigest::from_bytes([0u8; 32]),
+        digest: WorkflowDigest::from_bytes(digest_bytes),
         nodes: Box::new([
             CompiledNode {
                 id: StepIdx::new(0),
