@@ -36,10 +36,10 @@ mod tests {
                 items: None,
                 body: vec![],
             }),
-            // Repeat without body - not supported in body steps
-            Just(StepPrimitive::Repeat {
-                max_attempts: 0,
-                body: vec![],
+            // Ask - not supported in body steps
+            Just(StepPrimitive::Ask {
+                prompt: "?".to_string(),
+                timeout: None,
             }),
         ]
     }
