@@ -1,0 +1,26 @@
+command: bd show vb-jpq7.33
+cwd: /home/lewis/src/velvet-ballistics
+timestamp: 2026-06-02T00:31:34Z
+exit_code: 0
+--- bd show output follows ---
+✓ vb-jpq7.33 · P0: add taint resource overflow and error recovery properties   [● P0 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: task
+Created: 2026-05-22 · Updated: 2026-05-31
+Close reason: All 5 black-hat findings fixed or confirmed already resolved. Items 1-3 files already deleted. Item 4 cfg(kani) already in HEAD. Item 5 tests run and evidence captured.
+
+DESCRIPTION
+Split from vb-jpq7.6. Prove safety-critical taint/resource/overflow/recovery properties with exact semantic assertions.
+
+ACCEPTANCE CRITERIA
+Properties cover taint preservation arithmetic overflow typed failures resource budget behavior and error recovery behavior; failures create implementation beads rather than weakened properties; seeds and counterexamples are recorded.
+
+LABELS: backend-dod, budget, master-gap, overflow, property, proptest, recovery, release-blocker, taint, truth-serum
+
+PARENT
+  ↑ ● vb-jpq7: (EPIC) P0: Truth-serum backend blocker burn-down ● P0
+
+DEPENDS ON
+  → ✓ vb-jpq7.29: P0: add recovery replay equivalence suite ● P0
+
+BLOCKS
+  ← ◐ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0

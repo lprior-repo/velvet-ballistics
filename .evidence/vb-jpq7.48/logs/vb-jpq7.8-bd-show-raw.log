@@ -1,0 +1,31 @@
+command: bd show vb-jpq7.8
+cwd: /home/lewis/src/velvet-ballistics
+timestamp: 2026-06-02T00:31:34Z
+exit_code: 0
+--- bd show output follows ---
+✓ vb-jpq7.8 · P0: reopen stale bead evidence and enforce close-only-with-fresh-gates   [● P0 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: task
+Created: 2026-05-22 · Updated: 2026-05-31
+Close reason: Closed
+
+DESCRIPTION
+Bead tracker reports 933 closed and only 1 open while the live tree fails moon ci. Closed beads vb-qi37.13, vb-qi37.12, vb-qi37.1, vb-qi37.4 and release evidence beads conflict with direct current evidence. Need an explicit audit/reopen/supersede pass so closed status cannot hide red trunk or stale proof claims.
+
+NOTES
+Branch triage/landing after origin/main 3656c1eb: origin/agent/r7-drift-9 manually salvaged only for current vb_ipc client split and landed as f3e8ab312008588dd4893c6df683a5b878af1d1a; no .beads/architecture-refactor.md imported. Additional sampled branch triage: origin/worktree-agent-ab7b14d8dc82b64cc VerificationWarning is superseded by current stronger vb_storage::VerificationWarning/VerificationProof model; origin/vb-qi37-9-4 Length/Empty helper support is superseded by current vb_codegen tests and support; origin/vb-xkli-repair Kani/F64/fuzz fixes are already present or stale; origin/truth-landing-20260522 contains stale OutputFormat/deny/timer churn and is not safe for wholesale landing.
+
+ACCEPTANCE CRITERIA
+Every closed release-blocker bead named in the audit has a fresh verification note or is reopened/superseded; bd ready/status reflects real work left; full-gate evidence bead cannot close until moon ci and mandated gates pass on current commit; stale summary-only evidence is labeled unverified; new failures get child beads.
+
+LABELS: backend-dod, beads, evidence, master-gap, process, release-blocker, truth-serum
+
+PARENT
+  ↑ ● vb-jpq7: (EPIC) P0: Truth-serum backend blocker burn-down ● P0
+
+CHILDREN
+  ↳ ✓ vb-jpq7.8.1: Salvage or retire origin/landing/vb-82ah before branch landing ● P1
+  ↳ ✓ vb-jpq7.8.2: Decompose polluted test-quality remote branches before landing ● P1
+  ↳ ✓ vb-jpq7.8.3: Salvage vb_ipc client split from drift branch ● P1
+
+BLOCKS
+  ← ◐ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0

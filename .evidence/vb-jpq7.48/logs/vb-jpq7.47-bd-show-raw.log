@@ -1,0 +1,24 @@
+command: bd show vb-jpq7.47
+cwd: /home/lewis/src/velvet-ballistics
+timestamp: 2026-06-02T00:31:34Z
+exit_code: 0
+--- bd show output follows ---
+✓ vb-jpq7.47 · P0: enforce 300-line Rust file policy   [● P0 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: task
+Created: 2026-05-22 · Updated: 2026-05-31
+Close reason: Closed
+
+DESCRIPTION
+Split from vb-jpq7.10. Turn the architectural-drift 300-line first-party Rust file policy into a mechanical gate with bead-linked exceptions.
+
+ACCEPTANCE CRITERIA
+CI fails on new first-party .rs files over 300 lines; existing over-limit files have owner reason split bead and removal plan or are split by domain responsibility; generated/deferred exceptions are allowlisted explicitly; source-length evidence is fresh and linked.
+
+LABELS: architecture, backend-dod, ci, master-gap, release-blocker, reviewability, source-size, truth-serum
+
+PARENT
+  ↑ ● vb-jpq7: (EPIC) P0: Truth-serum backend blocker burn-down ● P0
+
+BLOCKS
+  ← ○ vb-9kwz: P1: split architecture drift and expand source-length gates ● P1
+  ← ◐ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0
