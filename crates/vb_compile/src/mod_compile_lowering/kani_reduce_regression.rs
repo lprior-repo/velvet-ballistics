@@ -202,11 +202,11 @@ fn check_single_step_equivalence_contract() {
                     node_b.next
                 );
                 assert!(
-                    node_a.slot == node_b.slot,
-                    "node {}: slot mismatch: a={:?}, b={:?}",
+                    node_a.error_slot == node_b.error_slot,
+                    "node {}: error_slot mismatch: a={:?}, b={:?}",
                     i,
-                    node_a.slot,
-                    node_b.slot
+                    node_a.error_slot,
+                    node_b.error_slot
                 );
             }
 
