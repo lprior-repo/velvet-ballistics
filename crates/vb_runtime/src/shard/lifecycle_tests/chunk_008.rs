@@ -347,20 +347,17 @@
             }
 
             #[test]
-            fn prop_non_deterministicpure_never_fires_guard(
+            fn prop_atleastonceexternal_nonclean_input_does_not_require_clean_output(
                 input_taint in all_taints(),
-                idempotency in all_idempotencies(),
                 supplied in all_taints(),
             ) {
-                prop_assume!(idempotency != Idempotency::DeterministicPure);
                 let state = make_proptest_run_state(input_taint);
-                let contract = test_action_contract(idempotency);
+                let contract = test_action_contract(Idempotency::AtLeastOnceExternal);
                 let frame_taint = state.frame.read_taint(SlotIdx::ZERO).unwrap();
                 let result = reject_taint_downgrade(frame_taint, &contract, supplied);
                 if let Err(RuntimeError::ActionTaintDowngrade { required, .. }) = &result {
                     prop_assert_ne!(*required, Taint::Clean,
-                        "guard must not fire for non-DeterministicPure idempotency \
-                         (idem={:?}, input={:?})", idempotency, input_taint);
+                        "AtLeastOnceExternal guard must not fire for Clean-required (input={:?})", input_taint);
                 }
             }
 

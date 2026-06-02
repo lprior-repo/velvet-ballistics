@@ -166,11 +166,14 @@ fn reject_taint_downgrade(
     contract: &ActionContract,
     supplied: Taint,
 ) -> RuntimeResult<()> {
-    // DeterministicPure actions must operate only on Clean input.
+    // DeterministicPure and IdempotentExternal actions must operate only on Clean input.
     // Defense-in-depth: engine-side check in execute_do also enforces this,
     // but the completion path must independently reject non-Clean input
     // before allowing frame mutation.
-    if contract.idempotency == Idempotency::DeterministicPure && input_taint != Taint::Clean {
+    if (contract.idempotency == Idempotency::DeterministicPure
+        || contract.idempotency == Idempotency::IdempotentExternal)
+        && input_taint != Taint::Clean
+    {
         return Err(RuntimeError::ActionTaintDowngrade {
             required: Taint::Clean,
             supplied: input_taint,
