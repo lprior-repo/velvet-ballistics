@@ -1,0 +1,34 @@
+# Progress: vb-zxgb - arch: Enumerate all first-party Rust files over 300 lines
+
+## Phase 0: Research ✅
+- [x] Review existing check-source-length.sh
+
+## Phase 1: Tests First ✅
+- [x] Run enumeration across all first-party .rs files
+
+## Phase 2: Implementation ✅
+- [x] Categorize by hot/cold path using exact is_excluded_source_path() and is_test_like_source_path()
+
+## Phase 3: Verification ✅
+- [x] check-source-length.sh passes (exit 0 for file-level check)
+- [x] moon fmt passes
+
+## Gate 0: Research ✅
+Research notes documented in `.bead-progress/velvet-ballistics-20260524223121-uuf9dni9/research_notes.md`
+
+## Gate 1: Tests ✅
+Enumeration data produced (research artifact only - no tests to write)
+
+## Gate 2: Implementation ✅
+Enumeration and categorization complete with CORRECTED counts
+
+## Gate 3: Integration ✅
+- [x] check-source-length.sh verification passed
+- [x] moon fmt verification passed
+
+## CORRECTED Summary Statistics
+| Category | Count |
+|----------|-------|
+| Total files > 300 lines | 498 |
+| Hot paths (non-test-like) | 131 |
+| Cold paths (test-like) | 367 |
