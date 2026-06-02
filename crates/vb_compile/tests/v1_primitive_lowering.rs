@@ -2203,22 +2203,26 @@ fn compile_workflow_rejects_empty_body_in_scoped_primitives() -> Result<(), Stri
         (
             "for_each with empty body",
             "  - id: loop\n    for_each:\n      variable: item\n      input: \"0\"\n      steps: []\n  - id: done\n    finish:\n      result: 0\n",
+            "exactly one set step",
         ),
         (
             "collect with empty body",
             "  - id: pages\n    collect:\n      variable: page\n      source: \"0\"\n      steps: []\n  - id: done\n    finish:\n      result: 0\n",
+            "exactly one set step",
         ),
         (
             "reduce with empty body",
             "  - id: fold\n    reduce:\n      variable: acc\n      input: \"0\"\n      initial: \"10\"\n      steps: []\n  - id: done\n    finish:\n      result: 0\n",
+            "at least one body step",
         ),
         (
             "repeat with empty body",
             "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps: []\n  - id: done\n    finish:\n      result: 0\n",
+            "exactly one set step",
         ),
     ];
 
-    for (case_name, yaml_steps) in cases {
+    for (case_name, yaml_steps, expected_shape) in cases {
         let yaml = workflow_yaml(yaml_steps);
         let errors = compile_yaml_error(&yaml)?;
         let first = first_compile_error(&errors)?;
@@ -2231,7 +2235,7 @@ fn compile_workflow_rejects_empty_body_in_scoped_primitives() -> Result<(), Stri
             } => {
                 assert_eq!(
                     (*step, field.as_ref(), expected.as_ref()),
-                    (0, "steps", "exactly one set step"),
+                    (0, "steps", expected_shape),
                     "case {case_name}"
                 );
             }

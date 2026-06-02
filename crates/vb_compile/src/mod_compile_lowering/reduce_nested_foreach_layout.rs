@@ -31,9 +31,7 @@ mod tests {
 
     fn foreach_step_strategy() -> impl Strategy<Value = StepPrimitive> {
         (1usize..10usize).prop_map(|n| {
-            let body: Vec<vb_yaml::ast::StepAst> = (0..n)
-                .map(|i| set_step(i as i64))
-                .collect();
+            let body: Vec<vb_yaml::ast::StepAst> = (0..n).map(|i| set_step(i as i64)).collect();
             StepPrimitive::ForEach {
                 variable: "item".to_string(),
                 input: "0".to_string(),

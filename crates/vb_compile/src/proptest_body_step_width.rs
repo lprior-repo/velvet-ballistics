@@ -13,56 +13,13 @@
 #![cfg(test)]
 #![forbid(unsafe_code)]
 
-use proptest::prelude::*;
 use crate::mod_compile_lowering::canonical_body_step_width;
+use proptest::prelude::*;
 use vb_yaml::ast::{StepAst, StepPrimitive, TogetherBranch};
 
 // ─────────────────────────────────────────────────────────────────
 // Strategies
 // ─────────────────────────────────────────────────────────────────
-
-/// Strategy for a single Set body step.
-fn set_step_strategy() -> impl Strategy<Value = StepAst> {
-    ("[a-z]+", any::<i64>()).prop_map(|(output, value)| StepAst {
-        id: format!("step_{}", output),
-        name: None,
-        condition: None,
-        primitive: StepPrimitive::Set {
-            output,
-            value: value.to_string(),
-        },
-        with: None,
-        retry: None,
-        on_error: None,
-        then: None,
-    })
-}
-
-/// Strategy for a Together primitive with random branch count and body steps.
-fn together_primitive_strategy() -> impl Strategy<Value = StepPrimitive> {
-    (1usize..=16usize).prop_flat_map(|branch_count| {
-        let branch_strategies: Vec<_> = (0..branch_count)
-            .map(|i| {
-                (0usize..=32usize).prop_flat_map(move |body_count| {
-                    let steps = proptest::collection::vec(set_step_strategy(), body_count);
-                    (Just(i), steps)
-                })
-            })
-            .collect();
-
-        proptest::strategy::Union::new(branch_strategies).prop_map(|(i, steps)| {
-            (i, TogetherBranch {
-                label: format!("b{}", i),
-                steps,
-            })
-        })
-    })
-    // For now, use a simpler strategy
-    .prop_map(|_| StepPrimitive::Set {
-        output: String::from("x"),
-        value: String::from("1"),
-    })
-}
 
 /// Strategy for generating together bodies for width computation.
 fn together_body_for_width_strategy() -> impl Strategy<Value = StepPrimitive> {
@@ -138,7 +95,7 @@ proptest! {
                         let expected = 2 + total_steps;
 
                         prop_assert!(width >= min_expected,
-                            "width must account for TogetherStart + TogetherJoin + branches");
+                            "width must account for TogetherStart + TogetherJoin + branches; flat expectation {expected}");
                     }
                     Err(_) => {
                         // Error is acceptable for edge cases (e.g., overflow)

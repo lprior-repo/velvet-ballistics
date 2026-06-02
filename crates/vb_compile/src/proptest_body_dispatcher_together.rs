@@ -16,10 +16,10 @@
 #![cfg(test)]
 #![forbid(unsafe_code)]
 
-use proptest::prelude::*;
 use crate::SlotCompiler;
 use crate::mod_compile_lowering::canonical_body_step_width;
 use crate::mod_compile_lowering::emit_single_body_set;
+use proptest::prelude::*;
 use vb_core::ids::{SlotIdx, StepIdx};
 use vb_yaml::ast::{StepAst, StepPrimitive, TogetherBranch};
 
@@ -306,7 +306,6 @@ proptest! {
                     "nested together must emit at least 6 nodes (2 levels)");
 
                 // Verify monotonic ordering (inner nodes contiguous within branch span)
-                let mut prev_id: usize = 0;
                 let mut prev_id_opt: Option<usize> = None;
                 for i in nodes_before..nodes_after {
                     let current_id = builder.nodes[i].id.as_usize();

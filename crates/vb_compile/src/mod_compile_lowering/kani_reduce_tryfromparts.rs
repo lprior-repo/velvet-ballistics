@@ -22,14 +22,25 @@ use vb_yaml::ast::{StepAst, StepPrimitive};
 fn arbitrary_body_step(idx: u8) -> StepAst {
     let variant: u8 = kani::any();
     let primitive = if variant == 0 {
-        StepPrimitive::Do { action: format!("{}", idx + 1), input: "0".to_string() }
+        StepPrimitive::Do {
+            action: format!("{}", idx + 1),
+            input: "0".to_string(),
+        }
     } else {
-        StepPrimitive::Set { output: format!("out_{}", idx), value: format!("{}", idx) }
+        StepPrimitive::Set {
+            output: format!("out_{}", idx),
+            value: format!("{}", idx),
+        }
     };
     StepAst {
         id: format!("reduce_body_{}", idx),
-        name: None, condition: None,
-        primitive, with: None, retry: None, on_error: None, then: None,
+        name: None,
+        condition: None,
+        primitive,
+        with: None,
+        retry: None,
+        on_error: None,
+        then: None,
     }
 }
 
@@ -46,7 +57,10 @@ fn check_reduce_multi_step_try_from_parts() {
     match total_width {
         Ok(w) => {
             kani::cover!(true, "Kani: multi-step body width Ok");
-            assert!(w >= 4, "width must be >= 4 for body with 1+ steps + overhead 3");
+            assert!(
+                w >= 4,
+                "width must be >= 4 for body with 1+ steps + overhead 3"
+            );
             assert!(w <= usize::from(u16::MAX), "width within u16::MAX");
         }
         Err(_) => {

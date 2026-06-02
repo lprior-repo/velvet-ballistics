@@ -39,15 +39,15 @@ mod proptest_choose_lowering;
 // - `part_01`/`part_04` private modules → items made pub(crate) + correct paths used
 // - Syntax error in proptest_together_errors.rs:101 → resolved (was cascading import error)
 #[cfg(test)]
-mod proptest_body_step_width;
-#[cfg(test)]
 mod proptest_body_dispatcher_together;
 #[cfg(test)]
-mod proptest_together_errors;
+mod proptest_body_step_width;
+#[cfg(test)]
+mod proptest_budget_together;
 #[cfg(test)]
 mod proptest_gate11_together;
 #[cfg(test)]
-mod proptest_budget_together;
+mod proptest_together_errors;
 // ── end vb-xi2f.22 proptest properties ──
 
 // ── vb-xi2f.22: Flux refinement annotations ──

@@ -13,9 +13,9 @@
 #![cfg(test)]
 #![forbid(unsafe_code)]
 
-use proptest::prelude::*;
 use crate::SlotCompiler;
 use crate::mod_compile_lowering::emit_single_body_set;
+use proptest::prelude::*;
 use vb_core::ids::{SlotIdx, StepIdx};
 use vb_yaml::ast::{StepAst, StepPrimitive, TogetherBranch};
 

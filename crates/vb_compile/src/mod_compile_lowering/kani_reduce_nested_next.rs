@@ -50,12 +50,8 @@ fn check_nested_next_correctness() {
     // Production call: checked_step_offset for the next body step
     let current_width: u16 = kani::any();
     kani::assume(current_width >= 1 && current_width <= 8);
-    let next_body_result = checked_step_offset(
-        id,
-        offset.saturating_add(current_width),
-        "reduce",
-        "body",
-    );
+    let next_body_result =
+        checked_step_offset(id, offset.saturating_add(current_width), "reduce", "body");
 
     // Production call: checked_step_offset for the aggregate's next_step
     let total_width: u16 = kani::any();

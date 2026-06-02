@@ -246,7 +246,11 @@ fn canonical_body_step_width_returns_overflow_error_when_branch_bodies_exceed_us
 
     // When / Then: the function returns Ok(width) — 100×100 steps fit in usize
     let result = compute_width(&primitive);
-    assert!(result.is_ok(), "Large together width computation must succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "Large together width computation must succeed: {:?}",
+        result
+    );
     // 2 + 100*(1 + 100) = 2 + 10100 = 10102
     assert_eq!(result.unwrap(), 10_102);
 }

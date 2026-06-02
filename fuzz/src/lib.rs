@@ -2719,23 +2719,15 @@ pub fn fuzz_strict_yaml_profile(data: &[u8]) {
 /// **Hardened (PO-vb-hbav-016)**: On successful load, accepted_at_seq > 0 and
 /// gate_count must match verification claims.
 pub fn fuzz_accepted_artifact_decode(data: &[u8]) {
-    let Ok(temp_dir) = tempfile::tempdir() else {
-        return;
-    };
-    let Ok(journal) = vb_storage::FjallJournal::open(temp_dir.path(), None) else {
-        return;
-    };
     let digest = vb_core::WorkflowDigest::from_bytes(blake3::hash(data).into());
     let record = vb_storage::CompiledIrRecord {
         digest,
         ir: data.to_vec(),
     };
-    if journal.put_compiled_ir(&record).is_err() {
+    if vb_storage::admission::fuzz_access::validate_compiled_ir_record(&record).is_err() {
         return;
     }
-    let store = vb_runtime::admission::StorageArtifactStore::new(std::sync::Arc::new(journal));
-    let result =
-        vb_runtime::admission::AcceptedArtifactStore::load_accepted_artifact(&store, digest);
+    let result = vb_storage::admission::fuzz_access::decode_accepted_artifact_envelope(&record.ir);
     match result {
         Ok(artifact) => {
             // Loaded successfully: verify structural invariants.

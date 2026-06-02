@@ -17,9 +17,7 @@
 #![cfg(kani)]
 #![forbid(unsafe_code)]
 
-use crate::mod_compile_lowering::part_01::{
-    body_width, canonical_body_step_width,
-};
+use crate::mod_compile_lowering::part_01::{body_width, canonical_body_step_width};
 use vb_yaml::ast::{StepAst, StepPrimitive};
 
 /// Generate a body step with diverse variants (Set or Do).
@@ -57,9 +55,7 @@ fn check_foreach_width_advance() {
     let foreach_body_len: u8 = kani::any();
     kani::assume(foreach_body_len <= 8);
 
-    let foreach_body: Vec<StepAst> = (0..foreach_body_len)
-        .map(arbitrary_body_step)
-        .collect();
+    let foreach_body: Vec<StepAst> = (0..foreach_body_len).map(arbitrary_body_step).collect();
 
     let foreach_primitive = StepPrimitive::ForEach {
         variable: "item".to_string(),
@@ -94,9 +90,7 @@ fn check_foreach_width_never_one() {
     let body_len: u8 = kani::any();
     kani::assume(body_len <= 4);
 
-    let foreach_body: Vec<StepAst> = (0..body_len)
-        .map(arbitrary_body_step)
-        .collect();
+    let foreach_body: Vec<StepAst> = (0..body_len).map(arbitrary_body_step).collect();
 
     let foreach_primitive = StepPrimitive::ForEach {
         variable: "x".to_string(),
@@ -119,9 +113,7 @@ fn check_foreach_body_width_included() {
     let foreach_body_len: u8 = kani::any();
     kani::assume(foreach_body_len <= 6);
 
-    let foreach_body: Vec<StepAst> = (0..foreach_body_len)
-        .map(arbitrary_body_step)
-        .collect();
+    let foreach_body: Vec<StepAst> = (0..foreach_body_len).map(arbitrary_body_step).collect();
 
     // body_width with overhead 2 (ForEach overhead)
     let result = body_width(&foreach_body, 2);

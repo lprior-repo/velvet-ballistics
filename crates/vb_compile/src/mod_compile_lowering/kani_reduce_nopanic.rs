@@ -102,9 +102,16 @@ fn check_reduce_body_width_boundary_no_panic() {
     let cursor: u16 = kani::any();
     let body = vec![vb_yaml::ast::StepAst {
         id: "b".to_string(),
-        name: None, condition: None,
-        primitive: StepPrimitive::Set { output: "o".to_string(), value: "1".to_string() },
-        with: None, retry: None, on_error: None, then: None,
+        name: None,
+        condition: None,
+        primitive: StepPrimitive::Set {
+            output: "o".to_string(),
+            value: "1".to_string(),
+        },
+        with: None,
+        retry: None,
+        on_error: None,
+        then: None,
     }];
     let _ = body_width(&body, usize::from(cursor));
 }

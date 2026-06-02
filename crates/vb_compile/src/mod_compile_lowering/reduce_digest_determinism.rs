@@ -14,10 +14,7 @@
 #[cfg(test)]
 mod tests {
     use proptest::prelude::*;
-    use vb_yaml::ast::{
-        ScalarValue, StepAst, StepPrimitive, TriggerAst,
-        WorkflowSource, WorkflowSourceParts,
-    };
+    use vb_yaml::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
 
     fn workflow_source_strategy() -> impl Strategy<Value = WorkflowSource> {
         (1usize..20usize).prop_flat_map(|body_len| {

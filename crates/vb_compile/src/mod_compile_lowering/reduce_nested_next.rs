@@ -16,10 +16,7 @@ mod tests {
 
     fn nested_position_strategy() -> impl Strategy<Value = (usize, usize)> {
         // (body_len, nested_position)
-        (1usize..20usize)
-            .prop_flat_map(|len| {
-                (Just(len), 0usize..len)
-            })
+        (1usize..20usize).prop_flat_map(|len| (Just(len), 0usize..len))
     }
 
     proptest! {

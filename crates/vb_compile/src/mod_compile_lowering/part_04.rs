@@ -30,11 +30,8 @@ pub(super) fn lower_canonical_aggregate(
     let body_step =
         checked_step_offset(id, 1, "reduce", "body").map_err(|e| CompileErrors(vec![e]))?;
     let body_total_width = body_width(body, 0).map_err(|e| CompileErrors(vec![e]))?;
-    let body_total_width_u16 = u16::try_from(body_total_width).map_err(|_| {
-        CompileErrors(vec![CompileError::StepIndexOutOfRange {
-            value: index,
-        }])
-    })?;
+    let body_total_width_u16 = u16::try_from(body_total_width)
+        .map_err(|_| CompileErrors(vec![CompileError::StepIndexOutOfRange { value: index }]))?;
     let next_step = checked_step_offset(body_step, body_total_width_u16, "reduce", "next")
         .map_err(|e| CompileErrors(vec![e]))?;
     let done =
@@ -377,8 +374,7 @@ pub(super) fn emit_reduce_body_steps(
         };
         match &step.primitive {
             vb_yaml::ast::StepPrimitive::Set { value, .. } => {
-                let constant =
-                    body_constant_index(builder, value, diagnostic_step, false)?;
+                let constant = body_constant_index(builder, value, diagnostic_step, false)?;
                 builder.record_slot(slot);
                 builder.push_node(lower_set(step_id, slot, constant, step_next));
             }

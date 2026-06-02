@@ -14,12 +14,12 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use vb_yaml::parser;
+use vb_yaml::parse_workflow_source;
 
 fuzz_target!(|data: &[u8]| {
     if let Ok(text) = std::str::from_utf8(data) {
-        if let Ok(source) = parser::parse_workflow_text(text) {
-            match vb_compile::mod_compile_lowering::part_01::compile_source(&source) {
+        if let Ok(source) = parse_workflow_source(text) {
+            match vb_compile::compile_source(&source) {
                 Ok(_workflow) => {
                     // Successful compilation — valid diagnostic by absence of error
                 }

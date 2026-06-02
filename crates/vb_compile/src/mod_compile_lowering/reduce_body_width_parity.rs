@@ -34,11 +34,7 @@ mod tests {
     }
 
     fn arbitrary_body_strategy() -> impl Strategy<Value = Vec<vb_yaml::ast::StepAst>> {
-        (0..50usize).prop_map(|n| {
-            (0..n)
-                .map(|i| make_set_step(&i.to_string()))
-                .collect()
-        })
+        (0..50usize).prop_map(|n| (0..n).map(|i| make_set_step(&i.to_string())).collect())
     }
 
     proptest! {

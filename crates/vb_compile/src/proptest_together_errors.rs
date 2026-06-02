@@ -13,33 +13,30 @@
 #![cfg(test)]
 #![forbid(unsafe_code)]
 
-use proptest::prelude::*;
 use crate::SlotCompiler;
 use crate::mod_compile_lowering::emit_single_body_set;
+use proptest::prelude::*;
 use vb_core::ids::{SlotIdx, StepIdx};
 use vb_yaml::ast::{StepAst, StepPrimitive, TogetherBranch};
-
-/// Strategy: empty body (no steps)
-fn empty_body_strategy() -> impl Strategy<Value = Vec<StepAst>> {
-    Just(vec![])
-}
 
 /// Strategy: multi-step body (2..=5 steps)
 fn multi_step_body_strategy() -> impl Strategy<Value = Vec<StepAst>> {
     (2usize..=5usize).prop_map(|n| {
-        (0..n).map(|i| StepAst {
-            id: format!("step_{}", i),
-            name: None,
-            condition: None,
-            primitive: StepPrimitive::Set {
-                output: String::from("x"),
-                value: String::from("1"),
-            },
-            with: None,
-            retry: None,
-            on_error: None,
-            then: None,
-        }).collect()
+        (0..n)
+            .map(|i| StepAst {
+                id: format!("step_{}", i),
+                name: None,
+                condition: None,
+                primitive: StepPrimitive::Set {
+                    output: String::from("x"),
+                    value: String::from("1"),
+                },
+                with: None,
+                retry: None,
+                on_error: None,
+                then: None,
+            })
+            .collect()
     })
 }
 
@@ -78,16 +75,19 @@ fn edge_stepidx_together_strategy() -> impl Strategy<Value = (Vec<StepAst>, u16)
                 }],
             })
             .collect();
-        (vec![StepAst {
-            id: String::from("t"),
-            name: None,
-            condition: None,
-            primitive: StepPrimitive::Together { branches },
-            with: None,
-            retry: None,
-            on_error: None,
-            then: None,
-        }], edge_id)
+        (
+            vec![StepAst {
+                id: String::from("t"),
+                name: None,
+                condition: None,
+                primitive: StepPrimitive::Together { branches },
+                with: None,
+                retry: None,
+                on_error: None,
+                then: None,
+            }],
+            edge_id,
+        )
     })
 }
 
@@ -148,10 +148,10 @@ proptest! {
             &mut builder,
             false,
         );
-        // Must not panic. Error or Ok are both acceptable for zero-branch edge case.
-        match result {
-            Ok(()) | Err(_) => {} // no panic is the property
-        }
+        prop_assert!(
+            matches!(result, Ok(()) | Err(_)),
+            "zero-branch together must return a Result without panic"
+        );
     }
 
     /// Edge StepIdx together → error or success, but never panic.

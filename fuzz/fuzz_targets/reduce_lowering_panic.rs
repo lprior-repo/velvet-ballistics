@@ -14,15 +14,15 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use vb_yaml::parser;
+use vb_yaml::parse_workflow_source;
 
 fuzz_target!(|data: &[u8]| {
     // Attempt to parse arbitrary bytes as YAML
     if let Ok(text) = std::str::from_utf8(data) {
         // Try to parse YAML into WorkflowSource
-        if let Ok(source) = parser::parse_workflow_text(text) {
+        if let Ok(source) = parse_workflow_source(text) {
             // Feed through compile_source — must not panic
-            let _ = vb_compile::mod_compile_lowering::part_01::compile_source(&source);
+            let _ = vb_compile::compile_source(&source);
         }
     }
 });

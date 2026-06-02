@@ -24,13 +24,28 @@ use vb_yaml::ast::{StepAst, StepPrimitive};
 fn arbitrary_body_step(idx: u8) -> StepAst {
     let variant: u8 = kani::any();
     let primitive = match variant {
-        0 => StepPrimitive::Set { output: format!("out_{}", idx), value: format!("val_{}", idx) },
-        1 => StepPrimitive::Do { action: format!("{}", idx + 1), input: format!("{}", idx) },
-        _ => StepPrimitive::Set { output: format!("out_{}", idx), value: format!("val_{}", idx) },
+        0 => StepPrimitive::Set {
+            output: format!("out_{}", idx),
+            value: format!("val_{}", idx),
+        },
+        1 => StepPrimitive::Do {
+            action: format!("{}", idx + 1),
+            input: format!("{}", idx),
+        },
+        _ => StepPrimitive::Set {
+            output: format!("out_{}", idx),
+            value: format!("val_{}", idx),
+        },
     };
     StepAst {
-        id: format!("step_{}", idx), name: None, condition: None,
-        primitive, with: None, retry: None, on_error: None, then: None,
+        id: format!("step_{}", idx),
+        name: None,
+        condition: None,
+        primitive,
+        with: None,
+        retry: None,
+        on_error: None,
+        then: None,
     }
 }
 
@@ -48,7 +63,10 @@ fn check_reduce_body_width_overflow() {
     match result {
         Ok(w) => {
             kani::cover!(true, "Kani: body_width Ok within bounds");
-            assert!(w <= usize::from(u16::MAX), "body_width Ok implies width <= u16::MAX");
+            assert!(
+                w <= usize::from(u16::MAX),
+                "body_width Ok implies width <= u16::MAX"
+            );
             assert!(w >= 3, "width must be >= overhead");
         }
         Err(_) => {
@@ -87,9 +105,17 @@ fn check_reduce_step_width_no_panic() {
     kani::assume(variant <= 2); // 0=Set, 1=Do, 2=Finish
 
     let primitive = match variant {
-        0 => StepPrimitive::Set { output: "o".to_string(), value: "1".to_string() },
-        1 => StepPrimitive::Do { action: "1".to_string(), input: "1".to_string() },
-        _ => StepPrimitive::Finish { result: vb_yaml::ast::ScalarValue::Integer(0) },
+        0 => StepPrimitive::Set {
+            output: "o".to_string(),
+            value: "1".to_string(),
+        },
+        1 => StepPrimitive::Do {
+            action: "1".to_string(),
+            input: "1".to_string(),
+        },
+        _ => StepPrimitive::Finish {
+            result: vb_yaml::ast::ScalarValue::Integer(0),
+        },
     };
 
     kani::cover!(true, "Kani: step width no-panic entry");

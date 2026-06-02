@@ -69,7 +69,10 @@ fn check_reduce_body_width_parity() {
         Ok(w) => {
             kani::cover!(true, "Kani: body_width Ok path");
             assert!(w >= 3, "body_width must be at least overhead of 3");
-            assert!(w <= usize::from(u16::MAX), "body_width must not exceed u16::MAX");
+            assert!(
+                w <= usize::from(u16::MAX),
+                "body_width must not exceed u16::MAX"
+            );
         }
         Err(_) => {
             kani::cover!(true, "Kani: body_width Err (overflow) path");
@@ -103,7 +106,9 @@ fn check_individual_step_widths_consistent() {
     let body_w = body_width(&body, 0);
     if let Ok(bw) = body_w {
         kani::cover!(true, "Kani: body_width with zero overhead");
-        assert!(bw == total_individual,
-            "body_width with overhead 0 must equal sum of individual step widths");
+        assert!(
+            bw == total_individual,
+            "body_width with overhead 0 must equal sum of individual step widths"
+        );
     }
 }

@@ -59,29 +59,29 @@ mod kani_reduce_tryfromparts;
 // together-collision regression.
 // ============================================================
 #[cfg(test)]
-mod reduce_body_width_parity;
+mod reduce_body_chain_integrity;
 #[cfg(test)]
 mod reduce_body_offset_monotonic;
 #[cfg(test)]
-mod reduce_body_chain_integrity;
-#[cfg(test)]
 mod reduce_body_width_overflow;
 #[cfg(test)]
-mod reduce_nested_next;
-#[cfg(test)]
-mod reduce_empty_body;
-#[cfg(test)]
-mod reduce_single_step_regression;
-#[cfg(test)]
-mod reduce_nested_foreach_layout;
-#[cfg(test)]
-mod reduce_lowering_no_panic;
-#[cfg(test)]
-mod reduce_digest_determinism;
+mod reduce_body_width_parity;
 #[cfg(test)]
 mod reduce_diagnostic_codes;
 #[cfg(test)]
+mod reduce_digest_determinism;
+#[cfg(test)]
+mod reduce_empty_body;
+#[cfg(test)]
+mod reduce_lowering_no_panic;
+#[cfg(test)]
 mod reduce_multi_step_try_from_parts;
+#[cfg(test)]
+mod reduce_nested_foreach_layout;
+#[cfg(test)]
+mod reduce_nested_next;
+#[cfg(test)]
+mod reduce_single_step_regression;
 #[cfg(test)]
 mod reduce_together_collision;
 

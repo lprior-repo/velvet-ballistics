@@ -17,18 +17,23 @@ mod tests {
         (0u8..8u8).prop_flat_map(|variant| {
             let val = any::<i64>();
             match variant % 8 {
-                0 => (val).prop_map(|v| StepPrimitive::Set {
-                    output: "o".to_string(),
-                    value: v.to_string(),
-                }).boxed(),
-                1 => (any::<i64>(), any::<i64>()).prop_map(|(a, i)| StepPrimitive::Do {
-                    action: a.to_string(),
-                    input: i.to_string(),
-                }).boxed(),
+                0 => (val)
+                    .prop_map(|v| StepPrimitive::Set {
+                        output: "o".to_string(),
+                        value: v.to_string(),
+                    })
+                    .boxed(),
+                1 => (any::<i64>(), any::<i64>())
+                    .prop_map(|(a, i)| StepPrimitive::Do {
+                        action: a.to_string(),
+                        input: i.to_string(),
+                    })
+                    .boxed(),
                 _ => Just(StepPrimitive::Set {
                     output: "o".to_string(),
                     value: "0".to_string(),
-                }).boxed(),
+                })
+                .boxed(),
             }
         })
     }

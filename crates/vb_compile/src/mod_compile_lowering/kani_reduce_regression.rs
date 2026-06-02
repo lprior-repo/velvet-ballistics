@@ -20,11 +20,11 @@
 #![forbid(unsafe_code)]
 
 use crate::mod_compile_lowering::part_01::body_width;
-use crate::mod_compile_lowering::part_04::emit_single_body_set;
 use crate::mod_compile_lowering::part_04::emit_reduce_body_steps;
+use crate::mod_compile_lowering::part_04::emit_single_body_set;
 use crate::mod_compile_lowering::part_07::SlotCompiler;
-use vb_core::ids::StepIdx;
 use vb_core::SlotIdx;
+use vb_core::ids::StepIdx;
 use vb_yaml::ast::{StepAst, StepPrimitive};
 
 /// Generate a single-step body with arbitrary Set or Do primitive.
@@ -166,14 +166,7 @@ fn check_single_step_equivalence_contract() {
         &mut builder_a,
         false,
     );
-    let result_b = emit_reduce_body_steps(
-        &body,
-        step_idx,
-        0,
-        slot_idx,
-        next_step,
-        &mut builder_b,
-    );
+    let result_b = emit_reduce_body_steps(&body, step_idx, 0, slot_idx, next_step, &mut builder_b);
 
     match (&result_a, &result_b) {
         (Ok(()), Ok(())) => {
@@ -188,24 +181,32 @@ fn check_single_step_equivalence_contract() {
             );
 
             // Per-node comparison: IDs and next pointers must match
-            for (i, (node_a, node_b)) in builder_a.nodes.iter()
+            for (i, (node_a, node_b)) in builder_a
+                .nodes
+                .iter()
                 .zip(builder_b.nodes.iter())
                 .enumerate()
             {
                 assert!(
                     node_a.id == node_b.id,
                     "node {}: ID mismatch: a={:?}, b={:?}",
-                    i, node_a.id, node_b.id
+                    i,
+                    node_a.id,
+                    node_b.id
                 );
                 assert!(
                     node_a.next == node_b.next,
                     "node {}: next link mismatch: a={:?}, b={:?}",
-                    i, node_a.next, node_b.next
+                    i,
+                    node_a.next,
+                    node_b.next
                 );
                 assert!(
                     node_a.slot == node_b.slot,
                     "node {}: slot mismatch: a={:?}, b={:?}",
-                    i, node_a.slot, node_b.slot
+                    i,
+                    node_a.slot,
+                    node_b.slot
                 );
             }
 
@@ -217,14 +218,23 @@ fn check_single_step_equivalence_contract() {
             );
         }
         (Err(_), Err(_)) => {
-            kani::cover!(true, "both dispatchers rejected — expected for empty/invalid body");
+            kani::cover!(
+                true,
+                "both dispatchers rejected — expected for empty/invalid body"
+            );
         }
         (Ok(()), Err(_)) => {
-            kani::cover!(true, "single-step succeeded but multi-step failed — CONTRACT VIOLATION");
+            kani::cover!(
+                true,
+                "single-step succeeded but multi-step failed — CONTRACT VIOLATION"
+            );
             panic!("dispatchers must agree: single-step Ok, multi-step Err");
         }
         (Err(_), Ok(())) => {
-            kani::cover!(true, "single-step failed but multi-step succeeded — CONTRACT VIOLATION");
+            kani::cover!(
+                true,
+                "single-step failed but multi-step succeeded — CONTRACT VIOLATION"
+            );
             panic!("dispatchers must agree: single-step Err, multi-step Ok");
         }
     }

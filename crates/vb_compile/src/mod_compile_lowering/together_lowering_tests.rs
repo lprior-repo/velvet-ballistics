@@ -844,7 +844,11 @@ fn together_checked_arithmetic_returns_err_not_panic() {
     );
 
     // Post-implementation: StepIdx overflow at u16::MAX returns StepIndexOutOfRange
-    assert!(result.is_err(), "StepIdx::MAX together must return error: {:?}", result);
+    assert!(
+        result.is_err(),
+        "StepIdx::MAX together must return error: {:?}",
+        result
+    );
     let errs = result.unwrap_err();
     let first = errs.iter().next().unwrap();
     assert!(
@@ -887,7 +891,11 @@ fn together_errors_carry_correct_diagnostic_step() {
     // Post-implementation: together_width requires canonical_body_step_width for each
     // branch body, which rejects Wait with step:0 (hardcoded in part_01.rs:149-150).
     // The body-level diagnostic_step does not propagate through the width computation.
-    assert!(result.is_err(), "Together with Wait in branch body must fail: {:?}", result);
+    assert!(
+        result.is_err(),
+        "Together with Wait in branch body must fail: {:?}",
+        result
+    );
     let errs = result.unwrap_err();
     assert!(!errs.is_empty(), "Error list must be non-empty");
     // Verify the error type — Wait is not supported in body lowering

@@ -86,7 +86,10 @@ mod tests {
         }];
         let result = crate::mod_compile_lowering::part_01::body_width(&body, 3);
         // body_width must reject unsupported primitives in body
-        assert!(result.is_err(), "body_width must error for unsupported primitives");
+        assert!(
+            result.is_err(),
+            "body_width must error for unsupported primitives"
+        );
     }
 
     /// Test that body_width with unsupported primitives in body returns Err.
@@ -105,6 +108,9 @@ mod tests {
             then: None,
         }];
         let result = crate::mod_compile_lowering::part_01::body_width(&body, 3);
-        assert!(result.is_err(), "body_width must reject unsupported primitive in body");
+        assert!(
+            result.is_err(),
+            "body_width must reject unsupported primitive in body"
+        );
     }
 }

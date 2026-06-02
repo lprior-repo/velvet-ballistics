@@ -24,6 +24,8 @@ pub mod flux {
 // impossible cfg (Verus uses its own compiler frontend).
 #[cfg(verus)]
 pub mod verus {
+    #[path = "vb-0l9k0/mod.rs"]
+    pub mod vb_0l9k0;
     pub mod vb_y9d3v_action_fence;
 }
 
