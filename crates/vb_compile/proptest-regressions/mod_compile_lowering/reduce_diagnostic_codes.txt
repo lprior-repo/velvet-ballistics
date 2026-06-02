@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 75d8637557239c273f4a77b220d8a26ed5afcf7d35fa24d931195e14fcf62454 # shrinks to primitive = Repeat { max_attempts: 0, body: [] }

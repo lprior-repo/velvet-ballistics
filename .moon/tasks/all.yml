@@ -232,6 +232,7 @@ tasks:
   source-length:
     command: 'bash scripts/check-source-length.sh'
     deps:
+      - 'source-length-self-test'
       - 'workspace-assertions'
       - 'banned-token-gates'
       - 'test-integrity'
@@ -241,6 +242,15 @@ tasks:
       - '@globs(sources)'
       - '@globs(tests)'
       - '@globs(configs)'
+    options:
+      runInCI: true
+
+  source-length-self-test:
+    command: 'bash scripts/check-source-length-tests.sh'
+    inputs:
+      - 'scripts/check-source-length.sh'
+      - 'scripts/check-source-length-tests.sh'
+      - '.moon/tasks/all.yml'
     options:
       runInCI: true
 
@@ -270,7 +280,7 @@ tasks:
       set -euo pipefail
       mkdir -p target/moon-locks
       mkdir -p target/tmp
-      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" timeout 10m rustup run nightly-2026-04-28 cargo nextest run --cargo-quiet --workspace --all-features
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" timeout 20m rustup run nightly-2026-04-28 cargo nextest run --cargo-quiet --workspace --all-features
     deps:
       - 'check'
     toolchains:
@@ -383,7 +393,7 @@ tasks:
       set -euo pipefail
       mkdir -p target/miri-tmp
       mkdir -p target/moon-locks
-      TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" MIRIFLAGS="-Zmiri-disable-isolation" timeout 3m rustup run nightly-2026-04-28 cargo miri test --quiet -p vb_core --lib --all-features ids::tests::run_id_zero_constant
+      TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" MIRIFLAGS="-Zmiri-disable-isolation" timeout 30m rustup run nightly-2026-04-28 cargo miri test --quiet -p vb_core -p vb_expr -p vb_compile --all-features
     toolchains:
       - rust
     inputs:
