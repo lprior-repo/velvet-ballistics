@@ -191,7 +191,7 @@ fn fuzz_parts_with_actions(actions: &[u16]) -> WorkflowParts {
 }
 
 /// Asserts that a YAML error is a known typed variant (exhaustive over all 19 variants).
-fn assert_typed_yaml_error(error: vb_yaml::YamlError) {
+pub(crate) fn assert_typed_yaml_error(error: vb_yaml::YamlError) {
     use vb_yaml::YamlError;
     match error {
         YamlError::UnsupportedTrigger { .. }
@@ -283,9 +283,21 @@ pub fn fuzz_yaml_events(data: &[u8]) {
 }
 
 /// Exercises IPC header/frame decoding and typed payload decoding.
+///
+/// This target exercises three decode paths:
+/// 1. **Slice-based header decode**: `decode_frame_header` on the first 24 bytes.
+/// 2. **Slice-based payload decode**: `decode_frame_payload` on remaining bytes.
+/// 3. **Bounded read path**: `read_frame_header_bounded` + `read_frame_payload_bounded`
+///    with `Cursor` and bounds `[1, 16, 256, 1024, 65536, 1048576]`. This path
+///    exercises the preallocation gate -- oversized payloads must be rejected
+///    before any allocation occurs.
+///
+/// All error paths are validated through `assert_typed_ipc_error` to ensure
+/// only known typed `IpcError` variants are returned (never panics).
 pub fn fuzz_ipc_frame(data: &[u8]) {
     use vb_ipc::frame::{decode_frame_header, decode_frame_payload};
 
+    // ── Path 1: Slice-based header decode ──────────────────────────────
     let Some(header_bytes) = data.get(..vb_ipc::IPC_HEADER_LEN) else {
         return;
     };
@@ -308,6 +320,7 @@ pub fn fuzz_ipc_frame(data: &[u8]) {
         }
     }
 
+    // ── Path 2: Slice-based payload decode ─────────────────────────────
     let Some(payload) = data.get(vb_ipc::IPC_HEADER_LEN..) else {
         return;
     };
@@ -319,7 +332,9 @@ pub fn fuzz_ipc_frame(data: &[u8]) {
         // Payload decode must return a Result (never panic). Matching lengths
         // only permit postcard deserialization to run; arbitrary bytes may still
         // fail with a typed payload-decode error.
-        let payload_len_usize = header.payload_len as usize;
+        let Some(payload_len_usize) = usize::try_from(header.payload_len).ok() else {
+            return;
+        };
         let result = decode_frame_payload(&header, payload);
         match result {
             Ok(decoded) => {
@@ -354,6 +369,51 @@ pub fn fuzz_ipc_frame(data: &[u8]) {
                 }
             }
             Err(e) => assert_typed_ipc_error(e),
+        }
+    }
+
+    // ── Path 3: Bounded Cursor-based read with preallocation gate ──────
+    // Exercises read_frame_payload_bounded with various max_payload bounds.
+    // Each bound tests that oversized payloads are rejected before any
+    // allocation occurs (the preallocation gate proven by Kani harnesses).
+    use std::io::Cursor;
+
+    // Bounds array: each value is used as a NonZeroUsize payload limit.
+    // Bound 1 exercises the tightest possible limit (barely any payload).
+    // Bound 1_048_576 is the DEFAULT bound exercised in production.
+    let bounds: &[usize] = &[1, 16, 256, 1024, 65536, 1_048_576];
+    for &bound_val in bounds {
+        let Some(max_payload_nz) = std::num::NonZeroUsize::new(bound_val) else {
+            continue;
+        };
+        let max_payload = vb_ipc::MaxPayloadBytes::new(max_payload_nz);
+
+        let mut cursor = Cursor::new(data);
+
+        // Try to read header with bounded validation.
+        let header = match vb_ipc::frame::read_frame_header_bounded(&mut cursor, max_payload) {
+            Ok(h) => h,
+            Err(e) => {
+                // Header read failed — must be a typed IpcError.
+                assert_typed_ipc_error(e);
+                continue;
+            }
+        };
+
+        // Header validated — attempt bounded payload read.
+        // read_frame_payload_bounded calls validate_frame_bounds first,
+        // then allocates only if the payload does not exceed max_payload.
+        match vb_ipc::frame::read_frame_payload_bounded(&mut cursor, &header, max_payload) {
+            Ok(_payload_bytes) => {
+                // Payload read succeeded within the bound — the fuzzer
+                // found input where declared payload_len ≤ bound and
+                // sufficient bytes were available in the Cursor.
+            }
+            Err(e) => {
+                // Payload rejected — must be a typed IpcError
+                // (e.g. PayloadTooLarge, PayloadDecodeFailed).
+                assert_typed_ipc_error(e);
+            }
         }
     }
 }

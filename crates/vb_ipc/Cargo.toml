@@ -18,6 +18,7 @@ vb_runtime = { path = "../vb_runtime" }
 
 [dev-dependencies]
 proptest = { workspace = true }
+rstest = "0.26.1"
 
 [lints]
 workspace = true

@@ -29,6 +29,10 @@ unwrap_used = "deny"
 expect_used = "deny"
 panic = "deny"
 
+[dev-dependencies]
+indoc = "2"
+proptest = "1"
+
 [dependencies]
 libfuzzer-sys = "0.4"
 postcard = { version = "1", features = ["alloc"] }
@@ -429,26 +433,26 @@ test = false
 doc = false
 bench = false
 
-[[bin]]
-name = "structured_status_render_hostile"
-path = "src/bin/structured_status_render_hostile.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]  # REQUIRES xtask crate (currently excluded from workspace)
+# name = "structured_status_render_hostile"
+# path = "src/bin/structured_status_render_hostile.rs"
+# test = false
+# doc = false
+# bench = false
 
-[[bin]]
-name = "xtask_parse_argv_hostile"
-path = "src/bin/xtask_parse_argv_hostile.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]  # REQUIRES xtask crate (currently excluded from workspace)
+# name = "xtask_parse_argv_hostile"
+# path = "src/bin/xtask_parse_argv_hostile.rs"
+# test = false
+# doc = false
+# bench = false
 
-[[bin]]
-name = "xtask_parse_options_hostile"
-path = "src/bin/xtask_parse_options_hostile.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]  # REQUIRES xtask crate (currently excluded from workspace)
+# name = "xtask_parse_options_hostile"
+# path = "src/bin/xtask_parse_options_hostile.rs"
+# test = false
+# doc = false
+# bench = false
 
 # === new libfuzzer targets (vb-64nl Phase 0) ===
 
@@ -610,5 +614,24 @@ bench = false
 name = "reduce_diagnostic_codes"
 path = "fuzz_targets/reduce_diagnostic_codes.rs"
 test = false
+doc = false
+bench = false
+
+# === Behavior tests for yaml_events fuzz target (vb-jpq7.34) ===
+
+[[test]]
+name = "test_yaml_events_harness"
+path = "tests/test_yaml_events_harness.rs"
+
+[[test]]
+name = "test_yaml_events_parser_surface"
+path = "tests/test_yaml_events_parser_surface.rs"
+
+# === vb-jpq7.34 Proptest suites ===
+
+[[test]]
+name = "yaml_events_panic"
+path = "tests/proptest/yaml_events_panic.rs"
+test = true
 doc = false
 bench = false

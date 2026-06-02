@@ -1312,3 +1312,414 @@ fn payload_len_u32_rejects_usize_max() {
         })
     );
 }
+
+// ══ Preallocation Surface Tests (P0: Bounded Payload Read) ═════════════════════
+
+/// Constructs a `MaxPayloadBytes` from a literal nonzero value.
+fn max_payload_bytes(value: usize) -> MaxPayloadBytes {
+    MaxPayloadBytes::new(std::num::NonZeroUsize::new(value).expect("value must be nonzero"))
+}
+
+/// Verifies that after `read_frame_payload_bounded` rejects an oversized payload,
+/// the cursor position is unchanged (no bytes were consumed).
+fn assert_cursor_position_unchanged_after_bounded_read(
+    header: &IpcFrameHeader,
+    max: MaxPayloadBytes,
+    data: &[u8],
+) {
+    let mut cursor = std::io::Cursor::new(data);
+    let pos_before = cursor.position();
+    let _result = read_frame_payload_bounded(&mut cursor, header, max);
+    let pos_after = cursor.position();
+    assert_eq!(
+        pos_before, pos_after,
+        "cursor must not advance when payload rejected by bounds check"
+    );
+}
+
+// ── P0-#1: reject with bound 1 ──
+
+#[test]
+fn read_frame_payload_bounded_rejects_before_allocation_when_payload_exceeds_max_bound_1() {
+    // Given: a header with payload_len=100, bound=1 byte, cursor with 100 bytes
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 100);
+    let tiny_max = max_payload_bytes(1);
+    let data = vec![0xAB_u8; 100];
+    let mut cursor = std::io::Cursor::new(data.as_slice());
+    let pos_before = cursor.position();
+
+    // When: read_frame_payload_bounded is called
+    let result = read_frame_payload_bounded(&mut cursor, &header, tiny_max);
+
+    // Then: PayloadTooLarge with exact fields; cursor unchanged
+    assert_eq!(
+        result,
+        Err(IpcError::PayloadTooLarge {
+            actual: 100,
+            limit: 1,
+        })
+    );
+    assert_eq!(
+        cursor.position(),
+        pos_before,
+        "cursor must not advance: rejection happens before any read"
+    );
+}
+
+// ── P0-#2: reject with bound 256 ──
+
+#[test]
+fn read_frame_payload_bounded_rejects_before_allocation_when_payload_exceeds_max_bound_256() {
+    // Given: header with payload_len=1024, bound=256, cursor with sufficient data
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 1024);
+    let max_256 = max_payload_bytes(256);
+    let data = vec![0xCD_u8; 1024];
+    let mut cursor = std::io::Cursor::new(data.as_slice());
+    let pos_before = cursor.position();
+
+    // When: read_frame_payload_bounded is called
+    let result = read_frame_payload_bounded(&mut cursor, &header, max_256);
+
+    // Then: PayloadTooLarge with correct fields; cursor unchanged
+    assert_eq!(
+        result,
+        Err(IpcError::PayloadTooLarge {
+            actual: 1024,
+            limit: 256,
+        })
+    );
+    assert_eq!(cursor.position(), pos_before);
+}
+
+// ── P0-#3: u32::MAX payload_len against default bound ──
+
+#[test]
+fn read_frame_payload_bounded_rejects_u32_max_payload_with_default_bound() {
+    // Given: header with payload_len=u32::MAX, bound=1 MiB (default)
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, u32::MAX);
+    let data = vec![0u8; 24]; // minimal cursor for context
+    let mut cursor = std::io::Cursor::new(data.as_slice());
+    let pos_before = cursor.position();
+
+    // When: read_frame_payload_bounded with default max
+    let result = read_frame_payload_bounded(&mut cursor, &header, MaxPayloadBytes::DEFAULT);
+
+    // Then: PayloadTooLarge — no OOM, no panic
+    let expected_len = usize::try_from(u32::MAX).map_or(usize::MAX, |v| v);
+    assert_eq!(
+        result,
+        Err(IpcError::PayloadTooLarge {
+            actual: expected_len,
+            limit: MaxPayloadBytes::DEFAULT.get(),
+        })
+    );
+    assert_eq!(cursor.position(), pos_before);
+}
+
+// ── P0-#3b: u32::MAX rejected against ALL six bounds ──
+
+#[rstest::rstest]
+#[case(1usize)]
+#[case(16usize)]
+#[case(256usize)]
+#[case(1024usize)]
+#[case(65536usize)]
+#[case(1_048_576usize)]
+fn read_frame_payload_bounded_rejects_u32_max_against_every_bound(#[case] bound_val: usize) {
+    // Given: header with payload_len=u32::MAX, each bound value, cursor present
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, u32::MAX);
+    let max = max_payload_bytes(bound_val);
+    let data = vec![0u8; 24];
+    let mut cursor = std::io::Cursor::new(data.as_slice());
+
+    // When: read_frame_payload_bounded is called
+    let result = read_frame_payload_bounded(&mut cursor, &header, max);
+
+    // Then: every bound rejects u32::MAX with correct limit field
+    let expected_len = usize::try_from(u32::MAX).map_or(usize::MAX, |v| v);
+    assert_eq!(
+        result,
+        Err(IpcError::PayloadTooLarge {
+            actual: expected_len,
+            limit: bound_val,
+        })
+    );
+}
+
+// ── P1-#4: reject with bound 65536 ──
+
+#[test]
+fn read_frame_payload_bounded_rejects_before_allocation_when_payload_exceeds_max_bound_65536() {
+    // Given: header with payload_len=65537, bound=65536
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 65537);
+    let max_64k = max_payload_bytes(65536);
+    let data = vec![0xEF_u8; 65536];
+    let mut cursor = std::io::Cursor::new(data.as_slice());
+    let pos_before = cursor.position();
+
+    // When: read_frame_payload_bounded is called
+    let result = read_frame_payload_bounded(&mut cursor, &header, max_64k);
+
+    // Then: PayloadTooLarge with correct fields
+    assert_eq!(
+        result,
+        Err(IpcError::PayloadTooLarge {
+            actual: 65537,
+            limit: 65536,
+        })
+    );
+    assert_eq!(cursor.position(), pos_before);
+}
+
+// ── P1-#5: successful read when payload matches bound ──
+
+#[rstest::rstest]
+#[case(1usize, b"X".to_vec())]
+#[case(16usize, vec![0xAB_u8; 16])]
+#[case(256usize, vec![0xCD_u8; 256])]
+#[case(1024usize, vec![0xEF_u8; 1024])]
+#[case(65536usize, vec![0x55_u8; 65536])]
+#[case(1_048_576usize, vec![0xAA_u8; 1_048_576])]
+fn read_frame_payload_bounded_returns_exact_payload_bytes_when_payload_matches_bound(
+    #[case] bound_val: usize,
+    #[case] expected_payload: Vec<u8>,
+) {
+    // Given: header with payload_len == bound, matching bound max, cursor with payload
+    let payload_len = u32::try_from(bound_val).expect("bound must fit u32");
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, payload_len);
+    let max = max_payload_bytes(bound_val);
+    let mut cursor = std::io::Cursor::new(expected_payload.as_slice());
+
+    // When: read_frame_payload_bounded is called
+    let result = read_frame_payload_bounded(&mut cursor, &header, max);
+
+    // Then: exact payload bytes returned
+    let payload = result.expect("payload within bound must succeed");
+    assert_eq!(payload, expected_payload);
+    assert_eq!(payload.len(), bound_val);
+}
+
+// ── P1-#5b: one below each bound also succeeds ──
+
+#[rstest::rstest]
+#[case(16usize)]
+#[case(256usize)]
+#[case(1024usize)]
+#[case(65536usize)]
+fn read_frame_payload_bounded_accepts_payload_one_below_bound(#[case] bound_val: usize) {
+    // Given: payload is one byte less than the bound
+    let payload_len = u32::try_from(bound_val.saturating_sub(1)).expect("must fit u32");
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, payload_len);
+    let max = max_payload_bytes(bound_val);
+    let payload = vec![0xCC_u8; bound_val.saturating_sub(1)];
+    let mut cursor = std::io::Cursor::new(payload.as_slice());
+
+    // When: read_frame_payload_bounded is called
+    let result = read_frame_payload_bounded(&mut cursor, &header, max);
+
+    // Then: succeeds — payload is within bound
+    let read_bytes = result.expect("payload below bound must succeed");
+    assert_eq!(read_bytes, payload);
+}
+
+// ── P1-#5c: one above each bound is rejected ──
+
+#[rstest::rstest]
+#[case(1usize, 2u32)]
+#[case(16usize, 17u32)]
+#[case(256usize, 257u32)]
+#[case(1024usize, 1025u32)]
+#[case(65536usize, 65537u32)]
+fn read_frame_payload_bounded_rejects_payload_one_above_bound(
+    #[case] bound_val: usize,
+    #[case] payload_len: u32,
+) {
+    // Given: payload is one byte more than the bound
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, payload_len);
+    let max = max_payload_bytes(bound_val);
+    let data = vec![0u8; 24];
+    let mut cursor = std::io::Cursor::new(data.as_slice());
+
+    // When: read_frame_payload_bounded is called
+    let result = read_frame_payload_bounded(&mut cursor, &header, max);
+
+    // Then: PayloadTooLarge with exact field values
+    let actual_usize = usize::try_from(payload_len).expect("payload_len must fit usize");
+    assert_eq!(
+        result,
+        Err(IpcError::PayloadTooLarge {
+            actual: actual_usize,
+            limit: bound_val,
+        })
+    );
+}
+
+// ── P1-#6: zero-length payload ──
+
+#[test]
+fn read_frame_payload_bounded_returns_empty_vec_when_payload_len_is_zero() {
+    // Given: header with payload_len=0, default max, empty cursor
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
+    let empty_data: &[u8] = b"";
+    let mut cursor = std::io::Cursor::new(empty_data);
+
+    // When: read_frame_payload_bounded is called
+    let result =
+        read_frame_payload_bounded(&mut cursor, &header, MaxPayloadBytes::DEFAULT);
+
+    // Then: Ok with empty vec
+    let payload = result.expect("zero-length payload must succeed");
+    assert_eq!(payload, Vec::<u8>::new());
+    assert_eq!(payload.len(), 0);
+}
+
+// ── P2-#7: exact field values in PayloadTooLarge ──
+
+#[test]
+fn read_frame_payload_bounded_returns_exact_actual_and_limit_fields() {
+    // Given: header with payload_len=500, bound=100
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 500);
+    let max_100 = max_payload_bytes(100);
+    let data = vec![0u8; 500];
+    let mut cursor = std::io::Cursor::new(data.as_slice());
+
+    // When: read_frame_payload_bounded is called
+    let result = read_frame_payload_bounded(&mut cursor, &header, max_100);
+
+    // Then: error carries exact actual=500, limit=100
+    assert_eq!(
+        result,
+        Err(IpcError::PayloadTooLarge {
+            actual: 500,
+            limit: 100,
+        })
+    );
+}
+
+// ── P2-#8: allocation size cap ──
+
+#[test]
+fn read_frame_payload_bounded_allocates_at_most_bound_bytes_on_success() {
+    // Given: header with payload_len=42, bound=256, cursor with 42 bytes
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 42);
+    let max_256 = max_payload_bytes(256);
+    let payload_data = vec![0xCC_u8; 42];
+    let mut cursor = std::io::Cursor::new(payload_data.as_slice());
+
+    // When: read_frame_payload_bounded is called
+    let result = read_frame_payload_bounded(&mut cursor, &header, max_256);
+
+    // Then: allocation is at most bound bytes (42 ≤ 256)
+    let payload = result.expect("within-bound payload must succeed");
+    assert_eq!(payload.len(), 42);
+    assert!(payload.len() <= max_256.get());
+}
+
+// ── P2-#8b: at-boundary allocation ──
+
+#[test]
+fn read_frame_payload_bounded_allocates_exactly_bound_bytes_at_boundary() {
+    // Given: header with payload_len=16, bound=16
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 16);
+    let max_16 = max_payload_bytes(16);
+    let payload_data = vec![0xDD_u8; 16];
+    let mut cursor = std::io::Cursor::new(payload_data.as_slice());
+
+    // When: read_frame_payload_bounded is called
+    let result = read_frame_payload_bounded(&mut cursor, &header, max_16);
+
+    // Then: payload equals bound — allocation is exactly at limit
+    let payload = result.expect("at-boundary payload must succeed");
+    assert_eq!(payload.len(), 16);
+    assert_eq!(payload, payload_data);
+}
+
+// ── P2-#9: validate_frame_bounds accepts payload_len == max ──
+
+#[rstest::rstest]
+#[case(1usize)]
+#[case(16usize)]
+#[case(256usize)]
+#[case(1024usize)]
+#[case(65536usize)]
+#[case(1_048_576usize)]
+fn validate_frame_bounds_accepts_payload_len_equal_to_max(#[case] bound_val: usize) {
+    // Given: header with payload_len == bound, matching max
+    let payload_len = u32::try_from(bound_val).expect("bound must fit u32");
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, payload_len);
+    let max = max_payload_bytes(bound_val);
+
+    // When: validate_frame_bounds is called
+    let result = validate_frame_bounds(&header, max);
+
+    // Then: Ok — payload at boundary is accepted (strict >, not >=)
+    assert_eq!(result, Ok(()));
+}
+
+// ── P2-#10: validate_frame_bounds rejects with correct limit field ──
+
+#[rstest::rstest]
+#[case(1usize, 2u32)]
+#[case(16usize, 17u32)]
+#[case(256usize, 257u32)]
+#[case(1024usize, 1025u32)]
+#[case(65536usize, 65537u32)]
+fn validate_frame_bounds_rejects_oversized_with_correct_limit_field(
+    #[case] bound_val: usize,
+    #[case] payload_len: u32,
+) {
+    // Given: header with payload_len one above bound
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, payload_len);
+    let max = max_payload_bytes(bound_val);
+
+    // When: validate_frame_bounds is called
+    let result = validate_frame_bounds(&header, max);
+
+    // Then: PayloadTooLarge with exact field values
+    let actual_usize = usize::try_from(payload_len).expect("payload_len must fit usize");
+    assert_eq!(
+        result,
+        Err(IpcError::PayloadTooLarge {
+            actual: actual_usize,
+            limit: bound_val,
+        })
+    );
+}
+
+// ── Cursor Position Verification ──
+
+#[test]
+fn read_frame_payload_bounded_does_not_advance_cursor_when_bounds_reject() {
+    // Given: header with payload_len=1024, bound=16, cursor with test data
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 1024);
+    let max_16 = max_payload_bytes(16);
+    let test_data = b"PRESERVE_THIS_DATA_FOR_VERIFICATION";
+    assert_cursor_position_unchanged_after_bounded_read(&header, max_16, test_data);
+}
+
+#[test]
+fn read_frame_payload_bounded_does_not_advance_cursor_when_giant_payload_rejected() {
+    // Given: header with payload_len=1_000_000, bound=1024
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 1_000_000);
+    let max_1024 = max_payload_bytes(1024);
+    let test_data = b"DO_NOT_CONSUME";
+    assert_cursor_position_unchanged_after_bounded_read(&header, max_1024, test_data);
+}
+
+// ── Short-read path: bounds pass but cursor is truncated ──
+
+#[test]
+fn read_frame_payload_bounded_returns_payload_decode_failed_when_bounds_pass_but_cursor_truncated() {
+    // Given: header with payload_len=100 (within 1 MiB default), cursor has only 3 bytes
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 100);
+    let short_data = b"abc";
+    let mut cursor = std::io::Cursor::new(short_data.as_slice());
+
+    // When: read_frame_payload_bounded is called with default max
+    let result =
+        read_frame_payload_bounded(&mut cursor, &header, MaxPayloadBytes::DEFAULT);
+
+    // Then: bounds pass but read_exact fails → PayloadDecodeFailed
+    // (Allocation for 100 bytes does happen, then read fails)
+    assert_eq!(result, Err(IpcError::PayloadDecodeFailed));
+}

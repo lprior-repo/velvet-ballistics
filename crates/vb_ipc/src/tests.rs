@@ -1912,4 +1912,333 @@ mod proptests {
             prop_assert_eq!(encoded.len(), IPC_HEADER_LEN);
         }
     }
+
+    // ── P6: validate_frame_bounds obeys strict > for random (payload_len, max) ──
+
+    proptest! {
+        #[test]
+        fn validate_frame_bounds_obeys_strict_greater_than(
+            payload_len in 0u32..=65535u32,
+            max_val in 1u16..=65535u16,
+        ) {
+            // Given: random payload_len and max, construct header and max_payload
+            let Some(max) = std::num::NonZeroUsize::new(max_val as usize) else {
+                return Ok(());
+            };
+            let max_payload = MaxPayloadBytes::new(max);
+            let header = IpcFrameHeader::new(IpcCommand::Health, 0, 0, payload_len);
+
+            let result = crate::validate_frame_bounds(&header, max_payload);
+
+            // Convert payload_len to usize; on 32-bit this may fail (waiver WVR-001)
+            let Ok(payload_usize) = usize::try_from(payload_len) else {
+                // 32-bit platform where u32 doesn't fit usize
+                let is_out_of_range = match &result {
+                    Err(IpcError::PayloadLengthOutOfRange { actual }) => *actual == payload_len,
+                    _ => false,
+                };
+                prop_assert!(is_out_of_range, "expected PayloadLengthOutOfRange");
+                return Ok(());
+            };
+
+            if payload_usize > max_payload.get() {
+                prop_assert_eq!(
+                    result,
+                    Err(IpcError::PayloadTooLarge {
+                        actual: payload_usize,
+                        limit: max_payload.get(),
+                    })
+                );
+            } else {
+                prop_assert_eq!(result, Ok(()));
+            }
+        }
+    }
+}
+
+// ══ Preallocation Surface Integration Tests ════════════════════════════════════
+
+/// Helper: constructs a `MaxPayloadBytes` from a literal nonzero value.
+fn max_payload_bytes(value: usize) -> MaxPayloadBytes {
+    MaxPayloadBytes::new(std::num::NonZeroUsize::new(value).expect("value must be nonzero"))
+}
+
+// ── P0-#1: cursor position unchanged after bounded read rejection ──
+
+#[test]
+fn bounded_read_rejects_before_allocation_proof_cursor_position_unchanged() {
+    // Given: a hostile header with payload_len > max, and a cursor with known content
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 500);
+    let tiny_max = max_payload_bytes(1);
+    // Use a known test pattern so we can verify cursor content after rejection
+    let known_pattern: [u8; 21] = *b"CURSOR_PRESERVE_TEST!";
+
+    // When: before and after the bounded read
+    let mut cursor = std::io::Cursor::new(known_pattern);
+    let pos_before = cursor.position();
+
+    let result = crate::read_frame_payload_bounded(&mut cursor, &header, tiny_max);
+
+    // Then: PayloadTooLarge, cursor position unchanged, cursor still has original data
+    assert_eq!(
+        result,
+        Err(IpcError::PayloadTooLarge {
+            actual: 500,
+            limit: 1,
+        })
+    );
+    assert_eq!(
+        cursor.position(),
+        pos_before,
+        "cursor must not advance when bounds reject: no bytes consumed"
+    );
+
+    // Verify we can still read the original data from the cursor
+    let pos_after = cursor.position();
+    assert_eq!(pos_after, 0, "cursor should still be at position 0");
+    let content_after = &cursor.get_ref()[pos_after as usize..];
+    assert_eq!(content_after, known_pattern.as_slice(), "original bytes still readable after rejection");
+}
+
+// ── P0-#2: per-bound acceptance and rejection for all 6 bounds ──
+
+#[test]
+fn bounded_read_per_bound_acceptance_at_boundary() {
+    let bounds: [(usize, u32); 6] = [
+        (1, 1),
+        (16, 16),
+        (256, 256),
+        (1024, 1024),
+        (65536, 65536),
+        (1_048_576, 1_048_576),
+    ];
+
+    for (bound_val, payload_len) in &bounds {
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, *payload_len);
+        let max = max_payload_bytes(*bound_val);
+        let payload = vec![0xAA_u8; *bound_val];
+        let mut cursor = std::io::Cursor::new(payload.as_slice());
+
+        let result = crate::read_frame_payload_bounded(&mut cursor, &header, max);
+
+        let read_bytes = result.unwrap_or_else(|e| {
+            panic!(
+                "payload at bound {bound_val} must succeed, got {e:?}"
+            )
+        });
+        assert_eq!(
+            read_bytes.len(),
+            *bound_val,
+            "payload at bound {bound_val} must have correct length"
+        );
+        assert_eq!(read_bytes, vec![0xAA_u8; *bound_val]);
+    }
+}
+
+#[test]
+fn bounded_read_per_bound_rejection_one_above() {
+    let bounds: [(usize, u32); 6] = [
+        (1, 2),
+        (16, 17),
+        (256, 257),
+        (1024, 1025),
+        (65536, 65537),
+        (1_048_576, 1_048_577),
+    ];
+
+    for (bound_val, payload_len) in &bounds {
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, *payload_len);
+        let max = max_payload_bytes(*bound_val);
+        let data = vec![0u8; 24];
+        let mut cursor = std::io::Cursor::new(data.as_slice());
+
+        let result = crate::read_frame_payload_bounded(&mut cursor, &header, max);
+
+        assert_eq!(
+            result,
+            Err(IpcError::PayloadTooLarge {
+                actual: *bound_val + 1,
+                limit: *bound_val,
+            }),
+            "payload one above bound {bound_val} must be rejected"
+        );
+    }
+}
+
+// ── P1-#3: u32::MAX payload_len does not OOM ──
+
+#[test]
+fn bounded_read_with_u32_max_payload_len_no_oom() {
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, u32::MAX);
+    let data = vec![0u8; 24]; // minimal cursor: not read by bounds check
+    let mut cursor = std::io::Cursor::new(data.as_slice());
+
+    let result = crate::read_frame_payload_bounded(
+        &mut cursor,
+        &header,
+        MaxPayloadBytes::DEFAULT,
+    );
+
+    // On 64-bit: PayloadTooLarge since 4GB > 1 MiB
+    // On 32-bit: PayloadLengthOutOfRange (u32 > usize::MAX)
+    // Either way, no OOM, no panic
+    match result {
+        Err(IpcError::PayloadTooLarge { actual, limit }) => {
+            assert!(actual > limit, "oversized payload must be larger than limit");
+            assert_eq!(limit, MaxPayloadBytes::DEFAULT.get());
+        }
+        Err(IpcError::PayloadLengthOutOfRange { actual }) => {
+            // Only reachable on 32-bit
+            assert_eq!(actual, u32::MAX);
+        }
+        other => {
+            panic!("expected PayloadTooLarge or PayloadLengthOutOfRange, got {other:?}");
+        }
+    }
+}
+
+// ── P1-#4: fuzz target mock exercises all error paths ──
+
+#[test]
+fn fuzz_target_mock_exercises_all_decode_error_paths() {
+    // Given: hand-crafted byte sequences triggering each of the 7 decode errors
+
+    // 1. InvalidMagic — empty/zero header bytes
+    {
+        let zero_header: [u8; IPC_HEADER_LEN] = [0u8; IPC_HEADER_LEN];
+        let result = crate::decode_frame_header(&zero_header);
+        assert_eq!(
+            result,
+            Err(IpcError::InvalidMagic { actual: 0 }),
+            "zero header must produce InvalidMagic"
+        );
+    }
+
+    // 2. InvalidMagic — 0xDEADBEEF magic
+    {
+        let mut bad_header = [0u8; IPC_HEADER_LEN];
+        bad_header[..4].copy_from_slice(&0xDEAD_BEEFu32.to_le_bytes());
+        let result = crate::decode_frame_header(&bad_header);
+        assert_eq!(
+            result,
+            Err(IpcError::InvalidMagic {
+                actual: 0xDEAD_BEEF
+            }),
+            "0xDEADBEEF magic must produce InvalidMagic"
+        );
+    }
+
+    // 3. UnsupportedVersion — valid magic, version=0
+    {
+        let mut h = [0u8; IPC_HEADER_LEN];
+        h[..4].copy_from_slice(&IPC_MAGIC.to_le_bytes());
+        // version bytes at 4..6 are already 0
+        let result = crate::decode_frame_header(&h);
+        assert_eq!(
+            result,
+            Err(IpcError::UnsupportedVersion { actual: 0 }),
+            "version=0 must produce UnsupportedVersion"
+        );
+    }
+
+    // 4. ReservedNonZero — valid magic, version=1, reserved=1
+    {
+        let mut h = [0u8; IPC_HEADER_LEN];
+        h[..4].copy_from_slice(&IPC_MAGIC.to_le_bytes());
+        h[4..6].copy_from_slice(&IPC_VERSION.to_le_bytes());
+        h[6..8].copy_from_slice(&IpcCommand::Health.as_u16().to_le_bytes());
+        h[10..12].copy_from_slice(&1u16.to_le_bytes()); // reserved=1
+        let result = crate::decode_frame_header(&h);
+        assert_eq!(
+            result,
+            Err(IpcError::ReservedNonZero { actual: 1 }),
+            "reserved=1 must produce ReservedNonZero"
+        );
+    }
+
+    // 5. PayloadTooLarge — valid header, payload_len=1024, bound=256
+    {
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 1024);
+        let max_256 = max_payload_bytes(256);
+        let encoded = header.encode().expect("header should encode");
+        let result = IpcFrameHeader::decode(&encoded, max_256);
+        assert_eq!(
+            result,
+            Err(IpcError::PayloadTooLarge {
+                actual: 1024,
+                limit: 256,
+            }),
+            "payload too large for bound must produce PayloadTooLarge"
+        );
+    }
+
+    // 6. HeaderDecodeFailed — truncated byte slice
+    {
+        let short: [u8; 3] = [0u8; 3];
+        let result = crate::validate_frame_magic(&short);
+        assert_eq!(
+            result,
+            Err(IpcError::HeaderDecodeFailed),
+            "3-byte input must produce HeaderDecodeFailed"
+        );
+    }
+
+    // 7. PayloadDecodeFailed — bounds pass but short cursor
+    {
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 100);
+        let short_data = b"abc";
+        let mut cursor = std::io::Cursor::new(short_data.as_slice());
+        let result = crate::read_frame_payload_bounded(
+            &mut cursor,
+            &header,
+            MaxPayloadBytes::DEFAULT,
+        );
+        assert_eq!(
+            result,
+            Err(IpcError::PayloadDecodeFailed),
+            "truncated payload within bounds must produce PayloadDecodeFailed"
+        );
+    }
+
+    // 8. PayloadLengthMismatch — header says 8, actual is 4
+    {
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 8);
+        let short_payload = vec![0u8; 4];
+        let result = crate::decode_frame_payload(&header, &short_payload);
+        assert_eq!(
+            result,
+            Err(IpcError::PayloadLengthMismatch {
+                header: 8,
+                actual: 4,
+            }),
+            "length mismatch must produce PayloadLengthMismatch"
+        );
+    }
+
+    // 9. PayloadLengthMismatch — header says 0, actual is 10
+    {
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
+        let extra_payload = vec![0u8; 10];
+        let result = crate::decode_frame_payload(&header, &extra_payload);
+        assert_eq!(
+            result,
+            Err(IpcError::PayloadLengthMismatch {
+                header: 0,
+                actual: 10,
+            }),
+            "zero header with extra payload must produce PayloadLengthMismatch"
+        );
+    }
+
+    // 10. PayloadDecodeFailed — garbage postcard bytes
+    {
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 4);
+        let garbage = vec![0xFF, 0xFE, 0xFD, 0xFC];
+        let result = crate::decode_frame_payload(&header, &garbage);
+        assert_eq!(
+            result,
+            Err(IpcError::PayloadDecodeFailed),
+            "garbage postcard bytes must produce PayloadDecodeFailed"
+        );
+    }
 }

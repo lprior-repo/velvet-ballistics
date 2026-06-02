@@ -54,18 +54,10 @@ mod tests {
                 &primitive,
             );
 
-            match result {
-                Ok(_) => {
-                    // These primitives are NOT supported in body steps
-                    panic!(
-                        "canonical_body_step_width should reject unsupported primitive in body"
-                    );
-                }
-                Err(_e) => {
-                    // Error produced - correct behavior for unsupported primitives
-                    // In production, this becomes CompileError::UnsupportedStepPrimitive
-                }
-            }
+            prop_assert!(
+                result.is_err(),
+                "canonical_body_step_width should reject unsupported primitive in body"
+            );
         }
     }
 
