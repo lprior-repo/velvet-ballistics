@@ -212,7 +212,12 @@ fn check_pop_pair_underflow() {
     );
     match left {
         Err(ExprError::StackUnderflow) => {}
-        Err(_) => {}
+        Err(e) => {
+            kani::assert(
+                matches!(e, ExprError::StackUnderflow),
+                "second pop on single-element stack must return StackUnderflow",
+            );
+        }
         Ok(_) => {
             kani::assert(false, "pop on insufficient stack must fail");
         }

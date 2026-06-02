@@ -16,7 +16,7 @@ fn header_with_kind(kind: u16) -> [u8; vb_storage::constants::RECORD_HEADER_BYTE
 }
 
 fn unknown_kind(kind: u16) -> bool {
-    !matches!(kind, 1 | 2 | 3 | 10..=27 | 30 | 40 | 50)
+    !matches!(kind, 1 | 2 | 3 | 10..=28 | 30 | 40 | 50)
 }
 
 proptest! {
@@ -89,6 +89,7 @@ fn explicit_edges_and_stable_record_kinds_hold() -> Result<(), JournalError> {
     assert_eq!(vb_storage::records::RecordKind::RunHeader.id(), 3);
     assert_eq!(vb_storage::records::RecordKind::RunAccepted.id(), 10);
     assert_eq!(vb_storage::records::RecordKind::RunAnswered.id(), 27);
+    assert_eq!(vb_storage::records::RecordKind::RunKilled.id(), 28);
     assert_eq!(vb_storage::records::RecordKind::Snapshot.id(), 30);
     assert_eq!(vb_storage::records::RecordKind::Blob.id(), 40);
     assert_eq!(vb_storage::records::RecordKind::IndexUpdate.id(), 50);

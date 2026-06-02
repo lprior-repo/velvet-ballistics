@@ -1564,8 +1564,7 @@ fn read_frame_payload_bounded_returns_empty_vec_when_payload_len_is_zero() {
     let mut cursor = std::io::Cursor::new(empty_data);
 
     // When: read_frame_payload_bounded is called
-    let result =
-        read_frame_payload_bounded(&mut cursor, &header, MaxPayloadBytes::DEFAULT);
+    let result = read_frame_payload_bounded(&mut cursor, &header, MaxPayloadBytes::DEFAULT);
 
     // Then: Ok with empty vec
     let payload = result.expect("zero-length payload must succeed");
@@ -1709,15 +1708,15 @@ fn read_frame_payload_bounded_does_not_advance_cursor_when_giant_payload_rejecte
 // ── Short-read path: bounds pass but cursor is truncated ──
 
 #[test]
-fn read_frame_payload_bounded_returns_payload_decode_failed_when_bounds_pass_but_cursor_truncated() {
+fn read_frame_payload_bounded_returns_payload_decode_failed_when_bounds_pass_but_cursor_truncated()
+{
     // Given: header with payload_len=100 (within 1 MiB default), cursor has only 3 bytes
     let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 100);
     let short_data = b"abc";
     let mut cursor = std::io::Cursor::new(short_data.as_slice());
 
     // When: read_frame_payload_bounded is called with default max
-    let result =
-        read_frame_payload_bounded(&mut cursor, &header, MaxPayloadBytes::DEFAULT);
+    let result = read_frame_payload_bounded(&mut cursor, &header, MaxPayloadBytes::DEFAULT);
 
     // Then: bounds pass but read_exact fails → PayloadDecodeFailed
     // (Allocation for 100 bytes does happen, then read fails)

@@ -1997,7 +1997,11 @@ fn bounded_read_rejects_before_allocation_proof_cursor_position_unchanged() {
     let pos_after = cursor.position();
     assert_eq!(pos_after, 0, "cursor should still be at position 0");
     let content_after = &cursor.get_ref()[pos_after as usize..];
-    assert_eq!(content_after, known_pattern.as_slice(), "original bytes still readable after rejection");
+    assert_eq!(
+        content_after,
+        known_pattern.as_slice(),
+        "original bytes still readable after rejection"
+    );
 }
 
 // ── P0-#2: per-bound acceptance and rejection for all 6 bounds ──
@@ -2021,11 +2025,8 @@ fn bounded_read_per_bound_acceptance_at_boundary() {
 
         let result = crate::read_frame_payload_bounded(&mut cursor, &header, max);
 
-        let read_bytes = result.unwrap_or_else(|e| {
-            panic!(
-                "payload at bound {bound_val} must succeed, got {e:?}"
-            )
-        });
+        let read_bytes = result
+            .unwrap_or_else(|e| panic!("payload at bound {bound_val} must succeed, got {e:?}"));
         assert_eq!(
             read_bytes.len(),
             *bound_val,
@@ -2073,18 +2074,17 @@ fn bounded_read_with_u32_max_payload_len_no_oom() {
     let data = vec![0u8; 24]; // minimal cursor: not read by bounds check
     let mut cursor = std::io::Cursor::new(data.as_slice());
 
-    let result = crate::read_frame_payload_bounded(
-        &mut cursor,
-        &header,
-        MaxPayloadBytes::DEFAULT,
-    );
+    let result = crate::read_frame_payload_bounded(&mut cursor, &header, MaxPayloadBytes::DEFAULT);
 
     // On 64-bit: PayloadTooLarge since 4GB > 1 MiB
     // On 32-bit: PayloadLengthOutOfRange (u32 > usize::MAX)
     // Either way, no OOM, no panic
     match result {
         Err(IpcError::PayloadTooLarge { actual, limit }) => {
-            assert!(actual > limit, "oversized payload must be larger than limit");
+            assert!(
+                actual > limit,
+                "oversized payload must be larger than limit"
+            );
             assert_eq!(limit, MaxPayloadBytes::DEFAULT.get());
         }
         Err(IpcError::PayloadLengthOutOfRange { actual }) => {
@@ -2188,11 +2188,8 @@ fn fuzz_target_mock_exercises_all_decode_error_paths() {
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 100);
         let short_data = b"abc";
         let mut cursor = std::io::Cursor::new(short_data.as_slice());
-        let result = crate::read_frame_payload_bounded(
-            &mut cursor,
-            &header,
-            MaxPayloadBytes::DEFAULT,
-        );
+        let result =
+            crate::read_frame_payload_bounded(&mut cursor, &header, MaxPayloadBytes::DEFAULT);
         assert_eq!(
             result,
             Err(IpcError::PayloadDecodeFailed),

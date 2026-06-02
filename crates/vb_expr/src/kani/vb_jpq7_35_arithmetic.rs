@@ -69,7 +69,12 @@ fn check_i64_mul_overflow() {
 
     match result {
         Err(ExprError::IntegerOverflow) => {}
-        Err(_) => {}
+        Err(e) => {
+            kani::assert(
+                matches!(e, ExprError::IntegerOverflow),
+                "i64::MAX * 2 must return IntegerOverflow",
+            );
+        }
         Ok(_) => {
             kani::assert(false, "i64::MAX * 2 must not succeed");
         }
@@ -85,7 +90,12 @@ fn check_i64_mul_overflow_min_neg_one() {
 
     match result {
         Err(ExprError::IntegerOverflow) => {}
-        Err(_) => {}
+        Err(e) => {
+            kani::assert(
+                matches!(e, ExprError::IntegerOverflow),
+                "i64::MIN * -1 must return IntegerOverflow",
+            );
+        }
         Ok(_) => {
             kani::assert(false, "i64::MIN * -1 must not succeed");
         }
@@ -124,7 +134,12 @@ fn check_i64_neg_overflow() {
 
     match result {
         Err(ExprError::IntegerOverflow) => {}
-        Err(_) => {}
+        Err(e) => {
+            kani::assert(
+                matches!(e, ExprError::IntegerOverflow),
+                "-(i64::MIN) must return IntegerOverflow",
+            );
+        }
         Ok(_) => {
             kani::assert(false, "-(i64::MIN) must not succeed");
         }
@@ -248,7 +263,12 @@ fn check_f64_zero_div_zero_returns_non_finite_float() {
 
     match result {
         Err(ExprError::NonFiniteFloat) => {}
-        Err(_) => {}
+        Err(e) => {
+            kani::assert(
+                matches!(e, ExprError::NonFiniteFloat),
+                "0.0/0.0 must return NonFiniteFloat",
+            );
+        }
         Ok(_) => {
             kani::assert(false, "0.0/0.0 must not succeed");
         }
