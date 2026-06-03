@@ -604,3 +604,13 @@ impl DigestCheck {
         self.hierarchy_rank() < other.hierarchy_rank()
     }
 }
+
+/// Configuration for Full-level digest verification.
+///
+/// Contains the expected action ABI and policy digests that must match
+/// during replay validation at Full strictness.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct DigestCheckConfig<'a> {
+    pub action_abi_entries: Option<&'a [(ActionId, WorkflowDigest, WorkflowDigest)]>,
+    pub policy_entries: Option<&'a [(StepIdx, WorkflowDigest, WorkflowDigest)]>,
+}

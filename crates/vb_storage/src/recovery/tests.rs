@@ -8,6 +8,7 @@ use crate::recovery::{
     recover_runtime_frame_seed_from_events_with_workflow, recover_runtime_summary,
     recover_snapshot_plus_tail, replay_events, summarize_recovery_events, verify_digests,
 };
+use crate::recovery::types::DigestCheckConfig;
 use crate::{DurableActionOutcome, EventSeq, FjallJournal, JournalEvent, RunHeaderRecord};
 use vb_core::action::{ActionTicket, compute_action_idempotency_key};
 use vb_core::value::{ConstValue, SlotValue, Taint};
@@ -1656,8 +1657,10 @@ fn verify_digests_returns_ok_when_all_match() {
         sample_digest(8),
         sample_digest(8),
         DigestCheck::Full,
-        Some(&[]),
-        Some(&[]),
+        Some(DigestCheckConfig {
+            action_abi_entries: Some(&[]),
+            policy_entries: Some(&[]),
+        }),
     )
     .expect("matching digests at Full level should succeed");
 }
@@ -1685,7 +1688,6 @@ fn verify_digests_returns_mismatch_when_ir_differs() {
         sample_digest(8),
         sample_digest(9),
         DigestCheck::WorkflowAndIr,
-        None,
         None,
     );
     assert!(matches!(
@@ -1722,8 +1724,10 @@ fn verify_digests_full_level_checks_action_abi_digest() {
         ir_digest,
         ir_digest,
         DigestCheck::Full,
-        Some(&[(action_id, matching_digest, mismatching_digest)]),
-        Some(&[]),
+        Some(DigestCheckConfig {
+            action_abi_entries: Some(&[(action_id, matching_digest, mismatching_digest)]),
+            policy_entries: Some(&[]),
+        }),
     );
     assert!(matches!(
         result,
@@ -1759,8 +1763,10 @@ fn verify_digests_full_level_checks_policy_digest() {
         ir_digest,
         ir_digest,
         DigestCheck::Full,
-        Some(&[]),
-        Some(&[(step, matching_digest, mismatching_digest)]),
+        Some(DigestCheckConfig {
+            action_abi_entries: Some(&[]),
+            policy_entries: Some(&[(step, matching_digest, mismatching_digest)]),
+        }),
     );
     assert!(matches!(
         result,
@@ -1796,8 +1802,10 @@ fn verify_digests_full_level_succeeds_with_all_matching() {
         ir_digest,
         ir_digest,
         DigestCheck::Full,
-        Some(&[(action_id, digest, digest)]),
-        Some(&[(step, digest, digest)]),
+        Some(DigestCheckConfig {
+            action_abi_entries: Some(&[(action_id, digest, digest)]),
+            policy_entries: Some(&[(step, digest, digest)]),
+        }),
     );
     result.expect("all matching digests at Full level should succeed");
 }

@@ -16,7 +16,7 @@ use vb_proof_kernels::vb_kyyf_normalization::{
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::ShardConfig;
 use vb_storage::recovery::{
-    ActionReplayTracker, DigestCheck, RecoveryError, RecoveryFrameSeedBuilder,
+    ActionReplayTracker, DigestCheck, DigestCheckConfig, RecoveryError, RecoveryFrameSeedBuilder,
 };
 use vb_storage::{EventSeq, FjallJournal, JournalEvent};
 use velvet_ballistics_workspace_tests::acceptance_catalog::{Scenario, catalog};
@@ -996,7 +996,6 @@ fn repeated_compiled_ir_digest_mismatch(
                 expected_ir_digest,
                 found_ir_digest,
                 DigestCheck::WorkflowAndIr,
-                None,
                 None,
             ),
         ))

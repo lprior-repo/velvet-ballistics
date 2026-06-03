@@ -18,11 +18,11 @@ use vb_core::{
 };
 use vb_runtime::recovery::RuntimeRecoveryBoundary;
 use vb_storage::recovery::{
-    ActionReplayTracker, DigestCheck, RecoveredStepEntry, RecoveredStepState, RecoveryError,
-    RecoveryFrameSeed, RecoveryHydration, RecoveryRuntimeSummary, RecoveryTerminalState,
-    RunSnapshot, hydrate_run_frame, hydrate_run_frame_from_events, recover_full_journal,
-    recover_runtime_frame_seed, recover_runtime_summary, recover_runtime_summary_with_expected,
-    verify_digests,
+    ActionReplayTracker, DigestCheck, DigestCheckConfig, RecoveredStepEntry, RecoveredStepState,
+    RecoveryError, RecoveryFrameSeed, RecoveryHydration, RecoveryRuntimeSummary,
+    RecoveryTerminalState, RunSnapshot, hydrate_run_frame, hydrate_run_frame_from_events,
+    recover_full_journal, recover_runtime_frame_seed, recover_runtime_summary,
+    recover_runtime_summary_with_expected, verify_digests,
 };
 use vb_storage::{EventSeq, FjallConfig, FjallJournal, JournalEvent};
 
@@ -1616,7 +1616,6 @@ fn verify_digests_workflow_source_only_level_passes() {
         test_digest(0xFE),
         DigestCheck::WorkflowSourceOnly,
         None,
-        None,
     );
     assert!(
         result.is_ok(),
@@ -1653,7 +1652,6 @@ fn verify_digests_workflow_and_ir_level_detects_ir_mismatch() {
         test_digest(0x24),
         test_digest(0x25),
         DigestCheck::WorkflowAndIr,
-        None,
         None,
     );
     let Err(RecoveryError::CompiledIrDigestMismatch { expected, found }) = result else {

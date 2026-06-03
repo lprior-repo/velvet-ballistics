@@ -11,8 +11,8 @@ use vb_core::{
     ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx, WorkflowDigest,
 };
 use vb_storage::recovery::{
-    ActionReplayTracker, DigestCheck, RecoveredStepEntry, RecoveredStepState, RecoveryError,
-    RecoveryFrameSeed, RecoveryHydration, RecoveryRuntimeSummary, RecoveryTerminalState,
+    ActionReplayTracker, DigestCheck, DigestCheckConfig, RecoveredStepEntry, RecoveredStepState,
+    RecoveryError, RecoveryFrameSeed, RecoveryHydration, RecoveryRuntimeSummary, RecoveryTerminalState,
     RunSnapshot, check_action_abi_digests, check_compiled_ir_digest, check_policy_digests,
     check_workflow_source_digest, hydrate_run_frame, hydrate_run_frame_from_events,
     recover_full_journal, recover_runtime_frame_seed, recover_runtime_summary, verify_digests,
@@ -1625,7 +1625,6 @@ fn verify_digests_returns_ok_when_all_match() {
         ir_digest, // found_ir_digest = ir_digest (distinct from source_digest)
         DigestCheck::WorkflowAndIr,
         None,
-        None,
     );
     assert!(
         result.is_ok(),
@@ -1660,7 +1659,6 @@ fn verify_digests_returns_workflow_mismatch_error() {
         test_digest(0xBB),
         stored_digest,
         DigestCheck::WorkflowAndIr,
-        None,
         None,
     );
 
@@ -1894,7 +1892,6 @@ fn verify_digests_detects_ir_digest_mismatch() {
         ir_digest,
         wrong_ir_digest, // found != expected
         DigestCheck::WorkflowAndIr,
-        None,
         None,
     );
 
@@ -2822,7 +2819,6 @@ fn verify_digests_at_workflow_source_only_level() {
         ir_digest,
         ir_digest,
         DigestCheck::WorkflowSourceOnly,
-        None,
         None,
     );
     assert!(
