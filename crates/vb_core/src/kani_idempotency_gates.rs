@@ -227,7 +227,7 @@ fn verify_idempotency_missing_key_symbolic_contract_no_frame_write() {
 }
 
 #[kani::proof]
-#[kani::unwind(8)]
+#[kani::unwind(10)]
 fn verify_idempotency_symbolic_key_taints_are_classified() {
     let contract = bounded_contract_for_retry(RetrySafety::KeyRequired);
     let frame = symbolic_frame();
@@ -297,7 +297,7 @@ fn check_symbolic_key_array<const N: usize>(
 }
 
 #[kani::proof]
-#[kani::unwind(8)]
+#[kani::unwind(10)]
 fn verify_idempotency_required_taint_variants_have_witnesses() {
     let contract = bounded_contract_for_retry(RetrySafety::KeyRequired);
     let taint_selector: u8 = kani::any();
@@ -332,7 +332,7 @@ fn verify_idempotency_required_taint_variants_have_witnesses() {
 }
 
 #[kani::proof]
-#[kani::unwind(8)]
+#[kani::unwind(10)]
 fn verify_idempotency_retry_policy_matrix_is_total() {
     let contract = symbolic_contract_no_caps();
     let frame = symbolic_frame();
@@ -359,7 +359,7 @@ fn verify_idempotency_retry_policy_matrix_is_total() {
 }
 
 #[kani::proof]
-#[kani::unwind(6)]
+#[kani::unwind(10)]
 fn verify_idempotency_duplicate_invocation_is_stable() {
     let contract = bounded_contract_for_retry(RetrySafety::KeyRequired);
     let taint = match kani::any::<u8>() {
@@ -711,7 +711,7 @@ fn kani_action_ticket_has_valid_key() {
 /// PO-VB-IDEM-017a: verify_idempotency returns MissingKey for KeyRequired
 /// with empty key_slots OR Unsafe retry.
 #[kani::proof]
-#[kani::unwind(8)]
+#[kani::unwind(10)]
 fn kani_verify_idempotency_missing_key() {
     use crate::action::{
         ActionContract, Idempotency, IdempotencyViolation, RetrySafety, SideEffect,

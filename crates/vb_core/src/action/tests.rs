@@ -1925,3 +1925,63 @@ fn test_canonical_key_validates() {
         );
     }
 }
+
+// =========================================================================
+// vb-tub4: Kani proof obligations - idempotency bounded property test
+// =========================================================================
+
+#[test]
+fn idempotency_property_bounded() {
+    // B-IDEM-001 variant: verify_idempotency is deterministic for bounded inputs
+    // Same contract/key/frame must produce same result across duplicate calls.
+    // This is the "bounded" property - we test with concrete (non-symbolic) values.
+    use crate::action::{
+        ActionContract, ActionId, ActionName, Idempotency, RetrySafety, SideEffect,
+        verify_idempotency,
+    };
+    use crate::frame::RunFrame;
+    use crate::ids::{RunId, SlotIdx, StepIdx};
+    use crate::value::SlotValue;
+
+    // Create a deterministic clean contract with KeyRequired safety
+    let contract = ActionContract {
+        id: ActionId::new(42),
+        name: ActionName::new("test-action").unwrap(),
+        input_slot_count: 2,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 512,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::Writes,
+        retry_safety: RetrySafety::KeyRequired,
+        required_capabilities: Box::new([]),
+    };
+
+    // Create a clean frame with initialized key slots
+    let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2).unwrap();
+    let mut frame = frame;
+    // Populate key slots with clean values
+    let _ = frame.write_slot(SlotIdx::new(0), SlotValue::I64(100));
+    let _ = frame.write_slot(SlotIdx::new(1), SlotValue::Bool(true));
+
+    let key_slots = &[SlotIdx::new(0), SlotIdx::new(1)];
+
+    // First call
+    let first_result = verify_idempotency(&contract, key_slots, &frame);
+
+    // Second call with same inputs - must be deterministic
+    let second_result = verify_idempotency(&contract, key_slots, &frame);
+
+    assert_eq!(
+        first_result, second_result,
+        "verify_idempotency must be deterministic: same inputs produce same result"
+    );
+
+    // Third call to further confirm stability
+    let third_result = verify_idempotency(&contract, key_slots, &frame);
+    assert_eq!(
+        first_result, third_result,
+        "verify_idempotency must be stable across multiple calls"
+    );
+}

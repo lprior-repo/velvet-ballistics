@@ -1327,8 +1327,8 @@ fn succeeded_to_running_is_invalid_transition() {
 }
 
 #[test]
-fn succeeded_to_pending_is_invalid_transition() {
-    // Succeeded -> Pending is valid (for loop re-entry). This should be valid.
+fn succeeded_to_pending_is_valid_transition_for_loop_reentry() {
+    // Succeeded -> Pending is valid (for loop re-entry).
     assert!(is_valid_step_state_transition(StepState::Succeeded, StepState::Pending));
 }
 
