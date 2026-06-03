@@ -25,12 +25,16 @@ pub mod typecheck;
 
 #[cfg(test)]
 mod property_tests;
+#[cfg(test)]
+mod harness_tests;
 
 #[cfg(kani)]
 pub mod proofs;
 
 #[cfg(kani)]
 pub mod kani_expr_stack;
+#[cfg(kani)]
+pub mod kani;
 
 pub use bytecode::{
     ReferenceResolver, check_expr_stack_bound, compile_expr, compile_expr_to_bytecode,
