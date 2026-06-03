@@ -346,9 +346,11 @@ fn persist_accepted_artifact_ir(
     artifact: &AcceptedArtifact,
 ) -> Result<(), JournalError> {
     let envelope = serialize_accepted_artifact(artifact)?;
+    let metadata_hash = compute_artifact_metadata_hash(artifact);
     let record = CompiledIrRecord {
         digest: artifact.digest,
         ir: envelope,
+        metadata_hash: Some(metadata_hash),
     };
     journal.put_compiled_ir(&record)
 }
@@ -364,7 +366,7 @@ pub fn validate_compiled_ir_record(record: &CompiledIrRecord) -> Result<(), Jour
     validate_accepted_artifact_digest(&artifact, record.digest)
 }
 
-fn decode_accepted_artifact_envelope(bytes: &[u8]) -> Result<AcceptedArtifact, JournalError> {
+pub(crate) fn decode_accepted_artifact_envelope(bytes: &[u8]) -> Result<AcceptedArtifact, JournalError> {
     let (artifact, remaining) =
         postcard::take_from_bytes(bytes).map_err(|_| JournalError::ArtifactMalformed)?;
     let declared_end = bytes
@@ -642,6 +644,59 @@ pub fn admit_compiled_artifact(
     Ok(artifact.digest)
 }
 
+/// Computes a BLAKE3 hash of the artifact metadata fields that must remain
+/// immutable after admission.
+///
+/// This includes: `source_digest`, `policy_digest`, the inner `ir` bytes,
+/// `verification` fields (excluding the nested `digest` which equals the outer
+/// digest), `accepted_at_seq`, and `required_capabilities`.
+///
+/// The `digest` field itself is excluded because it is the primary binding
+/// already verified by `validate_accepted_artifact_digest`.
+pub(crate) fn compute_artifact_metadata_hash(artifact: &AcceptedArtifact) -> [u8; 32] {
+    use std::io::Write;
+
+    let mut hasher = blake3::Hasher::new();
+    let _ = hasher.write_all(&artifact.source_digest.as_bytes());
+    let _ = hasher.write_all(&artifact.policy_digest.as_bytes());
+    let _ = hasher.write_all(&artifact.ir);
+    // Hash verification fields (excluding artifact.verification.digest which
+    // equals artifact.digest, already verified separately; durable and gate_count
+    // which are runtime policy decisions, not intrinsic artifact metadata)
+    // NOTE: durable is NOT included because it reflects RuntimePolicy (Strict vs Journaled)
+    // at admission time, not an immutable artifact property
+    // NOTE: gate_count is NOT included because Relaxed=0 vs Journaled/Strict=15,
+    // so the same artifact legitimately has different gate_count under different policies
+    let _ = hasher.write_all(&[artifact.verification.bounded_claimed as u8]);
+    let _ = hasher.write_all(&[artifact.verification.taint_safe_claimed as u8]);
+    let _ = hasher.write_all(&[artifact.verification.retry_safe_claimed as u8]);
+    let _ = hasher.write_all(&[artifact.verification.idempotency_verified_claimed as u8]);
+    let _ = hasher.write_all(&[artifact.verification.replayable_claimed as u8]);
+    // Hash idempotency data
+    for id in artifact.verification.idempotency_keyed.as_ref() {
+        let _ = hasher.write_all(&id.get().to_le_bytes());
+    }
+    for id in artifact.verification.idempotency_attested.as_ref() {
+        let _ = hasher.write_all(&id.get().to_le_bytes());
+    }
+    // Hash warnings
+    for w in &artifact.verification.warnings {
+        let _ = hasher.write_all(&w.code.to_le_bytes());
+        let _ = hasher.write_all(w.message.as_bytes());
+        let _ = hasher.write_all(&[w.gate]);
+    }
+    let _ = hasher.write_all(&artifact.accepted_at_seq.get().to_le_bytes());
+    for cap in artifact.required_capabilities.as_ref() {
+        let _ = hasher.write_all(cap.name().as_bytes());
+        let _ = hasher.write_all(&cap.action_id().get().to_le_bytes());
+    }
+    *hasher.finalize().as_bytes()
+}
+
+/// Validates that a new record's metadata hash does not conflict with an
+/// existing record's metadata hash for the same digest.
+///
+/// Returns `Ok(new_metadata_hash)` if no conflict, or `Err(MetadataMutation)`
 #[cfg(test)]
 #[path = "admission/tests.rs"]
 mod tests;

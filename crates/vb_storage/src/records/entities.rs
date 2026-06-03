@@ -15,12 +15,47 @@ pub struct WorkflowSourceRecord {
 }
 
 /// Compiled IR artifact bytes bound to their digest.
+///
+/// Includes a metadata hash to prevent same-digest metadata mutation attacks.
+/// The metadata hash is computed from the `AcceptedArtifact` fields that should
+/// not change after admission: `source_digest`, `policy_digest`, `ir`,
+/// `verification` (excluding its own `digest` field), `accepted_at_seq`,
+/// and `required_capabilities`.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct CompiledIrRecord {
     /// Compiled IR digest key.
     pub digest: WorkflowDigest,
     /// Postcard-compatible compiled artifact bytes.
     pub ir: Vec<u8>,
+    /// BLAKE3 hash of the artifact metadata fields that must remain immutable
+    /// after admission. `None` indicates a pre-mutation-protection record
+    /// (backward compatibility); such records are accepted on read but any
+    /// subsequent write to the same digest must provide a matching hash.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub metadata_hash: Option<[u8; 32]>,
+}
+
+#[cfg(test)]
+impl CompiledIrRecord {
+    /// Test-only constructor that creates a record with no metadata hash.
+    /// The metadata hash will be computed and set by `journal.put_compiled_ir`.
+    pub(crate) fn test_new(digest: WorkflowDigest, ir: Vec<u8>) -> Self {
+        Self {
+            digest,
+            ir,
+            metadata_hash: None,
+        }
+    }
+}
+
+impl Default for CompiledIrRecord {
+    fn default() -> Self {
+        Self {
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            ir: Vec::new(),
+            metadata_hash: None,
+        }
+    }
 }
 
 /// Minimal run metadata record.

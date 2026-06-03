@@ -21,7 +21,9 @@ mod kani_capability_harnesses {
         let bytes: [u8; 16] = kani::any();
         let s = String::from_utf8_lossy(&bytes);
         // Split at null and take first part to avoid trailing null issues.
-        let name = s.split('\0').next().unwrap_or("cap");
+        // Note: split() always yields at least one element for any &str input,
+        // so unwrap() is guaranteed safe here.
+        let name = s.split('\0').next().unwrap();
         // Ensure non-empty; if empty, use default.
         if name.is_empty() {
             Box::from("cap")
@@ -117,16 +119,18 @@ mod kani_capability_harnesses {
     ) -> vb_storage::admission::AcceptedArtifact {
         vb_storage::admission::AcceptedArtifact {
             digest,
+            source_digest: digest,
+            policy_digest: digest,
             ir: Vec::new(),
             verification: vb_storage::admission::VerificationProof {
                 digest,
                 gate_count: REQUIRED_GATE_COUNT,
                 durable: true,
-                bounded: true,
-                taint_safe: true,
-                retry_safe: true,
-                idempotency_verified: true,
-                replayable: true,
+                bounded_claimed: true,
+                taint_safe_claimed: true,
+                retry_safe_claimed: true,
+                idempotency_verified_claimed: true,
+                replayable_claimed: true,
                 idempotency_keyed: Box::new([]),
                 idempotency_attested: Box::new([]),
                 warnings: Vec::new(),

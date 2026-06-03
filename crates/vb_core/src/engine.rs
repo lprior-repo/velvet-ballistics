@@ -2,9 +2,13 @@
 //! Synchronous in-memory state-machine loop.
 
 pub(crate) mod choose;
+#[cfg(test)]
+pub(crate) mod choose_tests;
 pub(crate) mod error_routing;
 pub(crate) mod expr_eval;
 pub(crate) mod node_helpers;
+#[cfg(test)]
+pub(crate) mod node_helpers_tests;
 pub(crate) mod object_list;
 pub(crate) mod run_loop;
 pub(crate) mod signals;

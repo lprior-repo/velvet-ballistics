@@ -4,7 +4,7 @@
 //! Accumulates writes across multiple keyspaces and commits them
 //! atomically with a single WAL fsync.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     codec::encode_record,
@@ -25,11 +25,7 @@ use crate::{
 
 use crate::journal::FjallJournal;
 #[cfg(test)]
-use crate::{
-    constants::{MAGIC_COMPILED_ARTIFACT, MAX_COMPILED_IR_BYTES},
-    keys::compiled_ir_key,
-    records::CompiledIrRecord,
-};
+use crate::records::CompiledIrRecord;
 
 /// Default journal batch encoded-byte budget (1 MiB).
 ///
@@ -50,6 +46,9 @@ pub struct JournalWriteBatch<'j> {
     journal: &'j FjallJournal,
     #[allow(dead_code)]
     staged_event_keys: HashSet<[u8; JOURNAL_KEY_BYTES]>,
+    /// Tracks staged compiled IR digests and their metadata hashes
+    /// to detect same-batch metadata mutation attempts.
+    staged_ir_hashes: HashMap<vb_core::WorkflowDigest, [u8; 32]>,
     aborted: bool,
     /// Accumulated encoded-byte total for journal events accepted in this batch.
     staged_bytes: u64,
@@ -66,6 +65,7 @@ impl<'j> JournalWriteBatch<'j> {
             inner: journal.database.batch(),
             journal,
             staged_event_keys: HashSet::new(),
+            staged_ir_hashes: HashMap::new(),
             aborted: false,
             staged_bytes: 0,
             byte_limit: Some(DEFAULT_JOURNAL_BATCH_BYTE_LIMIT),
@@ -115,21 +115,107 @@ impl<'j> JournalWriteBatch<'j> {
     /// SECURITY: This is pub(crate) to restrict access to admission path only.
     /// External callers MUST use `submit_artifact` or `admit_compiled_artifact`
     /// which properly bind all artifact metadata (warnings, capabilities, seq).
+    ///
+    /// This queues the insert for atomic commit. The metadata hash is computed
+    /// and stored with the record to prevent same-digest metadata mutation attacks.
+    /// SECURITY: Validates metadata hash against existing records (both in the
+    /// batch and in the journal) before inserting, preventing bypass attacks.
     #[cfg(test)]
     pub(crate) fn put_compiled_ir(
         &mut self,
         record: &CompiledIrRecord,
     ) -> Result<(), JournalError> {
-        self.abort_on_error(crate::admission::validate_compiled_ir_record(record))?;
-        let key = self.abort_on_error(compiled_ir_key(record.digest.as_bytes()))?;
-        let value = self.abort_on_error(encode_record(
-            MAGIC_COMPILED_ARTIFACT,
+        // Validate the record structure first
+        if let Err(e) = crate::admission::validate_compiled_ir_record(record) {
+            self.aborted = true;
+            return Err(e);
+        }
+
+        // Decode artifact to compute metadata hash
+        let artifact = match crate::admission::decode_accepted_artifact_envelope(&record.ir) {
+            Ok(a) => a,
+            Err(e) => {
+                self.aborted = true;
+                return Err(e);
+            }
+        };
+        let h_pending = crate::admission::compute_artifact_metadata_hash(&artifact);
+
+        // SECURITY: Check for same-batch staged record first
+        // This catches mutation attempts within the same batch
+        if let Some(&h_staged) = self.staged_ir_hashes.get(&record.digest) {
+            if h_pending != h_staged {
+                self.aborted = true;
+                return Err(JournalError::MetadataMutation {
+                    digest: record.digest,
+                });
+            }
+        }
+
+        // SECURITY: Check for existing record in journal and validate metadata hash
+        // This prevents same-digest metadata mutation attacks via batch API
+        let key = match crate::keys::compiled_ir_key(record.digest.as_bytes()) {
+            Ok(k) => k,
+            Err(e) => {
+                self.aborted = true;
+                return Err(e);
+            }
+        };
+        if let Ok(Some(existing)) = self.journal.compiled_ir(record.digest) {
+            let existing_hash = existing.metadata_hash;
+            match existing_hash {
+                Some(h_existing) => {
+                    // Subsequent write: metadata hash must match exactly
+                    if h_pending != h_existing {
+                        self.aborted = true;
+                        return Err(JournalError::MetadataMutation {
+                            digest: record.digest,
+                        });
+                    }
+                }
+                None => {
+                    // Backward compatibility: existing record predates metadata hash.
+                    // Compute hash from existing artifact - if it differs from pending,
+                    // this indicates different artifacts with same digest (reject).
+                    let existing_artifact =
+                        crate::admission::decode_accepted_artifact_envelope(&existing.ir)?;
+                    let h_existing =
+                        crate::admission::compute_artifact_metadata_hash(&existing_artifact);
+                    if h_pending != h_existing {
+                        self.aborted = true;
+                        return Err(JournalError::MetadataMutation {
+                            digest: record.digest,
+                        });
+                    }
+                }
+            }
+        }
+
+        // Track this staged digest and its hash for same-batch detection
+        self.staged_ir_hashes.insert(record.digest, h_pending);
+
+        // Create record with computed metadata hash
+        let mut record_with_hash = record.clone();
+        record_with_hash.metadata_hash = Some(h_pending);
+
+        // Encode the record
+        let value = match encode_record(
+            crate::constants::MAGIC_COMPILED_ARTIFACT,
             RecordKind::CompiledIr,
             0,
-            record,
-            MAX_COMPILED_IR_BYTES,
-        ))?;
-        self.inner.insert(&self.journal.compiled_ir, key, value);
+            &record_with_hash,
+            crate::constants::MAX_COMPILED_IR_BYTES,
+        ) {
+            Ok(v) => v,
+            Err(e) => {
+                self.aborted = true;
+                return Err(e);
+            }
+        };
+
+        // Queue the insert for atomic commit
+        self.inner
+            .insert(&self.journal.compiled_ir, key, value);
         Ok(())
     }
 

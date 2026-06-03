@@ -1,3 +1,12 @@
+// Storage runtime journal adapter using Fjall-backed durability.
+//
+// - [`StorageRuntimeJournal`](crate::journal::StorageRuntimeJournal): synchronous journal adapter
+// - [`QueuedStorageRuntimeJournal`](crate::journal::QueuedStorageRuntimeJournal): queued/batched adapter
+
+mod chunk_002_queued;
+
+pub(crate) use chunk_002_queued::QueuedStorageRuntimeJournal;
+
 impl StorageRuntimeJournal {
     /// Creates an adapter that uses journaled appends without a per-event sync barrier.
     #[must_use]
@@ -292,66 +301,5 @@ impl RuntimeJournal for StorageRuntimeJournal {
 
     fn storage_journal(&self) -> Option<std::sync::Arc<vb_storage::FjallJournal>> {
         Some(self.journal.clone())
-    }
-}
-
-/// Runtime journal adapter that stages lifecycle events through `JournalWriterQueue`.
-pub struct QueuedStorageRuntimeJournal {
-    journal: Arc<FjallJournal>,
-    queue: Arc<JournalWriterQueue>,
-    profile: DurabilityProfile,
-}
-
-impl QueuedStorageRuntimeJournal {
-    /// Creates a queued adapter that enqueues journaled requests.
-    #[must_use]
-    pub fn journaled(journal: Arc<FjallJournal>, queue: Arc<JournalWriterQueue>) -> Self {
-        Self {
-            journal,
-            queue,
-            profile: DurabilityProfile::Journaled,
-        }
-    }
-
-    /// Creates a queued adapter that enqueues strict requests.
-    #[must_use]
-    pub fn strict(journal: Arc<FjallJournal>, queue: Arc<JournalWriterQueue>) -> Self {
-        Self {
-            journal,
-            queue,
-            profile: DurabilityProfile::Strict,
-        }
-    }
-
-    /// Creates a shared queued journaled adapter for direct runtime construction.
-    #[must_use]
-    pub fn shared_journaled(
-        journal: Arc<FjallJournal>,
-        queue: Arc<JournalWriterQueue>,
-    ) -> SharedRuntimeJournal {
-        Arc::new(Self::journaled(journal, queue))
-    }
-
-    /// Creates a shared queued strict adapter for direct runtime construction.
-    #[must_use]
-    pub fn shared_strict(
-        journal: Arc<FjallJournal>,
-        queue: Arc<JournalWriterQueue>,
-    ) -> SharedRuntimeJournal {
-        Arc::new(Self::strict(journal, queue))
-    }
-
-    /// Flushes a bounded batch from the queue into Fjall.
-    pub fn flush_batch(&self) -> RuntimeResult<JournalWriterFlushReport> {
-        self.queue
-            .flush_batch(&self.journal)
-            .map_err(RuntimeError::from)
-    }
-
-    /// Drains all queued journal writes into Fjall.
-    pub fn drain_all(&self) -> RuntimeResult<JournalWriterFlushReport> {
-        self.queue
-            .drain_all(&self.journal)
-            .map_err(RuntimeError::from)
     }
 }

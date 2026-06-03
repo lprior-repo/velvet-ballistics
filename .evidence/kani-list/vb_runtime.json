@@ -2,8 +2,8 @@
   "kani-version": "0.67.0",
   "file-version": "0.1",
   "standard-harnesses": {
-    "crates/vb_runtime/src/primitives/collect.rs": [
-      "primitives::collect::kani_collect_verification::collect_page_pagination_bounds"
+    "crates/vb_runtime/src/primitives/collect/kani.rs": [
+      "primitives::collect::kani::collect_page_pagination_bounds"
     ],
     "crates/vb_runtime/src/primitives/reentry_proofs.rs": [
       "primitives::reentry_proofs::reentry_harnesses::collect_next_reentry",
@@ -13,26 +13,18 @@
       "primitives::reentry_proofs::reentry_harnesses::repeat_attempt_reentry",
       "primitives::reentry_proofs::reentry_harnesses::repeat_check_reentry"
     ],
-    "crates/vb_runtime/src/verification/kani/kani_attempt_fence_harnesses.rs": [
-      "verification::kani::kani_attempt_fence_harnesses::proof_action_ticket_fields_non_overflow",
-      "verification::kani::kani_attempt_fence_harnesses::proof_all_attempt_combinations_handled",
-      "verification::kani::kani_attempt_fence_harnesses::proof_attempt_comparison_panic_free",
-      "verification::kani::kani_attempt_fence_harnesses::proof_future_attempt_rejected_or_normalized",
-      "verification::kani::kani_attempt_fence_harnesses::proof_retry_fence_capacity_enforced",
-      "verification::kani::kani_attempt_fence_harnesses::proof_retry_fence_no_overflow",
-      "verification::kani::kani_attempt_fence_harnesses::proof_single_terminal_event_invariant",
-      "verification::kani::kani_attempt_fence_harnesses::proof_stale_attempt_rejected",
-      "verification::kani::kani_attempt_fence_harnesses::proof_stale_authority_no_mutation",
-      "verification::kani::kani_attempt_fence_harnesses::proof_typed_missing_run_error",
-      "verification::kani::kani_attempt_fence_harnesses::proof_zero_attempt_rejected",
-      "verification::kani::kani_attempt_fence_harnesses::proof_zero_capacity_rejected",
-      "verification::kani::kani_attempt_fence_harnesses::proof_zero_policy_max_rejected"
+    "crates/vb_runtime/src/shard/lifecycle/chunk_003_kani.rs": [
+      "shard::lifecycle::chunk_003_kani::kani_taint_guard::clean_input_never_triggers_guard",
+      "shard::lifecycle::chunk_003_kani::kani_taint_guard::every_non_clean_taint_triggers_guard_for_deterministicpure",
+      "shard::lifecycle::chunk_003_kani::kani_taint_guard::guard_decision_panic_free",
+      "shard::lifecycle::chunk_003_kani::kani_taint_guard::guard_fires_exactly_for_non_clean_deterministicpure",
+      "shard::lifecycle::chunk_003_kani::kani_taint_guard::non_deterministicpure_never_triggers_guard"
     ]
   },
   "contract-harnesses": {},
   "contracts": [],
   "totals": {
-    "standard-harnesses": 20,
+    "standard-harnesses": 12,
     "contract-harnesses": 0,
     "functions-under-contract": 0
   }

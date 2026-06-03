@@ -524,6 +524,8 @@ fn verify_digests_detects_compiled_ir_mismatch() {
         ir_digest,
         wrong_ir,
         vb_storage::recovery::DigestCheck::WorkflowAndIr,
+        None,
+        None,
     );
     assert!(
         matches!(

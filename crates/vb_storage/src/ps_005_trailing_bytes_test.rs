@@ -131,6 +131,7 @@ proptest::proptest! {
         let record = CompiledIrRecord {
             digest: artifact.digest,
             ir: envelope,
+            ..Default::default()
         };
 
         // SECURITY: This tests the internal storage boundary directly

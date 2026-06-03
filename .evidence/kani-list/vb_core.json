@@ -32,6 +32,10 @@
       "engine::expr_eval::kani_stack::harness_push_to_capacity_then_overflow",
       "engine::expr_eval::kani_stack::harness_push_with_room"
     ],
+    "crates/vb_core/src/engine/signals.rs": [
+      "engine::signals::kani_overflow_guard::step_budget_no_overflow_for_valid_range",
+      "engine::signals::kani_overflow_guard::step_budget_overflow_guard"
+    ],
     "crates/vb_core/src/frame.rs": [
       "frame::frame_kani_harnesses::increment_executed_no_panic",
       "frame::frame_kani_harnesses::read_slot_no_panic",
@@ -47,18 +51,25 @@
       "frame::parallel_in_flight_kani::sub_parallel_in_flight_no_panic"
     ],
     "crates/vb_core/src/frame/tests_and_verification.rs": [
+      "frame::tests_and_verification::frame_kani_harnesses::add_parallel_in_flight_increases",
+      "frame::tests_and_verification::frame_kani_harnesses::executed_starts_at_zero",
+      "frame::tests_and_verification::frame_kani_harnesses::increment_executed_advances",
       "frame::tests_and_verification::frame_kani_harnesses::increment_executed_no_panic",
       "frame::tests_and_verification::frame_kani_harnesses::read_slot_no_panic",
+      "frame::tests_and_verification::frame_kani_harnesses::read_taint_no_panic",
+      "frame::tests_and_verification::frame_kani_harnesses::reinitialize_resets_executed",
       "frame::tests_and_verification::frame_kani_harnesses::set_pc_no_panic",
       "frame::tests_and_verification::frame_kani_harnesses::set_pc_rejects_out_of_bounds",
+      "frame::tests_and_verification::frame_kani_harnesses::slot_count_edge_cases",
+      "frame::tests_and_verification::frame_kani_harnesses::sub_parallel_in_flight_decreases",
       "frame::tests_and_verification::frame_kani_harnesses::validate_transition_exhaustive_64",
       "frame::tests_and_verification::frame_kani_harnesses::validate_transition_idempotent",
       "frame::tests_and_verification::frame_kani_harnesses::validate_transition_no_panic_random",
       "frame::tests_and_verification::frame_kani_harnesses::validate_transition_running_to_all_valid_targets",
       "frame::tests_and_verification::frame_kani_harnesses::validate_transition_terminal_blocks_all",
       "frame::tests_and_verification::frame_kani_harnesses::write_slot_no_panic",
-      "frame::tests_and_verification::parallel_in_flight_kani::add_parallel_in_flight_no_panic",
-      "frame::tests_and_verification::parallel_in_flight_kani::sub_parallel_in_flight_no_panic"
+      "frame::tests_and_verification::frame_kani_harnesses::write_slot_with_taint_atomic",
+      "frame::tests_and_verification::frame_kani_harnesses::write_taint_no_panic_initialized"
     ],
     "crates/vb_core/src/ids/kani_id_bounds.rs": [
       "ids::kani_id_bounds::accessor_idx_as_usize_never_panics",
@@ -261,7 +272,7 @@
   "contract-harnesses": {},
   "contracts": [],
   "totals": {
-    "standard-harnesses": 197,
+    "standard-harnesses": 206,
     "contract-harnesses": 0,
     "functions-under-contract": 0
   }

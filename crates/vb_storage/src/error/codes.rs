@@ -74,6 +74,8 @@ impl JournalError {
     pub const INVALID_RUN_ID_CODE: DiagnosticCode = DiagnosticCode::new(0x4021);
     /// Diagnostic code for journal batch accumulated byte budget exceeded.
     pub const JOURNAL_BATCH_BYTES_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x4022);
+    /// Diagnostic code for artifact metadata mutation detected.
+    pub const METADATA_MUTATION_CODE: DiagnosticCode = DiagnosticCode::new(0x4023);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -127,6 +129,7 @@ impl JournalError {
             Self::Trim(_) => Self::FJALL_CODE, // Map trim errors to a generic code
             Self::InvalidRunId { .. } => Self::INVALID_RUN_ID_CODE,
             Self::JournalBatchBytesExceeded { .. } => Self::JOURNAL_BATCH_BYTES_EXCEEDED_CODE,
+            Self::MetadataMutation { .. } => Self::METADATA_MUTATION_CODE,
         }
     }
 
@@ -182,6 +185,7 @@ impl JournalError {
             Self::Trim(_) => "FJALL_ERROR",
             Self::InvalidRunId { .. } => "INVALID_RUN_ID",
             Self::JournalBatchBytesExceeded { .. } => "JOURNAL_BATCH_BYTES_EXCEEDED",
+            Self::MetadataMutation { .. } => "METADATA_MUTATION",
         };
         if let Some(code) = SymbolicCode::from_static(s) {
             return code;

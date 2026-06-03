@@ -3,7 +3,8 @@
 //! Runtime engine with action-aware execution.
 //!
 //! This module is the public facade. Implementation is split into focused submodules:
-//! - `types`: EvidenceCollector, RuntimeEngineError, RetryPolicy, RuntimeSignal
+//! - `evidence`: EvidenceEvent, EvidenceCollector for drive loop instrumentation
+//! - `types`: RuntimeEngineError, RetryPolicy, RuntimeSignal
 //! - `execute`: Node execution dispatch
 //! - `drive`: Deterministic drive loop
 //! - `action`: Action execution helpers
@@ -12,8 +13,12 @@
 //! - `tests`: BDD and proptest tests
 
 pub mod action;
+#[cfg(test)]
+pub mod action_tests;
 pub mod drive;
+pub mod evidence;
 pub mod execute;
+pub mod handlers;
 pub mod helpers;
 #[cfg(test)]
 pub mod property_tests;
@@ -29,11 +34,11 @@ pub use action::{
     execute_retry_check, resolve_contract, resume_action_outcome,
 };
 pub use drive::{drive_deterministic_full, drive_with_actions};
+pub use evidence::{EvidenceCollector, EvidenceEvent};
 pub use execute::execute_node_full;
 pub use helpers::mark_step_after_signal;
 pub use retry_math::{RetryCursor, RetryPolicyLimits, RetryPolicyMathError};
 pub use signal::runtime_from_core;
 pub use types::{
-    EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeEngineError, RuntimeEngineResult,
-    RuntimeSignal,
+    RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal,
 };

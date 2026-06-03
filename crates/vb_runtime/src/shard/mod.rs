@@ -2,12 +2,19 @@
 //! Single-threaded shard owning mutable run state directly.
 
 pub mod arena;
+pub mod ask;
+pub mod command;
 pub mod completion_watermark;
+pub mod config;
 pub mod directive;
 pub mod helpers;
 pub mod impl_;
+pub mod introspection;
 pub mod lifecycle;
+pub mod queue;
+pub mod run_state;
 pub mod tests;
+pub mod timer;
 pub mod timer_wheel;
 pub mod transitions;
 pub mod types;

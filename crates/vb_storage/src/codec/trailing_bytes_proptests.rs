@@ -174,6 +174,7 @@ proptest! {
                 let record = CompiledIrRecord {
                     digest: WorkflowDigest::from_bytes([0x22; DIGEST_BYTES]),
                     ir: payload.clone(),
+                    ..Default::default()
                 };
                 let bytes = encode_record(
                     MAGIC_COMPILED_ARTIFACT,

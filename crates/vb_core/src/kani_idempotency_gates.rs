@@ -27,7 +27,7 @@ fn bounded_contract_for_retry(retry_safety: RetrySafety) -> ActionContract {
 fn symbolic_contract_no_caps() -> ActionContract {
     ActionContract {
         id: ActionId::new(kani::any()),
-        name: ActionName::new("test-action").unwrap(),
+        name: ActionName::new("test-action").expect("hardcoded valid name"),
         input_slot_count: kani::any(),
         output_slot_count: kani::any(),
         max_input_bytes: kani::any(),
@@ -180,10 +180,28 @@ fn unreachable_for_kani_frame_bounds() -> RunFrame {
     }
 }
 
+/// Concrete contract for the MissingKey harness — avoids kani::any() branching
+/// on the contract fields, which keeps the verification state space bounded.
+fn concrete_key_required_contract() -> ActionContract {
+    ActionContract {
+        id: ActionId::new(1),
+        name: ActionName::new("test-action").expect("hardcoded valid name"),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::Writes,
+        retry_safety: RetrySafety::KeyRequired,
+        required_capabilities: Box::new([]),
+    }
+}
+
 #[kani::proof]
-#[kani::unwind(4)]
+#[kani::unwind(10)]
 fn verify_idempotency_missing_key_symbolic_contract_no_frame_write() {
-    let contract = bounded_contract_for_retry(RetrySafety::KeyRequired);
+    let contract = concrete_key_required_contract();
     let step_count = bounded_nonzero_u16(2);
     let slot_count = bounded_nonzero_u16(2);
     let step_raw: u16 = kani::any();
@@ -703,7 +721,7 @@ fn kani_verify_idempotency_missing_key() {
     // Build a non-None side-effect contract
     let make_contract = |retry_safety| ActionContract {
         id: ActionId::new(kani::any()),
-        name: ActionName::new("test-action").unwrap(),
+        name: ActionName::new("test-action").expect("hardcoded valid name"),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,

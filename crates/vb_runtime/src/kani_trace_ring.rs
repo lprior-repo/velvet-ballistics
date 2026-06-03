@@ -8,6 +8,7 @@
 //! `rtrb` crate ring buffer implementation is trusted.
 //! `trace.rs` is `#![forbid(unsafe_code)]`.
 
+use crate::trace::{TraceEvent, TraceRing};
 use vb_core::action::ActionFailureCode;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
 
@@ -15,26 +16,26 @@ use vb_core::ids::{RunId, SlotIdx, StepIdx};
 ///
 /// Uses kani::any() for StepIdx/SlotIdx to avoid GOD RULE hardcoded-0 violations.
 /// The indices are identifiers only (not array bounds), so any u16 value is valid.
-fn arbitrary_trace_event(run: RunId, variant_selector: u8) -> crate::TraceEvent {
+fn arbitrary_trace_event(run: RunId, variant_selector: u8) -> TraceEvent {
     let step: StepIdx = kani::any();
     let slot: SlotIdx = kani::any();
-    let value: Vec<u8> = kani::any();
+    let value: Vec<u8> = (0..8).map(|_| kani::any()).collect();
     match variant_selector % 11 {
-        0 => crate::TraceEvent::StepStarted { run, step },
-        1 => crate::TraceEvent::StepEnded { run, step },
-        2 => crate::TraceEvent::SlotWritten { run, slot, value },
-        3 => crate::TraceEvent::ActionScheduled { run, step },
-        4 => crate::TraceEvent::ActionCompleted { run, step },
-        5 => crate::TraceEvent::ActionFailed {
+        0 => TraceEvent::StepStarted { run, step },
+        1 => TraceEvent::StepEnded { run, step },
+        2 => TraceEvent::SlotWritten { run, slot, value },
+        3 => TraceEvent::ActionScheduled { run, step },
+        4 => TraceEvent::ActionCompleted { run, step },
+        5 => TraceEvent::ActionFailed {
             run,
             step,
             code: ActionFailureCode::Timeout,
         },
-        6 => crate::TraceEvent::AskAnswered { run, step, slot },
-        7 => crate::TraceEvent::RunSubmitted { run },
-        8 => crate::TraceEvent::RunFinished { run },
-        9 => crate::TraceEvent::RunFailed { run },
-        _ => crate::TraceEvent::RunCancelled { run },
+        6 => TraceEvent::AskAnswered { run, step, slot },
+        7 => TraceEvent::RunSubmitted { run },
+        8 => TraceEvent::RunFinished { run },
+        9 => TraceEvent::RunFailed { run },
+        _ => TraceEvent::RunCancelled { run },
     }
 }
 
@@ -46,7 +47,7 @@ fn arbitrary_trace_event(run: RunId, variant_selector: u8) -> crate::TraceEvent 
 fn verify_trace_ring_bounds() {
     // Bound capacity to reasonable range for exhaustive check.
     let capacity: usize = kani::any_where(|c| *c >= 1 && *c <= 64);
-    let mut ring = crate::TraceRing::new(capacity);
+    let mut ring = TraceRing::new(capacity);
 
     // Simulate arbitrary push/drain sequence.
     // Use a bounded loop to keep state space tractable.
@@ -78,12 +79,11 @@ fn verify_trace_ring_bounds() {
 #[kani::proof]
 fn verify_trace_ring_dropped_monotonic() {
     let capacity: usize = kani::any_where(|c| *c >= 1 && *c <= 64);
-    let mut ring = crate::TraceRing::new(capacity);
+    let mut ring = TraceRing::new(capacity);
 
     let initial_dropped = ring.dropped();
 
     // Fill ring past capacity to trigger drops.
-    let num_pushes = capacity + 4; // Force at least some drops.
     for i in 0..16 {
         let run = RunId::new(i as u64);
         let event = arbitrary_trace_event(run, i as u8);
@@ -106,21 +106,22 @@ fn verify_trace_ring_dropped_monotonic() {
 #[kani::proof]
 fn verify_drain_for_run_correctness() {
     let capacity: usize = kani::any_where(|c| *c >= 4 && *c <= 16);
-    let mut ring = crate::TraceRing::new(capacity);
+    let mut ring = TraceRing::new(capacity);
 
     let target_run = RunId::new(42);
 
     // Push a mix of events: target run and others interleaved.
+    // Use arbitrary_trace_event helper (avoids TraceEvent: kani::Arbitrary requirement).
     // GOD RULE fix: use kani::any() for event contents; keep run_ids explicit
     // so we can verify drain_for_run correctness without circular assumptions.
     // Two arbitrary events (any run), then two target_run events.
-    let event_0: crate::TraceEvent = kani::any();
-    let event_1 = crate::TraceEvent::StepStarted {
+    let event_0 = arbitrary_trace_event(target_run, 0);
+    let event_1 = TraceEvent::StepStarted {
         run: target_run,
         step: kani::any(),
     };
-    let event_2: crate::TraceEvent = kani::any();
-    let event_3 = crate::TraceEvent::StepStarted {
+    let event_2 = arbitrary_trace_event(target_run, 2);
+    let event_3 = TraceEvent::StepStarted {
         run: target_run,
         step: kani::any(),
     };
@@ -158,21 +159,21 @@ fn verify_drain_for_run_correctness() {
 #[kani::proof]
 fn verify_terminal_event_detection() {
     let capacity: usize = kani::any_where(|c| *c >= 1 && *c <= 64);
-    let mut ring = crate::TraceRing::new(capacity);
+    let mut ring = TraceRing::new(capacity);
 
     let target_run = RunId::new(7);
     let other_run = RunId::new(99);
 
     // Push a terminal event for target_run.
-    let terminal = crate::TraceEvent::RunFinished { run: target_run };
+    let terminal = TraceEvent::RunFinished { run: target_run };
     let _ = ring.push(terminal);
 
     // Push non-terminal events.
-    let _ = ring.push(crate::TraceEvent::StepStarted {
+    let _ = ring.push(TraceEvent::StepStarted {
         run: target_run,
         step: StepIdx::new(0),
     });
-    let _ = ring.push(crate::TraceEvent::RunSubmitted { run: other_run });
+    let _ = ring.push(TraceEvent::RunSubmitted { run: other_run });
 
     // Detection must return true for target_run (has terminal).
     assert!(ring.has_terminal_event_for_run(target_run));
@@ -181,16 +182,16 @@ fn verify_terminal_event_detection() {
     assert!(!ring.has_terminal_event_for_run(other_run));
 
     // Empty ring has no terminal events.
-    let empty_ring = crate::TraceRing::new(8);
+    let empty_ring = TraceRing::new(8);
     assert!(!empty_ring.has_terminal_event_for_run(target_run));
 
     // RunFailed terminal event.
-    let mut ring2 = crate::TraceRing::new(8);
-    let _ = ring2.push(crate::TraceEvent::RunFailed { run: target_run });
+    let mut ring2 = TraceRing::new(8);
+    let _ = ring2.push(TraceEvent::RunFailed { run: target_run });
     assert!(ring2.has_terminal_event_for_run(target_run));
 
     // RunCancelled terminal event.
-    let mut ring3 = crate::TraceRing::new(8);
-    let _ = ring3.push(crate::TraceEvent::RunCancelled { run: target_run });
+    let mut ring3 = TraceRing::new(8);
+    let _ = ring3.push(TraceEvent::RunCancelled { run: target_run });
     assert!(ring3.has_terminal_event_for_run(target_run));
 }

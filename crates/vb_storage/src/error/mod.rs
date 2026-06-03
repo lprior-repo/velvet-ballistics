@@ -153,6 +153,14 @@ pub enum JournalError {
     /// Artifact digest checksum mismatch.
     #[error("artifact checksum mismatch")]
     ArtifactChecksumMismatch,
+    /// Attempted to write a compiled IR record with the same digest but
+    /// different metadata than what was previously stored. This indicates a
+    /// potential metadata mutation attack.
+    #[error("artifact metadata mutation detected for digest {digest:?}")]
+    MetadataMutation {
+        /// The digest that was targeted.
+        digest: WorkflowDigest,
+    },
     /// Invalid verification gate count.
     #[error("invalid gate count: {found}")]
     InvalidGateCount {

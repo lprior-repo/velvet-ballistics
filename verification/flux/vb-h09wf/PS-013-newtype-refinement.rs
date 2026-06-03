@@ -4,17 +4,20 @@
 // Verifier: flux-rs
 // Command: bash scripts/flux-check-package.sh vb_storage
 //
-// Domain claim:
-//   EnvelopeBytes and IrBytes are distinct indexed types.
-//   Functions expecting EnvelopeBytes reject IrBytes at compile time.
-//   The type-system prevents H11 (misleading field name) and H12 (name collision).
+// STATUS: ASPIRATIONAL / NOT YET IMPLEMENTED
 //
-// PRODUCTION BINDING:
-//   vb_storage::records::entities::CompiledIrRecord
-//   vb_storage::admission::AcceptedArtifact
+// Current implementation (vb-h09wf decision): `CompiledIrRecord.ir` stores
+// a serialized `AcceptedArtifact` envelope. The `AcceptedArtifact.ir` field
+// stores canonical WorkflowParts bytes. No Flux refinements are applied.
 //
-// NOTE: This is a non-behavior-affecting type-system hardening.
-// The newtypes introduce zero runtime overhead.
+// This file documents a POSSIBLE FUTURE type-system hardening where
+// `EnvelopeBytes` and `IrBytes` newtypes would prevent H11/H12 hazards.
+// The refinements are aspirational and introduce zero runtime overhead in
+// the current implementation.
+//
+// PRODUCTION BINDING (current):
+//   vb_storage::records::entities::CompiledIrRecord  (no refinements)
+//   vb_storage::admission::AcceptedArtifact          (no refinements)
 //
 // Trusted base: Newtype wrapping/unwrapping preserves byte identity
 // Source: .beads/vb-h09wf/proof-obligations.planned.jsonl PO-vb-h09wf-036

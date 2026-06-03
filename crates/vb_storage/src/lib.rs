@@ -324,9 +324,11 @@ pub(crate) fn accepted_compiled_ir_record_for_test(ir: Vec<u8>) -> CompiledIrRec
         required_capabilities: Box::new([]),
     };
     let envelope = postcard::to_allocvec(&artifact).expect("AcceptedArtifact should encode");
+    let metadata_hash = admission::compute_artifact_metadata_hash(&artifact);
     CompiledIrRecord {
         digest,
         ir: envelope,
+        metadata_hash: Some(metadata_hash),
     }
 }
 

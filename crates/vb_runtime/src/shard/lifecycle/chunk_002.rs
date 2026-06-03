@@ -151,8 +151,9 @@ impl Shard {
         Ok(())
     }
 
-    pub(crate) fn handle_inspect(&mut self, run: RunId, correlation: u64) {
+    pub(crate) fn handle_inspect(&mut self, run: RunId, correlation: u64) -> RuntimeResult<()> {
         self.inspect_response = Some(self.snapshot_run(run, correlation));
+        Ok(())
     }
 
     fn drive_run(&mut self, run: RunId) -> RuntimeResult<()> {

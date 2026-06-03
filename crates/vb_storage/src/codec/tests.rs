@@ -216,7 +216,7 @@ fn encode_decode_roundtrip_workflow_source_record() -> Result<(), JournalError> 
 fn encode_decode_roundtrip_compiled_ir_record() -> Result<(), JournalError> {
     let ir = b"compiled-ir-bytes".to_vec();
     let digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
-    let record = CompiledIrRecord { digest, ir };
+    let record = CompiledIrRecord { digest, ir, ..Default::default() };
     let bytes = encode_record(
         MAGIC_COMPILED_ARTIFACT,
         RecordKind::CompiledIr,
@@ -1484,6 +1484,7 @@ fn decode_rejects_trailing_bytes_across_record_magic_families() -> Result<(), Jo
     let compiled = CompiledIrRecord {
         digest: WorkflowDigest::from_bytes([0x22; DIGEST_BYTES]),
         ir: vec![4, 5, 6],
+        ..Default::default()
     };
     let compiled_bytes = encode_record(
         MAGIC_COMPILED_ARTIFACT,
@@ -2260,6 +2261,7 @@ fn encode_rejects_compiled_ir_payload_exceeding_max() -> Result<(), JournalError
     let record = CompiledIrRecord {
         digest,
         ir: large_ir,
+        ..Default::default()
     };
     let result = encode_record(
         MAGIC_COMPILED_ARTIFACT,
@@ -2428,6 +2430,7 @@ fn encode_produces_valid_envelope_for_each_record_type() -> Result<(), JournalEr
     let ir_record = CompiledIrRecord {
         digest: ir_digest,
         ir,
+        ..Default::default()
     };
     let ir_bytes = encode_record(
         MAGIC_COMPILED_ARTIFACT,

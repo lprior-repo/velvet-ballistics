@@ -4,18 +4,27 @@
 // Verifier: flux-rs
 // Command: bash scripts/flux-check-package.sh vb_storage
 //
-// Domain claim (CS-2 clauses 5-6):
-//   Flux reports gate_count refined to {0, 15} at the type level.
-//   Proof flag fields refined to enforce all-true invariant.
-//   Any construction of VerificationProof outside these bounds is a compile-time error.
+// STATUS: ASPIRATIONAL / NOT YET IMPLEMENTED
 //
-// PRODUCTION BINDING:
+// Current implementation: VerificationProof validation is done at runtime via
+// `is_accepted_gate_count` and `missing_proof_flag` functions. Gate count
+// must be 0 or 15, and all proof flags must be true per CS-2 clauses 5-6.
+//
+// This file documents POSSIBLE FUTURE Flux refinements that would make invalid
+// VerificationProof construction a compile-time error instead of runtime error.
+//
+// PRODUCTION BINDING (current):
 //   vb_storage::admission::is_accepted_gate_count (admission.rs:475-477)
 //   vb_storage::admission::missing_proof_flag (admission.rs:459-473)
 //   vb_storage::admission::validate_verification_proof (admission.rs:441-457)
 //
 // Trusted base: u8 exhaustive enumeration, bool exhaustive enumeration
 // Source: .beads/vb-h09wf/proof-obligations.planned.jsonl PO-vb-h09wf-024
+//
+// NOTE: This is a standalone Flux refinement specification. Full verification
+// requires flux annotations on the production crate, which is prohibited by
+// the no-production-edit rule. This file documents intended refinements.
+// The proptest and Kani layers provide the implementation-bound evidence.
 
 #![forbid(unsafe_code)]
 #![allow(unused)]

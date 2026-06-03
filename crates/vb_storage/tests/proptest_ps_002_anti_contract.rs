@@ -82,6 +82,7 @@ proptest! {
         let record = CompiledIrRecord {
             digest: artifact.digest,
             ir: envelope.clone(),
+            ..Default::default()
         };
 
         let envelope_hash = blake3::hash(&envelope);

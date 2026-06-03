@@ -2,10 +2,7 @@ use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex};
 use vb_core::Taint;
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
-use vb_storage::{
-    DurabilityProfile, EventSeq, FjallJournal, JournalEvent, JournalWriterFlushReport,
-    JournalWriterQueue,
-};
+use vb_storage::{DurabilityProfile, EventSeq, FjallJournal, JournalEvent, JournalWriterFlushReport, JournalWriterQueue};
 
 use crate::{RuntimeError, RuntimeResult};
 
@@ -236,93 +233,6 @@ pub trait RuntimeJournal: Send + Sync {
 /// Shared journal trait object.
 pub type SharedRuntimeJournal = Arc<dyn RuntimeJournal>;
 
-/// Journal implementation that intentionally drops all events.
-#[derive(Debug, Default)]
-pub struct NoopRuntimeJournal;
-
-impl NoopRuntimeJournal {
-    /// Creates a shared noop journal for explicitly non-durable tests or benchmarks.
-    #[must_use]
-    pub fn shared_for_tests_and_benchmarks() -> SharedRuntimeJournal {
-        Arc::new(Self)
-    }
-
-    /// Creates a shared noop journal for callers that explicitly select no durability.
-    #[must_use]
-    pub fn shared() -> SharedRuntimeJournal {
-        Self::shared_for_tests_and_benchmarks()
-    }
-}
-
-impl RuntimeJournal for NoopRuntimeJournal {
-    fn append(&self, _event: RuntimeJournalEvent) -> RuntimeResult<()> {
-        Ok(())
-    }
-    fn probe(&self) -> RuntimeResult<()> {
-        Ok(())
-    }
-}
-
-/// In-memory journal useful for tests and volatile embeddings.
-#[derive(Debug)]
-pub struct VolatileRuntimeJournal {
-    events: Mutex<Vec<RuntimeJournalEvent>>,
-    capacity: usize,
-}
-
-impl VolatileRuntimeJournal {
-    /// Default maximum number of in-memory journal events retained by a volatile journal.
-    pub const DEFAULT_CAPACITY: usize = 65_536;
-
-    /// Creates an empty volatile journal.
-    #[must_use]
-    pub const fn new() -> Self {
-        Self {
-            events: Mutex::new(Vec::new()),
-            capacity: Self::DEFAULT_CAPACITY,
-        }
-    }
-
-    /// Creates an empty volatile journal with an explicit event capacity.
-    #[must_use]
-    pub const fn with_capacity(capacity: NonZeroUsize) -> Self {
-        Self {
-            events: Mutex::new(Vec::new()),
-            capacity: capacity.get(),
-        }
-    }
-
-    /// Creates a shared volatile journal.
-    #[must_use]
-    pub fn shared() -> SharedRuntimeJournal {
-        Arc::new(Self::new())
-    }
-
-    /// Returns a point-in-time copy of appended events.
-    pub fn snapshot(&self) -> RuntimeResult<Vec<RuntimeJournalEvent>> {
-        let events = self
-            .events
-            .lock()
-            .map_err(|_| crate::RuntimeError::JournalPoisoned)?;
-        Ok(events.clone())
-    }
-
-    fn reserve_one_event(
-        events: &mut Vec<RuntimeJournalEvent>,
-        capacity: usize,
-    ) -> RuntimeResult<()> {
-        events
-            .try_reserve(1)
-            .map_err(|_| crate::RuntimeError::JournalFull { capacity })
-    }
-}
-
-impl Default for VolatileRuntimeJournal {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 /// Runtime journal selection using explicit storage durability profiles.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RuntimeJournalConfig {
@@ -362,33 +272,11 @@ impl RuntimeJournalConfig {
     }
 }
 
-impl RuntimeJournal for VolatileRuntimeJournal {
-    fn append(&self, event: RuntimeJournalEvent) -> RuntimeResult<()> {
-        let mut events = self
-            .events
-            .lock()
-            .map_err(|_| crate::RuntimeError::JournalPoisoned)?;
-        if events.len() >= self.capacity {
-            return Err(RuntimeError::JournalFull {
-                capacity: self.capacity,
-            });
-        }
-        Self::reserve_one_event(&mut events, self.capacity)?;
-        events.push(event);
-        Ok(())
-    }
-    fn probe(&self) -> RuntimeResult<()> {
-        // Verify the mutex is not poisoned.
-        let _guard = self
-            .events
-            .lock()
-            .map_err(|_| crate::RuntimeError::JournalPoisoned)?;
-        Ok(())
-    }
-}
-
 /// Runtime journal adapter that appends lifecycle events into `vb_storage`.
 pub struct StorageRuntimeJournal {
     journal: Arc<FjallJournal>,
     profile: DurabilityProfile,
 }
+
+include!("chunk_001_noop.rs");
+include!("chunk_001_volatile.rs");
