@@ -1,3 +1,5 @@
+// DEPRECATED: Legacy vacuum model — superseded by kani_assert_yaml_error.rs (bead vb-jpq7.34).
+// Retained for reference; new verification uses fuzz/src/kani/kani_assert_yaml_error.rs.
 #![forbid(unsafe_code)]
 //! PO-006: Kani harness verifying every YamlError variant maps to a
 //! registered SymbolicCode in the registry.
