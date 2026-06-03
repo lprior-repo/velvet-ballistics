@@ -207,9 +207,15 @@ pub fn recover_full_journal(
         .iter()
         .any(|e| matches!(e, JournalEvent::RunAdmission { .. }));
 
-    if !has_run_admission && !expected_policy_digests.is_empty() {
+    if !has_run_admission {
+        let Some((step, expected)) = expected_policy_digests.first() else {
+            return replay_events(&events, tracker, _expected_action_abi_digests);
+        };
+
         return Err(RecoveryError::PolicyDigestMismatch {
-            step: StepIdx::ZERO,
+            step: *step,
+            expected: *expected,
+            found: WorkflowDigest::from_bytes([0u8; 32]),
         });
     }
 

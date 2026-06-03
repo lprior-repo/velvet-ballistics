@@ -114,7 +114,7 @@ mod recover_tests {
         ];
         let result = check_action_abi_digests(&entries);
         assert!(
-            matches!(result, Err(RecoveryError::ActionAbiMismatch { action_id }) if action_id == ActionId::new(2)),
+            matches!(result, Err(RecoveryError::ActionAbiMismatch { action_id, .. }) if action_id == ActionId::new(2)),
             "should report first mismatch, got {:?}",
             result
         );
@@ -144,7 +144,7 @@ mod recover_tests {
         ];
         let result = check_policy_digests(&entries);
         assert!(
-            matches!(result, Err(RecoveryError::PolicyDigestMismatch { step }) if step == StepIdx::new(3)),
+            matches!(result, Err(RecoveryError::PolicyDigestMismatch { step, .. }) if step == StepIdx::new(3)),
             "should report first policy mismatch, got {:?}",
             result
         );

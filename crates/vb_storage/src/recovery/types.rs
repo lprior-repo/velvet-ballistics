@@ -57,7 +57,9 @@ pub enum RecoveryError {
         found: WorkflowDigest,
     },
     /// Action ABI digest mismatch during recovery.
-    #[error("action ABI digest mismatch for action {action_id:?}: expected {expected:?}, found {found:?}")]
+    #[error(
+        "action ABI digest mismatch for action {action_id:?}: expected {expected:?}, found {found:?}"
+    )]
     ActionAbiMismatch {
         /// Action with mismatched ABI.
         action_id: ActionId,

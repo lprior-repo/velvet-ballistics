@@ -103,7 +103,14 @@ pub fn verify_digests(
     level: DigestCheck,
     config: Option<DigestCheckConfig<'_>>,
 ) -> RecoveryResult<()> {
-    check_workflow_and_ir(journal, run, workflow_digest, ir_digest, found_ir_digest, level)?;
+    check_workflow_and_ir(
+        journal,
+        run,
+        workflow_digest,
+        ir_digest,
+        found_ir_digest,
+        level,
+    )?;
     check_full_level(config, level)?;
     Ok(())
 }
@@ -125,7 +132,10 @@ fn check_workflow_and_ir(
     Ok(())
 }
 
-fn check_full_level(config: Option<DigestCheckConfig<'_>>, level: DigestCheck) -> RecoveryResult<()> {
+fn check_full_level(
+    config: Option<DigestCheckConfig<'_>>,
+    level: DigestCheck,
+) -> RecoveryResult<()> {
     if matches!(level, DigestCheck::Full) {
         if let Some(cfg) = config {
             if let Some(entries) = cfg.action_abi_entries {
@@ -142,7 +152,7 @@ fn check_full_level(config: Option<DigestCheckConfig<'_>>, level: DigestCheck) -
 /// Checks action ABI digests against expected values from an external source.
 ///
 /// Each entry provides `(action_id, expected_digest, found_digest)`.
-/// Returns `ActionAbiMismatch { action_id }` on the first mismatch found.
+/// Returns `ActionAbiMismatch { action_id, expected, found }` on the first mismatch found.
 /// Returns `Ok(())` when all entries match or when no entries are provided.
 /// Does not guess mismatches from missing data — only checks explicitly provided inputs.
 pub fn check_action_abi_digests(

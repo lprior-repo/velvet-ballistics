@@ -294,7 +294,11 @@ fn recovery_error_action_abi_mismatch_includes_action_id() {
     let action_id = ActionId::new(7);
     let expected = WorkflowDigest::from_bytes([1u8; 32]);
     let found = WorkflowDigest::from_bytes([2u8; 32]);
-    let err = RecoveryError::ActionAbiMismatch { action_id, expected, found };
+    let err = RecoveryError::ActionAbiMismatch {
+        action_id,
+        expected,
+        found,
+    };
     let result: Result<(), _> = Err(err);
     assert!(matches!(
         result,
@@ -309,7 +313,11 @@ fn recovery_error_policy_digest_mismatch_includes_step() {
     let step = StepIdx::new(11);
     let expected = WorkflowDigest::from_bytes([1u8; 32]);
     let found = WorkflowDigest::from_bytes([2u8; 32]);
-    let err = RecoveryError::PolicyDigestMismatch { step, expected, found };
+    let err = RecoveryError::PolicyDigestMismatch {
+        step,
+        expected,
+        found,
+    };
     let result: Result<(), _> = Err(err);
     assert!(matches!(
         result,

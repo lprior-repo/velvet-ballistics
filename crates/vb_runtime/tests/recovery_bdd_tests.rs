@@ -1766,7 +1766,10 @@ fn action_abi_mismatch_returns_typed_error() {
     let entries = [(action_id, expected_digest, found_digest)];
     let result = check_action_abi_digests(&entries);
 
-    let Err(RecoveryError::ActionAbiMismatch { action_id: found, .. }) = result else {
+    let Err(RecoveryError::ActionAbiMismatch {
+        action_id: found, ..
+    }) = result
+    else {
         panic!("expected ActionAbiMismatch, got: {result:?}");
     };
     assert_eq!(found, action_id, "action_id must match exactly");

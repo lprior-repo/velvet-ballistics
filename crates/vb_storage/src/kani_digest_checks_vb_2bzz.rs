@@ -43,7 +43,7 @@ fn kani_check_action_abi_fail_fast() {
     let result = check_action_abi_digests(&entries);
     match result {
         Err(e) => {
-            let RecoveryError::ActionAbiMismatch { action_id } = e else {
+            let RecoveryError::ActionAbiMismatch { action_id, .. } = e else {
                 kani::assert(false, "expected ActionAbiMismatch error variant");
                 return;
             };
@@ -72,7 +72,7 @@ fn kani_check_policy_fail_fast() {
     let result = check_policy_digests(&entries);
     match result {
         Err(e) => {
-            let RecoveryError::PolicyDigestMismatch { step } = e else {
+            let RecoveryError::PolicyDigestMismatch { step, .. } = e else {
                 kani::assert(false, "expected PolicyDigestMismatch error variant");
                 return;
             };
@@ -171,7 +171,7 @@ fn kani_check_action_abi_mismatch_last() {
     let result = check_action_abi_digests(&entries);
     match result {
         Err(e) => {
-            let RecoveryError::ActionAbiMismatch { action_id } = e else {
+            let RecoveryError::ActionAbiMismatch { action_id, .. } = e else {
                 kani::assert(false, "expected ActionAbiMismatch");
                 return;
             };
@@ -200,7 +200,7 @@ fn kani_check_policy_mismatch_last() {
     let result = check_policy_digests(&entries);
     match result {
         Err(e) => {
-            let RecoveryError::PolicyDigestMismatch { step } = e else {
+            let RecoveryError::PolicyDigestMismatch { step, .. } = e else {
                 kani::assert(false, "expected PolicyDigestMismatch");
                 return;
             };

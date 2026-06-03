@@ -2148,7 +2148,11 @@ fn recovery_error_action_abi_mismatch_constructs_correctly() {
     let action_id = ActionId::new(42);
     let expected = WorkflowDigest::from_bytes([1u8; 32]);
     let found = WorkflowDigest::from_bytes([2u8; 32]);
-    let err = RecoveryError::ActionAbiMismatch { action_id, expected, found };
+    let err = RecoveryError::ActionAbiMismatch {
+        action_id,
+        expected,
+        found,
+    };
     assert!(matches!(err, RecoveryError::ActionAbiMismatch { action_id: a, .. } if a == action_id));
 }
 
@@ -2157,7 +2161,11 @@ fn recovery_error_policy_digest_mismatch_constructs_correctly() {
     let step = StepIdx::new(7);
     let expected = WorkflowDigest::from_bytes([1u8; 32]);
     let found = WorkflowDigest::from_bytes([2u8; 32]);
-    let err = RecoveryError::PolicyDigestMismatch { step, expected, found };
+    let err = RecoveryError::PolicyDigestMismatch {
+        step,
+        expected,
+        found,
+    };
     assert!(matches!(err, RecoveryError::PolicyDigestMismatch { step: s, .. } if s == step));
 }
 
