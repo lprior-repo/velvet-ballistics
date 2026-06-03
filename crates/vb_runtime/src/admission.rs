@@ -5,9 +5,9 @@
 //! and admission policy for each accepted run. `AdmissionError` enumerates
 //! the reasons a submit may be rejected at the admission gate.
 
-mod guards;
 mod admission;
 mod errors;
+mod guards;
 mod stores;
 mod types;
 mod validation;
@@ -17,13 +17,12 @@ pub use admission::{
     admit_artifact_run, admit_artifact_run_with_certificate_floor, admit_run,
     admit_run_with_budget, admit_run_with_budget_policy, check_capability,
 };
-pub use errors::{map_artifact_envelope_error, ArtifactEnvelopeError, AdmissionError};
+pub use errors::{AdmissionError, ArtifactEnvelopeError, map_artifact_envelope_error};
 pub use stores::{
-    AcceptedArtifactStore, AlwaysPresentArtifactStore, ArtifactStore,
-    MissingAcceptedArtifactStore, SharedAcceptedArtifactStore, SharedArtifactStore,
-    StorageArtifactStore,
+    AcceptedArtifactStore, AlwaysPresentArtifactStore, ArtifactStore, MissingAcceptedArtifactStore,
+    SharedAcceptedArtifactStore, SharedArtifactStore, StorageArtifactStore,
 };
-pub use types::{AdmissionBudgetRequest, RunAdmission, REQUIRED_GATE_COUNT};
+pub use types::{AdmissionBudgetRequest, REQUIRED_GATE_COUNT, RunAdmission};
 pub use validation::validate_accepted_artifact_envelope;
 
 // Re-export vb_core types for test compatibility

@@ -113,7 +113,12 @@ pub fn run_from_env() -> ExitCode {
             output,
             filters,
         }) => cmd_trace(&run_id, &db, output, filters),
-        Ok(Command::Retry { run_id, step, db, output }) => cmd_retry(&run_id, step.as_ref(), &db, output),
+        Ok(Command::Retry {
+            run_id,
+            step,
+            db,
+            output,
+        }) => cmd_retry(&run_id, step.as_ref(), &db, output),
         Ok(Command::Resume { run_id, db, output }) => cmd_resume(&run_id, &db, output),
         Ok(Command::BenchRun { workflow, output }) => cmd_bench_run(&workflow, output),
         Ok(Command::Doctor { db, output }) => cmd_doctor(db.as_deref(), output),
@@ -144,7 +149,9 @@ pub fn run_from_env() -> ExitCode {
                 let db_path = db.unwrap();
                 cmd_diff(&run_a, &run_b, &db_path, output)
             } else {
-                crate::errln!("diff requires either two run IDs or --against <run_id> with a workflow");
+                crate::errln!(
+                    "diff requires either two run IDs or --against <run_id> with a workflow"
+                );
                 CliExitCode::ValidationFailed.into()
             }
         }

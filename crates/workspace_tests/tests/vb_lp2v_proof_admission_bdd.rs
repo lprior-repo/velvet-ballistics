@@ -113,6 +113,7 @@ fn persist_artifact_as(
         &CompiledIrRecord {
             digest: record_digest,
             ir,
+            metadata_hash: None,
         },
     )
     .map_err(|error| error.to_string())
@@ -178,6 +179,7 @@ fn given_storage_record_with_mismatched_artifact_digest_when_stored_then_storage
         &CompiledIrRecord {
             digest: requested,
             ir,
+            metadata_hash: None,
         },
     );
 

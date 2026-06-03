@@ -2,7 +2,7 @@
 //!
 //! Does not store values — just tracks which slots are "in the set".
 
-use super::types::{ArenaError, Generation, SlotHandle, SlotId};
+use super::types::{ArenaError, SlotHandle};
 
 use super::arena::Arena;
 

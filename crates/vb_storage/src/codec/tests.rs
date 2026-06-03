@@ -214,9 +214,7 @@ fn encode_decode_roundtrip_workflow_source_record() -> Result<(), JournalError> 
 
 #[test]
 fn encode_decode_roundtrip_compiled_ir_record() -> Result<(), JournalError> {
-    let ir = b"compiled-ir-bytes".to_vec();
-    let digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
-    let record = CompiledIrRecord { digest, ir, ..Default::default() };
+    let record = crate::accepted_compiled_ir_record_for_test(b"compiled-ir-bytes".to_vec());
     let bytes = encode_record(
         MAGIC_COMPILED_ARTIFACT,
         RecordKind::CompiledIr,
@@ -2425,13 +2423,7 @@ fn encode_produces_valid_envelope_for_each_record_type() -> Result<(), JournalEr
     assert_eq!(ws_env.magic, MAGIC_WORKFLOW_SOURCE);
 
     // Compiled IR
-    let ir = b"ir".to_vec();
-    let ir_digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
-    let ir_record = CompiledIrRecord {
-        digest: ir_digest,
-        ir,
-        ..Default::default()
-    };
+    let ir_record = crate::accepted_compiled_ir_record_for_test(b"ir".to_vec());
     let ir_bytes = encode_record(
         MAGIC_COMPILED_ARTIFACT,
         RecordKind::CompiledIr,

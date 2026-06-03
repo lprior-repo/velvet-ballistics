@@ -1,6 +1,7 @@
 use crate::{
     admission::{
-        compute_artifact_metadata_hash, decode_accepted_artifact_envelope, validate_compiled_ir_record,
+        compute_artifact_metadata_hash, decode_accepted_artifact_envelope,
+        validate_compiled_ir_record,
     },
     codec::encode_record,
     constants::{
@@ -71,9 +72,7 @@ impl FjallJournal {
     }
 
     /// Computes the metadata hash for a pending record.
-    fn compute_pending_metadata_hash(
-        record: &CompiledIrRecord,
-    ) -> Result<[u8; 32], JournalError> {
+    fn compute_pending_metadata_hash(record: &CompiledIrRecord) -> Result<[u8; 32], JournalError> {
         let artifact = decode_accepted_artifact_envelope(&record.ir)?;
         Ok(compute_artifact_metadata_hash(&artifact))
     }
@@ -108,8 +107,7 @@ impl FjallJournal {
                 }
             }
             None => {
-                let existing_artifact =
-                    decode_accepted_artifact_envelope(&existing_record.ir)?;
+                let existing_artifact = decode_accepted_artifact_envelope(&existing_record.ir)?;
                 let h_existing = compute_artifact_metadata_hash(&existing_artifact);
                 if h_pending != h_existing {
                     return Err(JournalError::MetadataMutation { digest });
@@ -120,11 +118,7 @@ impl FjallJournal {
     }
 
     /// Builds the record to store, attaching the computed metadata hash.
-    fn build_stored_record(
-        &self,
-        record: &CompiledIrRecord,
-        h: [u8; 32],
-    ) -> CompiledIrRecord {
+    fn build_stored_record(&self, record: &CompiledIrRecord, h: [u8; 32]) -> CompiledIrRecord {
         let mut r = record.clone();
         r.metadata_hash = Some(h);
         r

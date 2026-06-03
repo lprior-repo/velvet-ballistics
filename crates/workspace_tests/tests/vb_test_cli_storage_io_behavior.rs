@@ -881,6 +881,7 @@ fn storage_rejects_corrupted_ir_before_resolver_load() {
     let record = CompiledIrRecord {
         digest: dummy_digest(),
         ir: vec![0xDE, 0xAD, 0xBE, 0xEF], // Corrupted data
+        metadata_hash: None,
     };
     let write_result = put_compiled_ir(&journal, &record);
     assert!(

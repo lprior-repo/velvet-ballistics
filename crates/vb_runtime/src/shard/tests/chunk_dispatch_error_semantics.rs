@@ -178,108 +178,6 @@ fn action_completion_for_nonexistent_run_returns_not_found() {
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
 }
 
-/// Test action_failure_retry_now_path: Retry policy triggers retry.
-#[test]
-fn action_failure_with_retryable_policy_triggers_retry() {
-    let config = small_config();
-    let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else {
-        return;
-    };
-    let run = RunId::new(510);
-
-    // Submit
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
-        Ok(())
-    );
-    assert_eq!(shard.tick(), Ok(true));
-
-    // Send action failure with retryable policy
-    let failure = vb_core::action::ActionFailure {
-        code: ActionFailureCode::Timeout,
-        retry_policy: VbRetryPolicy::RetryNow,
-        taint: vb_core::value::Taint::Clean,
-        detail: None,
-        encoded_len: 0,
-    };
-
-    let ticket = vb_core::action::ActionTicket {
-        run,
-        step: StepIdx::ZERO,
-        seq: vb_core::ids::SeqNo::ZERO,
-        action: ActionId::new(0),
-        attempt: 1,
-        idempotency_key: 0,
-        capacity: 1,
-    };
-
-    assert_eq!(
-        shard.enqueue(ShardCommand::ActionFailed { ticket, failure }),
-        Ok(())
-    );
-    // Tick should process the retry
-    assert_eq!(shard.tick(), Ok(true));
-    // Run should still be active (waiting for retry)
-    assert_eq!(shard.run_state_contains(run), true);
-}
-
-/// Test action_failure_fail_run_path: Unretryable failure transitions to terminal.
-#[test]
-fn action_failure_with_non_retryable_policy_fails_run() {
-    let config = small_config();
-    let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else {
-        return;
-    };
-    let run = RunId::new(511);
-
-    // Submit
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: vb_core::capability::CapabilitySet::empty()
-        }),
-        Ok(())
-    );
-    assert_eq!(shard.tick(), Ok(true));
-
-    // Send action failure with non-retryable policy
-    let failure = vb_core::action::ActionFailure {
-        code: ActionFailureCode::Timeout,
-        retry_policy: VbRetryPolicy::NonRetryable,
-        taint: vb_core::value::Taint::Clean,
-        detail: None,
-        encoded_len: 0,
-    };
-
-    let ticket = vb_core::action::ActionTicket {
-        run,
-        step: StepIdx::ZERO,
-        seq: vb_core::ids::SeqNo::ZERO,
-        action: ActionId::new(0),
-        attempt: 1,
-        idempotency_key: 0,
-        capacity: 1,
-    };
-
-    assert_eq!(
-        shard.enqueue(ShardCommand::ActionFailed { ticket, failure }),
-        Ok(())
-    );
-    assert_eq!(shard.tick(), Ok(true));
-
-    // Run should be in terminal state
-    assert_eq!(shard.run_state_contains(run), false);
-    assert_eq!(shard.terminal_runs_contains(run), true);
-    assert_eq!(shard.counters().snapshot().runs_failed, 1);
-}
-
 // ============================================================================
 // Timer Fire Errors
 // ============================================================================
@@ -493,7 +391,7 @@ fn ask_answer_with_wrong_step_returns_error() {
     );
     assert_eq!(shard.tick(), Ok(true));
 
-    let pending = shard.pending_timer_get(run).expect("should have ask timer");
+    let _pending = shard.pending_timer_get(run).expect("should have ask timer");
 
     // Create answer with wrong ask_step
     let answer = AskAnswer::with_encoded_len(

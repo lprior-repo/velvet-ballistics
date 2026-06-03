@@ -5,8 +5,8 @@ use std::sync::{Arc, Mutex};
 
 use vb_core::ids::RunId;
 
-use crate::RuntimeResult;
 use super::run_state::InspectResponse;
+use crate::RuntimeResult;
 
 // ============================================================================
 // Introspection Registry Outcome types

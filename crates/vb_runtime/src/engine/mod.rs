@@ -39,6 +39,4 @@ pub use execute::execute_node_full;
 pub use helpers::mark_step_after_signal;
 pub use retry_math::{RetryCursor, RetryPolicyLimits, RetryPolicyMathError};
 pub use signal::runtime_from_core;
-pub use types::{
-    RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal,
-};
+pub use types::{RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal};

@@ -13,10 +13,11 @@ use crate::workflow::{
     WorkflowParts, check_expr_stack_bound,
 };
 
-use crate::engine::expr_eval::ops_text_list::{eval_append, eval_append_if, eval_contains,
-    eval_empty, eval_ends_with, eval_has, eval_length, eval_starts_with, eval_sum,
-    eval_count, eval_unique};
-use crate::engine::expr_eval::stack::{push_value, ExprStack};
+use crate::engine::expr_eval::ops_text_list::{
+    eval_append, eval_append_if, eval_contains, eval_count, eval_empty, eval_ends_with, eval_has,
+    eval_length, eval_starts_with, eval_sum, eval_unique,
+};
+use crate::engine::expr_eval::stack::{ExprStack, push_value};
 
 fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
 where

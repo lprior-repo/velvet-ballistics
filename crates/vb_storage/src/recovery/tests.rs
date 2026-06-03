@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 //! Recovery tests for velvet-ballistics journal.
+use crate::recovery::types::DigestCheckConfig;
 use crate::recovery::{
     ActionReplayTracker, DigestCheck, RecoveredStepState, RecoveryError, RecoveryHydration,
     RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState, check_compiled_ir_digest,
@@ -8,7 +9,6 @@ use crate::recovery::{
     recover_runtime_frame_seed_from_events_with_workflow, recover_runtime_summary,
     recover_snapshot_plus_tail, replay_events, summarize_recovery_events, verify_digests,
 };
-use crate::recovery::types::DigestCheckConfig;
 use crate::{DurableActionOutcome, EventSeq, FjallJournal, JournalEvent, RunHeaderRecord};
 use vb_core::action::{ActionTicket, compute_action_idempotency_key};
 use vb_core::value::{ConstValue, SlotValue, Taint};

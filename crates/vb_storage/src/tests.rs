@@ -1942,7 +1942,7 @@ mod tests {
 
         assert!(matches!(
             journal.compiled_ir(corrupt.digest),
-            Err(JournalError::ArtifactMalformed)
+            Err(JournalError::PostcardDecodeFailed)
         ));
     }
 
@@ -2270,23 +2270,22 @@ mod tests {
         // Given a CompiledIrRecord
         // When encoded and decoded with MAGIC_COMPILED_ARTIFACT
         // Then the record survives the round trip
-        let record = CompiledIrRecord {
-            digest: WorkflowDigest::from_bytes([0xBB; 32]),
-            ir: vec![4, 5, 6],
-            ..Default::default()
-        };
+        let record = crate::accepted_compiled_ir_record_for_test(vec![4, 5, 6]);
         let encoded = encode_record(
             MAGIC_COMPILED_ARTIFACT,
             RecordKind::CompiledIr,
             0,
             &record,
-            128,
+            MAX_COMPILED_IR_BYTES,
         )
         .expect("encoding should succeed");
 
-        let (envelope, decoded) =
-            decode_record::<CompiledIrRecord>(&encoded, MAGIC_COMPILED_ARTIFACT, 128)
-                .expect("decoding should succeed");
+        let (envelope, decoded) = decode_record::<CompiledIrRecord>(
+            &encoded,
+            MAGIC_COMPILED_ARTIFACT,
+            MAX_COMPILED_IR_BYTES,
+        )
+        .expect("decoding should succeed");
         assert_eq!(envelope.magic, MAGIC_COMPILED_ARTIFACT);
         assert_eq!(envelope.record_kind, RecordKind::CompiledIr.id());
         assert_eq!(decoded, record);
@@ -7459,7 +7458,9 @@ mod tests {
         };
         journal.put_compiled_ir(&first).expect("put1");
         // SECURITY: Second write with mutated metadata must be rejected
-        let err = journal.put_compiled_ir(&second).expect_err("put2 must fail");
+        let err = journal
+            .put_compiled_ir(&second)
+            .expect_err("put2 must fail");
         assert!(
             matches!(err, JournalError::MetadataMutation { digest } if digest == first.digest),
             "metadata mutation must be detected and rejected"
@@ -7494,7 +7495,9 @@ mod tests {
             ..Default::default()
         };
         journal.put_compiled_ir(&first).expect("put1");
-        let err = journal.put_compiled_ir(&second).expect_err("put2 must fail");
+        let err = journal
+            .put_compiled_ir(&second)
+            .expect_err("put2 must fail");
         assert!(
             matches!(err, JournalError::MetadataMutation { digest } if digest == first.digest),
             "required_capabilities mutation must be rejected"
@@ -7510,11 +7513,14 @@ mod tests {
         let mut second_artifact: crate::AcceptedArtifact =
             postcard::from_bytes(&first.ir).expect("accepted artifact should decode");
         // Mutate warnings
-        second_artifact.verification.warnings.push(crate::admission::VerificationWarning {
-            code: 999,
-            message: "forged warning".into(),
-            gate: 1,
-        });
+        second_artifact
+            .verification
+            .warnings
+            .push(crate::admission::VerificationWarning {
+                code: 999,
+                message: "forged warning".into(),
+                gate: 1,
+            });
         let second_ir =
             postcard::to_allocvec(&second_artifact).expect("accepted artifact should encode");
         let second = CompiledIrRecord {
@@ -7523,7 +7529,9 @@ mod tests {
             ..Default::default()
         };
         journal.put_compiled_ir(&first).expect("put1");
-        let err = journal.put_compiled_ir(&second).expect_err("put2 must fail");
+        let err = journal
+            .put_compiled_ir(&second)
+            .expect_err("put2 must fail");
         assert!(
             matches!(err, JournalError::MetadataMutation { digest } if digest == first.digest),
             "warnings mutation must be rejected"
@@ -7548,7 +7556,9 @@ mod tests {
             ..Default::default()
         };
         journal.put_compiled_ir(&first).expect("put1");
-        let err = journal.put_compiled_ir(&second).expect_err("put2 must fail");
+        let err = journal
+            .put_compiled_ir(&second)
+            .expect_err("put2 must fail");
         assert!(
             matches!(err, JournalError::MetadataMutation { digest } if digest == first.digest),
             "idempotency evidence mutation must be rejected"
@@ -7564,8 +7574,7 @@ mod tests {
         let mut second_artifact: crate::AcceptedArtifact =
             postcard::from_bytes(&first.ir).expect("accepted artifact should decode");
         // Mutate idempotency_attested - add an attested action id
-        second_artifact.verification.idempotency_attested =
-            Box::new([vb_core::ActionId::new(42)]);
+        second_artifact.verification.idempotency_attested = Box::new([vb_core::ActionId::new(42)]);
         let second_ir =
             postcard::to_allocvec(&second_artifact).expect("accepted artifact should encode");
         let second = CompiledIrRecord {
@@ -7574,7 +7583,9 @@ mod tests {
             ..Default::default()
         };
         journal.put_compiled_ir(&first).expect("put1");
-        let err = journal.put_compiled_ir(&second).expect_err("put2 must fail");
+        let err = journal
+            .put_compiled_ir(&second)
+            .expect_err("put2 must fail");
         assert!(
             matches!(err, JournalError::MetadataMutation { digest } if digest == first.digest),
             "idempotency_attested mutation must be rejected"
@@ -7599,7 +7610,9 @@ mod tests {
             ..Default::default()
         };
         journal.put_compiled_ir(&first).expect("put1");
-        let err = journal.put_compiled_ir(&second).expect_err("put2 must fail");
+        let err = journal
+            .put_compiled_ir(&second)
+            .expect_err("put2 must fail");
         // Validation rejects the mutated artifact BEFORE metadata hash comparison.
         // The artifact has taint_safe_claimed=false, which fails proof validation.
         // This is correct behavior: bad artifacts are rejected at validation gate.
@@ -7628,7 +7641,9 @@ mod tests {
             ..Default::default()
         };
         batch.put_compiled_ir(&first).expect("put1");
-        let err = batch.put_compiled_ir(&second).expect_err("batch put2 must fail");
+        let err = batch
+            .put_compiled_ir(&second)
+            .expect_err("batch put2 must fail");
         assert!(
             matches!(err, JournalError::MetadataMutation { digest } if digest == first.digest),
             "batch must also reject metadata mutation"
@@ -7707,8 +7722,7 @@ mod tests {
             "stored record must have metadata_hash set"
         );
         assert_eq!(
-            loaded.metadata_hash,
-            record.metadata_hash,
+            loaded.metadata_hash, record.metadata_hash,
             "metadata_hash must match original"
         );
     }
@@ -7755,8 +7769,7 @@ mod tests {
         use crate::admission::{compute_artifact_metadata_hash, decode_accepted_artifact_envelope};
 
         // Create first artifact with default policy
-        let first_record =
-            crate::accepted_compiled_ir_record_for_test(b"policy_test".to_vec());
+        let first_record = crate::accepted_compiled_ir_record_for_test(b"policy_test".to_vec());
         let first_artifact =
             decode_accepted_artifact_envelope(&first_record.ir).expect("artifact must decode");
         let hash1 = compute_artifact_metadata_hash(&first_artifact);

@@ -1,13 +1,13 @@
 #![forbid(unsafe_code)]
 //! Tests for choose branch evaluation logic.
 
+use crate::ValueStore;
+use crate::engine::choose::{choose_expr_branch, choose_slot_branch};
 use crate::errors::EngineError;
+use crate::frame::RunFrame;
 use crate::ids::{ExprIdx, RunId, SlotIdx, StepIdx};
 use crate::value::SlotValue;
 use crate::workflow::{ExprBranch, SlotBranch};
-use crate::engine::choose::{choose_expr_branch, choose_expr_target, choose_slot_branch, choose_slot_target};
-use crate::frame::RunFrame;
-use crate::ValueStore;
 
 fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
 where
@@ -44,8 +44,8 @@ fn choose_slot_takes_first_matching_branch() -> Result<(), String> {
             target: StepIdx::new(7),
         },
     ];
-    let result =
-        choose_slot_branch(&mut run, &branches, Some(StepIdx::new(9))).map_err(|e| e.to_string())?;
+    let result = choose_slot_branch(&mut run, &branches, Some(StepIdx::new(9)))
+        .map_err(|e| e.to_string())?;
 
     ensure_equal(result, crate::EngineSignal::Continue)?;
     ensure_equal(run.pc(), StepIdx::new(5))
@@ -69,8 +69,8 @@ fn choose_slot_skips_false_takes_second_branch() -> Result<(), String> {
             target: StepIdx::new(7),
         },
     ];
-    let result =
-        choose_slot_branch(&mut run, &branches, Some(StepIdx::new(9))).map_err(|e| e.to_string())?;
+    let result = choose_slot_branch(&mut run, &branches, Some(StepIdx::new(9)))
+        .map_err(|e| e.to_string())?;
 
     ensure_equal(result, crate::EngineSignal::Continue)?;
     ensure_equal(run.pc(), StepIdx::new(7))
@@ -94,8 +94,8 @@ fn choose_slot_takes_otherwise_when_all_false() -> Result<(), String> {
             target: StepIdx::new(7),
         },
     ];
-    let _result =
-        choose_slot_branch(&mut run, &branches, Some(StepIdx::new(3))).map_err(|e| e.to_string())?;
+    let _result = choose_slot_branch(&mut run, &branches, Some(StepIdx::new(3)))
+        .map_err(|e| e.to_string())?;
 
     ensure_equal(run.pc(), StepIdx::new(3))
 }
@@ -143,8 +143,8 @@ fn choose_slot_rejects_non_bool_condition() -> Result<(), String> {
 fn choose_slot_empty_branches_takes_otherwise() -> Result<(), String> {
     let mut run = test_frame(1)?;
     let branches: Vec<SlotBranch> = vec![];
-    let _result =
-        choose_slot_branch(&mut run, &branches, Some(StepIdx::new(2))).map_err(|e| e.to_string())?;
+    let _result = choose_slot_branch(&mut run, &branches, Some(StepIdx::new(2)))
+        .map_err(|e| e.to_string())?;
 
     ensure_equal(run.pc(), StepIdx::new(2))
 }
@@ -246,8 +246,14 @@ fn choose_expr_takes_first_true_branch() -> Result<(), String> {
             target: StepIdx::new(2),
         },
     ];
-    let result = choose_expr_branch(&plan, &mut run, &mut store, &branches, Some(StepIdx::new(3)))
-        .map_err(|e| e.to_string())?;
+    let result = choose_expr_branch(
+        &plan,
+        &mut run,
+        &mut store,
+        &branches,
+        Some(StepIdx::new(3)),
+    )
+    .map_err(|e| e.to_string())?;
 
     ensure_equal(result, crate::EngineSignal::Continue)?;
     ensure_equal(run.pc(), StepIdx::new(1))
@@ -263,9 +269,14 @@ fn choose_expr_takes_otherwise_when_all_false() -> Result<(), String> {
         condition: ExprIdx::new(1),
         target: StepIdx::new(2),
     }];
-    let _result =
-        choose_expr_branch(&plan, &mut run, &mut store, &branches, Some(StepIdx::new(3)))
-            .map_err(|e| e.to_string())?;
+    let _result = choose_expr_branch(
+        &plan,
+        &mut run,
+        &mut store,
+        &branches,
+        Some(StepIdx::new(3)),
+    )
+    .map_err(|e| e.to_string())?;
 
     ensure_equal(run.pc(), StepIdx::new(3))
 }

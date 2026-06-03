@@ -140,27 +140,21 @@ mod harnesses {
             assert!(!name.is_empty());
         };
         let _ = {
-            let e: ValidationError = ValidationError::InvalidId {
-                id: String::new(),
-            };
+            let e: ValidationError = ValidationError::InvalidId { id: String::new() };
             let code = e.code();
             let name = code.as_str();
             assert!(is_registered(name));
             assert!(!name.is_empty());
         };
         let _ = {
-            let e: ValidationError = ValidationError::ReservedId {
-                id: String::new(),
-            };
+            let e: ValidationError = ValidationError::ReservedId { id: String::new() };
             let code = e.code();
             let name = code.as_str();
             assert!(is_registered(name));
             assert!(!name.is_empty());
         };
         let _ = {
-            let e: ValidationError = ValidationError::DuplicateId {
-                id: String::new(),
-            };
+            let e: ValidationError = ValidationError::DuplicateId { id: String::new() };
             let code = e.code();
             let name = code.as_str();
             assert!(is_registered(name));
@@ -491,9 +485,7 @@ mod harnesses {
             assert!(!name.is_empty());
         };
         let _ = {
-            let e: ValidationError = ValidationError::ActionContractOrphan {
-                action_id: 0usize,
-            };
+            let e: ValidationError = ValidationError::ActionContractOrphan { action_id: 0usize };
             let code = e.code();
             let name = code.as_str();
             assert!(is_registered(name));

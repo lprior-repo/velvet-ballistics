@@ -187,9 +187,7 @@ pub fn map_artifact_envelope_error(source: ArtifactEnvelopeError) -> AdmissionEr
         ArtifactEnvelopeError::ArtifactNotFound { digest } => {
             AdmissionError::ArtifactNotFound { digest }
         }
-        ArtifactEnvelopeError::PostcardDecodeFailed => {
-            AdmissionError::ArtifactEnvelopeDecodeFailed
-        }
+        ArtifactEnvelopeError::PostcardDecodeFailed => AdmissionError::ArtifactEnvelopeDecodeFailed,
         ArtifactEnvelopeError::InvalidGateCount { found, required } => {
             AdmissionError::ArtifactInvalidGateCount { found, required }
         }

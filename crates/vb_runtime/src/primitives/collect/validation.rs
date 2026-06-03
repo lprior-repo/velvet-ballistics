@@ -72,7 +72,10 @@ pub(crate) fn validate_collect_state(
 }
 
 /// Copies a prefix of items up to page_size.
-pub(crate) fn copy_prefix(items: &[SlotValue], page_size: usize) -> Result<Box<[SlotValue]>, EngineError> {
+pub(crate) fn copy_prefix(
+    items: &[SlotValue],
+    page_size: usize,
+) -> Result<Box<[SlotValue]>, EngineError> {
     let count = page_size.min(items.len());
     let mut page = Vec::with_capacity(count);
     let mut index = 0usize;

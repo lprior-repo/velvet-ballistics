@@ -4,7 +4,7 @@
 use vb_core::value::SlotValue;
 
 use super::{
-    checked_add_usize, copy_prefix, page_size_from, validate_page_bound, CollectPaginationState,
+    CollectPaginationState, checked_add_usize, copy_prefix, page_size_from, validate_page_bound,
 };
 use vb_core::frame::RunFrame;
 use vb_core::ids::{ListId, SlotIdx};

@@ -60,7 +60,7 @@ pub use super::introspection::{
 // ============================================================================
 
 pub use super::queue::{
-    is_valid_command_queue_capacity, MAX_COMMAND_QUEUE_CAPACITY, ShardCommandQueue,
+    MAX_COMMAND_QUEUE_CAPACITY, ShardCommandQueue, is_valid_command_queue_capacity,
 };
 
 // ============================================================================
@@ -68,6 +68,6 @@ pub use super::queue::{
 // ============================================================================
 
 pub use super::config::{
-    is_valid_step_budget_per_tick, is_valid_trace_capacity, Shard, ShardConfig, ShardHealth,
-    ShardStatus,
+    Shard, ShardConfig, ShardHealth, ShardStatus, is_valid_step_budget_per_tick,
+    is_valid_trace_capacity,
 };

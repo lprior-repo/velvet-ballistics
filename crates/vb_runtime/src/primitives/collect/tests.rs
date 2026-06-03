@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use vb_core::EventSeq as CoreEventSeq;
 use vb_core::errors::{CollectExtraHydrationFailureKind, EngineError};
 use vb_core::frame::RunFrame;
-use vb_core::ids::SlotIdx;
+use vb_core::ids::{RunId, SlotIdx};
 use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 use vb_storage::recovery::{ActionReplayTracker, recover_full_journal};

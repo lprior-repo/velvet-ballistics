@@ -1,10 +1,9 @@
 use vb_core::action::{
     ActionContract, ActionError, ActionOutcome, ActionOutputReady, ActionTicket, Idempotency,
 };
-use vb_core::ids::{SlotIdx, StepIdx};
-use vb_core::value::{join_taint, SlotValue, Taint};
+use vb_core::ids::SlotIdx;
+use vb_core::value::{SlotValue, Taint, join_taint};
 use vb_core::workflow::CompiledNodeKind;
-use vb_core::ValueStore;
 
 use crate::shard::types::RunState;
 use crate::{RuntimeError, RuntimeResult};

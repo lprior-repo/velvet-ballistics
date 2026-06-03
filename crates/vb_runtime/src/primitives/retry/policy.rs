@@ -1,8 +1,6 @@
 #![forbid(unsafe_code)]
 //! Retry policy configuration types.
 
-use vb_core::errors::CoreError;
-
 /// Delay strategy applied between retry attempts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]

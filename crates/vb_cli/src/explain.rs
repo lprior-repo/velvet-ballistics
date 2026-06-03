@@ -19,9 +19,9 @@ use crate::output::{
     write_stdout_line,
 };
 use crate::output_utils::*;
-use vb_core::{CompiledNodeKind, StepIdx};
 use std::io::{self, Write};
 use std::process::ExitCode;
+use vb_core::{CompiledNodeKind, StepIdx};
 
 pub(crate) fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
@@ -214,7 +214,8 @@ fn explain_execution_plan(compiled: &vb_core::CompiledWorkflow) {
                     suspension_points.push(format!("step {} ({}) - Ask for input", step, name));
                 }
                 CompiledNodeKind::WaitUntil { .. } => {
-                    suspension_points.push(format!("step {} ({}) - WaitUntil deadline", step, name));
+                    suspension_points
+                        .push(format!("step {} ({}) - WaitUntil deadline", step, name));
                 }
                 CompiledNodeKind::WaitEvent { .. } => {
                     suspension_points.push(format!("step {} ({}) - WaitEvent", step, name));
@@ -271,7 +272,10 @@ pub(crate) fn explain_success_report(
     for step in 0..compiled.node_count() {
         let step_idx = StepIdx::new(step);
         if let Some(node) = compiled.node(step_idx) {
-            let name = compiled.step_name(step_idx).unwrap_or("<unnamed>").to_string();
+            let name = compiled
+                .step_name(step_idx)
+                .unwrap_or("<unnamed>")
+                .to_string();
             match node.kind {
                 CompiledNodeKind::Do { .. } => {
                     actions.push(format!("step {} ({})", step, name));
@@ -281,7 +285,8 @@ pub(crate) fn explain_success_report(
                     suspension_points.push(format!("step {} ({}) - Ask for input", step, name));
                 }
                 CompiledNodeKind::WaitUntil { .. } => {
-                    suspension_points.push(format!("step {} ({}) - WaitUntil deadline", step, name));
+                    suspension_points
+                        .push(format!("step {} ({}) - WaitUntil deadline", step, name));
                 }
                 CompiledNodeKind::WaitEvent { .. } => {
                     suspension_points.push(format!("step {} ({}) - WaitEvent", step, name));

@@ -12,10 +12,7 @@ use vb_core::errors::{
 };
 use vb_core::ids::{EventSeq, ListId, RunId, SlotIdx};
 use vb_core::value::SlotValue;
-use vb_core::value_store::ValueStore;
 use vb_storage::JournalEvent;
-
-use super::super::helpers::{expect_list, jump_to, jump_to_body, require_output};
 
 /// Per-run pagination state stored in a side table keyed by (RunId, SlotIdx).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -46,7 +43,7 @@ pub struct CollectPaginationState {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CollectStates {
     pub(crate) entries: Map<(RunId, SlotIdx), CollectPaginationState>,
-    pub(crate) lineages: Map<(RunId, SlotIdx), CollectPageLineage>,
+    lineages: Map<(RunId, SlotIdx), CollectPageLineage>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

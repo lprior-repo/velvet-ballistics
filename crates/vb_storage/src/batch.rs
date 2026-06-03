@@ -4,7 +4,9 @@
 //! Accumulates writes across multiple keyspaces and commits them
 //! atomically with a single WAL fsync.
 
-use std::collections::{HashMap, HashSet};
+#[cfg(test)]
+use std::collections::HashMap;
+use std::collections::HashSet;
 
 use crate::{
     codec::encode_record,
@@ -48,6 +50,7 @@ pub struct JournalWriteBatch<'j> {
     staged_event_keys: HashSet<[u8; JOURNAL_KEY_BYTES]>,
     /// Tracks staged compiled IR digests and their metadata hashes
     /// to detect same-batch metadata mutation attempts.
+    #[cfg(test)]
     staged_ir_hashes: HashMap<vb_core::WorkflowDigest, [u8; 32]>,
     aborted: bool,
     /// Accumulated encoded-byte total for journal events accepted in this batch.
@@ -65,6 +68,7 @@ impl<'j> JournalWriteBatch<'j> {
             inner: journal.database.batch(),
             journal,
             staged_event_keys: HashSet::new(),
+            #[cfg(test)]
             staged_ir_hashes: HashMap::new(),
             aborted: false,
             staged_bytes: 0,
@@ -214,20 +218,8 @@ impl<'j> JournalWriteBatch<'j> {
         };
 
         // Queue the insert for atomic commit
-        self.inner
-            .insert(&self.journal.compiled_ir, key, value);
+        self.inner.insert(&self.journal.compiled_ir, key, value);
         Ok(())
-    }
-
-    #[cfg(test)]
-    fn abort_on_error<T>(&mut self, result: Result<T, JournalError>) -> Result<T, JournalError> {
-        match result {
-            Ok(value) => Ok(value),
-            Err(error) => {
-                self.aborted = true;
-                Err(error)
-            }
-        }
     }
 
     /// Inserts a run header record into the batch.

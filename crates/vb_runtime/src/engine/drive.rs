@@ -9,10 +9,10 @@ use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
 
+use crate::engine::EvidenceCollector;
 use crate::engine::execute::execute_node_full;
 use crate::engine::helpers::mark_step_after_signal;
 use crate::engine::types::{RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal};
-use crate::engine::EvidenceCollector;
 use crate::primitives::collect::CollectStates;
 
 pub(crate) fn compute_max_parallel_in_flight(plan: &CompiledWorkflow) -> RuntimeEngineResult<u16> {

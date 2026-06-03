@@ -11,8 +11,8 @@ use vb_core::{
     ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx, WorkflowDigest,
 };
 use vb_storage::recovery::{
-    ActionReplayTracker, DigestCheck, DigestCheckConfig, RecoveredStepEntry, RecoveredStepState,
-    RecoveryError, RecoveryFrameSeed, RecoveryHydration, RecoveryRuntimeSummary, RecoveryTerminalState,
+    ActionReplayTracker, DigestCheck, RecoveredStepEntry, RecoveredStepState, RecoveryError,
+    RecoveryFrameSeed, RecoveryHydration, RecoveryRuntimeSummary, RecoveryTerminalState,
     RunSnapshot, check_action_abi_digests, check_compiled_ir_digest, check_policy_digests,
     check_workflow_source_digest, hydrate_run_frame, hydrate_run_frame_from_events,
     recover_full_journal, recover_runtime_frame_seed, recover_runtime_summary, verify_digests,

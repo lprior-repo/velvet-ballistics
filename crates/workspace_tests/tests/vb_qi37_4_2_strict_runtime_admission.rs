@@ -894,6 +894,7 @@ fn given_raw_or_malformed_storage_bytes_when_stored_then_storage_admission_denie
             &vb_storage::CompiledIrRecord {
                 digest: requested,
                 ir: bytes,
+                metadata_hash: None,
             },
         );
         assert_eq!(

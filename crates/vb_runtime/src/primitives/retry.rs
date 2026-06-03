@@ -15,7 +15,6 @@ pub mod state;
 
 pub use policy::{DelayStrategy, RetryPolicy, RetryPolicyError};
 pub use state::{RetryDecision, RetryState};
-pub(crate) use vb_core::value::SlotValue;
 
 /// Checks whether a failure is retriable given the action's retry safety.
 ///

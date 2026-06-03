@@ -6,14 +6,11 @@
 // - [`chunk_003_kani`](chunk_003_kani) - Kani proof harnesses
 
 use vb_core::ValueStore;
-use vb_core::action::{
-    ActionContract, ActionError, ActionFailure, ActionOutcome, ActionOutputReady, ActionTicket,
-    Idempotency, RetryPolicy as VbCoreRetryPolicy,
-};
+use vb_core::action::{ActionFailure, ActionOutputReady, ActionTicket};
 use vb_core::capability::CapabilitySet;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
-use vb_core::value::{SlotValue, Taint, join_taint};
-use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
+use vb_core::value::{SlotValue, Taint};
+use vb_core::workflow::CompiledWorkflow;
 
 use crate::engine::{
     EvidenceCollector, RetryPolicy, RuntimeEngineResult, RuntimeSignal, drive_deterministic_full,
@@ -34,7 +31,8 @@ mod chunk_003_kani;
 
 // Re-export for convenience
 pub(crate) use chunk_003_completion::{
-    current_timestamp, preflight_action_completion, reject_taint_downgrade, retry_is_available,
-    ActionCompletionPreflight, ActionFailureOutcome,
+    ActionFailureOutcome, current_timestamp, preflight_action_completion, retry_is_available,
 };
+#[cfg(test)]
+pub(crate) use chunk_003_completion::reject_taint_downgrade;
 pub(crate) use chunk_003_error::apply_error_handler;

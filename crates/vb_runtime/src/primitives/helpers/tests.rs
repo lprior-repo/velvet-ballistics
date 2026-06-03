@@ -3,10 +3,10 @@
 
 use vb_core::errors::EngineError;
 use vb_core::frame::RunFrame;
-use vb_core::value_store::ValueStore;
 use vb_core::value::SlotValue;
+use vb_core::value_store::ValueStore;
 
-use super::{empty_list, expect_list, jump_to, jump_to_body, jump_to_next, require_output, tail_items};
+use super::{empty_list, expect_list, jump_to, jump_to_body, jump_to_next, require_output};
 use vb_core::ids::{SlotIdx, StepIdx};
 
 fn ensure(condition: bool, message: impl Into<String>) -> Result<(), String> {
@@ -158,8 +158,7 @@ fn tail_items_single_item_returns_empty() -> Result<(), String> {
 
 #[test]
 fn tail_items_two_items_returns_second() -> Result<(), String> {
-    let items: Box<[SlotValue]> =
-        vec![SlotValue::I64(10), SlotValue::I64(20)].into_boxed_slice();
+    let items: Box<[SlotValue]> = vec![SlotValue::I64(10), SlotValue::I64(20)].into_boxed_slice();
     let tail = super::tail_items(&items).map_err(|e| format!("tail_items failed: {e:?}"))?;
     ensure(
         tail.len() == 1,
@@ -291,10 +290,7 @@ fn jump_to_next_increments_executed() -> Result<(), String> {
         .map_err(|e| format!("jump_to_next failed: {e:?}"))?;
     ensure(
         run.executed() == before.saturating_add(1),
-        format!(
-            "expected {}",
-            before.saturating_add(1),
-        ),
+        format!("expected {}", before.saturating_add(1),),
     )
 }
 
@@ -347,8 +343,7 @@ fn tc001_jump_to_body_succeeded_to_pending() -> Result<(), String> {
     let body = StepIdx::new(1);
     run.mark_succeeded(body).map_err(|e| format!("{e:?}"))?;
     let before_exec = run.executed();
-    let result =
-        jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
+    let result = jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
     ensure(
         result == vb_core::EngineSignal::Continue,
         "expected Continue signal",
@@ -374,8 +369,7 @@ fn tc002_jump_to_body_pending_idempotent() -> Result<(), String> {
     let mut run = fresh_frame();
     let body = StepIdx::new(1);
     run.mark_pending(body).map_err(|e| format!("{e:?}"))?;
-    let result =
-        jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
+    let result = jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
     ensure(
         result == vb_core::EngineSignal::Continue,
         "expected Continue",
@@ -392,8 +386,7 @@ fn tc003_jump_to_body_succeeded_also_idempotent() -> Result<(), String> {
     let mut run = fresh_frame();
     let body = StepIdx::new(1);
     run.mark_succeeded(body).map_err(|e| format!("{e:?}"))?;
-    let result =
-        jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
+    let result = jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
     ensure(
         result == vb_core::EngineSignal::Continue,
         "expected Continue",
@@ -411,8 +404,7 @@ fn tc004_jump_to_body_waiting_reentry_valid() -> Result<(), String> {
     let body = StepIdx::new(1);
     run.mark_running(body).map_err(|e| format!("{e:?}"))?;
     run.mark_waiting(body).map_err(|e| format!("{e:?}"))?;
-    let result =
-        jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
+    let result = jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
     ensure(
         result == vb_core::EngineSignal::Continue,
         "expected Continue",
@@ -430,8 +422,7 @@ fn tc005_jump_to_body_asking_reentry_valid() -> Result<(), String> {
     let body = StepIdx::new(1);
     run.mark_running(body).map_err(|e| format!("{e:?}"))?;
     run.mark_asking(body).map_err(|e| format!("{e:?}"))?;
-    let result =
-        jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
+    let result = jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
     ensure(
         result == vb_core::EngineSignal::Continue,
         "expected Continue",

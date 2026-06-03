@@ -4,15 +4,14 @@
 //! to prevent ABA-style stale references after deallocation.
 
 mod arena;
+#[cfg(test)]
 mod arena_tests;
 mod slot_set;
 mod types;
 
 pub use arena::Arena;
 pub use slot_set::SlotSet;
-pub use types::{
-    ArenaError, Generation, MAX_ARENA_SLOTS, SlotHandle, SlotId,
-};
+pub use types::{ArenaError, Generation, MAX_ARENA_SLOTS, SlotHandle, SlotId};
 
 use super::types::{PendingTimer, RunState, RuntimeState};
 use crate::frame_pool::FramePool;

@@ -1,6 +1,6 @@
 use super::*;
 use vb_core::action::{ActionFailureCode, RetryPolicy as VbRetryPolicy};
-use vb_core::value::Taint;
+use vb_core::value::{SlotValue, Taint};
 
 fn fresh_frame() -> RunFrame {
     crate::test_harness::fresh_frame(8, 8)

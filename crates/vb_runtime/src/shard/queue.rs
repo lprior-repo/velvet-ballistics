@@ -3,8 +3,8 @@
 
 use crossbeam_queue::ArrayQueue;
 
-use crate::RuntimeResult;
 use super::command::ShardCommand;
+use crate::RuntimeResult;
 
 // ============================================================================
 // ShardCommandQueue

@@ -6,8 +6,8 @@ mod action_queue_tests {
     use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
 
     use crate::action_queue::{
-        ActionQueueCapacity, ActionQueueError, BoundedActionCompletionQueue,
-        BackpressureWarning, InvalidActionQueueCapacity, MAX_ACTION_COMPLETION_QUEUE_CAPACITY,
+        ActionQueueCapacity, ActionQueueError, BackpressureWarning, BoundedActionCompletionQueue,
+        InvalidActionQueueCapacity, MAX_ACTION_COMPLETION_QUEUE_CAPACITY,
     };
 
     fn make_ticket(seq: u32) -> ActionTicket {

@@ -319,16 +319,14 @@ pub(crate) fn cmd_diff_workflow_against(
     // Build actual actions from events
     let actual_actions: Vec<String> = events
         .iter()
-        .filter_map(|e| {
-            match e {
-                vb_storage::JournalEvent::ActionScheduled { step, action, .. } => {
-                    Some(format!("step {:?} action {:?}", step, action))
-                }
-                vb_storage::JournalEvent::AskScheduledEvent { step, .. } => {
-                    Some(format!("step {:?} Ask", step))
-                }
-                _ => None,
+        .filter_map(|e| match e {
+            vb_storage::JournalEvent::ActionScheduled { step, action, .. } => {
+                Some(format!("step {:?} action {:?}", step, action))
             }
+            vb_storage::JournalEvent::AskScheduledEvent { step, .. } => {
+                Some(format!("step {:?} Ask", step))
+            }
+            _ => None,
         })
         .collect();
 
@@ -352,8 +350,16 @@ pub(crate) fn cmd_diff_workflow_against(
             );
         }
         OutputFormat::Text => {
-            crate::outln!("diff: workflow {} vs run {}", workflow.display(), against_run);
-            crate::outln!("  workflow: {} nodes, {} slots", compiled.node_count(), compiled.slot_count());
+            crate::outln!(
+                "diff: workflow {} vs run {}",
+                workflow.display(),
+                against_run
+            );
+            crate::outln!(
+                "  workflow: {} nodes, {} slots",
+                compiled.node_count(),
+                compiled.slot_count()
+            );
             crate::outln!("  run: {} events", events.len());
             crate::outln!("");
             crate::outln!("Expected actions (from workflow):");

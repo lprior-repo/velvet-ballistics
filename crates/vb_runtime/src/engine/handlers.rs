@@ -9,7 +9,7 @@ use vb_core::frame::RunFrame;
 use vb_core::ids::{ActionId, ConstIdx, FanoutLimit, SeqNo, SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
+use vb_core::workflow::CompiledWorkflow;
 
 use crate::engine::action::{
     execute_do, execute_do_without_contract, execute_retry_check, resolve_contract,
@@ -18,10 +18,7 @@ use crate::engine::signal::runtime_from_core;
 use crate::engine::types::{RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal};
 use crate::primitives::collect::CollectStates;
 
-pub(super) fn read_attempt_from_slot(
-    run: &RunFrame,
-    slot: SlotIdx,
-) -> RuntimeEngineResult<u16> {
+pub(super) fn read_attempt_from_slot(run: &RunFrame, slot: SlotIdx) -> RuntimeEngineResult<u16> {
     match run.read_slot(slot) {
         Ok(value) => match *value {
             SlotValue::I64(v) => u16::try_from(v).map_err(|_| {
@@ -55,7 +52,14 @@ pub(super) fn handle_for_each_start(
     output: Option<SlotIdx>,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     crate::primitives::for_each::for_each_start(
-        run, store, input, item_slot, FanoutLimit::new(limit), body, done, output,
+        run,
+        store,
+        input,
+        item_slot,
+        FanoutLimit::new(limit),
+        body,
+        done,
+        output,
     )
     .map_err(RuntimeEngineError::Core)
     .map(runtime_from_core)
@@ -111,7 +115,13 @@ pub(super) fn handle_together_branch(
     output: Option<SlotIdx>,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     crate::primitives::together::together_branch(
-        run, store, branch, entry, join, accumulator, output,
+        run,
+        store,
+        branch,
+        entry,
+        join,
+        accumulator,
+        output,
     )
     .map_err(RuntimeEngineError::Core)
     .map(runtime_from_core)
@@ -127,7 +137,13 @@ pub(super) fn handle_together_join(
     step: StepIdx,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     match crate::primitives::together::together_join(
-        run, store, branch_count, accumulator, output, next, step,
+        run,
+        store,
+        branch_count,
+        accumulator,
+        output,
+        next,
+        step,
     ) {
         Ok(signal) => Ok(runtime_from_core(signal)),
         Err(e) => Err(RuntimeEngineError::Core(e)),
@@ -210,7 +226,15 @@ pub(super) fn handle_reduce_start(
     output: Option<SlotIdx>,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     crate::primitives::reduce::reduce_start(
-        plan, run, store, input, accumulator, initial, body, done, output,
+        plan,
+        run,
+        store,
+        input,
+        accumulator,
+        initial,
+        body,
+        done,
+        output,
     )
     .map_err(RuntimeEngineError::Core)
     .map(runtime_from_core)
@@ -226,7 +250,13 @@ pub(super) fn handle_reduce_next(
     output: Option<SlotIdx>,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     crate::primitives::reduce::reduce_next(
-        run, store, iterator_slot, accumulator, body, done, output,
+        run,
+        store,
+        iterator_slot,
+        accumulator,
+        body,
+        done,
+        output,
     )
     .map_err(RuntimeEngineError::Core)
     .map(runtime_from_core)

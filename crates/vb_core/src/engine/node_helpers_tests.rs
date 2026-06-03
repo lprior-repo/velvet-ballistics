@@ -3,11 +3,11 @@
 
 #[cfg(test)]
 mod tests {
+    use crate::EngineSignal;
     use crate::errors::EngineError;
     use crate::ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
     use crate::value::{ConstValue, SlotValue, Taint};
     use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
-    use crate::EngineSignal;
 
     fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
     where
@@ -69,8 +69,8 @@ mod tests {
     #[test]
     fn jump_to_sets_pc_and_returns_continue() -> Result<(), String> {
         let mut run = test_frame(3, 1)?;
-        let result =
-            crate::engine::node_helpers::jump_to(&mut run, StepIdx::new(2)).map_err(|e| e.to_string())?;
+        let result = crate::engine::node_helpers::jump_to(&mut run, StepIdx::new(2))
+            .map_err(|e| e.to_string())?;
         ensure_equal(result, EngineSignal::Continue)?;
         ensure_equal(run.pc(), StepIdx::new(2))?;
         ensure_equal(run.executed(), 1)
@@ -99,9 +99,8 @@ mod tests {
             error_slot: None,
             kind: CompiledNodeKind::Nop,
         };
-        let result =
-            crate::engine::node_helpers::jump_to_next(&mut run, node.next, node.id)
-                .map_err(|e| e.to_string())?;
+        let result = crate::engine::node_helpers::jump_to_next(&mut run, node.next, node.id)
+            .map_err(|e| e.to_string())?;
         ensure_equal(result, EngineSignal::Continue)?;
         ensure_equal(run.pc(), StepIdx::new(1))
     }
@@ -123,8 +122,8 @@ mod tests {
         let mut run = test_frame(2, 2)?;
         run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(55), Taint::Clean)
             .map_err(|e| e.to_string())?;
-        let result =
-            crate::engine::node_helpers::finish_run(&mut run, SlotIdx::new(1)).map_err(|e| e.to_string())?;
+        let result = crate::engine::node_helpers::finish_run(&mut run, SlotIdx::new(1))
+            .map_err(|e| e.to_string())?;
         ensure_equal(
             result,
             EngineSignal::Finished(SlotValue::I64(55), Taint::Clean),
@@ -137,8 +136,8 @@ mod tests {
         let mut run = test_frame(2, 2)?;
         run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Bool(true), Taint::Secret)
             .map_err(|e| e.to_string())?;
-        let result =
-            crate::engine::node_helpers::finish_run(&mut run, SlotIdx::new(0)).map_err(|e| e.to_string())?;
+        let result = crate::engine::node_helpers::finish_run(&mut run, SlotIdx::new(0))
+            .map_err(|e| e.to_string())?;
         ensure_equal(
             result,
             EngineSignal::Finished(SlotValue::Bool(true), Taint::Secret),
@@ -171,8 +170,9 @@ mod tests {
                 value: ConstIdx::new(0),
             },
         };
-        let result = crate::engine::node_helpers::set_const(&plan, &mut run, &node, ConstIdx::new(0))
-            .map_err(|e| e.to_string())?;
+        let result =
+            crate::engine::node_helpers::set_const(&plan, &mut run, &node, ConstIdx::new(0))
+                .map_err(|e| e.to_string())?;
         ensure_equal(result, EngineSignal::Continue)?;
         ensure_equal(
             *run.read_slot(SlotIdx::new(0)).map_err(|e| e.to_string())?,
@@ -223,9 +223,8 @@ mod tests {
                 source: SlotIdx::new(0),
             },
         };
-        let result =
-            crate::engine::node_helpers::copy_slot(&mut run, &node, SlotIdx::new(0))
-                .map_err(|e| e.to_string())?;
+        let result = crate::engine::node_helpers::copy_slot(&mut run, &node, SlotIdx::new(0))
+            .map_err(|e| e.to_string())?;
         ensure_equal(result, EngineSignal::Continue)?;
         ensure_equal(
             *run.read_slot(SlotIdx::new(1)).map_err(|e| e.to_string())?,

@@ -5,15 +5,15 @@ use vb_core::budget::{
     AggregateBudgetError, AggregateResourceBudget, AggregateResourceCapacity,
     AggregateResourceUsage, BoundednessPolicy, validate_aggregate_budget,
 };
-use vb_core::capability::{Capability, CapabilitySet};
-use vb_core::ids::{ActionId, RunId, WorkflowDigest};
+use vb_core::capability::CapabilitySet;
+use vb_core::ids::{RunId, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_storage::EventSeq;
 
-use super::errors::{map_artifact_envelope_error, AdmissionError};
+use super::errors::{AdmissionError, map_artifact_envelope_error};
 use super::guards::capability_count_mismatch_error;
 pub use super::guards::check_capability;
-use super::stores::{ArtifactStore, AcceptedArtifactStore};
+use super::stores::{AcceptedArtifactStore, ArtifactStore};
 use super::types::{AdmissionBudgetRequest, RunAdmission};
 use super::validation::validate_accepted_artifact_envelope;
 
@@ -35,8 +35,7 @@ pub fn admit_run(
             let artifact = store
                 .load_accepted_artifact(digest)
                 .map_err(map_artifact_envelope_error)?;
-            validate_accepted_artifact_envelope(&artifact)
-                .map_err(map_artifact_envelope_error)?;
+            validate_accepted_artifact_envelope(&artifact).map_err(map_artifact_envelope_error)?;
             if artifact.digest != digest {
                 return Err(AdmissionError::ArtifactDigestMismatch {
                     requested: digest,
@@ -103,8 +102,7 @@ pub fn admit_artifact_run_with_certificate_floor(
             let artifact = store
                 .load_accepted_artifact(artifact_digest)
                 .map_err(map_artifact_envelope_error)?;
-            validate_accepted_artifact_envelope(&artifact)
-                .map_err(map_artifact_envelope_error)?;
+            validate_accepted_artifact_envelope(&artifact).map_err(map_artifact_envelope_error)?;
 
             // INV-002: digest binding must be total. The loaded artifact's digest
             // must match the requested digest exactly — a crafted artifact with
@@ -195,12 +193,10 @@ pub fn admit_run_with_budget_policy(
     caps: CapabilitySet,
     budget: AdmissionBudgetRequest,
 ) -> Result<RunAdmission, AdmissionError> {
-    validate_aggregate_budget(&budget.requested, &budget.policy)
+    validate_aggregate_budget(&budget.requested, &budget.policy).map_err(map_budget_error)?;
+    let requested_usage = AggregateResourceUsage::default()
+        .try_add_budget(&budget.requested)
         .map_err(map_budget_error)?;
-    let requested_usage =
-        AggregateResourceUsage::default()
-            .try_add_budget(&budget.requested)
-            .map_err(map_budget_error)?;
     requested_usage
         .check_policy(&budget.policy)
         .map_err(map_budget_error)?;
@@ -208,9 +204,7 @@ pub fn admit_run_with_budget_policy(
         .fits_within(&budget.available)
         .map_err(map_budget_error)?;
     match policy {
-        RuntimePolicy::Strict | RuntimePolicy::Journaled
-            if !store.compiled_ir_exists(digest) =>
-        {
+        RuntimePolicy::Strict | RuntimePolicy::Journaled if !store.compiled_ir_exists(digest) => {
             return Err(AdmissionError::ArtifactNotFound { digest });
         }
         RuntimePolicy::Strict | RuntimePolicy::Journaled => {}
@@ -267,7 +261,7 @@ fn map_budget_error(error: AggregateBudgetError) -> AdmissionError {
         }
         AggregateBudgetError::PerTickCeilingExceeded { requested, limit } => {
             AdmissionError::ResourcePerTickCeilingExceeded { requested, limit }
-        },
+        }
         #[cfg(not(kani))]
         AggregateBudgetError::WorkflowBudget(_) => AdmissionError::BudgetPolicyExceeded {
             resource: "workflow_budget",
@@ -280,13 +274,11 @@ fn map_budget_error(error: AggregateBudgetError) -> AdmissionError {
             actual: u64::MAX,
             limit: 0,
         },
-        AggregateBudgetError::ReservationNotFound { .. } => {
-            AdmissionError::BudgetPolicyExceeded {
-                resource: "reservation_not_found",
-                actual: u64::MAX,
-                limit: 0,
-            }
-        }
+        AggregateBudgetError::ReservationNotFound { .. } => AdmissionError::BudgetPolicyExceeded {
+            resource: "reservation_not_found",
+            actual: u64::MAX,
+            limit: 0,
+        },
         _ => AdmissionError::BudgetPolicyExceeded {
             resource: "unknown_aggregate_budget_error", // DEAD: #[non_exhaustive] catch-all
             actual: u64::MAX,

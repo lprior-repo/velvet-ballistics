@@ -10,6 +10,8 @@ mod ops_text_list;
 #[cfg(test)]
 mod ops_text_list_tests;
 mod stack;
+#[cfg(test)]
+mod stack_tests;
 
 pub use accessors::{eval_accessor, eval_accessor_with_store};
 pub use core::{eval_expr, eval_expr_with_store};

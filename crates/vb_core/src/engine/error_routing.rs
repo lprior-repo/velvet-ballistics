@@ -16,9 +16,6 @@ use crate::ids::{SlotIdx, StepIdx};
 use crate::value::SlotValue;
 use crate::workflow::CompiledWorkflow;
 
-#[cfg(test)]
-use crate::workflow::CompiledNode;
-
 /// Outcome of an error handler routing decision.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
@@ -153,12 +150,6 @@ fn write_error_slot(
 ) -> Result<(), EngineError> {
     run.write_slot(error_slot, SlotValue::I64(i64::from(failed_step.get())))?;
     Ok(())
-}
-
-#[cfg(test)]
-#[must_use]
-fn has_error_handler(node: &CompiledNode) -> bool {
-    node.on_error.is_some()
 }
 
 #[cfg(test)]

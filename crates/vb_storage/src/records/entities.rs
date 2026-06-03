@@ -35,19 +35,6 @@ pub struct CompiledIrRecord {
     pub metadata_hash: Option<[u8; 32]>,
 }
 
-#[cfg(test)]
-impl CompiledIrRecord {
-    /// Test-only constructor that creates a record with no metadata hash.
-    /// The metadata hash will be computed and set by `journal.put_compiled_ir`.
-    pub(crate) fn test_new(digest: WorkflowDigest, ir: Vec<u8>) -> Self {
-        Self {
-            digest,
-            ir,
-            metadata_hash: None,
-        }
-    }
-}
-
 impl Default for CompiledIrRecord {
     fn default() -> Self {
         Self {

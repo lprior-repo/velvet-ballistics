@@ -21,16 +21,6 @@ impl QueuedStorageRuntimeJournal {
         }
     }
 
-    /// Creates a queued adapter that enqueues strict requests.
-    #[must_use]
-    pub(crate) fn strict(journal: Arc<FjallJournal>, queue: Arc<JournalWriterQueue>) -> Self {
-        Self {
-            journal,
-            queue,
-            profile: DurabilityProfile::Strict,
-        }
-    }
-
     /// Creates a shared queued journaled adapter for direct runtime construction.
     #[must_use]
     pub(crate) fn shared_journaled(
@@ -40,16 +30,8 @@ impl QueuedStorageRuntimeJournal {
         Arc::new(Self::journaled(journal, queue))
     }
 
-    /// Creates a shared queued strict adapter for direct runtime construction.
-    #[must_use]
-    pub(crate) fn shared_strict(
-        journal: Arc<FjallJournal>,
-        queue: Arc<JournalWriterQueue>,
-    ) -> SharedRuntimeJournal {
-        Arc::new(Self::strict(journal, queue))
-    }
-
     /// Flushes a bounded batch from the queue into Fjall.
+    #[cfg(test)]
     pub(crate) fn flush_batch(&self) -> RuntimeResult<JournalWriterFlushReport> {
         self.queue
             .flush_batch(&self.journal)

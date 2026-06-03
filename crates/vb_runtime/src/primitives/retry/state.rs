@@ -5,7 +5,7 @@ use vb_core::frame::RunFrame;
 use vb_core::ids::SlotIdx;
 use vb_core::value::SlotValue;
 
-use super::policy::{DelayStrategy, RetryPolicy, RetryPolicyError};
+use super::policy::{RetryPolicy, RetryPolicyError};
 
 /// Current state of the retry state machine.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -4,8 +4,8 @@ use std::sync::mpsc::{Receiver, TrySendError};
 use vb_core::action::ActionTicket;
 
 use super::types::{
-    ActionQueueCapacity, ActionQueueError, BackpressureWarning,
-    BoundedActionCompletionQueue, Inner, MAX_ACTION_COMPLETION_QUEUE_CAPACITY,
+    ActionQueueCapacity, ActionQueueError, BackpressureWarning, BoundedActionCompletionQueue,
+    Inner, MAX_ACTION_COMPLETION_QUEUE_CAPACITY,
 };
 
 impl BoundedActionCompletionQueue {

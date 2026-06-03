@@ -21,10 +21,7 @@ pub fn timer_registration_required(state: &RunState, step: StepIdx) -> bool {
 }
 
 /// Advances state after a timer fires.
-pub fn advance_after_timer_fire(
-    state: &mut RunState,
-    timer: PendingTimer,
-) -> RuntimeResult<()> {
+pub fn advance_after_timer_fire(state: &mut RunState, timer: PendingTimer) -> RuntimeResult<()> {
     let Some(node) = state.workflow.node(timer.step) else {
         return Err(RuntimeError::InvalidTimerFire);
     };

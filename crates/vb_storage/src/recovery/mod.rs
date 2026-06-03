@@ -34,10 +34,10 @@ mod recovery_unit_tests;
 // ============================================================================
 
 pub use types::{
-    ActionReplayTracker, DigestCheck, RecoveredPendingAction, RecoveredRunAdmission,
-    RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState, RecoveryError, RecoveryFrameSeed,
-    RecoveryHydration, RecoveryResult, RecoveryRuntimeSummary, RecoveryTerminalState, RunSnapshot,
-    UnsupportedRecoveryState,
+    ActionReplayTracker, DigestCheck, DigestCheckConfig, RecoveredPendingAction,
+    RecoveredRunAdmission, RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState,
+    RecoveryError, RecoveryFrameSeed, RecoveryHydration, RecoveryResult, RecoveryRuntimeSummary,
+    RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState,
 };
 
 // ============================================================================

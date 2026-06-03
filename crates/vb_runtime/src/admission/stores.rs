@@ -175,9 +175,8 @@ impl AcceptedArtifactStore for StorageArtifactStore {
             })?;
 
         // Decode the postcard payload as AcceptedArtifact.
-        let artifact: vb_storage::admission::AcceptedArtifact =
-            postcard::from_bytes(&record.ir)
-                .map_err(|_decode_err| ArtifactEnvelopeError::PostcardDecodeFailed)?;
+        let artifact: vb_storage::admission::AcceptedArtifact = postcard::from_bytes(&record.ir)
+            .map_err(|_decode_err| ArtifactEnvelopeError::PostcardDecodeFailed)?;
 
         if artifact.digest != artifact_digest {
             return Err(ArtifactEnvelopeError::ArtifactDigestMismatch {

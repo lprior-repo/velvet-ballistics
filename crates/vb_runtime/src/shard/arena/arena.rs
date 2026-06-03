@@ -3,8 +3,7 @@
 //! Replaces `IndexMap<RunId, T>` with `Vec<Option<T>>` plus generation-based handles
 //! to prevent ABA-style stale references after deallocation.
 
-use super::types::{ArenaError, Generation, SlotHandle, SlotId, MAX_ARENA_SLOTS};
-use core::fmt;
+use super::types::{ArenaError, Generation, MAX_ARENA_SLOTS, SlotHandle, SlotId};
 
 /// Slot-based arena allocator using `Vec<Option<T>>` storage.
 ///

@@ -220,5 +220,3 @@ pub(crate) fn eval_unique(
         .map_err(|_| EngineError::AllocationFailed)?;
     push_value(stack, SlotValue::List(new_list))
 }
-
-

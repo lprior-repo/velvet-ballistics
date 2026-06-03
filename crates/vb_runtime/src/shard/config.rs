@@ -12,7 +12,9 @@ use crate::journal::SharedRuntimeJournal;
 use crate::trace::TraceRing;
 
 // Re-export from queue for ShardConfig
-pub use super::queue::{ShardCommandQueue, MAX_COMMAND_QUEUE_CAPACITY, is_valid_command_queue_capacity};
+pub use super::queue::{
+    MAX_COMMAND_QUEUE_CAPACITY, ShardCommandQueue, is_valid_command_queue_capacity,
+};
 
 // ============================================================================
 // ShardConfig

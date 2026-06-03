@@ -242,8 +242,7 @@ fn eval_expr_without_store_loads_const() -> Result<(), String> {
         1,
     )?;
     let run = make_run(1)?;
-    let (value, taint) =
-        eval_expr(&workflow, &run, ExprIdx::new(0)).map_err(|e| e.to_string())?;
+    let (value, taint) = eval_expr(&workflow, &run, ExprIdx::new(0)).map_err(|e| e.to_string())?;
     ensure_equal(value, SlotValue::Bool(false))?;
     ensure_equal(taint, Taint::Clean)
 }

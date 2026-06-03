@@ -90,10 +90,7 @@ pub(super) fn parse_retry(args: &[OsString]) -> Result<Command, ParseError> {
     validate_known_flags(args, "retry")?;
     let a = parse_run_db_args(args, "retry")?;
     let step = named_flag(args, "--step")
-        .map(|s| {
-            s.parse::<u16>()
-                .map_err(|_| ParseError::InvalidStep(s))
-        })
+        .map(|s| s.parse::<u16>().map_err(|_| ParseError::InvalidStep(s)))
         .transpose()?;
     Ok(Command::Retry {
         run_id: a.run_id,
@@ -151,8 +148,7 @@ pub(super) fn parse_answer(args: &[OsString]) -> Result<Command, ParseError> {
     let slot = slot_raw
         .parse::<u16>()
         .map_err(|_| ParseError::InvalidStep(slot_raw))?;
-    let value =
-        named_flag(args, "--value").ok_or(ParseError::MissingArgument("--value"))?;
+    let value = named_flag(args, "--value").ok_or(ParseError::MissingArgument("--value"))?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
     let output = parse_output_format(args);
     Ok(Command::Answer {

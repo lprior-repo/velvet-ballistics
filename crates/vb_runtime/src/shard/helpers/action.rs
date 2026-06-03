@@ -31,10 +31,7 @@ pub fn seed_input_slots(
 }
 
 /// Validates that an action completion matches the expected ticket.
-pub fn validate_action_completion(
-    state: &RunState,
-    ticket: ActionTicket,
-) -> RuntimeResult<()> {
+pub fn validate_action_completion(state: &RunState, ticket: ActionTicket) -> RuntimeResult<()> {
     validate_ticket_attempt(state, ticket)?;
     if state.frame.step_state(ticket.step) != Ok(StepState::Running) {
         return Err(RuntimeError::InvalidActionCompletion);
@@ -95,7 +92,10 @@ fn validate_ticket_attempt(state: &RunState, ticket: ActionTicket) -> RuntimeRes
 }
 
 /// Promotes an engine-issued ticket to the live per-step attempt counter.
-pub fn normalize_scheduled_ticket(state: &RunState, ticket: ActionTicket) -> RuntimeResult<ActionTicket> {
+pub fn normalize_scheduled_ticket(
+    state: &RunState,
+    ticket: ActionTicket,
+) -> RuntimeResult<ActionTicket> {
     let current = state
         .action_attempts
         .get(ticket.step.as_usize())
@@ -112,10 +112,7 @@ pub fn normalize_scheduled_ticket(state: &RunState, ticket: ActionTicket) -> Run
 }
 
 /// Advances PC after an action completes successfully.
-pub fn advance_after_action_completion(
-    state: &mut RunState,
-    step: StepIdx,
-) -> RuntimeResult<()> {
+pub fn advance_after_action_completion(state: &mut RunState, step: StepIdx) -> RuntimeResult<()> {
     let Some(node) = state.workflow.node(step) else {
         return Err(RuntimeError::InvalidActionCompletion);
     };
@@ -149,10 +146,7 @@ pub fn new_action_attempts(step_count: u16) -> Box<[u16]> {
 }
 
 /// Creates a new run state from a compiled workflow.
-pub fn make_run_state(
-    workflow: CompiledWorkflow,
-    run_id: RunId,
-) -> Option<RunState> {
+pub fn make_run_state(workflow: CompiledWorkflow, run_id: RunId) -> Option<RunState> {
     let step_count = workflow.node_count();
     let slot_count = workflow.slot_count();
     let frame = RunFrame::new(run_id, workflow.entry(), step_count, slot_count).ok()?;

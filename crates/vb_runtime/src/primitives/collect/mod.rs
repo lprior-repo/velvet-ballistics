@@ -1,10 +1,10 @@
 #![forbid(unsafe_code)]
 //! Collect pagination primitive handlers.
 
-mod state;
-mod validation;
 #[cfg(kani)]
 mod kani;
+mod state;
+mod validation;
 
 pub use state::{CollectPaginationState, CollectStates};
 pub use vb_core::errors::CollectPageOrderViolationKind;
@@ -13,7 +13,7 @@ use std::time::SystemTime;
 
 use vb_core::errors::EngineError;
 use vb_core::frame::RunFrame;
-use vb_core::ids::{ListId, RunId, SlotIdx, StepIdx};
+use vb_core::ids::{ListId, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::value_store::ValueStore;
 use vb_storage::JournalEvent;
@@ -52,10 +52,18 @@ pub fn collect_start(
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let mut plan = build_collect_start_plan(run, store, source, output, limit, page_size)?;
     if plan.page.is_empty() {
-        return finish_empty_collect_start(run, store, states, plan.collector, plan.source_taint, done);
+        return finish_empty_collect_start(
+            run,
+            store,
+            states,
+            plan.collector,
+            plan.source_taint,
+            done,
+        );
     }
     let page = core::mem::take(&mut plan.page);
-    let current_page = write_collected_page_with_taint(run, store, plan.collector, page, plan.source_taint)?;
+    let current_page =
+        write_collected_page_with_taint(run, store, plan.collector, page, plan.source_taint)?;
     finish_collect_start_page(run, states, plan, current_page, time_limit_ms, body, done)
 }
 

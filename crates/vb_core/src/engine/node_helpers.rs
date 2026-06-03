@@ -1,10 +1,10 @@
 #![forbid(unsafe_code)]
 //! Node execution helper functions.
 
+use crate::EngineSignal;
 use crate::errors::EngineError;
 use crate::ids::{ConstIdx, SlotIdx, StepIdx};
 use crate::workflow::CompiledWorkflow;
-use crate::EngineSignal;
 
 #[inline]
 pub(super) fn set_const(
@@ -70,5 +70,3 @@ pub(super) fn finish_run(
     run.increment_executed()?;
     Ok(EngineSignal::Finished(value, taint))
 }
-
-

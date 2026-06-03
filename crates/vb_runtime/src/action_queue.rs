@@ -14,8 +14,8 @@ mod queue;
 mod types;
 
 // Re-export types for convenience
-pub use types::{
-    ActionQueueCapacity, ActionQueueError, BackpressureWarning,
-    InvalidActionQueueCapacity, MAX_ACTION_COMPLETION_QUEUE_CAPACITY,
-};
 pub use types::BoundedActionCompletionQueue;
+pub use types::{
+    ActionQueueCapacity, ActionQueueError, BackpressureWarning, InvalidActionQueueCapacity,
+    MAX_ACTION_COMPLETION_QUEUE_CAPACITY,
+};

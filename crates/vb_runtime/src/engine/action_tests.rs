@@ -10,21 +10,17 @@
 //! - `execute_do`: capability checking
 //! - `resume_action_outcome`: retry capacity gates
 
-use vb_core::action::{
-    ActionName, ActionOutcome, Idempotency, RetrySafety, SideEffect,
-};
+use vb_core::action::{ActionFailure, ActionFailureCode, ActionTicket};
+use vb_core::action::{ActionName, ActionOutcome, Idempotency, RetrySafety, SideEffect};
 use vb_core::capability::Capability;
 use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
-use vb_core::action::{ActionFailure, ActionFailureCode, ActionTicket};
-use vb_core::action::compute_action_idempotency_key;
 
-use crate::admission::check_capability;
-use crate::engine::types::{RetryPolicy, RuntimeEngineError, RuntimeSignal};
 use crate::engine::action::{
     compute_idempotency_key, execute_do, execute_error_handler, execute_retry_check,
     resolve_contract, resume_action_outcome,
 };
+use crate::engine::types::{RetryPolicy, RuntimeEngineError, RuntimeSignal};
 
 // =====================================================================
 // compute_idempotency_key
@@ -242,9 +238,11 @@ fn resolve_contract_returns_unknown_for_empty_registry() {
     let result = resolve_contract(ActionId::new(0), &contracts);
     assert_eq!(
         result,
-        Err(RuntimeEngineError::Action(vb_core::action::ActionError::UnknownAction {
-            action: ActionId::new(0),
-        }))
+        Err(RuntimeEngineError::Action(
+            vb_core::action::ActionError::UnknownAction {
+                action: ActionId::new(0),
+            }
+        ))
     );
 }
 
@@ -324,10 +322,7 @@ fn make_contract_with_capability(
 #[test]
 fn execute_do_returns_capability_denied_when_required_capability_not_granted() {
     let mut run = vb_core::frame::RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2).unwrap();
-    assert_eq!(
-        run.write_slot(SlotIdx::new(0), SlotValue::I64(0)),
-        Ok(())
-    );
+    assert_eq!(run.write_slot(SlotIdx::new(0), SlotValue::I64(0)), Ok(()));
     let action = ActionId::new(0);
     let required_cap = Capability::new("secrets".into(), action);
     let contract = make_contract_with_capability(action, required_cap);
@@ -356,18 +351,14 @@ fn execute_do_returns_capability_denied_when_required_capability_not_granted() {
 #[test]
 fn execute_do_succeeds_when_required_capability_is_granted() {
     let mut run = vb_core::frame::RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2).unwrap();
-    assert_eq!(
-        run.write_slot(SlotIdx::new(0), SlotValue::I64(0)),
-        Ok(())
-    );
+    assert_eq!(run.write_slot(SlotIdx::new(0), SlotValue::I64(0)), Ok(()));
     let action = ActionId::new(0);
     let required_cap = Capability::new("secrets".into(), action);
     let contract = make_contract_with_capability(action, required_cap);
-    let granted =
-        vb_core::capability::CapabilitySet::from_grants(Box::new([Capability::new(
-            "secrets".into(),
-            action,
-        )]));
+    let granted = vb_core::capability::CapabilitySet::from_grants(Box::new([Capability::new(
+        "secrets".into(),
+        action,
+    )]));
 
     let result = execute_do(
         &run,

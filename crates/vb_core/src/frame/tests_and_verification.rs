@@ -7,7 +7,9 @@
 #[allow(clippy::panic_in_result_fn)]
 mod tests {
     use crate::errors::{CoreError, CoreResult};
-    use crate::frame::{is_valid_step_state_transition, RunFrame, SlotIdx, SlotValue, StepIdx, StepState, Taint};
+    use crate::frame::{
+        RunFrame, SlotIdx, SlotValue, StepIdx, StepState, Taint, is_valid_step_state_transition,
+    };
     use crate::ids::RunId;
 
     #[test]
@@ -1078,7 +1080,7 @@ mod frame_kani_harnesses {
         {
             let c = StepState::Succeeded;
             {
-// NOTE: Succeeded->Pending is intentional loop re-entry per vb_proof_kernels/src/step_state.rs:48
+                // NOTE: Succeeded->Pending is intentional loop re-entry per vb_proof_kernels/src/step_state.rs:48
                 let r = validate_transition_inline(c, StepState::Pending);
                 if !r {
                     errors += 1;
@@ -1146,7 +1148,7 @@ mod frame_kani_harnesses {
         {
             let c = StepState::Failed;
             {
-// NOTE: Failed->Pending is NOT in VALID_TRANSITIONS - invalid transition
+                // NOTE: Failed->Pending is NOT in VALID_TRANSITIONS - invalid transition
                 let r = validate_transition_inline(c, StepState::Pending);
                 if r {
                     errors += 1;
@@ -1214,7 +1216,7 @@ mod frame_kani_harnesses {
         {
             let c = StepState::Skipped;
             {
-// NOTE: Skipped->Pending is NOT in VALID_TRANSITIONS - invalid transition
+                // NOTE: Skipped->Pending is NOT in VALID_TRANSITIONS - invalid transition
                 let r = validate_transition_inline(c, StepState::Pending);
                 if r {
                     errors += 1;

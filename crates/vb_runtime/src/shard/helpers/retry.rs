@@ -35,10 +35,7 @@ pub fn retry_metadata_exists(state: &RunState, step: StepIdx) -> bool {
 }
 
 /// Extracts retry policy from the step's retry check node.
-pub fn retry_policy_after_action(
-    state: &RunState,
-    step: StepIdx,
-) -> RuntimeResult<RetryPolicy> {
+pub fn retry_policy_after_action(state: &RunState, step: StepIdx) -> RuntimeResult<RetryPolicy> {
     let Some(node) = state.workflow.node(step) else {
         return Err(RuntimeError::InvalidActionCompletion);
     };

@@ -7312,7 +7312,10 @@ fn check_policy_returns_policy_exceeded_when_actual_greater_than_limit() {
     };
     let policy = BoundednessPolicy::DEFAULT;
     let result = usage.check_policy(&policy);
-    assert!(result.is_err(), "check_policy must reject policy-exceeding usage");
+    assert!(
+        result.is_err(),
+        "check_policy must reject policy-exceeding usage"
+    );
     match result {
         Err(AggregateBudgetError::PolicyExceeded {
             resource,

@@ -13,7 +13,6 @@ pub mod together;
 pub mod wait_ask;
 #[cfg(test)]
 pub mod wait_ask_tests;
-pub(crate) use wait_ask::{ask, ask_resume, wait_event, wait_until};
 pub use vb_core::frame::RunFrame;
 
 #[cfg(kani)]

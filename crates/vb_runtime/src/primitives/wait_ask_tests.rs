@@ -6,7 +6,7 @@ use vb_core::frame::RunFrame;
 use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 
-use super::{ask, ask_resume, wait_event, wait_until};
+use crate::primitives::wait_ask::{ask, ask_resume, wait_event, wait_until};
 
 fn fresh_frame() -> RunFrame {
     crate::test_harness::fresh_frame(4, 8)

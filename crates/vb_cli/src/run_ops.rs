@@ -21,7 +21,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use vb_ipc::client::IpcClient;
 use vb_ipc::{IpcCommand, IpcPayload};
 
-pub(crate) fn cmd_retry(run_id: &str, step: Option<&u16>, db: &std::path::Path, output: OutputFormat) -> ExitCode {
+pub(crate) fn cmd_retry(
+    run_id: &str,
+    step: Option<&u16>,
+    db: &std::path::Path,
+    output: OutputFormat,
+) -> ExitCode {
     let events = match read_journal_events(run_id, db, output) {
         Ok(ev) => ev,
         Err(code) => return code,
@@ -52,7 +57,10 @@ pub(crate) fn cmd_retry(run_id: &str, step: Option<&u16>, db: &std::path::Path, 
     // If --step was provided, use it; otherwise calculate from analysis
     let resume_step = match step {
         Some(s) => *s,
-        None => analysis.last_successful_step.map(|s| s.saturating_add(1)).unwrap_or(0),
+        None => analysis
+            .last_successful_step
+            .map(|s| s.saturating_add(1))
+            .unwrap_or(0),
     };
     if output != OutputFormat::Text {
         crate::emit_json_or_return!(

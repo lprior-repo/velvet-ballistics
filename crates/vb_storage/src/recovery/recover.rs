@@ -7,7 +7,9 @@
 //! - Incomplete run discovery
 //! - Digest verification
 
-use crate::recovery::types::{DigestCheck, DigestCheckConfig, RecoveryError, RecoveryHydration, RecoveryResult};
+use crate::recovery::types::{
+    DigestCheck, DigestCheckConfig, RecoveryError, RecoveryHydration, RecoveryResult,
+};
 use crate::{FjallJournal, JournalEvent};
 use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest};
 
@@ -102,6 +104,7 @@ pub fn verify_digests(
     if matches!(level, DigestCheck::WorkflowAndIr | DigestCheck::Full) {
         check_compiled_ir_digest(ir_digest, found_ir_digest)?;
     }
+    #[allow(clippy::collapsible_if)]
     if matches!(level, DigestCheck::Full) {
         if let Some(cfg) = config {
             if let Some(entries) = cfg.action_abi_entries {

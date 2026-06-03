@@ -131,6 +131,7 @@ fn persist_accepted_artifact(
     let record = CompiledIrRecord {
         digest: artifact.digest,
         ir: payload,
+        metadata_hash: None,
     };
     put_compiled_ir(journal, &record)
 }
@@ -289,6 +290,7 @@ fn persist_source_and_artifact_returns_compiled_ir_digest_mismatch_when_artifact
     let record = CompiledIrRecord {
         digest: wrong_digest,
         ir: postcard::to_allocvec(&artifact).map_err(|error| error.to_string())?,
+        metadata_hash: None,
     };
 
     let result = put_compiled_ir(&journal, &record);
@@ -455,6 +457,7 @@ fn admit_strict_artifact_run_rejects_raw_workflow_parts_or_yaml_bypass_with_acce
         &CompiledIrRecord {
             digest: workflow.digest(),
             ir: postcard::to_allocvec(&workflow.to_parts()).map_err(|error| error.to_string())?,
+            metadata_hash: None,
         },
     );
     assert_eq!(
