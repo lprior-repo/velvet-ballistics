@@ -87,3 +87,6 @@ isolates/
 # Beads workspace state
 .beads/
 .beads/*/agent-invocation-ledger.jsonl
+
+# Beads / Dolt files (added by bd init)
+.beads/proxieddb/
