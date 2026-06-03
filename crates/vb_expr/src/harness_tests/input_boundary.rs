@@ -32,10 +32,16 @@ fn harness_returns_silently_for_invalid_utf8_ff_fe_fd() {
     // When: utf-8 validation runs
     let is_valid = validate_utf8_for_harness(data);
     // Then: it's rejected as invalid UTF-8
-    assert!(!is_valid, "0xFF 0xFE 0xFD must be detected as invalid UTF-8");
+    assert!(
+        !is_valid,
+        "0xFF 0xFE 0xFD must be detected as invalid UTF-8"
+    );
     // And: the full pipeline must not panic on this input
     let result = simulate_harness_pipeline(data);
-    assert!(result.is_err(), "invalid UTF-8 must produce an error from pipeline");
+    assert!(
+        result.is_err(),
+        "invalid UTF-8 must produce an error from pipeline"
+    );
 }
 
 // ── A-2: Empty bytes produce valid UTF-8, lex returns [End] ──
@@ -45,13 +51,20 @@ fn harness_returns_silently_for_empty_bytes() {
     // Given: empty byte slice
     let data: &[u8] = b"";
     // When: validated as UTF-8
-    assert!(validate_utf8_for_harness(data), "empty bytes are valid UTF-8");
+    assert!(
+        validate_utf8_for_harness(data),
+        "empty bytes are valid UTF-8"
+    );
     let text = std::str::from_utf8(data).expect("empty bytes must be valid UTF-8");
     // Then: lex returns Ok with [End] (empty input is valid for lexing)
     let tokens = lex_expr(text);
     assert!(tokens.is_ok(), "empty string must lex successfully");
     let tokens = tokens.unwrap();
-    assert_eq!(tokens.len(), 1, "empty input must produce exactly one End token");
+    assert_eq!(
+        tokens.len(),
+        1,
+        "empty input must produce exactly one End token"
+    );
 }
 
 // ── A-3: Whitespace-only input is valid UTF-8, lex returns [End] ──
@@ -67,7 +80,11 @@ fn harness_returns_silently_for_whitespace_only_input() {
     let tokens = lex_expr(text);
     assert!(tokens.is_ok(), "whitespace-only must lex successfully");
     let tokens = tokens.unwrap();
-    assert_eq!(tokens.len(), 1, "whitespace-only must produce exactly one End token");
+    assert_eq!(
+        tokens.len(),
+        1,
+        "whitespace-only must produce exactly one End token"
+    );
 }
 
 // ── A-4: Harness never panics on arbitrary byte sequences ──
@@ -91,7 +108,9 @@ fn harness_never_panics_on_zero_length_byte() {
 #[test]
 fn harness_never_panics_on_binary_garbage() {
     // Given: arbitrary binary garbage
-    let data: &[u8] = &[0x00, 0x01, 0x02, 0x80, 0x81, 0xFE, 0xFF, 0xC0, 0xC1, 0xF5, 0xF6, 0xF7];
+    let data: &[u8] = &[
+        0x00, 0x01, 0x02, 0x80, 0x81, 0xFE, 0xFF, 0xC0, 0xC1, 0xF5, 0xF6, 0xF7,
+    ];
     // When/Then: pipeline must not panic
     let _ = simulate_harness_pipeline(data);
 }

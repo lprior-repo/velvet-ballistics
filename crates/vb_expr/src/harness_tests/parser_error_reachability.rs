@@ -90,7 +90,10 @@ fn harness_returns_too_many_helper_args_for_exactly_8_args_is_accepted() {
     let result = harness_parse_stage(source);
     match result {
         Err(ExprError::TooManyHelperArgs { len, max }) => {
-            assert_eq!(len, 8, "8th arg triggers TooMany because len >= MAX_HELPER_ARGS before push");
+            assert_eq!(
+                len, 8,
+                "8th arg triggers TooMany because len >= MAX_HELPER_ARGS before push"
+            );
             assert_eq!(max, 8);
         }
         _ => {} // may also get HelperArityMismatch because append_if wants 3
@@ -104,7 +107,11 @@ fn harness_returns_helper_arity_mismatch_for_contains_with_1_arg() {
     let source = "contains(1)";
     let result = harness_parse_stage(source);
     match result {
-        Err(ExprError::HelperArityMismatch { helper, expected, actual }) => {
+        Err(ExprError::HelperArityMismatch {
+            helper,
+            expected,
+            actual,
+        }) => {
             assert_eq!(helper, "contains");
             assert_eq!(expected, 2);
             assert_eq!(actual, 1);
@@ -118,7 +125,11 @@ fn harness_returns_helper_arity_mismatch_for_exists_with_2_args() {
     let source = "exists(1, 2)";
     let result = harness_parse_stage(source);
     match result {
-        Err(ExprError::HelperArityMismatch { helper, expected, actual }) => {
+        Err(ExprError::HelperArityMismatch {
+            helper,
+            expected,
+            actual,
+        }) => {
             assert_eq!(helper, "exists");
             assert_eq!(expected, 1);
             assert_eq!(actual, 2);
@@ -132,7 +143,11 @@ fn harness_returns_helper_arity_mismatch_for_empty_with_0_args() {
     let source = "empty()";
     let result = harness_parse_stage(source);
     match result {
-        Err(ExprError::HelperArityMismatch { helper, expected, actual }) => {
+        Err(ExprError::HelperArityMismatch {
+            helper,
+            expected,
+            actual,
+        }) => {
             assert_eq!(helper, "empty");
             assert_eq!(expected, 1);
             assert_eq!(actual, 0);
@@ -203,7 +218,10 @@ fn harness_returns_unexpected_token_for_bare_identifier() {
     let result = harness_parse_stage(source);
     match result {
         Err(ExprError::UnexpectedToken { token }) => {
-            assert!(token.contains("xyz"), "token must mention the bare identifier");
+            assert!(
+                token.contains("xyz"),
+                "token must mention the bare identifier"
+            );
         }
         other => panic!("expected UnexpectedToken, got {:?}", other),
     }
@@ -234,7 +252,10 @@ fn harness_returns_unexpected_token_for_unclosed_paren() {
     match result {
         Err(ExprError::UnexpectedToken { .. }) => {}
         Err(ExprError::UnexpectedEof) => {} // either variant is acceptable
-        other => panic!("expected UnexpectedToken or UnexpectedEof for unclosed '(' , got {:?}", other),
+        other => panic!(
+            "expected UnexpectedToken or UnexpectedEof for unclosed '(' , got {:?}",
+            other
+        ),
     }
 }
 
@@ -258,5 +279,9 @@ fn harness_accepts_parse_depth_exactly_64() {
     let close = ")".repeat(64);
     let source = format!("{open}1{close}");
     let result = harness_parse_stage(&source);
-    assert!(result.is_ok(), "64 levels of nesting must be accepted, got {:?}", result);
+    assert!(
+        result.is_ok(),
+        "64 levels of nesting must be accepted, got {:?}",
+        result
+    );
 }

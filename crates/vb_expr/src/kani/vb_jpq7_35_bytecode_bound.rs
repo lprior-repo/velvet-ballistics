@@ -9,9 +9,9 @@
 //! - push_constant returns ConstantPoolOverflow when constants exceed MAX_CONSTANTS=65535
 //! - Both bounds are independently enforced
 
+use crate::ExprError;
 use crate::bytecode::{compile_expr_to_bytecode, push_constant};
 use crate::parser::{ExprAst, ExprLiteral};
-use crate::ExprError;
 use vb_core::ConstValue;
 
 /// Maximum bytecode ops (must match MAX_OPS in bytecode/mod.rs).

@@ -106,7 +106,11 @@ fn harness_returns_type_mismatch_for_null_plus_int() {
     match result {
         Err(ExprError::TypeMismatch { expected, found }) => {
             assert_eq!(expected, "number");
-            assert!(found.contains("null"), "found type should be null, got: {}", found);
+            assert!(
+                found.contains("null"),
+                "found type should be null, got: {}",
+                found
+            );
         }
         other => panic!("expected TypeMismatch, got {:?}", other),
     }
@@ -162,7 +166,11 @@ fn harness_returns_type_mismatch_for_not_null() {
     match result {
         Err(ExprError::TypeMismatch { expected, found }) => {
             assert_eq!(expected, "boolean");
-            assert!(found.contains("null"), "found type should be null, got: {}", found);
+            assert!(
+                found.contains("null"),
+                "found type should be null, got: {}",
+                found
+            );
         }
         other => panic!("expected TypeMismatch, got {:?}", other),
     }
@@ -198,7 +206,10 @@ fn ok_value_has_non_empty_type_name_for_bool() {
     let result = harness_full_pipeline("true");
     let value = result.expect("true must evaluate successfully");
     let type_name = value.type_name();
-    assert!(!type_name.is_empty(), "type_name must not be empty for Bool");
+    assert!(
+        !type_name.is_empty(),
+        "type_name must not be empty for Bool"
+    );
 }
 
 #[test]
@@ -206,5 +217,8 @@ fn ok_value_has_non_empty_type_name_for_null() {
     let result = harness_full_pipeline("null");
     let value = result.expect("null must evaluate successfully");
     let type_name = value.type_name();
-    assert!(!type_name.is_empty(), "type_name must not be empty for Null");
+    assert!(
+        !type_name.is_empty(),
+        "type_name must not be empty for Null"
+    );
 }

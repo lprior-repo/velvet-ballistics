@@ -244,16 +244,14 @@ fn pipeline_evaluates_inequality_different_integers() {
 
 #[test]
 fn pipeline_ok_result_has_valid_type_name() {
-    for (source, _expected_type) in [
-        ("1 + 2", "number"),
-        ("true", "boolean"),
-        ("null", "null"),
-    ] {
+    for (source, _expected_type) in [("1 + 2", "number"), ("true", "boolean"), ("null", "null")] {
         let result = pipeline_eval(source).expect("expression must evaluate");
         let type_name = result.type_name();
         assert!(
             !type_name.is_empty(),
-            "type_name must not be empty for '{}', got '{}'", source, type_name
+            "type_name must not be empty for '{}', got '{}'",
+            source,
+            type_name
         );
     }
 }

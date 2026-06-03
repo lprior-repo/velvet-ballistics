@@ -31,7 +31,10 @@ fn try_make_program(ops: Vec<ExprOp>) -> CoreResult<ExprProgram> {
     ExprProgram::try_from_ops(ops.into_boxed_slice())
 }
 
-fn eval_with_consts(program: &ExprProgram, constants: Vec<ConstValue>) -> Result<SlotValue, ExprError> {
+fn eval_with_consts(
+    program: &ExprProgram,
+    constants: Vec<ConstValue>,
+) -> Result<SlotValue, ExprError> {
     let slots: Vec<Option<SlotValue>> = Vec::new();
     eval_expr_program(program, &slots, &constants)
 }
@@ -101,10 +104,7 @@ fn unit_stack_underflow_from_stack_validation_at_construction() {
 #[test]
 fn unit_stack_underflow_from_unbalanced_program() {
     // Program [LoadConst(0), Add]: pushes 1, then tries to pop 2.
-    let program = try_make_program(vec![
-        ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::Add,
-    ]);
+    let program = try_make_program(vec![ExprOp::LoadConst(ConstIdx::new(0)), ExprOp::Add]);
     match program {
         Err(vb_core::CoreError::ExpressionStackUnderflow) => {}
         other => panic!(
@@ -180,7 +180,11 @@ fn unit_valid_program_constructs_successfully() {
         ExprOp::Add,
     ];
     let program = try_make_program(ops);
-    assert!(program.is_ok(), "balanced program must construct, got {:?}", program);
+    assert!(
+        program.is_ok(),
+        "balanced program must construct, got {:?}",
+        program
+    );
     let program = program.unwrap();
     let result = eval_with_consts(&program, vec![ConstValue::I64(2), ConstValue::I64(3)]);
     match result {

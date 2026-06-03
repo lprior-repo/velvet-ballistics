@@ -82,14 +82,18 @@ fn nan_bug_f64_multiplication_producing_inf() {
     // 1e308 * 1e308 overflows to Inf in f64
     // But our lexer only handles [0-9]+\.[0-9]+ without e-notation
     // So we need a different approach — large values
-    let source = "99999999999999999999999999999999999999.0 * 99999999999999999999999999999999999999.0";
+    let source =
+        "99999999999999999999999999999999999999.0 * 99999999999999999999999999999999999999.0";
     let result = pipeline_eval(source);
     // This large value may not parse (IntegerOutOfRange), but if it does lex,
     // it should produce NonFiniteFloat or evaluate fine
     match result {
         Err(ExprError::NonFiniteFloat) | Err(ExprError::IntegerOutOfRange) => {}
         Ok(_) => {} // also acceptable if doesn't overflow
-        other => panic!("unexpected result for large f64 multiplication: {:?}", other),
+        other => panic!(
+            "unexpected result for large f64 multiplication: {:?}",
+            other
+        ),
     }
 }
 
@@ -100,7 +104,11 @@ fn nan_bug_f64_add_zero_does_not_produce_non_finite() {
     let result = pipeline_eval(source);
     match result {
         Ok(SlotValue::F64(f)) => {
-            assert!((f.get() - 3.0).abs() < 1e-10, "1.0 + 2.0 = 3.0, got {}", f.get());
+            assert!(
+                (f.get() - 3.0).abs() < 1e-10,
+                "1.0 + 2.0 = 3.0, got {}",
+                f.get()
+            );
         }
         other => panic!("expected Ok(F64(3.0)), got {:?}", other),
     }
@@ -112,7 +120,11 @@ fn nan_bug_f64_subtract_produces_valid_result() {
     let result = pipeline_eval(source);
     match result {
         Ok(SlotValue::F64(f)) => {
-            assert!((f.get() - 1.5).abs() < 1e-10, "5.0 - 3.5 = 1.5, got {}", f.get());
+            assert!(
+                (f.get() - 1.5).abs() < 1e-10,
+                "5.0 - 3.5 = 1.5, got {}",
+                f.get()
+            );
         }
         other => panic!("expected Ok(F64(1.5)), got {:?}", other),
     }
@@ -124,7 +136,11 @@ fn nan_bug_f64_multiply_produces_valid_result() {
     let result = pipeline_eval(source);
     match result {
         Ok(SlotValue::F64(f)) => {
-            assert!((f.get() - 10.0).abs() < 1e-10, "2.5 * 4.0 = 10.0, got {}", f.get());
+            assert!(
+                (f.get() - 10.0).abs() < 1e-10,
+                "2.5 * 4.0 = 10.0, got {}",
+                f.get()
+            );
         }
         other => panic!("expected Ok(F64(10.0)), got {:?}", other),
     }
@@ -145,7 +161,10 @@ fn nan_bug_f64_negation_produces_type_mismatch() {
             assert!(!expected.is_empty());
             assert!(!found.is_empty());
         }
-        other => panic!("expected TypeMismatch for -3.14 (I64/F64 mismatch), got {:?}", other),
+        other => panic!(
+            "expected TypeMismatch for -3.14 (I64/F64 mismatch), got {:?}",
+            other
+        ),
     }
 }
 

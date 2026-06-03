@@ -183,7 +183,11 @@ fn harness_accepts_source_at_exactly_4096_bytes_boundary() {
     // When: lex stage runs
     let result = harness_lex_stage(&source);
     // Then: must succeed (no ExpressionTooLong)
-    assert!(result.is_ok(), "4096-byte source must be accepted, got {:?}", result);
+    assert!(
+        result.is_ok(),
+        "4096-byte source must be accepted, got {:?}",
+        result
+    );
 }
 
 // ── B-6: Boundary: exactly 256 tokens accepted ──
@@ -194,5 +198,9 @@ fn harness_accepts_source_with_exactly_256_tokens_boundary() {
     // The trailing "+" is fine — lex just counts tokens, parse handles validity.
     let source = "1+".repeat(128);
     let result = harness_lex_stage(&source);
-    assert!(result.is_ok(), "256 tokens must be accepted, got {:?}", result);
+    assert!(
+        result.is_ok(),
+        "256 tokens must be accepted, got {:?}",
+        result
+    );
 }

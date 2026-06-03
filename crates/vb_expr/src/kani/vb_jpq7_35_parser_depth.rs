@@ -12,8 +12,8 @@
 //!   (((...((1))...)))  — N open parens, literal, N close parens
 //! and verify ParseDepthExceeded for N > 64.
 
-use crate::lexer::Token;
 use crate::ExprError;
+use crate::lexer::Token;
 
 /// Maximum parse depth (must match MAX_DEPTH in parser/mod.rs).
 const MAX_DEPTH: u8 = 64;

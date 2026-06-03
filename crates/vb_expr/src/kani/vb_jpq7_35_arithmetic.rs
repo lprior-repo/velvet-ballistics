@@ -10,11 +10,11 @@
 //! Verifies that all i64 arithmetic operations use checked_* operations,
 //! returning IntegerOverflow on overflow and DivisionByZero on zero divisor.
 
+use crate::ExprError;
 use crate::eval::{eval_binary_op, eval_unary_op};
 use crate::lexer::{BinaryOp, UnaryOp};
-use crate::ExprError;
-use vb_core::value::FiniteF64;
 use vb_core::SlotValue;
+use vb_core::value::FiniteF64;
 
 /// PO-KANI-005 H1: i64::MAX + 1 returns IntegerOverflow.
 #[kani::proof]
