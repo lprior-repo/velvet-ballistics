@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Fuzz target for IPC frame decode — full harness with bounded read paths.
 //!
 //! This target exercises three decode paths through `fuzz_lib::fuzz_ipc_frame`:

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Fuzz target for YAML event parsing.
 //!
 //! This target verifies that YAML profile validation and event parsing never panic

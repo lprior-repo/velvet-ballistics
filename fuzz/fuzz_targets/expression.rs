@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Fuzz target for expression lex/parse/compile/eval roundtrip.
 //!
 //! This target verifies that expression evaluation never panics on any UTF-8 input.
