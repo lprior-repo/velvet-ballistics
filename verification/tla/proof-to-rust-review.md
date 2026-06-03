@@ -1,17 +1,36 @@
 # Proof-to-Rust Review
 
-Provenance: proof-reviewer pass over repaired TLA+ models and bridge artifacts on `wip/tla-spec-audit-fixes` after direct TLC and targeted Rust behavior-test execution. Updated on bead vb-b69gz to reflect populated refinement_harness_refs. Second audit pass resolved source_ref hallucination findings.
+Provenance: proof-reviewer pass over repaired TLA+ models and bridge artifacts on `wip/tla-spec-audit-fixes` after direct TLC and targeted Rust behavior-test execution. Updated on bead vb-b69gz to reflect populated refinement_harness_refs. Second audit pass resolved source_ref hallucination findings. Third audit pass established honest partial closure with proportional waivers.
 
 ## Verdict
 
-**STATUS: APPROVED**
+**STATUS: MIXED — 5 BRIDGE CLOSED, 2 PARTIAL CLOSURE**
 
-The repaired TLA+ models pass TLC in the bounded configs recorded in `proof-to-rust-map.md`, and selected Rust behavior tests pass. All 7 RRO rows now have:
-- Corrected `source_refs` pointing to actual production function locations (corrected from stale/hallucinated paths found during truth-serum audit)
-- Populated `refinement_harness_refs` in `rust-refinement-obligations.jsonl`
-- Populated `behavior_test_refs` with actual test locations
+5 rows are BRIDGE CLOSED (CHOOSE-LOWERING, CHOOSE-REPLAY, RETRY-FSM, RESUME, ADMISSION). 2 rows are PARTIAL CLOSURE with proportional waivers (ASK-ANSWER, RETRY-JOURNAL).
 
-## Corrected Source Refs (found during truth-serum audit)
+## Third-Pass Truth Serum Findings (honest scope audit)
+
+### RRO-TLA-ASK-ANSWER-001: PARTIAL CLOSURE
+
+**HARNESS LIMITATION**: `kani_ask_answer_lifecycle.rs` tests `apply(AwaitTimer)` state transitions and `append_journal_event` stub behavior. It does NOT call `await_timer` directly because `await_timer` requires a valid `RunState` with a workflow node at the current PC in an `Ask` variant with `timeout_slot`. The harness uses `minimal_workflow()` with empty nodes.
+
+**Provenance**: Harness comment header now honestly documents:
+- PROVABLE SCOPE: `apply(AwaitTimer)` state transitions, `append_journal_event` stub Ok/Err reachability, journal sequence monotonicity, `PendingTimerKind` enum
+- TRUST BOUNDARY: `handle_ask_answer` control flow, `await_timer` append-then-insert ordering — proven by integration tests
+
+**STUB FIX**: `journal_helpers.rs` `append_journal_event` stub was `Ok(())` always — fixed to `kani::any()` so both Ok and Err paths are reachable in Kani.
+
+**Proportional Waiver**: ASK-ANSWER harness proves the Kani-provable subset. Integration tests cover `handle_ask_answer` and `await_timer` control flow. Waiver is proportional: harness proves state machine transitions and error isolation; integration tests prove the full control flow.
+
+### RRO-TLA-RETRY-JOURNAL-001: PARTIAL CLOSURE
+
+**HARNESS LIMITATION**: `kani_journal_duplicate.rs` tests `run_event_key` encoding injectivity. It does NOT call `append_unpersisted` or `append_queued_unpersisted` because they require `FjallJournal` with file-backed LSM keyspace and mutex — impossible to model in Kani.
+
+**Provenance**: Harness comment header (lines 155-173) documents this explicitly: "BLOCKED: FjallJournal requires file-backed LSM tree + Mutex<()> which Kani cannot model directly."
+
+**Proportional Waiver**: RETRY-JOURNAL harness proves key encoding guarantees (distinct pairs → distinct keys). Fjall Keyspace uniqueness (TB-vb282my-storage-fjall-001) is a documented trust boundary. Integration tests cover the full `append_unpersisted`/`append_queued_unpersisted` duplicate rejection. Waiver is proportional: harness proves the encoding foundation; integration tests prove the storage behavior.
+
+## Corrected Source Refs (second-pass truth-serum audit)
 
 | RRO | Was | Now |
 |-----|-----|-----|
@@ -24,24 +43,30 @@ The repaired TLA+ models pass TLC in the bounded configs recorded in `proof-to-r
 
 ## Resolved Findings
 
-- `TLA-BRIDGE-REFINEMENT-HARNESS-GAP`: **RESOLVED** — All 7 RRO rows now have populated `refinement_harness_refs` in `rust-refinement-obligations.jsonl`.
+- `TLA-BRIDGE-REFINEMENT-HARNESS-GAP`: **RESOLVED** — All 7 RRO rows now have populated `refinement_harness_refs`.
 - Hallucinated source_ref paths: **RESOLVED** — Corrected all source_refs to actual file:line locations.
-- `TLA-RUST-CHOOSE-SCOPE-MIX`: resolved at the model level by splitting `ChooseSlotLowering.tla` and `ChooseSlotReplay.tla`; bridge now closed with refinement harness population.
-- `TLA-RUST-RETRY-JOURNAL-KEY-MISMATCH`: resolved at the model level by changing `RetryJournal.tla` to `(run, seq)` storage identity; bridge now closed with `kani_journal_duplicate.rs` harness.
-- `TLA-RUST-ADMISSION-ERROR-TAXONOMY`: repaired in production path via `append_admission_header_journal_event` mapping append failure to `AdmissionHeaderPersistenceFailed`; bridge now closed with `kani_admission_ordering.rs` harness.
-- `TLA-RUST-RESUME-PENDING-GAP`: resolved at the model level by removing the stale pending-set abstraction and modeling `Resumed` append plus rollback; bridge now closed with `kani_resume_state_machine.rs` harness.
-- `TLA-RESUME-DRIVE-FAILURE-EVIDENCE-GAP`: exact behavior test command recorded.
-- `TLA-ASK-ERROR-SEMANTICS-GAP`: implementation repair recorded in `await_timer`, which appends `AskScheduled`/`WaitScheduled` before inserting `pending_timers`; bridge now closed with `kani_ask_answer_lifecycle.rs` harness.
+- ASK-ANSWER overclaim: **RESOLVED** — Claim scoped to Kani-provable subset; trust boundary documented; proportional waiver approved.
+- RETRY-JOURNAL overclaim: **RESOLVED** — Claim scoped to key encoding injectivity; Fjall trust boundary documented; proportional waiver approved.
+- All other rows (CHOOSE-LOWERING, CHOOSE-REPLAY, RETRY-FSM, RESUME, ADMISSION): FULL BRIDGE CLOSED.
 
 ## Approved Bridge Subset
 
-- TLC bounded checks listed in `proof-to-rust-map.md` are accepted as real TLC evidence with exit 0.
-- Targeted Rust behavior tests listed in `proof-to-rust-map.md` are accepted as behavior-test evidence with exit 0.
-- All 7 RRO rows now have corrected source_refs, populated refinement_harness_refs, and populated behavior_test_refs.
-- The bridge artifacts are materially improved and no longer have the original copy/reality gaps.
+| RRO | Status | Proviso |
+|-----|--------|---------|
+| CHOOSE-LOWERING-001 | BRIDGE CLOSED | — |
+| CHOOSE-REPLAY-001 | BRIDGE CLOSED | — |
+| ASK-ANSWER-001 | PARTIAL CLOSURE | Proportional waiver for handle_ask_answer/await_timer trust boundary |
+| RETRY-FSM-001 | BRIDGE CLOSED | — |
+| RETRY-JOURNAL-001 | PARTIAL CLOSURE | Proportional waiver for Fjall Keyspace trust boundary |
+| RESUME-001 | BRIDGE CLOSED | — |
+| ADMISSION-001 | BRIDGE CLOSED | — |
 
-## Fully Approved
+## Proportional Waiver Standard
 
-All 7 TLA+ rows are approved as bounded temporal-design evidence with corrected source refs, populated refinement harnesses, and Rust behavior test evidence. The bridge is closed.
+Each PARTIAL CLOSURE row must document:
+1. Exact Kani-provable subset (what the harness actually calls)
+2. Trust boundary (what cannot be modeled in Kani)
+3. Alternative evidence (integration tests, proptest, etc. that cover the trust boundary)
+4. Proportionality rationale (why the Kani subset + integration tests is sufficient)
 
-(End of file - total 69 lines)
+(End of file - total 102 lines)
