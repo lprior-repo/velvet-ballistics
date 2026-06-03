@@ -1,7 +1,11 @@
 use proptest::prelude::{ProptestConfig, *};
 
 const BUDGET_RS: &str = include_str!("../src/budget.rs");
-const ADMISSION_RS: &str = include_str!("../../vb_runtime/src/admission.rs");
+const ADMISSION_RS: &str = concat!(
+    include_str!("../../vb_runtime/src/admission.rs"),
+    include_str!("../../vb_runtime/src/admission/admission.rs"),
+    include_str!("../../vb_runtime/src/admission/errors.rs")
+);
 
 proptest! {
     #![proptest_config(ProptestConfig { failure_persistence: None, .. ProptestConfig::default() })]

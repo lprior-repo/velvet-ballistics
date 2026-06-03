@@ -1,5 +1,8 @@
 const BUDGET_RS: &str = include_str!("../src/budget.rs");
-const ADMISSION_RS: &str = include_str!("../../vb_runtime/src/admission.rs");
+const ADMISSION_RS: &str = concat!(
+    include_str!("../../vb_runtime/src/admission.rs"),
+    include_str!("../../vb_runtime/src/admission/errors.rs")
+);
 
 #[test]
 fn aggregate_budget_error_shape_snapshot_matches_contract() {

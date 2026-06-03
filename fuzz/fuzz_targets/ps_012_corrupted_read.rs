@@ -43,6 +43,7 @@ fn valid_compiled_ir_record() -> Result<CompiledIrRecord, String> {
         digest: artifact.digest,
         ir: postcard::to_allocvec(&artifact)
             .map_err(|error| format!("artifact encode failed: {error}"))?,
+        metadata_hash: None,
     })
 }
 
@@ -97,6 +98,7 @@ fn assert_digest_mismatch_is_rejected(record: CompiledIrRecord) {
     let corrupted = CompiledIrRecord {
         digest: vb_core::WorkflowDigest::from_bytes(digest_bytes),
         ir: record.ir,
+        metadata_hash: None,
     };
     let result = vb_storage::admission::fuzz_access::validate_compiled_ir_record(&corrupted);
     assert!(
@@ -135,6 +137,7 @@ fn inner_payload_checksum_corruption(record: CompiledIrRecord) -> Result<Compile
         digest: record.digest,
         ir: postcard::to_allocvec(&artifact)
             .map_err(|error| format!("corrupted artifact encode failed: {error}"))?,
+        metadata_hash: None,
     })
 }
 

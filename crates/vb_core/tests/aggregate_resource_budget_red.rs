@@ -2,7 +2,11 @@
 
 const BUDGET_RS: &str = include_str!("../src/budget.rs");
 const CORE_LIB_RS: &str = include_str!("../src/lib.rs");
-const ADMISSION_RS: &str = include_str!("../../vb_runtime/src/admission.rs");
+const ADMISSION_RS: &str = concat!(
+    include_str!("../../vb_runtime/src/admission.rs"),
+    include_str!("../../vb_runtime/src/admission/admission.rs"),
+    include_str!("../../vb_runtime/src/admission/errors.rs")
+);
 const SHARD_TYPES_RS: &str = include_str!("../../vb_runtime/src/shard/types.rs");
 
 fn repository_source() -> String {

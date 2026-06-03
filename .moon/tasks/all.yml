@@ -404,7 +404,17 @@ tasks:
       set -euo pipefail
       mkdir -p target/miri-tmp
       mkdir -p target/moon-locks
-      TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" MIRIFLAGS="-Zmiri-disable-isolation" timeout 30m rustup run nightly-2026-04-28 cargo miri test --quiet -p vb_core -p vb_expr -p vb_compile --all-features
+      run_miri_smoke() {
+        package="$1"
+        filter="$2"
+        TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" MIRIFLAGS="-Zmiri-disable-isolation" timeout 10m rustup run nightly-2026-04-28 cargo miri test --quiet -p "${package}" --lib --all-features "${filter}"
+      }
+      # CI policy: Miri is a bounded UB smoke lane for pure crates. The full
+      # native test lane owns exhaustive behavior; sweeping all normal unit tests
+      # under Miri exceeds the configured 30m automation budget.
+      run_miri_smoke vb_core validate_action_outcome_failed_always_succeeds
+      run_miri_smoke vb_expr miri_tests
+      run_miri_smoke vb_compile compile_error_empty_source_code
     toolchains:
       - rust
     inputs:

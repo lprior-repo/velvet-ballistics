@@ -19,6 +19,12 @@ use vb_runtime::shard::{Shard, ShardCommand, ShardConfig};
 #[cfg(test)]
 use vb_storage::__put_compiled_ir_for_testing as put_compiled_ir;
 
+const RUNTIME_ADMISSION_SOURCE: &str = concat!(
+    include_str!("../../../crates/vb_runtime/src/admission.rs"),
+    include_str!("../../../crates/vb_runtime/src/admission/admission.rs"),
+    include_str!("../../../crates/vb_runtime/src/admission/stores.rs")
+);
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ObservedAdmissionDiagnostic {
     Admitted(RunAdmission),
@@ -1406,7 +1412,7 @@ fn given_strict_journaled_runtime_when_constructed_then_storage_backed_artifact_
 #[test]
 fn given_valid_accepted_artifact_when_runtime_admits_then_yaml_json_decoder_is_not_called() {
     // Given / When: static guard over the strict runtime admission implementation.
-    let admission_source = include_str!("../../../crates/vb_runtime/src/admission.rs");
+    let admission_source = RUNTIME_ADMISSION_SOURCE;
     let strict_path_start = admission_source.find("pub fn admit_artifact_run");
     let strict_path = match strict_path_start {
         Some(start) => match admission_source.get(start..) {
@@ -1425,7 +1431,7 @@ fn given_valid_accepted_artifact_when_runtime_admits_then_yaml_json_decoder_is_n
 #[test]
 fn given_existence_only_artifact_check_when_strict_admission_then_bypass_is_denied() {
     // Given / When
-    let admission_source = include_str!("../../../crates/vb_runtime/src/admission.rs");
+    let admission_source = RUNTIME_ADMISSION_SOURCE;
     let shard_source = include_str!("../../../crates/vb_runtime/src/shard/impl_parts/chunk_001.rs");
 
     // Then

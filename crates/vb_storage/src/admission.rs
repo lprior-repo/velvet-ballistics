@@ -669,11 +669,21 @@ pub(crate) fn compute_artifact_metadata_hash(artifact: &AcceptedArtifact) -> [u8
     // at admission time, not an immutable artifact property
     // NOTE: gate_count is NOT included because Relaxed=0 vs Journaled/Strict=15,
     // so the same artifact legitimately has different gate_count under different policies
-    let _ = hasher.write_all(&[u8::from(artifact.verification.bounded_claimed)]).ok();
-    let _ = hasher.write_all(&[u8::from(artifact.verification.taint_safe_claimed)]).ok();
-    let _ = hasher.write_all(&[u8::from(artifact.verification.retry_safe_claimed)]).ok();
-    let _ = hasher.write_all(&[u8::from(artifact.verification.idempotency_verified_claimed)]).ok();
-    let _ = hasher.write_all(&[u8::from(artifact.verification.replayable_claimed)]).ok();
+    let _ = hasher
+        .write_all(&[u8::from(artifact.verification.bounded_claimed)])
+        .ok();
+    let _ = hasher
+        .write_all(&[u8::from(artifact.verification.taint_safe_claimed)])
+        .ok();
+    let _ = hasher
+        .write_all(&[u8::from(artifact.verification.retry_safe_claimed)])
+        .ok();
+    let _ = hasher
+        .write_all(&[u8::from(artifact.verification.idempotency_verified_claimed)])
+        .ok();
+    let _ = hasher
+        .write_all(&[u8::from(artifact.verification.replayable_claimed)])
+        .ok();
     // Hash idempotency data
     for id in artifact.verification.idempotency_keyed.as_ref() {
         let _ = hasher.write_all(&id.get().to_le_bytes()).ok();
@@ -687,7 +697,9 @@ pub(crate) fn compute_artifact_metadata_hash(artifact: &AcceptedArtifact) -> [u8
         let _ = hasher.write_all(w.message.as_bytes()).ok();
         let _ = hasher.write_all(&[w.gate]).ok();
     }
-    let _ = hasher.write_all(&artifact.accepted_at_seq.get().to_le_bytes()).ok();
+    let _ = hasher
+        .write_all(&artifact.accepted_at_seq.get().to_le_bytes())
+        .ok();
     for cap in artifact.required_capabilities.as_ref() {
         let _ = hasher.write_all(cap.name().as_bytes()).ok();
         let _ = hasher.write_all(&cap.action_id().get().to_le_bytes()).ok();

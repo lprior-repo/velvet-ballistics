@@ -2783,6 +2783,7 @@ pub fn fuzz_accepted_artifact_decode(data: &[u8]) {
     let record = vb_storage::CompiledIrRecord {
         digest,
         ir: data.to_vec(),
+        metadata_hash: None,
     };
     if vb_storage::admission::fuzz_access::validate_compiled_ir_record(&record).is_err() {
         return;
