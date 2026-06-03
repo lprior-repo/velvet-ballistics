@@ -1624,6 +1624,8 @@ fn verify_digests_returns_ok_when_all_match() {
         ir_digest,
         ir_digest, // found_ir_digest = ir_digest (distinct from source_digest)
         DigestCheck::WorkflowAndIr,
+        None,
+        None,
     );
     assert!(
         result.is_ok(),
@@ -1658,6 +1660,8 @@ fn verify_digests_returns_workflow_mismatch_error() {
         test_digest(0xBB),
         stored_digest,
         DigestCheck::WorkflowAndIr,
+        None,
+        None,
     );
 
     let Err(RecoveryError::WorkflowSourceDigestMismatch { expected, found }) = result else {
@@ -1890,6 +1894,8 @@ fn verify_digests_detects_ir_digest_mismatch() {
         ir_digest,
         wrong_ir_digest, // found != expected
         DigestCheck::WorkflowAndIr,
+        None,
+        None,
     );
 
     let Err(RecoveryError::CompiledIrDigestMismatch { expected, found }) = result else {
@@ -2816,6 +2822,8 @@ fn verify_digests_at_workflow_source_only_level() {
         ir_digest,
         ir_digest,
         DigestCheck::WorkflowSourceOnly,
+        None,
+        None,
     );
     assert!(
         result.is_ok(),

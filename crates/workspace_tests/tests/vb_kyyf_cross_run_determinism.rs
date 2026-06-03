@@ -996,6 +996,8 @@ fn repeated_compiled_ir_digest_mismatch(
                 expected_ir_digest,
                 found_ir_digest,
                 DigestCheck::WorkflowAndIr,
+                None,
+                None,
             ),
         ))
     };

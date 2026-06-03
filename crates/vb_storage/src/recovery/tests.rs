@@ -1656,6 +1656,8 @@ fn verify_digests_returns_ok_when_all_match() {
         sample_digest(8),
         sample_digest(8),
         DigestCheck::Full,
+        Some(&[]),
+        Some(&[]),
     )
     .expect("matching digests at Full level should succeed");
 }
@@ -1683,11 +1685,121 @@ fn verify_digests_returns_mismatch_when_ir_differs() {
         sample_digest(8),
         sample_digest(9),
         DigestCheck::WorkflowAndIr,
+        None,
+        None,
     );
     assert!(matches!(
         result,
         Err(RecoveryError::CompiledIrDigestMismatch { .. })
     ));
+}
+
+#[test]
+fn verify_digests_full_level_checks_action_abi_digest() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(202);
+    let workflow_digest = sample_digest(7);
+    let event = JournalEvent::RunAccepted {
+        run,
+        seq: EventSeq::new(0),
+        workflow: workflow_digest,
+    };
+    journal
+        .append_journaled(&event)
+        .expect("setup: append event");
+
+    let action_id = ActionId::new(1);
+    let matching_digest = sample_digest(10);
+    let mismatching_digest = sample_digest(11);
+    let ir_digest = sample_digest(8);
+
+    let result = verify_digests(
+        &journal,
+        run,
+        workflow_digest,
+        ir_digest,
+        ir_digest,
+        DigestCheck::Full,
+        Some(&[(action_id, matching_digest, mismatching_digest)]),
+        Some(&[]),
+    );
+    assert!(matches!(
+        result,
+        Err(RecoveryError::ActionAbiMismatch { action_id: a }) if a == action_id
+    ));
+}
+
+#[test]
+fn verify_digests_full_level_checks_policy_digest() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(203);
+    let workflow_digest = sample_digest(7);
+    let event = JournalEvent::RunAccepted {
+        run,
+        seq: EventSeq::new(0),
+        workflow: workflow_digest,
+    };
+    journal
+        .append_journaled(&event)
+        .expect("setup: append event");
+
+    let step = StepIdx::new(2);
+    let matching_digest = sample_digest(12);
+    let mismatching_digest = sample_digest(13);
+    let ir_digest = sample_digest(8);
+
+    let result = verify_digests(
+        &journal,
+        run,
+        workflow_digest,
+        ir_digest,
+        ir_digest,
+        DigestCheck::Full,
+        Some(&[]),
+        Some(&[(step, matching_digest, mismatching_digest)]),
+    );
+    assert!(matches!(
+        result,
+        Err(RecoveryError::PolicyDigestMismatch { step: s }) if s == step
+    ));
+}
+
+#[test]
+fn verify_digests_full_level_succeeds_with_all_matching() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(204);
+    let workflow_digest = sample_digest(7);
+    let event = JournalEvent::RunAccepted {
+        run,
+        seq: EventSeq::new(0),
+        workflow: workflow_digest,
+    };
+    journal
+        .append_journaled(&event)
+        .expect("setup: append event");
+
+    let action_id = ActionId::new(1);
+    let step = StepIdx::new(2);
+    let digest = sample_digest(10);
+    let ir_digest = sample_digest(8);
+
+    let result = verify_digests(
+        &journal,
+        run,
+        workflow_digest,
+        ir_digest,
+        ir_digest,
+        DigestCheck::Full,
+        Some(&[(action_id, digest, digest)]),
+        Some(&[(step, digest, digest)]),
+    );
+    result.expect("all matching digests at Full level should succeed");
 }
 
 #[test]

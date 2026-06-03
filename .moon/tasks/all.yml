@@ -404,7 +404,7 @@ tasks:
       set -euo pipefail
       mkdir -p target/miri-tmp
       mkdir -p target/moon-locks
-      TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" MIRIFLAGS="-Zmiri-disable-isolation" timeout 3m rustup run nightly-2026-04-28 cargo miri test --quiet -p vb_core --lib --all-features ids::tests::run_id_zero_constant
+      TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" MIRIFLAGS="-Zmiri-disable-isolation" timeout 30m rustup run nightly-2026-04-28 cargo miri test --quiet -p vb_core -p vb_expr -p vb_compile --all-features
     toolchains:
       - rust
     inputs:

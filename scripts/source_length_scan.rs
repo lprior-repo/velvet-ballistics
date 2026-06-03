@@ -145,16 +145,20 @@ pub fn is_hot_source(file: &str) -> bool {
         Some(value) => *value,
         None => return false,
     };
-    let first = match parts.get(3) {
-        Some(value) => *value,
-        None => return false,
-    };
-    crate_name == "vb_runtime"
-        || (crate_name.starts_with("vb_")
-            && matches!(
-                first,
-                "engine.rs" | "engine" | "runtime" | "generated" | "perf"
-            ))
+    if crate_name == "vb_runtime" {
+        return true;
+    }
+    if crate_name.starts_with("vb_") {
+        let first = match parts.get(3) {
+            Some(value) => *value,
+            None => return false,
+        };
+        return matches!(
+            first,
+            "engine.rs" | "engine" | "runtime" | "generated" | "perf"
+        );
+    }
+    false
 }
 
 fn is_test_like(file: &str) -> bool {

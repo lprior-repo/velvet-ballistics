@@ -77,9 +77,13 @@ pub fn check_policy_digest(
 }
 
 /// Verifies all digests at the requested check level.
-/// POST-003: returns Ok only when ALL digests match (workflow, compiled IR).
-/// For action ABI and policy digest checks, use `check_action_abi_digests`
-/// and `check_policy_digests` separately with explicit verifier inputs.
+///
+/// POST-003: returns Ok only when ALL digests match (workflow, compiled IR,
+/// action ABI, policy).
+///
+/// For `DigestCheck::Full`, `action_abi_entries` and `policy_entries` must be
+/// provided to perform the additional checks. If no action ABI or policy digests
+/// exist for a given run, pass empty slices.
 pub fn verify_digests(
     journal: &FjallJournal,
     run: RunId,
@@ -87,6 +91,8 @@ pub fn verify_digests(
     ir_digest: WorkflowDigest,
     found_ir_digest: WorkflowDigest,
     level: DigestCheck,
+    action_abi_entries: Option<&[(ActionId, WorkflowDigest, WorkflowDigest)]>,
+    policy_entries: Option<&[(StepIdx, WorkflowDigest, WorkflowDigest)]>,
 ) -> RecoveryResult<()> {
     if matches!(
         level,
@@ -96,6 +102,14 @@ pub fn verify_digests(
     }
     if matches!(level, DigestCheck::WorkflowAndIr | DigestCheck::Full) {
         check_compiled_ir_digest(ir_digest, found_ir_digest)?;
+    }
+    if matches!(level, DigestCheck::Full) {
+        if let Some(entries) = action_abi_entries {
+            check_action_abi_digests(entries)?;
+        }
+        if let Some(entries) = policy_entries {
+            check_policy_digests(entries)?;
+        }
     }
     Ok(())
 }
