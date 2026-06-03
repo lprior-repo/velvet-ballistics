@@ -1,122 +1,122 @@
-# Proof Plan Review: vb-shvxy (Global Tooling Blocker)
+# Proof Plan Review: vb-wymp, vb-r5zb, vb-ui6k
 
 reviewer_skill: proof-plan-reviewer
-reviewer_invocation_id: vb-shvxy-state4-proof-plan-review-attempt1
+reviewer_invocation_id: vb-wymp-r5zb-ui6k-proof-plan-review-attempt1
 review_state: independent
-planner_invocation_id: vb-shvxy-state4-proof-planner-attempt1
+planner_invocation_id: (none found - no proof planning artifacts exist)
 
-**Bead ID**: vb-shvxy
-**Title**: Global Tooling Blocker — formal verifier lane restoration
-**Review Date**: 2026-05-29
+**Bead IDs**: vb-wymp, vb-r5zb, vb-ui6k
+**Titles**:
+- vb-wymp: storage: Extend DigestCheck::Full to verify action ABI and policy digests
+- vb-r5zb: ci: Expand Miri to run on all vb_core, vb_expr, vb_compile tests
+- vb-ui6k: arch: Expand source-length gate to all first-party Rust files
+**Review Date**: 2026-06-02
+**Commit**: 3375a4e48 fix(vb-wymp,vb-r5zb,vb-ui6k): drive 3 stale beads to done
 
 ## Reviewed Artifacts
 
-| Artifact | SHA-256 |
+| Artifact | Status |
 |---|---|
-| proof-strategy.md | 2eaf349fb1594d4b5ebe1504bf8f2c4d71951980490db9b5cb9b98c50643c317 |
-| verifier-lane-decisions.jsonl | 93607e0004da41c7001fbe64fca8c2f8caf528ae2bbcf044a66b2159ee0b1c06 |
-| proof-obligations.planned.jsonl | 3ab8a4025d1098e74c3a922d0913dca5343dd8848b62b62471a743e80b8344a2 |
-| proof-seeds.jsonl | b001a64b949344bea1c5ba68c5549b4ffdd1668560aa7e3e18babc752f54d01c |
-| trusted-base-plan.md | 983684551386c6fabd724dc8f4e9b18504cee8e38b1d982f2344139468c7026b |
-| waiver-candidates.jsonl | ba09503642373798cd680817a90dba11e6f2234e5a05031566a75c1ba4e19fe5 |
-| traceability-matrix.jsonl | 020de38185778aa8815e6779205ded3536558b9b8dacbb3aabd9c3be7387fcb9 |
-| agent-invocation-ledger.jsonl | c67cdeeda2a131c079a43fc8654f58aef98621b9a68e3fc75760de3165bd9eb1 |
-| delivery-scope.jsonl | debce297b7dc2d1b030d60398c714bc6f2d58aba57468dd56bc670d35ee54984 |
-
-All reviewed artifacts existed before review start.
+| proof-strategy.md | NOT FOUND |
+| verifier-lane-decisions.jsonl | NOT FOUND |
+| proof-obligations.planned.jsonl | NOT FOUND |
+| proof-seeds.jsonl | NOT FOUND |
+| trusted-base-plan.md | NOT FOUND |
+| waiver-candidates.jsonl | NOT FOUND |
+| traceability-matrix.jsonl | NOT FOUND |
+| agent-invocation-ledger.jsonl | Found - no entries for these beads |
 
 ## Summary of Findings
 
-3 findings (0 BLOCKER, 2 WARN, 1 INFO). See `proof-plan-findings.jsonl` for details.
+3 findings (3 BLOCKER). See `proof-plan-findings.jsonl` for details.
 
-### FIND-001 (WARN): Waiver candidate self-stamped review_status
-Waiver candidates WC-001 and WC-002 have `review_status: approved` set by the planner. Waiver candidates must not self-stamp reviewer-only fields. The reviewer independently accepts both waivers after review. Repair: reset to `candidate` in source.
+### FIND-001 (BLOCKER): No proof planning artifacts exist for vb-wymp
+**Bead**: vb-wymp (storage bug fix)
+**Issue**: This bead was driven to done without proof planning artifacts. The bead modifies production Rust code in `crates/vb_storage/src/recovery/recover.rs` to extend `DigestCheck::Full` with action ABI and policy digest verification. According to the verification-lane-policy, any Rust behavior change requires Verus/Kani/Flux/proptest lane decisions and proof obligations.
+**Required fix**: Create proof planning artifacts before this bead can be accepted.
 
-### FIND-002 (WARN): Seed behavior_affecting mismatch
-All 7 proof seeds declare `behavior_affecting: true` but all 16 obligations correctly set `behavior_affecting: false`. This bead restores tooling infrastructure; no production Rust behavior is affected. Seed-level flag should be false.
+### FIND-002 (BLOCKER): No proof planning artifacts exist for vb-r5zb  
+**Bead**: vb-r5zb (CI configuration change)
+**Issue**: This bead modifies `.moon/tasks/all.yml` to expand Miri task. While this is primarily a CI configuration change, the expansion to run Miri on vb_core, vb_expr, vb_compile implies Miri verification obligations exist. No proof planning artifacts exist.
+**Required fix**: Create proof planning artifacts if Miri verification is claimed, or clarify that this is purely CI tooling with no formal verification claims.
 
-### FIND-003 (INFO): Traceability ID scheme mismatch
-Traceability-matrix.jsonl references `PS-SHVXY-00X` IDs but proof-seeds.jsonl uses canonical `vb-shvxy-seed-00X` IDs. These are disjoint schemes breaking traceability. Matrix must use actual seed IDs.
+### FIND-003 (BLOCKER): No proof planning artifacts exist for vb-ui6k
+**Bead**: vb-ui6k (source_length_scan.rs bug fix)
+**Issue**: This bead fixes a bug in `scripts/source_length_scan.rs`. The bead description mentions "is_hot_source bug" fix but the fix modifies Rust code. No proof planning artifacts exist.
+**Required fix**: Create proof planning artifacts before this bead can be accepted.
 
 ## Lane Decision Review Summary
 
-| Category | Count | Verdict |
-|---|---|---|
-| Total lane decisions | 32 | All reviewed |
-| Required lanes | 10 | All accepted |
-| Not applicable lanes | 22 | All accepted |
-| Blocked tooling | 0 | N/A |
-| Rejected | 0 | N/A |
-
-### Per-Lane Breakdown
-
-| Verifier | Required | not_applicable | Status |
-|---|---|---|---|
-| kani | 3 (VLD-001, 027, plus seed-001 req) | 4 (VLD-007, 011, 020, 025) | accepted |
-| flux-rs | 2 (VLD-005, 028) | 4 (VLD-003, 010, 019, 024) | accepted |
-| proptest | 2 (VLD-013, 029) | 4 (VLD-004, 008, 016, 026) | accepted |
-| cargo-fuzz | 2 (VLD-017, 030) | 1 (VLD-021) | accepted |
-| loom | 2 (VLD-022, 031) | 0 | accepted |
-| verus | 0 | 7 (VLD-002, 006, 009, 014, 018, 023, 032) | accepted |
-
-### TLA+ Lanes: Confirmed not_applicable
-All 4 lane decisions for seed-003 (VLD-009 through VLD-012) are `not_applicable` with `limitation_kind: tla-globally-removed`. Waiver WC-001 covers the TLA removal. No TLA/TLC obligations exist. Reviewer confirms: TLA+ lanes are correctly handled as not_applicable.
+**No lane decisions found.** All lanes (Verus, Kani, Flux, proptest, Loom, Miri, cargo-fuzz) require evidence-based not_applicable decisions or accepted required decisions. No decisions exist.
 
 ## Obligation Review Summary
 
-16 obligations planned (PO-001 through PO-012L). All use schema `proof-obligation/v1`. No legacy alias fields detected. All have exact commands, workdir, bounds, assumptions, and expected evidence.
+**No obligations found.** Without proof-obligations.planned.jsonl, there are no machine-readable proof obligations to review.
 
-### Tooling Obligations (PO-001 through PO-011)
-- Kani inventory (PO-001/002): Valid JSON inventory for vb_core/vb_runtime. Commands are exact. Non-vacuous guard: harness list must be non-empty.
-- Kani feature gate (PO-003): Feature-gated KANI_FEATURES check. Fail-closed on undeclared features.
-- Flux package wrapper (PO-004/005): Package-level smoke with unsupported selector rejection guard. Commands include both valid and invalid selectors.
-- Proptest guard (PO-006/007): Zero-test detector script (to be created by proof-writer) with passthrough and non-vacuous count check. Artifact dependency acknowledged.
-- Cargo-fuzz (PO-008/009): Target registration and GNU target build. Explicit triple guards against musl+sanitizer incompatibility.
-- Loom wiring (PO-010/011): cfg(loom) compilation and model enumeration. xtask loom integration confirmed.
-
-### Closure Obligations (PO-012K/012F/012P/012C/012L)
-- Owner state: 10. Rerun from: 10. These are downstream closure checks requiring evidence classification (BehaviorProof vs Inventory vs Blocker).
-- Each references applicable_count > 0 guard.
-- Prior vb-ttyc State 12 blocker evidence correctly cited as negative examples, not reused as pass evidence.
-
-## Trusted Base Review
-
-5 trusted base entries:
-- TB-001: Verus registry-driven pattern (design template)
-- TB-002: Cargo metadata feature resolution (standard tooling)
-- TB-003: Xtask Loom model enumeration (single source of truth)
-- TB-004: Prior vb-ttyc blocker evidence (context only, not reused)
-- TB-005: Moon CI fuzz-smoke target config (proven GNU target)
-
-All entries have compensating evidence. No trusted markers without ledger entries. Trust boundaries NOT crossed section explicitly prevents version-check-as-proof and wrapper-trust misuse.
-
-## Waiver Review
-
-- WC-001 (TLA+ removal): behavior_affecting: false, boundary_proof cites all four not_applicable lane decisions. Compensating evidence: 5 remaining verifier lanes provide coverage. **Reviewer accepts.**
-- WC-002 (Proptest guard script not yet created): behavior_affecting: false, PO-006 explicitly plans script creation. Compensating evidence: Verus registry pattern template. **Reviewer accepts.**
-
-## Compliance with Verification Lane Policy
+## Verification Lane Policy Compliance
 
 | Policy Requirement | Status |
 |---|---|
-| Default lanes (Verus, Kani, Flux, proptest) | Verus: not_applicable (working); Kani/Flux/proptest: required ✓ |
-| Conditional Loom | Required (concurrency risk tags present) ✓ |
-| Conditional cargo-fuzz | Required (input-boundary risk) ✓ |
-| Conditional Miri | Not in scope (no unsafe/FFI claims in proof seeds) ✓ |
-| Non-vacuity principle | Documented and enforced per obligation ✓ |
-| Fail-closed policy | 8 blocker categories enumerated ✓ |
-| TLA+ not as Rust substitute | Confirmed not_applicable, no TLA obligations ✓ |
+| Default lanes (Verus, Kani, Flux, proptest) | NOT REVIEWED - no artifacts |
+| Conditional Loom | NOT REVIEWED - no artifacts |
+| Conditional Miri | NOT REVIEWED - no artifacts |
+| Non-vacuity principle | NOT REVIEWED - no artifacts |
+| Fail-closed policy | NOT REVIEWED - no artifacts |
 
-## Non-Vacuity Check
+## Critical Deficiencies
 
-Every obligation includes model_bounds requiring applicable_count > 0. Inventory/setup/version output classified as SetupHealth, not BehaviorProof. Kani `cover!` is not used as sole satisfaction evidence.
+1. **No proof-seeds.jsonl**: Cannot verify behavior_affecting classification
+2. **No verifier-lane-decisions.jsonl**: Cannot verify lane profile is implemented
+3. **No proof-obligations.planned.jsonl**: Cannot verify exact commands, bounds, assumptions, expected evidence
+4. **No traceability-matrix.jsonl**: Cannot verify proof-to-implementation trace
+5. **No agent-invocation-ledger.jsonl entries**: Cannot verify planner/reviewer independence
+
+## Root Cause Analysis
+
+These beads appear to have been "driven to done" as simple bug fixes without formal proof planning. However, vb-wymp at minimum modifies production Rust code in a storage recovery module, which triggers the default Rust verification lane profile.
 
 ## Bridge Planning
 
-This bead targets tooling infrastructure only (behavior_affecting: false on all obligations). No production Rust behavior bridge is required at State 4. The Verus-already-working claim is a trusted-base design pattern, not a production behavior claim. State 7 (proof-to-implementation) will establish bridge refs for any tooling scripts that touch production APIs.
+**Not applicable** - No proof planning artifacts exist to review bridge planning.
 
 ## Final Status
 
-**STATUS: APPROVED**
+**STATUS: REJECTED**
 
-The proof plan is precise enough for proof-writer and proof-to-implementation. All 32 lane decisions are independently reviewed and accepted. All 16 obligations have exact commands, bounds, assumptions, and expected evidence. Three non-blocking findings are documented in proof-plan-findings.jsonl with repair instructions. The TLA+ lanes are confirmed not_applicable. No behavior-affecting waivers exist.
+These beads cannot be approved because no proof planning artifacts exist for review. The proof-plan-reviewer skill requires:
+1. proof-strategy.md
+2. verifier-lane-decisions.jsonl (with one `verifier-lane-review/v1` row per planner lane decision)
+3. proof-obligations.planned.jsonl (schema version, exact command, workdir, bounds, assumptions, expected evidence)
+4. proof-seeds.jsonl
+5. traceability-matrix.jsonl
+6. trusted-base-plan.md
+
+Without these artifacts, there is no machine-readable evidence that:
+- The default Rust verification lane profile (Verus/Kani/Flux/proptest) was considered
+- Lane decisions were made with evidence-based not_applicable justifications
+- Proof obligations have exact commands and non-vacuous bounds
+- The planner and reviewer are independent
+
+## Repair Instructions
+
+To proceed, the following must be created for each bead:
+
+**For vb-wymp (storage, Rust behavior change)**:
+1. Create proof-seeds.jsonl with behavior_affecting classification
+2. Create verifier-lane-decisions.jsonl with default Rust lane profile
+3. Create proof-obligations.planned.jsonl with Verus/Kani/Flux/proptest obligations
+4. Create proof-strategy.md summarizing approach
+5. Create traceability-matrix.jsonl linking seeds to obligations to source refs
+
+**For vb-r5zb (CI configuration)**:
+1. If Miri verification is claimed: create Miri-specific lane decisions and obligations
+2. If purely CI tooling: document no formal verification obligations exist
+
+**For vb-ui6k (source_length_scan.rs fix)**:
+1. Clarify whether this modifies production Rust or is purely script/tooling
+2. If production Rust: create full proof planning artifacts
+3. If tooling only: document no formal verification obligations exist
+
+---
+
+(End of file - total 140 lines)
