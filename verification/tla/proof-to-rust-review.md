@@ -36,7 +36,8 @@ Provenance: proof-reviewer pass over repaired TLA+ models and bridge artifacts o
 |-----|-----|-----|
 | CHOOSE-LOWERING-001 | `part_02.rs:216-293::lower_canonical_choose` (wrong file) | `part_14.rs:8::lower_canonical_choose` |
 | CHOOSE-REPLAY-001 | `choose.rs:12-58` (non-existent file) | `choose/mod.rs:12-58` |
-| RETRY-FSM-001 | `helpers.rs:273-294` (off by ~27 lines) | `helpers.rs:300` |
+| RETRY-FSM-001 | `helpers.rs:300` (file only 31 lines) | `helpers/retry.rs:87::record_retry_attempt` |
+| RETRY-FSM-001 | `chunk_001.rs::action failure handling` (non-existent file) | `chunk_001_action.rs:71::handle_action_failure` |
 | RESUME-001 | `types.rs:722-733::RuntimeState` (file only 73 lines) | `run_state.rs:70::RuntimeState` |
 | RESUME-001 | `transitions.rs:36-60::apply` (apply at line 50) | `transitions.rs:50::apply` |
 | CHOOSE-LOWERING-001 | `tests.rs:524-608` (REDUCE tests, not CHOOSE) | `tests.rs:806-1600::lower_canonical_choose_*` |
