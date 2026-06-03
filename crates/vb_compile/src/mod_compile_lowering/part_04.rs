@@ -303,16 +303,15 @@ pub(crate) fn emit_single_body_set(
             if result.is_ok()
                 && let Ok(expected_width) = canonical_body_step_width(&step.primitive)
             {
+                let emitted_width = nodes_after.saturating_sub(nodes_before);
                 #[cfg(not(kani))]
                 debug_assert_eq!(
-                    expected_width,
-                    nodes_after.wrapping_sub(nodes_before),
+                    expected_width, emitted_width,
                     "together width mismatch: computed {}, emitted {}",
-                    expected_width,
-                    nodes_after.wrapping_sub(nodes_before),
+                    expected_width, emitted_width,
                 );
                 #[cfg(kani)]
-                let _ = (expected_width, nodes_after.wrapping_sub(nodes_before));
+                let _ = (expected_width, emitted_width);
             }
             result
         }
