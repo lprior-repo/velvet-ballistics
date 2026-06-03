@@ -136,14 +136,14 @@ fn check_full_level(
     config: Option<DigestCheckConfig<'_>>,
     level: DigestCheck,
 ) -> RecoveryResult<()> {
-    if matches!(level, DigestCheck::Full) {
-        if let Some(cfg) = config {
-            if let Some(entries) = cfg.action_abi_entries {
-                check_action_abi_digests(entries)?;
-            }
-            if let Some(entries) = cfg.policy_entries {
-                check_policy_digests(entries)?;
-            }
+    if matches!(level, DigestCheck::Full)
+        && let Some(cfg) = config
+    {
+        if let Some(entries) = cfg.action_abi_entries {
+            check_action_abi_digests(entries)?;
+        }
+        if let Some(entries) = cfg.policy_entries {
+            check_policy_digests(entries)?;
         }
     }
     Ok(())
