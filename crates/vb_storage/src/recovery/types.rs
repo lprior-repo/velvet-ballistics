@@ -57,16 +57,24 @@ pub enum RecoveryError {
         found: WorkflowDigest,
     },
     /// Action ABI digest mismatch during recovery.
-    #[error("action ABI digest mismatch for action {action_id:?}")]
+    #[error("action ABI digest mismatch for action {action_id:?}: expected {expected:?}, found {found:?}")]
     ActionAbiMismatch {
         /// Action with mismatched ABI.
         action_id: ActionId,
+        /// Expected digest.
+        expected: WorkflowDigest,
+        /// Found digest.
+        found: WorkflowDigest,
     },
     /// Policy digest mismatch during recovery.
-    #[error("policy digest mismatch for step {step:?}")]
+    #[error("policy digest mismatch for step {step:?}: expected {expected:?}, found {found:?}")]
     PolicyDigestMismatch {
         /// Step where policy diverged.
         step: StepIdx,
+        /// Expected digest.
+        expected: WorkflowDigest,
+        /// Found digest.
+        found: WorkflowDigest,
     },
     /// A non-idempotent action was encountered during recovery and cannot be re-executed.
     #[error(

@@ -292,11 +292,13 @@ fn recovery_error_workflow_source_digest_mismatch_carries_digests() {
 fn recovery_error_action_abi_mismatch_includes_action_id() {
     use vb_storage::recovery::RecoveryError;
     let action_id = ActionId::new(7);
-    let err = RecoveryError::ActionAbiMismatch { action_id };
+    let expected = WorkflowDigest::from_bytes([1u8; 32]);
+    let found = WorkflowDigest::from_bytes([2u8; 32]);
+    let err = RecoveryError::ActionAbiMismatch { action_id, expected, found };
     let result: Result<(), _> = Err(err);
     assert!(matches!(
         result,
-        Err(RecoveryError::ActionAbiMismatch { action_id: _ })
+        Err(RecoveryError::ActionAbiMismatch { action_id: _, .. })
     ));
 }
 
@@ -305,11 +307,13 @@ fn recovery_error_action_abi_mismatch_includes_action_id() {
 fn recovery_error_policy_digest_mismatch_includes_step() {
     use vb_storage::recovery::RecoveryError;
     let step = StepIdx::new(11);
-    let err = RecoveryError::PolicyDigestMismatch { step };
+    let expected = WorkflowDigest::from_bytes([1u8; 32]);
+    let found = WorkflowDigest::from_bytes([2u8; 32]);
+    let err = RecoveryError::PolicyDigestMismatch { step, expected, found };
     let result: Result<(), _> = Err(err);
     assert!(matches!(
         result,
-        Err(RecoveryError::PolicyDigestMismatch { step: _ })
+        Err(RecoveryError::PolicyDigestMismatch { step: _, .. })
     ));
 }
 

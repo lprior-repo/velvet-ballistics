@@ -61,7 +61,7 @@ mod recover_tests {
         let action_id = ActionId::new(7);
         let result = check_action_abi_digest(action_id, digest(0xAA), digest(0xBB));
         assert!(
-            matches!(result, Err(RecoveryError::ActionAbiMismatch { action_id: a }) if a == action_id),
+            matches!(result, Err(RecoveryError::ActionAbiMismatch { action_id: a, .. }) if a == action_id),
             "should report ABI mismatch, got {:?}",
             result
         );
@@ -83,7 +83,7 @@ mod recover_tests {
         let step = StepIdx::new(5);
         let result = check_policy_digest(step, digest(0xCC), digest(0xDD));
         assert!(
-            matches!(result, Err(RecoveryError::PolicyDigestMismatch { step: s }) if s == step),
+            matches!(result, Err(RecoveryError::PolicyDigestMismatch { step: s, .. }) if s == step),
             "should report policy mismatch, got {:?}",
             result
         );

@@ -61,7 +61,11 @@ pub fn check_action_abi_digest(
     if expected == found {
         Ok(())
     } else {
-        Err(RecoveryError::ActionAbiMismatch { action_id })
+        Err(RecoveryError::ActionAbiMismatch {
+            action_id,
+            expected,
+            found,
+        })
     }
 }
 
@@ -74,7 +78,11 @@ pub fn check_policy_digest(
     if expected == found {
         Ok(())
     } else {
-        Err(RecoveryError::PolicyDigestMismatch { step })
+        Err(RecoveryError::PolicyDigestMismatch {
+            step,
+            expected,
+            found,
+        })
     }
 }
 
@@ -95,16 +103,29 @@ pub fn verify_digests(
     level: DigestCheck,
     config: Option<DigestCheckConfig<'_>>,
 ) -> RecoveryResult<()> {
-    if matches!(
-        level,
-        DigestCheck::WorkflowSourceOnly | DigestCheck::WorkflowAndIr | DigestCheck::Full
-    ) {
+    check_workflow_and_ir(journal, run, workflow_digest, ir_digest, found_ir_digest, level)?;
+    check_full_level(config, level)?;
+    Ok(())
+}
+
+fn check_workflow_and_ir(
+    journal: &FjallJournal,
+    run: RunId,
+    workflow_digest: WorkflowDigest,
+    ir_digest: WorkflowDigest,
+    found_ir_digest: WorkflowDigest,
+    level: DigestCheck,
+) -> RecoveryResult<()> {
+    if level.checks_workflow_source() {
         check_workflow_source_digest(journal, run, workflow_digest)?;
     }
-    if matches!(level, DigestCheck::WorkflowAndIr | DigestCheck::Full) {
+    if level.checks_compiled_ir() {
         check_compiled_ir_digest(ir_digest, found_ir_digest)?;
     }
-    #[allow(clippy::collapsible_if)]
+    Ok(())
+}
+
+fn check_full_level(config: Option<DigestCheckConfig<'_>>, level: DigestCheck) -> RecoveryResult<()> {
     if matches!(level, DigestCheck::Full) {
         if let Some(cfg) = config {
             if let Some(entries) = cfg.action_abi_entries {
@@ -131,6 +152,8 @@ pub fn check_action_abi_digests(
         if *expected != *found {
             return Err(RecoveryError::ActionAbiMismatch {
                 action_id: *action_id,
+                expected: *expected,
+                found: *found,
             });
         }
     }
@@ -140,7 +163,7 @@ pub fn check_action_abi_digests(
 /// Checks policy digests against expected values from an external source.
 ///
 /// Each entry provides `(step, expected_digest, found_digest)`.
-/// Returns `PolicyDigestMismatch { step }` on the first mismatch found.
+/// Returns `PolicyDigestMismatch { step, expected, found }` on the first mismatch found.
 /// Returns `Ok(())` when all entries match or when no entries are provided.
 /// Does not guess mismatches from missing data — only checks explicitly provided inputs.
 pub fn check_policy_digests(
@@ -148,7 +171,11 @@ pub fn check_policy_digests(
 ) -> RecoveryResult<()> {
     for (step, expected, found) in entries {
         if *expected != *found {
-            return Err(RecoveryError::PolicyDigestMismatch { step: *step });
+            return Err(RecoveryError::PolicyDigestMismatch {
+                step: *step,
+                expected: *expected,
+                found: *found,
+            });
         }
     }
     Ok(())
