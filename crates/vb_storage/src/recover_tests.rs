@@ -11,9 +11,8 @@
 )]
 mod recover_tests {
     use crate::recovery::{
-        RecoveryError,
-        check_compiled_ir_digest, check_action_abi_digest, check_policy_digest,
-        check_action_abi_digests, check_policy_digests,
+        RecoveryError, check_action_abi_digest, check_action_abi_digests, check_compiled_ir_digest,
+        check_policy_digest, check_policy_digests,
     };
     use vb_core::{ActionId, StepIdx, WorkflowDigest};
 
@@ -96,13 +95,21 @@ mod recover_tests {
             (ActionId::new(2), digest(0x22), digest(0x22)),
         ];
         let result = check_action_abi_digests(&entries);
-        assert!(result.is_ok(), "all matching should succeed, got {:?}", result);
+        assert!(
+            result.is_ok(),
+            "all matching should succeed, got {:?}",
+            result
+        );
     }
 
     #[test]
     fn check_action_abi_digests_accepts_empty_entries() {
         let result = check_action_abi_digests(&[]);
-        assert!(result.is_ok(), "empty entries should succeed, got {:?}", result);
+        assert!(
+            result.is_ok(),
+            "empty entries should succeed, got {:?}",
+            result
+        );
     }
 
     #[test]
@@ -127,13 +134,21 @@ mod recover_tests {
             (StepIdx::new(1), digest(0x66), digest(0x66)),
         ];
         let result = check_policy_digests(&entries);
-        assert!(result.is_ok(), "all matching should succeed, got {:?}", result);
+        assert!(
+            result.is_ok(),
+            "all matching should succeed, got {:?}",
+            result
+        );
     }
 
     #[test]
     fn check_policy_digests_accepts_empty_entries() {
         let result = check_policy_digests(&[]);
-        assert!(result.is_ok(), "empty entries should succeed, got {:?}", result);
+        assert!(
+            result.is_ok(),
+            "empty entries should succeed, got {:?}",
+            result
+        );
     }
 
     #[test]

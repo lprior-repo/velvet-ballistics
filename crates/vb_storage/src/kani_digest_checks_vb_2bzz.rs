@@ -10,14 +10,16 @@
 
 use vb_core::{ActionId, StepIdx, WorkflowDigest};
 
-/// Generate a random non-zero 32-byte digest.
-fn arbitrary_nonzero_digest() -> WorkflowDigest {
-    loop {
-        let bytes: [u8; 32] = kani::any();
-        if bytes != [0u8; 32] {
-            return WorkflowDigest::from_bytes(bytes);
-        }
-    }
+/// Generate an arbitrary digest.
+fn arbitrary_digest() -> WorkflowDigest {
+    WorkflowDigest::from_bytes(kani::any())
+}
+
+/// Generate an arbitrary digest that is guaranteed to differ from `excluded`.
+fn arbitrary_digest_except(excluded: WorkflowDigest) -> WorkflowDigest {
+    let bytes: [u8; 32] = kani::any();
+    kani::assume(bytes != excluded.as_bytes());
+    WorkflowDigest::from_bytes(bytes)
 }
 
 // ===================================================================
@@ -26,7 +28,7 @@ fn arbitrary_nonzero_digest() -> WorkflowDigest {
 
 /// PPI-005: `check_action_abi_digests` returns the *first* mismatch.
 #[kani::proof]
-#[kani::unwind(5)]
+#[kani::unwind(40)]
 fn kani_check_action_abi_fail_fast() {
     use crate::recovery::recover::check_action_abi_digests;
     use crate::recovery::types::RecoveryError;
@@ -34,28 +36,36 @@ fn kani_check_action_abi_fail_fast() {
     let a1 = ActionId::new(1);
     let a2 = ActionId::new(2);
     let a3 = ActionId::new(3);
-    let d_ok = WorkflowDigest::from_bytes([1u8; 32]);
-    let d_bad = arbitrary_nonzero_digest();
+    let d_ok = arbitrary_digest();
+    let d_bad = arbitrary_digest_except(d_ok);
 
     let entries: [(ActionId, WorkflowDigest, WorkflowDigest); 3] =
         [(a1, d_ok, d_ok), (a2, d_ok, d_bad), (a3, d_ok, d_bad)];
 
     let result = check_action_abi_digests(&entries);
-    match result {
-        Err(e) => {
-            let RecoveryError::ActionAbiMismatch { action_id, .. } = e else {
-                kani::assert(false, "expected ActionAbiMismatch error variant");
-                return;
-            };
-            kani::assert(action_id == a2, "first mismatch is a2");
+    match &result {
+        Err(RecoveryError::ActionAbiMismatch {
+            action_id,
+            expected,
+            found,
+        }) => {
+            kani::assert(*action_id == a2, "first mismatch is a2");
+            kani::assert(
+                *expected == d_ok,
+                "expected digest is first mismatching expected",
+            );
+            kani::assert(*found == d_bad, "found digest is first mismatching found");
+            kani::cover!(true, "action_abi_fail_fast_mismatch_branch_reached");
         }
+        Err(_) => kani::assert(false, "expected ActionAbiMismatch error variant"),
         Ok(()) => kani::assert(false, "should return Err, not Ok"),
     }
+    std::mem::forget(result);
 }
 
 /// PPI-006: `check_policy_digests` returns the *first* mismatch.
 #[kani::proof]
-#[kani::unwind(5)]
+#[kani::unwind(40)]
 fn kani_check_policy_fail_fast() {
     use crate::recovery::recover::check_policy_digests;
     use crate::recovery::types::RecoveryError;
@@ -63,23 +73,31 @@ fn kani_check_policy_fail_fast() {
     let s1 = StepIdx::new(1);
     let s2 = StepIdx::new(2);
     let s3 = StepIdx::new(3);
-    let d_ok = WorkflowDigest::from_bytes([1u8; 32]);
-    let d_bad = arbitrary_nonzero_digest();
+    let d_ok = arbitrary_digest();
+    let d_bad = arbitrary_digest_except(d_ok);
 
     let entries: [(StepIdx, WorkflowDigest, WorkflowDigest); 3] =
         [(s1, d_ok, d_ok), (s2, d_ok, d_bad), (s3, d_ok, d_bad)];
 
     let result = check_policy_digests(&entries);
-    match result {
-        Err(e) => {
-            let RecoveryError::PolicyDigestMismatch { step, .. } = e else {
-                kani::assert(false, "expected PolicyDigestMismatch error variant");
-                return;
-            };
-            kani::assert(step == s2, "first mismatch is s2");
+    match &result {
+        Err(RecoveryError::PolicyDigestMismatch {
+            step,
+            expected,
+            found,
+        }) => {
+            kani::assert(*step == s2, "first mismatch is s2");
+            kani::assert(
+                *expected == d_ok,
+                "expected digest is first mismatching expected",
+            );
+            kani::assert(*found == d_bad, "found digest is first mismatching found");
+            kani::cover!(true, "policy_fail_fast_mismatch_branch_reached");
         }
+        Err(_) => kani::assert(false, "expected PolicyDigestMismatch error variant"),
         Ok(()) => kani::assert(false, "should return Err, not Ok"),
     }
+    std::mem::forget(result);
 }
 
 // ===================================================================
@@ -154,13 +172,13 @@ fn kani_check_policy_all_match() {
 
 /// PPI-011: mismatch is in the last entry.
 #[kani::proof]
-#[kani::unwind(5)]
+#[kani::unwind(40)]
 fn kani_check_action_abi_mismatch_last() {
     use crate::recovery::recover::check_action_abi_digests;
     use crate::recovery::types::RecoveryError;
 
-    let d_ok = WorkflowDigest::from_bytes([1u8; 32]);
-    let d_bad = arbitrary_nonzero_digest();
+    let d_ok = arbitrary_digest();
+    let d_bad = arbitrary_digest_except(d_ok);
 
     let entries: [(ActionId, WorkflowDigest, WorkflowDigest); 3] = [
         (ActionId::new(1), d_ok, d_ok),
@@ -169,27 +187,35 @@ fn kani_check_action_abi_mismatch_last() {
     ];
 
     let result = check_action_abi_digests(&entries);
-    match result {
-        Err(e) => {
-            let RecoveryError::ActionAbiMismatch { action_id, .. } = e else {
-                kani::assert(false, "expected ActionAbiMismatch");
-                return;
-            };
-            kani::assert(action_id == ActionId::new(3), "mismatch is in last entry");
+    match &result {
+        Err(RecoveryError::ActionAbiMismatch {
+            action_id,
+            expected,
+            found,
+        }) => {
+            kani::assert(*action_id == ActionId::new(3), "mismatch is in last entry");
+            kani::assert(
+                *expected == d_ok,
+                "expected digest is last mismatching expected",
+            );
+            kani::assert(*found == d_bad, "found digest is last mismatching found");
+            kani::cover!(true, "action_abi_last_mismatch_branch_reached");
         }
+        Err(_) => kani::assert(false, "expected ActionAbiMismatch"),
         Ok(()) => kani::assert(false, "should return Err"),
     }
+    std::mem::forget(result);
 }
 
 /// PPI-012: mismatch is in the last policy entry.
 #[kani::proof]
-#[kani::unwind(5)]
+#[kani::unwind(40)]
 fn kani_check_policy_mismatch_last() {
     use crate::recovery::recover::check_policy_digests;
     use crate::recovery::types::RecoveryError;
 
-    let d_ok = WorkflowDigest::from_bytes([1u8; 32]);
-    let d_bad = arbitrary_nonzero_digest();
+    let d_ok = arbitrary_digest();
+    let d_bad = arbitrary_digest_except(d_ok);
 
     let entries: [(StepIdx, WorkflowDigest, WorkflowDigest); 3] = [
         (StepIdx::new(1), d_ok, d_ok),
@@ -198,16 +224,24 @@ fn kani_check_policy_mismatch_last() {
     ];
 
     let result = check_policy_digests(&entries);
-    match result {
-        Err(e) => {
-            let RecoveryError::PolicyDigestMismatch { step, .. } = e else {
-                kani::assert(false, "expected PolicyDigestMismatch");
-                return;
-            };
-            kani::assert(step == StepIdx::new(3), "mismatch is in last entry");
+    match &result {
+        Err(RecoveryError::PolicyDigestMismatch {
+            step,
+            expected,
+            found,
+        }) => {
+            kani::assert(*step == StepIdx::new(3), "mismatch is in last entry");
+            kani::assert(
+                *expected == d_ok,
+                "expected digest is last mismatching expected",
+            );
+            kani::assert(*found == d_bad, "found digest is last mismatching found");
+            kani::cover!(true, "policy_last_mismatch_branch_reached");
         }
+        Err(_) => kani::assert(false, "expected PolicyDigestMismatch"),
         Ok(()) => kani::assert(false, "should return Err"),
     }
+    std::mem::forget(result);
 }
 
 // ===================================================================
@@ -225,8 +259,8 @@ fn kani_check_action_abi_no_panic() {
     let mut entries = Vec::new();
     for _ in 0..count {
         let action = ActionId::new(kani::any());
-        let expected = arbitrary_nonzero_digest();
-        let found = arbitrary_nonzero_digest();
+        let expected = arbitrary_digest();
+        let found = arbitrary_digest();
         entries.push((action, expected, found));
     }
     let _ = check_action_abi_digests(&entries);
@@ -243,8 +277,8 @@ fn kani_check_policy_no_panic() {
     let mut entries = Vec::new();
     for _ in 0..count {
         let step = StepIdx::new(kani::any());
-        let expected = arbitrary_nonzero_digest();
-        let found = arbitrary_nonzero_digest();
+        let expected = arbitrary_digest();
+        let found = arbitrary_digest();
         entries.push((step, expected, found));
     }
     let _ = check_policy_digests(&entries);

@@ -539,10 +539,7 @@ pub fn fuzz_replay_events(data: &[u8]) {
             // Tracker state must be consistent: last action/step recorded
             // in replayed events must be reflected in tracker state.
             for event in &replayed {
-                if let vb_storage::JournalEvent::ActionCompletedEvent {
-                    action, step, ..
-                } = event
-                {
+                if let vb_storage::JournalEvent::ActionCompletedEvent { action, step, .. } = event {
                     assert!(
                         tracker.has_completed(*action, *step),
                         "ActionCompletedEvent must be tracked as completed"
@@ -2466,8 +2463,7 @@ pub fn fuzz_digest_coherence(data: &[u8]) {
             result: SlotIdx::ZERO,
         },
     }]);
-    let constants: Box<[vb_core::ConstValue]> =
-        Box::new([vb_core::ConstValue::Bool(true)]);
+    let constants: Box<[vb_core::ConstValue]> = Box::new([vb_core::ConstValue::Bool(true)]);
 
     let parts = vb_core::WorkflowParts {
         name: Box::<str>::from("fuzz_digest_test"),
@@ -2521,8 +2517,11 @@ pub fn fuzz_digest_coherence(data: &[u8]) {
             Ok(wf) => wf,
             Err(_) => return,
         };
-        let result =
-            vb_storage::submit_artifact(&journal, &coherent_workflow, vb_core::RuntimePolicy::Strict);
+        let result = vb_storage::submit_artifact(
+            &journal,
+            &coherent_workflow,
+            vb_core::RuntimePolicy::Strict,
+        );
         match result {
             Ok(artifact) => {
                 // Digest coherence: the artifact digest must equal the
@@ -2530,8 +2529,7 @@ pub fn fuzz_digest_coherence(data: &[u8]) {
                 // parts.  The admission pipeline recomputes this hash
                 // internally and verifies it matches.
                 assert_eq!(
-                    artifact.digest,
-                    reference_digest,
+                    artifact.digest, reference_digest,
                     "artifact digest must match reference blake3 hash"
                 );
             }
@@ -3681,18 +3679,15 @@ pub fn fuzz_collect_page_pagination(data: &[u8]) {
     // We verify this indirectly: if 0 < list_len < page_size, then
     // collect_start with limit≥page_size should produce at most one
     // page and signal Continue (dispatch to body) or Finished (empty).
-    if page_size > 0
-        && list_len > 0
-        && list_len < page_size
-    {
+    if page_size > 0 && list_len > 0 && list_len < page_size {
         match zero_page_result {
             Ok(signal) => {
                 // With list_len < page_size, a single page should
                 // be emitted — signal is either Continue or Finished.
                 assert!(
-                    matches!(signal,
-                        vb_core::EngineSignal::Continue
-                        | vb_core::EngineSignal::Finished(..)
+                    matches!(
+                        signal,
+                        vb_core::EngineSignal::Continue | vb_core::EngineSignal::Finished(..)
                     ),
                     "collect_start single-page signal unexpected: {signal:?}"
                 );

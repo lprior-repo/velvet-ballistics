@@ -336,6 +336,46 @@ pub(crate) fn digest_step_primitive(
                 digest_step_primitive(hasher, &step.primitive)?;
             }
         }
+        vb_yaml::ast::StepPrimitive::Do { action, input } => {
+            hasher.update(b"do");
+            hasher.update(action.as_bytes());
+            hasher.update(input.as_bytes());
+        }
+        vb_yaml::ast::StepPrimitive::Choose { branches, otherwise } => {
+            hasher.update(b"choose");
+            let count = u16::try_from(branches.len()).map_err(|_| {
+                CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
+                    primitive: "choose",
+                    field: "branches",
+                    value: branches.len(),
+                    limit: usize::from(u16::MAX),
+                }])
+            })?;
+            hasher.update(&count.to_le_bytes());
+            for branch in branches {
+                hasher.update(branch.when.as_bytes());
+                for step in &branch.steps {
+                    digest_sub_step(hasher, step)?;
+                }
+            }
+            match otherwise {
+                Some(label) => {
+                    hasher.update(b"otherwise");
+                    hasher.update(label.as_bytes());
+                }
+                None => {
+                    hasher.update(b"no_otherwise");
+                }
+            }
+        }
+        vb_yaml::ast::StepPrimitive::Save { value } => {
+            hasher.update(b"save");
+            match value {
+                vb_yaml::ast::ScalarValue::String(v) => hasher.update(v.as_bytes()),
+                vb_yaml::ast::ScalarValue::Integer(v) => hasher.update(&v.to_le_bytes()),
+                _ => hasher.update(b"unsupported"),
+            };
+        }
         other => {
             hasher.update(canonical_primitive_name(other).as_bytes());
         }
@@ -426,3 +466,8 @@ pub fn lower_do(
 #[cfg(test)]
 #[path = "../tests/digest_unit_tests.rs"]
 mod tests;
+
+// Unit tests for Do and Choose digest field sensitivity (vb-qf5oj, vb-pbhor)
+#[cfg(test)]
+#[path = "../tests/do_choose_digest_unit_tests.rs"]
+mod do_choose_digest_tests;
