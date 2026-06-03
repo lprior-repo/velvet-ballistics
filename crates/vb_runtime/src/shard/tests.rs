@@ -32,3 +32,9 @@ include!("tests/chunk_028.rs");
 include!("tests/chunk_029.rs");
 include!("tests/chunk_031.rs");
 include!("tests/chunk_032.rs");
+// PO-vb-pymh test coverage
+include!("tests/chunk_001_submit_frame_release.rs");
+include!("tests/chunk_002_payload_bounds.rs");
+include!("tests/chunk_002_cancel_kill_idempotency.rs");
+include!("tests/chunk_dispatch_shutdown.rs");
+include!("tests/chunk_dispatch_error_semantics.rs");
