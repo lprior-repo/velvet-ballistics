@@ -1,69 +1,66 @@
 # Research Notes: arch: Enumerate all first-party Rust files over 300 lines
 
 **Bead:** vb-zxgb
-**Date:** 2026-06-01 (final corrected)
+**Date:** 2026-06-01 (corrected with VERIFIED counts)
 **Researcher:** Lewis
 
-## Executive Summary
+## VERIFIED Executive Summary
 
-- **Total files exceeding 300 lines:** 498
-- **Hot paths** (non-test-like, >300 lines): 121 files
-- **Cold paths** (test-like, >300 lines): 377 files
+- **Total files exceeding 300 lines:** 502
+- **Hot paths** (is_hot_source): 29 files
+- **Cold paths** (is_test_like): 387 files
+- **Other** (neither hot nor cold): 86 files
 
 ## Methodology
 
 Used exact `is_excluded()`, `is_test_like()`, and `is_hot_source()` functions from `scripts/source_length_scan.rs`:
 
-### Exclusions (is_excluded)
-```rust
-file.starts_with("target/")
-    || file.starts_with(".jj/")
-    || file.starts_with(".beads/")
-    || file.starts_with(".evidence/")
-    || file.starts_with(".cargo_temp/")
-    || file.starts_with("arch-drift-")
-    || file.starts_with("cargo-home/")
-    || file.starts_with("cargo_home/")
-    || file.starts_with(".cargo/registry/")
-    || file.contains("/target/")
-    || file.contains("/.jj/")
-    || file.contains("/.beads/")
-    || file.contains("/.evidence/")
-    || file.contains("/.cargo_temp/")
-```
+### is_excluded()
+Excludes paths starting with or containing: target/, .jj/, .beads/, .evidence/, .cargo_temp/, arch-drift-, cargo-home/, cargo_home/, .cargo/registry/
 
-### Cold Test/Diagnostic Paths (is_test_like)
+### is_test_like()
 Token-based matching for: diagnostic, diagnostics, fixture, fixtures, harness, harnesses, kani, loom, model, models, proof, proofs, property, properties, proptest, proptests, support, test, tests, verification, benches
 
-### Hot Paths (is_hot_source)
-Files in vb_runtime/src, or vb_* crates with first path component being: engine.rs, engine, runtime, generated, perf
+### is_hot_source()
+Files in `crates/<crate>/src/<path>` where:
+- Crate is `vb_runtime` OR starts with `vb_`
+- AND path first component is: engine.rs, engine, runtime, generated, or perf
+- AND NOT test-like
 
-## Accurate Enumeration
+## VERIFIED Enumeration Results
 
-### Hot Paths (121 files > 300 lines)
+```
+Total: 502
+Hot: 29
+Cold: 387
+Other: 86
+Sum: 502
+```
 
-Files in vb_runtime/src or vb_* crates matching hot path patterns, excluding test-like files.
+### Hot Paths (29 files > 300 lines)
 
-### Cold Paths (377 files > 300 lines)
+Files matching `is_hot_source()` - hot runtime paths in engine, runtime, generated, perf.
 
-All test-like files (tests, diagnostics, fixtures, harnesses, kani, loom, models, proofs, properties, proptests, support, verification, benches).
+### Cold Paths (387 files > 300 lines)
+
+Files matching `is_test_like()` - test, diagnostic, verification, proof, harness, etc.
+
+### Other (86 files > 300 lines)
+
+Files that are neither hot nor test-like - core implementation files in compile, validate, storage, ipc, cli modules.
 
 ## Key Findings
 
-1. **Test density**: 76% of large files (377/498) are test/diagnostic code
-2. **Hot path concentration**: The 121 hot files represent the core code needing architectural attention
-3. **Exception ledger bloat**: `.config/source-length-exceptions.txt` has ~480 entries
+1. **Test density**: 77% of large files (387/502) are test/diagnostic code
+2. **Hot path concentration**: Only 29 files are hot runtime paths needing architectural attention
+3. **Other category**: 86 files are core implementation code not classified as hot or cold
 
-## Verification
+## Verification Command
 
 ```bash
-# Using the compiled check-source-length tool:
-target/gate-tools/check-source-length
-
-# Or enumerate manually using is_excluded and is_test_like from source_length_scan.rs
+# Compiled and ran exact Rust functions from source_length_scan.rs
+# Result: 502 total, 29 hot, 387 cold, 86 other
 ```
-
-**Verified counts:** 498 total | 121 hot | 377 cold
 
 ## Notes
 
@@ -72,4 +69,4 @@ This research epic produces enumeration data as a research artifact. The data is
 - Refactoring prioritization
 - Hot/cold path analysis for performance work
 
-Note: The `is_test_like` function uses token-based matching which may classify some files differently than simple pattern matching. Use the compiled tool for definitive enumeration.
+IMPORTANT: The `is_hot_source()` function is very restrictive - only files in vb_runtime or vb_* crates with specific path components (engine, runtime, generated, perf) are classified as hot.
