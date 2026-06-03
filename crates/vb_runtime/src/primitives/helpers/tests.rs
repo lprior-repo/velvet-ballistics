@@ -2,6 +2,7 @@
 //! Tests for helper functions.
 
 use vb_core::errors::EngineError;
+use vb_core::frame::RunFrame;
 use vb_core::value_store::ValueStore;
 use vb_core::value::SlotValue;
 

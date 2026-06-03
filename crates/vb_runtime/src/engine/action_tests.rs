@@ -14,9 +14,9 @@ use vb_core::action::{
     ActionName, ActionOutcome, Idempotency, RetrySafety, SideEffect,
 };
 use vb_core::capability::Capability;
-use vb_core::ids::{RunId, SeqNo, SlotIdx, StepIdx};
+use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
-use vb_core::action::{ActionFailure, ActionFailureCode, ActionId, ActionTicket};
+use vb_core::action::{ActionFailure, ActionFailureCode, ActionTicket};
 use vb_core::action::compute_action_idempotency_key;
 
 use crate::admission::check_capability;
