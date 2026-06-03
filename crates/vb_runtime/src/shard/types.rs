@@ -6,10 +6,10 @@
 //! - `timer.rs` – TimerTick, TimerDuration, TimerDeadline, TimerKind, PendingTimer
 //! - `command.rs` – ShardCommand
 //! - `ask.rs` – AskTicket, AskAnswer
-//! - `run_state.rs` – RunState, RuntimeState, RuntimeEvent, ResumeStatus, ResumeResult,
-//!                    ResumeError, InspectSnapshot, InspectResponse
+//! - `run_state.rs` – RunState, RuntimeState, RuntimeEvent, ResumeStatus,
+//!   ResumeResult, ResumeError, InspectSnapshot, InspectResponse
 //! - `introspection.rs` – IntrospectionRegistry, InspectHandle, InspectSnapshotFormatter,
-//!                        UnregisterOutcome, RegisterOverlapOutcome
+//!   UnregisterOutcome, RegisterOverlapOutcome
 //! - `queue.rs` – ShardCommandQueue, MAX_COMMAND_QUEUE_CAPACITY
 //! - `config.rs` – Shard, ShardConfig, ShardStatus, ShardHealth
 

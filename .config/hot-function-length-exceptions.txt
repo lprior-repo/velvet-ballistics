@@ -2,30 +2,10 @@
 # Format: <file_path>|<start_line>|<owner>|<split_bead>|<removal_plan>|<reason>
 # Each over-limit hot function must have a validated entry or be split below 25 logical lines.
 # Rows below are the pre-existing hot-function drift baseline exposed by vb-ui6k.
-crates/vb_core/src/engine/choose.rs|274|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 75 logical lines; split function before removing exception.
-crates/vb_core/src/engine/error_routing.rs|54|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 51 logical lines; split function before removing exception.
-crates/vb_core/src/engine/error_routing.rs|178|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 55 logical lines; split function before removing exception.
-crates/vb_core/src/engine/error_routing.rs|236|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 35 logical lines; split function before removing exception.
-crates/vb_core/src/engine/error_routing.rs|342|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 48 logical lines; split function before removing exception.
-crates/vb_core/src/engine/error_routing.rs|419|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 37 logical lines; split function before removing exception.
 crates/vb_core/src/engine/expr_eval/accessors.rs|118|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 30 logical lines; split function before removing exception.
-crates/vb_core/src/engine/expr_eval/accessors.rs|217|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 30 logical lines; split function before removing exception.
-crates/vb_core/src/engine/expr_eval/accessors.rs|632|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 29 logical lines; split function before removing exception.
-crates/vb_core/src/engine/expr_eval/accessors.rs|686|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 26 logical lines; split function before removing exception.
-crates/vb_core/src/engine/expr_eval/core.rs|146|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 33 logical lines; split function before removing exception.
-crates/vb_core/src/engine/expr_eval/core.rs|308|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 41 logical lines; split function before removing exception.
 crates/vb_core/src/engine/expr_eval/ops.rs|145|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 36 logical lines; split function before removing exception.
-crates/vb_core/src/engine/expr_eval/ops.rs|216|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 47 logical lines; split function before removing exception.
-crates/vb_core/src/engine/expr_eval/ops.rs|479|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 32 logical lines; split function before removing exception.
-crates/vb_core/src/engine/expr_eval/ops.rs|532|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 42 logical lines; split function before removing exception.
-crates/vb_core/src/engine/expr_eval/ops.rs|691|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 40 logical lines; split function before removing exception.
 crates/vb_core/src/engine/expr_eval/ops_text_list.rs|70|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 28 logical lines; split function before removing exception.
 crates/vb_core/src/engine/expr_eval/ops_text_list.rs|104|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 26 logical lines; split function before removing exception.
-crates/vb_core/src/engine/expr_eval/ops_text_list.rs|257|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 47 logical lines; split function before removing exception.
-crates/vb_core/src/engine/expr_eval/ops_text_list.rs|491|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 26 logical lines; split function before removing exception.
-crates/vb_core/src/engine/expr_eval/ops_text_list.rs|687|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 28 logical lines; split function before removing exception.
-crates/vb_core/src/engine/node_helpers.rs|98|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 37 logical lines; split function before removing exception.
-crates/vb_core/src/engine/node_helpers.rs|272|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 28 logical lines; split function before removing exception.
 crates/vb_core/src/engine/object_list.rs|10|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 27 logical lines; split function before removing exception.
 crates/vb_core/src/engine/object_list.rs|51|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 32 logical lines; split function before removing exception.
 crates/vb_core/src/engine/object_list.rs|123|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 33 logical lines; split function before removing exception.
@@ -33,71 +13,43 @@ crates/vb_core/src/engine/run_loop.rs|56|lewis|vb-ui6k|split-or-retire-before-re
 crates/vb_core/src/engine/run_loop.rs|167|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 32 logical lines; split function before removing exception.
 crates/vb_core/src/engine/validate.rs|16|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 27 logical lines; split function before removing exception.
 crates/vb_core/src/engine/validate.rs|68|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 44 logical lines; split function before removing exception.
-crates/vb_runtime/src/action_queue.rs|514|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 33 logical lines; split function before removing exception.
-crates/vb_runtime/src/action_queue.rs|562|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 41 logical lines; split function before removing exception.
-crates/vb_runtime/src/admission.rs|499|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 28 logical lines; split function before removing exception.
-crates/vb_runtime/src/admission.rs|659|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 49 logical lines; split function before removing exception.
-crates/vb_runtime/src/admission.rs|756|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 34 logical lines; split function before removing exception.
-crates/vb_runtime/src/admission.rs|795|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 52 logical lines; split function before removing exception.
 crates/vb_runtime/src/engine/action.rs|20|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 43 logical lines; split function before removing exception.
 crates/vb_runtime/src/engine/action.rs|138|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 57 logical lines; split function before removing exception.
-crates/vb_runtime/src/engine/action.rs|523|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 27 logical lines; split function before removing exception.
-crates/vb_runtime/src/engine/action.rs|588|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 26 logical lines; split function before removing exception.
-crates/vb_runtime/src/engine/action.rs|620|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 26 logical lines; split function before removing exception.
-crates/vb_runtime/src/engine/drive.rs|47|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 30 logical lines; split function before removing exception.
-crates/vb_runtime/src/engine/drive.rs|636|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 52 logical lines; split function before removing exception.
-crates/vb_runtime/src/engine/drive.rs|782|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 55 logical lines; split function before removing exception.
-crates/vb_runtime/src/engine/drive.rs|1094|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 46 logical lines; split function before removing exception.
-crates/vb_runtime/src/engine/drive.rs|1185|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 26 logical lines; split function before removing exception.
-crates/vb_runtime/src/engine/execute.rs|429|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 173 logical lines; split function before removing exception.
-crates/vb_runtime/src/engine/types.rs|134|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 26 logical lines; split function before removing exception.
 crates/vb_runtime/src/error/display.rs|13|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 36 logical lines; split function before removing exception.
 crates/vb_runtime/src/error/display.rs|62|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 49 logical lines; split function before removing exception.
 crates/vb_runtime/src/error/equality.rs|42|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 84 logical lines; split function before removing exception.
 crates/vb_runtime/src/error/equality.rs|136|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 37 logical lines; split function before removing exception.
-crates/vb_runtime/src/journal/chunk_002.rs|41|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 58 logical lines; split function before removing exception.
-crates/vb_runtime/src/journal/chunk_002.rs|103|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 73 logical lines; split function before removing exception.
-crates/vb_runtime/src/journal/chunk_002.rs|181|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 61 logical lines; split function before removing exception.
-crates/vb_runtime/src/primitives/collect.rs|195|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 26 logical lines; split function before removing exception.
-crates/vb_runtime/src/primitives/collect.rs|312|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 27 logical lines; split function before removing exception.
-crates/vb_runtime/src/primitives/collect.rs|388|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 26 logical lines; split function before removing exception.
-crates/vb_runtime/src/primitives/collect.rs|442|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 28 logical lines; split function before removing exception.
-crates/vb_runtime/src/primitives/collect.rs|794|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 52 logical lines; split function before removing exception.
 crates/vb_runtime/src/primitives/for_each.rs|17|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 39 logical lines; split function before removing exception.
 crates/vb_runtime/src/primitives/reduce.rs|19|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 34 logical lines; split function before removing exception.
 crates/vb_runtime/src/primitives/reduce.rs|58|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 26 logical lines; split function before removing exception.
-crates/vb_runtime/src/primitives/reduce.rs|144|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 35 logical lines; split function before removing exception.
-crates/vb_runtime/src/primitives/reduce.rs|184|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 31 logical lines; split function before removing exception.
-crates/vb_runtime/src/primitives/reduce.rs|283|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 26 logical lines; split function before removing exception.
-crates/vb_runtime/src/primitives/reduce.rs|343|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 26 logical lines; split function before removing exception.
-crates/vb_runtime/src/primitives/reduce.rs|378|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 28 logical lines; split function before removing exception.
-crates/vb_runtime/src/primitives/reduce.rs|487|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 29 logical lines; split function before removing exception.
-crates/vb_runtime/src/primitives/reduce.rs|655|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 35 logical lines; split function before removing exception.
-crates/vb_runtime/src/primitives/reduce.rs|700|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 33 logical lines; split function before removing exception.
-crates/vb_runtime/src/primitives/reduce.rs|745|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 26 logical lines; split function before removing exception.
-crates/vb_runtime/src/primitives/reduce.rs|777|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 40 logical lines; split function before removing exception.
-crates/vb_runtime/src/primitives/reduce.rs|827|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 40 logical lines; split function before removing exception.
-crates/vb_runtime/src/primitives/reduce.rs|877|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 29 logical lines; split function before removing exception.
-crates/vb_runtime/src/primitives/reduce.rs|912|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 29 logical lines; split function before removing exception.
-crates/vb_runtime/src/primitives/reduce.rs|947|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 42 logical lines; split function before removing exception.
-crates/vb_runtime/src/primitives/repeat.rs|682|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 27 logical lines; split function before removing exception.
-crates/vb_runtime/src/primitives/repeat.rs|794|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 27 logical lines; split function before removing exception.
 crates/vb_runtime/src/primitives/together.rs|18|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 29 logical lines; split function before removing exception.
 crates/vb_runtime/src/primitives/together.rs|81|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 29 logical lines; split function before removing exception.
-crates/vb_runtime/src/runtime.rs|227|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 32 logical lines; split function before removing exception.
-crates/vb_runtime/src/runtime.rs|274|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 31 logical lines; split function before removing exception.
-crates/vb_runtime/src/runtime.rs|419|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 49 logical lines; split function before removing exception.
-crates/vb_runtime/src/runtime.rs|504|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 45 logical lines; split function before removing exception.
-crates/vb_runtime/src/shard/helpers.rs|158|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 30 logical lines; split function before removing exception.
-crates/vb_runtime/src/shard/helpers.rs|251|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 45 logical lines; split function before removing exception.
-crates/vb_runtime/src/shard/impl_parts/chunk_001.rs|311|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 62 logical lines; split function before removing exception.
 crates/vb_runtime/src/shard/impl_parts/chunk_003.rs|5|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 29 logical lines; split function before removing exception.
-crates/vb_runtime/src/shard/lifecycle/chunk_001.rs|138|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 56 logical lines; split function before removing exception.
-crates/vb_runtime/src/shard/lifecycle/chunk_001.rs|217|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 48 logical lines; split function before removing exception.
-crates/vb_runtime/src/shard/lifecycle/chunk_001.rs|368|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 38 logical lines; split function before removing exception.
-crates/vb_runtime/src/shard/lifecycle/chunk_001.rs|432|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 27 logical lines; split function before removing exception.
 crates/vb_runtime/src/shard/lifecycle/chunk_002.rs|16|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 54 logical lines; split function before removing exception.
 crates/vb_runtime/src/shard/lifecycle/chunk_002.rs|79|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 31 logical lines; split function before removing exception.
 crates/vb_runtime/src/shard/transitions.rs|103|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 31 logical lines; split function before removing exception.
 crates/vb_runtime/src/shard/transitions.rs|137|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 35 logical lines; split function before removing exception.
-crates/vb_runtime/src/shard/types.rs|401|lewis|vb-ui6k|split-or-retire-before-release|vb-ui6k hot-function gate baseline found 33 logical lines; split function before removing exception.
+crates/vb_core/src/engine/error_routing.rs|51|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 51 logical lines after source split; split function before removing exception.
+crates/vb_runtime/src/admission/admission.rs|91|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 49 logical lines after source split; split function before removing exception.
+crates/vb_runtime/src/admission/admission.rs|188|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 34 logical lines after source split; split function before removing exception.
+crates/vb_runtime/src/admission/admission.rs|227|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 52 logical lines after source split; split function before removing exception.
+crates/vb_runtime/src/admission/validation.rs|12|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 28 logical lines after source split; split function before removing exception.
+crates/vb_runtime/src/engine/drive.rs|46|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 30 logical lines after source split; split function before removing exception.
+crates/vb_runtime/src/engine/evidence.rs|134|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 26 logical lines after source split; split function before removing exception.
+crates/vb_runtime/src/engine/execute.rs|27|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 173 logical lines after source split; split function before removing exception.
+crates/vb_runtime/src/journal/chunk_002.rs|50|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 58 logical lines after source split; split function before removing exception.
+crates/vb_runtime/src/journal/chunk_002.rs|112|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 73 logical lines after source split; split function before removing exception.
+crates/vb_runtime/src/journal/chunk_002.rs|190|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 61 logical lines after source split; split function before removing exception.
+crates/vb_runtime/src/primitives/collect/mod.rs|41|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 26 logical lines after collect source split; split function before removing exception.
+crates/vb_runtime/src/primitives/collect/mod.rs|95|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 28 logical lines after collect source split; split function before removing exception.
+crates/vb_runtime/src/primitives/collect/state.rs|190|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 26 logical lines after collect source split; split function before removing exception.
+crates/vb_runtime/src/primitives/collect/state.rs|298|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 27 logical lines after collect source split; split function before removing exception.
+crates/vb_runtime/src/shard/helpers/retry.rs|38|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 42 logical lines after helper source split; split function before removing exception.
+crates/vb_runtime/src/shard/helpers/timer.rs|24|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 27 logical lines after helper source split; split function before removing exception.
+crates/vb_runtime/src/shard/impl_parts/dispatch.rs|19|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 58 logical lines after source split; split function before removing exception.
+crates/vb_runtime/src/shard/introspection.rs|124|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 33 logical lines after source split; split function before removing exception.
+crates/vb_runtime/src/shard/lifecycle/chunk_001_action.rs|7|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 38 logical lines after lifecycle source split; split function before removing exception.
+crates/vb_runtime/src/shard/lifecycle/chunk_001_action.rs|71|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 27 logical lines after lifecycle source split; split function before removing exception.
+crates/vb_runtime/src/shard/lifecycle/chunk_001_submit.rs|142|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 56 logical lines after lifecycle source split; split function before removing exception.
+crates/vb_runtime/src/shard/lifecycle/chunk_001_submit.rs|221|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 48 logical lines after lifecycle source split; split function before removing exception.
+crates/vb_runtime/src/shard/lifecycle/chunk_003_completion.rs|35|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 35 logical lines after lifecycle source split; split function before removing exception.

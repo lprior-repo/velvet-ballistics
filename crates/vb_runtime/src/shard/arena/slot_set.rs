@@ -4,7 +4,7 @@
 
 use super::types::{ArenaError, SlotHandle};
 
-use super::arena::Arena;
+use super::arena_core::Arena;
 
 /// Membership-only set for terminal runs.
 /// Does not store values — just tracks which slots are "in the set".

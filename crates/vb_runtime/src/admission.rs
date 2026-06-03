@@ -5,7 +5,8 @@
 //! and admission policy for each accepted run. `AdmissionError` enumerates
 //! the reasons a submit may be rejected at the admission gate.
 
-mod admission;
+#[path = "admission/admission.rs"]
+mod admission_core;
 mod errors;
 mod guards;
 mod stores;
@@ -13,7 +14,7 @@ mod types;
 mod validation;
 
 // Public re-exports for crate users
-pub use admission::{
+pub use admission_core::{
     admit_artifact_run, admit_artifact_run_with_certificate_floor, admit_run,
     admit_run_with_budget, admit_run_with_budget_policy, check_capability,
 };

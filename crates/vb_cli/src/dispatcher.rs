@@ -137,24 +137,20 @@ pub fn run_from_env() -> ExitCode {
             run_b,
             db,
             output,
-        }) => {
-            if workflow.is_some() && against.is_some() && db.is_some() {
-                let workflow = workflow.unwrap();
-                let against_run = against.unwrap();
-                let db_path = db.unwrap();
+        }) => match (workflow, against, run_a, run_b, db) {
+            (Some(workflow), Some(against_run), _, _, Some(db_path)) => {
                 cmd_diff_workflow_against(&workflow, &against_run, &db_path, output)
-            } else if run_a.is_some() && run_b.is_some() && db.is_some() {
-                let run_a = run_a.unwrap();
-                let run_b = run_b.unwrap();
-                let db_path = db.unwrap();
+            }
+            (_, _, Some(run_a), Some(run_b), Some(db_path)) => {
                 cmd_diff(&run_a, &run_b, &db_path, output)
-            } else {
+            }
+            _ => {
                 crate::errln!(
                     "diff requires either two run IDs or --against <run_id> with a workflow"
                 );
                 CliExitCode::ValidationFailed.into()
             }
-        }
+        },
         Ok(Command::Incident { run_id, db, output }) => cmd_incident(&run_id, &db, output),
         Ok(Command::Submit {
             workflow,
