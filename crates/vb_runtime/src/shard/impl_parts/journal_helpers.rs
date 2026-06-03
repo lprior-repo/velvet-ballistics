@@ -16,7 +16,7 @@ impl Shard {
         &mut self,
         _event: RuntimeJournalEvent,
     ) -> RuntimeResult<()> {
-        Ok(())
+        kani::any()
     }
 
     fn journal_sequence_for(&self, run: RunId) -> EventSeq {
