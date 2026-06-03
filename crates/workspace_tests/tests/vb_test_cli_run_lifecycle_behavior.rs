@@ -547,27 +547,27 @@ mod answer_command {
         assert!(!output.status.success(), "answer without args should fail");
     }
 
-    /// answer with invalid step should fail.
+    /// answer with invalid slot should fail.
     #[test]
-    fn cli_answer_invalid_step_fails() {
+    fn cli_answer_invalid_slot_fails() {
         let output = run_vb(&[
             "answer",
             "42",
-            "--step",
+            "--slot",
             "not-a-number",
-            "--value-file",
+            "--value",
             "value.bin",
             "--db",
             "journal-db",
         ]);
         assert!(
             !output.status.success(),
-            "answer with invalid step should fail"
+            "answer with invalid slot should fail"
         );
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
-            stderr.contains("invalid step") || stderr.contains("not-a-number"),
-            "should report invalid step: {}",
+            stderr.contains("invalid") || stderr.contains("not-a-number"),
+            "should report invalid slot: {}",
             stderr
         );
     }

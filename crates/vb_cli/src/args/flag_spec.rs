@@ -22,10 +22,9 @@ pub(crate) struct ActionInspectParseState {
 pub(crate) fn known_flag_spec(command: &'static str, token: &str) -> Option<FlagSpec> {
     match command {
         "validate" | "explain" | "bench-run" | "graph" | "simulate" => output_flag_spec(token),
-        "ai-context" => switch_flag_spec(token, "--json")
-            .or_else(|| output_flag_spec(token))
+        "ai-context" => output_flag_spec(token)
             .or_else(|| value_flag_spec(token, "--db")),
-        "inspect" | "replay" | "retry" | "resume" | "incident" => {
+        "inspect" | "replay" | "resume" | "incident" => {
             output_flag_spec(token).or_else(|| value_flag_spec(token, "--db"))
         }
         "verify" => output_flag_spec(token).or_else(|| value_flag_spec(token, "--profile")),
@@ -77,8 +76,13 @@ pub(crate) fn known_flag_spec(command: &'static str, token: &str) -> Option<Flag
         }),
         "doctor" => output_flag_spec(token).or_else(|| value_flag_spec(token, "--db")),
         "answer" => output_flag_spec(token).or(match token {
+            "--slot" => Some(FlagSpec::Value("--slot")),
+            "--value" => Some(FlagSpec::Value("--value")),
+            "--db" => Some(FlagSpec::Value("--db")),
+            _ => None,
+        }),
+        "retry" => output_flag_spec(token).or(match token {
             "--step" => Some(FlagSpec::Value("--step")),
-            "--value-file" => Some(FlagSpec::Value("--value-file")),
             "--db" => Some(FlagSpec::Value("--db")),
             _ => None,
         }),

@@ -153,6 +153,7 @@ pub(crate) enum Command {
     },
     Retry {
         run_id: String,
+        step: Option<u16>,
         db: PathBuf,
         output: OutputFormat,
     },
@@ -176,8 +177,8 @@ pub(crate) enum Command {
     },
     Answer {
         run_id: String,
-        step: u16,
-        value_file: PathBuf,
+        slot: u16,
+        value: PathBuf,
         db: PathBuf,
         output: OutputFormat,
     },

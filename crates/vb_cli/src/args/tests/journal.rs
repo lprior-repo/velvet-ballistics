@@ -329,48 +329,48 @@ fn parse_incident_requires_run_id_and_db() {
 }
 
 #[test]
-fn parse_answer_rejects_invalid_step_with_exact_variant() {
+fn parse_answer_rejects_invalid_slot_with_exact_variant() {
     let parsed = parse_args(&args(&[
         "velvet-ballistics",
         "answer",
         "run-1",
-        "--step",
-        "not-a-step",
-        "--value-file",
+        "--slot",
+        "not-a-slot",
+        "--value",
         "value.bin",
         "--db",
         "test-db",
     ]));
     assert!(
-        matches!(parsed, Err(ParseError::InvalidStep(ref s)) if s == "not-a-step"),
-        "expected InvalidStep(not-a-step), got {parsed:?}"
+        matches!(parsed, Err(ParseError::InvalidStep(ref s)) if s == "not-a-slot"),
+        "expected InvalidStep(not-a-slot), got {parsed:?}"
     );
 }
 
 #[test]
-fn parse_answer_accepts_valid_step_and_input() {
+fn parse_answer_accepts_valid_slot_and_input() {
     let parsed = parse_args(&args(&[
         "velvet-ballistics",
         "answer",
         "run-1",
-        "--step",
+        "--slot",
         "3",
-        "--value-file",
+        "--value",
         "value.bin",
         "--db",
         "test-db",
     ]));
     if let Ok(Command::Answer {
         run_id,
-        step,
-        value_file,
+        slot,
+        value,
         db,
         output,
     }) = parsed
     {
         assert_eq!(run_id, "run-1");
-        assert_eq!(step, 3);
-        assert_eq!(value_file, PathBuf::from("value.bin"));
+        assert_eq!(slot, 3);
+        assert_eq!(value, PathBuf::from("value.bin"));
         assert_eq!(db, PathBuf::from("test-db"));
         assert_eq!(output, OutputFormat::Text);
     } else {

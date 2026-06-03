@@ -21,7 +21,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use vb_ipc::client::IpcClient;
 use vb_ipc::{IpcCommand, IpcPayload};
 
-pub(crate) fn cmd_retry(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
+pub(crate) fn cmd_retry(run_id: &str, step: Option<&u16>, db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let events = match read_journal_events(run_id, db, output) {
         Ok(ev) => ev,
         Err(code) => return code,
@@ -49,7 +49,11 @@ pub(crate) fn cmd_retry(run_id: &str, db: &std::path::Path, output: OutputFormat
         }
         return CliExitCode::ValidationFailed.into();
     }
-    let resume_step = analysis.last_successful_step.map(|s| s.saturating_add(1));
+    // If --step was provided, use it; otherwise calculate from analysis
+    let resume_step = match step {
+        Some(s) => *s,
+        None => analysis.last_successful_step.map(|s| s.saturating_add(1)).unwrap_or(0),
+    };
     if output != OutputFormat::Text {
         crate::emit_json_or_return!(
             &serde_json::json!({
@@ -72,12 +76,7 @@ pub(crate) fn cmd_retry(run_id: &str, db: &std::path::Path, output: OutputFormat
             }
             (None, None) => crate::outln!("Run {run_id} failed. No step progress recorded."),
         }
-        match resume_step {
-            Some(step) => {
-                crate::outln!("Retry would resume from step {step} with recovered state.")
-            }
-            None => crate::outln!("Retry would resume from the beginning."),
-        }
+        crate::outln!("Retry will resume from step {resume_step} with recovered state.");
     }
     ExitCode::SUCCESS
 }
@@ -134,7 +133,7 @@ pub(crate) fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputForma
 
 pub(crate) fn cmd_answer(
     run_id: &str,
-    step: u16,
+    slot: u16,
     value_file: &std::path::Path,
     db: &std::path::Path,
     output: OutputFormat,
@@ -158,7 +157,7 @@ pub(crate) fn cmd_answer(
         }
     };
 
-    // Read value_file as bytes (expected to be postcard-encoded SlotValue)
+    // Read value file as bytes (expected to be postcard-encoded SlotValue)
     let answer_bytes = match std::fs::read(value_file) {
         Ok(bytes) => bytes,
         Err(e) => {
@@ -206,7 +205,7 @@ pub(crate) fn cmd_answer(
     // Construct the IPC payload
     let payload = IpcPayload::AnswerAsk {
         run_id: rid,
-        ticket: step.into(),
+        ticket: slot.into(),
         answer: answer_bytes,
         taint: None,
     };

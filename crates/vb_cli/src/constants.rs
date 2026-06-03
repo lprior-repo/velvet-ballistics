@@ -23,18 +23,18 @@ commands:
   trace      <run_id> --db <path> [--step <N>] [--action <N>] [--status <status>]
              [--since-seq <N>] [--until-seq <N>] [--limit <N>] [--emit text|yaml|postcard]
                                                         Show step-by-step execution trace
-  retry      <run_id> --db <path> [--emit text|yaml|postcard]     Retry a failed run from last successful step
+  retry      <run_id> --db <path> [--step <N>] [--emit text|yaml|postcard]  Retry a failed run from last successful step
   resume     <run_id> --db <path> [--emit text|yaml|postcard]     Resume a suspended run
   cancel     <run_id> --db <path> [--reason <text>] [--emit text|yaml|postcard]  Cancel a run
   bench-run  <workflow.yaml> [--emit text|yaml|postcard]          Benchmark a workflow
   doctor     [--db <path>] [--emit text|yaml|postcard]            Run diagnostic checks
-  answer     <run_id> --step <N> --value-file <file> --db <path> [--emit text|yaml|postcard]  Answer a suspended step
+  answer     <run_id> --slot <N> --value <file> --db <path> [--emit text|yaml|postcard]  Answer a suspended step
   graph      <workflow.yaml> [--emit text|yaml|postcard]          Output control flow graph in DOT format
   diff       <run_a> <run_b> --db <path> [--emit text|yaml|postcard]  Compare two runs
   incident   <run_id> --db <path> [--emit text|yaml|postcard]     Black-box failure report
   submit     <workflow.yaml> --input-bin <file> --db <path> --durability <mode> [--emit text|yaml|postcard]  Submit workflow run
   simulate   <workflow.yaml> [--emit text|yaml|postcard]     Dry-run workflow without executing actions
-  ai-context <run_id> --db <path> [--json] [--emit text|yaml|postcard]  Emit compact AI context packet for a run
+  ai-context <run_id> --db <path> [--emit text|yaml|postcard]  Emit compact AI context packet for a run
   help                                                Print this message
   version                                             Print version
   agent-context [--deliver stdout|file:<path>]       Emit or deliver versioned AI-agent CLI schema

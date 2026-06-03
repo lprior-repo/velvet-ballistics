@@ -89,8 +89,15 @@ pub(super) fn parse_replay(args: &[OsString]) -> Result<Command, ParseError> {
 pub(super) fn parse_retry(args: &[OsString]) -> Result<Command, ParseError> {
     validate_known_flags(args, "retry")?;
     let a = parse_run_db_args(args, "retry")?;
+    let step = named_flag(args, "--step")
+        .map(|s| {
+            s.parse::<u16>()
+                .map_err(|_| ParseError::InvalidStep(s))
+        })
+        .transpose()?;
     Ok(Command::Retry {
         run_id: a.run_id,
+        step,
         db: a.db,
         output: a.output,
     })
@@ -140,18 +147,18 @@ pub(super) fn parse_answer(args: &[OsString]) -> Result<Command, ParseError> {
     let run_id = find_positional(args, 2)
         .and_then(|path| path.to_str().map(String::from))
         .ok_or(ParseError::MissingArgument("run_id"))?;
-    let step_raw = named_flag(args, "--step").ok_or(ParseError::MissingArgument("--step"))?;
-    let step = step_raw
+    let slot_raw = named_flag(args, "--slot").ok_or(ParseError::MissingArgument("--slot"))?;
+    let slot = slot_raw
         .parse::<u16>()
-        .map_err(|_| ParseError::InvalidStep(step_raw))?;
-    let value_file =
-        named_flag(args, "--value-file").ok_or(ParseError::MissingArgument("--value-file"))?;
+        .map_err(|_| ParseError::InvalidStep(slot_raw))?;
+    let value =
+        named_flag(args, "--value").ok_or(ParseError::MissingArgument("--value"))?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
     let output = parse_output_format(args);
     Ok(Command::Answer {
         run_id,
-        step,
-        value_file: PathBuf::from(value_file),
+        slot,
+        value: PathBuf::from(value),
         db: PathBuf::from(db),
         output,
     })
