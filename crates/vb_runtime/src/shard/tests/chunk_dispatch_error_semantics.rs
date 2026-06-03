@@ -10,7 +10,7 @@
 // small_config() is defined in chunk_003.rs
 
 /// Workflow with an Ask.
-fn ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+fn ask_workflow_for_error_tests() -> Option<vb_core::workflow::CompiledWorkflow> {
     let set_prompt = CompiledNode {
         id: vb_core::ids::StepIdx::ZERO,
         output: Some(SlotIdx::ZERO),
@@ -435,7 +435,7 @@ fn valid_wait_timer_fire_advances_state() {
 fn valid_ask_timer_fire_clears_pending_timer() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = ask_workflow() else {
+    let Some(workflow) = ask_workflow_for_error_tests() else {
         return;
     };
     let run = RunId::new(524);
@@ -478,7 +478,7 @@ fn valid_ask_timer_fire_clears_pending_timer() {
 fn ask_answer_with_wrong_step_returns_error() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = ask_workflow() else {
+    let Some(workflow) = ask_workflow_for_error_tests() else {
         return;
     };
     let run = RunId::new(530);
