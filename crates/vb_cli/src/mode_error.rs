@@ -191,9 +191,11 @@ mod tests {
     #[test]
     fn command_mode_returns_storage_for_diff() {
         let cmd = Command::Diff {
-            run_a: "1".into(),
-            run_b: "2".into(),
-            db: dummy_path(),
+            workflow: None,
+            against: None,
+            run_a: Some("1".into()),
+            run_b: Some("2".into()),
+            db: Some(dummy_path()),
             output: OutputFormat::Text,
         };
         assert_eq!(command_mode(&cmd), CommandMode::Storage);

@@ -86,7 +86,8 @@ pub(crate) fn known_flag_spec(command: &'static str, token: &str) -> Option<Flag
             "--db" => Some(FlagSpec::Value("--db")),
             _ => None,
         }),
-        "diff" => output_flag_spec(token).or_else(|| value_flag_spec(token, "--db")),
+        "diff" => output_flag_spec(token).or_else(|| value_flag_spec(token, "--against"))
+            .or_else(|| value_flag_spec(token, "--db")),
         "submit" => output_flag_spec(token).or(match token {
             "--input-bin" => Some(FlagSpec::Value("--input-bin")),
             "--db" => Some(FlagSpec::Value("--db")),

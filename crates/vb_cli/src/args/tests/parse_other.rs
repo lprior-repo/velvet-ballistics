@@ -110,16 +110,20 @@ fn parse_diff_requires_both_run_ids_and_db() {
         "unexpected: {parsed:?}"
     );
     if let Ok(Command::Diff {
+        workflow,
+        against,
         run_a,
         run_b,
         db,
         output,
     }) = parsed
     {
-        assert_eq!(run_a, "1");
-        assert_eq!(run_b, "2");
-        assert_eq!(db, PathBuf::from("test-db"));
+        assert_eq!(run_a, Some("1".to_string()));
+        assert_eq!(run_b, Some("2".to_string()));
+        assert_eq!(db, Some(PathBuf::from("test-db")));
         assert_eq!(output, OutputFormat::Text);
+        assert!(workflow.is_none());
+        assert!(against.is_none());
     }
 }
 

@@ -1415,9 +1415,11 @@ mod mode_activation {
     #[test]
     fn command_mode_diff_is_storage() {
         let cmd = Command::Diff {
-            run_a: "1".to_string(),
-            run_b: "2".to_string(),
-            db: PathBuf::from("/tmp/journal"),
+            workflow: None,
+            against: None,
+            run_a: Some("1".to_string()),
+            run_b: Some("2".to_string()),
+            db: Some(PathBuf::from("/tmp/journal")),
             output: OutputFormat::Text,
         };
         assert_eq!(command_mode(&cmd), CommandMode::Storage);
@@ -1649,9 +1651,11 @@ mod mode_activation {
         );
         assert_eq!(
             command_mode(&Command::Diff {
-                run_a: "1".to_string(),
-                run_b: "2".to_string(),
-                db: PathBuf::from("/tmp/j"),
+                workflow: None,
+                against: None,
+                run_a: Some("1".to_string()),
+                run_b: Some("2".to_string()),
+                db: Some(PathBuf::from("/tmp/j")),
                 output: OutputFormat::Text,
             }),
             CommandMode::Storage

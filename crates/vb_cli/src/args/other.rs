@@ -93,14 +93,35 @@ pub(super) fn parse_doctor(args: &[OsString]) -> Result<Command, ParseError> {
 
 pub(super) fn parse_diff(args: &[OsString]) -> Result<Command, ParseError> {
     validate_known_flags(args, "diff")?;
-    let run_a = positional_str(args, 2, "run_a")?;
-    let run_b = positional_str(args, 3, "run_b")?;
-    let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
     let output = parse_output_format(args);
-    Ok(Command::Diff {
-        run_a,
-        run_b,
-        db: PathBuf::from(db),
-        output,
-    })
+
+    // Check if --against flag is present (workflow-vs-run mode)
+    if let Some(against) = named_flag(args, "--against") {
+        // Workflow vs run mode: diff <workflow> --against <run_id> [--db <path>]
+        let workflow = find_positional(args, 2)
+            .and_then(|p| p.to_str().map(String::from))
+            .ok_or(ParseError::MissingArgument("workflow.yaml"))?;
+        let db = named_flag(args, "--db");
+        Ok(Command::Diff {
+            workflow: Some(PathBuf::from(workflow)),
+            against: Some(against),
+            run_a: None,
+            run_b: None,
+            db: db.map(PathBuf::from),
+            output,
+        })
+    } else {
+        // Run vs run mode: diff <run_a> <run_b> --db <path>
+        let run_a = positional_str(args, 2, "run_a")?;
+        let run_b = positional_str(args, 3, "run_b")?;
+        let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
+        Ok(Command::Diff {
+            workflow: None,
+            against: None,
+            run_a: Some(run_a),
+            run_b: Some(run_b),
+            db: Some(PathBuf::from(db)),
+            output,
+        })
+    }
 }

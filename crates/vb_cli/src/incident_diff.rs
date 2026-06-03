@@ -229,6 +229,161 @@ pub(crate) fn cmd_diff(
     CliExitCode::Success.into()
 }
 
+/// Compare a workflow's expected execution against a run's actual events.
+pub(crate) fn cmd_diff_workflow_against(
+    workflow: &std::path::Path,
+    against_run: &str,
+    db: &std::path::Path,
+    output: OutputFormat,
+) -> ExitCode {
+    // Read and compile the workflow
+    let bytes = match crate::file_io::read_file(workflow, output, CliExitCode::ValidationFailed) {
+        Ok(b) => b,
+        Err(code) => return code,
+    };
+
+    let compiled = match vb_compile::compile_workflow(&bytes) {
+        Ok(c) => c,
+        Err(errors) => {
+            let message = compile_errors_message(&errors.0);
+            write_failure_message(&message, output, CliExitCode::CompileFailed);
+            return CliExitCode::CompileFailed.into();
+        }
+    };
+
+    // Parse the run ID
+    let rid = match against_run.parse::<u64>() {
+        Ok(id) => vb_core::RunId::new(id),
+        Err(e) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({"success": false, "error": format!("invalid run_id '{against_run}': {e}")}),
+                    output,
+                );
+            } else {
+                crate::errln!("invalid run_id '{against_run}': {e}");
+            }
+            return CliExitCode::ValidationFailed.into();
+        }
+    };
+
+    // Open journal and get events
+    let journal = match vb_storage::FjallJournal::open(db, None) {
+        Ok(j) => j,
+        Err(e) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({"success": false, "error": format!("error opening journal at {}: {e}", db.display())}),
+                    output,
+                );
+            } else {
+                crate::errln!("error opening journal at {}: {e}", db.display());
+            }
+            return CliExitCode::StorageError.into();
+        }
+    };
+
+    let events = match journal.events_for_run(rid) {
+        Ok(evts) => evts,
+        Err(e) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({"success": false, "error": format!("error reading run {against_run}: {e}")}),
+                    output,
+                );
+            } else {
+                crate::errln!("error reading run {against_run}: {e}");
+            }
+            return CliExitCode::StorageError.into();
+        }
+    };
+
+    // Build expected actions from workflow
+    let mut expected_actions = Vec::new();
+    for step in 0..compiled.node_count() {
+        let step_idx = vb_core::ids::StepIdx::new(step);
+        if let Some(node) = compiled.node(step_idx) {
+            let name = compiled.step_name(step_idx).unwrap_or("<unnamed>");
+            match node.kind {
+                vb_core::CompiledNodeKind::Do { action, .. } => {
+                    expected_actions.push(format!("step {} ({}) action {:?}", step, name, action));
+                }
+                vb_core::CompiledNodeKind::Ask { .. } => {
+                    expected_actions.push(format!("step {} ({}) Ask", step, name));
+                }
+                _ => {}
+            }
+        }
+    }
+
+    // Build actual actions from events
+    let actual_actions: Vec<String> = events
+        .iter()
+        .filter_map(|e| {
+            match e {
+                vb_storage::JournalEvent::ActionScheduled { step, action, .. } => {
+                    Some(format!("step {:?} action {:?}", step, action))
+                }
+                vb_storage::JournalEvent::AskScheduledEvent { step, .. } => {
+                    Some(format!("step {:?} Ask", step))
+                }
+                _ => None,
+            }
+        })
+        .collect();
+
+    // Compare
+    match output {
+        OutputFormat::Yaml | OutputFormat::Postcard => {
+            crate::emit_json_or_return!(
+                &serde_json::json!({
+                    "schema_version": crate::cli_envelope::SCHEMA_VERSION,
+                    "kind": "workflow_diff_report",
+                    "workflow": workflow.display().to_string(),
+                    "run": against_run,
+                    "expected_actions": expected_actions,
+                    "actual_actions": actual_actions,
+                    "workflow_nodes": compiled.node_count(),
+                    "workflow_slots": compiled.slot_count(),
+                    "run_events": events.len(),
+                    "match": expected_actions.len() == actual_actions.len()
+                }),
+                output,
+            );
+        }
+        OutputFormat::Text => {
+            crate::outln!("diff: workflow {} vs run {}", workflow.display(), against_run);
+            crate::outln!("  workflow: {} nodes, {} slots", compiled.node_count(), compiled.slot_count());
+            crate::outln!("  run: {} events", events.len());
+            crate::outln!("");
+            crate::outln!("Expected actions (from workflow):");
+            if expected_actions.is_empty() {
+                crate::outln!("  (none)");
+            } else {
+                for action in &expected_actions {
+                    crate::outln!("  - {}", action);
+                }
+            }
+            crate::outln!("");
+            crate::outln!("Actual actions (from run):");
+            if actual_actions.is_empty() {
+                crate::outln!("  (none)");
+            } else {
+                for action in &actual_actions {
+                    crate::outln!("  - {}", action);
+                }
+            }
+            crate::outln!("");
+            if expected_actions == actual_actions {
+                crate::outln!("Result: workflow and run actions match");
+            } else {
+                crate::outln!("Result: workflow and run actions DIFFER");
+            }
+        }
+    }
+    CliExitCode::Success.into()
+}
+
 pub(crate) fn print_diff_entry(diff: &serde_json::Value) {
     let kind = str_field(diff, "kind", "unknown");
     match kind {

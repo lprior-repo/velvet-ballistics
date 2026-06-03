@@ -19,7 +19,7 @@ use crate::exit_code::CliExitCode;
 use crate::explain::cmd_explain;
 use crate::file_io::*;
 use crate::graph::cmd_graph;
-use crate::incident_diff::{cmd_diff, cmd_incident};
+use crate::incident_diff::{cmd_diff, cmd_diff_workflow_against, cmd_incident};
 use crate::inspect::cmd_inspect;
 use crate::io_helpers::*;
 use crate::ipc_serve::cmd_ipc_serve;
@@ -126,11 +126,28 @@ pub fn run_from_env() -> ExitCode {
         }) => cmd_answer(&run_id, slot, &value, &db, output),
         Ok(Command::Graph { workflow, output }) => cmd_graph(&workflow, output),
         Ok(Command::Diff {
+            workflow,
+            against,
             run_a,
             run_b,
             db,
             output,
-        }) => cmd_diff(&run_a, &run_b, &db, output),
+        }) => {
+            if workflow.is_some() && against.is_some() && db.is_some() {
+                let workflow = workflow.unwrap();
+                let against_run = against.unwrap();
+                let db_path = db.unwrap();
+                cmd_diff_workflow_against(&workflow, &against_run, &db_path, output)
+            } else if run_a.is_some() && run_b.is_some() && db.is_some() {
+                let run_a = run_a.unwrap();
+                let run_b = run_b.unwrap();
+                let db_path = db.unwrap();
+                cmd_diff(&run_a, &run_b, &db_path, output)
+            } else {
+                crate::errln!("diff requires either two run IDs or --against <run_id> with a workflow");
+                CliExitCode::ValidationFailed.into()
+            }
+        }
         Ok(Command::Incident { run_id, db, output }) => cmd_incident(&run_id, &db, output),
         Ok(Command::Submit {
             workflow,
