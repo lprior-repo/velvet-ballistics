@@ -14,6 +14,11 @@ pub mod flux {
     pub mod vb_y9d3v_action_ticket_refinements;
 }
 
+#[cfg(all(flux, feature = "vb-fzgdn-flux-refinements"))]
+pub mod flux {
+    pub mod vb_fzgdn;
+}
+
 // Verus proof modules (compiled with verus toolchain)
 // Gated behind a cfg to avoid compilation under normal rustc.
 // Actual verification: `bash scripts/verify-verus.sh --target vb-y9d3v-action-fence`
