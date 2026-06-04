@@ -23,6 +23,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use mio::net::UnixStream;
+use vb_core::ids::SlotIdx;
 use vb_core::{RunId, WorkflowDigest};
 use vb_ipc::server::{IpcResponse, IpcServer};
 use vb_ipc::{IpcCommand, IpcFrameHeader, IpcPayload, MaxPayloadBytes, SubmitRunPayload};
@@ -448,7 +449,7 @@ fn ipc_all_11_commands_have_typed_responses() {
             .unwrap_or_default(),
             IpcCommand::AnswerAsk => postcard::to_allocvec(&IpcPayload::AnswerAsk {
                 run_id: RunId::new(1),
-                ticket: 0,
+                answer_slot: SlotIdx::ZERO,
                 answer: vec![],
                 taint: None,
             })

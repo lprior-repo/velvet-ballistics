@@ -59,11 +59,12 @@
             "postcard"
           ]
         },
-        "--step": {
+        "--slot": {
           "required": true,
           "type": "u16"
         },
-        "--value-file": {
+        "--value": {
+          "format": "postcard-encoded SlotValue bytes",
           "required": true,
           "type": "path"
         }
@@ -112,26 +113,52 @@
       "summary": "Compile a workflow to an artifact."
     },
     "diff": {
-      "flags": {
-        "--db": {
-          "required": true,
-          "type": "path"
+      "modes": {
+        "durable_run": {
+          "flags": {
+            "--db": {
+              "required": true,
+              "type": "path"
+            },
+            "--emit": {
+              "default": "text",
+              "type": "enum",
+              "values": [
+                "text",
+                "yaml",
+                "postcard"
+              ]
+            }
+          },
+          "positionals": [
+            "run_a",
+            "run_b"
+          ],
+          "summary": "Compare two durable runs."
         },
-        "--emit": {
-          "default": "text",
-          "type": "enum",
-          "values": [
-            "text",
-            "yaml",
-            "postcard"
-          ]
+        "workflow": {
+          "flags": {
+            "--against": {
+              "required": true,
+              "type": "path"
+            },
+            "--emit": {
+              "default": "text",
+              "type": "enum",
+              "values": [
+                "text",
+                "yaml",
+                "postcard"
+              ]
+            }
+          },
+          "positionals": [
+            "workflow.yaml"
+          ],
+          "summary": "Compare workflow semantics against another workflow definition."
         }
       },
-      "positionals": [
-        "run_a",
-        "run_b"
-      ],
-      "summary": "Compare two durable runs."
+      "summary": "Compare workflow definitions or durable runs."
     },
     "doctor": {
       "flags": {
@@ -187,7 +214,7 @@
       "positionals": [
         "workflow.yaml"
       ],
-      "summary": "Explain validation errors in detail."
+      "summary": "Dry-run a workflow and report the execution plan with semantic parity to run."
     },
     "graph": {
       "flags": {

@@ -27,5 +27,6 @@ pub(crate) enum ParseError {
     InvalidArgument(String),
     NoCommand,
     InvalidStep(String),
+    InvalidSlot(String),
     ReasonTooLong,
 }

@@ -1,57 +1,33 @@
 # Proof Strategy — vb-jpq7.21 AnswerAsk IPC/runtime semantic delta
 
-STATUS: PLANNED. No verifier, test, fuzz, or CI execution is claimed here.
+STATUS: PLANNED. No verifier, test, fuzz, CI, or proof success is claimed here.
 
 ## Scope
 
-This plan covers only the repaired AnswerAsk semantic delta:
-
-- `IpcPayload::AnswerAsk` is `{ run_id, answer_slot, answer, taint }`.
-- IPC handlers decode AnswerAsk and call `Runtime::answer_pending_ask_slot`.
-- Runtime derives `AskTicket` from shard state, requires a pending `PendingTimerKind::Ask`, resolves the resume step from the Ask node, validates `AskResume { answer } == answer_slot`, and enqueues `AskAnswered` only for valid state.
-
-Out of scope: production/test code edits by this planning pass, scheduler concurrency redesign, SlotValue semantics beyond decode/pass-through, postcard implementation internals, and legacy `answer_ask(AskAnswer)` ticket behavior except as bridge context.
+This repaired plan covers the behavior-affecting AnswerAsk semantic delta: `IpcPayload::AnswerAsk { run_id, answer_slot, answer, taint }`, IPC handler SlotValue decode/size/taint defaulting, routing to `Runtime::answer_pending_ask_slot`, runtime derivation of `AskTicket` from pending Ask state, and exact `AskResume.answer == answer_slot` rejection-before-mutation semantics.
 
 ## Risk classification
 
-- Temporal/state-machine: applicable; pending Ask timer and resume-step state machine is central.
-- Rust-local invariant: applicable; slot equality and enum shape are local Rust invariants.
-- Bounded state: applicable; finite node/timer/slot cases fit Kani and proptest.
-- Refinement/type-state: applicable conceptually, but Flux/Verus are not tooling-fit for current source annotations.
-- Concurrency: not applicable; no new locks, atomics, tasks, cancellation, or interleavings in this delta.
-- Unsafe/UB: not applicable; scoped first-party files forbid unsafe code.
-- Untrusted input: applicable; IPC binary payload is hostile input.
-- Dependency/supply-chain: not triggered; no dependency changes are in this scope.
-- Performance: not triggered; no speed claim.
-- Release-critical gate: applicable; run `moon ci` after focused obligations.
+Temporal/state-machine, Rust-local invariant, bounded state, refinement/type-state, untrusted input, IPC codec, and release-critical gates are in scope. Concurrency/Loom and unsafe/Miri triggers are not present because this bead adds no locks, atomics, tasks, cancellation, raw pointers, FFI, or unsafe code.
 
-## Lane choices
+## Lane policy application
 
-Required lanes:
+Default Rust behavior lanes are recorded per seed for `kani`, `verus`, `flux-rs`, and `proptest`. Required obligations are planned for Kani/proptest where they bind to production runtime or IPC seams. The IPC handler/runtime bridge Kani lane is required because the seam has bounded Rust control flow over hostile IPC bytes, SlotValue decode, answer byte bounds, taint defaulting/propagation, fail-closed rejection-before-runtime-mutation, and Runtime::answer_pending_ask_slot routing; the proptest lane is also required and planned for generated SlotValue bytes, malformed bytes, answer_slot equality/mismatch, taint defaulting/propagation, encoded length, and rejection-before-runtime-mutation. Verus and Flux-rs are recorded as `not_applicable` per seed with concrete source/tooling evidence rather than omitted or waived for behavior. `cargo-fuzz` is required for IPC/hostile-input seeds. Cargo behavior-test obligations are split into one exact test filter per command. `moon ci` remains the release gate.
 
-- **Kani** for bounded runtime answer-slot equality and ticket derivation over generated shard/workflow/timer states.
-- **Proptest** for randomized IPC AnswerAsk roundtrip and valid/invalid answer-slot behavior.
-- **cargo-fuzz** for hostile IPC frame/payload byte boundary (`ipc_decode`, `ipc_frame_fuzz_boundary`).
-- **Cargo behavior tests** as bridge evidence to existing deterministic tests and future focused handler/runtime tests.
-- **moon ci** as release gate after focused proof/test/fuzz obligations.
+## New behavior tests cited as planned evidence
 
-Not applicable lanes:
+- `handle_answer_ask_accepts_valid_postcard_slot_value_and_default_clean_taint`
+- `handle_answer_ask_rejects_mismatched_answer_slot_without_consuming_pending_ask`
+- `handle_answer_ask_rejects_absent_pending_ask`
+- `handle_answer_ask_rejects_malformed_slot_value_bytes_before_runtime_mutation`
+- `answer_pending_ask_slot_accepts_matching_answer_slot_and_completes_run`
+- `answer_pending_ask_slot_rejects_mismatched_answer_slot_without_advancing_pending_ask`
+- `answer_pending_ask_slot_rejects_absent_pending_ask_for_unknown_run`
+- `answer_pending_ask_slot_rejects_action_suspended_non_ask_state`
+- `answer_pending_ask_slot_rejects_wait_timer_non_ask_state`
+- `cli_answer_slot_value_happy_path_uses_ipc_answer_ask`
+- `cli_answer_rejects_malformed_slot_value_without_ipc_server`
 
-- **Flux**: no scoped Flux annotations/features for Runtime/IpcPayload/CompiledWorkflow; existing Flux is action-ticket-specific.
-- **Verus**: no production-bound Verus requires/ensures for scoped exec functions; mirror-only Verus would violate no-vacuum-Verus rule.
-- **Loom**: no new concurrency/interleaving surface.
-- **Miri**: no unsafe/provenance/UB surface.
+## Waiver posture
 
-## Bridge to existing behavior
-
-Existing tests already prove useful but insufficient facts:
-
-- `payload_roundtrip_preserves_answer_ask_variant` and adversarial `AnswerAsk` roundtrips cover deterministic IPC shape examples.
-- `cli_answer_slot_value_happy_path_uses_ipc_answer_ask` proves CLI emits `AnswerAsk { run_id, answer_slot, answer, taint: None }`.
-- `test_direct_api_answer_ask_resumes_suspended_run` proves legacy direct `answer_ask(AskAnswer)` can resume and emit `AskAnswered`; it does **not** close the new `answer_pending_ask_slot` derivation proof.
-
-Planned future harnesses must add explicit mismatch/no-timer/non-Ask/missing-resume coverage for `answer_pending_ask_slot`.
-
-## Acceptance for proof-plan-reviewer
-
-The plan is complete only if reviewer accepts `verifier-lane-decisions.jsonl`, every required obligation in `proof-obligations.planned.jsonl`, and the trusted-base exclusions above. Proof success is deliberately not claimed.
+No behavior-affecting waiver is made. `waiver-candidates.jsonl` contains only non-behavior proof-infrastructure candidates for not materializing new Flux/Verus infrastructure in this planning pass, with repair triggers and compensating required obligations.

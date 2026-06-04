@@ -120,6 +120,26 @@ fn run_cli(args: &[&std::ffi::OsStr]) -> Option<std::process::Output> {
     }
 }
 
+fn run_cli_with_timeout(args: &[&std::ffi::OsStr], timeout: &str) -> Option<std::process::Output> {
+    let mut command = std::process::Command::new("timeout");
+    command
+        .arg("--kill-after=2s")
+        .arg(timeout)
+        .arg(env!("CARGO_BIN_EXE_velvet-ballistics"))
+        .args(args);
+
+    match command.output() {
+        Ok(output) => Some(output),
+        Err(err) => {
+            assert!(
+                forced_assertion_failure(),
+                "failed to execute bounded velvet_ballistics: {err}"
+            );
+            None
+        }
+    }
+}
+
 fn output_stdout(output: &std::process::Output) -> String {
     String::from_utf8_lossy(&output.stdout).into_owned()
 }
@@ -1753,7 +1773,7 @@ fn cli_run_reports_exact_input_mapping_decode_failure() {
 
 #[test]
 fn taint_secret_propagates_through_deterministic_action() {
-    use vb_core::action::{propagate_action_taint, Idempotency};
+    use vb_core::action::{Idempotency, propagate_action_taint};
     use vb_core::value::Taint;
 
     let result = propagate_action_taint(Idempotency::DeterministicPure, Taint::Secret);
@@ -1762,7 +1782,7 @@ fn taint_secret_propagates_through_deterministic_action() {
 
 #[test]
 fn taint_clean_stays_clean_for_pure_actions() {
-    use vb_core::action::{propagate_action_taint, Idempotency};
+    use vb_core::action::{Idempotency, propagate_action_taint};
     use vb_core::value::Taint;
 
     let result = propagate_action_taint(Idempotency::DeterministicPure, Taint::Clean);
@@ -1771,7 +1791,7 @@ fn taint_clean_stays_clean_for_pure_actions() {
 
 #[test]
 fn taint_derived_propagates() {
-    use vb_core::action::{propagate_action_taint, Idempotency};
+    use vb_core::action::{Idempotency, propagate_action_taint};
     use vb_core::value::Taint;
 
     let result = propagate_action_taint(Idempotency::IdempotentExternal, Taint::DerivedFromSecret);
@@ -3078,6 +3098,18 @@ fn parse_yaml_stdout(output: &std::process::Output, command: &str) -> serde_json
     }
 }
 
+fn semantic_change<'a>(diff: &'a serde_json::Value, field: &str) -> &'a serde_json::Value {
+    diff.get("semantic_diff")
+        .and_then(|semantic| semantic.get("changes"))
+        .and_then(serde_json::Value::as_array)
+        .and_then(|changes| {
+            changes
+                .iter()
+                .find(|change| change.get("field") == Some(&serde_json::json!(field)))
+        })
+        .unwrap_or_else(|| panic!("semantic diff missing change field {field}: {diff}"))
+}
+
 fn assert_postcard_stdout(
     output: &std::process::Output,
     command: &str,
@@ -3260,6 +3292,134 @@ fn cli_canonical_emit_yaml_covers_required_output_contract_commands() {
         Some(&serde_json::json!("explain_report"))
     );
     assert_eq!(explain.get("status"), Some(&serde_json::json!("valid")));
+    let plan = explain
+        .get("execution_plan")
+        .and_then(serde_json::Value::as_object)
+        .expect("explain execution_plan must be an object");
+    let graph = plan
+        .get("graph")
+        .expect("explain execution_plan graph missing");
+    assert_eq!(
+        graph.get("nodes"),
+        Some(&serde_json::json!([
+            {"step": 0, "name": "build_result", "kind": "set_const", "output_slot": 0, "next_step": 1, "on_error_step": null},
+            {"step": 1, "name": "done", "kind": "finish", "output_slot": null, "next_step": null, "on_error_step": null}
+        ])),
+        "explain graph nodes must expose exact step ids/kinds: {explain}"
+    );
+    assert_eq!(
+        graph.get("edges"),
+        Some(&serde_json::json!([{"from": 0, "to": 1, "label": "next"}])),
+        "explain graph edges must expose exact control-flow edge: {explain}"
+    );
+    let resources = plan
+        .get("resources")
+        .and_then(serde_json::Value::as_object)
+        .expect("explain resources must be an object");
+    assert_eq!(resources.get("max_steps"), Some(&serde_json::json!(10_000)));
+    assert_eq!(resources.get("max_slots"), Some(&serde_json::json!(1_024)));
+    assert_eq!(
+        resources.get("max_constants"),
+        Some(&serde_json::json!(65_535))
+    );
+    assert_eq!(
+        resources.get("max_accessors"),
+        Some(&serde_json::json!(8_192))
+    );
+    assert_eq!(
+        resources.get("max_expressions"),
+        Some(&serde_json::json!(4_096))
+    );
+    assert_eq!(
+        resources.get("max_expr_stack"),
+        Some(&serde_json::json!(64))
+    );
+    assert_eq!(
+        resources.get("max_step_budget_per_tick"),
+        Some(&serde_json::json!(10_000))
+    );
+    assert_eq!(
+        resources.get("max_transitions_per_tick"),
+        Some(&serde_json::json!(10_000))
+    );
+    assert_eq!(
+        resources.get("max_input_bytes"),
+        Some(&serde_json::json!(1_048_576))
+    );
+    assert_eq!(
+        resources.get("max_output_bytes"),
+        Some(&serde_json::json!(262_144))
+    );
+    assert_eq!(
+        resources.get("max_blob_bytes"),
+        Some(&serde_json::json!(16_777_216))
+    );
+    assert_eq!(
+        resources.get("max_ipc_payload_bytes"),
+        Some(&serde_json::json!(1_048_576))
+    );
+    assert_eq!(
+        resources.get("max_retry_attempts"),
+        Some(&serde_json::json!(3))
+    );
+    assert_eq!(resources.get("max_fanout"), Some(&serde_json::json!(64)));
+    assert_eq!(
+        resources.get("max_collect_items"),
+        Some(&serde_json::json!(1_024))
+    );
+    assert_eq!(
+        resources.get("max_queue_depth"),
+        Some(&serde_json::json!(1_024))
+    );
+    assert_eq!(
+        resources.get("max_journal_batch_bytes"),
+        Some(&serde_json::json!(1_048_576))
+    );
+    assert_eq!(
+        resources.get("allows_secret_results"),
+        Some(&serde_json::json!(false))
+    );
+    assert_eq!(plan.get("actions"), Some(&serde_json::json!([])));
+    assert_eq!(plan.get("suspension_points"), Some(&serde_json::json!([])));
+    assert_eq!(
+        plan.get("slots"),
+        Some(&serde_json::json!({"total": 1, "expressions": 0, "accessors": 0, "constants": 1}))
+    );
+    assert_eq!(
+        plan.get("secrets"),
+        Some(
+            &serde_json::json!({"declared": [], "references_by_step": [], "source_metadata_available": false})
+        )
+    );
+    assert_eq!(
+        plan.get("budget_plan"),
+        Some(&serde_json::json!({
+            "status": "computed",
+            "max_total_steps": 2,
+            "max_total_slots": 1024,
+            "max_fanout": 0,
+            "max_nesting_depth": 0,
+            "max_steps_executable": 2,
+            "max_action_tickets": 0,
+            "max_parallel_in_flight": 0,
+            "max_retries_per_action": 3,
+            "max_gather_pages": 0,
+            "max_gather_items": 0,
+            "max_for_each_iterations": 0,
+            "max_together_branches": 0,
+            "max_repeat_attempts": 0,
+            "max_run_time_seconds": 2,
+            "max_result_bytes": 262144,
+            "max_total_slots_written": 1024,
+            "max_timer_entries": 0,
+            "max_trace_events": 2,
+            "max_journal_batch_bytes": 1048576,
+            "max_queue_depth": 1024,
+            "max_ipc_payload_bytes": 1048576,
+            "max_blob_bytes": 16777216,
+            "max_input_bytes": 1048576
+        }))
+    );
 
     let run_output = run_cli(&[
         std::ffi::OsStr::new("run"),
@@ -3349,10 +3509,10 @@ fn cli_canonical_emit_yaml_covers_required_output_contract_commands() {
     assert_eq!(output_stderr(&diff_output), "");
     let diff = parse_yaml_stdout(&diff_output, "diff --emit yaml");
     assert_eq!(diff.get("kind"), Some(&serde_json::json!("diff_report")));
-    assert!(
-        diff.get("total_differences").is_some(),
-        "diff total missing: {diff}"
-    );
+    assert_eq!(diff.get("run_a"), Some(&serde_json::json!("1")));
+    assert_eq!(diff.get("run_b"), Some(&serde_json::json!("1")));
+    assert_eq!(diff.get("total_differences"), Some(&serde_json::json!(0)));
+    assert_eq!(diff.get("diffs"), Some(&serde_json::json!([])));
 }
 
 #[test]
@@ -4046,18 +4206,505 @@ fn cli_diff_identical_runs_reports_zero_differences() {
         std::ffi::OsStr::new("1"),
         std::ffi::OsStr::new("--db"),
         db_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
     ]) {
         Some(output) => output,
         None => return,
     };
     assert_cli_success(&diff_output, "diff 1 1 --db");
-    let stdout = output_stdout(&diff_output);
-    assert!(
-        stdout.contains("0 differences")
-            || stdout.contains("total_differences")
-            || stdout.contains("no differences found"),
-        "diff of identical runs should report 0 differences: {stdout}"
+    assert_eq!(output_stderr(&diff_output), "");
+    let diff = parse_yaml_stdout(&diff_output, "diff 1 1 --db --emit yaml");
+    assert_eq!(diff.get("kind"), Some(&serde_json::json!("diff_report")));
+    assert_eq!(diff.get("run_a"), Some(&serde_json::json!("1")));
+    assert_eq!(diff.get("run_b"), Some(&serde_json::json!("1")));
+    assert_eq!(diff.get("total_differences"), Some(&serde_json::json!(0)));
+    assert_eq!(diff.get("diffs"), Some(&serde_json::json!([])));
+}
+
+#[test]
+fn cli_diff_workflow_against_reports_semantic_diff_without_db() {
+    let dir = cli_tempdir().expect("tempdir for workflow diff test");
+    let before_path = dir.path().join("diff-before.yaml");
+    let after_path = dir.path().join("diff-after.yaml");
+    let after_workflow = r"version: velvet-ballistics/v1
+name: cli_subprocess_changed
+when:
+  manual: {}
+steps:
+  - id: build_result
+    save:
+      output: saved
+      value: '42'
+  - id: enrich_result
+    save:
+      output: enriched
+      value: '43'
+  - id: done
+    finish:
+      result: enriched
+";
+    std::fs::write(&before_path, CLI_WORKFLOW.as_bytes()).expect("before workflow write");
+    std::fs::write(&after_path, after_workflow.as_bytes()).expect("after workflow write");
+
+    let output = run_cli(&[
+        std::ffi::OsStr::new("diff"),
+        after_path.as_os_str(),
+        std::ffi::OsStr::new("--against"),
+        before_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
+    ])
+    .expect("diff workflow --against command must run");
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "workflow semantic diff with changes must exit 1: stdout={} stderr={}",
+        output_stdout(&output),
+        output_stderr(&output)
     );
+    assert_eq!(output_stderr(&output), "");
+    let diff = parse_yaml_stdout(&output, "diff workflow --against --emit yaml");
+    assert_eq!(
+        diff.get("kind"),
+        Some(&serde_json::json!("workflow_diff_report"))
+    );
+    assert_eq!(
+        diff.get("source_diff")
+            .and_then(|source| source.get("changed")),
+        Some(&serde_json::json!(true)),
+        "workflow diff should report source changes: {diff}"
+    );
+    let changes = diff
+        .get("semantic_diff")
+        .and_then(|semantic| semantic.get("changes"))
+        .and_then(serde_json::Value::as_array)
+        .expect("workflow diff must include semantic changes");
+    assert_eq!(diff.get("total_differences"), Some(&serde_json::json!(6)));
+    assert_eq!(
+        diff.get("semantic_diff")
+            .and_then(|semantic| semantic.get("changed")),
+        Some(&serde_json::json!(true))
+    );
+    assert_eq!(changes.len(), 6, "exact semantic changes expected: {diff}");
+    assert_eq!(
+        semantic_change(&diff, "name"),
+        &serde_json::json!({"field": "name", "before": "cli_subprocess", "after": "cli_subprocess_changed"})
+    );
+    assert_eq!(
+        semantic_change(&diff, "node_count"),
+        &serde_json::json!({"field": "node_count", "before": 2, "after": 3})
+    );
+    assert_eq!(
+        semantic_change(&diff, "slot_count"),
+        &serde_json::json!({"field": "slot_count", "before": 1, "after": 2})
+    );
+    assert_eq!(
+        semantic_change(&diff, "slots"),
+        &serde_json::json!({
+            "field": "slots",
+            "before": {"total": 1, "expressions": 0, "accessors": 0, "constants": 1},
+            "after": {"total": 2, "expressions": 0, "accessors": 0, "constants": 2}
+        })
+    );
+    assert_eq!(
+        semantic_change(&diff, "graph").get("before"),
+        Some(&serde_json::json!({
+            "nodes": [
+                {"step": 0, "name": "build_result", "kind": "set_const", "output_slot": 0, "next_step": 1, "on_error_step": null},
+                {"step": 1, "name": "done", "kind": "finish", "output_slot": null, "next_step": null, "on_error_step": null}
+            ],
+            "edges": [{"from": 0, "to": 1, "label": "next"}]
+        }))
+    );
+    assert_eq!(
+        semantic_change(&diff, "graph").get("after"),
+        Some(&serde_json::json!({
+            "nodes": [
+                {"step": 0, "name": "build_result", "kind": "set_const", "output_slot": 0, "next_step": 1, "on_error_step": null},
+                {"step": 1, "name": "enrich_result", "kind": "set_const", "output_slot": 1, "next_step": 2, "on_error_step": null},
+                {"step": 2, "name": "done", "kind": "finish", "output_slot": null, "next_step": null, "on_error_step": null}
+            ],
+            "edges": [
+                {"from": 0, "to": 1, "label": "next"},
+                {"from": 1, "to": 2, "label": "next"}
+            ]
+        }))
+    );
+    assert_eq!(
+        semantic_change(&diff, "budget_plan").get("before"),
+        Some(&serde_json::json!({
+            "status": "computed",
+            "max_total_steps": 2,
+            "max_total_slots": 1024,
+            "max_fanout": 0,
+            "max_nesting_depth": 0,
+            "max_steps_executable": 2,
+            "max_action_tickets": 0,
+            "max_parallel_in_flight": 0,
+            "max_retries_per_action": 3,
+            "max_gather_pages": 0,
+            "max_gather_items": 0,
+            "max_for_each_iterations": 0,
+            "max_together_branches": 0,
+            "max_repeat_attempts": 0,
+            "max_run_time_seconds": 2,
+            "max_result_bytes": 262144,
+            "max_total_slots_written": 1024,
+            "max_timer_entries": 0,
+            "max_trace_events": 2,
+            "max_journal_batch_bytes": 1048576,
+            "max_queue_depth": 1024,
+            "max_ipc_payload_bytes": 1048576,
+            "max_blob_bytes": 16777216,
+            "max_input_bytes": 1048576
+        }))
+    );
+    assert_eq!(
+        semantic_change(&diff, "budget_plan").get("after"),
+        Some(&serde_json::json!({
+            "status": "computed",
+            "max_total_steps": 3,
+            "max_total_slots": 1024,
+            "max_fanout": 0,
+            "max_nesting_depth": 0,
+            "max_steps_executable": 3,
+            "max_action_tickets": 0,
+            "max_parallel_in_flight": 0,
+            "max_retries_per_action": 3,
+            "max_gather_pages": 0,
+            "max_gather_items": 0,
+            "max_for_each_iterations": 0,
+            "max_together_branches": 0,
+            "max_repeat_attempts": 0,
+            "max_run_time_seconds": 3,
+            "max_result_bytes": 262144,
+            "max_total_slots_written": 1024,
+            "max_timer_entries": 0,
+            "max_trace_events": 3,
+            "max_journal_batch_bytes": 1048576,
+            "max_queue_depth": 1024,
+            "max_ipc_payload_bytes": 1048576,
+            "max_blob_bytes": 16777216,
+            "max_input_bytes": 1048576
+        }))
+    );
+    let forbidden_db = dir.path().join("diff-should-not-create-db");
+    assert!(
+        !forbidden_db.exists(),
+        "workflow --against diff must not create DB state"
+    );
+}
+
+#[test]
+fn cli_diff_workflow_against_source_only_change_is_semantic_noop() {
+    let dir = cli_tempdir().expect("tempdir for source-only workflow diff test");
+    let before_path = dir.path().join("source-before.yaml");
+    let after_path = dir.path().join("source-after.yaml");
+    let reformatted_workflow = r"# source-only comment
+version: velvet-ballistics/v1
+name: cli_subprocess
+when:
+  manual: {}
+steps:
+  - id: build_result
+    save: { output: saved, value: '42' }
+  - id: done
+    finish:
+      result: saved
+";
+    std::fs::write(&before_path, CLI_WORKFLOW.as_bytes()).expect("before workflow write");
+    std::fs::write(&after_path, reformatted_workflow.as_bytes()).expect("after workflow write");
+
+    let output = run_cli(&[
+        std::ffi::OsStr::new("diff"),
+        after_path.as_os_str(),
+        std::ffi::OsStr::new("--against"),
+        before_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
+    ])
+    .expect("source-only diff workflow --against command must run");
+    assert_cli_success(&output, "diff source-only workflow --against --emit yaml");
+    assert_eq!(output_stderr(&output), "");
+    let diff = parse_yaml_stdout(&output, "diff source-only workflow --against --emit yaml");
+    assert_eq!(
+        diff.get("kind"),
+        Some(&serde_json::json!("workflow_diff_report"))
+    );
+    assert_eq!(
+        diff.get("source_diff")
+            .and_then(|source| source.get("changed")),
+        Some(&serde_json::json!(true)),
+        "format-only edit must report source changed: {diff}"
+    );
+    assert_eq!(
+        diff.get("semantic_diff")
+            .and_then(|semantic| semantic.get("changed")),
+        Some(&serde_json::json!(false)),
+        "format-only edit must not report semantic change: {diff}"
+    );
+    assert_eq!(
+        diff.get("semantic_diff")
+            .and_then(|semantic| semantic.get("changes")),
+        Some(&serde_json::json!([])),
+        "semantic changes must be exactly empty: {diff}"
+    );
+    assert_eq!(diff.get("total_differences"), Some(&serde_json::json!(0)));
+    let forbidden_db = dir.path().join("source-only-should-not-create-db");
+    assert!(
+        !forbidden_db.exists(),
+        "source-only diff must not create DB state"
+    );
+}
+
+#[test]
+fn cli_diff_workflow_against_with_db_rejects_hidden_mode() {
+    let dir = cli_tempdir().expect("tempdir for hidden workflow diff mode test");
+    let workflow_path = dir.path().join("current.yaml");
+    let db_path = dir.path().join("hidden-mode-db");
+    std::fs::write(&workflow_path, CLI_WORKFLOW.as_bytes()).expect("workflow write");
+
+    let output = run_cli(&[
+        std::ffi::OsStr::new("diff"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--against"),
+        std::ffi::OsStr::new("123"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ])
+    .expect("hidden workflow diff mode command must run to rejection");
+
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "hidden workflow+against+db mode must fail validation: stdout={} stderr={}",
+        output_stdout(&output),
+        output_stderr(&output)
+    );
+    assert_eq!(output_stdout(&output), "");
+    assert!(
+        output_stderr(&output).contains(
+            "invalid argument: diff accepts either workflow --against <old-workflow> without --db, or two run IDs plus --db"
+        ),
+        "deterministic hidden-mode diagnostic missing: {}",
+        output_stderr(&output)
+    );
+}
+
+#[test]
+fn cli_retry_step_flag_overrides_recovered_resume_step() {
+    let dir = cli_tempdir().expect("tempdir for retry step test");
+    let db_path = dir.path().join("retry-step-db");
+    let journal =
+        vb_storage::FjallJournal::open(&db_path, None).expect("retry test journal must open");
+    let run = vb_core::RunId::new(77);
+    journal
+        .append_journaled(&vb_storage::JournalEvent::RunAccepted {
+            run,
+            seq: vb_storage::EventSeq::ZERO,
+            workflow: WorkflowDigest::from_bytes([0x77; 32]),
+        })
+        .expect("RunAccepted append must succeed");
+    journal
+        .append_journaled(&vb_storage::JournalEvent::StepSucceeded {
+            run,
+            seq: vb_storage::EventSeq::new(1),
+            step: StepIdx::new(0),
+            output: SlotIdx::new(0),
+        })
+        .expect("StepSucceeded append must succeed");
+    journal
+        .append_journaled(&vb_storage::JournalEvent::ActionFailedEvent {
+            run,
+            seq: vb_storage::EventSeq::new(2),
+            step: StepIdx::new(1),
+            action: vb_core::ActionId::new(9),
+            attempt: 1,
+        })
+        .expect("ActionFailed append must succeed");
+    journal
+        .append_journaled(&vb_storage::JournalEvent::RunFailedEvent {
+            run,
+            seq: vb_storage::EventSeq::new(3),
+            attempt: 1,
+        })
+        .expect("RunFailed append must succeed");
+    drop(journal);
+
+    let output = run_cli(&[
+        std::ffi::OsStr::new("retry"),
+        std::ffi::OsStr::new("77"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--step"),
+        std::ffi::OsStr::new("5"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
+    ])
+    .expect("retry --step command must run");
+    assert_cli_success(&output, "retry --step --emit yaml");
+    let retry = parse_yaml_stdout(&output, "retry --step --emit yaml");
+    assert_eq!(
+        retry.get("resume_from_step"),
+        Some(&serde_json::json!(5)),
+        "retry --step must override recovered resume step: {retry}"
+    );
+    assert_eq!(
+        retry.get("failed_at_step"),
+        Some(&serde_json::json!(1)),
+        "retry should still report the failed step: {retry}"
+    );
+}
+
+#[test]
+fn cli_answer_slot_value_happy_path_uses_ipc_answer_ask() {
+    use std::io::Write;
+
+    let dir = tempfile::Builder::new()
+        .prefix("vba-")
+        .tempdir()
+        .expect("short answer IPC tempdir must exist");
+    let db_path = dir.path().join("db");
+    let socket_path = db_path.with_extension("sock");
+    let value_path = dir.path().join("answer-value.bin");
+    let encoded_answer = postcard::to_allocvec(&vb_core::value::SlotValue::I64(123))
+        .expect("answer SlotValue must encode");
+    std::fs::write(&value_path, &encoded_answer).expect("answer value file write");
+    let listener = std::os::unix::net::UnixListener::bind(&socket_path)
+        .expect("answer IPC mock listener must bind");
+    listener
+        .set_nonblocking(true)
+        .expect("answer IPC mock listener must be nonblocking");
+    let (server_tx, server_rx) = std::sync::mpsc::channel();
+    let server_expected_answer = encoded_answer.clone();
+    let server = std::thread::spawn(move || {
+        let outcome = (|| -> Result<(), String> {
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            let (mut stream, _) = loop {
+                match listener.accept() {
+                    Ok(accepted) => break accepted,
+                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                        if std::time::Instant::now() >= deadline {
+                            return Err("answer IPC client did not connect before deadline".into());
+                        }
+                        std::thread::sleep(std::time::Duration::from_millis(10));
+                    }
+                    Err(error) => return Err(format!("answer IPC client must connect: {error}")),
+                }
+            };
+            stream
+                .set_read_timeout(Some(std::time::Duration::from_secs(5)))
+                .map_err(|error| format!("answer IPC read timeout must set: {error}"))?;
+            stream
+                .set_write_timeout(Some(std::time::Duration::from_secs(5)))
+                .map_err(|error| format!("answer IPC write timeout must set: {error}"))?;
+            let header =
+                vb_ipc::read_frame_header_bounded(&mut stream, vb_ipc::MaxPayloadBytes::DEFAULT)
+                    .map_err(|error| format!("answer IPC header must decode: {error}"))?;
+            assert_eq!(header.command, vb_ipc::IpcCommand::AnswerAsk);
+            let payload_bytes = vb_ipc::read_frame_payload_bounded(
+                &mut stream,
+                &header,
+                vb_ipc::MaxPayloadBytes::DEFAULT,
+            )
+            .map_err(|error| format!("answer IPC payload must decode: {error}"))?;
+            let payload: vb_ipc::IpcPayload = postcard::from_bytes(&payload_bytes)
+                .map_err(|error| format!("answer payload must be postcard: {error}"))?;
+            match payload {
+                vb_ipc::IpcPayload::AnswerAsk {
+                    run_id,
+                    answer_slot,
+                    answer,
+                    taint,
+                } => {
+                    assert_eq!(run_id.get(), 42);
+                    assert_eq!(answer_slot.get(), 7);
+                    assert_eq!(answer, server_expected_answer);
+                    assert_eq!(taint, None);
+                }
+                other => panic!("expected AnswerAsk payload, got {other:?}"),
+            }
+            let response = vb_ipc::server::IpcResponse::AcceptedRun { run_id: 42 };
+            let response_bytes = postcard::to_allocvec(&response)
+                .map_err(|error| format!("response must encode: {error}"))?;
+            let frame = vb_ipc::encode_frame(
+                vb_ipc::IpcCommand::AnswerAsk,
+                0,
+                header.correlation,
+                &response_bytes,
+            )
+            .map_err(|error| format!("response frame must encode: {error}"))?;
+            stream
+                .write_all(&frame)
+                .map_err(|error| format!("response frame must write: {error}"))?;
+            Ok(())
+        })();
+        let _ = server_tx.send(outcome);
+    });
+
+    let output = run_cli_with_timeout(
+        &[
+            std::ffi::OsStr::new("answer"),
+            std::ffi::OsStr::new("42"),
+            std::ffi::OsStr::new("--slot"),
+            std::ffi::OsStr::new("7"),
+            std::ffi::OsStr::new("--value"),
+            value_path.as_os_str(),
+            std::ffi::OsStr::new("--db"),
+            db_path.as_os_str(),
+            std::ffi::OsStr::new("--emit"),
+            std::ffi::OsStr::new("yaml"),
+        ],
+        "10s",
+    )
+    .expect("answer --slot --value command must run");
+    assert_cli_success(&output, "answer --slot --value --emit yaml");
+    let answer = parse_yaml_stdout(&output, "answer --slot --value --emit yaml");
+    assert_eq!(answer.get("success"), Some(&serde_json::json!(true)));
+    assert_eq!(answer.get("run_id"), Some(&serde_json::json!(42)));
+    let server_result = server_rx
+        .recv_timeout(std::time::Duration::from_secs(5))
+        .map_err(|error| {
+            format!("answer IPC mock server must finish within bounded timeout: {error}")
+        });
+    let joined = server.join();
+    assert!(joined.is_ok(), "answer IPC mock server panicked");
+    assert_eq!(server_result, Ok(Ok(())));
+}
+
+#[test]
+fn cli_answer_rejects_malformed_slot_value_without_ipc_server() {
+    let dir = tempfile::Builder::new()
+        .prefix("vba-bad-")
+        .tempdir()
+        .expect("malformed answer tempdir must exist");
+    let db_path = dir.path().join("db");
+    let value_path = dir.path().join("malformed-answer.bin");
+    std::fs::write(&value_path, [255_u8]).expect("malformed answer file write");
+
+    let output = run_cli(&[
+        std::ffi::OsStr::new("answer"),
+        std::ffi::OsStr::new("42"),
+        std::ffi::OsStr::new("--slot"),
+        std::ffi::OsStr::new("7"),
+        std::ffi::OsStr::new("--value"),
+        value_path.as_os_str(),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ])
+    .expect("answer malformed --value command must run");
+
+    assert_cli_failure_contains(
+        &output,
+        "answer malformed --value",
+        "answer value file must contain postcard-encoded SlotValue",
+    );
+    assert_eq!(output.status.code(), Some(2));
+    let stderr = output_stderr(&output);
+    assert!(!stderr.contains("error connecting to IPC server"));
+    assert!(!stderr.contains("panicked"));
+    assert!(!stderr.contains("stack backtrace"));
 }
 
 #[test]
@@ -4290,9 +4937,9 @@ fn cli_explain_valid_workflow_outputs_valid_status() {
         "explain should report valid status: {stdout}"
     );
     assert!(stdout.contains("Execution Plan:"), "stdout={stdout}");
-    assert!(stdout.contains("budget:"), "stdout={stdout}");
+    assert!(stdout.contains("resources:"), "stdout={stdout}");
+    assert!(stdout.contains("budget_plan:"), "stdout={stdout}");
     assert!(stdout.contains("slots:"), "stdout={stdout}");
-    assert!(stdout.contains("steps:"), "stdout={stdout}");
     assert!(stdout.contains("actions:"), "stdout={stdout}");
     assert!(stdout.contains("suspension_points:"), "stdout={stdout}");
 }

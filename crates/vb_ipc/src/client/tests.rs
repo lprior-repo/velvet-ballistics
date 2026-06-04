@@ -204,7 +204,8 @@ fn adversarial_client_error_variants_are_distinct() {
 // ── helpers ─────────────────────────────────────────────────────────────────
 
 fn temp_socket_path(name: &str) -> PathBuf {
-    std::env::temp_dir().join(format!("vb_ipc_client_test_{name}_{}", std::process::id()))
+    let short_name: String = name.chars().take(24).collect();
+    PathBuf::from(format!("/tmp/vbipc_{}_{}", std::process::id(), short_name))
 }
 
 struct CleanupPath<'a>(&'a std::path::Path);

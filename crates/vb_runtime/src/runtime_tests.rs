@@ -128,6 +128,111 @@ mod tests {
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
     }
 
+    fn ask_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+        let set_prompt = CompiledNode {
+            id: StepIdx::ZERO,
+            output: Some(SlotIdx::ZERO),
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        };
+        let ask = CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Ask {
+                prompt: SlotIdx::ZERO,
+                timeout_slot: Some(SlotIdx::ZERO),
+            },
+        };
+        let resume = CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: Some(StepIdx::new(3)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::AskResume {
+                answer: SlotIdx::new(1),
+            },
+        };
+        let finish = CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(1),
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::from("ask_then_finish"),
+            digest: WorkflowDigest::from_bytes([21; 32]),
+            nodes: Box::from([set_prompt, ask, resume, finish]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([vb_core::value::ConstValue::I64(10)]),
+            slot_count: 2,
+            symbols_count: 0,
+            entry: StepIdx::ZERO,
+            step_names: Box::from([]),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    }
+
+    fn wait_timer_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+        let set_deadline = CompiledNode {
+            id: StepIdx::ZERO,
+            output: Some(SlotIdx::ZERO),
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        };
+        let wait = CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::WaitUntil {
+                deadline_slot: SlotIdx::ZERO,
+            },
+        };
+        let finish = CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::ZERO,
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::from("wait_timer"),
+            digest: WorkflowDigest::from_bytes([22; 32]),
+            nodes: Box::from([set_deadline, wait, finish]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([vb_core::value::ConstValue::I64(10)]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::ZERO,
+            step_names: Box::from([]),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    }
+
     fn runtime_config() -> ShardConfig {
         ShardConfig {
             command_queue_capacity: 16,
@@ -190,6 +295,42 @@ mod tests {
             },
             Err(_) => u32::MAX,
         }
+    }
+
+    fn encoded_value(value: &SlotValue) -> Vec<u8> {
+        match postcard::to_allocvec(value) {
+            Ok(bytes) => bytes,
+            Err(error) => panic!("test setup failed: SlotValue {value:?} must encode: {error:?}"),
+        }
+    }
+
+    fn assert_journal_has_exact_slot_value(
+        journal: &VolatileRuntimeJournal,
+        run: vb_core::ids::RunId,
+        slot: SlotIdx,
+        expected_value: &SlotValue,
+        expected_taint: Taint,
+        context: &str,
+    ) {
+        let expected_bytes = encoded_value(expected_value);
+        let events = match journal.snapshot() {
+            Ok(events) => events,
+            Err(error) => panic!("journal snapshot failed for {context}: {error}"),
+        };
+        let matched = events.iter().any(|event| {
+            matches!(
+                event,
+                RuntimeJournalEvent::SlotWritten { run: actual_run, slot: actual_slot, value, taint, .. }
+                    if *actual_run == run
+                        && *actual_slot == slot
+                        && *value == expected_bytes
+                        && *taint == expected_taint
+            )
+        });
+        assert_eq!(
+            matched, true,
+            "{context}: journal must contain exact postcard bytes for {expected_value:?} in slot {slot:?}"
+        );
     }
 
     fn active_frame(runtime: &Runtime, run: vb_core::ids::RunId) -> Option<vb_core::RunFrame> {
@@ -875,6 +1016,174 @@ mod tests {
         };
         let result = runtime.answer_ask(answer);
         assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn answer_pending_ask_slot_accepts_matching_answer_slot_and_completes_run() {
+        let shard_count = match NonZeroUsize::new(1) {
+            Some(shard_count) => shard_count,
+            None => panic!("test setup failed: shard_count must be non-zero"),
+        };
+        let journal = Arc::new(VolatileRuntimeJournal::new());
+        let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), journal.clone());
+        let workflow = match ask_then_finish_workflow() {
+            Some(workflow) => workflow,
+            None => panic!("test setup failed: ask-then-finish workflow must compile"),
+        };
+        let run = vb_core::ids::RunId::new(2101);
+
+        assert_eq!(runtime.submit_compiled(run, workflow), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        assert_eq!(
+            runtime.answer_pending_ask_slot(
+                run,
+                SlotIdx::new(1),
+                SlotValue::I64(42),
+                Taint::Clean,
+                encoded_len(&SlotValue::I64(42)),
+            ),
+            Ok(())
+        );
+        assert_eq!(runtime.tick_all(), Ok(true));
+
+        let counters = runtime.counters_snapshot();
+        assert_eq!(counters.runs_completed, 1);
+        assert_eq!(counters.runs_failed, 0);
+        assert_journal_has_exact_slot_value(
+            &journal,
+            run,
+            SlotIdx::new(1),
+            &SlotValue::I64(42),
+            Taint::Clean,
+            "matching answer completion",
+        );
+    }
+
+    #[test]
+    fn answer_pending_ask_slot_rejects_mismatched_answer_slot_without_advancing_pending_ask() {
+        let shard_count = match NonZeroUsize::new(1) {
+            Some(shard_count) => shard_count,
+            None => panic!("test setup failed: shard_count must be non-zero"),
+        };
+        let journal = Arc::new(VolatileRuntimeJournal::new());
+        let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), journal.clone());
+        let workflow = match ask_then_finish_workflow() {
+            Some(workflow) => workflow,
+            None => panic!("test setup failed: ask-then-finish workflow must compile"),
+        };
+        let run = vb_core::ids::RunId::new(2102);
+
+        assert_eq!(runtime.submit_compiled(run, workflow), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        assert_eq!(
+            runtime.answer_pending_ask_slot(
+                run,
+                SlotIdx::new(0),
+                SlotValue::I64(99),
+                Taint::Clean,
+                encoded_len(&SlotValue::I64(99)),
+            ),
+            Err(RuntimeError::InvalidActionCompletion)
+        );
+        assert_eq!(runtime.counters_snapshot().runs_completed, 0);
+
+        assert_eq!(
+            runtime.answer_pending_ask_slot(
+                run,
+                SlotIdx::new(1),
+                SlotValue::I64(100),
+                Taint::Clean,
+                encoded_len(&SlotValue::I64(100)),
+            ),
+            Ok(())
+        );
+        assert_eq!(runtime.tick_all(), Ok(true));
+        assert_eq!(runtime.counters_snapshot().runs_completed, 1);
+        assert_journal_has_exact_slot_value(
+            &journal,
+            run,
+            SlotIdx::new(1),
+            &SlotValue::I64(100),
+            Taint::Clean,
+            "valid answer after mismatched slot rejection",
+        );
+    }
+
+    #[test]
+    fn answer_pending_ask_slot_rejects_absent_pending_ask_for_unknown_run() {
+        let shard_count = match NonZeroUsize::new(1) {
+            Some(shard_count) => shard_count,
+            None => panic!("test setup failed: shard_count must be non-zero"),
+        };
+        let runtime = Runtime::new(shard_count, runtime_config());
+        let run = vb_core::ids::RunId::new(2103);
+
+        assert_eq!(
+            runtime.answer_pending_ask_slot(
+                run,
+                SlotIdx::new(1),
+                SlotValue::Bool(true),
+                Taint::Clean,
+                encoded_len(&SlotValue::Bool(true)),
+            ),
+            Err(RuntimeError::RunNotFound)
+        );
+    }
+
+    #[test]
+    fn answer_pending_ask_slot_rejects_action_suspended_non_ask_state() {
+        let shard_count = match NonZeroUsize::new(1) {
+            Some(shard_count) => shard_count,
+            None => panic!("test setup failed: shard_count must be non-zero"),
+        };
+        let mut runtime = Runtime::new(shard_count, runtime_config());
+        let workflow = match suspended_workflow() {
+            Some(workflow) => workflow,
+            None => panic!("test setup failed: suspended workflow must compile"),
+        };
+        let run = vb_core::ids::RunId::new(2104);
+
+        assert_eq!(submit_suspended(&runtime, run, workflow), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        assert_eq!(
+            runtime.answer_pending_ask_slot(
+                run,
+                SlotIdx::ZERO,
+                SlotValue::Bool(true),
+                Taint::Clean,
+                encoded_len(&SlotValue::Bool(true)),
+            ),
+            Err(RuntimeError::InvalidActionCompletion)
+        );
+        assert_eq!(runtime.counters_snapshot().runs_completed, 0);
+    }
+
+    #[test]
+    fn answer_pending_ask_slot_rejects_wait_timer_non_ask_state() {
+        let shard_count = match NonZeroUsize::new(1) {
+            Some(shard_count) => shard_count,
+            None => panic!("test setup failed: shard_count must be non-zero"),
+        };
+        let mut runtime = Runtime::new(shard_count, runtime_config());
+        let workflow = match wait_timer_workflow() {
+            Some(workflow) => workflow,
+            None => panic!("test setup failed: wait-timer workflow must compile"),
+        };
+        let run = vb_core::ids::RunId::new(2105);
+
+        assert_eq!(runtime.submit_compiled(run, workflow), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        assert_eq!(
+            runtime.answer_pending_ask_slot(
+                run,
+                SlotIdx::ZERO,
+                SlotValue::Bool(true),
+                Taint::Clean,
+                encoded_len(&SlotValue::Bool(true)),
+            ),
+            Err(RuntimeError::InvalidActionCompletion)
+        );
+        assert_eq!(runtime.counters_snapshot().runs_completed, 0);
     }
 
     #[test]

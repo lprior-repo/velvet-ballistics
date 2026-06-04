@@ -15,8 +15,8 @@ fn parse_answer_rejects_invalid_slot_with_exact_variant() {
     ]));
 
     assert!(
-        matches!(parsed, Err(ParseError::InvalidStep(ref s)) if s == "not-a-slot"),
-        "expected InvalidStep(not-a-slot), got {parsed:?}"
+        matches!(parsed, Err(ParseError::InvalidSlot(ref s)) if s == "not-a-slot"),
+        "expected InvalidSlot(not-a-slot), got {parsed:?}"
     );
 }
 
@@ -147,6 +147,45 @@ fn parse_diff_requires_db_flag() {
     let parsed = parse_args(&args(&["velvet-ballistics", "diff", "1", "2"]));
     assert!(
         matches!(parsed, Err(ParseError::MissingArgument("--db"))),
+        "unexpected: {parsed:?}"
+    );
+}
+
+#[test]
+fn parse_diff_allows_workflow_against_workflow_without_db() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballistics",
+        "diff",
+        "current.yaml",
+        "--against",
+        "previous.yaml",
+    ]));
+    match parsed {
+        Ok(Command::Diff {
+            diff_mode: DiffMode::WorkflowAgainst { workflow, against },
+            output,
+        }) => {
+            assert_eq!(workflow, PathBuf::from("current.yaml"));
+            assert_eq!(against, PathBuf::from("previous.yaml"));
+            assert_eq!(output, OutputFormat::Text);
+        }
+        other => panic!("expected workflow diff without db to parse, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_diff_rejects_workflow_against_with_db_hidden_mode() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballistics",
+        "diff",
+        "current.yaml",
+        "--against",
+        "123",
+        "--db",
+        "test-db",
+    ]));
+    assert!(
+        matches!(parsed, Err(ParseError::InvalidArgument(ref reason)) if reason == "diff accepts either workflow --against <old-workflow> without --db, or two run IDs plus --db"),
         "unexpected: {parsed:?}"
     );
 }

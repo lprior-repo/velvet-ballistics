@@ -604,7 +604,7 @@ fn payload_roundtrip_preserves_list_events_variant() {
 fn payload_roundtrip_preserves_answer_ask_variant() {
     let payload = IpcPayload::AnswerAsk {
         run_id: RunId::new(5),
-        ticket: 999,
+        answer_slot: vb_core::ids::SlotIdx::new(9),
         answer: Vec::from(&b"yes"[..]),
         taint: None,
     };
@@ -1272,10 +1272,10 @@ fn adversarial_cancel_run_with_run_id_max_encoded_roundtrips() {
 }
 
 #[test]
-fn adversarial_answer_ask_with_zero_ticket_roundtrips() {
+fn adversarial_answer_ask_with_zero_answer_slot_roundtrips() {
     let payload = IpcPayload::AnswerAsk {
         run_id: RunId::new(1),
-        ticket: 0,
+        answer_slot: vb_core::ids::SlotIdx::ZERO,
         answer: Vec::new(),
         taint: None,
     };
@@ -1289,10 +1289,10 @@ fn adversarial_answer_ask_with_zero_ticket_roundtrips() {
 }
 
 #[test]
-fn adversarial_answer_ask_with_max_u64_ticket_roundtrips() {
+fn adversarial_answer_ask_with_max_answer_slot_roundtrips() {
     let payload = IpcPayload::AnswerAsk {
         run_id: RunId::new(1),
-        ticket: u64::MAX,
+        answer_slot: vb_core::ids::SlotIdx::new(u16::MAX),
         answer: Vec::from(&b"malicious"[..]),
         taint: None,
     };

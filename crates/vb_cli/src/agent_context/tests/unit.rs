@@ -690,6 +690,62 @@ fn command_replay_has_run_id_positional() {
 }
 
 #[test]
+fn command_diff_declares_workflow_and_durable_run_modes() {
+    let context = build("0.1.0");
+    let modes = context
+        .pointer("/commands/diff/modes")
+        .and_then(Value::as_object)
+        .expect("diff modes must be an object");
+
+    assert!(modes.contains_key("workflow"));
+    assert!(modes.contains_key("durable_run"));
+}
+
+#[test]
+fn command_diff_workflow_mode_requires_against_without_db() {
+    let context = build("0.1.0");
+    let flags = context
+        .pointer("/commands/diff/modes/workflow/flags")
+        .and_then(Value::as_object)
+        .expect("workflow diff flags must be an object");
+    let against = flags
+        .get("--against")
+        .and_then(Value::as_object)
+        .expect("--against must be an object");
+
+    assert_eq!(against.get("required").and_then(Value::as_bool), Some(true));
+    assert_eq!(against.get("type").and_then(Value::as_str), Some("path"));
+    assert!(!flags.contains_key("--db"));
+}
+
+#[test]
+fn command_diff_durable_run_mode_requires_db_and_run_positionals() {
+    let context = build("0.1.0");
+    let positionals = context
+        .pointer("/commands/diff/modes/durable_run/positionals")
+        .and_then(Value::as_array)
+        .expect("durable run positionals must be an array");
+    let flags = context
+        .pointer("/commands/diff/modes/durable_run/flags")
+        .and_then(Value::as_object)
+        .expect("durable run diff flags must be an object");
+    let db = flags
+        .get("--db")
+        .and_then(Value::as_object)
+        .expect("--db must be an object");
+
+    assert_eq!(
+        positionals
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>(),
+        vec!["run_a", "run_b"]
+    );
+    assert_eq!(db.get("required").and_then(Value::as_bool), Some(true));
+    assert_eq!(db.get("type").and_then(Value::as_str), Some("path"));
+}
+
+#[test]
 fn vocabulary_policy_canonical_output_flag_is_dash_dash_emit() {
     let context = build("0.1.0");
     assert_eq!(
@@ -971,14 +1027,14 @@ fn command_all_have_summary_field() {
 }
 
 #[test]
-fn command_answer_has_step_and_value_file_and_db_flags() {
+fn command_answer_has_slot_and_value_and_db_flags() {
     let context = build("0.1.0");
     let flags = context
         .pointer("/commands/answer/flags")
         .and_then(Value::as_object)
         .expect("flags must be an object");
 
-    for flag_name in &["--step", "--value-file", "--db"] {
+    for flag_name in &["--slot", "--value", "--db"] {
         let flag = flags
             .get(*flag_name)
             .and_then(Value::as_object)

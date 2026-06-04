@@ -10,6 +10,7 @@ fn args(parts: &[&str]) -> Vec<OsString> {
     parts.iter().map(|part| OsString::from(*part)).collect()
 }
 
+mod journal;
 mod parse_misc;
 mod parse_misc2;
 mod parse_other;

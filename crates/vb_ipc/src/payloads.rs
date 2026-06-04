@@ -42,12 +42,12 @@ pub enum IpcPayload {
         /// First event sequence to return.
         from_sequence: u64,
     },
-    /// Answer a suspended ask ticket.
+    /// Answer the pending ask for a run.
     AnswerAsk {
         /// Target run identifier.
         run_id: RunId,
-        /// Ask ticket identifier.
-        ticket: u64,
+        /// Destination slot that receives the decoded answer.
+        answer_slot: SlotIdx,
         /// Postcard-compatible answer bytes.
         answer: Vec<u8>,
         /// Taint classification of the answer value.
