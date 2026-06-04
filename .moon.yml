@@ -8,6 +8,7 @@ pipeline:
   - 'fmt'
   - 'lint-src'
   - 'check'
+  - 'sanitizer-address-check'
   - 'verify-kani'
   - 'nightly-feature-gate'
   - 'nightly-feature-cargo-probe'
