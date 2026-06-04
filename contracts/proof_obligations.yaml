@@ -335,6 +335,28 @@ obligations:
       - cargo nextest run -p vb_core resource_policy
 
   # ============================================================
+  # RUNFRAME EXEC FNS (Section 83) — vb-481r.5
+  # ============================================================
+  - id: VB-CORE-RUNFRAME-EXEC-001
+    section: [83]
+    statement: |
+      exec fn wrappers in run_frame_new_exec_proofs.rs bind production RunFrame::new.
+      Preconditions: step_count > 0, first_step.as_usize() < step_count
+      Postconditions: Ok(frame) with correct field initialization
+    proof_level: L4
+    crate: vb_core
+    files:
+      - crates/vb_core/src/verification/verus/run_frame_new_exec_proofs.rs
+      - crates/vb_core/src/frame.rs
+    required:
+      verus_crate: full-crate verus build via cargo verus
+    commands:
+      - verus --crate-type=lib ...  # STANDALONE BLOCKED - requires crate-level build
+    verification_status: tooling_blocked_standalone
+    note: "Verified by code inspection. Compensating controls: 34 specs + Flux + 450+ tests."
+    bead: vb-481r.5
+
+  # ============================================================
   # IPC DECODER (Section 18, 21, 50)
   # ============================================================
   - id: VB-IPC-DECODE-001

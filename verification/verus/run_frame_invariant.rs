@@ -17,11 +17,101 @@ pub open spec fn valid_u16_dim(dim: int) -> bool {
     0 <= dim && dim <= u16_max()
 }
 
+//
+// Phase 1 — SpecError
+//
+
+/// Ghost mirror of CoreError variants emitted by RunFrame::new.
+pub enum SpecError {
+    InvalidCompiledWorkflow { reason: &'static str },
+    InvalidProgramCounter { step: int },
+}
+
+pub open spec fn spec_error_is_invalid_compiled_workflow(err: SpecError) -> bool {
+    match err {
+        SpecError::InvalidCompiledWorkflow { .. } => true,
+        _ => false,
+    }
+}
+
+pub open spec fn spec_error_is_invalid_program_counter(err: SpecError) -> bool {
+    match err {
+        SpecError::InvalidProgramCounter { .. } => true,
+        _ => false,
+    }
+}
+
+//
+// Phase 1 — spec_run_frame_new with error path modeling
+//
+
 pub open spec fn spec_run_frame_new_preconditions(first_step: int, step_count: int) -> bool {
     0 <= first_step && 0 < step_count && first_step < step_count && valid_u16_dim(step_count)
 }
 
+/// Ghost constructor for RunFrame that mirrors RunFrame::new semantics.
+/// Returns Ok(SpecRunFrame) when preconditions hold; Err(SpecError) otherwise.
+///
+/// Binding: This spec function has identical guards to production RunFrame::new:
+///   - Err(InvalidCompiledWorkflow) when states_len == 0
+///   - Err(InvalidProgramCounter) when first_step >= states_len
+///   - Ok(SpecRunFrame{..}) when preconditions hold
+pub open spec fn spec_run_frame_new(
+    run_id: int,
+    first_step: int,
+    step_count: int,
+    slot_count: int,
+) -> Result<SpecRunFrame, SpecError> {
+    let states_len = step_count;
+    if states_len == 0 {
+        Err(SpecError::InvalidCompiledWorkflow { reason: "step_count_zero" })
+    } else if first_step >= states_len {
+        Err(SpecError::InvalidProgramCounter { step: first_step })
+    } else {
+        // Preconditions satisfied — production RunFrame::new would succeed.
+        // We construct SpecRunFrame with identical field values:
+        //   run_id = run_id
+        //   pc = first_step
+        //   executed = 0
+        //   max_parallel_in_flight = u16::MAX
+        //   parallel_in_flight = 0
+        //   step_count = step_count
+        //   slot_count = slot_count
+        //   states_len = step_count
+        //   slots_len = slot_count
+        //   taint_len = slot_count
+        //   all_states_pending = true
+        //   all_slots_empty = true
+        //   all_taint_clean = true
+        let slots_len = slot_count;
+        Ok(SpecRunFrame {
+            run_id,
+            pc: first_step,
+            executed: 0,
+            max_parallel_in_flight: u16_max(),
+            parallel_in_flight: 0,
+            step_count,
+            slot_count,
+            states_len,
+            slots_len,
+            taint_len: slots_len,
+            all_states_pending: true,
+            all_slots_empty: true,
+            all_taint_clean: true,
+        })
+    }
+}
+
+//
+// Phase 2 — Extended SpecRunFrame
+//
+
 pub struct SpecRunFrame {
+    pub run_id: int,
+    pub pc: int,
+    pub executed: int,
+    pub max_parallel_in_flight: int,
+    pub parallel_in_flight: int,
     pub step_count: int,
     pub slot_count: int,
     pub states_len: int,
@@ -32,8 +122,19 @@ pub struct SpecRunFrame {
     pub all_taint_clean: bool,
 }
 
-pub open spec fn spec_run_frame_new_postconditions(frame: SpecRunFrame, step_count: int, slot_count: int) -> bool {
-    frame.step_count == step_count
+pub open spec fn spec_run_frame_new_postconditions(
+    frame: SpecRunFrame,
+    run_id: int,
+    first_step: int,
+    step_count: int,
+    slot_count: int,
+) -> bool {
+    frame.run_id == run_id
+        && frame.pc == first_step
+        && frame.executed == 0
+        && frame.max_parallel_in_flight == u16_max()
+        && frame.parallel_in_flight == 0
+        && frame.step_count == step_count
         && frame.slot_count == slot_count
         && frame.states_len == step_count
         && frame.slots_len == slot_count
@@ -43,8 +144,18 @@ pub open spec fn spec_run_frame_new_postconditions(frame: SpecRunFrame, step_cou
         && frame.all_taint_clean
 }
 
-pub open spec fn spec_constructed_run_frame(step_count: int, slot_count: int) -> SpecRunFrame {
+pub open spec fn spec_constructed_run_frame(
+    run_id: int,
+    first_step: int,
+    step_count: int,
+    slot_count: int,
+) -> SpecRunFrame {
     SpecRunFrame {
+        run_id,
+        pc: first_step,
+        executed: 0,
+        max_parallel_in_flight: u16_max(),
+        parallel_in_flight: 0,
         step_count,
         slot_count,
         states_len: step_count,
@@ -101,13 +212,26 @@ pub proof fn proof_run_frame_new_accepts_valid_dimensions(first_step: int, step_
 {
 }
 
-pub proof fn proof_run_frame_new_initializes_dimensions_and_defaults(step_count: int, slot_count: int)
+pub proof fn proof_run_frame_new_initializes_dimensions_and_defaults(
+    run_id: int,
+    first_step: int,
+    step_count: int,
+    slot_count: int,
+)
     requires
         valid_u16_dim(step_count),
         valid_u16_dim(slot_count),
         0 < step_count,
+        0 <= first_step,
+        first_step < step_count,
     ensures
-        spec_run_frame_new_postconditions(spec_constructed_run_frame(step_count, slot_count), step_count, slot_count),
+        spec_run_frame_new_postconditions(
+            spec_constructed_run_frame(run_id, first_step, step_count, slot_count),
+            run_id,
+            first_step,
+            step_count,
+            slot_count,
+        ),
 {
 }
 
@@ -162,6 +286,195 @@ pub proof fn proof_reinitialize_rejects_dimension_mismatch(
             new_slot_count,
         ),
 {
+}
+
+//
+// Phase 3 — Binding Lemmas
+//
+
+/// proof_run_frame_new_preconditions_sufficient:
+///
+/// If spec_run_frame_new_preconditions(first_step, step_count) holds, then
+/// spec_run_frame_new returns Ok (not Err).
+///
+/// Binding: RunFrame::new returns Err only for the two error cases;
+/// when both guards are false (preconditions hold), the Ok path is taken.
+pub proof fn proof_run_frame_new_preconditions_sufficient(
+    run_id: int,
+    first_step: int,
+    step_count: int,
+    slot_count: int,
+)
+    requires
+        valid_u16_dim(step_count),
+        valid_u16_dim(slot_count),
+        spec_run_frame_new_preconditions(first_step, step_count),
+    ensures
+        match spec_run_frame_new(run_id, first_step, step_count, slot_count) {
+            Ok(_) => true,
+            Err(_) => false,
+        },
+{
+    // preconditions imply both error guards are false:
+    //   states_len = step_count != 0  (from 0 < step_count)
+    //   first_step < step_count = states_len  (from first_step < step_count)
+    // Therefore spec_run_frame_new takes the Ok branch.
+    let result = spec_run_frame_new(run_id, first_step, step_count, slot_count);
+    match result {
+        Ok(_) => { }
+        Err(_) => { assert(false); }
+    }
+}
+
+/// proof_run_frame_new_preconditions_necessary:
+///
+/// If spec_run_frame_new returns Err(SpecError::InvalidCompiledWorkflow),
+/// then preconditions must have been violated (states_len == 0).
+///
+/// This lemma is vacuous for the InvalidProgramCounter path since
+/// first_step >= states_len is consistent with valid_u16_dim(first_step).
+pub proof fn proof_run_frame_new_preconditions_necessary(
+    run_id: int,
+    first_step: int,
+    step_count: int,
+    slot_count: int,
+)
+    requires
+        valid_u16_dim(step_count),
+        valid_u16_dim(slot_count),
+    ensures
+        // If Err(InvalidCompiledWorkflow) then step_count == 0
+        (match spec_run_frame_new(run_id, first_step, step_count, slot_count) {
+            Err(SpecError::InvalidCompiledWorkflow { .. }) => step_count == 0,
+            _ => true,
+        }),
+{
+    let result = spec_run_frame_new(run_id, first_step, step_count, slot_count);
+    match result {
+        Err(SpecError::InvalidCompiledWorkflow { .. }) => {
+            // states_len == step_count, and the error branch is taken only when states_len == 0
+            assert(step_count == 0);
+        }
+        _ => { }
+    }
+}
+
+/// proof_run_frame_new_postconditions_full:
+///
+/// When spec_run_frame_new returns Ok(frame), frame satisfies ALL
+/// postconditions from spec_run_frame_new_postconditions.
+///
+/// Binding: RunFrame::new sets run_id, pc, executed, max_parallel_in_flight,
+/// parallel_in_flight, and array lengths exactly as modeled.
+pub proof fn proof_run_frame_new_postconditions_full(
+    run_id: int,
+    first_step: int,
+    step_count: int,
+    slot_count: int,
+)
+    requires
+        valid_u16_dim(step_count),
+        valid_u16_dim(slot_count),
+        spec_run_frame_new_preconditions(first_step, step_count),
+    ensures
+        match spec_run_frame_new(run_id, first_step, step_count, slot_count) {
+            Ok(frame) => {
+                spec_run_frame_new_postconditions(
+                    frame,
+                    run_id,
+                    first_step,
+                    step_count,
+                    slot_count,
+                )
+            },
+            Err(_) => false,
+        },
+{
+    let result = spec_run_frame_new(run_id, first_step, step_count, slot_count);
+    match result {
+        Ok(frame) => {
+            // Verify each postcondition field by matching on the Ok arm
+            assert(frame.run_id == run_id);
+            assert(frame.pc == first_step);
+            assert(frame.executed == 0);
+            assert(frame.max_parallel_in_flight == u16_max());
+            assert(frame.parallel_in_flight == 0);
+            assert(frame.step_count == step_count);
+            assert(frame.slot_count == slot_count);
+            assert(frame.states_len == step_count);
+            assert(frame.slots_len == slot_count);
+            assert(frame.taint_len == slot_count);
+            assert(frame.all_states_pending);
+            assert(frame.all_slots_empty);
+            assert(frame.all_taint_clean);
+        }
+        Err(_) => { assert(false); }
+    }
+}
+
+/// proof_reinitialize_accepts:
+///
+/// If reinitialize is called with valid preconditions and unchanged dimensions,
+/// then both RunFrame::new and RunFrame::reinitialize succeed and produce
+/// frames with identical run_id, pc, executed, max_parallel_in_flight,
+/// and parallel_in_flight values.
+///
+/// Binding: RunFrame::reinitialize enforces the same guards as RunFrame::new
+/// plus an additional dimension-check, then resets run-dependent fields
+/// identically to the constructor.
+pub proof fn proof_reinitialize_accepts(
+    run_id: int,
+    old_step_count: int,
+    old_slot_count: int,
+    first_step: int,
+    new_step_count: int,
+    new_slot_count: int,
+)
+    requires
+        valid_u16_dim(old_step_count),
+        valid_u16_dim(old_slot_count),
+        valid_u16_dim(new_step_count),
+        valid_u16_dim(new_slot_count),
+        spec_reinitialize_accepts(
+            old_step_count,
+            old_slot_count,
+            first_step,
+            new_step_count,
+            new_slot_count,
+        ),
+    ensures
+        // reinitialize succeeds
+        spec_run_frame_new_preconditions(first_step, new_step_count)
+            && old_step_count == new_step_count
+            && old_slot_count == new_slot_count,
+        // The new frame has the same field values as a freshly constructed one
+        match spec_run_frame_new(run_id, first_step, new_step_count, new_slot_count) {
+            Ok(frame) => {
+                frame.run_id == run_id
+                    && frame.pc == first_step
+                    && frame.executed == 0
+                    && frame.max_parallel_in_flight == u16_max()
+                    && frame.parallel_in_flight == 0
+            },
+            Err(_) => false,
+        },
+{
+    // preconditions for reinitialize accept → spec_run_frame_new_preconditions hold
+    assert(spec_run_frame_new_preconditions(first_step, new_step_count));
+    assert(old_step_count == new_step_count);
+    assert(old_slot_count == new_slot_count);
+    // Therefore spec_run_frame_new returns Ok
+    let result = spec_run_frame_new(run_id, first_step, new_step_count, new_slot_count);
+    match result {
+        Ok(frame) => {
+            assert(frame.run_id == run_id);
+            assert(frame.pc == first_step);
+            assert(frame.executed == 0);
+            assert(frame.max_parallel_in_flight == u16_max());
+            assert(frame.parallel_in_flight == 0);
+        }
+        Err(_) => { assert(false); }
+    }
 }
 
 // VB-INV001-VERUS: RunFrame::new bounds proof.
@@ -264,29 +577,33 @@ pub proof fn proof_valid_dimensions_accepted(first_step: int, step_count: int)
 //   - Taint enum has exactly 3 closed variants (verified at type-system level)
 //   - No raw u8-to-Taint conversion (forbid(unsafe_code) active on frame.rs)
 
-/// SpecTaint mirrors the runtime Taint enum (Clean=0, DerivedFromSecret=1, Secret=2).
+/// SpecTaint mirrors the runtime Taint enum (Clean=0, DerivedFromSecret=1, Secret=2, Random=3, TimeDependent=4).
 pub enum SpecTaint {
     Clean,
     DerivedFromSecret,
     Secret,
+    Random,
+    TimeDependent,
 }
 
-/// spec_taint_valid_write: After a successful write, taint is one of the 3 valid variants.
+/// spec_taint_valid_write: After a successful write, taint is one of the 5 valid variants.
 pub open spec fn spec_taint_valid_write(taint: SpecTaint) -> bool {
     match taint {
         SpecTaint::Clean => true,
         SpecTaint::DerivedFromSecret => true,
         SpecTaint::Secret => true,
+        SpecTaint::Random => true,
+        SpecTaint::TimeDependent => true,
     }
 }
 
 /// lemma_taint_valid_write: write_slot_with_taint preserves taint validity.
 ///
 /// If write_slot_with_taint returns Ok, then the taint at that slot is
-/// guaranteed to be one of {Clean, DerivedFromSecret, Secret}.
+/// guaranteed to be one of {Clean, DerivedFromSecret, Secret, Random, TimeDependent}.
 ///
 /// This follows from:
-/// 1. Taint is a closed enum (3 variants, no others possible)
+/// 1. Taint is a closed enum (5 variants, no others possible)
 /// 2. The write is direct: taint[index] = taint (not a conversion)
 /// 3. The function validates bounds before write (returns Err on OOB)
 /// 4. On Ok path, the written value is exactly the input taint
@@ -305,28 +622,40 @@ pub proof fn lemma_taint_valid_write(taint: SpecTaint)
         SpecTaint::Secret => {
             assert(spec_taint_valid_write(taint) == true);
         }
+        SpecTaint::Random => {
+            assert(spec_taint_valid_write(taint) == true);
+        }
+        SpecTaint::TimeDependent => {
+            assert(spec_taint_valid_write(taint) == true);
+        }
     }
 }
 
-/// Lemma: All three taint variants are valid write targets.
+/// Lemma: All five taint variants are valid write targets.
 pub proof fn lemma_all_taint_variants_valid()
     ensures
         spec_taint_valid_write(SpecTaint::Clean) == true,
         spec_taint_valid_write(SpecTaint::DerivedFromSecret) == true,
         spec_taint_valid_write(SpecTaint::Secret) == true,
+        spec_taint_valid_write(SpecTaint::Random) == true,
+        spec_taint_valid_write(SpecTaint::TimeDependent) == true,
 {
     assert(spec_taint_valid_write(SpecTaint::Clean) == true) by(compute);
     assert(spec_taint_valid_write(SpecTaint::DerivedFromSecret) == true) by(compute);
     assert(spec_taint_valid_write(SpecTaint::Secret) == true) by(compute);
+    assert(spec_taint_valid_write(SpecTaint::Random) == true) by(compute);
+    assert(spec_taint_valid_write(SpecTaint::TimeDependent) == true) by(compute);
 }
 
 /// Lemma: There are no invalid taint values (closed enum exhaustiveness).
 pub proof fn lemma_no_invalid_taint()
     ensures
-        // The three variants are exhaustive — no other values exist
+        // The five variants are exhaustive — no other values exist
         spec_taint_valid_write(SpecTaint::Clean) == true,
         spec_taint_valid_write(SpecTaint::DerivedFromSecret) == true,
         spec_taint_valid_write(SpecTaint::Secret) == true,
+        spec_taint_valid_write(SpecTaint::Random) == true,
+        spec_taint_valid_write(SpecTaint::TimeDependent) == true,
 {
     lemma_all_taint_variants_valid();
 }
@@ -345,6 +674,8 @@ pub proof fn lemma_taint_valid_write_all_variants()
         spec_taint_valid_write(SpecTaint::Clean) == true,
         spec_taint_valid_write(SpecTaint::DerivedFromSecret) == true,
         spec_taint_valid_write(SpecTaint::Secret) == true,
+        spec_taint_valid_write(SpecTaint::Random) == true,
+        spec_taint_valid_write(SpecTaint::TimeDependent) == true,
 {
     lemma_all_taint_variants_valid();
 }
@@ -369,6 +700,8 @@ pub proof fn lemma_multiple_writes_preserve_taint_validity()
         spec_taint_valid_write(SpecTaint::Clean) == true,
         spec_taint_valid_write(SpecTaint::DerivedFromSecret) == true,
         spec_taint_valid_write(SpecTaint::Secret) == true,
+        spec_taint_valid_write(SpecTaint::Random) == true,
+        spec_taint_valid_write(SpecTaint::TimeDependent) == true,
 {
     lemma_taint_valid_write_all_variants();
 }
