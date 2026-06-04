@@ -1,5 +1,11 @@
 # Compiler, YAML, Validation, and IR Defects
 
+## Status Update 2026-06-03
+
+All defects in this file are historical unless fresh command evidence contradicts the bead graph. `vb-xi2f` and all 40 children are CLOSED, including primitive lowering (`vb-xi2f.1`, `.2`, `.12`-.`.25`, `.36`, `.37`), validated `try_from_parts` emission (`vb-xi2f.4`), trigger/vocabulary/reference parity (`vb-xi2f.5`-.`.7`, `.15`-.`.17`), diagnostics (`vb-xi2f.9`, `.10`), and digest semantic coverage (`vb-xi2f.8`, `.18`-.`.20`, `.26`-.`.39`).
+
+The original findings below are retained as audit history, not as current open work.
+
 ## P0: Canonical compiler lowering rejects required v1 primitives
 
 Evidence:

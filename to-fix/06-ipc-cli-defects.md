@@ -1,5 +1,9 @@
 # IPC and CLI Defects
 
+## Status Update 2026-06-03
+
+The stale OutputFormat Json/Jsonl cleanup is CLOSED under `vb-ne3j`. The IPC/CLI audit defects in this file remain open under `vb-k8ut.1`-.`5` until their beads close. Current uncommitted CLI edits in the working tree were not treated as closure evidence.
+
 ## P0: Live IPC server buffers before validating magic
 
 Evidence:

@@ -1,6 +1,6 @@
 # Runtime Architecture
 
-Velvet Ballastics is optimized for raw in-process orchestration performance. YAML is source input only. The hot path never interprets YAML, never resolves string references, and never performs HTTP request handling.
+`velvet-ballistics` is optimized for raw in-process orchestration performance. YAML is source input only. The hot path never interprets YAML, never resolves string references, and never performs HTTP request handling.
 
 ## Pipeline
 

@@ -298,7 +298,7 @@ Major modules: `admission.rs`, `action_queue/`, `shard/` (30+ chunk files), `pri
 
 ## 10-13. vb_cli, vb_boundary_inventory, vb_doc, vb_ui_model
 
-**vb_cli** (59 src, 48 pub fn, 24 pub types): CLI binary (velvet-ballastics). Argument parsing, commands (diff, incident, journal, status, system, verify, workflow), lifecycle, deliver_sink, naming_scan.
+**vb_cli** (59 src, 48 pub fn, 24 pub types): CLI binary (`velvet-ballistics`). Argument parsing, commands (diff, incident, journal, status, system, verify, workflow), lifecycle, deliver_sink, naming_scan.
 
 **vb_boundary_inventory** (17 src, 23 pub fn, 28 pub types): Workspace boundary scanner. `parse_inventory()`, `validate_inventory()`, `BoundaryInventory`, `BoundaryRecord`, `BoundaryStatus`.
 
@@ -325,4 +325,3 @@ Major modules: `admission.rs`, `action_queue/`, `shard/` (30+ chunk files), `pri
 **vb_proof_kernels** (6 src, 44 pub fn, 19 pub types): Envelope header proofs. `validate_header_crc()`, `validate_header_before_alloc()`, `EnvelopeHeader`.
 
 **vb_verification** (1 src, 0 pub items): Placeholder crate (deps: vb_core, vb_storage).
-

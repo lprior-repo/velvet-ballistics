@@ -1,6 +1,6 @@
 # Performance Contract
 
-Velvet Ballastics optimizes latency and throughput by refusing to put authoring concerns on the execution path.
+`velvet-ballistics` optimizes latency and throughput by refusing to put authoring concerns on the execution path.
 
 ## Non-Negotiable Contract
 

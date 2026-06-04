@@ -12,14 +12,16 @@ Backend / IR Interpreter Complete is not releasable yet.
 
 The tree has a lot of good substrate: numeric IR types, handle-based values, strict YAML-profile machinery, Fjall keyspace/envelope code, bounded shard queues, runtime primitive dispatch surfaces, typed errors, fuzz harness implementation functions, and Moon task skeletons.
 
-The blockers are still real:
+## Status Update 2026-06-03
 
-- Compiler lowering is not full v1: `do` and `choose` are rejected by the canonical lowering path, and nested primitive bodies only accept `set`.
-- Runtime action completion mutates frame state before durable evidence append and does not enforce full idempotency, output-size, duplicate-completion, or taint policy.
-- Durable action journal records lose the full `ActionTicket`, idempotency key, and real attempt number.
+The original 2026-05-24 verdict is partially stale. Current bead reconciliation shows the compiler/YAML/IR audit family `vb-xi2f` is CLOSED, and the runtime action durability family `vb-w678` is CLOSED. See `to-fix/08-resolution-tracker.md` for the current closed/open mapping.
+
+The current blockers are still real:
+
+- Runtime/core semantics still diverge on taint lattice, terminal step-state transitions, ResourceContract shape/defaults, and collect wall-clock reads.
 - Storage/recovery has envelope, compiled-IR digest, pending-action hydration, and digest-check completeness gaps.
-- CI/formal gates are materially miswired or smoke-only: Moon uses nonexistent formal task names, Miri/coverage are one-test smokes, fuzz target names do not match the required Section 37 names, and TLC/Kani/Verus evidence has fail-open or vacuity problems.
-- Master policy drift remains around taint shape, step-state terminal transitions, resource defaults, Cargo profiles, workspace shape, hot function/file lengths, and deferred-codegen residue.
+- CI/formal gates are still materially incomplete: Miri/coverage remain smoke-only, TLC/Kani/Verus evidence has fail-open or vacuity problems, sanitizer is omitted from the canonical pipeline, and benchmark evidence is below Section 39.
+- Master policy drift remains around hot runtime boundedness, hot function/file splits, Cargo profiles, duplicate compiler modules, and IPC/CLI surface reconciliation.
 
 ## Current-Scope Exclusions Applied
 

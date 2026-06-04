@@ -1,5 +1,9 @@
 # Runtime, Action, and Durability Defects
 
+## Status Update 2026-06-03
+
+The action durability cluster is fixed in bead terms: `vb-w678` and children `vb-w678.1`-.`5` are CLOSED, and frame-pool capacity work `vb-n70qh` is CLOSED. Remaining open runtime/core defects from this file are `vb-o5zb.1` (taint lattice), `vb-o5zb.2` (terminal step states), `vb-o5zb.3` (ResourceContract shape/defaults), and `vb-trq7b` (collect wall-clock reads).
+
 ## P0: Action completion mutates frame before full validation and durable evidence
 
 Evidence:

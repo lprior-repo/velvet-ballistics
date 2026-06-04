@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft product requirements document for extracting the Velvet Ballastics `xtask` lessons into a reusable Rust-only AI software delivery harness.
+Draft product requirements document for extracting the `velvet-ballistics` `xtask` lessons into a reusable Rust-only AI software delivery harness.
 
 ## Summary
 
@@ -439,7 +439,7 @@ crates/
   xtaskd              optional local daemon for long-running agent/gate sessions
 ```
 
-The core must not depend on a specific repository, issue tracker, UI fixture, or bead ID. Velvet Ballastics becomes one profile/adaptor, not the product kernel.
+The core must not depend on a specific repository, issue tracker, UI fixture, or bead ID. `velvet-ballistics` becomes one profile/adaptor, not the product kernel.
 
 ## Core Domain Model
 

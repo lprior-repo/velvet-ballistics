@@ -1,6 +1,6 @@
 # Rust Governance
 
-Velvet Ballastics uses pinned nightly Rust for bounded, explicit performance work. The pin is `nightly-2026-04-28` in `rust-toolchain.toml` and must be used for first-party builds.
+`velvet-ballistics` uses pinned nightly Rust for bounded, explicit performance work. The pin is `nightly-2026-04-28` in `rust-toolchain.toml` and must be used for first-party builds.
 
 ## Nightly Feature Gate
 

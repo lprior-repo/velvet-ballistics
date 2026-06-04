@@ -10,7 +10,7 @@ Generated 2026-05-24. This is a Master-filtered backlog source for `vb-8mdp`.
 
 Do not copy external orchestrator code, module names, type names, async architecture, HTTP/gRPC/JSON paths, distributed control-plane assumptions, storage layout, or wire formats.
 
-Identify behavioral risks that must be re-expressed through Velvet Ballastics types, numeric IR, binary IPC, Fjall/Postcard storage, bounded queues, and single-server shard-owned execution.
+Identify behavioral risks that must be re-expressed through `velvet-ballistics` types, numeric IR, binary IPC, Fjall/Postcard storage, bounded queues, and single-server shard-owned execution.
 
 ## Accepted Steals
 

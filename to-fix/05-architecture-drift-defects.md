@@ -1,5 +1,11 @@
 # Architecture Drift Defects
 
+## Status Update 2026-06-03
+
+Closed or reconciled: oversized-file enumeration (`vb-zxgb`), source-length gate expansion (`vb-ui6k`), 300-line Rust policy gate (`vb-jpq7.47`), bounded timer wheel replacement (`vb-vi3g`), workspace membership reconciliation (`vb-esq9.2`), and deferred codegen graph quarantine (`vb-esq9.3`).
+
+Still open: hot runtime state boundedness (`vb-jpq7.9`), hot dispatcher split (`vb-9kwz.1`), shard tick command handler split (`vb-9kwz.2`), root Cargo profile contract (`vb-esq9.1`), duplicate compiler module tree (`vb-esq9.4`), and their umbrellas `vb-9kwz` and `vb-esq9`.
+
 ## P0: File-size drift is massive
 
 Evidence:

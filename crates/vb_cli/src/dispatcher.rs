@@ -131,25 +131,19 @@ pub fn run_from_env() -> ExitCode {
         }) => cmd_answer(&run_id, slot, &value, &db, output),
         Ok(Command::Graph { workflow, output }) => cmd_graph(&workflow, output),
         Ok(Command::Diff {
-            workflow,
-            against,
-            run_a,
-            run_b,
-            db,
+            diff_mode,
             output,
-        }) => match (workflow, against, run_a, run_b, db) {
-            (Some(workflow), Some(against_run), _, _, Some(db_path)) => {
-                cmd_diff_workflow_against(&workflow, &against_run, &db_path, output)
-            }
-            (_, _, Some(run_a), Some(run_b), Some(db_path)) => {
-                cmd_diff(&run_a, &run_b, &db_path, output)
-            }
-            _ => {
-                crate::errln!(
-                    "diff requires either two run IDs or --against <run_id> with a workflow"
-                );
-                CliExitCode::ValidationFailed.into()
-            }
+        }) => match diff_mode {
+            DiffMode::WorkflowAgainst {
+                workflow,
+                against,
+                db,
+            } => cmd_diff_workflow_against(&workflow, &against, &db, output),
+            DiffMode::RunAgainst {
+                run_a,
+                run_b,
+                db,
+            } => cmd_diff(&run_a, &run_b, &db, output),
         },
         Ok(Command::Incident { run_id, db, output }) => cmd_incident(&run_id, &db, output),
         Ok(Command::Submit {

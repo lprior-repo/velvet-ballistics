@@ -272,7 +272,7 @@ Nightly update contract:
 
 ## 8. Language Specification
 
-**Title:** Velvet Ballastics Workflow Language v1
+**Title:** `velvet-ballistics/v1` Workflow Language
 **Canonical version string:** `velvet-ballistics/v1`
 
 Required top-level fields:
@@ -3610,7 +3610,7 @@ The following are internal engineering targets for `velvet-ballistics` as a sing
 
 ### Step-Level Latency Targets
 
-| Metric | Velvet Ballastics (single-server) | Notes |
+| Metric | `velvet-ballistics` (single-server) | Notes |
 |--------|-----------------------------------|-------|
 | Single step p50 (no replication) | <= 1ms | No network roundtrip for quorum |
 | Single step p50 (journaled) | <= 5ms | Fjall group commit |
@@ -3621,7 +3621,7 @@ The following are internal engineering targets for `velvet-ballistics` as a sing
 
 ### Throughput Targets
 
-| Metric | Velvet Ballastics | Notes |
+| Metric | `velvet-ballistics` | Notes |
 |--------|-------------------|-------|
 | Full workflows per second (9 steps) | >= 10,000 | Single-server removes replication overhead |
 | Concurrent active runs | >= 4,096 | Frame pool capacity |

@@ -1,11 +1,11 @@
-# Velvet Ballastics Workflow Language v1
+# `velvet-ballistics/v1` Workflow Language
 
 Status: draft
 Canonical workflow version: `velvet-ballistics/v1`
 Canonical action manifest version: `velvet/action/v1`
 Suggested file extensions: `.velvet.yaml`, `.vb.yaml`, `.workflow.yaml`
 
-Velvet Ballastics is a strict YAML workflow language and durable execution model for high-performance workflow orchestration.
+`velvet-ballistics/v1` is a strict YAML workflow language and durable execution model for high-performance workflow orchestration.
 
 The language is built around one sentence:
 
@@ -32,13 +32,13 @@ YAML document
 Product name:
 
 ```text
-Velvet Ballastics
+velvet-ballistics
 ```
 
 Language name:
 
 ```text
-Velvet Ballastics Workflow Language
+velvet-ballistics/v1 Workflow Language
 ```
 
 Suggested abbreviations:
@@ -79,7 +79,7 @@ when:
 steps:
   - id: greeting
     save:
-      text: Hello from Velvet Ballastics
+      text: Hello from velvet-ballistics
 
 result:
   message: $greeting.text
@@ -87,7 +87,7 @@ result:
 
 ## Design Goals
 
-Velvet Ballastics v1 is designed to be strict, small, typed, durable, inspectable, AI-generatable, AI-debuggable, graph-renderable, high-performance, single-binary friendly, Docker-optional, and Kubernetes-optional.
+`velvet-ballistics/v1` is designed to be strict, small, typed, durable, inspectable, AI-generatable, AI-debuggable, graph-renderable, high-performance, single-binary friendly, Docker-optional, and Kubernetes-optional.
 
 The language favors explicit bounded primitives over arbitrary code and arbitrary cycles.
 
@@ -2011,6 +2011,6 @@ Export a debug bundle.
 The language and runtime should prove this thesis:
 
 ```text
-Velvet Ballastics is a truly open-source, single-binary, durable workflow orchestrator
+velvet-ballistics is a truly open-source, single-binary, durable workflow orchestrator
 with Step Functions clarity, n8n approachability, and a beautiful inspectable UI.
 ```

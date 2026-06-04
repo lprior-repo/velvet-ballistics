@@ -18,6 +18,6 @@ mod tests;
 pub(crate) use error::ParseError;
 pub(crate) use shared::parse_args;
 pub(crate) use types::{
-    ActionRegistryMode, Command, DurabilityMode, EmitTarget, EventStatus, OutputFormat,
+    ActionRegistryMode, Command, DiffMode, DurabilityMode, EmitTarget, EventStatus, OutputFormat,
     StatusOptions, StepTarget, SystemStatusOptions, VALID_COMMANDS, VerifyProfile,
 };

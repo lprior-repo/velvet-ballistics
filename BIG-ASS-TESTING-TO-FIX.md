@@ -9,6 +9,19 @@ Findings drive remediation beads in beads.
 
 This file is a historical four-round audit. It is no longer a live blocker list unless a row below has a current bead reference or fresh command evidence.
 
+## STATUS RECONCILIATION 2026-06-03
+
+Use `to-fix/08-resolution-tracker.md` and `bd` for current status. This audit remains historical.
+
+Current reconciliation found:
+
+- The compiler/YAML/IR audit family `vb-xi2f` is closed with all 40 children closed.
+- The runtime action durability family `vb-w678` remains closed with all children closed.
+- The frame-pool defect is closed under `vb-n70qh`.
+- Formal evidence reconciliation beads `vb-u831a`, `vb-b69gz`, and `vb-uwg7d` are closed; residual waived-lane work remains tracked by follow-up beads such as `vb-0l9k0`, `vb-axpzb`, `vb-0utlp`, and `vb-hkedh` where applicable.
+- The collect wall-clock defect is still present in `crates/vb_runtime/src/primitives/collect/mod.rs` and is now tracked by `vb-trq7b`.
+- Remaining open defects are listed in `to-fix/08-resolution-tracker.md`; do not use the old round summaries below as current shipping status.
+
 Current bead reconciliation found:
 
 - The prior action-completion MUST_FIX set is closed under `vb-w678`, with child beads `vb-w678.1` through `vb-w678.5` covering full ticket persistence, prevalidation, taint/output bounds, append-before-mutate ordering, and explicit non-durable runtime construction.

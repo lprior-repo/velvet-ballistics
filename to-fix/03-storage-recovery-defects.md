@@ -1,5 +1,9 @@
 # Storage and Recovery Defects
 
+## Status Update 2026-06-03
+
+All defects in this file remain live and mapped to open beads: `vb-mrwe.1` through `vb-mrwe.7`. No untracked-bead gap remains for storage/recovery, but none of these rows should be claimed fixed until the corresponding bead is closed.
+
 ## P0: Storage envelope does not reject trailing bytes
 
 Evidence:

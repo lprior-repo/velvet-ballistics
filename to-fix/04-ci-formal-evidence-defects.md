@@ -1,5 +1,11 @@
 # CI, Fuzz, Formal, and Evidence Defects
 
+## Status Update 2026-06-03
+
+Closed: formal task names (`vb-481r.1`), Section 37 fuzz target names (`vb-481r.8`), vb-fzgdn State 12 evidence closure (`vb-u831a`), partial TLA RRO bridge closure (`vb-b69gz`), and the stale numeric timer trusted-base claim (`vb-uwg7d`).
+
+Still open: TLC fail-open/path issues (`vb-481r.2`), hardcoded Kani shapes (`vb-481r.3`), Verus production binding gaps (`vb-481r.4`, `vb-481r.5`), Miri/coverage smoke-only gates (`vb-481r.6`, `vb-481r.7`), root Cargo profiles (`vb-esq9.1`), sanitizer pipeline omission (`vb-481r.10`), and Section 39 benchmark evidence (`vb-a7t6`, `vb-a7t6.1`-.`4`).
+
 <!-- RESOLVED 2026-05-24: Sections 1 (formal task names) and 2 (fuzz target names) resolved via vb-481r.1, vb-481r.8 -->
 
 ## ✅ P0: Moon pipeline references nonexistent formal task names [RESOLVED: vb-481r.1]
