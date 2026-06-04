@@ -7,6 +7,7 @@ use vb_core::value::SlotValue;
 use vb_core::workflow::CompiledNodeKind;
 
 use crate::engine::RetryPolicy;
+use crate::shard::helpers::action::AttemptFenceError;
 use crate::shard::types::RunState;
 use crate::{RuntimeError, RuntimeResult};
 
@@ -87,18 +88,49 @@ pub fn record_retry_attempt(
     policy: RetryPolicy,
 ) -> RuntimeResult<bool> {
     validate_retry_attempt(ticket, policy)?;
-    let attempt = state
+    let slot = state
         .action_attempts
         .get_mut(ticket.step.as_usize())
         .ok_or(RuntimeError::InvalidActionCompletion)?;
-    *attempt = (*attempt).max(ticket.attempt);
-    if *attempt >= policy.max_attempts {
-        return Ok(false);
+    let (next, can_retry) = retry_attempt_after(Some(*slot), ticket.attempt, policy.max_attempts)?;
+    *slot = next;
+    Ok(can_retry)
+}
+
+// ===========================================================================
+// Pure kernel — Verus/Flux binding surface
+// ===========================================================================
+
+/// Pure retry-transition kernel.
+///
+/// Computes the next attempt counter and whether retry is available,
+/// based on the current counter, ticket attempt, and policy max.
+/// Does NOT mutate state.
+///
+/// Panics: NEVER (checked_add is fallible, returns Err on overflow)
+/// I/O: NONE
+/// Allocation: NONE
+pub(crate) fn retry_attempt_after(
+    current: Option<u16>,
+    ticket_attempt: u16,
+    max_attempts: u16,
+) -> Result<(u16, bool), AttemptFenceError> {
+    if max_attempts == 0 || ticket_attempt == 0 || ticket_attempt > max_attempts {
+        return Err(AttemptFenceError::AttemptBeyondMax {
+            attempt: ticket_attempt,
+            max: max_attempts,
+        });
     }
-    *attempt = attempt
-        .checked_add(1)
-        .ok_or(RuntimeError::UnsupportedOperation {
-            operation: "retry_attempt_overflow",
-        })?;
-    Ok(true)
+    let Some(c) = current else {
+        return Err(AttemptFenceError::InvalidActionCompletion);
+    };
+    let base = c.max(ticket_attempt);
+    if base >= max_attempts {
+        Ok((base, false))
+    } else {
+        let next = base
+            .checked_add(1)
+            .ok_or(AttemptFenceError::InvalidActionCompletion)?;
+        Ok((next, true))
+    }
 }

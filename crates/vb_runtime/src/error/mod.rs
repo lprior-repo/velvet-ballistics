@@ -181,6 +181,23 @@ impl From<std::io::Error> for RuntimeError {
     }
 }
 
+impl From<crate::shard::helpers::action::AttemptFenceError> for RuntimeError {
+    fn from(e: crate::shard::helpers::action::AttemptFenceError) -> Self {
+        match e {
+            crate::shard::helpers::action::AttemptFenceError::StaleAttempt {
+                incoming,
+                current,
+            } => RuntimeError::StaleAttempt { incoming, current },
+            crate::shard::helpers::action::AttemptFenceError::AttemptBeyondMax { attempt, max } => {
+                RuntimeError::AttemptBeyondMax { attempt, max }
+            }
+            crate::shard::helpers::action::AttemptFenceError::InvalidActionCompletion => {
+                RuntimeError::InvalidActionCompletion
+            }
+        }
+    }
+}
+
 /// Result alias for runtime operations.
 pub type RuntimeResult<T> = Result<T, RuntimeError>;
 

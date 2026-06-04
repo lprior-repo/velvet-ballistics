@@ -17,6 +17,16 @@ use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::CompiledWorkflow;
 
+/// Error variants for attempt-fence validation kernels.
+/// Mirrors the decision logic of RuntimeError without coupling to the full
+/// RuntimeError type, making these suitable for pure Verus spec binding.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AttemptFenceError {
+    StaleAttempt { incoming: u16, current: u16 },
+    AttemptBeyondMax { attempt: u16, max: u16 },
+    InvalidActionCompletion,
+}
+
 /// Seeds input slots on a frame before deterministic execution.
 pub fn seed_input_slots(
     frame: &mut RunFrame,
@@ -66,29 +76,16 @@ pub fn action_output_slot(state: &RunState, step: StepIdx) -> RuntimeResult<Slot
 }
 
 fn validate_ticket_attempt(state: &RunState, ticket: ActionTicket) -> RuntimeResult<()> {
-    if ticket.attempt == 0 || ticket.capacity == 0 || ticket.attempt > ticket.capacity {
-        return Err(RuntimeError::AttemptBeyondMax {
-            attempt: ticket.attempt,
-            max: ticket.capacity,
-        });
-    }
-    let current = state
-        .action_attempts
-        .get(ticket.step.as_usize())
-        .copied()
-        .ok_or(RuntimeError::InvalidActionCompletion)?;
-    if ticket.attempt < current {
-        return Err(RuntimeError::StaleAttempt {
-            incoming: ticket.attempt,
-            current,
-        });
-    }
-    // Future-attempt rejection (G005): only the scheduled attempt may complete.
-    // A zero current attempt means no ticket has been issued for this step yet.
-    if ticket.attempt > current {
-        return Err(RuntimeError::InvalidActionCompletion);
-    }
-    Ok(())
+    let current = state.action_attempts.get(ticket.step.as_usize()).copied();
+    classify_ticket_attempt(current, ticket.attempt, ticket.capacity).map_err(|e| match e {
+        AttemptFenceError::StaleAttempt { incoming, current } => {
+            RuntimeError::StaleAttempt { incoming, current }
+        }
+        AttemptFenceError::AttemptBeyondMax { attempt, max } => {
+            RuntimeError::AttemptBeyondMax { attempt, max }
+        }
+        AttemptFenceError::InvalidActionCompletion => RuntimeError::InvalidActionCompletion,
+    })
 }
 
 /// Promotes an engine-issued ticket to the live per-step attempt counter.
@@ -96,18 +93,8 @@ pub fn normalize_scheduled_ticket(
     state: &RunState,
     ticket: ActionTicket,
 ) -> RuntimeResult<ActionTicket> {
-    let current = state
-        .action_attempts
-        .get(ticket.step.as_usize())
-        .copied()
-        .ok_or(RuntimeError::InvalidActionCompletion)?;
-    let attempt = current.max(ticket.attempt).max(1);
-    if ticket.capacity == 0 || attempt > ticket.capacity {
-        return Err(RuntimeError::AttemptBeyondMax {
-            attempt,
-            max: ticket.capacity,
-        });
-    }
+    let current = state.action_attempts.get(ticket.step.as_usize()).copied();
+    let attempt = normalize_scheduled_attempt(current, ticket.attempt, ticket.capacity)?;
     Ok(ActionTicket { attempt, ..ticket })
 }
 
@@ -133,10 +120,12 @@ pub fn record_scheduled_attempt(state: &mut RunState, ticket: ActionTicket) {
     if ticket.attempt == 0 {
         return;
     }
-    if let Some(attempt) = state.action_attempts.get_mut(ticket.step.as_usize())
-        && (*attempt == 0 || *attempt < ticket.attempt)
-    {
-        *attempt = ticket.attempt;
+    let slot = state.action_attempts.get_mut(ticket.step.as_usize());
+    if let Some(attempt_slot) = slot {
+        let next = scheduled_attempt_after(Some(*attempt_slot), ticket.attempt);
+        if let Some(n) = next {
+            *attempt_slot = n;
+        }
     }
 }
 
@@ -159,4 +148,94 @@ pub fn make_run_state(workflow: CompiledWorkflow, run_id: RunId) -> Option<RunSt
         collect_states: CollectStates::new(),
         action_contracts: Box::new([]),
     })
+}
+
+// ===========================================================================
+// Pure kernels — Verus/Flux binding surface
+// ===========================================================================
+
+/// Pure ticket classification kernel.
+///
+/// Classifies an incoming ticket attempt against a per-step counter.
+/// Returns `Ok(())` only when the attempt matches the current counter
+/// and both are within the ticket's capacity window.
+///
+/// Panics: NEVER (no unwrap, no panic paths)
+/// I/O: NONE
+/// Allocation: NONE
+pub(crate) fn classify_ticket_attempt(
+    current: Option<u16>,
+    ticket_attempt: u16,
+    ticket_capacity: u16,
+) -> Result<(), AttemptFenceError> {
+    if ticket_attempt == 0 || ticket_capacity == 0 || ticket_attempt > ticket_capacity {
+        Err(AttemptFenceError::AttemptBeyondMax {
+            attempt: ticket_attempt,
+            max: ticket_capacity,
+        })
+    } else if current.is_none() {
+        Err(AttemptFenceError::InvalidActionCompletion)
+    } else {
+        let c = current.unwrap();
+        if ticket_attempt < c {
+            Err(AttemptFenceError::StaleAttempt {
+                incoming: ticket_attempt,
+                current: c,
+            })
+        } else if ticket_attempt > c {
+            Err(AttemptFenceError::InvalidActionCompletion)
+        } else {
+            Ok(())
+        }
+    }
+}
+
+/// Pure scheduled-ticket normalization kernel.
+///
+/// Promotes a scheduled ticket's attempt to at least 1, then checks
+/// capacity bounds. Does NOT mutate state.
+///
+/// Panics: NEVER
+/// I/O: NONE
+/// Allocation: NONE
+pub(crate) fn normalize_scheduled_attempt(
+    current: Option<u16>,
+    ticket_attempt: u16,
+    ticket_capacity: u16,
+) -> Result<u16, AttemptFenceError> {
+    let Some(c) = current else {
+        return Err(AttemptFenceError::InvalidActionCompletion);
+    };
+    let attempt = c.max(ticket_attempt).max(1);
+    if ticket_capacity == 0 || attempt > ticket_capacity {
+        Err(AttemptFenceError::AttemptBeyondMax {
+            attempt,
+            max: ticket_capacity,
+        })
+    } else {
+        Ok(attempt)
+    }
+}
+
+/// Pure scheduled-attempt recording kernel.
+///
+/// Computes the new per-step attempt counter value after a scheduling event.
+/// Does NOT write to state.
+///
+/// Panics: NEVER
+/// I/O: NONE
+/// Allocation: NONE
+pub(crate) fn scheduled_attempt_after(current: Option<u16>, ticket_attempt: u16) -> Option<u16> {
+    if ticket_attempt == 0 {
+        current
+    } else if current.is_none() {
+        Some(ticket_attempt)
+    } else {
+        let c = current.unwrap();
+        if c == 0 || ticket_attempt > c {
+            Some(ticket_attempt)
+        } else {
+            Some(c)
+        }
+    }
 }

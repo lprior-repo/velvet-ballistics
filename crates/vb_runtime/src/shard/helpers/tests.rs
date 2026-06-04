@@ -4,8 +4,8 @@ use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowD
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
-use crate::RuntimeError;
 use crate::shard::{PendingTimer, PendingTimerKind};
+use crate::RuntimeError;
 
 use super::{
     advance_after_action_completion, advance_after_timer_fire, find_error_handler_for_failure,

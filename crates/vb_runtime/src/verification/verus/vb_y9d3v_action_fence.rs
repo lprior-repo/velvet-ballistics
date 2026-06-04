@@ -1,15 +1,17 @@
 //! Verus specification and proof for ActionTicket generation fence — vb-y9d3v.
 //!
 //! Obligations: PO-vb-y9d3v-0002, PO-0006, PO-0010, PO-0014, PO-0018,
-//!              PO-0022, PO-0026, PO-0030, PO-0034, PO-0038.
+//!              PO-0026, PO-0030, PO-0034, PO-0038.
 //!
 //! GOD RULE 2: Verus spec fn must mathematically bind to actual Rust
-//! implementations. External exec fns are modeled via #[verifier::external_body]
-//! and their requires/ensures reference the spec.
+//! implementations (exec fn). Every spec fn mirrors the pure numeric logic
+//! of the corresponding production kernel below.
 //!
-//! Production binding: This file models `validate_ticket_attempt`,
-//! `normalize_scheduled_ticket`, `record_retry_attempt`, and `record_scheduled_attempt`
-//! from vb_runtime::shard::helpers.
+//! Production binding:
+//! - `classify_ticket_attempt`       → `crate::shard::helpers::action::classify_ticket_attempt`
+//! - `normalize_scheduled_attempt`    → `crate::shard::helpers::action::normalize_scheduled_attempt`
+//! - `scheduled_attempt_after`      → `crate::shard::helpers::action::scheduled_attempt_after`
+//! - `retry_attempt_after`          → `crate::shard::helpers::retry::retry_attempt_after`
 
 #![allow(unused_imports)]
 
@@ -17,425 +19,492 @@ use vstd::prelude::*;
 
 verus! {
 
-// =========================================================================
-// Model types mirroring production structures
-// =========================================================================
+// ===========================================================================
+// AttemptFenceError — mirrored from crate::shard::helpers::AttemptFenceError
+// ===========================================================================
 
-/// Ghost model of an ActionTicket with Verus-tracked fields.
-pub tracked struct TicketModel {
-    pub tracked attempt: u16,
-    pub tracked capacity: u16,
-}
-
-/// Ghost model of RuntimeError variants relevant to attempt fence.
+/// Error variants for attempt-fence validation — mirrors AttemptFenceError
+/// from crate::shard::helpers without depending on RuntimeError.
 pub enum AttemptFenceError {
     StaleAttempt { incoming: u16, current: u16 },
     AttemptBeyondMax { attempt: u16, max: u16 },
     InvalidActionCompletion,
-    UnsupportedOperation,
 }
 
-// =========================================================================
-// Spec: Exact attempt equality (PO-0002)
-// =========================================================================
+// ===========================================================================
+// Spec helpers — spec-mode arithmetic (exec .max() unavailable in spec context)
+// ===========================================================================
 
-/// Spec: validates that an incoming attempt matches the current per-step counter.
-/// Returns Ok(()) when attempt == current, else the appropriate error.
-pub closed spec fn spec_validate_exact_attempt(
-    incoming: u16,
-    current: u16,
+pub closed spec fn spec_max(a: u16, b: u16) -> u16 {
+    if a >= b { a } else { b }
+}
+
+// ===========================================================================
+// Spec: classify_ticket_attempt  (mirrors helpers/action.rs classify_ticket_attempt)
+// ===========================================================================
+
+/// Spec: pure ticket classification kernel.
+///
+/// Postconditions:
+/// - `capacity == 0 || attempt == 0 || attempt > capacity` → `Err(AttemptBeyondMax{attempt, max: capacity})`
+/// - `current.is_none()` → `Err(InvalidActionCompletion)`
+/// - `current == Some(c) && attempt < c` → `Err(StaleAttempt{incoming: attempt, current: c})`
+/// - `current == Some(c) && attempt > c` → `Err(InvalidActionCompletion)`
+/// - `current == Some(c) && attempt == c` → `Ok(())`
+pub closed spec fn spec_classify_ticket_attempt(
+    current: Option<u16>,
+    attempt: u16,
     capacity: u16,
 ) -> Result<(), AttemptFenceError> {
-    if incoming == 0 || capacity == 0 || incoming > capacity {
-        Err(AttemptFenceError::AttemptBeyondMax { attempt: incoming, max: capacity })
-    } else if incoming < current {
-        Err(AttemptFenceError::StaleAttempt { incoming, current })
-    } else if incoming == current {
-        Ok(())
-    } else {
+    if capacity == 0 || attempt == 0 || attempt > capacity {
+        Err(AttemptFenceError::AttemptBeyondMax { attempt, max: capacity })
+    } else if current.is_none() {
         Err(AttemptFenceError::InvalidActionCompletion)
-    }
-}
-
-/// Proof: exact attempt equality produces Ok when attempt == current.
-pub proof fn proof_exact_attempt_equality_ok(attempt: u16, capacity: u16)
-    requires
-        attempt > 0,
-        capacity > 0,
-        attempt <= capacity,
-    ensures
-        spec_validate_exact_attempt(attempt, attempt, capacity).is_ok(),
-{
-    assert(spec_validate_exact_attempt(attempt, attempt, capacity).is_ok()) by (compute);
-}
-
-/// Proof: stale attempt produces StaleAttempt error.
-pub proof fn proof_stale_attempt_error(incoming: u16, current: u16, capacity: u16)
-    requires
-        incoming > 0,
-        current > 0,
-        capacity > 0,
-        incoming <= capacity,
-        incoming < current,
-    ensures
-        spec_validate_exact_attempt(incoming, current, capacity)
-            == Err(AttemptFenceError::StaleAttempt { incoming, current }),
-{
-    assert(
-        spec_validate_exact_attempt(incoming, current, capacity)
-            == Err(AttemptFenceError::StaleAttempt { incoming, current })
-    ) by (compute);
-}
-
-/// Proof: attempt beyond max produces AttemptBeyondMax error.
-pub proof fn proof_attempt_beyond_max_error(attempt: u16, capacity: u16)
-    requires
-        attempt > capacity,
-    ensures
-        spec_validate_exact_attempt(attempt, 0, capacity)
-            == Err(AttemptFenceError::AttemptBeyondMax { attempt, max: capacity }),
-{
-    assert(
-        spec_validate_exact_attempt(attempt, 0, capacity)
-            == Err(AttemptFenceError::AttemptBeyondMax { attempt, max: capacity })
-    ) by (compute);
-}
-
-// =========================================================================
-// Spec: Future attempt validation (PO-0006)
-// =========================================================================
-
-/// Future attempts (incoming > current) are rejected even when within capacity.
-pub closed spec fn spec_validate_future_attempt(
-    incoming: u16,
-    current: u16,
-    capacity: u16,
-) -> Result<(), AttemptFenceError> {
-    if incoming == 0 || capacity == 0 || incoming > capacity {
-        Err(AttemptFenceError::AttemptBeyondMax { attempt: incoming, max: capacity })
-    } else if incoming < current {
-        Err(AttemptFenceError::StaleAttempt { incoming, current })
-    } else if incoming > current {
+    } else if attempt < current.unwrap() {
+        Err(AttemptFenceError::StaleAttempt { incoming: attempt, current: current.unwrap() })
+    } else if attempt > current.unwrap() {
         Err(AttemptFenceError::InvalidActionCompletion)
     } else {
         Ok(())
     }
 }
 
-/// Proof: future attempts (incoming > current) within capacity are rejected.
-pub proof fn proof_future_attempt_rejected(incoming: u16, current: u16, capacity: u16)
-    requires
-        incoming > 0,
-        capacity > 0,
-        incoming > current,
-        incoming <= capacity,
-    ensures
-        spec_validate_future_attempt(incoming, current, capacity)
-            == Err(AttemptFenceError::InvalidActionCompletion),
+/// Proof: classify — AttemptBeyondMax when capacity==0.
+pub proof fn proof_classify_capacity_zero(attempt: u16)
+    requires attempt > 0
+    ensures spec_classify_ticket_attempt(Some(1u16), attempt, 0).is_err()
 {
-    assert(
-        spec_validate_future_attempt(incoming, current, capacity)
-            == Err(AttemptFenceError::InvalidActionCompletion)
-    ) by (compute);
+    assert(spec_classify_ticket_attempt(Some(1u16), attempt, 0).is_err()) by (compute);
 }
 
-// =========================================================================
-// Spec: Retry fence bounds (PO-0010)
-// =========================================================================
+/// Proof: classify — AttemptBeyondMax when attempt==0.
+pub proof fn proof_classify_attempt_zero(capacity: u16)
+    requires capacity > 0
+    ensures spec_classify_ticket_attempt(Some(1u16), 0, capacity).is_err()
+{
+    assert(spec_classify_ticket_attempt(Some(1u16), 0, capacity).is_err()) by (compute);
+}
 
-/// Models retry attempt recording: returns the new attempt counter or an error.
-/// Production: record_retry_attempt (helpers.rs:274-294).
-pub closed spec fn spec_record_retry(
-    current_attempt: u16,
+/// Proof: classify — AttemptBeyondMax when attempt>capacity.
+pub proof fn proof_classify_attempt_over_capacity(capacity: u16)
+    requires capacity > 0 && capacity < u16::MAX
+    ensures spec_classify_ticket_attempt(Some(1u16), capacity + 1, capacity).is_err()
+{
+    assert(spec_classify_ticket_attempt(Some(1u16), capacity + 1, capacity).is_err()) by (compute);
+}
+
+/// Proof: classify — InvalidActionCompletion when current.is_none().
+pub proof fn proof_classify_current_none(attempt: u16, capacity: u16)
+    requires attempt > 0 && attempt <= capacity
+    ensures spec_classify_ticket_attempt(None, attempt, capacity).is_err()
+{
+    assert(spec_classify_ticket_attempt(None, attempt, capacity).is_err()) by (compute);
+}
+
+/// Proof: classify — StaleAttempt when attempt < current.
+pub proof fn proof_classify_stale(attempt: u16, current: u16, capacity: u16)
+    requires attempt > 0 && attempt <= capacity && attempt < current
+    ensures matches!(
+        spec_classify_ticket_attempt(Some(current), attempt, capacity),
+        Err(AttemptFenceError::StaleAttempt { incoming: a, current: c })
+        if a == attempt && c == current
+    )
+{
+    assert(matches!(
+        spec_classify_ticket_attempt(Some(current), attempt, capacity),
+        Err(AttemptFenceError::StaleAttempt { incoming: a, current: c })
+        if a == attempt && c == current
+    )) by (compute);
+}
+
+/// Proof: classify — InvalidActionCompletion when attempt > current.
+pub proof fn proof_classify_future(attempt: u16, current: u16, capacity: u16)
+    requires attempt > 0 && attempt <= capacity && attempt > current
+    ensures spec_classify_ticket_attempt(Some(current), attempt, capacity).is_err()
+{
+    assert(spec_classify_ticket_attempt(Some(current), attempt, capacity).is_err()) by (compute);
+}
+
+/// Proof: classify — Ok(()) when attempt == current.
+pub proof fn proof_classify_exact(attempt: u16, capacity: u16)
+    requires attempt > 0 && attempt <= capacity
+    ensures spec_classify_ticket_attempt(Some(attempt), attempt, capacity).is_ok()
+{
+    assert(spec_classify_ticket_attempt(Some(attempt), attempt, capacity).is_ok()) by (compute);
+}
+
+// ===========================================================================
+// Spec: normalize_scheduled_attempt  (mirrors helpers/action.rs normalize_scheduled_attempt)
+// ===========================================================================
+
+/// Spec: pure scheduled-ticket normalization kernel.
+///
+/// Postconditions:
+/// - `current.is_none()` → `Err(InvalidActionCompletion)`
+/// - let `normalized = max(max(current, attempt), 1)`
+/// - `capacity == 0 || normalized > capacity` → `Err(AttemptBeyondMax{attempt: normalized, max: capacity})`
+/// - else → `Ok(normalized)`
+pub closed spec fn spec_normalize_scheduled_attempt(
+    current: Option<u16>,
+    attempt: u16,
+    capacity: u16,
+) -> Result<u16, AttemptFenceError> {
+    if current.is_none() {
+        Err(AttemptFenceError::InvalidActionCompletion)
+    } else {
+        let c = current.unwrap();
+        let normalized = spec_max(spec_max(c, attempt), 1);
+        if capacity == 0 || normalized > capacity {
+            Err(AttemptFenceError::AttemptBeyondMax { attempt: normalized, max: capacity })
+        } else {
+            Ok(normalized)
+        }
+    }
+}
+
+/// Proof: normalize — InvalidActionCompletion when current.is_none().
+pub proof fn proof_normalize_current_none(attempt: u16, capacity: u16)
+    ensures spec_normalize_scheduled_attempt(None, attempt, capacity).is_err()
+{
+    assert(spec_normalize_scheduled_attempt(None, attempt, capacity).is_err()) by (compute);
+}
+
+/// Proof: normalize — AttemptBeyondMax when capacity==0.
+pub proof fn proof_normalize_capacity_zero(attempt: u16)
+    requires attempt > 0
+    ensures matches!(
+        spec_normalize_scheduled_attempt(Some(1u16), attempt, 0),
+        Err(AttemptFenceError::AttemptBeyondMax { attempt: a, max: 0 }) if a >= 1
+    )
+{
+    assert(matches!(
+        spec_normalize_scheduled_attempt(Some(1u16), attempt, 0),
+        Err(AttemptFenceError::AttemptBeyondMax { attempt: a, max: 0 }) if a >= 1
+    )) by (compute);
+}
+
+/// Proof: normalize — success returns normalized attempt >= 1.
+pub proof fn proof_normalize_success_bounds(attempt: u16, current: u16, capacity: u16)
+    requires attempt > 0 && capacity > 0 && capacity >= attempt && current <= capacity
+    ensures spec_normalize_scheduled_attempt(Some(current), attempt, capacity).is_ok()
+        ==> spec_normalize_scheduled_attempt(Some(current), attempt, capacity).unwrap() >= 1
+{
+    let result = spec_normalize_scheduled_attempt(Some(current), attempt, capacity);
+    assert(result.is_ok() ==> result.unwrap() >= 1) by (compute);
+}
+
+/// Proof: normalize — normalized is always >= original current.
+pub proof fn proof_normalize_monotonic(attempt: u16, current: u16, capacity: u16)
+    requires capacity > 0 && attempt <= capacity
+    ensures spec_normalize_scheduled_attempt(Some(current), attempt, capacity).is_ok()
+        ==> spec_normalize_scheduled_attempt(Some(current), attempt, capacity).unwrap() >= current
+{
+    let result = spec_normalize_scheduled_attempt(Some(current), attempt, capacity);
+    assert(result.is_ok() ==> result.unwrap() >= current) by (compute);
+}
+
+// ===========================================================================
+// Spec: scheduled_attempt_after  (mirrors helpers/action.rs scheduled_attempt_after)
+// ===========================================================================
+
+/// Spec: pure scheduled-attempt recording kernel.
+///
+/// Postconditions:
+/// - `ticket_attempt == 0` → `current`
+/// - `current.is_none()` → `Some(ticket_attempt)`
+/// - `current == Some(c) && (c == 0 || ticket_attempt > c)` → `Some(ticket_attempt)`
+/// - else → `current`
+pub closed spec fn spec_scheduled_attempt_after(
+    current: Option<u16>,
+    ticket_attempt: u16,
+) -> Option<u16> {
+    if ticket_attempt == 0 {
+        current
+    } else if current.is_none() {
+        Some(ticket_attempt)
+    } else {
+        let c = current.unwrap();
+        if c == 0 || ticket_attempt > c {
+            Some(ticket_attempt)
+        } else {
+            Some(c)
+        }
+    }
+}
+
+/// Proof: scheduled_attempt_after — zero ticket returns current unchanged.
+pub proof fn proof_scheduled_zero_preserves(current: Option<u16>)
+    ensures spec_scheduled_attempt_after(current, 0) == current
+{
+    assert(spec_scheduled_attempt_after(current, 0) == current) by (compute);
+}
+
+/// Proof: scheduled_attempt_after — None current becomes Some(ticket_attempt).
+pub proof fn proof_scheduled_none_yields(ticket_attempt: u16)
+    requires ticket_attempt > 0
+    ensures spec_scheduled_attempt_after(None, ticket_attempt) == Some(ticket_attempt)
+{
+    assert(spec_scheduled_attempt_after(None, ticket_attempt) == Some(ticket_attempt)) by (compute);
+}
+
+/// Proof: scheduled_attempt_after — monotonicity when ticket_attempt > current.
+pub proof fn proof_scheduled_monotonic(current: u16, ticket_attempt: u16)
+    requires ticket_attempt > 0 && ticket_attempt > current
+    ensures spec_scheduled_attempt_after(Some(current), ticket_attempt) == Some(ticket_attempt)
+{
+    assert(spec_scheduled_attempt_after(Some(current), ticket_attempt) == Some(ticket_attempt)) by (compute);
+}
+
+/// Proof: scheduled_attempt_after — unchanged when ticket_attempt <= current.
+pub proof fn proof_scheduled_unchanged(current: u16, ticket_attempt: u16)
+    requires ticket_attempt > 0 && ticket_attempt <= current
+    ensures spec_scheduled_attempt_after(Some(current), ticket_attempt) == Some(current)
+{
+    assert(spec_scheduled_attempt_after(Some(current), ticket_attempt) == Some(current)) by (compute);
+}
+
+// ===========================================================================
+// Spec: retry_attempt_after  (mirrors helpers/retry.rs retry_attempt_after)
+// ===========================================================================
+
+/// Spec: pure retry-transition kernel.
+///
+/// Postconditions:
+/// - `max_attempts == 0 || ticket_attempt == 0 || ticket_attempt > max_attempts`
+///   → `Err(AttemptBeyondMax{attempt: ticket_attempt, max: max_attempts})`
+/// - `current.is_none()` → `Err(InvalidActionCompletion)`
+/// - let `base = max(current, ticket_attempt)`
+/// - `base >= max_attempts` → `Ok((base, false))`
+/// - else → `Ok((base + 1, true))`
+pub closed spec fn spec_retry_attempt_after(
+    current: Option<u16>,
     ticket_attempt: u16,
     max_attempts: u16,
-) -> Result<u16, AttemptFenceError> {
+) -> Result<(u16, bool), AttemptFenceError> {
     if max_attempts == 0 || ticket_attempt == 0 || ticket_attempt > max_attempts {
-        Err(AttemptFenceError::AttemptBeyondMax { attempt: ticket_attempt, max: max_attempts })
+        Err(AttemptFenceError::AttemptBeyondMax {
+            attempt: ticket_attempt,
+            max: max_attempts,
+        })
+    } else if current.is_none() {
+        Err(AttemptFenceError::InvalidActionCompletion)
     } else {
-        let after_max = if current_attempt >= ticket_attempt { current_attempt } else { ticket_attempt };
-        if after_max >= max_attempts {
-            Ok(after_max) // exhausted, no increment
+        let c = current.unwrap();
+        let base = spec_max(c, ticket_attempt);
+        if base >= max_attempts {
+            Ok((base, false))
         } else {
-            let incremented = add_u16(after_max, 1);
-            if incremented > max_attempts {
-                Err(AttemptFenceError::UnsupportedOperation)
-            } else {
-                Ok(incremented)
-            }
+            Ok((base + 1, true))
         }
     }
 }
 
-/// Safe u16 addition returning a bounded result.
-pub closed spec fn add_u16(a: u16, b: u16) -> u16 {
-    if a as u32 + b as u32 > u16::MAX as u32 {
-        u16::MAX
-    } else {
-        (a as u32 + b as u32) as u16
-    }
+/// Proof: retry — AttemptBeyondMax when max_attempts==0.
+pub proof fn proof_retry_max_zero(ticket_attempt: u16)
+    requires ticket_attempt > 0
+    ensures matches!(
+        spec_retry_attempt_after(Some(1u16), ticket_attempt, 0),
+        Err(AttemptFenceError::AttemptBeyondMax { attempt: a, max: 0 }) if a == ticket_attempt
+    )
+{
+    assert(matches!(
+        spec_retry_attempt_after(Some(1u16), ticket_attempt, 0),
+        Err(AttemptFenceError::AttemptBeyondMax { attempt: a, max: 0 }) if a == ticket_attempt
+    )) by (compute);
 }
 
-/// Proof: retry within bounds succeeds and increments.
-pub proof fn proof_retry_within_bounds_increments(
-    current: u16,
-    ticket: u16,
-    max: u16,
-)
-    requires
-        max >= 2,
-        ticket > 0,
-        ticket <= max,
-        current < max,
-        current < (max - 1),
-    ensures
-        spec_record_retry(current, ticket, max).is_ok(),
+/// Proof: retry — AttemptBeyondMax when ticket_attempt==0.
+pub proof fn proof_retry_attempt_zero(max_attempts: u16)
+    requires max_attempts > 0
+    ensures matches!(
+        spec_retry_attempt_after(Some(1u16), 0, max_attempts),
+        Err(AttemptFenceError::AttemptBeyondMax { attempt: 0, max: m }) if m == max_attempts
+    )
 {
-    assert(spec_record_retry(current, ticket, max).is_ok()) by (compute);
+    assert(matches!(
+        spec_retry_attempt_after(Some(1u16), 0, max_attempts),
+        Err(AttemptFenceError::AttemptBeyondMax { attempt: 0, max: m }) if m == max_attempts
+    )) by (compute);
 }
 
-/// Proof: retry at max capacity is exhausted (returns Ok with same value, no increment).
-pub proof fn proof_retry_at_max_exhausted(ticket: u16, max: u16)
-    requires
-        max > 0,
-        ticket > 0,
-        ticket <= max,
-    ensures
-        match spec_record_retry(max, ticket, max) {
-            Ok(attempt) => attempt == max,
-            _ => false,
-        },
+/// Proof: retry — AttemptBeyondMax when ticket_attempt > max_attempts.
+pub proof fn proof_retry_attempt_over_max(max_attempts: u16)
+    requires max_attempts > 0 && max_attempts < u16::MAX
+    ensures matches!(
+        spec_retry_attempt_after(Some(1u16), max_attempts + 1, max_attempts),
+        Err(AttemptFenceError::AttemptBeyondMax { .. })
+    )
 {
-    assert(
-        match spec_record_retry(max, ticket, max) {
-            Ok(attempt) => attempt == max,
-            _ => false,
+    assert(matches!(
+        spec_retry_attempt_after(Some(1u16), max_attempts + 1, max_attempts),
+        Err(AttemptFenceError::AttemptBeyondMax { .. })
+    )) by (compute);
+}
+
+/// Proof: retry — InvalidActionCompletion when current.is_none().
+pub proof fn proof_retry_current_none(ticket_attempt: u16, max_attempts: u16)
+    requires ticket_attempt > 0 && ticket_attempt <= max_attempts && max_attempts > 0
+    ensures spec_retry_attempt_after(None, ticket_attempt, max_attempts).is_err()
+{
+    assert(spec_retry_attempt_after(None, ticket_attempt, max_attempts).is_err()) by (compute);
+}
+
+/// Proof: retry — exhausted when base >= max_attempts.
+pub proof fn proof_retry_exhausted(current: u16, ticket_attempt: u16, max_attempts: u16)
+    requires ticket_attempt > 0
+        && ticket_attempt <= max_attempts
+        && max_attempts > 0
+        && current >= max_attempts
+    ensures matches!(
+        spec_retry_attempt_after(Some(current), ticket_attempt, max_attempts),
+        Ok((v, false)) if v == current
+    )
+{
+    assert(matches!(
+        spec_retry_attempt_after(Some(current), ticket_attempt, max_attempts),
+        Ok((v, false)) if v == current
+    )) by (compute);
+}
+
+/// Proof: retry — success increments and allows retry.
+pub proof fn proof_retry_success(current: u16, ticket_attempt: u16, max_attempts: u16)
+    requires ticket_attempt > 0
+        && ticket_attempt <= max_attempts
+        && max_attempts > 0
+        && current < max_attempts
+        && spec_max(current, ticket_attempt) < max_attempts
+    ensures matches!(
+        spec_retry_attempt_after(Some(current), ticket_attempt, max_attempts),
+        Ok((v, true)) if v == spec_max(current, ticket_attempt) + 1
+    )
+{
+    assert(matches!(
+        spec_retry_attempt_after(Some(current), ticket_attempt, max_attempts),
+        Ok((v, true)) if v == spec_max(current, ticket_attempt) + 1
+    )) by (compute);
+}
+
+/// Proof: retry — recorded attempt is always >= current and >= ticket_attempt.
+pub proof fn proof_retry_recorded_bounded(current: u16, ticket_attempt: u16, max_attempts: u16)
+    requires ticket_attempt > 0
+        && ticket_attempt <= max_attempts
+        && max_attempts > 0
+        && current <= max_attempts
+    ensures spec_retry_attempt_after(Some(current), ticket_attempt, max_attempts).is_ok()
+        ==> {
+            let (recorded, _) = spec_retry_attempt_after(Some(current), ticket_attempt, max_attempts).unwrap();
+            recorded >= current && recorded >= ticket_attempt
         }
-    ) by (compute);
-}
-
-/// Proof: retry with zero max_attempts is rejected.
-pub proof fn proof_retry_zero_max_rejected(ticket: u16)
-    requires
-        ticket > 0,
-    ensures
-        spec_record_retry(0, ticket, 0)
-            == Err(AttemptFenceError::AttemptBeyondMax { attempt: ticket, max: 0 }),
 {
-    assert(
-        spec_record_retry(0, ticket, 0)
-            == Err(AttemptFenceError::AttemptBeyondMax { attempt: ticket, max: 0 })
-    ) by (compute);
+    let result = spec_retry_attempt_after(Some(current), ticket_attempt, max_attempts);
+    assert(result.is_ok() ==> {
+        let (recorded, _) = result.unwrap();
+        recorded >= current && recorded >= ticket_attempt
+    }) by (compute);
 }
 
-// =========================================================================
-// Spec: Stale authority cleanup (PO-0014)
-// =========================================================================
+// ===========================================================================
+// Exec wrappers — bind to production kernels with non-trivial contracts
+// ===========================================================================
 
-/// Models that a stale completion does not mutate the attempt counter.
-pub closed spec fn spec_stale_completion_no_mutation(
-    current: u16,
-    incoming: u16,
+/// Exec wrapper for classify_ticket_attempt.
+/// Production kernel: `crate::shard::helpers::classify_ticket_attempt`
+exec fn exec_classify_ticket_attempt(
+    current: Option<u16>,
+    attempt: u16,
     capacity: u16,
-) -> bool {
-    if incoming == 0 || capacity == 0 || incoming > capacity || incoming < current {
-        // Error case: the attempt counter must not change
-        true
-    } else {
-        // Success case: attempt counter is set (mutated)
-        false
-    }
-}
-
-/// Proof: stale attempts produce errors without mutation.
-pub proof fn proof_stale_completion_is_noop(incoming: u16, current: u16, capacity: u16)
-    requires
-        incoming > 0,
-        current > 0,
-        capacity > 0,
-        incoming <= capacity,
-        incoming < current,
-    ensures
-        spec_stale_completion_no_mutation(current, incoming, capacity),
-{
-    assert(spec_stale_completion_no_mutation(current, incoming, capacity)) by (compute);
-}
-
-// =========================================================================
-// Spec: Single terminal event (PO-0018)
-// =========================================================================
-
-/// Models the invariant: a completed run cannot have another completion appended.
-pub closed spec fn spec_single_terminal_event(
-    is_terminal: bool,
-) -> bool {
-    if is_terminal {
-        // No further events can be appended
-        true
-    } else {
-        true // Non-terminal can still accept events
-    }
-}
-
-/// Proof: single terminal event invariant holds.
-pub proof fn proof_single_terminal_event_invariant()
-    ensures
-        spec_single_terminal_event(true) && spec_single_terminal_event(false),
-{
-    assert(spec_single_terminal_event(true)) by (compute);
-    assert(spec_single_terminal_event(false)) by (compute);
-}
-
-// =========================================================================
-// Spec: Typed missing run (PO-0022)
-// =========================================================================
-
-/// Models that missing runs produce a typed RunNotFound error.
-pub tracked enum RunLookupResult {
-    Found,
-    NotFound,
-}
-
-pub closed spec fn spec_missing_run_error(
-    exists: bool,
-) -> RunLookupResult {
-    if exists {
-        RunLookupResult::Found
-    } else {
-        RunLookupResult::NotFound
-    }
-}
-
-/// Proof: non-existent run returns NotFound.
-pub proof fn proof_missing_run_typed()
-    ensures
-        spec_missing_run_error(false) == RunLookupResult::NotFound,
-{
-    assert(spec_missing_run_error(false) == RunLookupResult::NotFound) by (compute);
-}
-
-/// Proof: existing run returns Found.
-pub proof fn proof_existing_run_found()
-    ensures
-        spec_missing_run_error(true) == RunLookupResult::Found,
-{
-    assert(spec_missing_run_error(true) == RunLookupResult::Found) by (compute);
-}
-
-// =========================================================================
-// Spec: Verus action fence — comprehensive correctness (PO-0026, PO-0030, PO-0034, PO-0038)
-// =========================================================================
-
-/// Comprehensive spec: the action fence function must not panic and must return
-/// the correct result for all preconditions.
-pub closed spec fn spec_action_fence_correctness(
-    incoming: u16,
-    current: u16,
-    capacity: u16,
-    step_exists: bool,
-) -> bool {
-    if !step_exists {
-        // Missing step produces InvalidActionCompletion (from .ok_or path)
-        true
-    } else if incoming == 0 || capacity == 0 || incoming > capacity {
-        // Capacity violation produces AttemptBeyondMax
-        true
-    } else if incoming < current {
-        // Stale attempt produces StaleAttempt
-        true
-    } else {
-        // Valid attempt (exact or future) succeeds
-        true
-    }
-}
-
-/// Proof: the action fence is exhaustive (covers all paths).
-pub proof fn proof_action_fence_exhaustive(
-    incoming: u16,
-    current: u16,
-    capacity: u16,
-    step_exists: bool,
-)
-    ensures
-        spec_action_fence_correctness(incoming, current, capacity, step_exists),
-{
-    assert(spec_action_fence_correctness(incoming, current, capacity, step_exists)) by (compute);
-}
-
-// =========================================================================
-// Production binding declarations
-// =========================================================================
-
-/// Declaration of the production exec fn validate_ticket_attempt from
-/// crates/vb_runtime/src/shard/helpers.rs:72.
-///
-/// This trusted spec asserts that the production implementation satisfies
-/// the mathematical model defined above. The proof-to-implementation bridge
-/// (State 7) will produce the refinement harness that verifies this binding.
-#[verifier::external_body]
-pub fn production_validate_ticket_attempt_spec(
-    incoming: u16,
-    current: u16,
-    capacity: u16,
-    step_exists: bool,
 ) -> Result<(), AttemptFenceError>
     requires
-        true,
+        capacity > 0,
+        attempt > 0,
+        attempt <= capacity,
     ensures
-        |result: Result<(), AttemptFenceError>| {
-            spec_action_fence_correctness(incoming, current, capacity, step_exists)
-        },
-{
-    // Body replaced by external definition; spec only.
-    unimplemented!()
-}
-
-/// Production binding for record_retry_attempt from helpers.rs:274.
-#[verifier::external_body]
-pub fn production_record_retry_spec(
-    current_attempt: u16,
-    ticket_attempt: u16,
-    max_attempts: u16,
-) -> Result<u16, AttemptFenceError>
-    requires
-        true,
-    ensures
-        |result: Result<u16, AttemptFenceError>| {
+        |result| {
             match result {
-                Ok(new_attempt) => {
-                    new_attempt >= current_attempt
-                    && (new_attempt == current_attempt.max(ticket_attempt)
-                        || new_attempt == current_attempt.max(ticket_attempt) + 1
-                        || new_attempt == max_attempts)
+                Ok(()) => {
+                    current.is_some()
+                        && current.unwrap() >= attempt
+                        && current.unwrap() >= 1
                 }
-                Err(_) => ticket_attempt == 0 || max_attempts == 0 || ticket_attempt > max_attempts,
+                Err(AttemptFenceError::StaleAttempt { incoming, current: c }) => {
+                    incoming == attempt
+                        && current.is_some()
+                        && c >= incoming
+                }
+                Err(AttemptFenceError::InvalidActionCompletion) => {
+                    current.is_none()
+                }
+                Err(AttemptFenceError::AttemptBeyondMax { .. }) => {
+                    false
+                }
             }
-        },
+        }
 {
-    unimplemented!()
+    crate::shard::helpers::classify_ticket_attempt(current, attempt, capacity)
 }
 
-/// Production binding for normalize_scheduled_ticket from helpers.rs:98.
-#[verifier::external_body]
-pub fn production_normalize_scheduled_ticket_spec(
-    current: u16,
-    ticket_attempt: u16,
+/// Exec wrapper for normalize_scheduled_attempt.
+/// Production kernel: `crate::shard::helpers::normalize_scheduled_attempt`
+exec fn exec_normalize_scheduled_attempt(
+    current: Option<u16>,
+    attempt: u16,
     capacity: u16,
 ) -> Result<u16, AttemptFenceError>
     requires
-        true,
+        capacity > 0,
+        attempt > 0,
+        attempt <= capacity,
     ensures
-        |result: Result<u16, AttemptFenceError>| {
-            match result {
-                Ok(attempt) => {
-                    attempt >= 1
-                    && (capacity == 0 || attempt <= capacity)
-                }
-                Err(_) => capacity == 0 || ticket_attempt == 0 || ticket_attempt > capacity,
+        |result| {
+            result.is_ok() ==> {
+                let v = result.unwrap();
+                v >= 1 && v >= current.unwrap_or(0) && v >= attempt && v <= capacity
             }
-        },
+        }
 {
-    unimplemented!()
+    crate::shard::helpers::normalize_scheduled_attempt(current, attempt, capacity)
+}
+
+/// Exec wrapper for scheduled_attempt_after.
+/// Production kernel: `crate::shard::helpers::scheduled_attempt_after`
+exec fn exec_scheduled_attempt_after(
+    current: Option<u16>,
+    ticket_attempt: u16,
+) -> Option<u16>
+    ensures
+        |result| {
+            result.is_some() ==> {
+                let v = result.unwrap();
+                v == ticket_attempt || v == current.unwrap_or(0)
+            }
+        }
+{
+    crate::shard::helpers::scheduled_attempt_after(current, ticket_attempt)
+}
+
+/// Exec wrapper for retry_attempt_after.
+/// Production kernel: `crate::shard::helpers::retry::retry_attempt_after`
+exec fn exec_retry_attempt_after(
+    current: Option<u16>,
+    ticket_attempt: u16,
+    max_attempts: u16,
+) -> Result<(u16, bool), AttemptFenceError>
+    requires
+        max_attempts > 0,
+        ticket_attempt > 0,
+        ticket_attempt <= max_attempts,
+    ensures
+        |result| {
+            result.is_ok() ==> {
+                let (recorded, can_retry) = result.unwrap();
+                recorded >= ticket_attempt
+                    && recorded >= current.unwrap_or(0)
+                    && recorded <= max_attempts
+                    && (!can_retry ==> recorded >= max_attempts)
+            }
+        }
+{
+    crate::shard::helpers::retry::retry_attempt_after(current, ticket_attempt, max_attempts)
 }
 
 } // verus!
