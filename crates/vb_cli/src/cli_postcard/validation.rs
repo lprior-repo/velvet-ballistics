@@ -2,7 +2,7 @@
 //!
 //! Validation helpers for CLI Postcard binary format.
 
-use super::{CLI_POSTCARD_KIND, CLI_SCHEMA_VERSION, HEADER_SIZE, PostcardError, PostcardHeader};
+use super::{PostcardError, PostcardHeader, CLI_POSTCARD_KIND, CLI_SCHEMA_VERSION, HEADER_SIZE};
 
 pub(crate) fn validate_cli_payload(
     payload: &super::CliPostcardPayload,

@@ -70,21 +70,26 @@ pub(crate) fn report_storage_open_error(
     }
 }
 
+pub(crate) fn ensure_existing_journal_directory(
+    db: &std::path::Path,
+    output: OutputFormat,
+) -> Result<(), ExitCode> {
+    if db.exists() {
+        return Ok(());
+    }
+
+    let message = format!("journal directory does not exist: {}", db.display());
+    write_failure_message(&message, output, CliExitCode::StorageError);
+    Err(CliExitCode::StorageError.into())
+}
+
 pub(crate) fn read_journal_events(
     run_id: &str,
     db: &std::path::Path,
     output: OutputFormat,
 ) -> Result<Vec<vb_storage::JournalEvent>, ExitCode> {
     let rid = parse_run_id(run_id, output)?;
-    if !db.exists() {
-        let msg = format!("journal directory does not exist: {}", db.display());
-        if output != OutputFormat::Text {
-            write_failure_message(&msg, output, CliExitCode::StorageError);
-        } else {
-            crate::errln!("{msg}");
-        }
-        return Err(CliExitCode::StorageError.into());
-    }
+    ensure_existing_journal_directory(db, output)?;
     let journal = vb_storage::FjallJournal::open(db, None).map_err(|e| -> ExitCode {
         report_storage_open_error(&e, db, output);
         CliExitCode::StorageError.into()

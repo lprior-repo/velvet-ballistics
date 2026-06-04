@@ -4,7 +4,10 @@
 use crate::args::{ActionRegistryMode, Command, OutputFormat, ParseError, StepTarget};
 use crate::cli_envelope;
 use crate::exit_code::CliExitCode;
-use crate::file_io::{parse_run_id, read_file, read_journal_events, report_storage_open_error};
+use crate::file_io::{
+    ensure_existing_journal_directory, parse_run_id, read_file, read_journal_events,
+    report_storage_open_error,
+};
 use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
 use crate::output::{
     json_error, json_out, output_error_exit, write_contract_error_json, write_failure_message,
@@ -149,6 +152,9 @@ pub(crate) fn cmd_diff(
         Ok(id) => id,
         Err(code) => return code,
     };
+    if let Err(code) = ensure_existing_journal_directory(db, output) {
+        return code;
+    }
 
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
@@ -179,6 +185,9 @@ pub(crate) fn cmd_diff(
             return CliExitCode::StorageError.into();
         }
     };
+    if events_a.is_empty() {
+        return write_absent_run(run_a, output);
+    }
 
     let events_b = match journal.events_for_run(rid_b) {
         Ok(events) => events,
@@ -194,6 +203,9 @@ pub(crate) fn cmd_diff(
             return CliExitCode::StorageError.into();
         }
     };
+    if events_b.is_empty() {
+        return write_absent_run(run_b, output);
+    }
 
     let result = crate::commands_diff::compute_diff(&events_a, &events_b);
 
@@ -227,6 +239,24 @@ pub(crate) fn cmd_diff(
         }
     }
     CliExitCode::Success.into()
+}
+
+fn write_absent_run(run_id: &str, output: OutputFormat) -> ExitCode {
+    if output != OutputFormat::Text {
+        json_error(
+            &serde_json::json!({
+                "success": false,
+                "run_id": run_id,
+                "status": "not_found",
+                "events": 0,
+                "error": format!("run {run_id}: no events found")
+            }),
+            output,
+        );
+    } else {
+        crate::errln!("run {run_id}: no events found");
+    }
+    CliExitCode::ValidationFailed.into()
 }
 
 /// Compare a workflow's expected execution against a run's actual events.

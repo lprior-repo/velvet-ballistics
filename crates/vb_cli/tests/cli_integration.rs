@@ -128,6 +128,67 @@ fn output_stderr(output: &std::process::Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
 
+fn empty_journal_db(root: &std::path::Path, name: &str) -> Option<std::path::PathBuf> {
+    let db_path = root.join(name);
+    match vb_storage::FjallJournal::open(&db_path, None) {
+        Ok(journal) => {
+            drop(journal);
+            Some(db_path)
+        }
+        Err(err) => {
+            assert!(
+                forced_assertion_failure(),
+                "failed to create empty journal: {err}"
+            );
+            None
+        }
+    }
+}
+
+fn append_journal_event(
+    journal: &vb_storage::FjallJournal,
+    event: &vb_storage::JournalEvent,
+) -> bool {
+    match journal.append_journaled(event) {
+        Ok(()) => true,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "failed to append event: {err}");
+            false
+        }
+    }
+}
+
+fn assert_absent_run_exit_2(args: &[&std::ffi::OsStr], command: &str, run_id: &str) {
+    let output = match run_cli(args) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_eq!(output.status.code(), Some(2), "{command} exit code");
+    assert_eq!(output_stdout(&output), "", "{command} stdout");
+    let stderr = output_stderr(&output);
+    assert_eq!(
+        stderr,
+        format!("run {run_id}: no events found\n"),
+        "{command} stderr"
+    );
+    stderr_contains_no_panic_text(&stderr);
+}
+
+fn assert_storage_error_contains(args: &[&std::ffi::OsStr], command: &str, diagnostic: &str) {
+    let output = match run_cli(args) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_eq!(output.status.code(), Some(5), "{command} exit code");
+    assert_eq!(output_stdout(&output), "", "{command} stdout");
+    let stderr = output_stderr(&output);
+    assert!(
+        stderr.contains(diagnostic),
+        "{command} stderr missing {diagnostic:?}: {stderr}"
+    );
+    stderr_contains_no_panic_text(&stderr);
+}
+
 fn first_stderr_line(output: &std::process::Output) -> String {
     let stderr = output_stderr(output);
     match stderr.lines().next() {
@@ -1692,7 +1753,7 @@ fn cli_run_reports_exact_input_mapping_decode_failure() {
 
 #[test]
 fn taint_secret_propagates_through_deterministic_action() {
-    use vb_core::action::{Idempotency, propagate_action_taint};
+    use vb_core::action::{propagate_action_taint, Idempotency};
     use vb_core::value::Taint;
 
     let result = propagate_action_taint(Idempotency::DeterministicPure, Taint::Secret);
@@ -1701,7 +1762,7 @@ fn taint_secret_propagates_through_deterministic_action() {
 
 #[test]
 fn taint_clean_stays_clean_for_pure_actions() {
-    use vb_core::action::{Idempotency, propagate_action_taint};
+    use vb_core::action::{propagate_action_taint, Idempotency};
     use vb_core::value::Taint;
 
     let result = propagate_action_taint(Idempotency::DeterministicPure, Taint::Clean);
@@ -1710,7 +1771,7 @@ fn taint_clean_stays_clean_for_pure_actions() {
 
 #[test]
 fn taint_derived_propagates() {
-    use vb_core::action::{Idempotency, propagate_action_taint};
+    use vb_core::action::{propagate_action_taint, Idempotency};
     use vb_core::value::Taint;
 
     let result = propagate_action_taint(Idempotency::IdempotentExternal, Taint::DerivedFromSecret);
@@ -1804,11 +1865,9 @@ steps:
         None => return,
     };
     assert_cli_success(&output, "validate valid workflow");
+    assert_eq!(output_stderr(&output), "", "validate success stderr");
     let stdout = output_stdout(&output);
-    assert!(
-        stdout.contains("valid"),
-        "validate should print 'valid': {stdout}"
-    );
+    assert_eq!(stdout, "valid\n", "validate success stdout");
 }
 
 #[test]
@@ -1829,15 +1888,14 @@ fn cli_validate_invalid_yaml_returns_parse_error() {
         Some(output) => output,
         None => return,
     };
-    assert!(
-        !output.status.success(),
-        "validate should fail on broken YAML"
-    );
+    assert_eq!(output.status.code(), Some(2), "validate invalid exit");
+    assert_eq!(output_stdout(&output), "", "validate invalid stdout");
     let stderr = output_stderr(&output);
     assert!(
         stderr.contains("YAML parse error") || stderr.contains("YAML parse failed"),
         "validate should report parse error: {stderr}"
     );
+    stderr_contains_no_panic_text(&stderr);
 }
 
 #[test]
@@ -1871,15 +1929,14 @@ steps:
         Some(output) => output,
         None => return,
     };
-    assert!(
-        !output.status.success(),
-        "validate should fail on undefined step reference"
-    );
+    assert_eq!(output.status.code(), Some(2), "bad reference exit");
+    assert_eq!(output_stdout(&output), "", "bad reference stdout");
     let stderr = output_stderr(&output);
     assert!(
-        stderr.contains("compile error"),
+        stderr.starts_with("compilation failed; compile error:"),
         "validate should report compile error for undefined step reference: {stderr}"
     );
+    stderr_contains_no_panic_text(&stderr);
 }
 
 #[test]
@@ -1914,15 +1971,14 @@ steps:
         Some(output) => output,
         None => return,
     };
-    assert!(
-        !output.status.success(),
-        "validate should fail on type mismatch"
-    );
+    assert_eq!(output.status.code(), Some(2), "type mismatch exit");
+    assert_eq!(output_stdout(&output), "", "type mismatch stdout");
     let stderr = output_stderr(&output);
     assert!(
-        stderr.contains("compile error"),
+        stderr.starts_with("compilation failed; compile error:"),
         "validate should report compile error: {stderr}"
     );
+    stderr_contains_no_panic_text(&stderr);
 }
 
 // ---------------------------------------------------------------------------
@@ -2299,7 +2355,10 @@ fn cli_inspect_nonexistent_run_shows_no_events() {
             return;
         }
     };
-    let db_path = dir.path().join("empty-db");
+    let db_path = match empty_journal_db(dir.path(), "empty-db") {
+        Some(path) => path,
+        None => return,
+    };
 
     let inspect_output = match run_cli(&[
         std::ffi::OsStr::new("inspect"),
@@ -2315,6 +2374,361 @@ fn cli_inspect_nonexistent_run_shows_no_events() {
         "inspect nonexistent run",
         "no events found",
     );
+}
+
+fn assert_absent_run_operator_journey(db_path: &std::path::Path, run_id: &str) {
+    let run = std::ffi::OsStr::new(run_id);
+    assert_absent_run_exit_2(
+        &[
+            std::ffi::OsStr::new("inspect"),
+            run,
+            std::ffi::OsStr::new("--db"),
+            db_path.as_os_str(),
+        ],
+        "inspect absent run",
+        run_id,
+    );
+    assert_absent_run_exit_2(
+        &[
+            std::ffi::OsStr::new("events"),
+            run,
+            std::ffi::OsStr::new("--db"),
+            db_path.as_os_str(),
+        ],
+        "events absent run",
+        run_id,
+    );
+    assert_absent_run_exit_2(
+        &[
+            std::ffi::OsStr::new("replay"),
+            run,
+            std::ffi::OsStr::new("--db"),
+            db_path.as_os_str(),
+        ],
+        "replay absent run",
+        run_id,
+    );
+    assert_absent_run_exit_2(
+        &[
+            std::ffi::OsStr::new("trace"),
+            run,
+            std::ffi::OsStr::new("--db"),
+            db_path.as_os_str(),
+        ],
+        "trace absent run",
+        run_id,
+    );
+    assert_absent_run_exit_2(
+        &[
+            std::ffi::OsStr::new("retry"),
+            run,
+            std::ffi::OsStr::new("--db"),
+            db_path.as_os_str(),
+        ],
+        "retry absent run",
+        run_id,
+    );
+    assert_absent_run_exit_2(
+        &[
+            std::ffi::OsStr::new("resume"),
+            run,
+            std::ffi::OsStr::new("--db"),
+            db_path.as_os_str(),
+        ],
+        "resume absent run",
+        run_id,
+    );
+    assert_absent_run_exit_2(
+        &[
+            std::ffi::OsStr::new("diff"),
+            run,
+            std::ffi::OsStr::new("405"),
+            std::ffi::OsStr::new("--db"),
+            db_path.as_os_str(),
+        ],
+        "diff absent run",
+        run_id,
+    );
+}
+
+#[test]
+fn cli_absent_run_operator_journey_returns_validation_failed() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let db_path = match empty_journal_db(dir.path(), "absent-run-db") {
+        Some(path) => path,
+        None => return,
+    };
+    let journal = match vb_storage::FjallJournal::open(&db_path, None) {
+        Ok(journal) => journal,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "failed to open journal: {err}");
+            return;
+        }
+    };
+    let existing_run = vb_storage::JournalEvent::RunAccepted {
+        run: vb_core::RunId::new(405),
+        seq: vb_storage::EventSeq::new(0),
+        workflow: WorkflowDigest::from_bytes([0x40; 32]),
+    };
+    if !append_journal_event(&journal, &existing_run) {
+        return;
+    }
+    drop(journal);
+
+    // Given an existing journal with no run 404, every operator lookup fails the same way.
+    assert_absent_run_operator_journey(&db_path, "404");
+    assert_absent_run_exit_2(
+        &[
+            std::ffi::OsStr::new("diff"),
+            std::ffi::OsStr::new("405"),
+            std::ffi::OsStr::new("404"),
+            std::ffi::OsStr::new("--db"),
+            db_path.as_os_str(),
+        ],
+        "diff right-hand absent run",
+        "404",
+    );
+}
+
+fn assert_storage_path_operator_journey(
+    db_path: &std::path::Path,
+    diagnostic: &str,
+    command_label: &str,
+) {
+    let run = std::ffi::OsStr::new("404");
+    assert_storage_error_contains(
+        &[
+            std::ffi::OsStr::new("inspect"),
+            run,
+            std::ffi::OsStr::new("--db"),
+            db_path.as_os_str(),
+        ],
+        &format!("inspect {command_label}"),
+        diagnostic,
+    );
+    assert_storage_error_contains(
+        &[
+            std::ffi::OsStr::new("events"),
+            run,
+            std::ffi::OsStr::new("--db"),
+            db_path.as_os_str(),
+        ],
+        &format!("events {command_label}"),
+        diagnostic,
+    );
+    assert_storage_error_contains(
+        &[
+            std::ffi::OsStr::new("replay"),
+            run,
+            std::ffi::OsStr::new("--db"),
+            db_path.as_os_str(),
+        ],
+        &format!("replay {command_label}"),
+        diagnostic,
+    );
+    assert_storage_error_contains(
+        &[
+            std::ffi::OsStr::new("trace"),
+            run,
+            std::ffi::OsStr::new("--db"),
+            db_path.as_os_str(),
+        ],
+        &format!("trace {command_label}"),
+        diagnostic,
+    );
+    assert_storage_error_contains(
+        &[
+            std::ffi::OsStr::new("retry"),
+            run,
+            std::ffi::OsStr::new("--db"),
+            db_path.as_os_str(),
+        ],
+        &format!("retry {command_label}"),
+        diagnostic,
+    );
+    assert_storage_error_contains(
+        &[
+            std::ffi::OsStr::new("resume"),
+            run,
+            std::ffi::OsStr::new("--db"),
+            db_path.as_os_str(),
+        ],
+        &format!("resume {command_label}"),
+        diagnostic,
+    );
+    assert_storage_error_contains(
+        &[
+            std::ffi::OsStr::new("diff"),
+            run,
+            std::ffi::OsStr::new("405"),
+            std::ffi::OsStr::new("--db"),
+            db_path.as_os_str(),
+        ],
+        &format!("diff {command_label}"),
+        diagnostic,
+    );
+}
+
+#[test]
+fn cli_missing_journal_path_operator_journey_returns_storage_error() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let db_path = dir.path().join("missing-db");
+
+    assert_storage_path_operator_journey(
+        &db_path,
+        "journal directory does not exist",
+        "missing db",
+    );
+}
+
+#[test]
+fn cli_broken_journal_path_operator_journey_returns_storage_error() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let db_path = dir.path().join("broken-db-file");
+    if !write_test_file(&db_path, b"not a journal directory") {
+        return;
+    }
+
+    assert_storage_path_operator_journey(&db_path, "error opening journal at", "broken db");
+}
+
+#[test]
+fn cli_semantic_diff_operator_journey_reports_changed_step() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let db_path = dir.path().join("semantic-diff-db");
+    let journal = match vb_storage::FjallJournal::open(&db_path, None) {
+        Ok(journal) => journal,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "failed to open journal: {err}");
+            return;
+        }
+    };
+    let run_a = vb_core::RunId::new(501);
+    let run_b = vb_core::RunId::new(502);
+    let digest = WorkflowDigest::from_bytes([0x51; 32]);
+    let events = [
+        vb_storage::JournalEvent::RunAccepted {
+            run: run_a,
+            seq: vb_storage::EventSeq::new(0),
+            workflow: digest,
+        },
+        vb_storage::JournalEvent::StepSucceeded {
+            run: run_a,
+            seq: vb_storage::EventSeq::new(1),
+            step: StepIdx::new(0),
+            output: SlotIdx::new(0),
+        },
+        vb_storage::JournalEvent::RunAccepted {
+            run: run_b,
+            seq: vb_storage::EventSeq::new(0),
+            workflow: digest,
+        },
+        vb_storage::JournalEvent::StepSucceeded {
+            run: run_b,
+            seq: vb_storage::EventSeq::new(1),
+            step: StepIdx::new(0),
+            output: SlotIdx::new(1),
+        },
+    ];
+    for event in &events {
+        if !append_journal_event(&journal, event) {
+            return;
+        }
+    }
+    drop(journal);
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("diff"),
+        std::ffi::OsStr::new("501"),
+        std::ffi::OsStr::new("502"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&output, "diff semantic run mismatch");
+    assert_eq!(output_stderr(&output), "", "diff success stderr");
+    let stdout = output_stdout(&output);
+    assert!(
+        stdout.contains("diff: run 501 vs run 502"),
+        "stdout={stdout}"
+    );
+    assert!(stdout.contains("events: 2 vs 2"), "stdout={stdout}");
+    assert!(stdout.contains("[1] ~ changed"), "stdout={stdout}");
+    assert!(
+        stdout.contains("step 0: ~ succeeded(output=0) vs succeeded(output=1)"),
+        "stdout={stdout}"
+    );
+    assert!(stdout.contains("2 difference(s) total"), "stdout={stdout}");
+}
+
+#[test]
+fn cli_doctor_broken_journal_path_reports_storage_error_without_mutation() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let db_path = dir.path().join("doctor-broken-db-file");
+    let original = b"not a journal directory";
+    if !write_test_file(&db_path, original) {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("doctor"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_eq!(output.status.code(), Some(5), "doctor broken db exit");
+    assert_eq!(output_stdout(&output), "", "doctor broken db stdout");
+    let stderr = output_stderr(&output);
+    assert!(
+        stderr.starts_with("FAIL: cannot open journal at"),
+        "stderr={stderr}"
+    );
+    stderr_contains_no_panic_text(&stderr);
+    let after = match std::fs::read(&db_path) {
+        Ok(bytes) => bytes,
+        Err(err) => {
+            assert!(
+                forced_assertion_failure(),
+                "failed to read broken db file: {err}"
+            );
+            return;
+        }
+    };
+    assert_eq!(after, original, "doctor must not mutate broken db file");
 }
 
 // ---------------------------------------------------------------------------
@@ -2615,9 +3029,17 @@ fn cli_doctor_returns_storage_error_for_unreadable_path() {
         Some(output) => output,
         None => return,
     };
+    assert_eq!(output.status.code(), Some(5), "doctor unreadable exit");
+    assert_eq!(output_stdout(&output), "", "doctor unreadable stdout");
+    let stderr = output_stderr(&output);
     assert!(
-        !output.status.success(),
-        "doctor should fail for unreadable path"
+        stderr.starts_with("FAIL: cannot open journal at"),
+        "stderr={stderr}"
+    );
+    stderr_contains_no_panic_text(&stderr);
+    assert!(
+        !nonexistent.exists(),
+        "doctor must not create missing db path"
     );
 }
 // ---------------------------------------------------------------------------
@@ -3861,15 +4283,18 @@ fn cli_explain_valid_workflow_outputs_valid_status() {
         None => return,
     };
     assert_cli_success(&output, "explain valid workflow");
+    assert_eq!(output_stderr(&output), "", "explain success stderr");
     let stdout = output_stdout(&output);
     assert!(
-        stdout.contains("valid"),
+        stdout.contains("status:  valid"),
         "explain should report valid status: {stdout}"
     );
-    assert!(
-        stdout.contains("node") || stdout.contains("step"),
-        "explain should describe steps: {stdout}"
-    );
+    assert!(stdout.contains("Execution Plan:"), "stdout={stdout}");
+    assert!(stdout.contains("budget:"), "stdout={stdout}");
+    assert!(stdout.contains("slots:"), "stdout={stdout}");
+    assert!(stdout.contains("steps:"), "stdout={stdout}");
+    assert!(stdout.contains("actions:"), "stdout={stdout}");
+    assert!(stdout.contains("suspension_points:"), "stdout={stdout}");
 }
 
 #[test]

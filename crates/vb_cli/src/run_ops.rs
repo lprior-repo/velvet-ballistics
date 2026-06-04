@@ -34,13 +34,19 @@ pub(crate) fn cmd_retry(
     if events.is_empty() {
         if output != OutputFormat::Text {
             json_error(
-                &serde_json::json!({ "success": false, "error": format!("run {run_id} not found") }),
+                &serde_json::json!({
+                    "success": false,
+                    "run_id": run_id,
+                    "status": "not_found",
+                    "events": 0,
+                    "error": format!("run {run_id}: no events found")
+                }),
                 output,
             );
         } else {
             crate::errln!("run {run_id}: no events found");
         }
-        return CliExitCode::StorageError.into();
+        return CliExitCode::ValidationFailed.into();
     }
     let analysis = crate::commands_journal::analyze_retry(&events);
     if !analysis.can_retry {
@@ -97,13 +103,19 @@ pub(crate) fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputForma
     if events.is_empty() {
         if output != OutputFormat::Text {
             json_error(
-                &serde_json::json!({ "success": false, "error": format!("run {run_id} not found") }),
+                &serde_json::json!({
+                    "success": false,
+                    "run_id": run_id,
+                    "status": "not_found",
+                    "events": 0,
+                    "error": format!("run {run_id}: no events found")
+                }),
                 output,
             );
         } else {
             crate::errln!("run {run_id}: no events found");
         }
-        return CliExitCode::StorageError.into();
+        return CliExitCode::ValidationFailed.into();
     }
     let analysis = crate::commands_journal::analyze_resume(&events);
     if !analysis.can_resume {

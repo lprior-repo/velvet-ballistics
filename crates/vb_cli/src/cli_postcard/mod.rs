@@ -17,8 +17,8 @@ mod validation;
 
 pub(crate) use error::PostcardError;
 pub(crate) use types::{
-    CLI_MAGIC, CLI_POSTCARD_KIND, CLI_SCHEMA_VERSION, CliPostcardContentType, CliPostcardPayload,
-    HEADER_SIZE, HEADER_SIZE_U32, MAX_PAYLOAD, MAX_PAYLOAD_U32, PostcardHeader,
+    CliPostcardContentType, CliPostcardPayload, PostcardHeader, CLI_MAGIC, CLI_POSTCARD_KIND,
+    CLI_SCHEMA_VERSION, HEADER_SIZE, HEADER_SIZE_U32, MAX_PAYLOAD, MAX_PAYLOAD_U32,
 };
 
 #[allow(unused_imports)]

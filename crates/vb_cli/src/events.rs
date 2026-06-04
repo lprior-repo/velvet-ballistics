@@ -6,7 +6,10 @@ use crate::args::{
 };
 use crate::cli_envelope;
 use crate::exit_code::CliExitCode;
-use crate::file_io::{parse_run_id, read_file, read_journal_events, report_storage_open_error};
+use crate::file_io::{
+    ensure_existing_journal_directory, parse_run_id, read_file, read_journal_events,
+    report_storage_open_error,
+};
 use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
 use crate::output::{
     json_error, json_out, output_error_exit, write_contract_error_json, write_failure_message,
@@ -32,6 +35,9 @@ pub(crate) fn cmd_events(
         Ok(id) => id,
         Err(code) => return code,
     };
+    if let Err(code) = ensure_existing_journal_directory(db, output) {
+        return code;
+    }
 
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,

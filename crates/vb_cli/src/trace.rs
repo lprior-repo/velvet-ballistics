@@ -25,6 +25,24 @@ pub(crate) fn cmd_trace(
         Ok(ev) => ev,
         Err(code) => return code,
     };
+    if events.is_empty() {
+        if output != OutputFormat::Text {
+            json_error(
+                &serde_json::json!({
+                    "success": false,
+                    "run_id": run_id,
+                    "status": "not_found",
+                    "trace": [],
+                    "total": 0,
+                    "error": format!("run {run_id}: no events found")
+                }),
+                output,
+            );
+        } else {
+            crate::errln!("run {run_id}: no events found");
+        }
+        return CliExitCode::ValidationFailed.into();
+    }
     let trace = crate::commands_journal::filter_trace(
         crate::commands_journal::build_trace(&events),
         filters,
