@@ -132,6 +132,25 @@ mod tests {
         assert_eq!(frame.slot_count(), 0);
     }
 
+    // --- run_frame_new_accepts_valid_input ---
+
+    #[test]
+    fn run_frame_new_accepts_valid_input() -> CoreResult<()> {
+        let frame = RunFrame::new(RunId::new(42), StepIdx::new(2), 5, 3)?;
+        assert_eq!(frame.run_id(), RunId::new(42));
+        assert_eq!(frame.pc(), StepIdx::new(2));
+        assert_eq!(frame.step_count(), 5);
+        assert_eq!(frame.slot_count(), 3);
+        assert_eq!(frame.executed(), 0);
+        // Verify states array initialized to Pending
+        assert_eq!(frame.states_snapshot(), vec![StepState::Pending; 5]);
+        // Verify slots array initialized to None
+        assert_eq!(frame.slots_snapshot(), vec![None; 3]);
+        // Verify taint array initialized to Clean
+        assert_eq!(frame.taint_snapshot(), vec![Taint::Clean; 3]);
+        Ok(())
+    }
+
     // --- Succeeded step is terminal and rejects transition back to Running ---
 
     #[test]
@@ -403,6 +422,118 @@ mod tests {
 
         assert_eq!(frame.read_slot(SlotIdx::ZERO)?, &SlotValue::I64(42));
         assert_eq!(frame.read_taint(SlotIdx::ZERO)?, Taint::Secret);
+
+        Ok(())
+    }
+
+    // --- write_slot_with_taint preserves taint validity (all 5 Taint variants) ---
+
+    #[test]
+    fn write_slot_with_taint_preserves_taint_clean() -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 5)?;
+        frame.write_slot_with_taint(SlotIdx::ZERO, SlotValue::Null, Taint::Clean)?;
+        assert_eq!(frame.read_taint(SlotIdx::ZERO)?, Taint::Clean);
+        Ok(())
+    }
+
+    #[test]
+    fn write_slot_with_taint_preserves_taint_derived_from_secret() -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 5)?;
+        frame.write_slot_with_taint(SlotIdx::new(1), SlotValue::Null, Taint::DerivedFromSecret)?;
+        assert_eq!(frame.read_taint(SlotIdx::new(1))?, Taint::DerivedFromSecret);
+        Ok(())
+    }
+
+    #[test]
+    fn write_slot_with_taint_preserves_taint_secret() -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 5)?;
+        frame.write_slot_with_taint(SlotIdx::new(2), SlotValue::Null, Taint::Secret)?;
+        assert_eq!(frame.read_taint(SlotIdx::new(2))?, Taint::Secret);
+        Ok(())
+    }
+
+    #[test]
+    fn write_slot_with_taint_preserves_taint_random() -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 5)?;
+        frame.write_slot_with_taint(SlotIdx::new(3), SlotValue::Null, Taint::Random)?;
+        assert_eq!(frame.read_taint(SlotIdx::new(3))?, Taint::Random);
+        Ok(())
+    }
+
+    #[test]
+    fn write_slot_with_taint_preserves_taint_time_dependent() -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 5)?;
+        frame.write_slot_with_taint(SlotIdx::new(4), SlotValue::Null, Taint::TimeDependent)?;
+        assert_eq!(frame.read_taint(SlotIdx::new(4))?, Taint::TimeDependent);
+        Ok(())
+    }
+
+    // --- new_frame_taint_all_clean ---
+
+    #[test]
+    fn new_frame_taint_all_clean() -> CoreResult<()> {
+        let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 5)?;
+        let taint_snapshot = frame.taint_snapshot();
+        assert_eq!(taint_snapshot.len(), 5);
+        for (i, &t) in taint_snapshot.iter().enumerate() {
+            assert_eq!(
+                t,
+                Taint::Clean,
+                "taint[{}] should be Clean, got {:?}",
+                i,
+                t
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn new_frame_taint_all_clean_zero_slots() -> CoreResult<()> {
+        let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 0)?;
+        let taint_snapshot = frame.taint_snapshot();
+        assert!(taint_snapshot.is_empty());
+        Ok(())
+    }
+
+    // --- taint_closed_enum_exhaustiveness ---
+
+    #[test]
+    fn taint_closed_enum_exhaustiveness() -> CoreResult<()> {
+        use crate::value::join_taint;
+
+        // Test that all 5 variants can be constructed and used
+        let variants = [
+            Taint::Clean,
+            Taint::DerivedFromSecret,
+            Taint::Secret,
+            Taint::Random,
+            Taint::TimeDependent,
+        ];
+
+        // Verify each variant has unique discriminant via join_taint
+        for &v in &variants {
+            let result = join_taint(v, Taint::Clean);
+            assert_eq!(result, v, "join_taint({v:?}, Clean) must return {v:?}");
+        }
+
+        // Verify join_taint produces correct lattice result
+        assert_eq!(
+            join_taint(Taint::Clean, Taint::DerivedFromSecret),
+            Taint::DerivedFromSecret
+        );
+        // join_taint returns the higher-discriminant value
+        assert_eq!(
+            join_taint(Taint::Secret, Taint::Random),
+            Taint::Random
+        ); // Random (3) > Secret (2) in lattice
+
+        // Verify round-trip through write_slot_with_taint and read_taint
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 5)?;
+        for (i, &v) in variants.iter().enumerate() {
+            let slot = SlotIdx::new(u16::try_from(i).unwrap());
+            frame.write_slot_with_taint(slot, SlotValue::Null, v)?;
+            assert_eq!(frame.read_taint(slot)?, v);
+        }
 
         Ok(())
     }
