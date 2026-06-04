@@ -77,7 +77,7 @@ pub use crate::dispatcher::run_from_env;
 // Kept commented: run_resume, explain_validation3, explain_validation4 — files do not exist.
 
 // Re-exports for convenience — items expected at crate root by many files.
-pub(crate) use crate::args::OutputFormat;
+pub(crate) use crate::args::{DiffMode, OutputFormat};
 pub(crate) use crate::exit_code::CliExitCode;
 pub(crate) use crate::file_io::write_failure_message;
 pub(crate) use crate::output::OutputError;

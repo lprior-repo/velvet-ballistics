@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use super::args;
-use crate::args::{Command, OutputFormat, ParseError, parse_args};
+use crate::args::{Command, DiffMode, OutputFormat, ParseError, parse_args};
 use crate::commands_journal::TraceStatus;
 
 #[test]
@@ -389,9 +389,7 @@ fn parse_diff_requires_both_run_ids_and_db() {
         "test-db",
     ]));
     if let Ok(Command::Diff {
-        run_a,
-        run_b,
-        db,
+        diff_mode: DiffMode::RunAgainst { run_a, run_b, db },
         output,
     }) = parsed
     {
