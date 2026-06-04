@@ -456,8 +456,8 @@ fn cmd_trace_empty_run_returns_success() {
 
     assert!(output.is_some());
     let output = output.unwrap();
-    // Empty run should return success with "no events found" message
-    assert_cli_success(&output, "trace on empty run");
+    // Empty run now returns ValidationFailed (exit 2) per vb-jpq7.21 behavior change
+    assert_cli_exit_code(&output, 2);
 }
 
 #[test]
@@ -530,8 +530,8 @@ fn cli_trace_command_exit_code_success() {
 }
 
 #[test]
-fn cli_trace_command_on_nonexistent_run_exit_code_zero() {
-    // Per POST-006: non-existent run is treated as empty trace, exit 0
+fn cli_trace_command_on_nonexistent_run_exit_code_two() {
+    // Per vb-jpq7.21: non-existent run returns ValidationFailed (exit 2)
     let dir = tempfile::tempdir().expect("temp dir");
 
     let output = run_cli(&[
@@ -543,5 +543,5 @@ fn cli_trace_command_on_nonexistent_run_exit_code_zero() {
 
     assert!(output.is_some());
     let output = output.unwrap();
-    assert_cli_exit_code(&output, 0);
+    assert_cli_exit_code(&output, 2);
 }

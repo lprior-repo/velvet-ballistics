@@ -785,6 +785,9 @@ mod absent_run_scenarios {
         // Given: a temp db with no runs, and a valid numeric run ID that doesn't exist
         let tmp_dir = bdd_tempdir().unwrap();
         let db = tmp_dir.path().join("absent-run-db");
+        // Create actual journal so commands can open it
+        let journal = vb_storage::FjallJournal::open(&db, None).expect("journal should open");
+        drop(journal);
         // Run ID is numeric but has no events in the db
         let output = run_cli_failing(&["inspect", "999991", "--db", db.to_str().unwrap()]).unwrap();
         // inspect exits 0 when run exists but has no events; for absent run should be 2
@@ -803,6 +806,9 @@ mod absent_run_scenarios {
     fn absent_run_events_no_events_found_exit_2() {
         let tmp_dir = bdd_tempdir().unwrap();
         let db = tmp_dir.path().join("absent-run-db");
+        // Create actual journal so commands can open it
+        let journal = vb_storage::FjallJournal::open(&db, None).expect("journal should open");
+        drop(journal);
         let output = run_cli_failing(&["events", "999992", "--db", db.to_str().unwrap()]).unwrap();
         assert_eq!(
             output.status.code(),
@@ -878,15 +884,18 @@ mod absent_run_scenarios {
 
     /// absent_run diff — two nonexistent runs → exit 0 with "no differences found" (current behavior)
     #[test]
-    fn absent_run_diff_two_nonexistent_runs_no_diff_found_exit_0() {
+    fn absent_run_diff_two_nonexistent_runs_no_diff_found_exit_2() {
         let tmp_dir = bdd_tempdir().unwrap();
+        // Create an actual empty journal so diff can open it
         let db = tmp_dir.path().join("absent-run-db");
+        let journal = vb_storage::FjallJournal::open(&db, None).expect("journal should open");
+        drop(journal);
         let output = run_cli(&["diff", "999997", "999998", "--db", db.to_str().unwrap()]).unwrap();
-        // diff exits 0 when both runs don't exist but are syntactically valid
+        // diff exits 2 (ValidationFailed) when both runs don't exist per vb-jpq7.21 behavior change
         assert_eq!(
             output.status.code(),
-            Some(0),
-            "expected exit 0 for diff of two nonexistent runs"
+            Some(2),
+            "expected exit 2 for diff of two nonexistent runs"
         );
         let combined = format!(
             "{}{}",
@@ -894,8 +903,8 @@ mod absent_run_scenarios {
             String::from_utf8_lossy(&output.stderr)
         );
         assert!(
-            combined.to_lowercase().contains("no differences found") || combined.is_empty(),
-            "expected 'no differences found' or empty, got: {}",
+            combined.to_lowercase().contains("no events found") || combined.is_empty(),
+            "expected 'no events found' or empty, got: {}",
             combined
         );
     }
@@ -931,8 +940,7 @@ mod validate_verify_explain_scenarios {
         let invalid_yaml = tmp_dir.path().join("invalid.yaml");
         std::fs::write(&invalid_yaml, "invalid: yaml: content: [").unwrap();
         // When: validate is called
-        let output =
-            run_cli_failing(&["validate", invalid_yaml.to_str().unwrap()]).unwrap();
+        let output = run_cli_failing(&["validate", invalid_yaml.to_str().unwrap()]).unwrap();
         // Then: exit 2 with YAML parse error
         assert_eq!(
             output.status.code(),
@@ -995,7 +1003,8 @@ mod validate_verify_explain_scenarios {
         );
         // explain should emit repair hints
         assert!(
-            combined.to_lowercase().contains("repair") || combined.to_lowercase().contains("hint")
+            combined.to_lowercase().contains("repair")
+                || combined.to_lowercase().contains("hint")
                 || combined.to_lowercase().contains("yaml"),
             "expected repair hints or YAML error in explain output, got: {}",
             combined
@@ -1040,8 +1049,7 @@ mod doctor_scenarios {
             String::from_utf8_lossy(&output.stderr)
         );
         assert!(
-            combined.to_lowercase().contains("doctor")
-                || combined.to_lowercase().contains("check"),
+            combined.to_lowercase().contains("doctor") || combined.to_lowercase().contains("check"),
             "expected doctor output, got: {}",
             combined
         );
