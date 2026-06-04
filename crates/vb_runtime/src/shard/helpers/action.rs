@@ -173,19 +173,17 @@ pub(crate) fn classify_ticket_attempt(
             attempt: ticket_attempt,
             max: ticket_capacity,
         })
-    } else if current.is_none() {
-        Err(AttemptFenceError::InvalidActionCompletion)
     } else {
-        let c = current.unwrap();
-        if ticket_attempt < c {
-            Err(AttemptFenceError::StaleAttempt {
-                incoming: ticket_attempt,
-                current: c,
-            })
-        } else if ticket_attempt > c {
-            Err(AttemptFenceError::InvalidActionCompletion)
-        } else {
-            Ok(())
+        match current {
+            None => Err(AttemptFenceError::InvalidActionCompletion),
+            Some(c) if ticket_attempt < c => {
+                Err(AttemptFenceError::StaleAttempt {
+                    incoming: ticket_attempt,
+                    current: c,
+                })
+            }
+            Some(c) if ticket_attempt > c => Err(AttemptFenceError::InvalidActionCompletion),
+            Some(_) => Ok(()),
         }
     }
 }
@@ -228,14 +226,11 @@ pub(crate) fn normalize_scheduled_attempt(
 pub(crate) fn scheduled_attempt_after(current: Option<u16>, ticket_attempt: u16) -> Option<u16> {
     if ticket_attempt == 0 {
         current
-    } else if current.is_none() {
-        Some(ticket_attempt)
     } else {
-        let c = current.unwrap();
-        if c == 0 || ticket_attempt > c {
-            Some(ticket_attempt)
-        } else {
-            Some(c)
+        match current {
+            None => Some(ticket_attempt),
+            Some(c) if c == 0 || ticket_attempt > c => Some(ticket_attempt),
+            Some(c) => Some(c),
         }
     }
 }
