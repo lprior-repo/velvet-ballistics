@@ -23,8 +23,8 @@ use vb_core::capability::CapabilitySet;
 use vb_core::value::{ConstValue, SlotValue};
 use vb_core::workflow::{ResourceContract, WorkflowParts};
 use vb_core::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, RunId, SlotIdx, StepIdx,
-    WorkflowDigest,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, RunId, RuntimePolicy, SlotIdx,
+    StepIdx, WorkflowDigest,
 };
 use vb_runtime::engine::drive::drive_deterministic_full;
 use vb_runtime::engine::types::{EvidenceCollector, RetryPolicy};
@@ -62,6 +62,16 @@ fn make_workflow(
         step_names: names,
     };
     CompiledWorkflow::try_from_parts(parts).map_err(|e| format!("{e}"))
+}
+
+fn run_admission_event(run: RunId, seq: EventSeq, digest: WorkflowDigest) -> JournalEvent {
+    JournalEvent::RunAdmission {
+        run,
+        seq,
+        artifact_digest: digest,
+        granted_capabilities: CapabilitySet::empty(),
+        policy: RuntimePolicy::Relaxed,
+    }
 }
 
 /// Creates a SetConst node: writes a constant value to an output slot.
@@ -525,15 +535,16 @@ fn replay_restores_slot_values_in_correct_sequence_order() {
             seq: EventSeq::new(0),
             workflow: digest,
         },
+        run_admission_event(run, EventSeq::new(1), digest),
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::new(1),
+            seq: EventSeq::new(2),
             step: StepIdx::ZERO,
             attempt: 1,
         },
         JournalEvent::SlotWrittenEvent {
             run,
-            seq: EventSeq::new(2),
+            seq: EventSeq::new(3),
             slot: SlotIdx::new(0),
             value: Some(postcard::to_allocvec(&SlotValue::I64(10)).unwrap()),
             extra: None,
@@ -541,19 +552,19 @@ fn replay_restores_slot_values_in_correct_sequence_order() {
         },
         JournalEvent::StepSucceeded {
             run,
-            seq: EventSeq::new(3),
+            seq: EventSeq::new(4),
             step: StepIdx::ZERO,
             output: SlotIdx::new(0),
         },
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::new(4),
+            seq: EventSeq::new(5),
             step: StepIdx::new(1),
             attempt: 1,
         },
         JournalEvent::SlotWrittenEvent {
             run,
-            seq: EventSeq::new(5),
+            seq: EventSeq::new(6),
             slot: SlotIdx::new(1),
             value: Some(postcard::to_allocvec(&SlotValue::I64(20)).unwrap()),
             extra: None,
@@ -561,13 +572,13 @@ fn replay_restores_slot_values_in_correct_sequence_order() {
         },
         JournalEvent::StepSucceeded {
             run,
-            seq: EventSeq::new(6),
+            seq: EventSeq::new(7),
             step: StepIdx::new(1),
             output: SlotIdx::new(1),
         },
         JournalEvent::RunFinished {
             run,
-            seq: EventSeq::new(7),
+            seq: EventSeq::new(8),
             result: SlotIdx::new(0),
             attempt: 1,
         },
@@ -1198,19 +1209,23 @@ fn replay_events_filters_older_attempts() {
 /// Verifies that recover_full_journal correctly handles the boundary case
 /// where the journal has exactly one event.
 ///
-/// Given: A journal with a single RunAccepted event
+/// Given: A journal with a minimal admitted run
 /// When:  recover_full_journal is called
-/// Then:  Recovery succeeds (empty replay)
+/// Then:  Recovery succeeds and preserves both durable evidence events
 #[test]
-fn recover_full_journal_with_single_event() {
+fn recover_full_journal_with_minimal_admitted_run() {
     let dir = TempDir::new().expect("temp dir should be created");
     let run = RunId::new(5001);
 
-    let events = vec![JournalEvent::RunAccepted {
-        run,
-        seq: EventSeq::new(0),
-        workflow: vb_core::WorkflowDigest::from_bytes([0xBC; 32]),
-    }];
+    let digest = vb_core::WorkflowDigest::from_bytes([0xBC; 32]);
+    let events = vec![
+        JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: digest,
+        },
+        run_admission_event(run, EventSeq::new(1), digest),
+    ];
 
     {
         let journal = open_journal(&dir);
@@ -1227,7 +1242,7 @@ fn recover_full_journal_with_single_event() {
     assert!(result.is_ok(), "recover should succeed: {:?}", result);
     assert_eq!(
         result.unwrap().len(),
-        1,
-        "single event journal should replay to single event"
+        2,
+        "minimal admitted journal should replay to two events"
     );
 }

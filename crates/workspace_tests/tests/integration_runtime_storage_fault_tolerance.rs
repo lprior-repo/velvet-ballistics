@@ -319,10 +319,17 @@ fn recovery_error_policy_digest_mismatch_includes_step() {
         found,
     };
     let result: Result<(), _> = Err(err);
-    assert!(matches!(
-        result,
-        Err(RecoveryError::PolicyDigestMismatch { step: _, .. })
-    ));
+    let Err(RecoveryError::PolicyDigestMismatch {
+        step: found_step,
+        expected: found_expected,
+        found: found_found,
+    }) = result
+    else {
+        panic!("expected PolicyDigestMismatch");
+    };
+    assert_eq!(found_step, step);
+    assert_eq!(found_expected, expected);
+    assert_eq!(found_found, found);
 }
 
 /// CorruptSnapshot error carries run and seq.

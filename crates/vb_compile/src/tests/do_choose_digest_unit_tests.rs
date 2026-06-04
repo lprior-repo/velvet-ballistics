@@ -1,11 +1,8 @@
 //! Unit tests for Do and Choose digest digest field sensitivity.
-//!
 //! Beads: vb-qf5oj, vb-pbhor
-//!
 //! These tests prove that the `digest_step_primitive` function includes
 //! Do { action, input } and Choose { branches, otherwise } field bytes
 //! in the hasher state — not just the canonical primitive name.
-//!
 //! The bug (pre-fix): Do, Choose, and Save fell through to the `other =>`
 //! catch-all which only hashed `canonical_primitive_name(other)` (e.g. b"do"
 //! or b"choose"), ignoring all semantic fields.
@@ -26,7 +23,10 @@ fn do_primitive(action: &str, input: &str) -> StepPrimitive {
 
 /// Build a minimal Choose StepPrimitive with one branch and optional otherwise.
 fn choose_primitive(branches: Vec<ChooseBranch>, otherwise: Option<String>) -> StepPrimitive {
-    StepPrimitive::Choose { branches, otherwise }
+    StepPrimitive::Choose {
+        branches,
+        otherwise,
+    }
 }
 
 /// Build a single ChooseBranch with a "when" label and a body step.
@@ -296,8 +296,5 @@ fn choose_deterministic_digest() {
     let _ = digest_step_primitive(&mut hasher2, &choose);
     let digest2 = hasher2.finalize();
 
-    assert_eq!(
-        digest1, digest2,
-        "Choose digest must be deterministic"
-    );
+    assert_eq!(digest1, digest2, "Choose digest must be deterministic");
 }

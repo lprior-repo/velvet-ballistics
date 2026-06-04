@@ -3528,13 +3528,21 @@ fn assert_typed_recovery_error(error: vb_storage::recovery::RecoveryError) {
         | RecoveryError::CompiledIrDigestMismatch { .. }
         | RecoveryError::ActionAbiMismatch { .. }
         | RecoveryError::PolicyDigestMismatch { .. }
+        | RecoveryError::PolicyDigestUnavailable { .. }
+        | RecoveryError::PolicyDigestExpectationMissing { .. }
+        | RecoveryError::FullDigestCheckConfigMissing
+        | RecoveryError::RunAdmissionArtifactDigestMismatch { .. }
         | RecoveryError::NonIdempotentActionBlocked { .. }
         | RecoveryError::ReplayDivergence { .. }
         | RecoveryError::SlotTaintReadFailed { .. }
         | RecoveryError::CorruptSlotTaint { .. }
-        | RecoveryError::NoRecoveryData { .. } => {}
-        _ => {
-            // Coverage-only: unknown future variants are accepted gracefully.
+        | RecoveryError::NoRecoveryData { .. }
+        | RecoveryError::CorruptSnapshot { .. }
+        | RecoveryError::TerminalStateMismatch { .. }
+        | RecoveryError::FrameDimensionOverflow { .. } => {}
+        #[allow(unreachable_patterns)]
+        _future_non_exhaustive_variant => {
+            // `RecoveryError` is non_exhaustive outside vb_storage; all current variants are above.
         }
     }
 }

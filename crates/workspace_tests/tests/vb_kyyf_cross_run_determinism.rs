@@ -629,15 +629,22 @@ fn stable_recovery_error_label(error: RecoveryError) -> &'static str {
         RecoveryError::WorkflowSourceDigestMismatch { .. }
         | RecoveryError::CompiledIrDigestMismatch { .. }
         | RecoveryError::ActionAbiMismatch { .. }
-        | RecoveryError::PolicyDigestMismatch { .. } => "ReplayDigestMismatch",
+        | RecoveryError::PolicyDigestMismatch { .. }
+        | RecoveryError::PolicyDigestUnavailable { .. }
+        | RecoveryError::PolicyDigestExpectationMissing { .. }
+        | RecoveryError::FullDigestCheckConfigMissing
+        | RecoveryError::RunAdmissionArtifactDigestMismatch { .. } => "ReplayDigestMismatch",
         RecoveryError::NonIdempotentActionBlocked { .. } => "ReplayPolicyBlocked",
         RecoveryError::ReplayDivergence { .. }
         | RecoveryError::CorruptSnapshot { .. }
+        | RecoveryError::SlotTaintReadFailed { .. }
+        | RecoveryError::CorruptSlotTaint { .. }
         | RecoveryError::Journal(_)
         | RecoveryError::NoRecoveryData { .. }
         | RecoveryError::TerminalStateMismatch { .. }
         | RecoveryError::FrameDimensionOverflow { .. } => "ReplaySequenceViolation",
-        _ => "RecoveryError",
+        #[allow(unreachable_patterns)]
+        _future_non_exhaustive_variant => "UnknownRecoveryError",
     }
 }
 
@@ -647,14 +654,23 @@ fn exact_recovery_error_label(error: RecoveryError) -> &'static str {
         RecoveryError::CompiledIrDigestMismatch { .. } => "CompiledIrDigestMismatch",
         RecoveryError::ActionAbiMismatch { .. } => "ActionAbiMismatch",
         RecoveryError::PolicyDigestMismatch { .. } => "PolicyDigestMismatch",
+        RecoveryError::PolicyDigestUnavailable { .. } => "PolicyDigestUnavailable",
+        RecoveryError::PolicyDigestExpectationMissing { .. } => "PolicyDigestExpectationMissing",
+        RecoveryError::FullDigestCheckConfigMissing => "FullDigestCheckConfigMissing",
+        RecoveryError::RunAdmissionArtifactDigestMismatch { .. } => {
+            "RunAdmissionArtifactDigestMismatch"
+        }
         RecoveryError::NonIdempotentActionBlocked { .. } => "NonIdempotentActionBlocked",
         RecoveryError::ReplayDivergence { .. } => "ReplayDivergence",
         RecoveryError::CorruptSnapshot { .. } => "CorruptSnapshot",
+        RecoveryError::SlotTaintReadFailed { .. } => "SlotTaintReadFailed",
+        RecoveryError::CorruptSlotTaint { .. } => "CorruptSlotTaint",
         RecoveryError::Journal(_) => "Journal",
         RecoveryError::NoRecoveryData { .. } => "NoRecoveryData",
         RecoveryError::TerminalStateMismatch { .. } => "TerminalStateMismatch",
         RecoveryError::FrameDimensionOverflow { .. } => "FrameDimensionOverflow",
-        _ => "RecoveryError",
+        #[allow(unreachable_patterns)]
+        _future_non_exhaustive_variant => "UnknownRecoveryError",
     }
 }
 
@@ -1324,12 +1340,31 @@ fn collect_bdd_kyyf_003() -> Result<VbKyyfScenarioEvidence, VbKyyfScenarioDiagno
     let mut tracker = ActionReplayTracker::new();
     let action = vb_core::ActionId::new(3);
     let step = StepIdx::new(2);
+    let workflow = WorkflowDigest::from_bytes([0x30; 32]);
     tracker.mark_completed(action, step);
+    append_event(
+        &journal,
+        &JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow,
+        },
+    )?;
+    append_event(
+        &journal,
+        &JournalEvent::RunAdmission {
+            run,
+            seq: EventSeq::new(1),
+            artifact_digest: workflow,
+            granted_capabilities: vb_core::CapabilitySet::empty(),
+            policy: RuntimePolicy::Strict,
+        },
+    )?;
     append_event(
         &journal,
         &JournalEvent::ActionScheduled {
             run,
-            seq: EventSeq::new(0),
+            seq: EventSeq::new(2),
             step,
             action,
             attempt: 1,
@@ -1424,15 +1459,27 @@ fn collect_bdd_kyyf_004() -> Result<VbKyyfScenarioEvidence, VbKyyfScenarioDiagno
         },
     ];
     let out_of_order = [
-        JournalEvent::StepStarted {
+        JournalEvent::RunAccepted {
             run,
             seq: EventSeq::new(0),
+            workflow,
+        },
+        JournalEvent::RunAdmission {
+            run,
+            seq: EventSeq::new(1),
+            artifact_digest: workflow,
+            granted_capabilities: vb_core::CapabilitySet::empty(),
+            policy: RuntimePolicy::Strict,
+        },
+        JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(2),
             step: StepIdx::new(2),
             attempt: 1,
         },
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::new(1),
+            seq: EventSeq::new(3),
             step: StepIdx::new(1),
             attempt: 1,
         },

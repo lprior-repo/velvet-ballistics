@@ -86,6 +86,19 @@ fn append_run_accepted(
     Ok(event)
 }
 
+fn append_run_admission(journal: &FjallJournal, run: RunId, seq: u64) -> Result<(), String> {
+    let event = JournalEvent::RunAdmission {
+        run,
+        seq: EventSeq::new(seq),
+        artifact_digest: digest(0xAA),
+        granted_capabilities: vb_core::CapabilitySet::empty(),
+        policy: RuntimePolicy::Relaxed,
+    };
+    journal
+        .append_strict(&event)
+        .map_err(|error| error.to_string())
+}
+
 #[test]
 fn given_duplicate_success_event_when_appended_then_duplicate_event_variant_and_count_unchanged()
 -> Result<(), String> {
@@ -322,16 +335,17 @@ fn given_completed_action_before_restart_when_replayed_then_no_redispatch_and_ev
     let (_dir, journal) = temp_journal()?;
     let run = RunId::new(13);
     append_run_accepted(&journal, run, 0)?;
+    append_run_admission(&journal, run, 1)?;
     let scheduled = JournalEvent::ActionScheduled {
         run,
-        seq: EventSeq::new(1),
+        seq: EventSeq::new(2),
         step: StepIdx::new(0),
         action: ActionId::new(9),
         attempt: 1,
     };
     let completed = JournalEvent::ActionCompletedEvent {
         run,
-        seq: EventSeq::new(2),
+        seq: EventSeq::new(3),
         step: StepIdx::new(0),
         action: ActionId::new(9),
         attempt: 1,
@@ -349,7 +363,7 @@ fn given_completed_action_before_restart_when_replayed_then_no_redispatch_and_ev
         .map_err(|error| error.to_string())?;
 
     // Then
-    assert_eq!(replayed.len(), 3);
+    assert_eq!(replayed.len(), 4);
     assert_eq!(
         replay_tracker.is_resolved(ActionId::new(9), StepIdx::new(0)),
         true
@@ -365,9 +379,10 @@ fn given_evicted_runtime_key_when_durable_journal_replayed_then_recovery_resolve
     let (_dir, journal) = temp_journal()?;
     let run = RunId::new(14);
     append_run_accepted(&journal, run, 0)?;
+    append_run_admission(&journal, run, 1)?;
     let completed = JournalEvent::ActionCompletedEvent {
         run,
-        seq: EventSeq::new(1),
+        seq: EventSeq::new(2),
         step: StepIdx::new(1),
         action: ActionId::new(4),
         attempt: 1,
@@ -386,7 +401,7 @@ fn given_evicted_runtime_key_when_durable_journal_replayed_then_recovery_resolve
         .map_err(|error| error.to_string())?;
 
     // Then
-    assert_eq!(events.len(), 2);
+    assert_eq!(events.len(), 3);
     assert_eq!(count_completed(&events), 1);
     assert_eq!(events.contains(&completed), true);
     assert_eq!(

@@ -34,8 +34,8 @@ mod tests {
         replay_journal, verify_digest_match, write_snapshot,
     };
     use vb_core::{
-        ActionId, CODE_REGISTRY, DiagnosticCode, RunId, SlotIdx, StepIdx, WorkflowDigest,
-        WorkflowId,
+        ActionId, CODE_REGISTRY, CapabilitySet, DiagnosticCode, RunId, RuntimePolicy, SlotIdx,
+        StepIdx, WorkflowDigest, WorkflowId,
     };
 
     #[test]
@@ -1677,18 +1677,27 @@ mod tests {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = open_store(temp_dir.path()).expect("setup: journal open");
         let run = RunId::new(71);
+        let digest = WorkflowDigest::from_bytes([8; 32]);
         let event = JournalEvent::RunAccepted {
             run,
             seq: EventSeq::new(0),
-            workflow: WorkflowDigest::from_bytes([8; 32]),
+            workflow: digest,
+        };
+        let admission = JournalEvent::RunAdmission {
+            run,
+            seq: EventSeq::new(1),
+            artifact_digest: digest,
+            granted_capabilities: CapabilitySet::empty(),
+            policy: RuntimePolicy::Relaxed,
         };
         append_journal_event(&journal, &event).expect("append_journal_event must succeed");
+        append_journal_event(&journal, &admission).expect("append_journal_event must succeed");
 
         let mut tracker = ActionReplayTracker::new();
         let replayed = replay_journal(&journal, run, &mut tracker, &[], &[]);
 
         let replayed = replayed.expect("replay_journal should succeed");
-        assert_eq!(replayed, vec![event]);
+        assert_eq!(replayed, vec![event, admission]);
     }
 
     #[test]

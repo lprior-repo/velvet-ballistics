@@ -64,6 +64,9 @@ fn build_two_step_finished_run(run: RunId, digest: WorkflowDigest) -> Vec<Journa
     });
     seq = seq.saturating_add(1);
 
+    events.push(test_admission_event(run, EventSeq::new(seq), digest));
+    seq = seq.saturating_add(1);
+
     events.push(JournalEvent::StepStarted {
         run,
         seq: EventSeq::new(seq),
@@ -1227,22 +1230,23 @@ fn action_scheduled_then_completed_is_resolved_after_recovery() {
             seq: EventSeq::new(0),
             workflow: digest,
         },
+        test_admission_event(run, EventSeq::new(1), digest),
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::new(1),
+            seq: EventSeq::new(2),
             step: StepIdx::new(2),
             attempt: 1,
         },
         JournalEvent::ActionScheduled {
             run,
-            seq: EventSeq::new(2),
+            seq: EventSeq::new(3),
             step: StepIdx::new(2),
             action,
             attempt: 1,
         },
         JournalEvent::ActionCompletedEvent {
             run,
-            seq: EventSeq::new(3),
+            seq: EventSeq::new(4),
             step: StepIdx::new(2),
             action,
             attempt: 1,
@@ -1281,29 +1285,30 @@ fn non_idempotent_action_rescheduled_after_completion_is_blocked() {
             seq: EventSeq::new(0),
             workflow: digest,
         },
+        test_admission_event(run, EventSeq::new(1), digest),
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::new(1),
+            seq: EventSeq::new(2),
             step: StepIdx::ZERO,
             attempt: 1,
         },
         JournalEvent::ActionScheduled {
-            run,
-            seq: EventSeq::new(2),
-            step: StepIdx::ZERO,
-            action,
-            attempt: 1,
-        },
-        JournalEvent::ActionCompletedEvent {
             run,
             seq: EventSeq::new(3),
             step: StepIdx::ZERO,
             action,
             attempt: 1,
         },
-        JournalEvent::ActionScheduled {
+        JournalEvent::ActionCompletedEvent {
             run,
             seq: EventSeq::new(4),
+            step: StepIdx::ZERO,
+            action,
+            attempt: 1,
+        },
+        JournalEvent::ActionScheduled {
+            run,
+            seq: EventSeq::new(5),
             step: StepIdx::ZERO,
             action,
             attempt: 1,

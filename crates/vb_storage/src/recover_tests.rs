@@ -58,12 +58,20 @@ mod recover_tests {
     #[test]
     fn check_action_abi_digest_rejects_mismatch() {
         let action_id = ActionId::new(7);
-        let result = check_action_abi_digest(action_id, digest(0xAA), digest(0xBB));
-        assert!(
-            matches!(result, Err(RecoveryError::ActionAbiMismatch { action_id: a, .. }) if a == action_id),
-            "should report ABI mismatch, got {:?}",
-            result
-        );
+        let expected = digest(0xAA);
+        let found = digest(0xBB);
+        let result = check_action_abi_digest(action_id, expected, found);
+        let Err(RecoveryError::ActionAbiMismatch {
+            action_id: reported_action,
+            expected: reported_expected,
+            found: reported_found,
+        }) = result
+        else {
+            panic!("should report ABI mismatch, got {result:?}");
+        };
+        assert_eq!(reported_action, action_id);
+        assert_eq!(reported_expected, expected);
+        assert_eq!(reported_found, found);
     }
 
     #[test]
@@ -80,12 +88,20 @@ mod recover_tests {
     #[test]
     fn check_policy_digest_rejects_mismatch() {
         let step = StepIdx::new(5);
-        let result = check_policy_digest(step, digest(0xCC), digest(0xDD));
-        assert!(
-            matches!(result, Err(RecoveryError::PolicyDigestMismatch { step: s, .. }) if s == step),
-            "should report policy mismatch, got {:?}",
-            result
-        );
+        let expected = digest(0xCC);
+        let found = digest(0xDD);
+        let result = check_policy_digest(step, expected, found);
+        let Err(RecoveryError::PolicyDigestMismatch {
+            step: reported_step,
+            expected: reported_expected,
+            found: reported_found,
+        }) = result
+        else {
+            panic!("should report policy mismatch, got {result:?}");
+        };
+        assert_eq!(reported_step, step);
+        assert_eq!(reported_expected, expected);
+        assert_eq!(reported_found, found);
     }
 
     #[test]
@@ -120,11 +136,17 @@ mod recover_tests {
             (ActionId::new(3), digest(0x44), digest(0x44)),
         ];
         let result = check_action_abi_digests(&entries);
-        assert!(
-            matches!(result, Err(RecoveryError::ActionAbiMismatch { action_id, .. }) if action_id == ActionId::new(2)),
-            "should report first mismatch, got {:?}",
-            result
-        );
+        let Err(RecoveryError::ActionAbiMismatch {
+            action_id,
+            expected,
+            found,
+        }) = result
+        else {
+            panic!("should report first mismatch, got {result:?}");
+        };
+        assert_eq!(action_id, ActionId::new(2));
+        assert_eq!(expected, digest(0x22));
+        assert_eq!(found, digest(0x33));
     }
 
     #[test]
@@ -158,10 +180,16 @@ mod recover_tests {
             (StepIdx::new(3), digest(0x77), digest(0x88)),
         ];
         let result = check_policy_digests(&entries);
-        assert!(
-            matches!(result, Err(RecoveryError::PolicyDigestMismatch { step, .. }) if step == StepIdx::new(3)),
-            "should report first policy mismatch, got {:?}",
-            result
-        );
+        let Err(RecoveryError::PolicyDigestMismatch {
+            step,
+            expected,
+            found,
+        }) = result
+        else {
+            panic!("should report first policy mismatch, got {result:?}");
+        };
+        assert_eq!(step, StepIdx::new(3));
+        assert_eq!(expected, digest(0x77));
+        assert_eq!(found, digest(0x88));
     }
 }

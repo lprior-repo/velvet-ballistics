@@ -70,10 +70,17 @@ mod tests {
             expected,
             found,
         };
-        assert!(matches!(
-            err,
-            RecoveryError::ActionAbiMismatch { action_id: a, .. } if a == action_id
-        ));
+        let RecoveryError::ActionAbiMismatch {
+            action_id: found_action,
+            expected: found_expected,
+            found: found_digest,
+        } = err
+        else {
+            panic!("expected ActionAbiMismatch");
+        };
+        assert_eq!(found_action, action_id);
+        assert_eq!(found_expected, expected);
+        assert_eq!(found_digest, found);
     }
 
     #[test]
@@ -86,10 +93,17 @@ mod tests {
             expected,
             found,
         };
-        assert!(matches!(
-            err,
-            RecoveryError::PolicyDigestMismatch { step: s, .. } if s == step
-        ));
+        let RecoveryError::PolicyDigestMismatch {
+            step: found_step,
+            expected: found_expected,
+            found: found_digest,
+        } = err
+        else {
+            panic!("expected PolicyDigestMismatch");
+        };
+        assert_eq!(found_step, step);
+        assert_eq!(found_expected, expected);
+        assert_eq!(found_digest, found);
     }
 
     #[test]
@@ -1089,6 +1103,14 @@ mod tests {
                 RecoveryError::CompiledIrDigestMismatch { .. } => "compiled_ir_digest_mismatch",
                 RecoveryError::ActionAbiMismatch { .. } => "action_abi_mismatch",
                 RecoveryError::PolicyDigestMismatch { .. } => "policy_digest_mismatch",
+                RecoveryError::PolicyDigestUnavailable { .. } => "policy_digest_unavailable",
+                RecoveryError::PolicyDigestExpectationMissing { .. } => {
+                    "policy_digest_expectation_missing"
+                }
+                RecoveryError::FullDigestCheckConfigMissing => "full_digest_check_config_missing",
+                RecoveryError::RunAdmissionArtifactDigestMismatch { .. } => {
+                    "run_admission_artifact_digest_mismatch"
+                }
                 RecoveryError::NonIdempotentActionBlocked { .. } => "non_idempotent_action_blocked",
                 RecoveryError::ReplayDivergence { .. } => "replay_divergence",
                 RecoveryError::SlotTaintReadFailed { .. } => "slot_taint_read_failed",

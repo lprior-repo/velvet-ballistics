@@ -6,7 +6,7 @@
 #![forbid(unsafe_code)]
 
 use tempfile::TempDir;
-use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::{ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest};
 use vb_storage::recovery::{
     ActionReplayTracker, RecoveryError, RecoveryHydration, RecoveryTerminalState, extract_terminal,
     is_terminal_event, recover_full_journal, recover_runtime_summary,
@@ -26,6 +26,16 @@ fn open_journal(dir: &TempDir) -> FjallJournal {
         .expect("journal open should succeed")
 }
 
+fn test_admission_event(run: RunId, seq: EventSeq, digest: WorkflowDigest) -> JournalEvent {
+    JournalEvent::RunAdmission {
+        run,
+        seq,
+        artifact_digest: digest,
+        granted_capabilities: CapabilitySet::empty(),
+        policy: RuntimePolicy::Relaxed,
+    }
+}
+
 /// Helper: builds the complete set of journal events for a two-step run.
 fn build_full_run_events(run: RunId, digest: WorkflowDigest) -> Vec<JournalEvent> {
     let mut events = Vec::new();
@@ -37,6 +47,9 @@ fn build_full_run_events(run: RunId, digest: WorkflowDigest) -> Vec<JournalEvent
         seq: EventSeq::new(seq),
         workflow: digest,
     });
+    seq = seq.saturating_add(1);
+
+    events.push(test_admission_event(run, EventSeq::new(seq), digest));
     seq = seq.saturating_add(1);
 
     // Step 0: start, write slots, succeed
@@ -592,29 +605,30 @@ fn action_replay_tracker_reconstructs_from_events() {
             seq: EventSeq::new(0),
             workflow: digest,
         },
+        test_admission_event(run, EventSeq::new(1), digest),
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::new(1),
+            seq: EventSeq::new(2),
             step: StepIdx::new(0),
             attempt: 1,
         },
         JournalEvent::ActionScheduled {
-            run,
-            seq: EventSeq::new(2),
-            step: StepIdx::new(0),
-            action: ActionId::new(10),
-            attempt: 1,
-        },
-        JournalEvent::ActionCompletedEvent {
             run,
             seq: EventSeq::new(3),
             step: StepIdx::new(0),
             action: ActionId::new(10),
             attempt: 1,
         },
-        JournalEvent::SlotWrittenEvent {
+        JournalEvent::ActionCompletedEvent {
             run,
             seq: EventSeq::new(4),
+            step: StepIdx::new(0),
+            action: ActionId::new(10),
+            attempt: 1,
+        },
+        JournalEvent::SlotWrittenEvent {
+            run,
+            seq: EventSeq::new(5),
             slot: SlotIdx::new(0),
             value: None,
             extra: None,
@@ -622,7 +636,7 @@ fn action_replay_tracker_reconstructs_from_events() {
         },
         JournalEvent::StepSucceeded {
             run,
-            seq: EventSeq::new(5),
+            seq: EventSeq::new(6),
             step: StepIdx::new(0),
             output: SlotIdx::new(0),
         },
@@ -665,22 +679,23 @@ fn action_replay_tracker_tracks_failed_actions() {
             seq: EventSeq::new(0),
             workflow: digest,
         },
+        test_admission_event(run, EventSeq::new(1), digest),
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::new(1),
+            seq: EventSeq::new(2),
             step: StepIdx::new(0),
             attempt: 1,
         },
         JournalEvent::ActionScheduled {
             run,
-            seq: EventSeq::new(2),
+            seq: EventSeq::new(3),
             step: StepIdx::new(0),
             action: ActionId::new(11),
             attempt: 1,
         },
         JournalEvent::ActionFailedEvent {
             run,
-            seq: EventSeq::new(3),
+            seq: EventSeq::new(4),
             step: StepIdx::new(0),
             action: ActionId::new(11),
             attempt: 1,
@@ -719,29 +734,30 @@ fn action_replay_blocks_duplicate_scheduled_action() {
             seq: EventSeq::new(0),
             workflow: digest,
         },
+        test_admission_event(run, EventSeq::new(1), digest),
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::new(1),
+            seq: EventSeq::new(2),
             step: StepIdx::new(0),
             attempt: 1,
         },
         JournalEvent::ActionScheduled {
-            run,
-            seq: EventSeq::new(2),
-            step: StepIdx::new(0),
-            action: ActionId::new(12),
-            attempt: 1,
-        },
-        JournalEvent::ActionCompletedEvent {
             run,
             seq: EventSeq::new(3),
             step: StepIdx::new(0),
             action: ActionId::new(12),
             attempt: 1,
         },
-        JournalEvent::ActionScheduled {
+        JournalEvent::ActionCompletedEvent {
             run,
             seq: EventSeq::new(4),
+            step: StepIdx::new(0),
+            action: ActionId::new(12),
+            attempt: 1,
+        },
+        JournalEvent::ActionScheduled {
+            run,
+            seq: EventSeq::new(5),
             step: StepIdx::new(0),
             action: ActionId::new(12),
             attempt: 1,

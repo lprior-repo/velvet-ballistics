@@ -16,7 +16,7 @@ use vb_core::value::ConstValue;
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
-use vb_core::{RunId, RuntimePolicy};
+use vb_core::{CapabilitySet, RunId, RuntimePolicy};
 use vb_ipc::server::WorkflowResolutionError;
 #[cfg(test)]
 use vb_storage::__put_compiled_ir_for_testing as put_compiled_ir;
@@ -41,6 +41,16 @@ fn test_tempdir() -> tempfile::TempDir {
 
 fn dummy_digest() -> WorkflowDigest {
     WorkflowDigest::from_bytes([0xAB_u8; 32])
+}
+
+fn dummy_admission(run: RunId, seq: u64) -> JournalEvent {
+    JournalEvent::RunAdmission {
+        run,
+        seq: make_event_seq(seq),
+        artifact_digest: dummy_digest(),
+        granted_capabilities: CapabilitySet::empty(),
+        policy: RuntimePolicy::Relaxed,
+    }
 }
 
 fn make_run_id(v: u64) -> RunId {
@@ -360,21 +370,22 @@ fn inspect_returns_correct_event_count() {
             seq: make_event_seq(0),
             workflow: dummy_digest(),
         },
+        dummy_admission(run, 1),
         JournalEvent::StepStarted {
             run,
-            seq: make_event_seq(1),
+            seq: make_event_seq(2),
             step: make_step_idx(0),
             attempt: 1,
         },
         JournalEvent::StepSucceeded {
             run,
-            seq: make_event_seq(2),
+            seq: make_event_seq(3),
             step: make_step_idx(0),
             output: make_slot_idx(0),
         },
         JournalEvent::RunFinished {
             run,
-            seq: make_event_seq(3),
+            seq: make_event_seq(4),
             result: make_slot_idx(0),
             attempt: 1,
         },
@@ -387,7 +398,7 @@ fn inspect_returns_correct_event_count() {
     let result = journal.events_for_run(run);
     assert!(result.is_ok(), "events_for_run must succeed");
     let fetched = result.expect("events ok");
-    assert_eq!(fetched.len(), 4, "must return all 4 events");
+    assert_eq!(fetched.len(), 5, "must return all 5 events");
 }
 
 // ---------------------------------------------------------------------------
@@ -407,21 +418,22 @@ fn replay_recovers_all_events() {
             seq: make_event_seq(0),
             workflow: dummy_digest(),
         },
+        dummy_admission(run, 1),
         JournalEvent::StepStarted {
             run,
-            seq: make_event_seq(1),
+            seq: make_event_seq(2),
             step: make_step_idx(0),
             attempt: 1,
         },
         JournalEvent::StepSucceeded {
             run,
-            seq: make_event_seq(2),
+            seq: make_event_seq(3),
             step: make_step_idx(0),
             output: make_slot_idx(0),
         },
         JournalEvent::RunFinished {
             run,
-            seq: make_event_seq(3),
+            seq: make_event_seq(4),
             result: make_slot_idx(0),
             attempt: 1,
         },
@@ -435,7 +447,7 @@ fn replay_recovers_all_events() {
     let result = recover_full_journal(&journal, run, &mut tracker, &[], &[]);
     assert!(result.is_ok(), "recover_full_journal must succeed");
     let recovered = result.expect("recover ok");
-    assert_eq!(recovered.len(), 4, "must recover all 4 events");
+    assert_eq!(recovered.len(), 5, "must recover all 5 events");
 }
 
 /// Verify replay extracts terminal event correctly.
@@ -451,9 +463,10 @@ fn replay_extracts_terminal_event() {
             seq: make_event_seq(0),
             workflow: dummy_digest(),
         },
+        dummy_admission(run, 1),
         JournalEvent::RunFinished {
             run,
-            seq: make_event_seq(1),
+            seq: make_event_seq(2),
             result: make_slot_idx(0),
             attempt: 1,
         },
@@ -497,11 +510,14 @@ fn replay_terminal_none_for_incomplete_run() {
     let journal = FjallJournal::open(dir.path(), None).expect("journal must open");
 
     let run = make_run_id(1);
-    let events = vec![JournalEvent::RunAccepted {
-        run,
-        seq: make_event_seq(0),
-        workflow: dummy_digest(),
-    }];
+    let events = vec![
+        JournalEvent::RunAccepted {
+            run,
+            seq: make_event_seq(0),
+            workflow: dummy_digest(),
+        },
+        dummy_admission(run, 1),
+    ];
 
     journal
         .append_strict_batch(&events)
@@ -530,9 +546,10 @@ fn replay_terminal_returns_last_terminal() {
             seq: make_event_seq(0),
             workflow: dummy_digest(),
         },
+        dummy_admission(run, 1),
         JournalEvent::RunFailedEvent {
             run,
-            seq: make_event_seq(1),
+            seq: make_event_seq(2),
             attempt: 1,
         },
     ];
@@ -548,8 +565,8 @@ fn replay_terminal_returns_last_terminal() {
 
     let terminal = extract_terminal(&recovered);
     assert!(
-        matches!(terminal, Some(JournalEvent::RunFailedEvent { seq, .. }) if seq.get() == 1),
-        "terminal must be the last RunFailedEvent with seq 1"
+        matches!(terminal, Some(JournalEvent::RunFailedEvent { seq, .. }) if seq.get() == 2),
+        "terminal must be the last RunFailedEvent with seq 2"
     );
 }
 

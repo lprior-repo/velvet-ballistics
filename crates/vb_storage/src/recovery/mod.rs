@@ -14,6 +14,7 @@
 //! - Snapshot-plus-tail journal recovery
 //! - Full journal recovery when no snapshot available
 
+pub(crate) mod digest;
 pub mod hydrate;
 pub mod hydrate_support;
 pub mod recover;

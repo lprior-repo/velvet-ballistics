@@ -1817,10 +1817,20 @@ fn policy_digest_mismatch_returns_typed_error() {
     let entries = [(step, expected_digest, found_digest)];
     let result = check_policy_digests(&entries);
 
-    let Err(RecoveryError::PolicyDigestMismatch { step: found, .. }) = result else {
+    let Err(RecoveryError::PolicyDigestMismatch {
+        step: found,
+        expected: found_expected,
+        found: found_found,
+    }) = result
+    else {
         panic!("expected PolicyDigestMismatch, got: {result:?}");
     };
     assert_eq!(found, step, "step must match exactly");
+    assert_eq!(
+        found_expected, expected_digest,
+        "expected digest must match"
+    );
+    assert_eq!(found_found, found_digest, "found digest must match");
 }
 
 #[test]

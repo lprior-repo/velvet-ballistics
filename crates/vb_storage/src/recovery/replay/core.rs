@@ -6,6 +6,8 @@
 //! - Non-idempotent action blocking
 //! - Snapshot-plus-tail replay
 
+use super::action_abi::validate_action_abi_expectations;
+use super::admission::verify_run_admission_evidence;
 use super::attempt::compute_max_attempt;
 pub use super::attempt::{
     replay_attempt_is_current, replay_attempt_is_stale, replay_attempt_or_default,
@@ -28,8 +30,9 @@ use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest};
 pub fn replay_events(
     events: &[JournalEvent],
     tracker: &mut ActionReplayTracker,
-    _expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
+    expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
 ) -> RecoveryResult<Vec<JournalEvent>> {
+    validate_action_abi_expectations(events, expected_action_abi_digests)?;
     replay_events_with_schedule_requirement(events, tracker, true)
 }
 
@@ -163,25 +166,35 @@ fn replay_events_with_schedule_requirement(
 }
 
 fn validate_contiguous_sequences(events: &[JournalEvent]) -> RecoveryResult<()> {
-    let Some(first) = events.first() else {
-        return Ok(());
-    };
-    let mut expected = first.seq();
-    for event in events {
-        let seq = event.seq();
-        if seq != expected {
+    events.windows(2).try_for_each(|pair| {
+        let [previous_event, next_event] = pair else {
+            return Ok(());
+        };
+        let previous = previous_event.seq();
+        let found = next_event.seq();
+        let Some(expected) = previous.get().checked_add(1).map(EventSeq::new) else {
+            return Err(RecoveryError::ReplayDivergence {
+                step: StepIdx::ZERO,
+                detail: format!(
+                    "journal sequence overflow after {} before {}",
+                    previous.get(),
+                    found.get()
+                ),
+            });
+        };
+
+        if found != expected {
             return Err(RecoveryError::ReplayDivergence {
                 step: StepIdx::ZERO,
                 detail: format!(
                     "journal sequence violation: expected {}, found {}",
                     expected.get(),
-                    seq.get()
+                    found.get()
                 ),
             });
         }
-        expected = EventSeq::new(expected.get().saturating_add(1));
-    }
-    Ok(())
+        Ok(())
+    })
 }
 
 /// Replays a full journal for a run when no snapshot is available.
@@ -189,13 +202,13 @@ fn validate_contiguous_sequences(events: &[JournalEvent]) -> RecoveryResult<()> 
 ///
 /// ## GAP-3: Policy Digest Verification
 ///
-/// When `expected_policy_digests` is empty and `RunAdmission` is absent,
-/// return `PolicyDigestMismatch` because the policy digest cannot be verified.
+/// Missing durable `RunAdmission` evidence fails closed instead of replaying
+/// without proof or fabricating a digest value.
 pub fn recover_full_journal(
     journal: &FjallJournal,
     run: RunId,
     tracker: &mut ActionReplayTracker,
-    _expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
+    expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
     expected_policy_digests: &[(StepIdx, WorkflowDigest)],
 ) -> RecoveryResult<Vec<JournalEvent>> {
     let events = journal.events_for_run(run)?;
@@ -203,23 +216,9 @@ pub fn recover_full_journal(
         return Err(RecoveryError::NoRecoveryData { run });
     }
 
-    let has_run_admission = events
-        .iter()
-        .any(|e| matches!(e, JournalEvent::RunAdmission { .. }));
+    verify_run_admission_evidence(&events, run, expected_policy_digests)?;
 
-    if !has_run_admission {
-        let Some((step, expected)) = expected_policy_digests.first() else {
-            return replay_events(&events, tracker, _expected_action_abi_digests);
-        };
-
-        return Err(RecoveryError::PolicyDigestMismatch {
-            step: *step,
-            expected: *expected,
-            found: WorkflowDigest::from_bytes([0u8; 32]),
-        });
-    }
-
-    replay_events(&events, tracker, _expected_action_abi_digests)
+    replay_events(&events, tracker, expected_action_abi_digests)
 }
 
 /// Loads a snapshot from the journal, translating decode failures to

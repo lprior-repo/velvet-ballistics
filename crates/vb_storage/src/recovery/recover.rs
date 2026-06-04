@@ -1,12 +1,9 @@
 #![forbid(unsafe_code)]
 //! High-level recovery orchestration.
-//!
-//! Provides:
-//! - Runtime summary recovery
-//! - Frame seed recovery
-//! - Incomplete run discovery
-//! - Digest verification
 
+use crate::recovery::digest::{
+    first_action_abi_mismatch, first_policy_mismatch, workflow_digest_bytes_equal,
+};
 use crate::recovery::types::{
     DigestCheck, DigestCheckConfig, RecoveryError, RecoveryHydration, RecoveryResult,
 };
@@ -28,7 +25,7 @@ pub fn check_workflow_source_digest(
     let events = journal.events_for_run(run)?;
     for event in &events {
         if let JournalEvent::RunAccepted { workflow, .. } = event {
-            if *workflow != expected {
+            if !workflow_digest_bytes_equal(*workflow, expected) {
                 return Err(RecoveryError::WorkflowSourceDigestMismatch {
                     expected,
                     found: *workflow,
@@ -45,7 +42,7 @@ pub fn check_compiled_ir_digest(
     expected: WorkflowDigest,
     found: WorkflowDigest,
 ) -> RecoveryResult<()> {
-    if expected == found {
+    if workflow_digest_bytes_equal(expected, found) {
         Ok(())
     } else {
         Err(RecoveryError::CompiledIrDigestMismatch { expected, found })
@@ -58,7 +55,7 @@ pub fn check_action_abi_digest(
     expected: WorkflowDigest,
     found: WorkflowDigest,
 ) -> RecoveryResult<()> {
-    if expected == found {
+    if workflow_digest_bytes_equal(expected, found) {
         Ok(())
     } else {
         Err(RecoveryError::ActionAbiMismatch {
@@ -75,7 +72,7 @@ pub fn check_policy_digest(
     expected: WorkflowDigest,
     found: WorkflowDigest,
 ) -> RecoveryResult<()> {
-    if expected == found {
+    if workflow_digest_bytes_equal(expected, found) {
         Ok(())
     } else {
         Err(RecoveryError::PolicyDigestMismatch {
@@ -91,9 +88,9 @@ pub fn check_policy_digest(
 /// POST-003: returns Ok only when ALL digests match (workflow, compiled IR,
 /// action ABI, policy).
 ///
-/// For `DigestCheck::Full`, `config` must be provided to perform the additional
-/// checks. If no action ABI or policy digests exist for a given run, pass a
-/// config with `None` values.
+/// For `DigestCheck::Full`, `config` must provide both action ABI and policy
+/// entry slices. Empty slices are valid only when the caller has no entries for
+/// that digest class; omitted slices fail closed.
 pub fn verify_digests(
     journal: &FjallJournal,
     run: RunId,
@@ -136,16 +133,24 @@ fn check_full_level(
     config: Option<DigestCheckConfig<'_>>,
     level: DigestCheck,
 ) -> RecoveryResult<()> {
-    if matches!(level, DigestCheck::Full)
-        && let Some(cfg) = config
-    {
-        if let Some(entries) = cfg.action_abi_entries {
-            check_action_abi_digests(entries)?;
-        }
-        if let Some(entries) = cfg.policy_entries {
-            check_policy_digests(entries)?;
-        }
+    if !matches!(level, DigestCheck::Full) {
+        return Ok(());
     }
+
+    let Some(cfg) = config else {
+        return Err(RecoveryError::FullDigestCheckConfigMissing);
+    };
+
+    let Some(action_entries) = cfg.action_abi_entries else {
+        return Err(RecoveryError::FullDigestCheckConfigMissing);
+    };
+    let Some(policy_entries) = cfg.policy_entries else {
+        return Err(RecoveryError::FullDigestCheckConfigMissing);
+    };
+
+    check_action_abi_digests(action_entries)?;
+    check_policy_digests(policy_entries)?;
+
     Ok(())
 }
 
@@ -158,14 +163,12 @@ fn check_full_level(
 pub fn check_action_abi_digests(
     entries: &[(ActionId, WorkflowDigest, WorkflowDigest)],
 ) -> RecoveryResult<()> {
-    for (action_id, expected, found) in entries {
-        if *expected != *found {
-            return Err(RecoveryError::ActionAbiMismatch {
-                action_id: *action_id,
-                expected: *expected,
-                found: *found,
-            });
-        }
+    if let Some((action_id, expected, found)) = first_action_abi_mismatch(entries) {
+        return Err(RecoveryError::ActionAbiMismatch {
+            action_id,
+            expected,
+            found,
+        });
     }
     Ok(())
 }
@@ -179,14 +182,12 @@ pub fn check_action_abi_digests(
 pub fn check_policy_digests(
     entries: &[(StepIdx, WorkflowDigest, WorkflowDigest)],
 ) -> RecoveryResult<()> {
-    for (step, expected, found) in entries {
-        if *expected != *found {
-            return Err(RecoveryError::PolicyDigestMismatch {
-                step: *step,
-                expected: *expected,
-                found: *found,
-            });
-        }
+    if let Some((step, expected, found)) = first_policy_mismatch(entries) {
+        return Err(RecoveryError::PolicyDigestMismatch {
+            step,
+            expected,
+            found,
+        });
     }
     Ok(())
 }

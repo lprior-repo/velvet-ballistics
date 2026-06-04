@@ -22,17 +22,23 @@
       "kani_codec::kani_truncated_header_zero_bytes",
       "kani_codec::kani_wrong_magic_any_value"
     ],
-    "crates/vb_storage/src/kani_digest_checks_vb_2bzz.rs": [
-      "kani_digest_checks_vb_2bzz::kani_check_action_abi_all_match",
-      "kani_digest_checks_vb_2bzz::kani_check_action_abi_empty",
-      "kani_digest_checks_vb_2bzz::kani_check_action_abi_fail_fast",
-      "kani_digest_checks_vb_2bzz::kani_check_action_abi_mismatch_last",
-      "kani_digest_checks_vb_2bzz::kani_check_action_abi_no_panic",
-      "kani_digest_checks_vb_2bzz::kani_check_policy_all_match",
-      "kani_digest_checks_vb_2bzz::kani_check_policy_empty",
-      "kani_digest_checks_vb_2bzz::kani_check_policy_fail_fast",
-      "kani_digest_checks_vb_2bzz::kani_check_policy_mismatch_last",
-      "kani_digest_checks_vb_2bzz::kani_check_policy_no_panic"
+    "crates/vb_storage/src/kani_digest_checks_vb_2bzz/action.rs": [
+      "kani_digest_checks_vb_2bzz::action::kani_check_action_abi_all_match",
+      "kani_digest_checks_vb_2bzz::action::kani_check_action_abi_empty",
+      "kani_digest_checks_vb_2bzz::action::kani_check_action_abi_fail_fast",
+      "kani_digest_checks_vb_2bzz::action::kani_check_action_abi_first_entry_mismatch",
+      "kani_digest_checks_vb_2bzz::action::kani_check_action_abi_mismatch_last",
+      "kani_digest_checks_vb_2bzz::action::kani_check_action_abi_no_panic",
+      "kani_digest_checks_vb_2bzz::action::kani_check_action_abi_single_entry_mismatch"
+    ],
+    "crates/vb_storage/src/kani_digest_checks_vb_2bzz/policy.rs": [
+      "kani_digest_checks_vb_2bzz::policy::kani_check_policy_all_match",
+      "kani_digest_checks_vb_2bzz::policy::kani_check_policy_empty",
+      "kani_digest_checks_vb_2bzz::policy::kani_check_policy_fail_fast",
+      "kani_digest_checks_vb_2bzz::policy::kani_check_policy_first_entry_mismatch",
+      "kani_digest_checks_vb_2bzz::policy::kani_check_policy_mismatch_last",
+      "kani_digest_checks_vb_2bzz::policy::kani_check_policy_no_panic",
+      "kani_digest_checks_vb_2bzz::policy::kani_check_policy_single_entry_mismatch"
     ],
     "crates/vb_storage/src/kani_hydrate_proofs.rs": [
       "kani_hydrate_proofs::kani_dimensions_positive_accepts_positive",
@@ -115,7 +121,7 @@
   "contract-harnesses": {},
   "contracts": [],
   "totals": {
-    "standard-harnesses": 87,
+    "standard-harnesses": 91,
     "contract-harnesses": 0,
     "functions-under-contract": 0
   }

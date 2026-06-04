@@ -341,7 +341,10 @@ pub(crate) fn digest_step_primitive(
             hasher.update(action.as_bytes());
             hasher.update(input.as_bytes());
         }
-        vb_yaml::ast::StepPrimitive::Choose { branches, otherwise } => {
+        vb_yaml::ast::StepPrimitive::Choose {
+            branches,
+            otherwise,
+        } => {
             hasher.update(b"choose");
             let count = u16::try_from(branches.len()).map_err(|_| {
                 CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {

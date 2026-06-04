@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 
 use tempfile::TempDir;
-use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::{CapabilitySet, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest};
 use vb_storage::recovery::{
     ActionReplayTracker, RecoveryHydration, RecoveryTerminalState, recover_full_journal,
     recover_runtime_summary,
@@ -14,6 +14,16 @@ fn test_digest(byte: u8) -> WorkflowDigest {
 
 fn open_journal(dir: &TempDir) -> Result<FjallJournal, String> {
     FjallJournal::open(dir.path(), Some(FjallConfig::default())).map_err(|error| error.to_string())
+}
+
+fn test_admission_event(run: RunId, seq: EventSeq, digest: WorkflowDigest) -> JournalEvent {
+    JournalEvent::RunAdmission {
+        run,
+        seq,
+        artifact_digest: digest,
+        granted_capabilities: CapabilitySet::empty(),
+        policy: RuntimePolicy::Relaxed,
+    }
 }
 
 fn write_events_strict(journal: &FjallJournal, events: &[JournalEvent]) -> Result<(), String> {
@@ -32,33 +42,34 @@ fn resumed_run_events(run: RunId, digest: WorkflowDigest) -> Vec<JournalEvent> {
             seq: EventSeq::new(0),
             workflow: digest,
         },
+        test_admission_event(run, EventSeq::new(1), digest),
         JournalEvent::StepStarted {
-            run,
-            seq: EventSeq::new(1),
-            step: StepIdx::ZERO,
-            attempt: 1,
-        },
-        JournalEvent::WaitScheduledEvent {
             run,
             seq: EventSeq::new(2),
             step: StepIdx::ZERO,
             attempt: 1,
         },
-        JournalEvent::RetryScheduledEvent {
+        JournalEvent::WaitScheduledEvent {
             run,
             seq: EventSeq::new(3),
-            step: StepIdx::new(1),
+            step: StepIdx::ZERO,
             attempt: 1,
         },
-        JournalEvent::StepStarted {
+        JournalEvent::RetryScheduledEvent {
             run,
             seq: EventSeq::new(4),
             step: StepIdx::new(1),
             attempt: 1,
         },
-        JournalEvent::SlotWrittenEvent {
+        JournalEvent::StepStarted {
             run,
             seq: EventSeq::new(5),
+            step: StepIdx::new(1),
+            attempt: 1,
+        },
+        JournalEvent::SlotWrittenEvent {
+            run,
+            seq: EventSeq::new(6),
             slot: SlotIdx::new(2),
             value: None,
             extra: None,
@@ -66,13 +77,13 @@ fn resumed_run_events(run: RunId, digest: WorkflowDigest) -> Vec<JournalEvent> {
         },
         JournalEvent::StepSucceeded {
             run,
-            seq: EventSeq::new(6),
+            seq: EventSeq::new(7),
             step: StepIdx::new(1),
             output: SlotIdx::new(2),
         },
         JournalEvent::RunFinished {
             run,
-            seq: EventSeq::new(7),
+            seq: EventSeq::new(8),
             result: SlotIdx::new(2),
             attempt: 1,
         },
@@ -119,7 +130,7 @@ fn resume_tail_replays_exactly_when_journal_is_reopened() -> Result<(), String> 
     };
     assert_eq!(summary.run, run);
     assert_eq!(summary.first_seq, EventSeq::new(0));
-    assert_eq!(summary.last_seq, EventSeq::new(7));
+    assert_eq!(summary.last_seq, EventSeq::new(8));
     assert_eq!(summary.workflow, Some(digest));
     assert_eq!(summary.steps_started, 2);
     assert_eq!(summary.steps_succeeded, 1);

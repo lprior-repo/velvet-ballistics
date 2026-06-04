@@ -78,6 +78,37 @@ pub enum RecoveryError {
         /// Found digest.
         found: WorkflowDigest,
     },
+    /// Durable admission evidence is absent, so policy digest evidence cannot be read.
+    #[error("policy digest unavailable for run {run:?} step {step:?}: expected {expected:?}")]
+    PolicyDigestUnavailable {
+        /// Run identifier missing durable admission evidence.
+        run: RunId,
+        /// Step whose policy digest was required.
+        step: StepIdx,
+        /// Expected digest from recovery caller.
+        expected: WorkflowDigest,
+    },
+    /// Recovery caller did not provide policy expectations for a run missing admission evidence.
+    #[error("policy digest expectation missing for run {run:?}")]
+    PolicyDigestExpectationMissing {
+        /// Run identifier missing both durable admission evidence and caller expectations.
+        run: RunId,
+    },
+    /// Full digest verification was requested without the required digest config.
+    #[error("full digest check config missing")]
+    FullDigestCheckConfigMissing,
+    /// Durable admission evidence names a different artifact than the accepted run.
+    #[error(
+        "run admission artifact digest mismatch for run {run:?}: expected {expected:?}, found {found:?}"
+    )]
+    RunAdmissionArtifactDigestMismatch {
+        /// Run identifier with divergent admission evidence.
+        run: RunId,
+        /// Digest from the accepted run evidence.
+        expected: WorkflowDigest,
+        /// Digest found in the admission event.
+        found: WorkflowDigest,
+    },
     /// A non-idempotent action was encountered during recovery and cannot be re-executed.
     #[error(
         "non-idempotent action {action:?} at step {step:?} cannot be re-executed during recovery"
@@ -619,7 +650,7 @@ impl DigestCheck {
 ///
 /// Contains the expected action ABI and policy digests that must match
 /// during replay validation at Full strictness.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct DigestCheckConfig<'a> {
     pub action_abi_entries: Option<&'a [(ActionId, WorkflowDigest, WorkflowDigest)]>,
     pub policy_entries: Option<&'a [(StepIdx, WorkflowDigest, WorkflowDigest)]>,

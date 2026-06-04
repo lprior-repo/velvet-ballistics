@@ -5,6 +5,8 @@
 //! - `core`: Core replay logic (replay_events, snapshot handling)
 //! - `summary`: Summary building and frame seed construction
 
+mod action_abi;
+pub mod admission;
 pub mod attempt;
 pub mod core;
 pub mod summary;

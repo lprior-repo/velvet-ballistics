@@ -49,7 +49,10 @@ pub mod kani_record_payload_len;
 #[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_record_crc;
 
-#[cfg(all(kani, feature = "legacy-kani"))]
+#[cfg(all(
+    kani,
+    any(feature = "legacy-kani", feature = "kani-digest-checks-vb-2bzz")
+))]
 pub mod kani_digest_checks_vb_2bzz;
 
 #[cfg(all(kani, feature = "legacy-kani"))]
@@ -151,6 +154,10 @@ mod proptest_integration;
 #[cfg(test)]
 #[path = "error_tests.rs"]
 mod error_tests;
+
+#[cfg(test)]
+#[path = "recover_tests.rs"]
+mod recover_tests;
 
 pub mod queue;
 pub mod records;

@@ -23,6 +23,7 @@ tempfile.workspace = true
 [features]
 default = []
 legacy-kani = []
+kani-digest-checks-vb-2bzz = []
 kani-typed-partitioned-ids = []
 kani-storage-trailing-bytes = []
 kani-vb-u8gi-decode-taxonomy = []

@@ -21,6 +21,22 @@ fn sample_digest(byte: u8) -> WorkflowDigest {
     WorkflowDigest::from_bytes([byte; 32])
 }
 
+fn sample_admission(run: RunId, seq: EventSeq, digest: WorkflowDigest) -> JournalEvent {
+    JournalEvent::RunAdmission {
+        run,
+        seq,
+        artifact_digest: digest,
+        granted_capabilities: vb_core::CapabilitySet::empty(),
+        policy: vb_core::RuntimePolicy::Relaxed,
+    }
+}
+
+fn relaxed_policy_digest() -> WorkflowDigest {
+    let bytes = postcard::to_allocvec(&vb_core::RuntimePolicy::Relaxed)
+        .expect("RuntimePolicy should encode");
+    WorkflowDigest::from_bytes(*blake3::hash(&bytes).as_bytes())
+}
+
 fn deterministic_plan() -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
     CompiledWorkflow::try_from_parts(deterministic_parts())
         .map_err(Box::<dyn std::error::Error>::from)
@@ -1128,33 +1144,35 @@ fn action_tracker_allows_first_execution() {
 fn snapshot_tail_matches_full_journal_lifecycle_summary() -> Result<(), Box<dyn std::error::Error>>
 {
     let run = RunId::new(900);
+    let workflow = sample_digest(1);
     let events = vec![
         JournalEvent::RunAccepted {
             run,
             seq: EventSeq::new(0),
-            workflow: sample_digest(1),
+            workflow,
         },
+        sample_admission(run, EventSeq::new(1), workflow),
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::new(1),
+            seq: EventSeq::new(2),
             step: StepIdx::new(0),
             attempt: 1,
         },
         JournalEvent::StepSucceeded {
             run,
-            seq: EventSeq::new(2),
+            seq: EventSeq::new(3),
             step: StepIdx::new(0),
             output: SlotIdx::new(3),
         },
         JournalEvent::RunFinished {
             run,
-            seq: EventSeq::new(3),
+            seq: EventSeq::new(4),
             result: SlotIdx::new(3),
             attempt: 1,
         },
     ];
 
-    assert_snapshot_tail_matches_full_summary(run, EventSeq::new(1), &events)
+    assert_snapshot_tail_matches_full_summary(run, EventSeq::new(2), &events)
 }
 
 #[test]
@@ -1162,93 +1180,99 @@ fn snapshot_tail_matches_full_journal_action_summary() -> Result<(), Box<dyn std
     let run = RunId::new(901);
     let action = ActionId::new(4);
     let step = StepIdx::new(2);
+    let workflow = sample_digest(1);
     let events = vec![
         JournalEvent::RunAccepted {
             run,
             seq: EventSeq::new(0),
-            workflow: sample_digest(1),
+            workflow,
         },
+        sample_admission(run, EventSeq::new(1), workflow),
         JournalEvent::ActionScheduled {
             run,
-            seq: EventSeq::new(1),
+            seq: EventSeq::new(2),
             step,
             action,
             attempt: 1,
         },
         JournalEvent::ActionCompletedEvent {
             run,
-            seq: EventSeq::new(2),
+            seq: EventSeq::new(3),
             step,
             action,
             attempt: 1,
         },
         JournalEvent::RunFinished {
             run,
-            seq: EventSeq::new(3),
+            seq: EventSeq::new(4),
             result: SlotIdx::new(0),
             attempt: 1,
         },
     ];
 
-    assert_snapshot_tail_matches_full_summary(run, EventSeq::new(1), &events)
+    assert_snapshot_tail_matches_full_summary(run, EventSeq::new(2), &events)
 }
 
 #[test]
 fn snapshot_tail_matches_full_journal_wait_summary() -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(902);
+    let workflow = sample_digest(1);
     let events = vec![
         JournalEvent::RunAccepted {
             run,
             seq: EventSeq::new(0),
-            workflow: sample_digest(1),
+            workflow,
         },
+        sample_admission(run, EventSeq::new(1), workflow),
         JournalEvent::WaitScheduledEvent {
             run,
-            seq: EventSeq::new(1),
+            seq: EventSeq::new(2),
             step: StepIdx::new(7),
             attempt: 1,
         },
         JournalEvent::RunCancelled {
             run,
-            seq: EventSeq::new(2),
+            seq: EventSeq::new(3),
             attempt: 1,
             reason: None,
         },
     ];
 
-    assert_snapshot_tail_matches_full_summary(run, EventSeq::new(0), &events)
+    assert_snapshot_tail_matches_full_summary(run, EventSeq::new(1), &events)
 }
 
 #[test]
 fn snapshot_tail_matches_full_journal_ask_summary() -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(903);
+    let workflow = sample_digest(1);
     let events = vec![
         JournalEvent::RunAccepted {
             run,
             seq: EventSeq::new(0),
-            workflow: sample_digest(1),
+            workflow,
         },
+        sample_admission(run, EventSeq::new(1), workflow),
         JournalEvent::AskScheduledEvent {
-            run,
-            seq: EventSeq::new(1),
-            step: StepIdx::new(8),
-            attempt: 1,
-        },
-        JournalEvent::AskAnsweredEvent {
             run,
             seq: EventSeq::new(2),
             step: StepIdx::new(8),
             attempt: 1,
         },
-        JournalEvent::RunFinished {
+        JournalEvent::AskAnsweredEvent {
             run,
             seq: EventSeq::new(3),
+            step: StepIdx::new(8),
+            attempt: 1,
+        },
+        JournalEvent::RunFinished {
+            run,
+            seq: EventSeq::new(4),
             result: SlotIdx::new(1),
             attempt: 1,
         },
     ];
 
-    assert_snapshot_tail_matches_full_summary(run, EventSeq::new(1), &events)
+    assert_snapshot_tail_matches_full_summary(run, EventSeq::new(2), &events)
 }
 
 #[test]
@@ -1399,21 +1423,23 @@ fn full_journal_recovery_replays_events() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
     let run = RunId::new(42);
+    let workflow = sample_digest(1);
 
     let accepted = JournalEvent::RunAccepted {
         run,
         seq: EventSeq::new(0),
-        workflow: sample_digest(1),
+        workflow,
     };
+    let admission = sample_admission(run, EventSeq::new(1), workflow);
     let started = JournalEvent::StepStarted {
         run,
-        seq: EventSeq::new(1),
+        seq: EventSeq::new(2),
         step: StepIdx::new(0),
         attempt: 1,
     };
     let finished = JournalEvent::RunFinished {
         run,
-        seq: EventSeq::new(2),
+        seq: EventSeq::new(3),
         result: SlotIdx::new(0),
         attempt: 1,
     };
@@ -1421,6 +1447,9 @@ fn full_journal_recovery_replays_events() {
     journal
         .append_journaled(&accepted)
         .expect("setup: append accepted");
+    journal
+        .append_journaled(&admission)
+        .expect("setup: append admission");
     journal
         .append_journaled(&started)
         .expect("setup: append started");
@@ -1431,7 +1460,7 @@ fn full_journal_recovery_replays_events() {
     let mut tracker = ActionReplayTracker::new();
     let replayed = recover_full_journal(&journal, run, &mut tracker, &[], &[])
         .expect("full journal recovery should succeed");
-    assert_eq!(replayed.len(), 3);
+    assert_eq!(replayed.len(), 4);
 }
 
 #[test]
@@ -1681,19 +1710,22 @@ fn verify_digests_returns_mismatch_when_ir_differs() {
         .append_journaled(&event)
         .expect("setup: append event");
 
+    let expected_ir = sample_digest(8);
+    let found_ir = sample_digest(9);
     let result = verify_digests(
         &journal,
         run,
         digest,
-        sample_digest(8),
-        sample_digest(9),
+        expected_ir,
+        found_ir,
         DigestCheck::WorkflowAndIr,
         None,
     );
-    assert!(matches!(
-        result,
-        Err(RecoveryError::CompiledIrDigestMismatch { .. })
-    ));
+    let Err(RecoveryError::CompiledIrDigestMismatch { expected, found }) = result else {
+        panic!("expected CompiledIrDigestMismatch, got {result:?}");
+    };
+    assert_eq!(expected, expected_ir);
+    assert_eq!(found, found_ir);
 }
 
 #[test]
@@ -1729,10 +1761,17 @@ fn verify_digests_full_level_checks_action_abi_digest() {
             policy_entries: Some(&[]),
         }),
     );
-    assert!(matches!(
-        result,
-        Err(RecoveryError::ActionAbiMismatch { action_id: a, .. }) if a == action_id
-    ));
+    let Err(RecoveryError::ActionAbiMismatch {
+        action_id: found_action_id,
+        expected,
+        found,
+    }) = result
+    else {
+        panic!("expected ActionAbiMismatch, got {result:?}");
+    };
+    assert_eq!(found_action_id, action_id);
+    assert_eq!(expected, matching_digest);
+    assert_eq!(found, mismatching_digest);
 }
 
 #[test]
@@ -1768,10 +1807,17 @@ fn verify_digests_full_level_checks_policy_digest() {
             policy_entries: Some(&[(step, matching_digest, mismatching_digest)]),
         }),
     );
-    assert!(matches!(
-        result,
-        Err(RecoveryError::PolicyDigestMismatch { step: s, .. }) if s == step
-    ));
+    let Err(RecoveryError::PolicyDigestMismatch {
+        step: found_step,
+        expected: found_expected,
+        found,
+    }) = result
+    else {
+        panic!("expected PolicyDigestMismatch, got {result:?}");
+    };
+    assert_eq!(found_step, step);
+    assert_eq!(found_expected, matching_digest);
+    assert_eq!(found, mismatching_digest);
 }
 
 #[test]
@@ -1811,6 +1857,105 @@ fn verify_digests_full_level_succeeds_with_all_matching() {
 }
 
 #[test]
+fn verify_digests_full_level_without_config_fails_closed() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(205);
+    let workflow_digest = sample_digest(7);
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: workflow_digest,
+        })
+        .expect("setup: append event");
+
+    let ir_digest = sample_digest(8);
+    let result = verify_digests(
+        &journal,
+        run,
+        workflow_digest,
+        ir_digest,
+        ir_digest,
+        DigestCheck::Full,
+        None,
+    );
+
+    let Err(RecoveryError::FullDigestCheckConfigMissing) = result else {
+        panic!("expected FullDigestCheckConfigMissing, got {result:?}");
+    };
+}
+
+#[test]
+fn verify_digests_full_level_without_action_config_fails_closed() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(206);
+    let workflow_digest = sample_digest(7);
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: workflow_digest,
+        })
+        .expect("setup: append event");
+
+    let ir_digest = sample_digest(8);
+    let result = verify_digests(
+        &journal,
+        run,
+        workflow_digest,
+        ir_digest,
+        ir_digest,
+        DigestCheck::Full,
+        Some(DigestCheckConfig {
+            action_abi_entries: None,
+            policy_entries: Some(&[]),
+        }),
+    );
+
+    let Err(RecoveryError::FullDigestCheckConfigMissing) = result else {
+        panic!("expected FullDigestCheckConfigMissing, got {result:?}");
+    };
+}
+
+#[test]
+fn verify_digests_full_level_without_policy_config_fails_closed() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(207);
+    let workflow_digest = sample_digest(7);
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: workflow_digest,
+        })
+        .expect("setup: append event");
+
+    let ir_digest = sample_digest(8);
+    let result = verify_digests(
+        &journal,
+        run,
+        workflow_digest,
+        ir_digest,
+        ir_digest,
+        DigestCheck::Full,
+        Some(DigestCheckConfig {
+            action_abi_entries: Some(&[]),
+            policy_entries: None,
+        }),
+    );
+
+    let Err(RecoveryError::FullDigestCheckConfigMissing) = result else {
+        panic!("expected FullDigestCheckConfigMissing, got {result:?}");
+    };
+}
+
+#[test]
 fn recover_full_journal_returns_no_recovery_data_when_empty() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
     let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
@@ -1822,6 +1967,379 @@ fn recover_full_journal_returns_no_recovery_data_when_empty() {
         panic!("expected NoRecoveryData, got {:?}", result);
     };
     assert_eq!(found_run, run);
+}
+
+#[test]
+fn recover_full_journal_without_admission_and_without_policy_expectation_fails_closed() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(1001);
+    let event = JournalEvent::RunAccepted {
+        run,
+        seq: EventSeq::new(0),
+        workflow: sample_digest(1),
+    };
+    journal
+        .append_journaled(&event)
+        .expect("setup: append event");
+
+    let mut tracker = ActionReplayTracker::new();
+    let result = recover_full_journal(&journal, run, &mut tracker, &[], &[]);
+    let Err(RecoveryError::PolicyDigestExpectationMissing { run: found_run }) = result else {
+        panic!("expected PolicyDigestExpectationMissing, got {result:?}");
+    };
+    assert_eq!(found_run, run);
+}
+
+#[test]
+fn recover_full_journal_without_admission_reports_expected_policy_digest() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(1002);
+    let step = StepIdx::new(4);
+    let expected = sample_digest(9);
+    let event = JournalEvent::RunAccepted {
+        run,
+        seq: EventSeq::new(0),
+        workflow: sample_digest(1),
+    };
+    journal
+        .append_journaled(&event)
+        .expect("setup: append event");
+
+    let mut tracker = ActionReplayTracker::new();
+    let result = recover_full_journal(&journal, run, &mut tracker, &[], &[(step, expected)]);
+    let Err(RecoveryError::PolicyDigestUnavailable {
+        run: found_run,
+        step: found_step,
+        expected: found_expected,
+    }) = result
+    else {
+        panic!("expected PolicyDigestUnavailable, got {result:?}");
+    };
+    assert_eq!(found_run, run);
+    assert_eq!(found_step, step);
+    assert_eq!(found_expected, expected);
+}
+
+#[test]
+fn recover_full_journal_with_admission_digest_mismatch_fails_closed() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(1003);
+    let expected = sample_digest(1);
+    let found = sample_digest(2);
+    let accepted = JournalEvent::RunAccepted {
+        run,
+        seq: EventSeq::new(0),
+        workflow: expected,
+    };
+    journal
+        .append_journaled(&accepted)
+        .expect("setup: append accepted");
+    journal
+        .append_journaled(&sample_admission(run, EventSeq::new(1), found))
+        .expect("setup: append admission");
+
+    let mut tracker = ActionReplayTracker::new();
+    let result = recover_full_journal(&journal, run, &mut tracker, &[], &[]);
+    let Err(RecoveryError::RunAdmissionArtifactDigestMismatch {
+        run: found_run,
+        expected: found_expected,
+        found: found_digest,
+    }) = result
+    else {
+        panic!("expected RunAdmissionArtifactDigestMismatch, got {result:?}");
+    };
+    assert_eq!(found_run, run);
+    assert_eq!(found_expected, expected);
+    assert_eq!(found_digest, found);
+}
+
+#[test]
+fn recover_full_journal_with_stale_other_run_admission_fails_closed() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(1010);
+    let stale_run = RunId::new(1011);
+    let digest = sample_digest(1);
+    let step = StepIdx::new(3);
+    let expected_policy = sample_digest(9);
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: digest,
+        })
+        .expect("setup: append accepted");
+    journal
+        .append_journaled(&sample_admission(stale_run, EventSeq::new(1), digest))
+        .expect("setup: append stale admission");
+
+    let mut tracker = ActionReplayTracker::new();
+    let result = recover_full_journal(&journal, run, &mut tracker, &[], &[(step, expected_policy)]);
+    let Err(RecoveryError::PolicyDigestUnavailable {
+        run: found_run,
+        step: found_step,
+        expected,
+    }) = result
+    else {
+        panic!("expected PolicyDigestUnavailable, got {result:?}");
+    };
+    assert_eq!(found_run, run);
+    assert_eq!(found_step, step);
+    assert_eq!(expected, expected_policy);
+}
+
+#[test]
+fn recover_full_journal_with_admission_policy_mismatch_fails_closed() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(1012);
+    let digest = sample_digest(1);
+    let step = StepIdx::new(4);
+    let expected_policy = sample_digest(9);
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: digest,
+        })
+        .expect("setup: append accepted");
+    journal
+        .append_journaled(&sample_admission(run, EventSeq::new(1), digest))
+        .expect("setup: append admission");
+
+    let mut tracker = ActionReplayTracker::new();
+    let result = recover_full_journal(&journal, run, &mut tracker, &[], &[(step, expected_policy)]);
+    let Err(RecoveryError::PolicyDigestMismatch {
+        step: found_step,
+        expected,
+        found,
+    }) = result
+    else {
+        panic!("expected PolicyDigestMismatch, got {result:?}");
+    };
+    assert_eq!(found_step, step);
+    assert_eq!(expected, expected_policy);
+    assert_eq!(found, relaxed_policy_digest());
+}
+
+#[test]
+fn recover_full_journal_with_admission_before_accepted_fails_closed() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(1004);
+    journal
+        .append_journaled(&sample_admission(run, EventSeq::new(0), sample_digest(1)))
+        .expect("setup: append admission");
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(1),
+            workflow: sample_digest(1),
+        })
+        .expect("setup: append accepted");
+
+    let mut tracker = ActionReplayTracker::new();
+    let result = recover_full_journal(&journal, run, &mut tracker, &[], &[]);
+    let Err(RecoveryError::ReplayDivergence { step, detail }) = result else {
+        panic!("expected ReplayDivergence, got {result:?}");
+    };
+    assert_eq!(step, StepIdx::ZERO);
+    assert_eq!(
+        detail,
+        format!(
+            "run {run:?} admission sequence invalid: expected {:?}, found {:?}",
+            EventSeq::new(2),
+            EventSeq::new(0)
+        )
+    );
+}
+
+#[test]
+fn recover_full_journal_with_admission_but_no_accepted_fails_closed() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(1005);
+    journal
+        .append_journaled(&sample_admission(run, EventSeq::new(0), sample_digest(1)))
+        .expect("setup: append admission");
+
+    let mut tracker = ActionReplayTracker::new();
+    let result = recover_full_journal(&journal, run, &mut tracker, &[], &[]);
+    let Err(RecoveryError::ReplayDivergence { step, detail }) = result else {
+        panic!("expected ReplayDivergence, got {result:?}");
+    };
+    assert_eq!(step, StepIdx::ZERO);
+    assert_eq!(
+        detail,
+        format!(
+            "run {run:?} run admission has no RunAccepted evidence at {:?}",
+            EventSeq::new(0)
+        )
+    );
+}
+
+#[test]
+fn recover_full_journal_with_late_admission_fails_closed() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(1006);
+    let digest = sample_digest(1);
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: digest,
+        })
+        .expect("setup: append accepted");
+    journal
+        .append_journaled(&JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::ZERO,
+            attempt: 1,
+        })
+        .expect("setup: append step");
+    journal
+        .append_journaled(&sample_admission(run, EventSeq::new(2), digest))
+        .expect("setup: append admission");
+
+    let mut tracker = ActionReplayTracker::new();
+    let result = recover_full_journal(&journal, run, &mut tracker, &[], &[]);
+    let Err(RecoveryError::ReplayDivergence { step, detail }) = result else {
+        panic!("expected ReplayDivergence, got {result:?}");
+    };
+    assert_eq!(step, StepIdx::ZERO);
+    assert_eq!(
+        detail,
+        format!(
+            "run {run:?} admission sequence invalid: expected {:?}, found {:?}",
+            EventSeq::new(1),
+            EventSeq::new(2)
+        )
+    );
+}
+
+#[test]
+fn recover_full_journal_with_duplicate_mismatching_admission_fails_closed() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(1007);
+    let digest = sample_digest(1);
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: digest,
+        })
+        .expect("setup: append accepted");
+    journal
+        .append_journaled(&sample_admission(run, EventSeq::new(1), digest))
+        .expect("setup: append first admission");
+    journal
+        .append_journaled(&sample_admission(run, EventSeq::new(2), sample_digest(2)))
+        .expect("setup: append duplicate admission");
+
+    let mut tracker = ActionReplayTracker::new();
+    let result = recover_full_journal(&journal, run, &mut tracker, &[], &[]);
+    let Err(RecoveryError::ReplayDivergence { step, detail }) = result else {
+        panic!("expected ReplayDivergence, got {result:?}");
+    };
+    assert_eq!(step, StepIdx::ZERO);
+    assert_eq!(
+        detail,
+        format!(
+            "run {run:?} duplicate RunAdmission evidence at {:?}",
+            EventSeq::new(2)
+        )
+    );
+}
+
+#[test]
+fn recover_full_journal_with_duplicate_same_digest_admission_fails_closed() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(1008);
+    let digest = sample_digest(1);
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: digest,
+        })
+        .expect("setup: append accepted");
+    journal
+        .append_journaled(&sample_admission(run, EventSeq::new(1), digest))
+        .expect("setup: append first admission");
+    journal
+        .append_journaled(&sample_admission(run, EventSeq::new(2), digest))
+        .expect("setup: append duplicate admission");
+
+    let mut tracker = ActionReplayTracker::new();
+    let result = recover_full_journal(&journal, run, &mut tracker, &[], &[]);
+    let Err(RecoveryError::ReplayDivergence { step, detail }) = result else {
+        panic!("expected ReplayDivergence, got {result:?}");
+    };
+    assert_eq!(step, StepIdx::ZERO);
+    assert_eq!(
+        detail,
+        format!(
+            "run {run:?} duplicate RunAdmission evidence at {:?}",
+            EventSeq::new(2)
+        )
+    );
+}
+
+#[test]
+fn recover_full_journal_with_duplicate_accepted_evidence_fails_closed() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(1009);
+    let digest = sample_digest(1);
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: digest,
+        })
+        .expect("setup: append accepted");
+    journal
+        .append_journaled(&sample_admission(run, EventSeq::new(1), digest))
+        .expect("setup: append admission");
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(2),
+            workflow: digest,
+        })
+        .expect("setup: append duplicate accepted");
+
+    let mut tracker = ActionReplayTracker::new();
+    let result = recover_full_journal(&journal, run, &mut tracker, &[], &[]);
+    let Err(RecoveryError::ReplayDivergence { step, detail }) = result else {
+        panic!("expected ReplayDivergence, got {result:?}");
+    };
+    assert_eq!(step, StepIdx::ZERO);
+    assert_eq!(
+        detail,
+        format!(
+            "run {run:?} duplicate RunAccepted evidence at {:?}",
+            EventSeq::new(2)
+        )
+    );
 }
 
 #[test]
@@ -1863,6 +2381,64 @@ fn replay_events_accumulates_state_from_multiple_events() {
     let replayed = replay_events(&events, &mut tracker, &[]).expect("replay should succeed");
     assert_eq!(replayed.len(), 3);
     assert!(tracker.is_resolved(action, step));
+}
+
+#[test]
+fn replay_events_rejects_duplicate_max_sequence() {
+    let run = RunId::new(31);
+    let events = vec![
+        JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::MAX,
+            workflow: sample_digest(1),
+        },
+        JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::MAX,
+            workflow: sample_digest(1),
+        },
+    ];
+
+    let mut tracker = ActionReplayTracker::new();
+    let result = replay_events(&events, &mut tracker, &[]);
+    let Err(RecoveryError::ReplayDivergence { step, detail }) = result else {
+        panic!("expected ReplayDivergence, got {result:?}");
+    };
+    assert_eq!(step, StepIdx::ZERO);
+    assert_eq!(
+        detail,
+        format!(
+            "journal sequence overflow after {} before {}",
+            EventSeq::MAX.get(),
+            EventSeq::MAX.get()
+        )
+    );
+}
+
+#[test]
+fn replay_events_rejects_action_without_expected_abi_evidence() {
+    let run = RunId::new(32);
+    let action = ActionId::new(1);
+    let missing_action = ActionId::new(2);
+    let step = StepIdx::new(0);
+    let events = vec![JournalEvent::ActionScheduled {
+        run,
+        seq: EventSeq::new(0),
+        step,
+        action: missing_action,
+        attempt: 1,
+    }];
+
+    let mut tracker = ActionReplayTracker::new();
+    let result = replay_events(&events, &mut tracker, &[(action, sample_digest(1))]);
+    let Err(RecoveryError::ReplayDivergence { step, detail }) = result else {
+        panic!("expected ReplayDivergence, got {result:?}");
+    };
+    assert_eq!(step, StepIdx::ZERO);
+    assert_eq!(
+        detail,
+        format!("action {missing_action:?} missing action ABI digest evidence")
+    );
 }
 
 #[test]
@@ -2153,7 +2729,17 @@ fn recovery_error_action_abi_mismatch_constructs_correctly() {
         expected,
         found,
     };
-    assert!(matches!(err, RecoveryError::ActionAbiMismatch { action_id: a, .. } if a == action_id));
+    let RecoveryError::ActionAbiMismatch {
+        action_id: found_action,
+        expected: found_expected,
+        found: found_digest,
+    } = err
+    else {
+        panic!("expected ActionAbiMismatch");
+    };
+    assert_eq!(found_action, action_id);
+    assert_eq!(found_expected, expected);
+    assert_eq!(found_digest, found);
 }
 
 #[test]
@@ -2166,7 +2752,17 @@ fn recovery_error_policy_digest_mismatch_constructs_correctly() {
         expected,
         found,
     };
-    assert!(matches!(err, RecoveryError::PolicyDigestMismatch { step: s, .. } if s == step));
+    let RecoveryError::PolicyDigestMismatch {
+        step: found_step,
+        expected: found_expected,
+        found: found_digest,
+    } = err
+    else {
+        panic!("expected PolicyDigestMismatch");
+    };
+    assert_eq!(found_step, step);
+    assert_eq!(found_expected, expected);
+    assert_eq!(found_digest, found);
 }
 
 #[test]

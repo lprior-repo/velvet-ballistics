@@ -8,6 +8,7 @@ use vb_core::frame::RunFrame;
 use vb_core::ids::{RunId, SlotIdx};
 use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
+use vb_core::{CapabilitySet, RuntimePolicy, WorkflowDigest};
 use vb_storage::recovery::{ActionReplayTracker, recover_full_journal};
 use vb_storage::{EventSeq, JournalEvent};
 
@@ -83,14 +84,43 @@ fn captured_collect_extra(run: &mut RunFrame, collector: SlotIdx) -> Result<Vec<
 }
 
 fn slot_written_extra(run: RunId, slot: SlotIdx, extra: Vec<u8>) -> JournalEvent {
+    slot_written_extra_at_seq(run, EventSeq::new(0), slot, extra)
+}
+
+fn slot_written_extra_at_seq(
+    run: RunId,
+    seq: EventSeq,
+    slot: SlotIdx,
+    extra: Vec<u8>,
+) -> JournalEvent {
     JournalEvent::SlotWrittenEvent {
         run,
-        seq: EventSeq::new(0),
+        seq,
         attempt: 1,
         slot,
         value: None,
         extra: Some(extra),
     }
+}
+
+fn append_recovery_admission(journal: &vb_storage::FjallJournal, run: RunId) -> Result<(), String> {
+    let digest = WorkflowDigest::from_bytes([0xCA; 32]);
+    journal
+        .append_strict(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: digest,
+        })
+        .map_err(|e| format!("append run accepted: {e:?}"))?;
+    journal
+        .append_strict(&JournalEvent::RunAdmission {
+            run,
+            seq: EventSeq::new(1),
+            artifact_digest: digest,
+            granted_capabilities: CapabilitySet::empty(),
+            policy: RuntimePolicy::Relaxed,
+        })
+        .map_err(|e| format!("append run admission: {e:?}"))
 }
 
 fn assert_slot_list_items(
@@ -2170,8 +2200,14 @@ fn collect_pagination_extra_recovered_journal_rejects_corrupt_bytes() -> Result<
         vb_storage::FjallJournal::open(dir.path(), Some(vb_storage::FjallConfig::default()))
             .map_err(|e| format!("journal open: {e:?}"))?;
     let run = RunId::new(9);
+    append_recovery_admission(&journal, run)?;
     journal
-        .append_strict(&slot_written_extra(run, SlotIdx::new(1), vec![255, 0, 7]))
+        .append_strict(&slot_written_extra_at_seq(
+            run,
+            EventSeq::new(2),
+            SlotIdx::new(1),
+            vec![255, 0, 7],
+        ))
         .map_err(|e| format!("append: {e:?}"))?;
 
     let mut tracker = ActionReplayTracker::new();
@@ -2220,8 +2256,14 @@ fn collect_pagination_extra_recovered_journal_round_trips_and_resumes_next_page(
         .capture_extra(run.run_id(), collector)
         .map_err(|e| format!("capture: {e:?}"))?
         .ok_or("expected pagination extra")?;
+    append_recovery_admission(&journal, run.run_id())?;
     journal
-        .append_strict(&slot_written_extra(run.run_id(), collector, extra))
+        .append_strict(&slot_written_extra_at_seq(
+            run.run_id(),
+            EventSeq::new(2),
+            collector,
+            extra,
+        ))
         .map_err(|e| format!("append: {e:?}"))?;
 
     let mut tracker = ActionReplayTracker::new();
@@ -2283,8 +2325,14 @@ fn collect_pagination_extra_recovered_journal_rejects_identity_mismatch() -> Res
     let collector = SlotIdx::new(1);
     let extra = captured_collect_extra(&mut run, collector)?;
     let durable_run = RunId::new(2);
+    append_recovery_admission(&journal, durable_run)?;
     journal
-        .append_strict(&slot_written_extra(durable_run, collector, extra))
+        .append_strict(&slot_written_extra_at_seq(
+            durable_run,
+            EventSeq::new(2),
+            collector,
+            extra,
+        ))
         .map_err(|e| format!("append: {e:?}"))?;
 
     let mut tracker = ActionReplayTracker::new();
