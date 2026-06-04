@@ -106,8 +106,14 @@ impl TimerWheel {
     /// Fires all timers whose deadlines have passed.
     ///
     /// Returns the fired entries in deadline order.
+    ///
+    /// Bounded output: pre-allocates output `Vec` to the current pending timer count,
+    /// capping the worst-case allocation to `self.by_run.len()`. The intermediate
+    /// `expired_keys` buffer is bounded by the number of distinct deadline instants
+    /// that have expired — at most `self.by_deadline.len()` but typically far fewer.
     pub fn fire_expired(&mut self, now: Instant) -> Vec<TimerEntry> {
-        let mut fired = Vec::new();
+        let capacity = self.by_run.len();
+        let mut fired = Vec::with_capacity(capacity);
         let expired_keys: Vec<Instant> = self
             .by_deadline
             .range(..=now)
