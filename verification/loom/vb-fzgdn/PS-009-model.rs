@@ -2,52 +2,77 @@
 //! Production binding: crates/vb_runtime/src/shard/timer_wheel.rs
 //!
 //! Models: when deadline == current tick, timer fires immediately without races.
+//!
+//! BOUND to production types:
+//! - `RunId` from `vb_core::ids` replaces raw `u64` run identifiers
+//! - `PendingTimerKind` from `vb_runtime::shard::types` for timer kind
+//! - `HashMap<RunId, TimerEntry>` replaces `Vec<TimerEntry>` for O(1) cancel
+//! - `Instant` deadline modeled as `u64` ticks for loom determinism
 
 #![cfg(loom)]
 
+use loom::collections::HashMap;
 use loom::sync::Arc;
 use loom::sync::Mutex;
 use loom::thread;
 
+use vb_core::ids::RunId;
+use vb_runtime::shard::types::PendingTimerKind;
+
+/// Timer entry bound to production `TimerEntry`.
 #[derive(Debug, Clone, Copy)]
 struct TimerEntry {
-    run_id: u64,
+    run: RunId,
     deadline: u64,
+    kind: PendingTimerKind,
 }
 
+/// Timer wheel model using HashMap for run-indexed lookup.
 struct TimerWheelModel {
-    entries: Vec<TimerEntry>,
+    by_run: HashMap<RunId, TimerEntry>,
 }
 
 impl TimerWheelModel {
-    fn new() -> Self { Self { entries: Vec::new() } }
+    fn new() -> Self {
+        Self {
+            by_run: HashMap::new(),
+        }
+    }
 
-    fn insert(&mut self, run_id: u64, deadline: u64) {
-        self.entries.retain(|e| e.run_id != run_id);
-        self.entries.push(TimerEntry { run_id, deadline });
+    fn insert(&mut self, run: RunId, deadline: u64, kind: PendingTimerKind) {
+        self.by_run.remove(&run);
+        self.by_run.insert(
+            run,
+            TimerEntry { run, deadline, kind },
+        );
     }
 
     fn fire_expired(&mut self, now: u64) -> Vec<TimerEntry> {
         let mut fired = Vec::new();
-        self.entries.retain(|e| {
-            if e.deadline <= now {
-                fired.push(*e);
-                false
-            } else {
-                true
+        let mut expired_runs = Vec::new();
+        for (&run, entry) in self.by_run.iter() {
+            if entry.deadline <= now {
+                expired_runs.push(run);
             }
-        });
+        }
+        for run in expired_runs {
+            if let Some(entry) = self.by_run.remove(&run) {
+                fired.push(entry);
+            }
+        }
         fired
     }
 
-    fn len(&self) -> usize { self.entries.len() }
+    fn len(&self) -> usize {
+        self.by_run.len()
+    }
 }
 
 #[test]
 fn ps_009_zero_duration_fires_immediately() {
     loom::model(|| {
         let mut wheel = TimerWheelModel::new();
-        wheel.insert(1, 0);
+        wheel.insert(RunId::new(1), 0, PendingTimerKind::Wait);
         let fired = wheel.fire_expired(0);
         assert_eq!(fired.len(), 1);
         assert_eq!(wheel.len(), 0);
@@ -62,7 +87,7 @@ fn ps_009_concurrent_insert_and_fire() {
         let w1 = wheel.clone();
         let t1 = thread::spawn(move || {
             let mut guard = w1.lock().unwrap();
-            guard.insert(1, 50);
+            guard.insert(RunId::new(1), 50, PendingTimerKind::Wait);
         });
 
         let w2 = wheel.clone();
@@ -77,5 +102,19 @@ fn ps_009_concurrent_insert_and_fire() {
         let guard = wheel.lock().unwrap();
         // If inserted at deadline=50 and fired at now=100, entry should be gone
         assert_eq!(guard.len(), 0);
+    });
+}
+
+#[test]
+fn ps_009_deadline_equal_to_now_fires() {
+    loom::model(|| {
+        let mut wheel = TimerWheelModel::new();
+        wheel.insert(RunId::new(1), 42, PendingTimerKind::Ask);
+        wheel.insert(RunId::new(2), 43, PendingTimerKind::Wait);
+        // Fire at exactly deadline=42 should include that timer
+        let fired = wheel.fire_expired(42);
+        assert_eq!(fired.len(), 1);
+        assert_eq!(fired[0].run, RunId::new(1));
+        assert_eq!(wheel.len(), 1);
     });
 }
