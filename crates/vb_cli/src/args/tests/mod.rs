@@ -1,6 +1,6 @@
 use crate::args::{
-    ActionRegistryMode, Command, DurabilityMode, EmitTarget, OutputFormat, ParseError, StepTarget,
-    VerifyProfile, parse_args,
+    ActionRegistryMode, Command, DiffMode, DurabilityMode, EmitTarget, OutputFormat, ParseError,
+    StepTarget, VerifyProfile, parse_args,
 };
 use crate::commands_journal::TraceStatus;
 use std::ffi::OsString;

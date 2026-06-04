@@ -24,7 +24,7 @@ use std::path::PathBuf;
 
 // Import from the crate — these exist
 use crate::args::{
-    ActionRegistryMode, Command, DurabilityMode, EmitTarget, OutputFormat, ParseError,
+    ActionRegistryMode, Command, DiffMode, DurabilityMode, EmitTarget, OutputFormat, ParseError,
     StatusOptions, VerifyProfile,
 };
 use crate::exit_code::CliExitCode;
@@ -442,11 +442,11 @@ fn command_mode_answer_is_storage() {
 #[test]
 fn command_mode_diff_is_storage() {
     let cmd = Command::Diff {
-        workflow: None,
-        against: None,
-        run_a: Some("1".to_string()),
-        run_b: Some("2".to_string()),
-        db: Some(PathBuf::from("/tmp/journal")),
+        diff_mode: DiffMode::RunAgainst {
+            run_a: "1".to_string(),
+            run_b: "2".to_string(),
+            db: PathBuf::from("/tmp/journal"),
+        },
         output: OutputFormat::Text,
     };
     assert_eq!(command_mode(&cmd), CommandMode::Storage);
@@ -678,9 +678,11 @@ fn command_mode_all_25_command_variants_are_classified() {
     );
     assert_eq!(
         command_mode(&Command::Diff {
-            run_a: "1".to_string(),
-            run_b: "2".to_string(),
-            db: PathBuf::from("/tmp/j"),
+            diff_mode: DiffMode::RunAgainst {
+                run_a: "1".to_string(),
+                run_b: "2".to_string(),
+                db: PathBuf::from("/tmp/j"),
+            },
             output: OutputFormat::Text,
         }),
         CommandMode::Storage

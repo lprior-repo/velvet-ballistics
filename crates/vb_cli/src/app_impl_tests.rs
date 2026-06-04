@@ -7,7 +7,7 @@
 #![allow(clippy::doc_markdown)]
 
 use super::{
-    ActionRegistryMode, CliExitCode, Command, DurabilityMode, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
+    ActionRegistryMode, CliExitCode, Command, DiffMode, DurabilityMode, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
     INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
     InputMappingError, OutputFormat, ParseError, RunStatus, StepTarget, StorageWorkflowResolver,
     action_contract_detail, action_idempotency_name, action_table_rows, build_step_frame,
@@ -1415,11 +1415,11 @@ mod mode_activation {
     #[test]
     fn command_mode_diff_is_storage() {
         let cmd = Command::Diff {
-            workflow: None,
-            against: None,
-            run_a: Some("1".to_string()),
-            run_b: Some("2".to_string()),
-            db: Some(PathBuf::from("/tmp/journal")),
+            diff_mode: DiffMode::RunAgainst {
+                run_a: "1".to_string(),
+                run_b: "2".to_string(),
+                db: PathBuf::from("/tmp/journal"),
+            },
             output: OutputFormat::Text,
         };
         assert_eq!(command_mode(&cmd), CommandMode::Storage);
@@ -1651,11 +1651,11 @@ mod mode_activation {
         );
         assert_eq!(
             command_mode(&Command::Diff {
-                workflow: None,
-                against: None,
-                run_a: Some("1".to_string()),
-                run_b: Some("2".to_string()),
-                db: Some(PathBuf::from("/tmp/j")),
+                diff_mode: DiffMode::RunAgainst {
+                    run_a: "1".to_string(),
+                    run_b: "2".to_string(),
+                    db: PathBuf::from("/tmp/j"),
+                },
                 output: OutputFormat::Text,
             }),
             CommandMode::Storage
