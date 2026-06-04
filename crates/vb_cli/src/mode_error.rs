@@ -89,7 +89,7 @@ pub(crate) fn command_mode(command: &Command) -> CommandMode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::args::{Command, DurabilityMode, EmitTarget, OutputFormat, VerifyProfile};
+    use crate::args::{Command, DiffMode, DurabilityMode, EmitTarget, OutputFormat, VerifyProfile};
     use std::path::PathBuf;
 
     fn dummy_path() -> PathBuf {
@@ -191,11 +191,11 @@ mod tests {
     #[test]
     fn command_mode_returns_storage_for_diff() {
         let cmd = Command::Diff {
-            workflow: None,
-            against: None,
-            run_a: Some("1".into()),
-            run_b: Some("2".into()),
-            db: Some(dummy_path()),
+            diff_mode: DiffMode::RunAgainst {
+                run_a: "1".into(),
+                run_b: "2".into(),
+                db: dummy_path(),
+            },
             output: OutputFormat::Text,
         };
         assert_eq!(command_mode(&cmd), CommandMode::Storage);
