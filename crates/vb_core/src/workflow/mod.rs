@@ -1,6 +1,8 @@
 #![forbid(unsafe_code)]
 //! Compiled workflow IR.
 
+pub mod compiled_query;
+pub mod compiled_slug;
 pub mod lifecycle;
 pub mod types;
 pub mod validation;
