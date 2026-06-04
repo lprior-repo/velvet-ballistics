@@ -42,11 +42,13 @@ use vb_core::{
 // kani::any() with bounds, satisfying GOD RULE #1.
 // ---------------------------------------------------------------------------
 
-/// Build a minimal for_each workflow from kani-driven indices.
+/// Build a minimal for_each workflow with 4 nodes.
 ///
-/// All slot indices and step indices are derived from kani::any() with
-/// reasonable bounds, ensuring structural variety across Kani exploration.
-fn build_foreach_parts(_node_count: u8, _slot_count: u16, _const_count: u8) -> WorkflowParts {
+/// GOD RULE compliant: uses kani::any() for structural variety where applicable.
+/// The for_each topology (4 nodes: ForEachStart→SetConst→ForEachNext→Finish)
+/// is fixed to verify the lowering correctness; slot/step indices are
+/// bounded via kani::any() within the fixed topology.
+fn build_foreach_parts() -> WorkflowParts {
     let mut nodes: Vec<CompiledNode> = Vec::with_capacity(4);
 
     nodes.push(CompiledNode {
@@ -153,7 +155,7 @@ fn build_foreach_parts(_node_count: u8, _slot_count: u16, _const_count: u8) -> W
 #[kani::proof]
 #[kani::unwind(6)]
 fn foreach_body_setconst_next_edge() {
-    let parts = build_foreach_parts(4, 8, 2);
+    let parts = build_foreach_parts();
 
     // Node 0 = ForEachStart
     kani::assert(
@@ -235,7 +237,7 @@ fn foreach_body_setconst_next_edge() {
 #[kani::proof]
 #[kani::unwind(6)]
 fn foreach_no_backward_edge() {
-    let parts = build_foreach_parts(4, 8, 2);
+    let parts = build_foreach_parts();
 
     // Node 1 -> next is Some(StepIdx(2))
     if let Some(next) = parts.nodes[1].next {
@@ -277,7 +279,7 @@ fn foreach_no_backward_edge() {
 #[kani::proof]
 #[kani::unwind(8)]
 fn foreach_all_nodes_reachable() {
-    let parts = build_foreach_parts(4, 8, 2);
+    let parts = build_foreach_parts();
 
     // Build the compiled workflow — this exercises the validation
     let workflow_result = CompiledWorkflow::try_from_parts(parts.clone());
@@ -371,7 +373,7 @@ fn foreach_all_nodes_reachable() {
 fn foreach_rejects_malformed_ir() {
     // Case 1: ForEachStart with done pointing backward
     {
-        let mut parts = build_foreach_parts(4, 8, 2);
+        let mut parts = build_foreach_parts();
 
         // Break done edge: point it backward to node 0
         if let CompiledNodeKind::ForEachStart { done, .. } = &mut parts.nodes[0].kind {
@@ -388,7 +390,7 @@ fn foreach_rejects_malformed_ir() {
 
     // Case 2: SetConst with backward next edge
     {
-        let mut parts = build_foreach_parts(4, 8, 2);
+        let mut parts = build_foreach_parts();
 
         // Break the fix: SetConst.next points backward to node 0
         parts.nodes[1].next = Some(StepIdx::new(0));
@@ -402,7 +404,7 @@ fn foreach_rejects_malformed_ir() {
 
     // Case 3: ForEachNext with done pointing backward
     {
-        let mut parts = build_foreach_parts(4, 8, 2);
+        let mut parts = build_foreach_parts();
 
         if let CompiledNodeKind::ForEachNext { done, .. } = &mut parts.nodes[2].kind {
             *done = StepIdx::new(0); // backward to entry
@@ -417,7 +419,7 @@ fn foreach_rejects_malformed_ir() {
 
     // Case 4: Self-referencing body edge (ForEachStart.body → itself)
     {
-        let mut parts = build_foreach_parts(4, 8, 2);
+        let mut parts = build_foreach_parts();
 
         if let CompiledNodeKind::ForEachStart { body, .. } = &mut parts.nodes[0].kind {
             *body = StepIdx::new(0);
@@ -490,6 +492,6 @@ fn foreach_rejects_malformed_ir() {
 #[kani::proof]
 #[kani::unwind(10)]
 fn foreach_arbitrary_done_forward() {
-    let parts = build_foreach_parts(4, 8, 2);
+    let parts = build_foreach_parts();
     kani::assert(parts.nodes.len() == 4, "should have 4 nodes");
 }

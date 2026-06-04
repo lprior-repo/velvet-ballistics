@@ -18,7 +18,7 @@
 use vb_core::frame::RunFrame;
 use vb_core::ids::{RunId, StepIdx};
 use vb_core::value::SlotValue;
-use vb_core::workflow::{CompiledWorkflow, ResourceContract, WorkflowParts};
+use vb_core::workflow::CompiledWorkflow;
 
 use crate::shard::ResumeError;
 use crate::shard::types::{ResumeStatus, RunState, RuntimeEvent, RuntimeState, Shard, ShardConfig};
@@ -65,50 +65,19 @@ fn new_shard() -> Shard {
     Shard::new(ShardConfig::default())
 }
 
-/// Constructs a minimal CompiledWorkflow for use in RunState.
-/// Uses the Kani-specific unchecked constructor (kani_from_parts_unchecked)
-/// with empty parts to avoid re-proving workflow validation.
+/// Constructs an arbitrary CompiledWorkflow via kani::any().
+/// GOD RULE compliant: uses kani::Arbitrary for structural generation.
 fn minimal_workflow() -> CompiledWorkflow {
-    let parts = WorkflowParts {
-        name: Box::from("kani-minimal"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: Box::from([]),
-        expressions: Box::from([]),
-        accessors: Box::from([]),
-        constants: Box::from([]),
-        slot_count: 2,
-        symbols_count: 0,
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract {
-            max_steps: 1,
-            max_slots: 2,
-            max_constants: 0,
-            max_accessors: 0,
-            max_expressions: 0,
-            max_expr_stack: 0,
-            max_step_budget_per_tick: 1000,
-            max_transitions_per_tick: 1000,
-            max_input_bytes: 1024,
-            max_output_bytes: 1024,
-            max_blob_bytes: 0,
-            max_ipc_payload_bytes: 1024,
-            max_retry_attempts: 3,
-            max_fanout: 4,
-            max_collect_items: 0,
-            max_queue_depth: 0,
-            max_journal_batch_bytes: 65536,
-            allows_secret_results: false,
-        },
-        step_names: Box::from([]),
-    };
-    CompiledWorkflow::kani_from_parts_unchecked(parts)
+    // kani::Arbitrary for CompiledWorkflow uses bounded WorkflowParts internally
+    kani::any()
 }
 
-/// Constructs a minimal RunState for inserting into shard.runs.
-/// This is used for handle_resume() guard-path testing where
-/// the RunState internals are not deeply accessed.
-fn minimal_run_state(run: RunId) -> RunState {
-    let frame = RunFrame::new(run, StepIdx::new(0), 1, 1).expect("minimal RunFrame construction");
+/// Constructs a RunState with arbitrary (kani::any) RunFrame and CompiledWorkflow.
+/// GOD RULE compliant: uses kani::Arbitrary for structural generation.
+/// Bounded: RunFrame uses step_count <= 8, slot_count <= 8.
+fn minimal_run_state(_run: RunId) -> RunState {
+    // Use kani::any() for structural generation — no hardcoded shapes
+    let frame: RunFrame = kani::any();
     let workflow = minimal_workflow();
     RunState {
         frame,

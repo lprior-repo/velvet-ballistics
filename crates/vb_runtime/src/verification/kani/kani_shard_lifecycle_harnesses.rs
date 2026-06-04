@@ -27,7 +27,7 @@ use vb_core::action::{
 use vb_core::frame::StepState;
 use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, Taint};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+use vb_core::workflow::CompiledWorkflow;
 
 use crate::ValueStore;
 use crate::engine::RetryPolicy;
@@ -98,65 +98,14 @@ fn any_pending_timer() -> PendingTimer {
     }
 }
 
-fn make_minimal_run_state(step_count: u16) -> RunState {
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::ZERO),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Do {
-            action: ActionId::new(0),
-            input: SlotIdx::ZERO,
-        },
-    };
-    let retry_check_node = CompiledNode {
-        id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::RetryCheck {
-            policy_slot: SlotIdx::new(1),
-            body: StepIdx::ZERO,
-            exhausted: StepIdx::new(2),
-        },
-    };
-    let finish_node = CompiledNode {
-        id: StepIdx::new(2),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::ZERO,
-        },
-    };
-    let mut nodes = vec![node, retry_check_node, finish_node];
-    nodes.truncate(usize::from(step_count).min(3));
-    let nodes = nodes.into_boxed_slice();
+/// Constructs a RunState with fully arbitrary (kani::any) WorkflowParts and RunFrame.
+/// GOD RULE compliant: uses kani::Arbitrary for all production types.
+/// Bounded: WorkflowParts uses node_count <= 8, RunFrame uses step_count <= 8.
+fn make_minimal_run_state() -> RunState {
+    // Use kani::any() for structural generation — no hardcoded shapes
+    let workflow: vb_core::workflow::CompiledWorkflow = kani::any();
+    let frame: vb_core::frame::RunFrame = kani::any();
 
-    let parts = WorkflowParts {
-        name: Box::from("kani_test"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([0xAB; 32]),
-        nodes,
-        expressions: Box::from([]),
-        accessors: Box::from([]),
-        constants: Box::from([]),
-        slot_count: 2,
-        symbols_count: 0,
-        entry: StepIdx::ZERO,
-        step_names: Box::from([]),
-        resource_contract: ResourceContract::DEFAULT,
-    };
-    let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).unwrap();
-    let frame = vb_core::frame::RunFrame::new(
-        RunId::new(1),
-        workflow.entry(),
-        workflow.node_count(),
-        workflow.slot_count(),
-    )
-    .unwrap();
     RunState {
         frame,
         workflow,
@@ -277,7 +226,7 @@ fn kani_next_generation_monotonicity() {
 #[kani::proof]
 #[kani::unwind(5)]
 fn kani_terminal_run_rejects_completion() {
-    let mut state = make_minimal_run_state(3);
+    let mut state = make_minimal_run_state();
     let ticket = any_ticket();
 
     // Set step to Running so validate_action_completion doesn't reject first
@@ -327,7 +276,7 @@ fn kani_terminal_run_rejects_completion() {
 #[kani::proof]
 #[kani::unwind(5)]
 fn kani_retry_attempt_monotonicity() {
-    let mut state = make_minimal_run_state(3);
+    let mut state = make_minimal_run_state();
     let ticket = any_ticket();
 
     // Set up state to allow record_retry_attempt
@@ -499,7 +448,7 @@ fn kani_timer_fire_consumes_atomically() {
 #[kani::proof]
 #[kani::unwind(5)]
 fn kani_retry_attempt_overflow_fail_closed() {
-    let mut state = make_minimal_run_state(3);
+    let mut state = make_minimal_run_state();
 
     // Set up a ticket at u16::MAX
     let step_idx = StepIdx::new(0);
@@ -542,7 +491,7 @@ fn kani_retry_attempt_overflow_fail_closed() {
 #[kani::proof]
 #[kani::unwind(5)]
 fn kani_validate_action_completion_step_state() {
-    let mut state = make_minimal_run_state(3);
+    let mut state = make_minimal_run_state();
     let ticket = any_ticket();
 
     let step_idx = ticket.step;
@@ -607,7 +556,7 @@ fn kani_validate_action_completion_step_state() {
 #[kani::proof]
 #[kani::unwind(10)]
 fn kani_retry_exhaustion() {
-    let mut state = make_minimal_run_state(3);
+    let mut state = make_minimal_run_state();
     let ticket = any_ticket();
 
     // Set up the state: action_attempts at step >= policy.max_attempts
@@ -661,7 +610,7 @@ fn kani_retry_exhaustion() {
 #[kani::proof]
 #[kani::unwind(10)]
 fn kani_retry_terminal_typing() {
-    let mut state = make_minimal_run_state(3);
+    let mut state = make_minimal_run_state();
     let ticket = any_ticket();
 
     let step_idx = ticket.step;
@@ -720,7 +669,7 @@ fn kani_retry_terminal_typing() {
 #[kani::proof]
 #[kani::unwind(15)]
 fn kani_retry_convergence() {
-    let mut state = make_minimal_run_state(3);
+    let mut state = make_minimal_run_state();
 
     let max_attempts: u16 = kani::any();
     kani::assume(max_attempts > 0);
