@@ -2,112 +2,6 @@
   "kani-version": "0.67.0",
   "file-version": "0.1",
   "standard-harnesses": {
-    "crates/vb_storage/src/kani_admission.rs": [
-      "kani_admission::admit_compiled_artifact_kani",
-      "kani_admission::submit_artifact_kani",
-      "kani_admission::submit_artifact_with_contracts_kani",
-      "kani_admission::verification_proof_all_claim_flags_unconditional",
-      "kani_admission::verification_proof_digest_binding",
-      "kani_admission::verification_proof_digest_binding_relaxed"
-    ],
-    "crates/vb_storage/src/kani_codec.rs": [
-      "kani_codec::kani_arbitrary_header_60_bytes",
-      "kani_codec::kani_bad_crc",
-      "kani_codec::kani_bad_magic_bytes",
-      "kani_codec::kani_decode_header_exhaustive_error_coverage",
-      "kani_codec::kani_future_schema_version",
-      "kani_codec::kani_past_schema_version",
-      "kani_codec::kani_truncated_header_30_bytes",
-      "kani_codec::kani_truncated_header_59_bytes",
-      "kani_codec::kani_truncated_header_zero_bytes",
-      "kani_codec::kani_wrong_magic_any_value"
-    ],
-    "crates/vb_storage/src/kani_digest_checks_vb_2bzz/action.rs": [
-      "kani_digest_checks_vb_2bzz::action::kani_check_action_abi_all_match",
-      "kani_digest_checks_vb_2bzz::action::kani_check_action_abi_empty",
-      "kani_digest_checks_vb_2bzz::action::kani_check_action_abi_fail_fast",
-      "kani_digest_checks_vb_2bzz::action::kani_check_action_abi_first_entry_mismatch",
-      "kani_digest_checks_vb_2bzz::action::kani_check_action_abi_mismatch_last",
-      "kani_digest_checks_vb_2bzz::action::kani_check_action_abi_no_panic",
-      "kani_digest_checks_vb_2bzz::action::kani_check_action_abi_single_entry_mismatch"
-    ],
-    "crates/vb_storage/src/kani_digest_checks_vb_2bzz/policy.rs": [
-      "kani_digest_checks_vb_2bzz::policy::kani_check_policy_all_match",
-      "kani_digest_checks_vb_2bzz::policy::kani_check_policy_empty",
-      "kani_digest_checks_vb_2bzz::policy::kani_check_policy_fail_fast",
-      "kani_digest_checks_vb_2bzz::policy::kani_check_policy_first_entry_mismatch",
-      "kani_digest_checks_vb_2bzz::policy::kani_check_policy_mismatch_last",
-      "kani_digest_checks_vb_2bzz::policy::kani_check_policy_no_panic",
-      "kani_digest_checks_vb_2bzz::policy::kani_check_policy_single_entry_mismatch"
-    ],
-    "crates/vb_storage/src/kani_hydrate_proofs.rs": [
-      "kani_hydrate_proofs::kani_dimensions_positive_accepts_positive",
-      "kani_hydrate_proofs::kani_dimensions_positive_rejects_both_zero",
-      "kani_hydrate_proofs::kani_dimensions_positive_rejects_zero_slot",
-      "kani_hydrate_proofs::kani_dimensions_positive_rejects_zero_step",
-      "kani_hydrate_proofs::kani_events_preconditions_empty",
-      "kani_hydrate_proofs::kani_events_preconditions_non_empty",
-      "kani_hydrate_proofs::kani_has_evidence_all_empty",
-      "kani_hydrate_proofs::kani_has_evidence_slots_non_empty",
-      "kani_hydrate_proofs::kani_has_evidence_tail_non_empty",
-      "kani_hydrate_proofs::kani_preconditions_all_met",
-      "kani_hydrate_proofs::kani_preconditions_false_run_mismatch",
-      "kani_hydrate_proofs::kani_run_matches_event_differs",
-      "kani_hydrate_proofs::kani_run_matches_snapshot_differs",
-      "kani_hydrate_proofs::kani_run_matches_true",
-      "kani_hydrate_proofs::kani_seq_after_false_before",
-      "kani_hydrate_proofs::kani_seq_after_false_equal",
-      "kani_hydrate_proofs::kani_seq_after_true"
-    ],
-    "crates/vb_storage/src/kani_postcard_envelope_wire.rs": [
-      "kani_postcard_envelope_wire::kani_harness_bad_magic_no_allocation",
-      "kani_postcard_envelope_wire::kani_harness_crc_before_digest",
-      "kani_postcard_envelope_wire::kani_harness_digest_before_postcard",
-      "kani_postcard_envelope_wire::kani_harness_payload_len_bounds",
-      "kani_postcard_envelope_wire::kani_harness_storage_decode_order"
-    ],
-    "crates/vb_storage/src/kani_record_crc.rs": [
-      "kani_record_crc::kani_record_crc_accepts_matching",
-      "kani_record_crc::kani_record_crc_all_ones_header",
-      "kani_record_crc::kani_record_crc_detects_single_bit_flip",
-      "kani_record_crc::kani_record_crc_rejects_mismatch",
-      "kani_record_crc::kani_record_crc_rejects_zero"
-    ],
-    "crates/vb_storage/src/kani_record_kind.rs": [
-      "kani_record_kind::check_all_existing_kinds_known",
-      "kani_record_kind::check_journal_family_exhaustive",
-      "kani_record_kind::check_kind_28_blob_family_rejected",
-      "kani_record_kind::check_kind_28_journal_family",
-      "kani_record_kind::check_kind_28_known",
-      "kani_record_kind::check_kind_28_snapshot_family_rejected",
-      "kani_record_kind::check_kind_28_validate_known_kind",
-      "kani_record_kind::check_replay_contiguity_with_killed",
-      "kani_record_kind::check_replay_duplicate_detection",
-      "kani_record_kind::check_replay_sequence_gap_detection",
-      "kani_record_kind::check_runkilled_fields_preserved",
-      "kani_record_kind::check_runkilled_zero_attempt_invalid",
-      "kani_record_kind::check_runkilled_zero_run_invalid",
-      "kani_record_kind::check_unknown_kind_rejected"
-    ],
-    "crates/vb_storage/src/kani_record_magic.rs": [
-      "kani_record_magic::kani_record_magic_accepts_correct_magic",
-      "kani_record_magic::kani_record_magic_rejects_all_ones",
-      "kani_record_magic::kani_record_magic_rejects_wrong_magic",
-      "kani_record_magic::kani_record_magic_rejects_zero"
-    ],
-    "crates/vb_storage/src/kani_record_payload_len.rs": [
-      "kani_record_payload_len::kani_record_payload_len_exactly_at_max",
-      "kani_record_payload_len::kani_record_payload_len_exactly_over_max",
-      "kani_record_payload_len::kani_record_payload_len_exceeds_max",
-      "kani_record_payload_len::kani_record_payload_len_rejects_nonzero_when_max_zero",
-      "kani_record_payload_len::kani_record_payload_len_within_max"
-    ],
-    "crates/vb_storage/src/kani_record_schema.rs": [
-      "kani_record_schema::kani_record_schema_accepts_current_version",
-      "kani_record_schema::kani_record_schema_rejects_future_version",
-      "kani_record_schema::kani_record_schema_rejects_old_version",
-      "kani_record_schema::kani_record_schema_zero_returns_migration_required"
-    ],
     "crates/vb_storage/src/kani_vbjpq733_proofs.rs": [
       "kani_vbjpq733_proofs::vbjpq733_is_fully_supported_all_states",
       "kani_vbjpq733_proofs::vbjpq733_is_fully_supported_each_flag",
@@ -121,7 +15,7 @@
   "contract-harnesses": {},
   "contracts": [],
   "totals": {
-    "standard-harnesses": 91,
+    "standard-harnesses": 7,
     "contract-harnesses": 0,
     "functions-under-contract": 0
   }
