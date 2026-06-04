@@ -147,7 +147,7 @@ pub(super) fn parse_answer(args: &[OsString]) -> Result<Command, ParseError> {
     let slot_raw = named_flag(args, "--slot").ok_or(ParseError::MissingArgument("--slot"))?;
     let slot = slot_raw
         .parse::<u16>()
-        .map_err(|_| ParseError::InvalidStep(slot_raw))?;
+        .map_err(|_| ParseError::InvalidSlot(slot_raw))?;
     let value = named_flag(args, "--value").ok_or(ParseError::MissingArgument("--value"))?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
     let output = parse_output_format(args);

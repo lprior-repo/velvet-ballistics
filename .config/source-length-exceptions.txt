@@ -2,8 +2,6 @@
 # Format: <file_path>|<owner>|<split_bead>|<removal_plan>|<reason>
 # Each over-limit file must have a validated entry or be split below 300 lines.
 # Rows below are the pre-existing architectural-drift baseline captured by vb-jpq7.47.
-# vb-jpq7.4: DiffMode enum addition pushed types.rs from 288 to 301 lines (Phase 3 fix)
-crates/vb_cli/src/args/types.rs|lewis|vb-jpq7.4|split-or-retire-before-release|vb-jpq7.4 DiffMode enum fix (301 lines); makes illegal states unrepresentable per black-hat Phase 3.
 # vb-b8i8f: cancel/kill lattice verification artifacts (added by bead vb-b8i8f)
 crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs|lewis|vb-b8i8f|split-after-bead-landing|vb-b8i8f cancel/kill lattice Kani harness (380 lines); will split by proof obligation after landing.
 crates/vb_storage/src/codec/tests/kill_kind_admission.rs|lewis|vb-b8i8f|split-after-bead-landing|vb-b8i8f kill kind admission tests (486 lines); will split by test scenario after landing.
@@ -19,7 +17,6 @@ crates/vb_boundary_inventory/src/tests/error_tests.rs|lewis|vb-jpq7.47|split-or-
 crates/vb_boundary_inventory/src/tests/parser_tests.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (577 lines); must be split by domain responsibility or retired before removing exception.
 crates/vb_boundary_inventory/src/tests/property_tests.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (558 lines); must be split by domain responsibility or retired before removing exception.
 crates/vb_boundary_inventory/src/tests/validation_tests.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (318 lines); must be split by domain responsibility or retired before removing exception.
-crates/vb_cli/src/agent_context/mod.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (303 lines); must be split by domain responsibility or retired before removing exception.
 crates/vb_cli/src/agent_context/tests/unit.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (1021 lines); must be split by domain responsibility or retired before removing exception.
 crates/vb_cli/src/args/tests/journal.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (471 lines); must be split by domain responsibility or retired before removing exception.
 crates/vb_cli/src/args/tests/run.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Pre-existing over-300-line Rust source baseline (402 lines); must be split by domain responsibility or retired before removing exception.

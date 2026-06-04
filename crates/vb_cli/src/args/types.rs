@@ -217,12 +217,8 @@ pub(crate) enum Command {
 /// Discriminated union for diff modes — makes illegal states unrepresentable.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum DiffMode {
-    /// Compare workflow expected actions against an actual run's journal events.
-    WorkflowAgainst {
-        workflow: PathBuf,
-        against: String,
-        db: PathBuf,
-    },
+    /// Compare a workflow source against an earlier workflow source.
+    WorkflowAgainst { workflow: PathBuf, against: PathBuf },
     /// Compare two runs' journal events.
     RunAgainst {
         run_a: String,

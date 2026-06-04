@@ -1,39 +1,32 @@
 # Proof-to-Implementation Input — vb-jpq7.21
 
-STATUS: PLANNED. This is bridge input, not bridge approval.
+STATUS: PLANNED bridge input, not approval.
 
-## Production source refs
+## Production refs
 
-- `crates/vb_ipc/src/payloads.rs:45-57` — repaired `IpcPayload::AnswerAsk` fields.
-- `crates/vb_ipc/src/server/handlers.rs:174-228` — top-level handler decode/bounds/SlotValue/taint/runtime call.
-- `crates/vb_ipc/src/server/handlers/command.rs:16-69` — command handler decode/bounds/SlotValue/taint/runtime call.
-- `crates/vb_runtime/src/runtime_actions.rs:93-113` — public `answer_pending_ask_slot` API.
-- `crates/vb_runtime/src/runtime_actions.rs:159-201` — pending Ask ticket derivation and AskResume answer slot validation.
+- `crates/vb_ipc/src/payloads.rs:45-57` — repaired AnswerAsk payload shape.
+- `crates/vb_ipc/src/server/handlers.rs:174-228` — AnswerAsk handler decode, bounds, SlotValue decode, taint defaulting, encoded length, runtime call routing.
+- `crates/vb_runtime/src/runtime_actions.rs:93-201` — `answer_pending_ask_slot`, pending Ask ticket derivation, AskResume slot equality.
+- `crates/vb_cli/src/run_ops.rs:168-200` — CLI local malformed SlotValue validation rejects invalid bytes before IPC.
+- `crates/vb_cli/src/run_ops.rs:228-237` — CLI slot-value AnswerAsk payload construction and IPC send.
 
-## Existing behavior tests to keep linked
+## Required behavior bridge tests
 
-- `crates/vb_ipc/src/tests.rs:603-618` — deterministic AnswerAsk roundtrip.
-- `crates/vb_ipc/src/tests.rs:1274-1306` — zero/max answer slot deterministic adversarial roundtrips.
-- `crates/vb_cli/tests/cli_integration.rs:4082-4168` — CLI emits AnswerAsk run_id/answer_slot/answer/taint None.
-- `crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:613-662` — legacy direct AskAnswer resume/AskAnswered bridge context.
+The proof bridge must cite and execute obligations for: valid postcard SlotValue plus default clean taint; mismatched handler answer slot without consuming pending ask; absent pending ask; malformed SlotValue bytes before runtime mutation; valid runtime completion; runtime mismatch without advancing pending ask; absent run; action-suspended non-ask state; wait-timer non-ask state; CLI slot-value happy path over IPC; and local malformed CLI rejection without an IPC server.
 
-## Planned future artifacts
+## Required bounded Kani bridge
 
-- `crates/vb_runtime/src/verification/kani/kani_answer_ask_slot_semantics.rs`
-  - `answer_slot_equality_accepts_only_exact_ask_resume_slot`
-  - `pending_ask_ticket_derivation_rejects_invalid_shard_states`
-- `crates/vb_runtime/src/verification/proptest/proptest_answer_ask_slot_semantics.rs`
-  - `vb_jpq7_21_answer_pending_ask_slot_generated`
-- `crates/vb_ipc/tests/vb_jpq7_21_answerask_payload_props.rs`
-  - `vb_jpq7_21_answerask_payload_roundtrip_generated`
-- Existing fuzz targets to refresh/seed if needed:
-  - `fuzz/src/bin/ipc_decode.rs`
-  - `fuzz/src/bin/ipc_frame_fuzz_boundary.rs`
+`obl-vb-jpq7-21-kani-handler-runtime-bridge-012` must be implemented by proof-writer as a production-bound bounded handler/runtime bridge harness. It must cover hostile bytes, malformed SlotValue rejection before runtime mutation, answer byte bounds, missing taint defaulting to Clean, explicit taint propagation, valid routing to `Runtime::answer_pending_ask_slot`, and mismatched slot rejection without consuming the pending ask; it may not use one hardcoded fixture or copied handler logic.
 
-## Non-negotiable bridge checks
+## Required generated property bridge
+
+`obl-vb-jpq7-21-proptest-handler-bridge-020` must be implemented by proof/test writer as a production-bound generated property artifact. It must generate SlotValue bytes, malformed byte vectors, answer_slot equality/mismatch, taint None/Some, encoded length cases, and rejection-before-runtime-mutation observations; it may not replace behavior with a copied-only model.
+
+## Non-negotiable checks
 
 - No proof may rely on a removed legacy `ticket` field in `IpcPayload::AnswerAsk`.
-- Kani generators must cover invalid as well as valid shapes; no fixed dummy workflow/run frame.
-- Mismatched `answer_slot` must map to `RuntimeError::InvalidActionCompletion` and must not enqueue `AskAnswered`.
-- Missing `taint` from IPC must default to `Taint::Clean`; explicit taint must pass through.
-- Handler malformed postcard `SlotValue` bytes must return an error response before runtime mutation.
+- Kani must use bounded generators/`kani::any()` style coverage, not a fixed dummy `WorkflowParts`/`RunFrame`.
+- Mismatched `answer_slot` rejects before `AskAnswered` enqueue or pending ask advancement.
+- Missing IPC taint defaults to `Taint::Clean`; explicit taint passes through.
+- Malformed postcard `SlotValue` bytes return an IPC error before runtime mutation.
+- Handler obligations must demonstrate `Runtime::answer_pending_ask_slot` routing and encoded-length accounting.

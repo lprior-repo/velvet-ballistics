@@ -526,12 +526,90 @@ mod bdd_scenarios {
     // answer
 
     #[test]
-    fn cli_answer_requires_db_and_step_and_value_file() {
-        // answer requires --db, --step, --value-file
-        let output = run_cli_failing(&["answer", "test-run-id"]).unwrap();
+    fn cli_answer_requires_db_slot_and_value() {
+        let tmp_dir = bdd_tempdir().unwrap();
+        let db = tmp_dir.path().join("answer-db");
+        let value = tmp_dir.path().join("answer-value.bin");
+        std::fs::write(&value, b"answer").unwrap();
+
+        let missing_slot = run_cli_failing(&[
+            "answer",
+            "42",
+            "--value",
+            value.to_str().unwrap(),
+            "--db",
+            db.to_str().unwrap(),
+        ])
+        .unwrap();
+        assert_eq!(missing_slot.status.code(), Some(2));
+        assert_eq!(String::from_utf8_lossy(&missing_slot.stdout), "");
+        let missing_slot_stderr = String::from_utf8_lossy(&missing_slot.stderr);
         assert!(
-            output.status.code() == Some(2),
-            "expected exit 2 for missing required args"
+            missing_slot_stderr.contains("missing argument: --slot"),
+            "stderr must name missing --slot: {}",
+            missing_slot_stderr
+        );
+
+        let missing_value =
+            run_cli_failing(&["answer", "42", "--slot", "7", "--db", db.to_str().unwrap()])
+                .unwrap();
+        assert_eq!(missing_value.status.code(), Some(2));
+        assert_eq!(String::from_utf8_lossy(&missing_value.stdout), "");
+        let missing_value_stderr = String::from_utf8_lossy(&missing_value.stderr);
+        assert!(
+            missing_value_stderr.contains("missing argument: --value"),
+            "stderr must name missing --value: {}",
+            missing_value_stderr
+        );
+
+        let missing_db = run_cli_failing(&[
+            "answer",
+            "42",
+            "--slot",
+            "7",
+            "--value",
+            value.to_str().unwrap(),
+        ])
+        .unwrap();
+        assert_eq!(missing_db.status.code(), Some(2));
+        assert_eq!(String::from_utf8_lossy(&missing_db.stdout), "");
+        let missing_db_stderr = String::from_utf8_lossy(&missing_db.stderr);
+        assert!(
+            missing_db_stderr.contains("missing argument: --db"),
+            "stderr must name missing --db: {}",
+            missing_db_stderr
+        );
+    }
+
+    #[test]
+    fn cli_answer_invalid_slot_reports_slot_not_step() {
+        let tmp_dir = bdd_tempdir().unwrap();
+        let db = tmp_dir.path().join("answer-db");
+        let value = tmp_dir.path().join("answer-value.bin");
+        std::fs::write(&value, b"answer").unwrap();
+
+        let output = run_cli_failing(&[
+            "answer",
+            "42",
+            "--slot",
+            "not-a-slot",
+            "--value",
+            value.to_str().unwrap(),
+            "--db",
+            db.to_str().unwrap(),
+        ])
+        .unwrap();
+
+        assert_eq!(output.status.code(), Some(2));
+        assert_eq!(String::from_utf8_lossy(&output.stdout), "");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("invalid slot: not-a-slot"),
+            "stderr must report invalid slot, got: {stderr}"
+        );
+        assert!(
+            !stderr.contains("invalid step"),
+            "answer --slot parse errors must not report invalid step: {stderr}"
         );
     }
 

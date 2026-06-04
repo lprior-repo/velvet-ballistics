@@ -21,7 +21,6 @@ use crate::output::{
 use crate::output_utils::*;
 use std::io::{self, Write};
 use std::process::ExitCode;
-use vb_core::{CompiledNodeKind, StepIdx};
 
 pub(crate) fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
@@ -97,6 +96,8 @@ pub(crate) fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> E
         }
     };
 
+    let plan_ast = crate::explain_plan::parse_plan_ast(&bytes);
+
     // Phase 3: Verification (runs all gates)
     match crate::commands_verify::run_verification(text, &bytes, VerifyProfile::Standard) {
         Ok(result) => {
@@ -108,7 +109,7 @@ pub(crate) fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> E
                 crate::outln!("");
 
                 // Execution plan section
-                explain_execution_plan(&compiled);
+                crate::explain_plan::emit_execution_plan(&compiled, plan_ast.as_ref());
 
                 crate::outln!("Passed gates ({}):", result.checks.len());
                 for check in &result.checks {
@@ -131,7 +132,10 @@ pub(crate) fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> E
                 }
                 crate::outln!("All gates passed. Workflow is correct and verifiable.");
             } else {
-                crate::emit_json_or_return!(&explain_success_report(&result, &compiled), output);
+                crate::emit_json_or_return!(
+                    &crate::explain_plan::success_report(&result, &compiled, plan_ast.as_ref()),
+                    output,
+                );
             }
             ExitCode::SUCCESS
         }
@@ -178,165 +182,6 @@ pub(crate) fn explain_compile_failure_report(errors: &[String]) -> serde_json::V
         "errors": errors,
         "repair_hints": ["Run validate to isolate syntax and schema errors"],
         "exit_code": cli_exit_code_number(CliExitCode::ValidationFailed)
-    })
-}
-
-/// Emit execution plan with graph, resources, actions, suspension points, slots, and budget.
-fn explain_execution_plan(compiled: &vb_core::CompiledWorkflow) {
-    crate::outln!("Execution Plan:");
-    crate::outln!("  entry:     step {}", compiled.entry().get());
-
-    // Resources / budget
-    let contract = compiled.resource_contract();
-    crate::outln!("  budget:");
-    crate::outln!("    max_steps:     {}", contract.max_steps);
-    crate::outln!("    max_slots:     {}", contract.max_slots);
-    crate::outln!("    max_constants: {}", contract.max_constants);
-    crate::outln!("    max_accessors: {}", contract.max_accessors);
-    crate::outln!("    max_expressions: {}", contract.max_expressions);
-    crate::outln!("  slots:     {} slots", compiled.slot_count());
-    crate::outln!("  steps:     {} nodes", compiled.node_count());
-
-    // Collect actions and suspension points
-    let mut actions = Vec::new();
-    let mut suspension_points = Vec::new();
-
-    for step in 0..compiled.node_count() {
-        let step_idx = StepIdx::new(step);
-        if let Some(node) = compiled.node(step_idx) {
-            let name = compiled.step_name(step_idx).unwrap_or("<unnamed>");
-            match node.kind {
-                CompiledNodeKind::Do { .. } => {
-                    actions.push(format!("step {} ({})", step, name));
-                    suspension_points.push(format!("step {} ({}) - Do action", step, name));
-                }
-                CompiledNodeKind::Ask { .. } => {
-                    suspension_points.push(format!("step {} ({}) - Ask for input", step, name));
-                }
-                CompiledNodeKind::WaitUntil { .. } => {
-                    suspension_points
-                        .push(format!("step {} ({}) - WaitUntil deadline", step, name));
-                }
-                CompiledNodeKind::WaitEvent { .. } => {
-                    suspension_points.push(format!("step {} ({}) - WaitEvent", step, name));
-                }
-                CompiledNodeKind::TogetherStart { .. } => {
-                    suspension_points.push(format!("step {} ({}) - Parallel branches", step, name));
-                }
-                CompiledNodeKind::ForEachStart { .. } => {
-                    suspension_points.push(format!("step {} ({}) - ForEach loop", step, name));
-                }
-                CompiledNodeKind::CollectStart { .. } => {
-                    suspension_points.push(format!("step {} ({}) - Collect", step, name));
-                }
-                CompiledNodeKind::ReduceStart { .. } => {
-                    suspension_points.push(format!("step {} ({}) - Reduce", step, name));
-                }
-                CompiledNodeKind::RepeatStart { .. } => {
-                    suspension_points.push(format!("step {} ({}) - Repeat loop", step, name));
-                }
-                _ => {}
-            }
-        }
-    }
-
-    if !actions.is_empty() {
-        crate::outln!("  actions:   {} action(s)", actions.len());
-        for action in &actions {
-            crate::outln!("    - {}", action);
-        }
-    } else {
-        crate::outln!("  actions:   none");
-    }
-
-    if !suspension_points.is_empty() {
-        crate::outln!("  suspension_points: {} point(s)", suspension_points.len());
-        for sp in &suspension_points {
-            crate::outln!("    - {}", sp);
-        }
-    } else {
-        crate::outln!("  suspension_points: none");
-    }
-}
-
-pub(crate) fn explain_success_report(
-    result: &crate::commands_verify::VerifyOk,
-    compiled: &vb_core::CompiledWorkflow,
-) -> serde_json::Value {
-    let contract = compiled.resource_contract();
-
-    // Collect actions and suspension points for JSON
-    let mut actions = Vec::new();
-    let mut suspension_points = Vec::new();
-
-    for step in 0..compiled.node_count() {
-        let step_idx = StepIdx::new(step);
-        if let Some(node) = compiled.node(step_idx) {
-            let name = compiled
-                .step_name(step_idx)
-                .unwrap_or("<unnamed>")
-                .to_string();
-            match node.kind {
-                CompiledNodeKind::Do { .. } => {
-                    actions.push(format!("step {} ({})", step, name));
-                    suspension_points.push(format!("step {} ({}) - Do action", step, name));
-                }
-                CompiledNodeKind::Ask { .. } => {
-                    suspension_points.push(format!("step {} ({}) - Ask for input", step, name));
-                }
-                CompiledNodeKind::WaitUntil { .. } => {
-                    suspension_points
-                        .push(format!("step {} ({}) - WaitUntil deadline", step, name));
-                }
-                CompiledNodeKind::WaitEvent { .. } => {
-                    suspension_points.push(format!("step {} ({}) - WaitEvent", step, name));
-                }
-                CompiledNodeKind::TogetherStart { .. } => {
-                    suspension_points.push(format!("step {} ({}) - Parallel branches", step, name));
-                }
-                CompiledNodeKind::ForEachStart { .. } => {
-                    suspension_points.push(format!("step {} ({}) - ForEach loop", step, name));
-                }
-                CompiledNodeKind::CollectStart { .. } => {
-                    suspension_points.push(format!("step {} ({}) - Collect", step, name));
-                }
-                CompiledNodeKind::ReduceStart { .. } => {
-                    suspension_points.push(format!("step {} ({}) - Reduce", step, name));
-                }
-                CompiledNodeKind::RepeatStart { .. } => {
-                    suspension_points.push(format!("step {} ({}) - Repeat loop", step, name));
-                }
-                _ => {}
-            }
-        }
-    }
-
-    serde_json::json!({
-        "schema_version": crate::cli_envelope::SCHEMA_VERSION,
-        "kind": "explain_report",
-        "success": true,
-        "status": "valid",
-        "artifact": {
-            "ir_digest_hex": result.digest_hex.as_str(),
-            "node_count": result.node_count
-        },
-        "execution_plan": {
-            "entry_step": compiled.entry().get(),
-            "slots": compiled.slot_count(),
-            "budget": {
-                "max_steps": contract.max_steps,
-                "max_slots": contract.max_slots,
-                "max_constants": contract.max_constants,
-                "max_accessors": contract.max_accessors,
-                "max_expressions": contract.max_expressions
-            },
-            "actions": actions,
-            "suspension_points": suspension_points
-        },
-        "passed_gates": &result.checks,
-        "warnings": &result.warnings,
-        "repair_hints": [],
-        "exit_code": cli_exit_code_number(CliExitCode::Success)
     })
 }
 

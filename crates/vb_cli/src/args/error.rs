@@ -32,6 +32,7 @@ pub(crate) enum ParseError {
     InvalidArgument(String),
     NoCommand,
     InvalidStep(String),
+    InvalidSlot(String),
     ReasonTooLong,
 }
 
@@ -132,6 +133,7 @@ impl std::fmt::Display for ParseError {
             }
             Self::NoCommand => write!(formatter, "no command provided"),
             Self::InvalidStep(step) => write!(formatter, "invalid step: {step}"),
+            Self::InvalidSlot(slot) => write!(formatter, "invalid slot: {slot}"),
             Self::ReasonTooLong => {
                 write!(formatter, "reason exceeds maximum length of 256 characters")
             }

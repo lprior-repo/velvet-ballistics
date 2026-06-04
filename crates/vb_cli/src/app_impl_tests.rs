@@ -835,14 +835,14 @@ fn parse_error_exact_variant_coverage() {
             "velvet-ballistics",
             "answer",
             "run-1",
-            "--step",
-            "not-a-step",
-            "--value-file",
+            "--slot",
+            "not-a-slot",
+            "--value",
             "value.bin",
             "--db",
             "journal-db",
         ])),
-        Err(ParseError::InvalidStep("not-a-step".into()))
+        Err(ParseError::InvalidSlot("not-a-slot".into()))
     );
 }
 

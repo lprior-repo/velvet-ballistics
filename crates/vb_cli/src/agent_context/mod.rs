@@ -3,6 +3,8 @@
 
 use serde_json::{Map, Value};
 
+mod primitives;
+
 /// Build the machine-readable CLI surface for AI agents.
 pub(crate) fn build(version: &str) -> Value {
     serde_json::json!({
@@ -37,7 +39,7 @@ pub(crate) fn build(version: &str) -> Value {
         "exit_codes": exit_codes(),
         "enums": enums(),
         "commands": commands(),
-        "planned_agent_primitives": planned_agent_primitives()
+        "planned_agent_primitives": primitives::planned_agent_primitives()
     })
 }
 
@@ -129,7 +131,7 @@ fn commands() -> Value {
         command(
             "explain",
             serde_json::json!({
-                "summary": "Explain validation errors in detail.",
+                "summary": "Dry-run a workflow and report the execution plan with semantic parity to run.",
                 "positionals": ["workflow.yaml"],
                 "flags": output_flags()
             }),
@@ -218,7 +220,7 @@ fn commands() -> Value {
             serde_json::json!({
                 "summary": "Answer a suspended ask step.",
                 "positionals": ["run_id"],
-                "flags": {"--step": {"type": "u16", "required": true}, "--value-file": {"type": "path", "required": true}, "--db": {"type": "path", "required": true}, "--emit": output_emit_flag()}
+                "flags": {"--slot": {"type": "u16", "required": true}, "--value": {"type": "path", "required": true, "format": "postcard-encoded SlotValue bytes"}, "--db": {"type": "path", "required": true}, "--emit": output_emit_flag()}
             }),
         ),
         command(
@@ -229,14 +231,7 @@ fn commands() -> Value {
                 "flags": output_flags()
             }),
         ),
-        command(
-            "diff",
-            serde_json::json!({
-                "summary": "Compare two durable runs.",
-                "positionals": ["run_a", "run_b"],
-                "flags": db_output_flags()
-            }),
-        ),
+        command("diff", primitives::diff_command()),
         command(
             "incident",
             run_id_db_command("Produce a black-box failure report."),
@@ -286,16 +281,6 @@ fn run_id_db_command(summary: &str) -> Value {
         "summary": summary,
         "positionals": ["run_id"],
         "flags": db_output_flags()
-    })
-}
-
-fn planned_agent_primitives() -> Value {
-    serde_json::json!({
-        "async_wait_flag": "--wait",
-        "jobs_commands": ["jobs list", "jobs get", "jobs prune"],
-        "profile_commands": ["profile save", "profile list", "profile show", "profile delete"],
-        "delivery_flag": "--deliver",
-        "feedback_command": "feedback"
     })
 }
 

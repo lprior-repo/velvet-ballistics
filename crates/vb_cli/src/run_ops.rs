@@ -195,6 +195,21 @@ pub(crate) fn cmd_answer(
             return CliExitCode::ValidationFailed.into();
         }
     };
+    if postcard::from_bytes::<vb_core::value::SlotValue>(&answer_bytes).is_err() {
+        let message = "answer value file must contain postcard-encoded SlotValue";
+        if output != OutputFormat::Text {
+            json_error(
+                &serde_json::json!({
+                    "success": false,
+                    "error": message
+                }),
+                output,
+            );
+        } else {
+            crate::errln!("{message}");
+        }
+        return CliExitCode::ValidationFailed.into();
+    }
 
     // Derive IPC socket path from db path: <db_parent>/<db_stem>.sock
     // e.g., /var/lib/vb/run.db -> /var/lib/vb/run.sock
@@ -225,7 +240,7 @@ pub(crate) fn cmd_answer(
     // Construct the IPC payload
     let payload = IpcPayload::AnswerAsk {
         run_id: rid,
-        ticket: slot.into(),
+        answer_slot: vb_core::ids::SlotIdx::new(slot),
         answer: answer_bytes,
         taint: None,
     };

@@ -355,9 +355,13 @@ pub fn fuzz_ipc_frame(data: &[u8]) {
                     | vb_ipc::IpcPayload::DrainTrace { run_id, .. } => {
                         let _ = run_id;
                     }
-                    vb_ipc::IpcPayload::AnswerAsk { run_id, ticket, .. } => {
+                    vb_ipc::IpcPayload::AnswerAsk {
+                        run_id,
+                        answer_slot,
+                        ..
+                    } => {
                         let _ = run_id;
-                        let _ = ticket;
+                        let _ = answer_slot;
                     }
                     vb_ipc::IpcPayload::CompleteAction { run_id, ticket, .. }
                     | vb_ipc::IpcPayload::FailAction { run_id, ticket, .. } => {

@@ -11,7 +11,7 @@ velvet-ballistics - compiled workflow runtime
 commands:
   validate   <workflow.yaml> [--emit text|yaml|postcard]          Validate a workflow definition
   verify     <workflow.yaml> [--profile <quick|standard|full>] [--emit text|yaml|postcard]  Verify a workflow
-  explain    <workflow.yaml> [--emit text|yaml|postcard]          Explain validation errors in detail
+  explain    <workflow.yaml> [--emit text|yaml|postcard]          Explain dry-run execution plan
   compile    <workflow.yaml> --emit <ir|yaml|postcard> --out <file>  Compile a workflow
   run        <workflow.yaml> --input-bin <file> --durability <mode> [--db <path>] [--emit text|yaml|postcard]
              [--step <id> --step-input <file>]                                 Run a single step in isolation
@@ -28,8 +28,9 @@ commands:
   cancel     <run_id> --db <path> [--reason <text>] [--emit text|yaml|postcard]  Cancel a run
   bench-run  <workflow.yaml> [--emit text|yaml|postcard]          Benchmark a workflow
   doctor     [--db <path>] [--emit text|yaml|postcard]            Run diagnostic checks
-  answer     <run_id> --slot <N> --value <file> --db <path> [--emit text|yaml|postcard]  Answer a suspended step
+  answer     <run_id> --slot <N> --value <postcard SlotValue file> --db <path> [--emit text|yaml|postcard]  Answer a suspended step
   graph      <workflow.yaml> [--emit text|yaml|postcard]          Output control flow graph in DOT format
+  diff       <workflow.yaml> --against <old.yaml> [--emit text|yaml|postcard]  Compare workflow semantics
   diff       <run_a> <run_b> --db <path> [--emit text|yaml|postcard]  Compare two runs
   incident   <run_id> --db <path> [--emit text|yaml|postcard]     Black-box failure report
   submit     <workflow.yaml> --input-bin <file> --db <path> --durability <mode> [--emit text|yaml|postcard]  Submit workflow run

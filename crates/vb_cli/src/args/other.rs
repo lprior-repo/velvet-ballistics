@@ -95,18 +95,21 @@ pub(super) fn parse_diff(args: &[OsString]) -> Result<Command, ParseError> {
     validate_known_flags(args, "diff")?;
     let output = parse_output_format(args);
 
-    // Check if --against flag is present (workflow-vs-run mode)
+    // Check if --against flag is present (workflow-vs-workflow mode)
     if let Some(against) = named_flag(args, "--against") {
-        // Workflow vs run mode: diff <workflow> --against <run_id> [--db <path>]
+        if named_flag(args, "--db").is_some() {
+            return Err(ParseError::InvalidArgument(String::from(
+                "diff accepts either workflow --against <old-workflow> without --db, or two run IDs plus --db",
+            )));
+        }
+        // Workflow diff mode: diff <workflow> --against <old-workflow>
         let workflow = find_positional(args, 2)
             .and_then(|p| p.to_str().map(String::from))
             .ok_or(ParseError::MissingArgument("workflow.yaml"))?;
-        let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
         Ok(Command::Diff {
             diff_mode: DiffMode::WorkflowAgainst {
                 workflow: PathBuf::from(workflow),
-                against,
-                db: PathBuf::from(db),
+                against: PathBuf::from(against),
             },
             output,
         })
