@@ -8,10 +8,8 @@
 //! validate_against_governance returns empty Vec.
 
 use crate::profile_contract::{
-    ProfileName, ProfileKey, SettingValue, StrVal, DebugMode,
-    ProfileConfig, WorkspaceProfileSet,
-    MASTER_PROFILE_CONTRACT,
-    validate_against_master, validate_against_governance,
+    DebugMode, MASTER_PROFILE_CONTRACT, ProfileConfig, ProfileKey, ProfileName, SettingValue,
+    StrVal, WorkspaceProfileSet, validate_against_governance, validate_against_master,
 };
 
 /// PO-K-007: Verify zero gaps after restoring all profiles.
@@ -29,39 +27,51 @@ fn zero_gaps_after_fix() {
     let mut ws = WorkspaceProfileSet::new();
 
     // Release: all 4 master keys
-    ws.add(ProfileConfig::new(ProfileName::Release, vec![
-        (ProfileKey::OptLevel, SettingValue::U8(3)),
-        (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
-        (ProfileKey::CodegenUnits, SettingValue::U16(1)),
-        (ProfileKey::Strip, SettingValue::String(StrVal::Symbols)),
-    ]));
+    ws.add(ProfileConfig::new(
+        ProfileName::Release,
+        vec![
+            (ProfileKey::OptLevel, SettingValue::U8(3)),
+            (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
+            (ProfileKey::CodegenUnits, SettingValue::U16(1)),
+            (ProfileKey::Strip, SettingValue::String(StrVal::Symbols)),
+        ],
+    ));
 
     // Bench: all 4 master keys
-    ws.add(ProfileConfig::new(ProfileName::Bench, vec![
-        (ProfileKey::Inherits, SettingValue::String(StrVal::Release)),
-        (ProfileKey::Debug, SettingValue::Bool(true)),
-        (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
-        (ProfileKey::CodegenUnits, SettingValue::U16(1)),
-    ]));
+    ws.add(ProfileConfig::new(
+        ProfileName::Bench,
+        vec![
+            (ProfileKey::Inherits, SettingValue::String(StrVal::Release)),
+            (ProfileKey::Debug, SettingValue::Bool(true)),
+            (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
+            (ProfileKey::CodegenUnits, SettingValue::U16(1)),
+        ],
+    ));
 
     // Hardened: existing keys + debug-assertions=true (the fix)
-    ws.add(ProfileConfig::new(ProfileName::Hardened, vec![
-        (ProfileKey::Inherits, SettingValue::String(StrVal::Release)),
-        (ProfileKey::CodegenUnits, SettingValue::U16(1)),
-        (ProfileKey::Debug, SettingValue::DebugMode(DebugMode::LineTablesOnly)),
-        (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
-        (ProfileKey::OverflowChecks, SettingValue::Bool(true)),
-        (ProfileKey::Panic, SettingValue::String(StrVal::Abort)),
-        (ProfileKey::Strip, SettingValue::String(StrVal::Symbols)),
-        (ProfileKey::DebugAssertions, SettingValue::Bool(true)),  // THE FIX
-    ]));
+    ws.add(ProfileConfig::new(
+        ProfileName::Hardened,
+        vec![
+            (ProfileKey::Inherits, SettingValue::String(StrVal::Release)),
+            (ProfileKey::CodegenUnits, SettingValue::U16(1)),
+            (
+                ProfileKey::Debug,
+                SettingValue::DebugMode(DebugMode::LineTablesOnly),
+            ),
+            (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
+            (ProfileKey::OverflowChecks, SettingValue::Bool(true)),
+            (ProfileKey::Panic, SettingValue::String(StrVal::Abort)),
+            (ProfileKey::Strip, SettingValue::String(StrVal::Symbols)),
+            (ProfileKey::DebugAssertions, SettingValue::Bool(true)), // THE FIX
+        ],
+    ));
 
     // ----- Master contract validation -----
     let master_gaps = validate_against_master(&ws, &MASTER_PROFILE_CONTRACT);
 
     kani::assert(
         master_gaps.is_empty(),
-        "Post-fix configuration must produce zero master contract gaps"
+        "Post-fix configuration must produce zero master contract gaps",
     );
 
     // Provide detailed diagnostics on any gap
@@ -77,7 +87,7 @@ fn zero_gaps_after_fix() {
 
     kani::assert(
         governance_gaps.is_empty(),
-        "Post-fix configuration must produce zero governance gaps"
+        "Post-fix configuration must produce zero governance gaps",
     );
 
     // Confirm the hardened profile has debug-assertions=true explicitly
@@ -85,7 +95,7 @@ fn zero_gaps_after_fix() {
         let da = hardened.get(ProfileKey::DebugAssertions);
         kani::assert(
             da == Some(&SettingValue::Bool(true)),
-            "Hardened must have debug-assertions=true in explicit settings"
+            "Hardened must have debug-assertions=true in explicit settings",
         );
     }
 }

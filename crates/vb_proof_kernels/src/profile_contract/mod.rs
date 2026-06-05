@@ -10,30 +10,28 @@
 
 #![forbid(unsafe_code)]
 
-pub mod types;
-pub mod config;
-pub mod workspace;
-pub mod master;
-pub mod validation;
-pub mod inheritance;
 pub mod binding;
+pub mod config;
 pub mod errors;
+pub mod inheritance;
+pub mod master;
+pub mod types;
+pub mod validation;
+pub mod workspace;
 
 // Re-export key types for convenience
-pub use types::{
-    ProfileName, ProfileKey, SettingValue, StrVal, DebugMode,
-    LtoMode, StripMode, PanicMode,
-};
+pub use binding::{BindingResult, MoonTaskProfileBinding, ProfileRefKind, bind_moon_task};
 pub use config::ProfileConfig;
-pub use workspace::WorkspaceProfileSet;
-pub use master::{MasterProfileContract, MASTER_PROFILE_CONTRACT};
-pub use validation::{validate_against_master, validate_against_governance};
-pub use inheritance::resolve_inheritance;
-pub use binding::{bind_moon_task, MoonTaskProfileBinding, ProfileRefKind, BindingResult};
 pub use errors::{
-    ContractGap, GovernanceGap, ResolveError,
-    ProfileNameError, ProfileKeyError, SettingValueError,
+    ContractGap, GovernanceGap, ProfileKeyError, ProfileNameError, ResolveError, SettingValueError,
 };
+pub use inheritance::resolve_inheritance;
+pub use master::{MASTER_PROFILE_CONTRACT, MasterProfileContract};
+pub use types::{
+    DebugMode, LtoMode, PanicMode, ProfileKey, ProfileName, SettingValue, StrVal, StripMode,
+};
+pub use validation::{validate_against_governance, validate_against_master};
+pub use workspace::WorkspaceProfileSet;
 
 // Maximum inheritance chain depth (safety guard).
 pub const MAX_INHERITANCE_DEPTH: u8 = 8;

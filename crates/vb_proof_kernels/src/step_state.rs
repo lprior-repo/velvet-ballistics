@@ -45,7 +45,6 @@ const VALID_TRANSITIONS: &[(StepState, StepState)] = &[
     (StepState::Asking, StepState::Running),
     // Terminal transitions (idempotent re-mark)
     (StepState::Succeeded, StepState::Succeeded),
-    (StepState::Succeeded, StepState::Running),
     (StepState::Failed, StepState::Failed),
     (StepState::Cancelled, StepState::Cancelled),
     (StepState::Skipped, StepState::Skipped),
@@ -206,8 +205,12 @@ mod tests {
     #[test]
     fn test_invalid_transitions() {
         assert!(!is_valid_transition(StepState::Running, StepState::Pending));
-        // Note: Succeeded -> Running IS valid (for loop body re-entry)
-        assert!(is_valid_transition(StepState::Succeeded, StepState::Running));
+        // Note: Succeeded -> Running is INVALID (terminal states are absorbing).
+        // Loop re-entry is handled by step_once skipping mark_running.
+        assert!(!is_valid_transition(
+            StepState::Succeeded,
+            StepState::Running
+        ));
         assert!(!is_valid_transition(StepState::Failed, StepState::Running));
     }
 
@@ -357,11 +360,13 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_transition_valid_succeeded_to_running() {
-        // Succeeded -> Running is VALID for loop body re-entry
+    fn test_validate_transition_invalid_succeeded_to_running() {
+        // Succeeded -> Running is INVALID (terminal states are absorbing).
+        // Loop re-entry is handled by step_once skipping mark_running.
         let result = validate_transition(StepState::Succeeded, StepState::Running);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), StepState::Running);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err, "invalid_state_transition");
     }
 
     #[test]
@@ -497,23 +502,19 @@ mod tests {
     fn test_next_states_terminal_unique() {
         for terminal in terminal_states() {
             let next = next_states(terminal);
-            // Succeeded can transition to Running for loop body re-entry
-            if terminal == StepState::Succeeded {
-                assert!(next.contains(&StepState::Succeeded));
-                assert!(next.contains(&StepState::Running));
-            } else {
-                assert_eq!(next.len(), 1);
-                assert_eq!(next[0], terminal);
-            }
+            // All terminal states are fully absorbing: only self-transition.
+            assert_eq!(next.len(), 1);
+            assert_eq!(next[0], terminal);
         }
     }
 }
 
 // ---------------------------------------------------------------------------
-// PO-KANI-006: Kani harness — terminal transition exceptions
+// PO-KANI-006: Kani harness — terminal transition properties
 // ---------------------------------------------------------------------------
-// Succeeded is the only terminal state with a non-self transition: Running for
-// loop body re-entry. Failed, Cancelled, and Skipped remain absorbing.
+// All terminal states (Succeeded, Failed, Cancelled, Skipped) are fully
+// absorbing. No non-self transitions from terminal states are permitted.
+// Loop re-entry is handled by step_once skipping mark_running.
 // This harness uses kani::any() to symbolically verify that for any
 // terminal state, the only valid transitions match that contract.
 #[cfg(kani)]
@@ -526,7 +527,10 @@ mod kani_step_state_harnesses {
     fn terminal_cannot_transition_to_non_terminal_kani() {
         // Verify the top-level function returns true
         let result = terminal_cannot_transition_to_non_terminal();
-        kani::assert(result, "terminal transition kernel must accept only documented terminal transitions");
+        kani::assert(
+            result,
+            "terminal transition kernel must accept only documented terminal transitions",
+        );
 
         // Symbolic check: for ALL terminal states and ALL target states (s != t),
         // is_valid_transition(t, s) is false except Succeeded->Running.
@@ -551,10 +555,16 @@ mod kani_step_state_harnesses {
         // the loop body re-entry transition Succeeded->Running.
         if t == StepState::Succeeded && s == StepState::Running {
             let valid = is_valid_transition(t, s);
-            kani::assert(valid, "Succeeded->Running must remain valid for loop re-entry");
+            kani::assert(
+                valid,
+                "Succeeded->Running must remain valid for loop re-entry",
+            );
         } else if t != s {
             let valid = is_valid_transition(t, s);
-            kani::assert(!valid, "terminal transition must be invalid outside documented exception");
+            kani::assert(
+                !valid,
+                "terminal transition must be invalid outside documented exception",
+            );
         } else {
             // Self-transition is always valid (idempotent)
             let valid = is_valid_transition(t, t);

@@ -176,12 +176,10 @@ pub(crate) fn classify_ticket_attempt(
     } else {
         match current {
             None => Err(AttemptFenceError::InvalidActionCompletion),
-            Some(c) if ticket_attempt < c => {
-                Err(AttemptFenceError::StaleAttempt {
-                    incoming: ticket_attempt,
-                    current: c,
-                })
-            }
+            Some(c) if ticket_attempt < c => Err(AttemptFenceError::StaleAttempt {
+                incoming: ticket_attempt,
+                current: c,
+            }),
             Some(c) if ticket_attempt > c => Err(AttemptFenceError::InvalidActionCompletion),
             Some(_) => Ok(()),
         }

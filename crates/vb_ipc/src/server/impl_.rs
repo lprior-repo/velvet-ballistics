@@ -200,7 +200,11 @@ impl IpcServer {
         if client.magic_state == MagicValidationState::AwaitingMagic
             && bytes_read >= AWAITING_MAGIC_MAX_BYTES
         {
-            match validate_magic_early(&temp_buf[..bytes_read]) {
+            // SAFETY: bytes_read is return value of read() into fixed-size temp_buf,
+            // guaranteed <= READ_CHUNK_BYTES. Slice indexing is therefore valid.
+            #[allow(clippy::indexing_slicing)]
+            let buf = &temp_buf[..bytes_read];
+            match validate_magic_early(buf) {
                 Ok(MagicValidationState::AwaitingMagic) => {
                     // Not enough bytes yet for full magic validation.
                     append_read_bytes(&mut client.read_buffer, &temp_buf, bytes_read)?;

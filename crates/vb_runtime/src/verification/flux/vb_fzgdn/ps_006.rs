@@ -4,8 +4,8 @@
 //! Refinement: timer_registration_required returns true iff the step's node kind
 //! is WaitUntil or (WaitEvent|Ask with Some(timeout_slot)).
 
-use vb_runtime::shard::RunState;
 use vb_core::ids::StepIdx;
+use vb_runtime::shard::RunState;
 
 /// Refinement module: slot validation returns correct boolean.
 mod slot_validation_refinements {

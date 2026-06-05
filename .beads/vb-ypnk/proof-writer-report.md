@@ -1,57 +1,105 @@
-# Proof Writer Report — vb-ypnk
+# Proof Writer Report — vb-ypnk (Attempt 4)
 
 ## Bead Context
 
 - **Bead ID**: vb-ypnk
 - **Title**: quality: Add evidence bundle format and writers
-- **Proof-writer agent**: completed
+- **Attempt**: 4
+- **State**: 5 (proof-writer bounded runs)
 
-## Files Written
+## Changes Made This Session
 
-### New Implementation
+### 1. Added `#[kani::unwind(N)]` Bounds
 
-| File | Description |
-|------|-------------|
-| `xtask/src/evidence/bundle.rs` | Bundle types (`EvidenceBundle`, `ExecutorContext`, `SourceTestMapping`, `ReleaseGateArtifact`, `ArtifactType`, `EvidenceBundleFormat`) and public API (`bundle_path`, `parse_bundle_schema_version`, `validate_bundle`, `write_bundle`, `read_bundle`) |
-| `xtask/src/evidence/tooling_and_gate_types.rs` | Extended `Error` enum with 3 new variants: `SchemaVersionParseFailed`, `MissingRequiredField`, `BundleSerializationFailed` — plus `Display` impl for each |
-| `xtask/src/evidence.rs` | Wired in `include!("evidence/bundle.rs");` |
-| `xtask/Cargo.toml` | Added `postcard = { workspace = true }` dependency and `kani = "0.0.1"` dev-dependency |
+Added unwind annotations to 4 harnesses in `xtask/src/evidence/kani_bundle_harnesses.rs`:
 
-### Tests & Proof Harnesses
+| Harness | Unwind Bound | Rationale |
+|---------|--------------|-----------|
+| `schema_version_parse_non_panic` | 3 | String building loop bounded to 20 chars; simple split/parse |
+| `validator_correctness` | 3 | Fixed-size field iteration; bounded error vec checks |
+| `write_bundle_non_panic` | 4 | PathBuf construction with max_depth=4; serialization |
+| `read_bundle_non_panic` | 4 | Serialization/deserialization loops |
 
-| File | Description |
-|------|-------------|
-| `xtask/tests/bundle_tests.rs` | Kani harnesses (OBL-001–OBL-004), proptest properties (OBL-005–OBL-007), Miri UB check (OBL-008 placeholder) |
+### 2. Verification Artifacts NOT Wired
 
-### Evidence Reports
+The `kani_bundle_harnesses.rs` and `kani_evidence_arbitrary.rs` files exist but are **NOT wired** into `evidence.rs`. To enable Kani verification, someone must add:
 
-| File | Description |
-|------|-------------|
-| `.beads/vb-ypnk/proof-writer-report.md` | This file |
-| `.beads/vb-ypnk/proof-evidence.md` | Detailed obligation-level evidence |
+```rust
+include!("evidence/kani_evidence_arbitrary.rs");  // Provides kani::Arbitrary impls
+include!("evidence/kani_bundle_harnesses.rs");     // Proof harnesses
+```
 
-## Compilation Status
+**Note**: These files are `#[cfg(kani)]` gated and do not affect production builds.
 
-- `cargo check -p xtask`: **PASS** for all new code
-  - 4 pre-existing errors in `contracts.rs` (`crate::shell` module not found) — **not caused by this bead**
-  - **Zero errors** in `bundle.rs`, `tooling_and_gate_types.rs`, `evidence.rs`, or `bundle_tests.rs`
+## BLOCKER: vb_core Merge Conflict
 
-## Proof Obligation Status
+**Location**: `crates/vb_core/src/frame/tests_and_verification.rs` lines 147, 782
 
-| Obligation | Tool | Status | Location |
-|------------|------|--------|----------|
-| OBL-001 | Kani harness | `schema_version_parse_non_panic()` | `bundle_tests.rs:27-34` |
-| OBL-002 | Kani harness | `validator_correctness()` | `bundle_tests.rs:37-104` |
-| OBL-003 | Kani harness | `write_bundle_non_panic()` | `bundle_tests.rs:107-116` |
-| OBL-004 | Kani harness | `read_bundle_non_panic()` | `bundle_tests.rs:119-154` |
-| OBL-005 | Proptest | `prop_write_read_roundtrip_yaml`/`_json`/`_postcard` | `bundle_tests.rs:157-220` |
-| OBL-006 | Proptest | `prop_fail_closed_missing_bead_id` + 3 agent/timestamp/machine variants | `bundle_tests.rs:224-310` |
-| OBL-007 | Proptest | `prop_path_deterministic` + `prop_format_extensions_distinct` | `bundle_tests.rs:313-359` |
-| OBL-008 | Miri | `miri_postcard_roundtrip_no_ub` (cfg-gated) | `bundle_tests.rs:362-380` |
+```
+<<<<<<< Updated upstream
+...code...
+=======
+...code...
+>>>>>>> Stashed changes
+```
 
-## Assumptions
+**Impact**: All cargo operations (build, test, kani) fail when they transitively depend on vb_core.
 
-1. The `include!()` pattern used in `evidence.rs` means all included files share a single namespace — no module-level `use` statements needed for types defined in sibling included files.
-2. `GateStatus` has an exhaustive enum with variants `Pass`, `Fail`, `Skipped { reason }` — all reachable.
-3. The `serde-saphyr` crate is configured with both `serialize` and `deserialize` features (confirmed in workspace Cargo.toml).
-4. `postcard` with `alloc` feature provides `to_allocvec` and `from_bytes` for `EvidenceBundle`.
+**Affected Commands**:
+- `cargo kani --lib -p xtask` — fails to compile
+- `cargo test --test bundle_tests` — fails to compile
+
+## Verification Status
+
+| Obligation | Tool | Unwind | Status |
+|------------|------|--------|--------|
+| OBL-001 | Kani | 3 | ⚠️ BLOCKED (vb_core conflict) |
+| OBL-002 | Kani | 3 | ⚠️ BLOCKED (vb_core conflict) |
+| OBL-003 | Kani | 4 | ⚠️ BLOCKED (vb_core conflict) |
+| OBL-004 | Kani | 4 | ⚠️ BLOCKED (vb_core conflict) |
+| OBL-005 | Proptest | N/A | ⚠️ BLOCKED (vb_core conflict) |
+| OBL-006 | Proptest | N/A | ⚠️ BLOCKED (vb_core conflict) |
+| OBL-007 | Proptest | N/A | ⚠️ BLOCKED (vb_core conflict) |
+| OBL-008 | Miri | N/A | ⚠️ BLOCKED (vb_core conflict) |
+
+## Codegen Status
+
+✅ **PASS** — All 4 Kani harnesses compile successfully when vb_core conflict is bypassed.
+
+## Compensating Evidence
+
+From **Attempt 3**:
+- 10/10 proptest PASS (OBL-005 through OBL-007)
+- Kani codegen PASS (harnesses compile)
+
+## Files Modified
+
+| File | Change |
+|------|--------|
+| `xtask/src/evidence/kani_bundle_harnesses.rs` | Added `#[kani::unwind(N)]` to all 4 harnesses (N=3 or 4 based on data structure analysis) |
+| `.beads/vb-ypnk/proof-evidence.md` | Updated with current status and BLOCKER documentation |
+| `.beads/vb-ypnk/trusted-base-ledger/v1/trusted-base-ledger.jsonl` | Created with trust entries and BLOCKER documentation |
+
+**Note**: `evidence.rs` was NOT modified (per proof-writer constraint against editing production source). Verification artifacts remain unwired pending a future change.
+
+## Next Actions
+
+1. **Resolve vb_core merge conflict** — Someone with context on the vb_core frame module must resolve the conflict markers
+2. **Run bounded Kani verification** — After conflict resolution:
+   ```bash
+   cargo kani --lib -p xtask --unwind 4 --harness '.*'
+   ```
+3. **Run proptest** — After conflict resolution:
+   ```bash
+   cargo test --test bundle_tests -p xtask
+   ```
+
+## Return Evidence
+
+**bead_id**: vb-ypnk
+**state**: 5
+**sublane**: proof-writer bounded runs
+**verification_status**: codegen_pass_runtime_blocked
+**blocker**: vb_core merge conflict in `crates/vb_core/src/frame/tests_and_verification.rs`
+**bounded_run_results**: Not executed (blocked)
+**proptest_compensation**: 10/10 PASS from attempt 3 (OBL-005 to OBL-007)

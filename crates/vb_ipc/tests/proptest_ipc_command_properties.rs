@@ -122,7 +122,7 @@ fn prop_roundtrip_exhaustive_all_eleven() {
     }
 }
 
-/// Roundtrip identity: proptest-driven, any valid command ID roundtrips.
+// Roundtrip identity: proptest-driven, any valid command ID roundtrips.
 proptest! {
     #[test]
     fn prop_roundtrip_valid_ids(id in valid_command_id()) {
@@ -164,7 +164,7 @@ fn invalid_command_id() -> impl Strategy<Value = u16> {
     ]
 }
 
-/// Every u16 outside 1..=11 decodes as UnknownCommand and never returns Err.
+// Every u16 outside 1..=11 decodes as UnknownCommand and never returns Err.
 proptest! {
     #[test]
     fn prop_invalid_ids_return_unknown_command(id in invalid_command_id()) {
@@ -181,7 +181,7 @@ proptest! {
     }
 }
 
-/// from_u16 never panics for any u16 (defense-in-depth with proptest sampling).
+// from_u16 never panics for any u16 (defense-in-depth with proptest sampling).
 proptest! {
     #[test]
     fn prop_from_u16_never_panics(id in any::<u16>()) {
@@ -256,8 +256,7 @@ fn prop_stale_baseline_commands_do_not_exist() {
     // First: verify the total count is 11 (any extra would increase this).
     let count = SEMANTIC_VARIANTS.len();
     assert_eq!(
-        count,
-        11,
+        count, 11,
         "Stale baseline claims 16 commands, but only 11 semantic variants exist"
     );
 

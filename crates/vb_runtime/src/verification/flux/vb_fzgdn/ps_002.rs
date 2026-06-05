@@ -12,8 +12,8 @@ use vb_runtime::shard::{PendingTimer, PendingTimerKind};
 ///   crates/vb_runtime/src/shard/transitions.rs:165-173
 ///   fn next_pending_timer_generation: None => Ok(1), Some(t) => t.generation.checked_add(1)
 mod pending_timer_refinements {
-    use vb_core::ids::{RunId, StepIdx};
     use std::time::Instant;
+    use vb_core::ids::{RunId, StepIdx};
 
     /// Refinement: generation >= 1 for any active pending timer.
     /// Production code reference: crates/vb_runtime/src/shard/timer_wheel.rs:86

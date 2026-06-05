@@ -9,8 +9,8 @@ use vb_runtime::shard::PendingTimerKind;
 
 /// Refinement module binding to production authority-check pattern.
 mod authority_refinements {
-    use vb_core::ids::RunId;
     use std::time::Instant;
+    use vb_core::ids::RunId;
 
     /// Production reference:
     ///   crates/vb_runtime/src/shard/lifecycle/chunk_002.rs:71-76
@@ -23,9 +23,9 @@ mod authority_refinements {
     ///
     /// Refinement: stale generation (< current_timer.generation) is always rejected.
     #[flux_rs::trusted]
-    #[flux_rs::sig(fn(u64[@gen], u64[@auth_gen]) -> bool[gen != auth_gen])]
-    pub fn generation_mismatch(gen: u64, auth_gen: u64) -> bool {
-        gen != auth_gen
+    #[flux_rs::sig(fn(u64[@generation], u64[@auth_gen]) -> bool[generation != auth_gen])]
+    pub fn generation_mismatch(generation: u64, auth_gen: u64) -> bool {
+        generation != auth_gen
     }
 }
 

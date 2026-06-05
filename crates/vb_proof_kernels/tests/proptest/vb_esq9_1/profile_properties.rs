@@ -7,13 +7,10 @@
 
 use proptest::prelude::*;
 use vb_proof_kernels::profile_contract::{
-    ProfileName, ProfileKey, SettingValue, StrVal, DebugMode,
-    ProfileConfig, WorkspaceProfileSet,
-    MASTER_PROFILE_CONTRACT,
-    validate_against_master, validate_against_governance,
-    resolve_inheritance,
-    binding::{bind_moon_task, MoonTaskProfileBinding, ProfileRefKind, BindingResult},
-    ContractGap,
+    ContractGap, DebugMode, MASTER_PROFILE_CONTRACT, ProfileConfig, ProfileKey, ProfileName,
+    SettingValue, StrVal, WorkspaceProfileSet,
+    binding::{BindingResult, MoonTaskProfileBinding, ProfileRefKind, bind_moon_task},
+    resolve_inheritance, validate_against_governance, validate_against_master,
 };
 
 // =========================================================================
@@ -68,14 +65,16 @@ fn arb_setting_value() -> impl Strategy<Value = SettingValue> {
             Just(StrVal::Release),
             Just(StrVal::Unwind),
             Just(StrVal::Abort),
-        ].prop_map(SettingValue::String),
+        ]
+        .prop_map(SettingValue::String),
         any::<u8>().prop_map(SettingValue::U8),
         any::<u16>().prop_map(SettingValue::U16),
         prop_oneof![
             Just(DebugMode::False),
             Just(DebugMode::True),
             Just(DebugMode::LineTablesOnly),
-        ].prop_map(SettingValue::DebugMode),
+        ]
+        .prop_map(SettingValue::DebugMode),
     ]
 }
 
@@ -87,9 +86,8 @@ fn arb_profile_config() -> impl Strategy<Value = ProfileConfig> {
     (
         arb_profile_name(),
         proptest::collection::vec((arb_profile_key(), arb_setting_value()), 0..12),
-    ).prop_map(|(name, settings)| {
-        ProfileConfig::new(name, settings)
-    })
+    )
+        .prop_map(|(name, settings)| ProfileConfig::new(name, settings))
 }
 
 // =========================================================================
@@ -114,28 +112,40 @@ fn arb_workspace_profile_set() -> impl Strategy<Value = WorkspaceProfileSet> {
 fn arb_correct_workspace() -> impl Strategy<Value = WorkspaceProfileSet> {
     Just(()).prop_map(|_| {
         let mut ws = WorkspaceProfileSet::new();
-        ws.add(ProfileConfig::new(ProfileName::Release, vec![
-            (ProfileKey::OptLevel, SettingValue::U8(3)),
-            (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
-            (ProfileKey::CodegenUnits, SettingValue::U16(1)),
-            (ProfileKey::Strip, SettingValue::String(StrVal::Symbols)),
-        ]));
-        ws.add(ProfileConfig::new(ProfileName::Bench, vec![
-            (ProfileKey::Inherits, SettingValue::String(StrVal::Release)),
-            (ProfileKey::Debug, SettingValue::Bool(true)),
-            (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
-            (ProfileKey::CodegenUnits, SettingValue::U16(1)),
-        ]));
-        ws.add(ProfileConfig::new(ProfileName::Hardened, vec![
-            (ProfileKey::Inherits, SettingValue::String(StrVal::Release)),
-            (ProfileKey::CodegenUnits, SettingValue::U16(1)),
-            (ProfileKey::Debug, SettingValue::DebugMode(DebugMode::LineTablesOnly)),
-            (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
-            (ProfileKey::OverflowChecks, SettingValue::Bool(true)),
-            (ProfileKey::Panic, SettingValue::String(StrVal::Abort)),
-            (ProfileKey::Strip, SettingValue::String(StrVal::Symbols)),
-            (ProfileKey::DebugAssertions, SettingValue::Bool(true)),
-        ]));
+        ws.add(ProfileConfig::new(
+            ProfileName::Release,
+            vec![
+                (ProfileKey::OptLevel, SettingValue::U8(3)),
+                (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
+                (ProfileKey::CodegenUnits, SettingValue::U16(1)),
+                (ProfileKey::Strip, SettingValue::String(StrVal::Symbols)),
+            ],
+        ));
+        ws.add(ProfileConfig::new(
+            ProfileName::Bench,
+            vec![
+                (ProfileKey::Inherits, SettingValue::String(StrVal::Release)),
+                (ProfileKey::Debug, SettingValue::Bool(true)),
+                (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
+                (ProfileKey::CodegenUnits, SettingValue::U16(1)),
+            ],
+        ));
+        ws.add(ProfileConfig::new(
+            ProfileName::Hardened,
+            vec![
+                (ProfileKey::Inherits, SettingValue::String(StrVal::Release)),
+                (ProfileKey::CodegenUnits, SettingValue::U16(1)),
+                (
+                    ProfileKey::Debug,
+                    SettingValue::DebugMode(DebugMode::LineTablesOnly),
+                ),
+                (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
+                (ProfileKey::OverflowChecks, SettingValue::Bool(true)),
+                (ProfileKey::Panic, SettingValue::String(StrVal::Abort)),
+                (ProfileKey::Strip, SettingValue::String(StrVal::Symbols)),
+                (ProfileKey::DebugAssertions, SettingValue::Bool(true)),
+            ],
+        ));
         ws
     })
 }
@@ -149,7 +159,7 @@ proptest! {
     ///
     /// Given an arbitrary WorkspaceProfileSet, verify:
     /// 1. If release is missing → MissingProfile(Release) gap
-    /// 2. If bench is missing → MissingProfile(Bench) gap  
+    /// 2. If bench is missing → MissingProfile(Bench) gap
     /// 3. If release has wrong lto → WrongSetting gap
     /// 4. maxperf is rejected at construction → ProfileName::new("maxperf").is_err()
     /// 5. If hardened has no debug-assertions → MissingDebugAssertions governance gap

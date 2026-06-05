@@ -679,7 +679,8 @@ pub mod reentry_harnesses {
             let done = StepIdx::new(2);
 
             let packed: i64 = (3_i64 << 32) | 1_i64;
-            run.write_slot(attempt_slot, SlotValue::I64(packed)).unwrap();
+            run.write_slot(attempt_slot, SlotValue::I64(packed))
+                .unwrap();
 
             let body_step = StepIdx::new(1);
             run.mark_running(body_step).unwrap();
@@ -703,7 +704,8 @@ pub mod reentry_harnesses {
             let next_body = StepIdx::new(1);
 
             let packed: i64 = (3_i64 << 32) | 1_i64;
-            run.write_slot(attempt_slot, SlotValue::I64(packed)).unwrap();
+            run.write_slot(attempt_slot, SlotValue::I64(packed))
+                .unwrap();
 
             let body_step = StepIdx::new(1);
             run.mark_running(body_step).unwrap();

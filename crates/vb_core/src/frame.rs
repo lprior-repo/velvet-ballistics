@@ -1099,7 +1099,8 @@ mod frame_kani_harnesses {
         kani::assume(is_terminal);
         let result = validate_transition_inline(terminal, target);
         // Terminal states can transition to themselves (idempotent re-mark)
-        if terminal == target || (terminal == StepState::Succeeded && target == StepState::Running) {
+        if terminal == target || (terminal == StepState::Succeeded && target == StepState::Running)
+        {
             kani::assert(result, "terminal->self allowed");
         } else {
             // All other non-self transitions from terminal states are invalid.

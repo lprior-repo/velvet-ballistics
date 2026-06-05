@@ -13,9 +13,11 @@ mod generation_refinements {
     ///
     /// Refinement: for gen < u64::MAX, checked_add(1) returns gen + 1 exactly.
     #[flux_rs::trusted]
-    #[flux_rs::sig(fn(u64[@gen]) -> u64[gen + 1] requires gen < u64::MAX)]
-    pub fn safe_increment(gen: u64) -> u64 {
-        gen.checked_add(1).expect("precondition guarantees within bounds")
+    #[flux_rs::sig(fn(u64[@generation]) -> u64[generation + 1] requires generation < u64::MAX)]
+    pub fn safe_increment(generation: u64) -> u64 {
+        generation
+            .checked_add(1)
+            .expect("precondition guarantees within bounds")
     }
 
     /// Refinement: 0 as sentinel (no timer present) maps to generation 1 on first insert.

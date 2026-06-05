@@ -5,8 +5,8 @@
 //! Refinement: duplicate insert preserves count = 1 and updates kind/deadline.
 
 use vb_core::ids::RunId;
-use vb_runtime::shard::timer_wheel::TimerWheel;
 use vb_runtime::shard::PendingTimerKind;
+use vb_runtime::shard::timer_wheel::TimerWheel;
 
 /// Refinement module: duplicate insert preserves invariants.
 mod duplicate_refinements {
@@ -19,11 +19,7 @@ mod duplicate_refinements {
     /// Refinement: after insert on existing run, len() == 1 and kind matches the new kind.
     #[flux_rs::trusted]
     #[flux_rs::sig(fn(&TimerWheel, RunId, PendingTimerKind) -> bool)]
-    pub fn timer_kind_matches(
-        wheel: &TimerWheel,
-        run: RunId,
-        expected: PendingTimerKind,
-    ) -> bool {
+    pub fn timer_kind_matches(wheel: &TimerWheel, run: RunId, expected: PendingTimerKind) -> bool {
         wheel.get_kind(run) == Some(expected)
     }
 }

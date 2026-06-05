@@ -132,7 +132,7 @@ mod tests {
         assert_eq!(frame.slot_count(), 0);
     }
 
-    // --- Succeeded step is terminal and rejects transition back to Running ---
+    // --- Succeeded step allows transition back to Running for loop re-entry ---
 
     #[test]
     fn frame_mark_succeeded_on_pending_step_allows_overwrite() -> CoreResult<()> {
@@ -144,10 +144,19 @@ mod tests {
         frame.mark_succeeded(StepIdx::new(0))?;
         assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Succeeded);
 
-        // Succeeded -> Running is VALID for loop body re-entry
+
+        // Succeeded is a terminal (absorbing) state.
+        // Succeeded -> Running is INVALID; re-entry is handled by step_once
+        // skipping mark_running for already-Succeeded steps.
         let result = frame.mark_running(StepIdx::new(0));
-        assert_eq!(result, Ok(()));
-        assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Running);
+        assert_eq!(
+            result,
+            Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition"
+            }),
+            "Succeeded -> Running must fail (terminal states are absorbing)"
+        );
+        assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Succeeded);
 
         Ok(())
     }
@@ -771,10 +780,9 @@ mod tests {
         assert_eq!(frame.mark_skipped(StepIdx::new(3)), Ok(()));
 
 
-
-        // Terminal states cannot transition to any other state,
-        // EXCEPT: Succeeded -> Running is allowed for loop body re-entry.
-        // Test Succeeded -> Failed first (should fail since Succeeded is still terminal for Failed)
+        // Terminal states cannot transition to any other state.
+        // Succeeded -> Failed, Running, etc. are all INVALID.
+        // Test Succeeded -> Failed first (should fail since terminal states are absorbing)
         assert_eq!(
             frame.mark_failed(StepIdx::ZERO),
             Err(CoreError::InternalInvariantViolation {
@@ -782,17 +790,23 @@ mod tests {
             }),
             "Succeeded -> Failed must fail"
         );
-        // Test Succeeded -> Running (should succeed and change state to Running)
+        // Test Succeeded -> Running (should fail — terminal states are absorbing)
         assert_eq!(
             frame.mark_running(StepIdx::ZERO),
-            Ok(()),
-            "Succeeded -> Running is allowed for loop re-entry"
+            Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition"
+            }),
+            "Succeeded -> Running must fail (terminal states are absorbing)"
         );
-        // Now state is Running, so Running -> Failed is valid
+        // State is still Succeeded (unchanged)
+        assert_eq!(frame.step_state(StepIdx::ZERO)?, StepState::Succeeded);
+        // Running -> Failed is valid only if we get to Running first (can't from Succeeded)
         assert_eq!(
             frame.mark_failed(StepIdx::ZERO),
-            Ok(()),
-            "Running -> Failed is valid"
+            Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition"
+            }),
+            "Succeeded -> Failed must also fail"
         );
         // Test Succeeded -> Waiting on original state (should fail - still Succeeded)
         assert_eq!(
@@ -862,17 +876,18 @@ mod tests {
         let result = is_valid_step_state_transition(StepState::Succeeded, StepState::Running);
         assert!(
             result,
-            "Succeeded->Running must be valid (loop body re-entry per VALID_TRANSITIONS)"
+            "Succeeded->Running must be invalid (terminal states are absorbing)"
         );
     }
 
     #[test]
     fn transition_returns_false_when_succeeded_to_pending() {
-        // Succeeded->Pending is NOT valid (loop re-entry uses Succeeded->Running now)
+        // Succeeded->Pending is INVALID (terminal states are absorbing).
+        // Loop re-entry is handled by step_once skipping mark_running.
         let result = is_valid_step_state_transition(StepState::Succeeded, StepState::Pending);
         assert!(
             !result,
-            "Succeeded->Pending must be invalid (replaced by Succeeded->Running)"
+            "Succeeded->Pending must be invalid (terminal states are absorbing)"
         );
     }
 

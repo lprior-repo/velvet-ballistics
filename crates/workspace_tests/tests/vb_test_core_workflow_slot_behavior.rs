@@ -898,7 +898,10 @@ mod behavior_step_state_transitions {
         let result = frame.mark_running(StepIdx::new(0));
 
         // THEN: Succeeded→Running is VALID (jump_to_body uses mark_running after Succeeded)
-        assert!(result.is_ok(), "Succeeded→Running must be valid for loop body re-entry");
+        assert!(
+            result.is_ok(),
+            "Succeeded→Running must be valid for loop body re-entry"
+        );
     }
 }
 

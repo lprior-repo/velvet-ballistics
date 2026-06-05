@@ -6,11 +6,8 @@
 //! Verifier: cargo kani --harness <name> -p vb_proof_kernels
 
 use crate::profile_contract::{
-    ProfileName, ProfileKey, SettingValue, StrVal,
-    ProfileConfig, WorkspaceProfileSet,
-    MASTER_PROFILE_CONTRACT,
-    validate_against_master, validate_against_governance,
-    ContractGap,
+    ContractGap, MASTER_PROFILE_CONTRACT, ProfileConfig, ProfileKey, ProfileName, SettingValue,
+    StrVal, WorkspaceProfileSet, validate_against_governance, validate_against_master,
 };
 
 // ---------------------------------------------------------------------------
@@ -66,12 +63,12 @@ fn release_profile_master_keys() {
 
     kani::assert(
         !has_release_gap,
-        "Release profile with all 4 master keys should produce zero release contract gaps"
+        "Release profile with all 4 master keys should produce zero release contract gaps",
     );
 
     kani::assert(
         gaps.is_empty(),
-        "Correct release + bench profiles should produce zero total contract gaps"
+        "Correct release + bench profiles should produce zero total contract gaps",
     );
 }
 
@@ -86,19 +83,25 @@ fn release_profile_master_keys() {
 fn bench_profile_master_keys() {
     let mut ws = WorkspaceProfileSet::new();
 
-    ws.add(ProfileConfig::new(ProfileName::Release, vec![
-        (ProfileKey::OptLevel, SettingValue::U8(3)),
-        (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
-        (ProfileKey::CodegenUnits, SettingValue::U16(1)),
-        (ProfileKey::Strip, SettingValue::String(StrVal::Symbols)),
-    ]));
+    ws.add(ProfileConfig::new(
+        ProfileName::Release,
+        vec![
+            (ProfileKey::OptLevel, SettingValue::U8(3)),
+            (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
+            (ProfileKey::CodegenUnits, SettingValue::U16(1)),
+            (ProfileKey::Strip, SettingValue::String(StrVal::Symbols)),
+        ],
+    ));
 
-    ws.add(ProfileConfig::new(ProfileName::Bench, vec![
-        (ProfileKey::Inherits, SettingValue::String(StrVal::Release)),
-        (ProfileKey::Debug, SettingValue::Bool(true)),
-        (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
-        (ProfileKey::CodegenUnits, SettingValue::U16(1)),
-    ]));
+    ws.add(ProfileConfig::new(
+        ProfileName::Bench,
+        vec![
+            (ProfileKey::Inherits, SettingValue::String(StrVal::Release)),
+            (ProfileKey::Debug, SettingValue::Bool(true)),
+            (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
+            (ProfileKey::CodegenUnits, SettingValue::U16(1)),
+        ],
+    ));
 
     let gaps = validate_against_master(&ws, &MASTER_PROFILE_CONTRACT);
 
@@ -118,8 +121,14 @@ fn bench_profile_master_keys() {
         }
     }
 
-    kani::assert(!has_bench_gap, "Bench profile should produce zero bench contract gaps");
-    kani::assert(gaps.is_empty(), "Correct config should produce zero total gaps");
+    kani::assert(
+        !has_bench_gap,
+        "Bench profile should produce zero bench contract gaps",
+    );
+    kani::assert(
+        gaps.is_empty(),
+        "Correct config should produce zero total gaps",
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -131,16 +140,19 @@ fn bench_profile_master_keys() {
 fn hardened_debug_assertions_enabled() {
     let mut ws = WorkspaceProfileSet::new();
 
-    ws.add(ProfileConfig::new(ProfileName::Hardened, vec![
-        (ProfileKey::DebugAssertions, SettingValue::Bool(true)),
-        (ProfileKey::OverflowChecks, SettingValue::Bool(true)),
-    ]));
+    ws.add(ProfileConfig::new(
+        ProfileName::Hardened,
+        vec![
+            (ProfileKey::DebugAssertions, SettingValue::Bool(true)),
+            (ProfileKey::OverflowChecks, SettingValue::Bool(true)),
+        ],
+    ));
 
     let gaps = validate_against_governance(&ws);
 
     kani::assert(
         gaps.is_empty(),
-        "Hardened with debug-assertions=true should produce zero governance gaps"
+        "Hardened with debug-assertions=true should produce zero governance gaps",
     );
 }
 
@@ -153,16 +165,22 @@ fn hardened_debug_assertions_enabled() {
 fn maxperf_rejected_by_construction() {
     // 1. Direct check
     let result = ProfileName::new("maxperf");
-    kani::assert(result.is_err(), "ProfileName::new('maxperf') must return Err");
+    kani::assert(
+        result.is_err(),
+        "ProfileName::new('maxperf') must return Err",
+    );
 
     // 2. Exhaustive: all valid ProfileName variants are not maxperf
     let name: ProfileName = kani::any();
     // All 6 valid variants are non-maxperf — this is a structural guarantee
     kani::assert(
-        name == ProfileName::Release || name == ProfileName::Bench
-        || name == ProfileName::Hardened || name == ProfileName::Fuzz
-        || name == ProfileName::Test || name == ProfileName::Dev,
-        "All valid ProfileName variants are non-maxperf"
+        name == ProfileName::Release
+            || name == ProfileName::Bench
+            || name == ProfileName::Hardened
+            || name == ProfileName::Fuzz
+            || name == ProfileName::Test
+            || name == ProfileName::Dev,
+        "All valid ProfileName variants are non-maxperf",
     );
 
     // 3. Defense-in-depth: arbitrary workspace never has ForbiddenProfile gap
@@ -176,5 +194,8 @@ fn maxperf_rejected_by_construction() {
             has_forbidden = true;
         }
     }
-    kani::assert(!has_forbidden, "No ForbiddenProfile gap for valid workspaces");
+    kani::assert(
+        !has_forbidden,
+        "No ForbiddenProfile gap for valid workspaces",
+    );
 }

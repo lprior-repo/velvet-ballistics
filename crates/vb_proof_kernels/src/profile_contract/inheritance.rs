@@ -4,11 +4,11 @@
 //! Resolves inherited settings following Cargo's `inherits` semantics.
 //! Depth-bounded to MAX_INHERITANCE_DEPTH (8). Cycle detection via visited set.
 
+use crate::profile_contract::MAX_INHERITANCE_DEPTH;
 use crate::profile_contract::config::ProfileConfig;
 use crate::profile_contract::errors::ResolveError;
 use crate::profile_contract::types::{ProfileKey, ProfileName, SettingValue};
 use crate::profile_contract::workspace::WorkspaceProfileSet;
-use crate::profile_contract::MAX_INHERITANCE_DEPTH;
 
 /// Resolved profile settings map.
 pub type ResolvedProfile = Vec<(ProfileKey, SettingValue)>;
