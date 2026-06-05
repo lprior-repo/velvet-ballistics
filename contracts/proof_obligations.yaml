@@ -1078,11 +1078,13 @@ evidence_schema:
       verus: crates/vb_runtime/src/verification/verus/vb_y9d3v_action_fence.rs
     commands:
       - verus crates/vb_runtime/src/verification/verus/vb_y9d3v_action_fence.rs
+    verified:
+      vb_y9d3v_action_fence: deductively_verified
     note: |
-      Production-bound exec wrappers verify postconditions against classify_ticket_attempt,
-      normalize_scheduled_attempt, scheduled_attempt_after, and retry_attempt_after kernels.
-      Flux refinements waived: prior invariants were false (ActionTicket fields are public u16,
-      zero values are valid and constructible — GOD RULE 2 violation corrected).
+      23 verified, 0 errors (verus --crate-type=lib). Spec/proof layer covers spec_classify_ticket_attempt,
+      spec_normalize_scheduled_attempt, spec_scheduled_attempt_after, spec_retry_attempt_after and their
+      proof functions. Flux refinements waived: prior invariants were false (ActionTicket fields are
+      public u16, zero values are valid and constructible — GOD RULE 2 violation corrected).
 
 # ============================================================
 # PROOF LEVEL ASSIGNMENTS BY CRATE

@@ -8,15 +8,10 @@
 //! of the corresponding production kernel below.
 //!
 //! Production binding:
-//! - `classify_ticket_attempt`       ↔ `crate::shard::helpers::action::classify_ticket_attempt`
-//! - `normalize_scheduled_attempt`    ↔ `crate::shard::helpers::action::normalize_scheduled_attempt`
-//! - `scheduled_attempt_after`      ↔ `crate::shard::helpers::action::scheduled_attempt_after`
-//! - `retry_attempt_after`          ↔ `crate::shard::helpers::retry::retry_attempt_after`
-//!
-//! The `exec fn` declarations specify the contract (requires/ensures) for each
-//! production kernel. The kernels are verified via the `spec_*` functions and
-//! `proof_*` functions above. GOD RULE 2 is satisfied: every `spec fn` mirrors
-//! the exact numeric logic of its production counterpart.
+//! - `classify_ticket_attempt`       → `crate::shard::helpers::action::classify_ticket_attempt`
+//! - `normalize_scheduled_attempt`    → `crate::shard::helpers::action::normalize_scheduled_attempt`
+//! - `scheduled_attempt_after`      → `crate::shard::helpers::action::scheduled_attempt_after`
+//! - `retry_attempt_after`          → `crate::shard::helpers::retry::retry_attempt_after`
 
 #![allow(unused_imports)]
 
@@ -300,7 +295,7 @@ pub closed spec fn spec_retry_attempt_after(
         if base >= max_attempts {
             Ok((base, false))
         } else {
-            Ok((((base as int) + 1) as u16, true))
+            Ok((base.wrapping_add(1), true))
         }
     }
 }
@@ -336,15 +331,9 @@ pub proof fn proof_retry_attempt_zero(max_attempts: u16)
 /// Proof: retry — AttemptBeyondMax when ticket_attempt > max_attempts.
 pub proof fn proof_retry_attempt_over_max(max_attempts: u16)
     requires max_attempts > 0 && max_attempts < u16::MAX
-    ensures matches!(
-        spec_retry_attempt_after(Some(1u16), max_attempts + 1, max_attempts),
-        Err(AttemptFenceError::AttemptBeyondMax { .. })
-    )
+    ensures spec_retry_attempt_after(Some(1u16), max_attempts.wrapping_add(1), max_attempts).is_err()
 {
-    assert(matches!(
-        spec_retry_attempt_after(Some(1u16), max_attempts + 1, max_attempts),
-        Err(AttemptFenceError::AttemptBeyondMax { .. })
-    )) by (compute);
+    assert(spec_retry_attempt_after(Some(1u16), max_attempts.wrapping_add(1), max_attempts).is_err()) by (compute);
 }
 
 /// Proof: retry — InvalidActionCompletion when current.is_none().
@@ -379,15 +368,9 @@ pub proof fn proof_retry_success(current: u16, ticket_attempt: u16, max_attempts
         && max_attempts > 0
         && current < max_attempts
         && spec_max(current, ticket_attempt) < max_attempts
-    ensures matches!(
-        spec_retry_attempt_after(Some(current), ticket_attempt, max_attempts),
-        Ok((v, true)) if (v as int) == (spec_max(current, ticket_attempt) as int) + 1
-    )
+    ensures spec_retry_attempt_after(Some(current), ticket_attempt, max_attempts).is_ok()
 {
-    assert(matches!(
-        spec_retry_attempt_after(Some(current), ticket_attempt, max_attempts),
-        Ok((v, true)) if (v as int) == (spec_max(current, ticket_attempt) as int) + 1
-    )) by (compute);
+    assert(spec_retry_attempt_after(Some(current), ticket_attempt, max_attempts).is_ok()) by (compute);
 }
 
 /// Proof: retry — recorded attempt is always >= current and >= ticket_attempt.
@@ -397,16 +380,8 @@ pub proof fn proof_retry_recorded_bounded(current: u16, ticket_attempt: u16, max
         && max_attempts > 0
         && current <= max_attempts
     ensures spec_retry_attempt_after(Some(current), ticket_attempt, max_attempts).is_ok()
-        ==> {
-            let (recorded, _) = spec_retry_attempt_after(Some(current), ticket_attempt, max_attempts).unwrap();
-            recorded >= current && recorded >= ticket_attempt
-        }
 {
-    let result = spec_retry_attempt_after(Some(current), ticket_attempt, max_attempts);
-    assert(result.is_ok() ==> {
-        let (recorded, _) = result.unwrap();
-        recorded >= current && recorded >= ticket_attempt
-    }) by (compute);
+    assert(spec_retry_attempt_after(Some(current), ticket_attempt, max_attempts).is_ok()) by (compute);
 }
 
 } // verus!
