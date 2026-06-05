@@ -206,10 +206,7 @@ mod tests {
     #[test]
     fn test_invalid_transitions() {
         assert!(!is_valid_transition(StepState::Running, StepState::Pending));
-        assert!(!is_valid_transition(
-            StepState::Succeeded,
-            StepState::Running
-        ));
+        // Note: Succeeded -> Running IS valid (for loop body re-entry)
         assert!(!is_valid_transition(StepState::Failed, StepState::Running));
     }
 
@@ -359,11 +356,11 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_transition_invalid_terminal_to_non_terminal() {
+    fn test_validate_transition_valid_succeeded_to_running() {
+        // Succeeded -> Running is VALID for loop body re-entry
         let result = validate_transition(StepState::Succeeded, StepState::Running);
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert_eq!(err, "invalid_state_transition");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), StepState::Running);
     }
 
     #[test]

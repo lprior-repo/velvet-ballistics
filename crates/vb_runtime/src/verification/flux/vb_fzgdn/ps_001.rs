@@ -15,8 +15,8 @@ pub struct SafeGeneration(u64);
 impl SafeGeneration {
     /// Creates a SafeGeneration from a u64 value that is guaranteed < u64::MAX.
     #[flux_rs::sig(fn(u64) -> SafeGeneration[gen])]
-    pub fn new(gen: u64) -> SafeGeneration {
-        SafeGeneration(gen)
+    pub fn new(r#gen: u64) -> SafeGeneration {
+        SafeGeneration(r#gen)
     }
 
     /// Returns the inner u64 value.
@@ -41,8 +41,8 @@ mod production_refinements {
     ///   }
     #[flux_rs::trusted]
     #[flux_rs::sig(fn(u64[@gen]) -> u64[gen + 1] requires gen < u64::MAX)]
-    pub fn bump_generation(gen: u64) -> u64 {
-        gen.checked_add(1).expect("SAFETY: caller proves gen < u64::MAX")
+    pub fn bump_generation(r#gen: u64) -> u64 {
+        r#gen.checked_add(1).expect("SAFETY: caller proves gen < u64::MAX")
     }
 
     /// Refinement: MAX generation cannot be incremented.

@@ -464,11 +464,12 @@ mod unknown_record_kind_rejection {
 
     #[test]
     fn is_known_record_kind_returns_false_for_invalid_kinds() {
-        // Given: kind values 0, 4..=9, 29, 31..=39, 41..=49, 51..=65535
+        // Given: kind values 0, 4..=9, 31..=39, 41..=49, 51..=65535
+        // Note: 29 is StepSucceeded (valid) after vb-mrwe.5 fix
+        // Note: 30 is Snapshot (valid kind but for MAGIC_SNAPSHOT, not MAGIC_JOURNAL_EVENT)
         // We test a representative sample due to the large range
         let invalid_kinds: Vec<u16> = vec![
             0, 4, 5, 6, 7, 8, 9,  // 4..=9
-            29, // gap after RunKilled(28)
             31, 32, 33, 34, 35, 36, 37, 38, 39, // 31..=39
             41, 42, 43, 44, 45, 46, 47, 48, 49, // 41..=49
             51, 52, // small sample after 50

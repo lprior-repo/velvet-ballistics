@@ -197,7 +197,10 @@ fn kind_28_admission_does_not_open_unknown_kind_29() {
     );
 
     // Verify kind 29 (StepSucceeded) is now known and admitted for journal
-    assert!(is_known_record_kind(29), "kind 29 must be known (StepSucceeded)");
+    assert!(
+        is_known_record_kind(29),
+        "kind 29 must be known (StepSucceeded)"
+    );
     assert!(
         validate_kind_family(MAGIC_JOURNAL_EVENT, 29).is_ok(),
         "kind 29 must be admitted for journal magic"
