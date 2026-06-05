@@ -3,7 +3,9 @@
 //! Bead: vb-esq9.1 | State: 5 (proof-writer)
 //! These types make illegal states unrepresentable by design.
 
-use crate::profile_contract::errors::{ProfileNameError, ProfileKeyError, SettingValueError};
+use crate::profile_contract::errors::{ProfileKeyError, ProfileNameError, SettingValueError};
+use core::convert::Infallible;
+use core::str::FromStr;
 
 // ---------------------------------------------------------------------------
 // ProfileName — validated profile identifier
@@ -124,38 +126,42 @@ pub enum SettingValue {
 /// are represented as `Other`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StrVal {
-    Thin,          // "thin"
-    Fat,           // "fat"
-    Off,           // "off"
-    True,          // "true"  (for inherits = "release")
-    False,         // "false"
-    None_,         // "none"
-    Symbols,       // "symbols"
-    Debuginfo,     // "debuginfo"
-    Release,       // "release" (for inherits)
-    Unwind,        // "unwind"
-    Abort,         // "abort"
-    Other,         // catch-all for unknown string values
+    Thin,      // "thin"
+    Fat,       // "fat"
+    Off,       // "off"
+    True,      // "true"  (for inherits = "release")
+    False,     // "false"
+    None_,     // "none"
+    Symbols,   // "symbols"
+    Debuginfo, // "debuginfo"
+    Release,   // "release" (for inherits)
+    Unwind,    // "unwind"
+    Abort,     // "abort"
+    Other,     // catch-all for unknown string values
+}
+
+impl FromStr for StrVal {
+    type Err = Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "thin" => Ok(Self::Thin),
+            "fat" => Ok(Self::Fat),
+            "off" => Ok(Self::Off),
+            "true" => Ok(Self::True),
+            "false" => Ok(Self::False),
+            "none" => Ok(Self::None_),
+            "symbols" => Ok(Self::Symbols),
+            "debuginfo" => Ok(Self::Debuginfo),
+            "release" => Ok(Self::Release),
+            "unwind" => Ok(Self::Unwind),
+            "abort" => Ok(Self::Abort),
+            _ => Ok(Self::Other),
+        }
+    }
 }
 
 impl StrVal {
-    pub fn from_str(s: &str) -> Self {
-        match s {
-            "thin" => Self::Thin,
-            "fat" => Self::Fat,
-            "off" => Self::Off,
-            "true" => Self::True,
-            "false" => Self::False,
-            "none" => Self::None_,
-            "symbols" => Self::Symbols,
-            "debuginfo" => Self::Debuginfo,
-            "release" => Self::Release,
-            "unwind" => Self::Unwind,
-            "abort" => Self::Abort,
-            _ => Self::Other,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Thin => "thin",
@@ -221,10 +227,7 @@ impl SettingValue {
     /// - opt-level != 3 for release profile
     /// - codegen-units != 1 for release/bench
     /// - lto value not in {false, thin, fat, off}
-    pub fn for_key(
-        key: ProfileKey,
-        value: SettingValue,
-    ) -> Result<Self, SettingValueError> {
+    pub fn for_key(key: ProfileKey, value: SettingValue) -> Result<Self, SettingValueError> {
         match (key, &value) {
             (ProfileKey::OptLevel, SettingValue::U8(v)) if *v != 3 => {
                 Err(SettingValueError::InvalidOptLevel(*v))
@@ -232,24 +235,18 @@ impl SettingValue {
             (ProfileKey::CodegenUnits, SettingValue::U16(v)) if *v != 1 => {
                 Err(SettingValueError::InvalidCodegenUnits(*v))
             }
-            (ProfileKey::Lto, SettingValue::String(s)) => {
-                match s {
-                    StrVal::Thin | StrVal::Fat | StrVal::Off | StrVal::False => Ok(value),
-                    _ => Err(SettingValueError::InvalidLto),
-                }
-            }
-            (ProfileKey::Strip, SettingValue::String(s)) => {
-                match s {
-                    StrVal::None_ | StrVal::Symbols | StrVal::Debuginfo => Ok(value),
-                    _ => Err(SettingValueError::InvalidStrip),
-                }
-            }
-            (ProfileKey::Panic, SettingValue::String(s)) => {
-                match s {
-                    StrVal::Unwind | StrVal::Abort => Ok(value),
-                    _ => Err(SettingValueError::InvalidPanic),
-                }
-            }
+            (ProfileKey::Lto, SettingValue::String(s)) => match s {
+                StrVal::Thin | StrVal::Fat | StrVal::Off | StrVal::False => Ok(value),
+                _ => Err(SettingValueError::InvalidLto),
+            },
+            (ProfileKey::Strip, SettingValue::String(s)) => match s {
+                StrVal::None_ | StrVal::Symbols | StrVal::Debuginfo => Ok(value),
+                _ => Err(SettingValueError::InvalidStrip),
+            },
+            (ProfileKey::Panic, SettingValue::String(s)) => match s {
+                StrVal::Unwind | StrVal::Abort => Ok(value),
+                _ => Err(SettingValueError::InvalidPanic),
+            },
             _ => Ok(value),
         }
     }

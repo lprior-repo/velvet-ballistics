@@ -79,6 +79,20 @@ doc = false
 bench = false
 
 [[bin]]
+name = "vb_mrwe6_duplicate_decode"
+path = "fuzz_targets/vb_mrwe6_duplicate_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_mrwe6_recovery_inventory"
+path = "fuzz_targets/vb_mrwe6_recovery_inventory.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "vb_qi37_12_persisted_payload_decode"
 path = "src/bin/vb_qi37_12_persisted_payload_decode.rs"
 test = false

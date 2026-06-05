@@ -78,11 +78,7 @@ fn kani_from_u16_exhaustive() {
             IpcCommand::DrainTrace,
             "value 9 must map to DrainTrace"
         ),
-        10 => assert_eq!(
-            command,
-            IpcCommand::Health,
-            "value 10 must map to Health"
-        ),
+        10 => assert_eq!(command, IpcCommand::Health, "value 10 must map to Health"),
         11 => assert_eq!(
             command,
             IpcCommand::Shutdown,

@@ -1,5 +1,8 @@
 use vstd::prelude::*;
 
+mod vb_mrwe6_kernel_binding;
+use vb_mrwe6_kernel_binding::*;
+
 verus! {
 
 // Verus artifact for obl-vb-mrwe-6-duplicate-verus-013.
@@ -8,21 +11,28 @@ verus! {
 // boundary: equality and marker presence are finite inputs; Kani/bridge tests
 // call the classifier with real JournalEvent values.
 
-pub enum Mrwe6DuplicateRetryDecisionView { IdempotentEqualRetry, DivergentDuplicateConflict, MissingExpectedIndexState }
-
-pub open spec fn seam_duplicate_decision(equal_payload: bool, index_marker_present: bool, is_schedule: bool) -> Mrwe6DuplicateRetryDecisionView {
-    if !equal_payload { Mrwe6DuplicateRetryDecisionView::DivergentDuplicateConflict }
-    else if !is_schedule || index_marker_present { Mrwe6DuplicateRetryDecisionView::IdempotentEqualRetry }
-    else { Mrwe6DuplicateRetryDecisionView::MissingExpectedIndexState }
-}
-
-pub proof fn divergent_duplicate_never_idempotent(index_marker_present: bool, is_schedule: bool)
-    ensures seam_duplicate_decision(false, index_marker_present, is_schedule) == Mrwe6DuplicateRetryDecisionView::DivergentDuplicateConflict,
+pub proof fn divergent_duplicate_never_idempotent(index_marker_present: bool, retry_class: Mrwe6EventClassView)
+    ensures spec_duplicate_retry_decision_from_facts(false, retry_class, index_marker_present) == Mrwe6DuplicateRetryDecisionView::DivergentDuplicateConflict,
 {
 }
 
 pub proof fn equal_scheduled_duplicate_with_marker_is_idempotent()
-    ensures seam_duplicate_decision(true, true, true) == Mrwe6DuplicateRetryDecisionView::IdempotentEqualRetry,
+    ensures spec_duplicate_retry_decision_from_facts(true, Mrwe6EventClassView::Scheduled, true) == Mrwe6DuplicateRetryDecisionView::IdempotentEqualRetry,
+{
+}
+
+pub proof fn equal_scheduled_duplicate_without_marker_is_missing_state()
+    ensures spec_duplicate_retry_decision_from_facts(true, Mrwe6EventClassView::Scheduled, false) == Mrwe6DuplicateRetryDecisionView::MissingExpectedIndexState,
+{
+}
+
+pub proof fn equal_resolution_duplicate_is_unsupported(index_marker_present: bool)
+    ensures spec_duplicate_retry_decision_from_facts(true, Mrwe6EventClassView::Resolution, index_marker_present) == Mrwe6DuplicateRetryDecisionView::UnsupportedDuplicateClassRejected,
+{
+}
+
+pub proof fn equal_unrelated_duplicate_is_unsupported(index_marker_present: bool)
+    ensures spec_duplicate_retry_decision_from_facts(true, Mrwe6EventClassView::Unrelated, index_marker_present) == Mrwe6DuplicateRetryDecisionView::UnsupportedDuplicateClassRejected,
 {
 }
 

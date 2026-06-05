@@ -18,6 +18,7 @@ use vb_core::frame::RunFrame;
 use vb_core::ids::{RunId, StepIdx};
 
 const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
+const SNAPSHOT_RESTORE_NODE_COUNT: u16 = 51;
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
 struct BenchSnapshot {
@@ -45,18 +46,32 @@ fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
     )
 }
 
-/// Simple workflow for testing.
+/// Workflow large enough for every benchmark snapshot program counter.
 fn simple_workflow() -> CompiledWorkflow {
-    let nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        },
-    }];
+    let mut nodes = Vec::with_capacity(usize::from(SNAPSHOT_RESTORE_NODE_COUNT));
+    for step in 0..SNAPSHOT_RESTORE_NODE_COUNT {
+        let is_last = step == SNAPSHOT_RESTORE_NODE_COUNT.saturating_sub(1);
+        let next = if is_last {
+            None
+        } else {
+            step.checked_add(1).map(StepIdx::new)
+        };
+        let kind = if is_last {
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            }
+        } else {
+            CompiledNodeKind::Nop
+        };
+        nodes.push(CompiledNode {
+            id: StepIdx::new(step),
+            output: None,
+            next,
+            on_error: None,
+            error_slot: None,
+            kind,
+        });
+    }
     CompiledWorkflow::try_from_parts(WorkflowParts {
         name: Box::from("bench_simple"),
         digest: WorkflowDigest::from_bytes([0x11; 32]),

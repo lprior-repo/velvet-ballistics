@@ -6,17 +6,15 @@
 //! JournalEvent constructors and seam functions.
 
 use crate::mrwe6_seams::{Mrwe6EventClass, Mrwe6IntentKind};
-use flux_rs::attrs::*;
-
-#[refined_by(kind: int)]
+#[flux_rs::refined_by(kind: int)]
 pub enum Mrwe6ScheduleAtom {
-    #[variant(Mrwe6ScheduleAtom[0])]
+    #[flux_rs::variant(Mrwe6ScheduleAtom[0])]
     EventOnly,
-    #[variant(Mrwe6ScheduleAtom[1])]
+    #[flux_rs::variant(Mrwe6ScheduleAtom[1])]
     EventAndIndex,
 }
 
-#[sig(fn(atom: Mrwe6ScheduleAtom{v: v == 1}) -> bool[true])]
+#[flux_rs::sig(fn(atom: Mrwe6ScheduleAtom{v: v == 1}) -> bool[true])]
 pub fn scheduled_atom_has_index(atom: Mrwe6ScheduleAtom) -> bool {
     match atom {
         Mrwe6ScheduleAtom::EventAndIndex => true,
@@ -24,6 +22,15 @@ pub fn scheduled_atom_has_index(atom: Mrwe6ScheduleAtom) -> bool {
     }
 }
 
+#[flux_rs::sig(fn(atom: Mrwe6ScheduleAtom{v: v == 0}) -> bool[false])]
+pub fn invalid_scheduled_event_only_rejected(atom: Mrwe6ScheduleAtom) -> bool {
+    match atom {
+        Mrwe6ScheduleAtom::EventOnly => false,
+        Mrwe6ScheduleAtom::EventAndIndex => true,
+    }
+}
+
+#[flux_rs::sig(fn(Mrwe6EventClass, Mrwe6IntentKind) -> Mrwe6ScheduleAtom)]
 pub fn schedule_atom_from_production_seam(
     class: Mrwe6EventClass,
     required: Mrwe6IntentKind,
@@ -34,4 +41,10 @@ pub fn schedule_atom_from_production_seam(
         }
         _ => Mrwe6ScheduleAtom::EventOnly,
     }
+}
+
+#[cfg(feature = "vb-mrwe6-flux-negative-probes")]
+#[flux_rs::sig(fn() -> bool[true])]
+pub fn negative_probe_event_only_schedule_is_rejected() -> bool {
+    invalid_scheduled_event_only_rejected(Mrwe6ScheduleAtom::EventOnly)
 }

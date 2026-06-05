@@ -703,7 +703,7 @@ criteria = "safe-to-deploy"
 
 [[exemptions.generator]]
 version = "0.8.8"
-criteria = "safe-to-run"
+criteria = "safe-to-deploy"
 
 [[exemptions.getrandom]]
 version = "0.3.4"
@@ -883,7 +883,7 @@ criteria = "safe-to-deploy"
 
 [[exemptions.loom]]
 version = "0.7.2"
-criteria = "safe-to-run"
+criteria = "safe-to-deploy"
 
 [[exemptions.lsm-tree]]
 version = "3.1.4"
@@ -1119,7 +1119,7 @@ criteria = "safe-to-deploy"
 
 [[exemptions.matchers]]
 version = "0.2.0"
-criteria = "safe-to-run"
+criteria = "safe-to-deploy"
 
 [[exemptions.memchr]]
 version = "2.7.6@git:20b6c53b6f229b165fe7f813504ae93405159d27"
@@ -1171,7 +1171,7 @@ criteria = "safe-to-deploy"
 
 [[exemptions.nu-ansi-term]]
 version = "0.50.3"
-criteria = "safe-to-run"
+criteria = "safe-to-deploy"
 
 [[exemptions.num-traits]]
 version = "0.2.19"
@@ -1491,7 +1491,7 @@ criteria = "safe-to-deploy"
 
 [[exemptions.sharded-slab]]
 version = "0.1.7"
-criteria = "safe-to-run"
+criteria = "safe-to-deploy"
 
 [[exemptions.shlex]]
 version = "1.3.0"
@@ -1583,7 +1583,7 @@ criteria = "safe-to-deploy"
 
 [[exemptions.thread_local]]
 version = "1.1.9"
-criteria = "safe-to-run"
+criteria = "safe-to-deploy"
 
 [[exemptions.tiny-skia]]
 version = "0.11.4"
@@ -1635,19 +1635,19 @@ criteria = "safe-to-deploy"
 
 [[exemptions.tracing]]
 version = "0.1.44"
-criteria = "safe-to-run"
+criteria = "safe-to-deploy"
 
 [[exemptions.tracing-core]]
 version = "0.1.36"
-criteria = "safe-to-run"
+criteria = "safe-to-deploy"
 
 [[exemptions.tracing-log]]
 version = "0.2.0"
-criteria = "safe-to-run"
+criteria = "safe-to-deploy"
 
 [[exemptions.tracing-subscriber]]
 version = "0.3.23"
-criteria = "safe-to-run"
+criteria = "safe-to-deploy"
 
 [[exemptions.trybuild]]
 version = "1.0.116"
@@ -1759,7 +1759,7 @@ criteria = "safe-to-deploy"
 
 [[exemptions.valuable]]
 version = "0.1.1"
-criteria = "safe-to-run"
+criteria = "safe-to-deploy"
 
 [[exemptions.varint-rs]]
 version = "2.2.0"

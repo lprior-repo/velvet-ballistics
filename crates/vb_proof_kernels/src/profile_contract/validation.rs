@@ -4,12 +4,10 @@
 //! No I/O, no panics, no unsafe. Returns typed error lists for contract and
 //! governance gaps.
 
-use crate::profile_contract::types::{ProfileName, ProfileKey};
-use crate::profile_contract::workspace::WorkspaceProfileSet;
-use crate::profile_contract::master::{
-    MasterProfileContract, HARDENED_GOVERNANCE_REQUIRED,
-};
 use crate::profile_contract::errors::{ContractGap, GovernanceGap};
+use crate::profile_contract::master::{HARDENED_GOVERNANCE_REQUIRED, MasterProfileContract};
+use crate::profile_contract::types::{ProfileKey, ProfileName};
+use crate::profile_contract::workspace::WorkspaceProfileSet;
 
 /// Validate the workspace profile set against the master contract (MASTER §34).
 ///
@@ -107,9 +105,7 @@ pub fn validate_against_master(
 ///
 /// Returns a list of GovernanceGap for every violation. An empty list
 /// means the hardened profile satisfies governance requirements.
-pub fn validate_against_governance(
-    set: &WorkspaceProfileSet,
-) -> Vec<GovernanceGap> {
+pub fn validate_against_governance(set: &WorkspaceProfileSet) -> Vec<GovernanceGap> {
     let mut gaps = Vec::new();
 
     // governance only applies to hardened profile

@@ -2,6 +2,18 @@
   "kani-version": "0.67.0",
   "file-version": "0.1",
   "standard-harnesses": {
+    "crates/vb_storage/src/kani_vb_mrwe4_reject_unsupported_state.rs": [
+      "kani_vb_mrwe4_reject_unsupported_state::kani_vb_mrwe4_reject_unsupported_state::vb_mrwe4_reject_does_not_use_pending_actions"
+    ],
+    "crates/vb_storage/src/kani_vb_mrwe4_seed_unsupported_state.rs": [
+      "kani_vb_mrwe4_seed_unsupported_state::kani_vb_mrwe4_seed_unsupported_state::vb_mrwe4_seed_unsupported_state_pending_false"
+    ],
+    "crates/vb_storage/src/kani_vb_mrwe5_record_kind.rs": [
+      "kani_vb_mrwe5_record_kind::kani_vb_mrwe5_record_kind_injectivity::vb_mrwe5_record_kind_injectivity"
+    ],
+    "crates/vb_storage/src/kani_vb_mrwe5_step_succeeded_id.rs": [
+      "kani_vb_mrwe5_step_succeeded_id::kani_vb_mrwe5_step_succeeded_id::vb_mrwe5_step_succeeded_id"
+    ],
     "crates/vb_storage/src/kani_vbjpq733_proofs.rs": [
       "kani_vbjpq733_proofs::vbjpq733_is_fully_supported_all_states",
       "kani_vbjpq733_proofs::vbjpq733_is_fully_supported_each_flag",
@@ -10,12 +22,30 @@
       "kani_vbjpq733_proofs::vbjpq733_unsupported_union_commutative",
       "kani_vbjpq733_proofs::vbjpq733_unsupported_union_idempotent",
       "kani_vbjpq733_proofs::vbjpq733_unsupported_union_supported_identity"
+    ],
+    "crates/vb_storage/src/verification/kani/vb_mrwe6_architecture_binding.rs": [
+      "vb_mrwe6_atomic_index::vb_mrwe6_architecture_binding::vb_mrwe6_architecture_binding_all_domains"
+    ],
+    "crates/vb_storage/src/verification/kani/vb_mrwe6_atomic_index.rs": [
+      "vb_mrwe6_atomic_index::vb_mrwe6_atomic_index_all_cases"
+    ],
+    "crates/vb_storage/src/verification/kani/vb_mrwe6_completion_policy.rs": [
+      "vb_mrwe6_completion_policy::vb_mrwe6_completion_policy_all_cases"
+    ],
+    "crates/vb_storage/src/verification/kani/vb_mrwe6_duplicate_schedule.rs": [
+      "vb_mrwe6_duplicate_schedule::vb_mrwe6_duplicate_arbitrary_facts"
+    ],
+    "crates/vb_storage/src/verification/kani/vb_mrwe6_queue_intent.rs": [
+      "vb_mrwe6_queue_intent::vb_mrwe6_queue_intent_preservation"
+    ],
+    "crates/vb_storage/src/verification/kani/vb_mrwe6_recovery_reliance.rs": [
+      "vb_mrwe6_recovery_reliance::vb_mrwe6_recovery_inventory_all_cases"
     ]
   },
   "contract-harnesses": {},
   "contracts": [],
   "totals": {
-    "standard-harnesses": 7,
+    "standard-harnesses": 17,
     "contract-harnesses": 0,
     "functions-under-contract": 0
   }

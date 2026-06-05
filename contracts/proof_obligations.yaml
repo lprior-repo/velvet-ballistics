@@ -46,6 +46,8 @@ obligations:
     proof_level: L4
     crate: vb_storage
     files:
+      - crates/vb_storage/src/journal/append/mrwe6_kernel.rs
+      - verification/verus/vb_mrwe6_kernel_binding.rs
       - crates/vb_storage/src/batch.rs
       - crates/vb_storage/src/journal/internal.rs
     required:
@@ -61,6 +63,8 @@ obligations:
     proof_level: L4
     crate: vb_storage
     files:
+      - crates/vb_storage/src/journal/append/mrwe6_kernel.rs
+      - verification/verus/vb_mrwe6_kernel_binding.rs
       - crates/vb_storage/src/queue/writer.rs
     required:
       verus: verification/verus/vb_mrwe6_queue_intent.rs
@@ -75,6 +79,8 @@ obligations:
     proof_level: L4
     crate: vb_storage
     files:
+      - crates/vb_storage/src/journal/append/mrwe6_kernel.rs
+      - verification/verus/vb_mrwe6_kernel_binding.rs
       - crates/vb_storage/src/journal/append.rs
     required:
       verus: verification/verus/vb_mrwe6_duplicate_schedule.rs
@@ -89,6 +95,8 @@ obligations:
     proof_level: L4
     crate: vb_storage
     files:
+      - crates/vb_storage/src/journal/append/mrwe6_kernel.rs
+      - verification/verus/vb_mrwe6_kernel_binding.rs
       - crates/vb_storage/src/journal/append.rs
     required:
       verus: verification/verus/vb_mrwe6_completion_policy.rs
@@ -103,6 +111,8 @@ obligations:
     proof_level: L4
     crate: vb_storage
     files:
+      - crates/vb_storage/src/journal/append/mrwe6_kernel.rs
+      - verification/verus/vb_mrwe6_kernel_binding.rs
       - crates/vb_storage/src/recovery/replay/summary.rs
     required:
       verus: verification/verus/vb_mrwe6_recovery_reliance.rs

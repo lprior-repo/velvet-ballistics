@@ -15,7 +15,9 @@ pub struct WorkspaceProfileSet {
 impl WorkspaceProfileSet {
     /// Create an empty workspace profile set.
     pub fn new() -> Self {
-        Self { profiles: Vec::new() }
+        Self {
+            profiles: Vec::new(),
+        }
     }
 
     /// Add a profile to the set.
@@ -25,12 +27,7 @@ impl WorkspaceProfileSet {
 
     /// Find a profile by name. Returns None if absent.
     pub fn find(&self, name: ProfileName) -> Option<&ProfileConfig> {
-        for p in &self.profiles {
-            if p.name == name {
-                return Some(p);
-            }
-        }
-        None
+        self.profiles.iter().find(|profile| profile.name == name)
     }
 
     /// Check if a profile exists by name.
@@ -41,6 +38,17 @@ impl WorkspaceProfileSet {
     /// Count profiles in the set.
     pub fn len(&self) -> usize {
         self.profiles.len()
+    }
+
+    /// Returns true when no profiles are present.
+    pub fn is_empty(&self) -> bool {
+        self.profiles.is_empty()
+    }
+}
+
+impl Default for WorkspaceProfileSet {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

@@ -8,7 +8,7 @@
 
 #![cfg(kani)]
 
-pub mod profile_contract;
-pub mod inheritance;
-pub mod gap_closure;
 pub mod forbidden_states;
+pub mod gap_closure;
+pub mod inheritance;
+pub mod profile_contract;

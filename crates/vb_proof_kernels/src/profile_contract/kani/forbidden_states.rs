@@ -12,13 +12,14 @@
 //! GOD RULE 4: Verifies implementation; does not weaken contract.
 
 use crate::profile_contract::{
-    ProfileName, ProfileKey, SettingValue, StrVal,
-    ProfileConfig, WorkspaceProfileSet,
-    MasterProfileContract, MASTER_PROFILE_CONTRACT,
-    validate_against_master, validate_against_governance,
-    resolve_inheritance,
-    binding::{bind_moon_task, MoonTaskProfileBinding, ProfileRefKind},
+    MASTER_PROFILE_CONTRACT, MasterProfileContract, ProfileConfig, ProfileKey, ProfileName,
+    SettingValue, StrVal, WorkspaceProfileSet,
+    binding::{MoonTaskProfileBinding, ProfileRefKind, bind_moon_task},
+    resolve_inheritance, validate_against_governance, validate_against_master,
 };
+
+#[path = "forbidden_states_master.rs"]
+mod forbidden_states_master;
 
 // ---------------------------------------------------------------------------
 // PS-010: Forbidden states rejected
@@ -49,19 +50,27 @@ fn forbidden_states_rejected_and_pure_functions_no_panic() {
     // ===================================================================
     {
         let mut ws = WorkspaceProfileSet::new();
-        ws.add(ProfileConfig::new(ProfileName::Bench, vec![
-            (ProfileKey::Inherits, SettingValue::String(StrVal::Release)),
-            (ProfileKey::Debug, SettingValue::Bool(true)),
-            (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
-            (ProfileKey::CodegenUnits, SettingValue::U16(1)),
-        ]));
+        ws.add(ProfileConfig::new(
+            ProfileName::Bench,
+            vec![
+                (ProfileKey::Inherits, SettingValue::String(StrVal::Release)),
+                (ProfileKey::Debug, SettingValue::Bool(true)),
+                (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
+                (ProfileKey::CodegenUnits, SettingValue::U16(1)),
+            ],
+        ));
         let gaps = validate_against_master(&ws, &MASTER_PROFILE_CONTRACT);
         let has_missing_release = gaps.iter().any(|g| {
-            matches!(g, crate::profile_contract::ContractGap::MissingProfile { name: ProfileName::Release })
+            matches!(
+                g,
+                crate::profile_contract::ContractGap::MissingProfile {
+                    name: ProfileName::Release
+                }
+            )
         });
         kani::assert(
             has_missing_release,
-            "Missing [profile.release] must produce MissingProfile gap"
+            "Missing [profile.release] must produce MissingProfile gap",
         );
     }
 
@@ -70,19 +79,27 @@ fn forbidden_states_rejected_and_pure_functions_no_panic() {
     // ===================================================================
     {
         let mut ws = WorkspaceProfileSet::new();
-        ws.add(ProfileConfig::new(ProfileName::Release, vec![
-            (ProfileKey::OptLevel, SettingValue::U8(3)),
-            (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
-            (ProfileKey::CodegenUnits, SettingValue::U16(1)),
-            (ProfileKey::Strip, SettingValue::String(StrVal::Symbols)),
-        ]));
+        ws.add(ProfileConfig::new(
+            ProfileName::Release,
+            vec![
+                (ProfileKey::OptLevel, SettingValue::U8(3)),
+                (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
+                (ProfileKey::CodegenUnits, SettingValue::U16(1)),
+                (ProfileKey::Strip, SettingValue::String(StrVal::Symbols)),
+            ],
+        ));
         let gaps = validate_against_master(&ws, &MASTER_PROFILE_CONTRACT);
         let has_missing_bench = gaps.iter().any(|g| {
-            matches!(g, crate::profile_contract::ContractGap::MissingProfile { name: ProfileName::Bench })
+            matches!(
+                g,
+                crate::profile_contract::ContractGap::MissingProfile {
+                    name: ProfileName::Bench
+                }
+            )
         });
         kani::assert(
             has_missing_bench,
-            "Missing [profile.bench] must produce MissingProfile gap"
+            "Missing [profile.bench] must produce MissingProfile gap",
         );
     }
 
@@ -91,22 +108,28 @@ fn forbidden_states_rejected_and_pure_functions_no_panic() {
     // ===================================================================
     {
         let mut ws = WorkspaceProfileSet::new();
-        ws.add(ProfileConfig::new(ProfileName::Release, vec![
-            (ProfileKey::OptLevel, SettingValue::U8(3)),
-            (ProfileKey::Lto, SettingValue::String(StrVal::Off)),      // WRONG: should be "thin"
-            (ProfileKey::CodegenUnits, SettingValue::U16(1)),
-            (ProfileKey::Strip, SettingValue::String(StrVal::Symbols)),
-        ]));
-        ws.add(ProfileConfig::new(ProfileName::Bench, vec![
-            (ProfileKey::Inherits, SettingValue::String(StrVal::Release)),
-            (ProfileKey::Debug, SettingValue::Bool(true)),
-            (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
-            (ProfileKey::CodegenUnits, SettingValue::U16(1)),
-        ]));
+        ws.add(ProfileConfig::new(
+            ProfileName::Release,
+            vec![
+                (ProfileKey::OptLevel, SettingValue::U8(3)),
+                (ProfileKey::Lto, SettingValue::String(StrVal::Off)), // WRONG: should be "thin"
+                (ProfileKey::CodegenUnits, SettingValue::U16(1)),
+                (ProfileKey::Strip, SettingValue::String(StrVal::Symbols)),
+            ],
+        ));
+        ws.add(ProfileConfig::new(
+            ProfileName::Bench,
+            vec![
+                (ProfileKey::Inherits, SettingValue::String(StrVal::Release)),
+                (ProfileKey::Debug, SettingValue::Bool(true)),
+                (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
+                (ProfileKey::CodegenUnits, SettingValue::U16(1)),
+            ],
+        ));
         let gaps = validate_against_master(&ws, &MASTER_PROFILE_CONTRACT);
         kani::assert(
             !gaps.is_empty(),
-            "Wrong lto value must produce contract gaps"
+            "Wrong lto value must produce contract gaps",
         );
     }
 
@@ -115,14 +138,17 @@ fn forbidden_states_rejected_and_pure_functions_no_panic() {
     // ===================================================================
     {
         let mut ws = WorkspaceProfileSet::new();
-        ws.add(ProfileConfig::new(ProfileName::Hardened, vec![
-            (ProfileKey::OverflowChecks, SettingValue::Bool(true)),
-            // NO debug-assertions — this is the gap!
-        ]));
+        ws.add(ProfileConfig::new(
+            ProfileName::Hardened,
+            vec![
+                (ProfileKey::OverflowChecks, SettingValue::Bool(true)),
+                // NO debug-assertions — this is the gap!
+            ],
+        ));
         let gaps = validate_against_governance(&ws);
         kani::assert(
             !gaps.is_empty(),
-            "Hardened without debug-assertions must produce governance gap"
+            "Hardened without debug-assertions must produce governance gap",
         );
     }
 
@@ -133,7 +159,7 @@ fn forbidden_states_rejected_and_pure_functions_no_panic() {
         let result = ProfileName::new("maxperf");
         kani::assert(
             result.is_err(),
-            "ProfileName::new('maxperf') must return Err"
+            "ProfileName::new('maxperf') must return Err",
         );
     }
 
@@ -187,102 +213,5 @@ fn forbidden_states_rejected_and_pure_functions_no_panic() {
         // Must not panic for any input
     }
 
-    // ===================================================================
-    // PS-012: MasterProfileContract constant matches known literal values
-    // ===================================================================
-    {
-        // Verify the constant's structure matches master §34:1375-1386
-        let contract: &MasterProfileContract = &MASTER_PROFILE_CONTRACT;
-
-        // Required profiles: Release and Bench
-        kani::assert(
-            contract.required_profiles.contains(&ProfileName::Release),
-            "Master contract must require Release profile"
-        );
-        kani::assert(
-            contract.required_profiles.contains(&ProfileName::Bench),
-            "Master contract must require Bench profile"
-        );
-
-        // forbidden_profile_names contains "maxperf"
-        kani::assert(
-            contract.forbidden_profile_names.contains(&"maxperf"),
-            "Master contract must forbid 'maxperf'"
-        );
-
-        // Release keys: all 4 must be present
-        kani::assert(
-            contract.release_keys.len() == 4,
-            "Master contract must specify exactly 4 release keys"
-        );
-        // Check each key has the correct master value
-        for &(key, ref expected) in contract.release_keys {
-            match key {
-                ProfileKey::OptLevel => {
-                    kani::assert(
-                        *expected == SettingValue::U8(3),
-                        "Master contract: release opt-level must be 3"
-                    );
-                }
-                ProfileKey::Lto => {
-                    kani::assert(
-                        *expected == SettingValue::String(StrVal::Thin),
-                        "Master contract: release lto must be 'thin'"
-                    );
-                }
-                ProfileKey::CodegenUnits => {
-                    kani::assert(
-                        *expected == SettingValue::U16(1),
-                        "Master contract: release codegen-units must be 1"
-                    );
-                }
-                ProfileKey::Strip => {
-                    kani::assert(
-                        *expected == SettingValue::String(StrVal::Symbols),
-                        "Master contract: release strip must be 'symbols'"
-                    );
-                }
-                _ => {
-                    kani::assert(false, "Unexpected key in release_keys");
-                }
-            }
-        }
-
-        // Bench keys: all 4 must be present
-        kani::assert(
-            contract.bench_keys.len() == 4,
-            "Master contract must specify exactly 4 bench keys"
-        );
-        for &(key, ref expected) in contract.bench_keys {
-            match key {
-                ProfileKey::Inherits => {
-                    kani::assert(
-                        *expected == SettingValue::String(StrVal::Release),
-                        "Master contract: bench inherits must be 'release'"
-                    );
-                }
-                ProfileKey::Debug => {
-                    kani::assert(
-                        *expected == SettingValue::Bool(true),
-                        "Master contract: bench debug must be true"
-                    );
-                }
-                ProfileKey::Lto => {
-                    kani::assert(
-                        *expected == SettingValue::String(StrVal::Thin),
-                        "Master contract: bench lto must be 'thin'"
-                    );
-                }
-                ProfileKey::CodegenUnits => {
-                    kani::assert(
-                        *expected == SettingValue::U16(1),
-                        "Master contract: bench codegen-units must be 1"
-                    );
-                }
-                _ => {
-                    kani::assert(false, "Unexpected key in bench_keys");
-                }
-            }
-        }
-    }
+    forbidden_states_master::assert_master_contract_literals();
 }

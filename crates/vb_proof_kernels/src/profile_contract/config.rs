@@ -3,7 +3,7 @@
 //! Bead: vb-esq9.1 | State: 5 (proof-writer)
 //! Represents one `[profile.<name>]` section from root Cargo.toml.
 
-use crate::profile_contract::types::{ProfileName, ProfileKey, SettingValue, StrVal};
+use crate::profile_contract::types::{ProfileKey, ProfileName, SettingValue, StrVal};
 
 /// A complete profile definition.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -18,32 +18,25 @@ pub struct ProfileConfig {
 
 impl ProfileConfig {
     /// Construct a ProfileConfig.
-    pub fn new(
-        name: ProfileName,
-        settings: Vec<(ProfileKey, SettingValue)>,
-    ) -> Self {
-        let mut inherits = None;
-        for i in 0..settings.len() {
-            let (k, v) = &settings[i];
-            if *k == ProfileKey::Inherits {
-                if let SettingValue::String(s) = v {
-                    if *s == StrVal::Release {
-                        inherits = Some(ProfileName::Release);
-                    }
-                }
+    pub fn new(name: ProfileName, settings: Vec<(ProfileKey, SettingValue)>) -> Self {
+        let inherits = settings.iter().find_map(|(key, value)| match (key, value) {
+            (ProfileKey::Inherits, SettingValue::String(StrVal::Release)) => {
+                Some(ProfileName::Release)
             }
+            _ => None,
+        });
+        Self {
+            name,
+            inherits,
+            settings,
         }
-        Self { name, inherits, settings }
     }
 
     /// Look up a setting value by key. Returns None if not present.
     pub fn get(&self, key: ProfileKey) -> Option<&SettingValue> {
-        for i in 0..self.settings.len() {
-            if self.settings[i].0 == key {
-                return Some(&self.settings[i].1);
-            }
-        }
-        None
+        self.settings
+            .iter()
+            .find_map(|(setting_key, value)| (*setting_key == key).then_some(value))
     }
 
     /// Returns true if the profile has explicit `inherits` pointing at `parent`.
@@ -119,10 +112,18 @@ mod kani_arb {
         fn any() -> Self {
             let idx: u8 = kani::any();
             match idx % 12 {
-                0 => Self::Thin, 1 => Self::Fat, 2 => Self::Off,
-                3 => Self::True, 4 => Self::False, 5 => Self::None_,
-                6 => Self::Symbols, 7 => Self::Debuginfo, 8 => Self::Release,
-                9 => Self::Unwind, 10 => Self::Abort, _ => Self::Other,
+                0 => Self::Thin,
+                1 => Self::Fat,
+                2 => Self::Off,
+                3 => Self::True,
+                4 => Self::False,
+                5 => Self::None_,
+                6 => Self::Symbols,
+                7 => Self::Debuginfo,
+                8 => Self::Release,
+                9 => Self::Unwind,
+                10 => Self::Abort,
+                _ => Self::Other,
             }
         }
     }
@@ -131,7 +132,9 @@ mod kani_arb {
         fn any() -> Self {
             let idx: u8 = kani::any();
             match idx % 3 {
-                0 => Self::False, 1 => Self::True, _ => Self::LineTablesOnly,
+                0 => Self::False,
+                1 => Self::True,
+                _ => Self::LineTablesOnly,
             }
         }
     }

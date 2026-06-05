@@ -1,6 +1,6 @@
 #![cfg(kani)]
 
-//! Kani harness for obl-vb-mrwe-6-queue-intent-kani-008.
+//! Kani harness for obl-vb-in8ib-queue-intent-kani.
 //!
 //! Production-bound seams used here:
 //! - `journal::append::verification_action_index_intent` for the production
@@ -78,7 +78,7 @@ fn generated_event(
 }
 
 #[kani::proof]
-fn queued_events_preserve_side_index_intent() {
+fn vb_mrwe6_queue_intent_preservation() {
     let class = generated_class();
     let intent = required_intent(class);
     let run = RunId::new(kani::any::<u64>());

@@ -1,6 +1,6 @@
 #![cfg(kani)]
 
-//! Kani harness for obl-vb-mrwe-6-atomic-index-kani-002.
+//! Kani harness for obl-vb-in8ib-atomic-index-kani.
 //!
 //! Production-bound seams used here:
 //! - `journal::append::verification_action_index_intent` for the production
@@ -15,6 +15,9 @@ use crate::journal::append::{
 };
 use crate::types::EventSeq;
 use vb_core::{ActionId, ActionTicket, RunId, SeqNo, SlotIdx, StepIdx};
+
+#[path = "vb_mrwe6_architecture_binding.rs"]
+mod vb_mrwe6_architecture_binding;
 
 #[derive(Clone, Copy)]
 enum ScheduleVariant {
@@ -74,7 +77,7 @@ fn generated_schedule_event(
 }
 
 #[kani::proof]
-fn scheduled_write_commits_event_and_index_atomically() {
+fn vb_mrwe6_atomic_index_all_cases() {
     let variant = generated_variant();
     let run = RunId::new(kani::any::<u64>());
     let seq = EventSeq::new(kani::any::<u64>());

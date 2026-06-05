@@ -671,6 +671,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "flux-attrs"
+version = "0.1.0"
+source = "git+https://github.com/flux-rs/flux?rev=4d329f2#4d329f2399d4c2bd9ea7dbf7453ab8ed3811730c"
+dependencies = [
+ "flux-attrs-impl",
+]
+
+[[package]]
+name = "flux-attrs-impl"
+version = "0.1.0"
+source = "git+https://github.com/flux-rs/flux?rev=4d329f2#4d329f2399d4c2bd9ea7dbf7453ab8ed3811730c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "flux-rs"
+version = "0.1.0"
+source = "git+https://github.com/flux-rs/flux?rev=4d329f2#4d329f2399d4c2bd9ea7dbf7453ab8ed3811730c"
+dependencies = [
+ "flux-attrs",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2089,6 +2115,7 @@ dependencies = [
  "blake3",
  "chrono",
  "crossbeam-queue",
+ "flux-rs",
  "indexmap",
  "loom",
  "postcard",
@@ -2110,6 +2137,7 @@ dependencies = [
  "chrono",
  "crc32c",
  "fjall",
+ "flux-rs",
  "postcard",
  "proptest",
  "rustix",

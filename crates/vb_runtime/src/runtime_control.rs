@@ -25,8 +25,13 @@ impl Runtime {
         let source = self.checked_shard_index(shard)?;
         match directive {
             ShardDirective::Continue => self.tick_existing_shard(source),
-            ShardDirective::Suspend | ShardDirective::Barrier => self.shard_alive(source),
-            ShardDirective::Cancel => self.cancel_selected_shard(source),
+            ShardDirective::Suspend => self.shard_alive(source),
+            ShardDirective::Cancel => Err(RuntimeError::UnsupportedOperation {
+                operation: "tick_shard_cancel",
+            }),
+            ShardDirective::Barrier => Err(RuntimeError::UnsupportedOperation {
+                operation: "tick_shard_barrier",
+            }),
             ShardDirective::Migrate { target } => self.migrate_selected_shard(source, target),
             ShardDirective::Shutdown => self.shutdown_selected_shard(source),
         }
@@ -72,17 +77,6 @@ impl Runtime {
             return Err(RuntimeError::ShardNotFound { shard: u32::MAX });
         };
         Ok(!shard.is_shutting_down())
-    }
-
-    fn cancel_selected_shard(&mut self, source: usize) -> RuntimeResult<bool> {
-        let Some(shard) = self.shards.get_mut(source) else {
-            return Err(RuntimeError::ShardNotFound { shard: u32::MAX });
-        };
-        let runs: Vec<RunId> = shard.runs.keys().copied().collect();
-        for run in runs {
-            shard.enqueue(ShardCommand::Cancel { run, reason: None })?;
-        }
-        shard.tick()
     }
 
     fn migrate_selected_shard(&mut self, source: usize, target: u32) -> RuntimeResult<bool> {

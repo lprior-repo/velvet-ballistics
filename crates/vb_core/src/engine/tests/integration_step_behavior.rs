@@ -1327,9 +1327,9 @@ fn succeeded_to_running_is_invalid_transition() {
 }
 
 #[test]
-fn succeeded_to_pending_is_valid_transition_for_loop_reentry() {
-    // Succeeded -> Pending is valid (for loop re-entry).
-    assert!(is_valid_step_state_transition(StepState::Succeeded, StepState::Pending));
+fn succeeded_to_pending_is_invalid_direct_transition() {
+    // Succeeded -> Pending is admitted only by RunFrame::mark_pending.
+    assert!(!is_valid_step_state_transition(StepState::Succeeded, StepState::Pending));
 }
 
 #[test]

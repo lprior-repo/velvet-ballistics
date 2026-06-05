@@ -249,10 +249,13 @@
     "crates/vb_core/src/replay/choose/kani/kani_choose_no_otherwise.rs": [
       "replay::choose::kani::kani_choose_no_otherwise::kani_choose_no_otherwise"
     ],
-    "crates/vb_core/src/replay/kani_harnesses.rs": [
-      "replay::kani_harnesses::verification::verify_choose_slot_output_in_input_set",
-      "replay::kani_harnesses::verification::verify_replay_choose_slot_two_branches_no_panic",
-      "replay::kani_harnesses::verification::verify_replay_deterministic_for_same_input"
+    "crates/vb_core/src/replay/kani_choose_slot.rs": [
+      "replay::kani_harnesses::kani_choose_slot::verify_choose_slot_output_in_input_set",
+      "replay::kani_harnesses::kani_choose_slot::verify_replay_choose_slot_two_branches_no_panic",
+      "replay::kani_harnesses::kani_choose_slot::verify_replay_deterministic_for_same_input"
+    ],
+    "crates/vb_core/src/replay/kani_terminal_states.rs": [
+      "replay::kani_harnesses::kani_terminal_states::kani_replay_skips_terminal_states"
     ],
     "crates/vb_core/src/shard/partition/kani_key_range_properties.rs": [
       "shard::partition::kani_key_range_properties::key_range_adjacent_correctness",
@@ -272,7 +275,7 @@
   "contract-harnesses": {},
   "contracts": [],
   "totals": {
-    "standard-harnesses": 206,
+    "standard-harnesses": 207,
     "contract-harnesses": 0,
     "functions-under-contract": 0
   }

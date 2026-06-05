@@ -1169,28 +1169,28 @@ fn gwt_re5_repeat_check_loops_back_after_succeeded() {
     assert_eq!(run.pc(), next_body);
 }
 
-/// GWT-RE-6: Succeeded→Pending transition allowed for loop re-entry
+/// GWT-RE-6: Direct terminal transitions stay absorbing for loop re-entry
 /// Given: body step in Succeeded state
 /// When: jump_to_body is called for loop re-entry
-/// Then: Succeeded→Running transition is allowed for loop body re-entry.
+/// Then: the direct transition predicate rejects Succeeded→Running and Succeeded→Pending.
 #[test]
-fn gwt_re6_succeeded_to_running_allowed_for_loop_reentry() {
+fn gwt_re6_succeeded_direct_transitions_rejected_for_loop_reentry() {
     use vb_core::frame::StepState;
 
-    // Succeeded → Running IS a valid transition for loop body re-entry
+    // Succeeded → Running is not a direct transition; jump_to_body uses Pending admission.
     let is_valid =
         vb_core::frame::is_valid_step_state_transition(StepState::Succeeded, StepState::Running);
     assert!(
-        is_valid,
-        "Succeeded→Running must be valid for loop re-entry per VALID_TRANSITIONS"
+        !is_valid,
+        "Succeeded→Running must be invalid for direct terminal absorption"
     );
 
-    // Succeeded → Pending is NOT valid (loop re-entry uses Succeeded → Running now)
+    // Succeeded → Pending is also not valid through the direct predicate.
     let can_go_to_pending =
         vb_core::frame::is_valid_step_state_transition(StepState::Succeeded, StepState::Pending);
     assert!(
         !can_go_to_pending,
-        "Succeeded→Pending must be invalid (replaced by Succeeded→Running)"
+        "Succeeded→Pending must be invalid in the direct transition predicate"
     );
 }
 

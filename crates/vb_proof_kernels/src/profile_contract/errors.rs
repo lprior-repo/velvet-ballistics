@@ -3,7 +3,7 @@
 //! Bead: vb-esq9.1 | State: 5 (proof-writer)
 //! Maps to error taxonomy: C001-C009 (contract gaps), R001-R003 (resolve errors).
 
-use crate::profile_contract::types::{ProfileName, ProfileKey, SettingValue};
+use crate::profile_contract::types::{ProfileKey, ProfileName, SettingValue};
 
 // ---------------------------------------------------------------------------
 // Construction errors
@@ -44,14 +44,10 @@ pub enum SettingValueError {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ContractGap {
     /// A required profile is absent from root Cargo.toml. (C001, C002)
-    MissingProfile {
-        name: ProfileName,
-    },
+    MissingProfile { name: ProfileName },
 
     /// A forbidden profile (maxperf) is present. (C004)
-    ForbiddenProfile {
-        name: ProfileName,
-    },
+    ForbiddenProfile { name: ProfileName },
 
     /// A key-value pair does not match the master specification. (C005-C007)
     WrongSetting {
@@ -91,9 +87,7 @@ pub enum ResolveError {
     },
 
     /// Inheritance depth exceeded MAX_INHERITANCE_DEPTH. (R003)
-    InheritanceDepthExceeded {
-        depth: u8,
-    },
+    InheritanceDepthExceeded { depth: u8 },
 }
 
 /// Result of binding a Moon task profile reference to a workspace profile set.

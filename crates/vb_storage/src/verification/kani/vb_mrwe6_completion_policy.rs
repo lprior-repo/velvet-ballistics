@@ -1,6 +1,6 @@
 #![cfg(kani)]
 
-//! Kani harness for obl-vb-mrwe-6-completion-policy-kani-020.
+//! Kani harness for obl-vb-in8ib-completion-kani.
 
 use crate::events::JournalEvent;
 use crate::journal::append::{
@@ -43,7 +43,7 @@ fn resolution(
 }
 
 #[kani::proof]
-fn resolution_commit_removes_pending_marker() {
+fn vb_mrwe6_completion_policy_all_cases() {
     let kind = if kani::any::<bool>() {
         ResolutionKind::Completed
     } else {

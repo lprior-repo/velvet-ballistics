@@ -30,6 +30,8 @@ pub enum StepState {
 
 /// Pure transition predicate shared by runtime validation and proof harnesses.
 /// Inlines the step-state machine contract from vb_proof_kernels::step_state.
+/// Terminal states are absorbing here; loop re-entry uses explicit pending
+/// admission through [`RunFrame::mark_pending`] before entering `Running` again.
 #[must_use]
 pub fn is_valid_step_state_transition(current: StepState, new: StepState) -> bool {
     if current == new {
@@ -49,11 +51,6 @@ pub fn is_valid_step_state_transition(current: StepState, new: StepState) -> boo
         (StepState::Running, StepState::Skipped),
         (StepState::Waiting, StepState::Running),
         (StepState::Asking, StepState::Running),
-        (StepState::Succeeded, StepState::Succeeded),
-        (StepState::Succeeded, StepState::Running),
-        (StepState::Failed, StepState::Failed),
-        (StepState::Cancelled, StepState::Cancelled),
-        (StepState::Skipped, StepState::Skipped),
     ];
     for &(f, t) in VALID_TRANSITIONS {
         if f == current && t == new {
@@ -391,9 +388,15 @@ impl RunFrame {
         self.write_step_state(step, StepState::Running)
     }
 
-    /// Marks a step pending (for loop body re-entry after Succeeded).
+    /// Marks a step pending through the explicit loop-body re-entry admission path.
     pub fn mark_pending(&mut self, step: StepIdx) -> CoreResult<()> {
-        self.write_step_state(step, StepState::Pending)
+        let current = self.step_state(step)?;
+        Self::validate_pending_admission(current)?;
+        *self
+            .states
+            .get_mut(step.as_usize())
+            .ok_or(CoreError::StepStateOutOfBounds { step })? = StepState::Pending;
+        Ok(())
     }
 
     /// Marks a step succeeded.
@@ -456,6 +459,15 @@ impl RunFrame {
             Err(CoreError::InternalInvariantViolation {
                 reason: "invalid_state_transition",
             })
+        }
+    }
+
+    fn validate_pending_admission(current: StepState) -> CoreResult<()> {
+        match current {
+            StepState::Pending | StepState::Succeeded => Ok(()),
+            _ => Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition",
+            }),
         }
     }
 }

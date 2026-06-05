@@ -6,19 +6,17 @@
 //! production JournalEvent values.
 
 use crate::mrwe6_seams::{Mrwe6EventClass, Mrwe6IntentKind};
-use flux_rs::attrs::*;
-
-#[refined_by(kind: int)]
+#[flux_rs::refined_by(kind: int)]
 pub enum Mrwe6QueuedIntent {
-    #[variant(Mrwe6QueuedIntent[0])]
+    #[flux_rs::variant(Mrwe6QueuedIntent[0])]
     None,
-    #[variant(Mrwe6QueuedIntent[1])]
+    #[flux_rs::variant(Mrwe6QueuedIntent[1])]
     PutPending,
-    #[variant(Mrwe6QueuedIntent[2])]
+    #[flux_rs::variant(Mrwe6QueuedIntent[2])]
     RemovePending,
 }
 
-#[sig(fn(intent: Mrwe6QueuedIntent{v: v > 0}) -> bool[true])]
+#[flux_rs::sig(fn(intent: Mrwe6QueuedIntent{v: v > 0}) -> bool[true])]
 pub fn queued_relevant_event_has_intent(intent: Mrwe6QueuedIntent) -> bool {
     match intent {
         Mrwe6QueuedIntent::PutPending | Mrwe6QueuedIntent::RemovePending => true,
@@ -26,6 +24,15 @@ pub fn queued_relevant_event_has_intent(intent: Mrwe6QueuedIntent) -> bool {
     }
 }
 
+#[flux_rs::sig(fn(intent: Mrwe6QueuedIntent{v: v == 0}) -> bool[false])]
+pub fn invalid_queued_relevant_event_without_intent_rejected(intent: Mrwe6QueuedIntent) -> bool {
+    match intent {
+        Mrwe6QueuedIntent::None => false,
+        Mrwe6QueuedIntent::PutPending | Mrwe6QueuedIntent::RemovePending => true,
+    }
+}
+
+#[flux_rs::sig(fn(Mrwe6EventClass, Mrwe6IntentKind) -> Mrwe6QueuedIntent)]
 pub fn queued_intent_from_production_seam(
     class: Mrwe6EventClass,
     required: Mrwe6IntentKind,
@@ -37,4 +44,10 @@ pub fn queued_intent_from_production_seam(
         }
         _ => Mrwe6QueuedIntent::None,
     }
+}
+
+#[cfg(feature = "vb-mrwe6-flux-negative-probes")]
+#[flux_rs::sig(fn() -> bool[true])]
+pub fn negative_probe_queued_relevant_event_without_intent_is_rejected() -> bool {
+    invalid_queued_relevant_event_without_intent_rejected(Mrwe6QueuedIntent::None)
 }

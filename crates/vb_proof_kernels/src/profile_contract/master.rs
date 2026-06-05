@@ -4,7 +4,7 @@
 //! Derived from velvet-ballistics-MASTER.md §34 lines 1375-1386.
 //! Governance requirements from docs/rust-governance.md:61.
 
-use crate::profile_contract::types::{ProfileName, ProfileKey, SettingValue, StrVal};
+use crate::profile_contract::types::{ProfileKey, ProfileName, SettingValue, StrVal};
 
 /// The required key-value pairs that [profile.release] must declare.
 /// Master reference: velvet-ballistics-MASTER.md lines 1375-1379.

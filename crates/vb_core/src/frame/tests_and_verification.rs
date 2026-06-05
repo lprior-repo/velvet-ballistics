@@ -132,7 +132,7 @@ mod tests {
         assert_eq!(frame.slot_count(), 0);
     }
 
-    // --- Succeeded step is terminal and rejects transition back to Running ---
+    // --- Succeeded step re-enters only through explicit Pending admission ---
 
     #[test]
     fn frame_mark_succeeded_on_pending_step_allows_overwrite() -> CoreResult<()> {
@@ -144,9 +144,19 @@ mod tests {
         frame.mark_succeeded(StepIdx::new(0))?;
         assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Succeeded);
 
-        // Succeeded -> Running is VALID for loop body re-entry
+        // Succeeded -> Running is rejected by the direct transition predicate.
         let result = frame.mark_running(StepIdx::new(0));
-        assert_eq!(result, Ok(()));
+        assert_eq!(
+            result,
+            Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition"
+            })
+        );
+        assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Succeeded);
+
+        // Loop body re-entry uses explicit pending admission, then normal entry.
+        frame.mark_pending(StepIdx::new(0))?;
+        frame.mark_running(StepIdx::new(0))?;
         assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Running);
 
         Ok(())
@@ -770,8 +780,7 @@ mod tests {
         assert_eq!(frame.mark_cancelled(StepIdx::new(2)), Ok(()));
         assert_eq!(frame.mark_skipped(StepIdx::new(3)), Ok(()));
 
-        // Terminal states cannot transition to any other state,
-        // EXCEPT: Succeeded -> Running is allowed for loop body re-entry.
+        // Terminal states cannot directly transition to any other state.
         // Test Succeeded -> Failed first (should fail since Succeeded is still terminal for Failed)
         assert_eq!(
             frame.mark_failed(StepIdx::ZERO),
@@ -780,13 +789,19 @@ mod tests {
             }),
             "Succeeded -> Failed must fail"
         );
-        // Test Succeeded -> Running (should succeed and change state to Running)
+        // Test Succeeded -> Running (should fail; re-entry must go through mark_pending)
         assert_eq!(
             frame.mark_running(StepIdx::ZERO),
-            Ok(()),
-            "Succeeded -> Running is allowed for loop re-entry"
+            Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition"
+            }),
+            "Succeeded -> Running must be rejected for direct transition"
         );
-        // Now state is Running, so Running -> Failed is valid
+        assert_eq!(frame.step_state(StepIdx::ZERO)?, StepState::Succeeded);
+        // Explicit admission path is Succeeded -> Pending -> Running.
+        assert_eq!(frame.mark_pending(StepIdx::ZERO), Ok(()));
+        assert_eq!(frame.mark_running(StepIdx::ZERO), Ok(()));
+        // Now state is Running, so Running -> Failed is valid.
         assert_eq!(
             frame.mark_failed(StepIdx::ZERO),
             Ok(()),
@@ -855,22 +870,22 @@ mod tests {
     // --- is_valid_step_state_transition boundary tests ---
 
     #[test]
-    fn transition_returns_true_when_succeeded_to_running() {
-        // Succeeded->Running is explicitly allowed for loop body re-entry
+    fn transition_returns_false_when_succeeded_to_running() {
+        // Loop re-entry uses explicit Pending admission, not direct Succeeded->Running.
         let result = is_valid_step_state_transition(StepState::Succeeded, StepState::Running);
         assert!(
-            result,
-            "Succeeded->Running must be valid (loop body re-entry per VALID_TRANSITIONS)"
+            !result,
+            "Succeeded->Running must be invalid for direct terminal absorption"
         );
     }
 
     #[test]
     fn transition_returns_false_when_succeeded_to_pending() {
-        // Succeeded->Pending is NOT valid (loop re-entry uses Succeeded->Running now)
+        // Succeeded->Pending is not a direct transition; mark_pending handles explicit admission.
         let result = is_valid_step_state_transition(StepState::Succeeded, StepState::Pending);
         assert!(
             !result,
-            "Succeeded->Pending must be invalid (replaced by Succeeded->Running)"
+            "Succeeded->Pending must be invalid in the direct transition predicate"
         );
     }
 
@@ -897,9 +912,9 @@ mod tests {
     // --- PO-PROP-002, PO-PROP-004: Terminal absorption proptest properties ---
 
     mod proptest_transitions {
-        use proptest::prelude::*;
-        use crate::frame::StepState;
         use super::is_valid_step_state_transition;
+        use crate::frame::StepState;
+        use proptest::prelude::*;
 
         fn arb_step_state() -> impl Strategy<Value = StepState> {
             prop_oneof![
@@ -915,7 +930,13 @@ mod tests {
         }
 
         fn is_terminal(s: StepState) -> bool {
-            matches!(s, StepState::Succeeded | StepState::Failed | StepState::Skipped | StepState::Cancelled)
+            matches!(
+                s,
+                StepState::Succeeded
+                    | StepState::Failed
+                    | StepState::Skipped
+                    | StepState::Cancelled
+            )
         }
 
         proptest! {

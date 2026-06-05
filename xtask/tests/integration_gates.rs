@@ -9,6 +9,10 @@ fn run_xtask(args: &[&str]) -> Output {
         .args(["xtask", "--"])
         .args(args)
         .current_dir(workspace_root())
+        .env("CARGO_TARGET_DIR", xtask_target_dir())
+        .env_remove("RUSTFLAGS")
+        .env_remove("RUSTDOCFLAGS")
+        .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .output()
     {
         Ok(output) => output,
@@ -34,6 +38,10 @@ fn failed_output(message: String) -> Output {
 
 fn evidence_root() -> PathBuf {
     workspace_root().join(".evidence")
+}
+
+fn xtask_target_dir() -> PathBuf {
+    workspace_root().join("target/xtask-integration-gates")
 }
 
 fn cleanup_evidence(bead_id: &str) {

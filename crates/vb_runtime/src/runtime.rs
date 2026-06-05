@@ -6,12 +6,12 @@ use std::num::NonZeroUsize;
 use vb_core::action::{ActionFailure, ActionOutputReady, ActionTicket};
 use vb_core::capability::CapabilitySet;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
-use vb_core::value::{SlotValue, Taint};
-use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
+use vb_core::value::SlotValue;
+use vb_core::workflow::CompiledWorkflow;
 
 use crate::counters::{CounterSnapshot, RuntimeMetricsSnapshot};
 use crate::journal::SharedRuntimeJournal;
-use crate::shard::{AskAnswer, AskTicket, InspectResponse, Shard, ShardCommand, ShardConfig};
+use crate::shard::{AskAnswer, InspectResponse, Shard, ShardCommand, ShardConfig};
 use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
 
@@ -21,6 +21,10 @@ use runtime_metrics::collect_metrics;
 #[path = "runtime_control.rs"]
 mod runtime_control;
 pub use runtime_control::ActiveRunSummary;
+#[path = "runtime_admission.rs"]
+mod runtime_admission;
+#[path = "runtime_ask.rs"]
+mod runtime_ask;
 
 /// Multi-shard runtime facade.
 pub struct Runtime {
@@ -63,14 +67,15 @@ impl Runtime {
 
     /// Submits a run using a compiled workflow.
     pub fn submit_direct(&self, run: RunId, workflow: CompiledWorkflow) -> RuntimeResult<()> {
-        self.shard_for(run)?.enqueue(ShardCommand::Submit {
+        let shard = self.shard_for(run)?;
+        Self::preflight_direct_admission(shard, run, &workflow, CapabilitySet::empty())?;
+        shard.enqueue(ShardCommand::Submit {
             run,
             workflow,
             caps: CapabilitySet::empty(),
         })
     }
 
-    /// Submits a run using a compiled workflow.
     pub fn submit_compiled(&self, run: RunId, workflow: CompiledWorkflow) -> RuntimeResult<()> {
         self.submit_direct(run, workflow)
     }
@@ -91,7 +96,6 @@ impl Runtime {
             })
     }
 
-    /// Submits a run with inputs, grants, and prevalidated action contracts.
     pub fn submit_direct_with_inputs_grants_and_contracts(
         &self,
         run: RunId,
@@ -173,7 +177,7 @@ impl Runtime {
     /// Fails an action with a typed failure payload.
     pub fn fail_action(&self, ticket: ActionTicket, failure: ActionFailure) -> RuntimeResult<()> {
         self.shard_for(ticket.run)?
-            .enqueue(ShardCommand::ActionFailed { ticket, failure })
+            .enqueue(ShardCommand::RuntimeActionFailed { ticket, failure })
     }
 
     /// Lists trace events for one run without draining.
@@ -185,58 +189,11 @@ impl Runtime {
 
     /// Answers an ask with an explicit payload and resume ticket.
     pub fn answer_ask(&self, answer: AskAnswer) -> RuntimeResult<()> {
-        self.shard_for(answer.ticket.run)?
-            .enqueue(ShardCommand::AskAnswered { answer })
-    }
-
-    /// Answers the currently pending ask for a run by deriving the active ask ticket.
-    pub fn answer_pending_ask_slot(
-        &mut self,
-        run: RunId,
-        answer_slot: SlotIdx,
-        value: SlotValue,
-        taint: Taint,
-        encoded_len: u32,
-    ) -> RuntimeResult<()> {
-        let shard_index = self.shard_index(run);
-        let shard = self
-            .shards
-            .get_mut(shard_index)
-            .ok_or(RuntimeError::RunNotFound)?;
-        if !shard.run_state_contains(run) {
+        let shard = self.shard_for(answer.ticket.run)?;
+        if shard.terminal_runs_contains(answer.ticket.run) {
             return Err(RuntimeError::RunNotFound);
         }
-        let pending_timer = shard
-            .pending_timer_get(run)
-            .ok_or(RuntimeError::InvalidActionCompletion)?;
-        if pending_timer.kind != crate::shard::PendingTimerKind::Ask {
-            return Err(RuntimeError::InvalidActionCompletion);
-        }
-        let state = shard.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
-        let ask_node = state
-            .workflow
-            .node(pending_timer.step)
-            .ok_or(RuntimeError::InvalidActionCompletion)?;
-        if !matches!(ask_node.kind, CompiledNodeKind::Ask { .. }) {
-            return Err(RuntimeError::InvalidActionCompletion);
-        }
-        let resume_step = ask_node.next.ok_or(RuntimeError::InvalidActionCompletion)?;
-        match state.workflow.node(resume_step).map(|node| &node.kind) {
-            Some(CompiledNodeKind::AskResume { answer }) if *answer == answer_slot => {}
-            _ => return Err(RuntimeError::InvalidActionCompletion),
-        }
-        let answer = AskAnswer::with_encoded_len(
-            AskTicket {
-                run,
-                ask_step: pending_timer.step,
-                resume_step,
-            },
-            answer_slot,
-            value,
-            taint,
-            encoded_len,
-        );
-        shard.handle_ask_answer(answer)
+        shard.enqueue(ShardCommand::AskAnswered { answer })
     }
 
     /// Advances a run whose registered wait or ask timer fired externally.
@@ -269,7 +226,6 @@ impl Runtime {
             })
     }
 
-    /// Takes the latest inspect response from the run's shard.
     pub fn take_inspect_response(&mut self, run: RunId) -> RuntimeResult<Option<InspectResponse>> {
         let index = self.shard_index(run);
         let shard = self
@@ -294,7 +250,6 @@ impl Runtime {
         collect_metrics(&self.shards, self.shard_count)
     }
 
-    /// Returns aggregated counter snapshots from all shards.
     pub fn counters_snapshot(&self) -> CounterSnapshot {
         let mut total = CounterSnapshot {
             runs_submitted: 0,

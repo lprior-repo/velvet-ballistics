@@ -532,7 +532,10 @@ mod kani_step_state_harnesses {
     fn terminal_cannot_transition_to_non_terminal_kani() {
         // Verify the top-level function returns true
         let result = terminal_cannot_transition_to_non_terminal();
-        kani::assert(result, "terminal_cannot_transition_to_non_terminal must return true post-fix");
+        kani::assert(
+            result,
+            "terminal_cannot_transition_to_non_terminal must return true post-fix",
+        );
 
         // Symbolic check: for ALL terminal states and ALL target states (s != t),
         // is_valid_transition(t, s) is false.
@@ -557,7 +560,10 @@ mod kani_step_state_harnesses {
         // For all terminal t, if s != t, the transition must be invalid
         if t != s {
             let valid = is_valid_transition(t, s);
-            kani::assert(!valid, "terminal->non-terminal transition must be invalid post-fix");
+            kani::assert(
+                !valid,
+                "terminal->non-terminal transition must be invalid post-fix",
+            );
         } else {
             // Self-transition is always valid (idempotent)
             let valid = is_valid_transition(t, t);

@@ -110,8 +110,8 @@ fn bench_action_dispatch(c: &mut Criterion) {
                     );
                     let outcome = result.expect("ok");
                     match outcome {
-                        ActionOutcome::Ready(_) => {}
-                        _ => panic!("expected ActionOutcome::Ready"),
+                        ActionOutcome::Suspended(_) => {}
+                        _ => panic!("expected ActionOutcome::Suspended"),
                     }
                     black_box(outcome);
                 });
@@ -141,8 +141,8 @@ fn bench_action_dispatch(c: &mut Criterion) {
                     );
                     let outcome = result.expect("ok");
                     match outcome {
-                        ActionOutcome::Ready(_) => {}
-                        _ => panic!("expected ActionOutcome::Ready"),
+                        ActionOutcome::Suspended(_) => {}
+                        _ => panic!("expected ActionOutcome::Suspended"),
                     }
                     black_box(outcome);
                 });
@@ -172,8 +172,8 @@ fn bench_action_dispatch(c: &mut Criterion) {
                     );
                     let outcome = result.expect("ok");
                     match outcome {
-                        ActionOutcome::Ready(_) => {}
-                        _ => panic!("expected ActionOutcome::Ready"),
+                        ActionOutcome::Suspended(_) => {}
+                        _ => panic!("expected ActionOutcome::Suspended"),
                     }
                     black_box(outcome);
                 });

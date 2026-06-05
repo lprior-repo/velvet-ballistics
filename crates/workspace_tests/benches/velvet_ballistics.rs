@@ -33,6 +33,7 @@ const EXPR_ARITHMETIC: &str = "1 + 2 * 3";
 const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
 const JOURNAL_REPLAY_EVENTS: u64 = 1000;
 const BENCH_LATENCY_BUDGET_US: u64 = 100_000;
+const BENCH_ADDRESS_SANITIZER_LATENCY_MULTIPLIER: u64 = 2;
 const BENCH_LATENCY_BUDGET_ENV: &str = "VB_BENCH_LATENCY_BUDGET_US";
 const BENCH_LATENCY_REPORT_ENV: &str = "VB_BENCH_LATENCY_REPORT";
 
@@ -42,10 +43,24 @@ fn bench_latency_budget_us() -> u64 {
     match std::env::var(BENCH_LATENCY_BUDGET_ENV) {
         Ok(raw) => match raw.parse::<u64>() {
             Ok(value) => value,
-            Err(_) => BENCH_LATENCY_BUDGET_US,
+            Err(_) => default_bench_latency_budget_us(),
         },
-        Err(_) => BENCH_LATENCY_BUDGET_US,
+        Err(_) => default_bench_latency_budget_us(),
     }
+}
+
+fn default_bench_latency_budget_us() -> u64 {
+    if address_sanitizer_enabled() {
+        BENCH_LATENCY_BUDGET_US.saturating_mul(BENCH_ADDRESS_SANITIZER_LATENCY_MULTIPLIER)
+    } else {
+        BENCH_LATENCY_BUDGET_US
+    }
+}
+
+fn address_sanitizer_enabled() -> bool {
+    std::env::var("RUSTFLAGS")
+        .map(|flags| flags.contains("-Zsanitizer=address"))
+        .unwrap_or(false)
 }
 
 #[allow(clippy::arithmetic_side_effects)]

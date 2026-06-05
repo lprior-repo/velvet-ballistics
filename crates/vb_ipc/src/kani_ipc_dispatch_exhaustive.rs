@@ -75,8 +75,7 @@ fn kani_unknown_command_returns_bad_request() {
     let payload: &[u8] = &[];
     let mut runtime = make_runtime();
 
-    let response =
-        dispatch_command_with_resolver(&header, payload, &mut runtime, None);
+    let response = dispatch_command_with_resolver(&header, payload, &mut runtime, None);
 
     // Invariant: UnknownCommand MUST return BadRequest.
     assert_eq!(
@@ -129,8 +128,7 @@ fn kani_dispatch_arm_count() {
     for cmd in &semantic_commands {
         let header = make_header(*cmd);
         let payload: &[u8] = &[];
-        let response =
-            dispatch_command_with_resolver(&header, payload, &mut runtime, None);
+        let response = dispatch_command_with_resolver(&header, payload, &mut runtime, None);
 
         // Any response is acceptable — we only verify no panic occurred.
         // The response must be a valid IpcResponse discriminant (Rust
@@ -142,8 +140,7 @@ fn kani_dispatch_arm_count() {
     let unknown = IpcCommand::UnknownCommand(0);
     let header = make_header(unknown);
     let payload: &[u8] = &[];
-    let response =
-        dispatch_command_with_resolver(&header, payload, &mut runtime, None);
+    let response = dispatch_command_with_resolver(&header, payload, &mut runtime, None);
 
     assert_eq!(
         response,

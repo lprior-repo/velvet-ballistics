@@ -69,7 +69,7 @@ fn ensure(condition: bool, message: &'static str) -> Result<(), String> {
 }
 
 // =========================================================================
-// Test 3: Terminal state allows re-entry -- finished run can be re-run
+// Test 3: Terminal state re-entry uses explicit Pending admission
 // =========================================================================
 
 #[test]
@@ -95,17 +95,21 @@ fn terminal_state_finished_run_can_be_rerun() -> Result<(), String> {
         "workflow must finish with I64(42)",
     )?;
 
-    // After finishing, step_once can be called again because Succeeded->Running is valid.
+    // After finishing, re-entry must explicitly admit the terminal step back to Pending.
+    frame.mark_pending(frame.pc()).map_err(|e| e.to_string())?;
     // This re-executes the Finish node and returns Finished again.
     let signal = step_once(&workflow, &mut frame, &mut store).map_err(|e| e.to_string())?;
     ensure(
-        matches!(signal, EngineSignal::Finished(SlotValue::I64(42), Taint::Clean)),
+        matches!(
+            signal,
+            EngineSignal::Finished(SlotValue::I64(42), Taint::Clean)
+        ),
         "re-run should return Finished with same value",
     )
 }
 
 #[test]
-fn terminal_state_succeeded_allows_mark_running_for_loop_reentry() -> Result<(), String> {
+fn terminal_state_succeeded_reenters_through_pending_admission() -> Result<(), String> {
     let mut frame =
         RunFrame::new(RunId::new(1), StepIdx::new(0), 3, 1).map_err(|e| e.to_string())?;
     frame
@@ -114,9 +118,18 @@ fn terminal_state_succeeded_allows_mark_running_for_loop_reentry() -> Result<(),
     frame
         .mark_succeeded(StepIdx::new(0))
         .map_err(|e| e.to_string())?;
-    // Succeeded -> Running is ALLOWED for loop body re-entry
+    // Succeeded -> Running is rejected as a direct transition.
     let result = frame.mark_running(StepIdx::new(0));
-    ensure(result.is_ok(), "succeeded step must allow mark_running for loop reentry")
+    ensure(
+        result.is_err(),
+        "succeeded step must reject direct mark_running",
+    )?;
+    frame
+        .mark_pending(StepIdx::new(0))
+        .map_err(|e| e.to_string())?;
+    frame
+        .mark_running(StepIdx::new(0))
+        .map_err(|e| e.to_string())
 }
 
 #[test]

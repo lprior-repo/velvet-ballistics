@@ -1,92 +1,60 @@
 #![cfg(kani)]
 
-//! Kani harness for obl-vb-mrwe-6-duplicate-kani-014.
+//! Kani harness for obl-vb-in8ib-duplicate-kani.
 
-use crate::events::JournalEvent;
-use crate::journal::append::{
-    VerificationActionIndexIntent, VerificationDuplicateRetryDecision,
-    verification_action_index_intent, verification_duplicate_retry_decision,
-    verification_event_and_index_keys_exist,
+use crate::mrwe6_seams::{
+    Mrwe6DuplicateRetryDecision, Mrwe6EventClass, mrwe6_duplicate_retry_decision_from_facts,
 };
-use crate::types::EventSeq;
-use vb_core::{ActionId, RunId, StepIdx};
 
-fn schedule(
-    run: RunId,
-    seq: EventSeq,
-    step: StepIdx,
-    action: ActionId,
-    attempt: u16,
-) -> JournalEvent {
-    JournalEvent::ActionScheduled {
-        run,
-        seq,
-        step,
-        action,
-        attempt,
+fn generated_retry_class() -> Mrwe6EventClass {
+    match kani::any::<u8>() % 3 {
+        0 => Mrwe6EventClass::Scheduled,
+        1 => Mrwe6EventClass::Resolution,
+        _ => Mrwe6EventClass::Unrelated,
     }
 }
 
+fn expected_equal_payload_decision(
+    retry_class: Mrwe6EventClass,
+    marker_present: bool,
+) -> Mrwe6DuplicateRetryDecision {
+    match (retry_class, marker_present) {
+        (Mrwe6EventClass::Scheduled, true) => Mrwe6DuplicateRetryDecision::IdempotentEqualRetry,
+        (Mrwe6EventClass::Scheduled, false) => {
+            Mrwe6DuplicateRetryDecision::MissingExpectedIndexState
+        }
+        (Mrwe6EventClass::Resolution | Mrwe6EventClass::Unrelated, _) => {
+            Mrwe6DuplicateRetryDecision::UnsupportedDuplicateClassRejected
+        }
+    }
+}
+
+fn unsupported_never_idempotent(
+    retry_class: Mrwe6EventClass,
+    decision: Mrwe6DuplicateRetryDecision,
+) -> bool {
+    matches!(retry_class, Mrwe6EventClass::Scheduled)
+        || decision != Mrwe6DuplicateRetryDecision::IdempotentEqualRetry
+}
+
 #[kani::proof]
-fn duplicate_schedule_retry_is_idempotent_or_conflict() {
-    let run = RunId::new(kani::any::<u64>());
-    let seq = EventSeq::new(kani::any::<u64>());
-    let step = StepIdx::new(kani::any::<u16>());
-    let action = ActionId::new(kani::any::<u16>());
-    let attempt = kani::any::<u16>();
-    let divergent = kani::any::<bool>();
-    let retry_attempt = if divergent {
-        attempt.wrapping_add(1)
-    } else {
-        attempt
-    };
-
-    let existing = schedule(run, seq, step, action, attempt);
-    let retry = schedule(run, seq, step, action, retry_attempt);
-    let equal_payload = existing == retry;
-    let existing_intent = verification_action_index_intent(&existing);
-    let retry_intent = verification_action_index_intent(&retry);
+fn vb_mrwe6_duplicate_arbitrary_facts() {
+    let retry_class = generated_retry_class();
+    let equal_payload = kani::any::<bool>();
     let marker_present = kani::any::<bool>();
-    let decision = verification_duplicate_retry_decision(&existing, &retry, marker_present);
+    let decision =
+        mrwe6_duplicate_retry_decision_from_facts(equal_payload, retry_class, marker_present);
 
-    assert!(matches!(
-        existing_intent,
-        VerificationActionIndexIntent::Put {
-            action: a,
-            run: r,
-            step: s,
-        } if a == action && r == run && s == step
-    ));
-    assert_eq!(existing_intent, retry_intent);
-    assert!(matches!(
-        verification_event_and_index_keys_exist(&existing),
-        Ok(true)
-    ));
-    assert!(matches!(
-        verification_event_and_index_keys_exist(&retry),
-        Ok(true)
-    ));
-
-    if equal_payload && marker_present {
+    if equal_payload {
         assert_eq!(
             decision,
-            VerificationDuplicateRetryDecision::IdempotentEqualRetry
+            expected_equal_payload_decision(retry_class, marker_present)
         );
-    }
-    if equal_payload && !marker_present {
+    } else {
         assert_eq!(
             decision,
-            VerificationDuplicateRetryDecision::MissingExpectedIndexState
+            Mrwe6DuplicateRetryDecision::DivergentDuplicateConflict
         );
     }
-    if !equal_payload {
-        assert_eq!(
-            decision,
-            VerificationDuplicateRetryDecision::DivergentDuplicateConflict
-        );
-    }
-    assert_eq!(equal_payload, !divergent || retry_attempt == attempt);
-
-    core::mem::forget(existing);
-    core::mem::forget(retry);
+    assert!(unsupported_never_idempotent(retry_class, decision));
 }
