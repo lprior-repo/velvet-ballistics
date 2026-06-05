@@ -18,6 +18,8 @@ pub enum RecordKind {
     StepStarted = 11,
     /// Slot written event.
     SlotWritten = 12,
+    /// Step succeeded event.
+    StepSucceeded = 29,
     /// Action scheduled event.
     ActionScheduled = 13,
     /// Action completed event.
@@ -71,6 +73,7 @@ impl RecordKind {
             Self::RunAccepted => 10,
             Self::StepStarted => 11,
             Self::SlotWritten => 12,
+            Self::StepSucceeded => 29,
             Self::ActionScheduled => 13,
             Self::ActionCompleted => 14,
             Self::ActionFailed => 15,

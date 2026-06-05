@@ -29,18 +29,12 @@ fuzz_target!(|data: &[u8]| {
     ];
 
     for magic in magics {
-        let result = vb_storage::decode_record::<vb_storage::JournalEvent>(
-            data,
-            magic,
-            max_payload_len,
-        );
+        let result =
+            vb_storage::decode_record::<vb_storage::JournalEvent>(data, magic, max_payload_len);
         match result {
             Ok((_envelope, event)) => {
                 // On success, event must pass is_valid().
-                assert!(
-                    event.is_valid(),
-                    "decoded event must be structurally valid"
-                );
+                assert!(event.is_valid(), "decoded event must be structurally valid");
             }
             Err(error) => {
                 assert_typed_journal_error(error);
@@ -50,11 +44,8 @@ fuzz_target!(|data: &[u8]| {
 
     // Exercise with boundary magic values.
     for magic in [0xFFFF_FFFFu32, 0x0000_0000u32] {
-        let result = vb_storage::decode_record::<vb_storage::JournalEvent>(
-            data,
-            magic,
-            max_payload_len,
-        );
+        let result =
+            vb_storage::decode_record::<vb_storage::JournalEvent>(data, magic, max_payload_len);
         match result {
             Ok((_envelope, event)) => {
                 assert!(event.is_valid(), "decoded event must be structurally valid");

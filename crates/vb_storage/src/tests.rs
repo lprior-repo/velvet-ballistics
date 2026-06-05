@@ -3536,8 +3536,14 @@ mod tests {
             step: StepIdx::new(5),
             output: vb_core::SlotIdx::new(10),
         };
-        let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::SlotWritten, 2, &event, 128)
-            .expect("encoding should succeed");
+        let encoded = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::StepSucceeded,
+            2,
+            &event,
+            128,
+        )
+        .expect("encoding should succeed");
         let (_, decoded) = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
             .expect("decoding should succeed");
         assert_eq!(decoded, event);

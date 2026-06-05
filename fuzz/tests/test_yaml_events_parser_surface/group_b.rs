@@ -1,13 +1,15 @@
 //! Continuation of yaml events parser surface tests (group B: tests 11-21).
 use fuzz_lib::test_exports::fuzz_yaml_events;
-use vb_yaml::{validate_yaml_profile, parse_yaml_events, build_source_map};
+use vb_yaml::{build_source_map, parse_yaml_events, validate_yaml_profile};
 
 #[test]
 #[ignore = "slow"]
 fn integration_source_too_large_triggers_yaml_error() {
     // Given: YAML exceeding max source size (2MB)
     let key = "a".repeat(2_097_152); // 2MB
-    let yaml = format!("version: v1\nname: test\nwhen: manual\nsteps:\n  - id: 1\n    do: ping\n    input: 0\n    extra: {key}\n");
+    let yaml = format!(
+        "version: v1\nname: test\nwhen: manual\nsteps:\n  - id: 1\n    do: ping\n    input: 0\n    extra: {key}\n"
+    );
     // When: harness processes it
     // Then: must not panic or OOM
     fuzz_yaml_events(yaml.as_bytes());
@@ -30,7 +32,9 @@ fn integration_source_too_large_triggers_yaml_error() {
 fn integration_scalar_too_long_triggers_yaml_error() {
     // Given: YAML with an extremely long scalar value (70KB)
     let value = "x".repeat(70_000);
-    let yaml = format!("version: v1\nname: test\nwhen: manual\nsteps:\n  - id: 1\n    do: ping\n    input: 0\n    data: {value}\n");
+    let yaml = format!(
+        "version: v1\nname: test\nwhen: manual\nsteps:\n  - id: 1\n    do: ping\n    input: 0\n    data: {value}\n"
+    );
     // When: harness processes it
     // Then: must not panic
     fuzz_yaml_events(yaml.as_bytes());
@@ -51,8 +55,9 @@ fn integration_scalar_too_long_triggers_yaml_error() {
 #[ignore = "slow"]
 fn integration_sequence_too_long_triggers_yaml_error() {
     // Given: YAML with a long sequence (stays under MAX_FUZZ_PAYLOAD)
-    let mut yaml =
-        String::from("version: v1\nname: test\nwhen: manual\nsteps:\n  - id: 1\n    do: ping\n    input: 0\n    items:\n");
+    let mut yaml = String::from(
+        "version: v1\nname: test\nwhen: manual\nsteps:\n  - id: 1\n    do: ping\n    input: 0\n    items:\n",
+    );
     for i in 0..500 {
         yaml.push_str(&format!("      - item_{i}\n"));
     }
@@ -76,7 +81,9 @@ fn integration_sequence_too_long_triggers_yaml_error() {
 #[test]
 fn integration_mapping_too_large_triggers_yaml_error() {
     // Given: YAML with many key-value pairs in a mapping
-    let mut yaml = String::from("version: v1\nname: test\nwhen: manual\nsteps:\n  - id: 1\n    do: ping\n    input: 0\n");
+    let mut yaml = String::from(
+        "version: v1\nname: test\nwhen: manual\nsteps:\n  - id: 1\n    do: ping\n    input: 0\n",
+    );
     for i in 0..2048 {
         yaml.push_str(&format!("    key_{i}: value_{i}\n"));
     }
@@ -100,7 +107,9 @@ fn integration_mapping_too_large_triggers_yaml_error() {
 #[test]
 fn integration_nesting_too_deep_triggers_yaml_error() {
     // Given: Deeply nested YAML (200 levels of valid mapping nesting)
-    let mut yaml = String::from("version: v1\nname: test\nwhen: manual\nsteps:\n  - id: 1\n    do: ping\n    input: 0\n");
+    let mut yaml = String::from(
+        "version: v1\nname: test\nwhen: manual\nsteps:\n  - id: 1\n    do: ping\n    input: 0\n",
+    );
     for depth in 0..200 {
         for _ in 0..(depth + 1) {
             yaml.push_str("  ");
@@ -186,10 +195,7 @@ fn saphyr_boundary_parse_error_preserves_non_empty_reason() {
     let result = parse_yaml_events(yaml);
     if let Err(e) = result {
         let error_string = e.to_string();
-        assert!(
-            !error_string.is_empty(),
-            "error display must be non-empty"
-        );
+        assert!(!error_string.is_empty(), "error display must be non-empty");
     }
 }
 
@@ -200,29 +206,28 @@ fn saphyr_boundary_parse_error_preserves_non_empty_reason() {
 #[test]
 fn corpus_seed_minimal_workflow_does_not_panic() {
     // Given: a minimal valid workflow (matching seed_minimal_workflow.yaml)
-    let yaml = "version: v1\nname: minimal\nwhen: manual\nsteps:\n  - id: 1\n    do: ping\n    input: 0\n";
+    let yaml =
+        "version: v1\nname: minimal\nwhen: manual\nsteps:\n  - id: 1\n    do: ping\n    input: 0\n";
     // When: harness processes it
     // Then: no panic
     fuzz_yaml_events(yaml.as_bytes());
     // Also verify the individual APIs succeed
     let profile = validate_yaml_profile(yaml);
-    assert!(profile.is_ok(), "minimal workflow must pass profile validation");
+    assert!(
+        profile.is_ok(),
+        "minimal workflow must pass profile validation"
+    );
     let events = parse_yaml_events(yaml);
-    assert!(
-        events.is_ok(),
-        "minimal workflow must parse to events"
-    );
+    assert!(events.is_ok(), "minimal workflow must parse to events");
     let source_map = build_source_map(yaml);
-    assert!(
-        source_map.is_ok(),
-        "minimal workflow must build source map"
-    );
+    assert!(source_map.is_ok(), "minimal workflow must build source map");
 }
 
 #[test]
 fn corpus_seed_with_primitive_types_does_not_panic() {
     // Given: a workflow exercising various YAML primitive types
-    let yaml = "version: v1\nname: types\nwhen: manual\nsteps:\n  - id: 1\n    do: ping\n    input: 0\n";
+    let yaml =
+        "version: v1\nname: types\nwhen: manual\nsteps:\n  - id: 1\n    do: ping\n    input: 0\n";
     // When: harness processes it
     // Then: no panic
     fuzz_yaml_events(yaml.as_bytes());
@@ -231,7 +236,9 @@ fn corpus_seed_with_primitive_types_does_not_panic() {
 #[test]
 fn corpus_seed_deep_nesting_does_not_panic() {
     // Given: a workflow with moderate nesting depth (20 levels)
-    let mut yaml = String::from("version: v1\nname: deep\nwhen: manual\nsteps:\n  - id: 1\n    do: ping\n    input: 0\n");
+    let mut yaml = String::from(
+        "version: v1\nname: deep\nwhen: manual\nsteps:\n  - id: 1\n    do: ping\n    input: 0\n",
+    );
     for depth in 0..20 {
         for _ in 0..(depth * 2 + 2) {
             yaml.push(' ');

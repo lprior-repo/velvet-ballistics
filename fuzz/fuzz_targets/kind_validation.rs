@@ -41,8 +41,11 @@ fuzz_target!(|data: &[u8]| {
     match known_result {
         Ok(()) => {
             // Kind is known. Verify that is_known_record_kind agrees.
-            assert!(vb_storage::codec::is_known_record_kind(kind),
-                "validate_known_kind Ok but is_known_record_kind false for kind {}", kind);
+            assert!(
+                vb_storage::codec::is_known_record_kind(kind),
+                "validate_known_kind Ok but is_known_record_kind false for kind {}",
+                kind
+            );
         }
         Err(e) => {
             // Kind is unknown. Verify error is correctly typed.
@@ -57,11 +60,18 @@ fuzz_target!(|data: &[u8]| {
             // Kind-magic pair is valid. Verify invariants based on magic.
             match magic {
                 m if m == vb_storage::MAGIC_JOURNAL_EVENT => {
-                    assert!((10..=28).contains(&kind),
-                        "MAGIC_JOURNAL_EVENT accepted kind {} not in 10..=28", kind);
+                    assert!(
+                        (10..=28).contains(&kind),
+                        "MAGIC_JOURNAL_EVENT accepted kind {} not in 10..=28",
+                        kind
+                    );
                 }
                 m if m == vb_storage::MAGIC_SNAPSHOT => {
-                    assert_eq!(kind, 30, "MAGIC_SNAPSHOT accepted non-snapshot kind {}", kind);
+                    assert_eq!(
+                        kind, 30,
+                        "MAGIC_SNAPSHOT accepted non-snapshot kind {}",
+                        kind
+                    );
                 }
                 m if m == vb_storage::MAGIC_BLOB => {
                     assert_eq!(kind, 40, "MAGIC_BLOB accepted non-blob kind {}", kind);
@@ -115,7 +125,10 @@ fn assert_typed_unknown_kind_error(error: vb_storage::JournalError, expected_kin
 /// Assert that a family mismatch error is properly typed.
 fn assert_typed_family_error(error: vb_storage::JournalError, magic: u32, kind: u16) {
     match error {
-        vb_storage::JournalError::RecordKindFamilyMismatch { magic: err_magic, kind: err_kind } => {
+        vb_storage::JournalError::RecordKindFamilyMismatch {
+            magic: err_magic,
+            kind: err_kind,
+        } => {
             assert_eq!(err_magic, magic, "family mismatch magic must match input");
             assert_eq!(err_kind, kind, "family mismatch kind must match input");
         }

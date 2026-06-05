@@ -35,6 +35,65 @@ proof_levels:
 obligations:
 
   # ============================================================
+  # VB-MRWE.5 — JournalEvent kind parity bridge models
+  # ============================================================
+  - id: VB-MRWE5-VERUS-001
+    section: ["vb-mrwe.5"]
+    statement: |
+      StepSucceeded and SlotWrittenEvent carry distinct durable record-kind ids.
+    proof_level: L4
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/events.rs
+      - crates/vb_storage/src/records/kinds.rs
+    required:
+      verus: verification/verus/vb_mrwe5_kind_parity.rs
+    commands:
+      - verus verification/verus/vb_mrwe5_kind_parity.rs
+
+  - id: VB-MRWE5-VERUS-002
+    section: ["vb-mrwe.5"]
+    statement: |
+      Semantic journal decode succeeds only when envelope and payload kinds match.
+    proof_level: L4
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/codec/mod.rs
+      - crates/vb_storage/src/events.rs
+    required:
+      verus: verification/verus/vb_mrwe5_decode_reject.rs
+    commands:
+      - verus verification/verus/vb_mrwe5_decode_reject.rs
+
+  - id: VB-MRWE5-VERUS-003
+    section: ["vb-mrwe.5"]
+    statement: |
+      StepSucceeded and SlotWrittenEvent round-trip observations require separate expected kinds.
+    proof_level: L4
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/codec/mod.rs
+      - crates/vb_storage/src/events.rs
+    required:
+      verus: verification/verus/vb_mrwe5_roundtrip.rs
+    commands:
+      - verus verification/verus/vb_mrwe5_roundtrip.rs
+
+  - id: VB-MRWE5-VERUS-004
+    section: ["vb-mrwe.5"]
+    statement: |
+      StepSucceeded id 29 is inside the bounded journal kind family and arbitrary mismatches are not silently valid.
+    proof_level: L4
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/records/kinds.rs
+      - crates/vb_storage/src/codec/validation.rs
+    required:
+      verus: verification/verus/vb_mrwe5_compat_kind_family.rs
+    commands:
+      - verus verification/verus/vb_mrwe5_compat_kind_family.rs
+
+  # ============================================================
   # CORE TAINT LATTICE (Section 47)
   # ============================================================
   - id: VB-CORE-TAINT-001

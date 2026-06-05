@@ -1609,7 +1609,7 @@ fn step_succeeded_event_maps_to_step_succeeded_kind() {
     assert_eq!(
         event.record_kind(),
         RecordKind::StepSucceeded,
-        "StepSucceeded event should map to StepSucceeded record kind (id=29), distinct from SlotWrittenEvent"
+        "StepSucceeded event should map to StepSucceeded record kind"
     );
 }
 

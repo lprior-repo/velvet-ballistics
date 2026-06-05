@@ -10,12 +10,24 @@
       "kani_vbjpq733_proofs::vbjpq733_unsupported_union_commutative",
       "kani_vbjpq733_proofs::vbjpq733_unsupported_union_idempotent",
       "kani_vbjpq733_proofs::vbjpq733_unsupported_union_supported_identity"
+    ],
+    "crates/vb_storage/src/verification/kani/vb_mrwe5_compat_kind_family.rs": [
+      "vb_mrwe5_compat_kind_family::kind_ids_and_legacy_policy_are_narrow"
+    ],
+    "crates/vb_storage/src/verification/kani/vb_mrwe5_decode_reject.rs": [
+      "vb_mrwe5_decode_reject::valid_postcard_mismatches_reject_before_semantics"
+    ],
+    "crates/vb_storage/src/verification/kani/vb_mrwe5_kind_parity.rs": [
+      "vb_mrwe5_kind_parity::new_writes_use_canonical_record_kind"
+    ],
+    "crates/vb_storage/src/verification/kani/vb_mrwe5_roundtrip.rs": [
+      "vb_mrwe5_roundtrip::step_succeeded_and_slot_written_roundtrip_with_envelope_assertions"
     ]
   },
   "contract-harnesses": {},
   "contracts": [],
   "totals": {
-    "standard-harnesses": 7,
+    "standard-harnesses": 11,
     "contract-harnesses": 0,
     "functions-under-contract": 0
   }

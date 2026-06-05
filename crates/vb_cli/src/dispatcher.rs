@@ -131,9 +131,11 @@ pub fn run_from_env() -> ExitCode {
         }) => cmd_answer(&run_id, slot, &value, &db, output),
         Ok(Command::Graph { workflow, output }) => cmd_graph(&workflow, output),
         Ok(Command::Diff { diff_mode, output }) => match diff_mode {
-            DiffMode::WorkflowAgainst { workflow, against } => {
-                cmd_diff_workflow_against(&workflow, &against, output)
-            }
+            DiffMode::WorkflowAgainst {
+                workflow,
+                against,
+                db,
+            } => cmd_diff_workflow_against(&workflow, &against, &db, output),
             DiffMode::RunAgainst { run_a, run_b, db } => cmd_diff(&run_a, &run_b, &db, output),
         },
         Ok(Command::Incident { run_id, db, output }) => cmd_incident(&run_id, &db, output),

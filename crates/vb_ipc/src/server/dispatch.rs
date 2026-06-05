@@ -71,12 +71,33 @@ mod tests {
     use crate::server::{WorkflowResolutionError, WorkflowResolver};
     use std::num::NonZeroUsize;
     use std::path::PathBuf;
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::Duration;
     use vb_runtime::runtime::Runtime;
     use vb_runtime::shard::ShardConfig;
 
+    static NEXT_SOCKET_ID: AtomicU64 = AtomicU64::new(0);
+
     fn temp_socket_path(name: &str) -> PathBuf {
-        std::env::temp_dir().join(format!("vb_dispatch_test_{name}_{}", std::process::id()))
+        let sequence_result =
+            NEXT_SOCKET_ID.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |current| {
+                current.checked_add(1)
+            });
+        let sequence = match sequence_result {
+            Ok(current) => current,
+            Err(_overflowed_current) => 0,
+        };
+        let suffix = name
+            .chars()
+            .filter(char::is_ascii_alphanumeric)
+            .take(12)
+            .collect::<String>();
+        PathBuf::from(format!(
+            "/tmp/vbd_{}_{}_{}.sock",
+            std::process::id(),
+            sequence,
+            suffix
+        ))
     }
 
     struct CleanupPath<'a>(&'a std::path::Path);

@@ -93,6 +93,34 @@ doc = false
 bench = false
 
 [[bin]]
+name = "storage_journal_kind_parity"
+path = "src/bin/storage_journal_kind_parity.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "storage_journal_decode_reject"
+path = "src/bin/storage_journal_decode_reject.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "storage_journal_roundtrip"
+path = "src/bin/storage_journal_roundtrip.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "storage_journal_compat_kind_family"
+path = "src/bin/storage_journal_compat_kind_family.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "capability_name_schema"
 path = "src/bin/capability_name_schema.rs"
 test = false

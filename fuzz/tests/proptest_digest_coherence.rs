@@ -6,8 +6,8 @@
 
 use proptest::prelude::*;
 use vb_core::{
-    CompiledNode, CompiledNodeKind, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
-    ResourceContract,
+    CompiledNode, CompiledNodeKind, ResourceContract, SlotIdx, StepIdx, WorkflowDigest,
+    WorkflowParts,
 };
 
 proptest! {
