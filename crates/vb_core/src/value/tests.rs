@@ -387,8 +387,6 @@ fn taint_discriminant(taint: Taint) -> u8 {
         Taint::Clean => 0,
         Taint::DerivedFromSecret => 1,
         Taint::Secret => 2,
-        Taint::Secret => 3,
-        Taint::Secret => 4,
     }
 }
 
