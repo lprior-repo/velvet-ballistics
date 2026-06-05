@@ -69,7 +69,7 @@ Additional observed context:
 - Typed partitioned ID test repair was reviewed; State 10/13/14 validators previously passed.
 - Current State 11/13/14/15 validators were PASS before this final `moon ci` rerun.
 
-Classification: canonical aggregate CI is green. Landing may proceed if the fresh State 15 validator passes and staged diff remains limited to intended vb-in8ib/vb-mrwe.6 changes.
+Classification: canonical aggregate CI is green. Fresh State 15 validator passed; staged diff was limited to intended vb-in8ib/vb-mrwe.6 landing changes and excluded forbidden bead runtime paths.
 
 ## Go-skill validator status
 
@@ -78,19 +78,36 @@ Classification: canonical aggregate CI is green. Landing may proceed if the fres
 - State 12 validator: PASS after ledger refresh (per handoff).
 - State 13 validator: PASS after black-hat narrow re-review (per handoff).
 - State 14 validator: PASS after evidence packaging refresh (per handoff).
-- State 15 validator: pending rerun after this report update, using the fresh canonical `moon ci` PASS evidence above.
+- State 15 validator: PASS.
+
+Command:
+
+```text
+/home/lewis/.agents/skills/go-skill/tools/go-skill-v9-validate --workspace /home/lewis/isolated/go-skill-batch-20260604/vb-mrwe.6 --bead vb-in8ib --state 15 --source-checkout /home/lewis/src/velvet-ballistics --skill-root /home/lewis/.agents/skills/go-skill --format text
+```
+
+Output:
+
+```text
+STATUS: PASS
+```
 
 ## Files staged/committed/pushed
 
-- Staged files: pending.
-- Commit: pending.
-- Push: pending.
+- Staged files: intended vb-in8ib/vb-mrwe.6 source, proof, test, task, evidence, and landing-report changes only; forbidden `.beads/dolt`, `.beads/backup`, `.beads/embeddeddolt`, locks, runtime DB state, and secrets were not staged.
+- Staged diff summary: `109 files changed, 3947 insertions(+), 1925 deletions(-)` before first landing commit.
+- Commit: `f412e62d49ae97001ff4ca1f29129503e5a0f3cc feat(vb-mrwe.6): land atomic journal proof repairs`.
+- Push: succeeded to `origin/go-skill/vb-mrwe-6-20260604` (`ab47b8a17..f412e62d4`).
+- Remote verification: local `HEAD` and `origin/go-skill/vb-mrwe-6-20260604` both resolved to `f412e62d49ae97001ff4ca1f29129503e5a0f3cc` after push.
+- Post-push status: clean working tree.
 
-Reason: final canonical `moon ci` passed. Landing is approved to stage, commit, push, and verify after State 15 validator PASS.
+Reason: final canonical `moon ci` passed, State 15 validator passed, commit was pushed, and post-push status was clean.
 
 ## Handoff / next action
 
-Advance to State 16 only after the following landing commands complete successfully:
+Orchestrator may advance to State 16.
+
+Completed landing commands:
 
 ```text
 /home/lewis/.agents/skills/go-skill/tools/go-skill-v9-validate --workspace /home/lewis/isolated/go-skill-batch-20260604/vb-mrwe.6 --bead vb-in8ib --state 15 --source-checkout /home/lewis/src/velvet-ballistics --skill-root /home/lewis/.agents/skills/go-skill --format text
@@ -98,6 +115,7 @@ git add <intended vb-in8ib/vb-mrwe.6 files only>
 git commit -m "<repo-style message>"
 git push origin go-skill/vb-mrwe-6-20260604
 git status --short --branch
+/usr/bin/git rev-parse HEAD origin/go-skill/vb-mrwe-6-20260604
 ```
 
-If any gate fails, update this report with `BLOCK_*`, do not commit/push, and return exact cause.
+No `BLOCK_*` condition remains.
