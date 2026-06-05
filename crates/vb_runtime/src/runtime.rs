@@ -186,7 +186,7 @@ impl Runtime {
     /// Answers an ask with an explicit payload and resume ticket.
     pub fn answer_ask(&self, answer: AskAnswer) -> RuntimeResult<()> {
         let shard = self.shard_for(answer.ticket.run)?;
-        if !shard.run_state_contains(answer.ticket.run) {
+        if shard.terminal_runs_contains(answer.ticket.run) {
             return Err(RuntimeError::RunNotFound);
         }
         shard.enqueue(ShardCommand::AskAnswered { answer })
