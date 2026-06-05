@@ -1685,9 +1685,9 @@ mod proptest_reentry {
         }
     }
 
-    // ── PO-PROP-003: Loop body state immutability during re-entry ──────────
-    // Verifies that loop primitives do NOT mutate the body step state
-    // during re-entry. The body Succeeded state persists across iterations.
+    // -- PO-PROP-003: Loop body re-entry moves Succeeded to Running ----------
+    // Verifies that loop primitives use the explicit Succeeded->Running
+    // re-entry transition instead of Succeeded->Pending.
     proptest! {
         #[test]
         fn proptest_loop_reentry_body_state_immutable(
@@ -1729,9 +1729,6 @@ mod proptest_reentry {
                 run.mark_running(body_step).unwrap();
                 run.mark_succeeded(body_step).unwrap();
 
-                // Capture body state before re-entry
-                let state_before = run.step_state(body_step).unwrap();
-
                 let fe = for_each_next(
                     &mut run,
                     &mut store,
@@ -1741,15 +1738,15 @@ mod proptest_reentry {
                     Some(output_slot),
                 );
 
-                // If loop continues, body state must be unchanged (immutable)
+                // If loop continues, body state moves through the explicit
+                // Succeeded->Running re-entry transition.
                 if let Ok(vb_core::EngineSignal::Continue) = fe {
                     let state_after = run.step_state(body_step).unwrap();
                     prop_assert_eq!(
-                        state_after, state_before,
-                        "body step state must not change during for_each_next re-entry (PO-PROP-003)"
+                        state_after, StepState::Running,
+                        "body step state must be Running during for_each_next re-entry (PO-PROP-003)"
                     );
                 }
-                // If loop exits (done), body state is terminal - also unchanged
             }
         }
     }

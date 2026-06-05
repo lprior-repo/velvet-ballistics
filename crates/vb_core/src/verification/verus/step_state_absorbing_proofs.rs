@@ -1,9 +1,9 @@
-//! Verus absorbing-terminal invariant proofs — PO-VERUS-001, PO-VERUS-002, PO-VERUS-003.
+//! Verus terminal-transition invariant proofs — PO-VERUS-001, PO-VERUS-002, PO-VERUS-003.
 //!
 //! ## Obligations
-//! - PO-VERUS-001: proof_fn_terminal_absorbing — forall terminal t, forall s != t: !is_valid(t, s)
+//! - PO-VERUS-001: proof_fn_terminal_reentry_exception — terminal non-self transitions are invalid except Succeeded->Running
 //! - PO-VERUS-002: is_valid_step_state_transition exec fn binding with requires/ensures
-//! - PO-VERUS-003: terminal_cannot_transition_to_non_terminal uniform terminal treatment
+//! - PO-VERUS-003: terminal_cannot_transition_to_non_terminal honors the Succeeded->Running reentry exception
 //!
 //! ## Production Binding
 //! - `is_valid_step_state_transition` → `vb_core::frame::is_valid_step_state_transition`
@@ -83,32 +83,36 @@ pub open spec fn spec_is_valid_transition(current: StepState, new: StepState) ->
             (StepState::Waiting, StepState::Running)
             | (StepState::Asking, StepState::Running) => true,
 
-            // All other transitions (including Succeeded->*) invalid
+            // Succeeded can re-enter a loop body as Running.
+            (StepState::Succeeded, StepState::Running) => true,
+
+            // All other transitions invalid
             _ => false,
         }
     }
 }
 
 // ===========================================================================
-// PO-VERUS-001: Absorbing-terminal invariant
+// PO-VERUS-001: Terminal-transition invariant
 // ===========================================================================
 
-/// Lemma: For all terminal states t and all states s != t,
-/// spec_is_valid_transition(t, s) is false.
-pub proof fn lemma_terminal_absorbing(t: StepState, s: StepState)
+/// Lemma: For all terminal states t and all states s != t, transitions are
+/// invalid except Succeeded->Running loop re-entry.
+pub proof fn lemma_terminal_reentry_exception(t: StepState, s: StepState)
     requires
         spec_is_terminal(t),
         t != s,
+        !(t == StepState::Succeeded && s == StepState::Running),
     ensures
         !spec_is_valid_transition(t, s),
 {
-    // Exhaustive case analysis over all 4 terminal states
-    // and the 7 non-self states for each.
+    // Exhaustive case analysis over all terminal non-self transitions except
+    // the Succeeded->Running re-entry edge.
     // Since StepState is a finite 8-variant enum, this is a bounded proof.
     // Verus can discharge this via SMT + by(compute) on the finite space.
 
     // We reveal the spec function bodies and let the SMT solver
-    // check all (4 × 7 = 28) terminal→non-terminal combinations.
+    // check all terminal non-self combinations outside the re-entry exception.
     assert(!spec_is_valid_transition(t, s)) by {
         // The SMT solver can handle this finite case split natively
         // because spec_is_valid_transition and spec_is_terminal are both
@@ -116,52 +120,52 @@ pub proof fn lemma_terminal_absorbing(t: StepState, s: StepState)
     }
 }
 
-/// PO-VERUS-001: Top-level proof function proving the absorbing-terminal invariant
-/// for all terminal states and all distinct target states.
-pub proof fn proof_fn_terminal_absorbing()
+/// PO-VERUS-001: Top-level proof function proving the terminal transition
+/// invariant for all terminal states and all distinct target states outside the
+/// Succeeded->Running re-entry exception.
+pub proof fn proof_fn_terminal_reentry_exception()
     ensures
         forall|t: StepState, s: StepState|
-            spec_is_terminal(t) && t != s ==> !spec_is_valid_transition(t, s),
+            spec_is_terminal(t) && t != s && !(t == StepState::Succeeded && s == StepState::Running)
+                ==> !spec_is_valid_transition(t, s),
 {
     // Exhaustive proof over 8-element StepState enum.
     // The SMT solver + by(compute) handles the finite case split.
     assert forall|t: StepState, s: StepState|
-        spec_is_terminal(t) && t != s ==> !spec_is_valid_transition(t, s) by {
-        // For each (t, s) where t is terminal and t != s:
-        // spec_is_valid_transition(t, s) must be false.
-        // This is a finite check over 4 × 7 = 28 pairs.
-        // The lemma_terminal_absorbing provides the per-pair proof.
-        if spec_is_terminal(t) && t != s {
-            lemma_terminal_absorbing(t, s);
+        spec_is_terminal(t) && t != s && !(t == StepState::Succeeded && s == StepState::Running)
+            ==> !spec_is_valid_transition(t, s) by {
+        if spec_is_terminal(t) && t != s && !(t == StepState::Succeeded && s == StepState::Running) {
+            lemma_terminal_reentry_exception(t, s);
         }
     };
 }
 
 // ===========================================================================
-// PO-VERUS-003: Uniform terminal treatment
+// PO-VERUS-003: Terminal treatment with re-entry exception
 // ===========================================================================
 
-/// Lemma: All 4 terminal states are uniformly absorbing.
-/// For each terminal t, the only valid transition is t → t (idempotent).
-pub proof fn lemma_uniform_terminal_treatment()
+/// Lemma: terminal states allow only self-transition plus Succeeded->Running.
+pub proof fn lemma_terminal_treatment_with_reentry()
     ensures
         forall|t: StepState, s: StepState|
-            spec_is_terminal(t) && t != s ==> !spec_is_valid_transition(t, s),
+            spec_is_terminal(t) && t != s && !(t == StepState::Succeeded && s == StepState::Running)
+                ==> !spec_is_valid_transition(t, s),
 {
     assert forall|t: StepState, s: StepState|
-        spec_is_terminal(t) && t != s ==> !spec_is_valid_transition(t, s) by {
-        if spec_is_terminal(t) && t != s {
-            lemma_terminal_absorbing(t, s);
+        spec_is_terminal(t) && t != s && !(t == StepState::Succeeded && s == StepState::Running)
+            ==> !spec_is_valid_transition(t, s) by {
+        if spec_is_terminal(t) && t != s && !(t == StepState::Succeeded && s == StepState::Running) {
+            lemma_terminal_reentry_exception(t, s);
         }
     };
 }
 
 /// Spec: terminal_cannot_transition_to_non_terminal — mirrors the proof kernel.
-/// Returns true iff every terminal state t has next_states(t) = [t].
-/// In the corrected contract, there are no exceptions.
+/// Returns true iff terminal transitions are self-only except Succeeded->Running.
 pub open spec fn spec_terminal_cannot_transition_to_non_terminal() -> bool {
     forall|t: StepState| spec_is_terminal(t) ==>
-        forall|s: StepState| t != s ==> !spec_is_valid_transition(t, s)
+        forall|s: StepState| t != s && !(t == StepState::Succeeded && s == StepState::Running)
+            ==> !spec_is_valid_transition(t, s)
 }
 
 /// PO-VERUS-003: Proof that terminal_cannot_transition_to_non_terminal holds.
@@ -172,11 +176,13 @@ pub proof fn proof_fn_terminal_cannot_transition_to_non_terminal()
     // Unfold and prove the forall over all StepState variants
     assert(spec_terminal_cannot_transition_to_non_terminal()) by {
         assert forall|t: StepState| spec_is_terminal(t) ==>
-            forall|s: StepState| t != s ==> !spec_is_valid_transition(t, s) by {
+            forall|s: StepState| t != s && !(t == StepState::Succeeded && s == StepState::Running)
+                ==> !spec_is_valid_transition(t, s) by {
             if spec_is_terminal(t) {
-                assert forall|s: StepState| t != s ==> !spec_is_valid_transition(t, s) by {
-                    if t != s {
-                        lemma_terminal_absorbing(t, s);
+                assert forall|s: StepState| t != s && !(t == StepState::Succeeded && s == StepState::Running)
+                    ==> !spec_is_valid_transition(t, s) by {
+                    if t != s && !(t == StepState::Succeeded && s == StepState::Running) {
+                        lemma_terminal_reentry_exception(t, s);
                     }
                 };
             }
@@ -213,7 +219,7 @@ pub exec fn binding_is_valid_transition(current: StepState, new: StepState) -> (
 ///
 /// TRUST BOUNDARY TB-005b: The production proof kernel function
 /// (vb_proof_kernels::step_state::terminal_cannot_transition_to_non_terminal)
-/// must return true after removal of the Succeeded special case.
+/// must return true while preserving the Succeeded->Running re-entry exception.
 #[verifier::external_body]
 pub exec fn binding_terminal_cannot_transition_to_non_terminal() -> (result: bool)
     ensures

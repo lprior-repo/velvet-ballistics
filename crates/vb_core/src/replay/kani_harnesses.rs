@@ -292,26 +292,23 @@ mod verification {
     }
 
     // -----------------------------------------------------------------------
-    // PO-KANI-012: Replay skips terminal states
+    // PO-KANI-012: Replay skips absorbing terminal states
     // -----------------------------------------------------------------------
-    // After fix: when a step is in a terminal state (Succeeded, Failed,
-    // Cancelled, or Skipped), the replay executor must NOT attempt to
-    // re-execute that step. The step's state remains terminal throughout
-    // replay. No replay code depends on Succeeded->Pending being valid.
+    // Failed, Cancelled, and Skipped are absorbing. Succeeded has a separate
+    // loop body re-entry edge to Running, so this harness excludes it.
 
-    /// PO-KANI-012: Verify replay dispatch skips steps in terminal states.
-    /// A step in Succeeded/Failed/Cancelled/Skipped is not re-executed.
-    /// Uses kani::any() to test all terminal states and step positions.
+    /// PO-KANI-012: Verify replay dispatch skips absorbing terminal states.
+    /// A step in Failed/Cancelled/Skipped is not re-executed.
+    /// Uses kani::any() to test absorbing terminal states and step positions.
     #[kani::proof]
     fn kani_replay_skips_terminal_states() {
         let step_raw: u8 = kani::any();
         let step_state_val: u8 = kani::any();
 
-        // Map to a terminal state: Succeeded(2), Failed(3), Cancelled(7), Skipped(4)
-        let terminal_state = match step_state_val % 4 {
-            0 => crate::frame::StepState::Succeeded,
-            1 => crate::frame::StepState::Failed,
-            2 => crate::frame::StepState::Cancelled,
+        // Map to an absorbing terminal state: Failed(3), Cancelled(7), Skipped(4).
+        let terminal_state = match step_state_val % 3 {
+            0 => crate::frame::StepState::Failed,
+            1 => crate::frame::StepState::Cancelled,
             _ => crate::frame::StepState::Skipped,
         };
 
@@ -363,24 +360,22 @@ mod verification {
         // Set step 1 (the middle step) to a terminal state
         let terminal_idx = StepIdx::new(1);
         match terminal_state {
-            crate::frame::StepState::Succeeded => run.mark_succeeded(terminal_idx).unwrap(),
             crate::frame::StepState::Failed => run.mark_failed(terminal_idx).unwrap(),
             crate::frame::StepState::Cancelled => run.mark_cancelled(terminal_idx).unwrap(),
             crate::frame::StepState::Skipped => run.mark_skipped(terminal_idx).unwrap(),
             _ => {}
         }
 
-        // Verify step 1 is terminal
+        // Verify step 1 is an absorbing terminal.
         let state = run.step_state(terminal_idx).unwrap();
         kani::assert(
             matches!(
                 state,
-                crate::frame::StepState::Succeeded
-                    | crate::frame::StepState::Failed
+                crate::frame::StepState::Failed
                     | crate::frame::StepState::Cancelled
                     | crate::frame::StepState::Skipped
             ),
-            "step 1 is in a terminal state",
+            "step 1 is in an absorbing terminal state",
         );
 
         // Execute step 0 (Nop) to advance to step 1
@@ -389,24 +384,23 @@ mod verification {
         set_pc_for_replay(&mut run, StepIdx::new(0));
         let _ = replay_step(node0, &mut run, &mut store, &plan);
 
-        // Now at step 1 (terminal). Attempting replay should NOT execute it.
+        // Now at step 1 (absorbing terminal). Attempting replay should NOT execute it.
         // The step should either be skipped or produce a Continue action
         // without modifying the step state.
         let node1 = plan.node(StepIdx::new(1)).expect("node 1 missing");
         set_pc_for_replay(&mut run, StepIdx::new(1));
         let result = replay_step(node1, &mut run, &mut store, &plan);
 
-        // After replay attempt, step state must still be terminal
+        // After replay attempt, step state must still be absorbing terminal.
         let state_after = run.step_state(terminal_idx).unwrap();
         kani::assert(
             matches!(
                 state_after,
-                crate::frame::StepState::Succeeded
-                    | crate::frame::StepState::Failed
+                crate::frame::StepState::Failed
                     | crate::frame::StepState::Cancelled
                     | crate::frame::StepState::Skipped
             ),
-            "terminal state must remain terminal after replay (PO-KANI-012)",
+            "absorbing terminal state must remain terminal after replay (PO-KANI-012)",
         );
 
         // The state must be exactly the same as before

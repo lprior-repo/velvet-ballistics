@@ -68,6 +68,7 @@ pub fn dispatch_command_with_resolver(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::server::{WorkflowResolutionError, WorkflowResolver};
     use std::num::NonZeroUsize;
     use std::path::PathBuf;
     use std::time::Duration;
@@ -230,5 +231,81 @@ mod tests {
         let header = crate::IpcFrameHeader::new(IpcCommand::DrainTrace, 0, 0, 0);
         let response = dispatch_command_with_resolver(&header, &[], &mut runtime, None);
         assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    // ══ UnknownCommand dispatch tests (PO-KANI-003 compensating evidence) ═══════
+
+    #[test]
+    fn dispatch_unknown_command_returns_bad_request() {
+        let mut runtime = make_runtime();
+        let header = crate::IpcFrameHeader::new(IpcCommand::UnknownCommand(99), 0, 0, 0);
+        let response = dispatch_command_with_resolver(&header, &[], &mut runtime, None);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn dispatch_unknown_command_with_resolver_present_returns_bad_request() {
+        let mut runtime = make_runtime();
+        struct NoopResolver;
+        impl WorkflowResolver for NoopResolver {
+            fn resolve_workflow(
+                &mut self,
+                _digest: vb_core::WorkflowDigest,
+            ) -> Result<vb_core::workflow::CompiledWorkflow, WorkflowResolutionError> {
+                Err(WorkflowResolutionError::NotFound)
+            }
+        }
+        let mut resolver = NoopResolver;
+        let header = crate::IpcFrameHeader::new(IpcCommand::UnknownCommand(42), 0, 0, 0);
+        let response =
+            dispatch_command_with_resolver(&header, &[], &mut runtime, Some(&mut resolver));
+        assert_eq!(
+            response,
+            IpcResponse::BadRequest,
+            "UnknownCommand must return BadRequest even when resolver is present"
+        );
+    }
+
+    #[test]
+    fn dispatch_unknown_command_with_various_ids_returns_bad_request() {
+        let mut runtime = make_runtime();
+        let unknown_ids = [0u16, 12, 13, 14, 15, 16, 99, u16::MAX];
+        for &id in &unknown_ids {
+            let header = crate::IpcFrameHeader::new(IpcCommand::UnknownCommand(id), 0, 0, 0);
+            let response = dispatch_command_with_resolver(&header, &[], &mut runtime, None);
+            assert_eq!(
+                response,
+                IpcResponse::BadRequest,
+                "UnknownCommand({id}) must return BadRequest"
+            );
+        }
+    }
+
+    // ══ Missing dispatch arm coverage (SubmitRun, Shutdown) ═════════════════════
+
+    #[test]
+    fn dispatch_submit_run_without_resolver_returns_workflow_resolution_required() {
+        let mut runtime = make_runtime();
+        let header = crate::IpcFrameHeader::new(IpcCommand::SubmitRun, 0, 0, 0);
+        // Encode a valid SubmitRun payload so the handler proceeds past payload
+        // decode and reaches the resolver gate, verifying the dispatch arm is
+        // exercised end-to-end.
+        let submit_payload = crate::SubmitRunPayload {
+            run_id: vb_core::ids::RunId::new(1),
+            workflow: vb_core::ids::WorkflowDigest::from_bytes([0xAB; 32]),
+            input: Vec::new(),
+        };
+        let encoded = postcard::to_allocvec(&crate::IpcPayload::SubmitRun(submit_payload))
+            .expect("test payload must encode");
+        let response = dispatch_command_with_resolver(&header, &encoded, &mut runtime, None);
+        assert_eq!(response, IpcResponse::WorkflowResolutionRequired);
+    }
+
+    #[test]
+    fn dispatch_shutdown_returns_shutting_down() {
+        let mut runtime = make_runtime();
+        let header = crate::IpcFrameHeader::new(IpcCommand::Shutdown, 0, 0, 0);
+        let response = dispatch_command_with_resolver(&header, &[], &mut runtime, None);
+        assert_eq!(response, IpcResponse::ShuttingDown);
     }
 }

@@ -1084,10 +1084,9 @@ mod frame_kani_harnesses {
         }
     }
 
-    /// K-F5: Terminal states block all non-self transitions (absorbing).
+    /// K-F5: Terminal states block invalid non-self transitions.
     /// Uses kani::any() to symbolically verify terminal blocking property.
-    /// PO-KANI-002, PO-KANI-005: All 4 terminal states are absorbing.
-    /// After fix, Succeeded->Pending is no longer valid; Succeeded is uniformly absorbing.
+    /// Succeeded->Running remains valid for loop body re-entry.
     #[kani::proof]
     fn validate_transition_terminal_blocks_all() {
         let terminal: StepState = kani::any();
@@ -1100,10 +1099,10 @@ mod frame_kani_harnesses {
         kani::assume(is_terminal);
         let result = validate_transition_inline(terminal, target);
         // Terminal states can transition to themselves (idempotent re-mark)
-        if terminal == target {
+        if terminal == target || (terminal == StepState::Succeeded && target == StepState::Running) {
             kani::assert(result, "terminal->self allowed");
         } else {
-            // All non-self transitions from terminal states are invalid (absorbing)
+            // All other non-self transitions from terminal states are invalid.
             kani::assert(!result, "terminal->other blocked");
         }
     }

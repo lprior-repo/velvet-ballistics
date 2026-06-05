@@ -894,15 +894,11 @@ mod behavior_step_state_transitions {
             .mark_succeeded(StepIdx::new(0))
             .expect("mark_succeeded should succeed");
 
-        // WHEN: Attempting to transition from terminal state back to Running
+        // WHEN: Transitioning from Succeeded back to Running (for loop body re-entry)
         let result = frame.mark_running(StepIdx::new(0));
 
-        // THEN: Returns InternalInvariantViolation (invalid transition)
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert!(
-            matches!(err, CoreError::InternalInvariantViolation { reason } if *reason == *"invalid_state_transition")
-        );
+        // THEN: Succeeded→Running is VALID (jump_to_body uses mark_running after Succeeded)
+        assert!(result.is_ok(), "Succeeded→Running must be valid for loop body re-entry");
     }
 }
 

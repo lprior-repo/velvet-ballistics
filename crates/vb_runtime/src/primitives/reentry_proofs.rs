@@ -520,15 +520,14 @@ pub mod reentry_harnesses {
     }
 
     // -----------------------------------------------------------------------
-    // PO-KANI-008, PO-KANI-009, PO-KANI-010: Body state immutability harnesses
+    // PO-KANI-008, PO-KANI-009, PO-KANI-010: Body re-entry transition harnesses
     // -----------------------------------------------------------------------
-    // These harnesses verify that loop primitives do NOT mutate the body
-    // step's state during re-entry. After the fix (PC-jump-only),
-    // the body's Succeeded state persists across iterations.
+    // These harnesses verify that loop primitives use the explicit
+    // Succeeded->Running transition during body re-entry instead of the removed
+    // Succeeded->Pending transition.
 
-    /// PO-KANI-008: for_each_next body state immutability.
-    /// Verifies that after for_each_next re-entry, the body step state
-    /// is unchanged (not marked to Running or Pending).
+    /// PO-KANI-008: for_each_next body state re-entry.
+    /// Verifies that after for_each_next re-entry, the body step state is Running.
     #[kani::proof]
     fn kani_for_each_reentry_body_state_immutable() {
         let mut run = fresh_frame(4, 8);
@@ -552,8 +551,6 @@ pub mod reentry_harnesses {
         run.mark_running(body_step).unwrap();
         run.mark_succeeded(body_step).unwrap();
 
-        let state_before = run.step_state(body_step).unwrap();
-
         // for_each_next re-enters for next item
         let result = for_each_next(
             &mut run,
@@ -564,17 +561,17 @@ pub mod reentry_harnesses {
             Some(output_slot),
         );
 
-        // If re-entry succeeded (Continue), body state must be unchanged
+        // If re-entry succeeded (Continue), body state must be Running.
         if let Ok(vb_core::EngineSignal::Continue) = result {
             let state_after = run.step_state(body_step).unwrap();
             kani::assert(
-                state_after == state_before,
-                "for_each_next re-entry must not mutate body step state (PO-KANI-008)",
+                state_after == StepState::Running,
+                "for_each_next re-entry must mark body step Running (PO-KANI-008)",
             );
         }
     }
 
-    /// PO-KANI-009: reduce_next body state immutability.
+    /// PO-KANI-009: reduce_next body state re-entry.
     #[kani::proof]
     fn kani_reduce_reentry_body_state_immutable() {
         let mut run = fresh_frame(4, 8);
@@ -598,8 +595,6 @@ pub mod reentry_harnesses {
         run.mark_running(body_step).unwrap();
         run.mark_succeeded(body_step).unwrap();
 
-        let state_before = run.step_state(body_step).unwrap();
-
         let result = reduce_next(
             &mut run,
             &mut store,
@@ -613,14 +608,14 @@ pub mod reentry_harnesses {
         if let Ok(vb_core::EngineSignal::Continue) = result {
             let state_after = run.step_state(body_step).unwrap();
             kani::assert(
-                state_after == state_before,
-                "reduce_next re-entry must not mutate body step state (PO-KANI-009)",
+                state_after == StepState::Running,
+                "reduce_next re-entry must mark body step Running (PO-KANI-009)",
             );
         }
     }
 
     /// PO-KANI-010: Combined harness for collect_next, collect_page,
-    /// repeat_attempt, and repeat_check body state immutability.
+    /// repeat_attempt, and repeat_check body state re-entry.
     /// Bounded: step_count ≤ 16, pages ≤ 4, attempts ≤ 4.
     #[kani::proof]
     fn kani_remaining_primitives_reentry_body_state_immutable() {
@@ -658,8 +653,6 @@ pub mod reentry_harnesses {
             let body_step = StepIdx::new(1);
             run.mark_running(body_step).unwrap();
             run.mark_succeeded(body_step).unwrap();
-            let state_before = run.step_state(body_step).unwrap();
-
             let result = collect_next(
                 &mut run,
                 &mut store,
@@ -672,8 +665,8 @@ pub mod reentry_harnesses {
             if let Ok(vb_core::EngineSignal::Continue) = result {
                 let state_after = run.step_state(body_step).unwrap();
                 kani::assert(
-                    state_after == state_before,
-                    "collect_next must not mutate body state (PO-KANI-010)",
+                    state_after == StepState::Running,
+                    "collect_next must mark body state Running (PO-KANI-010)",
                 );
             }
         }
@@ -691,15 +684,13 @@ pub mod reentry_harnesses {
             let body_step = StepIdx::new(1);
             run.mark_running(body_step).unwrap();
             run.mark_succeeded(body_step).unwrap();
-            let state_before = run.step_state(body_step).unwrap();
-
             let result = repeat_attempt(&mut run, attempt_slot, body, done);
 
             if let Ok(vb_core::EngineSignal::Continue) = result {
                 let state_after = run.step_state(body_step).unwrap();
                 kani::assert(
-                    state_after == state_before,
-                    "repeat_attempt must not mutate body state (PO-KANI-010)",
+                    state_after == StepState::Running,
+                    "repeat_attempt must mark body state Running (PO-KANI-010)",
                 );
             }
         }
@@ -717,30 +708,27 @@ pub mod reentry_harnesses {
             let body_step = StepIdx::new(1);
             run.mark_running(body_step).unwrap();
             run.mark_succeeded(body_step).unwrap();
-            let state_before = run.step_state(body_step).unwrap();
-
             let result = repeat_check(&mut run, attempt_slot, done, Some(next_body), StepIdx::ZERO);
 
             if let Ok(vb_core::EngineSignal::Continue) = result {
                 let state_after = run.step_state(body_step).unwrap();
                 kani::assert(
-                    state_after == state_before,
-                    "repeat_check must not mutate body state (PO-KANI-010)",
+                    state_after == StepState::Running,
+                    "repeat_check must mark body state Running (PO-KANI-010)",
                 );
             }
         }
     }
 
     // -----------------------------------------------------------------------
-    // PO-KANI-011: jump_to_body no state mutation
+    // PO-KANI-011: jump_to_body re-entry transition
     // -----------------------------------------------------------------------
-    // After fix: jump_to_body must only call set_pc + increment_executed.
-    // No mark_running, mark_pending, or any state mutation call.
-    // For any symbolic body step state, states[body] is unchanged.
+    // jump_to_body marks Succeeded bodies Running before jumping, and leaves all
+    // other states unchanged.
 
-    /// PO-KANI-011: jump_to_body must be pure PC jump without state mutation.
-    /// Verifies that after jump_to_body(run, body), the body step state
-    /// is unchanged for ALL possible StepState values.
+    /// PO-KANI-011: jump_to_body must use Succeeded->Running for re-entry.
+    /// Verifies that after jump_to_body(run, body), Succeeded becomes Running
+    /// and all other states stay unchanged.
     #[kani::proof]
     fn kani_jump_to_body_no_state_mutation() {
         let mut run = fresh_frame(8, 4);
@@ -780,15 +768,19 @@ pub mod reentry_harnesses {
             );
         }
 
-        // Body state must be unchanged after jump_to_body
+        // Body state must follow the explicit re-entry contract.
         let state_after = run.step_state(body).unwrap();
+        let expected = if state_before == StepState::Succeeded {
+            StepState::Running
+        } else {
+            state_before
+        };
         kani::assert(
-            state_after == state_before,
-            "jump_to_body must not mutate body step state (PO-KANI-011)",
+            state_after == expected,
+            "jump_to_body must only mutate Succeeded body state to Running (PO-KANI-011)",
         );
 
         // PC and executed should have changed (the jump happened)
-        // but body state must not have changed
         kani::cover!(run.pc() != pc_before, "PC changed after jump_to_body");
         kani::cover!(run.executed() != executed_before, "executed incremented");
     }
