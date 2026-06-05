@@ -194,24 +194,48 @@ impl IpcServer {
             Err(_) => return Ok(true),
         };
 
-        append_read_bytes(&mut client.read_buffer, &temp_buf, bytes_read)?;
-
-        // Early magic validation — reject immediately if magic bytes are invalid.
-        // This prevents unbounded buffer growth from a malicious peer.
+        // Validate magic BEFORE appending when still awaiting magic.
+        // This prevents unbounded buffer growth from a malicious peer
+        // that sends garbage bytes instead of valid magic.
         if client.magic_state == MagicValidationState::AwaitingMagic
-            && client.read_buffer.len() >= AWAITING_MAGIC_MAX_BYTES
+            && bytes_read >= AWAITING_MAGIC_MAX_BYTES
         {
-            match validate_magic_early(&client.read_buffer) {
+            match validate_magic_early(&temp_buf[..bytes_read]) {
                 Ok(MagicValidationState::AwaitingMagic) => {
-                    // Not enough bytes yet — wait for more.
+                    // Not enough bytes yet for full magic validation.
+                    append_read_bytes(&mut client.read_buffer, &temp_buf, bytes_read)?;
                     return Ok(false);
                 }
                 Ok(MagicValidationState::MagicValidated) => {
+                    // Magic validated — append bytes and continue.
                     client.magic_state = MagicValidationState::MagicValidated;
+                    append_read_bytes(&mut client.read_buffer, &temp_buf, bytes_read)?;
                 }
                 Err(_error) => {
-                    // Invalid magic — close connection immediately.
+                    // Invalid magic — close connection immediately without buffering.
                     return Ok(true);
+                }
+            }
+        } else {
+            // Not yet enough bytes for magic check, or already validated.
+            append_read_bytes(&mut client.read_buffer, &temp_buf, bytes_read)?;
+
+            // Check if we now have enough bytes to validate magic.
+            if client.magic_state == MagicValidationState::AwaitingMagic
+                && client.read_buffer.len() >= AWAITING_MAGIC_MAX_BYTES
+            {
+                match validate_magic_early(&client.read_buffer) {
+                    Ok(MagicValidationState::AwaitingMagic) => {
+                        // Still waiting for more bytes.
+                        return Ok(false);
+                    }
+                    Ok(MagicValidationState::MagicValidated) => {
+                        client.magic_state = MagicValidationState::MagicValidated;
+                    }
+                    Err(_error) => {
+                        // Invalid magic — close connection.
+                        return Ok(true);
+                    }
                 }
             }
         }

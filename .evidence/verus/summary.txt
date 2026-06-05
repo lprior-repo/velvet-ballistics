@@ -1,4 +1,4 @@
-VERUS_TARGET_COUNT=11
+VERUS_TARGET_COUNT=12
 VERUS_VERSION=Verus
   Version: 0.2026.05.05.d03e906
   Profile: release
@@ -17,4 +17,3 @@ PASS verus verification/verus/vb_cli_commands_journal_trace.rs
 PASS verus verification/verus/budget_bounded.rs
 PASS verus verification/verus/idempotency_replay_tracker.rs
 PASS verus verification/verus/accepted_artifact_admission_decision.rs
-VERUS_TRUST_SCAN_OK

@@ -392,7 +392,6 @@ crates/vb_runtime/src/frame_pool/tests.rs|lewis|vb-2lu1|split-or-retire-before-r
 crates/vb_runtime/src/primitives/collect/tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 3716-line file.
 crates/vb_runtime/src/primitives/retry/tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 1269-line file.
 crates/vb_runtime/src/recovery/tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 392-line file.
-crates/vb_runtime/src/runtime_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 2214-line file.
 crates/vb_runtime/src/shard/lifecycle_tests/chunk_004.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 599-line file.
 crates/vb_runtime/src/shard/lifecycle_tests/chunk_005.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 430-line file.
 crates/vb_runtime/src/shard/tests/chunk_031.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 317-line file.
@@ -489,3 +488,6 @@ crates/vb_runtime/src/primitives/wait_ask_tests.rs|lewis|vb-wsamy|split-or-retir
 crates/vb_runtime/src/shard/tests/chunk_002_cancel_kill_idempotency.rs|lewis|vb-wsamy|split-or-retire-before-release|vb-lhtnj rebaseline surfaced 347-line shard cancel/kill idempotency tests; split scenario families before removing exception.
 crates/vb_runtime/src/shard/tests/chunk_002_payload_bounds.rs|lewis|vb-wsamy|split-or-retire-before-release|vb-lhtnj rebaseline surfaced 506-line shard payload bounds tests; split payload scenario families before removing exception.
 crates/vb_runtime/src/shard/tests/chunk_dispatch_error_semantics.rs|lewis|vb-wsamy|split-or-retire-before-release|vb-lhtnj rebaseline surfaced 453-line shard dispatch error semantics tests; split error scenario families before removing exception.
+crates/vb_core/src/workflow/compiled_query.rs|lewis|vb-9kwz|split-or-retire-before-release|vb-9kwz source audit found 307-line compiled query types (7 over limit); trim tests or split query parser from types before removing exception.
+crates/vb_core/src/workflow/yb_token.rs|lewis|vb-9kwz|split-or-retire-before-release|vb-9kwz source audit found 1111-line YB token types+tests+verification (811 over limit); split tests/kani into sub-module before removing exception.
+verification/verus/run_frame_new_postconditions.rs|lewis|vb-9kwz|split-or-retire-before-release|vb-9kwz source audit found 487-line Verus postconditions (187 over limit); split by proof obligation cluster before removing exception.

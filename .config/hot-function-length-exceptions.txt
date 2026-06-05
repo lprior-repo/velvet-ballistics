@@ -44,7 +44,7 @@ crates/vb_runtime/src/primitives/collect/mod.rs|41|lewis|vb-ui6k|split-or-retire
 crates/vb_runtime/src/primitives/collect/mod.rs|95|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 28 logical lines after collect source split; split function before removing exception.
 crates/vb_runtime/src/primitives/collect/state.rs|190|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 26 logical lines after collect source split; split function before removing exception.
 crates/vb_runtime/src/primitives/collect/state.rs|298|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 27 logical lines after collect source split; split function before removing exception.
-crates/vb_runtime/src/shard/helpers/retry.rs|38|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 42 logical lines after helper source split; split function before removing exception.
+crates/vb_runtime/src/shard/helpers/retry.rs|39|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 42 logical lines after helper source split; split function before removing exception.
 crates/vb_runtime/src/shard/helpers/timer.rs|24|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 27 logical lines after helper source split; split function before removing exception.
 crates/vb_runtime/src/shard/impl_parts/dispatch.rs|19|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 58 logical lines after source split; split function before removing exception.
 crates/vb_runtime/src/shard/introspection.rs|124|lewis|vb-ui6k|split-or-retire-before-release|vb-lhtnj rebaseline found 33 logical lines after source split; split function before removing exception.

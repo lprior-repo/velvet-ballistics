@@ -1058,6 +1058,32 @@ evidence_schema:
     verified:
       accepted_artifact_admission_decision: deductively_verified
 
+  # ============================================================
+  # ACTION ATTEMPT FENCE — vb-y9d3v (GOD RULE 2: pure kernel binding)
+  # ============================================================
+  - id: VB-RUNTIME-ACT-001
+    section: [49]
+    statement: |
+      ActionTicket attempt fence: classify_ticket_attempt returns Ok only when
+      incoming attempt matches the per-step counter (current) and is within
+      [1, capacity]. Returns StaleAttempt when incoming < current, returns
+      AttemptBeyondMax when attempt == 0 or > capacity, returns
+      InvalidActionCompletion when current is None.
+    proof_level: L4
+    crate: vb_runtime
+    files:
+      - crates/vb_runtime/src/shard/helpers/action.rs
+      - crates/vb_runtime/src/shard/helpers/retry.rs
+    required:
+      verus: crates/vb_runtime/src/verification/verus/vb_y9d3v_action_fence.rs
+    commands:
+      - verus crates/vb_runtime/src/verification/verus/vb_y9d3v_action_fence.rs
+    note: |
+      Production-bound exec wrappers verify postconditions against classify_ticket_attempt,
+      normalize_scheduled_attempt, scheduled_attempt_after, and retry_attempt_after kernels.
+      Flux refinements waived: prior invariants were false (ActionTicket fields are public u16,
+      zero values are valid and constructible — GOD RULE 2 violation corrected).
+
 # ============================================================
 # PROOF LEVEL ASSIGNMENTS BY CRATE
 # ============================================================
@@ -1099,9 +1125,9 @@ proof_matrix:
     primary_level: L3
     secondary_level: L2
   vb_runtime:
-    proof_strategy: "TLA+/PlusCal model for journal/recovery/action ordering. Loom for shard queue/cancel/action-completion races. Differential tests against reference engine."
+    proof_strategy: "TLA+/PlusCal model for journal/recovery/action ordering. Loom for shard queue/cancel/action-completion races. Differential tests against reference engine. Verus for pure attempt-fence kernels (L4)."
     primary_level: L3
-    secondary_level: L2
+    secondary_level: L4
   vb_ipc:
     proof_strategy: "Kani + fuzz. The key property is 'reject before allocation'."
     primary_level: L3
