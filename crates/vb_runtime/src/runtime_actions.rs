@@ -165,38 +165,81 @@ fn pending_ask_ticket(
     let pending_timer = shard
         .pending_timer_get(run)
         .ok_or(RuntimeError::InvalidActionCompletion)?;
-    if pending_timer.kind != PendingTimerKind::Ask {
-        return Err(RuntimeError::InvalidActionCompletion);
-    }
-    let resume_step = ask_resume_step(&state.workflow, pending_timer)?;
-    validate_ask_answer_slot(&state.workflow, resume_step, answer_slot)?;
-    Ok(AskTicket {
-        run,
-        ask_step: pending_timer.step,
-        resume_step,
-    })
+    pending_ask_ticket_from_parts(run, &state.workflow, pending_timer, answer_slot)
 }
 
-fn ask_resume_step(
+pub(crate) fn pending_ask_ticket_from_parts(
+    run: RunId,
     workflow: &CompiledWorkflow,
     pending_timer: PendingTimer,
-) -> RuntimeResult<StepIdx> {
-    workflow
-        .node(pending_timer.step)
-        .and_then(|node| node.next)
-        .ok_or(RuntimeError::InvalidActionCompletion)
+    answer_slot: SlotIdx,
+) -> RuntimeResult<AskTicket> {
+    let ask_next = workflow.node(pending_timer.step).and_then(|node| node.next);
+    let resume_answer = ask_next.and_then(|resume_step| {
+        workflow.node(resume_step).and_then(|node| match node.kind {
+            CompiledNodeKind::AskResume { answer } => Some(answer),
+            _ => None,
+        })
+    });
+    match derive_ask_ticket_from_parts(
+        run,
+        pending_timer.kind,
+        pending_timer.step,
+        ask_next,
+        resume_answer,
+        answer_slot,
+    ) {
+        AskTicketDerivation::Ticket(ticket) => Ok(ticket),
+        AskTicketDerivation::InvalidActionCompletion => Err(RuntimeError::InvalidActionCompletion),
+    }
 }
 
-fn validate_ask_answer_slot(
-    workflow: &CompiledWorkflow,
-    resume_step: StepIdx,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(not(kani), allow(unreachable_pub))]
+pub enum AskTicketDerivation {
+    Ticket(AskTicket),
+    InvalidActionCompletion,
+}
+
+pub(crate) fn derive_ask_ticket_from_parts(
+    run: RunId,
+    pending_kind: PendingTimerKind,
+    ask_step: StepIdx,
+    ask_next: Option<StepIdx>,
+    resume_answer: Option<SlotIdx>,
     answer_slot: SlotIdx,
-) -> RuntimeResult<()> {
-    let resume_node = workflow
-        .node(resume_step)
-        .ok_or(RuntimeError::InvalidActionCompletion)?;
-    match resume_node.kind {
-        CompiledNodeKind::AskResume { answer } if answer == answer_slot => Ok(()),
-        _ => Err(RuntimeError::InvalidActionCompletion),
+) -> AskTicketDerivation {
+    if pending_kind != PendingTimerKind::Ask {
+        return AskTicketDerivation::InvalidActionCompletion;
     }
+    let Some(resume_step) = ask_next else {
+        return AskTicketDerivation::InvalidActionCompletion;
+    };
+    match resume_answer {
+        Some(answer) if answer == answer_slot => AskTicketDerivation::Ticket(AskTicket {
+            run,
+            ask_step,
+            resume_step,
+        }),
+        _ => AskTicketDerivation::InvalidActionCompletion,
+    }
+}
+
+#[cfg(kani)]
+pub fn kani_derive_ask_ticket_from_parts(
+    run: RunId,
+    pending_kind: PendingTimerKind,
+    ask_step: StepIdx,
+    ask_next: Option<StepIdx>,
+    resume_answer: Option<SlotIdx>,
+    answer_slot: SlotIdx,
+) -> AskTicketDerivation {
+    derive_ask_ticket_from_parts(
+        run,
+        pending_kind,
+        ask_step,
+        ask_next,
+        resume_answer,
+        answer_slot,
+    )
 }

@@ -10,6 +10,9 @@ mod routing;
 #[path = "runtime_scheduling.rs"]
 mod scheduling;
 
+#[cfg(kani)]
+pub use actions::{AskTicketDerivation, kani_derive_ask_ticket_from_parts};
+
 use std::num::NonZeroUsize;
 use vb_core::action::ActionContract;
 use vb_core::capability::CapabilitySet;

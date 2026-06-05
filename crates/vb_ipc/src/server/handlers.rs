@@ -44,6 +44,31 @@ const MAX_ACTION_ERROR_LEN: usize = 65536;
 /// Prevents unbounded deserialization of unused answer data.
 const MAX_ANSWER_ASK_BYTES: usize = 65536;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct DecodedAnswerAskFields {
+    pub(crate) run_id: vb_core::ids::RunId,
+    pub(crate) answer_slot: vb_core::ids::SlotIdx,
+    pub(crate) value: SlotValue,
+    pub(crate) taint: Taint,
+    pub(crate) encoded_len: u32,
+}
+
+pub(crate) type DecodedAnswerAsk = DecodedAnswerAskFields;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum AnswerAskSlotValueDecode {
+    Decoded(SlotValue),
+    Invalid,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum AnswerAskFieldDecision {
+    Decoded(DecodedAnswerAskFields),
+    InvalidAnswerBytes,
+    OversizeAnswer,
+    EncodedLengthOverflow,
+}
+
 /// Sanitizes a runtime error message before returning it to an IPC client.
 ///
 /// Truncates the message to a fixed maximum length to prevent accidental
@@ -173,6 +198,27 @@ pub fn handle_list_events(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
 
 /// Handles answer-ask.
 pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
+    let decoded = match decode_answer_ask_payload(payload) {
+        Ok(decoded) => decoded,
+        Err(response) => return response,
+    };
+    match runtime.answer_pending_ask_slot(
+        decoded.run_id,
+        decoded.answer_slot,
+        decoded.value,
+        decoded.taint,
+        decoded.encoded_len,
+    ) {
+        Ok(()) => IpcResponse::AcceptedRun {
+            run_id: decoded.run_id.get(),
+        },
+        Err(e) => IpcResponse::RuntimeError {
+            message: sanitize_runtime_error(&e),
+        },
+    }
+}
+
+pub(crate) fn decode_answer_ask_payload(payload: &[u8]) -> Result<DecodedAnswerAsk, IpcResponse> {
     let Ok(crate::IpcPayload::AnswerAsk {
         run_id,
         answer_slot,
@@ -180,51 +226,114 @@ pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
         taint,
     }) = decode_payload::<crate::IpcPayload>(payload)
     else {
-        return IpcResponse::BadRequest;
+        return Err(IpcResponse::BadRequest);
     };
-    if answer.len() > MAX_ANSWER_ASK_BYTES {
-        return IpcResponse::PayloadError {
+    decode_answer_ask_fields(run_id, answer_slot, &answer, taint)
+}
+
+pub(crate) fn decode_answer_ask_fields(
+    run_id: vb_core::ids::RunId,
+    answer_slot: vb_core::ids::SlotIdx,
+    answer: &[u8],
+    taint: Option<Taint>,
+) -> Result<DecodedAnswerAsk, IpcResponse> {
+    decode_answer_ask_fields_with_slot_value_decoder(run_id, answer_slot, answer, taint, |bytes| {
+        match postcard::from_bytes::<SlotValue>(bytes) {
+            Ok(value) => AnswerAskSlotValueDecode::Decoded(value),
+            Err(_) => AnswerAskSlotValueDecode::Invalid,
+        }
+    })
+}
+
+pub(crate) fn decode_answer_ask_fields_with_slot_value_decoder(
+    run_id: vb_core::ids::RunId,
+    answer_slot: vb_core::ids::SlotIdx,
+    answer: &[u8],
+    taint: Option<Taint>,
+    decoder: impl FnOnce(&[u8]) -> AnswerAskSlotValueDecode,
+) -> Result<DecodedAnswerAsk, IpcResponse> {
+    match decide_answer_ask_encoded_len(answer.len()) {
+        Ok(_) => {}
+        Err(decision) => return answer_ask_field_decision_response(decision),
+    };
+
+    let decoded_value = decoder(answer);
+    answer_ask_field_decision_response(decide_answer_ask_fields(
+        run_id,
+        answer_slot,
+        answer.len(),
+        decoded_value,
+        taint,
+    ))
+}
+
+fn answer_ask_field_decision_response(
+    decision: AnswerAskFieldDecision,
+) -> Result<DecodedAnswerAsk, IpcResponse> {
+    match decision {
+        AnswerAskFieldDecision::Decoded(decoded) => Ok(decoded),
+        AnswerAskFieldDecision::OversizeAnswer => Err(IpcResponse::PayloadError {
             diagnostic: crate::IpcError::PayloadDecodeFailed
                 .diagnostic_code()
                 .code(),
             message: String::from("answer payload exceeds maximum allowed size"),
-        };
+        }),
+        AnswerAskFieldDecision::EncodedLengthOverflow => Err(IpcResponse::RuntimeError {
+            message: String::from("answer payload size exceeds u32::MAX"),
+        }),
+        AnswerAskFieldDecision::InvalidAnswerBytes => Err(IpcResponse::RuntimeError {
+            message: String::from("answer bytes are not valid postcard-encoded SlotValue"),
+        }),
+    }
+}
+
+pub(crate) fn decide_answer_ask_fields(
+    run_id: vb_core::ids::RunId,
+    answer_slot: vb_core::ids::SlotIdx,
+    answer_len: usize,
+    decoded_value: AnswerAskSlotValueDecode,
+    taint: Option<Taint>,
+) -> AnswerAskFieldDecision {
+    let encoded_len = match decide_answer_ask_encoded_len(answer_len) {
+        Ok(len) => len,
+        Err(decision) => return decision,
+    };
+    decode_answer_ask_decoded_fields(run_id, answer_slot, encoded_len, decoded_value, taint)
+}
+
+fn decide_answer_ask_encoded_len(answer_len: usize) -> Result<u32, AnswerAskFieldDecision> {
+    if answer_len > MAX_ANSWER_ASK_BYTES {
+        return Err(AnswerAskFieldDecision::OversizeAnswer);
     }
 
-    let encoded_len = match u32::try_from(answer.len()) {
-        Ok(len) => len,
-        Err(_) => {
-            // MAX_ANSWER_ASK_BYTES (65536) is well below u32::MAX, so this
-            // branch is logically unreachable due to the prior bounds check.
-            // The match handles the fallible conversion without panicking.
-            return IpcResponse::RuntimeError {
-                message: String::from("answer payload size exceeds u32::MAX"),
-            };
-        }
-    };
-    // Decode the caller's answer bytes as a postcard-serialized SlotValue.
-    // The bytes are expected to be valid postcard-encoded SlotValue; if decode
-    // fails, return an error rather than silently discarding the payload.
-    let value = match postcard::from_bytes::<SlotValue>(&answer) {
-        Ok(v) => v,
-        Err(_) => {
-            return IpcResponse::RuntimeError {
-                message: String::from("answer bytes are not valid postcard-encoded SlotValue"),
-            };
-        }
+    match u32::try_from(answer_len) {
+        Ok(len) => Ok(len),
+        Err(_) => Err(AnswerAskFieldDecision::EncodedLengthOverflow),
+    }
+}
+
+fn decode_answer_ask_decoded_fields(
+    run_id: vb_core::ids::RunId,
+    answer_slot: vb_core::ids::SlotIdx,
+    encoded_len: u32,
+    decoded_value: AnswerAskSlotValueDecode,
+    taint: Option<Taint>,
+) -> AnswerAskFieldDecision {
+    let value = match decoded_value {
+        AnswerAskSlotValueDecode::Decoded(value) => value,
+        AnswerAskSlotValueDecode::Invalid => return AnswerAskFieldDecision::InvalidAnswerBytes,
     };
     let answer_taint = match taint {
         Some(value) => value,
         None => Taint::Clean,
     };
-    match runtime.answer_pending_ask_slot(run_id, answer_slot, value, answer_taint, encoded_len) {
-        Ok(()) => IpcResponse::AcceptedRun {
-            run_id: run_id.get(),
-        },
-        Err(e) => IpcResponse::RuntimeError {
-            message: sanitize_runtime_error(&e),
-        },
-    }
+    AnswerAskFieldDecision::Decoded(DecodedAnswerAskFields {
+        run_id,
+        answer_slot,
+        value,
+        taint: answer_taint,
+        encoded_len,
+    })
 }
 
 /// Handles complete-action.
@@ -594,6 +703,91 @@ mod answer_ask_runtime_semantics_tests {
         assert_eq!(
             matched, true,
             "pending ask must remain consumable and write exact SlotValue::Bool(false) bytes after malformed rejection"
+        );
+    }
+
+    #[test]
+    fn handle_answer_ask_rejects_oversize_answer_before_runtime_mutation() {
+        let run_id = RunId::new(3105);
+        let journal = Arc::new(VolatileRuntimeJournal::new());
+        let mut runtime = match runtime_with_pending_ask(run_id, journal.clone()) {
+            Some(runtime) => runtime,
+            None => panic!("test setup failed: runtime must reach pending ask state"),
+        };
+        let oversize_answer = vec![0; 65_537];
+        let oversize_payload = must_answer_payload(run_id, SlotIdx::new(1), oversize_answer, None);
+
+        assert_eq!(
+            handle_answer_ask(&oversize_payload, &mut runtime),
+            IpcResponse::PayloadError {
+                diagnostic: crate::IpcError::PayloadDecodeFailed
+                    .diagnostic_code()
+                    .code(),
+                message: String::from("answer payload exceeds maximum allowed size"),
+            }
+        );
+        assert_eq!(runtime.counters_snapshot().runs_completed, 0);
+
+        let valid_answer = must_encoded_value(&SlotValue::I64(123));
+        let valid_payload =
+            must_answer_payload(run_id, SlotIdx::new(1), valid_answer.clone(), None);
+        assert_eq!(
+            handle_answer_ask(&valid_payload, &mut runtime),
+            IpcResponse::AcceptedRun { run_id: 3105 }
+        );
+        assert_eq!(runtime.tick_all(), Ok(true));
+        assert_eq!(runtime.counters_snapshot().runs_completed, 1);
+        let events = match journal.snapshot() {
+            Ok(events) => events,
+            Err(e) => panic!("journal snapshot failed after oversize rejection recovery: {e}"),
+        };
+        let matched = events.iter().any(|event| {
+            matches!(
+                event,
+                RuntimeJournalEvent::SlotWritten { run, slot, value, taint, .. }
+                    if *run == run_id
+                        && *slot == SlotIdx::new(1)
+                        && *value == valid_answer
+                        && *taint == Taint::Clean
+            )
+        });
+        assert_eq!(
+            matched, true,
+            "pending ask must remain consumable and write exact SlotValue::I64(123) bytes after oversize rejection"
+        );
+    }
+
+    #[test]
+    fn decode_answer_ask_fields_rejects_oversize_before_slot_value_decode() {
+        let run_id = RunId::new(3106);
+        let answer_slot = SlotIdx::new(1);
+        let answer = vec![0; MAX_ANSWER_ASK_BYTES.saturating_add(1)];
+        let mut decoder_invoked = false;
+
+        let result = decode_answer_ask_fields_with_slot_value_decoder(
+            run_id,
+            answer_slot,
+            &answer,
+            Some(Taint::Secret),
+            |bytes| {
+                decoder_invoked = true;
+                assert_eq!(bytes.len(), MAX_ANSWER_ASK_BYTES.saturating_add(1));
+                AnswerAskSlotValueDecode::Invalid
+            },
+        );
+
+        assert_eq!(
+            result,
+            Err(IpcResponse::PayloadError {
+                diagnostic: crate::IpcError::PayloadDecodeFailed
+                    .diagnostic_code()
+                    .code(),
+                message: String::from("answer payload exceeds maximum allowed size"),
+            })
+        );
+        assert_eq!(
+            decoder_invoked, false,
+            "oversize answer bytes must be rejected before invoking the SlotValue decoder"
         );
     }
 }

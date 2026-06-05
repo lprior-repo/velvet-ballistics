@@ -7,8 +7,9 @@ impl Shard {
         self.advance_journal_sequence(run, seq)
     }
 
-    /// `#[cfg(kani)]` replacement for `append_journal_event` that returns
-    /// nondeterministic Ok or Err. Trust boundary TB-vb282my-journal-stub-001.
+    /// `#[cfg(kani)]` replacement for `append_journal_event` that returns a
+    /// bounded nondeterministic Ok or concrete journal-capacity Err. Trust
+    /// boundary TB-vb282my-journal-stub-001.
     /// Production journal append uses Fjall-backed persistence; stubbed version
     /// exercises error paths and ordering verification without real I/O.
     #[cfg(kani)]
@@ -16,7 +17,11 @@ impl Shard {
         &mut self,
         _event: RuntimeJournalEvent,
     ) -> RuntimeResult<()> {
-        kani::any()
+        if kani::any::<bool>() {
+            Ok(())
+        } else {
+            Err(RuntimeError::JournalFull { capacity: 0 })
+        }
     }
 
     fn journal_sequence_for(&self, run: RunId) -> EventSeq {
