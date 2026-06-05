@@ -1486,6 +1486,79 @@ fn collect_states_upsert_and_find_roundtrip() -> Result<(), String> {
     )
 }
 
+/// Verifies that `from_journal` flag is preserved through upsert cycle.
+/// When state is upserted with `from_journal: true`, it must remain true
+/// until explicitly changed. This ensures journal-hydrated state retains
+/// its provenance through subsequent state updates.
+#[test]
+fn collect_states_from_journal_flag_preserved_through_upsert() -> Result<(), String> {
+    let mut states = CollectStates::new();
+    let original_start_millis: u64 = 1234567890;
+
+    // Create state as if hydrated from journal
+    let hydrated_state = CollectPaginationState {
+        run_id: RunId::new(1),
+        collector_slot: SlotIdx::new(0),
+        source: ListId::new(10),
+        current_page: ListId::new(20),
+        cursor: 5,
+        page_size: 10,
+        item_count: 30,
+        limit: 100,
+        time_limit_ms: Some(5000),
+        start_millis: original_start_millis,
+        from_journal: true, // Mark as hydrated from journal
+    };
+
+    states
+        .upsert(hydrated_state)
+        .map_err(|e| format!("upsert failed: {e:?}"))?;
+
+    // Find the state and verify from_journal is preserved
+    let found = states
+        .find(RunId::new(1), SlotIdx::new(0), ListId::new(20))
+        .ok_or("state not found after upsert")?;
+
+    ensure(
+        found.from_journal,
+        format!(
+            "from_journal should be true (was {})",
+            found.from_journal
+        ),
+    )?;
+    ensure(
+        found.start_millis == original_start_millis,
+        format!(
+            "start_millis should be preserved (expected {}, got {})",
+            original_start_millis, found.start_millis
+        ),
+    )?;
+
+    // Update cursor (simulating pagination advance) - from_journal should stay true
+    let updated_state = CollectPaginationState {
+        cursor: 10,
+        ..hydrated_state
+    };
+    states
+        .upsert(updated_state)
+        .map_err(|e| format!("upsert update failed: {e:?}"))?;
+
+    let updated = states
+        .find(RunId::new(1), SlotIdx::new(0), ListId::new(20))
+        .ok_or("state not found after update")?;
+
+    ensure(
+        updated.from_journal,
+        "from_journal should remain true after state update",
+    )?;
+    ensure(
+        updated.start_millis == original_start_millis,
+        "start_millis should still be preserved after update",
+    )?;
+
+    Ok(())
+}
+
 #[test]
 fn collect_states_find_returns_none_for_wrong_page() -> Result<(), String> {
     let mut states = CollectStates::new();

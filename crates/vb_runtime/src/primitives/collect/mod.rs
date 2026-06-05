@@ -149,28 +149,22 @@ fn finish_collect_start_page(
         states.remove(run.run_id(), plan.collector);
         return jump_to(run, done);
     }
-    upsert_started_collect(run, states, plan, current_page, cursor, time_limit_ms)?;
+    upsert_started_collect(run, states, &plan, current_page, cursor, time_limit_ms)?;
     jump_to(run, body)
 }
 
 fn upsert_started_collect(
     run: &RunFrame,
     states: &mut CollectStates,
-    plan: CollectStartPlan,
+    plan: &CollectStartPlan,
     current_page: ListId,
     cursor: usize,
     time_limit_ms: Option<u64>,
 ) -> Result<(), EngineError> {
-    // Check if state was hydrated from journal (replay).
-    // If so, preserve the original wall-clock time to maintain
-    // deterministic replay behavior. Otherwise, capture fresh
-    // wall-clock time for the new execution.
-    let start_millis = {
-        let key = (run.run_id(), plan.collector);
-        match states.entries.get(&key) {
-            Some(existing) if existing.from_journal => existing.start_millis,
-            _ => millis_since_epoch()?,
-        }
+    let key = (run.run_id(), plan.collector);
+    let start_millis = match states.entries.get(&key) {
+        Some(existing) if existing.from_journal => existing.start_millis,
+        _ => millis_since_epoch()?,
     };
     states.upsert(State {
         run_id: run.run_id(),
