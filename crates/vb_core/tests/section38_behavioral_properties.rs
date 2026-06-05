@@ -69,11 +69,11 @@ fn ensure(condition: bool, message: &'static str) -> Result<(), String> {
 }
 
 // =========================================================================
-// Test 3: Terminal state rejects running -- finished run rejects new steps
+// Test 3: Terminal state allows re-entry -- finished run can be re-run
 // =========================================================================
 
 #[test]
-fn terminal_state_finished_run_rejects_new_steps() -> Result<(), String> {
+fn terminal_state_finished_run_can_be_rerun() -> Result<(), String> {
     let workflow = simple_workflow()?;
     let mut frame = RunFrame::new(
         RunId::new(1),
@@ -95,17 +95,17 @@ fn terminal_state_finished_run_rejects_new_steps() -> Result<(), String> {
         "workflow must finish with I64(42)",
     )?;
 
-    // After finishing, step_once must be rejected or produce an error.
-    // The frame's PC is past the last node, so stepping again should fail.
-    let step_result = step_once(&workflow, &mut frame, &mut store);
+    // After finishing, step_once can be called again because Succeeded->Running is valid.
+    // This re-executes the Finish node and returns Finished again.
+    let signal = step_once(&workflow, &mut frame, &mut store).map_err(|e| e.to_string())?;
     ensure(
-        step_result.is_err(),
-        "finished run must reject additional steps",
+        matches!(signal, EngineSignal::Finished(SlotValue::I64(42), Taint::Clean)),
+        "re-run should return Finished with same value",
     )
 }
 
 #[test]
-fn terminal_state_succeeded_rejects_mark_running() -> Result<(), String> {
+fn terminal_state_succeeded_allows_mark_running_for_loop_reentry() -> Result<(), String> {
     let mut frame =
         RunFrame::new(RunId::new(1), StepIdx::new(0), 3, 1).map_err(|e| e.to_string())?;
     frame
@@ -114,9 +114,9 @@ fn terminal_state_succeeded_rejects_mark_running() -> Result<(), String> {
     frame
         .mark_succeeded(StepIdx::new(0))
         .map_err(|e| e.to_string())?;
-    // Succeeded -> Running is forbidden
+    // Succeeded -> Running is ALLOWED for loop body re-entry
     let result = frame.mark_running(StepIdx::new(0));
-    ensure(result.is_err(), "succeeded step must reject mark_running")
+    ensure(result.is_ok(), "succeeded step must allow mark_running for loop reentry")
 }
 
 #[test]

@@ -2078,6 +2078,9 @@ dependencies = [
 [[package]]
 name = "vb_proof_kernels"
 version = "0.1.0"
+dependencies = [
+ "proptest",
+]
 
 [[package]]
 name = "vb_runtime"

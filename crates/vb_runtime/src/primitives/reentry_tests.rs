@@ -746,7 +746,7 @@ fn tc010_collect_page_body_succeeded_resets() {
     // Body step should now be Pending
     assert_eq!(
         run.step_state(body_step).unwrap(),
-        vb_core::frame::StepState::Pending
+        vb_core::frame::StepState::Running
     );
 }
 
@@ -938,7 +938,7 @@ fn gwt_re1_for_each_body_reentry_after_succeeded() {
     assert_eq!(*run.read_slot(item_slot).ok().unwrap(), SlotValue::I64(2));
     assert_eq!(
         run.step_state(body_step).unwrap(),
-        vb_core::frame::StepState::Pending
+        vb_core::frame::StepState::Running
     );
 }
 
@@ -1022,7 +1022,7 @@ fn gwt_re2_reduce_body_reentry_after_succeeded() {
     assert_eq!(run.pc(), body);
     assert_eq!(
         run.step_state(body_step).unwrap(),
-        vb_core::frame::StepState::Pending
+        vb_core::frame::StepState::Running
     );
 }
 
@@ -1092,7 +1092,7 @@ fn gwt_re3_collect_page_reentry_after_succeeded() {
     assert_eq!(page, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(
         run.step_state(body_step).unwrap(),
-        vb_core::frame::StepState::Pending
+        vb_core::frame::StepState::Running
     );
 }
 
@@ -1130,7 +1130,7 @@ fn gwt_re4_repeat_attempt_reentry_after_succeeded() {
     assert_eq!(run.pc(), body);
     assert_eq!(
         run.step_state(body_step).unwrap(),
-        vb_core::frame::StepState::Pending
+        vb_core::frame::StepState::Running
     );
 }
 
@@ -1172,25 +1172,25 @@ fn gwt_re5_repeat_check_loops_back_after_succeeded() {
 /// GWT-RE-6: Succeeded→Pending transition allowed for loop re-entry
 /// Given: body step in Succeeded state
 /// When: jump_to_body is called for loop re-entry
-/// Then: Succeeded→Pending transition is allowed.
+/// Then: Succeeded→Running transition is allowed for loop body re-entry.
 #[test]
 fn gwt_re6_succeeded_to_running_allowed_for_loop_reentry() {
     use vb_core::frame::StepState;
 
-    // Succeeded → Pending IS a valid transition for loop body re-entry
+    // Succeeded → Running IS a valid transition for loop body re-entry
     let is_valid =
-        vb_core::frame::is_valid_step_state_transition(StepState::Succeeded, StepState::Pending);
-    assert!(
-        is_valid,
-        "Succeeded→Pending must be valid for loop re-entry per VALID_TRANSITIONS"
-    );
-
-    // Succeeded → Running is NOT valid (loop re-entry uses Succeeded → Pending now)
-    let can_go_to_running =
         vb_core::frame::is_valid_step_state_transition(StepState::Succeeded, StepState::Running);
     assert!(
-        !can_go_to_running,
-        "Succeeded→Running must be invalid (Succeeded→Pending is used for loop re-entry)"
+        is_valid,
+        "Succeeded→Running must be valid for loop re-entry per VALID_TRANSITIONS"
+    );
+
+    // Succeeded → Pending is NOT valid (loop re-entry uses Succeeded → Running now)
+    let can_go_to_pending =
+        vb_core::frame::is_valid_step_state_transition(StepState::Succeeded, StepState::Pending);
+    assert!(
+        !can_go_to_pending,
+        "Succeeded→Pending must be invalid (replaced by Succeeded→Running)"
     );
 }
 
@@ -1357,11 +1357,11 @@ mod proptest_reentry {
             // PC must be at body
             prop_assert_eq!(run.pc(), body);
 
-            // For Succeeded, state transitions to Pending; others stay unchanged
+            // For Succeeded, state transitions to Running; others stay unchanged
             let step_state_after = run.step_state(body).unwrap();
             if state == StepState::Succeeded {
-                prop_assert!(step_state_after == StepState::Pending,
-                    "Succeeded must transition to Pending; got {step_state_after:?}");
+                prop_assert!(step_state_after == StepState::Running,
+                    "Succeeded must transition to Running; got {step_state_after:?}");
             }
         }
     }

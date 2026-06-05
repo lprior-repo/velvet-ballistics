@@ -471,6 +471,13 @@ doc = false
 bench = false
 
 [[bin]]
+name = "ipc_from_u16_edge"
+path = "fuzz_targets/ipc_from_u16_edge.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "expression"
 path = "fuzz_targets/expression.rs"
 test = false

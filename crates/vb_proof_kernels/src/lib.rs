@@ -9,3 +9,6 @@ pub mod resource_budget;
 pub mod step_state;
 pub mod taint;
 pub mod vb_kyyf_normalization;
+
+// === vb-esq9.1: Cargo Profile Contract Verification ===
+pub mod profile_contract;

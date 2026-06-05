@@ -26,5 +26,23 @@ publish = false
 
 [dependencies]
 
+[dev-dependencies]
+proptest.workspace = true
+
+[features]
+default = []
+kani-profile-validation = []
+kani-inheritance = []
+kani-gap-closure = []
+kani-forbidden-states = []
+proptest-profile = []
+
 [lints]
 workspace = true
+
+# === vb-esq9.1 Proptest Target ===
+
+[[test]]
+name = "profile_properties"
+path = "tests/proptest/vb_esq9_1/profile_properties.rs"
+harness = true

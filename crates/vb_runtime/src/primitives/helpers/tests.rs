@@ -338,7 +338,7 @@ fn require_output_with_zero_step() -> Result<(), String> {
 // ── jump_to_body tests ──────────────────────────────────────────────
 
 #[test]
-fn tc001_jump_to_body_succeeded_to_pending() -> Result<(), String> {
+fn tc001_jump_to_body_succeeded_to_running() -> Result<(), String> {
     let mut run = fresh_frame();
     let body = StepIdx::new(1);
     run.mark_succeeded(body).map_err(|e| format!("{e:?}"))?;
@@ -358,8 +358,8 @@ fn tc001_jump_to_body_succeeded_to_pending() -> Result<(), String> {
     )?;
     let state = run.step_state(body).map_err(|e| format!("{e:?}"))?;
     ensure(
-        matches!(state, vb_core::frame::StepState::Pending),
-        format!("expected Pending, got {state:?}"),
+        matches!(state, vb_core::frame::StepState::Running),
+        format!("expected Running, got {state:?}"),
     )?;
     Ok(())
 }
@@ -393,8 +393,8 @@ fn tc003_jump_to_body_succeeded_also_idempotent() -> Result<(), String> {
     )?;
     let state = run.step_state(body).map_err(|e| format!("{e:?}"))?;
     ensure(
-        matches!(state, vb_core::frame::StepState::Pending),
-        format!("expected Pending (Succeeded→Pending), got {state:?}"),
+        matches!(state, vb_core::frame::StepState::Running),
+        format!("expected Running (Succeeded→Running), got {state:?}"),
     )
 }
 

@@ -37,6 +37,12 @@ pub mod kani_ipc_decode_order;
 #[cfg(kani)]
 pub mod kani_flag_validation;
 
+#[cfg(kani)]
+pub mod kani_ipc_command_exhaustive;
+
+#[cfg(kani)]
+pub mod kani_ipc_dispatch_exhaustive;
+
 pub use crate::action_output::IpcActionOutputPayload;
 pub use crate::bounded::{BoundedPayload, MaxPayloadBytes, QueueCapacity};
 pub use crate::codec::{decode_payload, encode_payload};

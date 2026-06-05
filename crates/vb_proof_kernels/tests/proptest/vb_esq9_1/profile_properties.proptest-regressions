@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 5059483ab52aec6efffca6ebc41fb869ecce007fba3f2e16210e939d0b07a13c # shrinks to ws = WorkspaceProfileSet { profiles: [ProfileConfig { name: Release, inherits: None, settings: [] }] }
+cc 34e5a75a64c12ae93203f3eed62dee58e5b0a8a81455418cbd436d7d3a87b7de # shrinks to ws = WorkspaceProfileSet { profiles: [ProfileConfig { name: Release, inherits: None, settings: [(CodegenUnits, Bool(false)), (CodegenUnits, String(Thin))] }] }

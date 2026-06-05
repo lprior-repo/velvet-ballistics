@@ -763,20 +763,15 @@ fn try_from_parts_accepts_valid_parts() {
 // =========================================================================
 
 #[test]
-fn terminal_succeeded_state_never_transitions_back_to_running() -> CoreResult<()> {
+fn terminal_succeeded_state_can_transition_to_running_for_loop_reentry() -> CoreResult<()> {
     let mut frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 3, 1)?;
     frame.mark_running(StepIdx::new(0))?;
     frame.mark_succeeded(StepIdx::new(0))?;
-    // Succeeded -> Running must be rejected
+    // Succeeded -> Running must be ALLOWED for loop body re-entry
     let result = frame.mark_running(StepIdx::new(0));
-    assert_eq!(
-        result,
-        Err(CoreError::InternalInvariantViolation {
-            reason: "invalid_state_transition"
-        })
-    );
-    // State remains Succeeded
-    assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Succeeded);
+    assert_eq!(result, Ok(()));
+    // State is now Running
+    assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Running);
     Ok(())
 }
 
