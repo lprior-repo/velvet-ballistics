@@ -145,14 +145,11 @@ pub enum QueryParseError {
 /// `QueryParseError::QueryPathTooDeep` if any query exceeds the path depth limit.
 /// Returns `QueryParseError::TooManyQueries` if the number of queries exceeds
 /// `MAX_QUERIES_PER_WORKFLOW`.
-#[allow(clippy::needless_pass_by_value)]
-pub fn from_bytes_compiled_queries(
-    bytes: &[u8],
+/// Validates compiled queries against the yield budget and hard limits.
+fn validate_compiled_queries(
+    compiled: &CompiledQueries,
     max_yield_budget: u64,
-) -> Result<YbBoundedQueries, QueryParseError> {
-    let compiled: CompiledQueries =
-        postcard::from_bytes(bytes).map_err(QueryParseError::Decode)?;
-
+) -> Result<(), QueryParseError> {
     if compiled.queries.len() > MAX_QUERIES_PER_WORKFLOW {
         return Err(QueryParseError::TooManyQueries {
             count: compiled.queries.len(),
@@ -176,9 +173,33 @@ pub fn from_bytes_compiled_queries(
         });
     }
 
-    let remaining = max_yield_budget
-        .checked_sub(compiled.total_yield_cost)
-        .unwrap_or(0);
+    Ok(())
+}
+
+/// Decodes compiled queries from bytes and validates them against a yield budget.
+///
+/// Deserializes the `CompiledQueries` structure using `postcard::from_bytes` and
+/// checks that the accumulated yield cost does not exceed `max_yield_budget`.
+/// Each query's path depth is also validated against `MAX_QUERY_PATH_SEGMENTS`.
+///
+/// # Errors
+///
+/// Returns `QueryParseError::Decode` if the byte sequence is not valid
+/// postcard-encoded `CompiledQueries`. Returns `QueryParseError::YbBudgetExceeded`
+/// if the total yield cost of all queries exceeds `max_yield_budget`. Returns
+/// `QueryParseError::QueryPathTooDeep` if any query exceeds the path depth limit.
+/// Returns `QueryParseError::TooManyQueries` if the number of queries exceeds
+/// `MAX_QUERIES_PER_WORKFLOW`.
+#[allow(clippy::needless_pass_by_value)]
+pub fn from_bytes_compiled_queries(
+    bytes: &[u8],
+    max_yield_budget: u64,
+) -> Result<YbBoundedQueries, QueryParseError> {
+    let compiled: CompiledQueries = postcard::from_bytes(bytes).map_err(QueryParseError::Decode)?;
+
+    validate_compiled_queries(&compiled, max_yield_budget)?;
+
+    let remaining = max_yield_budget.saturating_sub(compiled.total_yield_cost);
 
     Ok(YbBoundedQueries {
         queries: compiled.queries,
@@ -241,7 +262,10 @@ mod tests {
 
     #[test]
     fn query_parse_error_display() {
-        let err = QueryParseError::YbBudgetExceeded { total: 100, max: 50 };
+        let err = QueryParseError::YbBudgetExceeded {
+            total: 100,
+            max: 50,
+        };
         let msg = err.to_string();
         assert!(msg.contains("YB budget exceeded"));
         assert!(msg.contains("100"));
@@ -250,7 +274,10 @@ mod tests {
 
     #[test]
     fn query_parse_error_too_many_queries() {
-        let err = QueryParseError::TooManyQueries { count: 70000, max: 65535 };
+        let err = QueryParseError::TooManyQueries {
+            count: 70000,
+            max: 65535,
+        };
         let msg = err.to_string();
         assert!(msg.contains("too many queries"));
         assert!(msg.contains("70000"));
@@ -303,5 +330,22 @@ mod tests {
         assert_eq!(query_string.output_type, QueryOutputType::String);
         assert_eq!(query_list.output_type, QueryOutputType::List);
         assert_eq!(query_obj.output_type, QueryOutputType::Object);
+    }
+
+    #[test]
+    fn roundtrip_compiled_queries() {
+        let queries = CompiledQueries {
+            queries: vec![YbBoundedQuery {
+                path: vec![PathSegment::Field(SymbolId::new(1))].into(),
+                output_type: QueryOutputType::Boolean,
+                yield_cost: 10,
+            }]
+            .into(),
+            total_yield_cost: 10,
+        };
+        let bytes = postcard::to_allocvec(&queries).unwrap();
+        let decoded = from_bytes_compiled_queries(&bytes, 100).unwrap();
+        assert_eq!(decoded.queries.len(), 1);
+        assert_eq!(decoded.remaining_budget(), 90);
     }
 }
