@@ -99,7 +99,10 @@ fn terminal_state_finished_run_can_be_rerun() -> Result<(), String> {
     // This re-executes the Finish node and returns Finished again.
     let signal = step_once(&workflow, &mut frame, &mut store).map_err(|e| e.to_string())?;
     ensure(
-        matches!(signal, EngineSignal::Finished(SlotValue::I64(42), Taint::Clean)),
+        matches!(
+            signal,
+            EngineSignal::Finished(SlotValue::I64(42), Taint::Clean)
+        ),
         "re-run should return Finished with same value",
     )
 }

@@ -16,9 +16,14 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 /// Build a bounded String with length 0..max_len using only primitive Arbitrary types.
+/// Uses kani::assume() to bound symbolic execution to concrete range.
 fn arb_string(max_len: u8) -> String {
     let len: u8 = kani::any();
-    let actual_len = (len % max_len) as usize;
+    // Bound symbolic execution: constrain len to 0..max_len (max_len is always > 0 in practice)
+    if max_len > 0 {
+        kani::assume(len <= max_len);
+    }
+    let actual_len = if max_len > 0 { (len % max_len) as usize } else { 0 };
     let mut s = String::with_capacity(actual_len);
     let mut i = 0usize;
     while i < actual_len {
@@ -149,9 +154,10 @@ impl kani::Arbitrary for GateEvidence {
 
 impl kani::Arbitrary for SourceTestMapping {
     fn any() -> Self {
-        // Build tests vector manually
+        // Build tests vector manually with bounded length
         let len: u8 = kani::any();
-        let actual_len = (len % 5) as usize;
+        kani::assume(len <= 5); // bound Vec length for symbolic execution
+        let actual_len = (len % 6) as usize;
         let mut tests: Vec<String> = Vec::with_capacity(actual_len);
         let mut i = 0usize;
         while i < actual_len {
@@ -201,9 +207,10 @@ impl kani::Arbitrary for ExecutorContext {
 
 impl kani::Arbitrary for EvidenceBundle {
     fn any() -> Self {
-        // Build gates vector manually
+        // Build gates vector manually with bounded length
         let len: u8 = kani::any();
-        let gates_cap = (len % 4) as usize;
+        kani::assume(len <= 4); // bound Vec length for symbolic execution
+        let gates_cap = (len % 5) as usize;
         let mut gates: Vec<GateEvidence> = Vec::with_capacity(gates_cap);
         let mut i = 0usize;
         while i < gates_cap {
@@ -211,9 +218,10 @@ impl kani::Arbitrary for EvidenceBundle {
             i += 1;
         }
 
-        // Build source_test_mappings vector manually
+        // Build source_test_mappings vector manually with bounded length
         let len: u8 = kani::any();
-        let stms_cap = (len % 3) as usize;
+        kani::assume(len <= 3); // bound Vec length for symbolic execution
+        let stms_cap = (len % 4) as usize;
         let mut stms: Vec<SourceTestMapping> = Vec::with_capacity(stms_cap);
         let mut j = 0usize;
         while j < stms_cap {
@@ -221,9 +229,10 @@ impl kani::Arbitrary for EvidenceBundle {
             j += 1;
         }
 
-        // Build release_artifacts vector manually
+        // Build release_artifacts vector manually with bounded length
         let len: u8 = kani::any();
-        let rga_cap = (len % 3) as usize;
+        kani::assume(len <= 3); // bound Vec length for symbolic execution
+        let rga_cap = (len % 4) as usize;
         let mut rga: Vec<ReleaseGateArtifact> = Vec::with_capacity(rga_cap);
         let mut k = 0usize;
         while k < rga_cap {

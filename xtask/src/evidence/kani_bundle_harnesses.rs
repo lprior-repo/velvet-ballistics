@@ -14,13 +14,20 @@
 /// Build an arbitrary PathBuf with bounded depth and component length.
 fn bounded_pathbuf(max_depth: u8, max_component_len: u8) -> std::path::PathBuf {
     let depth: u8 = kani::any();
-    let actual_depth = (depth % max_depth) as usize;
+    // Bound symbolic execution to concrete range
+    if max_depth > 0 {
+        kani::assume(depth <= max_depth);
+    }
+    let actual_depth = if max_depth > 0 { (depth % max_depth) as usize } else { 0 };
     let mut components: Vec<String> = Vec::with_capacity(actual_depth);
     let mut i = 0usize;
     while i < actual_depth {
         // Generate a simple component string
         let comp_len: u8 = kani::any();
-        let actual_len = (comp_len % max_component_len) as usize;
+        if max_component_len > 0 {
+            kani::assume(comp_len <= max_component_len);
+        }
+        let actual_len = if max_component_len > 0 { (comp_len % max_component_len) as usize } else { 0 };
         let mut s = String::with_capacity(actual_len);
         let mut j = 0usize;
         while j < actual_len {
@@ -53,7 +60,8 @@ fn bounded_pathbuf(max_depth: u8, max_component_len: u8) -> std::path::PathBuf {
 fn schema_version_parse_non_panic() {
     // Build string manually since String doesn't implement kani::Arbitrary
     let len: u8 = kani::any();
-    let actual_len = (len % 20) as usize;
+    kani::assume(len <= 20); // bound symbolic execution
+    let actual_len = (len % 21) as usize;
     let mut s = String::with_capacity(actual_len);
     let mut i = 0usize;
     while i < actual_len {

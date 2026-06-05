@@ -2548,7 +2548,7 @@ fn collect_next_time_limit_exceeded_returns_error() -> Result<(), String> {
     states
         .upsert(CollectPaginationState {
             start_millis: 0,
-        from_journal: false,
+            from_journal: false,
             ..state
         })
         .map_err(|e| format!("{e:?}"))?;

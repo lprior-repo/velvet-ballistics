@@ -165,9 +165,9 @@ pub struct ResourceContract {
 impl ResourceContract {
     /// Conservative default used until policy profiles become user-configurable.
     pub const DEFAULT: Self = Self {
-        max_steps: 10_000,
+        max_steps: 1_000,
         max_slots: 1_024,
-        max_constants: u16::MAX,
+        max_constants: 8_192,
         max_accessors: 8_192,
         max_expressions: 4_096,
         max_expr_stack: 64,

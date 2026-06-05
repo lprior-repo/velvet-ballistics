@@ -427,6 +427,643 @@ fn miri_postcard_roundtrip_no_ub() {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// BDD Gap Tests — Schema Version Acceptance (B-001)
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// B-001: valid schema versions accepted — "0.0", "0.1", "1.99".
+#[test]
+fn schema_version_parse_accepts_valid_versions() {
+    for input in &["0.0", "0.1", "1.99"] {
+        let result = parse_bundle_schema_version(input);
+        assert!(result.is_ok(), "valid input '{}' must be accepted", input);
+        assert_eq!(
+            result.as_ref().unwrap(),
+            input,
+            "parse must return the original string"
+        );
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// BDD Gap Tests — Schema Version Rejection (B-002 to B-005, B-012)
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// B-002: empty string returns SchemaVersionParseFailed with empty version field.
+#[test]
+fn schema_version_parse_rejects_empty_string() {
+    let result = parse_bundle_schema_version("");
+    assert!(result.is_err(), "empty string must be rejected");
+    let err = result.unwrap_err();
+    assert!(
+        matches!(err, xtask::evidence::Error::SchemaVersionParseFailed { ref version } if version.is_empty()),
+        "error variant must be SchemaVersionParseFailed with empty version, got {:?}",
+        err
+    );
+}
+
+/// B-003: leading zeros rejected — "01.0", "0.01", "00.00".
+#[test]
+fn schema_version_parse_rejects_leading_zeros() {
+    for input in &["01.0", "0.01", "00.00", "00.99", "10.01", "1.00"] {
+        let result = parse_bundle_schema_version(input);
+        assert!(
+            result.is_err(),
+            "input '{}' must be rejected due to leading zeros",
+            input
+        );
+        let err = result.unwrap_err();
+        assert!(
+            matches!(err, xtask::evidence::Error::SchemaVersionParseFailed { ref version } if version == *input),
+            "error for '{}' must preserve original string, got {:?}",
+            input,
+            err
+        );
+    }
+}
+
+/// B-004: malformed formats rejected — "1", "1.", ".0", "1.0.0", "a.b".
+#[test]
+fn schema_version_parse_rejects_malformed_formats() {
+    let malformed = &[
+        "1", "1.", ".0", "1.0.0", "1.0.0.0", "a.b", "!.@", "1.0.", ".0.0", "1..0", "1.0. ", " 1.0",
+        "1.0\n",
+    ];
+    for input in malformed {
+        let result = parse_bundle_schema_version(input);
+        assert!(
+            result.is_err(),
+            "malformed input '{}' must be rejected",
+            input
+        );
+        let err = result.unwrap_err();
+        assert!(
+            matches!(err, xtask::evidence::Error::SchemaVersionParseFailed { .. }),
+            "error for '{}' must be SchemaVersionParseFailed, got {:?}",
+            input,
+            err
+        );
+    }
+}
+
+/// B-005: major version above 1 rejected — "2.0", "10.5", "100.0".
+#[test]
+fn schema_version_parse_rejects_major_above_one() {
+    for input in &["2.0", "10.5", "100.0", "999.0", "2.99"] {
+        let result = parse_bundle_schema_version(input);
+        assert!(
+            result.is_err(),
+            "major > 1 input '{}' must be rejected",
+            input
+        );
+        let err = result.unwrap_err();
+        assert!(
+            matches!(err, xtask::evidence::Error::SchemaVersionParseFailed { .. }),
+            "error for '{}' must be SchemaVersionParseFailed, got {:?}",
+            input,
+            err
+        );
+    }
+}
+
+/// B-012: validate_bundle returns SchemaVersionParseFailed (not MissingRequiredField)
+/// when schema_version is non-empty but malformed.
+#[test]
+fn validate_bundle_returns_schema_version_parse_error_for_invalid_version() {
+    let bundle = EvidenceBundle {
+        schema_version: "01.0".to_string(),
+        executor_context: ExecutorContext {
+            agent: "test-agent".to_string(),
+            timestamp: "2025-01-01T00:00:00Z".to_string(),
+            machine: "test-machine".to_string(),
+        },
+        linked_bead_id: "vb-abc".to_string(),
+        gates: vec![],
+        source_test_mappings: vec![],
+        release_artifacts: vec![],
+    };
+
+    let errors = validate_bundle(&bundle);
+    assert!(
+        !errors.is_empty(),
+        "validate_bundle must reject invalid schema version"
+    );
+
+    let has_schema_parse_err = errors.iter().any(|e| {
+        matches!(e, xtask::evidence::Error::SchemaVersionParseFailed { version } if version == "01.0")
+    });
+    let has_missing_schema_err = errors.iter().any(|e| {
+        matches!(e, xtask::evidence::Error::MissingRequiredField { field } if field == "schema_version")
+    });
+
+    assert!(
+        has_schema_parse_err,
+        "must have SchemaVersionParseFailed error, got: {:?}",
+        errors
+    );
+    assert!(
+        !has_missing_schema_err,
+        "must NOT have MissingRequiredField for schema_version when schema_version is non-empty but malformed, got: {:?}",
+        errors
+    );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// BDD Gap Tests — Validation Returns Empty Vec on Valid Bundle (B-010)
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// B-010: validate_bundle returns empty vec for a fully valid bundle.
+#[test]
+fn validate_bundle_returns_empty_vec_for_valid_bundle() {
+    let bundle = EvidenceBundle {
+        schema_version: "1.0".to_string(),
+        executor_context: ExecutorContext {
+            agent: "test-agent".to_string(),
+            timestamp: "2025-01-01T00:00:00Z".to_string(),
+            machine: "test-machine".to_string(),
+        },
+        linked_bead_id: "vb-valid".to_string(),
+        gates: vec![],
+        source_test_mappings: vec![],
+        release_artifacts: vec![],
+    };
+
+    let errors = validate_bundle(&bundle);
+    assert!(
+        errors.is_empty(),
+        "validate_bundle must return empty vec for valid bundle, got: {:?}",
+        errors
+    );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// BDD Gap Tests — Parent Directory Creation (B-013)
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// B-013: write_bundle creates parent directories for deep nested paths.
+#[test]
+#[cfg(not(miri))] // Miri isolation blocks filesystem; covered by miri_postcard_roundtrip_no_ub UB check
+fn write_bundle_creates_parent_directories() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let deep_path = dir
+        .path()
+        .join("deeply")
+        .join("nested")
+        .join("directory")
+        .join("bundle.yaml");
+
+    let bundle = EvidenceBundle {
+        schema_version: "1.0".to_string(),
+        executor_context: ExecutorContext {
+            agent: "test".to_string(),
+            timestamp: "2025-01-01T00:00:00Z".to_string(),
+            machine: "test-machine".to_string(),
+        },
+        linked_bead_id: "vb-deep".to_string(),
+        gates: vec![],
+        source_test_mappings: vec![],
+        release_artifacts: vec![],
+    };
+
+    let result = write_bundle(&bundle, &deep_path, EvidenceBundleFormat::Yaml);
+    assert!(
+        result.is_ok(),
+        "write_bundle must succeed and create parent dirs, got: {:?}",
+        result
+    );
+    assert!(
+        deep_path.exists(),
+        "bundle file must exist at deep nested path"
+    );
+
+    // Verify round-trip works too.
+    let roundtrip = read_bundle(&deep_path, EvidenceBundleFormat::Yaml)
+        .expect("read_bundle must succeed after write_bundle created parent dirs");
+    assert_eq!(bundle, roundtrip, "round-trip must preserve bundle");
+}
+
+/// B-013: write_bundle to a deeply nested path with Postcard format.
+#[test]
+#[cfg(not(miri))]
+fn write_bundle_creates_parent_directories_postcard() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let deep_path = dir
+        .path()
+        .join("a")
+        .join("b")
+        .join("c")
+        .join("bundle.postcard");
+
+    let bundle = EvidenceBundle {
+        schema_version: "1.0".to_string(),
+        executor_context: ExecutorContext {
+            agent: "test".to_string(),
+            timestamp: "2025-01-01T00:00:00Z".to_string(),
+            machine: "test-machine".to_string(),
+        },
+        linked_bead_id: "vb-deep-postcard".to_string(),
+        gates: vec![],
+        source_test_mappings: vec![],
+        release_artifacts: vec![],
+    };
+
+    let result = write_bundle(&bundle, &deep_path, EvidenceBundleFormat::Postcard);
+    assert!(
+        result.is_ok(),
+        "write_bundle postcard must create parent dirs: {:?}",
+        result
+    );
+    assert!(
+        deep_path.exists(),
+        "postcard bundle must exist at deep path"
+    );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// BDD Gap Tests — Error Descriptiveness (B-015 to B-017)
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// B-015: BundleSerializationFailed error variant is live via read_bundle.
+///
+/// NOTE: BundleSerializationFailed CANNOT be triggered by write_bundle on well-formed EvidenceBundle
+/// because all field types (String, Vec, PathBuf, enums) are natively infallible via serde.
+/// The serialization libraries (serde_json, postcard) do not fail on valid data.
+///
+/// This test PROVES the error variant exists and is LIVE by triggering it through read_bundle
+/// with malformed JSON data. The same Error::BundleSerializationFailed variant is declared by
+/// write_bundle but is mathematically unreachable for valid EvidenceBundle — only read_bundle
+/// with corrupted data can trigger it.
+#[test]
+#[cfg(not(miri))]
+fn bundle_serialization_error_variant_is_live() {
+    // Prove BundleSerializationFailed error variant exists and is triggerable
+    // by writing malformed data directly to a file and reading it back.
+    let dir = tempfile::tempdir().expect("create temp dir");
+
+    // Malformed JSON that will fail deserialization
+    let json_path = dir.path().join("malformed.json");
+    std::fs::write(&json_path, "{ invalid json }").expect("write malformed json");
+
+    let result = read_bundle(&json_path, EvidenceBundleFormat::Json);
+    assert!(result.is_err(), "read_bundle must error on malformed JSON");
+    let err = result.unwrap_err();
+    assert!(
+        matches!(err, xtask::evidence::Error::BundleSerializationFailed { ref format, ref cause }
+            if *format == "json" && !cause.is_empty()),
+        "error must be BundleSerializationFailed with format='json' and non-empty cause, got: {:?}",
+        err
+    );
+}
+
+/// B-015: write_bundle creates parent dirs and succeeds for well-formed bundle.
+#[test]
+#[cfg(not(miri))]
+fn write_bundle_succeeds_with_created_parent_dirs() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let path = dir.path().join("deeply").join("nested").join("bundle.yaml");
+
+    let result = write_bundle(
+        &EvidenceBundle {
+            schema_version: "1.0".to_string(),
+            executor_context: ExecutorContext {
+                agent: "test".to_string(),
+                timestamp: "2025-01-01T00:00:00Z".to_string(),
+                machine: "test-machine".to_string(),
+            },
+            linked_bead_id: "vb-err".to_string(),
+            gates: vec![],
+            source_test_mappings: vec![],
+            release_artifacts: vec![],
+        },
+        &path,
+        EvidenceBundleFormat::Yaml,
+    );
+    assert!(
+        result.is_ok(),
+        "write should succeed with created parent dirs: {:?}",
+        result
+    );
+}
+
+/// B-016: read_bundle returns descriptive error for malformed file contents.
+#[test]
+#[cfg(not(miri))]
+fn read_bundle_returns_descriptive_error_for_malformed_yaml() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let path = dir.path().join("malformed.yaml");
+
+    // Write invalid YAML content (not valid YAML at all)
+    std::fs::write(&path, "invalid: yaml: content: [[[[").expect("write malformed yaml");
+
+    let result = read_bundle(&path, EvidenceBundleFormat::Yaml);
+    assert!(result.is_err(), "read_bundle must error on malformed YAML");
+    let err = result.unwrap_err();
+    assert!(
+        matches!(err, xtask::evidence::Error::BundleSerializationFailed { ref format, ref cause }
+            if *format == "yaml" && !cause.is_empty()),
+        "error must be BundleSerializationFailed with format='yaml' and non-empty cause, got: {:?}",
+        err
+    );
+}
+
+/// B-016: read_bundle returns descriptive error for malformed JSON.
+#[test]
+#[cfg(not(miri))]
+fn read_bundle_returns_descriptive_error_for_malformed_json() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let path = dir.path().join("malformed.json");
+
+    std::fs::write(&path, "{ invalid json }").expect("write malformed json");
+
+    let result = read_bundle(&path, EvidenceBundleFormat::Json);
+    assert!(result.is_err(), "read_bundle must error on malformed JSON");
+    let err = result.unwrap_err();
+    assert!(
+        matches!(err, xtask::evidence::Error::BundleSerializationFailed { ref format, ref cause }
+            if *format == "json" && !cause.is_empty()),
+        "error must be BundleSerializationFailed with format='json' and non-empty cause, got: {:?}",
+        err
+    );
+}
+
+/// B-016: read_bundle returns descriptive error for malformed Postcard.
+#[test]
+#[cfg(not(miri))]
+fn read_bundle_returns_descriptive_error_for_malformed_postcard() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let path = dir.path().join("malformed.postcard");
+
+    std::fs::write(&path, &[0xFF, 0xFE, 0x00, 0x01]).expect("write malformed postcard bytes");
+
+    let result = read_bundle(&path, EvidenceBundleFormat::Postcard);
+    assert!(
+        result.is_err(),
+        "read_bundle must error on malformed Postcard bytes"
+    );
+    let err = result.unwrap_err();
+    assert!(
+        matches!(err, xtask::evidence::Error::BundleSerializationFailed { ref format, ref cause }
+            if *format == "postcard" && !cause.is_empty()),
+        "error must be BundleSerializationFailed with format='postcard' and non-empty cause, got: {:?}",
+        err
+    );
+}
+
+/// B-017: read_bundle returns EvidenceWriteFailed for missing file.
+#[test]
+#[cfg(not(miri))]
+fn read_bundle_returns_error_for_missing_file() {
+    let path = PathBuf::from("/tmp/this/path/does/not/exist/bundle.yaml");
+
+    let result = read_bundle(&path, EvidenceBundleFormat::Yaml);
+    assert!(
+        result.is_err(),
+        "read_bundle must error when file does not exist"
+    );
+    let err = result.unwrap_err();
+    assert!(
+        matches!(err, xtask::evidence::Error::EvidenceWriteFailed { ref gate, ref cause, .. }
+            if *gate == "bundle" && !cause.is_empty()),
+        "error must be EvidenceWriteFailed with gate='bundle' and non-empty cause, got: {:?}",
+        err
+    );
+}
+
+/// B-017: read_bundle missing file error includes path.
+#[test]
+#[cfg(not(miri))]
+fn read_bundle_missing_file_error_includes_path() {
+    let path = PathBuf::from("/tmp/nonexistent/bundle.json");
+    let result = read_bundle(&path, EvidenceBundleFormat::Json);
+    assert!(result.is_err(), "missing file must error");
+    let err = result.unwrap_err();
+    assert!(
+        matches!(err, xtask::evidence::Error::EvidenceWriteFailed { path: ref p, .. } if *p == path),
+        "error must include the missing path, got: {:?}",
+        err
+    );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// BDD Gap Tests — GateStatus Postcard Wire Conversion (B-018)
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// B-018: GateStatus::Pass round-trips through postcard write/read unchanged.
+#[test]
+#[cfg(not(miri))]
+fn gate_status_pass_roundtrips_through_postcard() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let path = dir.path().join("bundle.postcard");
+
+    let bundle = EvidenceBundle {
+        schema_version: "1.0".to_string(),
+        executor_context: ExecutorContext {
+            agent: "test".to_string(),
+            timestamp: "2025-01-01T00:00:00Z".to_string(),
+            machine: "test-machine".to_string(),
+        },
+        linked_bead_id: "vb-status".to_string(),
+        gates: vec![GateEvidence {
+            kind: "gate-evidence".to_string(),
+            gate_name: "test".to_string(),
+            command: "cargo test".to_string(),
+            exit_code: 0,
+            log: PathBuf::from("test.log"),
+            status: GateStatus::Pass,
+            why_failed: None,
+        }],
+        source_test_mappings: vec![],
+        release_artifacts: vec![],
+    };
+
+    write_bundle(&bundle, &path, EvidenceBundleFormat::Postcard).expect("write postcard ok");
+    let roundtrip = read_bundle(&path, EvidenceBundleFormat::Postcard).expect("read postcard ok");
+
+    assert_eq!(roundtrip.gates.len(), 1, "must have one gate");
+    assert_eq!(
+        roundtrip.gates[0].status,
+        GateStatus::Pass,
+        "Pass status must survive postcard round-trip"
+    );
+}
+
+/// B-018: GateStatus::Fail round-trips through postcard write/read unchanged.
+#[test]
+#[cfg(not(miri))]
+fn gate_status_fail_roundtrips_through_postcard() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let path = dir.path().join("bundle.postcard");
+
+    let bundle = EvidenceBundle {
+        schema_version: "1.0".to_string(),
+        executor_context: ExecutorContext {
+            agent: "test".to_string(),
+            timestamp: "2025-01-01T00:00:00Z".to_string(),
+            machine: "test-machine".to_string(),
+        },
+        linked_bead_id: "vb-status".to_string(),
+        gates: vec![GateEvidence {
+            kind: "gate-evidence".to_string(),
+            gate_name: "test".to_string(),
+            command: "cargo test".to_string(),
+            exit_code: 1,
+            log: PathBuf::from("test.log"),
+            status: GateStatus::Fail,
+            why_failed: None,
+        }],
+        source_test_mappings: vec![],
+        release_artifacts: vec![],
+    };
+
+    write_bundle(&bundle, &path, EvidenceBundleFormat::Postcard).expect("write postcard ok");
+    let roundtrip = read_bundle(&path, EvidenceBundleFormat::Postcard).expect("read postcard ok");
+
+    assert_eq!(roundtrip.gates.len(), 1, "must have one gate");
+    assert_eq!(
+        roundtrip.gates[0].status,
+        GateStatus::Fail,
+        "Fail status must survive postcard round-trip"
+    );
+}
+
+/// B-018: GateStatus::Skipped{reason} round-trips through postcard write/read with reason preserved.
+#[test]
+#[cfg(not(miri))]
+fn gate_status_skipped_roundtrips_through_postcard_with_reason() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let path = dir.path().join("bundle.postcard");
+
+    let skip_reason = "miri not available on this platform".to_string();
+    let bundle = EvidenceBundle {
+        schema_version: "1.0".to_string(),
+        executor_context: ExecutorContext {
+            agent: "test".to_string(),
+            timestamp: "2025-01-01T00:00:00Z".to_string(),
+            machine: "test-machine".to_string(),
+        },
+        linked_bead_id: "vb-status".to_string(),
+        gates: vec![GateEvidence {
+            kind: "gate-evidence".to_string(),
+            gate_name: "miri".to_string(),
+            command: "cargo +nightly miri test".to_string(),
+            exit_code: 0,
+            log: PathBuf::from("miri.log"),
+            status: GateStatus::Skipped {
+                reason: skip_reason.clone(),
+            },
+            why_failed: None,
+        }],
+        source_test_mappings: vec![],
+        release_artifacts: vec![],
+    };
+
+    write_bundle(&bundle, &path, EvidenceBundleFormat::Postcard).expect("write postcard ok");
+    let roundtrip = read_bundle(&path, EvidenceBundleFormat::Postcard).expect("read postcard ok");
+
+    assert_eq!(roundtrip.gates.len(), 1, "must have one gate");
+    assert!(
+        matches!(
+            roundtrip.gates[0].status,
+            GateStatus::Skipped { ref reason } if reason == &skip_reason
+        ),
+        "Skipped reason '{}' must be preserved through postcard round-trip, got: {:?}",
+        skip_reason,
+        roundtrip.gates[0].status
+    );
+}
+
+/// B-018: GateStatus::Skipped{reason: ""} (empty reason) round-trips through postcard.
+#[test]
+#[cfg(not(miri))]
+fn gate_status_skipped_empty_reason_roundtrips_through_postcard() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let path = dir.path().join("bundle.postcard");
+
+    let bundle = EvidenceBundle {
+        schema_version: "1.0".to_string(),
+        executor_context: ExecutorContext {
+            agent: "test".to_string(),
+            timestamp: "2025-01-01T00:00:00Z".to_string(),
+            machine: "test-machine".to_string(),
+        },
+        linked_bead_id: "vb-status".to_string(),
+        gates: vec![GateEvidence {
+            kind: "gate-evidence".to_string(),
+            gate_name: "gate".to_string(),
+            command: "cmd".to_string(),
+            exit_code: 0,
+            log: PathBuf::from("log.log"),
+            status: GateStatus::Skipped {
+                reason: String::new(),
+            },
+            why_failed: None,
+        }],
+        source_test_mappings: vec![],
+        release_artifacts: vec![],
+    };
+
+    write_bundle(&bundle, &path, EvidenceBundleFormat::Postcard).expect("write postcard ok");
+    let roundtrip = read_bundle(&path, EvidenceBundleFormat::Postcard).expect("read postcard ok");
+
+    assert_eq!(
+        roundtrip.gates[0].status,
+        GateStatus::Skipped {
+            reason: String::new()
+        },
+        "Skipped with empty reason must round-trip"
+    );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// PI-008: GateStatusPostcard proptest invariant — all variants round-trip losslessly
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// PI-008: GateStatus variants round-trip losslessly through postcard serialization
+/// for all three variants (Pass, Fail, Skipped with arbitrary reason).
+#[test]
+#[cfg(not(miri))]
+fn prop_gate_status_postcard_roundtrip_all_variants() {
+    use proptest::prelude::*;
+
+    proptest!(
+        |(status in prop_oneof![
+            Just(GateStatus::Pass),
+            Just(GateStatus::Fail),
+            any::<String>().prop_map(|reason| GateStatus::Skipped { reason }),
+        ])| {
+            let dir = tempfile::tempdir().expect("temp dir");
+            let path = dir.path().join("bundle.postcard");
+
+            let bundle = EvidenceBundle {
+                schema_version: "1.0".to_string(),
+                executor_context: ExecutorContext {
+                    agent: "prop-test".to_string(),
+                    timestamp: "2025-01-01T00:00:00Z".to_string(),
+                    machine: "prop-machine".to_string(),
+                },
+                linked_bead_id: "vb-prop".to_string(),
+                gates: vec![GateEvidence {
+                    kind: "gate-evidence".to_string(),
+                    gate_name: "gate".to_string(),
+                    command: "cmd".to_string(),
+                    exit_code: 0,
+                    log: PathBuf::from("log.log"),
+                    status: status.clone(),
+                    why_failed: None,
+                }],
+                source_test_mappings: vec![],
+                release_artifacts: vec![],
+            };
+
+            write_bundle(&bundle, &path, EvidenceBundleFormat::Postcard).expect("write ok");
+            let roundtrip = read_bundle(&path, EvidenceBundleFormat::Postcard).expect("read ok");
+
+            prop_assert_eq!(&bundle.gates[0].status, &roundtrip.gates[0].status,
+                "GateStatus {:?} must round-trip losslessly through postcard", status);
+        }
+    );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Helper: proptest strategy for generating arbitrary EvidenceBundle values
 // ──────────────────────────────────────────────────────────────────────────────
 

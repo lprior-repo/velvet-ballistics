@@ -144,7 +144,6 @@ mod tests {
         frame.mark_succeeded(StepIdx::new(0))?;
         assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Succeeded);
 
-
         // Succeeded is a terminal (absorbing) state.
         // Succeeded -> Running is INVALID; re-entry is handled by step_once
         // skipping mark_running for already-Succeeded steps.
@@ -779,7 +778,6 @@ mod tests {
         assert_eq!(frame.mark_cancelled(StepIdx::new(2)), Ok(()));
         assert_eq!(frame.mark_skipped(StepIdx::new(3)), Ok(()));
 
-
         // Terminal states cannot transition to any other state.
         // Succeeded -> Failed, Running, etc. are all INVALID.
         // Test Succeeded -> Failed first (should fail since terminal states are absorbing)
@@ -914,9 +912,9 @@ mod tests {
     // --- PO-PROP-002, PO-PROP-004: Terminal transition proptest properties ---
 
     mod proptest_transitions {
-        use proptest::prelude::*;
-        use crate::frame::StepState;
         use super::is_valid_step_state_transition;
+        use crate::frame::StepState;
+        use proptest::prelude::*;
 
         fn arb_step_state() -> impl Strategy<Value = StepState> {
             prop_oneof![
@@ -932,7 +930,13 @@ mod tests {
         }
 
         fn is_terminal(s: StepState) -> bool {
-            matches!(s, StepState::Succeeded | StepState::Failed | StepState::Skipped | StepState::Cancelled)
+            matches!(
+                s,
+                StepState::Succeeded
+                    | StepState::Failed
+                    | StepState::Skipped
+                    | StepState::Cancelled
+            )
         }
 
         proptest! {
@@ -1624,7 +1628,8 @@ mod frame_kani_harnesses {
         kani::assume(is_terminal);
         let result = validate_transition_inline(terminal, target);
         // Terminal states can transition to themselves (idempotent re-mark)
-        if terminal == target || (terminal == StepState::Succeeded && target == StepState::Running) {
+        if terminal == target || (terminal == StepState::Succeeded && target == StepState::Running)
+        {
             kani::assert(result, "terminal->self allowed");
         } else {
             // All other non-self transitions from terminal states are invalid.
