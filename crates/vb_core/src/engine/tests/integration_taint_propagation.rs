@@ -1436,39 +1436,21 @@ fn join_taint_random_absorbs_secret_derived_and_clean() {
 // C-002: join_taint with TimeDependent absorbs all other taint levels
 #[test]
 fn join_taint_time_dependent_absorbs_all_other_taint_levels() {
-    assert_eq!(
-        join_taint(Taint::Secret, Taint::Clean),
-        Taint::Secret
-    );
+    assert_eq!(join_taint(Taint::Secret, Taint::Clean), Taint::Secret);
     assert_eq!(
         join_taint(Taint::Secret, Taint::DerivedFromSecret),
         Taint::Secret
     );
-    assert_eq!(
-        join_taint(Taint::Secret, Taint::Secret),
-        Taint::Secret
-    );
-    assert_eq!(
-        join_taint(Taint::Secret, Taint::Secret),
-        Taint::Secret
-    );
-    assert_eq!(
-        join_taint(Taint::Secret, Taint::Secret),
-        Taint::Secret
-    );
+    assert_eq!(join_taint(Taint::Secret, Taint::Secret), Taint::Secret);
+    assert_eq!(join_taint(Taint::Secret, Taint::Secret), Taint::Secret);
+    assert_eq!(join_taint(Taint::Secret, Taint::Secret), Taint::Secret);
 }
 
 // C-003: TimeDependent joined with Random returns TimeDependent
 #[test]
 fn join_taint_time_dependent_with_random_returns_secret() {
-    assert_eq!(
-        join_taint(Taint::Secret, Taint::Secret),
-        Taint::Secret
-    );
-    assert_eq!(
-        join_taint(Taint::Secret, Taint::Secret),
-        Taint::Secret
-    );
+    assert_eq!(join_taint(Taint::Secret, Taint::Secret), Taint::Secret);
+    assert_eq!(join_taint(Taint::Secret, Taint::Secret), Taint::Secret);
 }
 
 // C-004: join_taint lattice order is total: Clean < DerivedFromSecret < Secret < Random < TimeDependent
@@ -1562,10 +1544,7 @@ fn random_sits_between_secret_and_time_dependent_in_lattice() {
     // Secret < Random
     assert_eq!(join_taint(Taint::Secret, Taint::Secret), Taint::Secret);
     // Random < TimeDependent
-    assert_eq!(
-        join_taint(Taint::Secret, Taint::Secret),
-        Taint::Secret
-    );
+    assert_eq!(join_taint(Taint::Secret, Taint::Secret), Taint::Secret);
     // Clean < Random
     assert_eq!(join_taint(Taint::Clean, Taint::Secret), Taint::Secret);
 }
@@ -1653,15 +1632,11 @@ fn join_taint_never_lower_than_either_input() {
                 Taint::Clean => 0u8,
                 Taint::DerivedFromSecret => 1,
                 Taint::Secret => 2,
-                Taint::Secret => 3,
-                Taint::Secret => 4,
             };
             let disc_b = match b {
                 Taint::Clean => 0u8,
                 Taint::DerivedFromSecret => 1,
                 Taint::Secret => 2,
-                Taint::Secret => 3,
-                Taint::Secret => 4,
             };
             let disc_result = match result {
                 Taint::Clean => 0u8,
@@ -1916,8 +1891,7 @@ fn build_object_with_taint_returns_random_when_any_field_is_random() -> Result<(
 
 // C-041: build_object_with_taint returns TimeDependent when any field is TimeDependent
 #[test]
-fn build_object_with_taint_returns_secret_when_any_field_time_dependent()
--> Result<(), String> {
+fn build_object_with_taint_returns_secret_when_any_field_time_dependent() -> Result<(), String> {
     let mut store = ValueStore::new();
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 2).map_err(|e| e.to_string())?;
 
@@ -2011,8 +1985,7 @@ fn build_list_with_taint_returns_random_when_any_item_is_random() -> Result<(), 
 
 // C-051: build_list_with_taint returns TimeDependent when any item is TimeDependent
 #[test]
-fn build_list_with_taint_returns_secret_when_any_item_time_dependent() -> Result<(), String>
-{
+fn build_list_with_taint_returns_secret_when_any_item_time_dependent() -> Result<(), String> {
     let mut store = ValueStore::new();
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 2).map_err(|e| e.to_string())?;
 
@@ -2250,11 +2223,7 @@ fn postcard_roundtrip_preserves_join_taint_result() {
 // C-072: postcard discriminator encoding matches serial number for all three variants
 #[test]
 fn postcard_encoding_distinguishes_all_three_variants() {
-    let all = [
-        Taint::Clean,
-        Taint::DerivedFromSecret,
-        Taint::Secret,
-    ];
+    let all = [Taint::Clean, Taint::DerivedFromSecret, Taint::Secret];
     for (i, a) in all.iter().enumerate() {
         for (j, b) in all.iter().enumerate() {
             if i != j {

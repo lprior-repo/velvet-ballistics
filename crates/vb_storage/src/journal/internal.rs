@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use crate::{
     codec::{decode_journal_event, decode_record, encode_journal_event_record},
     constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES},

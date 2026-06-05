@@ -9,9 +9,6 @@ use vb_runtime::shard::PendingTimerKind;
 
 /// Refinement module binding to production authority-check pattern.
 mod authority_refinements {
-    use std::time::Instant;
-    use vb_core::ids::RunId;
-
     /// Production reference:
     ///   crates/vb_runtime/src/shard/lifecycle/chunk_002.rs:71-76
     ///   let Some(current_timer) = self.pending_timers.get(&run).copied() else {

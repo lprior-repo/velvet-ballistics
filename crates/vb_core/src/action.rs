@@ -420,9 +420,7 @@ pub const fn propagate_action_taint(idempotency: Idempotency, input_taint: Taint
         Idempotency::DeterministicPure | Idempotency::IdempotentExternal => input_taint,
         Idempotency::AtLeastOnceExternal => match input_taint {
             Taint::Clean => Taint::Clean,
-            Taint::Secret | Taint::DerivedFromSecret => {
-                Taint::DerivedFromSecret
-            }
+            Taint::Secret | Taint::DerivedFromSecret => Taint::DerivedFromSecret,
         },
     }
 }

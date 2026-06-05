@@ -17,7 +17,7 @@ mod generation_refinements {
     pub fn safe_increment(generation: u64) -> u64 {
         generation
             .checked_add(1)
-            .expect("precondition guarantees within bounds")
+            .expect("SAFETY: caller proves generation < u64::MAX")
     }
 
     /// Refinement: 0 as sentinel (no timer present) maps to generation 1 on first insert.

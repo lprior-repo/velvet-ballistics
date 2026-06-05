@@ -891,9 +891,9 @@ mod tests {
     // --- PO-PROP-002, PO-PROP-004: Terminal absorption proptest properties ---
 
     mod proptest_transitions {
-        use proptest::prelude::*;
-        use crate::frame::StepState;
         use super::is_valid_step_state_transition;
+        use crate::frame::StepState;
+        use proptest::prelude::*;
 
         fn arb_step_state() -> impl Strategy<Value = StepState> {
             prop_oneof![
@@ -909,7 +909,13 @@ mod tests {
         }
 
         fn is_terminal(s: StepState) -> bool {
-            matches!(s, StepState::Succeeded | StepState::Failed | StepState::Skipped | StepState::Cancelled)
+            matches!(
+                s,
+                StepState::Succeeded
+                    | StepState::Failed
+                    | StepState::Skipped
+                    | StepState::Cancelled
+            )
         }
 
         proptest! {
