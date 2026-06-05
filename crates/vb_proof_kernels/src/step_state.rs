@@ -359,10 +359,12 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_transition_valid_succeeded_to_running() {
+    fn test_validate_transition_invalid_succeeded_to_running() {
         // Succeeded -> Running is INVALID: terminal states are fully absorbing
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), StepState::Running);
+        let result = validate_transition(StepState::Succeeded, StepState::Running);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err, "invalid_state_transition");
     }
 
     #[test]

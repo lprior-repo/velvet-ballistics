@@ -72,6 +72,7 @@ fn collect_frame_extra(run: RunId, slot: SlotIdx) -> Result<Vec<u8>, String> {
         limit: 2,
         time_limit_ms: None,
         start_millis: 0,
+        from_journal: false,
     };
     postcard::to_allocvec(&state).map_err(|err| err.to_string())
 }

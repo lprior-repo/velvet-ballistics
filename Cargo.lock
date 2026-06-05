@@ -2083,6 +2083,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "vb_queue_semantics"
+version = "0.1.0"
+
+[[package]]
 name = "vb_runtime"
 version = "0.1.0"
 dependencies = [

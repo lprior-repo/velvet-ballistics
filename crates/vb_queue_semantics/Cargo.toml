@@ -1,0 +1,14 @@
+[package]
+name = "vb_queue_semantics"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+
+[features]
+default = []
+flux = []
+
+[lints]
+workspace = true
