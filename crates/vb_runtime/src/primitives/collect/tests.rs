@@ -1521,10 +1521,7 @@ fn collect_states_from_journal_flag_preserved_through_upsert() -> Result<(), Str
 
     ensure(
         found.from_journal,
-        format!(
-            "from_journal should be true (was {})",
-            found.from_journal
-        ),
+        format!("from_journal should be true (was {})", found.from_journal),
     )?;
     ensure(
         found.start_millis == original_start_millis,

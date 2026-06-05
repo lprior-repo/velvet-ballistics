@@ -144,12 +144,11 @@ fn finish_collect_start_page(
     body: StepIdx,
     done: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    let cursor = checked_add_usize(0, plan.page_len, "collect cursor overflow")?;
-    if cursor >= plan.item_count {
+    if plan.page_len >= plan.item_count {
         states.remove(run.run_id(), plan.collector);
         return jump_to(run, done);
     }
-    upsert_started_collect(run, states, &plan, current_page, cursor, time_limit_ms)?;
+    upsert_started_collect(run, states, &plan, current_page, time_limit_ms)?;
     jump_to(run, body)
 }
 
@@ -158,25 +157,23 @@ fn upsert_started_collect(
     states: &mut CollectStates,
     plan: &CollectStartPlan,
     current_page: ListId,
-    cursor: usize,
     time_limit_ms: Option<u64>,
 ) -> Result<(), EngineError> {
     let key = (run.run_id(), plan.collector);
-    let start_millis = match states.entries.get(&key) {
-        Some(existing) if existing.from_journal => existing.start_millis,
-        _ => millis_since_epoch()?,
-    };
     states.upsert(State {
         run_id: run.run_id(),
         collector_slot: plan.collector,
         source: plan.list_id,
         current_page,
-        cursor,
+        cursor: plan.page_len,
         page_size: plan.page_size,
         item_count: plan.item_count,
         limit: plan.limit,
         time_limit_ms,
-        start_millis,
+        start_millis: match states.entries.get(&key) {
+            Some(e) if e.from_journal => e.start_millis,
+            _ => millis_since_epoch()?,
+        },
         from_journal: false,
     })
 }
