@@ -2044,6 +2044,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f54a172d0620933a27a4360d3db3e2ae0dd6cceae9730751a036bbf182c4b23"
 
 [[package]]
+name = "vb_ajc40_flux"
+version = "0.1.0"
+dependencies = [
+ "vb_core",
+]
+
+[[package]]
 name = "vb_benchmark"
 version = "0.1.0"
 dependencies = [

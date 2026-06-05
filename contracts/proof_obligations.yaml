@@ -1003,31 +1003,6 @@ obligations:
       - cargo xtask loom --model bounded_queue
 
 # ============================================================
-# EVIDENCE FORMAT
-# ============================================================
-evidence_schema:
-  kind: ProofEvidence
-  bead: string
-  commit: string
-  obligations:
-    - id: string
-      status: pass | fail | waived | deferred
-      level: L0 | L1 | L2 | L3 | L4 | L5 | L6
-      commands:
-        - string
-      log: string
-  remaining_assumptions:
-    - string
-  verified:
-    taint_lattice: deductively_verified | property_tested | fuzzed | externally_assumed
-    step_state: deductively_verified | bounded_model_checked | property_tested
-    resource_budget: deductively_verified | bounded_model_checked | property_tested
-    ipc_decoder: fuzzed_and_bounded_model_checked | bounded_model_checked | fuzzed
-    generated_parity: differentially_tested | property_tested
-    replay_safety: model_checked_and_crash_lab_evidenced | model_checked | fuzzed
-    fjall_durability: externally_assumed_with_strict_fsync_boundary | operationally_evidenced
-
-# ============================================================
 # VB-RQMW: Verus vacuum proof repair (2026-06-01)
 # All files verified with 0 errors. Proof bodies use explicit assert()
 # for open spec functions (computable by SMT solver).
@@ -1170,6 +1145,31 @@ evidence_schema:
       spec_normalize_scheduled_attempt, spec_scheduled_attempt_after, spec_retry_attempt_after and their
       proof functions. Flux refinements waived: prior invariants were false (ActionTicket fields are
       public u16, zero values are valid and constructible — GOD RULE 2 violation corrected).
+
+# ============================================================
+# EVIDENCE FORMAT
+# ============================================================
+evidence_schema:
+  kind: ProofEvidence
+  bead: string
+  commit: string
+  obligations:
+    - id: string
+      status: pass | fail | waived | deferred
+      level: L0 | L1 | L2 | L3 | L4 | L5 | L6
+      commands:
+        - string
+      log: string
+  remaining_assumptions:
+    - string
+  verified:
+    taint_lattice: deductively_verified | property_tested | fuzzed | externally_assumed
+    step_state: deductively_verified | bounded_model_checked | property_tested
+    resource_budget: deductively_verified | bounded_model_checked | property_tested
+    ipc_decoder: fuzzed_and_bounded_model_checked | bounded_model_checked | fuzzed
+    generated_parity: differentially_tested | property_tested
+    replay_safety: model_checked_and_crash_lab_evidenced | model_checked | fuzzed
+    fjall_durability: externally_assumed_with_strict_fsync_boundary | operationally_evidenced
 
 # ============================================================
 # PROOF LEVEL ASSIGNMENTS BY CRATE

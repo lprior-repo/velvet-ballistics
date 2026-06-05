@@ -240,6 +240,34 @@ doc = false
 bench = false
 
 [[bin]]
+name = "vb_ajc40_compiled_slug_decode"
+path = "fuzz_targets/vb_ajc40_compiled_slug_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_ajc40_compiled_query_decode"
+path = "fuzz_targets/vb_ajc40_compiled_query_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_ajc40_empty_path_root_accessor"
+path = "fuzz_targets/vb_ajc40_empty_path_root_accessor.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_ajc40_total_yield_cost_mismatch"
+path = "fuzz_targets/vb_ajc40_total_yield_cost_mismatch.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "budget_compute"
 path = "src/bin/budget_compute.rs"
 test = false

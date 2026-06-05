@@ -1,0 +1,12 @@
+admission-kernel-source-v1
+error TooManyItems
+error PathTooDeep
+error TotalYieldCostMismatch
+error YieldBudgetExceeded
+validate count_gt_max => TooManyItems
+validate path_gt_max => PathTooDeep
+validate declared_ne_recomputed => TotalYieldCostMismatch
+validate recomputed_gt_budget => YieldBudgetExceeded
+validate ok_remaining => max_yield_budget_minus_recomputed_total
+accumulate checked_add_overflow => YieldBudgetExceeded
+accumulate checked_add_ok => total_plus_item_cost

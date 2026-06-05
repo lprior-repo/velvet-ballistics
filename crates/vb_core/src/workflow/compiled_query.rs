@@ -2,6 +2,9 @@
 //! Bounded compiled query types for yield-budget-constrained workflow execution.
 
 use crate::workflow::PathSegment;
+use crate::workflow::admission_kernel::{
+    AdmissionKernelError, accumulate_yield_cost, validate_admission_summary,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -129,57 +132,194 @@ pub enum QueryParseError {
         /// Maximum allowed queries.
         max: usize,
     },
+    /// Recomputing the sum of all per-query yield costs overflowed `u64`.
+    #[error("query yield cost sum overflowed u64")]
+    YieldCostOverflow,
+    /// Serialized total yield cost does not match the recomputed sum.
+    #[error("query total yield cost mismatch: declared {declared}, recomputed {recomputed}")]
+    TotalYieldCostMismatch {
+        /// Serialized total yield cost.
+        declared: u64,
+        /// Recomputed sum of per-query yield costs.
+        recomputed: u64,
+    },
 }
 
-/// Decodes compiled queries from bytes and validates them against a yield budget.
-///
-/// Deserializes the `CompiledQueries` structure using `postcard::from_bytes` and
-/// checks that the accumulated yield cost does not exceed `max_yield_budget`.
-/// Each query's path depth is also validated against `MAX_QUERY_PATH_SEGMENTS`.
+fn checked_total_yield_cost(queries: &[YbBoundedQuery]) -> Result<u64, QueryParseError> {
+    let mut total = 0_u64;
+    for query in queries {
+        total = accumulate_yield_cost(total, query.yield_cost)
+            .map_err(|_| QueryParseError::YieldCostOverflow)?;
+    }
+    Ok(total)
+}
+
+/// Validates a decoded query count against the workflow admission limit.
 ///
 /// # Errors
 ///
-/// Returns `QueryParseError::Decode` if the byte sequence is not valid
-/// postcard-encoded `CompiledQueries`. Returns `QueryParseError::YbBudgetExceeded`
-/// if the total yield cost of all queries exceeds `max_yield_budget`. Returns
-/// `QueryParseError::QueryPathTooDeep` if any query exceeds the path depth limit.
-/// Returns `QueryParseError::TooManyQueries` if the number of queries exceeds
+/// Returns `QueryParseError::TooManyQueries` when `count` exceeds
 /// `MAX_QUERIES_PER_WORKFLOW`.
-/// Validates compiled queries against the yield budget and hard limits.
-fn validate_compiled_queries(
-    compiled: &CompiledQueries,
-    max_yield_budget: u64,
-) -> Result<(), QueryParseError> {
-    if compiled.queries.len() > MAX_QUERIES_PER_WORKFLOW {
+pub fn validate_compiled_query_count(count: usize) -> Result<(), QueryParseError> {
+    if count > MAX_QUERIES_PER_WORKFLOW {
         return Err(QueryParseError::TooManyQueries {
-            count: compiled.queries.len(),
+            count,
             max: MAX_QUERIES_PER_WORKFLOW,
-        });
-    }
-
-    for query in compiled.queries.iter() {
-        if query.is_path_too_deep() {
-            return Err(QueryParseError::QueryPathTooDeep {
-                depth: query.path_depth(),
-                max: MAX_QUERY_PATH_SEGMENTS,
-            });
-        }
-    }
-
-    if compiled.total_yield_cost > max_yield_budget {
-        return Err(QueryParseError::YbBudgetExceeded {
-            total: compiled.total_yield_cost,
-            max: max_yield_budget,
         });
     }
 
     Ok(())
 }
 
+/// Validates the summarized post-decode query admission facts.
+///
+/// # Errors
+///
+/// Returns the same count, path-depth, total-mismatch, and budget errors as the
+/// full decoded-query validator after total recomputation succeeds.
+pub fn validate_compiled_query_summary(
+    count: usize,
+    recomputed_total: u64,
+    declared_total_yield_cost: u64,
+    max_path_depth: usize,
+    max_yield_budget: u64,
+) -> Result<u64, QueryParseError> {
+    validate_query_admission_kernel(
+        count,
+        recomputed_total,
+        declared_total_yield_cost,
+        max_path_depth,
+        max_yield_budget,
+    )
+    .map_err(|error| {
+        query_summary_error(
+            error,
+            count,
+            recomputed_total,
+            declared_total_yield_cost,
+            max_path_depth,
+            max_yield_budget,
+        )
+    })
+}
+
+fn validate_query_admission_kernel(
+    count: usize,
+    recomputed_total: u64,
+    declared_total_yield_cost: u64,
+    max_path_depth: usize,
+    max_yield_budget: u64,
+) -> Result<u64, AdmissionKernelError> {
+    validate_admission_summary(
+        count,
+        MAX_QUERIES_PER_WORKFLOW,
+        max_path_depth,
+        MAX_QUERY_PATH_SEGMENTS,
+        recomputed_total,
+        declared_total_yield_cost,
+        max_yield_budget,
+    )
+}
+
+fn query_summary_error(
+    error: AdmissionKernelError,
+    count: usize,
+    recomputed_total: u64,
+    declared_total_yield_cost: u64,
+    max_path_depth: usize,
+    max_yield_budget: u64,
+) -> QueryParseError {
+    match error {
+        AdmissionKernelError::TooManyItems => QueryParseError::TooManyQueries {
+            count,
+            max: MAX_QUERIES_PER_WORKFLOW,
+        },
+        AdmissionKernelError::PathTooDeep => QueryParseError::QueryPathTooDeep {
+            depth: max_path_depth,
+            max: MAX_QUERY_PATH_SEGMENTS,
+        },
+        AdmissionKernelError::TotalYieldCostMismatch => QueryParseError::TotalYieldCostMismatch {
+            declared: declared_total_yield_cost,
+            recomputed: recomputed_total,
+        },
+        AdmissionKernelError::YieldBudgetExceeded => QueryParseError::YbBudgetExceeded {
+            total: recomputed_total,
+            max: max_yield_budget,
+        },
+    }
+}
+
+fn max_query_path_depth(queries: &[YbBoundedQuery]) -> usize {
+    let mut max_depth = 0_usize;
+    for query in queries {
+        max_depth = max_depth.max(query.path_depth());
+    }
+    max_depth
+}
+
+/// Validates decoded query parts and returns the remaining budget.
+///
+/// This lower-level seam avoids ownership transfer so Kani can verify the
+/// post-decode admission contract over bounded fixed arrays.
+///
+/// # Errors
+///
+/// Returns the same structural, total, and budget errors as
+/// `validate_compiled_queries`.
+pub fn validate_compiled_query_parts(
+    queries: &[YbBoundedQuery],
+    declared_total_yield_cost: u64,
+    max_yield_budget: u64,
+) -> Result<u64, QueryParseError> {
+    validate_compiled_query_count(queries.len())?;
+    let max_path_depth = max_query_path_depth(queries);
+    let recomputed_total = checked_total_yield_cost(queries)?;
+    validate_compiled_query_summary(
+        queries.len(),
+        recomputed_total,
+        declared_total_yield_cost,
+        max_path_depth,
+        max_yield_budget,
+    )
+}
+
+/// Validates an already-decoded compiled query payload against structural and
+/// yield-budget admission rules.
+///
+/// This seam is intentionally post-decode and side-effect free so verification
+/// tools can prove admission behavior without symbolically executing postcard.
+/// `from_bytes_compiled_queries` delegates here after successful deserialization.
+///
+/// # Errors
+///
+/// Returns `QueryParseError::TooManyQueries` if `compiled` exceeds
+/// `MAX_QUERIES_PER_WORKFLOW`, `QueryParseError::QueryPathTooDeep` if any path
+/// exceeds `MAX_QUERY_PATH_SEGMENTS`, `QueryParseError::YieldCostOverflow` if
+/// recomputing totals overflows, `QueryParseError::TotalYieldCostMismatch` if
+/// the declared total differs from the recomputed total, and
+/// `QueryParseError::YbBudgetExceeded` if the recomputed total exceeds
+/// `max_yield_budget`.
+pub fn validate_compiled_queries(
+    compiled: CompiledQueries,
+    max_yield_budget: u64,
+) -> Result<YbBoundedQueries, QueryParseError> {
+    let remaining = validate_compiled_query_parts(
+        &compiled.queries,
+        compiled.total_yield_cost,
+        max_yield_budget,
+    )?;
+
+    Ok(YbBoundedQueries {
+        queries: compiled.queries,
+        remaining_budget: remaining,
+    })
+}
+
 /// Decodes compiled queries from bytes and validates them against a yield budget.
 ///
 /// Deserializes the `CompiledQueries` structure using `postcard::from_bytes` and
-/// checks that the accumulated yield cost does not exceed `max_yield_budget`.
+/// recomputes and verifies the accumulated yield cost before checking it against
+/// `max_yield_budget`.
 /// Each query's path depth is also validated against `MAX_QUERY_PATH_SEGMENTS`.
 ///
 /// # Errors
@@ -189,22 +329,17 @@ fn validate_compiled_queries(
 /// if the total yield cost of all queries exceeds `max_yield_budget`. Returns
 /// `QueryParseError::QueryPathTooDeep` if any query exceeds the path depth limit.
 /// Returns `QueryParseError::TooManyQueries` if the number of queries exceeds
-/// `MAX_QUERIES_PER_WORKFLOW`.
+/// `MAX_QUERIES_PER_WORKFLOW`. Returns `QueryParseError::YieldCostOverflow` if
+/// the recomputed yield sum overflows `u64`. Returns
+/// `QueryParseError::TotalYieldCostMismatch` if the serialized total differs
+/// from the recomputed sum.
 #[allow(clippy::needless_pass_by_value)]
 pub fn from_bytes_compiled_queries(
     bytes: &[u8],
     max_yield_budget: u64,
 ) -> Result<YbBoundedQueries, QueryParseError> {
     let compiled: CompiledQueries = postcard::from_bytes(bytes).map_err(QueryParseError::Decode)?;
-
-    validate_compiled_queries(&compiled, max_yield_budget)?;
-
-    let remaining = max_yield_budget.saturating_sub(compiled.total_yield_cost);
-
-    Ok(YbBoundedQueries {
-        queries: compiled.queries,
-        remaining_budget: remaining,
-    })
+    validate_compiled_queries(compiled, max_yield_budget)
 }
 
 #[cfg(test)]
@@ -333,19 +468,187 @@ mod tests {
     }
 
     #[test]
-    fn roundtrip_compiled_queries() {
-        let queries = CompiledQueries {
-            queries: vec![YbBoundedQuery {
-                path: vec![PathSegment::Field(SymbolId::new(1))].into(),
-                output_type: QueryOutputType::Boolean,
-                yield_cost: 10,
-            }]
-            .into(),
-            total_yield_cost: 10,
+    fn query_count_helper_accepts_exact_limit_and_rejects_next() {
+        assert_eq!(
+            validate_compiled_query_count(MAX_QUERIES_PER_WORKFLOW),
+            Ok(())
+        );
+        assert_eq!(
+            validate_compiled_query_count(MAX_QUERIES_PER_WORKFLOW + 1),
+            Err(QueryParseError::TooManyQueries {
+                count: MAX_QUERIES_PER_WORKFLOW + 1,
+                max: MAX_QUERIES_PER_WORKFLOW,
+            })
+        );
+    }
+
+    #[test]
+    fn query_summary_helper_preserves_error_order_and_remaining_budget() {
+        assert_eq!(
+            validate_compiled_query_summary(2, 18, 18, MAX_QUERY_PATH_SEGMENTS, 25),
+            Ok(7)
+        );
+        assert_eq!(
+            validate_compiled_query_summary(2, 18, 17, MAX_QUERY_PATH_SEGMENTS, 25),
+            Err(QueryParseError::TotalYieldCostMismatch {
+                declared: 17,
+                recomputed: 18,
+            })
+        );
+        assert_eq!(
+            validate_compiled_query_summary(2, 18, 18, MAX_QUERY_PATH_SEGMENTS + 1, 25),
+            Err(QueryParseError::QueryPathTooDeep {
+                depth: MAX_QUERY_PATH_SEGMENTS + 1,
+                max: MAX_QUERY_PATH_SEGMENTS,
+            })
+        );
+        assert_eq!(
+            validate_compiled_query_summary(2, 18, 18, MAX_QUERY_PATH_SEGMENTS, 17),
+            Err(QueryParseError::YbBudgetExceeded { total: 18, max: 17 })
+        );
+    }
+
+    fn encode_queries(payload: &CompiledQueries) -> Result<Vec<u8>, String> {
+        postcard::to_allocvec(payload).map_err(|err| format!("query postcard encode failed: {err}"))
+    }
+
+    fn unit_query(cost: u64) -> YbBoundedQuery {
+        YbBoundedQuery {
+            path: Vec::new().into_boxed_slice(),
+            output_type: QueryOutputType::Boolean,
+            yield_cost: cost,
+        }
+    }
+
+    #[test]
+    fn compiled_queries_reject_underdeclared_total() -> Result<(), String> {
+        let payload = CompiledQueries {
+            queries: vec![unit_query(7), unit_query(11)].into(),
+            total_yield_cost: 17,
         };
-        let bytes = postcard::to_allocvec(&queries).unwrap();
-        let decoded = from_bytes_compiled_queries(&bytes, 100).unwrap();
-        assert_eq!(decoded.queries.len(), 1);
-        assert_eq!(decoded.remaining_budget(), 90);
+        let bytes = encode_queries(&payload)?;
+
+        let result = from_bytes_compiled_queries(&bytes, 18);
+
+        assert_eq!(
+            result,
+            Err(QueryParseError::TotalYieldCostMismatch {
+                declared: 17,
+                recomputed: 18,
+            })
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn validate_compiled_queries_rejects_underdeclared_total_without_decode() {
+        let payload = CompiledQueries {
+            queries: vec![unit_query(7), unit_query(11)].into(),
+            total_yield_cost: 17,
+        };
+
+        let result = validate_compiled_queries(payload, 18);
+
+        assert_eq!(
+            result,
+            Err(QueryParseError::TotalYieldCostMismatch {
+                declared: 17,
+                recomputed: 18,
+            })
+        );
+    }
+
+    #[test]
+    fn compiled_queries_reject_overdeclared_total() -> Result<(), String> {
+        let payload = CompiledQueries {
+            queries: vec![unit_query(7), unit_query(11)].into(),
+            total_yield_cost: 19,
+        };
+        let bytes = encode_queries(&payload)?;
+
+        let result = from_bytes_compiled_queries(&bytes, 19);
+
+        assert_eq!(
+            result,
+            Err(QueryParseError::TotalYieldCostMismatch {
+                declared: 19,
+                recomputed: 18,
+            })
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn compiled_queries_reject_yield_sum_overflow() -> Result<(), String> {
+        let payload = CompiledQueries {
+            queries: vec![unit_query(u64::MAX), unit_query(1)].into(),
+            total_yield_cost: 0,
+        };
+        let bytes = encode_queries(&payload)?;
+
+        let result = from_bytes_compiled_queries(&bytes, u64::MAX);
+
+        assert_eq!(result, Err(QueryParseError::YieldCostOverflow));
+        Ok(())
+    }
+
+    #[test]
+    fn compiled_queries_accept_exact_total_with_remaining_budget() -> Result<(), String> {
+        let payload = CompiledQueries {
+            queries: vec![unit_query(7), unit_query(11)].into(),
+            total_yield_cost: 18,
+        };
+        let bytes = encode_queries(&payload)?;
+
+        let result = from_bytes_compiled_queries(&bytes, 25);
+
+        match result {
+            Ok(admitted) => {
+                assert_eq!(admitted.len(), 2);
+                assert_eq!(admitted.remaining_budget(), 7);
+                Ok(())
+            }
+            Err(err) => Err(format!("compiled query admission failed: {err}")),
+        }
+    }
+
+    #[test]
+    fn validate_compiled_queries_accepts_exact_total_without_decode() -> Result<(), String> {
+        let payload = CompiledQueries {
+            queries: vec![unit_query(7), unit_query(11)].into(),
+            total_yield_cost: 18,
+        };
+
+        let result = validate_compiled_queries(payload, 25);
+
+        match result {
+            Ok(admitted) => {
+                assert_eq!(admitted.len(), 2);
+                assert_eq!(admitted.remaining_budget(), 7);
+                Ok(())
+            }
+            Err(err) => Err(format!("compiled query admission failed: {err}")),
+        }
+    }
+
+    #[test]
+    fn compiled_queries_keep_empty_path_root_accessor_valid() -> Result<(), String> {
+        let payload = CompiledQueries {
+            queries: vec![unit_query(4)].into(),
+            total_yield_cost: 4,
+        };
+        let bytes = encode_queries(&payload)?;
+
+        let result = from_bytes_compiled_queries(&bytes, 4);
+
+        match result {
+            Ok(admitted) => {
+                assert_eq!(admitted.len(), 1);
+                assert!(matches!(admitted.queries().first(), Some(item) if item.path_depth() == 0));
+                assert_eq!(admitted.remaining_budget(), 0);
+                Ok(())
+            }
+            Err(err) => Err(format!("compiled query admission failed: {err}")),
+        }
     }
 }

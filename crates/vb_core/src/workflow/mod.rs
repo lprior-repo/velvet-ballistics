@@ -1,11 +1,21 @@
 #![forbid(unsafe_code)]
 //! Compiled workflow IR.
 
+pub mod admission_kernel;
 pub mod compiled_query;
 pub mod compiled_slug;
 pub mod lifecycle;
 pub mod types;
 pub mod validation;
+
+#[cfg(kani)]
+mod compiled_empty_path_kani;
+#[cfg(kani)]
+mod compiled_query_kani;
+#[cfg(kani)]
+mod compiled_slug_kani;
+#[cfg(kani)]
+mod compiled_total_cost_kani;
 
 // Re-export commonly used types at the workflow level for ergonomic API surface.
 pub use crate::workflow::lifecycle::{
