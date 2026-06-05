@@ -29,9 +29,19 @@ fuzz_target!(|data: &[u8]| {
 
             // If the event is RunKilled, verify its fields
             if matches!(event.record_kind(), vb_storage::RecordKind::RunKilled) {
-                assert!(event.run_id().get() != 0, "RunKilled run_id must be non-zero");
-                assert!(event.seq().get() != u64::MAX, "RunKilled seq must not be overflow");
-                assert_ne!(event.attempt(), Some(0), "RunKilled attempt must not be zero if present");
+                assert!(
+                    event.run_id().get() != 0,
+                    "RunKilled run_id must be non-zero"
+                );
+                assert!(
+                    event.seq().get() != u64::MAX,
+                    "RunKilled seq must not be overflow"
+                );
+                assert_ne!(
+                    event.attempt(),
+                    Some(0),
+                    "RunKilled attempt must not be zero if present"
+                );
             }
         }
         Err(error) => {
@@ -52,16 +62,14 @@ fuzz_target!(|data: &[u8]| {
         0x0000_0000u32,
     ] {
         for payload_limit in [0u32, 1u32, 64u32, 1024u32, 4096u32, u32::MAX] {
-            let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(
-                data,
-                magic,
-                payload_limit,
-            );
+            let _ =
+                vb_storage::decode_record::<vb_storage::JournalEvent>(data, magic, payload_limit);
         }
     }
 
     // Exercise decode_record_header directly
-    let _ = vb_storage::decode_record_header(data, vb_storage::MAGIC_JOURNAL_EVENT, max_payload_len);
+    let _ =
+        vb_storage::decode_record_header(data, vb_storage::MAGIC_JOURNAL_EVENT, max_payload_len);
 
     // Exercise with truncated inputs (critical for kind 28 boundary)
     for truncation in 0..data.len().min(64) {

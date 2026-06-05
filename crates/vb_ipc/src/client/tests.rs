@@ -6,6 +6,7 @@ use crate::server::{IpcResponse, IpcServer};
 use std::io::{Read, Write};
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::ShardConfig;
@@ -203,8 +204,20 @@ fn adversarial_client_error_variants_are_distinct() {
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
+static SOCKET_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
 fn temp_socket_path(name: &str) -> PathBuf {
-    std::env::temp_dir().join(format!("vb_ipc_client_test_{name}_{}", std::process::id()))
+    let sequence = SOCKET_COUNTER.fetch_add(1, Ordering::Relaxed);
+    PathBuf::from(format!(
+        "/tmp/vbic{}_{}_{}.sock",
+        std::process::id(),
+        sequence,
+        bounded_socket_name(name)
+    ))
+}
+
+fn bounded_socket_name(name: &str) -> String {
+    name.chars().take(12).collect()
 }
 
 struct CleanupPath<'a>(&'a std::path::Path);

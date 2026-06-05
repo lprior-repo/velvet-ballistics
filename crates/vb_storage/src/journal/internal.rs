@@ -1,5 +1,5 @@
 use crate::{
-    codec::{decode_record, encode_record},
+    codec::{decode_journal_event, decode_record, encode_journal_event_record},
     constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES},
     error::JournalError,
     events::JournalEvent,
@@ -36,13 +36,7 @@ impl FjallJournal {
                 seq: event.seq(),
             });
         }
-        let value = encode_record(
-            MAGIC_JOURNAL_EVENT,
-            event.record_kind(),
-            event.seq().get(),
-            event,
-            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        )?;
+        let value = encode_journal_event_record(event)?;
         self.events.insert(key.to_vec(), value)?;
         Ok(())
     }
@@ -58,7 +52,7 @@ impl FjallJournal {
                 let Some(value) = self.events.get(key)? else {
                     return Err(JournalError::DuplicateEvent { run, seq });
                 };
-                let (_, existing) = decode_record::<JournalEvent>(
+                let (_, existing) = decode_journal_event(
                     value.as_ref(),
                     MAGIC_JOURNAL_EVENT,
                     MAX_JOURNAL_EVENT_PAYLOAD_BYTES,

@@ -8,7 +8,7 @@
 //! - E1-E22: Error variant classification (assert_typed_yaml_error exhaustiveness)
 //! - BT1-BT6: Boundary tests (fuzz gate: UTF-8, empty, non-UTF-8, etc.)
 
-use fuzz_lib::test_exports::{assert_typed_yaml_error, fuzz_yaml_events, MAX_FUZZ_PAYLOAD};
+use fuzz_lib::test_exports::{MAX_FUZZ_PAYLOAD, assert_typed_yaml_error, fuzz_yaml_events};
 use vb_yaml::YamlError;
 
 // ============================================================================
@@ -18,7 +18,8 @@ use vb_yaml::YamlError;
 #[test]
 fn harness_does_not_panic_on_valid_minimal_workflow() {
     // Given: a valid, minimal velvet-ballistics workflow
-    let yaml = "version: v1\nname: test\nwhen: manual\nsteps:\n  - id: 1\n    do: ping\n    input: 0\n";
+    let yaml =
+        "version: v1\nname: test\nwhen: manual\nsteps:\n  - id: 1\n    do: ping\n    input: 0\n";
     // When: fuzz_yaml_events is called with valid UTF-8
     // Then: must not panic (the function returns (), no return value to check)
     fuzz_yaml_events(yaml.as_bytes());
@@ -176,7 +177,6 @@ fn classify_binary_scalar_variant() {
     let err = YamlError::BinaryScalar;
     assert_classifies!(err);
 }
-
 
 // Remaining tests live in submodule
 mod group_b;

@@ -11,6 +11,7 @@ use proptest::prelude::*;
 use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_storage::{
     EventSeq, JournalEvent,
+    codec::decode_journal_event,
     constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES},
     decode_record, encode_record,
     records::RecordKind,
@@ -363,16 +364,17 @@ proptest! {
         };
         let encoded = encode_record(
             MAGIC_JOURNAL_EVENT,
-            RecordKind::SlotWritten,
+            RecordKind::StepSucceeded,
             13,
             &event,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         ).expect("encode should succeed");
-        let decoded = decode_record::<JournalEvent>(
+        let decoded = decode_journal_event(
             &encoded,
             MAGIC_JOURNAL_EVENT,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         ).expect("decode should succeed");
+        prop_assert_eq!(decoded.0.record_kind, RecordKind::StepSucceeded.id());
         prop_assert_eq!(decoded.1.run_id(), run);
     }
 
@@ -465,7 +467,7 @@ proptest! {
 
     // PO-3t44-026: All known RecordKind ids roundtrip correctly
     #[test]
-    fn po_3t44_026_all_record_kind_ids_valid(kind_id in 10u16..=27u16) {
+    fn po_3t44_026_all_record_kind_ids_valid(kind_id in 10u16..=29u16) {
         // Verify that all record kind IDs in the journal event range are known
         let kind = match kind_id {
             10 => RecordKind::RunAccepted,
@@ -486,6 +488,8 @@ proptest! {
             25 => RecordKind::RunResumed,
             26 => RecordKind::RunRetried,
             27 => RecordKind::RunAnswered,
+            28 => RecordKind::RunKilled,
+            29 => RecordKind::StepSucceeded,
             _ => return Ok(()),
         };
         prop_assert_eq!(kind.id(), kind_id);
@@ -596,4 +600,60 @@ proptest! {
         );
         prop_assert!(result.is_ok(), "valid record should decode successfully");
     }
+}
+
+#[test]
+fn vb_mrwe5_postcard_envelope_kind_assertions() -> Result<(), Box<dyn std::error::Error>> {
+    let run = RunId::new(1);
+    let step = JournalEvent::StepSucceeded {
+        run,
+        seq: EventSeq::new(13),
+        step: StepIdx::new(2),
+        output: SlotIdx::new(3),
+    };
+    let slot = JournalEvent::SlotWrittenEvent {
+        run,
+        seq: EventSeq::new(14),
+        slot: SlotIdx::new(3),
+        value: None,
+        extra: None,
+        attempt: 1,
+    };
+
+    let step_encoded = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::StepSucceeded,
+        13,
+        &step,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    let slot_encoded = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::SlotWritten,
+        14,
+        &slot,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+
+    let (step_envelope, step_decoded) = decode_journal_event(
+        &step_encoded,
+        MAGIC_JOURNAL_EVENT,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    let (slot_envelope, slot_decoded) = decode_journal_event(
+        &slot_encoded,
+        MAGIC_JOURNAL_EVENT,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+
+    assert_eq!(step_envelope.record_kind, RecordKind::StepSucceeded.id());
+    assert_eq!(slot_envelope.record_kind, RecordKind::SlotWritten.id());
+    assert_ne!(step_envelope.record_kind, slot_envelope.record_kind);
+    assert!(matches!(step_decoded, JournalEvent::StepSucceeded { .. }));
+    assert!(matches!(
+        slot_decoded,
+        JournalEvent::SlotWrittenEvent { .. }
+    ));
+
+    Ok(())
 }

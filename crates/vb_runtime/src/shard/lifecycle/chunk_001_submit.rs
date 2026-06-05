@@ -224,7 +224,7 @@ impl Shard {
         digest: vb_core::ids::WorkflowDigest,
         caps: CapabilitySet,
     ) -> RuntimeResult<Option<crate::admission::RunAdmission>> {
-        use crate::admission::{admit_artifact_run, AdmissionError};
+        use crate::admission::{AdmissionError, admit_artifact_run};
 
         match admit_artifact_run(self.artifact_store.as_ref(), self.policy, run, digest, caps) {
             Ok(admission) => Ok(Some(admission)),
@@ -283,6 +283,7 @@ impl Shard {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn validate_submit_admission(
         &self,
         run: RunId,

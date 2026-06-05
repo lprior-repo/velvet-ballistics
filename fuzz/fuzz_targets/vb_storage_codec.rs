@@ -59,7 +59,9 @@ fn fuzz_codec_encode_decode_path(data: &[u8]) {
                 max_payload,
             ) {
                 let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(
-                    &encoded, magic, max_payload,
+                    &encoded,
+                    magic,
+                    max_payload,
                 );
             }
         }
@@ -85,8 +87,7 @@ fn fuzz_codec_encode_decode_path(data: &[u8]) {
 fn fuzz_codec_header_decode_path(data: &[u8]) {
     let _ = vb_storage::decode_record_header(data, vb_storage::MAGIC_JOURNAL_EVENT, 1024);
     let _ = vb_storage::decode_record_header(data, vb_storage::MAGIC_BLOB, 65536);
-    let _ =
-        vb_storage::decode_record_header(data, vb_storage::MAGIC_COMPILED_ARTIFACT, 16_777_216);
+    let _ = vb_storage::decode_record_header(data, vb_storage::MAGIC_COMPILED_ARTIFACT, 16_777_216);
     let _ = vb_storage::decode_record_header(data, vb_storage::MAGIC_SNAPSHOT, 67_108_864);
     let _ = vb_storage::decode_record_header(data, vb_storage::MAGIC_WORKFLOW_SOURCE, 1_048_576);
     let _ = vb_storage::decode_record_header(data, 0xDEAD_BEEF, 1024);
@@ -126,11 +127,8 @@ fn fuzz_codec_payload_corruption(data: &[u8]) {
         if off < corrupted.len() {
             corrupted[off] = corrupted[off].wrapping_add(1);
         }
-        let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(
-            &corrupted,
-            magic,
-            max_payload,
-        );
+        let _ =
+            vb_storage::decode_record::<vb_storage::JournalEvent>(&corrupted, magic, max_payload);
     }
 
     for truncation in 0usize..encoded.len().min(64) {
@@ -208,28 +206,24 @@ fn fuzz_codec_schema_version_boundary(data: &[u8]) {
         encoded[4..6].copy_from_slice(&(schema_version + 1).to_le_bytes());
         let checksum = crc32c::crc32c(&encoded[..56]);
         encoded[56..60].copy_from_slice(&checksum.to_le_bytes());
-        let _ =
-            vb_storage::decode_record::<vb_storage::JournalEvent>(&encoded, magic, max_payload);
+        let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(&encoded, magic, max_payload);
 
         encoded[4..6].copy_from_slice(&(schema_version.wrapping_sub(1)).to_le_bytes());
         let checksum = crc32c::crc32c(&encoded[..56]);
         encoded[56..60].copy_from_slice(&checksum.to_le_bytes());
-        let _ =
-            vb_storage::decode_record::<vb_storage::JournalEvent>(&encoded, magic, max_payload);
+        let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(&encoded, magic, max_payload);
 
         let unknown_kind: u16 = 999;
         encoded[6..8].copy_from_slice(&unknown_kind.to_le_bytes());
         let checksum = crc32c::crc32c(&encoded[..56]);
         encoded[56..60].copy_from_slice(&checksum.to_le_bytes());
-        let _ =
-            vb_storage::decode_record::<vb_storage::JournalEvent>(&encoded, magic, max_payload);
+        let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(&encoded, magic, max_payload);
 
         let wrong_header_len: u32 = 99;
         encoded[8..12].copy_from_slice(&wrong_header_len.to_le_bytes());
         let checksum = crc32c::crc32c(&encoded[..56]);
         encoded[56..60].copy_from_slice(&checksum.to_le_bytes());
-        let _ =
-            vb_storage::decode_record::<vb_storage::JournalEvent>(&encoded, magic, max_payload);
+        let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(&encoded, magic, max_payload);
     }
 }
 

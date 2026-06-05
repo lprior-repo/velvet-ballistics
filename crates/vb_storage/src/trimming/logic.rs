@@ -5,7 +5,7 @@ use crate::trimming::{
     TrimBlocker, TrimDiagnostic, TrimEligibility, TrimError, TrimPolicy, TrimResult, TrimStatus,
     TrimmedRunResult,
 };
-use crate::{EventSeq, FjallJournal, JournalError, JournalEvent};
+use crate::{EventSeq, FjallJournal, JournalError};
 use fjall::Readable;
 use vb_core::RunId;
 
@@ -55,13 +55,6 @@ impl FjallJournal {
         Ok(latest)
     }
 
-    /// Trims journal events for a specific run.
-    ///
-    /// Removes events with sequence numbers less than the latest durable
-    /// snapshot sequence. If no durable snapshot exists for the run, returns an error.
-    ///
-    /// Trimming is idempotent: subsequent trims of an already-trimmed run
-    /// are a no-op.
     pub fn trim_events_for_run(
         &self,
         run: RunId,
@@ -139,7 +132,6 @@ impl FjallJournal {
     /// Non-destructive trim eligibility diagnostic.
     ///
     /// Scans all runs and reports eligibility WITHOUT deleting anything.
-    /// Safe to run during incident triage.
     pub fn trim_eligibility_diagnostic(
         &self,
         policy: TrimPolicy,
@@ -247,7 +239,7 @@ impl FjallJournal {
 
         for item in snap.prefix(&self.events, prefix) {
             let value = item.value().map_err(TrimError::from)?;
-            let (_, event) = crate::codec::decode_record::<JournalEvent>(
+            let (_, event) = crate::codec::decode_journal_event(
                 value.as_ref(),
                 crate::constants::MAGIC_JOURNAL_EVENT,
                 crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,

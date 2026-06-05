@@ -1753,7 +1753,7 @@ fn cli_run_reports_exact_input_mapping_decode_failure() {
 
 #[test]
 fn taint_secret_propagates_through_deterministic_action() {
-    use vb_core::action::{propagate_action_taint, Idempotency};
+    use vb_core::action::{Idempotency, propagate_action_taint};
     use vb_core::value::Taint;
 
     let result = propagate_action_taint(Idempotency::DeterministicPure, Taint::Secret);
@@ -1762,7 +1762,7 @@ fn taint_secret_propagates_through_deterministic_action() {
 
 #[test]
 fn taint_clean_stays_clean_for_pure_actions() {
-    use vb_core::action::{propagate_action_taint, Idempotency};
+    use vb_core::action::{Idempotency, propagate_action_taint};
     use vb_core::value::Taint;
 
     let result = propagate_action_taint(Idempotency::DeterministicPure, Taint::Clean);
@@ -1771,7 +1771,7 @@ fn taint_clean_stays_clean_for_pure_actions() {
 
 #[test]
 fn taint_derived_propagates() {
-    use vb_core::action::{propagate_action_taint, Idempotency};
+    use vb_core::action::{Idempotency, propagate_action_taint};
     use vb_core::value::Taint;
 
     let result = propagate_action_taint(Idempotency::IdempotentExternal, Taint::DerivedFromSecret);

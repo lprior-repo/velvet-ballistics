@@ -1599,7 +1599,7 @@ fn encode_accepts_run_header_kind_with_index_record_magic() -> Result<(), Journa
 }
 
 #[test]
-fn step_succeeded_event_maps_to_slot_written_kind() {
+fn step_succeeded_event_maps_to_step_succeeded_kind() {
     let event = JournalEvent::StepSucceeded {
         run: RunId::new(1),
         seq: EventSeq::new(0),
@@ -1608,8 +1608,8 @@ fn step_succeeded_event_maps_to_slot_written_kind() {
     };
     assert_eq!(
         event.record_kind(),
-        RecordKind::SlotWritten,
-        "StepSucceeded event should map to SlotWritten record kind"
+        RecordKind::StepSucceeded,
+        "StepSucceeded event should map to StepSucceeded record kind"
     );
 }
 

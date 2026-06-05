@@ -7,5 +7,5 @@
 //! All strategies generate from the actual type space using proptest
 //! combinators — no hardcoded dummy data (GOD RULE 1 compliance).
 
-mod strategies;
 mod proptests;
+mod strategies;

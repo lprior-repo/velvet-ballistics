@@ -33,6 +33,7 @@ pub mod indexes;
 pub mod journal;
 #[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_codec;
+pub mod mrwe5_contract;
 
 #[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_record_magic;
@@ -129,6 +130,21 @@ pub mod kani_vb_h09wf_ps011;
 #[cfg(all(kani, feature = "kani-vb-h09wf"))]
 pub mod kani_vb_h09wf_ps012;
 
+// --- vb-mrwe.5 Kani harnesses: durable JournalEvent record-kind parity. ---
+// Verification wiring only; no production runtime behavior changes.
+#[cfg(all(kani, feature = "kani-vb-mrwe5"))]
+#[path = "verification/kani/vb_mrwe5_compat_kind_family.rs"]
+pub mod vb_mrwe5_compat_kind_family;
+#[cfg(all(kani, feature = "kani-vb-mrwe5"))]
+#[path = "verification/kani/vb_mrwe5_decode_reject.rs"]
+pub mod vb_mrwe5_decode_reject;
+#[cfg(all(kani, feature = "kani-vb-mrwe5"))]
+#[path = "verification/kani/vb_mrwe5_kind_parity.rs"]
+pub mod vb_mrwe5_kind_parity;
+#[cfg(all(kani, feature = "kani-vb-mrwe5"))]
+#[path = "verification/kani/vb_mrwe5_roundtrip.rs"]
+pub mod vb_mrwe5_roundtrip;
+
 pub mod keys;
 pub mod preview;
 pub mod process_lock;
@@ -169,6 +185,8 @@ pub mod tests;
 pub mod trimming;
 pub mod types;
 pub mod vb_2bok_durability_gate_tests;
+#[cfg(any(test, flux))]
+pub mod verification;
 
 // ============================================================================
 // Re-exports from submodules
@@ -177,7 +195,7 @@ pub mod vb_2bok_durability_gate_tests;
 // Core types
 pub use constants::*;
 pub use error::{JournalError, KeyDecodeError};
-pub use events::{DurableActionOutcome, JournalEvent};
+pub use events::{DurableActionOutcome, JournalEvent, JournalEventKindClass};
 pub use records::{
     BlobRecord, CompiledIrRecord, RecordKind, RunHeaderRecord, WorkflowSourceRecord,
 };
@@ -212,8 +230,12 @@ pub use trimming::{
 
 // Codec
 pub use codec::{
-    decode_envelope_only, decode_record, decode_record_header, encode_record, encode_record_header,
-    verify_digest_match,
+    ExactJournalKindParity, JournalKindCompatibility, JournalSemanticDecodeDecision,
+    RecordKindFamilyDecision, ValidatedJournalRecord, classify_journal_kind_compatibility,
+    classify_journal_semantic_decode, classify_record_kind_family, decode_envelope_only,
+    decode_record, decode_record_header, decode_validated_journal_record,
+    encode_journal_event_record, encode_record, encode_record_header, is_journal_record_kind,
+    journal_kinds_are_exact_match, validate_journal_event_semantics, verify_digest_match,
 };
 
 // Admission

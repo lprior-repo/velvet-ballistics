@@ -46,6 +46,7 @@ mod record_tests {
         assert_eq!(RecordKind::RunAccepted.id(), 10);
         assert_eq!(RecordKind::StepStarted.id(), 11);
         assert_eq!(RecordKind::SlotWritten.id(), 12);
+        assert_eq!(RecordKind::StepSucceeded.id(), 29);
         assert_eq!(RecordKind::ActionScheduled.id(), 13);
         assert_eq!(RecordKind::ActionCompleted.id(), 14);
         assert_eq!(RecordKind::ActionFailed.id(), 15);
@@ -68,6 +69,7 @@ mod record_tests {
             RecordKind::RunAccepted.id(),
             RecordKind::StepStarted.id(),
             RecordKind::SlotWritten.id(),
+            RecordKind::StepSucceeded.id(),
             RecordKind::ActionScheduled.id(),
             RecordKind::ActionCompleted.id(),
             RecordKind::ActionFailed.id(),

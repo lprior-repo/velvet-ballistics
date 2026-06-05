@@ -9,7 +9,7 @@
 //! - CV1-CV5: Corpus seed validation
 
 use fuzz_lib::test_exports::fuzz_yaml_events;
-use vb_yaml::{validate_yaml_profile, parse_yaml_events, build_source_map};
+use vb_yaml::{build_source_map, parse_yaml_events, validate_yaml_profile};
 
 // ============================================================================
 // I1-I14: Harness↔Parser Integration — Exercise error variants through fuzz_yaml_events
@@ -58,8 +58,7 @@ fn integration_anchor_alias_triggers_yaml_error() {
         assert!(
             matches!(
                 e,
-                vb_yaml::YamlError::AnchorAliasMerge
-                    | vb_yaml::YamlError::ForbiddenFeature { .. }
+                vb_yaml::YamlError::AnchorAliasMerge | vb_yaml::YamlError::ForbiddenFeature { .. }
             ),
             "expected AnchorAliasMerge or ForbiddenFeature, got {e:?}"
         );
@@ -99,8 +98,7 @@ fn integration_custom_tag_triggers_yaml_error() {
         assert!(
             matches!(
                 e,
-                vb_yaml::YamlError::CustomTag { .. }
-                    | vb_yaml::YamlError::ForbiddenFeature { .. }
+                vb_yaml::YamlError::CustomTag { .. } | vb_yaml::YamlError::ForbiddenFeature { .. }
             ),
             "expected CustomTag or ForbiddenFeature, got {e:?}"
         );
@@ -131,8 +129,7 @@ fn integration_binary_scalar_triggers_yaml_error() {
 #[test]
 fn integration_multiple_documents_triggers_yaml_error() {
     // Given: YAML with multiple documents
-    let yaml =
-        "version: v1\nname: test\nwhen: manual\nsteps:\n  - id: 1\n    do: ping\n    input: 0\n---\nversion: v1\nname: test2\nwhen: manual\nsteps:\n  - id: 1\n    do: ping\n    input: 0\n";
+    let yaml = "version: v1\nname: test\nwhen: manual\nsteps:\n  - id: 1\n    do: ping\n    input: 0\n---\nversion: v1\nname: test2\nwhen: manual\nsteps:\n  - id: 1\n    do: ping\n    input: 0\n";
     // When: harness and profile process it
     // Then: must not panic — multiple documents are rejected
     fuzz_yaml_events(yaml.as_bytes());
@@ -190,7 +187,6 @@ fn integration_unsupported_feature_triggers_yaml_error() {
         );
     }
 }
-
 
 // Remaining tests live in submodule
 mod group_b;

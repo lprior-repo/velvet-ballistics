@@ -1,5 +1,5 @@
 //! Continuation of yaml events harness tests (group B: tests 19-38).
-use fuzz_lib::test_exports::{assert_typed_yaml_error, fuzz_yaml_events, MAX_FUZZ_PAYLOAD};
+use fuzz_lib::test_exports::{MAX_FUZZ_PAYLOAD, assert_typed_yaml_error, fuzz_yaml_events};
 use vb_yaml::YamlError;
 
 #[test]
@@ -133,13 +133,9 @@ fn exhaustive_match_all_variants_in_loop() {
         YamlError::UnsupportedFeature {
             feature: "merge_keys",
         },
-        YamlError::DuplicateKey {
-            key: "key".into(),
-        },
+        YamlError::DuplicateKey { key: "key".into() },
         YamlError::AnchorAliasMerge,
-        YamlError::CustomTag {
-            tag: "!tag".into(),
-        },
+        YamlError::CustomTag { tag: "!tag".into() },
         YamlError::BinaryScalar,
         YamlError::MultipleDocuments { count: 2 },
         YamlError::AmbiguousScalar {
@@ -161,10 +157,7 @@ fn exhaustive_match_all_variants_in_loop() {
             len: 99999,
             max: 8192,
         },
-        YamlError::SequenceTooLong {
-            len: 999,
-            max: 256,
-        },
+        YamlError::SequenceTooLong { len: 999, max: 256 },
         YamlError::MappingTooLarge {
             count: 999,
             max: 256,

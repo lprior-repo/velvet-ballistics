@@ -280,14 +280,14 @@ fn unknown_record_kind_value_28_returns_none() {
 }
 
 // =============================================================================
-// B52: is_known_record_kind(29) returns false
+// B52: is_known_record_kind(29) returns true for StepSucceeded.
 // =============================================================================
 
 #[test]
-fn is_known_record_kind_29_returns_false() {
+fn is_known_record_kind_29_returns_true() {
     assert!(
-        !is_known_record_kind(29),
-        "kind 29 must NOT be recognized as a known record kind"
+        is_known_record_kind(29),
+        "kind 29 must be recognized as StepSucceeded"
     );
 }
 
@@ -304,21 +304,15 @@ fn is_known_record_kind_0xffff_returns_false() {
 }
 
 // =============================================================================
-// B53: validate_kind_family(MAGIC_JOURNAL_EVENT, 29) returns Err
+// B53: validate_kind_family(MAGIC_JOURNAL_EVENT, 29) returns Ok.
 // =============================================================================
 
 #[test]
-fn validate_kind_family_journal_event_29_returns_rejection() {
+fn validate_kind_family_journal_event_29_returns_ok() {
     let result = validate_kind_family(MAGIC_JOURNAL_EVENT, 29);
     assert!(
-        matches!(
-            result,
-            Err(JournalError::RecordKindFamilyMismatch {
-                magic: MAGIC_JOURNAL_EVENT,
-                kind: 29
-            })
-        ),
-        "kind 29 must be rejected for MAGIC_JOURNAL_EVENT, got {:?}",
+        result.is_ok(),
+        "kind 29 must be accepted for MAGIC_JOURNAL_EVENT, got {:?}",
         result
     );
 }
@@ -431,9 +425,9 @@ fn is_known_record_kind_51_returns_false() {
 // =============================================================================
 
 #[test]
-fn unknown_record_kind_value_29_returns_some_29() {
+fn unknown_record_kind_value_29_returns_none() {
     let result = unknown_record_kind_value(29);
-    assert_eq!(result, Some(29));
+    assert_eq!(result, None);
 }
 
 #[test]
@@ -453,11 +447,11 @@ fn unknown_record_kind_value_known_returns_none_for_kind_1() {
 // =============================================================================
 
 #[test]
-fn validate_known_kind_rejects_kind_29() {
+fn validate_known_kind_accepts_kind_29() {
     let result = validate_known_kind(29);
     assert!(
-        matches!(result, Err(JournalError::UnknownRecordKind { kind: 29 })),
-        "validate_known_kind must reject unknown kind 29, got {:?}",
+        result.is_ok(),
+        "validate_known_kind must accept StepSucceeded kind 29, got {:?}",
         result
     );
 }
@@ -474,11 +468,11 @@ fn validate_known_kind_accepts_kind_10() {
 
 #[test]
 fn kind_28_does_not_affect_known_kinds_elsewhere() {
-    // Ensure adding kind 28 didn't accidentally allow adjacent un-admitted kinds
+    // Ensure adding kind 28 and StepSucceeded kind 29 did not accidentally allow
+    // adjacent un-admitted kinds.
     assert!(!is_known_record_kind(4));
     assert!(!is_known_record_kind(5));
     assert!(!is_known_record_kind(9));
-    assert!(!is_known_record_kind(29));
     assert!(!is_known_record_kind(31));
     assert!(!is_known_record_kind(39));
     assert!(!is_known_record_kind(41));
