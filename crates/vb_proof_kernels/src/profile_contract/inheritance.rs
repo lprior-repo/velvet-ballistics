@@ -55,14 +55,13 @@ fn resolve_inner(
     // 1. Resolve parent chain first (base)
     if let Some(parent_name) = profile.inherits {
         // Find parent in workspace
-        let parent = all.find(parent_name).ok_or_else(|| {
-            ResolveError::InheritTargetMissing {
-                profile: profile.name,
-                parent: parent_name,
-            }
+        let parent = all.find(parent_name).ok_or(ResolveError::InheritTargetMissing {
+            profile: profile.name,
+            parent: parent_name,
         })?;
 
-        let parent_resolved = resolve_inner(parent, all, depth + 1, visited)?;
+        let parent_resolved =
+            resolve_inner(parent, all, depth.saturating_add(1), visited)?;
 
         // Apply parent settings as base
         for (k, v) in &parent_resolved {

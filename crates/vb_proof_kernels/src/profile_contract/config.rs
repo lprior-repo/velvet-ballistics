@@ -23,14 +23,11 @@ impl ProfileConfig {
         settings: Vec<(ProfileKey, SettingValue)>,
     ) -> Self {
         let mut inherits = None;
-        for i in 0..settings.len() {
-            let (k, v) = &settings[i];
-            if *k == ProfileKey::Inherits {
-                if let SettingValue::String(s) = v {
-                    if *s == StrVal::Release {
-                        inherits = Some(ProfileName::Release);
-                    }
-                }
+        for (k, v) in &settings {
+            if *k == ProfileKey::Inherits
+                && matches!(v, SettingValue::String(s) if *s == StrVal::Release)
+            {
+                inherits = Some(ProfileName::Release);
             }
         }
         Self { name, inherits, settings }
@@ -38,12 +35,7 @@ impl ProfileConfig {
 
     /// Look up a setting value by key. Returns None if not present.
     pub fn get(&self, key: ProfileKey) -> Option<&SettingValue> {
-        for i in 0..self.settings.len() {
-            if self.settings[i].0 == key {
-                return Some(&self.settings[i].1);
-            }
-        }
-        None
+        self.settings.iter().find(|(k, _)| *k == key).map(|(_, v)| v)
     }
 
     /// Returns true if the profile has explicit `inherits` pointing at `parent`.

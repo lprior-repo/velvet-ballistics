@@ -139,7 +139,7 @@ pub enum StrVal {
 }
 
 impl StrVal {
-    pub fn from_str(s: &str) -> Self {
+    pub fn parse(s: &str) -> Self {
         match s {
             "thin" => Self::Thin,
             "fat" => Self::Fat,
