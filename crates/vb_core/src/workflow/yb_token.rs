@@ -161,8 +161,8 @@ impl YbTokenBudget {
 
 impl Default for YbTokenBudget {
     fn default() -> Self {
-        // Default budget uses 1 token to avoid InvalidInitial error
-        Self::new(1).expect("YbTokenBudget::default should always succeed with initial=1")
+        // Direct struct literal: 1 is guaranteed valid (non-zero), avoiding .expect()/.unwrap()
+        Self { initial: 1, remaining: 1 }
     }
 }
 
