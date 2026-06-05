@@ -1,6 +1,6 @@
 # Fjall Storage Journal
 
-Fjall is the only embedded durability substrate in this scaffold. It is used as an append-only journal for workflow events, not as the in-memory execution state.
+Fjall is the required embedded durability substrate for the current Backend / IR Interpreter Complete milestone. It stores workflow source, compiled IR, run headers, journal events, snapshots, blobs, and indexes; it is not the in-memory execution state.
 
 ## Key Layout
 
@@ -24,10 +24,9 @@ Duplicate `(RunId, EventSeq)` appends are rejected. Event history is immutable; 
 
 | Mode | Meaning | Crash Behavior |
 | --- | --- | --- |
-| memory | no Fjall append | run is lost on process crash |
-| journaled | append without explicit fsync barrier | OS/page-cache durability only |
-| group_commit | batched persist barrier | durable after batch barrier completes |
-| strict | persist barrier for each critical event | strongest local durability, highest latency |
+| Volatile | no Fjall append | run is lost on process crash |
+| Journaled | bounded group commit via `JournalWriterQueue` | acknowledged data-loss window until persistence barrier |
+| Strict | synchronous `PersistMode::SyncAll` after critical writes | strongest local durability, highest latency |
 
 Default policy target:
 
@@ -38,4 +37,8 @@ Default policy target:
 
 ## Recovery
 
-Current replay returns ordered per-run events. Future recovery will hydrate `RunFrame` state from `RunAccepted` plus ordered step events. Snapshots can be added after the event log is stable; they must never replace immutable event history.
+Current-scope recovery loads accepted artifacts by digest and never reparses YAML for existing runs. Full recovery replays the journal when no snapshot exists. Snapshot recovery hydrates from the latest snapshot and replays the tail journal.
+
+Recovery must reconstruct slot values, slot taint, step lifecycle, pending action state where supported, and terminal outcomes from durable records. Unsupported live recovery states must fail closed with typed errors instead of hydrating a broken `RunFrame`.
+
+The master drift register still treats pending-action hydration and strict acknowledgement behavior as high-risk evidence areas. Do not claim crash safety without end-to-end recovery evidence.

@@ -4,7 +4,7 @@ The runtime core is a single-process state-machine engine. It consumes immutable
 
 ## Current Scope
 
-`vb-core` owns:
+`vb_core` owns:
 
 ```text
 RunFrame

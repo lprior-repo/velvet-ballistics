@@ -11,6 +11,10 @@ workflow name for cold diagnostics
 WorkflowDigest
 boxed CompiledNode array
 boxed constant pool
+boxed expression program table
+boxed accessor table
+boxed action contract table
+ResourceContract
 slot_count
 entry StepIdx
 ```
@@ -49,11 +53,15 @@ entry outside node array
 step targets outside node array
 slot references outside slot_count
 constant references outside constant pool
+expression references outside expression table
+accessor references outside accessor table
+action references outside action table
+resource contracts outside bounded policy
 ```
 
-## Future IR Extensions
+## Current Artifact Boundary
 
-Upcoming phases add:
+The current master treats these as current-scope artifact concerns, not future extensions:
 
 ```text
 WorkflowId
@@ -64,5 +72,6 @@ expression bytecode table
 accessor table
 native action dispatch nodes
 versioned binary IR encoding
-generated Rust parity tests
 ```
+
+Generated Rust parity tests are removed from the current Backend / IR Interpreter Complete milestone. They belong to the deferred codegen track documented in `docs/deferred-codegen-maxperf.md`.

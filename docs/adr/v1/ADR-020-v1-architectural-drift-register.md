@@ -18,8 +18,7 @@ Known architectural drift is tracked explicitly. Drift entries must state the de
 ## Current High-Risk Drift
 
 - Crash recovery pending-action hydration and strict acknowledgement behavior.
-- Existing docs using stale names or stale scope language.
-- Existing docs describing current master requirements as future-only.
+- Future doc edits may reintroduce stale names, deferred-scope leakage, or evidence laundering unless ADR review gates are run.
 
 ## Master Anchors
 

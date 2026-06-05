@@ -4,7 +4,7 @@ Fjall is the embedded persistence layer. The runtime core remains in memory; per
 
 ## Current Scope
 
-`vb-storage` owns the Fjall journal boundary. Current storage writes compact postcard-encoded `JournalEvent` values into an `events` keyspace.
+`vb_storage` owns the Fjall journal boundary. Current storage writes compact postcard-encoded `JournalEvent` values into an `events` keyspace.
 
 Current event key:
 

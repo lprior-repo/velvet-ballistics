@@ -6,7 +6,7 @@ This audit records the review status for the `velvet-ballistics/v1` ADR set.
 
 Status: acceptable as an architecture baseline, not as implementation proof.
 
-The ADRs are coherent enough for implementation agents to use, but several repository docs still drift from the master contract and must not be treated as authoritative.
+The ADRs are coherent enough for implementation agents to use. Narrative docs have been reconciled for the known naming and current/deferred scope contradictions, but the master document still remains authoritative over every supporting doc.
 
 ## Consistent Decisions
 
@@ -20,9 +20,9 @@ The ADRs are coherent enough for implementation agents to use, but several repos
 
 ## Sharp Edges
 
-### 1. Existing docs still contain stale product and crate names
+### 1. Narrative docs can drift again
 
-`docs/runtime-architecture.md`, `docs/language-spec.md`, and several related docs use old product spelling or hyphenated crate names. The ADRs use canonical module names, but the old docs need cleanup.
+Known stale product spelling, hyphenated crate names, draft language status, future-only IR wording, future-only recovery wording, and PGO current-gate wording have been reconciled. The remaining risk is recurrence, so ADR review gates must be run on future doc edits.
 
 ### 2. Recovery is still the highest-risk current-scope claim
 
@@ -40,15 +40,11 @@ Tests that bypass runtime admission do not prove production admission. ADR-016 r
 
 The master preserves UI and codegen extension material, but current acceptance excludes it. ADR-021 is the fence.
 
-### 6. Existing performance governance still mentions PGO tasks
+### 6. Performance governance still needs evidence discipline
 
-Master section 41 removes PGO and maxperf from current release gates. Any PGO task is future or advisory unless a future bead reopens it.
+Master section 41 removes PGO and maxperf from current release gates. Any PGO task is future or advisory unless a future bead reopens it. Current performance claims still require measured IR-interpreter evidence.
 
 ## Required Follow-up Beads
 
-1. Clean existing docs for canonical product spelling and crate names.
-2. Reconcile `docs/language-spec.md` with current backend scope and deferred UI status.
-3. Update `docs/compiled-ir.md` so current expression/action IR features are not described as future.
-4. Update `docs/storage-journal.md` so recovery is not described as future-only.
-5. Remove or quarantine PGO current-gate language from `docs/rust-governance.md`.
-6. Add an automated doc drift scan for these ADR gates.
+1. Add an automated doc drift scan for these ADR gates.
+2. Keep recovery evidence gaps tracked in implementation beads until pending-action recovery and strict acknowledgement behavior are closed by raw evidence.

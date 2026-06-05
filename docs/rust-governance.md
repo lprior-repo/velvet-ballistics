@@ -1,6 +1,6 @@
 # Rust Governance
 
-Velvet Ballastics uses pinned nightly Rust for bounded, explicit performance work. The pin is `nightly-2026-04-28` in `rust-toolchain.toml` and must be used for first-party builds.
+`velvet-ballistics` uses pinned nightly Rust for bounded, explicit performance and verification work. The pin is `nightly-2026-04-28` in `rust-toolchain.toml` and must be used for first-party builds.
 
 ## Nightly Feature Gate
 
@@ -58,7 +58,9 @@ Holzmann bounds are mandatory:
 
 ## Profiles
 
-`release` is optimized for normal release builds. `hardened` inherits release settings but enables debug assertions, overflow checks, and debug info for verification builds. `maxperf` keeps fat LTO and one codegen unit for benchmarked performance builds.
+`release` is optimized for normal release builds. `hardened` inherits release settings but enables debug assertions, overflow checks, and debug info for verification builds.
+
+`maxperf`, PGO, generated Rust execution, and `target-cpu=native` workflows are deferred from the current Backend / IR Interpreter Complete milestone. They must not be current release gates or performance evidence unless a future architecture bead reactivates them.
 
 ## Required Gates
 
@@ -82,16 +84,13 @@ Governance and deeper verification are represented as Moon tasks. A represented 
 - `bench-build`: compiles benchmarks.
 - `benchmark-regression-policy`: validates `contracts/perf-budget.yaml` and `evidence/benchmark-evidence.jsonl` so every speed claim has baseline/result/raw-log evidence, explicit thresholds, and current-milestone `ir-interpreter` scope.
 - `benchmark-proof`: records a Criterion baseline named `vb-current` when real benchmarks exist; it is not itself acceptance evidence until paired with `benchmark-regression-policy` metadata.
-- `pgo-instrument-build`: builds with `-Cprofile-generate=target/pgo/profiles`.
-- `pgo-optimized-build`: builds with `-Cprofile-use=target/pgo/merged.profdata` after profile merge.
-
-PGO collection requires running representative workloads between instrumented build and optimized build, then merging raw profiles into `target/pgo/merged.profdata` with `llvm-profdata` from the pinned toolchain.
+- Deferred PGO probes may exist for future research, but they are not current release gates and do not prove current IR-interpreter performance.
 
 ## Performance Crate And Tool Policy
 
 Performance crates are allowed only when they beat simple first-party code or provide audited primitives that cannot be maintained locally. Each addition must name the hot path, the alternative considered, the expected resource bound, and the benchmark that proves value.
 
-Performance tools must measure the claimed behavior. Use Criterion for statistical microbenchmarks, `iai-callgrind` or Valgrind for instruction/cache evidence, `perf` or `samply` for CPU profiles, `cargo bloat` for size investigation, and PGO only after a representative workload exists.
+Performance tools must measure the claimed behavior. Use Criterion for statistical microbenchmarks, `iai-callgrind` or Valgrind for instruction/cache evidence, `perf` or `samply` for CPU profiles, and `cargo bloat` for size investigation. PGO evidence is future-scope unless reactivated by a dedicated architecture bead.
 
 Current Criterion scaffold benchmarks that only compile placeholder harnesses are compileability checks, not performance evidence. They cannot justify latency, throughput, allocation, instruction-count, or maxperf claims.
 

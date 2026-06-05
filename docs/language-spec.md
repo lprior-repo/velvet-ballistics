@@ -1,11 +1,11 @@
-# Velvet Ballastics Workflow Language v1
+# `velvet-ballistics/v1` Workflow Language
 
-Status: draft
+Status: current backend/IR-interpreter language contract; subordinate to `velvet-ballistics-MASTER.md`
 Canonical workflow version: `velvet-ballistics/v1`
 Canonical action manifest version: `velvet/action/v1`
 Suggested file extensions: `.velvet.yaml`, `.vb.yaml`, `.workflow.yaml`
 
-Velvet Ballastics is a strict YAML workflow language and durable execution model for high-performance workflow orchestration.
+`velvet-ballistics` is a strict YAML authoring language and durable execution model for the current IR-interpreter runtime.
 
 The language is built around one sentence:
 
@@ -13,15 +13,15 @@ The language is built around one sentence:
 When this happens, take this input, run these steps, return this result.
 ```
 
-YAML is the authoring source of truth. Runtime execution never interprets YAML directly; implementations compile YAML into normalized workflow IR and execute that IR against a durable event journal.
+YAML is an authoring input, not the runtime source of truth. Runtime execution never interprets YAML directly; implementations compile YAML into accepted numeric workflow artifacts and execute those artifacts against a durable event journal.
 
 ```text
 YAML document
   -> restricted YAML parser
   -> workflow AST
-  -> validator
-  -> normalized workflow IR
-  -> immutable workflow snapshot
+  -> validator and expression compiler
+  -> compiled numeric workflow IR
+  -> accepted artifact bound by digest
   -> durable runtime execution
   -> event journal
   -> inspectable run state
@@ -29,31 +29,13 @@ YAML document
 
 ## Product Naming
 
-Product name:
+Canonical product, binary, and package name: `velvet-ballistics`.
 
-```text
-Velvet Ballastics
-```
+Canonical Rust crate/module prefix: `velvet_ballistics`.
 
-Language name:
+Canonical language version: `velvet-ballistics/v1`.
 
-```text
-Velvet Ballastics Workflow Language
-```
-
-Suggested abbreviations:
-
-```text
-VBWL
-Velvet
-```
-
-Suggested CLI names:
-
-```bash
-velvet
-vb
-```
+Legacy names such as `Velvet Ballastics`, `velvet`, and `vb` are not valid for new docs, CLI examples, diagnostics, generated paths, packages, or implementation artifacts unless explicitly labeled as migration references.
 
 ## Core Concepts
 
@@ -79,7 +61,7 @@ when:
 steps:
   - id: greeting
     save:
-      text: Hello from Velvet Ballastics
+      text: Hello from velvet-ballistics
 
 result:
   message: $greeting.text
@@ -87,7 +69,7 @@ result:
 
 ## Design Goals
 
-Velvet Ballastics v1 is designed to be strict, small, typed, durable, inspectable, AI-generatable, AI-debuggable, graph-renderable, high-performance, single-binary friendly, Docker-optional, and Kubernetes-optional.
+`velvet-ballistics/v1` is designed to be strict, small, typed, durable, inspectable, AI-generatable, AI-debuggable, graph-renderable, high-performance, single-binary friendly, Docker-optional, and Kubernetes-optional.
 
 The language favors explicit bounded primitives over arbitrary code and arbitrary cycles.
 
@@ -196,7 +178,7 @@ result:
   message: $greeting.text
 ```
 
-Current scaffold note: the Phase 0 compiler executes only a numeric-slot subset of `save`, `choose`, and `finish`. It validates `inputs` schema syntax and constraints but does not yet compile input mapping into runtime slots. It accepts `vars`, `secrets`, and `examples` only after shallow shape validation. It accepts `id` and string `name` step metadata, but rejects `if`, `with`, `try_again`, `on_error`, and `then` until those control semantics are compiled. Phase 0 `choose` accepts only `condition`, `on_true`, and `on_false`; Phase 0 `finish` accepts only `result`. It accepts an empty top-level `result` object but rejects non-empty result mappings until result-object IR exists. This is an implementation subset, not a different public language.
+Implementation status note: the public language is larger than any single compiler slice. Current backend acceptance is defined by `velvet-ballistics-MASTER.md`, especially the Backend / IR Interpreter Complete milestone and the mandatory function surfaces for `vb_yaml`, `vb_validate`, `vb_expr`, `vb_compile`, `vb_core`, `vb_runtime`, `vb_storage`, and `vb_ipc`.
 
 ## Names And IDs
 
@@ -258,10 +240,10 @@ v1 is strict. These legacy/internal aliases are not accepted as public YAML prim
 | `reduce` | `aggregate` |
 | `together` | `parallel` |
 
-A future CLI migration command may rewrite old files into canonical v1 syntax:
+A future CLI migration command may rewrite old files into canonical v1 syntax. This command is a future migration example, not a current backend blocker:
 
 ```bash
-velvet migrate old.yaml --from twerk/v1 --to velvet-ballistics/v1
+velvet-ballistics migrate old.yaml --from twerk/v1 --to velvet-ballistics/v1
 ```
 
 ## Triggers
@@ -1290,7 +1272,7 @@ Rules:
 - Examples must validate against `inputs`.
 - Real secrets are forbidden.
 - Fake example secrets are still masked.
-- Examples should be runnable by `velvet test flow.yaml` and `velvet dry-run flow.yaml --example bug_report`.
+- Examples should be runnable by `velvet-ballistics test flow.yaml` and `velvet-ballistics simulate flow.yaml --example bug_report` once the corresponding CLI commands are implemented.
 
 ## Duration Grammar
 
@@ -1632,32 +1614,33 @@ The workflow validator must use action manifests to check unknown action names, 
 Core commands:
 
 ```bash
-velvet validate flow.yaml
-velvet explain flow.yaml
-velvet graph flow.yaml --format mermaid
-velvet dry-run flow.yaml --input input.json
-velvet run flow.yaml --input input.json --jsonl
-velvet inspect <run_id> --json
-velvet events <run_id> --jsonl
-velvet logs <run_id> --jsonl
-velvet trace <run_id> --json
-velvet replay <run_id> --from-step classify --json
-velvet bundle <run_id> --json
-velvet actions list --json
-velvet actions show http.get --json
-velvet test flow.yaml --json
-velvet serve
+velvet-ballistics verify flow.yaml
+velvet-ballistics explain flow.yaml
+velvet-ballistics graph flow.yaml --format mermaid
+velvet-ballistics simulate flow.yaml --input input.json
+velvet-ballistics submit flow.yaml --input input.json --format jsonl
+velvet-ballistics inspect <run_id> --format json
+velvet-ballistics events <run_id> --format jsonl
+velvet-ballistics logs <run_id> --format jsonl
+velvet-ballistics trace <run_id> --format json
+velvet-ballistics replay <run_id> --from-step classify --format json
+velvet-ballistics bundle <run_id> --format json
+velvet-ballistics actions list --format json
+velvet-ballistics actions show http.get --format json
+velvet-ballistics test flow.yaml --format json
 ```
 
 Machine output rules:
 
-- `--json` emits one JSON document.
-- `--jsonl` emits one JSON object per line.
+- `--format json` emits one JSON document as a cold CLI projection.
+- `--format jsonl` emits one JSON object per line as a cold CLI projection.
 - No ANSI color in machine mode.
 - No progress spinners in machine mode.
 - No interactive prompts in machine mode.
 - Errors must be structured JSON in machine mode.
 - Secrets are redacted by default.
+
+Machine JSON and JSONL are CLI projections only. They do not permit JSON routing or JSON parsing inside `vb_core`, `vb_runtime`, `vb_storage`, or `vb_ipc`.
 
 ## Event Journal
 
@@ -1866,8 +1849,8 @@ YAML parser
   -> AST
   -> validator
   -> normalized IR
-  -> immutable snapshot
-  -> runtime scheduler
+  -> accepted artifact bound by digest
+  -> shard-owned synchronous runtime
   -> Fjall-backed event journal
   -> materialized run state
 ```
@@ -1876,18 +1859,19 @@ Use compiled workflow IR, interned IDs, compact numeric step indexes, precompile
 
 Avoid string map lookups in hot loops, runtime YAML traversal, dynamic schema interpretation during every step, allocation per expression token, revalidating static workflow structure during runs, unbounded async task spawning, and unbounded event buffers.
 
-Suggested Rust crate layout:
+Current Rust crate layout:
 
 ```text
 crates/
-  velvet-core/
-  velvet-runtime/
-  velvet-storage/
-  velvet-actions/
-  velvet-cli/
-  velvet-server/
-  velvet-web/
-  velvet/
+  vb_core/
+  vb_yaml/
+  vb_validate/
+  vb_expr/
+  vb_compile/
+  vb_storage/
+  vb_runtime/
+  vb_ipc/
+  vb_cli/
 ```
 
 Recommended Fjall keyspaces:
@@ -1978,15 +1962,12 @@ Recommended build order:
 17. choose
 18. wait
 19. webhook/manual triggers
-20. Leptos read-only graph UI
-21. Leptos run inspector
-22. for_each
-23. parallel
-24. repeat
-25. gather
-26. aggregate
-27. ask
-28. visual editor
+20. for_each
+21. parallel
+22. repeat
+23. gather
+24. aggregate
+25. ask
 ```
 
 ## v1 North Star
@@ -1995,11 +1976,9 @@ The first killer demo should be:
 
 ```text
 Download one binary.
-Run `velvet serve`.
-Open the Leptos UI.
-Create or paste YAML.
-Validate it.
-Run it.
+Run `velvet-ballistics verify flow.yaml`.
+Run `velvet-ballistics simulate flow.yaml`.
+Submit the accepted artifact through direct Rust API or binary IPC.
 Kill the process mid-run.
 Restart it.
 The run resumes.
@@ -2011,6 +1990,6 @@ Export a debug bundle.
 The language and runtime should prove this thesis:
 
 ```text
-Velvet Ballastics is a truly open-source, single-binary, durable workflow orchestrator
-with Step Functions clarity, n8n approachability, and a beautiful inspectable UI.
+velvet-ballistics is an AI-safe, local-first, single-server durable execution engine
+that verifies AI-authored workflows before admission and exposes inspectable replay evidence.
 ```

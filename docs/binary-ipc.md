@@ -4,7 +4,7 @@ The fastest control path is direct in-process Rust API. IPC exists for external 
 
 ## Current Scope
 
-`vb-ipc` currently exposes bounded in-memory ingress:
+`vb_ipc` currently exposes bounded in-memory ingress:
 
 ```text
 MemoryIngress

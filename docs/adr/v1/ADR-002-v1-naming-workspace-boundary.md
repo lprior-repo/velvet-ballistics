@@ -26,9 +26,9 @@ Production code lives under `crates/`. Cross-crate integration tests and benchma
 - Rust crate references use actual workspace crate names such as `vb_core`, `vb_yaml`, `vb_validate`, `vb_expr`, `vb_compile`, `vb_storage`, `vb_runtime`, and `vb_ipc`.
 - No production code, tests, or benchmarks are added at repository root.
 
-## Known Drift
+## Drift Status
 
-Some older docs use stale product spelling and hyphenated crate names. Those docs are not authoritative and need cleanup beads.
+Known stale product spelling and hyphenated crate names in narrative docs have been reconciled. Future recurrence should be caught by ADR review gates.
 
 ## Master Anchors
 

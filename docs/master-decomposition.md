@@ -49,17 +49,17 @@ distributed consensus, replication, quorum, or leader election
 | Assurance and evidence | 36, 37, 38, 39, 40, 43, 60, 77 | ADR-018, ADR-019, ADR-022 | Evidence laundering, placeholder benchmarks, toy proof models |
 | Architectural drift | 67 | ADR-020 | Known gaps hidden by high-level docs |
 
-## Existing Docs That Must Be Reconciled
+## Existing Docs Reconciled Against This ADR Set
 
-These existing docs contain useful material but must remain subordinate to the master document and this ADR package:
+These existing docs remain subordinate to the master document and this ADR package. They have been updated to remove the known stale naming and current/deferred scope contradictions identified by the ADR freeze audit.
 
-| Existing doc | Problem to watch |
+| Existing doc | Current alignment note |
 |--------------|------------------|
-| `docs/runtime-architecture.md` | Uses stale product spelling and hyphenated crate names; must map to `vb_core`, `vb_compile`, `vb_ipc`, `vb_storage`, and `vb_runtime`. |
-| `docs/language-spec.md` | Still says `Status: draft`, uses stale product/CLI/UI language, and contains UI north-star material outside current backend scope. |
-| `docs/compiled-ir.md` | Describes expression bytecode and action IDs as future even though the master treats them as current mandatory coverage. |
-| `docs/storage-journal.md` | Says recovery hydration is future while the master makes recovery/replay part of current DoD and drift closure. |
-| `docs/rust-governance.md` | Still references PGO tasks; master section 41 removes PGO and maxperf from current release gates. |
+| `docs/runtime-architecture.md` | Uses canonical naming and maps current runtime ownership to `vb_core`, `vb_yaml`, `vb_validate`, `vb_expr`, `vb_compile`, `vb_ipc`, `vb_storage`, and `vb_runtime`. |
+| `docs/language-spec.md` | Marked as current backend/IR-interpreter language contract; legacy CLI/UI wording is removed or labeled as migration-only. |
+| `docs/compiled-ir.md` | Treats expression bytecode, accessors, action IDs, and artifact boundaries as current master requirements. |
+| `docs/storage-journal.md` | Treats recovery and replay as current-scope requirements and preserves pending-action recovery as an evidence risk. |
+| `docs/rust-governance.md` | Quarantines PGO, `maxperf`, generated Rust execution, and native CPU workflows as deferred from current release gates. |
 | `docs/generated-workflows.md` | Correctly marks generated mode deferred, but any command examples remain future-only. |
 | `docs/deferred-ui.md` | Correctly marks UI deferred; any UI claims remain non-blocking for Backend / IR Interpreter Complete. |
 
