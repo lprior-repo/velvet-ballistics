@@ -91,6 +91,22 @@ large_stack_arrays = "warn"
 large_types_passed_by_value = "warn"
 result_large_err = "warn"
 
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 16
+
+[profile.bench]
+inherits = "release"
+debug = true
+
+[profile.maxperf]
+inherits = "release"
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+debug = "line-tables-only"
+
 [profile.hardened]
 inherits = "release"
 codegen-units = 1
