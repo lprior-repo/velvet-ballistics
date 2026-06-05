@@ -896,6 +896,52 @@ mod tests {
         );
     }
 
+    // --- PO-PROP-002, PO-PROP-004: Terminal absorption proptest properties ---
+
+    mod proptest_transitions {
+        use proptest::prelude::*;
+        use crate::frame::StepState;
+        use super::is_valid_step_state_transition;
+
+        fn arb_step_state() -> impl Strategy<Value = StepState> {
+            prop_oneof![
+                Just(StepState::Pending),
+                Just(StepState::Running),
+                Just(StepState::Succeeded),
+                Just(StepState::Failed),
+                Just(StepState::Skipped),
+                Just(StepState::Waiting),
+                Just(StepState::Asking),
+                Just(StepState::Cancelled),
+            ]
+        }
+
+        fn is_terminal(s: StepState) -> bool {
+            matches!(s, StepState::Succeeded | StepState::Failed | StepState::Skipped | StepState::Cancelled)
+        }
+
+        proptest! {
+            /// PO-PROP-002: Succeeded->Pending is specifically rejected.
+            /// Regression guard for the fixed bug.
+            #[test]
+            fn proptest_succeeded_to_pending_rejected(_seed in any::<u64>()) {
+                let result = is_valid_step_state_transition(StepState::Succeeded, StepState::Pending);
+                prop_assert!(!result, "Succeeded->Pending must be invalid post-fix");
+            }
+
+            /// PO-PROP-004: All 4 terminal states reject transition to Pending.
+            /// Generates random terminal states and asserts Pending is not reachable.
+            #[test]
+            fn proptest_all_terminals_reject_pending(
+                terminal in arb_step_state()
+            ) {
+                prop_assume!(is_terminal(terminal));
+                let result = is_valid_step_state_transition(terminal, StepState::Pending);
+                prop_assert!(!result, "terminal {:?}->Pending must be invalid", terminal);
+            }
+        }
+    }
+
     // --- RunFrame::set_pc bounds tests ---
 
     #[test]
@@ -1096,13 +1142,13 @@ mod frame_kani_harnesses {
         {
             let c = StepState::Succeeded;
             {
-                // NOTE: Succeeded->Pending is intentional loop re-entry per vb_proof_kernels/src/step_state.rs:48
+                // PO-KANI-003: Succeeded->Pending must be invalid after fix (absorbing terminal)
                 let r = validate_transition_inline(c, StepState::Pending);
-                if !r {
+                if r {
                     errors += 1;
                 }
                 total += 1;
-                kani::assert(r, "X->P");
+                kani::assert(!r, "X->P!");
             }
             {
                 let r = validate_transition_inline(c, StepState::Running);
@@ -1539,10 +1585,10 @@ mod frame_kani_harnesses {
         }
     }
 
-    /// K-F5: Terminal states block all non-self transitions EXCEPT Succeeded->Pending.
+    /// K-F5: Terminal states block all non-self transitions (absorbing).
     /// Uses kani::any() to symbolically verify terminal blocking property.
-    /// NOTE: vb_proof_kernels/src/step_state.rs:48 explicitly allows Succeeded->Pending,
-    /// so this harness reflects that design decision.
+    /// PO-KANI-002, PO-KANI-005, PO-KANI-014: All 4 terminal states are absorbing.
+    /// Synchronized with frame.rs copy.
     #[kani::proof]
     fn validate_transition_terminal_blocks_all() {
         let terminal: StepState = kani::any();
@@ -1557,10 +1603,8 @@ mod frame_kani_harnesses {
         // Terminal states can transition to themselves (idempotent re-mark)
         if terminal == target {
             kani::assert(result, "terminal->self allowed");
-        // Succeeded->Pending is explicitly allowed by proof kernel (step_state.rs:48)
-        } else if terminal == StepState::Succeeded && target == StepState::Pending {
-            kani::assert(result, "Succeeded->Pending allowed by proof kernel");
         } else {
+            // All non-self transitions from terminal states are invalid (absorbing)
             kani::assert(!result, "terminal->other blocked");
         }
     }

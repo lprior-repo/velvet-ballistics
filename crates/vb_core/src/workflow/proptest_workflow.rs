@@ -5,8 +5,49 @@ use super::super::{
     WorkflowParts,
 };
 use super::tests::resource_contract;
+use crate::frame::{is_valid_step_state_transition, StepState};
 use crate::ids::{ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
 use proptest::prelude::*;
+
+fn arb_step_state() -> impl Strategy<Value = StepState> {
+    prop_oneof![
+        Just(StepState::Pending),
+        Just(StepState::Running),
+        Just(StepState::Succeeded),
+        Just(StepState::Failed),
+        Just(StepState::Skipped),
+        Just(StepState::Waiting),
+        Just(StepState::Asking),
+        Just(StepState::Cancelled),
+    ]
+}
+
+fn is_terminal(s: StepState) -> bool {
+    matches!(
+        s,
+        StepState::Succeeded | StepState::Failed | StepState::Skipped | StepState::Cancelled
+    )
+}
+
+proptest! {
+    // ── PO-PROP-001: Terminal absorption invariant ─────────────────────────
+    // For all terminal states t and all states s where s != t:
+    //   is_valid_step_state_transition(t, s) == false
+    #[test]
+    fn proptest_terminal_absorption_invariant(
+        from in arb_step_state(),
+        to in arb_step_state(),
+    ) {
+        prop_assume!(is_terminal(from));
+        prop_assume!(from != to);
+        let result = is_valid_step_state_transition(from, to);
+        prop_assert!(
+            !result,
+            "terminal {:?}->{:?} must be invalid (absorbing terminal invariant)",
+            from, to
+        );
+    }
+}
 
 proptest! {
     #[test]

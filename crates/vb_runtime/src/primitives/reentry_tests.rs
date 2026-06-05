@@ -1685,6 +1685,75 @@ mod proptest_reentry {
         }
     }
 
+    // ── PO-PROP-003: Loop body state immutability during re-entry ──────────
+    // Verifies that loop primitives do NOT mutate the body step state
+    // during re-entry. The body Succeeded state persists across iterations.
+    proptest! {
+        #[test]
+        fn proptest_loop_reentry_body_state_immutable(
+            max_items in 1u16..=8u16,
+        ) {
+            use crate::primitives::for_each::{for_each_next, for_each_start};
+            use crate::test_harness::list_in_slot;
+
+            let mut run = fresh_frame();
+            let mut store = ValueStore::new();
+
+            let iterator_slot = SlotIdx::new(0);
+            let output_slot = SlotIdx::new(1);
+            let body = StepIdx::new(1);
+            let done = StepIdx::new(2);
+
+            // Build a list of max_items to iterate
+            let items: Vec<SlotValue> = (0..max_items).map(|i| SlotValue::I64(i as i64)).collect();
+            list_in_slot(&mut run, &mut store, iterator_slot, items);
+
+            let fs = for_each_start(
+                &mut run,
+                &mut store,
+                iterator_slot,
+                output_slot,
+                100u32,
+                body,
+                done,
+                Some(output_slot),
+            );
+            prop_assert!(fs.is_ok(), "for_each_start must succeed");
+
+            let body_step = StepIdx::new(1);
+
+            // Process all items: each iteration runs body to Succeeded,
+            // then for_each_next re-enters for next item
+            for _item_num in 0..max_items {
+                // Body executes → Succeeded
+                run.mark_running(body_step).unwrap();
+                run.mark_succeeded(body_step).unwrap();
+
+                // Capture body state before re-entry
+                let state_before = run.step_state(body_step).unwrap();
+
+                let fe = for_each_next(
+                    &mut run,
+                    &mut store,
+                    iterator_slot,
+                    body,
+                    done,
+                    Some(output_slot),
+                );
+
+                // If loop continues, body state must be unchanged (immutable)
+                if let Ok(vb_core::EngineSignal::Continue) = fe {
+                    let state_after = run.step_state(body_step).unwrap();
+                    prop_assert_eq!(
+                        state_after, state_before,
+                        "body step state must not change during for_each_next re-entry (PO-PROP-003)"
+                    );
+                }
+                // If loop exits (done), body state is terminal - also unchanged
+            }
+        }
+    }
+
     // ── PROP-6: repeat_check_loop_back ──────────────────────────────────
 
     // PROP-6: Additional property: repeat_check correctly loops back to body

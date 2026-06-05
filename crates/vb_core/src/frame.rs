@@ -1084,10 +1084,10 @@ mod frame_kani_harnesses {
         }
     }
 
-    /// K-F5: Terminal states block all non-self transitions EXCEPT Succeeded->Pending.
+    /// K-F5: Terminal states block all non-self transitions (absorbing).
     /// Uses kani::any() to symbolically verify terminal blocking property.
-    /// NOTE: vb_proof_kernels/src/step_state.rs:48 explicitly allows Succeeded->Pending,
-    /// so this harness reflects that design decision.
+    /// PO-KANI-002, PO-KANI-005: All 4 terminal states are absorbing.
+    /// After fix, Succeeded->Pending is no longer valid; Succeeded is uniformly absorbing.
     #[kani::proof]
     fn validate_transition_terminal_blocks_all() {
         let terminal: StepState = kani::any();
@@ -1102,10 +1102,8 @@ mod frame_kani_harnesses {
         // Terminal states can transition to themselves (idempotent re-mark)
         if terminal == target {
             kani::assert(result, "terminal->self allowed");
-        // Succeeded->Pending is explicitly allowed by proof kernel (step_state.rs:48)
-        } else if terminal == StepState::Succeeded && target == StepState::Pending {
-            kani::assert(result, "Succeeded->Pending allowed by proof kernel");
         } else {
+            // All non-self transitions from terminal states are invalid (absorbing)
             kani::assert(!result, "terminal->other blocked");
         }
     }
