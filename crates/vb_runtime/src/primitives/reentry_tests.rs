@@ -1169,30 +1169,28 @@ fn gwt_re5_repeat_check_loops_back_after_succeeded() {
     assert_eq!(run.pc(), next_body);
 }
 
-/// GWT-RE-6: Succeeded→Running transition rejected by state machine (negative)
+/// GWT-RE-6: Succeeded→Pending transition allowed for loop re-entry
 /// Given: body step in Succeeded state
-/// When: Plain jump_to (not jump_to_body) is called, and engine tries Succeeded→Running
-/// Then: validate_transition returns Err("invalid_state_transition").
+/// When: jump_to_body is called for loop re-entry
+/// Then: Succeeded→Pending transition is allowed.
 #[test]
-fn gwt_re6_succeeded_to_running_rejected() {
+fn gwt_re6_succeeded_to_running_allowed_for_loop_reentry() {
     use vb_core::frame::StepState;
 
-    // Succeeded → Running is NOT a valid transition
+    // Succeeded → Pending IS a valid transition for loop body re-entry
     let is_valid =
-        vb_core::frame::is_valid_step_state_transition(StepState::Succeeded, StepState::Running);
-    assert!(
-        !is_valid,
-        "Succeeded→Running must be invalid per VALID_TRANSITIONS"
-    );
-
-    // The only valid transitions from Succeeded are:
-    // - Succeeded → Succeeded (idempotent)
-    // - Succeeded → Pending (for loop re-entry via jump_to_body)
-    let can_go_to_pending =
         vb_core::frame::is_valid_step_state_transition(StepState::Succeeded, StepState::Pending);
     assert!(
-        can_go_to_pending,
-        "Succeeded→Pending must be valid (this is why jump_to_body exists)"
+        is_valid,
+        "Succeeded→Pending must be valid for loop re-entry per VALID_TRANSITIONS"
+    );
+
+    // Succeeded → Running is NOT valid (loop re-entry uses Succeeded → Pending now)
+    let can_go_to_running =
+        vb_core::frame::is_valid_step_state_transition(StepState::Succeeded, StepState::Running);
+    assert!(
+        !can_go_to_running,
+        "Succeeded→Running must be invalid (Succeeded→Pending is used for loop re-entry)"
     );
 }
 

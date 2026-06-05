@@ -45,7 +45,7 @@ const VALID_TRANSITIONS: &[(StepState, StepState)] = &[
     (StepState::Asking, StepState::Running),
     // Terminal transitions (idempotent re-mark)
     (StepState::Succeeded, StepState::Succeeded),
-    (StepState::Succeeded, StepState::Pending),
+    (StepState::Succeeded, StepState::Running),
     (StepState::Failed, StepState::Failed),
     (StepState::Cancelled, StepState::Cancelled),
     (StepState::Skipped, StepState::Skipped),
@@ -102,13 +102,13 @@ pub fn non_terminal_states() -> Vec<StepState> {
 pub fn terminal_cannot_transition_to_non_terminal() -> bool {
     for terminal in terminal_states() {
         let next = next_states(terminal);
-        // Succeeded is special: it can transition to Pending for loop body re-entry
+        // Succeeded is special: it can transition to Running for loop body re-entry
         if terminal == StepState::Succeeded {
             let valid = matches!(
                 next.as_slice(),
                 [StepState::Succeeded]
-                    | [StepState::Succeeded, StepState::Pending]
-                    | [StepState::Pending, StepState::Succeeded]
+                    | [StepState::Succeeded, StepState::Running]
+                    | [StepState::Running, StepState::Succeeded]
             );
             if !valid {
                 return false;
@@ -207,6 +207,7 @@ mod tests {
     fn test_invalid_transitions() {
         assert!(!is_valid_transition(StepState::Running, StepState::Pending));
         // Note: Succeeded -> Running IS valid (for loop body re-entry)
+        assert!(is_valid_transition(StepState::Succeeded, StepState::Running));
         assert!(!is_valid_transition(StepState::Failed, StepState::Running));
     }
 
@@ -496,10 +497,10 @@ mod tests {
     fn test_next_states_terminal_unique() {
         for terminal in terminal_states() {
             let next = next_states(terminal);
-            // Succeeded can transition to Pending for loop body re-entry
+            // Succeeded can transition to Running for loop body re-entry
             if terminal == StepState::Succeeded {
                 assert!(next.contains(&StepState::Succeeded));
-                assert!(next.contains(&StepState::Pending));
+                assert!(next.contains(&StepState::Running));
             } else {
                 assert_eq!(next.len(), 1);
                 assert_eq!(next[0], terminal);

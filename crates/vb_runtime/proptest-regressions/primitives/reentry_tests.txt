@@ -6,3 +6,4 @@
 # everyone who runs the test benefits from these saved cases.
 cc 5ac66996f1d9d4d776d4011c4e69e5e9494cfcf1a5f151f764399a0411240bd5 # shrinks to max_attempts = 2
 cc fce3d7333590e36dcaf8acbf50a9c961c93914246d2d7d998a2483ed7f581696 # shrinks to items = [I64(0)], page_size = 1
+cc 5f4707b0bd7ea3c9ae3bd97bc506e69e52d42c474ef72d8999b255173620fa7c # shrinks to state = Succeeded

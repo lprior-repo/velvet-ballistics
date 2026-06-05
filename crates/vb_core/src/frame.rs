@@ -50,7 +50,7 @@ pub fn is_valid_step_state_transition(current: StepState, new: StepState) -> boo
         (StepState::Waiting, StepState::Running),
         (StepState::Asking, StepState::Running),
         (StepState::Succeeded, StepState::Succeeded),
-        (StepState::Succeeded, StepState::Pending),
+        (StepState::Succeeded, StepState::Running),
         (StepState::Failed, StepState::Failed),
         (StepState::Cancelled, StepState::Cancelled),
         (StepState::Skipped, StepState::Skipped),
