@@ -200,7 +200,15 @@ impl IpcServer {
         if client.magic_state == MagicValidationState::AwaitingMagic
             && bytes_read >= AWAITING_MAGIC_MAX_BYTES
         {
-            match validate_magic_early(&temp_buf[..bytes_read]) {
+            let read_slice = temp_buf
+                .get(..bytes_read)
+                .ok_or(IpcServerError::FrameInvalid {
+                    source: IpcError::PayloadLengthMismatch {
+                        header: READ_CHUNK_BYTES,
+                        actual: bytes_read,
+                    },
+                })?;
+            match validate_magic_early(read_slice) {
                 Ok(MagicValidationState::AwaitingMagic) => {
                     // Not enough bytes yet for full magic validation.
                     append_read_bytes(&mut client.read_buffer, &temp_buf, bytes_read)?;

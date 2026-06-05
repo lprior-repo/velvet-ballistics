@@ -283,6 +283,7 @@ impl Shard {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn validate_submit_admission(
         &self,
         run: RunId,

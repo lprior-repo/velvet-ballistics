@@ -20,9 +20,8 @@ mod kani_vb_mrwe4_reject_unsupported_state {
         };
 
         // After fix: pending_actions is NOT in the condition
-        let should_reject = unsupported.slot_values
-            || unsupported.slot_taint
-            || unsupported.action_payloads;
+        let should_reject =
+            unsupported.slot_values || unsupported.slot_taint || unsupported.action_payloads;
 
         if should_reject {
             kani::assert(

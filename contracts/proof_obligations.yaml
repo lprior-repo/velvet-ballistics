@@ -35,6 +35,81 @@ proof_levels:
 obligations:
 
   # ============================================================
+  # VB-MRWE.6 PENDING ACTION INDEX WRITE BOUNDARY
+  # ============================================================
+  - id: obl-vb-mrwe-6-atomic-index-verus-001
+    section: ["vb-mrwe.6", "REQ-MRWE6-ATOMIC-INDEX"]
+    statement: |
+      Every durable scheduled action event write stages the run_event atom and
+      matching index_action atom in one write boundary or fails without relying
+      on a partial commit.
+    proof_level: L4
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/batch.rs
+      - crates/vb_storage/src/journal/internal.rs
+    required:
+      verus: verification/verus/vb_mrwe6_atomic_index.rs
+    commands:
+      - verus --crate-type=lib verification/verus/vb_mrwe6_atomic_index.rs
+
+  - id: obl-vb-mrwe-6-queue-intent-verus-007
+    section: ["vb-mrwe.6", "REQ-MRWE6-QUEUE-INTENT"]
+    statement: |
+      Queued scheduled and resolution events retain side-index intent through
+      enqueue, flush_batch, strict persist, and drain_all boundaries.
+    proof_level: L4
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/queue/writer.rs
+    required:
+      verus: verification/verus/vb_mrwe6_queue_intent.rs
+    commands:
+      - verus --crate-type=lib verification/verus/vb_mrwe6_queue_intent.rs
+
+  - id: obl-vb-mrwe-6-duplicate-verus-013
+    section: ["vb-mrwe.6", "REQ-MRWE6-DUPLICATE"]
+    statement: |
+      Equal duplicate schedule retries are idempotent; divergent duplicate
+      retries preserve existing state and classify as conflict.
+    proof_level: L4
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/journal/append.rs
+    required:
+      verus: verification/verus/vb_mrwe6_duplicate_schedule.rs
+    commands:
+      - verus --crate-type=lib verification/verus/vb_mrwe6_duplicate_schedule.rs
+
+  - id: obl-vb-mrwe-6-completion-policy-verus-019
+    section: ["vb-mrwe.6", "REQ-MRWE6-COMPLETION-POLICY"]
+    statement: |
+      Completion/failure resolution commits remove the pending action marker in
+      the same durable boundary as the resolution event.
+    proof_level: L4
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/journal/append.rs
+    required:
+      verus: verification/verus/vb_mrwe6_completion_policy.rs
+    commands:
+      - verus --crate-type=lib verification/verus/vb_mrwe6_completion_policy.rs
+
+  - id: obl-vb-mrwe-6-recovery-reliance-verus-025
+    section: ["vb-mrwe.6", "REQ-MRWE6-RECOVERY-RELIANCE"]
+    statement: |
+      Recovery valid pending inventory is allowed only for event/index parity;
+      mismatches classify as defect or explicit legacy fallback.
+    proof_level: L4
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/recovery/replay/summary.rs
+    required:
+      verus: verification/verus/vb_mrwe6_recovery_reliance.rs
+    commands:
+      - verus --crate-type=lib verification/verus/vb_mrwe6_recovery_reliance.rs
+
+  # ============================================================
   # CORE TAINT LATTICE (Section 47)
   # ============================================================
   - id: VB-CORE-TAINT-001

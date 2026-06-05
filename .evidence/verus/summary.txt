@@ -1,4 +1,4 @@
-VERUS_TARGET_COUNT=12
+VERUS_TARGET_COUNT=17
 VERUS_VERSION=Verus
   Version: 0.2026.05.05.d03e906
   Profile: release
@@ -6,6 +6,11 @@ VERUS_VERSION=Verus
   Toolchain: 1.95.0-x86_64-unknown-linux-gnu
 
 VERUSFMT=available
+PASS verus verification/verus/vb_mrwe6_atomic_index.rs
+PASS verus verification/verus/vb_mrwe6_queue_intent.rs
+PASS verus verification/verus/vb_mrwe6_duplicate_schedule.rs
+PASS verus verification/verus/vb_mrwe6_completion_policy.rs
+PASS verus verification/verus/vb_mrwe6_recovery_reliance.rs
 PASS verus verification/verus/taint_lattice.rs
 PASS verus verification/verus/step_state_machine.rs
 PASS verus verification/verus/step_budget.rs

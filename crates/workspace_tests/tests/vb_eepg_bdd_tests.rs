@@ -469,7 +469,7 @@ mod unknown_record_kind_rejection {
         // Note: 30 is Snapshot (valid kind but for MAGIC_SNAPSHOT, not MAGIC_JOURNAL_EVENT)
         // We test a representative sample due to the large range
         let invalid_kinds: Vec<u16> = vec![
-            0, 4, 5, 6, 7, 8, 9,  // 4..=9
+            0, 4, 5, 6, 7, 8, 9, // 4..=9
             31, 32, 33, 34, 35, 36, 37, 38, 39, // 31..=39
             41, 42, 43, 44, 45, 46, 47, 48, 49, // 41..=49
             51, 52, // small sample after 50

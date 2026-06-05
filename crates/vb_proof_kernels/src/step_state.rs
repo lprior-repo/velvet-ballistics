@@ -207,7 +207,10 @@ mod tests {
     fn test_invalid_transitions() {
         assert!(!is_valid_transition(StepState::Running, StepState::Pending));
         // Note: Succeeded -> Running IS valid (for loop body re-entry)
-        assert!(is_valid_transition(StepState::Succeeded, StepState::Running));
+        assert!(is_valid_transition(
+            StepState::Succeeded,
+            StepState::Running
+        ));
         assert!(!is_valid_transition(StepState::Failed, StepState::Running));
     }
 

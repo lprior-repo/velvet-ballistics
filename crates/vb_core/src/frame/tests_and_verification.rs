@@ -770,8 +770,6 @@ mod tests {
         assert_eq!(frame.mark_cancelled(StepIdx::new(2)), Ok(()));
         assert_eq!(frame.mark_skipped(StepIdx::new(3)), Ok(()));
 
-
-
         // Terminal states cannot transition to any other state,
         // EXCEPT: Succeeded -> Running is allowed for loop body re-entry.
         // Test Succeeded -> Failed first (should fail since Succeeded is still terminal for Failed)

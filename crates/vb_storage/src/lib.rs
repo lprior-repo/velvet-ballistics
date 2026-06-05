@@ -33,6 +33,7 @@ pub mod indexes;
 pub mod journal;
 #[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_codec;
+pub mod mrwe6_seams;
 
 #[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_record_magic;
@@ -110,9 +111,9 @@ pub mod kani_vb_mrwe5_step_succeeded_id;
 
 // vb-mrwe.4: pending_actions recovery proofs
 #[cfg(kani)]
-pub mod kani_vb_mrwe4_seed_unsupported_state;
-#[cfg(kani)]
 pub mod kani_vb_mrwe4_reject_unsupported_state;
+#[cfg(kani)]
+pub mod kani_vb_mrwe4_seed_unsupported_state;
 
 // --- vb-h09wf Kani harnesses (PS-001 through PS-012) ---
 // Verification wiring only — no production behavior changes.
@@ -140,6 +141,34 @@ pub mod kani_vb_h09wf_ps010;
 pub mod kani_vb_h09wf_ps011;
 #[cfg(all(kani, feature = "kani-vb-h09wf"))]
 pub mod kani_vb_h09wf_ps012;
+
+#[cfg(all(kani, feature = "kani-vb-mrwe6"))]
+#[path = "verification/kani/vb_mrwe6_atomic_index.rs"]
+pub mod vb_mrwe6_atomic_index;
+
+#[cfg(all(kani, feature = "kani-vb-mrwe6"))]
+#[path = "verification/kani/vb_mrwe6_queue_intent.rs"]
+pub mod vb_mrwe6_queue_intent;
+
+#[cfg(all(kani, feature = "kani-vb-mrwe6"))]
+#[path = "verification/kani/vb_mrwe6_duplicate_schedule.rs"]
+pub mod vb_mrwe6_duplicate_schedule;
+
+#[cfg(all(kani, feature = "kani-vb-mrwe6"))]
+#[path = "verification/kani/vb_mrwe6_completion_policy.rs"]
+pub mod vb_mrwe6_completion_policy;
+
+#[cfg(all(kani, feature = "kani-vb-mrwe6"))]
+#[path = "verification/kani/vb_mrwe6_recovery_reliance.rs"]
+pub mod vb_mrwe6_recovery_reliance;
+
+#[cfg(flux)]
+pub mod mrwe6_flux_storage {
+    #[path = "../verification/flux/vb_mrwe6_duplicate_refinements.rs"]
+    pub mod vb_mrwe6_duplicate_refinements;
+    #[path = "../verification/flux/vb_mrwe6_recovery_refinements.rs"]
+    pub mod vb_mrwe6_recovery_refinements;
+}
 
 pub mod keys;
 pub mod preview;

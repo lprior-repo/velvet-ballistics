@@ -47,6 +47,7 @@ impl FjallJournal {
         Ok(())
     }
 
+    #[cfg(test)]
     pub(crate) fn append_queued_unpersisted(
         &self,
         event: &JournalEvent,

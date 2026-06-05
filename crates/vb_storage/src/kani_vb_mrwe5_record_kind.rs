@@ -3,8 +3,8 @@
 
 #[cfg(kani)]
 mod kani_vb_mrwe5_record_kind_injectivity {
-    use crate::{JournalEvent, RecordKind, EventSeq};
-    use vb_core::{RunId, StepIdx, SlotIdx};
+    use crate::{EventSeq, JournalEvent, RecordKind};
+    use vb_core::{RunId, SlotIdx, StepIdx};
 
     /// PO-001: record_kind() is injective for StepSucceeded and SlotWrittenEvent.
     #[kani::proof]

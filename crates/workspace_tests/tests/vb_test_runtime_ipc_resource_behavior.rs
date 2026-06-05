@@ -408,7 +408,7 @@ fn ipc_action_completion_enqueues_for_nonexistent_run() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new(shard_count, test_config());
+    let runtime = Runtime::new(shard_count, test_config());
 
     // Complete action for non-existent run - enqueues successfully
     let ticket = ActionTicket {
