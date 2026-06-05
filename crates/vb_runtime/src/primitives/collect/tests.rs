@@ -1383,6 +1383,7 @@ fn check_time_limit_returns_error_when_exceeded() {
         limit: 100,
         time_limit_ms: Some(1),
         start_millis: 0,
+        from_journal: false,
     };
     assert_eq!(
         check_time_limit(&state),
@@ -1404,6 +1405,7 @@ fn check_time_limit_ok_when_not_exceeded() -> Result<(), EngineError> {
         limit: 100,
         time_limit_ms: Some(60000),
         start_millis: now,
+        from_journal: false,
     };
     assert_eq!(check_time_limit(&state), Ok(()));
     Ok(())
@@ -1422,6 +1424,7 @@ fn check_time_limit_ok_when_no_limit_set() {
         limit: 100,
         time_limit_ms: None,
         start_millis: 0,
+        from_journal: false,
     };
     assert_eq!(check_time_limit(&state), Ok(()));
 }
@@ -1461,6 +1464,7 @@ fn collect_states_upsert_and_find_roundtrip() -> Result<(), String> {
         limit: 100,
         time_limit_ms: None,
         start_millis: 0,
+        from_journal: false,
     };
     states
         .upsert(state)
@@ -1496,6 +1500,7 @@ fn collect_states_find_returns_none_for_wrong_page() -> Result<(), String> {
         limit: 100,
         time_limit_ms: None,
         start_millis: 0,
+        from_journal: false,
     };
     states
         .upsert(state)
@@ -1518,6 +1523,7 @@ fn collect_states_find_returns_none_for_wrong_run_id() -> Result<(), String> {
         limit: 100,
         time_limit_ms: None,
         start_millis: 0,
+        from_journal: false,
     };
     states
         .upsert(state)
@@ -1540,6 +1546,7 @@ fn collect_states_remove_clears_entry() -> Result<(), String> {
         limit: 100,
         time_limit_ms: None,
         start_millis: 0,
+        from_journal: false,
     };
     states
         .upsert(state)
@@ -1567,6 +1574,7 @@ fn collect_states_upsert_replaces_existing() -> Result<(), String> {
         limit: 100,
         time_limit_ms: None,
         start_millis: 0,
+        from_journal: false,
     };
     states
         .upsert(state_v1)
@@ -1582,6 +1590,7 @@ fn collect_states_upsert_replaces_existing() -> Result<(), String> {
         limit: 100,
         time_limit_ms: None,
         start_millis: 0,
+        from_journal: false,
     };
     states
         .upsert(state_v2)
@@ -1619,6 +1628,7 @@ fn collect_pagination_state_copy_equality() -> Result<(), String> {
         limit: 30,
         time_limit_ms: Some(1000),
         start_millis: 500,
+        from_journal: false,
     };
     let b = a;
     ensure(a == b, "identical states should be equal")
@@ -1637,6 +1647,7 @@ fn collect_pagination_state_inequality() -> Result<(), String> {
         limit: 100,
         time_limit_ms: None,
         start_millis: 0,
+        from_journal: false,
     };
     let b = CollectPaginationState {
         run_id: RunId::new(2),
@@ -1649,6 +1660,7 @@ fn collect_pagination_state_inequality() -> Result<(), String> {
         limit: 100,
         time_limit_ms: None,
         start_millis: 0,
+        from_journal: false,
     };
     ensure(a != b, "states with different run_id should not be equal")
 }
@@ -1787,6 +1799,7 @@ fn validate_collect_state_rejects_page_size_above_limit() -> Result<(), String> 
         limit: 30,
         time_limit_ms: None,
         start_millis: 0,
+        from_journal: false,
     };
     let result = validate_collect_state(&state, 10);
     match result {
@@ -1808,6 +1821,7 @@ fn validate_collect_state_rejects_item_count_above_limit() -> Result<(), String>
         limit: 30,
         time_limit_ms: None,
         start_millis: 0,
+        from_journal: false,
     };
     let result = validate_collect_state(&state, 50);
     match result {
@@ -1829,6 +1843,7 @@ fn validate_collect_state_rejects_source_length_change() -> Result<(), String> {
         limit: 30,
         time_limit_ms: None,
         start_millis: 0,
+        from_journal: false,
     };
     let result = validate_collect_state(&state, 20);
     match result {
@@ -1853,6 +1868,7 @@ fn validate_collect_state_accepts_valid_state() -> Result<(), String> {
         limit: 30,
         time_limit_ms: None,
         start_millis: 0,
+        from_journal: false,
     };
     validate_collect_state(&state, 10).map_err(|e| format!("{e:?}"))?;
     Ok(())
@@ -2025,6 +2041,7 @@ fn collect_finish_removes_state_after_writing_output() -> Result<(), String> {
         limit: 100,
         time_limit_ms: None,
         start_millis: 0,
+        from_journal: false,
     };
     states.upsert(state).map_err(|e| format!("{e:?}"))?;
     collect_finish(
@@ -2531,6 +2548,7 @@ fn collect_next_time_limit_exceeded_returns_error() -> Result<(), String> {
     states
         .upsert(CollectPaginationState {
             start_millis: 0,
+        from_journal: false,
             ..state
         })
         .map_err(|e| format!("{e:?}"))?;
@@ -2557,6 +2575,7 @@ fn collect_states_independent_entries_per_run() -> Result<(), String> {
         limit: 50,
         time_limit_ms: None,
         start_millis: 0,
+        from_journal: false,
     };
     let s2 = CollectPaginationState {
         run_id: RunId::new(2),
@@ -2569,6 +2588,7 @@ fn collect_states_independent_entries_per_run() -> Result<(), String> {
         limit: 50,
         time_limit_ms: None,
         start_millis: 0,
+        from_journal: false,
     };
     states.upsert(s1).map_err(|e| format!("{e:?}"))?;
     states.upsert(s2).map_err(|e| format!("{e:?}"))?;
@@ -2718,6 +2738,7 @@ fn validate_collect_state_accepts_page_size_at_limit() -> Result<(), String> {
         limit: 10,
         time_limit_ms: None,
         start_millis: 0,
+        from_journal: false,
     };
     validate_collect_state(&state, 5).map_err(|e| format!("{e:?}"))?;
     Ok(())
@@ -2737,6 +2758,7 @@ fn validate_collect_state_accepts_item_count_at_limit() -> Result<(), String> {
         limit: 10,
         time_limit_ms: None,
         start_millis: 0,
+        from_journal: false,
     };
     validate_collect_state(&state, 10).map_err(|e| format!("{e:?}"))?;
     Ok(())
@@ -2764,6 +2786,7 @@ fn collect_states_find_returns_none_for_wrong_slot() -> Result<(), String> {
         limit: 100,
         time_limit_ms: None,
         start_millis: 0,
+        from_journal: false,
     };
     states.upsert(state).map_err(|e| format!("{e:?}"))?;
     let found = states.find(RunId::new(1), SlotIdx::new(5), ListId::new(20));
@@ -3213,6 +3236,7 @@ fn qi37_3_valid_state(
         limit: 4,
         time_limit_ms: None,
         start_millis: 10,
+        from_journal: false,
     }
 }
 

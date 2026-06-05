@@ -37,6 +37,12 @@ pub struct CollectPaginationState {
     pub time_limit_ms: Option<u64>,
     /// Start timestamp in milliseconds since UNIX epoch.
     pub start_millis: u64,
+    /// Flag indicating whether this state was hydrated from journal replay.
+    /// When true, the state was restored from journal events and `start_millis`
+    /// contains the original wall-clock time from the first execution.
+    /// `collect_start` will skip re-capturing wall-clock time in this case
+    /// to preserve deterministic replay behavior.
+    pub from_journal: bool,
 }
 
 /// Side table replacing the global Mutex. Owns pagination state per (RunId, SlotIdx).
@@ -203,13 +209,16 @@ impl CollectStates {
                 event_seq,
             });
         }
-        let state: CollectPaginationState =
+        let mut state: CollectPaginationState =
             postcard::from_bytes(extra).map_err(|_| EngineError::CollectExtraHydrationFailed {
                 kind: CollectExtraHydrationFailureKind::DecodeFailed,
                 run_id,
                 collector_slot,
                 event_seq,
             })?;
+        // Mark state as hydrated from journal to preserve original wall-clock time
+        // during replay and prevent collect_start from overwriting start_millis.
+        state.from_journal = true;
         validate_hydrated_identity(&state, run_id, collector_slot, event_seq)?;
         if let Some(expected) = expected_page {
             validate_hydrated_page(&state, run_id, collector_slot, event_seq, expected)?;

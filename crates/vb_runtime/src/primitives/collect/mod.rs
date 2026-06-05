@@ -161,6 +161,17 @@ fn upsert_started_collect(
     cursor: usize,
     time_limit_ms: Option<u64>,
 ) -> Result<(), EngineError> {
+    // Check if state was hydrated from journal (replay).
+    // If so, preserve the original wall-clock time to maintain
+    // deterministic replay behavior. Otherwise, capture fresh
+    // wall-clock time for the new execution.
+    let start_millis = {
+        let key = (run.run_id(), plan.collector);
+        match states.entries.get(&key) {
+            Some(existing) if existing.from_journal => existing.start_millis,
+            _ => millis_since_epoch()?,
+        }
+    };
     states.upsert(State {
         run_id: run.run_id(),
         collector_slot: plan.collector,
@@ -171,7 +182,8 @@ fn upsert_started_collect(
         item_count: plan.item_count,
         limit: plan.limit,
         time_limit_ms,
-        start_millis: millis_since_epoch()?,
+        start_millis,
+        from_journal: false,
     })
 }
 
