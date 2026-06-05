@@ -304,21 +304,16 @@ fn is_known_record_kind_0xffff_returns_false() {
 }
 
 // =============================================================================
-// B53: validate_kind_family(MAGIC_JOURNAL_EVENT, 29) returns Err
+// B53: validate_kind_family(MAGIC_JOURNAL_EVENT, 29) returns Ok
+// (StepSucceeded record kind id=29 is now valid for journal events)
 // =============================================================================
 
 #[test]
-fn validate_kind_family_journal_event_29_returns_rejection() {
+fn validate_kind_family_journal_event_29_returns_ok() {
     let result = validate_kind_family(MAGIC_JOURNAL_EVENT, 29);
     assert!(
-        matches!(
-            result,
-            Err(JournalError::RecordKindFamilyMismatch {
-                magic: MAGIC_JOURNAL_EVENT,
-                kind: 29
-            })
-        ),
-        "kind 29 must be rejected for MAGIC_JOURNAL_EVENT, got {:?}",
+        result.is_ok(),
+        "kind 29 (StepSucceeded) must be accepted for MAGIC_JOURNAL_EVENT, got {:?}",
         result
     );
 }

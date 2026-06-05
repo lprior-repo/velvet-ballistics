@@ -378,11 +378,7 @@ fn seed_unsupported_state(
         } else {
             UnsupportedRecoveryState::SUPPORTED
         },
-        if accumulator.pending_actions.is_empty() {
-            UnsupportedRecoveryState::SUPPORTED
-        } else {
-            UnsupportedRecoveryState::pending_actions_unsupported()
-        },
+        // pending_actions are always supported; they are a normal part of recovery hydration
     ]
     .into_iter()
     .fold(

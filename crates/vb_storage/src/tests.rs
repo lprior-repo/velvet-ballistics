@@ -3370,7 +3370,7 @@ mod tests {
                 output: vb_core::SlotIdx::new(0)
             }
             .record_kind(),
-            RecordKind::SlotWritten
+            RecordKind::StepSucceeded
         );
         assert_eq!(
             JournalEvent::ActionScheduled {

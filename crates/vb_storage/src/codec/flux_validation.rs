@@ -46,24 +46,24 @@ fn model_is_known_record_kind(kind: u16) -> bool {
     crate::codec::validation::is_known_record_kind(kind)
 }
 
-/// Trusted model for validate_kind_family: kind 28 is valid for journal magic.
-/// Production: validation.rs:46 — MAGIC_JOURNAL_EVENT => matches!(kind, 10..=28)
+/// Trusted model for validate_kind_family: kind 29 is valid for journal magic.
+/// Production: validation.rs:46 — MAGIC_JOURNAL_EVENT => matches!(kind, 10..=29)
 ///
 /// TRUSTED BOUNDARY justification:
 /// The production validate_kind_family is called during journal decode and replay.
 /// Kani harnesses (PO-KANI-004) verify exhaustive kind-space behavior.
-/// This Flux refinement captures: for MAGIC_JOURNAL_EVENT, Ok(()) iff 10 <= kind <= 28.
+/// This Flux refinement captures: for MAGIC_JOURNAL_EVENT, Ok(()) iff 10 <= kind <= 29.
 #[flux_rs::trusted]
 #[sig(fn(magic: u32, kind: u16) -> Result<(), crate::JournalError>)]
 fn model_validate_kind_family(magic: u32, kind: u16) -> Result<(), crate::JournalError> {
     crate::codec::validation::validate_kind_family(magic, kind)
 }
 
-/// Refinement: validate_kind_family(MAGIC_JOURNAL_EVENT, kind) returns Ok(()) iff 10 <= kind <= 28.
+/// Refinement: validate_kind_family(MAGIC_JOURNAL_EVENT, kind) returns Ok(()) iff 10 <= kind <= 29.
 /// Precondition: magic == crate::constants::MAGIC_JOURNAL_EVENT
 #[flux_rs::trusted]
 #[sig(fn(kind: u16) -> bool[{
-    (kind >= 10 && kind <= 28) == model_validate_kind_family_ok(kind)
+    (kind >= 10 && kind <= 29) == model_validate_kind_family_ok(kind)
 }])]
 fn model_journal_kind_valid(kind: u16) -> bool {
     let result =

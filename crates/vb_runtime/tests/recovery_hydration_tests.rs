@@ -1670,14 +1670,17 @@ fn verify_digests_workflow_and_ir_level_detects_ir_mismatch() {
 // SECTION 11: Runtime boundary recovery tests
 // ============================================================================
 
-/// Given an UnsupportedRecoveryState with pending_actions=true
-/// When DurableFrameRecoveryBoundary hydrates
-/// Then InvalidRecoveryHydration is returned
+/// After the fix, pending_actions are always a supported recovery state.
+/// Unsupported.pending_actions is never set by seed_unsupported_state(),
+/// and the runtime no longer rejects based on pending_actions.
+/// This test verifies that pending_actions alone does NOT block hydration.
 #[test]
-fn runtime_boundary_rejects_unsupported_pending_actions() {
+fn runtime_boundary_accepts_pending_actions_as_supported() {
     let run = RunId::new(11100);
     let digest = test_digest(0x26);
 
+    // Build a seed where pending_actions is non-empty but unsupported state is SUPPORTED.
+    // After the fix, this should succeed: pending_actions are a normal supported recovery state.
     let seed = RecoveryFrameSeed {
         summary: RecoveryRuntimeSummary {
             run,
@@ -1701,17 +1704,21 @@ fn runtime_boundary_rejects_unsupported_pending_actions() {
             state: RecoveredStepState::Running,
         }],
         slots: vec![],
-        pending_actions: vec![],
-        unsupported: vb_storage::recovery::UnsupportedRecoveryState::pending_actions_unsupported(),
+        pending_actions: vec![vb_storage::recovery::RecoveredPendingAction {
+            step: StepIdx::ZERO,
+            action: vb_core::ActionId::new(9),
+        }],
+        // After fix: pending_actions are always supported, never part of UnsupportedRecoveryState
+        unsupported: vb_storage::recovery::UnsupportedRecoveryState::SUPPORTED,
     };
 
     let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
+    // After fix: pending_actions alone does NOT block hydration
     let result = boundary.hydrate_run_frame();
-    let Err(vb_runtime::RuntimeError::InvalidRecoveryHydration) = result else {
-        panic!(
-            "expected InvalidRecoveryHydration for unsupported pending_actions, got: {result:?}"
-        );
-    };
+    assert!(
+        result.is_ok(),
+        "expected Ok for supported pending_actions recovery, got: {result:?}"
+    );
 }
 
 /// Given a RecoveryHydration::FrameSeed with unsupported slot_taint

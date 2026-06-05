@@ -338,7 +338,8 @@ impl JournalEvent {
             Self::RunAccepted { .. } => RecordKind::RunAccepted,
             Self::RunAdmission { .. } => RecordKind::RunAdmission,
             Self::StepStarted { .. } => RecordKind::StepStarted,
-            Self::StepSucceeded { .. } | Self::SlotWrittenEvent { .. } => RecordKind::SlotWritten,
+            Self::StepSucceeded { .. } => RecordKind::StepSucceeded,
+            Self::SlotWrittenEvent { .. } => RecordKind::SlotWritten,
             Self::ActionScheduled { .. } | Self::ActionScheduledTicket { .. } => {
                 RecordKind::ActionScheduled
             }
