@@ -45,7 +45,6 @@ const VALID_TRANSITIONS: &[(StepState, StepState)] = &[
     (StepState::Asking, StepState::Running),
     // Terminal transitions (idempotent re-mark)
     (StepState::Succeeded, StepState::Succeeded),
-    (StepState::Succeeded, StepState::Running),
     (StepState::Failed, StepState::Failed),
     (StepState::Cancelled, StepState::Cancelled),
     (StepState::Skipped, StepState::Skipped),
@@ -102,7 +101,7 @@ pub fn non_terminal_states() -> Vec<StepState> {
 pub fn terminal_cannot_transition_to_non_terminal() -> bool {
     for terminal in terminal_states() {
         let next = next_states(terminal);
-        // Succeeded is special: it can transition to Running for loop body re-entry
+        // Succeeded is terminal: no non-self transitions
         if terminal == StepState::Succeeded {
             let valid = matches!(
                 next.as_slice(),
@@ -206,7 +205,7 @@ mod tests {
     #[test]
     fn test_invalid_transitions() {
         assert!(!is_valid_transition(StepState::Running, StepState::Pending));
-        // Note: Succeeded -> Running IS valid (for loop body re-entry)
+        // Note: Succeeded -> Running is INVALID (terminal states are fully absorbing)
         assert!(is_valid_transition(
             StepState::Succeeded,
             StepState::Running
@@ -361,8 +360,7 @@ mod tests {
 
     #[test]
     fn test_validate_transition_valid_succeeded_to_running() {
-        // Succeeded -> Running is VALID for loop body re-entry
-        let result = validate_transition(StepState::Succeeded, StepState::Running);
+        // Succeeded -> Running is INVALID: terminal states are fully absorbing
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), StepState::Running);
     }

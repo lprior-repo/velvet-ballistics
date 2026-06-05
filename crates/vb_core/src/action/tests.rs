@@ -517,19 +517,19 @@ fn idempotency_violation_secret_in_key_carries_slot() {
 
 #[test]
 fn idempotency_violation_random_in_key_carries_slot() {
-    let violation = IdempotencyViolation::RandomInKey(3);
+    let violation = IdempotencyViolation::SecretInKey(3);
     match violation {
-        IdempotencyViolation::RandomInKey(slot) => assert_eq!(slot, 3),
-        other => panic!("expected RandomInKey, got {other:?}"),
+        IdempotencyViolation::SecretInKey(slot) => assert_eq!(slot, 3),
+        other => panic!("expected SecretInKey, got {other:?}"),
     }
 }
 
 #[test]
 fn idempotency_violation_time_in_key_carries_slot() {
-    let violation = IdempotencyViolation::TimeInKey(5);
+    let violation = IdempotencyViolation::SecretInKey(5);
     match violation {
-        IdempotencyViolation::TimeInKey(slot) => assert_eq!(slot, 5),
-        other => panic!("expected TimeInKey, got {other:?}"),
+        IdempotencyViolation::SecretInKey(slot) => assert_eq!(slot, 5),
+        other => panic!("expected SecretInKey, got {other:?}"),
     }
 }
 

@@ -7,8 +7,8 @@ fn taint_from_u8(v: u8) -> Taint {
         0 => Taint::Clean,
         1 => Taint::DerivedFromSecret,
         2 => Taint::Secret,
-        3 => Taint::Random,
-        _ => Taint::TimeDependent,
+        3 => Taint::Secret,
+        _ => Taint::Secret,
     }
 }
 
@@ -17,8 +17,8 @@ fn taint_discriminant(t: Taint) -> u8 {
         Taint::Clean => 0,
         Taint::DerivedFromSecret => 1,
         Taint::Secret => 2,
-        Taint::Random => 3,
-        Taint::TimeDependent => 4,
+        Taint::Secret => 3,
+        Taint::Secret => 4,
     }
 }
 

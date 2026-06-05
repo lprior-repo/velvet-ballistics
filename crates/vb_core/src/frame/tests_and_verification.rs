@@ -144,10 +144,9 @@ mod tests {
         frame.mark_succeeded(StepIdx::new(0))?;
         assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Succeeded);
 
-        // Succeeded -> Running is VALID for loop body re-entry
+        // Succeeded is terminal/absorbing - mark_running must fail
         let result = frame.mark_running(StepIdx::new(0));
-        assert_eq!(result, Ok(()));
-        assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Running);
+        assert!(result.is_err(), "Succeeded->Running must be rejected");
 
         Ok(())
     }
@@ -770,27 +769,22 @@ mod tests {
         assert_eq!(frame.mark_cancelled(StepIdx::new(2)), Ok(()));
         assert_eq!(frame.mark_skipped(StepIdx::new(3)), Ok(()));
 
-        // Terminal states cannot transition to any other state,
-        // EXCEPT: Succeeded -> Running is allowed for loop body re-entry.
-        // Test Succeeded -> Failed first (should fail since Succeeded is still terminal for Failed)
+        // Terminal states cannot transition to any other state.
+        // Succeeded is fully absorbing — Succeeded -> Running is INVALID.
+        assert_eq!(
+            frame.mark_running(StepIdx::ZERO),
+            Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition"
+            }),
+            "Succeeded -> Running must fail (terminal states are fully absorbing)"
+        );
+        // Step is still Succeeded, so Succeeded -> Failed is also invalid
         assert_eq!(
             frame.mark_failed(StepIdx::ZERO),
             Err(CoreError::InternalInvariantViolation {
                 reason: "invalid_state_transition"
             }),
             "Succeeded -> Failed must fail"
-        );
-        // Test Succeeded -> Running (should succeed and change state to Running)
-        assert_eq!(
-            frame.mark_running(StepIdx::ZERO),
-            Ok(()),
-            "Succeeded -> Running is allowed for loop re-entry"
-        );
-        // Now state is Running, so Running -> Failed is valid
-        assert_eq!(
-            frame.mark_failed(StepIdx::ZERO),
-            Ok(()),
-            "Running -> Failed is valid"
         );
         // Test Succeeded -> Waiting on original state (should fail - still Succeeded)
         assert_eq!(
@@ -855,12 +849,12 @@ mod tests {
     // --- is_valid_step_state_transition boundary tests ---
 
     #[test]
-    fn transition_returns_true_when_succeeded_to_running() {
-        // Succeeded->Running is explicitly allowed for loop body re-entry
+    fn transition_returns_false_when_succeeded_to_running() {
+        // Succeeded is terminal/absorbing - cannot transition to Running
         let result = is_valid_step_state_transition(StepState::Succeeded, StepState::Running);
         assert!(
-            result,
-            "Succeeded->Running must be valid (loop body re-entry per VALID_TRANSITIONS)"
+            !result,
+            "Succeeded->Running must be invalid (Succeeded is terminal/absorbing)"
         );
     }
 

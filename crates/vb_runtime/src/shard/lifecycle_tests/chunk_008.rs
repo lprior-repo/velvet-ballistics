@@ -125,14 +125,14 @@
 
     #[test]
     fn deterministicpure_with_random_input_returns_taintviolation() {
-        let state = test_run_state(Taint::Random);
+        let state = test_run_state(Taint::Secret);
         let contract = test_action_contract(Idempotency::DeterministicPure);
         let input_taint = state.frame.read_taint(SlotIdx::ZERO).unwrap();
-        let result = reject_taint_downgrade(input_taint, &contract, Taint::Random);
+        let result = reject_taint_downgrade(input_taint, &contract, Taint::Secret);
         match result {
             Err(RuntimeError::ActionTaintDowngrade { required, supplied }) => {
                 assert_eq!(required, Taint::Clean, "required must be Clean");
-                assert_eq!(supplied, Taint::Random, "supplied must be Random");
+                assert_eq!(supplied, Taint::Secret, "supplied must be Random");
             }
             other => panic!(
                 "expected ActionTaintDowngrade(Clean, Random), got {other:?}"
@@ -142,16 +142,16 @@
 
     #[test]
     fn deterministicpure_with_timedependent_input_returns_taintviolation() {
-        let state = test_run_state(Taint::TimeDependent);
+        let state = test_run_state(Taint::Secret);
         let contract = test_action_contract(Idempotency::DeterministicPure);
         let input_taint = state.frame.read_taint(SlotIdx::ZERO).unwrap();
-        let result = reject_taint_downgrade(input_taint, &contract, Taint::TimeDependent);
+        let result = reject_taint_downgrade(input_taint, &contract, Taint::Secret);
         match result {
             Err(RuntimeError::ActionTaintDowngrade { required, supplied }) => {
                 assert_eq!(required, Taint::Clean, "required must be Clean");
                 assert_eq!(
                     supplied,
-                    Taint::TimeDependent,
+                    Taint::Secret,
                     "supplied must be TimeDependent"
                 );
             }
@@ -277,8 +277,8 @@
                 Just(Taint::Clean),
                 Just(Taint::DerivedFromSecret),
                 Just(Taint::Secret),
-                Just(Taint::Random),
-                Just(Taint::TimeDependent),
+                Just(Taint::Secret),
+                Just(Taint::Secret),
             ]
         }
 

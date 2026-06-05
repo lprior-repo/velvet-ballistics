@@ -140,12 +140,6 @@ pub enum IdempotencyViolation {
     /// Idempotency key ingredient contains a secret-tainted value.
     #[error("idempotency key ingredient contains secret-tainted value at slot {0}")]
     SecretInKey(u32),
-    /// Idempotency key ingredient contains a random-generated value.
-    #[error("idempotency key ingredient contains random value at slot {0}")]
-    RandomInKey(u32),
-    /// Idempotency key ingredient contains a time-dependent value.
-    #[error("idempotency key ingredient contains time-dependent value at slot {0}")]
-    TimeInKey(u32),
 }
 
 /// Static contract describing an action's resource and correctness bounds.
@@ -426,7 +420,7 @@ pub const fn propagate_action_taint(idempotency: Idempotency, input_taint: Taint
         Idempotency::DeterministicPure | Idempotency::IdempotentExternal => input_taint,
         Idempotency::AtLeastOnceExternal => match input_taint {
             Taint::Clean => Taint::Clean,
-            Taint::Secret | Taint::DerivedFromSecret | Taint::Random | Taint::TimeDependent => {
+            Taint::Secret | Taint::DerivedFromSecret => {
                 Taint::DerivedFromSecret
             }
         },
@@ -464,12 +458,6 @@ pub fn validate_idempotency_key_ingredients(
             Taint::Clean => {}
             Taint::Secret | Taint::DerivedFromSecret => {
                 return Err(IdempotencyViolation::SecretInKey(u32::from(slot.get())));
-            }
-            Taint::Random => {
-                return Err(IdempotencyViolation::RandomInKey(u32::from(slot.get())));
-            }
-            Taint::TimeDependent => {
-                return Err(IdempotencyViolation::TimeInKey(u32::from(slot.get())));
             }
         }
         i = match i.checked_add(1) {

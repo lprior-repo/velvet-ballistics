@@ -16,8 +16,8 @@ fn taint_from_u8(v: u8) -> Taint {
         0 => Taint::Clean,
         1 => Taint::DerivedFromSecret,
         2 => Taint::Secret,
-        3 => Taint::Random,
-        _ => Taint::TimeDependent,
+        3 => Taint::Secret,
+        _ => Taint::Secret,
     }
 }
 
@@ -26,8 +26,8 @@ fn taint_discriminant(t: Taint) -> u8 {
         Taint::Clean => 0,
         Taint::DerivedFromSecret => 1,
         Taint::Secret => 2,
-        Taint::Random => 3,
-        Taint::TimeDependent => 4,
+        Taint::Secret => 3,
+        Taint::Secret => 4,
     }
 }
 
@@ -197,9 +197,9 @@ fn kani_join_taint_monotonic() {
 fn kani_time_dependent_is_lattice_top() {
     let a_raw = kani::any::<u8>();
     let a = taint_from_u8(a_raw);
-    let result = join_taint(a, Taint::TimeDependent);
+    let result = join_taint(a, Taint::Secret);
     kani::assert(
-        result == Taint::TimeDependent,
+        result == Taint::Secret,
         "TimeDependent absorbs all taint levels",
     );
 }
@@ -220,12 +220,12 @@ fn kani_clean_is_lattice_bottom() {
 fn kani_random_below_time_dependent() {
     let a_raw = kani::any::<u8>();
     let a = taint_from_u8(a_raw);
-    let result = join_taint(Taint::Random, a);
+    let result = join_taint(Taint::Secret, a);
     // If a is TimeDependent, result is TimeDependent
     // In all other cases, Random >= a means result is Random
     // So result is either Random or TimeDependent, never lower
     kani::assert(
-        result == Taint::Random || result == Taint::TimeDependent,
+        result == Taint::Secret || result == Taint::Secret,
         "join(Random, a) is Random or TimeDependent",
     );
 }

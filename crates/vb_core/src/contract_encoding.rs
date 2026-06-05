@@ -14,7 +14,7 @@ use crate::workflow::ResourceContract;
 /// Produces the canonical, deterministic byte encoding of a `ResourceContract`
 /// suitable for feeding into `blake3::Hasher::update`.
 ///
-/// Each of the 17 fields is encoded as `[field_tag_bytes][value_bytes]` in a
+/// Each of the 18 fields is encoded as `[field_tag_bytes][value_bytes]` in a
 /// fixed canonical order. Field tags are unique static ASCII strings that
 /// provide domain separation. Multi-byte values use little-endian encoding.
 ///
@@ -25,7 +25,7 @@ use crate::workflow::ResourceContract;
 /// same byte sequence.
 #[must_use]
 pub fn encode_contract_bytes(contract: &ResourceContract) -> Vec<u8> {
-    // 17 fields * (max tag len 24 + value len 8) + header ~= 512 bytes
+    // 18 fields * (max tag len 24 + value len 8) + header ~= 512 bytes
     let mut buf = Vec::with_capacity(512);
     buf.extend_from_slice(b"resource_contract");
 

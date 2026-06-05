@@ -22,8 +22,8 @@ mod kani_taint_guard {
             0 => Taint::Clean,
             1 => Taint::DerivedFromSecret,
             2 => Taint::Secret,
-            3 => Taint::Random,
-            4 => Taint::TimeDependent,
+            3 => Taint::Secret,
+            4 => Taint::Secret,
             _ => Taint::Clean, // unreachable due to assume
         }
     }

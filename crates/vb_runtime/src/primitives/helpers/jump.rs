@@ -15,17 +15,21 @@ pub(crate) fn jump_to(
     Ok(vb_core::EngineSignal::Continue)
 }
 
-/// Jumps to a step body with a pure PC jump.
+/// Jumps to a step body, marking it [`Running`][vb_core::frame::StepState::Running]
+/// if it has completed (Succeeded) to allow loop body re-entry.
 ///
-/// Terminal states (Succeeded, Failed, Cancelled, Skipped) are fully absorbing.
-/// jump_to_body performs a PC jump and executed-counter increment without any
-/// state mutation. The engine (step_once) handles body re-entry by skipping
-/// mark_running for already-Succeeded steps, allowing idempotent re-execution
-/// while preserving the absorbing invariant.
+/// Terminal states (Succeeded, Failed, Cancelled, Skipped) are absorbing for
+/// normal transitions, but Succeeded->Running is allowed for loop body re-entry.
+///
+/// [`Running`][vb_core::frame::StepState::Running]: vb_core::frame::StepState::Running
 pub(crate) fn jump_to_body(
     run: &mut RunFrame,
     body: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
+    let current = run.step_state(body)?;
+    if current == vb_core::frame::StepState::Succeeded {
+        run.mark_running(body)?;
+    }
     jump_to(run, body)
 }
 

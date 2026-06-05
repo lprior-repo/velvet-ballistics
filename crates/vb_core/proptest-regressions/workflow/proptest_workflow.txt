@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 7857b9b921e8eb66133a08f389bd36aed048c4eb3ffb86ff3617c532ac4361c8 # shrinks to _seed = 0
+cc cfef621438a23aa2a0fb4603b5aa5a798ebfdc4787269a6448fbe2e996e4c1a4 # shrinks to from = Succeeded, to = Running

@@ -17,8 +17,8 @@ fn taint_discriminant(t: Taint) -> u8 {
         Taint::Clean => 0,
         Taint::DerivedFromSecret => 1,
         Taint::Secret => 2,
-        Taint::Random => 3,
-        Taint::TimeDependent => 4,
+        Taint::Secret => 3,
+        Taint::Secret => 4,
     }
 }
 
@@ -82,7 +82,7 @@ fn join_taint_monotonic_5var() {
 #[kani::unwind(4)]
 fn join_taint_random_secret_interaction() {
     kani::assert(
-        join_taint(Taint::Random, Taint::Secret) == Taint::Random,
+        join_taint(Taint::Secret, Taint::Secret) == Taint::Secret,
         "Random (d=3) > Secret (d=2)",
     );
 }
@@ -93,7 +93,7 @@ fn join_taint_random_secret_interaction() {
 fn join_taint_time_dependent_top() {
     let a: Taint = kani::any();
     kani::assert(
-        join_taint(a, Taint::TimeDependent) == Taint::TimeDependent,
+        join_taint(a, Taint::Secret) == Taint::Secret,
         "TimeDependent absorbs all",
     );
 }

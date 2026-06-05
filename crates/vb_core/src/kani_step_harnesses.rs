@@ -387,8 +387,8 @@ fn taint_validity_harness() {
                 Taint::Clean
                 | Taint::DerivedFromSecret
                 | Taint::Secret
-                | Taint::Random
-                | Taint::TimeDependent => {
+                | Taint::Secret
+                | Taint::Secret => {
                     // All valid — closed enum guarantee
                 }
             }

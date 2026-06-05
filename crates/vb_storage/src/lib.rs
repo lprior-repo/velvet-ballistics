@@ -33,6 +33,7 @@ pub mod indexes;
 pub mod journal;
 #[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_codec;
+pub mod mrwe5_contract;
 pub mod mrwe6_seams;
 
 #[cfg(all(kani, feature = "legacy-kani"))]

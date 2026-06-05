@@ -2,17 +2,17 @@
 //! ResourceContract type integrity tests (Behaviors B1–B5).
 //! Bead: vb-xi2f.35 — P1: digest covers resource contract semantics.
 //!
-//! Verifies that ResourceContract has exactly 17 fields including
+//! Verifies that ResourceContract has exactly 18 fields including
 //! max_transitions_per_tick and allows_secret_results.
 
 use vb_core::ResourceContract;
 
 // ---------------------------------------------------------------------------
-// B1: Canonical type has exactly 17 fields
+// B1: Canonical type has exactly 18 fields
 // ---------------------------------------------------------------------------
 
-/// This test proves that ResourceContract has exactly 17 fields by
-/// constructing the struct with all 17 fields named. If a field is missing,
+/// This test proves that ResourceContract has exactly 18 fields by
+/// constructing the struct with all 18 fields named. If a field is missing,
 /// this won't compile. If an extra field is expected but missing, the
 /// struct literal will have an extra `..ResourceContract::DEFAULT` but
 /// still produce a compilation error for the missing field.
@@ -20,7 +20,7 @@ use vb_core::ResourceContract;
 /// This is primarily a COMPILE-TIME test — the runtime assertions just
 /// provide additional confidence.
 #[test]
-fn resource_contract_canonical_type_has_17_fields() {
+fn resource_contract_canonical_type_has_18_fields() {
     let c = ResourceContract {
         max_steps: 1,
         max_slots: 1,
@@ -64,11 +64,11 @@ fn resource_contract_canonical_type_has_17_fields() {
 }
 
 // ---------------------------------------------------------------------------
-// B2: CompiledWorkflow accepts 17-field ResourceContract
+// B2: CompiledWorkflow accepts 18-field ResourceContract
 // ---------------------------------------------------------------------------
 
 #[test]
-fn compiled_workflow_accepts_17_field_resource_contract() {
+fn compiled_workflow_accepts_18_field_resource_contract() {
     use vb_core::{
         CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, StepIdx, WorkflowDigest,
         WorkflowParts,
@@ -101,17 +101,17 @@ fn compiled_workflow_accepts_17_field_resource_contract() {
     };
 
     let workflow = CompiledWorkflow::try_from_parts(parts)
-        .expect("CompiledWorkflow::try_from_parts must accept 17-field ResourceContract");
+        .expect("CompiledWorkflow::try_from_parts must accept 18-field ResourceContract");
     assert_eq!(workflow.resource_contract().max_transitions_per_tick, 100);
     assert_eq!(workflow.resource_contract().allows_secret_results, true);
 }
 
 // ---------------------------------------------------------------------------
-// B3: resource_contract() returns full 17-field contract
+// B3: resource_contract() returns full 18-field contract
 // ---------------------------------------------------------------------------
 
 #[test]
-fn compiled_workflow_resource_contract_returns_full_17_field_contract() {
+fn compiled_workflow_resource_contract_returns_full_18_field_contract() {
     use vb_core::{
         CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, StepIdx, WorkflowDigest,
         WorkflowParts,
@@ -147,7 +147,7 @@ fn compiled_workflow_resource_contract_returns_full_17_field_contract() {
     };
 
     let workflow =
-        CompiledWorkflow::try_from_parts(parts).expect("Valid parts with 17-field contract");
+        CompiledWorkflow::try_from_parts(parts).expect("Valid parts with 18-field contract");
     let returned = workflow.resource_contract();
 
     assert_eq!(returned.max_steps, 42, "max_steps roundtrip");
@@ -185,12 +185,12 @@ fn compiled_workflow_resource_contract_returns_full_17_field_contract() {
 // ---------------------------------------------------------------------------
 //
 // B4: Validation imports canonical type — verified by B2 and B3 which
-//     successfully construct and validate WorkflowParts with the 17-field
+//     successfully construct and validate WorkflowParts with the 18-field
 //     ResourceContract. If validation imported the 16-field duplicate,
 //     these tests would fail with type mismatches.
 //
 // B5: 16-field duplicate is inaccessible — verified by the fact that
-//     ResourceContract (from vb_core) has exactly 17 fields. Any code
+//     ResourceContract (from vb_core) has exactly 18 fields. Any code
 //     depending on a 16-field variant would fail to compile against
 //     the public API.
 
@@ -234,7 +234,7 @@ fn resource_contract_is_copy() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn resource_contract_all_17_fields_accessible() {
+fn resource_contract_all_18_fields_accessible() {
     let c = ResourceContract::DEFAULT;
     // Access all fields — this is a compile-time check that each field exists
     let _fields = (

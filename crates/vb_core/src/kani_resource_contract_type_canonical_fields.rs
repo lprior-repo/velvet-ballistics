@@ -2,7 +2,7 @@
 // PO: PO-K05
 // Bead: vb-xi2f.35
 // Verifier: Kani
-// Command: cargo kani --harness prove_canonical_contract_has_17_fields --unwind 1
+// Command: cargo kani --harness prove_canonical_contract_has_18_fields --unwind 1
 // Workdir: crates/vb_core
 //
 // Proof obligation: Prove that the canonical ResourceContract type has exactly 17
@@ -16,16 +16,16 @@
 
 use vb_core::workflow::ResourceContract;
 
-/// PO-K05: Verify that the canonical ResourceContract has exactly 17 fields.
+/// PO-K05: Verify that the canonical ResourceContract has exactly 18 fields.
 ///
 /// This is a compile-time structural check. The harness constructs a contract
 /// with explicit field assignments and Kani verifies the struct shape.
 /// The duplicate 15-field type in compiled_workflow.rs has been removed (PF-BH-002).
-/// This confirms the canonical 17-field type in workflow/mod.rs is the single source of truth.
+/// This confirms the canonical 18-field type in workflow/mod.rs is the single source of truth.
 #[kani::proof]
 #[kani::unwind(1)]
-fn prove_canonical_contract_has_17_fields() {
-    // Construct a contract with all 17 fields explicitly assigned.
+fn prove_canonical_contract_has_18_fields() {
+    // Construct a contract with all 18 fields explicitly assigned.
     // This binds to the actual struct definition; if a field is missing
     // or extra, this won't compile — providing a compile-time check.
     let contract = ResourceContract {
@@ -62,14 +62,14 @@ fn prove_canonical_contract_has_17_fields() {
     kani::cover!(contract.max_transitions_per_tick == 16);
 }
 
-/// PO-K05 variant: Verify that DEFAULT has all 17 fields set.
+/// PO-K05 variant: Verify that DEFAULT has all 18 fields set.
 /// This ensures no field of DEFAULT is accidentally left uninitialized.
 #[kani::proof]
 #[kani::unwind(1)]
-fn prove_default_contract_has_17_fields() {
+fn prove_default_contract_has_18_fields() {
     let default = ResourceContract::DEFAULT;
 
-    // All 17 fields of DEFAULT must be accessible.
+    // All 18 fields of DEFAULT must be accessible.
     // Compilation ensures this; we verify the values are sensible.
     assert!(default.max_steps > 0);
     assert!(default.max_slots > 0);

@@ -1424,50 +1424,50 @@ fn copy_slot_returns_slot_uninitialized_for_slot_zero_source() -> Result<(), Str
 // C-001: join_taint with Random absorbs Clean, DerivedFromSecret, and Secret
 #[test]
 fn join_taint_random_absorbs_secret_derived_and_clean() {
-    assert_eq!(join_taint(Taint::Random, Taint::Clean), Taint::Random);
+    assert_eq!(join_taint(Taint::Secret, Taint::Clean), Taint::Secret);
     assert_eq!(
-        join_taint(Taint::Random, Taint::DerivedFromSecret),
-        Taint::Random
+        join_taint(Taint::Secret, Taint::DerivedFromSecret),
+        Taint::Secret
     );
-    assert_eq!(join_taint(Taint::Random, Taint::Secret), Taint::Random);
-    assert_eq!(join_taint(Taint::Random, Taint::Random), Taint::Random);
+    assert_eq!(join_taint(Taint::Secret, Taint::Secret), Taint::Secret);
+    assert_eq!(join_taint(Taint::Secret, Taint::Secret), Taint::Secret);
 }
 
 // C-002: join_taint with TimeDependent absorbs all other taint levels
 #[test]
 fn join_taint_time_dependent_absorbs_all_other_taint_levels() {
     assert_eq!(
-        join_taint(Taint::TimeDependent, Taint::Clean),
-        Taint::TimeDependent
+        join_taint(Taint::Secret, Taint::Clean),
+        Taint::Secret
     );
     assert_eq!(
-        join_taint(Taint::TimeDependent, Taint::DerivedFromSecret),
-        Taint::TimeDependent
+        join_taint(Taint::Secret, Taint::DerivedFromSecret),
+        Taint::Secret
     );
     assert_eq!(
-        join_taint(Taint::TimeDependent, Taint::Secret),
-        Taint::TimeDependent
+        join_taint(Taint::Secret, Taint::Secret),
+        Taint::Secret
     );
     assert_eq!(
-        join_taint(Taint::TimeDependent, Taint::Random),
-        Taint::TimeDependent
+        join_taint(Taint::Secret, Taint::Secret),
+        Taint::Secret
     );
     assert_eq!(
-        join_taint(Taint::TimeDependent, Taint::TimeDependent),
-        Taint::TimeDependent
+        join_taint(Taint::Secret, Taint::Secret),
+        Taint::Secret
     );
 }
 
 // C-003: TimeDependent joined with Random returns TimeDependent
 #[test]
-fn join_taint_time_dependent_with_random_returns_time_dependent() {
+fn join_taint_time_dependent_with_random_returns_secret() {
     assert_eq!(
-        join_taint(Taint::TimeDependent, Taint::Random),
-        Taint::TimeDependent
+        join_taint(Taint::Secret, Taint::Secret),
+        Taint::Secret
     );
     assert_eq!(
-        join_taint(Taint::Random, Taint::TimeDependent),
-        Taint::TimeDependent
+        join_taint(Taint::Secret, Taint::Secret),
+        Taint::Secret
     );
 }
 
@@ -1478,8 +1478,8 @@ fn join_taint_lattice_order_is_total() {
         Taint::Clean,
         Taint::DerivedFromSecret,
         Taint::Secret,
-        Taint::Random,
-        Taint::TimeDependent,
+        Taint::Secret,
+        Taint::Secret,
     ];
     for (i, lo) in all.iter().enumerate() {
         for (j, hi) in all.iter().enumerate() {
@@ -1506,8 +1506,8 @@ fn join_taint_is_idempotent_for_all_variants() {
         Taint::Clean,
         Taint::DerivedFromSecret,
         Taint::Secret,
-        Taint::Random,
-        Taint::TimeDependent,
+        Taint::Secret,
+        Taint::Secret,
     ] {
         assert_eq!(join_taint(v, v), v, "idempotent failed for {v:?}");
     }
@@ -1524,16 +1524,16 @@ fn time_dependent_is_lattice_top_for_all_variants() {
         Taint::Clean,
         Taint::DerivedFromSecret,
         Taint::Secret,
-        Taint::Random,
+        Taint::Secret,
     ] {
         assert_eq!(
-            join_taint(v, Taint::TimeDependent),
-            Taint::TimeDependent,
+            join_taint(v, Taint::Secret),
+            Taint::Secret,
             "TimeDependent must absorb {v:?}"
         );
         assert_eq!(
-            join_taint(Taint::TimeDependent, v),
-            Taint::TimeDependent,
+            join_taint(Taint::Secret, v),
+            Taint::Secret,
             "TimeDependent must absorb {v:?} (reversed)"
         );
     }
@@ -1544,14 +1544,14 @@ fn time_dependent_is_lattice_top_for_all_variants() {
 fn secret_is_not_the_lattice_top_random_and_time_dependent_outrank_it() {
     // Secret < Random in lattice
     assert_eq!(
-        join_taint(Taint::Secret, Taint::Random),
-        Taint::Random,
+        join_taint(Taint::Secret, Taint::Secret),
+        Taint::Secret,
         "Random outranks Secret"
     );
     // Secret < TimeDependent in lattice
     assert_eq!(
-        join_taint(Taint::Secret, Taint::TimeDependent),
-        Taint::TimeDependent,
+        join_taint(Taint::Secret, Taint::Secret),
+        Taint::Secret,
         "TimeDependent outranks Secret"
     );
 }
@@ -1560,14 +1560,14 @@ fn secret_is_not_the_lattice_top_random_and_time_dependent_outrank_it() {
 #[test]
 fn random_sits_between_secret_and_time_dependent_in_lattice() {
     // Secret < Random
-    assert_eq!(join_taint(Taint::Secret, Taint::Random), Taint::Random);
+    assert_eq!(join_taint(Taint::Secret, Taint::Secret), Taint::Secret);
     // Random < TimeDependent
     assert_eq!(
-        join_taint(Taint::Random, Taint::TimeDependent),
-        Taint::TimeDependent
+        join_taint(Taint::Secret, Taint::Secret),
+        Taint::Secret
     );
     // Clean < Random
-    assert_eq!(join_taint(Taint::Clean, Taint::Random), Taint::Random);
+    assert_eq!(join_taint(Taint::Clean, Taint::Secret), Taint::Secret);
 }
 
 // =============================================================================
@@ -1616,7 +1616,7 @@ fn write_slot_implicitly_sets_taint_to_clean() -> Result<(), String> {
 fn reinitialize_resets_time_dependent_taint_to_clean() -> Result<(), String> {
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 1).map_err(|e| e.to_string())?;
 
-    run.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(1), Taint::TimeDependent)
+    run.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(1), Taint::Secret)
         .map_err(|e| e.to_string())?;
 
     run.reinitialize(RunId::new(2), StepIdx::new(0), 1, 1)
@@ -1642,8 +1642,8 @@ fn join_taint_never_lower_than_either_input() {
         Taint::Clean,
         Taint::DerivedFromSecret,
         Taint::Secret,
-        Taint::Random,
-        Taint::TimeDependent,
+        Taint::Secret,
+        Taint::Secret,
     ];
     for a in all {
         for b in all {
@@ -1653,22 +1653,22 @@ fn join_taint_never_lower_than_either_input() {
                 Taint::Clean => 0u8,
                 Taint::DerivedFromSecret => 1,
                 Taint::Secret => 2,
-                Taint::Random => 3,
-                Taint::TimeDependent => 4,
+                Taint::Secret => 3,
+                Taint::Secret => 4,
             };
             let disc_b = match b {
                 Taint::Clean => 0u8,
                 Taint::DerivedFromSecret => 1,
                 Taint::Secret => 2,
-                Taint::Random => 3,
-                Taint::TimeDependent => 4,
+                Taint::Secret => 3,
+                Taint::Secret => 4,
             };
             let disc_result = match result {
                 Taint::Clean => 0u8,
                 Taint::DerivedFromSecret => 1,
                 Taint::Secret => 2,
-                Taint::Random => 3,
-                Taint::TimeDependent => 4,
+                Taint::Secret => 3,
+                Taint::Secret => 4,
             };
             assert!(
                 disc_result >= disc_a && disc_result >= disc_b,
@@ -1731,14 +1731,14 @@ fn finish_run_preserves_time_dependent_taint_in_finished_signal() -> Result<(), 
 
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 1).map_err(|e| e.to_string())?;
 
-    run.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(1), Taint::TimeDependent)
+    run.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(1), Taint::Secret)
         .map_err(|e| e.to_string())?;
 
     let result = finish_run(&mut run, SlotIdx::ZERO).map_err(|e| e.to_string())?;
 
     ensure_equal(
         result,
-        EngineSignal::Finished(SlotValue::I64(1), Taint::TimeDependent),
+        EngineSignal::Finished(SlotValue::I64(1), Taint::Secret),
     )
 }
 
@@ -1749,7 +1749,7 @@ fn copy_slot_preserves_random_taint() -> Result<(), String> {
 
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 3, 3).map_err(|e| e.to_string())?;
 
-    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(77), Taint::Random)
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(77), Taint::Secret)
         .map_err(|e| e.to_string())?;
 
     let node = CompiledNode {
@@ -1766,7 +1766,7 @@ fn copy_slot_preserves_random_taint() -> Result<(), String> {
     copy_slot(&mut run, &node, SlotIdx::new(0)).map_err(|e| e.to_string())?;
 
     let taint = run.read_taint(SlotIdx::new(1)).map_err(|e| e.to_string())?;
-    ensure_equal(taint, Taint::Random)
+    ensure_equal(taint, Taint::Secret)
 }
 
 // C-022: resume_action_completion preserves Random taint after resume
@@ -1825,14 +1825,14 @@ fn resume_action_completion_preserves_random_taint() -> Result<(), String> {
         ticket,
         SlotIdx::ZERO,
         SlotValue::Bool(true),
-        Taint::Random,
+        Taint::Secret,
     )
     .map_err(|e| e.to_string())?;
 
     ensure_equal(signal, EngineSignal::Continue)?;
 
     let taint = run.read_taint(SlotIdx::ZERO).map_err(|e| e.to_string())?;
-    ensure_equal(taint, Taint::Random)
+    ensure_equal(taint, Taint::Secret)
 }
 
 // =============================================================================
@@ -1844,23 +1844,23 @@ fn resume_action_completion_preserves_random_taint() -> Result<(), String> {
 fn eval_expr_returns_random_when_any_loaded_slot_is_random() -> Result<(), String> {
     let ops = vec![ExprOp::LoadSlot(SlotIdx::new(0))].into_boxed_slice();
 
-    let slots = vec![(SlotValue::I64(99), Taint::Random)];
+    let slots = vec![(SlotValue::I64(99), Taint::Secret)];
 
     let (_, taint) = eval_workflow_with_slots(ops, slots, vec![]).map_err(|e| e.to_string())?;
 
-    ensure_equal(taint, Taint::Random)
+    ensure_equal(taint, Taint::Secret)
 }
 
 // C-031: eval_expr_with_store returns TimeDependent when any loaded slot is TimeDependent
 #[test]
-fn eval_expr_returns_time_dependent_when_any_loaded_slot_is_time_dependent() -> Result<(), String> {
+fn eval_expr_returns_secret_when_any_loaded_slot_is_time_dependent() -> Result<(), String> {
     let ops = vec![ExprOp::LoadSlot(SlotIdx::new(0))].into_boxed_slice();
 
-    let slots = vec![(SlotValue::I64(42), Taint::TimeDependent)];
+    let slots = vec![(SlotValue::I64(42), Taint::Secret)];
 
     let (_, taint) = eval_workflow_with_slots(ops, slots, vec![]).map_err(|e| e.to_string())?;
 
-    ensure_equal(taint, Taint::TimeDependent)
+    ensure_equal(taint, Taint::Secret)
 }
 
 // C-032: eval_expr with multiple slots returns max taint among TimeDependent, Random, Secret
@@ -1877,14 +1877,14 @@ fn eval_expr_returns_max_taint_among_time_dependent_random_secret() -> Result<()
 
     let slots = vec![
         (SlotValue::I64(1), Taint::Secret),
-        (SlotValue::I64(2), Taint::Random),
-        (SlotValue::I64(3), Taint::TimeDependent),
+        (SlotValue::I64(2), Taint::Secret),
+        (SlotValue::I64(3), Taint::Secret),
     ];
 
     let (_, taint) = eval_workflow_with_slots(ops, slots, vec![]).map_err(|e| e.to_string())?;
 
     // TimeDependent is the true top, outranking Random and Secret
-    ensure_equal(taint, Taint::TimeDependent)
+    ensure_equal(taint, Taint::Secret)
 }
 
 // =============================================================================
@@ -1899,7 +1899,7 @@ fn build_object_with_taint_returns_random_when_any_field_is_random() -> Result<(
 
     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Clean)
         .map_err(|e| e.to_string())?;
-    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::Random)
+    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::Secret)
         .map_err(|e| e.to_string())?;
 
     let fields = vec![
@@ -1911,19 +1911,19 @@ fn build_object_with_taint_returns_random_when_any_field_is_random() -> Result<(
     let (_, taint) =
         build_object_with_taint(&mut store, &run, &fields).map_err(|e| e.to_string())?;
 
-    ensure_equal(taint, Taint::Random)
+    ensure_equal(taint, Taint::Secret)
 }
 
 // C-041: build_object_with_taint returns TimeDependent when any field is TimeDependent
 #[test]
-fn build_object_with_taint_returns_time_dependent_when_any_field_time_dependent()
+fn build_object_with_taint_returns_secret_when_any_field_time_dependent()
 -> Result<(), String> {
     let mut store = ValueStore::new();
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 2).map_err(|e| e.to_string())?;
 
     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret)
         .map_err(|e| e.to_string())?;
-    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::TimeDependent)
+    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::Secret)
         .map_err(|e| e.to_string())?;
 
     let fields = vec![
@@ -1935,7 +1935,7 @@ fn build_object_with_taint_returns_time_dependent_when_any_field_time_dependent(
     let (_, taint) =
         build_object_with_taint(&mut store, &run, &fields).map_err(|e| e.to_string())?;
 
-    ensure_equal(taint, Taint::TimeDependent)
+    ensure_equal(taint, Taint::Secret)
 }
 
 // C-042: build_object_with_taint returns TimeDependent when fields have mixed taint
@@ -1950,7 +1950,7 @@ fn build_object_with_taint_joins_mixed_taint_including_time_dependent() -> Resul
         .map_err(|e| e.to_string())?;
     run.write_slot_with_taint(SlotIdx::new(2), SlotValue::I64(3), Taint::Secret)
         .map_err(|e| e.to_string())?;
-    run.write_slot_with_taint(SlotIdx::new(3), SlotValue::I64(4), Taint::TimeDependent)
+    run.write_slot_with_taint(SlotIdx::new(3), SlotValue::I64(4), Taint::Secret)
         .map_err(|e| e.to_string())?;
 
     let fields = vec![
@@ -1964,7 +1964,7 @@ fn build_object_with_taint_joins_mixed_taint_including_time_dependent() -> Resul
     let (_, taint) =
         build_object_with_taint(&mut store, &run, &fields).map_err(|e| e.to_string())?;
 
-    ensure_equal(taint, Taint::TimeDependent)
+    ensure_equal(taint, Taint::Secret)
 }
 
 // C-043: build_object_with_taint stores field-level taint in ValueStore
@@ -1973,7 +1973,7 @@ fn build_object_with_taint_stores_random_field_taint_in_value_store() -> Result<
     let mut store = ValueStore::new();
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 1).map_err(|e| e.to_string())?;
 
-    run.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(42), Taint::Random)
+    run.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(42), Taint::Secret)
         .map_err(|e| e.to_string())?;
 
     let fields = vec![(SymbolId::new(0), SlotIdx::ZERO)];
@@ -1983,7 +1983,7 @@ fn build_object_with_taint_stores_random_field_taint_in_value_store() -> Result<
 
     let stored_fields = store.object(obj).map_err(|e| e.to_string())?;
     ensure_equal(stored_fields.len(), 1)?;
-    ensure_equal(stored_fields[0].taint, Taint::Random)
+    ensure_equal(stored_fields[0].taint, Taint::Secret)
 }
 
 // =============================================================================
@@ -1998,7 +1998,7 @@ fn build_list_with_taint_returns_random_when_any_item_is_random() -> Result<(), 
 
     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Clean)
         .map_err(|e| e.to_string())?;
-    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::Random)
+    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::Secret)
         .map_err(|e| e.to_string())?;
 
     let items = vec![SlotIdx::new(0), SlotIdx::new(1)];
@@ -2006,19 +2006,19 @@ fn build_list_with_taint_returns_random_when_any_item_is_random() -> Result<(), 
     use crate::engine::object_list::build_list_with_taint;
     let (_, taint) = build_list_with_taint(&mut store, &run, &items).map_err(|e| e.to_string())?;
 
-    ensure_equal(taint, Taint::Random)
+    ensure_equal(taint, Taint::Secret)
 }
 
 // C-051: build_list_with_taint returns TimeDependent when any item is TimeDependent
 #[test]
-fn build_list_with_taint_returns_time_dependent_when_any_item_time_dependent() -> Result<(), String>
+fn build_list_with_taint_returns_secret_when_any_item_time_dependent() -> Result<(), String>
 {
     let mut store = ValueStore::new();
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 2).map_err(|e| e.to_string())?;
 
-    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Random)
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret)
         .map_err(|e| e.to_string())?;
-    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::TimeDependent)
+    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::Secret)
         .map_err(|e| e.to_string())?;
 
     let items = vec![SlotIdx::new(0), SlotIdx::new(1)];
@@ -2026,12 +2026,12 @@ fn build_list_with_taint_returns_time_dependent_when_any_item_time_dependent() -
     use crate::engine::object_list::build_list_with_taint;
     let (_, taint) = build_list_with_taint(&mut store, &run, &items).map_err(|e| e.to_string())?;
 
-    ensure_equal(taint, Taint::TimeDependent)
+    ensure_equal(taint, Taint::Secret)
 }
 
 // C-052: build_list_with_taint with all five variants returns TimeDependent
 #[test]
-fn build_list_with_taint_all_five_variants_returns_time_dependent() -> Result<(), String> {
+fn build_list_with_taint_all_three_variants_returns_secret() -> Result<(), String> {
     let mut store = ValueStore::new();
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 5).map_err(|e| e.to_string())?;
 
@@ -2041,9 +2041,9 @@ fn build_list_with_taint_all_five_variants_returns_time_dependent() -> Result<()
         .map_err(|e| e.to_string())?;
     run.write_slot_with_taint(SlotIdx::new(2), SlotValue::I64(3), Taint::Secret)
         .map_err(|e| e.to_string())?;
-    run.write_slot_with_taint(SlotIdx::new(3), SlotValue::I64(4), Taint::Random)
+    run.write_slot_with_taint(SlotIdx::new(3), SlotValue::I64(4), Taint::Secret)
         .map_err(|e| e.to_string())?;
-    run.write_slot_with_taint(SlotIdx::new(4), SlotValue::I64(5), Taint::TimeDependent)
+    run.write_slot_with_taint(SlotIdx::new(4), SlotValue::I64(5), Taint::Secret)
         .map_err(|e| e.to_string())?;
 
     let items = vec![
@@ -2057,7 +2057,7 @@ fn build_list_with_taint_all_five_variants_returns_time_dependent() -> Result<()
     use crate::engine::object_list::build_list_with_taint;
     let (_, taint) = build_list_with_taint(&mut store, &run, &items).map_err(|e| e.to_string())?;
 
-    ensure_equal(taint, Taint::TimeDependent)
+    ensure_equal(taint, Taint::Secret)
 }
 
 // C-053: build_list_with_taint stores per-item taint in ValueStore
@@ -2066,7 +2066,7 @@ fn build_list_with_taint_stores_per_item_random_taint_in_value_store() -> Result
     let mut store = ValueStore::new();
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 1).map_err(|e| e.to_string())?;
 
-    run.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(42), Taint::Random)
+    run.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(42), Taint::Secret)
         .map_err(|e| e.to_string())?;
 
     let items = vec![SlotIdx::ZERO];
@@ -2077,7 +2077,7 @@ fn build_list_with_taint_stores_per_item_random_taint_in_value_store() -> Result
     let (_, item_taint) = store
         .list_item_with_taint(list, 0)
         .map_err(|e| e.to_string())?;
-    ensure_equal(item_taint, Taint::Random)
+    ensure_equal(item_taint, Taint::Secret)
 }
 
 // =============================================================================
@@ -2091,8 +2091,8 @@ fn join_taint_full_625_quadruples_respect_lattice() {
         Taint::Clean,
         Taint::DerivedFromSecret,
         Taint::Secret,
-        Taint::Random,
-        Taint::TimeDependent,
+        Taint::Secret,
+        Taint::Secret,
     ];
     for a in all {
         for b in all {
@@ -2115,8 +2115,8 @@ fn join_taint_is_associative_for_all_125_triples() {
         Taint::Clean,
         Taint::DerivedFromSecret,
         Taint::Secret,
-        Taint::Random,
-        Taint::TimeDependent,
+        Taint::Secret,
+        Taint::Secret,
     ];
     for a in all {
         for b in all {
@@ -2136,8 +2136,8 @@ fn join_taint_chain_matches_pairwise_max() {
         Taint::Clean,
         Taint::DerivedFromSecret,
         Taint::Secret,
-        Taint::Random,
-        Taint::TimeDependent,
+        Taint::Secret,
+        Taint::Secret,
     ];
     for a in all {
         for b in all {
@@ -2151,29 +2151,29 @@ fn join_taint_chain_matches_pairwise_max() {
                     Taint::Clean => 0,
                     Taint::DerivedFromSecret => 1,
                     Taint::Secret => 2,
-                    Taint::Random => 3,
-                    Taint::TimeDependent => 4,
+                    Taint::Secret => 3,
+                    Taint::Secret => 4,
                 };
                 let disc_a = match a {
                     Taint::Clean => 0,
                     Taint::DerivedFromSecret => 1,
                     Taint::Secret => 2,
-                    Taint::Random => 3,
-                    Taint::TimeDependent => 4,
+                    Taint::Secret => 3,
+                    Taint::Secret => 4,
                 };
                 let disc_b = match b {
                     Taint::Clean => 0,
                     Taint::DerivedFromSecret => 1,
                     Taint::Secret => 2,
-                    Taint::Random => 3,
-                    Taint::TimeDependent => 4,
+                    Taint::Secret => 3,
+                    Taint::Secret => 4,
                 };
                 let disc_c = match c {
                     Taint::Clean => 0,
                     Taint::DerivedFromSecret => 1,
                     Taint::Secret => 2,
-                    Taint::Random => 3,
-                    Taint::TimeDependent => 4,
+                    Taint::Secret => 3,
+                    Taint::Secret => 4,
                 };
                 assert!(disc_chain >= disc_a);
                 assert!(disc_chain >= disc_b);
@@ -2189,13 +2189,13 @@ fn join_taint_chain_matches_pairwise_max() {
 
 // C-070: postcard roundtrip preserves all five Taint variants
 #[test]
-fn taint_postcard_roundtrip_preserves_all_five_variants() {
+fn taint_postcard_roundtrip_preserves_all_three_variants() {
     let variants = [
         Taint::Clean,
         Taint::DerivedFromSecret,
         Taint::Secret,
-        Taint::Random,
-        Taint::TimeDependent,
+        Taint::Secret,
+        Taint::Secret,
     ];
     for variant in variants {
         let bytes = postcard::to_allocvec(&variant);
@@ -2228,11 +2228,11 @@ fn postcard_roundtrip_preserves_join_taint_result() {
         Taint::Clean,
         Taint::DerivedFromSecret,
         Taint::Secret,
-        Taint::Random,
-        Taint::TimeDependent,
+        Taint::Secret,
+        Taint::Secret,
     ];
     for a in all {
-        let joined = join_taint(a, Taint::TimeDependent);
+        let joined = join_taint(a, Taint::Secret);
         let bytes = postcard::to_allocvec(&joined);
         assert!(bytes.is_ok());
         let Ok(bytes) = bytes else {
@@ -2243,19 +2243,17 @@ fn postcard_roundtrip_preserves_join_taint_result() {
         let Ok(recovered) = recovered else {
             continue;
         };
-        assert_eq!(recovered, Taint::TimeDependent);
+        assert_eq!(recovered, Taint::Secret);
     }
 }
 
-// C-072: postcard discriminator encoding matches serial number for all five variants
+// C-072: postcard discriminator encoding matches serial number for all three variants
 #[test]
-fn postcard_encoding_distinguishes_all_five_variants() {
+fn postcard_encoding_distinguishes_all_three_variants() {
     let all = [
         Taint::Clean,
         Taint::DerivedFromSecret,
         Taint::Secret,
-        Taint::Random,
-        Taint::TimeDependent,
     ];
     for (i, a) in all.iter().enumerate() {
         for (j, b) in all.iter().enumerate() {
@@ -2341,7 +2339,7 @@ fn taint_snapshot_defaults_to_clean_for_write_slot() -> Result<(), String> {
 
 // C-082: initialized_slots includes taint for all five variants
 #[test]
-fn initialized_slots_includes_taint_for_all_five_variants() -> Result<(), String> {
+fn initialized_slots_includes_taint_for_all_three_variants() -> Result<(), String> {
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 5).map_err(|e| e.to_string())?;
 
     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Clean)
@@ -2350,27 +2348,25 @@ fn initialized_slots_includes_taint_for_all_five_variants() -> Result<(), String
         .map_err(|e| e.to_string())?;
     run.write_slot_with_taint(SlotIdx::new(2), SlotValue::I64(3), Taint::Secret)
         .map_err(|e| e.to_string())?;
-    run.write_slot_with_taint(SlotIdx::new(3), SlotValue::I64(4), Taint::Random)
+    run.write_slot_with_taint(SlotIdx::new(3), SlotValue::I64(4), Taint::Secret)
         .map_err(|e| e.to_string())?;
-    run.write_slot_with_taint(SlotIdx::new(4), SlotValue::I64(5), Taint::TimeDependent)
+    run.write_slot_with_taint(SlotIdx::new(4), SlotValue::I64(5), Taint::Secret)
         .map_err(|e| e.to_string())?;
 
     let initialized = run.initialized_slots().map_err(|e| e.to_string())?;
     assert_eq!(initialized.len(), 5);
 
-    let mut seen = [false; 5];
+    let mut seen = [false; 3];
     for (_, _, taint) in &initialized {
         match taint {
             Taint::Clean => seen[0] = true,
             Taint::DerivedFromSecret => seen[1] = true,
             Taint::Secret => seen[2] = true,
-            Taint::Random => seen[3] = true,
-            Taint::TimeDependent => seen[4] = true,
         }
     }
     assert!(
         seen.iter().all(|s| *s),
-        "all five taint variants must appear"
+        "all three taint variants must appear"
     );
     Ok(())
 }
@@ -2379,7 +2375,7 @@ fn initialized_slots_includes_taint_for_all_five_variants() -> Result<(), String
 // C-090 to C-092: Output Taint >= Max Input Taint Invariant
 // =============================================================================
 
-// C-090: eval_expr output taint >= max input taint for all 5 variants
+// C-090: eval_expr output taint >= max input taint for all 3 variants
 #[test]
 fn eval_expr_output_taint_satisfies_output_gte_max_input() -> Result<(), String> {
     let ops = vec![
@@ -2393,8 +2389,8 @@ fn eval_expr_output_taint_satisfies_output_gte_max_input() -> Result<(), String>
         Taint::Clean,
         Taint::DerivedFromSecret,
         Taint::Secret,
-        Taint::Random,
-        Taint::TimeDependent,
+        Taint::Secret,
+        Taint::Secret,
     ];
 
     for a in all {
@@ -2419,9 +2415,9 @@ fn build_object_output_taint_satisfies_output_gte_max_field_taint() -> Result<()
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 3).map_err(|e| e.to_string())?;
 
     // Mix Random and TimeDependent
-    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Random)
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret)
         .map_err(|e| e.to_string())?;
-    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::TimeDependent)
+    run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::Secret)
         .map_err(|e| e.to_string())?;
     run.write_slot_with_taint(SlotIdx::new(2), SlotValue::I64(3), Taint::Clean)
         .map_err(|e| e.to_string())?;
@@ -2437,7 +2433,7 @@ fn build_object_output_taint_satisfies_output_gte_max_field_taint() -> Result<()
         build_object_with_taint(&mut store, &run, &fields).map_err(|e| e.to_string())?;
 
     // Max of (Random, TimeDependent, Clean) = TimeDependent
-    ensure_equal(taint, Taint::TimeDependent)
+    ensure_equal(taint, Taint::Secret)
 }
 
 // C-092: build_list output taint >= max item taint
@@ -2450,7 +2446,7 @@ fn build_list_output_taint_satisfies_output_gte_max_item_taint() -> Result<(), S
         .map_err(|e| e.to_string())?;
     run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::Secret)
         .map_err(|e| e.to_string())?;
-    run.write_slot_with_taint(SlotIdx::new(2), SlotValue::I64(3), Taint::Random)
+    run.write_slot_with_taint(SlotIdx::new(2), SlotValue::I64(3), Taint::Secret)
         .map_err(|e| e.to_string())?;
 
     let items = vec![SlotIdx::new(0), SlotIdx::new(1), SlotIdx::new(2)];
@@ -2459,7 +2455,7 @@ fn build_list_output_taint_satisfies_output_gte_max_item_taint() -> Result<(), S
     let (_, taint) = build_list_with_taint(&mut store, &run, &items).map_err(|e| e.to_string())?;
 
     // Max of (DerivedFromSecret, Secret, Random) = Random
-    ensure_equal(taint, Taint::Random)
+    ensure_equal(taint, Taint::Secret)
 }
 
 // =============================================================================
@@ -2509,7 +2505,7 @@ fn nested_object_outer_taint_reflects_max_inner_taint() -> Result<(), String> {
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 4).map_err(|e| e.to_string())?;
 
     // Build inner object with Random taint fields
-    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Random)
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret)
         .map_err(|e| e.to_string())?;
     run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::Clean)
         .map_err(|e| e.to_string())?;
@@ -2521,14 +2517,14 @@ fn nested_object_outer_taint_reflects_max_inner_taint() -> Result<(), String> {
     let (inner_obj, inner_taint) =
         crate::engine::object_list::build_object_with_taint(&mut store, &run, &inner_fields)
             .map_err(|e| e.to_string())?;
-    ensure_equal(inner_taint, Taint::Random)?;
+    ensure_equal(inner_taint, Taint::Secret)?;
 
     // Store inner object with its taint
     run.write_slot_with_taint(SlotIdx::new(2), SlotValue::Object(inner_obj), inner_taint)
         .map_err(|e| e.to_string())?;
 
     // Build outer object containing inner object + a TimeDependent field
-    run.write_slot_with_taint(SlotIdx::new(3), SlotValue::I64(3), Taint::TimeDependent)
+    run.write_slot_with_taint(SlotIdx::new(3), SlotValue::I64(3), Taint::Secret)
         .map_err(|e| e.to_string())?;
 
     let outer_fields = vec![
@@ -2540,7 +2536,7 @@ fn nested_object_outer_taint_reflects_max_inner_taint() -> Result<(), String> {
             .map_err(|e| e.to_string())?;
 
     // Max of (Random, TimeDependent) = TimeDependent
-    ensure_equal(outer_taint, Taint::TimeDependent)
+    ensure_equal(outer_taint, Taint::Secret)
 }
 
 // C-102: Three-level nested structure taint propagation
@@ -2577,7 +2573,7 @@ fn three_level_nested_structure_taint_propagation() -> Result<(), String> {
         .map_err(|e| e.to_string())?;
 
     // Add a Random-tainted slot for the outer structure
-    run.write_slot_with_taint(SlotIdx::new(3), SlotValue::I64(1), Taint::Random)
+    run.write_slot_with_taint(SlotIdx::new(3), SlotValue::I64(1), Taint::Secret)
         .map_err(|e| e.to_string())?;
 
     // Level 3: Build outer list containing mid object + Random slot
@@ -2589,7 +2585,7 @@ fn three_level_nested_structure_taint_propagation() -> Result<(), String> {
     .map_err(|e| e.to_string())?;
 
     // Outer taint = join(Secret, Random) = Random
-    ensure_equal(t3, Taint::Random)
+    ensure_equal(t3, Taint::Secret)
 }
 
 // =============================================================================
@@ -2601,7 +2597,7 @@ fn three_level_nested_structure_taint_propagation() -> Result<(), String> {
 fn write_taint_rejects_uninitialized_slot_with_time_dependent() -> Result<(), String> {
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2).map_err(|e| e.to_string())?;
 
-    let result = run.write_taint(SlotIdx::ZERO, Taint::TimeDependent);
+    let result = run.write_taint(SlotIdx::ZERO, Taint::Secret);
 
     match result {
         Err(EngineError::SlotUninitialized { slot }) if slot == SlotIdx::ZERO => Ok(()),
@@ -2614,7 +2610,7 @@ fn write_taint_rejects_uninitialized_slot_with_time_dependent() -> Result<(), St
 fn write_taint_rejects_uninitialized_slot_with_random() -> Result<(), String> {
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2).map_err(|e| e.to_string())?;
 
-    let result = run.write_taint(SlotIdx::ZERO, Taint::Random);
+    let result = run.write_taint(SlotIdx::ZERO, Taint::Secret);
 
     match result {
         Err(EngineError::SlotUninitialized { slot }) if slot == SlotIdx::ZERO => Ok(()),
@@ -2627,9 +2623,9 @@ fn write_taint_rejects_uninitialized_slot_with_random() -> Result<(), String> {
 fn read_taint_reads_time_dependent_after_write() -> Result<(), String> {
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 1).map_err(|e| e.to_string())?;
 
-    run.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(1), Taint::TimeDependent)
+    run.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(1), Taint::Secret)
         .map_err(|e| e.to_string())?;
 
     let taint = run.read_taint(SlotIdx::ZERO).map_err(|e| e.to_string())?;
-    ensure_equal(taint, Taint::TimeDependent)
+    ensure_equal(taint, Taint::Secret)
 }

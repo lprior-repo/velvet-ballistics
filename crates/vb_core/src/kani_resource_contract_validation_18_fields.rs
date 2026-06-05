@@ -1,8 +1,8 @@
-// Verification artifact: kani_resource_contract_validation_17_fields.rs
+// Verification artifact: kani_resource_contract_validation_18_fields.rs
 // PO: PO-K11
 // Bead: vb-xi2f.35
 // Verifier: Kani
-// Command: cargo kani --harness prove_validation_covers_all_17_fields --unwind 3
+// Command: cargo kani --harness prove_validation_covers_all_18_fields --unwind 3
 // Workdir: crates/vb_core
 //
 // Proof obligation: Prove that max_transitions_per_tick and allows_secret_results
@@ -117,13 +117,21 @@ fn prove_allows_secret_results_valid_bool_accepted() {
     let parts = minimal_valid_parts(contract);
     let result = validate_resource_contract(&parts);
 
-    // allows_secret_results true or false should both be accepted
-    // for a minimal valid workflow
-    assert!(
-        result.is_ok(),
-        "allows_secret_results={allow_true} with minimal workflow must pass validation, got: {:?}",
-        result
-    );
+    // allows_secret_results=false must be accepted; true must be rejected
+    // (P0 fix: allows_secret_results gate rejects true until auth infrastructure exists)
+    if allow_true {
+        assert!(
+            result.is_err(),
+            "allows_secret_results=true must be rejected, got: {:?}",
+            result
+        );
+    } else {
+        assert!(
+            result.is_ok(),
+            "allows_secret_results=false with minimal workflow must pass validation, got: {:?}",
+            result
+        );
+    }
 }
 
 /// PO-K11 H5: All 15 existing field validations still pass for DEFAULT contract.

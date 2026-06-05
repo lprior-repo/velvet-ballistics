@@ -31,11 +31,11 @@ fn encode_contract_bytes_is_deterministic_for_random_contract() {
 }
 
 // ---------------------------------------------------------------------------
-// I2: All 17 field tags present in canonical order
+// I2: All 18 field tags present in canonical order
 // ---------------------------------------------------------------------------
 
 #[test]
-fn encode_contract_bytes_contains_all_17_field_tags_in_order() {
+fn encode_contract_bytes_contains_all_18_field_tags_in_order() {
     let contract = ResourceContract::DEFAULT;
     let bytes = encode_contract_bytes(&contract);
     // The first tag is the header "resource_contract"
@@ -173,7 +173,7 @@ fn encode_contract_bytes_field_tags_are_unique() {
         b"allows_secret_results",
     ];
 
-    // All 17 field tags (plus header "resource_contract") must be unique
+    // All 18 field tags (plus header "resource_contract") must be unique
     let all_tags: &[&[u8]] = &[
         b"resource_contract",
         b"max_steps",

@@ -743,7 +743,7 @@ fn tc010_collect_page_body_succeeded_resets() {
         done,
     );
     assert_eq!(page_result, Ok(vb_core::EngineSignal::Continue));
-    // Body step should now be Running
+    // Body step should now be Pending
     assert_eq!(
         run.step_state(body_step).unwrap(),
         vb_core::frame::StepState::Running
@@ -932,7 +932,7 @@ fn gwt_re1_for_each_body_reentry_after_succeeded() {
         Some(item_slot),
     );
 
-    // THEN: Continue returned, PC at body, Item2 bound, body step Running
+    // THEN: Continue returned, PC at body, Item2 bound, body step Pending
     assert_eq!(next, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(run.pc(), body);
     assert_eq!(*run.read_slot(item_slot).ok().unwrap(), SlotValue::I64(2));
@@ -1017,7 +1017,7 @@ fn gwt_re2_reduce_body_reentry_after_succeeded() {
         Some(SlotIdx::new(4)),
     );
 
-    // THEN: Continue, PC at body, C bound, body step Running
+    // THEN: Continue, PC at body, C bound, body step Pending
     assert_eq!(next, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(run.pc(), body);
     assert_eq!(
@@ -1029,7 +1029,7 @@ fn gwt_re2_reduce_body_reentry_after_succeeded() {
 /// GWT-RE-3: collect_page re-entry after page body Succeeded
 /// Given: collect with page_size=2 over [A,B,C,D], page1 body → Succeeded
 /// When: collect_page re-entry for page2
-/// Then: jump_to_body transitions Succeeded → Running.
+/// Then: jump_to_body transitions Succeeded → Pending.
 #[test]
 fn gwt_re3_collect_page_reentry_after_succeeded() {
     let mut run = fresh_frame();
@@ -1088,7 +1088,7 @@ fn gwt_re3_collect_page_reentry_after_succeeded() {
         done,
     );
 
-    // THEN: Continue, body step Running
+    // THEN: Continue, body step Pending
     assert_eq!(page, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(
         run.step_state(body_step).unwrap(),
@@ -1125,7 +1125,7 @@ fn gwt_re4_repeat_attempt_reentry_after_succeeded() {
     // repeat_attempt for attempt 2 (re-entry)
     let attempt = repeat_attempt(&mut run, attempt_slot, body, done);
 
-    // THEN: Continue, PC at body, body step Running
+    // THEN: Continue, PC at body, body step Pending
     assert_eq!(attempt, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(run.pc(), body);
     assert_eq!(
@@ -1137,7 +1137,7 @@ fn gwt_re4_repeat_attempt_reentry_after_succeeded() {
 /// GWT-RE-5: repeat_check loops back to body after attempt Succeeded
 /// Given: repeat with max_attempts=3, attempt 2 → Succeeded
 /// When: repeat_check routes back to body
-/// Then: jump_to_body transitions Succeeded → Running.
+/// Then: jump_to_body transitions Succeeded → Pending.
 #[test]
 fn gwt_re5_repeat_check_loops_back_after_succeeded() {
     let mut run = fresh_frame();
@@ -1177,29 +1177,20 @@ fn gwt_re5_repeat_check_loops_back_after_succeeded() {
 fn gwt_re6_succeeded_to_running_allowed_for_loop_reentry() {
     use vb_core::frame::StepState;
 
-    // Succeeded → Running is NOT a valid transition.
-    // Terminal states are absorbing; re-entry is engine-internal (skip mark_running).
+    // Succeeded → Running IS a valid transition for loop body re-entry
     let is_valid =
         vb_core::frame::is_valid_step_state_transition(StepState::Succeeded, StepState::Running);
     assert!(
-        !is_valid,
-        "Succeeded→Running must be INVALID (terminal states are absorbing)"
+        is_valid,
+        "Succeeded→Running must be valid for loop re-entry per VALID_TRANSITIONS"
     );
 
-    // Succeeded → Pending is also NOT valid.
+    // Succeeded → Pending is NOT valid (loop re-entry uses Succeeded → Running now)
     let can_go_to_pending =
         vb_core::frame::is_valid_step_state_transition(StepState::Succeeded, StepState::Pending);
     assert!(
         !can_go_to_pending,
-        "Succeeded→Pending must be INVALID (terminal states are absorbing)"
-    );
-
-    // Succeeded → Succeeded IS valid (idempotent re-mark).
-    let same_state =
-        vb_core::frame::is_valid_step_state_transition(StepState::Succeeded, StepState::Succeeded);
-    assert!(
-        same_state,
-        "Succeeded→Succeeded must be valid (idempotent re-mark)"
+        "Succeeded→Pending must be invalid (replaced by Succeeded→Running)"
     );
 }
 

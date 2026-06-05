@@ -978,8 +978,8 @@ fn postcard_roundtrip_taint_all_variants() -> Result<(), String> {
         Taint::Clean,
         Taint::DerivedFromSecret,
         Taint::Secret,
-        Taint::Random,
-        Taint::TimeDependent,
+        Taint::Secret,
+        Taint::Secret,
     ];
     for taint in variants {
         let bytes = postcard::to_allocvec(&taint).map_err(|e| e.to_string())?;

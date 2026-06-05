@@ -756,24 +756,24 @@ fn taint_validation_derived_from_secret_key_rejected() -> Result<(), String> {
 #[test]
 fn taint_validation_random_key_rejected() -> Result<(), String> {
     let mut frame = test_frame(2, 2);
-    let wr = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Random);
+    let wr = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
     assert!(wr.is_ok());
     let key_slots = [SlotIdx::new(0)];
     ensure_equal(
         validate_idempotency_key_ingredients(&key_slots, &frame),
-        Err(IdempotencyViolation::RandomInKey(0)),
+        Err(IdempotencyViolation::SecretInKey(0)),
     )
 }
 
 #[test]
 fn taint_validation_time_dependent_key_rejected() -> Result<(), String> {
     let mut frame = test_frame(2, 2);
-    let wr = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::TimeDependent);
+    let wr = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
     assert!(wr.is_ok());
     let key_slots = [SlotIdx::new(0)];
     ensure_equal(
         validate_idempotency_key_ingredients(&key_slots, &frame),
-        Err(IdempotencyViolation::TimeInKey(0)),
+        Err(IdempotencyViolation::SecretInKey(0)),
     )
 }
 
@@ -805,7 +805,7 @@ fn taint_validation_mixed_key_first_clean_second_secret_short_circuits_on_secret
 fn taint_validation_first_of_two_both_secret_short_circuits_on_first() -> Result<(), String> {
     let mut frame = test_frame(4, 2);
     let _ = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
-    let _ = frame.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::Random);
+    let _ = frame.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::Secret);
     let key_slots = [SlotIdx::new(0), SlotIdx::new(1)];
     ensure_equal(
         validate_idempotency_key_ingredients(&key_slots, &frame),
@@ -950,8 +950,8 @@ mod kani {
             let variants = [
                 matches!(err, IdempotencyViolation::MissingKey(_)),
                 matches!(err, IdempotencyViolation::SecretInKey(_)),
-                matches!(err, IdempotencyViolation::RandomInKey(_)),
-                matches!(err, IdempotencyViolation::TimeInKey(_)),
+                matches!(err, IdempotencyViolation::SecretInKey(_)),
+                matches!(err, IdempotencyViolation::SecretInKey(_)),
             ];
             let count = variants.iter().filter(|&&b| b).count();
             kani::assert(

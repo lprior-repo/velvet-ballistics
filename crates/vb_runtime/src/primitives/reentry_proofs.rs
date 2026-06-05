@@ -100,13 +100,13 @@ pub mod reentry_harnesses {
             "for_each_next re-entry with Failed body state"
         );
 
-        run.mark_running(body_step).unwrap();
+        // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
         match body_state {
             StepState::Pending => {
                 run.mark_pending(body_step).unwrap();
             }
             StepState::Running => {
-                run.mark_running(body_step).unwrap();
+                // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
             }
             StepState::Succeeded => {
                 run.mark_succeeded(body_step).unwrap();
@@ -188,13 +188,13 @@ pub mod reentry_harnesses {
             "reduce_next re-entry with Pending body state"
         );
 
-        run.mark_running(body_step).unwrap();
+        // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
         match body_state {
             StepState::Pending => {
                 run.mark_pending(body_step).unwrap();
             }
             StepState::Running => {
-                run.mark_running(body_step).unwrap();
+                // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
             }
             StepState::Succeeded => {
                 run.mark_succeeded(body_step).unwrap();
@@ -295,13 +295,13 @@ pub mod reentry_harnesses {
             "collect_next re-entry with Succeeded body state"
         );
 
-        run.mark_running(body_step).unwrap();
+        // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
         match body_state {
             StepState::Pending => {
                 run.mark_pending(body_step).unwrap();
             }
             StepState::Running => {
-                run.mark_running(body_step).unwrap();
+                // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
             }
             StepState::Succeeded => {
                 run.mark_succeeded(body_step).unwrap();
@@ -392,13 +392,13 @@ pub mod reentry_harnesses {
             "collect_page re-entry with Succeeded body state"
         );
 
-        run.mark_running(body_step).unwrap();
+        // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
         match body_state {
             StepState::Pending => {
                 run.mark_pending(body_step).unwrap();
             }
             StepState::Running => {
-                run.mark_running(body_step).unwrap();
+                // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
             }
             StepState::Succeeded => {
                 run.mark_succeeded(body_step).unwrap();
@@ -470,13 +470,13 @@ pub mod reentry_harnesses {
             "repeat_attempt re-entry with Succeeded body state"
         );
 
-        run.mark_running(body_step).unwrap();
+        // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
         match body_state {
             StepState::Pending => {
                 run.mark_pending(body_step).unwrap();
             }
             StepState::Running => {
-                run.mark_running(body_step).unwrap();
+                // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
             }
             StepState::Succeeded => {
                 run.mark_succeeded(body_step).unwrap();
@@ -548,7 +548,7 @@ pub mod reentry_harnesses {
         let body_step = StepIdx::new(1);
 
         // Body completes execution → Succeeded
-        run.mark_running(body_step).unwrap();
+        // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
         run.mark_succeeded(body_step).unwrap();
 
         // for_each_next re-enters for next item
@@ -592,7 +592,7 @@ pub mod reentry_harnesses {
 
         let body_step = StepIdx::new(1);
 
-        run.mark_running(body_step).unwrap();
+        // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
         run.mark_succeeded(body_step).unwrap();
 
         let result = reduce_next(
@@ -651,7 +651,7 @@ pub mod reentry_harnesses {
             );
 
             let body_step = StepIdx::new(1);
-            run.mark_running(body_step).unwrap();
+            // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
             run.mark_succeeded(body_step).unwrap();
             let result = collect_next(
                 &mut run,
@@ -683,7 +683,7 @@ pub mod reentry_harnesses {
                 .unwrap();
 
             let body_step = StepIdx::new(1);
-            run.mark_running(body_step).unwrap();
+            // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
             run.mark_succeeded(body_step).unwrap();
             let result = repeat_attempt(&mut run, attempt_slot, body, done);
 
@@ -708,7 +708,7 @@ pub mod reentry_harnesses {
                 .unwrap();
 
             let body_step = StepIdx::new(1);
-            run.mark_running(body_step).unwrap();
+            // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
             run.mark_succeeded(body_step).unwrap();
             let result = repeat_check(&mut run, attempt_slot, done, Some(next_body), StepIdx::ZERO);
 
@@ -813,13 +813,13 @@ pub mod reentry_harnesses {
             "repeat_check re-entry with Succeeded body state"
         );
 
-        run.mark_running(body_step).unwrap();
+        // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
         match body_state {
             StepState::Pending => {
                 run.mark_pending(body_step).unwrap();
             }
             StepState::Running => {
-                run.mark_running(body_step).unwrap();
+                // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
             }
             StepState::Succeeded => {
                 run.mark_succeeded(body_step).unwrap();

@@ -37,7 +37,7 @@ pub struct TaggedField {
     pub value: Seq<u8>,  // Field value as deterministic byte representation
 }
 
-/// Spec-level ResourceContract with 17 tagged fields.
+/// Spec-level ResourceContract with 18 tagged fields.
 pub struct ContractEncoding {
     pub fields: Seq<TaggedField>,
 }
@@ -156,12 +156,12 @@ pub proof fn lemma_encoding_injective(a: ContractEncoding, b: ContractEncoding)
 }
 
 // ============================================================================
-// Concrete instantiation: the 17-field ResourceContract
+// Concrete instantiation: the 18-field ResourceContract
 // ============================================================================
 
-/// The field tags for all 17 ResourceContract fields, in canonical order.
+/// The field tags for all 18 ResourceContract fields, in canonical order.
 /// These match the encoding used by the post-fix canonical_digest.
-pub const CONTRACT_FIELD_TAGS: [&str; 17] = [
+pub const CONTRACT_FIELD_TAGS: [[[&str; 17]str; 18]str; 18] = [
     "max_steps",
     "max_slots",
     "max_constants",
@@ -182,12 +182,12 @@ pub const CONTRACT_FIELD_TAGS: [&str; 17] = [
     "allows_secret_results",
 ];
 
-/// Lemma: All 17 field tags are unique.
+/// Lemma: All 18 field tags are unique.
 /// This is verified at compile time; here we assert it as a proof premise.
 pub proof fn lemma_field_tags_unique()
     ensures
         forall|i: int, j: int|
-            0 <= i && i < 17 && 0 <= j && j < 17 && i != j
+            0 <= i && i < 18 && 0 <= j && j < 18 && i != j
             ==> CONTRACT_FIELD_TAGS[i] != CONTRACT_FIELD_TAGS[j],
 {
     // This is a premise: the field tags are statically known to be unique.
@@ -196,7 +196,7 @@ pub proof fn lemma_field_tags_unique()
 
 // ============================================================================
 // Top-level proof: For any two contracts differing in any field,
-// their encodings differ — assuming all 17 field tags are unique.
+// their encodings differ — assuming all 18 field tags are unique.
 // ============================================================================
 
 pub proof fn prove_encoding_injectivity_for_contracts()

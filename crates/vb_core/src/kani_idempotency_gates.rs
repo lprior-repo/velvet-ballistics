@@ -306,8 +306,8 @@ fn verify_idempotency_required_taint_variants_have_witnesses() {
         0 => Taint::Clean,
         1 => Taint::Secret,
         2 => Taint::DerivedFromSecret,
-        3 => Taint::Random,
-        _ => Taint::TimeDependent,
+        3 => Taint::Secret,
+        _ => Taint::Secret,
     };
     let frame = one_slot_frame_with_taint(taint);
     let key_slots = [SlotIdx::new(0)];
@@ -366,8 +366,8 @@ fn verify_idempotency_duplicate_invocation_is_stable() {
         0 => Taint::Clean,
         1 => Taint::Secret,
         2 => Taint::DerivedFromSecret,
-        3 => Taint::Random,
-        _ => Taint::TimeDependent,
+        3 => Taint::Secret,
+        _ => Taint::Secret,
     };
     let frame = one_slot_frame_with_taint(taint);
     let key_slots = [SlotIdx::new(0)];
@@ -406,8 +406,8 @@ fn verify_idempotency_duplicate_failure_tainted_key() {
     let taint = match kani::any::<u8>() {
         0 => Taint::Secret,
         1 => Taint::DerivedFromSecret,
-        2 => Taint::Random,
-        _ => Taint::TimeDependent,
+        2 => Taint::Secret,
+        _ => Taint::Secret,
     };
     let frame = one_slot_frame_with_taint(taint);
     let key_slots = [SlotIdx::new(0)];

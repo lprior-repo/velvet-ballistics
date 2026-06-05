@@ -512,8 +512,8 @@ impl kani::Arbitrary for Taint {
             0 => Taint::Clean,
             1 => Taint::DerivedFromSecret,
             2 => Taint::Secret,
-            3 => Taint::Random,
-            _ => Taint::TimeDependent,
+            3 => Taint::Secret,
+            _ => Taint::Secret,
         }
     }
 }
