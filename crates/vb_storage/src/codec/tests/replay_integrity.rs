@@ -196,14 +196,11 @@ fn kind_28_admission_does_not_open_unknown_kind_29() {
         "kind 28 must be admitted for journal magic"
     );
 
-    // Verify kind 29 is still unknown and rejected
-    assert!(!is_known_record_kind(29), "kind 29 must still be unknown");
+    // Verify kind 29 (StepSucceeded) is now known and admitted for journal
+    assert!(is_known_record_kind(29), "kind 29 must be known (StepSucceeded)");
     assert!(
-        matches!(
-            validate_kind_family(MAGIC_JOURNAL_EVENT, 29),
-            Err(JournalError::RecordKindFamilyMismatch { .. })
-        ),
-        "kind 29 must be rejected for journal magic"
+        validate_kind_family(MAGIC_JOURNAL_EVENT, 29).is_ok(),
+        "kind 29 must be admitted for journal magic"
     );
 }
 

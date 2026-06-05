@@ -280,14 +280,14 @@ fn unknown_record_kind_value_28_returns_none() {
 }
 
 // =============================================================================
-// B52: is_known_record_kind(29) returns false
+// B52: is_known_record_kind(29) returns true (StepSucceeded)
 // =============================================================================
 
 #[test]
-fn is_known_record_kind_29_returns_false() {
+fn is_known_record_kind_29_returns_true() {
     assert!(
-        !is_known_record_kind(29),
-        "kind 29 must NOT be recognized as a known record kind"
+        is_known_record_kind(29),
+        "kind 29 must be recognized as a known record kind (StepSucceeded)"
     );
 }
 
@@ -426,9 +426,9 @@ fn is_known_record_kind_51_returns_false() {
 // =============================================================================
 
 #[test]
-fn unknown_record_kind_value_29_returns_some_29() {
+fn unknown_record_kind_value_29_returns_none() {
     let result = unknown_record_kind_value(29);
-    assert_eq!(result, Some(29));
+    assert_eq!(result, None, "kind 29 is now known (StepSucceeded)");
 }
 
 #[test]
@@ -448,11 +448,11 @@ fn unknown_record_kind_value_known_returns_none_for_kind_1() {
 // =============================================================================
 
 #[test]
-fn validate_known_kind_rejects_kind_29() {
+fn validate_known_kind_accepts_kind_29() {
     let result = validate_known_kind(29);
     assert!(
-        matches!(result, Err(JournalError::UnknownRecordKind { kind: 29 })),
-        "validate_known_kind must reject unknown kind 29, got {:?}",
+        result.is_ok(),
+        "validate_known_kind must accept known kind 29 (StepSucceeded), got {:?}",
         result
     );
 }
@@ -473,7 +473,7 @@ fn kind_28_does_not_affect_known_kinds_elsewhere() {
     assert!(!is_known_record_kind(4));
     assert!(!is_known_record_kind(5));
     assert!(!is_known_record_kind(9));
-    assert!(!is_known_record_kind(29));
+    assert!(is_known_record_kind(29)); // StepSucceeded is now known
     assert!(!is_known_record_kind(31));
     assert!(!is_known_record_kind(39));
     assert!(!is_known_record_kind(41));

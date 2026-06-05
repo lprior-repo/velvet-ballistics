@@ -290,8 +290,25 @@ impl RuntimeJournal for StorageRuntimeJournal {
     }
 
     fn append_sequenced(&self, event: RuntimeJournalEvent, seq: EventSeq) -> RuntimeResult<()> {
+        // Extract action index update before consuming the event
+        let action_index_update = if let RuntimeJournalEvent::ActionScheduledTicket {
+            ticket,
+            ..
+        } = &event
+        {
+            Some((ticket.action, ticket.run, ticket.step))
+        } else {
+            None
+        };
+
         let storage_event = Self::storage_event(event, seq)?;
         self.append_storage_event(&storage_event)?;
+
+        // Update action index keyspace when scheduling an action
+        if let Some((action, run, step)) = action_index_update {
+            self.journal.put_action_index(action, run, step)?;
+        }
+
         Ok(())
     }
 
