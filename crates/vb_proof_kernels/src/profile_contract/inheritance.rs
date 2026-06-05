@@ -5,9 +5,9 @@
 //! Depth-bounded to MAX_INHERITANCE_DEPTH (8). Cycle detection via visited set.
 
 use crate::profile_contract::config::ProfileConfig;
-use crate::profile_contract::types::{ProfileName, ProfileKey, SettingValue};
-use crate::profile_contract::workspace::WorkspaceProfileSet;
 use crate::profile_contract::errors::ResolveError;
+use crate::profile_contract::types::{ProfileKey, ProfileName, SettingValue};
+use crate::profile_contract::workspace::WorkspaceProfileSet;
 use crate::profile_contract::MAX_INHERITANCE_DEPTH;
 
 /// Resolved profile settings map.
@@ -55,13 +55,14 @@ fn resolve_inner(
     // 1. Resolve parent chain first (base)
     if let Some(parent_name) = profile.inherits {
         // Find parent in workspace
-        let parent = all.find(parent_name).ok_or(ResolveError::InheritTargetMissing {
-            profile: profile.name,
-            parent: parent_name,
-        })?;
+        let parent = all
+            .find(parent_name)
+            .ok_or(ResolveError::InheritTargetMissing {
+                profile: profile.name,
+                parent: parent_name,
+            })?;
 
-        let parent_resolved =
-            resolve_inner(parent, all, depth.saturating_add(1), visited)?;
+        let parent_resolved = resolve_inner(parent, all, depth.saturating_add(1), visited)?;
 
         // Apply parent settings as base
         for (k, v) in &parent_resolved {

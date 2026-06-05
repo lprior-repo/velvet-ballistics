@@ -15,7 +15,9 @@ pub struct WorkspaceProfileSet {
 impl WorkspaceProfileSet {
     /// Create an empty workspace profile set.
     pub fn new() -> Self {
-        Self { profiles: Vec::new() }
+        Self {
+            profiles: Vec::new(),
+        }
     }
 
     /// Add a profile to the set.
