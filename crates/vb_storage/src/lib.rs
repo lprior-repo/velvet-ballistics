@@ -102,6 +102,18 @@ pub mod kani_vb_vzcuf_ps009;
 #[cfg(kani)]
 pub mod kani_vbjpq733_proofs;
 
+// vb-mrwe.5: StepSucceeded record kind parity proofs
+#[cfg(kani)]
+pub mod kani_vb_mrwe5_record_kind;
+#[cfg(kani)]
+pub mod kani_vb_mrwe5_step_succeeded_id;
+
+// vb-mrwe.4: pending_actions recovery proofs
+#[cfg(kani)]
+pub mod kani_vb_mrwe4_seed_unsupported_state;
+#[cfg(kani)]
+pub mod kani_vb_mrwe4_reject_unsupported_state;
+
 // --- vb-h09wf Kani harnesses (PS-001 through PS-012) ---
 // Verification wiring only — no production behavior changes.
 #[cfg(all(kani, feature = "kani-vb-h09wf"))]
