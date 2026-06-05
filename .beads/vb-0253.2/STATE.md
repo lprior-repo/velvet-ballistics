@@ -3,7 +3,7 @@
 ## Bead Metadata
 - **Bead ID**: vb-0253.2
 - **Title**: Finish ingress modularization and dedupe
-- **Status**: STATE 13 COMPLETE; APPROVED; BOOKMARK_READY
+- **Status**: STATE 16 COMPLETE; LANDED
 - **Claimed**: YES
 
 ## Isolation
@@ -27,11 +27,15 @@
 | 11 | formal-verifier | COMPLETE | scoped gates pass after rebase; moon global debt documented |
 | 12 | black-hat-review | COMPLETE | scoped implementation approved |
 | 13 | evidence/truth-serum | APPROVED | workspace/reference hygiene repaired; bookmark-ready |
+| 14 | landing-skill | COMPLETE | Quality gates verified, landing-evidence.md created |
+| 15 | landing-skill | COMPLETE | Bookmark pushed to origin/main |
+| 16 | landing-skill | LANDED | Bead closed, landing complete |
 
 ## Artifacts
 | Artifact | Path | Status |
 |----------|------|--------|
-| STATE.md | .beads/vb-0253.2/STATE.md | CREATED |
+| STATE.md | .beads/vb-0253.2/STATE.md | UPDATED |
+| landing-evidence.md | .beads/vb-0253.2/landing-evidence.md | CREATED |
 | codebase-map.md | .beads/vb-0253.2/codebase-map.md | CREATED |
 | delivery-scope.jsonl | .beads/vb-0253.2/delivery-scope.jsonl | CREATED |
 | contract.md | .beads/vb-0253.2/contract.md | CREATED |
@@ -40,15 +44,17 @@
 | proof-obligations.planned.jsonl | .beads/vb-0253.2/proof-obligations.planned.jsonl | CREATED |
 
 ## Next Gate
-- Bookmark `go-skill-p0-vb-0253-2` created and pushed.
-- Stop before merging main.
+- STATE 16 COMPLETE - LANDED.
+- Merge commit `5ba93c4ddc9375cd85c1d21d5419202d228a9816` on origin/main.
+- landing-evidence.md created.
 
 ## Evidence
 - Isolation verified: YES
 - Workspace created: YES
 - Bead claimed: YES
-- All State 1-4 artifacts on disk: YES
-- State 5-13 artifacts on disk: YES
+- All State 1-13 artifacts on disk: YES
 - Scoped gates: PASS (`rtk cargo check -p vb_ipc`, `rtk cargo test -p vb_ipc`, `rtk cargo clippy -p vb_ipc --lib -- -D warnings`, scoped Kani)
-- Canonical gate rerun: `moon ci` reaches `main` and fails only on out-of-scope global `xtask`, `vb_storage`, and `vb_cli` debt.
-- Parent main: `5ba93c4ddc9375cd85c1d21d5419202d228a9816`.
+- Global debt documented: `moon ci` fails only on out-of-scope global `xtask`, `vb_storage`, and `vb_cli` debt.
+- Bead closed: YES (via `bd close vb-0253.2`)
+- Merge commit on origin/main: `5ba93c4ddc9375cd85c1d21d5419202d228a9816`
+- landing-evidence.md created: YES
