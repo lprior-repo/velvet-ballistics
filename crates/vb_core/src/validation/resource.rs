@@ -31,6 +31,12 @@ pub(crate) fn validate_resource_contract(parts: &WorkflowParts) -> Result<(), Wo
     validate_nonzero_u32("max_collect_items", contract.max_collect_items, MAX_COLLECT_ITEMS)?;
     validate_nonzero_u32("max_queue_depth", contract.max_queue_depth, MAX_QUEUE_DEPTH)?;
     validate_nonzero_u32("max_journal_batch_bytes", contract.max_journal_batch_bytes, MAX_JOURNAL_BATCH_BYTES)?;
+    // P0: allows_secret_results must be enforceable. If true, the runtime must
+    // prove the workflow is authorized to handle Secret-tainted answer payloads.
+    // Until authorization infrastructure exists, reject true at admission.
+    if contract.allows_secret_results {
+        return Err(WorkflowError::ResourceContractExceeded { resource: "allows_secret_results" });
+    }
     Ok(())
 }
 

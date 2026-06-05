@@ -113,6 +113,7 @@ strip = "symbols"
 [profile.hardened]
 inherits = "release"
 codegen-units = 1
+debug-assertions = true
 debug = "line-tables-only"
 lto = "thin"
 overflow-checks = true

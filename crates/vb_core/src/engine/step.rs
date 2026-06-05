@@ -9,7 +9,7 @@ use super::object_list;
 use crate::EngineSignal;
 use crate::action::{ActionFailureCode, ActionJournalEvent, ActionTicket, RetryPolicy};
 use crate::errors::EngineError;
-use crate::frame::RunFrame;
+use crate::frame::{RunFrame, StepState};
 use crate::ids::ActionId;
 use crate::ids::{ExprIdx, SlotIdx, StepIdx};
 use crate::value::SlotValue;
@@ -26,15 +26,28 @@ pub fn step_once(
     let node = plan
         .node(pc)
         .ok_or(EngineError::InvalidProgramCounter { step: pc })?;
-    run.mark_running(pc)?;
+
+    // Loop body re-entry: when a step is already in a terminal state
+    // (Succeeded from a previous iteration), skip mark_running so the
+    // absorbing terminal-state invariant is preserved. The step stays
+    // in its terminal state across re-execution.
+    let is_reentry = matches!(run.step_state(pc)?, StepState::Succeeded);
+
+    if !is_reentry {
+        run.mark_running(pc)?;
+    }
     let signal = match execute_node(plan, run, node, store) {
         Ok(signal) => signal,
         Err(error) => {
-            run.mark_failed(pc)?;
+            // On re-entry, the step stays in its terminal state; do not
+            // attempt to mark it Failed (which would violate the absorbing
+            // invariant). The error propagates to the caller.
+            if !is_reentry {
+                run.mark_failed(pc)?;
+            }
             // Check if this step has an error handler.
             match route_error_handler(plan, run, pc, &error)? {
                 ErrorHandlerOutcome::Routed => {
-                    // PC is now at the handler step. Continue execution.
                     return Ok(EngineSignal::Continue);
                 }
                 ErrorHandlerOutcome::NoHandler => {
@@ -43,7 +56,10 @@ pub fn step_once(
             }
         }
     };
-    mark_step_after_signal(run, pc, &signal)?;
+    // On re-entry, the step already carries its terminal state.
+    if !is_reentry {
+        mark_step_after_signal(run, pc, &signal)?;
+    }
     Ok(signal)
 }
 

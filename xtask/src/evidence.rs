@@ -140,3 +140,7 @@ include!("evidence/release_rendering.rs");
 include!("evidence/negative_fixtures.rs");
 include!("evidence/persistence.rs");
 include!("evidence/tests.rs");
+#[cfg(kani)]
+include!("evidence/kani_evidence_arbitrary.rs");
+#[cfg(kani)]
+include!("evidence/kani_bundle_harnesses.rs");

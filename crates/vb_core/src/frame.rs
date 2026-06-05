@@ -50,7 +50,6 @@ pub fn is_valid_step_state_transition(current: StepState, new: StepState) -> boo
         (StepState::Waiting, StepState::Running),
         (StepState::Asking, StepState::Running),
         (StepState::Succeeded, StepState::Succeeded),
-        (StepState::Succeeded, StepState::Running),
         (StepState::Failed, StepState::Failed),
         (StepState::Cancelled, StepState::Cancelled),
         (StepState::Skipped, StepState::Skipped),
@@ -1086,7 +1085,7 @@ mod frame_kani_harnesses {
 
     /// K-F5: Terminal states block invalid non-self transitions.
     /// Uses kani::any() to symbolically verify terminal blocking property.
-    /// Succeeded->Running remains valid for loop body re-entry.
+    /// Terminal states are fully absorbing. No non-self transitions.
     #[kani::proof]
     fn validate_transition_terminal_blocks_all() {
         let terminal: StepState = kani::any();
