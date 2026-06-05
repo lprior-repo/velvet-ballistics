@@ -45,4 +45,24 @@ impl FjallJournal {
         self.index_action.insert(key.to_vec(), Vec::<u8>::new())?;
         Ok(())
     }
+
+    /// Removes a pending action index marker.
+    pub fn delete_action_index(
+        &self,
+        action: vb_core::ActionId,
+        run: vb_core::RunId,
+        step: vb_core::StepIdx,
+    ) -> Result<(), JournalError> {
+        let key = index_action_key(action, run, step)?;
+        self.index_action.remove(key.as_slice())?;
+        Ok(())
+    }
 }
+
+#[cfg(test)]
+#[path = "index_tests.rs"]
+mod index_tests;
+
+#[cfg(test)]
+#[path = "mrwe6_index_contract_tests.rs"]
+mod mrwe6_index_contract_tests;

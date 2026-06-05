@@ -132,7 +132,7 @@ mod tests {
         assert_eq!(frame.slot_count(), 0);
     }
 
-    // --- Succeeded step allows transition back to Running for loop re-entry ---
+    // --- Succeeded step is terminal and rejects transition back to Running ---
 
     #[test]
     fn frame_mark_succeeded_on_pending_step_allows_overwrite() -> CoreResult<()> {
@@ -144,18 +144,10 @@ mod tests {
         frame.mark_succeeded(StepIdx::new(0))?;
         assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Succeeded);
 
-        // Succeeded is a terminal (absorbing) state.
-        // Succeeded -> Running is INVALID; re-entry is handled by step_once
-        // skipping mark_running for already-Succeeded steps.
+        // Succeeded -> Running is VALID for loop body re-entry
         let result = frame.mark_running(StepIdx::new(0));
-        assert_eq!(
-            result,
-            Err(CoreError::InternalInvariantViolation {
-                reason: "invalid_state_transition"
-            }),
-            "Succeeded -> Running must fail (terminal states are absorbing)"
-        );
-        assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Succeeded);
+        assert_eq!(result, Ok(()));
+        assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Running);
 
         Ok(())
     }
@@ -778,9 +770,9 @@ mod tests {
         assert_eq!(frame.mark_cancelled(StepIdx::new(2)), Ok(()));
         assert_eq!(frame.mark_skipped(StepIdx::new(3)), Ok(()));
 
-        // Terminal states cannot transition to any other state.
-        // Succeeded -> Failed, Running, etc. are all INVALID.
-        // Test Succeeded -> Failed first (should fail since terminal states are absorbing)
+        // Terminal states cannot transition to any other state,
+        // EXCEPT: Succeeded -> Running is allowed for loop body re-entry.
+        // Test Succeeded -> Failed first (should fail since Succeeded is still terminal for Failed)
         assert_eq!(
             frame.mark_failed(StepIdx::ZERO),
             Err(CoreError::InternalInvariantViolation {
@@ -788,23 +780,17 @@ mod tests {
             }),
             "Succeeded -> Failed must fail"
         );
-        // Test Succeeded -> Running (should fail — terminal states are absorbing)
+        // Test Succeeded -> Running (should succeed and change state to Running)
         assert_eq!(
             frame.mark_running(StepIdx::ZERO),
-            Err(CoreError::InternalInvariantViolation {
-                reason: "invalid_state_transition"
-            }),
-            "Succeeded -> Running must fail (terminal states are absorbing)"
+            Ok(()),
+            "Succeeded -> Running is allowed for loop re-entry"
         );
-        // State is still Succeeded (unchanged)
-        assert_eq!(frame.step_state(StepIdx::ZERO)?, StepState::Succeeded);
-        // Running -> Failed is valid only if we get to Running first (can't from Succeeded)
+        // Now state is Running, so Running -> Failed is valid
         assert_eq!(
             frame.mark_failed(StepIdx::ZERO),
-            Err(CoreError::InternalInvariantViolation {
-                reason: "invalid_state_transition"
-            }),
-            "Succeeded -> Failed must also fail"
+            Ok(()),
+            "Running -> Failed is valid"
         );
         // Test Succeeded -> Waiting on original state (should fail - still Succeeded)
         assert_eq!(
@@ -869,23 +855,22 @@ mod tests {
     // --- is_valid_step_state_transition boundary tests ---
 
     #[test]
-    fn transition_returns_false_when_succeeded_to_running() {
-        // Succeeded->Running is INVALID (terminal states are absorbing)
+    fn transition_returns_true_when_succeeded_to_running() {
+        // Succeeded->Running is explicitly allowed for loop body re-entry
         let result = is_valid_step_state_transition(StepState::Succeeded, StepState::Running);
         assert!(
-            !result,
-            "Succeeded->Running must be invalid (terminal states are absorbing)"
+            result,
+            "Succeeded->Running must be valid (loop body re-entry per VALID_TRANSITIONS)"
         );
     }
 
     #[test]
     fn transition_returns_false_when_succeeded_to_pending() {
-        // Succeeded->Pending is INVALID (terminal states are absorbing).
-        // Loop re-entry is handled by step_once skipping mark_running.
+        // Succeeded->Pending is NOT valid (loop re-entry uses Succeeded->Running now)
         let result = is_valid_step_state_transition(StepState::Succeeded, StepState::Pending);
         assert!(
             !result,
-            "Succeeded->Pending must be invalid (terminal states are absorbing)"
+            "Succeeded->Pending must be invalid (replaced by Succeeded->Running)"
         );
     }
 
@@ -909,12 +894,12 @@ mod tests {
         );
     }
 
-    // --- PO-PROP-002, PO-PROP-004: Terminal transition proptest properties ---
+    // --- PO-PROP-002, PO-PROP-004: Terminal absorption proptest properties ---
 
     mod proptest_transitions {
-        use super::is_valid_step_state_transition;
-        use crate::frame::StepState;
         use proptest::prelude::*;
+        use crate::frame::StepState;
+        use super::is_valid_step_state_transition;
 
         fn arb_step_state() -> impl Strategy<Value = StepState> {
             prop_oneof![
@@ -930,13 +915,7 @@ mod tests {
         }
 
         fn is_terminal(s: StepState) -> bool {
-            matches!(
-                s,
-                StepState::Succeeded
-                    | StepState::Failed
-                    | StepState::Skipped
-                    | StepState::Cancelled
-            )
+            matches!(s, StepState::Succeeded | StepState::Failed | StepState::Skipped | StepState::Cancelled)
         }
 
         proptest! {
@@ -957,14 +936,6 @@ mod tests {
                 prop_assume!(is_terminal(terminal));
                 let result = is_valid_step_state_transition(terminal, StepState::Pending);
                 prop_assert!(!result, "terminal {:?}->Pending must be invalid", terminal);
-            }
-
-            /// Terminal states are fully absorbing; Succeeded->Running is NOT valid.
-            /// Loop re-entry is handled by step_once skipping mark_running.
-            #[test]
-            fn proptest_succeeded_to_running_rejected(_seed in any::<u64>()) {
-                let result = is_valid_step_state_transition(StepState::Succeeded, StepState::Running);
-                prop_assert!(!result, "Succeeded->Running must be invalid (terminal states are absorbing)");
             }
         }
     }
@@ -1169,7 +1140,7 @@ mod frame_kani_harnesses {
         {
             let c = StepState::Succeeded;
             {
-                // PO-KANI-003: Succeeded->Pending must be invalid; re-entry uses Running.
+                // PO-KANI-003: Succeeded->Pending must be invalid after fix (absorbing terminal)
                 let r = validate_transition_inline(c, StepState::Pending);
                 if r {
                     errors += 1;
@@ -1179,11 +1150,11 @@ mod frame_kani_harnesses {
             }
             {
                 let r = validate_transition_inline(c, StepState::Running);
-                if !r {
+                if r {
                     errors += 1;
                 }
                 total += 1;
-                kani::assert(r, "X->R");
+                kani::assert(!r, "X->R!");
             }
             {
                 let r = validate_transition_inline(c, StepState::Failed);
@@ -1612,9 +1583,9 @@ mod frame_kani_harnesses {
         }
     }
 
-    /// K-F5: Terminal states block invalid non-self transitions.
+    /// K-F5: Terminal states block all non-self transitions (absorbing).
     /// Uses kani::any() to symbolically verify terminal blocking property.
-    /// Terminal states are fully absorbing. No non-self transitions.
+    /// PO-KANI-002, PO-KANI-005, PO-KANI-014: All 4 terminal states are absorbing.
     /// Synchronized with frame.rs copy.
     #[kani::proof]
     fn validate_transition_terminal_blocks_all() {
@@ -1628,11 +1599,10 @@ mod frame_kani_harnesses {
         kani::assume(is_terminal);
         let result = validate_transition_inline(terminal, target);
         // Terminal states can transition to themselves (idempotent re-mark)
-        if terminal == target || (terminal == StepState::Succeeded && target == StepState::Running)
-        {
+        if terminal == target {
             kani::assert(result, "terminal->self allowed");
         } else {
-            // All other non-self transitions from terminal states are invalid.
+            // All non-self transitions from terminal states are invalid (absorbing)
             kani::assert(!result, "terminal->other blocked");
         }
     }

@@ -71,6 +71,7 @@ pub mod kani_trace_ring;
 pub mod kani_vt2f_runtime_facade;
 #[cfg(all(kani, feature = "kani-vt2f-shard-lower-semantics"))]
 pub mod kani_vt2f_shard_lower_semantics;
+pub mod mrwe6_seams;
 
 #[cfg(all(kani, feature = "kani-admission-store"))]
 pub mod kani_admission_store;
@@ -87,7 +88,7 @@ pub mod trace;
 pub mod yaml_e2e_admission_matrix;
 
 // Verification harnesses gated internally (kani/test/verus/flux via cfg)
-#[cfg(verus)]
+#[cfg(any(verus, loom, flux))]
 pub mod verification;
 
 pub use error::{RuntimeError, RuntimeResult};

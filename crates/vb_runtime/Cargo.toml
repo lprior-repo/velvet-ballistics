@@ -9,6 +9,7 @@ blake3.workspace = true
 chrono.workspace = true
 crossbeam-queue.workspace = true
 indexmap.workspace = true
+loom = "0.7"
 rtrb.workspace = true
 thiserror.workspace = true
 vb_core = { path = "../vb_core" }
@@ -20,7 +21,6 @@ serde.workspace = true
 proptest = { workspace = true }
 tempfile.workspace = true
 vb_core = { path = "../vb_core", features = ["test-util"] }
-loom = "0.7"
 
 [features]
 default = []
@@ -34,7 +34,7 @@ kani-vt2f-shard-lower-semantics = []
 kani-yaml-e2e-admission-matrix = []
 vb-y9d3v-attempt-fence = []
 vb-y9d3v-flux-refinements = []
-vb-fzgdn-flux-refinements = []
+vb-mrwe6-flux-refinements = []
 
 [lints]
 workspace = true

@@ -14,9 +14,23 @@ pub mod flux {
     pub mod vb_y9d3v_action_ticket_refinements;
 }
 
-#[cfg(all(flux, feature = "vb-fzgdn-flux-refinements"))]
-pub mod flux {
-    pub mod vb_fzgdn;
+#[cfg(flux)]
+pub mod mrwe6_flux {
+    #[path = "../flux/vb_mrwe6_atomic_index_refinements.rs"]
+    pub mod vb_mrwe6_atomic_index_refinements;
+    #[path = "../flux/vb_mrwe6_completion_policy_refinements.rs"]
+    pub mod vb_mrwe6_completion_policy_refinements;
+    #[path = "../flux/vb_mrwe6_queue_intent_refinements.rs"]
+    pub mod vb_mrwe6_queue_intent_refinements;
+}
+
+#[cfg(all(test, loom))]
+pub mod loom {
+    pub mod vb_mrwe6_atomic_index_loom;
+    pub mod vb_mrwe6_completion_policy_loom;
+    pub mod vb_mrwe6_duplicate_loom;
+    pub mod vb_mrwe6_queue_intent_loom;
+    pub mod vb_mrwe6_recovery_reliance_loom;
 }
 
 // Verus proof modules (compiled with verus toolchain)

@@ -207,10 +207,7 @@ mod index_tests {
 
         for item in journal.index_workflow.iter() {
             let val = item.value().expect("value should be readable");
-            assert!(
-                val.is_empty(),
-                "workflow index value should be empty bytes"
-            );
+            assert!(val.is_empty(), "workflow index value should be empty bytes");
         }
     }
 
