@@ -1642,8 +1642,6 @@ fn join_taint_never_lower_than_either_input() {
                 Taint::Clean => 0u8,
                 Taint::DerivedFromSecret => 1,
                 Taint::Secret => 2,
-                Taint::Secret => 3,
-                Taint::Secret => 4,
             };
             assert!(
                 disc_result >= disc_a && disc_result >= disc_b,
@@ -2138,15 +2136,11 @@ fn join_taint_chain_matches_pairwise_max() {
                     Taint::Clean => 0,
                     Taint::DerivedFromSecret => 1,
                     Taint::Secret => 2,
-                    Taint::Secret => 3,
-                    Taint::Secret => 4,
                 };
                 let disc_c = match c {
                     Taint::Clean => 0,
                     Taint::DerivedFromSecret => 1,
                     Taint::Secret => 2,
-                    Taint::Secret => 3,
-                    Taint::Secret => 4,
                 };
                 assert!(disc_chain >= disc_a);
                 assert!(disc_chain >= disc_b);
