@@ -91,3 +91,16 @@ impl CheckEvidence {
         Ok(())
     }
 }
+
+#[cfg(kani)]
+impl kani::Arbitrary for CheckEvidence {
+    fn any() -> Self {
+        CheckEvidence {
+            check_kind: "arbitrary_check_kind",
+            threshold_pct: kani::any(),
+            baseline_us: kani::any(),
+            result_us: kani::any(),
+            budget_us: kani::any(),
+        }
+    }
+}

@@ -9,7 +9,7 @@
 #![cfg(kani)]
 #![forbid(unsafe_code)]
 
-use vb_core::check::CheckEvidence;
+use crate::check::CheckEvidence;
 
 /// Kani harness for CheckEvidence::has_baseline.
 #[kani::proof]
@@ -54,7 +54,7 @@ fn proof_check_evidence_validation() {
                 result.is_ok()
                     || matches!(
                         result,
-                        Err(vb_core::check::CheckEvidenceError::RegressionDetected { .. })
+                        Err(crate::check::CheckEvidenceError::RegressionDetected { .. })
                     )
             );
         }
