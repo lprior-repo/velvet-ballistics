@@ -134,6 +134,17 @@ pub(crate) fn write_json_pretty_stdout(value: &serde_json::Value) -> Result<(), 
     write_stdout_line_io(format_args!("{json_str}")).map_err(OutputError::Stdout)
 }
 
+/// vb-k8ut.5: Encodes a serde_json::Value as the v1 deprecated JSON-in-postcard
+/// bridge payload. The outer envelope (`CliPostcardPayload`) is fully typed
+/// (schema_version, kind, content_type, payload bytes) and the postcard frame
+/// itself is typed and CRC/digest-checked. The `JsonUtf8` content_type marks
+/// this as the cold-path JSON bridge intended for early-v1 CLI machine output.
+/// New CLI commands should land typed domain payloads as additional
+/// `CliPostcardContentType` variants in `cli_postcard::types` rather than
+/// growing new shapes inside the JSON bridge. Master document
+/// `velvet-ballistics-MASTER.md`: CLI structured output is operator/agent
+/// cold-path contract; runtime journal and IPC postcard payloads are typed
+/// independently in `vb_storage` and `vb_ipc`.
 fn encode_postcard_json_frame(value: &serde_json::Value) -> Result<Vec<u8>, OutputError> {
     let json_utf8 = serde_json::to_vec(value).map_err(OutputError::JsonSerialize)?;
     let payload = crate::cli_postcard::CliPostcardPayload::from_json_utf8(json_utf8)

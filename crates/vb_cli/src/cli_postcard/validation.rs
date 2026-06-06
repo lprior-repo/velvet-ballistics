@@ -13,10 +13,12 @@ pub(crate) fn validate_cli_payload(
     if payload.kind != CLI_POSTCARD_KIND {
         return Err(PostcardError::PayloadMetadataMismatch);
     }
-    if payload.content_type != super::CliPostcardContentType::JsonUtf8 {
-        return Err(PostcardError::PayloadMetadataMismatch);
+    // vb-k8ut.5: match keeps validation forward-compatible as typed
+    // CliPostcardContentType variants land. JsonUtf8 is the documented v1
+    // deprecated bridge and is the only currently-emitted variant.
+    match payload.content_type {
+        super::CliPostcardContentType::JsonUtf8 => Ok(()),
     }
-    Ok(())
 }
 
 pub(crate) fn payload_digest(payload: &[u8]) -> [u8; 32] {

@@ -25,13 +25,34 @@ pub(crate) const MAX_PAYLOAD_U32: u32 = 64 * 1024;
 pub(crate) const CLI_SCHEMA_VERSION: u16 = 1;
 pub(crate) const CLI_POSTCARD_KIND: u16 = 2;
 
-/// Machine-readable CLI payload content carried inside the postcard frame.
+/// Discriminates the content carried inside the typed CLI postcard envelope.
+///
+/// vb-k8ut.5: `JsonUtf8` is the **v1 deprecated cold-path bridge** carrying
+/// UTF-8 JSON bytes inside the typed envelope. New CLI commands MUST land
+/// typed domain payloads as additional `#[non_exhaustive]` variants (e.g.
+/// `DoctorReport`, `ExplainPlan`) rather than encoding new shapes into the
+/// JSON bridge. Master document `velvet-ballistics-MASTER.md`: CLI structured
+/// output is an operator/agent cold-path contract; runtime journal and IPC
+/// postcard payloads are typed independently in `vb_storage` and `vb_ipc`.
+///
+/// The enum is intentionally `#[non_exhaustive]` so callers must keep their
+/// matches forward-compatible as typed variants land.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub(crate) enum CliPostcardContentType {
+    /// v1 deprecated cold-path bridge: UTF-8 JSON bytes inside the typed envelope.
+    /// Prefer adding a typed variant for any new CLI domain payload.
     JsonUtf8,
 }
 
-/// Versioned CLI payload carried by the outer postcard frame.
+/// Versioned, typed CLI envelope carried by the outer postcard frame.
+///
+/// vb-k8ut.5: the envelope itself is fully typed (schema_version, kind,
+/// content_type, payload bytes). The `json_utf8` field name and the
+/// `CliPostcardContentType::JsonUtf8` variant are the deprecated v1 cold-path
+/// bridge. Typed domain payloads should be added as new `CliPostcardContentType`
+/// variants with their own typed-payload fields, not by encoding new shapes
+/// inside the JSON bridge.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct CliPostcardPayload {
     pub(crate) schema_version: u16,

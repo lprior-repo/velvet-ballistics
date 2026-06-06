@@ -176,6 +176,66 @@ fn decode_rejects_truncated_header() {
     assert_eq!(decode_postcard(truncated), Err(PostcardError::DecodeFailed));
 }
 
+// vb-k8ut.5: the next four tests assert the **typed** CliPostcardPayload
+// envelope shape (not serde_json::Value). They prove the v1 cold-path
+// JSON-in-postcard bridge is wrapped in a fully typed envelope and verify
+// the decoder returns the typed struct directly.
+
+#[test]
+fn decode_cli_payload_returns_typed_envelope_shape() {
+    let json_bytes = br#"{"hello":"world"}"#.to_vec();
+    let payload = CliPostcardPayload::from_json_utf8(json_bytes.clone())
+        .expect("typed envelope must encode JSON payload");
+    let encoded = postcard::to_allocvec(&payload).expect("typed envelope must postcard-serialize");
+
+    let decoded = decode_cli_payload(&encoded).expect("typed envelope must round-trip");
+
+    assert_eq!(decoded.schema_version, CLI_SCHEMA_VERSION);
+    assert_eq!(decoded.kind, CLI_POSTCARD_KIND);
+    assert!(matches!(
+        decoded.content_type,
+        CliPostcardContentType::JsonUtf8
+    ));
+    assert_eq!(decoded.json_utf8, json_bytes);
+}
+
+#[test]
+fn decode_cli_payload_rejects_garbage_bytes_as_typed_envelope() {
+    let garbage = [0xFFu8; 24];
+    let result = decode_cli_payload(&garbage);
+    assert_eq!(result, Err(PostcardError::DecodeFailed));
+}
+
+#[test]
+fn validate_cli_payload_accepts_documented_json_bridge_variant() {
+    let payload = CliPostcardPayload::from_json_utf8(b"{}".to_vec())
+        .expect("documented bridge variant must construct");
+    assert_eq!(validate_cli_payload(&payload), Ok(()));
+    // The typed envelope must always advertise the documented v1 bridge
+    // content type; growth happens via new CliPostcardContentType variants,
+    // not by reinterpreting the JsonUtf8 bytes.
+    assert!(matches!(
+        payload.content_type,
+        CliPostcardContentType::JsonUtf8
+    ));
+}
+
+#[test]
+fn typed_envelope_round_trip_preserves_kind_and_schema_metadata() {
+    let payload = CliPostcardPayload::from_json_utf8(br#"[1,2,3]"#.to_vec())
+        .expect("typed envelope must encode array payload");
+    let bytes = postcard::to_allocvec(&payload).expect("typed envelope must serialize");
+    let decoded = decode_cli_payload(&bytes).expect("typed envelope must round-trip");
+
+    // Assert on the typed envelope struct directly — explicitly NOT decoding
+    // through serde_json::Value, which is the JSON-in-postcard pattern the
+    // bead rejects for typed contract evidence.
+    assert_eq!(decoded.schema_version, payload.schema_version);
+    assert_eq!(decoded.kind, payload.kind);
+    assert_eq!(decoded.content_type, payload.content_type);
+    assert_eq!(decoded.json_utf8, payload.json_utf8);
+}
+
 fn encode_test_postcard(schema_version: u16, kind: u16, payload: &[u8]) -> Vec<u8> {
     encode_postcard(schema_version, kind, payload).expect("test postcard encodes")
 }
