@@ -213,10 +213,10 @@
       "kani_taint_propagation::kani_join_taint_ge_second_arg",
       "kani_taint_propagation::kani_join_taint_idempotent",
       "kani_taint_propagation::kani_join_taint_monotonic",
-      "kani_taint_propagation::kani_random_below_time_dependent",
       "kani_taint_propagation::kani_read_taint_no_panic",
+      "kani_taint_propagation::kani_secret_is_left_absorbing",
+      "kani_taint_propagation::kani_secret_is_right_absorbing",
       "kani_taint_propagation::kani_taint_lattice_transitive",
-      "kani_taint_propagation::kani_time_dependent_is_lattice_top",
       "kani_taint_propagation::kani_write_taint_no_panic"
     ],
     "crates/vb_core/src/kani_vbjpq733_proofs.rs": [
@@ -249,13 +249,11 @@
     "crates/vb_core/src/replay/choose/kani/kani_choose_no_otherwise.rs": [
       "replay::choose::kani::kani_choose_no_otherwise::kani_choose_no_otherwise"
     ],
-    "crates/vb_core/src/replay/kani_choose_slot.rs": [
-      "replay::kani_harnesses::kani_choose_slot::verify_choose_slot_output_in_input_set",
-      "replay::kani_harnesses::kani_choose_slot::verify_replay_choose_slot_two_branches_no_panic",
-      "replay::kani_harnesses::kani_choose_slot::verify_replay_deterministic_for_same_input"
-    ],
-    "crates/vb_core/src/replay/kani_terminal_states.rs": [
-      "replay::kani_harnesses::kani_terminal_states::kani_replay_skips_terminal_states"
+    "crates/vb_core/src/replay/kani_harnesses.rs": [
+      "replay::kani_harnesses::verification::kani_replay_skips_terminal_states",
+      "replay::kani_harnesses::verification::verify_choose_slot_output_in_input_set",
+      "replay::kani_harnesses::verification::verify_replay_choose_slot_two_branches_no_panic",
+      "replay::kani_harnesses::verification::verify_replay_deterministic_for_same_input"
     ],
     "crates/vb_core/src/shard/partition/kani_key_range_properties.rs": [
       "shard::partition::kani_key_range_properties::key_range_adjacent_correctness",
@@ -270,12 +268,34 @@
     ],
     "crates/vb_core/src/value_store.rs": [
       "value_store::kani_harnesses::value_store_cap_rejects_insert_with_budget_exceeded_max_slots"
+    ],
+    "crates/vb_core/src/workflow/compiled_empty_path_kani.rs": [
+      "workflow::compiled_empty_path_kani::vb_ajc40_empty_path_root_accessor"
+    ],
+    "crates/vb_core/src/workflow/compiled_query_kani.rs": [
+      "workflow::compiled_query_kani::vb_ajc40_query_budget_boundaries",
+      "workflow::compiled_query_kani::vb_ajc40_query_count_65535_65536",
+      "workflow::compiled_query_kani::vb_ajc40_query_decode_bytes",
+      "workflow::compiled_query_kani::vb_ajc40_query_decode_smoke_cases",
+      "workflow::compiled_query_kani::vb_ajc40_query_path_depth_16_17",
+      "workflow::compiled_query_kani::vb_ajc40_query_post_decode_semantics"
+    ],
+    "crates/vb_core/src/workflow/compiled_slug_kani.rs": [
+      "workflow::compiled_slug_kani::vb_ajc40_slug_budget_boundaries",
+      "workflow::compiled_slug_kani::vb_ajc40_slug_count_65535_65536",
+      "workflow::compiled_slug_kani::vb_ajc40_slug_decode_bytes",
+      "workflow::compiled_slug_kani::vb_ajc40_slug_decode_smoke_cases",
+      "workflow::compiled_slug_kani::vb_ajc40_slug_path_depth_16_17",
+      "workflow::compiled_slug_kani::vb_ajc40_slug_post_decode_semantics"
+    ],
+    "crates/vb_core/src/workflow/compiled_total_cost_kani.rs": [
+      "workflow::compiled_total_cost_kani::vb_ajc40_total_cost_mismatch_rejected"
     ]
   },
   "contract-harnesses": {},
   "contracts": [],
   "totals": {
-    "standard-harnesses": 207,
+    "standard-harnesses": 221,
     "contract-harnesses": 0,
     "functions-under-contract": 0
   }

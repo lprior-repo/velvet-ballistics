@@ -577,33 +577,31 @@ pub proof fn proof_valid_dimensions_accepted(first_step: int, step_count: int)
 //   - Taint enum has exactly 3 closed variants (verified at type-system level)
 //   - No raw u8-to-Taint conversion (forbid(unsafe_code) active on frame.rs)
 
-/// SpecTaint mirrors the runtime Taint enum (Clean=0, DerivedFromSecret=1, Secret=2, Random=3, TimeDependent=4).
+/// SpecTaint mirrors the runtime Taint enum (Clean=0, DerivedFromSecret=1, Secret=2).
+/// Bound to crates/vb_core/src/value.rs:14-21 (3 closed variants) and the master
+/// secrecy lattice (velvet-ballistics-MASTER.md:528).
 pub enum SpecTaint {
     Clean,
     DerivedFromSecret,
     Secret,
-    Random,
-    TimeDependent,
 }
 
-/// spec_taint_valid_write: After a successful write, taint is one of the 5 valid variants.
+/// spec_taint_valid_write: After a successful write, taint is one of the 3 valid variants.
 pub open spec fn spec_taint_valid_write(taint: SpecTaint) -> bool {
     match taint {
         SpecTaint::Clean => true,
         SpecTaint::DerivedFromSecret => true,
         SpecTaint::Secret => true,
-        SpecTaint::Random => true,
-        SpecTaint::TimeDependent => true,
     }
 }
 
 /// lemma_taint_valid_write: write_slot_with_taint preserves taint validity.
 ///
 /// If write_slot_with_taint returns Ok, then the taint at that slot is
-/// guaranteed to be one of {Clean, DerivedFromSecret, Secret, Random, TimeDependent}.
+/// guaranteed to be one of {Clean, DerivedFromSecret, Secret}.
 ///
 /// This follows from:
-/// 1. Taint is a closed enum (5 variants, no others possible)
+/// 1. Taint is a closed enum (3 variants, no others possible)
 /// 2. The write is direct: taint[index] = taint (not a conversion)
 /// 3. The function validates bounds before write (returns Err on OOB)
 /// 4. On Ok path, the written value is exactly the input taint
@@ -622,40 +620,28 @@ pub proof fn lemma_taint_valid_write(taint: SpecTaint)
         SpecTaint::Secret => {
             assert(spec_taint_valid_write(taint) == true);
         }
-        SpecTaint::Random => {
-            assert(spec_taint_valid_write(taint) == true);
-        }
-        SpecTaint::TimeDependent => {
-            assert(spec_taint_valid_write(taint) == true);
-        }
     }
 }
 
-/// Lemma: All five taint variants are valid write targets.
+/// Lemma: All three taint variants are valid write targets.
 pub proof fn lemma_all_taint_variants_valid()
     ensures
         spec_taint_valid_write(SpecTaint::Clean) == true,
         spec_taint_valid_write(SpecTaint::DerivedFromSecret) == true,
         spec_taint_valid_write(SpecTaint::Secret) == true,
-        spec_taint_valid_write(SpecTaint::Random) == true,
-        spec_taint_valid_write(SpecTaint::TimeDependent) == true,
 {
     assert(spec_taint_valid_write(SpecTaint::Clean) == true) by(compute);
     assert(spec_taint_valid_write(SpecTaint::DerivedFromSecret) == true) by(compute);
     assert(spec_taint_valid_write(SpecTaint::Secret) == true) by(compute);
-    assert(spec_taint_valid_write(SpecTaint::Random) == true) by(compute);
-    assert(spec_taint_valid_write(SpecTaint::TimeDependent) == true) by(compute);
 }
 
 /// Lemma: There are no invalid taint values (closed enum exhaustiveness).
 pub proof fn lemma_no_invalid_taint()
     ensures
-        // The five variants are exhaustive — no other values exist
+        // The three variants are exhaustive — no other values exist
         spec_taint_valid_write(SpecTaint::Clean) == true,
         spec_taint_valid_write(SpecTaint::DerivedFromSecret) == true,
         spec_taint_valid_write(SpecTaint::Secret) == true,
-        spec_taint_valid_write(SpecTaint::Random) == true,
-        spec_taint_valid_write(SpecTaint::TimeDependent) == true,
 {
     lemma_all_taint_variants_valid();
 }
@@ -674,8 +660,6 @@ pub proof fn lemma_taint_valid_write_all_variants()
         spec_taint_valid_write(SpecTaint::Clean) == true,
         spec_taint_valid_write(SpecTaint::DerivedFromSecret) == true,
         spec_taint_valid_write(SpecTaint::Secret) == true,
-        spec_taint_valid_write(SpecTaint::Random) == true,
-        spec_taint_valid_write(SpecTaint::TimeDependent) == true,
 {
     lemma_all_taint_variants_valid();
 }
@@ -700,8 +684,6 @@ pub proof fn lemma_multiple_writes_preserve_taint_validity()
         spec_taint_valid_write(SpecTaint::Clean) == true,
         spec_taint_valid_write(SpecTaint::DerivedFromSecret) == true,
         spec_taint_valid_write(SpecTaint::Secret) == true,
-        spec_taint_valid_write(SpecTaint::Random) == true,
-        spec_taint_valid_write(SpecTaint::TimeDependent) == true,
 {
     lemma_taint_valid_write_all_variants();
 }

@@ -187,16 +187,21 @@ fn kani_join_taint_monotonic() {
     kani::assert(disc_r >= disc_b, "join(a,b).disc >= b.disc");
 }
 
-/// VB-CORE-TAINT-006-KANI H10: join_taint lattice top absorption
+/// VB-CORE-TAINT-006-KANI H10: join_taint lattice top absorption (right-absorbing).
+///
+/// Secret is the unique top of the 3-variant secrecy lattice
+/// (Clean=0, DerivedFromSecret=1, Secret=2), so joining any taint `a`
+/// with `Secret` on the right must yield `Secret`. H12
+/// (`kani_secret_is_left_absorbing`) covers the symmetric left side.
 #[kani::proof]
 #[kani::unwind(4)]
-fn kani_time_dependent_is_lattice_top() {
+fn kani_secret_is_right_absorbing() {
     let a_raw = kani::any::<u8>();
     let a = taint_from_u8(a_raw);
     let result = join_taint(a, Taint::Secret);
     kani::assert(
         result == Taint::Secret,
-        "TimeDependent absorbs all taint levels",
+        "Secret absorbs all taint levels (top of 3-variant secrecy lattice)",
     );
 }
 
@@ -210,18 +215,21 @@ fn kani_clean_is_lattice_bottom() {
     kani::assert(result == a, "Clean is identity for join_taint");
 }
 
-/// VB-CORE-TAINT-006-KANI H12: join_taint result ranks Random below TimeDependent
+/// VB-CORE-TAINT-006-KANI H12: Secret is the unique top of the 3-variant secrecy lattice.
+///
+/// Binds to crates/vb_core/src/value.rs:14-21 and master lattice
+/// (velvet-ballistics-MASTER.md:528). For any arbitrary lower taint `a`,
+/// joining with `Secret` must yield `Secret`. This proves Secret is
+/// absorbing on the left as well as on the right (H10 covers the
+/// right-absorbing direction).
 #[kani::proof]
 #[kani::unwind(4)]
-fn kani_random_below_time_dependent() {
+fn kani_secret_is_left_absorbing() {
     let a_raw = kani::any::<u8>();
     let a = taint_from_u8(a_raw);
     let result = join_taint(Taint::Secret, a);
-    // If a is TimeDependent, result is TimeDependent
-    // In all other cases, Random >= a means result is Random
-    // So result is either Random or TimeDependent, never lower
     kani::assert(
-        result == Taint::Secret || result == Taint::Secret,
-        "join(Random, a) is Random or TimeDependent",
+        result == Taint::Secret,
+        "join(Secret, a) == Secret for every taint a",
     );
 }
