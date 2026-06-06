@@ -15,7 +15,7 @@ echo "CommitSHA: $(git rev-parse HEAD)"
 echo "Toolchain: $(rustc --version)"
 echo "Command: $COMMAND_SUMMARY"
 echo "ScanDomain: crates/*/src"
-echo "NonProductionPathExcluded: tests benches examples fuzz target .beads fixtures build.rs path-scoped tests.rs *_tests.rs kani harnesses loom models"
+echo "NonProductionPathExcluded: tests benches examples fuzz target .beads fixtures build.rs path-scoped tests.rs *_tests.rs kani harnesses loom models vb_ajc40_flux"
 
 set +e
 mapfile -t violations < <(
