@@ -16,12 +16,14 @@ pub mod flux {
 
 #[cfg(all(flux, feature = "vb-mrwe6-flux-refinements"))]
 pub mod mrwe6_flux {
-    #[path = "../flux/vb_mrwe6_atomic_index_refinements.rs"]
-    pub mod vb_mrwe6_atomic_index_refinements;
-    #[path = "../flux/vb_mrwe6_completion_policy_refinements.rs"]
-    pub mod vb_mrwe6_completion_policy_refinements;
-    #[path = "../flux/vb_mrwe6_queue_intent_refinements.rs"]
-    pub mod vb_mrwe6_queue_intent_refinements;
+    include!("flux/vb_mrwe6_atomic_index_refinements.rs");
+    include!("flux/vb_mrwe6_completion_policy_refinements.rs");
+    include!("flux/vb_mrwe6_queue_intent_refinements.rs");
+}
+
+#[cfg(all(flux, feature = "vb-egysa-flux-refinements"))]
+pub mod vb_egysa_flux {
+    include!("flux/vb_egysa_runtime_facade_refinements.rs");
 }
 
 #[cfg(all(test, loom))]

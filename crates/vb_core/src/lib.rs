@@ -14,12 +14,14 @@
 pub mod action;
 pub mod budget;
 pub mod capability;
+pub mod check;
 pub mod contract_encoding;
 pub mod diagnostic;
 pub mod engine;
 pub mod error;
 pub mod errors;
 pub mod frame;
+pub mod git;
 pub mod ids;
 pub mod limits;
 pub mod policy;

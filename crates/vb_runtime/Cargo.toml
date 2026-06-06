@@ -8,6 +8,7 @@ version.workspace = true
 enabled = true
 include = [
   "src/verification/flux/vb_mrwe6_*_refinements.rs",
+  "src/verification/flux/vb_egysa*_refinements.rs",
   "src/verification/mrwe6_flux/*.rs",
 ]
 
@@ -44,6 +45,7 @@ kani-yaml-e2e-admission-matrix = []
 vb-y9d3v-attempt-fence = []
 vb-y9d3v-flux-refinements = []
 vb-mrwe6-flux-refinements = ["dep:flux-rs", "vb_storage/vb-mrwe6-flux-refinements"]
+vb-egysa-flux-refinements = ["dep:flux-rs"]
 vb-mrwe6-flux-negative-probes = []
 
 [lints]

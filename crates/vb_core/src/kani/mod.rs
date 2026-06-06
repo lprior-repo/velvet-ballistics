@@ -19,3 +19,5 @@ pub mod kani_reverse_lookup;
 pub mod kani_serde_roundtrip;
 pub mod kani_symbolic_code_validation;
 pub mod kani_zero_alloc;
+#[cfg(feature = "kani-vb-5iebh-check-scope")]
+pub mod vb_5iebh_check_scope;

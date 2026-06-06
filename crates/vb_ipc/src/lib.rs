@@ -44,7 +44,9 @@ pub mod kani_ipc_command_exhaustive;
 pub mod kani_ipc_dispatch_exhaustive;
 
 pub use crate::action_output::IpcActionOutputPayload;
-pub use crate::bounded::{BoundedPayload, MaxPayloadBytes, QueueCapacity};
+pub use crate::bounded::{
+    BoundedPayload, BoundedReadExtent, BoundedWriteDrainExtent, MaxPayloadBytes, QueueCapacity,
+};
 pub use crate::codec::{decode_payload, encode_payload};
 pub use crate::commands::IpcCommand;
 pub use crate::constants::{IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION};

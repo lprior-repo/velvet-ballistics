@@ -67,3 +67,79 @@ impl BoundedPayload {
         &self.0
     }
 }
+
+/// Bounds for a read operation extent in an IPC buffer.
+///
+/// Defines the start offset and length of a bounded read region
+/// within an IPC buffer frame.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoundedReadExtent(
+    /// Starting offset within the buffer.
+    usize,
+    /// Length of the read extent.
+    usize,
+);
+
+impl BoundedReadExtent {
+    /// Creates a new read extent with offset and length.
+    #[must_use]
+    pub const fn new(offset: usize, length: usize) -> Option<Self> {
+        Some(Self(offset, length))
+    }
+
+    /// Returns the start offset.
+    #[must_use]
+    pub const fn offset(self) -> usize {
+        self.0
+    }
+
+    /// Returns the length.
+    #[must_use]
+    pub const fn length(self) -> usize {
+        self.1
+    }
+
+    /// Returns the end offset (offset + length).
+    #[must_use]
+    pub const fn end(self) -> usize {
+        self.0.saturating_add(self.1)
+    }
+}
+
+/// Bounds for a write/drain operation extent in an IPC buffer.
+///
+/// Defines the start offset and capacity bound for a bounded write
+/// or drain region within an IPC buffer frame.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoundedWriteDrainExtent(
+    /// Starting offset within the buffer.
+    usize,
+    /// Capacity bound for the write/drain operation.
+    usize,
+);
+
+impl BoundedWriteDrainExtent {
+    /// Creates a new write/drain extent with offset and capacity.
+    #[must_use]
+    pub const fn new(offset: usize, capacity: usize) -> Option<Self> {
+        Some(Self(offset, capacity))
+    }
+
+    /// Returns the start offset.
+    #[must_use]
+    pub const fn offset(self) -> usize {
+        self.0
+    }
+
+    /// Returns the capacity bound.
+    #[must_use]
+    pub const fn capacity(self) -> usize {
+        self.1
+    }
+
+    /// Returns the end offset (offset + capacity).
+    #[must_use]
+    pub const fn end(self) -> usize {
+        self.0.saturating_add(self.1)
+    }
+}
