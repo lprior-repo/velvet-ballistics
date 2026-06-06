@@ -1556,6 +1556,95 @@ fn collect_states_from_journal_flag_preserved_through_upsert() -> Result<(), Str
     Ok(())
 }
 
+/// vb-izu26: Verifies `collect_start` (via `upsert_started_collect`) preserves
+/// the journaled `start_millis` when an existing pagination state entry has
+/// `from_journal: true`. This proves the replay-determinism contract: the
+/// original wall-clock time recorded at first execution is reused during
+/// journal-driven replay, rather than being overwritten with a fresh
+/// `millis_since_epoch()` reading. Acceptance criterion F3 of the vb-o5zb.4
+/// proof-review.
+#[test]
+fn collect_start_preserves_start_millis_when_from_journal_true() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    let collector = SlotIdx::new(1);
+    let body = StepIdx::new(1);
+    let done = StepIdx::new(2);
+
+    // 4 source items with page_size = 2 ensures `page_len < item_count`,
+    // which exercises the `upsert_started_collect` branch that retains state.
+    list_in_slot(
+        &mut run,
+        &mut store,
+        source,
+        vec![
+            SlotValue::I64(1),
+            SlotValue::I64(2),
+            SlotValue::I64(3),
+            SlotValue::I64(4),
+        ],
+    );
+
+    // Seed the side table with a from_journal=true entry under the exact
+    // (RunId, collector_slot) key that collect_start will look up.
+    let journaled_start_millis: u64 = 1_700_000_000_000;
+    let seeded = CollectPaginationState {
+        run_id: run.run_id(),
+        collector_slot: collector,
+        source: ListId::new(0),
+        current_page: ListId::new(0),
+        cursor: 0,
+        page_size: 2,
+        item_count: 4,
+        limit: 100,
+        time_limit_ms: Some(60_000),
+        start_millis: journaled_start_millis,
+        from_journal: true,
+    };
+    states
+        .upsert(seeded)
+        .map_err(|e| format!("seed upsert failed: {e:?}"))?;
+
+    let signal = collect_start(
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        100,
+        2,
+        body,
+        done,
+        Some(collector),
+        Some(60_000),
+    )
+    .map_err(|e| format!("collect_start failed: {e:?}"))?;
+    ensure(
+        signal == vb_core::EngineSignal::Continue,
+        format!("expected Continue, got {signal:?}"),
+    )?;
+
+    let key = (run.run_id(), collector);
+    let after = states
+        .entries
+        .get(&key)
+        .copied()
+        .ok_or("pagination state missing after collect_start")?;
+
+    ensure(
+        after.start_millis == journaled_start_millis,
+        format!(
+            "start_millis must be preserved from journal (expected {}, got {})",
+            journaled_start_millis, after.start_millis
+        ),
+    )?;
+    ensure(
+        after.from_journal,
+        "from_journal flag must remain true after collect_start re-upsert",
+    )
+}
+
 #[test]
 fn collect_states_find_returns_none_for_wrong_page() -> Result<(), String> {
     let mut states = CollectStates::new();
