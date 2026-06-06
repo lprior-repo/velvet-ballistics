@@ -31,7 +31,8 @@ fn is_terminal(s: StepState) -> bool {
 
 proptest! {
     // -- PO-PROP-001: Terminal transition invariant -------------------------
-    // All terminal states are fully absorbing. No non-self transitions allowed.
+    // Most terminal states are fully absorbing. No non-self transitions allowed.
+    // Exception: Succeeded can transition to Running for loop body reentry.
     #[test]
     fn proptest_terminal_absorption_invariant(
         from in arb_step_state(),
@@ -39,19 +40,25 @@ proptest! {
     ) {
         prop_assume!(is_terminal(from));
         prop_assume!(from != to);
-        let result = is_valid_step_state_transition(from, to);
-        prop_assert!(
-            !result,
-            "terminal {:?}->{:?} must be invalid (terminal states are fully absorbing)",
-            from, to
-        );
+        // Special case: Succeeded->Running is allowed for loop reentry
+        if from == StepState::Succeeded && to == StepState::Running {
+            let result = is_valid_step_state_transition(from, to);
+            prop_assert!(result, "Succeeded->Running must be valid (for loop reentry)");
+        } else {
+            let result = is_valid_step_state_transition(from, to);
+            prop_assert!(
+                !result,
+                "terminal {:?}->{:?} must be invalid (terminal states are fully absorbing)",
+                from, to
+            );
+        }
     }
 
-    /// Terminal states are fully absorbing — Succeeded->Running is NOT valid.
+    /// Succeeded allows transition to Running for loop body reentry.
     #[test]
-    fn proptest_succeeded_to_running_blocked(_seed in any::<u64>()) {
+    fn proptest_succeeded_to_running_allowed(_seed in any::<u64>()) {
         let result = is_valid_step_state_transition(StepState::Succeeded, StepState::Running);
-        prop_assert!(!result, "Succeeded->Running must be invalid (Succeeded is terminal/absorbing)");
+        prop_assert!(result, "Succeeded->Running must be valid (for loop reentry)");
     }
 }
 

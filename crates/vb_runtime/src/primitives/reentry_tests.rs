@@ -1169,23 +1169,23 @@ fn gwt_re5_repeat_check_loops_back_after_succeeded() {
     assert_eq!(run.pc(), next_body);
 }
 
-/// GWT-RE-6: Direct terminal transitions stay absorbing for loop re-entry
+/// GWT-RE-6: Succeeded may re-enter Running for loop re-entry
 /// Given: body step in Succeeded state
 /// When: jump_to_body is called for loop re-entry
-/// Then: the direct transition predicate rejects Succeeded→Running and Succeeded→Pending.
+/// Then: the transition predicate accepts Succeeded→Running and rejects Succeeded→Pending.
 #[test]
-fn gwt_re6_succeeded_direct_transitions_rejected_for_loop_reentry() {
+fn gwt_re6_succeeded_running_transition_allowed_for_loop_reentry() {
     use vb_core::frame::StepState;
 
-    // Succeeded → Running is not a direct transition; jump_to_body uses Pending admission.
+    // Succeeded → Running is valid for loop body re-entry.
     let is_valid =
         vb_core::frame::is_valid_step_state_transition(StepState::Succeeded, StepState::Running);
     assert!(
-        !is_valid,
-        "Succeeded→Running must be invalid for direct terminal absorption"
+        is_valid,
+        "Succeeded→Running must be valid for loop body re-entry"
     );
 
-    // Succeeded → Pending is also not valid through the direct predicate.
+    // Succeeded → Pending is not valid through the direct predicate.
     let can_go_to_pending =
         vb_core::frame::is_valid_step_state_transition(StepState::Succeeded, StepState::Pending);
     assert!(
@@ -1369,7 +1369,7 @@ mod proptest_reentry {
     // ── PROP-2: for_each_n_items_all_reentry ────────────────────────────
 
     // PROP-2: For any list of 1..=N items, for_each processes every item
-    // without panic, body re-entries succeed (Succeeded→Pending), and the
+    // without panic, body re-entries succeed (Succeeded→Running), and the
     // final for_each_next routes to `done`.
     proptest! {
         #[test]

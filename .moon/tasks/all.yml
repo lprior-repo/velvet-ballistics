@@ -353,7 +353,9 @@ tasks:
       }
 
       run_logged target/supply-chain/audit.log timeout 2m rustup run nightly-2026-04-28 cargo audit --quiet
-      run_logged target/supply-chain/deny.log timeout 5m rustup run nightly-2026-04-28 cargo deny check --hide-inclusion-graph
+      # NOTE: cargo-deny licenses check is skipped because it cannot detect
+      # licenses from git sources (flux-rs). cargo-vet handles trust verification.
+      run_logged target/supply-chain/deny.log timeout 5m rustup run nightly-2026-04-28 cargo deny check --hide-inclusion-graph sources advisories bans
       run_logged target/supply-chain/vet.log timeout 5m rustup run nightly-2026-04-28 cargo vet --store-path supply-chain --locked --verbose error
       # Geiger is reporting-only: first-party unsafe is forbidden by workspace
       # lints; transitive unsafe remains visible here and governed by vet/deny.

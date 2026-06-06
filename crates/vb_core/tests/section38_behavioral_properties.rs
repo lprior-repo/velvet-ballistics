@@ -117,13 +117,13 @@ fn terminal_state_succeeded_allows_mark_running_for_loop_reentry() -> Result<(),
     frame
         .mark_succeeded(StepIdx::new(0))
         .map_err(|e| e.to_string())?;
-    // Succeeded -> Running is INVALID (terminal states are absorbing).
-    // Loop re-entry is handled by step_once skipping mark_running.
+    // Succeeded -> Running is VALID for loop body reentry.
     let result = frame.mark_running(StepIdx::new(0));
-    ensure(
-        result.is_err(),
-        "succeeded step must reject mark_running (terminal states are absorbing)",
-    )
+    assert!(
+        result.is_ok(),
+        "succeeded step must allow mark_running for loop reentry"
+    );
+    Ok(())
 }
 
 #[test]

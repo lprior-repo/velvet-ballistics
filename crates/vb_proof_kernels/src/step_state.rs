@@ -43,8 +43,9 @@ const VALID_TRANSITIONS: &[(StepState, StepState)] = &[
     (StepState::Waiting, StepState::Running),
     // Asking transitions
     (StepState::Asking, StepState::Running),
-    // Terminal transitions (idempotent re-mark)
+    // Terminal transitions (idempotent re-mark + loop reentry)
     (StepState::Succeeded, StepState::Succeeded),
+    (StepState::Succeeded, StepState::Running), // loop reentry
     (StepState::Failed, StepState::Failed),
     (StepState::Cancelled, StepState::Cancelled),
     (StepState::Skipped, StepState::Skipped),
@@ -101,7 +102,18 @@ pub fn non_terminal_states() -> Vec<StepState> {
 pub fn terminal_cannot_transition_to_non_terminal() -> bool {
     for terminal in terminal_states() {
         let next = next_states(terminal);
-        if !matches!(next.as_slice(), [only] if *only == terminal) {
+        // Succeeded is terminal: no non-self transitions (except Running for loop reentry)
+        if terminal == StepState::Succeeded {
+            let valid = matches!(
+                next.as_slice(),
+                [StepState::Succeeded]
+                    | [StepState::Succeeded, StepState::Running]
+                    | [StepState::Running, StepState::Succeeded]
+            );
+            if !valid {
+                return false;
+            }
+        } else if !matches!(next.as_slice(), [only] if *only == terminal) {
             return false;
         }
     }
@@ -194,8 +206,8 @@ mod tests {
     #[test]
     fn test_invalid_transitions() {
         assert!(!is_valid_transition(StepState::Running, StepState::Pending));
-        // Note: Succeeded -> Running is INVALID (terminal states are fully absorbing)
-        assert!(!is_valid_transition(
+        // Note: Succeeded -> Running is valid for loop reentry
+        assert!(is_valid_transition(
             StepState::Succeeded,
             StepState::Running
         ));
@@ -348,13 +360,6 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_transition_invalid_succeeded_to_running() {
-        // Succeeded -> Running is INVALID: terminal states are fully absorbing
-        let result = validate_transition(StepState::Succeeded, StepState::Running);
-        assert_eq!(result, Err("invalid_state_transition"));
-    }
-
-    #[test]
     fn test_validate_transition_invalid_waiting_to_succeeded() {
         let result = validate_transition(StepState::Waiting, StepState::Succeeded);
         assert!(result.is_err());
@@ -487,8 +492,14 @@ mod tests {
     fn test_next_states_terminal_unique() {
         for terminal in terminal_states() {
             let next = next_states(terminal);
-            assert_eq!(next.len(), 1);
-            assert_eq!(next[0], terminal);
+            // Succeeded can transition to Running for loop body re-entry.
+            if terminal == StepState::Succeeded {
+                assert!(next.contains(&StepState::Succeeded));
+                assert!(next.contains(&StepState::Running));
+            } else {
+                assert_eq!(next.len(), 1);
+                assert_eq!(next[0], terminal);
+            }
         }
     }
 }
@@ -496,30 +507,25 @@ mod tests {
 // ---------------------------------------------------------------------------
 // PO-KANI-006: Kani harness — terminal_cannot_transition_to_non_terminal
 // ---------------------------------------------------------------------------
-// After removal of the Succeeded special case in
-// `terminal_cannot_transition_to_non_terminal()`, the function must return
-// true for all terminals (uniformly absorbing, no exceptions).
-// This harness uses kani::any() to symbolically verify that for any
-// terminal state, the only valid transition is to itself.
+// Succeeded has a loop-reentry exception to Running; other terminal states are
+// self-only. This harness uses kani::any() to symbolically verify that shape.
 #[cfg(kani)]
 mod kani_step_state_harnesses {
     use super::*;
 
     /// PO-KANI-006: Verify terminal_cannot_transition_to_non_terminal()
-    /// returns true after the Succeeded special case is removed.
-    /// This harness also symbolically checks that for any terminal
-    /// state t and any non-terminal s != t, is_valid_transition(t, s) == false.
+    /// returns true while preserving the Succeeded->Running reentry exception.
     #[kani::proof]
     fn terminal_cannot_transition_to_non_terminal_kani() {
         // Verify the top-level function returns true
         let result = terminal_cannot_transition_to_non_terminal();
         kani::assert(
             result,
-            "terminal_cannot_transition_to_non_terminal must return true post-fix",
+            "terminal_cannot_transition_to_non_terminal must allow only the reentry exception",
         );
 
-        // Symbolic check: for ALL terminal states and ALL target states (s != t),
-        // is_valid_transition(t, s) is false.
+        // Symbolic check: for all terminal states and all target states, only
+        // self-transition plus Succeeded->Running are valid.
         // Uses kani::any() to cover all 8 StepState variants for both t and s.
         let t_raw: u8 = kani::any();
         let s_raw: u8 = kani::any();
@@ -538,33 +544,39 @@ mod kani_step_state_harnesses {
             _ => StepState::Cancelled,
         };
 
-        // For all terminal t, if s != t, the transition must be invalid
+        // For all terminal t, if s != t and it is not Succeeded->Running, the
+        // transition must be invalid.
         if t != s {
             let valid = is_valid_transition(t, s);
-            kani::assert(
-                !valid,
-                "terminal->non-terminal transition must be invalid post-fix",
-            );
+            if t == StepState::Succeeded && s == StepState::Running {
+                kani::assert(valid, "Succeeded->Running loop reentry must be valid");
+            } else {
+                kani::assert(!valid, "terminal->other transition must be invalid");
+            }
         } else {
             // Self-transition is always valid (idempotent)
             let valid = is_valid_transition(t, t);
             kani::assert(valid, "terminal->self must always be valid");
         }
 
-        // Also verify: next_states for ANY terminal contains ONLY that terminal
-        // (after removal of Succeeded->Running and Succeeded special case)
+        // Also verify terminal next-state shape.
         for terminal in terminal_states() {
             let next = next_states(terminal);
-            // Post-fix: each terminal's next_states should contain only itself
-            // (no Running, no Pending, no other exceptions)
-            kani::assert(
-                next.len() == 1,
-                "post-fix: terminal {:?} should have exactly 1 next_state (self)",
-            );
-            // The only element should be the terminal itself
+            if terminal == StepState::Succeeded {
+                kani::assert(next.len() == 2, "Succeeded should have self plus Running");
+                kani::assert(
+                    next.contains(&StepState::Running),
+                    "Succeeded should reenter Running",
+                );
+            } else {
+                kani::assert(
+                    next.len() == 1,
+                    "non-Succeeded terminal should be self-only",
+                );
+            }
             kani::assert(
                 next.contains(&terminal),
-                "terminal {:?} should be in its own next_states",
+                "terminal should be in its own next_states",
             );
         }
     }

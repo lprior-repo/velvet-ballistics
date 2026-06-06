@@ -30,8 +30,8 @@ pub enum StepState {
 
 /// Pure transition predicate shared by runtime validation and proof harnesses.
 /// Inlines the step-state machine contract from vb_proof_kernels::step_state.
-/// Terminal states are absorbing here; loop re-entry uses explicit pending
-/// admission through [`RunFrame::mark_pending`] before entering `Running` again.
+/// `Succeeded` may re-enter `Running` for loop-body reentry; other terminal
+/// states are self-only.
 #[must_use]
 pub fn is_valid_step_state_transition(current: StepState, new: StepState) -> bool {
     if current == new {
@@ -51,6 +51,7 @@ pub fn is_valid_step_state_transition(current: StepState, new: StepState) -> boo
         (StepState::Running, StepState::Skipped),
         (StepState::Waiting, StepState::Running),
         (StepState::Asking, StepState::Running),
+        (StepState::Succeeded, StepState::Running),
     ];
     for &(f, t) in VALID_TRANSITIONS {
         if f == current && t == new {
@@ -1098,7 +1099,8 @@ mod frame_kani_harnesses {
 
     /// K-F5: Terminal states block invalid non-self transitions.
     /// Uses kani::any() to symbolically verify terminal blocking property.
-    /// Terminal states are fully absorbing. No non-self transitions.
+    /// Succeeded may transition to Running for loop reentry; other terminal
+    /// states are self-only.
     #[kani::proof]
     fn validate_transition_terminal_blocks_all() {
         let terminal: StepState = kani::any();
@@ -1110,8 +1112,9 @@ mod frame_kani_harnesses {
         );
         kani::assume(is_terminal);
         let result = validate_transition_inline(terminal, target);
-        // Terminal states can transition only to themselves (idempotent re-mark).
-        if terminal == target {
+        // Terminal states can transition to themselves; Succeeded can re-enter Running.
+        if terminal == target || (terminal == StepState::Succeeded && target == StepState::Running)
+        {
             kani::assert(result, "terminal->self allowed");
         } else {
             // All other non-self transitions from terminal states are invalid.

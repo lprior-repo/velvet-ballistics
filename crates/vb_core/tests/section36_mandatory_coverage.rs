@@ -767,17 +767,11 @@ fn terminal_succeeded_state_rejects_transition_to_running() -> CoreResult<()> {
     let mut frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 3, 1)?;
     frame.mark_running(StepIdx::new(0))?;
     frame.mark_succeeded(StepIdx::new(0))?;
-    // Succeeded -> Running is INVALID (terminal states are absorbing).
-    // Loop re-entry is handled by step_once skipping mark_running.
+    // Succeeded -> Running is VALID for loop body reentry.
     let result = frame.mark_running(StepIdx::new(0));
-    assert_eq!(
-        result,
-        Err(CoreError::InternalInvariantViolation {
-            reason: "invalid_state_transition"
-        })
-    );
-    // State is still Succeeded
-    assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Succeeded);
+    assert_eq!(result, Ok(()));
+    // State is now Running
+    assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Running);
     Ok(())
 }
 

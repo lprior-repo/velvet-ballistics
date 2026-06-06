@@ -755,7 +755,7 @@ mod state_transitions {
     }
 
     #[test]
-    fn step_state_succeeded_rejects_direct_running_transition() -> Result<(), String> {
+    fn step_state_succeeded_allows_running_for_loop_reentry() -> Result<(), String> {
         let workflow = make_simple_workflow()?;
         let mut run = make_frame(&workflow)?;
 
@@ -764,25 +764,13 @@ mod state_transitions {
         run.mark_succeeded(StepIdx::new(0))
             .map_err(|e| e.to_string())?;
 
-        // Succeeded→Running is invalid directly; loop body re-entry must use
-        // the explicit Succeeded→Pending→Running admission path.
+        // Succeeded→Running is valid for loop body re-entry.
         let result = run.mark_running(StepIdx::new(0));
-        assert!(
-            result.is_err(),
-            "Succeeded→Running must be rejected as a direct terminal transition"
+        assert_eq!(
+            result,
+            Ok(()),
+            "Succeeded→Running must be valid for loop body re-entry"
         );
-        match result {
-            Err(CoreError::InternalInvariantViolation { reason }) => {
-                assert_eq!(reason, "invalid_state_transition");
-            }
-            Err(other) => {
-                return Err(format!(
-                    "expected InternalInvariantViolation, got {:?}",
-                    other
-                ));
-            }
-            Ok(_) => return Err(String::from("expected error, got Ok")),
-        }
         Ok(())
     }
 

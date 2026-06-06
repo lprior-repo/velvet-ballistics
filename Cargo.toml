@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/vb_boundary_inventory",
+    "crates/vb_queue_semantics",
     "crates/vb_core",
     "crates/vb_yaml",
     "crates/vb_validate",

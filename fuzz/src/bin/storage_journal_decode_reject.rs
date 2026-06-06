@@ -7,12 +7,12 @@ use libfuzzer_sys::fuzz_target;
 use vb_storage::JournalEvent;
 use vb_storage::codec::{
     JournalSemanticDecodeDecision, classify_journal_semantic_decode,
-    decode_validated_journal_record,
+    decode_record, decode_validated_journal_record,
 };
 use vb_storage::constants;
 
 fuzz_target!(|data: &[u8]| {
-    let generic = vb_storage::decode_record::<JournalEvent>(
+    let generic = decode_record::<JournalEvent>(
         data,
         constants::MAGIC_JOURNAL_EVENT,
         constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
