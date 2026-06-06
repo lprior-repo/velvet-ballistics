@@ -123,10 +123,12 @@ fn bind_removes_existing_socket_file() {
 
 #[test]
 fn bind_to_nested_directory_fails() {
-    // Hardcode /tmp: Unix socket paths are bounded by sun_path (108 chars on
-    // Linux). std::env::temp_dir() can return long paths when TMPDIR points
-    // into a deeply nested worktree directory.
-    let path = PathBuf::from("/tmp/vb_ipc_nonexistent_dir_test/sock");
+    let sequence = SOCKET_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let path = PathBuf::from(format!(
+        "/tmp/vbi{}_nested_{}/sock",
+        std::process::id(),
+        sequence
+    ));
     let result = IpcServer::bind(&path);
 
     let Err(_) = result else {
@@ -1107,8 +1109,8 @@ fn bind_succeeds_after_previous_server_dropped() {
 
 #[test]
 fn bind_fails_when_path_is_existing_directory() {
-    // Hardcode /tmp: see sun_path limit (108 chars on Linux).
-    let dir = PathBuf::from(format!("/tmp/vb_ipc_dir_test_{}", std::process::id()));
+    let sequence = SOCKET_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let dir = PathBuf::from(format!("/tmp/vbi{}_dir_{}", std::process::id(), sequence));
     let _dir_cleanup = CleanupDir(&dir);
     std::fs::create_dir_all(&dir).expect("should create temp dir");
 

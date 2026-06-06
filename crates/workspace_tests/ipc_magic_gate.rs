@@ -23,7 +23,6 @@ use vb_ipc::{
     IPC_HEADER_LEN, IPC_MAGIC,
 };
 use std::os::unix::net::UnixStream;
-use std::path::PathBuf;
 use std::time::Duration;
 use vb_runtime::runtime::Runtime;
 
@@ -61,11 +60,7 @@ fn send_and_receive_response(
 /// And: the server does not read additional bytes from the socket
 #[test]
 fn invalid_magic_connection_closed_immediately_without_further_reads() {
-    // Unix socket paths are bounded by sun_path (108 chars on Linux). Hardcode
-    // /tmp rather than std::env::temp_dir() so long worktree TMPDIR values
-    // (e.g. /home/.../worktrees/<branch>/target/tmp/) cannot push the path
-    // past the limit and cause Address family not supported by protocol.
-    let socket_path = PathBuf::from("/tmp/vb54mw_test_invalid_magic.sock");
+    let socket_path = std::env::temp_dir().join("vb54mw_test_invalid_magic.sock");
     let _ = std::fs::remove_file(&socket_path);
 
     let (mut server, mut client, mut runtime) =
@@ -108,7 +103,7 @@ fn invalid_magic_connection_closed_immediately_without_further_reads() {
 /// And: the client is removed
 #[test]
 fn invalid_magic_sends_frame_error_response_before_closing() {
-    let socket_path = PathBuf::from("/tmp/vb54mw_test_frame_error.sock");
+    let socket_path = std::env::temp_dir().join("vb54mw_test_frame_error.sock");
     let _ = std::fs::remove_file(&socket_path);
 
     let (mut server, mut client, mut runtime) =
@@ -154,7 +149,7 @@ fn invalid_magic_sends_frame_error_response_before_closing() {
 /// And: the client is removed
 #[test]
 fn server_rejects_buffer_growth_beyond_4_bytes_in_awaiting_magic_state() {
-    let socket_path = PathBuf::from("/tmp/vb54mw_test_buffer_cap.sock");
+    let socket_path = std::env::temp_dir().join("vb54mw_test_buffer_cap.sock");
     let _ = std::fs::remove_file(&socket_path);
 
     let (mut server, mut client, mut runtime) =
@@ -215,7 +210,7 @@ fn server_rejects_buffer_growth_beyond_4_bytes_in_awaiting_magic_state() {
 /// And: read_buffer does not exceed 4096 before magic validation
 #[test]
 fn first_read_chunk_respects_read_chunk_bytes_bound() {
-    let socket_path = PathBuf::from("/tmp/vb54mw_test_chunk_bound.sock");
+    let socket_path = std::env::temp_dir().join("vb54mw_test_chunk_bound.sock");
     let _ = std::fs::remove_file(&socket_path);
 
     let (mut server, mut client, mut runtime) =
