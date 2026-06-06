@@ -81,7 +81,7 @@ members = [
     "crates/workspace_tests",
     "crates/vb_benchmark",
 {extra}]
-exclude = ["target/miri-tmp", "crates/vb_ui", "fuzz"]
+exclude = ["target/miri-tmp", "crates/vb_ui", "fuzz", "crates/vb_ajc40_flux"]
 "#
         ),
     )
@@ -116,6 +116,8 @@ edition = "2024"
 default = []
 bench = []
 kani-diagnostic-codes = []
+kani-vb-5iebh-check-scope = []
+kani-vb-ajc40 = []
 volatile = []
 test-util = []
 "#
