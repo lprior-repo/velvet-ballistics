@@ -187,11 +187,21 @@ fn copy_duplicates_source_slot_value_and_taint_to_output() -> Result<(), String>
             CompiledNode {
                 id: StepIdx::new(0),
                 output: Some(SlotIdx::new(0)),
-                next: None,
+                next: Some(StepIdx::new(1)),
                 on_error: None,
                 error_slot: None,
                 kind: CompiledNodeKind::Copy {
                     source: SlotIdx::new(0),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
                 },
             },
         ]
@@ -454,19 +464,11 @@ fn jump_sets_pc_to_target_and_returns_continue() -> Result<(), String> {
                 on_error: None,
                 error_slot: None,
                 kind: CompiledNodeKind::Jump {
-                    target: StepIdx::new(2),
+                    target: StepIdx::new(1),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
                 output: None,
                 next: None,
                 on_error: None,
@@ -495,7 +497,7 @@ fn jump_sets_pc_to_target_and_returns_continue() -> Result<(), String> {
     let result = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
     ensure_equal(result, EngineSignal::Continue)?;
-    ensure_equal(run.pc(), StepIdx::new(2))?;
+    ensure_equal(run.pc(), StepIdx::new(1))?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Succeeded))?;
     Ok(())
 }
@@ -829,7 +831,7 @@ fn run_frame_created_with_all_step_states_pending() -> Result<(), String> {
 
     for step in 0..run.step_count() {
         ensure_equal(
-            run.step_state(StepIdx::new(step as u32)),
+            run.step_state(StepIdx::new(step as u16)),
             Ok(StepState::Pending),
         )?;
     }
@@ -998,7 +1000,7 @@ fn make_ticket(run: RunId, step: StepIdx, seq: u32, action: ActionId, attempt: u
     crate::action::ActionTicket {
         run,
         step,
-        seq: SeqNo::new(seq),
+        seq: SeqNo::new(seq.into()),
         action,
         attempt,
         idempotency_key: 0,
@@ -1179,8 +1181,8 @@ fn resume_action_failure_journal_has_failed_variant_with_failure_code() -> Resul
         &workflow,
         &mut run,
         ticket,
-        crate::action::ActionFailureCode::ServiceUnavailable,
-        crate::action::RetryPolicy::Retryable { max_attempts: 5, backoff_ms: 100 },
+        crate::action::ActionFailureCode::ExternalUnavailable,
+        crate::action::RetryPolicy::Retryable,
     )
     .map_err(|error| error.to_string())?;
 
@@ -1193,11 +1195,8 @@ fn resume_action_failure_journal_has_failed_variant_with_failure_code() -> Resul
         } => {
             ensure_equal(t.step, StepIdx::new(0))?;
             ensure_equal(attempt, 3)?;
-            ensure_equal(code, crate::action::ActionFailureCode::ServiceUnavailable)?;
-            ensure_equal(
-                *retry_policy,
-                crate::action::RetryPolicy::Retryable { max_attempts: 5, backoff_ms: 100 },
-            )?;
+            ensure_equal(code, crate::action::ActionFailureCode::ExternalUnavailable)?;
+            ensure_equal(*retry_policy, crate::action::RetryPolicy::Retryable)?;
             Ok(())
         }
         other => Err(format!("expected Failed journal event, got {other:?}")),
@@ -1241,14 +1240,14 @@ fn resume_action_failure_with_retry_policy_preserves_policy_in_journal() -> Resu
         &workflow,
         &mut run,
         ticket,
-        crate::action::ActionFailureCode::Cancelled,
-        crate::action::RetryPolicy::Retryable { max_attempts: 10, backoff_ms: 5000 },
+        crate::action::ActionFailureCode::Unknown,
+        crate::action::RetryPolicy::Retryable,
     )
     .map_err(|error| error.to_string())?;
 
     match journal {
         crate::action::ActionJournalEvent::Failed { code, .. } => {
-            ensure_equal(code, crate::action::ActionFailureCode::Cancelled)
+            ensure_equal(code, crate::action::ActionFailureCode::Unknown)
         }
         other => Err(format!("expected Failed journal, got {other:?}")),
     }
@@ -1322,8 +1321,12 @@ fn running_to_pending_is_invalid_transition() {
 }
 
 #[test]
-fn succeeded_to_running_is_valid_transition_for_loop_reentry() {
-    assert!(is_valid_step_state_transition(StepState::Succeeded, StepState::Running));
+fn succeeded_to_running_is_invalid_transition() {
+    // Master contract (velvet-ballistics-MASTER.md:1569): no terminal state
+    // transitions back to running. Loop body reentry uses the explicit
+    // Succeeded->Pending admission path in RunFrame::mark_pending before
+    // mark_running; the direct Succeeded->Running edge is invalid.
+    assert!(!is_valid_step_state_transition(StepState::Succeeded, StepState::Running));
 }
 
 #[test]
@@ -1457,7 +1460,7 @@ fn empty_workflow_parts_rejected_at_try_from_parts() -> Result<(), String> {
     match result {
         Err(ref e) => {
             let msg = format!("{e}");
-            if msg.contains("EmptyNodes") || msg.contains("empty") {
+            if msg.contains("EmptyNodes") || msg.contains("empty") || msg.contains("at least one node") {
                 Ok(())
             } else {
                 Err(format!("expected EmptyNodes validation error, got {msg}"))
@@ -1474,8 +1477,11 @@ fn step_once_on_invalid_pc_returns_error() -> Result<(), String> {
     let mut run = test_frame(RunId::new(270), &workflow)?;
     let mut store = test_store();
 
-    run.set_pc(StepIdx::new(99))?;
-    let result = step_once(&workflow, &mut run, &mut store);
+    // The two-step workflow has step_count=2, so set_pc(99) must be rejected
+    // with InvalidProgramCounter before step_once is called. We verify the
+    // set_pc guard here; the test name reflects the broader invariant that
+    // out-of-bounds PC values are rejected at the frame boundary.
+    let result = run.set_pc(StepIdx::new(99));
 
     match result {
         Err(EngineError::InvalidProgramCounter { step }) if step == StepIdx::new(99) => Ok(()),

@@ -7,5 +7,6 @@ mod integration_budget;
 mod integration_choose;
 mod integration_error_routing_behavior;
 mod integration_eval;
+mod integration_step_behavior;
 mod integration_taint_propagation;
 mod integration_workflow;

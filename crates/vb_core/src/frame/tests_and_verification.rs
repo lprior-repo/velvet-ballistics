@@ -132,10 +132,10 @@ mod tests {
         assert_eq!(frame.slot_count(), 0);
     }
 
-    // --- Succeeded step allows transition back to Running for loop reentry ---
+    // --- Succeeded step is terminal: rejects direct transition to Running ---
 
     #[test]
-    fn frame_mark_succeeded_on_pending_step_allows_overwrite() -> CoreResult<()> {
+    fn frame_mark_succeeded_step_rejects_direct_running_transition() -> CoreResult<()> {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1)?;
         assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Pending);
 
@@ -144,11 +144,19 @@ mod tests {
         frame.mark_succeeded(StepIdx::new(0))?;
         assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Succeeded);
 
-        // Succeeded->Running is allowed for loop body reentry
+        // Master contract: no terminal state transitions back to running.
+        // The direct Succeeded->Running edge is invalid. Loop body reentry
+        // uses the explicit Succeeded->Pending admission path via mark_pending
+        // before mark_running.
         let result = frame.mark_running(StepIdx::new(0));
         assert!(
-            result.is_ok(),
-            "Succeeded->Running must be allowed for loop reentry"
+            matches!(
+                result,
+                Err(CoreError::InternalInvariantViolation {
+                    reason: "invalid_state_transition"
+                })
+            ),
+            "Succeeded->Running must be rejected (terminal states are absorbing)"
         );
 
         Ok(())
@@ -753,9 +761,11 @@ mod tests {
     // Step state machine: terminal-state isolation tests
     // =========================================================================
 
-    /// VB-CORE-STATE-001: Most terminal states (Failed, Cancelled, Skipped)
-    /// block ALL transitions out, but allow idempotent re-mark (same→same).
-    /// Succeeded allows transition to Running for loop body reentry.
+    /// VB-CORE-STATE-001: All terminal states (Succeeded, Failed, Cancelled,
+    /// Skipped) block ALL non-self transitions out. Idempotent re-mark
+    /// (same→same) is always valid. No terminal state may transition back to
+    /// running. Loop body reentry uses the explicit Succeeded->Pending
+    /// admission path via mark_pending before mark_running.
     /// Modeled in TLA+ by StepState.tla.
     #[test]
     fn ut_terminal_state_blocks_transitions() -> CoreResult<()> {
@@ -773,12 +783,18 @@ mod tests {
         assert_eq!(frame.mark_cancelled(StepIdx::new(2)), Ok(()));
         assert_eq!(frame.mark_skipped(StepIdx::new(3)), Ok(()));
 
-        // Succeeded allows transition to Running for loop body reentry
+        // Succeeded must reject direct transition to Running. Loop body
+        // reentry uses the explicit Succeeded->Pending admission path via
+        // mark_pending before mark_running.
         assert_eq!(
             frame.mark_running(StepIdx::ZERO),
-            Ok(()),
-            "Succeeded -> Running must succeed (for loop reentry)"
+            Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition"
+            }),
+            "Succeeded -> Running must be rejected (terminal states are absorbing)"
         );
+        // Use the explicit re-entry admission path on step 0.
+        frame.mark_pending(StepIdx::ZERO)?;
         // Step is now Running, so Running -> Failed is valid
         assert_eq!(
             frame.mark_failed(StepIdx::ZERO),
@@ -848,12 +864,15 @@ mod tests {
     // --- is_valid_step_state_transition boundary tests ---
 
     #[test]
-    fn transition_returns_true_when_succeeded_to_running() {
-        // Succeeded->Running is valid for loop body reentry
+    fn transition_returns_false_when_succeeded_to_running() {
+        // Master contract (velvet-ballistics-MASTER.md:1569): no terminal
+        // state transitions back to running. Loop body reentry uses the
+        // explicit Succeeded->Pending admission path before mark_running;
+        // the direct Succeeded->Running edge is invalid.
         let result = is_valid_step_state_transition(StepState::Succeeded, StepState::Running);
         assert!(
-            result,
-            "Succeeded->Running must be valid (for loop reentry)"
+            !result,
+            "Succeeded->Running must be invalid (terminal states are absorbing)"
         );
     }
 
@@ -1583,10 +1602,10 @@ mod frame_kani_harnesses {
         }
     }
 
-    /// K-F5: Terminal states block invalid non-self transitions.
+    /// K-F5: Terminal states block all non-self transitions.
     /// Uses kani::any() to symbolically verify terminal blocking property.
-    /// Succeeded may transition to Running for loop reentry; other terminal
-    /// states are self-only.
+    /// No terminal state may transition back to Running; loop reentry is
+    /// admitted only through the explicit `mark_pending` admission path.
     /// Synchronized with frame.rs copy.
     #[kani::proof]
     fn validate_transition_terminal_blocks_all() {
@@ -1599,9 +1618,8 @@ mod frame_kani_harnesses {
         );
         kani::assume(is_terminal);
         let result = validate_transition_inline(terminal, target);
-        // Terminal states can transition to themselves; Succeeded can re-enter Running.
-        if terminal == target || (terminal == StepState::Succeeded && target == StepState::Running)
-        {
+        // Terminal states may only transition to themselves.
+        if terminal == target {
             kani::assert(result, "terminal->self allowed");
         } else {
             // All other non-self transitions from terminal states are invalid.

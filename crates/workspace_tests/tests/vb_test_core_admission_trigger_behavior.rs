@@ -755,7 +755,7 @@ mod state_transitions {
     }
 
     #[test]
-    fn step_state_succeeded_allows_running_for_loop_reentry() -> Result<(), String> {
+    fn step_state_succeeded_rejects_running_direct_transition() -> Result<(), String> {
         let workflow = make_simple_workflow()?;
         let mut run = make_frame(&workflow)?;
 
@@ -764,12 +764,18 @@ mod state_transitions {
         run.mark_succeeded(StepIdx::new(0))
             .map_err(|e| e.to_string())?;
 
-        // Succeeded→Running is valid for loop body re-entry.
+        // Master contract (velvet-ballistics-MASTER.md:1569): no terminal
+        // state transitions back to running. Loop body reentry uses the
+        // explicit Succeeded->Pending admission path before mark_running.
         let result = run.mark_running(StepIdx::new(0));
-        assert_eq!(
-            result,
-            Ok(()),
-            "Succeeded→Running must be valid for loop body re-entry"
+        assert!(
+            matches!(
+                result,
+                Err(vb_core::errors::CoreError::InternalInvariantViolation {
+                    reason: "invalid_state_transition"
+                })
+            ),
+            "Succeeded→Running must be rejected (terminal states are absorbing)"
         );
         Ok(())
     }

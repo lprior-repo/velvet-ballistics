@@ -32,7 +32,7 @@ fn kani_step_state_transition_matches_contract() {
     );
     kani::cover(
         current == StepState::Succeeded && next == StepState::Running,
-        "succeeded->running reentry edge covered",
+        "terminal->running invalid edge covered (must be blocked)",
     );
     kani::cover(
         current == StepState::Waiting && next == StepState::Running,
@@ -64,9 +64,9 @@ fn transition_contract(current: StepState, next: StepState) -> bool {
             | StepState::Skipped,
         ) => true,
         (StepState::Waiting | StepState::Asking, StepState::Running) => true,
-        // Succeeded can re-enter Running for loop body re-entry; the only
-        // outward non-self transition admitted for a terminal state.
-        (StepState::Succeeded, StepState::Running) => true,
+        // All terminal states are absorbing; no terminal->Running edge is
+        // admitted. Loop body re-entry uses the explicit Succeeded->Pending
+        // admission path in RunFrame::mark_pending before mark_running.
         _ => false,
     }
 }

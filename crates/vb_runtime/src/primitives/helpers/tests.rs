@@ -394,7 +394,7 @@ fn tc003_jump_to_body_succeeded_also_idempotent() -> Result<(), String> {
     let state = run.step_state(body).map_err(|e| format!("{e:?}"))?;
     ensure(
         matches!(state, vb_core::frame::StepState::Running),
-        format!("expected Running (Succeeded→Running), got {state:?}"),
+        format!("expected Running (Succeeded→Pending→Running), got {state:?}"),
     )
 }
 

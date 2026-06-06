@@ -31,8 +31,10 @@ fn is_terminal(s: StepState) -> bool {
 
 proptest! {
     // -- PO-PROP-001: Terminal transition invariant -------------------------
-    // Most terminal states are fully absorbing. No non-self transitions allowed.
-    // Exception: Succeeded can transition to Running for loop body reentry.
+    // All terminal states (Succeeded, Failed, Cancelled, Skipped) are fully
+    // absorbing. No non-self transitions are allowed. Loop body reentry uses
+    // the explicit Succeeded->Pending admission path in RunFrame::mark_pending
+    // before mark_running; the direct Succeeded->Running edge is invalid.
     #[test]
     fn proptest_terminal_absorption_invariant(
         from in arb_step_state(),
@@ -40,25 +42,23 @@ proptest! {
     ) {
         prop_assume!(is_terminal(from));
         prop_assume!(from != to);
-        // Special case: Succeeded->Running is allowed for loop reentry
-        if from == StepState::Succeeded && to == StepState::Running {
-            let result = is_valid_step_state_transition(from, to);
-            prop_assert!(result, "Succeeded->Running must be valid (for loop reentry)");
-        } else {
-            let result = is_valid_step_state_transition(from, to);
-            prop_assert!(
-                !result,
-                "terminal {:?}->{:?} must be invalid (terminal states are fully absorbing)",
-                from, to
-            );
-        }
+        let result = is_valid_step_state_transition(from, to);
+        prop_assert!(
+            !result,
+            "terminal {:?}->{:?} must be invalid (terminal states are fully absorbing)",
+            from, to
+        );
     }
 
-    /// Succeeded allows transition to Running for loop body reentry.
+    /// Succeeded must not transition directly to Running.
+    /// Loop reentry uses the explicit mark_pending admission path.
     #[test]
-    fn proptest_succeeded_to_running_allowed(_seed in any::<u64>()) {
+    fn proptest_succeeded_to_running_rejected(_seed in any::<u64>()) {
         let result = is_valid_step_state_transition(StepState::Succeeded, StepState::Running);
-        prop_assert!(result, "Succeeded->Running must be valid (for loop reentry)");
+        prop_assert!(
+            !result,
+            "Succeeded->Running must be invalid (master: no terminal->running edge)"
+        );
     }
 }
 

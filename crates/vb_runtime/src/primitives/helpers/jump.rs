@@ -19,8 +19,9 @@ pub(crate) fn jump_to(
 /// before marking it [`Running`][vb_core::frame::StepState::Running].
 ///
 /// Terminal states (Succeeded, Failed, Cancelled, Skipped) are absorbing for
-/// normal direct transitions. Loop body re-entry uses Succeeded -> Pending ->
-/// Running as an explicit admission path.
+/// direct transitions. Loop body re-entry uses the explicit admission path
+/// `Succeeded -> Pending -> Running` via `mark_pending` followed by
+/// `mark_running`; the direct Succeeded->Running edge is not valid.
 ///
 /// [`Running`][vb_core::frame::StepState::Running]: vb_core::frame::StepState::Running
 pub(crate) fn jump_to_body(

@@ -1,15 +1,17 @@
 (* StepState.tla
  *
- * Per-step execution state machine from crates/vb_core/src/frame.rs:394-431.
+ * Per-step execution state machine from crates/vb_core/src/frame.rs.
  *
- * Valid transitions (matching Rust validate_transition()):
+ * Valid transitions (matching Rust is_valid_step_state_transition()):
  *   Pending -> Running, Succeeded, Failed, Cancelled, Skipped
  *   Running  -> Succeeded, Failed, Waiting, Asking, Cancelled, Skipped
  *   Waiting | Asking -> Running
- *   Succeeded -> Running  (loop body re-entry; only outward transition
- *                          admitted for a terminal state)
  *   state == next  (idempotent re-mark, always valid)
- *   Terminal states (Failed, Cancelled, Skipped) block all outward transitions
+ *
+ * All terminal states (Succeeded, Failed, Cancelled, Skipped) are absorbing;
+ * no terminal state transitions back to Running. Loop body re-entry uses
+ * the explicit Succeeded->Pending admission path in
+ * RunFrame::mark_pending before mark_running.
  *)
 
 ---- MODULE StepState ----
@@ -31,7 +33,6 @@ ValidNext(source) ==
       [] source = "Running"  -> {"Succeeded", "Failed", "Waiting", "Asking", "Cancelled", "Skipped"}
       [] source = "Waiting"  -> {"Running"}
       [] source = "Asking"   -> {"Running"}
-      [] source = "Succeeded"-> {"Running"}
       [] OTHER              -> {}
 
 IsValidTransition(source, next) ==
@@ -41,16 +42,16 @@ IsValidTransition(source, next) ==
 TypeInvariant ==
     \A step \in StepId : step_state[step] \in StateNames
 
-\* Non-Succeeded terminal states block every outward non-self transition.
-\* Succeeded is the partial exception: it admits a single outward edge to
-\* Running for loop body re-entry (see production frame.rs validate_transition).
+\* All terminal states (including Succeeded) are fully absorbing:
+\* they block every outward non-self transition. Loop re-entry uses
+\* the explicit Succeeded->Pending admission path; no direct
+\* Succeeded->Running edge is admitted.
 TerminalStateBlocksOutwardTransitions ==
     \A step \in StepId :
         step_state[step] \in TerminalStates
             => \A next \in StateNames :
                 IsValidTransition(step_state[step], next)
                     <=> (next = step_state[step])
-                        \/ (step_state[step] = "Succeeded" /\ next = "Running")
 
 Init ==
     step_state = [step \in StepId |-> "Pending"]

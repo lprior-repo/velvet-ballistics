@@ -30,8 +30,10 @@ pub enum StepState {
 
 /// Pure transition predicate shared by runtime validation and proof harnesses.
 /// Inlines the step-state machine contract from vb_proof_kernels::step_state.
-/// `Succeeded` may re-enter `Running` for loop-body reentry; other terminal
-/// states are self-only.
+/// All terminal states (Succeeded, Failed, Cancelled, Skipped) are self-only;
+/// no terminal state transitions back to Running. Loop-body reentry uses
+/// the explicit `Succeeded -> Pending` admission path in
+/// `RunFrame::mark_pending` followed by `mark_running`.
 #[must_use]
 pub fn is_valid_step_state_transition(current: StepState, new: StepState) -> bool {
     if current == new {
@@ -51,7 +53,6 @@ pub fn is_valid_step_state_transition(current: StepState, new: StepState) -> boo
         (StepState::Running, StepState::Skipped),
         (StepState::Waiting, StepState::Running),
         (StepState::Asking, StepState::Running),
-        (StepState::Succeeded, StepState::Running),
     ];
     for &(f, t) in VALID_TRANSITIONS {
         if f == current && t == new {
@@ -1097,10 +1098,10 @@ mod frame_kani_harnesses {
         }
     }
 
-    /// K-F5: Terminal states block invalid non-self transitions.
+    /// K-F5: Terminal states block all non-self transitions.
     /// Uses kani::any() to symbolically verify terminal blocking property.
-    /// Succeeded may transition to Running for loop reentry; other terminal
-    /// states are self-only.
+    /// No terminal state may transition back to Running; loop reentry is
+    /// admitted only through the explicit `mark_pending` admission path.
     #[kani::proof]
     fn validate_transition_terminal_blocks_all() {
         let terminal: StepState = kani::any();
@@ -1112,12 +1113,11 @@ mod frame_kani_harnesses {
         );
         kani::assume(is_terminal);
         let result = validate_transition_inline(terminal, target);
-        // Terminal states can transition to themselves; Succeeded can re-enter Running.
-        if terminal == target || (terminal == StepState::Succeeded && target == StepState::Running)
-        {
+        // Terminal states may only transition to themselves.
+        if terminal == target {
             kani::assert(result, "terminal->self allowed");
         } else {
-            // All other non-self transitions from terminal states are invalid.
+            // All non-self transitions from terminal states are invalid.
             kani::assert(!result, "terminal->other blocked");
         }
     }

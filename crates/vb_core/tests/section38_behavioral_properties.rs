@@ -2,6 +2,7 @@
 //! Section 38 behavioral property tests: terminal state rejection, replay
 //! determinism, ordering invariants, and snapshot equivalence.
 
+use vb_core::errors::CoreError;
 use vb_core::frame::{RunFrame, StepState};
 use vb_core::ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::{ConstValue, SlotValue, Taint};
@@ -108,7 +109,7 @@ fn terminal_state_finished_run_can_be_rerun() -> Result<(), String> {
 }
 
 #[test]
-fn terminal_state_succeeded_allows_mark_running_for_loop_reentry() -> Result<(), String> {
+fn terminal_state_succeeded_rejects_mark_running_direct() -> Result<(), String> {
     let mut frame =
         RunFrame::new(RunId::new(1), StepIdx::new(0), 3, 1).map_err(|e| e.to_string())?;
     frame
@@ -117,11 +118,18 @@ fn terminal_state_succeeded_allows_mark_running_for_loop_reentry() -> Result<(),
     frame
         .mark_succeeded(StepIdx::new(0))
         .map_err(|e| e.to_string())?;
-    // Succeeded -> Running is VALID for loop body reentry.
+    // Master contract (velvet-ballistics-MASTER.md:1569): no terminal state
+    // transitions back to running. Loop body reentry uses the explicit
+    // Succeeded->Pending admission path via mark_pending before mark_running.
     let result = frame.mark_running(StepIdx::new(0));
     assert!(
-        result.is_ok(),
-        "succeeded step must allow mark_running for loop reentry"
+        matches!(
+            result,
+            Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition"
+            })
+        ),
+        "succeeded step must reject mark_running; terminal states are absorbing"
     );
     Ok(())
 }

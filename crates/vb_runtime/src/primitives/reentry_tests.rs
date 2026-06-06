@@ -1169,23 +1169,27 @@ fn gwt_re5_repeat_check_loops_back_after_succeeded() {
     assert_eq!(run.pc(), next_body);
 }
 
-/// GWT-RE-6: Succeeded may re-enter Running for loop re-entry
-/// Given: body step in Succeeded state
-/// When: jump_to_body is called for loop re-entry
-/// Then: the transition predicate accepts Succeeded→Running and rejects Succeeded→Pending.
+/// GWT-RE-6: Succeeded must not transition directly to Running.
+/// Loop body reentry uses the explicit `mark_pending` admission path
+/// (Succeeded -> Pending) before `mark_running` (Pending -> Running).
+/// The direct Succeeded->Running edge is invalid per the master contract
+/// (velvet-ballistics-MASTER.md:1569: no terminal state transitions
+/// back to running).
 #[test]
-fn gwt_re6_succeeded_running_transition_allowed_for_loop_reentry() {
+fn gwt_re6_succeeded_to_running_is_invalid_direct_transition() {
     use vb_core::frame::StepState;
 
-    // Succeeded → Running is valid for loop body re-entry.
+    // Succeeded → Running is invalid: terminal states are absorbing.
     let is_valid =
         vb_core::frame::is_valid_step_state_transition(StepState::Succeeded, StepState::Running);
     assert!(
-        is_valid,
-        "Succeeded→Running must be valid for loop body re-entry"
+        !is_valid,
+        "Succeeded→Running must be invalid (master: no terminal->running edge)"
     );
 
-    // Succeeded → Pending is not valid through the direct predicate.
+    // Succeeded → Pending is also invalid in the direct transition predicate.
+    // The Succeeded->Pending path is admitted only by RunFrame::mark_pending
+    // (the explicit loop-body reentry admission path).
     let can_go_to_pending =
         vb_core::frame::is_valid_step_state_transition(StepState::Succeeded, StepState::Pending);
     assert!(
@@ -1369,8 +1373,8 @@ mod proptest_reentry {
     // ── PROP-2: for_each_n_items_all_reentry ────────────────────────────
 
     // PROP-2: For any list of 1..=N items, for_each processes every item
-    // without panic, body re-entries succeed (Succeeded→Running), and the
-    // final for_each_next routes to `done`.
+    // without panic, body re-entries succeed (Succeeded→Pending→Running via
+    // jump_to_body), and the final for_each_next routes to `done`.
     proptest! {
         #[test]
         fn prop2_for_each_n_items_all_reentry(items in arb_i64_list()) {
@@ -1686,8 +1690,9 @@ mod proptest_reentry {
     }
 
     // -- PO-PROP-003: Loop body re-entry moves Succeeded to Running ----------
-    // Verifies that loop primitives use the explicit Succeeded->Running
-    // re-entry transition instead of Succeeded->Pending.
+    // Verifies that loop primitives use the explicit Succeeded->Pending->Running
+    // re-entry admission path (terminal states are absorbing; the direct
+    // Succeeded->Running edge is invalid).
     proptest! {
         #[test]
         fn proptest_loop_reentry_body_state_immutable(
@@ -1739,7 +1744,7 @@ mod proptest_reentry {
                 );
 
                 // If loop continues, body state moves through the explicit
-                // Succeeded->Running re-entry transition.
+                // Succeeded->Pending->Running re-entry admission path.
                 if let Ok(vb_core::EngineSignal::Continue) = fe {
                     let state_after = run.step_state(body_step).unwrap();
                     prop_assert_eq!(

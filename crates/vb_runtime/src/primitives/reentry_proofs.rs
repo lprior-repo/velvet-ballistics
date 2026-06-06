@@ -4,11 +4,10 @@
 //! These harnesses verify that the step state machine correctly handles
 //! re-entry into loop bodies after a previous iteration has completed.
 //!
-//! Bug: When a loop body step completes (Succeeded) and control returns
-//! to the loop primitive (for_each_next, reduce_next, collect_next,
-//! repeat_attempt, repeat_check), the step is still in Succeeded state.
-//! The loop primitive needs to transition Succeeded→Pending before
-//! re-entering the body, but this transition was missing.
+//! Body re-entry uses the explicit Succeeded -> Pending admission path
+//! in `RunFrame::mark_pending` before `mark_running` (Pending -> Running).
+//! No direct Succeeded -> Running edge is admitted; terminal states are
+//! absorbing per the master contract.
 
 #[cfg(kani)]
 pub mod reentry_harnesses {
@@ -522,9 +521,9 @@ pub mod reentry_harnesses {
     // -----------------------------------------------------------------------
     // PO-KANI-008, PO-KANI-009, PO-KANI-010: Body re-entry transition harnesses
     // -----------------------------------------------------------------------
-    // These harnesses verify that loop primitives use the explicit
-    // Succeeded->Running transition during body re-entry instead of the removed
-    // Succeeded->Pending transition.
+    // These harnesses verify that loop primitives re-enter body steps via
+    // the explicit Succeeded->Pending->Running admission path (terminal states
+    // are absorbing; no direct Succeeded->Running edge is admitted).
 
     /// PO-KANI-008: for_each_next body state re-entry.
     /// Verifies that after for_each_next re-entry, the body step state is Running.
@@ -725,12 +724,14 @@ pub mod reentry_harnesses {
     // -----------------------------------------------------------------------
     // PO-KANI-011: jump_to_body re-entry transition
     // -----------------------------------------------------------------------
-    // jump_to_body marks Succeeded bodies Running before jumping, and leaves all
-    // other states unchanged.
+    // jump_to_body routes Succeeded bodies through Pending->Running via
+    // mark_pending followed by mark_running (the explicit re-entry admission
+    // path), and leaves all other states unchanged.
 
-    /// PO-KANI-011: jump_to_body must use Succeeded->Running for re-entry.
-    /// Verifies that after jump_to_body(run, body), Succeeded becomes Running
-    /// and all other states stay unchanged.
+    /// PO-KANI-011: jump_to_body must use Succeeded->Pending->Running for
+    /// re-entry (terminal states are absorbing; the direct Succeeded->Running
+    /// edge is invalid). Verifies that after jump_to_body(run, body),
+    /// Succeeded becomes Running and all other states stay unchanged.
     #[kani::proof]
     fn kani_jump_to_body_no_state_mutation() {
         let mut run = fresh_frame(8, 4);

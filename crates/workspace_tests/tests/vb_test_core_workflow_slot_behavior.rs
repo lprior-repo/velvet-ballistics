@@ -894,13 +894,18 @@ mod behavior_step_state_transitions {
             .mark_succeeded(StepIdx::new(0))
             .expect("mark_succeeded should succeed");
 
-        // WHEN: Transitioning from Succeeded back to Running for loop body re-entry.
+        // WHEN: Attempting direct Succeeded→Running (no admission path).
         let result = frame.mark_running(StepIdx::new(0));
 
-        // THEN: Succeeded→Running is valid.
+        // THEN: Rejected (master contract: no terminal→running edge).
         assert!(
-            result.is_ok(),
-            "Succeeded→Running must be valid for loop body re-entry"
+            matches!(
+                result,
+                Err(vb_core::errors::CoreError::InternalInvariantViolation {
+                    reason: "invalid_state_transition"
+                })
+            ),
+            "Succeeded→Running must be rejected (terminal states are absorbing)"
         );
     }
 }
