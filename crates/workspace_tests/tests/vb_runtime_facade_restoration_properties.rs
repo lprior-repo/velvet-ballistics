@@ -1,14 +1,14 @@
 // vb-pyg3p: behavior test for vb_runtime runtime facade
 // Tests public Runtime facade importability, API surface, and typed-error paths.
 //
-// This is a basic behavior test - proptest properties are in
-// vb_runtime_facade_restoration_properties.rs once the lane is fixed.
+// This is a basic behavior test - proptest properties can be added
+// in vb_runtime_facade_restoration_properties.rs once the lane is fixed.
 
 #![forbid(unsafe_code)]
 
 use std::num::NonZeroUsize;
-use vb_core::ids::RunId;
 use vb_core::WorkflowDigest;
+use vb_core::ids::RunId;
 use vb_runtime::runtime::{ActiveRunSummary, Runtime};
 use vb_runtime::shard::ShardConfig;
 use vb_runtime::{RuntimeError, RuntimeResult};
@@ -17,10 +17,7 @@ use vb_runtime::{RuntimeError, RuntimeResult};
 #[test]
 fn test_runtime_construction_succeeds() {
     let config = ShardConfig::default();
-    let _runtime = Runtime::new(
-        NonZeroUsize::new(4).expect("non-zero"),
-        config,
-    );
+    let _runtime = Runtime::new(NonZeroUsize::new(4).expect("non-zero"), config);
 }
 
 /// Test that ActiveRunSummary fields are accessible.
