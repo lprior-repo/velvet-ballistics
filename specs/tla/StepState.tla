@@ -6,8 +6,10 @@
  *   Pending -> Running, Succeeded, Failed, Cancelled, Skipped
  *   Running  -> Succeeded, Failed, Waiting, Asking, Cancelled, Skipped
  *   Waiting | Asking -> Running
+ *   Succeeded -> Running  (loop body re-entry; only outward transition
+ *                          admitted for a terminal state)
  *   state == next  (idempotent re-mark, always valid)
- *   Terminal states (Succeeded, Failed, Cancelled, Skipped) block outward transitions
+ *   Terminal states (Failed, Cancelled, Skipped) block all outward transitions
  *)
 
 ---- MODULE StepState ----
@@ -25,10 +27,11 @@ StateNames == {"Pending", "Running", "Succeeded", "Failed",
 TerminalStates == {"Succeeded", "Failed", "Cancelled", "Skipped"}
 
 ValidNext(source) ==
-    CASE source = "Pending"  -> {"Running", "Succeeded", "Failed", "Cancelled", "Skipped"}
+    CASE source = "Pending"   -> {"Running", "Succeeded", "Failed", "Cancelled", "Skipped"}
       [] source = "Running"  -> {"Succeeded", "Failed", "Waiting", "Asking", "Cancelled", "Skipped"}
       [] source = "Waiting"  -> {"Running"}
-      [] source = "Asking"  -> {"Running"}
+      [] source = "Asking"   -> {"Running"}
+      [] source = "Succeeded"-> {"Running"}
       [] OTHER              -> {}
 
 IsValidTransition(source, next) ==
@@ -38,11 +41,16 @@ IsValidTransition(source, next) ==
 TypeInvariant ==
     \A step \in StepId : step_state[step] \in StateNames
 
+\* Non-Succeeded terminal states block every outward non-self transition.
+\* Succeeded is the partial exception: it admits a single outward edge to
+\* Running for loop body re-entry (see production frame.rs validate_transition).
 TerminalStateBlocksOutwardTransitions ==
     \A step \in StepId :
         step_state[step] \in TerminalStates
             => \A next \in StateNames :
-                IsValidTransition(step_state[step], next) <=> (next = step_state[step])
+                IsValidTransition(step_state[step], next)
+                    <=> (next = step_state[step])
+                        \/ (step_state[step] = "Succeeded" /\ next = "Running")
 
 Init ==
     step_state = [step \in StepId |-> "Pending"]

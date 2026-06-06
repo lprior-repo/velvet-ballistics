@@ -1322,8 +1322,8 @@ fn running_to_pending_is_invalid_transition() {
 }
 
 #[test]
-fn succeeded_to_running_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(StepState::Succeeded, StepState::Running));
+fn succeeded_to_running_is_valid_transition_for_loop_reentry() {
+    assert!(is_valid_step_state_transition(StepState::Succeeded, StepState::Running));
 }
 
 #[test]
