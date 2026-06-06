@@ -230,6 +230,7 @@ pub const fn validate_capacity(capacity: usize, maximum: usize) -> Result<(), Ca
 
 /// Verus-shared helper route for the accepted 1..=65536 capacity domain.
 #[must_use]
+#[cfg_attr(flux, flux_rs::sig(fn(capacity: usize) -> bool[capacity > 0 && capacity <= 65536]))]
 pub const fn helper_valid_capacity(capacity: usize) -> bool {
     capacity > 0 && capacity <= SHARED_QUEUE_CAPACITY_MAX
 }
@@ -248,30 +249,35 @@ pub const fn queue_is_full(capacity: usize, len: usize) -> bool {
 
 /// Verus-shared helper route for full-queue decisions.
 #[must_use]
+#[cfg_attr(flux, flux_rs::sig(fn(capacity: usize, len: usize) -> bool[len >= capacity]))]
 pub const fn helper_queue_is_full(capacity: usize, len: usize) -> bool {
     len >= capacity
 }
 
 /// Verus-shared helper route for enqueue admission decisions.
 #[must_use]
+#[cfg_attr(flux, flux_rs::sig(fn(capacity: usize, len: usize) -> bool[len < capacity]))]
 pub const fn helper_enqueue_accepts(capacity: usize, len: usize) -> bool {
     !helper_queue_is_full(capacity, len)
 }
 
 /// Verus-shared helper route for command pop decisions.
 #[must_use]
+#[cfg_attr(flux, flux_rs::sig(fn(capacity: usize, len: usize) -> bool[len > 0 && capacity > 0]))]
 pub const fn helper_command_pop_is_pop_front(capacity: usize, len: usize) -> bool {
     len > 0 && capacity > 0
 }
 
 /// Verus-shared helper route for shard tick pop decisions.
 #[must_use]
+#[cfg_attr(flux, flux_rs::sig(fn(capacity: usize, len: usize) -> bool[len > 0 && capacity > 0]))]
 pub const fn helper_shard_tick_is_pop_front(capacity: usize, len: usize) -> bool {
     helper_command_pop_is_pop_front(capacity, len)
 }
 
 /// Verus-shared helper route for public runtime QueueFull mapping.
 #[must_use]
+#[cfg_attr(flux, flux_rs::sig(fn(depth: usize, capacity: usize) -> bool[depth >= capacity]))]
 pub const fn helper_runtime_queue_full_maps(depth: usize, capacity: usize) -> bool {
     helper_queue_is_full(capacity, depth)
 }

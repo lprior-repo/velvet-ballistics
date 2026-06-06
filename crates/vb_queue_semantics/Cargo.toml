@@ -1,0 +1,18 @@
+[package]
+name = "vb_queue_semantics"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[package.metadata.flux]
+enabled = true
+
+[dependencies]
+flux-rs = { git = "https://github.com/flux-rs/flux.git" }
+
+[features]
+default = []
+flux = []
+
+[lints]
+workspace = true

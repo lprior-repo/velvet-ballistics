@@ -671,6 +671,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "flux-attrs"
+version = "0.1.0"
+source = "git+https://github.com/flux-rs/flux.git#9dece888fa1208ffd6b2e48fcaf8f5f98a68bf36"
+dependencies = [
+ "flux-attrs-impl",
+]
+
+[[package]]
+name = "flux-attrs-impl"
+version = "0.1.0"
+source = "git+https://github.com/flux-rs/flux.git#9dece888fa1208ffd6b2e48fcaf8f5f98a68bf36"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "flux-rs"
+version = "0.1.0"
+source = "git+https://github.com/flux-rs/flux.git#9dece888fa1208ffd6b2e48fcaf8f5f98a68bf36"
+dependencies = [
+ "flux-attrs",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2080,6 +2106,13 @@ name = "vb_proof_kernels"
 version = "0.1.0"
 dependencies = [
  "proptest",
+]
+
+[[package]]
+name = "vb_queue_semantics"
+version = "0.1.0"
+dependencies = [
+ "flux-rs",
 ]
 
 [[package]]
