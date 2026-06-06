@@ -25,6 +25,8 @@ pub mod trace;
 
 #[cfg(test)]
 mod impl_tests;
+#[cfg(test)]
+mod dispatch_tests;
 
 use crate::{
     IPC_HEADER_LEN, IpcActionOutputPayload, IpcCommand, IpcError, IpcFrameHeader, IpcPayload,
