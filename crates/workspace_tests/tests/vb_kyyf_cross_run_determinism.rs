@@ -739,6 +739,9 @@ fn run_velvet_ballistics_cli(
             "--db",
         ])
         .arg(db_path)
+        .env_remove("RUSTFLAGS")
+        .env_remove("RUSTDOCFLAGS")
+        .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .output()
         .map_err(|_| VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
             bead_id: BEAD_ID,

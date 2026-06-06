@@ -1,10 +1,15 @@
 #![cfg(all(test, loom))]
 
-//! Loom model for obl-vb-mrwe-6-recovery-reliance-loom-030.
+//! Loom model for obl-vb-in8ib-recovery-loom.
+//!
+//! Source bridge: recovery observations are classified through
+//! `vb_storage::mrwe6_seams::mrwe6_recovery_outcome_from_facts`, the same pure
+//! production MRWE6 kernel surface used by storage recovery seams.
 
 use loom::sync::atomic::{AtomicBool, Ordering};
 use loom::sync::{Arc, Mutex};
 use loom::thread;
+use vb_storage::mrwe6_seams::{Mrwe6RecoveryOutcome, mrwe6_recovery_outcome_from_facts};
 
 #[test]
 fn vb_mrwe6_recovery_trusts_only_atomic_event_index_pairs() {
@@ -17,9 +22,9 @@ fn vb_mrwe6_recovery_trusts_only_atomic_event_index_pairs() {
         let writer_event = Arc::clone(&event);
         let writer_index = Arc::clone(&index);
         let writer = thread::spawn(move || {
-            let _guard = writer_boundary
-                .lock()
-                .expect("loom mutex should not poison");
+            let Ok(_guard) = writer_boundary.lock() else {
+                return;
+            };
             writer_event.store(true, Ordering::Release);
             writer_index.store(true, Ordering::Release);
         });
@@ -28,18 +33,25 @@ fn vb_mrwe6_recovery_trusts_only_atomic_event_index_pairs() {
         let recovery_event = Arc::clone(&event);
         let recovery_index = Arc::clone(&index);
         let recovery = thread::spawn(move || {
-            let _guard = recovery_boundary
-                .lock()
-                .expect("loom mutex should not poison");
-            let valid_pending =
-                recovery_event.load(Ordering::Acquire) && recovery_index.load(Ordering::Acquire);
-            if valid_pending {
-                assert!(recovery_event.load(Ordering::Acquire));
-                assert!(recovery_index.load(Ordering::Acquire));
+            let Ok(_guard) = recovery_boundary.lock() else {
+                return;
+            };
+            let event_present = recovery_event.load(Ordering::Acquire);
+            let marker_present = recovery_index.load(Ordering::Acquire);
+            let outcome = mrwe6_recovery_outcome_from_facts(
+                event_present,
+                false,
+                false,
+                marker_present,
+                false,
+            );
+            if outcome == Mrwe6RecoveryOutcome::PendingInventory {
+                assert!(event_present);
+                assert!(marker_present);
             }
         });
 
-        writer.join().expect("writer joins");
-        recovery.join().expect("recovery joins");
+        assert!(writer.join().is_ok());
+        assert!(recovery.join().is_ok());
     });
 }

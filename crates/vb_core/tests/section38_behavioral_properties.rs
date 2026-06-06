@@ -95,8 +95,8 @@ fn terminal_state_finished_run_can_be_rerun() -> Result<(), String> {
         "workflow must finish with I64(42)",
     )?;
 
-    // After finishing, step_once can be called again because Succeeded->Running is valid.
-    // This re-executes the Finish node and returns Finished again.
+    // After finishing, step_once can be called again because the engine treats
+    // an already-succeeded current step as idempotent and returns Finished again.
     let signal = step_once(&workflow, &mut frame, &mut store).map_err(|e| e.to_string())?;
     ensure(
         matches!(

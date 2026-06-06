@@ -2716,22 +2716,24 @@ max_active_runs: 1024
 ### ResourceContract::DEFAULT
 
 ```text
-max_steps: 1_000
-max_slots: 65_535 (u16::MAX)
+max_steps: 10_000
+max_slots: 1_024
 max_constants: 65_535
 max_accessors: 8_192
 max_expressions: 4_096
 max_expr_stack: 64
-max_step_budget_per_tick: u64::MAX
+max_step_budget_per_tick: 10_000
+max_transitions_per_tick: 10_000
 max_input_bytes: 1 MiB
-max_output_bytes: 1 MiB
+max_output_bytes: 256 KiB
 max_blob_bytes: 16 MiB
 max_ipc_payload_bytes: 1 MiB
-max_retry_attempts: 65_535
-max_fanout: 65_535
-max_collect_items: 4_294_967_295 (u32::MAX)
+max_retry_attempts: 3
+max_fanout: 64
+max_collect_items: 1_024
 max_queue_depth: 1_024
 max_journal_batch_bytes: 1 MiB
+allows_secret_results: false
 ```
 
 ### Named Profiles

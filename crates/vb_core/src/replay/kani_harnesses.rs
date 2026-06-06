@@ -302,7 +302,7 @@ mod verification {
     /// Uses kani::any() to test absorbing terminal states and step positions.
     #[kani::proof]
     fn kani_replay_skips_terminal_states() {
-        let step_raw: u8 = kani::any();
+        let _step_raw: u8 = kani::any();
         let step_state_val: u8 = kani::any();
 
         // Map to an absorbing terminal state: Failed(3), Cancelled(7), Skipped(4).

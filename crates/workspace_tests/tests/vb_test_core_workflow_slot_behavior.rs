@@ -894,13 +894,14 @@ mod behavior_step_state_transitions {
             .mark_succeeded(StepIdx::new(0))
             .expect("mark_succeeded should succeed");
 
-        // WHEN: Transitioning from Succeeded back to Running (for loop body re-entry)
+        // WHEN: Attempting a direct transition from Succeeded back to Running.
         let result = frame.mark_running(StepIdx::new(0));
 
-        // THEN: Succeeded→Running is VALID (jump_to_body uses mark_running after Succeeded)
+        // THEN: Succeeded→Running is invalid directly. Runtime loop re-entry uses
+        // explicit Succeeded→Pending→Running admission instead.
         assert!(
-            result.is_ok(),
-            "Succeeded→Running must be valid for loop body re-entry"
+            result.is_err(),
+            "Succeeded→Running must be rejected as a direct terminal transition"
         );
     }
 }

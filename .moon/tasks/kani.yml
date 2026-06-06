@@ -48,6 +48,8 @@ tasks:
       run_validate_harness kani_gate_08_arbitrary_parts_symbol_oob_rejected
     toolchains:
       - rust
+    deps:
+      - 'test'
     inputs:
       - '@globs(kani_sources)'
       - '@globs(kani_harnesses)'
@@ -56,3 +58,4 @@ tasks:
     options:
       runInCI: true
       cache: false
+      timeout: 1800

@@ -1,0 +1,46 @@
+command: bd show vb-jpq7.21 --long
+cwd: /home/lewis/isolated/go-skill-batch-20260604/vb-mrwe.6
+timestamp: 2026-06-05T13:07:21Z
+exit_code: 0
+stdout:
+✓ vb-jpq7.21 [BUG] · P0: implement CLI semantic explain diff retry answer contracts   [● P0 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: bug
+Created: 2026-05-22 · Updated: 2026-06-04
+Close reason: Completed: verified fully implemented and passing
+
+DESCRIPTION
+Split from vb-jpq7.4. Bring semantic commands into master shape: explain as dry-run execution plan, diff as workflow semantic diff, retry/answer flags as specified.
+
+NOTES
+Global closure blocker cleared. Prior scoped evidence remains valid (args::tests 68 passed; cli_integration 123 passed; velvet-ballistics package 758 passed; moon run :check PASS). Fresh canonical gate on current main: moon ci PASS with 29 completed (3 cached), 0 failed, total 9m29s. Raw CI log: /home/lewis/.local/share/opencode/tool-output/tool_e8c6aba9f0010KjUia1CALghgF.
+Post-closure reviewer gate failed on 2026-06-03. test-reviewer verdict FAIL/REOPEN: no behavior test asserts explain graph/resources/actions/suspension-points/slots/secrets/budget-plan fields; no behavior test found for workflow diff --against; retry --step not asserted; answer --slot --value happy-path execution not proven. black-hat verdict FAIL: current explain output lacks explicit graph/resources/secrets/budget-plan parity; stale answer behavior docs mention old --step/--value-file shape. proof-reviewer did not require formal proof artifacts but warned CI evidence was pre-commit/parent-SHA-bound. Required repair: implement/prove CLI explain contract parity and strengthen behavior tests before reclosing.
+Repair evidence 2026-06-03: implemented explain execution-plan parity fields, workflow diff --against without DB, retry --step override test, answer --slot --value IPC happy path test; removed silent test early-return skips; restored/split vb_runtime runtime module to satisfy source-length governance. Targeted evidence: rtk cargo fmt --all -- --check PASS; rtk cargo check -p vb_runtime PASS; rtk cargo test -p velvet-ballistics --test cli_integration PASS (126 passed); rtk cargo test -p vb_runtime runtime::tests PASS (67 passed); rtk moon run :test-integrity PASS; rtk moon run :source-length PASS; rtk moon run :lint-src PASS. Canonical evidence: rtk moon ci PASS, 25 completed (4 cached), 0 failed, total 9m50s; raw log /home/lewis/.local/share/opencode/tool-output/tool_e8f199638001JnmSGs8rOhgQD6.
+Final repair/review closure 2026-06-04: all requested reviewer gates approved after recursive repairs. black-hat APPROVED; truth-serum APPROVED; test-reviewer APPROVED; proof-plan-reviewer APPROVED. Hidden workflow+against+db diff mode removed/rejected; agent-context diff schema matches two public modes; explain-plan long functions split; AnswerAsk CLI/IPC/runtime tests assert exact postcard SlotValue bytes and malformed local rejection; proof-plan commands/source refs/provenance repaired with exact commands and required Kani handler/runtime bridge lane. Latest canonical gate: rtk moon ci PASS, 26 completed, 4 cached, 13798 tests passed, 40 skipped; raw log /home/lewis/.local/share/opencode/tool-output/tool_e910eae52001Ijni5rlz1WhIZW. Additional truth-serum rerun also ran rtk moon ci PASS, 26 completed, 5 cached, 13798 passed, raw log /home/lewis/.local/share/opencode/tool-output/tool_e911afa050012KB7orE5l22bvR. Quota/global blocker repaired by cleaning stale build/tmp artifacts; standalone vb_ipc server::impl_tests::bind_removes_existing_socket_file passed after cleanup.
+Landing update 2026-06-04: amended commit d73d158b6 fix(vb-jpq7.21): repair CLI semantic contracts. Post-amend focused checks passed: rtk cargo fmt --all -- --check; rtk cargo test -p velvet-ballistics --test cli_integration cli_explain_valid_workflow_outputs_valid_status -- --nocapture (1 passed, 133 filtered out). Final canonical gate passed: rtk moon ci, Tasks: 26 completed (4 cached), 13856 tests passed, 40 skipped. Raw log: /home/lewis/.local/share/opencode/tool-output/tool_e917c997000141kpEuqU8c0am3.
+Go-skill v10 validator post-push check failed for State 16/landing. Command: /home/lewis/.opencode/skill/go-skill/tools/go-skill-v9-validate --workspace /home/lewis/isolated/go-skill-vb-jpq7-21-cli-contract --bead vb-jpq7.21 --state 16 --landing --format text. Summary: missing required lifecycle artifacts, runtime provenance, ledger hash/provenance failures, reviewer provenance gaps, proof-to-rust bridge gaps, and formal pending-at-closure entries. Follow-up bead created to repair/resolve validator closure without fabricating artifacts.
+
+ACCEPTANCE CRITERIA
+explain emits graph/resources/actions/suspension-points/slots/secrets/budget plan; diff supports workflow --against without requiring run DB diff mode; retry uses --step; answer uses --slot --value; tests cover happy and error paths.
+
+LABELS: answer, backend-dod, cli, explain, master-gap, release-blocker, retry, semantic-diff, truth-serum
+
+PARENT
+  ↑ ✓ vb-jpq7: P0: Truth-serum backend blocker burn-down ● P0
+
+DEPENDS ON
+  → ✓ vb-jpq7.20: P0: implement CLI output format contract ● P0
+
+BLOCKS
+  ← ○ vb-k8ut.4: P1: define single authoritative CLI command surface ● P1
+  ← ✓ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0
+  ← ✓ vb-jpq7.23: P0: add BDD operator journey scenarios ● P0
+
+DISCOVERED
+  ◊ ✓ vb-27h8w: Repair vb-jpq7.21 go-skill v10 closure artifacts ● P1
+
+EXTENDED DETAILS
+  Closed at: 2026-06-03 17:16
+
+
+stderr:
+

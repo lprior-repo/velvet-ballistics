@@ -1,10 +1,10 @@
 use crate::TestSetupError;
-use std::path::PathBuf;
+use tempfile::TempDir;
 
 /// An isolated Fjall database that cleans up its temporary directory on drop.
 pub struct TempKeyspace {
-    database: fjall::Database,
-    path: PathBuf,
+    database: Option<fjall::Database>,
+    temp_dir: TempDir,
 }
 
 impl TempKeyspace {
@@ -19,37 +19,32 @@ impl TempKeyspace {
             TestSetupError::TempDirError(format!("failed to create temp dir: {}", e))
         })?;
         let path = temp_dir.path().to_path_buf();
-        // Leak the TempDir so we control cleanup manually on drop.
-        std::mem::forget(temp_dir);
 
         let database = fjall::Database::builder(&path).open().map_err(|e| {
             TestSetupError::FjallOpenError(format!("failed to open database: {}", e))
         })?;
 
-        Ok(Self { database, path })
+        Ok(Self {
+            database: Some(database),
+            temp_dir,
+        })
     }
 
     /// Return the filesystem path of the temporary database.
     pub fn path(&self) -> &std::path::Path {
-        &self.path
+        self.temp_dir.path()
     }
 
     /// Access the underlying `fjall::Database`.
-    pub fn database(&self) -> &fjall::Database {
-        &self.database
+    pub fn database(&self) -> Option<&fjall::Database> {
+        self.database.as_ref()
     }
 }
 
 impl Drop for TempKeyspace {
     fn drop(&mut self) {
         // Explicitly drop the database first so Fjall releases file locks.
-        let path = std::mem::take(&mut self.path);
-        // Now remove the directory. Errors are logged but ignored because
-        // this runs during unwind and we must not panic in drop.
-        if let Err(_cleanup_error) = std::fs::remove_dir_all(&path) {
-            // Directory may already be deleted or permissions may be insufficient.
-            // Either way, the temp dir will be cleaned by the OS eventually.
-        }
+        let _database = self.database.take();
     }
 }
 

@@ -37,6 +37,7 @@ fn collect_states_with_n_entries(count: usize) -> CollectStates {
             limit: 100,
             time_limit_ms: None,
             start_millis: 0,
+            from_journal: false,
         };
         let _key = (state.run_id, state.collector_slot);
         let _ = states.upsert(state);
@@ -75,6 +76,7 @@ fn bench_collect_page(c: &mut Criterion) {
                         limit: 100,
                         time_limit_ms: None,
                         start_millis: 0,
+                        from_journal: false,
                     };
                     let result = states.upsert(state);
                     black_box(result.is_ok());
@@ -117,6 +119,7 @@ fn bench_collect_page(c: &mut Criterion) {
                         limit: 100,
                         time_limit_ms: None,
                         start_millis: 0,
+                        from_journal: false,
                     };
                     states.upsert(first_state).expect("first upsert");
 
@@ -132,6 +135,7 @@ fn bench_collect_page(c: &mut Criterion) {
                         limit: 100,
                         time_limit_ms: None,
                         start_millis: 0,
+                        from_journal: false,
                     };
                     let result = states.upsert(second_state);
                     black_box(result.is_ok());
@@ -181,6 +185,7 @@ fn bench_collect_page(c: &mut Criterion) {
                         limit: 100,
                         time_limit_ms: None,
                         start_millis: 0,
+                        from_journal: false,
                     };
                     states.upsert(state).expect("upsert");
 
@@ -229,6 +234,7 @@ fn bench_collect_page(c: &mut Criterion) {
                             limit: 1000,
                             time_limit_ms: None,
                             start_millis: 0,
+                            from_journal: false,
                         };
                         states.upsert(state).expect("upsert");
                         cursor = cursor.saturating_add(100);

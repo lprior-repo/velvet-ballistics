@@ -1,5 +1,8 @@
 use vstd::prelude::*;
 
+mod vb_mrwe6_kernel_binding;
+use vb_mrwe6_kernel_binding::*;
+
 verus! {
 
 // Verus artifact for obl-vb-mrwe-6-queue-intent-verus-007.
@@ -7,19 +10,8 @@ verus! {
 // Residual support boundary: queue capacity and Fjall commit are modeled;
 // bridge/Kani evidence calls production classifiers.
 
-pub enum Mrwe6EventClassView { Scheduled, Resolution, Unrelated }
-pub enum Mrwe6IntentKindView { None, PutPending, RemovePending }
-
-pub open spec fn seam_required_intent(class: Mrwe6EventClassView) -> Mrwe6IntentKindView {
-    match class {
-        Mrwe6EventClassView::Scheduled => Mrwe6IntentKindView::PutPending,
-        Mrwe6EventClassView::Resolution => Mrwe6IntentKindView::RemovePending,
-        Mrwe6EventClassView::Unrelated => Mrwe6IntentKindView::None,
-    }
-}
-
 pub open spec fn valid_queue_item(class: Mrwe6EventClassView, intent: Mrwe6IntentKindView) -> bool {
-    intent == seam_required_intent(class)
+    spec_intent_kind_matches_event_class(class, intent)
 }
 
 pub proof fn queued_schedule_requires_put_pending(intent: Mrwe6IntentKindView)

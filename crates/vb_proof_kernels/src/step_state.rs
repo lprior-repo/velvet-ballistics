@@ -101,18 +101,7 @@ pub fn non_terminal_states() -> Vec<StepState> {
 pub fn terminal_cannot_transition_to_non_terminal() -> bool {
     for terminal in terminal_states() {
         let next = next_states(terminal);
-        // Succeeded is terminal: no non-self transitions
-        if terminal == StepState::Succeeded {
-            let valid = matches!(
-                next.as_slice(),
-                [StepState::Succeeded]
-                    | [StepState::Succeeded, StepState::Running]
-                    | [StepState::Running, StepState::Succeeded]
-            );
-            if !valid {
-                return false;
-            }
-        } else if !matches!(next.as_slice(), [only] if *only == terminal) {
+        if !matches!(next.as_slice(), [only] if *only == terminal) {
             return false;
         }
     }
@@ -206,7 +195,7 @@ mod tests {
     fn test_invalid_transitions() {
         assert!(!is_valid_transition(StepState::Running, StepState::Pending));
         // Note: Succeeded -> Running is INVALID (terminal states are fully absorbing)
-        assert!(is_valid_transition(
+        assert!(!is_valid_transition(
             StepState::Succeeded,
             StepState::Running
         ));
@@ -359,10 +348,10 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_transition_valid_succeeded_to_running() {
+    fn test_validate_transition_invalid_succeeded_to_running() {
         // Succeeded -> Running is INVALID: terminal states are fully absorbing
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), StepState::Running);
+        let result = validate_transition(StepState::Succeeded, StepState::Running);
+        assert_eq!(result, Err("invalid_state_transition"));
     }
 
     #[test]
@@ -498,14 +487,8 @@ mod tests {
     fn test_next_states_terminal_unique() {
         for terminal in terminal_states() {
             let next = next_states(terminal);
-            // Succeeded can transition to Running for loop body re-entry
-            if terminal == StepState::Succeeded {
-                assert!(next.contains(&StepState::Succeeded));
-                assert!(next.contains(&StepState::Running));
-            } else {
-                assert_eq!(next.len(), 1);
-                assert_eq!(next[0], terminal);
-            }
+            assert_eq!(next.len(), 1);
+            assert_eq!(next[0], terminal);
         }
     }
 }

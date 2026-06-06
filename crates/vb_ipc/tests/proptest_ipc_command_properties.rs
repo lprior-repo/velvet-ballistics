@@ -12,7 +12,7 @@ use vb_ipc::IpcCommand;
 // PO-PROP-001: Semantic variant count and discriminant range.
 // ──────────────────────────────────────────────────────────────────────
 
-/// The 11 semantic IpcCommand variants in canonical order.
+// The 11 semantic IpcCommand variants in canonical order.
 const SEMANTIC_VARIANTS: [IpcCommand; 11] = [
     IpcCommand::SubmitRun,
     IpcCommand::SubmitRunInline,
@@ -27,7 +27,7 @@ const SEMANTIC_VARIANTS: [IpcCommand; 11] = [
     IpcCommand::Shutdown,
 ];
 
-/// Verify exactly 11 semantic IpcCommand variants exist.
+// Verify exactly 11 semantic IpcCommand variants exist.
 #[test]
 fn prop_exactly_eleven_semantic_variants() {
     assert_eq!(
@@ -37,7 +37,7 @@ fn prop_exactly_eleven_semantic_variants() {
     );
 }
 
-/// Verify all 11 semantic variants have discriminants in 1..=11.
+// Verify all 11 semantic variants have discriminants in 1..=11.
 #[test]
 fn prop_all_semantic_discriminants_in_range() {
     for cmd in &SEMANTIC_VARIANTS {
@@ -50,7 +50,7 @@ fn prop_all_semantic_discriminants_in_range() {
     }
 }
 
-/// Verify discriminants are unique (no duplicates).
+// Verify discriminants are unique (no duplicates).
 #[test]
 fn prop_semantic_discriminants_unique() {
     let ids: Vec<u16> = SEMANTIC_VARIANTS.iter().map(|c| c.as_u16()).collect();
@@ -64,7 +64,7 @@ fn prop_semantic_discriminants_unique() {
     );
 }
 
-/// Verify discriminants are in canonical order (1 through 11).
+// Verify discriminants are in canonical order (1 through 11).
 #[test]
 fn prop_discriminants_canonical_order() {
     for (i, cmd) in SEMANTIC_VARIANTS.iter().enumerate() {
@@ -79,7 +79,7 @@ fn prop_discriminants_canonical_order() {
     }
 }
 
-/// Verify UnknownCommand is NOT counted as a semantic variant.
+// Verify UnknownCommand is NOT counted as a semantic variant.
 #[test]
 fn prop_unknown_command_not_semantic() {
     let unknown = IpcCommand::UnknownCommand(0);
@@ -102,12 +102,12 @@ fn prop_unknown_command_not_semantic() {
 // PO-PROP-002: Roundtrip identity.
 // ──────────────────────────────────────────────────────────────────────
 
-/// Proptest strategy generating valid command IDs (1..=11).
+// Proptest strategy generating valid command IDs (1..=11).
 fn valid_command_id() -> impl Strategy<Value = u16> {
     (1u16..=11u16).prop_map(|v| v)
 }
 
-/// Roundtrip identity: from_u16(as_u16(c)) == Ok(c) for all 11 variants.
+// Roundtrip identity: from_u16(as_u16(c)) == Ok(c) for all 11 variants.
 #[test]
 fn prop_roundtrip_exhaustive_all_eleven() {
     for cmd in &SEMANTIC_VARIANTS {
@@ -134,7 +134,7 @@ proptest! {
     }
 }
 
-/// as_u16 is injective: different semantic variants have different wire IDs.
+// as_u16 is injective: different semantic variants have different wire IDs.
 #[test]
 fn prop_as_u16_injective() {
     for i in 0..SEMANTIC_VARIANTS.len() {
@@ -154,7 +154,7 @@ fn prop_as_u16_injective() {
 // PO-PROP-003: Unknown command rejection.
 // ──────────────────────────────────────────────────────────────────────
 
-/// Proptest strategy: any u16 outside the valid range 1..=11.
+// Proptest strategy: any u16 outside the valid range 1..=11.
 fn invalid_command_id() -> impl Strategy<Value = u16> {
     prop_oneof![
         // Values 0..=0 (exactly 0)
@@ -198,10 +198,10 @@ proptest! {
 // PO-PROP-004: Reserved IDs 12-16.
 // ──────────────────────────────────────────────────────────────────────
 
-/// The reserved wire IDs 12..=16 that must NOT be named variants.
+// The reserved wire IDs 12..=16 that must NOT be named variants.
 const RESERVED_IDS: [u16; 5] = [12, 13, 14, 15, 16];
 
-/// Reserved IDs 12-16 decode as UnknownCommand.
+// Reserved IDs 12-16 decode as UnknownCommand.
 #[test]
 fn prop_reserved_ids_return_unknown_command() {
     for &id in &RESERVED_IDS {
@@ -223,8 +223,8 @@ fn prop_reserved_ids_return_unknown_command() {
     }
 }
 
-/// No named IpcCommand variant exists with discriminants 12-16.
-/// This is a compile-time property, but we verify it at runtime too.
+// No named IpcCommand variant exists with discriminants 12-16.
+// This is a compile-time property, but we verify it at runtime too.
 #[test]
 fn prop_no_named_variant_for_reserved_ids() {
     for &id in &RESERVED_IDS {
@@ -239,12 +239,12 @@ fn prop_no_named_variant_for_reserved_ids() {
     }
 }
 
-/// Verify that the "extra commands" from the stale baseline report
-/// (ListRuns, GetMetrics, GetWorkflowGraph, GetTaintReport, VerifyWorkflow)
-/// do not exist as IpcCommand variants. This is verified by:
-/// 1. The enum has exactly 11 semantic variants (already verified above).
-/// 2. None of the 11 variants has a discriminant in 12..=16.
-/// 3. Attempting to use a non-existent variant name would fail at compile time.
+// Verify that the "extra commands" from the stale baseline report
+// (ListRuns, GetMetrics, GetWorkflowGraph, GetTaintReport, VerifyWorkflow)
+// do not exist as IpcCommand variants. This is verified by:
+// 1. The enum has exactly 11 semantic variants (already verified above).
+// 2. None of the 11 variants has a discriminant in 12..=16.
+// 3. Attempting to use a non-existent variant name would fail at compile time.
 #[test]
 fn prop_stale_baseline_commands_do_not_exist() {
     // The IpcCommand enum definition is the source of truth.

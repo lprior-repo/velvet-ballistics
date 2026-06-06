@@ -860,11 +860,12 @@ mod tests {
 
     #[test]
     fn transition_returns_false_when_succeeded_to_pending() {
-        // Succeeded->Pending is NOT valid (loop re-entry uses Succeeded->Running now)
+        // Succeeded->Pending is NOT a normal transition; loop re-entry uses
+        // explicit pending admission before Running.
         let result = is_valid_step_state_transition(StepState::Succeeded, StepState::Pending);
         assert!(
             !result,
-            "Succeeded->Pending must be invalid (replaced by Succeeded->Running)"
+            "Succeeded->Pending must be invalid as a direct transition"
         );
     }
 

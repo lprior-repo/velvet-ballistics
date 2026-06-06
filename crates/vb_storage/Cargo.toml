@@ -4,6 +4,15 @@ edition.workspace = true
 license.workspace = true
 version.workspace = true
 
+[package.metadata.flux]
+enabled = true
+include = [
+  "src/verification/flux/vb_mrwe6_*_refinements.rs",
+  "src/mrwe6_flux_storage/*.rs",
+  "src/journal/append/intent.rs",
+  "src/journal/append/decision.rs",
+]
+
 [dependencies]
 arrayvec.workspace = true
 blake3.workspace = true
@@ -15,6 +24,7 @@ rustix.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 vb_core = { path = "../vb_core" }
+flux-rs = { git = "https://github.com/flux-rs/flux", rev = "4d329f2", package = "flux-rs", optional = true }
 
 [dev-dependencies]
 proptest = { workspace = true }
@@ -32,6 +42,8 @@ kani-vb-h09wf = []
 kani-vb-mrwe5 = []
 kani-vb-fn4vt = []
 kani-vb-mrwe6 = []
+vb-mrwe6-flux-refinements = ["dep:flux-rs"]
+vb-mrwe6-flux-negative-probes = []
 test-support = []
 
 [lints]

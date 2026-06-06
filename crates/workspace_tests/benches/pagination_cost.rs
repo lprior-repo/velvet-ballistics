@@ -1,7 +1,5 @@
 //! Pagination cost benchmarks.
-//!
 //! Measures CollectStates table operations: insert, upsert, find (existing and missing).
-
 #![allow(missing_docs)]
 
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};
@@ -35,6 +33,7 @@ fn collect_states_with_n_entries(count: usize) -> CollectStates {
             limit: 100,
             time_limit_ms: None,
             start_millis: 0,
+            from_journal: false,
         };
         let _key = (state.run_id, state.collector_slot);
         let _ = states.upsert(state);
@@ -60,6 +59,7 @@ fn collect_states_1_entry() -> (CollectStates, RunId, SlotIdx, ListId) {
         limit: 100,
         time_limit_ms: None,
         start_millis: 0,
+        from_journal: false,
     };
     states.upsert(state).expect("upsert");
     (states, run_id, slot, current_page)
@@ -85,6 +85,7 @@ fn collect_states_10_page_lineage() -> (CollectStates, RunId, SlotIdx) {
             limit: 500,
             time_limit_ms: None,
             start_millis: 0,
+            from_journal: false,
         };
         states.upsert(state).expect("upsert");
         page = page.saturating_add(1);
@@ -121,6 +122,7 @@ fn bench_pagination_cost(c: &mut Criterion) {
                         limit: 100,
                         time_limit_ms: None,
                         start_millis: 0,
+                        from_journal: false,
                     };
                     let result = states.upsert(state);
                     // Exact assertion: insert must succeed
@@ -170,6 +172,7 @@ fn bench_pagination_cost(c: &mut Criterion) {
                         limit: 100,
                         time_limit_ms: None,
                         start_millis: 0,
+                        from_journal: false,
                     };
                     let result = states.upsert(second_state);
                     // Exact assertion: upsert must succeed

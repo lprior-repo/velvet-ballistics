@@ -4,7 +4,11 @@
 //! Fuzz artifact for `obl-vb-mrwe-5-ps004-fuzz-020`.
 
 use libfuzzer_sys::fuzz_target;
-use vb_storage::{JournalKindCompatibility, RecordKind, RecordKindFamilyDecision, constants};
+use vb_storage::codec::{
+    JournalKindCompatibility, RecordKindFamilyDecision, classify_journal_kind_compatibility,
+    classify_record_kind_family,
+};
+use vb_storage::{RecordKind, constants};
 
 fuzz_target!(|data: &[u8]| {
     check_pair(
@@ -23,7 +27,7 @@ fuzz_target!(|data: &[u8]| {
         };
         if !vb_storage::codec::is_known_record_kind(kind)
             && matches!(
-                vb_storage::classify_record_kind_family(constants::MAGIC_JOURNAL_EVENT, kind),
+                classify_record_kind_family(constants::MAGIC_JOURNAL_EVENT, kind),
                 RecordKindFamilyDecision::Accepted
             )
         {
@@ -35,8 +39,7 @@ fuzz_target!(|data: &[u8]| {
 });
 
 fn check_pair(envelope_kind: u16, payload_kind: u16) {
-    let compatibility =
-        vb_storage::classify_journal_kind_compatibility(envelope_kind, payload_kind);
+    let compatibility = classify_journal_kind_compatibility(envelope_kind, payload_kind);
     match compatibility {
         JournalKindCompatibility::ExactMatch if envelope_kind == payload_kind => {}
         JournalKindCompatibility::RejectedMismatch if envelope_kind != payload_kind => {}
