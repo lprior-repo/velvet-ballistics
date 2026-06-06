@@ -484,7 +484,7 @@ proptest! {
 
 #[test]
 fn resource_contract_default_has_reasonable_max_steps() {
-    assert_eq!(ResourceContract::DEFAULT.max_steps, 10_000);
+    assert_eq!(ResourceContract::DEFAULT.max_steps, 1_000);
 }
 
 #[test]

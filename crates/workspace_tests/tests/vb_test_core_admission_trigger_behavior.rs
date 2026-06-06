@@ -1011,9 +1011,9 @@ mod resource_contract_admission {
         let contract = ResourceContract::DEFAULT;
 
         // Sharp assertions on default bounds
-        assert_eq!(contract.max_steps, 10_000);
+        assert_eq!(contract.max_steps, 1_000);
         assert_eq!(contract.max_slots, 1_024);
-        assert_eq!(contract.max_constants, u16::MAX);
+        assert_eq!(contract.max_constants, 8_192);
         assert_eq!(contract.max_accessors, 8_192);
         assert_eq!(contract.max_expressions, 4_096);
         assert_eq!(contract.max_expr_stack, 64);

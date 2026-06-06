@@ -1002,11 +1002,11 @@ fn limits_resource_contract_default_max_input_bytes_is_one_mib() {
 }
 
 #[test]
-fn limits_resource_contract_default_max_steps_is_10000() {
+fn limits_resource_contract_default_max_steps_is_1000() {
     // Given: the default ResourceContract
     let contract = ResourceContract::DEFAULT;
-    // Then: max_steps is 10000 (the Phase 45 tightened limit)
-    assert_eq!(contract.max_steps, 10_000);
+    // Then: max_steps is 1000 (the Phase 45 tightened limit)
+    assert_eq!(contract.max_steps, 1_000);
 }
 
 // ===========================================================================

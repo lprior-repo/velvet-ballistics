@@ -3316,11 +3316,11 @@ fn cli_canonical_emit_yaml_covers_required_output_contract_commands() {
         .get("resources")
         .and_then(serde_json::Value::as_object)
         .expect("explain resources must be an object");
-    assert_eq!(resources.get("max_steps"), Some(&serde_json::json!(10_000)));
+    assert_eq!(resources.get("max_steps"), Some(&serde_json::json!(1_000)));
     assert_eq!(resources.get("max_slots"), Some(&serde_json::json!(1_024)));
     assert_eq!(
         resources.get("max_constants"),
-        Some(&serde_json::json!(65_535))
+        Some(&serde_json::json!(8_192))
     );
     assert_eq!(
         resources.get("max_accessors"),
