@@ -24,6 +24,9 @@
 
 #![allow(dead_code)]
 
+#[cfg(flux)]
+compile_error!("FLUX ENABLED");
+
 #[allow(unused_imports)]
 use crate::mod_compile_errors::CompileError;
 #[allow(unused_imports)]

@@ -140,6 +140,12 @@ pub enum IdempotencyViolation {
     /// Idempotency key ingredient contains a secret-tainted value.
     #[error("idempotency key ingredient contains secret-tainted value at slot {0}")]
     SecretInKey(u32),
+    /// Idempotency key ingredient contains a random-tainted value.
+    #[error("idempotency key ingredient contains random-tainted value at slot {0}")]
+    RandomInKey(u32),
+    /// Idempotency key ingredient contains a time-dependent value.
+    #[error("idempotency key ingredient contains time-dependent value at slot {0}")]
+    TimeInKey(u32),
 }
 
 /// Static contract describing an action's resource and correctness bounds.

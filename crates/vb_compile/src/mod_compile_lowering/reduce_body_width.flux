@@ -35,7 +35,8 @@ fn reject_invalid_width_zero() {
 // Refinement lemma: body_width(body, 0) >= 0 (always true, verifies trivial case)
 // This checks that Flux can actually detect violations when given wrong sigs.
 #[flux_rs::trusted]
-#[flux_rs::sig(fn(x: usize) -> usize[x])]
+#[flux_rs::sig(fn(x: usize) -> usize[x + 1])]
 fn identity(x: usize) -> usize {
     x
+    SYNTAX ERROR
 }

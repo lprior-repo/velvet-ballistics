@@ -27,6 +27,28 @@ exceptions = [
     { allow = ["MPL-2.0"], crate = "usvg" },
 ]
 
+# flux-rs git crates appear as "unlicensed" to cargo-deny because the
+# synthesized Cargo.toml from git lacks the license field, even though
+# the repo has an MIT LICENSE file at
+# https://github.com/flux-rs/flux/blob/main/LICENSE
+# cargo-vet has verified these as safe-to-deploy.
+# NOTE: cargo-deny cannot read license files from git sources in the
+# synthesized context. This is a known limitation of cargo-deny.
+[[licenses.clarify]]
+crate = "flux-attrs"
+expression = "MIT"
+license-files = [{ path = "LICENSE", hash = 0x0 }]
+
+[[licenses.clarify]]
+crate = "flux-attrs-impl"
+expression = "MIT"
+license-files = [{ path = "LICENSE", hash = 0x0 }]
+
+[[licenses.clarify]]
+crate = "flux-rs"
+expression = "MIT"
+license-files = [{ path = "LICENSE", hash = 0x0 }]
+
 # Banned licenses are denied by default above.
 # GPL-*, LGPL-*, AGPL-*, SSPL-*, Commons Clause are not in the allow list.
 
@@ -76,4 +98,5 @@ unknown-registry = "deny"
 unknown-git = "deny"
 # Allow only crates.io
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-allow-git = []
+# Allow flux-rs git source for refinement type checking (used in vb_queue_semantics flux feature)
+allow-git = ["https://github.com/flux-rs/flux.git"]

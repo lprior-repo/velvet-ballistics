@@ -2122,15 +2122,11 @@ fn join_taint_chain_matches_pairwise_max() {
                     Taint::Clean => 0,
                     Taint::DerivedFromSecret => 1,
                     Taint::Secret => 2,
-                    Taint::Secret => 3,
-                    Taint::Secret => 4,
                 };
                 let disc_a = match a {
                     Taint::Clean => 0,
                     Taint::DerivedFromSecret => 1,
                     Taint::Secret => 2,
-                    Taint::Secret => 3,
-                    Taint::Secret => 4,
                 };
                 let disc_b = match b {
                     Taint::Clean => 0,
