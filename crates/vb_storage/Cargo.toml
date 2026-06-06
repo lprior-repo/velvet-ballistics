@@ -45,6 +45,8 @@ kani-vb-mrwe6 = []
 vb-mrwe6-flux-refinements = ["dep:flux-rs"]
 vb-mrwe6-flux-negative-probes = []
 test-support = []
+# Enable fuzzing support modules (fuzz_access) for use with cargo-fuzz
+fuzzing = []
 
 [lints]
 workspace = true

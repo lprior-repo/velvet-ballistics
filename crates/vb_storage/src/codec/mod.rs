@@ -12,7 +12,7 @@ mod replay;
 mod semantic;
 pub(crate) mod validation;
 
-#[cfg(fuzzing)]
+#[cfg(feature = "fuzzing")]
 #[doc(hidden)]
 pub mod fuzz_validation {
     //! Internal fuzz-harness accessors; unavailable in normal Cargo builds.

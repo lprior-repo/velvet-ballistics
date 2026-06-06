@@ -270,9 +270,9 @@ fn resource_contract_default_has_consistent_bounds() {
     let contract = ResourceContract::DEFAULT;
 
     // Verify DEFAULT contract has reasonable bounds
-    assert_eq!(contract.max_steps, 10_000);
+    assert_eq!(contract.max_steps, 1_000);
     assert_eq!(contract.max_slots, 1_024);
-    assert_eq!(contract.max_constants, u16::MAX);
+    assert_eq!(contract.max_constants, 8_192);
     assert_eq!(contract.max_accessors, 8_192);
     assert_eq!(contract.max_expressions, 4_096);
     assert_eq!(contract.max_expr_stack, 64);
@@ -656,7 +656,7 @@ fn resource_contract_default_matches_compiled_default() {
     let compiled_default = ResourceContract::DEFAULT;
 
     // These are the hardcoded defaults in the spec
-    assert_eq!(compiled_default.max_steps, 10_000);
+    assert_eq!(compiled_default.max_steps, 1_000);
     assert_eq!(compiled_default.max_slots, 1_024);
     assert_eq!(compiled_default.max_expr_stack, 64);
     assert_eq!(compiled_default.max_step_budget_per_tick, 10_000);
@@ -771,7 +771,7 @@ steps:
     let contract = workflow.resource_contract();
 
     // The compiled workflow must carry a valid resource contract
-    assert_eq!(contract.max_steps, 10_000);
+    assert_eq!(contract.max_steps, 1_000);
     assert_eq!(contract.max_slots, 1_024);
     assert_eq!(contract.max_expr_stack, 64);
 }
@@ -792,7 +792,7 @@ steps:
     let parts = workflow.to_parts();
 
     // to_parts must preserve the resource contract
-    assert_eq!(parts.resource_contract.max_steps, 10_000);
+    assert_eq!(parts.resource_contract.max_steps, 1_000);
     assert_eq!(parts.resource_contract.max_slots, 1_024);
     assert_eq!(parts.resource_contract.max_expr_stack, 64);
 }

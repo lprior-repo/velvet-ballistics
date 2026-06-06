@@ -42,7 +42,7 @@ tempfile = "3"
 vb_boundary_inventory = { path = "../crates/vb_boundary_inventory" }
 vb_core = { path = "../crates/vb_core" }
 vb_expr = { path = "../crates/vb_expr" }
-vb_storage = { path = "../crates/vb_storage" }
+vb_storage = { path = "../crates/vb_storage", features = ["fuzzing"] }
 vb_runtime = { path = "../crates/vb_runtime" }
 vb_validate = { path = "../crates/vb_validate" }
 vb_yaml = { path = "../crates/vb_yaml" }
