@@ -174,7 +174,7 @@ fn upsert_started_collect(
             Some(e) if e.from_journal => e.start_millis,
             _ => millis_since_epoch()?,
         },
-        from_journal: false,
+        from_journal: matches!(states.entries.get(&key), Some(e) if e.from_journal),
     })
 }
 
@@ -261,6 +261,13 @@ pub fn collect_finish(
 }
 
 fn check_time_limit(state: &State) -> Result<(), EngineError> {
+    // Skip wall-clock check during replay to preserve deterministic replay.
+    // The original timeout outcome was recorded in the journal; re-checking
+    // live wall-clock during replay would produce different elapsed time
+    // than the original execution, breaking AC-3.
+    if state.from_journal {
+        return Ok(());
+    }
     if let Some(limit_ms) = state.time_limit_ms {
         let elapsed = millis_since_epoch()?.saturating_sub(state.start_millis);
         if elapsed > limit_ms {
