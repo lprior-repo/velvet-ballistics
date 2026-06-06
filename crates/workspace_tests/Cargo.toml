@@ -266,6 +266,11 @@ path = "tests/restate_sync_drr_scheduler_tests.rs"
 name = "vb_8mdp_7_resource_admission_props"
 path = "tests/vb_8mdp_7_resource_admission_props.rs"
 
+# === vb-pyg3p Runtime Facade Behavior Tests ===
+[[test]]
+name = "vb_runtime_facade_restoration_properties"
+path = "tests/vb_runtime_facade_restoration_properties.rs"
+
 [[bench]]
 name = "rtrb"
 harness = false
