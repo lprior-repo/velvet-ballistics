@@ -120,6 +120,80 @@ obligations:
       - verus --crate-type=lib verification/verus/vb_mrwe6_recovery_reliance.rs
 
   # ============================================================
+  # VB-MRWE.5 RECORD KIND PARITY (Section vb-mrwe.5)
+  # Strict r11 binding: shared-source Verus/Rust kernel via
+  # `#[path = "../../crates/vb_storage/src/mrwe5_contract.rs"]`
+  # so the Verus artifact type-checks against the same dependency-free
+  # production kernel consumed by `vb_storage` write/decode seams.
+  # ============================================================
+  - id: obl-vb-mrwe-5-kind-parity-verus-001
+    section: ["vb-mrwe.5", "REQ-MRWE5-KIND-PARITY"]
+    statement: |
+      StepSucceeded maps to a distinct canonical kind id (29) that
+      differs from SlotWrittenEvent (12); exact match is reflexive and
+      cross-id mismatch is detected by the production kernel.
+    proof_level: L4
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/mrwe5_contract.rs
+      - verification/verus/vb_mrwe5_kind_parity.rs
+    required:
+      verus: verification/verus/vb_mrwe5_kind_parity.rs
+    commands:
+      - verus --crate-type=lib verification/verus/vb_mrwe5_kind_parity.rs
+
+  - id: obl-vb-mrwe-5-decode-reject-verus-006
+    section: ["vb-mrwe.5", "REQ-MRWE5-DECODE-REJECT"]
+    statement: |
+      Semantic decode rejects envelope/payload kind mismatches before
+      journal events are exposed; exact match with valid payload yields
+      SemanticSuccess; exact match with invalid payload yields
+      InvalidEvent; kind compatibility policy is fail-closed.
+    proof_level: L4
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/mrwe5_contract.rs
+      - verification/verus/vb_mrwe5_decode_reject.rs
+    required:
+      verus: verification/verus/vb_mrwe5_decode_reject.rs
+    commands:
+      - verus --crate-type=lib verification/verus/vb_mrwe5_decode_reject.rs
+
+  - id: obl-vb-mrwe-5-roundtrip-verus-011
+    section: ["vb-mrwe.5", "REQ-MRWE5-ROUNDTRIP"]
+    statement: |
+      StepSucceeded and SlotWrittenEvent round-trip independently to
+      SemanticSuccess when envelope kind, payload kind, and event
+      validity all agree; cross-kind envelopes are rejected as
+      KindPayloadMismatch.
+    proof_level: L4
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/mrwe5_contract.rs
+      - verification/verus/vb_mrwe5_roundtrip.rs
+    required:
+      verus: verification/verus/vb_mrwe5_roundtrip.rs
+    commands:
+      - verus --crate-type=lib verification/verus/vb_mrwe5_roundtrip.rs
+
+  - id: obl-vb-mrwe-5-compat-kind-family-verus-016
+    section: ["vb-mrwe.5", "REQ-MRWE5-COMPAT-KIND-FAMILY"]
+    statement: |
+      The journal record-kind family accepts only kinds in [10..=29]
+      under the journal magic; outside that family the record is
+      rejected; kind compatibility is fail-closed for envelope/payload
+      kind mismatches.
+    proof_level: L4
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/mrwe5_contract.rs
+      - verification/verus/vb_mrwe5_compat_kind_family.rs
+    required:
+      verus: verification/verus/vb_mrwe5_compat_kind_family.rs
+    commands:
+      - verus --crate-type=lib verification/verus/vb_mrwe5_compat_kind_family.rs
+
+  # ============================================================
   # CORE TAINT LATTICE (Section 47)
   # ============================================================
   - id: VB-CORE-TAINT-001
