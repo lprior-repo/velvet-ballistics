@@ -24,7 +24,7 @@ const EXPECTED_MEMBERS: &[&str] = &[
     "crates/vb_benchmark",
 ];
 
-const EXPECTED_EXCLUDES: &[&str] = &["target/miri-tmp", "crates/vb_ui", "fuzz"];
+const EXPECTED_EXCLUDES: &[&str] = &["target/miri-tmp", "crates/vb_ui", "fuzz", "crates/vb_ajc40_flux"];
 const BOUNDARY_CRATES: &[&str] = &["vb_core", "vb_runtime", "vb_storage", "vb_ipc"];
 const FORBIDDEN_UI_DEPENDENCIES: &[&str] = &[
     "vb_ui",
@@ -79,6 +79,8 @@ const EXPECTED_FEATURES: &[(&str, &[&str])] = &[
             "bench",
             "default",
             "kani-diagnostic-codes",
+            "kani-vb-5iebh-check-scope",
+            "kani-vb-ajc40",
             "test-util",
             "volatile",
         ],

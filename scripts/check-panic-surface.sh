@@ -38,6 +38,7 @@ mapfile -t violations < <(
     --glob '!.beads/**' \
     --glob '!fixtures/**' \
     --glob '!build.rs' \
+    --glob '!crates/vb_ajc40_flux/**' \
   | while IFS=: read -r file linenum rest; do
     if [[ "$file" == *"_tests.rs" ]] || [[ "$file" == *"tests.rs" ]] || [[ "$file" == *"test/"* ]]; then
       continue

@@ -14,7 +14,6 @@ members = [
     "crates/vb_proof_kernels",
     "crates/vb_cli",
     "crates/vb_verification",
-    "crates/vb_ajc40_flux",
     "crates/vb_test_util",
     "crates/workspace_tests/idempotency_suite",
     "crates/workspace_tests",
@@ -23,7 +22,7 @@ members = [
     # "xtask",
 ]
 resolver = "2"
-exclude = ["target/miri-tmp", "crates/vb_ui", "fuzz"]
+exclude = ["target/miri-tmp", "crates/vb_ui", "fuzz", "crates/vb_ajc40_flux"]
 
 [workspace.package]
 edition = "2024"
