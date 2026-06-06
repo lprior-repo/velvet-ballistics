@@ -1,5 +1,7 @@
 use crate::{error::JournalError, events::JournalEvent, keys::index_action_key};
 
+pub use super::mrwe6_kernel::{Mrwe6AtomKind, Mrwe6EventClass, Mrwe6IntentKind, Mrwe6SeamError};
+
 #[cfg(kani)]
 use crate::keys::run_event_key;
 
@@ -20,32 +22,6 @@ pub enum Mrwe6ActionIndexIntent {
 
 #[cfg(kani)]
 pub(crate) type VerificationActionIndexIntent = Mrwe6ActionIndexIntent;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Mrwe6EventClass {
-    Scheduled,
-    Resolution,
-    Unrelated,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Mrwe6IntentKind {
-    None,
-    PutPending,
-    RemovePending,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Mrwe6AtomKind {
-    EventOnly,
-    EventAndPutPending,
-    EventAndRemovePending,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Mrwe6SeamError {
-    ClassIntentMismatch,
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Mrwe6ValidatedAtom {
@@ -76,35 +52,53 @@ pub(crate) type ActionIndexIntent = Mrwe6ActionIndexIntent;
 impl Mrwe6ActionIndexIntent {
     pub(crate) fn for_event(event: &JournalEvent) -> Self {
         match event {
+            JournalEvent::ActionScheduled { .. } | JournalEvent::ActionScheduledTicket { .. } => {
+                Self::scheduled_intent(event)
+            }
+            JournalEvent::ActionCompletedEvent { .. }
+            | JournalEvent::ActionFailedEvent { .. }
+            | JournalEvent::ActionCompletedEnvelope { .. } => Self::resolution_intent(event),
+            _ => Self::None,
+        }
+    }
+
+    fn scheduled_intent(event: &JournalEvent) -> Self {
+        match event {
             JournalEvent::ActionScheduled {
                 action, run, step, ..
-            } => Self::Put {
-                action: *action,
-                run: *run,
-                step: *step,
-            },
-            JournalEvent::ActionScheduledTicket { ticket, .. } => Self::Put {
-                action: ticket.action,
-                run: ticket.run,
-                step: ticket.step,
-            },
+            } => Self::put(*action, *run, *step),
+            JournalEvent::ActionScheduledTicket { ticket, .. } => {
+                Self::put(ticket.action, ticket.run, ticket.step)
+            }
+            _ => Self::None,
+        }
+    }
+
+    fn resolution_intent(event: &JournalEvent) -> Self {
+        match event {
             JournalEvent::ActionCompletedEvent {
                 action, run, step, ..
             }
             | JournalEvent::ActionFailedEvent {
                 action, run, step, ..
-            } => Self::Delete {
-                action: *action,
-                run: *run,
-                step: *step,
-            },
-            JournalEvent::ActionCompletedEnvelope { ticket, .. } => Self::Delete {
-                action: ticket.action,
-                run: ticket.run,
-                step: ticket.step,
-            },
+            } => Self::delete(*action, *run, *step),
+            JournalEvent::ActionCompletedEnvelope { ticket, .. } => {
+                Self::delete(ticket.action, ticket.run, ticket.step)
+            }
             _ => Self::None,
         }
+    }
+
+    const fn put(action: vb_core::ActionId, run: vb_core::RunId, step: vb_core::StepIdx) -> Self {
+        Self::Put { action, run, step }
+    }
+
+    const fn delete(
+        action: vb_core::ActionId,
+        run: vb_core::RunId,
+        step: vb_core::StepIdx,
+    ) -> Self {
+        Self::Delete { action, run, step }
     }
 
     #[cfg(kani)]
@@ -138,11 +132,7 @@ pub fn mrwe6_intent_kind(intent: Mrwe6ActionIndexIntent) -> Mrwe6IntentKind {
 
 #[must_use]
 pub fn mrwe6_required_intent_kind_for_class(class: Mrwe6EventClass) -> Mrwe6IntentKind {
-    match class {
-        Mrwe6EventClass::Scheduled => Mrwe6IntentKind::PutPending,
-        Mrwe6EventClass::Resolution => Mrwe6IntentKind::RemovePending,
-        Mrwe6EventClass::Unrelated => Mrwe6IntentKind::None,
-    }
+    super::mrwe6_kernel::required_intent_kind_for_class(class)
 }
 
 #[must_use]
@@ -158,21 +148,14 @@ pub fn mrwe6_intent_kind_matches_event_class(
     class: Mrwe6EventClass,
     intent_kind: Mrwe6IntentKind,
 ) -> bool {
-    mrwe6_required_intent_kind_for_class(class) == intent_kind
+    super::mrwe6_kernel::intent_kind_matches_event_class(class, intent_kind)
 }
 
 pub fn mrwe6_validated_atom(
     class: Mrwe6EventClass,
     intent_kind: Mrwe6IntentKind,
 ) -> Result<Mrwe6ValidatedAtom, Mrwe6SeamError> {
-    if !mrwe6_intent_kind_matches_event_class(class, intent_kind) {
-        return Err(Mrwe6SeamError::ClassIntentMismatch);
-    }
-    let atom_kind = match intent_kind {
-        Mrwe6IntentKind::None => Mrwe6AtomKind::EventOnly,
-        Mrwe6IntentKind::PutPending => Mrwe6AtomKind::EventAndPutPending,
-        Mrwe6IntentKind::RemovePending => Mrwe6AtomKind::EventAndRemovePending,
-    };
+    let atom_kind = super::mrwe6_kernel::checked_atom_kind(class, intent_kind)?;
     Ok(Mrwe6ValidatedAtom {
         class,
         intent_kind,
@@ -185,6 +168,30 @@ pub fn mrwe6_validated_atom_for_event(
 ) -> Result<Mrwe6ValidatedAtom, Mrwe6SeamError> {
     let intent = mrwe6_action_index_intent(event);
     mrwe6_validated_atom(mrwe6_event_class(event), mrwe6_intent_kind(intent))
+}
+
+pub fn mrwe6_valid_scheduled_atom(
+    class: Mrwe6EventClass,
+    intent_kind: Mrwe6IntentKind,
+) -> Result<Mrwe6ValidatedAtom, Mrwe6SeamError> {
+    let atom_kind = super::mrwe6_kernel::checked_scheduled_atom_kind(class, intent_kind)?;
+    Ok(Mrwe6ValidatedAtom {
+        class,
+        intent_kind,
+        atom_kind,
+    })
+}
+
+pub fn mrwe6_valid_queued_relevant_intent(
+    class: Mrwe6EventClass,
+    intent_kind: Mrwe6IntentKind,
+) -> Result<Mrwe6ValidatedAtom, Mrwe6SeamError> {
+    let atom_kind = super::mrwe6_kernel::checked_queued_relevant_atom_kind(class, intent_kind)?;
+    Ok(Mrwe6ValidatedAtom {
+        class,
+        intent_kind,
+        atom_kind,
+    })
 }
 
 pub fn mrwe6_action_index_key_for_intent(

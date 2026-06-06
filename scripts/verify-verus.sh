@@ -20,7 +20,28 @@ fi
 
 mkdir -p -- "$EVIDENCE_DIR"
 
-mapfile -t targets < <(python3 - "$REGISTRY" <<'PY'
+if [ "$#" -gt 0 ]; then
+  targets=()
+  for requested_target in "$@"; do
+    case "$requested_target" in
+      vb-ajc40-admission-kernel-scalar)
+        targets+=("verification/verus/vb_ajc40_admission_kernel_scalar.rs")
+        ;;
+      vb-ajc40-*)
+        target_name="${requested_target//-/_}"
+        targets+=("verification/verus/${target_name}.rs")
+        ;;
+      verification/verus/*.rs)
+        targets+=("$requested_target")
+        ;;
+      *)
+        printf 'Unknown Verus target alias: %s\n' "$requested_target" >&2
+        exit 1
+        ;;
+    esac
+  done
+else
+  mapfile -t targets < <(python3 - "$REGISTRY" <<'PY'
 from pathlib import Path
 import re
 import sys
@@ -36,6 +57,7 @@ for line in registry.read_text(encoding="utf-8").splitlines():
             print(target)
 PY
 )
+fi
 
 if [ "${#targets[@]}" -eq 0 ]; then
   printf 'No required.verus targets found in %s; refusing silent proof pass.\n' "$REGISTRY" >&2

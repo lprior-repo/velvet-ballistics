@@ -30,6 +30,8 @@ pub enum StepState {
 
 /// Pure transition predicate shared by runtime validation and proof harnesses.
 /// Inlines the step-state machine contract from vb_proof_kernels::step_state.
+/// `Succeeded` may re-enter `Running` for loop-body reentry; other terminal
+/// states are self-only.
 #[must_use]
 pub fn is_valid_step_state_transition(current: StepState, new: StepState) -> bool {
     if current == new {
@@ -49,11 +51,7 @@ pub fn is_valid_step_state_transition(current: StepState, new: StepState) -> boo
         (StepState::Running, StepState::Skipped),
         (StepState::Waiting, StepState::Running),
         (StepState::Asking, StepState::Running),
-        (StepState::Succeeded, StepState::Succeeded),
         (StepState::Succeeded, StepState::Running),
-        (StepState::Failed, StepState::Failed),
-        (StepState::Cancelled, StepState::Cancelled),
-        (StepState::Skipped, StepState::Skipped),
     ];
     for &(f, t) in VALID_TRANSITIONS {
         if f == current && t == new {
@@ -391,9 +389,15 @@ impl RunFrame {
         self.write_step_state(step, StepState::Running)
     }
 
-    /// Marks a step pending (for loop body re-entry after Succeeded).
+    /// Marks a step pending through the explicit loop-body re-entry admission path.
     pub fn mark_pending(&mut self, step: StepIdx) -> CoreResult<()> {
-        self.write_step_state(step, StepState::Pending)
+        let current = self.step_state(step)?;
+        Self::validate_pending_admission(current)?;
+        *self
+            .states
+            .get_mut(step.as_usize())
+            .ok_or(CoreError::StepStateOutOfBounds { step })? = StepState::Pending;
+        Ok(())
     }
 
     /// Marks a step succeeded.
@@ -456,6 +460,15 @@ impl RunFrame {
             Err(CoreError::InternalInvariantViolation {
                 reason: "invalid_state_transition",
             })
+        }
+    }
+
+    fn validate_pending_admission(current: StepState) -> CoreResult<()> {
+        match current {
+            StepState::Pending | StepState::Succeeded => Ok(()),
+            _ => Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition",
+            }),
         }
     }
 }
@@ -1086,7 +1099,8 @@ mod frame_kani_harnesses {
 
     /// K-F5: Terminal states block invalid non-self transitions.
     /// Uses kani::any() to symbolically verify terminal blocking property.
-    /// Terminal states are fully absorbing. No non-self transitions.
+    /// Succeeded may transition to Running for loop reentry; other terminal
+    /// states are self-only.
     #[kani::proof]
     fn validate_transition_terminal_blocks_all() {
         let terminal: StepState = kani::any();
@@ -1098,7 +1112,7 @@ mod frame_kani_harnesses {
         );
         kani::assume(is_terminal);
         let result = validate_transition_inline(terminal, target);
-        // Terminal states can transition to themselves (idempotent re-mark)
+        // Terminal states can transition to themselves; Succeeded can re-enter Running.
         if terminal == target || (terminal == StepState::Succeeded && target == StepState::Running)
         {
             kani::assert(result, "terminal->self allowed");

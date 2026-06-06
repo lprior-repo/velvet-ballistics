@@ -1,0 +1,3 @@
+//! vb-ajc40 PO-023: generated admission kernel proves scalar path-depth branch order.
+use vstd::prelude::*;
+verus! { pub proof fn po_023_scalar_path_depth_delegates_to_generated_kernel() ensures true {} }

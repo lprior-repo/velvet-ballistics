@@ -6,7 +6,7 @@ use std::process::{Command, Output};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-const EXTRA_MEMBER_MANIFESTS: [(&str, &str); 13] = [
+const EXTRA_MEMBER_MANIFESTS: [(&str, &str); 14] = [
     ("crates/vb_boundary_inventory", "vb_boundary_inventory"),
     ("crates/vb_yaml", "vb_yaml"),
     ("crates/vb_validate", "vb_validate"),
@@ -14,6 +14,7 @@ const EXTRA_MEMBER_MANIFESTS: [(&str, &str); 13] = [
     ("crates/vb_compile", "vb_compile"),
     ("crates/vb_doc", "vb_doc"),
     ("crates/vb_proof_kernels", "vb_proof_kernels"),
+    ("crates/vb_queue_semantics", "vb_queue_semantics"),
     ("crates/vb_cli", "velvet-ballistics"),
     ("crates/vb_verification", "vb_verification"),
     ("crates/vb_test_util", "vb_test_util"),
@@ -72,6 +73,7 @@ members = [
     "crates/vb_doc",
     "crates/vb_ipc",
     "crates/vb_proof_kernels",
+    "crates/vb_queue_semantics",
     "crates/vb_cli",
     "crates/vb_verification",
     "crates/vb_test_util",

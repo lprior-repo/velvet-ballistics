@@ -253,11 +253,15 @@ fn bench_timer_wheel_tick(c: &mut Criterion) {
                         fired.iter().all(|e| e.run != RunId::new(50)),
                         "cancelled timer 50 must not appear in fired list"
                     );
-                    // 99 timers remain
+                    // The 99 non-cancelled timers fire at the advanced deadline.
                     assert_eq!(
-                        wheel.next_deadline().is_some(),
-                        true,
-                        "99 remaining timers must have a deadline"
+                        fired.len(),
+                        99,
+                        "all 99 non-cancelled timers must fire at the advanced deadline"
+                    );
+                    assert!(
+                        wheel.is_empty(),
+                        "wheel must be empty after firing 99 timers"
                     );
                     black_box(cancelled)
                 });

@@ -247,6 +247,11 @@ fn run_ai_release_for_vb_nf2u(workspace: &IsolatedWorkspace) -> Result<Output, B
             "--bead",
             BEAD_ID,
         ])
+        .env("CARGO_TARGET_DIR", &workspace.cargo_target_dir)
+        .env("TMPDIR", &workspace.tmp_dir)
+        .env_remove("RUSTFLAGS")
+        .env_remove("RUSTDOCFLAGS")
+        .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .output()
         .map_err(Into::into)
 }
@@ -607,17 +612,42 @@ fn write_fixture(path: PathBuf, content: &str) -> Result<(), Box<dyn Error>> {
 
 struct IsolatedWorkspace {
     root: TempDir,
+    cargo_target_dir: PathBuf,
+    tmp_dir: PathBuf,
 }
 
 fn isolated_workspace(test_name: &str) -> IsolatedWorkspace {
+    let isolation_base = Path::new(WORKSPACE_ROOT)
+        .join("target")
+        .join("vb-nf2u-ui-release")
+        .join(test_name);
+    let workspace_parent = isolation_base.join("workspace");
+    let cargo_target_dir = isolation_base.join("cargo-target");
+    let tmp_dir = isolation_base.join("tmp");
+    must(
+        fs::create_dir_all(&workspace_parent).map_err(Box::<dyn Error>::from),
+        "create isolated workspace parent",
+    );
+    must(
+        fs::create_dir_all(&cargo_target_dir).map_err(Box::<dyn Error>::from),
+        "create nested cargo target dir",
+    );
+    must(
+        fs::create_dir_all(&tmp_dir).map_err(Box::<dyn Error>::from),
+        "create nested cargo tmp dir",
+    );
     let root = must(
         tempfile::Builder::new()
             .prefix(&format!("vb-nf2u-{test_name}-"))
-            .tempdir()
+            .tempdir_in(&workspace_parent)
             .map_err(Box::<dyn Error>::from),
         "create isolated workspace",
     );
-    let workspace = IsolatedWorkspace { root };
+    let workspace = IsolatedWorkspace {
+        root,
+        cargo_target_dir,
+        tmp_dir,
+    };
     must(
         seed_snapshot_fixture_artifacts(&workspace),
         "seed snapshot fixtures",

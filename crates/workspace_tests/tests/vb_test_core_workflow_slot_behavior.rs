@@ -894,10 +894,10 @@ mod behavior_step_state_transitions {
             .mark_succeeded(StepIdx::new(0))
             .expect("mark_succeeded should succeed");
 
-        // WHEN: Transitioning from Succeeded back to Running (for loop body re-entry)
+        // WHEN: Transitioning from Succeeded back to Running for loop body re-entry.
         let result = frame.mark_running(StepIdx::new(0));
 
-        // THEN: Succeeded→Running is VALID (jump_to_body uses mark_running after Succeeded)
+        // THEN: Succeeded→Running is valid.
         assert!(
             result.is_ok(),
             "Succeeded→Running must be valid for loop body re-entry"

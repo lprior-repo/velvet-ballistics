@@ -1,0 +1,33 @@
+command: bd show vb-jpq7.23 --long
+cwd: /home/lewis/isolated/go-skill-batch-20260604/vb-mrwe.6
+timestamp: 2026-06-05T13:07:21Z
+exit_code: 0
+stdout:
+✓ vb-jpq7.23 · P0: add BDD operator journey scenarios   [● P0 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: task
+Created: 2026-05-22 · Started: 2026-06-04 · Updated: 2026-06-04
+Close reason: Completed BDD operator journeys for absent-run CLI commands and related operator paths. Added exact exit/stdout/stderr/no-panic coverage for inspect/events/replay/trace/retry/resume/diff absent runs, missing/broken journal separation, semantic diff, validation errors, explain plan, run/replay recovery, and doctor broken-state side effects. Evidence: rtk cargo test -p velvet-ballistics --test cli_integration -- --nocapture (128 passed); rtk cargo test -p velvet-ballistics --test cli_vb_m214_bdd_scenarios -- --nocapture (59 passed); rtk cargo check -p velvet-ballistics --all-targets; rustfmt --check touched files; rtk git diff --check; final test-reviewer PASS.
+
+DESCRIPTION
+Split from vb-jpq7.4/vb-jpq7.6. Add executable Given/When/Then operator journeys for absent-run commands and validate/verify/explain/diff/run/replay/doctor behavior.
+
+ACCEPTANCE CRITERIA
+BDD scenarios cover absent_run inspect/events/replay/trace/retry/resume/diff variants with exit 2; validate invalid workflow verify valid workflow explain plan semantic diff run/replay recovery and doctor broken-state scenarios assert exit code stdout/stderr format and side effects.
+
+LABELS: backend-dod, bdd, cli, exit-codes, master-gap, operator-journey, release-blocker, truth-serum
+
+PARENT
+  ↑ ✓ vb-jpq7: P0: Truth-serum backend blocker burn-down ● P0
+
+DEPENDS ON
+  → ✓ vb-jpq7.21: P0: implement CLI semantic explain diff retry answer contracts ● P0
+
+BLOCKS
+  ← ✓ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0
+
+EXTENDED DETAILS
+  Closed at: 2026-06-04 02:32
+
+
+stderr:
+

@@ -14,6 +14,7 @@ members = [
     "crates/vb_proof_kernels",
     "crates/vb_cli",
     "crates/vb_verification",
+    "crates/vb_ajc40_flux",
     "crates/vb_test_util",
     "crates/workspace_tests/idempotency_suite",
     "crates/workspace_tests",

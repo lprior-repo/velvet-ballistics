@@ -2,6 +2,9 @@
 //! Bounded compiled slug types for yield-budget-constrained workflow execution.
 
 use crate::workflow::PathSegment;
+use crate::workflow::admission_kernel::{
+    AdmissionKernelError, accumulate_yield_cost, validate_admission_summary,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -109,57 +112,191 @@ pub enum SlugParseError {
         /// Maximum allowed slugs.
         max: usize,
     },
+    /// Recomputing the sum of all per-slug yield costs overflowed `u64`.
+    #[error("slug yield cost sum overflowed u64")]
+    YieldCostOverflow,
+    /// Serialized total yield cost does not match the recomputed sum.
+    #[error("slug total yield cost mismatch: declared {declared}, recomputed {recomputed}")]
+    TotalYieldCostMismatch {
+        /// Serialized total yield cost.
+        declared: u64,
+        /// Recomputed sum of per-slug yield costs.
+        recomputed: u64,
+    },
 }
 
-/// Decodes compiled slugs from bytes and validates them against a yield budget.
-///
-/// Deserializes the `CompiledSlugs` structure using `postcard::from_bytes` and
-/// checks that the accumulated yield cost does not exceed `max_yield_budget`.
-/// Each slug's path depth is also validated against `MAX_SLUG_PATH_SEGMENTS`.
+fn checked_total_yield_cost(slugs: &[YbBoundedSlug]) -> Result<u64, SlugParseError> {
+    let mut total = 0_u64;
+    for slug in slugs {
+        total = accumulate_yield_cost(total, slug.yield_cost)
+            .map_err(|_| SlugParseError::YieldCostOverflow)?;
+    }
+    Ok(total)
+}
+
+/// Validates a decoded slug count against the workflow admission limit.
 ///
 /// # Errors
 ///
-/// Returns `SlugParseError::Decode` if the byte sequence is not valid
-/// postcard-encoded `CompiledSlugs`. Returns `SlugParseError::YbBudgetExceeded`
-/// if the total yield cost of all slugs exceeds `max_yield_budget`. Returns
-/// `SlugParseError::SlugPathTooDeep` if any slug exceeds the path depth limit.
-/// Returns `SlugParseError::TooManySlugs` if the number of slugs exceeds
+/// Returns `SlugParseError::TooManySlugs` when `count` exceeds
 /// `MAX_SLUGS_PER_WORKFLOW`.
-/// Validates compiled slugs against the yield budget and hard limits.
-fn validate_compiled_slugs(
-    compiled: &CompiledSlugs,
-    max_yield_budget: u64,
-) -> Result<(), SlugParseError> {
-    if compiled.slugs.len() > MAX_SLUGS_PER_WORKFLOW {
+pub fn validate_compiled_slug_count(count: usize) -> Result<(), SlugParseError> {
+    if count > MAX_SLUGS_PER_WORKFLOW {
         return Err(SlugParseError::TooManySlugs {
-            count: compiled.slugs.len(),
+            count,
             max: MAX_SLUGS_PER_WORKFLOW,
-        });
-    }
-
-    for slug in compiled.slugs.iter() {
-        if slug.is_path_too_deep() {
-            return Err(SlugParseError::SlugPathTooDeep {
-                depth: slug.path_depth(),
-                max: MAX_SLUG_PATH_SEGMENTS,
-            });
-        }
-    }
-
-    if compiled.total_yield_cost > max_yield_budget {
-        return Err(SlugParseError::YbBudgetExceeded {
-            total: compiled.total_yield_cost,
-            max: max_yield_budget,
         });
     }
 
     Ok(())
 }
 
+/// Validates the summarized post-decode slug admission facts.
+///
+/// # Errors
+///
+/// Returns the same count, path-depth, total-mismatch, and budget errors as the
+/// full decoded-slug validator after total recomputation succeeds.
+pub fn validate_compiled_slug_summary(
+    count: usize,
+    recomputed_total: u64,
+    declared_total_yield_cost: u64,
+    max_path_depth: usize,
+    max_yield_budget: u64,
+) -> Result<u64, SlugParseError> {
+    validate_slug_admission_kernel(
+        count,
+        recomputed_total,
+        declared_total_yield_cost,
+        max_path_depth,
+        max_yield_budget,
+    )
+    .map_err(|error| {
+        slug_summary_error(
+            error,
+            count,
+            recomputed_total,
+            declared_total_yield_cost,
+            max_path_depth,
+            max_yield_budget,
+        )
+    })
+}
+
+fn validate_slug_admission_kernel(
+    count: usize,
+    recomputed_total: u64,
+    declared_total_yield_cost: u64,
+    max_path_depth: usize,
+    max_yield_budget: u64,
+) -> Result<u64, AdmissionKernelError> {
+    validate_admission_summary(
+        count,
+        MAX_SLUGS_PER_WORKFLOW,
+        max_path_depth,
+        MAX_SLUG_PATH_SEGMENTS,
+        recomputed_total,
+        declared_total_yield_cost,
+        max_yield_budget,
+    )
+}
+
+fn slug_summary_error(
+    error: AdmissionKernelError,
+    count: usize,
+    recomputed_total: u64,
+    declared_total_yield_cost: u64,
+    max_path_depth: usize,
+    max_yield_budget: u64,
+) -> SlugParseError {
+    match error {
+        AdmissionKernelError::TooManyItems => SlugParseError::TooManySlugs {
+            count,
+            max: MAX_SLUGS_PER_WORKFLOW,
+        },
+        AdmissionKernelError::PathTooDeep => SlugParseError::SlugPathTooDeep {
+            depth: max_path_depth,
+            max: MAX_SLUG_PATH_SEGMENTS,
+        },
+        AdmissionKernelError::TotalYieldCostMismatch => SlugParseError::TotalYieldCostMismatch {
+            declared: declared_total_yield_cost,
+            recomputed: recomputed_total,
+        },
+        AdmissionKernelError::YieldBudgetExceeded => SlugParseError::YbBudgetExceeded {
+            total: recomputed_total,
+            max: max_yield_budget,
+        },
+    }
+}
+
+fn max_slug_path_depth(slugs: &[YbBoundedSlug]) -> usize {
+    let mut max_depth = 0_usize;
+    for slug in slugs {
+        max_depth = max_depth.max(slug.path_depth());
+    }
+    max_depth
+}
+
+/// Validates decoded slug parts and returns the remaining budget.
+///
+/// This lower-level seam avoids ownership transfer so Kani can verify the
+/// post-decode admission contract over bounded fixed arrays.
+///
+/// # Errors
+///
+/// Returns the same structural, total, and budget errors as
+/// `validate_compiled_slugs`.
+pub fn validate_compiled_slug_parts(
+    slugs: &[YbBoundedSlug],
+    declared_total_yield_cost: u64,
+    max_yield_budget: u64,
+) -> Result<u64, SlugParseError> {
+    validate_compiled_slug_count(slugs.len())?;
+    let max_path_depth = max_slug_path_depth(slugs);
+    let recomputed_total = checked_total_yield_cost(slugs)?;
+    validate_compiled_slug_summary(
+        slugs.len(),
+        recomputed_total,
+        declared_total_yield_cost,
+        max_path_depth,
+        max_yield_budget,
+    )
+}
+
+/// Validates an already-decoded compiled slug payload against structural and
+/// yield-budget admission rules.
+///
+/// This seam is intentionally post-decode and side-effect free so verification
+/// tools can prove admission behavior without symbolically executing postcard.
+/// `from_bytes_compiled_slugs` delegates here after successful deserialization.
+///
+/// # Errors
+///
+/// Returns `SlugParseError::TooManySlugs` if `compiled` exceeds
+/// `MAX_SLUGS_PER_WORKFLOW`, `SlugParseError::SlugPathTooDeep` if any path
+/// exceeds `MAX_SLUG_PATH_SEGMENTS`, `SlugParseError::YieldCostOverflow` if
+/// recomputing totals overflows, `SlugParseError::TotalYieldCostMismatch` if
+/// the declared total differs from the recomputed total, and
+/// `SlugParseError::YbBudgetExceeded` if the recomputed total exceeds
+/// `max_yield_budget`.
+pub fn validate_compiled_slugs(
+    compiled: CompiledSlugs,
+    max_yield_budget: u64,
+) -> Result<YbBoundedSlugs, SlugParseError> {
+    let remaining =
+        validate_compiled_slug_parts(&compiled.slugs, compiled.total_yield_cost, max_yield_budget)?;
+
+    Ok(YbBoundedSlugs {
+        slugs: compiled.slugs,
+        remaining_budget: remaining,
+    })
+}
+
 /// Decodes compiled slugs from bytes and validates them against a yield budget.
 ///
 /// Deserializes the `CompiledSlugs` structure using `postcard::from_bytes` and
-/// checks that the accumulated yield cost does not exceed `max_yield_budget`.
+/// recomputes and verifies the accumulated yield cost before checking it against
+/// `max_yield_budget`.
 /// Each slug's path depth is also validated against `MAX_SLUG_PATH_SEGMENTS`.
 ///
 /// # Errors
@@ -169,22 +306,17 @@ fn validate_compiled_slugs(
 /// if the total yield cost of all slugs exceeds `max_yield_budget`. Returns
 /// `SlugParseError::SlugPathTooDeep` if any slug exceeds the path depth limit.
 /// Returns `SlugParseError::TooManySlugs` if the number of slugs exceeds
-/// `MAX_SLUGS_PER_WORKFLOW`.
+/// `MAX_SLUGS_PER_WORKFLOW`. Returns `SlugParseError::YieldCostOverflow` if the
+/// recomputed yield sum overflows `u64`. Returns
+/// `SlugParseError::TotalYieldCostMismatch` if the serialized total differs from
+/// the recomputed sum.
 #[allow(clippy::needless_pass_by_value)]
 pub fn from_bytes_compiled_slugs(
     bytes: &[u8],
     max_yield_budget: u64,
 ) -> Result<YbBoundedSlugs, SlugParseError> {
     let compiled: CompiledSlugs = postcard::from_bytes(bytes).map_err(SlugParseError::Decode)?;
-
-    validate_compiled_slugs(&compiled, max_yield_budget)?;
-
-    let remaining = max_yield_budget.saturating_sub(compiled.total_yield_cost);
-
-    Ok(YbBoundedSlugs {
-        slugs: compiled.slugs,
-        remaining_budget: remaining,
-    })
+    validate_compiled_slugs(compiled, max_yield_budget)
 }
 
 #[cfg(test)]
@@ -269,18 +401,183 @@ mod tests {
     }
 
     #[test]
-    fn roundtrip_compiled_slugs() {
-        let slugs = CompiledSlugs {
-            slugs: vec![YbBoundedSlug {
-                path: vec![PathSegment::Field(SymbolId::new(1))].into(),
-                yield_cost: 10,
-            }]
-            .into(),
-            total_yield_cost: 10,
+    fn slug_count_helper_accepts_exact_limit_and_rejects_next() {
+        assert_eq!(validate_compiled_slug_count(MAX_SLUGS_PER_WORKFLOW), Ok(()));
+        assert_eq!(
+            validate_compiled_slug_count(MAX_SLUGS_PER_WORKFLOW + 1),
+            Err(SlugParseError::TooManySlugs {
+                count: MAX_SLUGS_PER_WORKFLOW + 1,
+                max: MAX_SLUGS_PER_WORKFLOW,
+            })
+        );
+    }
+
+    #[test]
+    fn slug_summary_helper_preserves_error_order_and_remaining_budget() {
+        assert_eq!(
+            validate_compiled_slug_summary(2, 18, 18, MAX_SLUG_PATH_SEGMENTS, 25),
+            Ok(7)
+        );
+        assert_eq!(
+            validate_compiled_slug_summary(2, 18, 17, MAX_SLUG_PATH_SEGMENTS, 25),
+            Err(SlugParseError::TotalYieldCostMismatch {
+                declared: 17,
+                recomputed: 18,
+            })
+        );
+        assert_eq!(
+            validate_compiled_slug_summary(2, 18, 18, MAX_SLUG_PATH_SEGMENTS + 1, 25),
+            Err(SlugParseError::SlugPathTooDeep {
+                depth: MAX_SLUG_PATH_SEGMENTS + 1,
+                max: MAX_SLUG_PATH_SEGMENTS,
+            })
+        );
+        assert_eq!(
+            validate_compiled_slug_summary(2, 18, 18, MAX_SLUG_PATH_SEGMENTS, 17),
+            Err(SlugParseError::YbBudgetExceeded { total: 18, max: 17 })
+        );
+    }
+
+    fn encode_slugs(payload: &CompiledSlugs) -> Result<Vec<u8>, String> {
+        postcard::to_allocvec(payload).map_err(|err| format!("slug postcard encode failed: {err}"))
+    }
+
+    fn unit_slug(cost: u64) -> YbBoundedSlug {
+        YbBoundedSlug {
+            path: Vec::new().into_boxed_slice(),
+            yield_cost: cost,
+        }
+    }
+
+    #[test]
+    fn compiled_slugs_reject_underdeclared_total() -> Result<(), String> {
+        let payload = CompiledSlugs {
+            slugs: vec![unit_slug(7), unit_slug(11)].into(),
+            total_yield_cost: 17,
         };
-        let bytes = postcard::to_allocvec(&slugs).unwrap();
-        let decoded = from_bytes_compiled_slugs(&bytes, 100).unwrap();
-        assert_eq!(decoded.slugs.len(), 1);
-        assert_eq!(decoded.remaining_budget(), 90);
+        let bytes = encode_slugs(&payload)?;
+
+        let result = from_bytes_compiled_slugs(&bytes, 18);
+
+        assert_eq!(
+            result,
+            Err(SlugParseError::TotalYieldCostMismatch {
+                declared: 17,
+                recomputed: 18,
+            })
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn validate_compiled_slugs_rejects_underdeclared_total_without_decode() {
+        let payload = CompiledSlugs {
+            slugs: vec![unit_slug(7), unit_slug(11)].into(),
+            total_yield_cost: 17,
+        };
+
+        let result = validate_compiled_slugs(payload, 18);
+
+        assert_eq!(
+            result,
+            Err(SlugParseError::TotalYieldCostMismatch {
+                declared: 17,
+                recomputed: 18,
+            })
+        );
+    }
+
+    #[test]
+    fn compiled_slugs_reject_overdeclared_total() -> Result<(), String> {
+        let payload = CompiledSlugs {
+            slugs: vec![unit_slug(7), unit_slug(11)].into(),
+            total_yield_cost: 19,
+        };
+        let bytes = encode_slugs(&payload)?;
+
+        let result = from_bytes_compiled_slugs(&bytes, 19);
+
+        assert_eq!(
+            result,
+            Err(SlugParseError::TotalYieldCostMismatch {
+                declared: 19,
+                recomputed: 18,
+            })
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn compiled_slugs_reject_yield_sum_overflow() -> Result<(), String> {
+        let payload = CompiledSlugs {
+            slugs: vec![unit_slug(u64::MAX), unit_slug(1)].into(),
+            total_yield_cost: 0,
+        };
+        let bytes = encode_slugs(&payload)?;
+
+        let result = from_bytes_compiled_slugs(&bytes, u64::MAX);
+
+        assert_eq!(result, Err(SlugParseError::YieldCostOverflow));
+        Ok(())
+    }
+
+    #[test]
+    fn compiled_slugs_accept_exact_total_with_remaining_budget() -> Result<(), String> {
+        let payload = CompiledSlugs {
+            slugs: vec![unit_slug(7), unit_slug(11)].into(),
+            total_yield_cost: 18,
+        };
+        let bytes = encode_slugs(&payload)?;
+
+        let result = from_bytes_compiled_slugs(&bytes, 25);
+
+        match result {
+            Ok(admitted) => {
+                assert_eq!(admitted.len(), 2);
+                assert_eq!(admitted.remaining_budget(), 7);
+                Ok(())
+            }
+            Err(err) => Err(format!("compiled slug admission failed: {err}")),
+        }
+    }
+
+    #[test]
+    fn validate_compiled_slugs_accepts_exact_total_without_decode() -> Result<(), String> {
+        let payload = CompiledSlugs {
+            slugs: vec![unit_slug(7), unit_slug(11)].into(),
+            total_yield_cost: 18,
+        };
+
+        let result = validate_compiled_slugs(payload, 25);
+
+        match result {
+            Ok(admitted) => {
+                assert_eq!(admitted.len(), 2);
+                assert_eq!(admitted.remaining_budget(), 7);
+                Ok(())
+            }
+            Err(err) => Err(format!("compiled slug admission failed: {err}")),
+        }
+    }
+
+    #[test]
+    fn compiled_slugs_keep_empty_path_root_accessor_valid() -> Result<(), String> {
+        let payload = CompiledSlugs {
+            slugs: vec![unit_slug(4)].into(),
+            total_yield_cost: 4,
+        };
+        let bytes = encode_slugs(&payload)?;
+
+        let result = from_bytes_compiled_slugs(&bytes, 4);
+
+        match result {
+            Ok(admitted) => {
+                assert_eq!(admitted.len(), 1);
+                assert!(matches!(admitted.slugs().first(), Some(item) if item.path_depth() == 0));
+                assert_eq!(admitted.remaining_budget(), 0);
+                Ok(())
+            }
+            Err(err) => Err(format!("compiled slug admission failed: {err}")),
+        }
     }
 }

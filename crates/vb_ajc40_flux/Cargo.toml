@@ -1,0 +1,19 @@
+[package]
+name = "vb_ajc40_flux"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[package.metadata.flux]
+enabled = true
+
+[dependencies]
+vb_core = { path = "../vb_core" }
+
+[features]
+default = []
+positive = []
+negative = ["positive"]
+
+[lints]
+workspace = true

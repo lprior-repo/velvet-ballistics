@@ -1456,13 +1456,7 @@ fn join_taint_time_dependent_with_random_returns_secret() {
 // C-004: join_taint lattice order is total: Clean < DerivedFromSecret < Secret < Random < TimeDependent
 #[test]
 fn join_taint_lattice_order_is_total() {
-    let all = [
-        Taint::Clean,
-        Taint::DerivedFromSecret,
-        Taint::Secret,
-        Taint::Secret,
-        Taint::Secret,
-    ];
+    let all = [Taint::Clean, Taint::DerivedFromSecret, Taint::Secret];
     for (i, lo) in all.iter().enumerate() {
         for (j, hi) in all.iter().enumerate() {
             let result = join_taint(*lo, *hi);
@@ -1617,13 +1611,7 @@ fn reinitialize_resets_time_dependent_taint_to_clean() -> Result<(), String> {
 // C-013: join_taint never returns a taint lower than either input
 #[test]
 fn join_taint_never_lower_than_either_input() {
-    let all = [
-        Taint::Clean,
-        Taint::DerivedFromSecret,
-        Taint::Secret,
-        Taint::Secret,
-        Taint::Secret,
-    ];
+    let all = [Taint::Clean, Taint::DerivedFromSecret, Taint::Secret];
     for a in all {
         for b in all {
             let result = join_taint(a, b);

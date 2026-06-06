@@ -27,6 +27,7 @@ harness = false
 bench = []
 default = []
 kani-diagnostic-codes = []
+kani-vb-ajc40 = []
 test-util = []
 volatile = []
 

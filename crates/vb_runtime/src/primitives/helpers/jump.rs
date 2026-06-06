@@ -15,11 +15,12 @@ pub(crate) fn jump_to(
     Ok(vb_core::EngineSignal::Continue)
 }
 
-/// Jumps to a step body, marking it [`Running`][vb_core::frame::StepState::Running]
-/// if it has completed (Succeeded) to allow loop body re-entry.
+/// Jumps to a step body, explicitly admitting a completed body through Pending
+/// before marking it [`Running`][vb_core::frame::StepState::Running].
 ///
 /// Terminal states (Succeeded, Failed, Cancelled, Skipped) are absorbing for
-/// normal transitions, but Succeeded->Running is allowed for loop body re-entry.
+/// normal direct transitions. Loop body re-entry uses Succeeded -> Pending ->
+/// Running as an explicit admission path.
 ///
 /// [`Running`][vb_core::frame::StepState::Running]: vb_core::frame::StepState::Running
 pub(crate) fn jump_to_body(
@@ -28,6 +29,7 @@ pub(crate) fn jump_to_body(
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let current = run.step_state(body)?;
     if current == vb_core::frame::StepState::Succeeded {
+        run.mark_pending(body)?;
         run.mark_running(body)?;
     }
     jump_to(run, body)

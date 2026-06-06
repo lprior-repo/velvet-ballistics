@@ -14,7 +14,7 @@ pub mod flux {
     pub mod vb_y9d3v_action_ticket_refinements;
 }
 
-#[cfg(flux)]
+#[cfg(all(flux, feature = "vb-mrwe6-flux-refinements"))]
 pub mod mrwe6_flux {
     #[path = "../flux/vb_mrwe6_atomic_index_refinements.rs"]
     pub mod vb_mrwe6_atomic_index_refinements;

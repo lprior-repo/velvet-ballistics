@@ -308,7 +308,7 @@ tasks:
       set -euo pipefail
       mkdir -p target/moon-locks
       mkdir -p target/tmp
-      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo test --quiet --doc --workspace --all-targets --all-features
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo test --quiet --doc --workspace --all-features
     deps:
       - 'test'
     toolchains:
@@ -324,7 +324,7 @@ tasks:
       set -euo pipefail
       mkdir -p target/moon-locks
       mkdir -p target/tmp
-      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" RUSTDOCFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo doc --quiet --workspace --all-targets --all-features --no-deps
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" RUSTDOCFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo doc --quiet --workspace --all-features --no-deps
     deps:
       - 'test'
     toolchains:
@@ -529,7 +529,11 @@ tasks:
       - 'target/fuzz-smoke/**'
 
   sanitizer-address-check:
-    script: 'RUSTFLAGS="-Zsanitizer=address" rustup run nightly-2026-04-28 cargo test -Zbuild-std --target x86_64-unknown-linux-gnu --workspace --all-targets --all-features'
+    script: |
+      set -euo pipefail
+      RUSTFLAGS="-Zsanitizer=address" rustup run nightly-2026-04-28 cargo test -Zbuild-std --target x86_64-unknown-linux-gnu --workspace --all-targets --all-features
+      mkdir -p target/sanitizer-address-check
+      touch target/sanitizer-address-check/success.stamp
     deps:
       - 'check'
     toolchains:

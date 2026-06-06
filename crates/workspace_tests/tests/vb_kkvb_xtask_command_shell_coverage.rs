@@ -239,6 +239,9 @@ fn run_xtask(current_dir: &Path, args: &[&str]) -> Result<Output, Box<dyn Error>
             "--",
         ])
         .args(args)
+        .env_remove("RUSTFLAGS")
+        .env_remove("RUSTDOCFLAGS")
+        .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .output()
         .map_err(Into::into)
 }

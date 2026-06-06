@@ -75,23 +75,23 @@ fn join_taint_monotonic_5var() {
     kani::assert(disc_r >= disc_b, "join(a,b).disc >= b.disc");
 }
 
-/// PO-003 H1: join_taint(Random, Secret) == Random
+/// PO-003 H1: join_taint(Secret, Secret) == Secret
 #[kani::proof]
 #[kani::unwind(4)]
-fn join_taint_random_secret_interaction() {
+fn join_taint_secret_absorbs_secret() {
     kani::assert(
         join_taint(Taint::Secret, Taint::Secret) == Taint::Secret,
-        "Random (d=3) > Secret (d=2)",
+        "Secret is idempotent at the lattice top",
     );
 }
 
-/// PO-003 H2: TimeDependent is top element
+/// PO-003 H2: Secret is top element
 #[kani::proof]
 #[kani::unwind(4)]
-fn join_taint_time_dependent_top() {
+fn join_taint_secret_top() {
     let a: Taint = kani::any();
     kani::assert(
         join_taint(a, Taint::Secret) == Taint::Secret,
-        "TimeDependent absorbs all",
+        "Secret absorbs all",
     );
 }

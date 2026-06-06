@@ -4,8 +4,12 @@
 //! Fuzz artifact for `obl-vb-mrwe-5-ps002-fuzz-010`.
 
 use libfuzzer_sys::fuzz_target;
-use vb_storage::codec::{classify_journal_semantic_decode, decode_validated_journal_record};
-use vb_storage::{decode_record, JournalEvent, JournalSemanticDecodeDecision, constants};
+use vb_storage::JournalEvent;
+use vb_storage::codec::{
+    JournalSemanticDecodeDecision, classify_journal_semantic_decode,
+    decode_record, decode_validated_journal_record,
+};
+use vb_storage::constants;
 
 fuzz_target!(|data: &[u8]| {
     let generic = decode_record::<JournalEvent>(

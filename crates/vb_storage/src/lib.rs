@@ -163,7 +163,7 @@ pub mod vb_mrwe6_completion_policy;
 #[path = "verification/kani/vb_mrwe6_recovery_reliance.rs"]
 pub mod vb_mrwe6_recovery_reliance;
 
-#[cfg(flux)]
+#[cfg(all(flux, feature = "vb-mrwe6-flux-refinements"))]
 pub mod mrwe6_flux_storage {
     #[path = "../verification/flux/vb_mrwe6_duplicate_refinements.rs"]
     pub mod vb_mrwe6_duplicate_refinements;

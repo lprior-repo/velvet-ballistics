@@ -154,6 +154,17 @@ fn action_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> 
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
 }
 
+fn terminal_reentry_output(value: SlotValue) -> Result<ActionOutputReady, String> {
+    let encoded = postcard::to_allocvec(&value).map_err(|error| error.to_string())?;
+    let encoded_len = u32::try_from(encoded.len()).map_err(|error| error.to_string())?;
+    Ok(ActionOutputReady {
+        output_slot: SlotIdx::new(1),
+        value,
+        taint: Taint::Clean,
+        encoded_len,
+    })
+}
+
 // ============================================================================
 // IPC-001: Command routing — submits route to correct shard deterministically
 // ============================================================================
@@ -408,7 +419,7 @@ fn ipc_action_completion_enqueues_for_nonexistent_run() {
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
     };
-    let mut runtime = Runtime::new(shard_count, test_config());
+    let runtime = Runtime::new(shard_count, test_config());
 
     // Complete action for non-existent run - enqueues successfully
     let ticket = ActionTicket {
@@ -429,6 +440,43 @@ fn ipc_action_completion_enqueues_for_nonexistent_run() {
 
     // Enqueue succeeds (validation happens during tick)
     assert_eq!(runtime.complete_action_with_output(ticket, output), Ok(()));
+}
+
+/// Given a public runtime run reaches terminal state,
+/// when the same run/step/action completion is admitted again,
+/// then queued processing returns the explicit terminal re-entry error.
+#[test]
+fn ipc_terminal_run_reentry_completion_returns_run_not_found_when_processed() -> Result<(), String>
+{
+    let shard_count = NonZeroUsize::new(1).ok_or_else(|| String::from("one shard required"))?;
+    let mut runtime = Runtime::new(shard_count, test_config());
+    let workflow = finished_workflow().ok_or_else(|| String::from("finished workflow required"))?;
+    let run = RunId::new(4242);
+    let step = StepIdx::ZERO;
+    let action = ActionId::new(7);
+    let seq = SeqNo::ZERO;
+    let ticket = ActionTicket {
+        run,
+        step,
+        seq,
+        action,
+        attempt: 1,
+        idempotency_key: vb_runtime::engine::compute_idempotency_key(run, seq, action),
+        capacity: 1,
+    };
+    let second_output = terminal_reentry_output(SlotValue::I64(99))?;
+
+    assert_eq!(runtime.submit_direct(run, workflow), Ok(()));
+    assert_eq!(runtime.tick_all(), Ok(true));
+    assert_eq!(runtime.counters_snapshot().runs_completed, 1);
+
+    assert_eq!(
+        runtime.complete_action_with_output(ticket, second_output),
+        Ok(())
+    );
+    assert_eq!(runtime.tick_all(), Err(RuntimeError::RunNotFound));
+    assert_eq!(runtime.counters_snapshot().runs_completed, 1);
+    Ok(())
 }
 
 // ============================================================================

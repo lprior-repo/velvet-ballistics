@@ -92,6 +92,7 @@ pub mod yaml_e2e_admission_matrix;
 pub mod verification;
 
 pub use error::{RuntimeError, RuntimeResult};
+pub use runtime::Runtime;
 pub use shard::{AskAnswer, AskTicket, ResumeError, ResumeResult, ResumeStatus};
 
 #[cfg(test)]

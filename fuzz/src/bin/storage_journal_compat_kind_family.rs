@@ -4,6 +4,10 @@
 //! Fuzz artifact for `obl-vb-mrwe-5-ps004-fuzz-020`.
 
 use libfuzzer_sys::fuzz_target;
+use vb_storage::codec::{
+    JournalKindCompatibility, RecordKindFamilyDecision, classify_journal_kind_compatibility,
+    classify_record_kind_family,
+};
 use vb_storage::{RecordKind, constants};
 
 fuzz_target!(|data: &[u8]| {
@@ -23,8 +27,8 @@ fuzz_target!(|data: &[u8]| {
         };
         if !vb_storage::codec::is_known_record_kind(kind)
             && matches!(
-                vb_storage::codec::classify_record_kind_family(constants::MAGIC_JOURNAL_EVENT, kind),
-                vb_storage::codec::RecordKindFamilyDecision::Accepted
+                classify_record_kind_family(constants::MAGIC_JOURNAL_EVENT, kind),
+                RecordKindFamilyDecision::Accepted
             )
         {
             std::process::abort();
@@ -35,12 +39,11 @@ fuzz_target!(|data: &[u8]| {
 });
 
 fn check_pair(envelope_kind: u16, payload_kind: u16) {
-    let compatibility =
-        vb_storage::codec::classify_journal_kind_compatibility(envelope_kind, payload_kind);
+    let compatibility = classify_journal_kind_compatibility(envelope_kind, payload_kind);
     match compatibility {
-        vb_storage::codec::JournalKindCompatibility::ExactMatch if envelope_kind == payload_kind => {}
-        vb_storage::codec::JournalKindCompatibility::RejectedMismatch if envelope_kind != payload_kind => {}
-        vb_storage::codec::JournalKindCompatibility::ExactMatch | vb_storage::codec::JournalKindCompatibility::RejectedMismatch => {
+        JournalKindCompatibility::ExactMatch if envelope_kind == payload_kind => {}
+        JournalKindCompatibility::RejectedMismatch if envelope_kind != payload_kind => {}
+        JournalKindCompatibility::ExactMatch | JournalKindCompatibility::RejectedMismatch => {
             std::process::abort();
         }
     }

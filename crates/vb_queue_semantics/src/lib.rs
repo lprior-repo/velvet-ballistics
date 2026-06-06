@@ -422,11 +422,7 @@ pub const fn warning_threshold(capacity: usize) -> usize {
     match capacity.checked_mul(8) {
         Some(scaled) => {
             let threshold = scaled / 10;
-            if threshold == 0 {
-                1
-            } else {
-                threshold
-            }
+            if threshold == 0 { 1 } else { threshold }
         }
         None => capacity,
     }

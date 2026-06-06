@@ -276,22 +276,8 @@ fn check_symbolic_key_array<const N: usize>(
         matches!(result, Err(IdempotencyViolation::SecretInKey(_))),
         "secret key failure covered"
     );
-    kani::cover!(
-        matches!(result, Err(IdempotencyViolation::RandomInKey(_))),
-        "random key failure covered"
-    );
-    kani::cover!(
-        matches!(result, Err(IdempotencyViolation::TimeInKey(_))),
-        "time-dependent key failure covered"
-    );
     kani::assert(
-        result.is_ok()
-            || matches!(
-                result,
-                Err(IdempotencyViolation::SecretInKey(_))
-                    | Err(IdempotencyViolation::RandomInKey(_))
-                    | Err(IdempotencyViolation::TimeInKey(_))
-            ),
+        result.is_ok() || matches!(result, Err(IdempotencyViolation::SecretInKey(_))),
         "non-empty bounded key only succeeds or reports the first tainted key ingredient",
     );
 }
@@ -301,13 +287,11 @@ fn check_symbolic_key_array<const N: usize>(
 fn verify_idempotency_required_taint_variants_have_witnesses() {
     let contract = bounded_contract_for_retry(RetrySafety::KeyRequired);
     let taint_selector: u8 = kani::any();
-    kani::assume(taint_selector < 5);
+    kani::assume(taint_selector < 3);
     let taint = match taint_selector {
         0 => Taint::Clean,
         1 => Taint::Secret,
-        2 => Taint::DerivedFromSecret,
-        3 => Taint::Secret,
-        _ => Taint::Secret,
+        _ => Taint::DerivedFromSecret,
     };
     let frame = one_slot_frame_with_taint(taint);
     let key_slots = [SlotIdx::new(0)];
@@ -320,14 +304,6 @@ fn verify_idempotency_required_taint_variants_have_witnesses() {
     kani::cover!(
         matches!(result, Err(IdempotencyViolation::SecretInKey(0))),
         "secret taint failure covered"
-    );
-    kani::cover!(
-        matches!(result, Err(IdempotencyViolation::RandomInKey(0))),
-        "random taint failure covered"
-    );
-    kani::cover!(
-        matches!(result, Err(IdempotencyViolation::TimeInKey(0))),
-        "time taint failure covered"
     );
 }
 

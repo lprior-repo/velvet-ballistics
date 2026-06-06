@@ -6,7 +6,7 @@ use std::process::{Command, Output};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-const MEMBERS: [(&str, &str); 17] = [
+const MEMBERS: [(&str, &str); 18] = [
     ("crates/vb_boundary_inventory", "vb_boundary_inventory"),
     ("crates/vb_core", "vb_core"),
     ("crates/vb_yaml", "vb_yaml"),
@@ -18,6 +18,7 @@ const MEMBERS: [(&str, &str); 17] = [
     ("crates/vb_doc", "vb_doc"),
     ("crates/vb_ipc", "vb_ipc"),
     ("crates/vb_proof_kernels", "vb_proof_kernels"),
+    ("crates/vb_queue_semantics", "vb_queue_semantics"),
     ("crates/vb_cli", "velvet-ballistics"),
     ("crates/vb_verification", "vb_verification"),
     ("crates/vb_test_util", "vb_test_util"),

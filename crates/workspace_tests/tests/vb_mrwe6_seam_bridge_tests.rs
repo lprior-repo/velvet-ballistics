@@ -4,12 +4,13 @@ use vb_core::{ActionId, RunId, StepIdx};
 use vb_storage::mrwe6_seams::{
     Mrwe6ActionIndexIntent, Mrwe6AtomKind, Mrwe6DuplicateRetryDecision, Mrwe6EventClass,
     Mrwe6IntentKind, Mrwe6RecoveryOutcome, Mrwe6ResolutionCommitDecision, Mrwe6SeamError,
-    mrwe6_action_index_intent, mrwe6_duplicate_retry_decision,
-    mrwe6_duplicate_retry_decision_from_facts, mrwe6_event_class, mrwe6_event_intent_matches_class,
-    mrwe6_recovery_outcome, mrwe6_recovery_outcome_from_facts,
+    mrwe6_action_index_intent, mrwe6_committed_resolution_from_facts,
+    mrwe6_duplicate_retry_decision, mrwe6_duplicate_retry_decision_from_facts, mrwe6_event_class,
+    mrwe6_event_intent_matches_class, mrwe6_idempotent_duplicate_retry_from_facts,
+    mrwe6_pending_inventory_from_facts, mrwe6_recovery_outcome, mrwe6_recovery_outcome_from_facts,
     mrwe6_required_intent_kind_for_class, mrwe6_resolution_commit_decision,
-    mrwe6_resolution_commit_decision_from_facts, mrwe6_validated_atom,
-    mrwe6_validated_atom_for_event,
+    mrwe6_resolution_commit_decision_from_facts, mrwe6_valid_queued_relevant_intent,
+    mrwe6_valid_scheduled_atom, mrwe6_validated_atom, mrwe6_validated_atom_for_event,
 };
 use vb_storage::{EventSeq, JournalEvent};
 
@@ -106,6 +107,38 @@ fn vb_mrwe6_bridge_duplicate_classifier_separates_equal_from_divergent() {
 }
 
 #[test]
+fn vb_mrwe6_bridge_duplicate_classifier_rejects_equal_resolution_retry_for_marker_states() {
+    let resolution = completed(13, action());
+
+    assert_eq!(
+        mrwe6_duplicate_retry_decision(&resolution, &resolution, false),
+        Mrwe6DuplicateRetryDecision::UnsupportedDuplicateClassRejected
+    );
+    assert_eq!(
+        mrwe6_duplicate_retry_decision(&resolution, &resolution, true),
+        Mrwe6DuplicateRetryDecision::UnsupportedDuplicateClassRejected
+    );
+}
+
+#[test]
+fn vb_mrwe6_bridge_duplicate_classifier_rejects_equal_unrelated_retry_for_marker_states() {
+    let unrelated = JournalEvent::RunKilled {
+        run: run(),
+        seq: EventSeq::new(14),
+        attempt: 1,
+    };
+
+    assert_eq!(
+        mrwe6_duplicate_retry_decision(&unrelated, &unrelated, false),
+        Mrwe6DuplicateRetryDecision::UnsupportedDuplicateClassRejected
+    );
+    assert_eq!(
+        mrwe6_duplicate_retry_decision(&unrelated, &unrelated, true),
+        Mrwe6DuplicateRetryDecision::UnsupportedDuplicateClassRejected
+    );
+}
+
+#[test]
 fn vb_mrwe6_bridge_completion_classifier_removes_only_same_key_on_success() {
     let resolution = completed(4, action());
     let other_action = ActionId::new(12);
@@ -197,5 +230,53 @@ fn vb_mrwe6_primitive_decision_functions_match_event_wrappers() {
         mrwe6_resolution_commit_decision(&completion, action(), run(), step(), true),
         Ok(decision)
             if decision == mrwe6_resolution_commit_decision_from_facts(true, true, true)
+    ));
+}
+
+#[test]
+fn vb_mrwe6_invalid_scheduled_atom_is_rejected_with_diagnostic() {
+    assert!(matches!(
+        mrwe6_valid_scheduled_atom(Mrwe6EventClass::Scheduled, Mrwe6IntentKind::None),
+        Err(Mrwe6SeamError::ClassIntentMismatch)
+    ));
+    assert!(matches!(
+        mrwe6_valid_scheduled_atom(Mrwe6EventClass::Unrelated, Mrwe6IntentKind::None),
+        Err(Mrwe6SeamError::ScheduledAtomMissingPutPending)
+    ));
+}
+
+#[test]
+fn vb_mrwe6_invalid_queued_relevant_intent_is_rejected_with_diagnostic() {
+    assert!(matches!(
+        mrwe6_valid_queued_relevant_intent(Mrwe6EventClass::Scheduled, Mrwe6IntentKind::PutPending),
+        Ok(_)
+    ));
+    assert!(matches!(
+        mrwe6_valid_queued_relevant_intent(Mrwe6EventClass::Unrelated, Mrwe6IntentKind::None),
+        Err(Mrwe6SeamError::QueuedRelevantEventMissingIntent)
+    ));
+}
+
+#[test]
+fn vb_mrwe6_invalid_duplicate_success_is_rejected_with_diagnostic() {
+    assert!(matches!(
+        mrwe6_idempotent_duplicate_retry_from_facts(false, Mrwe6EventClass::Scheduled, true),
+        Err(Mrwe6SeamError::DuplicateRetryNotIdempotent)
+    ));
+}
+
+#[test]
+fn vb_mrwe6_invalid_resolution_success_is_rejected_with_diagnostic() {
+    assert!(matches!(
+        mrwe6_committed_resolution_from_facts(true, true, false),
+        Err(Mrwe6SeamError::ResolutionDidNotRemovePending)
+    ));
+}
+
+#[test]
+fn vb_mrwe6_invalid_recovery_inventory_is_rejected_with_diagnostic() {
+    assert!(matches!(
+        mrwe6_pending_inventory_from_facts(true, false, false, false, false),
+        Err(Mrwe6SeamError::RecoveryOutcomeNotPendingInventory)
     ));
 }

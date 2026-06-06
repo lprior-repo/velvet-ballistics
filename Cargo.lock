@@ -673,9 +673,27 @@ dependencies = [
 [[package]]
 name = "flux-attrs"
 version = "0.1.0"
+source = "git+https://github.com/flux-rs/flux?rev=4d329f2#4d329f2399d4c2bd9ea7dbf7453ab8ed3811730c"
+dependencies = [
+ "flux-attrs-impl 0.1.0 (git+https://github.com/flux-rs/flux?rev=4d329f2)",
+]
+
+[[package]]
+name = "flux-attrs"
+version = "0.1.0"
 source = "git+https://github.com/flux-rs/flux.git#9dece888fa1208ffd6b2e48fcaf8f5f98a68bf36"
 dependencies = [
- "flux-attrs-impl",
+ "flux-attrs-impl 0.1.0 (git+https://github.com/flux-rs/flux.git)",
+]
+
+[[package]]
+name = "flux-attrs-impl"
+version = "0.1.0"
+source = "git+https://github.com/flux-rs/flux?rev=4d329f2#4d329f2399d4c2bd9ea7dbf7453ab8ed3811730c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -691,9 +709,17 @@ dependencies = [
 [[package]]
 name = "flux-rs"
 version = "0.1.0"
+source = "git+https://github.com/flux-rs/flux?rev=4d329f2#4d329f2399d4c2bd9ea7dbf7453ab8ed3811730c"
+dependencies = [
+ "flux-attrs 0.1.0 (git+https://github.com/flux-rs/flux?rev=4d329f2)",
+]
+
+[[package]]
+name = "flux-rs"
+version = "0.1.0"
 source = "git+https://github.com/flux-rs/flux.git#9dece888fa1208ffd6b2e48fcaf8f5f98a68bf36"
 dependencies = [
- "flux-attrs",
+ "flux-attrs 0.1.0 (git+https://github.com/flux-rs/flux.git)",
 ]
 
 [[package]]
@@ -2018,6 +2044,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f54a172d0620933a27a4360d3db3e2ae0dd6cceae9730751a036bbf182c4b23"
 
 [[package]]
+name = "vb_ajc40_flux"
+version = "0.1.0"
+dependencies = [
+ "vb_core",
+]
+
+[[package]]
 name = "vb_benchmark"
 version = "0.1.0"
 dependencies = [
@@ -2112,7 +2145,7 @@ dependencies = [
 name = "vb_queue_semantics"
 version = "0.1.0"
 dependencies = [
- "flux-rs",
+ "flux-rs 0.1.0 (git+https://github.com/flux-rs/flux.git)",
 ]
 
 [[package]]
@@ -2122,6 +2155,7 @@ dependencies = [
  "blake3",
  "chrono",
  "crossbeam-queue",
+ "flux-rs 0.1.0 (git+https://github.com/flux-rs/flux?rev=4d329f2)",
  "indexmap",
  "loom",
  "postcard",
@@ -2143,6 +2177,7 @@ dependencies = [
  "chrono",
  "crc32c",
  "fjall",
+ "flux-rs 0.1.0 (git+https://github.com/flux-rs/flux?rev=4d329f2)",
  "postcard",
  "proptest",
  "rustix",

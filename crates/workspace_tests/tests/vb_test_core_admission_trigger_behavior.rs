@@ -764,10 +764,11 @@ mod state_transitions {
         run.mark_succeeded(StepIdx::new(0))
             .map_err(|e| e.to_string())?;
 
-        // Succeeded→Running is VALID for loop body re-entry (jump_to_body uses mark_running)
+        // Succeeded→Running is valid for loop body re-entry.
         let result = run.mark_running(StepIdx::new(0));
-        assert!(
-            result.is_ok(),
+        assert_eq!(
+            result,
+            Ok(()),
             "Succeeded→Running must be valid for loop body re-entry"
         );
         Ok(())

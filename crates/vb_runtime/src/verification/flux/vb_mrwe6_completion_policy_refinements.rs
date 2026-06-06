@@ -6,17 +6,15 @@
 //! production JournalEvent resolution helpers.
 
 use crate::mrwe6_seams::{Mrwe6EventClass, Mrwe6IntentKind};
-use flux_rs::attrs::*;
-
-#[refined_by(kind: int)]
+#[flux_rs::refined_by(kind: int)]
 pub enum Mrwe6ResolutionAtom {
-    #[variant(Mrwe6ResolutionAtom[0])]
+    #[flux_rs::variant(Mrwe6ResolutionAtom[0])]
     EventOnly,
-    #[variant(Mrwe6ResolutionAtom[1])]
+    #[flux_rs::variant(Mrwe6ResolutionAtom[1])]
     EventAndRemovePending,
 }
 
-#[sig(fn(atom: Mrwe6ResolutionAtom{v: v == 1}) -> bool[true])]
+#[flux_rs::sig(fn(atom: Mrwe6ResolutionAtom{v: v == 1}) -> bool[true])]
 pub fn resolution_atom_removes_pending(atom: Mrwe6ResolutionAtom) -> bool {
     match atom {
         Mrwe6ResolutionAtom::EventAndRemovePending => true,
@@ -24,6 +22,15 @@ pub fn resolution_atom_removes_pending(atom: Mrwe6ResolutionAtom) -> bool {
     }
 }
 
+#[flux_rs::sig(fn(atom: Mrwe6ResolutionAtom{v: v == 0}) -> bool[false])]
+pub fn invalid_resolution_event_only_rejected(atom: Mrwe6ResolutionAtom) -> bool {
+    match atom {
+        Mrwe6ResolutionAtom::EventOnly => false,
+        Mrwe6ResolutionAtom::EventAndRemovePending => true,
+    }
+}
+
+#[flux_rs::sig(fn(Mrwe6EventClass, Mrwe6IntentKind) -> Mrwe6ResolutionAtom)]
 pub fn resolution_atom_from_production_seam(
     class: Mrwe6EventClass,
     required: Mrwe6IntentKind,
@@ -34,4 +41,10 @@ pub fn resolution_atom_from_production_seam(
         }
         _ => Mrwe6ResolutionAtom::EventOnly,
     }
+}
+
+#[cfg(feature = "vb-mrwe6-flux-negative-probes")]
+#[flux_rs::sig(fn() -> bool[true])]
+pub fn negative_probe_resolution_event_only_is_rejected() -> bool {
+    invalid_resolution_event_only_rejected(Mrwe6ResolutionAtom::EventOnly)
 }

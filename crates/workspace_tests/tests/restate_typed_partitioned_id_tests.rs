@@ -12,11 +12,14 @@ fn header_with_kind(kind: u16) -> [u8; vb_storage::constants::RECORD_HEADER_BYTE
     header[8..12].copy_from_slice(&vb_storage::constants::RECORD_HEADER_LEN.to_le_bytes());
     header[12..16].copy_from_slice(&0_u32.to_le_bytes());
     header[16..24].copy_from_slice(&0_u64.to_le_bytes());
+    let checksum = crc32c::crc32c(&header[..vb_storage::constants::CRC_OFFSET]);
+    header[vb_storage::constants::CRC_OFFSET..vb_storage::constants::CRC_OFFSET + 4]
+        .copy_from_slice(&checksum.to_le_bytes());
     header
 }
 
 fn unknown_kind(kind: u16) -> bool {
-    !matches!(kind, 1 | 2 | 3 | 10..=28 | 30 | 40 | 50)
+    !matches!(kind, 1 | 2 | 3 | 10..=29 | 30 | 40 | 50)
 }
 
 proptest! {
@@ -90,6 +93,7 @@ fn explicit_edges_and_stable_record_kinds_hold() -> Result<(), JournalError> {
     assert_eq!(vb_storage::records::RecordKind::RunAccepted.id(), 10);
     assert_eq!(vb_storage::records::RecordKind::RunAnswered.id(), 27);
     assert_eq!(vb_storage::records::RecordKind::RunKilled.id(), 28);
+    assert_eq!(vb_storage::records::RecordKind::StepSucceeded.id(), 29);
     assert_eq!(vb_storage::records::RecordKind::Snapshot.id(), 30);
     assert_eq!(vb_storage::records::RecordKind::Blob.id(), 40);
     assert_eq!(vb_storage::records::RecordKind::IndexUpdate.id(), 50);

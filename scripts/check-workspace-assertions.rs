@@ -15,6 +15,7 @@ const EXPECTED_MEMBERS: &[&str] = &[
     "crates/vb_doc",
     "crates/vb_ipc",
     "crates/vb_proof_kernels",
+    "crates/vb_queue_semantics",
     "crates/vb_cli",
     "crates/vb_verification",
     "crates/vb_test_util",
@@ -56,6 +57,7 @@ const EXPECTED_PACKAGE_NAMES: &[(&str, &str)] = &[
     ("crates/vb_doc", "vb_doc"),
     ("crates/vb_ipc", "vb_ipc"),
     ("crates/vb_proof_kernels", "vb_proof_kernels"),
+    ("crates/vb_queue_semantics", "vb_queue_semantics"),
     ("crates/vb_cli", "velvet-ballistics"),
     ("crates/vb_verification", "vb_verification"),
     ("crates/vb_test_util", "vb_test_util"),
@@ -438,11 +440,7 @@ fn run() -> i32 {
     check_generated_boundaries(&root, &mut failures);
 
     failures.iter().for_each(|failure| eprintln!("{failure}"));
-    if failures.is_empty() {
-        0
-    } else {
-        1
-    }
+    if failures.is_empty() { 0 } else { 1 }
 }
 
 fn main() {

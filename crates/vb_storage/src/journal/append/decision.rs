@@ -1,42 +1,17 @@
-use crate::{error::JournalError, events::JournalEvent, keys::index_action_key};
-
 use super::intent::{
-    ActionIndexIntent, Mrwe6EventClass, Mrwe6IntentKind, mrwe6_event_class,
-    mrwe6_required_intent_kind_for_class,
+    ActionIndexIntent, Mrwe6EventClass, Mrwe6SeamError, mrwe6_action_index_intent,
+    mrwe6_event_class,
 };
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Mrwe6DuplicateRetryDecision {
-    IdempotentEqualRetry,
-    DivergentDuplicateConflict,
-    MissingExpectedIndexState,
-}
-
+pub use super::mrwe6_kernel::{
+    Mrwe6DuplicateRetryDecision, Mrwe6RecoveryOutcome, Mrwe6ResolutionCommitDecision,
+};
+use crate::{error::JournalError, events::JournalEvent, keys::index_action_key};
 #[cfg(kani)]
 pub(crate) type VerificationDuplicateRetryDecision = Mrwe6DuplicateRetryDecision;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Mrwe6ResolutionCommitDecision {
-    CommittedAndMarkerRemoved,
-    CommitFailedMarkerRetained,
-    MismatchedResolutionRejected,
-    NonResolutionRejected,
-}
-
 #[cfg(kani)]
 pub(crate) type VerificationResolutionCommitDecision = Mrwe6ResolutionCommitDecision;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Mrwe6RecoveryOutcome {
-    PendingInventory,
-    ResolvedNoPending,
-    ParityDefect,
-    LegacyFallback,
-}
-
 #[cfg(kani)]
 pub(crate) type VerificationRecoveryOutcome = Mrwe6RecoveryOutcome;
-
 #[cfg(kani)]
 pub(crate) fn verification_duplicate_retry_decision(
     existing: &JournalEvent,
@@ -65,20 +40,24 @@ pub fn mrwe6_duplicate_retry_decision_from_facts(
     retry_class: Mrwe6EventClass,
     index_marker_present: bool,
 ) -> Mrwe6DuplicateRetryDecision {
-    if !equal_payload {
-        return Mrwe6DuplicateRetryDecision::DivergentDuplicateConflict;
-    }
-    match mrwe6_required_intent_kind_for_class(retry_class) {
-        Mrwe6IntentKind::PutPending if index_marker_present => {
-            Mrwe6DuplicateRetryDecision::IdempotentEqualRetry
-        }
-        Mrwe6IntentKind::RemovePending if !index_marker_present => {
-            Mrwe6DuplicateRetryDecision::IdempotentEqualRetry
-        }
-        Mrwe6IntentKind::None => Mrwe6DuplicateRetryDecision::IdempotentEqualRetry,
-        Mrwe6IntentKind::PutPending | Mrwe6IntentKind::RemovePending => {
-            Mrwe6DuplicateRetryDecision::MissingExpectedIndexState
-        }
+    super::mrwe6_kernel::duplicate_retry_decision_from_facts(
+        equal_payload,
+        retry_class,
+        index_marker_present,
+    )
+}
+
+pub fn mrwe6_idempotent_duplicate_retry_from_facts(
+    equal_payload: bool,
+    retry_class: Mrwe6EventClass,
+    index_marker_present: bool,
+) -> Result<Mrwe6DuplicateRetryDecision, Mrwe6SeamError> {
+    let decision =
+        mrwe6_duplicate_retry_decision_from_facts(equal_payload, retry_class, index_marker_present);
+    if decision == Mrwe6DuplicateRetryDecision::IdempotentEqualRetry {
+        Ok(decision)
+    } else {
+        Err(Mrwe6SeamError::DuplicateRetryNotIdempotent)
     }
 }
 
@@ -88,7 +67,7 @@ pub(crate) fn verification_resolution_marker_present_after_commit(
     existing_marker_matches_resolution: bool,
     commit_success: bool,
 ) -> Result<bool, JournalError> {
-    match ActionIndexIntent::for_event(event) {
+    match mrwe6_action_index_intent(event) {
         ActionIndexIntent::Delete { .. } => {
             Ok(!(commit_success && existing_marker_matches_resolution))
         }
@@ -144,16 +123,27 @@ pub fn mrwe6_resolution_commit_decision_from_facts(
     key_matches_pending: bool,
     commit_success: bool,
 ) -> Mrwe6ResolutionCommitDecision {
-    if !is_resolution_event {
-        return Mrwe6ResolutionCommitDecision::NonResolutionRejected;
-    }
-    if !key_matches_pending {
-        return Mrwe6ResolutionCommitDecision::MismatchedResolutionRejected;
-    }
-    if commit_success {
-        Mrwe6ResolutionCommitDecision::CommittedAndMarkerRemoved
+    super::mrwe6_kernel::resolution_commit_decision_from_facts(
+        is_resolution_event,
+        key_matches_pending,
+        commit_success,
+    )
+}
+
+pub fn mrwe6_committed_resolution_from_facts(
+    is_resolution_event: bool,
+    key_matches_pending: bool,
+    commit_success: bool,
+) -> Result<Mrwe6ResolutionCommitDecision, Mrwe6SeamError> {
+    let decision = mrwe6_resolution_commit_decision_from_facts(
+        is_resolution_event,
+        key_matches_pending,
+        commit_success,
+    );
+    if decision == Mrwe6ResolutionCommitDecision::CommittedAndMarkerRemoved {
+        Ok(decision)
     } else {
-        Mrwe6ResolutionCommitDecision::CommitFailedMarkerRetained
+        Err(Mrwe6SeamError::ResolutionDidNotRemovePending)
     }
 }
 
@@ -173,47 +163,102 @@ pub fn mrwe6_recovery_outcome(
     marker_present: bool,
     legacy_profile: bool,
 ) -> Result<Mrwe6RecoveryOutcome, JournalError> {
-    let ActionIndexIntent::Put { action, run, step } = ActionIndexIntent::for_event(scheduled)
-    else {
+    let ActionIndexIntent::Put { action, run, step } = mrwe6_action_index_intent(scheduled) else {
         return Ok(Mrwe6RecoveryOutcome::ParityDefect);
     };
     let _scheduled_key = index_action_key(action, run, step)?;
-    if let Some(resolution_event) = resolution {
-        match ActionIndexIntent::for_event(resolution_event) {
-            ActionIndexIntent::Delete {
-                action: resolved_action,
-                run: resolved_run,
-                step: resolved_step,
-            } => {
-                let _resolution_key =
-                    index_action_key(resolved_action, resolved_run, resolved_step)?;
-                Ok(mrwe6_recovery_outcome_from_facts(
-                    true,
-                    true,
-                    resolved_action == action && resolved_run == run && resolved_step == step,
-                    marker_present,
-                    legacy_profile,
-                ))
-            }
-            ActionIndexIntent::Put { .. } | ActionIndexIntent::None => {
-                Ok(mrwe6_recovery_outcome_from_facts(
-                    true,
-                    true,
-                    false,
-                    marker_present,
-                    legacy_profile,
-                ))
-            }
-        }
-    } else {
-        Ok(mrwe6_recovery_outcome_from_facts(
-            true,
-            false,
-            false,
+    recovery_outcome_for_scheduled(
+        action,
+        run,
+        step,
+        resolution,
+        marker_present,
+        legacy_profile,
+    )
+}
+
+fn recovery_outcome_for_scheduled(
+    action: vb_core::ActionId,
+    run: vb_core::RunId,
+    step: vb_core::StepIdx,
+    resolution: Option<&JournalEvent>,
+    marker_present: bool,
+    legacy_profile: bool,
+) -> Result<Mrwe6RecoveryOutcome, JournalError> {
+    match resolution {
+        Some(resolution_event) => recovery_outcome_for_resolution(
+            action,
+            run,
+            step,
+            resolution_event,
             marker_present,
             legacy_profile,
-        ))
+        ),
+        None => Ok(recovery_outcome_without_resolution(
+            marker_present,
+            legacy_profile,
+        )),
     }
+}
+
+fn recovery_outcome_without_resolution(
+    marker_present: bool,
+    legacy_profile: bool,
+) -> Mrwe6RecoveryOutcome {
+    mrwe6_recovery_outcome_from_facts(true, false, false, marker_present, legacy_profile)
+}
+
+fn recovery_outcome_for_resolution(
+    action: vb_core::ActionId,
+    run: vb_core::RunId,
+    step: vb_core::StepIdx,
+    resolution: &JournalEvent,
+    marker_present: bool,
+    legacy_profile: bool,
+) -> Result<Mrwe6RecoveryOutcome, JournalError> {
+    let matches_scheduled = resolution_matches_scheduled(action, run, step, resolution)?;
+    Ok(mrwe6_recovery_outcome_from_facts(
+        true,
+        true,
+        matches_scheduled,
+        marker_present,
+        legacy_profile,
+    ))
+}
+
+fn resolution_matches_scheduled(
+    action: vb_core::ActionId,
+    run: vb_core::RunId,
+    step: vb_core::StepIdx,
+    resolution: &JournalEvent,
+) -> Result<bool, JournalError> {
+    match mrwe6_action_index_intent(resolution) {
+        ActionIndexIntent::Delete {
+            action: resolved_action,
+            run: resolved_run,
+            step: resolved_step,
+        } => same_resolution_key(
+            action,
+            run,
+            step,
+            resolved_action,
+            resolved_run,
+            resolved_step,
+        ),
+        ActionIndexIntent::Put { .. } | ActionIndexIntent::None => Ok(false),
+    }
+}
+
+fn same_resolution_key(
+    action: vb_core::ActionId,
+    run: vb_core::RunId,
+    step: vb_core::StepIdx,
+    resolved_action: vb_core::ActionId,
+    resolved_run: vb_core::RunId,
+    resolved_step: vb_core::StepIdx,
+) -> Result<bool, JournalError> {
+    let _resolution_key = index_action_key(resolved_action, resolved_run, resolved_step)?;
+    Ok(resolved_action == action && resolved_run == run && resolved_step == step)
 }
 
 #[must_use]
@@ -224,20 +269,32 @@ pub fn mrwe6_recovery_outcome_from_facts(
     marker_present: bool,
     legacy_profile: bool,
 ) -> Mrwe6RecoveryOutcome {
-    if !scheduled_has_pending_intent {
-        return Mrwe6RecoveryOutcome::ParityDefect;
-    }
-    if resolution_present {
-        if resolution_matches_scheduled {
-            Mrwe6RecoveryOutcome::ResolvedNoPending
-        } else {
-            Mrwe6RecoveryOutcome::ParityDefect
-        }
-    } else if marker_present {
-        Mrwe6RecoveryOutcome::PendingInventory
-    } else if legacy_profile {
-        Mrwe6RecoveryOutcome::LegacyFallback
+    super::mrwe6_kernel::recovery_outcome_from_facts(
+        scheduled_has_pending_intent,
+        resolution_present,
+        resolution_matches_scheduled,
+        marker_present,
+        legacy_profile,
+    )
+}
+
+pub fn mrwe6_pending_inventory_from_facts(
+    scheduled_has_pending_intent: bool,
+    resolution_present: bool,
+    resolution_matches_scheduled: bool,
+    marker_present: bool,
+    legacy_profile: bool,
+) -> Result<Mrwe6RecoveryOutcome, Mrwe6SeamError> {
+    let outcome = mrwe6_recovery_outcome_from_facts(
+        scheduled_has_pending_intent,
+        resolution_present,
+        resolution_matches_scheduled,
+        marker_present,
+        legacy_profile,
+    );
+    if outcome == Mrwe6RecoveryOutcome::PendingInventory {
+        Ok(outcome)
     } else {
-        Mrwe6RecoveryOutcome::ParityDefect
+        Err(Mrwe6SeamError::RecoveryOutcomeNotPendingInventory)
     }
 }

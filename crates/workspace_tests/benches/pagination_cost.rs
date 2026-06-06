@@ -1,7 +1,5 @@
 //! Pagination cost benchmarks.
-//!
 //! Measures CollectStates table operations: insert, upsert, find (existing and missing).
-
 #![allow(missing_docs)]
 
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};

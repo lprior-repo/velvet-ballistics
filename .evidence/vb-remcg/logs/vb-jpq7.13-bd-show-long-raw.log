@@ -1,0 +1,81 @@
+command: bd show vb-jpq7.13 --long
+cwd: /home/lewis/isolated/go-skill-batch-20260604/vb-mrwe.6
+timestamp: 2026-06-05T13:07:21Z
+exit_code: 0
+stdout:
+✓ vb-jpq7.13 · P0: enforce blocker epic dependency and closure guard   [● P0 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: task
+Created: 2026-05-22 · Updated: 2026-06-04
+Close reason: All 51 blocker children closed with fresh evidence: vb-jpq7.23 (BDD scenarios) and vb-jpq7.9 (bounded timer wheel) just closed. Mechanical closure guard satisfied: bd show vb-jpq7 shows all children with explicit blocker/dependency edges, all P0 children closed, no prose-only closure. Epic vb-jpq7 now has 52/53 children closed (98%).
+
+DESCRIPTION
+Make vb-jpq7 mechanically impossible to close before all blocker children and split P0s are closed with fresh evidence. Visual parent-child display is insufficient.
+
+ACCEPTANCE CRITERIA
+bd show vb-jpq7 shows explicit blockers/dependencies for every P0 child/split bead; bd ready does not list vb-jpq7 until blockers close; parent closure notes include child IDs, command evidence commit SHA, and no unresolved backend P0/P1 blockers; no parent closure from prose summary.
+
+LABELS: anti-laundering, backend-dod, beads, evidence, master-gap, release-blocker, truth-serum
+
+PARENT
+  ↑ ✓ vb-jpq7: P0: Truth-serum backend blocker burn-down ● P0
+
+DEPENDS ON
+  → ✓ vb-jpq7.48: P0: make blocker closure evidence machine-checkable ● P0
+  → ✓ vb-jpq7.4: P0: align CLI with master operator contract ● P0
+  → ✓ vb-jpq7.9: P0: bound hot runtime state and queue/timer structures ● P0
+  → ✓ vb-jpq7.47: P0: enforce 300-line Rust file policy ● P0
+  → ✓ vb-jpq7.41: P0: implement accepted-artifact durable evidence chain ● P0
+  → ✓ vb-jpq7.1: P0: restore green trunk and canonical gate execution ● P0
+  → ✓ vb-jpq7.18: P0: align Moon and just mandatory gates ● P0
+  → ✓ vb-jpq7.45: P0: collect IR benchmark measurement evidence ● P0
+  → ✓ vb-jpq7.28: P0: enforce parser validator exact diagnostics ● P0
+  → ✓ vb-jpq7.6: P0: rebuild test coverage for master sections 36-40 ● P0
+  → ✓ vb-jpq7.40: P0: implement whole-workflow boundedness analyzer ● P0
+  → ✓ vb-jpq7.23: P0: add BDD operator journey scenarios ● P0
+  → ✓ vb-jpq7.39: P0: add deterministic flakiness and rerun gate ● P0
+  → ✓ vb-jpq7.21: P0: implement CLI semantic explain diff retry answer contracts ● P0
+  → ✓ vb-jpq7.27: P0: rebuild proof obligation ledger with raw evidence ● P0
+  → ✓ vb-jpq7.19: P0: implement CLI parse help and no-side-effect errors ● P0
+  → ✓ vb-jpq7.30: P0: add expression and compiler parity properties ● P0
+  → ✓ vb-jpq7.46: P0: add benchmark regression policy gate ● P0
+  → ✓ vb-jpq7.44: P0: remove IPC MemoryIngress clone data-loss trap ● P0
+  → ✓ vb-jpq7.20: P0: implement CLI output format contract ● P0
+  → ✓ vb-jpq7.38: P0: triage mutation survivors with release-grade scope ● P0
+  → ✓ vb-jpq7.29: P0: add recovery replay equivalence suite ● P0
+  → ✓ vb-jpq7.49: P0: block proof and evidence laundering ● P0
+  → ✓ vb-jpq7.22: P0: repair agent-context operator parity ● P0
+  → ✓ vb-jpq7.26: P0: repair TLA bounded overflow models ● P0
+  → ✓ vb-jpq7.24: P0: repair Verus evidence binding ● P0
+  → ✓ vb-jpq7.31: P0: add digest layout and artifact stability properties ● P0
+  → ✓ vb-jpq7.34: P0: fuzz yaml_events parser typed-error surface ● P0
+  → ✓ vb-jpq7.10: P0: split oversized critical Rust modules for reviewable architecture ● P0
+  → ✓ vb-jpq7.17: P0: quarantine deferred UI codegen maxperf crates ● P0
+  → ✓ vb-jpq7.37: P0: fuzz journal_event envelope decode surface ● P0
+  → ✓ vb-jpq7.14: P0: restore hard-deny clippy and panic-surface gate ● P0
+  → ✓ vb-jpq7.8: P0: reopen stale bead evidence and enforce close-only-with-fresh-gates ● P0
+  → ✓ vb-jpq7.32: P0: add runtime replay ordering and terminal-state properties ● P0
+  → ✓ vb-jpq7.2: P0: rebaseline workspace package and deferred scope ● P0
+  → ✓ vb-jpq7.25: P0: repair Kani harness discovery and generators ● P0
+  → ✓ vb-jpq7.43: P0: implement path-aware hot cold scanner ● P0
+  → ✓ vb-jpq7.5: P0: repair formal verification evidence and proof ledgers ● P0
+  → ✓ vb-jpq7.7: P0: replace placeholder benchmark evidence with measured backend data ● P0
+  → ✓ vb-jpq7.36: P0: fuzz ipc_frame decoder preallocation surface ● P0
+  → ✓ vb-jpq7.42: P0: enforce action idempotency and replay side-effect safety ● P0
+  → ✓ vb-jpq7.35: P0: fuzz expression lexer parser compiler bounds surface ● P0
+  → ✓ vb-jpq7.3: P0: fail-closed storage and recovery durability paths ● P0
+  → ✓ vb-jpq7.33: P0: add taint resource overflow and error recovery properties ● P0
+  → ✓ vb-jpq7.16: P0: restore canonical velvet-ballastics package identity ● P0
+  → ✓ vb-jpq7.11: P0: resolve supply-chain and dependency-scope drift ● P0
+  → ✓ vb-jpq7.12: P0: fix canonical naming and legacy spelling gates ● P0
+  → ✓ vb-jpq7.15: P0: ban test deletion and assertion weakening during trunk repair ● P0
+
+COMMENTS
+  2026-05-23 23:19 Lewis
+    Not closed after Wave 1 proof landing at commit 5426d31c904070574c45d4386e6a321dd49d226e. Closure guard remains correctly open because it depends on still-open child blockers not covered by the landed proof sweep; completed discovered proof blockers vb-2tpu and vb-utvm were closed with moon ci PASS, proof/evidence PASS, and remote main push evidence from the landing.
+
+EXTENDED DETAILS
+  Closed at: 2026-06-04 02:05
+
+
+stderr:
+

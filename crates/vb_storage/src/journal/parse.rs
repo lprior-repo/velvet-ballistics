@@ -9,9 +9,9 @@ use crate::{
 
 /// Parses a journal event from raw bytes.
 ///
-/// This is a convenience wrapper around [`decode_journal_event`] that fixes the
-/// magic and max payload length to the journal event contract values and returns
-/// only the deserialized event after kind/payload parity validation.
+/// This is a convenience wrapper around [`decode_validated_journal_record`] that
+/// fixes the magic and max payload length to the journal event contract values
+/// and returns only the deserialized event after kind/payload parity validation.
 ///
 /// # Errors
 ///

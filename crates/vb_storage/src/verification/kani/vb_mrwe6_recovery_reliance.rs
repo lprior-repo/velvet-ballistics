@@ -1,6 +1,6 @@
 #![cfg(kani)]
 
-//! Kani harness for obl-vb-mrwe-6-recovery-reliance-kani-026.
+//! Kani harness for obl-vb-in8ib-recovery-kani.
 //!
 //! The harness is bound to production-adjacent verification seams in
 //! `journal::append`: the same `ActionIndexIntent::for_event` classifier and
@@ -55,7 +55,7 @@ fn completion(run: RunId, seq: EventSeq, step: StepIdx, action: ActionId) -> Jou
 }
 
 #[kani::proof]
-fn non_legacy_mismatches_are_defects_not_pending_inventory() {
+fn vb_mrwe6_recovery_inventory_all_cases() {
     let run = RunId::new(kani::any::<u64>());
     let seq = EventSeq::new(kani::any::<u64>());
     let resolution_seq = EventSeq::new(seq.get().wrapping_add(1));
