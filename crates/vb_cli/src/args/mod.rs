@@ -21,3 +21,4 @@ pub(crate) use types::{
     ActionRegistryMode, Command, DiffMode, DurabilityMode, EmitTarget, EventStatus, OutputFormat,
     StatusOptions, StepTarget, SystemStatusOptions, VALID_COMMANDS, VerifyProfile,
 };
+pub(crate) use vb_core::action::ActionName;

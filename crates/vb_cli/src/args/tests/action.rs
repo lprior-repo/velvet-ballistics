@@ -1,5 +1,7 @@
 use super::args;
-use crate::args::{ActionRegistryMode, Command, OutputFormat, ParseError, parse_args};
+use crate::args::{
+    ActionName, ActionRegistryMode, Command, OutputFormat, ParseError, parse_args,
+};
 
 #[test]
 fn parse_action_list_defaults_to_text_and_registered() {
@@ -151,7 +153,7 @@ fn parse_action_inspect_accepts_valid_name_and_defaults() {
         registry,
     }) = parsed
     {
-        assert_eq!(action_name, "send_email");
+        assert_eq!(action_name.as_str(), "send_email");
         assert_eq!(output, OutputFormat::Text);
         assert_eq!(registry, ActionRegistryMode::Registered);
     } else {
@@ -177,7 +179,7 @@ fn parse_action_inspect_accepts_registry_and_emit_postcard() {
         registry,
     }) = parsed
     {
-        assert_eq!(action_name, "send_email");
+        assert_eq!(action_name.as_str(), "send_email");
         assert_eq!(output, OutputFormat::Postcard);
         assert_eq!(registry, ActionRegistryMode::Empty);
     } else {

@@ -3,6 +3,8 @@
 
 use std::path::PathBuf;
 
+use vb_core::action::ActionName;
+
 use crate::commands_journal::{TraceFilters, TraceStatus};
 
 /// Structured output format for CLI commands.
@@ -89,7 +91,7 @@ pub(crate) enum Command {
         registry: ActionRegistryMode,
     },
     ActionInspect {
-        action_name: String,
+        action_name: ActionName,
         output: OutputFormat,
         registry: ActionRegistryMode,
     },

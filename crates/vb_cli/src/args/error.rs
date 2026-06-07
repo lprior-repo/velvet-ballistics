@@ -26,7 +26,6 @@ pub(crate) enum ParseError {
     UnknownActionInspectFlag(String),
     UnexpectedActionInspectArgument(String),
     InvalidActionInspectArgument(String),
-    InvalidActionId(String),
     InvalidActionName(String),
     UnknownFlag { command: &'static str, flag: String },
     InvalidArgument(String),
@@ -118,9 +117,6 @@ impl std::fmt::Display for ParseError {
             }
             Self::InvalidActionInspectArgument(reason) => {
                 write!(formatter, "invalid action inspect argument: {reason}")
-            }
-            Self::InvalidActionId(action_id) => {
-                write!(formatter, "invalid action id: {action_id}")
             }
             Self::InvalidActionName(name) => {
                 write!(formatter, "invalid action name: {name}")

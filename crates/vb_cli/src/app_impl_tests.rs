@@ -7,13 +7,14 @@
 #![allow(clippy::doc_markdown)]
 
 use super::{
-    ActionRegistryMode, CliExitCode, Command, DiffMode, DurabilityMode, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
-    INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
-    InputMappingError, OutputFormat, ParseError, RunStatus, StepTarget, StorageWorkflowResolver,
-    action_contract_detail, action_idempotency_name, action_table_rows, build_step_frame,
-    decode_step_inputs, execute_step_isolated, map_runtime_inputs, node_kind_name, parse_args,
-    parse_run_id, redacted_slot_value, registered_cli_actions, run_compiled_workflow,
-    setup_exit_code, signal_name, suggested_ai_commands, write_step_inputs,
+    ActionName, ActionRegistryMode, CliExitCode, Command, DiffMode, DurabilityMode,
+    INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,
+    INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE, InputMappingError, OutputFormat, ParseError,
+    RunStatus, StepTarget, StorageWorkflowResolver, action_contract_detail,
+    action_idempotency_name, action_table_rows, build_step_frame, decode_step_inputs,
+    execute_step_isolated, map_runtime_inputs, node_kind_name, parse_args, parse_run_id,
+    redacted_slot_value, registered_cli_actions, run_compiled_workflow, setup_exit_code,
+    signal_name, suggested_ai_commands, write_step_inputs,
 };
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -290,7 +291,7 @@ fn parse_action_inspect_accepts_action_name_defaults_to_text() {
                 ref action_name,
                 output: super::OutputFormat::Text,
                 registry: ActionRegistryMode::Registered,
-            }) if action_name == "send_email"
+            }) if action_name.as_str() == "send_email"
         ),
         "unexpected parse result: {parsed:?}"
     );
@@ -1280,7 +1281,8 @@ mod mode_activation {
     #[test]
     fn command_mode_action_inspect_is_pure() {
         let cmd = Command::ActionInspect {
-            action_name: "send_email".into(),
+            action_name: ActionName::new("send_email")
+                .expect("test fixture: \"send_email\" is a known-valid action name"),
             output: OutputFormat::Text,
             registry: ActionRegistryMode::Registered,
         };
@@ -1542,7 +1544,8 @@ mod mode_activation {
         );
         assert_eq!(
             command_mode(&Command::ActionInspect {
-                action_name: "send_email".into(),
+                action_name: ActionName::new("send_email")
+                    .expect("test fixture: \"send_email\" is a known-valid action name"),
                 output: OutputFormat::Text,
                 registry: ActionRegistryMode::Registered,
             }),

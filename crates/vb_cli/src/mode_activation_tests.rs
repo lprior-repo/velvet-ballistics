@@ -24,8 +24,8 @@ use std::path::PathBuf;
 
 // Import from the crate — these exist
 use crate::args::{
-    ActionRegistryMode, Command, DiffMode, DurabilityMode, EmitTarget, OutputFormat, ParseError,
-    StatusOptions, VerifyProfile,
+    ActionName, ActionRegistryMode, Command, DiffMode, DurabilityMode, EmitTarget, OutputFormat,
+    ParseError, StatusOptions, VerifyProfile,
 };
 use crate::exit_code::CliExitCode;
 use proptest::prelude::*;
@@ -307,7 +307,8 @@ fn command_mode_action_list_is_pure() {
 #[test]
 fn command_mode_action_inspect_is_pure() {
     let cmd = Command::ActionInspect {
-        action_name: "send_email".into(),
+        action_name: ActionName::new("send_email")
+            .expect("test fixture: \"send_email\" is a known-valid action name"),
         output: OutputFormat::Text,
         registry: ActionRegistryMode::Registered,
     };
@@ -569,7 +570,8 @@ fn command_mode_all_25_command_variants_are_classified() {
     );
     assert_eq!(
         command_mode(&Command::ActionInspect {
-            action_name: "send_email".into(),
+            action_name: ActionName::new("send_email")
+                .expect("test fixture: \"send_email\" is a known-valid action name"),
             output: OutputFormat::Text,
             registry: ActionRegistryMode::Registered,
         }),

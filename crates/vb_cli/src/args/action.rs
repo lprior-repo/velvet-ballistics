@@ -3,6 +3,8 @@
 
 use std::ffi::OsString;
 
+use vb_core::action::ActionName;
+
 use super::error::ParseError;
 use super::flag_spec::{ActionInspectParseState, ActionListParseState};
 use super::types::{ActionRegistryMode, Command, OutputFormat};
@@ -39,24 +41,11 @@ fn parse_action_inspect(args: &[OsString]) -> Result<Command, ParseError> {
     let (raw_name, rest) = args
         .split_first()
         .ok_or(ParseError::MissingArgument("action_name"))?;
-    let action_name = raw_name
+    let raw_str = raw_name
         .to_str()
-        .ok_or_else(|| ParseError::InvalidActionName(format!("{raw_name:?}")))?
-        .trim()
-        .to_string();
-    if action_name.is_empty() {
-        return Err(ParseError::InvalidActionName("action name is empty".into()));
-    }
-    if action_name.len() > 64 {
-        return Err(ParseError::InvalidActionName(
-            "action name exceeds maximum length of 64 characters".into(),
-        ));
-    }
-    if action_name.chars().any(|c| c.is_whitespace()) {
-        return Err(ParseError::InvalidActionName(
-            "action name contains whitespace".into(),
-        ));
-    }
+        .ok_or_else(|| ParseError::InvalidActionName(format!("{raw_name:?}")))?;
+    let action_name = ActionName::new(raw_str)
+        .map_err(|error| ParseError::InvalidActionName(error.to_string()))?;
     let parsed = parse_action_inspect_args(
         rest,
         ActionInspectParseState {

@@ -271,38 +271,6 @@ fn parse_action_list_accepts_empty_registry_defaults_to_text() {
 }
 
 #[test]
-fn parse_action_inspect_accepts_action_id_defaults_to_text() {
-    let parsed = parse_args(&args(&["velvet-ballistics", "action", "inspect", "2"]));
-
-    assert!(
-        matches!(
-            parsed,
-            Ok(Command::ActionInspect {
-                action_id: 2,
-                output: super::OutputFormat::Text,
-                registry: ActionRegistryMode::Registered,
-            })
-        ),
-        "unexpected parse result: {parsed:?}"
-    );
-}
-
-#[test]
-fn parse_action_inspect_rejects_invalid_action_id() {
-    let parsed = parse_args(&args(&[
-        "velvet-ballistics",
-        "action",
-        "inspect",
-        "not-a-number",
-    ]));
-
-    assert_eq!(
-        parsed,
-        Err(ParseError::InvalidActionId("not-a-number".into()))
-    );
-}
-
-#[test]
 fn parse_action_list_rejects_invalid_registry() {
     let parsed = parse_args(&args(&[
         "velvet-ballistics",

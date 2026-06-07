@@ -102,18 +102,18 @@ pub(crate) fn cmd_action_list(output: OutputFormat, registry_mode: ActionRegistr
 }
 
 pub(crate) fn cmd_action_inspect(
-    action_name: String,
+    action_name: vb_core::action::ActionName,
     output: OutputFormat,
     registry_mode: ActionRegistryMode,
 ) -> ExitCode {
     match registry_mode {
         ActionRegistryMode::Registered => match registered_cli_actions() {
-            Ok(registry) => write_action_inspect(&registry, action_name, output),
+            Ok(registry) => write_action_inspect(&registry, &action_name, output),
             Err(error) => write_action_registry_error(&error, output),
         },
         ActionRegistryMode::Empty => {
             let registry = ActionRegistry::new();
-            write_action_inspect(&registry, action_name, output)
+            write_action_inspect(&registry, &action_name, output)
         }
         ActionRegistryMode::Uninitialized => {
             write_action_registry_uninitialized(output);

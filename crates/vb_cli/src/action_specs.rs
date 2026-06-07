@@ -351,30 +351,12 @@ pub(crate) fn write_action_registry(
 
 pub(crate) fn write_action_inspect(
     registry: &ActionRegistry,
-    action_name: String,
+    action_name: &vb_core::action::ActionName,
     output: OutputFormat,
 ) -> std::process::ExitCode {
-    match vb_core::action::ActionName::new(&action_name) {
-        Ok(name) => match registry.resolve_by_name(&name) {
-            Ok(contract) => write_action_contract_json(contract, output),
-            Err(error) => write_action_inspect_error(&action_name, &error, output),
-        },
-        Err(e) => {
-            let message = format!("invalid action name: {}", e);
-            if output == OutputFormat::Text {
-                crate::errln!("{message}");
-            } else {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "action_name": action_name,
-                        "error": message,
-                    }),
-                    output,
-                );
-            }
-            crate::exit_code::CliExitCode::ValidationFailed.into()
-        }
+    match registry.resolve_by_name(action_name) {
+        Ok(contract) => write_action_contract_json(contract, output),
+        Err(error) => write_action_inspect_error(action_name.as_str(), &error, output),
     }
 }
 
