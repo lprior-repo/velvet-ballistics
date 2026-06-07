@@ -27,7 +27,7 @@ pub(crate) use types::{
     DiagnosticReport, HEADER_SIZE, HEADER_SIZE_U32, MAX_PAYLOAD, MAX_PAYLOAD_U32, PostcardHeader,
 };
 #[cfg(test)]
-pub(crate) use types::{TypedJsonTree, TypedTreePayload};
+pub(crate) use types::TypedJsonTree;
 
 #[allow(unused_imports)]
 pub(crate) use codec::{decode_cli_payload, decode_postcard_payload, encode_postcard};

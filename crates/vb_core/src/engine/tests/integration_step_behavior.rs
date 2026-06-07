@@ -1475,7 +1475,6 @@ fn step_once_on_invalid_pc_returns_error() -> Result<(), String> {
     let parts = tiny_workflow_parts("bad_pc", ConstValue::I64(1));
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(270), &workflow)?;
-    let mut store = test_store();
 
     // The two-step workflow has step_count=2, so set_pc(99) must be rejected
     // with InvalidProgramCounter before step_once is called. We verify the
