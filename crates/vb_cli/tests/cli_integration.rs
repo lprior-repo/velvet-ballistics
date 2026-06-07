@@ -3118,18 +3118,37 @@ fn assert_postcard_stdout(
 ) {
     assert_cli_success(output, command);
     assert_eq!(output_stderr(output), "", "{command} must not write stderr");
-    let (header, packet) = cli_postcard::decode_postcard_json(&output.stdout)
+    let (header, envelope) = cli_postcard::decode_postcard_payload(&output.stdout)
         .unwrap_or_else(|error| panic!("{command} postcard payload must decode: {error}"));
     assert_eq!(header.magic, cli_postcard::CLI_MAGIC);
     assert_eq!(header.schema_version, cli_postcard::CLI_SCHEMA_VERSION);
     assert_eq!(header.kind, cli_postcard::CLI_POSTCARD_KIND);
     assert_eq!(header.header_len, 52);
+
+    // vb-k8ut.5: the postcard envelope is a typed `CliPostcardPayload` enum.
+    // Extract the typed-tree payload and pattern-match on the typed kind
+    // discriminant (NOT a JSON kind string parsed from raw bytes). Convert
+    // the TypedJsonTree back to serde_json::Value for field inspection.
+    let (kind, packet) = match envelope {
+        cli_postcard::CliPostcardPayload::TypedTree(tp) => (tp.kind, tp.tree.into_json()),
+        cli_postcard::CliPostcardPayload::Diagnostic(report) => (
+            cli_postcard::CliPostcardKind::DiagnosticReport,
+            serde_json::to_value(&report)
+                .unwrap_or_else(|error| panic!("{command} diagnostic must serialize: {error}")),
+        ),
+    };
+
     assert_eq!(
         packet.get("schema_version"),
         Some(&serde_json::json!("velvet-ballistics/cli-output/v1")),
         "{command} payload schema_version mismatch: {packet}"
     );
     if let Some(expected_kind) = expected_payload_kind {
+        let expected_typed = cli_postcard::CliPostcardKind::from_envelope_kind(expected_kind);
+        assert_eq!(
+            kind, expected_typed,
+            "{command} typed CliPostcardKind discriminant mismatch (expected {expected_kind:?}/{expected_typed:?}, got {kind:?})"
+        );
         assert_eq!(
             packet.get("kind"),
             Some(&serde_json::json!(expected_kind)),

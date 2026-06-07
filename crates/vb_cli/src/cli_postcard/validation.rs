@@ -4,23 +4,6 @@
 
 use super::{CLI_POSTCARD_KIND, CLI_SCHEMA_VERSION, HEADER_SIZE, PostcardError, PostcardHeader};
 
-pub(crate) fn validate_cli_payload(
-    payload: &super::CliPostcardPayload,
-) -> Result<(), PostcardError> {
-    if payload.schema_version != CLI_SCHEMA_VERSION {
-        return Err(PostcardError::PayloadMetadataMismatch);
-    }
-    if payload.kind != CLI_POSTCARD_KIND {
-        return Err(PostcardError::PayloadMetadataMismatch);
-    }
-    // vb-k8ut.5: match keeps validation forward-compatible as typed
-    // CliPostcardContentType variants land. JsonUtf8 is the documented v1
-    // deprecated bridge and is the only currently-emitted variant.
-    match payload.content_type {
-        super::CliPostcardContentType::JsonUtf8 => Ok(()),
-    }
-}
-
 pub(crate) fn payload_digest(payload: &[u8]) -> [u8; 32] {
     let digest = blake3::hash(payload);
     let mut out = [0u8; 32];

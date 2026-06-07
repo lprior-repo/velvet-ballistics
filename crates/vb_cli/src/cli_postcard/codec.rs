@@ -4,7 +4,7 @@
 
 use super::{CLI_MAGIC, HEADER_SIZE, HEADER_SIZE_U32, MAX_PAYLOAD, PostcardError, PostcardHeader};
 
-/// Decode CLI payload from postcard-encoded bytes.
+/// Decode the typed CLI payload from postcard-encoded bytes.
 pub(crate) fn decode_cli_payload(
     payload: &[u8],
 ) -> Result<super::CliPostcardPayload, PostcardError> {
@@ -12,25 +12,19 @@ pub(crate) fn decode_cli_payload(
         .map_err(|_| PostcardError::DecodeFailed)
 }
 
-/// Decode JSON value from postcard message.
-/// Validates header before allocating payload buffer.
-/// INV-005: Bounded allocation enforced via header validation.
+/// Decode the typed CLI payload from a full postcard message (header + payload).
 ///
-/// # Arguments
-/// * `data` - Raw byte slice containing postcard message
-///
-/// # Returns
-/// `Ok((header, value))` if decode succeeds, `Err(PostcardError)` otherwise.
-pub(crate) fn decode_postcard_json(
+/// Validates header bounds and digest before decoding the typed envelope.
+/// vb-k8ut.5: replaces the prior `decode_postcard_json` path which decoded
+/// raw UTF-8 JSON bytes inside the envelope. The decoded value is the typed
+/// `CliPostcardPayload` enum.
+pub(crate) fn decode_postcard_payload(
     data: &[u8],
-) -> Result<(PostcardHeader, serde_json::Value), PostcardError> {
+) -> Result<(PostcardHeader, super::CliPostcardPayload), PostcardError> {
     let (header_bytes, payload_bytes) = super::decode_postcard(data)?;
     let header = PostcardHeader::from_bytes(header_bytes)?;
     let payload = decode_cli_payload(payload_bytes)?;
-    super::validate_cli_payload(&payload)?;
-    let value = serde_json::from_slice::<serde_json::Value>(&payload.json_utf8)
-        .map_err(|_| PostcardError::JsonPayloadDecodeFailed)?;
-    Ok((header, value))
+    Ok((header, payload))
 }
 
 /// Encode a Postcard message to bytes.

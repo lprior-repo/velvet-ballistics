@@ -338,13 +338,34 @@ proptest! {
     }
 }
 
-/// Property: Content type discrimination
+/// Property: Typed CLI postcard payload discriminates between Diagnostic and TypedTree variants
+/// vb-k8ut.5: replaces the prior `CliPostcardContentType::JsonUtf8` smoke
+/// test now that the JSON-in-postcard bridge has been removed.
 #[test]
-fn properties_content_type_discrimination() {
-    use vb_cli::cli_postcard::CliPostcardContentType;
-    let ct1 = CliPostcardContentType::JsonUtf8;
-    let ct2 = CliPostcardContentType::JsonUtf8;
-    assert_eq!(ct1, ct2);
+fn properties_typed_payload_variant_discrimination() {
+    use vb_cli::cli_postcard::{CliPostcardKind, CliPostcardPayload, DiagnosticReport};
+
+    let diagnostic = CliPostcardPayload::from_diagnostic(DiagnosticReport {
+        schema_version: "velvet-ballistics/cli-output/v1".to_string(),
+        kind: "DiagnosticReport".to_string(),
+        code: "ValidationFailed".to_string(),
+        exit_code: 2,
+        message: "test".to_string(),
+    });
+    let typed_tree = CliPostcardPayload::from_kind_value(
+        CliPostcardKind::ValidateReport,
+        serde_json::json!({"kind": "validate_report", "success": true}),
+    );
+    // The two variants must not compare equal — proves variant discrimination.
+    assert_ne!(diagnostic, typed_tree);
+
+    // Round-tripping each variant must preserve the variant tag.
+    let diag_bytes = postcard::to_allocvec(&diagnostic).expect("encode");
+    let tree_bytes = postcard::to_allocvec(&typed_tree).expect("encode");
+    let diag_back: CliPostcardPayload = postcard::from_bytes(&diag_bytes).expect("decode");
+    let tree_back: CliPostcardPayload = postcard::from_bytes(&tree_bytes).expect("decode");
+    assert!(matches!(diag_back, CliPostcardPayload::Diagnostic(_)));
+    assert!(matches!(tree_back, CliPostcardPayload::TypedTree(_)));
 }
 
 /// Property: All Kind variants roundtrip

@@ -20,7 +20,7 @@ pub(crate) fn write_structured_stderr(
             write_stderr_line_io(format_args!("{yaml}"))
         }
         OutputFormat::Postcard => {
-            let framed = encode_postcard_json_frame(value)
+            let framed = encode_postcard_envelope_value(value)
                 .map_err(|error| io::Error::other(error.to_string()))?;
             write_stderr_bytes(&framed)
         }
@@ -134,29 +134,31 @@ pub(crate) fn write_json_pretty_stdout(value: &serde_json::Value) -> Result<(), 
     write_stdout_line_io(format_args!("{json_str}")).map_err(OutputError::Stdout)
 }
 
-/// vb-k8ut.5: Encodes a serde_json::Value as the v1 deprecated JSON-in-postcard
-/// bridge payload. The outer envelope (`CliPostcardPayload`) is fully typed
-/// (schema_version, kind, content_type, payload bytes) and the postcard frame
-/// itself is typed and CRC/digest-checked. The `JsonUtf8` content_type marks
-/// this as the cold-path JSON bridge intended for early-v1 CLI machine output.
-/// New CLI commands should land typed domain payloads as additional
-/// `CliPostcardContentType` variants in `cli_postcard::types` rather than
-/// growing new shapes inside the JSON bridge. Master document
-/// `velvet-ballistics-MASTER.md`: CLI structured output is operator/agent
-/// cold-path contract; runtime journal and IPC postcard payloads are typed
-/// independently in `vb_storage` and `vb_ipc`.
-fn encode_postcard_json_frame(value: &serde_json::Value) -> Result<Vec<u8>, OutputError> {
-    let json_utf8 = serde_json::to_vec(value).map_err(OutputError::JsonSerialize)?;
-    let payload = crate::cli_postcard::CliPostcardPayload::from_json_utf8(json_utf8)
-        .map_err(OutputError::PostcardFrame)?;
+/// vb-k8ut.5: Encodes a CLI command's JSON envelope as a TYPED postcard
+/// payload. The outer postcard frame carries a typed `CliPostcardPayload`
+/// enum (postcard-native serde-encoded), NOT a JSON-UTF8 byte bridge.
+///
+/// Sites that pass a `serde_json::Value` route through
+/// `CliPostcardPayload::from_json_envelope` which resolves the JSON `kind`
+/// field to a typed `CliPostcardKind` discriminant and wraps the tree as a
+/// `TypedTreePayload`. Once a CLI command's payload shape is promoted to a
+/// dedicated typed struct, callers should switch to
+/// `CliPostcardPayload::Diagnostic(_)` / future per-kind variants directly
+/// and skip the serde_json::Value bridge entirely.
+fn encode_typed_postcard_frame(payload: &crate::cli_postcard::CliPostcardPayload) -> Result<Vec<u8>, OutputError> {
     let postcard_payload =
-        postcard::to_allocvec(&payload).map_err(OutputError::PostcardSerialize)?;
+        postcard::to_allocvec(payload).map_err(OutputError::PostcardSerialize)?;
     crate::cli_postcard::encode_postcard(
         crate::cli_postcard::CLI_SCHEMA_VERSION,
         crate::cli_postcard::CLI_POSTCARD_KIND,
         &postcard_payload,
     )
     .map_err(OutputError::PostcardFrame)
+}
+
+fn encode_postcard_envelope_value(value: &serde_json::Value) -> Result<Vec<u8>, OutputError> {
+    let payload = crate::cli_postcard::CliPostcardPayload::from_json_envelope(value.clone());
+    encode_typed_postcard_frame(&payload)
 }
 
 pub(crate) fn write_stderr_line(args: std::fmt::Arguments<'_>) {
@@ -188,7 +190,7 @@ pub(crate) fn json_out(value: &serde_json::Value, format: OutputFormat) -> Resul
                 .map_err(|error| OutputError::YamlSerialize(error.to_string()))?;
             write_stdout_line_io(format_args!("{yaml}")).map_err(OutputError::Stdout)
         }
-        OutputFormat::Postcard => match encode_postcard_json_frame(value) {
+        OutputFormat::Postcard => match encode_postcard_envelope_value(value) {
             Ok(encoded) => write_stdout_bytes(&encoded),
             Err(error) => Err(error),
         },
@@ -265,7 +267,7 @@ pub(crate) fn write_diagnostic_message_stderr(
     output: OutputFormat,
 ) {
     let write_result = match output {
-        OutputFormat::Yaml | OutputFormat::Postcard => {
+        OutputFormat::Yaml => {
             let diagnostic = serde_json::json!({
                 "schema_version": crate::cli_envelope::SCHEMA_VERSION,
                 "kind": crate::cli_envelope::kind::DIAGNOSTIC_REPORT,
@@ -274,6 +276,22 @@ pub(crate) fn write_diagnostic_message_stderr(
                 "message": message,
             });
             write_structured_stderr(&diagnostic, output)
+        }
+        OutputFormat::Postcard => {
+            // vb-k8ut.5: diagnostic envelopes go straight through the typed
+            // `DiagnosticReport` variant — no serde_json::Value bridge.
+            let report = crate::cli_postcard::DiagnosticReport {
+                schema_version: crate::cli_envelope::SCHEMA_VERSION.to_string(),
+                kind: crate::cli_envelope::kind::DIAGNOSTIC_REPORT.to_string(),
+                code: output_utils::cli_exit_code_name(code).to_string(),
+                exit_code: i32::from(output_utils::cli_exit_code_number(code)),
+                message: message.to_string(),
+            };
+            let payload = crate::cli_postcard::CliPostcardPayload::from_diagnostic(report);
+            match encode_typed_postcard_frame(&payload) {
+                Ok(bytes) => write_stderr_bytes(&bytes),
+                Err(error) => Err(io::Error::other(error.to_string())),
+            }
         }
         OutputFormat::Text => write_stderr_line_io(format_args!("{message}")),
     };
