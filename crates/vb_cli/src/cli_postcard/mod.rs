@@ -28,7 +28,7 @@ pub(crate) use error::PostcardError;
 pub(crate) use types::{
     CLI_MAGIC, CLI_POSTCARD_KIND, CLI_SCHEMA_VERSION, CliPostcardKind, CliPostcardPayload,
     DiagnosticReport, DiffEntry, DiffReport, EnvelopeSchemaVersion, EventEntry, EventsReport,
-    ExplainArtifactSection, ExplainErrorEntry, ExplainReport, GenericPayload, HEADER_SIZE,
+    ExplainErrorEntry, ExplainReport, GenericPayload, HEADER_SIZE,
     HEADER_SIZE_U32, MAX_PAYLOAD, MAX_PAYLOAD_U32, PostcardHeader, ReplayReport, TraceEntry,
     TraceReport, ValidateReport, VerifyArtifactSection, VerifyDurabilitySection,
     VerifyReplaySection, VerifyReport,
