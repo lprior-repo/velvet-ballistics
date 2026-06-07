@@ -253,11 +253,19 @@ pub(crate) fn build_step_result_json(
     after: serde_json::Value,
 ) -> serde_json::Value {
     let mut map = serde_json::Map::new();
-    map.insert("step".to_string(), serde_json::json!(step.get()));
+    // vb-k8ut.5: the envelope `kind` field is the typed `CliPostcardKind`
+    // discriminant, NOT the workflow `CompiledNodeKind` name. Setting
+    // `kind` to e.g. "SetConst" makes the postcard classifier reject the
+    // envelope with "unknown envelope kind: SetConst" because node kind
+    // names are not in the `from_envelope_kind` table. The actual node
+    // kind is preserved under `node_kind` so downstream consumers can
+    // still inspect it.
+    map.insert("kind".to_string(), serde_json::json!("run_report"));
     map.insert(
-        "kind".to_string(),
+        "node_kind".to_string(),
         serde_json::json!(node_kind_name(&node.kind)),
     );
+    map.insert("step".to_string(), serde_json::json!(step.get()));
     map.insert("signal".to_string(), serde_json::json!(signal_name(signal)));
     map.insert("before".to_string(), before);
     map.insert("after".to_string(), after);
