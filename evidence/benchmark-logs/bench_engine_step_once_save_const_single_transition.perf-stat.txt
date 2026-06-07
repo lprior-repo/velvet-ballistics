@@ -1,0 +1,9 @@
+ Performance counter stats for 'target/debug/deps/velvet_ballistics-1dd80da5599c3f12 bench_engine_step_once_save_const_single_transition --sample-size 10 --warm-up-time 1 --measurement-time 1':
+
+       241,963,878      instructions:u                                                        
+
+       0.024967900 seconds time elapsed
+
+       0.022858000 seconds user
+       0.001163000 seconds sys
+

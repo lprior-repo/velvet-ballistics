@@ -1,0 +1,9 @@
+ Performance counter stats for 'target/debug/deps/velvet_ballistics-1dd80da5599c3f12 ipc_frame_decode --sample-size 10 --warm-up-time 1 --measurement-time 1':
+
+       241,628,412      instructions:u                                                        
+
+       0.023062275 seconds time elapsed
+
+       0.019478000 seconds user
+       0.003052000 seconds sys
+

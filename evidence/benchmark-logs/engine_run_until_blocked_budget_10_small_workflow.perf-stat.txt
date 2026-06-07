@@ -1,0 +1,9 @@
+ Performance counter stats for 'target/debug/deps/velvet_ballistics-1dd80da5599c3f12 engine_run_until_blocked_budget_10_small_workflow --sample-size 10 --warm-up-time 1 --measurement-time 1':
+
+       241,895,784      instructions:u                                                        
+
+       0.025171188 seconds time elapsed
+
+       0.018893000 seconds user
+       0.004176000 seconds sys
+

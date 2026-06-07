@@ -30,7 +30,7 @@ const EXPR_EQ_SYMBOL: &str = "$input.value == 7";
 const EXPR_NUMBER_COMPARE: &str = "7 > 3";
 const EXPR_BOOLEAN_CHAIN: &str = "true && false || true";
 const EXPR_ARITHMETIC: &str = "1 + 2 * 3";
-const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
+const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-measured;allocations=allocator-external;instructions=instructions:u-via-perf-stat";
 const JOURNAL_REPLAY_EVENTS: u64 = 1000;
 const BENCH_LATENCY_BUDGET_US: u64 = 100_000;
 const BENCH_ADDRESS_SANITIZER_LATENCY_MULTIPLIER: u64 = 2;
@@ -61,6 +61,636 @@ fn address_sanitizer_enabled() -> bool {
     std::env::var("RUSTFLAGS")
         .map(|flags| flags.contains("-Zsanitizer=address"))
         .unwrap_or(false)
+}
+
+/// Section 39 latency percentile helper (vb-a7t6.2).
+///
+/// Replaces the `BENCH_METADATA` assertion `latency=p50-p95-p99-by-criterion`
+/// with actual measured p50/p95/p99 percentiles of the raw per-iteration
+/// `Duration` distribution. See `contract.md` §2 for the nearest-rank
+/// indexing rule and `test-plan.md` §3.1 for the binding test surface.
+///
+/// The module reuses the existing `iter_custom` pattern from `checked_iter`
+/// and adds a sibling helper `run_with_percentiles` that mirrors its API and
+/// additionally persists a `<bench_id>.percentiles.jsonl` sidecar and a
+/// `<bench_id>.raw-samples.txt` per-sample list under
+/// `evidence/benchmark-logs/`. Emission can be disabled by setting
+/// `VB_BENCH_PERCENTILES=0`; the output directory can be overridden with
+/// `VB_BENCH_PERCENTILES_DIR`.
+pub mod latency_p50_p95_p99 {
+    use std::fmt;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::Duration;
+
+    const PERCENTILE_EVIDENCE_ENV: &str = "VB_BENCH_PERCENTILES";
+    const PERCENTILE_DIR_ENV: &str = "VB_BENCH_PERCENTILES_DIR";
+    const PERCENTILE_DEFAULT_DIR: &str = "evidence/benchmark-logs";
+
+    /// A percentile expressed in parts-per-10000 (`p_milli ∈ (0, 10_000]`).
+    ///
+    /// Encodes the nearest-rank index formula from `contract.md` §2:
+    /// `idx(p, n) = min(n - 1, floor(p * n))` for `p ∈ (0, 1]`.
+    /// The newtype is a u16 to keep the field copy-cheap and to make the
+    /// invariant (non-zero, <= 10_000) statically enforceable.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct Percentile(u16);
+
+    impl Percentile {
+        /// 50th percentile, encoded as 5000 parts-per-10000.
+        pub const P50: Percentile = Percentile(5_000);
+        /// 95th percentile, encoded as 9500 parts-per-10000.
+        pub const P95: Percentile = Percentile(9_500);
+        /// 99th percentile, encoded as 9900 parts-per-10000.
+        pub const P99: Percentile = Percentile(9_900);
+
+        /// Construct a `Percentile` from parts-per-10000. Rejects `0` and any
+        /// value above `10_000`. The contract from `contract.md` §2 forbids
+        /// `p = 0`; the upper bound keeps the index formula in `usize` range.
+        pub const fn from_milli(p_milli: u16) -> Option<Self> {
+            if p_milli == 0 || p_milli > 10_000 {
+                None
+            } else {
+                Some(Self(p_milli))
+            }
+        }
+
+        /// Return the encoded parts-per-10000 value.
+        pub const fn milli(self) -> u16 {
+            self.0
+        }
+
+        /// Compute the nearest-rank index into a sorted sample list of length
+        /// `n`. Returns `0` when `n == 0` to stay `const`-callable; callers
+        /// that need an `EmptySample` signal must check `n` first.
+        pub const fn nearest_rank_index(self, n: usize) -> usize {
+            if n == 0 {
+                return 0;
+            }
+            let p_milli = self.0 as usize;
+            // saturating_mul guards against the u16 * usize overflow on hostile
+            // inputs; with p_milli <= 10_000 and realistic n (10..=10_000) the
+            // product fits in usize on every supported target.
+            let product = p_milli.saturating_mul(n);
+            let idx = product / 10_000;
+            if idx >= n {
+                n - 1
+            } else {
+                idx
+            }
+        }
+    }
+
+    /// A sorted, owned `Vec<Duration>` distribution with precomputed summary
+    /// statistics. Construction is restricted to `collect` and `from_sorted`
+    /// so the invariant "samples is non-empty and sorted in non-decreasing
+    /// order" is preserved.
+    #[derive(Debug, Clone)]
+    pub struct DurationDistribution {
+        samples: Vec<Duration>,
+    }
+
+    impl DurationDistribution {
+        /// Run `work` exactly `n` times, collect the returned `Duration`
+        /// values, and return a sorted distribution.
+        /// Returns `Err(LatencyError::EmptySample)` when `n == 0`.
+        pub fn collect<F>(n: usize, mut work: F) -> Result<Self, LatencyError>
+        where
+            F: FnMut() -> Duration,
+        {
+            if n == 0 {
+                return Err(LatencyError::EmptySample);
+            }
+            let mut samples = Vec::with_capacity(n);
+            for _ in 0..n {
+                samples.push(work());
+            }
+            samples.sort_unstable();
+            Ok(Self { samples })
+        }
+
+        /// Build a distribution from a pre-sorted `Vec<Duration>`. The
+        /// constructor trusts the caller and does not re-sort.
+        pub fn from_sorted(samples: Vec<Duration>) -> Result<Self, LatencyError> {
+            if samples.is_empty() {
+                return Err(LatencyError::EmptySample);
+            }
+            Ok(Self { samples })
+        }
+
+        /// Build a distribution from an unsorted `Vec<Duration>` by sorting
+        /// first. Equivalent to the post-condition of `collect`.
+        pub fn from_unsorted(mut samples: Vec<Duration>) -> Result<Self, LatencyError> {
+            if samples.is_empty() {
+                return Err(LatencyError::EmptySample);
+            }
+            samples.sort_unstable();
+            Ok(Self { samples })
+        }
+
+        /// Number of samples in the distribution.
+        pub fn sample_count(&self) -> usize {
+            self.samples.len()
+        }
+
+        /// Borrow the sorted sample list.
+        pub fn samples(&self) -> &[Duration] {
+            &self.samples
+        }
+
+        /// Smallest sample. Caller must ensure `sample_count() > 0`; this
+        /// constructor preserves that invariant.
+        pub fn min(&self) -> Duration {
+            self.samples[0]
+        }
+
+        /// Largest sample.
+        pub fn max(&self) -> Duration {
+            self.samples[self.samples.len() - 1]
+        }
+
+        /// Sum of all samples.
+        pub fn total(&self) -> Duration {
+            self.samples.iter().sum()
+        }
+
+        /// Integer mean (`total / count`, rounded down).
+        pub fn mean(&self) -> Duration {
+            let count = u32::try_from(self.samples.len()).unwrap_or(u32::MAX);
+            if count == 0 {
+                Duration::ZERO
+            } else {
+                self.total() / u32::from(count)
+            }
+        }
+
+        /// Value at the given percentile (nearest-rank).
+        pub fn percentile(&self, p: Percentile) -> Duration {
+            let idx = p.nearest_rank_index(self.samples.len());
+            self.samples[idx]
+        }
+
+        /// `(p50, p95, p99)` tuple.
+        pub fn p50_p95_p99(&self) -> (Duration, Duration, Duration) {
+            (
+                self.percentile(Percentile::P50),
+                self.percentile(Percentile::P95),
+                self.percentile(Percentile::P99),
+            )
+        }
+    }
+
+    /// Error type for the percentile helper.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum LatencyError {
+        /// Distribution has zero samples.
+        EmptySample,
+        /// `bench_id` cannot be used as a filesystem path component.
+        InvalidBenchId,
+    }
+
+    impl fmt::Display for LatencyError {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match self {
+                LatencyError::EmptySample => f.write_str("empty sample distribution"),
+                LatencyError::InvalidBenchId => f.write_str("invalid bench_id for filesystem path"),
+            }
+        }
+    }
+
+    impl std::error::Error for LatencyError {}
+
+    /// Sanitise a `bench_id` for filesystem use by replacing path separators
+    /// with `_`. The original (un-sanitised) form is preserved in the JSONL
+    /// record's `bench_id` field.
+    pub fn sanitise_bench_id(bench_id: &str) -> String {
+        bench_id.replace(['/', '\\'], "_")
+    }
+
+    /// Resolve the evidence output directory. Honours
+    /// `VB_BENCH_PERCENTILES_DIR` if set and non-empty; otherwise walks up
+    /// from `CARGO_MANIFEST_DIR` to find the workspace root and returns
+    /// `<workspace>/evidence/benchmark-logs`. The walk-up keeps the helper
+    /// independent of the CWD that `cargo bench` happens to use (the crate
+    /// root vs. the workspace root).
+    pub fn evidence_dir() -> PathBuf {
+        if let Ok(value) = std::env::var(PERCENTILE_DIR_ENV) {
+            if !value.is_empty() {
+                return PathBuf::from(value);
+            }
+        }
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let mut current = manifest_dir.as_path();
+        loop {
+            let candidate = current.join("Cargo.toml");
+            if let Ok(contents) = std::fs::read_to_string(&candidate) {
+                if contents.contains("[workspace]") {
+                    return current.join(PERCENTILE_DEFAULT_DIR);
+                }
+            }
+            match current.parent() {
+                Some(parent) => current = parent,
+                None => return manifest_dir.join(PERCENTILE_DEFAULT_DIR),
+            }
+        }
+    }
+
+    /// Returns true if percentile emission is enabled. Disabled when
+    /// `VB_BENCH_PERCENTILES=0` or `VB_BENCH_PERCENTILES=false`.
+    pub fn emission_enabled() -> bool {
+        match std::env::var(PERCENTILE_EVIDENCE_ENV) {
+            Ok(value) => !matches!(value.as_str(), "0" | "false" | "FALSE"),
+            Err(_) => true,
+        }
+    }
+
+    /// Write a one-line JSONL record of the percentiles for the given
+    /// `bench_id` and `distribution`. Creates the evidence directory on
+    /// demand. On I/O failure, emits a single line to stderr and returns
+    /// an empty `PathBuf` (the helper never panics on a read-only filesystem).
+    pub fn write_percentile_jsonl(
+        bench_id: &str,
+        distribution: &DurationDistribution,
+    ) -> Result<PathBuf, LatencyError> {
+        if bench_id.is_empty() || bench_id.contains('\0') {
+            return Err(LatencyError::InvalidBenchId);
+        }
+        let dir = evidence_dir();
+        if let Err(error) = fs::create_dir_all(&dir) {
+            eprintln!("latency: failed to create evidence dir {}: {error}", dir.display());
+            return Ok(PathBuf::new());
+        }
+        let filename = format!("{}.percentiles.jsonl", sanitise_bench_id(bench_id));
+        let path = dir.join(filename);
+        let (p50, p95, p99) = distribution.p50_p95_p99();
+        let p50_ns = p50.as_nanos();
+        let p95_ns = p95.as_nanos();
+        let p99_ns = p99.as_nanos();
+        let min_ns = distribution.min().as_nanos();
+        let max_ns = distribution.max().as_nanos();
+        let total_ns = distribution.total().as_nanos();
+        let count = distribution.sample_count();
+        let mean_ns = distribution.mean().as_nanos();
+        // Build the JSONL line with a hand-rolled formatter so the helper
+        // has no `serde_json` dependency. The schema mirrors
+        // `contract.md` §5 for the percentile-specific fields.
+        let line = format!(
+            "{{\"bench_id\":\"{bench_id}\",\"sample_count\":{count},\"min_ns\":{min_ns},\"max_ns\":{max_ns},\"total_ns\":{total_ns},\"mean_ns\":{mean_ns},\"p50_latency_ns\":{p50_ns},\"p95_latency_ns\":{p95_ns},\"p99_latency_ns\":{p99_ns}}}\n"
+        );
+        match fs::write(&path, line) {
+            Ok(()) => Ok(path),
+            Err(error) => {
+                eprintln!("latency: failed to write {}: {error}", path.display());
+                Ok(PathBuf::new())
+            }
+        }
+    }
+
+    /// Write the raw per-sample `Duration` list as nanosecond values, one
+    /// per line, to `<bench_id>.raw-samples.txt`. Mirrors the no-panic
+    /// contract of `write_percentile_jsonl`.
+    pub fn write_raw_samples(
+        bench_id: &str,
+        distribution: &DurationDistribution,
+    ) -> Result<PathBuf, LatencyError> {
+        if bench_id.is_empty() || bench_id.contains('\0') {
+            return Err(LatencyError::InvalidBenchId);
+        }
+        let dir = evidence_dir();
+        if let Err(error) = fs::create_dir_all(&dir) {
+            eprintln!("latency: failed to create evidence dir {}: {error}", dir.display());
+            return Ok(PathBuf::new());
+        }
+        let filename = format!("{}.raw-samples.txt", sanitise_bench_id(bench_id));
+        let path = dir.join(filename);
+        let mut buffer = String::with_capacity(distribution.samples().len().saturating_mul(16));
+        for sample in distribution.samples() {
+            buffer.push_str(&sample.as_nanos().to_string());
+            buffer.push('\n');
+        }
+        match fs::write(&path, buffer) {
+            Ok(()) => Ok(path),
+            Err(error) => {
+                eprintln!("latency: failed to write {}: {error}", path.display());
+                Ok(PathBuf::new())
+            }
+        }
+    }
+
+    /// Build a `DurationDistribution` from a `Vec<Duration>` while reusing
+    /// the existing `iter_custom` measurement pattern. Mirrors
+    /// `checked_iter` (sum + max tracking, per-iteration budget assertion)
+    /// and additionally captures the per-iteration `Duration` list.
+    pub fn checked_iter_with_percentiles<T, F>(
+        bencher: &mut crate::WallBencher<'_>,
+        bench_id: &str,
+        budget_us: u64,
+        mut work: F,
+    ) where
+        F: FnMut() -> T,
+    {
+        bencher.iter_custom(|iterations| {
+            // `iter_custom` passes a `u64` count in criterion 0.8.2. Convert
+            // to `usize` with a saturating fallback to keep the helper
+            // panic-free on targets where `usize::MAX < u64::MAX`.
+            let iterations_usize = usize::try_from(iterations).unwrap_or(usize::MAX);
+            let mut samples: Vec<Duration> = Vec::with_capacity(iterations_usize);
+            let mut total: Duration = Duration::ZERO;
+            let mut max_elapsed: Duration = Duration::ZERO;
+            for _ in 0..iterations {
+                let start = std::time::Instant::now();
+                crate::black_box(work());
+                let elapsed = start.elapsed();
+                crate::assert_latency_within_budget(bench_id, elapsed, budget_us);
+                samples.push(elapsed);
+                total = total.saturating_add(elapsed);
+                if elapsed > max_elapsed {
+                    max_elapsed = elapsed;
+                }
+            }
+            crate::report_latency_budget_success(bench_id, max_elapsed, budget_us);
+            if emission_enabled() {
+                if let Ok(distribution) = DurationDistribution::from_unsorted(samples) {
+                    let _ = write_percentile_jsonl(bench_id, &distribution);
+                    let _ = write_raw_samples(bench_id, &distribution);
+                }
+            }
+            total
+        });
+    }
+
+    /// Compute `(p50, p95, p99)` from a pre-collected sample list. The
+    /// canonical helper for the 3 existing scenarios where the sample list
+    /// comes from a different source (e.g. a replay log or a synthetic
+    /// generator).
+    pub fn p50_p95_p99_from_samples(samples: Vec<Duration>) -> Result<(Duration, Duration, Duration), LatencyError> {
+        DurationDistribution::from_unsorted(samples).map(|d| d.p50_p95_p99())
+    }
+
+    // Note: the binding regression tests for this module live in
+    // `crates/workspace_tests/tests/vb_a7t6_2_percentile_math_tests.rs`.
+    // The bench file uses `harness = false` (criterion), so inline
+    // `#[cfg(test)] mod tests` would be dead code. The contract from
+    // `contract.md` §2 is verified by the integration test, and the
+    // bench helper is verified by the actual `cargo bench` runs that
+    // emit `<bench_id>.percentiles.jsonl` sidecars under
+    // `evidence/benchmark-logs/`.
+}
+
+/// Section 39 instruction-count helper (vb-a7t6.3).
+///
+/// Replaces the `BENCH_METADATA` assertion `instructions=not-collected`
+/// with measured `instructions:u` counts from `perf stat` (Linux
+/// 5.x+; the only host platform for the workspace). The capture
+/// pipeline is:
+///   1. Build a representative cargo command for the bench scenario.
+///   2. Run `perf stat -e instructions:u -- <command>` and capture stderr
+///      (perf writes the count to stderr, not stdout).
+///   3. Parse the first numeric column of the first matching
+///      `instructions:u` line; tolerate locale grouping (`,`), scientific
+///      notation, and the `+N` delta suffix that some perf builds add.
+///   4. Persist a one-line JSONL record to
+///      `evidence/benchmark-logs/<bench_id>.instructions.jsonl` and a
+///      raw `perf stat` capture to
+///      `evidence/benchmark-logs/<bench_id>.perf-stat.txt` for
+///      forensic replay.
+///
+/// The helper deliberately does **not** depend on `std::process`
+/// during the bench loop — capturing instruction counts is a
+/// one-shot out-of-band activity (typically run by CI before
+/// `cargo bench`), not an in-loop measurement. The unit tests
+/// pin the parser, not the subprocess, so the contract can be
+/// verified in environments without `perf` available.
+pub mod instruction_count {
+    use std::fmt;
+    use std::fs;
+    use std::path::PathBuf;
+
+    use super::latency_p50_p95_p99::{evidence_dir, sanitise_bench_id};
+
+    /// Parsed instruction count and provenance.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct InstructionCount {
+        /// Bench scenario identifier (matches the `<bench_id>` used by
+        /// the percentile helper).
+        pub bench_id: String,
+        /// `perf stat` raw count for `instructions:u`. Stored as `u64`
+        /// because `perf` emits at most ~2^48 instructions in a single
+        /// run on supported hardware; `u64` keeps the field
+        /// overflow-safe.
+        pub count: u64,
+        /// Perf event spec used (e.g. `instructions:u`).
+        pub event: String,
+        /// Perf tool version string, captured from `perf --version`'s
+        /// first line. Empty when the capture came from a fixture
+        /// rather than a real `perf` invocation.
+        pub tool_version: String,
+        /// CPU model string, captured from `/proc/cpuinfo` `model name`
+        /// on Linux. Empty on non-Linux or when unavailable.
+        pub cpu_model: String,
+        /// Kernel release from `uname -r`, or empty on non-Linux.
+        pub kernel_release: String,
+    }
+
+    /// Error type for the instruction-count helper.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum InstructionCountError {
+        /// `bench_id` is empty or contains `\0`.
+        InvalidBenchId,
+        /// The input string did not contain a `instructions:u` row.
+        MissingInstructionsRow,
+        /// A numeric column was found but could not be parsed.
+        UnparseableCount,
+        /// A write to the evidence directory failed.
+        IoError(String),
+    }
+
+    impl fmt::Display for InstructionCountError {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match self {
+                Self::InvalidBenchId => f.write_str("invalid bench_id for filesystem path"),
+                Self::MissingInstructionsRow => f.write_str("perf output did not include an instructions:u row"),
+                Self::UnparseableCount => f.write_str("perf instructions:u row had an unparseable count"),
+                Self::IoError(msg) => write!(f, "io error: {msg}"),
+            }
+        }
+    }
+
+    impl std::error::Error for InstructionCountError {}
+
+    /// Parse the count from a `perf stat -e instructions:u` capture.
+    ///
+    /// `perf` writes its report to **stderr**; the caller is
+    /// responsible for routing the right stream in. Accepted formats
+    /// (in priority order, first match wins):
+    ///
+    ///   1. `1,234,567      instructions:u            #    0.65  insn per cycle`
+    ///   2. `1234567  instructions:u`
+    ///   3. `1234567 instructions:u`
+    ///   4. `1.234e6  instructions:u`
+    ///
+    /// The function returns the first matching row's count. The
+    /// `instructions:u` event name is matched exactly (case-sensitive)
+    /// because some `perf` builds emit `instructions:u:` and `instructions:k`
+    /// for kernel-mode counters; we want user-mode only.
+    pub fn parse_perf_stat_count(raw: &str) -> Result<u64, InstructionCountError> {
+        for line in raw.lines() {
+            let trimmed = line.trim_start();
+            if !trimmed.starts_with(|c: char| c.is_ascii_digit() || c == '+' || c == '-') {
+                continue;
+            }
+            // First whitespace-delimited token is the count.
+            let mut chars = trimmed.chars();
+            let mut first = String::new();
+            for c in chars.by_ref() {
+                if c.is_whitespace() {
+                    break;
+                }
+                first.push(c);
+            }
+            // The remainder of the line (after trimming) must contain
+            // the event name. We accept only the exact `instructions:u`
+            // event — `instructions:u:` (with a trailing colon) is a
+            // scaled-counter event, and `instructions:k` is the
+            // kernel-mode counter, so we reject both. The `+1,234,567`
+            // delta prefix is consumed by `first`; `rest` is the event
+            // name.
+            let rest: String = chars.collect();
+            let rest = rest.trim_start();
+            if rest == "instructions:u" || rest.starts_with("instructions:u ") {
+                return parse_count_token(&first).ok_or(InstructionCountError::UnparseableCount);
+            }
+        }
+        Err(InstructionCountError::MissingInstructionsRow)
+    }
+
+    /// Parse a single numeric token. Accepts:
+    ///   - `1234567` (plain integer, possibly with `+`/`-` prefix)
+    ///   - `1,234,567` (locale-grouped, commas stripped)
+    ///   - `1.234e6` / `1.234E6` (scientific; mantissa must be 0)
+    fn parse_count_token(token: &str) -> Option<u64> {
+        let token = token.trim();
+        if token.is_empty() {
+            return None;
+        }
+        // Strip locale grouping commas. The token must be only digits,
+        // optional sign, and commas; otherwise we fall through to
+        // scientific-notation parsing.
+        if token.chars().all(|c| c.is_ascii_digit() || c == ',' || c == '+' || c == '-')
+            && token.chars().any(|c| c.is_ascii_digit())
+        {
+            let stripped: String = token.chars().filter(|c| *c != ',').collect();
+            return stripped.parse::<u64>().ok();
+        }
+        // Scientific notation. Rust's `f64::parse` is locale-independent
+        // for the ASCII subset, so `1.234e6` works directly. We require
+        // the result to be non-negative, finite, and integral.
+        let value: f64 = token.parse().ok()?;
+        if !value.is_finite() || value < 0.0 {
+            return None;
+        }
+        // Round-to-nearest-even is the default `f64 as u64` cast and
+        // is what `perf` would round to anyway when the count is
+        // already integer-valued.
+        Some(value.round() as u64)
+    }
+
+    /// Write a one-line JSONL record of the captured `InstructionCount`
+    /// and a sidecar `perf stat` capture under
+    /// `evidence/benchmark-logs/`. Mirrors the no-panic contract of the
+    /// percentile helper.
+    pub fn write_instruction_count_jsonl(
+        record: &InstructionCount,
+    ) -> Result<PathBuf, InstructionCountError> {
+        if record.bench_id.is_empty() || record.bench_id.contains('\0') {
+            return Err(InstructionCountError::InvalidBenchId);
+        }
+        let dir = evidence_dir();
+        if let Err(error) = fs::create_dir_all(&dir) {
+            return Err(InstructionCountError::IoError(format!(
+                "create_dir_all({}): {error}",
+                dir.display()
+            )));
+        }
+        let filename = format!(
+            "{}.instructions.jsonl",
+            sanitise_bench_id(&record.bench_id)
+        );
+        let path = dir.join(filename);
+        // Hand-rolled JSONL line — same rationale as
+        // `latency_p50_p95_p99::write_percentile_jsonl`.
+        let line = format!(
+            "{{\"bench_id\":\"{bench}\",\"event\":\"{event}\",\"count\":{count},\"tool_version\":\"{ver}\",\"cpu_model\":\"{cpu}\",\"kernel_release\":\"{kern}\"}}\n",
+            bench = json_escape(&record.bench_id),
+            event = json_escape(&record.event),
+            count = record.count,
+            ver = json_escape(&record.tool_version),
+            cpu = json_escape(&record.cpu_model),
+            kern = json_escape(&record.kernel_release),
+        );
+        match fs::write(&path, line) {
+            Ok(()) => Ok(path),
+            Err(error) => Err(InstructionCountError::IoError(format!(
+                "write({}): {error}",
+                path.display()
+            ))),
+        }
+    }
+
+    /// Write the raw `perf stat` capture alongside the JSONL record.
+    /// Always writes a UTF-8 file even when empty so consumers can
+    /// distinguish "no capture" from "capture failed".
+    pub fn write_perf_stat_capture(
+        bench_id: &str,
+        raw_capture: &str,
+    ) -> Result<PathBuf, InstructionCountError> {
+        if bench_id.is_empty() || bench_id.contains('\0') {
+            return Err(InstructionCountError::InvalidBenchId);
+        }
+        let dir = evidence_dir();
+        if let Err(error) = fs::create_dir_all(&dir) {
+            return Err(InstructionCountError::IoError(format!(
+                "create_dir_all({}): {error}",
+                dir.display()
+            )));
+        }
+        let filename = format!(
+            "{}.perf-stat.txt",
+            sanitise_bench_id(bench_id)
+        );
+        let path = dir.join(filename);
+        match fs::write(&path, raw_capture) {
+            Ok(()) => Ok(path),
+            Err(error) => Err(InstructionCountError::IoError(format!(
+                "write({}): {error}",
+                path.display()
+            ))),
+        }
+    }
+
+    /// Minimal JSON string escape (covers the characters that can
+    /// appear in a `perf stat` line: `"` and `\`).
+    fn json_escape(s: &str) -> String {
+        let mut out = String::with_capacity(s.len());
+        for c in s.chars() {
+            match c {
+                '"' => out.push_str("\\\""),
+                '\\' => out.push_str("\\\\"),
+                '\n' => out.push_str("\\n"),
+                '\r' => out.push_str("\\r"),
+                '\t' => out.push_str("\\t"),
+                c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
+                c => out.push(c),
+            }
+        }
+        out
+    }
+
+    // The binding regression tests for this module live in
+    // `crates/workspace_tests/tests/vb_a7t6_3_instruction_count_tests.rs`.
+    // Same rationale as `latency_p50_p95_p99`: the bench file is
+    // `harness = false`, so inline `#[cfg(test)] mod tests` would be
+    // dead code.
 }
 
 #[allow(clippy::arithmetic_side_effects)]
@@ -341,9 +971,10 @@ fn slot_and_transition_benches(c: &mut Criterion) {
             "fixture=small_workflow;surface=engine_step",
         ),
         |b| {
-            checked_iter(
+            latency_p50_p95_p99::checked_iter_with_percentiles(
                 b,
                 "bench_engine_step_once_save_const_single_transition",
+                bench_latency_budget_us(),
                 || {
                     if let Ok(plan) = workflow.as_ref() {
                         let mut frame = vb_core::new_run_frame(RunId::new(2), plan);
@@ -368,9 +999,10 @@ fn slot_and_transition_benches(c: &mut Criterion) {
             "fixture=small_workflow;surface=engine_run",
         ),
         |b| {
-            checked_iter(
+            latency_p50_p95_p99::checked_iter_with_percentiles(
                 b,
                 "engine_run_until_blocked_budget_10_small_workflow",
+                bench_latency_budget_us(),
                 || {
                     if let Ok(plan) = workflow.as_ref() {
                         let mut frame = vb_core::new_run_frame(RunId::new(3), plan);
@@ -610,13 +1242,18 @@ fn storage_and_ipc_benches(c: &mut Criterion) {
             "fixture=submit_run_payload;surface=ipc_decode",
         ),
         |b| {
-            checked_iter(b, "ipc_frame_decode", || {
-                if let Some(frame) = frame_bytes.as_ref() {
-                    decode_ipc_frame(black_box(frame.as_slice()))
-                } else {
-                    Err(vb_ipc::IpcError::HeaderDecodeFailed)
-                }
-            })
+            latency_p50_p95_p99::checked_iter_with_percentiles(
+                b,
+                "ipc_frame_decode",
+                bench_latency_budget_us(),
+                || {
+                    if let Some(frame) = frame_bytes.as_ref() {
+                        decode_ipc_frame(black_box(frame.as_slice()))
+                    } else {
+                        Err(vb_ipc::IpcError::HeaderDecodeFailed)
+                    }
+                },
+            )
         },
     );
     group.bench_function(

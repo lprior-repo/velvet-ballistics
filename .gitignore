@@ -59,6 +59,11 @@ callgrind.out.*
 mutants.out/
 mutants.out.old/
 mutants.out.*/
+# Large raw-samples sidecars emitted by the latency_p50_p95_p99 bench
+# helper. The .percentiles.jsonl files alongside them are the binding
+# evidence; the raw samples are a debugging artifact and exceed jj's
+# 1 MiB snapshot ceiling.
+evidence/benchmark-logs/*.raw-samples.txt
 kani-list.json
 /*.rlib
 .beads/moon-ci-output.md

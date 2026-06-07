@@ -271,6 +271,27 @@ path = "tests/vb_8mdp_7_resource_admission_props.rs"
 name = "vb_runtime_facade_restoration_properties"
 path = "tests/vb_runtime_facade_restoration_properties.rs"
 
+# === vb-a7t6.2 Section 39 p50/p95/p99 Percentile Math ===
+# Regression test for the `latency=p50-p95-p99-by-criterion` mislabel
+# fix. The bench helper lives in `benches/velvet_ballistics.rs` and
+# follows the contract from `contract.md` §2; this test pins the
+# nearest-rank math against a dependency-free reference implementation.
+[[test]]
+name = "vb_a7t6_2_percentile_math_tests"
+path = "tests/vb_a7t6_2_percentile_math_tests.rs"
+
+# === vb-a7t6.3 Section 39 instructions:u Capture ===
+# Regression test for the `instructions=not-collected` mislabel
+# fix. The bench helper lives in `benches/velvet_ballistics.rs`
+# and runs `perf stat -e instructions:u`; this test pins the
+# parser and JSONL writer against a dependency-free reference
+# implementation. Captured evidence files
+# (`*.instructions.jsonl`, `*.perf-stat.txt`) live under
+# `evidence/benchmark-logs/`.
+[[test]]
+name = "vb_a7t6_3_instruction_count_tests"
+path = "tests/vb_a7t6_3_instruction_count_tests.rs"
+
 [[bench]]
 name = "rtrb"
 harness = false
