@@ -133,11 +133,7 @@ pub mod latency_p50_p95_p99 {
             // product fits in usize on every supported target.
             let product = p_milli.saturating_mul(n);
             let idx = product / 10_000;
-            if idx >= n {
-                n - 1
-            } else {
-                idx
-            }
+            if idx >= n { n - 1 } else { idx }
         }
     }
 
@@ -317,7 +313,10 @@ pub mod latency_p50_p95_p99 {
         }
         let dir = evidence_dir();
         if let Err(error) = fs::create_dir_all(&dir) {
-            eprintln!("latency: failed to create evidence dir {}: {error}", dir.display());
+            eprintln!(
+                "latency: failed to create evidence dir {}: {error}",
+                dir.display()
+            );
             return Ok(PathBuf::new());
         }
         let filename = format!("{}.percentiles.jsonl", sanitise_bench_id(bench_id));
@@ -358,7 +357,10 @@ pub mod latency_p50_p95_p99 {
         }
         let dir = evidence_dir();
         if let Err(error) = fs::create_dir_all(&dir) {
-            eprintln!("latency: failed to create evidence dir {}: {error}", dir.display());
+            eprintln!(
+                "latency: failed to create evidence dir {}: {error}",
+                dir.display()
+            );
             return Ok(PathBuf::new());
         }
         let filename = format!("{}.raw-samples.txt", sanitise_bench_id(bench_id));
@@ -423,7 +425,9 @@ pub mod latency_p50_p95_p99 {
     /// canonical helper for the 3 existing scenarios where the sample list
     /// comes from a different source (e.g. a replay log or a synthetic
     /// generator).
-    pub fn p50_p95_p99_from_samples(samples: Vec<Duration>) -> Result<(Duration, Duration, Duration), LatencyError> {
+    pub fn p50_p95_p99_from_samples(
+        samples: Vec<Duration>,
+    ) -> Result<(Duration, Duration, Duration), LatencyError> {
         DurationDistribution::from_unsorted(samples).map(|d| d.p50_p95_p99())
     }
 
@@ -509,8 +513,12 @@ pub mod instruction_count {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             match self {
                 Self::InvalidBenchId => f.write_str("invalid bench_id for filesystem path"),
-                Self::MissingInstructionsRow => f.write_str("perf output did not include an instructions:u row"),
-                Self::UnparseableCount => f.write_str("perf instructions:u row had an unparseable count"),
+                Self::MissingInstructionsRow => {
+                    f.write_str("perf output did not include an instructions:u row")
+                }
+                Self::UnparseableCount => {
+                    f.write_str("perf instructions:u row had an unparseable count")
+                }
                 Self::IoError(msg) => write!(f, "io error: {msg}"),
             }
         }
@@ -576,7 +584,9 @@ pub mod instruction_count {
         // Strip locale grouping commas. The token must be only digits,
         // optional sign, and commas; otherwise we fall through to
         // scientific-notation parsing.
-        if token.chars().all(|c| c.is_ascii_digit() || c == ',' || c == '+' || c == '-')
+        if token
+            .chars()
+            .all(|c| c.is_ascii_digit() || c == ',' || c == '+' || c == '-')
             && token.chars().any(|c| c.is_ascii_digit())
         {
             let stripped: String = token.chars().filter(|c| *c != ',').collect();
@@ -612,10 +622,7 @@ pub mod instruction_count {
                 dir.display()
             )));
         }
-        let filename = format!(
-            "{}.instructions.jsonl",
-            sanitise_bench_id(&record.bench_id)
-        );
+        let filename = format!("{}.instructions.jsonl", sanitise_bench_id(&record.bench_id));
         let path = dir.join(filename);
         // Hand-rolled JSONL line — same rationale as
         // `latency_p50_p95_p99::write_percentile_jsonl`.
@@ -654,10 +661,7 @@ pub mod instruction_count {
                 dir.display()
             )));
         }
-        let filename = format!(
-            "{}.perf-stat.txt",
-            sanitise_bench_id(bench_id)
-        );
+        let filename = format!("{}.perf-stat.txt", sanitise_bench_id(bench_id));
         let path = dir.join(filename);
         match fs::write(&path, raw_capture) {
             Ok(()) => Ok(path),

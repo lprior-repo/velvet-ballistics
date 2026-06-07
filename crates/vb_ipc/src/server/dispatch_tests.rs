@@ -3,14 +3,14 @@
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::ShardConfig;
 
-use crate::server::IpcServer;
-use crate::server::IpcResponse;
-use crate::server::WorkflowResolutionError;
-use crate::server::WorkflowResolver;
 use crate::IpcCommand;
 use crate::IpcFrameHeader;
 use crate::IpcPayload;
 use crate::SubmitRunPayload;
+use crate::server::IpcResponse;
+use crate::server::IpcServer;
+use crate::server::WorkflowResolutionError;
+use crate::server::WorkflowResolver;
 
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
@@ -97,8 +97,12 @@ fn serve_ipc_with_resolver_forwards_to_poll_once_with_resolver() {
     let mut server = IpcServer::bind(&path).expect("bind should succeed");
     let mut runtime = make_runtime();
     server.set_test_poll_once_result(Ok(true));
-    let result =
-        super::dispatch::serve_ipc_with_resolver(&mut server, &mut runtime, Some(Duration::ZERO), None);
+    let result = super::dispatch::serve_ipc_with_resolver(
+        &mut server,
+        &mut runtime,
+        Some(Duration::ZERO),
+        None,
+    );
     assert_eq!(result, Ok(true));
 }
 
@@ -109,8 +113,12 @@ fn serve_ipc_with_resolver_returns_false_when_server_should_shutdown() {
     let mut server = IpcServer::bind(&path).expect("bind should succeed");
     let mut runtime = make_runtime();
     server.set_test_poll_once_result(Ok(false));
-    let result =
-        super::dispatch::serve_ipc_with_resolver(&mut server, &mut runtime, Some(Duration::ZERO), None);
+    let result = super::dispatch::serve_ipc_with_resolver(
+        &mut server,
+        &mut runtime,
+        Some(Duration::ZERO),
+        None,
+    );
     assert_eq!(result, Ok(false));
 }
 
@@ -121,8 +129,12 @@ fn serve_ipc_with_resolver_propagates_poll_once_errors() {
     let mut server = IpcServer::bind(&path).expect("bind should succeed");
     let mut runtime = make_runtime();
     server.set_test_poll_once_result(Err(crate::server::IpcServerError::TooManyClients));
-    let result =
-        super::dispatch::serve_ipc_with_resolver(&mut server, &mut runtime, Some(Duration::ZERO), None);
+    let result = super::dispatch::serve_ipc_with_resolver(
+        &mut server,
+        &mut runtime,
+        Some(Duration::ZERO),
+        None,
+    );
     assert!(matches!(
         result,
         Err(crate::server::IpcServerError::TooManyClients)

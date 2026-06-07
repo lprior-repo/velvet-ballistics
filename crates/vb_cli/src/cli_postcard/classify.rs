@@ -24,7 +24,10 @@ pub(crate) enum ClassifyError {
     /// The `kind` string is not a known `CliPostcardKind` variant.
     UnknownKind(String),
     /// The JSON shape does not deserialize into the typed report struct.
-    ShapeMismatch { kind: CliPostcardKind, reason: String },
+    ShapeMismatch {
+        kind: CliPostcardKind,
+        reason: String,
+    },
     /// Generic-body postcard encoding failed.
     GenericEncode(postcard::Error),
 }
@@ -67,41 +70,27 @@ fn classify_by_kind(
     envelope: &serde_json::Value,
 ) -> Result<CliPostcardPayload, ClassifyError> {
     match kind {
-        CliPostcardKind::ValidateReport => typed_or_generic::<ValidateReport, _>(
-            kind,
-            envelope,
-            CliPostcardPayload::Validate,
-        ),
-        CliPostcardKind::VerifyReport => typed_or_generic::<VerifyReport, _>(
-            kind,
-            envelope,
-            CliPostcardPayload::Verify,
-        ),
-        CliPostcardKind::ExplainReport => typed_or_generic::<ExplainReport, _>(
-            kind,
-            envelope,
-            CliPostcardPayload::Explain,
-        ),
-        CliPostcardKind::EventsReport => typed_or_generic::<EventsReport, _>(
-            kind,
-            envelope,
-            CliPostcardPayload::Events,
-        ),
-        CliPostcardKind::TraceReport => typed_or_generic::<TraceReport, _>(
-            kind,
-            envelope,
-            CliPostcardPayload::Trace,
-        ),
-        CliPostcardKind::ReplayReport => typed_or_generic::<ReplayReport, _>(
-            kind,
-            envelope,
-            CliPostcardPayload::Replay,
-        ),
-        CliPostcardKind::DiffReport => typed_or_generic::<DiffReport, _>(
-            kind,
-            envelope,
-            CliPostcardPayload::Diff,
-        ),
+        CliPostcardKind::ValidateReport => {
+            typed_or_generic::<ValidateReport, _>(kind, envelope, CliPostcardPayload::Validate)
+        }
+        CliPostcardKind::VerifyReport => {
+            typed_or_generic::<VerifyReport, _>(kind, envelope, CliPostcardPayload::Verify)
+        }
+        CliPostcardKind::ExplainReport => {
+            typed_or_generic::<ExplainReport, _>(kind, envelope, CliPostcardPayload::Explain)
+        }
+        CliPostcardKind::EventsReport => {
+            typed_or_generic::<EventsReport, _>(kind, envelope, CliPostcardPayload::Events)
+        }
+        CliPostcardKind::TraceReport => {
+            typed_or_generic::<TraceReport, _>(kind, envelope, CliPostcardPayload::Trace)
+        }
+        CliPostcardKind::ReplayReport => {
+            typed_or_generic::<ReplayReport, _>(kind, envelope, CliPostcardPayload::Replay)
+        }
+        CliPostcardKind::DiffReport => {
+            typed_or_generic::<DiffReport, _>(kind, envelope, CliPostcardPayload::Diff)
+        }
         _ => encode_generic(kind, envelope),
     }
 }
@@ -170,9 +159,7 @@ impl GenericEnvelopeRepr {
                 }
             }
             serde_json::Value::String(s) => Self::Str(s.clone()),
-            serde_json::Value::Array(arr) => {
-                Self::Array(arr.iter().map(Self::from_json).collect())
-            }
+            serde_json::Value::Array(arr) => Self::Array(arr.iter().map(Self::from_json).collect()),
             serde_json::Value::Object(map) => Self::Object(
                 map.iter()
                     .map(|(k, v)| (k.clone(), Self::from_json(v)))
@@ -195,8 +182,10 @@ impl GenericEnvelopeRepr {
                 serde_json::Value::Array(arr.into_iter().map(Self::into_json).collect())
             }
             Self::Object(entries) => {
-                let map: serde_json::Map<String, serde_json::Value> =
-                    entries.into_iter().map(|(k, v)| (k, v.into_json())).collect();
+                let map: serde_json::Map<String, serde_json::Value> = entries
+                    .into_iter()
+                    .map(|(k, v)| (k, v.into_json()))
+                    .collect();
                 serde_json::Value::Object(map)
             }
         }

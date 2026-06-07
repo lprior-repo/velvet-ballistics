@@ -87,8 +87,12 @@ enum ParseError {
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::MissingInstructionsRow => f.write_str("perf output did not include an instructions:u row"),
-            Self::UnparseableCount => f.write_str("perf instructions:u row had an unparseable count"),
+            Self::MissingInstructionsRow => {
+                f.write_str("perf output did not include an instructions:u row")
+            }
+            Self::UnparseableCount => {
+                f.write_str("perf instructions:u row had an unparseable count")
+            }
         }
     }
 }
@@ -200,7 +204,10 @@ fn parses_no_grouping_form() {
 
 #[test]
 fn parses_scientific_notation() {
-    assert_eq!(parse_perf_stat_count(PERF_STAT_SCIENTIFIC), Ok(1_234_000_000));
+    assert_eq!(
+        parse_perf_stat_count(PERF_STAT_SCIENTIFIC),
+        Ok(1_234_000_000)
+    );
 }
 
 #[test]
@@ -215,7 +222,10 @@ fn picks_instructions_u_over_other_event_rows() {
     // `instructions:u:`). The fixture lists `instructions:u:`
     // first and `instructions:u` second; the parser must reject
     // the colon-suffixed row and return the plain one.
-    assert_eq!(parse_perf_stat_count(PERF_STAT_MULTIPLE_EVENTS), Ok(1_234_567));
+    assert_eq!(
+        parse_perf_stat_count(PERF_STAT_MULTIPLE_EVENTS),
+        Ok(1_234_567)
+    );
 }
 
 #[test]
@@ -287,13 +297,19 @@ fn jsonl_record_round_trip_with_known_capture() {
             "{{\"bench_id\":\"{bench_id}\",\"event\":\"instructions:u\",\"count\":{count},\"tool_version\":\"perf 7.0.9-1\",\"cpu_model\":\"AMD Ryzen 7 7840U\",\"kernel_release\":\"6.6.0-1-amd64\"}}\n"
         )
     };
-    let a = record("bench_engine_step_once_save_const_single_transition", 2_847_901);
+    let a = record(
+        "bench_engine_step_once_save_const_single_transition",
+        2_847_901,
+    );
     assert!(a.contains("\"bench_id\":\"bench_engine_step_once_save_const_single_transition\""));
     assert!(a.contains("\"event\":\"instructions:u\""));
     assert!(a.contains("\"count\":2847901"));
     assert!(a.contains("\"tool_version\":\"perf 7.0.9-1\""));
 
-    let b = record("engine_run_until_blocked_budget_10_small_workflow", 3_124_508);
+    let b = record(
+        "engine_run_until_blocked_budget_10_small_workflow",
+        3_124_508,
+    );
     assert!(b.contains("\"count\":3124508"));
 
     let c = record("ipc_frame_decode", 1_901_442);

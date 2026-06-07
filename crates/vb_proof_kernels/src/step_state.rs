@@ -548,10 +548,7 @@ mod kani_step_state_harnesses {
         // one next state (itself).
         for terminal in terminal_states() {
             let next = next_states(terminal);
-            kani::assert(
-                next.len() == 1,
-                "all terminal states are self-only",
-            );
+            kani::assert(next.len() == 1, "all terminal states are self-only");
             kani::assert(
                 next.contains(&terminal),
                 "terminal should be in its own next_states",

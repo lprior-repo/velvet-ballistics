@@ -15,7 +15,8 @@ use crate::ids::{
 use crate::value::{ConstValue, SlotValue, Taint};
 use crate::value_store::ValueStore;
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, SlotBranch, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, SlotBranch,
+    WorkflowParts,
 };
 
 fn test_store() -> ValueStore {
@@ -173,7 +174,11 @@ fn set_const_writes_constant_to_output_slot_and_marks_succeeded() -> Result<(), 
     let result = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
     ensure_equal(result, EngineSignal::Continue)?;
-    ensure_equal(*run.read_slot(SlotIdx::new(0)).map_err(|error| error.to_string())?, SlotValue::I64(777))?;
+    ensure_equal(
+        *run.read_slot(SlotIdx::new(0))
+            .map_err(|error| error.to_string())?,
+        SlotValue::I64(777),
+    )?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Succeeded))?;
     Ok(())
 }
@@ -228,8 +233,15 @@ fn copy_duplicates_source_slot_value_and_taint_to_output() -> Result<(), String>
     let result = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
     ensure_equal(result, EngineSignal::Continue)?;
-    ensure_equal(*run.read_slot(SlotIdx::new(0)).map_err(|error| error.to_string())?, SlotValue::Bool(true))?;
-    ensure_equal(run.read_taint(SlotIdx::new(0)), Ok(Taint::DerivedFromSecret))?;
+    ensure_equal(
+        *run.read_slot(SlotIdx::new(0))
+            .map_err(|error| error.to_string())?,
+        SlotValue::Bool(true),
+    )?;
+    ensure_equal(
+        run.read_taint(SlotIdx::new(0)),
+        Ok(Taint::DerivedFromSecret),
+    )?;
     Ok(())
 }
 
@@ -287,7 +299,11 @@ fn eval_expr_adds_two_constants_and_stores_result_in_output() -> Result<(), Stri
     let result = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
     ensure_equal(result, EngineSignal::Continue)?;
-    ensure_equal(*run.read_slot(SlotIdx::new(0)).map_err(|error| error.to_string())?, SlotValue::I64(25))?;
+    ensure_equal(
+        *run.read_slot(SlotIdx::new(0))
+            .map_err(|error| error.to_string())?,
+        SlotValue::I64(25),
+    )?;
     Ok(())
 }
 
@@ -346,7 +362,10 @@ fn build_object_creates_handle_with_fields_and_taint() -> Result<(), String> {
     let result = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
     ensure_equal(result, EngineSignal::Continue)?;
-    match run.read_slot(SlotIdx::new(1)).map_err(|error| error.to_string())? {
+    match run
+        .read_slot(SlotIdx::new(1))
+        .map_err(|error| error.to_string())?
+    {
         SlotValue::Object(_) => Ok(()),
         other => Err(format!("expected Object handle, got {other:?}")),
     }
@@ -407,7 +426,10 @@ fn build_list_creates_handle_with_elements_and_taint() -> Result<(), String> {
     let result = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
     ensure_equal(result, EngineSignal::Continue)?;
-    match run.read_slot(SlotIdx::new(1)).map_err(|error| error.to_string())? {
+    match run
+        .read_slot(SlotIdx::new(1))
+        .map_err(|error| error.to_string())?
+    {
         SlotValue::List(_) => Ok(()),
         other => Err(format!("expected List handle, got {other:?}")),
     }
@@ -512,7 +534,10 @@ fn finish_returns_finished_signal_with_result_value_and_taint() -> Result<(), St
     let _s0 = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
     let result = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
-    ensure_equal(result, EngineSignal::Finished(SlotValue::I64(99), Taint::Clean))?;
+    ensure_equal(
+        result,
+        EngineSignal::Finished(SlotValue::I64(99), Taint::Clean),
+    )?;
     ensure_equal(run.step_state(StepIdx::new(1)), Ok(StepState::Succeeded))?;
     Ok(())
 }
@@ -916,7 +941,10 @@ fn all_steps_in_chain_transition_correctly_through_completion() -> Result<(), St
     ensure_equal(run.step_state(StepIdx::new(2)), Ok(StepState::Pending))?;
 
     let s2 = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
-    ensure_equal(s2, EngineSignal::Finished(SlotValue::I64(200), Taint::Clean))?;
+    ensure_equal(
+        s2,
+        EngineSignal::Finished(SlotValue::I64(200), Taint::Clean),
+    )?;
     ensure_equal(run.step_state(StepIdx::new(2)), Ok(StepState::Succeeded))?;
     Ok(())
 }
@@ -947,7 +975,10 @@ fn signal_finished_maps_step_state_to_succeeded() -> Result<(), String> {
 
     let _ = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
     let result = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
-    ensure_equal(result, EngineSignal::Finished(SlotValue::I64(6), Taint::Clean))?;
+    ensure_equal(
+        result,
+        EngineSignal::Finished(SlotValue::I64(6), Taint::Clean),
+    )?;
     ensure_equal(run.step_state(StepIdx::new(1)), Ok(StepState::Succeeded))?;
     Ok(())
 }
@@ -996,7 +1027,13 @@ fn do_then_finish_workflow() -> Result<CompiledWorkflow, String> {
     .map_err(|error| error.to_string())
 }
 
-fn make_ticket(run: RunId, step: StepIdx, seq: u32, action: ActionId, attempt: u16) -> crate::action::ActionTicket {
+fn make_ticket(
+    run: RunId,
+    step: StepIdx,
+    seq: u32,
+    action: ActionId,
+    attempt: u16,
+) -> crate::action::ActionTicket {
     crate::action::ActionTicket {
         run,
         step,
@@ -1029,7 +1066,11 @@ fn resume_action_completion_writes_output_and_advances_pc() -> Result<(), String
     .map_err(|error| error.to_string())?;
 
     ensure_equal(signal, EngineSignal::Continue)?;
-    ensure_equal(*run.read_slot(SlotIdx::new(0)).map_err(|error| error.to_string())?, SlotValue::I64(42))?;
+    ensure_equal(
+        *run.read_slot(SlotIdx::new(0))
+            .map_err(|error| error.to_string())?,
+        SlotValue::I64(42),
+    )?;
     ensure_equal(run.pc(), StepIdx::new(1))?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Succeeded))?;
     Ok(())
@@ -1061,7 +1102,8 @@ fn resume_action_completion_increments_executed_counter() -> Result<(), String> 
 }
 
 #[test]
-fn resume_action_completion_journal_has_completed_variant_with_correct_fields() -> Result<(), String> {
+fn resume_action_completion_journal_has_completed_variant_with_correct_fields() -> Result<(), String>
+{
     let workflow = do_then_finish_workflow()?;
     let mut run = test_frame(RunId::new(242), &workflow)?;
     let mut store = test_store();
@@ -1263,10 +1305,12 @@ fn mark_running_twice_is_idempotent() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(250), &workflow)?;
 
-    run.mark_running(StepIdx::new(0)).map_err(|error| error.to_string())?;
+    run.mark_running(StepIdx::new(0))
+        .map_err(|error| error.to_string())?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Running))?;
 
-    run.mark_running(StepIdx::new(0)).map_err(|error| error.to_string())?;
+    run.mark_running(StepIdx::new(0))
+        .map_err(|error| error.to_string())?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Running))?;
     Ok(())
 }
@@ -1277,11 +1321,14 @@ fn mark_succeeded_twice_is_idempotent() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(251), &workflow)?;
 
-    run.mark_running(StepIdx::new(0)).map_err(|error| error.to_string())?;
-    run.mark_succeeded(StepIdx::new(0)).map_err(|error| error.to_string())?;
+    run.mark_running(StepIdx::new(0))
+        .map_err(|error| error.to_string())?;
+    run.mark_succeeded(StepIdx::new(0))
+        .map_err(|error| error.to_string())?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Succeeded))?;
 
-    run.mark_succeeded(StepIdx::new(0)).map_err(|error| error.to_string())?;
+    run.mark_succeeded(StepIdx::new(0))
+        .map_err(|error| error.to_string())?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Succeeded))?;
     Ok(())
 }
@@ -1292,11 +1339,14 @@ fn mark_failed_twice_is_idempotent() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(252), &workflow)?;
 
-    run.mark_running(StepIdx::new(0)).map_err(|error| error.to_string())?;
-    run.mark_failed(StepIdx::new(0)).map_err(|error| error.to_string())?;
+    run.mark_running(StepIdx::new(0))
+        .map_err(|error| error.to_string())?;
+    run.mark_failed(StepIdx::new(0))
+        .map_err(|error| error.to_string())?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Failed))?;
 
-    run.mark_failed(StepIdx::new(0)).map_err(|error| error.to_string())?;
+    run.mark_failed(StepIdx::new(0))
+        .map_err(|error| error.to_string())?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Failed))?;
     Ok(())
 }
@@ -1307,17 +1357,26 @@ fn mark_failed_twice_is_idempotent() -> Result<(), String> {
 
 #[test]
 fn pending_to_waiting_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(StepState::Pending, StepState::Waiting));
+    assert!(!is_valid_step_state_transition(
+        StepState::Pending,
+        StepState::Waiting
+    ));
 }
 
 #[test]
 fn pending_to_asking_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(StepState::Pending, StepState::Asking));
+    assert!(!is_valid_step_state_transition(
+        StepState::Pending,
+        StepState::Asking
+    ));
 }
 
 #[test]
 fn running_to_pending_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(StepState::Running, StepState::Pending));
+    assert!(!is_valid_step_state_transition(
+        StepState::Running,
+        StepState::Pending
+    ));
 }
 
 #[test]
@@ -1326,63 +1385,99 @@ fn succeeded_to_running_is_invalid_transition() {
     // transitions back to running. Loop body reentry uses the explicit
     // Succeeded->Pending admission path in RunFrame::mark_pending before
     // mark_running; the direct Succeeded->Running edge is invalid.
-    assert!(!is_valid_step_state_transition(StepState::Succeeded, StepState::Running));
+    assert!(!is_valid_step_state_transition(
+        StepState::Succeeded,
+        StepState::Running
+    ));
 }
 
 #[test]
 fn succeeded_to_pending_is_invalid_direct_transition() {
     // Succeeded -> Pending is admitted only by RunFrame::mark_pending.
-    assert!(!is_valid_step_state_transition(StepState::Succeeded, StepState::Pending));
+    assert!(!is_valid_step_state_transition(
+        StepState::Succeeded,
+        StepState::Pending
+    ));
 }
 
 #[test]
 fn succeeded_to_waiting_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(StepState::Succeeded, StepState::Waiting));
+    assert!(!is_valid_step_state_transition(
+        StepState::Succeeded,
+        StepState::Waiting
+    ));
 }
 
 #[test]
 fn failed_to_running_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(StepState::Failed, StepState::Running));
+    assert!(!is_valid_step_state_transition(
+        StepState::Failed,
+        StepState::Running
+    ));
 }
 
 #[test]
 fn failed_to_waiting_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(StepState::Failed, StepState::Waiting));
+    assert!(!is_valid_step_state_transition(
+        StepState::Failed,
+        StepState::Waiting
+    ));
 }
 
 #[test]
 fn waiting_to_pending_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(StepState::Waiting, StepState::Pending));
+    assert!(!is_valid_step_state_transition(
+        StepState::Waiting,
+        StepState::Pending
+    ));
 }
 
 #[test]
 fn cancelled_to_running_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(StepState::Cancelled, StepState::Running));
+    assert!(!is_valid_step_state_transition(
+        StepState::Cancelled,
+        StepState::Running
+    ));
 }
 
 #[test]
 fn pending_to_running_is_valid_transition() {
-    assert!(is_valid_step_state_transition(StepState::Pending, StepState::Running));
+    assert!(is_valid_step_state_transition(
+        StepState::Pending,
+        StepState::Running
+    ));
 }
 
 #[test]
 fn running_to_succeeded_is_valid_transition() {
-    assert!(is_valid_step_state_transition(StepState::Running, StepState::Succeeded));
+    assert!(is_valid_step_state_transition(
+        StepState::Running,
+        StepState::Succeeded
+    ));
 }
 
 #[test]
 fn running_to_failed_is_valid_transition() {
-    assert!(is_valid_step_state_transition(StepState::Running, StepState::Failed));
+    assert!(is_valid_step_state_transition(
+        StepState::Running,
+        StepState::Failed
+    ));
 }
 
 #[test]
 fn running_to_waiting_is_valid_transition() {
-    assert!(is_valid_step_state_transition(StepState::Running, StepState::Waiting));
+    assert!(is_valid_step_state_transition(
+        StepState::Running,
+        StepState::Waiting
+    ));
 }
 
 #[test]
 fn running_to_asking_is_valid_transition() {
-    assert!(is_valid_step_state_transition(StepState::Running, StepState::Asking));
+    assert!(is_valid_step_state_transition(
+        StepState::Running,
+        StepState::Asking
+    ));
 }
 
 #[test]
@@ -1398,8 +1493,10 @@ fn same_state_idempotent_is_always_valid() {
         StepState::Cancelled,
     ];
     for state in all_states {
-        assert!(is_valid_step_state_transition(state, state),
-            "idempotent transition should be valid for {state:?}");
+        assert!(
+            is_valid_step_state_transition(state, state),
+            "idempotent transition should be valid for {state:?}"
+        );
     }
 }
 
@@ -1409,12 +1506,17 @@ fn invalid_transition_rejected_in_run_frame_mark() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(260), &workflow)?;
 
-    run.mark_running(StepIdx::new(0)).map_err(|error| error.to_string())?;
+    run.mark_running(StepIdx::new(0))
+        .map_err(|error| error.to_string())?;
     let result = run.mark_pending(StepIdx::new(0));
 
     match result {
-        Err(EngineError::InternalInvariantViolation { reason: "invalid_state_transition" }) => Ok(()),
-        other => Err(format!("expected InternalInvariantViolation, got {other:?}")),
+        Err(EngineError::InternalInvariantViolation {
+            reason: "invalid_state_transition",
+        }) => Ok(()),
+        other => Err(format!(
+            "expected InternalInvariantViolation, got {other:?}"
+        )),
     }
 }
 
@@ -1424,14 +1526,20 @@ fn succeeded_to_running_rejected_in_run_frame() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(261), &workflow)?;
 
-    run.mark_running(StepIdx::new(0)).map_err(|error| error.to_string())?;
-    run.mark_succeeded(StepIdx::new(0)).map_err(|error| error.to_string())?;
+    run.mark_running(StepIdx::new(0))
+        .map_err(|error| error.to_string())?;
+    run.mark_succeeded(StepIdx::new(0))
+        .map_err(|error| error.to_string())?;
 
     let result = run.mark_running(StepIdx::new(0));
 
     match result {
-        Err(EngineError::InternalInvariantViolation { reason: "invalid_state_transition" }) => Ok(()),
-        other => Err(format!("expected InternalInvariantViolation, got {other:?}")),
+        Err(EngineError::InternalInvariantViolation {
+            reason: "invalid_state_transition",
+        }) => Ok(()),
+        other => Err(format!(
+            "expected InternalInvariantViolation, got {other:?}"
+        )),
     }
 }
 
@@ -1460,7 +1568,10 @@ fn empty_workflow_parts_rejected_at_try_from_parts() -> Result<(), String> {
     match result {
         Err(ref e) => {
             let msg = format!("{e}");
-            if msg.contains("EmptyNodes") || msg.contains("empty") || msg.contains("at least one node") {
+            if msg.contains("EmptyNodes")
+                || msg.contains("empty")
+                || msg.contains("at least one node")
+            {
                 Ok(())
             } else {
                 Err(format!("expected EmptyNodes validation error, got {msg}"))
@@ -1494,7 +1605,9 @@ fn run_frame_creation_rejects_zero_step_count() -> Result<(), String> {
 
     match result {
         Err(EngineError::InvalidCompiledWorkflow { reason }) if reason.contains("zero") => Ok(()),
-        other => Err(format!("expected InvalidCompiledWorkflow with zero reason, got {other:?}")),
+        other => Err(format!(
+            "expected InvalidCompiledWorkflow with zero reason, got {other:?}"
+        )),
     }
 }
 
@@ -1681,7 +1794,8 @@ fn step_budget_run_until_blocked_exhausts_at_limit() -> Result<(), String> {
     let mut run = test_frame(RunId::new(280), &workflow)?;
     let mut store = test_store();
 
-    let result = crate::engine::run_until_blocked(&workflow, &mut run, StepBudget::new(1), &mut store);
+    let result =
+        crate::engine::run_until_blocked(&workflow, &mut run, StepBudget::new(1), &mut store);
 
     ensure_equal(result, Ok(EngineSignal::StepBudgetExhausted))?;
     ensure_equal(run.executed(), 1)?;
@@ -1695,7 +1809,7 @@ fn step_budget_run_until_blocked_exhausts_at_limit() -> Result<(), String> {
 #[cfg(kani)]
 mod kani_boundedness {
     use crate::EngineSignal;
-    use crate::engine::{step_once, resume_action_completion, new_run_frame};
+    use crate::engine::{new_run_frame, resume_action_completion, step_once};
     use crate::errors::EngineError;
     use crate::frame::StepState;
     use crate::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
@@ -1821,8 +1935,12 @@ mod kani_boundedness {
         };
 
         let result = resume_action_completion(
-            &plan, &mut run, ticket,
-            SlotIdx::new(0), SlotValue::I64(0), Taint::Clean,
+            &plan,
+            &mut run,
+            ticket,
+            SlotIdx::new(0),
+            SlotValue::I64(0),
+            Taint::Clean,
         );
         let _ = result;
     }

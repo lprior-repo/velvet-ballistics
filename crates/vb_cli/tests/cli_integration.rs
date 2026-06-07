@@ -3363,7 +3363,11 @@ fn verify_artifact_section_is_present(section: &cli_postcard::VerifyArtifactSect
 }
 
 fn verify_replay_section_is_present(section: &cli_postcard::VerifyReplaySection) -> bool {
-    let _ = (&section.gates_passed, &section.gate_sequence, section.replay_safe);
+    let _ = (
+        &section.gates_passed,
+        &section.gate_sequence,
+        section.replay_safe,
+    );
     true
 }
 

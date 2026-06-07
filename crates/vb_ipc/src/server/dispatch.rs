@@ -64,4 +64,3 @@ pub fn dispatch_command_with_resolver(
         IpcCommand::UnknownCommand(_) => IpcResponse::BadRequest,
     }
 }
-

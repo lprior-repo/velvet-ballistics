@@ -146,7 +146,9 @@ pub(crate) fn write_json_pretty_stdout(value: &serde_json::Value) -> Result<(), 
 /// dedicated typed report fall back to `CliPostcardPayload::Generic` with a
 /// postcard-encoded typed body (never raw JSON UTF-8 bytes, never
 /// `serde_json::Value`).
-fn encode_typed_postcard_frame(payload: &crate::cli_postcard::CliPostcardPayload) -> Result<Vec<u8>, OutputError> {
+fn encode_typed_postcard_frame(
+    payload: &crate::cli_postcard::CliPostcardPayload,
+) -> Result<Vec<u8>, OutputError> {
     let postcard_payload =
         postcard::to_allocvec(payload).map_err(OutputError::PostcardSerialize)?;
     crate::cli_postcard::encode_postcard(

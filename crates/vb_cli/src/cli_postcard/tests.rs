@@ -212,7 +212,10 @@ fn typed_diagnostic_payload_round_trips() {
             assert_eq!(report.code, CliExitCode::ValidationFailed);
             assert_eq!(report.kind, CliPostcardKind::DiagnosticReport);
             assert_eq!(report.message, "boom");
-            assert_eq!(report.schema_version.as_str(), "velvet-ballistics/cli-output/v1");
+            assert_eq!(
+                report.schema_version.as_str(),
+                "velvet-ballistics/cli-output/v1"
+            );
         }
         other => panic!("expected Diagnostic variant, got {other:?}"),
     }
@@ -284,7 +287,10 @@ fn typed_verify_payload_round_trips() {
             assert_eq!(decoded_report.profile, "strict");
             assert_eq!(decoded_report.digest, "abc123");
             assert_eq!(decoded_report.node_count, 7);
-            assert_eq!(decoded_report.checks, vec!["g0".to_string(), "g1".to_string()]);
+            assert_eq!(
+                decoded_report.checks,
+                vec!["g0".to_string(), "g1".to_string()]
+            );
             assert!(decoded_report.warnings.is_empty());
             assert_eq!(decoded_report.artifact.source_digest_hex, "src");
             assert_eq!(decoded_report.artifact.ir_digest_hex, "ir");
@@ -509,7 +515,10 @@ fn classify_envelope_routes_validate_report_to_typed_variant() {
             assert!(report.success);
             assert_eq!(report.status, "valid");
             assert_eq!(report.exit_code, 0);
-            assert_eq!(report.schema_version.as_str(), "velvet-ballistics/cli-output/v1");
+            assert_eq!(
+                report.schema_version.as_str(),
+                "velvet-ballistics/cli-output/v1"
+            );
         }
         other => panic!("expected Validate variant, got {other:?}"),
     }
@@ -618,20 +627,44 @@ fn from_envelope_kind_impl_for_envelope_kind_covers_all_variants() {
     // every `cli_envelope::Kind` variant must map to a typed discriminant
     // without panic or fallback.
     let cases: &[(EnvelopeKind, CliPostcardKind)] = &[
-        (EnvelopeKind::VerificationReport, CliPostcardKind::VerificationReport),
-        (EnvelopeKind::DiagnosticReport, CliPostcardKind::DiagnosticReport),
-        (EnvelopeKind::WorkflowExplanation, CliPostcardKind::WorkflowExplanation),
+        (
+            EnvelopeKind::VerificationReport,
+            CliPostcardKind::VerificationReport,
+        ),
+        (
+            EnvelopeKind::DiagnosticReport,
+            CliPostcardKind::DiagnosticReport,
+        ),
+        (
+            EnvelopeKind::WorkflowExplanation,
+            CliPostcardKind::WorkflowExplanation,
+        ),
         (EnvelopeKind::WorkflowGraph, CliPostcardKind::WorkflowGraph),
-        (EnvelopeKind::SimulationReport, CliPostcardKind::SimulationReport),
-        (EnvelopeKind::SubmitRunResult, CliPostcardKind::SubmitRunResult),
+        (
+            EnvelopeKind::SimulationReport,
+            CliPostcardKind::SimulationReport,
+        ),
+        (
+            EnvelopeKind::SubmitRunResult,
+            CliPostcardKind::SubmitRunResult,
+        ),
         (EnvelopeKind::RunInspection, CliPostcardKind::RunInspection),
         (EnvelopeKind::RunEvents, CliPostcardKind::RunEvents),
         (EnvelopeKind::ReplayReport, CliPostcardKind::ReplayReport),
-        (EnvelopeKind::IncidentReport, CliPostcardKind::IncidentReport),
+        (
+            EnvelopeKind::IncidentReport,
+            CliPostcardKind::IncidentReport,
+        ),
         (EnvelopeKind::ActionList, CliPostcardKind::ActionList),
-        (EnvelopeKind::ActionDescription, CliPostcardKind::ActionDescription),
+        (
+            EnvelopeKind::ActionDescription,
+            CliPostcardKind::ActionDescription,
+        ),
         (EnvelopeKind::DoctorReport, CliPostcardKind::DoctorReport),
-        (EnvelopeKind::AiContextPacket, CliPostcardKind::AiContextPacket),
+        (
+            EnvelopeKind::AiContextPacket,
+            CliPostcardKind::AiContextPacket,
+        ),
         (EnvelopeKind::CliStatus, CliPostcardKind::CliStatus),
         (EnvelopeKind::SystemStatus, CliPostcardKind::SystemStatus),
         (EnvelopeKind::AgentContext, CliPostcardKind::AgentContext),
@@ -671,9 +704,7 @@ fn typed_postcard_wire_format_carries_typed_bool_not_string() {
     let payload = CliPostcardPayload::Validate(report);
     let bytes = postcard::to_allocvec(&payload).expect("typed validate must encode");
 
-    let contains_true_substring = bytes
-        .windows(b"true".len())
-        .any(|window| window == b"true");
+    let contains_true_substring = bytes.windows(b"true".len()).any(|window| window == b"true");
     assert!(
         !contains_true_substring,
         "postcard-encoded bool=true must NOT carry the ASCII substring b\"true\"; \

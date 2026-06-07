@@ -32,11 +32,7 @@ fn nearest_rank_index(p_milli: u16, n: usize) -> usize {
     }
     let p = p_milli as usize;
     let idx = (p.saturating_mul(n)) / 10_000;
-    if idx >= n {
-        n - 1
-    } else {
-        idx
-    }
+    if idx >= n { n - 1 } else { idx }
 }
 
 /// Reference percentile lookup: sort a `Vec<Duration>` and return the
@@ -95,7 +91,10 @@ fn p99_clamps_to_n_minus_1_when_floor_exceeds_n_minus_1() {
     let mut samples: Vec<Duration> = (1..=10_u64).map(Duration::from_nanos).collect();
     samples.sort_unstable();
     assert_eq!(percentile_sorted(&samples, 9_900), Duration::from_nanos(10));
-    assert_eq!(percentile_sorted(&samples, 10_000), Duration::from_nanos(10));
+    assert_eq!(
+        percentile_sorted(&samples, 10_000),
+        Duration::from_nanos(10)
+    );
     // p_milli = 5_000 with n = 10 → idx = 5, samples[5] = 6ns.
     assert_eq!(percentile_sorted(&samples, 5_000), Duration::from_nanos(6));
     // p_milli = 9_500 with n = 10 → idx = 9, samples[9] = 10ns.
