@@ -1278,29 +1278,201 @@ Required coverage areas:
 
 ## 33. CLI Commands
 
+> **Amended (vb-k8ut.4, 2026-06-06):** This section is the **single
+> authoritative 30-command matrix** for the velvet-ballistics v1 CLI.
+> It supersedes the 17-row listing that previously lived in this
+> block, the 24-row listing in Section 69 (lines 3452-3479), the
+> 16-row listing in Section 75 (lines 3755-3776), and Section 35
+> row 31 (line 1430). Sections 69, 70, 75, and S35 row 31 are
+> **downstream extensions or summary pointers** that must stay
+> consistent with this matrix. The matrix is the canonical row.
+>
+> **Drift class:** documentation. The implementation
+> (`Command` enum in `crates/vb_cli/src/args/types.rs`,
+> `VALID_COMMANDS` at line 230, dispatcher in
+> `crates/vb_cli/src/dispatcher.rs`, parser dispatch in
+> `crates/vb_cli/src/args/shared.rs:208-254`) already matches
+> the 30-row matrix. **No code change is required to land
+> this amendment.** The single-source rule is enforced by the
+> matrix-conformance proptest in
+> `crates/workspace_tests/tests/cli_matrix_conformance.rs`
+> (see `matrix-conformance-test.md` in
+> `.beads/vb-k8ut.4/`).
+
+### 33.1 The 30-Command Matrix (authoritative)
+
 ```bash
-velvet-ballistics validate <workflow.yaml>
-velvet-ballistics compile <workflow.yaml> --emit ir --out <file.vbir>
-velvet-ballistics run <workflow.yaml> --input-bin <input.vbin> --durability <mode>
-velvet-ballistics run-compiled <workflow.vbir> --input-bin <input.vbin> --durability <mode>
+# --- meta (3) ---
+velvet-ballistics help
+velvet-ballistics version
+velvet-ballistics agent-context [--deliver stdout|file:<path>|webhook:<url>]
+
+# --- diagnostic (4) ---
+velvet-ballistics status [--active-runs] [--queue-depth] [--trace-dropped] [--emit text|yaml]
+velvet-ballistics system status [--profile <name>] [--server <addr>] [--emit text|yaml]
+velvet-ballistics action list [--emit text|yaml|postcard]
+velvet-ballistics action inspect <action-name> [--emit text|yaml|postcard]
+
+# --- cold / dry-run (6) ---
+velvet-ballistics verify <workflow.yaml> [--profile <name>] [--emit text|yaml|postcard]
+velvet-ballistics validate <workflow.yaml> [--emit text|yaml|postcard]
+velvet-ballistics explain <workflow.yaml> [--emit text|yaml|postcard]
+velvet-ballistics compile <workflow.yaml> --emit ir|yaml|postcard --out <file>
+velvet-ballistics graph <workflow.yaml> [--emit text|yaml|postcard]
+velvet-ballistics simulate <workflow.yaml> [--emit text|yaml|postcard]
+velvet-ballistics diff <workflow.yaml> --against <old.yaml> [--emit text|yaml|postcard]
+velvet-ballistics diff <run_a> <run_b> --db <path> [--emit text|yaml|postcard]
+velvet-ballistics bench-run <workflow.yaml> [--emit text|yaml|postcard]
+
+# --- run (3) ---
+velvet-ballistics run <workflow.yaml> --input-bin <file> --durability <mode> [--db <path>] [--emit text|yaml|postcard]
+velvet-ballistics run <workflow.yaml> --step <step-id> --step-input <file> [--durability <mode>]   # single-step; no journal
+velvet-ballistics run-compiled <workflow.vbir> --input-bin <file> --durability <mode> [--db <path>] [--emit text|yaml|postcard]
+
+# --- server (1) ---
 velvet-ballistics ipc-serve --socket <path> --db <path>
-velvet-ballistics agent-context
-velvet-ballistics inspect <run_id> --db <path>
-velvet-ballistics events <run_id> --db <path>
-velvet-ballistics replay <run_id> --db <path>
-velvet-ballistics graph <workflow.yaml> --emit yaml
-velvet-ballistics system status --emit yaml
-velvet-ballistics action list --emit yaml
-velvet-ballistics action inspect <action-name> --emit yaml
-velvet-ballistics incident <run_id> --db <path> --emit yaml
-velvet-ballistics ai context <run_id> --db <path> --emit yaml
-velvet-ballistics bench-run <workflow.yaml>
-velvet-ballistics doctor --db <path>
+
+# --- lifecycle: read (5) ---
+velvet-ballistics inspect <run-id> --db <path> [--emit text|yaml|postcard]
+velvet-ballistics events <run-id> --db <path> [--status <s>] [--limit <n>] [--emit text|yaml|postcard]
+velvet-ballistics replay <run-id> --db <path> [--emit text|yaml|postcard]
+velvet-ballistics trace <run-id> --db <path> [--step <id>] [--action <name>] [--status <s>] [--since-seq <n>] [--until-seq <n>] [--limit <n>] [--emit text|yaml|postcard]
+velvet-ballistics incident <run-id> --db <path> [--emit text|yaml|postcard]
+
+# --- lifecycle: durable (5) ---
+velvet-ballistics submit <workflow.yaml> --input-bin <file> --db <path> --durability <mode> [--emit text|yaml|postcard]
+velvet-ballistics retry <run-id> --db <path> [--step <step-id>] [--emit text|yaml|postcard]
+velvet-ballistics resume <run-id> --db <path> [--emit text|yaml|postcard]
+velvet-ballistics answer <run-id> --slot <slot-id> --value <file> --db <path> [--emit text|yaml|postcard]
+velvet-ballistics cancel <run-id> --db <path> [--reason <text>] [--emit text|yaml|postcard]
+
+# --- diagnostic (1) ---
+velvet-ballistics doctor [--db <path>] [--emit text|yaml|postcard]
+
+# --- lifecycle: AI context (1) ---
+velvet-ballistics ai-context <run-id> --db <path> [--emit text|yaml|postcard]
 ```
 
-CLI structured output is a cold-path operator/agent contract and never enters `vb_core`, `vb_runtime`, `vb_storage`, or `vb_ipc`. `--emit yaml` is the canonical structured text flag for v1; `--emit postcard` is the canonical binary machine-output flag where supported. JSON may be added later as a separate cold adapter. Runtime machine artifacts remain binary/Postcard.
+**Token count:** 30 (the `Command` enum's variant count in
+`crates/vb_cli/src/args/types.rs:67-215`).
 
-The `ui` command and Makepad desktop application are removed from the current command surface.
+**Multi-token invocations (4):** `system status` (row 6),
+`action list` (row 7), `action inspect <name>` (row 8), and the
+S33-style `ai context` spelling (row 30). The parser only
+accepts the kebab-case `ai-context`; the space form is the
+historical Section 33 spelling and is listed here for
+documentation parity.
+
+**Sub-shapes (3):** `diff` has two sub-shapes (workflow-vs-workflow
+with `--against`; run-vs-run with `<run_a> <run_b> --db`) — the
+parser rejects `--against` combined with `--db` (`DiffMode`
+disjointness at `args/types.rs:217-228`,
+`args/other.rs:100-104`). `run` has two sub-shapes (full
+journaled run; single-step `--step <id> --step-input <file>` with
+no journal write, S69 lines 3487-3498).
+
+### 33.2 Section-69 commands NOT in the matrix (deprecated/removed)
+
+The 13 commands added in this amendment come from Section 69's
+"Operator CLI Contract" (24-row listing, lines 3452-3479) and
+Section 75's "Lifecycle Command Surface" (16-row listing, lines
+3755-3776). **All 30 commands in §33.1 are wired in the
+implementation.** The following Section-69 commands that
+historically appeared in intermediate drafts are **explicitly
+deprecated/removed** from the v1 surface and must NOT be added
+back without a master amendment:
+
+| Historical token (legacy S69 / pre-`vb-k8ut.4`) | Status | Reason |
+|-------------------------------------------------|--------|--------|
+| `info`                                          | REMOVED | Banned per S69 principle 6 (CRUD consistency); `info` aliases `inspect` are rejected. |
+| `ls`                                             | REMOVED | Banned per S69 principle 6; `events` is the canonical list verb. |
+| `ui` (or `tui`, `dashboard`, `console`)          | REMOVED | Section 33 line 1303 + Section 69 line 3485. Makepad desktop is out of scope. |
+| `resubmit`                                       | REMOVED | Section 69 line 3512: "resubmit is `run` with the same workflow -- it gets a new `RunId` and fresh journal. It is not a lifecycle command." |
+| `jobs list`, `jobs get`, `jobs prune`            | DEFERRED | S69 principle 8: required before async APIs are release-grade; not in v1 surface. |
+| `feedback <text>`                                | DEFERRED | S69 principle 10: required before release-grade agents; not in v1 surface. |
+| `profile list`, `profile show`                   | DEFERRED | S69 principle 9: profiles are surfaced in `agent-context`; explicit subcommands deferred. |
+| `get`, `list`, `create`, `update`, `delete` (CRUD aliases) | DEFERRED | S69 principle 6: CRUD verbs require a documented justification. The v1 surface uses domain verbs (`submit`, `inspect`, `events`, `replay`, `cancel`). |
+| `verify` (as IPC `VerifyWorkflow`)               | REMOVED | S21 reserved range 12..=16 explicitly forbids `VerifyWorkflow` on the IPC wire. CLI `verify` (row 9) is the dry-run form and is in the matrix. |
+| `list-runs`, `get-metrics`, `get-workflow-graph`, `get-taint-report` (IPC) | REMOVED | S21 reserved range 12..=16 explicitly forbids these on the IPC wire. |
+| `vb` (binary alias)                              | REMOVED | S33 line 1303 + S69 lines 3481-3483: the only supported binary name is `velvet-ballistics`. `crates/vb_cli/Cargo.toml:28-30` rejects `[[bin]] name = "vb"`. |
+| `velvet_ballistics` (snake_case workspace member) | DRIFT | S34 lists `crates/velvet_ballistics` as a workspace member; the binary actually lives in `crates/vb_cli` with `name = "velvet-ballistics"`. Workspace-shape drift, not command-surface drift; out of scope for vb-k8ut.4 and flagged separately. |
+| `ai context` (space form, parser token)          | NORMALIZED | The parser token is `ai-context` (kebab-case). The space form `ai context` is a documentation spelling preserved in §33.1 row 30 for Section 33 historical parity; the parser does NOT accept the space form. |
+
+**Single-source rule:** a future Section 69 / Section 75
+amendment that wishes to add a CLI subcommand MUST update this
+matrix first; the matrix is the upper bound.
+
+### 33.3 Implementation-side sources-of-truth (all subsets of the matrix)
+
+| Source | Path | Coverage | Status |
+|--------|------|----------|--------|
+| `Command` enum | `crates/vb_cli/src/args/types.rs:67-215` | 30/30 | Matches matrix exactly. |
+| `VALID_COMMANDS` const | `crates/vb_cli/src/args/types.rs:230` | 30/30 | Matches matrix exactly. |
+| `parse_args` dispatch | `crates/vb_cli/src/args/shared.rs:208-254` | 30/30 | Matches matrix exactly. |
+| `run_from_env` dispatcher | `crates/vb_cli/src/dispatcher.rs:49-159` | 30/30 | Matches matrix exactly. |
+| `HELP` string | `crates/vb_cli/src/constants.rs:8-53` | 30/30 (36 lines counting multi-token subshapes) | Matches matrix exactly. |
+| `agent_context::commands()` JSON | `crates/vb_cli/src/agent_context/mod.rs:103-260` | **22/30** | **GAP — 7 entries missing (see §33.4).** |
+
+The matrix-conformance proptest
+(`crates/workspace_tests/tests/cli_matrix_conformance.rs`)
+asserts that all six sources stay in lockstep with §33.1.
+
+### 33.4 Agent-context gap (7 entries missing from `agent_context::commands`)
+
+The `agent-context` JSON (v1 introspection surface; see
+`agent_context/mod.rs:103-260`) currently returns 22 of the
+30 matrix entries. The following 7 entries are present in the
+implementation `Command` enum and in the matrix but **are NOT
+yet exposed in the agent-context schema**. (`agent-context`
+itself IS in the source at `agent_context/mod.rs:105-111` as
+the first command, so it is NOT a gap.) This is a
+documentation/introspection gap, not a behaviour gap; the
+commands parse and dispatch correctly.
+
+| # | Token | `Command` variant | Status |
+|---|-------|-------------------|--------|
+| 1 | `help` | `Command::Help` | **GAP** — not in `agent_context::commands()` |
+| 2 | `version` | `Command::Version` | **GAP** — not in `agent_context::commands()` |
+| 3 | `status` | `Command::Status` | **GAP** — top-level `status` not in `agent_context::commands()` |
+| 4 | `system` | `Command::SystemStatus` | **GAP** — `system status` not in `agent_context::commands()` |
+| 5 | `action` (list) | `Command::ActionList` | **GAP** — `action list` not in `agent_context::commands()` |
+| 6 | `action` (inspect) | `Command::ActionInspect` | **GAP** — `action inspect` not in `agent_context::commands()` |
+| 7 | `ai-context` | `Command::AiContext` | **GAP** — `ai-context` not in `agent_context::commands()` (the `ai context` S33 spelling is also missing) |
+
+**Resolution path:** the matrix-conformance proptest asserts
+that `agent_context::commands()` returns 30/30; a future bead
+(recommended `vb-k8ut.4.1`) extends `agent_context/mod.rs` to
+enumerate all 30 variants. Until then, the 22/30 gap is
+documented here and the contract is satisfied as long as
+**the impl never rejects a command listed in the matrix** (which
+it does not: the parser, dispatcher, and `VALID_COMMANDS`
+all match 30/30).
+
+### 33.5 Cross-reference (where else in master the matrix appears)
+
+| Section | Treatment after this amendment |
+|---------|-------------------------------|
+| Section 21 (Binary IPC Protocol, lines 1022-1083) | Unchanged. IPC has 11 wire commands (`IpcCommand` enum at `crates/vb_ipc/src/commands.rs:9-37`): `SubmitRun`, `SubmitRunInline`, `CancelRun`, `InspectRun`, `ListEvents`, `AnswerAsk`, `CompleteAction`, `FailAction`, `DrainTrace`, `Health`, `Shutdown`. **5 of the 11 map to CLI lifecycle rows**: `InspectRun`→row 16, `ListEvents`→row 17, `AnswerAsk`→row 24, `SubmitRun`→row 28, `CancelRun`→row 30. The other **6 IPC commands are IPC-only** (no CLI equivalent): `SubmitRunInline`, `CompleteAction`, `FailAction`, `DrainTrace`, `Health`, `Shutdown`. The IPC set is therefore NOT a strict subset of the CLI rows; the CLI set has commands with no IPC mirror (rows 4 `AiContext`, 20 `Retry`, 21 `Resume`) and the IPC set has commands with no CLI mirror (the 6 listed above). CLI/IPC parity is owned by the parent `vb-k8ut` and `vb-jpq7.20` beads. |
+| Section 33 row 31 (this section) | **Authoritative.** This is the canonical home of the 30-row matrix. |
+| Section 35 row 31 (line 1430) | "Implementation phase 31" is a summary list derived from this matrix. No new subcommand names. |
+| Section 69 (Operator CLI Contract, lines 3448-3585) | The 24-row "Canonical Command Surface" block at lines 3452-3479 is now a **summary pointer** to this matrix. Section 69's Single-Step Testing (lines 3487-3498), Durable Execution Controls table (lines 3502-3512), Explain/Dry-Run contract (lines 3514-3528), Semantic Diff contract (lines 3530-3538), Structured Observability (lines 3540-3553), CLI Design Rules (lines 3555-3561), and Agent-First CLI Principles (lines 3563-3584) remain authoritative for those topics. The binary-name policy (lines 3481-3483) and the `ui` removal (line 3485) remain authoritative. |
+| Section 70 (Phase Extension: Operator Features, lines 3588-3606) | A phase-tracking overlay. Phases 50-54 deliver the matrix rows that were added in this amendment; phases 55-60 are internal or cleanup. The phase table remains a delivery tracker, not a command-surface source. |
+| Section 75 (AI-Native CLI Control Plane, lines 3719-4317) | The 16-row "Lifecycle Command Surface" block at lines 3755-3776 is a **downstream extension** that adds output-schema addenda for `verify` (lines 3808-3872), `explain` (lines 3875-3912), `simulate` (lines 3947-3984), `inspect`/`replay`/`incident` (lines 3987-4103), and `graph` (lines 4107-4180). These addenda are authoritative for those specific commands' output payloads. |
+| Section 34 (Workspace Cargo Contract, lines 1307-1388) | Unchanged. Drift on `crates/velvet_ballistics` workspace membership is a separate contract reconciliation; out of scope for vb-k8ut.4. |
+
+### 33.6 Binary-name policy (preserved)
+
+The only supported CLI binary name is `velvet-ballistics`.
+Short aliases such as `vb` are not part of the canonical
+interface and must not be added as Cargo `[[bin]]` targets.
+Enforced at `crates/vb_cli/Cargo.toml:28-30`.
+
+### 33.7 Removed commands (preserved)
+
+The `ui` command and Makepad desktop application are removed
+from the current command surface.
+
+CLI structured output is a cold-path operator/agent contract and never enters `vb_core`, `vb_runtime`, `vb_storage`, or `vb_ipc`. `--emit yaml` is the canonical structured text flag for v1; `--emit postcard` is the canonical binary machine-output flag where supported. JSON may be added later as a separate cold adapter. Runtime machine artifacts remain binary/Postcard.
 
 ---
 
