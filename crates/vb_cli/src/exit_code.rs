@@ -6,7 +6,11 @@ use std::process::ExitCode;
 ///
 /// Each variant maps to a distinct byte value so that callers and
 /// integration tests can match on the process exit status.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+///
+/// vb-k8ut.5: derives `Serialize`/`Deserialize` so the typed
+/// `cli_postcard::DiagnosticReport` can carry it directly. Variant names
+/// are the serde tags (e.g. `"ValidationFailed"`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[repr(u8)]
 #[allow(dead_code)]
 pub(crate) enum CliExitCode {

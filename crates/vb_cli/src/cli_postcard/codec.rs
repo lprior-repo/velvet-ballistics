@@ -14,10 +14,8 @@ pub(crate) fn decode_cli_payload(
 
 /// Decode the typed CLI payload from a full postcard message (header + payload).
 ///
-/// Validates header bounds and digest before decoding the typed envelope.
-/// vb-k8ut.5: replaces the prior `decode_postcard_json` path which decoded
-/// raw UTF-8 JSON bytes inside the envelope. The decoded value is the typed
-/// `CliPostcardPayload` enum.
+/// vb-k8ut.5: returns the typed `CliPostcardPayload` enum directly. Callers
+/// pattern-match on the variant tag for per-command typed access.
 pub(crate) fn decode_postcard_payload(
     data: &[u8],
 ) -> Result<(PostcardHeader, super::CliPostcardPayload), PostcardError> {
@@ -28,15 +26,6 @@ pub(crate) fn decode_postcard_payload(
 }
 
 /// Encode a Postcard message to bytes.
-/// Returns a vector containing header + payload.
-///
-/// # Arguments
-/// * `schema_version` - Schema version as u16
-/// * `kind` - Kind as u16
-/// * `payload` - Raw payload bytes
-///
-/// # Returns
-/// `Ok(Vec<u8>)` containing the encoded postcard message.
 pub(crate) fn encode_postcard(
     schema_version: u16,
     kind: u16,
