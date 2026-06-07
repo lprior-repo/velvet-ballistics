@@ -166,7 +166,7 @@ pub(crate) fn explain_failure_report(
         "success": false,
         "status": "invalid",
         "phase": phase,
-        "errors": [{ "phase": phase, "message": message }],
+        "errors": [{ "Structured": { "phase": phase, "message": message } }],
         "repair_hints": repair_hints,
         "exit_code": cli_exit_code_number(code)
     })
@@ -179,7 +179,7 @@ pub(crate) fn explain_compile_failure_report(errors: &[String]) -> serde_json::V
         "success": false,
         "status": "invalid",
         "phase": "compile",
-        "errors": errors,
+        "errors": errors.iter().map(|m| serde_json::json!({ "Message": m })).collect::<Vec<_>>(),
         "repair_hints": ["Run validate to isolate syntax and schema errors"],
         "exit_code": cli_exit_code_number(CliExitCode::ValidationFailed)
     })

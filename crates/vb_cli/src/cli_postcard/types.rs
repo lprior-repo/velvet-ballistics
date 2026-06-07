@@ -1,32 +1,22 @@
-//! CLI Postcard Types
+//! CLI Postcard Types — typed per-command domain envelopes.
 //!
-//! Core types for CLI Postcard binary format.
-//!
-//! vb-k8ut.5: the wire payload is a typed `CliPostcardPayload` enum. Each
-//! variant is a per-kind typed Rust struct. The envelope is serialized via
-//! postcard's native typed serde format — there is no JSON-in-postcard
-//! bridge. Migrating callers carry their JSON tree inside the typed
-//! `TypedTree { kind: CliPostcardKind, tree: ... }` variant; the tree
-//! itself is encoded as a postcard-native typed serde tree (NOT raw JSON
-//! UTF-8 bytes).
+//! vb-k8ut.5: every `--emit postcard` payload deserializes into a per-command
+//! typed Rust variant of `CliPostcardPayload`. There is no JSON-in-postcard
+//! bridge: typed structs are postcard-native serde-encoded and decoders
+//! pattern-match on the variant tag. The serde_json::Value type does not
+//! appear in any typed payload field.
 
 use serde::{Deserialize, Serialize};
+
+use crate::cli_envelope::{Kind as EnvelopeKind, SCHEMA_VERSION};
+use crate::exit_code::CliExitCode;
 
 /// Magic bytes for CLI Postcard format: "VCLA" (Velvet CLI Application)
 pub(crate) const CLI_MAGIC: [u8; 4] = [0x56, 0x43, 0x4C, 0x41];
 
 /// Maximum encoded payload size in bytes (64KB).
-/// This bound is validated before allocation to prevent OOM.
 pub(crate) const MAX_PAYLOAD: usize = 64 * 1024;
 
-/// Header size in bytes:
-/// - magic: 4 bytes
-/// - schema_version_u16: 2 bytes
-/// - kind_u16: 2 bytes
-/// - header_len: 4 bytes
-/// - payload_len: 4 bytes
-/// - payload_digest: 32 bytes (BLAKE3-256)
-/// - header_crc: 4 bytes
 pub(crate) const HEADER_SIZE: usize = 52;
 pub(crate) const HEADER_SIZE_U32: u32 = 52;
 pub(crate) const MAX_PAYLOAD_U32: u32 = 64 * 1024;
@@ -35,14 +25,11 @@ pub(crate) const CLI_POSTCARD_KIND: u16 = 2;
 
 /// Typed discriminant for the CLI postcard payload kind.
 ///
-/// vb-k8ut.5: replaces the implicit "JSON-in-postcard" bridge with an
-/// explicit, exhaustive, typed kind. The discriminant matches the registry
-/// in `crate::cli_envelope::Kind` (the same enum used as the `kind` field
-/// of the JSON/YAML envelope) so callers can pivot between text and
-/// postcard outputs without two parallel kind taxonomies.
-///
-/// `#[non_exhaustive]` keeps decoders forward-compatible as new
-/// `cli_envelope::Kind` variants land.
+/// vb-k8ut.5: single source of truth for the postcard discriminant catalog.
+/// Every `cli_envelope::Kind` variant maps to a `CliPostcardKind` variant via
+/// `From<EnvelopeKind>`; per-command JSON `kind` strings (`validate_report`,
+/// `verify_report`, etc.) resolve via `from_envelope_kind` which returns
+/// `Option<CliPostcardKind>` — unknown strings are NOT silently coerced.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub(crate) enum CliPostcardKind {
@@ -63,33 +50,25 @@ pub(crate) enum CliPostcardKind {
     CliStatus,
     SystemStatus,
     AgentContext,
-    /// Validation report (kind="validate_report" in the JSON envelope).
     ValidateReport,
-    /// Verify report (kind="verify_report" in the JSON envelope).
     VerifyReport,
-    /// Explain report (kind="explain_report" in the JSON envelope).
     ExplainReport,
-    /// Diff report (kind="diff_report" in the JSON envelope).
     DiffReport,
-    /// Events report (kind="events_report" in the JSON envelope).
     EventsReport,
-    /// Trace report (kind="trace_report" in the JSON envelope).
     TraceReport,
-    /// Replay report variant (kind="replay_report" in the JSON envelope).
-    ReplayReportV2,
-    /// Run output report (kind="run_report" in the JSON envelope).
     RunReport,
-    /// Inspect report (kind="inspect_report" in the JSON envelope).
     InspectReport,
+    Simulate,
+    WorkflowDiffReport,
 }
 
 impl CliPostcardKind {
-    /// Resolve a string envelope-kind to the typed `CliPostcardKind`.
+    /// Resolve a string envelope-kind to the typed discriminant.
     ///
-    /// Unknown strings are normalized to `DiagnosticReport` so the
-    /// postcard envelope always carries a typed discriminant.
-    pub(crate) fn from_envelope_kind(kind: &str) -> Self {
-        match kind {
+    /// vb-k8ut.5: unknown strings return `None` instead of silently mapping
+    /// to `DiagnosticReport`. Callers decide how to handle unknown kinds.
+    pub(crate) fn from_envelope_kind(kind: &str) -> Option<Self> {
+        let resolved = match kind {
             "VerificationReport" => Self::VerificationReport,
             "DiagnosticReport" => Self::DiagnosticReport,
             "WorkflowExplanation" => Self::WorkflowExplanation,
@@ -113,208 +92,405 @@ impl CliPostcardKind {
             "diff_report" => Self::DiffReport,
             "events_report" => Self::EventsReport,
             "trace_report" => Self::TraceReport,
-            "replay_report" => Self::ReplayReportV2,
+            "replay_report" => Self::ReplayReport,
             "run_report" => Self::RunReport,
             "inspect_report" => Self::InspectReport,
-            _ => Self::DiagnosticReport,
+            "simulate" => Self::Simulate,
+            "workflow_diff_report" => Self::WorkflowDiffReport,
+            _ => return None,
+        };
+        Some(resolved)
+    }
+}
+
+impl From<EnvelopeKind> for CliPostcardKind {
+    fn from(kind: EnvelopeKind) -> Self {
+        match kind {
+            EnvelopeKind::VerificationReport => Self::VerificationReport,
+            EnvelopeKind::DiagnosticReport => Self::DiagnosticReport,
+            EnvelopeKind::WorkflowExplanation => Self::WorkflowExplanation,
+            EnvelopeKind::WorkflowGraph => Self::WorkflowGraph,
+            EnvelopeKind::SimulationReport => Self::SimulationReport,
+            EnvelopeKind::SubmitRunResult => Self::SubmitRunResult,
+            EnvelopeKind::RunInspection => Self::RunInspection,
+            EnvelopeKind::RunEvents => Self::RunEvents,
+            EnvelopeKind::ReplayReport => Self::ReplayReport,
+            EnvelopeKind::IncidentReport => Self::IncidentReport,
+            EnvelopeKind::ActionList => Self::ActionList,
+            EnvelopeKind::ActionDescription => Self::ActionDescription,
+            EnvelopeKind::DoctorReport => Self::DoctorReport,
+            EnvelopeKind::AiContextPacket => Self::AiContextPacket,
+            EnvelopeKind::CliStatus => Self::CliStatus,
+            EnvelopeKind::SystemStatus => Self::SystemStatus,
+            EnvelopeKind::AgentContext => Self::AgentContext,
         }
     }
 }
 
-/// A diagnostic envelope (typed Rust struct mirroring the stderr diagnostic JSON).
+/// Typed envelope schema version newtype.
 ///
-/// Replaces the prior pattern of serializing a `serde_json::json!({...})`
-/// blob with `JsonUtf8` content_type. The decoder reconstructs a typed
-/// `DiagnosticReport` directly.
+/// vb-k8ut.5: the schema version string is a domain newtype, not raw String.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub(crate) struct EnvelopeSchemaVersion(String);
+
+impl EnvelopeSchemaVersion {
+    pub(crate) fn current() -> Self {
+        Self(SCHEMA_VERSION.to_string())
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<String> for EnvelopeSchemaVersion {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
+impl From<&str> for EnvelopeSchemaVersion {
+    fn from(value: &str) -> Self {
+        Self(value.to_string())
+    }
+}
+
+/// Typed diagnostic envelope.
+///
+/// vb-k8ut.5: replaces the prior pattern of serializing a `json!({...})` blob.
+/// Every field is typed at the domain level: `kind` is the typed
+/// `CliPostcardKind` discriminant, `exit_code` is `CliExitCode`, etc.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct DiagnosticReport {
-    pub(crate) schema_version: String,
-    pub(crate) kind: String,
-    pub(crate) code: String,
-    pub(crate) exit_code: i32,
+    pub(crate) schema_version: EnvelopeSchemaVersion,
+    pub(crate) kind: CliPostcardKind,
+    pub(crate) code: CliExitCode,
     pub(crate) message: String,
 }
 
-/// A typed JSON tree carried inside the postcard envelope.
-///
-/// vb-k8ut.5: this variant exists for CLI commands whose JSON shape has not
-/// yet been promoted to a dedicated typed report struct. The `tree` field
-/// is a `TypedJsonTree` — a closed Rust enum with explicit variants for
-/// every JSON node kind — encoded over the wire by postcard's native
-/// schema-driven serde data model, NOT as raw UTF-8 JSON bytes and NOT as
-/// the self-describing `serde_json::Value` (which postcard cannot decode
-/// because it is schema-less). The `kind` field is a typed `CliPostcardKind`
-/// discriminant so decoders can pattern-match on the producing command
-/// without parsing payload content.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct TypedTreePayload {
-    pub(crate) kind: CliPostcardKind,
-    pub(crate) tree: TypedJsonTree,
-}
-
-/// Typed, postcard-schema-friendly representation of a JSON tree.
-///
-/// vb-k8ut.5: `serde_json::Value` cannot round-trip through postcard
-/// because postcard is a schema-driven format and `Value::deserialize`
-/// is self-describing. `TypedJsonTree` carries the same information as
-/// a closed enum with one explicit variant per JSON node kind so postcard
-/// can encode and decode it natively. Floating-point numbers are stored
-/// as raw IEEE-754 bits to preserve byte-for-byte equality and Eq/Hash.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) enum TypedJsonTree {
-    Null,
-    Bool(bool),
-    I64(i64),
-    U64(u64),
-    F64Bits(u64),
-    Str(String),
-    Array(Vec<TypedJsonTree>),
-    /// Ordered key/value pairs (preserves insertion order, deterministic
-    /// across serialize/deserialize cycles).
-    Object(Vec<(String, TypedJsonTree)>),
-}
-
-impl TypedJsonTree {
-    /// Convert a `serde_json::Value` into the typed tree.
-    pub(crate) fn from_json(value: &serde_json::Value) -> Self {
-        match value {
-            serde_json::Value::Null => Self::Null,
-            serde_json::Value::Bool(b) => Self::Bool(*b),
-            serde_json::Value::Number(n) => {
-                if let Some(i) = n.as_i64() {
-                    Self::I64(i)
-                } else if let Some(u) = n.as_u64() {
-                    Self::U64(u)
-                } else if let Some(f) = n.as_f64() {
-                    Self::F64Bits(f.to_bits())
-                } else {
-                    Self::Null
-                }
-            }
-            serde_json::Value::String(s) => Self::Str(s.clone()),
-            serde_json::Value::Array(arr) => {
-                Self::Array(arr.iter().map(Self::from_json).collect())
-            }
-            serde_json::Value::Object(map) => Self::Object(
-                map.iter()
-                    .map(|(k, v)| (k.clone(), Self::from_json(v)))
-                    .collect(),
-            ),
-        }
-    }
-
-    /// Convert the typed tree back into a `serde_json::Value` for callers
-    /// that still want to inspect via the serde_json API.
-    pub(crate) fn into_json(self) -> serde_json::Value {
-        match self {
-            Self::Null => serde_json::Value::Null,
-            Self::Bool(b) => serde_json::Value::Bool(b),
-            Self::I64(i) => serde_json::Value::Number(serde_json::Number::from(i)),
-            Self::U64(u) => serde_json::Value::Number(serde_json::Number::from(u)),
-            Self::F64Bits(bits) => serde_json::Number::from_f64(f64::from_bits(bits))
-                .map(serde_json::Value::Number)
-                .unwrap_or(serde_json::Value::Null),
-            Self::Str(s) => serde_json::Value::String(s),
-            Self::Array(arr) => {
-                serde_json::Value::Array(arr.into_iter().map(Self::into_json).collect())
-            }
-            Self::Object(entries) => {
-                let map: serde_json::Map<String, serde_json::Value> = entries
-                    .into_iter()
-                    .map(|(k, v)| (k, v.into_json()))
-                    .collect();
-                serde_json::Value::Object(map)
-            }
+impl DiagnosticReport {
+    pub(crate) fn from_code(message: String, code: CliExitCode) -> Self {
+        Self {
+            schema_version: EnvelopeSchemaVersion::current(),
+            kind: CliPostcardKind::DiagnosticReport,
+            code,
+            message,
         }
     }
 }
 
-/// The typed CLI postcard payload carried by the outer postcard frame.
+/// Typed validation report (`kind = "validate_report"`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct ValidateReport {
+    pub(crate) schema_version: EnvelopeSchemaVersion,
+    #[serde(default = "validate_kind")]
+    pub(crate) kind: String,
+    pub(crate) success: bool,
+    pub(crate) status: String,
+    pub(crate) exit_code: u8,
+    #[serde(default)]
+    pub(crate) repair_hints: Vec<String>,
+}
+
+fn validate_kind() -> String {
+    "validate_report".to_string()
+}
+
+/// Typed verify-replay subsection of [`VerifyReport`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct VerifyReplaySection {
+    #[serde(default)]
+    pub(crate) gates_passed: Vec<String>,
+    #[serde(default)]
+    pub(crate) gate_sequence: Vec<String>,
+    pub(crate) replay_safe: bool,
+}
+
+/// Typed verify-artifact subsection of [`VerifyReport`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct VerifyArtifactSection {
+    pub(crate) source_digest_hex: String,
+    pub(crate) ir_digest_hex: String,
+    pub(crate) node_count: u32,
+}
+
+/// Typed verify-durability subsection of [`VerifyReport`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct VerifyDurabilitySection {
+    pub(crate) profile: String,
+    pub(crate) journal_written: bool,
+}
+
+/// Typed verify report (`kind = "verify_report"`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct VerifyReport {
+    pub(crate) schema_version: EnvelopeSchemaVersion,
+    #[serde(default = "verify_kind")]
+    pub(crate) kind: String,
+    pub(crate) success: bool,
+    pub(crate) profile: String,
+    pub(crate) digest: String,
+    pub(crate) node_count: u32,
+    #[serde(default)]
+    pub(crate) checks: Vec<String>,
+    #[serde(default)]
+    pub(crate) warnings: Vec<String>,
+    pub(crate) artifact: VerifyArtifactSection,
+    pub(crate) replay: VerifyReplaySection,
+    pub(crate) durability: VerifyDurabilitySection,
+}
+
+fn verify_kind() -> String {
+    "verify_report".to_string()
+}
+
+/// Typed explain-error subsection of [`ExplainReport`].
 ///
-/// vb-k8ut.5: every supported `--emit postcard` output deserializes into one
-/// of these variants. The envelope is fully typed at the Rust type level;
-/// decoders pattern-match on the variant to discriminate command output
-/// without inspecting the inner bytes.
+/// vb-k8ut.5: uses default external tagging so postcard can encode the
+/// variant index directly. Postcard does not support `#[serde(untagged)]`,
+/// which is why this enum uses the default external-tagged form on both
+/// the JSON envelope path and the postcard wire path. The JSON envelope
+/// producers in `explain.rs` are responsible for emitting the
+/// `{"Structured": {...}}` / `{"Message": "..."}` shape that matches the
+/// external-tagged form.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum ExplainErrorEntry {
+    Structured { phase: String, message: String },
+    Message(String),
+}
+
+/// Typed explain report (`kind = "explain_report"`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct ExplainReport {
+    pub(crate) schema_version: EnvelopeSchemaVersion,
+    #[serde(default = "explain_kind")]
+    pub(crate) kind: String,
+    pub(crate) success: bool,
+    pub(crate) status: String,
+    #[serde(default)]
+    pub(crate) phase: String,
+    #[serde(default)]
+    pub(crate) errors: Vec<ExplainErrorEntry>,
+    #[serde(default)]
+    pub(crate) repair_hints: Vec<String>,
+    pub(crate) exit_code: u8,
+    /// Optional rendered text body present in compile-success/repair flows.
+    #[serde(default)]
+    pub(crate) body: Option<String>,
+    #[serde(default)]
+    pub(crate) artifact: Option<ExplainArtifactSection>,
+}
+
+fn explain_kind() -> String {
+    "explain_report".to_string()
+}
+
+/// Optional artifact summary attached to [`ExplainReport`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct ExplainArtifactSection {
+    #[serde(default)]
+    pub(crate) source_digest_hex: String,
+    pub(crate) ir_digest_hex: String,
+    pub(crate) node_count: u32,
+}
+
+/// Typed events report (`kind = "events_report"`).
 ///
-/// Add a new variant per kind whose payload shape graduates from a
-/// `serde_json::Value` tree to a dedicated typed struct. The
-/// `#[non_exhaustive]` attribute keeps external decoders forward-compatible.
+/// `events` carries opaque event blobs as a typed `Vec<EventEntry>` —
+/// each entry is itself a typed struct with the universal fields.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct EventsReport {
+    pub(crate) schema_version: EnvelopeSchemaVersion,
+    #[serde(default = "events_kind")]
+    pub(crate) kind: String,
+    pub(crate) run_id: u64,
+    #[serde(default)]
+    pub(crate) events: Vec<EventEntry>,
+    pub(crate) total: u64,
+}
+
+fn events_kind() -> String {
+    "events_report".to_string()
+}
+
+/// Typed event entry carried by [`EventsReport`] and [`ReplayReport`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct EventEntry {
+    pub(crate) seq: u64,
+    pub(crate) attempt: u32,
+    #[serde(rename = "type")]
+    pub(crate) event_type: String,
+    #[serde(default)]
+    pub(crate) step: Option<u32>,
+    #[serde(default)]
+    pub(crate) slot: Option<u32>,
+}
+
+/// Typed trace entry carried by [`TraceReport`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct TraceEntry {
+    pub(crate) seq: u64,
+    #[serde(rename = "type")]
+    pub(crate) event_type: String,
+    #[serde(default)]
+    pub(crate) step: Option<u32>,
+    #[serde(default)]
+    pub(crate) status: Option<String>,
+    #[serde(default)]
+    pub(crate) action: Option<String>,
+}
+
+/// Typed trace report (`kind = "trace_report"`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct TraceReport {
+    pub(crate) schema_version: EnvelopeSchemaVersion,
+    #[serde(default = "trace_kind")]
+    pub(crate) kind: String,
+    pub(crate) run_id: u64,
+    #[serde(default)]
+    pub(crate) trace: Vec<TraceEntry>,
+    pub(crate) total: u64,
+}
+
+fn trace_kind() -> String {
+    "trace_report".to_string()
+}
+
+/// Typed replay report (`kind = "replay_report"`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct ReplayReport {
+    pub(crate) schema_version: EnvelopeSchemaVersion,
+    #[serde(default = "replay_kind")]
+    pub(crate) kind: String,
+    pub(crate) run_id: u64,
+    pub(crate) recovered: u64,
+    #[serde(default)]
+    pub(crate) events: Vec<EventEntry>,
+    pub(crate) terminal: String,
+}
+
+fn replay_kind() -> String {
+    "replay_report".to_string()
+}
+
+/// Typed diff entry carried by [`DiffReport`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct DiffEntry {
+    pub(crate) kind: String,
+    #[serde(default)]
+    pub(crate) seq: Option<u64>,
+    #[serde(default)]
+    pub(crate) step: Option<u32>,
+    #[serde(default)]
+    pub(crate) slot: Option<u32>,
+    #[serde(default)]
+    pub(crate) detail: Option<String>,
+}
+
+/// Typed diff report (`kind = "diff_report"`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct DiffReport {
+    pub(crate) schema_version: EnvelopeSchemaVersion,
+    #[serde(default = "diff_kind")]
+    pub(crate) kind: String,
+    pub(crate) run_a: u64,
+    pub(crate) run_b: u64,
+    pub(crate) events_a: u64,
+    pub(crate) events_b: u64,
+    #[serde(default)]
+    pub(crate) diffs: Vec<DiffEntry>,
+    pub(crate) total_differences: u64,
+}
+
+fn diff_kind() -> String {
+    "diff_report".to_string()
+}
+
+/// Typed CLI postcard payload.
+///
+/// vb-k8ut.5: every `--emit postcard` payload variant is a per-command
+/// typed Rust struct. Decoders pattern-match on the variant tag and access
+/// typed fields without going through `serde_json::Value`. The
+/// `#[non_exhaustive]` attribute keeps external decoders forward-compatible
+/// as new typed variants land.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub(crate) enum CliPostcardPayload {
-    /// Typed stderr diagnostic envelope.
     Diagnostic(DiagnosticReport),
-    /// Typed-tree payload carrying a `(kind, serde tree)` pair. Used by
-    /// CLI commands whose schema has not yet been promoted to a dedicated
-    /// typed report; the tree itself is postcard-native typed serde, NOT
-    /// raw JSON UTF-8.
-    TypedTree(TypedTreePayload),
+    Validate(ValidateReport),
+    Verify(VerifyReport),
+    Explain(ExplainReport),
+    Events(EventsReport),
+    Trace(TraceReport),
+    Replay(ReplayReport),
+    Diff(DiffReport),
+    /// Generic typed envelope used as the migration fallback for kinds
+    /// whose shape has not yet been promoted to a dedicated typed report
+    /// (e.g. `simulate`, `workflow_diff_report`, `CliStatus`, `SystemStatus`,
+    /// etc.). Carries the typed `CliPostcardKind` discriminant and the raw
+    /// JSON envelope serialized as postcard bytes (a typed-byte payload —
+    /// NOT raw UTF-8 JSON, NOT a self-describing serde_json::Value).
+    Generic(GenericPayload),
+}
+
+/// Typed migration-fallback payload for envelope kinds without a dedicated
+/// typed report struct yet. The wire shape is `(kind, postcard-encoded body
+/// bytes)`. The body bytes are postcard-native typed serde encoding of the
+/// underlying typed envelope, NOT JSON UTF-8 bytes.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct GenericPayload {
+    pub(crate) kind: CliPostcardKind,
+    /// Postcard-encoded body bytes of the typed envelope shape captured
+    /// at the call site. Always equals
+    /// `postcard::to_allocvec(&envelope_struct)` where `envelope_struct` is
+    /// a typed Rust struct derived from the call-site shape. Decoders treat
+    /// this as opaque typed bytes and re-deserialize against a typed
+    /// schema when a per-kind variant is later added.
+    pub(crate) body: Vec<u8>,
 }
 
 impl CliPostcardPayload {
-    /// Encode a typed CLI command output as a typed-tree payload.
-    pub(crate) fn from_kind_value(kind: CliPostcardKind, tree: serde_json::Value) -> Self {
-        Self::TypedTree(TypedTreePayload {
-            kind,
-            tree: TypedJsonTree::from_json(&tree),
-        })
-    }
-
-    /// Encode a typed diagnostic envelope.
+    /// Construct a typed diagnostic payload.
     pub(crate) fn from_diagnostic(report: DiagnosticReport) -> Self {
         Self::Diagnostic(report)
     }
 
-    /// Construct a typed payload from a serde_json envelope by reading its
-    /// `kind` string and wrapping the whole value in `TypedTree`.
-    ///
-    /// vb-k8ut.5: this is the bridge used by callers that still construct
-    /// `serde_json::Value` blobs via `json!({...})`. The kind discriminant
-    /// is resolved to the typed `CliPostcardKind` so the postcard envelope
-    /// is always typed; the tree itself is converted into the postcard-
-    /// schema-friendly `TypedJsonTree` enum (NOT raw JSON UTF-8 bytes and
-    /// NOT the self-describing `serde_json::Value`).
-    pub(crate) fn from_json_envelope(value: serde_json::Value) -> Self {
-        let kind_str = value
-            .get("kind")
-            .and_then(serde_json::Value::as_str)
-            .unwrap_or("DiagnosticReport");
-        let kind = CliPostcardKind::from_envelope_kind(kind_str);
-        Self::TypedTree(TypedTreePayload {
-            kind,
-            tree: TypedJsonTree::from_json(&value),
-        })
+    /// Construct a generic migration-fallback payload from a typed-byte body.
+    pub(crate) fn generic(kind: CliPostcardKind, body: Vec<u8>) -> Self {
+        Self::Generic(GenericPayload { kind, body })
+    }
+
+    /// Returns the typed kind discriminant of this payload.
+    pub(crate) fn kind(&self) -> CliPostcardKind {
+        match self {
+            Self::Diagnostic(_) => CliPostcardKind::DiagnosticReport,
+            Self::Validate(_) => CliPostcardKind::ValidateReport,
+            Self::Verify(_) => CliPostcardKind::VerifyReport,
+            Self::Explain(_) => CliPostcardKind::ExplainReport,
+            Self::Events(_) => CliPostcardKind::EventsReport,
+            Self::Trace(_) => CliPostcardKind::TraceReport,
+            Self::Replay(_) => CliPostcardKind::ReplayReport,
+            Self::Diff(_) => CliPostcardKind::DiffReport,
+            Self::Generic(payload) => payload.kind,
+        }
     }
 }
 
 /// Postcard header structure for CLI output.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct PostcardHeader {
-    /// Magic bytes (must be CLI_MAGIC).
     pub(crate) magic: [u8; 4],
-    /// Schema version as u16 (endianness specified by protocol).
     pub(crate) schema_version: u16,
-    /// Kind enum as u16.
     pub(crate) kind: u16,
-    /// Length of header in bytes.
     pub(crate) header_len: u32,
-    /// Length of payload in bytes.
     pub(crate) payload_len: u32,
-    /// BLAKE3-256 digest of payload (32 bytes).
     pub(crate) payload_digest: [u8; 32],
-    /// CRC-32 of header bytes.
     pub(crate) header_crc: u32,
 }
 
 impl PostcardHeader {
-    /// Validate header before payload allocation.
-    /// INV-005: Ensures bounded allocation by checking:
-    /// - magic matches CLI_MAGIC
-    /// - header_len matches HEADER_SIZE
-    /// - payload_len <= MAX_PAYLOAD
-    ///
-    /// # Returns
-    /// `Ok(())` if header is valid, `Err(PostcardError)` otherwise.
+    /// INV-005: Bounded allocation gate.
     pub(crate) fn validate(&self) -> Result<(), super::PostcardError> {
         if self.magic != CLI_MAGIC {
             return Err(super::PostcardError::InvalidMagic);
@@ -328,13 +504,6 @@ impl PostcardHeader {
         Ok(())
     }
 
-    /// Create a PostcardHeader from raw bytes.
-    ///
-    /// # Arguments
-    /// * `data` - Raw byte slice containing at least HEADER_SIZE bytes
-    ///
-    /// # Returns
-    /// `Ok(PostcardHeader)` if data is large enough, `Err(PostcardError::DecodeFailed)` otherwise.
     pub(crate) fn from_bytes(data: &[u8]) -> Result<Self, super::PostcardError> {
         if data.len() < HEADER_SIZE {
             return Err(super::PostcardError::DecodeFailed);

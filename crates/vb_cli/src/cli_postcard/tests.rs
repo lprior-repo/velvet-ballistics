@@ -1,10 +1,15 @@
 //! CLI Postcard Tests
 //!
 //! vb-k8ut.5: tests assert the typed `CliPostcardPayload` envelope shape
-//! end-to-end — never decoding through `serde_json::Value` and never relying
-//! on a JSON-in-postcard bridge.
+//! end-to-end. Every test that touches the payload enum decodes through
+//! `decode_cli_payload` and pattern-matches on the typed enum variant. No
+//! test decodes through `serde_json::Value`, and no test references any
+//! removed API (`TypedTreePayload`, `TypedJsonTree`, `from_json_envelope`,
+//! `from_kind_value`, `CliPostcardContentType`).
 
 use super::*;
+use crate::cli_envelope::Kind as EnvelopeKind;
+use crate::exit_code::CliExitCode;
 
 #[test]
 fn test_valid_magic() {
@@ -180,152 +185,6 @@ fn decode_rejects_truncated_header() {
     assert_eq!(decode_postcard(truncated), Err(PostcardError::DecodeFailed));
 }
 
-// vb-k8ut.5: the next tests assert the TYPED `CliPostcardPayload` envelope.
-// They prove the wire format carries postcard-native typed serde, not raw
-// JSON UTF-8 bytes, and the decoder returns the typed enum directly so
-// pattern matches discriminate on the variant.
-
-#[test]
-fn typed_diagnostic_payload_round_trips_as_typed_enum() {
-    let report = DiagnosticReport {
-        schema_version: "velvet-ballistics/cli-output/v1".into(),
-        kind: "DiagnosticReport".into(),
-        code: "ValidationFailed".into(),
-        exit_code: 2,
-        message: "boom".into(),
-    };
-    let payload = CliPostcardPayload::from_diagnostic(report.clone());
-    let bytes = postcard::to_allocvec(&payload).expect("typed payload must postcard-encode");
-    let decoded = decode_cli_payload(&bytes).expect("typed payload must round-trip");
-
-    match decoded {
-        CliPostcardPayload::Diagnostic(decoded_report) => {
-            assert_eq!(decoded_report, report);
-            assert_eq!(decoded_report.exit_code, 2);
-            assert_eq!(decoded_report.code, "ValidationFailed");
-        }
-        other => panic!("expected Diagnostic variant, got {other:?}"),
-    }
-}
-
-#[test]
-fn typed_tree_payload_carries_kind_discriminant() {
-    let tree = serde_json::json!({
-        "schema_version": "velvet-ballistics/cli-output/v1",
-        "kind": "validate_report",
-        "success": true,
-        "status": "ok",
-        "exit_code": 0,
-    });
-    let payload = CliPostcardPayload::from_kind_value(CliPostcardKind::ValidateReport, tree.clone());
-    let bytes = postcard::to_allocvec(&payload).expect("typed-tree payload must encode");
-    let decoded = decode_cli_payload(&bytes).expect("typed-tree payload must round-trip");
-
-    match decoded {
-        CliPostcardPayload::TypedTree(tp) => {
-            assert_eq!(tp.kind, CliPostcardKind::ValidateReport);
-            // The typed tree on the wire is `TypedJsonTree`, NOT
-            // `serde_json::Value`. Convert back to inspect, but the
-            // discriminator above already proved typed decode succeeded.
-            let round_tripped = tp.tree.into_json();
-            assert_eq!(round_tripped, tree);
-        }
-        other => panic!("expected TypedTree variant, got {other:?}"),
-    }
-}
-
-#[test]
-fn from_json_envelope_resolves_typed_kind_discriminant() {
-    let payload = CliPostcardPayload::from_json_envelope(serde_json::json!({
-        "schema_version": "velvet-ballistics/cli-output/v1",
-        "kind": "doctor_report",
-        "success": true,
-    }));
-    // "doctor_report" (snake) is not a registered envelope kind, so it
-    // normalizes to the typed `DiagnosticReport` discriminant. The decoded
-    // typed envelope still preserves the original JSON tree intact for
-    // downstream inspection.
-    match payload {
-        CliPostcardPayload::TypedTree(tp) => {
-            assert_eq!(tp.kind, CliPostcardKind::DiagnosticReport);
-        }
-        other => panic!("expected TypedTree variant, got {other:?}"),
-    }
-
-    let payload = CliPostcardPayload::from_json_envelope(serde_json::json!({
-        "schema_version": "velvet-ballistics/cli-output/v1",
-        "kind": "DoctorReport",
-    }));
-    match payload {
-        CliPostcardPayload::TypedTree(tp) => assert_eq!(tp.kind, CliPostcardKind::DoctorReport),
-        other => panic!("expected TypedTree variant, got {other:?}"),
-    }
-}
-
-#[test]
-fn typed_envelope_wire_format_is_postcard_serde_not_json_bytes() {
-    // vb-k8ut.5: this test pins the wire format. We construct a typed-tree
-    // payload carrying a small JSON tree (converted to TypedJsonTree) and
-    // verify that the postcard serialization does not contain the raw JSON
-    // UTF-8 string anywhere as a substring — which can only happen if
-    // postcard is encoding the typed serde tree natively rather than
-    // wrapping a UTF-8 JSON blob.
-    let tree = serde_json::json!({
-        "schema_version": "velvet-ballistics/cli-output/v1",
-        "kind": "validate_report",
-        "success": true,
-        "status": "ok",
-        "exit_code": 0,
-    });
-    let raw_json_bytes = serde_json::to_vec(&tree).expect("json encodes");
-    let payload = CliPostcardPayload::from_kind_value(CliPostcardKind::ValidateReport, tree);
-    let postcard_bytes = postcard::to_allocvec(&payload).expect("payload encodes");
-
-    // The raw JSON byte sequence must NOT be a substring of the postcard
-    // bytes — that would indicate the payload is still carrying the JSON
-    // text inside the envelope.
-    let contains_json = postcard_bytes
-        .windows(raw_json_bytes.len())
-        .any(|w| w == raw_json_bytes.as_slice());
-    assert!(
-        !contains_json,
-        "typed postcard encoding must not contain raw JSON UTF-8 bytes as a substring; \
-         that would indicate a JSON-in-postcard bridge.\n  json={raw_json_bytes:?}\n  postcard={postcard_bytes:?}"
-    );
-
-    // The encoded form must round-trip back to the same typed envelope.
-    let decoded = decode_cli_payload(&postcard_bytes).expect("typed envelope round-trips");
-    match decoded {
-        CliPostcardPayload::TypedTree(tp) => {
-            assert_eq!(tp.kind, CliPostcardKind::ValidateReport);
-        }
-        other => panic!("expected TypedTree variant, got {other:?}"),
-    }
-}
-
-#[test]
-fn typed_json_tree_round_trips_through_serde_json_value() {
-    // vb-k8ut.5: TypedJsonTree is the postcard-friendly typed
-    // representation. Round-tripping serde_json::Value -> TypedJsonTree ->
-    // serde_json::Value must preserve every node kind exactly.
-    let original = serde_json::json!({
-        "null": null,
-        "true": true,
-        "false": false,
-        "i64": -42,
-        "u64_big": 9_000_000_000_000_000_000u64,
-        "string": "hello",
-        "array": [1, 2, 3],
-        "nested": { "k": "v" },
-    });
-    let tree = TypedJsonTree::from_json(&original);
-    let bytes = postcard::to_allocvec(&tree).expect("typed tree encodes");
-    let decoded: TypedJsonTree =
-        postcard::from_bytes(&bytes).expect("typed tree decodes from postcard");
-    let recovered = decoded.into_json();
-    assert_eq!(recovered, original);
-}
-
 #[test]
 fn decode_cli_payload_rejects_garbage_bytes_as_typed_envelope() {
     let garbage = [0xFFu8; 24];
@@ -333,13 +192,385 @@ fn decode_cli_payload_rejects_garbage_bytes_as_typed_envelope() {
     assert_eq!(result, Err(PostcardError::DecodeFailed));
 }
 
+// ============================================================================
+// vb-k8ut.5: typed `CliPostcardPayload` envelope tests.
+// Every test below asserts the typed enum directly. The decoder returns a
+// `CliPostcardPayload` and each test pattern-matches on the per-command
+// variant tag, accessing typed Rust fields without going through
+// `serde_json::Value`.
+// ============================================================================
+
 #[test]
-fn cli_postcard_kind_resolves_all_registered_envelope_kinds() {
-    // vb-k8ut.5: every kind constant in `cli_envelope::kind` plus every
-    // per-command JSON kind string must resolve to a typed CliPostcardKind
-    // variant — no envelope kind silently degrades except the documented
-    // unknown -> DiagnosticReport fallback.
-    let cases = [
+fn typed_diagnostic_payload_round_trips() {
+    let report = DiagnosticReport::from_code("boom".to_string(), CliExitCode::ValidationFailed);
+    let payload = CliPostcardPayload::Diagnostic(report);
+    let bytes = postcard::to_allocvec(&payload).expect("typed diagnostic must postcard-encode");
+    let decoded = decode_cli_payload(&bytes).expect("typed diagnostic must round-trip");
+
+    match decoded {
+        CliPostcardPayload::Diagnostic(report) => {
+            assert_eq!(report.code, CliExitCode::ValidationFailed);
+            assert_eq!(report.kind, CliPostcardKind::DiagnosticReport);
+            assert_eq!(report.message, "boom");
+            assert_eq!(report.schema_version.as_str(), "velvet-ballistics/cli-output/v1");
+        }
+        other => panic!("expected Diagnostic variant, got {other:?}"),
+    }
+}
+
+#[test]
+fn typed_validate_payload_round_trips() {
+    let report = ValidateReport {
+        schema_version: EnvelopeSchemaVersion::current(),
+        kind: "validate_report".to_string(),
+        success: true,
+        status: "valid".to_string(),
+        exit_code: 0,
+        repair_hints: Vec::new(),
+    };
+    let payload = CliPostcardPayload::Validate(report);
+    let bytes = postcard::to_allocvec(&payload).expect("typed validate must postcard-encode");
+    let decoded = decode_cli_payload(&bytes).expect("typed validate must round-trip");
+
+    match decoded {
+        CliPostcardPayload::Validate(decoded_report) => {
+            assert!(decoded_report.success);
+            assert_eq!(decoded_report.status, "valid");
+            assert_eq!(decoded_report.exit_code, 0);
+            assert!(decoded_report.repair_hints.is_empty());
+            assert_eq!(decoded_report.kind, "validate_report");
+            assert_eq!(
+                decoded_report.schema_version.as_str(),
+                "velvet-ballistics/cli-output/v1"
+            );
+        }
+        other => panic!("expected Validate variant, got {other:?}"),
+    }
+}
+
+#[test]
+fn typed_verify_payload_round_trips() {
+    let report = VerifyReport {
+        schema_version: EnvelopeSchemaVersion::current(),
+        kind: "verify_report".to_string(),
+        success: true,
+        profile: "strict".to_string(),
+        digest: "abc123".to_string(),
+        node_count: 7,
+        checks: vec!["g0".to_string(), "g1".to_string()],
+        warnings: Vec::new(),
+        artifact: VerifyArtifactSection {
+            source_digest_hex: "src".to_string(),
+            ir_digest_hex: "ir".to_string(),
+            node_count: 7,
+        },
+        replay: VerifyReplaySection {
+            gates_passed: vec!["g0".to_string()],
+            gate_sequence: vec!["g0".to_string(), "g1".to_string()],
+            replay_safe: true,
+        },
+        durability: VerifyDurabilitySection {
+            profile: "strict".to_string(),
+            journal_written: true,
+        },
+    };
+    let payload = CliPostcardPayload::Verify(report);
+    let bytes = postcard::to_allocvec(&payload).expect("typed verify must postcard-encode");
+    let decoded = decode_cli_payload(&bytes).expect("typed verify must round-trip");
+
+    match decoded {
+        CliPostcardPayload::Verify(decoded_report) => {
+            assert!(decoded_report.success);
+            assert_eq!(decoded_report.profile, "strict");
+            assert_eq!(decoded_report.digest, "abc123");
+            assert_eq!(decoded_report.node_count, 7);
+            assert_eq!(decoded_report.checks, vec!["g0".to_string(), "g1".to_string()]);
+            assert!(decoded_report.warnings.is_empty());
+            assert_eq!(decoded_report.artifact.source_digest_hex, "src");
+            assert_eq!(decoded_report.artifact.ir_digest_hex, "ir");
+            assert_eq!(decoded_report.artifact.node_count, 7);
+            assert_eq!(decoded_report.replay.gates_passed, vec!["g0".to_string()]);
+            assert!(decoded_report.replay.replay_safe);
+            assert_eq!(decoded_report.durability.profile, "strict");
+            assert!(decoded_report.durability.journal_written);
+        }
+        other => panic!("expected Verify variant, got {other:?}"),
+    }
+}
+
+#[test]
+fn typed_explain_payload_round_trips() {
+    let report = ExplainReport {
+        schema_version: EnvelopeSchemaVersion::current(),
+        kind: "explain_report".to_string(),
+        success: false,
+        status: "failed".to_string(),
+        phase: "compile".to_string(),
+        errors: vec![
+            ExplainErrorEntry::Structured {
+                phase: "compile".to_string(),
+                message: "syntax error at step 3".to_string(),
+            },
+            ExplainErrorEntry::Message("bottom-line failure".to_string()),
+        ],
+        repair_hints: vec!["add step".to_string()],
+        exit_code: 3,
+        body: None,
+        artifact: None,
+    };
+    let payload = CliPostcardPayload::Explain(report);
+    let bytes = postcard::to_allocvec(&payload).expect("typed explain must postcard-encode");
+    let decoded = decode_cli_payload(&bytes).expect("typed explain must round-trip");
+
+    match decoded {
+        CliPostcardPayload::Explain(decoded_report) => {
+            assert!(!decoded_report.success);
+            assert_eq!(decoded_report.status, "failed");
+            assert_eq!(decoded_report.phase, "compile");
+            assert_eq!(decoded_report.exit_code, 3);
+            assert_eq!(decoded_report.repair_hints, vec!["add step".to_string()]);
+            assert_eq!(decoded_report.errors.len(), 2);
+            match &decoded_report.errors[0] {
+                ExplainErrorEntry::Structured { phase, message } => {
+                    assert_eq!(phase, "compile");
+                    assert_eq!(message, "syntax error at step 3");
+                }
+                other => panic!("expected Structured error entry, got {other:?}"),
+            }
+            match &decoded_report.errors[1] {
+                ExplainErrorEntry::Message(message) => {
+                    assert_eq!(message, "bottom-line failure");
+                }
+                other => panic!("expected Message error entry, got {other:?}"),
+            }
+        }
+        other => panic!("expected Explain variant, got {other:?}"),
+    }
+}
+
+#[test]
+fn typed_events_payload_round_trips() {
+    let report = EventsReport {
+        schema_version: EnvelopeSchemaVersion::current(),
+        kind: "events_report".to_string(),
+        run_id: 42,
+        events: vec![EventEntry {
+            seq: 1,
+            attempt: 0,
+            event_type: "Started".to_string(),
+            step: Some(0),
+            slot: None,
+        }],
+        total: 1,
+    };
+    let payload = CliPostcardPayload::Events(report);
+    let bytes = postcard::to_allocvec(&payload).expect("typed events must postcard-encode");
+    let decoded = decode_cli_payload(&bytes).expect("typed events must round-trip");
+
+    match decoded {
+        CliPostcardPayload::Events(decoded_report) => {
+            assert_eq!(decoded_report.run_id, 42);
+            assert_eq!(decoded_report.total, 1);
+            assert_eq!(decoded_report.events.len(), 1);
+            assert_eq!(decoded_report.events[0].seq, 1);
+            assert_eq!(decoded_report.events[0].attempt, 0);
+            assert_eq!(decoded_report.events[0].event_type, "Started");
+            assert_eq!(decoded_report.events[0].step, Some(0));
+            assert_eq!(decoded_report.events[0].slot, None);
+        }
+        other => panic!("expected Events variant, got {other:?}"),
+    }
+}
+
+#[test]
+fn typed_trace_payload_round_trips() {
+    let report = TraceReport {
+        schema_version: EnvelopeSchemaVersion::current(),
+        kind: "trace_report".to_string(),
+        run_id: 7,
+        trace: vec![TraceEntry {
+            seq: 0,
+            event_type: "StepBegin".to_string(),
+            step: Some(0),
+            status: Some("ok".to_string()),
+            action: Some("noop".to_string()),
+        }],
+        total: 1,
+    };
+    let payload = CliPostcardPayload::Trace(report);
+    let bytes = postcard::to_allocvec(&payload).expect("typed trace must postcard-encode");
+    let decoded = decode_cli_payload(&bytes).expect("typed trace must round-trip");
+
+    match decoded {
+        CliPostcardPayload::Trace(decoded_report) => {
+            assert_eq!(decoded_report.run_id, 7);
+            assert_eq!(decoded_report.total, 1);
+            assert_eq!(decoded_report.trace.len(), 1);
+            assert_eq!(decoded_report.trace[0].seq, 0);
+            assert_eq!(decoded_report.trace[0].event_type, "StepBegin");
+            assert_eq!(decoded_report.trace[0].step, Some(0));
+            assert_eq!(decoded_report.trace[0].status.as_deref(), Some("ok"));
+            assert_eq!(decoded_report.trace[0].action.as_deref(), Some("noop"));
+        }
+        other => panic!("expected Trace variant, got {other:?}"),
+    }
+}
+
+#[test]
+fn typed_replay_payload_round_trips() {
+    let report = ReplayReport {
+        schema_version: EnvelopeSchemaVersion::current(),
+        kind: "replay_report".to_string(),
+        run_id: 100,
+        recovered: 5,
+        events: vec![EventEntry {
+            seq: 0,
+            attempt: 1,
+            event_type: "Recovered".to_string(),
+            step: None,
+            slot: Some(2),
+        }],
+        terminal: "Succeeded".to_string(),
+    };
+    let payload = CliPostcardPayload::Replay(report);
+    let bytes = postcard::to_allocvec(&payload).expect("typed replay must postcard-encode");
+    let decoded = decode_cli_payload(&bytes).expect("typed replay must round-trip");
+
+    match decoded {
+        CliPostcardPayload::Replay(decoded_report) => {
+            assert_eq!(decoded_report.run_id, 100);
+            assert_eq!(decoded_report.recovered, 5);
+            assert_eq!(decoded_report.terminal, "Succeeded");
+            assert_eq!(decoded_report.events.len(), 1);
+            assert_eq!(decoded_report.events[0].event_type, "Recovered");
+            assert_eq!(decoded_report.events[0].slot, Some(2));
+        }
+        other => panic!("expected Replay variant, got {other:?}"),
+    }
+}
+
+#[test]
+fn typed_diff_payload_round_trips() {
+    let report = DiffReport {
+        schema_version: EnvelopeSchemaVersion::current(),
+        kind: "diff_report".to_string(),
+        run_a: 1,
+        run_b: 2,
+        events_a: 10,
+        events_b: 12,
+        diffs: vec![DiffEntry {
+            kind: "step".to_string(),
+            seq: Some(3),
+            step: Some(1),
+            slot: None,
+            detail: Some("payload differs".to_string()),
+        }],
+        total_differences: 1,
+    };
+    let payload = CliPostcardPayload::Diff(report);
+    let bytes = postcard::to_allocvec(&payload).expect("typed diff must postcard-encode");
+    let decoded = decode_cli_payload(&bytes).expect("typed diff must round-trip");
+
+    match decoded {
+        CliPostcardPayload::Diff(decoded_report) => {
+            assert_eq!(decoded_report.run_a, 1);
+            assert_eq!(decoded_report.run_b, 2);
+            assert_eq!(decoded_report.events_a, 10);
+            assert_eq!(decoded_report.events_b, 12);
+            assert_eq!(decoded_report.total_differences, 1);
+            assert_eq!(decoded_report.diffs.len(), 1);
+            assert_eq!(decoded_report.diffs[0].kind, "step");
+            assert_eq!(decoded_report.diffs[0].seq, Some(3));
+            assert_eq!(decoded_report.diffs[0].step, Some(1));
+            assert_eq!(decoded_report.diffs[0].slot, None);
+            assert_eq!(
+                decoded_report.diffs[0].detail.as_deref(),
+                Some("payload differs")
+            );
+        }
+        other => panic!("expected Diff variant, got {other:?}"),
+    }
+}
+
+#[test]
+fn classify_envelope_routes_validate_report_to_typed_variant() {
+    let envelope = serde_json::json!({
+        "schema_version": "velvet-ballistics/cli-output/v1",
+        "kind": "validate_report",
+        "success": true,
+        "status": "valid",
+        "exit_code": 0,
+        "repair_hints": [],
+    });
+    let payload = classify_envelope(&envelope).expect("validate_report must classify");
+
+    match payload {
+        CliPostcardPayload::Validate(report) => {
+            assert!(report.success);
+            assert_eq!(report.status, "valid");
+            assert_eq!(report.exit_code, 0);
+            assert_eq!(report.schema_version.as_str(), "velvet-ballistics/cli-output/v1");
+        }
+        other => panic!("expected Validate variant, got {other:?}"),
+    }
+}
+
+#[test]
+fn classify_envelope_routes_unknown_kind_to_unknown_kind_error() {
+    let envelope = serde_json::json!({
+        "schema_version": "velvet-ballistics/cli-output/v1",
+        "kind": "totally_unknown",
+    });
+    let result = classify_envelope(&envelope);
+    match result {
+        Err(ClassifyError::UnknownKind(kind)) => {
+            assert_eq!(kind, "totally_unknown");
+        }
+        other => panic!("expected UnknownKind error, got {other:?}"),
+    }
+}
+
+#[test]
+fn classify_envelope_fails_on_missing_kind_field() {
+    let envelope = serde_json::json!({
+        "schema_version": "velvet-ballistics/cli-output/v1",
+    });
+    let result = classify_envelope(&envelope);
+    assert_eq!(result, Err(ClassifyError::MissingKind));
+}
+
+#[test]
+fn classify_envelope_falls_back_to_generic_for_unmapped_typed_kinds() {
+    // DoctorReport has no dedicated typed variant in CliPostcardPayload —
+    // it must land in the `Generic` migration-fallback variant with the
+    // body bytes round-tripping through `GenericEnvelopeRepr`.
+    let original = serde_json::json!({
+        "schema_version": "velvet-ballistics/cli-output/v1",
+        "kind": "DoctorReport",
+        "status": "healthy",
+        "checks": ["ok"],
+    });
+    let payload =
+        classify_envelope(&original).expect("DoctorReport must classify to generic fallback");
+
+    let body = match payload {
+        CliPostcardPayload::Generic(generic) => {
+            assert_eq!(generic.kind, CliPostcardKind::DoctorReport);
+            generic.body
+        }
+        other => panic!("expected Generic variant, got {other:?}"),
+    };
+
+    let recovered = GenericEnvelopeRepr::decode_body_as_json(&body)
+        .expect("generic body must decode to json tree");
+    assert_eq!(recovered, original);
+}
+
+#[test]
+fn cli_postcard_kind_from_envelope_kind_resolves_known_kinds_and_returns_none_for_unknown() {
+    // Every known kind string must resolve to its typed `CliPostcardKind`
+    // discriminant — no silent coercion to DiagnosticReport.
+    let cases: &[(&str, CliPostcardKind)] = &[
         ("VerificationReport", CliPostcardKind::VerificationReport),
         ("DiagnosticReport", CliPostcardKind::DiagnosticReport),
         ("WorkflowExplanation", CliPostcardKind::WorkflowExplanation),
@@ -363,21 +594,108 @@ fn cli_postcard_kind_resolves_all_registered_envelope_kinds() {
         ("diff_report", CliPostcardKind::DiffReport),
         ("events_report", CliPostcardKind::EventsReport),
         ("trace_report", CliPostcardKind::TraceReport),
-        ("replay_report", CliPostcardKind::ReplayReportV2),
+        ("replay_report", CliPostcardKind::ReplayReport),
         ("run_report", CliPostcardKind::RunReport),
         ("inspect_report", CliPostcardKind::InspectReport),
+        ("simulate", CliPostcardKind::Simulate),
+        ("workflow_diff_report", CliPostcardKind::WorkflowDiffReport),
     ];
     for (input, expected) in cases {
         assert_eq!(
             CliPostcardKind::from_envelope_kind(input),
-            expected,
+            Some(*expected),
             "envelope kind {input:?} must resolve to typed CliPostcardKind {expected:?}"
         );
     }
-    // Unknown kind degrades to DiagnosticReport, never panics.
-    assert_eq!(
-        CliPostcardKind::from_envelope_kind("totally_unknown"),
-        CliPostcardKind::DiagnosticReport
+    // Unknown kinds return `None` — there is no silent fallback.
+    assert_eq!(CliPostcardKind::from_envelope_kind("totally_unknown"), None);
+    assert_eq!(CliPostcardKind::from_envelope_kind(""), None);
+}
+
+#[test]
+fn from_envelope_kind_impl_for_envelope_kind_covers_all_variants() {
+    // The `From<EnvelopeKind> for CliPostcardKind` impl must be total —
+    // every `cli_envelope::Kind` variant must map to a typed discriminant
+    // without panic or fallback.
+    let cases: &[(EnvelopeKind, CliPostcardKind)] = &[
+        (EnvelopeKind::VerificationReport, CliPostcardKind::VerificationReport),
+        (EnvelopeKind::DiagnosticReport, CliPostcardKind::DiagnosticReport),
+        (EnvelopeKind::WorkflowExplanation, CliPostcardKind::WorkflowExplanation),
+        (EnvelopeKind::WorkflowGraph, CliPostcardKind::WorkflowGraph),
+        (EnvelopeKind::SimulationReport, CliPostcardKind::SimulationReport),
+        (EnvelopeKind::SubmitRunResult, CliPostcardKind::SubmitRunResult),
+        (EnvelopeKind::RunInspection, CliPostcardKind::RunInspection),
+        (EnvelopeKind::RunEvents, CliPostcardKind::RunEvents),
+        (EnvelopeKind::ReplayReport, CliPostcardKind::ReplayReport),
+        (EnvelopeKind::IncidentReport, CliPostcardKind::IncidentReport),
+        (EnvelopeKind::ActionList, CliPostcardKind::ActionList),
+        (EnvelopeKind::ActionDescription, CliPostcardKind::ActionDescription),
+        (EnvelopeKind::DoctorReport, CliPostcardKind::DoctorReport),
+        (EnvelopeKind::AiContextPacket, CliPostcardKind::AiContextPacket),
+        (EnvelopeKind::CliStatus, CliPostcardKind::CliStatus),
+        (EnvelopeKind::SystemStatus, CliPostcardKind::SystemStatus),
+        (EnvelopeKind::AgentContext, CliPostcardKind::AgentContext),
+    ];
+    for (input, expected) in cases {
+        let actual: CliPostcardKind = CliPostcardKind::from(input.clone());
+        assert_eq!(
+            actual, *expected,
+            "From<EnvelopeKind> must map {input:?} to {expected:?}, got {actual:?}"
+        );
+    }
+}
+
+#[test]
+fn typed_postcard_wire_format_carries_typed_bool_not_string() {
+    // vb-k8ut.5: this is the typed wire-format contract. A `bool: true`
+    // postcard-encodes as a single byte 0x01, NEVER as the four-byte ASCII
+    // sequence b"true" (0x74 0x72 0x75 0x65). The replacement for the
+    // prior placebo wire-format test asserts that the typed bool survives
+    // the postcard encoder without becoming a self-describing JSON-style
+    // string. Conversely, the typed `String` field carrying the kind tag
+    // ("validate_report") is postcard-encoded as a varint-prefixed UTF-8
+    // string, so the byte sequence b"validate_report" MUST appear in the
+    // wire bytes — that proves the typed `String` discriminant is still
+    // present alongside the typed bool, matching the JSON envelope
+    // contract for kind. The same invariant holds for `false` (the
+    // b"false" sequence MUST NOT appear because the bool field encodes
+    // as a single 0x00 byte, not the ASCII string "false").
+    let report = ValidateReport {
+        schema_version: EnvelopeSchemaVersion::current(),
+        kind: "validate_report".to_string(),
+        success: true,
+        status: "valid".to_string(),
+        exit_code: 0,
+        repair_hints: Vec::new(),
+    };
+    let payload = CliPostcardPayload::Validate(report);
+    let bytes = postcard::to_allocvec(&payload).expect("typed validate must encode");
+
+    let contains_true_substring = bytes
+        .windows(b"true".len())
+        .any(|window| window == b"true");
+    assert!(
+        !contains_true_substring,
+        "postcard-encoded bool=true must NOT carry the ASCII substring b\"true\"; \
+         bool is encoded as a single byte 0x01. wire bytes: {bytes:?}"
+    );
+
+    let contains_false_substring = bytes
+        .windows(b"false".len())
+        .any(|window| window == b"false");
+    assert!(
+        !contains_false_substring,
+        "postcard-encoded bool=false must NOT carry the ASCII substring b\"false\"; \
+         bool is encoded as a single byte 0x00. wire bytes: {bytes:?}"
+    );
+
+    let contains_kind_substring = bytes
+        .windows(b"validate_report".len())
+        .any(|window| window == b"validate_report");
+    assert!(
+        contains_kind_substring,
+        "postcard-encoded String kind field must carry the ASCII substring b\"validate_report\"; \
+         the typed struct preserves the kind tag as a String. wire bytes: {bytes:?}"
     );
 }
 

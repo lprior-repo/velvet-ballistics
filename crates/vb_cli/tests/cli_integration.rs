@@ -9,6 +9,21 @@ use vb_core::ids::{SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::SlotValue;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
+// vb-k8ut.5: the integration test pulls in the typed cli_postcard module
+// (and its `pub(crate)` typed `CliPostcardPayload`/`CliPostcardKind`
+// surface) directly via `#[path]`. `cli_postcard` references
+// `crate::cli_envelope` and `crate::exit_code` for the typed
+// `EnvelopeSchemaVersion` and `CliExitCode` domain types, so we mirror
+// those module paths into this test crate via the same `#[path]`
+// mechanism. The mirrored modules are self-contained (no other
+// crate-internal dependencies) so this preserves the typed-postcard
+// boundary without leaking JSON-bridged shapes back into the test.
+#[path = "../src/exit_code.rs"]
+mod exit_code;
+
+#[path = "../src/cli_envelope.rs"]
+mod cli_envelope;
+
 #[path = "../src/cli_postcard/mod.rs"]
 mod cli_postcard;
 
@@ -3124,43 +3139,236 @@ fn assert_postcard_stdout(
     assert_eq!(header.schema_version, cli_postcard::CLI_SCHEMA_VERSION);
     assert_eq!(header.kind, cli_postcard::CLI_POSTCARD_KIND);
     assert_eq!(header.header_len, 52);
-
-    // vb-k8ut.5: the postcard envelope is a typed `CliPostcardPayload` enum.
-    // Extract the typed-tree payload and pattern-match on the typed kind
-    // discriminant (NOT a JSON kind string parsed from raw bytes). Convert
-    // the TypedJsonTree back to serde_json::Value for field inspection.
-    let (kind, packet) = match envelope {
-        cli_postcard::CliPostcardPayload::TypedTree(tp) => (tp.kind, tp.tree.into_json()),
-        cli_postcard::CliPostcardPayload::Diagnostic(report) => (
-            cli_postcard::CliPostcardKind::DiagnosticReport,
-            serde_json::to_value(&report)
-                .unwrap_or_else(|error| panic!("{command} diagnostic must serialize: {error}")),
-        ),
-    };
-
-    assert_eq!(
-        packet.get("schema_version"),
-        Some(&serde_json::json!("velvet-ballistics/cli-output/v1")),
-        "{command} payload schema_version mismatch: {packet}"
+    assert!(
+        header.payload_len > 0,
+        "{command} postcard payload_len must be non-zero",
     );
+    assert!(
+        header.payload_len <= cli_postcard::MAX_PAYLOAD_U32,
+        "{command} postcard payload_len {payload_len} must not exceed MAX_PAYLOAD_U32",
+        payload_len = header.payload_len,
+    );
+
+    // vb-k8ut.5: the envelope is a typed `CliPostcardPayload` enum.
+    // Assert on the typed discriminant via `envelope.kind()`, then
+    // pattern-match the variant and inspect typed Rust fields directly.
+    // No `serde_json::Value::get(...)` access on the decoded payload.
+    let actual_kind = envelope.kind();
     if let Some(expected_kind) = expected_payload_kind {
-        let expected_typed = cli_postcard::CliPostcardKind::from_envelope_kind(expected_kind);
+        let expected_typed = cli_postcard::CliPostcardKind::from_envelope_kind(expected_kind)
+            .expect("envelope kind must resolve to typed CliPostcardKind");
         assert_eq!(
-            kind, expected_typed,
-            "{command} typed CliPostcardKind discriminant mismatch (expected {expected_kind:?}/{expected_typed:?}, got {kind:?})"
-        );
-        assert_eq!(
-            packet.get("kind"),
-            Some(&serde_json::json!(expected_kind)),
-            "{command} payload kind mismatch: {packet}"
+            actual_kind, expected_typed,
+            "{command} typed CliPostcardKind discriminant mismatch (expected {expected_kind:?}/{expected_typed:?}, got {actual_kind:?})",
         );
     }
+
+    let schema_version = typed_payload_schema_version(&envelope);
+    assert_eq!(
+        schema_version,
+        cli_postcard::EnvelopeSchemaVersion::current().as_str(),
+        "{command} payload schema_version mismatch (got {schema_version:?}, variant {actual_kind:?})",
+    );
+
+    assert_typed_required_fields(command, &envelope, required_fields);
+}
+
+fn typed_payload_schema_version(envelope: &cli_postcard::CliPostcardPayload) -> String {
+    use cli_postcard::CliPostcardPayload;
+    match envelope {
+        CliPostcardPayload::Diagnostic(report) => report.schema_version.as_str().to_string(),
+        CliPostcardPayload::Validate(report) => report.schema_version.as_str().to_string(),
+        CliPostcardPayload::Verify(report) => report.schema_version.as_str().to_string(),
+        CliPostcardPayload::Explain(report) => report.schema_version.as_str().to_string(),
+        CliPostcardPayload::Events(report) => report.schema_version.as_str().to_string(),
+        CliPostcardPayload::Trace(report) => report.schema_version.as_str().to_string(),
+        CliPostcardPayload::Replay(report) => report.schema_version.as_str().to_string(),
+        CliPostcardPayload::Diff(report) => report.schema_version.as_str().to_string(),
+        CliPostcardPayload::Generic(payload) => generic_payload_schema_version(payload),
+    }
+}
+
+fn generic_payload_schema_version(payload: &cli_postcard::GenericPayload) -> String {
+    // vb-k8ut.5 escape hatch: decode the typed body via
+    // `GenericEnvelopeRepr::decode_body_as_json` and read the
+    // `schema_version` field from the decoded JSON tree. This keeps the
+    // schema_version assertion grounded in the actual wire bytes rather
+    // than assuming the canonical version for fallback payloads.
+    match cli_postcard::GenericEnvelopeRepr::decode_body_as_json(&payload.body) {
+        Ok(json) => json
+            .get("schema_version")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("")
+            .to_string(),
+        Err(_) => String::new(),
+    }
+}
+
+fn assert_typed_required_fields(
+    command: &str,
+    envelope: &cli_postcard::CliPostcardPayload,
+    required_fields: &[&str],
+) {
+    let variant = envelope.kind();
     for field in required_fields {
         assert!(
-            packet.get(field).is_some(),
-            "{command} payload missing field {field}: {packet}"
+            field_is_present_in_typed_payload(envelope, field),
+            "{command} payload missing typed field {field} on variant {variant:?}",
         );
     }
+}
+
+fn field_is_present_in_typed_payload(
+    envelope: &cli_postcard::CliPostcardPayload,
+    field: &str,
+) -> bool {
+    use cli_postcard::CliPostcardPayload;
+    match envelope {
+        CliPostcardPayload::Validate(report) => match field {
+            "schema_version" => !report.schema_version.as_str().is_empty(),
+            "kind" => !report.kind.is_empty(),
+            "success" => true,
+            "status" => !report.status.is_empty(),
+            "exit_code" => true,
+            "repair_hints" => {
+                let _ = &report.repair_hints;
+                true
+            }
+            _ => false,
+        },
+        CliPostcardPayload::Verify(report) => match field {
+            "schema_version" => !report.schema_version.as_str().is_empty(),
+            "kind" => !report.kind.is_empty(),
+            "success" => true,
+            "profile" => !report.profile.is_empty(),
+            "digest" => !report.digest.is_empty(),
+            "node_count" => true,
+            "checks" => {
+                let _ = &report.checks;
+                true
+            }
+            "warnings" => {
+                let _ = &report.warnings;
+                true
+            }
+            "artifact" => verify_artifact_section_is_present(&report.artifact),
+            "replay" => verify_replay_section_is_present(&report.replay),
+            "durability" => verify_durability_section_is_present(&report.durability),
+            _ => false,
+        },
+        CliPostcardPayload::Explain(report) => match field {
+            "schema_version" => !report.schema_version.as_str().is_empty(),
+            "kind" => !report.kind.is_empty(),
+            "success" => true,
+            "status" => !report.status.is_empty(),
+            "phase" => {
+                let _ = &report.phase;
+                true
+            }
+            "errors" => {
+                let _ = &report.errors;
+                true
+            }
+            "repair_hints" => {
+                let _ = &report.repair_hints;
+                true
+            }
+            "exit_code" => true,
+            "body" => report.body.is_some(),
+            "artifact" => report.artifact.is_some(),
+            _ => false,
+        },
+        CliPostcardPayload::Events(report) => match field {
+            "schema_version" => !report.schema_version.as_str().is_empty(),
+            "kind" => !report.kind.is_empty(),
+            "run_id" => true,
+            "events" => {
+                let _ = &report.events;
+                true
+            }
+            "total" => true,
+            _ => false,
+        },
+        CliPostcardPayload::Trace(report) => match field {
+            "schema_version" => !report.schema_version.as_str().is_empty(),
+            "kind" => !report.kind.is_empty(),
+            "run_id" => true,
+            "trace" => {
+                let _ = &report.trace;
+                true
+            }
+            "total" => true,
+            _ => false,
+        },
+        CliPostcardPayload::Replay(report) => match field {
+            "schema_version" => !report.schema_version.as_str().is_empty(),
+            "kind" => !report.kind.is_empty(),
+            "run_id" => true,
+            "recovered" => true,
+            "events" => {
+                let _ = &report.events;
+                true
+            }
+            "terminal" => !report.terminal.is_empty(),
+            _ => false,
+        },
+        CliPostcardPayload::Diff(report) => match field {
+            "schema_version" => !report.schema_version.as_str().is_empty(),
+            "kind" => !report.kind.is_empty(),
+            "run_a" => true,
+            "run_b" => true,
+            "events_a" => true,
+            "events_b" => true,
+            "diffs" => {
+                let _ = &report.diffs;
+                true
+            }
+            "total_differences" => true,
+            _ => false,
+        },
+        CliPostcardPayload::Diagnostic(report) => match field {
+            "schema_version" => !report.schema_version.as_str().is_empty(),
+            "kind" => true,
+            "code" => true,
+            "message" => !report.message.is_empty(),
+            _ => false,
+        },
+        CliPostcardPayload::Generic(payload) => {
+            // vb-k8ut.5 escape hatch: when a known envelope kind falls back
+            // to the migration `Generic` variant (because the JSON shape has
+            // not yet been promoted to a dedicated typed report), the spec
+            // explicitly authorizes decoding the typed body and inspecting
+            // the field via `GenericEnvelopeRepr::decode_body_as_json`. We
+            // still treat the typed `kind`/`schema_version` discriminants as
+            // first-class and only fall through to body inspection for
+            // payload-shaped fields. New typed variants should keep this
+            // path empty for their kinds.
+            matches!(field, "schema_version" | "kind")
+                || generic_body_field_is_present(payload, field)
+        }
+    }
+}
+
+fn generic_body_field_is_present(payload: &cli_postcard::GenericPayload, field: &str) -> bool {
+    match cli_postcard::GenericEnvelopeRepr::decode_body_as_json(&payload.body) {
+        Ok(json) => json.get(field).is_some(),
+        Err(_) => false,
+    }
+}
+
+fn verify_artifact_section_is_present(section: &cli_postcard::VerifyArtifactSection) -> bool {
+    !section.source_digest_hex.is_empty()
+        || !section.ir_digest_hex.is_empty()
+        || section.node_count > 0
+}
+
+fn verify_replay_section_is_present(section: &cli_postcard::VerifyReplaySection) -> bool {
+    let _ = (&section.gates_passed, &section.gate_sequence, section.replay_safe);
+    true
+}
+
+fn verify_durability_section_is_present(section: &cli_postcard::VerifyDurabilitySection) -> bool {
+    !section.profile.is_empty() || section.journal_written
 }
 
 #[test]
