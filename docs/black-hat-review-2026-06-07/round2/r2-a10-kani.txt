@@ -1,0 +1,2805 @@
+=== verify-kani gate run (FRESH VERIFICATION) ===
+Date: 2026-06-07T22:08:10Z
+Host: Linux omarchy 7.0.9-arch2-1 #1 SMP PREEMPT_DYNAMIC Fri, 22 May 2026 19:25:09 +0000 x86_64 GNU/Linux
+Toolchain: nightly-2026-04-28
+kani: cargo-kani 0.67.0
+moon: moon 2.2.4
+CBMC: 6.8.0 (cbmc-6.8.0)
+
+=== Pre-flight: invalidating kani incremental cache ===
+Removing kani metadata + CBMC outputs for vb_core so verification is real
+Cache cleared. Running each harness with --force-build.
+
+
+============================================================
+HARNESS: kani_budget_add_dim_zero
+============================================================
+Kani Rust Verifier 0.67.0 (cargo plugin)
+   Compiling proc-macro2 v1.0.106
+   Compiling quote v1.0.45
+   Compiling unicode-ident v1.0.24
+   Compiling serde_core v1.0.228
+   Compiling serde v1.0.228
+   Compiling semver v1.0.28
+   Compiling thiserror v2.0.18
+   Compiling scopeguard v1.2.0
+   Compiling autocfg v1.5.1
+   Compiling byteorder v1.5.0
+   Compiling stable_deref_trait v1.2.1
+   Compiling iana-time-zone v0.1.65
+   Compiling equivalent v1.0.2
+   Compiling hashbrown v0.17.1
+   Compiling lock_api v0.4.14
+   Compiling hash32 v0.2.1
+   Compiling rustc_version v0.4.1
+   Compiling spin v0.9.8
+   Compiling num-traits v0.2.19
+   Compiling heapless v0.7.17
+   Compiling indexmap v2.14.0
+   Compiling syn v2.0.117
+   Compiling serde_derive v1.0.228
+   Compiling thiserror-impl v2.0.18
+   Compiling cobs v0.3.0
+   Compiling chrono v0.4.44
+   Compiling bytes v1.11.1
+   Compiling postcard v1.1.3
+   Compiling vb_core v0.1.0 (/home/lewis/src/velvet-ballistics/crates/vb_core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.56s
+Checking harness kani_step_budget_zero::kani_budget_add_dim_zero...
+CBMC 6.8.0 (cbmc-6.8.0)
+CBMC version 6.8.0 (cbmc-6.8.0) 64-bit x86_64 linux
+Reading GOTO program from file /home/lewis/src/velvet-ballistics/target/kani-vb-core/kani/x86_64-unknown-linux-gnu/debug/deps/vb_core-fe4f368ccf9e8d30__RNvNtCs9nBeUb7Jtiz_7vb_core21kani_step_budget_zero24kani_budget_add_dim_zero.out
+Generating GOTO Program
+Adding CPROVER library (x86_64)
+Removal of function pointers and virtual functions
+Generic Property Instrumentation
+Running with 16 object bits, 48 offset bits (user-specified)
+Starting Bounded Model Checking
+Runtime Symex: 0.00154046s
+size of program expression: 142 steps
+slicing removed 97 assignments
+Generated 3 VCC(s), 1 remaining after simplification
+Runtime Postprocess Equation: 1.896e-05s
+Passing problem to propositional reduction
+converting SSA
+Runtime Convert SSA: 4.366e-05s
+Running propositional reduction
+Post-processing
+Runtime Post-process: 7.82e-06s
+Solving with CaDiCaL 2.0.0
+1 variables, 0 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 4.642e-05s
+Runtime decision procedure: 0.00011043s
+
+RESULTS:
+Check 1: kani_step_budget_zero::kani_budget_add_dim_zero.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: crates/vb_core/src/kani_step_budget_zero.rs:46:11 in function kani_step_budget_zero::kani_budget_add_dim_zero
+
+Check 2: kani_step_budget_zero::kani_budget_add_dim_zero.assertion.1
+	 - Status: SUCCESS
+	 - Description: "0+0=0"
+	 - Location: crates/vb_core/src/kani_step_budget_zero.rs:47:20 in function kani_step_budget_zero::kani_budget_add_dim_zero
+
+Check 3: kani_step_budget_zero::kani_budget_add_dim_zero.assertion.2
+	 - Status: UNREACHABLE
+	 - Description: "0+0 cannot overflow"
+	 - Location: crates/vb_core/src/kani_step_budget_zero.rs:48:17 in function kani_step_budget_zero::kani_budget_add_dim_zero
+
+Check 4: core::num::<impl u64>::checked_add.arithmetic_overflow.1
+	 - Status: SUCCESS
+	 - Description: "attempt to compute `unchecked_add` which would overflow"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/num/uint_macros.rs:658:31 in function core::num::<impl u64>::checked_add
+
+
+SUMMARY:
+ ** 0 of 4 failed (1 unreachable)
+
+VERIFICATION:- SUCCESSFUL
+Verification Time: 0.017196331s
+
+Manual Harness Summary:
+Complete - 1 successfully verified harnesses, 0 failures, 1 total.
+zsh:47: command not found: bc
+---
+HARNESS: kani_budget_add_dim_zero  EXIT=0  DURATION=s (6875ms)
+
+============================================================
+HARNESS: kani_budget_sub_dim_zero
+============================================================
+Kani Rust Verifier 0.67.0 (cargo plugin)
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling proc-macro2 v1.0.106
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.45
+   Compiling serde_core v1.0.228
+   Compiling serde v1.0.228
+   Compiling semver v1.0.28
+   Compiling scopeguard v1.2.0
+   Compiling thiserror v2.0.18
+   Compiling autocfg v1.5.1
+   Compiling byteorder v1.5.0
+   Compiling stable_deref_trait v1.2.1
+   Compiling equivalent v1.0.2
+   Compiling hashbrown v0.17.1
+   Compiling iana-time-zone v0.1.65
+   Compiling lock_api v0.4.14
+   Compiling hash32 v0.2.1
+   Compiling rustc_version v0.4.1
+   Compiling spin v0.9.8
+   Compiling indexmap v2.14.0
+   Compiling num-traits v0.2.19
+   Compiling heapless v0.7.17
+   Compiling syn v2.0.117
+   Compiling serde_derive v1.0.228
+   Compiling thiserror-impl v2.0.18
+   Compiling cobs v0.3.0
+   Compiling chrono v0.4.44
+   Compiling bytes v1.11.1
+   Compiling postcard v1.1.3
+   Compiling vb_core v0.1.0 (/home/lewis/src/velvet-ballistics/crates/vb_core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.75s
+Checking harness kani_step_budget_zero::kani_budget_sub_dim_zero...
+CBMC 6.8.0 (cbmc-6.8.0)
+CBMC version 6.8.0 (cbmc-6.8.0) 64-bit x86_64 linux
+Reading GOTO program from file /home/lewis/src/velvet-ballistics/target/kani-vb-core/kani/x86_64-unknown-linux-gnu/debug/deps/vb_core-23d0aa98fc6e3d8b__RNvNtCs9nBeUb7Jtiz_7vb_core21kani_step_budget_zero24kani_budget_sub_dim_zero.out
+Generating GOTO Program
+Adding CPROVER library (x86_64)
+Removal of function pointers and virtual functions
+Generic Property Instrumentation
+Running with 16 object bits, 48 offset bits (user-specified)
+Starting Bounded Model Checking
+Runtime Symex: 0.00113s
+size of program expression: 121 steps
+slicing removed 79 assignments
+Generated 3 VCC(s), 1 remaining after simplification
+Runtime Postprocess Equation: 2.437e-05s
+Passing problem to propositional reduction
+converting SSA
+Runtime Convert SSA: 4.067e-05s
+Running propositional reduction
+Post-processing
+Runtime Post-process: 8.749e-06s
+Solving with CaDiCaL 2.0.0
+1 variables, 0 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 4.3849e-05s
+Runtime decision procedure: 0.000107939s
+
+RESULTS:
+Check 1: kani_step_budget_zero::kani_budget_sub_dim_zero.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: crates/vb_core/src/kani_step_budget_zero.rs:57:11 in function kani_step_budget_zero::kani_budget_sub_dim_zero
+
+Check 2: kani_step_budget_zero::kani_budget_sub_dim_zero.assertion.1
+	 - Status: SUCCESS
+	 - Description: "0-0=0"
+	 - Location: crates/vb_core/src/kani_step_budget_zero.rs:58:20 in function kani_step_budget_zero::kani_budget_sub_dim_zero
+
+Check 3: kani_step_budget_zero::kani_budget_sub_dim_zero.assertion.2
+	 - Status: UNREACHABLE
+	 - Description: "0-0 cannot underflow"
+	 - Location: crates/vb_core/src/kani_step_budget_zero.rs:59:17 in function kani_step_budget_zero::kani_budget_sub_dim_zero
+
+Check 4: core::num::<impl u64>::checked_sub.arithmetic_overflow.1
+	 - Status: SUCCESS
+	 - Description: "attempt to compute `unchecked_sub` which would overflow"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/num/uint_macros.rs:812:31 in function core::num::<impl u64>::checked_sub
+
+
+SUMMARY:
+ ** 0 of 4 failed (1 unreachable)
+
+VERIFICATION:- SUCCESSFUL
+Verification Time: 0.016147116s
+
+Manual Harness Summary:
+Complete - 1 successfully verified harnesses, 0 failures, 1 total.
+zsh:47: command not found: bc
+---
+HARNESS: kani_budget_sub_dim_zero  EXIT=0  DURATION=s (7029ms)
+
+============================================================
+HARNESS: kani_aggregate_usage_zero
+============================================================
+Kani Rust Verifier 0.67.0 (cargo plugin)
+   Compiling proc-macro2 v1.0.106
+   Compiling quote v1.0.45
+   Compiling unicode-ident v1.0.24
+   Compiling serde_core v1.0.228
+   Compiling serde v1.0.228
+   Compiling semver v1.0.28
+   Compiling autocfg v1.5.1
+   Compiling scopeguard v1.2.0
+   Compiling thiserror v2.0.18
+   Compiling byteorder v1.5.0
+   Compiling stable_deref_trait v1.2.1
+   Compiling hashbrown v0.17.1
+   Compiling iana-time-zone v0.1.65
+   Compiling equivalent v1.0.2
+   Compiling lock_api v0.4.14
+   Compiling hash32 v0.2.1
+   Compiling rustc_version v0.4.1
+   Compiling spin v0.9.8
+   Compiling num-traits v0.2.19
+   Compiling heapless v0.7.17
+   Compiling indexmap v2.14.0
+   Compiling syn v2.0.117
+   Compiling serde_derive v1.0.228
+   Compiling thiserror-impl v2.0.18
+   Compiling cobs v0.3.0
+   Compiling bytes v1.11.1
+   Compiling chrono v0.4.44
+   Compiling postcard v1.1.3
+   Compiling vb_core v0.1.0 (/home/lewis/src/velvet-ballistics/crates/vb_core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.33s
+Checking harness kani_step_budget_zero::kani_aggregate_usage_zero...
+CBMC 6.8.0 (cbmc-6.8.0)
+CBMC version 6.8.0 (cbmc-6.8.0) 64-bit x86_64 linux
+Reading GOTO program from file /home/lewis/src/velvet-ballistics/target/kani-vb-core/kani/x86_64-unknown-linux-gnu/debug/deps/vb_core-7dbbd5d1dc821ec4__RNvNtCs9nBeUb7Jtiz_7vb_core21kani_step_budget_zero25kani_aggregate_usage_zero.out
+Generating GOTO Program
+Adding CPROVER library (x86_64)
+Removal of function pointers and virtual functions
+Generic Property Instrumentation
+Running with 16 object bits, 48 offset bits (user-specified)
+Starting Bounded Model Checking
+Runtime Symex: 0.393324s
+size of program expression: 19963 steps
+slicing removed 15889 assignments
+Generated 433 VCC(s), 18 remaining after simplification
+Runtime Postprocess Equation: 0.0087263s
+Passing problem to propositional reduction
+converting SSA
+Runtime Convert SSA: 0.0413473s
+Running propositional reduction
+Post-processing
+Runtime Post-process: 6.68e-06s
+Solving with CaDiCaL 2.0.0
+32886 variables, 51060 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 0.00156549s
+Runtime decision procedure: 0.0434526s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+32887 variables, 51061 clauses
+SAT checker: instance is UNSATISFIABLE
+Runtime Solver: 0.000132489s
+Runtime decision procedure: 0.000191479s
+
+RESULTS:
+Check 1: std::option::Option::<u64>::ok_or::<budget::AggregateBudgetError>.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:1338:15 in function std::option::Option::<u64>::ok_or::<budget::AggregateBudgetError>
+
+Check 2: core::num::<impl u64>::checked_add.arithmetic_overflow.1
+	 - Status: SUCCESS
+	 - Description: "attempt to compute `unchecked_add` which would overflow"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/num/uint_macros.rs:658:31 in function core::num::<impl u64>::checked_add
+
+Check 3: budget::AggregateResourceUsage::try_add_budget.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: crates/vb_core/src/lib.rs:0:0 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 4: kani_step_budget_zero::kani_aggregate_usage_zero.assertion.1
+	 - Status: SUCCESS
+	 - Description: "adding zero budgets succeeds"
+	 - Location: crates/vb_core/src/kani_step_budget_zero.rs:72:5 in function kani_step_budget_zero::kani_aggregate_usage_zero
+
+Check 5: std::ptr::drop_in_place::<budget::AggregateBudgetError>.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "misaligned pointer to reference cast: address must be a multiple of its type's alignment"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<budget::AggregateBudgetError>
+
+Check 6: std::ptr::drop_in_place::<budget::AggregateBudgetError>.safety_check.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<budget::AggregateBudgetError>
+
+Check 7: <std::result::Result<u64, budget::AggregateBudgetError> as std::ops::Try>::branch.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:2173:15 in function <std::result::Result<u64, budget::AggregateBudgetError> as std::ops::Try>::branch
+
+Check 8: <std::result::Result<u64, budget::AggregateBudgetError> as std::ops::Try>::branch.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:2173:15 in function <std::result::Result<u64, budget::AggregateBudgetError> as std::ops::Try>::branch
+
+Check 9: <std::result::Result<u64, budget::AggregateBudgetError> as std::ops::Try>::branch.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:2174:22 in function <std::result::Result<u64, budget::AggregateBudgetError> as std::ops::Try>::branch
+
+Check 10: std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>
+
+Check 11: std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>
+
+Check 12: std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>
+
+Check 13: std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>
+
+Check 14: std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>
+
+Check 15: std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>
+
+Check 16: std::option::Option::<u64>::ok_or::<budget::AggregateBudgetError>.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:1339:24 in function std::option::Option::<u64>::ok_or::<budget::AggregateBudgetError>
+
+Check 17: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:777:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 18: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:777:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 19: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:777:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 20: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:777:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 21: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:777:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 22: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:777:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 23: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.7
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:778:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 24: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.8
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:778:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 25: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.9
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:778:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 26: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.10
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:778:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 27: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.11
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:778:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 28: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.12
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:778:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 29: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.13
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:776:35 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 30: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.14
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:782:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 31: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.15
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:782:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 32: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.16
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:782:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 33: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.17
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:782:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 34: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.18
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:782:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 35: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.19
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:782:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 36: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.20
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:783:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 37: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.21
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:783:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 38: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.22
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:783:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 39: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.23
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:783:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 40: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.24
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:783:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 41: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.25
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:783:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 42: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.26
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:781:33 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 43: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.27
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:787:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 44: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.28
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:787:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 45: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.29
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:787:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 46: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.30
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:787:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 47: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.31
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:787:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 48: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.32
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:787:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 49: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.33
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:788:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 50: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.34
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:788:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 51: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.35
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:788:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 52: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.36
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:788:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 53: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.37
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:788:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 54: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.38
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:788:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 55: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.39
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:786:37 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 56: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.40
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:792:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 57: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.41
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:792:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 58: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.42
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:792:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 59: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.43
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:792:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 60: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.44
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:792:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 61: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.45
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:792:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 62: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.46
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:793:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 63: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.47
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:793:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 64: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.48
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:793:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 65: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.49
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:793:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 66: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.50
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:793:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 67: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.51
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:793:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 68: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.52
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:791:31 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 69: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.53
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:797:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 70: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.54
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:797:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 71: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.55
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:797:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 72: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.56
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:797:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 73: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.57
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:797:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 74: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.58
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:797:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 75: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.59
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:798:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 76: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.60
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:798:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 77: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.61
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:798:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 78: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.62
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:798:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 79: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.63
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:798:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 80: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.64
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:798:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 81: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.65
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:796:31 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 82: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.66
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:802:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 83: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.67
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:802:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 84: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.68
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:802:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 85: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.69
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:802:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 86: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.70
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:802:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 87: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.71
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:802:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 88: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.72
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:803:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 89: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.73
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:803:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 90: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.74
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:803:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 91: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.75
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:803:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 92: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.76
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:803:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 93: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.77
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:803:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 94: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.78
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:801:31 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 95: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.79
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:807:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 96: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.80
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:807:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 97: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.81
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:807:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 98: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.82
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:807:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 99: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.83
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:807:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 100: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.84
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:807:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 101: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.85
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:808:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 102: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.86
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:808:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 103: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.87
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:808:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 104: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.88
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:808:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 105: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.89
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:808:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 106: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.90
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:808:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 107: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.91
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:806:38 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 108: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.92
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:812:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 109: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.93
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:812:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 110: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.94
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:812:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 111: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.95
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:812:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 112: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.96
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:812:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 113: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.97
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:812:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 114: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.98
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:813:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 115: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.99
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:813:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 116: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.100
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:813:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 117: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.101
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:813:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 118: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.102
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:813:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 119: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.103
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:813:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 120: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.104
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:811:32 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 121: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.105
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:817:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 122: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.106
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:817:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 123: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.107
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:817:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 124: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.108
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:817:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 125: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.109
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:817:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 126: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.110
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:817:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 127: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.111
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:818:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 128: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.112
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:818:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 129: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.113
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:818:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 130: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.114
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:818:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 131: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.115
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:818:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 132: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.116
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:818:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 133: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.117
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:816:31 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 134: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.118
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:821:38 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 135: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.119
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:821:38 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 136: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.120
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:821:38 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 137: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.121
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:821:38 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 138: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.122
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:821:38 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 139: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.123
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:821:38 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 140: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.124
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:821:30 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 141: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.125
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:823:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 142: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.126
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:823:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 143: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.127
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:823:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 144: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.128
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:823:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 145: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.129
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:823:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 146: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.130
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:823:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 147: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.131
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:824:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 148: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.132
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:824:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 149: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.133
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:824:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 150: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.134
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:824:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 151: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.135
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:824:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 152: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.136
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:824:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 153: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.137
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:822:30 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 154: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.138
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:828:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 155: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.139
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:828:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 156: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.140
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:828:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 157: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.141
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:828:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 158: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.142
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:828:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 159: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.143
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:828:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 160: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.144
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:829:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 161: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.145
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:829:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 162: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.146
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:829:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 163: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.147
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:829:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 164: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.148
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:829:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 165: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.149
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:829:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 166: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.150
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:827:38 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 167: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.151
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:833:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 168: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.152
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:833:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 169: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.153
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:833:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 170: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.154
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:833:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 171: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.155
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:833:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 172: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.156
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:833:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 173: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.157
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:834:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 174: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.158
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:834:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 175: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.159
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:834:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 176: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.160
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:834:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 177: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.161
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:834:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 178: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.162
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:834:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 179: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.163
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:832:36 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 180: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.164
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:837:37 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 181: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.165
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:837:37 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 182: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.166
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:837:37 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 183: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.167
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:837:37 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 184: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.168
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:837:37 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 185: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.169
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:837:37 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 186: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.170
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:837:58 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 187: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.171
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:837:58 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 188: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.172
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:837:58 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 189: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.173
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:837:58 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 190: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.174
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:837:58 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 191: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.175
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:837:58 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 192: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.176
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:837:29 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 193: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.177
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:839:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 194: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.178
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:839:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 195: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.179
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:839:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 196: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.180
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:839:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 197: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.181
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:839:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 198: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.182
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:839:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 199: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.183
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:840:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 200: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.184
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:840:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 201: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.185
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:840:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 202: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.186
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:840:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 203: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.187
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:840:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 204: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.188
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:840:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 205: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.189
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:838:30 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 206: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.190
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:844:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 207: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.191
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:844:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 208: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.192
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:844:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 209: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.193
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:844:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 210: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.194
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:844:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 211: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.195
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:844:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 212: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.196
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:845:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 213: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.197
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:845:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 214: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.198
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:845:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 215: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.199
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:845:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 216: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.200
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:845:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 217: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.201
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:845:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 218: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.202
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:843:39 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 219: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.203
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:849:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 220: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.204
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:849:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 221: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.205
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:849:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 222: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.206
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:849:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 223: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.207
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:849:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 224: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.208
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:849:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 225: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.209
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:850:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 226: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.210
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:850:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 227: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.211
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:850:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 228: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.212
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:850:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 229: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.213
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:850:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 230: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.214
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:850:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 231: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.215
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:848:39 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 232: std::ptr::drop_in_place::<budget::AggregateBudgetError>.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<budget::AggregateBudgetError>
+
+Check 233: std::ptr::drop_in_place::<budget::AggregateBudgetError>.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<budget::AggregateBudgetError>
+
+Check 234: std::ptr::drop_in_place::<budget::AggregateBudgetError>.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<budget::AggregateBudgetError>
+
+Check 235: std::ptr::drop_in_place::<budget::AggregateBudgetError>.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<budget::AggregateBudgetError>
+
+Check 236: std::ptr::drop_in_place::<budget::AggregateBudgetError>.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<budget::AggregateBudgetError>
+
+Check 237: std::ptr::drop_in_place::<budget::AggregateBudgetError>.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<budget::AggregateBudgetError>
+
+Check 238: std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok
+
+Check 239: std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok
+
+Check 240: std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok
+
+Check 241: std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok
+
+Check 242: std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok
+
+Check 243: std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok
+
+
+SUMMARY:
+ ** 0 of 243 failed
+
+VERIFICATION:- SUCCESSFUL
+Verification Time: 0.5639102s
+
+Manual Harness Summary:
+Complete - 1 successfully verified harnesses, 0 failures, 1 total.
+zsh:47: command not found: bc
+---
+HARNESS: kani_aggregate_usage_zero  EXIT=0  DURATION=s (7192ms)
+
+============================================================
+HARNESS: kani_try_add_budget_zero_current
+============================================================
+Kani Rust Verifier 0.67.0 (cargo plugin)
+   Compiling proc-macro2 v1.0.106
+   Compiling quote v1.0.45
+   Compiling unicode-ident v1.0.24
+   Compiling serde_core v1.0.228
+   Compiling serde v1.0.228
+   Compiling semver v1.0.28
+   Compiling autocfg v1.5.1
+   Compiling scopeguard v1.2.0
+   Compiling thiserror v2.0.18
+   Compiling byteorder v1.5.0
+   Compiling stable_deref_trait v1.2.1
+   Compiling equivalent v1.0.2
+   Compiling iana-time-zone v0.1.65
+   Compiling hashbrown v0.17.1
+   Compiling lock_api v0.4.14
+   Compiling hash32 v0.2.1
+   Compiling rustc_version v0.4.1
+   Compiling spin v0.9.8
+   Compiling num-traits v0.2.19
+   Compiling heapless v0.7.17
+   Compiling indexmap v2.14.0
+   Compiling syn v2.0.117
+   Compiling serde_derive v1.0.228
+   Compiling thiserror-impl v2.0.18
+   Compiling cobs v0.3.0
+   Compiling bytes v1.11.1
+   Compiling chrono v0.4.44
+   Compiling postcard v1.1.3
+   Compiling vb_core v0.1.0 (/home/lewis/src/velvet-ballistics/crates/vb_core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 9.25s
+Checking harness kani_step_budget_zero::kani_try_add_budget_zero_current...
+CBMC 6.8.0 (cbmc-6.8.0)
+CBMC version 6.8.0 (cbmc-6.8.0) 64-bit x86_64 linux
+Reading GOTO program from file /home/lewis/src/velvet-ballistics/target/kani-vb-core/kani/x86_64-unknown-linux-gnu/debug/deps/vb_core-38408c958aba8b7f__RNvNtCs9nBeUb7Jtiz_7vb_core21kani_step_budget_zero32kani_try_add_budget_zero_current.out
+Generating GOTO Program
+Adding CPROVER library (x86_64)
+Removal of function pointers and virtual functions
+Generic Property Instrumentation
+Running with 16 object bits, 48 offset bits (user-specified)
+Starting Bounded Model Checking
+Runtime Symex: 0.464972s
+size of program expression: 20001 steps
+slicing removed 15919 assignments
+Generated 433 VCC(s), 18 remaining after simplification
+Runtime Postprocess Equation: 0.00965583s
+Passing problem to propositional reduction
+converting SSA
+Runtime Convert SSA: 0.0352323s
+Running propositional reduction
+Post-processing
+Runtime Post-process: 5e-06s
+Solving with CaDiCaL 2.0.0
+32886 variables, 51060 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 0.00170228s
+Runtime decision procedure: 0.0374861s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+32887 variables, 51061 clauses
+SAT checker: instance is UNSATISFIABLE
+Runtime Solver: 0.000184779s
+Runtime decision procedure: 0.000252739s
+
+RESULTS:
+Check 1: std::option::Option::<u64>::ok_or::<budget::AggregateBudgetError>.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:1338:15 in function std::option::Option::<u64>::ok_or::<budget::AggregateBudgetError>
+
+Check 2: kani_step_budget_zero::kani_try_add_budget_zero_current.assertion.1
+	 - Status: SUCCESS
+	 - Description: "adding budget to zero usage succeeds"
+	 - Location: crates/vb_core/src/kani_step_budget_zero.rs:87:5 in function kani_step_budget_zero::kani_try_add_budget_zero_current
+
+Check 3: budget::AggregateResourceUsage::try_add_budget.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: crates/vb_core/src/lib.rs:0:0 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 4: core::num::<impl u64>::checked_add.arithmetic_overflow.1
+	 - Status: SUCCESS
+	 - Description: "attempt to compute `unchecked_add` which would overflow"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/num/uint_macros.rs:658:31 in function core::num::<impl u64>::checked_add
+
+Check 5: <std::result::Result<u64, budget::AggregateBudgetError> as std::ops::Try>::branch.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:2173:15 in function <std::result::Result<u64, budget::AggregateBudgetError> as std::ops::Try>::branch
+
+Check 6: std::ptr::drop_in_place::<budget::AggregateBudgetError>.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "misaligned pointer to reference cast: address must be a multiple of its type's alignment"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<budget::AggregateBudgetError>
+
+Check 7: std::ptr::drop_in_place::<budget::AggregateBudgetError>.safety_check.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<budget::AggregateBudgetError>
+
+Check 8: std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>
+
+Check 9: std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>
+
+Check 10: std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>
+
+Check 11: std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>
+
+Check 12: std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>
+
+Check 13: std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<std::result::Result<budget::AggregateResourceUsage, budget::AggregateBudgetError>>
+
+Check 14: std::ptr::drop_in_place::<budget::AggregateBudgetError>.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<budget::AggregateBudgetError>
+
+Check 15: std::ptr::drop_in_place::<budget::AggregateBudgetError>.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<budget::AggregateBudgetError>
+
+Check 16: std::ptr::drop_in_place::<budget::AggregateBudgetError>.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<budget::AggregateBudgetError>
+
+Check 17: std::ptr::drop_in_place::<budget::AggregateBudgetError>.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<budget::AggregateBudgetError>
+
+Check 18: std::ptr::drop_in_place::<budget::AggregateBudgetError>.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<budget::AggregateBudgetError>
+
+Check 19: std::ptr::drop_in_place::<budget::AggregateBudgetError>.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:805:1 in function std::ptr::drop_in_place::<budget::AggregateBudgetError>
+
+Check 20: <std::result::Result<u64, budget::AggregateBudgetError> as std::ops::Try>::branch.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:2173:15 in function <std::result::Result<u64, budget::AggregateBudgetError> as std::ops::Try>::branch
+
+Check 21: <std::result::Result<u64, budget::AggregateBudgetError> as std::ops::Try>::branch.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:2174:22 in function <std::result::Result<u64, budget::AggregateBudgetError> as std::ops::Try>::branch
+
+Check 22: std::option::Option::<u64>::ok_or::<budget::AggregateBudgetError>.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:1339:24 in function std::option::Option::<u64>::ok_or::<budget::AggregateBudgetError>
+
+Check 23: std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok
+
+Check 24: std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok
+
+Check 25: std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok
+
+Check 26: std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok
+
+Check 27: std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok
+
+Check 28: std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:594:18 in function std::result::Result::<budget::AggregateResourceUsage, budget::AggregateBudgetError>::is_ok
+
+Check 29: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:777:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 30: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:777:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 31: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:777:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 32: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:777:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 33: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:777:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 34: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:777:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 35: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.7
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:778:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 36: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.8
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:778:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 37: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.9
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:778:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 38: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.10
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:778:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 39: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.11
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:778:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 40: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.12
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:778:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 41: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.13
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:776:35 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 42: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.14
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:782:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 43: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.15
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:782:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 44: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.16
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:782:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 45: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.17
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:782:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 46: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.18
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:782:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 47: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.19
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:782:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 48: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.20
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:783:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 49: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.21
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:783:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 50: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.22
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:783:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 51: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.23
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:783:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 52: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.24
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:783:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 53: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.25
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:783:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 54: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.26
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:781:33 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 55: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.27
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:787:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 56: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.28
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:787:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 57: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.29
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:787:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 58: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.30
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:787:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 59: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.31
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:787:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 60: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.32
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:787:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 61: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.33
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:788:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 62: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.34
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:788:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 63: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.35
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:788:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 64: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.36
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:788:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 65: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.37
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:788:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 66: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.38
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:788:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 67: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.39
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:786:37 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 68: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.40
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:792:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 69: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.41
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:792:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 70: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.42
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:792:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 71: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.43
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:792:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 72: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.44
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:792:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 73: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.45
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:792:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 74: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.46
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:793:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 75: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.47
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:793:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 76: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.48
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:793:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 77: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.49
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:793:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 78: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.50
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:793:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 79: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.51
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:793:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 80: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.52
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:791:31 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 81: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.53
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:797:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 82: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.54
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:797:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 83: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.55
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:797:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 84: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.56
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:797:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 85: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.57
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:797:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 86: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.58
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:797:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 87: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.59
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:798:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 88: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.60
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:798:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 89: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.61
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:798:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 90: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.62
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:798:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 91: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.63
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:798:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 92: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.64
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:798:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 93: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.65
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:796:31 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 94: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.66
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:802:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 95: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.67
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:802:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 96: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.68
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:802:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 97: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.69
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:802:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 98: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.70
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:802:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 99: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.71
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:802:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 100: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.72
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:803:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 101: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.73
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:803:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 102: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.74
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:803:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 103: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.75
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:803:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 104: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.76
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:803:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 105: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.77
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:803:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 106: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.78
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:801:31 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 107: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.79
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:807:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 108: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.80
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:807:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 109: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.81
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:807:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 110: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.82
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:807:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 111: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.83
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:807:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 112: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.84
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:807:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 113: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.85
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:808:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 114: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.86
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:808:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 115: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.87
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:808:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 116: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.88
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:808:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 117: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.89
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:808:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 118: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.90
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:808:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 119: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.91
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:806:38 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 120: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.92
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:812:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 121: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.93
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:812:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 122: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.94
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:812:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 123: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.95
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:812:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 124: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.96
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:812:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 125: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.97
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:812:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 126: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.98
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:813:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 127: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.99
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:813:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 128: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.100
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:813:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 129: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.101
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:813:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 130: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.102
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:813:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 131: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.103
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:813:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 132: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.104
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:811:32 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 133: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.105
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:817:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 134: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.106
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:817:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 135: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.107
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:817:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 136: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.108
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:817:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 137: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.109
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:817:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 138: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.110
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:817:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 139: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.111
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:818:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 140: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.112
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:818:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 141: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.113
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:818:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 142: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.114
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:818:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 143: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.115
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:818:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 144: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.116
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:818:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 145: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.117
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:816:31 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 146: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.118
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:821:38 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 147: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.119
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:821:38 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 148: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.120
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:821:38 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 149: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.121
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:821:38 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 150: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.122
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:821:38 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 151: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.123
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:821:38 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 152: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.124
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:821:30 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 153: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.125
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:823:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 154: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.126
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:823:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 155: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.127
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:823:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 156: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.128
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:823:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 157: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.129
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:823:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 158: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.130
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:823:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 159: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.131
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:824:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 160: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.132
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:824:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 161: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.133
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:824:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 162: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.134
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:824:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 163: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.135
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:824:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 164: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.136
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:824:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 165: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.137
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:822:30 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 166: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.138
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:828:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 167: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.139
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:828:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 168: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.140
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:828:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 169: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.141
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:828:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 170: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.142
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:828:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 171: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.143
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:828:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 172: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.144
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:829:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 173: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.145
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:829:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 174: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.146
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:829:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 175: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.147
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:829:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 176: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.148
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:829:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 177: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.149
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:829:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 178: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.150
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:827:38 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 179: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.151
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:833:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 180: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.152
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:833:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 181: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.153
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:833:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 182: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.154
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:833:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 183: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.155
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:833:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 184: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.156
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:833:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 185: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.157
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:834:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 186: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.158
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:834:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 187: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.159
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:834:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 188: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.160
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:834:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 189: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.161
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:834:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 190: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.162
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:834:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 191: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.163
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:832:36 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 192: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.164
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:837:37 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 193: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.165
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:837:37 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 194: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.166
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:837:37 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 195: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.167
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:837:37 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 196: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.168
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:837:37 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 197: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.169
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:837:37 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 198: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.170
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:837:58 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 199: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.171
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:837:58 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 200: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.172
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:837:58 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 201: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.173
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:837:58 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 202: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.174
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:837:58 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 203: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.175
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:837:58 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 204: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.176
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:837:29 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 205: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.177
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:839:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 206: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.178
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:839:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 207: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.179
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:839:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 208: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.180
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:839:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 209: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.181
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:839:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 210: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.182
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:839:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 211: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.183
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:840:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 212: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.184
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:840:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 213: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.185
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:840:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 214: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.186
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:840:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 215: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.187
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:840:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 216: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.188
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:840:27 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 217: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.189
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:838:30 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 218: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.190
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:844:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 219: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.191
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:844:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 220: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.192
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:844:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 221: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.193
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:844:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 222: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.194
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:844:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 223: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.195
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:844:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 224: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.196
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:845:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 225: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.197
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:845:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 226: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.198
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:845:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 227: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.199
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:845:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 228: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.200
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:845:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 229: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.201
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:845:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 230: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.202
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:843:39 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 231: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.203
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:849:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 232: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.204
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:849:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 233: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.205
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:849:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 234: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.206
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:849:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 235: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.207
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:849:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 236: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.208
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:849:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 237: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.209
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/budget.rs:850:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 238: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.210
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/budget.rs:850:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 239: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.211
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/budget.rs:850:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 240: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.212
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:850:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 241: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.213
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/budget.rs:850:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 242: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.214
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/budget.rs:850:17 in function budget::AggregateResourceUsage::try_add_budget
+
+Check 243: budget::AggregateResourceUsage::try_add_budget.pointer_dereference.215
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/budget.rs:848:39 in function budget::AggregateResourceUsage::try_add_budget
+
+
+SUMMARY:
+ ** 0 of 243 failed
+
+VERIFICATION:- SUCCESSFUL
+Verification Time: 0.66631943s
+
+Manual Harness Summary:
+Complete - 1 successfully verified harnesses, 0 failures, 1 total.
+zsh:47: command not found: bc
+---
+HARNESS: kani_try_add_budget_zero_current  EXIT=0  DURATION=s (10266ms)
+
+============================================================
+SUMMARY
+============================================================
+Total harnesses: 4
+Passed: 4
+Failed: 0
+Total duration: 31s
+Date: 2026-06-07T22:08:41Z

@@ -1,0 +1,32 @@
+================================================================
+GATE: moon :fmt
+REPO: /home/lewis/src/velvet-ballistics
+TOOLCHAIN: nightly-2026-04-28 (active)
+MOON VERSION: moon 2.2.4
+RUSTUP TOOLCHAIN: nightly-2026-04-28-x86_64-unknown-linux-gnu (overridden by '/home/lewis/src/velvet-ballistics/rust-toolchain.toml')
+STARTED: 2026-06-07T22:04:45Z
+HOSTNAME: omarchy
+================================================================
+
+$ moon run :fmt -f
+
+[ WARN 2026-06-07 17:04:45.613] moon_task_hasher::task_hasher  Attempted to hash input crates/workspace_tests/fixtures but it does not exist, skipping 
+[ WARN 17:04:45.615] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
+▮▮▮▮ velvet-ballistics:fmt (f7df1e17)
+▮▮▮▮ velvet-ballistics:fmt (1s 353ms, f7df1e17)
+
+Tasks: 1 completed
+ Time: 12s 155ms
+
+
+================================================================
+EXIT CODE: 0  (confirmed by direct `cargo fmt --all --check` recheck; moon output shows "Tasks: 1 completed")
+WALL-CLOCK DURATION: 12s  (moon: 12s 155ms; cargo fmt internal: 1s 353ms)
+FINISHED: 2026-06-07T22:04:57Z
+ERROR COUNT: 0
+STATUS: PASS
+================================================================
+
+----- POST-RUN DIRECT CARGO FMT RECHECK -----
+$ rustup run nightly-2026-04-28 cargo fmt --all --check
+[recheck exit code: 0 in 1s]

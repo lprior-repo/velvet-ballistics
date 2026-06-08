@@ -1,0 +1,196 @@
+=== r2-a11-verus :: moon run :verify-verus ===
+started: 2026-06-07T22:06:34Z
+toolchain: nightly-2026-04-28-x86_64-unknown-linux-gnu (overridden by '/home/lewis/src/velvet-ballistics/rust-toolchain.toml')
+verus: Verus   Version: 0.2026.05.05.d03e906   Profile: release   Platform: linux_x86_64   Toolchain: 1.95.0-x86_64-unknown-linux-gnu  
+verus_obligations_in_registry: 28
+---
+▮▮▮▮ velvet-ballistics:verify-verus (f4e23be7)
+[verus] verus --crate-type=lib verification/verus/vb_mrwe6_atomic_index.rs
+verification results:: 7 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/vb_mrwe6_queue_intent.rs
+verification results:: 8 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/vb_mrwe6_duplicate_schedule.rs
+verification results:: 11 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/vb_mrwe6_completion_policy.rs
+verification results:: 8 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/vb_mrwe6_recovery_reliance.rs
+verification results:: 9 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/vb_mrwe5_kind_parity.rs
+verification results:: 8 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/vb_mrwe5_decode_reject.rs
+verification results:: 8 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/vb_mrwe5_roundtrip.rs
+verification results:: 7 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/vb_mrwe5_compat_kind_family.rs
+verification results:: 11 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/taint_lattice.rs
+verification results:: 13 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/step_state_machine.rs
+verification results:: 16 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/step_budget.rs
+verification results:: 7 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/resource_budget.rs
+verification results:: 10 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/vb_jpq724_events_for_run_production.rs
+note: automatically chose triggers for this expression:
+   --> verification/verus/vb_jpq724_events_for_run_production.rs:219:17
+    |
+219 |               &&& (forall|i: int|
+    |  _________________^
+220 | |                 0 <= i && i < events.len() as int ==> events[i as int].run_id == run)
+    | |_____________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> verification/verus/vb_jpq724_events_for_run_production.rs:220:55
+    |
+220 |                 0 <= i && i < events.len() as int ==> events[i as int].run_id == run)
+    |                                                       ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> verification/verus/vb_jpq724_events_for_run_production.rs:260:9
+    |
+260 |         forall|i: int| 0 <= i && i < events.len() as int ==> events[i as int].run_id == run,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 1 of 1:
+   --> verification/verus/vb_jpq724_events_for_run_production.rs:260:62
+    |
+260 |         forall|i: int| 0 <= i && i < events.len() as int ==> events[i as int].run_id == run,
+    |                                                              ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> verification/verus/vb_jpq724_events_for_run_production.rs:262:5
+    |
+262 | /     assert_forall_by(
+263 | |         |i: int|
+264 | |             {
+265 | |                 requires(0 <= i && i < events.len() as int);
+...   |
+268 | |             },
+269 | |     );
+    | |_____^
+
+note:   trigger 1 of 1:
+   --> verification/verus/vb_jpq724_events_for_run_production.rs:266:25
+    |
+266 |                 ensures(events[i as int].run_id == run);
+    |                         ^^^^^^^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+   --> verification/verus/vb_jpq724_events_for_run_production.rs:262:5
+    |
+262 | /     assert_forall_by(
+263 | |         |i: int|
+264 | |             {
+265 | |                 requires(0 <= i && i < events.len() as int);
+...   |
+268 | |             },
+269 | |     );
+    | |_____^
+
+verification results:: 5 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/signals_invariant.rs
+verification results:: 19 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/run_loop_termination.rs
+verification results:: 7 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/vb_cli_commands_journal_trace.rs
+note: automatically chose triggers for this expression:
+   --> verification/verus/vb_cli_commands_journal_trace.rs:301:9
+    |
+301 | /         forall|i: int| 0 <= i < events1.len() ==>
+302 | |             spec_trace_one(i, &events1[i]) == spec_trace_one(i, &events2[i]),
+    | |____________________________________________________________________________^
+
+note:   trigger 1 of 2:
+   --> verification/verus/vb_cli_commands_journal_trace.rs:302:32
+    |
+302 |             spec_trace_one(i, &events1[i]) == spec_trace_one(i, &events2[i]),
+    |                                ^^^^^^^^^^
+
+note:   trigger 2 of 2:
+   --> verification/verus/vb_cli_commands_journal_trace.rs:302:66
+    |
+302 |             spec_trace_one(i, &events1[i]) == spec_trace_one(i, &events2[i]),
+    |                                                                  ^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> verification/verus/vb_cli_commands_journal_trace.rs:307:5
+    |
+307 |     assert forall|i: int| 0 <= i < events1.len() implies spec_trace_one(i, &events1[i]) == spec_trace_one(i, &events2[i]) by {
+    |     ^^^^^^
+
+note:   trigger 1 of 2:
+   --> verification/verus/vb_cli_commands_journal_trace.rs:307:77
+    |
+307 |     assert forall|i: int| 0 <= i < events1.len() implies spec_trace_one(i, &events1[i]) == spec_trace_one(i, &events2[i]) by {
+    |                                                                             ^^^^^^^^^^
+
+note:   trigger 2 of 2:
+   --> verification/verus/vb_cli_commands_journal_trace.rs:307:111
+    |
+307 |     assert forall|i: int| 0 <= i < events1.len() implies spec_trace_one(i, &events1[i]) == spec_trace_one(i, &events2[i]) by {
+    |                                                                                                               ^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+   --> verification/verus/vb_cli_commands_journal_trace.rs:307:5
+    |
+307 |     assert forall|i: int| 0 <= i < events1.len() implies spec_trace_one(i, &events1[i]) == spec_trace_one(i, &events2[i]) by {
+    |     ^^^^^^
+
+verification results:: 4 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/budget_bounded.rs
+verification results:: 15 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/idempotency_replay_tracker.rs
+verification results:: 8 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/accepted_artifact_admission_decision.rs
+verification results:: 10 verified, 0 errors
+[verus] verus --crate-type=lib crates/vb_runtime/src/verification/verus/vb_y9d3v_action_fence.rs
+warning: Failed to simplify expression <<(result is Ok ==> result.0 >= 1)>> before sending to Z3
+   --> crates/vb_runtime/src/verification/verus/vb_y9d3v_action_fence.rs:194:12
+    |
+194 |     assert(result.is_ok() ==> result.unwrap() >= 1) by (compute);
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: Failed to simplify expression <<(result is Ok ==> result.0 >= current)>> before sending to Z3
+   --> crates/vb_runtime/src/verification/verus/vb_y9d3v_action_fence.rs:204:12
+    |
+204 |     assert(result.is_ok() ==> result.unwrap() >= current) by (compute);
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+verification results:: 23 verified, 0 errors
+warning: 2 warnings emitted
+
+VERUS_REGISTRY_OK evidence=.evidence/verus
+▮▮▮▮ velvet-ballistics:verify-verus (7s 165ms, f4e23be7)
+
+Tasks: 1 completed
+ Time: 7s 192ms
+
+---
+exit_code: 0
+duration_seconds: 8
+finished: 2026-06-07T22:06:42Z

@@ -1,0 +1,89 @@
+================================================================
+GATE: moon :lint-src
+REPO: /home/lewis/src/velvet-ballistics
+TOOLCHAIN: nightly-2026-04-28 (active)
+MOON VERSION: moon 2.2.4
+RUSTUP TOOLCHAIN: nightly-2026-04-28-x86_64-unknown-linux-gnu (overridden by '/home/lewis/src/velvet-ballistics/rust-toolchain.toml')
+STARTED: 2026-06-07T22:05:57Z
+HOSTNAME: omarchy
+================================================================
+
+Task definition summary (.moon/tasks/all.yml:lint-src):
+  - cargo clippy --quiet --workspace --lib --bins --examples --all-features
+  - -D warnings -W clippy::all
+  - -D unsafe_code
+  - -D clippy::unwrap_used -D clippy::expect_used
+  - -D clippy::panic -D clippy::panic_in_result_fn
+  - -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro
+  - -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap
+  - -D clippy::arithmetic_side_effects -D clippy::as_conversions
+  - -D clippy::let_underscore_must_use -D clippy::await_holding_lock
+  - -D clippy::print_stdout -D clippy::print_stderr
+  - Pre-deps: panic-surface, ignored-fallible-results
+  - flock --shared target/moon-locks/source-mutation.lock
+
+$ moon run :lint-src -f
+
+[ WARN 2026-06-07 17:05:57.425] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 17:05:57.425] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 17:05:57.428] moon_task_hasher::task_hasher  Attempted to hash input crates/workspace_tests/fixtures but it does not exist, skipping 
+[ WARN 17:05:57.428] moon_task_hasher::task_hasher  Attempted to hash input crates/workspace_tests/fixtures but it does not exist, skipping 
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (40b3fca8)
+▮▮▮▮ velvet-ballistics:panic-surface (22ab9ced)
+velvet-ballistics:panic-surface | CWD: /home/lewis/src/velvet-ballistics
+velvet-ballistics:panic-surface | CommitSHA: 106b5b6214b990bcc6cebb4f32689396bf30c468
+velvet-ballistics:panic-surface | Toolchain: rustc 1.97.0-nightly (52b6e2c20 2026-04-27)
+velvet-ballistics:panic-surface | Command: bash scripts/check-panic-surface.sh
+velvet-ballistics:panic-surface | ScanDomain: crates/*/src
+velvet-ballistics:panic-surface | NonProductionPathExcluded: tests benches examples fuzz target .beads fixtures build.rs path-scoped tests.rs *_tests.rs kani harnesses loom models vb_ajc40_flux
+velvet-ballistics:panic-surface | NoViolationFound
+velvet-ballistics:panic-surface | ExitCode: 0
+▮▮▮▮ velvet-ballistics:panic-surface (9s 150ms, 22ab9ced)
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (running for 30s)
+velvet-ballistics:ignored-fallible-results | FixturePass: clean production-like fixture exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-001 bare fallible call exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-002 let underscore exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 ok err lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 embedded ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 split ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-004 swallowed Err exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-005 drop fallible exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-006 undocumented allow marker exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: path-bound justified exception exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: overbroad exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | FixturePass: malformed exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | ScanDomain: crates/*/src xtask/src
+velvet-ballistics:ignored-fallible-results | NonProductionExcluded: tests benches examples fuzz target .beads fixtures
+velvet-ballistics:ignored-fallible-results | NoViolationFound
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (41s 818ms, 40b3fca8)
+[ WARN 17:06:39.321] moon_task_hasher::task_hasher  Attempted to hash input crates/workspace_tests/fixtures but it does not exist, skipping 
+[ WARN 17:06:39.323] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
+▮▮▮▮ velvet-ballistics:lint-src (9720d381)
+▮▮▮▮ velvet-ballistics:lint-src (138ms, 9720d381)
+
+Tasks: 3 completed
+ Time: 54s 664ms
+
+
+================================================================
+EXIT CODE: 0  (moon output: "Tasks: 3 completed"; no failure summary present)
+WALL-CLOCK DURATION: 55s total
+  - panic-surface:           9s 150ms
+  - ignored-fallible-results: 41s 818ms
+  - lint-src (clippy):        138ms  (incremental; cargo target was hot)
+FINISHED: 2026-06-07T22:06:52Z
+ERROR COUNT: 0
+STATUS: PASS
+
+----- POST-RUN DIRECT CLIPPY RECHECK -----
+$ flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo clippy --workspace --lib --bins --examples --all-features
+  Blocking waiting for file lock on package cache
+  Blocking waiting for file lock on build directory
+  Checking vb_boundary_inventory ... (16 crates total)
+  Checking xtask
+  Checking velvet-ballistics (vb_cli)
+  Finished `dev` profile [unoptimized + debuginfo] target(s) in 19.52s
+[recheck exit code: 0]
+Recheck duration: 20s (cold from a non-moon shell, full dep-graph check).
+The moon 138ms figure reflects incremental cargo caching across same-toolchain runs.
+================================================================

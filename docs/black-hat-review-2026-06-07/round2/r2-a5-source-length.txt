@@ -1,0 +1,9 @@
+.config/source-length-exceptions.txt:436 stale exception for verification/proptest/properties.rs with 94 physical lines (limit >300)
+.config/source-length-exceptions.txt:493 stale exception for crates/vb_ipc/src/server/dispatch.rs with 66 physical lines (limit >300)
+crates/vb_cli/src/cli_postcard/tests.rs has 751 physical lines (limit <=300) and no valid .config/source-length-exceptions.txt row
+crates/vb_cli/src/cli_postcard/types.rs has 530 physical lines (limit <=300) and no valid .config/source-length-exceptions.txt row
+crates/vb_cli/src/output.rs has 303 physical lines (limit <=300) and no valid .config/source-length-exceptions.txt row
+crates/vb_core/src/workflow/compiled_slug.rs has 583 physical lines (limit <=300) and no valid .config/source-length-exceptions.txt row
+crates/vb_core/tests/vb_ajc40_public_decode_regression.rs has 600 physical lines (limit <=300) and no valid .config/source-length-exceptions.txt row
+crates/vb_ipc/src/server/dispatch_tests.rs has 302 physical lines (limit <=300) and no valid .config/source-length-exceptions.txt row
+crates/workspace_tests/tests/vb_a7t6_3_instruction_count_tests.rs has 317 physical lines (limit <=300) and no valid .config/source-length-exceptions.txt row

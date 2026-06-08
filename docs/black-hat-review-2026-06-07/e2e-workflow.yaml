@@ -1,0 +1,16 @@
+version: velvet-ballistics/v1
+name: e2e_smoke_test
+when:
+  manual: {}
+steps:
+  - id: step_hello
+    set:
+      output: greeting
+      value: "1"
+  - id: step_count
+    set:
+      output: count
+      value: "42"
+  - id: done
+    finish:
+      result: count

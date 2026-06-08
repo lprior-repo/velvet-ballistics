@@ -1,0 +1,41 @@
+----- INDEPENDENT FORBIDDEN-PATTERN AUDIT -----
+Scope: crates/*/src, xtask/src
+Method: literal ripgrep; tests/ benches/ examples/ fuzz/ excluded
+
+  unwrap\s*\( : 107 production hit(s)
+xtask/src/forbidden_scan.rs:34:    (r"\b\.unwrap\(\)", "arbitrary .unwrap() call"),
+xtask/src/forbidden_scan.rs:321:                // Skip dbg! invocations that might contain .unwrap()
+xtask/src/forbidden_scan.rs:477:            // Match .unwrap() but not dbg!.unwrap()
+xtask/src/forbidden_scan.rs:478:            haystack.contains(".unwrap()") && !haystack.contains("dbg!.unwrap()")
+xtask/src/assure/ir.rs:185:        let ir = AssuranceIr::from_contract(&clauses, &domains).unwrap();
+xtask/src/assure/path.rs:202:        let result = check_paths(&paths, &clauses, &[]).unwrap();
+xtask/src/evidence/tests.rs:105:        let errors = result.unwrap();
+xtask/src/evidence/tests.rs:143:            result.as_ref().unwrap().is_empty(),
+xtask/src/evidence/tests.rs:163:        let errors = result.unwrap();
+xtask/src/evidence/kani_bundle_harnesses.rs:99:        let _major: u64 = parts[0].parse().unwrap();
+  expect\s*\( : 99 production hit(s)
+xtask/src/benchmark_policy.rs:313:        let budget = parse_budget(VALID_BUDGET).expect("valid budget");
+xtask/src/forbidden_scan.rs:35:    (r"\b\.expect\(", "arbitrary .expect() call"),
+xtask/src/forbidden_scan.rs:480:        r"\b\.expect\(" => haystack.contains(".expect(") && !haystack.contains("dbg!.expect("),
+xtask/src/logger.rs:91:        let json = serde_json::to_string(&entry).expect("serialize");
+xtask/src/evidence/bundle.rs:45:            .expect("postcard serialise must succeed for valid bundle");
+xtask/src/evidence/bundle.rs:48:            .expect("postcard deserialise must succeed for valid bytes")
+crates/vb_ipc/src/frame_types/tests.rs:12:        header.encode().expect("encode should succeed")
+crates/vb_ipc/src/frame_types/tests.rs:83:            .expect("frame should build");
+crates/vb_ipc/src/frame_types/tests.rs:97:        .expect("frame should build");
+crates/vb_ipc/src/frame_types/tests.rs:115:        let header_bytes = header.encode().expect("encode should succeed");
+  panic! : 0 production hits
+  unsafe : 18 production hit(s)
+xtask/src/forbidden_scan.rs:6:// Scans first-party Rust crates for forbidden unsafe patterns and discipline violations.
+xtask/src/forbidden_scan.rs:41:/// Unsafe block pattern (to detect unsafe { } blocks).
+xtask/src/forbidden_scan.rs:336:    // Check unsafe blocks (excluding allowlisted)
+xtask/src/forbidden_scan.rs:346:                    description: "unsafe { } block (not allowlisted)".to_string(),
+xtask/src/forbidden_scan.rs:484:        r"\bunsafe\s*\{" => haystack.contains("unsafe {"),
+xtask/src/evidence/bundle.rs:27:    /// Postcard uses unsafe byte-level repr transmutes internally. Miri detects UB
+crates/vb_cli/src/main_tests.rs:405:    assert_eq!(third.retry_safety, "unsafe");
+crates/vb_cli/src/action_specs.rs:232:        vb_core::action::RetrySafety::Unsafe => "unsafe",
+crates/vb_cli/src/action_specs.rs:274:            "unsafe actions must not be retried automatically"
+crates/vb_cli/src/app_impl_tests.rs:449:    assert_eq!(third.retry_safety, "unsafe");
+  todo! : 0 production hits
+  unimplemented! : 0 production hits
+  dbg! : 0 production hits

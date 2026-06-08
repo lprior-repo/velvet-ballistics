@@ -1,0 +1,24 @@
+[ WARN 2026-06-07 17:05:38.790] moon_task_hasher::task_hasher  Attempted to hash input crates/workspace_tests/fixtures but it does not exist, skipping 
+[ WARN 17:05:38.792] moon_task_hasher::task_hasher  Attempted to hash input crates/vb_cli/tests/fixtures/fixtures but it does not exist, skipping 
+▮▮▮▮ velvet-ballistics:miri (88fed449)
+▮▮▮▮ velvet-ballistics:miri (running for 30s)
+
+running 1 test
+.
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2254 filtered out; finished in 24.10s
+
+
+running 15 tests
+...............
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 750 filtered out; finished in 4.87s
+
+
+running 1 test
+.
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 607 filtered out; finished in 1.68s
+
+▮▮▮▮ velvet-ballistics:miri (46s 813ms, 88fed449)
+
+Tasks: 1 completed
+ Time: 1m 934ms
+

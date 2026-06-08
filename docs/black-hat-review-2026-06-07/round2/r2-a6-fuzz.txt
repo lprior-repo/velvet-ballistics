@@ -1,0 +1,50 @@
+fuzz-smoke start: 1780869954
+▮▮▮▮ velvet-ballistics:fuzz-smoke (47d59013)
+▮▮▮▮ velvet-ballistics:fuzz-smoke (running for 30s)
+▮▮▮▮ velvet-ballistics:fuzz-smoke (32s 753ms, 47d59013)
+
+Tasks: 1 completed
+ Time: 33s 144ms
+
+
+fuzz-smoke end: 1780869988 duration: 34s exit: 0
+
+=== per-target run summary ===
+--- yaml_events ---
+stderr last line:
+Done 4166 runs in 2 second(s)
+stderr size: 24L 362W 2374B
+artifacts:
+(empty)
+--- ipc_frame ---
+stderr last line:
+Done 510600 runs in 2 second(s)
+stderr size: 30L 430W 2672B
+artifacts:
+(empty)
+--- journal_event_fuzz ---
+stderr last line:
+Done 497184 runs in 2 second(s)
+stderr size: 62L 971W 6511B
+artifacts:
+(empty)
+--- compiled_ir ---
+stderr last line:
+Done 69132 runs in 2 second(s)
+stderr size: 824L 14613W 106915B
+artifacts:
+(empty)
+--- expression ---
+stderr last line:
+Done 30967 runs in 2 second(s)
+stderr size: 26L 400W 2669B
+artifacts:
+(empty)
+
+=== build.err ===
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/velvet-ballistics/crates/vb_ipc)
+   Compiling velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/velvet-ballistics/fuzz)
+    Finished `release` profile [optimized + debuginfo] target(s) in 16.22s
+
+=== crash/error scan ===
+No BINGO/ERROR/panic/test failure patterns found in any .err
