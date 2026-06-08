@@ -12,7 +12,7 @@
 ## File Layout
 
 ```
-/tmp/opencode/transcripts/
+docs/black-hat-review-2026-06-07/
 ├── MASTER-ROADMAP.md                        (12.8 KB) — Final SHIP decision
 ├── e2e-test-results.md                       (7.2 KB) — Phase 6 hands-on test
 ├── e2e-workflow.yaml                        (256 B) — Test workflow

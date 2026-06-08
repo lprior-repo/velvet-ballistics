@@ -45,7 +45,7 @@ Master §39 requires 22 fields. `lib.rs::BenchmarkMetadata` struct has 7 fields:
 
 **Missing 15 fields**: governor, kernel, RUSTFLAGS, sample_count, fixture_digest, durability_profile, p50, p95, p99, allocation_count, bytes_allocated, timestamp_utc, host_name, etc.
 
-The 15 missing fields are recorded in a sidecar JSONL file `.evidence/benchmark-logs/<bench>.jsonl` at runtime, not in the struct.
+The 15 missing fields are recorded in a sidecar JSONL file `../../.evidence/benchmark-logs/<bench>.jsonl` at runtime, not in the struct.
 
 ## 12 *_root_migrated.rs Dead Duplicates
 
@@ -71,7 +71,7 @@ For each of 12 bench files, there is a `*_root_migrated.rs` copy (0 of 12 byte-i
 ## Real Measurement Evidence
 
 3 bench targets have real measurement evidence:
-1. `bench_engine_step_once_save_const_single_transition` — has p50/p95/p99 in `.evidence/benchmark-logs/`
+1. `bench_engine_step_once_save_const_single_transition` — has p50/p95/p99 in `../../.evidence/benchmark-logs/`
 2. `engine_run_until_blocked_budget_10_small_workflow` — has p50/p95/p99
 3. `ipc_frame_decode` — has p50/p95/p99
 

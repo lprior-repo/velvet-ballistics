@@ -1,7 +1,7 @@
 # Phase 6: Hands-On End-to-End Test of the `velvet-ballistics` Binary
 
 **Date:** 2026-06-07
-**Binary:** `/home/lewis/src/velvet-ballistics/target/hardened/velvet-ballistics`
+**Binary:** `../../target/hardened/velvet-ballistics`
 **Profile:** `hardened` (`opt-level 3, lto thin, codegen-units 1, panic abort, overflow-checks true`)
 **Build time:** 31.70s (131 crates compiled)
 **Toolchain:** `nightly-2026-04-28-x86_64-unknown-linux-gnu`
@@ -37,7 +37,7 @@ steps:
 | 2 | `velvet-ballistics help` | **PASS** | <1s | All 30 master §33 subcommands listed; binary name `velvet-ballistics` (no `vb` alias) ✓ §33.6 compliant |
 | 3 | `validate e2e-workflow.yaml` | **PASS** | <1s | After 2 iteration on the YAML schema; output: `valid` |
 | 4 | `simulate e2e-workflow.yaml` | **PASS** | <1s | Output: "Step 0: Set constant value / Step 1: Set constant value / Step 2: Finish -- would complete run" |
-| 5 | `run ... --input-bin <empty> --durability strict --db /tmp/e2e-db` | **PASS** | <5s | Output: `run 1: submitted=1 completed=1 failed=0 steps=3 / trace: RunSubmitted, StepStarted, SlotWritten×2, StepStarted, RunFinished` |
+| 5 | `run ... --input-bin <empty> --durability strict --db /tmp/e2e-db` | **PASS** | <5s | Output: `run 1: submitted=1 completed=1 failed=0 steps=3 / trace: RunSubmitted, StepStarted, SlotWritten×2, StepStarted, RunFinished` [^e2e-db-path] |
 | 6 | `inspect 1 --db ...` | **PASS** | <1s | Output: `run 1: status=finished, events=11` + BDD test evidence path `BDD-KYYF-002` |
 | 7 | `events 1 --db ...` | **PASS** | <1s | 11 events: `RunAccepted, RunAdmission, StepStarted, SlotWritten, StepSucceeded, StepStarted, SlotWritten, StepSucceeded, StepStarted, StepSucceeded, RunFinished` |
 | 8 | `trace 1 --db ...` | **PASS** | <1s | Same 11 events, formatted with step index |
@@ -107,3 +107,5 @@ The `inspect` and `events` outputs include `BDD-KYYF-002 command=inspect run_id=
 - R2-A3 evidence: `r2-a3-test.txt` (14,305 tests pass) — the test suite is green
 - R4-A12 evidence: 4 critical runtime defects that don't manifest in the 3-step smoke test
 - R5-A12 evidence: SHIP score 41/100, requires 124h of work to reach 80
+
+[^e2e-db-path]: The journal was originally written to /tmp/e2e-db at test time; the canonical copy in this transcript is at `e2e-db/`

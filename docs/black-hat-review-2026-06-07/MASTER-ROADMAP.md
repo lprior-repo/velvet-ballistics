@@ -96,7 +96,7 @@ All of the following must be true:
 6. **Duplicate IR types eliminated.** Master contract cites canonical paths only. Dead files deleted. CI gate prevents re-introduction.
 7. **`$attempt.number` restriction active.** `mod restrictions;` declared. `StepKindAst::Repeat` carries body. 19 tests run. `InvalidVariableScope` error variant exists.
 8. **E2E test on the live binary** demonstrates: `wait` of 1 hour survives process restart and resumes at the original deadline; `kill` returns `Cancelled` from `inspect_run` (not `NotFound`); `SECRET_UNAVAILABLE` errors surface as `SECRET_UNAVAILABLE` in logs; `REPLAY_DIVERGED` returns exit code 8.
-9. **Evidence pack at `.evidence/<bead>/`** for every closed bead, with raw command output.
+9. **Evidence pack at `../../.evidence/<bead>/`** for every closed bead, with raw command output.
 10. **`git push` succeeds.** `bd dolt push` succeeds. `git status` is clean.
 
 ---
@@ -164,7 +164,7 @@ All of the following must be true:
 | Section 17 dead-letter code implementation requires CoreError variant additions | MEDIUM | CoreError is `#[non_exhaustive]` already | Use named-field variants |
 | Duplicate IR type deletion breaks agents reading master | MEDIUM | Agents who edit `nodes.rs` per master will be confused | Update master contract in same commit |
 | `test-determinism` re-inclusion breaks CI on first run | HIGH | CI is red on 1,088 findings immediately | Use `--baseline` file; archive current as `.beads/vb-rdet/baseline.json` |
-| Beads closed without proper evidence | MEDIUM | `bd list` shows closed but no proof | Require raw log + `.evidence/<bead>/` file before `bd close` |
+| Beads closed without proper evidence | MEDIUM | `bd list` shows closed but no proof | Require raw log + `../../.evidence/<bead>/` file before `bd close` |
 
 ---
 

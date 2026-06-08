@@ -19,7 +19,7 @@ The 5x test-density contract is a master-mandated release gate. Actual is 3.99x 
 - `tarpaulin-report.json`: 3 bytes (`{}` + newline)
 - `xtask/.evidence/vb-test/coverage.log`: 1 line "fixture-backed gate execution; no raw tool output"
 - `xtask/.evidence/vb-test/llvm-cov.log`: same 1-line stub
-- `.evidence/vb-itest-deep-agg/llvm-cov.yaml`: exit_code 101, no number
+- `../../.evidence/vb-itest-deep-agg/llvm-cov.yaml`: exit_code 101, no number
 
 **The repo's "coverage evidence" is three stubs that themselves admit they contain no data.**
 
@@ -66,7 +66,7 @@ The 5x test-density contract is a master-mandated release gate. Actual is 3.99x 
 4. **HIGH**: Add ≥ 89 `#[test]` to `crates/vb_core/src/frame/tests_and_verification.rs` to reach 5.0x density on the 27 `pub fn` of `frame.rs`.
 5. **HIGH**: Investigate and fix why `cargo-llvm-cov` reports 0 branches for all files.
 6. **MEDIUM**: Fix the documentation in `crates/vb_expr/src/helpers/tests/edge_case_tests.rs:3-7` — there are 13 helpers, not 12. Add tests for `eval_unique`, `eval_has`, `eval_append`, `eval_append_if` to bring per-helper density to ≥ 5.0x.
-7. **PROCESS**: Reject any future bead submission whose `.evidence/<bead>/coverage*` file is a stub.
+7. **PROCESS**: Reject any future bead submission whose `../../.evidence/<bead>/coverage*` file is a stub.
 
 ## Verdict: SHIP-BLOCKER
 

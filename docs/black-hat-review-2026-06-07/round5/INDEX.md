@@ -9,18 +9,18 @@ The R5 agents wrote their plans to specific files. Index:
 
 | Agent | Plan Output | Total Hours | Beads |
 |---|---|---|---|
-| R5-A1 | `states/r4-p0-remediation-plan.md` (597 lines) | 40h | vb-r4fix-001..006 |
-| R5-A2 | `to-fix/11-section50-arrayqueue-migration-plan.md` | 10.5h | vb-section50-1..4 |
-| R5-A3 | `to-fix/11-section-65-taxonomy-migration.md` (MAJOR-6 filed as `vb-yfveq`) | 15.25h | vb-yfveq + 7 children |
-| R5-A4 | `.bead-progress/source-length-r2-repair/plan.md` | 37.5h | vb-source-length-r2 |
-| R5-A5 | `to-fix/13-section17-deadletter-recovery-plan.md` (1176 lines, 12 beads created) | 52h | vb-13d2a..k |
-| R5-A6 | `to-fix/12-resource-contract-admission-gap.md` (30 KB) | 30h | vb-o5zb.3.1..6 |
-| R5-A7 | `to-fix/13-dead-ir-deduplication-plan.md` (611 lines, 10 beads) | 4.5-7.5h | vb-br993..vb-eq7lv |
-| R5-A8 | `docs/attempt-scope-fix-plan.md` (7 steps, 22.75h) | 22.75h | vb-scope-attempt.1..7 |
-| R5-A9 | `/tmp/section38-property-test-gap-plan.md` (466 lines) | 41h | vb-cs38.1..11 |
-| R5-A10 | `to-fix/11-round4-pipeline-integrity-plan.md` (453 lines) | 118h | vb-r4mi/rcov/rmut/rfuz/rbnc/rdet/rpp1/rpp2/rax1..13 |
+| R5-A1 | `../../states/r4-p0-remediation-plan.md` (597 lines) | 40h | vb-r4fix-001..006 |
+| R5-A2 | `../../to-fix/11-section50-arrayqueue-migration-plan.md` | 10.5h | vb-section50-1..4 |
+| R5-A3 | `../../to-fix/11-section-65-taxonomy-migration.md` (MAJOR-6 filed as `vb-yfveq`) | 15.25h | vb-yfveq + 7 children |
+| R5-A4 | `../../.bead-progress/source-length-r2-repair/plan.md` | 37.5h | vb-source-length-r2 |
+| R5-A5 | `../../to-fix/13-section17-deadletter-recovery-plan.md` (1176 lines, 12 beads created) | 52h | vb-13d2a..k |
+| R5-A6 | `../../to-fix/12-resource-contract-admission-gap.md` (30 KB) | 30h | vb-o5zb.3.1..6 |
+| R5-A7 | `../../to-fix/13-dead-ir-deduplication-plan.md` (611 lines, 10 beads) | 4.5-7.5h | vb-br993..vb-eq7lv |
+| R5-A8 | `../../docs/attempt-scope-fix-plan.md` (7 steps, 22.75h) | 22.75h | vb-scope-attempt.1..7 |
+| R5-A9 | `r5-a9-section38-property-test-gap-plan.md` (466 lines) | 41h | vb-cs38.1..11 |
+| R5-A10 | `../../to-fix/11-round4-pipeline-integrity-plan.md` (453 lines) | 118h | vb-r4mi/rcov/rmut/rfuz/rbnc/rdet/rpp1/rpp2/rax1..13 |
 | R5-A11 | (plan in agent output) | 7h | vb-ref-roots.1..6 |
-| R5-A12 | `.evidence/SHIP-MASTER-ROADMAP-2026-06-07.md` (444 lines) | 124h total | **MASTER SYNTHESIS** |
+| R5-A12 | `../../.evidence/SHIP-MASTER-ROADMAP-2026-06-07.md` (444 lines) | 124h total | **MASTER SYNTHESIS** |
 
 ## Per-Plan Highlights (condensed)
 
@@ -100,7 +100,7 @@ The R5 agents wrote their plans to specific files. Index:
 
 ## Master Synthesis (R5-A12)
 
-The full synthesis is at `.evidence/SHIP-MASTER-ROADMAP-2026-06-07.md`. Key conclusions:
+The full synthesis is at `../../.evidence/SHIP-MASTER-ROADMAP-2026-06-07.md`. Key conclusions:
 
 1. **SHIP SCORE: 41/100** — weighted across 6 dimensions
 2. **RELEASE DECISION: HOLD** — do not declare "Backend / IR Interpreter Complete"
