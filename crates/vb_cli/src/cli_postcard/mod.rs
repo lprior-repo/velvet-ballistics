@@ -33,10 +33,7 @@ pub(crate) use types::{
     MAX_PAYLOAD_U32, PostcardHeader, ReplayReport, TraceEntry, TraceReport, ValidateReport,
     VerifyArtifactSection, VerifyDurabilitySection, VerifyReplaySection, VerifyReport,
 };
-pub(crate) use types_more::{
-    AiContextPacketReport, CliStatusReport, RunReport, SimulateReport, SystemStatusReport,
-    WorkflowDiffReport,
-};
+pub(crate) use types_more::{AiContextPacketReport, SystemStatusReport, WorkflowDiffReport};
 pub(crate) use validation::{decode_postcard, payload_digest};
 
 #[cfg(test)]
