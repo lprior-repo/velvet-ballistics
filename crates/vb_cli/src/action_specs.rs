@@ -236,11 +236,13 @@ pub(crate) fn action_retry_safety_name(value: vb_core::action::RetrySafety) -> &
 
 pub(crate) fn action_side_effect_name(value: vb_core::action::SideEffect) -> &'static str {
     match value {
-        vb_core::action::SideEffect::Pure => "none",
-        vb_core::action::SideEffect::LocalWrite => "writes",
-        vb_core::action::SideEffect::ExternalWrite => "sends",
-        vb_core::action::SideEffect::LocalWrite => "creates",
-        vb_core::action::SideEffect::LocalWrite => "destroys",
+        vb_core::action::SideEffect::Pure => "pure",
+        vb_core::action::SideEffect::LocalRead => "local_read",
+        vb_core::action::SideEffect::LocalWrite => "local_write",
+        vb_core::action::SideEffect::ExternalRead => "external_read",
+        vb_core::action::SideEffect::ExternalWrite => "external_write",
+        vb_core::action::SideEffect::Process => "process",
+        vb_core::action::SideEffect::UnsafeShell => "unsafe_shell",
         _ => "unknown",
     }
 }

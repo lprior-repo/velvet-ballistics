@@ -386,10 +386,12 @@ fn action_contract_all_idempotency_variants_constructable() {
 fn action_contract_all_side_effect_variants_constructable() {
     let variants = [
         SideEffect::Pure,
+        SideEffect::LocalRead,
         SideEffect::LocalWrite,
+        SideEffect::ExternalRead,
         SideEffect::ExternalWrite,
-        SideEffect::LocalWrite,
-        SideEffect::LocalWrite,
+        SideEffect::Process,
+        SideEffect::UnsafeShell,
     ];
     for variant in variants {
         let contract = ActionContract {
@@ -705,13 +707,15 @@ fn action_contract_side_effects_require_key_when_not_safe() {
         required_capabilities: Box::new([]),
     };
 
-    // Safety contract: Writes side effect with AtLeastOnceExternal needs KeyRequired
+    // Safety contract: Non-pure side effect with AtLeastOnceExternal needs KeyRequired
     assert!(matches!(
         contract.side_effect,
-        SideEffect::LocalWrite
+        SideEffect::LocalRead
+            | SideEffect::LocalWrite
+            | SideEffect::ExternalRead
             | SideEffect::ExternalWrite
-            | SideEffect::LocalWrite
-            | SideEffect::LocalWrite
+            | SideEffect::Process
+            | SideEffect::UnsafeShell
     ));
     assert!(matches!(
         contract.retry_safety,

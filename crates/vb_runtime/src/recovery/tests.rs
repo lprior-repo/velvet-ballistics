@@ -398,7 +398,6 @@ fn recover_hydrates_pending_timers() -> Result<(), String> {
     use crate::shard::PendingTimer;
     use crate::shard::config::ShardConfig;
     use crate::shard::timer::PendingTimerKind;
-    use crate::shard::timer_wheel::TimerEntry;
     use vb_core::ids::StepIdx;
 
     // Build a frame-seed hydration for a run that was suspended on a wait.

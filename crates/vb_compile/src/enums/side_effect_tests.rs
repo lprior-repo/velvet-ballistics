@@ -10,8 +10,7 @@
 //! tests verify the contract is satisfied.
 
 use vb_core::{
-    ActionContract, ActionId, Idempotency, RetrySafety, RunFrame, RunId, SideEffect, SlotIdx,
-    SlotValue, StepIdx, Taint,
+    RetrySafety, SideEffect,
     action::{ActionName, verify_idempotency},
 };
 
