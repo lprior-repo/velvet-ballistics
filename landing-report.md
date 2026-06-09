@@ -254,3 +254,18 @@ YES: 022a2f2f is on origin/main
 
 ## Conclusion
 vb-bi9hq successfully landed. 12 file-level `#![cfg(kani)]` attributes added to `crates/vb_core/src/kani_*.rs` harness files. Holzman gate clean. Bead closed. Dolt + git pushed. Lock released.
+
+# Wave A — femdation landing summary (2026-06-09)
+
+6 beads landed via femdation controller (concurrency: flock on /tmp/velvet-ballistics-landing.lock, 6 landing children in parallel).
+
+| Bead | Merge commit | Branch | Holzman gate | Notes |
+|---|---|---|---|---|
+| vb-0l9hg | 58859286e | femdation/wave-a/vb-0l9hg | fmt=0 check=0 clippy=0 | Includes repair commit 1b0111614 (renumber RunInspection 30→31) |
+| vb-fuz02 | 7a3b4fa21 | femdation/wave-a/vb-fuz02 | fmt=0 check=0 clippy=0 | 4 dead fuzz targets removed |
+| vb-dedup12 | 4dbb6d573 | femdation/wave-a/vb-dedup12 | fmt=0 check=0 clippy=0 source-length: 20→18 | 2 stale source-length exception rows deleted |
+| vb-uxwga | 4cdca2202 | femdation/wave-a/vb-uxwga | fmt=0 check=0 clippy=0 | RecoveryStamp=7 added to RecordKind |
+| vb-ymlkn01 | e7c1a8ef3 | femdation/wave-a/vb-ymlkn01 | fmt=0 check=0 clippy=0 | 4 kani mods wired, vacuum-model rewritten; cargo-kani=SKIPPED (BLOCK_GLOBAL) |
+| vb-bi9hq | 022a2f2f + cd470b1e9 | femdation/wave-a/vb-bi9hq | fmt=0 check=0 clippy=0 | cfg-gate 12 kani files; .beads artifact de-tracked from commit |
+
+Per-bead implementation evidence: see each bead's femdation workdir `<workdir>/.beads/<id>/implementation.md` (gitignored, on disk in `/home/lewis/src/velvet-ballistics-femdation-wave-a-<id>/.beads/<id>/implementation.md`).
