@@ -26,6 +26,9 @@
 //! - **I4**: All three durability profiles produce identical evidence ordering
 //! - **I5**: Multi-step workflows preserve per-step ordering
 
+use crate::engine::drive::drive_deterministic_full;
+use crate::engine::types::{EvidenceCollector, RetryPolicy};
+use crate::primitives::collect::CollectStates;
 use proptest::prelude::*;
 use proptest::strategy::{Just, Strategy};
 use vb_core::capability::CapabilitySet;
@@ -35,9 +38,6 @@ use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, RunId, SlotIdx, StepIdx,
     WorkflowDigest,
 };
-use crate::engine::drive::drive_deterministic_full;
-use crate::engine::types::{EvidenceCollector, RetryPolicy};
-use crate::primitives::collect::CollectStates;
 
 // ============================================================================
 // Test Fixtures and Helpers
@@ -127,41 +127,39 @@ fn arb_set_const_workflow(
     min_steps: u16,
     max_steps: u16,
 ) -> impl Strategy<Value = (CompiledWorkflow, Vec<ConstValue>)> {
-    (min_steps..=max_steps).prop_flat_map(|step_count| {
-        let slot_count = step_count + 1; // One extra slot for the finish result
-        let num_constants = step_count;
+    (min_steps..=max_steps)
+        .prop_flat_map(|step_count| {
+            let slot_count = step_count + 1; // One extra slot for the finish result
+            let num_constants = step_count;
 
-        // Generate step count SetConst nodes plus a finish node
-        let nodes: Vec<CompiledNode> = (0..step_count)
-            .map(|i| {
-                // Each step writes its constant to slot i, next step is i+1
-                set_const_node(i, i, i, Some(i + 1))
-            })
-            .collect();
-        let nodes: Vec<CompiledNode> = nodes
-            .into_iter()
-            .chain(std::iter::once(finish_node(step_count, step_count - 1)))
-            .collect();
+            // Generate step count SetConst nodes plus a finish node
+            let nodes: Vec<CompiledNode> = (0..step_count)
+                .map(|i| {
+                    // Each step writes its constant to slot i, next step is i+1
+                    set_const_node(i, i, i, Some(i + 1))
+                })
+                .collect();
+            let nodes: Vec<CompiledNode> = nodes
+                .into_iter()
+                .chain(std::iter::once(finish_node(step_count, step_count - 1)))
+                .collect();
 
-        // Generate random constant values
-        let constants: Vec<ConstValue> = (0..num_constants)
-            .map(|i| ConstValue::I64(i64::from(i as u8) + 1))
-            .collect();
+            // Generate random constant values
+            let constants: Vec<ConstValue> = (0..num_constants)
+                .map(|i| ConstValue::I64(i64::from(i as u8) + 1))
+                .collect();
 
-        Just((nodes, constants, slot_count))
-    })
-    .prop_map(|(nodes, constants, slot_count)| {
-        let wf = make_workflow(nodes, slot_count, constants.clone())
-            .expect("workflow construction should succeed");
-        (wf, constants)
-    })
+            Just((nodes, constants, slot_count))
+        })
+        .prop_map(|(nodes, constants, slot_count)| {
+            let wf = make_workflow(nodes, slot_count, constants.clone())
+                .expect("workflow construction should succeed");
+            (wf, constants)
+        })
 }
 
 /// Generates a mixed workflow with SetConst, Copy, Nop, and Finish nodes.
-fn arb_mixed_workflow(
-    min_steps: u16,
-    max_steps: u16,
-) -> impl Strategy<Value = CompiledWorkflow> {
+fn arb_mixed_workflow(min_steps: u16, max_steps: u16) -> impl Strategy<Value = CompiledWorkflow> {
     (min_steps..=max_steps).prop_flat_map(|step_count| {
         prop_oneof![
             // Generate a SetConst chain
@@ -784,10 +782,7 @@ fn step_event_ordering_in_drive_loop() {
 #[test]
 fn pc_advances_after_drive_completes() {
     let wf = make_workflow(
-        vec![
-            set_const_node(0, 0, 0, Some(1)),
-            finish_node(1, 0),
-        ],
+        vec![set_const_node(0, 0, 0, Some(1)), finish_node(1, 0)],
         1,
         vec![ConstValue::I64(42)],
     )
@@ -824,12 +819,8 @@ fn pc_advances_after_drive_completes() {
 /// Deterministic test: Copy node preserves slot value ordering in evidence.
 #[test]
 fn copy_node_slot_written_preserves_value() {
-    let wf = make_workflow(
-        vec![copy_node(0, 1, 0, 1), finish_node(1, 0)],
-        2,
-        vec![],
-    )
-    .expect("workflow construction should succeed");
+    let wf = make_workflow(vec![copy_node(0, 1, 0, 1), finish_node(1, 0)], 2, vec![])
+        .expect("workflow construction should succeed");
 
     let mut run = vb_core::frame::RunFrame::new(RunId::new(13), StepIdx::new(0), 2, 2)
         .expect("run frame creation should succeed");
