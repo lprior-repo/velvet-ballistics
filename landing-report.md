@@ -273,3 +273,4 @@ Per-bead implementation evidence: see each bead's femdation workdir `<workdir>/.
 ## Wave B
 - vb-clipst01: typed Postcard envelopes (6 new structs) landed; merge 4e5c6be1b.
 - vb-clitst01: split cli_postcard/tests.rs landed; merge d4affeb59; 33 tests preserved; source-length 18→17.
+- vb-cs3804: error_recovery proptest landed; merge 26113f338; 1000 proptest cases pass.
