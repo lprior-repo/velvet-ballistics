@@ -412,6 +412,12 @@ The holzman gate passes on code that compiles, lints clean, and has tests that p
 
 The 4 approved beads (vb-fuz02, vb-dedup12, vb-bi9hq, vb-clitst01) are closed. The 3 stale-duplicate closes (vb-4zd19, vb-hkqef, vb-nos2l) are closed. The 4 REJECTED beads and vb-0l9hg are *closed* (already landed) but flagged for repair via the new Wave C beads. The 3 N/A (proof-reviewer scope) are routed to proof-reviewer for the next wave.
 
+## Wave C — landing evidence (post-orchestrator)
+
+Per-bead landing outcomes from the Wave C repair landing pass (5 children serialized via `/tmp/velvet-ballistics-landing.lock`):
+
+- vb-mvedz: master §18 re-add Snapshot=30, remove RunInspection=31; merge 17642bea43d2dd263c1aeb58c678a70b1dbca1b5; §18 ↔ kinds.rs parity confirmed.
+
 ## Review artifact paths (on disk, gitignored, per AGENTS.md)
 
 ```
