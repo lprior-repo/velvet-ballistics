@@ -433,7 +433,6 @@ crates/workspace_tests/tests/restate_sync_drr_scheduler_tests.rs|lewis|vb-2lu1|s
 crates/workspace_tests/tests/restate_timer_deadline_primitive_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 1974-line file.
 crates/workspace_tests/tests/vb_8mdp_7_resource_admission_props.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 815-line file.
 crates/workspace_tests/tests/vb_eepg_bdd_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 852-line file.
-verification/proptest/properties.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 369-line file.
 verification/verus/vb_8mdp_12_storage_queue_exec_spec.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 353-line file.
 crates/vb_cli/src/action_specs.rs|lewis|vb-wsamy|split-or-retire-before-release|vb-t7srg source-length repair surfaced 433-line module; split action spec rendering by concern before removing exception.
 crates/vb_cli/src/args/status.rs|lewis|vb-wsamy|split-or-retire-before-release|vb-t7srg source-length repair surfaced 339-line status args module; split status option parsing by concern before removing exception.
@@ -490,7 +489,6 @@ crates/vb_core/src/workflow/compiled_query.rs|lewis|vb-9kwz|split-or-retire-befo
 crates/vb_core/src/workflow/yb_token.rs|lewis|vb-9kwz|split-or-retire-before-release|vb-9kwz source audit found 1111-line YB token types+tests+verification (811 over limit); split tests/kani into sub-module before removing exception.
 verification/verus/run_frame_new_postconditions.rs|lewis|vb-9kwz|split-or-retire-before-release|vb-9kwz source audit found 487-line Verus postconditions (187 over limit); split by proof obligation cluster before removing exception.
 crates/vb_core/src/replay/kani_harnesses.rs|lewis|vb-5iebh|split-or-retire-before-release|vb-5iebh moon ci baseline: 423-line kani harnesses (123 over limit); split by harness group or retire unused harnesses before removing exception.
-crates/vb_ipc/src/server/dispatch.rs|lewis|vb-5iebh|split-or-retire-before-release|vb-5iebh moon ci baseline: 332-line IPC dispatch (32 over limit); split dispatch branches or trim dead handlers before removing exception.
 crates/vb_proof_kernels/src/profile_contract/kani/forbidden_states.rs|lewis|vb-5iebh|split-or-retire-before-release|vb-5iebh moon ci baseline: 311-line forbidden states harness (11 over limit); split by state transition cluster before removing exception.
 crates/vb_proof_kernels/src/profile_contract/kani/inheritance.rs|lewis|vb-5iebh|split-or-retire-before-release|vb-5iebh moon ci baseline: 324-line inheritance harness (24 over limit); split by inheritance rule before removing exception.
 crates/vb_proof_kernels/tests/proptest/vb_esq9_1/profile_properties.rs|lewis|vb-5iebh|split-or-retire-before-release|vb-5iebh moon ci baseline: 469-line profile properties (169 over limit); split by property group before removing exception.
