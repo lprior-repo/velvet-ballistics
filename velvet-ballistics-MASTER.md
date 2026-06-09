@@ -857,7 +857,7 @@ Required `record_kind_u16` IDs:
 | 27 | `RunAnswered` |
 | 28 | `RunKilled` |
 | 29 | `StepSucceeded` |
-| 30 | `RunInspection` |
+| 31 | `RunInspection` (wire ID 31 chosen to avoid collision with `Snapshot=30`; see vb-0l9hg-repair commit message) |
 | 40 | `Blob` |
 | 50 | `IndexUpdate` |
 
