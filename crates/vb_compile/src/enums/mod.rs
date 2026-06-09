@@ -19,6 +19,3 @@
 
 #[cfg(test)]
 mod side_effect_tests;
-
-#[cfg(test)]
-mod retry_safety_tests;

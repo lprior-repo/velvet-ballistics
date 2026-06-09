@@ -2,6 +2,7 @@
 //! Engine signal types and step budget.
 
 use crate::errors::EngineError;
+use crate::ids::SlotIdx;
 use crate::limits::MAX_STEP_BUDGET;
 use crate::value::{SlotValue, Taint};
 
@@ -106,10 +107,23 @@ pub enum EngineSignal {
     StepBudgetExhausted,
     /// The run suspended on an action.
     AwaitingAction,
-    /// The run suspended on wait.
-    AwaitingWait,
-    /// The run suspended on ask.
-    AwaitingAsk,
+    /// The run suspended on wait. Carries the slot the wait primitive
+    /// read its deadline from so the host runtime can compute the
+    /// concrete `Instant` deadline for the pending timer.
+    AwaitingWait {
+        /// Slot the wait primitive read its deadline from. The host
+        /// runtime reads this slot on the suspended run frame to
+        /// obtain the actual deadline value the wait validated.
+        deadline_slot: SlotIdx,
+    },
+    /// The run suspended on ask. Carries the optional timeout slot
+    /// for ask nodes that include a timeout; `None` means the ask
+    /// has no timeout and only the prompt is suspended.
+    AwaitingAsk {
+        /// Optional slot the ask primitive read its timeout from.
+        /// `None` means the ask has no timeout.
+        timeout_slot: Option<SlotIdx>,
+    },
 }
 
 #[cfg(test)]

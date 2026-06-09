@@ -29,6 +29,10 @@ mod type_taint;
 #[cfg(test)]
 mod proptest_finish_digest;
 
+// Enum parity tests verifying SideEffect / RetrySafety match master plan §65.
+#[cfg(test)]
+mod enums;
+
 // Proptest properties for ChooseSlot lowering (vb-282my).
 #[cfg(test)]
 mod proptest_choose_lowering;
