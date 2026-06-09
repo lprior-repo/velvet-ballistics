@@ -577,7 +577,7 @@ Required types (authoritative layout in code):
 | `ExprOp` | 30 opcodes: `LoadSlot`, `LoadConst`, `LoadAccessor`, comparison, logical, arithmetic, and helper ops (Section 46). |
 | `AccessorProgram` | Path traversal: `root: SlotIdx`, `path: Box<[PathSegment]>` where `PathSegment = Field(SymbolId) \| Index(u32)`. |
 | `ConstValue` | See `value.rs` above. |
-| `ResourceContract` | 18 fields controlling hard limits (Section 13): `max_steps`, `max_slots`, `max_constants`, `max_accessors`, `max_expressions`, `max_expr_stack`, `max_step_budget_per_tick`, `max_transitions_per_tick`, `max_input_bytes`, `max_output_bytes`, `max_blob_bytes`, `max_ipc_payload_bytes`, `max_retry_attempts`, `max_fanout`, `max_collect_items`, `max_queue_depth`, `max_journal_batch_bytes`, `allows_secret_results`. Canonical: `crates/vb_core/src/workflow/types.rs:167-206` (re-exported as `vb_core::ResourceContract` from `lib.rs:126`). |
+| `ResourceContract` | 18 fields controlling hard limits (Section 13): `max_steps`, `max_slots`, `max_constants`, `max_accessors`, `max_expressions`, `max_expr_stack`, `max_step_budget_per_tick`, `max_transitions_per_tick`, `max_input_bytes`, `max_output_bytes`, `max_blob_bytes`, `max_ipc_payload_bytes`, `max_retry_attempts`, `max_fanout`, `max_collect_items`, `max_queue_depth`, `max_journal_batch_bytes`, `allows_secret_results`. Canonical: `crates/vb_core/src/workflow/types.rs:174-213` (re-exported as `vb_core::ResourceContract` from `lib.rs:124-128`). |
 
 Compiler rule: high-level YAML primitives may lower to multiple IR nodes. Runtime executes IR only in the current milestone. Final choose IR has exactly two checked forms: `Choose` evaluates expression-branch conditions from `ExprIdx`, and `ChooseSlot` reads pre-materialized boolean conditions from `SlotIdx` values produced by earlier IR. Raw YAML condition strings and untyped choose nodes are forbidden in final IR.
 
@@ -3442,7 +3442,7 @@ This section tracks known architectural defects discovered through adversarial r
 - `EvalExpr` reads taint from all `LoadSlot` operands and joins into output taint (`crates/vb_expr/src/eval.rs`).
 - `BuildObject` joins taint from all field slots into output taint.
 - `BuildList` joins taint from all item slots into output taint.
-- `Finish` node reads slot taint and emits `EngineSignal::Finished(SlotValue, Taint)` (`crates/vb_core/src/workflow/types.rs:706-709 for the IR variant (CompiledNodeKind::Finish), crates/vb_core/src/engine/node_helpers.rs::finish_run for the engine handler`).
+- `Finish` node reads slot taint and emits `EngineSignal::Finished(SlotValue, Taint)` (`crates/vb_core/src/workflow/types.rs:717-720 for the IR variant (CompiledNodeKind::Finish), crates/vb_core/src/engine/node_helpers.rs::finish_run for the engine handler`).
 - `EngineSignal::Finished` carries taint alongside value in the result signal.
 - Compile-time taint validation remains as defense-in-depth.
 
