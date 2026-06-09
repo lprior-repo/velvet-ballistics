@@ -101,12 +101,18 @@ fn execute_boundary_node(
             // later call resume_action_completion or resume_action_failure.
             Ok(EngineSignal::AwaitingAction)
         }
-        CompiledNodeKind::WaitUntil { .. } | CompiledNodeKind::WaitEvent { .. } => {
-            Ok(EngineSignal::AwaitingWait {
-                deadline_slot: SlotIdx::new(0),
-            })
-        }
-        CompiledNodeKind::Ask { .. } => Ok(EngineSignal::AwaitingAsk { timeout_slot: None }),
+        CompiledNodeKind::WaitUntil { deadline_slot } => Ok(EngineSignal::AwaitingWait {
+            deadline_slot: *deadline_slot,
+        }),
+        CompiledNodeKind::WaitEvent {
+            event,
+            timeout_slot,
+        } => Ok(EngineSignal::AwaitingWait {
+            deadline_slot: timeout_slot.unwrap_or(*event),
+        }),
+        CompiledNodeKind::Ask { timeout_slot, .. } => Ok(EngineSignal::AwaitingAsk {
+            timeout_slot: *timeout_slot,
+        }),
         CompiledNodeKind::Jump { target } => node_helpers::jump_to(run, *target),
         CompiledNodeKind::Finish { result } => node_helpers::finish_run(run, *result),
         CompiledNodeKind::ErrorHandler { body, .. } => {

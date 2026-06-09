@@ -292,11 +292,6 @@ impl Runtime {
         &mut self,
         journal: &crate::journal::SharedRuntimeJournal,
     ) -> RuntimeResult<Vec<RunId>> {
-        use crate::primitives::collect::CollectStates;
-        use crate::recovery::{DurableFrameRecoveryBoundary, RuntimeRecoveryBoundary};
-        use crate::shard::PendingTimer;
-        use crate::shard::timer::PendingTimerKind;
-
         // 1. Get all incomplete runs from storage
         let hydrations = vb_storage::recovery::recover_all_incomplete_runs(
             journal
@@ -319,110 +314,139 @@ impl Runtime {
                 _ => continue,
             };
 
-            // 4. Reconstruct pending timer if applicable (wait/ask)
-            // Extract needed fields before moving seed into boundary
+            // Extract needed fields before passing seed to hydrate_frame
             let run = seed.summary.run;
-            let pc = seed.pc;
             let slot_count = seed.slot_count;
+            let pc = seed.pc;
 
             // 3. Build recovery boundary and hydrate the frame
-            let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
-            let frame = boundary.hydrate_run_frame()?;
+            let frame = Self::hydrate_frame(seed)?;
+
+            // 4. Extract timer info from events
             let events = journal
                 .storage_journal()
                 .ok_or(RuntimeError::InvalidRecoveryHydration)?
                 .events_for_run(run)
                 .map_err(|_| RuntimeError::InvalidRecoveryHydration)?;
-
-            let mut deadline: Option<std::time::Instant> = None;
-            let mut kind: Option<PendingTimerKind> = None;
-            let mut step: Option<StepIdx> = None;
-
-            for ev in events.iter().rev() {
-                match ev {
-                    vb_storage::JournalEvent::WaitScheduledEvent {
-                        step: s,
-                        deadline_ms,
-                        ..
-                    } if pc == *s => {
-                        step = Some(*s);
-                        kind = Some(PendingTimerKind::Wait);
-                        deadline = Some(
-                            std::time::Instant::now()
-                                .checked_add(std::time::Duration::from_millis(*deadline_ms))
-                                .unwrap_or_else(std::time::Instant::now),
-                        );
-                    }
-                    vb_storage::JournalEvent::AskScheduledEvent {
-                        step: s,
-                        deadline_ms,
-                        ..
-                    } if pc == *s => {
-                        step = Some(*s);
-                        kind = Some(PendingTimerKind::Ask);
-                        deadline = Some(
-                            std::time::Instant::now()
-                                .checked_add(std::time::Duration::from_millis(*deadline_ms))
-                                .unwrap_or_else(std::time::Instant::now),
-                        );
-                    }
-                    _ => {}
-                }
-            }
+            let pending_timer = Self::extract_pending_timer(&events, pc)?;
 
             // 5. Insert the run into the shard
-            let shard_idx = self.shard_index(run);
-            let shard = self
-                .shards
-                .get_mut(shard_idx)
-                .ok_or(RuntimeError::RunNotFound)?;
-
-            // Insert runtime state
-            shard
-                .runtime_states
-                .insert(run, crate::shard::RuntimeState::Resumable);
-
-            // Store workflow in pending_workflows for later retrieval
-            let workflow = crate::admission::empty_workflow();
-            shard.pending_workflows.insert(run, workflow.clone());
-
-            // Insert the frame
-            shard.runs.insert(
-                run,
-                crate::shard::RunState {
-                    frame,
-                    workflow,
-                    store: vb_core::value_store::ValueStore::with_max_slots(slot_count),
-                    action_attempts: Box::new([]),
-                    admission: None,
-                    collect_states: CollectStates::default(),
-                    action_contracts: Box::new([]),
-                },
-            );
-
-            // 6. Reconstruct pending timer if this was a wait/ask suspension
-            if let (Some(step_val), Some(timer_kind), Some(dl)) = (step, kind, deadline) {
-                let generation = match shard.next_pending_timer_generation(run) {
-                    Some(g) => g,
-                    None => {
-                        return Err(RuntimeError::InvalidTimerFire);
-                    }
-                };
-                shard.pending_timer_insert(
-                    run,
-                    PendingTimer {
-                        step: step_val,
-                        kind: timer_kind,
-                        generation,
-                        deadline: dl,
-                    },
-                );
-            }
+            Self::insert_recovered_run(self, run, frame, slot_count, pending_timer)?;
 
             recovered.push(run);
         }
 
         Ok(recovered)
+    }
+
+    /// Hydrates a run frame from a recovery seed.
+    fn hydrate_frame(
+        seed: vb_storage::recovery::RecoveryFrameSeed,
+    ) -> RuntimeResult<vb_core::frame::RunFrame> {
+        use crate::recovery::{DurableFrameRecoveryBoundary, RuntimeRecoveryBoundary};
+
+        let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
+        boundary.hydrate_run_frame()
+    }
+
+    /// Extracts pending timer info from journal events for a suspended run.
+    fn extract_pending_timer(
+        events: &[vb_storage::JournalEvent],
+        pc: vb_core::StepIdx,
+    ) -> RuntimeResult<Option<crate::shard::PendingTimer>> {
+        use crate::shard::timer::PendingTimerKind;
+
+        for ev in events.iter().rev() {
+            match ev {
+                vb_storage::JournalEvent::WaitScheduledEvent {
+                    step: s,
+                    deadline_ms,
+                    ..
+                } if pc == *s => {
+                    let deadline = std::time::Instant::now()
+                        .checked_add(std::time::Duration::from_millis(*deadline_ms))
+                        .unwrap_or_else(std::time::Instant::now);
+                    return Ok(Some(crate::shard::PendingTimer {
+                        step: *s,
+                        kind: PendingTimerKind::Wait,
+                        generation: 0, // Will be updated by insert_recovered_run
+                        deadline,
+                    }));
+                }
+                vb_storage::JournalEvent::AskScheduledEvent {
+                    step: s,
+                    deadline_ms,
+                    ..
+                } if pc == *s => {
+                    let deadline = std::time::Instant::now()
+                        .checked_add(std::time::Duration::from_millis(*deadline_ms))
+                        .unwrap_or_else(std::time::Instant::now);
+                    return Ok(Some(crate::shard::PendingTimer {
+                        step: *s,
+                        kind: PendingTimerKind::Ask,
+                        generation: 0, // Will be updated by insert_recovered_run
+                        deadline,
+                    }));
+                }
+                _ => {}
+            }
+        }
+        Ok(None)
+    }
+
+    /// Inserts a recovered run into the shard with its frame and optional pending timer.
+    #[cfg(feature = "test-util")]
+    fn insert_recovered_run(
+        &mut self,
+        run: vb_core::ids::RunId,
+        frame: vb_core::frame::RunFrame,
+        slot_count: u16,
+        pending_timer: Option<crate::shard::PendingTimer>,
+    ) -> RuntimeResult<()> {
+        use crate::primitives::collect::CollectStates;
+
+        let shard_idx = self.shard_index(run);
+        let shard = self
+            .shards
+            .get_mut(shard_idx)
+            .ok_or(RuntimeError::RunNotFound)?;
+
+        // Insert runtime state
+        shard
+            .runtime_states
+            .insert(run, crate::shard::RuntimeState::Resumable);
+
+        // Store workflow in pending_workflows for later retrieval
+        let workflow = crate::admission::empty_workflow();
+        shard.pending_workflows.insert(run, workflow.clone());
+
+        // Insert the frame
+        shard.runs.insert(
+            run,
+            crate::shard::RunState {
+                frame,
+                workflow,
+                store: vb_core::value_store::ValueStore::with_max_slots(slot_count),
+                action_attempts: Box::new([]),
+                admission: None,
+                collect_states: CollectStates::default(),
+                action_contracts: Box::new([]),
+            },
+        );
+
+        // Insert pending timer if applicable
+        if let Some(mut timer) = pending_timer {
+            let generation = match shard.next_pending_timer_generation(run) {
+                Some(g) => g,
+                None => {
+                    return Err(RuntimeError::InvalidTimerFire);
+                }
+            };
+            timer.generation = generation;
+            shard.pending_timer_insert(run, timer);
+        }
+
+        Ok(())
     }
 
     /// Computes the owning shard index for a run.

@@ -220,7 +220,7 @@ fn compute_deadline_ms_from_slot(state: &RunState, slot: SlotIdx) -> u64 {
         Ok(vb_core::value::SlotValue::I64(ms)) => u64::try_from(*ms).unwrap_or(0),
         Ok(vb_core::value::SlotValue::F64(value)) => {
             let ms = value.get();
-            if !ms.is_sign_positive() {
+            if !ms.is_finite() || !ms.is_sign_positive() {
                 return 0;
             }
             #[allow(clippy::as_conversions)]
