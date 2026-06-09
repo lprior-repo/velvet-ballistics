@@ -457,3 +457,78 @@ Per-bead landing outcomes from the Wave C repair landing pass (5 children serial
 - bd status: 1514 total, 92 open, 0 in progress, 12 blocked, 1385 closed
 - Working tree clean
 - All pushed: `git push` succeeded, `bd dolt push` succeeded
+
+---
+
+# Wave C retrospective (2026-06-09)
+
+**6 beads closed, 3 follow-up repair beads open.** This is the fail-forward Wave C: dispatching fresh impl work for the 4 REJECTED + 1 split-verdict Wave A/B landings, with the reviewer triad as the binding gate (not holzman-rust alone).
+
+## Wave C landing chain on main
+
+| Merge | Commit | Bead | Status |
+|---|---|---|---|
+| `a6e22bd3a` | `9f7bb438c` | vb-yd9g0 (kani_step_harnesses E0164 fix) | **CLOSED ✓ APPROVED (review)** |
+| `17642bea4` | `8a76dfa71` | vb-mvedz (master §18 re-add Snapshot=30; remove RunInspection=31) | **CLOSED ✓ APPROVED (review)** |
+| `96da8f6d5` | `0ccddc8f2` | vb-40cfh (proptest now exercises recovery::replay_events) | **CLOSED ✓ APPROVED (review)** |
+| `d0007b03b` | `a5ff3828d` | vb-5hf16 (3 dead Postcard envelopes killed; 4 new tests) | **CLOSED ✗ REJECTED (review)** — see follow-up `vb-ehhpw` |
+| `183513448` | `60182bdad` | vb-1cwhx (RecoveryStamp=7 decoder extended) | **CLOSED ✗ REJECTED (review)** — see follow-up `vb-k6iwh` |
+| `b16408f26` | `2e3b80f58` | vb-3ysvx (cargo-kani verification) | **CLOSED (BLOCKED — 66 compile errors)** — see follow-up `vb-h7j7g` |
+
+Main HEAD: `4fb1aec1f`
+
+## Reviewer triad pass on Wave C repairs
+
+10 review children (5 black-hat + 5 test-reviewer) on the 5 successful Phase-1 repairs. Verdict matrix:
+
+| Bead | Black-hat | Test-reviewer | Outcome |
+|---|---|---|---|
+| vb-yd9g0 | APPROVED | N/A (verifier code) | ✅ APPROVED |
+| vb-mvedz | APPROVED-WITH-FOLLOWUP | APPROVED | ✅ APPROVED (with `vb-mvedz-followup` for master §18 ↔ kinds.rs parity test + RecoveryStamp=7 row) |
+| vb-40cfh | APPROVE WITH MINOR FINDINGS | APPROVED | ✅ APPROVED |
+| vb-5hf16 | **REJECT** (F1 HIGH: 66-line helper violates Farley cap; impl child misapplied the "splitting obscures invariants" exception) | APPROVED (with 2 MEDIUM mutation-resistance findings: 3 round-trip tests are self-referential, asserting byte-equality on opaque bytes) | ❌ REJECTED |
+| vb-1cwhx | **REJECT** (B-1: KEYSPACE_RECOVERY_STAMP is dead in production — FjallJournal doesn't open the keyspace; no put_recovery_stamp / get_recovery_stamp methods) | APPROVED | ❌ REJECTED |
+
+**Summary:** 3 approved, 2 rejected. Same hit rate as the Wave A/B review pass (which was 4 approved / 4 rejected / 1 split / 2 N/A). The reviewer triad consistently catches contract defects that the holzman gate misses.
+
+## Concrete defects the reviewer triad found in Wave C repairs
+
+These are defects that passed holzman (`cargo fmt/check/clippy/test` all green) but were caught by the reviewer:
+
+1. **vb-1cwhx: phantom keyspace.** The decoder path for `RecoveryStamp=7` is wired for the codec layer (is_known_record_kind, classify_kind_family, try_key_prefix, encode/decode), but the Fjall storage layer is not. `KEYSPACE_RECOVERY_STAMP` is a dead constant. Master §18 doesn't register the new keyspace/prefix/magic. **Pattern is the same as the original vb-uxwga rejection: "wires the codec half, leaves the storage half as dead code."** Follow-up `vb-k6iwh`.
+
+2. **vb-5hf16: Farley 25-line cap violation masked as a justified exception.** `round_trip_validate_fallback` is 66 lines. The impl child tried to justify with "splitting would obscure invariants" but the reviewer showed the function has 3 clearly-bounded sections (dispatch extract, postcard round-trip, JSON-tree structural assertions) that are demonstrably splittable. **Pattern: the impl child applied a doctrine exception without the exception being earned.** Follow-up `vb-ehhpw`.
+
+3. **vb-5hf16: 3 self-referential round-trip tests.** The tests assert `generic.body == body` byte-equality on opaque bytes. Deleting the dispatch arm at `classify.rs:95-97` still lets all 3 pass. Only the 1 negative test (`typed_fallback_to_generic_on_shape_mismatch`) is genuinely mutation-resistant. **Pattern: tests that exercise the encode side of round-trip without decoding back to typed are half-tests.**
+
+4. **vb-3ysvx: kani rewrite doesn't even build.** The black-hat reviewer of vb-ymlkn01 said the kani fix was "unverified." The verifier execution subagent found it was worse than that: 0 of 5 vb_yaml kani harness files compiled under cargo-kani 0.67.0. **66 rustc errors** in 5 categories (kani::any::<String>() unsupported, missing trait imports, private is_primitive, unknown kani::no_unwinding_checks, self-imports). Follow-up `vb-h7j7g`.
+
+## Open follow-up repair beads (3)
+
+| Bead | Priority | Discovered-from | What |
+|---|---|---|---|
+| `vb-h7j7g` | P0 | vb-3ysvx | Fix 66 cargo-kani compile errors in vb_yaml's 5 kani harness files; subsume kani_all_variants_registered; regenerate kani-list.json; add `bash scripts/kani-list.sh <pkg>` to the verification gate |
+| `vb-k6iwh` | P0 | vb-1cwhx | Open Fjall keyspace for RecoveryStamp (add to FjallJournal struct, declared_keyspaces, put/get methods); add journal-round-trip BDD test; update master §18 to register the new keyspace/prefix/magic/key format/wire ID 7 |
+| `vb-ehhpw` | P1 | vb-5hf16 | Split 66-line round_trip_validate_fallback into 3 helpers <25 lines; inline expected_kind_label; strengthen 3 self-referential round-trip tests so they decode body back to typed (or assert cross-dispatch property) |
+
+## Final state
+
+- `main` HEAD: `4fb1aec1f` (Wave C summary commit)
+- 6 Wave C beads closed (5 successful + 1 verification-blocked)
+- 3 follow-up repair beads open (vb-h7j7g, vb-k6iwh, vb-ehhpw)
+- bd: 1517 total, 89 open, 0 in progress, 12 blocked, 1391 closed
+- Working tree clean
+- All pushed: `git push` + `bd dolt push` succeeded
+
+## Honest summary
+
+Of 18 beads closed in this session (12 Wave A/B + 6 Wave C), the reviewer triad REJECTED 6 (4 from Wave A/B + 2 from Wave C). My holzman gate alone would have shipped 18 of 18 as APPROVED. The reviewer triad is *the* binding gate, not a supplement.
+
+The pattern of defects the reviewer keeps catching:
+- **Phantom reachability** (vb-uxwga, vb-1cwhx): a public type/variant/constant that compiles, lints clean, and tests pass, but is unreachable through the production path it claims to enable.
+- **Self-referential tests** (vb-5hf16): tests that pass for the wrong reason because they assert on a property that's tautologically true.
+- **Wrong function under test** (vb-cs3804): a proptest that calls a different function than the spec named.
+- **Hallucinated spec** (vb-cs3804, vb-ymlkn01): bead descriptions that reference master line ranges, types, and macros that don't exist.
+- **Farley rule violation masked as exception** (vb-5hf16): impl children invoking "splitting would obscure invariants" without the exception being earned.
+
+The next femdation wave should pick up `vb-h7j7g` + `vb-k6iwh` + `vb-ehhpw` first (they're P0/P1 and unblock the rest), then continue with the next 6 ready beads.
