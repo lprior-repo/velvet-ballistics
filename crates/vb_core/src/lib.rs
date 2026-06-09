@@ -86,6 +86,9 @@ pub mod kani_vbjpq733_proofs;
 #[cfg(all(kani, feature = "kani-diagnostic-codes"))]
 pub mod kani;
 
+#[cfg(kani)]
+pub mod kani_validate_resource_contract_boundaries;
+
 pub use action::{
     ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionInput, ActionJournalEvent,
     ActionOutcome, ActionOutput, ActionOutputReady, ActionResult, ActionTicket, Idempotency,

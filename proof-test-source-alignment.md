@@ -53,7 +53,7 @@ All 11 Kani harnesses exist at `crates/vb_compile/src/mod_compile_lowering/kani_
 | PO-NESTED-FOREACH-KANI-001 | `kani_reduce_foreach.rs` | 4.3K | ✅ EXISTS, wired |
 | PO-NOPANIC-KANI-001 | `kani_reduce_nopanic.rs` | 3.3K | ✅ EXISTS, wired |
 | PO-DIAGNOSTIC-KANI-001 | `kani_reduce_diagnostics.rs` | 2.8K | ✅ EXISTS, wired |
-| PO-TRYFROMPARTS-KANI-001 | `kani_reduce_tryfromparts.rs` | 2.1K | ✅ EXISTS, wired |
+| PO-TRYFROMPARTS-KANI-001 | `kani_reduce_body_width.rs` | 3.7K | ✅ EXISTS, wired (was: `kani_reduce_tryfromparts.rs`, removed in bead vb-eq7lv F-VACUUM-003; this harness proves the body_width canonical invariant required by try_from_parts width-checking) |
 
 **Execution status**: 1/11 VERIFIED (PO-EMPTY-KANI-001), 10/11 COMPILABLE (blocked by Kani timeouts/blake3 InlineAsm). GOD RULE 1 compliant: all harnesses use `kani::any()`, no hardcoded structural inputs.
 

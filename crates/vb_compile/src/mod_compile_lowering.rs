@@ -48,8 +48,6 @@ mod kani_reduce_offset;
 mod kani_reduce_overflow;
 #[cfg(kani)]
 mod kani_reduce_regression;
-#[cfg(kani)]
-mod kani_reduce_tryfromparts;
 
 // ============================================================
 // Proptest properties for nested reduce body lowering (vb-xi2f.24).

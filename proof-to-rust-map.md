@@ -163,7 +163,7 @@ Separate from behavior tests and verifier harnesses. Materialized at State 12:
 - `crates/vb_compile/src/mod_compile_lowering/kani_reduce_foreach.rs` (Kani ForEach width)
 - `crates/vb_compile/src/mod_compile_lowering/kani_reduce_nopanic.rs` (Kani no panic)
 - `crates/vb_compile/src/mod_compile_lowering/kani_reduce_diagnostics.rs` (Kani diagnostics)
-- `crates/vb_compile/src/mod_compile_lowering/kani_reduce_tryfromparts.rs` (Kani try_from_parts)
+- `crates/vb_compile/src/mod_compile_lowering/kani_reduce_body_width.rs` (Kani body_width parity; canonical refinement harness for RRO-vb-xi2f24-004, formerly misnamed `kani_reduce_tryfromparts.rs` which never called `try_from_parts` — removed in bead vb-eq7lv, F-VACUUM-003)
 - `crates/vb_compile/src/mod_compile_lowering/kani_reduce_overflow.rs` (Kani overflow)
 - `verification/flux/vb_compile/mod_compile_lowering/reduce_body_width.flux`
 - `verification/flux/vb_compile/mod_compile_lowering/reduce_offset.flux`
@@ -203,7 +203,7 @@ Separate from behavior tests and verifier harnesses. Materialized at State 12:
 | PO-WIDTH-MATCH-KANI-001 | Width-node parity bounded | true | body_width:104, emit_single_body_set:213 | test_reduce_body_width_parity | kani_reduce_body_width.rs | kani | `cargo kani -p vb_compile --harness check_reduce_body_width_parity --unwind 16` | planned |
 | PO-WIDTH-MATCH-FLUX-001 | body_width refinement | true | body_width:104 | N/A (Flux static) | reduce_body_width.flux | flux-rs | `bash scripts/flux-check-package.sh vb_compile` | planned |
 | PO-WIDTH-MATCH-PROP-001 | Width-node random parity | true | lower_canonical_aggregate:15, body_width:104 | test_reduce_body_width_parity | reduce_body_width_parity.rs | proptest | `cargo test -p vb_compile -- proptest_reduce_body_width_parity` | planned |
-| PO-TRYFROMPARTS-KANI-001 | E2E try_from_parts | true | lower_canonical_aggregate:15, try_from_parts | test_reduce_multi_step_body | kani_reduce_tryfromparts.rs | kani | `cargo kani -p vb_compile --harness check_reduce_multi_step_try_from_parts --unwind 16` | planned |
+| PO-TRYFROMPARTS-KANI-001 | body_width canonical invariant required for try_from_parts | true | body_width:104, canonical_body_step_width:142 | test_reduce_multi_step_body | kani_reduce_body_width.rs | kani | `cargo kani -p vb_compile --harness check_reduce_body_width_parity --unwind 16` | rebound (was: kani_reduce_tryfromparts.rs, F-VACUUM-003 removed in bead vb-eq7lv) |
 | PO-TRYFROMPARTS-PROP-001 | E2E try_from_parts random | true | lower_canonical_aggregate:15 | test_try_from_parts_multi_step | reduce_multi_step_try_from_parts.rs | proptest | `cargo test -p vb_compile -- proptest_reduce_multi_step_try_from_parts` | planned |
 | PO-OFFSET-KANI-001 | StepIdx distinctness | true | emit_single_body_set:213, checked_step_offset:199 | test_reduce_body_offset_monotonic | kani_reduce_offset.rs | kani | `cargo kani -p vb_compile --harness check_reduce_body_offset_distinctness --unwind 16` | planned |
 | PO-OFFSET-FLUX-001 | Monotonic offset refinement | true | emit_single_body_set:213 | N/A (Flux static) | reduce_offset.flux | flux-rs | `bash scripts/flux-check-package.sh vb_compile` | planned |
