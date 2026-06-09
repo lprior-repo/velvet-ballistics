@@ -58,6 +58,14 @@ pub enum RecordKind {
     Blob = 40,
     /// Index update record.
     IndexUpdate = 50,
+    /// Recovery stamp record (master contract §18).
+    ///
+    /// A journal marker written during the recovery process to checkpoint
+    /// replay progress. A subsequent recovery invocation can detect a prior
+    /// recovery attempt's progress by reading the stamp and resume from
+    /// that point instead of re-replaying the full journal. Carries the
+    /// `VBSR` magic (`0x56425352`) per the storage envelope contract.
+    RecoveryStamp = 7,
 }
 
 impl RecordKind {
@@ -91,6 +99,7 @@ impl RecordKind {
             Self::Snapshot => 30,
             Self::Blob => 40,
             Self::IndexUpdate => 50,
+            Self::RecoveryStamp => 7,
         }
     }
 }
