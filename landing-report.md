@@ -269,3 +269,6 @@ vb-bi9hq successfully landed. 12 file-level `#![cfg(kani)]` attributes added to 
 | vb-bi9hq | 022a2f2f + cd470b1e9 | femdation/wave-a/vb-bi9hq | fmt=0 check=0 clippy=0 | cfg-gate 12 kani files; .beads artifact de-tracked from commit |
 
 Per-bead implementation evidence: see each bead's femdation workdir `<workdir>/.beads/<id>/implementation.md` (gitignored, on disk in `/home/lewis/src/velvet-ballistics-femdation-wave-a-<id>/.beads/<id>/implementation.md`).
+
+## Wave B
+- vb-clipst01: typed Postcard envelopes (6 new structs) landed; merge 4e5c6be1b.
