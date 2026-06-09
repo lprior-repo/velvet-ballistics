@@ -417,6 +417,7 @@ The 4 approved beads (vb-fuz02, vb-dedup12, vb-bi9hq, vb-clitst01) are closed. T
 Per-bead landing outcomes from the Wave C repair landing pass (5 children serialized via `/tmp/velvet-ballistics-landing.lock`):
 
 - vb-mvedz: master §18 re-add Snapshot=30, remove RunInspection=31; merge 17642bea43d2dd263c1aeb58c678a70b1dbca1b5; §18 ↔ kinds.rs parity confirmed.
+- vb-5hf16: 3 dead envelopes killed (CliStatusReport, RunReport, SimulateReport); merge d0007b03bc5b9b10ada036ff43f085ba82903d4e; cli_postcard tests 33→37 (4 new: 3 round-trip for SystemStatusReport/AiContextPacketReport/WorkflowDiffReport + 1 negative for shape-mismatch fallback); types_more.rs shrunk 206→116 lines.
 
 ## Wave C — landing summary (2026-06-09)
 
