@@ -1,5 +1,6 @@
 //! Kani harnesses for `check_expr_stack_bound` correctness proof.
 
+#![cfg(kani)]
 #![forbid(unsafe_code)]
 
 use crate::ids::SlotIdx;

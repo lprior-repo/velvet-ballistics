@@ -1,3 +1,4 @@
+#![cfg(kani)]
 #![forbid(unsafe_code)]
 //! VB-CORE-BUDGET-001: Step budget zero bound verification
 //!

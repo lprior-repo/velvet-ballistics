@@ -1,3 +1,4 @@
+#![cfg(kani)]
 #![forbid(unsafe_code)]
 //! VB-CORE-RESOURCE-004: Resource budget boundedness verification
 //!

@@ -1,3 +1,4 @@
+#![cfg(kani)]
 #![forbid(unsafe_code)]
 //! Kani harnesses for `step_once` single-step execution.
 //!

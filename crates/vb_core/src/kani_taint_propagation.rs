@@ -1,3 +1,4 @@
+#![cfg(kani)]
 #![forbid(unsafe_code)]
 //! VB-CORE-TAINT-006-KANI: Taint propagation verification
 //!
