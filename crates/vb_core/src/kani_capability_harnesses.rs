@@ -9,6 +9,7 @@
 //
 // GOD RULE COMPLIANT: Uses kani::any() for arbitrary action IDs and one arbitrary name in each proof
 
+#![cfg(kani)]
 #![forbid(unsafe_code)]
 
 use crate::capability::{Capability, CapabilitySet};

@@ -1,3 +1,4 @@
+#![cfg(kani)]
 #![forbid(unsafe_code)]
 //! VB-CORE-BUDGET-003-KANI: Step budget bounded arithmetic verification
 //!

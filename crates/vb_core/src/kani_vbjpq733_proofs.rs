@@ -5,6 +5,7 @@
 //!
 //! Obligations covered: PO-010, PO-012 (StepBudget), PO-001, PO-003 (Taint lattice)
 
+#![cfg(kani)]
 #![forbid(unsafe_code)]
 
 use crate::engine::signals::StepBudget;

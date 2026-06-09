@@ -1,3 +1,5 @@
+#![cfg(kani)]
+
 use crate::frame::RunFrame;
 use crate::ids::{RunId, SlotIdx, StepIdx};
 use crate::value::{SlotValue, Taint, join_taint};

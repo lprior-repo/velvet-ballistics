@@ -4,6 +4,7 @@
 //! Obligations: KANI-RUNTIME-001 through KANI-RUNTIME-009, vb-ko29.4
 //! generator/non-vacuity repair.
 
+#![cfg(kani)]
 #![forbid(unsafe_code)]
 
 use crate::action::{
