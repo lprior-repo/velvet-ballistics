@@ -428,12 +428,14 @@ fn failure_code_repr(code: ActionFailureCode) -> u8 {
 fn side_effect_repr_values_are_distinct() {
     let effects = [
         SideEffect::Pure,
+        SideEffect::LocalRead,
         SideEffect::LocalWrite,
+        SideEffect::ExternalRead,
         SideEffect::ExternalWrite,
-        SideEffect::LocalWrite,
-        SideEffect::LocalWrite,
+        SideEffect::Process,
+        SideEffect::UnsafeShell,
     ];
-    let mut reprs: [u8; 5] = [0; 5];
+    let mut reprs: [u8; 7] = [0; 7];
     let mut count = 0;
     for effect in &effects {
         let repr = side_effect_repr(*effect);
@@ -461,16 +463,18 @@ fn side_effect_repr_values_are_distinct() {
             None => break,
         };
     }
-    assert_eq!(count, 5);
+    assert_eq!(count, 7);
 }
 
 fn side_effect_repr(effect: SideEffect) -> u8 {
     match effect {
         SideEffect::Pure => 0,
-        SideEffect::LocalWrite => 1,
-        SideEffect::ExternalWrite => 2,
-        SideEffect::LocalWrite => 3,
-        SideEffect::LocalWrite => 4,
+        SideEffect::LocalRead => 1,
+        SideEffect::LocalWrite => 2,
+        SideEffect::ExternalRead => 3,
+        SideEffect::ExternalWrite => 4,
+        SideEffect::Process => 5,
+        SideEffect::UnsafeShell => 6,
     }
 }
 

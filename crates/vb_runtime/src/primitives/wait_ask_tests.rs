@@ -493,7 +493,12 @@ fn ask_increments_executed_counter() {
     // When calling ask
     let result = ask(&mut run, prompt, None);
     // Then executed counter IS incremented
-    assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingAsk));
+    assert_eq!(
+        result,
+        Ok(vb_core::EngineSignal::AwaitingAsk {
+            timeout_slot: None,
+        })
+    );
     assert_eq!(run.executed(), before + 1);
 }
 
@@ -509,7 +514,12 @@ fn wait_event_increments_executed_counter() {
     // When calling wait_event
     let result = wait_event(&mut run, event, None);
     // Then executed counter IS incremented
-    assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+    assert_eq!(
+        result,
+        Ok(vb_core::EngineSignal::AwaitingWait {
+            deadline_slot: event,
+        })
+    );
     assert_eq!(run.executed(), before + 1);
 }
 

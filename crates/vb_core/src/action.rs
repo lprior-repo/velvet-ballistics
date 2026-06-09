@@ -507,16 +507,16 @@ pub fn validate_idempotency_key_ingredients(
 /// the idempotency key slots, and the current run frame.
 ///
 /// Verification rules:
+/// - `SideEffect::Pure` always passes regardless of retry_safety.
 /// - `RetrySafety::Safe` always passes.
 /// - `RetrySafety::KeyRequired` passes if key ingredients are valid.
 /// - `RetrySafety::Unsafe` always fails with `MissingKey`.
-/// - Actions with `SideEffect::None` always pass regardless of retry_safety.
 pub fn verify_idempotency(
     action: &ActionContract,
     key_slots: &[SlotIdx],
     frame: &RunFrame,
 ) -> Result<(), IdempotencyViolation> {
-    if action.side_effect == SideEffect::None {
+    if action.side_effect.is_pure() {
         return Ok(());
     }
     match action.retry_safety {
