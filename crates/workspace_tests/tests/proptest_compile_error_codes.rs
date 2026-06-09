@@ -192,7 +192,7 @@ fn compile_error_sample() -> Vec<CompileError> {
         },
         CompileError::IdempotencyViolation {
             action: ActionId::new(0),
-            side_effect: vb_core::SideEffect::Writes,
+            side_effect: vb_core::SideEffect::LocalWrite,
             reason: Box::<str>::from("unsafe retry"),
         },
         // Input schema

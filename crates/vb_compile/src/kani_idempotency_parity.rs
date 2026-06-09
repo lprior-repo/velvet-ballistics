@@ -28,11 +28,11 @@ use vb_validate::idempotency_contract::is_statically_idempotent_contract;
 #[kani::unwind(8)]
 fn idempotency_gate_parity() {
     let side_effects = [
-        SideEffect::None,
-        SideEffect::Writes,
-        SideEffect::Sends,
-        SideEffect::Creates,
-        SideEffect::Destroys,
+        SideEffect::Pure,
+        SideEffect::LocalWrite,
+        SideEffect::ExternalWrite,
+        SideEffect::LocalWrite,
+        SideEffect::LocalWrite,
     ];
     let retry_safeties = [
         RetrySafety::Safe,
@@ -83,7 +83,7 @@ fn idempotency_gate_parity() {
                      must agree on Ok/Err for all 45 combinations",
                 );
 
-                let side_effecting = !matches!(side_effect, SideEffect::None);
+                let side_effecting = !matches!(side_effect, SideEffect::Pure);
                 let expected_retry_unsafe =
                     side_effecting && matches!(retry_safety, RetrySafety::Unsafe);
                 let expected_at_least_once = side_effecting

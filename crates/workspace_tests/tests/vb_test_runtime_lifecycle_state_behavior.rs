@@ -160,7 +160,7 @@ fn action_contract(
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::from([required_capability(action)]),
     }

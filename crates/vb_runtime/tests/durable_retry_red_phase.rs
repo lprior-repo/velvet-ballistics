@@ -345,7 +345,7 @@ fn action_contract(action: ActionId, required: bool) -> ActionContract {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities,
     }

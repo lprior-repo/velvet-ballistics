@@ -12,7 +12,7 @@ fn contract_fixture(id: u16) -> ActionContract {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     }
@@ -151,7 +151,7 @@ fn validate_input_bytes_rejects_when_max_input_bytes_is_zero() {
         max_output_bytes: 0,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -222,7 +222,7 @@ fn action_registry_dispatch_rejects_mismatched_contract() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -348,7 +348,7 @@ fn action_contract_fields_are_preserved() {
         max_output_bytes: 4096,
         timeout_ms: 10000,
         idempotency: Idempotency::IdempotentExternal,
-        side_effect: SideEffect::Writes,
+        side_effect: SideEffect::LocalWrite,
         retry_safety: RetrySafety::KeyRequired,
         required_capabilities: Box::new([]),
     };
@@ -460,7 +460,7 @@ fn action_registry_register_max_action_id_does_not_overflow() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -483,7 +483,7 @@ fn action_registry_validate_input_bytes_rejects_zero_with_slots() {
         max_output_bytes: 0,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -519,7 +519,7 @@ fn action_registry_dispatch_with_contract_zero_bytes_and_zero_slots_succeeds() {
         max_output_bytes: 0,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };

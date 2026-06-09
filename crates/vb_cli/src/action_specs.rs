@@ -164,7 +164,7 @@ pub(crate) fn cli_action_specs() -> &'static [CliActionSpec] {
             id: 1,
             idempotency: vb_core::action::Idempotency::DeterministicPure,
             retry_safety: vb_core::action::RetrySafety::Safe,
-            side_effect: vb_core::action::SideEffect::None,
+            side_effect: vb_core::action::SideEffect::Pure,
             input_slot_count: 1,
             output_slot_count: 1,
             timeout_ms: 1_000,
@@ -173,7 +173,7 @@ pub(crate) fn cli_action_specs() -> &'static [CliActionSpec] {
             id: 2,
             idempotency: vb_core::action::Idempotency::IdempotentExternal,
             retry_safety: vb_core::action::RetrySafety::KeyRequired,
-            side_effect: vb_core::action::SideEffect::Writes,
+            side_effect: vb_core::action::SideEffect::LocalWrite,
             input_slot_count: 2,
             output_slot_count: 1,
             timeout_ms: 5_000,
@@ -182,7 +182,7 @@ pub(crate) fn cli_action_specs() -> &'static [CliActionSpec] {
             id: 3,
             idempotency: vb_core::action::Idempotency::AtLeastOnceExternal,
             retry_safety: vb_core::action::RetrySafety::Unsafe,
-            side_effect: vb_core::action::SideEffect::Sends,
+            side_effect: vb_core::action::SideEffect::ExternalWrite,
             input_slot_count: 1,
             output_slot_count: 0,
             timeout_ms: 10_000,
@@ -236,11 +236,11 @@ pub(crate) fn action_retry_safety_name(value: vb_core::action::RetrySafety) -> &
 
 pub(crate) fn action_side_effect_name(value: vb_core::action::SideEffect) -> &'static str {
     match value {
-        vb_core::action::SideEffect::None => "none",
-        vb_core::action::SideEffect::Writes => "writes",
-        vb_core::action::SideEffect::Sends => "sends",
-        vb_core::action::SideEffect::Creates => "creates",
-        vb_core::action::SideEffect::Destroys => "destroys",
+        vb_core::action::SideEffect::Pure => "none",
+        vb_core::action::SideEffect::LocalWrite => "writes",
+        vb_core::action::SideEffect::ExternalWrite => "sends",
+        vb_core::action::SideEffect::LocalWrite => "creates",
+        vb_core::action::SideEffect::LocalWrite => "destroys",
         _ => "unknown",
     }
 }

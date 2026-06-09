@@ -1,6 +1,6 @@
 //! Type definitions for bounded action completion queue.
 
-use std::collections::VecDeque;
+use crossbeam_queue::ArrayQueue;
 use vb_core::action::ActionTicket;
 
 /// Maximum accepted action completion queue capacity.
@@ -61,14 +61,23 @@ pub struct BackpressureWarning {
 ///
 /// Tracks action completion tickets with a fixed capacity bound.
 /// Emits backpressure warnings when the queue reaches 80% capacity.
-#[derive(Debug)]
+///
+/// The internal storage is a lock-free bounded MPMC ring buffer
+/// (`crossbeam_queue::ArrayQueue`). Producer and consumer paths use
+/// only `push`/`pop` atomic operations, eliminating the `Mutex` and
+/// heap-allocated `VecDeque` previously used on this hot path.
 pub struct BoundedActionCompletionQueue {
-    pub(crate) inner: std::sync::Mutex<Inner>,
+    pub(crate) inner: ArrayQueue<ActionTicket>,
     pub(crate) capacity: ActionQueueCapacity,
     pub(crate) backpressure_tx: Option<std::sync::mpsc::SyncSender<BackpressureWarning>>,
 }
 
-#[derive(Debug, Clone)]
-pub(crate) struct Inner {
-    pub(crate) items: VecDeque<ActionTicket>,
+impl std::fmt::Debug for BoundedActionCompletionQueue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BoundedActionCompletionQueue")
+            .field("capacity", &self.capacity)
+            .field("len", &self.inner.len())
+            .field("is_full", &self.inner.is_full())
+            .finish()
+    }
 }

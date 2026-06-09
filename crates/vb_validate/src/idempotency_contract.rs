@@ -145,7 +145,7 @@ pub fn is_statically_idempotent_contract(
         contract.retry_safety,
         contract.idempotency,
     ) {
-        (SideEffect::None, _, _) => Ok(()),
+        (SideEffect::Pure, _, _) => Ok(()),
         (side_effect, RetrySafety::Unsafe, idempotency) => {
             Err(IdempotencyContractViolation::SideEffectingRetryUnsafe {
                 action: contract.id,

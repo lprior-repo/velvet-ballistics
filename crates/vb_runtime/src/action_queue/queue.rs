@@ -1,11 +1,13 @@
 //! Queue implementation for bounded action completion queue.
 
 use std::sync::mpsc::{Receiver, TrySendError};
+
+use crossbeam_queue::ArrayQueue;
 use vb_core::action::ActionTicket;
 
 use super::types::{
     ActionQueueCapacity, ActionQueueError, BackpressureWarning, BoundedActionCompletionQueue,
-    Inner, MAX_ACTION_COMPLETION_QUEUE_CAPACITY,
+    MAX_ACTION_COMPLETION_QUEUE_CAPACITY,
 };
 
 impl BoundedActionCompletionQueue {
@@ -16,9 +18,7 @@ impl BoundedActionCompletionQueue {
     pub fn new(capacity: usize) -> Result<Self, ActionQueueError> {
         let capacity = parse_capacity(capacity)?;
         Ok(Self {
-            inner: std::sync::Mutex::new(Inner {
-                items: std::collections::VecDeque::with_capacity(capacity.get()),
-            }),
+            inner: ArrayQueue::new(capacity.get()),
             capacity,
             backpressure_tx: None,
         })
@@ -35,9 +35,7 @@ impl BoundedActionCompletionQueue {
         let (tx, rx) = std::sync::mpsc::sync_channel(capacity.get());
         Ok((
             Self {
-                inner: std::sync::Mutex::new(Inner {
-                    items: std::collections::VecDeque::with_capacity(capacity.get()),
-                }),
+                inner: ArrayQueue::new(capacity.get()),
                 capacity,
                 backpressure_tx: Some(tx),
             },
@@ -45,7 +43,7 @@ impl BoundedActionCompletionQueue {
         ))
     }
 
-    /// Attempts to enqueue an action ticket.
+    /// Pushes a ticket into the queue.
     ///
     /// Returns `Ok(())` if the item was enqueued.
     /// Returns `Err(ActionQueueError::QueueFull)` if the queue is at capacity.
@@ -53,19 +51,12 @@ impl BoundedActionCompletionQueue {
     /// Emits a backpressure warning if the queue reaches or exceeds 80% capacity
     /// after the enqueue.
     pub fn enqueue(&self, ticket: ActionTicket) -> Result<(), ActionQueueError> {
-        let mut inner = match self.inner.lock() {
-            Ok(guard) => guard,
-            Err(poisoned) => poisoned.into_inner(),
-        };
-        if inner.items.len() >= self.capacity.get() {
-            return Err(ActionQueueError::QueueFull {
+        self.inner
+            .push(ticket)
+            .map_err(|_| ActionQueueError::QueueFull {
                 capacity: self.capacity,
-            });
-        }
-
-        inner.items.push_back(ticket);
-
-        let depth = inner.items.len();
+            })?;
+        let depth = self.inner.len();
         let threshold = backpressure_threshold(self.capacity);
         if depth >= threshold
             && let Some(ref tx) = self.backpressure_tx
@@ -77,7 +68,6 @@ impl BoundedActionCompletionQueue {
                 Ok(()) | Err(TrySendError::Full(_)) | Err(TrySendError::Disconnected(_)) => {}
             }
         }
-
         Ok(())
     }
 
@@ -87,38 +77,31 @@ impl BoundedActionCompletionQueue {
     /// Returns `None` if the queue is empty.
     #[must_use]
     pub fn dequeue(&self) -> Option<ActionTicket> {
-        let mut inner = match self.inner.lock() {
-            Ok(guard) => guard,
-            Err(poisoned) => poisoned.into_inner(),
-        };
-        inner.items.pop_front()
+        self.inner.pop()
     }
 
     /// Returns the number of items currently in the queue.
     #[must_use]
     pub fn len(&self) -> usize {
-        match self.inner.lock() {
-            Ok(guard) => guard.items.len(),
-            Err(poisoned) => poisoned.into_inner().items.len(),
-        }
+        self.inner.len()
     }
 
     /// Returns `true` if the queue contains no items.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.inner.is_empty()
     }
 
     /// Returns `true` if the queue is at capacity.
     #[must_use]
     pub fn is_full(&self) -> bool {
-        self.len() >= self.capacity.get()
+        self.inner.is_full()
     }
 
     /// Returns the number of slots available for new items.
     #[must_use]
     pub fn remaining_capacity(&self) -> usize {
-        self.capacity.get().saturating_sub(self.len())
+        self.capacity.get().saturating_sub(self.inner.len())
     }
 
     /// Returns the fixed capacity of this queue.

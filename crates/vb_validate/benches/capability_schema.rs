@@ -55,7 +55,7 @@ fn contract() -> ActionContract {
         max_output_bytes: 1024,
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
-        side_effect: SideEffect::Writes,
+        side_effect: SideEffect::LocalWrite,
         retry_safety: RetrySafety::KeyRequired,
         required_capabilities: Box::new([Capability::new(
             Box::from("network.github"),

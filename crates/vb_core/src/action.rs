@@ -90,20 +90,51 @@ pub enum Idempotency {
 }
 
 /// Classifies the observable side effects of an action.
+///
+/// 7-variant master taxonomy per `velvet-ballistics-MASTER.md` §65:
+/// `{Pure, LocalRead, LocalWrite, ExternalRead, ExternalWrite, Process, UnsafeShell}`.
+///
+/// Discriminant values are stable: `Pure = 0` ... `UnsafeShell = 6`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
 #[non_exhaustive]
 pub enum SideEffect {
-    /// No observable side effects (pure computation).
-    None = 0,
-    /// Writes to external state (database, file, API).
-    Writes = 1,
-    /// Sends a message or notification.
-    Sends = 2,
-    /// Creates a resource (provision, allocate).
-    Creates = 3,
-    /// Destroys a resource (deprovision, delete).
-    Destroys = 4,
+    /// Pure deterministic computation with no observable side effects.
+    Pure = 0,
+    /// Reads from local state (memory, file, local registry) without mutation.
+    LocalRead = 1,
+    /// Writes to local state (memory, file, local registry) only.
+    LocalWrite = 2,
+    /// Reads from external state (database, API, remote service) without mutation.
+    ExternalRead = 3,
+    /// Writes to external state (database, API, remote service) without local change.
+    ExternalWrite = 4,
+    /// Spawns or controls an external process (subprocess, sidecar).
+    Process = 5,
+    /// Shells out to an external binary that may be `unsafe` or untrusted.
+    UnsafeShell = 6,
+}
+
+impl SideEffect {
+    /// Returns true if this side-effect is fully pure (no I/O, no shell, no process).
+    pub const fn is_pure(self) -> bool {
+        matches!(self, Self::Pure)
+    }
+
+    /// Returns true if this side-effect can be safely retried without external coordination.
+    /// `Pure`, `LocalRead`, `LocalWrite`, `ExternalRead` are idempotent.
+    /// `Process`, `UnsafeShell`, `ExternalWrite` are not.
+    pub const fn is_idempotent(self) -> bool {
+        matches!(
+            self,
+            Self::Pure | Self::LocalRead | Self::LocalWrite | Self::ExternalRead
+        )
+    }
+
+    /// Returns true if executing this side-effect requires an external lease/capability.
+    pub const fn requires_external_lease(self) -> bool {
+        matches!(self, Self::Process | Self::UnsafeShell)
+    }
 }
 
 /// Classifies whether an action can be safely retried.

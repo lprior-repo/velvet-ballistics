@@ -95,10 +95,14 @@ mod action_queue_tests {
     }
 
     #[test]
-    fn bounded_action_queue_preallocates_vecdeque_to_validated_capacity() {
+    fn bounded_action_queue_capacity_reports_validated_value() {
+        // The previous `VecDeque` implementation exposed a private `inner.items`
+        // field whose preallocated `capacity()` matched the validated input.
+        // The current lock-free `ArrayQueue` does not expose its internal
+        // buffer size; the only thing callers can rely on is the public
+        // `capacity()` accessor, which still mirrors the validated input.
         let queue = BoundedActionCompletionQueue::new(13).unwrap();
-        let inner = queue.inner.lock().unwrap();
-        assert_eq!(inner.items.capacity(), 13);
+        assert_eq!(queue.capacity(), 13);
     }
 
     #[test]

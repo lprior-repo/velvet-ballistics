@@ -620,7 +620,7 @@ fn is_contract_idempotency_accepted(contract: &ActionContract) -> bool {
         contract.retry_safety,
         contract.idempotency,
     ) {
-        (SideEffect::None, _, _) => true,
+        (SideEffect::Pure, _, _) => true,
         (_, RetrySafety::Unsafe, _) => false,
         (_, _, Idempotency::AtLeastOnceExternal | Idempotency::DeterministicPure) => false,
         (_, RetrySafety::Safe | RetrySafety::KeyRequired, Idempotency::IdempotentExternal) => true,

@@ -1,9 +1,10 @@
 #![forbid(unsafe_code)]
 //! Run state transition helpers: keep, finish, await action, await timer, fail.
 
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use vb_core::action::ActionTicket;
 use vb_core::ids::{RunId, SlotIdx};
+use vb_core::value::SlotValue;
 
 use crate::journal::RuntimeJournalEvent;
 use crate::trace::TraceEvent;
@@ -134,11 +135,19 @@ impl Shard {
     }
 
     /// Transitions a run to awaiting a timer (wait or ask timeout).
+    ///
+    /// The deadline is computed from the slot the wait/ask primitive
+    /// validated, NOT synthesized from `Instant::now()`. The caller
+    /// must supply the slot index that the suspended node read its
+    /// deadline from. An unwritten or non-numeric slot yields a zero
+    /// deadline (`Instant::now()`), which causes the timer to fire
+    /// immediately on the next event-loop tick.
     pub(crate) fn await_timer(
         &mut self,
         run: RunId,
         state: RunState,
         kind: PendingTimerKind,
+        deadline_slot: SlotIdx,
     ) -> RuntimeResult<()> {
         self.counters.add_steps(state.frame.executed());
         let step = state.frame.pc();
@@ -162,13 +171,14 @@ impl Shard {
                 self.run_state_insert(run, state);
                 return Err(error);
             }
+            let deadline = compute_deadline_from_slot(&state, deadline_slot);
             self.pending_timer_insert(
                 run,
                 PendingTimer {
                     step,
                     kind,
                     generation,
-                    deadline: Instant::now(),
+                    deadline,
                 },
             );
         }
@@ -188,5 +198,39 @@ impl Shard {
         self.release_frame(state.frame);
         self.discard_journal_sequence(run);
         Ok(())
+    }
+}
+
+/// Computes the wall-clock deadline for a pending timer from the slot
+/// the wait/ask primitive validated.
+///
+/// The slot value is treated as a positive offset in milliseconds
+/// from `Instant::now()`. When the slot is uninitialized or holds a
+/// non-numeric value, the deadline collapses to `Instant::now()` so
+/// the timer fires on the next tick (matches the previous
+/// synthesizing-fallback behavior, but only as a degenerate case the
+/// caller can detect via the slot's value, never silently).
+fn compute_deadline_from_slot(state: &RunState, slot: SlotIdx) -> Instant {
+    let now = Instant::now();
+    match state.frame.read_slot(slot) {
+        Ok(SlotValue::I64(ms)) => match u64::try_from(ms).ok() {
+            Some(m) => now.checked_add(Duration::from_millis(m)).unwrap_or(now),
+            None => now,
+        },
+        Ok(SlotValue::F64(value)) => {
+            // FiniteF64 guarantees finiteness; only the sign check is needed.
+            let ms = value.get();
+            if !ms.is_sign_positive() {
+                return now;
+            }
+            // Clamp to u64::MAX to avoid lossy cast traps.
+            let capped = if ms > u64::MAX as f64 {
+                u64::MAX
+            } else {
+                ms as u64
+            };
+            now.checked_add(Duration::from_millis(capped)).unwrap_or(now)
+        }
+        _ => now,
     }
 }

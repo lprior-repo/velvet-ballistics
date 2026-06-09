@@ -736,7 +736,7 @@ pub fn check_idempotency_gates(contracts: &[ActionContract]) -> Result<(), Compi
         let Some(contract) = contracts.get(i) else {
             break;
         };
-        if contract.side_effect == SideEffect::None {
+        if contract.side_effect == SideEffect::Pure {
             i = match i.checked_add(1) {
                 Some(next) => next,
                 None => break,

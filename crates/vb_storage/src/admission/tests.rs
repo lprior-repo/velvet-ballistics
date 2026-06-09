@@ -418,7 +418,7 @@ fn submit_artifact_returns_required_capabilities_when_contract_requires_capabili
         max_output_bytes: 2048,
         timeout_ms: 1000,
         idempotency: vb_core::action::Idempotency::IdempotentExternal,
-        side_effect: vb_core::action::SideEffect::Writes,
+        side_effect: vb_core::action::SideEffect::LocalWrite,
         retry_safety: vb_core::action::RetrySafety::KeyRequired,
         required_capabilities: Box::new([required.clone()]),
     };
@@ -480,7 +480,7 @@ fn submit_artifact_carries_idempotency_evidence_from_contracts() -> Result<(), S
         max_output_bytes: 2048,
         timeout_ms: 1000,
         idempotency: vb_core::action::Idempotency::IdempotentExternal,
-        side_effect: vb_core::action::SideEffect::Writes,
+        side_effect: vb_core::action::SideEffect::LocalWrite,
         retry_safety: vb_core::action::RetrySafety::KeyRequired,
         required_capabilities: Box::new([]),
     };
@@ -515,7 +515,7 @@ fn submit_artifact_rejects_failed_idempotency_contract() -> Result<(), String> {
         max_output_bytes: 2048,
         timeout_ms: 1000,
         idempotency: vb_core::action::Idempotency::DeterministicPure,
-        side_effect: vb_core::action::SideEffect::Writes,
+        side_effect: vb_core::action::SideEffect::LocalWrite,
         retry_safety: vb_core::action::RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };

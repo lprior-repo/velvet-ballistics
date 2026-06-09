@@ -161,7 +161,7 @@ fn action_contract(action: ActionId, input_slots: u16, output_slots: u16) -> Act
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::from([contract_required_capability(action)]),
     }

@@ -607,7 +607,7 @@ fn cat10_do_awaiting_action() -> Result<(), String> {
             max_output_bytes: 0,
             timeout_ms: 0,
             idempotency: Idempotency::DeterministicPure,
-            side_effect: SideEffect::None,
+            side_effect: SideEffect::Pure,
             retry_safety: RetrySafety::Safe,
             required_capabilities: Box::from([]),
         },
@@ -620,7 +620,7 @@ fn cat10_do_awaiting_action() -> Result<(), String> {
             max_output_bytes: 1024,
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
-            side_effect: SideEffect::None,
+            side_effect: SideEffect::Pure,
             retry_safety: RetrySafety::Safe,
             required_capabilities: Box::from([Capability::new(
                 "__contract_required__".into(),

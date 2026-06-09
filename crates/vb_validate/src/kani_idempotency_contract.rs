@@ -18,11 +18,11 @@ use crate::idempotency_contract::is_statically_idempotent_contract as static_che
 #[kani::unwind(8)]
 fn kani_decision_001_all_combinations() {
     let side_effects = [
-        SideEffect::None,
-        SideEffect::Writes,
-        SideEffect::Sends,
-        SideEffect::Creates,
-        SideEffect::Destroys,
+        SideEffect::Pure,
+        SideEffect::LocalWrite,
+        SideEffect::ExternalWrite,
+        SideEffect::LocalWrite,
+        SideEffect::LocalWrite,
     ];
     let retry_safeties = [
         RetrySafety::Safe,
@@ -115,7 +115,7 @@ fn decision_table_ok_branch() {
                 max_input_bytes: 0,
                 max_output_bytes: 0,
                 timeout_ms: 0,
-                side_effect: SideEffect::None,
+                side_effect: SideEffect::Pure,
                 retry_safety,
                 idempotency,
                 required_capabilities: Box::new([]),
@@ -140,10 +140,10 @@ fn decision_table_ok_branch() {
 
     // CASE B: side_effect!=None AND idempotency==IdempotentExternal AND retry_safety in {Safe, KeyRequired}
     let side_effects_non_none = [
-        SideEffect::Writes,
-        SideEffect::Sends,
-        SideEffect::Creates,
-        SideEffect::Destroys,
+        SideEffect::LocalWrite,
+        SideEffect::ExternalWrite,
+        SideEffect::LocalWrite,
+        SideEffect::LocalWrite,
     ];
     let safe_key_required = [RetrySafety::Safe, RetrySafety::KeyRequired];
 
@@ -196,10 +196,10 @@ fn decision_table_ok_branch() {
 #[kani::unwind(40)]
 fn decision_table_unsafe_rejected() {
     let side_effects_non_none = [
-        SideEffect::Writes,
-        SideEffect::Sends,
-        SideEffect::Creates,
-        SideEffect::Destroys,
+        SideEffect::LocalWrite,
+        SideEffect::ExternalWrite,
+        SideEffect::LocalWrite,
+        SideEffect::LocalWrite,
     ];
     let idempotencies = [
         Idempotency::DeterministicPure,
@@ -263,10 +263,10 @@ fn decision_table_unsafe_rejected() {
 #[kani::unwind(40)]
 fn decision_table_at_least_once_rejected() {
     let side_effects_non_none = [
-        SideEffect::Writes,
-        SideEffect::Sends,
-        SideEffect::Creates,
-        SideEffect::Destroys,
+        SideEffect::LocalWrite,
+        SideEffect::ExternalWrite,
+        SideEffect::LocalWrite,
+        SideEffect::LocalWrite,
     ];
     let safe_key_required = [RetrySafety::Safe, RetrySafety::KeyRequired];
 
@@ -330,10 +330,10 @@ fn decision_table_at_least_once_rejected() {
 #[kani::unwind(55)]
 fn decision_table_deterministic_rejected() {
     let side_effects_non_none = [
-        SideEffect::Writes,
-        SideEffect::Sends,
-        SideEffect::Creates,
-        SideEffect::Destroys,
+        SideEffect::LocalWrite,
+        SideEffect::ExternalWrite,
+        SideEffect::LocalWrite,
+        SideEffect::LocalWrite,
     ];
     let safe_key_required = [RetrySafety::Safe, RetrySafety::KeyRequired];
 

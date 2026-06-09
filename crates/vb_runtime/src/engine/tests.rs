@@ -459,7 +459,7 @@ fn execute_do_returns_awaiting_action_for_known_action() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -473,7 +473,7 @@ fn execute_do_returns_awaiting_action_for_known_action() {
             max_output_bytes: 0,
             timeout_ms: 0,
             idempotency: Idempotency::DeterministicPure,
-            side_effect: SideEffect::None,
+            side_effect: SideEffect::Pure,
             retry_safety: RetrySafety::Safe,
             required_capabilities: Box::new([]),
         },
@@ -521,7 +521,7 @@ fn execute_do_propagates_taint_from_secret_input_without_violation() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::AtLeastOnceExternal,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -535,7 +535,7 @@ fn execute_do_propagates_taint_from_secret_input_without_violation() {
             max_output_bytes: 0,
             timeout_ms: 0,
             idempotency: Idempotency::DeterministicPure,
-            side_effect: SideEffect::None,
+            side_effect: SideEffect::Pure,
             retry_safety: RetrySafety::Safe,
             required_capabilities: Box::new([]),
         },
@@ -581,7 +581,7 @@ fn execute_do_returns_unknown_action_for_unregistered_action() {
         max_output_bytes: 0,
         timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -657,7 +657,7 @@ fn dummy_contract() -> vb_core::action::ActionContract {
         max_output_bytes: 0,
         timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     }
@@ -1407,7 +1407,7 @@ fn bh_execute_do_propagates_taint_through_ticket_for_at_least_once() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::AtLeastOnceExternal,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -1584,7 +1584,7 @@ mod blackhat_engine {
             max_output_bytes: 0,
             timeout_ms: 0,
             idempotency: Idempotency::DeterministicPure,
-            side_effect: SideEffect::None,
+            side_effect: SideEffect::Pure,
             retry_safety: RetrySafety::Safe,
             required_capabilities: Box::new([]),
         }
@@ -1991,7 +1991,7 @@ mod blackhat_engine {
             max_output_bytes: 1024,
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
-            side_effect: SideEffect::None,
+            side_effect: SideEffect::Pure,
             retry_safety: RetrySafety::Safe,
             required_capabilities: Box::new([]),
         }];
@@ -2308,7 +2308,7 @@ mod blackhat_engine {
             max_output_bytes: 1024,
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
-            side_effect: SideEffect::None,
+            side_effect: SideEffect::Pure,
             retry_safety: RetrySafety::Safe,
             required_capabilities: Box::new([]),
         };

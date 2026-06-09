@@ -17,7 +17,7 @@
             max_output_bytes: 1024,
             timeout_ms: 5_000,
             idempotency,
-            side_effect: SideEffect::None,
+            side_effect: SideEffect::Pure,
             retry_safety: RetrySafety::Safe,
             required_capabilities: Box::new([]),
         }

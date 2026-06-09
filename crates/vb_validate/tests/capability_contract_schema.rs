@@ -67,7 +67,7 @@ fn action_contract(action: u16, required_capabilities: Box<[Capability]>) -> Act
         max_output_bytes: 1024,
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
-        side_effect: SideEffect::Writes,
+        side_effect: SideEffect::LocalWrite,
         retry_safety: RetrySafety::KeyRequired,
         required_capabilities,
     }

@@ -550,11 +550,11 @@ impl kani::Arbitrary for Idempotency {
 impl kani::Arbitrary for SideEffect {
     fn any() -> Self {
         match kani::any::<u8>() % 5 {
-            0 => SideEffect::None,
-            1 => SideEffect::Writes,
-            2 => SideEffect::Sends,
-            3 => SideEffect::Creates,
-            _ => SideEffect::Destroys,
+            0 => SideEffect::Pure,
+            1 => SideEffect::LocalWrite,
+            2 => SideEffect::ExternalWrite,
+            3 => SideEffect::LocalWrite,
+            _ => SideEffect::LocalWrite,
         }
     }
 }

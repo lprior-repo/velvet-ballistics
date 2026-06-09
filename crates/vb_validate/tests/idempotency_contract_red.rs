@@ -91,7 +91,7 @@ fn workflow(nodes: Box<[CompiledNode]>) -> WorkflowParts {
 fn retry_unsafe_violation(action_id: ActionId) -> IdempotencyContractViolation {
     IdempotencyContractViolation::SideEffectingRetryUnsafe {
         action: action_id,
-        side_effect: SideEffect::Destroys,
+        side_effect: SideEffect::LocalWrite,
         idempotency: Idempotency::IdempotentExternal,
         retry_safety: RetrySafety::Unsafe,
     }
@@ -100,7 +100,7 @@ fn retry_unsafe_violation(action_id: ActionId) -> IdempotencyContractViolation {
 fn at_least_once_violation(action_id: ActionId) -> IdempotencyContractViolation {
     IdempotencyContractViolation::SideEffectingAtLeastOnceExternal {
         action: action_id,
-        side_effect: SideEffect::Creates,
+        side_effect: SideEffect::LocalWrite,
         idempotency: Idempotency::AtLeastOnceExternal,
         retry_safety: RetrySafety::Safe,
     }
@@ -109,7 +109,7 @@ fn at_least_once_violation(action_id: ActionId) -> IdempotencyContractViolation 
 fn deterministic_pure_violation(action_id: ActionId) -> IdempotencyContractViolation {
     IdempotencyContractViolation::SideEffectingDeterministicPure {
         action: action_id,
-        side_effect: SideEffect::Writes,
+        side_effect: SideEffect::LocalWrite,
         idempotency: Idempotency::DeterministicPure,
         retry_safety: RetrySafety::Safe,
     }
@@ -119,7 +119,7 @@ fn deterministic_pure_violation(action_id: ActionId) -> IdempotencyContractViola
 fn validate_action_returns_unit_for_pure_deterministic_safe_contract() {
     let candidate = contract(
         action(1),
-        SideEffect::None,
+        SideEffect::Pure,
         Idempotency::DeterministicPure,
         RetrySafety::Safe,
     );
@@ -133,7 +133,7 @@ fn validate_action_returns_unit_for_pure_deterministic_safe_contract() {
 fn validate_action_returns_unit_for_pure_at_least_once_unsafe_contract() {
     let candidate = contract(
         action(2),
-        SideEffect::None,
+        SideEffect::Pure,
         Idempotency::AtLeastOnceExternal,
         RetrySafety::Unsafe,
     );
@@ -147,7 +147,7 @@ fn validate_action_returns_unit_for_pure_at_least_once_unsafe_contract() {
 fn validate_action_returns_unit_for_side_effecting_idempotent_external_safe_contract() {
     let candidate = contract(
         action(3),
-        SideEffect::Writes,
+        SideEffect::LocalWrite,
         Idempotency::IdempotentExternal,
         RetrySafety::Safe,
     );
@@ -161,7 +161,7 @@ fn validate_action_returns_unit_for_side_effecting_idempotent_external_safe_cont
 fn validate_action_returns_unit_for_side_effecting_idempotent_external_key_required_contract() {
     let candidate = contract(
         action(4),
-        SideEffect::Sends,
+        SideEffect::ExternalWrite,
         Idempotency::IdempotentExternal,
         RetrySafety::KeyRequired,
     );
@@ -176,7 +176,7 @@ fn validate_action_returns_retry_unsafe_violation_with_all_fields_when_retry_is_
     let action_id = action(5);
     let candidate = contract(
         action_id,
-        SideEffect::Destroys,
+        SideEffect::LocalWrite,
         Idempotency::IdempotentExternal,
         RetrySafety::Unsafe,
     );
@@ -192,7 +192,7 @@ fn validate_action_returns_at_least_once_violation_with_all_fields_when_idempote
     let action_id = action(6);
     let candidate = contract(
         action_id,
-        SideEffect::Creates,
+        SideEffect::LocalWrite,
         Idempotency::AtLeastOnceExternal,
         RetrySafety::Safe,
     );
@@ -208,7 +208,7 @@ fn validate_action_returns_deterministic_pure_violation_with_all_fields_when_sid
     let action_id = action(7);
     let candidate = contract(
         action_id,
-        SideEffect::Writes,
+        SideEffect::LocalWrite,
         Idempotency::DeterministicPure,
         RetrySafety::Safe,
     );
@@ -232,19 +232,19 @@ fn collect_returns_unit_for_all_legal_contracts() {
     let contracts = [
         contract(
             action(8),
-            SideEffect::None,
+            SideEffect::Pure,
             Idempotency::AtLeastOnceExternal,
             RetrySafety::Unsafe,
         ),
         contract(
             action(9),
-            SideEffect::Writes,
+            SideEffect::LocalWrite,
             Idempotency::IdempotentExternal,
             RetrySafety::Safe,
         ),
         contract(
             action(10),
-            SideEffect::Sends,
+            SideEffect::ExternalWrite,
             Idempotency::IdempotentExternal,
             RetrySafety::KeyRequired,
         ),
@@ -260,7 +260,7 @@ fn collect_returns_one_boxed_retry_unsafe_violation_for_single_illegal_contract(
     let action_id = action(11);
     let contracts = [contract(
         action_id,
-        SideEffect::Destroys,
+        SideEffect::LocalWrite,
         Idempotency::IdempotentExternal,
         RetrySafety::Unsafe,
     )];
@@ -280,7 +280,7 @@ fn collect_returns_one_boxed_at_least_once_violation_for_single_illegal_contract
     let action_id = action(12);
     let contracts = [contract(
         action_id,
-        SideEffect::Creates,
+        SideEffect::LocalWrite,
         Idempotency::AtLeastOnceExternal,
         RetrySafety::Safe,
     )];
@@ -300,7 +300,7 @@ fn collect_returns_one_boxed_deterministic_pure_violation_for_single_illegal_con
     let action_id = action(13);
     let contracts = [contract(
         action_id,
-        SideEffect::Writes,
+        SideEffect::LocalWrite,
         Idempotency::DeterministicPure,
         RetrySafety::Safe,
     )];
@@ -324,25 +324,25 @@ fn collect_returns_all_boxed_violations_in_input_order_for_multiple_illegal_cont
     let contracts = [
         contract(
             first,
-            SideEffect::Destroys,
+            SideEffect::LocalWrite,
             Idempotency::IdempotentExternal,
             RetrySafety::Unsafe,
         ),
         contract(
             legal,
-            SideEffect::Sends,
+            SideEffect::ExternalWrite,
             Idempotency::IdempotentExternal,
             RetrySafety::KeyRequired,
         ),
         contract(
             second,
-            SideEffect::Creates,
+            SideEffect::LocalWrite,
             Idempotency::AtLeastOnceExternal,
             RetrySafety::Safe,
         ),
         contract(
             third,
-            SideEffect::Writes,
+            SideEffect::LocalWrite,
             Idempotency::DeterministicPure,
             RetrySafety::Safe,
         ),
@@ -365,19 +365,19 @@ fn collect_returns_same_boxed_violations_when_called_twice_with_same_input() {
     let contracts = [
         contract(
             action(18),
-            SideEffect::Destroys,
+            SideEffect::LocalWrite,
             Idempotency::IdempotentExternal,
             RetrySafety::Unsafe,
         ),
         contract(
             action(19),
-            SideEffect::Creates,
+            SideEffect::LocalWrite,
             Idempotency::AtLeastOnceExternal,
             RetrySafety::Safe,
         ),
         contract(
             action(20),
-            SideEffect::Writes,
+            SideEffect::LocalWrite,
             Idempotency::DeterministicPure,
             RetrySafety::Safe,
         ),
@@ -393,55 +393,55 @@ fn collect_returns_same_boxed_violations_when_called_twice_with_same_input() {
 fn is_static_returns_unit_for_pure_contract_for_all_retry_and_idempotency_values() {
     let deterministic_safe = contract(
         action(21),
-        SideEffect::None,
+        SideEffect::Pure,
         Idempotency::DeterministicPure,
         RetrySafety::Safe,
     );
     let deterministic_key = contract(
         action(22),
-        SideEffect::None,
+        SideEffect::Pure,
         Idempotency::DeterministicPure,
         RetrySafety::KeyRequired,
     );
     let deterministic_unsafe = contract(
         action(23),
-        SideEffect::None,
+        SideEffect::Pure,
         Idempotency::DeterministicPure,
         RetrySafety::Unsafe,
     );
     let external_safe = contract(
         action(24),
-        SideEffect::None,
+        SideEffect::Pure,
         Idempotency::IdempotentExternal,
         RetrySafety::Safe,
     );
     let external_key = contract(
         action(25),
-        SideEffect::None,
+        SideEffect::Pure,
         Idempotency::IdempotentExternal,
         RetrySafety::KeyRequired,
     );
     let external_unsafe = contract(
         action(26),
-        SideEffect::None,
+        SideEffect::Pure,
         Idempotency::IdempotentExternal,
         RetrySafety::Unsafe,
     );
     let at_least_once_safe = contract(
         action(27),
-        SideEffect::None,
+        SideEffect::Pure,
         Idempotency::AtLeastOnceExternal,
         RetrySafety::Safe,
     );
     let at_least_once_key = contract(
         action(28),
-        SideEffect::None,
+        SideEffect::Pure,
         Idempotency::AtLeastOnceExternal,
         RetrySafety::KeyRequired,
     );
     let at_least_once_unsafe = contract(
         action(29),
-        SideEffect::None,
+        SideEffect::Pure,
         Idempotency::AtLeastOnceExternal,
         RetrySafety::Unsafe,
     );
@@ -478,7 +478,7 @@ fn is_static_returns_unit_for_pure_contract_for_all_retry_and_idempotency_values
 fn is_static_returns_unit_for_side_effecting_idempotent_external_safe_contract() {
     let candidate = contract(
         action(30),
-        SideEffect::Writes,
+        SideEffect::LocalWrite,
         Idempotency::IdempotentExternal,
         RetrySafety::Safe,
     );
@@ -492,7 +492,7 @@ fn is_static_returns_unit_for_side_effecting_idempotent_external_safe_contract()
 fn is_static_returns_unit_for_side_effecting_idempotent_external_key_required_contract() {
     let candidate = contract(
         action(31),
-        SideEffect::Sends,
+        SideEffect::ExternalWrite,
         Idempotency::IdempotentExternal,
         RetrySafety::KeyRequired,
     );
@@ -507,7 +507,7 @@ fn is_static_returns_retry_unsafe_violation_with_all_fields_when_retry_is_unsafe
     let action_id = action(32);
     let candidate = contract(
         action_id,
-        SideEffect::Destroys,
+        SideEffect::LocalWrite,
         Idempotency::IdempotentExternal,
         RetrySafety::Unsafe,
     );
@@ -522,7 +522,7 @@ fn is_static_returns_at_least_once_violation_with_all_fields_when_idempotency_is
     let action_id = action(33);
     let candidate = contract(
         action_id,
-        SideEffect::Creates,
+        SideEffect::LocalWrite,
         Idempotency::AtLeastOnceExternal,
         RetrySafety::Safe,
     );
@@ -538,7 +538,7 @@ fn is_static_returns_deterministic_pure_violation_with_all_fields_when_side_effe
     let action_id = action(34);
     let candidate = contract(
         action_id,
-        SideEffect::Writes,
+        SideEffect::LocalWrite,
         Idempotency::DeterministicPure,
         RetrySafety::Safe,
     );
@@ -552,7 +552,7 @@ fn runtime_returns_missing_key_when_key_required_action_has_empty_key_slots()
 -> Result<(), Box<dyn std::error::Error>> {
     let candidate = contract(
         action(35),
-        SideEffect::Sends,
+        SideEffect::ExternalWrite,
         Idempotency::IdempotentExternal,
         RetrySafety::KeyRequired,
     );
@@ -562,7 +562,7 @@ fn runtime_returns_missing_key_when_key_required_action_has_empty_key_slots()
 
     assert_eq!(
         result,
-        Err(IdempotencyViolation::MissingKey(SideEffect::Sends))
+        Err(IdempotencyViolation::MissingKey(SideEffect::ExternalWrite))
     );
     Ok(())
 }
@@ -600,7 +600,7 @@ fn runtime_returns_unit_when_key_required_action_has_non_empty_clean_key_slots()
 -> Result<(), Box<dyn std::error::Error>> {
     let candidate = contract(
         action(36),
-        SideEffect::Writes,
+        SideEffect::LocalWrite,
         Idempotency::IdempotentExternal,
         RetrySafety::KeyRequired,
     );
@@ -617,7 +617,7 @@ fn runtime_returns_unit_when_key_required_action_has_non_empty_clean_key_slots()
 fn static_verifier_ignores_zero_numeric_ticket_key_when_contract_is_key_required() {
     let candidate = contract(
         action(37),
-        SideEffect::Sends,
+        SideEffect::ExternalWrite,
         Idempotency::IdempotentExternal,
         RetrySafety::KeyRequired,
     );
@@ -642,19 +642,19 @@ fn direct_decision_table_has_no_uncovered_enum_combination() {
     let accepted = [
         is_statically_idempotent_contract(&contract(
             action(38),
-            SideEffect::None,
+            SideEffect::Pure,
             Idempotency::DeterministicPure,
             RetrySafety::Safe,
         )),
         is_statically_idempotent_contract(&contract(
             action(39),
-            SideEffect::Writes,
+            SideEffect::LocalWrite,
             Idempotency::IdempotentExternal,
             RetrySafety::Safe,
         )),
         is_statically_idempotent_contract(&contract(
             action(40),
-            SideEffect::Sends,
+            SideEffect::ExternalWrite,
             Idempotency::IdempotentExternal,
             RetrySafety::KeyRequired,
         )),
@@ -662,19 +662,19 @@ fn direct_decision_table_has_no_uncovered_enum_combination() {
     let rejected = [
         is_statically_idempotent_contract(&contract(
             action(41),
-            SideEffect::Destroys,
+            SideEffect::LocalWrite,
             Idempotency::IdempotentExternal,
             RetrySafety::Unsafe,
         )),
         is_statically_idempotent_contract(&contract(
             action(42),
-            SideEffect::Creates,
+            SideEffect::LocalWrite,
             Idempotency::AtLeastOnceExternal,
             RetrySafety::Safe,
         )),
         is_statically_idempotent_contract(&contract(
             action(43),
-            SideEffect::Writes,
+            SideEffect::LocalWrite,
             Idempotency::DeterministicPure,
             RetrySafety::Safe,
         )),
@@ -695,7 +695,7 @@ fn direct_decision_table_has_no_uncovered_enum_combination() {
 fn verifier_unit_functions_do_not_mutate_contract_values() {
     let candidate = contract(
         action(44),
-        SideEffect::Writes,
+        SideEffect::LocalWrite,
         Idempotency::IdempotentExternal,
         RetrySafety::Safe,
     );
@@ -723,7 +723,7 @@ fn validate_workflow_returns_unit_for_side_effecting_idempotent_external_when_re
     let parts = workflow(Box::from([do_node(0, action_id)]));
     let contracts = [contract(
         action_id,
-        SideEffect::Writes,
+        SideEffect::LocalWrite,
         Idempotency::IdempotentExternal,
         RetrySafety::Safe,
     )];
@@ -739,7 +739,7 @@ fn validate_workflow_returns_unit_for_side_effecting_idempotent_external_when_ke
     let parts = workflow(Box::from([do_node(0, action_id)]));
     let contracts = [contract(
         action_id,
-        SideEffect::Sends,
+        SideEffect::ExternalWrite,
         Idempotency::IdempotentExternal,
         RetrySafety::KeyRequired,
     )];
@@ -755,7 +755,7 @@ fn validate_workflow_returns_retry_unsafe_error_when_side_effecting_contract_is_
     let parts = workflow(Box::from([do_node(0, action_id)]));
     let contracts = [contract(
         action_id,
-        SideEffect::Destroys,
+        SideEffect::LocalWrite,
         Idempotency::IdempotentExternal,
         RetrySafety::Unsafe,
     )];
@@ -793,7 +793,7 @@ fn validate_workflow_returns_action_contract_orphan_when_registry_contract_has_n
     let parts = workflow(Box::from([nop_node(0)]));
     let contracts = [contract(
         action_id,
-        SideEffect::Writes,
+        SideEffect::LocalWrite,
         Idempotency::IdempotentExternal,
         RetrySafety::Safe,
     )];
@@ -811,7 +811,7 @@ proptest! {
     fn proptest_pure_action_acceptance_holds_for_representative_action_ids(action_raw in 0u16..128u16) {
         let candidate = contract(
             ActionId::new(action_raw),
-            SideEffect::None,
+            SideEffect::Pure,
             Idempotency::AtLeastOnceExternal,
             RetrySafety::Unsafe,
         );
@@ -826,7 +826,7 @@ proptest! {
         let action_id = ActionId::new(action_raw);
         let candidate = contract(
             action_id,
-            SideEffect::Destroys,
+            SideEffect::LocalWrite,
             Idempotency::IdempotentExternal,
             RetrySafety::Unsafe,
         );
@@ -841,11 +841,11 @@ proptest! {
     #[test]
     fn proptest_001_decision_table_confluence_10k(
         side_effect in prop_oneof![
-            Just(SideEffect::None),
-            Just(SideEffect::Writes),
-            Just(SideEffect::Sends),
-            Just(SideEffect::Creates),
-            Just(SideEffect::Destroys),
+            Just(SideEffect::Pure),
+            Just(SideEffect::LocalWrite),
+            Just(SideEffect::ExternalWrite),
+            Just(SideEffect::LocalWrite),
+            Just(SideEffect::LocalWrite),
         ],
         retry_safety in prop_oneof![
             Just(RetrySafety::Safe),
@@ -872,9 +872,9 @@ proptest! {
     #[test]
     fn proptest_002_runtime_gate_determinism_10k(
         side_effect in prop_oneof![
-            Just(SideEffect::None),
-            Just(SideEffect::Writes),
-            Just(SideEffect::Sends),
+            Just(SideEffect::Pure),
+            Just(SideEffect::LocalWrite),
+            Just(SideEffect::ExternalWrite),
         ],
         idempotency in prop_oneof![
             Just(Idempotency::IdempotentExternal),

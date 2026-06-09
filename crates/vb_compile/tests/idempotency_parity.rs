@@ -44,7 +44,7 @@ fn parity_side_effect_none_all_combinations_accept() {
             Idempotency::IdempotentExternal,
             Idempotency::AtLeastOnceExternal,
         ] {
-            let c = contract(1, SideEffect::None, idempotency, retry_safety);
+            let c = contract(1, SideEffect::Pure, idempotency, retry_safety);
             assert!(
                 static_ok(&c),
                 "static accepts None+{retry_safety:?}+{idempotency:?}"
@@ -61,10 +61,10 @@ fn parity_side_effect_none_all_combinations_accept() {
 fn parity_unsafe_retry_all_side_effects_rejected() {
     let mut id = 100;
     for side_effect in [
-        SideEffect::Writes,
-        SideEffect::Sends,
-        SideEffect::Creates,
-        SideEffect::Destroys,
+        SideEffect::LocalWrite,
+        SideEffect::ExternalWrite,
+        SideEffect::LocalWrite,
+        SideEffect::LocalWrite,
     ] {
         for idempotency in [
             Idempotency::DeterministicPure,
@@ -89,10 +89,10 @@ fn parity_unsafe_retry_all_side_effects_rejected() {
 fn parity_idempotent_external_safe_or_key_required_accepts() {
     let mut id = 200;
     for side_effect in [
-        SideEffect::Writes,
-        SideEffect::Sends,
-        SideEffect::Creates,
-        SideEffect::Destroys,
+        SideEffect::LocalWrite,
+        SideEffect::ExternalWrite,
+        SideEffect::LocalWrite,
+        SideEffect::LocalWrite,
     ] {
         for retry_safety in [RetrySafety::Safe, RetrySafety::KeyRequired] {
             let c = contract(
@@ -118,10 +118,10 @@ fn parity_idempotent_external_safe_or_key_required_accepts() {
 fn parity_at_least_once_external_with_safe_or_key_required_rejected_by_both() {
     let mut id = 300;
     for side_effect in [
-        SideEffect::Writes,
-        SideEffect::Sends,
-        SideEffect::Creates,
-        SideEffect::Destroys,
+        SideEffect::LocalWrite,
+        SideEffect::ExternalWrite,
+        SideEffect::LocalWrite,
+        SideEffect::LocalWrite,
     ] {
         for retry_safety in [RetrySafety::Safe, RetrySafety::KeyRequired] {
             let c = contract(
@@ -148,10 +148,10 @@ fn parity_at_least_once_external_with_safe_or_key_required_rejected_by_both() {
 fn parity_deterministic_pure_with_safe_or_key_required_rejected_by_both() {
     let mut id = 400;
     for side_effect in [
-        SideEffect::Writes,
-        SideEffect::Sends,
-        SideEffect::Creates,
-        SideEffect::Destroys,
+        SideEffect::LocalWrite,
+        SideEffect::ExternalWrite,
+        SideEffect::LocalWrite,
+        SideEffect::LocalWrite,
     ] {
         for retry_safety in [RetrySafety::Safe, RetrySafety::KeyRequired] {
             let c = contract(
@@ -176,11 +176,11 @@ fn parity_deterministic_pure_with_safe_or_key_required_rejected_by_both() {
 #[test]
 fn parity_exhaustive_all_45_cases() {
     let side_effects = [
-        SideEffect::None,
-        SideEffect::Writes,
-        SideEffect::Sends,
-        SideEffect::Creates,
-        SideEffect::Destroys,
+        SideEffect::Pure,
+        SideEffect::LocalWrite,
+        SideEffect::ExternalWrite,
+        SideEffect::LocalWrite,
+        SideEffect::LocalWrite,
     ];
 
     let mut agree_count = 0usize;
@@ -225,7 +225,7 @@ fn parity_side_effect_none_all_9_cases_agree() {
             Idempotency::IdempotentExternal,
             Idempotency::AtLeastOnceExternal,
         ] {
-            let c = contract(500, SideEffect::None, idempotency, retry_safety);
+            let c = contract(500, SideEffect::Pure, idempotency, retry_safety);
             assert_eq!(
                 static_ok(&c),
                 compile_ok(&c),
@@ -241,10 +241,10 @@ fn parity_side_effect_none_all_9_cases_agree() {
 fn parity_unsafe_12_cases_all_rejected_by_both() {
     let mut count = 0usize;
     for side_effect in [
-        SideEffect::Writes,
-        SideEffect::Sends,
-        SideEffect::Creates,
-        SideEffect::Destroys,
+        SideEffect::LocalWrite,
+        SideEffect::ExternalWrite,
+        SideEffect::LocalWrite,
+        SideEffect::LocalWrite,
     ] {
         for idempotency in [
             Idempotency::DeterministicPure,
@@ -270,10 +270,10 @@ fn parity_unsafe_12_cases_all_rejected_by_both() {
 fn parity_idempotent_external_8_cases_all_accepted_by_both() {
     let mut count = 0usize;
     for side_effect in [
-        SideEffect::Writes,
-        SideEffect::Sends,
-        SideEffect::Creates,
-        SideEffect::Destroys,
+        SideEffect::LocalWrite,
+        SideEffect::ExternalWrite,
+        SideEffect::LocalWrite,
+        SideEffect::LocalWrite,
     ] {
         for retry_safety in [RetrySafety::Safe, RetrySafety::KeyRequired] {
             let c = contract(

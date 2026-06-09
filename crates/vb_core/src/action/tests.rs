@@ -318,7 +318,7 @@ fn action_contract_with_zero_output_bytes_is_constructable() {
         max_output_bytes: 0,
         timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -337,7 +337,7 @@ fn action_contract_with_zero_timeout_is_constructable() {
         max_output_bytes: 1024,
         timeout_ms: 0,
         idempotency: Idempotency::AtLeastOnceExternal,
-        side_effect: SideEffect::Writes,
+        side_effect: SideEffect::LocalWrite,
         retry_safety: RetrySafety::KeyRequired,
         required_capabilities: Box::new([]),
     };
@@ -427,11 +427,11 @@ fn failure_code_repr(code: ActionFailureCode) -> u8 {
 #[test]
 fn side_effect_repr_values_are_distinct() {
     let effects = [
-        SideEffect::None,
-        SideEffect::Writes,
-        SideEffect::Sends,
-        SideEffect::Creates,
-        SideEffect::Destroys,
+        SideEffect::Pure,
+        SideEffect::LocalWrite,
+        SideEffect::ExternalWrite,
+        SideEffect::LocalWrite,
+        SideEffect::LocalWrite,
     ];
     let mut reprs: [u8; 5] = [0; 5];
     let mut count = 0;
@@ -466,11 +466,11 @@ fn side_effect_repr_values_are_distinct() {
 
 fn side_effect_repr(effect: SideEffect) -> u8 {
     match effect {
-        SideEffect::None => 0,
-        SideEffect::Writes => 1,
-        SideEffect::Sends => 2,
-        SideEffect::Creates => 3,
-        SideEffect::Destroys => 4,
+        SideEffect::Pure => 0,
+        SideEffect::LocalWrite => 1,
+        SideEffect::ExternalWrite => 2,
+        SideEffect::LocalWrite => 3,
+        SideEffect::LocalWrite => 4,
     }
 }
 
@@ -499,9 +499,9 @@ fn retry_safety_repr(safety: RetrySafety) -> u8 {
 
 #[test]
 fn idempotency_violation_missing_key_carries_side_effect() {
-    let violation = IdempotencyViolation::MissingKey(SideEffect::Writes);
+    let violation = IdempotencyViolation::MissingKey(SideEffect::LocalWrite);
     match violation {
-        IdempotencyViolation::MissingKey(eff) => assert_eq!(eff, SideEffect::Writes),
+        IdempotencyViolation::MissingKey(eff) => assert_eq!(eff, SideEffect::LocalWrite),
         other => panic!("expected MissingKey, got {other:?}"),
     }
 }
@@ -544,7 +544,7 @@ fn verify_idempotency_pure_action_always_passes() {
         max_output_bytes: 0,
         timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -566,7 +566,7 @@ fn verify_idempotency_safe_action_with_side_effect_passes() {
         max_output_bytes: 1024,
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
-        side_effect: SideEffect::Writes,
+        side_effect: SideEffect::LocalWrite,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -588,7 +588,7 @@ fn verify_idempotency_unsafe_action_rejected() {
         max_output_bytes: 1024,
         timeout_ms: 1000,
         idempotency: Idempotency::AtLeastOnceExternal,
-        side_effect: SideEffect::Destroys,
+        side_effect: SideEffect::LocalWrite,
         retry_safety: RetrySafety::Unsafe,
         required_capabilities: Box::new([]),
     };
@@ -598,7 +598,7 @@ fn verify_idempotency_unsafe_action_rejected() {
     let result = verify_idempotency(&action, &[SlotIdx::new(0)], &frame);
     assert_eq!(
         result,
-        Err(IdempotencyViolation::MissingKey(SideEffect::Destroys))
+        Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))
     );
 }
 
@@ -613,7 +613,7 @@ fn verify_idempotency_key_required_empty_keys_rejected() {
         max_output_bytes: 1024,
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
-        side_effect: SideEffect::Writes,
+        side_effect: SideEffect::LocalWrite,
         retry_safety: RetrySafety::KeyRequired,
         required_capabilities: Box::new([]),
     };
@@ -623,7 +623,7 @@ fn verify_idempotency_key_required_empty_keys_rejected() {
     let result = verify_idempotency(&action, &[], &frame);
     assert_eq!(
         result,
-        Err(IdempotencyViolation::MissingKey(SideEffect::Writes))
+        Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))
     );
 }
 
@@ -638,7 +638,7 @@ fn verify_idempotency_key_required_clean_keys_passes() {
         max_output_bytes: 1024,
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
-        side_effect: SideEffect::Writes,
+        side_effect: SideEffect::LocalWrite,
         retry_safety: RetrySafety::KeyRequired,
         required_capabilities: Box::new([]),
     };
@@ -661,7 +661,7 @@ fn verify_idempotency_key_required_secret_key_rejected() {
         max_output_bytes: 1024,
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
-        side_effect: SideEffect::Writes,
+        side_effect: SideEffect::LocalWrite,
         retry_safety: RetrySafety::KeyRequired,
         required_capabilities: Box::new([]),
     };
@@ -713,7 +713,7 @@ fn verify_idempotency_sends_side_effect_key_required_rejected_without_key() {
         max_output_bytes: 1024,
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
-        side_effect: SideEffect::Sends,
+        side_effect: SideEffect::ExternalWrite,
         retry_safety: RetrySafety::KeyRequired,
         required_capabilities: Box::new([]),
     };
@@ -723,7 +723,7 @@ fn verify_idempotency_sends_side_effect_key_required_rejected_without_key() {
     let result = verify_idempotency(&action, &[], &frame);
     assert_eq!(
         result,
-        Err(IdempotencyViolation::MissingKey(SideEffect::Sends))
+        Err(IdempotencyViolation::MissingKey(SideEffect::ExternalWrite))
     );
 }
 
@@ -738,7 +738,7 @@ fn verify_idempotency_creates_side_effect_unsafe_rejected() {
         max_output_bytes: 1024,
         timeout_ms: 1000,
         idempotency: Idempotency::AtLeastOnceExternal,
-        side_effect: SideEffect::Creates,
+        side_effect: SideEffect::LocalWrite,
         retry_safety: RetrySafety::Unsafe,
         required_capabilities: Box::new([]),
     };
@@ -748,7 +748,7 @@ fn verify_idempotency_creates_side_effect_unsafe_rejected() {
     let result = verify_idempotency(&action, &[SlotIdx::new(0)], &frame);
     assert_eq!(
         result,
-        Err(IdempotencyViolation::MissingKey(SideEffect::Creates))
+        Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))
     );
 }
 
@@ -763,7 +763,7 @@ fn action_contract_serializes_with_new_fields() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::IdempotentExternal,
-        side_effect: SideEffect::Writes,
+        side_effect: SideEffect::LocalWrite,
         retry_safety: RetrySafety::KeyRequired,
         required_capabilities: Box::new([]),
     };
@@ -780,7 +780,7 @@ fn action_contract_serializes_with_new_fields() {
 
 #[test]
 fn side_effect_is_copy() {
-    let a = SideEffect::Writes;
+    let a = SideEffect::LocalWrite;
     let b = a;
     assert_eq!(a, b);
 }
@@ -807,7 +807,7 @@ fn verify_idempotency_writes_with_safe_passes() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::IdempotentExternal,
-        side_effect: SideEffect::Writes,
+        side_effect: SideEffect::LocalWrite,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -829,7 +829,7 @@ fn verify_idempotency_destroys_with_unsafe_rejected_even_with_keys() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::AtLeastOnceExternal,
-        side_effect: SideEffect::Destroys,
+        side_effect: SideEffect::LocalWrite,
         retry_safety: RetrySafety::Unsafe,
         required_capabilities: Box::new([]),
     };
@@ -841,7 +841,7 @@ fn verify_idempotency_destroys_with_unsafe_rejected_even_with_keys() {
     let result = verify_idempotency(&action, &key_slots, &frame);
     assert_eq!(
         result,
-        Err(IdempotencyViolation::MissingKey(SideEffect::Destroys))
+        Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))
     );
 }
 
@@ -856,7 +856,7 @@ fn verify_idempotency_destroys_with_unsafe_rejected_without_keys() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::AtLeastOnceExternal,
-        side_effect: SideEffect::Destroys,
+        side_effect: SideEffect::LocalWrite,
         retry_safety: RetrySafety::Unsafe,
         required_capabilities: Box::new([]),
     };
@@ -866,7 +866,7 @@ fn verify_idempotency_destroys_with_unsafe_rejected_without_keys() {
     let result = verify_idempotency(&action, &[], &frame);
     assert_eq!(
         result,
-        Err(IdempotencyViolation::MissingKey(SideEffect::Destroys))
+        Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))
     );
 }
 
@@ -881,7 +881,7 @@ fn verify_idempotency_key_required_rejects_secret_tainted_key_slot() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::IdempotentExternal,
-        side_effect: SideEffect::Writes,
+        side_effect: SideEffect::LocalWrite,
         retry_safety: RetrySafety::KeyRequired,
         required_capabilities: Box::new([]),
     };
@@ -928,7 +928,7 @@ fn verify_idempotency_key_required_rejects_when_first_slot_clean_but_second_secr
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::IdempotentExternal,
-        side_effect: SideEffect::Creates,
+        side_effect: SideEffect::LocalWrite,
         retry_safety: RetrySafety::KeyRequired,
         required_capabilities: Box::new([]),
     };
@@ -948,7 +948,7 @@ fn verify_idempotency_key_required_rejects_when_first_slot_clean_but_second_secr
 
 #[test]
 fn verify_idempotency_none_side_effect_always_passes_even_unsafe() {
-    // Actions with SideEffect::None always pass, regardless of retry_safety.
+    // Actions with SideEffect::Pure always pass, regardless of retry_safety.
     let action = ActionContract {
         id: ActionId::new(105),
         name: ActionName::new("test-action").unwrap(),
@@ -958,7 +958,7 @@ fn verify_idempotency_none_side_effect_always_passes_even_unsafe() {
         max_output_bytes: 0,
         timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Unsafe,
         required_capabilities: Box::new([]),
     };
@@ -980,7 +980,7 @@ fn verify_idempotency_sends_side_effect_unsafe_rejected() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::AtLeastOnceExternal,
-        side_effect: SideEffect::Sends,
+        side_effect: SideEffect::ExternalWrite,
         retry_safety: RetrySafety::Unsafe,
         required_capabilities: Box::new([]),
     };
@@ -990,7 +990,7 @@ fn verify_idempotency_sends_side_effect_unsafe_rejected() {
     let result = verify_idempotency(&action, &[SlotIdx::new(0)], &frame);
     assert_eq!(
         result,
-        Err(IdempotencyViolation::MissingKey(SideEffect::Sends))
+        Err(IdempotencyViolation::MissingKey(SideEffect::ExternalWrite))
     );
 }
 
@@ -1011,7 +1011,7 @@ fn validate_action_dispatch_succeeds_with_populated_input_and_output_slot() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -1038,7 +1038,7 @@ fn validate_action_dispatch_fails_on_uninitialized_input() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -1061,7 +1061,7 @@ fn validate_action_dispatch_fails_on_out_of_bounds_input() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -1083,7 +1083,7 @@ fn validate_action_dispatch_succeeds_with_zero_output_count() {
         max_output_bytes: 0,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -1164,7 +1164,7 @@ fn validate_action_outcome_ready_succeeds_with_valid_slot() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -1190,7 +1190,7 @@ fn validate_action_outcome_ready_rejects_out_of_bounds_slot() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -1222,7 +1222,7 @@ fn validate_action_outcome_failed_always_succeeds() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -1249,7 +1249,7 @@ fn validate_action_outcome_suspended_rejected() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -1278,7 +1278,7 @@ fn validate_action_outcome_rejects_taint_downgrade_deterministic_pure() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -1310,7 +1310,7 @@ fn validate_action_outcome_deterministic_pure_rejects_secret_output_with_clean_i
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -1342,7 +1342,7 @@ fn validate_action_outcome_idempotent_external_rejects_secret_output_with_clean_
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::IdempotentExternal,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -1374,7 +1374,7 @@ fn validate_action_outcome_rejects_taint_downgrade_idempotent_external() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::IdempotentExternal,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -1406,7 +1406,7 @@ fn validate_action_outcome_accepts_correct_taint_idempotent_external() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::IdempotentExternal,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -1432,7 +1432,7 @@ fn validate_action_outcome_rejects_taint_downgrade_at_least_once() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::AtLeastOnceExternal,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -1673,7 +1673,7 @@ fn action_ticket_with_zero_timeout_via_contract() {
         max_output_bytes: 512,
         timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -1811,7 +1811,7 @@ fn action_contract_fields_and_required_capabilities() {
         max_output_bytes: 2048,
         timeout_ms: 30_000,
         idempotency: Idempotency::IdempotentExternal,
-        side_effect: SideEffect::Writes,
+        side_effect: SideEffect::LocalWrite,
         retry_safety: RetrySafety::KeyRequired,
         required_capabilities: Box::new([Capability::new(
             String::from("file_read").into_boxed_str(),
@@ -1825,7 +1825,7 @@ fn action_contract_fields_and_required_capabilities() {
     assert_eq!(contract.max_output_bytes, 2048);
     assert_eq!(contract.timeout_ms, 30_000);
     assert_eq!(contract.idempotency, Idempotency::IdempotentExternal);
-    assert_eq!(contract.side_effect, SideEffect::Writes);
+    assert_eq!(contract.side_effect, SideEffect::LocalWrite);
     assert_eq!(contract.retry_safety, RetrySafety::KeyRequired);
     assert_eq!(contract.required_capabilities.len(), 1);
 }
@@ -1842,7 +1842,7 @@ fn action_contract_default_like_values() {
         max_output_bytes: 0,
         timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
@@ -1953,7 +1953,7 @@ fn idempotency_property_bounded() {
         max_output_bytes: 512,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::Writes,
+        side_effect: SideEffect::LocalWrite,
         retry_safety: RetrySafety::KeyRequired,
         required_capabilities: Box::new([]),
     };

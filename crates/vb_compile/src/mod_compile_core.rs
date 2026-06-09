@@ -137,7 +137,7 @@ pub fn emit_compiled_artifact(workflow: &CompiledWorkflow) -> Result<Box<[u8]>, 
 /// that workflows with unsafe action configurations are rejected before deployment.
 ///
 /// Rules:
-/// - `SideEffect::None` always passes (pure computation).
+/// - `SideEffect::Pure` always passes (pure computation).
 /// - `side_effect != None` AND `RetrySafety::Unsafe` is rejected.
 /// - `side_effect != None` AND `Idempotency::AtLeastOnceExternal` is rejected.
 /// - `side_effect != None` AND `Idempotency::DeterministicPure` is rejected.
@@ -150,7 +150,7 @@ pub fn is_compile_idempotency_gate_accepted(contract: &ActionContract) -> bool {
             contract.retry_safety,
             contract.idempotency,
         ),
-        (SideEffect::None, _, _)
+        (SideEffect::Pure, _, _)
             | (
                 _,
                 RetrySafety::Safe | RetrySafety::KeyRequired,

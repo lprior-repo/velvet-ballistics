@@ -19,7 +19,7 @@ const MAX_SYMBOLIC_SLOTS: u16 = 4;
 
 fn bounded_contract_for_retry(retry_safety: RetrySafety) -> ActionContract {
     let mut contract = symbolic_contract_no_caps();
-    kani::assume(contract.side_effect != SideEffect::None);
+    kani::assume(contract.side_effect != SideEffect::Pure);
     contract.retry_safety = retry_safety;
     contract
 }
@@ -42,11 +42,11 @@ fn symbolic_contract_no_caps() -> ActionContract {
 
 fn symbolic_side_effect() -> SideEffect {
     match kani::any::<u8>() {
-        0 => SideEffect::None,
-        1 => SideEffect::Writes,
-        2 => SideEffect::Sends,
-        3 => SideEffect::Creates,
-        _ => SideEffect::Destroys,
+        0 => SideEffect::Pure,
+        1 => SideEffect::LocalWrite,
+        2 => SideEffect::ExternalWrite,
+        3 => SideEffect::LocalWrite,
+        _ => SideEffect::LocalWrite,
     }
 }
 
@@ -192,7 +192,7 @@ fn concrete_key_required_contract() -> ActionContract {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::Writes,
+        side_effect: SideEffect::LocalWrite,
         retry_safety: RetrySafety::KeyRequired,
         required_capabilities: Box::new([]),
     }
@@ -315,7 +315,7 @@ fn verify_idempotency_retry_policy_matrix_is_total() {
     let key_slots = [bounded_key_slot()];
     let result = verify_idempotency(&contract, &key_slots, &frame);
     kani::cover!(
-        contract.side_effect == SideEffect::None && result.is_ok(),
+        contract.side_effect == SideEffect::Pure && result.is_ok(),
         "pure bypass covered"
     );
     kani::cover!(
@@ -327,7 +327,7 @@ fn verify_idempotency_retry_policy_matrix_is_total() {
         "key-required retry covered"
     );
     kani::cover!(
-        contract.side_effect != SideEffect::None
+        contract.side_effect != SideEffect::Pure
             && contract.retry_safety == RetrySafety::Unsafe
             && matches!(result, Err(IdempotencyViolation::MissingKey(_))),
         "unsafe retry failure covered"
@@ -448,23 +448,23 @@ fn verify_idempotency_retry_policy_matrix_no_frame_write() {
     };
     let result = verify_idempotency(&contract, &[], &frame);
     kani::cover!(
-        contract.side_effect == SideEffect::None && result.is_ok(),
+        contract.side_effect == SideEffect::Pure && result.is_ok(),
         "no side-effect bypass covered"
     );
     kani::cover!(
-        contract.side_effect != SideEffect::None
+        contract.side_effect != SideEffect::Pure
             && contract.retry_safety == RetrySafety::Safe
             && result.is_ok(),
         "safe retry covered"
     );
     kani::cover!(
-        contract.side_effect != SideEffect::None
+        contract.side_effect != SideEffect::Pure
             && contract.retry_safety == RetrySafety::KeyRequired
             && matches!(result, Err(IdempotencyViolation::MissingKey(_))),
         "key-required missing-key covered"
     );
     kani::cover!(
-        contract.side_effect != SideEffect::None
+        contract.side_effect != SideEffect::Pure
             && contract.retry_safety == RetrySafety::Unsafe
             && matches!(result, Err(IdempotencyViolation::MissingKey(_))),
         "unsafe retry covered"
@@ -704,7 +704,7 @@ fn kani_verify_idempotency_missing_key() {
         max_output_bytes: 1024,
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
-        side_effect: SideEffect::Writes,
+        side_effect: SideEffect::LocalWrite,
         retry_safety,
         required_capabilities: Box::new([]),
     };
@@ -727,7 +727,7 @@ fn kani_verify_idempotency_missing_key() {
     kani::assert(
         matches!(
             result_empty,
-            Err(IdempotencyViolation::MissingKey(SideEffect::Writes))
+            Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))
         ),
         "KeyRequired empty returns MissingKey(Writes)",
     );
@@ -745,7 +745,7 @@ fn kani_verify_idempotency_missing_key() {
     kani::assert(
         matches!(
             result_unsafe_empty,
-            Err(IdempotencyViolation::MissingKey(SideEffect::Writes))
+            Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))
         ),
         "Unsafe returns MissingKey even with empty key_slots",
     );
@@ -761,7 +761,7 @@ fn kani_verify_idempotency_missing_key() {
     kani::assert(
         matches!(
             result_unsafe_with_key,
-            Err(IdempotencyViolation::MissingKey(SideEffect::Writes))
+            Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))
         ),
         "Unsafe with keys still returns MissingKey",
     );
@@ -777,10 +777,10 @@ fn kani_verify_idempotency_missing_key() {
 
     // None side-effect -> always Ok regardless of retry_safety
     let contract_none = ActionContract {
-        side_effect: SideEffect::None,
+        side_effect: SideEffect::Pure,
         retry_safety: RetrySafety::Unsafe,
         ..make_contract(RetrySafety::Safe)
     };
     let result_none = verify_idempotency(&contract_none, &[], &frame);
-    kani::assert(result_none.is_ok(), "SideEffect::None always passes");
+    kani::assert(result_none.is_ok(), "SideEffect::Pure always passes");
 }
