@@ -359,3 +359,87 @@ Each bead's femdation workdir contains a `.beads/<id>/implementation.md` artifac
 - The user said "using black hat, test reviewer, and holzman rust for review". The holzman-rust doctrine is the active review frame; the black-hat-reviewer and test-reviewer were not explicitly invoked as separate sub-agents in this run. Their effect is embedded in the holzman-rust gate (the strict clippy deny-list and the moon :lint-src task cover the contract-parity and Farley-constraint concerns that black-hat and test-reviewer would otherwise check).
 - A pre-existing 2026-06-09 cargo-kani blocker means 1 of the 12 beads (`vb-ymlkn01`) is structurally correct but unverified by symbolic execution. Logged as a residual risk, not as a blocker.
 - The first child commit of `vb-0l9hg` was repaired by a second child commit (renumber RunInspection 30→31) before landing. The first commit is preserved in branch history; the merge commit on main includes both.
+
+---
+
+# Reviewer Triad Pass — Wave A + Wave B retrospective (2026-06-09)
+
+**18 review children dispatched (9 black-hat-reviewer + 9 test-reviewer) over the 9 landed merge commits.** This is the review pass the user explicitly asked for after the landings.
+
+## Review verdicts (frozen on disk, one per bead per reviewer)
+
+| Bead | Black-hat | Test-reviewer | Outcome | Review artifact |
+|---|---|---|---|---|
+| vb-0l9hg | REJECTED (2 blockers: Snapshot=30 removed from master §18; RunInspection=31 is contract-only) | APPROVED (5 owner-approved findings) | **Split verdict** | `<workdir>/.beads/vb-0l9hg/{black-hat,test}-review.md` |
+| vb-uxwga | REJECTED (phantom variant: is_known_record_kind(7)=false; no magic; no decoder path; doc comment wrong) | REJECTED (CRITICAL TR-VBUXWGA-001: contract claim not in master §18) | **Both REJECTED** | `<workdir>/.beads/vb-uxwga/{black-hat,test}-review.md` |
+| vb-fuz02 | APPROVED (1 MEDIUM follow-up: audit R1 review files for fabricated filenames) | APPROVED (3 informational follow-ups) | **APPROVED** | `<workdir>/.beads/vb-fuz02/{black-hat,test}-review.md` |
+| vb-dedup12 | APPROVED (no blocker; meta-smell out of scope) | APPROVED WITH FINDINGS (1 MEDIUM doc gap, 2 LOW) | **APPROVED** | `<workdir>/.beads/vb-dedup12/{black-hat,test}-review.md` |
+| vb-bi9hq | APPROVED WITH FINDINGS (3 HIGH pre-existing repo state, 1 LOW cosmetic) | N/A — out of test-reviewer scope (kani harnesses are not behavior tests) | **APPROVED + proof-reviewer follow-up** | `<workdir>/.beads/vb-bi9hq/{black-hat,test}-review.md` |
+| vb-ymlkn01 | REJECTED (CRITICAL F1: Kani fix unverified; HIGH F3: 4 newly-wired modules never compiled under cfg(kani); HIGH F2: two harnesses prove same invariant) | N/A — Kani rewrite is proof-reviewer scope | **REJECTED + proof-reviewer follow-up** | `<workdir>/.beads/vb-ymlkn01/{black-hat,test}-review.md` |
+| vb-cs3804 | REJECTED (CRITICAL F1-F4: proptest doesn't call replay_events, master line 1182-1186 doesn't exist, StorageError doesn't exist, proptest_harness! doesn't exist; F5: apply_mutation 56 lines) | REJECTED (3 blockers: F1 classifier collapse, F3 wrong function, F4 nonexistent error type) | **Both REJECTED** | `<workdir>/.beads/vb-cs3804/{black-hat,test}-review.md` |
+| vb-clitst01 | APPROVED (5-module split is cap-driven; 33 tests preserved) | APPROVED (2 minor observations) | **APPROVED** | `<workdir>/.beads/vb-clitst01/{black-hat,test}-review.md` |
+| vb-clipst01 | REJECT (3 of 6 envelopes dead-on-arrival; 0 round-trip tests) | REJECTED (B-1: 0 round-trip tests for 6 new kinds) | **Both REJECTED** | `<workdir>/.beads/vb-clipst01/{black-hat,test}-review.md` |
+
+**Summary:** 4 approved, 4 rejected, 1 split verdict, 2 N/A (out of scope, routed to proof-reviewer).
+
+## Why the holzman gate was insufficient
+
+The holzman-rust gate (`cargo fmt --check`, `cargo check --workspace --all-targets`, `cargo clippy ... -- <15 deny lints>`, `cargo test --workspace --all-features`, panic-macro scan) caught mechanical defects (panic surface, unwrap/expect, formatting, function-size on hot paths) but not contract defects. The reviewer triad caught:
+
+- **Contract drift** (master §18 vs production `kinds.rs` wire ID disagreement on IDs 30 and 31)
+- **Phantom public types** (RecoveryStamp=7 is unreachable through the decoder; CliStatusReport, SimulateReport, RunReport are dead-on-arrival)
+- **Wrong function under test** (vb-cs3804 proptest called `decode_journal_event` instead of `recovery::replay_events`)
+- **Hallucinated spec** (master line 1182-1186 doesn't exist; the real §38 is at line 1735; `StorageError` and `proptest_harness!` don't exist in the codebase)
+- **Mutation-silent test surface** (0 round-trip tests for 6 new typed envelopes; `TruncateAtByte` and `PayloadOverflow` both → `UnexpectedEof`; `apply_mutation` 56 lines > 2x the Farley 25-line cap)
+- **Verifier dormancy** (rewritten Kani proof has never been symbolically executed; cargo-kani is blocked by a pre-existing E0164)
+
+The holzman gate passes on code that compiles, lints clean, and has tests that pass. The reviewer triad verifies the code is the *right* code for the *right* contract.
+
+## Wave C — fresh repair beads (fail forward, no reverts)
+
+**No reverts.** The 4 REJECTED beads and the 1 split verdict stay on main. The reviewer findings are surfaced as new beads with corrected scope, owned by the next femdation wave. This is "fail forward": preserve the work, document the defects, dispatch corrected follow-ups.
+
+6 new beads filed (`discovered-from` links to the rejected landings):
+
+| New bead | Priority | Discovered from | What it fixes |
+|---|---|---|---|
+| `vb-mvedz` | P0 | vb-0l9hg | Re-add Snapshot=30 to master §18; resolve the RunInspection=31 contract-only promise (either remove the row or add the production variant) |
+| `vb-1cwhx` | P0 | vb-uxwga | Extend decoder path so `RecoveryStamp=7` is reachable end-to-end (is_known_record_kind(7)=true, magic, key prefix, writer/reader, BDD + proptest parity) |
+| `vb-40cfh` | P0 | vb-cs3804 | Rewrite proptest to actually exercise `recovery::replay_events` (not `decode_journal_event`); assert `RecoveryError` variants; tighten the mutation classifier; add event_count=0 boundary; reduce `apply_mutation` to ≤25 lines |
+| `vb-5hf16` | P1 | vb-clipst01 | Kill 3 dead-on-arrival envelopes (CliStatusReport, SimulateReport, RunReport); add 3 round-trip tests for the 3 valid kinds (SystemStatusReport, AiContextPacketReport, WorkflowDiffReport); add negative test pinning shape-mismatch fallback |
+| `vb-3ysvx` | P0 | vb-ymlkn01 | Run cargo kani on the rewritten kani_yaml_error_code proof; compile + verify the 4 newly-wired kani modules; subsume the duplicate kani_all_variants_registered |
+| `vb-yd9g0` | P0 | vb-ymlkn01 | (BLOCK_GLOBAL prerequisite) Fix the pre-existing E0164 in `vb_core/src/kani_step_harnesses.rs:133,209` so cargo-kani can run on the workspace at all |
+
+The 4 approved beads (vb-fuz02, vb-dedup12, vb-bi9hq, vb-clitst01) are closed. The 3 stale-duplicate closes (vb-4zd19, vb-hkqef, vb-nos2l) are closed. The 4 REJECTED beads and vb-0l9hg are *closed* (already landed) but flagged for repair via the new Wave C beads. The 3 N/A (proof-reviewer scope) are routed to proof-reviewer for the next wave.
+
+## Review artifact paths (on disk, gitignored, per AGENTS.md)
+
+```
+/home/lewis/src/velvet-ballistics-femdation-wave-a-vb-0l9hg/.beads/vb-0l9hg/black-hat-review.md
+/home/lewis/src/velvet-ballistics-femdation-wave-a-vb-0l9hg/.beads/vb-0l9hg/test-review.md
+/home/lewis/src/velvet-ballistics-femdation-wave-a-vb-uxwga/.beads/vb-uxwga/black-hat-review.md
+/home/lewis/src/velvet-ballistics-femdation-wave-a-vb-uxwga/.beads/vb-uxwga/test-review.md
+/home/lewis/src/velvet-ballistics-femdation-wave-a-vb-fuz02/.beads/vb-fuz02/black-hat-review.md
+/home/lewis/src/velvet-ballistics-femdation-wave-a-vb-fuz02/.beads/vb-fuz02/test-review.md
+/home/lewis/src/velvet-ballistics-femdation-wave-a-vb-dedup12/.beads/vb-dedup12/black-hat-review.md
+/home/lewis/src/velvet-ballistics-femdation-wave-a-vb-dedup12/.beads/vb-dedup12/test-review.md
+/home/lewis/src/velvet-ballistics-femdation-wave-a-vb-bi9hq/.beads/vb-bi9hq/black-hat-review.md
+/home/lewis/src/velvet-ballistics-femdation-wave-a-vb-bi9hq/.beads/vb-bi9hq/test-review.md
+/home/lewis/src/velvet-ballistics-femdation-wave-a-vb-ymlkn01/.beads/vb-ymlkn01/black-hat-review.md
+/home/lewis/src/velvet-ballistics-femdation-wave-a-vb-ymlkn01/.beads/vb-ymlkn01/test-review.md
+/home/lewis/src/velvet-ballistics-femdation-wave-b-vb-cs3804/.beads/vb-cs3804/black-hat-review.md
+/home/lewis/src/velvet-ballistics-femdation-wave-b-vb-cs3804/.beads/vb-cs3804/test-review.md
+/home/lewis/src/velvet-ballistics-femdation-wave-b-vb-clitst01/.beads/vb-clitst01/black-hat-review.md
+/home/lewis/src/velvet-ballistics-femdation-wave-b-vb-clitst01/.beads/vb-clitst01/test-review.md
+/home/lewis/src/velvet-ballistics-femdation-wave-b-vb-clipst01/.beads/vb-clipst01/black-hat-review.md
+/home/lewis/src/velvet-ballistics-femdation-wave-b-vb-clipst01/.beads/vb-clipst01/test-review.md
+```
+
+## Final state
+
+- `main` HEAD: `8acb0bdb4` (unchanged; no reverts)
+- 12 beads closed in this session (6 Wave A + 3 Wave B + 3 stale dups)
+- 6 new repair beads open (Wave C): `vb-mvedz`, `vb-1cwhx`, `vb-40cfh`, `vb-5hf16`, `vb-3ysvx`, `vb-yd9g0`
+- bd status: 1514 total, 92 open, 0 in progress, 12 blocked, 1385 closed
+- Working tree clean
+- All pushed: `git push` succeeded, `bd dolt push` succeeded
