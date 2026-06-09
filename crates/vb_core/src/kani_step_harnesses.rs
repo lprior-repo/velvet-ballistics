@@ -110,6 +110,9 @@ fn step_once_bounds_harness() {
     // INV-002: Cover all signal variants reachable (using concrete checks)
     match &result {
         Ok(signal) => {
+            // Hoist constructor out of the pattern to avoid E0164.
+            // Patterns forbid function calls; bindings and consts are allowed.
+            let zero_slot = SlotIdx::new(0);
             // All signal variants are covered by the dispatch logic
             kani::cover!(
                 matches!(signal, EngineSignal::Continue),
@@ -131,7 +134,7 @@ fn step_once_bounds_harness() {
                 matches!(
                     signal,
                     EngineSignal::AwaitingWait {
-                        deadline_slot: SlotIdx::new(0)
+                        deadline_slot: zero_slot
                     }
                 ),
                 "AwaitingWait reachable"
@@ -203,13 +206,18 @@ fn step_once_state_mapping_harness() {
         kani::assert(state.is_ok(), "step_state read does not panic");
 
         // Map signal to expected state (per contract.md INV-002)
+        // Hoist constructor out of the pattern to avoid E0164.
+        // Use a wildcard binding for the inner slot so all `AwaitingAsk`
+        // variants are covered (E0004) and the pre-buggy semantic — any
+        // `AwaitingAsk` maps to `Asking` — is preserved.
+        let zero_slot = SlotIdx::new(0);
         let expected_state = match signal {
             EngineSignal::Continue | EngineSignal::Finished(_, _) => StepState::Succeeded,
             EngineSignal::AwaitingAction | EngineSignal::StepBudgetExhausted => StepState::Running,
             EngineSignal::AwaitingWait {
-                deadline_slot: SlotIdx::new(0),
+                deadline_slot: zero_slot,
             } => StepState::Waiting,
-            EngineSignal::AwaitingAsk { timeout_slot: None } => StepState::Asking,
+            EngineSignal::AwaitingAsk { timeout_slot: _ } => StepState::Asking,
         };
 
         // INV-002: states[step] must reflect correct StepState
