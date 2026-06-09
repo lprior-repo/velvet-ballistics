@@ -29,10 +29,10 @@
 #![cfg(kani)]
 #![forbid(unsafe_code)]
 
-use crate::workflow::validation::validate_resource_contract;
 use crate::ids::{SlotIdx, StepIdx, WorkflowDigest};
 use crate::limits::MAX_ACCESSORS;
 use crate::value::ConstValue;
+use crate::workflow::validation::validate_resource_contract;
 use crate::workflow::{
     CompiledNode, CompiledNodeKind, ResourceContract, WorkflowError, WorkflowParts,
 };

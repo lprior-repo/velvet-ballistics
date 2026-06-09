@@ -2,12 +2,7 @@
 //!
 //! These tests assert the FIXED state: the 7-variant taxonomy defined
 //! in the master plan (Pure, LocalRead, LocalWrite, ExternalRead,
-//! ExternalWrite, Process, UnsafeShell). They will initially fail to
-//! compile because the current implementation uses a different 5-variant
-//! taxonomy (None, Writes, Sends, Creates, Destroys).
-//!
-//! After the implementation is fixed to match the master plan, these
-//! tests verify the contract is satisfied.
+//! ExternalWrite, Process, UnsafeShell).
 
 use vb_core::{
     RetrySafety, SideEffect,
@@ -30,22 +25,26 @@ const fn side_effect_discriminant(v: SideEffect) -> u8 {
 /// - Any master plan variant name doesn't exist
 #[test]
 fn side_effect_has_exactly_seven_master_plan_variants() {
-    // The 7 variants defined in master plan Section 65
     const MASTER_PLAN_COUNT: usize = 7;
 
-    // We verify by constructing a match that is exhaustive for the 7 fixed variants.
-    // If the enum has more or fewer variants, or different names, this won't compile.
-    let count = match () {
-        _ if true => 1, // Pure
-        _ if true => 1, // LocalRead
-        _ if true => 1, // LocalWrite
-        _ if true => 1, // ExternalRead
-        _ if true => 1, // ExternalWrite
-        _ if true => 1, // Process
-        _ if true => 1, // UnsafeShell
-        _ => 0,
-    };
-    assert_eq!(count, MASTER_PLAN_COUNT);
+    // Enumerate all 7 variants to prove they exist and have unique discriminants.
+    let variants = [
+        SideEffect::Pure,
+        SideEffect::LocalRead,
+        SideEffect::LocalWrite,
+        SideEffect::ExternalRead,
+        SideEffect::ExternalWrite,
+        SideEffect::Process,
+        SideEffect::UnsafeShell,
+    ];
+
+    // Verify we have exactly 7 entries
+    assert_eq!(variants.len(), MASTER_PLAN_COUNT);
+
+    // Verify all discriminants are unique (0-6).
+    let mut discriminants: Vec<u8> = variants.iter().map(|v| *v as u8).collect();
+    discriminants.sort();
+    assert_eq!(discriminants, vec![0, 1, 2, 3, 4, 5, 6]);
 }
 
 /// Test that SideEffect::Pure exists and has a unique discriminant.

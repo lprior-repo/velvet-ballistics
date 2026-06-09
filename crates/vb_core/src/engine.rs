@@ -19,6 +19,7 @@ pub use crate::errors::EngineError;
 pub use crate::frame::RunFrame;
 pub use crate::value_store::ValueStore;
 pub use crate::workflow::CompiledWorkflow;
+pub use crate::workflow::validation::validate_resource_contract;
 pub use error_routing::{ErrorHandlerOutcome, ErrorSlotData, route_error_handler};
 pub use expr_eval::eval_accessor;
 pub use expr_eval::eval_accessor_with_store;
@@ -35,10 +36,7 @@ pub use signals::{EngineSignal, StepBudget};
 pub use step::{
     journal_action_suspended, resume_action_completion, resume_action_failure, step_once,
 };
-pub use validate::{
-    validate_compiled_workflow, validate_node_bounds, validate_transition_target,
-};
-pub use crate::workflow::validation::validate_resource_contract;
+pub use validate::{validate_compiled_workflow, validate_node_bounds, validate_transition_target};
 
 use crate::ids::RunId;
 
