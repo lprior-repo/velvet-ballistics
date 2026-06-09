@@ -45,7 +45,10 @@
 fn is_primitive_parallel_harness() {
     // Test the legacy "parallel" key - should return false after fix
     let result = crate::ast::parse_steps::is_primitive("parallel");
-    kani::assert(!result, "is_primitive(\"parallel\") must return false after fix");
+    kani::assert(
+        !result,
+        "is_primitive(\"parallel\") must return false after fix",
+    );
 }
 
 /// KANI-XI2F-16-002: Bounded verification using kani::any() for vacuity check.
@@ -96,7 +99,10 @@ fn is_primitive_any_string_harness() {
 fn is_primitive_aggregate_harness() {
     // Test the legacy "aggregate" key - should return false after fix
     let result = crate::ast::parse_steps::is_primitive("aggregate");
-    kani::assert(!result, "is_primitive(\"aggregate\") must return false after fix");
+    kani::assert(
+        !result,
+        "is_primitive(\"aggregate\") must return false after fix",
+    );
 }
 
 // =========================================================================
@@ -145,23 +151,26 @@ fn is_primitive_reduce_harness() {
 // Evidence Commands (for documentation)
 // =========================================================================
 
-/// ## Kani Evidence Commands
-///
-/// ```bash
-/// # Legacy rejection (should FAIL before fix, PASS after fix)
-/// TMPDIR=target/tmp cargo kani -p vb_yaml --harness is_primitive_parallel_harness --no-unwind
-/// TMPDIR=target/tmp cargo kani -p vb_yaml --harness is_primitive_aggregate_harness --no-unwind
-///
-/// # Canonical acceptance (should PASS after fix)
-/// TMPDIR=target/tmp cargo kani -p vb_yaml --harness is_primitive_together_harness --no-unwind
-/// TMPDIR=target/tmp cargo kani -p vb_yaml --harness is_primitive_reduce_harness --no-unwind
-///
-/// # Vacuity check
-/// TMPDIR=target/tmp cargo kani -p vb_yaml --harness is_primitive_any_string_harness --no-unwind
-/// ```
-///
-/// ## Prerequisites
-/// - Production code changes must be made first:
-///   - Remove "parallel" and "aggregate" from is_primitive() matches! macro
-///   - Add "together" and "reduce" to is_primitive() matches! macro
-/// - vb_yaml crate must be compiled with `cargo build -p vb_yaml`
+// ## Kani Evidence Commands
+//
+// ```bash
+// # Legacy rejection (should FAIL before fix, PASS after fix)
+// TMPDIR=target/tmp cargo kani -p vb_yaml --harness is_primitive_parallel_harness --no-unwind
+// TMPDIR=target/tmp cargo kani -p vb_yaml --harness is_primitive_aggregate_harness --no-unwind
+//
+// # Canonical acceptance (should PASS after fix)
+// TMPDIR=target/tmp cargo kani -p vb_yaml --harness is_primitive_together_harness --no-unwind
+// TMPDIR=target/tmp cargo kani -p vb_yaml --harness is_primitive_reduce_harness --no-unwind
+//
+// # Vacuity check
+// TMPDIR=target/tmp cargo kani -p vb_yaml --harness is_primitive_any_string_harness --no-unwind
+// ```
+//
+// ## Prerequisites
+// - Production code changes must be made first:
+//   - Remove "parallel" and "aggregate" from is_primitive() matches! macro
+//   - Add "together" and "reduce" to is_primitive() matches! macro
+// - vb_yaml crate must be compiled with `cargo build -p vb_yaml`
+// (Converted from `///` (outer doc) to `//` (regular comment) so the
+// trailing block is bounded and the file ends without a dangling
+// doc-comment — preserves the original documentation.)

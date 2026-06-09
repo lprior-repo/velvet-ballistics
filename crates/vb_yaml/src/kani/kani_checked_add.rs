@@ -69,10 +69,12 @@ fn check_checked_add_counters_node_count() {
     let limits = YamlLimits::default();
     let max_nodes = limits.max_nodes;
 
-    let result = node_count.checked_add(1).ok_or(YamlError::NodeLimitExceeded {
-        count: u32::MAX,
-        max: max_nodes,
-    });
+    let result = node_count
+        .checked_add(1)
+        .ok_or(YamlError::NodeLimitExceeded {
+            count: u32::MAX,
+            max: max_nodes,
+        });
 
     match result {
         Ok(new_count) => {
@@ -175,10 +177,12 @@ fn check_checked_add_counters_merge() {
     let parent: usize = kani::any();
     let child: usize = kani::any();
 
-    let result = parent.checked_add(child).ok_or(YamlError::NodeLimitExceeded {
-        count: u32::MAX,
-        max: YamlLimits::default().max_nodes,
-    });
+    let result = parent
+        .checked_add(child)
+        .ok_or(YamlError::NodeLimitExceeded {
+            count: u32::MAX,
+            max: YamlLimits::default().max_nodes,
+        });
 
     match result {
         Ok(sum) => {

@@ -94,10 +94,7 @@ fn check_validate_yaml_profile_panic_free() {
             Err(error) => {
                 // Must be a registered symbolic code.
                 let code = error.symbolic_code();
-                assert_ne!(
-                    code,
-                    vb_core::diagnostic::SymbolicCode::INTERNAL_INVARIANT
-                );
+                assert_ne!(code, vb_core::diagnostic::SymbolicCode::INTERNAL_INVARIANT);
             }
         }
     }

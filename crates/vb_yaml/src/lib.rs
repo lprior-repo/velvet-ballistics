@@ -29,6 +29,13 @@ mod limits;
 #[cfg(kani)]
 pub mod kani;
 
+// vb-ymlkn01 (REPAIR): Wire top-level kani_is_primitive_legacy.rs (PO-001..PO-004)
+// harness. This file was orphaned at src/kani_is_primitive_legacy.rs and never
+// compiled. It uses kani::any() for shape input and exercises is_primitive()
+// acceptance/rejection of legacy names.
+#[cfg(kani)]
+mod kani_is_primitive_legacy;
+
 pub use error::*;
 pub use limits::*;
 

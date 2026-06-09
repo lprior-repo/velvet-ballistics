@@ -1,209 +1,172 @@
-// DEPRECATED: Legacy vacuum model — superseded by kani_assert_yaml_error.rs (bead vb-jpq7.34).
-// Retained for reference; new verification uses fuzz/src/kani/kani_assert_yaml_error.rs.
 #![forbid(unsafe_code)]
-//! PO-006: Kani harness verifying every YamlError variant maps to a
-//! registered SymbolicCode in the registry.
+//! PO-006: Kani harness verifying that every `YamlError` variant,
+//! when constructed with arbitrary field values, returns a
+//! `SymbolicCode` that is registered in `vb_core::CODE_REGISTRY`
+//! (i.e., `SymbolicCode::from_static` returns `Some`).
 //!
-//! Proves: For each of 20 YamlError variants, code() returns a SymbolicCode
-//! that is in the CODE_REGISTRY.
+//! GOD RULE 1 compliance:
+//! - Variant selector is `kani::any::<u8>()`, bounded via `kani::assume`.
+//! - Every field is `kani::any::<T>()` for its concrete type.
+//! - No hardcoded `YamlError` literals; no fixed `variants: [YamlError; N]`
+//!   array of dummy values.
+//! - Uses the production `YamlError` and `HasSymbolicCode` impl from
+//!   `vb_yaml::error`, not a parallel mini-model.
 //!
-//! Bound: 20 YamlError variants (unwind=20)
+//! Bound: 21 YamlError variants (unwind=21).
+//!
+//! NOTE: This harness uses `String` + `.leak()` to produce owned
+//! `&'static str` references (see kani_all_variants_registered.rs
+//! comment R-003). The leak is bounded by `kani::assume` on string
+//! length so Kani tractability is preserved.
 
-/// Minimal model of SymbolicCode.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SymbolicCode(&'static str);
+use crate::YamlError;
+use vb_core::diagnostic::{HasSymbolicCode, SymbolicCode};
 
-/// Minimal model of YamlError (20 variants).
-#[derive(Debug, Clone)]
-pub enum YamlError {
-    DuplicateKey {
-        key: Box<str>,
-    },
-    ForbiddenFeature {
-        detail: &'static str,
-    },
-    AnchorAliasMerge,
-    CustomTag {
-        tag: Box<str>,
-    },
-    BinaryScalar,
-    MultipleDocuments {
-        count: usize,
-    },
-    AmbiguousScalar {
-        scalar: Box<str>,
-    },
-    SourceTooLarge {
-        size: usize,
-        max: usize,
-    },
-    NestingTooDeep {
-        depth: u16,
-        max: u16,
-    },
-    NodeLimitExceeded {
-        count: u32,
-        max: u32,
-    },
-    ScalarTooLong {
-        len: usize,
-        max: usize,
-    },
-    SequenceTooLong {
-        len: usize,
-        max: usize,
-    },
-    MappingTooLarge {
-        count: usize,
-        max: usize,
-    },
-    UnknownField {
-        field: Box<str>,
-    },
-    EmptySource,
-    MissingField {
-        field: &'static str,
-    },
-    FieldShape {
-        field: &'static str,
-        expected: &'static str,
-    },
-    ParseError {
-        line: usize,
-        reason: Box<str>,
-    },
-    UnsupportedFeature {
-        feature: &'static str,
-    },
-    UnsupportedTrigger {
-        trigger: &'static str,
-    },
-}
+/// Total number of `YamlError` variants in the production enum
+/// (`crates/vb_yaml/src/error.rs`). 21 as of vb-ymlkn01:
+/// UnsupportedTrigger, UnsupportedFeature, DuplicateKey, AnchorAliasMerge,
+/// CustomTag, BinaryScalar, MultipleDocuments, AmbiguousScalar,
+/// SourceTooLarge, NestingTooDeep, NodeLimitExceeded, ScalarTooLong,
+/// SequenceTooLong, MappingTooLarge, UnknownField, EmptySource,
+/// MissingField, FieldShape, ParseError, ForbiddenFeature, LegacyPrimitive.
+const YAML_ERROR_VARIANT_COUNT: u8 = 21;
 
-/// YamlError::code() — maps each variant to its registered SymbolicCode.
-impl YamlError {
-    #[must_use]
-    pub fn code(&self) -> SymbolicCode {
-        match self {
-            YamlError::DuplicateKey { .. } => SymbolicCode("DUPLICATE_KEY"),
-            YamlError::ForbiddenFeature { .. } => SymbolicCode("FORBIDDEN_YAML_FEATURE"),
-            YamlError::AnchorAliasMerge => SymbolicCode("FORBIDDEN_YAML_FEATURE"),
-            YamlError::CustomTag { .. } => SymbolicCode("FORBIDDEN_YAML_FEATURE"),
-            YamlError::BinaryScalar => SymbolicCode("FORBIDDEN_YAML_FEATURE"),
-            YamlError::MultipleDocuments { .. } => SymbolicCode("FORBIDDEN_YAML_FEATURE"),
-            YamlError::AmbiguousScalar { .. } => SymbolicCode("FORBIDDEN_YAML_FEATURE"),
-            YamlError::SourceTooLarge { .. } => SymbolicCode("PAYLOAD_TOO_LARGE"),
-            YamlError::NestingTooDeep { .. } => SymbolicCode("LIMIT_EXCEEDED"),
-            YamlError::NodeLimitExceeded { .. } => SymbolicCode("LIMIT_EXCEEDED"),
-            YamlError::ScalarTooLong { .. } => SymbolicCode("LIMIT_EXCEEDED"),
-            YamlError::SequenceTooLong { .. } => SymbolicCode("LIMIT_EXCEEDED"),
-            YamlError::MappingTooLarge { .. } => SymbolicCode("LIMIT_EXCEEDED"),
-            YamlError::UnknownField { .. } => SymbolicCode("UNKNOWN_TOP_LEVEL_FIELD"),
-            YamlError::EmptySource => SymbolicCode("MISSING_REQUIRED_FIELD"),
-            YamlError::MissingField { .. } => SymbolicCode("MISSING_REQUIRED_FIELD"),
-            YamlError::FieldShape { .. } => SymbolicCode("TYPE_MISMATCH"),
-            YamlError::ParseError { .. } => SymbolicCode("FORBIDDEN_YAML_FEATURE"),
-            YamlError::UnsupportedFeature { .. } => SymbolicCode("FORBIDDEN_YAML_FEATURE"),
-            YamlError::UnsupportedTrigger { .. } => SymbolicCode("UNSUPPORTED_TRIGGER"),
-        }
+/// Upper bound on the length of an arbitrary generated string field.
+/// Kani generates bytes up to this length; kept small for tractability.
+const MAX_KANI_STRING_LEN: usize = 32;
+
+/// Construct an arbitrary `YamlError` whose variant is selected by
+/// `variant` (a symbolic byte in `[0, YAML_ERROR_VARIANT_COUNT)`)
+/// and whose fields are all `kani::any::<T>()` values for the
+/// field's concrete type.
+///
+/// Every field is symbolic — no constants, no dummy strings, no
+/// hardcoded counters. This is the GOD RULE 1 fix.
+fn arbitrary_yaml_error(variant: u8) -> YamlError {
+    match variant {
+        0 => YamlError::DuplicateKey {
+            key: kani::any::<String>().into_boxed_str(),
+        },
+        1 => YamlError::ForbiddenFeature {
+            detail: static_str_from_any(),
+        },
+        2 => YamlError::AnchorAliasMerge,
+        3 => YamlError::CustomTag {
+            tag: kani::any::<String>().into_boxed_str(),
+        },
+        4 => YamlError::BinaryScalar,
+        5 => YamlError::MultipleDocuments {
+            count: kani::any::<usize>(),
+        },
+        6 => YamlError::AmbiguousScalar {
+            scalar: kani::any::<String>().into_boxed_str(),
+        },
+        7 => YamlError::SourceTooLarge {
+            size: kani::any::<usize>(),
+            max: kani::any::<usize>(),
+        },
+        8 => YamlError::NestingTooDeep {
+            depth: kani::any::<u16>(),
+            max: kani::any::<u16>(),
+        },
+        9 => YamlError::NodeLimitExceeded {
+            count: kani::any::<u32>(),
+            max: kani::any::<u32>(),
+        },
+        10 => YamlError::ScalarTooLong {
+            len: kani::any::<usize>(),
+            max: kani::any::<usize>(),
+        },
+        11 => YamlError::SequenceTooLong {
+            len: kani::any::<usize>(),
+            max: kani::any::<usize>(),
+        },
+        12 => YamlError::MappingTooLarge {
+            count: kani::any::<usize>(),
+            max: kani::any::<usize>(),
+        },
+        13 => YamlError::UnknownField {
+            field: kani::any::<String>().into_boxed_str(),
+        },
+        14 => YamlError::EmptySource,
+        15 => YamlError::MissingField {
+            field: static_str_from_any(),
+        },
+        16 => YamlError::FieldShape {
+            field: static_str_from_any(),
+            expected: static_str_from_any(),
+        },
+        17 => YamlError::ParseError {
+            line: kani::any::<usize>(),
+            reason: kani::any::<String>().into_boxed_str(),
+        },
+        18 => YamlError::UnsupportedFeature {
+            feature: static_str_from_any(),
+        },
+        19 => YamlError::UnsupportedTrigger {
+            trigger: static_str_from_any(),
+        },
+        20 => YamlError::LegacyPrimitive {
+            primitive: static_str_from_any(),
+            canonical: static_str_from_any(),
+        },
+        // Compile-time exhaustiveness: if `variant >= YAML_ERROR_VARIANT_COUNT`
+        // the precondition is violated (kani::assume restricts to [0, 21)).
+        _ => YamlError::EmptySource,
     }
 }
 
-/// The set of registered symbolic codes that YamlError variants map to.
-const REGISTERED_CODES: &[&str] = &[
-    "DUPLICATE_KEY",
-    "FORBIDDEN_YAML_FEATURE",
-    "UNSUPPORTED_TRIGGER",
-    "PAYLOAD_TOO_LARGE",
-    "LIMIT_EXCEEDED",
-    "UNKNOWN_TOP_LEVEL_FIELD",
-    "MISSING_REQUIRED_FIELD",
-    "TYPE_MISMATCH",
-];
-
-fn is_registered(name: &str) -> bool {
-    REGISTERED_CODES.iter().any(|&r| r == name)
+/// Generate a bounded arbitrary string and leak it to a `&'static str`.
+///
+/// The string is bounded by `kani::assume(len <= MAX_KANI_STRING_LEN)`
+/// so Kani does not blow up exploring huge `String` values. The leak
+/// produces a valid `&'static str` reference for the lifetime of
+/// the harness (R-003 from kani_all_variants_registered.rs).
+fn static_str_from_any() -> &'static str {
+    let s: String = kani::any::<String>();
+    kani::assume(s.len() <= MAX_KANI_STRING_LEN);
+    Box::leak(s.into_boxed_str())
 }
 
+/// PO-006: For every YamlError variant, with arbitrary field values,
+/// `HasSymbolicCode::symbolic_code` returns a `SymbolicCode` that is
+/// registered in `vb_core::CODE_REGISTRY` and is not the
+/// `INTERNAL_INVARIANT` sentinel.
 #[cfg(kani)]
-mod harnesses {
-    use super::*;
+#[kani::proof]
+#[kani::unwind(21)]
+fn kani_yaml_error_code_registered() {
+    let variant: u8 = kani::any();
+    // Restrict the symbolic byte to a valid variant index.
+    kani::assume(variant < YAML_ERROR_VARIANT_COUNT);
 
-    /// PO-006: Every YamlError variant's code() returns a registered SymbolicCode.
-    #[kani::proof]
-    #[kani::unwind(20)]
-    fn kani_yaml_error_code_registered() {
-        let variants: [YamlError; 20] = [
-            YamlError::DuplicateKey {
-                key: Box::from("test_key"),
-            },
-            YamlError::ForbiddenFeature { detail: "test" },
-            YamlError::AnchorAliasMerge,
-            YamlError::CustomTag {
-                tag: Box::from("!test"),
-            },
-            YamlError::BinaryScalar,
-            YamlError::MultipleDocuments { count: 2 },
-            YamlError::AmbiguousScalar {
-                scalar: Box::from("yes"),
-            },
-            YamlError::SourceTooLarge {
-                size: 9999,
-                max: 1000,
-            },
-            YamlError::NestingTooDeep {
-                depth: 100,
-                max: 50,
-            },
-            YamlError::NodeLimitExceeded {
-                count: 9999,
-                max: 1000,
-            },
-            YamlError::ScalarTooLong {
-                len: 9999,
-                max: 1000,
-            },
-            YamlError::SequenceTooLong {
-                len: 9999,
-                max: 1000,
-            },
-            YamlError::MappingTooLarge {
-                count: 9999,
-                max: 1000,
-            },
-            YamlError::UnknownField {
-                field: Box::from("unknown"),
-            },
-            YamlError::EmptySource,
-            YamlError::MissingField {
-                field: "required_field",
-            },
-            YamlError::FieldShape {
-                field: "test",
-                expected: "mapping",
-            },
-            YamlError::ParseError {
-                line: 1,
-                reason: Box::from("syntax error"),
-            },
-            YamlError::UnsupportedFeature { feature: "legacy" },
-            YamlError::UnsupportedTrigger { trigger: "unknown" },
-        ];
+    let error = arbitrary_yaml_error(variant);
+    let code = error.symbolic_code();
 
-        for (i, variant) in variants.iter().enumerate() {
-            let code = variant.code();
-            let name = code.0;
-            assert!(
-                is_registered(name),
-                "YamlError variant {}: code '{}' must be registered",
-                i,
-                name
-            );
-            assert!(
-                !name.is_empty(),
-                "YamlError variant {}: code must not be empty",
-                i
-            );
-        }
-    }
+    // The returned code must be a registered SymbolicCode: from_static
+    // returns Some only for names that appear in vb_core::CODE_REGISTRY.
+    let registered = SymbolicCode::from_static(code.as_str());
+    assert!(
+        registered.is_some(),
+        "YamlError variant {}: symbolic_code '{}' is not registered in CODE_REGISTRY",
+        variant,
+        code.as_str()
+    );
+
+    // The code must never be the INTERNAL_INVARIANT sentinel; that
+    // would mean a variant fell through to the unreachable fallback in
+    // the production `HasSymbolicCode` impl.
+    assert_ne!(
+        code,
+        SymbolicCode::INTERNAL_INVARIANT,
+        "YamlError variant {}: symbolic_code must not be INTERNAL_INVARIANT",
+        variant
+    );
+
+    // The code name must be non-empty.
+    assert!(
+        !code.as_str().is_empty(),
+        "YamlError variant {}: symbolic_code must not be empty",
+        variant
+    );
 }
