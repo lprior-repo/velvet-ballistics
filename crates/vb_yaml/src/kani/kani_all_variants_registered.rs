@@ -183,17 +183,11 @@ fn cover_all_variant_paths() {
     let _code = error.symbolic_code();
     kani::cover!(true, "AmbiguousScalar");
 
-    let error = YamlError::SourceTooLarge {
-        size: 100,
-        max: 50,
-    };
+    let error = YamlError::SourceTooLarge { size: 100, max: 50 };
     let _code = error.symbolic_code();
     kani::cover!(true, "SourceTooLarge");
 
-    let error = YamlError::NestingTooDeep {
-        depth: 65,
-        max: 64,
-    };
+    let error = YamlError::NestingTooDeep { depth: 65, max: 64 };
     let _code = error.symbolic_code();
     kani::cover!(true, "NestingTooDeep");
 
@@ -204,17 +198,11 @@ fn cover_all_variant_paths() {
     let _code = error.symbolic_code();
     kani::cover!(true, "NodeLimitExceeded");
 
-    let error = YamlError::ScalarTooLong {
-        len: 100,
-        max: 50,
-    };
+    let error = YamlError::ScalarTooLong { len: 100, max: 50 };
     let _code = error.symbolic_code();
     kani::cover!(true, "ScalarTooLong");
 
-    let error = YamlError::SequenceTooLong {
-        len: 100,
-        max: 50,
-    };
+    let error = YamlError::SequenceTooLong { len: 100, max: 50 };
     let _code = error.symbolic_code();
     kani::cover!(true, "SequenceTooLong");
 
