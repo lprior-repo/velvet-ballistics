@@ -418,6 +418,10 @@ Per-bead landing outcomes from the Wave C repair landing pass (5 children serial
 
 - vb-mvedz: master §18 re-add Snapshot=30, remove RunInspection=31; merge 17642bea43d2dd263c1aeb58c678a70b1dbca1b5; §18 ↔ kinds.rs parity confirmed.
 
+## Wave C — landing summary (2026-06-09)
+
+- vb-yd9g0: kani_step_harnesses E0164 fixed; merge a6e22bd3a; cargo kani list now runs clean.
+
 ## Review artifact paths (on disk, gitignored, per AGENTS.md)
 
 ```
