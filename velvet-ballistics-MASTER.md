@@ -851,7 +851,13 @@ Required `record_kind_u16` IDs:
 | 21 | `RunCancelled` |
 | 22 | `RunFinished` |
 | 23 | `RunFailed` |
-| 30 | `Snapshot` |
+| 24 | `RunAdmission` |
+| 25 | `RunResumed` |
+| 26 | `RunRetried` |
+| 27 | `RunAnswered` |
+| 28 | `RunKilled` |
+| 29 | `StepSucceeded` |
+| 30 | `RunInspection` |
 | 40 | `Blob` |
 | 50 | `IndexUpdate` |
 
