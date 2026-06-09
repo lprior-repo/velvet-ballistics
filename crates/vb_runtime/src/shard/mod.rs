@@ -11,6 +11,8 @@ pub mod helpers;
 pub mod impl_;
 pub mod introspection;
 pub mod lifecycle;
+#[cfg(test)]
+pub mod property_tests;
 pub mod queue;
 pub mod run_state;
 pub mod tests;
