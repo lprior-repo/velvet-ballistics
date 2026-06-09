@@ -13,6 +13,9 @@
 //!   (Diagnostic, Validate, Events, Replay).
 //! - `typed_payloads_reports` covers the four "multi-section"
 //!   per-command round-trips (Verify, Explain, Trace, Diff).
+//! - `typed_payloads_wave_c` covers the three "validate-fallback"
+//!   per-command round-trips (SystemStatus, AiContextPacket,
+//!   WorkflowDiffReport) and the shape-mismatch fallback negative test.
 //! - `wire_format` covers the typed `bool` / typed `String` kind-tag
 //!   wire-format contract.
 //! - `errors` covers malformed-header rejection, CRC/digest mismatches,
@@ -34,6 +37,7 @@ mod errors;
 mod round_trip;
 mod typed_payloads;
 mod typed_payloads_reports;
+mod typed_payloads_wave_c;
 mod wire_format;
 
 use super::{CLI_MAGIC, CLI_POSTCARD_KIND, CLI_SCHEMA_VERSION, HEADER_SIZE_U32};

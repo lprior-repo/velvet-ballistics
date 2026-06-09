@@ -12,9 +12,9 @@
 //! postcard-encoded form of a typed envelope shape — never raw JSON bytes.
 
 use super::{
-    AiContextPacketReport, CliPostcardKind, CliPostcardPayload, CliStatusReport, DiffReport,
-    EventsReport, ExplainReport, GenericPayload, ReplayReport, RunReport, SimulateReport,
-    SystemStatusReport, TraceReport, ValidateReport, VerifyReport, WorkflowDiffReport,
+    AiContextPacketReport, CliPostcardKind, CliPostcardPayload, DiffReport, EventsReport,
+    ExplainReport, GenericPayload, ReplayReport, SystemStatusReport, TraceReport, ValidateReport,
+    VerifyReport, WorkflowDiffReport,
 };
 
 /// Failure modes when converting a serde_json envelope to a typed payload.
@@ -92,15 +92,12 @@ fn classify_by_kind(
         CliPostcardKind::DiffReport => {
             typed_or_generic::<DiffReport, _>(kind, envelope, CliPostcardPayload::Diff)
         }
-        CliPostcardKind::CliStatus => typed_validate_fallback::<CliStatusReport>(kind, envelope),
         CliPostcardKind::SystemStatus => {
             typed_validate_fallback::<SystemStatusReport>(kind, envelope)
         }
         CliPostcardKind::AiContextPacket => {
             typed_validate_fallback::<AiContextPacketReport>(kind, envelope)
         }
-        CliPostcardKind::RunReport => typed_validate_fallback::<RunReport>(kind, envelope),
-        CliPostcardKind::Simulate => typed_validate_fallback::<SimulateReport>(kind, envelope),
         CliPostcardKind::WorkflowDiffReport => {
             typed_validate_fallback::<WorkflowDiffReport>(kind, envelope)
         }
