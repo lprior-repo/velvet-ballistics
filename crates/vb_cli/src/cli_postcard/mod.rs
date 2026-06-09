@@ -20,6 +20,7 @@ mod classify;
 mod codec;
 mod error;
 mod types;
+mod types_more;
 mod validation;
 
 pub(crate) use classify::{ClassifyError, classify_envelope};
@@ -31,6 +32,10 @@ pub(crate) use types::{
     ExplainErrorEntry, ExplainReport, GenericPayload, HEADER_SIZE, HEADER_SIZE_U32, MAX_PAYLOAD,
     MAX_PAYLOAD_U32, PostcardHeader, ReplayReport, TraceEntry, TraceReport, ValidateReport,
     VerifyArtifactSection, VerifyDurabilitySection, VerifyReplaySection, VerifyReport,
+};
+pub(crate) use types_more::{
+    AiContextPacketReport, CliStatusReport, RunReport, SimulateReport, SystemStatusReport,
+    WorkflowDiffReport,
 };
 pub(crate) use validation::{decode_postcard, payload_digest};
 

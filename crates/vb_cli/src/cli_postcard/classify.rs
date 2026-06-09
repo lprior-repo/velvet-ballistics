@@ -12,8 +12,9 @@
 //! postcard-encoded form of a typed envelope shape — never raw JSON bytes.
 
 use super::{
-    CliPostcardKind, CliPostcardPayload, DiffReport, EventsReport, ExplainReport, GenericPayload,
-    ReplayReport, TraceReport, ValidateReport, VerifyReport,
+    AiContextPacketReport, CliPostcardKind, CliPostcardPayload, CliStatusReport, DiffReport,
+    EventsReport, ExplainReport, GenericPayload, ReplayReport, RunReport, SimulateReport,
+    SystemStatusReport, TraceReport, ValidateReport, VerifyReport, WorkflowDiffReport,
 };
 
 /// Failure modes when converting a serde_json envelope to a typed payload.
@@ -91,6 +92,18 @@ fn classify_by_kind(
         CliPostcardKind::DiffReport => {
             typed_or_generic::<DiffReport, _>(kind, envelope, CliPostcardPayload::Diff)
         }
+        CliPostcardKind::CliStatus => typed_validate_fallback::<CliStatusReport>(kind, envelope),
+        CliPostcardKind::SystemStatus => {
+            typed_validate_fallback::<SystemStatusReport>(kind, envelope)
+        }
+        CliPostcardKind::AiContextPacket => {
+            typed_validate_fallback::<AiContextPacketReport>(kind, envelope)
+        }
+        CliPostcardKind::RunReport => typed_validate_fallback::<RunReport>(kind, envelope),
+        CliPostcardKind::Simulate => typed_validate_fallback::<SimulateReport>(kind, envelope),
+        CliPostcardKind::WorkflowDiffReport => {
+            typed_validate_fallback::<WorkflowDiffReport>(kind, envelope)
+        }
         _ => encode_generic(kind, envelope),
     }
 }
@@ -106,6 +119,28 @@ where
 {
     match serde_json::from_value::<T>(envelope.clone()) {
         Ok(typed) => Ok(wrap(typed)),
+        Err(_) => encode_generic(kind, envelope),
+    }
+}
+
+/// vb-clipst01: validate the JSON envelope against a typed envelope struct
+/// without promoting it to a dedicated `CliPostcardPayload` variant. On
+/// shape match, the typed struct is postcard-encoded and carried in a
+/// `Generic` body — the dispatch knows the typed shape but the wire format
+/// remains `Generic`. On shape mismatch, falls back to the legacy
+/// `GenericEnvelopeRepr` JSON-tree encoding path.
+fn typed_validate_fallback<T>(
+    kind: CliPostcardKind,
+    envelope: &serde_json::Value,
+) -> Result<CliPostcardPayload, ClassifyError>
+where
+    T: for<'de> serde::Deserialize<'de> + serde::Serialize,
+{
+    match serde_json::from_value::<T>(envelope.clone()) {
+        Ok(typed) => {
+            let body = postcard::to_allocvec(&typed).map_err(ClassifyError::GenericEncode)?;
+            Ok(CliPostcardPayload::Generic(GenericPayload { kind, body }))
+        }
         Err(_) => encode_generic(kind, envelope),
     }
 }
