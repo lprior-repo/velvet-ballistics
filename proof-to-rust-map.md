@@ -47,7 +47,7 @@ Maps 32 behavior-affecting proof obligations (11 Kani, 6 Flux, 13 proptest, 2 fu
 | PO-WIDTH-MATCH-KANI-001 | kani | Width-node parity | `part_01.rs::body_width:104-141`, `part_04.rs::emit_single_body_set:213-301` (reference; multi-step dispatcher `emit_reduce_body_steps` TBD) |
 | PO-WIDTH-MATCH-FLUX-001 | flux-rs | body_width refinements | `part_01.rs::body_width:104-141` |
 | PO-WIDTH-MATCH-PROP-001 | proptest | Full pipeline parity | `part_04.rs::lower_canonical_aggregate:15-84`, `part_01.rs::body_width:104-141`, `compile_source()` |
-| PO-TRYFROMPARTS-KANI-001 | kani | E2E try_from_parts | `part_04.rs::lower_canonical_aggregate:15-84`, `vb_core::compiled_workflow::try_from_parts` |
+| PO-TRYFROMPARTS-KANI-001 | kani | E2E try_from_parts | `part_04.rs::lower_canonical_aggregate:15-84`, `vb_core::workflow::CompiledWorkflow::try_from_parts` (or `vb_core::CompiledWorkflow::try_from_parts` from `lib.rs:125`) |
 | PO-TRYFROMPARTS-PROP-001 | proptest | E2E try_from_parts | Same as PO-TRYFROMPARTS-KANI-001 |
 
 ### C3/C5/C6: Step Offset Correctness (4 Kani + 3 Flux + 5 proptest obligations)

@@ -564,18 +564,20 @@ All errors must be typed (no stringly errors), must carry diagnostic codes (Sect
 
 ### `workflow.rs` — Compiled IR Types
 
+Canonical Rust location: `crates/vb_core/src/workflow/` (re-exported through `lib.rs:124-127`). The `types.rs` submodule is the single source of truth for `CompiledWorkflow`, `CompiledNode`, `CompiledNodeKind`, `ExprProgram`, `ExprOp`, `AccessorProgram`, `PathSegment`, `WorkflowParts`, `ResourceContract`, `WorkflowError`, `ExprBranch`, `SlotBranch`, and `check_expr_stack_bound`. The `validation.rs` submodule is the single source of truth for `validate_parts`, `validate_budget`, and all `validate_*` helpers. Do not introduce parallel type definitions at `crates/vb_core/src/{nodes,expressions,accessors,validation,compiled_workflow}.rs` — those paths were eliminated as dead duplicates (bead series `vb-dedup.*`).
+
 Required types (authoritative layout in code):
 
 | Type | Contract |
 |------|----------|
 | `CompiledWorkflow` | Immutable compiled artifact. Holds `nodes`, `expressions`, `accessors`, `constants`, `slot_count`, `entry: StepIdx`, `digest: WorkflowDigest`, `name`, `resource_contract`. Fields are private with getter methods. Constructed via `try_from_parts()` which validates all bounds. |
-| `CompiledNode` | Single IR node: `id: StepIdx`, `output: Option<SlotIdx>`, `next: Option<StepIdx>`, `kind: CompiledNodeKind`. |
+| `CompiledNode` | Single IR node: `id: StepIdx`, `output: Option<SlotIdx>`, `next: Option<StepIdx>`, `on_error: Option<StepIdx>`, `error_slot: Option<SlotIdx>`, `kind: CompiledNodeKind`. Canonical: `crates/vb_core/src/workflow/types.rs:520-538` (re-exported as `vb_core::CompiledNode` from `lib.rs:125`). |
 | `CompiledNodeKind` | 34+ variants covering all primitives (Section 15 lists them). The authoritative variant list is in the code. |
 | `ExprProgram` | Postfix bytecode: `ops: Box<[ExprOp]>`, `max_stack: u8`. Stack effects validated by `check_expr_stack_bound`. |
 | `ExprOp` | 30 opcodes: `LoadSlot`, `LoadConst`, `LoadAccessor`, comparison, logical, arithmetic, and helper ops (Section 46). |
 | `AccessorProgram` | Path traversal: `root: SlotIdx`, `path: Box<[PathSegment]>` where `PathSegment = Field(SymbolId) \| Index(u32)`. |
 | `ConstValue` | See `value.rs` above. |
-| `ResourceContract` | 16 fields controlling hard limits (Section 13). |
+| `ResourceContract` | 18 fields controlling hard limits (Section 13): `max_steps`, `max_slots`, `max_constants`, `max_accessors`, `max_expressions`, `max_expr_stack`, `max_step_budget_per_tick`, `max_transitions_per_tick`, `max_input_bytes`, `max_output_bytes`, `max_blob_bytes`, `max_ipc_payload_bytes`, `max_retry_attempts`, `max_fanout`, `max_collect_items`, `max_queue_depth`, `max_journal_batch_bytes`, `allows_secret_results`. Canonical: `crates/vb_core/src/workflow/types.rs:167-206` (re-exported as `vb_core::ResourceContract` from `lib.rs:126`). |
 
 Compiler rule: high-level YAML primitives may lower to multiple IR nodes. Runtime executes IR only in the current milestone. Final choose IR has exactly two checked forms: `Choose` evaluates expression-branch conditions from `ExprIdx`, and `ChooseSlot` reads pre-materialized boolean conditions from `SlotIdx` values produced by earlier IR. Raw YAML condition strings and untyped choose nodes are forbidden in final IR.
 
@@ -3440,7 +3442,7 @@ This section tracks known architectural defects discovered through adversarial r
 - `EvalExpr` reads taint from all `LoadSlot` operands and joins into output taint (`crates/vb_expr/src/eval.rs`).
 - `BuildObject` joins taint from all field slots into output taint.
 - `BuildList` joins taint from all item slots into output taint.
-- `Finish` node reads slot taint and emits `EngineSignal::Finished(SlotValue, Taint)` (`crates/vb_core/src/nodes.rs`, `node_helpers.rs`).
+- `Finish` node reads slot taint and emits `EngineSignal::Finished(SlotValue, Taint)` (`crates/vb_core/src/workflow/types.rs:706-709 for the IR variant (CompiledNodeKind::Finish), crates/vb_core/src/engine/node_helpers.rs::finish_run for the engine handler`).
 - `EngineSignal::Finished` carries taint alongside value in the result signal.
 - Compile-time taint validation remains as defense-in-depth.
 

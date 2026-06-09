@@ -1,5 +1,12 @@
 #![forbid(unsafe_code)]
 //! Compiled workflow types.
+//!
+//! CANONICAL HOME for `CompiledWorkflow`, `CompiledNode`, `CompiledNodeKind`,
+//! `ExprProgram`, `ExprOp`, `AccessorProgram`, `PathSegment`, `WorkflowParts`,
+//! `ResourceContract`, `WorkflowError`, `ExprBranch`, `SlotBranch`, and
+//! `check_expr_stack_bound`. The dead parallel universes
+//! `crates/vb_core/src/{nodes,expressions,accessors,validation,compiled_workflow}.rs`
+//! were excised in bead series `vb-dedup.1..7`; do not recreate them.
 
 use crate::errors::{CoreError, CoreResult};
 use crate::ids::{
@@ -207,6 +214,10 @@ pub struct ResourceContract {
 
 impl ResourceContract {
     /// Conservative default used until policy profiles become user-configurable.
+    ///
+    /// NOTE: Any `*.removed`, `*.bak`, or `*.orig` tombstone files that
+    /// previously shadowed this `DEFAULT` were cleaned up in bead
+    /// `vb-dedup.6`; the canonical `DEFAULT` is defined here only.
     pub const DEFAULT: Self = Self {
         max_steps: 1_000,
         max_slots: 1_024,

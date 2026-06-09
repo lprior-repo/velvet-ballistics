@@ -1,5 +1,11 @@
 #![forbid(unsafe_code)]
 //! Workflow validation functions.
+//!
+//! CANONICAL HOME for `validate_parts`, `validate_budget`, and all
+//! `validate_*` helpers on `WorkflowParts` / `CompiledWorkflow`.
+//! The dead parallel universe `crates/vb_core/src/validation.rs` and the
+//! `crates/vb_core/src/validation/{graph,nodes,resource,targets}.rs`
+//! directory were excised in bead `vb-dedup.4`; do not recreate them.
 
 use crate::errors::CoreError;
 use crate::ids::{AccessorIdx, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};

@@ -204,6 +204,14 @@ tasks:
     options:
       runInCI: true
 
+  check-no-dead-ir-duplicates:
+    command: 'bash scripts/check-no-dead-ir-duplicates.sh'
+    inputs:
+      - 'scripts/check-no-dead-ir-duplicates.sh'
+      - 'crates/vb_core/src/**/*'
+    options:
+      runInCI: true
+
   hot-cold-forbidden-apis:
     command: 'bash scripts/check-hot-cold-forbidden-apis.sh'
     inputs:
