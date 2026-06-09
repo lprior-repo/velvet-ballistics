@@ -430,13 +430,15 @@ bench = false
 # doc = false
 # bench = false
 
-# vb_5xs4_* targets SKIPPED (Phase 0): vb_boundary_inventory::quality::test_loop_inventory
-# module has been removed (quality.rs is empty). These targets need separate beads
-# for API compatibility analysis and rewrite.
-# [[bin]] name = "vb_5xs4_generated_source_mapping" ...
-# [[bin]] name = "vb_5xs4_inventory_report" ...
-# [[bin]] name = "vb_5xs4_label_sufficiency" ...
-# [[bin]] name = "vb_5xs4_scan_source_text" ...
+# vb_5xs4_* targets DELETED (vb-fuz02, 2026-06-09): referenced
+# vb_boundary_inventory::quality::test_loop_inventory which does not
+# exist in the workspace. The targets were orphan `.rs` files (not
+# registered as `[[bin]]` since Phase 0) and were removed as dead code.
+# The 4 deleted files were:
+#   fuzz_targets/vb_5xs4_generated_source_mapping.rs
+#   fuzz_targets/vb_5xs4_inventory_report.rs
+#   fuzz_targets/vb_5xs4_label_sufficiency.rs
+#   fuzz_targets/vb_5xs4_scan_source_text.rs
 
 [[bin]]
 name = "kind_validation"
