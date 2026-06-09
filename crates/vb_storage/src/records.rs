@@ -5,7 +5,9 @@ mod entities;
 mod kinds;
 mod status;
 
-pub use entities::{BlobRecord, CompiledIrRecord, RunHeaderRecord, WorkflowSourceRecord};
+pub use entities::{
+    BlobRecord, CompiledIrRecord, RecoveryStampRecord, RunHeaderRecord, WorkflowSourceRecord,
+};
 pub use kinds::RecordKind;
 
 pub use status::{

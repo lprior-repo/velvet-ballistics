@@ -202,6 +202,10 @@ mod type_tests {
             run: RunId::new(7),
             step: StepIdx::new(8),
         };
+        let _rs = StorageKey::RecoveryStamp {
+            run: RunId::new(9),
+            seq: EventSeq::new(10),
+        };
     }
 
     #[test]

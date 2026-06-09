@@ -117,13 +117,20 @@ mod proptests {
 
         #[test]
         fn record_kind_id_roundtrip(kind_id in 1u16..=50u16) {
-            // Given a valid record kind id
-            // When it matches a known RecordKind variant
-            // Then the id() round-trips correctly
+            // Given any kind id in 1..=50
+            // When the id is in the set of kinds admitted by
+            //      `is_known_record_kind` (the durable wire-id set)
+            // Then the matching RecordKind variant must round-trip
+            //      `id()` back to the input value (no silent skip).
+            if !crate::codec::is_known_record_kind(kind_id) {
+                // Stay in-band: durably-unknown ids are not asserted here.
+                return Ok(());
+            }
             let kind = match kind_id {
                 1 => RecordKind::WorkflowSource,
                 2 => RecordKind::CompiledIr,
                 3 => RecordKind::RunHeader,
+                7 => RecordKind::RecoveryStamp,
                 10 => RecordKind::RunAccepted,
                 11 => RecordKind::StepStarted,
                 12 => RecordKind::SlotWritten,
@@ -138,10 +145,25 @@ mod proptests {
                 21 => RecordKind::RunCancelled,
                 22 => RecordKind::RunFinished,
                 23 => RecordKind::RunFailed,
+                24 => RecordKind::RunAdmission,
+                25 => RecordKind::RunResumed,
+                26 => RecordKind::RunRetried,
+                27 => RecordKind::RunAnswered,
+                28 => RecordKind::RunKilled,
+                29 => RecordKind::StepSucceeded,
                 30 => RecordKind::Snapshot,
                 40 => RecordKind::Blob,
                 50 => RecordKind::IndexUpdate,
-                _ => return Ok(()),
+                other => {
+                    prop_assert!(
+                        false,
+                        "is_known_record_kind({other}) returned true but no RecordKind arm is \
+                         defined; update record_kind_id_roundtrip"
+                    );
+                    return Err(proptest::test_runner::TestCaseError::fail(format!(
+                        "kind_id {other} admitted by is_known_record_kind but no arm"
+                    )));
+                }
             };
             prop_assert_eq!(kind.id(), kind_id);
         }

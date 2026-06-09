@@ -464,10 +464,11 @@ mod unknown_record_kind_rejection {
 
     #[test]
     fn is_known_record_kind_returns_false_for_invalid_kinds() {
-        // Given: kind values 0, 4..=9, 31..=39, 41..=49, 51..=65535
+        // Given: kind values 0, 4..=6, 8..=9, 31..=39, 41..=49, 51..=65535
+        // (kind 7 is RecoveryStamp and is admitted; we do not list it here.)
         // We test a representative sample due to the large range
         let invalid_kinds: Vec<u16> = vec![
-            0, 4, 5, 6, 7, 8, 9, // 4..=9
+            0, 4, 5, 6, 8, 9, // 0, 4..=6, 8..=9 (kind 7 is RecoveryStamp)
             31, 32, 33, 34, 35, 36, 37, 38, 39, // 31..=39
             41, 42, 43, 44, 45, 46, 47, 48, 49, // 41..=49
             51, 52, // small sample after 50
@@ -510,6 +511,7 @@ mod record_kind_stable_ids {
             RecordKind::WorkflowSource,
             RecordKind::CompiledIr,
             RecordKind::RunHeader,
+            RecordKind::RecoveryStamp,
             RecordKind::RunAccepted,
             RecordKind::StepStarted,
             RecordKind::SlotWritten,
@@ -573,6 +575,11 @@ mod record_kind_stable_ids {
             "CompiledIr.id() must equal 2"
         );
         assert_eq!(RecordKind::RunHeader.id(), 3, "RunHeader.id() must equal 3");
+        assert_eq!(
+            RecordKind::RecoveryStamp.id(),
+            7,
+            "RecoveryStamp.id() must equal 7"
+        );
         assert_eq!(
             RecordKind::RunAccepted.id(),
             10,

@@ -10,14 +10,14 @@
 pub enum KeyDecodeError {
     /// Input is empty (length 0).
     EmptyKey,
-    /// First byte is not one of the nine known prefix constants.
+    /// First byte is not one of the known prefix constants.
     UnknownPrefix {
         /// The unknown prefix byte encountered.
         prefix: u8,
     },
     /// Input length does not match the expected key size for the given prefix.
     KeyLengthMismatch {
-        /// The prefix byte (one of the nine known prefixes).
+        /// The prefix byte (one of the known prefixes).
         prefix: u8,
         /// The expected key length in bytes.
         expected: usize,

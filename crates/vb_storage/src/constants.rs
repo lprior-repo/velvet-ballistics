@@ -22,6 +22,8 @@ pub const KEYSPACE_INDEX_STATUS: &str = "index_status";
 pub const KEYSPACE_INDEX_WORKFLOW: &str = "index_workflow";
 /// Pending action index records.
 pub const KEYSPACE_INDEX_ACTION: &str = "index_action";
+/// Recovery-stamp progress markers written during the recovery path.
+pub const KEYSPACE_RECOVERY_STAMP: &str = "recovery_stamp";
 
 /// `workflow_source` key prefix.
 pub const PREFIX_WORKFLOW_SOURCE: u8 = 0x01;
@@ -41,6 +43,8 @@ pub const PREFIX_INDEX_STATUS: u8 = 0x30;
 pub const PREFIX_INDEX_WORKFLOW: u8 = 0x31;
 /// `index_action` key prefix.
 pub const PREFIX_INDEX_ACTION: u8 = 0x32;
+/// `recovery_stamp` key prefix.
+pub const PREFIX_RECOVERY_STAMP: u8 = 0x40;
 
 /// Record envelope header length.
 pub const RECORD_HEADER_LEN: u32 = 60;
@@ -60,6 +64,13 @@ pub const MAGIC_IPC_FRAME: u32 = 0x5642_4C54;
 pub const MAGIC_WORKFLOW_SOURCE: u32 = 0x5642_5352;
 /// Index record magic, ASCII `VBIX`.
 pub const MAGIC_INDEX_RECORD: u32 = 0x5642_4958;
+/// Recovery-stamp magic, ASCII `VRST`.
+///
+/// Distinct from `MAGIC_WORKFLOW_SOURCE` (`VBSR`, kind 1) and the journal-event
+/// magic (`VBJE`); this family exclusively covers the recovery-stamp record
+/// kind (wire ID 7) so that recovery writes can be admitted and rejected
+/// independently of the source/journal record paths.
+pub const MAGIC_RECOVERY_STAMP: u32 = 0x5652_5354;
 
 pub(crate) const JOURNAL_KEY_BYTES: usize = 17;
 pub(crate) const DIGEST_KEY_BYTES: usize = 33;
@@ -67,6 +78,8 @@ pub(crate) const RUN_ONLY_KEY_BYTES: usize = 9;
 pub(crate) const INDEX_STATUS_KEY_BYTES: usize = 18;
 pub(crate) const INDEX_WORKFLOW_KEY_BYTES: usize = 13;
 pub(crate) const INDEX_ACTION_KEY_BYTES: usize = 13;
+/// Total byte width of a `recovery_stamp` storage key (`[0x40][run][seq]`).
+pub const RECOVERY_STAMP_KEY_BYTES: usize = 17;
 pub(crate) const _RUN_EVENT_PREFIX_BYTES: usize = 9;
 /// Digest byte width used by storage keys and record payload checksums.
 pub const DIGEST_BYTES: usize = 32;
@@ -86,6 +99,8 @@ pub const MAX_RUN_HEADER_BYTES: u32 = 65_536;
 pub const MAX_SNAPSHOT_BYTES: u32 = 67_108_864;
 /// Maximum blob payload bytes accepted by the default blob APIs.
 pub const MAX_BLOB_BYTES: u32 = 67_108_864;
+/// Maximum recovery-stamp payload bytes accepted by the recovery-stamp APIs.
+pub const MAX_RECOVERY_STAMP_BYTES: u32 = 4_096;
 /// Maximum number of events permitted in a single journal write batch.
 pub const MAX_BATCH_COUNT: usize = 10_000;
 const _PAYLOAD_LEN_CONVERSION_MAX: u32 = 4_294_967_295;

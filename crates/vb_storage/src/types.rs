@@ -298,6 +298,8 @@ pub enum StorageKey {
         run: RunId,
         step: vb_core::StepIdx,
     },
+    /// Recovery-stamp progress marker.
+    RecoveryStamp { run: RunId, seq: EventSeq },
 }
 
 /// Configuration for bounded keyspace preview.

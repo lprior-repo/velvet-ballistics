@@ -221,7 +221,8 @@ pub use constants::*;
 pub use error::{JournalError, KeyDecodeError};
 pub use events::{DurableActionOutcome, JournalEvent};
 pub use records::{
-    BlobRecord, CompiledIrRecord, RecordKind, RunHeaderRecord, WorkflowSourceRecord,
+    BlobRecord, CompiledIrRecord, RecordKind, RecoveryStampRecord, RunHeaderRecord,
+    WorkflowSourceRecord,
 };
 pub use recovery::{ActionReplayTracker, RunSnapshot};
 pub use slot_extra::{
