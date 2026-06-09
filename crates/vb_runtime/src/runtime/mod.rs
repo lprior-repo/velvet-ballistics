@@ -15,15 +15,11 @@ use crate::shard::{AskAnswer, InspectResponse, Shard, ShardCommand, ShardConfig}
 use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
 
-#[path = "runtime_metrics.rs"]
 mod runtime_metrics;
 use runtime_metrics::collect_metrics;
-#[path = "runtime_control.rs"]
 mod runtime_control;
 pub use runtime_control::ActiveRunSummary;
-#[path = "runtime_admission.rs"]
 mod runtime_admission;
-#[path = "runtime_ask.rs"]
 mod runtime_ask;
 
 /// Multi-shard runtime facade.
