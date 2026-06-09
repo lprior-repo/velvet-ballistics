@@ -35,7 +35,9 @@ use crate::engine::validate::validate_resource_contract;
 use crate::ids::{SlotIdx, StepIdx, WorkflowDigest};
 use crate::limits::MAX_ACCESSORS;
 use crate::value::ConstValue;
-use crate::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowError, WorkflowParts};
+use crate::workflow::{
+    CompiledNode, CompiledNodeKind, ResourceContract, WorkflowError, WorkflowParts,
+};
 
 // ============================================================================
 // Helper: build a minimal WorkflowParts wrapping a given contract.

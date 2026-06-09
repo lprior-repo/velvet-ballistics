@@ -392,7 +392,12 @@ mod trigger_condition_evaluation {
 
         let result = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
 
-        assert_eq!(result, EngineSignal::AwaitingWait);
+        assert_eq!(
+            result,
+            EngineSignal::AwaitingWait {
+                deadline_slot: vb_core::ids::SlotIdx::new(0)
+            }
+        );
         assert_eq!(
             run.step_state(StepIdx::new(0)).map_err(|e| e.to_string())?,
             StepState::Waiting
@@ -432,7 +437,7 @@ mod trigger_condition_evaluation {
 
         let result = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
 
-        assert_eq!(result, EngineSignal::AwaitingAsk);
+        assert_eq!(result, EngineSignal::AwaitingAsk { timeout_slot: None });
         assert_eq!(
             run.step_state(StepIdx::new(0)).map_err(|e| e.to_string())?,
             StepState::Asking
@@ -1264,8 +1269,10 @@ mod signal_exhaustion_paths {
             EngineSignal::Finished(SlotValue::Null, Taint::Clean),
             EngineSignal::StepBudgetExhausted,
             EngineSignal::AwaitingAction,
-            EngineSignal::AwaitingWait,
-            EngineSignal::AwaitingAsk,
+            EngineSignal::AwaitingWait {
+                deadline_slot: vb_core::ids::SlotIdx::new(0),
+            },
+            EngineSignal::AwaitingAsk { timeout_slot: None },
         ];
 
         for (i, sig) in signals.iter().enumerate() {

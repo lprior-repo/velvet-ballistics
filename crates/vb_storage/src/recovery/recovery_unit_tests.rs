@@ -457,6 +457,7 @@ mod tests {
                 seq: EventSeq::new(6),
                 step: StepIdx::new(1),
                 attempt: 1,
+                deadline_ms: 30000,
             },
         ];
         let result = summarize_recovery_events(&events);
@@ -592,6 +593,7 @@ mod tests {
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
                 attempt: 1,
+                deadline_ms: 30000,
             },
         ];
         let seed = recover_runtime_frame_seed_from_events(&events);
@@ -617,6 +619,7 @@ mod tests {
                 seq: EventSeq::new(1),
                 step: StepIdx::new(1),
                 attempt: 1,
+                deadline_ms: 30000,
             },
         ];
         let seed = recover_runtime_frame_seed_from_events(&events);

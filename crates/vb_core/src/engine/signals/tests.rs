@@ -1,6 +1,7 @@
 //! Unit tests for the signals module.
 
 use crate::engine::signals::{EngineSignal, StepBudget};
+use crate::ids::SlotIdx;
 use crate::limits::MAX_STEP_BUDGET;
 use crate::value::{SlotValue, Taint};
 
@@ -98,8 +99,10 @@ fn engine_signal_variants_are_distinct() -> Result<(), String> {
         EngineSignal::Finished(SlotValue::Null, Taint::Clean),
         EngineSignal::StepBudgetExhausted,
         EngineSignal::AwaitingAction,
-        EngineSignal::AwaitingWait,
-        EngineSignal::AwaitingAsk,
+        EngineSignal::AwaitingWait {
+            deadline_slot: SlotIdx::new(0),
+        },
+        EngineSignal::AwaitingAsk { timeout_slot: None },
     ];
     for (i, sig) in signals.iter().enumerate() {
         for (j, other) in signals.iter().enumerate() {
@@ -233,16 +236,26 @@ fn engine_signal_clone_preserves_variant_and_data() -> Result<(), String> {
 #[test]
 fn engine_signal_all_suspension_variants_are_distinct() -> Result<(), String> {
     let action = EngineSignal::AwaitingAction;
-    let wait = EngineSignal::AwaitingWait;
-    let ask = EngineSignal::AwaitingAsk;
+    let wait = EngineSignal::AwaitingWait {
+        deadline_slot: SlotIdx::new(0),
+    };
+    let ask = EngineSignal::AwaitingAsk { timeout_slot: None };
 
     ensure_equal(action != wait, true)?;
     ensure_equal(action != ask, true)?;
     ensure_equal(wait != ask, true)?;
 
     ensure_equal(action.clone(), EngineSignal::AwaitingAction)?;
-    ensure_equal(wait.clone(), EngineSignal::AwaitingWait)?;
-    ensure_equal(ask.clone(), EngineSignal::AwaitingAsk)
+    ensure_equal(
+        wait.clone(),
+        EngineSignal::AwaitingWait {
+            deadline_slot: SlotIdx::new(0),
+        },
+    )?;
+    ensure_equal(
+        ask.clone(),
+        EngineSignal::AwaitingAsk { timeout_slot: None },
+    )
 }
 
 #[test]
@@ -256,11 +269,17 @@ fn engine_signal_debug_format_all_variants() -> Result<(), String> {
         true,
     )?;
     ensure_equal(
-        format!("{:?}", EngineSignal::AwaitingWait).contains("AwaitingWait"),
+        format!(
+            "{:?}",
+            EngineSignal::AwaitingWait {
+                deadline_slot: SlotIdx::new(0)
+            }
+        )
+        .contains("AwaitingWait"),
         true,
     )?;
     ensure_equal(
-        format!("{:?}", EngineSignal::AwaitingAsk).contains("AwaitingAsk"),
+        format!("{:?}", EngineSignal::AwaitingAsk { timeout_slot: None }).contains("AwaitingAsk"),
         true,
     )?;
     let finished_debug = format!(
@@ -364,8 +383,18 @@ fn engine_signal_debug_format_all_variants_exhaustive() {
     assert!(format!("{:?}", EngineSignal::Continue).contains("Continue"));
     assert!(format!("{:?}", EngineSignal::StepBudgetExhausted).contains("StepBudgetExhausted"));
     assert!(format!("{:?}", EngineSignal::AwaitingAction).contains("AwaitingAction"));
-    assert!(format!("{:?}", EngineSignal::AwaitingWait).contains("AwaitingWait"));
-    assert!(format!("{:?}", EngineSignal::AwaitingAsk).contains("AwaitingAsk"));
+    assert!(
+        format!(
+            "{:?}",
+            EngineSignal::AwaitingWait {
+                deadline_slot: SlotIdx::new(0)
+            }
+        )
+        .contains("AwaitingWait")
+    );
+    assert!(
+        format!("{:?}", EngineSignal::AwaitingAsk { timeout_slot: None }).contains("AwaitingAsk")
+    );
     assert!(
         format!(
             "{:?}",

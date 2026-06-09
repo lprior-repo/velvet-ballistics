@@ -925,6 +925,7 @@ fn derive_status_waiting_answer_state() {
             seq: make_event_seq(1),
             step: make_step_idx(0),
             attempt: 1,
+            deadline_ms: 30000,
         },
     ];
 

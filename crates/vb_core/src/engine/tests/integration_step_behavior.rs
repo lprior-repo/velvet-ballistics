@@ -573,7 +573,12 @@ fn wait_until_returns_awaiting_wait_and_step_enters_waiting_state() -> Result<()
 
     let result = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
-    ensure_equal(result, EngineSignal::AwaitingWait)?;
+    ensure_equal(
+        result,
+        EngineSignal::AwaitingWait {
+            deadline_slot: SlotIdx::new(0),
+        },
+    )?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Waiting))?;
     Ok(())
 }
@@ -610,7 +615,12 @@ fn wait_event_returns_awaiting_wait_and_preserves_step_in_waiting_state() -> Res
 
     let result = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
-    ensure_equal(result, EngineSignal::AwaitingWait)?;
+    ensure_equal(
+        result,
+        EngineSignal::AwaitingWait {
+            deadline_slot: SlotIdx::new(0),
+        },
+    )?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Waiting))?;
     Ok(())
 }
@@ -647,7 +657,7 @@ fn ask_returns_awaiting_ask_and_step_enters_asking_state() -> Result<(), String>
 
     let result = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
-    ensure_equal(result, EngineSignal::AwaitingAsk)?;
+    ensure_equal(result, EngineSignal::AwaitingAsk { timeout_slot: None })?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Asking))?;
     Ok(())
 }

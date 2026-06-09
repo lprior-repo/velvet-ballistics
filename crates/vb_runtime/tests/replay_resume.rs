@@ -54,6 +54,7 @@ fn resumed_run_events(run: RunId, digest: WorkflowDigest) -> Vec<JournalEvent> {
             seq: EventSeq::new(3),
             step: StepIdx::ZERO,
             attempt: 1,
+            deadline_ms: 30000,
         },
         JournalEvent::RetryScheduledEvent {
             run,
@@ -204,6 +205,7 @@ fn resume_tail_replay_rejects_sequence_gap_before_resume_continuation() -> Resul
             seq: EventSeq::new(1),
             step: StepIdx::ZERO,
             attempt: 1,
+            deadline_ms: 30000,
         },
         JournalEvent::StepStarted {
             run,

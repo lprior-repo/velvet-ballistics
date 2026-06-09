@@ -279,6 +279,152 @@ impl Runtime {
         Ok(())
     }
 
+    /// Recovers all incomplete runs from the durable journal and rehydrates
+    /// pending timers. Returns the list of rehydrated run IDs for observability.
+    ///
+    /// This is a hard, atomic operation: any error in hydration is propagated
+    /// without partial state. On success, the runtime is ready to resume work
+    /// across the new process boundary.
+    ///
+    /// Requires the `test-util` feature on `vb_core` (gated via `vb_runtime/test-util`).
+    #[cfg(feature = "test-util")]
+    pub fn recover(
+        &mut self,
+        journal: &crate::journal::SharedRuntimeJournal,
+    ) -> RuntimeResult<Vec<RunId>> {
+        use crate::primitives::collect::CollectStates;
+        use crate::recovery::{DurableFrameRecoveryBoundary, RuntimeRecoveryBoundary};
+        use crate::shard::PendingTimer;
+        use crate::shard::timer::PendingTimerKind;
+
+        // 1. Get all incomplete runs from storage
+        let hydrations = vb_storage::recovery::recover_all_incomplete_runs(
+            journal
+                .storage_journal()
+                .ok_or(RuntimeError::InvalidRecoveryHydration)?
+                .as_ref(),
+        )
+        .map_err(|_| RuntimeError::InvalidRecoveryHydration)?;
+
+        if hydrations.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let mut recovered = Vec::with_capacity(hydrations.len());
+
+        for hydration in hydrations {
+            // 2. Only handle frame-seed hydration (full frame reconstruction)
+            let seed = match hydration {
+                vb_storage::recovery::RecoveryHydration::FrameSeed(s) => s,
+                _ => continue,
+            };
+
+            // 4. Reconstruct pending timer if applicable (wait/ask)
+            // Extract needed fields before moving seed into boundary
+            let run = seed.summary.run;
+            let pc = seed.pc;
+            let slot_count = seed.slot_count;
+
+            // 3. Build recovery boundary and hydrate the frame
+            let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
+            let frame = boundary.hydrate_run_frame()?;
+            let events = journal
+                .storage_journal()
+                .ok_or(RuntimeError::InvalidRecoveryHydration)?
+                .events_for_run(run)
+                .map_err(|_| RuntimeError::InvalidRecoveryHydration)?;
+
+            let mut deadline: Option<std::time::Instant> = None;
+            let mut kind: Option<PendingTimerKind> = None;
+            let mut step: Option<StepIdx> = None;
+
+            for ev in events.iter().rev() {
+                match ev {
+                    vb_storage::JournalEvent::WaitScheduledEvent {
+                        step: s,
+                        deadline_ms,
+                        ..
+                    } if pc == *s => {
+                        step = Some(*s);
+                        kind = Some(PendingTimerKind::Wait);
+                        deadline = Some(
+                            std::time::Instant::now()
+                                .checked_add(std::time::Duration::from_millis(*deadline_ms))
+                                .unwrap_or_else(std::time::Instant::now),
+                        );
+                    }
+                    vb_storage::JournalEvent::AskScheduledEvent {
+                        step: s,
+                        deadline_ms,
+                        ..
+                    } if pc == *s => {
+                        step = Some(*s);
+                        kind = Some(PendingTimerKind::Ask);
+                        deadline = Some(
+                            std::time::Instant::now()
+                                .checked_add(std::time::Duration::from_millis(*deadline_ms))
+                                .unwrap_or_else(std::time::Instant::now),
+                        );
+                    }
+                    _ => {}
+                }
+            }
+
+            // 5. Insert the run into the shard
+            let shard_idx = self.shard_index(run);
+            let shard = self
+                .shards
+                .get_mut(shard_idx)
+                .ok_or(RuntimeError::RunNotFound)?;
+
+            // Insert runtime state
+            shard
+                .runtime_states
+                .insert(run, crate::shard::RuntimeState::Resumable);
+
+            // Store workflow in pending_workflows for later retrieval
+            let workflow = crate::admission::empty_workflow();
+            shard.pending_workflows.insert(run, workflow.clone());
+
+            // Insert the frame
+            shard.runs.insert(
+                run,
+                crate::shard::RunState {
+                    frame,
+                    workflow,
+                    store: vb_core::value_store::ValueStore::with_max_slots(slot_count),
+                    action_attempts: Box::new([]),
+                    admission: None,
+                    collect_states: CollectStates::default(),
+                    action_contracts: Box::new([]),
+                },
+            );
+
+            // 6. Reconstruct pending timer if this was a wait/ask suspension
+            if let (Some(step_val), Some(timer_kind), Some(dl)) = (step, kind, deadline) {
+                let generation = match shard.next_pending_timer_generation(run) {
+                    Some(g) => g,
+                    None => {
+                        return Err(RuntimeError::InvalidTimerFire);
+                    }
+                };
+                shard.pending_timer_insert(
+                    run,
+                    PendingTimer {
+                        step: step_val,
+                        kind: timer_kind,
+                        generation,
+                        deadline: dl,
+                    },
+                );
+            }
+
+            recovered.push(run);
+        }
+
+        Ok(recovered)
+    }
+
     /// Computes the owning shard index for a run.
     #[must_use]
     pub fn shard_index(&self, run: RunId) -> usize {

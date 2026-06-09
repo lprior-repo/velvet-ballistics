@@ -515,7 +515,7 @@ fn drive_deterministic_stops_on_wait_node_with_awaiting_wait_signal() -> Result<
         drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
             .map_err(|e| e.to_string())?;
 
-    ensure_equal(result, EngineSignal::AwaitingWait)?;
+    ensure_equal(result, EngineSignal::AwaitingWait { deadline_slot: SlotIdx::new(0) })?;
     ensure_equal(run.executed(), 1)?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Waiting))
 }
@@ -531,7 +531,7 @@ fn drive_deterministic_stops_on_ask_node_with_awaiting_ask_signal() -> Result<()
         drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
             .map_err(|e| e.to_string())?;
 
-    ensure_equal(result, EngineSignal::AwaitingAsk)?;
+    ensure_equal(result, EngineSignal::AwaitingAsk { timeout_slot: None })?;
     ensure_equal(run.executed(), 1)?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Asking))
 }
@@ -558,7 +558,7 @@ fn run_until_blocked_stops_on_wait_node_awaiting_wait_preserves_pc() -> Result<(
     let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
         .map_err(|e| e.to_string())?;
 
-    ensure_equal(result, EngineSignal::AwaitingWait)?;
+    ensure_equal(result, EngineSignal::AwaitingWait { deadline_slot: SlotIdx::new(0) })?;
     ensure_equal(run.pc(), StepIdx::new(0))
 }
 
@@ -571,7 +571,7 @@ fn run_until_blocked_stops_on_ask_node_awaiting_ask_preserves_pc() -> Result<(),
     let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
         .map_err(|e| e.to_string())?;
 
-    ensure_equal(result, EngineSignal::AwaitingAsk)?;
+    ensure_equal(result, EngineSignal::AwaitingAsk { timeout_slot: None })?;
     ensure_equal(run.pc(), StepIdx::new(0))
 }
 
@@ -635,7 +635,7 @@ fn drive_deterministic_wait_node_marks_step_as_waiting() -> Result<(), String> {
         drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
             .map_err(|e| e.to_string())?;
 
-    ensure_equal(result, EngineSignal::AwaitingWait)?;
+    ensure_equal(result, EngineSignal::AwaitingWait { deadline_slot: SlotIdx::new(0) })?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Waiting))
 }
 
@@ -650,7 +650,7 @@ fn drive_deterministic_ask_node_marks_step_as_asking() -> Result<(), String> {
         drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
             .map_err(|e| e.to_string())?;
 
-    ensure_equal(result, EngineSignal::AwaitingAsk)?;
+    ensure_equal(result, EngineSignal::AwaitingAsk { timeout_slot: None })?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Asking))
 }
 
@@ -802,7 +802,7 @@ fn step_once_wait_node_returns_awaiting_wait_and_marks_waiting() -> Result<(), S
 
     let result = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
 
-    ensure_equal(result, EngineSignal::AwaitingWait)?;
+    ensure_equal(result, EngineSignal::AwaitingWait { deadline_slot: SlotIdx::new(0) })?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Waiting))
 }
 
@@ -814,7 +814,7 @@ fn step_once_ask_node_returns_awaiting_ask_and_marks_asking() -> Result<(), Stri
 
     let result = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
 
-    ensure_equal(result, EngineSignal::AwaitingAsk)?;
+    ensure_equal(result, EngineSignal::AwaitingAsk { timeout_slot: None })?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Asking))
 }
 

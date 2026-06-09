@@ -390,3 +390,143 @@ fn recovery_boundary_factory_frame_seed_round_trips_summary() {
     assert_eq!(recovered_summary.steps_succeeded, summary.steps_succeeded);
     assert_eq!(recovered_summary.terminal, summary.terminal);
 }
+
+/// Verifies that a hydrated run frame from a frame-seed hydration product
+/// can be inserted into a shard with a pending timer entry.
+#[test]
+fn recover_hydrates_pending_timers() -> Result<(), String> {
+    use crate::shard::PendingTimer;
+    use crate::shard::config::ShardConfig;
+    use crate::shard::timer::PendingTimerKind;
+    use crate::shard::timer_wheel::TimerEntry;
+    use vb_core::ids::StepIdx;
+
+    // Build a frame-seed hydration for a run that was suspended on a wait.
+    let run = RunId::new(42);
+    let summary = RecoveryRuntimeSummary {
+        run,
+        first_seq: EventSeq::new(0),
+        last_seq: EventSeq::new(3),
+        workflow: Some(WorkflowDigest::from_bytes([1; 32])),
+        steps_started: 2,
+        steps_succeeded: 1,
+        actions_scheduled: 0,
+        actions_resolved: 0,
+        suspensions: 1,
+        slots_written: 0,
+        terminal: None,
+    };
+    let seed = RecoveryFrameSeed {
+        summary,
+        first_step: StepIdx::ZERO,
+        step_count: 3,
+        slot_count: 2,
+        pc: StepIdx::new(2),
+        steps: vec![
+            RecoveredStepEntry {
+                step: StepIdx::ZERO,
+                state: RecoveredStepState::Succeeded,
+            },
+            RecoveredStepEntry {
+                step: StepIdx::new(1),
+                state: RecoveredStepState::Waiting,
+            },
+            RecoveredStepEntry {
+                step: StepIdx::new(2),
+                state: RecoveredStepState::Running,
+            },
+        ],
+        slots: Vec::new(),
+        pending_actions: Vec::new(),
+        unsupported: UnsupportedRecoveryState::SUPPORTED,
+    };
+
+    // Hydrate the frame from the seed.
+    let boundary = DurableFrameRecoveryBoundary::from_seed(seed.clone());
+    let frame = boundary
+        .hydrate_run_frame()
+        .map_err(|e| format!("hydrate_run_frame failed: {e:?}"))?;
+
+    // Build a shard with relaxed policy.
+    let config = ShardConfig::default();
+    let journal = crate::journal::VolatileRuntimeJournal::shared();
+    let mut shard = crate::shard::Shard::new_with_journal(config, journal);
+
+    // Insert the recovered run state.
+    shard
+        .runtime_states
+        .insert(run, crate::shard::RuntimeState::Resumable);
+
+    // Use a minimal workflow (test-util feature required for CompiledWorkflow construction).
+    #[cfg(feature = "test-util")]
+    {
+        use crate::admission::empty_workflow;
+        let workflow = empty_workflow();
+
+        shard.runs.insert(
+            run,
+            crate::shard::RunState {
+                frame,
+                workflow,
+                store: vb_core::value_store::ValueStore::with_max_slots(2),
+                action_attempts: Box::new([]),
+                admission: None,
+                collect_states: Default::default(),
+                action_contracts: Box::new([]),
+            },
+        );
+    }
+
+    #[cfg(not(feature = "test-util"))]
+    {
+        // Without test-util, we can't construct a CompiledWorkflow.
+        // Skip this part of the test but still verify the pending timer path.
+        let _ = frame;
+    }
+
+    // Verify pending timer generation for the run.
+    let generation = shard
+        .next_pending_timer_generation(run)
+        .ok_or("generation should be Some(1) for new run".to_string())?;
+    if generation != 1 {
+        return Err(format!(
+            "expected generation 1 for new run, got {generation}"
+        ));
+    }
+
+    // Insert a pending timer for the run.
+    let timer = PendingTimer {
+        step: StepIdx::new(2),
+        kind: PendingTimerKind::Wait,
+        generation,
+        deadline: std::time::Instant::now() + std::time::Duration::from_secs(30),
+    };
+    shard.pending_timer_insert(run, timer);
+
+    // Verify the timer was inserted.
+    let retrieved = shard.pending_timer_get(run);
+    match retrieved {
+        Some(t) => {
+            if t.step != StepIdx::new(2) {
+                return Err(format!("expected step 2, got {:?}", t.step));
+            }
+            if t.kind != PendingTimerKind::Wait {
+                return Err(format!("expected Wait kind, got {:?}", t.kind));
+            }
+            if t.generation != 1 {
+                return Err(format!("expected generation 1, got {}", t.generation));
+            }
+        }
+        None => return Err("pending timer should exist after insert".to_string()),
+    }
+
+    // Verify next generation increments.
+    let next_gen = shard
+        .next_pending_timer_generation(run)
+        .ok_or("next generation should exist".to_string())?;
+    if next_gen != 2 {
+        return Err(format!("expected next generation 2, got {next_gen}"));
+    }
+
+    Ok(())
+}

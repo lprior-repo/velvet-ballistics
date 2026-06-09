@@ -708,7 +708,10 @@ fn action_contract_side_effects_require_key_when_not_safe() {
     // Safety contract: Writes side effect with AtLeastOnceExternal needs KeyRequired
     assert!(matches!(
         contract.side_effect,
-        SideEffect::LocalWrite | SideEffect::ExternalWrite | SideEffect::LocalWrite | SideEffect::LocalWrite
+        SideEffect::LocalWrite
+            | SideEffect::ExternalWrite
+            | SideEffect::LocalWrite
+            | SideEffect::LocalWrite
     ));
     assert!(matches!(
         contract.retry_safety,

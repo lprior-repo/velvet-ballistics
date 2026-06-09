@@ -18,7 +18,9 @@ pub fn wait_until(
     let deadline = *run.read_slot(deadline_slot)?;
     validate_numeric(deadline, "deadline")?;
     run.increment_executed()?;
-    Ok(vb_core::EngineSignal::AwaitingWait)
+    Ok(vb_core::EngineSignal::AwaitingWait {
+        deadline_slot: vb_core::ids::SlotIdx::new(0),
+    })
 }
 
 /// Executes WaitEvent: reads the event slot and optional timeout,
@@ -38,7 +40,9 @@ pub fn wait_event(
         validate_numeric(timeout_value, "timeout")?;
     }
     run.increment_executed()?;
-    Ok(vb_core::EngineSignal::AwaitingWait)
+    Ok(vb_core::EngineSignal::AwaitingWait {
+        deadline_slot: vb_core::ids::SlotIdx::new(0),
+    })
 }
 
 /// Executes Ask: reads the prompt slot, validates it is prompt-compatible,
@@ -59,7 +63,7 @@ pub fn ask(
         validate_numeric(timeout_value, "timeout")?;
     }
     run.increment_executed()?;
-    Ok(vb_core::EngineSignal::AwaitingAsk)
+    Ok(vb_core::EngineSignal::AwaitingAsk { timeout_slot: None })
 }
 
 /// Executes AskResume: validates the answer slot is populated

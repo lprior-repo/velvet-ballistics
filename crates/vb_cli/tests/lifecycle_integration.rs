@@ -116,6 +116,7 @@ fn write_waiting_answer(journal: &FjallJournal, run: RunId) {
         seq: EventSeq::new(1),
         step: StepIdx::ZERO,
         attempt: 1,
+        deadline_ms: 30000,
     };
     journal
         .append_journaled(&event1)

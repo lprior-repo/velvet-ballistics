@@ -33,7 +33,7 @@ fn storage_runtime_journal_maps_action_wait_and_ask_events() {
             RuntimeJournalEvent::WaitScheduled {
                 run,
                 step: StepIdx::new(3),
-            },
+            deadline_ms: 30000,},
             EventSeq::new(2),
         ),
         Ok(())
@@ -53,7 +53,7 @@ fn storage_runtime_journal_maps_action_wait_and_ask_events() {
             RuntimeJournalEvent::AskScheduled {
                 run,
                 step: StepIdx::new(4),
-            },
+            deadline_ms: 30000,},
             EventSeq::new(4),
         ),
         Ok(())
@@ -113,7 +113,7 @@ fn storage_runtime_journal_maps_action_wait_and_ask_events() {
                 seq: EventSeq::new(2),
                 step: StepIdx::new(3),
                 attempt: 1,
-            },
+            deadline_ms: 30000,},
             JournalEvent::RetryScheduledEvent {
                 run,
                 seq: EventSeq::new(3),
@@ -125,7 +125,7 @@ fn storage_runtime_journal_maps_action_wait_and_ask_events() {
                 seq: EventSeq::new(4),
                 step: StepIdx::new(4),
                 attempt: 1,
-            },
+            deadline_ms: 30000,},
             JournalEvent::AskAnsweredEvent {
                 run,
                 seq: EventSeq::new(5),

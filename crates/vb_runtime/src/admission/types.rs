@@ -127,3 +127,40 @@ impl RunAdmission {
         &self.idempotency_attested
     }
 }
+
+/// Returns a minimal compiled workflow suitable as a recovery placeholder.
+///
+/// The returned workflow has a single no-op node that will fail at the next
+/// drive call because it has no valid transitions. It exists solely so that
+/// `RunState` can be constructed when the actual workflow is not yet available
+/// during recovery.
+///
+/// Requires the `test-util` feature on `vb_core`.
+#[cfg(feature = "test-util")]
+pub fn empty_workflow() -> vb_core::workflow::CompiledWorkflow {
+    use vb_core::ids::StepIdx;
+    use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract};
+
+    let node = CompiledNode {
+        id: StepIdx::ZERO,
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Nop,
+    };
+    let parts = vb_core::workflow::WorkflowParts {
+        name: "recovery-placeholder".into(),
+        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
+        nodes: Box::new([node]),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: 0,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([Box::from("")]),
+    };
+    CompiledWorkflow::from_parts_unchecked(parts)
+}

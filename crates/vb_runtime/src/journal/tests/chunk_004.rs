@@ -79,7 +79,7 @@ fn runtime_journal_event_action_failed_preserves_attempt_field() {
 fn runtime_journal_event_wait_scheduled_has_correct_run_id() {
     let run = vb_core::ids::RunId::new(8);
     let step = vb_core::ids::StepIdx::new(1);
-    let event = super::RuntimeJournalEvent::WaitScheduled { run, step };
+    let event = super::RuntimeJournalEvent::WaitScheduled { run, step, deadline_ms: 30000 };
     assert_eq!(event.run_id(), run);
 }
 
@@ -95,7 +95,7 @@ fn runtime_journal_event_wait_resolved_has_correct_run_id() {
 fn runtime_journal_event_ask_scheduled_has_correct_run_id() {
     let run = vb_core::ids::RunId::new(10);
     let step = vb_core::ids::StepIdx::new(1);
-    let event = super::RuntimeJournalEvent::AskScheduled { run, step };
+    let event = super::RuntimeJournalEvent::AskScheduled { run, step, deadline_ms: 30000 };
     assert_eq!(event.run_id(), run);
 }
 
@@ -1041,16 +1041,18 @@ fn all_runtime_journal_event_variants_have_consistent_run_id_accessors() {
             attempt: 1,
         },
         super::RuntimeJournalEvent::WaitScheduled {
-            run,
-            step: vb_core::ids::StepIdx::new(0),
-        },
+             run,
+             step: vb_core::ids::StepIdx::new(0),
+             deadline_ms: 30000,
+         },
         super::RuntimeJournalEvent::WaitResolved {
             run,
             step: vb_core::ids::StepIdx::new(0),
         },
-        super::RuntimeJournalEvent::AskScheduled {
-            run,
-            step: vb_core::ids::StepIdx::new(0),
+       super::RuntimeJournalEvent::AskScheduled {
+             run,
+             step: vb_core::ids::StepIdx::new(0),
+             deadline_ms: 30000,
         },
         super::RuntimeJournalEvent::AskAnswered {
             run,

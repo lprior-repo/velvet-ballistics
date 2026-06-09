@@ -3119,6 +3119,7 @@ mod tests {
                 seq: EventSeq::new(0),
                 step: StepIdx::new(0),
                 attempt: 1,
+                deadline_ms: 30000,
             }
             .run_id(),
             run
@@ -3129,6 +3130,7 @@ mod tests {
                 seq: EventSeq::new(0),
                 step: StepIdx::new(0),
                 attempt: 1,
+                deadline_ms: 30000,
             }
             .run_id(),
             run
@@ -3271,6 +3273,7 @@ mod tests {
                 seq,
                 step: StepIdx::new(0),
                 attempt: 1,
+                deadline_ms: 30000,
             }
             .seq(),
             seq
@@ -3281,6 +3284,7 @@ mod tests {
                 seq,
                 step: StepIdx::new(0),
                 attempt: 1,
+                deadline_ms: 30000,
             }
             .seq(),
             seq
@@ -3423,6 +3427,7 @@ mod tests {
                 seq,
                 step: StepIdx::new(0),
                 attempt: 1,
+                deadline_ms: 30000,
             }
             .record_kind(),
             RecordKind::WaitScheduled
@@ -3433,6 +3438,7 @@ mod tests {
                 seq,
                 step: StepIdx::new(0),
                 attempt: 1,
+                deadline_ms: 30000,
             }
             .record_kind(),
             RecordKind::AskScheduled
@@ -4174,6 +4180,7 @@ mod tests {
             seq: EventSeq::new(2),
             step: StepIdx::new(3),
             attempt: 1,
+            deadline_ms: 30000,
         };
         let encoded = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -4198,6 +4205,7 @@ mod tests {
             seq: EventSeq::new(3),
             step: StepIdx::new(4),
             attempt: 1,
+            deadline_ms: 30000,
         };
         let encoded = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -5688,6 +5696,7 @@ mod tests {
             seq: EventSeq::new(0),
             step: StepIdx::new(3),
             attempt: 1,
+            deadline_ms: 30000,
         };
         let mut batch = journal.batch();
         batch

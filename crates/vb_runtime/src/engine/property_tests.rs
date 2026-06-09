@@ -178,7 +178,7 @@ fn runtime_signal_step_budget_exhausted_is_not_finished() {
 #[test]
 fn runtime_signal_awaiting_wait_is_not_finished() {
     assert_ne!(
-        RuntimeSignal::AwaitingWait,
+        RuntimeSignal::AwaitingWait(vb_core::ids::SlotIdx::ZERO),
         RuntimeSignal::Finished(SlotValue::Null)
     );
 }
@@ -186,7 +186,7 @@ fn runtime_signal_awaiting_wait_is_not_finished() {
 #[test]
 fn runtime_signal_awaiting_ask_is_not_finished() {
     assert_ne!(
-        RuntimeSignal::AwaitingAsk,
+        RuntimeSignal::AwaitingAsk(None),
         RuntimeSignal::Finished(SlotValue::Null)
     );
 }

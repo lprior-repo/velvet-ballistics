@@ -314,6 +314,7 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
                 attempt: 1,
+                deadline_ms: 30000,
             },
             // Attempt 2: ask scheduled (latest) - this should be in the pending_actions
             JournalEvent::AskScheduledEvent {
@@ -321,6 +322,7 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(2),
                 step: StepIdx::ZERO,
                 attempt: 1,
+                deadline_ms: 30000,
             },
         ];
 

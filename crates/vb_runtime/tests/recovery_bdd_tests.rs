@@ -481,6 +481,7 @@ fn wait_identity_and_state_survive_across_restart() {
             seq: EventSeq::new(3),
             step: StepIdx::ZERO,
             attempt: 1,
+            deadline_ms: 30000,
         },
     ];
 
@@ -553,6 +554,7 @@ fn ask_answer_slot_value_and_taint_survive_across_restart() {
             seq: EventSeq::new(3),
             step: StepIdx::ZERO,
             attempt: 1,
+            deadline_ms: 30000,
         },
         JournalEvent::AskAnsweredEvent {
             run,

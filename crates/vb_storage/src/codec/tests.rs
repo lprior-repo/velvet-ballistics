@@ -718,6 +718,7 @@ fn encode_decode_roundtrip_wait_scheduled() -> Result<(), JournalError> {
         seq: EventSeq::new(5),
         step: StepIdx::new(2),
         attempt: 1,
+        deadline_ms: 30000,
     };
     let bytes = encode_record(
         MAGIC_JOURNAL_EVENT,
@@ -742,6 +743,7 @@ fn encode_decode_roundtrip_ask_scheduled() -> Result<(), JournalError> {
         seq: EventSeq::new(6),
         step: StepIdx::new(3),
         attempt: 1,
+        deadline_ms: 30000,
     };
     let bytes = encode_record(
         MAGIC_JOURNAL_EVENT,
@@ -1952,6 +1954,7 @@ fn all_journal_event_kinds_encode_and_decode_correctly() -> Result<(), JournalEr
                 seq: EventSeq::new(7),
                 step: StepIdx::new(1),
                 attempt: 1,
+                deadline_ms: 30000,
             },
             RecordKind::WaitScheduled,
         ),
@@ -1961,6 +1964,7 @@ fn all_journal_event_kinds_encode_and_decode_correctly() -> Result<(), JournalEr
                 seq: EventSeq::new(8),
                 step: StepIdx::new(2),
                 attempt: 1,
+                deadline_ms: 30000,
             },
             RecordKind::AskScheduled,
         ),
@@ -2159,12 +2163,14 @@ fn every_event_variant_roundtrips_via_record_kind_method() -> Result<(), Journal
             seq: EventSeq::new(8),
             step: StepIdx::new(1),
             attempt: 1,
+            deadline_ms: 30000,
         },
         JournalEvent::AskScheduledEvent {
             run,
             seq: EventSeq::new(9),
             step: StepIdx::new(2),
             attempt: 1,
+            deadline_ms: 30000,
         },
         JournalEvent::AskAnsweredEvent {
             run,

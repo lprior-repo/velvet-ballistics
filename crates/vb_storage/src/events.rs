@@ -165,6 +165,9 @@ pub enum JournalEvent {
         step: StepIdx,
         /// Attempt number (1-based).
         attempt: u16,
+        /// Duration from wait scheduling to timer fire, in milliseconds.
+        #[serde(default)]
+        deadline_ms: u64,
     },
     /// Ask was scheduled.
     AskScheduledEvent {
@@ -176,6 +179,9 @@ pub enum JournalEvent {
         step: StepIdx,
         /// Attempt number (1-based).
         attempt: u16,
+        /// Duration from ask scheduling to timeout, in milliseconds.
+        #[serde(default)]
+        deadline_ms: u64,
     },
     /// Ask was answered.
     AskAnsweredEvent {
@@ -496,6 +502,19 @@ impl JournalEvent {
             | Self::RunResumed { .. }
             | Self::RunRetried { .. }
             | Self::RunAnswered { .. } => None,
+        }
+    }
+
+    /// Returns the deadline duration in milliseconds for wait/ask events.
+    ///
+    /// Returns `Some(deadline_ms)` for `WaitScheduledEvent` and
+    /// `AskScheduledEvent`. Returns `None` for other event types.
+    #[must_use]
+    pub const fn deadline_ms(&self) -> Option<u64> {
+        match self {
+            Self::WaitScheduledEvent { deadline_ms, .. }
+            | Self::AskScheduledEvent { deadline_ms, .. } => Some(*deadline_ms),
+            _ => None,
         }
     }
 

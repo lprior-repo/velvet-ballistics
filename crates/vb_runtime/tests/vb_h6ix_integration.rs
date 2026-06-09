@@ -465,6 +465,7 @@ fn stale_pending_actions_excluded_integration() {
             seq: EventSeq::new(2),
             step: StepIdx::ZERO,
             attempt: 1,
+            deadline_ms: 30000,
         },
         // Attempt 2: ask scheduled (latest)
         JournalEvent::AskScheduledEvent {
@@ -472,6 +473,7 @@ fn stale_pending_actions_excluded_integration() {
             seq: EventSeq::new(3),
             step: StepIdx::ZERO,
             attempt: 1,
+            deadline_ms: 30000,
         },
         JournalEvent::AskAnsweredEvent {
             run,

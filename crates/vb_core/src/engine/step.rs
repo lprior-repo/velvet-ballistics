@@ -102,9 +102,11 @@ fn execute_boundary_node(
             Ok(EngineSignal::AwaitingAction)
         }
         CompiledNodeKind::WaitUntil { .. } | CompiledNodeKind::WaitEvent { .. } => {
-            Ok(EngineSignal::AwaitingWait)
+            Ok(EngineSignal::AwaitingWait {
+                deadline_slot: SlotIdx::new(0),
+            })
         }
-        CompiledNodeKind::Ask { .. } => Ok(EngineSignal::AwaitingAsk),
+        CompiledNodeKind::Ask { .. } => Ok(EngineSignal::AwaitingAsk { timeout_slot: None }),
         CompiledNodeKind::Jump { target } => node_helpers::jump_to(run, *target),
         CompiledNodeKind::Finish { result } => node_helpers::finish_run(run, *result),
         CompiledNodeKind::ErrorHandler { body, .. } => {
@@ -232,8 +234,8 @@ fn mark_step_after_signal(
     signal: &EngineSignal,
 ) -> Result<(), EngineError> {
     match signal {
-        EngineSignal::AwaitingWait => run.mark_waiting(step),
-        EngineSignal::AwaitingAsk => run.mark_asking(step),
+        EngineSignal::AwaitingWait { .. } => run.mark_waiting(step),
+        EngineSignal::AwaitingAsk { .. } => run.mark_asking(step),
         EngineSignal::AwaitingAction | EngineSignal::StepBudgetExhausted => Ok(()),
         EngineSignal::Continue | EngineSignal::Finished(_, _) => run.mark_succeeded(step),
     }

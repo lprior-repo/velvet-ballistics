@@ -4,6 +4,7 @@
 use indexmap::{IndexMap, IndexSet};
 
 use vb_core::ids::RunId;
+use vb_core::workflow::CompiledWorkflow;
 use vb_storage::EventSeq;
 
 use crate::counters::ShardCounters;
@@ -128,6 +129,8 @@ pub struct Shard {
     pub(crate) shutting_down: bool,
     pub(crate) current_tick: TimerTick,
     pub(crate) journal: SharedRuntimeJournal,
+    /// Recovered workflows keyed by run, populated during `Runtime::recover`.
+    pub(crate) pending_workflows: IndexMap<RunId, CompiledWorkflow>,
 }
 
 // ============================================================================

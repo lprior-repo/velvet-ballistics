@@ -23,6 +23,8 @@ pub use stores::{
     AcceptedArtifactStore, AlwaysPresentArtifactStore, ArtifactStore, MissingAcceptedArtifactStore,
     SharedAcceptedArtifactStore, SharedArtifactStore, StorageArtifactStore,
 };
+#[cfg(feature = "test-util")]
+pub use types::empty_workflow;
 pub use types::{AdmissionBudgetRequest, REQUIRED_GATE_COUNT, RunAdmission};
 pub use validation::validate_accepted_artifact_envelope;
 

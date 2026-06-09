@@ -96,6 +96,7 @@ fn wait_scheduled_event_increments_suspensions() {
         seq: EventSeq::new(1),
         step: StepIdx::new(0),
         attempt: 1,
+        deadline_ms: 30000,
     };
     apply_summary_event(&mut summary, &event);
     assert_counters(&summary, 0, 0, 0, 0, 1, 0);

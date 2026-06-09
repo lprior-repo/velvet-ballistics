@@ -24,8 +24,8 @@ pub fn runtime_from_core(signal: EngineSignal) -> RuntimeSignal {
             idempotency_key: 0,
             capacity: 1,
         }),
-        EngineSignal::AwaitingWait => RuntimeSignal::AwaitingWait,
-        EngineSignal::AwaitingAsk => RuntimeSignal::AwaitingAsk,
+        EngineSignal::AwaitingWait { deadline_slot } => RuntimeSignal::AwaitingWait(deadline_slot),
+        EngineSignal::AwaitingAsk { timeout_slot } => RuntimeSignal::AwaitingAsk(timeout_slot),
         // Handle any future EngineSignal variants as Continue (safest default).
         #[allow(unreachable_code)]
         _ => RuntimeSignal::Continue,
@@ -56,14 +56,19 @@ mod tests {
 
     #[test]
     fn awaiting_wait_maps_directly() {
-        let result = runtime_from_core(EngineSignal::AwaitingWait);
-        assert_eq!(result, RuntimeSignal::AwaitingWait);
+        let result = runtime_from_core(EngineSignal::AwaitingWait {
+            deadline_slot: vb_core::ids::SlotIdx::new(0),
+        });
+        assert_eq!(
+            result,
+            RuntimeSignal::AwaitingWait(vb_core::ids::SlotIdx::new(0))
+        );
     }
 
     #[test]
     fn awaiting_ask_maps_directly() {
-        let result = runtime_from_core(EngineSignal::AwaitingAsk);
-        assert_eq!(result, RuntimeSignal::AwaitingAsk);
+        let result = runtime_from_core(EngineSignal::AwaitingAsk { timeout_slot: None });
+        assert_eq!(result, RuntimeSignal::AwaitingAsk(None));
     }
 
     #[test]
@@ -133,8 +138,10 @@ mod tests {
             runtime_from_core(EngineSignal::Finished(SlotValue::Null, Taint::Clean)),
             runtime_from_core(EngineSignal::StepBudgetExhausted),
             runtime_from_core(EngineSignal::AwaitingAction),
-            runtime_from_core(EngineSignal::AwaitingWait),
-            runtime_from_core(EngineSignal::AwaitingAsk),
+            runtime_from_core(EngineSignal::AwaitingWait {
+                deadline_slot: vb_core::ids::SlotIdx::new(0),
+            }),
+            runtime_from_core(EngineSignal::AwaitingAsk { timeout_slot: None }),
         ];
         for (i, a) in signals.iter().enumerate() {
             for (j, b) in signals.iter().enumerate() {

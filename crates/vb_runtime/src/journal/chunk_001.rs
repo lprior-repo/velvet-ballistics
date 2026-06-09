@@ -105,6 +105,9 @@ pub enum RuntimeJournalEvent {
         run: RunId,
         /// Step that scheduled the wait.
         step: StepIdx,
+        /// Duration from wait scheduling to timer fire, in milliseconds.
+        #[serde(default)]
+        deadline_ms: u64,
     },
     /// Wait was resolved by an external timer.
     WaitResolved {
@@ -119,6 +122,9 @@ pub enum RuntimeJournalEvent {
         run: RunId,
         /// Step that scheduled the ask.
         step: StepIdx,
+        /// Duration from ask scheduling to timeout, in milliseconds.
+        #[serde(default)]
+        deadline_ms: u64,
     },
     /// Ask was answered and wrote a slot.
     AskAnswered {

@@ -192,12 +192,13 @@ impl StorageRuntimeJournal {
         seq: EventSeq,
     ) -> RuntimeResult<Option<JournalEvent>> {
         match event {
-            RuntimeJournalEvent::WaitScheduled { run, step } => {
+            RuntimeJournalEvent::WaitScheduled { run, step, deadline_ms } => {
                 Ok(Some(JournalEvent::WaitScheduledEvent {
                     run,
                     seq,
                     step,
                     attempt: 1,
+                    deadline_ms,
                 }))
             }
             RuntimeJournalEvent::WaitResolved { run, step } => {
@@ -208,12 +209,13 @@ impl StorageRuntimeJournal {
                     attempt: 1,
                 }))
             }
-            RuntimeJournalEvent::AskScheduled { run, step } => {
+            RuntimeJournalEvent::AskScheduled { run, step, deadline_ms } => {
                 Ok(Some(JournalEvent::AskScheduledEvent {
                     run,
                     seq,
                     step,
                     attempt: 1,
+                    deadline_ms,
                 }))
             }
             RuntimeJournalEvent::AskAnswered { run, step, .. } => {

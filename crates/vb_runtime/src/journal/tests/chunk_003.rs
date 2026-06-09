@@ -230,9 +230,10 @@ fn volatile_runtime_journal_snapshots_remain_stable_after_full_append_rejection(
     let run = RunId::new(53);
     let first = RuntimeJournalEvent::RunCancelled { run, reason: None };
     let second = RuntimeJournalEvent::RunFailed { run };
-    let rejected = RuntimeJournalEvent::WaitScheduled {
+      let rejected = RuntimeJournalEvent::WaitScheduled {
         run,
         step: StepIdx::new(1),
+        deadline_ms: 30000,
     };
 
     assert_eq!(journal.append(first.clone()), Ok(()));

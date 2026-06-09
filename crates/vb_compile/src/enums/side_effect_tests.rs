@@ -10,10 +10,9 @@
 //! tests verify the contract is satisfied.
 
 use vb_core::{
-use vb_core::action::ActionName;
-    action::verify_idempotency,
-    ActionContract, ActionId, Idempotency, RetrySafety, RunFrame, RunId,
-    SideEffect, SlotIdx, SlotValue, StepIdx, Taint,
+    ActionContract, ActionId, Idempotency, RetrySafety, RunFrame, RunId, SideEffect, SlotIdx,
+    SlotValue, StepIdx, Taint,
+    action::{ActionName, verify_idempotency},
 };
 
 /// Helper to extract the #[repr(u8)] discriminant of a SideEffect variant.
@@ -162,7 +161,7 @@ fn side_effect_verify_idempotency_handles_pure_correctly() {
         timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Idempotent,
+        retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
 
@@ -172,5 +171,9 @@ fn side_effect_verify_idempotency_handles_pure_correctly() {
 
     // Pure actions should always pass idempotency verification
     let result = verify_idempotency(&contract, &[], &frame);
-    assert_eq!(result, Ok(()), "Pure SideEffect should pass verify_idempotency");
+    assert_eq!(
+        result,
+        Ok(()),
+        "Pure SideEffect should pass verify_idempotency"
+    );
 }

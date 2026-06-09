@@ -212,11 +212,11 @@ impl Shard {
             Ok(RuntimeSignal::AwaitingAction(ticket)) => {
                 self.apply_awaiting_action(run, state, ticket)
             }
-            Ok(RuntimeSignal::AwaitingWait) => {
-                self.apply_awaiting_timer(run, state, PendingTimerKind::Wait)
+            Ok(RuntimeSignal::AwaitingWait(deadline_slot)) => {
+                self.apply_awaiting_timer(run, state, PendingTimerKind::Wait, deadline_slot)
             }
-            Ok(RuntimeSignal::AwaitingAsk) => {
-                self.apply_awaiting_timer(run, state, PendingTimerKind::Ask)
+            Ok(RuntimeSignal::AwaitingAsk(timeout_slot)) => {
+                self.apply_awaiting_timer(run, state, PendingTimerKind::Ask, timeout_slot.unwrap_or(vb_core::ids::SlotIdx::ZERO))
             }
             Err(_) => self.apply_terminal_failed(run, state),
         }
@@ -237,8 +237,9 @@ impl Shard {
         run: RunId,
         state: RunState,
         kind: PendingTimerKind,
+        deadline_slot: SlotIdx,
     ) -> RuntimeResult<()> {
-        self.await_timer(run, state, kind)?;
+        self.await_timer(run, state, kind, deadline_slot)?;
         self.apply(run, RuntimeEvent::AwaitTimer);
         Ok(())
     }

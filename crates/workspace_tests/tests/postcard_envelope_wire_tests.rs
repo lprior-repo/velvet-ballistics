@@ -187,7 +187,7 @@ proptest! {
             seq: EventSeq::new(6),
             step: StepIdx::new(0),
             attempt: 1,
-        };
+        deadline_ms: 30000,};
         let encoded = encode_record(
             MAGIC_JOURNAL_EVENT,
             RecordKind::WaitScheduled,
@@ -212,7 +212,7 @@ proptest! {
             seq: EventSeq::new(7),
             step: StepIdx::new(0),
             attempt: 1,
-        };
+        deadline_ms: 30000,};
         let encoded = encode_record(
             MAGIC_JOURNAL_EVENT,
             RecordKind::AskScheduled,

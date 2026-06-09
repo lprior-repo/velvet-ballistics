@@ -493,6 +493,7 @@ fn hydration_reconstructs_waiting_and_asking_step_states() {
             seq: EventSeq::new(2),
             step: StepIdx::ZERO,
             attempt: 1,
+            deadline_ms: 30000,
         },
         JournalEvent::StepStarted {
             run,
@@ -505,6 +506,7 @@ fn hydration_reconstructs_waiting_and_asking_step_states() {
             seq: EventSeq::new(4),
             step: StepIdx::new(1),
             attempt: 1,
+            deadline_ms: 30000,
         },
     ];
 

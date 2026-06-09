@@ -22,7 +22,12 @@ fn wait_until_returns_awaiting_wait() {
 
     let result = wait_until(&mut run, deadline);
 
-    assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+    assert_eq!(
+        result,
+        Ok(vb_core::EngineSignal::AwaitingWait {
+            deadline_slot: vb_core::ids::SlotIdx::new(0)
+        })
+    );
 }
 
 #[test]
@@ -39,7 +44,12 @@ fn wait_event_returns_awaiting_wait() {
 
     let result = wait_event(&mut run, event, Some(timeout));
 
-    assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+    assert_eq!(
+        result,
+        Ok(vb_core::EngineSignal::AwaitingWait {
+            deadline_slot: vb_core::ids::SlotIdx::new(0)
+        })
+    );
 }
 
 #[test]
@@ -56,7 +66,10 @@ fn ask_returns_awaiting_ask() {
 
     let result = ask(&mut run, prompt, Some(timeout));
 
-    assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingAsk));
+    assert_eq!(
+        result,
+        Ok(vb_core::EngineSignal::AwaitingAsk { timeout_slot: None })
+    );
 }
 
 #[test]
@@ -122,7 +135,12 @@ fn wait_event_returns_awaiting_wait_without_timeout() {
     // When calling wait_event without timeout
     let result = wait_event(&mut run, event, None);
     // Then it returns AwaitingWait
-    assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+    assert_eq!(
+        result,
+        Ok(vb_core::EngineSignal::AwaitingWait {
+            deadline_slot: vb_core::ids::SlotIdx::new(0)
+        })
+    );
 }
 
 #[test]
@@ -147,7 +165,10 @@ fn ask_returns_awaiting_ask_without_timeout() {
     // When calling ask without timeout
     let result = ask(&mut run, prompt, None);
     // Then it returns AwaitingAsk
-    assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingAsk));
+    assert_eq!(
+        result,
+        Ok(vb_core::EngineSignal::AwaitingAsk { timeout_slot: None })
+    );
 }
 
 #[test]
@@ -242,7 +263,12 @@ fn wait_event_reads_timeout_when_provided() {
     // When calling wait_event with timeout
     let result = wait_event(&mut run, event, Some(timeout));
     // Then it returns AwaitingWait
-    assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+    assert_eq!(
+        result,
+        Ok(vb_core::EngineSignal::AwaitingWait {
+            deadline_slot: vb_core::ids::SlotIdx::new(0)
+        })
+    );
 }
 
 #[test]
@@ -260,7 +286,10 @@ fn ask_reads_timeout_when_provided() {
     // When calling ask with timeout
     let result = ask(&mut run, prompt, Some(timeout));
     // Then it returns AwaitingAsk
-    assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingAsk));
+    assert_eq!(
+        result,
+        Ok(vb_core::EngineSignal::AwaitingAsk { timeout_slot: None })
+    );
 }
 
 #[test]
@@ -275,7 +304,12 @@ fn wait_until_does_not_change_pc() {
     // When calling wait_until
     let result = wait_until(&mut run, deadline);
     // Then pc is unchanged
-    assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+    assert_eq!(
+        result,
+        Ok(vb_core::EngineSignal::AwaitingWait {
+            deadline_slot: vb_core::ids::SlotIdx::new(0)
+        })
+    );
     assert_eq!(run.pc(), pc_before);
 }
 
@@ -291,7 +325,12 @@ fn wait_event_does_not_change_pc() {
     // When calling wait_event
     let result = wait_event(&mut run, event, None);
     // Then pc is unchanged
-    assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+    assert_eq!(
+        result,
+        Ok(vb_core::EngineSignal::AwaitingWait {
+            deadline_slot: vb_core::ids::SlotIdx::new(0)
+        })
+    );
     assert_eq!(run.pc(), pc_before);
 }
 
@@ -307,7 +346,10 @@ fn ask_does_not_change_pc() {
     // When calling ask
     let result = ask(&mut run, prompt, None);
     // Then pc is unchanged
-    assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingAsk));
+    assert_eq!(
+        result,
+        Ok(vb_core::EngineSignal::AwaitingAsk { timeout_slot: None })
+    );
     assert_eq!(run.pc(), pc_before);
 }
 
@@ -412,7 +454,12 @@ fn wait_until_negative_deadline_returns_awaiting_wait() {
     let result = wait_until(&mut run, deadline);
     // Then it returns AwaitingWait (no deadline validation at primitive level)
     // BUG: No validation that the deadline is in the future or positive
-    assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+    assert_eq!(
+        result,
+        Ok(vb_core::EngineSignal::AwaitingWait {
+            deadline_slot: vb_core::ids::SlotIdx::new(0)
+        })
+    );
 }
 
 #[test]
@@ -426,7 +473,12 @@ fn wait_until_zero_deadline_returns_awaiting_wait() {
     // When calling wait_until with deadline=0
     let result = wait_until(&mut run, deadline);
     // Then it returns AwaitingWait (no deadline validation)
-    assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+    assert_eq!(
+        result,
+        Ok(vb_core::EngineSignal::AwaitingWait {
+            deadline_slot: vb_core::ids::SlotIdx::new(0)
+        })
+    );
 }
 
 #[test]
@@ -444,7 +496,10 @@ fn ask_with_zero_timeout_returns_awaiting_ask() {
     // When calling ask with timeout=0
     let result = ask(&mut run, prompt, Some(timeout));
     // Then it returns AwaitingAsk (no timeout validation at primitive level)
-    assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingAsk));
+    assert_eq!(
+        result,
+        Ok(vb_core::EngineSignal::AwaitingAsk { timeout_slot: None })
+    );
 }
 
 #[test]
@@ -462,7 +517,12 @@ fn wait_event_negative_timeout_returns_awaiting_wait() {
     // When calling wait_event with negative timeout
     let result = wait_event(&mut run, event, Some(timeout));
     // Then it returns AwaitingWait (no timeout sign validation)
-    assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+    assert_eq!(
+        result,
+        Ok(vb_core::EngineSignal::AwaitingWait {
+            deadline_slot: vb_core::ids::SlotIdx::new(0)
+        })
+    );
 }
 
 #[test]
@@ -477,7 +537,12 @@ fn wait_until_increments_executed_counter() {
     // When calling wait_until
     let result = wait_until(&mut run, deadline);
     // Then executed counter IS incremented
-    assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+    assert_eq!(
+        result,
+        Ok(vb_core::EngineSignal::AwaitingWait {
+            deadline_slot: vb_core::ids::SlotIdx::new(0)
+        })
+    );
     assert_eq!(run.executed(), before + 1);
 }
 
@@ -495,9 +560,7 @@ fn ask_increments_executed_counter() {
     // Then executed counter IS incremented
     assert_eq!(
         result,
-        Ok(vb_core::EngineSignal::AwaitingAsk {
-            timeout_slot: None,
-        })
+        Ok(vb_core::EngineSignal::AwaitingAsk { timeout_slot: None })
     );
     assert_eq!(run.executed(), before + 1);
 }

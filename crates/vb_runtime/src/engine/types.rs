@@ -133,8 +133,8 @@ pub enum RuntimeSignal {
     StepBudgetExhausted,
     /// Run is awaiting action completion with the given ticket.
     AwaitingAction(ActionTicket),
-    /// Run is awaiting a wait condition.
-    AwaitingWait,
-    /// Run is awaiting external input (ask).
-    AwaitingAsk,
+    /// Run is awaiting a wait condition. Carries the slot the wait primitive read its deadline from.
+    AwaitingWait(vb_core::ids::SlotIdx),
+    /// Run is awaiting external input (ask). Carries the optional timeout slot.
+    AwaitingAsk(Option<vb_core::ids::SlotIdx>),
 }

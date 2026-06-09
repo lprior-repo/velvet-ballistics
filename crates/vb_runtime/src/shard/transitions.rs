@@ -1,10 +1,8 @@
 #![forbid(unsafe_code)]
 //! Run state transition helpers: keep, finish, await action, await timer, fail.
 
-use std::time::{Duration, Instant};
 use vb_core::action::ActionTicket;
 use vb_core::ids::{RunId, SlotIdx};
-use vb_core::value::SlotValue;
 
 use crate::journal::RuntimeJournalEvent;
 use crate::trace::TraceEvent;
@@ -159,19 +157,30 @@ impl Shard {
                     return Err(RuntimeError::InvalidTimerFire);
                 }
             };
+            let deadline_ms = compute_deadline_ms_from_slot(&state, deadline_slot);
             let append_result = match kind {
                 PendingTimerKind::Wait => {
-                    self.append_journal_event(RuntimeJournalEvent::WaitScheduled { run, step })
+                    self.append_journal_event(RuntimeJournalEvent::WaitScheduled {
+                        run,
+                        step,
+                        deadline_ms,
+                    })
                 }
                 PendingTimerKind::Ask => {
-                    self.append_journal_event(RuntimeJournalEvent::AskScheduled { run, step })
+                    self.append_journal_event(RuntimeJournalEvent::AskScheduled {
+                        run,
+                        step,
+                        deadline_ms,
+                    })
                 }
             };
             if let Err(error) = append_result {
                 self.run_state_insert(run, state);
                 return Err(error);
             }
-            let deadline = compute_deadline_from_slot(&state, deadline_slot);
+            let deadline = std::time::Instant::now()
+                .checked_add(std::time::Duration::from_millis(deadline_ms))
+                .unwrap_or_else(std::time::Instant::now);
             self.pending_timer_insert(
                 run,
                 PendingTimer {
@@ -204,33 +213,26 @@ impl Shard {
 /// Computes the wall-clock deadline for a pending timer from the slot
 /// the wait/ask primitive validated.
 ///
-/// The slot value is treated as a positive offset in milliseconds
-/// from `Instant::now()`. When the slot is uninitialized or holds a
-/// non-numeric value, the deadline collapses to `Instant::now()` so
-/// the timer fires on the next tick (matches the previous
-/// synthesizing-fallback behavior, but only as a degenerate case the
-/// caller can detect via the slot's value, never silently).
-fn compute_deadline_from_slot(state: &RunState, slot: SlotIdx) -> Instant {
-    let now = Instant::now();
+/// Reads the deadline duration in milliseconds from a slot value.
+/// Returns a default of 0ms when the slot is unreadable or non-numeric.
+fn compute_deadline_ms_from_slot(state: &RunState, slot: SlotIdx) -> u64 {
     match state.frame.read_slot(slot) {
-        Ok(SlotValue::I64(ms)) => match u64::try_from(ms).ok() {
-            Some(m) => now.checked_add(Duration::from_millis(m)).unwrap_or(now),
-            None => now,
-        },
-        Ok(SlotValue::F64(value)) => {
-            // FiniteF64 guarantees finiteness; only the sign check is needed.
+        Ok(vb_core::value::SlotValue::I64(ms)) => u64::try_from(*ms).unwrap_or(0),
+        Ok(vb_core::value::SlotValue::F64(value)) => {
             let ms = value.get();
             if !ms.is_sign_positive() {
-                return now;
+                return 0;
             }
-            // Clamp to u64::MAX to avoid lossy cast traps.
-            let capped = if ms > u64::MAX as f64 {
+            #[allow(clippy::as_conversions)]
+            if ms > u64::MAX as f64 {
                 u64::MAX
             } else {
-                ms as u64
-            };
-            now.checked_add(Duration::from_millis(capped)).unwrap_or(now)
+                #[allow(clippy::as_conversions)]
+                {
+                    ms as u64
+                }
+            }
         }
-        _ => now,
+        _ => 0,
     }
 }

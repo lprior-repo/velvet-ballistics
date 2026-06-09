@@ -586,12 +586,14 @@ fn all_event_variant_roundtrip_through_journal() {
             seq: EventSeq::new(6),
             step: StepIdx::new(1),
             attempt: 1,
+            deadline_ms: 30000,
         },
         JournalEvent::AskScheduledEvent {
             run,
             seq: EventSeq::new(7),
             step: StepIdx::new(2),
             attempt: 1,
+            deadline_ms: 30000,
         },
         JournalEvent::AskAnsweredEvent {
             run,

@@ -127,11 +127,16 @@ fn step_once_bounds_harness() {
                 "AwaitingAction reachable"
             );
             kani::cover!(
-                matches!(signal, EngineSignal::AwaitingWait),
+                matches!(
+                    signal,
+                    EngineSignal::AwaitingWait {
+                        deadline_slot: SlotIdx::new(0)
+                    }
+                ),
                 "AwaitingWait reachable"
             );
             kani::cover!(
-                matches!(signal, EngineSignal::AwaitingAsk),
+                matches!(signal, EngineSignal::AwaitingAsk { timeout_slot: None }),
                 "AwaitingAsk reachable"
             );
         }
@@ -200,8 +205,10 @@ fn step_once_state_mapping_harness() {
         let expected_state = match signal {
             EngineSignal::Continue | EngineSignal::Finished(_, _) => StepState::Succeeded,
             EngineSignal::AwaitingAction | EngineSignal::StepBudgetExhausted => StepState::Running,
-            EngineSignal::AwaitingWait => StepState::Waiting,
-            EngineSignal::AwaitingAsk => StepState::Asking,
+            EngineSignal::AwaitingWait {
+                deadline_slot: SlotIdx::new(0),
+            } => StepState::Waiting,
+            EngineSignal::AwaitingAsk { timeout_slot: None } => StepState::Asking,
         };
 
         // INV-002: states[step] must reflect correct StepState

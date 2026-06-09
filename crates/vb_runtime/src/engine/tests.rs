@@ -262,17 +262,28 @@ fn runtime_signal_equality_exhausted() {
 
 #[test]
 fn runtime_signal_equality_awaiting_wait() {
-    assert_eq!(RuntimeSignal::AwaitingWait, RuntimeSignal::AwaitingWait);
+    let slot = vb_core::ids::SlotIdx::ZERO;
+    assert_eq!(
+        RuntimeSignal::AwaitingWait(slot),
+        RuntimeSignal::AwaitingWait(slot)
+    );
 }
 
 #[test]
 fn runtime_signal_equality_awaiting_ask() {
-    assert_eq!(RuntimeSignal::AwaitingAsk, RuntimeSignal::AwaitingAsk);
+    assert_eq!(
+        RuntimeSignal::AwaitingAsk(None),
+        RuntimeSignal::AwaitingAsk(None)
+    );
 }
 
 #[test]
 fn runtime_signal_differs_awaiting_wait_from_awaiting_ask() {
-    assert_ne!(RuntimeSignal::AwaitingWait, RuntimeSignal::AwaitingAsk);
+    let slot = vb_core::ids::SlotIdx::ZERO;
+    assert_ne!(
+        RuntimeSignal::AwaitingWait(slot),
+        RuntimeSignal::AwaitingAsk(None)
+    );
 }
 
 #[test]

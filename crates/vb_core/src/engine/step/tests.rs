@@ -182,7 +182,12 @@ fn step_once_wait_returns_awaiting_wait() -> Result<(), String> {
 
     let result = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
 
-    ensure_equal(result, EngineSignal::AwaitingWait)?;
+    ensure_equal(
+        result,
+        EngineSignal::AwaitingWait {
+            deadline_slot: SlotIdx::new(0),
+        },
+    )?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Waiting))
 }
 
@@ -220,7 +225,7 @@ fn step_once_ask_returns_awaiting_ask() -> Result<(), String> {
 
     let result = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
 
-    ensure_equal(result, EngineSignal::AwaitingAsk)?;
+    ensure_equal(result, EngineSignal::AwaitingAsk { timeout_slot: None })?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Asking))
 }
 
@@ -840,7 +845,12 @@ fn step_once_signal_maps_to_correct_state() -> Result<(), String> {
         let mut run = test_frame(&workflow)?;
         let mut store = ValueStore::new();
         let result = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
-        ensure_equal(result, EngineSignal::AwaitingWait)?;
+        ensure_equal(
+            result,
+            EngineSignal::AwaitingWait {
+                deadline_slot: SlotIdx::new(0),
+            },
+        )?;
         ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Waiting))?;
     }
 
@@ -874,7 +884,7 @@ fn step_once_signal_maps_to_correct_state() -> Result<(), String> {
         let mut run = test_frame(&workflow)?;
         let mut store = ValueStore::new();
         let result = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
-        ensure_equal(result, EngineSignal::AwaitingAsk)?;
+        ensure_equal(result, EngineSignal::AwaitingAsk { timeout_slot: None })?;
         ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Asking))?;
     }
 

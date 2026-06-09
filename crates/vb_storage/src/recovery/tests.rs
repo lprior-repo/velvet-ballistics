@@ -622,6 +622,7 @@ fn recover_runtime_frame_seed_from_events_rebuilds_dimensions_and_step_states() 
             seq: EventSeq::new(2),
             step: StepIdx::new(1),
             attempt: 1,
+            deadline_ms: 30000,
         },
         JournalEvent::StepSucceeded {
             run,
@@ -840,6 +841,7 @@ fn recover_runtime_frame_seed_reads_events_from_journal() {
             seq: EventSeq::new(1),
             step: StepIdx::new(2),
             attempt: 1,
+            deadline_ms: 30000,
         })
         .expect("ask append succeeds");
 
@@ -1229,6 +1231,7 @@ fn snapshot_tail_matches_full_journal_wait_summary() -> Result<(), Box<dyn std::
             seq: EventSeq::new(2),
             step: StepIdx::new(7),
             attempt: 1,
+            deadline_ms: 30000,
         },
         JournalEvent::RunCancelled {
             run,
@@ -1257,6 +1260,7 @@ fn snapshot_tail_matches_full_journal_ask_summary() -> Result<(), Box<dyn std::e
             seq: EventSeq::new(2),
             step: StepIdx::new(8),
             attempt: 1,
+            deadline_ms: 30000,
         },
         JournalEvent::AskAnsweredEvent {
             run,
@@ -1505,12 +1509,14 @@ fn replay_all_event_kinds() {
             seq: EventSeq::new(5),
             step: StepIdx::new(1),
             attempt: 1,
+            deadline_ms: 30000,
         },
         JournalEvent::AskScheduledEvent {
             run,
             seq: EventSeq::new(6),
             step: StepIdx::new(2),
             attempt: 1,
+            deadline_ms: 30000,
         },
         JournalEvent::AskAnsweredEvent {
             run,
@@ -3847,6 +3853,7 @@ mod hydrate_run_frame_tests {
                 seq: EventSeq::new(2),
                 step: StepIdx::new(0),
                 attempt: 1,
+                deadline_ms: 30000,
             },
         ];
 
@@ -3875,6 +3882,7 @@ mod hydrate_run_frame_tests {
                 seq: EventSeq::new(2),
                 step: StepIdx::new(0),
                 attempt: 1,
+                deadline_ms: 30000,
             },
         ];
 

@@ -33,6 +33,7 @@ vb_core = { path = "../vb_core", features = ["test-util"] }
 
 [features]
 default = []
+test-util = ["vb_core/test-util"]
 loom = []
 kani-admission-store = []
 kani-capability-harnesses = []

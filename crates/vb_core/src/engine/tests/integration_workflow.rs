@@ -293,7 +293,12 @@ fn drive_deterministic_stops_on_awaiting_wait_signal() -> Result<(), String> {
 
     let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
 
-    ensure_equal(result, Ok(EngineSignal::AwaitingWait))?;
+    ensure_equal(
+        result,
+        Ok(EngineSignal::AwaitingWait {
+            deadline_slot: SlotIdx::new(0),
+        }),
+    )?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Waiting))?;
     Ok(())
 }
@@ -330,7 +335,7 @@ fn drive_deterministic_stops_on_awaiting_ask_signal() -> Result<(), String> {
 
     let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
 
-    ensure_equal(result, Ok(EngineSignal::AwaitingAsk))?;
+    ensure_equal(result, Ok(EngineSignal::AwaitingAsk { timeout_slot: None }))?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Asking))?;
     Ok(())
 }

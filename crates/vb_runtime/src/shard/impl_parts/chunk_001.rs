@@ -36,6 +36,7 @@ impl Shard {
             shutting_down: false,
             current_tick: TimerTick::new(0),
             journal,
+            pending_workflows: IndexMap::new(),
         }
     }
 
