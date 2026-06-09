@@ -4,6 +4,7 @@
 use vb_core::{RunId, WorkflowDigest, WorkflowId};
 
 use super::status::RunHeaderStatus;
+use crate::types::EventSeq;
 
 /// Immutable workflow source bytes bound to their digest.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -84,4 +85,21 @@ pub struct BlobRecord {
     pub digest: [u8; crate::constants::DIGEST_BYTES],
     /// Bounded blob payload.
     pub bytes: Vec<u8>,
+}
+
+/// Recovery progress stamp (wire ID 7, magic `MAGIC_RECOVERY_STAMP`).
+///
+/// A small fixed-shape record written by the recovery path to mark how far
+/// replay has progressed for a given run. The fields are intentionally
+/// compact and bounded so a recovery stamp fits comfortably in
+/// `MAX_RECOVERY_STAMP_BYTES` and decodes without allocation beyond the
+/// postcard payload buffer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct RecoveryStampRecord {
+    /// Run identifier the stamp applies to.
+    pub run: RunId,
+    /// Highest journal sequence number observed at stamp time.
+    pub last_seq: EventSeq,
+    /// Wall-clock millisecond timestamp when the stamp was written.
+    pub written_at_ms: u64,
 }

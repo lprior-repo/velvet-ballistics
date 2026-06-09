@@ -71,7 +71,7 @@ fn preview_config_max_records_one() {
 // 2. try_key_prefix validates all 256 prefix bytes
 // ===========================================================================
 
-/// The nine known prefix bytes (in order of their constants).
+/// The known prefix bytes (in order of their constants).
 const KNOWN_PREFIXES: &[(u8, KeyPrefix)] = &[
     (0x01, KeyPrefix::WorkflowSource),
     (0x02, KeyPrefix::CompiledIr),
@@ -82,6 +82,7 @@ const KNOWN_PREFIXES: &[(u8, KeyPrefix)] = &[
     (0x30, KeyPrefix::IndexStatus),
     (0x31, KeyPrefix::IndexWorkflow),
     (0x32, KeyPrefix::IndexAction),
+    (0x40, KeyPrefix::RecoveryStamp),
 ];
 
 #[test]
@@ -116,8 +117,8 @@ fn try_key_prefix_rejects_all_247_unknown_bytes() {
             "prefix byte {byte:#04x} should be unknown",
         );
     }
-    // Verify count: 256 total - 9 known = 247 unknown
-    assert_eq!(unknown.len(), 247);
+    // Verify count: 256 total - 10 known = 246 unknown
+    assert_eq!(unknown.len(), 246);
 }
 
 #[test]

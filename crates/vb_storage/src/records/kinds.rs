@@ -60,11 +60,16 @@ pub enum RecordKind {
     IndexUpdate = 50,
     /// Recovery stamp record (master contract §18).
     ///
-    /// A journal marker written during the recovery process to checkpoint
+    /// A storage marker written during the recovery process to checkpoint
     /// replay progress. A subsequent recovery invocation can detect a prior
     /// recovery attempt's progress by reading the stamp and resume from
-    /// that point instead of re-replaying the full journal. Carries the
-    /// `VBSR` magic (`0x56425352`) per the storage envelope contract.
+    /// that point instead of re-replaying the full journal.
+    ///
+    /// Wire ID 7 is a non-journal record kind. It uses its own magic
+    /// `MAGIC_RECOVERY_STAMP` (`"VRST"`, `0x5652_5354`) — distinct from
+    /// `MAGIC_WORKFLOW_SOURCE` (`"VBSR"`, which is bound to kind 1) and
+    /// the journal-event magic (`"VBJE"`) — so that recovery writes can
+    /// be admitted and rejected independently of the source/journal paths.
     RecoveryStamp = 7,
 }
 

@@ -13,8 +13,9 @@ use crate::{
     constants::{
         DIGEST_KEY_BYTES, INDEX_ACTION_KEY_BYTES, INDEX_STATUS_KEY_BYTES, INDEX_WORKFLOW_KEY_BYTES,
         JOURNAL_KEY_BYTES, PREFIX_BLOB, PREFIX_COMPILED_IR, PREFIX_INDEX_ACTION,
-        PREFIX_INDEX_STATUS, PREFIX_INDEX_WORKFLOW, PREFIX_RUN_EVENT, PREFIX_RUN_HEADER,
-        PREFIX_RUN_SNAPSHOT, PREFIX_WORKFLOW_SOURCE, RUN_ONLY_KEY_BYTES,
+        PREFIX_INDEX_STATUS, PREFIX_INDEX_WORKFLOW, PREFIX_RECOVERY_STAMP, PREFIX_RUN_EVENT,
+        PREFIX_RUN_HEADER, PREFIX_RUN_SNAPSHOT, PREFIX_WORKFLOW_SOURCE, RECOVERY_STAMP_KEY_BYTES,
+        RUN_ONLY_KEY_BYTES,
     },
     error::KeyDecodeError,
     types::{EventSeq, IndexStatusState, StorageKey},
@@ -57,6 +58,14 @@ pub fn blob_key(
     digest: [u8; crate::constants::DIGEST_BYTES],
 ) -> Result<[u8; DIGEST_KEY_BYTES], JournalError> {
     digest_key(PREFIX_BLOB, digest)
+}
+
+/// Encodes `[0x40][run_id_u64_be][seq_u64_be]`.
+pub fn recovery_stamp_key(
+    run: RunId,
+    seq: EventSeq,
+) -> Result<[u8; RECOVERY_STAMP_KEY_BYTES], JournalError> {
+    sequenced_run_key(PREFIX_RECOVERY_STAMP, run, seq)
 }
 
 /// Encodes `[0x30][state_u8][timestamp_u64_be][run_id_u64_be]`.
@@ -128,13 +137,14 @@ pub fn encode_key(key: StorageKey) -> Result<Vec<u8>, JournalError> {
         StorageKey::IndexAction { action, run, step } => {
             index_action_key(action, run, step)?.to_vec()
         }
+        StorageKey::RecoveryStamp { run, seq } => recovery_stamp_key(run, seq)?.to_vec(),
     };
     Ok(encoded)
 }
 
 /// Storage key prefix classification for filter-by-kind operations.
 ///
-/// Each variant corresponds to one of the nine known key prefixes.
+/// Each variant corresponds to one of the known key prefixes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum KeyPrefix {
@@ -156,6 +166,8 @@ pub enum KeyPrefix {
     IndexWorkflow,
     /// Action index (`0x32`).
     IndexAction,
+    /// Recovery-stamp progress marker (`0x40`).
+    RecoveryStamp,
 }
 
 impl KeyPrefix {
@@ -172,6 +184,7 @@ impl KeyPrefix {
             Self::IndexStatus => PREFIX_INDEX_STATUS,
             Self::IndexWorkflow => PREFIX_INDEX_WORKFLOW,
             Self::IndexAction => PREFIX_INDEX_ACTION,
+            Self::RecoveryStamp => PREFIX_RECOVERY_STAMP,
         }
     }
 
@@ -184,6 +197,7 @@ impl KeyPrefix {
             Self::RunEvent | Self::RunSnapshot => JOURNAL_KEY_BYTES,
             Self::IndexStatus => INDEX_STATUS_KEY_BYTES,
             Self::IndexWorkflow | Self::IndexAction => INDEX_WORKFLOW_KEY_BYTES,
+            Self::RecoveryStamp => RECOVERY_STAMP_KEY_BYTES,
         }
     }
 }
@@ -214,6 +228,7 @@ pub fn try_key_prefix(bytes: &[u8]) -> Result<KeyPrefix, KeyDecodeError> {
         PREFIX_INDEX_STATUS => Ok(KeyPrefix::IndexStatus),
         PREFIX_INDEX_WORKFLOW => Ok(KeyPrefix::IndexWorkflow),
         PREFIX_INDEX_ACTION => Ok(KeyPrefix::IndexAction),
+        PREFIX_RECOVERY_STAMP => Ok(KeyPrefix::RecoveryStamp),
         unknown => Err(KeyDecodeError::UnknownPrefix { prefix: unknown }),
     }
 }
@@ -353,6 +368,20 @@ pub fn decode_storage_key(bytes: &[u8]) -> Result<StorageKey, KeyDecodeError> {
                 action: ActionId::new(action_val),
                 run: RunId::new(run_val),
                 step: vb_core::StepIdx::new(step_val),
+            })
+        }
+        KeyPrefix::RecoveryStamp => {
+            let run_val = u64::from_be_bytes(key_array::<8>(bytes, prefix, 1..9)?);
+            if run_val == 0 {
+                return Err(KeyDecodeError::InvalidRunId);
+            }
+            let seq_val = u64::from_be_bytes(key_array::<8>(bytes, prefix, 9..17)?);
+            if seq_val == u64::MAX {
+                return Err(KeyDecodeError::ReservedSeqSentinel);
+            }
+            Ok(StorageKey::RecoveryStamp {
+                run: RunId::new(run_val),
+                seq: EventSeq::new(seq_val),
             })
         }
     }

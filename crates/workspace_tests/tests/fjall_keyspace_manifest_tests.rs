@@ -21,7 +21,7 @@ use vb_storage::keys::{
 // Known constants
 // ============================================================
 
-/// All 9 valid keyspace prefixes.
+/// All known keyspace prefixes.
 const VALID_PREFIXES: &[u8] = &[
     0x01, // PREFIX_WORKFLOW_SOURCE
     0x02, // PREFIX_COMPILED_IR
@@ -32,6 +32,7 @@ const VALID_PREFIXES: &[u8] = &[
     0x30, // PREFIX_INDEX_STATUS
     0x31, // PREFIX_INDEX_WORKFLOW
     0x32, // PREFIX_INDEX_ACTION
+    0x40, // PREFIX_RECOVERY_STAMP
 ];
 
 // Key lengths derived from encoding format:
@@ -53,10 +54,10 @@ const INDEX_ACTION_KEY_BYTES: usize = 13;
 // ============================================================
 
 proptest! {
-    /// Verifies all 9 keyspace prefixes are pairwise distinct.
-    /// We sample 2-element subsets from the 9 valid prefixes and verify they differ.
+    /// Verifies all known keyspace prefixes are pairwise distinct.
+    /// We sample 2-element subsets from the known valid prefixes and verify they differ.
     #[test]
-    fn prefix_distinctness(ix in 0usize..9_usize, jx in 0usize..9_usize) {
+    fn prefix_distinctness(ix in 0usize..VALID_PREFIXES.len(), jx in 0usize..VALID_PREFIXES.len()) {
         prop_assume!(ix != jx, "must select two different indices");
         let a = VALID_PREFIXES[ix];
         let b = VALID_PREFIXES[jx];
@@ -70,7 +71,7 @@ proptest! {
 
 #[test]
 fn all_prefixes_distinct_unit() {
-    // Direct all-pairs check for the 9 known constants
+    // Direct all-pairs check for the known key-prefix constants.
     let prefixes = [
         0x01u8, // PREFIX_WORKFLOW_SOURCE
         0x02,   // PREFIX_COMPILED_IR
@@ -81,6 +82,7 @@ fn all_prefixes_distinct_unit() {
         0x30,   // PREFIX_INDEX_STATUS
         0x31,   // PREFIX_INDEX_WORKFLOW
         0x32,   // PREFIX_INDEX_ACTION
+        0x40,   // PREFIX_RECOVERY_STAMP
     ];
 
     for i in 0..prefixes.len() {
@@ -520,8 +522,8 @@ fn smoke_test_module_loads() {
     // Sanity check: constants are in scope
     assert_eq!(
         VALID_PREFIXES.len(),
-        9,
-        "must have exactly 9 valid prefixes"
+        10,
+        "must have exactly 10 valid prefixes"
     );
     assert_eq!(DIGEST_KEY_BYTES, 33, "DIGEST_KEY_BYTES must be 33");
     assert_eq!(JOURNAL_KEY_BYTES, 17, "JOURNAL_KEY_BYTES must be 17");
