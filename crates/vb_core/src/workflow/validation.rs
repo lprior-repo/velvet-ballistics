@@ -96,7 +96,13 @@ fn validate_node_id(node: &CompiledNode, index: usize) -> Result<(), WorkflowErr
     }
 }
 
-fn validate_resource_contract(parts: &WorkflowParts) -> Result<(), WorkflowError> {
+/// Validates resource contract bounds against hard limits.
+///
+/// CANONICAL HOME for `validate_resource_contract` — re-exported via
+/// `engine.rs` as `vb_core::validate_resource_contract`. The previous
+/// duplicate at `engine/validate.rs:16` was excised in bead vb-7zqbn;
+/// it checked 6 size fields but omitted `max_transitions_per_tick`.
+pub fn validate_resource_contract(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     let contract = parts.resource_contract;
     validate_resource_counts(parts, contract)?;
     validate_expr_stack_contract(parts.expressions.as_ref(), contract.max_expr_stack)?;

@@ -12,42 +12,6 @@ pub fn validate_compiled_workflow(parts: &WorkflowParts) -> Result<(), WorkflowE
     Ok(())
 }
 
-/// Validates resource contract bounds against hard limits.
-pub fn validate_resource_contract(parts: &WorkflowParts) -> Result<(), WorkflowError> {
-    let contract = parts.resource_contract;
-    if usize::from(contract.max_steps) > crate::limits::MAX_STEPS_PER_WORKFLOW {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: "max_steps",
-        });
-    }
-    if usize::from(contract.max_slots) > crate::limits::MAX_SLOTS_PER_WORKFLOW {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: "max_slots",
-        });
-    }
-    if usize::from(contract.max_constants) > crate::limits::MAX_CONSTANTS {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: "max_constants",
-        });
-    }
-    if usize::from(contract.max_accessors) > crate::limits::MAX_ACCESSORS {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: "max_accessors",
-        });
-    }
-    if usize::from(contract.max_expressions) > crate::limits::MAX_EXPRESSIONS {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: "max_expressions",
-        });
-    }
-    if contract.max_expr_stack > crate::limits::MAX_EXPRESSION_STACK {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: "max_expr_stack",
-        });
-    }
-    Ok(())
-}
-
 /// Validates that all node indices are within the node array bounds.
 pub fn validate_node_bounds(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     let node_count = parts.nodes.len();
