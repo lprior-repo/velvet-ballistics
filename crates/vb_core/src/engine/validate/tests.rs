@@ -8,9 +8,9 @@ use crate::workflow::{
 };
 
 use crate::engine::validate::{
-    validate_compiled_workflow, validate_node_bounds, validate_resource_contract,
-    validate_transition_target,
+    validate_compiled_workflow, validate_node_bounds, validate_transition_target,
 };
+use crate::workflow::validation::validate_resource_contract;
 
 fn valid_parts() -> WorkflowParts {
     WorkflowParts {
