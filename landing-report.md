@@ -418,6 +418,8 @@ Per-bead landing outcomes from the Wave C repair landing pass (5 children serial
 
 - vb-mvedz: master §18 re-add Snapshot=30, remove RunInspection=31; merge 17642bea43d2dd263c1aeb58c678a70b1dbca1b5; §18 ↔ kinds.rs parity confirmed.
 - vb-5hf16: 3 dead envelopes killed (CliStatusReport, RunReport, SimulateReport); merge d0007b03bc5b9b10ada036ff43f085ba82903d4e; cli_postcard tests 33→37 (4 new: 3 round-trip for SystemStatusReport/AiContextPacketReport/WorkflowDiffReport + 1 negative for shape-mismatch fallback); types_more.rs shrunk 206→116 lines.
+- vb-40cfh: error_recovery proptest now exercises recovery::replay_events; merge 96da8f6d5e92570dfc5cb936abe7d2387e4a90ba; test count 1293→1298.
+- vb-1cwhx: RecoveryStamp=7 decoder extended; merge 183513448dca8d76456e62ba198c7ac6024f00e7; new magic MAGIC_RECOVERY_STAMP=0x56525354 (VRST, not VBSR); is_known_record_kind(7)=true; key prefix 0x40 / KEYSPACE_RECOVERY_STAMP; encoder/decoder, BDD tests, proptest arms all added; vb_storage tests 1294→1298 (+4 BDD); doc comment on RecoveryStamp fixed (removed false VBSR claim).
 
 ## Wave C — landing summary (2026-06-09)
 
