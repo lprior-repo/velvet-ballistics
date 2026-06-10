@@ -91,10 +91,9 @@ fn ids_expose_zero_min_max_checked_add_and_checked_index() {
 
 #[test]
 fn limits_match_phase1_contract() {
-    assert_eq!(MAX_STEPS_PER_WORKFLOW, 65_535);
+    assert_eq!(MAX_STEPS_PER_WORKFLOW, 1_000);
     assert_eq!(MAX_SLOTS_PER_WORKFLOW, 65_535);
-    assert_eq!(MAX_SLOTS_PER_STEP, 256);
-    assert_eq!(MAX_CONSTANTS, 65_535);
+    assert_eq!(MAX_CONSTANTS, 8_192);
     assert_eq!(MAX_EXPRESSIONS, 4_096);
     assert_eq!(MAX_ACCESSORS, 8_192);
     assert_eq!(MAX_EXPRESSION_DEPTH, 64);

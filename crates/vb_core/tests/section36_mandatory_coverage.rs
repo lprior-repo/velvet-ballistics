@@ -1187,21 +1187,39 @@ fn parts_with_contract(contract: ResourceContract) -> WorkflowParts {
 #[test]
 fn validate_resource_contract_rejects_oversized_max_steps() {
     use vb_core::limits::MAX_STEPS_PER_WORKFLOW;
+    // Master §13 line 479: Steps | 1000. u16::MAX is well above the cap.
     let contract = ResourceContract {
         max_steps: u16::MAX,
         ..ResourceContract::DEFAULT
     };
-    // MAX_STEPS_PER_WORKFLOW == 65_535 == u16::MAX, so max_steps == u16::MAX is exactly at the limit
-    // and should NOT be rejected. Test that an at-limit contract passes.
     let parts = parts_with_contract(contract);
     let result = vb_core::validate_resource_contract(&parts);
     assert!(
-        result.is_ok(),
-        "max_steps at the hard limit should be accepted"
+        result.is_err(),
+        "max_steps above the master cap ({} = 1000) must be rejected",
+        MAX_STEPS_PER_WORKFLOW
     );
     let _ = result;
     let _ = contract;
     let _ = MAX_STEPS_PER_WORKFLOW;
+}
+
+#[test]
+fn validate_resource_contract_accepts_max_steps_at_master_cap() {
+    use vb_core::limits::MAX_STEPS_PER_WORKFLOW;
+    // Master §13 line 479: Steps | 1000. At-cap must be accepted.
+    let contract = ResourceContract {
+        max_steps: u16::try_from(MAX_STEPS_PER_WORKFLOW)
+            .expect("MAX_STEPS_PER_WORKFLOW fits in u16"),
+        ..ResourceContract::DEFAULT
+    };
+    let parts = parts_with_contract(contract);
+    let result = vb_core::validate_resource_contract(&parts);
+    assert!(
+        result.is_ok(),
+        "max_steps at the master cap ({}) must be accepted",
+        MAX_STEPS_PER_WORKFLOW
+    );
 }
 
 #[test]
@@ -1222,15 +1240,36 @@ fn validate_resource_contract_rejects_oversized_max_slots() {
 #[test]
 fn validate_resource_contract_rejects_oversized_max_constants() {
     use vb_core::limits::MAX_CONSTANTS;
+    // Master §13 line 483: Constants | 8192. u16::MAX is well above the cap.
     let contract = ResourceContract {
         max_constants: u16::MAX,
         ..ResourceContract::DEFAULT
     };
     let parts = parts_with_contract(contract);
-    // max_constants == u16::MAX == MAX_CONSTANTS (65_535), at-limit passes
     let result = vb_core::validate_resource_contract(&parts);
-    assert_eq!(result, Ok(()));
+    assert!(
+        result.is_err(),
+        "max_constants above the master cap ({} = 8192) must be rejected",
+        MAX_CONSTANTS
+    );
     let _ = MAX_CONSTANTS;
+}
+
+#[test]
+fn validate_resource_contract_accepts_max_constants_at_master_cap() {
+    use vb_core::limits::MAX_CONSTANTS;
+    // Master §13 line 483: Constants | 8192. At-cap must be accepted.
+    let contract = ResourceContract {
+        max_constants: u16::try_from(MAX_CONSTANTS).expect("MAX_CONSTANTS fits in u16"),
+        ..ResourceContract::DEFAULT
+    };
+    let parts = parts_with_contract(contract);
+    let result = vb_core::validate_resource_contract(&parts);
+    assert!(
+        result.is_ok(),
+        "max_constants at the master cap ({}) must be accepted",
+        MAX_CONSTANTS
+    );
 }
 
 #[test]

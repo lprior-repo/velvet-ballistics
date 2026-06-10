@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 706a164307b3cead20e76a47a4c9ff6ee29759fb65a9e53618d04ba42a216fb0 # shrinks to (_kind, ast) = (F64, Unary { op: Neg, expr: Literal(F64(FiniteF64(0.0))) })
+cc d831781724cc807f2df9449d62bc4c95696b1968bc474dfefdbf88bf8d3a1f87 # shrinks to (_kind, ast) = (F64, Unary { op: Neg, expr: Unary { op: Neg, expr: Literal(F64(FiniteF64(0.0))) } })

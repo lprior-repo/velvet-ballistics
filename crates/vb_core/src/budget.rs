@@ -360,8 +360,12 @@ pub struct BoundednessPolicy {
 
 impl BoundednessPolicy {
     /// Conservative default policy.
+    ///
+    /// `max_total_steps` matches the master spec
+    /// `velvet-ballistics-MASTER.md` §13 line 479 (Steps | 1000) and
+    /// §64 line 2856 (workflow resource ceiling reinforcement).
     pub const DEFAULT: Self = Self {
-        max_total_steps: 1_000_000,
+        max_total_steps: 1_000,
         max_total_slots: 65_535,
         max_fanout: 64,
         max_nesting_depth: 8,

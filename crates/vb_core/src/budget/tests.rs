@@ -342,7 +342,7 @@ fn budget_rejects_excessive_total_slots() {
 
 #[test]
 fn budget_default_policy_accepts_reasonable_budget() {
-    let budget = test_budget(500_000, 10_000, 32, 4);
+    let budget = test_budget(500, 10_000, 32, 4);
     let result = BoundednessPolicy::DEFAULT.validate(&budget);
     assert_eq!(result, Ok(()));
 }
@@ -823,11 +823,11 @@ fn budget_large_loop_counted_realistically() {
 
     assert!(budget.is_some(), "large loop should count 1002 steps not 3");
 
-    // The default policy (1M steps) should accept this
+    // The default policy (1000 steps) should REJECT this (1002 > 1000).
     let budget_val = budget.as_ref().unwrap();
     assert!(
-        BoundednessPolicy::DEFAULT.validate(budget_val).is_ok(),
-        "1002 steps should be within default policy"
+        BoundednessPolicy::DEFAULT.validate(budget_val).is_err(),
+        "1002 steps should exceed the default policy (1000-step cap)"
     );
 }
 
@@ -1166,7 +1166,7 @@ fn blackhat_jump_cycle_detection_relies_on_forward_edge_validation() {
 
 #[test]
 fn blackhat_policy_allows_exact_limit() {
-    let budget = test_budget(1_000_000, 65_535, 64, 8);
+    let budget = test_budget(1_000, 65_535, 64, 8);
     let result = BoundednessPolicy::DEFAULT.validate(&budget);
     assert_eq!(
         result,
@@ -1177,7 +1177,7 @@ fn blackhat_policy_allows_exact_limit() {
 
 #[test]
 fn blackhat_policy_rejects_one_over_limit() {
-    let budget = test_budget(1_000_001, 65_535, 64, 8);
+    let budget = test_budget(1_001, 65_535, 64, 8);
     let result = BoundednessPolicy::DEFAULT.validate(&budget);
     assert!(
         result.is_err(),
@@ -2611,8 +2611,8 @@ fn jump_self_cycle_detected() -> Result<(), String> {
 // -------------------------------------------------------------------------
 
 #[test]
-fn default_policy_total_steps_is_one_million() -> Result<(), String> {
-    ensure_equal(BoundednessPolicy::DEFAULT.max_total_steps, 1_000_000)
+fn default_policy_total_steps_is_one_thousand() -> Result<(), String> {
+    ensure_equal(BoundednessPolicy::DEFAULT.max_total_steps, 1_000)
 }
 
 #[test]
@@ -3324,7 +3324,7 @@ fn whole_workflow_budget_max_fields() -> Result<(), String> {
 #[test]
 fn boundedness_policy_default_values_are_sensible() -> Result<(), String> {
     let p = BoundednessPolicy::DEFAULT;
-    ensure_equal(p.max_total_steps, 1_000_000)?;
+    ensure_equal(p.max_total_steps, 1_000)?;
     ensure_equal(p.max_total_slots, 65_535)?;
     ensure_equal(p.max_fanout, 64)?;
     ensure_equal(p.max_nesting_depth, 8)?;

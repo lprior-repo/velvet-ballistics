@@ -323,10 +323,19 @@ fn validation_accepts_max_expr_stack_at_hard_limit() {
 
 #[test]
 fn validation_accepts_max_steps_at_boundary() {
-    let parts = nop_parts(contract(u16::MAX, 10, 10, 10, 10, 10));
+    let parts = nop_parts(contract(1_000, 10, 10, 10, 10, 10));
     match CompiledWorkflow::try_from_parts(parts) {
         Ok(_) => {}
-        Err(e) => panic!("Expected Ok at u16::MAX for max_steps, got: {e:?}"),
+        Err(e) => panic!("Expected Ok at 1_000 (master spec) for max_steps, got: {e:?}"),
+    }
+}
+
+#[test]
+fn validation_rejects_above_master_max_steps() {
+    let parts = nop_parts(contract(1_001, 10, 10, 10, 10, 10));
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(_) => {}
+        Ok(_) => panic!("Expected Err at 1_001 (above master cap of 1_000) for max_steps"),
     }
 }
 
@@ -341,10 +350,19 @@ fn validation_accepts_max_slots_at_boundary() {
 
 #[test]
 fn validation_accepts_max_constants_at_boundary() {
-    let parts = const_parts(contract(10, 10, u16::MAX, 10, 10, 10), Box::new([]));
+    let parts = const_parts(contract(10, 10, 8_192_u16, 10, 10, 10), Box::new([]));
     match CompiledWorkflow::try_from_parts(parts) {
         Ok(_) => {}
-        Err(e) => panic!("Expected Ok at u16::MAX for max_constants, got: {e:?}"),
+        Err(e) => panic!("Expected Ok at 8_192 (master spec) for max_constants, got: {e:?}"),
+    }
+}
+
+#[test]
+fn validation_rejects_above_master_max_constants() {
+    let parts = const_parts(contract(10, 10, 8_193, 10, 10, 10), Box::new([]));
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(_) => {}
+        Ok(_) => panic!("Expected Err at 8_193 (above master cap of 8_192) for max_constants"),
     }
 }
 

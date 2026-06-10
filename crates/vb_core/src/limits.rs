@@ -8,7 +8,9 @@
 
 /// Maximum number of steps allowed in a single compiled workflow.
 ///
-pub const MAX_STEPS_PER_WORKFLOW: usize = 65_535;
+/// Master contract: `velvet-ballistics-MASTER.md` §13 line 479 (Steps | 1000) and
+/// §64 line 2856 (workflow resource ceiling reinforcement).
+pub const MAX_STEPS_PER_WORKFLOW: usize = 1_000;
 
 /// Maximum number of slots allowed in a single compiled workflow.
 ///
@@ -20,7 +22,8 @@ pub const MAX_SLOTS_PER_STEP: usize = 256;
 
 /// Maximum size of the constant pool in a compiled workflow.
 ///
-pub const MAX_CONSTANTS: usize = 65_535;
+/// Master contract: `velvet-ballistics-MASTER.md` §13 line 483 (Constants | 8192).
+pub const MAX_CONSTANTS: usize = 8_192;
 
 /// Maximum recursive expression-evaluation depth (for safety in the bytecode engine).
 ///
