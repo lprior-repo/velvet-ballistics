@@ -502,7 +502,7 @@ fn append_strict_batch_on_empty_is_ok() {
 #[test]
 fn declared_keyspaces_count_matches_opened_keyspaces() {
     let declared = FjallJournal::declared_keyspaces();
-    assert_eq!(declared.len(), 9, "there should be 9 declared keyspaces");
+    assert_eq!(declared.len(), 10, "there should be 10 declared keyspaces");
     let (_temp, _journal) = temp_journal();
     // If we got here, all keyspaces opened successfully
 }
@@ -2365,6 +2365,7 @@ fn all_declared_keyspaces_are_iterable_after_open() {
     assert!(journal.index_status.iter().next().is_none());
     assert!(journal.index_workflow.iter().next().is_none());
     assert!(journal.index_action.iter().next().is_none());
+    assert!(journal.recovery_stamp.iter().next().is_none());
 }
 
 // =========================================================================
@@ -2441,4 +2442,145 @@ fn close_propagates_persist_errors() {
         "close must propagate strict durability failures, got {:?}",
         result
     );
+}
+
+// =========================================================================
+// vb-k6iwh: BDD Fjall round-trip for RecoveryStampRecord
+// (mirrors the codec round-trip test in tests.rs:recovery_stamp_record_round_trips_through_decoder
+//  but exercises the actual FjallJournal::put_recovery_stamp / get_recovery_stamp methods).
+// =========================================================================
+
+/// Given a typed `RecoveryStampRecord` and a real `FjallJournal`
+/// When the record is persisted via `FjallJournal::put_recovery_stamp`
+///      and read back via `FjallJournal::get_recovery_stamp`
+/// Then the deserialized record is byte-equal to the original, the prefix
+///      is `PREFIX_RECOVERY_STAMP` (`0x40`), and the key matches
+///      `[0x40][run_id_be][seq_be]`.
+#[test]
+fn recovery_stamp_persists_and_reads_back_via_fjall() {
+    use crate::RecoveryStampRecord;
+    use crate::constants::PREFIX_RECOVERY_STAMP;
+    use crate::keys::recovery_stamp_key;
+
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(7);
+    let seq = EventSeq::new(13);
+    let stamp = RecoveryStampRecord {
+        run,
+        last_seq: seq,
+        written_at_ms: 1_700_000_000_000,
+    };
+
+    // First read must be None (no record has been written for this (run, seq)).
+    let pre = journal
+        .get_recovery_stamp(run, seq)
+        .expect("get_recovery_stamp pre-read must succeed");
+    assert!(
+        pre.is_none(),
+        "no recovery_stamp has been written for (run={}, seq={}) yet",
+        run.get(),
+        seq.get()
+    );
+
+    journal
+        .put_recovery_stamp(run, seq, stamp)
+        .expect("put_recovery_stamp must succeed");
+
+    let loaded = journal
+        .get_recovery_stamp(run, seq)
+        .expect("get_recovery_stamp post-write must succeed")
+        .expect("get_recovery_stamp must return Some after put");
+    assert_eq!(loaded, stamp, "loaded record must equal the persisted one");
+
+    // The decoded key must round-trip and the prefix must be 0x40.
+    let key = recovery_stamp_key(run, seq).expect("recovery_stamp_key must succeed");
+    assert_eq!(key.len(), crate::constants::RECOVERY_STAMP_KEY_BYTES);
+    assert_eq!(
+        key[0], PREFIX_RECOVERY_STAMP,
+        "recovery_stamp key prefix must be 0x40"
+    );
+}
+
+/// Given two distinct `(run, seq)` keys
+/// When two `RecoveryStampRecord` values are written via Fjall
+/// Then each lookup returns only its own record (no cross-key aliasing).
+#[test]
+fn recovery_stamp_keys_do_not_alias_in_fjall() {
+    use crate::RecoveryStampRecord;
+
+    let (_temp, journal) = temp_journal();
+    let run_a = RunId::new(101);
+    let run_b = RunId::new(102);
+    let seq_a = EventSeq::new(1);
+    let seq_b = EventSeq::new(2);
+
+    let stamp_a = RecoveryStampRecord {
+        run: run_a,
+        last_seq: seq_a,
+        written_at_ms: 100,
+    };
+    let stamp_b = RecoveryStampRecord {
+        run: run_b,
+        last_seq: seq_b,
+        written_at_ms: 200,
+    };
+
+    journal
+        .put_recovery_stamp(run_a, seq_a, stamp_a)
+        .expect("put A must succeed");
+    journal
+        .put_recovery_stamp(run_b, seq_b, stamp_b)
+        .expect("put B must succeed");
+
+    let got_a = journal
+        .get_recovery_stamp(run_a, seq_a)
+        .expect("get A must succeed")
+        .expect("get A must be Some");
+    let got_b = journal
+        .get_recovery_stamp(run_b, seq_b)
+        .expect("get B must succeed")
+        .expect("get B must be Some");
+    assert_eq!(got_a, stamp_a, "A lookup must return stamp A");
+    assert_eq!(got_b, stamp_b, "B lookup must return stamp B");
+    assert_ne!(got_a, got_b, "stamps A and B must be distinct records");
+}
+
+/// Given a closed and reopened `FjallJournal`
+/// When a `RecoveryStampRecord` is written before close and read after reopen
+/// Then the record is durable across the reopen boundary.
+#[test]
+fn recovery_stamp_survives_close_and_reopen() {
+    use crate::RecoveryStampRecord;
+    use crate::types::FjallConfig;
+
+    let temp = tempfile::tempdir().expect("tempdir creation should succeed");
+    let path = temp.path().to_path_buf();
+    let run = RunId::new(555);
+    let seq = EventSeq::new(99);
+    let stamp = RecoveryStampRecord {
+        run,
+        last_seq: seq,
+        written_at_ms: 1_234_567_890,
+    };
+
+    // Phase 1: write the stamp, then close the journal.
+    {
+        let mut journal =
+            FjallJournal::open(&path, Some(FjallConfig::default())).expect("open should succeed");
+        journal
+            .put_recovery_stamp(run, seq, stamp)
+            .expect("put_recovery_stamp must succeed");
+        journal.close().expect("close must succeed");
+    }
+
+    // Phase 2: reopen the journal and read the stamp back.
+    {
+        let journal =
+            FjallJournal::open(&path, Some(FjallConfig::default())).expect("reopen should succeed");
+        let loaded = journal
+            .get_recovery_stamp(run, seq)
+            .expect("get_recovery_stamp must succeed")
+            .expect("recovery_stamp must survive close/reopen");
+        assert_eq!(loaded, stamp, "reopened stamp must equal the persisted one");
+    }
 }

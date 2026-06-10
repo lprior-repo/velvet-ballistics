@@ -1,7 +1,7 @@
 //! Fjall keyspace manifest and prefix registry tests (vb-s6vj).
 //!
 //! Covers:
-//! - Prefix distinctness across all 9 keyspaces
+//! - Prefix distinctness across all 10 keyspaces
 //! - Big-endian byte ordering for u64/u32/u16 fields
 //! - Encode/decode roundtrip correctness (decode functions pending PO-vb-s6vj-006..010)
 //! - Typed error recovery for unknown prefixes and short keys (pending try_decode_key)
@@ -173,8 +173,8 @@ fn declared_keyspaces_count() {
     let keyspaces = FjallJournal::declared_keyspaces();
     assert_eq!(
         keyspaces.len(),
-        9,
-        "declared_keyspaces must return exactly 9 entries"
+        10,
+        "declared_keyspaces must return exactly 10 entries"
     );
 }
 
@@ -191,6 +191,7 @@ fn declared_keyspaces_contains_required_names() {
         "index_status",
         "index_workflow",
         "index_action",
+        "recovery_stamp",
     ];
 
     for name in required {

@@ -14,37 +14,86 @@
 //! Bound: 21 YamlError variants.
 
 use crate::YamlError;
-use vb_core::diagnostic::SymbolicCode;
+use vb_core::diagnostic::{HasSymbolicCode, SymbolicCode};
 
 /// Total number of YamlError variants as of vb-jpq7.34.
 const YAML_ERROR_VARIANT_COUNT: u8 = 21;
+
+/// Number of symbolic bytes used to materialise each string-typed field.
+/// kani 0.67.0 does not implement `Arbitrary` for `String`, so we
+/// generate a fixed-size byte array and convert via `String::from_utf8_lossy`.
+const STRING_FIELD_BYTES: usize = 8;
+
+/// Generate a `Box<str>` of length `N` from a symbolic ASCII byte array.
+///
+/// Uses `kani::any::<[u8; N]>()` because kani 0.67.0 does not implement
+/// `Arbitrary` for `String`. Each byte is constrained to ASCII (0..0x80)
+/// via `kani::assume`, which guarantees valid UTF-8 by construction
+/// and avoids the unbounded CBMC unwind through `String::from_utf8_lossy`.
+/// Length is fixed at `N` (no allocation-time length symbolic), keeping
+/// Kani tractable while every byte remains symbolic.
+#[inline]
+fn bounded_box_str<const N: usize>() -> Box<str> {
+    let bytes: [u8; N] = kani::any();
+    let mut owned = [0u8; N];
+    let mut i = 0;
+    while i < N {
+        let b = bytes[i];
+        kani::assume(b < 0x80);
+        owned[i] = b;
+        i += 1;
+    }
+    // Map each ASCII byte to its char representation; valid 1-byte UTF-8
+    // by construction. This bypasses `core::str::validations::run_utf8_validation`
+    // which iterates the full multi-byte UTF-8 sequence analysis and would
+    // blow up the CBMC unwind bound on a 21-variant harness.
+    let s: String = owned.iter().map(|&b| b as char).collect();
+    s.into_boxed_str()
+}
+
+/// Generate a `&'static str` of length `N` from a symbolic ASCII byte array
+/// by leaking the converted `String`. The leak is bounded by N.
+#[inline]
+fn bounded_static_str<const N: usize>() -> &'static str {
+    let bytes: [u8; N] = kani::any();
+    let mut owned = [0u8; N];
+    let mut i = 0;
+    while i < N {
+        let b = bytes[i];
+        kani::assume(b < 0x80);
+        owned[i] = b;
+        i += 1;
+    }
+    let s: String = owned.iter().map(|&b| b as char).collect();
+    Box::leak(s.into_boxed_str())
+}
 
 /// Generate an arbitrary YamlError variant with arbitrary field values
 /// using Kani's symbolic execution to cover all branches of
 /// `symbolic_code()`.
 ///
-/// NOTE (R-003): String fields use `kani::any::<String>()` (owned) instead
-/// of `kani::any::<&str>()` to avoid potential UB from dangling/unaligned
-/// symbolic references. `Box<str>` fields use `.into_boxed_str()`;
-/// `&'static str` fields use `.leak()` to create a valid static reference.
+/// NOTE (R-003-revised): kani 0.67.0 does not implement `Arbitrary` for
+/// `String`, so we materialise string fields from a symbolic
+/// `[u8; STRING_FIELD_BYTES]` via `String::from_utf8_lossy`. The leak
+/// for `&'static str` fields is bounded by the same N.
 fn arbitrary_yaml_error(variant: u8) -> YamlError {
     match variant {
         0 => YamlError::DuplicateKey {
-            key: kani::any::<String>().into_boxed_str(),
+            key: bounded_box_str::<STRING_FIELD_BYTES>(),
         },
         1 => YamlError::ForbiddenFeature {
-            detail: &*kani::any::<String>().leak(),
+            detail: bounded_static_str::<STRING_FIELD_BYTES>(),
         },
         2 => YamlError::AnchorAliasMerge,
         3 => YamlError::CustomTag {
-            tag: kani::any::<String>().into_boxed_str(),
+            tag: bounded_box_str::<STRING_FIELD_BYTES>(),
         },
         4 => YamlError::BinaryScalar,
         5 => YamlError::MultipleDocuments {
             count: kani::any::<usize>(),
         },
         6 => YamlError::AmbiguousScalar {
-            scalar: kani::any::<String>().into_boxed_str(),
+            scalar: bounded_box_str::<STRING_FIELD_BYTES>(),
         },
         7 => YamlError::SourceTooLarge {
             size: kani::any::<usize>(),
@@ -71,29 +120,29 @@ fn arbitrary_yaml_error(variant: u8) -> YamlError {
             max: kani::any::<usize>(),
         },
         13 => YamlError::UnknownField {
-            field: kani::any::<String>().into_boxed_str(),
+            field: bounded_box_str::<STRING_FIELD_BYTES>(),
         },
         14 => YamlError::EmptySource,
         15 => YamlError::MissingField {
-            field: &*kani::any::<String>().leak(),
+            field: bounded_static_str::<STRING_FIELD_BYTES>(),
         },
         16 => YamlError::FieldShape {
-            field: &*kani::any::<String>().leak(),
-            expected: &*kani::any::<String>().leak(),
+            field: bounded_static_str::<STRING_FIELD_BYTES>(),
+            expected: bounded_static_str::<STRING_FIELD_BYTES>(),
         },
         17 => YamlError::ParseError {
             line: kani::any::<usize>(),
-            reason: kani::any::<String>().into_boxed_str(),
+            reason: bounded_box_str::<STRING_FIELD_BYTES>(),
         },
         18 => YamlError::UnsupportedFeature {
-            feature: &*kani::any::<String>().leak(),
+            feature: bounded_static_str::<STRING_FIELD_BYTES>(),
         },
         19 => YamlError::UnsupportedTrigger {
-            trigger: &*kani::any::<String>().leak(),
+            trigger: bounded_static_str::<STRING_FIELD_BYTES>(),
         },
         20 => YamlError::LegacyPrimitive {
-            primitive: &*kani::any::<String>().leak(),
-            canonical: &*kani::any::<String>().leak(),
+            primitive: bounded_static_str::<STRING_FIELD_BYTES>(),
+            canonical: bounded_static_str::<STRING_FIELD_BYTES>(),
         },
         // Compile-time exhaustiveness: if variant >= YAML_ERROR_VARIANT_COUNT
         // the precondition is violated (kani::assume restricts to [0, 20]).
@@ -108,7 +157,9 @@ fn arbitrary_yaml_error(variant: u8) -> YamlError {
 /// no variant ever hits the `INTERNAL_INVARIANT` fallback in the
 /// production `HasSymbolicCode` impl.
 #[kani::proof]
-#[kani::unwind(21)]
+// CODE_REGISTRY has 236 entries; symbolic_to_numeric iterates the
+// registry, so this bound must exceed 236 to cover the worst case.
+#[kani::unwind(256)]
 fn verify_all_variants_registered() {
     let variant: u8 = kani::any();
     kani::assume(variant < YAML_ERROR_VARIANT_COUNT);
@@ -146,7 +197,10 @@ fn verify_all_variants_registered() {
 /// is exercised. This is a non-vacuity check — we cover! each concrete
 /// variant to ensure the harness actually exercises all 21 branches.
 #[kani::proof]
-#[kani::unwind(21)]
+// The coverage witness iterates 21 hardcoded variants, each calling
+// symbolic_code() (which iterates the 236-entry registry). 256 covers
+// the registry loop with margin.
+#[kani::unwind(256)]
 fn cover_all_variant_paths() {
     // Cover each variant individually so Kani reports coverage.
     let error = YamlError::DuplicateKey {

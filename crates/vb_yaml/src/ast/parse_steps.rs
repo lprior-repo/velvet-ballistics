@@ -95,7 +95,12 @@ fn parse_step_primitive(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
     }
 }
 
-fn is_primitive(field: &str) -> bool {
+/// Returns `true` if the given field name is a recognised step primitive.
+///
+/// `pub(crate)` so the `kani_is_primitive_legacy` harness under
+/// `src/kani_is_primitive_legacy.rs` can verify the legacy-name
+/// rejection behavior. Not part of the public API.
+pub(crate) fn is_primitive(field: &str) -> bool {
     matches!(
         field,
         "set"

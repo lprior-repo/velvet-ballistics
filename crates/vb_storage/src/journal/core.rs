@@ -12,8 +12,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use crate::{
     constants::{
         KEYSPACE_BLOB, KEYSPACE_COMPILED_IR, KEYSPACE_INDEX_ACTION, KEYSPACE_INDEX_STATUS,
-        KEYSPACE_INDEX_WORKFLOW, KEYSPACE_RUN_EVENT, KEYSPACE_RUN_HEADER, KEYSPACE_RUN_SNAPSHOT,
-        KEYSPACE_WORKFLOW_SOURCE,
+        KEYSPACE_INDEX_WORKFLOW, KEYSPACE_RECOVERY_STAMP, KEYSPACE_RUN_EVENT, KEYSPACE_RUN_HEADER,
+        KEYSPACE_RUN_SNAPSHOT, KEYSPACE_WORKFLOW_SOURCE,
     },
     error::JournalError,
     process_lock::ProcessLock,
@@ -59,6 +59,7 @@ pub struct FjallJournal {
     pub(crate) index_status: fjall::Keyspace,
     pub(crate) index_workflow: fjall::Keyspace,
     pub(crate) index_action: fjall::Keyspace,
+    pub(crate) recovery_stamp: fjall::Keyspace,
     #[cfg(test)]
     pub(crate) fail_next_persist: AtomicBool,
     // SAFETY: write_lock is used in append_unpersisted() for poison detection.
@@ -103,6 +104,9 @@ impl FjallJournal {
         let index_action = database.keyspace(KEYSPACE_INDEX_ACTION, || {
             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
         })?;
+        let recovery_stamp = database.keyspace(KEYSPACE_RECOVERY_STAMP, || {
+            crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+        })?;
         let _process_lock = ProcessLock::acquire(path_ref)?;
         Ok(Self {
             database,
@@ -115,6 +119,7 @@ impl FjallJournal {
             index_status,
             index_workflow,
             index_action,
+            recovery_stamp,
             #[cfg(test)]
             fail_next_persist: AtomicBool::new(false),
             write_lock: Mutex::new(()),
@@ -124,7 +129,7 @@ impl FjallJournal {
 
     /// Returns all declared keyspace names after a successful open.
     #[must_use]
-    pub const fn declared_keyspaces() -> [&'static str; 9] {
+    pub const fn declared_keyspaces() -> [&'static str; 10] {
         [
             KEYSPACE_WORKFLOW_SOURCE,
             KEYSPACE_COMPILED_IR,
@@ -135,6 +140,7 @@ impl FjallJournal {
             KEYSPACE_INDEX_STATUS,
             KEYSPACE_INDEX_WORKFLOW,
             KEYSPACE_INDEX_ACTION,
+            KEYSPACE_RECOVERY_STAMP,
         ]
     }
 

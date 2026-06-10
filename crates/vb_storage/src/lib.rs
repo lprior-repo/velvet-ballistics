@@ -204,6 +204,7 @@ mod recover_tests;
 pub mod queue;
 pub mod records;
 pub mod recovery;
+pub mod recovery_stamps;
 pub mod security_tests;
 pub mod slot_extra;
 pub mod snapshots;

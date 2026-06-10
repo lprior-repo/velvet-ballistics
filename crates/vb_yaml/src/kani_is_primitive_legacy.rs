@@ -41,7 +41,6 @@
 /// - AFTER FIX: Kani reports SUCCESS (is_primitive returns false)
 #[kani::proof]
 #[kani::unwind(4)]
-#[kani::no_unwinding_checks]
 fn is_primitive_parallel_harness() {
     // Test the legacy "parallel" key - should return false after fix
     let result = crate::ast::parse_steps::is_primitive("parallel");
@@ -54,7 +53,8 @@ fn is_primitive_parallel_harness() {
 /// KANI-XI2F-16-002: Bounded verification using kani::any() for vacuity check.
 ///
 /// ## Scope
-/// Uses kani::any()::<String>() to generate arbitrary string inputs.
+/// Uses kani::any::<[u8; N]>() to generate arbitrary string inputs
+/// (kani 0.67.0 does not implement `Arbitrary` for `String`).
 /// Proves that for any string, is_primitive either returns true for
 /// canonical names or false for non-canonical names.
 ///
@@ -66,10 +66,12 @@ fn is_primitive_parallel_harness() {
 /// Kani verifies that is_primitive is defined for all string inputs
 #[kani::proof]
 #[kani::unwind(4)]
-#[kani::no_unwinding_checks]
 fn is_primitive_any_string_harness() {
-    // Use kani::any() for unbounded input to avoid vacuity
-    let input: String = kani::any();
+    // kani 0.67.0: `String: Arbitrary` is not implemented, so generate a
+    // bounded symbolic byte array and convert via from_utf8_lossy.
+    const N: usize = 8;
+    let bytes: [u8; N] = kani::any();
+    let input: String = String::from_utf8_lossy(&bytes).into_owned();
     // is_primitive should not panic on any string input
     let _result = crate::ast::parse_steps::is_primitive(&input);
     // If we reach here, is_primitive is defined for this input
@@ -95,7 +97,6 @@ fn is_primitive_any_string_harness() {
 /// - AFTER FIX: Kani reports SUCCESS (is_primitive returns false)
 #[kani::proof]
 #[kani::unwind(4)]
-#[kani::no_unwinding_checks]
 fn is_primitive_aggregate_harness() {
     // Test the legacy "aggregate" key - should return false after fix
     let result = crate::ast::parse_steps::is_primitive("aggregate");
@@ -120,7 +121,6 @@ fn is_primitive_aggregate_harness() {
 /// - AFTER FIX: Kani reports SUCCESS
 #[kani::proof]
 #[kani::unwind(4)]
-#[kani::no_unwinding_checks]
 fn is_primitive_together_harness() {
     let result = crate::ast::parse_steps::is_primitive("together");
     kani::assert(result, "is_primitive(\"together\") must return true");
@@ -141,7 +141,6 @@ fn is_primitive_together_harness() {
 /// - AFTER FIX: Kani reports SUCCESS
 #[kani::proof]
 #[kani::unwind(4)]
-#[kani::no_unwinding_checks]
 fn is_primitive_reduce_harness() {
     let result = crate::ast::parse_steps::is_primitive("reduce");
     kani::assert(result, "is_primitive(\"reduce\") must return true");

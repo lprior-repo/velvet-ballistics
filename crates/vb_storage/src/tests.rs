@@ -702,7 +702,7 @@ mod tests {
     fn journal_opens_declared_keyspaces_and_round_trips_typed_records() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        assert_eq!(FjallJournal::declared_keyspaces().len(), 9);
+        assert_eq!(FjallJournal::declared_keyspaces().len(), 10);
 
         let source_bytes = vec![b'n', b'a', b'm', b'e'];
         let workflow_digest = WorkflowDigest::from_bytes(blake3::hash(&source_bytes).into());
@@ -1627,7 +1627,7 @@ mod tests {
 
         let reopened = init_keyspaces(temp_dir.path());
         assert!(reopened.is_ok(), "init_keyspaces should succeed");
-        assert_eq!(FjallJournal::declared_keyspaces().len(), 9);
+        assert_eq!(FjallJournal::declared_keyspaces().len(), 10);
     }
 
     #[test]
@@ -2320,12 +2320,12 @@ mod tests {
     }
 
     #[test]
-    fn declared_keyspaces_returns_nine_entries() {
+    fn declared_keyspaces_returns_ten_entries() {
         // Given FjallJournal::declared_keyspaces()
         // When called
-        // Then it returns exactly 9 keyspace names
+        // Then it returns exactly 10 keyspace names
         let keyspaces = FjallJournal::declared_keyspaces();
-        assert_eq!(keyspaces.len(), 9);
+        assert_eq!(keyspaces.len(), 10);
         assert_eq!(keyspaces[0], "workflow_source");
         assert_eq!(keyspaces[1], "compiled_ir");
         assert_eq!(keyspaces[2], "run_header");
@@ -2335,6 +2335,7 @@ mod tests {
         assert_eq!(keyspaces[6], "index_status");
         assert_eq!(keyspaces[7], "index_workflow");
         assert_eq!(keyspaces[8], "index_action");
+        assert_eq!(keyspaces[9], "recovery_stamp");
     }
 
     #[test]

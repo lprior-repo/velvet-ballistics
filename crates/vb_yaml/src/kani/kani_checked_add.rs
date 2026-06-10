@@ -48,12 +48,12 @@ fn check_checked_add_counters_depth() {
             assert!(new_depth > depth);
             // Cover: production branch where depth exceeds limit (lines 97-102, 113-118)
             if new_depth > max_depth {
-                kani::cover!("depth_exceeded_max");
+                kani::cover!(true, "depth_exceeded_max");
                 // This path leads to an early return with NestingTooDeep in production.
             }
         }
         Err(_) => {
-            kani::cover!("depth_overflow");
+            kani::cover!(true, "depth_overflow");
             // Overflow path: depth was u16::MAX, checked_add returns None.
             assert_eq!(depth, u16::MAX);
         }
@@ -80,11 +80,11 @@ fn check_checked_add_counters_node_count() {
         Ok(new_count) => {
             assert!(new_count > node_count);
             if new_count > max_nodes {
-                kani::cover!("node_count_exceeded_max");
+                kani::cover!(true, "node_count_exceeded_max");
             }
         }
         Err(_) => {
-            kani::cover!("node_count_overflow");
+            kani::cover!(true, "node_count_overflow");
             assert_eq!(node_count, u32::MAX);
         }
     }
@@ -105,7 +105,7 @@ fn check_checked_add_counters_document_count() {
             assert!(new_count > document_count);
         }
         Err(_) => {
-            kani::cover!("document_count_overflow");
+            kani::cover!(true, "document_count_overflow");
             assert_eq!(document_count, usize::MAX);
         }
     }
@@ -128,14 +128,14 @@ fn check_checked_add_counters_sequence() {
         Ok(new_count) => {
             assert!(new_count > count);
             if new_count > max_sequence_len {
-                kani::cover!("sequence_len_exceeded_max");
+                kani::cover!(true, "sequence_len_exceeded_max");
                 // In production (profile_validation.rs:167-172), this returns SequenceTooLong.
                 // The Kani harness uses NodeLimitExceeded for the overflow case because
                 // checked_add checking is the same pattern regardless of error variant.
             }
         }
         Err(_) => {
-            kani::cover!("sequence_count_overflow");
+            kani::cover!(true, "sequence_count_overflow");
             assert_eq!(count, usize::MAX);
         }
     }
@@ -158,12 +158,12 @@ fn check_checked_add_counters_mapping() {
         Ok(new_count) => {
             assert!(new_count > count);
             if new_count > max_mapping_entries {
-                kani::cover!("mapping_entries_exceeded_max");
+                kani::cover!(true, "mapping_entries_exceeded_max");
                 // In production (profile_validation.rs:141-146), this returns MappingTooLarge.
             }
         }
         Err(_) => {
-            kani::cover!("mapping_count_overflow");
+            kani::cover!(true, "mapping_count_overflow");
             assert_eq!(count, usize::MAX);
         }
     }
@@ -190,7 +190,7 @@ fn check_checked_add_counters_merge() {
             assert!(sum >= child);
         }
         Err(_) => {
-            kani::cover!("merge_overflow");
+            kani::cover!(true, "merge_overflow");
             // Overflow: parent + child > usize::MAX.
             assert!(parent > usize::MAX - child);
         }

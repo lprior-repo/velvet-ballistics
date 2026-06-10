@@ -768,6 +768,7 @@ blob              large input/output/action payload blobs
 index_status      status/time indexes
 index_workflow    workflow/run indexes
 index_action      pending action indexes
+recovery_stamp    recovery-stamp progress markers (wire ID 7, magic VRST)
 ```
 
 Binary key format uses prefix bytes plus big-endian numeric IDs. String keys are forbidden on hot paths.
@@ -782,6 +783,7 @@ Binary key format uses prefix bytes plus big-endian numeric IDs. String keys are
 [0x30][state_u8][timestamp_u64_be][run_id_u64_be]  -> index_status
 [0x31][workflow_id_u32_be][run_id_u64_be]          -> index_workflow
 [0x32][action_id_u16_be][run_id_u64_be][step_u16]  -> index_action
+[0x40][run_id_u64_be][seq_u64_be]                  -> recovery_stamp
 ```
 
 Durability profiles:
@@ -829,6 +831,7 @@ Magic values:
 | IPC frame | `0x56424C54` | `VBLT` |
 | Workflow source record | `0x56425352` | `VBSR` |
 | Index record | `0x56424958` | `VBIX` |
+| Recovery stamp (wire ID 7) | `0x56525354` | `VRST` |
 
 Required `record_kind_u16` IDs:
 
@@ -837,6 +840,7 @@ Required `record_kind_u16` IDs:
 | 1 | `WorkflowSource` |
 | 2 | `CompiledIr` |
 | 3 | `RunHeader` |
+| 7 | `RecoveryStamp` (magic `0x56525354`, `recovery_stamp` keyspace, prefix `0x40`, key `[0x40][run_id][seq]`) |
 | 10 | `RunAccepted` |
 | 11 | `StepStarted` |
 | 12 | `SlotWritten` |
@@ -1232,7 +1236,7 @@ Required coverage areas:
 
 | Area | Required public surface |
 |------|------------------------|
-| Database | `FjallJournal::open` (creates/opens Fjall with 9 keyspaces). |
+| Database | `FjallJournal::open` (creates/opens Fjall with 10 keyspaces). |
 | Write path | `append_journaled`, `append_strict`, `append_strict_batch`, `persist_strict`. Write lock for ordering. |
 | Keyspaces | Per-keyspace put/get: `put_workflow_source`, `put_compiled_ir`, `put_run_header`, `put_snapshot`, `put_blob`, index puts. |
 | Read path | `workflow_source`, `compiled_ir`, `run_header`, `run_headers`, `snapshot`, `blob`, `events_for_run`. |

@@ -28,43 +28,52 @@
 use super::super::*;
 use crate::cli_envelope::SCHEMA_VERSION;
 
-/// Build a JSON envelope from a typed validate-fallback struct, run it
-/// through the production dispatch, and verify the resulting `Generic`
-/// payload's body survives a full `postcard` → `decode_cli_payload`
-/// round-trip with the expected kind discriminant.
+/// Dispatch the JSON envelope built from a typed validate-fallback
+/// struct, assert the resulting payload is `Generic` with the expected
+/// kind discriminant, and extract the body bytes plus the original
+/// envelope tree for downstream assertions.
 ///
-/// Field-by-field equality is verified by serializing the typed struct
-/// to JSON via `serde_json::to_value` and asserting every field maps
-/// into the envelope JSON (which is what `classify_envelope` deserialized
-/// to build the typed body). The body bytes themselves are also
-/// asserted byte-for-byte stable to pin the wire format.
-fn round_trip_validate_fallback<T>(typed: &T, expected_kind: CliPostcardKind)
+/// Returns the postcard-encoded body bytes and the original
+/// `serde_json::Value` envelope so callers can independently re-decode
+/// the body as a typed struct AND assert the envelope-tree shape.
+fn dispatch_extract_body<T>(
+    typed: &T,
+    expected_kind: CliPostcardKind,
+) -> (Vec<u8>, serde_json::Value)
 where
     T: serde::Serialize,
 {
     let envelope = serde_json::to_value(typed).expect("typed struct must serialize to JSON");
     let payload =
         classify_envelope(&envelope).expect("shape-matched envelope must classify to Generic");
-
     let body = match payload {
         CliPostcardPayload::Generic(generic) => {
-            assert_eq!(generic.kind, expected_kind);
+            assert_eq!(
+                generic.kind, expected_kind,
+                "Generic kind must match expected"
+            );
             generic.body
         }
         other => panic!("expected Generic variant, got {other:?}"),
     };
+    (body, envelope)
+}
 
+/// Pin the postcard wire format: rebuild a `Generic` payload from the
+/// extracted body bytes, encode via postcard, and decode via
+/// `decode_cli_payload`. The kind discriminant and body bytes must
+/// round-trip byte-for-byte.
+fn postcard_round_trip_body(body: &[u8], expected_kind: CliPostcardKind) {
     let payload_round = CliPostcardPayload::Generic(GenericPayload {
         kind: expected_kind,
-        body: body.clone(),
+        body: body.to_vec(),
     });
     let bytes =
         postcard::to_allocvec(&payload_round).expect("Generic payload must postcard-encode");
     let decoded = decode_cli_payload(&bytes).expect("Generic payload must round-trip");
-
     match decoded {
         CliPostcardPayload::Generic(generic) => {
-            assert_eq!(generic.kind, expected_kind);
+            assert_eq!(generic.kind, expected_kind, "kind survives round-trip");
             assert_eq!(
                 generic.body, body,
                 "Generic body must round-trip byte-for-byte (typed struct preserved)"
@@ -72,20 +81,18 @@ where
         }
         other => panic!("expected Generic variant, got {other:?}"),
     }
+}
 
-    // Field-by-field equality via JSON-tree comparison: the envelope
-    // we built from the typed struct must round-trip through
-    // classify_envelope into a body that decodes back to the same
-    // envelope shape via GenericEnvelopeRepr.
-    //
-    // Note: this decode goes through the typed struct (because the
-    // body bytes ARE the postcard-encoded typed struct), so a direct
-    // GenericEnvelopeRepr::decode_body_as_json would fail with
-    // WontImplement (serde_json::Value cannot be deserialized from
-    // arbitrary postcard bytes). The shape-match contract is pinned
-    // by the byte-level body assertion above plus the kind-discriminant
-    // assertion. The JSON-tree comparison here is structural, using
-    // the original `envelope` value as the ground truth.
+/// Structural assertions on the original envelope JSON tree: the
+/// `kind` field must match the expected discriminant (literal label
+/// supplied by the test, NOT computed from the kind enum), and
+/// `schema_version` must equal the canonical `SCHEMA_VERSION`.
+///
+/// Taking the literal label as a `&str` argument (rather than a
+/// `CliPostcardKind → &'static str` helper with a wildcard arm) keeps
+/// the wildcard panic out of test code: the literal is owned by the
+/// test caller.
+fn assert_envelope_tree_matches(envelope: &serde_json::Value, expected_kind_label: &str) {
     let envelope_tree = envelope
         .as_object()
         .expect("envelope must be a JSON object");
@@ -93,7 +100,7 @@ where
         envelope_tree
             .get("kind")
             .and_then(serde_json::Value::as_str),
-        Some(expected_kind_label(expected_kind)),
+        Some(expected_kind_label),
         "envelope kind must match the expected discriminant"
     );
     assert_eq!(
@@ -105,12 +112,47 @@ where
     );
 }
 
-fn expected_kind_label(kind: CliPostcardKind) -> &'static str {
-    match kind {
-        CliPostcardKind::SystemStatus => "SystemStatus",
-        CliPostcardKind::AiContextPacket => "AiContextPacket",
-        CliPostcardKind::WorkflowDiffReport => "workflow_diff_report",
-        _ => panic!("expected_kind_label called for non-fallback kind: {kind:?}"),
+/// Mutation-resistant typed round-trip assertion: prove the dispatch
+/// arm at `classify.rs:95-97` was actually exercised (vs deleted and
+/// falling through to `encode_generic`).
+///
+/// The dispatch has two paths to a `Generic` body:
+///   - `typed_validate_fallback` (shape match): body is the
+///     postcard-encoded typed struct, e.g. `SystemStatusReport`. The
+///     typed structs model nested JSON trees as `serde_json::Value`
+///     (see `types_more.rs`), which postcard can encode but CANNOT
+///     decode (`serde_json::Value::deserialize` calls
+///     `deserialize_any`, which postcard refuses with `WontImplement`).
+///     So the body is NOT a valid postcard encoding of the typed
+///     struct from the decode side, and it is also NOT a valid
+///     `GenericEnvelopeRepr` encoding — the wire format is a one-way
+///     typed postcard stream.
+///   - `encode_generic` (generic fallback, including deletion of the
+///     typed arm): body is a postcard-encoded `GenericEnvelopeRepr`,
+///     which `GenericEnvelopeRepr::decode_body_as_json` reconstructs
+///     back to the original `serde_json::Value` envelope tree.
+///
+/// The mutation-resistant assertion is the NEGATIVE of the generic
+/// path: `decode_body_as_json` must NOT reconstruct the original
+/// envelope JSON tree. If the typed arm is deleted, the dispatch
+/// falls through to `encode_generic`, the body becomes
+/// `GenericEnvelopeRepr`, `decode_body_as_json` succeeds, and the
+/// recovered JSON tree EQUALS the original envelope — failing this
+/// assertion.
+fn assert_body_is_typed_fallback_not_generic(body: &[u8], envelope: &serde_json::Value) {
+    match GenericEnvelopeRepr::decode_body_as_json(body) {
+        Err(_) => {
+            // Decode failed — the body is NOT a valid `GenericEnvelopeRepr`,
+            // which proves the typed arm was exercised. (Postcard
+            // serialization of the typed struct is one-way.)
+        }
+        Ok(recovered) => {
+            assert_ne!(
+                recovered, *envelope,
+                "body decoded as GenericEnvelopeRepr back to the original envelope — \
+                 typed_validate_fallback arm was skipped (dispatch fell through to encode_generic)"
+            );
+        }
     }
 }
 
@@ -133,7 +175,11 @@ fn typed_system_status_payload_round_trips() {
     assert_eq!(report.server, "primary");
     assert!(report.connected);
     assert_eq!(report.reason, "all checks passed");
-    round_trip_validate_fallback(&report, CliPostcardKind::SystemStatus);
+
+    let (body, envelope) = dispatch_extract_body(&report, CliPostcardKind::SystemStatus);
+    postcard_round_trip_body(&body, CliPostcardKind::SystemStatus);
+    assert_body_is_typed_fallback_not_generic(&body, &envelope);
+    assert_envelope_tree_matches(&envelope, "SystemStatus");
 }
 
 #[test]
@@ -168,7 +214,11 @@ fn typed_ai_context_packet_payload_round_trips() {
     assert_eq!(report.run_id, 4242);
     assert_eq!(report.journal_event_trail.len(), 2);
     assert_eq!(report.suggested_next_cli_commands.len(), 2);
-    round_trip_validate_fallback(&report, CliPostcardKind::AiContextPacket);
+
+    let (body, envelope) = dispatch_extract_body(&report, CliPostcardKind::AiContextPacket);
+    postcard_round_trip_body(&body, CliPostcardKind::AiContextPacket);
+    assert_body_is_typed_fallback_not_generic(&body, &envelope);
+    assert_envelope_tree_matches(&envelope, "AiContextPacket");
 }
 
 #[test]
@@ -198,7 +248,11 @@ fn typed_workflow_diff_report_payload_round_trips() {
     assert_eq!(report.workflow, "wf-v2");
     assert_eq!(report.against, "wf-v1");
     assert_eq!(report.total_differences, 1);
-    round_trip_validate_fallback(&report, CliPostcardKind::WorkflowDiffReport);
+
+    let (body, envelope) = dispatch_extract_body(&report, CliPostcardKind::WorkflowDiffReport);
+    postcard_round_trip_body(&body, CliPostcardKind::WorkflowDiffReport);
+    assert_body_is_typed_fallback_not_generic(&body, &envelope);
+    assert_envelope_tree_matches(&envelope, "workflow_diff_report");
 }
 
 #[test]

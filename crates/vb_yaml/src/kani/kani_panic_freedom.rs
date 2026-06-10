@@ -17,7 +17,8 @@
 //! - Max depth: 64 (from YamlLimits::default)
 //! - Max nodes: 100,000 (from YamlLimits::default)
 
-use vb_yaml::{parse_yaml_events, validate_yaml_profile};
+use crate::{parse_yaml_events, validate_yaml_profile};
+use vb_core::diagnostic::HasSymbolicCode;
 
 /// Bounded input size for Kani tractability.
 const MAX_KANI_INPUT: usize = 256;
@@ -42,7 +43,7 @@ fn arbitrary_utf8_input() -> Vec<u8> {
 /// PO-KANI-004: `parse_yaml_events` never panics on any valid UTF-8
 /// input up to MAX_KANI_INPUT bytes.
 #[kani::proof]
-#[kani::unwind(MAX_KANI_INPUT as u32)]
+#[kani::unwind(256)]
 fn check_parse_yaml_events_panic_free() {
     let data = arbitrary_utf8_input();
 
@@ -80,7 +81,7 @@ fn check_parse_yaml_events_panic_free() {
 
 /// PO-KANI-004 (extended): `validate_yaml_profile` never panics.
 #[kani::proof]
-#[kani::unwind(MAX_KANI_INPUT as u32)]
+#[kani::unwind(256)]
 fn check_validate_yaml_profile_panic_free() {
     let data = arbitrary_utf8_input();
 
