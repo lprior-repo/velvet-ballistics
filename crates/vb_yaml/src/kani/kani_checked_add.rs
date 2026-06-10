@@ -112,16 +112,23 @@ fn check_checked_add_counters_document_count() {
 }
 
 /// Verifies that sequence counter `checked_add(1)` — as used at
-/// profile_validation.rs:162-166 — never panics and detects overflow.
+/// profile_validation.rs:163-166 — never panics and detects overflow.
+///
+/// The `Err` variant is `YamlError::SequenceTooLong`: this is the
+/// user-facing semantic of the surrounding code at
+/// profile_validation.rs:167-172 (the post-increment soft-limit check
+/// returns `SequenceTooLong`, and the test-review contract is that the
+/// harness models the user-visible error rather than the internal
+/// `ok_or` argument).
 #[kani::proof]
 fn check_checked_add_counters_sequence() {
     let count: usize = kani::any();
     let limits = YamlLimits::default();
     let max_sequence_len = limits.max_sequence_len;
 
-    let result = count.checked_add(1).ok_or(YamlError::NodeLimitExceeded {
-        count: u32::MAX,
-        max: limits.max_nodes,
+    let result = count.checked_add(1).ok_or(YamlError::SequenceTooLong {
+        len: count,
+        max: max_sequence_len,
     });
 
     match result {
@@ -129,9 +136,6 @@ fn check_checked_add_counters_sequence() {
             assert!(new_count > count);
             if new_count > max_sequence_len {
                 kani::cover!(true, "sequence_len_exceeded_max");
-                // In production (profile_validation.rs:167-172), this returns SequenceTooLong.
-                // The Kani harness uses NodeLimitExceeded for the overflow case because
-                // checked_add checking is the same pattern regardless of error variant.
             }
         }
         Err(_) => {
@@ -142,16 +146,23 @@ fn check_checked_add_counters_sequence() {
 }
 
 /// Verifies that mapping entry counter `checked_add(1)` — as used at
-/// profile_validation.rs:136-140 — never panics and detects overflow.
+/// profile_validation.rs:137-140 — never panics and detects overflow.
+///
+/// The `Err` variant is `YamlError::MappingTooLarge`: this is the
+/// user-facing semantic of the surrounding code at
+/// profile_validation.rs:141-146 (the post-increment soft-limit check
+/// returns `MappingTooLarge`, and the test-review contract is that the
+/// harness models the user-visible error rather than the internal
+/// `ok_or` argument).
 #[kani::proof]
 fn check_checked_add_counters_mapping() {
     let count: usize = kani::any();
     let limits = YamlLimits::default();
     let max_mapping_entries = limits.max_mapping_entries;
 
-    let result = count.checked_add(1).ok_or(YamlError::NodeLimitExceeded {
-        count: u32::MAX,
-        max: limits.max_nodes,
+    let result = count.checked_add(1).ok_or(YamlError::MappingTooLarge {
+        count,
+        max: max_mapping_entries,
     });
 
     match result {
@@ -159,7 +170,6 @@ fn check_checked_add_counters_mapping() {
             assert!(new_count > count);
             if new_count > max_mapping_entries {
                 kani::cover!(true, "mapping_entries_exceeded_max");
-                // In production (profile_validation.rs:141-146), this returns MappingTooLarge.
             }
         }
         Err(_) => {
@@ -170,18 +180,29 @@ fn check_checked_add_counters_mapping() {
 }
 
 /// Verifies that nested counter merge `checked_add(count)` — as used
-/// at profile_validation.rs:182-184 and :198-200 — never panics and
+/// at profile_validation.rs:182-188 and :198-204 — never panics and
 /// detects overflow when merging child counters into parent.
+///
+/// The `Err` variant is `YamlError::NodeLimitExceeded`: this is the
+/// production variant at profile_validation.rs:185-188 and :201-204.
+/// The merge path has no soft-limit post-check (the `SequenceTooLong`/
+/// `MappingTooLarge` checks are only reached on `Scalar` events at the
+/// innermost level, not on the parent-counter merge). Therefore
+/// `NodeLimitExceeded` is the only error variant the production
+/// construct can return at the merge overflow point. This is the
+/// production-call-site-faithful variant, confirmed by the test-review
+/// finding (HIGH 4): "the latter is correct for `merge`".
 #[kani::proof]
 fn check_checked_add_counters_merge() {
     let parent: usize = kani::any();
     let child: usize = kani::any();
+    let max_nodes = YamlLimits::default().max_nodes;
 
     let result = parent
         .checked_add(child)
         .ok_or(YamlError::NodeLimitExceeded {
             count: u32::MAX,
-            max: YamlLimits::default().max_nodes,
+            max: max_nodes,
         });
 
     match result {

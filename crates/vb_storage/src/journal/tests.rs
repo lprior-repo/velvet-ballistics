@@ -2709,14 +2709,26 @@ fn recover_full_journal_writes_recovery_stamp_and_persists_across_reopen() {
     }
 }
 
-/// Given a `FjallJournal` that already carries a `RecoveryStampRecord` for a
-///      run (e.g., after a previous successful recovery call),
-/// When `recover_full_journal` is invoked a second time for the same run,
-/// Then the recovery still succeeds and the existing stamp is preserved
-///      (i.e., a second stamp is not written, the marker is stable).
+/// Given a `FjallJournal` that contains a small run sequence and NO prior
+///      `RecoveryStampRecord` for that run,
+/// When `recover_full_journal` is invoked for the first time,
+/// Then the production recovery path itself writes a stamp at
+///      `(run, last_seq)`, and the stamp survives a close/reopen cycle.
+/// And when `recover_full_journal` is invoked a SECOND time on the same
+///      journal, the existing stamp is preserved (its timestamp is
+///      unchanged), proving the `is_none()` branch in the production
+///      recovery path skips re-writing the stamp.
+///
+/// This test deliberately does NOT use `FjallJournal::put_recovery_stamp`
+/// or `FjallJournal::get_recovery_stamp` as setup helpers, because doing so
+/// would let a future mutation that simply removes the `put_recovery_stamp`
+/// call from `recover_full_journal` go undetected: a planted stamp would
+/// still appear "preserved" even if production code never wrote it. By
+/// requiring the FIRST call to `recover_full_journal` to be the one that
+/// creates the stamp, the test fails the moment the production wire-up is
+/// removed (Phase 1 would observe `None` from `get_recovery_stamp`).
 #[test]
 fn recover_full_journal_preserves_existing_recovery_stamp_on_replay() {
-    use crate::RecoveryStampRecord;
     use crate::recovery::{ActionReplayTracker, recover_full_journal};
 
     let temp = tempfile::tempdir().expect("tempdir creation should succeed");
@@ -2724,11 +2736,16 @@ fn recover_full_journal_preserves_existing_recovery_stamp_on_replay() {
     let run = RunId::new(0xD03);
     let workflow = WorkflowDigest::from_bytes([0x7E; DIGEST_BYTES]);
     let last_seq = EventSeq::new(2);
-    let original_written_at_ms: u64 = 1_700_000_000_000;
 
-    // Phase 1: write the events, then plant a stamp with a known timestamp.
+    let first_stamp_written_at_ms: u64;
+
+    // Phase 1: open the journal, append the run's events, then call the
+    //          production `recover_full_journal` for the FIRST time. The
+    //          recovery path must write a stamp at `(run, last_seq)`.
+    //          Capture the stamp's `written_at_ms` so Phase 2 can prove the
+    //          second call did not overwrite it.
     {
-        let journal = FjallJournal::open(&path, None).expect("open should succeed");
+        let mut journal = FjallJournal::open(&path, None).expect("open should succeed");
 
         journal
             .append_journaled(&JournalEvent::RunAccepted {
@@ -2755,36 +2772,109 @@ fn recover_full_journal_preserves_existing_recovery_stamp_on_replay() {
             })
             .expect("append RunFinished should succeed");
 
-        // Plant a stamp with a known (non-recent) timestamp.
-        journal
-            .put_recovery_stamp(
-                run,
-                last_seq,
-                RecoveryStampRecord {
-                    run,
-                    last_seq,
-                    written_at_ms: original_written_at_ms,
-                },
-            )
-            .expect("plant stamp must succeed");
-    }
+        // Pre-condition: no stamp may exist before the first recovery call.
+        // If a prior run left a stamp at this (run, last_seq) it would
+        // short-circuit Phase 1's write path; assert absence so Phase 1 is
+        // forced to depend on the production wire-up.
+        let pre = journal
+            .get_recovery_stamp(run, last_seq)
+            .expect("get_recovery_stamp pre-read must succeed");
+        assert!(
+            pre.is_none(),
+            "no recovery_stamp may exist before the first recover_full_journal call"
+        );
 
-    // Phase 2: reopen the journal, run recover_full_journal again, and verify
-    //          the original stamp is preserved (its timestamp is unchanged).
-    {
-        let journal = FjallJournal::open(&path, None).expect("reopen should succeed");
+        // First production recovery call. This MUST persist a stamp at
+        // (run, last_seq). If the production `put_recovery_stamp` call is
+        // removed, the post-recovery assertion below will fail.
         let mut tracker = ActionReplayTracker::new();
         let replayed = recover_full_journal(&journal, run, &mut tracker, &[], &[])
-            .expect("recover_full_journal must succeed even when a stamp already exists");
-        assert_eq!(replayed.len(), 3, "all three events must still be replayed");
+            .expect("first recover_full_journal must succeed");
+        assert_eq!(
+            replayed.len(),
+            3,
+            "all three events must be replayed on the first recovery call"
+        );
 
         let stamp = journal
             .get_recovery_stamp(run, last_seq)
-            .expect("get_recovery_stamp must succeed")
-            .expect("stamp must still exist after a second recovery call");
+            .expect("get_recovery_stamp post-recovery must succeed")
+            .expect(
+                "recover_full_journal must persist a RecoveryStampRecord at (run, last_seq); \
+                 if this fails, the production put_recovery_stamp call has been removed",
+            );
         assert_eq!(
-            stamp.written_at_ms, original_written_at_ms,
-            "existing stamp must be preserved (no new stamp should overwrite it)"
+            stamp.run, run,
+            "first-call stamp must reference the recovered run"
+        );
+        assert_eq!(
+            stamp.last_seq, last_seq,
+            "first-call stamp must reference the last replayed sequence number"
+        );
+        // The timestamp must be a real wall-clock value, not a sentinel.
+        assert!(
+            stamp.written_at_ms > 1_700_000_000_000,
+            "first-call stamp.written_at_ms must be a recent unix-millis timestamp, got {}",
+            stamp.written_at_ms
+        );
+        first_stamp_written_at_ms = stamp.written_at_ms;
+
+        // Explicit close so the durability barrier is enforced before the
+        // process exits the Phase 1 block, matching the close-then-reopen
+        // pattern used by sibling tests (e.g. Test 1 above and the prior
+        // recovery_stamp_survives_close_and_reopen BDD at line 2551).
+        journal.close().expect("close must succeed");
+    }
+
+    // Phase 2: reopen the journal, then call `recover_full_journal` a
+    //          SECOND time. The stamp written by Phase 1 must be preserved
+    //          (its `written_at_ms` must still equal `first_stamp_written_at_ms`).
+    {
+        let journal = FjallJournal::open(&path, None).expect("reopen should succeed");
+
+        // Pre-condition: the stamp written in Phase 1 must have survived
+        // the close/reopen cycle. This pins durability as well as the
+        // production wire-up.
+        let reopened_stamp = journal
+            .get_recovery_stamp(run, last_seq)
+            .expect("get_recovery_stamp after reopen must succeed")
+            .expect("stamp written by the first recovery call must survive close/reopen");
+        assert_eq!(
+            reopened_stamp.written_at_ms, first_stamp_written_at_ms,
+            "stamp timestamp must be unchanged across close/reopen"
+        );
+
+        // Second production recovery call. The existing stamp must NOT be
+        // overwritten: the `is_none()` branch in the production code must
+        // skip the `put_recovery_stamp` call. If a regression made the
+        // production code always call `put_recovery_stamp`, the timestamp
+        // would be bumped to a fresh wall-clock value and this assertion
+        // would catch it (we captured the exact T1 above).
+        let mut tracker = ActionReplayTracker::new();
+        let replayed = recover_full_journal(&journal, run, &mut tracker, &[], &[])
+            .expect("second recover_full_journal must succeed");
+        assert_eq!(
+            replayed.len(),
+            3,
+            "all three events must still be replayed on the second recovery call"
+        );
+
+        let preserved_stamp = journal
+            .get_recovery_stamp(run, last_seq)
+            .expect("get_recovery_stamp after second recovery must succeed")
+            .expect("stamp must still exist after the second recovery call");
+        assert_eq!(
+            preserved_stamp.written_at_ms, first_stamp_written_at_ms,
+            "second recovery call must NOT overwrite the existing stamp's timestamp \
+             (the is_none branch must skip the put_recovery_stamp call)"
+        );
+        assert_eq!(
+            preserved_stamp.run, run,
+            "preserved stamp must still reference the recovered run"
+        );
+        assert_eq!(
+            preserved_stamp.last_seq, last_seq,
+            "preserved stamp must still reference the last replayed sequence number"
         );
     }
 }
