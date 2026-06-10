@@ -115,9 +115,9 @@ fn kani_validate_resource_contract_rejects_zero_max_steps() {
     let parts = parts_with_contract(contract);
     let result = validate_resource_contract(&parts);
     // The public function only rejects declared > hard_limit (strict `>`).
-    // 0 is not > 65_535, so the function returns Ok. Asserting the
-    // function's actual contract here is mandatory under GOD RULE 4
-    // (no cheating the math).
+    // 0 is not > 1_000 (master §13 line 479), so the function returns Ok.
+    // Asserting the function's actual contract here is mandatory under
+    // GOD RULE 4 (no cheating the math).
     assert_eq!(result, Ok(()));
 }
 
@@ -128,10 +128,11 @@ fn kani_validate_resource_contract_rejects_zero_max_steps() {
 // `rejects_oversized_max_constants` with the value `u16::MAX`, but
 // the canonical validate_resource_contract (workflow/validation.rs:99)
 // uses strict-greater-than via validate_contract_limit (line 179) and
-// MAX_CONSTANTS = 65_535 (= u16::MAX exactly). No u16 value is
-// strictly greater, so the function returns Ok for every u16 input.
-// To still exercise a real boundary rejection (the spirit of
-// F-COVERAGE-001), this harness uses kani::any() for max_accessors —
+// MAX_CONSTANTS = 8_192 (master §13 line 483). Now that the cap is
+// below u16::MAX, the harness can directly test max_constants
+// rejection at the new boundary (see the explicit boundary harnesses
+// added in section36_mandatory_coverage.rs and
+// resource_contract_validation.rs).
 // a small-limit field where u16::MAX is strictly greater than
 // MAX_ACCESSORS (= 8_192) — and assumes it is over the limit, then
 // asserts the rejection.

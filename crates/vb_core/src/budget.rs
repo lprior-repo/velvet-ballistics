@@ -362,8 +362,11 @@ impl BoundednessPolicy {
     /// Conservative default policy.
     ///
     /// `max_total_steps` matches the master spec
-    /// `velvet-ballistics-MASTER.md` §13 line 479 (Steps | 1000) and
-    /// §64 line 2856 (workflow resource ceiling reinforcement).
+    /// `velvet-ballistics-MASTER.md` §13 line 479 (Steps | 1000).
+    /// This is a production extension field; the spec's `BoundednessPolicy`
+    /// (master §65 line 3241-3247) defines 5 `absolute_max_*` fields. We
+    /// add `max_total_steps` to bound the per-workflow cap below the
+    /// `absolute_max_run_time_seconds` budget.
     pub const DEFAULT: Self = Self {
         max_total_steps: 1_000,
         max_total_slots: 65_535,

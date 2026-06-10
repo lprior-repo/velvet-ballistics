@@ -8,8 +8,7 @@
 
 /// Maximum number of steps allowed in a single compiled workflow.
 ///
-/// Master contract: `velvet-ballistics-MASTER.md` §13 line 479 (Steps | 1000) and
-/// §64 line 2856 (workflow resource ceiling reinforcement).
+/// Master contract: `velvet-ballistics-MASTER.md` §13 line 479 (Steps | 1000).
 pub const MAX_STEPS_PER_WORKFLOW: usize = 1_000;
 
 /// Maximum number of slots allowed in a single compiled workflow.
