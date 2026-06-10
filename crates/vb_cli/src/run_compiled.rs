@@ -86,13 +86,13 @@ pub(crate) fn cmd_run_compiled(
                         "success": false,
                         "error": error.to_string()
                     }),
-                    CliExitCode::CompileFailed,
+                    CliExitCode::InputMappingFailed,
                     output,
                 );
             } else {
                 crate::errln!("{error}");
             }
-            return CliExitCode::CompileFailed.into();
+            return CliExitCode::InputMappingFailed.into();
         }
     };
 

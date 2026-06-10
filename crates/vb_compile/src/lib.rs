@@ -71,15 +71,16 @@ mod body_dispatcher_together_flux;
 #[cfg(kani)]
 pub mod kani_finish_digest;
 
-// TEMPORARILY DISABLED: pre-existing proptest macro compatibility issue in
-// bytecode_ast_parity.rs and a known bytecode/AST parity failure that the
-// proptest surfaces (master §38 follow-up: the bytecode evaluator rejects
-// `(-(-x))` as TypeMismatch while the AST evaluator returns the correct
-// value). The untracked `property_tests/` directory exists on disk for the
-// followup bead but is intentionally NOT wired in here until the parity
-// bug is fixed.
-// #[cfg(test)]
-// mod property_tests;
+// Master plan §38 ("Bytecode/AST parity" row, lines 1167-1170) requires
+// the bytecode_ast_parity proptest to be wired in. The proptest currently
+// surfaces a real parity violation: the production bytecode evaluator
+// (vb_core::engine::expr_eval::eval_expr) rejects a nested unary negation
+// `(-(-x))` with `EvalErrorKind::TypeMismatch`, while the recursive AST
+// oracle returns the correct negated value. The test is wired in and
+// marked `#[ignore = "blocked by vb-cwb90: see parity violation; remove
+// ignore after fix lands"]`. Follow-up bead: vb-cwb90.
+#[cfg(test)]
+mod property_tests;
 
 // Internal test modules (error variant completeness, together digest unit tests).
 #[cfg(test)]

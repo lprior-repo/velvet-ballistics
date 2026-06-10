@@ -6,6 +6,13 @@ impl RuntimeError {
     pub const STORAGE_ERROR_RUNTIME_CODE: &str = "STORAGE_ERROR";
     pub const ADMISSION_DURABILITY_ERROR_RUNTIME_CODE: &str = "ADMISSION_DURABILITY_ERROR";
     pub const ACTION_FAILED_RUNTIME_CODE: &str = "ACTION_FAILED";
+    pub const ASK_TIMEOUT_RUNTIME_CODE: &str = "ASK_TIMEOUT";
+    pub const WAIT_TIMEOUT_RUNTIME_CODE: &str = "WAIT_TIMEOUT";
+    pub const COLLECT_PAGE_FAILED_RUNTIME_CODE: &str = "COLLECT_PAGE_FAILED";
+    pub const REDUCE_ITEM_FAILED_RUNTIME_CODE: &str = "REDUCE_ITEM_FAILED";
+    pub const TOGETHER_BRANCH_FAILED_RUNTIME_CODE: &str = "TOGETHER_BRANCH_FAILED";
+    pub const FOR_EACH_ITEM_FAILED_RUNTIME_CODE: &str = "FOR_EACH_ITEM_FAILED";
+    pub const INPUT_MAPPING_FAILED_RUNTIME_CODE: &str = "INPUT_MAPPING_FAILED";
 
     pub const QUEUE_FULL_CODE: DiagnosticCode = DiagnosticCode::new(0x2001);
     pub const RUN_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x2002);
@@ -39,6 +46,13 @@ impl RuntimeError {
     pub const ENGINE_DRIVE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x201B);
     pub const SHARD_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x201C);
     pub const MIGRATE_SELF_CODE: DiagnosticCode = DiagnosticCode::new(0x201D);
+    pub const INPUT_MAPPING_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x201F);
+    pub const ASK_TIMEOUT_CODE: DiagnosticCode = DiagnosticCode::new(0x4031);
+    pub const WAIT_TIMEOUT_CODE: DiagnosticCode = DiagnosticCode::new(0x4032);
+    pub const COLLECT_PAGE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x4033);
+    pub const REDUCE_ITEM_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x4034);
+    pub const TOGETHER_BRANCH_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x4035);
+    pub const FOR_EACH_ITEM_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x4036);
 
     #[must_use]
     pub fn diagnostic_code(&self) -> DiagnosticCode {
@@ -89,6 +103,13 @@ impl RuntimeError {
             Self::EngineDriveFailed { .. } => Self::ENGINE_DRIVE_FAILED_CODE,
             Self::ShardNotFound { .. } => Self::SHARD_NOT_FOUND_CODE,
             Self::MigrateSelf => Self::MIGRATE_SELF_CODE,
+            Self::InputMappingFailed { .. } => Self::INPUT_MAPPING_FAILED_CODE,
+            Self::AskTimeout { .. } => Self::ASK_TIMEOUT_CODE,
+            Self::WaitTimeout { .. } => Self::WAIT_TIMEOUT_CODE,
+            Self::CollectPageFailed { .. } => Self::COLLECT_PAGE_FAILED_CODE,
+            Self::ReduceItemFailed { .. } => Self::REDUCE_ITEM_FAILED_CODE,
+            Self::TogetherBranchFailed { .. } => Self::TOGETHER_BRANCH_FAILED_CODE,
+            Self::ForEachItemFailed { .. } => Self::FOR_EACH_ITEM_FAILED_CODE,
         }
     }
 
@@ -127,6 +148,13 @@ impl RuntimeError {
             | Self::ActionOutputBlobTooLarge { .. }
             | Self::ActionTaintDowngrade { .. } => Some(Self::ACTION_FAILED_RUNTIME_CODE),
             Self::EngineDriveFailed { .. } => Some(Self::ACTION_FAILED_RUNTIME_CODE),
+            Self::AskTimeout { .. } => Some(Self::ASK_TIMEOUT_RUNTIME_CODE),
+            Self::WaitTimeout { .. } => Some(Self::WAIT_TIMEOUT_RUNTIME_CODE),
+            Self::CollectPageFailed { .. } => Some(Self::COLLECT_PAGE_FAILED_RUNTIME_CODE),
+            Self::ReduceItemFailed { .. } => Some(Self::REDUCE_ITEM_FAILED_RUNTIME_CODE),
+            Self::TogetherBranchFailed { .. } => Some(Self::TOGETHER_BRANCH_FAILED_RUNTIME_CODE),
+            Self::ForEachItemFailed { .. } => Some(Self::FOR_EACH_ITEM_FAILED_RUNTIME_CODE),
+            Self::InputMappingFailed { .. } => Some(Self::INPUT_MAPPING_FAILED_RUNTIME_CODE),
             Self::RunNotFound
             | Self::RunAlreadyExists
             | Self::UnsupportedOperation { .. }

@@ -55,6 +55,9 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
         }
         RuntimeError::EngineDriveFailed { .. } => Some("deterministic engine drive failed"),
         RuntimeError::MigrateSelf => Some("migration target is the source shard"),
+        RuntimeError::InputMappingFailed { kind, .. } => Some(kind.legacy_diagnostic_phrase()),
+        RuntimeError::AskTimeout { .. } => Some("ask timer expired before answer arrived"),
+        RuntimeError::WaitTimeout { .. } => Some("wait timer expired before deadline reached"),
         _ => None,
     }
 }
@@ -121,6 +124,55 @@ fn write_runtime_error_dynamic(
         RuntimeError::ShardNotFound { shard } => {
             write!(f, "shard {shard} not found")
         }
+        RuntimeError::AskTimeout { step, ask_id } => {
+            write!(f, "ask timer expired at step {step:?} for ask {ask_id:?}")
+        }
+        RuntimeError::WaitTimeout { step } => {
+            write!(f, "wait timer expired at step {step:?}")
+        }
+        RuntimeError::CollectPageFailed {
+            step,
+            expected_page,
+            found_page,
+        } => {
+            write!(
+                f,
+                "collect page order violation at step {step:?}: expected {expected_page:?}, found {found_page:?}"
+            )
+        }
+        RuntimeError::ReduceItemFailed {
+            step,
+            item_index,
+            source,
+        } => {
+            write!(
+                f,
+                "reduce body failed at step {step:?} on item {item_index}: {source}"
+            )
+        }
+        RuntimeError::TogetherBranchFailed {
+            step,
+            branch_index,
+            source,
+        } => {
+            write!(
+                f,
+                "together branch {branch_index} failed at step {step:?}: {source}"
+            )
+        }
+        RuntimeError::ForEachItemFailed {
+            step,
+            item_index,
+            source,
+        } => {
+            write!(
+                f,
+                "for-each body failed at step {step:?} on item {item_index}: {source}"
+            )
+        }
+        RuntimeError::InputMappingFailed { kind, source } => {
+            write!(f, "{}: {source}", kind.legacy_diagnostic_phrase())
+        }
         _ => Ok(()),
     }
 }
@@ -132,6 +184,10 @@ impl std::error::Error for RuntimeError {
             Self::StorageJournalAppend { source } => Some(source.as_ref()),
             Self::AdmissionHeaderPersistenceFailed { source } => Some(source.as_ref()),
             Self::EngineDriveFailed { source, .. } => Some(source.as_ref()),
+            Self::ReduceItemFailed { source, .. } => Some(source.as_ref()),
+            Self::TogetherBranchFailed { source, .. } => Some(source.as_ref()),
+            Self::ForEachItemFailed { source, .. } => Some(source.as_ref()),
+            Self::InputMappingFailed { source, .. } => Some(source.as_ref()),
             _ => None,
         }
     }

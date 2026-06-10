@@ -2,6 +2,7 @@ use super::RuntimeError;
 use std::error::Error;
 use std::sync::Arc;
 use vb_core::DiagnosticCode;
+use vb_core::ids::{ListId, StepIdx};
 
 #[test]
 fn admission_durability_error_variants_are_exhaustive() {
@@ -146,5 +147,107 @@ fn runtime_error_diagnostic_code_catalog() {
     assert_eq!(
         RuntimeError::InvalidRecoveryHydration.diagnostic_code(),
         DiagnosticCode::new(0x200E)
+    );
+}
+
+// ---------------------------------------------------------------------------
+// P0 bead coverage: Section 17 aggregation-boundary error codes.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn ask_timeout_variant_maps_to_ask_timeout_symbolic_code() {
+    let err = RuntimeError::AskTimeout {
+        step: StepIdx::new(3),
+        ask_id: StepIdx::new(3),
+    };
+    assert_eq!(err.diagnostic_code(), RuntimeError::ASK_TIMEOUT_CODE);
+    assert_eq!(err.runtime_code(), Some("ASK_TIMEOUT"));
+    assert_eq!(
+        err.symbolic_code().as_str(),
+        "ASK_TIMEOUT",
+        "AskTimeout must surface its registered symbolic name"
+    );
+}
+
+#[test]
+fn wait_timeout_variant_maps_to_wait_timeout_symbolic_code() {
+    let err = RuntimeError::WaitTimeout {
+        step: StepIdx::new(7),
+    };
+    assert_eq!(err.diagnostic_code(), RuntimeError::WAIT_TIMEOUT_CODE);
+    assert_eq!(err.runtime_code(), Some("WAIT_TIMEOUT"));
+    assert_eq!(err.symbolic_code().as_str(), "WAIT_TIMEOUT");
+}
+
+#[test]
+fn collect_page_failed_variant_maps_to_collect_page_failed_symbolic_code() {
+    let err = RuntimeError::CollectPageFailed {
+        step: StepIdx::new(2),
+        expected_page: ListId::new(1),
+        found_page: ListId::new(2),
+    };
+    assert_eq!(
+        err.diagnostic_code(),
+        RuntimeError::COLLECT_PAGE_FAILED_CODE
+    );
+    assert_eq!(err.runtime_code(), Some("COLLECT_PAGE_FAILED"));
+    assert_eq!(err.symbolic_code().as_str(), "COLLECT_PAGE_FAILED");
+}
+
+#[test]
+fn reduce_item_failed_variant_maps_to_reduce_item_failed_symbolic_code() {
+    let err = RuntimeError::ReduceItemFailed {
+        step: StepIdx::new(4),
+        item_index: 2,
+        source: Box::new(vb_core::errors::CoreError::NonBoolCondition {
+            slot: vb_core::ids::SlotIdx::new(0),
+        }),
+    };
+    assert_eq!(err.diagnostic_code(), RuntimeError::REDUCE_ITEM_FAILED_CODE);
+    assert_eq!(err.runtime_code(), Some("REDUCE_ITEM_FAILED"));
+    assert_eq!(err.symbolic_code().as_str(), "REDUCE_ITEM_FAILED");
+    assert!(
+        err.source().is_some(),
+        "ReduceItemFailed must expose source"
+    );
+}
+
+#[test]
+fn together_branch_failed_variant_maps_to_together_branch_failed_symbolic_code() {
+    let err = RuntimeError::TogetherBranchFailed {
+        step: StepIdx::new(5),
+        branch_index: 3,
+        source: Box::new(vb_core::errors::CoreError::QueueFull),
+    };
+    assert_eq!(
+        err.diagnostic_code(),
+        RuntimeError::TOGETHER_BRANCH_FAILED_CODE
+    );
+    assert_eq!(err.runtime_code(), Some("TOGETHER_BRANCH_FAILED"));
+    assert_eq!(err.symbolic_code().as_str(), "TOGETHER_BRANCH_FAILED");
+    assert!(
+        err.source().is_some(),
+        "TogetherBranchFailed must expose source"
+    );
+}
+
+#[test]
+fn for_each_item_failed_variant_maps_to_for_each_item_failed_symbolic_code() {
+    let err = RuntimeError::ForEachItemFailed {
+        step: StepIdx::new(6),
+        item_index: 9,
+        source: Box::new(vb_core::errors::CoreError::MissingOutputSlot {
+            step: StepIdx::new(7),
+        }),
+    };
+    assert_eq!(
+        err.diagnostic_code(),
+        RuntimeError::FOR_EACH_ITEM_FAILED_CODE
+    );
+    assert_eq!(err.runtime_code(), Some("FOR_EACH_ITEM_FAILED"));
+    assert_eq!(err.symbolic_code().as_str(), "FOR_EACH_ITEM_FAILED");
+    assert!(
+        err.source().is_some(),
+        "ForEachItemFailed must expose source"
     );
 }

@@ -20,13 +20,13 @@ pub mod evidence;
 pub mod execute;
 pub mod handlers;
 pub mod helpers;
-// `property_tests` is the untracked `crates/vb_runtime/src/property_tests/`
-// directory that contains a `concurrency_safety` proptest. It surfaces a
-// real IntrospectionRegistry race (master §38 follow-up). The directory
-// is left on disk for the followup bead; we do NOT wire it in until the
-// race is fixed.
-// #[cfg(test)]
-// pub mod property_tests;
+// The 785-line `concurrency_safety` proptest (vb-cs3801) lives at the
+// crate-root path `crates/vb_runtime/src/property_tests/` and is wired
+// in from `crates/vb_runtime/src/lib.rs` (not from this `engine` module).
+// The engine subdirectory contains its own 250-line `property_tests.rs`
+// (an unrelated collection of unit tests for engine types) which is
+// currently NOT wired from this module. See vb-tndkw for the IntrospectionRegistry
+// drop-vs-register race that the concurrency_safety proptest surfaces.
 pub mod retry_math;
 pub mod signal;
 #[cfg(test)]

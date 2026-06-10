@@ -30,19 +30,19 @@ const SECTION_17_MAPPED: &[&str] = &[
     "ADMISSION_DURABILITY_ERROR",
     "BUDGET_EXCEEDED",
     "CAPABILITY_DENIED",
-];
-
-const SECTION_17_UNMAPPED: &[&str] = &[
-    "INPUT_MAPPING_FAILED",
-    "REFERENCE_MISSING",
-    "STEP_SKIPPED_REFERENCE",
-    "RETRY_EXHAUSTED",
     "WAIT_TIMEOUT",
     "ASK_TIMEOUT",
     "FOR_EACH_ITEM_FAILED",
     "TOGETHER_BRANCH_FAILED",
     "COLLECT_PAGE_FAILED",
     "REDUCE_ITEM_FAILED",
+    "INPUT_MAPPING_FAILED",
+];
+
+const SECTION_17_UNMAPPED: &[&str] = &[
+    "REFERENCE_MISSING",
+    "STEP_SKIPPED_REFERENCE",
+    "RETRY_EXHAUSTED",
     "RESULT_REFERENCE_MISSING",
     "PAYLOAD_TOO_LARGE", // runtime-specific (diff from Section 16 PAYLOAD_TOO_LARGE)
     "REPLAY_DIVERGED",
@@ -132,6 +132,37 @@ fn runtime_error_runtime_codes() -> BTreeSet<String> {
         vb_runtime::RuntimeError::InvalidActionCompletion,
         vb_runtime::RuntimeError::EngineDriveFailed {
             run: vb_core::ids::RunId::new(1),
+            source: Box::new(vb_core::errors::CoreError::QueueFull),
+        },
+        vb_runtime::RuntimeError::AskTimeout {
+            step: vb_core::ids::StepIdx::new(0),
+            ask_id: vb_core::ids::StepIdx::new(0),
+        },
+        vb_runtime::RuntimeError::WaitTimeout {
+            step: vb_core::ids::StepIdx::new(0),
+        },
+        vb_runtime::RuntimeError::CollectPageFailed {
+            step: vb_core::ids::StepIdx::new(0),
+            expected_page: vb_core::ids::ListId::new(0),
+            found_page: vb_core::ids::ListId::new(0),
+        },
+        vb_runtime::RuntimeError::ReduceItemFailed {
+            step: vb_core::ids::StepIdx::new(0),
+            item_index: 0,
+            source: Box::new(vb_core::errors::CoreError::QueueFull),
+        },
+        vb_runtime::RuntimeError::TogetherBranchFailed {
+            step: vb_core::ids::StepIdx::new(0),
+            branch_index: 0,
+            source: Box::new(vb_core::errors::CoreError::QueueFull),
+        },
+        vb_runtime::RuntimeError::ForEachItemFailed {
+            step: vb_core::ids::StepIdx::new(0),
+            item_index: 0,
+            source: Box::new(vb_core::errors::CoreError::QueueFull),
+        },
+        vb_runtime::RuntimeError::InputMappingFailed {
+            kind: vb_runtime::InputMappingFailureKind::MalformedPostcard,
             source: Box::new(vb_core::errors::CoreError::QueueFull),
         },
     ];

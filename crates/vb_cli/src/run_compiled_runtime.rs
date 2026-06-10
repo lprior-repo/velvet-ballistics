@@ -12,31 +12,47 @@ use crate::output::{
     write_stderr_line, write_stdout_line,
 };
 use crate::output_utils::*;
-use crate::run_compiled::InputMappingError;
 use std::io::{self, Write};
 use std::num::NonZeroUsize;
 use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use vb_runtime::{InputMappingFailureKind, RuntimeError};
 
 pub(crate) fn map_runtime_inputs(
     compiled: &vb_core::CompiledWorkflow,
     input_data: &[u8],
-) -> Result<Box<[(vb_core::SlotIdx, vb_core::SlotValue)]>, InputMappingError> {
+) -> Result<Box<[(vb_core::SlotIdx, vb_core::SlotValue)]>, RuntimeError> {
     if input_data.is_empty() {
         return Ok(Box::from([]));
     }
-    let values = postcard::from_bytes::<Box<[vb_core::SlotValue]>>(input_data)
-        .map_err(|_| InputMappingError::DecodeFailed)?;
+    let values = postcard::from_bytes::<Box<[vb_core::SlotValue]>>(input_data).map_err(|_| {
+        RuntimeError::InputMappingFailed {
+            kind: InputMappingFailureKind::MalformedPostcard,
+            source: Box::new(vb_core::errors::CoreError::InternalInvariantViolation {
+                reason: "input-bin postcard decode failed",
+            }),
+        }
+    })?;
     if values.len() > usize::from(compiled.slot_count()) {
-        return Err(InputMappingError::SlotCountExceeded);
+        return Err(RuntimeError::InputMappingFailed {
+            kind: InputMappingFailureKind::TypeMismatch { expected: 0 },
+            source: Box::new(vb_core::errors::CoreError::InternalInvariantViolation {
+                reason: "input slot count exceeds workflow slot count",
+            }),
+        });
     }
     values
         .iter()
         .copied()
         .enumerate()
         .map(|(index, value)| {
-            let slot = u16::try_from(index).map_err(|_| InputMappingError::SlotIndexOutOfRange)?;
+            let slot = u16::try_from(index).map_err(|_| RuntimeError::InputMappingFailed {
+                kind: InputMappingFailureKind::TypeMismatch { expected: 0 },
+                source: Box::new(vb_core::errors::CoreError::InternalInvariantViolation {
+                    reason: "input slot index out of range",
+                }),
+            })?;
             Ok((vb_core::SlotIdx::new(slot), value))
         })
         .collect::<Result<Vec<_>, _>>()

@@ -2576,3 +2576,210 @@ fn read_taint_reads_time_dependent_after_write() -> Result<(), String> {
     let taint = run.read_taint(SlotIdx::ZERO).map_err(|e| e.to_string())?;
     ensure_equal(taint, Taint::Secret)
 }
+
+// =============================================================================
+// Property-Based Tests
+// =============================================================================
+//
+// Bounded proptest macros verifying the algebraic invariants of
+// `join_taint` and the monotonicity of taint propagation through
+// `eval_expr_with_store` over randomized `Taint` and bounded i64 inputs.
+//
+// The expression programs in this section are bounded to depth 1 (a single
+// `Add` over two slots, or a single `LoadConst`) to keep control flow
+// statically bounded per the Holzman Power-of-Ten Rule 2. The `Add` op uses
+// `checked_add`, so i64 values are bounded to the small range
+// `[-1024, 1024]` to make overflow impossible.
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+    use proptest::prelude::*;
+
+    /// Strategy: pick any one of the three `Taint` variants with equal weight.
+    fn arb_taint() -> impl Strategy<Value = Taint> {
+        prop_oneof![
+            Just(Taint::Clean),
+            Just(Taint::DerivedFromSecret),
+            Just(Taint::Secret),
+        ]
+    }
+
+    /// Strategy: small i64 in `[-1024, 1024]` so `checked_add` cannot overflow.
+    fn arb_small_i64() -> impl Strategy<Value = i64> {
+        (-1024i64..=1024i64).boxed()
+    }
+
+    /// Discriminant ordering: Clean (0) < DerivedFromSecret (1) < Secret (2).
+    fn taint_disc(t: Taint) -> u8 {
+        match t {
+            Taint::Clean => 0,
+            Taint::DerivedFromSecret => 1,
+            Taint::Secret => 2,
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256,
+            ..ProptestConfig::default()
+        })]
+
+        /// `join_taint(a, b) >= max(a, b)` for any pair of taints.
+        ///
+        /// The join is a join-semilattice, so it must dominate both inputs
+        /// in the partial order.
+        #[test]
+        fn prop_join_taint_monotonic(a in arb_taint(), b in arb_taint()) {
+            let max_in = if taint_disc(a) >= taint_disc(b) { a } else { b };
+            let joined = join_taint(a, b);
+            prop_assert!(
+                taint_disc(joined) >= taint_disc(max_in),
+                "join_taint({a:?}, {b:?}) = {joined:?} is below max input {max_in:?}"
+            );
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256,
+            ..ProptestConfig::default()
+        })]
+
+        /// `join_taint(a, a) == a` for any taint.
+        #[test]
+        fn prop_join_taint_idempotent(a in arb_taint()) {
+            prop_assert_eq!(join_taint(a, a), a);
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256,
+            ..ProptestConfig::default()
+        })]
+
+        /// `join_taint(a, b) == join_taint(b, a)` for any pair of taints.
+        #[test]
+        fn prop_join_taint_commutative(a in arb_taint(), b in arb_taint()) {
+            prop_assert_eq!(join_taint(a, b), join_taint(b, a));
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256,
+            ..ProptestConfig::default()
+        })]
+
+        /// `LoadConst` does not accumulate taint: the taint accumulator
+        /// starts at `Clean` and constants carry no taint, so the result
+        /// of evaluating a single `LoadConst` expression is always `Clean`.
+        #[test]
+        fn prop_taint_const_no_accumulation(
+            n in arb_small_i64(),
+            constant_taint in arb_taint(),
+        ) {
+            // The constant's *declared* taint is irrelevant: taint of a
+            // SlotValue is recorded on the slot, not on the ConstValue.
+            // The accumulator only advances on LoadSlot/LoadAccessor.
+            let _ = constant_taint;
+
+            let ops: Box<[ExprOp]> =
+                vec![ExprOp::LoadConst(ConstIdx::new(0))].into_boxed_slice();
+
+            let constants: Vec<ConstValue> = vec![ConstValue::I64(n)];
+
+            let result = eval_workflow_with_slots(ops, Vec::new(), constants);
+            let Ok((_value, taint)) = result else {
+                prop_assert!(false, "eval of LoadConst must succeed: {:?}", result);
+                return Ok(());
+            };
+            prop_assert_eq!(taint, Taint::Clean);
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256,
+            ..ProptestConfig::default()
+        })]
+
+        /// Taint of `eval(Add(x, y)) >= max(taint(x), taint(y))` for any
+        /// pair of input taints and any small-i64 operand values.
+        #[test]
+        fn prop_taint_eval_monotonic(
+            x in arb_small_i64(),
+            y in arb_small_i64(),
+            tx in arb_taint(),
+            ty in arb_taint(),
+        ) {
+            let ops: Box<[ExprOp]> = vec![
+                ExprOp::LoadSlot(SlotIdx::new(0)),
+                ExprOp::LoadSlot(SlotIdx::new(1)),
+                ExprOp::Add,
+            ]
+            .into_boxed_slice();
+
+            let slots: Vec<(SlotValue, Taint)> = vec![
+                (SlotValue::I64(x), tx),
+                (SlotValue::I64(y), ty),
+            ];
+
+            let result = eval_workflow_with_slots(ops, slots, Vec::new());
+            let Ok((_value, out_taint)) = result else {
+                prop_assert!(false, "eval of Add(small, small) must succeed: {:?}", result);
+                return Ok(());
+            };
+
+            let max_in = if taint_disc(tx) >= taint_disc(ty) { tx } else { ty };
+            prop_assert!(
+                taint_disc(out_taint) >= taint_disc(max_in),
+                "eval taint {out_taint:?} is below max input taint {max_in:?} \
+                 (inputs: tx={tx:?}, ty={ty:?})"
+            );
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256,
+            ..ProptestConfig::default()
+        })]
+
+        /// `taint(eval(Add(x, y))) == join(taint(x), taint(y))` exactly.
+        ///
+        /// This is the precise algebraic invariant the taint-accumulator
+        /// in `eval_expr_inner` is supposed to maintain: every LoadSlot
+        /// updates `taint_accum` via `join_taint`, and the binary ops
+        /// (Add, Sub, Mul, etc.) leave `taint_accum` untouched.
+        #[test]
+        fn prop_taint_add_invariant(
+            x in arb_small_i64(),
+            y in arb_small_i64(),
+            tx in arb_taint(),
+            ty in arb_taint(),
+        ) {
+            let ops: Box<[ExprOp]> = vec![
+                ExprOp::LoadSlot(SlotIdx::new(0)),
+                ExprOp::LoadSlot(SlotIdx::new(1)),
+                ExprOp::Add,
+            ]
+            .into_boxed_slice();
+
+            let slots: Vec<(SlotValue, Taint)> = vec![
+                (SlotValue::I64(x), tx),
+                (SlotValue::I64(y), ty),
+            ];
+
+            let result = eval_workflow_with_slots(ops, slots, Vec::new());
+            let Ok((_value, out_taint)) = result else {
+                prop_assert!(false, "eval of Add(small, small) must succeed: {:?}", result);
+                return Ok(());
+            };
+
+            let expected = join_taint(tx, ty);
+            prop_assert_eq!(out_taint, expected);
+        }
+    }
+}

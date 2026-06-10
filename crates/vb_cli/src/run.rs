@@ -7,10 +7,10 @@ use crate::file_io::{read_file as read_file_with_output, write_failure_message};
 use crate::run_compiled_runtime::{
     map_runtime_inputs as runtime_map_inputs, run_compiled_workflow,
 };
-use crate::workflow::InputMappingError;
 use std::path::Path;
 use std::process::ExitCode;
 use vb_core::{CompiledWorkflow, SlotIdx, SlotValue, WorkflowParts};
+use vb_runtime::{InputMappingFailureKind, RuntimeError};
 
 pub(crate) const INPUT_MAPPING_DECODE_FAILED_MESSAGE: &str =
     "INPUT_MAPPING_FAILED: input-bin decode failed";
@@ -132,8 +132,8 @@ pub(crate) fn cmd_run(
     let inputs = match runtime_map_inputs(&compiled, &input_data) {
         Ok(inputs) => inputs,
         Err(error) => {
-            write_failure_message(&error.to_string(), output, CliExitCode::CompileFailed);
-            return CliExitCode::CompileFailed.into();
+            write_failure_message(&error.to_string(), output, CliExitCode::InputMappingFailed);
+            return CliExitCode::InputMappingFailed.into();
         }
     };
 
@@ -174,7 +174,7 @@ pub(crate) fn cmd_run_compiled(
         Ok(inputs) => inputs,
         Err(error) => {
             crate::errln!("{error}");
-            return ExitCode::FAILURE;
+            return CliExitCode::InputMappingFailed.into();
         }
     };
 
@@ -184,25 +184,8 @@ pub(crate) fn cmd_run_compiled(
 pub(crate) fn map_runtime_inputs(
     compiled: &CompiledWorkflow,
     input_data: &[u8],
-) -> Result<Box<[(SlotIdx, SlotValue)]>, InputMappingError> {
-    if input_data.is_empty() {
-        return Ok(Box::from([]));
-    }
-    let values = postcard::from_bytes::<Box<[SlotValue]>>(input_data)
-        .map_err(|_| InputMappingError::DecodeFailed)?;
-    if values.len() > usize::from(compiled.slot_count()) {
-        return Err(InputMappingError::SlotCountExceeded);
-    }
-    values
-        .iter()
-        .copied()
-        .enumerate()
-        .map(|(index, value)| {
-            let slot = u16::try_from(index).map_err(|_| InputMappingError::SlotIndexOutOfRange)?;
-            Ok((SlotIdx::new(slot), value))
-        })
-        .collect::<Result<Vec<_>, _>>()
-        .map(Vec::into_boxed_slice)
+) -> Result<Box<[(SlotIdx, SlotValue)]>, RuntimeError> {
+    runtime_map_inputs(compiled, input_data)
 }
 
 pub(crate) fn read_file(path: &std::path::Path) -> Result<Vec<u8>, ExitCode> {

@@ -62,6 +62,7 @@ pub(crate) fn cli_exit_code_name(code: CliExitCode) -> &'static str {
         CliExitCode::IpcError => "IpcError",
         CliExitCode::ActionPolicyError => "ActionPolicyError",
         CliExitCode::ReplayDivergence => "ReplayDivergence",
+        CliExitCode::InputMappingFailed => "InputMappingFailed",
     }
 }
 

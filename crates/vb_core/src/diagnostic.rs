@@ -793,6 +793,12 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
         category: CodeCategory::Storage,
         deprecated: false,
     },
+    CodeEntry {
+        symbolic: "INPUT_MAPPING_FAILED",
+        numeric: 0x201F,
+        category: CodeCategory::Storage,
+        deprecated: false,
+    },
     // ---- Legacy storage infrastructure codes (relocated) ----
     CodeEntry {
         symbolic: "STORAGE_UNAVAILABLE",
@@ -1331,6 +1337,43 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
     CodeEntry {
         symbolic: "JOURNAL_SLOT_SEALED",
         numeric: 0x402E,
+        category: CodeCategory::RuntimeBoundary,
+        deprecated: false,
+    },
+    // ---- Runtime boundary failure codes (P0 bead coverage) ----
+    CodeEntry {
+        symbolic: "ASK_TIMEOUT",
+        numeric: 0x4031,
+        category: CodeCategory::RuntimeBoundary,
+        deprecated: false,
+    },
+    CodeEntry {
+        symbolic: "WAIT_TIMEOUT",
+        numeric: 0x4032,
+        category: CodeCategory::RuntimeBoundary,
+        deprecated: false,
+    },
+    CodeEntry {
+        symbolic: "COLLECT_PAGE_FAILED",
+        numeric: 0x4033,
+        category: CodeCategory::RuntimeBoundary,
+        deprecated: false,
+    },
+    CodeEntry {
+        symbolic: "REDUCE_ITEM_FAILED",
+        numeric: 0x4034,
+        category: CodeCategory::RuntimeBoundary,
+        deprecated: false,
+    },
+    CodeEntry {
+        symbolic: "TOGETHER_BRANCH_FAILED",
+        numeric: 0x4035,
+        category: CodeCategory::RuntimeBoundary,
+        deprecated: false,
+    },
+    CodeEntry {
+        symbolic: "FOR_EACH_ITEM_FAILED",
+        numeric: 0x4036,
         category: CodeCategory::RuntimeBoundary,
         deprecated: false,
     },

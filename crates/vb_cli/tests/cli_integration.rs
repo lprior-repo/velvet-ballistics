@@ -1782,6 +1782,46 @@ fn cli_run_reports_exact_input_mapping_decode_failure() {
     );
 }
 
+#[test]
+fn cli_run_malformed_input_bin_returns_exit_code_9() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("workflow.yaml");
+    let input_path = dir.path().join("input.bin");
+
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+    if !write_test_file(&input_path, b"not-postcard") {
+        return;
+    }
+
+    let run_output = match run_cli(&[
+        std::ffi::OsStr::new("run"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("none"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_eq!(
+        run_output.status.code(),
+        Some(9),
+        "malformed input bin must return exit code 9 (InputMappingFailed), got: {:?}\nstdout: {}\nstderr: {}",
+        run_output.status.code(),
+        output_stdout(&run_output),
+        output_stderr(&run_output),
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Phase 10: Taint propagation via action ABI
 // ---------------------------------------------------------------------------

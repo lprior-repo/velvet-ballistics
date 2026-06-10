@@ -1,5 +1,6 @@
-use super::RuntimeError;
+use super::{InputMappingFailureKind, RuntimeError};
 use std::sync::Arc;
+use vb_core::ids::{ListId, StepIdx};
 
 #[test]
 fn admission_header_persistence_failure_has_dedicated_diagnostic() {
@@ -189,4 +190,223 @@ fn runtime_error_runtime_codes_are_unique() {
             .len(),
         3
     );
+}
+
+#[test]
+fn input_mapping_failed_empty_emits_empty_input_bin_message() {
+    let error = RuntimeError::InputMappingFailed {
+        kind: InputMappingFailureKind::EmptyInputBin,
+        source: Box::new(vb_core::errors::CoreError::InternalInvariantViolation {
+            reason: "empty input bin",
+        }),
+    };
+    assert_eq!(
+        format!("{error}"),
+        "INPUT_MAPPING_FAILED: input-bin is empty"
+    );
+}
+
+#[test]
+fn input_mapping_failed_malformed_emits_malformed_postcard_message() {
+    let error = RuntimeError::InputMappingFailed {
+        kind: InputMappingFailureKind::MalformedPostcard,
+        source: Box::new(vb_core::errors::CoreError::InternalInvariantViolation {
+            reason: "bad postcard",
+        }),
+    };
+    assert_eq!(
+        format!("{error}"),
+        "INPUT_MAPPING_FAILED: input-bin decode failed"
+    );
+}
+
+#[test]
+fn input_mapping_failed_type_mismatch_emits_type_mismatch_message() {
+    let error = RuntimeError::InputMappingFailed {
+        kind: InputMappingFailureKind::TypeMismatch { expected: 2 },
+        source: Box::new(vb_core::errors::CoreError::InternalInvariantViolation {
+            reason: "type mismatch",
+        }),
+    };
+    assert_eq!(
+        format!("{error}"),
+        "INPUT_MAPPING_FAILED: input slot type mismatch"
+    );
+}
+
+#[test]
+fn input_mapping_failed_runtime_code_is_input_mapping_failed() {
+    let error = RuntimeError::InputMappingFailed {
+        kind: InputMappingFailureKind::MalformedPostcard,
+        source: Box::new(vb_core::errors::CoreError::InternalInvariantViolation {
+            reason: "bad postcard",
+        }),
+    };
+    assert_eq!(error.runtime_code(), Some("INPUT_MAPPING_FAILED"));
+}
+
+#[test]
+fn input_mapping_failed_diagnostic_code_is_0x201f() {
+    let error = RuntimeError::InputMappingFailed {
+        kind: InputMappingFailureKind::MalformedPostcard,
+        source: Box::new(vb_core::errors::CoreError::InternalInvariantViolation {
+            reason: "bad postcard",
+        }),
+    };
+    assert_eq!(
+        error.diagnostic_code(),
+        RuntimeError::INPUT_MAPPING_FAILED_CODE
+    );
+    assert_eq!(error.diagnostic_code().code(), 0x201F);
+}
+
+// ---------------------------------------------------------------------------
+// P0 bead coverage: Display + Equality for the new aggregation-boundary errors
+// ---------------------------------------------------------------------------
+
+#[test]
+fn ask_timeout_display_contains_step() {
+    let err = RuntimeError::AskTimeout {
+        step: StepIdx::new(3),
+        ask_id: StepIdx::new(3),
+    };
+    let display = format!("{err}");
+    assert!(display.contains("ask timer"), "display was: {display}");
+}
+
+#[test]
+fn wait_timeout_display_contains_step() {
+    let err = RuntimeError::WaitTimeout {
+        step: StepIdx::new(7),
+    };
+    let display = format!("{err}");
+    assert!(display.contains("wait timer"), "display was: {display}");
+}
+
+#[test]
+fn collect_page_failed_display_contains_pages() {
+    let err = RuntimeError::CollectPageFailed {
+        step: StepIdx::new(1),
+        expected_page: ListId::new(1),
+        found_page: ListId::new(2),
+    };
+    let display = format!("{err}");
+    assert!(display.contains("collect"), "display was: {display}");
+}
+
+#[test]
+fn reduce_item_failed_display_contains_item_index() {
+    let err = RuntimeError::ReduceItemFailed {
+        step: StepIdx::new(1),
+        item_index: 4,
+        source: Box::new(vb_core::errors::CoreError::QueueFull),
+    };
+    let display = format!("{err}");
+    assert!(display.contains("item 4"), "display was: {display}");
+}
+
+#[test]
+fn together_branch_failed_display_contains_branch_index() {
+    let err = RuntimeError::TogetherBranchFailed {
+        step: StepIdx::new(1),
+        branch_index: 2,
+        source: Box::new(vb_core::errors::CoreError::QueueFull),
+    };
+    let display = format!("{err}");
+    assert!(display.contains("branch 2"), "display was: {display}");
+}
+
+#[test]
+fn for_each_item_failed_display_contains_item_index() {
+    let err = RuntimeError::ForEachItemFailed {
+        step: StepIdx::new(1),
+        item_index: 7,
+        source: Box::new(vb_core::errors::CoreError::QueueFull),
+    };
+    let display = format!("{err}");
+    assert!(display.contains("item 7"), "display was: {display}");
+}
+
+#[test]
+fn new_variants_equality_respects_all_fields() {
+    let a = RuntimeError::AskTimeout {
+        step: StepIdx::new(3),
+        ask_id: StepIdx::new(3),
+    };
+    let b = RuntimeError::AskTimeout {
+        step: StepIdx::new(3),
+        ask_id: StepIdx::new(3),
+    };
+    let c = RuntimeError::AskTimeout {
+        step: StepIdx::new(4),
+        ask_id: StepIdx::new(3),
+    };
+    assert_eq!(a, b);
+    assert_ne!(a, c);
+
+    let w1 = RuntimeError::WaitTimeout {
+        step: StepIdx::new(7),
+    };
+    let w2 = RuntimeError::WaitTimeout {
+        step: StepIdx::new(8),
+    };
+    assert_eq!(
+        RuntimeError::WaitTimeout {
+            step: StepIdx::new(7)
+        },
+        w1
+    );
+    assert_ne!(w1, w2);
+
+    let c1 = RuntimeError::CollectPageFailed {
+        step: StepIdx::new(1),
+        expected_page: ListId::new(1),
+        found_page: ListId::new(2),
+    };
+    let c2 = RuntimeError::CollectPageFailed {
+        step: StepIdx::new(1),
+        expected_page: ListId::new(1),
+        found_page: ListId::new(3),
+    };
+    assert_eq!(c1, c1.clone());
+    assert_ne!(c1, c2);
+
+    let r1 = RuntimeError::ReduceItemFailed {
+        step: StepIdx::new(1),
+        item_index: 0,
+        source: Box::new(vb_core::errors::CoreError::QueueFull),
+    };
+    let r2 = RuntimeError::ReduceItemFailed {
+        step: StepIdx::new(1),
+        item_index: 1,
+        source: Box::new(vb_core::errors::CoreError::QueueFull),
+    };
+    assert_eq!(r1, r1.clone());
+    assert_ne!(r1, r2);
+
+    let tb1 = RuntimeError::TogetherBranchFailed {
+        step: StepIdx::new(1),
+        branch_index: 0,
+        source: Box::new(vb_core::errors::CoreError::QueueFull),
+    };
+    let tb2 = RuntimeError::TogetherBranchFailed {
+        step: StepIdx::new(1),
+        branch_index: 1,
+        source: Box::new(vb_core::errors::CoreError::QueueFull),
+    };
+    assert_eq!(tb1, tb1.clone());
+    assert_ne!(tb1, tb2);
+
+    let fe1 = RuntimeError::ForEachItemFailed {
+        step: StepIdx::new(1),
+        item_index: 0,
+        source: Box::new(vb_core::errors::CoreError::QueueFull),
+    };
+    let fe2 = RuntimeError::ForEachItemFailed {
+        step: StepIdx::new(1),
+        item_index: 1,
+        source: Box::new(vb_core::errors::CoreError::QueueFull),
+    };
+    assert_eq!(fe1, fe1.clone());
+    assert_ne!(fe1, fe2);
 }

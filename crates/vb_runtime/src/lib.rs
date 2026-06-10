@@ -91,9 +91,21 @@ pub mod yaml_e2e_admission_matrix;
 #[cfg(any(verus, loom, flux))]
 pub mod verification;
 
-pub use error::{RuntimeError, RuntimeResult};
+pub use error::{InputMappingFailureKind, RuntimeError, RuntimeResult};
 pub use runtime::Runtime;
 pub use shard::{AskAnswer, AskTicket, ResumeError, ResumeResult, ResumeStatus};
+
+// `property_tests` is the `crates/vb_runtime/src/property_tests/`
+// directory that contains the `concurrency_safety` proptest (vb-cs3801).
+// The proptest surfaces a real IntrospectionRegistry drop-vs-register race
+// (shard/introspection.rs:49,85) recorded as a proptest regression at
+// `crates/vb_runtime/proptest-regressions/property_tests/concurrency_safety.txt`
+// (failing seed: 0e98177b9efc5da7a79eb77f356a7c5d1bf6863dec8e301bca9a24f5b22558a0,
+// shrinks to _seed = 0). The test is wired in and marked
+// `#[ignore = "blocked by vb-tndkw: see race condition; remove ignore
+// after fix lands"]`. Follow-up bead: vb-tndkw.
+#[cfg(test)]
+mod property_tests;
 
 #[cfg(test)]
 mod test_harness;

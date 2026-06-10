@@ -1,5 +1,63 @@
 use std::sync::Arc;
-use vb_core::ids::RunId;
+use vb_core::ids::{RunId, StepIdx};
+
+/// Distinguishes the failure modes of input-bin -> slot mapping at the
+/// runtime boundary.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum InputMappingFailureKind {
+    /// Input bin was empty; this is treated as "no inputs to map" and is
+    /// not itself an error, but is preserved as a distinct outcome for
+    /// diagnostics and parity.
+    EmptyInputBin,
+    /// Postcard decoder rejected the input bin.
+    MalformedPostcard,
+    /// A decoded value could not be coerced into the expected slot type.
+    TypeMismatch {
+        /// Expected slot type tag (compact, runtime-internal).
+        expected: u16,
+    },
+}
+
+impl InputMappingFailureKind {
+    /// Stable lower-snake phrase used by legacy diagnostic renderers.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::EmptyInputBin => "empty_input_bin",
+            Self::MalformedPostcard => "malformed_postcard",
+            Self::TypeMismatch { .. } => "type_mismatch",
+        }
+    }
+
+    /// Returns the legacy human-readable diagnostic phrase.
+    #[must_use]
+    pub const fn legacy_diagnostic_phrase(self) -> &'static str {
+        match self {
+            Self::EmptyInputBin => "INPUT_MAPPING_FAILED: input-bin is empty",
+            Self::MalformedPostcard => "INPUT_MAPPING_FAILED: input-bin decode failed",
+            Self::TypeMismatch { .. } => "INPUT_MAPPING_FAILED: input slot type mismatch",
+        }
+    }
+
+    /// Compact `u32` code suitable for log or metric emission. The
+    /// high 16 bits hold the diagnostic code (`0x201F`); the low 16
+    /// bits distinguish the kind.
+    #[must_use]
+    pub const fn code(self) -> u32 {
+        match self {
+            Self::EmptyInputBin => 0x201F_0001,
+            Self::MalformedPostcard => 0x201F_0002,
+            Self::TypeMismatch { .. } => 0x201F_0003,
+        }
+    }
+}
+
+impl std::fmt::Display for InputMappingFailureKind {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.legacy_diagnostic_phrase())
+    }
+}
 
 /// Runtime error type.
 #[derive(Debug, Clone)]
@@ -122,6 +180,13 @@ pub enum RuntimeError {
     },
     /// Failed to encode a slot value for journal persistence.
     EncodeFailed,
+    /// Input bin could not be mapped to workflow slot values.
+    InputMappingFailed {
+        /// Specific mapping failure mode.
+        kind: InputMappingFailureKind,
+        /// Preserved core error source.
+        source: Box<vb_core::errors::CoreError>,
+    },
     /// Caller-declared action output length did not match encoded bytes.
     ActionOutputLengthMismatch {
         /// Caller-declared encoded length.
@@ -173,6 +238,54 @@ pub enum RuntimeError {
     },
     /// Migrate directive targeted the source shard (self-migrate).
     MigrateSelf,
+    /// Ask timer expired before an answer arrived for the suspended ask.
+    AskTimeout {
+        /// Step that issued the ask.
+        step: StepIdx,
+        /// Ask identifier (the ask_step from the AskTicket).
+        ask_id: StepIdx,
+    },
+    /// Wait timer expired for a suspended wait/ask-wait step.
+    WaitTimeout {
+        /// Step that issued the wait.
+        step: StepIdx,
+    },
+    /// Collect step observed an out-of-order page.
+    CollectPageFailed {
+        /// Step that hosts the Collect primitive.
+        step: StepIdx,
+        /// Page that the collector expected.
+        expected_page: vb_core::ids::ListId,
+        /// Page that the body delivered.
+        found_page: vb_core::ids::ListId,
+    },
+    /// Reduce step body failed on a specific item.
+    ReduceItemFailed {
+        /// Step that hosts the Reduce primitive.
+        step: StepIdx,
+        /// Zero-based index of the item that failed.
+        item_index: u32,
+        /// Underlying source error from the body execution.
+        source: Box<vb_core::errors::CoreError>,
+    },
+    /// Together parallel branch failed.
+    TogetherBranchFailed {
+        /// Step that hosts the Together primitive.
+        step: StepIdx,
+        /// Zero-based index of the failing branch.
+        branch_index: u16,
+        /// Underlying source error from the branch execution.
+        source: Box<vb_core::errors::CoreError>,
+    },
+    /// ForEach body failed on a specific item.
+    ForEachItemFailed {
+        /// Step that hosts the ForEach primitive.
+        step: StepIdx,
+        /// Zero-based index of the item that failed.
+        item_index: u32,
+        /// Underlying source error from the body execution.
+        source: Box<vb_core::errors::CoreError>,
+    },
 }
 
 impl From<std::io::Error> for RuntimeError {

@@ -124,6 +124,69 @@ fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> boo
             RuntimeError::EngineDriveFailed { run: a, source: s1 },
             RuntimeError::EngineDriveFailed { run: b, source: s2 },
         ) => a == b && s1.diagnostic_code() == s2.diagnostic_code(),
+        (
+            RuntimeError::AskTimeout { step: a, ask_id: b },
+            RuntimeError::AskTimeout { step: c, ask_id: d },
+        ) => a == c && b == d,
+        (RuntimeError::WaitTimeout { step: a }, RuntimeError::WaitTimeout { step: b }) => a == b,
+        (
+            RuntimeError::CollectPageFailed {
+                step: a,
+                expected_page: b,
+                found_page: c,
+            },
+            RuntimeError::CollectPageFailed {
+                step: d,
+                expected_page: e,
+                found_page: f,
+            },
+        ) => a == d && b == e && c == f,
+        (
+            RuntimeError::ReduceItemFailed {
+                step: a,
+                item_index: b,
+                source: s1,
+            },
+            RuntimeError::ReduceItemFailed {
+                step: c,
+                item_index: d,
+                source: s2,
+            },
+        ) => a == c && b == d && s1.diagnostic_code() == s2.diagnostic_code(),
+        (
+            RuntimeError::TogetherBranchFailed {
+                step: a,
+                branch_index: b,
+                source: s1,
+            },
+            RuntimeError::TogetherBranchFailed {
+                step: c,
+                branch_index: d,
+                source: s2,
+            },
+        ) => a == c && b == d && s1.diagnostic_code() == s2.diagnostic_code(),
+        (
+            RuntimeError::ForEachItemFailed {
+                step: a,
+                item_index: b,
+                source: s1,
+            },
+            RuntimeError::ForEachItemFailed {
+                step: c,
+                item_index: d,
+                source: s2,
+            },
+        ) => a == c && b == d && s1.diagnostic_code() == s2.diagnostic_code(),
+        (
+            RuntimeError::InputMappingFailed {
+                kind: k1,
+                source: s1,
+            },
+            RuntimeError::InputMappingFailed {
+                kind: k2,
+                source: s2,
+            },
+        ) => k1 == k2 && s1.diagnostic_code() == s2.diagnostic_code(),
         _ => false,
     }
 }

@@ -30,7 +30,7 @@
 #![forbid(unsafe_code)]
 
 use crate::ids::{SlotIdx, StepIdx, WorkflowDigest};
-use crate::limits::MAX_ACCESSORS;
+use crate::limits::MAX_CONSTANTS;
 use crate::value::ConstValue;
 use crate::workflow::validation::validate_resource_contract;
 use crate::workflow::{
@@ -122,37 +122,32 @@ fn kani_validate_resource_contract_rejects_zero_max_steps() {
 }
 
 // ============================================================================
-// 3. max_constants boundary: any u16 value is handled without panic.
+// 3. max_constants boundary: any u16 value greater than MAX_CONSTANTS is rejected.
 //
-// NOTE: the bead spec named this harness
-// `rejects_oversized_max_constants` with the value `u16::MAX`, but
-// the canonical validate_resource_contract (workflow/validation.rs:99)
+// The canonical validate_resource_contract (workflow/validation.rs:99)
 // uses strict-greater-than via validate_contract_limit (line 179) and
-// MAX_CONSTANTS = 8_192 (master §13 line 483). Now that the cap is
-// below u16::MAX, the harness can directly test max_constants
-// rejection at the new boundary (see the explicit boundary harnesses
-// added in section36_mandatory_coverage.rs and
-// resource_contract_validation.rs).
-// a small-limit field where u16::MAX is strictly greater than
-// MAX_ACCESSORS (= 8_192) — and assumes it is over the limit, then
-// asserts the rejection.
+// MAX_CONSTANTS = 8_192 (master §13 line 483). Since MAX_CONSTANTS is
+// strictly less than u16::MAX (= 65_535), the harness can directly
+// exercise the max_constants rejection boundary by binding the field
+// symbolically via kani::any::<u16>() and constraining it to the
+// oversize region with kani::assume.
 //
-// GOD RULE 4: the function's contract is honored, not the spec's
-// misread. The harness NAME retains the spec wording to preserve
-// traceability; the field under test is the one that actually trips
-// the boundary in the real function.
+// GOD RULE 1: kani::any for the field under test; the other 17 fields
+//   take their DEFAULT values via the struct-update syntax.
+// GOD RULE 4: the harness name, body, and assert all match the
+//   boundary being exercised — no field-substitution lies.
 // ============================================================================
 
 #[kani::proof]
 #[kani::unwind(4)]
 fn kani_validate_resource_contract_rejects_oversized_max_constants() {
-    let max_accessors: u16 = kani::any();
-    // Constrain to values strictly greater than MAX_ACCESSORS so the
+    let max_constants: u16 = kani::any();
+    // Constrain to values strictly greater than MAX_CONSTANTS so the
     // function actually rejects them. kani::assume is the disciplined
     // way to model the boundary input set (GOD RULE 1).
-    kani::assume(usize::from(max_accessors) > MAX_ACCESSORS);
+    kani::assume(usize::from(max_constants) > MAX_CONSTANTS);
     let contract = ResourceContract {
-        max_accessors,
+        max_constants,
         ..ResourceContract::DEFAULT
     };
     let parts = parts_with_contract(contract);

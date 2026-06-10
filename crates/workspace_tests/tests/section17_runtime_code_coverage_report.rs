@@ -92,6 +92,37 @@ fn collect_all_runtime_codes() -> BTreeSet<String> {
             run: vb_core::ids::RunId::new(1),
             source: Box::new(vb_core::errors::CoreError::QueueFull),
         },
+        vb_runtime::RuntimeError::AskTimeout {
+            step: vb_core::ids::StepIdx::new(0),
+            ask_id: vb_core::ids::StepIdx::new(0),
+        },
+        vb_runtime::RuntimeError::WaitTimeout {
+            step: vb_core::ids::StepIdx::new(0),
+        },
+        vb_runtime::RuntimeError::CollectPageFailed {
+            step: vb_core::ids::StepIdx::new(0),
+            expected_page: vb_core::ids::ListId::new(0),
+            found_page: vb_core::ids::ListId::new(0),
+        },
+        vb_runtime::RuntimeError::ReduceItemFailed {
+            step: vb_core::ids::StepIdx::new(0),
+            item_index: 0,
+            source: Box::new(vb_core::errors::CoreError::QueueFull),
+        },
+        vb_runtime::RuntimeError::TogetherBranchFailed {
+            step: vb_core::ids::StepIdx::new(0),
+            branch_index: 0,
+            source: Box::new(vb_core::errors::CoreError::QueueFull),
+        },
+        vb_runtime::RuntimeError::ForEachItemFailed {
+            step: vb_core::ids::StepIdx::new(0),
+            item_index: 0,
+            source: Box::new(vb_core::errors::CoreError::QueueFull),
+        },
+        vb_runtime::RuntimeError::InputMappingFailed {
+            kind: vb_runtime::InputMappingFailureKind::MalformedPostcard,
+            source: Box::new(vb_core::errors::CoreError::QueueFull),
+        },
     ]
     .iter()
     {
@@ -154,13 +185,16 @@ const MAPPED_CODES: &[&str] = &[
     "ADMISSION_DURABILITY_ERROR",
     "BUDGET_EXCEEDED",
     "CAPABILITY_DENIED",
+    "WAIT_TIMEOUT",
+    "ASK_TIMEOUT",
+    "FOR_EACH_ITEM_FAILED",
+    "TOGETHER_BRANCH_FAILED",
+    "COLLECT_PAGE_FAILED",
+    "REDUCE_ITEM_FAILED",
+    "INPUT_MAPPING_FAILED",
 ];
 
 const UNMAPPED_CODES_WITH_RATIONALE: &[(&str, &str)] = &[
-    (
-        "INPUT_MAPPING_FAILED",
-        "Future: input schema mapping failures not yet modeled in runtime",
-    ),
     (
         "REFERENCE_MISSING",
         "Future: unresolved runtime reference failures not yet implemented",
@@ -172,30 +206,6 @@ const UNMAPPED_CODES_WITH_RATIONALE: &[(&str, &str)] = &[
     (
         "RETRY_EXHAUSTED",
         "Future: runtime retry exhaustion not yet surfaced as typed error",
-    ),
-    (
-        "WAIT_TIMEOUT",
-        "Future: timer wait timeouts not yet modeled as runtime errors",
-    ),
-    (
-        "ASK_TIMEOUT",
-        "Future: ask-interaction timeouts not yet modeled as runtime errors",
-    ),
-    (
-        "FOR_EACH_ITEM_FAILED",
-        "Future: per-item failure aggregation not yet implemented",
-    ),
-    (
-        "TOGETHER_BRANCH_FAILED",
-        "Future: together-branch failure aggregation not yet implemented",
-    ),
-    (
-        "COLLECT_PAGE_FAILED",
-        "Future: collect page failure aggregation not yet implemented",
-    ),
-    (
-        "REDUCE_ITEM_FAILED",
-        "Future: reduce item failure aggregation not yet implemented",
     ),
     (
         "RESULT_REFERENCE_MISSING",
@@ -224,7 +234,7 @@ const PARTIALLY_MAPPED_CODES: &[(&str, &str)] = &[(
 fn section17_coverage_report_mapped_codes_match_runtime() {
     let runtime_codes = collect_all_runtime_codes();
 
-    assert_eq!(MAPPED_CODES.len(), 19, "golden mapped count must be 19");
+    assert_eq!(MAPPED_CODES.len(), 26, "golden mapped count must be 26");
 
     for code in MAPPED_CODES {
         assert!(
@@ -253,15 +263,15 @@ fn section17_coverage_report_counts_are_correct() {
     let partial_count = PARTIALLY_MAPPED_CODES.len();
     let total = mapped_count + unmapped_count + partial_count;
 
-    assert_eq!(mapped_count, 19, "expected 19 mapped Section 17 codes");
-    assert_eq!(unmapped_count, 13, "expected 13 unmapped Section 17 codes");
+    assert_eq!(mapped_count, 26, "expected 26 mapped Section 17 codes");
+    assert_eq!(unmapped_count, 6, "expected 6 unmapped Section 17 codes");
     assert_eq!(
         partial_count, 1,
         "expected 1 partially mapped Section 17 code"
     );
     assert_eq!(
         total, 33,
-        "expected 33 unique Section 17 codes (19 mapped + 13 unmapped + 1 partially mapped)"
+        "expected 33 unique Section 17 codes (26 mapped + 6 unmapped + 1 partially mapped)"
     );
 
     // Verify the mapped count against actual production runtime_codes
