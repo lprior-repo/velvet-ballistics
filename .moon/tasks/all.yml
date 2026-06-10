@@ -212,6 +212,285 @@ tasks:
     options:
       runInCI: true
 
+  # === vb-scr01 (R1-A11 / R4-A11 missing gate scripts) ===
+
+  check-test-density:
+    command: 'bash scripts/check-test-density.sh'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'
+      - 'scripts/check-test-density.sh'
+      - '.moon/tasks/all.yml'
+    options:
+      # Threshold and override knobs are documented in the script.
+      # The current tree has 5 known density-deficient crates
+      # (vb_ajc40_flux, vb_benchmark, vb_proof_kernels,
+      # vb_queue_semantics, vb_test_util). Until those are addressed
+      # under separate beads, this gate is allowed to fail; the
+      # landing reviewer will see the diagnostic.
+      runInCI: true
+
+  check-bench-registration:
+    command: 'bash scripts/check-bench-registration.sh'
+    inputs:
+      - 'scripts/check-bench-registration.sh'
+      - 'crates/*/Cargo.toml'
+      - 'crates/*/benches/**/*.rs'
+      - '.moon/tasks/all.yml'
+    options:
+      # Currently 16 bench files lack a [[bench]] entry (1 in
+      # vb_validate, 15 in workspace_tests). Until those are wired
+      # under separate beads, the gate is allowed to fail with a
+      # diagnostic.
+      runInCI: true
+
+  check-kani-shape-vacuity:
+    command: 'bash scripts/check-kani-shape-vacuity.sh'
+    inputs:
+      - 'scripts/check-kani-shape-vacuity.sh'
+      - 'crates/*/src/kani/**/*.rs'
+      - 'crates/*/src/**/kani/**/*.rs'
+      - 'verification/kani/**/*.rs'
+      - '.moon/tasks/all.yml'
+    options:
+      # The current tree has 112 vacuous Kani harnesses out of 172
+      # scanned. These are real defects that need follow-up beads;
+      # the gate is allowed to fail with a diagnostic until they are
+      # addressed.
+      runInCI: true
+
+  # === vb-scr02 (orphaned scripts that were not in any moon task) ===
+
+  bench-alloc-evidence:
+    # Per-bead vb-a7t6.4 evidence: wraps criterion benches with
+    # heaptrack 1.5.0 and emits evidence/alloc-evidence.jsonl.
+    command: 'bash scripts/bench-alloc-evidence.sh'
+    deps:
+      - 'bench-build'
+    inputs:
+      - 'scripts/bench-alloc-evidence.sh'
+      - 'crates/vb_core/src/**/*'
+      - 'crates/workspace_tests/benches/**/*.rs'
+      - '.moon/tasks/all.yml'
+    options:
+      # Smoke-only evidence gate: requires heaptrack on PATH; the
+      # script fails closed when heaptrack is missing.
+      runInCI: false
+
+  bench-instruction-counts:
+    # Per-bead vb-a7t6.3 evidence: wraps criterion benches with
+    # `perf stat -e instructions:u` and emits
+    # evidence/instruction-counts.jsonl.
+    command: 'bash scripts/bench-instruction-counts.sh'
+    deps:
+      - 'bench-build'
+    inputs:
+      - 'scripts/bench-instruction-counts.sh'
+      - 'crates/vb_core/src/**/*'
+      - 'crates/workspace_tests/benches/**/*.rs'
+      - '.moon/tasks/all.yml'
+    options:
+      # Smoke-only evidence gate: requires `perf` on PATH; the
+      # script fails closed when perf is missing.
+      runInCI: false
+
+  build-section39-latency:
+    # Consolidates the 3 *.percentiles.jsonl sidecars from
+    # evidence/benchmark-logs/ with section39-metadata.jsonl into
+    # evidence/section39-latency.jsonl.
+    command: 'bash scripts/build-section39-latency.sh'
+    deps:
+      - 'bench-build'
+    inputs:
+      - 'scripts/build-section39-latency.sh'
+      - 'evidence/benchmark-logs/**/*'
+      - 'evidence/section39-metadata.jsonl'
+      - '.moon/tasks/all.yml'
+    options:
+      runInCI: false
+
+  check-doc-taint-consistency:
+    # Mechanical gate: rejects stale joined-taint wording in
+    # production documentation. Mirrors the line-scoped rejection
+    # enforced by vb_doc::reconcile. The script scans a single
+    # markdown file; the canonical target is the master doc.
+    command: 'python scripts/check-doc-taint-consistency.py velvet-ballistics-MASTER.md'
+    inputs:
+      - 'scripts/check-doc-taint-consistency.py'
+      - 'velvet-ballistics-MASTER.md'
+      - '.moon/tasks/all.yml'
+    options:
+      runInCI: true
+
+  check-error-exhaustiveness:
+    # Compares fuzz harness error match arms against production
+    # error enum definitions. Advisory-only: documents the gap
+    # between fuzz coverage and production variants.
+    command: 'bash scripts/check-error-exhaustiveness.sh'
+    inputs:
+      - 'scripts/check-error-exhaustiveness.sh'
+      - 'fuzz/src/**/*.rs'
+      - 'fuzz/fuzz_targets/**/*.rs'
+      - '.moon/tasks/all.yml'
+    options:
+      # Advisory: the script exits 1 when variants are missing but
+      # the diagnostic is informational, not a hard gate. Keep
+      # runInCI off until the gap is closed under a separate bead.
+      runInCI: false
+
+  check-spelling-gate:
+    # Mechanical gate: rejects "velvet-ballistics" (wrong) in
+    # production code/docs; canonical spelling is
+    # "velvet-ballistics" (correct).
+    command: 'bash scripts/check-spelling-gate.sh'
+    inputs:
+      - 'scripts/check-spelling-gate.sh'
+      - '@globs(sources)'
+      - '@globs(tests)'
+      - '@globs(docs)'
+      - '.moon/tasks/all.yml'
+    options:
+      runInCI: true
+
+  forbidden-scan:
+    # Wraps xtask/src/forbidden_scan.rs to detect first-party
+    # introduction of forbidden token/pattern combos.
+    command: 'bash scripts/forbidden-scan.sh'
+    toolchains:
+      - rust
+    inputs:
+      - 'scripts/forbidden-scan.sh'
+      - 'xtask/src/forbidden_scan.rs'
+      - '@globs(sources)'
+      - '.moon/tasks/all.yml'
+    options:
+      # Requires the xtask crate to be in the workspace; currently
+      # excluded. Keep runInCI off until xtask is re-admitted.
+      runInCI: false
+
+  fuzz-minimization:
+    # Cargo-fuzz config fix-up: cargo-fuzz's TOML parser cannot
+    # simultaneously accept the [package.metadata] form and the
+    # [package.metadata.cargo-fuzz] form; this script bridges
+    # between them so the fuzz harness builds.
+    command: 'bash scripts/fuzz-minimization.sh'
+    inputs:
+      - 'scripts/fuzz-minimization.sh'
+      - 'fuzz/Cargo.toml'
+      - 'fuzz/fuzz_targets.rs'
+      - '.moon/tasks/all.yml'
+    options:
+      runInCI: false
+
+  generate-queue-state-verus-helpers:
+    # Mechanical helper for the vb-8mdp.8 verus queue_state helper
+    # region: extracts accepted helper bodies from
+    # crates/vb_queue_semantics/src/lib.rs and rewrites only the
+    # marked region in verification/verus/...
+    command: 'python scripts/generate_queue_state_verus_helpers.py'
+    inputs:
+      - 'scripts/generate_queue_state_verus_helpers.py'
+      - 'crates/vb_queue_semantics/src/lib.rs'
+      - 'verification/verus/vb_8mdp_8/queue_state_shared_source.rs'
+      - '.moon/tasks/all.yml'
+    options:
+      runInCI: false
+
+  guard-zero-tests:
+    # Fail-closed detector that rejects vacuous cargo test output
+    # (zero applicable tests). Wraps cargo test with passthrough.
+    # The smoke here just checks the script can be invoked; real
+    # usage wraps cargo test args; that is up to per-bead task
+    # bodies.
+    script: |
+      set -euo pipefail
+      bash scripts/guard-zero-tests.sh --help >/dev/null
+    inputs:
+      - 'scripts/guard-zero-tests.sh'
+      - '.moon/tasks/all.yml'
+    options:
+      runInCI: false
+
+  hotpath-scan:
+    # Invokes the hot-path scan: detects calls to forbidden hot-path
+    # APIs in `crates/vb_core/src/**`, `crates/vb_runtime/src/**`,
+    # `crates/vb_storage/src/**`, and `crates/vb_ipc/src/**`.
+    command: 'bash scripts/hotpath-scan.sh'
+    inputs:
+      - 'scripts/hotpath-scan.sh'
+      - 'scripts/hotpath-scan.allow'
+      - 'crates/vb_core/src/**/*'
+      - 'crates/vb_runtime/src/**/*'
+      - 'crates/vb_storage/src/**/*'
+      - 'crates/vb_ipc/src/**/*'
+      - '.moon/tasks/all.yml'
+    options:
+      runInCI: true
+
+  kani-list:
+    # Per-bead vb-ybzsz.1-adjacent: enumerates Kani harnesses for a
+    # package list. The dedicated moon wiring for the Flux/Loom
+    # obligations lives in .moon/tasks/kani.yml / loom.yml
+    # (vb-ybzsz parent bead); this task provides an off-cycle smoke
+    # that exercises kani-list.sh on the same packages.
+    command: 'bash scripts/kani-list.sh vb_core vb_compile'
+    toolchains:
+      - rust
+    inputs:
+      - 'scripts/kani-list.sh'
+      - 'crates/vb_core/Cargo.toml'
+      - 'crates/vb_compile/Cargo.toml'
+      - '.moon/tasks/all.yml'
+    options:
+      # Requires `cargo kani` on PATH; fails closed when missing.
+      # Off-CI; the canonical Flux/Loom wiring is owned by vb-ybzsz.
+      runInCI: false
+
+  run-tlc-checks:
+    # Local TLC runner. Mirrors the .moon/tasks/tlc.yml::verify-tlc
+    # gate but with a per-spec config and a hard-coded tla2tools.jar
+    # path. The CI version is the .moon/tasks/tlc.yml one; this task
+    # exists so a developer can run all `.cfg` files locally.
+    command: 'bash scripts/run-tlc-checks.sh'
+    inputs:
+      - 'scripts/run-tlc-checks.sh'
+      - 'verification/tla/*.tla'
+      - 'verification/tla/*.cfg'
+      - '.moon/tasks/all.yml'
+    options:
+      # Off-CI: the canonical tlc pipeline is verify-tlc in
+      # .moon/tasks/tlc.yml.
+      runInCI: false
+
+  verify-lean:
+    # Lean proof verifier wrapper. The active proofs are in
+    # ${LEAN_PROOF_DIR:-proofs/lean}; the script is fail-closed
+    # when the dir is missing and LEAN_REQUIRED != 1.
+    command: 'bash scripts/verify-lean.sh'
+    inputs:
+      - 'scripts/verify-lean.sh'
+      - 'proofs/lean/**/*'
+      - '.moon/tasks/all.yml'
+    options:
+      # Off-CI: lean proof verification requires `lake` on PATH and
+      # a populated proofs/lean tree; neither is part of the active
+      # CI surface.
+      runInCI: false
+
+  verify-no-legacy-primitives:
+    # Meta-lint: STEP_PRIMITIVES and ALLOWED_STEP_FIELDS must NOT
+    # contain legacy primitive names "parallel" or "aggregate".
+    # Per-bead vb-xi2f.16 PO-013.
+    command: 'bash scripts/verify_no_legacy_primitives.sh'
+    inputs:
+      - 'scripts/verify_no_legacy_primitives.sh'
+      - 'crates/vb_core/src/workflow/**/*'
+      - '.moon/tasks/all.yml'
+    options:
+      runInCI: true
+
   hot-cold-forbidden-apis:
     command: 'bash scripts/check-hot-cold-forbidden-apis.sh'
     inputs:
