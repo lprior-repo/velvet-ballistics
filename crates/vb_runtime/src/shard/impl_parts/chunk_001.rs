@@ -210,13 +210,17 @@ impl Shard {
     #[must_use]
     pub fn snapshot_run(&self, run: RunId, correlation: u64) -> InspectResponse {
         if self.terminal_runs_contains(run) {
-            let outcome = self
-                .terminal_outcome_get(run)
-                .unwrap_or(TerminalOutcome::Failed);
-            return InspectResponse::Terminal {
-                run,
-                correlation,
-                outcome,
+            return match self.terminal_outcome_get(run) {
+                Some(outcome) => InspectResponse::Terminal {
+                    run,
+                    correlation,
+                    outcome,
+                },
+                // The run is in the terminal set but the outcome record is missing.
+                // Surface this as an explicit `Tombstoned` rather than silently
+                // synthesizing `Failed`; the caller decides how to handle the
+                // inconsistency instead of inheriting a fabricated outcome.
+                None => InspectResponse::Tombstoned { run, correlation },
             };
         }
         match self.runs.get(&run) {

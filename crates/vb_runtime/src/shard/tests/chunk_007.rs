@@ -302,6 +302,9 @@ fn snapshot_run_returns_cancelled_status_for_terminal_cancelled_run() {
         InspectResponse::Found(_) => {
             panic!("expected Terminal Cancelled, got Found");
         }
+        InspectResponse::Tombstoned { .. } => {
+            panic!("expected Terminal Cancelled, got Tombstoned");
+        }
     }
 }
 
@@ -347,6 +350,9 @@ fn snapshot_run_returns_killed_status_for_terminal_killed_run() {
         InspectResponse::Found(_) => {
             panic!("expected Terminal Killed, got Found");
         }
+        InspectResponse::Tombstoned { .. } => {
+            panic!("expected Terminal Killed, got Tombstoned");
+        }
     }
 }
 
@@ -380,6 +386,9 @@ fn snapshot_run_still_returns_found_for_active_run() {
         }
         InspectResponse::NotFound { .. } => {
             panic!("expected Found for active run, got NotFound");
+        }
+        InspectResponse::Tombstoned { .. } => {
+            panic!("expected Found for active run, got Tombstoned");
         }
     }
 }

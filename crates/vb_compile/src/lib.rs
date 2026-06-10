@@ -71,7 +71,13 @@ mod body_dispatcher_together_flux;
 #[cfg(kani)]
 pub mod kani_finish_digest;
 
-// TEMPORARILY DISABLED: pre-existing proptest macro compatibility issue in bytecode_ast_parity.rs
+// TEMPORARILY DISABLED: pre-existing proptest macro compatibility issue in
+// bytecode_ast_parity.rs and a known bytecode/AST parity failure that the
+// proptest surfaces (master §38 follow-up: the bytecode evaluator rejects
+// `(-(-x))` as TypeMismatch while the AST evaluator returns the correct
+// value). The untracked `property_tests/` directory exists on disk for the
+// followup bead but is intentionally NOT wired in here until the parity
+// bug is fixed.
 // #[cfg(test)]
 // mod property_tests;
 

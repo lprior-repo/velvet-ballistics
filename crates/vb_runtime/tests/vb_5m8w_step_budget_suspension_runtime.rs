@@ -15,7 +15,9 @@ use vb_runtime::engine::{
     EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeSignal, drive_deterministic_full,
 };
 use vb_runtime::primitives::collect::CollectStates;
-use vb_runtime::shard::{InspectResponse, ResumeError, Shard, ShardCommand, ShardConfig, TerminalOutcome};
+use vb_runtime::shard::{
+    InspectResponse, ResumeError, Shard, ShardCommand, ShardConfig, TerminalOutcome,
+};
 
 fn one_step_workflow(kind: CompiledNodeKind, slot_count: u16) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {

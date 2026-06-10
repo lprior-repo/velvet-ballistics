@@ -149,10 +149,7 @@ pub(crate) struct BackpressureSender {
 
 impl BackpressureSender {
     /// Attempts to enqueue a warning. Returns the warning back on full.
-    pub(crate) fn try_send(
-        &self,
-        warning: BackpressureWarning,
-    ) -> Result<(), BackpressureWarning> {
+    pub(crate) fn try_send(&self, warning: BackpressureWarning) -> Result<(), BackpressureWarning> {
         match self.queue.push(warning) {
             Ok(()) => Ok(()),
             Err(returned) => Err(returned),

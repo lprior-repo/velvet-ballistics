@@ -38,7 +38,8 @@ impl BoundedActionCompletionQueue {
         capacity: usize,
     ) -> Result<(Self, BackpressureReceiver), ActionQueueError> {
         let capacity = parse_capacity(capacity)?;
-        let bp_queue: Arc<ArrayQueue<BackpressureWarning>> = Arc::new(ArrayQueue::new(capacity.get()));
+        let bp_queue: Arc<ArrayQueue<BackpressureWarning>> =
+            Arc::new(ArrayQueue::new(capacity.get()));
         let tx = BackpressureSender {
             queue: Arc::clone(&bp_queue),
         };

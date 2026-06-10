@@ -29,7 +29,9 @@ use vb_core::workflow::{
 };
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::runtime::Runtime;
-use vb_runtime::shard::{InspectResponse, RuntimeState, ShardConfig, ShardDirective, TerminalOutcome};
+use vb_runtime::shard::{
+    InspectResponse, RuntimeState, ShardConfig, ShardDirective, TerminalOutcome,
+};
 use vb_runtime::trace::TraceEvent;
 
 // =============================================================================

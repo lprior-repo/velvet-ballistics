@@ -5,9 +5,29 @@
 //! reference with `CompileError::InvalidVariableScope` (the dedicated
 //! scope variant) rather than the generic `UnknownReferenceRoot`.
 //!
+//! ## Architectural note
+//!
 //! These tests live in their own module so they can run independently of
 //! the larger aspirational `attempt_number_tests.rs` suite, which assumes
 //! a `Repeat { steps: ... }` shape that the cold AST does not yet preserve.
+//!
+//! **Why the scope guard is correct under the cold-AST invariant.** The
+//! cold AST (master spec §45) drops `StepKindAst::Repeat` body expressions
+//! at construction, so the validator never sees a `$attempt.*` reference
+//! that is *inside* a `Repeat` body. Any `$attempt.*` that reaches the
+//! validator is therefore by definition outside a `Repeat` body. There is
+//! no per-step "in a Repeat body" flag on `RefTables` (only declared name
+//! sets), and the cold-AST `Repeat` variant carries no body to inspect.
+//! The blanket reject is correct under that invariant.
+//!
+//! **Follow-up bead.** When canonical lowering adds body retention (master
+//! §45 follow-up), this guard will need a `repeat_step_indices` set
+//! threaded through `RefTables` so the legal use case
+//! (`$attempt.number` inside a `Repeat` body step) can be accepted
+//! without re-introducing the bare-reference fallback. The current
+//! `attempt_number_tests.rs` placeholder already encodes that contract.
+//! Until then, the scope guard must remain in force and these tests
+//! must keep passing.
 
 use crate::{CompileError, CompileErrors, YamlCompiler};
 
@@ -61,12 +81,6 @@ steps:
     }
 }
 
-/// `$attempt.number` in a `do.input` is not exercisable here: the `do:`
-/// primitive's `input:` field is a slot index, not a reference string, and
-/// is rejected by the schema before the reference validator runs. (The
-/// `save:` case above is the canonical reference-bearing primitive at the
-/// top level; the `choose.condition` case below is the other one.)
-
 /// `$attempt.number` in a `choose.condition` at the top level must
 /// produce `InvalidVariableScope`.
 #[test]
@@ -89,5 +103,40 @@ steps:
     assert!(
         matches!(err, CompileError::InvalidVariableScope { .. }),
         "expected InvalidVariableScope, got: {err:?}"
+    );
+}
+
+/// Bare `$attempt` (no accessor) in a top-level expression must also
+/// produce `InvalidVariableScope` (or the legacy `UnknownReferenceRoot`
+/// fallback for the bare-reference path that delegates to the shared
+/// validator). This guards the case where the `attempt` root is
+/// matched without a `.something` tail.
+#[test]
+fn bare_attempt_outside_repeat_emits_invalid_variable_scope_or_unknown_root() {
+    let source = br#"version: velvet-ballistics/v1
+name: bare_attempt
+when:
+  manual: {}
+steps:
+  - id: log
+    save:
+      value: $attempt
+  - id: done
+    finish:
+      result: 0
+"#;
+    let err = match YamlCompiler::default().parse_ast(source) {
+        Ok(ast) => panic!("parse_ast unexpectedly succeeded with AST: {ast:?}"),
+        Err(CompileErrors(errors)) => errors
+            .into_iter()
+            .next()
+            .expect("parse_ast failed with empty error list"),
+    };
+    assert!(
+        matches!(
+            err,
+            CompileError::InvalidVariableScope { .. } | CompileError::UnknownReferenceRoot { .. }
+        ),
+        "expected InvalidVariableScope or UnknownReferenceRoot for bare $attempt, got: {err:?}"
     );
 }

@@ -223,19 +223,8 @@ fn validate_compile_reference(
         return validate_single_reference_with_context(reference, tables, step_index, false, false)
             .map_err(|e| map_validation_error(reference, &e));
     };
-    // Scope guard: `$attempt.*` is only legal inside a `Repeat` body step.
-    // The cold AST does not preserve `Repeat` body expressions, so every
-    // `$attempt.*` reference observed at this validation layer is by
-    // definition outside a repeat body and must be rejected with the
-    // correct taxonomy (`InvalidVariableScope`) rather than the generic
-    // `UnknownReferenceRoot` fallback.
     if root == "attempt" {
-        return Err(CompileError::InvalidVariableScope {
-            reference: Box::from(reference),
-            context: "outside repeat body",
-            allowed: Box::from(["repeat_attempt.body", "repeat_check"].as_slice()),
-            mark: SourceMark::unavailable(),
-        });
+        return Err(reject_attempt_scope(reference));
     }
     // Compile-specific: slot references are not in the standalone validator
     if matches!(root, "slot" | "slots") {
@@ -249,6 +238,30 @@ fn validate_compile_reference(
     }
     validate_single_reference_with_context(reference, tables, step_index, false, false)
         .map_err(|e| map_validation_error(reference, &e))
+}
+
+/// Rejects a `$attempt.*` reference observed outside a `Repeat` body.
+///
+/// Scope guard: `$attempt.*` is only legal inside a `Repeat` body step.
+/// Architectural invariant: the cold AST (master spec §45) drops
+/// `StepKindAst::Repeat` body expressions at construction. Any
+/// `$attempt.*` reference that reaches this validator is therefore
+/// by definition outside a `Repeat` body — there is no per-step
+/// "in a Repeat body" flag on `RefTables` (only declared name
+/// sets), and the cold-AST `Repeat` variant carries no body to
+/// inspect. The blanket reject is correct under the cold-AST
+/// invariant. When canonical lowering adds body retention (master
+/// §45 follow-up), this guard will need a `repeat_step_indices`
+/// set threaded through `RefTables` to support the legal
+/// use case (see `references_scope_guard_tests.rs` for the
+/// architectural note).
+fn reject_attempt_scope(reference: &str) -> CompileError {
+    CompileError::InvalidVariableScope {
+        reference: Box::from(reference),
+        context: "outside repeat body",
+        allowed: Box::from(["repeat_attempt.body", "repeat_check"].as_slice()),
+        mark: SourceMark::unavailable(),
+    }
 }
 
 /// Validates a `$slot.*` reference (compile-specific).

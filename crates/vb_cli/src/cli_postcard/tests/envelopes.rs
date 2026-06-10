@@ -124,8 +124,9 @@ fn cli_postcard_kind_from_str_resolves_known_kinds_and_returns_typed_err_for_unk
         ("workflow_diff_report", CliPostcardKind::WorkflowDiffReport),
     ];
     for (input, expected) in cases {
-        let actual = CliPostcardKind::from_str(input)
-            .unwrap_or_else(|_| panic!("envelope kind {input:?} must parse to typed CliPostcardKind"));
+        let actual = CliPostcardKind::from_str(input).unwrap_or_else(|_| {
+            panic!("envelope kind {input:?} must parse to typed CliPostcardKind")
+        });
         assert_eq!(
             actual, *expected,
             "envelope kind {input:?} parsed to {actual:?}, expected {expected:?}"
@@ -195,8 +196,8 @@ fn cli_postcard_kind_from_cli_envelope_kind_is_total() {
 
 #[test]
 fn cli_postcard_kind_round_trips_for_all_variants() {
-    use std::str::FromStr;
     use proptest::prelude::*;
+    use std::str::FromStr;
 
     // Property test: the closed `CliPostcardKind` enum must round-trip
     // through its string discriminant for every variant in the taxonomy,

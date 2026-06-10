@@ -237,6 +237,12 @@ impl InspectSnapshotFormatter {
                     run, correlation, outcome
                 )
             }
+            InspectResponse::Tombstoned { run, correlation } => {
+                format!(
+                    "Tombstoned {{ run: {:?}, correlation: {} }}",
+                    run, correlation
+                )
+            }
         }
     }
 }

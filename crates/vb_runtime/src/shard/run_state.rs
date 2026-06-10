@@ -71,6 +71,19 @@ pub enum InspectResponse {
         /// How the run reached the terminal state.
         outcome: TerminalOutcome,
     },
+    /// The run was found in the terminal set but its outcome record was missing.
+    ///
+    /// This indicates a transient shard state inconsistency (terminal_runs contains
+    /// the run but terminal_outcomes does not). Callers must NOT treat this as a
+    /// normal `Failed` outcome; the absence of an outcome is observable and must
+    /// be reported explicitly. Re-running inspect once the shard settles typically
+    /// resolves the inconsistency.
+    Tombstoned {
+        /// Run identifier.
+        run: RunId,
+        /// Caller correlation identifier.
+        correlation: u64,
+    },
 }
 
 /// Recorded terminal state for a run that has been moved to the terminal set.
