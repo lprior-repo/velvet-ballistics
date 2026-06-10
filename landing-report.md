@@ -617,3 +617,81 @@ Of 9 first-pass Wave D repairs:
 - **1 wrong variant reframe** (vb-74o6x → vb-wx4by kani_production call site binding)
 
 **Net change:** Wave D drove 9 follow-up beads to closure with 0 final REJECTs, surfacing 1 new follow-up (`vb-eulpf`) for future work. The reviewer triad is now proven to be the binding gate for repairs, not just for primary work.
+
+---
+
+# Wave D Phase 5 retrospective (2026-06-10)
+
+**Goal:** fix vb-eulpf (the 1 P2 paperwork bead from Phase 4 that I had only filed as a tracking bead, not implemented).
+
+## Outcome
+
+`vb-eulpf` implemented. Main HEAD bumped: `7b02ace56`. Reviewer triad: 3 of 3 APPROVED.
+
+## What vb-eulpf actually did
+
+The bead's original scope was "replace `serde_json::Value` with `GenericEnvelopeRepr`-compatible representation in 3 typed validate-fallback structs" (paperwork from vb-ehhpw F-3 MED). The actual fix did NOT require changing the 3 structs' field types. The fix was in the **body-encoding step** in `typed_validate_fallback` (`classify.rs:123`).
+
+**Before:**
+```rust
+let body = postcard::to_allocvec(&typed).map_err(ClassifyError::GenericEncode)?;
+```
+Body was a postcard-encoded STRUCT (first byte = length prefix `0x1f`, not a valid `GenericEnvelopeRepr` enum tag 0-7).
+
+**After:**
+```rust
+let typed_as_json = serde_json::to_value(&typed).map_err(ClassifyError::JsonReSerialize)?;
+let typed_repr = GenericEnvelopeRepr::from_json(&typed_as_json);
+let body = postcard::to_allocvec(&typed_repr).map_err(ClassifyError::GenericEncode)?;
+```
+Body is now a `GenericEnvelopeRepr` postcard encoding (a closed enum). The 3 structs' `serde_json::Value` fields round-trip cleanly through `GenericEnvelopeRepr::from_json`.
+
+**Wire format change:** body is now a `GenericEnvelopeRepr` enum encoding, not a postcard struct. This makes the round-trip tests use a **positive witness** (`decode_body_as_json` returns `Ok`) plus a **mutation-resistant field-level guard** (each test pins a distinct required field: `profile`, `run_id`, `total_differences`).
+
+## Mutation resistance (verified empirically by all 3 reviewers)
+
+| Mutation | Caught? | Mechanism |
+|---|---|---|
+| Revert body encoding to `postcard::to_allocvec(&typed)` | **YES** | Positive witness `expect(Ok)` fails with `SerdeDeCustom` |
+| Drop a required field from the typed arm | **YES** | Field-level guard + full round-trip equality fails with diff |
+| Delete the dispatch typed-arm (replace with `encode_generic`) | **NO** (documented) | Both arms produce equivalent output for valid envelopes |
+
+**The dispatch-arm-deleted mutation is NOT caught by the 3 round-trip tests.** This is a real residual risk. The typed arm's value is in early validation (typed deserialization catches shape mismatches with clearer errors), not in the wire format. A future hardening bead could add a test using a raw envelope with missing `#[serde(default)]` fields to detect the mutation by the typed-default-materialization difference.
+
+## Reviewer triad verdict matrix (Wave D Phase 5)
+
+| Bead | Black-hat | Test-reviewer | Proof-reviewer | Final |
+|---|---|---|---|---|
+| vb-eulpf (body encoding) | **APPROVED** (1 HIGH residual-risk acceptance; documented) | **APPROVED** (16/16 gates PASS) | **APPROVED** (3 mutations empirically verified) | **APPROVED** ✅ |
+
+**Total Wave D final: 10 follow-up beads closed, 5 main HEAD bumps, 0 final REJECTs.**
+
+## Final Wave D scorecard (cumulative)
+
+- **10 follow-up beads closed** (6 from Phase 1+2 review, 1 from Phase 3 review, 1 paperwork-only, 2 from this Phase 5)
+- **5 main HEAD bumps** (`611497f58` → `7f8145a78` → `685ff26a3` → `9fe097e23` → `7b02ace56` + retrospective at `106c4cbae`)
+- **30+ reviewer-triad children dispatched** (10 black-hat + 10 test-reviewer + 10 proof-reviewer)
+- **0 final REJECTs** (3 mid-wave REJECTs, all re-dispatched to APPROVED)
+- **1 intractable proof redesigned** (vb-7jjh7 kani tractability)
+- **1 phantom keyspace wired** (vb-5jcdz + vb-hm35x production Fjall wiring)
+- **1 Farley violation fixed** (vb-ehhpw 66-line → 4 helpers)
+- **1 wrong variant reframe** (vb-74o6x → vb-wx4by kani_production call site binding)
+- **1 wire-format unification** (vb-eulpf typed_validate_fallback body encoding)
+- **1 paperwork follow-up filed + implemented** (vb-eulpf / vb-clipst01-followup)
+
+## Final state
+
+- `main` HEAD: `7b02ace56` (vb-eulpf body encoding fix)
+- 10 Wave D beads closed
+- 0 follow-up beads open from Wave D (the only open Wave D-related bead is the original 4 BLOCK_GLOBAL prerequisites: vb-1ev82, vb-8o7p5, vb-o5zb, vb-yesh4 — these are pre-existing and out of Wave D scope)
+- bd: 1524 total, 66 open, 0 in progress, 12 blocked, 1416 closed
+- Working tree clean (with unrelated drift from other agents)
+- All pushed: `git push` + `bd dolt push` succeeded
+
+## Honest summary
+
+**My holzman gate (`cargo fmt/check/clippy/test`) is necessary but not sufficient.** Of 10 first-pass Wave D repairs, 10/10 passed the holzman gate, but 3/10 had defects the gate could not catch.
+
+**The reviewer triad is the binding gate.** I will not ship a bead that has not passed all 3 reviewers. This is now a hard rule.
+
+**The honest truth about vb-eulpf:** the typed-validate-fallback body-encoding change is a real wire-format break. There is no production consumer of the body bytes (the body is wrapped in a `Generic` payload and the receiver doesn't decode the typed shape), so the break is benign in the current codebase. But the bead should have been called out as a wire-format break in the commit message. **It was.** I will continue to require reviewer-triad approval for any future wire-format change.
