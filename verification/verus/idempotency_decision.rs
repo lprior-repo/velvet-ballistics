@@ -61,7 +61,7 @@ pub open spec fn vb_validate_idempotency_decision(
 ) -> ProdIdempotencyDecision {
     if !prod_has_external_side_effect(side_effect) {
         ProdIdempotencyDecision::Accept
-    } else if retry_safety == ProdRetrySafety::Unsafe {
+    } else if retry_safety == ProdRetrySafety::NotRetrySafe {
         ProdIdempotencyDecision::RejectRetryUnsafe
     } else if idempotency == ProdIdempotency::AtLeastOnceExternal {
         ProdIdempotencyDecision::RejectAtLeastOnceExternal
@@ -79,7 +79,7 @@ pub open spec fn vb_compile_idempotency_decision(
 ) -> ProdIdempotencyDecision {
     if side_effect == ProdSideEffect::None {
         ProdIdempotencyDecision::Accept
-    } else if retry_safety == ProdRetrySafety::Unsafe {
+    } else if retry_safety == ProdRetrySafety::NotRetrySafe {
         ProdIdempotencyDecision::RejectRetryUnsafe
     } else if idempotency == ProdIdempotency::AtLeastOnceExternal {
         ProdIdempotencyDecision::RejectAtLeastOnceExternal
@@ -126,10 +126,10 @@ pub proof fn proof_side_effecting_unsafe_rejected(
     requires
         prod_has_external_side_effect(side_effect),
     ensures
-        vb_validate_idempotency_decision(side_effect, ProdRetrySafety::Unsafe, idempotency)
+        vb_validate_idempotency_decision(side_effect, ProdRetrySafety::NotRetrySafe, idempotency)
             == ProdIdempotencyDecision::RejectRetryUnsafe,
 {
-    assert(vb_validate_idempotency_decision(side_effect, ProdRetrySafety::Unsafe, idempotency)
+    assert(vb_validate_idempotency_decision(side_effect, ProdRetrySafety::NotRetrySafe, idempotency)
         == ProdIdempotencyDecision::RejectRetryUnsafe) by(compute);
 }
 
@@ -139,7 +139,7 @@ pub proof fn proof_side_effecting_at_least_once_rejected(
 )
     requires
         prod_has_external_side_effect(side_effect),
-        retry_safety != ProdRetrySafety::Unsafe,
+        retry_safety != ProdRetrySafety::NotRetrySafe,
     ensures
         vb_validate_idempotency_decision(side_effect, retry_safety, ProdIdempotency::AtLeastOnceExternal)
             == ProdIdempotencyDecision::RejectAtLeastOnceExternal,
@@ -154,7 +154,7 @@ pub proof fn proof_side_effecting_deterministic_pure_rejected(
 )
     requires
         prod_has_external_side_effect(side_effect),
-        retry_safety != ProdRetrySafety::Unsafe,
+        retry_safety != ProdRetrySafety::NotRetrySafe,
     ensures
         vb_validate_idempotency_decision(side_effect, retry_safety, ProdIdempotency::DeterministicPure)
             == ProdIdempotencyDecision::RejectSideEffectingDeterministicPure,
@@ -169,7 +169,7 @@ pub proof fn proof_side_effecting_idempotent_external_safe_accepted(
 )
     requires
         prod_has_external_side_effect(side_effect),
-        retry_safety == ProdRetrySafety::Safe || retry_safety == ProdRetrySafety::KeyRequired,
+        retry_safety == ProdRetrySafety::Idempotent || retry_safety == ProdRetrySafety::RequiresIdempotencyKey,
     ensures
         vb_validate_idempotency_decision(side_effect, retry_safety, ProdIdempotency::IdempotentExternal)
             == ProdIdempotencyDecision::Accept,

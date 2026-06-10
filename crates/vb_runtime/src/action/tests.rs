@@ -13,7 +13,7 @@ fn contract_fixture(id: u16) -> ActionContract {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     }
 }
@@ -152,7 +152,7 @@ fn validate_input_bytes_rejects_when_max_input_bytes_is_zero() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     assert_eq!(registry.register(contract), Ok(()));
@@ -223,7 +223,7 @@ fn action_registry_dispatch_rejects_mismatched_contract() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let result = registry.dispatch(&input, &wrong_contract);
@@ -349,7 +349,7 @@ fn action_contract_fields_are_preserved() {
         timeout_ms: 10000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([]),
     };
     // When registering and resolving
@@ -461,7 +461,7 @@ fn action_registry_register_max_action_id_does_not_overflow() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let result = registry.register(contract);
@@ -484,7 +484,7 @@ fn action_registry_validate_input_bytes_rejects_zero_with_slots() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     assert_eq!(registry.register(contract), Ok(()));
@@ -520,7 +520,7 @@ fn action_registry_dispatch_with_contract_zero_bytes_and_zero_slots_succeeds() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     assert_eq!(registry.register(contract), Ok(()));

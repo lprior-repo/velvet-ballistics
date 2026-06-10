@@ -35,9 +35,9 @@ fn compile_ok(c: &ActionContract) -> bool {
 #[test]
 fn parity_side_effect_none_all_combinations_accept() {
     for retry_safety in [
-        RetrySafety::Safe,
-        RetrySafety::KeyRequired,
-        RetrySafety::Unsafe,
+        RetrySafety::Idempotent,
+        RetrySafety::RequiresIdempotencyKey,
+        RetrySafety::NotRetrySafe,
     ] {
         for idempotency in [
             Idempotency::DeterministicPure,
@@ -71,7 +71,7 @@ fn parity_unsafe_retry_all_side_effects_rejected() {
             Idempotency::IdempotentExternal,
             Idempotency::AtLeastOnceExternal,
         ] {
-            let c = contract(id, side_effect, idempotency, RetrySafety::Unsafe);
+            let c = contract(id, side_effect, idempotency, RetrySafety::NotRetrySafe);
             assert!(
                 !static_ok(&c),
                 "static rejects {side_effect:?}+Unsafe+{idempotency:?}"
@@ -94,7 +94,7 @@ fn parity_idempotent_external_safe_or_key_required_accepts() {
         SideEffect::LocalWrite,
         SideEffect::LocalWrite,
     ] {
-        for retry_safety in [RetrySafety::Safe, RetrySafety::KeyRequired] {
+        for retry_safety in [RetrySafety::Idempotent, RetrySafety::RequiresIdempotencyKey] {
             let c = contract(
                 id,
                 side_effect,
@@ -123,7 +123,7 @@ fn parity_at_least_once_external_with_safe_or_key_required_rejected_by_both() {
         SideEffect::LocalWrite,
         SideEffect::LocalWrite,
     ] {
-        for retry_safety in [RetrySafety::Safe, RetrySafety::KeyRequired] {
+        for retry_safety in [RetrySafety::Idempotent, RetrySafety::RequiresIdempotencyKey] {
             let c = contract(
                 id,
                 side_effect,
@@ -153,7 +153,7 @@ fn parity_deterministic_pure_with_safe_or_key_required_rejected_by_both() {
         SideEffect::LocalWrite,
         SideEffect::LocalWrite,
     ] {
-        for retry_safety in [RetrySafety::Safe, RetrySafety::KeyRequired] {
+        for retry_safety in [RetrySafety::Idempotent, RetrySafety::RequiresIdempotencyKey] {
             let c = contract(
                 id,
                 side_effect,
@@ -187,9 +187,9 @@ fn parity_exhaustive_all_45_cases() {
 
     for side_effect in side_effects.iter().copied() {
         for retry_safety in [
-            RetrySafety::Safe,
-            RetrySafety::KeyRequired,
-            RetrySafety::Unsafe,
+            RetrySafety::Idempotent,
+            RetrySafety::RequiresIdempotencyKey,
+            RetrySafety::NotRetrySafe,
         ] {
             for idempotency in [
                 Idempotency::DeterministicPure,
@@ -216,9 +216,9 @@ fn parity_exhaustive_all_45_cases() {
 fn parity_side_effect_none_all_9_cases_agree() {
     let mut count = 0usize;
     for retry_safety in [
-        RetrySafety::Safe,
-        RetrySafety::KeyRequired,
-        RetrySafety::Unsafe,
+        RetrySafety::Idempotent,
+        RetrySafety::RequiresIdempotencyKey,
+        RetrySafety::NotRetrySafe,
     ] {
         for idempotency in [
             Idempotency::DeterministicPure,
@@ -251,7 +251,7 @@ fn parity_unsafe_12_cases_all_rejected_by_both() {
             Idempotency::IdempotentExternal,
             Idempotency::AtLeastOnceExternal,
         ] {
-            let c = contract(600, side_effect, idempotency, RetrySafety::Unsafe);
+            let c = contract(600, side_effect, idempotency, RetrySafety::NotRetrySafe);
             assert!(
                 !static_ok(&c),
                 "static rejects Unsafe+{side_effect:?}+{idempotency:?}"
@@ -275,7 +275,7 @@ fn parity_idempotent_external_8_cases_all_accepted_by_both() {
         SideEffect::LocalWrite,
         SideEffect::LocalWrite,
     ] {
-        for retry_safety in [RetrySafety::Safe, RetrySafety::KeyRequired] {
+        for retry_safety in [RetrySafety::Idempotent, RetrySafety::RequiresIdempotencyKey] {
             let c = contract(
                 700,
                 side_effect,

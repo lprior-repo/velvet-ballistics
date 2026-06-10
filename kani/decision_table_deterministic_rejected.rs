@@ -22,7 +22,7 @@ fn decision_table_deterministic_rejected() {
         SideEffect::Creates,
         SideEffect::Destroys,
     ];
-    let retry_safeties = [RetrySafety::Safe, RetrySafety::KeyRequired, RetrySafety::Unsafe];
+    let retry_safeties = [RetrySafety::Idempotent, RetrySafety::RequiresIdempotencyKey, RetrySafety::NotRetrySafe];
 
     let mut i = 0;
     while i < side_effects_non_none.len() {

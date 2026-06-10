@@ -22,7 +22,7 @@ use vb_validate::idempotency_contract::is_statically_idempotent_contract;
 #[kani::unwind(6)]
 fn decision_table_ok_branch() {
     // CASE A: side_effect == None — 9 combinations
-    let retry_safeties = [RetrySafety::Safe, RetrySafety::KeyRequired, RetrySafety::Unsafe];
+    let retry_safeties = [RetrySafety::Idempotent, RetrySafety::RequiresIdempotencyKey, RetrySafety::NotRetrySafe];
     let idempotencies = [
         Idempotency::DeterministicPure,
         Idempotency::IdempotentExternal,
@@ -65,7 +65,7 @@ fn decision_table_ok_branch() {
 
     // CASE B: side_effect!=None AND idempotency==IdempotentExternal AND retry_safety in {Safe, KeyRequired}
     let side_effects_non_none = [SideEffect::Writes, SideEffect::Sends, SideEffect::Creates, SideEffect::Destroys];
-    let safe_key_required = [RetrySafety::Safe, RetrySafety::KeyRequired];
+    let safe_key_required = [RetrySafety::Idempotent, RetrySafety::RequiresIdempotencyKey];
 
     let mut i = 0;
     while i < side_effects_non_none.len() {

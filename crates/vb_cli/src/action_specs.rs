@@ -163,7 +163,7 @@ pub(crate) fn cli_action_specs() -> &'static [CliActionSpec] {
         CliActionSpec {
             id: 1,
             idempotency: vb_core::action::Idempotency::DeterministicPure,
-            retry_safety: vb_core::action::RetrySafety::Safe,
+            retry_safety: vb_core::action::RetrySafety::Idempotent,
             side_effect: vb_core::action::SideEffect::Pure,
             input_slot_count: 1,
             output_slot_count: 1,
@@ -172,7 +172,7 @@ pub(crate) fn cli_action_specs() -> &'static [CliActionSpec] {
         CliActionSpec {
             id: 2,
             idempotency: vb_core::action::Idempotency::IdempotentExternal,
-            retry_safety: vb_core::action::RetrySafety::KeyRequired,
+            retry_safety: vb_core::action::RetrySafety::RequiresIdempotencyKey,
             side_effect: vb_core::action::SideEffect::LocalWrite,
             input_slot_count: 2,
             output_slot_count: 1,
@@ -181,7 +181,7 @@ pub(crate) fn cli_action_specs() -> &'static [CliActionSpec] {
         CliActionSpec {
             id: 3,
             idempotency: vb_core::action::Idempotency::AtLeastOnceExternal,
-            retry_safety: vb_core::action::RetrySafety::Unsafe,
+            retry_safety: vb_core::action::RetrySafety::NotRetrySafe,
             side_effect: vb_core::action::SideEffect::ExternalWrite,
             input_slot_count: 1,
             output_slot_count: 0,
@@ -227,9 +227,9 @@ pub(crate) fn action_idempotency_name(value: vb_core::action::Idempotency) -> &'
 
 pub(crate) fn action_retry_safety_name(value: vb_core::action::RetrySafety) -> &'static str {
     match value {
-        vb_core::action::RetrySafety::Safe => "safe",
-        vb_core::action::RetrySafety::KeyRequired => "key_required",
-        vb_core::action::RetrySafety::Unsafe => "unsafe",
+        vb_core::action::RetrySafety::Idempotent => "safe",
+        vb_core::action::RetrySafety::RequiresIdempotencyKey => "key_required",
+        vb_core::action::RetrySafety::NotRetrySafe => "unsafe",
         _ => "unknown",
     }
 }
@@ -269,10 +269,10 @@ pub(crate) fn action_idempotency_rule(
         (vb_core::action::Idempotency::DeterministicPure, _) => {
             "pure deterministic actions may replay without an external key"
         }
-        (_, vb_core::action::RetrySafety::KeyRequired) => {
+        (_, vb_core::action::RetrySafety::RequiresIdempotencyKey) => {
             "external retries require a stable idempotency key"
         }
-        (_, vb_core::action::RetrySafety::Unsafe) => {
+        (_, vb_core::action::RetrySafety::NotRetrySafe) => {
             "unsafe actions must not be retried automatically"
         }
         _ => "retry behavior follows the action contract",

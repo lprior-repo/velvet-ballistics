@@ -227,7 +227,7 @@ fn make_contract(id: u16) -> vb_core::action::ActionContract {
         timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     }
 }
@@ -314,7 +314,7 @@ fn make_contract_with_capability(
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([cap]),
     }
 }

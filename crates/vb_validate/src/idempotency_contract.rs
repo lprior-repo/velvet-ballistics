@@ -146,12 +146,12 @@ pub fn is_statically_idempotent_contract(
         contract.idempotency,
     ) {
         (SideEffect::Pure, _, _) => Ok(()),
-        (side_effect, RetrySafety::Unsafe, idempotency) => {
+        (side_effect, RetrySafety::NotRetrySafe, idempotency) => {
             Err(IdempotencyContractViolation::SideEffectingRetryUnsafe {
                 action: contract.id,
                 side_effect,
                 idempotency,
-                retry_safety: RetrySafety::Unsafe,
+                retry_safety: RetrySafety::NotRetrySafe,
             })
         }
         (side_effect, retry_safety, Idempotency::AtLeastOnceExternal) => Err(
@@ -170,9 +170,11 @@ pub fn is_statically_idempotent_contract(
                 retry_safety,
             },
         ),
-        (_, RetrySafety::Safe | RetrySafety::KeyRequired, Idempotency::IdempotentExternal) => {
-            Ok(())
-        }
+        (
+            _,
+            RetrySafety::Idempotent | RetrySafety::RequiresIdempotencyKey,
+            Idempotency::IdempotentExternal,
+        ) => Ok(()),
         // `SideEffect`, `RetrySafety`, and `Idempotency` are all `#[non_exhaustive]`.
         // Any unrecognized combination is treated as an invalid contract.
         (side_effect, retry_safety, idempotency) => {

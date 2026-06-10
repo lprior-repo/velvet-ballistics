@@ -138,16 +138,32 @@ impl SideEffect {
 }
 
 /// Classifies whether an action can be safely retried.
+///
+/// 4-variant master taxonomy per `velvet-ballistics-MASTER.md` §65:
+/// `{Idempotent, RequiresIdempotencyKey, NotRetrySafe, Unknown}`.
+///
+/// Discriminant values are stable: `Idempotent = 0`,
+/// `RequiresIdempotencyKey = 1`, `NotRetrySafe = 2`, `Unknown = 3`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
 #[non_exhaustive]
 pub enum RetrySafety {
-    /// Always safe to retry (pure/idempotent).
-    Safe = 0,
-    /// Safe to retry IF an idempotency key is present.
-    KeyRequired = 1,
-    /// Never safe to retry (destructive side-effect with no key).
-    Unsafe = 2,
+    /// Always safe to retry (pure / statically idempotent).
+    Idempotent = 0,
+    /// Safe to retry IF an idempotency key is present and well-formed.
+    RequiresIdempotencyKey = 1,
+    /// Never safe to retry: the action has destructive side effects
+    /// that cannot be safely retried (e.g., external write, process
+    /// spawn, shell exec). The verifier MUST reject any retry path
+    /// that targets a `NotRetrySafe` action.
+    NotRetrySafe = 2,
+    /// Retry safety is undecidable at compile time (e.g., an action
+    /// declared via a dynamic descriptor, an unknown plugin, or an
+    /// external symbol whose retry contract is not part of the
+    /// verified artifact). Treated as retry-rejected by the default
+    /// policy; explicit operator approval is required to admit a
+    /// retry path under `Unknown`.
+    Unknown = 3,
 }
 
 /// Policy for whether an action failure can be retried.
@@ -508,9 +524,10 @@ pub fn validate_idempotency_key_ingredients(
 ///
 /// Verification rules:
 /// - `SideEffect::Pure` always passes regardless of retry_safety.
-/// - `RetrySafety::Safe` always passes.
-/// - `RetrySafety::KeyRequired` passes if key ingredients are valid.
-/// - `RetrySafety::Unsafe` always fails with `MissingKey`.
+/// - `RetrySafety::Idempotent` always passes.
+/// - `RetrySafety::RequiresIdempotencyKey` passes if key ingredients are valid.
+/// - `RetrySafety::NotRetrySafe` always fails with `MissingKey`.
+/// - `RetrySafety::Unknown` always fails with `MissingKey`.
 pub fn verify_idempotency(
     action: &ActionContract,
     key_slots: &[SlotIdx],
@@ -520,14 +537,16 @@ pub fn verify_idempotency(
         return Ok(());
     }
     match action.retry_safety {
-        RetrySafety::Safe => Ok(()),
-        RetrySafety::KeyRequired => {
+        RetrySafety::Idempotent => Ok(()),
+        RetrySafety::RequiresIdempotencyKey => {
             if key_slots.is_empty() {
                 return Err(IdempotencyViolation::MissingKey(action.side_effect));
             }
             validate_idempotency_key_ingredients(key_slots, frame)
         }
-        RetrySafety::Unsafe => Err(IdempotencyViolation::MissingKey(action.side_effect)),
+        RetrySafety::NotRetrySafe | RetrySafety::Unknown => {
+            Err(IdempotencyViolation::MissingKey(action.side_effect))
+        }
     }
 }
 

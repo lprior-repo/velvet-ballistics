@@ -28,7 +28,7 @@ fn verify_idempotency_all_clean() {
         max_output_bytes: 1024,
         timeout_ms: 1000,
         side_effect: SideEffect::Writes,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         idempotency: Idempotency::IdempotentExternal,
         required_capabilities: Box::new([]),
     };

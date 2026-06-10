@@ -9,11 +9,10 @@
 //! After the implementation is fixed to match the master plan, these
 //! tests verify the contract is satisfied.
 
+use vb_core::action::{verify_idempotency, ActionName};
 use vb_core::{
-use vb_core::action::ActionName;
-    action::verify_idempotency,
-    ActionContract, ActionId, Idempotency, RetrySafety, RunFrame, RunId,
-    SideEffect, SlotIdx, SlotValue, StepIdx, Taint,
+    ActionContract, ActionId, Idempotency, RetrySafety, RunFrame, RunId, SideEffect, SlotIdx,
+    SlotValue, StepIdx, Taint,
 };
 
 /// Helper to extract the #[repr(u8)] discriminant of a RetrySafety variant.

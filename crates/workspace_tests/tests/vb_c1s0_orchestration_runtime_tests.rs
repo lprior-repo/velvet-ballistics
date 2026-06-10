@@ -160,7 +160,7 @@ fn action_contract(action: ActionId, output_slots: u16) -> vb_core::action::Acti
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::from([required_capability(action)]),
     }
 }

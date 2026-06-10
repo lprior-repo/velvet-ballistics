@@ -15,7 +15,9 @@ use vb_runtime::engine::{
     EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeSignal, drive_deterministic_full,
 };
 use vb_runtime::primitives::collect::CollectStates;
-use vb_runtime::shard::{InspectResponse, ResumeError, Shard, ShardCommand, ShardConfig, TerminalOutcome};
+use vb_runtime::shard::{
+    InspectResponse, ResumeError, Shard, ShardCommand, ShardConfig, TerminalOutcome,
+};
 
 fn one_step_workflow(kind: CompiledNodeKind, slot_count: u16) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
@@ -147,7 +149,7 @@ fn action_contract(action: ActionId) -> ActionContract {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     }
 }

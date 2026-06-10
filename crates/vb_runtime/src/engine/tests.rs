@@ -471,7 +471,7 @@ fn execute_do_returns_awaiting_action_for_known_action() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let registry_contracts: Vec<vb_core::action::ActionContract> = vec![
@@ -485,7 +485,7 @@ fn execute_do_returns_awaiting_action_for_known_action() {
             timeout_ms: 0,
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::Pure,
-            retry_safety: RetrySafety::Safe,
+            retry_safety: RetrySafety::Idempotent,
             required_capabilities: Box::new([]),
         },
         contract,
@@ -533,7 +533,7 @@ fn execute_do_propagates_taint_from_secret_input_without_violation() {
         timeout_ms: 5000,
         idempotency: Idempotency::AtLeastOnceExternal,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let registry_contracts: Vec<vb_core::action::ActionContract> = vec![
@@ -547,7 +547,7 @@ fn execute_do_propagates_taint_from_secret_input_without_violation() {
             timeout_ms: 0,
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::Pure,
-            retry_safety: RetrySafety::Safe,
+            retry_safety: RetrySafety::Idempotent,
             required_capabilities: Box::new([]),
         },
         contract,
@@ -593,7 +593,7 @@ fn execute_do_returns_unknown_action_for_unregistered_action() {
         timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let result = execute_do(
@@ -669,7 +669,7 @@ fn dummy_contract() -> vb_core::action::ActionContract {
         timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     }
 }
@@ -1419,7 +1419,7 @@ fn bh_execute_do_propagates_taint_through_ticket_for_at_least_once() {
         timeout_ms: 5000,
         idempotency: Idempotency::AtLeastOnceExternal,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let registry = vec![contract];
@@ -1596,7 +1596,7 @@ mod blackhat_engine {
             timeout_ms: 0,
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::Pure,
-            retry_safety: RetrySafety::Safe,
+            retry_safety: RetrySafety::Idempotent,
             required_capabilities: Box::new([]),
         }
     }
@@ -2003,7 +2003,7 @@ mod blackhat_engine {
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::Pure,
-            retry_safety: RetrySafety::Safe,
+            retry_safety: RetrySafety::Idempotent,
             required_capabilities: Box::new([]),
         }];
         let result = execute_node_full(
@@ -2320,7 +2320,7 @@ mod blackhat_engine {
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::Pure,
-            retry_safety: RetrySafety::Safe,
+            retry_safety: RetrySafety::Idempotent,
             required_capabilities: Box::new([]),
         };
         let registry = vec![contract.clone()];

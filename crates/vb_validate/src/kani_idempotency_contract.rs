@@ -25,9 +25,9 @@ fn kani_decision_001_all_combinations() {
         SideEffect::LocalWrite,
     ];
     let retry_safeties = [
-        RetrySafety::Safe,
-        RetrySafety::KeyRequired,
-        RetrySafety::Unsafe,
+        RetrySafety::Idempotent,
+        RetrySafety::RequiresIdempotencyKey,
+        RetrySafety::NotRetrySafe,
     ];
     let idempotencies = [
         Idempotency::DeterministicPure,
@@ -89,9 +89,9 @@ fn kani_decision_001_all_combinations() {
 #[kani::unwind(8)]
 fn decision_table_ok_branch() {
     let retry_safeties = [
-        RetrySafety::Safe,
-        RetrySafety::KeyRequired,
-        RetrySafety::Unsafe,
+        RetrySafety::Idempotent,
+        RetrySafety::RequiresIdempotencyKey,
+        RetrySafety::NotRetrySafe,
     ];
     let idempotencies = [
         Idempotency::DeterministicPure,
@@ -145,7 +145,7 @@ fn decision_table_ok_branch() {
         SideEffect::LocalWrite,
         SideEffect::LocalWrite,
     ];
-    let safe_key_required = [RetrySafety::Safe, RetrySafety::KeyRequired];
+    let safe_key_required = [RetrySafety::Idempotent, RetrySafety::RequiresIdempotencyKey];
 
     let mut i = 0;
     while i < side_effects_non_none.len() {
@@ -188,7 +188,7 @@ fn decision_table_ok_branch() {
 
 /// KANI-DECISION-003: Err(SideEffectingRetryUnsafe) when side_effect!=None AND retry_safety==Unsafe.
 ///
-/// NOTE: The match arm order is `(side_effect, RetrySafety::Unsafe, _)` BEFORE
+/// NOTE: The match arm order is `(side_effect, RetrySafety::NotRetrySafe, _)` BEFORE
 /// `(side_effect, _, Idempotency::DeterministicPure)`. So `Unsafe` always returns
 /// SideEffectingRetryUnsafe regardless of idempotency. The implementation is correct;
 /// this is a proof-obligations mismatch for the DeterministicPure+Unsafe combination.
@@ -223,7 +223,7 @@ fn decision_table_unsafe_rejected() {
                 max_output_bytes: 1024,
                 timeout_ms: 1000,
                 side_effect,
-                retry_safety: RetrySafety::Unsafe,
+                retry_safety: RetrySafety::NotRetrySafe,
                 idempotency,
                 required_capabilities: Box::new([]),
             };
@@ -254,7 +254,7 @@ fn decision_table_unsafe_rejected() {
 /// KANI-DECISION-004: Err(SideEffectingAtLeastOnceExternal) when side_effect!=None AND idempotency==AtLeastOnceExternal.
 ///
 /// Covers only Safe and KeyRequired (not Unsafe) because the implementation's
-/// match arm order means `RetrySafety::Unsafe` always returns SideEffectingRetryUnsafe
+/// match arm order means `RetrySafety::NotRetrySafe` always returns SideEffectingRetryUnsafe
 /// before evaluating the AtLeastOnceExternal arm. This mirrors the same pre-existing
 /// issue as KANI-DECISION-005.
 ///
@@ -268,7 +268,7 @@ fn decision_table_at_least_once_rejected() {
         SideEffect::LocalWrite,
         SideEffect::LocalWrite,
     ];
-    let safe_key_required = [RetrySafety::Safe, RetrySafety::KeyRequired];
+    let safe_key_required = [RetrySafety::Idempotent, RetrySafety::RequiresIdempotencyKey];
 
     let mut i = 0;
     while i < side_effects_non_none.len() {
@@ -319,7 +319,7 @@ fn decision_table_at_least_once_rejected() {
 /// KANI-DECISION-005: Err(SideEffectingDeterministicPure) when side_effect!=None AND idempotency==DeterministicPure.
 ///
 /// Covers only Safe and KeyRequired (not Unsafe) because the implementation's
-/// match arm order means `RetrySafety::Unsafe` always returns SideEffectingRetryUnsafe
+/// match arm order means `RetrySafety::NotRetrySafe` always returns SideEffectingRetryUnsafe
 /// before evaluating the DeterministicPure arm. This is a pre-existing implementation
 /// quirk that causes a mismatch with the proof-obligation description (which says
 /// "regardless of retry_safety"). The proof-reviewer should assess whether the
@@ -335,7 +335,7 @@ fn decision_table_deterministic_rejected() {
         SideEffect::LocalWrite,
         SideEffect::LocalWrite,
     ];
-    let safe_key_required = [RetrySafety::Safe, RetrySafety::KeyRequired];
+    let safe_key_required = [RetrySafety::Idempotent, RetrySafety::RequiresIdempotencyKey];
 
     let mut i = 0;
     while i < side_effects_non_none.len() {

@@ -562,9 +562,9 @@ impl kani::Arbitrary for SideEffect {
 impl kani::Arbitrary for RetrySafety {
     fn any() -> Self {
         match kani::any::<u8>() % 3 {
-            0 => RetrySafety::Safe,
-            1 => RetrySafety::KeyRequired,
-            _ => RetrySafety::Unsafe,
+            0 => RetrySafety::Idempotent,
+            1 => RetrySafety::RequiresIdempotencyKey,
+            _ => RetrySafety::NotRetrySafe,
         }
     }
 }

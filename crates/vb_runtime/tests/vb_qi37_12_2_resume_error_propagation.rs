@@ -55,7 +55,7 @@ fn suspended_action_contracts() -> Box<[ActionContract]> {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::from([contract_required_capability(action)]),
     }])
 }

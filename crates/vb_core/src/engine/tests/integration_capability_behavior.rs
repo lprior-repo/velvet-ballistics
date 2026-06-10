@@ -242,7 +242,7 @@ fn idempotency_same_key_slots_twice_yields_same_ok_result() -> Result<(), String
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([]),
     };
     let mut frame = test_frame(2, 2);
@@ -267,7 +267,7 @@ fn idempotency_same_key_twice_yields_same_err_result() -> Result<(), String> {
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([]),
     };
     let mut frame = test_frame(2, 2);
@@ -291,7 +291,7 @@ fn idempotency_different_key_slots_produce_independent_results() -> Result<(), S
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([]),
     };
     let mut frame = test_frame(4, 2);
@@ -320,7 +320,7 @@ fn idempotency_key_reuse_after_completion_deterministic() -> Result<(), String> 
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([]),
     };
     let mut frame = test_frame(2, 2);
@@ -346,7 +346,7 @@ fn idempotency_same_key_no_side_effect_always_ok_even_unsafe_retry() -> Result<(
         timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Unsafe,
+        retry_safety: RetrySafety::NotRetrySafe,
         required_capabilities: Box::new([]),
     };
     let frame = test_frame(2, 2);
@@ -372,7 +372,7 @@ fn idempotency_storage_is_stateless_no_persistent_state_between_calls() -> Resul
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([]),
     };
     let mut frame = test_frame(2, 2);
@@ -397,7 +397,7 @@ fn idempotency_stateless_new_frame_with_same_slots_returns_same_result() -> Resu
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([]),
     };
     let mut frame_a = test_frame(2, 2);
@@ -448,7 +448,7 @@ fn capability_and_idempotency_are_independent_correctness_dimensions() -> Result
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([required_cap]),
     };
     let cap_set = CapabilitySet::from_grants(Box::new([cap("network", ActionId::new(10))]));
@@ -473,7 +473,7 @@ fn capability_grants_while_idempotency_fails_with_secret_key() -> Result<(), Str
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([cap("network", ActionId::new(11))]),
     };
     let cap_set = CapabilitySet::from_grants(Box::new([cap("network", ActionId::new(11))]));
@@ -501,7 +501,7 @@ fn retry_safety_safe_with_writes_passes() -> Result<(), String> {
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let frame = test_frame(2, 2);
@@ -521,7 +521,7 @@ fn retry_safety_safe_with_sends_passes() -> Result<(), String> {
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::ExternalWrite,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let frame = test_frame(2, 2);
@@ -540,7 +540,7 @@ fn retry_safety_safe_with_creates_passes() -> Result<(), String> {
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let frame = test_frame(2, 2);
@@ -559,7 +559,7 @@ fn retry_safety_safe_with_destroys_passes() -> Result<(), String> {
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let frame = test_frame(2, 2);
@@ -578,7 +578,7 @@ fn retry_safety_unsafe_with_writes_fails() -> Result<(), String> {
         timeout_ms: 1000,
         idempotency: Idempotency::AtLeastOnceExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::Unsafe,
+        retry_safety: RetrySafety::NotRetrySafe,
         required_capabilities: Box::new([]),
     };
     let frame = test_frame(2, 2);
@@ -600,7 +600,7 @@ fn retry_safety_unsafe_with_sends_fails() -> Result<(), String> {
         timeout_ms: 1000,
         idempotency: Idempotency::AtLeastOnceExternal,
         side_effect: SideEffect::ExternalWrite,
-        retry_safety: RetrySafety::Unsafe,
+        retry_safety: RetrySafety::NotRetrySafe,
         required_capabilities: Box::new([]),
     };
     let frame = test_frame(2, 2);
@@ -622,7 +622,7 @@ fn retry_safety_unsafe_with_creates_fails() -> Result<(), String> {
         timeout_ms: 1000,
         idempotency: Idempotency::AtLeastOnceExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::Unsafe,
+        retry_safety: RetrySafety::NotRetrySafe,
         required_capabilities: Box::new([]),
     };
     let frame = test_frame(2, 2);
@@ -644,7 +644,7 @@ fn retry_safety_unsafe_with_destroys_fails() -> Result<(), String> {
         timeout_ms: 1000,
         idempotency: Idempotency::AtLeastOnceExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::Unsafe,
+        retry_safety: RetrySafety::NotRetrySafe,
         required_capabilities: Box::new([]),
     };
     let frame = test_frame(2, 2);
@@ -667,7 +667,7 @@ fn retry_safety_key_required_with_empty_keys_all_side_effects_fail() -> Result<(
             timeout_ms: 1000,
             idempotency: Idempotency::IdempotentExternal,
             side_effect: se,
-            retry_safety: RetrySafety::KeyRequired,
+            retry_safety: RetrySafety::RequiresIdempotencyKey,
             required_capabilities: Box::new([]),
         };
         let frame = test_frame(2, 2);
@@ -692,7 +692,7 @@ fn retry_safety_key_required_with_clean_keys_all_side_effects_pass() -> Result<(
             timeout_ms: 1000,
             idempotency: Idempotency::IdempotentExternal,
             side_effect: se,
-            retry_safety: RetrySafety::KeyRequired,
+            retry_safety: RetrySafety::RequiresIdempotencyKey,
             required_capabilities: Box::new([]),
         };
         let mut frame = test_frame(2, 2);
@@ -705,7 +705,7 @@ fn retry_safety_key_required_with_clean_keys_all_side_effects_pass() -> Result<(
 
 #[test]
 fn retry_safety_none_side_effect_passes_for_all_retry_safeties() -> Result<(), String> {
-    for rs in [RetrySafety::Safe, RetrySafety::KeyRequired, RetrySafety::Unsafe] {
+    for rs in [RetrySafety::Idempotent, RetrySafety::RequiresIdempotencyKey, RetrySafety::NotRetrySafe] {
         let contract = ActionContract {
             id: ActionId::new(300),
             name: ActionName::new("test-action").unwrap(),
@@ -900,7 +900,7 @@ mod kani {
     #[kani::unwind(4)]
     fn kani_idempotency_determinism() {
         let contract = kani::any::<ActionContract>();
-        kani::assume(contract.retry_safety == RetrySafety::KeyRequired);
+        kani::assume(contract.retry_safety == RetrySafety::RequiresIdempotencyKey);
         kani::assume(contract.side_effect != SideEffect::Pure);
 
         let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
@@ -921,7 +921,7 @@ mod kani {
     #[kani::unwind(8)]
     fn kani_short_circuit_first_error() {
         let contract = kani::any::<ActionContract>();
-        kani::assume(contract.retry_safety == RetrySafety::KeyRequired);
+        kani::assume(contract.retry_safety == RetrySafety::RequiresIdempotencyKey);
         kani::assume(contract.side_effect != SideEffect::Pure);
 
         let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 4);

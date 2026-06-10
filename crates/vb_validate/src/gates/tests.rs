@@ -1169,7 +1169,7 @@ fn blackhat_gate_12_rejects_orphan_contract() {
         timeout_ms: 5000,
         idempotency: vb_core::action::Idempotency::DeterministicPure,
         side_effect: vb_core::action::SideEffect::Pure,
-        retry_safety: vb_core::action::RetrySafety::Safe,
+        retry_safety: vb_core::action::RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     }];
     let result = validate_gate_12_action_contract_completeness(&parts, &contracts);

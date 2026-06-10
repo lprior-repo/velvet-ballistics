@@ -608,7 +608,7 @@ fn cat10_do_awaiting_action() -> Result<(), String> {
             timeout_ms: 0,
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::Pure,
-            retry_safety: RetrySafety::Safe,
+            retry_safety: RetrySafety::Idempotent,
             required_capabilities: Box::from([]),
         },
         ActionContract {
@@ -621,7 +621,7 @@ fn cat10_do_awaiting_action() -> Result<(), String> {
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::Pure,
-            retry_safety: RetrySafety::Safe,
+            retry_safety: RetrySafety::Idempotent,
             required_capabilities: Box::from([Capability::new(
                 "__contract_required__".into(),
                 ActionId::new(1),

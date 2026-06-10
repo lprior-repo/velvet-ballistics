@@ -29,7 +29,9 @@ use vb_core::workflow::{
 };
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::runtime::Runtime;
-use vb_runtime::shard::{InspectResponse, RuntimeState, ShardConfig, ShardDirective, TerminalOutcome};
+use vb_runtime::shard::{
+    InspectResponse, RuntimeState, ShardConfig, ShardDirective, TerminalOutcome,
+};
 use vb_runtime::trace::TraceEvent;
 
 // =============================================================================
@@ -161,7 +163,7 @@ fn action_contract(
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::from([required_capability(action)]),
     }
 }

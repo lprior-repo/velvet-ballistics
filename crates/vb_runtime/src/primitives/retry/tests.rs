@@ -259,7 +259,7 @@ fn is_failure_retriable_safe_and_retryable() {
         detail: None,
         encoded_len: 0,
     };
-    assert!(is_failure_retriable(&failure, RetrySafety::Safe));
+    assert!(is_failure_retriable(&failure, RetrySafety::Idempotent));
 }
 
 #[test]
@@ -271,7 +271,7 @@ fn is_failure_retriable_safe_but_not_retryable() {
         detail: None,
         encoded_len: 0,
     };
-    assert!(!is_failure_retriable(&failure, RetrySafety::Safe));
+    assert!(!is_failure_retriable(&failure, RetrySafety::Idempotent));
 }
 
 #[test]
@@ -283,7 +283,7 @@ fn is_failure_retriable_unsafe_always_false() {
         detail: None,
         encoded_len: 0,
     };
-    assert!(!is_failure_retriable(&failure, RetrySafety::Unsafe));
+    assert!(!is_failure_retriable(&failure, RetrySafety::NotRetrySafe));
 }
 
 #[test]
@@ -295,7 +295,10 @@ fn is_failure_retriable_key_required_and_retryable() {
         detail: None,
         encoded_len: 0,
     };
-    assert!(is_failure_retriable(&failure, RetrySafety::KeyRequired));
+    assert!(is_failure_retriable(
+        &failure,
+        RetrySafety::RequiresIdempotencyKey
+    ));
 }
 
 #[test]
@@ -307,7 +310,10 @@ fn is_failure_retriable_key_required_but_not_retryable() {
         detail: None,
         encoded_len: 0,
     };
-    assert!(!is_failure_retriable(&failure, RetrySafety::KeyRequired));
+    assert!(!is_failure_retriable(
+        &failure,
+        RetrySafety::RequiresIdempotencyKey
+    ));
 }
 
 // ── compute_delay ─────────────────────────────────────────────────
@@ -387,7 +393,7 @@ fn evaluate_retry_retriable_with_remaining_attempts() {
         detail: None,
         encoded_len: 0,
     };
-    let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
+    let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Idempotent);
     match decision {
         RetryDecision::Retry { state, delay_ms } => {
             assert_eq!(state.current_attempt(), 2);
@@ -427,7 +433,7 @@ fn evaluate_retry_exhausted_when_remaining_zero() {
         detail: None,
         encoded_len: 0,
     };
-    let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
+    let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Idempotent);
     assert_eq!(decision, RetryDecision::Exhausted { max_attempts: 3 });
 }
 
@@ -448,7 +454,7 @@ fn evaluate_retry_not_retriable_unsafe() {
         detail: None,
         encoded_len: 0,
     };
-    let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Unsafe);
+    let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::NotRetrySafe);
     assert_eq!(decision, RetryDecision::NotRetriable);
 }
 
@@ -469,7 +475,7 @@ fn evaluate_retry_not_retriable_failure_flag_false() {
         detail: None,
         encoded_len: 0,
     };
-    let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
+    let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Idempotent);
     assert_eq!(decision, RetryDecision::NotRetriable);
 }
 
@@ -490,7 +496,7 @@ fn evaluate_retry_full_cycle_three_attempts() {
     let state1 = RetryState::from_policy(&policy);
     assert_eq!(state1.current_attempt(), 1);
     assert_eq!(state1.remaining(), 3);
-    let decision1 = evaluate_retry(&state1, &policy, &failure, RetrySafety::Safe);
+    let decision1 = evaluate_retry(&state1, &policy, &failure, RetrySafety::Idempotent);
     match decision1 {
         RetryDecision::Retry { state, delay_ms } => {
             assert_eq!(state.current_attempt(), 2);
@@ -518,7 +524,7 @@ fn evaluate_retry_full_cycle_three_attempts() {
         remaining: 2,
         current_delay_ms: 100,
     };
-    let decision2 = evaluate_retry(&state2, &policy, &failure, RetrySafety::Safe);
+    let decision2 = evaluate_retry(&state2, &policy, &failure, RetrySafety::Idempotent);
     match decision2 {
         RetryDecision::Retry { state, delay_ms } => {
             assert_eq!(state.current_attempt(), 3);
@@ -546,7 +552,7 @@ fn evaluate_retry_full_cycle_three_attempts() {
         remaining: 1,
         current_delay_ms: 100,
     };
-    let decision3 = evaluate_retry(&state3, &policy, &failure, RetrySafety::Safe);
+    let decision3 = evaluate_retry(&state3, &policy, &failure, RetrySafety::Idempotent);
     match decision3 {
         RetryDecision::Retry { state, delay_ms } => {
             assert_eq!(state.current_attempt(), 4);
@@ -574,7 +580,7 @@ fn evaluate_retry_full_cycle_three_attempts() {
         remaining: 0,
         current_delay_ms: 100,
     };
-    let decision4 = evaluate_retry(&state4, &policy, &failure, RetrySafety::Safe);
+    let decision4 = evaluate_retry(&state4, &policy, &failure, RetrySafety::Idempotent);
     assert_eq!(decision4, RetryDecision::Exhausted { max_attempts: 3 });
 }
 
@@ -594,13 +600,13 @@ fn evaluate_retry_exponential_backoff_increments_delay() {
     };
 
     let state1 = RetryState::from_policy(&policy);
-    let decision1 = evaluate_retry(&state1, &policy, &failure, RetrySafety::Safe);
+    let decision1 = evaluate_retry(&state1, &policy, &failure, RetrySafety::Idempotent);
     match decision1 {
         RetryDecision::Retry { state, delay_ms } => {
             assert_eq!(delay_ms, 100);
             assert_eq!(state.current_delay_ms(), 100);
             // Verify state for next iteration
-            let decision2 = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
+            let decision2 = evaluate_retry(&state, &policy, &failure, RetrySafety::Idempotent);
             match decision2 {
                 RetryDecision::Retry { delay_ms, .. } => {
                     assert_eq!(delay_ms, 200);
@@ -655,7 +661,7 @@ fn evaluate_retry_non_retryable_failure_rejected_even_with_many_attempts() {
         detail: None,
         encoded_len: 0,
     };
-    let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
+    let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Idempotent);
     assert_eq!(decision, RetryDecision::NotRetriable);
 }
 
@@ -676,7 +682,7 @@ fn evaluate_retry_unsafe_safety_rejects_retryable_failure() {
         detail: None,
         encoded_len: 0,
     };
-    let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Unsafe);
+    let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::NotRetrySafe);
     assert_eq!(decision, RetryDecision::NotRetriable);
 }
 
@@ -725,7 +731,7 @@ fn retry_on_failure_writes_updated_state_on_retry() {
         detail: None,
         encoded_len: 0,
     };
-    let decision = retry_on_failure(&mut frame, slot, &policy, &failure, RetrySafety::Safe)
+    let decision = retry_on_failure(&mut frame, slot, &policy, &failure, RetrySafety::Idempotent)
         .ok()
         .expect("evaluate must succeed");
     match decision {
@@ -777,7 +783,7 @@ fn retry_on_failure_does_not_modify_slot_on_exhaustion() {
         detail: None,
         encoded_len: 0,
     };
-    let decision = retry_on_failure(&mut frame, slot, &policy, &failure, RetrySafety::Safe)
+    let decision = retry_on_failure(&mut frame, slot, &policy, &failure, RetrySafety::Idempotent)
         .ok()
         .expect("evaluate must succeed");
     // The first retry decision allows one retry (remaining=1 -> remaining=0)
@@ -801,7 +807,7 @@ fn retry_on_failure_does_not_modify_slot_on_exhaustion() {
     }
 
     // Now the state has remaining=0, next failure should exhaust
-    let decision2 = retry_on_failure(&mut frame, slot, &policy, &failure, RetrySafety::Safe)
+    let decision2 = retry_on_failure(&mut frame, slot, &policy, &failure, RetrySafety::Idempotent)
         .ok()
         .expect("evaluate must succeed");
     assert_eq!(decision2, RetryDecision::Exhausted { max_attempts: 1 });
@@ -825,7 +831,7 @@ fn retry_on_failure_does_not_modify_slot_on_not_retriable() {
         detail: None,
         encoded_len: 0,
     };
-    let decision = retry_on_failure(&mut frame, slot, &policy, &failure, RetrySafety::Safe)
+    let decision = retry_on_failure(&mut frame, slot, &policy, &failure, RetrySafety::Idempotent)
         .ok()
         .expect("evaluate must succeed");
     assert_eq!(decision, RetryDecision::NotRetriable);
@@ -854,7 +860,7 @@ fn no_retry_policy_exhausts_after_first_failure() {
         detail: None,
         encoded_len: 0,
     };
-    let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
+    let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Idempotent);
     // remaining=1 -> remaining=0, still a retry decision
     match decision {
         RetryDecision::Retry { state, .. } => {
@@ -881,7 +887,7 @@ fn no_retry_policy_exhausts_after_first_failure() {
         remaining: 0,
         current_delay_ms: 0,
     };
-    let decision2 = evaluate_retry(&state_after, &policy, &failure, RetrySafety::Safe);
+    let decision2 = evaluate_retry(&state_after, &policy, &failure, RetrySafety::Idempotent);
     assert_eq!(decision2, RetryDecision::Exhausted { max_attempts: 1 });
 }
 
@@ -905,7 +911,7 @@ fn all_retryable_failure_codes_are_retriable_with_safe() {
             encoded_len: 0,
         };
         assert!(
-            is_failure_retriable(&failure, RetrySafety::Safe),
+            is_failure_retriable(&failure, RetrySafety::Idempotent),
             "expected {code:?} to be retriable"
         );
     }
@@ -928,7 +934,7 @@ fn all_non_retryable_failure_codes_are_not_retriable() {
             encoded_len: 0,
         };
         assert!(
-            !is_failure_retriable(&failure, RetrySafety::Safe),
+            !is_failure_retriable(&failure, RetrySafety::Idempotent),
             "expected {code:?} to not be retriable"
         );
     }
@@ -938,7 +944,7 @@ fn all_non_retryable_failure_codes_are_not_retriable() {
 
 #[test]
 fn retry_safety_unsafe_overrides_retryable_flag() {
-    // Given a failure with retry_policy=Retryable but RetrySafety::Unsafe
+    // Given a failure with retry_policy=Retryable but RetrySafety::NotRetrySafe
     let failure = ActionFailure {
         code: ActionFailureCode::Timeout,
         retry_policy: VbRetryPolicy::Retryable,
@@ -948,7 +954,7 @@ fn retry_safety_unsafe_overrides_retryable_flag() {
     };
     // When checking retriable with Unsafe
     // Then it is not retriable regardless of the flag
-    assert!(!is_failure_retriable(&failure, RetrySafety::Unsafe));
+    assert!(!is_failure_retriable(&failure, RetrySafety::NotRetrySafe));
 }
 
 #[test]
@@ -960,7 +966,7 @@ fn retry_safety_safe_respects_retryable_flag_false() {
         detail: None,
         encoded_len: 0,
     };
-    assert!(!is_failure_retriable(&failure, RetrySafety::Safe));
+    assert!(!is_failure_retriable(&failure, RetrySafety::Idempotent));
 }
 
 #[test]
@@ -980,7 +986,7 @@ fn evaluate_retry_non_retriable_does_not_consume_attempt() {
         detail: None,
         encoded_len: 0,
     };
-    let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
+    let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Idempotent);
     assert_eq!(decision, RetryDecision::NotRetriable);
     // The state was not consumed; remaining is still 3.
     // (We verify by re-evaluating with a retriable failure)
@@ -991,7 +997,7 @@ fn evaluate_retry_non_retriable_does_not_consume_attempt() {
         detail: None,
         encoded_len: 0,
     };
-    let decision2 = evaluate_retry(&state, &policy, &retryable_failure, RetrySafety::Safe);
+    let decision2 = evaluate_retry(&state, &policy, &retryable_failure, RetrySafety::Idempotent);
     match decision2 {
         RetryDecision::Retry { state, .. } => {
             assert_eq!(state.remaining(), 2);
@@ -1032,7 +1038,7 @@ fn retry_on_failure_returns_error_on_corrupted_slot() {
         detail: None,
         encoded_len: 0,
     };
-    let result = retry_on_failure(&mut frame, slot, &policy, &failure, RetrySafety::Safe);
+    let result = retry_on_failure(&mut frame, slot, &policy, &failure, RetrySafety::Idempotent);
     assert_eq!(
         result,
         Err(RetryPolicyError::InvalidRetrySlotType {
@@ -1123,7 +1129,7 @@ fn full_exhaustion_marks_step_failed() {
     };
 
     // First failure: should retry
-    let decision1 = retry_on_failure(&mut frame, slot, &policy, &failure, RetrySafety::Safe)
+    let decision1 = retry_on_failure(&mut frame, slot, &policy, &failure, RetrySafety::Idempotent)
         .ok()
         .expect("must succeed");
     match decision1 {
@@ -1147,7 +1153,7 @@ fn full_exhaustion_marks_step_failed() {
     }
 
     // Second failure: should retry (remaining goes 1->0)
-    let decision2 = retry_on_failure(&mut frame, slot, &policy, &failure, RetrySafety::Safe)
+    let decision2 = retry_on_failure(&mut frame, slot, &policy, &failure, RetrySafety::Idempotent)
         .ok()
         .expect("must succeed");
     match decision2 {
@@ -1171,7 +1177,7 @@ fn full_exhaustion_marks_step_failed() {
     }
 
     // Third failure: exhausted
-    let decision3 = retry_on_failure(&mut frame, slot, &policy, &failure, RetrySafety::Safe)
+    let decision3 = retry_on_failure(&mut frame, slot, &policy, &failure, RetrySafety::Idempotent)
         .ok()
         .expect("must succeed");
     assert_eq!(decision3, RetryDecision::Exhausted { max_attempts: 2 });
@@ -1199,7 +1205,7 @@ fn retry_policy_with_max_attempts_handles_boundary() {
         detail: None,
         encoded_len: 0,
     };
-    let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
+    let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Idempotent);
     match decision {
         RetryDecision::Retry { state, delay_ms } => {
             assert_eq!(state.remaining(), u16::MAX - 1);

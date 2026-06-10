@@ -68,7 +68,7 @@ fn action_contract(action: u16, required_capabilities: Box<[Capability]>) -> Act
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities,
     }
 }

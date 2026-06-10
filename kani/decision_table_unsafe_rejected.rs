@@ -43,7 +43,7 @@ fn decision_table_unsafe_rejected() {
                 max_output_bytes: 1024,
                 timeout_ms: 1000,
                 side_effect,
-                retry_safety: RetrySafety::Unsafe,
+                retry_safety: RetrySafety::NotRetrySafe,
                 idempotency,
                 required_capabilities: Box::new([]),
             };

@@ -18,7 +18,7 @@
             timeout_ms: 5_000,
             idempotency,
             side_effect: SideEffect::Pure,
-            retry_safety: RetrySafety::Safe,
+            retry_safety: RetrySafety::Idempotent,
             required_capabilities: Box::new([]),
         }
     }

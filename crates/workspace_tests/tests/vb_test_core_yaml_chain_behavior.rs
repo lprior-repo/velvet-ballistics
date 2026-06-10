@@ -316,7 +316,7 @@ fn action_contract_complete_construction() {
         timeout_ms: 30_000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([Capability::new("net.fetch".into(), ActionId::new(42))]),
     };
 
@@ -328,7 +328,7 @@ fn action_contract_complete_construction() {
     assert_eq!(contract.timeout_ms, 30_000);
     assert_eq!(contract.idempotency, Idempotency::IdempotentExternal);
     assert_eq!(contract.side_effect, SideEffect::LocalWrite);
-    assert_eq!(contract.retry_safety, RetrySafety::KeyRequired);
+    assert_eq!(contract.retry_safety, RetrySafety::RequiresIdempotencyKey);
     assert_eq!(contract.required_capabilities.len(), 1);
 }
 
@@ -344,7 +344,7 @@ fn action_contract_serialization_parity() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
 
@@ -375,7 +375,7 @@ fn action_contract_all_idempotency_variants_constructable() {
             timeout_ms: 0,
             idempotency: variant,
             side_effect: SideEffect::Pure,
-            retry_safety: RetrySafety::Safe,
+            retry_safety: RetrySafety::Idempotent,
             required_capabilities: Box::new([]),
         };
         assert_eq!(contract.idempotency, variant);
@@ -404,7 +404,7 @@ fn action_contract_all_side_effect_variants_constructable() {
             timeout_ms: 0,
             idempotency: Idempotency::DeterministicPure,
             side_effect: variant,
-            retry_safety: RetrySafety::Safe,
+            retry_safety: RetrySafety::Idempotent,
             required_capabilities: Box::new([]),
         };
         assert_eq!(contract.side_effect, variant);
@@ -414,9 +414,9 @@ fn action_contract_all_side_effect_variants_constructable() {
 #[test]
 fn action_contract_all_retry_safety_variants_constructable() {
     let variants = [
-        RetrySafety::Safe,
-        RetrySafety::KeyRequired,
-        RetrySafety::Unsafe,
+        RetrySafety::Idempotent,
+        RetrySafety::RequiresIdempotencyKey,
+        RetrySafety::NotRetrySafe,
     ];
     for variant in variants {
         let contract = ActionContract {
@@ -568,7 +568,7 @@ fn validate_with_contracts_rejects_orphan_action_contract() {
         timeout_ms: 5000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([]),
     };
 
@@ -636,7 +636,7 @@ fn validate_with_contracts_accepts_matching_contract() {
         timeout_ms: 5000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([]),
     };
 
@@ -680,14 +680,14 @@ fn action_contract_idempotency_determinism_parity() {
         timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
 
     // Semantic parity: DeterministicPure + None side effect = Safe retry
     assert_eq!(contract.side_effect, SideEffect::Pure);
     assert_eq!(contract.idempotency, Idempotency::DeterministicPure);
-    assert_eq!(contract.retry_safety, RetrySafety::Safe);
+    assert_eq!(contract.retry_safety, RetrySafety::Idempotent);
 }
 
 #[test]
@@ -703,7 +703,7 @@ fn action_contract_side_effects_require_key_when_not_safe() {
         timeout_ms: 5000,
         idempotency: Idempotency::AtLeastOnceExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([]),
     };
 
@@ -719,7 +719,7 @@ fn action_contract_side_effects_require_key_when_not_safe() {
     ));
     assert!(matches!(
         contract.retry_safety,
-        RetrySafety::KeyRequired | RetrySafety::Unsafe
+        RetrySafety::RequiresIdempotencyKey | RetrySafety::NotRetrySafe
     ));
 }
 

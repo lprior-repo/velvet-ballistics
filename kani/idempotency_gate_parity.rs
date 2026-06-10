@@ -36,7 +36,7 @@ fn idempotency_gate_parity() {
         SideEffect::Creates,
         SideEffect::Destroys,
     ];
-    let retry_safeties = [RetrySafety::Safe, RetrySafety::KeyRequired, RetrySafety::Unsafe];
+    let retry_safeties = [RetrySafety::Idempotent, RetrySafety::RequiresIdempotencyKey, RetrySafety::NotRetrySafe];
     let idempotencies = [
         Idempotency::DeterministicPure,
         Idempotency::IdempotentExternal,

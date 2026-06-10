@@ -251,7 +251,7 @@ fn execute_do_with_known_contract_returns_awaiting_action() {
             timeout_ms: 0,
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::Pure,
-            retry_safety: RetrySafety::Safe,
+            retry_safety: RetrySafety::Idempotent,
             required_capabilities: Box::new([]),
         },
         ActionContract {
@@ -264,7 +264,7 @@ fn execute_do_with_known_contract_returns_awaiting_action() {
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::Pure,
-            retry_safety: RetrySafety::Safe,
+            retry_safety: RetrySafety::Idempotent,
             required_capabilities: Box::new([]),
         },
     ];
@@ -325,7 +325,7 @@ fn execute_do_with_unknown_contract_returns_error() {
         timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     }];
     let result = execute_node_full(
@@ -388,7 +388,7 @@ fn execute_do_taint_violation_for_deterministic_pure_with_secret_input() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     }];
     let result = execute_node_full(

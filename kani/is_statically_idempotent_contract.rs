@@ -27,7 +27,7 @@ fn is_statically_idempotent_contract() {
     ];
 
     // Enumerate all RetrySafety variants
-    let retry_safeties = [RetrySafety::Safe, RetrySafety::KeyRequired, RetrySafety::Unsafe];
+    let retry_safeties = [RetrySafety::Idempotent, RetrySafety::RequiresIdempotencyKey, RetrySafety::NotRetrySafe];
 
     // Enumerate all Idempotency variants
     let idempotencies = [
