@@ -1,29 +1,32 @@
 //! CLI Postcard Wave-C Typed-Payload Tests
 //!
-//! vb-5hf16: round-trip and shape-mismatch-fallback tests for the 3
-//! "validate-fallback" envelopes that survive the wave-C cleanup
+//! vb-5hf16 + vb-eulpf: round-trip and shape-mismatch-fallback tests for
+//! the 3 "validate-fallback" envelopes that survive the wave-C cleanup
 //! (`SystemStatus`, `AiContextPacket`, `WorkflowDiffReport`).
 //!
 //! These three kinds share a different dispatch path from the
 //! `typed_or_generic` 7-pack:
 //! - `typed_or_generic` produces a typed `CliPostcardPayload::*` variant
 //!   on shape match, and falls through to `Generic` on shape mismatch.
-//! - `typed_validate_fallback` always produces `CliPostcardPayload::Generic`
-//!   — on shape match the body is a postcard-encoded typed struct, on
-//!   shape mismatch the body is the legacy `GenericEnvelopeRepr` JSON
-//!   tree (the `Err(_) => encode_generic(...)` arm).
+//! - `typed_validate_fallback` always produces `CliPostcardPayload::Generic`.
+//!   On shape match (post-vb-eulpf), the body is a postcard-encoded
+//!   `GenericEnvelopeRepr` of the typed struct's `serde_json::to_value`
+//!   output — a positive `decode_body_as_json` witness. On shape
+//!   mismatch, the body is a `GenericEnvelopeRepr` of the raw envelope
+//!   JSON (the `Err(_) => encode_generic(...)` arm).
 //!
 //! The 3 round-trip tests below pin the shape-match path: a JSON
 //! envelope whose shape matches the typed struct must classify to a
-//! `Generic` variant whose inner body round-trips byte-for-byte
-//! through the full `postcard` → `decode_cli_payload` path.
+//! `Generic` variant whose inner body round-trips through the full
+//! `postcard` → `decode_cli_payload` path AND decodes back to the
+//! original envelope via `GenericEnvelopeRepr::decode_body_as_json`.
 //!
 //! The negative test pins the shape-mismatch path: a broken
 //! `SystemStatus` envelope must still classify to a `Generic` variant
 //! (no `Err` propagated upward), and the body must decode back to the
 //! original JSON tree via `GenericEnvelopeRepr::decode_body_as_json` —
 //! which is only true if the fallback re-encoded via `GenericEnvelopeRepr`,
-//! not the typed struct.
+//! not a typed struct.
 
 use super::super::*;
 use crate::cli_envelope::SCHEMA_VERSION;
@@ -112,48 +115,44 @@ fn assert_envelope_tree_matches(envelope: &serde_json::Value, expected_kind_labe
     );
 }
 
-/// Mutation-resistant typed round-trip assertion: prove the dispatch
-/// arm at `classify.rs:95-97` was actually exercised (vs deleted and
-/// falling through to `encode_generic`).
+/// Mutation-resistant typed round-trip assertion. The body must be a
+/// `GenericEnvelopeRepr` (the post-vb-eulpf wire format) AND a required
+/// (non-`#[serde(default)]`) field of the typed struct must survive the
+/// `typed` → JSON → `GenericEnvelopeRepr` round-trip.
 ///
-/// The dispatch has two paths to a `Generic` body:
-///   - `typed_validate_fallback` (shape match): body is the
-///     postcard-encoded typed struct, e.g. `SystemStatusReport`. The
-///     typed structs model nested JSON trees as `serde_json::Value`
-///     (see `types_more.rs`), which postcard can encode but CANNOT
-///     decode (`serde_json::Value::deserialize` calls
-///     `deserialize_any`, which postcard refuses with `WontImplement`).
-///     So the body is NOT a valid postcard encoding of the typed
-///     struct from the decode side, and it is also NOT a valid
-///     `GenericEnvelopeRepr` encoding — the wire format is a one-way
-///     typed postcard stream.
-///   - `encode_generic` (generic fallback, including deletion of the
-///     typed arm): body is a postcard-encoded `GenericEnvelopeRepr`,
-///     which `GenericEnvelopeRepr::decode_body_as_json` reconstructs
-///     back to the original `serde_json::Value` envelope tree.
+/// Pre-vb-eulpf, the typed arm encoded the body as a postcard-encoded
+/// typed struct (e.g. `SystemStatusReport`), which postcard could
+/// encode but NOT decode (`serde_json::Value::deserialize` calls
+/// `deserialize_any`, which postcard refuses with `WontImplement`).
+/// The negative witness `assert!(is_err)` was the mutation guard.
 ///
-/// The mutation-resistant assertion is the NEGATIVE of the generic
-/// path: `decode_body_as_json` must NOT reconstruct the original
-/// envelope JSON tree. If the typed arm is deleted, the dispatch
-/// falls through to `encode_generic`, the body becomes
-/// `GenericEnvelopeRepr`, `decode_body_as_json` succeeds, and the
-/// recovered JSON tree EQUALS the original envelope — failing this
-/// assertion.
-fn assert_body_is_typed_fallback_not_generic(body: &[u8], envelope: &serde_json::Value) {
-    match GenericEnvelopeRepr::decode_body_as_json(body) {
-        Err(_) => {
-            // Decode failed — the body is NOT a valid `GenericEnvelopeRepr`,
-            // which proves the typed arm was exercised. (Postcard
-            // serialization of the typed struct is one-way.)
-        }
-        Ok(recovered) => {
-            assert_ne!(
-                recovered, *envelope,
-                "body decoded as GenericEnvelopeRepr back to the original envelope — \
-                 typed_validate_fallback arm was skipped (dispatch fell through to encode_generic)"
-            );
-        }
-    }
+/// Post-vb-eulpf, the typed arm encodes the body as a `GenericEnvelopeRepr`
+/// of the typed struct's `serde_json::to_value` output. The mutation
+/// guard is the positive witness (`expect(Ok)`) PLUS a field-level
+/// assertion: a required field of the typed struct (one without
+/// `#[serde(default)]`) must equal the original envelope's value. This
+/// catches regressions in the typed-arm body encoding (wrong struct,
+/// dropped field). Note: with the post-fix wire format, both the typed
+/// arm and the `encode_generic` fallback produce `GenericEnvelopeRepr`
+/// of equivalent JSON trees for valid envelopes, so the dispatch-arm-
+/// deleted mutation is not caught by these 3 tests — the typed arm's
+/// value is in early validation, not in the wire format.
+fn assert_body_is_typed_fallback_not_generic(
+    body: &[u8],
+    envelope: &serde_json::Value,
+    required_field: &str,
+) {
+    let recovered_json = GenericEnvelopeRepr::decode_body_as_json(body)
+        .expect("body must decode as GenericEnvelopeRepr (typed_validate_fallback arm)");
+    assert_eq!(
+        recovered_json, *envelope,
+        "envelope must round-trip exactly through typed_validate_fallback"
+    );
+    assert_eq!(
+        recovered_json.get(required_field),
+        envelope.get(required_field),
+        "required field `{required_field}` must round-trip through typed_validate_fallback"
+    );
 }
 
 #[test]
@@ -178,7 +177,7 @@ fn typed_system_status_payload_round_trips() {
 
     let (body, envelope) = dispatch_extract_body(&report, CliPostcardKind::SystemStatus);
     postcard_round_trip_body(&body, CliPostcardKind::SystemStatus);
-    assert_body_is_typed_fallback_not_generic(&body, &envelope);
+    assert_body_is_typed_fallback_not_generic(&body, &envelope, "profile");
     assert_envelope_tree_matches(&envelope, "SystemStatus");
 }
 
@@ -217,7 +216,7 @@ fn typed_ai_context_packet_payload_round_trips() {
 
     let (body, envelope) = dispatch_extract_body(&report, CliPostcardKind::AiContextPacket);
     postcard_round_trip_body(&body, CliPostcardKind::AiContextPacket);
-    assert_body_is_typed_fallback_not_generic(&body, &envelope);
+    assert_body_is_typed_fallback_not_generic(&body, &envelope, "run_id");
     assert_envelope_tree_matches(&envelope, "AiContextPacket");
 }
 
@@ -251,7 +250,7 @@ fn typed_workflow_diff_report_payload_round_trips() {
 
     let (body, envelope) = dispatch_extract_body(&report, CliPostcardKind::WorkflowDiffReport);
     postcard_round_trip_body(&body, CliPostcardKind::WorkflowDiffReport);
-    assert_body_is_typed_fallback_not_generic(&body, &envelope);
+    assert_body_is_typed_fallback_not_generic(&body, &envelope, "total_differences");
     assert_envelope_tree_matches(&envelope, "workflow_diff_report");
 }
 

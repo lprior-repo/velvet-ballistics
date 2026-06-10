@@ -31,6 +31,10 @@ pub(crate) enum ClassifyError {
     },
     /// Generic-body postcard encoding failed.
     GenericEncode(postcard::Error),
+    /// Typed-struct JSON re-serialization failed. `serde_json::Error` is
+    /// not `Eq`, so the error is carried as a `String` for typed-error
+    /// propagation.
+    JsonReSerialize(String),
 }
 
 impl std::fmt::Display for ClassifyError {
@@ -42,6 +46,7 @@ impl std::fmt::Display for ClassifyError {
                 write!(f, "envelope shape mismatch for {kind:?}: {reason}")
             }
             Self::GenericEncode(error) => write!(f, "generic body encode failed: {error}"),
+            Self::JsonReSerialize(error) => write!(f, "typed struct re-serialize failed: {error}"),
         }
     }
 }
@@ -122,10 +127,15 @@ where
 
 /// vb-clipst01: validate the JSON envelope against a typed envelope struct
 /// without promoting it to a dedicated `CliPostcardPayload` variant. On
-/// shape match, the typed struct is postcard-encoded and carried in a
-/// `Generic` body — the dispatch knows the typed shape but the wire format
-/// remains `Generic`. On shape mismatch, falls back to the legacy
-/// `GenericEnvelopeRepr` JSON-tree encoding path.
+/// shape match, the typed struct is round-tripped through
+/// `serde_json::to_value` (which materializes `#[serde(default)]` fields
+/// to their default values) and the resulting JSON tree is encoded as a
+/// `GenericEnvelopeRepr` postcard stream. The body is therefore a
+/// `GenericEnvelopeRepr` (the same schema used by the shape-mismatch
+/// fallback path), NOT a postcard-encoded typed struct. This gives the
+/// body a positive decode witness: `GenericEnvelopeRepr::decode_body_as_json`
+/// reconstructs the original JSON envelope. On shape mismatch, falls back
+/// to the same `GenericEnvelopeRepr` encoding of the raw envelope JSON.
 fn typed_validate_fallback<T>(
     kind: CliPostcardKind,
     envelope: &serde_json::Value,
@@ -135,7 +145,10 @@ where
 {
     match serde_json::from_value::<T>(envelope.clone()) {
         Ok(typed) => {
-            let body = postcard::to_allocvec(&typed).map_err(ClassifyError::GenericEncode)?;
+            let typed_as_json = serde_json::to_value(&typed)
+                .map_err(|e| ClassifyError::JsonReSerialize(e.to_string()))?;
+            let typed_repr = GenericEnvelopeRepr::from_json(&typed_as_json);
+            let body = postcard::to_allocvec(&typed_repr).map_err(ClassifyError::GenericEncode)?;
             Ok(CliPostcardPayload::Generic(GenericPayload { kind, body }))
         }
         Err(_) => encode_generic(kind, envelope),
