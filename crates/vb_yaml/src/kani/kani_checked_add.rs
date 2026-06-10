@@ -5,8 +5,24 @@
 //!
 //! Proves: For arbitrary counter values and increments, every
 //! `checked_add` site in the profile validation event loop returns
-//! `Ok(…)` or an explicit `YamlError` — never panics via wrapping
-//! or unchecked overflow.
+//! `Ok(new_value)` or `Err(YamlError::NodeLimitExceeded)` — never
+//! panics via wrapping or unchecked overflow. The proof is
+//! **mechanism-only**: the harness asserts the `Ok`/`Err` shape and
+//! the `checked_add` overflow boundary, and hardcodes the `Err` arm
+//! to whatever variant the production `ok_or` constructor at the
+//! call site actually constructs. The proof does NOT assert that
+//! the `Err` arm's variant is reachable from the `checked_add` site
+//! in some other code path.
+//!
+//! **Out of scope:** the post-increment soft-limit checks
+//! (`MappingTooLarge` at `profile_validation.rs:141-146`,
+//! `SequenceTooLong` at `profile_validation.rs:167-172`,
+//! `NestingTooDeep` at `:97-102` and `:113-118`,
+//! `NodeLimitExceeded` at `:217-222`) are constructed in separate
+//! `if` branches that production never reaches from the
+//! `checked_add` site. The proof covers the `checked_add` overflow
+//! mechanism only; those post-check branches would need separate
+//! harnesses to cover.
 //!
 //! Bound: depth ≤ u16::MAX, node_count ≤ u32::MAX, seq/map counters ≤ usize::MAX.
 //!
@@ -114,27 +130,28 @@ fn check_checked_add_counters_document_count() {
 /// Verifies that sequence counter `checked_add(1)` — as used at
 /// profile_validation.rs:163-166 — never panics and detects overflow.
 ///
-/// The `Err` variant is `YamlError::SequenceTooLong`: this is the
-/// user-facing semantic of the surrounding code at
-/// profile_validation.rs:167-172 (the post-increment soft-limit check
-/// returns `SequenceTooLong`, and the test-review contract is that the
-/// harness models the user-visible error rather than the internal
-/// `ok_or` argument).
+/// The `Err` variant is `YamlError::NodeLimitExceeded { count: u32::MAX, max: max_nodes }`:
+/// this is the variant the production `ok_or` constructor at
+/// `profile_validation.rs:163-166` constructs. The post-increment
+/// soft-limit check at `profile_validation.rs:167-172` returns
+/// `SequenceTooLong` in a separate `if` branch that production
+/// never reaches from the `checked_add` site; covering that branch
+/// would require a separate harness and is out of scope for this proof.
 #[kani::proof]
 fn check_checked_add_counters_sequence() {
     let count: usize = kani::any();
     let limits = YamlLimits::default();
-    let max_sequence_len = limits.max_sequence_len;
+    let max_nodes = limits.max_nodes;
 
-    let result = count.checked_add(1).ok_or(YamlError::SequenceTooLong {
-        len: count,
-        max: max_sequence_len,
+    let result = count.checked_add(1).ok_or(YamlError::NodeLimitExceeded {
+        count: u32::MAX,
+        max: max_nodes,
     });
 
     match result {
         Ok(new_count) => {
             assert!(new_count > count);
-            if new_count > max_sequence_len {
+            if new_count > limits.max_sequence_len {
                 kani::cover!(true, "sequence_len_exceeded_max");
             }
         }
@@ -148,27 +165,28 @@ fn check_checked_add_counters_sequence() {
 /// Verifies that mapping entry counter `checked_add(1)` — as used at
 /// profile_validation.rs:137-140 — never panics and detects overflow.
 ///
-/// The `Err` variant is `YamlError::MappingTooLarge`: this is the
-/// user-facing semantic of the surrounding code at
-/// profile_validation.rs:141-146 (the post-increment soft-limit check
-/// returns `MappingTooLarge`, and the test-review contract is that the
-/// harness models the user-visible error rather than the internal
-/// `ok_or` argument).
+/// The `Err` variant is `YamlError::NodeLimitExceeded { count: u32::MAX, max: max_nodes }`:
+/// this is the variant the production `ok_or` constructor at
+/// `profile_validation.rs:137-140` constructs. The post-increment
+/// soft-limit check at `profile_validation.rs:141-146` returns
+/// `MappingTooLarge` in a separate `if` branch that production
+/// never reaches from the `checked_add` site; covering that branch
+/// would require a separate harness and is out of scope for this proof.
 #[kani::proof]
 fn check_checked_add_counters_mapping() {
     let count: usize = kani::any();
     let limits = YamlLimits::default();
-    let max_mapping_entries = limits.max_mapping_entries;
+    let max_nodes = limits.max_nodes;
 
-    let result = count.checked_add(1).ok_or(YamlError::MappingTooLarge {
-        count,
-        max: max_mapping_entries,
+    let result = count.checked_add(1).ok_or(YamlError::NodeLimitExceeded {
+        count: u32::MAX,
+        max: max_nodes,
     });
 
     match result {
         Ok(new_count) => {
             assert!(new_count > count);
-            if new_count > max_mapping_entries {
+            if new_count > limits.max_mapping_entries {
                 kani::cover!(true, "mapping_entries_exceeded_max");
             }
         }
