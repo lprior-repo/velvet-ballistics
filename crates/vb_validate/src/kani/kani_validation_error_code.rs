@@ -27,6 +27,10 @@ const REGISTERED_CODES: &[&str] = &[
     "FUTURE_REFERENCE",
     "SECRET_NOT_DECLARED",
     "DIRECT_RUNTIME_REFERENCE",
+    "SCOPE_GUARD_VIOLATION",
+    "DIRECT_LOOP_REFERENCE",
+    "DIRECT_STEP_REFERENCE",
+    "STEP_SKIPPED_REFERENCE",
     "INVALID_THEN_TARGET",
     "CONTROL_FLOW_CYCLE",
     "UNREACHABLE_STEP",
@@ -203,6 +207,44 @@ mod harnesses {
         };
         let _ = {
             let e: ValidationError = ValidationError::DirectRuntimeReference;
+            let code = e.code();
+            let name = code.as_str();
+            assert!(is_registered(name));
+            assert!(!name.is_empty());
+        };
+        let _ = {
+            let e: ValidationError = ValidationError::ScopeGuardViolation {
+                reference: String::new(),
+                required_scope: String::new(),
+            };
+            let code = e.code();
+            let name = code.as_str();
+            assert!(is_registered(name));
+            assert!(!name.is_empty());
+        };
+        let _ = {
+            let e: ValidationError = ValidationError::DirectLoopReference {
+                variable: String::new(),
+            };
+            let code = e.code();
+            let name = code.as_str();
+            assert!(is_registered(name));
+            assert!(!name.is_empty());
+        };
+        let _ = {
+            let e: ValidationError = ValidationError::DirectStepReference {
+                step: String::new(),
+            };
+            let code = e.code();
+            let name = code.as_str();
+            assert!(is_registered(name));
+            assert!(!name.is_empty());
+        };
+        let _ = {
+            let e: ValidationError = ValidationError::StepSkippedReference {
+                step: vb_core::ids::StepIdx::new(0),
+                reference: String::new().into_boxed_str(),
+            };
             let code = e.code();
             let name = code.as_str();
             assert!(is_registered(name));

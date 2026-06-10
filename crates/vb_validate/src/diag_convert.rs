@@ -36,6 +36,20 @@ pub(super) fn all_variants() -> Vec<ValidationError> {
             secret: "tok".into(),
         },
         ValidationError::DirectRuntimeReference,
+        ValidationError::ScopeGuardViolation {
+            reference: "$total.x".into(),
+            required_scope: "repeat".into(),
+        },
+        ValidationError::DirectLoopReference {
+            variable: "item".into(),
+        },
+        ValidationError::DirectStepReference {
+            step: "build".into(),
+        },
+        ValidationError::StepSkippedReference {
+            step: vb_core::ids::StepIdx::new(0),
+            reference: "$input.missing".into(),
+        },
         ValidationError::InvalidThenTarget,
         ValidationError::ControlFlowCycle,
         ValidationError::UnreachableStep { step: "s".into() },
@@ -223,6 +237,16 @@ mod tests {
     fn direct_runtime_maps_to_e0204() {
         let diag = diagnostic_from_error(&ValidationError::DirectRuntimeReference);
         assert_eq!(diag.numeric_code.code(), 0x0204);
+    }
+
+    #[test]
+    fn direct_step_reference_maps_to_e0207() {
+        let diag = diagnostic_from_error(&ValidationError::DirectStepReference {
+            step: "build_result".into(),
+        });
+        assert_eq!(diag.numeric_code.code(), 0x0207);
+        assert!(diag.message.contains("build_result"));
+        assert!(diag.message.contains("$steps"));
     }
 
     #[test]

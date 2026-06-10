@@ -219,7 +219,7 @@ fn validate_compile_reference(
     };
     let Some((root, tail)) = body.split_once('.') else {
         // Bare reference -- delegate to shared validation
-        return validate_single_reference_with_context(reference, tables, step_index)
+        return validate_single_reference_with_context(reference, tables, step_index, false, false)
             .map_err(|e| map_validation_error(reference, &e));
     };
     // Compile-specific: slot references are not in the standalone validator
@@ -232,7 +232,7 @@ fn validate_compile_reference(
     if let Some(error) = check_accessor_path(reference, root, tail, tables) {
         return Err(error);
     }
-    validate_single_reference_with_context(reference, tables, step_index)
+    validate_single_reference_with_context(reference, tables, step_index, false, false)
         .map_err(|e| map_validation_error(reference, &e))
 }
 

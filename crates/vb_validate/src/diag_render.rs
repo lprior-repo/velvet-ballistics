@@ -119,6 +119,28 @@ fn error_diagnostic_parts(error: &ValidationError) -> (DiagnosticCode, String) {
             DiagnosticCode::new(CODE_DIRECT_RUNTIME_REFERENCE),
             "direct runtime reference".into(),
         ),
+        ValidationError::ScopeGuardViolation {
+            reference,
+            required_scope,
+        } => (
+            DiagnosticCode::new(CODE_SCOPE_GUARD_VIOLATION),
+            format!("scope guard violation: {reference} requires {required_scope} scope"),
+        ),
+        ValidationError::DirectLoopReference { variable } => (
+            DiagnosticCode::new(CODE_DIRECT_LOOP_REFERENCE),
+            format!("loop variables must use the `$loop.<var>` prefix (found `${variable}`)"),
+        ),
+        ValidationError::DirectStepReference { step } => (
+            DiagnosticCode::new(CODE_DIRECT_STEP_REFERENCE),
+            format!("step reference `{step}` must use the `$steps.X` prefix"),
+        ),
+        ValidationError::StepSkippedReference { step, reference } => (
+            DiagnosticCode::new(CODE_STEP_SKIPPED_REFERENCE),
+            format!(
+                "step {} skipped due to unresolved reference `{reference}`",
+                step.get()
+            ),
+        ),
         ValidationError::InvalidThenTarget => (
             DiagnosticCode::new(CODE_INVALID_THEN_TARGET),
             "invalid then target".into(),
