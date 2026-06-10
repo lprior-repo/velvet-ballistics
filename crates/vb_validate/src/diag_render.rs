@@ -141,6 +141,15 @@ fn error_diagnostic_parts(error: &ValidationError) -> (DiagnosticCode, String) {
                 step.get()
             ),
         ),
+        ValidationError::ResultReferenceMissing {
+            step,
+            missing_output,
+        } => (
+            DiagnosticCode::new(CODE_RESULT_REFERENCE_MISSING),
+            format!(
+                "step {step} does not produce an output; cannot reference field symbol {missing_output:?}"
+            ),
+        ),
         ValidationError::InvalidThenTarget => (
             DiagnosticCode::new(CODE_INVALID_THEN_TARGET),
             "invalid then target".into(),

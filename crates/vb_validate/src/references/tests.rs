@@ -52,6 +52,7 @@ fn make_tables_with_loop_vars(
                 .map(|s| s.to_string())
                 .collect::<Vec<String>>(),
         ),
+        step_outputs: std::collections::HashSet::new(),
     }
 }
 

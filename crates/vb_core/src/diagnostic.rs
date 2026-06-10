@@ -208,6 +208,36 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
         category: CodeCategory::Reference,
         deprecated: false,
     },
+    CodeEntry {
+        symbolic: "SCOPE_GUARD_VIOLATION",
+        numeric: 0x0205,
+        category: CodeCategory::Reference,
+        deprecated: false,
+    },
+    CodeEntry {
+        symbolic: "DIRECT_LOOP_REFERENCE",
+        numeric: 0x0206,
+        category: CodeCategory::Reference,
+        deprecated: false,
+    },
+    CodeEntry {
+        symbolic: "DIRECT_STEP_REFERENCE",
+        numeric: 0x0207,
+        category: CodeCategory::Reference,
+        deprecated: false,
+    },
+    CodeEntry {
+        symbolic: "STEP_SKIPPED_REFERENCE",
+        numeric: 0x0208,
+        category: CodeCategory::Reference,
+        deprecated: false,
+    },
+    CodeEntry {
+        symbolic: "RESULT_REFERENCE_MISSING",
+        numeric: 0x0209,
+        category: CodeCategory::Reference,
+        deprecated: false,
+    },
     // ---- ControlFlow: E03xx (0x0301–0x0309) ----
     CodeEntry {
         symbolic: "INVALID_THEN_TARGET",

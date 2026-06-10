@@ -50,6 +50,10 @@ pub(super) fn all_variants() -> Vec<ValidationError> {
             step: vb_core::ids::StepIdx::new(0),
             reference: "$input.missing".into(),
         },
+        ValidationError::ResultReferenceMissing {
+            step: vb_core::ids::StepIdx::new(0),
+            missing_output: vb_core::ids::SymbolId::new(0),
+        },
         ValidationError::InvalidThenTarget,
         ValidationError::ControlFlowCycle,
         ValidationError::UnreachableStep { step: "s".into() },

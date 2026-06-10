@@ -101,10 +101,13 @@ fn from_str_rejects_gap_between_e010b_and_e0201() {
 }
 
 #[test]
-fn from_str_rejects_gap_between_e0204_and_e0301() {
+fn from_str_accepts_e0205_scope_guard_violation() {
+    // E0205 was a gap before vb-cs3802; the scope-guard variants
+    // (SCOPE_GUARD_VIOLATION, DIRECT_LOOP_REFERENCE, DIRECT_STEP_REFERENCE,
+    // STEP_SKIPPED_REFERENCE, RESULT_REFERENCE_MISSING) now occupy 0x0205-0x0209.
     assert_eq!(
         DiagnosticCode::from_str("E0205"),
-        Err(DiagnosticCodeParseError::UnsupportedCode)
+        Ok(DiagnosticCode::new(0x0205))
     );
 }
 

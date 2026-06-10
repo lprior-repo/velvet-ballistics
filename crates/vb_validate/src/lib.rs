@@ -165,6 +165,55 @@ pub enum ValidationError {
     #[error("DIRECT_RUNTIME_REFERENCE")]
     DirectRuntimeReference,
 
+    /// Returned when a context-dependent reference (e.g., `$total.x`) is used
+    /// outside its required scope (e.g., outside a `repeat` body).
+    #[error("SCOPE_GUARD_VIOLATION: {reference} requires {required_scope} scope")]
+    ScopeGuardViolation {
+        reference: String,
+        required_scope: String,
+    },
+
+    /// Returned when a loop variable is referenced directly as `$<var>.<field>`
+    /// instead of the required `$loop.<var>.<field>` prefix.
+    #[error(
+        "DIRECT_LOOP_REFERENCE: loop variables must use the `$loop.<var>` prefix (found `${variable}`)"
+    )]
+    DirectLoopReference { variable: String },
+
+    /// Returned when a reference uses a bare step ID as root (e.g., `$build_result.output`)
+    /// instead of the required `$steps.<step_id>.<field>` prefix.
+    #[error(
+        "DIRECT_STEP_REFERENCE: step references must use the `$steps.X` prefix (found `${step}`)"
+    )]
+    DirectStepReference { step: String },
+
+    /// Returned when a step is silently skipped at runtime because one of its
+    /// references failed to resolve. The run is allowed to continue with stale
+    /// or default values, but the diagnostic is emitted so callers can surface
+    /// the failure instead of masking it.
+    #[error(
+        "STEP_SKIPPED_REFERENCE: step {step} skipped due to unresolved reference `{reference}`"
+    )]
+    StepSkippedReference {
+        step: vb_core::ids::StepIdx,
+        reference: Box<str>,
+    },
+
+    /// Returned when a workflow references `$steps.<step_id>.output` but the
+    /// step does not produce an output. Without this diagnostic, the runtime
+    /// would silently fall through with no binding for the user code, and the
+    /// run would proceed with stale or default values. The `step` is the
+    /// index of the producing step (i.e. the `X` in `$steps.X.output`) and
+    /// `missing_output` is the [`SymbolId`](vb_core::ids::SymbolId) of the
+    /// field that was referenced but never bound by the step.
+    #[error(
+        "RESULT_REFERENCE_MISSING: step {step} does not produce an output; cannot reference field symbol {missing_output:?}"
+    )]
+    ResultReferenceMissing {
+        step: vb_core::ids::StepIdx,
+        missing_output: vb_core::ids::SymbolId,
+    },
+
     /// Returned when the target of a `then` branch is not a valid step reference.
     #[error("INVALID_THEN_TARGET")]
     InvalidThenTarget,
@@ -408,6 +457,11 @@ impl ValidationError {
             Self::FutureReference { .. } => "FUTURE_REFERENCE",
             Self::SecretNotDeclared { .. } => "SECRET_NOT_DECLARED",
             Self::DirectRuntimeReference => "DIRECT_RUNTIME_REFERENCE",
+            Self::ScopeGuardViolation { .. } => "SCOPE_GUARD_VIOLATION",
+            Self::DirectLoopReference { .. } => "DIRECT_LOOP_REFERENCE",
+            Self::DirectStepReference { .. } => "DIRECT_STEP_REFERENCE",
+            Self::StepSkippedReference { .. } => "STEP_SKIPPED_REFERENCE",
+            Self::ResultReferenceMissing { .. } => "RESULT_REFERENCE_MISSING",
             // Control-flow: E03xx
             Self::InvalidThenTarget => "INVALID_THEN_TARGET",
             Self::ControlFlowCycle => "CONTROL_FLOW_CYCLE",

@@ -35,6 +35,12 @@ pub struct RefTables {
     step_ids: Vec<String>,
     step_ids_set: HashSet<String>,
     loop_variable_names: HashSet<String>,
+    /// Set of step IDs that produce outputs. Used to validate that
+    /// `$steps.<step_id>.output` references point to steps that actually
+    /// produce an output. A step that does not produce an output is
+    /// referenced at the user's peril: validation emits
+    /// [`ValidationError::ResultReferenceMissing`].
+    step_outputs: HashSet<String>,
 }
 
 impl RefTables {
@@ -49,6 +55,7 @@ impl RefTables {
             step_ids,
             step_ids_set,
             loop_variable_names: string_set(&workflow.loop_variable_names),
+            step_outputs: string_set(&workflow.step_outputs),
         }
     }
 
@@ -86,6 +93,7 @@ impl RefTables {
             step_ids: step_ids_vec,
             step_ids_set,
             loop_variable_names: string_set(loop_variable_names),
+            step_outputs: HashSet::new(),
         }
     }
 
@@ -117,6 +125,25 @@ impl RefTables {
     /// Returns the index of the given step ID, or `None` if not found.
     pub fn step_index(&self, step_id: &str) -> Option<usize> {
         self.step_ids.iter().position(|id| id == step_id)
+    }
+
+    /// Returns whether the given step ID is declared to produce an output.
+    ///
+    /// When the step-output set is populated (via
+    /// [`RefTables::from_slices_full`] or
+    /// [`WorkflowRefs::step_outputs`]), this returns `true` only for steps
+    /// that bind a result. When the set is empty (the default), every
+    /// step is treated as output-producing so that downstream callers
+    /// that have not yet wired output tracking do not regress.
+    pub fn step_has_output(&self, step_id: &str) -> bool {
+        // An empty set means the caller did not declare any outputs; we
+        // do not know which ones have outputs, so we conservatively
+        // assume every step does. This keeps the validator permissive
+        // when the workflow has not been inspected for output bindings.
+        if self.step_outputs.is_empty() {
+            return true;
+        }
+        self.step_outputs.contains(step_id)
     }
 }
 
@@ -346,6 +373,19 @@ fn validate_step_reference(
     let name = reference_name(tail);
     if let Some(step_idx) = tables.step_index(name) {
         // Step ID exists in the workflow.
+        //
+        // The reference is `$steps.<name>.<field>`. Check whether the
+        // requested field is "output" and the step does NOT produce
+        // one. In that case the runtime would have no value to bind
+        // and the reference would silently resolve to absent data, so
+        // validation surfaces the failure as
+        // [`ValidationError::ResultReferenceMissing`].
+        if step_field_is_output(tail) && !tables.step_has_output(name) {
+            return Err(ValidationError::ResultReferenceMissing {
+                step: step_index_to_step_idx(step_idx),
+                missing_output: OUTPUT_FIELD_SYMBOL,
+            });
+        }
         match current_step_index {
             Some(current_idx) => {
                 if step_idx >= current_idx {
@@ -367,6 +407,47 @@ fn validate_step_reference(
         Err(ValidationError::UnknownReference {
             reference: reference.to_owned(),
         })
+    }
+}
+
+/// Returns `true` when the requested step field is the canonical
+/// "output" slot.
+///
+/// The input `tail` is the text after `$steps.` (e.g. `"build.output"`)
+/// for a step-rooted reference. We split on the first `.` and compare
+/// the field name. If the tail has no dot the reference is just the
+/// step id (a bare step reference) and there is no field to check.
+fn step_field_is_output(tail: &str) -> bool {
+    match tail.split_once('.') {
+        Some((_, field)) => field == "output",
+        None => false,
+    }
+}
+
+/// Sentinel [`SymbolId`](vb_core::ids::SymbolId) for the canonical
+/// "output" field of a step result.
+///
+/// The validator does not have access to the workflow's symbol table,
+/// so we record the missing field as a fixed symbol id. Downstream
+/// consumers that know the workflow's symbol table can re-resolve
+/// the symbol id back to the field name "output" via the registry.
+const OUTPUT_FIELD_SYMBOL: vb_core::ids::SymbolId = vb_core::ids::SymbolId::new(0);
+
+/// Converts a [`usize`] workflow step index into the bounded
+/// [`StepIdx`] newtype used by [`ValidationError`] variants.
+///
+/// [`StepIdx`] is a `u16` newtype. Workflows that exceed `u16::MAX`
+/// steps cannot be represented; in that case we saturate to
+/// `StepIdx::MAX` so the validator can still emit a typed diagnostic
+/// instead of panicking on the conversion. The error variant the
+/// caller is constructing is `ResultReferenceMissing`, so the saturating
+/// behavior keeps the validation pipeline total and avoids surfacing
+/// a misleading `UnknownReference` when the real failure is the
+/// missing output slot.
+fn step_index_to_step_idx(step_idx: usize) -> StepIdx {
+    match u16::try_from(step_idx) {
+        Ok(value) => StepIdx::new(value),
+        Err(_) => StepIdx::new(u16::MAX),
     }
 }
 
@@ -412,6 +493,16 @@ pub struct WorkflowRefs {
     pub references: Vec<String>,
     /// Loop variable names in scope (from for_each, together, collect bodies).
     pub loop_variable_names: Vec<String>,
+    /// Step IDs that produce a result output.
+    ///
+    /// When non-empty, [`RefTables::step_has_output`] uses this set to
+    /// determine whether a `$steps.<step_id>.output` reference is valid;
+    /// references to steps not in this set produce
+    /// [`ValidationError::ResultReferenceMissing`]. When empty (the
+    /// default), every step is treated as output-producing so the
+    /// validator remains permissive for callers that have not yet wired
+    /// output tracking.
+    pub step_outputs: Vec<String>,
 }
 
 // ---------------------------------------------------------------------------

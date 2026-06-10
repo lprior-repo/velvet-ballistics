@@ -307,6 +307,12 @@ impl StepIdx {
     }
 }
 
+impl core::fmt::Display for StepIdx {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 impl SlotIdx {
     /// Zero slot index.
     pub const ZERO: Self = Self(0);
