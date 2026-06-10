@@ -9,13 +9,19 @@
 //! - Every field is `kani::any::<T>()` for its concrete type.
 //! - String fields use `kani::any::<[u8; N]>()` (kani 0.67.0 does not
 //!   implement `Arbitrary` for `String`) and are converted via
-//!   `String::from_utf8_lossy`. The byte array is symbolic, so every
+//!   `b as char` per byte. The byte array is symbolic, so every
 //!   byte is arbitrary — no hardcoded `YamlError` literals, no fixed
-//!   dummy strings.
+//!   dummy strings. The `b as char` mapping bypasses
+//!   `core::str::validations::run_utf8_validation` (valid 1-byte
+//!   UTF-8 by construction since each byte is constrained to
+//!   ASCII via `kani::assume(b < 0x80)`) and `String::from_utf8_lossy`.
 //! - Uses the production `YamlError` and `HasSymbolicCode` impl from
 //!   `vb_yaml::error`, not a parallel mini-model.
 //!
-//! Bound: 21 YamlError variants (unwind=21).
+//! Bound: 21 YamlError variants. Harness unwind is 256 (see
+//! `kani_yaml_error_code_registered`), not 21 — the 256 bound is
+//! driven by the 236-entry `vb_core::CODE_REGISTRY` lookup that
+//! `SymbolicCode::from_static` performs on the produced code.
 //!
 //! R-003-revised: kani 0.67.0 does not implement `Arbitrary` for
 //! `String`, so we use `kani::any::<[u8; N]>()` and convert. The
@@ -35,18 +41,29 @@ use vb_core::diagnostic::{HasSymbolicCode, SymbolicCode};
 const YAML_ERROR_VARIANT_COUNT: u8 = 21;
 
 /// Number of symbolic bytes used to materialise each string-typed field.
-/// Small constant (keepts Kani tractability) yet non-trivial so
-/// every byte is symbolic and no field is hardcoded.
-const STRING_FIELD_BYTES: usize = 8;
+///
+/// Reduced from 8 to 1 (bead vb-7jjh7, Option A) to keep the
+/// `kani_yaml_error_code_registered` SAT instance tractable. At 8 bytes
+/// per string field × 21 variants × multiple string fields per variant,
+/// the SAT instance reached 12M variables × 612M clauses and timed out
+/// at 1500s. With 1 byte per field the per-field symbolic-input space
+/// is 128 (7-bit ASCII) and the worst-case total SAT instance drops by
+/// roughly an order of magnitude. The core invariant still holds:
+/// every variant produces a registered symbolic code regardless of
+/// the field content (any of 128 ASCII bytes is covered symbolically).
+const STRING_FIELD_BYTES: usize = 1;
 
 /// Generate a `Box<str>` of length `N` from a symbolic ASCII byte array.
 ///
 /// Uses `kani::any::<[u8; N]>()` because kani 0.67.0 does not implement
 /// `Arbitrary` for `String`. Each byte is constrained to ASCII (0..0x80)
-/// via `kani::assume`, which guarantees valid UTF-8 by construction
-/// and avoids the unbounded CBMC unwind through `String::from_utf8_lossy`.
+/// via `kani::assume`, which guarantees valid UTF-8 by construction.
 /// Length is fixed at `N` (no allocation-time length symbolic), keeping
-/// Kani tractable while every byte remains symbolic.
+/// Kani tractable while every byte remains symbolic. The per-byte
+/// `b as char` mapping below produces valid 1-byte UTF-8 without
+/// invoking `core::str::validations::run_utf8_validation` or
+/// `String::from_utf8_lossy`, which would otherwise inflate the
+/// CBMC unwind bound on the 21-variant harness.
 #[inline]
 fn bounded_box_str<const N: usize>() -> Box<str> {
     let bytes: [u8; N] = kani::any();

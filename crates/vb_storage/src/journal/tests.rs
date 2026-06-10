@@ -2584,3 +2584,207 @@ fn recovery_stamp_survives_close_and_reopen() {
         assert_eq!(loaded, stamp, "reopened stamp must equal the persisted one");
     }
 }
+
+// =========================================================================
+// vb-k6iwh-r: TRUE end-to-end BDD — recovery path writes the stamp, and
+// the stamp persists across a journal close/reopen boundary.
+//
+// This test exercises the full production recovery code path
+// (crate::recovery::recover_full_journal), not just the put/get helpers in
+// isolation. It is the proof that the recovery_stamp keyspace is wired into
+// the recovery path (not a phantom keyspace).
+// =========================================================================
+
+/// Given a fresh `FjallJournal` with a small accepted/admission/finished event
+///      sequence for one run,
+/// When the production recovery path is invoked via
+///      `crate::recovery::recover_full_journal`,
+/// Then a `RecoveryStampRecord` is persisted at `(run, last_seq)` by the
+///      recovery path itself,
+/// And the persisted stamp survives a journal close/reopen cycle.
+#[test]
+fn recover_full_journal_writes_recovery_stamp_and_persists_across_reopen() {
+    use crate::recovery::{ActionReplayTracker, recover_full_journal};
+
+    let temp = tempfile::tempdir().expect("tempdir creation should succeed");
+    let path = temp.path().to_path_buf();
+    let run = RunId::new(0x5C0);
+    let workflow = WorkflowDigest::from_bytes([0xAB; DIGEST_BYTES]);
+    let last_seq = EventSeq::new(2);
+
+    // Phase 1: open the journal, write a small event sequence, run the
+    //          production recovery path, and verify the stamp is written.
+    {
+        let mut journal = FjallJournal::open(&path, None).expect("open should succeed");
+
+        journal
+            .append_journaled(&JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow,
+            })
+            .expect("append RunAccepted should succeed");
+        journal
+            .append_journaled(&JournalEvent::RunAdmission {
+                run,
+                seq: EventSeq::new(1),
+                artifact_digest: workflow,
+                granted_capabilities: vb_core::CapabilitySet::empty(),
+                policy: vb_core::RuntimePolicy::Relaxed,
+            })
+            .expect("append RunAdmission should succeed");
+        journal
+            .append_journaled(&JournalEvent::RunFinished {
+                run,
+                seq: last_seq,
+                result: SlotIdx::new(0),
+                attempt: 1,
+            })
+            .expect("append RunFinished should succeed");
+
+        // No stamp should exist before recovery runs.
+        let pre = journal
+            .get_recovery_stamp(run, last_seq)
+            .expect("get_recovery_stamp pre-read must succeed");
+        assert!(
+            pre.is_none(),
+            "no recovery_stamp may exist before recover_full_journal runs"
+        );
+
+        // Run the production recovery path. This is the call site that
+        // previous beads wired the stamp writes into.
+        let mut tracker = ActionReplayTracker::new();
+        let replayed = recover_full_journal(&journal, run, &mut tracker, &[], &[])
+            .expect("recover_full_journal must succeed");
+        assert_eq!(
+            replayed.len(),
+            3,
+            "all three events (RunAccepted, RunAdmission, RunFinished) must be replayed"
+        );
+
+        // The recovery path must have written a stamp at (run, last_seq).
+        let stamp = journal
+            .get_recovery_stamp(run, last_seq)
+            .expect("get_recovery_stamp post-recovery must succeed")
+            .expect("recover_full_journal must persist a RecoveryStampRecord at (run, last_seq)");
+        assert_eq!(stamp.run, run, "stamp must reference the recovered run");
+        assert_eq!(
+            stamp.last_seq, last_seq,
+            "stamp must reference the last replayed sequence number"
+        );
+        // written_at_ms is derived from SystemTime::now(); assert it is a
+        // recent (post-2023) timestamp to prove it is not a sentinel.
+        assert!(
+            stamp.written_at_ms > 1_700_000_000_000,
+            "stamp.written_at_ms must be a recent unix-millis timestamp, got {}",
+            stamp.written_at_ms
+        );
+
+        // Simulate a crash: close the journal explicitly so the durability
+        // barrier is enforced before the process exits.
+        journal.close().expect("close must succeed");
+    }
+
+    // Phase 2: reopen the journal, read the stamp back, and confirm it
+    //          matches what the recovery path wrote. This proves the stamp
+    //          is durable across a process restart boundary.
+    {
+        let journal = FjallJournal::open(&path, None).expect("reopen should succeed");
+        let loaded = journal
+            .get_recovery_stamp(run, last_seq)
+            .expect("get_recovery_stamp after reopen must succeed")
+            .expect("recovery_stamp must survive close/reopen");
+        assert_eq!(
+            loaded.run, run,
+            "reopened stamp must reference the recovered run"
+        );
+        assert_eq!(
+            loaded.last_seq, last_seq,
+            "reopened stamp must reference the last replayed sequence number"
+        );
+        assert!(
+            loaded.written_at_ms > 1_700_000_000_000,
+            "reopened stamp must carry the original recent timestamp"
+        );
+    }
+}
+
+/// Given a `FjallJournal` that already carries a `RecoveryStampRecord` for a
+///      run (e.g., after a previous successful recovery call),
+/// When `recover_full_journal` is invoked a second time for the same run,
+/// Then the recovery still succeeds and the existing stamp is preserved
+///      (i.e., a second stamp is not written, the marker is stable).
+#[test]
+fn recover_full_journal_preserves_existing_recovery_stamp_on_replay() {
+    use crate::RecoveryStampRecord;
+    use crate::recovery::{ActionReplayTracker, recover_full_journal};
+
+    let temp = tempfile::tempdir().expect("tempdir creation should succeed");
+    let path = temp.path().to_path_buf();
+    let run = RunId::new(0xD03);
+    let workflow = WorkflowDigest::from_bytes([0x7E; DIGEST_BYTES]);
+    let last_seq = EventSeq::new(2);
+    let original_written_at_ms: u64 = 1_700_000_000_000;
+
+    // Phase 1: write the events, then plant a stamp with a known timestamp.
+    {
+        let journal = FjallJournal::open(&path, None).expect("open should succeed");
+
+        journal
+            .append_journaled(&JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow,
+            })
+            .expect("append RunAccepted should succeed");
+        journal
+            .append_journaled(&JournalEvent::RunAdmission {
+                run,
+                seq: EventSeq::new(1),
+                artifact_digest: workflow,
+                granted_capabilities: vb_core::CapabilitySet::empty(),
+                policy: vb_core::RuntimePolicy::Relaxed,
+            })
+            .expect("append RunAdmission should succeed");
+        journal
+            .append_journaled(&JournalEvent::RunFinished {
+                run,
+                seq: last_seq,
+                result: SlotIdx::new(0),
+                attempt: 1,
+            })
+            .expect("append RunFinished should succeed");
+
+        // Plant a stamp with a known (non-recent) timestamp.
+        journal
+            .put_recovery_stamp(
+                run,
+                last_seq,
+                RecoveryStampRecord {
+                    run,
+                    last_seq,
+                    written_at_ms: original_written_at_ms,
+                },
+            )
+            .expect("plant stamp must succeed");
+    }
+
+    // Phase 2: reopen the journal, run recover_full_journal again, and verify
+    //          the original stamp is preserved (its timestamp is unchanged).
+    {
+        let journal = FjallJournal::open(&path, None).expect("reopen should succeed");
+        let mut tracker = ActionReplayTracker::new();
+        let replayed = recover_full_journal(&journal, run, &mut tracker, &[], &[])
+            .expect("recover_full_journal must succeed even when a stamp already exists");
+        assert_eq!(replayed.len(), 3, "all three events must still be replayed");
+
+        let stamp = journal
+            .get_recovery_stamp(run, last_seq)
+            .expect("get_recovery_stamp must succeed")
+            .expect("stamp must still exist after a second recovery call");
+        assert_eq!(
+            stamp.written_at_ms, original_written_at_ms,
+            "existing stamp must be preserved (no new stamp should overwrite it)"
+        );
+    }
+}

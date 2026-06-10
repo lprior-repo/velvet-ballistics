@@ -13,6 +13,7 @@ pub use super::attempt::{
     replay_attempt_is_current, replay_attempt_is_stale, replay_attempt_or_default,
     replay_event_has_state_effect, replay_event_is_stale_state_effect, replay_step_order_diverges,
 };
+use crate::records::RecoveryStampRecord;
 use crate::recovery::hydrate_support::{
     verified_action_envelope_digest, verify_action_ticket_event,
 };
@@ -204,6 +205,20 @@ fn validate_contiguous_sequences(events: &[JournalEvent]) -> RecoveryResult<()> 
 ///
 /// Missing durable `RunAdmission` evidence fails closed instead of replaying
 /// without proof or fabricating a digest value.
+///
+/// ## Recovery stamp integration (vb-k6iwh-r)
+///
+/// Before replay, the recovery stamp keyspace is consulted at `(run, last_seq)`.
+/// A present stamp indicates a prior recovery attempt has already replayed
+/// the journal up to `last_seq`; replay is still run (to refresh the action
+/// tracker for the caller) but no new stamp is written, preserving the
+/// existing marker. The skip-replay semantic — using the stamp to short-circuit
+/// replay when the journal tail is unchanged — is delegated to a follow-up
+/// bead that will compare the stamp's `last_seq` against the journal tail.
+///
+/// After a successful replay with no prior stamp, a fresh `RecoveryStampRecord`
+/// is persisted at `(run, last_seq)` so a subsequent recovery invocation can
+/// detect that the replay for this run has already been performed.
 pub fn recover_full_journal(
     journal: &FjallJournal,
     run: RunId,
@@ -218,7 +233,48 @@ pub fn recover_full_journal(
 
     verify_run_admission_evidence(&events, run, expected_policy_digests)?;
 
-    replay_events(&events, tracker, expected_action_abi_digests)
+    let last_seq = events.last().map_or(EventSeq::ZERO, JournalEvent::seq);
+    let replayed = replay_events(&events, tracker, expected_action_abi_digests)?;
+
+    if journal.get_recovery_stamp(run, last_seq)?.is_none() {
+        write_recovery_stamp(journal, run, last_seq)?;
+    }
+    Ok(replayed)
+}
+
+/// Persists a `RecoveryStampRecord` for `(run, last_seq)` after successful replay.
+///
+/// The millisecond timestamp is derived from the wall clock and narrowed to
+/// `u64` with checked arithmetic; a clock that exceeds `u64::MAX` ms (year
+/// ~584 billion) saturates to `u64::MAX` so the stamp is always writable.
+fn write_recovery_stamp(
+    journal: &FjallJournal,
+    run: RunId,
+    last_seq: EventSeq,
+) -> RecoveryResult<()> {
+    let written_at_ms = current_unix_millis_saturating();
+    let stamp = RecoveryStampRecord {
+        run,
+        last_seq,
+        written_at_ms,
+    };
+    journal.put_recovery_stamp(run, last_seq, stamp)?;
+    Ok(())
+}
+
+/// Returns the current wall-clock time in milliseconds since the Unix epoch,
+/// saturating to `u64::MAX` on overflow. The conversion is checked, not lossy.
+fn current_unix_millis_saturating() -> u64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let duration = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default();
+    let millis = duration.as_millis();
+    if millis > u128::from(u64::MAX) {
+        u64::MAX
+    } else {
+        u64::try_from(millis).unwrap_or(u64::MAX)
+    }
 }
 
 /// Loads a snapshot from the journal, translating decode failures to
