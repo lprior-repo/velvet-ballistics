@@ -3,12 +3,12 @@
 
 #![forbid(unsafe_code)]
 
-use super::validate_resource_contract;
 use crate::ids::{SlotIdx, StepIdx, WorkflowDigest};
 use crate::limits::{
     MAX_ACCESSORS, MAX_CONSTANTS, MAX_EXPRESSION_STACK, MAX_EXPRESSIONS, MAX_SLOTS_PER_WORKFLOW,
     MAX_STEPS_PER_WORKFLOW,
 };
+use crate::workflow::validation::validate_resource_contract;
 use crate::workflow::{
     CompiledNode, CompiledNodeKind, ResourceContract, WorkflowError, WorkflowParts,
 };
@@ -52,11 +52,11 @@ fn valid_parts() -> WorkflowParts {
 mod resource_contract_too_large {
     use super::*;
 
-    /// max_steps is u16-bounded and accepts the maximum representable declaration.
+    /// max_steps is bounded by MAX_STEPS_PER_WORKFLOW and accepts the maximum in-bounds value.
     #[test]
     fn accepts_max_steps_at_type_max() {
         let mut parts = valid_parts();
-        parts.resource_contract.max_steps = u16::MAX;
+        parts.resource_contract.max_steps = u16::try_from(MAX_STEPS_PER_WORKFLOW).unwrap();
 
         assert_eq!(validate_resource_contract(&parts), Ok(()));
     }
@@ -70,11 +70,11 @@ mod resource_contract_too_large {
         assert_eq!(validate_resource_contract(&parts), Ok(()));
     }
 
-    /// max_constants is u16-bounded and accepts the maximum representable declaration.
+    /// max_constants is bounded by MAX_CONSTANTS and accepts the maximum in-bounds value.
     #[test]
     fn accepts_max_constants_at_type_max() {
         let mut parts = valid_parts();
-        parts.resource_contract.max_constants = u16::MAX;
+        parts.resource_contract.max_constants = u16::try_from(MAX_CONSTANTS).unwrap();
 
         assert_eq!(validate_resource_contract(&parts), Ok(()));
     }
@@ -90,8 +90,8 @@ mod resource_contract_too_large {
             .expect_err("expected Err when max_accessors exceeds hard limit");
         assert!(
             matches!(
-                &err,
-                WorkflowError::ResourceContractTooLarge { resource } if *resource == "max_accessors"
+                err,
+                WorkflowError::ResourceContractTooLarge { resource } if resource == "max_accessors"
             ),
             "expected ResourceContractTooLarge {{ resource: \"max_accessors\" }}, got {err:?}"
         );
@@ -108,8 +108,8 @@ mod resource_contract_too_large {
             .expect_err("expected Err when max_expressions exceeds hard limit");
         assert!(
             matches!(
-                &err,
-                WorkflowError::ResourceContractTooLarge { resource } if *resource == "max_expressions"
+                err,
+                WorkflowError::ResourceContractTooLarge { resource } if resource == "max_expressions"
             ),
             "expected ResourceContractTooLarge {{ resource: \"max_expressions\" }}, got {err:?}"
         );
@@ -125,8 +125,8 @@ mod resource_contract_too_large {
             .expect_err("expected Err when max_expr_stack exceeds hard limit");
         assert!(
             matches!(
-                &err,
-                WorkflowError::ResourceContractTooLarge { resource } if *resource == "max_expr_stack"
+                err,
+                WorkflowError::ResourceContractTooLarge { resource } if resource == "max_expr_stack"
             ),
             "expected ResourceContractTooLarge {{ resource: \"max_expr_stack\" }}, got {err:?}"
         );
@@ -206,8 +206,8 @@ mod resource_contract_error_exactness {
         let err = validate_resource_contract(&parts).unwrap_err();
         assert!(
             matches!(
-                &err,
-                WorkflowError::ResourceContractTooLarge { resource } if *resource == resource_name
+                err,
+                WorkflowError::ResourceContractTooLarge { resource } if resource == resource_name
             ),
             "expected ResourceContractTooLarge {{ resource: \"{resource_name}\" }}, got {err}"
         );
@@ -217,7 +217,16 @@ mod resource_contract_error_exactness {
     fn too_large_error_contains_exact_resource_name_max_steps() {
         let mut parts = valid_parts();
         parts.resource_contract.max_steps = u16::MAX;
-        assert_eq!(validate_resource_contract(&parts), Ok(()));
+        let result = validate_resource_contract(&parts).unwrap_err();
+        assert!(
+            matches!(
+                &result,
+                WorkflowError::ResourceContractTooLarge {
+                    resource: "max_steps"
+                }
+            ),
+            "expected resource \"max_steps\", got {result}"
+        );
     }
 
     #[test]
@@ -231,7 +240,16 @@ mod resource_contract_error_exactness {
     fn too_large_error_contains_exact_resource_name_max_constants() {
         let mut parts = valid_parts();
         parts.resource_contract.max_constants = u16::MAX;
-        assert_eq!(validate_resource_contract(&parts), Ok(()));
+        let result = validate_resource_contract(&parts).unwrap_err();
+        assert!(
+            matches!(
+                &result,
+                WorkflowError::ResourceContractTooLarge {
+                    resource: "max_constants"
+                }
+            ),
+            "expected resource \"max_constants\", got {result}"
+        );
     }
 
     #[test]
