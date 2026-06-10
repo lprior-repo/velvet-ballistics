@@ -1,5 +1,6 @@
 
-/// Submit a finished workflow, then inspect it -- counters correct.
+/// Submit a finished workflow, then inspect it -- counters correct and
+/// inspect returns Terminal { Completed }.
 #[test]
 fn shard_submit_finish_then_inspect_counters() {
     let config = small_config();
@@ -31,9 +32,10 @@ fn shard_submit_finish_then_inspect_counters() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
         shard.take_inspect_response(),
-        Some(InspectResponse::NotFound {
+        Some(InspectResponse::Terminal {
             run,
-            correlation: 5
+            correlation: 5,
+            outcome: TerminalOutcome::Completed,
         })
     );
 }

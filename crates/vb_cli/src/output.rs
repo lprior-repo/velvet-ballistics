@@ -219,9 +219,12 @@ pub(crate) fn write_contract_error_json(value: &serde_json::Value, format: Outpu
 }
 
 /// Output a JSON error value to stderr in the specified format.
-pub(crate) fn json_error(value: &serde_json::Value, format: OutputFormat) {
+///
+/// The caller must supply the `CliExitCode` that pairs with the JSON payload;
+/// the exit code is a stable contract for CLI consumers and cannot be derived
+/// from a free-form message string.
+pub(crate) fn json_error(value: &serde_json::Value, code: CliExitCode, format: OutputFormat) {
     let message = legacy_json_error_message(value);
-    let code = infer_legacy_json_error_code(&message);
     if format == OutputFormat::Text {
         crate::errln!("{message}");
     } else {
@@ -238,30 +241,6 @@ pub(crate) fn legacy_json_error_message(value: &serde_json::Value) -> String {
         return error.to_string();
     }
     value.to_string()
-}
-
-/// Infer legacy exit code from error message.
-pub(crate) fn infer_legacy_json_error_code(message: &str) -> CliExitCode {
-    if message.contains("journal")
-        || message.contains("workflow source write")
-        || message.contains("compiled IR write")
-        || message.contains("error reading run")
-    {
-        return CliExitCode::StorageError;
-    }
-    if message.contains("runtime") || message.contains("INPUT_MAPPING_FAILED") {
-        return CliExitCode::RuntimeFailed;
-    }
-    if message.contains("compilation failed")
-        || message.contains("compile error")
-        || message.contains("compiled IR")
-        || message.contains("serialization error")
-        || message.contains("deserializing compiled IR")
-        || message.contains("codegen error")
-    {
-        return CliExitCode::CompileFailed;
-    }
-    CliExitCode::ValidationFailed
 }
 
 /// Output a diagnostic message to stderr.

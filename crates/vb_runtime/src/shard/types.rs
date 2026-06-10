@@ -43,7 +43,7 @@ pub use super::ask::{AskAnswer, AskTicket};
 
 pub use super::run_state::{
     InspectResponse, InspectSnapshot, ResumeError, ResumeResult, ResumeStatus, RunState,
-    RuntimeEvent, RuntimeState,
+    RuntimeEvent, RuntimeState, TerminalOutcome,
 };
 
 // ============================================================================

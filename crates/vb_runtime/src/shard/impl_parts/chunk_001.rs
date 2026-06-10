@@ -1,5 +1,5 @@
 use indexmap::IndexSet;
-use crate::shard::types::RuntimeState;
+use crate::shard::types::{RuntimeState, TerminalOutcome};
 use crate::AskAnswer;
 
 impl Shard {
@@ -23,6 +23,7 @@ impl Shard {
             runs: IndexMap::new(),
             runtime_states: IndexMap::new(),
             terminal_runs: IndexSet::new(),
+            terminal_outcomes: IndexMap::new(),
             journal_sequences: IndexMap::new(),
             pending_timers: IndexMap::new(),
             frame_pools: IndexMap::new(),
@@ -165,6 +166,24 @@ impl Shard {
         self.terminal_runs.insert(run_id);
     }
 
+    /// Records the terminal outcome for a run that is being moved to the
+    /// terminal set. Idempotent: a later call for the same run id replaces
+    /// the prior outcome.
+    pub fn terminal_outcome_record(&mut self, run_id: RunId, outcome: TerminalOutcome) {
+        self.terminal_outcomes.insert(run_id, outcome);
+    }
+
+    /// Returns the recorded terminal outcome for a run id, if any.
+    #[must_use]
+    pub fn terminal_outcome_get(&self, run_id: RunId) -> Option<TerminalOutcome> {
+        self.terminal_outcomes.get(&run_id).copied()
+    }
+
+    /// Removes the recorded terminal outcome for a run id, if any.
+    pub fn terminal_outcomes_remove(&mut self, run_id: RunId) {
+        self.terminal_outcomes.swap_remove(&run_id);
+    }
+
     /// Removes a run from the terminal runs set.
     pub fn terminal_runs_remove(&mut self, run_id: RunId) {
         self.terminal_runs.swap_remove(&run_id);
@@ -190,6 +209,16 @@ impl Shard {
     /// Returns a direct non-queued diagnostic snapshot for a run.
     #[must_use]
     pub fn snapshot_run(&self, run: RunId, correlation: u64) -> InspectResponse {
+        if self.terminal_runs_contains(run) {
+            let outcome = self
+                .terminal_outcome_get(run)
+                .unwrap_or(TerminalOutcome::Failed);
+            return InspectResponse::Terminal {
+                run,
+                correlation,
+                outcome,
+            };
+        }
         match self.runs.get(&run) {
             Some(state) => InspectResponse::Found(crate::shard::helpers::snapshot_from_state(
                 run,

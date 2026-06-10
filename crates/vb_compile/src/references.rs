@@ -6,6 +6,7 @@
 //! accessors) locally since those are not part of the standalone validator's
 //! surface.
 
+use crate::SourceMark;
 use crate::ast::{AstExpression, AstMapEntry, AstValue, StepAst, WorkflowAst};
 use crate::expression::ParsedExpression;
 use crate::{CompileError, CompileErrors};
@@ -222,6 +223,20 @@ fn validate_compile_reference(
         return validate_single_reference_with_context(reference, tables, step_index, false, false)
             .map_err(|e| map_validation_error(reference, &e));
     };
+    // Scope guard: `$attempt.*` is only legal inside a `Repeat` body step.
+    // The cold AST does not preserve `Repeat` body expressions, so every
+    // `$attempt.*` reference observed at this validation layer is by
+    // definition outside a repeat body and must be rejected with the
+    // correct taxonomy (`InvalidVariableScope`) rather than the generic
+    // `UnknownReferenceRoot` fallback.
+    if root == "attempt" {
+        return Err(CompileError::InvalidVariableScope {
+            reference: Box::from(reference),
+            context: "outside repeat body",
+            allowed: Box::from(["repeat_attempt.body", "repeat_check"].as_slice()),
+            mark: SourceMark::unavailable(),
+        });
+    }
     // Compile-specific: slot references are not in the standalone validator
     if matches!(root, "slot" | "slots") {
         return validate_slot_reference(reference, root, tail);

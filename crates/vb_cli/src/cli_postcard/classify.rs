@@ -11,6 +11,8 @@
 //! `CliPostcardPayload::Generic(GenericPayload)` where the body is the
 //! postcard-encoded form of a typed envelope shape — never raw JSON bytes.
 
+use std::str::FromStr;
+
 use super::{
     AiContextPacketReport, CliPostcardKind, CliPostcardPayload, DiffReport, EventsReport,
     ExplainReport, GenericPayload, ReplayReport, SystemStatusReport, TraceReport, ValidateReport,
@@ -66,8 +68,8 @@ pub(crate) fn classify_envelope(
         .get("kind")
         .and_then(serde_json::Value::as_str)
         .ok_or(ClassifyError::MissingKind)?;
-    let kind = CliPostcardKind::from_envelope_kind(kind_str)
-        .ok_or_else(|| ClassifyError::UnknownKind(kind_str.to_string()))?;
+    let kind = CliPostcardKind::from_str(kind_str)
+        .map_err(|_| ClassifyError::UnknownKind(kind_str.to_string()))?;
     classify_by_kind(kind, envelope)
 }
 

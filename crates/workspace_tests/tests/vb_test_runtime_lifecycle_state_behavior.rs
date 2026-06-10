@@ -29,7 +29,7 @@ use vb_core::workflow::{
 };
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::runtime::Runtime;
-use vb_runtime::shard::{InspectResponse, RuntimeState, ShardConfig, ShardDirective};
+use vb_runtime::shard::{InspectResponse, RuntimeState, ShardConfig, ShardDirective, TerminalOutcome};
 use vb_runtime::trace::TraceEvent;
 
 // =============================================================================
@@ -463,11 +463,11 @@ fn terminal_state_is_final_no_further_transitions() -> Result<(), String> {
     // Verify terminal state
     assert_eq!(
         runtime.snapshot_run(run, 1),
-        Ok(InspectResponse::NotFound {
+        Ok(InspectResponse::Terminal {
             run,
-            correlation: 1
+            correlation: 1,
+            outcome: TerminalOutcome::Completed,
         }),
-        "run should be terminal (NotFound)"
     );
 
     // Multiple subsequent ticks should have no effect
@@ -655,12 +655,13 @@ fn frame_released_on_run_finish() -> Result<(), String> {
     assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
     tick_and_drain(&mut runtime)?;
 
-    // Run is terminal - snapshot returns NotFound
+    // Run is terminal - snapshot returns Terminal (vb-wxl5r)
     assert_eq!(
         runtime.snapshot_run(run, 1),
-        Ok(InspectResponse::NotFound {
+        Ok(InspectResponse::Terminal {
             run,
-            correlation: 1
+            correlation: 1,
+            outcome: TerminalOutcome::Completed,
         })
     );
 
@@ -857,12 +858,13 @@ fn snapshot_run_returns_not_found_for_finished_run() -> Result<(), String> {
     assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
     tick_and_drain(&mut runtime)?;
 
-    // EXACT assertion - not just "not Found" but exact NotFound variant
+    // EXACT assertion - terminal run surfaces as Terminal::Completed (vb-wxl5r)
     assert_eq!(
         runtime.snapshot_run(run, 42),
-        Ok(InspectResponse::NotFound {
+        Ok(InspectResponse::Terminal {
             run,
-            correlation: 42
+            correlation: 42,
+            outcome: TerminalOutcome::Completed,
         }),
         "snapshot must return exact NotFound variant"
     );
@@ -1029,12 +1031,13 @@ fn shard_directive_continue_processes_one_command() -> Result<(), String> {
     // Continue directive processes submit command
     assert_eq!(runtime.tick_shard(0, ShardDirective::Continue), Ok(true));
 
-    // Run should be finished after Continue processed submit
+    // Run should be finished after Continue processed submit (vb-wxl5r)
     assert_eq!(
         runtime.snapshot_run(run, 1),
-        Ok(InspectResponse::NotFound {
+        Ok(InspectResponse::Terminal {
             run,
-            correlation: 1
+            correlation: 1,
+            outcome: TerminalOutcome::Completed,
         })
     );
     Ok(())
@@ -1175,12 +1178,13 @@ fn same_run_id_routes_to_same_shard() -> Result<(), String> {
     assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
     tick_and_drain(&mut runtime)?;
 
-    // Verify terminal state
+    // Verify terminal state (vb-wxl5r)
     assert_eq!(
         runtime.snapshot_run(run, 1),
-        Ok(InspectResponse::NotFound {
+        Ok(InspectResponse::Terminal {
             run,
-            correlation: 1
+            correlation: 1,
+            outcome: TerminalOutcome::Completed,
         })
     );
 

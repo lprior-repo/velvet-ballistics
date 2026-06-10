@@ -30,7 +30,7 @@ use vb_core::workflow::{
 };
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::runtime::Runtime;
-use vb_runtime::shard::{InspectResponse, ShardConfig};
+use vb_runtime::shard::{InspectResponse, ShardConfig, TerminalOutcome};
 use vb_runtime::trace::TraceEvent;
 
 fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
@@ -448,11 +448,12 @@ fn inv1_terminal_never_regresses_after_cancel() -> Result<(), String> {
 
     assert_eq!(
         runtime.snapshot_run(run, 1),
-        Ok(InspectResponse::NotFound {
+        Ok(InspectResponse::Terminal {
             run,
-            correlation: 1
+            correlation: 1,
+            outcome: TerminalOutcome::Cancelled,
         }),
-        "cancelled run should remain not found (terminal)"
+        "cancelled run should be inspectable as Terminal::Cancelled (vb-wxl5r)"
     );
 
     Ok(())

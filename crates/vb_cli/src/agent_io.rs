@@ -135,6 +135,7 @@ pub(crate) fn write_action_registry_error(
                 "success": false,
                 "error": message,
             }),
+            CliExitCode::ValidationFailed,
             output,
         );
     }

@@ -16,6 +16,7 @@ mod types;
 // Re-export types for convenience
 pub use types::BoundedActionCompletionQueue;
 pub use types::{
-    ActionQueueCapacity, ActionQueueError, BackpressureWarning, InvalidActionQueueCapacity,
+    ActionQueueCapacity, ActionQueueError, BackpressureReceiver, BackpressureRecvTimeoutError,
+    BackpressureTryRecvError, BackpressureWarning, InvalidActionQueueCapacity,
     MAX_ACTION_COMPLETION_QUEUE_CAPACITY,
 };

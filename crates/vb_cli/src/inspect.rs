@@ -47,6 +47,7 @@ pub(crate) fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputForm
                             "events": 0,
                             "error": format!("run {run_id}: no events found")
                         }),
+                        CliExitCode::ValidationFailed,
                         output,
                     );
                 } else {

@@ -134,6 +134,13 @@ pub enum CompileError {
     UnknownReferenceName { kind: &'static str, reference: Box<str>, name: Box<str> },
     #[error("unsupported accessor reference in {reference}: {root}.{path}")]
     UnsupportedAccessorReference { reference: Box<str>, root: Box<str>, path: Box<str> },
+    #[error("reference {reference} is not valid in this scope ({context}); allowed: {allowed:?} at {mark:?}")]
+    InvalidVariableScope {
+        reference: Box<str>,
+        context: &'static str,
+        allowed: Box<[&'static str]>,
+        mark: SourceMark,
+    },
     #[error("step {step} branch target {target} is not a declared step")]
     UnknownStepTarget { step: usize, target: usize },
     #[error("step {step} otherwise label '{label}' is not a declared step")]

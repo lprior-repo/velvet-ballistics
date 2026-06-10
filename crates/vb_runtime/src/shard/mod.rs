@@ -28,7 +28,7 @@ pub use types::{
     InspectSnapshotFormatter, IntrospectionRegistry, MAX_COMMAND_QUEUE_CAPACITY, PendingTimer,
     PendingTimerKind, RegisterOverlapOutcome, ResumeError, ResumeResult, ResumeStatus, RunState,
     RuntimeEvent, RuntimeState, Shard, ShardCommand, ShardConfig, ShardHealth, ShardStatus,
-    TimerDeadline, TimerDuration, TimerKind, TimerTick, UnregisterOutcome,
+    TerminalOutcome, TimerDeadline, TimerDuration, TimerKind, TimerTick, UnregisterOutcome,
 };
 
 // Re-export vb_core types needed by tests

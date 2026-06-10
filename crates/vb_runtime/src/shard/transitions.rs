@@ -9,7 +9,7 @@ use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
 
 use crate::shard::types::{
-    PendingTimer, PendingTimerKind, RunState, RuntimeEvent, RuntimeState, Shard,
+    PendingTimer, PendingTimerKind, RunState, RuntimeEvent, RuntimeState, Shard, TerminalOutcome,
 };
 
 impl Shard {
@@ -83,6 +83,7 @@ impl Shard {
     pub(crate) fn finish_run(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
         self.pending_timer_remove(run);
         self.terminal_runs_insert(run);
+        self.terminal_outcome_record(run, TerminalOutcome::Completed);
         self.counters.inc_completed();
         self.counters.add_steps(state.frame.executed());
         self.trace_ring.push(TraceEvent::RunFinished { run });
@@ -201,6 +202,7 @@ impl Shard {
     pub(crate) fn fail_run_state(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
         self.pending_timer_remove(run);
         self.terminal_runs_insert(run);
+        self.terminal_outcome_record(run, TerminalOutcome::Failed);
         self.counters.inc_failed();
         self.trace_ring.push(TraceEvent::RunFailed { run });
         self.append_journal_event(RuntimeJournalEvent::RunFailed { run })?;

@@ -1,13 +1,13 @@
 //! Queue implementation for bounded action completion queue.
 
-use std::sync::mpsc::{Receiver, TrySendError};
+use std::sync::Arc;
 
 use crossbeam_queue::ArrayQueue;
 use vb_core::action::ActionTicket;
 
 use super::types::{
-    ActionQueueCapacity, ActionQueueError, BackpressureWarning, BoundedActionCompletionQueue,
-    MAX_ACTION_COMPLETION_QUEUE_CAPACITY,
+    ActionQueueCapacity, ActionQueueError, BackpressureReceiver, BackpressureSender,
+    BackpressureWarning, BoundedActionCompletionQueue, MAX_ACTION_COMPLETION_QUEUE_CAPACITY,
 };
 
 impl BoundedActionCompletionQueue {
@@ -26,13 +26,23 @@ impl BoundedActionCompletionQueue {
 
     /// Creates a new bounded queue with backpressure notification channel.
     ///
+    /// The backpressure channel is a lock-free bounded MPMC ring buffer
+    /// (`crossbeam_queue::ArrayQueue<BackpressureWarning>`) shared between
+    /// the queue and the returned [`BackpressureReceiver`]. This satisfies
+    /// master spec §50 (lock-free MPMC primitives on the runtime hot path)
+    /// and the Holzman-Rust rule against `std::sync::mpsc` use.
+    ///
     /// Returns `Err(ActionQueueError::InvalidCapacity)` if `capacity` is zero
     /// or exceeds [`MAX_ACTION_COMPLETION_QUEUE_CAPACITY`].
     pub fn with_backpressure(
         capacity: usize,
-    ) -> Result<(Self, Receiver<BackpressureWarning>), ActionQueueError> {
+    ) -> Result<(Self, BackpressureReceiver), ActionQueueError> {
         let capacity = parse_capacity(capacity)?;
-        let (tx, rx) = std::sync::mpsc::sync_channel(capacity.get());
+        let bp_queue: Arc<ArrayQueue<BackpressureWarning>> = Arc::new(ArrayQueue::new(capacity.get()));
+        let tx = BackpressureSender {
+            queue: Arc::clone(&bp_queue),
+        };
+        let rx = BackpressureReceiver { queue: bp_queue };
         Ok((
             Self {
                 inner: ArrayQueue::new(capacity.get()),
@@ -49,7 +59,9 @@ impl BoundedActionCompletionQueue {
     /// Returns `Err(ActionQueueError::QueueFull)` if the queue is at capacity.
     ///
     /// Emits a backpressure warning if the queue reaches or exceeds 80% capacity
-    /// after the enqueue.
+    /// after the enqueue. The warning is non-blocking: a full backpressure
+    /// channel silently drops the new warning so producer enqueue is never
+    /// stalled by a slow consumer.
     pub fn enqueue(&self, ticket: ActionTicket) -> Result<(), ActionQueueError> {
         self.inner
             .push(ticket)
@@ -61,12 +73,11 @@ impl BoundedActionCompletionQueue {
         if depth >= threshold
             && let Some(ref tx) = self.backpressure_tx
         {
-            match tx.try_send(BackpressureWarning {
+            let warning = BackpressureWarning {
                 depth,
                 capacity: self.capacity.get(),
-            }) {
-                Ok(()) | Err(TrySendError::Full(_)) | Err(TrySendError::Disconnected(_)) => {}
-            }
+            };
+            drop(tx.try_send(warning));
         }
         Ok(())
     }

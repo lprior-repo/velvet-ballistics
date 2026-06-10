@@ -120,9 +120,10 @@ fn shard_cancel_removes_run_from_runs_map() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
         shard.take_inspect_response(),
-        Some(InspectResponse::NotFound {
+        Some(InspectResponse::Terminal {
             run,
-            correlation: 5
+            correlation: 5,
+            outcome: TerminalOutcome::Cancelled,
         })
     );
 }

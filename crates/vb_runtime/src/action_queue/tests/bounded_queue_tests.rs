@@ -9,6 +9,7 @@
 use vb_core::action::ActionTicket;
 use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
 use vb_runtime::action_queue::ActionQueueError;
+use vb_runtime::action_queue::BackpressureTryRecvError;
 use vb_runtime::action_queue::BoundedActionCompletionQueue;
 
 // =============================================================================
@@ -487,7 +488,7 @@ fn bounded_action_queue_does_not_emit_warning_below_80_percent() {
         queue2.enqueue(make_ticket(i)).unwrap();
     }
     let result2 = rx2.try_recv();
-    assert_eq!(result2, Err(std::sync::mpsc::TryRecvError::Empty));
+    assert_eq!(result2, Err(BackpressureTryRecvError::Empty));
 }
 
 #[test]
@@ -512,7 +513,7 @@ fn bounded_action_queue_backpressure_warning_contains_depth_and_capacity() {
 fn bounded_action_queue_no_backpressure_when_empty() {
     let (_queue, rx) = BoundedActionCompletionQueue::with_backpressure(10).unwrap();
     let result = rx.try_recv();
-    assert_eq!(result, Err(std::sync::mpsc::TryRecvError::Empty));
+    assert_eq!(result, Err(BackpressureTryRecvError::Empty));
 }
 
 #[test]
@@ -526,7 +527,7 @@ fn bounded_action_queue_backpressure_threshold_is_exclusive() {
     let warning_before_threshold = rx.try_recv();
     assert_eq!(
         warning_before_threshold,
-        Err(std::sync::mpsc::TryRecvError::Empty)
+        Err(BackpressureTryRecvError::Empty)
     );
 
     // At 4 out of 5 = 80%, warning fires
@@ -669,7 +670,7 @@ fn bounded_action_queue_large_capacity_backpressure_fires_at_80_percent() {
     let warning_before_threshold = rx.try_recv();
     assert_eq!(
         warning_before_threshold,
-        Err(std::sync::mpsc::TryRecvError::Empty)
+        Err(BackpressureTryRecvError::Empty)
     );
 
     // 80% = 80 items

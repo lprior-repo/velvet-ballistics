@@ -3155,8 +3155,9 @@ fn assert_postcard_stdout(
     // No `serde_json::Value::get(...)` access on the decoded payload.
     let actual_kind = envelope.kind();
     if let Some(expected_kind) = expected_payload_kind {
-        let expected_typed = cli_postcard::CliPostcardKind::from_envelope_kind(expected_kind)
-            .expect("envelope kind must resolve to typed CliPostcardKind");
+        let expected_typed = expected_kind
+            .parse::<cli_postcard::CliPostcardKind>()
+            .expect("envelope kind must parse to typed CliPostcardKind");
         assert_eq!(
             actual_kind, expected_typed,
             "{command} typed CliPostcardKind discriminant mismatch (expected {expected_kind:?}/{expected_typed:?}, got {actual_kind:?})",

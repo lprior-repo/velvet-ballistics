@@ -111,9 +111,9 @@ fn bh_shd_13_timer_fire_after_cancel_returns_run_not_found() {
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
 }
 
-// BH-SHD-14: Inspect after immediate completion returns NotFound.
+// BH-SHD-14: Inspect after immediate completion returns Terminal { Completed }.
 #[test]
-fn bh_shd_14_inspect_after_immediate_completion_returns_not_found() {
+fn bh_shd_14_inspect_after_immediate_completion_returns_terminal() {
     let config = small_config();
     let mut shard = Shard::new(config);
     let Some(workflow) = finished_workflow() else {
@@ -139,11 +139,17 @@ fn bh_shd_14_inspect_after_immediate_completion_returns_not_found() {
     );
     assert_eq!(shard.tick(), Ok(true));
     match shard.take_inspect_response() {
-        Some(InspectResponse::NotFound { run: r, .. }) => {
+        Some(InspectResponse::Terminal {
+            run: r,
+            correlation: c,
+            outcome,
+        }) => {
             assert_eq!(r, run);
+            assert_eq!(c, 1);
+            assert_eq!(outcome, TerminalOutcome::Completed);
         }
         other => {
-            let msg = format!("expected NotFound, got {other:?}");
+            let msg = format!("expected Terminal {{ Completed }}, got {other:?}");
             panic!("{msg}");
         }
     }
@@ -203,7 +209,7 @@ fn shard_submit_cancel_inspect_mixed_lifecycle() {
     );
     assert_eq!(shard.tick(), Ok(true));
 
-    // Inspect the finished run (should be NotFound since it completed)
+    // Inspect the finished run (should be Terminal { Completed } since it completed)
     assert_eq!(
         shard.enqueue(ShardCommand::Inspect {
             run: super::RunId::new(900),
@@ -214,9 +220,10 @@ fn shard_submit_cancel_inspect_mixed_lifecycle() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
         shard.take_inspect_response(),
-        Some(InspectResponse::NotFound {
+        Some(InspectResponse::Terminal {
             run: super::RunId::new(900),
             correlation: 1,
+            outcome: TerminalOutcome::Completed,
         })
     );
 

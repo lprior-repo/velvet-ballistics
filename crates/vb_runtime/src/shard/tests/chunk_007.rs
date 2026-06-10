@@ -218,7 +218,7 @@ fn run_state_equality() {
 // =======================================================================
 
 #[test]
-fn shard_cancel_then_inspect_returns_not_found() {
+fn shard_cancel_then_inspect_returns_terminal_cancelled() {
     // Given a shard with an active run
     let config = small_config();
     let mut shard = Shard::new(config);
@@ -249,14 +249,139 @@ fn shard_cancel_then_inspect_returns_not_found() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    // Then inspect returns NotFound
+    // Then inspect returns Terminal { Cancelled } (post-mortem observability)
     assert_eq!(
         shard.take_inspect_response(),
-        Some(InspectResponse::NotFound {
+        Some(InspectResponse::Terminal {
             run,
-            correlation: 1
+            correlation: 1,
+            outcome: TerminalOutcome::Cancelled,
         })
     );
+}
+
+#[test]
+fn snapshot_run_returns_cancelled_status_for_terminal_cancelled_run() {
+    // Given a shard with a cancelled run
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let run = RunId::new(201);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    // When snapshotting the cancelled run
+    let response = shard.snapshot_run(run, 7);
+    // Then it returns Terminal { Cancelled }, not NotFound
+    match response {
+        InspectResponse::Terminal {
+            run: r,
+            correlation,
+            outcome,
+        } => {
+            assert_eq!(r, run);
+            assert_eq!(correlation, 7);
+            assert_eq!(outcome, TerminalOutcome::Cancelled);
+        }
+        InspectResponse::NotFound { .. } => {
+            panic!("expected Terminal Cancelled, got NotFound");
+        }
+        InspectResponse::Found(_) => {
+            panic!("expected Terminal Cancelled, got Found");
+        }
+    }
+}
+
+#[test]
+fn snapshot_run_returns_killed_status_for_terminal_killed_run() {
+    // Given a shard with a killed run
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let run = RunId::new(202);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Kill { run, reason: None }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    // When snapshotting the killed run
+    let response = shard.snapshot_run(run, 11);
+    // Then it returns Terminal { Killed }, not NotFound
+    match response {
+        InspectResponse::Terminal {
+            run: r,
+            correlation,
+            outcome,
+        } => {
+            assert_eq!(r, run);
+            assert_eq!(correlation, 11);
+            assert_eq!(outcome, TerminalOutcome::Killed);
+        }
+        InspectResponse::NotFound { .. } => {
+            panic!("expected Terminal Killed, got NotFound");
+        }
+        InspectResponse::Found(_) => {
+            panic!("expected Terminal Killed, got Found");
+        }
+    }
+}
+
+#[test]
+fn snapshot_run_still_returns_found_for_active_run() {
+    // Regression guard: active runs must still return Found after the
+    // terminal_runs-first branch was added.
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let run = RunId::new(203);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let response = shard.snapshot_run(run, 3);
+    match response {
+        InspectResponse::Found(snap) => {
+            assert_eq!(snap.run, run);
+            assert_eq!(snap.correlation, 3);
+        }
+        InspectResponse::Terminal { .. } => {
+            panic!("expected Found for active run, got Terminal");
+        }
+        InspectResponse::NotFound { .. } => {
+            panic!("expected Found for active run, got NotFound");
+        }
+    }
 }
 
 #[test]

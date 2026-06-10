@@ -21,8 +21,8 @@
 //!
 //! Each remaining envelope's fields mirror the actual JSON output shape
 //! produced by the corresponding command site. The `kind` field is a stable
-//! lowercase string discriminant matching the `from_envelope_kind` table in
-//! `types.rs`.
+//! string discriminant matching the closed `CliPostcardKind` taxonomy in
+//! `types.rs` (parsed via `<CliPostcardKind as FromStr>::from_str`).
 
 use serde::{Deserialize, Serialize};
 

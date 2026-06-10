@@ -1,6 +1,13 @@
 #![forbid(unsafe_code)]
 
 //! Signal conversion helpers.
+//!
+//! Bead vb-bmvum audit (2026-06-10): the only `panic!` macro in this file
+//! is at line 88, inside `#[test] fn awaiting_action_produces_zeroed_ticket`
+//! within the `#[cfg(test)] mod tests` block. It is not reachable from
+//! production. The production function `runtime_from_core` is total over
+//! the `EngineSignal` enum and returns `RuntimeSignal` without panicking.
+//! Evidence: `.evidence/vb-bmvum/scan.txt`.
 
 use vb_core::action::ActionTicket;
 use vb_core::engine::EngineSignal;

@@ -46,6 +46,7 @@ pub(crate) fn cmd_submit(
                         "error": "compilation failed",
                         "errors": error_msgs
                     }),
+                    CliExitCode::CompileFailed,
                     output,
                 );
             } else {
@@ -95,6 +96,7 @@ pub(crate) fn cmd_submit(
                     "success": false,
                     "error": format!("workflow source write error: {e}")
                 }),
+                CliExitCode::StorageError,
                 output,
             );
         } else {
@@ -128,6 +130,7 @@ pub(crate) fn cmd_submit(
                     "success": false,
                     "error": format!("run header write error: {e}")
                 }),
+                CliExitCode::StorageError,
                 output,
             );
         } else {
@@ -149,6 +152,7 @@ pub(crate) fn cmd_submit(
                         "success": false,
                         "error": format!("journal append error: {e}")
                     }),
+                    CliExitCode::StorageError,
                     output,
                 );
             } else {

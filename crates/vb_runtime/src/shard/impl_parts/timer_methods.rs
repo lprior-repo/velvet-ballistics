@@ -81,15 +81,21 @@ impl Shard {
         (free, total)
     }
 
-    /// Builds a fail-closed legacy timer-fired command without fabricating authority.
+    /// Builds a timer-fired `ShardCommand` carrying the originally-armed
+    /// deadline and generation token for the run, or returns `None` if no
+    /// pending timer is currently registered for `run`.
+    ///
+    /// This lookup-based authority transfer honors master spec §20: fired-timer
+    /// commands must carry the deadline and generation token that were stored
+    /// at timer-arm time, never a freshly synthesized `Instant::now()` value.
     #[must_use]
-    pub fn timer_fired_command(&self, run: RunId) -> ShardCommand {
-        ShardCommand::TimerFired {
+    pub fn timer_fired_command(&self, run: RunId) -> Option<ShardCommand> {
+        self.pending_timer_get(run).map(|timer| ShardCommand::TimerFired {
             run,
-            generation: 0,
-            deadline: std::time::Instant::now(),
-            kind: PendingTimerKind::Wait,
-        }
+            generation: timer.generation,
+            deadline: timer.deadline,
+            kind: timer.kind,
+        })
     }
 
     /// Returns the current typed timer authority for explicit capture.
@@ -104,5 +110,74 @@ impl Shard {
                 deadline: timer.deadline,
                 kind: timer.kind,
             })
+    }
+}
+
+#[cfg(test)]
+mod timer_fired_command_tests {
+    use std::time::Instant;
+
+    use vb_core::ids::StepIdx;
+    use vb_core::policy::RuntimePolicy;
+
+    use crate::shard::types::{PendingTimer, PendingTimerKind};
+    use crate::shard::{RunId, Shard, ShardCommand, ShardConfig};
+
+    fn small_config() -> ShardConfig {
+        ShardConfig {
+            command_queue_capacity: 16,
+            trace_capacity: 16,
+            step_budget_per_tick: 4,
+            max_active_runs: 4,
+            policy: RuntimePolicy::Relaxed,
+        }
+    }
+
+    #[test]
+    fn timer_fired_command_returns_none_when_no_pending_timer() {
+        // Given an empty shard with no pending timers.
+        let shard = Shard::new(small_config());
+        let run = RunId::new(42_001);
+
+        // When timer_fired_command is called for a run with no pending timer.
+        let result = shard.timer_fired_command(run);
+
+        // Then it must return None rather than fabricating authority.
+        assert!(result.is_none(), "no pending timer must yield None");
+    }
+
+    #[test]
+    fn timer_fired_command_returns_real_deadline_when_pending_timer_exists() {
+        // Given a shard with one real pending timer armed for a run.
+        let mut shard = Shard::new(small_config());
+        let run = RunId::new(42_002);
+        let armed_deadline = Instant::now();
+        let armed_timer = PendingTimer {
+            step: StepIdx::new(7),
+            kind: PendingTimerKind::Ask,
+            generation: 13,
+            deadline: armed_deadline,
+        };
+        assert_eq!(shard.pending_timer_insert(run, armed_timer), None);
+
+        // When timer_fired_command is called for that run.
+        let command = shard.timer_fired_command(run);
+
+        // Then the returned command must carry exactly the originally-armed
+        // deadline, generation, and kind — not freshly synthesized values.
+        let Some(ShardCommand::TimerFired {
+            run: fired_run,
+            generation: fired_generation,
+            deadline: fired_deadline,
+            kind: fired_kind,
+        }) = command
+        else {
+            panic!("timer_fired_command must return Some(TimerFired) for armed run");
+        };
+        assert_eq!(fired_run, run);
+        assert_eq!(fired_generation, armed_timer.generation);
+        assert_eq!(fired_deadline, armed_timer.deadline);
+        assert_eq!(fired_kind, armed_timer.kind);
+        assert_eq!(fired_deadline, armed_deadline);
     }
 }

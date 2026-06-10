@@ -91,6 +91,7 @@ pub(crate) fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputForma
                         "events": [],
                         "error": format!("run {run_id}: no events found")
                     }),
+                    CliExitCode::ValidationFailed,
                     output,
                 );
             } else {
@@ -105,6 +106,7 @@ pub(crate) fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputForma
                         "success": false,
                         "error": format!("error replaying run {run_id}: {e}")
                     }),
+                    CliExitCode::StorageError,
                     output,
                 );
             } else {

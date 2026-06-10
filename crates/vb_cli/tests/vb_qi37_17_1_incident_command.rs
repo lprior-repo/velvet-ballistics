@@ -162,9 +162,14 @@ fn t_015_nonexistent_run_structured_error() {
         output.status.code().map(|c| c != 0).unwrap_or(true),
         "non-existent run should return non-zero exit"
     );
-    // Check that stderr contains error indication (YAML or text format)
+    // Check that stderr contains error indication (YAML or text format).
+    // Bead vb-194cz removed the legacy substring matcher that previously
+    // re-derived a JSON `code` from the free-form error message; the new
+    // typed path emits the caller's explicit `CliExitCode`. For the
+    // "no events for run" case that code is `StorageError`.
     assert!(
-        stderr.contains("ValidationFailed")
+        stderr.contains("StorageError")
+            || stderr.contains("ValidationFailed")
             || stderr.contains("validation")
             || stderr.contains("error"),
         "stderr should contain error indication"

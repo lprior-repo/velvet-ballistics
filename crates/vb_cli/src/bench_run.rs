@@ -37,6 +37,7 @@ pub(crate) fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) ->
                         "error": "compilation failed",
                         "errors": error_msgs
                     }),
+                    CliExitCode::CompileFailed,
                     output,
                 );
             } else {
@@ -58,6 +59,7 @@ pub(crate) fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) ->
                     "success": false,
                     "error": "runtime configuration error: shard count must be non-zero"
                 }),
+                CliExitCode::RuntimeFailed,
                 output,
             );
         } else {
@@ -74,6 +76,7 @@ pub(crate) fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) ->
                     "success": false,
                     "error": format!("runtime submit error: {e}")
                 }),
+                CliExitCode::RuntimeFailed,
                 output,
             );
         } else {
@@ -88,6 +91,7 @@ pub(crate) fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) ->
                     "success": false,
                     "error": format!("runtime tick error: {e}")
                 }),
+                CliExitCode::RuntimeFailed,
                 output,
             );
         } else {

@@ -20,6 +20,7 @@ fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: OutputFormat
             if output != OutputFormat::Text {
                 json_error(
                     &serde_json::json!({"success": false, "error": format!("error opening journal at {}: {e}", db.display())}),
+                    CliExitCode::StorageError,
                     output,
                 );
             } else {
@@ -35,6 +36,7 @@ fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: OutputFormat
             if output != OutputFormat::Text {
                 json_error(
                     &serde_json::json!({"success": false, "error": format!("error reading run {run_a}: {e}")}),
+                    CliExitCode::StorageError,
                     output,
                 );
             } else {
@@ -50,6 +52,7 @@ fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: OutputFormat
             if output != OutputFormat::Text {
                 json_error(
                     &serde_json::json!({"success": false, "error": format!("error reading run {run_b}: {e}")}),
+                    CliExitCode::StorageError,
                     output,
                 );
             } else {

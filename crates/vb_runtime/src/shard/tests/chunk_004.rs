@@ -131,7 +131,7 @@ fn shard_submit_drives_run_immediately_for_finished_workflow() {
     // Then the run is completed (not in runs map anymore) and counter shows completed
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     assert_eq!(shard.counters().snapshot().runs_submitted, 1);
-    // And inspect returns NotFound since the run finished
+    // And inspect returns Terminal { Completed } since the run finished
     assert_eq!(
         shard.enqueue(ShardCommand::Inspect {
             run,
@@ -142,9 +142,10 @@ fn shard_submit_drives_run_immediately_for_finished_workflow() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
         shard.take_inspect_response(),
-        Some(InspectResponse::NotFound {
+        Some(InspectResponse::Terminal {
             run,
-            correlation: 2
+            correlation: 2,
+            outcome: TerminalOutcome::Completed,
         })
     );
 }

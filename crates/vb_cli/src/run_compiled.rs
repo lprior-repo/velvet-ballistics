@@ -51,6 +51,7 @@ pub(crate) fn cmd_run_compiled(
                                 "success": false,
                                 "error": format!("compiled IR validation error: {e}")
                             }),
+                            CliExitCode::CompileFailed,
                             output,
                         );
                     } else {
@@ -66,6 +67,7 @@ pub(crate) fn cmd_run_compiled(
                             "success": false,
                             "error": format!("error deserializing compiled IR: {e}")
                         }),
+                        CliExitCode::CompileFailed,
                         output,
                     );
                 } else {
@@ -84,6 +86,7 @@ pub(crate) fn cmd_run_compiled(
                         "success": false,
                         "error": error.to_string()
                     }),
+                    CliExitCode::CompileFailed,
                     output,
                 );
             } else {

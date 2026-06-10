@@ -76,6 +76,7 @@ pub(crate) fn execute_step_isolated(
                         "error": error_name(&e),
                         "message": msg
                     }),
+                    CliExitCode::RuntimeFailed,
                     output,
                 );
             } else {
@@ -257,7 +258,7 @@ pub(crate) fn build_step_result_json(
     // discriminant, NOT the workflow `CompiledNodeKind` name. Setting
     // `kind` to e.g. "SetConst" makes the postcard classifier reject the
     // envelope with "unknown envelope kind: SetConst" because node kind
-    // names are not in the `from_envelope_kind` table. The actual node
+    // names are not in the `CliPostcardKind` taxonomy. The actual node
     // kind is preserved under `node_kind` so downstream consumers can
     // still inspect it.
     map.insert("kind".to_string(), serde_json::json!("run_report"));

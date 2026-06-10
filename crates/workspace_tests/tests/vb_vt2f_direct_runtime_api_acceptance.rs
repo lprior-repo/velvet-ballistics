@@ -16,7 +16,7 @@ use vb_core::workflow::{
 };
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::runtime::Runtime;
-use vb_runtime::shard::{AskAnswer, AskTicket, InspectResponse, ShardConfig};
+use vb_runtime::shard::{AskAnswer, AskTicket, InspectResponse, ShardConfig, TerminalOutcome};
 use vb_runtime::trace::TraceEvent;
 use vb_runtime::{RuntimeError, RuntimeResult};
 
@@ -431,14 +431,15 @@ fn test_direct_api_cancel_known_run_records_cancellation() -> Result<(), String>
     assert_eq!(runtime.cancel_run(run), Ok(()));
     run_one_tick(&mut runtime)?;
 
-    // Then: cancellation evidence is exact and the run is not active.
+    // Then: cancellation evidence is exact and the run is not active (vb-wxl5r: cancelled surfaces as Terminal).
     assert_eq!(runtime.counters_snapshot().runs_failed, 1);
     assert_eq!(runtime.list_active_runs(8, None), Vec::new());
     assert_eq!(
         runtime.snapshot_run(run, 55),
-        Ok(InspectResponse::NotFound {
+        Ok(InspectResponse::Terminal {
             run,
-            correlation: 55
+            correlation: 55,
+            outcome: TerminalOutcome::Cancelled,
         })
     );
     assert_eq!(
@@ -653,9 +654,10 @@ fn test_direct_api_answer_ask_resumes_suspended_run() -> Result<(), String> {
     );
     assert_eq!(
         runtime.snapshot_run(run, 66),
-        Ok(InspectResponse::NotFound {
+        Ok(InspectResponse::Terminal {
             run,
-            correlation: 66
+            correlation: 66,
+            outcome: TerminalOutcome::Completed,
         })
     );
     Ok(())
@@ -677,9 +679,10 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_ru
     run_one_tick(&mut runtime)?;
     assert_eq!(
         runtime.snapshot_run(stale, 606),
-        Ok(InspectResponse::NotFound {
+        Ok(InspectResponse::Terminal {
             run: stale,
-            correlation: 606
+            correlation: 606,
+            outcome: TerminalOutcome::Completed,
         })
     );
     let unrelated_before = runtime.snapshot_run(unrelated, 607);
@@ -733,9 +736,10 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evict
     run_one_tick(&mut runtime)?;
     assert_eq!(
         runtime.snapshot_run(stale, 616),
-        Ok(InspectResponse::NotFound {
+        Ok(InspectResponse::Terminal {
             run: stale,
-            correlation: 616
+            correlation: 616,
+            outcome: TerminalOutcome::Completed,
         })
     );
     assert_eq!(

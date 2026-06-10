@@ -72,6 +72,7 @@ impl CompileError {
             Self::IllegalReference { .. } => "DIRECT_RUNTIME_REFERENCE",
             Self::UnknownReferenceName { kind, .. } => unknown_reference_code(kind),
             Self::UnsupportedAccessorReference { .. } => "UNSUPPORTED_ACCESSOR_REFERENCE",
+            Self::InvalidVariableScope { .. } => "INVALID_VARIABLE_SCOPE",
             Self::UnreachableStep { .. } => "UNREACHABLE_STEP",
             Self::SecretTaintLeak { .. } => "SECRET_RESULT_LEAK",
             Self::ExpressionUnexpectedChar { .. }

@@ -6,8 +6,9 @@ mod action_queue_tests {
     use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
 
     use crate::action_queue::{
-        ActionQueueCapacity, ActionQueueError, BackpressureWarning, BoundedActionCompletionQueue,
-        InvalidActionQueueCapacity, MAX_ACTION_COMPLETION_QUEUE_CAPACITY,
+        ActionQueueCapacity, ActionQueueError, BackpressureTryRecvError, BackpressureWarning,
+        BoundedActionCompletionQueue, InvalidActionQueueCapacity,
+        MAX_ACTION_COMPLETION_QUEUE_CAPACITY,
     };
 
     fn make_ticket(seq: u32) -> ActionTicket {
@@ -192,7 +193,7 @@ mod action_queue_tests {
         for i in 0..7 {
             queue.enqueue(make_ticket(i)).unwrap();
         }
-        assert_eq!(rx.try_recv(), Err(std::sync::mpsc::TryRecvError::Empty));
+        assert_eq!(rx.try_recv(), Err(BackpressureTryRecvError::Empty));
 
         // Enqueue 8th item (80% exactly) — backpressure warning MUST fire
         queue.enqueue(make_ticket(7)).unwrap();
@@ -218,7 +219,7 @@ mod action_queue_tests {
         for i in 0..15 {
             queue.enqueue(make_ticket(i)).unwrap();
         }
-        assert_eq!(rx.try_recv(), Err(std::sync::mpsc::TryRecvError::Empty));
+        assert_eq!(rx.try_recv(), Err(BackpressureTryRecvError::Empty));
 
         // Enqueue 16th item (80% exactly) — backpressure warning MUST fire
         queue.enqueue(make_ticket(15)).unwrap();
@@ -249,7 +250,7 @@ mod action_queue_tests {
         // No backpressure warning at 70% (7/10 = 70% < 80%)
         assert_eq!(
             rx.try_recv(),
-            Err(std::sync::mpsc::TryRecvError::Empty),
+            Err(BackpressureTryRecvError::Empty),
             "no backpressure warning at 70% capacity (7/10)"
         );
 
@@ -295,7 +296,7 @@ mod action_queue_tests {
         for i in 0..7 {
             queue.enqueue(make_ticket(i)).unwrap();
         }
-        assert_eq!(rx.try_recv(), Err(std::sync::mpsc::TryRecvError::Empty));
+        assert_eq!(rx.try_recv(), Err(BackpressureTryRecvError::Empty));
 
         // Enqueue 8th (80%) — warning fires
         queue.enqueue(make_ticket(7)).unwrap();

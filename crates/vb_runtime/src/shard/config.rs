@@ -115,6 +115,9 @@ pub struct Shard {
     pub(crate) runtime_states: IndexMap<RunId, RuntimeState>,
     /// Terminal run ids retained as direct runtime state, independent of trace retention.
     pub(crate) terminal_runs: IndexSet<RunId>,
+    /// Recorded terminal outcome per run id, populated when a run is moved
+    /// into `terminal_runs` via cancel/kill/finish/fail.
+    pub(crate) terminal_outcomes: IndexMap<RunId, TerminalOutcome>,
     /// Next durable journal sequence by run, owned by this shard.
     pub(crate) journal_sequences: IndexMap<RunId, EventSeq>,
     pub(crate) pending_timers: IndexMap<RunId, PendingTimer>,
@@ -137,5 +140,5 @@ pub struct Shard {
 // Re-exports for Shard struct dependencies
 // ============================================================================
 
-pub use super::run_state::{InspectResponse, RunState, RuntimeState};
+pub use super::run_state::{InspectResponse, RunState, RuntimeState, TerminalOutcome};
 pub use super::timer::{PendingTimer, TimerTick};

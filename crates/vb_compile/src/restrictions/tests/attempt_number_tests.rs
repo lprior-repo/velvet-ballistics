@@ -821,3 +821,74 @@ steps:
         ),
     )
 }
+
+// =============================================================================
+// Scope guard: vb-sitry — `$attempt` root routes to InvalidVariableScope
+// =============================================================================
+
+/// `$attempt.number` appearing in a `finish.result` expression outside any
+/// `Repeat` body must be rejected with the dedicated `InvalidVariableScope`
+/// error variant.
+///
+/// Regression test for bead vb-sitry: prior to the fix the same input
+/// surfaced as `UnknownReferenceRoot` (wrong taxonomy — the reference is
+/// known, it is just out of scope). The new compile-time scope guard
+/// installed in `vb_compile::references::validate_compile_reference`
+/// routes the `$attempt` root to `InvalidVariableScope` with the canonical
+/// payload `{reference, context, allowed, mark}`.
+#[test]
+fn attempt_number_outside_repeat_body_emits_invalid_variable_scope() -> TestResult {
+    let source = br#"version: velvet-ballistics/v1
+name: attempt_outside_repeat
+when:
+  manual: {}
+steps:
+  - id: done
+    finish:
+      result: $attempt.number
+"#;
+
+    let error = parse_error(source)?;
+
+    // Must be the dedicated scope error with the documented payload shape.
+    let invalid = match error {
+        CompileError::InvalidVariableScope {
+            reference,
+            context,
+            allowed,
+            mark: _,
+        } => (reference, context, allowed),
+        other => {
+            return Err(format!(
+                "Expected CompileError::InvalidVariableScope for $attempt.number outside a \
+                 repeat body, got: {other:?}"
+            ));
+        }
+    };
+
+    let (reference, context, allowed) = invalid;
+
+    ensure(
+        reference.as_ref() == "$attempt.number",
+        format!(
+            "Expected reference field \"$attempt.number\", got {:?}",
+            reference
+        ),
+    )?;
+    ensure(
+        context == "outside repeat body",
+        format!(
+            "Expected context field \"outside repeat body\", got {:?}",
+            context
+        ),
+    )?;
+    ensure(
+        allowed.as_ref() == ["repeat_attempt.body", "repeat_check"].as_slice(),
+        format!(
+            "Expected allowed field [\"repeat_attempt.body\", \"repeat_check\"], got {:?}",
+            allowed.as_ref()
+        ),
+    )?;
+
+    Ok(())
+}

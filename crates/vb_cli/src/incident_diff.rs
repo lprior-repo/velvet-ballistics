@@ -32,6 +32,7 @@ pub(crate) fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFor
                         "success": false,
                         "error": format!("error opening journal at {}: {e}", db.display())
                     }),
+                    CliExitCode::StorageError,
                     output,
                 );
             } else {
@@ -50,6 +51,7 @@ pub(crate) fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFor
                         "success": false,
                         "error": format!("error reading events for run {run_id}: {e}")
                     }),
+                    CliExitCode::StorageError,
                     output,
                 );
             } else {
@@ -66,6 +68,7 @@ pub(crate) fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFor
                     "success": false,
                     "error": format!("no events found for run {run_id}")
                 }),
+                CliExitCode::StorageError,
                 output,
             );
         } else {
@@ -129,6 +132,7 @@ pub(crate) fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFor
                     "success": false,
                     "error": format!("run {run_id} has no failure event; not an incident")
                 }),
+                CliExitCode::StorageError,
                 output,
             );
         } else {
@@ -162,6 +166,7 @@ pub(crate) fn cmd_diff(
             if output != OutputFormat::Text {
                 json_error(
                     &serde_json::json!({"success": false, "error": format!("error opening journal at {}: {e}", db.display())}),
+                    CliExitCode::StorageError,
                     output,
                 );
             } else {
@@ -177,6 +182,7 @@ pub(crate) fn cmd_diff(
             if output != OutputFormat::Text {
                 json_error(
                     &serde_json::json!({"success": false, "error": format!("error reading run {run_a}: {e}")}),
+                    CliExitCode::StorageError,
                     output,
                 );
             } else {
@@ -195,6 +201,7 @@ pub(crate) fn cmd_diff(
             if output != OutputFormat::Text {
                 json_error(
                     &serde_json::json!({"success": false, "error": format!("error reading run {run_b}: {e}")}),
+                    CliExitCode::StorageError,
                     output,
                 );
             } else {
@@ -251,6 +258,7 @@ fn write_absent_run(run_id: &str, output: OutputFormat) -> ExitCode {
                 "events": 0,
                 "error": format!("run {run_id}: no events found")
             }),
+            CliExitCode::ValidationFailed,
             output,
         );
     } else {

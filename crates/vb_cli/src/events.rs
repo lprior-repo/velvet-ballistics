@@ -63,6 +63,7 @@ pub(crate) fn cmd_events(
                             "total": 0,
                             "error": format!("run {run_id}: no events found")
                         }),
+                        CliExitCode::ValidationFailed,
                         output,
                     );
                 } else {
@@ -102,6 +103,7 @@ pub(crate) fn cmd_events(
                         "success": false,
                         "error": format!("error reading events for run {run_id}: {e}")
                     }),
+                    CliExitCode::StorageError,
                     output,
                 );
             } else {

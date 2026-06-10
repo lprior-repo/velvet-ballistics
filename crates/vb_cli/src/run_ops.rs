@@ -41,6 +41,7 @@ pub(crate) fn cmd_retry(
                     "events": 0,
                     "error": format!("run {run_id}: no events found")
                 }),
+                CliExitCode::ValidationFailed,
                 output,
             );
         } else {
@@ -53,6 +54,7 @@ pub(crate) fn cmd_retry(
         if output != OutputFormat::Text {
             json_error(
                 &serde_json::json!({ "success": false, "error": format!("run {run_id} {}", analysis.reason) }),
+                CliExitCode::ValidationFailed,
                 output,
             );
         } else {
@@ -110,6 +112,7 @@ pub(crate) fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputForma
                     "events": 0,
                     "error": format!("run {run_id}: no events found")
                 }),
+                CliExitCode::ValidationFailed,
                 output,
             );
         } else {
@@ -122,6 +125,7 @@ pub(crate) fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputForma
         if output != OutputFormat::Text {
             json_error(
                 &serde_json::json!({ "success": false, "error": format!("run {run_id} {}", analysis.reason) }),
+                CliExitCode::ValidationFailed,
                 output,
             );
         } else {
@@ -168,6 +172,7 @@ pub(crate) fn cmd_answer(
                         "success": false,
                         "error": format!("invalid run_id '{run_id}': {e}")
                     }),
+                    CliExitCode::ValidationFailed,
                     output,
                 );
             } else {
@@ -187,6 +192,7 @@ pub(crate) fn cmd_answer(
                         "success": false,
                         "error": format!("error reading value file {}: {e}", value_file.display())
                     }),
+                    CliExitCode::ValidationFailed,
                     output,
                 );
             } else {
@@ -203,6 +209,7 @@ pub(crate) fn cmd_answer(
                     "success": false,
                     "error": message
                 }),
+                CliExitCode::ValidationFailed,
                 output,
             );
         } else {
@@ -225,6 +232,7 @@ pub(crate) fn cmd_answer(
                         "success": false,
                         "error": format!("error connecting to IPC server at {}: {e}", socket_path.display())
                     }),
+                    CliExitCode::IpcError,
                     output,
                 );
             } else {
@@ -253,6 +261,7 @@ pub(crate) fn cmd_answer(
                     "success": false,
                     "error": format!("error sending answer: {e}")
                 }),
+                CliExitCode::IpcError,
                 output,
             );
         } else {
@@ -285,6 +294,7 @@ pub(crate) fn cmd_answer(
                             "success": false,
                             "error": message
                         }),
+                        CliExitCode::RuntimeFailed,
                         output,
                     );
                 } else {
@@ -302,6 +312,7 @@ pub(crate) fn cmd_answer(
                             "success": false,
                             "error": message
                         }),
+                        CliExitCode::ValidationFailed,
                         output,
                     );
                 } else {
@@ -316,6 +327,7 @@ pub(crate) fn cmd_answer(
                             "success": false,
                             "error": format!("unexpected response: {other:?}")
                         }),
+                        CliExitCode::RuntimeFailed,
                         output,
                     );
                 } else {
@@ -331,6 +343,7 @@ pub(crate) fn cmd_answer(
                         "success": false,
                         "error": format!("error receiving response: {e}")
                     }),
+                    CliExitCode::IpcError,
                     output,
                 );
             } else {
@@ -458,6 +471,7 @@ pub(crate) fn cmd_cancel(
                     "success": false,
                     "error": format!("error writing cancel event: {e}")
                 }),
+                CliExitCode::StorageError,
                 output,
             );
         } else {

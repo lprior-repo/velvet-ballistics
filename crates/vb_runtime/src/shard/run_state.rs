@@ -58,6 +58,33 @@ pub enum InspectResponse {
         /// Caller correlation identifier.
         correlation: u64,
     },
+    /// The run is in the terminal set but no longer in the active runs map.
+    ///
+    /// Returned for cancelled, killed, completed, or failed runs that have been
+    /// moved to the terminal set. The recorded `outcome` distinguishes how the
+    /// run reached the terminal state.
+    Terminal {
+        /// Run identifier.
+        run: RunId,
+        /// Caller correlation identifier.
+        correlation: u64,
+        /// How the run reached the terminal state.
+        outcome: TerminalOutcome,
+    },
+}
+
+/// Recorded terminal state for a run that has been moved to the terminal set.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum TerminalOutcome {
+    /// The run was cancelled by a `ShardCommand::Cancel`.
+    Cancelled,
+    /// The run was killed by a `ShardCommand::Kill`.
+    Killed,
+    /// The run reached its natural `Finished` signal.
+    Completed,
+    /// The run failed during deterministic execution.
+    Failed,
 }
 
 // ============================================================================

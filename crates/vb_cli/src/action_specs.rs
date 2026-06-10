@@ -292,6 +292,7 @@ pub(crate) fn write_action_registry_error(
                 "success": false,
                 "error": message,
             }),
+            CliExitCode::ValidationFailed,
             output,
         );
     }
@@ -308,6 +309,7 @@ pub(crate) fn write_action_registry_uninitialized(output: OutputFormat) {
                 "success": false,
                 "error": message,
             }),
+            CliExitCode::ValidationFailed,
             output,
         );
     }
@@ -410,6 +412,7 @@ fn write_action_inspect_error(
                 "action_name": action_name,
                 "error": message,
             }),
+            CliExitCode::ValidationFailed,
             output,
         );
     }

@@ -104,6 +104,7 @@ fn write_run_id_error(raw: &str, reason: &str, output: OutputFormat) {
                 "success": false,
                 "error": message,
             }),
+            CliExitCode::ValidationFailed,
             output,
         );
     }
@@ -120,6 +121,7 @@ fn report_storage_open_error(
                 "success": false,
                 "error": format!("error opening journal at {}: {e}", db.display())
             }),
+            CliExitCode::StorageError,
             output,
         );
     } else {
@@ -138,6 +140,7 @@ fn report_run_not_found(run_id: &str, output: OutputFormat) -> ExitCode {
                 "code": "RUN_NOT_FOUND",
                 "run_id": run_id,
             }),
+            CliExitCode::ValidationFailed,
             output,
         );
     } else {
@@ -158,6 +161,7 @@ fn report_journal_read_error(
                 "success": false,
                 "error": format!("error reading {area} for run {run_id}: {e}")
             }),
+            CliExitCode::StorageError,
             output,
         );
     } else {

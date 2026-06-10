@@ -110,7 +110,7 @@ fn shard_action_completed_for_finished_run_returns_run_not_found() {
 }
 
 #[test]
-fn shard_snapshot_run_after_cancel_returns_not_found() {
+fn shard_snapshot_run_after_cancel_returns_terminal_cancelled() {
     // Given a shard with a cancelled run
     let config = small_config();
     let mut shard = Shard::new(config);
@@ -131,12 +131,13 @@ fn shard_snapshot_run_after_cancel_returns_not_found() {
     assert_eq!(shard.tick(), Ok(true));
     // When snapshotting the cancelled run
     let response = shard.snapshot_run(run, 7);
-    // Then it returns NotFound
+    // Then it returns Terminal { Cancelled } (post-mortem observability)
     assert_eq!(
         response,
-        InspectResponse::NotFound {
+        InspectResponse::Terminal {
             run,
             correlation: 7,
+            outcome: TerminalOutcome::Cancelled,
         }
     );
 }

@@ -65,6 +65,7 @@ pub(crate) fn cmd_verify(
                                 "profile": profile.as_str(),
                                 "error": msg
                             }),
+                            code,
                             output,
                         );
                     } else {
@@ -80,6 +81,7 @@ pub(crate) fn cmd_verify(
                                 "error": "compilation failed",
                                 "errors": errors
                             }),
+                            code,
                             output,
                         );
                     } else {
@@ -96,6 +98,7 @@ pub(crate) fn cmd_verify(
                                 "profile": profile.as_str(),
                                 "error": msg
                             }),
+                            code,
                             output,
                         );
                     } else {
@@ -110,6 +113,7 @@ pub(crate) fn cmd_verify(
                                 "profile": profile.as_str(),
                                 "error": msg
                             }),
+                            code,
                             output,
                         );
                     } else {
@@ -124,6 +128,7 @@ pub(crate) fn cmd_verify(
                                 "profile": profile.as_str(),
                                 "error": msg
                             }),
+                            code,
                             output,
                         );
                     } else {
@@ -138,6 +143,7 @@ pub(crate) fn cmd_verify(
                                 "profile": profile.as_str(),
                                 "error": msg
                             }),
+                            code,
                             output,
                         );
                     } else {

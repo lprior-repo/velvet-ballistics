@@ -21,6 +21,12 @@ mod mod_compile_errors;
 pub mod mod_compile_lowering;
 mod mod_compile_validation;
 mod references;
+// `restrictions` is aspirational: its test file uses a `Repeat { steps: ... }` shape
+// that the cold AST does not support. Master spec §45 (RepeatAttempt IR) requires
+// that body expressions are not preserved in the cold AST, so these tests
+// document expected behavior once canonical lowering adds body retention.
+// Wire the module in once the body-preservation work lands (bead vb-ykv39+ follow-up).
+// mod restrictions;
 mod schema;
 pub mod strict_yaml;
 mod type_taint;
@@ -72,6 +78,13 @@ pub mod kani_finish_digest;
 // Internal test modules (error variant completeness, together digest unit tests).
 #[cfg(test)]
 mod tests;
+
+// Scope-guard regression tests for bead vb-sitry.
+// Lives next to the production `references` module that owns the guard,
+// and does not require the aspirational `Repeat { steps: ... }` shape
+// that the cold AST does not yet preserve.
+#[cfg(test)]
+mod references_scope_guard_tests;
 
 // Kani harnesses for canonical_primitive_name coverage (vb-xi2f.16, vb-xi2f.29).
 #[cfg(kani)]

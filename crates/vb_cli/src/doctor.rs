@@ -66,6 +66,7 @@ pub(crate) fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> 
                         "success": false,
                         "checks": checks
                     }),
+                    CliExitCode::StorageError,
                     output,
                 );
             } else {
@@ -96,6 +97,7 @@ pub(crate) fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> 
                         "success": false,
                         "checks": checks
                     }),
+                    CliExitCode::StorageError,
                     output,
                 );
             } else {
@@ -125,6 +127,7 @@ pub(crate) fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> 
                     "success": false,
                     "checks": checks
                 }),
+                CliExitCode::StorageError,
                 output,
             );
         } else {
@@ -152,6 +155,7 @@ pub(crate) fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> 
                             "success": false,
                             "checks": checks
                         }),
+                        CliExitCode::StorageError,
                         output,
                     );
                 } else {
@@ -177,6 +181,7 @@ pub(crate) fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> 
                         "success": false,
                         "checks": checks
                     }),
+                    CliExitCode::StorageError,
                     output,
                 );
             } else {
@@ -249,6 +254,7 @@ pub(crate) fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> 
                         "success": false,
                         "checks": checks
                     }),
+                    CliExitCode::StorageError,
                     output,
                 );
             } else {

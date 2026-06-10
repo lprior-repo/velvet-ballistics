@@ -227,6 +227,16 @@ impl InspectSnapshotFormatter {
                     run, correlation
                 )
             }
+            InspectResponse::Terminal {
+                run,
+                correlation,
+                outcome,
+            } => {
+                format!(
+                    "Terminal {{ run: {:?}, correlation: {}, outcome: {:?} }}",
+                    run, correlation, outcome
+                )
+            }
         }
     }
 }

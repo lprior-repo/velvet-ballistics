@@ -247,6 +247,7 @@ pub(crate) fn report_runtime_error(args: std::fmt::Arguments<'_>, output: Output
     if output != OutputFormat::Text {
         json_error(
             &serde_json::json!({"success": false, "error": args.to_string()}),
+            CliExitCode::RuntimeFailed,
             output,
         );
     } else {

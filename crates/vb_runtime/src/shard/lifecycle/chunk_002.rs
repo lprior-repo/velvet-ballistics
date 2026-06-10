@@ -1,3 +1,5 @@
+use crate::shard::types::TerminalOutcome;
+
 impl Shard {
     /// Handles an ask answer for a suspended run.
     ///
@@ -127,6 +129,7 @@ impl Shard {
             self.append_journal_event(RuntimeJournalEvent::RunCancelled { run, reason })?;
             self.release_frame(state.frame);
             self.terminal_runs_insert(run);
+            self.terminal_outcome_record(run, TerminalOutcome::Cancelled);
             self.counters.inc_failed();
             self.trace_ring.push(TraceEvent::RunCancelled { run });
         }
@@ -143,6 +146,7 @@ impl Shard {
         if let Some(state) = self.run_state_remove(run) {
             self.release_frame(state.frame);
             self.terminal_runs_insert(run);
+            self.terminal_outcome_record(run, TerminalOutcome::Killed);
             self.counters.inc_failed();
             self.trace_ring.push(TraceEvent::RunKilled { run });
             self.append_journal_event(RuntimeJournalEvent::RunKilled { run })?;

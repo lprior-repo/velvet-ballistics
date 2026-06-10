@@ -15,7 +15,7 @@ use vb_runtime::engine::{
     EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeSignal, drive_deterministic_full,
 };
 use vb_runtime::primitives::collect::CollectStates;
-use vb_runtime::shard::{InspectResponse, ResumeError, Shard, ShardCommand, ShardConfig};
+use vb_runtime::shard::{InspectResponse, ResumeError, Shard, ShardCommand, ShardConfig, TerminalOutcome};
 
 fn one_step_workflow(kind: CompiledNodeKind, slot_count: u16) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
@@ -427,9 +427,10 @@ fn given_terminal_run_when_resume_attempted_then_invalid_resume_error() -> Resul
     assert_eq!(shard.active_run_count(), 0);
     assert_eq!(
         snapshot,
-        InspectResponse::NotFound {
+        InspectResponse::Terminal {
             run,
             correlation: 45,
+            outcome: TerminalOutcome::Completed,
         }
     );
     assert_eq!(

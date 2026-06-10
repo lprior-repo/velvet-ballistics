@@ -32,7 +32,7 @@ use vb_core::workflow::{
 };
 use vb_runtime::journal::VolatileRuntimeJournal;
 use vb_runtime::runtime::Runtime;
-use vb_runtime::shard::{InspectResponse, ShardConfig};
+use vb_runtime::shard::{InspectResponse, ShardConfig, TerminalOutcome};
 use vb_runtime::trace::TraceEvent;
 
 // Target file for reference: crates/workspace_tests/tests/vb_c1s0_orchestration_runtime_tests.rs
@@ -260,17 +260,19 @@ fn runtime_routes_run_to_correct_shard_by_run_id_modulo() -> Result<(), String> 
     // the submit would fail with RunAlreadyExists on wrong shard.
     assert_eq!(
         runtime.snapshot_run(run_a, 1),
-        Ok(InspectResponse::NotFound {
+        Ok(InspectResponse::Terminal {
             run: run_a,
-            correlation: 1
+            correlation: 1,
+            outcome: TerminalOutcome::Completed,
         }),
         "run_a should be finished after one tick (routing worked correctly)"
     );
     assert_eq!(
         runtime.snapshot_run(run_b, 2),
-        Ok(InspectResponse::NotFound {
+        Ok(InspectResponse::Terminal {
             run: run_b,
-            correlation: 2
+            correlation: 2,
+            outcome: TerminalOutcome::Completed,
         }),
         "run_b should be finished after one tick (routing worked correctly)"
     );
@@ -317,9 +319,10 @@ fn run_reaches_finished_state_when_workflow_complete() -> Result<(), String> {
     // Then: run is finished
     assert_eq!(
         runtime.snapshot_run(run, 77),
-        Ok(InspectResponse::NotFound {
+        Ok(InspectResponse::Terminal {
             run,
-            correlation: 77
+            correlation: 77,
+            outcome: TerminalOutcome::Completed,
         })
     );
     assert_eq!(runtime.counters_snapshot().runs_completed, 1);
@@ -395,9 +398,10 @@ fn run_reaches_cancelled_state_when_cancel_called() -> Result<(), String> {
     assert_eq!(runtime.counters_snapshot().runs_failed, 1);
     assert_eq!(
         runtime.snapshot_run(run, 88),
-        Ok(InspectResponse::NotFound {
+        Ok(InspectResponse::Terminal {
             run,
-            correlation: 88
+            correlation: 88,
+            outcome: TerminalOutcome::Cancelled,
         })
     );
     Ok(())
@@ -416,9 +420,10 @@ fn terminal_run_ignores_subsequent_commands() -> Result<(), String> {
     // Verify terminal state
     assert_eq!(
         runtime.snapshot_run(run, 99),
-        Ok(InspectResponse::NotFound {
+        Ok(InspectResponse::Terminal {
             run,
-            correlation: 99
+            correlation: 99,
+            outcome: TerminalOutcome::Completed,
         })
     );
 
@@ -832,9 +837,10 @@ fn terminal_state_guard_mutation_would_be_caught() -> Result<(), String> {
     // Verify terminal
     assert_eq!(
         runtime.snapshot_run(run, 99),
-        Ok(InspectResponse::NotFound {
+        Ok(InspectResponse::Terminal {
             run,
-            correlation: 99
+            correlation: 99,
+            outcome: TerminalOutcome::Completed,
         })
     );
 
@@ -902,9 +908,10 @@ fn answer_ask_returns_run_not_found_for_terminal_run() -> Result<(), String> {
     // Verify run is terminal
     assert_eq!(
         runtime.snapshot_run(run, 1),
-        Ok(InspectResponse::NotFound {
+        Ok(InspectResponse::Terminal {
             run,
-            correlation: 1
+            correlation: 1,
+            outcome: TerminalOutcome::Completed,
         })
     );
 
@@ -953,11 +960,11 @@ fn tick_shard_continue_directive_processes_command() -> Result<(), String> {
     assert_eq!(result, Ok(true));
     assert_eq!(
         runtime.snapshot_run(run, 1),
-        Ok(InspectResponse::NotFound {
+        Ok(InspectResponse::Terminal {
             run,
-            correlation: 1
+            correlation: 1,
+            outcome: TerminalOutcome::Completed,
         }),
-        "run should complete after one tick_shard with Continue"
     );
     Ok(())
 }

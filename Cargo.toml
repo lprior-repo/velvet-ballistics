@@ -18,8 +18,7 @@ members = [
     "crates/workspace_tests/idempotency_suite",
     "crates/workspace_tests",
     "crates/vb_benchmark",
-    # xtask excluded until the tooling crate is re-linted for workspace CI.
-    # "xtask",
+    "xtask",
 ]
 resolver = "2"
 exclude = ["target/miri-tmp", "crates/vb_ui", "fuzz", "crates/vb_ajc40_flux"]

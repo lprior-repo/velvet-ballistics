@@ -36,8 +36,8 @@ fn shard_frame_pool_metrics_after_submit_and_finish() {
     );
 }
 
-/// Verify that snapshot_run returns NotFound after a run finishes via
-/// error handler routing.
+/// Verify that snapshot_run returns Terminal { Completed } after a run finishes
+/// via error handler routing.
 #[test]
 fn shard_snapshot_after_error_handler_finish() {
     let config = small_config();
@@ -73,13 +73,14 @@ fn shard_snapshot_after_error_handler_finish() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
 
-    // Snapshot should return NotFound
+    // Snapshot should return Terminal { Completed }
     let response = shard.snapshot_run(run, 1);
     assert_eq!(
         response,
-        InspectResponse::NotFound {
+        InspectResponse::Terminal {
             run,
             correlation: 1,
+            outcome: TerminalOutcome::Completed,
         }
     );
 }
