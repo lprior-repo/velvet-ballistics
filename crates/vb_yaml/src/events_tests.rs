@@ -555,7 +555,7 @@ fn yaml_error_match_covers_all_variants() {
             YamlError::FieldShape { .. } => "field_shape",
             YamlError::ParseError { .. } => "parse_error",
             YamlError::ForbiddenFeature { .. } => "forbidden_feature",
-            YamlError::LegacyPrimitive { .. } => "legacy_primitive",
+            YamlError::LegacyPrimitiveDeprecated { .. } => "legacy_primitive_deprecated",
         }
     }
     let _ = _exhaustive_match;

@@ -23,6 +23,15 @@ pub mod lexer;
 pub mod parser;
 pub mod typecheck;
 
+mod accessor_eval;
+
+#[cfg(any(test, kani))]
+#[allow(dead_code)]
+pub(crate) mod builtin_eval;
+#[cfg(any(test, kani))]
+#[allow(dead_code)]
+pub(crate) mod stack_ops;
+
 #[cfg(test)]
 mod harness_tests;
 #[cfg(test)]
@@ -41,8 +50,8 @@ pub use bytecode::{
     compile_expr_with_pool, compile_expr_with_resolver,
 };
 pub use eval::{
-    eval_binary_op, eval_expr_program, eval_expr_program_with_store, eval_helper,
-    eval_helper_with_store, eval_unary_op,
+    eval_binary_op, eval_expr_program, eval_expr_program_with_accessors_and_store,
+    eval_expr_program_with_store, eval_helper, eval_helper_with_store, eval_unary_op,
 };
 
 use thiserror::Error;

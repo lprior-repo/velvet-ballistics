@@ -2,13 +2,12 @@
 //! Evaluation environment: stack operations and type expectations.
 
 use arrayvec::ArrayVec;
-use vb_core::limits::MAX_EXPRESSION_STACK_USIZE;
 use vb_core::SlotValue;
+use vb_core::limits::MAX_EXPRESSION_STACK_USIZE;
 
-pub use crate::lexer::{BinaryOp, UnaryOp};
-pub use crate::parser::ExprHelper;
-pub use crate::{ExprError, ExprResult};
-pub use vb_core::limits::MAX_EXPRESSION_STACK;
+use crate::parser::ExprHelper;
+use crate::{ExprError, ExprResult};
+use vb_core::limits::MAX_EXPRESSION_STACK;
 
 pub(crate) fn push_value(
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
@@ -42,7 +41,7 @@ pub(crate) fn pop_triple(
     Ok((first, second, third))
 }
 
-pub fn expect_bool(value: SlotValue) -> ExprResult<bool> {
+pub(super) fn expect_bool(value: SlotValue) -> ExprResult<bool> {
     match value {
         SlotValue::Bool(b) => Ok(b),
         other => Err(ExprError::TypeMismatch {
@@ -52,7 +51,7 @@ pub fn expect_bool(value: SlotValue) -> ExprResult<bool> {
     }
 }
 
-pub fn expect_i64(value: SlotValue) -> ExprResult<i64> {
+pub(super) fn expect_i64(value: SlotValue) -> ExprResult<i64> {
     match value {
         SlotValue::I64(n) => Ok(n),
         other => Err(ExprError::TypeMismatch {
@@ -62,7 +61,7 @@ pub fn expect_i64(value: SlotValue) -> ExprResult<i64> {
     }
 }
 
-pub fn expect_symbol(value: SlotValue) -> ExprResult<vb_core::ids::SymbolId> {
+pub(super) fn expect_symbol(value: SlotValue) -> ExprResult<vb_core::ids::SymbolId> {
     match value {
         SlotValue::Symbol(id) => Ok(id),
         other => Err(ExprError::TypeMismatch {
@@ -72,7 +71,7 @@ pub fn expect_symbol(value: SlotValue) -> ExprResult<vb_core::ids::SymbolId> {
     }
 }
 
-pub fn expect_list(value: SlotValue) -> ExprResult<vb_core::ids::ListId> {
+pub(super) fn expect_list(value: SlotValue) -> ExprResult<vb_core::ids::ListId> {
     match value {
         SlotValue::List(id) => Ok(id),
         other => Err(ExprError::TypeMismatch {
@@ -82,7 +81,7 @@ pub fn expect_list(value: SlotValue) -> ExprResult<vb_core::ids::ListId> {
     }
 }
 
-pub fn expect_object(value: SlotValue) -> ExprResult<vb_core::ids::ObjectId> {
+pub(super) fn expect_object(value: SlotValue) -> ExprResult<vb_core::ids::ObjectId> {
     match value {
         SlotValue::Object(id) => Ok(id),
         other => Err(ExprError::TypeMismatch {
@@ -166,24 +165,37 @@ fn eval_helper_unique(args: &[SlotValue]) -> ExprResult<SlotValue> {
 }
 
 fn eval_helper_contains(args: &[SlotValue]) -> ExprResult<SlotValue> {
-    let (list_val, item_val) = two_args(args, ExprHelper::Contains)?;
-    if matches!(*list_val, SlotValue::F64(_)) || matches!(*item_val, SlotValue::F64(_)) {
-        return Err(ExprError::TypeMismatch {
+    let (haystack, needle) = two_args(args, ExprHelper::Contains)?;
+    match (*haystack, *needle) {
+        (SlotValue::Symbol(_), SlotValue::Symbol(_)) => context_required_contains("text"),
+        (SlotValue::Symbol(_), other) => Err(ExprError::TypeMismatch {
+            expected: "text".into(),
+            found: other.type_name().into(),
+        }),
+        (SlotValue::List(_), _) => context_required_contains("list"),
+        (SlotValue::Object(_), SlotValue::Symbol(_)) => context_required_contains("object"),
+        (SlotValue::Object(_), other) => Err(ExprError::TypeMismatch {
+            expected: "text".into(),
+            found: other.type_name().into(),
+        }),
+        (other, _) => Err(ExprError::TypeMismatch {
             expected: "list, text, or object".into(),
-            found: "number".into(),
-        });
+            found: other.type_name().into(),
+        }),
     }
-    let _list_id = expect_list(*list_val)?;
+}
+
+fn context_required_contains(kind: &'static str) -> ExprResult<SlotValue> {
     Err(ExprError::TypeMismatch {
-        expected: "value-store context required for list contains check".into(),
-        found: "list handle without store".into(),
+        expected: format!("value-store context required for {kind} contains check"),
+        found: format!("{kind} handle without store"),
     })
 }
 
 fn eval_helper_starts_with(args: &[SlotValue]) -> ExprResult<SlotValue> {
-    let (text_val, prefix_val) = two_args(args, ExprHelper::StartsWith)?;
-    let _text_id = expect_symbol(*text_val)?;
-    let _prefix_id = expect_symbol(*prefix_val)?;
+    let (text, prefix) = two_args(args, ExprHelper::StartsWith)?;
+    let _text_id = expect_symbol(*text)?;
+    let _prefix_id = expect_symbol(*prefix)?;
     Err(ExprError::TypeMismatch {
         expected: "value-store context required for text operations".into(),
         found: "symbol handle without store".into(),
@@ -191,9 +203,9 @@ fn eval_helper_starts_with(args: &[SlotValue]) -> ExprResult<SlotValue> {
 }
 
 fn eval_helper_ends_with(args: &[SlotValue]) -> ExprResult<SlotValue> {
-    let (text_val, suffix_val) = two_args(args, ExprHelper::EndsWith)?;
-    let _text_id = expect_symbol(*text_val)?;
-    let _suffix_id = expect_symbol(*suffix_val)?;
+    let (text, suffix) = two_args(args, ExprHelper::EndsWith)?;
+    let _text_id = expect_symbol(*text)?;
+    let _suffix_id = expect_symbol(*suffix)?;
     Err(ExprError::TypeMismatch {
         expected: "value-store context required for text operations".into(),
         found: "symbol handle without store".into(),
@@ -201,9 +213,9 @@ fn eval_helper_ends_with(args: &[SlotValue]) -> ExprResult<SlotValue> {
 }
 
 fn eval_helper_has(args: &[SlotValue]) -> ExprResult<SlotValue> {
-    let (obj_val, key_val) = two_args(args, ExprHelper::Has)?;
-    let _obj_id = expect_object(*obj_val)?;
-    let _key_id = expect_symbol(*key_val)?;
+    let (obj, key) = two_args(args, ExprHelper::Has)?;
+    let _obj_id = expect_object(*obj)?;
+    let _key_id = expect_symbol(*key)?;
     Err(ExprError::TypeMismatch {
         expected: "value-store context required for object field lookup".into(),
         found: "object handle without store".into(),
@@ -211,8 +223,8 @@ fn eval_helper_has(args: &[SlotValue]) -> ExprResult<SlotValue> {
 }
 
 fn eval_helper_append(args: &[SlotValue]) -> ExprResult<SlotValue> {
-    let (list_val, _item_val) = two_args(args, ExprHelper::Append)?;
-    let _list_id = expect_list(*list_val)?;
+    let (list, _item) = two_args(args, ExprHelper::Append)?;
+    let _list_id = expect_list(*list)?;
     Err(ExprError::TypeMismatch {
         expected: "value-store context required for list append".into(),
         found: "list handle without store".into(),
@@ -220,9 +232,9 @@ fn eval_helper_append(args: &[SlotValue]) -> ExprResult<SlotValue> {
 }
 
 fn eval_helper_append_if(args: &[SlotValue]) -> ExprResult<SlotValue> {
-    let (list_val, _item_val, cond_val) = three_args(args, ExprHelper::AppendIf)?;
-    let _list_id = expect_list(*list_val)?;
-    let _ = expect_bool(*cond_val)?;
+    let (list, _item, condition) = three_args(args, ExprHelper::AppendIf)?;
+    let _list_id = expect_list(*list)?;
+    let _condition = expect_bool(*condition)?;
     Err(ExprError::TypeMismatch {
         expected: "value-store context required for list append".into(),
         found: "list handle without store".into(),
@@ -230,9 +242,9 @@ fn eval_helper_append_if(args: &[SlotValue]) -> ExprResult<SlotValue> {
 }
 
 fn eval_helper_merge(args: &[SlotValue]) -> ExprResult<SlotValue> {
-    let (left_val, right_val) = two_args(args, ExprHelper::Merge)?;
-    let _left_id = expect_object(*left_val)?;
-    let _right_id = expect_object(*right_val)?;
+    let (left, right) = two_args(args, ExprHelper::Merge)?;
+    let _left_id = expect_object(*left)?;
+    let _right_id = expect_object(*right)?;
     Err(ExprError::TypeMismatch {
         expected: "value-store context required for object merge".into(),
         found: "object handle without store".into(),
@@ -240,8 +252,8 @@ fn eval_helper_merge(args: &[SlotValue]) -> ExprResult<SlotValue> {
 }
 
 fn eval_helper_sum(args: &[SlotValue]) -> ExprResult<SlotValue> {
-    let value = one_arg(args, ExprHelper::Sum)?;
-    let _list_id = expect_list(*value)?;
+    let list = one_arg(args, ExprHelper::Sum)?;
+    let _list_id = expect_list(*list)?;
     Err(ExprError::TypeMismatch {
         expected: "value-store context required for list sum".into(),
         found: "list handle without store".into(),

@@ -66,9 +66,9 @@ fn all_yaml_error_variants() -> Vec<YamlError> {
         YamlError::ForbiddenFeature {
             detail: "custom YAML tag",
         },
-        YamlError::LegacyPrimitive {
-            primitive: "old_op",
-            canonical: "new_op",
+        YamlError::LegacyPrimitiveDeprecated {
+            name: String::from("old_op"),
+            replacement: String::from("new_op"),
         },
     ]
 }
@@ -157,9 +157,9 @@ fn yaml_error_forbidden_yaml_feature_variants() {
             line: 1,
             reason: Box::from("bad"),
         },
-        YamlError::LegacyPrimitive {
-            primitive: "old",
-            canonical: "new",
+        YamlError::LegacyPrimitiveDeprecated {
+            name: String::from("old"),
+            replacement: String::from("new"),
         },
     ];
     for err in forbidden_variants {

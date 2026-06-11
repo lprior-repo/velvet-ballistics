@@ -72,11 +72,8 @@ pub enum YamlError {
     #[error("forbidden YAML feature: {detail}")]
     ForbiddenFeature { detail: &'static str },
 
-    #[error("legacy primitive not supported: {primitive} (use {canonical} instead)")]
-    LegacyPrimitive {
-        primitive: &'static str,
-        canonical: &'static str,
-    },
+    #[error("legacy primitive deprecated: {name}; migration hint: replace with {replacement}")]
+    LegacyPrimitiveDeprecated { name: String, replacement: String },
 }
 
 impl YamlError {
@@ -84,7 +81,7 @@ impl YamlError {
     ///
     /// Mapping matches error-taxonomy §2.3:
     /// - `DUPLICATE_KEY`: DuplicateKey
-    /// - `FORBIDDEN_YAML_FEATURE`: ForbiddenFeature, AnchorAliasMerge, CustomTag, BinaryScalar, AmbiguousScalar, UnsupportedFeature, MultipleDocuments, ParseError, LegacyPrimitive
+    /// - `FORBIDDEN_YAML_FEATURE`: ForbiddenFeature, AnchorAliasMerge, CustomTag, BinaryScalar, AmbiguousScalar, UnsupportedFeature, MultipleDocuments, ParseError, LegacyPrimitiveDeprecated
     /// - `UNSUPPORTED_TRIGGER`: UnsupportedTrigger
     /// - `PAYLOAD_TOO_LARGE`: SourceTooLarge
     /// - `LIMIT_EXCEEDED`: NestingTooDeep, NodeLimitExceeded, ScalarTooLong, SequenceTooLong, MappingTooLarge
@@ -103,7 +100,7 @@ impl YamlError {
             | Self::AmbiguousScalar { .. }
             | Self::UnsupportedFeature { .. }
             | Self::ParseError { .. }
-            | Self::LegacyPrimitive { .. } => "FORBIDDEN_YAML_FEATURE",
+            | Self::LegacyPrimitiveDeprecated { .. } => "FORBIDDEN_YAML_FEATURE",
             Self::UnsupportedTrigger { .. } => "UNSUPPORTED_TRIGGER",
             Self::SourceTooLarge { .. } => "PAYLOAD_TOO_LARGE",
             Self::NestingTooDeep { .. }
@@ -145,7 +142,7 @@ impl HasSymbolicCode for YamlError {
             | YamlError::AmbiguousScalar { .. }
             | YamlError::ParseError { .. }
             | YamlError::UnsupportedFeature { .. }
-            | YamlError::LegacyPrimitive { .. } => "FORBIDDEN_YAML_FEATURE",
+            | YamlError::LegacyPrimitiveDeprecated { .. } => "FORBIDDEN_YAML_FEATURE",
             YamlError::SourceTooLarge { .. } => "PAYLOAD_TOO_LARGE",
             YamlError::NestingTooDeep { .. }
             | YamlError::NodeLimitExceeded { .. }

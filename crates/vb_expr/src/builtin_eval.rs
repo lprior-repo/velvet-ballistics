@@ -2,15 +2,15 @@
 //! Builtin binary and unary operator evaluation.
 
 use arrayvec::ArrayVec;
-use vb_core::limits::MAX_EXPRESSION_STACK_USIZE;
 use vb_core::SlotValue;
+use vb_core::limits::MAX_EXPRESSION_STACK_USIZE;
 
 use crate::lexer::{BinaryOp, UnaryOp};
 use crate::stack_ops::{expect_bool, expect_i64, pop_pair, pop_value, push_value};
 use crate::{ExprError, ExprResult};
 
 /// Evaluates equality comparison (Eq or NotEq).
-pub fn eval_eq(
+pub(crate) fn eval_eq(
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
     positive: bool,
 ) -> ExprResult<()> {
@@ -19,7 +19,7 @@ pub fn eval_eq(
 }
 
 /// Evaluates a binary operation by popping two values from the stack.
-pub fn eval_binary_stack(
+pub(crate) fn eval_binary_stack(
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
     op: BinaryOp,
 ) -> ExprResult<()> {
@@ -29,7 +29,7 @@ pub fn eval_binary_stack(
 }
 
 /// Evaluates a unary operation by popping one value from the stack.
-pub fn eval_unary_stack(
+pub(crate) fn eval_unary_stack(
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
     op: UnaryOp,
 ) -> ExprResult<()> {
@@ -39,7 +39,11 @@ pub fn eval_unary_stack(
 }
 
 /// Evaluates one binary operation over two already-popped values.
-pub fn eval_binary_op(op: BinaryOp, left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
+pub(crate) fn eval_binary_op(
+    op: BinaryOp,
+    left: SlotValue,
+    right: SlotValue,
+) -> ExprResult<SlotValue> {
     match op {
         BinaryOp::And => Ok(SlotValue::Bool(expect_bool(left)? && expect_bool(right)?)),
         BinaryOp::Or => Ok(SlotValue::Bool(expect_bool(left)? || expect_bool(right)?)),
@@ -57,7 +61,7 @@ pub fn eval_binary_op(op: BinaryOp, left: SlotValue, right: SlotValue) -> ExprRe
 }
 
 /// Evaluates one unary operation over an already-popped value.
-pub fn eval_unary_op(op: UnaryOp, value: SlotValue) -> ExprResult<SlotValue> {
+pub(crate) fn eval_unary_op(op: UnaryOp, value: SlotValue) -> ExprResult<SlotValue> {
     match op {
         UnaryOp::Not => Ok(SlotValue::Bool(!expect_bool(value)?)),
         UnaryOp::Neg => {
@@ -80,9 +84,12 @@ fn eval_i64_values(
 fn eval_div_values(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
     let left_i64 = expect_i64(left)?;
     let right_i64 = expect_i64(right)?;
+    if right_i64 == 0 {
+        return Err(ExprError::DivisionByZero);
+    }
     let value = left_i64
         .checked_div(right_i64)
-        .ok_or(ExprError::DivisionByZero)?;
+        .ok_or(ExprError::IntegerOverflow)?;
     Ok(SlotValue::I64(value))
 }
 
@@ -100,33 +107,24 @@ fn eval_i64_cmp_values(
 #[allow(clippy::panic_in_result_fn)]
 mod blackhat_tests {
     use super::*;
+    use crate::ExprError;
     use crate::eval::{eval_binary_op, eval_unary_op};
     use crate::lexer::{BinaryOp, UnaryOp};
-    use crate::ExprError;
 
-    /// BH-BE-001: builtin_eval::eval_div_values maps i64::MIN / -1 to DivisionByZero.
+    /// BH-BE-001: builtin_eval::eval_div_values maps i64::MIN / -1 to IntegerOverflow.
     ///
-    /// SECURITY FINDING (HIGH): The `eval_div_values` function in this module
-    /// maps ALL `None` results from `checked_div` to `DivisionByZero`, but
-    /// `checked_div` returns `None` for both division by zero AND for the
-    /// overflow case `i64::MIN / -1`. The correct error for `i64::MIN / -1`
-    /// is `IntegerOverflow`, not `DivisionByZero`. This is a misdiagnosis that
-    /// could cause incorrect control flow in callers that distinguish between
-    /// the two error types.
+    /// Regression coverage for the former BH-BE-001 bug: `checked_div` returns
+    /// `None` for both division by zero and the overflow case `i64::MIN / -1`.
+    /// The evaluator must check zero first and map the remaining `None` case to
+    /// `IntegerOverflow` so callers that distinguish errors keep correct control
+    /// flow.
     ///
     /// Compare with `eval::eval_div_values` which correctly handles this by
     /// checking for zero explicitly before calling `checked_div`.
     #[test]
-    fn blackhat_be_001_div_values_misreports_min_div_neg_one() {
+    fn blackhat_be_001_div_values_reports_min_div_neg_one_overflow() {
         let result = eval_div_values(SlotValue::I64(i64::MIN), SlotValue::I64(-1));
-        // This test documents the current buggy behavior.
-        // The result SHOULD be IntegerOverflow, but builtin_eval reports DivisionByZero.
-        let Err(ExprError::DivisionByZero) = result else {
-            // If this branch is reached, the bug has been fixed.
-            // Change this test to assert IntegerOverflow when fixed.
-            return;
-        };
-        // BUG CONFIRMED: i64::MIN / -1 incorrectly reports DivisionByZero
+        assert!(matches!(result, Err(ExprError::IntegerOverflow)));
     }
 
     /// BH-BE-002: Public eval_binary_op correctly handles i64::MIN / -1.
@@ -136,10 +134,7 @@ mod blackhat_tests {
     #[test]
     fn blackhat_be_002_public_api_correctly_handles_min_div_neg_one() {
         let result = eval_binary_op(BinaryOp::Div, SlotValue::I64(i64::MIN), SlotValue::I64(-1));
-        let Err(ExprError::IntegerOverflow) = result else {
-            return;
-        };
-        // CORRECT: public API returns IntegerOverflow
+        assert_eq!(result, Err(ExprError::IntegerOverflow));
     }
 
     /// BH-BE-003: eval_binary_op addition overflow detection.
@@ -203,7 +198,7 @@ mod blackhat_tests {
     /// this program because eval_div_values checks for zero explicitly.
     #[test]
     fn blackhat_be_009_program_i64_min_div_neg_one() -> crate::ExprResult<()> {
-        use vb_core::{ConstIdx, ConstValue, ExprOp, ExprProgram, SlotValue};
+        use vb_core::{ConstIdx, ConstValue, ExprOp, ExprProgram};
 
         let program = ExprProgram {
             ops: vec![
@@ -227,7 +222,7 @@ mod blackhat_tests {
     /// BH-BE-010: Stack underflow from empty stack returns error, not panic.
     #[test]
     fn blackhat_be_010_stack_underflow_no_panic() -> crate::ExprResult<()> {
-        use vb_core::{ExprOp, ExprProgram, SlotValue};
+        use vb_core::{ExprOp, ExprProgram};
 
         let program = ExprProgram {
             ops: vec![ExprOp::Add].into_boxed_slice(),
@@ -245,7 +240,7 @@ mod blackhat_tests {
     /// BH-BE-011: Out-of-bounds slot and constant access returns error, not panic.
     #[test]
     fn blackhat_be_011_oob_access_no_panic() -> crate::ExprResult<()> {
-        use vb_core::{ConstIdx, ExprOp, ExprProgram, SlotIdx, SlotValue};
+        use vb_core::{ConstIdx, ExprOp, ExprProgram, SlotIdx};
 
         let program = ExprProgram {
             ops: vec![ExprOp::LoadSlot(SlotIdx::new(255))].into_boxed_slice(),

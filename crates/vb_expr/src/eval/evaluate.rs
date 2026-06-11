@@ -4,7 +4,7 @@
 use arrayvec::ArrayVec;
 use vb_core::limits::MAX_EXPRESSION_STACK_USIZE;
 use vb_core::value_store::ValueStore;
-use vb_core::{ConstValue, ExprOp, ExprProgram, SlotValue};
+use vb_core::{AccessorProgram, ConstValue, ExprOp, ExprProgram, SlotValue};
 
 use super::environment::{
     expect_bool, expect_i64, expect_list, expect_object, expect_symbol, pop_pair, pop_triple,
@@ -30,7 +30,23 @@ pub fn eval_expr_program_with_store(
     constants: &[ConstValue],
     store: &mut ValueStore,
 ) -> ExprResult<SlotValue> {
+    eval_expr_program_with_accessors_and_store(program, slots, constants, &[], store)
+}
+
+pub fn eval_expr_program_with_accessors_and_store(
+    program: &ExprProgram,
+    slots: &[Option<SlotValue>],
+    constants: &[ConstValue],
+    accessors: &[AccessorProgram],
+    store: &mut ValueStore,
+) -> ExprResult<SlotValue> {
     let mut stack: ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE> = ArrayVec::new();
+    let mut context = EvalContext {
+        slots,
+        constants,
+        accessors,
+        store,
+    };
     let mut index = 0usize;
     while index < program.ops.len() {
         let op = *program
@@ -38,10 +54,17 @@ pub fn eval_expr_program_with_store(
             .as_ref()
             .get(index)
             .ok_or(ExprError::UnexpectedEof)?;
-        eval_expr_op_with_store(op, &mut stack, slots, constants, store)?;
+        eval_expr_op_with_store(op, &mut stack, &mut context)?;
         index = next_index(index)?;
     }
     finish_stack(&mut stack)
+}
+
+struct EvalContext<'a> {
+    slots: &'a [Option<SlotValue>],
+    constants: &'a [ConstValue],
+    accessors: &'a [AccessorProgram],
+    store: &'a mut ValueStore,
 }
 
 fn next_index(index: usize) -> ExprResult<usize> {
@@ -65,13 +88,12 @@ fn finish_stack(
 fn eval_expr_op_with_store(
     op: ExprOp,
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
-    slots: &[Option<SlotValue>],
-    constants: &[ConstValue],
-    store: &mut ValueStore,
+    context: &mut EvalContext<'_>,
 ) -> ExprResult<()> {
     match op {
-        ExprOp::LoadSlot(idx) => eval_load_slot(stack, slots, idx),
-        ExprOp::LoadConst(idx) => eval_load_const(stack, constants, idx),
+        ExprOp::LoadSlot(idx) => eval_load_slot(stack, context.slots, idx),
+        ExprOp::LoadConst(idx) => eval_load_const(stack, context.constants, idx),
+        ExprOp::LoadAccessor(idx) => eval_load_accessor(stack, context, idx),
         ExprOp::Eq => eval_eq(stack, true),
         ExprOp::NotEq => eval_eq(stack, false),
         ExprOp::And => eval_binary_stack(stack, BinaryOp::And),
@@ -85,8 +107,22 @@ fn eval_expr_op_with_store(
         ExprOp::Gte => eval_binary_stack(stack, BinaryOp::Gte),
         ExprOp::Lt => eval_binary_stack(stack, BinaryOp::Lt),
         ExprOp::Lte => eval_binary_stack(stack, BinaryOp::Lte),
-        _ => eval_helper_op_with_store(op, stack, store),
+        _ => eval_helper_op_with_store(op, stack, context.store),
     }
+}
+
+fn eval_load_accessor(
+    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
+    context: &EvalContext<'_>,
+    idx: vb_core::AccessorIdx,
+) -> ExprResult<()> {
+    let value = crate::accessor_eval::eval_load_accessor_from_slots(
+        context.slots,
+        context.accessors,
+        context.store,
+        idx,
+    )?;
+    push_value(stack, value)
 }
 
 fn eval_load_slot(
@@ -143,8 +179,16 @@ fn eval_unary_stack(
 
 pub fn eval_binary_op(op: BinaryOp, left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
     match op {
-        BinaryOp::And => Ok(SlotValue::Bool(expect_bool(left)? && expect_bool(right)?)),
-        BinaryOp::Or => Ok(SlotValue::Bool(expect_bool(left)? || expect_bool(right)?)),
+        BinaryOp::And => {
+            let left_bool = expect_bool(left)?;
+            let right_bool = expect_bool(right)?;
+            Ok(SlotValue::Bool(left_bool && right_bool))
+        }
+        BinaryOp::Or => {
+            let left_bool = expect_bool(left)?;
+            let right_bool = expect_bool(right)?;
+            Ok(SlotValue::Bool(left_bool || right_bool))
+        }
         BinaryOp::Eq => Ok(SlotValue::Bool(left == right)),
         BinaryOp::NotEq => Ok(SlotValue::Bool(left != right)),
         BinaryOp::Add => eval_add_op(left, right),
@@ -343,27 +387,27 @@ fn eval_helper_op_with_store(
             push_value(stack, result)
         }
         ExprOp::Contains => {
-            let (right, left) = pop_pair(stack)?;
+            let (left, right) = pop_pair(stack)?;
             let result = eval_helper_contains_with_store(&left, &right, store)?;
             push_value(stack, result)
         }
         ExprOp::StartsWith => {
-            let (right, left) = pop_pair(stack)?;
+            let (left, right) = pop_pair(stack)?;
             let result = eval_helper_starts_with_with_store(&left, &right, store)?;
             push_value(stack, result)
         }
         ExprOp::EndsWith => {
-            let (right, left) = pop_pair(stack)?;
+            let (left, right) = pop_pair(stack)?;
             let result = eval_helper_ends_with_with_store(&left, &right, store)?;
             push_value(stack, result)
         }
         ExprOp::Has => {
-            let (right, left) = pop_pair(stack)?;
+            let (left, right) = pop_pair(stack)?;
             let result = eval_helper_has_with_store(&left, &right, store)?;
             push_value(stack, result)
         }
         ExprOp::Append => {
-            let (right, left) = pop_pair(stack)?;
+            let (left, right) = pop_pair(stack)?;
             let result = eval_helper_append_with_store(&left, &right, store)?;
             push_value(stack, result)
         }
@@ -373,7 +417,7 @@ fn eval_helper_op_with_store(
             push_value(stack, result)
         }
         ExprOp::Merge => {
-            let (right, left) = pop_pair(stack)?;
+            let (left, right) = pop_pair(stack)?;
             let result = eval_helper_merge_with_store(&left, &right, store)?;
             push_value(stack, result)
         }

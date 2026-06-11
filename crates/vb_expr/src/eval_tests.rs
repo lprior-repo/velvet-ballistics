@@ -6,8 +6,8 @@
 #[allow(clippy::panic_in_result_fn)]
 mod tests {
     use crate::eval::{
-        eval_binary_op, eval_expr_program, eval_expr_program_with_store, eval_helper,
-        eval_helper_with_store, eval_unary_op,
+        eval_binary_op, eval_expr_program, eval_expr_program_with_accessors_and_store,
+        eval_expr_program_with_store, eval_helper, eval_helper_with_store, eval_unary_op,
     };
     use crate::lexer::{BinaryOp, UnaryOp};
     use crate::parser::ExprHelper;
@@ -17,8 +17,11 @@ mod tests {
     use vb_core::limits::MAX_EXPRESSION_STACK;
     use vb_core::value::FiniteF64;
     use vb_core::value::Taint;
-    use vb_core::value_store::ValueStore;
-    use vb_core::{ConstIdx, ConstValue, ExprOp, ExprProgram, SlotIdx, SlotValue};
+    use vb_core::value_store::{ObjectField, ValueStore};
+    use vb_core::{
+        AccessorIdx, AccessorProgram, ConstIdx, ConstValue, ExprOp, ExprProgram, PathSegment,
+        SlotIdx, SlotValue,
+    };
 
     fn make_f64(value: f64) -> FiniteF64 {
         FiniteF64::new(value).expect("expected finite f64")
@@ -689,6 +692,38 @@ mod tests {
     }
 
     #[test]
+    fn eval_helper_public_contains_rejects_i64_haystack_before_store_context() -> ExprResult<()> {
+        let result = eval_helper(
+            ExprHelper::Contains,
+            &[SlotValue::I64(1), SlotValue::I64(2)],
+        );
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for public contains(1, 2)".into(),
+            });
+        };
+        assert_eq!(expected, "list, text, or object");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_public_contains_rejects_bool_haystack_before_store_context() -> ExprResult<()> {
+        let result = eval_helper(
+            ExprHelper::Contains,
+            &[SlotValue::Bool(true), SlotValue::Bool(false)],
+        );
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for public contains(true, false)".into(),
+            });
+        };
+        assert_eq!(expected, "list, text, or object");
+        assert_eq!(found, "boolean");
+        Ok(())
+    }
+
+    #[test]
     fn eval_helper_append_returns_type_mismatch_for_i64_args() -> ExprResult<()> {
         let program = ExprProgram {
             ops: vec![
@@ -1347,6 +1382,78 @@ mod tests {
         let slots = vec![Some(SlotValue::List(list))];
         let result = eval_expr_program_with_store(&program, &slots, &[], &mut store)?;
         assert_eq!(result, SlotValue::I64(3));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_with_store_contains_preserves_operand_order() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let haystack = store
+            .insert_symbol(Box::<str>::from("hello world"))
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let needle = store
+            .insert_symbol(Box::<str>::from("world"))
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let program = ExprProgram {
+            ops: vec![
+                ExprOp::LoadSlot(SlotIdx::new(0)),
+                ExprOp::LoadSlot(SlotIdx::new(1)),
+                ExprOp::Contains,
+            ]
+            .into_boxed_slice(),
+            max_stack: 2,
+        };
+        let slots = vec![
+            Some(SlotValue::Symbol(haystack)),
+            Some(SlotValue::Symbol(needle)),
+        ];
+        let result = eval_expr_program_with_store(&program, &slots, &[], &mut store)?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_load_accessor_resolves_input_users_zero_name() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let users_key = store
+            .insert_symbol("users")
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let name_key = store
+            .insert_symbol("name")
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let alice = store
+            .insert_symbol("Alice")
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let user = store
+            .insert_object(vec![ObjectField::clean(name_key, SlotValue::Symbol(alice))])
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let users = store
+            .insert_list(vec![SlotValue::Object(user)])
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let input = store
+            .insert_object(vec![ObjectField::clean(users_key, SlotValue::List(users))])
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let program = make_program(vec![ExprOp::LoadAccessor(AccessorIdx::new(0))])?;
+        let accessors = [AccessorProgram {
+            root: SlotIdx::new(0),
+            path: vec![
+                PathSegment::Field(users_key),
+                PathSegment::Index(0),
+                PathSegment::Field(name_key),
+            ]
+            .into_boxed_slice(),
+        }];
+        let slots = [Some(SlotValue::Object(input))];
+
+        let result = eval_expr_program_with_accessors_and_store(
+            &program,
+            &slots,
+            &[],
+            &accessors,
+            &mut store,
+        )?;
+
+        assert_eq!(result, SlotValue::Symbol(alice));
         Ok(())
     }
 

@@ -461,6 +461,66 @@ fn parse_workflow_source_rejects_canonical_and_alias_duplicate_primitives() {
 }
 
 #[test]
+fn parse_workflow_source_rejects_parallel_legacy_primitive_with_migration_hint() {
+    let yaml = indoc::indoc! {r#"
+        version: velvet-ballistics/v1
+        name: legacy-parallel
+        when:
+          manual: {}
+        steps:
+          - id: s1
+            parallel: { branches: [] }
+    "#};
+    let result = parse_workflow_source(yaml);
+    let Err(error) = result else {
+        fail_assert!("expected deprecated legacy primitive error for parallel");
+        return;
+    };
+    let message = error.to_string();
+    assert_eq!(
+        error,
+        YamlError::LegacyPrimitiveDeprecated {
+            name: String::from("parallel"),
+            replacement: String::from("together"),
+        }
+    );
+    assert_eq!(
+        message,
+        "legacy primitive deprecated: parallel; migration hint: replace with together"
+    );
+}
+
+#[test]
+fn parse_workflow_source_rejects_aggregate_legacy_primitive_with_migration_hint() {
+    let yaml = indoc::indoc! {r#"
+        version: velvet-ballistics/v1
+        name: legacy-aggregate
+        when:
+          manual: {}
+        steps:
+          - id: s1
+            aggregate: { input: items }
+    "#};
+    let result = parse_workflow_source(yaml);
+    let Err(error) = result else {
+        fail_assert!("expected deprecated legacy primitive error for aggregate");
+        return;
+    };
+    let message = error.to_string();
+    assert_eq!(
+        error,
+        YamlError::LegacyPrimitiveDeprecated {
+            name: String::from("aggregate"),
+            replacement: String::from("reduce"),
+        }
+    );
+    assert_eq!(
+        message,
+        "legacy primitive deprecated: aggregate; migration hint: replace with reduce"
+    );
+}
+
+#[test]
 fn load_fixture_source_returns_error_for_missing_fixture() {
     let result = load_fixture_source("");
     assert_eq!(result, Err(YamlError::EmptySource));

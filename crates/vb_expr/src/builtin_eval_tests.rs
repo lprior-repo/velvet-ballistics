@@ -10,29 +10,20 @@ mod blackhat_tests {
     use crate::ExprError;
     use vb_core::SlotValue;
 
-    /// BH-BE-001: builtin_eval::eval_div_values maps i64::MIN / -1 to DivisionByZero.
+    /// BH-BE-001: builtin_eval::eval_div_values maps i64::MIN / -1 to IntegerOverflow.
     ///
-    /// SECURITY FINDING (HIGH): The `eval_div_values` function in this module
-    /// maps ALL `None` results from `checked_div` to `DivisionByZero`, but
-    /// `checked_div` returns `None` for both division by zero AND for the
-    /// overflow case `i64::MIN / -1`. The correct error for `i64::MIN / -1`
-    /// is `IntegerOverflow`, not `DivisionByZero`. This is a misdiagnosis that
-    /// could cause incorrect control flow in callers that distinguish between
-    /// the two error types.
+    /// Regression coverage for the former BH-BE-001 bug: `checked_div` returns
+    /// `None` for both division by zero and the overflow case `i64::MIN / -1`.
+    /// The evaluator must check zero first and map the remaining `None` case to
+    /// `IntegerOverflow` so callers that distinguish errors keep correct control
+    /// flow.
     ///
     /// Compare with `eval::eval_div_values` which correctly handles this by
     /// checking for zero explicitly before calling `checked_div`.
     #[test]
-    fn blackhat_be_001_div_values_misreports_min_div_neg_one() {
+    fn blackhat_be_001_div_values_reports_min_div_neg_one_overflow() {
         let result = eval_div_values(SlotValue::I64(i64::MIN), SlotValue::I64(-1));
-        // This test documents the current buggy behavior.
-        // The result SHOULD be IntegerOverflow, but builtin_eval reports DivisionByZero.
-        let Err(ExprError::DivisionByZero) = result else {
-            // If this branch is reached, the bug has been fixed.
-            // Change this test to assert IntegerOverflow when fixed.
-            return;
-        };
-        // BUG CONFIRMED: i64::MIN / -1 incorrectly reports DivisionByZero
+        assert!(matches!(result, Err(ExprError::IntegerOverflow)));
     }
 
     /// BH-BE-002: Public eval_binary_op correctly handles i64::MIN / -1.
@@ -43,10 +34,7 @@ mod blackhat_tests {
     fn blackhat_be_002_public_api_correctly_handles_min_div_neg_one() {
         let result =
             eval_binary_op(BinaryOp::Div, SlotValue::I64(i64::MIN), SlotValue::I64(-1));
-        let Err(ExprError::IntegerOverflow) = result else {
-            return;
-        };
-        // CORRECT: public API returns IntegerOverflow
+        assert_eq!(result, Err(ExprError::IntegerOverflow));
     }
 
     /// BH-BE-003: eval_binary_op addition overflow detection.

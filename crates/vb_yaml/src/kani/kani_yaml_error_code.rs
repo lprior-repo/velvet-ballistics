@@ -37,7 +37,8 @@ use vb_core::diagnostic::{HasSymbolicCode, SymbolicCode};
 /// CustomTag, BinaryScalar, MultipleDocuments, AmbiguousScalar,
 /// SourceTooLarge, NestingTooDeep, NodeLimitExceeded, ScalarTooLong,
 /// SequenceTooLong, MappingTooLarge, UnknownField, EmptySource,
-/// MissingField, FieldShape, ParseError, ForbiddenFeature, LegacyPrimitive.
+/// MissingField, FieldShape, ParseError, ForbiddenFeature,
+/// LegacyPrimitiveDeprecated.
 const YAML_ERROR_VARIANT_COUNT: u8 = 21;
 
 /// Number of symbolic bytes used to materialise each string-typed field.
@@ -98,6 +99,12 @@ fn bounded_static_str<const N: usize>() -> &'static str {
     }
     let s: String = owned.iter().map(|&b| b as char).collect();
     Box::leak(s.into_boxed_str())
+}
+
+/// Generate a `String` of length `N` from a symbolic ASCII byte array.
+#[inline]
+fn bounded_string<const N: usize>() -> String {
+    bounded_box_str::<N>().into()
 }
 
 /// Construct an arbitrary `YamlError` whose variant is selected by
@@ -171,9 +178,9 @@ fn arbitrary_yaml_error(variant: u8) -> YamlError {
         19 => YamlError::UnsupportedTrigger {
             trigger: bounded_static_str::<STRING_FIELD_BYTES>(),
         },
-        20 => YamlError::LegacyPrimitive {
-            primitive: bounded_static_str::<STRING_FIELD_BYTES>(),
-            canonical: bounded_static_str::<STRING_FIELD_BYTES>(),
+        20 => YamlError::LegacyPrimitiveDeprecated {
+            name: bounded_string::<STRING_FIELD_BYTES>(),
+            replacement: bounded_string::<STRING_FIELD_BYTES>(),
         },
         // Compile-time exhaustiveness: if `variant >= YAML_ERROR_VARIANT_COUNT`
         // the precondition is violated (kani::assume restricts to [0, 21)).

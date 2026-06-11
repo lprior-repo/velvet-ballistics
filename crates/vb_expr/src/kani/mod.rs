@@ -11,3 +11,5 @@ pub mod vb_jpq7_35_parser_depth;
 pub mod vb_jpq7_35_stack;
 #[cfg(kani)]
 pub mod vb_jpq7_35_token_bound;
+#[cfg(kani)]
+pub mod vb_xo50x_builtin_eval;

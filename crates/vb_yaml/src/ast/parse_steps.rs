@@ -50,17 +50,10 @@ fn parse_step_primitive(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
                 expected: "string",
             });
         };
-        // Intercept legacy names BEFORE is_primitive() gate to emit correct error
-        if key == "parallel" {
-            return Err(YamlError::LegacyPrimitive {
-                primitive: "parallel",
-                canonical: "together",
-            });
-        }
-        if key == "aggregate" {
-            return Err(YamlError::LegacyPrimitive {
-                primitive: "aggregate",
-                canonical: "reduce",
+        if let Some(replacement) = legacy_primitive_replacement(key) {
+            return Err(YamlError::LegacyPrimitiveDeprecated {
+                name: key.to_string(),
+                replacement: replacement.to_string(),
             });
         }
         if is_primitive(key) {
@@ -92,6 +85,14 @@ fn parse_step_primitive(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
         "ask" => parse_ask(sub),
         "finish" => parse_finish(sub),
         _ => Err(YamlError::UnknownField { field: kind.into() }),
+    }
+}
+
+fn legacy_primitive_replacement(field: &str) -> Option<&'static str> {
+    match field {
+        "parallel" => Some("together"),
+        "aggregate" => Some("reduce"),
+        _ => None,
     }
 }
 
@@ -131,6 +132,8 @@ fn reject_unknown_step_fields(node: &saphyr::Yaml<'_>) -> YamlResult<()> {
             "save",
             "do",
             "run",
+            "parallel",
+            "aggregate",
             "choose",
             "foreach",
             "for_each",

@@ -68,6 +68,12 @@ fn bounded_static_str<const N: usize>() -> &'static str {
     Box::leak(s.into_boxed_str())
 }
 
+/// Generate a `String` of length `N` from a symbolic ASCII byte array.
+#[inline]
+fn bounded_string<const N: usize>() -> String {
+    bounded_box_str::<N>().into()
+}
+
 /// Generate an arbitrary YamlError variant with arbitrary field values
 /// using Kani's symbolic execution to cover all branches of
 /// `symbolic_code()`.
@@ -140,9 +146,9 @@ fn arbitrary_yaml_error(variant: u8) -> YamlError {
         19 => YamlError::UnsupportedTrigger {
             trigger: bounded_static_str::<STRING_FIELD_BYTES>(),
         },
-        20 => YamlError::LegacyPrimitive {
-            primitive: bounded_static_str::<STRING_FIELD_BYTES>(),
-            canonical: bounded_static_str::<STRING_FIELD_BYTES>(),
+        20 => YamlError::LegacyPrimitiveDeprecated {
+            name: bounded_string::<STRING_FIELD_BYTES>(),
+            replacement: bounded_string::<STRING_FIELD_BYTES>(),
         },
         // Compile-time exhaustiveness: if variant >= YAML_ERROR_VARIANT_COUNT
         // the precondition is violated (kani::assume restricts to [0, 20]).
