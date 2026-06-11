@@ -73,8 +73,6 @@ mod reduce_empty_body;
 #[cfg(test)]
 mod reduce_lowering_no_panic;
 #[cfg(test)]
-mod reduce_multi_step_try_from_parts;
-#[cfg(test)]
 mod reduce_nested_foreach_layout;
 #[cfg(test)]
 mod reduce_nested_next;
@@ -82,6 +80,8 @@ mod reduce_nested_next;
 mod reduce_single_step_regression;
 #[cfg(test)]
 mod reduce_together_collision;
+#[cfg(test)]
+mod reduce_tryfromparts;
 
 // Kani harnesses for ForEach digest coverage (PO-K-FE-01 through PO-K-FE-10).
 // Bead: vb-xi2f.28 | State: 5 (proof-writer)
