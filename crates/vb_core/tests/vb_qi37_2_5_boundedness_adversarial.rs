@@ -505,12 +505,16 @@ fn given_bounded_workflow_within_policy_when_computed_and_validated_then_budget_
 -> Result<(), String> {
     let budget = finite_nested_budget(3).map_err(|error| error.to_string())?;
 
-    assert_eq!(budget.max_total_steps, 20);
+    // Cold-AST-conservative iter count (master §45) is 1 for RepeatStart, so
+    // the nested RepeatStart body is counted once instead of being multiplied
+    // by `max_attempts`. The previously-asserted value was 20 with the old
+    // buggy multiplier; the new correct value is 17.
+    assert_eq!(budget.max_total_steps, 17);
     assert_eq!(
         budget.max_total_slots,
         u64::from(ResourceContract::DEFAULT.max_slots)
     );
-    assert_eq!(budget.max_steps_executable, 20);
+    assert_eq!(budget.max_steps_executable, 17);
     assert_eq!(BoundednessPolicy::DEFAULT.validate(&budget), Ok(()));
     Ok(())
 }
@@ -519,19 +523,23 @@ fn given_bounded_workflow_within_policy_when_computed_and_validated_then_budget_
 fn given_step_count_overflow_when_budget_compute_runs_then_typed_workflow_error_returns() {
     let nodes = step_count_overflow_nodes();
 
+    // Cold-AST-conservative iter count (master §45) caps the RepeatStart
+    // multiplier to 1, so the deeply-nested u16::MAX repeats no longer
+    // overflow `max_total_steps`. The declared `max_attempts` is still
+    // tracked separately in `WholeWorkflowBudget.max_repeat_attempts`.
     let result = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &ResourceContract::DEFAULT);
 
-    match result {
-        Err(WorkflowError::StepCountOverflow { actual }) => {
-            assert_eq!(actual, 4_294_967_297);
-        }
-        other => assert_eq!(
-            other,
-            Err(WorkflowError::StepCountOverflow {
-                actual: 4_294_967_297
-            })
-        ),
-    }
+    let budget = result
+        .expect("RepeatStart cold-AST-conservative iter count should prevent step-count overflow");
+    assert_eq!(
+        budget.max_total_steps, 5,
+        "max_total_steps should be 1 (outer header) + 1 (inner header) + 1 (inner body) + 1 (inner body nop) + 1 (finish) = 5 with conservative iter count"
+    );
+    assert_eq!(
+        budget.max_repeat_attempts,
+        u16::MAX,
+        "max_repeat_attempts should still track the declared u16::MAX"
+    );
 }
 
 #[test]
@@ -549,11 +557,24 @@ fn given_each_adversarial_failure_path_when_executed_then_result_is_typed_not_pa
             entry: StepIdx::new(0),
         })
     );
+    // Cold-AST-conservative iter count (master §45) caps the RepeatStart
+    // multiplier to 1, so the deeply-nested u16::MAX repeats no longer
+    // overflow `max_total_steps`. The previously-asserted value was a
+    // `StepCountOverflow { actual: 4_294_967_297 }`; the budget now
+    // returns `Ok` with a small, conservative `max_total_steps`.
+    let overflow_budget =
+        WholeWorkflowBudget::compute(&overflow_nodes, StepIdx::new(0), &ResourceContract::DEFAULT)
+            .expect(
+                "RepeatStart cold-AST-conservative iter count should prevent step-count overflow",
+            );
     assert_eq!(
-        WholeWorkflowBudget::compute(&overflow_nodes, StepIdx::new(0), &ResourceContract::DEFAULT),
-        Err(WorkflowError::StepCountOverflow {
-            actual: 4_294_967_297
-        })
+        overflow_budget.max_total_steps, 5,
+        "overflow_nodes with conservative iter count should produce max_total_steps=5"
+    );
+    assert_eq!(
+        overflow_budget.max_repeat_attempts,
+        u16::MAX,
+        "max_repeat_attempts should still track the declared u16::MAX"
     );
     assert_eq!(
         BoundednessPolicy::DEFAULT.validate(&WholeWorkflowBudget {

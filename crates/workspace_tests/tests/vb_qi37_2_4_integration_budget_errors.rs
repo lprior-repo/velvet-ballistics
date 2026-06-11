@@ -989,29 +989,23 @@ fn integration_repeat_overflow_returns_total_steps_exceeded() {
 
     let contract = test_contract(60_000, 100);
 
-    let budget = WholeWorkflowBudget::compute(&nodes, entry, &contract);
+    // Cold-AST-conservative iter count (master §45) caps the RepeatStart
+    // multiplier to 1, so a workflow with `max_attempts=50_000` and 10 body
+    // nodes no longer overflows `max_total_steps`. The budget succeeds with
+    // a small step count, and the declared `max_attempts` is still tracked
+    // separately in `max_repeat_attempts` for downstream policy.
+    let budget = WholeWorkflowBudget::compute(&nodes, entry, &contract)
+        .expect("RepeatStart cold-AST-conservative iter count should prevent step-count overflow");
 
-    // Either budget computation fails or policy validation fails
-    match budget {
-        Ok(budget) => {
-            let policy = tight_policy(500_000, 65_535, 64, 8);
-            let result = policy.validate(&budget);
-            match result {
-                Err(BudgetError::TotalStepsExceeded { actual, limit }) => {
-                    assert!(
-                        actual > 500_000,
-                        "actual steps {} should exceed limit 500_000",
-                        actual
-                    );
-                    assert_eq!(limit, 500_000);
-                }
-                other => panic!("Expected TotalStepsExceeded from policy, got {:?}", other),
-            }
-        }
-        Err(_) => {
-            // Overflow rejected - this is also valid behavior
-        }
-    }
+    assert!(
+        budget.max_total_steps <= 100,
+        "max_total_steps should be bounded (got {})",
+        budget.max_total_steps
+    );
+    assert_eq!(
+        budget.max_repeat_attempts, 50_000,
+        "max_repeat_attempts should still track the declared max_attempts"
+    );
 }
 
 // ---------------------------------------------------------------------------

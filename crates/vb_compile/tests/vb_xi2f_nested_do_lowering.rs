@@ -221,8 +221,8 @@ fn nested_do_in_for_each_body_lowers_to_final_ir() -> Result<(), String> {
 }
 
 /// Tests that a `reduce` primitive with a `do` body lowers to final IR.
+/// Re-enabled by vb-em8xu (vb-budget-reduce).
 #[test]
-#[ignore = "blocked by vb-budget-reduce: reduce budget overcounts by MAX_LIST_ITEMS_PER_VALUE for the reduce primitive case"]
 fn nested_do_in_reduce_body_lowers_to_final_ir() -> Result<(), String> {
     let yaml = workflow_yaml(
         "  - id: fold\n    reduce:\n      variable: acc\n      input: \"0\"\n      initial: \"10\"\n      steps:\n        - id: add\n          do:\n            action: \"0\"\n            input: \"1\"\n  - id: done\n    finish:\n      result: 0\n",

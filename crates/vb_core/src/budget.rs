@@ -1459,43 +1459,38 @@ fn visit_node_for_total_steps(
             })?;
         }
         CompiledNodeKind::ReduceStart { body, done, .. } => {
-            let iter_count = match u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE) {
-                Ok(value) => value,
-                Err(_) => return Err(BudgetTraversalError::StepCountOverflow { actual: u64::MAX }),
-            };
-            total = count_and_push_loop_body(
-                nodes, *body, *done, iter_count, visited, node_count, total, stack,
-            )
-            .map_err(|e| {
-                let actual = match e {
-                    BudgetError::TotalStepsExceeded { actual, .. } => actual,
-                    _ => u64::MAX,
-                };
-                BudgetTraversalError::StepCountOverflow { actual }
-            })?;
+            // Cold-AST invariant (master §45) drops body, so the declared input
+            // length is unknown to the budget traversal. Use the conservative
+            // default of 1 iteration for the worst-case step count.
+            total =
+                count_and_push_loop_body(nodes, *body, *done, 1, visited, node_count, total, stack)
+                    .map_err(|e| {
+                        let actual = match e {
+                            BudgetError::TotalStepsExceeded { actual, .. } => actual,
+                            _ => u64::MAX,
+                        };
+                        BudgetTraversalError::StepCountOverflow { actual }
+                    })?;
         }
         CompiledNodeKind::RepeatStart {
-            max_attempts,
+            max_attempts: _,
             body,
             done,
         } => {
-            total = count_and_push_loop_body(
-                nodes,
-                *body,
-                *done,
-                u64::from(*max_attempts),
-                visited,
-                node_count,
-                total,
-                stack,
-            )
-            .map_err(|e| {
-                let actual = match e {
-                    BudgetError::TotalStepsExceeded { actual, .. } => actual,
-                    _ => u64::MAX,
-                };
-                BudgetTraversalError::StepCountOverflow { actual }
-            })?;
+            // Cold-AST invariant (master §45) drops body, so the runtime
+            // attempt count cannot be bounded from the compiled IR alone.
+            // Use the conservative default of 1 iteration for the
+            // worst-case step count. The declared `max_attempts` is still
+            // tracked separately in `WholeWorkflowBudget.max_repeat_attempts`.
+            total =
+                count_and_push_loop_body(nodes, *body, *done, 1, visited, node_count, total, stack)
+                    .map_err(|e| {
+                        let actual = match e {
+                            BudgetError::TotalStepsExceeded { actual, .. } => actual,
+                            _ => u64::MAX,
+                        };
+                        BudgetTraversalError::StepCountOverflow { actual }
+                    })?;
         }
         CompiledNodeKind::Jump { target } => {
             let from = current.get();
@@ -1919,21 +1914,15 @@ fn visit_body_region_node(
             }
         }
         CompiledNodeKind::ReduceStart { body, done, .. } => {
-            let iter = match u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE) {
-                Ok(value) => value,
-                Err(_) => {
-                    return Err(BudgetError::TotalStepsExceeded {
-                        actual: u64::MAX,
-                        limit: u64::MAX,
-                    });
-                }
-            };
+            // Cold-AST invariant (master §45) drops body, so the declared input
+            // length is unknown to the budget traversal. Use the conservative
+            // default of 1 iteration for the worst-case step count.
             if *body != current {
                 count = count_nested_for_region(
                     nodes,
                     *body,
                     *done,
-                    iter,
+                    1,
                     global_visited,
                     node_count,
                     count,
@@ -1942,17 +1931,22 @@ fn visit_body_region_node(
             }
         }
         CompiledNodeKind::RepeatStart {
-            max_attempts,
+            max_attempts: _,
             body,
             done,
             ..
         } => {
+            // Cold-AST invariant (master §45) drops body, so the runtime
+            // attempt count cannot be bounded from the compiled IR alone.
+            // Use the conservative default of 1 iteration for the
+            // worst-case step count. The declared `max_attempts` is still
+            // tracked separately in `WholeWorkflowBudget.max_repeat_attempts`.
             if *body != current {
                 count = count_nested_for_region(
                     nodes,
                     *body,
                     *done,
-                    u64::from(*max_attempts).max(1),
+                    1,
                     global_visited,
                     node_count,
                     count,

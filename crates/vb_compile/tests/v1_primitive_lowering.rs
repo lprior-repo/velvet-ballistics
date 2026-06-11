@@ -113,7 +113,7 @@ const PRIMITIVE_CASES: &[PrimitiveCase] = &[
 ];
 
 #[test]
-#[ignore = "blocked by vb-budget-reduce: reduce budget overcounts by MAX_LIST_ITEMS_PER_VALUE for the reduce primitive case"]
+// Re-enabled by vb-em8xu (vb-budget-reduce).
 fn compile_workflow_emits_supported_ir_when_each_scoped_primitive_is_valid() -> Result<(), String> {
     for case in PRIMITIVE_CASES {
         let workflow = compile_case(case)?;
@@ -144,7 +144,7 @@ fn compile_workflow_emits_supported_ir_when_each_scoped_primitive_is_valid() -> 
 }
 
 #[test]
-#[ignore = "blocked by vb-budget-reduce: reduce budget overcounts by MAX_LIST_ITEMS_PER_VALUE for the reduce primitive case"]
+// Re-enabled by vb-em8xu (vb-budget-reduce).
 fn compile_source_emits_supported_ir_when_each_scoped_primitive_is_valid() -> Result<(), String> {
     for case in PRIMITIVE_CASES {
         let yaml = workflow_yaml(case.yaml_steps);
@@ -169,7 +169,7 @@ fn compile_source_emits_supported_ir_when_each_scoped_primitive_is_valid() -> Re
 }
 
 #[test]
-#[ignore = "blocked by vb-budget-reduce: reduce budget overcounts by MAX_LIST_ITEMS_PER_VALUE for the reduce primitive case"]
+// Re-enabled by vb-em8xu (vb-budget-reduce).
 fn yaml_compiler_compile_emits_supported_ir_when_each_scoped_primitive_is_valid()
 -> Result<(), String> {
     let compiler = YamlCompiler::default();
@@ -994,7 +994,7 @@ proptest! {
     #![proptest_config(ProptestConfig { cases: 64, failure_persistence: None, .. ProptestConfig::default() })]
 
     #[test]
-    #[ignore = "blocked by vb-budget-reduce: reduce budget overcounts by MAX_LIST_ITEMS_PER_VALUE for the reduce primitive case"]
+    // Re-enabled by vb-em8xu (vb-budget-reduce).
     fn proptest_equal_primitive_sources_compile_to_equal_digest_and_ir(case in primitive_case_strategy()) {
         let left = compile_case(&case).map_err(TestCaseError::fail)?;
         let right = compile_case(&case).map_err(TestCaseError::fail)?;
@@ -1268,7 +1268,7 @@ proptest! {
     #![proptest_config(ProptestConfig { cases: 64, failure_persistence: None, .. ProptestConfig::default() })]
 
     #[test]
-    #[ignore = "blocked by vb-budget-reduce: repeat budget overcounts by max_attempts * body_count"]
+        // Re-enabled by vb-em8xu (vb-budget-reduce).
     fn proptest_repeat_different_params_different_digest(
         (max1, max2) in repeat_variable_strategy()
     ) {
@@ -1292,7 +1292,7 @@ proptest! {
     // Both bodies use single Set step (required by lowering validation),
     // but with distinct Set output/value fields.
     #[test]
-    #[ignore = "blocked by vb-budget-reduce: repeat budget overcounts by max_attempts * body_count"]
+        // Re-enabled by vb-em8xu (vb-budget-reduce).
     fn proptest_repeat_different_body_different_digest(
         max_attempts in 1u16..=u16::MAX,
     ) {
@@ -1584,7 +1584,7 @@ fn wait_invalid_shape_event_none_timeout_none_rejected_with_step_field_shape_whe
 /// comparison is covered by existing regression test PI-5
 /// (`proptest_equal_primitive_sources_compile_to_equal_digest_and_ir`).
 #[test]
-#[ignore = "blocked by vb-budget-reduce: reduce budget overcounts by MAX_LIST_ITEMS_PER_VALUE for the reduce primitive case"]
+// Re-enabled by vb-em8xu (vb-budget-reduce).
 fn proptest_non_wait_workflows_digests_are_deterministic_after_wait_fix() -> Result<(), String> {
     // Filter to non-Wait primitive cases that compile successfully.
     let non_wait_cases: Vec<&PrimitiveCase> = PRIMITIVE_CASES

@@ -164,7 +164,6 @@ fn test_repeat_max_attempts_two_differs_from_one() {
 /// PO-008 boundary: max_attempts=u16::MAX vs max_attempts=1 produce
 /// different digests.
 #[test]
-#[ignore = "blocked by vb-budget-reduce: repeat budget overcounts by max_attempts * body_count"]
 fn test_repeat_max_attempts_max_differs_from_one() {
     let steps_max = "  - id: retry\n    repeat:\n      max_attempts: 65535\n      steps:\n        - id: attempt\n          set:\n            output: attempted\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n";
 
@@ -184,7 +183,6 @@ fn test_repeat_max_attempts_max_differs_from_one() {
 /// PO-008 boundary: max_attempts=2 vs max_attempts=u16::MAX produce
 /// different digests (extremal pair with valid min).
 #[test]
-#[ignore = "blocked by vb-budget-reduce: repeat budget overcounts by max_attempts * body_count"]
 fn test_repeat_max_attempts_two_differs_from_max() {
     let steps_two = "  - id: retry\n    repeat:\n      max_attempts: 2\n      steps:\n        - id: attempt\n          set:\n            output: attempted\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n";
 

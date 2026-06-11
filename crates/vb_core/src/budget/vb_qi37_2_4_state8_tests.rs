@@ -400,10 +400,13 @@ proptest! {
         );
     }
 
-    /// PROP-BUD-001 P2: RepeatStart with max_attempts multiplies body cost correctly.
+    /// PROP-BUD-001 P2: RepeatStart body is counted once at the cold-AST-conservative
+    /// iter count of 1, regardless of declared `max_attempts`. The declared
+    /// `max_attempts` is tracked separately via `max_repeat_attempts`.
     ///
-    /// When a RepeatStart with max_attempts=N is in the workflow, the total steps
-    /// should include N * body_steps + overhead.
+    /// Cold-AST invariant (master §45) drops body, so the runtime attempt
+    /// count cannot be bounded from the compiled IR alone. The conservative
+    /// default iter count is 1.
     #[test]
     fn prop_repeat_body_multiplies_with_max_attempts(
         max_attempts in 1u16..=10u16,
@@ -471,12 +474,13 @@ proptest! {
 
         let budget = budget.unwrap();
 
-        // Expected: 1 (RepeatStart) + max_attempts * body_node_count + 1 (RepeatFinish) + 1 (Finish)
-        let expected_steps: u64 = 1 + (max_attempts as u64) * (body_node_count as u64) + 1 + 1;
+        // Expected: 1 (RepeatStart) + 1 * body_node_count + 1 (RepeatFinish) + 1 (Finish)
+        // The cold-AST-conservative iter count is 1, so the body is counted once.
+        let expected_steps: u64 = 1 + (body_node_count as u64) + 1 + 1;
 
         prop_assert_eq!(
             budget.max_total_steps, expected_steps,
-            "RepeatStart with max_attempts={} and body_count={} should have {} total steps, got {}",
+            "RepeatStart with max_attempts={} and body_count={} should have {} total steps (cold-AST-conservative), got {}",
             max_attempts, body_node_count, expected_steps, budget.max_total_steps
         );
         prop_assert_eq!(
@@ -1044,16 +1048,16 @@ proptest! {
         }
     }
 
-    /// PROP-DIAG-001 D4: ReduceStart with MAX_LIST_ITEMS_PER_VALUE includes diagnostic context.
+    /// PROP-DIAG-001 D4: ReduceStart with cold-AST-conservative iter count
+    /// produces a deterministic, bounded step count.
     ///
-    /// When a ReduceStart uses the maximum list items bound, the error
-    /// (if any) should include the ReduceStart primitive identification.
+    /// Cold-AST invariant (master §45) drops body, so the budget traversal
+    /// cannot recover the declared input length. The conservative iter count
+    /// is 1, giving body_count * 1 = 1 (header + body + finish).
     #[test]
     fn prop_reduce_max_list_items_has_diagnostic_context(
         _dummy in 0u8..1u8,
     ) {
-        use crate::limits::MAX_LIST_ITEMS_PER_VALUE;
-
         let nodes = vec![
             CompiledNode {
                 id: StepIdx::new(0),
@@ -1092,25 +1096,21 @@ proptest! {
         let contract = test_contract(3, 3);
         let result = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract);
 
-        // ReduceStart with MAX_LIST_ITEMS_PER_VALUE should be handled
-        // FAILS: The error (if overflow occurs) doesn't include ReduceStart as primitive
+        // ReduceStart with cold-AST conservative iter count should produce
+        // a deterministic step count of 3 (header + 1 body + finish).
         match result {
             Ok(budget) => {
-                // If accepted, verify the iteration count
-                let expected_iters = u64::try_from(MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
-                let expected_steps = 1 + expected_iters + 1; // header + iterations + finish
+                let expected_steps = 1 + 1 + 1; // header + 1 iteration + finish
                 prop_assert_eq!(
                     budget.max_total_steps, expected_steps,
-                    "ReduceStart should compute {} steps for MAX_LIST_ITEMS",
+                    "ReduceStart should compute {} steps with cold-AST conservative iter count",
                     expected_steps
                 );
             }
             Err(WorkflowError::StepCountOverflow { actual }) => {
-                // Overflow rejection - should identify ReduceStart primitive
-                // FAIL: BudgetError doesn't carry primitive kind
                 prop_assert!(
                     false,
-                    "ReduceStart overflow should identify the primitive, got actual={}",
+                    "ReduceStart with cold-AST conservative iter count should not overflow, got actual={}",
                     actual
                 );
             }

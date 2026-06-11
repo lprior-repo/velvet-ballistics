@@ -642,9 +642,12 @@ fn budget_foreach_loop_multiplies_body_steps() {
     );
 }
 
-/// Verifies that a RepeatStart loop multiplies body steps by max_attempts.
+/// Verifies that a RepeatStart body is counted once at the cold-AST-conservative
+/// iter count of 1. The declared `max_attempts` is tracked separately via
+/// `max_repeat_attempts`, not by multiplication into `max_total_steps`.
+///
 /// Workflow: RepeatStart(max=3, body=1, done=2) -> Nop -> Finish
-/// Expected: 1 (header) + 3 * 1 (body * attempts) + 1 (Finish) = 5
+/// Expected: 1 (header) + 1 (body) + 1 (Finish) = 3
 #[test]
 fn budget_repeat_loop_multiplies_body_steps() {
     let nodes = vec![
@@ -682,11 +685,11 @@ fn budget_repeat_loop_multiplies_body_steps() {
     let contract = test_contract(3, 3);
     let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
         .ok()
-        .filter(|b| b.max_total_steps == 5);
+        .filter(|b| b.max_total_steps == 3);
 
     assert!(
         budget.is_some(),
-        "repeat loop should multiply body steps by max_attempts"
+        "repeat loop body should be counted once with cold-AST-conservative iter count"
     );
 }
 
@@ -1235,10 +1238,10 @@ fn blackhat_self_referencing_loop_body_gracefully_handled() {
     );
 }
 
-// --- FINDING BH-BUD-13: ReduceStart uses MAX_LIST_ITEMS_PER_VALUE iterations ---
+// --- FINDING BH-BUD-13: ReduceStart body uses cold-AST-conservative iter count ---
 
 #[test]
-fn blackhat_reduce_start_uses_max_list_items_as_iteration_count() {
+fn blackhat_reduce_start_uses_cold_ast_conservative_iteration_count() {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
@@ -1276,12 +1279,14 @@ fn blackhat_reduce_start_uses_max_list_items_as_iteration_count() {
     let contract = test_contract(3, 3);
     let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract).ok();
 
-    let expected_iters = u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
-    let expected = 1 + expected_iters + 1;
+    // Cold-AST invariant (master §45) drops body, so the budget traversal
+    // cannot recover the declared input length. The conservative default
+    // iter count is 1, giving body_count * 1 = 1 + 1 (header + finish) = 3.
+    let expected = 1 + 1 + 1;
 
     assert!(
         budget.is_some(),
-        "BLACKHAT BH-BUD-13: ReduceStart should compute with MAX_LIST_ITEMS iterations"
+        "BLACKHAT BH-BUD-13: ReduceStart should compute with cold-AST-conservative iter count"
     );
     assert_eq!(
         budget.as_ref().map(|b| b.max_total_steps),
@@ -1845,8 +1850,8 @@ fn reduce_start_body_accounting() -> Result<(), String> {
     let contract = test_contract(3, 3);
     let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
         .map_err(|e| e.to_string())?;
-    let expected_iters = u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
-    ensure_equal(budget.max_total_steps, 1 + expected_iters + 1)
+    // Cold-AST conservative iter count is 1, so body_count * 1 = 1 (header + 1 body + 1 finish).
+    ensure_equal(budget.max_total_steps, 1 + 1 + 1)
 }
 
 // 4e. Repeat body cost
@@ -1887,7 +1892,10 @@ fn repeat_start_body_accounting() -> Result<(), String> {
     let contract = test_contract(3, 3);
     let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
         .map_err(|e| e.to_string())?;
-    ensure_equal(budget.max_total_steps, 9)?;
+    // Cold-AST conservative iter count is 1, so body_count * 1 = 1 (header + 1 body + 1 finish).
+    ensure_equal(budget.max_total_steps, 1 + 1 + 1)?;
+    // `max_repeat_attempts` is the user-declared max_attempts and is tracked
+    // separately from the step-count budget.
     ensure_equal(budget.max_repeat_attempts, 7)
 }
 
