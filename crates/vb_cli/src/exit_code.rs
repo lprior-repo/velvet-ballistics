@@ -40,7 +40,7 @@ pub(crate) enum CliExitCode {
 
 impl From<CliExitCode> for ExitCode {
     fn from(code: CliExitCode) -> Self {
-        // #[repr(u8)] guarantees the discriminant fits in u8; all variants are 0-8.
+        // #[repr(u8)] guarantees the discriminant fits in u8; all variants are 0-9.
         #[allow(clippy::as_conversions)]
         {
             ExitCode::from(code as u8)
@@ -84,6 +84,18 @@ impl From<vb_storage::error::JournalError> for CliExitCode {
         // payloads in its stable exit-code contract.
         drop(err);
         CliExitCode::StorageError
+    }
+}
+
+impl From<vb_storage::recovery::RecoveryError> for CliExitCode {
+    fn from(err: vb_storage::recovery::RecoveryError) -> Self {
+        match err {
+            vb_storage::recovery::RecoveryError::ReplayDivergence { .. } => {
+                CliExitCode::ReplayDivergence
+            }
+            vb_storage::recovery::RecoveryError::Journal(_) => CliExitCode::StorageError,
+            _ => CliExitCode::VerificationFailed,
+        }
     }
 }
 
@@ -156,6 +168,34 @@ mod tests {
     fn from_journal_error_maps_to_storage_error() {
         let err = vb_storage::error::JournalError::KeyCapacity;
         assert_eq!(CliExitCode::from(err), CliExitCode::StorageError);
+    }
+
+    #[test]
+    fn from_recovery_error_replay_divergence_maps_to_replay_divergence() {
+        let err = vb_storage::recovery::RecoveryError::ReplayDivergence {
+            step: vb_core::StepIdx::ZERO,
+            detail: String::from("state trajectory diverged"),
+        };
+
+        assert_eq!(CliExitCode::from(err), CliExitCode::ReplayDivergence);
+    }
+
+    #[test]
+    fn from_recovery_error_journal_maps_to_storage_error() {
+        let err = vb_storage::recovery::RecoveryError::Journal(
+            vb_storage::error::JournalError::QueueFull,
+        );
+
+        assert_eq!(CliExitCode::from(err), CliExitCode::StorageError);
+    }
+
+    #[test]
+    fn from_recovery_error_other_maps_to_verification_failed() {
+        let err = vb_storage::recovery::RecoveryError::NoRecoveryData {
+            run: vb_core::RunId::new(42),
+        };
+
+        assert_eq!(CliExitCode::from(err), CliExitCode::VerificationFailed);
     }
 
     #[test]
