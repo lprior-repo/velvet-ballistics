@@ -27,6 +27,7 @@ harness = false
 bench = []
 default = []
 kani-diagnostic-codes = []
+kani-resource-contract-boundaries = []
 kani-vb-5iebh-check-scope = []
 kani-vb-ajc40 = []
 test-util = []

@@ -86,7 +86,7 @@ pub mod kani_vbjpq733_proofs;
 #[cfg(all(kani, feature = "kani-diagnostic-codes"))]
 pub mod kani;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-resource-contract-boundaries"))]
 pub mod kani_validate_resource_contract_boundaries;
 
 pub use action::{
